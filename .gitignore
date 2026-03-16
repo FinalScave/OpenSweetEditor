@@ -1,0 +1,26 @@
+*.iml
+*.DS_Store
+.idea
+.vscode
+.vs
+.cxx
+.cache
+*.gv
+/cmake-build-*
+/build
+/out
+bin
+obj
+/docs/doxygen
+tests/output
+tests/build
+CMakeSettings.json
+*.csproj.user
+.tmp/
+
+# Claude Code / CodeX
+.claude
+.codex
+
+# Local build folders
+/build-*/

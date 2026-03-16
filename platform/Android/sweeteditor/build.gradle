@@ -1,0 +1,136 @@
+plugins {
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.maven.publisher)
+}
+apply plugin: "signing"
+
+description = "Cross-platform code editor"
+group = "com.qiplat"
+version = "0.0.2"
+
+android {
+    namespace 'com.qiplat.sweeteditor'
+    compileSdk 35
+    ndkVersion '28.2.13676358'
+
+    defaultConfig {
+        minSdk 21
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_STL=c++_static"
+                arguments "-DANDROID=ON"
+            }
+        }
+        ndk {
+            abiFilters "arm64-v8a", "x86_64"
+        }
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    externalNativeBuild {
+        cmake {
+            path "../../../CMakeLists.txt"
+        }
+    }
+}
+
+dependencies {
+    implementation libs.gson
+    implementation libs.annotation
+    implementation libs.recyclerview
+    testImplementation libs.junit
+    androidTestImplementation libs.ext.junit
+    androidTestImplementation libs.espresso.core
+}
+
+javadoc {
+    failOnError false
+    options {
+        locale("zh_CN")
+        encoding("utf-8")
+        links("http://docs.oracle.com/javase/7/docs/api")
+    }
+}
+
+ext.localPublishProps = new Properties()
+File f = rootProject.file(".gradle/publish.properties")
+if (f.exists()) {
+    f.withInputStream { ext.localPublishProps.load(it) }
+}
+
+static def toNonBlank(String value) {
+    if (value == null) {
+        return null
+    }
+    String trimmed = value.trim()
+    return trimmed.isEmpty() ? null : trimmed
+}
+
+def getPublishConfig(String name) {
+    return toNonBlank(providers.gradleProperty(name).orNull)
+            ?: toNonBlank(providers.environmentVariable(name).orNull)
+            ?: toNonBlank(providers.environmentVariable(name.replace('.', '_').toUpperCase()).orNull)
+            ?: toNonBlank(ext.localPublishProps.getProperty(name))
+}
+
+String defaultGpgExecutable = System.getProperty("os.name")
+        .toLowerCase()
+        .contains("windows") ? "gpg.exe" : "gpg"
+String gpgExecutable = getPublishConfig("signing.gnupg.executable") ?: defaultGpgExecutable
+String gpgKeyName = getPublishConfig("signing.gnupg.keyName")
+String gpgPassphrase = getPublishConfig("signing.gnupg.passphrase")
+project.extensions.extraProperties.set("signing.gnupg.executable", gpgExecutable)
+rootProject.extensions.extraProperties.set("signing.gnupg.executable", gpgExecutable)
+if (gpgKeyName != null && !gpgKeyName.empty) {
+    project.extensions.extraProperties.set("signing.gnupg.keyName", gpgKeyName)
+    rootProject.extensions.extraProperties.set("signing.gnupg.keyName", gpgKeyName)
+}
+if (gpgPassphrase != null && !gpgPassphrase.empty) {
+    project.extensions.extraProperties.set("signing.gnupg.passphrase", gpgPassphrase)
+    rootProject.extensions.extraProperties.set("signing.gnupg.passphrase", gpgPassphrase)
+}
+
+signing {
+    useGpgCmd()
+}
+
+centralPortal {
+    username = getPublishConfig("sonatype.username")
+    password = getPublishConfig("sonatype.password")
+    name = "sweeteditor"
+
+    pom {
+        url = "https://github.com/FinalScave/SweetEditor"
+        licenses {
+            license {
+                name = "MIT License"
+                url = "https://www.mit-license.org"
+            }
+        }
+        developers {
+            developer {
+                name = "Scave"
+                email = "iscave@163.com"
+                organization = "Mobile IPE"
+                organizationUrl = "https://github.com/mobile-ipe"
+            }
+        }
+        scm {
+            connection = "scm:git:https://github.com/FinalScave/SweetEditor.git"
+            developerConnection = "scm:git:https://github.com/FinalScave/SweetEditor"
+            url = "https://github.com/FinalScave/SweetEditor"
+        }
+    }
+}

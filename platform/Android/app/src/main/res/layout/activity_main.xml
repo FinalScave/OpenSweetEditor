@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!-- Top toolbar -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#FF2D2D2D"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:padding="4dp">
+
+            <Button
+                android:id="@+id/btn_undo"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_margin="2dp"
+                android:backgroundTint="#FF3C3C3C"
+                android:text="Undo"
+                android:textColor="#FFCCCCCC"
+                android:textSize="12sp"
+                android:minWidth="0dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp" />
+
+            <Button
+                android:id="@+id/btn_redo"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_margin="2dp"
+                android:backgroundTint="#FF3C3C3C"
+                android:text="Redo"
+                android:textColor="#FFCCCCCC"
+                android:textSize="12sp"
+                android:minWidth="0dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp" />
+
+            <Button
+                android:id="@+id/btn_select_all"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_margin="2dp"
+                android:backgroundTint="#FF3C3C3C"
+                android:text="SelectAll"
+                android:textColor="#FFCCCCCC"
+                android:textSize="12sp"
+                android:minWidth="0dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp" />
+
+            <Button
+                android:id="@+id/btn_get_selection"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_margin="2dp"
+                android:backgroundTint="#FF3C3C3C"
+                android:text="GetSel"
+                android:textColor="#FFCCCCCC"
+                android:textSize="12sp"
+                android:minWidth="0dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp" />
+
+            <Button
+                android:id="@+id/btn_switch_theme"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_margin="2dp"
+                android:backgroundTint="#FF4E4E1A"
+                android:text="Theme"
+                android:textColor="#FFFFD700"
+                android:textSize="12sp"
+                android:minWidth="0dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp" />
+
+            <Button
+                android:id="@+id/btn_wrap_mode"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_margin="2dp"
+                android:backgroundTint="#FF3A3A4E"
+                android:text="WrapMode"
+                android:textColor="#FFAAB8FA"
+                android:textSize="12sp"
+                android:minWidth="0dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp" />
+
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <!-- Status bar -->
+    <TextView
+        android:id="@+id/tv_status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#FF252526"
+        android:padding="4dp"
+        android:text="Ready"
+        android:textColor="#FF858585"
+        android:textSize="11sp"
+        android:singleLine="true"
+        android:ellipsize="end" />
+
+    <!-- Editor -->
+    <com.qiplat.sweeteditor.SweetEditor
+        android:id="@+id/editor"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+</LinearLayout>

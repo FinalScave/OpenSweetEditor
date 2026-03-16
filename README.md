@@ -1,0 +1,291 @@
+<div align="center">
+
+[简体中文](README_zh.md) | **English**
+
+# SweetEditor
+
+### Cross-Platform Code Editor Core (C++17)
+
+**A single C++ core for native rendering across platforms, built as long-term evolvable editor infrastructure.**
+
+[![C++17](https://img.shields.io/badge/C++-17-blue.svg?logo=cplusplus)](https://isocpp.org/)
+[![Platforms](https://img.shields.io/badge/Platforms-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows%20%7C%20Swing%20%7C%20Web*%20%7C%20OHOS*-brightgreen.svg)](#platform-integration-status-current-code)
+[![License](https://img.shields.io/badge/License-LGPL--2.1%2B-yellow.svg)](LICENSE)
+
+**Android · iOS · macOS · Windows · Swing · Web* · OHOS***
+
+---
+
+**Core and rendering fully decoupled · One core with unified editing semantics · Native integration on every platform**
+
+**Ghost Text · Inlay Hints · Code Folding · Four Guide-Line Types · Linked Editing**
+
+**SIMD Unicode Acceleration · Piece Table · Incremental Layout · Viewport Rendering**
+
+</div>
+
+---
+
+## Platform Demo Snapshots
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center"><b>Android</b><br/><img src="docs/snapshot/android.png" alt="Android demo" width="170"/></td>
+      <td align="center"><b>macOS</b><br/><img src="docs/snapshot/mac.png" alt="macOS demo" width="360"/></td>
+    </tr>
+    <tr>
+      <td align="center"><b>Windows (WinForms)</b><br/><img src="docs/snapshot/winforms.png" alt="WinForms demo" width="360"/></td>
+      <td align="center"><b>Swing</b><br/><img src="docs/snapshot/swing.png" alt="Swing demo" width="360"/></td>
+    </tr>
+  </table>
+</div>
+
+> Android source snapshot is lower resolution, so it is intentionally displayed smaller.
+
+## Project Positioning
+
+SweetEditor is a cross-platform code editing infrastructure engine for products that need consistent editor behavior across Android, iOS, macOS, Windows, and Swing (with Web/OHOS integration in progress).
+
+It follows a **unified C++17 core + native rendering** architecture: core handles editing semantics and layout, while each platform layer focuses on input forwarding and drawing.
+
+- Reuse advanced editor capabilities once (highlighting, folding, Inlay Hints, Ghost Text, guide lines)
+- Keep performance predictable through Piece Table, incremental layout, viewport rendering, SIMD, and mmap
+- Reduce cross-platform regression cost by consolidating core logic in one codebase
+
+## Overall Architecture
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│                 Platform Layer (Input + Render)                   │
+│                                                                    │
+│ Android        iOS/macOS         Swing/WinForms        Web/OHOS    │
+│ Canvas        CoreText/CG          Java2D / GDI+      (reserved)   │
+└───────────────┬───────────────────────────────┬────────────────────┘
+                │                               │
+                │ Direct JNI to C++             │ C ABI / Binary Payload
+                ▼                               ▼
+      ┌─────────────────────┐         ┌──────────────────────────┐
+      │ Android Bridge      │         │ C API Bridge             │
+      │ (jni_entry+jeditor) │         │ extern "C" + intptr_t    │
+      └───────────┬─────────┘         └────────────┬─────────────┘
+                  └──────────────────────┬──────────┘
+                                         ▼
+      ┌──────────────────────────────────────────────────────────┐
+      │                  SweetEditor Core (C++17)               │
+      │ Document · TextLayout · DecorationManager · EditorCore  │
+      │ GestureHandler · UndoManager · LinkedEditing            │
+      └──────────────────────────────────────────────────────────┘
+```
+
+Core principle: **core and rendering are fully decoupled**. The C++ core handles all editing logic, and each platform layer acts as a lightweight rendering shell - each platform can usually integrate with only a few hundred lines of code.
+
+> For full architecture docs, see [Architecture Design (ZH)](docs/zh/architecture.md) / [Architecture (EN)](docs/en/architecture.md)
+
+## Platform Integration Status (Current Code)
+
+| Platform | Adapter Layer | Rendering Technology | Status |
+| --- | --- | --- | --- |
+| **Android** | `SweetEditor` + direct JNI | Canvas + Paint | ✅ Implemented |
+| **iOS** | `SweetEditorViewiOS` | CoreText + CoreGraphics | ✅ Implemented |
+| **macOS** | `SweetEditorViewMacOS` | CoreText + CoreGraphics | ✅ Implemented |
+| **Windows** | `EditorControl` | GDI+ | ✅ Implemented |
+| **Swing** | `SweetEditor` | Java2D | ✅ Implemented |
+| **Web** | `platform/Emscripten` | - | 🚧 Directory created, bindings not integrated |
+| **OHOS** | `platform/OHOS` | - | 🚧 Directory placeholder |
+
+Core integration requirements are measurement callbacks, input-event forwarding, binary-protocol decoding, and native painting; editing semantics, layout, and render models are uniformly generated by the C++ core.
+
+## Full Feature List (2026-03)
+
+Below is the complete feature set organized from current code capabilities. This is not a roadmap; it is what is supported now.
+
+### 1) Document and text model
+
+- Dual document implementations: `LineArrayDocument` and `PieceTableDocument`, both with unified UTF-8 storage.
+- Support creating documents from in-memory text and from files (core API).
+- Line text query, line count query, and full-text query (core API; C API line-text reading path returns UTF-16; platform control-layer support can differ).
+- Large-file loading path supports `mmap`.
+
+### 2) Atomic editing capabilities
+
+- Insert: `insertText`
+- Exact replace: `replaceText`
+- Exact delete: `deleteText`
+- Backspace delete: `backspace`
+- Forward delete: `deleteForward`
+- Line operations: `moveLineUp/down`, `copyLineUp/down`, `deleteLine`, `insertLineAbove/below`
+- Undo/redo: `undo` / `redo` / `canUndo` / `canRedo`
+- Read-only mode switch: `setReadOnly` / `isReadOnly`
+
+### 3) Cursor, selection, and navigation
+
+- Cursor positioning: `setCursorPosition` / `getCursorPosition`
+- Selection control: `setSelection` / `getSelection` / `selectAll` / `getSelectedText`
+- Word query: `getWordRangeAtCursor` / `getWordAtCursor`
+- Cursor movement: left/right/up/down, line start/end, with optional selection expansion
+- Navigation: `scrollToLine` (Top/Center/Bottom) and `gotoLine`
+- Position queries: `getPositionRect` / `getCursorRect` (for popup anchoring)
+
+### 4) Input system (touch/mouse/keyboard/IME)
+
+- Gesture types: tap, double tap, long press, scroll, fling, zoom, drag selection, context menu.
+- Mouse events: left click, right click, drag, wheel.
+- Keyboard events: arrow keys, Home/End/PageUp/PageDown, common editing shortcuts (including modifier flags).
+- Full IME composition pipeline: `compositionStart/update/end/cancel`, `isComposing`.
+- IME composition can be toggled: `setCompositionEnabled` / `isCompositionEnabled` (availability depends on platform control-layer exposure).
+
+### 5) Layout and rendering
+
+- Wrap modes: `NONE` / `CHAR_BREAK` / `WORD_BREAK`
+- Auto-indent modes: `NONE` / `KEEP_INDENT`
+- Fold-arrow modes: `AUTO` / `ALWAYS` / `HIDDEN`
+- Line-height formula: `lineHeight = fontHeight * mult + add`
+- Render model output: `buildRenderModel` (native-endian binary payload; text fields currently UTF-8 encoded)
+- Layout metrics output: `getLayoutMetrics` (native-endian binary payload)
+- Viewport clipping and incremental layout (only visible-area model output)
+
+### 6) Style and decoration system
+
+- Style registration: foreground color, background color, font flags (bold/italic/strikethrough)
+- Highlight layers: `SYNTAX` / `SEMANTIC`
+- Per-line span set and clear: `setLineSpans` / `clearLineSpans` / `clearHighlightsLayer`
+- Inlay Hints in three forms: text, icon, color block
+- Phantom Text (Ghost Text) rendering
+- Diagnostic decorations: per-line ranges (`severity + color`)
+- Gutter icons: add/remove/clear + max icon count control
+- Four guide-line types: indentation guides, bracket branch lines, control-flow back arrows, separator lines
+- Bracket highlights: `setBracketPairs`, `setMatchedBrackets`, `clearMatchedBrackets`
+- One-shot cleanup: highlights / Inlay / Phantom / all decorations
+
+### 7) Code folding
+
+- Batch set fold regions (start/end/collapsed)
+- Single-line fold toggle: `toggleFold` (for example, Android control layer uses `toggleFoldAt`)
+- Force fold/unfold: `foldAt` / `unfoldAt`
+- Fold/unfold all: `foldAll` / `unfoldAll`
+- Line visibility query: `isLineVisible`
+
+### 8) Snippets and Linked Editing
+
+- Snippet insertion: `insertSnippet`
+- LinkedEditingModel construction: groups, default text, multi-range mapping
+- Session control: `startLinkedEditing` / `isInLinkedEditing`
+- Navigation: `linkedEditingNext` / `linkedEditingPrev`
+- Cancel: `cancelLinkedEditing`
+
+### 9) Platform-side extensibility mechanisms
+
+- DecorationProvider: async decoration provider, merging, and incremental refresh
+- CompletionProvider: trigger-char judgment, async candidate return, retrigger mechanism
+- Completion UI: candidate panel, up/down navigation, Enter confirm, custom rendering
+
+### 10) Engineering and performance foundations
+
+- [simdutf](https://github.com/simdutf/simdutf) SIMD Unicode transcoding pipeline
+- Text-width measurement cache and font-metrics cache
+- Viewport-scoped rebuild and rendering to avoid full relayout
+- Built-in switchable performance overlays on Android / WinForms (for debugging)
+- Core logic centralized in one C++ core, with platform layers focused on input forwarding and native drawing
+
+One-line summary: SweetEditor is no longer a control that can merely edit text; it is a cross-platform editor-core capability set for IDEs, AI coding tools, and cloud development workbenches.
+
+## Quick Start
+
+### Build
+
+```bash
+git clone https://github.com/aspect-aspect/SweetEditor.git
+cd SweetEditor
+
+# macOS / Linux
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j$(nproc)
+
+# Android (NDK required)
+cmake .. -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake \
+         -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-21
+
+# WebAssembly (Emscripten required; core build only for now, platform bindings not integrated)
+emcmake cmake .. -DCMAKE_BUILD_TYPE=Release
+emmake make
+```
+
+### Integration examples
+
+**Android**
+
+```java
+SweetEditor editor = new SweetEditor(context);
+editor.applyTheme(EditorTheme.dark());
+editor.loadDocument(new Document("Hello, SweetEditor!"));
+
+editor.registerStyle(1, 0xFF569CD6, FontStyle.BOLD);
+editor.setLineSpans(
+    0,
+    SpanLayer.SYNTAX,
+    java.util.List.of(new StyleSpan(0, 5, 1))
+);
+editor.setLinePhantomTexts(
+    0,
+    java.util.List.of(new PhantomText(19, "\n  // AI-generated suggestion"))
+);
+```
+
+**iOS / macOS**
+
+```swift
+// iOS UIKit
+let iosEditor = SweetEditorViewiOS(frame: .zero)
+iosEditor.applyTheme(isDark: isDark)
+iosEditor.loadDocument(text: "Hello, SweetEditor!")
+
+// macOS AppKit
+let macEditor = SweetEditorViewMacOS(frame: .zero)
+macEditor.applyTheme(isDark: isDark)
+macEditor.loadDocument(text: "Hello, SweetEditor!")
+
+// SwiftUI
+// WIP: SwiftUI wrapper is not fully ready and currently unavailable.
+// SweetEditorSwiftUIViewiOS(isDarkTheme: isDark)
+// SweetEditorSwiftUIMacOS(isDarkTheme: isDark)
+```
+
+**Windows**
+
+```csharp
+var editor = new EditorControl();
+editor.ApplyTheme(EditorTheme.Dark());
+editor.LoadDocument(new Document("Hello, SweetEditor!"));
+```
+
+## Third-Party Dependencies
+
+SweetEditor follows a minimal-dependency principle: the core runtime depends on only 3 lightweight libraries, with Catch2 used additionally for tests.
+
+| Library | Purpose | Package impact |
+| ------------------------------------------------- | --------------------------- | ---------- |
+| [simdutf](https://github.com/simdutf/simdutf) | SIMD-accelerated Unicode encoding/decoding | ~200KB |
+| [nlohmann/json](https://github.com/nlohmann/json) | JSON debug export and internal helper structures (not the main platform protocol) | Header-only |
+| [utfcpp](https://github.com/nemtrif/utfcpp) | UTF-8 iteration and validation | Header-only |
+| [Catch2](https://github.com/catchorg/Catch2) | Unit test framework (test-only) | Not included in artifacts |
+
+## Documentation
+
+| Document | Description |
+| ----------------------------------------- | ----------------------------------------------- |
+| [Architecture (ZH)](docs/zh/architecture.md) / [Architecture (EN)](docs/en/architecture.md) | Core architecture, module design, data flow, rendering pipeline |
+| [EditorCore API (ZH)](docs/zh/api-editor-core.md) / [EditorCore API (EN)](docs/en/api-editor-core.md) | Full reference for C++ core layer and C API |
+| [Platform API Index (ZH)](docs/zh/api-platform.md) / [Platform API Index (EN)](docs/en/api-platform.md) | Platform API documentation entry points (Android / Swing / Apple / WinForms) |
+| [Join (ZH)](docs/zh/join.md) / [Contributing (EN)](docs/en/join.md) | Repository structure, reading entry points, platform sync checkpoints |
+
+## Contributing
+
+SweetEditor is building an open ecosystem for cross-platform editor infrastructure, and contributions are welcome.
+
+See [Join Guide (ZH)](docs/zh/join.md) / [Contributing Guide (EN)](docs/en/join.md).
+
+## License
+
+SweetEditor is licensed under [GNU Lesser General Public License v2.1 or later](LICENSE) (LGPL-2.1+), with [Static Linking Exception](EXCEPTION) as supplementary terms.

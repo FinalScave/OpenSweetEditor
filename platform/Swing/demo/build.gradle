@@ -1,0 +1,54 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(22)
+    }
+}
+
+repositories {
+    maven { url 'https://maven.aliyun.com/repository/public/' }
+    maven { url 'https://maven.aliyun.com/repository/jcenter/' }
+    maven { url 'https://maven.aliyun.com/repository/google/' }
+    maven { url 'https://maven.aliyun.com/repository/gradle-plugin/' }
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    implementation(project(':sweeteditor'))
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+application {
+    mainClass = 'com.qiplat.sweeteditor.demo.Main'
+    def osName = System.getProperty('os.name').toLowerCase()
+    def nativeLibSubDir
+    if (osName.contains('windows')) {
+        nativeLibSubDir = '../../cmake-build-debug-visual-studio/bin/Debug'
+    } else if (osName.contains('mac')) {
+        nativeLibSubDir = '../../build/lib'
+    } else {
+        throw new GradleException("Unsupported OS for Swing demo nativeLibDir: ${System.getProperty('os.name')}")
+    }
+    def nativeLibDir = rootProject.projectDir.toPath().resolve(nativeLibSubDir).toAbsolutePath().normalize().toString()
+    applicationDefaultJvmArgs = [
+            '--enable-preview',
+            '--enable-native-access=ALL-UNNAMED',
+            "-Djava.library.path=${nativeLibDir}",
+            "-Dsweeteditor.lib.path=${nativeLibDir}"
+    ]
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['--enable-preview']
+}
+
+test {
+    useJUnitPlatform()
+    jvmArgs '--enable-preview', '--enable-native-access=ALL-UNNAMED'
+}

@@ -1,0 +1,24 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<OutputType>Library</OutputType>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<Nullable>enable</Nullable>
+		<UseWindowsForms>True</UseWindowsForms>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<AssemblyName>$(MSBuildProjectName).Net</AssemblyName>
+		<PackageId>SweetEditor</PackageId>
+		<Title>SweetEditor</Title>
+		<Authors>Scave</Authors>
+		<Company>Mobile-IPE</Company>
+		<Product>QiStudio</Product>
+	</PropertyGroup>
+	
+	<ItemGroup>
+		<Content Include="..\..\..\cmake-build-debug-visual-studio\bin\sweeteditor.dll" Pack="true" PackagePath="runtimes\win-x64\native\">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+</Project>

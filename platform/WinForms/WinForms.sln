@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36414.22 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SweetEditor", "SweetEditor\SweetEditor.csproj", "{E3AAFD2B-E486-4794-9F2A-7F8608D6E853}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Demo", "Demo\Demo.csproj", "{5AB99A14-4C7C-4263-905E-97247E0D82CF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E3AAFD2B-E486-4794-9F2A-7F8608D6E853}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E3AAFD2B-E486-4794-9F2A-7F8608D6E853}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E3AAFD2B-E486-4794-9F2A-7F8608D6E853}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E3AAFD2B-E486-4794-9F2A-7F8608D6E853}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5AB99A14-4C7C-4263-905E-97247E0D82CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5AB99A14-4C7C-4263-905E-97247E0D82CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5AB99A14-4C7C-4263-905E-97247E0D82CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5AB99A14-4C7C-4263-905E-97247E0D82CF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {0BBD864C-9A44-4379-B565-4A9879332753}
+	EndGlobalSection
+EndGlobal

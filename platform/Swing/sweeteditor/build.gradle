@@ -1,0 +1,36 @@
+plugins {
+    id 'java-library'
+}
+
+group = 'com.qiplat'
+version = '0.0.1'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(22)
+    }
+}
+
+repositories {
+    maven { url 'https://maven.aliyun.com/repository/public/' }
+    maven { url 'https://maven.aliyun.com/repository/jcenter/' }
+    maven { url 'https://maven.aliyun.com/repository/google/' }
+    maven { url 'https://maven.aliyun.com/repository/gradle-plugin/' }
+    google()
+    mavenCentral()
+}
+
+dependencies {
+    api 'com.google.code.gson:gson:2.11.0'
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs += ['--enable-preview']
+}
+
+test {
+    useJUnitPlatform()
+    jvmArgs '--enable-preview', '--enable-native-access=ALL-UNNAMED'
+}

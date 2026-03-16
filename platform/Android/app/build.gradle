@@ -1,0 +1,53 @@
+plugins {
+    alias(libs.plugins.android.application)
+}
+
+android {
+    namespace 'com.qiplat.sweeteditor.demo'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.qiplat.sweeteditor.demo"
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    configurations {
+        cleanedAnnotations
+        implementation.exclude group: 'org.jetbrains', module: 'annotations'
+        implementation.exclude group: 'com.intellij', module: 'annotations'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    lintOptions {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+
+dependencies {
+    implementation project(":sweeteditor")
+    implementation 'com.qiplat:sweetline:0.1.2'
+    implementation libs.activity
+    implementation libs.constraintlayout
+    implementation libs.appcompat
+    implementation libs.material
+    testImplementation libs.junit
+    androidTestImplementation libs.ext.junit
+    androidTestImplementation libs.espresso.core
+}
