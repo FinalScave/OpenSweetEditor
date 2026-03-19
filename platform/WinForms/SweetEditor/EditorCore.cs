@@ -196,13 +196,40 @@ namespace SweetEditor {
 	}
 
 	/// <summary>
-	/// Scrollbar geometry configuration.
+	/// Scrollbar visibility mode.
+	/// </summary>
+	public enum ScrollbarMode {
+		ALWAYS = 0,
+		TRANSIENT = 1,
+		NEVER = 2,
+	}
+
+	/// <summary>
+	/// Scrollbar track tap behavior.
+	/// </summary>
+	public enum ScrollbarTrackTapMode {
+		JUMP = 0,
+		DISABLED = 1,
+	}
+
+	/// <summary>
+	/// Scrollbar configuration (geometry + behavior).
 	/// </summary>
 	public class ScrollbarConfig {
 		/// <summary>Scrollbar thickness in pixels (default 10.0)</summary>
 		public float Thickness { get; set; } = 10.0f;
 		/// <summary>Minimum scrollbar thumb length in pixels (default 24.0)</summary>
 		public float MinThumb { get; set; } = 24.0f;
+		/// <summary>Visibility mode</summary>
+		public ScrollbarMode Mode { get; set; } = ScrollbarMode.ALWAYS;
+		/// <summary>Whether thumb dragging is enabled</summary>
+		public bool ThumbDraggable { get; set; } = true;
+		/// <summary>Track tap behavior</summary>
+		public ScrollbarTrackTapMode TrackTapMode { get; set; } = ScrollbarTrackTapMode.JUMP;
+		/// <summary>Delay before hide in TRANSIENT mode</summary>
+		public int FadeDelayMs { get; set; } = 700;
+		/// <summary>Fade duration in TRANSIENT mode (used for both fade-in and fade-out).</summary>
+		public int FadeDurationMs { get; set; } = 300;
 	}
 
 	/// <summary>
@@ -1167,6 +1194,9 @@ namespace SweetEditor {
 		/// <summary>Whether scrollbar is visible.</summary>
 		[JsonPropertyName("visible")]
 		public bool Visible { get; set; }
+		/// <summary>Scrollbar alpha in [0, 1].</summary>
+		[JsonPropertyName("alpha")]
+		public float Alpha { get; set; }
 		/// <summary>Track rectangle.</summary>
 		[JsonPropertyName("track")]
 		public ScrollbarRect Track { get; set; }
@@ -1376,7 +1406,10 @@ namespace SweetEditor {
 		internal static extern void SetHandleConfig(IntPtr handle, float radius, float centerDist, float lineWidth, float touchPadding, float dragYOffset);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_scrollbar_config", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetScrollbarConfig(IntPtr handle, float thickness, float minThumb);
+		internal static extern void SetScrollbarConfig(IntPtr handle,
+			float thickness, float minThumb,
+			int mode, int thumbDraggable, int trackTapMode,
+			int fadeDelayMs, int fadeDurationMs);
 
 		[DllImport(LibraryName, EntryPoint = "editor_get_position_rect", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void GetPositionRect(IntPtr handle, nuint line, nuint column, ref float outX, ref float outY, ref float outHeight);
@@ -2032,7 +2065,15 @@ namespace SweetEditor {
 		/// <param name="config">ScrollbarConfig instance</param>
 		public void SetScrollbarConfig(ScrollbarConfig config) {
 			_scrollbarConfig = config;
-			NativeMethods.SetScrollbarConfig(nativeHandle, config.Thickness, config.MinThumb);
+			NativeMethods.SetScrollbarConfig(
+				nativeHandle,
+				config.Thickness,
+				config.MinThumb,
+				(int) config.Mode,
+				config.ThumbDraggable ? 1 : 0,
+				(int) config.TrackTapMode,
+				config.FadeDelayMs,
+				config.FadeDurationMs);
 		}
 
 		/// <summary>Gets the current scrollbar geometry configuration.</summary>

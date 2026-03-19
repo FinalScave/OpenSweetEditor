@@ -8,6 +8,7 @@
 #endif
 
 #include <cstring>
+#include <algorithm>
 #include <limits>
 #include <vector>
 #include <utility.h>
@@ -232,6 +233,7 @@ static void appendScrollbarRect(std::vector<uint8_t>& buffer, const ScrollbarRec
 
 static void appendScrollbarModel(std::vector<uint8_t>& buffer, const ScrollbarModel& scrollbar) {
   appendBool(buffer, scrollbar.visible);
+  appendF32(buffer, scrollbar.alpha);
   appendScrollbarRect(buffer, scrollbar.track);
   appendScrollbarRect(buffer, scrollbar.thumb);
 }
@@ -1125,7 +1127,10 @@ void editor_set_handle_config(intptr_t editor_handle,
 
 #pragma region Scrollbar Config
 
-void editor_set_scrollbar_config(intptr_t editor_handle, float thickness, float min_thumb) {
+void editor_set_scrollbar_config(intptr_t editor_handle,
+    float thickness, float min_thumb,
+    int mode, int thumb_draggable, int track_tap_mode,
+    int fade_delay_ms, int fade_duration_ms) {
   Ptr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     return;
@@ -1133,6 +1138,21 @@ void editor_set_scrollbar_config(intptr_t editor_handle, float thickness, float 
   ScrollbarConfig config;
   config.thickness = thickness;
   config.min_thumb = min_thumb;
+
+  if (mode <= static_cast<int>(ScrollbarMode::ALWAYS)) {
+    config.mode = ScrollbarMode::ALWAYS;
+  } else if (mode >= static_cast<int>(ScrollbarMode::NEVER)) {
+    config.mode = ScrollbarMode::NEVER;
+  } else {
+    config.mode = static_cast<ScrollbarMode>(mode);
+  }
+
+  config.thumb_draggable = (thumb_draggable != 0);
+  config.track_tap_mode = (track_tap_mode == static_cast<int>(ScrollbarTrackTapMode::DISABLED))
+      ? ScrollbarTrackTapMode::DISABLED
+      : ScrollbarTrackTapMode::JUMP;
+  config.fade_delay_ms = static_cast<uint16_t>(std::max(0, std::min(65535, fade_delay_ms)));
+  config.fade_duration_ms = static_cast<uint16_t>(std::max(0, std::min(65535, fade_duration_ms)));
   editor_core->setScrollbarConfig(config);
 }
 

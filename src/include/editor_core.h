@@ -49,12 +49,33 @@ namespace NS_SWEETEDITOR {
     float drag_y_offset {50.0f};
   };
 
-  /// Scrollbar geometry configuration
+  enum class ScrollbarMode : uint8_t {
+    ALWAYS = 0,
+    TRANSIENT = 1,
+    NEVER = 2,
+  };
+
+  enum class ScrollbarTrackTapMode : uint8_t {
+    JUMP = 0,
+    DISABLED = 1,
+  };
+
+  /// Scrollbar configuration (geometry + interaction behavior)
   struct ScrollbarConfig {
     /// Scrollbar track/thumb thickness in pixels
     float thickness {10.0f};
     /// Minimum thumb length in pixels
     float min_thumb {24.0f};
+    /// Visibility mode across platforms
+    ScrollbarMode mode {ScrollbarMode::ALWAYS};
+    /// Whether thumb drag interaction is enabled
+    bool thumb_draggable {true};
+    /// Track tap behavior
+    ScrollbarTrackTapMode track_tap_mode {ScrollbarTrackTapMode::JUMP};
+    /// Delay before hide (TRANSIENT mode)
+    uint16_t fade_delay_ms {700};
+    /// Fade duration in milliseconds (TRANSIENT mode; used for both fade-in and fade-out)
+    uint16_t fade_duration_ms {300};
   };
 
   /// Runtime-mutable editor settings (modified via individual setters)
@@ -156,8 +177,8 @@ namespace NS_SWEETEDITOR {
     /// @param config Handle appearance and touch parameters
     void setHandleConfig(const HandleConfig& config);
 
-    /// Set scrollbar geometry configuration at runtime
-    /// @param config Scrollbar thickness/min-thumb parameters
+    /// Set scrollbar configuration at runtime
+    /// @param config Scrollbar geometry/behavior parameters
     void setScrollbarConfig(const ScrollbarConfig& config);
 
     /// Load text content
@@ -622,6 +643,10 @@ namespace NS_SWEETEDITOR {
 
     /// Drag target for scrollbar interaction
     enum class ScrollbarDragTarget { NONE, VERTICAL, HORIZONTAL };
+    /// Last user-scroll interaction time in ms (used by TRANSIENT scrollbar mode)
+    int64_t m_scrollbar_last_interaction_ms_ {0};
+    /// Start timestamp of current transient scrollbar cycle (used by fade-in)
+    int64_t m_scrollbar_cycle_start_ms_ {0};
     ScrollbarDragTarget m_dragging_scrollbar_ {ScrollbarDragTarget::NONE};
     /// Scrollbar drag start pointer position (screen coordinates)
     PointF m_scrollbar_drag_start_point_;
@@ -680,6 +705,8 @@ namespace NS_SWEETEDITOR {
     HandleDragTarget hitTestHandle(const PointF& screen_point) const;
     /// Drag selection handle to target position
     void dragHandleTo(HandleDragTarget target, const PointF& screen_point);
+    /// Mark scrollbar interaction timestamp for transient visibility/alpha timeline
+    void markScrollbarInteraction();
 
     /// Delete selection and place cursor at selection start
     void deleteSelection();

@@ -32,6 +32,7 @@ import com.qiplat.sweeteditor.core.Document;
 import com.qiplat.sweeteditor.core.EditorOptions;
 import com.qiplat.sweeteditor.core.HandleConfig;
 import com.qiplat.sweeteditor.core.EditorCore;
+import com.qiplat.sweeteditor.core.ScrollbarConfig;
 import com.qiplat.sweeteditor.core.adornment.DiagnosticItem;
 import com.qiplat.sweeteditor.core.adornment.FoldRegion;
 
@@ -171,6 +172,9 @@ public class SweetEditor extends View {
     private Paint mLinkedEditingInactivePaint;
     private Paint mBracketHighlightBorderPaint;
     private Paint mBracketHighlightBgPaint;
+    private Paint mScrollbarTrackPaint;
+    private Paint mScrollbarThumbPaint;
+    private static final int TRANSIENT_SCROLLBAR_REFRESH_MIN_MS = 16;
 
     // Cursor blink
     private boolean mCursorVisible = true;
@@ -183,6 +187,13 @@ public class SweetEditor extends View {
             // onDraw reuses cached EditorRenderModel, skips buildRenderModel
             postInvalidate();
             mHandler.postDelayed(this, 500);
+        }
+    };
+    private final Runnable mTransientScrollbarRefresh = new Runnable() {
+        @Override
+        public void run() {
+            // Trigger one rebuild so C++ transient alpha/visibility can advance.
+            flush();
         }
     };
 
@@ -349,6 +360,7 @@ public class SweetEditor extends View {
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_GUTTER);
         // Selection handles (drag handles)
         drawSelectionHandles(canvas, model.selectionStartHandle, model.selectionEndHandle);
+        drawScrollbars(canvas, model);
         if (drawPerf != null) {
             drawPerf.mark(PerfStepRecorder.STEP_HANDLES);
             drawPerf.finish(); // Lock end time immediately to avoid subsequent log/overlay code affecting stats
@@ -394,6 +406,7 @@ public class SweetEditor extends View {
     protected void onDetachedFromWindow() {
         super.onDetachedFromWindow();
         mHandler.removeCallbacks(mCursorBlink);
+        mHandler.removeCallbacks(mTransientScrollbarRefresh);
     }
 
     @Override
@@ -403,6 +416,7 @@ public class SweetEditor extends View {
             resetCursorBlink();
         } else {
             mHandler.removeCallbacks(mCursorBlink);
+            mHandler.removeCallbacks(mTransientScrollbarRefresh);
         }
     }
 
@@ -1942,6 +1956,12 @@ public class SweetEditor extends View {
         mBracketHighlightBgPaint.setColor(mTheme.bracketHighlightBgColor);
         mBracketHighlightBgPaint.setStyle(Paint.Style.FILL);
 
+        // Scrollbar Paint
+        mScrollbarTrackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mScrollbarTrackPaint.setStyle(Paint.Style.FILL);
+        mScrollbarThumbPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        mScrollbarThumbPaint.setStyle(Paint.Style.FILL);
+
         // Line number split line Paint
         mSplitLinePaint = new Paint();
         mSplitLinePaint.setColor(mTheme.splitLineColor);
@@ -1966,6 +1986,17 @@ public class SweetEditor extends View {
         EditorOptions editorOptions = new EditorOptions(scaledTouchSlop, 300);
         mEditorCore = new EditorCore(mTextMeasurer, editorOptions);
         mEditorCore.setHandleConfig(new HandleConfig());
+        float density = getResources().getDisplayMetrics().density;
+        float scrollbarThicknessPx = 12.0f * density;
+        float scrollbarMinThumbPx = 48.0f * density;
+        mEditorCore.setScrollbarConfig(new ScrollbarConfig(
+                scrollbarThicknessPx,
+                scrollbarMinThumbPx,
+                ScrollbarConfig.ScrollbarMode.TRANSIENT,
+                true,
+                ScrollbarConfig.ScrollbarTrackTapMode.DISABLED,
+                700,
+                300));
         mDecorationProviderManager = new DecorationProviderManager(this);
 
         // Completion manager and panel controller
@@ -2223,6 +2254,110 @@ public class SweetEditor extends View {
                 }
             }
         }
+    }
+
+    private void drawScrollbars(Canvas canvas, EditorRenderModel model) {
+        ScrollbarModel vertical = model.verticalScrollbar;
+        ScrollbarModel horizontal = model.horizontalScrollbar;
+        float verticalAlpha = getScrollbarAlpha(vertical);
+        float horizontalAlpha = getScrollbarAlpha(horizontal);
+        boolean hasVertical = isDrawableScrollbar(vertical, verticalAlpha);
+        boolean hasHorizontal = isDrawableScrollbar(horizontal, horizontalAlpha);
+        if (!hasVertical && !hasHorizontal) {
+            mHandler.removeCallbacks(mTransientScrollbarRefresh);
+            return;
+        }
+
+        float verticalTrackX = 0f;
+        float verticalTrackWidth = 0f;
+        float horizontalTrackY = 0f;
+        float horizontalTrackHeight = 0f;
+
+        if (hasVertical) {
+            int trackAlpha = Math.round(72f * verticalAlpha);
+            int thumbAlpha = Math.round(170f * verticalAlpha);
+            mScrollbarTrackPaint.setColor(withAlpha(mTheme.splitLineColor, trackAlpha));
+            mScrollbarThumbPaint.setColor(withAlpha(mTheme.lineNumberColor, thumbAlpha));
+            float trackX = vertical.track.origin != null ? vertical.track.origin.x : 0f;
+            float trackY = vertical.track.origin != null ? vertical.track.origin.y : 0f;
+            float thumbX = vertical.thumb.origin != null ? vertical.thumb.origin.x : 0f;
+            float thumbY = vertical.thumb.origin != null ? vertical.thumb.origin.y : 0f;
+            verticalTrackX = trackX;
+            verticalTrackWidth = vertical.track.width;
+            canvas.drawRect(trackX, trackY, trackX + vertical.track.width, trackY + vertical.track.height, mScrollbarTrackPaint);
+            canvas.drawRect(thumbX, thumbY, thumbX + vertical.thumb.width, thumbY + vertical.thumb.height, mScrollbarThumbPaint);
+        }
+
+        if (hasHorizontal) {
+            int trackAlpha = Math.round(72f * horizontalAlpha);
+            int thumbAlpha = Math.round(170f * horizontalAlpha);
+            mScrollbarTrackPaint.setColor(withAlpha(mTheme.splitLineColor, trackAlpha));
+            mScrollbarThumbPaint.setColor(withAlpha(mTheme.lineNumberColor, thumbAlpha));
+            float trackX = horizontal.track.origin != null ? horizontal.track.origin.x : 0f;
+            float trackY = horizontal.track.origin != null ? horizontal.track.origin.y : 0f;
+            float thumbX = horizontal.thumb.origin != null ? horizontal.thumb.origin.x : 0f;
+            float thumbY = horizontal.thumb.origin != null ? horizontal.thumb.origin.y : 0f;
+            horizontalTrackY = trackY;
+            horizontalTrackHeight = horizontal.track.height;
+            canvas.drawRect(trackX, trackY, trackX + horizontal.track.width, trackY + horizontal.track.height, mScrollbarTrackPaint);
+            canvas.drawRect(thumbX, thumbY, thumbX + horizontal.thumb.width, thumbY + horizontal.thumb.height, mScrollbarThumbPaint);
+        }
+
+        if (hasVertical && hasHorizontal) {
+            int cornerAlpha = Math.round(72f * Math.max(verticalAlpha, horizontalAlpha));
+            mScrollbarTrackPaint.setColor(withAlpha(mTheme.splitLineColor, cornerAlpha));
+            canvas.drawRect(
+                    verticalTrackX,
+                    horizontalTrackY,
+                    verticalTrackX + verticalTrackWidth,
+                    horizontalTrackY + horizontalTrackHeight,
+                    mScrollbarTrackPaint);
+        }
+
+        ScrollbarConfig config = mEditorCore.getScrollbarConfig();
+        if (config != null && config.mode == ScrollbarConfig.ScrollbarMode.TRANSIENT) {
+            // Keep ticking while transient scrollbars are visible so fade-out always progresses.
+            scheduleTransientScrollbarRefresh(TRANSIENT_SCROLLBAR_REFRESH_MIN_MS);
+        } else {
+            mHandler.removeCallbacks(mTransientScrollbarRefresh);
+        }
+    }
+
+    private static boolean isDrawableScrollbar(@Nullable ScrollbarModel scrollbar, float alpha) {
+        return scrollbar != null
+                && scrollbar.visible
+                && alpha > 0f
+                && scrollbar.track != null
+                && scrollbar.thumb != null
+                && scrollbar.track.width > 0f
+                && scrollbar.track.height > 0f
+                && scrollbar.thumb.width > 0f
+                && scrollbar.thumb.height > 0f;
+    }
+
+    private static float getScrollbarAlpha(@Nullable ScrollbarModel scrollbar) {
+        if (scrollbar == null) return 0f;
+        return clamp01(scrollbar.alpha);
+    }
+
+    private static float clamp01(float value) {
+        return Math.max(0f, Math.min(1f, value));
+    }
+
+    private static int withAlpha(int argb, int alpha) {
+        int a = Math.max(0, Math.min(255, alpha));
+        return (a << 24) | (argb & 0x00FFFFFF);
+    }
+
+    private void scheduleTransientScrollbarRefresh(int requestedDelayMs) {
+        ScrollbarConfig config = mEditorCore.getScrollbarConfig();
+        if (config == null || config.mode != ScrollbarConfig.ScrollbarMode.TRANSIENT) {
+            mHandler.removeCallbacks(mTransientScrollbarRefresh);
+            return;
+        }
+        int delayMs = Math.max(TRANSIENT_SCROLLBAR_REFRESH_MIN_MS, requestedDelayMs);
+        mHandler.removeCallbacks(mTransientScrollbarRefresh);
+        mHandler.postDelayed(mTransientScrollbarRefresh, delayMs);
     }
 
     private void drawCursor(Canvas canvas, @Nullable Cursor cursor) {

@@ -177,7 +177,7 @@ final class ProtocolDecoder {
         model.bracketHighlightRects = readBracketHighlightRects(data);
         model.verticalScrollbar = defaultScrollbarModel();
         model.horizontalScrollbar = defaultScrollbarModel();
-        if (data.remaining() >= 72) {
+        if (data.remaining() >= 80) {
             model.verticalScrollbar = readScrollbarModel(data);
             model.horizontalScrollbar = readScrollbarModel(data);
         }
@@ -414,6 +414,7 @@ final class ProtocolDecoder {
     private static ScrollbarModel defaultScrollbarModel() {
         ScrollbarModel model = new ScrollbarModel();
         model.visible = false;
+        model.alpha = 0f;
         model.track = defaultScrollbarRect();
         model.thumb = defaultScrollbarRect();
         return model;
@@ -430,6 +431,7 @@ final class ProtocolDecoder {
     private static ScrollbarModel readScrollbarModel(ByteBuffer data) {
         ScrollbarModel scrollbar = new ScrollbarModel();
         scrollbar.visible = data.getInt() != 0;
+        scrollbar.alpha = data.getFloat();
         scrollbar.track = readScrollbarRect(data);
         scrollbar.thumb = readScrollbarRect(data);
         return scrollbar;

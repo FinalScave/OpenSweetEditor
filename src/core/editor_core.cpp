@@ -5,6 +5,7 @@
 #include <simdutf/simdutf.h>
 #include <cmath>
 #include <algorithm>
+#include <chrono>
 #include <editor_core.h>
 #include <utility.h>
 #include "logging.h"
@@ -20,10 +21,19 @@ namespace NS_SWEETEDITOR {
            ch > 0x7F; // Treat non-ASCII characters as word characters (supports CJK, etc.)
   }
 
-  static bool pointInScrollbarRect(const PointF& point, const ScrollbarRect& rect) {
+  static bool pointInScrollbarRect(const PointF& point, const ScrollbarRect& rect, float expand = 0.0f) {
     if (rect.width <= 0.0f || rect.height <= 0.0f) return false;
-    return point.x >= rect.origin.x && point.x <= rect.origin.x + rect.width
-        && point.y >= rect.origin.y && point.y <= rect.origin.y + rect.height;
+    const float left = rect.origin.x - expand;
+    const float right = rect.origin.x + rect.width + expand;
+    const float top = rect.origin.y - expand;
+    const float bottom = rect.origin.y + rect.height + expand;
+    return point.x >= left && point.x <= right
+        && point.y >= top && point.y <= bottom;
+  }
+
+  static int64_t monotonicNowMs() {
+    using namespace std::chrono;
+    return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
   }
 
 #pragma region [Class: EditorOptions]
@@ -41,6 +51,11 @@ namespace NS_SWEETEDITOR {
         + ", enable_composition = " + (enable_composition ? "true" : "false")
         + ", scrollbar.thickness = " + std::to_string(scrollbar.thickness)
         + ", scrollbar.min_thumb = " + std::to_string(scrollbar.min_thumb)
+        + ", scrollbar.mode = " + std::to_string(static_cast<int>(scrollbar.mode))
+        + ", scrollbar.thumb_draggable = " + (scrollbar.thumb_draggable ? "true" : "false")
+        + ", scrollbar.track_tap_mode = " + std::to_string(static_cast<int>(scrollbar.track_tap_mode))
+        + ", scrollbar.fade_delay_ms = " + std::to_string(scrollbar.fade_delay_ms)
+        + ", scrollbar.fade_duration_ms = " + std::to_string(scrollbar.fade_duration_ms)
         + "}";
   }
 #pragma endregion
@@ -62,9 +77,33 @@ namespace NS_SWEETEDITOR {
   void EditorCore::setScrollbarConfig(const ScrollbarConfig& config) {
     m_settings_.scrollbar.thickness = std::max(1.0f, config.thickness);
     m_settings_.scrollbar.min_thumb = std::max(m_settings_.scrollbar.thickness, config.min_thumb);
+    m_settings_.scrollbar.mode = config.mode;
+    m_settings_.scrollbar.thumb_draggable = config.thumb_draggable;
+    m_settings_.scrollbar.track_tap_mode = config.track_tap_mode;
+    m_settings_.scrollbar.fade_delay_ms = std::max<uint16_t>(0, config.fade_delay_ms);
+    m_settings_.scrollbar.fade_duration_ms = std::max<uint16_t>(0, config.fade_duration_ms);
     normalizeScrollState();
-    LOGD("EditorCore::setScrollbarConfig(), thickness = %.1f, min_thumb = %.1f",
-         m_settings_.scrollbar.thickness, m_settings_.scrollbar.min_thumb);
+    LOGD("EditorCore::setScrollbarConfig(), thickness = %.1f, min_thumb = %.1f, mode = %d, thumb_draggable = %d, track_tap_mode = %d, fade_delay_ms = %u, fade_duration_ms = %u",
+         m_settings_.scrollbar.thickness,
+         m_settings_.scrollbar.min_thumb,
+         static_cast<int>(m_settings_.scrollbar.mode),
+         m_settings_.scrollbar.thumb_draggable ? 1 : 0,
+         static_cast<int>(m_settings_.scrollbar.track_tap_mode),
+         m_settings_.scrollbar.fade_delay_ms,
+         m_settings_.scrollbar.fade_duration_ms);
+  }
+
+  void EditorCore::markScrollbarInteraction() {
+    const int64_t now_ms = monotonicNowMs();
+    const int64_t hide_window_ms =
+        static_cast<int64_t>(m_settings_.scrollbar.fade_delay_ms) +
+        std::max<int64_t>(1, static_cast<int64_t>(m_settings_.scrollbar.fade_duration_ms));
+    if (m_scrollbar_last_interaction_ms_ <= 0
+        || m_scrollbar_cycle_start_ms_ <= 0
+        || now_ms - m_scrollbar_last_interaction_ms_ > hide_window_ms) {
+      m_scrollbar_cycle_start_ms_ = now_ms;
+    }
+    m_scrollbar_last_interaction_ms_ = now_ms;
   }
 
   void EditorCore::loadDocument(const Ptr<Document>& document) {
@@ -188,8 +227,47 @@ namespace NS_SWEETEDITOR {
     const float scrollbar_min_thumb = std::max(scrollbar_thickness, m_settings_.scrollbar.min_thumb);
 
     const ScrollBounds bounds = m_text_layout_->getScrollBounds();
-    const bool show_vertical = bounds.max_scroll_y > 0.0f;
-    const bool show_horizontal = bounds.max_scroll_x > 0.0f;
+    const bool logical_vertical = bounds.max_scroll_y > 0.0f;
+    const bool logical_horizontal = bounds.max_scroll_x > 0.0f;
+    const int64_t now_ms = monotonicNowMs();
+    const auto axisAlpha = [&](bool logical_visible, ScrollbarDragTarget drag_target) -> float {
+      if (!logical_visible) return 0.0f;
+      switch (m_settings_.scrollbar.mode) {
+      case ScrollbarMode::ALWAYS:
+        return 1.0f;
+      case ScrollbarMode::NEVER:
+        return 0.0f;
+      case ScrollbarMode::TRANSIENT: {
+        if (m_dragging_scrollbar_ == drag_target) return 1.0f;
+        if (m_scrollbar_last_interaction_ms_ <= 0) return 0.0f;
+
+        const int64_t fade_ms = std::max<int64_t>(1, static_cast<int64_t>(m_settings_.scrollbar.fade_duration_ms));
+        const int64_t delay_ms = static_cast<int64_t>(m_settings_.scrollbar.fade_delay_ms);
+        const int64_t elapsed_since_last = std::max<int64_t>(0, now_ms - m_scrollbar_last_interaction_ms_);
+        if (elapsed_since_last >= delay_ms + fade_ms) {
+          return 0.0f;
+        }
+
+        float fade_out_alpha = 1.0f;
+        if (elapsed_since_last > delay_ms) {
+          fade_out_alpha = 1.0f - static_cast<float>(elapsed_since_last - delay_ms) / static_cast<float>(fade_ms);
+        }
+
+        float fade_in_alpha = 1.0f;
+        if (m_scrollbar_cycle_start_ms_ > 0) {
+          const int64_t elapsed_since_cycle = std::max<int64_t>(0, now_ms - m_scrollbar_cycle_start_ms_);
+          // +16ms frame compensation avoids fully invisible first frame when interaction just starts.
+          fade_in_alpha = std::min(1.0f, static_cast<float>(elapsed_since_cycle + 16) / static_cast<float>(fade_ms));
+        }
+        return std::clamp(std::min(fade_in_alpha, fade_out_alpha), 0.0f, 1.0f);
+      }
+      }
+      return 1.0f;
+    };
+    const float vertical_alpha = axisAlpha(logical_vertical, ScrollbarDragTarget::VERTICAL);
+    const float horizontal_alpha = axisAlpha(logical_horizontal, ScrollbarDragTarget::HORIZONTAL);
+    const bool show_vertical = vertical_alpha > 0.0f;
+    const bool show_horizontal = horizontal_alpha > 0.0f;
     const float viewport_width = m_viewport_.width;
     const float viewport_height = m_viewport_.height;
 
@@ -197,6 +275,7 @@ namespace NS_SWEETEDITOR {
     const float vertical_track_height = viewport_height - (show_horizontal ? scrollbar_thickness : 0.0f);
     if (show_vertical && vertical_track_height > 0.0f) {
       vertical.visible = true;
+      vertical.alpha = vertical_alpha;
       vertical.track.origin = {vertical_track_x, 0.0f};
       vertical.track.width = scrollbar_thickness;
       vertical.track.height = vertical_track_height;
@@ -220,6 +299,7 @@ namespace NS_SWEETEDITOR {
     const float horizontal_track_y = viewport_height - scrollbar_thickness;
     if (show_horizontal && horizontal_track_width > 0.0f && horizontal_track_y >= 0.0f) {
       horizontal.visible = true;
+      horizontal.alpha = horizontal_alpha;
       horizontal.track.origin = {horizontal_track_x, horizontal_track_y};
       horizontal.track.width = horizontal_track_width;
       horizontal.track.height = scrollbar_thickness;
@@ -273,6 +353,9 @@ namespace NS_SWEETEDITOR {
       fillGestureResult(result);
       return true;
     };
+    const auto markScrollbarInteraction = [&]() {
+      this->markScrollbarInteraction();
+    };
 
     ScrollbarModel vertical;
     ScrollbarModel horizontal;
@@ -284,30 +367,42 @@ namespace NS_SWEETEDITOR {
     case EventType::MOUSE_DOWN: {
       if (event.points.empty()) return false;
       const PointF& point = event.points[0];
+      const bool is_touch_down = (event.type == EventType::TOUCH_DOWN);
+      const float thumb_hit_padding = is_touch_down
+        ? std::max(6.0f, m_settings_.scrollbar.thickness * 1.2f)
+        : 0.0f;
 
-      if (vertical.visible && pointInScrollbarRect(point, vertical.thumb)) {
+      if (vertical.visible
+          && m_settings_.scrollbar.thumb_draggable
+          && pointInScrollbarRect(point, vertical.thumb, thumb_hit_padding)) {
         m_dragging_scrollbar_ = ScrollbarDragTarget::VERTICAL;
         m_scrollbar_drag_start_point_ = point;
         m_scrollbar_drag_start_scroll_y_ = m_view_state_.scroll_y;
         m_scrollbar_drag_travel_y_ = std::max(0.0f, vertical.track.height - vertical.thumb.height);
         m_scrollbar_drag_max_scroll_y_ = std::max(0.0f, bounds.max_scroll_y);
         m_edge_scroll_.active = false;
+        markScrollbarInteraction();
         m_gesture_handler_->resetState();
         return consume(GestureType::UNDEFINED);
       }
 
-      if (horizontal.visible && pointInScrollbarRect(point, horizontal.thumb)) {
+      if (horizontal.visible
+          && m_settings_.scrollbar.thumb_draggable
+          && pointInScrollbarRect(point, horizontal.thumb, thumb_hit_padding)) {
         m_dragging_scrollbar_ = ScrollbarDragTarget::HORIZONTAL;
         m_scrollbar_drag_start_point_ = point;
         m_scrollbar_drag_start_scroll_x_ = m_view_state_.scroll_x;
         m_scrollbar_drag_travel_x_ = std::max(0.0f, horizontal.track.width - horizontal.thumb.width);
         m_scrollbar_drag_max_scroll_x_ = std::max(0.0f, bounds.max_scroll_x);
         m_edge_scroll_.active = false;
+        markScrollbarInteraction();
         m_gesture_handler_->resetState();
         return consume(GestureType::UNDEFINED);
       }
 
-      if (vertical.visible && pointInScrollbarRect(point, vertical.track)) {
+      if (vertical.visible
+          && m_settings_.scrollbar.track_tap_mode == ScrollbarTrackTapMode::JUMP
+          && pointInScrollbarRect(point, vertical.track)) {
         if (vertical.track.height > 0.0f && bounds.max_scroll_y > 0.0f) {
           const float travel = std::max(0.0f, vertical.track.height - vertical.thumb.height);
           const float ratio = travel <= 0.0f
@@ -316,12 +411,16 @@ namespace NS_SWEETEDITOR {
           m_view_state_.scroll_y = ratio * bounds.max_scroll_y;
           normalizeScrollState();
           m_edge_scroll_.active = false;
+          markScrollbarInteraction();
           return consume(GestureType::SCROLL);
         }
+        markScrollbarInteraction();
         return consume(GestureType::UNDEFINED);
       }
 
-      if (horizontal.visible && pointInScrollbarRect(point, horizontal.track)) {
+      if (horizontal.visible
+          && m_settings_.scrollbar.track_tap_mode == ScrollbarTrackTapMode::JUMP
+          && pointInScrollbarRect(point, horizontal.track)) {
         if (horizontal.track.width > 0.0f && bounds.max_scroll_x > 0.0f) {
           const float travel = std::max(0.0f, horizontal.track.width - horizontal.thumb.width);
           const float ratio = travel <= 0.0f
@@ -330,8 +429,10 @@ namespace NS_SWEETEDITOR {
           m_view_state_.scroll_x = ratio * bounds.max_scroll_x;
           normalizeScrollState();
           m_edge_scroll_.active = false;
+          markScrollbarInteraction();
           return consume(GestureType::SCROLL);
         }
+        markScrollbarInteraction();
         return consume(GestureType::UNDEFINED);
       }
       return false;
@@ -355,6 +456,7 @@ namespace NS_SWEETEDITOR {
         m_view_state_.scroll_y = std::clamp(target_y, 0.0f, bounds.max_scroll_y);
         normalizeScrollState();
         m_edge_scroll_.active = false;
+        markScrollbarInteraction();
         return consume(GestureType::SCROLL);
       }
       if (m_dragging_scrollbar_ == ScrollbarDragTarget::HORIZONTAL) {
@@ -366,6 +468,7 @@ namespace NS_SWEETEDITOR {
         m_view_state_.scroll_x = std::clamp(target_x, 0.0f, bounds.max_scroll_x);
         normalizeScrollState();
         m_edge_scroll_.active = false;
+        markScrollbarInteraction();
         return consume(GestureType::SCROLL);
       }
       return consume(GestureType::UNDEFINED);
@@ -518,11 +621,13 @@ namespace NS_SWEETEDITOR {
     case GestureType::SCROLL:
       m_view_state_.scroll_x += result.scroll_x;
       m_view_state_.scroll_y += result.scroll_y;
+      markScrollbarInteraction();
       break;
     case GestureType::FAST_SCROLL: {
       constexpr float kFastScrollMultiplier = 3.0f;
       m_view_state_.scroll_x += result.scroll_x * kFastScrollMultiplier;
       m_view_state_.scroll_y += result.scroll_y * kFastScrollMultiplier;
+      markScrollbarInteraction();
       break;
     }
     default:
@@ -2804,6 +2909,7 @@ namespace NS_SWEETEDITOR {
     // Apply scroll delta; the same screen point now maps to a new text position.
     m_view_state_.scroll_y += m_edge_scroll_.speed;
     normalizeScrollState();
+    markScrollbarInteraction();
 
     // Reuse existing drag logic to update selection with the shifted viewport.
     // Both functions internally call updateEdgeScrollState() to re-evaluate

@@ -622,7 +622,15 @@ public class EditorCore {
     public void setScrollbarConfig(ScrollbarConfig config) {
         if (mNativeHandle == 0) return;
         mScrollbarConfig = config;
-        nativeSetScrollbarConfig(mNativeHandle, config.thickness, config.minThumb);
+        nativeSetScrollbarConfig(
+                mNativeHandle,
+                config.thickness,
+                config.minThumb,
+                config.mode.value,
+                config.thumbDraggable,
+                config.trackTapMode.value,
+                config.fadeDelayMs,
+                config.fadeDurationMs);
     }
 
     /**
@@ -1702,7 +1710,9 @@ public class EditorCore {
     private static native void nativeSetHandleConfig(long handle, float radius, float centerDist, float lineWidth, float touchPadding, float dragYOffset);
 
     @CriticalNative
-    private static native void nativeSetScrollbarConfig(long handle, float thickness, float minThumb);
+    private static native void nativeSetScrollbarConfig(long handle, float thickness, float minThumb,
+                                                        int mode, boolean thumbDraggable, int trackTapMode,
+                                                        int fadeDelayMs, int fadeDurationMs);
 
     @FastNative
     private static native float[] nativeGetPositionRect(long handle, int line, int column);

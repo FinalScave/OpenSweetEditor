@@ -407,8 +407,16 @@ public:
     editor_set_handle_config(static_cast<intptr_t>(handle), radius, centerDist, lineWidth, touchPadding, dragYOffset);
   }
 
-  static void setScrollbarConfig(jlong handle, jfloat thickness, jfloat minThumb) {
-    editor_set_scrollbar_config(static_cast<intptr_t>(handle), thickness, minThumb);
+  static void setScrollbarConfig(jlong handle, jfloat thickness, jfloat minThumb,
+                                 jint mode, jboolean thumbDraggable, jint trackTapMode,
+                                 jint fadeDelayMs, jint fadeDurationMs) {
+    editor_set_scrollbar_config(static_cast<intptr_t>(handle),
+                                thickness, minThumb,
+                                static_cast<int>(mode),
+                                thumbDraggable == JNI_TRUE ? 1 : 0,
+                                static_cast<int>(trackTapMode),
+                                static_cast<int>(fadeDelayMs),
+                                static_cast<int>(fadeDurationMs));
   }
 
   static jfloatArray getPositionRect(JNIEnv* env, jclass clazz, jlong handle, jint line, jint column) {
@@ -823,7 +831,7 @@ public:
       {"nativeSetAutoIndentMode", "(JI)V", (void*) setAutoIndentMode},
       {"nativeGetAutoIndentMode", "(J)I", (void*) getAutoIndentMode},
       {"nativeSetHandleConfig", "(JFFFFF)V", (void*) setHandleConfig},
-      {"nativeSetScrollbarConfig", "(JFF)V", (void*) setScrollbarConfig},
+      {"nativeSetScrollbarConfig", "(JFFIZIII)V", (void*) setScrollbarConfig},
       {"nativeGetPositionRect", "(JII)[F", (void*) getPositionRect},
       {"nativeGetCursorRect", "(J)[F", (void*) getCursorRect},
       {"nativeRegisterStyle", "(JIIII)V", (void*) registerStyle},

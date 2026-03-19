@@ -216,6 +216,7 @@ EDITOR_API void editor_set_line_spacing(intptr_t editor_handle, float add, float
 ///         26. (optional append-only tail) ScrollbarModel horizontal_scrollbar
 ///             ScrollbarModel layout:
 ///             - i32 visible
+///             - f32 alpha (0~1)
 ///             - ScrollbarRect track
 ///             - ScrollbarRect thumb
 ///             ScrollbarRect layout:
@@ -570,10 +571,18 @@ EDITOR_API void editor_set_handle_config(intptr_t editor_handle,
 
 #pragma region Scrollbar Config
 
-/// Set scrollbar geometry configuration
-/// @param thickness Scrollbar thickness in pixels (default 10.0)
-/// @param min_thumb Minimum scrollbar thumb length in pixels (default 24.0)
-EDITOR_API void editor_set_scrollbar_config(intptr_t editor_handle, float thickness, float min_thumb);
+/// Set scrollbar full configuration (geometry + behavior)
+/// @param thickness Scrollbar thickness in pixels
+/// @param min_thumb Minimum scrollbar thumb length in pixels
+/// @param mode 0=ALWAYS, 1=TRANSIENT, 2=NEVER
+/// @param thumb_draggable 1=thumb drag enabled, 0=disabled
+/// @param track_tap_mode 0=JUMP, 1=DISABLED
+/// @param fade_delay_ms Delay before hide in TRANSIENT mode
+/// @param fade_duration_ms Fade duration in TRANSIENT mode (used for both fade-in and fade-out)
+EDITOR_API void editor_set_scrollbar_config(intptr_t editor_handle,
+    float thickness, float min_thumb,
+    int mode, int thumb_draggable, int track_tap_mode,
+    int fade_delay_ms, int fade_duration_ms);
 
 #pragma endregion
 

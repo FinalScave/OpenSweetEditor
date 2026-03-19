@@ -409,22 +409,69 @@ public class EditorCore implements AutoCloseable {
 
     /** Scrollbar geometry configuration */
     public static class ScrollbarConfig {
+        public enum ScrollbarMode {
+            ALWAYS(0),
+            TRANSIENT(1),
+            NEVER(2);
+
+            public final int value;
+
+            ScrollbarMode(int value) {
+                this.value = value;
+            }
+        }
+
+        public enum ScrollbarTrackTapMode {
+            JUMP(0),
+            DISABLED(1);
+
+            public final int value;
+
+            ScrollbarTrackTapMode(int value) {
+                this.value = value;
+            }
+        }
+
         public final float thickness;
         public final float minThumb;
+        public final ScrollbarMode mode;
+        public final boolean thumbDraggable;
+        public final ScrollbarTrackTapMode trackTapMode;
+        public final int fadeDelayMs;
+        public final int fadeDurationMs;
 
         public ScrollbarConfig() {
-            this(10.0f, 24.0f);
+            this(10.0f, 24.0f, ScrollbarMode.ALWAYS, true, ScrollbarTrackTapMode.JUMP, 700, 300);
         }
 
         public ScrollbarConfig(float thickness, float minThumb) {
+            this(thickness, minThumb, ScrollbarMode.ALWAYS, true, ScrollbarTrackTapMode.JUMP, 700, 300);
+        }
+
+        public ScrollbarConfig(float thickness, float minThumb,
+                               ScrollbarMode mode, boolean thumbDraggable, ScrollbarTrackTapMode trackTapMode,
+                               int fadeDelayMs, int fadeDurationMs) {
             this.thickness = thickness;
             this.minThumb = minThumb;
+            this.mode = mode;
+            this.thumbDraggable = thumbDraggable;
+            this.trackTapMode = trackTapMode;
+            this.fadeDelayMs = fadeDelayMs;
+            this.fadeDurationMs = fadeDurationMs;
         }
     }
 
     public void setScrollbarConfig(ScrollbarConfig config) {
         this.scrollbarConfig = config;
-        EditorNative.setScrollbarConfig(nativeHandle, config.thickness, config.minThumb);
+        EditorNative.setScrollbarConfig(
+                nativeHandle,
+                config.thickness,
+                config.minThumb,
+                config.mode.value,
+                config.thumbDraggable,
+                config.trackTapMode.value,
+                config.fadeDelayMs,
+                config.fadeDurationMs);
     }
 
     public ScrollbarConfig getScrollbarConfig() {

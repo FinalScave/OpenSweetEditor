@@ -227,6 +227,8 @@ namespace NS_SWEETEDITOR {
   struct ScrollbarModel {
     /// Whether scrollbar is visible for this axis
     bool visible {false};
+    /// Scrollbar alpha in [0, 1]
+    float alpha {0};
     /// Scrollbar track rectangle
     ScrollbarRect track;
     /// Scrollbar thumb rectangle
@@ -411,7 +413,7 @@ namespace NS_SWEETEDITOR {
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LinkedEditingRect, origin, width, height, is_active)
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(BracketHighlightRect, origin, width, height)
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ScrollbarRect, origin, width, height)
-  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ScrollbarModel, visible, track, thumb)
+  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ScrollbarModel, visible, alpha, track, thumb)
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(EditorRenderModel, split_x, scroll_x, scroll_y, viewport_width, viewport_height, current_line, lines, cursor, selection_rects, selection_start_handle, selection_end_handle, composition_decoration, guide_segments, diagnostic_decorations, max_gutter_icons, fold_arrow_x, linked_editing_rects, bracket_highlight_rects, vertical_scrollbar, horizontal_scrollbar)
   NLOHMANN_JSON_SERIALIZE_ENUM(FoldArrowMode, {
     {FoldArrowMode::AUTO, "AUTO"},
