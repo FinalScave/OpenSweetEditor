@@ -1627,7 +1627,7 @@ namespace SweetEditor {
 			inlayHintMeasurerGCHandle = GCHandle.Alloc(measurer.MeasureInlayHintWidth);
 			iconMeasurerGCHandle = GCHandle.Alloc(measurer.MeasureIconWidth);
 			fontMetricsGCHandle = GCHandle.Alloc(measurer.GetFontMetrics);
-		    byte[] optionsData = ProtocolEncoder.PackEditorOptions(options);
+			byte[] optionsData = ProtocolEncoder.PackEditorOptions(options);
 			nativeHandle = NativeMethods.CreateEditor(measurer, optionsData, (UIntPtr)optionsData.Length);
 		}
 
@@ -2072,9 +2072,9 @@ namespace SweetEditor {
 				config.Thickness,
 				config.MinThumb,
 				config.ThumbHitPadding,
-				(int) config.Mode,
+				(int)config.Mode,
 				config.ThumbDraggable ? 1 : 0,
-				(int) config.TrackTapMode,
+				(int)config.TrackTapMode,
 				config.FadeDelayMs,
 				config.FadeDurationMs);
 		}

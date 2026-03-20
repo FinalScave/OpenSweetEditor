@@ -255,7 +255,7 @@ namespace SweetEditor {
 		public event EventHandler<FoldToggleEventArgs> FoldToggle;
 		#endregion
 
-#region Constants
+		#region Constants
 
 		// Font style bit flag constants (consistent with C++ FontStyle enum).
 		// These are combinable bit flags, not mutually exclusive values.
@@ -371,7 +371,7 @@ namespace SweetEditor {
 
 		// ==================== LanguageConfiguration API ====================
 
- /// <summary>Sets language configuration.</summary>
+		/// <summary>Sets language configuration.</summary>
 		public void SetLanguageConfiguration(LanguageConfiguration? config) {
 			languageConfiguration = config;
 			if (config != null && config.Brackets.Count > 0) {
@@ -389,12 +389,12 @@ namespace SweetEditor {
 
 		// ==================== EditorMetadata API ====================
 
- /// <summary>Sets metadata.</summary>
+		/// <summary>Sets metadata.</summary>
 		public void SetMetadata<T>(T? metadata) where T : class, IEditorMetadata {
 			Metadata = metadata;
 		}
 
- /// <summary>Gets metadata.</summary>
+		/// <summary>Gets metadata.</summary>
 		public T? GetMetadata<T>() where T : class, IEditorMetadata {
 			return Metadata as T;
 		}
@@ -410,16 +410,16 @@ namespace SweetEditor {
 			newLineActionProviderManager?.RemoveProvider(provider);
 		}
 
- /// <summary>Gets position rect.</summary>
- /// <param name="line">Line index (0-based).</param>
- /// <param name="column">Column index (0-based).</param>
- /// <returns>Returns the cursor rectangle in control coordinates.</returns>
+		/// <summary>Gets position rect.</summary>
+		/// <param name="line">Line index (0-based).</param>
+		/// <param name="column">Column index (0-based).</param>
+		/// <returns>Returns the cursor rectangle in control coordinates.</returns>
 		public CursorRect GetPositionRect(int line, int column) {
 			return editorCore.GetPositionRect(line, column);
 		}
 
- /// <summary>Gets cursor rect.</summary>
- /// <returns>Returns the cursor rectangle in control coordinates.</returns>
+		/// <summary>Gets cursor rect.</summary>
+		/// <returns>Returns the cursor rectangle in control coordinates.</returns>
 		public CursorRect GetCursorRect() {
 			return editorCore.GetCursorRect();
 		}
@@ -428,78 +428,78 @@ namespace SweetEditor {
 
 		#region Public API - Text Editing
 
- /// <summary>Inserts text.</summary>
- /// <param name="text">Text content.</param>
+		/// <summary>Inserts text.</summary>
+		/// <param name="text">Text content.</param>
 		public void InsertText(string text) {
 			var result = editorCore.InsertText(text);
 			FireTextChanged(TextChangeAction.Insert, result);
 			Flush();
 		}
 
- /// <summary>Replaces text.</summary>
- /// <param name="range">Target text range.</param>
- /// <param name="newText">Replacement text.</param>
+		/// <summary>Replaces text.</summary>
+		/// <param name="range">Target text range.</param>
+		/// <param name="newText">Replacement text.</param>
 		public void ReplaceText(TextRange range, string newText) {
 			var result = editorCore.ReplaceText(range, newText);
 			FireTextChanged(TextChangeAction.Insert, result);
 			Flush();
 		}
 
- /// <summary>Deletes text.</summary>
- /// <param name="range">Target text range.</param>
+		/// <summary>Deletes text.</summary>
+		/// <param name="range">Target text range.</param>
 		public void DeleteText(TextRange range) {
 			var result = editorCore.DeleteText(range);
 			FireTextChanged(TextChangeAction.Insert, result);
 			Flush();
 		}
 
- /// <summary>Gets selected text.</summary>
- /// <returns>Returns the resulting string value.</returns>
+		/// <summary>Gets selected text.</summary>
+		/// <returns>Returns the resulting string value.</returns>
 		public string GetSelectedText() => editorCore.GetSelectedText();
 
- /// <summary>Moves line up.</summary>
+		/// <summary>Moves line up.</summary>
 		public void MoveLineUp() {
 			var result = editorCore.MoveLineUp();
 			FireTextChanged(TextChangeAction.Insert, result);
 			Flush();
 		}
 
- /// <summary>Moves line down.</summary>
+		/// <summary>Moves line down.</summary>
 		public void MoveLineDown() {
 			var result = editorCore.MoveLineDown();
 			FireTextChanged(TextChangeAction.Insert, result);
 			Flush();
 		}
 
- /// <summary>Copies line up.</summary>
+		/// <summary>Copies line up.</summary>
 		public void CopyLineUp() {
 			var result = editorCore.CopyLineUp();
 			FireTextChanged(TextChangeAction.Insert, result);
 			Flush();
 		}
 
- /// <summary>Copies line down.</summary>
+		/// <summary>Copies line down.</summary>
 		public void CopyLineDown() {
 			var result = editorCore.CopyLineDown();
 			FireTextChanged(TextChangeAction.Insert, result);
 			Flush();
 		}
 
- /// <summary>Deletes line.</summary>
+		/// <summary>Deletes line.</summary>
 		public void DeleteLine() {
 			var result = editorCore.DeleteLine();
 			FireTextChanged(TextChangeAction.Insert, result);
 			Flush();
 		}
 
- /// <summary>Inserts line above.</summary>
+		/// <summary>Inserts line above.</summary>
 		public void InsertLineAbove() {
 			var result = editorCore.InsertLineAbove();
 			FireTextChanged(TextChangeAction.Insert, result);
 			Flush();
 		}
 
- /// <summary>Inserts line below.</summary>
+		/// <summary>Inserts line below.</summary>
 		public void InsertLineBelow() {
 			var result = editorCore.InsertLineBelow();
 			FireTextChanged(TextChangeAction.Insert, result);
@@ -510,69 +510,69 @@ namespace SweetEditor {
 
 		#region Public API - Undo/Redo
 
- /// <summary>Performs an undo operation.</summary>
- /// <returns>Returns <c>true</c> when the operation succeeds.</returns>
+		/// <summary>Performs an undo operation.</summary>
+		/// <returns>Returns <c>true</c> when the operation succeeds.</returns>
 		public bool Undo() {
 			var result = editorCore.Undo();
 			if (result != null) { FireTextChanged(TextChangeAction.Undo, result); Flush(); return true; }
 			return false;
 		}
 
- /// <summary>Performs a redo operation.</summary>
- /// <returns>Returns <c>true</c> when the operation succeeds.</returns>
+		/// <summary>Performs a redo operation.</summary>
+		/// <returns>Returns <c>true</c> when the operation succeeds.</returns>
 		public bool Redo() {
 			var result = editorCore.Redo();
 			if (result != null) { FireTextChanged(TextChangeAction.Redo, result); Flush(); return true; }
 			return false;
 		}
 
- /// <summary>Returns whether undo.</summary>
+		/// <summary>Returns whether undo.</summary>
 		public bool CanUndo() => editorCore.CanUndo();
- /// <summary>Returns whether redo.</summary>
+		/// <summary>Returns whether redo.</summary>
 		public bool CanRedo() => editorCore.CanRedo();
 
 		#endregion
 
 		#region Public API - Caret/Selection Management
 
- /// <summary>Gets cursor position.</summary>
+		/// <summary>Gets cursor position.</summary>
 		public TextPosition GetCursorPosition() => editorCore.GetCursorPosition();
 
- /// <summary>Gets document.</summary>
+		/// <summary>Gets document.</summary>
 		public Document? GetDocument() => editorCore.GetDocument();
 
- /// <summary>Gets word range at cursor.</summary>
+		/// <summary>Gets word range at cursor.</summary>
 		public TextRange? GetWordRangeAtCursor() => editorCore.GetWordRangeAtCursor();
 
- /// <summary>Gets word at cursor.</summary>
+		/// <summary>Gets word at cursor.</summary>
 		public string GetWordAtCursor() => editorCore.GetWordAtCursor();
 
- /// <summary>Sets cursor position.</summary>
+		/// <summary>Sets cursor position.</summary>
 		public void SetCursorPosition(TextPosition position) {
 			editorCore.SetCursorPosition(position);
 			Flush();
 		}
 
 		/// <summary>Sets selection.</summary>
- /// <param name="startLine">Start line index (0-based).</param>
- /// <param name="startColumn">Start column index (0-based).</param>
- /// <param name="endLine">End line index (0-based).</param>
- /// <param name="endColumn">End column index (0-based).</param>
+		/// <param name="startLine">Start line index (0-based).</param>
+		/// <param name="startColumn">Start column index (0-based).</param>
+		/// <param name="endLine">End line index (0-based).</param>
+		/// <param name="endColumn">End column index (0-based).</param>
 		public void SetSelection(int startLine, int startColumn, int endLine, int endColumn) {
 			editorCore.SetSelection(startLine, startColumn, endLine, endColumn);
 			Flush();
 		}
 
- /// <summary>Sets selection.</summary>
- /// <param name="range">Target text range.</param>
+		/// <summary>Sets selection.</summary>
+		/// <param name="range">Target text range.</param>
 		public void SetSelection(TextRange range) {
 			SetSelection(range.Start.Line, range.Start.Column, range.End.Line, range.End.Column);
 		}
 
- /// <summary>Public.</summary>
+		/// <summary>Public.</summary>
 		public (bool hasSelection, TextRange range) GetSelection() => editorCore.GetSelection();
 
- /// <summary>Select all.</summary>
+		/// <summary>Select all.</summary>
 		public void SelectAll() {
 			editorCore.SelectAll();
 			Flush();
@@ -582,29 +582,29 @@ namespace SweetEditor {
 
 		#region Public API - Scrolling/Navigation
 
- /// <summary>Goto position.</summary>
- /// <param name="line">Line index (0-based).</param>
- /// <param name="column">Column index (0-based).</param>
+		/// <summary>Goto position.</summary>
+		/// <param name="line">Line index (0-based).</param>
+		/// <param name="column">Column index (0-based).</param>
 		public void GotoPosition(int line, int column = 0) {
 			editorCore.GotoPosition(line, column);
 			Flush();
 		}
 
- /// <summary>Scroll to line.</summary>
- /// <param name="line">Line index (0-based).</param>
- /// <param name="behavior">Scroll behavior.</param>
+		/// <summary>Scroll to line.</summary>
+		/// <param name="line">Line index (0-based).</param>
+		/// <param name="behavior">Scroll behavior.</param>
 		public void ScrollToLine(int line, ScrollBehavior behavior = ScrollBehavior.CENTER) {
 			editorCore.ScrollToLine(line, (int)behavior);
 			Flush();
 		}
 
- /// <summary>Sets scroll.</summary>
+		/// <summary>Sets scroll.</summary>
 		public void SetScroll(float scrollX, float scrollY) {
 			editorCore.SetScroll(scrollX, scrollY);
 			Flush();
 		}
 
- /// <summary>Gets scroll metrics.</summary>
+		/// <summary>Gets scroll metrics.</summary>
 		public ScrollMetrics GetScrollMetrics() => editorCore.GetScrollMetrics();
 
 		#endregion
@@ -612,31 +612,31 @@ namespace SweetEditor {
 		#region Public API - Style Registration + Highlight Spans
 
 		/// <summary>Register style.</summary>
- /// <param name="styleId">Style identifier.</param>
- /// <param name="color">Color value (ARGB).</param>
- /// <param name="backgroundColor">Background color value (ARGB).</param>
- /// <param name="fontStyle">Font style flags.</param>
+		/// <param name="styleId">Style identifier.</param>
+		/// <param name="color">Color value (ARGB).</param>
+		/// <param name="backgroundColor">Background color value (ARGB).</param>
+		/// <param name="fontStyle">Font style flags.</param>
 		public void RegisterStyle(uint styleId, int color, int backgroundColor, int fontStyle) =>
 			editorCore.RegisterStyle(styleId, color, backgroundColor, fontStyle);
 
- /// <summary>Register style.</summary>
- /// <param name="styleId">Style identifier.</param>
- /// <param name="color">Color value (ARGB).</param>
- /// <param name="fontStyle">Font style flags.</param>
+		/// <summary>Register style.</summary>
+		/// <param name="styleId">Style identifier.</param>
+		/// <param name="color">Color value (ARGB).</param>
+		/// <param name="fontStyle">Font style flags.</param>
 		public void RegisterStyle(uint styleId, int color, int fontStyle) =>
 			editorCore.RegisterStyle(styleId, color, fontStyle);
 
- /// <summary>Sets line spans.</summary>
+		/// <summary>Sets line spans.</summary>
 		public void SetLineSpans(int line, SpanLayer layer, IList<StyleSpan> spans) {
 			editorCore.SetLineSpans(line, (int)layer, spans);
 		}
 
- /// <summary>Sets line spans.</summary>
+		/// <summary>Sets line spans.</summary>
 		public void SetLineSpans(int line, IList<StyleSpan> spans) {
 			SetLineSpans(line, SpanLayer.SYNTAX, spans);
 		}
 
- /// <summary>Sets batch line spans.</summary>
+		/// <summary>Sets batch line spans.</summary>
 		public void SetBatchLineSpans(SpanLayer layer, Dictionary<int, IList<StyleSpan>> spansByLine) {
 			editorCore.SetBatchLineSpans((int)layer, spansByLine);
 		}
@@ -645,22 +645,22 @@ namespace SweetEditor {
 
 		#region Public API — InlayHint / PhantomText
 
- /// <summary>Sets line inlay hints.</summary>
+		/// <summary>Sets line inlay hints.</summary>
 		public void SetLineInlayHints(int line, IList<InlayHint> hints) {
 			editorCore.SetLineInlayHints(line, hints);
 		}
 
- /// <summary>Sets batch line inlay hints.</summary>
+		/// <summary>Sets batch line inlay hints.</summary>
 		public void SetBatchLineInlayHints(Dictionary<int, IList<InlayHint>> hintsByLine) {
 			editorCore.SetBatchLineInlayHints(hintsByLine);
 		}
 
- /// <summary>Sets line phantom texts.</summary>
+		/// <summary>Sets line phantom texts.</summary>
 		public void SetLinePhantomTexts(int line, IList<PhantomText> phantoms) {
 			editorCore.SetLinePhantomTexts(line, phantoms);
 		}
 
- /// <summary>Sets batch line phantom texts.</summary>
+		/// <summary>Sets batch line phantom texts.</summary>
 		public void SetBatchLinePhantomTexts(Dictionary<int, IList<PhantomText>> phantomsByLine) {
 			editorCore.SetBatchLinePhantomTexts(phantomsByLine);
 		}
@@ -669,23 +669,23 @@ namespace SweetEditor {
 
 		#region Public API - Gutter Icons
 
- /// <summary>Sets editor icon provider.</summary>
+		/// <summary>Sets editor icon provider.</summary>
 		public void SetEditorIconProvider(EditorRenderer.EditorIconProvider? provider) {
 			renderer.SetEditorIconProvider(provider);
 			Flush();
 		}
 
- /// <summary>Sets line gutter icons.</summary>
+		/// <summary>Sets line gutter icons.</summary>
 		public void SetLineGutterIcons(int line, IList<GutterIcon> icons) {
 			editorCore.SetLineGutterIcons(line, icons);
 		}
 
- /// <summary>Sets batch line gutter icons.</summary>
+		/// <summary>Sets batch line gutter icons.</summary>
 		public void SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine) {
 			editorCore.SetBatchLineGutterIcons(iconsByLine);
 		}
 
- /// <summary>Clears gutter icons.</summary>
+		/// <summary>Clears gutter icons.</summary>
 		public void ClearGutterIcons() { editorCore.ClearGutterIcons(); }
 
 		public void AddDecorationProvider(IDecorationProvider provider) => decorationProviderManager?.AddProvider(provider);
@@ -697,16 +697,16 @@ namespace SweetEditor {
 		public void AddCompletionProvider(ICompletionProvider provider) => completionProviderManager?.AddProvider(provider);
 		public void RemoveCompletionProvider(ICompletionProvider provider) => completionProviderManager?.RemoveProvider(provider);
 
- /// <summary>Trigger completion.</summary>
+		/// <summary>Trigger completion.</summary>
 		public void TriggerCompletion() => completionProviderManager?.TriggerCompletion(CompletionTriggerKind.Invoked, null);
 
- /// <summary>Show completion items.</summary>
+		/// <summary>Show completion items.</summary>
 		public void ShowCompletionItems(List<CompletionItem> items) => completionProviderManager?.ShowItems(items);
 
- /// <summary>Dismiss completion.</summary>
+		/// <summary>Dismiss completion.</summary>
 		public void DismissCompletion() => completionProviderManager?.Dismiss();
 
- /// <summary>Sets completion item renderer.</summary>
+		/// <summary>Sets completion item renderer.</summary>
 		public void SetCompletionItemRenderer(ICompletionItemRenderer? renderer) => completionPopupController?.SetRenderer(renderer);
 
 		public (int start, int end) GetVisibleLineRange() {
@@ -730,17 +730,17 @@ namespace SweetEditor {
 
 		#region Public API - Diagnostic Decorations
 
- /// <summary>Sets line diagnostics.</summary>
+		/// <summary>Sets line diagnostics.</summary>
 		public void SetLineDiagnostics(int line, IList<DiagnosticItem> items) {
 			editorCore.SetLineDiagnostics(line, items);
 		}
 
- /// <summary>Sets batch line diagnostics.</summary>
+		/// <summary>Sets batch line diagnostics.</summary>
 		public void SetBatchLineDiagnostics(Dictionary<int, IList<DiagnosticItem>> diagsByLine) {
 			editorCore.SetBatchLineDiagnostics(diagsByLine);
 		}
 
- /// <summary>Clears diagnostics.</summary>
+		/// <summary>Clears diagnostics.</summary>
 		public void ClearDiagnostics() {
 			editorCore.ClearDiagnostics();
 		}
@@ -749,97 +749,97 @@ namespace SweetEditor {
 
 		#region Public API - Guide Structure Lines
 
- /// <summary>Sets indent guides.</summary>
+		/// <summary>Sets indent guides.</summary>
 		public void SetIndentGuides(IList<IndentGuide> guides) {
 			editorCore.SetIndentGuides(guides);
 		}
 
- /// <summary>Sets bracket guides.</summary>
+		/// <summary>Sets bracket guides.</summary>
 		public void SetBracketGuides(IList<BracketGuide> guides) {
 			editorCore.SetBracketGuides(guides);
 		}
 
- /// <summary>Sets flow guides.</summary>
+		/// <summary>Sets flow guides.</summary>
 		public void SetFlowGuides(IList<FlowGuide> guides) {
 			editorCore.SetFlowGuides(guides);
 		}
 
- /// <summary>Sets separator guides.</summary>
+		/// <summary>Sets separator guides.</summary>
 		public void SetSeparatorGuides(IList<SeparatorGuide> guides) {
 			editorCore.SetSeparatorGuides(guides);
 		}
 
- /// <summary>Clears guides.</summary>
+		/// <summary>Clears guides.</summary>
 		public void ClearGuides() { editorCore.ClearGuides(); }
 
 		#endregion
 
 		#region Public API - Code Folding
 
- /// <summary>Sets fold regions.</summary>
+		/// <summary>Sets fold regions.</summary>
 		public void SetFoldRegions(IList<FoldRegion> regions) {
 			editorCore.SetFoldRegions(regions);
 		}
 
- /// <summary>Toggle fold.</summary>
- /// <param name="line">Line index (0-based).</param>
- /// <returns>Returns <c>true</c> when the operation succeeds.</returns>
+		/// <summary>Toggle fold.</summary>
+		/// <param name="line">Line index (0-based).</param>
+		/// <returns>Returns <c>true</c> when the operation succeeds.</returns>
 		public bool ToggleFold(int line) {
 			bool result = editorCore.ToggleFold(line);
 			if (result) Flush();
 			return result;
 		}
 
- /// <summary>Fold at.</summary>
- /// <param name="line">Line index (0-based).</param>
- /// <returns>Returns <c>true</c> when the operation succeeds.</returns>
+		/// <summary>Fold at.</summary>
+		/// <param name="line">Line index (0-based).</param>
+		/// <returns>Returns <c>true</c> when the operation succeeds.</returns>
 		public bool FoldAt(int line) {
 			bool result = editorCore.FoldAt(line);
 			if (result) Flush();
 			return result;
 		}
 
- /// <summary>Unfold at.</summary>
- /// <param name="line">Line index (0-based).</param>
- /// <returns>Returns <c>true</c> when the operation succeeds.</returns>
+		/// <summary>Unfold at.</summary>
+		/// <param name="line">Line index (0-based).</param>
+		/// <returns>Returns <c>true</c> when the operation succeeds.</returns>
 		public bool UnfoldAt(int line) {
 			bool result = editorCore.UnfoldAt(line);
 			if (result) Flush();
 			return result;
 		}
 
- /// <summary>Fold all.</summary>
+		/// <summary>Fold all.</summary>
 		public void FoldAll() { editorCore.FoldAll(); Flush(); }
- /// <summary>Unfold all.</summary>
+		/// <summary>Unfold all.</summary>
 		public void UnfoldAll() { editorCore.UnfoldAll(); Flush(); }
- /// <summary>Returns whether line visible.</summary>
+		/// <summary>Returns whether line visible.</summary>
 		public bool IsLineVisible(int line) => editorCore.IsLineVisible(line);
 
 		#endregion
 
 		#region Public API - Clear Operations
 
- /// <summary>Clears highlights.</summary>
+		/// <summary>Clears highlights.</summary>
 		public void ClearHighlights() { editorCore.ClearHighlights(); }
- /// <summary>Clears highlights.</summary>
+		/// <summary>Clears highlights.</summary>
 		public void ClearHighlights(SpanLayer layer) { editorCore.ClearHighlights((int)layer); }
- /// <summary>Clears inlay hints.</summary>
+		/// <summary>Clears inlay hints.</summary>
 		public void ClearInlayHints() { editorCore.ClearInlayHints(); }
- /// <summary>Clears phantom texts.</summary>
+		/// <summary>Clears phantom texts.</summary>
 		public void ClearPhantomTexts() { editorCore.ClearPhantomTexts(); }
- /// <summary>Clears all decorations.</summary>
+		/// <summary>Clears all decorations.</summary>
 		public void ClearAllDecorations() {
 			editorCore.ClearAllDecorations();
 			editorCore.ClearDiagnostics();
 		}
- /// <summary>Clears matched brackets.</summary>
+		/// <summary>Clears matched brackets.</summary>
 		public void ClearMatchedBrackets() { editorCore.ClearMatchedBrackets(); Flush(); }
 
 		#endregion
 
 		#region Public API - Linked Editing
 
- /// <summary>Inserts snippet.</summary>
+		/// <summary>Inserts snippet.</summary>
 		public TextEditResult InsertSnippet(string snippetTemplate) {
 			var result = editorCore.InsertSnippet(snippetTemplate);
 			FireTextChanged(TextChangeAction.Insert, result);
@@ -847,22 +847,22 @@ namespace SweetEditor {
 			return result;
 		}
 
- /// <summary>Starts linked editing.</summary>
+		/// <summary>Starts linked editing.</summary>
 		public void StartLinkedEditing(LinkedEditingModel model) {
 			editorCore.StartLinkedEditing(model);
 			Flush();
 		}
 
- /// <summary>Returns whether in linked editing.</summary>
+		/// <summary>Returns whether in linked editing.</summary>
 		public bool IsInLinkedEditing() { return editorCore.IsInLinkedEditing(); }
 
- /// <summary>Linked editing next.</summary>
+		/// <summary>Linked editing next.</summary>
 		public bool LinkedEditingNext() { bool r = editorCore.LinkedEditingNext(); Flush(); return r; }
 
- /// <summary>Linked editing prev.</summary>
+		/// <summary>Linked editing prev.</summary>
 		public bool LinkedEditingPrev() { bool r = editorCore.LinkedEditingPrev(); Flush(); return r; }
 
- /// <summary>Cancels linked editing.</summary>
+		/// <summary>Cancels linked editing.</summary>
 		public void CancelLinkedEditing() { editorCore.CancelLinkedEditing(); Flush(); }
 
 		#endregion
@@ -944,7 +944,7 @@ namespace SweetEditor {
 		protected override void OnKeyDown(KeyEventArgs e) {
 			using var perf = StartInputPerf($"OnKeyDown({e.KeyCode})");
 			// Ignore normal key handling while IME composition is active (except Escape).
- // IME (ProcessKey), composing .
+			// IME (ProcessKey), composing .
 			if (editorCore.IsComposing() && e.KeyCode != Keys.Escape) {
 				if (e.KeyCode != Keys.ProcessKey && !e.Control && !e.Alt) {
 					editorCore.CompositionCancel();
@@ -956,7 +956,7 @@ namespace SweetEditor {
 				}
 			}
 
- // completion
+			// completion
 			if (completionPopupController != null && completionPopupController.IsShowing) {
 				if (completionPopupController.HandleKeyCode(e.KeyCode)) {
 					e.Handled = true;
@@ -988,7 +988,7 @@ namespace SweetEditor {
 				string lineText = doc?.GetLineText(cursor.Line) ?? "";
 				var ctx = new NewLineContext(cursor.Line, cursor.Column, lineText,
 					GetLanguageConfiguration());
-			var action = newLineActionProviderManager.ProvideNewLineAction(ctx);
+				var action = newLineActionProviderManager.ProvideNewLineAction(ctx);
 				if (action != null) {
 					var editResult = editorCore.InsertText(action.Text);
 					FireTextChanged(TextChangeAction.Key, editResult);
@@ -1027,7 +1027,7 @@ namespace SweetEditor {
 				var result = editorCore.InsertText(e.KeyChar.ToString());
 				e.Handled = true;
 				FireTextChanged(TextChangeAction.Key, result);
- // linked editing completion, completion Enter/Tab
+				// linked editing completion, completion Enter/Tab
 				if (!editorCore.IsInLinkedEditing()) {
 					string charStr = e.KeyChar.ToString();
 					if (completionProviderManager != null) {
@@ -1049,7 +1049,7 @@ namespace SweetEditor {
 			switch (m.Msg) {
 				case WM_IME_STARTCOMPOSITION: {
 					using var perf = StartInputPerf("WndProc(IME_START)");
- // START composing, START .
+					// START composing, START .
 					base.WndProc(ref m);
 					return;
 				}
@@ -1321,7 +1321,7 @@ namespace SweetEditor {
 			}
 		}
 
- /// <summary>Applies completion item.</summary>
+		/// <summary>Applies completion item.</summary>
 		private void ApplyCompletionItem(CompletionItem item) {
 			var textEdit = item.TextEditValue;
 			bool isSnippet = item.InsertTextFormat == CompletionItem.INSERT_TEXT_FORMAT_SNIPPET;
@@ -1407,7 +1407,7 @@ namespace SweetEditor {
 
 			if (!IsDesignMode() && IsHandleCreated && editorCore != null) {
 				int dpi = DeviceDpi;
-			if (dpi != lastMeasureDpi) {
+				if (dpi != lastMeasureDpi) {
 					renderer.RecreateTextGraphics(this);
 					editorCore.ResetMeasurer();
 					lastMeasureDpi = dpi;
@@ -1416,7 +1416,7 @@ namespace SweetEditor {
 					renderer.RecreateTextGraphics(this);
 					editorCore.ResetMeasurer();
 				}
-			perf.Mark(PerfStepRecorder.StepPrep);
+				perf.Mark(PerfStepRecorder.StepPrep);
 			}
 
 			renderer.PerfMeasureStats.Reset();

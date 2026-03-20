@@ -67,7 +67,7 @@ namespace SweetEditor {
 		#region InlayHint
 
 		internal static byte[] PackLineInlayHints(int line, IList<InlayHint> hints) {
-            // Compute bytes length
+			// Compute bytes length
 			int count = hints.Count;
 			var textBytesArray = new byte[count][];
 			int textBlobSize = 0;
@@ -263,7 +263,7 @@ namespace SweetEditor {
 		}
 
 		internal static byte[] PackBracketGuides(IList<BracketGuide> guides) {
-            // BracketGuide: parent(8) + end(8) + childCount(4) + children(8*n)
+			// BracketGuide: parent(8) + end(8) + childCount(4) + children(8*n)
 			int totalChildren = 0;
 			for (int i = 0; i < guides.Count; i++) {
 				totalChildren += guides[i].Children?.Length ?? 0;
