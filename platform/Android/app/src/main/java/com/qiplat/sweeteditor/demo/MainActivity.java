@@ -19,6 +19,7 @@ import com.qiplat.sweeteditor.EditorSettings;
 import com.qiplat.sweeteditor.EditorTheme;
 import com.qiplat.sweeteditor.SweetEditor;
 import com.qiplat.sweeteditor.core.Document;
+import com.qiplat.sweeteditor.core.foundation.CurrentLineRenderMode;
 import com.qiplat.sweeteditor.core.foundation.FoldArrowMode;
 import com.qiplat.sweeteditor.core.foundation.WrapMode;
 import com.qiplat.sweeteditor.event.GutterIconClickEvent;
@@ -60,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
         settings.setEditorTextSize(36f);
         settings.setFoldArrowMode(FoldArrowMode.AUTO);
         settings.setMaxGutterIcons(1);
+        settings.setCurrentLineRenderMode(CurrentLineRenderMode.BORDER);
         registerColorStyleForCurrentTheme();
 
         try {
@@ -75,8 +77,10 @@ public class MainActivity extends AppCompatActivity {
         mEditor.addCompletionProvider(mDemoCompletionProvider);
 
         mEditor.setEditorIconProvider(iconId -> {
-            if (iconId == DemoDecorationProvider.ICON_CLASS) {
-                return ContextCompat.getDrawable(this, R.mipmap.ic_gutter_icon1);
+            if (iconId == DemoDecorationProvider.ICON_TYPE) {
+                return ContextCompat.getDrawable(this, R.mipmap.ic_gutter_down);
+            } else if (iconId == DemoDecorationProvider.ICON_AT) {
+                return ContextCompat.getDrawable(this, R.mipmap.ic_gutter_at);
             }
             return null;
         });
@@ -100,6 +104,8 @@ public class MainActivity extends AppCompatActivity {
         mEditor.subscribe(InlayHintClickEvent.class, e -> {
             if (e.isColor) {
                 Toast.makeText(this, "Click color: " + String.format("0X%X", e.colorValue), Toast.LENGTH_SHORT).show();
+            } else if (!e.isIcon) {
+                Toast.makeText(this, "Click inlay hint: (" + e.line + "," + e.column + ")", Toast.LENGTH_SHORT).show();
             }
         });
         mEditor.subscribe(GutterIconClickEvent.class, e ->

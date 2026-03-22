@@ -122,7 +122,7 @@ namespace SweetEditor {
 
 		public sealed record SpanItem(int Column, int Length, int StyleId);
 		public sealed record DiagnosticItem(int Column, int Length, int Severity, int Color);
-		public sealed record FoldRegionItem(int StartLine, int EndLine, bool Collapsed);
+		public sealed record FoldRegionItem(int StartLine, int EndLine);
 		public sealed record IndentGuideItem(TextPosition Start, TextPosition End);
 		public sealed record BracketGuideItem(TextPosition Parent, TextPosition End, TextPosition[]? Children);
 		public sealed record FlowGuideItem(TextPosition Start, TextPosition End);
@@ -443,14 +443,14 @@ namespace SweetEditor {
 				var regions = new List<FoldRegion>(foldRegions.Count);
 				for (int i = 0; i < foldRegions.Count; i++) {
 					var r = foldRegions[i];
-					regions.Add(new FoldRegion(r.StartLine, r.EndLine, r.Collapsed));
+					regions.Add(new FoldRegion(r.StartLine, r.EndLine));
 				}
 				editor.SetFoldRegions(regions);
 			} else if (foldRegions.Count > 0) {
 				var regions = new List<FoldRegion>(foldRegions.Count);
 				for (int i = 0; i < foldRegions.Count; i++) {
 					var r = foldRegions[i];
-					regions.Add(new FoldRegion(r.StartLine, r.EndLine, r.Collapsed));
+					regions.Add(new FoldRegion(r.StartLine, r.EndLine));
 				}
 				editor.SetFoldRegions(regions);
 			}

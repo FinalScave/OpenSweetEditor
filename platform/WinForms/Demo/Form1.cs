@@ -296,8 +296,13 @@ namespace Demo {
 			private const string DefaultAnalysisFileName = "example.cpp";
 			private const int StyleKeyword = (int)EditorTheme.STYLE_KEYWORD;
 			private const int StyleComment = (int)EditorTheme.STYLE_COMMENT;
+			private const int StyleAnnotation = (int)EditorTheme.STYLE_ANNOTATION;
 			private const int StyleColor = STYLE_COLOR;
 			private const int IconClass = 1;
+			private const int MaxDynamicDiagnostics = 8;
+			private const string PhantomMemberStub =
+				"\n    void debugTrace(const std::string& tag) {\n        log(DEBUG, tag);\n    }";
+			private const string PhantomInlineHint = " /* demo phantom */";
 
 			private static HighlightEngine? highlightEngine;
 
@@ -353,27 +358,10 @@ namespace Demo {
 			}
 
 			public void ProvideDecorations(DecorationContext context, IDecorationReceiver receiver) {
-				var phantoms = new Dictionary<int, List<DecorationResult.PhantomTextItem>> {
-					[15] = [new DecorationResult.PhantomTextItem(5, "\n    void warn(const std::string& m) {\n        log(WARN, m);\n    }")]
-				};
+				var diagnostics = new Dictionary<int, List<DecorationResult.DiagnosticItem>>();
 
-				DecorationResult sweetLineResult = BuildSweetLineDecorationResult(context);
-				receiver.Accept(new DecorationResult {
-					InlayHints = sweetLineResult.InlayHints,
-					InlayHintsMode = DecorationApplyMode.REPLACE_RANGE,
-					PhantomTexts = phantoms,
-					PhantomTextsMode = DecorationApplyMode.REPLACE_ALL,
-					SyntaxSpans = sweetLineResult.SyntaxSpans,
-					SyntaxSpansMode = DecorationApplyMode.MERGE,
-					IndentGuides = sweetLineResult.IndentGuides,
-					IndentGuidesMode = DecorationApplyMode.REPLACE_ALL,
-					FoldRegions = sweetLineResult.FoldRegions,
-					FoldRegionsMode = DecorationApplyMode.REPLACE_ALL,
-					SeparatorGuides = sweetLineResult.SeparatorGuides,
-					SeparatorGuidesMode = DecorationApplyMode.REPLACE_ALL,
-					GutterIcons = sweetLineResult.GutterIcons,
-					GutterIconsMode = DecorationApplyMode.REPLACE_ALL
-				});
+				DecorationResult sweetLineResult = BuildSweetLineDecorationResult(context, diagnostics);
+				receiver.Accept(sweetLineResult);
 
 				Task.Run(async () => {
 					await Task.Delay(500);
@@ -381,26 +369,17 @@ namespace Demo {
 						return;
 					}
 
-					var diags = new Dictionary<int, List<DecorationResult.DiagnosticItem>> {
-						[9] = [new DecorationResult.DiagnosticItem(13, 5, 0, 0)],
-						[16] = [new DecorationResult.DiagnosticItem(8, 4, 1, 0)],
-						[22] = [new DecorationResult.DiagnosticItem(4, 3, 3, 0)],
-						[44] = [new DecorationResult.DiagnosticItem(38, 20, 2, 0)],
-						[45] = [new DecorationResult.DiagnosticItem(4, 4, 1, unchecked((int)0xFFFF8C00))],
-						[46] = [
-							new DecorationResult.DiagnosticItem(17, 10, 2, 0),
-							new DecorationResult.DiagnosticItem(31, 6, 0, 0)
-						]
-					};
-
 					receiver.Accept(new DecorationResult {
-						Diagnostics = diags,
+						Diagnostics = diagnostics,
 						DiagnosticsMode = DecorationApplyMode.REPLACE_ALL
 					});
 				});
 			}
 
-			private DecorationResult BuildSweetLineDecorationResult(DecorationContext context) {
+			private DecorationResult BuildSweetLineDecorationResult(
+				DecorationContext context,
+				Dictionary<int, List<DecorationResult.DiagnosticItem>> dynamicDiagnostics) {
+				var dynamicPhantoms = new Dictionary<int, List<DecorationResult.PhantomTextItem>>();
 				var syntaxSpans = new Dictionary<int, List<DecorationResult.SpanItem>>();
 				var inlayHints = new Dictionary<int, List<DecorationResult.InlayHintItem>>();
 				var gutterIcons = new Dictionary<int, List<int>>();
@@ -408,6 +387,10 @@ namespace Demo {
 				var foldRegions = new List<DecorationResult.FoldRegionItem>();
 				var separatorGuides = new List<DecorationResult.SeparatorGuideItem>();
 				var seenColorHints = new HashSet<string>();
+				var phantomLines = new HashSet<int>();
+				var seenDiagnostics = new HashSet<string>();
+				int diagnosticCount = 0;
+				TokenRangeInfo? firstKeywordRange = null;
 
 				DocumentAnalyzer? analyzerSnapshot;
 				DocumentHighlight? highlightSnapshot;
@@ -415,7 +398,10 @@ namespace Demo {
 
 				lock (stateLock) {
 					if (highlightEngine == null) {
-						return new DecorationResult();
+						return new DecorationResult {
+							PhantomTexts = dynamicPhantoms,
+							PhantomTextsMode = DecorationApplyMode.REPLACE_ALL
+						};
 					}
 
 					string currentFileName = ResolveCurrentFileName(context);
@@ -446,6 +432,8 @@ namespace Demo {
 
 				if (highlightSnapshot?.Lines == null || highlightSnapshot.Lines.Count == 0) {
 					return new DecorationResult {
+						PhantomTexts = dynamicPhantoms,
+						PhantomTextsMode = DecorationApplyMode.REPLACE_ALL,
 						SyntaxSpans = syntaxSpans,
 						SyntaxSpansMode = DecorationApplyMode.MERGE,
 						InlayHints = inlayHints,
@@ -475,8 +463,18 @@ namespace Demo {
 						AppendTextInlayHint(inlayHints, textLines, token);
 						AppendSeparator(separatorGuides, textLines, token);
 						AppendGutterIcons(gutterIcons, textLines, token);
+						firstKeywordRange = AppendDynamicDemoDecorations(
+							dynamicPhantoms,
+							phantomLines,
+							dynamicDiagnostics,
+							seenDiagnostics,
+							ref diagnosticCount,
+							firstKeywordRange,
+							textLines,
+							token);
 					}
 				}
+				AppendDiagnosticFallbackIfNeeded(dynamicDiagnostics, seenDiagnostics, ref diagnosticCount, firstKeywordRange);
 
 				if (analyzerSnapshot != null && (context.TotalLineCount < 0 || context.TotalLineCount < 2048)) {
 					IndentGuideResult guideResult = analyzerSnapshot.AnalyzeIndentGuides();
@@ -498,13 +496,15 @@ namespace Demo {
 
 							string key = $"{guide.StartLine}:{guide.EndLine}";
 							if (seenFolds.Add(key)) {
-								foldRegions.Add(new DecorationResult.FoldRegionItem(guide.StartLine, guide.EndLine, false));
+								foldRegions.Add(new DecorationResult.FoldRegionItem(guide.StartLine, guide.EndLine));
 							}
 						}
 					}
 				}
 
 				return new DecorationResult {
+					PhantomTexts = dynamicPhantoms,
+					PhantomTextsMode = DecorationApplyMode.REPLACE_ALL,
 					SyntaxSpans = syntaxSpans,
 					SyntaxSpansMode = DecorationApplyMode.MERGE,
 					InlayHints = inlayHints,
@@ -530,7 +530,6 @@ namespace Demo {
 				engine.RegisterStyleName("method", (int)EditorTheme.STYLE_FUNCTION);
 				engine.RegisterStyleName("function", (int)EditorTheme.STYLE_FUNCTION);
 				engine.RegisterStyleName("variable", (int)EditorTheme.STYLE_VARIABLE);
-				engine.RegisterStyleName("identifier", (int)EditorTheme.STYLE_VARIABLE);
 				engine.RegisterStyleName("field", (int)EditorTheme.STYLE_VARIABLE);
 				engine.RegisterStyleName("number", (int)EditorTheme.STYLE_NUMBER);
 				engine.RegisterStyleName("class", (int)EditorTheme.STYLE_CLASS);
@@ -668,6 +667,110 @@ namespace Demo {
 				if (literal == "class" || literal == "struct") {
 					GetOrCreate(gutterIcons, range.Line).Add(IconClass);
 				}
+			}
+
+			private static TokenRangeInfo? AppendDynamicDemoDecorations(
+				Dictionary<int, List<DecorationResult.PhantomTextItem>> phantoms,
+				HashSet<int> phantomLines,
+				Dictionary<int, List<DecorationResult.DiagnosticItem>> diagnostics,
+				HashSet<string> seenDiagnostics,
+				ref int diagnosticCount,
+				TokenRangeInfo? firstKeywordRange,
+				List<string> textLines,
+				TokenSpan token) {
+				TokenRangeInfo? range = ExtractSingleLineTokenRange(token);
+				if (range == null) {
+					return firstKeywordRange;
+				}
+				string literal = GetTokenLiteral(textLines, range);
+				if (string.IsNullOrEmpty(literal)) {
+					return firstKeywordRange;
+				}
+
+				if (token.StyleId == StyleKeyword) {
+					firstKeywordRange ??= range;
+					if (phantomLines.Count == 0 && (literal == "class" || literal == "struct")) {
+						GetOrCreate(phantoms, range.Line)
+							.Add(new DecorationResult.PhantomTextItem(range.EndColumn, PhantomMemberStub));
+						phantomLines.Add(range.Line);
+					} else if (phantomLines.Count == 0 && literal == "return") {
+						GetOrCreate(phantoms, range.Line)
+							.Add(new DecorationResult.PhantomTextItem(range.EndColumn, PhantomInlineHint));
+						phantomLines.Add(range.Line);
+					}
+					return firstKeywordRange;
+				}
+
+				if (token.StyleId == StyleComment) {
+					int fixmeIndex = literal.IndexOf("FIXME", StringComparison.OrdinalIgnoreCase);
+					if (fixmeIndex >= 0) {
+						AppendDiagnostic(diagnostics, seenDiagnostics, ref diagnosticCount,
+							range.Line, range.StartColumn + fixmeIndex, 5, 0, 0);
+					}
+					int todoIndex = literal.IndexOf("TODO", StringComparison.OrdinalIgnoreCase);
+					if (todoIndex >= 0) {
+						AppendDiagnostic(diagnostics, seenDiagnostics, ref diagnosticCount,
+							range.Line, range.StartColumn + todoIndex, 4, 1, 0);
+					}
+					return firstKeywordRange;
+				}
+
+				if (token.StyleId == StyleColor) {
+					int? color = ParseColorLiteral(literal);
+					if (color.HasValue) {
+						AppendDiagnostic(diagnostics, seenDiagnostics, ref diagnosticCount,
+							range.Line, range.StartColumn, range.Length, 2, color.Value);
+					}
+					return firstKeywordRange;
+				}
+
+				if (token.StyleId == StyleAnnotation) {
+					AppendDiagnostic(diagnostics, seenDiagnostics, ref diagnosticCount,
+						range.Line, range.StartColumn, range.Length, 3, 0);
+				}
+				return firstKeywordRange;
+			}
+
+			private static void AppendDiagnostic(
+				Dictionary<int, List<DecorationResult.DiagnosticItem>> diagnostics,
+				HashSet<string> seenDiagnostics,
+				ref int diagnosticCount,
+				int line,
+				int column,
+				int length,
+				int severity,
+				int color) {
+				if (diagnosticCount >= MaxDynamicDiagnostics) {
+					return;
+				}
+				if (line < 0 || column < 0 || length <= 0) {
+					return;
+				}
+				string key = $"{line}:{column}:{length}:{severity}:{color}";
+				if (!seenDiagnostics.Add(key)) {
+					return;
+				}
+				GetOrCreate(diagnostics, line).Add(new DecorationResult.DiagnosticItem(column, length, severity, color));
+				diagnosticCount++;
+			}
+
+			private static void AppendDiagnosticFallbackIfNeeded(
+				Dictionary<int, List<DecorationResult.DiagnosticItem>> diagnostics,
+				HashSet<string> seenDiagnostics,
+				ref int diagnosticCount,
+				TokenRangeInfo? firstKeywordRange) {
+				if (diagnosticCount > 0 || firstKeywordRange == null) {
+					return;
+				}
+				AppendDiagnostic(
+					diagnostics,
+					seenDiagnostics,
+					ref diagnosticCount,
+					firstKeywordRange.Line,
+					firstKeywordRange.StartColumn,
+					firstKeywordRange.Length,
+					3,
+					0);
 			}
 
 			private static int? ParseColorLiteral(string literal) {

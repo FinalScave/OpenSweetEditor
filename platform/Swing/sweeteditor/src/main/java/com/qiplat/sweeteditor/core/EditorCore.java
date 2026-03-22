@@ -110,6 +110,18 @@ public class EditorCore implements AutoCloseable {
         EditorNative.setLineSpacing(nativeHandle, add, mult);
     }
 
+    public void setContentStartPadding(float padding) {
+        EditorNative.setContentStartPadding(nativeHandle, padding);
+    }
+
+    public void setShowSplitLine(boolean show) {
+        EditorNative.setShowSplitLine(nativeHandle, show);
+    }
+
+    public void setCurrentLineRenderMode(int mode) {
+        EditorNative.setCurrentLineRenderMode(nativeHandle, mode);
+    }
+
     // ===================== Rendering =====================
 
     public EditorRenderModel buildRenderModel() {

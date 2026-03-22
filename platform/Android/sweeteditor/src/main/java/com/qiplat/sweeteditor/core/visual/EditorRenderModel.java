@@ -12,6 +12,10 @@ public class EditorRenderModel {
     @SerializedName("split_x")
     public float splitX;
 
+    /** Whether split line should be rendered. */
+    @SerializedName("split_line_visible")
+    public boolean splitLineVisible = true;
+
     /** Current horizontal scroll offset. */
     @SerializedName("scroll_x")
     public float scrollX;
@@ -32,9 +36,21 @@ public class EditorRenderModel {
     @SerializedName("current_line")
     public PointF currentLine;
 
+    /** Current line render mode (0=BACKGROUND, 1=BORDER, 2=NONE). */
+    @SerializedName("current_line_render_mode")
+    public int currentLineRenderMode;
+
     /** Text lines to render visually (visible region only). */
     @SerializedName("lines")
     public List<VisualLine> lines;
+
+    /** Gutter icon render list (fully resolved geometry, visible region only). */
+    @SerializedName("gutter_icons")
+    public List<GutterIconRenderItem> gutterIcons;
+
+    /** Fold marker render list (fully resolved geometry, visible region only). */
+    @SerializedName("fold_markers")
+    public List<FoldMarkerRenderItem> foldMarkers;
 
     /** Cursor. */
     @SerializedName("cursor")
@@ -67,10 +83,6 @@ public class EditorRenderModel {
     /** Diagnostic decorations (wavy underline / underline). */
     @SerializedName("diagnostic_decorations")
     public List<DiagnosticDecoration> diagnosticDecorations;
-
-    /** Fold arrow drawing center X coordinate (0=disabled). */
-    @SerializedName("fold_arrow_x")
-    public float foldArrowX;
 
     /** Linked editing highlight rectangle list (Tab Stop placeholders). */
     @SerializedName("linked_editing_rects")

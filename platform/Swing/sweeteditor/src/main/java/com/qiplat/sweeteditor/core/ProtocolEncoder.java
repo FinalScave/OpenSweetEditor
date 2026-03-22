@@ -115,13 +115,12 @@ final class ProtocolEncoder {
 
     static byte[] packFoldRegions(List<? extends FoldRegion> regions) {
         int count = regions.size();
-        ByteBuffer payload = ByteBuffer.allocate(4 + count * 12).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer payload = ByteBuffer.allocate(4 + count * 8).order(ByteOrder.LITTLE_ENDIAN);
         payload.putInt(count);
         for (int i = 0; i < count; i++) {
             FoldRegion r = regions.get(i);
             payload.putInt(r.startLine);
             payload.putInt(r.endLine);
-            payload.putInt(r.collapsed ? 1 : 0);
         }
         return payload.array();
     }

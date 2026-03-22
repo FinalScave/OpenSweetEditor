@@ -238,9 +238,58 @@ namespace NS_SWEETEDITOR {
 #pragma region Fold (Code Folding)
 
   void DecorationManager::setFoldRegions(Vector<FoldRegion>&& regions) {
-    m_fold_regions_ = std::move(regions);
-    std::sort(m_fold_regions_.begin(), m_fold_regions_.end(),
-      [](const FoldRegion& a, const FoldRegion& b) { return a.start_line < b.start_line; });
+    Vector<FoldRegion> old_regions = std::move(m_fold_regions_);
+    Vector<FoldRegion> normalized;
+    normalized.reserve(regions.size());
+
+    for (auto& region : regions) {
+      if (region.end_line < region.start_line) {
+        continue;
+      }
+
+      region.collapsed = false;
+      bool matched = false;
+      for (const auto& old_region : old_regions) {
+        if (old_region.start_line == region.start_line &&
+            old_region.end_line == region.end_line) {
+          region.collapsed = old_region.collapsed;
+          matched = true;
+          break;
+        }
+      }
+
+      if (!matched) {
+        for (const auto& old_region : old_regions) {
+          if (old_region.start_line == region.start_line) {
+            region.collapsed = old_region.collapsed;
+            break;
+          }
+        }
+      }
+
+      normalized.push_back(region);
+    }
+
+    std::sort(normalized.begin(), normalized.end(),
+      [](const FoldRegion& a, const FoldRegion& b) {
+        if (a.start_line != b.start_line) {
+          return a.start_line < b.start_line;
+        }
+        return a.end_line < b.end_line;
+      });
+
+    m_fold_regions_.clear();
+    m_fold_regions_.reserve(normalized.size());
+    for (auto& region : normalized) {
+      if (!m_fold_regions_.empty()) {
+        FoldRegion& last = m_fold_regions_.back();
+        if (last.start_line == region.start_line && last.end_line == region.end_line) {
+          last.collapsed = last.collapsed || region.collapsed;
+          continue;
+        }
+      }
+      m_fold_regions_.push_back(region);
+    }
   }
 
   bool DecorationManager::foldAt(size_t line) {

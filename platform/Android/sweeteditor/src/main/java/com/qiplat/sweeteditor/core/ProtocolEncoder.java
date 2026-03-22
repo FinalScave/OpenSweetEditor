@@ -126,14 +126,13 @@ public final class ProtocolEncoder {
         return payload;
     }
 
-    static ByteBuffer packFoldRegions(@NonNull int[] startLines, @NonNull int[] endLines, @NonNull boolean[] collapsed) {
-        int count = Math.min(Math.min(startLines.length, endLines.length), collapsed.length);
-        ByteBuffer payload = ByteBuffer.allocateDirect(4 + count * 12).order(ByteOrder.LITTLE_ENDIAN);
+    static ByteBuffer packFoldRegions(@NonNull int[] startLines, @NonNull int[] endLines) {
+        int count = Math.min(startLines.length, endLines.length);
+        ByteBuffer payload = ByteBuffer.allocateDirect(4 + count * 8).order(ByteOrder.LITTLE_ENDIAN);
         payload.putInt(count);
         for (int i = 0; i < count; i++) {
             payload.putInt(startLines[i]);
             payload.putInt(endLines[i]);
-            payload.putInt(collapsed[i] ? 1 : 0);
         }
         payload.flip();
         return payload;
@@ -147,13 +146,12 @@ public final class ProtocolEncoder {
      */
     public static ByteBuffer packFoldRegions(@NonNull List<? extends FoldRegion> regions) {
         int count = regions.size();
-        ByteBuffer payload = ByteBuffer.allocateDirect(4 + count * 12).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer payload = ByteBuffer.allocateDirect(4 + count * 8).order(ByteOrder.LITTLE_ENDIAN);
         payload.putInt(count);
         for (int i = 0; i < count; i++) {
             FoldRegion r = regions.get(i);
             payload.putInt(r.startLine);
             payload.putInt(r.endLine);
-            payload.putInt(r.collapsed ? 1 : 0);
         }
         payload.flip();
         return payload;

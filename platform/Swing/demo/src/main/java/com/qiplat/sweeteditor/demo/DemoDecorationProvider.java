@@ -33,12 +33,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -58,6 +57,10 @@ public class DemoDecorationProvider implements DecorationProvider {
     private static final int STYLE_VARIABLE = EditorTheme.STYLE_VARIABLE;
     private static final int STYLE_ANNOTATION = EditorTheme.STYLE_ANNOTATION;
     private static final int STYLE_COLOR = EditorTheme.STYLE_PREPROCESSOR + 1;
+    private static final int MAX_DYNAMIC_DIAGNOSTICS = 8;
+    private static final String PHANTOM_MEMBER_STUB =
+            "\n    void debugTrace(const std::string& tag) {\n        log(DEBUG, tag);\n    }";
+    private static final String PHANTOM_INLINE_HINT = " /* demo phantom */";
 
     public static final int ICON_CLASS = 1;
 
@@ -98,20 +101,10 @@ public class DemoDecorationProvider implements DecorationProvider {
 
     @Override
     public void provideDecorations(DecorationContext context, DecorationReceiver receiver) {
-        Map<Integer, List<PhantomText>> phantoms = new HashMap<>();
-        phantoms.put(15, Collections.singletonList(
-                new PhantomText(5, "\n    void warn(const std::string& m) {\n        log(WARN, m);\n    }")));
+        Map<Integer, List<DiagnosticItem>> diagnostics = new HashMap<>();
 
-        DecorationResult sweetLineResult = buildSweetLineDecorationResult(context);
-        receiver.accept(new DecorationResult.Builder()
-                .inlayHints(sweetLineResult.getInlayHints(), DecorationResult.ApplyMode.REPLACE_RANGE)
-                .phantomTexts(phantoms, DecorationResult.ApplyMode.REPLACE_ALL)
-                .syntaxSpans(sweetLineResult.getSyntaxSpans(), DecorationResult.ApplyMode.MERGE)
-                .indentGuides(sweetLineResult.getIndentGuides(), DecorationResult.ApplyMode.REPLACE_ALL)
-                .foldRegions(sweetLineResult.getFoldRegions(), DecorationResult.ApplyMode.REPLACE_ALL)
-                .separatorGuides(sweetLineResult.getSeparatorGuides(), DecorationResult.ApplyMode.REPLACE_ALL)
-                .gutterIcons(sweetLineResult.getGutterIcons(), DecorationResult.ApplyMode.REPLACE_ALL)
-                .build());
+        DecorationResult sweetLineResult = buildSweetLineDecorationResult(context, diagnostics);
+        receiver.accept(sweetLineResult);
 
         executor.submit(() -> {
             try {
@@ -123,24 +116,15 @@ public class DemoDecorationProvider implements DecorationProvider {
                 return;
             }
 
-            Map<Integer, List<DiagnosticItem>> diags = new HashMap<>();
-            diags.put(9, Collections.singletonList(new DiagnosticItem(13, 5, 0, 0)));
-            diags.put(16, Collections.singletonList(new DiagnosticItem(8, 4, 1, 0)));
-            diags.put(22, Collections.singletonList(new DiagnosticItem(4, 3, 3, 0)));
-            diags.put(44, Collections.singletonList(new DiagnosticItem(38, 20, 2, 0)));
-            diags.put(45, Collections.singletonList(new DiagnosticItem(4, 4, 1, (int) 0xFFFF8C00)));
-            diags.put(46, Arrays.asList(
-                    new DiagnosticItem(17, 10, 2, 0),
-                    new DiagnosticItem(31, 6, 0, 0)
-            ));
-
             receiver.accept(new DecorationResult.Builder()
-                    .diagnostics(diags, DecorationResult.ApplyMode.REPLACE_ALL)
+                    .diagnostics(diagnostics, DecorationResult.ApplyMode.REPLACE_ALL)
                     .build());
         });
     }
 
-    private DecorationResult buildSweetLineDecorationResult(DecorationContext context) {
+    private DecorationResult buildSweetLineDecorationResult(DecorationContext context,
+                                                            Map<Integer, List<DiagnosticItem>> dynamicDiagnostics) {
+        Map<Integer, List<PhantomText>> dynamicPhantoms = new HashMap<>();
         Map<Integer, List<StyleSpan>> syntaxSpans = new HashMap<>();
         Map<Integer, List<InlayHint>> colorInlayHints = new HashMap<>();
         Map<Integer, List<GutterIcon>> gutterIcons = new HashMap<>();
@@ -148,13 +132,19 @@ public class DemoDecorationProvider implements DecorationProvider {
         List<FoldRegion> foldRegions = new ArrayList<>();
         List<SeparatorGuide> separatorGuides = new ArrayList<>();
         Set<String> seenColorHints = new HashSet<>();
+        Set<Integer> phantomLines = new HashSet<>();
+        Set<String> seenDiagnostics = new HashSet<>();
+        int[] diagnosticCount = new int[]{0};
+        TokenRangeInfo firstKeywordRange = null;
 
         DocumentAnalyzer analyzerSnapshot;
         DocumentHighlight highlightSnapshot;
         String textSnapshot;
         synchronized (stateLock) {
             if (highlightEngine == null) {
-                return new DecorationResult.Builder().build();
+                return new DecorationResult.Builder()
+                        .phantomTexts(dynamicPhantoms, DecorationResult.ApplyMode.REPLACE_ALL)
+                        .build();
             }
 
             String currentFileName = resolveCurrentFileName(context);
@@ -187,6 +177,7 @@ public class DemoDecorationProvider implements DecorationProvider {
 
         if (highlightSnapshot == null || highlightSnapshot.lines() == null || highlightSnapshot.lines().isEmpty()) {
             return new DecorationResult.Builder()
+                    .phantomTexts(dynamicPhantoms, DecorationResult.ApplyMode.REPLACE_ALL)
                     .syntaxSpans(syntaxSpans, DecorationResult.ApplyMode.MERGE)
                     .inlayHints(colorInlayHints, DecorationResult.ApplyMode.REPLACE_RANGE)
                     .indentGuides(indentGuides, DecorationResult.ApplyMode.REPLACE_ALL)
@@ -210,8 +201,19 @@ public class DemoDecorationProvider implements DecorationProvider {
                 appendTextInlayHint(colorInlayHints, textLines, token);
                 appendSeparator(separatorGuides, textLines, token);
                 appendGutterIcons(gutterIcons, textLines, token);
+                firstKeywordRange = appendDynamicDemoDecorations(
+                        dynamicPhantoms,
+                        phantomLines,
+                        dynamicDiagnostics,
+                        seenDiagnostics,
+                        diagnosticCount,
+                        firstKeywordRange,
+                        textLines,
+                        token
+                );
             }
         }
+        appendDiagnosticFallbackIfNeeded(dynamicDiagnostics, seenDiagnostics, diagnosticCount, firstKeywordRange);
 
         if (analyzerSnapshot != null && (context.totalLineCount < 0 || context.totalLineCount < 2048)) {
             IndentGuideResult guideResult = analyzerSnapshot.analyzeIndentGuides();
@@ -236,13 +238,14 @@ public class DemoDecorationProvider implements DecorationProvider {
                     }
                     String key = guide.startLine() + ":" + guide.endLine();
                     if (seenFolds.add(key)) {
-                        foldRegions.add(new FoldRegion(guide.startLine(), guide.endLine(), false));
+                        foldRegions.add(new FoldRegion(guide.startLine(), guide.endLine()));
                     }
                 }
             }
         }
 
         return new DecorationResult.Builder()
+                .phantomTexts(dynamicPhantoms, DecorationResult.ApplyMode.REPLACE_ALL)
                 .syntaxSpans(syntaxSpans, DecorationResult.ApplyMode.MERGE)
                 .inlayHints(colorInlayHints, DecorationResult.ApplyMode.REPLACE_RANGE)
                 .indentGuides(indentGuides, DecorationResult.ApplyMode.REPLACE_ALL)
@@ -250,6 +253,104 @@ public class DemoDecorationProvider implements DecorationProvider {
                 .separatorGuides(separatorGuides, DecorationResult.ApplyMode.REPLACE_ALL)
                 .gutterIcons(gutterIcons, DecorationResult.ApplyMode.REPLACE_ALL)
                 .build();
+    }
+
+    private static TokenRangeInfo appendDynamicDemoDecorations(Map<Integer, List<PhantomText>> phantoms,
+                                                               Set<Integer> phantomLines,
+                                                               Map<Integer, List<DiagnosticItem>> diagnostics,
+                                                               Set<String> seenDiagnostics,
+                                                               int[] diagnosticCount,
+                                                               TokenRangeInfo firstKeywordRange,
+                                                               List<String> textLines,
+                                                               TokenSpan token) {
+        TokenRangeInfo range = extractSingleLineTokenRange(token);
+        if (range == null) {
+            return firstKeywordRange;
+        }
+        String literal = getTokenLiteral(textLines, range);
+        if (literal.isEmpty()) {
+            return firstKeywordRange;
+        }
+
+        if (token.styleId() == STYLE_KEYWORD) {
+            if (firstKeywordRange == null) {
+                firstKeywordRange = range;
+            }
+            if (phantomLines.isEmpty() && ("class".equals(literal) || "struct".equals(literal))) {
+                phantoms.computeIfAbsent(range.line, ignored -> new ArrayList<>())
+                        .add(new PhantomText(range.endColumn, PHANTOM_MEMBER_STUB));
+                phantomLines.add(range.line);
+            } else if (phantomLines.isEmpty() && "return".equals(literal)) {
+                phantoms.computeIfAbsent(range.line, ignored -> new ArrayList<>())
+                        .add(new PhantomText(range.endColumn, PHANTOM_INLINE_HINT));
+                phantomLines.add(range.line);
+            }
+            return firstKeywordRange;
+        }
+
+        if (token.styleId() == STYLE_COMMENT) {
+            String upper = literal.toUpperCase(Locale.ROOT);
+            int fixmeIndex = upper.indexOf("FIXME");
+            if (fixmeIndex >= 0) {
+                appendDiagnostic(diagnostics, seenDiagnostics, diagnosticCount,
+                        range.line, range.startColumn + fixmeIndex, 5, 0, 0);
+            }
+            int todoIndex = upper.indexOf("TODO");
+            if (todoIndex >= 0) {
+                appendDiagnostic(diagnostics, seenDiagnostics, diagnosticCount,
+                        range.line, range.startColumn + todoIndex, 4, 1, 0);
+            }
+            return firstKeywordRange;
+        }
+
+        if (token.styleId() == STYLE_COLOR) {
+            Integer color = parseColorLiteral(literal);
+            if (color != null) {
+                appendDiagnostic(diagnostics, seenDiagnostics, diagnosticCount,
+                        range.line, range.startColumn, range.length(), 2, color);
+            }
+            return firstKeywordRange;
+        }
+
+        if (token.styleId() == STYLE_ANNOTATION) {
+            appendDiagnostic(diagnostics, seenDiagnostics, diagnosticCount,
+                    range.line, range.startColumn, range.length(), 3, 0);
+        }
+        return firstKeywordRange;
+    }
+
+    private static void appendDiagnostic(Map<Integer, List<DiagnosticItem>> diagnostics,
+                                         Set<String> seenDiagnostics,
+                                         int[] diagnosticCount,
+                                         int line,
+                                         int column,
+                                         int length,
+                                         int severity,
+                                         int color) {
+        if (diagnosticCount[0] >= MAX_DYNAMIC_DIAGNOSTICS) {
+            return;
+        }
+        if (line < 0 || column < 0 || length <= 0) {
+            return;
+        }
+        String key = line + ":" + column + ":" + length + ":" + severity + ":" + color;
+        if (!seenDiagnostics.add(key)) {
+            return;
+        }
+        diagnostics.computeIfAbsent(line, ignored -> new ArrayList<>())
+                .add(new DiagnosticItem(column, length, severity, color));
+        diagnosticCount[0]++;
+    }
+
+    private static void appendDiagnosticFallbackIfNeeded(Map<Integer, List<DiagnosticItem>> diagnostics,
+                                                         Set<String> seenDiagnostics,
+                                                         int[] diagnosticCount,
+                                                         TokenRangeInfo firstKeywordRange) {
+        if (diagnosticCount[0] > 0 || firstKeywordRange == null) {
+            return;
+        }
+        appendDiagnostic(diagnostics, seenDiagnostics, diagnosticCount,
+                firstKeywordRange.line, firstKeywordRange.startColumn, firstKeywordRange.length(), 3, 0);
     }
 
     private void appendStyleSpan(Map<Integer, List<StyleSpan>> syntaxSpans, TokenSpan token) {
@@ -507,7 +608,6 @@ public class DemoDecorationProvider implements DecorationProvider {
         engine.registerStyleName("method", STYLE_FUNCTION);
         engine.registerStyleName("function", STYLE_FUNCTION);
         engine.registerStyleName("variable", STYLE_VARIABLE);
-        engine.registerStyleName("identifier", STYLE_VARIABLE);
         engine.registerStyleName("field", STYLE_VARIABLE);
         engine.registerStyleName("number", STYLE_NUMBER);
         engine.registerStyleName("class", STYLE_CLASS);

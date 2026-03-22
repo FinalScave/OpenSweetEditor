@@ -186,18 +186,20 @@ namespace {
 
   struct RenderModelHeaderData {
     float split_x = 0.0f;
+    int32_t split_line_visible = 1;
     float scroll_x = 0.0f;
     float scroll_y = 0.0f;
     float viewport_width = 0.0f;
     float viewport_height = 0.0f;
     float current_line_x = 0.0f;
     float current_line_y = 0.0f;
+    int32_t current_line_render_mode = 0;
     int32_t line_count = 0;
   };
 
   RenderModelHeaderData parseRenderModelHeader(const uint8_t* data, size_t size) {
     RenderModelHeaderData header;
-    if (data == nullptr || size < sizeof(float) * 7 + sizeof(int32_t)) {
+    if (data == nullptr || size < sizeof(float) * 7 + sizeof(int32_t) * 3) {
       return header;
     }
     size_t offset = 0;
@@ -210,12 +212,14 @@ namespace {
       offset += sizeof(int32_t);
     };
     readFloat(header.split_x);
+    readI32(header.split_line_visible);
     readFloat(header.scroll_x);
     readFloat(header.scroll_y);
     readFloat(header.viewport_width);
     readFloat(header.viewport_height);
     readFloat(header.current_line_x);
     readFloat(header.current_line_y);
+    readI32(header.current_line_render_mode);
     readI32(header.line_count);
     return header;
   }
@@ -261,7 +265,7 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   REQUIRE(get_document_line_count(document) == 1);
   CHECK(getLineTextUtf8(document, 0) == "abc");
 
-  intptr_t editor = create_editor(10.0f, 300, makeMeasurer());
+  intptr_t editor = create_editor(makeMeasurer(), nullptr, 0);
   REQUIRE(editor != 0);
   set_editor_document(editor, document);
   set_editor_viewport(editor, 100, 80);
@@ -366,11 +370,13 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   size_t model_size = 0;
   const uint8_t* model_payload = build_editor_render_model(editor, &model_size);
   REQUIRE(model_payload != nullptr);
-  CHECK(model_size >= sizeof(float) * 7 + sizeof(int32_t));
+  CHECK(model_size >= sizeof(float) * 7 + sizeof(int32_t) * 3);
   RenderModelHeaderData model_header = parseRenderModelHeader(model_payload, model_size);
   free_binary_data(reinterpret_cast<intptr_t>(model_payload));
   CHECK(model_header.viewport_width == 100.0f);
   CHECK(model_header.viewport_height == 80.0f);
+  CHECK(model_header.split_line_visible == 1);
+  CHECK(model_header.current_line_render_mode == 0);
   CHECK(model_header.line_count >= 1);
 
   free_editor(editor);

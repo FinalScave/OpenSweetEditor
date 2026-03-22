@@ -22,12 +22,13 @@ public class EditorTheme {
     public static final int STYLE_CLASS = 7;
     public static final int STYLE_FUNCTION = 8;
     public static final int STYLE_VARIABLE = 9;
-    public static final int STYLE_ANNOTATION = 10;
-    public static final int STYLE_PREPROCESSOR = 11;
+    public static final int STYLE_PUNCTUATION = 10;
+    public static final int STYLE_ANNOTATION = 11;
+    public static final int STYLE_PREPROCESSOR = 12;
     /**
      * Base style ID reserved for application-defined/custom text styles.
      * <p>
-     * Built-in styles in this library currently occupy low IDs (1..11). To avoid collisions with
+     * Built-in styles in this library currently occupy low IDs (1..12). To avoid collisions with
      * current/future built-in style IDs and keep style IDs portable across all platform bindings,
      * allocate custom style IDs starting from {@code STYLE_USER_BASE} and above.
      */
@@ -43,6 +44,8 @@ public class EditorTheme {
     public Color selectionColor;
     /** Line number text color. */
     public Color lineNumberColor;
+    /** Current line number text color. */
+    public Color currentLineNumberColor;
     /** Current line highlight background color, recommended to include alpha. */
     public Color currentLineColor;
 
@@ -127,6 +130,7 @@ public class EditorTheme {
         t.cursorColor               = argb(0xFF8FB8FF);
         t.selectionColor            = argb(0x553B4F72);
         t.lineNumberColor           = argb(0xFF5E6778);
+        t.currentLineNumberColor    = argb(0xFF9CB3D6);
         t.currentLineColor          = argb(0x163A4A66);
         t.guideColor                = argb(0x2E56617A);
         t.separatorLineColor        = argb(0xFF4A8F7A);
@@ -136,8 +140,8 @@ public class EditorTheme {
         t.compositionUnderlineColor = argb(0xFF7AA2F7);
         t.inlayHintBgColor          = argb(0x223A4A66);
         t.inlayHintTextColor        = argb(0xC0AFC2E0);
-        t.foldPlaceholderBgColor    = argb(0x28405066);
-        t.foldPlaceholderTextColor  = argb(0xC0AFC2E0);
+        t.foldPlaceholderBgColor    = argb(0x36506C90);
+        t.foldPlaceholderTextColor  = argb(0xFFE2ECFF);
         t.phantomTextColor          = argb(0x8AA3B5D1);
         t.inlayHintIconColor        = argb(0xCC9CB0CD);
         t.diagnosticErrorColor      = argb(0xFFF7768E);
@@ -158,6 +162,7 @@ public class EditorTheme {
         t.defineTextStyle(STYLE_CLASS, new TextStyle(0xFFE0AF68, TextStyle.BOLD));
         t.defineTextStyle(STYLE_FUNCTION, new TextStyle(0xFF73DACA, TextStyle.NORMAL));
         t.defineTextStyle(STYLE_VARIABLE, new TextStyle(0xFFD7DEE9, TextStyle.NORMAL));
+        t.defineTextStyle(STYLE_PUNCTUATION, new TextStyle(0xFFB0BED3, TextStyle.NORMAL));
         t.defineTextStyle(STYLE_ANNOTATION, new TextStyle(0xFF2AC3DE, TextStyle.NORMAL));
         t.defineTextStyle(STYLE_PREPROCESSOR, new TextStyle(0xFFF7768E, TextStyle.NORMAL));
         return t;
@@ -173,6 +178,7 @@ public class EditorTheme {
         t.cursorColor               = argb(0xFF2563EB);
         t.selectionColor            = argb(0x4D60A5FA);
         t.lineNumberColor           = argb(0xFF8A94A6);
+        t.currentLineNumberColor    = argb(0xFF3A5FA0);
         t.currentLineColor          = argb(0x120D3B66);
         t.guideColor                = argb(0x2229426B);
         t.separatorLineColor        = argb(0xFF2F855A);
@@ -182,8 +188,8 @@ public class EditorTheme {
         t.compositionUnderlineColor = argb(0xFF2563EB);
         t.inlayHintBgColor          = argb(0x143B82F6);
         t.inlayHintTextColor        = argb(0xB0344A73);
-        t.foldPlaceholderBgColor    = argb(0x1A7A8CA8);
-        t.foldPlaceholderTextColor  = argb(0xC0354A6B);
+        t.foldPlaceholderBgColor    = argb(0x2E748DB0);
+        t.foldPlaceholderTextColor  = argb(0xFF284A70);
         t.phantomTextColor          = argb(0x8A4B607E);
         t.inlayHintIconColor        = argb(0xB04B607E);
         t.diagnosticErrorColor      = argb(0xFFDC2626);
@@ -204,6 +210,7 @@ public class EditorTheme {
         t.defineTextStyle(STYLE_CLASS, new TextStyle(0xFF9A3412, TextStyle.BOLD));
         t.defineTextStyle(STYLE_FUNCTION, new TextStyle(0xFF0E7490, TextStyle.NORMAL));
         t.defineTextStyle(STYLE_VARIABLE, new TextStyle(0xFF1F2937, TextStyle.NORMAL));
+        t.defineTextStyle(STYLE_PUNCTUATION, new TextStyle(0xFF6E82A0, TextStyle.NORMAL));
         t.defineTextStyle(STYLE_ANNOTATION, new TextStyle(0xFF0F766E, TextStyle.NORMAL));
         t.defineTextStyle(STYLE_PREPROCESSOR, new TextStyle(0xFFBE123C, TextStyle.NORMAL));
         return t;

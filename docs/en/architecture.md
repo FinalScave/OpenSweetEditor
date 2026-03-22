@@ -424,7 +424,6 @@ struct EditorRenderModel {
   Vector<GuideSegment> guide_segments;   // code structure guides
   Vector<DiagnosticDecoration> diagnostic_decorations; // diagnostic decorations
   uint32_t max_gutter_icons;            // gutter icon count
-  float fold_arrow_x;                   // fold arrow X
   Vector<LinkedEditingRect> linked_editing_rects; // linked-edit highlights
   Vector<BracketHighlightRect> bracket_highlight_rects; // bracket highlights
 };

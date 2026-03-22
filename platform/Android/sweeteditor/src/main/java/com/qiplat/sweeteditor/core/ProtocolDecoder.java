@@ -7,7 +7,9 @@ import com.qiplat.sweeteditor.core.visual.CompositionDecoration;
 import com.qiplat.sweeteditor.core.visual.Cursor;
 import com.qiplat.sweeteditor.core.visual.DiagnosticDecoration;
 import com.qiplat.sweeteditor.core.visual.EditorRenderModel;
+import com.qiplat.sweeteditor.core.visual.FoldMarkerRenderItem;
 import com.qiplat.sweeteditor.core.visual.FoldState;
+import com.qiplat.sweeteditor.core.visual.GutterIconRenderItem;
 import com.qiplat.sweeteditor.core.visual.GuideDirection;
 import com.qiplat.sweeteditor.core.visual.GuideSegment;
 import com.qiplat.sweeteditor.core.visual.GuideStyle;
@@ -158,12 +160,16 @@ final class ProtocolDecoder {
         data.order(ByteOrder.nativeOrder());
         EditorRenderModel model = new EditorRenderModel();
         model.splitX = data.getFloat();
+        model.splitLineVisible = data.getInt() != 0;
         model.scrollX = data.getFloat();
         model.scrollY = data.getFloat();
         model.viewportWidth = data.getFloat();
         model.viewportHeight = data.getFloat();
         model.currentLine = readPoint(data);
+        model.currentLineRenderMode = data.getInt();
         model.lines = readVisualLines(data);
+        model.gutterIcons = readGutterIconRenderItems(data);
+        model.foldMarkers = readFoldMarkerRenderItems(data);
         model.cursor = readCursor(data);
         model.selectionRects = readSelectionRects(data);
         model.selectionStartHandle = readSelectionHandle(data);
@@ -172,7 +178,6 @@ final class ProtocolDecoder {
         model.guideSegments = readGuideSegments(data);
         model.diagnosticDecorations = readDiagnosticDecorations(data);
         model.maxGutterIcons = data.getInt();
-        model.foldArrowX = data.getFloat();
         model.linkedEditingRects = readLinkedEditingRects(data);
         model.bracketHighlightRects = readBracketHighlightRects(data);
         model.verticalScrollbar = defaultScrollbarModel();
@@ -265,12 +270,6 @@ final class ProtocolDecoder {
         line.lineNumberPosition = readPoint(data);
         line.isPhantomLine = data.getInt() != 0;
         line.foldState = readFoldState(data);
-        int gutterCount = data.getInt();
-        ArrayList<Integer> gutterIds = new ArrayList<>(Math.max(gutterCount, 0));
-        for (int i = 0; i < gutterCount; i++) {
-            gutterIds.add(data.getInt());
-        }
-        line.gutterIconIds = gutterIds;
         line.runs = readVisualRuns(data);
         return line;
     }
@@ -282,6 +281,44 @@ final class ProtocolDecoder {
             lines.add(readVisualLine(data));
         }
         return lines;
+    }
+
+    private static GutterIconRenderItem readGutterIconRenderItem(ByteBuffer data) {
+        GutterIconRenderItem item = new GutterIconRenderItem();
+        item.logicalLine = data.getInt();
+        item.iconId = data.getInt();
+        item.origin = readPoint(data);
+        item.width = data.getFloat();
+        item.height = data.getFloat();
+        return item;
+    }
+
+    private static ArrayList<GutterIconRenderItem> readGutterIconRenderItems(ByteBuffer data) {
+        int count = data.getInt();
+        ArrayList<GutterIconRenderItem> items = new ArrayList<>(Math.max(count, 0));
+        for (int i = 0; i < count; i++) {
+            items.add(readGutterIconRenderItem(data));
+        }
+        return items;
+    }
+
+    private static FoldMarkerRenderItem readFoldMarkerRenderItem(ByteBuffer data) {
+        FoldMarkerRenderItem item = new FoldMarkerRenderItem();
+        item.logicalLine = data.getInt();
+        item.foldState = readFoldState(data);
+        item.origin = readPoint(data);
+        item.width = data.getFloat();
+        item.height = data.getFloat();
+        return item;
+    }
+
+    private static ArrayList<FoldMarkerRenderItem> readFoldMarkerRenderItems(ByteBuffer data) {
+        int count = data.getInt();
+        ArrayList<FoldMarkerRenderItem> items = new ArrayList<>(Math.max(count, 0));
+        for (int i = 0; i < count; i++) {
+            items.add(readFoldMarkerRenderItem(data));
+        }
+        return items;
     }
 
     private static Cursor readCursor(ByteBuffer data) {

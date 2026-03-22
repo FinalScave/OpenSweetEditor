@@ -424,7 +424,6 @@ struct EditorRenderModel {
   Vector<GuideSegment> guide_segments;   // 代码结构线
   Vector<DiagnosticDecoration> diagnostic_decorations; // 诊断装饰
   uint32_t max_gutter_icons;            // Gutter 图标数
-  float fold_arrow_x;                   // 折叠箭头 X 位置
   Vector<LinkedEditingRect> linked_editing_rects; // 联动编辑高亮
   Vector<BracketHighlightRect> bracket_highlight_rects; // 括号高亮
 };

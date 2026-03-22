@@ -8,12 +8,9 @@ public final class FoldRegion {
     public final int startLine;
     /** End line (0-based, inclusive) */
     public final int endLine;
-    /** Whether the region is currently collapsed (folded) */
-    public final boolean collapsed;
 
-    public FoldRegion(int startLine, int endLine, boolean collapsed) {
+    public FoldRegion(int startLine, int endLine) {
         this.startLine = startLine;
         this.endLine = endLine;
-        this.collapsed = collapsed;
     }
 }

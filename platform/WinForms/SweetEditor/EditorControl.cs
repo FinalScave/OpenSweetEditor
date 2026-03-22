@@ -94,11 +94,12 @@ namespace SweetEditor {
 		public const uint STYLE_CLASS = 7;
 		public const uint STYLE_FUNCTION = 8;
 		public const uint STYLE_VARIABLE = 9;
-		public const uint STYLE_ANNOTATION = 10;
-		public const uint STYLE_PREPROCESSOR = 11;
+		public const uint STYLE_PUNCTUATION = 10;
+		public const uint STYLE_ANNOTATION = 11;
+		public const uint STYLE_PREPROCESSOR = 12;
 		/// <summary>
 		/// Base style ID reserved for application-defined/custom text styles.
-		/// Built-in styles in this library currently use low IDs (1..11); to avoid conflicts
+		/// Built-in styles in this library currently use low IDs (1..12); to avoid conflicts
 		/// with current/future built-in IDs and keep style IDs consistent across platform bindings,
 		/// allocate custom style IDs starting from <see cref="STYLE_USER_BASE"/> and above.
 		/// </summary>
@@ -114,6 +115,8 @@ namespace SweetEditor {
 		public Color SelectionColor { get; set; }
 		/// <summary>Line number text color (ARGB).</summary>
 		public Color LineNumberColor { get; set; }
+		/// <summary>Current line number text color (ARGB).</summary>
+		public Color CurrentLineNumberColor { get; set; }
 		/// <summary>Current line highlight background color (ARGB, typically semi-transparent).</summary>
 		public Color CurrentLineColor { get; set; }
 
@@ -194,6 +197,7 @@ namespace SweetEditor {
 			CursorColor = Color.FromArgb(unchecked((int)0xFF8FB8FF)),
 			SelectionColor = Color.FromArgb(unchecked((int)0x553B4F72)),
 			LineNumberColor = Color.FromArgb(unchecked((int)0xFF5E6778)),
+			CurrentLineNumberColor = Color.FromArgb(unchecked((int)0xFF9CB3D6)),
 			CurrentLineColor = Color.FromArgb(unchecked((int)0x163A4A66)),
 			GuideColor = Color.FromArgb(unchecked((int)0x2E56617A)),
 			SeparatorColor = Color.FromArgb(unchecked((int)0xFF4A8F7A)),
@@ -205,8 +209,8 @@ namespace SweetEditor {
 			InlayHintTextColor = Color.FromArgb(unchecked((int)0xC0AFC2E0)),
 			InlayHintIconColor = Color.FromArgb(unchecked((int)0xCC9CB0CD)),
 			PhantomTextColor = Color.FromArgb(unchecked((int)0x8AA3B5D1)),
-			FoldPlaceholderBgColor = Color.FromArgb(unchecked((int)0x28405066)),
-			FoldPlaceholderTextColor = Color.FromArgb(unchecked((int)0xC0AFC2E0)),
+			FoldPlaceholderBgColor = Color.FromArgb(unchecked((int)0x36506C90)),
+			FoldPlaceholderTextColor = Color.FromArgb(unchecked((int)0xFFE2ECFF)),
 			DiagnosticErrorColor = Color.FromArgb(unchecked((int)0xFFF7768E)),
 			DiagnosticWarningColor = Color.FromArgb(unchecked((int)0xFFE0AF68)),
 			DiagnosticInfoColor = Color.FromArgb(unchecked((int)0xFF7DCFFF)),
@@ -225,6 +229,7 @@ namespace SweetEditor {
 				[STYLE_CLASS] = new TextStyle(unchecked((int)0xFFE0AF68), 1),
 				[STYLE_FUNCTION] = new TextStyle(unchecked((int)0xFF73DACA), 0),
 				[STYLE_VARIABLE] = new TextStyle(unchecked((int)0xFFD7DEE9), 0),
+				[STYLE_PUNCTUATION] = new TextStyle(unchecked((int)0xFFB0BED3), 0),
 				[STYLE_ANNOTATION] = new TextStyle(unchecked((int)0xFF2AC3DE), 0),
 				[STYLE_PREPROCESSOR] = new TextStyle(unchecked((int)0xFFF7768E), 0),
 			},
@@ -239,6 +244,7 @@ namespace SweetEditor {
 			CursorColor = Color.FromArgb(unchecked((int)0xFF2563EB)),
 			SelectionColor = Color.FromArgb(unchecked((int)0x4D60A5FA)),
 			LineNumberColor = Color.FromArgb(unchecked((int)0xFF8A94A6)),
+			CurrentLineNumberColor = Color.FromArgb(unchecked((int)0xFF3A5FA0)),
 			CurrentLineColor = Color.FromArgb(unchecked((int)0x120D3B66)),
 			GuideColor = Color.FromArgb(unchecked((int)0x2229426B)),
 			SeparatorColor = Color.FromArgb(unchecked((int)0xFF2F855A)),
@@ -250,8 +256,8 @@ namespace SweetEditor {
 			InlayHintTextColor = Color.FromArgb(unchecked((int)0xB0344A73)),
 			InlayHintIconColor = Color.FromArgb(unchecked((int)0xB04B607E)),
 			PhantomTextColor = Color.FromArgb(unchecked((int)0x8A4B607E)),
-			FoldPlaceholderBgColor = Color.FromArgb(unchecked((int)0x1A7A8CA8)),
-			FoldPlaceholderTextColor = Color.FromArgb(unchecked((int)0xC0354A6B)),
+			FoldPlaceholderBgColor = Color.FromArgb(unchecked((int)0x2E748DB0)),
+			FoldPlaceholderTextColor = Color.FromArgb(unchecked((int)0xFF284A70)),
 			DiagnosticErrorColor = Color.FromArgb(unchecked((int)0xFFDC2626)),
 			DiagnosticWarningColor = Color.FromArgb(unchecked((int)0xFFD97706)),
 			DiagnosticInfoColor = Color.FromArgb(unchecked((int)0xFF0EA5E9)),
@@ -270,6 +276,7 @@ namespace SweetEditor {
 				[STYLE_CLASS] = new TextStyle(unchecked((int)0xFF9A3412), 1),
 				[STYLE_FUNCTION] = new TextStyle(unchecked((int)0xFF0E7490), 0),
 				[STYLE_VARIABLE] = new TextStyle(unchecked((int)0xFF1F2937), 0),
+				[STYLE_PUNCTUATION] = new TextStyle(unchecked((int)0xFF6E82A0), 0),
 				[STYLE_ANNOTATION] = new TextStyle(unchecked((int)0xFF0F766E), 0),
 				[STYLE_PREPROCESSOR] = new TextStyle(unchecked((int)0xFFBE123C), 0),
 			},
@@ -431,6 +438,7 @@ namespace SweetEditor {
 		private const int EdgeScrollIntervalMs = 16;
 		private System.Windows.Forms.Timer? edgeScrollTimer;
 		private bool edgeScrollActive = false;
+		private const float DefaultContentStartPaddingDp = 3.0f;
 
 		public EditorControl() {
 			InitializeComponent();
@@ -1030,6 +1038,7 @@ namespace SweetEditor {
 			}
 
 			settings = new EditorSettings(this);
+			settings.SetContentStartPadding(DpToPx(DefaultContentStartPaddingDp));
 		}
 
 		protected override void OnHandleCreated(EventArgs e) {
@@ -1570,6 +1579,11 @@ namespace SweetEditor {
 			if (editorCore != null) {
 				editorCore.ResetMeasurer();
 			}
+		}
+
+		private float DpToPx(float dp) {
+			int dpi = DeviceDpi > 0 ? DeviceDpi : 96;
+			return dp * (dpi / 96f);
 		}
 
 		private PerfScope StartInputPerf(string tag) {

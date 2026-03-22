@@ -4,7 +4,7 @@ plugins {
 
 android {
     namespace 'com.qiplat.sweeteditor.demo'
-    compileSdk 35
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.qiplat.sweeteditor.demo"
@@ -48,7 +48,7 @@ android {
 
 dependencies {
     implementation project(":sweeteditor")
-    implementation 'com.qiplat:sweetline:0.1.4'
+    implementation 'com.qiplat:sweetline:1.1.0'
     implementation libs.activity
     implementation libs.constraintlayout
     implementation libs.appcompat

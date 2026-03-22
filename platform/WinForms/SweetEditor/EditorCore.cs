@@ -180,6 +180,18 @@ namespace SweetEditor {
 	}
 
 	/// <summary>
+	/// Current line render mode.
+	/// </summary>
+	public enum CurrentLineRenderMode {
+		/// <summary>Fill the entire current line background.</summary>
+		BACKGROUND = 0,
+		/// <summary>Draw a border around current line.</summary>
+		BORDER = 1,
+		/// <summary>Disable current line decoration.</summary>
+		NONE = 2,
+	}
+
+	/// <summary>
 	/// Selection handle appearance and touch configuration.
 	/// </summary>
 	public class HandleConfig {
@@ -432,9 +444,7 @@ namespace SweetEditor {
 		public int StartLine { get; }
 		/// <summary>End line (0-based, inclusive).</summary>
 		public int EndLine { get; }
-		/// <summary>Whether the region is folded</summary>
-		public bool Collapsed { get; }
-		public FoldRegion(int startLine, int endLine, bool collapsed) { StartLine = startLine; EndLine = endLine; Collapsed = collapsed; }
+		public FoldRegion(int startLine, int endLine) { StartLine = startLine; EndLine = endLine; }
 	}
 
 	/// <summary>Immutable value object describing an indent guide line.</summary>
@@ -664,12 +674,51 @@ namespace SweetEditor {
 		/// <summary>Whether this is a ghost-text continuation row (2nd, 3rd, ... rows of multi-line phantom text).</summary>
 		[JsonPropertyName("is_phantom_line")]
 		public bool IsPhantomLine { get; set; }
-		/// <summary>Gutter icon ID list.</summary>
-		[JsonPropertyName("gutter_icon_ids")]
-		public List<int> GutterIconIds { get; set; }
 		/// <summary>Fold state</summary>
 		[JsonPropertyName("fold_state")]
 		public FoldState FoldState { get; set; }
+	}
+
+	/// <summary>
+	/// Gutter icon render item with fully resolved geometry.
+	/// </summary>
+	public struct GutterIconRenderItem {
+		/// <summary>Logical line index.</summary>
+		[JsonPropertyName("logical_line")]
+		public int LogicalLine { get; set; }
+		/// <summary>Icon resource ID.</summary>
+		[JsonPropertyName("icon_id")]
+		public int IconId { get; set; }
+		/// <summary>Icon top-left corner.</summary>
+		[JsonPropertyName("origin")]
+		public PointF Origin { get; set; }
+		/// <summary>Icon width.</summary>
+		[JsonPropertyName("width")]
+		public float Width { get; set; }
+		/// <summary>Icon height.</summary>
+		[JsonPropertyName("height")]
+		public float Height { get; set; }
+	}
+
+	/// <summary>
+	/// Fold marker render item with fully resolved geometry.
+	/// </summary>
+	public struct FoldMarkerRenderItem {
+		/// <summary>Logical line index.</summary>
+		[JsonPropertyName("logical_line")]
+		public int LogicalLine { get; set; }
+		/// <summary>Fold state on this line.</summary>
+		[JsonPropertyName("fold_state")]
+		public FoldState FoldState { get; set; }
+		/// <summary>Marker top-left corner.</summary>
+		[JsonPropertyName("origin")]
+		public PointF Origin { get; set; }
+		/// <summary>Marker width.</summary>
+		[JsonPropertyName("width")]
+		public float Width { get; set; }
+		/// <summary>Marker height.</summary>
+		[JsonPropertyName("height")]
+		public float Height { get; set; }
 	}
 
 	/// <summary>
@@ -1013,6 +1062,9 @@ namespace SweetEditor {
 		/// <summary>Line-number divider position.</summary>
 		[JsonPropertyName("split_x")]
 		public float SplitX { get; set; }
+		/// <summary>Whether split line should be rendered.</summary>
+		[JsonPropertyName("split_line_visible")]
+		public bool SplitLineVisible { get; set; }
 		/// <summary>Current horizontal scroll offset</summary>
 		[JsonPropertyName("scroll_x")]
 		public float ScrollX { get; set; }
@@ -1028,12 +1080,21 @@ namespace SweetEditor {
 		/// <summary>Current-line background position</summary>
 		[JsonPropertyName("current_line")]
 		public PointF CurrentLine { get; set; }
-		/// <summary>Visually rendered text rows (visible area only).</summary>
-		[JsonPropertyName("lines")]
-		public List<VisualLine> VisualLines { get; set; }
-		/// <summary>Caret</summary>
-		[JsonPropertyName("cursor")]
-		public Cursor Cursor { get; set; }
+		/// <summary>Current line render mode.</summary>
+		[JsonPropertyName("current_line_render_mode")]
+		public CurrentLineRenderMode CurrentLineRenderMode { get; set; }
+			/// <summary>Visually rendered text rows (visible area only).</summary>
+			[JsonPropertyName("lines")]
+			public List<VisualLine> VisualLines { get; set; }
+			/// <summary>Gutter icon render list (fully resolved geometry, visible area only).</summary>
+			[JsonPropertyName("gutter_icons")]
+			public List<GutterIconRenderItem> GutterIcons { get; set; }
+			/// <summary>Fold marker render list (fully resolved geometry, visible area only).</summary>
+			[JsonPropertyName("fold_markers")]
+			public List<FoldMarkerRenderItem> FoldMarkers { get; set; }
+			/// <summary>Caret</summary>
+			[JsonPropertyName("cursor")]
+			public Cursor Cursor { get; set; }
 		/// <summary>Selection highlight rectangles</summary>
 		[JsonPropertyName("selection_rects")]
 		public List<SelectionRect> SelectionRects { get; set; }
@@ -1055,9 +1116,6 @@ namespace SweetEditor {
 		/// <summary>Maximum number of gutter icons shown in the line-number gutter (0 = overlay mode).</summary>
 		[JsonPropertyName("max_gutter_icons")]
 		public int MaxGutterIcons { get; set; }
-		/// <summary>Fold-arrow center X for rendering (0 = disabled).</summary>
-		[JsonPropertyName("fold_arrow_x")]
-		public float FoldArrowX { get; set; }
 		/// <summary>Linked-edit highlight rectangles (tab stop placeholders).</summary>
 		[JsonPropertyName("linked_editing_rects")]
 		public List<LinkedEditingRect> LinkedEditingRects { get; set; }
@@ -1251,6 +1309,15 @@ namespace SweetEditor {
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_line_spacing", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void SetLineSpacing(IntPtr handle, float add, float mult);
+
+		[DllImport(LibraryName, EntryPoint = "editor_set_content_start_padding", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern void SetContentStartPadding(IntPtr handle, float padding);
+
+		[DllImport(LibraryName, EntryPoint = "editor_set_show_split_line", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern void SetShowSplitLine(IntPtr handle, int show);
+
+		[DllImport(LibraryName, EntryPoint = "editor_set_current_line_render_mode", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern void SetCurrentLineRenderMode(IntPtr handle, int mode);
 
 		[DllImport(LibraryName, EntryPoint = "build_editor_render_model", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr BuildRenderModel(IntPtr handle, out UIntPtr outSize);
@@ -1681,6 +1748,24 @@ namespace SweetEditor {
 		/// <param name="mult">Line spacing multiplier</param>
 		public void SetLineSpacing(float add, float mult) {
 			NativeMethods.SetLineSpacing(nativeHandle, add, mult);
+		}
+
+		/// <summary>Sets extra horizontal padding between gutter split and text content start.</summary>
+		/// <param name="padding">Padding in pixels (clamped to &gt;= 0 on native side).</param>
+		public void SetContentStartPadding(float padding) {
+			NativeMethods.SetContentStartPadding(nativeHandle, padding);
+		}
+
+		/// <summary>Sets whether gutter split line should be rendered.</summary>
+		/// <param name="show">true=show, false=hide.</param>
+		public void SetShowSplitLine(bool show) {
+			NativeMethods.SetShowSplitLine(nativeHandle, show ? 1 : 0);
+		}
+
+		/// <summary>Sets current line render mode.</summary>
+		/// <param name="mode">BACKGROUND(fill), BORDER(stroke), or NONE(disabled).</param>
+		public void SetCurrentLineRenderMode(CurrentLineRenderMode mode) {
+			NativeMethods.SetCurrentLineRenderMode(nativeHandle, (int)mode);
 		}
 
 		#endregion

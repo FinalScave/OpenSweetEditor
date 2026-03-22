@@ -229,6 +229,12 @@ namespace NS_SWEETEDITOR {
     size_t findHitLine(float abs_y);
     /// Find wrapped sub-line index hit inside a logical line
     size_t findHitWrapIndex(const LogicalLine& ll, float abs_y, float line_height) const;
+    /// Build gutter icon render items for one logical line at the given screen Y
+    void buildGutterIconRenderItems(size_t logical_line, float line_top_screen,
+                                    Vector<GutterIconRenderItem>& out_items) const;
+    /// Build one fold marker render item for one logical line at the given screen Y
+    bool buildFoldMarkerRenderItem(size_t logical_line, float line_top_screen,
+                                   FoldMarkerRenderItem& out_item) const;
   };
 }
 

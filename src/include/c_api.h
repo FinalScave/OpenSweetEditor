@@ -112,6 +112,18 @@ EDITOR_API void editor_set_scale(intptr_t editor_handle, float scale);
 /// @param mult Line spacing multiplier (default 1.0)
 EDITOR_API void editor_set_line_spacing(intptr_t editor_handle, float add, float mult);
 
+/// Set extra horizontal padding between gutter split and text content start
+/// @param padding Padding in pixels (clamped to >= 0)
+EDITOR_API void editor_set_content_start_padding(intptr_t editor_handle, float padding);
+
+/// Set whether to render gutter split line
+/// @param show 0=hide, non-zero=show
+EDITOR_API void editor_set_show_split_line(intptr_t editor_handle, int show);
+
+/// Set current line render mode
+/// @param mode 0=BACKGROUND(fill), 1=BORDER(stroke), 2=NONE(disabled)
+EDITOR_API void editor_set_current_line_render_mode(intptr_t editor_handle, int mode);
+
 #pragma endregion
 
 #pragma region Rendering
@@ -121,23 +133,23 @@ EDITOR_API void editor_set_line_spacing(intptr_t editor_handle, float add, float
 /// @return EditorRenderModel binary data; payload uses native byte order, and all supported platforms are currently LE.
 ///         Top-level layout:
 ///         1. f32 split_x
-///         2. f32 scroll_x
-///         3. f32 scroll_y
-///         4. f32 viewport_width
-///         5. f32 viewport_height
-///         6. PointF current_line
+///         2. i32 split_line_visible (0=false, 1=true)
+///         3. f32 scroll_x
+///         4. f32 scroll_y
+///         5. f32 viewport_width
+///         6. f32 viewport_height
+///         7. PointF current_line
 ///            - f32 x
 ///            - f32 y
-///         7. i32 lines_count
-///         8. VisualLine[lines_count] lines
+///         8. i32 current_line_render_mode (0=BACKGROUND, 1=BORDER, 2=NONE)
+///         9. i32 lines_count
+///         10. VisualLine[lines_count] lines
 ///            VisualLine layout:
 ///            - i32 logical_line
 ///            - i32 wrap_index
 ///            - PointF line_number_position
 ///            - i32 is_phantom_line
 ///            - i32 fold_state
-///            - i32 gutter_icon_count
-///            - i32[gutter_icon_count] gutter_icon_ids
 ///            - i32 run_count
 ///            - VisualRun[run_count] runs
 ///            VisualRun layout:
@@ -155,7 +167,23 @@ EDITOR_API void editor_set_line_spacing(intptr_t editor_handle, float add, float
 ///            - f32 width
 ///            - f32 padding
 ///            - f32 margin
-///         9. Cursor cursor
+///         11. i32 gutter_icon_render_count
+///         12. GutterIconRenderItem[gutter_icon_render_count] gutter_icons
+///             GutterIconRenderItem layout:
+///             - i32 logical_line
+///             - i32 icon_id
+///             - PointF origin
+///             - f32 width
+///             - f32 height
+///         13. i32 fold_marker_render_count
+///         14. FoldMarkerRenderItem[fold_marker_render_count] fold_markers
+///             FoldMarkerRenderItem layout:
+///             - i32 logical_line
+///             - i32 fold_state
+///             - PointF origin
+///             - f32 width
+///             - f32 height
+///         15. Cursor cursor
 ///            - TextPosition text_position
 ///              - i32 line
 ///              - i32 column
@@ -163,25 +191,25 @@ EDITOR_API void editor_set_line_spacing(intptr_t editor_handle, float add, float
 ///            - f32 height
 ///            - i32 visible
 ///            - i32 show_dragger
-///         10. i32 selection_rect_count
-///         11. SelectionRect[selection_rect_count] selection_rects
+///         16. i32 selection_rect_count
+///         17. SelectionRect[selection_rect_count] selection_rects
 ///             SelectionRect layout:
 ///             - PointF origin
 ///             - f32 width
 ///             - f32 height
-///         12. SelectionHandle selection_start_handle
-///         13. SelectionHandle selection_end_handle
+///         18. SelectionHandle selection_start_handle
+///         19. SelectionHandle selection_end_handle
 ///             SelectionHandle layout:
 ///             - PointF position
 ///             - f32 height
 ///             - i32 visible
-///         14. CompositionDecoration composition_decoration
+///         20. CompositionDecoration composition_decoration
 ///             - i32 active
 ///             - PointF origin
 ///             - f32 width
 ///             - f32 height
-///         15. i32 guide_segment_count
-///         16. GuideSegment[guide_segment_count] guide_segments
+///         21. i32 guide_segment_count
+///         22. GuideSegment[guide_segment_count] guide_segments
 ///             GuideSegment layout:
 ///             - i32 direction
 ///             - i32 type
@@ -189,31 +217,30 @@ EDITOR_API void editor_set_line_spacing(intptr_t editor_handle, float add, float
 ///             - PointF start
 ///             - PointF end
 ///             - i32 arrow_end
-///         17. i32 diagnostic_count
-///         18. DiagnosticDecoration[diagnostic_count] diagnostic_decorations
+///         23. i32 diagnostic_count
+///         24. DiagnosticDecoration[diagnostic_count] diagnostic_decorations
 ///             DiagnosticDecoration layout:
 ///             - PointF origin
 ///             - f32 width
 ///             - f32 height
 ///             - i32 severity
 ///             - i32 color
-///         19. i32 max_gutter_icons
-///         20. f32 fold_arrow_x
-///         21. i32 linked_editing_rect_count
-///         22. LinkedEditingRect[linked_editing_rect_count] linked_editing_rects
+///         25. i32 max_gutter_icons
+///         26. i32 linked_editing_rect_count
+///         27. LinkedEditingRect[linked_editing_rect_count] linked_editing_rects
 ///             LinkedEditingRect layout:
 ///             - PointF origin
 ///             - f32 width
 ///             - f32 height
 ///             - i32 is_active
-///         23. i32 bracket_highlight_rect_count
-///         24. BracketHighlightRect[bracket_highlight_rect_count] bracket_highlight_rects
+///         28. i32 bracket_highlight_rect_count
+///         29. BracketHighlightRect[bracket_highlight_rect_count] bracket_highlight_rects
 ///             BracketHighlightRect layout:
 ///             - PointF origin
 ///             - f32 width
 ///             - f32 height
-///         25. (optional append-only tail) ScrollbarModel vertical_scrollbar
-///         26. (optional append-only tail) ScrollbarModel horizontal_scrollbar
+///         30. (optional append-only tail) ScrollbarModel vertical_scrollbar
+///         31. (optional append-only tail) ScrollbarModel horizontal_scrollbar
 ///             ScrollbarModel layout:
 ///             - i32 visible
 ///             - f32 alpha (0~1)
@@ -823,7 +850,7 @@ EDITOR_API void editor_clear_matched_brackets(intptr_t editor_handle);
 /// Set foldable region list (compact binary)
 /// @param data payload(LE):
 ///             u32 region_count, then repeat for region_count groups
-///             [u32 start_line, u32 end_line, u32 collapsed]
+///             [u32 start_line, u32 end_line]
 /// @param size payload byte length
 EDITOR_API void editor_set_fold_regions(intptr_t editor_handle, const uint8_t* data, size_t size);
 

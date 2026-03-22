@@ -94,6 +94,12 @@ namespace NS_SWEETEDITOR {
     HandleConfig handle;
     /// Scrollbar geometry configuration
     ScrollbarConfig scrollbar;
+    /// Extra horizontal padding between gutter split and text rendering start (pixels)
+    float content_start_padding {0.0f};
+    /// Whether to render the gutter split line
+    bool show_split_line {true};
+    /// Current line render mode
+    CurrentLineRenderMode current_line_render_mode {CurrentLineRenderMode::BACKGROUND};
 
     U8String dump() const;
   };
@@ -211,6 +217,18 @@ namespace NS_SWEETEDITOR {
     /// @param add Extra line spacing in pixels (default 0)
     /// @param mult Line spacing multiplier (default 1.0)
     void setLineSpacing(float add, float mult);
+
+    /// Set extra horizontal padding between gutter split and text content start
+    /// @param padding Padding in pixels (clamped to >= 0)
+    void setContentStartPadding(float padding);
+
+    /// Set whether to show gutter split line
+    /// @param show true=show split line, false=hide split line
+    void setShowSplitLine(bool show);
+
+    /// Set current line render mode
+    /// @param mode BACKGROUND=fill line background, BORDER=draw line border, NONE=disable
+    void setCurrentLineRenderMode(CurrentLineRenderMode mode);
 #pragma endregion
 
 #pragma region [Rendering]

@@ -158,14 +158,26 @@ static void appendVisualLine(std::vector<uint8_t>& buffer, const VisualLine& lin
   appendPoint(buffer, line.line_number_position);
   appendBool(buffer, line.is_phantom_line);
   appendI32(buffer, static_cast<int32_t>(line.fold_state));
-  appendI32(buffer, static_cast<int32_t>(line.gutter_icon_ids.size()));
-  for (int32_t icon_id : line.gutter_icon_ids) {
-    appendI32(buffer, icon_id);
-  }
   appendI32(buffer, static_cast<int32_t>(line.runs.size()));
   for (const auto& run : line.runs) {
     appendVisualRun(buffer, run);
   }
+}
+
+static void appendGutterIconRenderItem(std::vector<uint8_t>& buffer, const GutterIconRenderItem& item) {
+  appendI32(buffer, static_cast<int32_t>(item.logical_line));
+  appendI32(buffer, item.icon_id);
+  appendPoint(buffer, item.origin);
+  appendF32(buffer, item.width);
+  appendF32(buffer, item.height);
+}
+
+static void appendFoldMarkerRenderItem(std::vector<uint8_t>& buffer, const FoldMarkerRenderItem& item) {
+  appendI32(buffer, static_cast<int32_t>(item.logical_line));
+  appendI32(buffer, static_cast<int32_t>(item.fold_state));
+  appendPoint(buffer, item.origin);
+  appendF32(buffer, item.width);
+  appendF32(buffer, item.height);
 }
 
 static void appendCursor(std::vector<uint8_t>& buffer, const Cursor& cursor) {
@@ -242,15 +254,27 @@ static const uint8_t* editorRenderModelToBinary(const EditorRenderModel& model, 
   std::vector<uint8_t> buffer;
   buffer.reserve(1024);
   appendF32(buffer, model.split_x);
+  appendBool(buffer, model.split_line_visible);
   appendF32(buffer, model.scroll_x);
   appendF32(buffer, model.scroll_y);
   appendF32(buffer, model.viewport_width);
   appendF32(buffer, model.viewport_height);
   appendPoint(buffer, model.current_line);
+  appendI32(buffer, static_cast<int32_t>(model.current_line_render_mode));
 
   appendI32(buffer, static_cast<int32_t>(model.lines.size()));
   for (const auto& line : model.lines) {
     appendVisualLine(buffer, line);
+  }
+
+  appendI32(buffer, static_cast<int32_t>(model.gutter_icons.size()));
+  for (const auto& icon : model.gutter_icons) {
+    appendGutterIconRenderItem(buffer, icon);
+  }
+
+  appendI32(buffer, static_cast<int32_t>(model.fold_markers.size()));
+  for (const auto& marker : model.fold_markers) {
+    appendFoldMarkerRenderItem(buffer, marker);
   }
 
   appendCursor(buffer, model.cursor);
@@ -275,7 +299,6 @@ static const uint8_t* editorRenderModelToBinary(const EditorRenderModel& model, 
   }
 
   appendI32(buffer, static_cast<int32_t>(model.max_gutter_icons));
-  appendF32(buffer, model.fold_arrow_x);
 
   appendI32(buffer, static_cast<int32_t>(model.linked_editing_rects.size()));
   for (const auto& rect : model.linked_editing_rects) {
@@ -588,6 +611,30 @@ void editor_set_line_spacing(intptr_t editor_handle, float add, float mult) {
     return;
   }
   editor_core->setLineSpacing(add, mult);
+}
+
+void editor_set_content_start_padding(intptr_t editor_handle, float padding) {
+  Ptr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    return;
+  }
+  editor_core->setContentStartPadding(padding);
+}
+
+void editor_set_show_split_line(intptr_t editor_handle, int show) {
+  Ptr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    return;
+  }
+  editor_core->setShowSplitLine(show != 0);
+}
+
+void editor_set_current_line_render_mode(intptr_t editor_handle, int mode) {
+  Ptr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    return;
+  }
+  editor_core->setCurrentLineRenderMode(static_cast<CurrentLineRenderMode>(mode));
 }
 
 #pragma endregion
@@ -1779,7 +1826,7 @@ void editor_set_fold_regions(intptr_t editor_handle, const uint8_t* data, size_t
   }
 
   size_t fold_bytes = 0;
-  if (mulOverflow(static_cast<size_t>(fold_count), sizeof(uint32_t) * 3, fold_bytes) || cursor.remaining() != fold_bytes) {
+  if (mulOverflow(static_cast<size_t>(fold_count), sizeof(uint32_t) * 2, fold_bytes) || cursor.remaining() != fold_bytes) {
     return;
   }
 
@@ -1788,11 +1835,10 @@ void editor_set_fold_regions(intptr_t editor_handle, const uint8_t* data, size_t
   for (uint32_t i = 0; i < fold_count; ++i) {
     uint32_t start_line = 0;
     uint32_t end_line = 0;
-    uint32_t collapsed = 0;
-    if (!cursor.readU32(start_line) || !cursor.readU32(end_line) || !cursor.readU32(collapsed)) {
+    if (!cursor.readU32(start_line) || !cursor.readU32(end_line)) {
       return;
     }
-    regions.push_back(FoldRegion{static_cast<size_t>(start_line), static_cast<size_t>(end_line), collapsed != 0});
+    regions.push_back(FoldRegion{static_cast<size_t>(start_line), static_cast<size_t>(end_line)});
   }
   editor_core->setFoldRegions(std::move(regions));
 }

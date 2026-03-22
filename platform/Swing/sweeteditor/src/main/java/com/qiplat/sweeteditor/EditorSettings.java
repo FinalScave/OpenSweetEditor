@@ -1,6 +1,7 @@
 package com.qiplat.sweeteditor;
 
 import com.qiplat.sweeteditor.core.foundation.AutoIndentMode;
+import com.qiplat.sweeteditor.core.foundation.CurrentLineRenderMode;
 import com.qiplat.sweeteditor.core.foundation.FoldArrowMode;
 import com.qiplat.sweeteditor.core.foundation.WrapMode;
 
@@ -18,6 +19,9 @@ public class EditorSettings {
     private WrapMode mWrapMode = WrapMode.NONE;
     private float mLineSpacingAdd = 0f;
     private float mLineSpacingMult = 1.0f;
+    private float mContentStartPadding = 0f;
+    private boolean mShowSplitLine = true;
+    private CurrentLineRenderMode mCurrentLineRenderMode = CurrentLineRenderMode.BACKGROUND;
     private AutoIndentMode mAutoIndentMode = AutoIndentMode.NONE;
     private boolean mReadOnly = false;
     private int mMaxGutterIcons = 0;
@@ -71,6 +75,36 @@ public class EditorSettings {
 
     public float getLineSpacingMult() {
         return mLineSpacingMult;
+    }
+
+    public void setContentStartPadding(float padding) {
+        mContentStartPadding = Math.max(0f, padding);
+        mEditor.getEditorCore().setContentStartPadding(mContentStartPadding);
+        mEditor.flush();
+    }
+
+    public float getContentStartPadding() {
+        return mContentStartPadding;
+    }
+
+    public void setShowSplitLine(boolean show) {
+        mShowSplitLine = show;
+        mEditor.getEditorCore().setShowSplitLine(show);
+        mEditor.flush();
+    }
+
+    public boolean isShowSplitLine() {
+        return mShowSplitLine;
+    }
+
+    public void setCurrentLineRenderMode(CurrentLineRenderMode mode) {
+        mCurrentLineRenderMode = mode;
+        mEditor.getEditorCore().setCurrentLineRenderMode(mode.value);
+        mEditor.flush();
+    }
+
+    public CurrentLineRenderMode getCurrentLineRenderMode() {
+        return mCurrentLineRenderMode;
     }
 
     public void setAutoIndentMode(AutoIndentMode mode) {

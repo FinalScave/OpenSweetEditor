@@ -28,10 +28,6 @@ public class VisualLine {
     @SerializedName("is_phantom_line")
     public boolean isPhantomLine;
 
-    /** Gutter icon ID list (supports multiple icons displayed simultaneously). */
-    @SerializedName("gutter_icon_ids")
-    public List<Integer> gutterIconIds;
-
     /** Fold state: NONE=not a fold line, EXPANDED=foldable (expanded), COLLAPSED=folded. */
     @SerializedName("fold_state")
     public FoldState foldState;

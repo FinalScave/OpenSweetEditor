@@ -10,7 +10,7 @@ version = "0.0.2"
 
 android {
     namespace 'com.qiplat.sweeteditor'
-    compileSdk 35
+    compileSdk 34
     ndkVersion '28.2.13676358'
 
     defaultConfig {

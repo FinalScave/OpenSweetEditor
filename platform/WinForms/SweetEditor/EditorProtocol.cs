@@ -231,14 +231,13 @@ namespace SweetEditor {
 
 		internal static byte[] PackFoldRegions(IList<FoldRegion> regions) {
 			int count = regions.Count;
-			byte[] payload = new byte[4 + count * 12];
+			byte[] payload = new byte[4 + count * 8];
 			int offset = 0;
 			WriteInt32LE(payload, ref offset, count);
 			for (int i = 0; i < count; i++) {
 				var r = regions[i];
 				WriteInt32LE(payload, ref offset, r.StartLine);
 				WriteInt32LE(payload, ref offset, r.EndLine);
-				WriteInt32LE(payload, ref offset, r.Collapsed ? 1 : 0);
 			}
 			return payload;
 		}
@@ -551,17 +550,8 @@ namespace SweetEditor {
 				!TryReadInt32(data, ref offset, out int wrapIndex) ||
 				!TryReadPointF(data, ref offset, out PointF lineNumberPosition) ||
 				!TryReadInt32(data, ref offset, out int isPhantomLine) ||
-				!TryReadInt32(data, ref offset, out int foldStateValue) ||
-				!TryReadInt32(data, ref offset, out int gutterIconCount) ||
-				gutterIconCount < 0) {
+				!TryReadInt32(data, ref offset, out int foldStateValue)) {
 				return false;
-			}
-			List<int> gutterIconIds = new(gutterIconCount);
-			for (int i = 0; i < gutterIconCount; i++) {
-				if (!TryReadInt32(data, ref offset, out int iconId)) {
-					return false;
-				}
-				gutterIconIds.Add(iconId);
 			}
 			if (!TryReadInt32(data, ref offset, out int runCount) || runCount < 0) {
 				return false;
@@ -579,8 +569,45 @@ namespace SweetEditor {
 				LineNumberPosition = lineNumberPosition,
 				Runs = runs,
 				IsPhantomLine = isPhantomLine != 0,
-				GutterIconIds = gutterIconIds,
 				FoldState = ToFoldState(foldStateValue),
+			};
+			return true;
+		}
+
+		internal static bool TryReadGutterIconRenderItem(ReadOnlySpan<byte> data, ref int offset, out GutterIconRenderItem item) {
+			item = default;
+			if (!TryReadInt32(data, ref offset, out int logicalLine) ||
+				!TryReadInt32(data, ref offset, out int iconId) ||
+				!TryReadPointF(data, ref offset, out PointF origin) ||
+				!TryReadFloat(data, ref offset, out float width) ||
+				!TryReadFloat(data, ref offset, out float height)) {
+				return false;
+			}
+			item = new GutterIconRenderItem {
+				LogicalLine = logicalLine,
+				IconId = iconId,
+				Origin = origin,
+				Width = width,
+				Height = height,
+			};
+			return true;
+		}
+
+		internal static bool TryReadFoldMarkerRenderItem(ReadOnlySpan<byte> data, ref int offset, out FoldMarkerRenderItem item) {
+			item = default;
+			if (!TryReadInt32(data, ref offset, out int logicalLine) ||
+				!TryReadInt32(data, ref offset, out int foldStateValue) ||
+				!TryReadPointF(data, ref offset, out PointF origin) ||
+				!TryReadFloat(data, ref offset, out float width) ||
+				!TryReadFloat(data, ref offset, out float height)) {
+				return false;
+			}
+			item = new FoldMarkerRenderItem {
+				LogicalLine = logicalLine,
+				FoldState = ToFoldState(foldStateValue),
+				Origin = origin,
+				Width = width,
+				Height = height,
 			};
 			return true;
 		}
@@ -745,7 +772,10 @@ namespace SweetEditor {
 
 		internal static EditorRenderModel CreateEmptyRenderModel() {
 			return new EditorRenderModel {
+				SplitLineVisible = true,
 				VisualLines = new List<VisualLine>(),
+				GutterIcons = new List<GutterIconRenderItem>(),
+				FoldMarkers = new List<FoldMarkerRenderItem>(),
 				SelectionRects = new List<SelectionRect>(),
 				GuideSegments = new List<GuideSegment>(),
 				DiagnosticDecorations = new List<DiagnosticDecoration>(),
@@ -766,22 +796,28 @@ namespace SweetEditor {
 			ReadOnlySpan<byte> data = payload;
 			int offset = 0;
 			if (!TryReadFloat(data, ref offset, out float splitX) ||
+				!TryReadInt32(data, ref offset, out int splitLineVisibleRaw) ||
 				!TryReadFloat(data, ref offset, out float scrollX) ||
 				!TryReadFloat(data, ref offset, out float scrollY) ||
 				!TryReadFloat(data, ref offset, out float viewportWidth) ||
 				!TryReadFloat(data, ref offset, out float viewportHeight) ||
 				!TryReadPointF(data, ref offset, out PointF currentLine) ||
+				!TryReadInt32(data, ref offset, out int currentLineRenderModeValue) ||
 				!TryReadInt32(data, ref offset, out int lineCount) ||
 				lineCount < 0) {
 				return model;
 			}
 
 			model.SplitX = splitX;
+			model.SplitLineVisible = splitLineVisibleRaw != 0;
 			model.ScrollX = scrollX;
 			model.ScrollY = scrollY;
 			model.ViewportWidth = viewportWidth;
 			model.ViewportHeight = viewportHeight;
 			model.CurrentLine = currentLine;
+			model.CurrentLineRenderMode = Enum.IsDefined(typeof(CurrentLineRenderMode), currentLineRenderModeValue)
+				? (CurrentLineRenderMode)currentLineRenderModeValue
+				: CurrentLineRenderMode.BACKGROUND;
 
 			List<VisualLine> lines = new(lineCount);
 			for (int i = 0; i < lineCount; i++) {
@@ -791,6 +827,30 @@ namespace SweetEditor {
 				lines.Add(line);
 			}
 			model.VisualLines = lines;
+
+			if (!TryReadInt32(data, ref offset, out int gutterIconCount) || gutterIconCount < 0) {
+				return model;
+			}
+			List<GutterIconRenderItem> gutterIcons = new(gutterIconCount);
+			for (int i = 0; i < gutterIconCount; i++) {
+				if (!TryReadGutterIconRenderItem(data, ref offset, out GutterIconRenderItem item)) {
+					return model;
+				}
+				gutterIcons.Add(item);
+			}
+			model.GutterIcons = gutterIcons;
+
+			if (!TryReadInt32(data, ref offset, out int foldMarkerCount) || foldMarkerCount < 0) {
+				return model;
+			}
+			List<FoldMarkerRenderItem> foldMarkers = new(foldMarkerCount);
+			for (int i = 0; i < foldMarkerCount; i++) {
+				if (!TryReadFoldMarkerRenderItem(data, ref offset, out FoldMarkerRenderItem item)) {
+					return model;
+				}
+				foldMarkers.Add(item);
+			}
+			model.FoldMarkers = foldMarkers;
 
 			if (!TryReadCursor(data, ref offset, out Cursor cursor) ||
 				!TryReadInt32(data, ref offset, out int selectionRectCount) ||
@@ -841,13 +901,11 @@ namespace SweetEditor {
 			model.DiagnosticDecorations = diagnosticDecorations;
 
 			if (!TryReadInt32(data, ref offset, out int maxGutterIcons) ||
-				!TryReadFloat(data, ref offset, out float foldArrowX) ||
 				!TryReadInt32(data, ref offset, out int linkedRectCount) ||
 				linkedRectCount < 0) {
 				return model;
 			}
 			model.MaxGutterIcons = maxGutterIcons;
-			model.FoldArrowX = foldArrowX;
 
 			List<LinkedEditingRect> linkedEditingRects = new(linkedRectCount);
 			for (int i = 0; i < linkedRectCount; i++) {
