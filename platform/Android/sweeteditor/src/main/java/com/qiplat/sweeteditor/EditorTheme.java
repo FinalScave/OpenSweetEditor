@@ -137,8 +137,8 @@ public class EditorTheme {
         t.compositionUnderlineColor = 0xFF7AA2F7;
         t.inlayHintBgColor          = 0x223A4A66;
         t.inlayHintTextColor        = 0xC0AFC2E0;
-        t.foldPlaceholderBgColor    = 0x28405066;
-        t.foldPlaceholderTextColor  = 0xC0AFC2E0;
+        t.foldPlaceholderBgColor    = 0x36506C90;
+        t.foldPlaceholderTextColor  = 0xFFE2ECFF;
         t.phantomTextColor          = 0x8AA3B5D1;
         t.inlayHintIconColor        = 0xCC9CB0CD;
         t.diagnosticErrorColor      = 0xFFF7768E;
@@ -186,8 +186,8 @@ public class EditorTheme {
         t.compositionUnderlineColor = 0xFF2563EB;
         t.inlayHintBgColor          = 0x143B82F6;
         t.inlayHintTextColor        = 0xB0344A73;
-        t.foldPlaceholderBgColor    = 0x1A7A8CA8;
-        t.foldPlaceholderTextColor  = 0xC0354A6B;
+        t.foldPlaceholderBgColor    = 0x2E748DB0;
+        t.foldPlaceholderTextColor  = 0xFF284A70;
         t.phantomTextColor          = 0x8A4B607E;
         t.inlayHintIconColor        = 0xB04B607E;
         t.diagnosticErrorColor      = 0xFFDC2626;

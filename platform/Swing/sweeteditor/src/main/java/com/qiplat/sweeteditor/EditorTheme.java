@@ -137,8 +137,8 @@ public class EditorTheme {
         t.compositionUnderlineColor = argb(0xFF7AA2F7);
         t.inlayHintBgColor          = argb(0x223A4A66);
         t.inlayHintTextColor        = argb(0xC0AFC2E0);
-        t.foldPlaceholderBgColor    = argb(0x28405066);
-        t.foldPlaceholderTextColor  = argb(0xC0AFC2E0);
+        t.foldPlaceholderBgColor    = argb(0x36506C90);
+        t.foldPlaceholderTextColor  = argb(0xFFE2ECFF);
         t.phantomTextColor          = argb(0x8AA3B5D1);
         t.inlayHintIconColor        = argb(0xCC9CB0CD);
         t.diagnosticErrorColor      = argb(0xFFF7768E);
@@ -184,8 +184,8 @@ public class EditorTheme {
         t.compositionUnderlineColor = argb(0xFF2563EB);
         t.inlayHintBgColor          = argb(0x143B82F6);
         t.inlayHintTextColor        = argb(0xB0344A73);
-        t.foldPlaceholderBgColor    = argb(0x1A7A8CA8);
-        t.foldPlaceholderTextColor  = argb(0xC0354A6B);
+        t.foldPlaceholderBgColor    = argb(0x2E748DB0);
+        t.foldPlaceholderTextColor  = argb(0xFF284A70);
         t.phantomTextColor          = argb(0x8A4B607E);
         t.inlayHintIconColor        = argb(0xB04B607E);
         t.diagnosticErrorColor      = argb(0xFFDC2626);
