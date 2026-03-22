@@ -280,6 +280,78 @@ namespace SweetEditor {
 	/// SweetEditor WinForms editor control.
 	/// Based on <see cref="EditorCore"/> C++ engine for editing, layout and rendering-model generation.
 	/// </summary>
+
+	/// <summary>Bracket pair.</summary>
+	public sealed class BracketPair {
+		public string Open { get; }
+		public string Close { get; }
+		public BracketPair(string open, string close) { Open = open; Close = close; }
+	}
+
+	/// <summary>Block comment.</summary>
+	public sealed class BlockComment {
+		public string Open { get; }
+		public string Close { get; }
+		public BlockComment(string open, string close) { Open = open; Close = close; }
+	}
+
+	/// <summary>
+	/// Language configuration that describes language-specific metadata such as brackets, comments, and indentation.
+	/// When assigned to EditorCore, brackets are automatically synchronized to SetBracketPairs in the core layer.
+	/// </summary>
+	public sealed class LanguageConfiguration {
+		/// <summary>Language identifier (for example: "csharp", "java", "cpp").</summary>
+		public string LanguageId { get; }
+		/// <summary>Bracket pair list (synchronized to SetBracketPairs in the core layer).</summary>
+		public IReadOnlyList<BracketPair> Brackets { get; }
+		/// <summary>Auto-closing pair list.</summary>
+		public IReadOnlyList<BracketPair> AutoClosingPairs { get; }
+		/// <summary>Line comment prefix (for example: "//").</summary>
+		public string? LineComment { get; }
+		/// <summary>Block comment.</summary>
+		public BlockComment? BlockCommentValue { get; }
+		/// <summary>Tab width (optional).</summary>
+		public int? TabSize { get; }
+		/// <summary>Whether spaces are used instead of tabs (optional).</summary>
+		public bool? InsertSpaces { get; }
+
+		public LanguageConfiguration(
+			string languageId,
+			IReadOnlyList<BracketPair>? brackets = null,
+			IReadOnlyList<BracketPair>? autoClosingPairs = null,
+			string? lineComment = null,
+			BlockComment? blockComment = null,
+			int? tabSize = null,
+			bool? insertSpaces = null) {
+			LanguageId = languageId;
+			Brackets = brackets ?? new List<BracketPair>();
+			AutoClosingPairs = autoClosingPairs ?? new List<BracketPair>();
+			LineComment = lineComment;
+			BlockCommentValue = blockComment;
+			TabSize = tabSize;
+			InsertSpaces = insertSpaces;
+		}
+	}
+
+
+	/// <summary>
+	/// Marker interface for editor metadata.
+	/// External code can implement this interface to attach custom metadata to an editor instance.
+	/// Cast to the concrete subtype when using it.
+	/// </summary>
+	/// <example>
+	/// <code>
+	/// public class FileMetadata : IEditorMetadata {
+	///     public string FilePath { get; }
+	///     public FileMetadata(string filePath) { FilePath = filePath; }
+	/// }
+	/// editor.Metadata = new FileMetadata("/a/b.cpp");
+	/// var file = editor.Metadata as FileMetadata;
+	/// </code>
+	/// </example>
+	public interface IEditorMetadata { }
+
+
 	[Designer("System.Windows.Forms.Design.ControlDesigner, System.Design")]
 	public class EditorControl : Control {
 		#region Events
@@ -695,7 +767,7 @@ namespace SweetEditor {
 
 		#endregion
 
-		#region Public API 鈥?InlayHint / PhantomText
+		#region Public API 閳?InlayHint / PhantomText
 
 		/// <summary>Sets line inlay hints.</summary>
 		public void SetLineInlayHints(int line, IList<InlayHint> hints) {
