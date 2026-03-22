@@ -184,14 +184,6 @@
         "style": "string"
       },
       {
-        "pattern": "#[0-9a-fA-F]{8}\\b",
-        "style": "color"
-      },
-      {
-        "pattern": "\\b0[xX][0-9a-fA-F]{8}\\b",
-        "style": "color"
-      },
-      {
         "pattern": "\\b0[xX][0-9a-fA-F']+[uUlL]*\\b",
         "style": "number"
       },
@@ -260,10 +252,6 @@
       {
         "pattern": "\\b(true|false|nullptr|NULL)\\b",
         "styles": [1, "builtin"]
-      },
-      {
-        "pattern": "\\b0[xX][0-9a-fA-F]{8}\\b",
-        "style": "color"
       },
       {
         "pattern": "\\b0[xX][0-9a-fA-F']+[uUlL]*\\b",

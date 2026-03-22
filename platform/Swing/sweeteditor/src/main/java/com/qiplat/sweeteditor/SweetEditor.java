@@ -30,6 +30,7 @@ import java.util.Map;
  * Based on {@link EditorCore} C++ engine providing code editing, syntax highlighting, code folding, InlayHint, etc.
  */
 public class SweetEditor extends JPanel {
+    private static final float DEFAULT_CONTENT_START_PADDING_DP = 3.0f;
 
     // Event type constants (aligned with C++ EventType)
     private static final int MOUSE_DOWN = 7;
@@ -88,6 +89,7 @@ public class SweetEditor extends JPanel {
         completionPopupController.setConfirmListener(this::applyCompletionItem);
 
         settings = new EditorSettings(this);
+        settings.setContentStartPadding(dpToPx(DEFAULT_CONTENT_START_PADDING_DP));
 
         for (var entry : currentTheme.textStyles.entrySet()) {
             TextStyle v = entry.getValue();
@@ -100,6 +102,21 @@ public class SweetEditor extends JPanel {
         setupCursorBlink();
         setupEdgeScrollTimer();
         enableInputMethods(true);
+    }
+
+    private static float dpToPx(float dp) {
+        return dp * getUiScale();
+    }
+
+    private static float getUiScale() {
+        try {
+            int dpi = Toolkit.getDefaultToolkit().getScreenResolution();
+            if (dpi > 0) {
+                return dpi / 96.0f;
+            }
+        } catch (HeadlessException ignored) {
+        }
+        return 1.0f;
     }
 
     // ==================== Document Loading ====================

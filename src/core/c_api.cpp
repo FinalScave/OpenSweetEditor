@@ -242,6 +242,7 @@ static const uint8_t* editorRenderModelToBinary(const EditorRenderModel& model, 
   std::vector<uint8_t> buffer;
   buffer.reserve(1024);
   appendF32(buffer, model.split_x);
+  appendBool(buffer, model.split_line_visible);
   appendF32(buffer, model.scroll_x);
   appendF32(buffer, model.scroll_y);
   appendF32(buffer, model.viewport_width);
@@ -588,6 +589,22 @@ void editor_set_line_spacing(intptr_t editor_handle, float add, float mult) {
     return;
   }
   editor_core->setLineSpacing(add, mult);
+}
+
+void editor_set_content_start_padding(intptr_t editor_handle, float padding) {
+  Ptr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    return;
+  }
+  editor_core->setContentStartPadding(padding);
+}
+
+void editor_set_show_split_line(intptr_t editor_handle, int show) {
+  Ptr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    return;
+  }
+  editor_core->setShowSplitLine(show != 0);
 }
 
 #pragma endregion

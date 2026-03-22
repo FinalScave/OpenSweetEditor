@@ -239,6 +239,8 @@ namespace NS_SWEETEDITOR {
   struct EditorRenderModel {
     /// Line-number split x position
     float split_x {0};
+    /// Whether split line should be rendered
+    bool split_line_visible {true};
     /// Current horizontal scroll offset
     float scroll_x {0};
     /// Current vertical scroll offset
@@ -296,6 +298,8 @@ namespace NS_SWEETEDITOR {
     float line_number_margin {10};
     /// Line number width
     float line_number_width {10};
+    /// Extra horizontal padding between gutter split and text rendering start
+    float content_start_padding {0};
     /// Maximum gutter icon count (icon width = line height, reserve fixed space; 0 = no reserve)
     uint32_t max_gutter_icons {0};
     /// Horizontal background padding for InlayHint (left and right)
@@ -332,6 +336,11 @@ namespace NS_SWEETEDITOR {
     float gutterWidth() const {
       float icon_area = (max_gutter_icons > 0) ? (font_height * max_gutter_icons) : 0;
       return line_number_margin + line_number_width + icon_area + foldArrowAreaWidth() + line_number_margin;
+    }
+
+    /// Compute content text area x (gutter split + extra content start padding)
+    float textAreaX() const {
+      return gutterWidth() + content_start_padding;
     }
 
     U8String toJson() const;
@@ -414,13 +423,13 @@ namespace NS_SWEETEDITOR {
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(BracketHighlightRect, origin, width, height)
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ScrollbarRect, origin, width, height)
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ScrollbarModel, visible, alpha, track, thumb)
-  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(EditorRenderModel, split_x, scroll_x, scroll_y, viewport_width, viewport_height, current_line, lines, cursor, selection_rects, selection_start_handle, selection_end_handle, composition_decoration, guide_segments, diagnostic_decorations, max_gutter_icons, fold_arrow_x, linked_editing_rects, bracket_highlight_rects, vertical_scrollbar, horizontal_scrollbar)
+  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(EditorRenderModel, split_x, split_line_visible, scroll_x, scroll_y, viewport_width, viewport_height, current_line, lines, cursor, selection_rects, selection_start_handle, selection_end_handle, composition_decoration, guide_segments, diagnostic_decorations, max_gutter_icons, fold_arrow_x, linked_editing_rects, bracket_highlight_rects, vertical_scrollbar, horizontal_scrollbar)
   NLOHMANN_JSON_SERIALIZE_ENUM(FoldArrowMode, {
     {FoldArrowMode::AUTO, "AUTO"},
     {FoldArrowMode::ALWAYS, "ALWAYS"},
     {FoldArrowMode::HIDDEN, "HIDDEN"},
   })
-  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LayoutMetrics, font_height, font_ascent, line_spacing_add, line_spacing_mult, line_number_margin, line_number_width, max_gutter_icons, inlay_hint_padding, inlay_hint_margin, fold_arrow_mode, has_fold_regions)
+  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LayoutMetrics, font_height, font_ascent, line_spacing_add, line_spacing_mult, line_number_margin, line_number_width, content_start_padding, max_gutter_icons, inlay_hint_padding, inlay_hint_margin, fold_arrow_mode, has_fold_regions)
 }
 
 #endif //SWEETEDITOR_VISUAL_H

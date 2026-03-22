@@ -152,6 +152,26 @@ public class EditorCore {
         nativeSetLineSpacing(mNativeHandle, add, mult);
     }
 
+    /**
+     * Sets extra horizontal padding between gutter split and text content start.
+     *
+     * @param padding padding in pixels (clamped to >= 0 on native side)
+     */
+    public void setContentStartPadding(float padding) {
+        if (mNativeHandle == 0) return;
+        nativeSetContentStartPadding(mNativeHandle, padding);
+    }
+
+    /**
+     * Sets whether gutter split line should be rendered.
+     *
+     * @param show true to show split line, false to hide
+     */
+    public void setShowSplitLine(boolean show) {
+        if (mNativeHandle == 0) return;
+        nativeSetShowSplitLine(mNativeHandle, show);
+    }
+
     // ==================== Rendering ====================
 
     @Nullable
@@ -1593,6 +1613,12 @@ public class EditorCore {
 
     @CriticalNative
     private static native void nativeSetLineSpacing(long handle, float add, float mult);
+
+    @CriticalNative
+    private static native void nativeSetContentStartPadding(long handle, float padding);
+
+    @CriticalNative
+    private static native void nativeSetShowSplitLine(long handle, boolean show);
 
     @FastNative
     private static native ByteBuffer nativeBuildRenderModel(long handle);

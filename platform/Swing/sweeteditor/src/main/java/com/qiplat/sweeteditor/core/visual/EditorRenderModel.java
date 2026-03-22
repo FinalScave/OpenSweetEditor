@@ -5,6 +5,7 @@ import java.util.List;
 
 public class EditorRenderModel {
     @SerializedName("split_x") public float splitX;
+    @SerializedName("split_line_visible") public boolean splitLineVisible = true;
     @SerializedName("scroll_x") public float scrollX;
     @SerializedName("scroll_y") public float scrollY;
     @SerializedName("viewport_width") public float viewportWidth;

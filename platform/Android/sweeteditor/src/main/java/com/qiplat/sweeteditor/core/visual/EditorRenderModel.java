@@ -12,6 +12,10 @@ public class EditorRenderModel {
     @SerializedName("split_x")
     public float splitX;
 
+    /** Whether split line should be rendered. */
+    @SerializedName("split_line_visible")
+    public boolean splitLineVisible = true;
+
     /** Current horizontal scroll offset. */
     @SerializedName("scroll_x")
     public float scrollX;

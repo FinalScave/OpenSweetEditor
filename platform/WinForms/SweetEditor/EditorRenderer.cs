@@ -263,7 +263,9 @@ namespace SweetEditor {
 			using var brush = new SolidBrush(currentTheme.BackgroundColor);
 			g.FillRectangle(brush, 0, 0, model.SplitX, clientHeight);
 			DrawCurrentLineHighlight(g, model, model.SplitX);
-			DrawLineSplit(g, model.SplitX, clientHeight);
+			if (model.SplitLineVisible) {
+				DrawLineSplit(g, model.SplitX, clientHeight);
+			}
 		}
 
 		private void DrawLineNumbers(Graphics g, EditorRenderModel model) {

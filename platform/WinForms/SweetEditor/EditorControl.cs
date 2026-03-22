@@ -434,6 +434,7 @@ namespace SweetEditor {
 		private const int EdgeScrollIntervalMs = 16;
 		private System.Windows.Forms.Timer? edgeScrollTimer;
 		private bool edgeScrollActive = false;
+		private const float DefaultContentStartPaddingDp = 3.0f;
 
 		public EditorControl() {
 			InitializeComponent();
@@ -1033,6 +1034,7 @@ namespace SweetEditor {
 			}
 
 			settings = new EditorSettings(this);
+			settings.SetContentStartPadding(DpToPx(DefaultContentStartPaddingDp));
 		}
 
 		protected override void OnHandleCreated(EventArgs e) {
@@ -1573,6 +1575,11 @@ namespace SweetEditor {
 			if (editorCore != null) {
 				editorCore.ResetMeasurer();
 			}
+		}
+
+		private float DpToPx(float dp) {
+			int dpi = DeviceDpi > 0 ? DeviceDpi : 96;
+			return dp * (dpi / 96f);
 		}
 
 		private PerfScope StartInputPerf(string tag) {

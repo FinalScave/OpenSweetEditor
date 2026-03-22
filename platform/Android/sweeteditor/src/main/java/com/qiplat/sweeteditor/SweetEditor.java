@@ -91,6 +91,7 @@ public class SweetEditor extends View {
     private static final String TAG = SweetEditor.class.getSimpleName();
     private static final boolean ENABLE_PERF_LOG = true;
     private static final int PERF_LOG_INTERVAL = 60;
+    private static final float DEFAULT_CONTENT_START_PADDING_DP = 3.0f;
 
     private EditorRenderer mRenderer;
     private int mPerfLogFrameCount = 0;
@@ -1660,6 +1661,7 @@ public class SweetEditor extends View {
         }
 
         mSettings = new EditorSettings(this);
+        mSettings.setContentStartPadding(DEFAULT_CONTENT_START_PADDING_DP * density);
         mSettings.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL));
         setFocusable(true);
         setFocusableInTouchMode(true);

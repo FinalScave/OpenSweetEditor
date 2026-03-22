@@ -656,6 +656,14 @@ public:
     editor_set_line_spacing(static_cast<intptr_t>(handle), add, mult);
   }
 
+  static void setContentStartPadding(jlong handle, jfloat padding) {
+    editor_set_content_start_padding(static_cast<intptr_t>(handle), padding);
+  }
+
+  static void setShowSplitLine(jlong handle, jboolean show) {
+    editor_set_show_split_line(static_cast<intptr_t>(handle), show == JNI_TRUE ? 1 : 0);
+  }
+
   static jobject editorUndo(JNIEnv* env, jclass clazz, jlong handle) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
@@ -872,6 +880,8 @@ public:
       {"nativeSetWrapMode", "(JI)V", (void*) setWrapMode},
       {"nativeSetScale", "(JF)V", (void*) setScale},
       {"nativeSetLineSpacing", "(JFF)V", (void*) setLineSpacing},
+      {"nativeSetContentStartPadding", "(JF)V", (void*) setContentStartPadding},
+      {"nativeSetShowSplitLine", "(JZ)V", (void*) setShowSplitLine},
       {"nativeUndo", "(J)Ljava/nio/ByteBuffer;", (void*) editorUndo},
       {"nativeRedo", "(J)Ljava/nio/ByteBuffer;", (void*) editorRedo},
       {"nativeCanUndo", "(J)Z", (void*) editorCanUndo},

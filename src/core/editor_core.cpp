@@ -49,6 +49,8 @@ namespace NS_SWEETEDITOR {
     return "EditorSettings {max_scale = " + std::to_string(max_scale)
         + ", read_only = " + (read_only ? "true" : "false")
         + ", enable_composition = " + (enable_composition ? "true" : "false")
+        + ", content_start_padding = " + std::to_string(content_start_padding)
+        + ", show_split_line = " + (show_split_line ? "true" : "false")
         + ", scrollbar.thickness = " + std::to_string(scrollbar.thickness)
         + ", scrollbar.min_thumb = " + std::to_string(scrollbar.min_thumb)
         + ", scrollbar.thumb_hit_padding = " + std::to_string(scrollbar.thumb_hit_padding)
@@ -159,6 +161,21 @@ namespace NS_SWEETEDITOR {
     markAllLinesDirty();
     normalizeScrollState();
   }
+
+  void EditorCore::setContentStartPadding(float padding) {
+    padding = std::max(0.0f, padding);
+    auto& params = m_text_layout_->getLayoutMetrics();
+    if (params.content_start_padding == padding) return;
+    params.content_start_padding = padding;
+    m_settings_.content_start_padding = padding;
+    markAllLinesDirty();
+    normalizeScrollState();
+  }
+
+  void EditorCore::setShowSplitLine(bool show) {
+    if (m_settings_.show_split_line == show) return;
+    m_settings_.show_split_line = show;
+  }
 #pragma endregion
 
 #pragma region [Rendering]
@@ -170,6 +187,7 @@ namespace NS_SWEETEDITOR {
     PERF_TIMER("buildRenderModel");
     PERF_BEGIN(compose);
     m_text_layout_->layoutVisibleLines(model);
+    model.split_line_visible = m_settings_.show_split_line;
     PERF_END(compose, "buildRenderModel::layoutVisibleLines");
 
     float line_height = m_text_layout_->getLineHeight();

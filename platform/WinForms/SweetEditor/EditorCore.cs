@@ -1013,6 +1013,9 @@ namespace SweetEditor {
 		/// <summary>Line-number divider position.</summary>
 		[JsonPropertyName("split_x")]
 		public float SplitX { get; set; }
+		/// <summary>Whether split line should be rendered.</summary>
+		[JsonPropertyName("split_line_visible")]
+		public bool SplitLineVisible { get; set; }
 		/// <summary>Current horizontal scroll offset</summary>
 		[JsonPropertyName("scroll_x")]
 		public float ScrollX { get; set; }
@@ -1251,6 +1254,12 @@ namespace SweetEditor {
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_line_spacing", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void SetLineSpacing(IntPtr handle, float add, float mult);
+
+		[DllImport(LibraryName, EntryPoint = "editor_set_content_start_padding", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern void SetContentStartPadding(IntPtr handle, float padding);
+
+		[DllImport(LibraryName, EntryPoint = "editor_set_show_split_line", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern void SetShowSplitLine(IntPtr handle, int show);
 
 		[DllImport(LibraryName, EntryPoint = "build_editor_render_model", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr BuildRenderModel(IntPtr handle, out UIntPtr outSize);
@@ -1681,6 +1690,18 @@ namespace SweetEditor {
 		/// <param name="mult">Line spacing multiplier</param>
 		public void SetLineSpacing(float add, float mult) {
 			NativeMethods.SetLineSpacing(nativeHandle, add, mult);
+		}
+
+		/// <summary>Sets extra horizontal padding between gutter split and text content start.</summary>
+		/// <param name="padding">Padding in pixels (clamped to &gt;= 0 on native side).</param>
+		public void SetContentStartPadding(float padding) {
+			NativeMethods.SetContentStartPadding(nativeHandle, padding);
+		}
+
+		/// <summary>Sets whether gutter split line should be rendered.</summary>
+		/// <param name="show">true=show, false=hide.</param>
+		public void SetShowSplitLine(bool show) {
+			NativeMethods.SetShowSplitLine(nativeHandle, show ? 1 : 0);
 		}
 
 		#endregion

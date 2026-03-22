@@ -330,7 +330,9 @@ final class EditorRenderer {
                         model.splitX, model.currentLine.y + lineHeight,
                         mCurrentLinePaint);
             }
-            canvas.drawLine(model.splitX, 0, model.splitX, viewHeight, mSplitLinePaint);
+            if (model.splitLineVisible) {
+                canvas.drawLine(model.splitX, 0, model.splitX, viewHeight, mSplitLinePaint);
+            }
         }
 
         drawLineNumbers(canvas, model);

@@ -158,6 +158,7 @@ final class ProtocolDecoder {
         data.order(ByteOrder.nativeOrder());
         EditorRenderModel model = new EditorRenderModel();
         model.splitX = data.getFloat();
+        model.splitLineVisible = data.getInt() != 0;
         model.scrollX = data.getFloat();
         model.scrollY = data.getFloat();
         model.viewportWidth = data.getFloat();

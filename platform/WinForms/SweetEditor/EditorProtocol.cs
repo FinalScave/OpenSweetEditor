@@ -745,6 +745,7 @@ namespace SweetEditor {
 
 		internal static EditorRenderModel CreateEmptyRenderModel() {
 			return new EditorRenderModel {
+				SplitLineVisible = true,
 				VisualLines = new List<VisualLine>(),
 				SelectionRects = new List<SelectionRect>(),
 				GuideSegments = new List<GuideSegment>(),
@@ -766,6 +767,7 @@ namespace SweetEditor {
 			ReadOnlySpan<byte> data = payload;
 			int offset = 0;
 			if (!TryReadFloat(data, ref offset, out float splitX) ||
+				!TryReadInt32(data, ref offset, out int splitLineVisibleRaw) ||
 				!TryReadFloat(data, ref offset, out float scrollX) ||
 				!TryReadFloat(data, ref offset, out float scrollY) ||
 				!TryReadFloat(data, ref offset, out float viewportWidth) ||
@@ -777,6 +779,7 @@ namespace SweetEditor {
 			}
 
 			model.SplitX = splitX;
+			model.SplitLineVisible = splitLineVisibleRaw != 0;
 			model.ScrollX = scrollX;
 			model.ScrollY = scrollY;
 			model.ViewportWidth = viewportWidth;

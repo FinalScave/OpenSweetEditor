@@ -287,8 +287,10 @@ final class EditorRenderer implements EditorCore.TextMeasureCallback {
         g.setColor(theme.backgroundColor);
         g.fillRect(0, 0, (int) model.splitX, viewHeight);
         drawCurrentLineHighlight(g, model, model.splitX);
-        g.setColor(theme.splitLineColor);
-        g.drawLine((int) model.splitX, 0, (int) model.splitX, viewHeight);
+        if (model.splitLineVisible) {
+            g.setColor(theme.splitLineColor);
+            g.drawLine((int) model.splitX, 0, (int) model.splitX, viewHeight);
+        }
     }
 
     private void drawLineNumbers(Graphics2D g, EditorRenderModel model) {

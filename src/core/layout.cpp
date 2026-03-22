@@ -134,7 +134,7 @@ namespace NS_SWEETEDITOR {
           cropVisualLineRuns(visual_line, scroll_x);
         } else {
           // In wrap mode, no horizontal crop is needed; just set run.x to screen coord
-          const float text_area_x = m_layout_metrics_.gutterWidth();
+          const float text_area_x = m_layout_metrics_.textAreaX();
           for (VisualRun& run : visual_line.runs) {
             run.x += text_area_x;
           }
@@ -178,7 +178,8 @@ namespace NS_SWEETEDITOR {
 
     const float scroll_x = m_view_state_.scroll_x;
     const float scroll_y = m_view_state_.scroll_y;
-    const float text_area_x = m_layout_metrics_.gutterWidth();
+    const float split_x = m_layout_metrics_.gutterWidth();
+    const float text_area_x = m_layout_metrics_.textAreaX();
     const float line_height = getLineHeight();
 
     // Convert screen coords to absolute document coords
@@ -186,7 +187,7 @@ namespace NS_SWEETEDITOR {
     const float abs_y = screen_point.y + scroll_y;
 
     // Click on the left of text area (line number area): go to line start
-    const bool in_line_number_area = (screen_point.x < text_area_x);
+    const bool in_line_number_area = (screen_point.x < split_x);
 
     // Find hit logical line (skip fold-hidden lines)
     size_t hit_line = findHitLine(abs_y);
@@ -283,7 +284,8 @@ namespace NS_SWEETEDITOR {
 
     const float scroll_x = m_view_state_.scroll_x;
     const float scroll_y = m_view_state_.scroll_y;
-    const float text_area_x = m_layout_metrics_.gutterWidth();
+    const float split_x = m_layout_metrics_.gutterWidth();
+    const float text_area_x = m_layout_metrics_.textAreaX();
     const float line_height = getLineHeight();
     const float abs_y = screen_point.y + scroll_y;
 
@@ -293,10 +295,10 @@ namespace NS_SWEETEDITOR {
     const LogicalLine& ll = logical_lines[hit_line];
 
     // Detect click in gutter area (line number area)
-    if (screen_point.x < text_area_x) {
+    if (screen_point.x < split_x) {
       // Check fold arrow area first (on the right side of icon area)
       if (m_layout_metrics_.shouldShowFoldArrows()) {
-        float arrow_area_left = text_area_x - m_layout_metrics_.line_number_margin - m_layout_metrics_.foldArrowAreaWidth();
+        float arrow_area_left = split_x - m_layout_metrics_.line_number_margin - m_layout_metrics_.foldArrowAreaWidth();
         if (screen_point.x >= arrow_area_left) {
           int fold_state = m_decoration_manager_->getFoldStateForLine(hit_line);
           if (fold_state != 0) {
@@ -373,7 +375,7 @@ namespace NS_SWEETEDITOR {
 
     const float scroll_x = m_view_state_.scroll_x;
     const float scroll_y = m_view_state_.scroll_y;
-    const float text_area_x = m_layout_metrics_.gutterWidth();
+    const float text_area_x = m_layout_metrics_.textAreaX();
 
     LogicalLine& ll = logical_lines[position.line];
     layoutLine(position.line, ll);
@@ -438,7 +440,7 @@ namespace NS_SWEETEDITOR {
     }
 
     const float scroll_x = m_view_state_.scroll_x;
-    const float text_area_x = m_layout_metrics_.gutterWidth();
+    const float text_area_x = m_layout_metrics_.textAreaX();
     const float scroll_offset = (m_wrap_mode_ == WrapMode::NONE) ? scroll_x : 0.0f;
 
     LogicalLine& ll = logical_lines[line];
@@ -559,7 +561,7 @@ namespace NS_SWEETEDITOR {
 
     const float scroll_x = m_view_state_.scroll_x;
     const float scroll_y = m_view_state_.scroll_y;
-    const float text_area_x = m_layout_metrics_.gutterWidth();
+    const float text_area_x = m_layout_metrics_.textAreaX();
     const float scroll_offset = (m_wrap_mode_ == WrapMode::NONE) ? scroll_x : 0.0f;
 
     for (const VisualLine& vl : ll.visual_lines) {
@@ -715,7 +717,7 @@ namespace NS_SWEETEDITOR {
 
   ScrollBounds TextLayout::getScrollBounds() {
     ScrollBounds bounds;
-    bounds.text_area_x = m_layout_metrics_.gutterWidth();
+    bounds.text_area_x = m_layout_metrics_.textAreaX();
     bounds.text_area_width = std::max(0.0f, m_viewport_.width - bounds.text_area_x);
 
     if (m_document_ == nullptr || !m_viewport_.valid()) {
@@ -1138,7 +1140,7 @@ namespace NS_SWEETEDITOR {
   }
 
   void TextLayout::cropVisualLineRuns(VisualLine& visual_line, float scroll_x) {
-    const float text_area_x = m_layout_metrics_.gutterWidth();
+    const float text_area_x = m_layout_metrics_.textAreaX();
     // Expand crop bounds outward to keep a few extra chars, so crop points stay under
     // line-number background cover and avoid render jitter from char-level cropping
     const float crop_margin = text_area_x;
@@ -1259,7 +1261,7 @@ namespace NS_SWEETEDITOR {
 
   void TextLayout::wrapLineRuns(size_t line_index, float start_y, float line_height,
                                 Vector<VisualRun>& runs, Vector<VisualLine>& out_lines) {
-    const float text_area_x = m_layout_metrics_.gutterWidth();
+    const float text_area_x = m_layout_metrics_.textAreaX();
     const float wrap_width = m_viewport_.width - text_area_x;
     if (wrap_width <= 0) {
       // Viewport is too small: do not wrap, output single line
