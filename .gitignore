@@ -21,6 +21,7 @@ CMakeSettings.json
 # Claude Code / CodeX
 .claude
 .codex
-
+# Trae
+.trae/
 # Local build folders
 /build-*/
