@@ -19,7 +19,7 @@ import java.io.*;
 }
 
 // colors
-static int[] colors = {0XFFFF0000, 0XFF2196F3, 0XFF00FF00};
+static int[] colors = {0xFF5B9BD5, 0xFFED7D31, 0xFF70AD47};
 
 // enum type
 enum Color {
