@@ -20,6 +20,35 @@ final class ProtocolEncoder {
 
     // ==================== Highlight Spans ====================
 
+    static byte[] packBatchTextStyles(Map<Integer, ? extends TextStyle> textStyles) {
+        if (textStyles == null || textStyles.isEmpty()) return null;
+        validateBatchTextStyles(textStyles);
+        int entryCount = textStyles.size();
+        ByteBuffer payload = ByteBuffer.allocate(4 + entryCount * 16).order(ByteOrder.LITTLE_ENDIAN);
+        payload.putInt(entryCount);
+        var sortedEntries = textStyles.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey()).toList();
+        for (var entry : sortedEntries) {
+            TextStyle textStyle = entry.getValue();
+            payload.putInt(entry.getKey());
+            payload.putInt(textStyle.color);
+            payload.putInt(textStyle.backgroundColor);
+            payload.putInt(textStyle.fontStyle);
+        }
+        return payload.array();
+    }
+
+    private static void validateBatchTextStyles(Map<Integer, ? extends TextStyle> textStyles) {
+        for (var entry : textStyles.entrySet()) {
+            if (entry.getKey() == null) {
+                throw new IllegalArgumentException("textStyles contains null styleId");
+            }
+            if (entry.getValue() == null) {
+                throw new IllegalArgumentException("textStyles contains null TextStyle for styleId=" + entry.getKey());
+            }
+        }
+    }
+
     static byte[] packLineSpans(int line, int layer, List<? extends StyleSpan> spans) {
         int count = spans.size();
         ByteBuffer payload = ByteBuffer.allocate(12 + count * 12).order(ByteOrder.LITTLE_ENDIAN);

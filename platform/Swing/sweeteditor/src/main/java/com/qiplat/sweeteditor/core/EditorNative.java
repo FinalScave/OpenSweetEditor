@@ -572,6 +572,7 @@ public final class EditorNative {
     private static final MethodHandle SET_LINE_GUTTER_ICONS = downcall("editor_set_line_gutter_icons", BINARY_PAYLOAD_DESC);
     private static final MethodHandle SET_BATCH_LINE_GUTTER_ICONS = downcall("editor_set_batch_line_gutter_icons", BINARY_PAYLOAD_DESC);
     private static final MethodHandle SET_BATCH_LINE_SPANS = downcall("editor_set_batch_line_spans", BINARY_PAYLOAD_DESC);
+    private static final MethodHandle REGISTER_BATCH_TEXT_STYLES = downcall("editor_register_batch_text_styles", BINARY_PAYLOAD_DESC);
     private static final MethodHandle SET_BATCH_LINE_DIAGNOSTICS = downcall("editor_set_batch_line_diagnostics", BINARY_PAYLOAD_DESC);
     private static final MethodHandle SET_INDENT_GUIDES = downcall("editor_set_indent_guides", BINARY_PAYLOAD_DESC);
     private static final MethodHandle SET_BRACKET_GUIDES = downcall("editor_set_bracket_guides", BINARY_PAYLOAD_DESC);
@@ -1025,6 +1026,18 @@ public final class EditorNative {
         });
     }
 
+    public static void registerBatchTextStyles(long handle, byte[] payload, Arena arena) {
+        invokeVoid(() -> {
+            REGISTER_BATCH_TEXT_STYLES.invokeExact(handle, byteArraySegment(arena, payload), (long) payload.length);
+        });
+    }
+
+    public static void registerBatchTextStyles(long handle, MemorySegment payload, long size) {
+        invokeVoid(() -> {
+            REGISTER_BATCH_TEXT_STYLES.invokeExact(handle, payload, size);
+        });
+    }
+
     public static void setLineSpans(long handle, byte[] payload, Arena arena) {
         invokeVoid(() -> {
             SET_LINE_SPANS.invokeExact(handle, byteArraySegment(arena, payload), (long) payload.length);
@@ -1392,4 +1405,3 @@ public final class EditorNative {
 
     private EditorNative() {}
 }
-

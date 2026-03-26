@@ -560,6 +560,15 @@ public class EditorCore implements AutoCloseable {
         registerTextStyle(styleId, color, 0, fontStyle);
     }
 
+    public void registerBatchTextStyles(Map<Integer, ? extends TextStyle> textStyles) {
+        if (textStyles == null || textStyles.isEmpty()) return;
+        byte[] payload = ProtocolEncoder.packBatchTextStyles(textStyles);
+        if (payload == null) return;
+        try (Arena tempArena = Arena.ofConfined()) {
+            EditorNative.registerBatchTextStyles(nativeHandle, payload, tempArena);
+        }
+    }
+
     /** Set highlight spans for a specific line (model overload) */
     public void setLineSpans(int line, int layer, List<? extends StyleSpan> spans) {
         if (spans == null) return;
@@ -845,4 +854,3 @@ public class EditorCore implements AutoCloseable {
     public void clearMatchedBrackets() { EditorNative.clearMatchedBrackets(nativeHandle); }
     public void clearAllDecorations() { EditorNative.clearAllDecorations(nativeHandle); }
 }
-
