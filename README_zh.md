@@ -106,7 +106,12 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . -j
 ```
 
-Android / WebAssembly / 其他平台构建说明请参阅后续文档。
+Android / Swing 快速接入文档请参阅：
+
+- Android：[中文](docs/zh/api-platform-android.md#快速开始)
+- Swing：[中文](docs/zh/api-platform-swing.md#快速开始)
+
+WebAssembly / 其他平台构建说明请参阅后续文档。
 
 ### 最小集成示例
 

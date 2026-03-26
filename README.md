@@ -107,7 +107,12 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . -j
 ```
 
-For Android / WebAssembly / other platform build instructions, please refer to the corresponding documentation.
+For Android / Swing quick-start documentation, see:
+
+- Android: [English](docs/en/api-platform-android.md#quick-start)
+- Swing: [English](docs/en/api-platform-swing.md#quick-start)
+
+For WebAssembly / other platform build instructions, please refer to the corresponding documentation.
 
 ### Minimal Integration Example
 
