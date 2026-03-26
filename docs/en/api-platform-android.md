@@ -121,6 +121,31 @@ public void flush()
 
 `flush()` applies pending updates (decoration / layout / scroll / selection) and triggers redraw. For batched decoration updates, call `flush()` once at the end.
 
+### Completion Trigger Rules
+
+| Entry | Invocation | TriggerKind | Notes |
+| --- | --- | --- | --- |
+| Manual call | `triggerCompletion()` | `INVOKED` | Requests completion directly |
+| Shortcut | `Ctrl + Space` | `INVOKED` | Ultimately calls `triggerCompletion()` |
+| Auto trigger entry | `dispatchTextChanged` | See table below | Evaluated with short-circuit priority |
+
+Auto-trigger priority (short-circuit order; stop at first match):
+
+| Order | Condition | TriggerKind | Extra info |
+| --- | --- | --- | --- |
+| 1 | `isInLinkedEditing()==true` | No trigger | Skip auto completion in linked-editing mode |
+| 2 | Primary change is a single character and matches any provider trigger character | `CHARACTER` | Propagates `triggerCharacter` |
+| 3 | Primary change is a single character and completion panel is already visible | `RETRIGGER` | Re-trigger while panel is visible |
+| 4 | Primary change is a single character and char is alphanumeric or `_` | `INVOKED` | Normal typing trigger |
+| 5 | Primary change is not a single character and completion panel is already visible | `RETRIGGER` | Re-trigger only when panel is visible |
+
+| Rule type | Condition | Behavior |
+| --- | --- | --- |
+| Debounce | `INVOKED` | 0ms (immediate) |
+| Debounce | `CHARACTER` / `RETRIGGER` | 50ms |
+| Keyboard interaction | `Up/Down` / `Enter` / `Escape` | Navigate / confirm / close |
+| Gesture interaction | `TAP` or `SCROLL` | Dismiss current completion panel |
+
 ### Performance Debug
 
 ```java
@@ -128,7 +153,34 @@ public void setPerfOverlayEnabled(boolean enabled)
 public boolean isPerfOverlayEnabled()
 ```
 
-When enabled, the top-right corner shows live stats such as FPS, build/draw/total cost, measure stats, and last input event cost. Default is off; use only for debugging.
+When `setPerfOverlayEnabled(true)` is enabled, a real-time performance panel appears at the **top-left** of the editor area (off by default; debug use only).
+
+> Implementation detail note (current v0.0.2): field names, thresholds, and step labels below are for debugging display and are not a stable API contract. For upgrades, follow source code and release notes.
+
+Panel fields (current implementation):
+
+| Field label | Meaning |
+| --- | --- |
+| `FPS` | Real-time frames per second |
+| `Frame: total/build/draw` | Per-frame total time, build time, and draw time |
+| `Step: ...` | Step-level render timings |
+| `measure{...}` | text/inlay/icon measurement statistics |
+| `Input[tag]: ...` | Most recent input-path timing |
+
+Visual thresholds (current implementation):
+
+| Dimension | Condition | Panel marker |
+| --- | --- | --- |
+| Slow frame | `total > 16.6ms` | Append `SLOW` on `Frame` row |
+| Slow render step | Single step `>= 2ms` | Append `!` on that step |
+| Slow input path | Input cost `> 3ms` | Append `SLOW` on `Input` row |
+
+Logging thresholds (current implementation):
+
+| Log category | Condition | Output notes |
+| --- | --- | --- |
+| `[PERF][SLOW]` input log | Slow input path `>= 3ms` | Logs slow input paths |
+| `[PERF][Build]` log | build `>= 8ms` or measurement stats hit threshold | Periodic output, checked every 60 frames by default |
 
 ### Styles / Decorations / Folding / Linked Editing
 
