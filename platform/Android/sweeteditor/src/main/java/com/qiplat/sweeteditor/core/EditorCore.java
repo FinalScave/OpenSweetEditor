@@ -193,6 +193,16 @@ public class EditorCore {
     }
 
     /**
+     * Sets whether gutter area is visible.
+     *
+     * @param visible true=show gutter (line numbers, icons, fold arrows), false=hide entire gutter
+     */
+    public void setGutterVisible(boolean visible) {
+        if (mNativeHandle == 0) return;
+        nativeSetGutterVisible(mNativeHandle, visible);
+    }
+
+    /**
      * Sets current line render mode.
      *
      * @param mode 0=BACKGROUND(fill), 1=BORDER(stroke), 2=NONE(disabled)
@@ -1705,6 +1715,9 @@ public class EditorCore {
 
     @CriticalNative
     private static native void nativeSetGutterSticky(long handle, boolean sticky);
+
+    @CriticalNative
+    private static native void nativeSetGutterVisible(long handle, boolean visible);
 
     @CriticalNative
     private static native void nativeSetCurrentLineRenderMode(long handle, int mode);

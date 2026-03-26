@@ -280,6 +280,9 @@ public final class EditorNative {
     private static final MethodHandle SET_GUTTER_STICKY = downcall("editor_set_gutter_sticky",
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
 
+    private static final MethodHandle SET_GUTTER_VISIBLE = downcall("editor_set_gutter_visible",
+            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+
     private static final MethodHandle SET_CURRENT_LINE_RENDER_MODE = downcall("editor_set_current_line_render_mode",
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
 
@@ -695,6 +698,12 @@ public final class EditorNative {
     public static void setGutterSticky(long handle, boolean sticky) {
         invokeVoid(() -> {
             SET_GUTTER_STICKY.invokeExact(handle, sticky ? 1 : 0);
+        });
+    }
+
+    public static void setGutterVisible(long handle, boolean visible) {
+        invokeVoid(() -> {
+            SET_GUTTER_VISIBLE.invokeExact(handle, visible ? 1 : 0);
         });
     }
 

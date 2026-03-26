@@ -1153,6 +1153,9 @@ namespace SweetEditor {
 		/// <summary>Whether gutter stays fixed during horizontal scroll.</summary>
 		[JsonPropertyName("gutter_sticky")]
 		public bool GutterSticky { get; set; }
+		/// <summary>Whether gutter area is visible.</summary>
+		[JsonPropertyName("gutter_visible")]
+		public bool GutterVisible { get; set; }
 	}
 
 	/// <summary>
@@ -1349,6 +1352,9 @@ namespace SweetEditor {
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_gutter_sticky", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void SetGutterSticky(IntPtr handle, int sticky);
+
+		[DllImport(LibraryName, EntryPoint = "editor_set_gutter_visible", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern void SetGutterVisible(IntPtr handle, int visible);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_current_line_render_mode", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void SetCurrentLineRenderMode(IntPtr handle, int mode);
@@ -1811,6 +1817,12 @@ namespace SweetEditor {
 		/// <param name="sticky">true=gutter fixed (desktop style), false=gutter scrolls with content (mobile style).</param>
 		public void SetGutterSticky(bool sticky) {
 			NativeMethods.SetGutterSticky(nativeHandle, sticky ? 1 : 0);
+		}
+
+		/// <summary>Sets whether gutter area is visible.</summary>
+		/// <param name="visible">true=show gutter, false=hide entire gutter.</param>
+		public void SetGutterVisible(bool visible) {
+			NativeMethods.SetGutterVisible(nativeHandle, visible ? 1 : 0);
 		}
 
 		/// <summary>Sets current line render mode.</summary>

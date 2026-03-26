@@ -61,6 +61,7 @@ namespace NS_SWEETEDITOR {
         + ", scrollbar.fade_delay_ms = " + std::to_string(scrollbar.fade_delay_ms)
         + ", scrollbar.fade_duration_ms = " + std::to_string(scrollbar.fade_duration_ms)
         + ", gutter_sticky = " + (gutter_sticky ? "true" : "false")
+        + ", gutter_visible = " + (gutter_visible ? "true" : "false")
         + "}";
   }
 #pragma endregion
@@ -264,6 +265,14 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     normalizeScrollState();
   }
 
+  void EditorCore::setGutterVisible(bool visible) {
+    if (m_settings_.gutter_visible == visible) return;
+    m_settings_.gutter_visible = visible;
+    m_text_layout_->getLayoutMetrics().gutter_visible = visible;
+    markAllLinesDirty();
+    normalizeScrollState();
+  }
+
   void EditorCore::setCurrentLineRenderMode(CurrentLineRenderMode mode) {
     if (m_settings_.current_line_render_mode == mode) return;
     m_settings_.current_line_render_mode = mode;
@@ -282,6 +291,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     model.split_line_visible = m_settings_.show_split_line;
     model.current_line_render_mode = m_settings_.current_line_render_mode;
     model.gutter_sticky = m_settings_.gutter_sticky;
+    model.gutter_visible = m_settings_.gutter_visible;
     PERF_END(compose, "buildRenderModel::layoutVisibleLines");
 
     float line_height = m_text_layout_->getLineHeight();

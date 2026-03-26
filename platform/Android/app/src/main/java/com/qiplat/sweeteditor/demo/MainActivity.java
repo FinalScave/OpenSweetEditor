@@ -101,6 +101,8 @@ public class MainActivity extends AppCompatActivity {
         settings.setEditorTextSize(28f);
         settings.setFoldArrowMode(FoldArrowMode.AUTO);
         settings.setMaxGutterIcons(1);
+        settings.setGutterSticky(true);
+        settings.setGutterVisible(false);
         settings.setCurrentLineRenderMode(CurrentLineRenderMode.BORDER);
         registerColorStyleForCurrentTheme();
 

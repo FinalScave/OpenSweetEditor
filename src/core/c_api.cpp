@@ -316,6 +316,7 @@ static const uint8_t* editorRenderModelToBinary(const EditorRenderModel& model, 
   appendScrollbarModel(buffer, model.horizontal_scrollbar);
 
   appendBool(buffer, model.gutter_sticky);
+  appendBool(buffer, model.gutter_visible);
 
   return allocBinaryPayload(buffer.data(), buffer.size(), out_size);
 }
@@ -659,6 +660,14 @@ void editor_set_gutter_sticky(intptr_t editor_handle, int sticky) {
     return;
   }
   editor_core->setGutterSticky(sticky != 0);
+}
+
+void editor_set_gutter_visible(intptr_t editor_handle, int visible) {
+  Ptr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    return;
+  }
+  editor_core->setGutterVisible(visible != 0);
 }
 
 #pragma endregion

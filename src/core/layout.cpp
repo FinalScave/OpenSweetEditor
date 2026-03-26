@@ -164,7 +164,7 @@ namespace NS_SWEETEDITOR {
           }
         }
         // For first line (not continuation, not phantom), fill fold state and gutter icon render items
-        if (visual_line.wrap_index == 0 && !visual_line.is_phantom_line) {
+        if (visual_line.wrap_index == 0 && !visual_line.is_phantom_line && m_layout_metrics_.gutter_visible) {
           buildGutterIconRenderItems(i, screen_y, gutter_offset, model.gutter_icons);
           // Set fold state (used by platform to draw fold/unfold arrow)
           int fs = m_decoration_manager_->getFoldStateForLine(i);

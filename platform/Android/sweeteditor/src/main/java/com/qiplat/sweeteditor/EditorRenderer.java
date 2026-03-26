@@ -535,6 +535,7 @@ final class EditorRenderer {
     }
 
     private void drawLineNumbers(Canvas canvas, EditorRenderModel model) {
+        if (!model.gutterVisible) return;
         if (model.lines == null) return;
         List<GutterIconRenderItem> gutterIcons = model.gutterIcons;
         List<FoldMarkerRenderItem> foldMarkers = model.foldMarkers;

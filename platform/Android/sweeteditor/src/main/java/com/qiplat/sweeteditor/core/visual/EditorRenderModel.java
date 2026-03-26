@@ -103,4 +103,8 @@ public class EditorRenderModel {
     /** Whether gutter stays fixed during horizontal scroll. */
     @SerializedName("gutter_sticky")
     public boolean gutterSticky = true;
+
+    /** Whether gutter area is visible. */
+    @SerializedName("gutter_visible")
+    public boolean gutterVisible = true;
 }

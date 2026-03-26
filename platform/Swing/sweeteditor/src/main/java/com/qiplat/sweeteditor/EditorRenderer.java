@@ -305,6 +305,7 @@ final class EditorRenderer implements EditorCore.TextMeasureCallback {
     }
 
     private void drawLineNumbers(Graphics2D g, EditorRenderModel model) {
+        if (!model.gutterVisible) return;
         if (model.lines == null) return;
         List<GutterIconRenderItem> gutterIcons = model.gutterIcons;
         List<FoldMarkerRenderItem> foldMarkers = model.foldMarkers;

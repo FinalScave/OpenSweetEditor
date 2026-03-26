@@ -269,6 +269,7 @@ namespace SweetEditor {
 		}
 
 		private void DrawLineNumbers(Graphics g, EditorRenderModel model) {
+			if (!model.GutterVisible) return;
 			List<VisualLine> lines = model.VisualLines;
 			if (lines == null) return;
 			List<GutterIconRenderItem>? gutterIcons = model.GutterIcons;

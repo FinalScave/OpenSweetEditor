@@ -325,6 +325,8 @@ namespace NS_SWEETEDITOR {
     ScrollbarModel horizontal_scrollbar;
     /// Whether gutter stays fixed during horizontal scroll
     bool gutter_sticky {true};
+    /// Whether gutter area is visible
+    bool gutter_visible {true};
 
     U8String dump() const;
     U8String toJson() const;
@@ -358,6 +360,8 @@ namespace NS_SWEETEDITOR {
     bool has_fold_regions {false};
     /// Whether gutter stays fixed during horizontal scroll
     bool gutter_sticky {true};
+    /// Whether gutter area is visible (false = hide line numbers, icons, fold arrows)
+    bool gutter_visible {true};
 
     /// Compute fold-arrow area width
     float foldArrowAreaWidth() const {
@@ -382,6 +386,7 @@ namespace NS_SWEETEDITOR {
     /// Compute total gutter width (line-number area + icon area + fold-arrow area + margins)
     /// = line_number_margin + line_number_width + icon_area + fold_arrow_area + line_number_margin
     float gutterWidth() const {
+      if (!gutter_visible) return 0;
       float icon_area = (max_gutter_icons > 0) ? (font_height * max_gutter_icons) : 0;
       return line_number_margin + line_number_width + icon_area + foldArrowAreaWidth() + line_number_margin;
     }
@@ -479,13 +484,13 @@ namespace NS_SWEETEDITOR {
     {CurrentLineRenderMode::BORDER, "BORDER"},
     {CurrentLineRenderMode::NONE, "NONE"},
   })
-  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(EditorRenderModel, split_x, split_line_visible, scroll_x, scroll_y, viewport_width, viewport_height, current_line, current_line_render_mode, lines, cursor, selection_rects, selection_start_handle, selection_end_handle, composition_decoration, guide_segments, diagnostic_decorations, max_gutter_icons, linked_editing_rects, bracket_highlight_rects, gutter_icons, fold_markers, vertical_scrollbar, horizontal_scrollbar, gutter_sticky)
+  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(EditorRenderModel, split_x, split_line_visible, scroll_x, scroll_y, viewport_width, viewport_height, current_line, current_line_render_mode, lines, cursor, selection_rects, selection_start_handle, selection_end_handle, composition_decoration, guide_segments, diagnostic_decorations, max_gutter_icons, linked_editing_rects, bracket_highlight_rects, gutter_icons, fold_markers, vertical_scrollbar, horizontal_scrollbar, gutter_sticky, gutter_visible)
   NLOHMANN_JSON_SERIALIZE_ENUM(FoldArrowMode, {
     {FoldArrowMode::AUTO, "AUTO"},
     {FoldArrowMode::ALWAYS, "ALWAYS"},
     {FoldArrowMode::HIDDEN, "HIDDEN"},
   })
-  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LayoutMetrics, font_height, font_ascent, line_spacing_add, line_spacing_mult, line_number_margin, line_number_width, content_start_padding, max_gutter_icons, inlay_hint_padding, inlay_hint_margin, fold_arrow_mode, has_fold_regions, gutter_sticky)
+  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LayoutMetrics, font_height, font_ascent, line_spacing_add, line_spacing_mult, line_number_margin, line_number_width, content_start_padding, max_gutter_icons, inlay_hint_padding, inlay_hint_margin, fold_arrow_mode, has_fold_regions, gutter_sticky, gutter_visible)
 }
 
 #endif //SWEETEDITOR_VISUAL_H

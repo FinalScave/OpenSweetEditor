@@ -135,6 +135,10 @@ EDITOR_API void editor_set_current_line_render_mode(intptr_t editor_handle, int 
 /// @param sticky 0=gutter scrolls with content (mobile style), non-zero=gutter fixed (desktop style)
 EDITOR_API void editor_set_gutter_sticky(intptr_t editor_handle, int sticky);
 
+/// Set whether gutter area is visible
+/// @param visible 0=hide entire gutter, non-zero=show gutter
+EDITOR_API void editor_set_gutter_visible(intptr_t editor_handle, int visible);
+
 #pragma endregion
 
 #pragma region Rendering

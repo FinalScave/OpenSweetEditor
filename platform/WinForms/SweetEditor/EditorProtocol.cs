@@ -948,6 +948,9 @@ namespace SweetEditor {
 			if (TryReadInt32(data, ref offset, out int gutterStickyRaw)) {
 				model.GutterSticky = gutterStickyRaw != 0;
 			}
+			if (TryReadInt32(data, ref offset, out int gutterVisibleRaw)) {
+				model.GutterVisible = gutterVisibleRaw != 0;
+			}
 			return model;
 		}
 
