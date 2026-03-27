@@ -4,6 +4,9 @@ import SwiftUI
 import SweetEditorCoreInternal
 
 class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteractionDelegate, CompletionEditorAccessor, EditorSettingsHost {
+    static let usesFullContextFlipForRendering = false
+    static let textMatrixForTopOriginDrawing = CGAffineTransform(scaleX: 1.0, y: -1.0)
+
     var onFoldToggle: ((SweetEditorFoldToggleEvent) -> Void)?
     var onInlayHintClick: ((SweetEditorInlayHintClickEvent) -> Void)?
     var onGutterIconClick: ((SweetEditorGutterIconClickEvent) -> Void)?
@@ -97,12 +100,9 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
         pinchRecognizer = UIPinchGestureRecognizer(target: self, action: #selector(handlePinch(_:)))
         addGestureRecognizer(pinchRecognizer)
 
-        // iPad trackpad/mouse pointer support
-        let hoverRecognizer = UIHoverGestureRecognizer(target: self, action: #selector(handleHover(_:)))
-        addGestureRecognizer(hoverRecognizer)
-
-        let pointerInteraction = UIPointerInteraction(delegate: self)
-        addInteraction(pointerInteraction)
+        if #available(iOS 13.4, *) {
+            configurePointerSupportIfAvailable()
+        }
 
         loadDocument(text: "")
         applyTheme(EditorRenderer.theme)
@@ -534,16 +534,8 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
         guard let context = UIGraphicsGetCurrentContext(),
               let model = renderModel else { return }
 
-        // UIKit has top-left origin; CoreText expects bottom-left.
-        // Flip for CoreText text rendering.
         context.saveGState()
-        context.translateBy(x: 0, y: bounds.height)
-        context.scaleBy(x: 1.0, y: -1.0)
-
-        // In the flipped coordinate system, we need to adjust y coordinates
-        // Since EditorRenderer draws with top-left origin (y increases downward),
-        // and we've flipped, we need to re-flip the text matrix
-        context.textMatrix = CGAffineTransform.identity
+        context.textMatrix = Self.textMatrixForTopOriginDrawing
 
         let needsTransientRefresh = EditorRenderer.draw(context: context,
                                                         model: model,
@@ -742,6 +734,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
 
     // MARK: - iPad Pointer / Trackpad Support
 
+    @available(iOS 13.4, *)
     @objc private func handleHover(_ recognizer: UIHoverGestureRecognizer) {
         let point = recognizer.location(in: self)
         let floatPoint = [(Float(point.x), Float(point.y))]
@@ -758,6 +751,16 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
         }
     }
 
+    @available(iOS 13.4, *)
+    private func configurePointerSupportIfAvailable() {
+        let hoverRecognizer = UIHoverGestureRecognizer(target: self, action: #selector(handleHover(_:)))
+        addGestureRecognizer(hoverRecognizer)
+
+        let pointerInteraction = UIPointerInteraction(delegate: self)
+        addInteraction(pointerInteraction)
+    }
+
+    @available(iOS 13.4, *)
     func pointerInteraction(_ interaction: UIPointerInteraction, styleFor region: UIPointerRegion) -> UIPointerStyle? {
         let beamLength = CGFloat(renderModel?.cursor.height ?? 20)
         return UIPointerStyle(shape: .verticalBeam(length: beamLength))
@@ -884,6 +887,11 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
     // MARK: - Physical Keyboard Support (iPad)
 
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        guard #available(iOS 13.4, *) else {
+            super.pressesBegan(presses, with: event)
+            return
+        }
+
         var handled = false
         var contentChanged = false
         var changedTextChanges: [TextChange] = []
@@ -984,6 +992,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
 
     // MARK: - Helpers
 
+    @available(iOS 13.4, *)
     private func mapUIKeyToSEKeyCode(_ key: UIKey) -> SEKeyCode {
         switch key.keyCode {
         case .keyboardDeleteOrBackspace: return .backspace
@@ -1003,6 +1012,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
         }
     }
 
+    @available(iOS 13.4, *)
     private func modifiersFromUIKey(_ key: UIKey) -> SEModifier {
         var mods = SEModifier()
         if key.modifierFlags.contains(.shift) { mods.insert(.shift) }

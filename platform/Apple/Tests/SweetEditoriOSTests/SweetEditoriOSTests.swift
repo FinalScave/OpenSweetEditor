@@ -70,5 +70,13 @@ final class SweetEditoriOSTests: XCTestCase {
         XCTAssertTrue(settings.readOnly)
         XCTAssertEqual(settings.maxGutterIcons, 2)
     }
+
+    func testIOSDrawStrategyKeepsTopOriginCoordinatesAndOnlyFlipsText() {
+        XCTAssertFalse(IOSEditorView.usesFullContextFlipForRendering)
+        XCTAssertEqual(
+            IOSEditorView.textMatrixForTopOriginDrawing,
+            CGAffineTransform(scaleX: 1.0, y: -1.0)
+        )
+    }
     #endif
 }
