@@ -127,8 +127,7 @@ final class EditorRenderer implements EditorCore.TextMeasureCallback {
         return lastRenderFontRenderContext;
     }
 
-    public void render(Graphics2D g2, EditorRenderModel model,
-                       int viewWidth, int viewHeight, boolean cursorVisible) {
+    public void prepareGraphicsForRender(Graphics2D g2) {
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_LCD_HRGB);
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         // Keep draw-time glyph positioning consistent with measureTextWidth() FRC (fractional metrics on),
@@ -136,7 +135,10 @@ final class EditorRenderer implements EditorCore.TextMeasureCallback {
         g2.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
         // Capture real draw-time FRC so native text measurement callbacks use the same metrics source.
         lastRenderFontRenderContext = g2.getFontRenderContext();
+    }
 
+    public void render(Graphics2D g2, EditorRenderModel model,
+                       int viewWidth, int viewHeight, boolean cursorVisible) {
         g2.setColor(theme.backgroundColor);
         g2.fillRect(0, 0, viewWidth, viewHeight);
 

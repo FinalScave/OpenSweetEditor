@@ -23,8 +23,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public final class DecorationProviderManager {
+    private static final AtomicInteger PROVIDER_THREAD_ID = new AtomicInteger(1);
+
     private final SweetEditor editor;
     private final CopyOnWriteArrayList<DecorationProvider> providers = new CopyOnWriteArrayList<>();
     private final ConcurrentHashMap<DecorationProvider, ProviderState> providerStates = new ConcurrentHashMap<>();
@@ -73,8 +78,11 @@ public final class DecorationProviderManager {
         runOnEdt(() -> {
             providers.remove(provider);
             ProviderState state = providerStates.remove(provider);
-            if (state != null && state.activeReceiver != null) {
-                state.activeReceiver.cancel();
+            if (state != null) {
+                if (state.activeReceiver != null) {
+                    state.activeReceiver.cancel();
+                }
+                state.executor.shutdownNow();
             }
             scheduleApply();
         });
@@ -162,7 +170,15 @@ public final class DecorationProviderManager {
             ManagedReceiver receiver = new ManagedReceiver(provider, currentGeneration);
             state.activeReceiver = receiver;
             try {
-                provider.provideDecorations(context, receiver);
+                state.executor.execute(() -> {
+                    if (receiver.isCancelled()) {
+                        return;
+                    }
+                    try {
+                        provider.provideDecorations(context, receiver);
+                    } catch (Throwable ignored) {
+                    }
+                });
             } catch (Throwable ignored) {
             }
         }
@@ -548,6 +564,11 @@ public final class DecorationProviderManager {
     private static final class ProviderState {
         DecorationResult snapshot;
         ManagedReceiver activeReceiver;
+        final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
+            Thread thread = new Thread(r, "SweetEditor-Decoration-" + PROVIDER_THREAD_ID.getAndIncrement());
+            thread.setDaemon(true);
+            return thread;
+        });
     }
 
     private void runOnEdt(Runnable runnable) {

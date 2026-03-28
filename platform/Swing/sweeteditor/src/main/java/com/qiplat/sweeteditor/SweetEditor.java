@@ -48,6 +48,10 @@ public class SweetEditor extends JPanel {
     private EditorCore editorCore;
     private EditorTheme currentTheme;
     private EditorRenderModel renderModel;
+    private boolean renderModelDirty = true;
+    private boolean fontMetricsDirty = true;
+    private int cachedVisibleStartLine;
+    private int cachedVisibleEndLine = -1;
     private EditorRenderer renderer;
 
     private Timer cursorBlinkTimer;
@@ -85,7 +89,19 @@ public class SweetEditor extends JPanel {
         // Completion manager and popup controller
         completionProviderManager = new CompletionProviderManager(this);
         completionPopupController = new CompletionPopupController(this, theme);
-        completionProviderManager.setListener(completionPopupController);
+        completionProviderManager.setListener(new CompletionProviderManager.CompletionUpdateListener() {
+            @Override
+            public void onCompletionItemsUpdated(List<CompletionItem> items) {
+                ensureRenderModelUpToDate();
+                updateCompletionPopupCursorAnchor();
+                completionPopupController.onCompletionItemsUpdated(items);
+            }
+
+            @Override
+            public void onCompletionDismissed() {
+                completionPopupController.onCompletionDismissed();
+            }
+        });
         completionPopupController.setConfirmListener(this::applyCompletionItem);
 
         settings = new EditorSettings(this);
@@ -122,6 +138,9 @@ public class SweetEditor extends JPanel {
 
     public void loadDocument(Document document) {
         editorCore.loadDocument(document);
+        renderModel = null;
+        cachedVisibleStartLine = 0;
+        cachedVisibleEndLine = -1;
         decorationProviderManager.onDocumentLoaded();
         eventBus.publish(new DocumentLoadedEvent());
         flush();
@@ -153,18 +172,10 @@ public class SweetEditor extends JPanel {
     public EditorCore getEditorCore() { return editorCore; }
 
     public int[] getVisibleLineRange() {
-        EditorRenderModel model = editorCore.buildRenderModel();
-        if (model == null || model.lines == null || model.lines.isEmpty()) {
-            return new int[]{0, -1};
+        if ((renderModel == null || cachedVisibleEndLine < 0) && renderModelDirty) {
+            ensureRenderModelUpToDate();
         }
-        int start = Integer.MAX_VALUE;
-        int end = -1;
-        for (VisualLine line : model.lines) {
-            if (line.logicalLine < start) start = line.logicalLine;
-            if (line.logicalLine > end) end = line.logicalLine;
-        }
-        if (start == Integer.MAX_VALUE) start = 0;
-        return new int[]{start, end};
+        return new int[]{cachedVisibleStartLine, cachedVisibleEndLine};
     }
 
     public int getTotalLineCount() {
@@ -448,14 +459,11 @@ public class SweetEditor extends JPanel {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         Graphics2D g2 = (Graphics2D) g;
+        renderer.prepareGraphicsForRender(g2);
+        ensureRenderModelUpToDate();
 
         renderer.render(g2, renderModel, getWidth(), getHeight(), cursorVisible);
-
-        if (renderModel != null && completionPopupController != null
-                && renderModel.cursor != null && renderModel.cursor.position != null) {
-            completionPopupController.updateCursorPosition(
-                    renderModel.cursor.position.x, renderModel.cursor.position.y, renderModel.cursor.height);
-        }
+        updateCompletionPopupCursorAnchor();
     }
 
 
@@ -651,6 +659,7 @@ public class SweetEditor extends JPanel {
         return new InputMethodRequests() {
             @Override
             public Rectangle getTextLocation(java.awt.font.TextHitInfo offset) {
+                ensureRenderModelUpToDate();
                 if (renderModel != null && renderModel.cursor != null) {
                     java.awt.Point p = getLocationOnScreen();
                     return new Rectangle(
@@ -913,6 +922,8 @@ public class SweetEditor extends JPanel {
     void syncPlatformScale(float scale) {
         renderer.syncPlatformScale(scale);
         setFont(renderer.getRegularFont());
+        fontMetricsDirty = true;
+        renderModelDirty = true;
     }
 
     /**
@@ -923,9 +934,45 @@ public class SweetEditor extends JPanel {
      * updates to make them take effect.
      */
     public void flush() {
-        editorCore.onFontMetricsChanged();
-        renderModel = editorCore.buildRenderModel();
+        renderModelDirty = true;
         repaint();
+    }
+
+    private void ensureRenderModelUpToDate() {
+        if (!renderModelDirty) {
+            return;
+        }
+        if (fontMetricsDirty) {
+            editorCore.onFontMetricsChanged();
+            fontMetricsDirty = false;
+        }
+        renderModel = editorCore.buildRenderModel();
+        renderModelDirty = false;
+        updateVisibleLineRangeCache(renderModel);
+    }
+
+    private void updateCompletionPopupCursorAnchor() {
+        if (renderModel != null && completionPopupController != null
+                && renderModel.cursor != null && renderModel.cursor.position != null) {
+            completionPopupController.updateCursorPosition(
+                    renderModel.cursor.position.x, renderModel.cursor.position.y, renderModel.cursor.height);
+        }
+    }
+
+    private void updateVisibleLineRangeCache(EditorRenderModel model) {
+        if (model == null || model.lines == null || model.lines.isEmpty()) {
+            cachedVisibleStartLine = 0;
+            cachedVisibleEndLine = -1;
+            return;
+        }
+        int start = Integer.MAX_VALUE;
+        int end = -1;
+        for (VisualLine line : model.lines) {
+            if (line.logicalLine < start) start = line.logicalLine;
+            if (line.logicalLine > end) end = line.logicalLine;
+        }
+        cachedVisibleStartLine = start == Integer.MAX_VALUE ? 0 : start;
+        cachedVisibleEndLine = end;
     }
 
 }
