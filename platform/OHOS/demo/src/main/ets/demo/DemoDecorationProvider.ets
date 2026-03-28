@@ -15,7 +15,7 @@ import {
   SeparatorGuide,
   StyleSpan,
   TextPosition
-} from 'sweeteditor';
+} from '@qiplat/sweeteditor';
 import { DEMO_STYLE_COLOR } from './DemoSamples';
 import { DemoFileMetadata } from './DemoTypes';
 

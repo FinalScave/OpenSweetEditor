@@ -1,4 +1,4 @@
-import { EditorMetadata } from 'sweeteditor';
+import { EditorMetadata } from '@qiplat/sweeteditor';
 
 export class DemoFileMetadata implements EditorMetadata {
   readonly fileName: string;

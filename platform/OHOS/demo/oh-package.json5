@@ -6,7 +6,7 @@
   "author": "",
   "license": "",
   "dependencies": {
-    "sweeteditor": "file:../sweeteditor"
+    "@qiplat/sweeteditor": "file:../sweeteditor"
   }
 }
 

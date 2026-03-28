@@ -10,7 +10,7 @@ import {
   SweetEditor,
   SweetEditorController,
   WrapMode
-} from 'sweeteditor';
+} from '@qiplat/sweeteditor';
 import { resourceManager } from '@kit.LocalizationKit';
 import { util } from '@kit.ArkTS';
 import { window } from '@kit.ArkUI';

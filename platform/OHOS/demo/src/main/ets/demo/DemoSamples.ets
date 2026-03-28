@@ -1,4 +1,4 @@
-import { EditorTheme, LanguageConfiguration } from 'sweeteditor';
+import { EditorTheme, LanguageConfiguration } from '@qiplat/sweeteditor';
 import { DemoFileMetadata } from './DemoTypes';
 
 export const DEMO_STYLE_COLOR: number = EditorTheme.STYLE_USER_BASE + 1;

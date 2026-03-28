@@ -5,7 +5,7 @@ import {
   CompletionReceiver,
   CompletionResult,
   CompletionTriggerKind
-} from 'sweeteditor';
+} from '@qiplat/sweeteditor';
 
 const ASYNC_DELAY_MS = 200;
 const TRIGGER_CHARS: string[] = ['.', ':'];

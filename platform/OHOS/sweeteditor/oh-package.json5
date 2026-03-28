@@ -1,10 +1,13 @@
 {
-  "name": "sweeteditor",
+  "name": "@qiplat/sweeteditor",
   "version": "1.0.0",
-  "description": "Cross-platform code editor core for OHOS, powered by SweetEditor C++.",
+  "description": "SweetEditor is a high-performance OHOS code editor component powered by shared C++ core, delivering consistent cross-platform editing behavior with syntax highlighting, decorations, inlay hints, ghost text, code folding, completion, inline suggestions, diagnostics, selection menus, configurable wrapping, and extensible provider-based APIs for IDEs and developer tools.",
   "main": "./src/main/ets/Index.ets",
-  "author": "",
-  "license": "",
+  "author": "Scave",
+  "license": "LGPL 2.1",
+  "keywords": ["code editor", "editor", "rich text", "cross platform", "cpp"],
+  "homepage": "https://github.com/FinalScave/OpenSweetEditor",
+  "repository": "https://github.com/FinalScave/OpenSweetEditor",
   "dependencies": {
     "libsweeteditor.so": "file:./src/main/cpp/types/libsweeteditor"
   }
