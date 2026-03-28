@@ -195,22 +195,22 @@ namespace SweetEditor {
 	/// Selection handle hit-test configuration.
 	/// </summary>
 	public class HandleConfig {
-		/// <summary>Start handle hit area offset from cursor bottom (left)</summary>
-		public float StartLeft { get; set; } = -10.0f;
-		/// <summary>Start handle hit area offset from cursor bottom (top)</summary>
-		public float StartTop { get; set; } = 0.0f;
-		/// <summary>Start handle hit area offset from cursor bottom (right)</summary>
-		public float StartRight { get; set; } = 50.0f;
-		/// <summary>Start handle hit area offset from cursor bottom (bottom)</summary>
-		public float StartBottom { get; set; } = 80.0f;
-		/// <summary>End handle hit area offset from cursor bottom (left)</summary>
-		public float EndLeft { get; set; } = -50.0f;
-		/// <summary>End handle hit area offset from cursor bottom (top)</summary>
-		public float EndTop { get; set; } = 0.0f;
-		/// <summary>End handle hit area offset from cursor bottom (right)</summary>
-		public float EndRight { get; set; } = 10.0f;
-		/// <summary>End handle hit area offset from cursor bottom (bottom)</summary>
-		public float EndBottom { get; set; } = 80.0f;
+		/// <summary>Start handle hit area offset from the cursor bottom anchor (left)</summary>
+		public float StartLeft { get; set; } = -32.1f;
+		/// <summary>Start handle hit area offset from the cursor bottom anchor (top)</summary>
+		public float StartTop { get; set; } = -8.0f;
+		/// <summary>Start handle hit area offset from the cursor bottom anchor (right)</summary>
+		public float StartRight { get; set; } = 8.0f;
+		/// <summary>Start handle hit area offset from the cursor bottom anchor (bottom)</summary>
+		public float StartBottom { get; set; } = 32.1f;
+		/// <summary>End handle hit area offset from the cursor bottom anchor (left)</summary>
+		public float EndLeft { get; set; } = -8.0f;
+		/// <summary>End handle hit area offset from the cursor bottom anchor (top)</summary>
+		public float EndTop { get; set; } = -8.0f;
+		/// <summary>End handle hit area offset from the cursor bottom anchor (right)</summary>
+		public float EndRight { get; set; } = 32.1f;
+		/// <summary>End handle hit area offset from the cursor bottom anchor (bottom)</summary>
+		public float EndBottom { get; set; } = 32.1f;
 	}
 
 	/// <summary>

@@ -8,14 +8,14 @@ import android.graphics.RectF;
  * passed to C++ core for touch detection and drag offset calculation.
  */
 public class HandleConfig {
-    /** Hit area for start handle, offset from cursor bottom-left */
+    /** Hit area for start handle, offset from the cursor bottom anchor (handle tip) */
     public final RectF startHitOffset;
-    /** Hit area for end handle, offset from cursor bottom-left */
+    /** Hit area for end handle, offset from the cursor bottom anchor (handle tip) */
     public final RectF endHitOffset;
 
     public HandleConfig() {
-        this(new RectF(-15f, 0f, 45f, 40f),
-             new RectF(-45f, 0f, 15f, 40f));
+        this(new RectF(-32.1f, -8f, 8f, 32.1f),
+             new RectF(-8f, -8f, 32.1f, 32.1f));
     }
 
     public HandleConfig(RectF startHitOffset, RectF endHitOffset) {

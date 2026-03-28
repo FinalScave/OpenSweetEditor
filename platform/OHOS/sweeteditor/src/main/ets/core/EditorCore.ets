@@ -159,14 +159,15 @@ export class EditorOptions {
 }
 
 export class HandleConfig {
-  startLeft: number = -10.0;
-  startTop: number = 0.0;
-  startRight: number = 50.0;
-  startBottom: number = 80.0;
-  endLeft: number = -50.0;
-  endTop: number = 0.0;
-  endRight: number = 10.0;
-  endBottom: number = 80.0;
+  // Offset rects are relative to the cursor bottom anchor (the handle tip).
+  startLeft: number = -32.1;
+  startTop: number = -8.0;
+  startRight: number = 8.0;
+  startBottom: number = 32.1;
+  endLeft: number = -8.0;
+  endTop: number = -8.0;
+  endRight: number = 32.1;
+  endBottom: number = 32.1;
 }
 
 export class ScrollbarConfig {

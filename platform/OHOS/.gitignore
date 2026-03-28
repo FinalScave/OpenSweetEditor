@@ -10,3 +10,4 @@
 /.clang-tidy
 **/.test
 /.appanalyzer
+/demo/src/main/resources/rawfile/demo_shared/

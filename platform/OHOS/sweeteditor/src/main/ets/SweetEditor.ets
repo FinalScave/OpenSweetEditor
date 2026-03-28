@@ -90,6 +90,230 @@ interface PreviewCapableInputController {
   off(type: 'finishTextPreview', callback?: () => void): void;
 }
 
+interface SweetEditorExternalApi {
+  loadDocument(document: Document): void;
+
+  getDocument(): Document | null;
+
+  getSettings(): EditorSettings | null;
+
+  applyTheme(theme: EditorTheme): void;
+
+  getTheme(): EditorTheme;
+
+  setLanguageConfiguration(config: LanguageConfiguration | null): void;
+
+  setMetadata(metadata: EditorMetadata | null): void;
+
+  setEditorIconProvider(provider: EditorIconProvider | null): void;
+
+  addDecorationProvider(provider: DecorationProvider): void;
+
+  addCompletionProvider(provider: CompletionProvider): void;
+
+  requestDecorationRefresh(): void;
+
+  subscribe<T extends EditorEvent>(eventName: string, listener: EditorEventListener<T>): void;
+
+  unsubscribe<T extends EditorEvent>(eventName: string, listener: EditorEventListener<T>): void;
+
+  undo(): TextEditResult;
+
+  redo(): TextEditResult;
+
+  canUndo(): boolean;
+
+  canRedo(): boolean;
+}
+
+export class SweetEditorController {
+  private api: SweetEditorExternalApi | null = null;
+  private pendingActions: Array<(api: SweetEditorExternalApi) => void> = [];
+  private readyListeners: Array<() => void> = [];
+
+  bind(api: SweetEditorExternalApi): void {
+    this.api = api;
+    const actions = [...this.pendingActions];
+    this.pendingActions = [];
+    for (const action of actions) {
+      action(api);
+    }
+    const listeners = [...this.readyListeners];
+    this.readyListeners = [];
+    for (const listener of listeners) {
+      listener();
+    }
+  }
+
+  unbind(api: SweetEditorExternalApi): void {
+    if (this.api === api) {
+      this.api = null;
+    }
+  }
+
+  whenReady(listener: () => void): void {
+    if (this.api) {
+      listener();
+      return;
+    }
+    this.readyListeners.push(listener);
+  }
+
+  loadDocument(document: Document): void {
+    this.run((api) => api.loadDocument(document));
+  }
+
+  getDocument(): Document | null {
+    return this.api ? this.api.getDocument() : null;
+  }
+
+  getSettings(): EditorSettings | null {
+    return this.api ? this.api.getSettings() : null;
+  }
+
+  applyTheme(theme: EditorTheme): void {
+    this.run((api) => api.applyTheme(theme));
+  }
+
+  getTheme(): EditorTheme | null {
+    return this.api ? this.api.getTheme() : null;
+  }
+
+  setLanguageConfiguration(config: LanguageConfiguration | null): void {
+    this.run((api) => api.setLanguageConfiguration(config));
+  }
+
+  setMetadata(metadata: EditorMetadata | null): void {
+    this.run((api) => api.setMetadata(metadata));
+  }
+
+  setEditorIconProvider(provider: EditorIconProvider | null): void {
+    this.run((api) => api.setEditorIconProvider(provider));
+  }
+
+  addDecorationProvider(provider: DecorationProvider): void {
+    this.run((api) => api.addDecorationProvider(provider));
+  }
+
+  addCompletionProvider(provider: CompletionProvider): void {
+    this.run((api) => api.addCompletionProvider(provider));
+  }
+
+  requestDecorationRefresh(): void {
+    this.run((api) => api.requestDecorationRefresh());
+  }
+
+  subscribe<T extends EditorEvent>(eventName: string, listener: EditorEventListener<T>): void {
+    this.run((api) => api.subscribe(eventName, listener));
+  }
+
+  unsubscribe<T extends EditorEvent>(eventName: string, listener: EditorEventListener<T>): void {
+    if (this.api) {
+      this.api.unsubscribe(eventName, listener);
+    }
+  }
+
+  undo(): TextEditResult | null {
+    return this.api ? this.api.undo() : null;
+  }
+
+  redo(): TextEditResult | null {
+    return this.api ? this.api.redo() : null;
+  }
+
+  canUndo(): boolean {
+    return this.api ? this.api.canUndo() : false;
+  }
+
+  canRedo(): boolean {
+    return this.api ? this.api.canRedo() : false;
+  }
+
+  private run(action: (api: SweetEditorExternalApi) => void): void {
+    if (this.api) {
+      action(this.api);
+      return;
+    }
+    this.pendingActions.push(action);
+  }
+}
+
+class BoundSweetEditorExternalApi implements SweetEditorExternalApi {
+  private readonly editor: SweetEditor;
+
+  constructor(editor: SweetEditor) {
+    this.editor = editor;
+  }
+
+  loadDocument(document: Document): void {
+    this.editor.loadDocument(document);
+  }
+
+  getDocument(): Document | null {
+    return this.editor.getDocument();
+  }
+
+  getSettings(): EditorSettings | null {
+    return this.editor.getSettings();
+  }
+
+  applyTheme(theme: EditorTheme): void {
+    this.editor.applyTheme(theme);
+  }
+
+  getTheme(): EditorTheme {
+    return this.editor.getTheme();
+  }
+
+  setLanguageConfiguration(config: LanguageConfiguration | null): void {
+    this.editor.setLanguageConfiguration(config);
+  }
+
+  setMetadata(metadata: EditorMetadata | null): void {
+    this.editor.setMetadata(metadata);
+  }
+
+  setEditorIconProvider(provider: EditorIconProvider | null): void {
+    this.editor.setEditorIconProvider(provider);
+  }
+
+  addDecorationProvider(provider: DecorationProvider): void {
+    this.editor.addDecorationProvider(provider);
+  }
+
+  addCompletionProvider(provider: CompletionProvider): void {
+    this.editor.addCompletionProvider(provider);
+  }
+
+  requestDecorationRefresh(): void {
+    this.editor.requestDecorationRefresh();
+  }
+
+  subscribe<T extends EditorEvent>(eventName: string, listener: EditorEventListener<T>): void {
+    this.editor.subscribe(eventName, listener);
+  }
+
+  unsubscribe<T extends EditorEvent>(eventName: string, listener: EditorEventListener<T>): void {
+    this.editor.unsubscribe(eventName, listener);
+  }
+
+  undo(): TextEditResult {
+    return this.editor.undo();
+  }
+
+  redo(): TextEditResult {
+    return this.editor.redo();
+  }
+
+  canUndo(): boolean {
+    return this.editor.canUndo();
+  }
+
+  canRedo(): boolean {
+    return this.editor.canRedo();
+  }
+}
+
 /**
  * SweetEditor ArkUI component, providing code editing, syntax highlighting,
  * code folding, InlayHint and other features.
@@ -100,6 +324,7 @@ interface PreviewCapableInputController {
  */
 @Component
 export struct SweetEditor {
+  controller: SweetEditorController | null = null;
   private editorCore: EditorCore | null = null;
   private renderer: EditorRenderer | null = null;
   private settings: EditorSettings | null = null;
@@ -136,6 +361,7 @@ export struct SweetEditor {
   private imeWindowId: number = -1;
   private editorGlobalX: number = 0;
   private editorGlobalY: number = 0;
+  private controllerApi: SweetEditorExternalApi | null = null;
   private readonly onImeInsertText = (text: string): void => {
     if (this.editorCore && this.editorCore.isComposing()) {
       this.commitComposition(text);
@@ -199,6 +425,9 @@ export struct SweetEditor {
     }
     if (this.completionPopupController) {
       this.completionPopupController.dismiss();
+    }
+    if (this.controller && this.controllerApi) {
+      this.controller.unbind(this.controllerApi);
     }
   }
 
@@ -274,6 +503,7 @@ export struct SweetEditor {
     this.renderer.attachCanvasContext(ctx);
 
     this.editorCore = new EditorCore(this.renderer.getMeasurer(), options);
+    this.editorCore.setHandleConfig(this.renderer.getHandleConfig());
     this.registerImeCallbacks();
 
     this.settings = new EditorSettings(this);
@@ -283,9 +513,20 @@ export struct SweetEditor {
     this.editorCore.registerBatchTextStyles(this.theme.textStyles);
 
     this.initSubsystems();
+    this.bindController();
 
     this.startCursorBlink();
     this.flush();
+  }
+
+  private bindController(): void {
+    if (!this.controller) {
+      return;
+    }
+    if (!this.controllerApi) {
+      this.controllerApi = new BoundSweetEditorExternalApi(this);
+    }
+    this.controller.bind(this.controllerApi);
   }
 
   private initSubsystems(): void {

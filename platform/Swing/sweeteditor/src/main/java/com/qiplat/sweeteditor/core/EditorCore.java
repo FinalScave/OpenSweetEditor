@@ -414,7 +414,7 @@ public class EditorCore implements AutoCloseable {
         public final float endLeft, endTop, endRight, endBottom;
 
         public HandleConfig() {
-            this(-10f, 0f, 50f, 80f, -50f, 0f, 10f, 80f);
+            this(-32.1f, -8f, 8f, 32.1f, -8f, -8f, 32.1f, 32.1f);
         }
 
         public HandleConfig(float startLeft, float startTop, float startRight, float startBottom,

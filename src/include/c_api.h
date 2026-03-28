@@ -132,8 +132,8 @@ EDITOR_API void editor_set_gutter_sticky(intptr_t editor_handle, int sticky);
 EDITOR_API void editor_set_gutter_visible(intptr_t editor_handle, int visible);
 
 /// Set selection handle hit-test configuration using offset rects
-/// @param start_left/start_top/start_right/start_bottom  Start handle hit area offset from cursor bottom
-/// @param end_left/end_top/end_right/end_bottom  End handle hit area offset from cursor bottom
+/// @param start_left/start_top/start_right/start_bottom  Start handle hit area offset from cursor bottom anchor (handle tip)
+/// @param end_left/end_top/end_right/end_bottom  End handle hit area offset from cursor bottom anchor (handle tip)
 EDITOR_API void editor_set_handle_config(intptr_t editor_handle,
     float start_left, float start_top, float start_right, float start_bottom,
     float end_left, float end_top, float end_right, float end_bottom);

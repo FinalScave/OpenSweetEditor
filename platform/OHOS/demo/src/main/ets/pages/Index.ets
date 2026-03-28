@@ -1,18 +1,88 @@
-import { SweetEditor } from 'sweeteditor'
-import { window } from '@kit.ArkUI'
+import {
+  CurrentLineRenderMode,
+  Document,
+  FoldArrowMode,
+  InlayHintClickEvent,
+  SweetEditor,
+  SweetEditorController,
+  WrapMode
+} from 'sweeteditor';
+import { resourceManager } from '@kit.LocalizationKit';
+import { util } from '@kit.ArkTS';
+import { window } from '@kit.ArkUI';
+import { DemoDecorationProvider } from '../demo/DemoDecorationProvider';
+import {
+  createDemoFileMetadata,
+  createDemoTheme,
+  createLanguageConfiguration,
+  DEMO_RAWFILE_ROOT,
+  FALLBACK_FILE_NAME,
+  FALLBACK_TEXT
+} from '../demo/DemoSamples';
+
+const DARK_PAGE_BG: string = '#11141A';
+const DARK_PANEL: string = '#171B22';
+const DARK_PANEL_STRONG: string = '#202631';
+const DARK_TEXT_PRIMARY: string = '#E7EDF5';
+const DARK_TEXT_SECONDARY: string = '#7F8A9A';
+const DARK_BORDER: string = '#2A303B';
+
+const LIGHT_PAGE_BG: string = '#F3F6FA';
+const LIGHT_PANEL: string = '#FFFFFF';
+const LIGHT_PANEL_STRONG: string = '#EDF2F7';
+const LIGHT_TEXT_PRIMARY: string = '#18202A';
+const LIGHT_TEXT_SECONDARY: string = '#788394';
+const LIGHT_BORDER: string = '#D7DEE8';
+
+const ACCENT: string = '#4A8F7A';
+
+interface HostContextWithResourceManager {
+  resourceManager: resourceManager.ResourceManager;
+}
+
+class DemoSelectOption implements SelectOption {
+  value: ResourceStr;
+
+  constructor(value: ResourceStr) {
+    this.value = value;
+  }
+}
 
 @Entry
 @Component
 struct Index {
-  @State message: string = 'Hello World';
   @State topPadding: number = 0;
+  @State statusMessage: string = 'Ready';
+  @State isDarkTheme: boolean = true;
+  @State selectedWrapMode: WrapMode = WrapMode.NONE;
+  @State selectedFileIndex: number = 0;
+  @State fileOptions: SelectOption[] = [];
+  @State fileNames: string[] = [];
+  @State activeFileName: string = '';
+
+  private readonly editorController: SweetEditorController = new SweetEditorController();
+  private readonly demoDecorationProvider: DemoDecorationProvider = new DemoDecorationProvider(
+    () => this.editorController.getDocument()
+  );
+  private readonly textDecoder: util.TextDecoder = util.TextDecoder.create('utf-8', { ignoreBOM: true });
+  private editorConfigured: boolean = false;
+  private decorationProviderAdded: boolean = false;
+  private subscribedEvents: boolean = false;
 
   aboutToAppear(): void {
+    this.editorController.whenReady(() => {
+      this.configureEditor();
+      void this.loadActiveFile();
+    });
+
     const uiContext = this.getUIContext();
     const hostContext = uiContext.getHostContext();
     if (!hostContext) {
+      this.applyFallbackFileList();
       return;
     }
+
+    void this.loadFileList();
     window.getLastWindow(hostContext).then((win) => {
       const avoidArea = win.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
       this.topPadding = uiContext.px2vp(avoidArea.topRect.height);
@@ -22,12 +92,339 @@ struct Index {
 
   build() {
     Column() {
-      SweetEditor()
-        .layoutWeight(1)
-        .width('100%')
+      Column() {
+        this.buildHeader()
+      }
+      .width('100%')
+      .padding({ left: 12, right: 12 })
+
+      Column() {
+        SweetEditor({ controller: this.editorController })
+          .layoutWeight(1)
+          .width('100%')
+      }
+      .layoutWeight(1)
+      .width('100%')
+      .margin({ top: 12 })
+      .padding(1)
+      .backgroundColor(this.panelColor())
+      .border({ width: 1, color: this.chromeStrokeColor() })
     }
     .height('100%')
     .width('100%')
-    .padding({ top: this.topPadding })
+    .padding({ top: this.topPadding + 10, bottom: 12 })
+    .backgroundColor(this.pageBackgroundColor())
+  }
+
+  @Builder
+  private buildHeader(): void {
+    Column() {
+      Row() {
+        Column() {
+          Text('SweetEditor OHOS')
+            .fontSize(22)
+            .fontColor(this.primaryTextColor())
+            .fontWeight('700')
+          Text(this.activeFileName.length > 0 ? this.activeFileName : 'OHOS demo')
+            .margin({ top: 4 })
+            .fontSize(12)
+            .fontColor(this.secondaryTextColor())
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+          Text(this.statusMessage)
+            .margin({ top: 6 })
+            .fontSize(11)
+            .fontColor(this.secondaryTextColor())
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+        .alignItems(HorizontalAlign.Start)
+
+        Blank()
+
+        Text(this.isDarkTheme ? 'Dark' : 'Light')
+          .fontSize(11)
+          .fontColor(this.secondaryTextColor())
+          .padding({ left: 10, right: 10, top: 6, bottom: 6 })
+          .backgroundColor(this.panelStrongColor())
+          .borderRadius(999)
+      }
+      .width('100%')
+
+      Row() {
+        Select(this.fileOptions.length > 0 ? this.fileOptions : [new DemoSelectOption('Loading...')])
+          .selected(this.selectedFileIndex)
+          .value(this.activeFileName.length > 0 ? this.activeFileName : 'Select file')
+          .layoutWeight(1)
+          .height(40)
+          .backgroundColor(this.panelStrongColor())
+          .borderRadius(12)
+          .onSelect((index: number) => {
+            if (index < 0 || index >= this.fileNames.length) {
+              return;
+            }
+            this.selectedFileIndex = index;
+            this.activeFileName = this.fileNames[index];
+            void this.loadActiveFile();
+          })
+
+        Button() {
+          Text('↶')
+            .fontSize(18)
+            .fontColor(this.primaryTextColor())
+        }
+        .width(40)
+        .height(40)
+        .margin({ left: 8 })
+        .padding(0)
+        .backgroundColor(this.panelStrongColor())
+        .borderRadius(12)
+        .onClick(() => this.handleUndo())
+
+        Button() {
+          Text('↷')
+            .fontSize(18)
+            .fontColor(this.primaryTextColor())
+        }
+        .width(40)
+        .height(40)
+        .margin({ left: 8 })
+        .padding(0)
+        .backgroundColor(this.panelStrongColor())
+        .borderRadius(12)
+        .onClick(() => this.handleRedo())
+
+        Button() {
+          Text(this.isDarkTheme ? '◐' : '☼')
+            .fontSize(16)
+            .fontColor(this.primaryTextColor())
+        }
+        .width(40)
+        .height(40)
+        .margin({ left: 8 })
+        .padding(0)
+        .backgroundColor(this.panelStrongColor())
+        .borderRadius(12)
+        .onClick(() => this.toggleTheme())
+
+        Button() {
+          Text('≋')
+            .fontSize(17)
+            .fontColor(this.primaryTextColor())
+        }
+        .width(40)
+        .height(40)
+        .margin({ left: 8 })
+        .padding(0)
+        .backgroundColor(this.wrapButtonColor())
+        .borderRadius(12)
+        .onClick(() => this.cycleWrapMode())
+      }
+      .width('100%')
+      .margin({ top: 12 })
+
+      Row() {
+      }
+      .width('100%')
+      .height(1)
+      .margin({ top: 12 })
+      .backgroundColor(this.chromeStrokeColor())
+    }
+    .width('100%')
+    .padding({ left: 14, right: 14, top: 14, bottom: 12 })
+    .backgroundColor(this.panelColor())
+    .borderRadius(22)
+    .border({ width: 1, color: this.chromeStrokeColor() })
+  }
+
+  @Builder
+  private buildBadge(label: string): void {
+    Text(label)
+      .fontSize(11)
+      .fontColor(this.secondaryTextColor())
+      .padding({ left: 10, right: 10, top: 5, bottom: 5 })
+      .backgroundColor(this.panelStrongColor())
+      .borderRadius(999)
+      .margin({ right: 8 })
+  }
+
+  private configureEditor(): void {
+    if (this.editorConfigured) {
+      return;
+    }
+    this.editorConfigured = true;
+
+    const settings = this.editorController.getSettings();
+    if (!settings) {
+      return;
+    }
+
+    settings.setFontFamily('monospace');
+    settings.setEditorTextSize(28);
+    settings.setFoldArrowMode(FoldArrowMode.AUTO);
+    settings.setMaxGutterIcons(1);
+    settings.setCurrentLineRenderMode(CurrentLineRenderMode.BORDER);
+    settings.setWrapMode(this.selectedWrapMode);
+
+    if (!this.decorationProviderAdded) {
+      this.editorController.addDecorationProvider(this.demoDecorationProvider);
+      this.decorationProviderAdded = true;
+    }
+
+    this.editorController.applyTheme(createDemoTheme(this.isDarkTheme));
+
+    if (!this.subscribedEvents) {
+      this.editorController.subscribe<InlayHintClickEvent>('InlayHintClickEvent', (event: InlayHintClickEvent) => {
+        if (event.isColor) {
+          this.statusMessage = `Color hint: 0x${event.colorValue.toString(16).toUpperCase()}`;
+        } else {
+          this.statusMessage = `Inlay hint: ${event.line + 1}:${event.column + 1}`;
+        }
+      });
+      this.subscribedEvents = true;
+    }
+  }
+
+  private async loadFileList(): Promise<void> {
+    const manager = this.getResourceManager();
+    if (!manager) {
+      this.applyFallbackFileList();
+      return;
+    }
+    try {
+      const files = await manager.getRawFileList(DEMO_RAWFILE_ROOT);
+      const sorted = [...files].sort((a: string, b: string) => a.localeCompare(b));
+      if (sorted.length === 0) {
+        this.applyFallbackFileList();
+      } else {
+        this.fileNames = sorted;
+        const options: SelectOption[] = [];
+        for (let index = 0; index < sorted.length; index++) {
+          options.push(new DemoSelectOption(sorted[index]));
+        }
+        this.fileOptions = options;
+        this.selectedFileIndex = 0;
+        this.activeFileName = sorted[0];
+      }
+    } catch (_e) {
+      this.applyFallbackFileList();
+    }
+
+    if (this.editorConfigured) {
+      void this.loadActiveFile();
+    }
+  }
+
+  private applyFallbackFileList(): void {
+    this.fileNames = [FALLBACK_FILE_NAME];
+    this.fileOptions = [new DemoSelectOption(FALLBACK_FILE_NAME)];
+    this.selectedFileIndex = 0;
+    this.activeFileName = FALLBACK_FILE_NAME;
+  }
+
+  private async loadActiveFile(): Promise<void> {
+    if (!this.editorConfigured) {
+      return;
+    }
+    const fileName = this.activeFileName.length > 0 ? this.activeFileName : FALLBACK_FILE_NAME;
+    const manager = this.getResourceManager();
+    let text = FALLBACK_TEXT;
+
+    if (manager) {
+      try {
+        const content = await manager.getRawFileContent(`${DEMO_RAWFILE_ROOT}/${fileName}`);
+        text = this.textDecoder.decodeToString(content);
+      } catch (_e) {
+        text = FALLBACK_TEXT;
+      }
+    }
+
+    this.editorController.setLanguageConfiguration(createLanguageConfiguration(fileName));
+    this.editorController.setMetadata(createDemoFileMetadata(fileName));
+    this.editorController.loadDocument(Document.fromString(text));
+    this.editorController.requestDecorationRefresh();
+    this.statusMessage = `Loaded: ${fileName}`;
+  }
+
+  private handleUndo(): void {
+    if (!this.editorController.canUndo()) {
+      this.statusMessage = 'Nothing to undo';
+      return;
+    }
+    this.editorController.undo();
+    this.statusMessage = 'Undo';
+  }
+
+  private handleRedo(): void {
+    if (!this.editorController.canRedo()) {
+      this.statusMessage = 'Nothing to redo';
+      return;
+    }
+    this.editorController.redo();
+    this.statusMessage = 'Redo';
+  }
+
+  private toggleTheme(): void {
+    this.isDarkTheme = !this.isDarkTheme;
+    this.editorController.applyTheme(createDemoTheme(this.isDarkTheme));
+    this.statusMessage = this.isDarkTheme ? 'Dark theme' : 'Light theme';
+  }
+
+  private cycleWrapMode(): void {
+    const wrapModes: WrapMode[] = [WrapMode.NONE, WrapMode.CHAR_BREAK, WrapMode.WORD_BREAK];
+    const index = wrapModes.indexOf(this.selectedWrapMode);
+    this.selectedWrapMode = wrapModes[(index + 1) % wrapModes.length];
+    const settings = this.editorController.getSettings();
+    if (settings) {
+      settings.setWrapMode(this.selectedWrapMode);
+    }
+    this.statusMessage = `WrapMode: ${this.wrapModeLabel()}`;
+  }
+
+  private wrapModeLabel(): string {
+    switch (this.selectedWrapMode) {
+      case WrapMode.CHAR_BREAK:
+        return 'Wrap: Char';
+      case WrapMode.WORD_BREAK:
+        return 'Wrap: Word';
+      default:
+        return 'Wrap: None';
+    }
+  }
+
+  private getResourceManager(): resourceManager.ResourceManager | null {
+    const hostContext = this.getUIContext().getHostContext();
+    if (!hostContext) {
+      return null;
+    }
+    return (hostContext as HostContextWithResourceManager).resourceManager;
+  }
+
+  private pageBackgroundColor(): string {
+    return this.isDarkTheme ? DARK_PAGE_BG : LIGHT_PAGE_BG;
+  }
+
+  private panelColor(): string {
+    return this.isDarkTheme ? DARK_PANEL : LIGHT_PANEL;
+  }
+
+  private panelStrongColor(): string {
+    return this.isDarkTheme ? DARK_PANEL_STRONG : LIGHT_PANEL_STRONG;
+  }
+
+  private primaryTextColor(): string {
+    return this.isDarkTheme ? DARK_TEXT_PRIMARY : LIGHT_TEXT_PRIMARY;
+  }
+
+  private secondaryTextColor(): string {
+    return this.isDarkTheme ? DARK_TEXT_SECONDARY : LIGHT_TEXT_SECONDARY;
+  }
+
+  private chromeStrokeColor(): string {
+    return this.isDarkTheme ? DARK_BORDER : LIGHT_BORDER;
+  }
+
+  private wrapButtonColor(): string {
+    return this.selectedWrapMode === WrapMode.NONE ? this.panelStrongColor() : ACCENT;
   }
 }

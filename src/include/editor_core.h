@@ -44,10 +44,10 @@ namespace NS_SWEETEDITOR {
   /// Selection handle hit-test configuration.
   /// All geometry is owned by the platform drawing layer; C++ only needs hit areas.
   struct HandleConfig {
-    /// Hit area for the start handle, as an offset rect relative to cursor bottom-left
-    OffsetRect start_hit_offset {-15.0f, 0.0f, 45.0f, 40.0f};
-    /// Hit area for the end handle, as an offset rect relative to cursor bottom-left
-    OffsetRect end_hit_offset {-45.0f, 0.0f, 15.0f, 40.0f};
+    /// Hit area for the start handle, as an offset rect relative to the cursor bottom anchor (handle tip)
+    OffsetRect start_hit_offset {-32.1f, -8.0f, 8.0f, 32.1f};
+    /// Hit area for the end handle, as an offset rect relative to the cursor bottom anchor (handle tip)
+    OffsetRect end_hit_offset {-8.0f, -8.0f, 32.1f, 32.1f};
   };
 
   enum class ScrollbarMode : uint8_t {
