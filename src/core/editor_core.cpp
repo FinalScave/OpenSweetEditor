@@ -878,6 +878,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
   }
 
   KeyEventResult EditorCore::handleKeyEvent(const KeyEvent& event) {
+    LOGD("EditorCore::handleKeyEvent, event = %s", event.text.c_str());
     PERF_TIMER("handleKeyEvent");
     KeyEventResult result;
     if (m_document_ == nullptr) return result;

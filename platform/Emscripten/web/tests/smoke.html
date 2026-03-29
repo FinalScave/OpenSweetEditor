@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Web API Smoke</title>
+  <style>
+    body { margin: 0; font-family: ui-monospace, Menlo, Consolas, monospace; background: #0f172a; color: #e2e8f0; }
+    #host { width: 960px; max-width: calc(100vw - 24px); height: 460px; margin: 12px auto; border: 1px solid #334155; }
+    pre { margin: 12px; padding: 12px; background: #111827; border: 1px solid #334155; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <div id="host"></div>
+  <pre id="log">Running smoke...</pre>
+  <script type="module">
+    import { createSweetEditor } from "../index.js?v=20260326_27";
+    import { runWebApiSmoke } from "./web-api-smoke.js?v=20260326_27";
+
+    const logEl = document.getElementById("log");
+    const host = document.getElementById("host");
+
+    function log(text) {
+      logEl.textContent = String(text ?? "");
+    }
+
+    try {
+      const editor = await createSweetEditor(host, {
+        modulePath: "../../../../build/wasm/bin/sweeteditor.js",
+        text: "smoke\nline2",
+      });
+      const report = await runWebApiSmoke(editor);
+      log(`PASS\n${JSON.stringify(report, null, 2)}`);
+    } catch (error) {
+      console.error(error);
+      log(`FAIL\n${error?.stack || error}`);
+    }
+  </script>
+</body>
+</html>

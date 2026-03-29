@@ -36,21 +36,21 @@ It is suited for long-term editor infrastructure in IDEs, AI programming tools, 
 
 ## Platform Support Status
 
-| Platform | Status | Rendering Technology | UI Framework | Implementation |
-| --- | --- | --- | --- | --- |
-| Android | Implemented | Canvas + Paint | Android View | this repo: [platform/Android](./platform/Android) |
-| iOS | Implemented | CoreText + CoreGraphics | UIKit / SwiftUI (being refined) | this repo: [platform/Apple](./platform/Apple) |
-| macOS | Implemented | CoreText + CoreGraphics | AppKit / SwiftUI (being refined) | this repo: [platform/Apple](./platform/Apple) |
-| Windows | Implemented | GDI+ | WinForms | this repo: [platform/WinForms](./platform/WinForms) |
-| Swing | Implemented | Java2D | Swing | this repo: [platform/Swing](./platform/Swing) |
-| OHOS | Implemented | ArkUI Canvas | ArkUI | this repo: [platform/OHOS](./platform/OHOS) |
-| Web | In Progress | - | - | this repo: [platform/Emscripten](./platform/Emscripten) |
-| Flutter | In Progress | - | Flutter | - |
-| Compose Multiplatform | Planned | - | Compose | - |
-| Android Compose | Planned | - | Compose | - |
-| Qt | Planned | - | Qt | - |
-| C# Avalonia UI | Planned | - | - | - |
-| C# WinUI | Planned | - | - | - |
+| Platform SDK | Status | Rendering Technology | UI Framework |
+| --- | --- | --- | --- |
+| Android (official, [repo](./platform/Android)) | ✅ Implemented | Canvas + Paint | Android View |
+| iOS (official, [repo](./platform/Apple)) | ✅ Implemented | CoreText + CoreGraphics | UIKit (wrapped) / SwiftUI (being refined) |
+| macOS (official, [repo](./platform/Apple)) | ✅ Implemented | CoreText + CoreGraphics | AppKit (wrapped) / SwiftUI (being refined) |
+| Windows (official, [repo](./platform/WinForms)) | ✅ Implemented | GDI+ | WinForms |
+| Swing (official, [repo](./platform/Swing)) | ✅ Implemented | Java2D | Swing |
+| OHOS (official, [repo](./platform/OHOS)) | ✅ Implemented | ArkUI Canvas | ArkUI |
+| Web (official, [repo](./platform/Emscripten)) | 🚧 Testing | Canvas | - |
+| Flutter | 🚧 In Progress | - | Flutter |
+| Android Compose | ❌ Pending | - | Compose |
+| Qt | ❌ Pending | - | Qt |
+| Compose Multiplatform | ❌ Pending | - | Compose |
+| C# Avalonia UI | ❌ Pending | - | - |
+| C# WinUI | ❌ Pending | - | - |
 
 ## Overall Architecture
 
@@ -177,6 +177,7 @@ See [Contributing Guide](docs/en/join.md) for details.
     <td width="33%" valign="top" align="center">
       <strong>Discord</strong><br><br>
       <a href="https://discord.gg/q5u4tGMgKQ" target="_blank">Join Discord</a>
+
     </td>
     <td width="33%" valign="top" align="center">
       <strong>QQ</strong><br><br>

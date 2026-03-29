@@ -1,0 +1,336 @@
+{
+  "name": "cpp",
+  "fileExtensions": [".cpp", ".cxx", ".cc", ".hpp", ".hxx", ".hh", ".h++", ".ipp"],
+  "variables": {
+    "identifier": "[a-zA-Z_]\\w*",
+    "whiteSpace": "[ \\t\\f]",
+    "any": "[\\S\\s]"
+  },
+  "states": {
+    "default": [
+      {
+        "pattern": "^${whiteSpace}*(#)${whiteSpace}*(include|define|undef|ifdef|ifndef|if|elif|else|endif|pragma|error|warning|line)",
+        "styles": [1, "preprocessor", 2, "preprocessor"]
+      },
+      {
+        "pattern": "(#include)${whiteSpace}+(<)([^>]*)(>)",
+        "styles": [1, "preprocessor", 2, "string", 3, "string", 4, "string"]
+      },
+      {
+        "pattern": "(#define)${whiteSpace}+(${identifier})(\\()",
+        "styles": [1, "preprocessor", 2, "macro", 3, "punctuation"]
+      },
+      {
+        "pattern": "(#define)${whiteSpace}+(${identifier})",
+        "styles": [1, "preprocessor", 2, "macro"]
+      },
+      {
+        "pattern": "\\b[A-Z][A-Z0-9_]{2,}\\b",
+        "style": "macro"
+      },
+      {
+        "pattern": "\\b(enum)${whiteSpace}+(class|struct)${whiteSpace}+(${identifier})${whiteSpace}*(\\{)",
+        "styles": [1, "keyword", 2, "keyword", 3, "class", 4, "punctuation"]
+      },
+      {
+        "pattern": "\\b(enum)${whiteSpace}+(class|struct)${whiteSpace}+(${identifier})${whiteSpace}*(:)",
+        "styles": [1, "keyword", 2, "keyword", 3, "class", 4, "punctuation"]
+      },
+      {
+        "pattern": "\\b(enum)${whiteSpace}+(class|struct)${whiteSpace}+(${identifier})",
+        "styles": [1, "keyword", 2, "keyword", 3, "class"]
+      },
+      {
+        "pattern": "\\b(class|struct|enum)\\b${whiteSpace}+(${identifier})${whiteSpace}*(\\{)",
+        "styles": [1, "keyword", 2, "class", 3, "punctuation"]
+      },
+      {
+        "pattern": "\\b(class|struct|enum)\\b${whiteSpace}+(${identifier})${whiteSpace}+([*&]*${identifier})${whiteSpace}*([;=,)\\[\\]])",
+        "styles": [1, "keyword", 2, "class", 3, "variable", 4, "punctuation"]
+      },
+      {
+        "pattern": "\\b(class|struct|enum)\\b${whiteSpace}+(${identifier})${whiteSpace}*(:)",
+        "styles": [1, "keyword", 2, "class", 3, "punctuation"]
+      },
+      {
+        "pattern": "\\b(class|struct|enum)\\b${whiteSpace}+(${identifier})",
+        "styles": [1, "keyword", 2, "class"]
+      },
+      {
+        "pattern": "\\b(namespace)\\b${whiteSpace}+(${identifier})",
+        "styles": [1, "keyword", 2, "class"]
+      },
+      {
+        "pattern": "\\b(template)\\b${whiteSpace}*(<)(.*)(>)",
+        "styles": [1, "keyword", 2, "punctuation", 4, "punctuation"],
+        "subStates": [3, "templateParams"]
+      },
+      {
+        "pattern": "\\b(auto)\\b${whiteSpace}+(${identifier})${whiteSpace}*(\\()",
+        "styles": [1, "keyword", 2, "method", 3, "punctuation"],
+        "state": "methodParams"
+      },
+      {
+        "pattern": "\\b(auto)\\b${whiteSpace}+([*&]*${identifier})${whiteSpace}*([;=,)\\[\\]])",
+        "styles": [1, "keyword", 2, "variable", 3, "punctuation"]
+      },
+      {
+        "pattern": "\\b(auto)\\b${whiteSpace}+([*&]*${identifier})",
+        "styles": [1, "keyword", 2, "variable"]
+      },
+      {
+        "pattern": "\\b(alignas|alignof|break|case|catch|class|concept|const|consteval|constexpr|constinit|const_cast|continue|co_await|co_return|co_yield|decltype|default|delete|do|dynamic_cast|else|enum|explicit|export|extern|final|for|friend|goto|if|inline|mutable|namespace|new|noexcept|operator|override|private|protected|public|register|reinterpret_cast|requires|return|sizeof|static|static_assert|static_cast|struct|switch|template|this|throw|try|typedef|typeid|typename|union|using|virtual|volatile|while|auto)\\b",
+        "styles": [1, "keyword"]
+      },
+      {
+        "pattern": "\\b(void|bool|char|char8_t|char16_t|char32_t|wchar_t|short|int|long|float|double|signed|unsigned|size_t|ssize_t|ptrdiff_t|nullptr_t|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t)\\b(?:${whiteSpace}+([*&]*))?${whiteSpace}+(${identifier})${whiteSpace}*(\\()",
+        "styles": [1, "keyword", 2, "punctuation", 3, "method", 4, "punctuation"],
+        "state": "methodParams"
+      },
+      {
+        "pattern": "\\b(void|bool|char|char8_t|char16_t|char32_t|wchar_t|short|int|long|float|double|signed|unsigned|size_t|ssize_t|ptrdiff_t|nullptr_t|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t)\\b(?:${whiteSpace}+([*&]*))?${whiteSpace}+(${identifier})${whiteSpace}*([;=,)\\[\\]])",
+        "styles": [1, "keyword", 2, "punctuation", 3, "variable", 4, "punctuation"]
+      },
+      {
+        "pattern": "\\b(void|bool|char|char8_t|char16_t|char32_t|wchar_t|short|int|long|float|double|signed|unsigned|size_t|ssize_t|ptrdiff_t|nullptr_t|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t|string|vector|map|set|list|deque|array|pair|tuple|shared_ptr|unique_ptr|weak_ptr|optional|variant|any)\\b",
+        "styles": [1, "keyword"]
+      },
+      {
+        "pattern": "\\b(true|false|nullptr|NULL)\\b",
+        "styles": [1, "builtin"]
+      },
+      {
+        "pattern": "(${identifier})(::)(${identifier})${whiteSpace}*(<)(.*)(>)${whiteSpace}+(${identifier})${whiteSpace}*(\\()",
+        "styles": [1, "class", 2, "punctuation", 3, "class", 4, "punctuation", 6, "punctuation", 7, "method", 8, "punctuation"],
+        "subStates": [5, "templateParams"],
+        "state": "methodParams"
+      },
+      {
+        "pattern": "(${identifier})(::)(${identifier})${whiteSpace}*(<)(.*)(>)${whiteSpace}+(${identifier})${whiteSpace}*([;=,)\\[\\]])",
+        "styles": [1, "class", 2, "punctuation", 3, "class", 4, "punctuation", 6, "punctuation", 7, "variable", 8, "punctuation"],
+        "subStates": [5, "templateParams"]
+      },
+      {
+        "pattern": "(${identifier})(::)(${identifier})${whiteSpace}*(<)(.*)(>)${whiteSpace}*(\\()",
+        "styles": [1, "class", 2, "punctuation", 3, "method", 4, "punctuation", 6, "punctuation", 7, "punctuation"],
+        "subStates": [5, "templateParams"],
+        "state": "methodParams"
+      },
+      {
+        "pattern": "(${identifier})(::)(${identifier})${whiteSpace}*(<)(.*)(>)",
+        "styles": [1, "class", 2, "punctuation", 3, "class", 4, "punctuation", 6, "punctuation"],
+        "subStates": [5, "templateParams"]
+      },
+      {
+        "pattern": "(${identifier})${whiteSpace}*(<)(.*)(>)${whiteSpace}+(${identifier})${whiteSpace}*(\\()",
+        "styles": [1, "class", 2, "punctuation", 4, "punctuation", 5, "method", 6, "punctuation"],
+        "subStates": [3, "templateParams"],
+        "state": "methodParams"
+      },
+      {
+        "pattern": "(${identifier})${whiteSpace}*(<)(.*)(>)${whiteSpace}+(${identifier})${whiteSpace}*([;=,)\\[\\]])",
+        "styles": [1, "class", 2, "punctuation", 4, "punctuation", 5, "variable", 6, "punctuation"],
+        "subStates": [3, "templateParams"]
+      },
+      {
+        "pattern": "(${identifier})${whiteSpace}*(<)(.*)(>)${whiteSpace}*(\\()",
+        "styles": [1, "method", 2, "punctuation", 4, "punctuation", 5, "punctuation"],
+        "subStates": [3, "templateParams"],
+        "state": "methodParams"
+      },
+      {
+        "pattern": "(${identifier})(::)(${identifier})${whiteSpace}+(${identifier})${whiteSpace}*(\\()",
+        "styles": [1, "class", 2, "punctuation", 3, "class", 4, "method", 5, "punctuation"],
+        "state": "methodParams"
+      },
+      {
+        "pattern": "(${identifier})(::)(${identifier})${whiteSpace}+(${identifier})${whiteSpace}*([;=,)\\[\\]])",
+        "styles": [1, "class", 2, "punctuation", 3, "class", 4, "variable", 5, "punctuation"]
+      },
+      {
+        "pattern": "(${identifier})(::)(${identifier})${whiteSpace}*(\\()",
+        "styles": [1, "class", 2, "punctuation", 3, "method", 4, "punctuation"],
+        "state": "methodParams"
+      },
+      {
+        "pattern": "(${identifier})(::)(${identifier})",
+        "styles": [1, "class", 2, "punctuation", 3, "class"]
+      },
+      {
+        "pattern": "(${identifier})${whiteSpace}+(${identifier})${whiteSpace}*(\\()",
+        "styles": [1, "class", 2, "method", 3, "punctuation"],
+        "state": "methodParams"
+      },
+      {
+        "pattern": "(${identifier})${whiteSpace}+(${identifier})${whiteSpace}*([;=,)\\[\\]])",
+        "styles": [1, "class", 2, "variable", 3, "punctuation"]
+      },
+      {
+        "pattern": "(${identifier})${whiteSpace}*(\\()",
+        "styles": [1, "method", 2, "punctuation"],
+        "state": "methodParams"
+      },
+      {
+        "pattern": "R\"\\(",
+        "style": "string",
+        "state": "rawString"
+      },
+      {
+        "pattern": "\"(?:[^\"\\\\]|\\\\.)*\"",
+        "style": "string"
+      },
+      {
+        "pattern": "'(?:[^'\\\\]|\\\\.)*'",
+        "style": "string"
+      },
+      {
+        "pattern": "\\b0[xX][0-9a-fA-F']+[uUlL]*\\b",
+        "style": "number"
+      },
+      {
+        "pattern": "\\b0[bB][01']+[uUlL]*\\b",
+        "style": "number"
+      },
+      {
+        "pattern": "\\b(?:[0-9][0-9']*\\.?[0-9']*(?:[eE][+-]?[0-9']+)?[fFlLuU]*)\\b",
+        "style": "number"
+      },
+      {
+        "pattern": "/\\*",
+        "style": "comment",
+        "state": "longComment"
+      },
+      {
+        "pattern": "//${any}*",
+        "style": "comment"
+      },
+      {
+        "pattern": "->|::|\\+\\+|--|<<|>>|<=>|<=|>=|==|!=|&&|\\|\\||[.()\\[\\]?!@%^&|+\\-*/<>=,{};:~]",
+        "style": "punctuation"
+      }
+    ],
+    "methodParams": [
+      {
+        "pattern": "\\b(void|bool|char|char8_t|char16_t|char32_t|wchar_t|short|int|long|float|double|signed|unsigned|size_t|ssize_t|ptrdiff_t|nullptr_t|int8_t|int16_t|int32_t|int64_t|uint8_t|uint16_t|uint32_t|uint64_t)\\b${whiteSpace}*([*&]*)${whiteSpace}*(${identifier})",
+        "styles": [1, "keyword", 2, "punctuation", 3, "variable"]
+      },
+      {
+        "pattern": "\\b(const|volatile|static|inline|constexpr|unsigned|signed|virtual|override|final)\\b",
+        "styles": [1, "keyword"]
+      },
+      {
+        "pattern": "(${identifier})(::)(${identifier})${whiteSpace}*(<)(.*)(>)${whiteSpace}+([*&]*)${whiteSpace}*(${identifier})",
+        "styles": [1, "class", 2, "punctuation", 3, "class", 4, "punctuation", 6, "punctuation", 7, "punctuation", 8, "variable"],
+        "subStates": [5, "templateParams"]
+      },
+      {
+        "pattern": "(${identifier})(::)(${identifier})${whiteSpace}+([*&]*)${whiteSpace}*(${identifier})",
+        "styles": [1, "class", 2, "punctuation", 3, "class", 4, "punctuation", 5, "variable"]
+      },
+      {
+        "pattern": "(${identifier})${whiteSpace}*(<)(.*)(>)${whiteSpace}+([*&]*)${whiteSpace}*(${identifier})",
+        "styles": [1, "class", 2, "punctuation", 4, "punctuation", 5, "punctuation", 6, "variable"],
+        "subStates": [3, "templateParams"]
+      },
+      {
+        "pattern": "(${identifier})${whiteSpace}+([*&]*${identifier})",
+        "styles": [1, "class", 2, "variable"]
+      },
+      {
+        "pattern": "\\)",
+        "style": "punctuation",
+        "state": "default"
+      },
+      {
+        "pattern": "(${identifier})(::)(${identifier})",
+        "styles": [1, "class", 2, "punctuation", 3, "class"]
+      },
+      {
+        "pattern": "(${identifier})${whiteSpace}*(\\()",
+        "styles": [1, "method", 2, "punctuation"]
+      },
+      {
+        "pattern": "\\b(true|false|nullptr|NULL)\\b",
+        "styles": [1, "builtin"]
+      },
+      {
+        "pattern": "\\b0[xX][0-9a-fA-F']+[uUlL]*\\b",
+        "style": "number"
+      },
+      {
+        "pattern": "\\b0[bB][01']+[uUlL]*\\b",
+        "style": "number"
+      },
+      {
+        "pattern": "\\b(?:[0-9][0-9']*\\.?[0-9']*(?:[eE][+-]?[0-9']+)?[fFlLuU]*)\\b",
+        "style": "number"
+      },
+      {
+        "pattern": "\"(?:[^\"\\\\]|\\\\.)*\"",
+        "style": "string"
+      },
+      {
+        "pattern": "'(?:[^'\\\\]|\\\\.)*'",
+        "style": "string"
+      },
+      {
+        "pattern": "[=,\\[\\]*&:.!<>+\\-{}]",
+        "style": "punctuation"
+      },
+      {
+        "onLineEndState": "default"
+      }
+    ],
+    "templateParams": [
+      {
+        "pattern": "\\b(typename|class|int|bool|char|auto|size_t|unsigned|signed|long|short)\\b",
+        "styles": [1, "keyword"]
+      },
+      {
+        "pattern": "(${identifier})${whiteSpace}*(<)(.*)(>)",
+        "styles": [1, "class", 2, "punctuation", 4, "punctuation"],
+        "subStates": [3, "templateParams"]
+      },
+      {
+        "pattern": "(${identifier})(::)(${identifier})",
+        "styles": [1, "class", 2, "punctuation", 3, "class"]
+      },
+      {
+        "pattern": "${identifier}",
+        "style": "class"
+      },
+      {
+        "pattern": "[,\\[\\]&*:?<>]",
+        "style": "punctuation"
+      }
+    ],
+    "rawString": [
+      {
+        "pattern": "\\)\"",
+        "style": "string",
+        "state": "default"
+      },
+      {
+        "pattern": "${any}",
+        "style": "string"
+      }
+    ],
+    "longComment": [
+      {
+        "pattern": "\\*/",
+        "style": "comment",
+        "state": "default"
+      },
+      {
+        "pattern": "${any}",
+        "style": "comment"
+      }
+    ]
+  },
+  "scopeRules": [
+    {
+      "start": "{",
+      "end": "}"
+    }
+  ]
+}
