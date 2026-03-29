@@ -725,6 +725,7 @@ EMSCRIPTEN_BINDINGS(sweeteditor_wasm) {
     .function("handleGestureEvent", &EditorCore::handleGestureEvent)
     .function("handleGestureEventRaw", &editorHandleGestureEventRaw)
     .function("tickEdgeScroll", &EditorCore::tickEdgeScroll)
+    .function("tickFling", &EditorCore::tickFling)
     .function("handleKeyEvent", &EditorCore::handleKeyEvent)
     .function("handleKeyEventRaw", &editorHandleKeyEventRaw)
     .function("insertText", &EditorCore::insertText)
