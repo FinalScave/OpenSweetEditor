@@ -10,6 +10,7 @@ final class DemoScreenModel: ObservableObject {
     @Published private(set) var shouldApplyDecorations: Bool
     @Published private(set) var isDarkTheme = true
     @Published private(set) var wrapMode: WrapMode = .none
+    @Published private(set) var documentReloadToken = 0
 
     private var fileSelectionController: DemoFileSelectionController
     private let loadsSynchronously: Bool
@@ -66,6 +67,10 @@ final class DemoScreenModel: ObservableObject {
         isDarkTheme.toggle()
     }
 
+    func updateDocumentText(_ text: String) {
+        documentText = text
+    }
+
     func cycleWrapMode() {
         wrapMode = DemoWrapModeCycle.next(after: wrapMode)
     }
@@ -111,6 +116,7 @@ final class DemoScreenModel: ObservableObject {
             }
 
             documentText = text
+            documentReloadToken += 1
             isLoadingDocument = false
             shouldApplyDecorations = file.supportsDemoDecorations
             statusText = "Loaded \(file.fileName)"
@@ -120,6 +126,7 @@ final class DemoScreenModel: ObservableObject {
     private func applyLoadedFile(_ file: DemoSampleSupport.DemoSampleFile) {
         statusText = "Loaded \(file.fileName)"
         documentText = file.loadText()
+        documentReloadToken += 1
         isLoadingDocument = false
         shouldApplyDecorations = file.supportsDemoDecorations
     }

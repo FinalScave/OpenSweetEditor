@@ -17,7 +17,7 @@ enum DemoSampleSupport {
             textLoader()
         }
 
-        func loadText() -> String {
+        nonisolated func loadText() -> String {
             textLoader()
         }
 

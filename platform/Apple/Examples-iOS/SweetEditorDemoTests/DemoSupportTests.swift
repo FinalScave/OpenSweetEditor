@@ -60,6 +60,24 @@ struct DemoSupportTests {
     }
 
     @Test
+    @MainActor
+    func screenModelTracksDocumentReloadTokenSeparatelyFromEditBuffer() {
+        let model = DemoScreenModel(sampleFiles: DemoSampleSupport.availableSampleFiles(), loadsSynchronously: true)
+        let initialReloadToken = model.documentReloadToken
+        let initialText = model.documentText
+
+        model.updateDocumentText(initialText + "\n// local edit")
+
+        #expect(model.documentText.hasSuffix("// local edit"))
+        #expect(model.documentReloadToken == initialReloadToken)
+
+        model.selectFile(named: "example.kt")
+
+        #expect(model.documentReloadToken == initialReloadToken + 1)
+        #expect(model.documentText.contains("// Kotlin sample"))
+    }
+
+    @Test
     func decorationResolverProvidesBasicDemoDecorations() {
         let lines = DemoSampleSupport.availableSampleFiles()[0].text.components(separatedBy: "\n")
         let decorations = DemoDecorationResolver.resolve(lines: lines)
@@ -72,7 +90,18 @@ struct DemoSupportTests {
 
     @Test
     func toolbarTitleAlwaysUsesPrimaryForegroundRole() {
-        #expect(DemoToolbarStyle.titleRole(isDarkTheme: true) == .primary)
-        #expect(DemoToolbarStyle.titleRole(isDarkTheme: false) == .primary)
+        switch DemoToolbarStyle.titleRole(isDarkTheme: true) {
+        case .primary:
+            #expect(Bool(true))
+        case .secondary:
+            Issue.record("Expected primary role for dark theme title")
+        }
+
+        switch DemoToolbarStyle.titleRole(isDarkTheme: false) {
+        case .primary:
+            #expect(Bool(true))
+        case .secondary:
+            Issue.record("Expected primary role for light theme title")
+        }
     }
 }

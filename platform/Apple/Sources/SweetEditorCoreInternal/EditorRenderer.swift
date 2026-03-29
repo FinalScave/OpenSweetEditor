@@ -378,11 +378,7 @@ struct EditorRenderer {
 
     static func drawText(context: CGContext, text: String, x: CGFloat, y: CGFloat,
                           font: CTFont, color: CGColor) {
-        let attrStr = CFAttributedStringCreateMutable(nil, 0)!
-        CFAttributedStringReplaceString(attrStr, CFRange(location: 0, length: 0), text as CFString)
-        let range = CFRange(location: 0, length: text.utf16.count)
-        CFAttributedStringSetAttribute(attrStr, range, kCTFontAttributeName, font)
-        CFAttributedStringSetAttribute(attrStr, range, kCTForegroundColorAttributeName, color)
+        let attrStr = makeRenderedAttributedString(text, font: font, color: color)
         let line = CTLineCreateWithAttributedString(attrStr)
         context.textPosition = CGPoint(x: x, y: y)
         CTLineDraw(line, context)

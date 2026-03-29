@@ -40,9 +40,11 @@ struct ContentView: View {
         } else {
             DemoEditorContainer(
                 text: model.documentText,
+                reloadToken: model.documentReloadToken,
                 showsDemoDecorations: model.shouldApplyDecorations,
                 isDarkTheme: model.isDarkTheme,
-                wrapMode: model.wrapMode
+                wrapMode: model.wrapMode,
+                onTextChanged: model.updateDocumentText
             )
         }
     }

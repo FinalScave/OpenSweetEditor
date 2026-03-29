@@ -5,6 +5,7 @@ import SweetEditorCoreInternal
 
 public final class SweetEditorViewiOS: UIView {
     private let editorView = IOSEditorView(frame: .zero)
+    public var onDocumentTextChanged: ((String) -> Void)?
 
     public var settings: EditorSettings {
         editorView.settings
@@ -205,12 +206,12 @@ public final class SweetEditorViewiOS: UIView {
         editorView.documentLines()
     }
 
-    public func addDecorationProvider(_ provider: DecorationProvider) {
-        editorView.addDecorationProvider(provider)
+    public func attachDecorationProvider(_ provider: DecorationProvider) {
+        editorView.attachDecorationProvider(provider)
     }
 
-    public func removeDecorationProvider(_ provider: DecorationProvider) {
-        editorView.removeDecorationProvider(provider)
+    public func detachDecorationProvider(_ provider: DecorationProvider) {
+        editorView.detachDecorationProvider(provider)
     }
 
     public func requestDecorationRefresh() {
@@ -219,12 +220,12 @@ public final class SweetEditorViewiOS: UIView {
 
     // MARK: - Completion Providers
 
-    public func addCompletionProvider(_ provider: CompletionProvider) {
-        editorView.addCompletionProvider(provider)
+    public func attachCompletionProvider(_ provider: CompletionProvider) {
+        editorView.attachCompletionProvider(provider)
     }
 
-    public func removeCompletionProvider(_ provider: CompletionProvider) {
-        editorView.removeCompletionProvider(provider)
+    public func detachCompletionProvider(_ provider: CompletionProvider) {
+        editorView.detachCompletionProvider(provider)
     }
 
     public func triggerCompletion() {
@@ -240,6 +241,9 @@ public final class SweetEditorViewiOS: UIView {
     }
 
     private func setupViewHierarchy() {
+        editorView.onDocumentTextChanged = { [weak self] text in
+            self?.onDocumentTextChanged?(text)
+        }
         editorView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(editorView)
         NSLayoutConstraint.activate([

@@ -103,6 +103,13 @@ class SyntaxHighlighter {
                 continue
             }
 
+            // Keycap emoji sequence (e.g. 4️⃣) should stay as one grapheme cluster and
+            // must not be split into a numeric syntax span plus trailing combining marks.
+            if let keycapLength = keycapSequenceLength(chars, at: i) {
+                i += keycapLength
+                continue
+            }
+
             // Line comment //
             if ch == 0x2F && i + 1 < len && chars[i + 1] == 0x2F {
                 spans.append((column: UInt32(i), length: UInt32(len - i), styleId: HighlightStyleId.comment.rawValue))
@@ -208,6 +215,24 @@ class SyntaxHighlighter {
 
     private func isDigit(_ ch: UInt16) -> Bool {
         return ch >= 0x30 && ch <= 0x39 // '0'-'9'
+    }
+
+    private func keycapSequenceLength(_ chars: [UInt16], at index: Int) -> Int? {
+        guard index < chars.count else { return nil }
+        let ch = chars[index]
+        guard isDigit(ch) || ch == 0x23 || ch == 0x2A else { return nil } // 0-9, #, *
+
+        if index + 1 < chars.count, chars[index + 1] == 0x20E3 {
+            return 2
+        }
+
+        if index + 2 < chars.count,
+           chars[index + 1] == 0xFE0F,
+           chars[index + 2] == 0x20E3 {
+            return 3
+        }
+
+        return nil
     }
 
     private func isIdentStart(_ ch: UInt16) -> Bool {

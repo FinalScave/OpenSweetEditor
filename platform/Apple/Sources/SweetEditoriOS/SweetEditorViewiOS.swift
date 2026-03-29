@@ -3,13 +3,14 @@ import UIKit
 import SwiftUI
 import SweetEditorCoreInternal
 
-class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteractionDelegate, CompletionEditorAccessor, EditorSettingsHost {
+class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPointerInteractionDelegate, CompletionEditorAccessor, EditorSettingsHost {
     static let usesFullContextFlipForRendering = false
     static let textMatrixForTopOriginDrawing = CGAffineTransform(scaleX: 1.0, y: -1.0)
 
     var onFoldToggle: ((SweetEditorFoldToggleEvent) -> Void)?
     var onInlayHintClick: ((SweetEditorInlayHintClickEvent) -> Void)?
     var onGutterIconClick: ((SweetEditorGutterIconClickEvent) -> Void)?
+    var onDocumentTextChanged: ((String) -> Void)?
     var editorIconProvider: EditorIconProvider?
     let settings = EditorSettings(host: nil)
 
@@ -24,6 +25,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
     private var pinchRecognizer: UIPinchGestureRecognizer!
     private var transientScrollbarRefreshTimer: Timer?
     private var scrollbarPolicy = IOSScrollbarPolicy()
+    private lazy var textInputConnection = SweetEditorInputConnectioniOS(owner: self)
 
     /// Current language configuration.
     private(set) var languageConfiguration: LanguageConfiguration?
@@ -42,6 +44,22 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
     var smartQuotesType: UITextSmartQuotesType = .no
     var smartDashesType: UITextSmartDashesType = .no
     var smartInsertDeleteType: UITextSmartInsertDeleteType = .no
+
+    // UITextInput
+    var selectedTextRange: UITextRange? {
+        get { textInputConnection.selectedTextRange }
+        set { textInputConnection.selectedTextRange = newValue }
+    }
+
+    var markedTextRange: UITextRange? { textInputConnection.markedTextRange }
+    var markedTextStyle: [NSAttributedString.Key: Any]?
+    var beginningOfDocument: UITextPosition { textInputConnection.beginningOfDocument() }
+    var endOfDocument: UITextPosition { textInputConnection.endOfDocument() }
+    var tokenizer: UITextInputTokenizer { textInputConnection.tokenizer }
+    weak var inputDelegate: UITextInputDelegate? {
+        get { textInputConnection.inputDelegate }
+        set { textInputConnection.inputDelegate = newValue }
+    }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -141,6 +159,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
         let doc = SweetDocument(text: text)
         document = doc
         editorCore.setDocument(doc)
+        selectedTextRange = uiTextRange(from: NSRange(location: 0, length: 0))
         decorationProviderManager?.onDocumentLoaded()
         if highlighter == nil {
             highlighter = SyntaxHighlighter(editorCore: editorCore)
@@ -317,11 +336,11 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
         return (0..<totalLines).map { document.getLineText($0) }
     }
 
-    func addDecorationProvider(_ provider: DecorationProvider) {
+    func attachDecorationProvider(_ provider: DecorationProvider) {
         decorationProviderManager?.addProvider(provider)
     }
 
-    func removeDecorationProvider(_ provider: DecorationProvider) {
+    func detachDecorationProvider(_ provider: DecorationProvider) {
         decorationProviderManager?.removeProvider(provider)
     }
 
@@ -382,11 +401,11 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
 
     // MARK: - CompletionProvider API
 
-    func addCompletionProvider(_ provider: CompletionProvider) {
+    func attachCompletionProvider(_ provider: CompletionProvider) {
         completionProviderManager?.addProvider(provider)
     }
 
-    func removeCompletionProvider(_ provider: CompletionProvider) {
+    func detachCompletionProvider(_ provider: CompletionProvider) {
         completionProviderManager?.removeProvider(provider)
     }
 
@@ -407,6 +426,14 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
     func getCursorPosition() -> TextPosition? {
         guard let cursor = editorCore.getCursorPosition() else { return nil }
         return TextPosition(line: cursor.line, column: cursor.column)
+    }
+
+    func isCoreComposing() -> Bool {
+        editorCore.isComposing()
+    }
+
+    func cancelCoreCompositionForTesting() {
+        editorCore.compositionCancel()
     }
 
     func getDocument() -> SweetDocument? {
@@ -521,11 +548,15 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
         rebuildAndRedraw()
     }
 
-    private func rehighlightAndRedraw() {
+    func rehighlightAndRedraw() {
         if let doc = document {
             highlighter?.highlightAll(document: doc)
         }
         rebuildAndRedraw()
+    }
+
+    func notifyDocumentTextChanged() {
+        onDocumentTextChanged?(documentLines().joined(separator: "\n"))
     }
 
     // MARK: - Drawing
@@ -769,6 +800,10 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
     // MARK: - UIKeyInput
 
     func insertText(_ text: String) {
+        if textInputConnection.commitInsertTextIfNeeded(text) {
+            return
+        }
+
         // Let NewLineActionProvider handle newline first (provider decides indentation).
         // If no provider handles it, fall back to Core default behavior.
         if text == "\n" || text == "\r",
@@ -784,6 +819,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
             if let action = manager.provideNewLineAction(context: context) {
                 let editResult = editorCore.insertText(action.text)
                 decorationProviderManager?.onTextChanged(changes: textChanges(from: editResult))
+                notifyDocumentTextChanged()
                 rehighlightAndRedraw()
                 return
             }
@@ -802,6 +838,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
                 manager.triggerCompletion(.invoked)
             }
         }
+        notifyDocumentTextChanged()
         rehighlightAndRedraw()
     }
 
@@ -814,6 +851,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
             endLine: endLine, endColumn: endColumn,
             newText: newText)
         decorationProviderManager?.onTextChanged(changes: textChanges(from: editResult))
+        notifyDocumentTextChanged()
         rehighlightAndRedraw()
     }
 
@@ -824,6 +862,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
             startLine: startLine, startColumn: startColumn,
             endLine: endLine, endColumn: endColumn)
         decorationProviderManager?.onTextChanged(changes: textChanges(from: editResult))
+        notifyDocumentTextChanged()
         rehighlightAndRedraw()
     }
 
@@ -881,8 +920,116 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
     func deleteBackward() {
         let keyResult = editorCore.handleKeyEvent(keyCode: .backspace)
         decorationProviderManager?.onTextChanged(changes: textChanges(from: keyResult))
+        notifyDocumentTextChanged()
         rehighlightAndRedraw()
     }
+
+    func text(in range: UITextRange) -> String? {
+        textInputConnection.text(in: range)
+    }
+
+    func replace(_ range: UITextRange, withText text: String) {
+        textInputConnection.replace(range, withText: text)
+    }
+
+    func setMarkedText(_ markedText: String?, selectedRange: NSRange) {
+        textInputConnection.setMarkedText(markedText, selectedRange: selectedRange)
+    }
+
+    func unmarkText() {
+        textInputConnection.unmarkText()
+    }
+
+    func textRange(from fromPosition: UITextPosition, to toPosition: UITextPosition) -> UITextRange? {
+        textInputConnection.textRange(from: fromPosition, to: toPosition)
+    }
+
+    func position(from position: UITextPosition, offset: Int) -> UITextPosition? {
+        textInputConnection.position(from: position, offset: offset)
+    }
+
+    func offset(from: UITextPosition, to toPosition: UITextPosition) -> Int {
+        textInputConnection.offset(from: from, to: toPosition)
+    }
+
+    func caretRect(for position: UITextPosition) -> CGRect {
+        textInputConnection.caretRect(for: position)
+    }
+
+    func firstRect(for range: UITextRange) -> CGRect {
+        textInputConnection.firstRect(for: range)
+    }
+
+    func closestPosition(to point: CGPoint) -> UITextPosition? {
+        SweetEditorTextPosition(offset: closestTextOffset(to: point))
+    }
+
+    func closestPosition(to point: CGPoint, within range: UITextRange) -> UITextPosition? {
+        guard let closest = closestPosition(to: point) as? SweetEditorTextPosition,
+              let nsRange = nsRange(from: range) else { return range.start }
+        let clampedOffset = min(max(closest.offset, nsRange.location), nsRange.location + nsRange.length)
+        return SweetEditorTextPosition(offset: clampedOffset)
+    }
+
+    func compare(_ position: UITextPosition, to other: UITextPosition) -> ComparisonResult {
+        guard let lhs = position as? SweetEditorTextPosition,
+              let rhs = other as? SweetEditorTextPosition else { return .orderedSame }
+        if lhs.offset < rhs.offset { return .orderedAscending }
+        if lhs.offset > rhs.offset { return .orderedDescending }
+        return .orderedSame
+    }
+
+    func position(within range: UITextRange, farthestIn direction: UITextLayoutDirection) -> UITextPosition? {
+        switch direction {
+        case .left, .up:
+            return range.start
+        case .right, .down:
+            return range.end
+        @unknown default:
+            return range.end
+        }
+    }
+
+    func characterRange(byExtending position: UITextPosition, in direction: UITextLayoutDirection) -> UITextRange? {
+        guard let position = position as? SweetEditorTextPosition else { return nil }
+
+        let startOffset: Int
+        let endOffset: Int
+        switch direction {
+        case .left, .up:
+            startOffset = max(position.offset - 1, 0)
+            endOffset = position.offset
+        case .right, .down:
+            startOffset = position.offset
+            endOffset = min(position.offset + 1, documentLength())
+        @unknown default:
+            startOffset = position.offset
+            endOffset = position.offset
+        }
+
+        let start = SweetEditorTextPosition(offset: startOffset)
+        let end = SweetEditorTextPosition(offset: endOffset)
+        return textRange(from: start, to: end)
+    }
+
+    func baseWritingDirection(for position: UITextPosition, in direction: UITextStorageDirection) -> NSWritingDirection {
+        .leftToRight
+    }
+
+    func setBaseWritingDirection(_ writingDirection: NSWritingDirection, for range: UITextRange) {}
+
+    func selectionRects(for range: UITextRange) -> [UITextSelectionRect] { [] }
+
+    func characterRange(at point: CGPoint) -> UITextRange? {
+        guard let position = closestPosition(to: point) else { return selectedTextRange }
+        return textRange(from: position, to: position)
+    }
+
+    var insertDictationResultPlaceholder: Any { UUID().uuidString }
+
+    func removeDictationResultPlaceholder(_ placeholder: Any, willInsertResult: Bool) {}
+
+    func insertDictationResult(_ dictationResult: [UIDictationPhrase]) {}
 
     // MARK: - Physical Keyboard Support (iPad)
 
@@ -978,6 +1125,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
 
         if contentChanged {
             decorationProviderManager?.onTextChanged(changes: changedTextChanges)
+            notifyDocumentTextChanged()
             rehighlightAndRedraw()
         } else if handled {
             rebuildAndRedraw()
@@ -1078,6 +1226,304 @@ class IOSEditorView: UIView, UIKeyInput, UITextInputTraits, UIPointerInteraction
         } else {
             insertText(text)
         }
+    }
+
+    func documentLength() -> Int {
+        guard let doc = document else { return 0 }
+        return documentUTF16Length(doc)
+    }
+
+    func uiTextRange(from nsRange: NSRange) -> UITextRange? {
+        guard nsRange.location != NSNotFound else { return nil }
+        let start = SweetEditorTextPosition(offset: nsRange.location)
+        let end = SweetEditorTextPosition(offset: nsRange.location + nsRange.length)
+        return SweetEditorTextRange(start: start, end: end)
+    }
+
+    func nsRange(from textRange: UITextRange?) -> NSRange? {
+        guard let textRange,
+              let start = textRange.start as? SweetEditorTextPosition,
+              let end = textRange.end as? SweetEditorTextPosition else { return nil }
+        let lower = min(start.offset, end.offset)
+        let upper = max(start.offset, end.offset)
+        return NSRange(location: lower, length: upper - lower)
+    }
+
+    func substring(for range: NSRange) -> String? {
+        guard range.location != NSNotFound else { return nil }
+        guard let doc = document else { return nil }
+        let totalLength = documentUTF16Length(doc)
+        let startLocation = min(max(range.location, 0), totalLength)
+        let requestedEnd = range.location + range.length
+        let endLocation = min(max(requestedEnd, startLocation), totalLength)
+        return textBetweenOffsets(doc: doc, start: startLocation, end: endLocation)
+    }
+
+    func locationForOffset(_ offset: Int) -> (line: Int, column: Int)? {
+        guard let doc = document else { return (0, 0) }
+        return locationForOffset(offset, in: doc)
+    }
+
+    func offsetForLocation(line: Int, column: Int) -> Int {
+        guard let doc = document else { return 0 }
+        let totalLines = doc.getLineCount()
+        guard totalLines > 0 else { return 0 }
+
+        let clampedLine = min(max(line, 0), totalLines - 1)
+        var offset = 0
+        if clampedLine > 0 {
+            for currentLine in 0..<clampedLine {
+                offset += doc.getLineText(currentLine).utf16.count
+                offset += 1
+            }
+        }
+        let currentLineText = doc.getLineText(clampedLine)
+        let clampedColumn = min(max(column, 0), currentLineText.utf16.count)
+        return offset + clampedColumn
+    }
+
+    func currentSelectionNSRange() -> NSRange {
+        if let selection = editorCore.getSelectionRange() {
+            let startOffset = offsetForLocation(line: selection.startLine, column: selection.startColumn)
+            let endOffset = offsetForLocation(line: selection.endLine, column: selection.endColumn)
+            let lower = min(startOffset, endOffset)
+            let upper = Swift.max(startOffset, endOffset)
+            return NSRange(location: lower, length: upper - lower)
+        }
+
+        if let cursor = editorCore.getCursorPosition() {
+            let offset = offsetForLocation(line: cursor.line, column: cursor.column)
+            return NSRange(location: offset, length: 0)
+        }
+
+        return NSRange(location: 0, length: 0)
+    }
+
+    func closestTextOffset(to point: CGPoint) -> Int {
+        guard let document else { return 0 }
+        let lineCount = document.getLineCount()
+        guard lineCount > 0 else { return 0 }
+
+        var bestLine = 0
+        var bestLineDistance = CGFloat.greatestFiniteMagnitude
+
+        for line in 0..<lineCount {
+            let startRect = getPositionRect(line: line, column: 0)
+            let endRect = getPositionRect(line: line, column: document.getLineText(line).utf16.count)
+            let minY = min(startRect.y, endRect.y)
+            let maxY = max(startRect.y + startRect.height, endRect.y + endRect.height)
+            let distance: CGFloat
+            if point.y < minY {
+                distance = minY - point.y
+            } else if point.y > maxY {
+                distance = point.y - maxY
+            } else {
+                distance = 0
+            }
+
+            if distance < bestLineDistance {
+                bestLineDistance = distance
+                bestLine = line
+            }
+        }
+
+        let lineLength = document.getLineText(bestLine).utf16.count
+        var bestColumn = 0
+        var bestColumnDistance = CGFloat.greatestFiniteMagnitude
+
+        for column in 0...lineLength {
+            let rect = getPositionRect(line: bestLine, column: column)
+            let distance = abs(rect.x - point.x)
+            if distance < bestColumnDistance {
+                bestColumnDistance = distance
+                bestColumn = column
+            }
+        }
+
+        return offsetForLocation(line: bestLine, column: bestColumn)
+    }
+
+    func textBeforeCursor(_ count: Int) -> String {
+        let selection = currentSelectionNSRange()
+        let end = selection.location
+        let start = max(0, end - max(count, 0))
+        return substring(for: NSRange(location: start, length: end - start)) ?? ""
+    }
+
+    func textAfterCursor(_ count: Int) -> String {
+        let selection = currentSelectionNSRange()
+        let start = selection.location + selection.length
+        let clampedCount = max(count, 0)
+        let end = min(documentLength(), start + clampedCount)
+        return substring(for: NSRange(location: start, length: end - start)) ?? ""
+    }
+
+    func selectedText() -> String {
+        let selection = currentSelectionNSRange()
+        guard selection.length > 0 else { return "" }
+        return substring(for: selection) ?? ""
+    }
+
+    func deleteSurroundingText(before: Int, after: Int) {
+        let selection = currentSelectionNSRange()
+        let beforeCount = max(before, 0)
+        let afterCount = max(after, 0)
+
+        let start = max(0, selection.location - beforeCount)
+        let end = min(documentLength(), selection.location + selection.length + afterCount)
+        let deleteRange = NSRange(location: start, length: max(0, end - start))
+
+        replaceText(in: deleteRange, with: "")
+    }
+
+    func setSelection(from nsRange: NSRange) {
+        let lower = nsRange.location
+        let upper = nsRange.location + nsRange.length
+        guard let start = locationForOffset(lower),
+              let end = locationForOffset(upper) else { return }
+
+        if nsRange.length == 0 {
+            editorCore.gotoPosition(line: start.line, column: start.column)
+        } else {
+            editorCore.setSelectionRange(startLine: start.line,
+                                         startColumn: start.column,
+                                         endLine: end.line,
+                                         endColumn: end.column)
+        }
+    }
+
+    func replaceText(in range: NSRange, with text: String) {
+        guard let replacementRange = textRange(for: range) else {
+            insertText(text)
+            return
+        }
+        replaceText(startLine: replacementRange.startLine,
+                    startColumn: replacementRange.startColumn,
+                    endLine: replacementRange.endLine,
+                    endColumn: replacementRange.endColumn,
+                    newText: text)
+    }
+
+    func position(from position: UITextPosition, in direction: UITextLayoutDirection, offset: Int) -> UITextPosition? {
+        let signedOffset: Int
+        switch direction {
+        case .left, .up:
+            signedOffset = -offset
+        case .right, .down:
+            signedOffset = offset
+        @unknown default:
+            signedOffset = offset
+        }
+        return self.position(from: position, offset: signedOffset)
+    }
+
+    func textStyling(at position: UITextPosition, in direction: UITextStorageDirection) -> [NSAttributedString.Key: Any]? {
+        nil
+    }
+
+    var selectionAffinity: UITextStorageDirection {
+        get { .forward }
+        set {}
+    }
+
+    private func documentUTF16Length(_ doc: SweetDocument) -> Int {
+        let totalLines = doc.getLineCount()
+        guard totalLines > 0 else { return 0 }
+        var length = 0
+        for index in 0..<totalLines {
+            let text = doc.getLineText(index)
+            length += text.utf16.count
+            if index < totalLines - 1 {
+                length += 1
+            }
+        }
+        return length
+    }
+
+    private func normalizedReplacementRange(_ range: NSRange) -> NSRange? {
+        guard range.location != NSNotFound else { return nil }
+        guard let doc = document else { return nil }
+        let totalLength = documentUTF16Length(doc)
+        let startLocation = min(max(range.location, 0), totalLength)
+        let endLocation = min(max(range.location + range.length, startLocation), totalLength)
+        return NSRange(location: startLocation, length: endLocation - startLocation)
+    }
+
+    private func textRange(for nsRange: NSRange) -> (startLine: Int, startColumn: Int, endLine: Int, endColumn: Int)? {
+        guard let normalizedRange = normalizedReplacementRange(nsRange),
+              let doc = document,
+              let start = locationForOffset(normalizedRange.location, in: doc),
+              let end = locationForOffset(normalizedRange.location + normalizedRange.length, in: doc) else {
+            return nil
+        }
+        return (start.line, start.column, end.line, end.column)
+    }
+
+    private func locationForOffset(_ offset: Int, in doc: SweetDocument) -> (line: Int, column: Int)? {
+        let totalLines = doc.getLineCount()
+        guard totalLines > 0 else { return (0, 0) }
+
+        let clampedOffset = min(max(offset, 0), documentUTF16Length(doc))
+        var currentOffset = 0
+
+        for line in 0..<totalLines {
+            let text = doc.getLineText(line)
+            let lineLength = text.utf16.count
+            let lineEndOffset = currentOffset + lineLength
+
+            if clampedOffset <= lineEndOffset {
+                return (line, clampedOffset - currentOffset)
+            }
+
+            currentOffset = lineEndOffset
+            if line < totalLines - 1 {
+                currentOffset += 1
+            }
+        }
+
+        let lastLine = max(totalLines - 1, 0)
+        return (lastLine, doc.getLineText(lastLine).utf16.count)
+    }
+
+    private func textBetweenOffsets(doc: SweetDocument, start: Int, end: Int) -> String {
+        guard end > start else { return "" }
+        let totalLines = doc.getLineCount()
+        if totalLines == 0 {
+            return ""
+        }
+        var builder = String()
+        var currentOffset = 0
+        for line in 0..<totalLines {
+            let text = doc.getLineText(line)
+            let lineLength = text.utf16.count
+            let lineStart = currentOffset
+            let lineEnd = lineStart + lineLength
+            if end <= lineStart {
+                break
+            }
+            if start < lineEnd && end > lineStart {
+                let localStart = max(start, lineStart) - lineStart
+                let localEnd = min(end, lineEnd) - lineStart
+                if localStart < localEnd {
+                    let startIdx = String.Index(utf16Offset: localStart, in: text)
+                    let endIdx = String.Index(utf16Offset: localEnd, in: text)
+                    builder.append(String(text[startIdx..<endIdx]))
+                }
+            }
+            currentOffset = lineEnd
+            if line < totalLines - 1 {
+                let newlineStart = currentOffset
+                let newlineEnd = newlineStart + 1
+                if start < newlineEnd && end > newlineStart {
+                    builder.append("\n")
+                }
+                currentOffset = newlineEnd
+            }
+            if currentOffset >= end {
+                break
+            }
+        }
+        return builder
     }
 }
 

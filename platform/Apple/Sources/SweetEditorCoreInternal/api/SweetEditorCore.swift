@@ -1001,6 +1001,13 @@ class SweetEditorCore {
         }
     }
 
+    /// Moves caret to the given document position.
+    func gotoPosition(line: Int, column: Int) {
+        performCoreCall {
+            editor_goto_position(handle, line, column)
+        }
+    }
+
     /// Returns the text range of the word at the caret.
     func getWordRangeAtCursor() -> (startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) {
         return performCoreCall {
@@ -1027,6 +1034,13 @@ class SweetEditorCore {
                 return nil
             }
             return (startLine: sl, startColumn: sc, endLine: el, endColumn: ec)
+        }
+    }
+
+    /// Sets selection range in document coordinates.
+    func setSelectionRange(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) {
+        performCoreCall {
+            editor_set_selection(handle, startLine, startColumn, endLine, endColumn)
         }
     }
 
@@ -1234,12 +1248,6 @@ class SweetEditorCore {
     func scrollToLine(line: Int, behavior: UInt8) {
         performCoreCall {
             editor_scroll_to_line(handle, line, behavior)
-        }
-    }
-
-    func gotoPosition(line: Int, column: Int) {
-        performCoreCall {
-            editor_goto_position(handle, line, column)
         }
     }
 
@@ -1856,13 +1864,24 @@ func stringFromU16Ptr(_ ptr: UnsafePointer<UInt16>) -> String {
     return String(utf16CodeUnits: Array(buffer), count: length)
 }
 
+func makeRenderedAttributedString(_ string: String,
+                                  font: CTFont,
+                                  color: CGColor? = nil) -> CFAttributedString {
+    let attrStr = CFAttributedStringCreateMutable(nil, 0)!
+    CFAttributedStringReplaceString(attrStr, CFRange(location: 0, length: 0), string as CFString)
+    let range = CFRange(location: 0, length: string.utf16.count)
+    CFAttributedStringSetAttribute(attrStr, range, kCTFontAttributeName, font)
+    if let color {
+        CFAttributedStringSetAttribute(attrStr, range, kCTForegroundColorAttributeName, color)
+    }
+
+    return attrStr
+}
+
 /// Measure string width using CoreText CTLine
 func measureStringWidth(_ string: String, font: CTFont) -> CGFloat {
     if string.isEmpty { return 0 }
-    let attrStr = CFAttributedStringCreateMutable(nil, 0)!
-    CFAttributedStringReplaceString(attrStr, CFRange(location: 0, length: 0), string as CFString)
-    CFAttributedStringSetAttribute(attrStr, CFRange(location: 0, length: string.utf16.count),
-                                   kCTFontAttributeName, font)
+    let attrStr = makeRenderedAttributedString(string, font: font)
     let line = CTLineCreateWithAttributedString(attrStr)
     let width = CTLineGetTypographicBounds(line, nil, nil, nil)
     return width
