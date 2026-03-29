@@ -14,7 +14,7 @@ function(merge_static_libs target)
     if (MSVC)
         add_custom_command(TARGET ${target} POST_BUILD
                 COMMAND echo "Merging all static libs '${LIB_FILES}' into ${target} for MSVC"
-                COMMAND link /lib /out:${CMAKE_BINARY_DIR}/temp_merged.lib $<TARGET_FILE:${target}> ${LIB_FILES}
+                COMMAND ${CMAKE_LINKER} /lib /out:${CMAKE_BINARY_DIR}/temp_merged.lib $<TARGET_FILE:${target}> ${LIB_FILES}
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_BINARY_DIR}/temp_merged.lib $<TARGET_FILE:${target}>
                 COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/temp_merged.lib
                 VERBATIM
