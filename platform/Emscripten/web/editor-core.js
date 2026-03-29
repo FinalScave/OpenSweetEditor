@@ -1961,6 +1961,8 @@ export class DecorationContext {
   constructor({
     visibleStartLine = 0,
     visibleEndLine = -1,
+    viewportStartLine = visibleStartLine,
+    viewportEndLine = visibleEndLine,
     totalLineCount = 0,
     textChanges = [],
     languageConfiguration = null,
@@ -1968,6 +1970,8 @@ export class DecorationContext {
   } = {}) {
     this.visibleStartLine = ensureLine(visibleStartLine);
     this.visibleEndLine = toInt(visibleEndLine, -1);
+    this.viewportStartLine = ensureLine(viewportStartLine);
+    this.viewportEndLine = toInt(viewportEndLine, this.visibleEndLine);
     this.totalLineCount = Math.max(0, toInt(totalLineCount, 0));
     this.textChanges = asArray(textChanges).map((change) => ({
       range: ensureRange(change.range),
@@ -2206,16 +2210,7 @@ export class SweetLineIncrementalDecorationProvider extends DecorationProvider {
       Math.max(0, toInt(context?.totalLineCount, this._sourceLines.length)),
     );
 
-    const visibleStartLine = context?.visibleStartLine ?? 0;
-    const originalVisibleEndLine = context?.visibleEndLine ?? (visibleStartLine + 120);
-    const visibleEndLine = Math.floor((originalVisibleEndLine - visibleStartLine) * 1.75) + visibleStartLine;
-    
-    const visibleRange = clampVisibleLineRange(
-      visibleStartLine,
-      visibleEndLine,
-      totalLineCount,
-      this._maxRenderLinesPerPass,
-    );
+    const visibleRange = this._buildVisibleRangeForRendering(context, totalLineCount);
     if (visibleRange.end < visibleRange.start) {
       return;
     }
@@ -2248,6 +2243,33 @@ export class SweetLineIncrementalDecorationProvider extends DecorationProvider {
       extraPatch instanceof DecorationResult
         ? extraPatch
         : new DecorationResult(extraPatch),
+    );
+  }
+
+  _buildVisibleRangeForRendering(context, totalLineCount) {
+    const viewportStartLine = context?.viewportStartLine ?? context?.visibleStartLine ?? 0;
+    const viewportEndLine = context?.viewportEndLine ?? context?.visibleEndLine ?? (viewportStartLine + 120);
+    const viewportRange = clampVisibleLineRange(
+      viewportStartLine,
+      viewportEndLine,
+      totalLineCount,
+      this._maxRenderLinesPerPass,
+    );
+    if (viewportRange.end < viewportRange.start) {
+      return viewportRange;
+    }
+
+    const viewportLineCount = viewportRange.end - viewportRange.start + 1;
+    const targetLineCount = Math.max(1, Math.ceil(viewportLineCount * 1.75));
+    const extraLineCount = Math.max(0, targetLineCount - viewportLineCount);
+    const extraTop = Math.floor(extraLineCount / 2);
+    const extraBottom = extraLineCount - extraTop;
+
+    return clampVisibleLineRange(
+      viewportRange.start - extraTop,
+      viewportRange.end + extraBottom,
+      totalLineCount,
+      this._maxRenderLinesPerPass,
     );
   }
 
@@ -2760,6 +2782,8 @@ export class DecorationProviderManager {
       ? this._buildContext({
           visibleStartLine: contextRange.start,
           visibleEndLine: contextRange.end,
+          viewportStartLine: visibleRange.start,
+          viewportEndLine: visibleRange.end,
           totalLineCount,
           textChanges: contextChanges,
           languageConfiguration: this._getLanguageConfiguration?.() ?? null,
@@ -2768,6 +2792,8 @@ export class DecorationProviderManager {
       : new DecorationContext({
           visibleStartLine: contextRange.start,
           visibleEndLine: contextRange.end,
+          viewportStartLine: visibleRange.start,
+          viewportEndLine: visibleRange.end,
           totalLineCount,
           textChanges: contextChanges,
           languageConfiguration: this._getLanguageConfiguration?.() ?? null,
