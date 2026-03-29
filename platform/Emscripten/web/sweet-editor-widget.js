@@ -184,6 +184,15 @@ const WIDGET_I18N = {
       hide: "Hide",
       open: "Perf",
       chartUnavailable: "Chart unavailable",
+      stutterListTitle: "Stutter Events",
+      stutterListEmpty: "No stutters",
+      reasons: {
+        build: "Build/Highlight",
+        draw: "Draw",
+        rafLag: "RAF Lag",
+        blocked: "Main thread blocked",
+        unknown: "Unknown",
+      },
       labels: {
         fps: "FPS",
         frame: "Frame",
@@ -224,6 +233,15 @@ const WIDGET_I18N = {
       hide: "\u9690\u85cf",
       open: "\u6027\u80fd",
       chartUnavailable: "\u56fe\u8868\u4e0d\u53ef\u7528",
+      stutterListTitle: "\u5361\u987f\u4e8b\u4ef6\u5217\u8868",
+      stutterListEmpty: "\u6682\u65e0\u5361\u987f",
+      reasons: {
+        build: "\u6784\u5efa/\u9ad8\u4eae",
+        draw: "\u7ed8\u5236",
+        rafLag: "RAF \u5ef6\u8fdf",
+        blocked: "\u4e3b\u7ebf\u7a0b\u963b\u585e",
+        unknown: "\u672a\u77e5",
+      },
       labels: {
         fps: "\u5e27\u7387",
         frame: "\u5e27\u8017\u65f6",
@@ -1198,6 +1216,7 @@ export class SweetEditorWidget {
     this._performanceOverlayUpdateIntervalMs = Math.max(120, toInt(perfOverlayOptions.updateIntervalMs, 250));
     this._performanceOverlayStutterThresholdMs = Math.max(16, toInt(perfOverlayOptions.stutterThresholdMs, 50));
     this._performanceOverlayHistorySize = Math.max(30, toInt(perfOverlayOptions.historySize, 120));
+    this._performanceOverlayStutterListSize = Math.max(3, toInt(perfOverlayOptions.stutterListSize, 8));
     const perfChartOptions = (perfOverlayOptions.chart && typeof perfOverlayOptions.chart === "object")
       ? perfOverlayOptions.chart
       : {};
@@ -1209,6 +1228,8 @@ export class SweetEditorWidget {
     this._performanceOverlayTitleNode = null;
     this._performanceOverlayHideButton = null;
     this._performanceOverlayMetricRows = {};
+    this._performanceOverlayStutterListTitleNode = null;
+    this._performanceOverlayStutterListNode = null;
     this._performanceOverlayTextFallback = null;
     this._performanceOverlayChartHost = null;
     this._performanceChart = null;
@@ -1235,6 +1256,8 @@ export class SweetEditorWidget {
       lastStutterMs: 0,
       maxStutterMs: 0,
       sampledStutterCount: 0,
+      stutterEvents: [],
+      lastRenderSample: null,
       history: [],
     };
     this._debugInputLogsEnabled = options.debugInputLogs === undefined
@@ -1869,6 +1892,9 @@ export class SweetEditorWidget {
     const history = Array.isArray(stats.history)
       ? stats.history.map((item) => ({ ...item }))
       : [];
+    const stutterEvents = Array.isArray(stats.stutterEvents)
+      ? stats.stutterEvents.map((item) => ({ ...item }))
+      : [];
     return {
       enabled: !!this._performanceOverlayEnabled,
       visible: !!this._performanceOverlayVisible,
@@ -1886,6 +1912,7 @@ export class SweetEditorWidget {
       lastStutterMs: Number(stats.lastStutterMs) || 0,
       maxStutterMs: Number(stats.maxStutterMs) || 0,
       lastOverlayUpdatedAt: Number(stats.lastOverlayUpdatedAt) || 0,
+      stutterEvents,
       history,
     };
   }
@@ -2695,10 +2722,11 @@ export class SweetEditorWidget {
     panel.style.gap = "8px";
     panel.style.margin = "0";
     panel.style.padding = "8px 10px";
-    panel.style.border = "1px solid rgba(255, 212, 0, 0.35)";
-    panel.style.borderRadius = "4px";
-    panel.style.background = "rgba(0, 0, 0, 0.72)";
-    panel.style.color = "#ffd400";
+    panel.style.border = "1px solid rgba(148, 163, 184, 0.36)";
+    panel.style.borderRadius = "6px";
+    panel.style.background = "rgba(15, 23, 42, 0.88)";
+    panel.style.color = "#e2e8f0";
+    panel.style.boxShadow = "0 8px 24px rgba(2, 6, 23, 0.45)";
     panel.style.font = "12px Menlo, Consolas, Monaco, monospace";
     panel.style.lineHeight = "1.35";
     panel.style.pointerEvents = "auto";
@@ -2712,12 +2740,13 @@ export class SweetEditorWidget {
     const title = document.createElement("div");
     title.style.fontWeight = "700";
     title.style.letterSpacing = "0.2px";
+    title.style.color = "#93c5fd";
 
     const hideButton = document.createElement("button");
     hideButton.type = "button";
-    hideButton.style.border = "1px solid rgba(255,212,0,0.45)";
-    hideButton.style.background = "rgba(255, 212, 0, 0.12)";
-    hideButton.style.color = "#ffe66b";
+    hideButton.style.border = "1px solid rgba(148,163,184,0.5)";
+    hideButton.style.background = "rgba(30, 41, 59, 0.92)";
+    hideButton.style.color = "#cbd5e1";
     hideButton.style.padding = "3px 8px";
     hideButton.style.borderRadius = "4px";
     hideButton.style.cursor = "pointer";
@@ -2756,9 +2785,9 @@ export class SweetEditorWidget {
       row.style.justifyContent = "space-between";
       row.style.gap = "8px";
       const label = document.createElement("span");
-      label.style.color = "#ffe66b";
+      label.style.color = "#94a3b8";
       const value = document.createElement("span");
-      value.style.color = "#fef3c7";
+      value.style.color = "#e2e8f0";
       value.textContent = "--";
       row.appendChild(label);
       row.appendChild(value);
@@ -2766,11 +2795,31 @@ export class SweetEditorWidget {
       metricRows[key] = { row, label, value };
     });
 
+    const stutterListWrap = document.createElement("div");
+    stutterListWrap.style.display = "flex";
+    stutterListWrap.style.flexDirection = "column";
+    stutterListWrap.style.gap = "4px";
+
+    const stutterListTitle = document.createElement("div");
+    stutterListTitle.style.color = "#93c5fd";
+    stutterListTitle.style.fontWeight = "600";
+    stutterListWrap.appendChild(stutterListTitle);
+
+    const stutterListNode = document.createElement("div");
+    stutterListNode.style.maxHeight = "96px";
+    stutterListNode.style.overflowY = "auto";
+    stutterListNode.style.padding = "4px 6px";
+    stutterListNode.style.border = "1px solid rgba(148,163,184,0.25)";
+    stutterListNode.style.borderRadius = "4px";
+    stutterListNode.style.background = "rgba(15,23,42,0.55)";
+    stutterListWrap.appendChild(stutterListNode);
+    panel.appendChild(stutterListWrap);
+
     const chartHost = document.createElement("div");
     chartHost.style.width = "100%";
     chartHost.style.height = "160px";
-    chartHost.style.border = "1px solid rgba(255,212,0,0.18)";
-    chartHost.style.background = "rgba(0,0,0,0.28)";
+    chartHost.style.border = "1px solid rgba(148,163,184,0.25)";
+    chartHost.style.background = "rgba(15,23,42,0.55)";
     chartHost.style.borderRadius = "2px";
     chartHost.style.display = this._performanceOverlayChartEnabled ? "block" : "none";
     panel.appendChild(chartHost);
@@ -2779,7 +2828,7 @@ export class SweetEditorWidget {
     textFallback.style.margin = "0";
     textFallback.style.padding = "0";
     textFallback.style.whiteSpace = "pre";
-    textFallback.style.color = "#fef3c7";
+    textFallback.style.color = "#cbd5e1";
     textFallback.style.display = "block";
     panel.appendChild(textFallback);
 
@@ -2788,9 +2837,9 @@ export class SweetEditorWidget {
     openButton.style.marginLeft = "auto";
     openButton.style.display = "none";
     openButton.style.pointerEvents = "auto";
-    openButton.style.border = "1px solid rgba(255,212,0,0.45)";
-    openButton.style.background = "rgba(0, 0, 0, 0.72)";
-    openButton.style.color = "#ffe66b";
+    openButton.style.border = "1px solid rgba(148,163,184,0.5)";
+    openButton.style.background = "rgba(15, 23, 42, 0.88)";
+    openButton.style.color = "#cbd5e1";
     openButton.style.padding = "4px 9px";
     openButton.style.borderRadius = "4px";
     openButton.style.cursor = "pointer";
@@ -2811,6 +2860,8 @@ export class SweetEditorWidget {
     this._performanceOverlayTitleNode = title;
     this._performanceOverlayHideButton = hideButton;
     this._performanceOverlayMetricRows = metricRows;
+    this._performanceOverlayStutterListTitleNode = stutterListTitle;
+    this._performanceOverlayStutterListNode = stutterListNode;
     this._performanceOverlayTextFallback = textFallback;
     this._performanceOverlayChartHost = chartHost;
 
@@ -2839,6 +2890,135 @@ export class SweetEditorWidget {
     return prev + (value - prev) * alpha;
   }
 
+  _formatPerfRelativeSeconds(timestampMs) {
+    const value = Number(timestampMs);
+    if (!Number.isFinite(value) || value < 0) {
+      return "t+0.00s";
+    }
+    return `t+${(value / 1000).toFixed(2)}s`;
+  }
+
+  _classifyStutterReason(elapsedMs, now) {
+    const stats = this._perfStats || {};
+    const sample = stats.lastRenderSample;
+    const stutter = Math.max(0, Number(elapsedMs) || 0);
+    const relatedSample = sample && Number.isFinite(sample.at) && (now - sample.at) <= Math.max(420, stutter * 1.5)
+      ? sample
+      : null;
+
+    const buildMs = Number(relatedSample?.buildMs ?? stats.avgBuildMs) || 0;
+    const drawMs = Number(relatedSample?.drawMs ?? stats.avgDrawMs) || 0;
+    const rafLagMs = Number(relatedSample?.rafLagMs ?? stats.avgRafLagMs) || 0;
+    const threshold = Math.max(16, stutter * 0.2);
+
+    if (buildMs >= threshold && buildMs >= drawMs && buildMs >= rafLagMs) {
+      return "build";
+    }
+    if (drawMs >= threshold && drawMs >= rafLagMs) {
+      return "draw";
+    }
+    if (rafLagMs >= threshold) {
+      return "rafLag";
+    }
+    return "blocked";
+  }
+
+  _recordStutterEvent(elapsedMs, now) {
+    if (!this._perfStats) {
+      return;
+    }
+    const stats = this._perfStats;
+    const ms = Math.max(0, Number(elapsedMs) || 0);
+    const sample = stats.lastRenderSample || {};
+    const event = {
+      at: now,
+      elapsedMs: ms,
+      reason: this._classifyStutterReason(ms, now),
+      frameMs: Number(sample.frameMs ?? stats.avgFrameMs) || 0,
+      buildMs: Number(sample.buildMs ?? stats.avgBuildMs) || 0,
+      drawMs: Number(sample.drawMs ?? stats.avgDrawMs) || 0,
+      rafLagMs: Number(sample.rafLagMs ?? stats.avgRafLagMs) || 0,
+    };
+
+    stats.stutterCount += 1;
+    stats.lastStutterMs = ms;
+    stats.maxStutterMs = Math.max(stats.maxStutterMs, ms);
+    if (!Array.isArray(stats.stutterEvents)) {
+      stats.stutterEvents = [];
+    }
+    stats.stutterEvents.push(event);
+    if (stats.stutterEvents.length > this._performanceOverlayStutterListSize * 4) {
+      stats.stutterEvents.splice(0, stats.stutterEvents.length - this._performanceOverlayStutterListSize * 4);
+    }
+  }
+
+  _refreshStutterEventList() {
+    if (!this._performanceOverlayStutterListNode) {
+      return;
+    }
+
+    const perfI18n = this._i18n?.performance || WIDGET_I18N.en.performance;
+    const labels = perfI18n.labels || WIDGET_I18N.en.performance.labels;
+    const units = perfI18n.units || WIDGET_I18N.en.performance.units;
+    const reasons = perfI18n.reasons || WIDGET_I18N.en.performance.reasons;
+    const events = Array.isArray(this._perfStats?.stutterEvents)
+      ? this._perfStats.stutterEvents.slice(-this._performanceOverlayStutterListSize).reverse()
+      : [];
+
+    const listNode = this._performanceOverlayStutterListNode;
+    while (listNode.firstChild) {
+      listNode.removeChild(listNode.firstChild);
+    }
+
+    if (events.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.color = "#94a3b8";
+      empty.style.fontSize = "11px";
+      empty.textContent = perfI18n.stutterListEmpty || "No stutters";
+      listNode.appendChild(empty);
+      return;
+    }
+
+    events.forEach((event) => {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.flexDirection = "column";
+      row.style.gap = "2px";
+      row.style.padding = "3px 0";
+      row.style.borderBottom = "1px dashed rgba(148,163,184,0.22)";
+
+      const head = document.createElement("div");
+      head.style.display = "flex";
+      head.style.justifyContent = "space-between";
+      head.style.gap = "8px";
+
+      const reasonLabel = reasons[event.reason] || reasons.unknown || event.reason || "Unknown";
+      const left = document.createElement("span");
+      left.style.color = "#e2e8f0";
+      left.textContent = `${this._formatPerfRelativeSeconds(event.at)}  ${reasonLabel}`;
+
+      const right = document.createElement("span");
+      right.style.color = event.elapsedMs >= 200 ? "#fb7185" : "#f59e0b";
+      right.textContent = `${Number(event.elapsedMs || 0).toFixed(2)} ${units.ms}`;
+
+      head.appendChild(left);
+      head.appendChild(right);
+      row.appendChild(head);
+
+      const detail = document.createElement("div");
+      detail.style.color = "#94a3b8";
+      detail.style.fontSize = "10px";
+      detail.textContent = [
+        `${labels.build || "Build"} ${Number(event.buildMs || 0).toFixed(2)} ${units.ms}`,
+        `${labels.draw || "Draw"} ${Number(event.drawMs || 0).toFixed(2)} ${units.ms}`,
+        `${labels.rafLag || "RAF Lag"} ${Number(event.rafLagMs || 0).toFixed(2)} ${units.ms}`,
+      ].join("  |  ");
+      row.appendChild(detail);
+
+      listNode.appendChild(row);
+    });
+  }
+
   _applyPerformanceOverlayVisibility() {
     if (!this._performanceOverlay || !this._performanceOverlayToggleButton) {
       return;
@@ -2858,6 +3038,9 @@ export class SweetEditorWidget {
     }
     if (this._performanceOverlayToggleButton) {
       this._performanceOverlayToggleButton.textContent = perfI18n.open;
+    }
+    if (this._performanceOverlayStutterListTitleNode) {
+      this._performanceOverlayStutterListTitleNode.textContent = perfI18n.stutterListTitle || "Stutter Events";
     }
     const labels = perfI18n.labels || {};
     Object.entries(this._performanceOverlayMetricRows || {}).forEach(([key, row]) => {
@@ -2891,11 +3074,19 @@ export class SweetEditorWidget {
     Object.entries(rows).forEach(([key, row]) => {
       row.value.textContent = formatted[key] || "--";
     });
+    this._refreshStutterEventList();
 
     if (this._performanceOverlayTextFallback) {
       const chartUnavailableLine = (this._performanceOverlayChartEnabled && this._performanceChartFailed)
         ? `${perfI18n.chartUnavailable}: ${this._performanceChartFallbackReason || "-"}`
         : null;
+      const recentStutterLines = Array.isArray(stats.stutterEvents)
+        ? stats.stutterEvents.slice(-3).reverse().map((event, index) => {
+          const reasonMap = perfI18n.reasons || WIDGET_I18N.en.performance.reasons;
+          const reason = reasonMap[event.reason] || reasonMap.unknown || event.reason || "Unknown";
+          return `#${index + 1} ${reason} ${Number(event.elapsedMs || 0).toFixed(2)} ${units.ms}`;
+        })
+        : [];
       this._performanceOverlayTextFallback.textContent = [
         `${labels.fps || "FPS"} ${formatted.fps}`,
         `${labels.frame || "Frame"} ${formatted.frame}`,
@@ -2907,6 +3098,8 @@ export class SweetEditorWidget {
         `${labels.stutterCount || "Stutters"} ${formatted.stutterCount}`,
         `${labels.stutterLast || "Last Stutter"} ${formatted.stutterLast}`,
         `${labels.stutterPeak || "Peak Stutter"} ${formatted.stutterPeak}`,
+        ...(recentStutterLines.length > 0 ? [perfI18n.stutterListTitle || "Stutter Events"] : []),
+        ...recentStutterLines,
         chartUnavailableLine,
       ].filter(Boolean).join("\n");
       this._performanceOverlayTextFallback.style.display = (
@@ -2944,6 +3137,8 @@ export class SweetEditorWidget {
     this._performanceOverlayTitleNode = null;
     this._performanceOverlayHideButton = null;
     this._performanceOverlayMetricRows = {};
+    this._performanceOverlayStutterListTitleNode = null;
+    this._performanceOverlayStutterListNode = null;
     this._performanceOverlayTextFallback = null;
     this._performanceOverlayChartHost = null;
   }
@@ -3026,7 +3221,7 @@ export class SweetEditorWidget {
       textStyle: {
         fontFamily: "Menlo, Consolas, Monaco, monospace",
         fontSize: 11,
-        color: "#fef3c7",
+        color: "#cbd5e1",
       },
       grid: {
         top: 24,
@@ -3039,7 +3234,7 @@ export class SweetEditorWidget {
         itemWidth: 10,
         itemHeight: 6,
         textStyle: {
-          color: "#fef3c7",
+          color: "#94a3b8",
           fontSize: 10,
         },
         data: [legend.fps, legend.frame, legend.build, legend.draw, legend.rafLag, legend.stutter],
@@ -3049,25 +3244,25 @@ export class SweetEditorWidget {
       },
       xAxis: {
         type: "time",
-        axisLine: { lineStyle: { color: "rgba(255,255,255,0.22)" } },
-        axisLabel: { color: "#fef3c7", fontSize: 10 },
-        splitLine: { lineStyle: { color: "rgba(255,255,255,0.08)" } },
+        axisLine: { lineStyle: { color: "rgba(148,163,184,0.35)" } },
+        axisLabel: { color: "#94a3b8", fontSize: 10 },
+        splitLine: { lineStyle: { color: "rgba(148,163,184,0.18)" } },
       },
       yAxis: [
         {
           type: "value",
           name: legend.fps,
           min: 0,
-          axisLine: { lineStyle: { color: "rgba(255,255,255,0.22)" } },
-          axisLabel: { color: "#fef3c7", fontSize: 10 },
-          splitLine: { lineStyle: { color: "rgba(255,255,255,0.08)" } },
+          axisLine: { lineStyle: { color: "rgba(148,163,184,0.35)" } },
+          axisLabel: { color: "#94a3b8", fontSize: 10 },
+          splitLine: { lineStyle: { color: "rgba(148,163,184,0.18)" } },
         },
         {
           type: "value",
           name: units.ms,
           min: 0,
-          axisLine: { lineStyle: { color: "rgba(255,255,255,0.22)" } },
-          axisLabel: { color: "#fef3c7", fontSize: 10 },
+          axisLine: { lineStyle: { color: "rgba(148,163,184,0.35)" } },
+          axisLabel: { color: "#94a3b8", fontSize: 10 },
           splitLine: { show: false },
         },
       ],
@@ -3078,7 +3273,7 @@ export class SweetEditorWidget {
           showSymbol: false,
           smooth: true,
           yAxisIndex: 0,
-          lineStyle: { width: 1.5, color: "#ffd400" },
+          lineStyle: { width: 1.6, color: "#60a5fa" },
           data: fpsData,
         },
         {
@@ -3087,7 +3282,7 @@ export class SweetEditorWidget {
           showSymbol: false,
           smooth: true,
           yAxisIndex: 1,
-          lineStyle: { width: 1.2, color: "#ff8f5a" },
+          lineStyle: { width: 1.3, color: "#f59e0b" },
           data: frameData,
         },
         {
@@ -3096,7 +3291,7 @@ export class SweetEditorWidget {
           showSymbol: false,
           smooth: true,
           yAxisIndex: 1,
-          lineStyle: { width: 1.2, color: "#76e4f7" },
+          lineStyle: { width: 1.3, color: "#22d3ee" },
           data: buildData,
         },
         {
@@ -3105,7 +3300,7 @@ export class SweetEditorWidget {
           showSymbol: false,
           smooth: true,
           yAxisIndex: 1,
-          lineStyle: { width: 1.2, color: "#98f5a5" },
+          lineStyle: { width: 1.3, color: "#34d399" },
           data: drawData,
         },
         {
@@ -3114,7 +3309,7 @@ export class SweetEditorWidget {
           showSymbol: false,
           smooth: true,
           yAxisIndex: 1,
-          lineStyle: { width: 1.2, color: "#c084fc" },
+          lineStyle: { width: 1.3, color: "#a78bfa" },
           data: rafLagData,
         },
         {
@@ -3148,9 +3343,7 @@ export class SweetEditorWidget {
         const instantFps = 1000 / elapsedMs;
         stats.fps = this._smoothValue(stats.fps, instantFps, 0.22);
         if (elapsedMs >= this._performanceOverlayStutterThresholdMs) {
-          stats.stutterCount += 1;
-          stats.lastStutterMs = elapsedMs;
-          stats.maxStutterMs = Math.max(stats.maxStutterMs, elapsedMs);
+          this._recordStutterEvent(elapsedMs, now);
         }
       }
       this._performanceMonitorLastAt = now;
@@ -3185,6 +3378,7 @@ export class SweetEditorWidget {
     const buildMs = Math.max(0, Number(sample.buildMs) || 0);
     const drawMs = Math.max(0, Number(sample.drawMs) || 0);
     const rafLagMs = Math.max(0, Number(sample.rafLagMs) || 0);
+    const sampleAt = this._nowMs();
 
     stats.avgFrameMs = this._smoothValue(stats.avgFrameMs, frameMs, 0.16);
     stats.avgBuildMs = this._smoothValue(stats.avgBuildMs, buildMs, 0.2);
@@ -3192,6 +3386,14 @@ export class SweetEditorWidget {
     stats.avgRafLagMs = this._smoothValue(stats.avgRafLagMs, rafLagMs, 0.2);
     stats.maxFrameMs = Math.max(frameMs, stats.maxFrameMs * 0.92);
     stats.lastFrameMs = frameMs;
+    stats.lastRenderSample = {
+      at: sampleAt,
+      frameMs,
+      buildMs,
+      drawMs,
+      rafLagMs,
+      requeued: !!sample.requeued,
+    };
     if (sample.requeued) {
       stats.requeueCount += 1;
     }
