@@ -28,6 +28,10 @@
       const editor = await createSweetEditor(host, {
         modulePath: "../../../../build/wasm/bin/sweeteditor.js",
         text: "smoke\nline2",
+        performanceOverlay: {
+          enabled: false,
+          chart: { enabled: false },
+        },
       });
       const report = await runWebApiSmoke(editor);
       log(`PASS\n${JSON.stringify(report, null, 2)}`);

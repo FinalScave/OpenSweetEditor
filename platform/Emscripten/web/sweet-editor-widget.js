@@ -161,28 +161,225 @@ function forVector(vec, fn) {
   }
 }
 
-const CONTEXT_MENU_I18N = {
+const DEFAULT_ECHARTS_CDN_URL = "https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js";
+const DEFAULT_ECHARTS_CDN_CANDIDATES = Object.freeze([
+  DEFAULT_ECHARTS_CDN_URL,
+  "https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js",
+  "https://unpkg.com/echarts@5/dist/echarts.min.js",
+  "https://cdn.staticfile.org/echarts/5.5.0/echarts.min.js",
+]);
+
+const WIDGET_I18N = {
   en: {
-    undo: "Undo",
-    redo: "Redo",
-    cut: "Cut",
-    copy: "Copy",
-    paste: "Paste",
-    selectAll: "Select All",
+    contextMenu: {
+      undo: "Undo",
+      redo: "Redo",
+      cut: "Cut",
+      copy: "Copy",
+      paste: "Paste",
+      selectAll: "Select All",
+    },
+    performance: {
+      title: "Performance",
+      hide: "Hide",
+      open: "Perf",
+      chartUnavailable: "Chart unavailable",
+      labels: {
+        fps: "FPS",
+        frame: "Frame",
+        build: "Build",
+        draw: "Draw",
+        rafLag: "RAF Lag",
+        scrollV: "ScrollV",
+        maxFrame: "Max Frame",
+        stutterCount: "Stutters",
+        stutterLast: "Last Stutter",
+        stutterPeak: "Peak Stutter",
+      },
+      legend: {
+        fps: "FPS",
+        frame: "Frame",
+        build: "Build",
+        draw: "Draw",
+        rafLag: "RAF Lag",
+        stutter: "Stutter",
+      },
+      units: {
+        ms: "ms",
+        pxPerSec: "px/s",
+      },
+    },
   },
-  zh: {
-    undo: "撤销",
-    redo: "重做",
-    cut: "剪切",
-    copy: "复制",
-    paste: "粘贴",
-    selectAll: "全选",
+  "zh-CN": {
+    contextMenu: {
+      undo: "\u64a4\u9500",
+      redo: "\u91cd\u505a",
+      cut: "\u526a\u5207",
+      copy: "\u590d\u5236",
+      paste: "\u7c98\u8d34",
+      selectAll: "\u5168\u9009",
+    },
+    performance: {
+      title: "\u6027\u80fd\u76d1\u6d4b",
+      hide: "\u9690\u85cf",
+      open: "\u6027\u80fd",
+      chartUnavailable: "\u56fe\u8868\u4e0d\u53ef\u7528",
+      labels: {
+        fps: "\u5e27\u7387",
+        frame: "\u5e27\u8017\u65f6",
+        build: "\u6784\u5efa\u8017\u65f6",
+        draw: "\u7ed8\u5236\u8017\u65f6",
+        rafLag: "RAF \u5ef6\u8fdf",
+        scrollV: "\u6eda\u52a8\u901f\u5ea6",
+        maxFrame: "\u6700\u5927\u5e27\u8017\u65f6",
+        stutterCount: "\u5361\u987f\u6b21\u6570",
+        stutterLast: "\u6700\u8fd1\u5361\u987f",
+        stutterPeak: "\u5cf0\u503c\u5361\u987f",
+      },
+      legend: {
+        fps: "\u5e27\u7387",
+        frame: "\u5e27\u8017\u65f6",
+        build: "\u6784\u5efa",
+        draw: "\u7ed8\u5236",
+        rafLag: "RAF \u5ef6\u8fdf",
+        stutter: "\u5361\u987f",
+      },
+      units: {
+        ms: "\u6beb\u79d2",
+        pxPerSec: "\u50cf\u7d20/\u79d2",
+      },
+    },
   },
 };
 
 function resolveLocale(locale) {
   const value = String(locale || "").toLowerCase();
-  return value.startsWith("zh") ? "zh" : "en";
+  return value.startsWith("zh") ? "zh-CN" : "en";
+}
+function resolveI18nBundle(locale) {
+  return WIDGET_I18N[locale] || WIDGET_I18N.en;
+}
+
+const echartsLoadPromiseByUrl = new Map();
+
+function resolveEchartsCdnCandidates(cdnUrl) {
+  const seen = new Set();
+  const pushCandidate = (value, out) => {
+    const url = String(value || "").trim();
+    if (!url || seen.has(url)) {
+      return;
+    }
+    seen.add(url);
+    out.push(url);
+  };
+
+  const candidates = [];
+  if (Array.isArray(cdnUrl)) {
+    cdnUrl.forEach((url) => pushCandidate(url, candidates));
+  } else {
+    const raw = String(cdnUrl || "").trim();
+    if (raw.includes(",")) {
+      raw.split(",").forEach((url) => pushCandidate(url, candidates));
+    } else {
+      pushCandidate(raw, candidates);
+    }
+  }
+
+  if (candidates.length === 0) {
+    DEFAULT_ECHARTS_CDN_CANDIDATES.forEach((url) => pushCandidate(url, candidates));
+  }
+  return candidates;
+}
+
+function loadEchartsFromUrl(url) {
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return Promise.reject(new Error("ECharts requires browser environment"));
+  }
+  if (window.echarts && typeof window.echarts.init === "function") {
+    return Promise.resolve(window.echarts);
+  }
+
+  const normalizedUrl = String(url || "").trim();
+  if (!normalizedUrl) {
+    return Promise.reject(new Error("ECharts CDN url is empty"));
+  }
+  if (echartsLoadPromiseByUrl.has(normalizedUrl)) {
+    return echartsLoadPromiseByUrl.get(normalizedUrl);
+  }
+
+  const promise = new Promise((resolve, reject) => {
+    const selector = `script[data-sweeteditor-echarts="true"][src="${normalizedUrl}"]`;
+    const existing = document.querySelector(selector);
+    if (existing) {
+      const loadState = existing.getAttribute("data-load-state");
+      if (loadState === "loaded" && window.echarts && typeof window.echarts.init === "function") {
+        resolve(window.echarts);
+        return;
+      }
+      if (loadState === "failed") {
+        reject(new Error(`Previous load failed for ${normalizedUrl}`));
+        return;
+      }
+      const done = () => {
+        if (window.echarts && typeof window.echarts.init === "function") {
+          resolve(window.echarts);
+        } else {
+          reject(new Error("ECharts script loaded but window.echarts is unavailable"));
+        }
+      };
+      existing.addEventListener("load", done, { once: true });
+      existing.addEventListener("error", () => reject(new Error("Failed to load ECharts script")), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = normalizedUrl;
+    script.async = true;
+    script.defer = true;
+    script.setAttribute("data-sweeteditor-echarts", "true");
+    script.setAttribute("data-load-state", "loading");
+    script.onload = () => {
+      script.setAttribute("data-load-state", "loaded");
+      if (window.echarts && typeof window.echarts.init === "function") {
+        resolve(window.echarts);
+      } else {
+        reject(new Error("ECharts script loaded but window.echarts is unavailable"));
+      }
+    };
+    script.onerror = () => {
+      script.setAttribute("data-load-state", "failed");
+      reject(new Error(`Failed to load ECharts from ${normalizedUrl}`));
+    };
+    document.head.appendChild(script);
+  }).catch((error) => {
+    echartsLoadPromiseByUrl.delete(normalizedUrl);
+    throw error;
+  });
+
+  echartsLoadPromiseByUrl.set(normalizedUrl, promise);
+  return promise;
+}
+
+function loadEchartsFromCdn(cdnUrl) {
+  const candidates = resolveEchartsCdnCandidates(cdnUrl);
+  if (candidates.length === 0) {
+    return Promise.reject(new Error("No available ECharts CDN candidates"));
+  }
+
+  const errors = [];
+  let chain = Promise.reject(new Error("start"));
+  candidates.forEach((url) => {
+    chain = chain.catch(() => (
+      loadEchartsFromUrl(url).catch((error) => {
+        errors.push(`${url}: ${String(error?.message || error || "Unknown error")}`);
+        throw error;
+      })
+    ));
+  });
+
+  return chain.catch(() => {
+    throw new Error(`Failed to load ECharts from candidates: ${errors.join(" | ")}`);
+  });
 }
 
 const DEFAULT_THEME = {
@@ -951,7 +1148,7 @@ export class SweetEditorWidget {
     this._wasm = wasmModule;
     this._options = options;
     this._locale = resolveLocale(options.locale || (typeof navigator !== "undefined" ? navigator.language : "en"));
-    this._i18n = CONTEXT_MENU_I18N[this._locale];
+    this._i18n = resolveI18nBundle(this._locale);
     this._eventType = resolveEnum(wasmModule, "EventType", FALLBACK_EVENT_TYPE);
     this._gestureType = resolveEnum(wasmModule, "GestureType", FALLBACK_GESTURE_TYPE);
     this._keyCode = resolveEnum(wasmModule, "KeyCode", FALLBACK_KEY_CODE);
@@ -986,14 +1183,42 @@ export class SweetEditorWidget {
     const perfOverlayOptions = (options.performanceOverlay && typeof options.performanceOverlay === "object")
       ? options.performanceOverlay
       : {};
-    this._performanceOverlayEnabled = options.performanceOverlay === false
-      ? false
-      : Boolean(perfOverlayOptions.enabled ?? true);
+    if (options.performanceOverlay === false) {
+      this._performanceOverlayEnabled = false;
+    } else if (options.performanceOverlay === true) {
+      this._performanceOverlayEnabled = true;
+    } else if (options.performanceOverlay && typeof options.performanceOverlay === "object") {
+      this._performanceOverlayEnabled = Boolean(perfOverlayOptions.enabled ?? true);
+    } else {
+      this._performanceOverlayEnabled = false;
+    }
+    this._performanceOverlayVisible = this._performanceOverlayEnabled
+      ? Boolean(perfOverlayOptions.visible ?? true)
+      : false;
     this._performanceOverlayUpdateIntervalMs = Math.max(120, toInt(perfOverlayOptions.updateIntervalMs, 250));
+    this._performanceOverlayStutterThresholdMs = Math.max(16, toInt(perfOverlayOptions.stutterThresholdMs, 50));
+    this._performanceOverlayHistorySize = Math.max(30, toInt(perfOverlayOptions.historySize, 120));
+    const perfChartOptions = (perfOverlayOptions.chart && typeof perfOverlayOptions.chart === "object")
+      ? perfOverlayOptions.chart
+      : {};
+    this._performanceOverlayChartEnabled = Boolean(perfChartOptions.enabled ?? true);
+    this._performanceOverlayChartCdnUrl = String(perfChartOptions.cdnUrl || DEFAULT_ECHARTS_CDN_URL);
     this._performanceOverlay = null;
+    this._performanceOverlayRoot = null;
+    this._performanceOverlayToggleButton = null;
+    this._performanceOverlayTitleNode = null;
+    this._performanceOverlayHideButton = null;
+    this._performanceOverlayMetricRows = {};
+    this._performanceOverlayTextFallback = null;
+    this._performanceOverlayChartHost = null;
+    this._performanceChart = null;
+    this._performanceChartLoadPromise = null;
+    this._performanceChartFailed = false;
+    this._performanceChartFallbackReason = "";
+    this._performanceMonitorRafHandle = 0;
+    this._performanceMonitorLastAt = 0;
+    this._performanceMonitorLastSampleAt = 0;
     this._perfStats = {
-      frameCount: 0,
-      fpsWindowStartAt: 0,
       fps: 0,
       avgFrameMs: 0,
       avgBuildMs: 0,
@@ -1006,6 +1231,11 @@ export class SweetEditorWidget {
       lastScrollSampleY: 0,
       lastScrollSampleAt: 0,
       scrollSpeedY: 0,
+      stutterCount: 0,
+      lastStutterMs: 0,
+      maxStutterMs: 0,
+      sampledStutterCount: 0,
+      history: [],
     };
     this._debugInputLogsEnabled = options.debugInputLogs === undefined
       ? true
@@ -1596,8 +1826,68 @@ export class SweetEditorWidget {
 
   setLocale(locale) {
     this._locale = resolveLocale(locale);
-    this._i18n = CONTEXT_MENU_I18N[this._locale];
+    this._i18n = resolveI18nBundle(this._locale);
     this._refreshContextMenuLabels();
+    this._refreshPerformanceOverlayLabels();
+    this._updatePerformanceOverlay();
+    this._updatePerformanceChart();
+  }
+
+  setPerformanceOverlayEnabled(enabled) {
+    this._performanceOverlayEnabled = !!enabled;
+    if (!this._performanceOverlayEnabled) {
+      this._performanceOverlayVisible = false;
+      this._stopPerformanceMonitor();
+      this._teardownPerformanceOverlay();
+      return;
+    }
+
+    if (!this._performanceOverlayVisible) {
+      this._performanceOverlayVisible = true;
+    }
+    this._setupPerformanceOverlay();
+    this._startPerformanceMonitor();
+    this._updatePerformanceOverlay();
+    this._markDirty();
+  }
+
+  isPerformanceOverlayEnabled() {
+    return !!this._performanceOverlayEnabled;
+  }
+
+  setPerformanceOverlayVisible(visible) {
+    this._performanceOverlayVisible = !!visible && this._performanceOverlayEnabled;
+    this._applyPerformanceOverlayVisibility();
+  }
+
+  isPerformanceOverlayVisible() {
+    return !!this._performanceOverlayVisible;
+  }
+
+  getPerformanceStats() {
+    const stats = this._perfStats || {};
+    const history = Array.isArray(stats.history)
+      ? stats.history.map((item) => ({ ...item }))
+      : [];
+    return {
+      enabled: !!this._performanceOverlayEnabled,
+      visible: !!this._performanceOverlayVisible,
+      updateIntervalMs: this._performanceOverlayUpdateIntervalMs,
+      stutterThresholdMs: this._performanceOverlayStutterThresholdMs,
+      fps: Number(stats.fps) || 0,
+      avgFrameMs: Number(stats.avgFrameMs) || 0,
+      avgBuildMs: Number(stats.avgBuildMs) || 0,
+      avgDrawMs: Number(stats.avgDrawMs) || 0,
+      avgRafLagMs: Number(stats.avgRafLagMs) || 0,
+      maxFrameMs: Number(stats.maxFrameMs) || 0,
+      requeueCount: toInt(stats.requeueCount, 0),
+      scrollSpeedY: Number(stats.scrollSpeedY) || 0,
+      stutterCount: toInt(stats.stutterCount, 0),
+      lastStutterMs: Number(stats.lastStutterMs) || 0,
+      maxStutterMs: Number(stats.maxStutterMs) || 0,
+      lastOverlayUpdatedAt: Number(stats.lastOverlayUpdatedAt) || 0,
+      history,
+    };
   }
 
   setLanguageConfiguration(config) {
@@ -1699,10 +1989,8 @@ export class SweetEditorWidget {
       this._completionPopupController = null;
     }
 
-    if (this._performanceOverlay) {
-      this._performanceOverlay.remove();
-      this._performanceOverlay = null;
-    }
+    this._stopPerformanceMonitor();
+    this._teardownPerformanceOverlay();
 
     this._listeners.clear();
     this._newLineActionProviders = [];
@@ -2289,6 +2577,9 @@ export class SweetEditorWidget {
     this._input.style.pointerEvents = "none";
     this.container.appendChild(this._input);
     this._setupPerformanceOverlay();
+    if (this._performanceOverlayEnabled) {
+      this._startPerformanceMonitor();
+    }
 
     this._createContextMenu();
 
@@ -2384,28 +2675,149 @@ export class SweetEditorWidget {
   }
 
   _setupPerformanceOverlay() {
-    if (!this._performanceOverlayEnabled) {
+    if (!this._performanceOverlayEnabled || this._performanceOverlayRoot || this._disposed) {
       return;
     }
-    const panel = document.createElement("pre");
-    panel.setAttribute("aria-hidden", "true");
-    panel.style.position = "absolute";
-    panel.style.top = "8px";
-    panel.style.right = "8px";
+    const root = document.createElement("div");
+    root.setAttribute("aria-hidden", "true");
+    root.style.position = "absolute";
+    root.style.top = "8px";
+    root.style.right = "8px";
+    root.style.pointerEvents = "none";
+    root.style.zIndex = "30";
+
+    const panel = document.createElement("section");
+    panel.style.width = "420px";
+    panel.style.minHeight = "280px";
+    panel.style.boxSizing = "border-box";
+    panel.style.display = "flex";
+    panel.style.flexDirection = "column";
+    panel.style.gap = "8px";
     panel.style.margin = "0";
-    panel.style.padding = "6px 8px";
-    panel.style.border = "none";
-    panel.style.borderRadius = "0";
-    panel.style.background = "rgba(0, 0, 0, 0.62)";
+    panel.style.padding = "8px 10px";
+    panel.style.border = "1px solid rgba(255, 212, 0, 0.35)";
+    panel.style.borderRadius = "4px";
+    panel.style.background = "rgba(0, 0, 0, 0.72)";
     panel.style.color = "#ffd400";
     panel.style.font = "12px Menlo, Consolas, Monaco, monospace";
     panel.style.lineHeight = "1.35";
-    panel.style.whiteSpace = "pre";
-    panel.style.pointerEvents = "none";
-    panel.style.zIndex = "30";
-    panel.textContent = "FPS --\nFrame -- ms\nRenderLag -- ms";
-    this.container.appendChild(panel);
+    panel.style.pointerEvents = "auto";
+
+    const header = document.createElement("div");
+    header.style.display = "flex";
+    header.style.alignItems = "center";
+    header.style.justifyContent = "space-between";
+    header.style.gap = "8px";
+
+    const title = document.createElement("div");
+    title.style.fontWeight = "700";
+    title.style.letterSpacing = "0.2px";
+
+    const hideButton = document.createElement("button");
+    hideButton.type = "button";
+    hideButton.style.border = "1px solid rgba(255,212,0,0.45)";
+    hideButton.style.background = "rgba(255, 212, 0, 0.12)";
+    hideButton.style.color = "#ffe66b";
+    hideButton.style.padding = "3px 8px";
+    hideButton.style.borderRadius = "4px";
+    hideButton.style.cursor = "pointer";
+    hideButton.style.font = "inherit";
+    hideButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.setPerformanceOverlayVisible(false);
+    });
+
+    header.appendChild(title);
+    header.appendChild(hideButton);
+    panel.appendChild(header);
+
+    const metrics = document.createElement("div");
+    metrics.style.display = "grid";
+    metrics.style.gridTemplateColumns = "1fr 1fr";
+    metrics.style.gap = "4px 14px";
+    panel.appendChild(metrics);
+
+    const metricRows = {};
+    [
+      "fps",
+      "frame",
+      "build",
+      "draw",
+      "rafLag",
+      "scrollV",
+      "maxFrame",
+      "stutterCount",
+      "stutterLast",
+      "stutterPeak",
+    ].forEach((key) => {
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.justifyContent = "space-between";
+      row.style.gap = "8px";
+      const label = document.createElement("span");
+      label.style.color = "#ffe66b";
+      const value = document.createElement("span");
+      value.style.color = "#fef3c7";
+      value.textContent = "--";
+      row.appendChild(label);
+      row.appendChild(value);
+      metrics.appendChild(row);
+      metricRows[key] = { row, label, value };
+    });
+
+    const chartHost = document.createElement("div");
+    chartHost.style.width = "100%";
+    chartHost.style.height = "160px";
+    chartHost.style.border = "1px solid rgba(255,212,0,0.18)";
+    chartHost.style.background = "rgba(0,0,0,0.28)";
+    chartHost.style.borderRadius = "2px";
+    chartHost.style.display = this._performanceOverlayChartEnabled ? "block" : "none";
+    panel.appendChild(chartHost);
+
+    const textFallback = document.createElement("pre");
+    textFallback.style.margin = "0";
+    textFallback.style.padding = "0";
+    textFallback.style.whiteSpace = "pre";
+    textFallback.style.color = "#fef3c7";
+    textFallback.style.display = "block";
+    panel.appendChild(textFallback);
+
+    const openButton = document.createElement("button");
+    openButton.type = "button";
+    openButton.style.marginLeft = "auto";
+    openButton.style.display = "none";
+    openButton.style.pointerEvents = "auto";
+    openButton.style.border = "1px solid rgba(255,212,0,0.45)";
+    openButton.style.background = "rgba(0, 0, 0, 0.72)";
+    openButton.style.color = "#ffe66b";
+    openButton.style.padding = "4px 9px";
+    openButton.style.borderRadius = "4px";
+    openButton.style.cursor = "pointer";
+    openButton.style.font = "12px Menlo, Consolas, Monaco, monospace";
+    openButton.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      this.setPerformanceOverlayVisible(true);
+    });
+
+    root.appendChild(panel);
+    root.appendChild(openButton);
+    this.container.appendChild(root);
+
+    this._performanceOverlayRoot = root;
     this._performanceOverlay = panel;
+    this._performanceOverlayToggleButton = openButton;
+    this._performanceOverlayTitleNode = title;
+    this._performanceOverlayHideButton = hideButton;
+    this._performanceOverlayMetricRows = metricRows;
+    this._performanceOverlayTextFallback = textFallback;
+    this._performanceOverlayChartHost = chartHost;
+
+    this._refreshPerformanceOverlayLabels();
+    this._refreshPerformanceOverlayValues();
+    this._applyPerformanceOverlayVisibility();
+    this._ensurePerformanceChart();
   }
 
   _nowMs() {
@@ -2427,24 +2839,348 @@ export class SweetEditorWidget {
     return prev + (value - prev) * alpha;
   }
 
+  _applyPerformanceOverlayVisibility() {
+    if (!this._performanceOverlay || !this._performanceOverlayToggleButton) {
+      return;
+    }
+    const panelVisible = !!this._performanceOverlayEnabled && !!this._performanceOverlayVisible;
+    this._performanceOverlay.style.display = panelVisible ? "flex" : "none";
+    this._performanceOverlayToggleButton.style.display = (!panelVisible && this._performanceOverlayEnabled) ? "inline-flex" : "none";
+  }
+
+  _refreshPerformanceOverlayLabels() {
+    const perfI18n = this._i18n?.performance || WIDGET_I18N.en.performance;
+    if (this._performanceOverlayTitleNode) {
+      this._performanceOverlayTitleNode.textContent = perfI18n.title;
+    }
+    if (this._performanceOverlayHideButton) {
+      this._performanceOverlayHideButton.textContent = perfI18n.hide;
+    }
+    if (this._performanceOverlayToggleButton) {
+      this._performanceOverlayToggleButton.textContent = perfI18n.open;
+    }
+    const labels = perfI18n.labels || {};
+    Object.entries(this._performanceOverlayMetricRows || {}).forEach(([key, row]) => {
+      row.label.textContent = `${labels[key] || key}:`;
+    });
+  }
+
+  _refreshPerformanceOverlayValues() {
+    const stats = this._perfStats;
+    if (!stats) {
+      return;
+    }
+    const perfI18n = this._i18n?.performance || WIDGET_I18N.en.performance;
+    const labels = perfI18n.labels || {};
+    const units = perfI18n.units || WIDGET_I18N.en.performance.units;
+    const rows = this._performanceOverlayMetricRows || {};
+
+    const formatted = {
+      fps: `${stats.fps.toFixed(1)}`,
+      frame: `${stats.avgFrameMs.toFixed(2)} ${units.ms}`,
+      build: `${stats.avgBuildMs.toFixed(2)} ${units.ms}`,
+      draw: `${stats.avgDrawMs.toFixed(2)} ${units.ms}`,
+      rafLag: `${stats.avgRafLagMs.toFixed(2)} ${units.ms}`,
+      scrollV: `${stats.scrollSpeedY.toFixed(1)} ${units.pxPerSec}`,
+      maxFrame: `${stats.maxFrameMs.toFixed(2)} ${units.ms}`,
+      stutterCount: `${toInt(stats.stutterCount, 0)}`,
+      stutterLast: `${stats.lastStutterMs.toFixed(2)} ${units.ms}`,
+      stutterPeak: `${stats.maxStutterMs.toFixed(2)} ${units.ms}`,
+    };
+
+    Object.entries(rows).forEach(([key, row]) => {
+      row.value.textContent = formatted[key] || "--";
+    });
+
+    if (this._performanceOverlayTextFallback) {
+      const chartUnavailableLine = (this._performanceOverlayChartEnabled && this._performanceChartFailed)
+        ? `${perfI18n.chartUnavailable}: ${this._performanceChartFallbackReason || "-"}`
+        : null;
+      this._performanceOverlayTextFallback.textContent = [
+        `${labels.fps || "FPS"} ${formatted.fps}`,
+        `${labels.frame || "Frame"} ${formatted.frame}`,
+        `${labels.build || "Build"} ${formatted.build}`,
+        `${labels.draw || "Draw"} ${formatted.draw}`,
+        `${labels.rafLag || "RAF Lag"} ${formatted.rafLag}`,
+        `${labels.scrollV || "ScrollV"} ${formatted.scrollV}`,
+        `${labels.maxFrame || "Max Frame"} ${formatted.maxFrame}`,
+        `${labels.stutterCount || "Stutters"} ${formatted.stutterCount}`,
+        `${labels.stutterLast || "Last Stutter"} ${formatted.stutterLast}`,
+        `${labels.stutterPeak || "Peak Stutter"} ${formatted.stutterPeak}`,
+        chartUnavailableLine,
+      ].filter(Boolean).join("\n");
+      this._performanceOverlayTextFallback.style.display = (
+        this._performanceOverlayChartEnabled
+        && !!this._performanceChart
+        && !this._performanceChartFailed
+      )
+        ? "none"
+        : "block";
+    }
+  }
+
+  _teardownPerformanceOverlay() {
+    if (this._performanceChart) {
+      try {
+        this._performanceChart.dispose();
+      } catch (_) {
+        // ignore
+      }
+    }
+    this._performanceChart = null;
+    this._performanceChartLoadPromise = null;
+    this._performanceChartFailed = false;
+    this._performanceChartFallbackReason = "";
+
+    if (this._performanceOverlayRoot) {
+      this._performanceOverlayRoot.remove();
+    } else if (this._performanceOverlay) {
+      this._performanceOverlay.remove();
+    }
+
+    this._performanceOverlay = null;
+    this._performanceOverlayRoot = null;
+    this._performanceOverlayToggleButton = null;
+    this._performanceOverlayTitleNode = null;
+    this._performanceOverlayHideButton = null;
+    this._performanceOverlayMetricRows = {};
+    this._performanceOverlayTextFallback = null;
+    this._performanceOverlayChartHost = null;
+  }
+
+  _ensurePerformanceChart() {
+    if (
+      !this._performanceOverlayEnabled
+      || !this._performanceOverlayChartEnabled
+      || this._performanceChart
+      || this._performanceChartLoadPromise
+      || !this._performanceOverlayChartHost
+      || this._disposed
+    ) {
+      return;
+    }
+
+    this._performanceChartLoadPromise = loadEchartsFromCdn(this._performanceOverlayChartCdnUrl)
+      .then((echarts) => {
+        this._performanceChartLoadPromise = null;
+        if (
+          !this._performanceOverlayEnabled
+          || !this._performanceOverlayChartHost
+          || !this._performanceOverlayRoot
+          || this._disposed
+        ) {
+          return;
+        }
+        try {
+          this._performanceChart = echarts.init(this._performanceOverlayChartHost, null, { renderer: "canvas" });
+          this._performanceChartFailed = false;
+          this._performanceChartFallbackReason = "";
+          if (this._performanceOverlayChartHost) {
+            this._performanceOverlayChartHost.style.display = "block";
+          }
+          if (this._performanceOverlayTextFallback) {
+            this._performanceOverlayTextFallback.style.display = "none";
+          }
+          this._updatePerformanceChart();
+        } catch (error) {
+          this._performanceChart = null;
+          this._performanceChartFailed = true;
+          this._performanceChartFallbackReason = String(error?.message || error || "");
+          if (this._performanceOverlayChartHost) {
+            this._performanceOverlayChartHost.style.display = "none";
+          }
+          console.warn("SweetEditorWidget performance chart init failed:", error);
+          this._refreshPerformanceOverlayValues();
+        }
+      })
+      .catch((error) => {
+        this._performanceChartLoadPromise = null;
+        this._performanceChartFailed = true;
+        this._performanceChartFallbackReason = String(error?.message || error || "");
+        if (this._performanceOverlayChartHost) {
+          this._performanceOverlayChartHost.style.display = "none";
+        }
+        console.warn("SweetEditorWidget performance chart load failed:", error);
+        this._refreshPerformanceOverlayValues();
+      });
+  }
+
+  _updatePerformanceChart() {
+    if (!this._performanceChart || !this._perfStats) {
+      return;
+    }
+    const perfI18n = this._i18n?.performance || WIDGET_I18N.en.performance;
+    const legend = perfI18n.legend || WIDGET_I18N.en.performance.legend;
+    const units = perfI18n.units || WIDGET_I18N.en.performance.units;
+    const history = Array.isArray(this._perfStats.history) ? this._perfStats.history : [];
+    const fpsData = history.map((entry) => [entry.timestamp, entry.fps]);
+    const frameData = history.map((entry) => [entry.timestamp, entry.frameMs]);
+    const buildData = history.map((entry) => [entry.timestamp, entry.buildMs]);
+    const drawData = history.map((entry) => [entry.timestamp, entry.drawMs]);
+    const rafLagData = history.map((entry) => [entry.timestamp, entry.rafLagMs]);
+    const stutterData = history.map((entry) => [entry.timestamp, entry.stutterMs]);
+
+    this._performanceChart.setOption({
+      animation: false,
+      backgroundColor: "transparent",
+      textStyle: {
+        fontFamily: "Menlo, Consolas, Monaco, monospace",
+        fontSize: 11,
+        color: "#fef3c7",
+      },
+      grid: {
+        top: 24,
+        left: 44,
+        right: 42,
+        bottom: 24,
+      },
+      legend: {
+        top: 0,
+        itemWidth: 10,
+        itemHeight: 6,
+        textStyle: {
+          color: "#fef3c7",
+          fontSize: 10,
+        },
+        data: [legend.fps, legend.frame, legend.build, legend.draw, legend.rafLag, legend.stutter],
+      },
+      tooltip: {
+        trigger: "axis",
+      },
+      xAxis: {
+        type: "time",
+        axisLine: { lineStyle: { color: "rgba(255,255,255,0.22)" } },
+        axisLabel: { color: "#fef3c7", fontSize: 10 },
+        splitLine: { lineStyle: { color: "rgba(255,255,255,0.08)" } },
+      },
+      yAxis: [
+        {
+          type: "value",
+          name: legend.fps,
+          min: 0,
+          axisLine: { lineStyle: { color: "rgba(255,255,255,0.22)" } },
+          axisLabel: { color: "#fef3c7", fontSize: 10 },
+          splitLine: { lineStyle: { color: "rgba(255,255,255,0.08)" } },
+        },
+        {
+          type: "value",
+          name: units.ms,
+          min: 0,
+          axisLine: { lineStyle: { color: "rgba(255,255,255,0.22)" } },
+          axisLabel: { color: "#fef3c7", fontSize: 10 },
+          splitLine: { show: false },
+        },
+      ],
+      series: [
+        {
+          name: legend.fps,
+          type: "line",
+          showSymbol: false,
+          smooth: true,
+          yAxisIndex: 0,
+          lineStyle: { width: 1.5, color: "#ffd400" },
+          data: fpsData,
+        },
+        {
+          name: legend.frame,
+          type: "line",
+          showSymbol: false,
+          smooth: true,
+          yAxisIndex: 1,
+          lineStyle: { width: 1.2, color: "#ff8f5a" },
+          data: frameData,
+        },
+        {
+          name: legend.build,
+          type: "line",
+          showSymbol: false,
+          smooth: true,
+          yAxisIndex: 1,
+          lineStyle: { width: 1.2, color: "#76e4f7" },
+          data: buildData,
+        },
+        {
+          name: legend.draw,
+          type: "line",
+          showSymbol: false,
+          smooth: true,
+          yAxisIndex: 1,
+          lineStyle: { width: 1.2, color: "#98f5a5" },
+          data: drawData,
+        },
+        {
+          name: legend.rafLag,
+          type: "line",
+          showSymbol: false,
+          smooth: true,
+          yAxisIndex: 1,
+          lineStyle: { width: 1.2, color: "#c084fc" },
+          data: rafLagData,
+        },
+        {
+          name: legend.stutter,
+          type: "line",
+          showSymbol: false,
+          smooth: false,
+          yAxisIndex: 1,
+          lineStyle: { width: 1.4, color: "#fb7185" },
+          data: stutterData,
+        },
+      ],
+    }, { notMerge: true, lazyUpdate: true });
+  }
+
+  _startPerformanceMonitor() {
+    if (!this._performanceOverlayEnabled || this._performanceMonitorRafHandle || this._disposed) {
+      return;
+    }
+    this._performanceMonitorLastAt = 0;
+    this._performanceMonitorLastSampleAt = 0;
+    const tick = () => {
+      if (!this._performanceOverlayEnabled || this._disposed) {
+        this._performanceMonitorRafHandle = 0;
+        return;
+      }
+      const now = this._nowMs();
+      const stats = this._perfStats;
+      if (stats && this._performanceMonitorLastAt > 0) {
+        const elapsedMs = Math.max(0.1, now - this._performanceMonitorLastAt);
+        const instantFps = 1000 / elapsedMs;
+        stats.fps = this._smoothValue(stats.fps, instantFps, 0.22);
+        if (elapsedMs >= this._performanceOverlayStutterThresholdMs) {
+          stats.stutterCount += 1;
+          stats.lastStutterMs = elapsedMs;
+          stats.maxStutterMs = Math.max(stats.maxStutterMs, elapsedMs);
+        }
+      }
+      this._performanceMonitorLastAt = now;
+      if (this._performanceMonitorLastSampleAt <= 0) {
+        this._performanceMonitorLastSampleAt = now;
+      }
+      if (now - this._performanceMonitorLastSampleAt >= this._performanceOverlayUpdateIntervalMs) {
+        this._performanceMonitorLastSampleAt = now;
+        this._updatePerformanceOverlay(now);
+      }
+      this._performanceMonitorRafHandle = requestAnimationFrame(tick);
+    };
+    this._performanceMonitorRafHandle = requestAnimationFrame(tick);
+  }
+
+  _stopPerformanceMonitor() {
+    if (this._performanceMonitorRafHandle) {
+      cancelAnimationFrame(this._performanceMonitorRafHandle);
+      this._performanceMonitorRafHandle = 0;
+    }
+    this._performanceMonitorLastAt = 0;
+    this._performanceMonitorLastSampleAt = 0;
+  }
+
   _recordPerformanceSample(sample = {}) {
     if (!this._performanceOverlayEnabled || !this._perfStats) {
       return;
     }
 
     const stats = this._perfStats;
-    const now = this._nowMs();
-    stats.frameCount += 1;
-    if (stats.fpsWindowStartAt <= 0) {
-      stats.fpsWindowStartAt = now;
-    }
-    const fpsWindowElapsed = now - stats.fpsWindowStartAt;
-    if (fpsWindowElapsed >= 1000) {
-      stats.fps = (stats.frameCount * 1000) / fpsWindowElapsed;
-      stats.frameCount = 0;
-      stats.fpsWindowStartAt = now;
-    }
-
     const frameMs = Math.max(0, Number(sample.frameMs) || 0);
     const buildMs = Math.max(0, Number(sample.buildMs) || 0);
     const drawMs = Math.max(0, Number(sample.drawMs) || 0);
@@ -2459,14 +3195,35 @@ export class SweetEditorWidget {
     if (sample.requeued) {
       stats.requeueCount += 1;
     }
+  }
 
-    if (now - stats.lastOverlayUpdatedAt >= this._performanceOverlayUpdateIntervalMs) {
-      this._updatePerformanceOverlay(now);
+  _pushPerformanceHistorySample(now) {
+    if (!this._perfStats) {
+      return;
     }
+    const stats = this._perfStats;
+    const history = Array.isArray(stats.history) ? stats.history : [];
+    const hasNewStutter = stats.stutterCount > stats.sampledStutterCount;
+    if (hasNewStutter) {
+      stats.sampledStutterCount = stats.stutterCount;
+    }
+    history.push({
+      timestamp: now,
+      fps: Number(stats.fps) || 0,
+      frameMs: Number(stats.avgFrameMs) || 0,
+      buildMs: Number(stats.avgBuildMs) || 0,
+      drawMs: Number(stats.avgDrawMs) || 0,
+      rafLagMs: Number(stats.avgRafLagMs) || 0,
+      stutterMs: hasNewStutter ? (Number(stats.lastStutterMs) || 0) : 0,
+    });
+    if (history.length > this._performanceOverlayHistorySize) {
+      history.splice(0, history.length - this._performanceOverlayHistorySize);
+    }
+    stats.history = history;
   }
 
   _updatePerformanceOverlay(now = this._nowMs()) {
-    if (!this._performanceOverlayEnabled || !this._performanceOverlay || !this._perfStats) {
+    if (!this._performanceOverlayEnabled || !this._perfStats) {
       return;
     }
 
@@ -2488,16 +3245,9 @@ export class SweetEditorWidget {
     stats.lastScrollSampleY = scrollY;
     stats.lastScrollSampleAt = now;
     stats.lastOverlayUpdatedAt = now;
-
-    this._performanceOverlay.textContent = [
-      `FPS ${stats.fps.toFixed(1)}`,
-      `Frame ${stats.avgFrameMs.toFixed(2)} ms`,
-      `Build ${stats.avgBuildMs.toFixed(2)} ms`,
-      `Draw ${stats.avgDrawMs.toFixed(2)} ms`,
-      `RAF Lag ${stats.avgRafLagMs.toFixed(2)} ms`,
-      `ScrollV ${stats.scrollSpeedY.toFixed(1)} px/s`,
-      `Max ${stats.maxFrameMs.toFixed(2)} ms`,
-    ].join("\n");
+    this._pushPerformanceHistorySample(now);
+    this._refreshPerformanceOverlayValues();
+    this._updatePerformanceChart();
   }
 
   _debugInputTargetName(target) {
@@ -3261,6 +4011,9 @@ export class SweetEditorWidget {
     this._viewportHeight = rect.height;
     this._syncInputAnchor(null, rect.width, rect.height);
     this._core.setViewport(rect.width, rect.height);
+    if (this._performanceChart && typeof this._performanceChart.resize === "function") {
+      this._performanceChart.resize();
+    }
   }
   _markDirty() {
     if (this._disposed) return;
@@ -3750,7 +4503,7 @@ export class SweetEditorWidget {
 
   _refreshContextMenuLabels() {
     if (!this._contextMenuButtons) return;
-    const labels = this._i18n || CONTEXT_MENU_I18N.en;
+    const labels = this._i18n?.contextMenu || WIDGET_I18N.en.contextMenu;
     Object.entries(this._contextMenuButtons).forEach(([key, button]) => {
       button.textContent = labels[key] || key;
     });

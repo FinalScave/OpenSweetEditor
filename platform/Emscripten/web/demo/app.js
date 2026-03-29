@@ -531,7 +531,7 @@ const completeBtn = document.getElementById("completeBtn");
 const statusText = document.getElementById("statusText");
 
 const wasmVersion = Date.now();
-const locale = (navigator.language || "").toLowerCase().startsWith("zh") ? "zh" : "en";
+const locale = (navigator.language || "").toLowerCase().startsWith("zh") ? "zh-CN" : "en";
 const DEMO_DECORATION_OPTIONS = Object.freeze({
   // `INCREMENTAL`: pass textChanges to provider (provider can do incremental analyze)
   // `FULL`: force full analyze on every text change
@@ -556,11 +556,21 @@ const editor = await createSweetEditor(host, {
   modulePath: `../../../../build/wasm/bin/sweeteditor.js?v=${wasmVersion}`,
   locale,
   text: initialText,
+  performanceOverlay: {
+    enabled: true,
+    visible: true,
+    stutterThresholdMs: 50,
+    chart: {
+      enabled: true,
+    },
+  },
   decorationOptions: {
     ...DEMO_DECORATION_OPTIONS,
     ...initialDecorationRuntimeOptions,
   },
 });
+editor.setPerformanceOverlayEnabled(true);
+editor.setPerformanceOverlayVisible(true);
 
 registerDemoStyles(editor);
 editor.setContentStartPadding(5);

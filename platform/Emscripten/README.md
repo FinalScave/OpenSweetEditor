@@ -98,7 +98,19 @@ index.js            # Entry point (optional)
           cursor: '#ffffff',
           selection: 'rgba(90,140,255,0.30)',
         },
-        locale: 'en'  // or 'zh' for Chinese context menu
+        locale: 'en', // or 'zh-CN'
+        // Performance overlay is disabled by default for better runtime performance.
+        performanceOverlay: {
+          enabled: true,
+          visible: true,
+          updateIntervalMs: 250,
+          stutterThresholdMs: 50,
+          chart: {
+            enabled: true,
+            // Optional CDN override:
+            // cdnUrl: 'https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js',
+          },
+        },
       }
     );
 
@@ -108,6 +120,17 @@ index.js            # Entry point (optional)
 </body>
 </html>
 ```
+
+### Performance Overlay Behavior
+
+- `performanceOverlay` is **disabled by default** in the widget to avoid extra runtime overhead.
+- The demo app enables it explicitly.
+- Runtime controls:
+  - `editor.setPerformanceOverlayEnabled(enabled)`
+  - `editor.isPerformanceOverlayEnabled()`
+  - `editor.setPerformanceOverlayVisible(visible)`
+  - `editor.isPerformanceOverlayVisible()`
+  - `editor.getPerformanceStats()`
 
 ## API Overview
 

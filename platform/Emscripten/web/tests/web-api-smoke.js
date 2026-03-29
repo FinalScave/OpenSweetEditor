@@ -36,6 +36,10 @@ function waitTimerTick() {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
+function waitMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function makeKeyEvent(key, overrides = {}) {
   const event = {
     key,
@@ -140,13 +144,42 @@ export async function runWebApiSmoke(editor) {
     "applyTheme",
     "getTheme",
     "setEditorIconProvider",
+    "setPerformanceOverlayEnabled",
+    "isPerformanceOverlayEnabled",
+    "setPerformanceOverlayVisible",
+    "isPerformanceOverlayVisible",
+    "getPerformanceStats",
   ];
   requiredMethods.forEach((name) => {
     assert(typeof editor[name] === "function", `missing method: ${name}`);
   });
 
-  assert(!!editor._performanceOverlay, "performance overlay not mounted");
-  assert(editor._performanceOverlay.style.pointerEvents === "none", "performance overlay should not block input");
+  assert(!editor._performanceOverlay, "performance overlay should be disabled by default");
+  assert(editor.isPerformanceOverlayEnabled() === false, "performance overlay should default to disabled");
+
+  editor.setPerformanceOverlayEnabled(true);
+  assert(editor.isPerformanceOverlayEnabled() === true, "performance overlay should be enabled");
+  await waitFrame();
+  await waitFrame();
+  await waitFrame();
+  assert(!!editor._performanceOverlay, "performance overlay not mounted after enabling");
+
+  editor.setPerformanceOverlayVisible(false);
+  assert(editor.isPerformanceOverlayVisible() === false, "performance overlay should be hidden");
+  assert(editor._performanceOverlay.style.display === "none", "performance panel should be hidden");
+  assert(!!editor._performanceOverlayToggleButton, "performance open button missing");
+  assert(editor._performanceOverlayToggleButton.style.display !== "none", "performance open button should be visible");
+
+  editor.setPerformanceOverlayVisible(true);
+  assert(editor.isPerformanceOverlayVisible() === true, "performance overlay should be visible");
+  assert(editor._performanceOverlay.style.display !== "none", "performance panel should be visible");
+  assert(editor._performanceOverlayToggleButton.style.display === "none", "performance open button should be hidden");
+
+  await waitMs(320);
+  const perfStats = editor.getPerformanceStats();
+  assert(Number.isFinite(perfStats.fps) && perfStats.fps > 0, "performance FPS should be greater than zero when idle");
+  assert(Array.isArray(perfStats.history) && perfStats.history.length > 0, "performance history should be sampled");
+  assert(perfStats.stutterThresholdMs === 50, "stutter threshold default mismatch");
 
   const eventCounters = Object.create(null);
   const subs = [];
