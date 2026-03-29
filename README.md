@@ -177,7 +177,6 @@ See [Contributing Guide](docs/en/join.md) for details.
     <td width="33%" valign="top" align="center">
       <strong>Discord</strong><br><br>
       <a href="https://discord.gg/q5u4tGMgKQ" target="_blank">Join Discord</a>
-
     </td>
     <td width="33%" valign="top" align="center">
       <strong>QQ</strong><br><br>

@@ -98,7 +98,7 @@ npx serve .
 <body>
   <div id="editor-container"></div>
   <script type="module">
-    import { createSweetEditor, DocumentFactory } from './index.js';
+    import { createSweetEditor } from './index.js';
 
     const editor = await createSweetEditor(
       document.getElementById('editor-container'),
@@ -114,8 +114,7 @@ npx serve .
       }
     );
 
-    const doc = DocumentFactory.createLineArrayDocument('Hello, SweetEditor Web!');
-    editor.loadDocument(doc);
+    editor.loadText('Hello, SweetEditor Web!', { kind: 'line-array' });
   </script>
 </body>
 </html>
@@ -153,8 +152,9 @@ async function createSweetEditor(container, options = {})
 #### 文档与外观
 
 ```javascript
-async loadDocument(document)
-getDocument()
+loadText(text, options = {})   // options.kind: 'piece-table' | 'line-array'
+getText()
+getDocumentFactory()
 applyTheme(theme)
 getTheme()
 setScale(scale)
@@ -162,24 +162,18 @@ setWrapMode(mode)          // 'NONE' | 'CHAR_BREAK' | 'WORD_BREAK'
 setReadOnly(readOnly)
 isReadOnly()
 setAutoIndentMode(mode)    // 'NONE' | 'KEEP_INDENT'
+getAutoIndentMode()
 setLineSpacing(add, mult)
-setFoldArrowMode(mode)     // 'AUTO' | 'ALWAYS' | 'HIDDEN'
+setContentStartPadding(padding)
+getContentStartPadding()
 ```
 
-#### 文本编辑 / 行操作 / 撤销重做
+#### 文本编辑 / 撤销重做
 
 ```javascript
 insertText(text)
 replaceText(range, newText)
 deleteText(range)
-
-moveLineUp()
-moveLineDown()
-copyLineUp()
-copyLineDown()
-deleteLine()
-insertLineAbove()
-insertLineBelow()
 
 undo()
 redo()
@@ -196,20 +190,21 @@ getCursorPosition()
 setCursorPosition(position)
 setSelection(start, end)
 getSelection()
+getSelectionRange()
 hasSelection()
 clearSelection()
-gotoPosition(line, column)
+gotoPosition(line, column)     // alias: goto(line, column)
 scrollToLine(line, behavior)
 setScroll(scrollX, scrollY)
 getScrollMetrics()
-getWordRangeAtCursor()
-getWordAtCursor()
+getPositionRect(line, column)
+getCursorRect()
 ```
 
 #### 样式 / 装饰
 
 ```javascript
-registerStyle(styleId, color, backgroundColor, fontStyle)
+registerTextStyle(styleId, color, backgroundColor, fontStyle)
 setLineSpans(line, layer, spans)
 setBatchLineSpans(layer, spansByLine)
 
@@ -271,10 +266,13 @@ unsubscribe(eventType, listener)
 - `SelectionChanged`
 - `ScrollChanged`
 - `ScaleChanged`
+- `LongPress`
+- `DoubleTap`
 - `ContextMenu`
 - `InlayHintClick`
 - `GutterIconClick`
 - `FoldToggle`
+- `DocumentLoaded`
 
 #### 扩展提供者
 
@@ -282,6 +280,7 @@ unsubscribe(eventType, listener)
 addDecorationProvider(provider)
 removeDecorationProvider(provider)
 requestDecorationRefresh()
+addSweetLineDecorationProvider(options)
 
 addCompletionProvider(provider)
 removeCompletionProvider(provider)
@@ -301,16 +300,23 @@ WASM `EditorCore` 类的底层封装。为编辑、选区、光标、滚动、�
 
 ```javascript
 // 工厂方法
-DocumentFactory.createLineArrayDocument(text)
-DocumentFactory.createPieceTableDocument(text)
+const factory = editor.getDocumentFactory();
+factory.fromText(text, { kind: 'piece-table' }) // default
+factory.fromText(text, { kind: 'line-array' })
+factory.fromPieceTable(text)
+factory.fromLineArray(text)
 
 // 文档实例方法
-document.getU8Text()
+document.getText()
 document.getLineCount()
-document.getLineColumns(line)
+document.getLineText(line)
 document.getPositionFromCharIndex(index)
 document.getCharIndexFromPosition(position)
+document.dispose()
 ```
+
+优先使用 `editor.loadText(...)` 进行高层加载。
+仅在低层流程中使用 `editor.getCore().loadDocument(document)`。
 
 ## 关键类型
 
