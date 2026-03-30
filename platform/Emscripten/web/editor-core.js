@@ -2084,6 +2084,29 @@ function extractSingleLineStyleSpan(token) {
   };
 }
 
+function extractStyleSpansFromLineHighlight(lineHighlight, expectedLine = null) {
+  const out = [];
+  if (!lineHighlight) {
+    return out;
+  }
+  iterateNativeList(lineHighlight.spans, (token) => {
+    const span = extractSingleLineStyleSpan(token);
+    if (!span) {
+      return;
+    }
+    if (expectedLine != null && span.line !== expectedLine) {
+      return;
+    }
+    out.push({
+      column: span.column,
+      length: span.length,
+      styleId: span.styleId,
+    });
+  });
+  out.sort((a, b) => a.column - b.column);
+  return out;
+}
+
 function withSweetLineTextRange(sweetLine, range, fn) {
   const slRange = new sweetLine.TextRange();
   const start = new sweetLine.TextPosition();
@@ -2125,6 +2148,17 @@ export class SweetLineIncrementalDecorationProvider extends DecorationProvider {
     this._cacheHighlight = null;
     this._analysisReady = false;
     this._analyzedFileName = "";
+    this._textAnalyzer = null;
+    this._lineInfo = null;
+    this._lineAnalyzeTimer = 0;
+    this._lineAnalyzeJobId = 0;
+    this._lineAnalyzeTargetRange = { start: 0, end: -1 };
+    this._lineAnalyzeCursor = 0;
+    this._lineAnalyzeCursorState = 0;
+    this._lineAnalyzeCursorOffset = 0;
+    this._lineStartStates = [0];
+    this._lineStartOffsets = [0];
+    this._lineSpanCache = new Map();
 
     const maxRenderLinesValue = Number(options.maxRenderLinesPerPass);
     this._maxRenderLinesPerPass = Number.isFinite(maxRenderLinesValue)
@@ -2149,6 +2183,26 @@ export class SweetLineIncrementalDecorationProvider extends DecorationProvider {
       ? options.getDocumentText
       : null;
     this._syncSourceOnTextChange = options.syncSourceOnTextChange !== false;
+    this._lineAnalyzeChunkBudgetMs = Math.max(
+      1,
+      Number.isFinite(Number(options.lineAnalyzeChunkBudgetMs))
+        ? Number(options.lineAnalyzeChunkBudgetMs)
+        : 6,
+    );
+    this._lineAnalyzeChunkMaxLines = Math.max(
+      1,
+      toInt(options.lineAnalyzeChunkMaxLines, 160),
+    );
+    this._lazyPrefetchMultiplier = Math.max(
+      1,
+      Number.isFinite(Number(options.lazyPrefetchMultiplier))
+        ? Number(options.lazyPrefetchMultiplier)
+        : 1.75,
+    );
+    this._lineAnalyzeNoChunkLineThreshold = Math.max(
+      1,
+      toInt(options.lineAnalyzeNoChunkLineThreshold, 2000),
+    );
 
     this.setDocumentSource(
       options.fileName ?? options.sourceFileName ?? this._defaultFileName,
@@ -2171,6 +2225,7 @@ export class SweetLineIncrementalDecorationProvider extends DecorationProvider {
   setDocumentSource(fileName, text) {
     this._sourceFileName = String(fileName || this._defaultFileName);
     this._setSourceText(text);
+    this._resetLineAnalyzeState();
     this._disposeAnalyzer();
   }
 
@@ -2189,20 +2244,17 @@ export class SweetLineIncrementalDecorationProvider extends DecorationProvider {
     const fileChanged = resolvedFileName !== this._analyzedFileName;
     this._sourceFileName = resolvedFileName;
 
-    if ((fileChanged || !this._documentAnalyzer || !this._analysisReady) && this._getDocumentText) {
+    if ((fileChanged || !this._analysisReady) && this._getDocumentText) {
       this._syncSourceFromDocument();
     } else if (changes.length > 0) {
       this._applyTextChanges(changes);
     }
 
-    if (fileChanged || !this._documentAnalyzer || !this._analysisReady) {
-      if (!this._tryRebuildAnalyzer(resolvedFileName)) {
-        return;
-      }
-    } else if (changes.length > 0) {
-      if (!this._tryAnalyzeIncremental(changes, resolvedFileName)) {
-        return;
-      }
+    if (!this._ensureTextAnalyzer(resolvedFileName, fileChanged)) {
+      return;
+    }
+    if (changes.length > 0) {
+      this._invalidateLineAnalyzeByChanges(changes);
     }
 
     const totalLineCount = Math.max(
@@ -2215,11 +2267,21 @@ export class SweetLineIncrementalDecorationProvider extends DecorationProvider {
       return;
     }
 
-    const syntaxSpans = this._collectSyntaxSpans(visibleRange);
+    const analyzeRange = this._buildLazyAnalyzeRange(visibleRange, totalLineCount);
+    const shouldBypassChunkAnalyze = totalLineCount > 0
+      && totalLineCount < this._lineAnalyzeNoChunkLineThreshold;
+    if (shouldBypassChunkAnalyze) {
+      this._cancelPendingLineAnalyze();
+      this._analyzeLineRangeSynchronously(0, totalLineCount - 1);
+    }
+    const syntaxSpans = this._collectCachedSyntaxSpans(analyzeRange);
     receiver.accept(new DecorationResult({
       syntaxSpans,
-      syntaxSpansMode: this._syntaxSpansMode,
+      syntaxSpansMode: DecorationApplyMode.REPLACE_RANGE,
     }));
+    if (!shouldBypassChunkAnalyze) {
+      this._scheduleLineAnalyze(analyzeRange, receiver);
+    }
 
     if (!this._decorate) {
       return;
@@ -2271,6 +2333,273 @@ export class SweetLineIncrementalDecorationProvider extends DecorationProvider {
       totalLineCount,
       this._maxRenderLinesPerPass,
     );
+  }
+
+  _buildLazyAnalyzeRange(visibleRange, totalLineCount) {
+    const start = Math.max(0, toInt(visibleRange?.start, 0));
+    const end = Math.max(start - 1, toInt(visibleRange?.end, start - 1));
+    if (end < start) {
+      return { start, end };
+    }
+    const lineCount = end - start + 1;
+    const targetLineCount = Math.max(1, Math.ceil(lineCount * this._lazyPrefetchMultiplier));
+    const extraLineCount = Math.max(0, targetLineCount - lineCount);
+    const extraTop = Math.floor(extraLineCount / 2);
+    const extraBottom = extraLineCount - extraTop;
+    return clampVisibleLineRange(
+      start - extraTop,
+      end + extraBottom,
+      totalLineCount,
+      this._maxRenderLinesPerPass,
+    );
+  }
+
+  _resolveAnalyzerExtension(fileName) {
+    const name = String(fileName || "");
+    const dot = name.lastIndexOf(".");
+    if (dot <= 0 || dot >= name.length - 1) {
+      return "";
+    }
+    return `.${name.slice(dot + 1).toLowerCase()}`;
+  }
+
+  _ensureTextAnalyzer(fileName, fileChanged) {
+    if (!fileChanged && this._analysisReady && this._textAnalyzer && this._lineInfo) {
+      return true;
+    }
+
+    this._resetLineAnalyzeState();
+    safeDeleteNativeHandle(this._textAnalyzer);
+    safeDeleteNativeHandle(this._lineInfo);
+    this._textAnalyzer = null;
+    this._lineInfo = null;
+
+    const extension = this._resolveAnalyzerExtension(fileName);
+    let analyzer = null;
+    if (extension && typeof this._highlightEngine?.createAnalyzerByExtension === "function") {
+      analyzer = safeCall(() => this._highlightEngine.createAnalyzerByExtension(extension));
+    }
+    if (!analyzer && extension && typeof this._highlightEngine?.createAnalyzerByName === "function") {
+      const syntaxName = extension.startsWith(".") ? extension.slice(1) : extension;
+      analyzer = safeCall(() => this._highlightEngine.createAnalyzerByName(syntaxName));
+    }
+    if (!analyzer) {
+      this._analysisReady = false;
+      return false;
+    }
+
+    this._textAnalyzer = analyzer;
+    this._lineInfo = new this._sweetLine.TextLineInfo();
+    this._analysisReady = true;
+    this._analyzedFileName = String(fileName || this._defaultFileName);
+    this._cacheHighlight = null;
+    return true;
+  }
+
+  _resetLineAnalyzeState() {
+    if (this._lineAnalyzeTimer) {
+      clearTimeout(this._lineAnalyzeTimer);
+      this._lineAnalyzeTimer = 0;
+    }
+    this._lineAnalyzeJobId += 1;
+    this._lineAnalyzeTargetRange = { start: 0, end: -1 };
+    this._lineAnalyzeCursor = 0;
+    this._lineAnalyzeCursorState = 0;
+    this._lineAnalyzeCursorOffset = 0;
+    this._lineStartStates = [0];
+    this._lineStartOffsets = [0];
+    this._lineSpanCache.clear();
+  }
+
+  _invalidateLineAnalyzeByChanges(changes) {
+    if (!changes || changes.length === 0) {
+      return;
+    }
+    let startLine = Number.POSITIVE_INFINITY;
+    changes.forEach((change) => {
+      const line = toInt(change?.range?.start?.line, Number.POSITIVE_INFINITY);
+      if (Number.isFinite(line) && line < startLine) {
+        startLine = line;
+      }
+    });
+    if (!Number.isFinite(startLine)) {
+      startLine = 0;
+    }
+    this._invalidateLineAnalyzeFromLine(startLine);
+  }
+
+  _invalidateLineAnalyzeFromLine(line) {
+    const lineNo = Math.max(0, toInt(line, 0));
+    const clamped = Math.min(lineNo, this._sourceLines.length);
+    this._lineAnalyzeCursor = Math.min(this._lineAnalyzeCursor, clamped);
+    this._lineAnalyzeCursorState = toInt(
+      this._lineStartStates[this._lineAnalyzeCursor],
+      this._lineAnalyzeCursor === 0 ? 0 : this._lineAnalyzeCursorState,
+    );
+    this._lineAnalyzeCursorOffset = toInt(
+      this._lineStartOffsets[this._lineAnalyzeCursor],
+      this._lineAnalyzeCursor === 0 ? 0 : this._lineAnalyzeCursorOffset,
+    );
+    this._lineStartStates.length = Math.max(1, Math.min(this._lineStartStates.length, clamped + 1));
+    this._lineStartOffsets.length = Math.max(1, Math.min(this._lineStartOffsets.length, clamped + 1));
+    for (const key of Array.from(this._lineSpanCache.keys())) {
+      if (key >= clamped) {
+        this._lineSpanCache.delete(key);
+      }
+    }
+  }
+
+  _scheduleLineAnalyze(range, receiver) {
+    if (!this._textAnalyzer || !this._lineInfo || !receiver) {
+      return;
+    }
+    const start = Math.max(0, toInt(range?.start, 0));
+    const end = Math.max(start - 1, toInt(range?.end, start - 1));
+    if (end < start) {
+      return;
+    }
+    this._lineAnalyzeTargetRange = { start, end };
+    this._lineAnalyzeJobId += 1;
+    const jobId = this._lineAnalyzeJobId;
+    if (this._lineAnalyzeTimer) {
+      clearTimeout(this._lineAnalyzeTimer);
+      this._lineAnalyzeTimer = 0;
+    }
+    this._lineAnalyzeTimer = setTimeout(() => {
+      this._lineAnalyzeTimer = 0;
+      this._runLineAnalyzeChunk(jobId, receiver);
+    }, 0);
+  }
+
+  _cancelPendingLineAnalyze() {
+    if (this._lineAnalyzeTimer) {
+      clearTimeout(this._lineAnalyzeTimer);
+      this._lineAnalyzeTimer = 0;
+    }
+    this._lineAnalyzeJobId += 1;
+  }
+
+  _analyzeLineRangeSynchronously(startLine, endLine) {
+    const totalLines = Math.max(0, this._sourceLines.length);
+    if (totalLines <= 0) {
+      return 0;
+    }
+    const start = Math.max(0, toInt(startLine, 0));
+    const end = Math.min(totalLines - 1, Math.max(start - 1, toInt(endLine, start - 1)));
+    if (end < start) {
+      return 0;
+    }
+    this._invalidateLineAnalyzeFromLine(start);
+    let processed = 0;
+    while (this._lineAnalyzeCursor <= end) {
+      if (!this._analyzeOneLineAtCursor()) {
+        break;
+      }
+      processed += 1;
+    }
+    return processed;
+  }
+
+  _runLineAnalyzeChunk(jobId, receiver) {
+    if (jobId !== this._lineAnalyzeJobId || !receiver || receiver.isCancelled) {
+      return;
+    }
+    if (!this._textAnalyzer || !this._lineInfo) {
+      return;
+    }
+
+    const totalLines = Math.max(0, this._sourceLines.length);
+    const targetEnd = Math.min(totalLines - 1, Math.max(-1, toInt(this._lineAnalyzeTargetRange.end, -1)));
+    if (targetEnd < 0 || this._lineAnalyzeCursor > targetEnd) {
+      return;
+    }
+
+    const budgetMs = this._lineAnalyzeChunkBudgetMs;
+    const maxLines = this._lineAnalyzeChunkMaxLines;
+    const chunkStartTime = performance.now();
+    let processed = 0;
+
+    while (this._lineAnalyzeCursor <= targetEnd && processed < maxLines) {
+      if (processed > 0 && (performance.now() - chunkStartTime) >= budgetMs) {
+        break;
+      }
+      if (!this._analyzeOneLineAtCursor()) {
+        break;
+      }
+      processed += 1;
+    }
+
+    if (processed > 0 && !receiver.isCancelled) {
+      receiver.accept(new DecorationResult({
+        syntaxSpans: this._collectCachedSyntaxSpans(this._lineAnalyzeTargetRange),
+        syntaxSpansMode: DecorationApplyMode.REPLACE_RANGE,
+      }));
+    }
+
+    if (!receiver.isCancelled && jobId === this._lineAnalyzeJobId && this._lineAnalyzeCursor <= targetEnd) {
+      this._lineAnalyzeTimer = setTimeout(() => {
+        this._lineAnalyzeTimer = 0;
+        this._runLineAnalyzeChunk(jobId, receiver);
+      }, 0);
+    }
+  }
+
+  _analyzeOneLineAtCursor() {
+    const line = this._lineAnalyzeCursor;
+    if (line < 0 || line >= this._sourceLines.length) {
+      return false;
+    }
+    const text = String(this._sourceLines[line] ?? "");
+    const info = this._lineInfo;
+    info.line = line;
+    info.startState = toInt(this._lineAnalyzeCursorState, 0);
+    info.startCharOffset = Math.max(0, toInt(this._lineAnalyzeCursorOffset, 0));
+
+    let result = null;
+    try {
+      result = this._textAnalyzer.analyzeLine(text, info);
+      const spans = extractStyleSpansFromLineHighlight(result?.highlight, line);
+      this._lineSpanCache.set(line, spans);
+
+      const nextState = toInt(result?.endState, info.startState);
+      const charCount = Math.max(0, toInt(result?.charCount, text.length));
+      const nextOffset = info.startCharOffset + charCount + 1;
+      this._lineStartStates[line + 1] = nextState;
+      this._lineStartOffsets[line + 1] = nextOffset;
+      this._lineAnalyzeCursor += 1;
+      this._lineAnalyzeCursorState = nextState;
+      this._lineAnalyzeCursorOffset = nextOffset;
+      return true;
+    } catch (error) {
+      console.error("SweetLine line analyze failed:", error);
+      return false;
+    } finally {
+      safeDeleteNativeHandle(result);
+    }
+  }
+
+  _collectCachedSyntaxSpans(visibleRange) {
+    const out = new Map();
+    const startLine = Math.max(0, toInt(visibleRange?.start, 0));
+    const endLine = Math.max(startLine - 1, toInt(visibleRange?.end, startLine - 1));
+    if (endLine < startLine) {
+      return out;
+    }
+    for (let line = startLine; line <= endLine; line += 1) {
+      if (!this._lineSpanCache.has(line)) {
+        continue;
+      }
+      const spans = this._lineSpanCache.get(line) || [];
+      out.set(
+        line,
+        spans.map((span) => ({
+          column: span.column,
+          length: span.length,
+          styleId: span.styleId,
+        })),
+      );
+    }
+    return out;
   }
 
   _setSourceText(text) {
@@ -2375,12 +2704,28 @@ export class SweetLineIncrementalDecorationProvider extends DecorationProvider {
   }
 
   _disposeAnalyzer() {
+    if (this._lineAnalyzeTimer) {
+      clearTimeout(this._lineAnalyzeTimer);
+      this._lineAnalyzeTimer = 0;
+    }
     safeDeleteNativeHandle(this._cacheHighlight);
     safeDeleteNativeHandle(this._documentAnalyzer);
     safeDeleteNativeHandle(this._analysisDocument);
+    safeDeleteNativeHandle(this._textAnalyzer);
+    safeDeleteNativeHandle(this._lineInfo);
     this._cacheHighlight = null;
     this._documentAnalyzer = null;
     this._analysisDocument = null;
+    this._textAnalyzer = null;
+    this._lineInfo = null;
+    this._lineAnalyzeJobId += 1;
+    this._lineAnalyzeTargetRange = { start: 0, end: -1 };
+    this._lineAnalyzeCursor = 0;
+    this._lineAnalyzeCursorState = 0;
+    this._lineAnalyzeCursorOffset = 0;
+    this._lineStartStates = [0];
+    this._lineStartOffsets = [0];
+    this._lineSpanCache.clear();
     this._analysisReady = false;
     this._analyzedFileName = "";
   }
