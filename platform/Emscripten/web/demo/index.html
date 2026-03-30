@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OpenSweetEditor Web Demo</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #101214; color: #e5e7eb; font-family: ui-sans-serif, system-ui; }
+    .layout { display: grid; grid-template-rows: auto 1fr; height: 100%; }
+    .toolbar { display: flex; align-items: center; gap: 8px; padding: 10px; border-bottom: 1px solid #2a2f36; }
+    .toolbar button,
+    .toolbar select {
+      background: #1f2937;
+      color: #f3f4f6;
+      border: 1px solid #374151;
+      padding: 6px 10px;
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    .toolbar label { color: #9ca3af; font-size: 13px; margin-right: -2px; }
+    .status { margin-left: auto; color: #9ca3af; font-size: 13px; }
+    .editor-host { height: 100%; }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <div class="toolbar">
+    <label for="fileSelect">File</label>
+    <select id="fileSelect"></select>
+    <button id="openLocalBtn" type="button">Open Local</button>
+    <input id="localFileInput" type="file" accept=".txt,.java,.kt,.kts,.lua,.c,.cc,.cpp,.cxx,.h,.hpp,.m,.mm,.js,.ts,.json,.xml,.html,.css,.md,.py,.go,.rs,.swift,.cs,.sh,.bat,.ps1" style="display:none" />
+    <button id="undoBtn">Undo</button>
+    <button id="redoBtn">Redo</button>
+    <button id="completeBtn">Complete</button>
+    <span id="statusText" class="status">Ready</span>
+  </div>
+  <div id="editor" class="editor-host"></div>
+</div>
+  <script type="module" src="./app.js?v=20260326_27"></script>
+</body>
+</html>

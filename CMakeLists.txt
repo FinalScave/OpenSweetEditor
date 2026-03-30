@@ -39,6 +39,8 @@ list(APPEND INCLUDE_DIRS
 
 # platform special
 set(PLATFORM_FILES)
+set(WASM_BINDING_FILE)
+set(WASM_TARGET_NAME sweeteditor_wasm)
 if (ANDROID)
     file(GLOB_RECURSE PLATFORM_FILES ${CMAKE_PROJECT_DIR}/platform/Android/sweeteditor/src/main/cpp/*.*)
     list(APPEND INCLUDE_DIRS ${CMAKE_PROJECT_DIR}/platform/Android/sweeteditor/src/main/cpp)
@@ -57,26 +59,21 @@ elseif (APPLE)
     endif()
 elseif (EMSCRIPTEN)
     add_definitions(-DWASM)
-    set(BUILD_STATIC_LIB ON)
-    #file(GLOB_RECURSE WASM_FILES ${CMAKE_PROJECT_DIR}/platform/Emscripten/*.*)
-    message(STATUS "add target: libsweeteditor for wasm")
-    add_executable("libsweeteditor" ${WASM_FILES})
-    target_link_libraries("libsweeteditor" PRIVATE ${CMAKE_PROJECT_NAME}
-            "--bind"
-            "-s WASM=1"
-            "-s MODULARIZE=1"
-            "-s EXPORT_NAME='libsweeteditor'"
-            "-s EXPORT_ES6=1"
-            "-s FORCE_FILESYSTEM=1"
-            "-s ALLOW_MEMORY_GROWTH=1"
-            "-s EXPORTED_RUNTIME_METHODS=[\"FS\"]"
-    )
+    set(BUILD_SHARED_LIB OFF)
+    set(BUILD_STATIC_LIB OFF)
+    set(BUILD_TESTING OFF)
+    set(WASM_BINDING_FILE ${CMAKE_PROJECT_DIR}/platform/Emscripten/sweeteditor_bindings.cpp)
 elseif (UNIX AND NOT APPLE)
     add_definitions(-DLINUX)
 endif ()
 
 include_directories(${INCLUDE_DIRS})
 file(GLOB_RECURSE CORE_SOURCE_FILES ${SRC_DIR}/core/*.*)
+
+if (EMSCRIPTEN)
+    message(STATUS "add target: ${WASM_TARGET_NAME} for wasm")
+    add_executable(${WASM_TARGET_NAME} ${CORE_SOURCE_FILES} ${WASM_BINDING_FILE})
+endif ()
 
 # project shared/static lib
 if (BUILD_SHARED_LIB)
@@ -170,6 +167,23 @@ if (BUILD_STATIC_LIB)
     include(scripts/MergeStaticLib.cmake)
     get_target_property(SIMDUTF_PATH simdutf IMPORTED_LOCATION)
     merge_static_libs(${STATIC_LIB_NAME} ${SIMDUTF_PATH})
+endif ()
+if (EMSCRIPTEN)
+    target_link_libraries(${WASM_TARGET_NAME} PRIVATE ${LINK_LIB})
+    target_link_options(${WASM_TARGET_NAME} PRIVATE
+            "--bind"
+            "-O3"
+            "-sWASM=1"
+            "-sMODULARIZE=1"
+            "-sEXPORT_ES6=1"
+            "-sALLOW_MEMORY_GROWTH=1"
+            "-sENVIRONMENT=web"
+            "-sEXPORT_NAME=createSweetEditorModule"
+    )
+    set_target_properties(${WASM_TARGET_NAME} PROPERTIES
+            OUTPUT_NAME "sweeteditor"
+            SUFFIX ".js"
+    )
 endif ()
 
 # Unit tests

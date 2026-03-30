@@ -9,18 +9,19 @@
 - [Apple 平台 API](./api-platform-apple.md)
 - [WinForms 平台 API](./api-platform-winforms.md)
 - [OHOS 平台 API](./api-platform-ohos.md)
+- [Web 平台 API](./api-platform-web.md)
 - [C++ 核心 / C API](./api-editor-core.md)
 
 ## 当前平台状态
 
 | 平台 | 桥接方式 | 状态 | 说明 |
 |---|---|---|---|
-| Android | JNI 直连 C++（`jni_entry.cpp` + `jeditor.hpp`） | ✅ 已接入 | 主路径不经过 `c_api.h`，但复杂返回值仍走 binary payload 解码 |
-| Swing | Java FFM -> C API | ✅ 已接入 | 消费 binary payload |
-| WinForms | P/Invoke -> C API | ✅ 已接入 | 消费 binary payload |
-| Apple | Swift Package + 手工 C bridge | ✅ 已接入 | 主要消费 binary payload；bridge header 与 `c_api.h` 仍需显式对照 |
-| OHOS | ArkTS NAPI 直连共享 C++（`libsweeteditor.so`） | ✅ 已接入 | `EditorCore.ets` + `EditorProtocol.ets` 在 ArkTS 侧解码 binary payload |
-| Web (Emscripten) | 预留目录 | 🚧 未接入 | `platform/Emscripten/sweeteditor_bindings.cpp` 当前为空 |
+| Android | JNI 直连 C++ (`jni_entry.cpp` + `jeditor.hpp`) | ✅ 活跃 | 不经过 `c_api.h` 主路径，但复杂返回仍解码 binary payload |
+| Swing | Java FFM -> C API | ✅ 活跃 | 消费二进制 payload |
+| WinForms | P/Invoke -> C API | ✅ 活跃 | 消费二进制 payload |
+| Apple | Swift Package + 手工 C bridge | ✅ 活跃 | 主要消费二进制 payload；bridge header 与 `c_api.h` 需显式校对 |
+| OHOS | ArkTS NAPI 直连共享 C++ (`libsweeteditor.so`) | ✅ 活跃 | `EditorCore.ets` + `EditorProtocol.ets` 在 ArkTS 侧解码 binary payload |
+| Web (Emscripten) | Emscripten embind | 🚧 测试中 | 存在已知问题，暂无 CDN/NPM 包。详见 [Web 平台 API](./api-platform-web.md) |
 
 ## 当前平台层约定
 

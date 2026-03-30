@@ -1,0 +1,166 @@
+{
+  "name": "lua",
+  "fileExtensions": [".lua"],
+  "variables": {
+    "identifier": "[a-zA-Z_]\\w*",
+    "whiteSpace": "[ \\t\\f]",
+    "any": "[\\S\\s]"
+  },
+  "states": {
+    "default": [
+      {
+        "pattern": "\\b(function)\\b${whiteSpace}+(${identifier})(::?)(${identifier})${whiteSpace}*(\\()",
+        "styles": [1, "keyword", 2, "class", 3, "punctuation", 4, "method", 5, "punctuation"],
+        "state": "funcParams"
+      },
+      {
+        "pattern": "\\b(function)\\b${whiteSpace}+(${identifier}(?:\\.${identifier})*)${whiteSpace}*(\\()",
+        "styles": [1, "keyword", 2, "method", 3, "punctuation"],
+        "state": "funcParams"
+      },
+      {
+        "pattern": "\\b(local)\\b${whiteSpace}+(function)\\b${whiteSpace}+(${identifier})${whiteSpace}*(\\()",
+        "styles": [1, "keyword", 2, "keyword", 3, "method", 4, "punctuation"],
+        "state": "funcParams"
+      },
+      {
+        "pattern": "\\b(function)\\b${whiteSpace}*(\\()",
+        "styles": [1, "keyword", 2, "punctuation"],
+        "state": "funcParams"
+      },
+      {
+        "pattern": "\\b(local)\\b${whiteSpace}+(${identifier})${whiteSpace}*([;=,])",
+        "styles": [1, "keyword", 2, "variable", 3, "punctuation"]
+      },
+      {
+        "pattern": "\\b(local)\\b${whiteSpace}+(${identifier})",
+        "styles": [1, "keyword", 2, "variable"]
+      },
+      {
+        "pattern": "\\b(and|break|do|else|elseif|end|for|function|goto|if|in|local|not|or|repeat|return|then|until|while)\\b",
+        "styles": [1, "keyword"]
+      },
+      {
+        "pattern": "\\b(true|false|nil)\\b",
+        "styles": [1, "builtin"]
+      },
+      {
+        "pattern": "\\b(assert|collectgarbage|dofile|error|getmetatable|ipairs|load|loadfile|next|pairs|pcall|print|rawequal|rawget|rawlen|rawset|require|select|setmetatable|tonumber|tostring|type|unpack|xpcall)\\b${whiteSpace}*(\\()",
+        "styles": [1, "builtin", 2, "punctuation"]
+      },
+      {
+        "pattern": "\\b(string|table|math|io|os|coroutine|package|debug|utf8)\\b(\\.)(${identifier})${whiteSpace}*(\\()",
+        "styles": [1, "class", 2, "punctuation", 3, "method", 4, "punctuation"]
+      },
+      {
+        "pattern": "(${identifier})(::?)(${identifier})${whiteSpace}*(\\()",
+        "styles": [1, "variable", 2, "punctuation", 3, "method", 4, "punctuation"]
+      },
+      {
+        "pattern": "(${identifier})(\\.)(${identifier})${whiteSpace}*(\\()",
+        "styles": [1, "variable", 2, "punctuation", 3, "method", 4, "punctuation"]
+      },
+      {
+        "pattern": "(${identifier})${whiteSpace}*(\\()",
+        "styles": [1, "method", 2, "punctuation"]
+      },
+      {
+        "pattern": "(${identifier})(\\.)(${identifier})",
+        "styles": [1, "variable", 2, "punctuation", 3, "variable"]
+      },
+      {
+        "pattern": "\\[\\[",
+        "style": "string",
+        "state": "longString"
+      },
+      {
+        "pattern": "\"(?:[^\"\\\\]|\\\\.)*\"",
+        "style": "string"
+      },
+      {
+        "pattern": "'(?:[^'\\\\]|\\\\.)*'",
+        "style": "string"
+      },
+      {
+        "pattern": "\\b0[xX][0-9a-fA-F]+\\b",
+        "style": "number"
+      },
+      {
+        "pattern": "\\b(?:[0-9]+\\.?[0-9]*(?:[eE][+-]?[0-9]+)?)\\b",
+        "style": "number"
+      },
+      {
+        "pattern": "--\\[\\[",
+        "style": "comment",
+        "state": "longComment"
+      },
+      {
+        "pattern": "--${any}*",
+        "style": "comment"
+      },
+      {
+        "pattern": "\\.\\.\\.|\\.\\.|\\.\\.|<=|>=|==|~=|<<|>>|[.()\\[\\]#%^&|+\\-*/<>=,{};:]",
+        "style": "punctuation"
+      }
+    ],
+    "funcParams": [
+      {
+        "pattern": "\\)",
+        "style": "punctuation",
+        "state": "default"
+      },
+      {
+        "pattern": "(\\.\\.\\.)${whiteSpace}*",
+        "styles": [1, "punctuation"]
+      },
+      {
+        "pattern": "${identifier}",
+        "style": "variable"
+      },
+      {
+        "pattern": "[,]",
+        "style": "punctuation"
+      },
+      {
+        "onLineEndState": "default"
+      }
+    ],
+    "longString": [
+      {
+        "pattern": "\\]\\]",
+        "style": "string",
+        "state": "default"
+      },
+      {
+        "pattern": "${any}",
+        "style": "string"
+      }
+    ],
+    "longComment": [
+      {
+        "pattern": "\\]\\]",
+        "style": "comment",
+        "state": "default"
+      },
+      {
+        "pattern": "${any}",
+        "style": "comment"
+      }
+    ]
+  },
+  "scopeRules": [
+    {
+      "start": "do",
+      "end": "end"
+    },
+    {
+      "start": "then",
+      "end": "end",
+      "branches": ["elseif", "else"]
+    },
+    {
+      "start": "function",
+      "end": "end"
+    }
+  ]
+}

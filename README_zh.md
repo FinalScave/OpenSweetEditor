@@ -36,21 +36,21 @@ SweetEditor 是一套跨平台代码编辑器内核，面向需要在 Android、
 
 ## 平台支持状态
 
-| 平台 | 状态 | 渲染技术 | UI 框架 | 实现来源 |
-| --- | --- | --- | --- | --- |
-| Android | 已实现 | Canvas + Paint | Android View | 当前仓库：[platform/Android](./platform/Android) |
-| iOS | 已实现 | CoreText + CoreGraphics | UIKit / SwiftUI（正在完善） | 当前仓库：[platform/Apple](./platform/Apple) |
-| macOS | 已实现 | CoreText + CoreGraphics | AppKit / SwiftUI（正在完善） | 当前仓库：[platform/Apple](./platform/Apple) |
-| Windows | 已实现 | GDI+ | WinForms | 当前仓库：[platform/WinForms](./platform/WinForms) |
-| Swing | 已实现 | Java2D | Swing | 当前仓库：[platform/Swing](./platform/Swing) |
-| OHOS | 已实现 | ArkUI Canvas | ArkUI | 当前仓库：[platform/OHOS](./platform/OHOS) |
-| Web | 进行中 | - | - | 当前仓库：[platform/Emscripten](./platform/Emscripten) |
-| Flutter | 进行中 | - | Flutter | - |
-| Compose Multiplatform | 待实现 | - | Compose | - |
-| Android Compose | 待实现 | - | Compose | - |
-| Qt | 待实现 | - | Qt | - |
-| C# Avalonia UI | 待实现 | - | - | - |
-| C# WinUI | 待实现 | - | - | - |
+| 平台SDK | 状态 | 渲染技术 | UI框架 |
+|---|---|---|---|
+| Android（官方，[仓库](./platform/Android)） | ✅ 已实现 | Canvas + Paint | Android View |
+| iOS（官方，[仓库](./platform/Apple)） | ✅ 已实现 | CoreText + CoreGraphics | UIKit（已封装） / SwiftUI（正在完善） |
+| macOS（官方，[仓库](./platform/Apple)） | ✅ 已实现 | CoreText + CoreGraphics | AppKit（已封装） / SwiftUI（正在完善） |
+| Windows（官方，[仓库](./platform/WinForms)） | ✅ 已实现 | GDI+ | WinForms |
+| Swing（官方，[仓库](./platform/Swing)） | ✅ 已实现 | Java2D | Swing |
+| OHOS（官方，[仓库](./platform/OHOS)） | ✅ 已实现 | ArkUI Canvas | ArkUI |
+| Web（官方，[仓库](./platform/Emscripten)） | 🚧 测试中 | Canvas | - |
+| Flutter | 🚧 进行中 | - | Flutter |
+| Android Compose | ❌ 待实现 | - | Compose |
+| Qt | ❌ 待实现 | - | Qt |
+| Compose Multiplatform | ❌ 待实现 | - | Compose |
+| C# Avalonia UI | ❌ 待实现 | - | - |
+| C# WinUI | ❌ 待实现 | - | - |
 
 ## 整体架构
 
