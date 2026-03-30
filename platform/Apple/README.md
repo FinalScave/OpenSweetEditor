@@ -21,6 +21,16 @@ This directory is the Apple SPM workspace root.
 - `make demo-macos-run` runs the AppKit macOS demo app
 - `make demo-macos-run-swiftui` runs the SwiftUI macOS demo app
 
+## Native artifact layout
+
+- `platform/Apple/binaries/SweetNativeCore.xcframework` is the only packaged binary artifact consumed by `Package.swift`.
+- The XCFramework now contains dynamic `SweetNativeCore.framework` slices for macOS, iOS device (`arm64`), and iOS simulator (`arm64`).
+- Intermediate build outputs remain under `build/apple-*`. Those build directories may contain the underlying dynamic-library binaries used by the framework bundles, but only the XCFramework in `binaries/` is treated as a stable distributable artifact.
+
+### Consumer note
+
+The package surface stays the same, but the native Apple payload is now delivered as dynamic frameworks inside the XCFramework. App consumers should continue integrating through Swift Package Manager rather than trying to reference intermediate build outputs directly.
+
 ## Xcode one-click setup
 
 1. Open `platform/Apple/Package.swift` in Xcode.
