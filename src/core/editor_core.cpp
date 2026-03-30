@@ -825,7 +825,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
       m_scale_gesture_active_ = false;
     }
 
-    // For SCALE gestures, skip premature normalize â€?metrics haven't been updated yet.
+    // For SCALE gestures, skip premature normalize - metrics haven't been updated yet.
     // Platform will call onFontMetricsChanged() which normalizes with correct metrics.
     if (result.type == GestureType::SCALE) {
       m_text_layout_->setViewState(m_view_state_);
@@ -878,6 +878,9 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
   }
 
   KeyEventResult EditorCore::handleKeyEvent(const KeyEvent& event) {
+    #if !defined(NDEBUG)
+    LOGD("EditorCore::handleKeyEvent, event = %s", event.text.c_str());
+    #endif
     PERF_TIMER("handleKeyEvent");
     KeyEventResult result;
     if (m_document_ == nullptr) return result;

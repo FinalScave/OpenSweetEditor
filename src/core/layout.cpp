@@ -857,7 +857,8 @@ namespace NS_SWEETEDITOR {
     float average = sum / test_chars_len;
     float variance = 0;
     for (float w : widths) {
-      variance += pow(w - average, 2);
+      const float diff = w - average;
+      variance += diff * diff;
     }
     float std_dev = sqrt(variance / test_chars_len);
     // If std deviation is very small, treat chars as same width
