@@ -1353,15 +1353,29 @@ namespace NS_SWEETEDITOR {
             }
             size_t visible_start = skip_left;
             size_t visible_len = run.length - skip_left - skip_right;
+
+            // Align to surrogate pair boundaries to avoid splitting emoji
+            if (visible_start > 0 && visible_start < run.length &&
+                utf8::internal::is_lead_surrogate(run.text[visible_start - 1])) {
+              visible_start--;
+              visible_len++;
+            }
+            if (visible_len > 0 && (visible_start + visible_len) < run.length &&
+                utf8::internal::is_lead_surrogate(run.text[visible_start + visible_len - 1])) {
+              visible_len++;
+            }
+
             if (visible_len == 0) {
               current_x = run_right;
               run_it = visual_line.runs.erase(run_it);
               continue;
             }
             if (visible_start > 0 || visible_len < run.length) {
-              run.x = text_area_x + (run_left + skip_left * char_width) - scroll_x;
+              float crop_offset = visible_start > 0
+                  ? measureWidth(run.text.substr(0, visible_start), run.style.font_style) : 0;
+              run.x = text_area_x + (run_left + crop_offset) - scroll_x;
               run.text = run.text.substr(visible_start, visible_len);
-              run.width = visible_len * char_width;
+              run.width = measureWidth(run.text, run.style.font_style);
             }
           }
         } else {
@@ -1405,6 +1419,7 @@ namespace NS_SWEETEDITOR {
           if (start_u16_index > 0 || end_u16_index < run.text.length()) {
             run.x = text_area_x + crop_start_x - scroll_x;
             run.text = run.text.substr(start_u16_index, end_u16_index - start_u16_index);
+            run.width = measureWidth(run.text, run.style.font_style);
           }
         }
       }
