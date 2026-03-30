@@ -825,7 +825,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
       m_scale_gesture_active_ = false;
     }
 
-    // For SCALE gestures, skip premature normalize â€?metrics haven't been updated yet.
+    // For SCALE gestures, skip premature normalize - metrics haven't been updated yet.
     // Platform will call onFontMetricsChanged() which normalizes with correct metrics.
     if (result.type == GestureType::SCALE) {
       m_text_layout_->setViewState(m_view_state_);

@@ -245,9 +245,14 @@ endif ()
 # merge static libs
 if (BUILD_STATIC_LIB)
     target_link_libraries(${STATIC_LIB_NAME} PRIVATE ${LINK_LIB})
-    include(scripts/MergeStaticLib.cmake)
-    get_target_property(SIMDUTF_PATH simdutf IMPORTED_LOCATION)
-    merge_static_libs(${STATIC_LIB_NAME} ${SIMDUTF_PATH})
+    # MSVC `lib.exe` merge via POST_BUILD is not idempotent for incremental builds and
+    # can repeatedly duplicate symbols (LNK4006). On MSVC we keep the normal static-lib
+    # linkage path and skip the extra merge step.
+    if (NOT MSVC)
+        include(scripts/MergeStaticLib.cmake)
+        get_target_property(SIMDUTF_PATH simdutf IMPORTED_LOCATION)
+        merge_static_libs(${STATIC_LIB_NAME} ${SIMDUTF_PATH})
+    endif ()
 endif ()
 if (EMSCRIPTEN)
     target_link_libraries(${WASM_TARGET_NAME} PRIVATE ${LINK_LIB})

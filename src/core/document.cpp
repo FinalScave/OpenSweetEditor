@@ -3,12 +3,23 @@
 //
 #include <stdexcept>
 #include <algorithm>
+#include <limits>
 #include <simdutf/simdutf.h>
 #include <utf8/utf8.h>
 #include <document.h>
 #include <utility.h>
 
 namespace NS_SWEETEDITOR {
+namespace {
+  uint32_t clampToUint32(size_t value) {
+    constexpr size_t kMaxUint32 = static_cast<size_t>(std::numeric_limits<uint32_t>::max());
+    if (value > kMaxUint32) {
+      return std::numeric_limits<uint32_t>::max();
+    }
+    return static_cast<uint32_t>(value);
+  }
+}
+
 #pragma region [Class: PieceTableDocument]
   PieceTableDocument::PieceTableDocument(U8String&& original_string): m_original_buffer_(makeUPtr<U8StringBuffer>(std::move(original_string))) {
     rebuildBufferSegments();
@@ -65,7 +76,7 @@ namespace NS_SWEETEDITOR {
       throw std::out_of_range("PieceTableDocument::getLineColumns line index out of range");
     }
     updateDirtyLine(line, m_logical_lines_[line]);
-    return m_logical_lines_[line].cached_text.size();
+    return clampToUint32(m_logical_lines_[line].cached_text.size());
   }
 
   TextPosition PieceTableDocument::getPositionFromCharIndex(size_t char_index) const {
@@ -661,7 +672,7 @@ namespace NS_SWEETEDITOR {
       throw std::out_of_range("LineArrayDocument::getLineColumns line index out of range");
     }
     updateDirtyLine(line, m_logical_lines_[line]);
-    return m_logical_lines_[line].cached_text.size();
+    return clampToUint32(m_logical_lines_[line].cached_text.size());
   }
 
   TextPosition LineArrayDocument::getPositionFromCharIndex(size_t char_index) const {
