@@ -348,28 +348,16 @@ async function ensureSweetLineRuntime(versionTag) {
 
     let compiled = 0;
     for (const syntaxFile of SYNTAX_JSON_FILES) {
-      const candidates = [
-        new URL(`./syntaxes/${syntaxFile}?v=${versionTag}`, import.meta.url),
-        new URL(`../../../_res/syntaxes/${syntaxFile}?v=${versionTag}`, import.meta.url),
-      ];
-
-      let loaded = false;
-      for (const syntaxUrl of candidates) {
-        try {
-          const response = await fetch(syntaxUrl.href, { cache: "no-store" });
-          if (!response.ok) {
-            continue;
-          }
-          engine.compileSyntaxFromJson(await response.text());
-          compiled += 1;
-          loaded = true;
-          break;
-        } catch (_) {
-          // try next candidate
+      const syntaxUrl = new URL(`./syntaxes/${syntaxFile}?v=${versionTag}`, import.meta.url);
+      try {
+        const response = await fetch(syntaxUrl.href, { cache: "no-store" });
+        if (!response.ok) {
+          console.warn(`SweetLine syntax load failed: ${syntaxFile}`);
+          continue;
         }
-      }
-
-      if (!loaded) {
+        engine.compileSyntaxFromJson(await response.text());
+        compiled += 1;
+      } catch (_) {
         console.warn(`SweetLine syntax load failed: ${syntaxFile}`);
       }
     }
@@ -466,7 +454,7 @@ async function loadDemoFiles(versionTag) {
 
   await Promise.all(fileNames.map(async (fileName) => {
     const fallback = DEMO_FILE_FALLBACKS[fileName];
-    const url = new URL(`../../../_res/files/${encodeURIComponent(fileName)}?v=${versionTag}`, import.meta.url);
+    const url = new URL(`./files/${encodeURIComponent(fileName)}?v=${versionTag}`, import.meta.url);
     try {
       const response = await fetch(url.href, { cache: "no-store" });
       if (!response.ok) {
@@ -553,7 +541,7 @@ const initialText = fileMap.get(initialFileName) || DEMO_FILE_FALLBACKS[initialF
 const initialDecorationRuntimeOptions = resolveDecorationRuntimeOptionsByLineCount(countLogicalLines(initialText));
 
 const editor = await createSweetEditor(host, {
-  modulePath: `../../../../build/wasm/bin/sweeteditor.js?v=${wasmVersion}`,
+  modulePath: `../sweeteditor.js?v=${wasmVersion}`,
   locale,
   text: initialText,
   performanceOverlay: {

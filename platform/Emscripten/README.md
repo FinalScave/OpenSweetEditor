@@ -47,11 +47,17 @@ bash ./platform/Emscripten/build-wasm.sh
 Output files:
 - `build/wasm/bin/sweeteditor.js` - JavaScript glue code
 - `build/wasm/bin/sweeteditor.wasm` - WebAssembly binary
+- `platform/Emscripten/web/sweeteditor.js` - auto-synced demo/runtime artifact
+- `platform/Emscripten/web/sweeteditor.wasm` - auto-synced demo/runtime artifact
+
+The build scripts also sync `sweeteditor.js/.wasm` into `platform/Emscripten/web/`, so the
+`web` directory is ready to package as a standalone demo bundle.
 
 ### Run Demo
 
 1. Build the WASM module (see above)
-2. Start a local server:
+2. Optional: copy only `platform/Emscripten/web` to another location/machine for distribution
+3. Start a local server in the `web` directory:
 
 ```bash
 cd platform/Emscripten/web
@@ -59,18 +65,21 @@ python -m http.server 8080
 # or: npx serve .
 ```
 
-3. Open http://localhost:8080/demo/ in your browser
+4. Open http://localhost:8080/demo/ in your browser
 
 ## Integration
 
-Since there's no NPM package yet, copy these files to your project:
+Since there's no NPM package yet, copy files from `platform/Emscripten/web/` to your project:
 
 ```
-sweeteditor.js      # JS glue code (from build output)
-sweeteditor.wasm    # WASM binary (from build output)
+sweeteditor.js      # JS glue code (synced by build scripts)
+sweeteditor.wasm    # WASM binary (synced by build scripts)
 editor-core.js      # Core API wrapper
 sweet-editor-widget.js  # High-level widget
 index.js            # Entry point (optional)
+libs/sweetline/*    # Optional (needed if using SweetLine decoration provider)
+demo/syntaxes/*     # Optional (if reusing bundled demo syntaxes)
+demo/files/*        # Optional (if reusing bundled demo sample files)
 ```
 
 ### Basic Usage
@@ -199,21 +208,22 @@ core.loadDocument(doc);
 
 ```
 platform/Emscripten/
-â”œâ”€â”€ README.md                    # This file
-â”œâ”€â”€ build-wasm.ps1              # Windows build script
-â”œâ”€â”€ build-wasm.sh               # Unix build script
-â”œâ”€â”€ sweeteditor_bindings.cpp    # Embind C++ bindings
-â””â”€â”€ web/
-    â”œâ”€â”€ index.js                # Entry point
-    â”œâ”€â”€ editor-core.js          # Core API wrapper
-    â”œâ”€â”€ sweet-editor-widget.js  # High-level widget
-    â”œâ”€â”€ demo/                   # Demo application
-    â”‚   â”œâ”€â”€ index.html
-    â”‚   â”œâ”€â”€ app.js
-    â”‚   â””â”€â”€ syntaxes/           # Syntax definitions
-    â””â”€â”€ tests/                  # Test files
-        â”œâ”€â”€ smoke.html
-        â””â”€â”€ web-api-smoke.js
+©À©¤©¤ README.md                 # This file
+©À©¤©¤ build-wasm.ps1            # Windows build script
+©À©¤©¤ build-wasm.sh             # Unix build script
+©À©¤©¤ sweeteditor_bindings.cpp  # Embind C++ bindings
+©¸©¤©¤ web/
+    ©À©¤©¤ sweeteditor.js        # WASM JS glue (synced from build output)
+    ©À©¤©¤ sweeteditor.wasm      # WASM binary (synced from build output)
+    ©À©¤©¤ index.js              # Entry point
+    ©À©¤©¤ editor-core.js        # Core API wrapper
+    ©À©¤©¤ sweet-editor-widget.js
+    ©À©¤©¤ libs/sweetline/       # SweetLine runtime
+    ©¸©¤©¤ demo/
+        ©À©¤©¤ index.html
+        ©À©¤©¤ app.js
+        ©À©¤©¤ syntaxes/         # Demo syntax JSON files
+        ©¸©¤©¤ files/            # Demo sample files (standalone demo payload)
 ```
 
 ## Event Types

@@ -38,4 +38,19 @@ if ($LASTEXITCODE -ne 0) {
   throw "CMake build failed for wasm target."
 }
 
-Write-Host "Wasm build done: $buildPath/bin/sweeteditor.js"
+$wasmJs = Join-Path $buildPath "bin/sweeteditor.js"
+$wasmWasm = Join-Path $buildPath "bin/sweeteditor.wasm"
+$webDir = Join-Path $repoRoot "platform/Emscripten/web"
+
+if (-not (Test-Path $wasmJs)) {
+  throw "Wasm JS output not found: $wasmJs"
+}
+if (-not (Test-Path $wasmWasm)) {
+  throw "Wasm binary output not found: $wasmWasm"
+}
+
+Copy-Item -Force $wasmJs (Join-Path $webDir "sweeteditor.js")
+Copy-Item -Force $wasmWasm (Join-Path $webDir "sweeteditor.wasm")
+
+Write-Host "Wasm build done: $wasmJs"
+Write-Host "Synced wasm artifacts to web directory, ready to package: $webDir"

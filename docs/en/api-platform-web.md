@@ -51,12 +51,19 @@ The WASM output will be generated at:
 - `build/wasm/bin/sweeteditor.js`
 - `build/wasm/bin/sweeteditor.wasm`
 
+The build scripts also sync those artifacts to:
+- `platform/Emscripten/web/sweeteditor.js`
+- `platform/Emscripten/web/sweeteditor.wasm`
+
+This makes `platform/Emscripten/web` self-contained for demo distribution.
+
 ### Run the Demo
 
 The demo application is located at `platform/Emscripten/web/demo/`.
 
 1. Build the WASM module (see above)
-2. Start a local static server in the `platform/Emscripten/web` directory:
+2. Optional: copy only `platform/Emscripten/web` to another machine/location for distribution
+3. Start a local static server in the `platform/Emscripten/web` directory:
 
 ```bash
 # Using Python 3
@@ -68,14 +75,14 @@ cd platform/Emscripten/web
 npx serve .
 ```
 
-3. Open `http://localhost:8080/demo/` in your browser
+4. Open `http://localhost:8080/demo/` in your browser
 
 ### Integrate into an Existing Web Project
 
 Since there is no CDN or NPM package yet, you need to:
 
 1. Build the WASM module from source
-2. Copy the following files to your project:
+2. Copy files from `platform/Emscripten/web/` to your project:
    - `sweeteditor.js`
    - `sweeteditor.wasm`
    - `editor-core.js`
