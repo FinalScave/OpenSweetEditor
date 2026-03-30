@@ -18,6 +18,10 @@
 
 ---
 
+> This repository is an unofficial fork maintained by [LangLang03](https://github.com/LangLang03), and is **not** the official OpenSweetEditor repository.
+>
+> Official upstream repository: [FinalScave/OpenSweetEditor](https://github.com/FinalScave/OpenSweetEditor)
+
 ## Project Positioning
 
 SweetEditor is a cross-platform code editor core designed for products that need consistent editing behavior across Android, iOS, macOS, Windows, Swing, and OHOS.
@@ -38,13 +42,13 @@ It is suited for long-term editor infrastructure in IDEs, AI programming tools, 
 
 | Platform SDK | Status | Rendering Technology | UI Framework |
 | --- | --- | --- | --- |
-| Android (official, [repo](./platform/Android)) | ✅ Implemented | Canvas + Paint | Android View |
-| iOS (official, [repo](./platform/Apple)) | ✅ Implemented | CoreText + CoreGraphics | UIKit (wrapped) / SwiftUI (being refined) |
-| macOS (official, [repo](./platform/Apple)) | ✅ Implemented | CoreText + CoreGraphics | AppKit (wrapped) / SwiftUI (being refined) |
-| Windows (official, [repo](./platform/WinForms)) | ✅ Implemented | GDI+ | WinForms |
-| Swing (official, [repo](./platform/Swing)) | ✅ Implemented | Java2D | Swing |
-| OHOS (official, [repo](./platform/OHOS)) | ✅ Implemented | ArkUI Canvas | ArkUI |
-| Web (official, [repo](./platform/Emscripten)) | 🚧 Testing | Canvas | - |
+| Android (fork path, [repo](./platform/Android)) | ✅ Implemented | Canvas + Paint | Android View |
+| iOS (fork path, [repo](./platform/Apple)) | ✅ Implemented | CoreText + CoreGraphics | UIKit (wrapped) / SwiftUI (being refined) |
+| macOS (fork path, [repo](./platform/Apple)) | ✅ Implemented | CoreText + CoreGraphics | AppKit (wrapped) / SwiftUI (being refined) |
+| Windows (fork path, [repo](./platform/WinForms)) | ✅ Implemented | GDI+ | WinForms |
+| Swing (fork path, [repo](./platform/Swing)) | ✅ Implemented | Java2D | Swing |
+| OHOS (fork path, [repo](./platform/OHOS)) | ✅ Implemented | ArkUI Canvas | ArkUI |
+| Web (fork path, [repo](./platform/Emscripten)) | 🚧 Testing | Canvas | - |
 | Flutter | 🚧 In Progress | - | Flutter |
 | Android Compose | ❌ Pending | - | Compose |
 | Qt | ❌ Pending | - | Qt |
@@ -103,7 +107,7 @@ For the complete capability list, see [EditorCore API](docs/en/api-editor-core.m
 ### Build
 
 ```bash
-git clone https://github.com/FinalScave/OpenSweetEditor.git
+git clone https://github.com/LangLang03/OpenSweetEditor-Web.git
 cd OpenSweetEditor
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
