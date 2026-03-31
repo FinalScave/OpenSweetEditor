@@ -481,6 +481,11 @@ extern "C" {
 
 #pragma region [Core Lifecycle, View & Events]
 
+intptr_t create_document_from_utf8(const char* text) {
+  Ptr<Document> document = makePtr<LineArrayDocument>(text);
+  return toIntPtr(document);
+}
+
 intptr_t create_document_from_utf16(const U16Char* text) {
   Ptr<Document> document = makePtr<LineArrayDocument>(text);
   return toIntPtr(document);
