@@ -1,9 +1,4 @@
-import 'dart:math' as math;
-
-import 'package:flutter/material.dart';
-
-import 'completion_popup_controller.dart';
-import 'completion_types.dart';
+part of '../sweeteditor.dart';
 
 const double _kCompletionItemHeight = 32;
 const int _kCompletionMaxVisible = 6;

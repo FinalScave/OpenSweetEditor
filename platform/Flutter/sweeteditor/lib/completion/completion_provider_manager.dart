@@ -1,9 +1,4 @@
-import 'dart:async';
-
-import '../editor_core.dart' as core;
-import '../editor_types.dart';
-
-import 'completion_types.dart';
+part of '../sweeteditor.dart';
 
 const int _debounceCharacterMs = 50;
 const int _debounceInvokedMs = 0;
@@ -18,7 +13,9 @@ abstract class CompletionUpdateListener {
 /// Handles provider registration/removal, debounce, context building,
 /// dispatching requests, merging/sorting/filtering results, and driving panel updates.
 class CompletionProviderManager {
-  CompletionProviderManager();
+  CompletionProviderManager({required this.session});
+
+  final EditorSession session;
 
   final List<CompletionProvider> _providers = [];
   final Map<CompletionProvider, _ManagedCompletionReceiver> _activeReceivers =
@@ -29,13 +26,7 @@ class CompletionProviderManager {
   CompletionTriggerKind _lastTriggerKind = CompletionTriggerKind.invoked;
   String? _lastTriggerChar;
   bool _disposed = false;
-
-  // These will be set by the SweetEditor when integrated
-  core.TextPosition Function()? getCursorPosition;
-  String Function(int line)? getLineText;
-  core.TextRange Function()? getWordRangeAtCursor;
-  LanguageConfiguration? Function()? getLanguageConfiguration;
-  EditorMetadata? Function()? getMetadata;
+  Timer? _debounceTimer;
 
   void setListener(CompletionUpdateListener? listener) {
     _listener = listener;
@@ -69,8 +60,8 @@ class CompletionProviderManager {
         ? _debounceInvokedMs
         : _debounceCharacterMs;
     if (delay > 0) {
-      // In Flutter, use Future.delayed instead of setTimeout
-      Future.delayed(Duration(milliseconds: delay), () {
+      _debounceTimer = Timer(Duration(milliseconds: delay), () {
+        _debounceTimer = null;
         if (_disposed) return;
         _executeRefresh(_lastTriggerKind, _lastTriggerChar);
       });
@@ -139,23 +130,22 @@ class CompletionProviderManager {
     CompletionTriggerKind triggerKind,
     String? triggerCharacter,
   ) {
-    final cursor = getCursorPosition?.call();
+    final editorCore = session.editorCore;
+    final cursor = editorCore?.getCursorPosition();
     if (cursor == null) return null;
-    final lineText = getLineText?.call(cursor.line) ?? '';
-    final wordRange =
-        getWordRangeAtCursor?.call() ??
-        core.TextRange(
-          core.TextPosition(cursor.line, cursor.column),
-          core.TextPosition(cursor.line, cursor.column),
-        );
+    final lineText = session.document?.getLineText(cursor.line) ?? '';
+    final wordRange = core.TextRange(
+      core.TextPosition(cursor.line, cursor.column),
+      core.TextPosition(cursor.line, cursor.column),
+    );
     return CompletionContext(
       triggerKind: triggerKind,
       triggerCharacter: triggerCharacter,
       cursorPosition: cursor,
       lineText: lineText,
       wordRange: wordRange,
-      languageConfiguration: getLanguageConfiguration?.call(),
-      editorMetadata: getMetadata?.call(),
+      languageConfiguration: session.languageConfiguration,
+      editorMetadata: session.metadata,
     );
   }
 
@@ -181,11 +171,15 @@ class CompletionProviderManager {
 
   int get generation => _generation;
 
-  void _clearDebounce() {}
+  void _clearDebounce() {
+    _debounceTimer?.cancel();
+    _debounceTimer = null;
+  }
 
   void dispose() {
     if (_disposed) return;
     _disposed = true;
+    _clearDebounce();
     _cancelAllReceivers();
     final providers = List<CompletionProvider>.of(_providers);
     _providers.clear();
@@ -194,11 +188,6 @@ class CompletionProviderManager {
     }
     _mergedItems = [];
     _listener = null;
-    getCursorPosition = null;
-    getLineText = null;
-    getWordRangeAtCursor = null;
-    getLanguageConfiguration = null;
-    getMetadata = null;
   }
 }
 

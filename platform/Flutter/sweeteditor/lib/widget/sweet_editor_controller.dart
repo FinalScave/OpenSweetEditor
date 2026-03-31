@@ -7,9 +7,21 @@ part of '../sweeteditor.dart';
 /// yet mounted (no deferred action queue — matches Flutter conventions).
 class SweetEditorController {
   _SweetEditorWidgetState? _state;
+  final EditorEventBus _eventBus = EditorEventBus();
+  final EditorSettings settings = EditorSettings();
+  String? _pendingText;
+  bool _closed = false;
 
   void _attach(_SweetEditorWidgetState state) {
+    if (_closed) {
+      throw StateError('SweetEditorController is already closed');
+    }
     _state = state;
+    final pendingText = _pendingText;
+    if (pendingText != null) {
+      _pendingText = null;
+      state._loadText(pendingText);
+    }
   }
 
   void _detach() {
@@ -18,8 +30,16 @@ class SweetEditorController {
 
   bool get isAttached => _state != null;
 
-  void loadText(String text) => _state?._loadText(text);
-  String getContent() => _state?._getContent() ?? '';
+  void loadText(String text) {
+    if (_closed) return;
+    if (_state != null) {
+      _state!._loadText(text);
+    } else {
+      _pendingText = text;
+    }
+  }
+
+  String getContent() => _state?._getContent() ?? (_pendingText ?? '');
   int get lineCount => _state?._document?.lineCount ?? 0;
   String getLineText(int line) => _state?._document?.getLineText(line) ?? '';
 
@@ -81,8 +101,6 @@ class SweetEditorController {
   bool get canUndo => _state?._editorCore?.canUndo ?? false;
   bool get canRedo => _state?._editorCore?.canRedo ?? false;
 
-  EditorSettings? get settings => _state?._settings;
-
   void addCompletionProvider(CompletionProvider provider) =>
       _state?._completionProviderManager.addProvider(provider);
 
@@ -118,11 +136,39 @@ class SweetEditorController {
   void setSelectionMenuItemProvider(SelectionMenuItemProvider? provider) =>
       _state?._selectionMenuController.setItemProvider(provider);
 
-  void subscribe<T extends EditorEvent>(EditorEventListener<T> listener) =>
-      _state?._eventBus.subscribe<T>(listener);
+  Stream<TextChangedEvent> get onTextChanged => _eventBus.on<TextChangedEvent>();
 
-  void unsubscribe<T extends EditorEvent>(EditorEventListener<T> listener) =>
-      _state?._eventBus.unsubscribe<T>(listener);
+  Stream<CursorChangedEvent> get onCursorChanged =>
+      _eventBus.on<CursorChangedEvent>();
+
+  Stream<SelectionChangedEvent> get onSelectionChanged =>
+      _eventBus.on<SelectionChangedEvent>();
+
+  Stream<ScrollChangedEvent> get onScrollChanged =>
+      _eventBus.on<ScrollChangedEvent>();
+
+  Stream<ScaleChangedEvent> get onScaleChanged => _eventBus.on<ScaleChangedEvent>();
+
+  Stream<LongPressEvent> get onLongPress => _eventBus.on<LongPressEvent>();
+
+  Stream<DoubleTapEvent> get onDoubleTap => _eventBus.on<DoubleTapEvent>();
+
+  Stream<ContextMenuEvent> get onContextMenu =>
+      _eventBus.on<ContextMenuEvent>();
+
+  Stream<GutterIconClickEvent> get onGutterIconClick =>
+      _eventBus.on<GutterIconClickEvent>();
+
+  Stream<InlayHintClickEvent> get onInlayHintClick =>
+      _eventBus.on<InlayHintClickEvent>();
+
+  Stream<FoldToggleEvent> get onFoldToggle => _eventBus.on<FoldToggleEvent>();
+
+  Stream<DocumentLoadedEvent> get onDocumentLoaded =>
+      _eventBus.on<DocumentLoadedEvent>();
+
+  Stream<SelectionMenuItemClickEvent> get onSelectionMenuItemClick =>
+      _eventBus.on<SelectionMenuItemClickEvent>();
 
   void toggleFold(int line) {
     _state?._editorCore?.toggleFold(line);
@@ -153,4 +199,15 @@ class SweetEditorController {
   void setTheme(EditorTheme theme) => _state?._applyTheme(theme);
 
   void flush() => _state?._flush();
+
+  Future<void> close() async {
+    if (_closed) return;
+    if (_state != null) {
+      throw StateError(
+        'Cannot close SweetEditorController while it is attached to a widget',
+      );
+    }
+    _closed = true;
+    await _eventBus.close();
+  }
 }

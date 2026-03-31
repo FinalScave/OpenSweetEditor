@@ -1,38 +1,23 @@
+import 'dart:async';
+
 import 'editor_event.dart';
 
-typedef _UntypedEditorEventListener = void Function(EditorEvent event);
-
-/// Generic editor event bus.
-/// Dispatches by event type, each event type has its own subscriber list.
+/// Generic editor event bus backed by a Dart broadcast stream.
 class EditorEventBus {
-  final Map<Type, List<_UntypedEditorEventListener>> _listeners = {};
+  final StreamController<EditorEvent> _controller =
+      StreamController<EditorEvent>.broadcast();
 
-  void subscribe<T extends EditorEvent>(EditorEventListener<T> listener) {
-    final list = _listeners.putIfAbsent(T, () => []);
-    final cast = listener as _UntypedEditorEventListener;
-    if (!list.contains(cast)) {
-      list.add(cast);
+  Stream<T> on<T extends EditorEvent>() {
+    return _controller.stream.where((event) => event is T).cast<T>();
+  }
+
+  void publish(EditorEvent event) {
+    if (!_controller.isClosed) {
+      _controller.add(event);
     }
   }
 
-  void unsubscribe<T extends EditorEvent>(EditorEventListener<T> listener) {
-    final list = _listeners[T];
-    if (list == null) return;
-    list.remove(listener as _UntypedEditorEventListener);
-    if (list.isEmpty) {
-      _listeners.remove(T);
-    }
-  }
-
-  void publish<T extends EditorEvent>(T event) {
-    final list = _listeners[event.runtimeType];
-    if (list == null || list.isEmpty) return;
-    for (final listener in List<_UntypedEditorEventListener>.of(list)) {
-      listener(event);
-    }
-  }
-
-  void clear() {
-    _listeners.clear();
+  Future<void> close() {
+    return _controller.close();
   }
 }

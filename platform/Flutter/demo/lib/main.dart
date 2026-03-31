@@ -98,6 +98,8 @@ int main() {
 ''';
 
   late final SweetEditorController _controller;
+  StreamSubscription<TextChangedEvent>? _textChangedSub;
+  StreamSubscription<CursorChangedEvent>? _cursorChangedSub;
   bool _isDarkTheme = true;
   core.WrapMode _wrapMode = core.WrapMode.none;
   String _statusText = 'Ready';
@@ -115,24 +117,24 @@ int main() {
   @override
   void dispose() {
     _suggestionTimer?.cancel();
+    _textChangedSub?.cancel();
+    _cursorChangedSub?.cancel();
     super.dispose();
   }
 
   void _setupEditor() {
     final settings = _controller.settings;
-    if (settings != null) {
-      settings.setFoldArrowMode(core.FoldArrowMode.auto_);
-      settings.setCurrentLineRenderMode(core.CurrentLineRenderMode.border);
-      settings.setMaxGutterIcons(1);
-    }
+    settings.setFoldArrowMode(core.FoldArrowMode.auto_);
+    settings.setCurrentLineRenderMode(core.CurrentLineRenderMode.border);
+    settings.setMaxGutterIcons(1);
 
     _controller.addCompletionProvider(DemoCompletionProvider());
     _controller.addDecorationProvider(
       DemoDecorationProvider((line) => _controller.getLineText(line)),
     );
 
-    _controller.subscribe<TextChangedEvent>(_onTextChanged);
-    _controller.subscribe<CursorChangedEvent>(_onCursorChanged);
+    _textChangedSub = _controller.onTextChanged.listen(_onTextChanged);
+    _cursorChangedSub = _controller.onCursorChanged.listen(_onCursorChanged);
 
     _controller.setInlineSuggestionListener(
       _DemoSuggestionListener(
@@ -199,7 +201,7 @@ int main() {
   void _cycleWrapMode() {
     final modes = core.WrapMode.values;
     _wrapMode = modes[(_wrapMode.value + 1) % modes.length];
-    _controller.settings?.setWrapMode(_wrapMode);
+    _controller.settings.setWrapMode(_wrapMode);
     _updateStatus('WrapMode: ${_wrapMode.name}');
   }
 

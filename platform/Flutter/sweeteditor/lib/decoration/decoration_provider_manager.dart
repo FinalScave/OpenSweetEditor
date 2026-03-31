@@ -1,9 +1,4 @@
-import 'dart:async';
-
-import '../editor_core.dart' as core;
-import '../editor_types.dart';
-
-import 'decoration_types.dart';
+part of '../sweeteditor.dart';
 
 class _ProviderState {
   DecorationResult? snapshot;
@@ -14,7 +9,9 @@ class _ProviderState {
 /// Handles provider registration, refresh scheduling, debounce, scroll throttle,
 /// overscan, result merging, and applying decorations to the editor.
 class DecorationProviderManager {
-  DecorationProviderManager();
+  DecorationProviderManager({required this.session});
+
+  final EditorSession session;
 
   final List<DecorationProvider> _providers = [];
   final Map<DecorationProvider, _ProviderState> _providerStates = {};
@@ -23,37 +20,12 @@ class DecorationProviderManager {
   bool _applyScheduled = false;
   int _lastVisibleStartLine = 0;
   int _lastVisibleEndLine = -1;
-  bool _scrollRefreshScheduled = false;
   bool _pendingScrollRefresh = false;
   int _lastScrollRefreshTimeMs = 0;
   bool _disposed = false;
-
-  // These will be set by the SweetEditor when integrated
-  List<int> Function()? getVisibleLineRange;
-  int Function()? getTotalLineCount;
-  LanguageConfiguration? Function()? getLanguageConfiguration;
-  EditorMetadata? Function()? getMetadata;
-  void Function(int layer)? clearHighlights;
-  void Function(int layer, Map<int, List<core.StyleSpan>> spans)?
-  setBatchLineSpans;
-  void Function()? clearInlayHints;
-  void Function(Map<int, List<core.InlayHint>> hints)? setBatchLineInlayHints;
-  void Function()? clearDiagnostics;
-  void Function(Map<int, List<core.DiagnosticItem>> items)?
-  setBatchLineDiagnostics;
-  void Function()? clearGutterIcons;
-  void Function(Map<int, List<core.GutterIcon>> icons)? setBatchLineGutterIcons;
-  void Function()? clearPhantomTexts;
-  void Function(Map<int, List<core.PhantomText>> texts)?
-  setBatchLinePhantomTexts;
-  void Function(List<core.IndentGuide> guides)? setIndentGuides;
-  void Function(List<core.BracketGuide> guides)? setBracketGuides;
-  void Function(List<core.FlowGuide> guides)? setFlowGuides;
-  void Function(List<core.SeparatorGuide> guides)? setSeparatorGuides;
-  void Function(List<core.FoldRegion> regions)? setFoldRegions;
-  void Function()? flush;
-  int Function()? getDecorationScrollRefreshMinIntervalMs;
-  double Function()? getDecorationOverscanViewportMultiplier;
+  Timer? _refreshTimer;
+  Timer? _scrollRefreshTimer;
+  Timer? _applyTimer;
 
   void addProvider(DecorationProvider provider) {
     if (_disposed) return;
@@ -101,8 +73,11 @@ class DecorationProviderManager {
     if (changes != null) {
       _pendingTextChanges.addAll(changes);
     }
+    _refreshTimer?.cancel();
+    _refreshTimer = null;
     if (delayMs > 0) {
-      Future.delayed(Duration(milliseconds: delayMs), () {
+      _refreshTimer = Timer(Duration(milliseconds: delayMs), () {
+        _refreshTimer = null;
         if (_disposed) return;
         _doRefresh();
       });
@@ -115,27 +90,21 @@ class DecorationProviderManager {
     if (_disposed) return;
     final now = DateTime.now().millisecondsSinceEpoch;
     final elapsed = now - _lastScrollRefreshTimeMs;
-    final minInterval = getDecorationScrollRefreshMinIntervalMs?.call() ?? 200;
+    final minInterval =
+        session.settings.getDecorationScrollRefreshMinIntervalMs();
     final delay = elapsed >= minInterval ? 0 : (minInterval - elapsed);
-
-    if (_scrollRefreshScheduled) {
-      _pendingScrollRefresh = true;
-      return;
-    }
-    _scrollRefreshScheduled = true;
-    Future.delayed(Duration(milliseconds: delay), () {
+    _pendingScrollRefresh = true;
+    _scrollRefreshTimer?.cancel();
+    _scrollRefreshTimer = Timer(Duration(milliseconds: delay), () {
+      _scrollRefreshTimer = null;
       if (_disposed) {
-        _scrollRefreshScheduled = false;
         _pendingScrollRefresh = false;
         return;
       }
-      _scrollRefreshScheduled = false;
+      if (!_pendingScrollRefresh) return;
+      _pendingScrollRefresh = false;
       _doRefresh();
       _lastScrollRefreshTimeMs = DateTime.now().millisecondsSinceEpoch;
-      if (_pendingScrollRefresh) {
-        _pendingScrollRefresh = false;
-        _scheduleScrollRefresh();
-      }
     });
   }
 
@@ -144,10 +113,13 @@ class DecorationProviderManager {
     _generation++;
     final currentGeneration = _generation;
 
-    final visible = getVisibleLineRange?.call() ?? [0, -1];
+    final visualLines = session.renderModel.visualLines;
+    final visible = visualLines.isEmpty
+        ? [0, -1]
+        : [visualLines.first.logicalLine, visualLines.last.logicalLine];
     _lastVisibleStartLine = visible[0];
     _lastVisibleEndLine = visible[1];
-    final total = getTotalLineCount?.call() ?? 0;
+    final total = session.document?.lineCount ?? 0;
     final changes = List<core.TextChange>.of(_pendingTextChanges);
     _pendingTextChanges.clear();
 
@@ -164,8 +136,8 @@ class DecorationProviderManager {
       visibleEndLine: contextEnd,
       totalLineCount: total,
       textChanges: changes,
-      languageConfiguration: getLanguageConfiguration?.call(),
-      editorMetadata: getMetadata?.call(),
+      languageConfiguration: session.languageConfiguration,
+      editorMetadata: session.metadata,
     );
 
     for (final provider in _providers) {
@@ -191,7 +163,8 @@ class DecorationProviderManager {
     if (_disposed) return;
     if (_applyScheduled) return;
     _applyScheduled = true;
-    Future.delayed(Duration.zero, () {
+    _applyTimer = Timer(Duration.zero, () {
+      _applyTimer = null;
       if (_disposed) {
         _applyScheduled = false;
         return;
@@ -274,14 +247,14 @@ class DecorationProviderManager {
 
     _applySpanMode(0, syntaxMode);
     _applySpanMode(1, semanticMode);
-    setBatchLineSpans?.call(0, syntaxSpans);
-    setBatchLineSpans?.call(1, semanticSpans);
+    _setBatchLineSpans(0, syntaxSpans);
+    _setBatchLineSpans(1, semanticSpans);
 
     _applyInlayMode(inlayMode);
-    setBatchLineInlayHints?.call(inlayHints);
+    _setBatchLineInlayHints(inlayHints);
 
     _applyDiagnosticMode(diagnosticMode);
-    setBatchLineDiagnostics?.call(diagnostics);
+    _setBatchLineDiagnostics(diagnostics);
 
     _applyGuidesMode(indentMode, indentGuides, 0);
     _applyGuidesMode(bracketMode, bracketGuides, 1);
@@ -290,23 +263,23 @@ class DecorationProviderManager {
 
     if (foldMode == ApplyMode.replaceAll ||
         foldMode == ApplyMode.replaceRange) {
-      setFoldRegions?.call(foldRegions);
+      _setFoldRegions(foldRegions);
     } else if (foldRegions.isNotEmpty) {
-      setFoldRegions?.call(foldRegions);
+      _setFoldRegions(foldRegions);
     }
 
     _applyGutterMode(gutterMode);
-    setBatchLineGutterIcons?.call(gutterIcons);
+    _setBatchLineGutterIcons(gutterIcons);
 
     _applyPhantomMode(phantomMode);
-    setBatchLinePhantomTexts?.call(phantomTexts);
+    _setBatchLinePhantomTexts(phantomTexts);
 
-    flush?.call();
+    session.requestFlush();
   }
 
   void _applySpanMode(int layer, ApplyMode mode) {
     if (mode == ApplyMode.replaceAll) {
-      clearHighlights?.call(layer);
+      _clearHighlights(layer);
     } else if (mode == ApplyMode.replaceRange) {
       _clearSpanRange(layer, _lastVisibleStartLine, _lastVisibleEndLine);
     }
@@ -314,7 +287,7 @@ class DecorationProviderManager {
 
   void _applyInlayMode(ApplyMode mode) {
     if (mode == ApplyMode.replaceAll) {
-      clearInlayHints?.call();
+      _clearInlayHints();
     } else if (mode == ApplyMode.replaceRange) {
       _clearInlayRange(_lastVisibleStartLine, _lastVisibleEndLine);
     }
@@ -322,7 +295,7 @@ class DecorationProviderManager {
 
   void _applyDiagnosticMode(ApplyMode mode) {
     if (mode == ApplyMode.replaceAll) {
-      clearDiagnostics?.call();
+      _clearDiagnostics();
     } else if (mode == ApplyMode.replaceRange) {
       _clearDiagnosticRange(_lastVisibleStartLine, _lastVisibleEndLine);
     }
@@ -330,7 +303,7 @@ class DecorationProviderManager {
 
   void _applyGutterMode(ApplyMode mode) {
     if (mode == ApplyMode.replaceAll) {
-      clearGutterIcons?.call();
+      _clearGutterIcons();
     } else if (mode == ApplyMode.replaceRange) {
       _clearGutterRange(_lastVisibleStartLine, _lastVisibleEndLine);
     }
@@ -338,7 +311,7 @@ class DecorationProviderManager {
 
   void _applyPhantomMode(ApplyMode mode) {
     if (mode == ApplyMode.replaceAll) {
-      clearPhantomTexts?.call();
+      _clearPhantomTexts();
     } else if (mode == ApplyMode.replaceRange) {
       _clearPhantomRange(_lastVisibleStartLine, _lastVisibleEndLine);
     }
@@ -351,19 +324,19 @@ class DecorationProviderManager {
     switch (guideType) {
       case 0:
         if (shouldReplace || items.isNotEmpty) {
-          setIndentGuides?.call(items.cast<core.IndentGuide>());
+          _setIndentGuides(items.cast<core.IndentGuide>());
         }
       case 1:
         if (shouldReplace || items.isNotEmpty) {
-          setBracketGuides?.call(items.cast<core.BracketGuide>());
+          _setBracketGuides(items.cast<core.BracketGuide>());
         }
       case 2:
         if (shouldReplace || items.isNotEmpty) {
-          setFlowGuides?.call(items.cast<core.FlowGuide>());
+          _setFlowGuides(items.cast<core.FlowGuide>());
         }
       case 3:
         if (shouldReplace || items.isNotEmpty) {
-          setSeparatorGuides?.call(items.cast<core.SeparatorGuide>());
+          _setSeparatorGuides(items.cast<core.SeparatorGuide>());
         }
     }
   }
@@ -373,7 +346,8 @@ class DecorationProviderManager {
         ? (visibleEnd - visibleStart + 1)
         : 0;
     if (viewportLineCount <= 0) return 0;
-    final multiplier = (getDecorationOverscanViewportMultiplier?.call() ?? 0.5)
+    final multiplier = (session.settings
+            .getDecorationOverscanViewportMultiplier())
         .clamp(0.0, double.infinity);
     return (viewportLineCount * multiplier).ceil().clamp(0, 1 << 30);
   }
@@ -381,31 +355,31 @@ class DecorationProviderManager {
   void _clearSpanRange(int layer, int startLine, int endLine) {
     final empty = _buildEmptyMapRange<core.StyleSpan>(startLine, endLine);
     if (empty.isEmpty) return;
-    setBatchLineSpans?.call(layer, empty);
+    _setBatchLineSpans(layer, empty);
   }
 
   void _clearInlayRange(int startLine, int endLine) {
     final empty = _buildEmptyMapRange<core.InlayHint>(startLine, endLine);
     if (empty.isEmpty) return;
-    setBatchLineInlayHints?.call(empty);
+    _setBatchLineInlayHints(empty);
   }
 
   void _clearDiagnosticRange(int startLine, int endLine) {
     final empty = _buildEmptyMapRange<core.DiagnosticItem>(startLine, endLine);
     if (empty.isEmpty) return;
-    setBatchLineDiagnostics?.call(empty);
+    _setBatchLineDiagnostics(empty);
   }
 
   void _clearGutterRange(int startLine, int endLine) {
     final empty = _buildEmptyMapRange<core.GutterIcon>(startLine, endLine);
     if (empty.isEmpty) return;
-    setBatchLineGutterIcons?.call(empty);
+    _setBatchLineGutterIcons(empty);
   }
 
   void _clearPhantomRange(int startLine, int endLine) {
     final empty = _buildEmptyMapRange<core.PhantomText>(startLine, endLine);
     if (empty.isEmpty) return;
-    setBatchLinePhantomTexts?.call(empty);
+    _setBatchLinePhantomTexts(empty);
   }
 
   void onProviderResult(
@@ -522,6 +496,96 @@ class DecorationProviderManager {
     }
   }
 
+  void _clearHighlights(int layer) {
+    session.editorCore?.clearHighlightsLayer(core.SpanLayer.values[layer]);
+  }
+
+  void _setBatchLineSpans(int layer, Map<int, List<core.StyleSpan>> spans) {
+    final ec = session.editorCore;
+    if (ec == null) return;
+    final data = core.ProtocolEncoder.packBatchLineSpans(layer, spans);
+    ec.setBatchLineSpans(data);
+  }
+
+  void _clearInlayHints() {
+    session.editorCore?.clearInlayHints();
+  }
+
+  void _setBatchLineInlayHints(Map<int, List<core.InlayHint>> hints) {
+    final ec = session.editorCore;
+    if (ec == null) return;
+    final data = core.ProtocolEncoder.packBatchLineInlayHints(hints);
+    ec.setBatchLineInlayHints(data);
+  }
+
+  void _clearDiagnostics() {
+    session.editorCore?.clearDiagnostics();
+  }
+
+  void _setBatchLineDiagnostics(Map<int, List<core.DiagnosticItem>> items) {
+    final ec = session.editorCore;
+    if (ec == null) return;
+    final data = core.ProtocolEncoder.packBatchLineDiagnostics(items);
+    ec.setBatchLineDiagnostics(data);
+  }
+
+  void _clearGutterIcons() {
+    session.editorCore?.clearGutterIcons();
+  }
+
+  void _setBatchLineGutterIcons(Map<int, List<core.GutterIcon>> icons) {
+    final ec = session.editorCore;
+    if (ec == null) return;
+    final data = core.ProtocolEncoder.packBatchLineGutterIcons(icons);
+    ec.setBatchLineGutterIcons(data);
+  }
+
+  void _clearPhantomTexts() {
+    session.editorCore?.clearPhantomTexts();
+  }
+
+  void _setBatchLinePhantomTexts(Map<int, List<core.PhantomText>> texts) {
+    final ec = session.editorCore;
+    if (ec == null) return;
+    final data = core.ProtocolEncoder.packBatchLinePhantomTexts(texts);
+    ec.setBatchLinePhantomTexts(data);
+  }
+
+  void _setIndentGuides(List<core.IndentGuide> guides) {
+    final ec = session.editorCore;
+    if (ec == null) return;
+    final data = core.ProtocolEncoder.packIndentGuides(guides);
+    ec.setIndentGuides(data);
+  }
+
+  void _setBracketGuides(List<core.BracketGuide> guides) {
+    final ec = session.editorCore;
+    if (ec == null) return;
+    final data = core.ProtocolEncoder.packBracketGuides(guides);
+    ec.setBracketGuides(data);
+  }
+
+  void _setFlowGuides(List<core.FlowGuide> guides) {
+    final ec = session.editorCore;
+    if (ec == null) return;
+    final data = core.ProtocolEncoder.packFlowGuides(guides);
+    ec.setFlowGuides(data);
+  }
+
+  void _setSeparatorGuides(List<core.SeparatorGuide> guides) {
+    final ec = session.editorCore;
+    if (ec == null) return;
+    final data = core.ProtocolEncoder.packSeparatorGuides(guides);
+    ec.setSeparatorGuides(data);
+  }
+
+  void _setFoldRegions(List<core.FoldRegion> regions) {
+    final ec = session.editorCore;
+    if (ec == null) return;
+    final data = core.ProtocolEncoder.packFoldRegions(regions);
+    ec.setFoldRegions(data);
+  }
+
   static Map<int, List<T>> _buildEmptyMapRange<T>(int startLine, int endLine) {
     if (endLine < startLine) return {};
     return {for (var line = startLine; line <= endLine; line++) line: <T>[]};
@@ -547,34 +611,14 @@ class DecorationProviderManager {
     _providers.clear();
     _providerStates.clear();
     _pendingTextChanges.clear();
+    _refreshTimer?.cancel();
+    _scrollRefreshTimer?.cancel();
+    _applyTimer?.cancel();
     _applyScheduled = false;
-    _scrollRefreshScheduled = false;
     _pendingScrollRefresh = false;
     for (final provider in providers) {
       provider.dispose();
     }
-    getVisibleLineRange = null;
-    getTotalLineCount = null;
-    getLanguageConfiguration = null;
-    getMetadata = null;
-    clearHighlights = null;
-    setBatchLineSpans = null;
-    clearInlayHints = null;
-    setBatchLineInlayHints = null;
-    clearDiagnostics = null;
-    setBatchLineDiagnostics = null;
-    clearGutterIcons = null;
-    setBatchLineGutterIcons = null;
-    clearPhantomTexts = null;
-    setBatchLinePhantomTexts = null;
-    setIndentGuides = null;
-    setBracketGuides = null;
-    setFlowGuides = null;
-    setSeparatorGuides = null;
-    setFoldRegions = null;
-    flush = null;
-    getDecorationScrollRefreshMinIntervalMs = null;
-    getDecorationOverscanViewportMultiplier = null;
   }
 }
 

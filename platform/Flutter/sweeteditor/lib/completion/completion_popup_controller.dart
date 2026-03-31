@@ -1,6 +1,4 @@
-import 'completion_provider_manager.dart';
-import 'completion_types.dart';
-import '../overlay/editor_overlay.dart';
+part of '../sweeteditor.dart';
 
 const int _maxVisibleItems = 6;
 const double _itemHeightVp = 32;

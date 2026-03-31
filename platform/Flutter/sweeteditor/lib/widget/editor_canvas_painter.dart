@@ -54,17 +54,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
       Paint()..color = Color(_theme.backgroundColor),
     );
 
-    if (m.splitX > 0 && m.gutterVisible) {
-      final gutterWidth = m.gutterSticky ? m.splitX : m.splitX - sx;
-      if (gutterWidth > 0) {
-        canvas.drawRect(
-          Rect.fromLTWH(0, 0, gutterWidth, size.height),
-          Paint()..color = Color(_theme.backgroundColor),
-        );
-      }
-    }
-
-    _drawCurrentLineHighlight(canvas, size, m, sy);
+    _drawCurrentLineHighlight(canvas, m, sy, 0, size.width);
 
     _drawSelectionRects(canvas, m, sx, sy);
 
@@ -121,6 +111,26 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
       );
     }
 
+    if (m.splitX > 0 && m.gutterVisible) {
+      final splitScreenX = m.gutterSticky ? m.splitX : m.splitX - sx;
+      if (splitScreenX > 0) {
+        canvas.drawRect(
+          Rect.fromLTWH(0, 0, splitScreenX, size.height),
+          Paint()..color = Color(_theme.backgroundColor),
+        );
+        _drawCurrentLineHighlight(canvas, m, sy, 0, splitScreenX);
+        if (m.splitLineVisible) {
+          canvas.drawLine(
+            Offset(splitScreenX, 0),
+            Offset(splitScreenX, size.height),
+            Paint()
+              ..color = Color(_theme.splitLineColor)
+              ..strokeWidth = 1,
+          );
+        }
+      }
+    }
+
     _drawLineNumbers(canvas, m, sx, sy);
 
     _drawGutterIcons(canvas, m, sx, sy);
@@ -164,43 +174,31 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
       );
     }
 
-    if (m.splitLineVisible && m.splitX > 0) {
-      final splitScreenX = m.gutterSticky ? m.splitX : m.splitX - sx;
-      canvas.drawLine(
-        Offset(splitScreenX, 0),
-        Offset(splitScreenX, size.height),
-        Paint()
-          ..color = Color(_theme.splitLineColor)
-          ..strokeWidth = 1,
-      );
-    }
-
     _drawScrollbars(canvas, size, m);
   }
 
   void _drawCurrentLineHighlight(
     Canvas canvas,
-    Size size,
     core.EditorRenderModel m,
     double sy,
+    double left,
+    double right,
   ) {
+    if (right <= left) return;
     if (m.currentLineRenderMode == 2) return; // none
     final y = m.currentLine.y - sy;
-    if (y < -50 || y > size.height + 50) return;
-
-    final metrics = _measurer.getFontMetrics();
-    final lineH = metrics.lineHeight;
+    final lineH = m.cursor.visible ? m.cursor.height : _measurer.getFontMetrics().lineHeight;
 
     if (m.currentLineRenderMode == 0) {
       // background
       canvas.drawRect(
-        Rect.fromLTWH(0, y, size.width, lineH),
+        Rect.fromLTWH(left, y, right - left, lineH),
         Paint()..color = Color(_theme.currentLineColor),
       );
     } else {
       // border
       canvas.drawRect(
-        Rect.fromLTWH(0, y, size.width, lineH),
+        Rect.fromLTWH(left, y, right - left, lineH),
         Paint()
           ..color = Color(_theme.currentLineColor)
           ..style = PaintingStyle.stroke
@@ -620,7 +618,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
           text: '${line.logicalLine + 1}',
           style: TextStyle(
             fontFamily: _measurer.fontFamily,
-            fontSize: _measurer.fontSize,
+            fontSize: _measurer.fontSize * 0.85,
             color: Color(color),
             height: 1.0,
           ),
@@ -670,30 +668,37 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
     double sx,
     double sy,
   ) {
+    final activeLogicalLine = m.cursor.textPosition.line;
+    final activeColor = _theme.currentLineNumberColor != 0
+        ? _theme.currentLineNumberColor
+        : _theme.lineNumberColor;
     for (final marker in m.foldMarkers) {
       final x = m.gutterSticky ? marker.origin.x : marker.origin.x - sx;
       final y = marker.origin.y - sy;
       final cx = x + marker.width / 2;
       final cy = y + marker.height / 2;
-      final halfSize = math.min(marker.width, marker.height) * 0.3;
+      final halfSize = math.min(marker.width, marker.height) * 0.28;
       final paint = Paint()
-        ..color = Color(_theme.lineNumberColor)
+        ..color = Color(
+          marker.logicalLine == activeLogicalLine
+              ? activeColor
+              : _theme.lineNumberColor,
+        )
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2;
+        ..strokeWidth = math.max(1.0, marker.height * 0.1)
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
 
       final path = Path();
       if (marker.foldState == core.FoldState.collapsed) {
-        // Right-pointing triangle
-        path.moveTo(cx - halfSize, cy - halfSize);
-        path.lineTo(cx + halfSize, cy);
-        path.lineTo(cx - halfSize, cy + halfSize);
+        path.moveTo(cx - halfSize * 0.5, cy - halfSize);
+        path.lineTo(cx + halfSize * 0.5, cy);
+        path.lineTo(cx - halfSize * 0.5, cy + halfSize);
       } else {
-        // Down-pointing triangle
-        path.moveTo(cx - halfSize, cy - halfSize);
-        path.lineTo(cx + halfSize, cy - halfSize);
-        path.lineTo(cx, cy + halfSize);
+        path.moveTo(cx - halfSize, cy - halfSize * 0.5);
+        path.lineTo(cx, cy + halfSize * 0.5);
+        path.lineTo(cx + halfSize, cy - halfSize * 0.5);
       }
-      path.close();
       canvas.drawPath(path, paint);
     }
   }
