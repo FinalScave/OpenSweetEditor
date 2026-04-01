@@ -9,6 +9,7 @@
 #include <gesture.h>
 #include <layout.h>
 #include <interaction.h>
+#include <render_composer.h>
 #include <undo.h>
 #include <linked_editing.h>
 
@@ -682,6 +683,7 @@ namespace NS_SWEETEDITOR {
     Ptr<DecorationManager> m_decorations_;
     UPtr<TextLayout> m_text_layout_;
     UPtr<EditorInteraction> m_interaction_;
+    UPtr<RenderComposer> m_render_composer_;
     UPtr<UndoManager> m_undo_manager_;
     KeyResolver m_key_resolver_;
 
@@ -736,30 +738,6 @@ namespace NS_SWEETEDITOR {
     /// @param record_undo Whether to record in undo stack (pass false during undo/redo)
     /// @return Exact change info
     TextEditResult applyEdit(const TextRange& range, const U8String& new_text, bool record_undo = true);
-
-    /// Fill cursor render data (position, height, current line background)
-    void buildCursorModel(EditorRenderModel& model, float line_height);
-
-    /// Fill IME composition decoration (underline area)
-    void buildCompositionDecoration(EditorRenderModel& model, float line_height, float font_height);
-
-    /// Fill selection highlight rects and selection handles
-    void buildSelectionRects(EditorRenderModel& model, float line_height);
-
-    /// Fill linked editing highlight rects
-    void buildLinkedEditingRects(EditorRenderModel& model, float line_height);
-
-    /// Fill bracket match highlight rects (built-in char scan + external override)
-    void buildBracketHighlightRects(EditorRenderModel& model, float line_height);
-
-    /// Generate render primitives from guide data in DecorationManager
-    void buildGuideSegments(EditorRenderModel& model, float line_height);
-
-    /// Generate render decorations from diagnostic data in DecorationManager
-    void buildDiagnosticDecorations(EditorRenderModel& model, float line_height);
-
-    /// Build scrollbar geometry in render model
-    void buildScrollbarModel(EditorRenderModel& model) const;
 
     /// Sync fold state in DecorationManager to each LogicalLine.is_fold_hidden
     void syncFoldState();
