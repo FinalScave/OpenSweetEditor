@@ -5,7 +5,6 @@
 #include <simdutf/simdutf.h>
 #include <cmath>
 #include <algorithm>
-#include <chrono>
 #include <editor_core.h>
 #include <utility.h>
 #include "logging.h"
@@ -19,21 +18,6 @@ namespace NS_SWEETEDITOR {
            (ch >= CHAR16('0') && ch <= CHAR16('9')) ||
            ch == CHAR16('_') ||
            ch > 0x7F; // Treat non-ASCII characters as word characters (supports CJK, etc.)
-  }
-
-  static bool pointInScrollbarRect(const PointF& point, const ScrollbarRect& rect, float expand = 0.0f) {
-    if (rect.width <= 0.0f || rect.height <= 0.0f) return false;
-    const float left = rect.origin.x - expand;
-    const float right = rect.origin.x + rect.width + expand;
-    const float top = rect.origin.y - expand;
-    const float bottom = rect.origin.y + rect.height + expand;
-    return point.x >= left && point.x <= right
-        && point.y >= top && point.y <= bottom;
-  }
-
-  static int64_t monotonicNowMs() {
-    using namespace std::chrono;
-    return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
   }
 
 #pragma region [Setup & View State]
@@ -68,11 +52,15 @@ namespace NS_SWEETEDITOR {
   }
   EditorCore::EditorCore(const Ptr<TextMeasurer>& measurer, const EditorOptions& options): m_measurer_(measurer), m_options_(options), m_key_resolver_(options.key_chord_timeout_ms) {
     m_decorations_ = makePtr<DecorationManager>();
-    m_gesture_handler_ = makeUPtr<GestureHandler>(options.simpleAsTouchConfig());
     m_text_layout_ = makeUPtr<TextLayout>(measurer, m_decorations_);
+    InteractionContext interaction_context;
+    interaction_context.touch_config = options.simpleAsTouchConfig();
+    interaction_context.settings = &m_settings_;
+    interaction_context.view_state = &m_view_state_;
+    interaction_context.viewport = &m_viewport_;
+    interaction_context.text_layout = m_text_layout_.get();
+    m_interaction_ = makeUPtr<EditorInteraction>(interaction_context);
     m_undo_manager_ = makeUPtr<UndoManager>(options.max_undo_stack_size);
-    TouchConfig tc = options.simpleAsTouchConfig();
-m_fling_ = makeUPtr<FlingAnimator>(tc);
     m_key_resolver_.setKeyMap(KeyMap::createDefault());
     loadDocument(makePtr<LineArrayDocument>(""));
     LOGD("EditorCore::EditorCore(), options = %s", options.dump().c_str());
@@ -108,19 +96,6 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
          m_settings_.scrollbar.fade_duration_ms);
   }
 
-  void EditorCore::markScrollbarInteraction() {
-    const int64_t now_ms = monotonicNowMs();
-    const int64_t hide_window_ms =
-        static_cast<int64_t>(m_settings_.scrollbar.fade_delay_ms) +
-        std::max<int64_t>(1, static_cast<int64_t>(m_settings_.scrollbar.fade_duration_ms));
-    if (m_scrollbar_last_interaction_ms_ <= 0
-        || m_scrollbar_cycle_start_ms_ <= 0
-        || now_ms - m_scrollbar_last_interaction_ms_ > hide_window_ms) {
-      m_scrollbar_cycle_start_ms_ = now_ms;
-    }
-    m_scrollbar_last_interaction_ms_ = now_ms;
-  }
-
   void EditorCore::loadDocument(const Ptr<Document>& document) {
     m_document_ = document;
     m_text_layout_->loadDocument(document);
@@ -142,8 +117,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
 
   void EditorCore::onFontMetricsChanged() {
     float old_line_height = m_text_layout_->getLineHeight();
-    PendingScaleAnchor scale_anchor = m_pending_scale_anchor_;
-    m_pending_scale_anchor_.active = false;
+    EditorInteraction::PendingScaleAnchor scale_anchor = m_interaction_->takePendingScaleAnchor();
     // Anchor-based scroll preservation
     // Before resetting the measurer, find which logical line sits at the
     // viewport top and what fraction of that line has been scrolled past.
@@ -244,7 +218,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
       } else {
         target_scroll_y = m_view_state_.scroll_y + (anchor_rect.y + scale_anchor.offset_y - scale_anchor.focus_screen.y);
       }
-      if (m_scale_gesture_active_) {
+      if (m_interaction_->isScaleGestureActive()) {
         m_view_state_.scroll_x = target_scroll_x;
         m_view_state_.scroll_y = target_scroll_y;
       } else {
@@ -282,8 +256,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
   }
 
   void EditorCore::setScale(float scale) {
-    m_pending_scale_anchor_.active = false;
-    m_scale_gesture_active_ = false;
+    m_interaction_->resetScaleState();
     m_view_state_.scale = scale;
     normalizeScrollState();
     LOGD("EditorCore::setScale, m_view_state_ = %s", m_view_state_.dump().c_str());
@@ -407,520 +380,32 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     return metrics;
   }
 
-  void EditorCore::computeScrollbarModels(ScrollbarModel& vertical, ScrollbarModel& horizontal) const {
-    vertical = ScrollbarModel{};
-    horizontal = ScrollbarModel{};
-    if (!m_viewport_.valid() || m_text_layout_ == nullptr) {
-      return;
-    }
-
-    const float scrollbar_thickness = std::max(1.0f, m_settings_.scrollbar.thickness);
-    const float scrollbar_min_thumb = std::max(scrollbar_thickness, m_settings_.scrollbar.min_thumb);
-
-    const ScrollBounds bounds = m_text_layout_->getScrollBounds();
-    const bool logical_vertical = bounds.max_scroll_y > 0.0f;
-    const bool logical_horizontal = bounds.max_scroll_x > 0.0f;
-    const int64_t now_ms = monotonicNowMs();
-    const auto axisAlpha = [&](bool logical_visible, ScrollbarDragTarget drag_target) -> float {
-      if (!logical_visible) return 0.0f;
-      switch (m_settings_.scrollbar.mode) {
-      case ScrollbarMode::ALWAYS:
-        return 1.0f;
-      case ScrollbarMode::NEVER:
-        return 0.0f;
-      case ScrollbarMode::TRANSIENT: {
-        if (m_dragging_scrollbar_ == drag_target) return 1.0f;
-        if (m_scrollbar_last_interaction_ms_ <= 0) return 0.0f;
-
-        const int64_t fade_ms = std::max<int64_t>(1, static_cast<int64_t>(m_settings_.scrollbar.fade_duration_ms));
-        const int64_t delay_ms = static_cast<int64_t>(m_settings_.scrollbar.fade_delay_ms);
-        const int64_t elapsed_since_last = std::max<int64_t>(0, now_ms - m_scrollbar_last_interaction_ms_);
-        if (elapsed_since_last >= delay_ms + fade_ms) {
-          return 0.0f;
-        }
-
-        float fade_out_alpha = 1.0f;
-        if (elapsed_since_last > delay_ms) {
-          fade_out_alpha = 1.0f - static_cast<float>(elapsed_since_last - delay_ms) / static_cast<float>(fade_ms);
-        }
-
-        float fade_in_alpha = 1.0f;
-        if (m_scrollbar_cycle_start_ms_ > 0) {
-          const int64_t elapsed_since_cycle = std::max<int64_t>(0, now_ms - m_scrollbar_cycle_start_ms_);
-          // +16ms frame compensation avoids fully invisible first frame when interaction just starts.
-          fade_in_alpha = std::min(1.0f, static_cast<float>(elapsed_since_cycle + 16) / static_cast<float>(fade_ms));
-        }
-        return std::clamp(std::min(fade_in_alpha, fade_out_alpha), 0.0f, 1.0f);
-      }
-      }
-      return 1.0f;
-    };
-    const float vertical_alpha = axisAlpha(logical_vertical, ScrollbarDragTarget::VERTICAL);
-    const float horizontal_alpha = axisAlpha(logical_horizontal, ScrollbarDragTarget::HORIZONTAL);
-    const bool show_vertical = vertical_alpha > 0.0f;
-    const bool show_horizontal = horizontal_alpha > 0.0f;
-    const float viewport_width = m_viewport_.width;
-    const float viewport_height = m_viewport_.height;
-
-    const float vertical_track_x = viewport_width - scrollbar_thickness;
-    const float vertical_track_height = viewport_height - (show_horizontal ? scrollbar_thickness : 0.0f);
-    if (show_vertical && vertical_track_height > 0.0f) {
-      vertical.visible = true;
-      vertical.alpha = vertical_alpha;
-      vertical.thumb_active = (m_dragging_scrollbar_ == ScrollbarDragTarget::VERTICAL);
-      vertical.track.origin = {vertical_track_x, 0.0f};
-      vertical.track.width = scrollbar_thickness;
-      vertical.track.height = vertical_track_height;
-
-      const float viewport = std::max(1.0f, viewport_height);
-      const float content_span = std::max(viewport, bounds.max_scroll_y + viewport);
-      float thumb_height = std::max(scrollbar_min_thumb, vertical_track_height * viewport / content_span);
-      thumb_height = std::min(thumb_height, vertical_track_height);
-      const float travel = std::max(0.0f, vertical_track_height - thumb_height);
-      const float ratio = bounds.max_scroll_y <= 0.0f
-        ? 0.0f
-        : std::clamp(m_view_state_.scroll_y / bounds.max_scroll_y, 0.0f, 1.0f);
-      const float thumb_y = travel <= 0.0f ? 0.0f : travel * ratio;
-      vertical.thumb.origin = {vertical_track_x, thumb_y};
-      vertical.thumb.width = scrollbar_thickness;
-      vertical.thumb.height = thumb_height;
-    }
-
-    const float horizontal_track_x = m_settings_.gutter_sticky ? std::max(0.0f, bounds.text_area_x) : 0.0f;
-    const float horizontal_track_width = viewport_width - horizontal_track_x - (show_vertical ? scrollbar_thickness : 0.0f);
-    const float horizontal_track_y = viewport_height - scrollbar_thickness;
-    if (show_horizontal && horizontal_track_width > 0.0f && horizontal_track_y >= 0.0f) {
-      horizontal.visible = true;
-      horizontal.alpha = horizontal_alpha;
-      horizontal.thumb_active = (m_dragging_scrollbar_ == ScrollbarDragTarget::HORIZONTAL);
-      horizontal.track.origin = {horizontal_track_x, horizontal_track_y};
-      horizontal.track.width = horizontal_track_width;
-      horizontal.track.height = scrollbar_thickness;
-
-      const float viewport = std::max(1.0f, bounds.text_area_width);
-      const float content_span = std::max(viewport, bounds.max_scroll_x + viewport);
-      float thumb_width = std::max(scrollbar_min_thumb, horizontal_track_width * viewport / content_span);
-      thumb_width = std::min(thumb_width, horizontal_track_width);
-      const float travel = std::max(0.0f, horizontal_track_width - thumb_width);
-      const float ratio = bounds.max_scroll_x <= 0.0f
-        ? 0.0f
-        : std::clamp(m_view_state_.scroll_x / bounds.max_scroll_x, 0.0f, 1.0f);
-      const float thumb_x = horizontal_track_x + (travel <= 0.0f ? 0.0f : travel * ratio);
-      horizontal.thumb.origin = {thumb_x, horizontal_track_y};
-      horizontal.thumb.width = thumb_width;
-      horizontal.thumb.height = scrollbar_thickness;
-    }
-  }
-
   void EditorCore::buildScrollbarModel(EditorRenderModel& model) const {
-    computeScrollbarModels(model.vertical_scrollbar, model.horizontal_scrollbar);
+    m_interaction_->computeScrollbarModels(model.vertical_scrollbar, model.horizontal_scrollbar);
   }
 
   LayoutMetrics& EditorCore::getLayoutMetrics() const {
     return m_text_layout_->getLayoutMetrics();
   }
-  void EditorCore::fillGestureResult(GestureResult& result) const {
-    result.cursor_position = m_cursor_position_;
-    result.has_selection = m_has_selection_;
-    result.selection = m_selection_;
-    result.view_scroll_x = m_view_state_.scroll_x;
-    result.view_scroll_y = m_view_state_.scroll_y;
-    result.view_scale = m_view_state_.scale;
-    result.is_handle_drag = (m_dragging_handle_ != HandleDragTarget::NONE);
-  }
-
-  PointF EditorCore::resolveScaleFocus(const GestureEvent& event) const {
-    if (event.points.size() >= 2) {
-      return {
-        (event.points[0].x + event.points[1].x) * 0.5f,
-        (event.points[0].y + event.points[1].y) * 0.5f
-      };
-    }
-    if (!event.points.empty()) {
-      return event.points[0];
-    }
-    return {m_viewport_.width * 0.5f, m_viewport_.height * 0.5f};
-  }
-
-  bool EditorCore::handleScrollbarGesture(const GestureEvent& event, GestureResult& result) {
-    if (m_text_layout_ == nullptr || !m_viewport_.valid()) {
-      return false;
-    }
-    // While dragging selection handles, ignore scrollbar hit-test.
-    if (m_dragging_handle_ != HandleDragTarget::NONE
-        && m_dragging_scrollbar_ == ScrollbarDragTarget::NONE) {
-      return false;
-    }
-
-    const auto consume = [&](GestureType type) {
-      result.type = type;
-      fillGestureResult(result);
-      return true;
-    };
-    const auto markScrollbarInteraction = [&]() {
-      this->markScrollbarInteraction();
-    };
-
-    ScrollbarModel vertical;
-    ScrollbarModel horizontal;
-    computeScrollbarModels(vertical, horizontal);
-    const ScrollBounds bounds = m_text_layout_->getScrollBounds();
-
-    switch (event.type) {
-    case EventType::TOUCH_DOWN:
-    case EventType::MOUSE_DOWN: {
-      if (event.points.empty()) return false;
-      const PointF& point = event.points[0];
-      const float thumb_hit_padding = m_settings_.scrollbar.thumb_hit_padding;
-
-      if (vertical.visible
-          && m_settings_.scrollbar.thumb_draggable
-          && pointInScrollbarRect(point, vertical.thumb, thumb_hit_padding)) {
-        m_dragging_scrollbar_ = ScrollbarDragTarget::VERTICAL;
-        m_scrollbar_drag_start_point_ = point;
-        m_scrollbar_drag_start_scroll_y_ = m_view_state_.scroll_y;
-        m_scrollbar_drag_travel_y_ = std::max(0.0f, vertical.track.height - vertical.thumb.height);
-        m_scrollbar_drag_max_scroll_y_ = std::max(0.0f, bounds.max_scroll_y);
-        m_edge_scroll_.active = false;
-        markScrollbarInteraction();
-        m_gesture_handler_->resetState();
-        return consume(GestureType::UNDEFINED);
-      }
-
-      if (horizontal.visible
-          && m_settings_.scrollbar.thumb_draggable
-          && pointInScrollbarRect(point, horizontal.thumb, thumb_hit_padding)) {
-        m_dragging_scrollbar_ = ScrollbarDragTarget::HORIZONTAL;
-        m_scrollbar_drag_start_point_ = point;
-        m_scrollbar_drag_start_scroll_x_ = m_view_state_.scroll_x;
-        m_scrollbar_drag_travel_x_ = std::max(0.0f, horizontal.track.width - horizontal.thumb.width);
-        m_scrollbar_drag_max_scroll_x_ = std::max(0.0f, bounds.max_scroll_x);
-        m_edge_scroll_.active = false;
-        markScrollbarInteraction();
-        m_gesture_handler_->resetState();
-        return consume(GestureType::UNDEFINED);
-      }
-
-      if (vertical.visible
-          && m_settings_.scrollbar.track_tap_mode == ScrollbarTrackTapMode::JUMP
-          && pointInScrollbarRect(point, vertical.track)) {
-        if (vertical.track.height > 0.0f && bounds.max_scroll_y > 0.0f) {
-          const float travel = std::max(0.0f, vertical.track.height - vertical.thumb.height);
-          const float ratio = travel <= 0.0f
-            ? 0.0f
-            : std::clamp((point.y - vertical.track.origin.y - vertical.thumb.height * 0.5f) / travel, 0.0f, 1.0f);
-          m_view_state_.scroll_y = ratio * bounds.max_scroll_y;
-          normalizeScrollState();
-          m_edge_scroll_.active = false;
-          markScrollbarInteraction();
-          return consume(GestureType::SCROLL);
-        }
-        markScrollbarInteraction();
-        return consume(GestureType::UNDEFINED);
-      }
-
-      if (horizontal.visible
-          && m_settings_.scrollbar.track_tap_mode == ScrollbarTrackTapMode::JUMP
-          && pointInScrollbarRect(point, horizontal.track)) {
-        if (horizontal.track.width > 0.0f && bounds.max_scroll_x > 0.0f) {
-          const float travel = std::max(0.0f, horizontal.track.width - horizontal.thumb.width);
-          const float ratio = travel <= 0.0f
-            ? 0.0f
-            : std::clamp((point.x - horizontal.track.origin.x - horizontal.thumb.width * 0.5f) / travel, 0.0f, 1.0f);
-          m_view_state_.scroll_x = ratio * bounds.max_scroll_x;
-          normalizeScrollState();
-          m_edge_scroll_.active = false;
-          markScrollbarInteraction();
-          return consume(GestureType::SCROLL);
-        }
-        markScrollbarInteraction();
-        return consume(GestureType::UNDEFINED);
-      }
-      return false;
-    }
-
-    case EventType::TOUCH_MOVE:
-    case EventType::MOUSE_MOVE: {
-      if (m_dragging_scrollbar_ == ScrollbarDragTarget::NONE) {
-        return false;
-      }
-      if (event.points.empty()) {
-        return consume(GestureType::UNDEFINED);
-      }
-      const PointF& point = event.points[0];
-      if (m_dragging_scrollbar_ == ScrollbarDragTarget::VERTICAL) {
-        float target_y = m_scrollbar_drag_start_scroll_y_;
-        if (m_scrollbar_drag_travel_y_ > 0.0f && m_scrollbar_drag_max_scroll_y_ > 0.0f) {
-          const float delta = point.y - m_scrollbar_drag_start_point_.y;
-          target_y += delta * m_scrollbar_drag_max_scroll_y_ / m_scrollbar_drag_travel_y_;
-        }
-        m_view_state_.scroll_y = std::clamp(target_y, 0.0f, bounds.max_scroll_y);
-        normalizeScrollState();
-        m_edge_scroll_.active = false;
-        markScrollbarInteraction();
-        return consume(GestureType::SCROLL);
-      }
-      if (m_dragging_scrollbar_ == ScrollbarDragTarget::HORIZONTAL) {
-        float target_x = m_scrollbar_drag_start_scroll_x_;
-        if (m_scrollbar_drag_travel_x_ > 0.0f && m_scrollbar_drag_max_scroll_x_ > 0.0f) {
-          const float delta = point.x - m_scrollbar_drag_start_point_.x;
-          target_x += delta * m_scrollbar_drag_max_scroll_x_ / m_scrollbar_drag_travel_x_;
-        }
-        m_view_state_.scroll_x = std::clamp(target_x, 0.0f, bounds.max_scroll_x);
-        normalizeScrollState();
-        m_edge_scroll_.active = false;
-        markScrollbarInteraction();
-        return consume(GestureType::SCROLL);
-      }
-      return consume(GestureType::UNDEFINED);
-    }
-
-    case EventType::TOUCH_POINTER_DOWN: {
-      if (m_dragging_scrollbar_ != ScrollbarDragTarget::NONE) {
-        m_dragging_scrollbar_ = ScrollbarDragTarget::NONE;
-        m_gesture_handler_->resetState();
-        return consume(GestureType::UNDEFINED);
-      }
-      return false;
-    }
-
-    case EventType::TOUCH_UP:
-    case EventType::MOUSE_UP:
-    case EventType::TOUCH_CANCEL: {
-      if (m_dragging_scrollbar_ == ScrollbarDragTarget::NONE) {
-        return false;
-      }
-      m_dragging_scrollbar_ = ScrollbarDragTarget::NONE;
-      m_view_state_.scroll_x = std::round(m_view_state_.scroll_x);
-      m_view_state_.scroll_y = std::round(m_view_state_.scroll_y);
-      normalizeScrollState();
-      m_edge_scroll_.active = false;
-      m_gesture_handler_->resetState();
-      return consume(GestureType::UNDEFINED);
-    }
-
-    default:
-      return false;
-    }
-  }
 
   GestureResult EditorCore::handleGestureEvent(const GestureEvent& event) {
-    PERF_TIMER("handleGestureEvent");
-    GestureResult gesture_result;
-
-    if (handleScrollbarGesture(event, gesture_result)) {
-      return gesture_result;
-    }
-
-    // On TOUCH_DOWN / MOUSE_DOWN: cancel active fling and check handle hit
-    if (event.type == EventType::TOUCH_DOWN || event.type == EventType::MOUSE_DOWN) {
-      m_fling_->stop();
-      m_fling_->resetSamples();
-      if (!event.points.empty()) {
-        m_dragging_handle_ = hitTestHandle(event.points[0]);
-      }
-    }
-    // When a second finger touches down, cancel handle drag (user intent is two-finger scroll/zoom)
-    if (m_dragging_handle_ != HandleDragTarget::NONE
-        && event.type == EventType::TOUCH_POINTER_DOWN) {
-      m_dragging_handle_ = HandleDragTarget::NONE;
-      m_edge_scroll_.active = false;
-    }
-
-    // While dragging a handle: intercept TOUCH_MOVE / MOUSE_MOVE and update selection
-    if (m_dragging_handle_ != HandleDragTarget::NONE) {
-      if (event.type == EventType::TOUCH_MOVE || event.type == EventType::MOUSE_MOVE) {
-        if (!event.points.empty()) {
-          dragHandleTo(m_dragging_handle_, event.points[0]);
-          m_text_layout_->setViewState(m_view_state_);
-          gesture_result.type = GestureType::DRAG_SELECT;
-          gesture_result.is_handle_drag = true;
-          fillGestureResult(gesture_result);
-          gesture_result.needs_edge_scroll = m_edge_scroll_.active;
-          gesture_result.needs_animation = m_edge_scroll_.active;
-          return gesture_result;
-        }
-      }
-      if (event.type == EventType::TOUCH_UP || event.type == EventType::MOUSE_UP
-          || event.type == EventType::TOUCH_CANCEL) {
-        m_dragging_handle_ = HandleDragTarget::NONE;
-        m_edge_scroll_.active = false;
-        // Reset gesture handler state so skipped TOUCH_MOVE events during handle drag
-        // do not leave m_is_tap_ as true and affect later double-tap detection
-        m_gesture_handler_->resetState();
-        // Snap scroll to integer pixels for crisp text when idle
-        m_view_state_.scroll_x = std::round(m_view_state_.scroll_x);
-        m_view_state_.scroll_y = std::round(m_view_state_.scroll_y);
-        normalizeScrollState();
-        fillGestureResult(gesture_result);
-        return gesture_result;
-      }
-    }
-    GestureResult result = m_gesture_handler_->handleGestureEvent(event);
-
-    // Stop edge scroll on pointer release (non-handle-drag path)
-    if (event.type == EventType::TOUCH_UP || event.type == EventType::MOUSE_UP
-        || event.type == EventType::TOUCH_CANCEL) {
-      m_edge_scroll_.active = false;
-      // Attempt to start fling on touch-up if we were scrolling
-      if (event.type == EventType::TOUCH_UP && result.type == GestureType::UNDEFINED && !m_edge_scroll_.active) {
-        m_fling_->start();
-      }
-    }
-
-    // If TOUCH_DOWN just hit a cursor handle, skip follow-up actions such as TAP
-    if (m_dragging_handle_ != HandleDragTarget::NONE) {
-      m_text_layout_->setViewState(m_view_state_);
-      fillGestureResult(result);
-      return result;
-    }
-
-    switch (result.type) {
-    case GestureType::TAP:
-    if (static_cast<uint8_t>(result.modifiers & KeyModifier::SHIFT) && m_has_selection_) {
-        // Shift+Click from mouse should not apply touch y-offset
-        bool is_mouse_tap = (event.type == EventType::MOUSE_DOWN);
-        dragSelectTo(result.tap_point, is_mouse_tap);
-      } else {
-        // Tap in linked editing mode: check whether it is inside a tab stop range
-        if (m_linked_editing_session_ && m_linked_editing_session_->isActive()) {
-          TextPosition tap_pos = m_text_layout_->hitTest(result.tap_point);
-          bool in_tab_stop = false;
-          auto highlights = m_linked_editing_session_->getAllHighlights();
-          for (const auto& hl : highlights) {
-            if (hl.range.contains(tap_pos)) {
-              in_tab_stop = true;
-              break;
-            }
-          }
-          if (!in_tab_stop) {
-            cancelLinkedEditing();
-          }
-        }
-        // Single tap should collapse selection and place caret.
-        placeCursorAt(result.tap_point);
-      }
-      // Check whether InlayHint, GutterIcon, or fold-related targets were hit
-      result.hit_target = m_text_layout_->hitTestDecoration(result.tap_point);
-      // Toggle fold/unfold when tapping a fold placeholder or gutter fold arrow
-      if (result.hit_target.type == HitTargetType::FOLD_PLACEHOLDER ||
-          result.hit_target.type == HitTargetType::FOLD_GUTTER) {
-        toggleFoldAt(result.hit_target.line);
-      }
-      break;
-    case GestureType::DOUBLE_TAP:
-      selectWordAt(result.tap_point);
-      break;
-    case GestureType::LONG_PRESS:
-      placeCursorAt(result.tap_point);
-      break;
-    case GestureType::DRAG_SELECT: {
-      // Mouse events (MOUSE_MOVE) should not apply touch y-offset
-      bool is_mouse = (event.type == EventType::MOUSE_MOVE);
-      dragSelectTo(result.tap_point, is_mouse);
-      break;
-    }
-    case GestureType::SCALE: {
-      const PointF focus_screen = resolveScaleFocus(event);
-      TextPosition anchor_position = m_text_layout_->hitTest(focus_screen);
-      CursorRect anchor_rect = getPositionScreenRect(anchor_position);
-      m_pending_scale_anchor_.active = true;
-      m_pending_scale_anchor_.focus_screen = focus_screen;
-      m_pending_scale_anchor_.anchor_position = anchor_position;
-      m_pending_scale_anchor_.offset_x = focus_screen.x - anchor_rect.x;
-      m_pending_scale_anchor_.offset_y = focus_screen.y - anchor_rect.y;
-      m_scale_gesture_active_ = (event.type == EventType::TOUCH_MOVE && event.points.size() >= 2);
-      m_view_state_.scale = std::max(1.0f, std::min(m_settings_.max_scale, m_view_state_.scale * result.scale));
-      // Don't adjust scroll here - metrics haven't been updated yet.
-      // Platform will call onFontMetricsChanged() which adjusts scroll with accurate line heights.
-      break;
-    }
-    case GestureType::SCROLL:
-      m_view_state_.scroll_x += result.scroll_x;
-      m_view_state_.scroll_y += result.scroll_y;
-      markScrollbarInteraction();
-      if (event.type == EventType::TOUCH_MOVE && !event.points.empty()) {
-        m_fling_->recordSample(event.points[0], TimeUtil::milliTime());
-      }
-      break;
-    case GestureType::FAST_SCROLL: {
-      constexpr float kFastScrollMultiplier = 3.0f;
-      m_view_state_.scroll_x += result.scroll_x * kFastScrollMultiplier;
-      m_view_state_.scroll_y += result.scroll_y * kFastScrollMultiplier;
-      markScrollbarInteraction();
-      break;
-    }
-    default:
-      break;
-    }
-
-    const bool scale_gesture_end =
-      m_scale_gesture_active_ &&
-      (event.type == EventType::TOUCH_POINTER_UP
-        || event.type == EventType::TOUCH_UP
-        || event.type == EventType::TOUCH_CANCEL);
-
-    // Snap scroll to integer pixels for crisp text when pointer is released.
-    // Keep sub-pixel scroll during live touch scaling to reduce jitter.
-    if (scale_gesture_end || ((!m_scale_gesture_active_) &&
-        (event.type == EventType::TOUCH_UP || event.type == EventType::MOUSE_UP
-        || event.type == EventType::TOUCH_CANCEL))) {
-      m_view_state_.scroll_x = std::round(m_view_state_.scroll_x);
-      m_view_state_.scroll_y = std::round(m_view_state_.scroll_y);
-    }
-    if (scale_gesture_end) {
-      m_scale_gesture_active_ = false;
-    }
-    // For SCALE gestures, skip premature normalize; metrics have not been updated yet.
-    // Platform will call onFontMetricsChanged() which normalizes with correct metrics.
-    if (result.type == GestureType::SCALE) {
-      m_text_layout_->setViewState(m_view_state_);
-    } else {
-      normalizeScrollState();
-    }
-    fillGestureResult(result);
-    // Propagate edge-scroll flag for DRAG_SELECT gestures
-    if (result.type == GestureType::DRAG_SELECT) {
-      result.needs_edge_scroll = m_edge_scroll_.active;
-    }
-    result.needs_fling = m_fling_->isActive();
-    result.needs_animation = result.needs_edge_scroll || result.needs_fling;
-
-    LOGD("EditorCore::handleGestureEvent, m_view_state_ = %s", m_view_state_.dump().c_str());
-    return result;
+    return m_interaction_->handleGestureEvent(*this, event);
   }
 
   GestureResult EditorCore::tickFling() {
-    GestureResult result;
-    result.type = GestureType::SCROLL;
+    return m_interaction_->tickFling(m_cursor_position_);
+  }
 
-    if (!m_fling_->isActive()) {
-      fillGestureResult(result);
-      result.needs_fling = false;
-      result.needs_animation = m_edge_scroll_.active;
-      return result;
-    }
+  GestureResult EditorCore::tickEdgeScroll() {
+    return m_interaction_->tickEdgeScroll(m_cursor_position_);
+  }
 
-    float dx = 0, dy = 0;
-    bool still_active = m_fling_->advance(dx, dy);
-
-    // Fling velocity is in screen space (finger direction), scroll is inverted
-    m_view_state_.scroll_x -= dx;
-    m_view_state_.scroll_y -= dy;
-    // Snap to integer pixels every frame to prevent sub-pixel jitter during slow fling
-    m_view_state_.scroll_x = std::round(m_view_state_.scroll_x);
-    m_view_state_.scroll_y = std::round(m_view_state_.scroll_y);
-    normalizeScrollState();
-    markScrollbarInteraction();
-
-    fillGestureResult(result);
-    result.needs_fling = still_active;
-    result.needs_animation = m_edge_scroll_.active || still_active;
-    return result;
+  GestureResult EditorCore::tickAnimations() {
+    return m_interaction_->tickAnimations(m_cursor_position_);
   }
 
   void EditorCore::stopFling() {
-    m_fling_->stop();
+    m_interaction_->stopFling();
   }
 
   KeyEventResult EditorCore::handleKeyEvent(const KeyEvent& event) {
@@ -1205,7 +690,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     // Auto-indent: when inserting a newline with KEEP_INDENT enabled, append previous line's leading whitespace
     U8String actual_text = text;
     if (text == "\n" && m_settings_.auto_indent_mode == AutoIndentMode::KEEP_INDENT) {
-      size_t current_line = m_has_selection_ ? getNormalizedSelection().start.line : m_cursor_position_.line;
+      size_t current_line = hasSelection() ? getNormalizedSelection().start.line : m_cursor_position_.line;
       U16String line_text = m_document_->getLineU16Text(current_line);
       U8String indent;
       for (auto ch : line_text) {
@@ -1223,7 +708,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     if (isInLinkedEditing()) {
       const TabStopGroup* group = m_linked_editing_session_->currentGroup();
       if (group == nullptr || group->ranges.empty()) return {};
-      U8String current_text = m_has_selection_ ? "" : m_document_->getU8Text(group->ranges[0]);
+      U8String current_text = hasSelection() ? "" : m_document_->getU8Text(group->ranges[0]);
       U8String linked_text = current_text + actual_text;
       TextEditResult result = applyLinkedEditsWithResult(linked_text);
       LOGD("EditorCore::insertText(linked), cursor = %s", m_cursor_position_.dump().c_str());
@@ -1231,7 +716,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     }
 
     TextEditResult result;
-    if (m_has_selection_) {
+    if (hasSelection()) {
       TextRange range = getNormalizedSelection();
       result = applyEdit(range, actual_text);
     } else {
@@ -1280,7 +765,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
       const TabStopGroup* group = m_linked_editing_session_->currentGroup();
       if (group && !group->ranges.empty()) {
         const TextRange& primary = group->ranges[0];
-        if (m_has_selection_) {
+        if (hasSelection()) {
           auto result = applyLinkedEditsWithResult("");
           LOGD("EditorCore::backspace(linked), cursor = %s", m_cursor_position_.dump().c_str());
           return result;
@@ -1301,7 +786,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
       }
     }
 
-    if (m_has_selection_) {
+    if (hasSelection()) {
       TextRange range = getNormalizedSelection();
       auto result = applyEdit(range, "");
       LOGD("EditorCore::backspace, cursor = %s", m_cursor_position_.dump().c_str());
@@ -1342,13 +827,13 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
       return {};
     }
 
-    if (isInLinkedEditing() && m_has_selection_) {
+    if (isInLinkedEditing() && hasSelection()) {
       auto result = applyLinkedEditsWithResult("");
       LOGD("EditorCore::deleteForward(linked), cursor = %s", m_cursor_position_.dump().c_str());
       return result;
     }
 
-    if (m_has_selection_) {
+    if (hasSelection()) {
       TextRange range = getNormalizedSelection();
       auto result = applyEdit(range, "");
       LOGD("EditorCore::deleteForward, cursor = %s", m_cursor_position_.dump().c_str());
@@ -1381,7 +866,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
   }
 
   void EditorCore::deleteSelection() {
-    if (!m_has_selection_ || m_document_ == nullptr) return;
+    if (!hasSelection() || m_document_ == nullptr) return;
     TextRange range = getNormalizedSelection();
     // Internal call; do not record undo (used in composition flow)
     m_document_->deleteU8Text(range);
@@ -1396,7 +881,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     if (m_composition_.is_composing) compositionCancel();
 
     size_t first_line, last_line;
-    if (m_has_selection_) {
+    if (hasSelection()) {
       TextRange sel = getNormalizedSelection();
       first_line = sel.start.line;
       last_line = sel.end.column > 0 ? sel.end.line : (sel.end.line > sel.start.line ? sel.end.line - 1 : sel.end.line);
@@ -1416,14 +901,15 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     TextRange full_range = {{first_line - 1, 0}, {last_line, m_document_->getLineColumns(last_line)}};
     U8String new_text = block_text + "\n" + prev_text;
 
-    m_undo_manager_->beginGroup(m_cursor_position_, m_has_selection_, m_selection_);
+    m_undo_manager_->beginGroup(m_cursor_position_, hasSelection(), getSelection());
     auto result = applyEdit(full_range, new_text);
 
     TextPosition new_cursor = {m_cursor_position_.line > 0 ? m_cursor_position_.line - 1 : 0, m_cursor_position_.column};
     setCursorPosition(new_cursor);
-    if (m_has_selection_) {
-      setSelection({{m_selection_.start.line > 0 ? m_selection_.start.line - 1 : 0, m_selection_.start.column},
-                     {m_selection_.end.line > 0 ? m_selection_.end.line - 1 : 0, m_selection_.end.column}});
+    if (hasSelection()) {
+      TextRange selection = getSelection();
+      setSelection({{selection.start.line > 0 ? selection.start.line - 1 : 0, selection.start.column},
+                     {selection.end.line > 0 ? selection.end.line - 1 : 0, selection.end.column}});
     }
 
     m_undo_manager_->endGroup(m_cursor_position_);
@@ -1436,7 +922,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     if (m_composition_.is_composing) compositionCancel();
 
     size_t first_line, last_line;
-    if (m_has_selection_) {
+    if (hasSelection()) {
       TextRange sel = getNormalizedSelection();
       first_line = sel.start.line;
       last_line = sel.end.column > 0 ? sel.end.line : (sel.end.line > sel.start.line ? sel.end.line - 1 : sel.end.line);
@@ -1457,13 +943,14 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     TextRange full_range = {{first_line, 0}, {last_line + 1, m_document_->getLineColumns(last_line + 1)}};
     U8String new_text = next_text + "\n" + block_text;
 
-    m_undo_manager_->beginGroup(m_cursor_position_, m_has_selection_, m_selection_);
+    m_undo_manager_->beginGroup(m_cursor_position_, hasSelection(), getSelection());
     auto result = applyEdit(full_range, new_text);
 
     setCursorPosition({m_cursor_position_.line + 1, m_cursor_position_.column});
-    if (m_has_selection_) {
-      setSelection({{m_selection_.start.line + 1, m_selection_.start.column},
-                     {m_selection_.end.line + 1, m_selection_.end.column}});
+    if (hasSelection()) {
+      TextRange selection = getSelection();
+      setSelection({{selection.start.line + 1, selection.start.column},
+                     {selection.end.line + 1, selection.end.column}});
     }
 
     m_undo_manager_->endGroup(m_cursor_position_);
@@ -1476,7 +963,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     if (m_composition_.is_composing) compositionCancel();
 
     size_t first_line, last_line;
-    if (m_has_selection_) {
+    if (hasSelection()) {
       TextRange sel = getNormalizedSelection();
       first_line = sel.start.line;
       last_line = sel.end.column > 0 ? sel.end.line : (sel.end.line > sel.start.line ? sel.end.line - 1 : sel.end.line);
@@ -1494,7 +981,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     TextPosition insert_pos = {first_line, 0};
     U8String insert_text = block_text + "\n";
 
-    m_undo_manager_->beginGroup(m_cursor_position_, m_has_selection_, m_selection_);
+    m_undo_manager_->beginGroup(m_cursor_position_, hasSelection(), getSelection());
     auto result = applyEdit({insert_pos, insert_pos}, insert_text);
 
     // Keep cursor at original logical position (inserted text already shifted it down correctly)
@@ -1508,7 +995,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     if (m_composition_.is_composing) compositionCancel();
 
     size_t first_line, last_line;
-    if (m_has_selection_) {
+    if (hasSelection()) {
       TextRange sel = getNormalizedSelection();
       first_line = sel.start.line;
       last_line = sel.end.column > 0 ? sel.end.line : (sel.end.line > sel.start.line ? sel.end.line - 1 : sel.end.line);
@@ -1527,7 +1014,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     TextPosition insert_pos = {last_line, last_cols};
     U8String insert_text = "\n" + block_text;
 
-    m_undo_manager_->beginGroup(m_cursor_position_, m_has_selection_, m_selection_);
+    m_undo_manager_->beginGroup(m_cursor_position_, hasSelection(), getSelection());
     auto result = applyEdit({insert_pos, insert_pos}, insert_text);
 
     // applyEdit moves cursor to the end of inserted text (end of copied block), which is what we want
@@ -1541,7 +1028,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     if (m_composition_.is_composing) compositionCancel();
 
     size_t first_line, last_line;
-    if (m_has_selection_) {
+    if (hasSelection()) {
       TextRange sel = getNormalizedSelection();
       first_line = sel.start.line;
       last_line = sel.end.column > 0 ? sel.end.line : (sel.end.line > sel.start.line ? sel.end.line - 1 : sel.end.line);
@@ -1573,7 +1060,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     size_t line = m_cursor_position_.line;
     TextPosition insert_pos = {line, 0};
 
-    m_undo_manager_->beginGroup(m_cursor_position_, m_has_selection_, m_selection_);
+    m_undo_manager_->beginGroup(m_cursor_position_, hasSelection(), getSelection());
     auto result = applyEdit({insert_pos, insert_pos}, "\n");
 
     // Keep cursor on the newly inserted empty line
@@ -1817,22 +1304,20 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
   }
 
   void EditorCore::setSelection(const TextRange& range) {
-    m_selection_ = range;
-    m_has_selection_ = !(range.start == range.end);
+    m_interaction_->setSelection(range);
     m_cursor_position_ = range.end;
   }
 
   TextRange EditorCore::getSelection() const {
-    return m_selection_;
+    return m_interaction_->selection();
   }
 
   bool EditorCore::hasSelection() const {
-    return m_has_selection_;
+    return m_interaction_->hasSelection();
   }
 
   void EditorCore::clearSelection() {
-    m_has_selection_ = false;
-    m_selection_ = {};
+    m_interaction_->clearSelection();
   }
 
   void EditorCore::selectAll() {
@@ -1843,7 +1328,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
   }
 
   U8String EditorCore::getSelectedText() const {
-    if (!m_has_selection_ || m_document_ == nullptr) return "";
+    if (!hasSelection() || m_document_ == nullptr) return "";
     TextRange range = getNormalizedSelection();
     U8String result;
     for (size_t line = range.start.line; line <= range.end.line && line < m_document_->getLineCount(); ++line) {
@@ -1891,81 +1376,10 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     return result;
   }
 
-  EditorCore::HandleDragTarget EditorCore::hitTestHandle(const PointF& screen_point) const {
-    if (!m_cached_handles_valid_ || !m_has_selection_) return HandleDragTarget::NONE;
-
-    const auto& start_rect = m_settings_.handle.start_hit_offset;
-    const auto& end_rect = m_settings_.handle.end_hit_offset;
-    const float h = m_cached_handle_height_;
-
-    auto hitTest = [&](const PointF& pos, const OffsetRect& rect) -> bool {
-      float dx = screen_point.x - pos.x;
-      float dy = screen_point.y - (pos.y + h);
-      return rect.contains(dx, dy);
-    };
-
-    float dist_start = screen_point.distance(m_cached_start_handle_pos_);
-    float dist_end = screen_point.distance(m_cached_end_handle_pos_);
-
-    if (dist_start <= dist_end) {
-      if (hitTest(m_cached_start_handle_pos_, start_rect)) return HandleDragTarget::START;
-      if (hitTest(m_cached_end_handle_pos_, end_rect)) return HandleDragTarget::END;
-    } else {
-      if (hitTest(m_cached_end_handle_pos_, end_rect)) return HandleDragTarget::END;
-      if (hitTest(m_cached_start_handle_pos_, start_rect)) return HandleDragTarget::START;
-    }
-    return HandleDragTarget::NONE;
-  }
-
-  void EditorCore::dragHandleTo(HandleDragTarget target, const PointF& screen_point) {
-    if (!m_has_selection_ || target == HandleDragTarget::NONE) return;
-
-    // Derive drag offset from the active handle's hit rect so the finger doesn't obscure the cursor.
-    const auto& hit_rect = (target == HandleDragTarget::START)
-        ? m_settings_.handle.start_hit_offset
-        : m_settings_.handle.end_hit_offset;
-
-    // Only offset by the handle's visual extent (hit_rect.bottom); adding line_height
-    // would overshoot and jump the cursor to the previous line on first touch.
-    PointF adjusted_point = screen_point;
-    adjusted_point.y -= hit_rect.bottom;
-
-    TextPosition pos = m_text_layout_->hitTest(adjusted_point);
-
-    // Normalize current selection
-    TextPosition sel_start = m_selection_.start;
-    TextPosition sel_end = m_selection_.end;
-    bool swapped = sel_end < sel_start;
-    if (swapped) std::swap(sel_start, sel_end);
-
-    if (target == HandleDragTarget::START) {
-      sel_start = pos;
-    } else {
-      sel_end = pos;
-    }
-
-    // If dragging causes start > end, swap them and switch drag target
-    if (sel_end < sel_start) {
-      std::swap(sel_start, sel_end);
-      m_dragging_handle_ = (target == HandleDragTarget::START) ? HandleDragTarget::END : HandleDragTarget::START;
-    }
-
-    m_selection_.start = sel_start;
-    m_selection_.end = sel_end;
-    m_has_selection_ = !(sel_start == sel_end);
-    m_cursor_position_ = (m_dragging_handle_ == HandleDragTarget::END) ? sel_end : sel_start;
-
-    // Compute edge-scroll state (does NOT scroll here; just records speed/direction).
-    // Actual scrolling happens in tickEdgeScroll() called by platform timer.
-    updateEdgeScrollState(screen_point, /*is_handle_drag=*/true, /*is_mouse=*/false);
-
-    LOGD("EditorCore::dragHandleTo, selection = %s", m_selection_.dump().c_str());
-  }
-
   void EditorCore::moveCursorLeft(bool extend_selection) {
     if (m_document_ == nullptr) return;
 
-    if (m_has_selection_ && !extend_selection) {
+    if (hasSelection() && !extend_selection) {
       TextRange range = getNormalizedSelection();
       moveCursorTo(range.start, false);
       return;
@@ -1996,7 +1410,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
   void EditorCore::moveCursorRight(bool extend_selection) {
     if (m_document_ == nullptr) return;
 
-    if (m_has_selection_ && !extend_selection) {
+    if (hasSelection() && !extend_selection) {
       TextRange range = getNormalizedSelection();
       moveCursorTo(range.end, false);
       return;
@@ -2125,13 +1539,13 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     }
 
     // If there is a selection, delete it first (keep selection in linked editing and replace in insertText)
-    if (m_has_selection_ && !isInLinkedEditing()) {
+    if (hasSelection() && !isInLinkedEditing()) {
       deleteSelection();
     }
 
     m_composition_.is_composing = true;
     m_composition_.start_position = m_cursor_position_;
-    if (isInLinkedEditing() && m_has_selection_) {
+    if (isInLinkedEditing() && hasSelection()) {
       m_composition_.start_position = getNormalizedSelection().start;
     }
     m_composition_.composing_text.clear();
@@ -2295,7 +1709,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     // Determine insertion position
     TextPosition insert_pos = m_cursor_position_;
     TextRange replace_range = {insert_pos, insert_pos};
-    if (m_has_selection_) {
+    if (hasSelection()) {
       replace_range = getNormalizedSelection();
       insert_pos = replace_range.start;
     }
@@ -2409,7 +1823,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     if (edits.empty()) return changes;
 
     // Begin undo group
-    m_undo_manager_->beginGroup(m_cursor_position_, m_has_selection_, m_selection_);
+    m_undo_manager_->beginGroup(m_cursor_position_, hasSelection(), getSelection());
 
     // Replace from back to front to avoid offset issues
     for (const auto& [range, text] : edits) {
@@ -2670,7 +2084,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     model.cursor.text_position = m_cursor_position_;
     model.cursor.position = cursor_screen;
     model.cursor.height = line_height;
-    model.cursor.visible = !m_has_selection_;
+    model.cursor.visible = !hasSelection();
     model.cursor.show_dragger = false;
     model.current_line = {0, cursor_screen.y};
   }
@@ -2695,14 +2109,15 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
   }
 
   void EditorCore::buildSelectionRects(EditorRenderModel& model, float line_height) {
-    if (!m_has_selection_ || m_document_ == nullptr) {
-      m_cached_handles_valid_ = false;
+    if (!hasSelection() || m_document_ == nullptr) {
+      m_interaction_->clearHandleCache();
       return;
     }
 
     // Normalize selection range (ensure start < end)
-    TextPosition sel_start = m_selection_.start;
-    TextPosition sel_end = m_selection_.end;
+    const TextRange& selection = m_interaction_->selection();
+    TextPosition sel_start = selection.start;
+    TextPosition sel_end = selection.end;
     if (sel_end < sel_start) {
       std::swap(sel_start, sel_end);
     }
@@ -2759,10 +2174,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     model.selection_end_handle.visible = true;
 
     // Cache cursor positions for hit testing in next frame
-    m_cached_start_handle_pos_ = start_coord;
-    m_cached_end_handle_pos_ = end_coord;
-    m_cached_handle_height_ = line_height;
-    m_cached_handles_valid_ = true;
+    m_interaction_->updateHandleCache(start_coord, end_coord, line_height);
   }
 
   void EditorCore::buildLinkedEditingRects(EditorRenderModel& model, float line_height) {
@@ -3134,36 +2546,6 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     LOGD("EditorCore::selectWordAt, selection = %s", range.dump().c_str());
   }
 
-  void EditorCore::dragSelectTo(const PointF& screen_point, bool is_mouse) {
-    // Long-press drag selection: offset upward by drag_y_offset + line_height to keep
-    // the selection endpoint well above the finger.
-    // Mouse drag does NOT apply this offset (cursor does not occlude text).
-    PointF adjusted_point = screen_point;
-    if (!is_mouse) {
-      const float hit_bottom = std::max(m_settings_.handle.start_hit_offset.bottom,
-                                        m_settings_.handle.end_hit_offset.bottom);
-      adjusted_point.y -= hit_bottom;
-    }
-
-    TextPosition pos = m_text_layout_->hitTest(adjusted_point);
-
-    if (!m_has_selection_) {
-      m_selection_.start = m_cursor_position_;
-      m_selection_.end = pos;
-      m_has_selection_ = !(m_selection_.start == pos);
-    } else {
-      m_selection_.end = pos;
-      m_has_selection_ = !(m_selection_.start == m_selection_.end);
-    }
-    m_cursor_position_ = pos;
-
-    // Compute edge-scroll state (does NOT scroll here; just records speed/direction).
-    // Actual scrolling happens in tickEdgeScroll() called by platform timer.
-    updateEdgeScrollState(screen_point, /*is_handle_drag=*/false, is_mouse);
-
-    LOGD("EditorCore::dragSelectTo, selection = %s", m_selection_.dump().c_str());
-  }
-
   void EditorCore::ensureCursorVisible() {
     PointF cursor_screen = m_text_layout_->getPositionScreenCoord(m_cursor_position_);
     float line_height = m_text_layout_->getLineHeight();
@@ -3184,119 +2566,11 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
     normalizeScrollState();
   }
 
-  void EditorCore::updateEdgeScrollState(const PointF& screen_point, bool is_handle_drag, bool is_mouse) {
-    if (!m_viewport_.valid()) {
-      m_edge_scroll_.active = false;
-      return;
-    }
-
-    // Edge zone: 15% of viewport height, clamped to [30, 120] px
-    const float kEdgeZoneRatio = 0.15f;
-    const float kMinEdgeZone = 30.0f;
-    const float kMaxEdgeZone = 120.0f;
-    float edge_zone = std::clamp(m_viewport_.height * kEdgeZoneRatio,
-                                 kMinEdgeZone, kMaxEdgeZone);
-
-    // Max speed: 2 line-heights per 16ms frame, converted to px/s
-    const float line_height = m_text_layout_->getLineHeight();
-    const float max_speed_per_sec = (line_height * 2.0f) / 0.016f;
-
-    float speed = 0.0f;
-    if (screen_point.y < edge_zone) {
-      float ratio = (edge_zone - screen_point.y) / edge_zone;
-      speed = -max_speed_per_sec * ratio;
-    } else if (screen_point.y > m_viewport_.height - edge_zone) {
-      float ratio = (screen_point.y - (m_viewport_.height - edge_zone)) / edge_zone;
-      speed = max_speed_per_sec * ratio;
-    }
-
-    if (speed != 0.0f) {
-      m_edge_scroll_.active = true;
-      m_edge_scroll_.speed = speed;
-      m_edge_scroll_.last_screen_point = screen_point;
-      m_edge_scroll_.is_handle_drag = is_handle_drag;
-      m_edge_scroll_.is_mouse = is_mouse;
-      if (m_edge_scroll_.last_tick_time == 0) {
-        m_edge_scroll_.last_tick_time = TimeUtil::milliTime();
-      }
-    } else {
-      m_edge_scroll_.active = false;
-      m_edge_scroll_.speed = 0.0f;
-      m_edge_scroll_.last_tick_time = 0;
-    }
-  }
-
-  GestureResult EditorCore::tickEdgeScroll() {
-    GestureResult result;
-    result.type = GestureType::DRAG_SELECT;
-
-    if (!m_edge_scroll_.active) {
-      fillGestureResult(result);
-      result.needs_edge_scroll = false;
-      result.needs_animation = m_fling_->isActive();
-      return result;
-    }
-
-    int64_t now = TimeUtil::milliTime();
-    float dt_sec = static_cast<float>(now - m_edge_scroll_.last_tick_time) / 1000.0f;
-    if (dt_sec <= 0) dt_sec = 0.016f;
-    dt_sec = std::min(dt_sec, 0.1f);
-    m_edge_scroll_.last_tick_time = now;
-
-    m_view_state_.scroll_y += m_edge_scroll_.speed * dt_sec;
-    normalizeScrollState();
-    markScrollbarInteraction();
-
-    // Reuse existing drag logic to update selection with the shifted viewport.
-    // Both functions internally call updateEdgeScrollState() to re-evaluate
-    // whether the edge zone is still active after scrolling.
-    if (m_edge_scroll_.is_handle_drag) {
-      dragHandleTo(m_dragging_handle_, m_edge_scroll_.last_screen_point);
-    } else {
-      dragSelectTo(m_edge_scroll_.last_screen_point, m_edge_scroll_.is_mouse);
-    }
-
-    fillGestureResult(result);
-    result.needs_edge_scroll = m_edge_scroll_.active;
-    result.needs_animation = m_edge_scroll_.active || m_fling_->isActive();
-    return result;
-  }
-
-  GestureResult EditorCore::tickAnimations() {
-    GestureResult result;
-
-    bool did_edge_scroll = false;
-    if (m_edge_scroll_.active) {
-      result = tickEdgeScroll();
-      did_edge_scroll = true;
-    }
-
-    if (m_fling_->isActive()) {
-      GestureResult fling_result = tickFling();
-      if (!did_edge_scroll) {
-        result = fling_result;
-      } else {
-        result.needs_fling = fling_result.needs_fling;
-        result.view_scroll_x = fling_result.view_scroll_x;
-        result.view_scroll_y = fling_result.view_scroll_y;
-      }
-    }
-
-    if (!did_edge_scroll && !m_fling_->isActive()) {
-      fillGestureResult(result);
-    }
-
-    result.needs_animation = m_edge_scroll_.active || m_fling_->isActive();
-    return result;
-  }
-
   void EditorCore::moveCursorTo(const TextPosition& new_pos, bool extend_selection) {
     if (extend_selection) {
-      if (!m_has_selection_) {
-        m_selection_.start = m_cursor_position_;
-      }
-      m_selection_.end = new_pos;
-      m_has_selection_ = !(m_selection_.start == new_pos);
+      TextRange selection = hasSelection() ? getSelection() : TextRange {m_cursor_position_, m_cursor_position_};
+      selection.end = new_pos;
+      setSelection(selection);
     } else {
       clearSelection();
     }
@@ -3305,7 +2579,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
   }
 
   TextRange EditorCore::getNormalizedSelection() const {
-    TextRange range = m_selection_;
+    TextRange range = m_interaction_->selection();
     if (range.end < range.start) {
       std::swap(range.start, range.end);
     }
@@ -3375,8 +2649,8 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
 
     TextPosition cursor_before = m_cursor_position_;
     edit_result.cursor_before = cursor_before;
-    bool had_selection = m_has_selection_;
-    TextRange selection_before = m_selection_;
+    bool had_selection = hasSelection();
+    TextRange selection_before = getSelection();
 
     // Perform document operation
     if (is_insert) {
@@ -3450,8 +2724,7 @@ m_fling_ = makeUPtr<FlingAnimator>(tc);
   void EditorCore::normalizeScrollState() {
     PERF_TIMER("normalizeScrollState");
     if (m_text_layout_ == nullptr) return;
-    m_text_layout_->clampScroll(m_view_state_.scroll_x, m_view_state_.scroll_y);
-    m_text_layout_->setViewState(m_view_state_);
+    m_text_layout_->normalizeViewState(m_view_state_);
   }
 
   void EditorCore::resetCompositionState() {

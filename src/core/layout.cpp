@@ -833,6 +833,11 @@ namespace NS_SWEETEDITOR {
     scroll_x = std::clamp(scroll_x, 0.0f, bounds.max_scroll_x);
   }
 
+  void TextLayout::normalizeViewState(ViewState& view_state) {
+    clampScroll(view_state.scroll_x, view_state.scroll_y);
+    setViewState(view_state);
+  }
+
   void TextLayout::resetMeasurer() {
     PERF_TIMER("resetMeasurer");
     m_text_widths_.clear();

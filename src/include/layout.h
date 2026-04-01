@@ -149,6 +149,10 @@ namespace NS_SWEETEDITOR {
     /// @param scroll_y Vertical scroll offset (input/output)
     void clampScroll(float& scroll_x, float& scroll_y);
 
+    /// Clamp scroll offsets and sync the normalized view state back into layout
+    /// @param view_state View state to normalize and apply
+    void normalizeViewState(ViewState& view_state);
+
     /// Get current scroll bounds and content size
     ScrollBounds getScrollBounds();
 
