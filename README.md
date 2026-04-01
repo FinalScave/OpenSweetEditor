@@ -38,15 +38,15 @@ It is suited for long-term editor infrastructure in IDEs, AI programming tools, 
 
 | Platform | Status | Rendering Technology    | UI Framework | Implementation                                                                                                               |
 | --- | --- |-------------------------| --- |------------------------------------------------------------------------------------------------------------------------------|
-| Android | Implemented | Canvas + Paint          | Android View | this repo: [platform/Android](./platform/Android)                                                                            |
-| iOS | Implemented | CoreText + CoreGraphics | UIKit / SwiftUI (being refined) | this repo: [platform/Apple](./platform/Apple)                                                                                |
-| macOS | Implemented | CoreText + CoreGraphics | AppKit / SwiftUI (being refined) | this repo: [platform/Apple](./platform/Apple)                                                                                |
-| Windows | Implemented | GDI+                    | WinForms | this repo: [platform/WinForms](./platform/WinForms)                                                                          |
-| Swing | Implemented | Java2D                  | Swing | this repo: [platform/Swing](./platform/Swing)                                                                                |
-| OHOS | Implemented | ArkUI Canvas            | ArkUI | this repo: [platform/OHOS](./platform/OHOS)                                                                                  |
-| Flutter | Implemented | TextPainter             | Flutter | this repo: [platform/Flutter](./platform/Flutter)                                                                               |
-| Compose Multiplatform | In Progress | Compose Canvas          | Compose | fork repo: [SweetEditor-Compose](https://github.com/lumkit/SweetEditor-Compose)                                              |
-| Web | Testing (Unofficial) | -                       | - | fork repo: [LangLang03/OpenSweetEditor-Web](https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten) |
+| Android | Implemented | Canvas + Paint          | Android View | [./platform/Android](./platform/Android)                                                                            |
+| iOS | Implemented | CoreText + CoreGraphics | UIKit / SwiftUI (being refined) | [./platform/Apple](./platform/Apple)                                                                                |
+| macOS | Implemented | CoreText + CoreGraphics | AppKit / SwiftUI (being refined) | [./platform/Apple](./platform/Apple)                                                                                |
+| Windows | Implemented | GDI+                    | WinForms | [./platform/WinForms](./platform/WinForms)                                                                          |
+| Swing | Implemented | Java2D                  | Swing | [./platform/Swing](./platform/Swing)                                                                                |
+| OHOS | Implemented | ArkUI Canvas            | ArkUI | [./platform/OHOS](./platform/OHOS)                                                                                  |
+| Flutter | Implemented | TextPainter             | Flutter | [./platform/Flutter](./platform/Flutter)                                                                               |
+| Compose Multiplatform | In Progress | Compose Canvas          | Compose | [lumkit/SweetEditor-Compose](https://github.com/lumkit/SweetEditor-Compose)                                              |
+| Web | Testing (Unofficial) | -                       | - | [LangLang03/OpenSweetEditor-Web](https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten) |
 | Qt | Planned | -                       | Qt | -                                                                                                                            |
 | C# Avalonia UI | Planned | -                       | - | -                                                                                                                            |
 | C# WinUI | Planned | -                       | - | -                                                                                                                            |
@@ -79,8 +79,6 @@ It is suited for long-term editor infrastructure in IDEs, AI programming tools, 
                | LinkedEditing                                    |
                +--------------------------------------------------+
 ```
-
-> Web support is currently experimental testing work maintained in the unofficial fork repository: [LangLang03/OpenSweetEditor-Web](https://github.com/LangLang03/OpenSweetEditor-Web).
 
 > For the full architecture documentation, see [Architecture](docs/en/architecture.md)
 

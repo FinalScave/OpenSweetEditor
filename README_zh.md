@@ -38,15 +38,15 @@ SweetEditor 是一套跨平台代码编辑器内核，面向需要在 Android、
 
 | 平台 | 状态 | 渲染技术                    | UI 框架 | 实现来源                                                                                                                      |
 | --- | --- |-------------------------| --- |---------------------------------------------------------------------------------------------------------------------------|
-| Android | 已实现 | Canvas + Paint          | Android View | 当前仓库：[platform/Android](./platform/Android)                                                                               |
-| iOS | 已实现 | CoreText + CoreGraphics | UIKit / SwiftUI（正在完善） | 当前仓库：[platform/Apple](./platform/Apple)                                                                                   |
-| macOS | 已实现 | CoreText + CoreGraphics | AppKit / SwiftUI（正在完善） | 当前仓库：[platform/Apple](./platform/Apple)                                                                                   |
-| Windows | 已实现 | GDI+                    | WinForms | 当前仓库：[platform/WinForms](./platform/WinForms)                                                                             |
-| Swing | 已实现 | Java2D                  | Swing | 当前仓库：[platform/Swing](./platform/Swing)                                                                                   |
-| OHOS | 已实现 | ArkUI Canvas            | ArkUI | 当前仓库：[platform/OHOS](./platform/OHOS)                                                                                     |
-| Flutter | 已实现 | TextPainter             | Flutter | 当前仓库：[platform/Flutter](./platform/Flutter)                                                                               |
-| Compose Multiplatform | 进行中 | Compose Canvas          | Compose | fork 仓库：[SweetEditor-Compose](https://github.com/lumkit/SweetEditor-Compose)                                              |
-| Web | 测试中（非官方） | -                       | - | fork 仓库：[LangLang03/OpenSweetEditor-Web](https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten) |
+| Android | 已实现 | Canvas + Paint          | Android View | [./platform/Android](./platform/Android)                                                                               |
+| iOS | 已实现 | CoreText + CoreGraphics | UIKit / SwiftUI（正在完善） | [./platform/Apple](./platform/Apple)                                                                                   |
+| macOS | 已实现 | CoreText + CoreGraphics | AppKit / SwiftUI（正在完善） | [./platform/Apple](./platform/Apple)                                                                                   |
+| Windows | 已实现 | GDI+                    | WinForms | [./platform/WinForms](./platform/WinForms)                                                                             |
+| Swing | 已实现 | Java2D                  | Swing | ./[platform/Swing](./platform/Swing)                                                                                   |
+| OHOS | 已实现 | ArkUI Canvas            | ArkUI | [./platform/OHOS](./platform/OHOS)                                                                                     |
+| Flutter | 已实现 | TextPainter             | Flutter | [./platform/Flutter](./platform/Flutter)                                                                               |
+| Compose Multiplatform | 进行中 | Compose Canvas          | Compose | [lumkit/SweetEditor-Compose](https://github.com/lumkit/SweetEditor-Compose)                                              |
+| Web | 测试中（非官方） | -                       | - | [LangLang03/OpenSweetEditor-Web](https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten) |
 | Qt | 待实现 | -                       | Qt | -                                                                                                                         |
 | C# Avalonia UI | 待实现 | -                       | - | -                                                                                                                         |
 | C# WinUI | 待实现 | -                       | - | -                                                                                                                         |
@@ -79,8 +79,6 @@ SweetEditor 是一套跨平台代码编辑器内核，面向需要在 Android、
                | LinkedEditing                                    |
                +--------------------------------------------------+
 ```
-
-> Web 当前为实验性测试支持，由非官方 fork 仓库维护：[LangLang03/OpenSweetEditor-Web](https://github.com/LangLang03/OpenSweetEditor-Web)。
 
 > 完整架构文档请参阅 [架构设计文档](docs/zh/architecture.md)
 
