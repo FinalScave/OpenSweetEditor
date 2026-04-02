@@ -234,6 +234,30 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
+  static jobject handleGestureEventEx(JNIEnv* env, jclass clazz, jlong handle, jint type, jint pointer_count,
+                                      jfloatArray points, jint modifiers, jfloat wheel_delta_x,
+                                      jfloat wheel_delta_y, jfloat direct_scale) {
+    if (handle == 0 || (pointer_count > 0 && points == nullptr)) {
+      return nullptr;
+    }
+    size_t out_size = 0;
+    jfloat* points_arr = points != nullptr ? env->GetFloatArrayElements(points, nullptr) : nullptr;
+    const uint8_t* payload = handle_editor_gesture_event_ex(
+        static_cast<intptr_t>(handle),
+        static_cast<uint8_t>(type),
+        static_cast<uint8_t>(pointer_count),
+        points_arr,
+        static_cast<uint8_t>(modifiers),
+        static_cast<float>(wheel_delta_x),
+        static_cast<float>(wheel_delta_y),
+        static_cast<float>(direct_scale),
+        &out_size);
+    if (points != nullptr && points_arr != nullptr) {
+      env->ReleaseFloatArrayElements(points, points_arr, JNI_ABORT);
+    }
+    return wrapBinaryPayload(env, payload, out_size);
+  }
+
   static void onFontMetricsChanged(jlong handle) {
     editor_on_font_metrics_changed(static_cast<intptr_t>(handle));
   }
@@ -262,6 +286,12 @@ public:
   static jobject buildRenderModel(JNIEnv* env, jclass clazz, jlong handle) {
     size_t out_size = 0;
     return wrapBinaryPayload(env, build_editor_render_model(static_cast<intptr_t>(handle), &out_size), out_size);
+  }
+
+  static jobject getLayoutMetrics(JNIEnv* env, jclass clazz, jlong handle) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    return wrapBinaryPayload(env, get_layout_metrics(static_cast<intptr_t>(handle), &out_size), out_size);
   }
 
   static jobject handleKeyEvent(JNIEnv* env, jclass clazz, jlong handle, jint key_code, jstring text, jint modifiers) {
@@ -516,6 +546,10 @@ public:
 
   static void clearHighlightsLayer(jlong handle, jint layer) {
     editor_clear_highlights_layer(static_cast<intptr_t>(handle), static_cast<uint8_t>(layer));
+  }
+
+  static void clearLineSpans(jlong handle, jint line, jint layer) {
+    editor_clear_line_spans(static_cast<intptr_t>(handle), static_cast<size_t>(line), static_cast<uint8_t>(layer));
   }
 
   static void clearInlayHints(jlong handle) {
@@ -792,6 +826,36 @@ public:
     return env->NewStringUTF(word.c_str());
   }
 
+  static void setCursorPosition(jlong handle, jint line, jint column) {
+    editor_set_cursor_position(static_cast<intptr_t>(handle),
+                               static_cast<size_t>(line),
+                               static_cast<size_t>(column));
+  }
+
+  static void moveCursorLeft(jlong handle, jboolean extendSelection) {
+    editor_move_cursor_left(static_cast<intptr_t>(handle), extendSelection == JNI_TRUE ? 1 : 0);
+  }
+
+  static void moveCursorRight(jlong handle, jboolean extendSelection) {
+    editor_move_cursor_right(static_cast<intptr_t>(handle), extendSelection == JNI_TRUE ? 1 : 0);
+  }
+
+  static void moveCursorUp(jlong handle, jboolean extendSelection) {
+    editor_move_cursor_up(static_cast<intptr_t>(handle), extendSelection == JNI_TRUE ? 1 : 0);
+  }
+
+  static void moveCursorDown(jlong handle, jboolean extendSelection) {
+    editor_move_cursor_down(static_cast<intptr_t>(handle), extendSelection == JNI_TRUE ? 1 : 0);
+  }
+
+  static void moveCursorToLineStart(jlong handle, jboolean extendSelection) {
+    editor_move_cursor_to_line_start(static_cast<intptr_t>(handle), extendSelection == JNI_TRUE ? 1 : 0);
+  }
+
+  static void moveCursorToLineEnd(jlong handle, jboolean extendSelection) {
+    editor_move_cursor_to_line_end(static_cast<intptr_t>(handle), extendSelection == JNI_TRUE ? 1 : 0);
+  }
+
   static jobject editorInsertSnippet(JNIEnv* env, jclass clazz, jlong handle, jstring snippetTemplate) {
     if (handle == 0 || snippetTemplate == nullptr) return nullptr;
     const char* tpl_str = env->GetStringUTFChars(snippetTemplate, JNI_FALSE);
@@ -872,11 +936,13 @@ public:
       {"nativeSetViewport", "(JII)V", (void*) setViewport},
       {"nativeLoadDocument", "(JJ)V", (void*) loadDocument},
       {"nativeHandleGestureEvent", "(JII[F)Ljava/nio/ByteBuffer;", (void*) handleGestureEvent},
+      {"nativeHandleGestureEventEx", "(JII[FIFFF)Ljava/nio/ByteBuffer;", (void*) handleGestureEventEx},
       {"nativeTickEdgeScroll", "(J)Ljava/nio/ByteBuffer;", (void*) tickEdgeScroll},
       {"nativeTickFling", "(J)Ljava/nio/ByteBuffer;", (void*) tickFling},
       {"nativeTickAnimations", "(J)Ljava/nio/ByteBuffer;", (void*) tickAnimations},
       {"nativeOnFontMetricsChanged", "(J)V", (void*) onFontMetricsChanged},
       {"nativeBuildRenderModel", "(J)Ljava/nio/ByteBuffer;", (void*) buildRenderModel},
+      {"nativeGetLayoutMetrics", "(J)Ljava/nio/ByteBuffer;", (void*) getLayoutMetrics},
       {"nativeHandleKeyEvent", "(JILjava/lang/String;I)Ljava/nio/ByteBuffer;", (void*) handleKeyEvent},
       {"nativeSetKeyMap", "(JLjava/nio/ByteBuffer;)V", (void*) setKeyMap},
       {"nativeInsertText", "(JLjava/lang/String;)Ljava/nio/ByteBuffer;", (void*) insertText},
@@ -912,6 +978,7 @@ public:
       {"nativeSetLinePhantomTexts", "(JLjava/nio/ByteBuffer;I)V", (void*) setLinePhantomTexts},
       {"nativeClearHighlights", "(J)V", (void*) clearHighlights},
       {"nativeClearHighlightsLayer", "(JI)V", (void*) clearHighlightsLayer},
+      {"nativeClearLineSpans", "(JII)V", (void*) clearLineSpans},
       {"nativeClearInlayHints", "(J)V", (void*) clearInlayHints},
       {"nativeClearPhantomTexts", "(J)V", (void*) clearPhantomTexts},
       {"nativeClearGutterIcons", "(J)V", (void*) clearGutterIcons},
@@ -962,6 +1029,13 @@ public:
       {"nativeGetCursorPosition", "(J)J", (void*) getCursorPosition},
       {"nativeGetWordRangeAtCursor", "(J)[J", (void*) getWordRangeAtCursor},
       {"nativeGetWordAtCursor", "(J)Ljava/lang/String;", (void*) getWordAtCursor},
+      {"nativeMoveCursorLeft", "(JZ)V", (void*) moveCursorLeft},
+      {"nativeMoveCursorRight", "(JZ)V", (void*) moveCursorRight},
+      {"nativeMoveCursorUp", "(JZ)V", (void*) moveCursorUp},
+      {"nativeMoveCursorDown", "(JZ)V", (void*) moveCursorDown},
+      {"nativeMoveCursorToLineStart", "(JZ)V", (void*) moveCursorToLineStart},
+      {"nativeMoveCursorToLineEnd", "(JZ)V", (void*) moveCursorToLineEnd},
+      {"nativeSetCursorPosition", "(JII)V", (void*) setCursorPosition},
       {"nativeSelectAll", "(J)V", (void*) selectAll},
       {"nativeSetSelection", "(JIIII)V", (void*) setSelection},
       {"nativeGetSelection", "(J)[J", (void*) getSelection},

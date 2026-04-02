@@ -9,7 +9,8 @@ import com.qiplat.sweeteditor.EditorTheme;
 import com.qiplat.sweeteditor.SweetEditor;
 import com.qiplat.sweeteditor.core.Document;
 import com.qiplat.sweeteditor.core.EditorCore;
-import com.qiplat.sweeteditor.core.adornment.DiagnosticItem;
+import com.qiplat.sweeteditor.core.adornment.Diagnostic;
+import com.qiplat.sweeteditor.core.adornment.Diagnostic;
 import com.qiplat.sweeteditor.core.adornment.FoldRegion;
 import com.qiplat.sweeteditor.core.adornment.GutterIcon;
 import com.qiplat.sweeteditor.core.adornment.IndentGuide;
@@ -90,7 +91,7 @@ public class DemoDecorationProvider implements DecorationProvider {
 
     @Override
     public void provideDecorations(@NonNull DecorationContext context, @NonNull DecorationReceiver receiver) {
-        SparseArray<List<DiagnosticItem>> diagnostics = new SparseArray<>();
+        SparseArray<List<Diagnostic>> diagnostics = new SparseArray<>();
 
         DecorationResult sweetLineResult = buildSweetLineDecorationResult(context, diagnostics);
         receiver.accept(sweetLineResult);
@@ -113,7 +114,7 @@ public class DemoDecorationProvider implements DecorationProvider {
 
     @NonNull
     private DecorationResult buildSweetLineDecorationResult(@NonNull DecorationContext context,
-                                                            @NonNull SparseArray<List<DiagnosticItem>> dynamicDiagnostics) {
+                                                            @NonNull SparseArray<List<Diagnostic>> dynamicDiagnostics) {
         if (highlightEngine == null) {
             return new DecorationResult.Builder().build();
         }
@@ -222,7 +223,7 @@ public class DemoDecorationProvider implements DecorationProvider {
                 .build();
     }
 
-    private TokenRangeInfo appendDynamicDemoDecorations(@NonNull SparseArray<List<DiagnosticItem>> diagnostics,
+    private TokenRangeInfo appendDynamicDemoDecorations(@NonNull SparseArray<List<Diagnostic>> diagnostics,
                                                         @NonNull Set<String> seenDiagnostics,
                                                         @NonNull int[] diagnosticCount,
                                                         TokenRangeInfo firstKeywordRange,
@@ -270,7 +271,7 @@ public class DemoDecorationProvider implements DecorationProvider {
         return firstKeywordRange;
     }
 
-    private static void appendDiagnostic(@NonNull SparseArray<List<DiagnosticItem>> diagnostics,
+    private static void appendDiagnostic(@NonNull SparseArray<List<Diagnostic>> diagnostics,
                                          @NonNull Set<String> seenDiagnostics,
                                          @NonNull int[] diagnosticCount,
                                          int line,
@@ -288,16 +289,16 @@ public class DemoDecorationProvider implements DecorationProvider {
         if (!seenDiagnostics.add(key)) {
             return;
         }
-        List<DiagnosticItem> lineItems = diagnostics.get(line);
+        List<Diagnostic> lineItems = diagnostics.get(line);
         if (lineItems == null) {
             lineItems = new ArrayList<>();
             diagnostics.put(line, lineItems);
         }
-        lineItems.add(new DiagnosticItem(column, length, severity, color));
+        lineItems.add(new Diagnostic(column, length, severity, color));
         diagnosticCount[0]++;
     }
 
-    private static void appendDiagnosticFallbackIfNeeded(@NonNull SparseArray<List<DiagnosticItem>> diagnostics,
+    private static void appendDiagnosticFallbackIfNeeded(@NonNull SparseArray<List<Diagnostic>> diagnostics,
                                                          @NonNull Set<String> seenDiagnostics,
                                                          @NonNull int[] diagnosticCount,
                                                          TokenRangeInfo firstKeywordRange) {

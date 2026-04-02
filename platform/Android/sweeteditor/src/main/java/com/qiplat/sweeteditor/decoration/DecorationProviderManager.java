@@ -11,7 +11,7 @@ import androidx.annotation.Nullable;
 
 import com.qiplat.sweeteditor.EditorSettings;
 import com.qiplat.sweeteditor.SweetEditor;
-import com.qiplat.sweeteditor.core.adornment.DiagnosticItem;
+import com.qiplat.sweeteditor.core.adornment.Diagnostic;
 import com.qiplat.sweeteditor.core.adornment.FoldRegion;
 import com.qiplat.sweeteditor.core.adornment.GutterIcon;
 import com.qiplat.sweeteditor.core.adornment.BracketGuide;
@@ -176,7 +176,7 @@ public final class DecorationProviderManager {
         SparseArray<List<StyleSpan>> syntaxSpans = new SparseArray<>();
         SparseArray<List<StyleSpan>> semanticSpans = new SparseArray<>();
         SparseArray<List<InlayHint>> inlayHints = new SparseArray<>();
-        SparseArray<List<DiagnosticItem>> diagnostics = new SparseArray<>();
+        SparseArray<List<Diagnostic>> diagnostics = new SparseArray<>();
         List<IndentGuide> indentGuides = null;
         List<BracketGuide> bracketGuides = null;
         List<FlowGuide> flowGuides = null;
@@ -399,7 +399,7 @@ public final class DecorationProviderManager {
     }
 
     private void clearDiagnosticRange(int startLine, int endLine) {
-        SparseArray<List<DiagnosticItem>> empty = buildEmptySparseRange(startLine, endLine);
+        SparseArray<List<Diagnostic>> empty = buildEmptySparseRange(startLine, endLine);
         if (empty.size() == 0) return;
         editor.setBatchLineDiagnostics(empty);
     }

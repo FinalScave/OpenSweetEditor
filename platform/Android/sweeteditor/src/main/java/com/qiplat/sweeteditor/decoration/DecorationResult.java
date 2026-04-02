@@ -5,7 +5,7 @@ import android.util.SparseArray;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.qiplat.sweeteditor.core.adornment.DiagnosticItem;
+import com.qiplat.sweeteditor.core.adornment.Diagnostic;
 import com.qiplat.sweeteditor.core.adornment.FoldRegion;
 import com.qiplat.sweeteditor.core.adornment.GutterIcon;
 import com.qiplat.sweeteditor.core.adornment.BracketGuide;
@@ -29,7 +29,7 @@ public class DecorationResult {
     @Nullable private SparseArray<List<StyleSpan>> syntaxSpans;
     @Nullable private SparseArray<List<StyleSpan>> semanticSpans;
     @Nullable private SparseArray<List<InlayHint>> inlayHints;
-    @Nullable private SparseArray<List<DiagnosticItem>> diagnostics;
+    @Nullable private SparseArray<List<Diagnostic>> diagnostics;
     @Nullable private List<IndentGuide> indentGuides;
     @Nullable private List<BracketGuide> bracketGuides;
     @Nullable private List<FlowGuide> flowGuides;
@@ -53,7 +53,7 @@ public class DecorationResult {
     @Nullable public SparseArray<List<StyleSpan>> getSyntaxSpans() { return syntaxSpans; }
     @Nullable public SparseArray<List<StyleSpan>> getSemanticSpans() { return semanticSpans; }
     @Nullable public SparseArray<List<InlayHint>> getInlayHints() { return inlayHints; }
-    @Nullable public SparseArray<List<DiagnosticItem>> getDiagnostics() { return diagnostics; }
+    @Nullable public SparseArray<List<Diagnostic>> getDiagnostics() { return diagnostics; }
     @Nullable public List<IndentGuide> getIndentGuides() { return indentGuides; }
     @Nullable public List<BracketGuide> getBracketGuides() { return bracketGuides; }
     @Nullable public List<FlowGuide> getFlowGuides() { return flowGuides; }
@@ -76,7 +76,7 @@ public class DecorationResult {
     void setSyntaxSpans(@Nullable SparseArray<List<StyleSpan>> v) { this.syntaxSpans = v; }
     void setSemanticSpans(@Nullable SparseArray<List<StyleSpan>> v) { this.semanticSpans = v; }
     void setInlayHints(@Nullable SparseArray<List<InlayHint>> v) { this.inlayHints = v; }
-    void setDiagnostics(@Nullable SparseArray<List<DiagnosticItem>> v) { this.diagnostics = v; }
+    void setDiagnostics(@Nullable SparseArray<List<Diagnostic>> v) { this.diagnostics = v; }
     void setIndentGuides(@Nullable List<IndentGuide> v) { this.indentGuides = v; }
     void setBracketGuides(@Nullable List<BracketGuide> v) { this.bracketGuides = v; }
     void setFlowGuides(@Nullable List<FlowGuide> v) { this.flowGuides = v; }
@@ -145,7 +145,7 @@ public class DecorationResult {
         public Builder syntaxSpans(@Nullable SparseArray<List<StyleSpan>> value, @NonNull ApplyMode mode) { result.syntaxSpans = value; result.syntaxSpansMode = mode; return this; }
         public Builder semanticSpans(@Nullable SparseArray<List<StyleSpan>> value, @NonNull ApplyMode mode) { result.semanticSpans = value; result.semanticSpansMode = mode; return this; }
         public Builder inlayHints(@Nullable SparseArray<List<InlayHint>> value, @NonNull ApplyMode mode) { result.inlayHints = value; result.inlayHintsMode = mode; return this; }
-        public Builder diagnostics(@Nullable SparseArray<List<DiagnosticItem>> value, @NonNull ApplyMode mode) { result.diagnostics = value; result.diagnosticsMode = mode; return this; }
+        public Builder diagnostics(@Nullable SparseArray<List<Diagnostic>> value, @NonNull ApplyMode mode) { result.diagnostics = value; result.diagnosticsMode = mode; return this; }
         public Builder indentGuides(@Nullable List<IndentGuide> value, @NonNull ApplyMode mode) { result.indentGuides = value; result.indentGuidesMode = mode; return this; }
         public Builder bracketGuides(@Nullable List<BracketGuide> value, @NonNull ApplyMode mode) { result.bracketGuides = value; result.bracketGuidesMode = mode; return this; }
         public Builder flowGuides(@Nullable List<FlowGuide> value, @NonNull ApplyMode mode) { result.flowGuides = value; result.flowGuidesMode = mode; return this; }

@@ -16,6 +16,7 @@ import com.qiplat.sweeteditor.core.visual.GuideStyle;
 import com.qiplat.sweeteditor.core.visual.GuideType;
 import com.qiplat.sweeteditor.core.adornment.TextStyle;
 import com.qiplat.sweeteditor.core.visual.LinkedEditingRect;
+import com.qiplat.sweeteditor.core.visual.LayoutMetrics;
 import com.qiplat.sweeteditor.core.visual.PointF;
 import com.qiplat.sweeteditor.core.visual.SelectionHandle;
 import com.qiplat.sweeteditor.core.visual.SelectionRect;
@@ -167,6 +168,37 @@ final class ProtocolDecoder {
                 data.getFloat(),
                 data.getInt() != 0,
                 data.getInt() != 0
+        );
+    }
+
+    @Nullable
+    static LayoutMetrics decodeLayoutMetrics(@Nullable ByteBuffer data) {
+        if (data == null) return null;
+        data.order(ByteOrder.nativeOrder());
+        if (data.remaining() < 40) return null;
+        float fontHeight = data.getFloat();
+        float fontAscent = data.getFloat();
+        float lineSpacingAdd = data.getFloat();
+        float lineSpacingMult = data.getFloat();
+        float lineNumberMargin = data.getFloat();
+        float lineNumberWidth = data.getFloat();
+        int maxGutterIcons = data.getInt();
+        float inlayHintPadding = data.getFloat();
+        float inlayHintMargin = data.getFloat();
+        int foldArrowModeValue = data.getInt();
+        boolean hasFoldRegions = data.getInt() != 0;
+        return new LayoutMetrics(
+                fontHeight,
+                fontAscent,
+                lineSpacingAdd,
+                lineSpacingMult,
+                lineNumberMargin,
+                lineNumberWidth,
+                maxGutterIcons,
+                inlayHintPadding,
+                inlayHintMargin,
+                com.qiplat.sweeteditor.core.foundation.FoldArrowMode.fromValue(foldArrowModeValue),
+                hasFoldRegions
         );
     }
 

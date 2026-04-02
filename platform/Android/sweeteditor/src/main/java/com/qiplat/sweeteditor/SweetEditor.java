@@ -36,7 +36,7 @@ import com.qiplat.sweeteditor.core.keymap.EditorCommand;
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
 import com.qiplat.sweeteditor.core.keymap.KeyCode;
 import com.qiplat.sweeteditor.core.keymap.KeyModifier;
-import com.qiplat.sweeteditor.core.adornment.DiagnosticItem;
+import com.qiplat.sweeteditor.core.adornment.Diagnostic;
 import com.qiplat.sweeteditor.core.adornment.FoldRegion;
 
 import com.qiplat.sweeteditor.core.adornment.BracketGuide;
@@ -45,6 +45,7 @@ import com.qiplat.sweeteditor.core.adornment.IndentGuide;
 import com.qiplat.sweeteditor.core.adornment.SeparatorGuide;
 import com.qiplat.sweeteditor.core.adornment.GutterIcon;
 import com.qiplat.sweeteditor.core.adornment.InlayHint;
+import com.qiplat.sweeteditor.core.adornment.InlayType;
 import com.qiplat.sweeteditor.core.adornment.PhantomText;
 import com.qiplat.sweeteditor.core.adornment.StyleSpan;
 import com.qiplat.sweeteditor.core.adornment.TextStyle;
@@ -1006,7 +1007,7 @@ public class SweetEditor extends View {
      * @param line  Line number (0-based)
      * @param items Diagnostic item list
      */
-    public void setLineDiagnostics(int line, @NonNull List<? extends DiagnosticItem> items) {
+    public void setLineDiagnostics(int line, @NonNull List<? extends Diagnostic> items) {
         mEditorCore.setLineDiagnostics(line, items);
     }
 
@@ -1015,7 +1016,7 @@ public class SweetEditor extends View {
      *
      * @param diagsByLine Sparse array of line number 鈫?diagnostic list
      */
-    public void setBatchLineDiagnostics(@Nullable SparseArray<? extends List<? extends DiagnosticItem>> diagsByLine) {
+    public void setBatchLineDiagnostics(@Nullable SparseArray<? extends List<? extends Diagnostic>> diagsByLine) {
         mEditorCore.setBatchLineDiagnostics(diagsByLine);
     }
 
@@ -1630,18 +1631,26 @@ public class SweetEditor extends View {
                 if (result.hitTarget != null && result.hitTarget.type != EditorCore.HitTargetType.NONE) {
                     switch (result.hitTarget.type) {
                         case INLAY_HINT_TEXT:
+                            mEventBus.publish(new InlayHintClickEvent(
+                                    result.hitTarget.line,
+                                    result.hitTarget.column,
+                                    InlayType.TEXT,
+                                    0,
+                                    screenPoint));
+                            break;
                         case INLAY_HINT_ICON:
                             mEventBus.publish(new InlayHintClickEvent(
                                     result.hitTarget.line,
                                     result.hitTarget.column,
+                                    InlayType.ICON,
                                     result.hitTarget.iconId,
-                                    result.hitTarget.type == EditorCore.HitTargetType.INLAY_HINT_ICON,
                                     screenPoint));
                             break;
                         case INLAY_HINT_COLOR:
                             mEventBus.publish(new InlayHintClickEvent(
                                     result.hitTarget.line,
                                     result.hitTarget.column,
+                                    InlayType.COLOR,
                                     result.hitTarget.colorValue,
                                     screenPoint));
                             break;

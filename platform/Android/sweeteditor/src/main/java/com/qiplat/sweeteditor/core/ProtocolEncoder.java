@@ -7,7 +7,7 @@ import androidx.annotation.Nullable;
 
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
 import com.qiplat.sweeteditor.core.keymap.KeyMap;
-import com.qiplat.sweeteditor.core.adornment.DiagnosticItem;
+import com.qiplat.sweeteditor.core.adornment.Diagnostic;
 import com.qiplat.sweeteditor.core.adornment.FoldRegion;
 import com.qiplat.sweeteditor.core.adornment.GutterIcon;
 import com.qiplat.sweeteditor.core.adornment.BracketGuide;
@@ -139,19 +139,19 @@ public final class ProtocolEncoder {
     }
 
     /**
-     * Directly accepts List&lt;DiagnosticItem&gt; and packs into ByteBuffer, avoiding the caller having to unpack into parallel arrays.
+     * Directly accepts List&lt;Diagnostic&gt; and packs into ByteBuffer, avoiding the caller having to unpack into parallel arrays.
      *
      * @param line  line number (0-based)
      * @param items diagnostic item list
      * @return packed ByteBuffer
      */
-    public static ByteBuffer packLineDiagnostics(int line, @NonNull java.util.List<? extends DiagnosticItem> items) {
+    public static ByteBuffer packLineDiagnostics(int line, @NonNull java.util.List<? extends Diagnostic> items) {
         int count = items.size();
         ByteBuffer payload = ByteBuffer.allocateDirect(8 + count * 16).order(ByteOrder.LITTLE_ENDIAN);
         payload.putInt(line);
         payload.putInt(count);
         for (int i = 0; i < count; i++) {
-            DiagnosticItem item = items.get(i);
+            Diagnostic item = items.get(i);
             payload.putInt(item.column);
             payload.putInt(item.length);
             payload.putInt(item.severity);
@@ -698,12 +698,12 @@ public final class ProtocolEncoder {
      * @return packed ByteBuffer, returns null if input is null or empty
      */
     @Nullable
-    public static ByteBuffer packBatchLineDiagnostics(@Nullable SparseArray<? extends List<? extends DiagnosticItem>> diagsByLine) {
+    public static ByteBuffer packBatchLineDiagnostics(@Nullable SparseArray<? extends List<? extends Diagnostic>> diagsByLine) {
         if (diagsByLine == null || diagsByLine.size() == 0) return null;
         int entryCount = diagsByLine.size();
         int totalDiagCount = 0;
         for (int i = 0; i < entryCount; i++) {
-            List<? extends DiagnosticItem> diags = diagsByLine.valueAt(i);
+            List<? extends Diagnostic> diags = diagsByLine.valueAt(i);
             if (diags != null) totalDiagCount += diags.size();
         }
         ByteBuffer payload = ByteBuffer.allocateDirect(4 + entryCount * 8 + totalDiagCount * 16)
@@ -711,12 +711,12 @@ public final class ProtocolEncoder {
         payload.putInt(entryCount);
         for (int i = 0; i < entryCount; i++) {
             int line = diagsByLine.keyAt(i);
-            List<? extends DiagnosticItem> diags = diagsByLine.valueAt(i);
+            List<? extends Diagnostic> diags = diagsByLine.valueAt(i);
             int diagCount = (diags != null) ? diags.size() : 0;
             payload.putInt(line);
             payload.putInt(diagCount);
             for (int j = 0; j < diagCount; j++) {
-                DiagnosticItem item = diags.get(j);
+                Diagnostic item = diags.get(j);
                 payload.putInt(item.column);
                 payload.putInt(item.length);
                 payload.putInt(item.severity);

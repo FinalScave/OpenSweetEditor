@@ -13,4 +13,13 @@ public enum InlayType {
     InlayType(int value) {
         this.value = value;
     }
+
+    public static InlayType fromValue(int value) {
+        for (InlayType type : values()) {
+            if (type.value == value) {
+                return type;
+            }
+        }
+        return TEXT;
+    }
 }

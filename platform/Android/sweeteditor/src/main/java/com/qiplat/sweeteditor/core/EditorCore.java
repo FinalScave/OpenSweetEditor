@@ -7,7 +7,7 @@ import android.view.MotionEvent;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.qiplat.sweeteditor.core.adornment.DiagnosticItem;
+import com.qiplat.sweeteditor.core.adornment.Diagnostic;
 import com.qiplat.sweeteditor.core.adornment.FoldRegion;
 import com.qiplat.sweeteditor.core.adornment.GutterIcon;
 import com.qiplat.sweeteditor.core.adornment.BracketGuide;
@@ -18,6 +18,7 @@ import com.qiplat.sweeteditor.core.adornment.InlayHint;
 import com.qiplat.sweeteditor.core.keymap.KeyMap;
 import com.qiplat.sweeteditor.core.visual.CursorRect;
 import com.qiplat.sweeteditor.core.visual.EditorRenderModel;
+import com.qiplat.sweeteditor.core.visual.LayoutMetrics;
 import com.qiplat.sweeteditor.core.snippet.LinkedEditingModel;
 import com.qiplat.sweeteditor.core.visual.ScrollMetrics;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
@@ -44,20 +45,20 @@ import dalvik.annotation.optimization.FastNative;
  */
 public class EditorCore {
 
-    private static final int EVENT_TYPE_UNDEFINED = 0;
-    private static final int EVENT_TYPE_TOUCH_DOWN = 1;
-    private static final int EVENT_TYPE_TOUCH_POINTER_DOWN = 2;
-    private static final int EVENT_TYPE_TOUCH_MOVE = 3;
-    private static final int EVENT_TYPE_TOUCH_POINTER_UP = 4;
-    private static final int EVENT_TYPE_TOUCH_UP = 5;
-    private static final int EVENT_TYPE_TOUCH_CANCEL = 6;
-    private static final int EVENT_TYPE_MOUSE_DOWN = 7;
-    private static final int EVENT_TYPE_MOUSE_MOVE = 8;
-    private static final int EVENT_TYPE_MOUSE_UP = 9;
-    private static final int EVENT_TYPE_MOUSE_WHEEL = 10;
-    private static final int EVENT_TYPE_MOUSE_RIGHT_DOWN = 11;
-    private static final int EVENT_TYPE_DIRECT_SCALE = 12;
-    private static final int EVENT_TYPE_DIRECT_SCROLL = 13;
+    public static final int EVENT_TYPE_UNDEFINED = 0;
+    public static final int EVENT_TYPE_TOUCH_DOWN = 1;
+    public static final int EVENT_TYPE_TOUCH_POINTER_DOWN = 2;
+    public static final int EVENT_TYPE_TOUCH_MOVE = 3;
+    public static final int EVENT_TYPE_TOUCH_POINTER_UP = 4;
+    public static final int EVENT_TYPE_TOUCH_UP = 5;
+    public static final int EVENT_TYPE_TOUCH_CANCEL = 6;
+    public static final int EVENT_TYPE_MOUSE_DOWN = 7;
+    public static final int EVENT_TYPE_MOUSE_MOVE = 8;
+    public static final int EVENT_TYPE_MOUSE_UP = 9;
+    public static final int EVENT_TYPE_MOUSE_WHEEL = 10;
+    public static final int EVENT_TYPE_MOUSE_RIGHT_DOWN = 11;
+    public static final int EVENT_TYPE_DIRECT_SCALE = 12;
+    public static final int EVENT_TYPE_DIRECT_SCROLL = 13;
 
     // ==================== Construction/Initialization/Lifecycle ====================
 
@@ -231,6 +232,17 @@ public class EditorCore {
         return model;
     }
 
+    @Nullable
+    public LayoutMetrics getLayoutMetrics() {
+        if (mNativeHandle == 0) return null;
+        ByteBuffer data = nativeGetLayoutMetrics(mNativeHandle);
+        try {
+            return ProtocolDecoder.decodeLayoutMetrics(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
     // ==================== Gesture/Keyboard Event Handling ====================
 
     public GestureResult handleGestureEvent(MotionEvent event) {
@@ -245,6 +257,41 @@ public class EditorCore {
             points[i * 2 + 1] = event.getY(i);
         }
         ByteBuffer data = nativeHandleGestureEvent(mNativeHandle, eventType, pointerCount, points);
+        try {
+            return ProtocolDecoder.decodeGestureResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    public GestureResult handleGestureEventEx(int eventType,
+                                              @Nullable PointF[] points,
+                                              int modifiers,
+                                              float wheelDeltaX,
+                                              float wheelDeltaY,
+                                              float directScale) {
+        if (mNativeHandle == 0) {
+            return new GestureResult();
+        }
+        int pointerCount = points != null ? points.length : 0;
+        float[] packedPoints = null;
+        if (pointerCount > 0) {
+            packedPoints = new float[pointerCount * 2];
+            for (int i = 0; i < pointerCount; i++) {
+                PointF point = points[i];
+                packedPoints[i * 2] = point != null ? point.x : 0f;
+                packedPoints[i * 2 + 1] = point != null ? point.y : 0f;
+            }
+        }
+        ByteBuffer data = nativeHandleGestureEventEx(
+                mNativeHandle,
+                eventType,
+                pointerCount,
+                packedPoints,
+                modifiers,
+                wheelDeltaX,
+                wheelDeltaY,
+                directScale);
         try {
             return ProtocolDecoder.decodeGestureResult(data);
         } finally {
@@ -533,6 +580,36 @@ public class EditorCore {
         if (mNativeHandle == 0) return "";
         String word = nativeGetWordAtCursor(mNativeHandle);
         return word != null ? word : "";
+    }
+
+    public void moveCursorLeft(boolean extendSelection) {
+        if (mNativeHandle == 0) return;
+        nativeMoveCursorLeft(mNativeHandle, extendSelection);
+    }
+
+    public void moveCursorRight(boolean extendSelection) {
+        if (mNativeHandle == 0) return;
+        nativeMoveCursorRight(mNativeHandle, extendSelection);
+    }
+
+    public void moveCursorUp(boolean extendSelection) {
+        if (mNativeHandle == 0) return;
+        nativeMoveCursorUp(mNativeHandle, extendSelection);
+    }
+
+    public void moveCursorDown(boolean extendSelection) {
+        if (mNativeHandle == 0) return;
+        nativeMoveCursorDown(mNativeHandle, extendSelection);
+    }
+
+    public void moveCursorToLineStart(boolean extendSelection) {
+        if (mNativeHandle == 0) return;
+        nativeMoveCursorToLineStart(mNativeHandle, extendSelection);
+    }
+
+    public void moveCursorToLineEnd(boolean extendSelection) {
+        if (mNativeHandle == 0) return;
+        nativeMoveCursorToLineEnd(mNativeHandle, extendSelection);
     }
 
     /**
@@ -1075,7 +1152,7 @@ public class EditorCore {
      * @param line  Line number (0-based)
      * @param items Diagnostic item list
      */
-    public void setLineDiagnostics(int line, @NonNull List<? extends DiagnosticItem> items) {
+    public void setLineDiagnostics(int line, @NonNull List<? extends Diagnostic> items) {
         if (mNativeHandle == 0 || items == null) return;
         setLineDiagnostics(ProtocolEncoder.packLineDiagnostics(line, items));
     }
@@ -1095,7 +1172,7 @@ public class EditorCore {
      *
      * @param diagsByLine Sparse array of line鈫抎iagnostic list
      */
-    public void setBatchLineDiagnostics(@Nullable SparseArray<? extends List<? extends DiagnosticItem>> diagsByLine) {
+    public void setBatchLineDiagnostics(@Nullable SparseArray<? extends List<? extends Diagnostic>> diagsByLine) {
         if (mNativeHandle == 0 || diagsByLine == null || diagsByLine.size() == 0) return;
         ByteBuffer payload = ProtocolEncoder.packBatchLineDiagnostics(diagsByLine);
         setBatchLineDiagnostics(payload);
@@ -1381,6 +1458,11 @@ public class EditorCore {
     public void clearHighlights(int layer) {
         if (mNativeHandle == 0) return;
         nativeClearHighlightsLayer(mNativeHandle, layer);
+    }
+
+    public void clearLineSpans(int line, int layer) {
+        if (mNativeHandle == 0) return;
+        nativeClearLineSpans(mNativeHandle, line, layer);
     }
 
     /** Clears all Inlay Hints. */
@@ -1783,6 +1865,11 @@ public class EditorCore {
     private static native ByteBuffer nativeHandleGestureEvent(long handle, int type, int pointerCount, float[] points);
 
     @FastNative
+    private static native ByteBuffer nativeHandleGestureEventEx(long handle, int type, int pointerCount, float[] points,
+                                                                int modifiers, float wheelDeltaX, float wheelDeltaY,
+                                                                float directScale);
+
+    @FastNative
     private static native ByteBuffer nativeTickEdgeScroll(long handle);
 
     @FastNative
@@ -1790,6 +1877,9 @@ public class EditorCore {
 
     @FastNative
     private static native ByteBuffer nativeTickAnimations(long handle);
+
+    @FastNative
+    private static native ByteBuffer nativeGetLayoutMetrics(long handle);
 
     @FastNative
     private static native ByteBuffer nativeHandleKeyEvent(long handle, int keyCode, String text, int modifiers);
@@ -1849,6 +1939,24 @@ public class EditorCore {
 
     @FastNative
     private static native String nativeGetWordAtCursor(long handle);
+
+    @CriticalNative
+    private static native void nativeMoveCursorLeft(long handle, boolean extendSelection);
+
+    @CriticalNative
+    private static native void nativeMoveCursorRight(long handle, boolean extendSelection);
+
+    @CriticalNative
+    private static native void nativeMoveCursorUp(long handle, boolean extendSelection);
+
+    @CriticalNative
+    private static native void nativeMoveCursorDown(long handle, boolean extendSelection);
+
+    @CriticalNative
+    private static native void nativeMoveCursorToLineStart(long handle, boolean extendSelection);
+
+    @CriticalNative
+    private static native void nativeMoveCursorToLineEnd(long handle, boolean extendSelection);
 
     @CriticalNative
     private static native void nativeSetCursorPosition(long handle, int line, int column);
@@ -2018,6 +2126,9 @@ public class EditorCore {
 
     @CriticalNative
     private static native void nativeClearHighlightsLayer(long handle, int layer);
+
+    @CriticalNative
+    private static native void nativeClearLineSpans(long handle, int line, int layer);
 
     @CriticalNative
     private static native void nativeClearInlayHints(long handle);

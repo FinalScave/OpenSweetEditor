@@ -30,7 +30,7 @@ public class EditorSettings {
     private boolean mGutterSticky = true;
     private boolean mGutterVisible = true;
     private CurrentLineRenderMode mCurrentLineRenderMode = CurrentLineRenderMode.BACKGROUND;
-    private AutoIndentMode mAutoIndentMode = AutoIndentMode.NONE;
+    private AutoIndentMode mAutoIndentMode = AutoIndentMode.KEEP_INDENT;
     private boolean mReadOnly = false;
     private boolean mCompositionEnabled = false;
     private int mMaxGutterIcons = 0;
@@ -74,6 +74,7 @@ public class EditorSettings {
     public void setFoldArrowMode(@NonNull FoldArrowMode mode) {
         mFoldArrowMode = mode;
         mEditor.getEditorCore().setFoldArrowMode(mode.value);
+        mEditor.flush();
     }
 
     @NonNull
@@ -190,6 +191,7 @@ public class EditorSettings {
     public void setMaxGutterIcons(int count) {
         mMaxGutterIcons = count;
         mEditor.getEditorCore().setMaxGutterIcons(count);
+        mEditor.flush();
     }
 
     public int getMaxGutterIcons() {

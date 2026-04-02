@@ -3,10 +3,10 @@ package com.qiplat.sweeteditor.core.adornment;
 /**
  * Immutable value object representing diagnostic information (error, warning, hint, etc.) on a single line.
  * <p>
- * Each DiagnosticItem represents a diagnostic marker on a contiguous text segment,
+ * Each Diagnostic represents a diagnostic marker on a contiguous text segment,
  * including the starting column, character length, severity, and color information.
  */
-public final class DiagnosticItem {
+public final class Diagnostic {
     /** Starting column (0-based, UTF-16 offset) */
     public final int column;
     /** Character length */
@@ -22,7 +22,7 @@ public final class DiagnosticItem {
      * @param severity Severity level
      * @param color    Underline/marker color (ARGB)
      */
-    public DiagnosticItem(int column, int length, int severity, int color) {
+    public Diagnostic(int column, int length, int severity, int color) {
         this.column = column;
         this.length = length;
         this.severity = severity;
