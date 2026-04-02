@@ -440,6 +440,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.1"
+  sweetline:
+    dependency: transitive
+    description:
+      name: sweetline
+      sha256: "2b36074ffedfaafc87ee3e84c976b6e8f5b57f2e413af70c56edc6b2169c648b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   term_glyph:
     dependency: transitive
     description:

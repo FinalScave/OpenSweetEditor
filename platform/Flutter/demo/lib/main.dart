@@ -36,7 +36,7 @@ class EditorDemoPage extends StatefulWidget {
 }
 
 class _EditorDemoPageState extends State<EditorDemoPage> {
-  static const int _styleColor = EditorTheme.styleUserBase;
+  static const int _styleColor = EditorTheme.styleUserBase + 1;
   static const List<MapEntry<String, String>> _sampleAssets = [
     MapEntry('example.java', 'assets/demo_shared/files/example.java'),
     MapEntry('View.java', 'assets/demo_shared/files/View.java'),
@@ -80,9 +80,12 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
     settings.setMaxGutterIcons(1);
 
     _controller.addCompletionProvider(DemoCompletionProvider());
-    _controller.addDecorationProvider(
-      DemoDecorationProvider((line) => _controller.getLineText(line)),
-    );
+    try {
+      await DemoDecorationProvider.ensureSweetLineReady();
+      _controller.addDecorationProvider(DemoDecorationProvider(_controller));
+    } catch (_) {
+      _updateStatus('Failed to initialize SweetLine');
+    }
 
     _textChangedSub = _controller.onTextChanged.listen(_onTextChanged);
     _cursorChangedSub = _controller.onCursorChanged.listen(_onCursorChanged);
