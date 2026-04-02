@@ -419,12 +419,19 @@ namespace NS_SWEETEDITOR {
     if (intent.select_word) {
       selectWordAt(result.tap_point);
     }
-    if (intent.toggle_fold) {
-      toggleFoldAt(intent.fold_line);
-    }
-
-    return result;
+  if (intent.toggle_fold) {
+    toggleFoldAt(intent.fold_line);
   }
+
+  result.cursor_position = m_caret_.cursor;
+  result.has_selection = hasSelection();
+  result.selection = m_caret_.selection;
+  result.view_scroll_x = m_view_state_.scroll_x;
+  result.view_scroll_y = m_view_state_.scroll_y;
+  result.view_scale = m_view_state_.scale;
+
+  return result;
+}
 
   GestureResult EditorCore::tickFling() {
     return m_interaction_->tickFling();
