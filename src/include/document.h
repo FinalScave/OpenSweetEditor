@@ -105,6 +105,10 @@ namespace NS_SWEETEDITOR {
     /// Get all logical line data
     virtual Vector<LogicalLine>& getLogicalLines() = 0;
 
+    /// Get UTF-16 text reference of specified line, refreshing cache if dirty
+    virtual const U16String& getLineU16TextRef(size_t line) = 0;
+
+  protected:
     /// Refresh cached data for specified line (reload text from storage, update char offsets, etc.)
     /// @param index Line index
     /// @param logical_line Logical line to refresh (is_char_dirty flag will be cleared)
@@ -150,8 +154,9 @@ namespace NS_SWEETEDITOR {
     U8String getU8Text(const TextRange& range) override;
     size_t countChars(size_t start_byte, size_t byte_length) const override;
     Vector<LogicalLine>& getLogicalLines() override;
-    void updateDirtyLine(size_t index, LogicalLine& logical_line) override;
+    const U16String& getLineU16TextRef(size_t line) override;
   protected:
+    void updateDirtyLine(size_t index, LogicalLine& logical_line) override;
     /// UTF-8 text content for each line (without line ending)
     Vector<U8String> m_lines_;
     /// Logical line data
@@ -187,8 +192,9 @@ namespace NS_SWEETEDITOR {
     U8String getU8Text(const TextRange& range) override;
     size_t countChars(size_t start_byte, size_t byte_length) const override;
     Vector<LogicalLine>& getLogicalLines() override;
-    void updateDirtyLine(size_t index, LogicalLine& logical_line) override;
+    const U16String& getLineU16TextRef(size_t line) override;
   protected:
+    void updateDirtyLine(size_t index, LogicalLine& logical_line) override;
     /// Buffer for original content (read-only)
     UPtr<Buffer> m_original_buffer_;
     /// Buffer for user edits, append-only

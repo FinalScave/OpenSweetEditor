@@ -247,7 +247,6 @@ namespace NS_SWEETEDITOR {
         continue;
       }
 
-      region.collapsed = false;
       bool matched = false;
       for (const auto& old_region : old_regions) {
         if (old_region.start_line == region.start_line &&

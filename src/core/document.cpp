@@ -149,6 +149,14 @@ namespace NS_SWEETEDITOR {
     return m_logical_lines_;
   }
 
+  const U16String& PieceTableDocument::getLineU16TextRef(size_t line) {
+    if (line >= m_logical_lines_.size()) {
+      throw std::out_of_range("PieceTableDocument::getLineU16TextRef line index out of range");
+    }
+    updateDirtyLine(line, m_logical_lines_[line]);
+    return m_logical_lines_[line].cached_text;
+  }
+
   void PieceTableDocument::updateDirtyLine(size_t line, LogicalLine& logical_line) {
     if (logical_line.is_char_dirty) {
       const size_t byte_length = getByteLengthOfLine(line);
@@ -163,7 +171,8 @@ namespace NS_SWEETEDITOR {
         }
         const size_t prev_byte_length = getByteLengthOfLine(line - 1);
         U8String prev_line_text = getU8Text(prev_line.start_byte, prev_byte_length);
-        logical_line.start_char = prev_line.start_char + simdutf::count_utf8(prev_line_text.data(), prev_line_text.length());
+        size_t eol_chars = (prev_line.line_ending != LineEnding::NONE) ? 1 : 0;
+        logical_line.start_char = prev_line.start_char + simdutf::count_utf8(prev_line_text.data(), prev_line_text.length()) + eol_chars;
       } else {
         logical_line.start_char = 0;
       }
@@ -348,6 +357,8 @@ namespace NS_SWEETEDITOR {
     m_logical_lines_[line].is_char_dirty = true;
     m_logical_lines_[line].is_layout_dirty = true;
 
+    LineEnding original_line_ending = m_logical_lines_[line].line_ending;
+
     Vector<LogicalLine> new_lines;
     for (size_t i = 0; i < text.size(); ++i) {
       if (text[i] == '\r') {
@@ -390,11 +401,7 @@ namespace NS_SWEETEDITOR {
       }
     }
     if (!new_lines.empty()) {
-      // The last new line inherits the original line_ending
-      // (because the original trailing newline now belongs to the last new line)
-      // But if the inserted text does not end with a newline,
-      // the last new line's line_ending should be decided by following content
-      // Keep NONE here; the later dirty pass will recalculate it
+      new_lines.back().line_ending = original_line_ending;
       m_logical_lines_.insert(m_logical_lines_.begin() + line + 1, new_lines.begin(), new_lines.end());
     }
     // Update byte offsets for affected following lines
@@ -440,6 +447,9 @@ namespace NS_SWEETEDITOR {
     }
     size_t line_to_keep = low;
     if (line_to_remove < line_to_keep) {
+      if (line_to_remove > 0) {
+        m_logical_lines_[line_to_remove - 1].line_ending = m_logical_lines_[line_to_keep - 1].line_ending;
+      }
       m_logical_lines_.erase(m_logical_lines_.begin() + line_to_remove, m_logical_lines_.begin() + line_to_keep);
     }
     // Shift following lines: all lines after deleted range subtract length from offset
@@ -889,6 +899,14 @@ namespace NS_SWEETEDITOR {
 
   Vector<LogicalLine>& LineArrayDocument::getLogicalLines() {
     return m_logical_lines_;
+  }
+
+  const U16String& LineArrayDocument::getLineU16TextRef(size_t line) {
+    if (line >= m_logical_lines_.size()) {
+      throw std::out_of_range("LineArrayDocument::getLineU16TextRef line index out of range");
+    }
+    updateDirtyLine(line, m_logical_lines_[line]);
+    return m_logical_lines_[line].cached_text;
   }
 
   void LineArrayDocument::updateDirtyLine(size_t line, LogicalLine& logical_line) {

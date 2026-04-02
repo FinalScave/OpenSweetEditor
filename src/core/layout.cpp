@@ -95,8 +95,7 @@ namespace NS_SWEETEDITOR {
       return;
     }
     logical_line.visual_lines.clear();
-    m_document_->updateDirtyLine(index, logical_line);
-    const U16String& line_text = logical_line.cached_text;
+    const U16String& line_text = m_document_->getLineU16TextRef(index);
     float single_line_height = getLineHeight();
 
     layoutLineIntoVisualLines(index, line_text, logical_line.start_y, logical_line.visual_lines);
@@ -1627,8 +1626,7 @@ namespace NS_SWEETEDITOR {
     if (end_line_idx >= all_lines.size()) return;
 
     LogicalLine& end_ll = all_lines[end_line_idx];
-    m_document_->updateDirtyLine(end_line_idx, end_ll);
-    const U16String& end_text = end_ll.cached_text;
+    const U16String& end_text = m_document_->getLineU16TextRef(end_line_idx);
 
     // Count leading whitespace characters (skip spaces and tabs)
     size_t trim_pos = 0;

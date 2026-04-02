@@ -977,10 +977,11 @@ namespace NS_SWEETEDITOR {
     TextRange full_range = {{first_line, 0}, {last_line + 1, m_document_->getLineColumns(last_line + 1)}};
     U8String new_text = next_text + "\n" + block_text;
 
+    TextPosition original_cursor = m_caret_.cursor;
     m_undo_manager_->beginGroup(m_caret_.cursor, hasSelection(), getSelection());
     auto result = applyEdit(full_range, new_text);
 
-    setCursorPosition({m_caret_.cursor.line + 1, m_caret_.cursor.column});
+    setCursorPosition({original_cursor.line + 1, original_cursor.column});
     if (hasSelection()) {
       TextRange selection = getSelection();
       setSelection({{selection.start.line + 1, selection.start.column},
