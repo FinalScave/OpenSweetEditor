@@ -1203,16 +1203,16 @@ Resource creation and destruction follow explicit ordering constraints to preven
 | Phase | Constraint | Rule |
 |---|---|---|
 | Creation | **MUST** | `EditorCore` instance MUST be created during widget initialization (imperative frameworks: constructor or init; declarative frameworks: on first widget mount) |
-| Release path | **MUST** | The platform MUST provide a mechanism that can eventually release `EditorCore` and its native / C++ resources; the release timing MAY be tied to explicit `dispose()` / `close()`, host-managed lifecycle, an equivalent platform cleanup hook, or another platform-idiomatic mechanism. View detachment, widget unmount, or temporary removal from the view tree is NOT by itself required to be the release moment |
-| Post-release calls | **MUST** | After `EditorCore` resources are released, any method call MUST be a no-op or throw an explicit "already destroyed" exception; MUST NOT access freed C++ memory |
-| Repeated release | **MUST** | Multiple invocations of the release logic MUST be idempotent (no-op); MUST NOT cause double-free |
+| Release path | **MUST** | The platform MUST ensure that `EditorCore` and its native / C++ resources are eventually released; the mechanism MAY be an explicit `dispose()` / `close()`, a host-managed lifecycle, GC / finalizer / ARC-backed automatic reclamation, an equivalent platform cleanup hook, or another platform-idiomatic mechanism. View detachment, widget unmount, or temporary removal from the view tree is NOT by itself required to be the release moment |
+| Post-release calls | **MUST** | If the platform exposes an explicit release API, or otherwise keeps the object reachable after internal release, any method call after release MUST be a no-op or throw an explicit "already destroyed" exception; MUST NOT access freed C++ memory |
+| Repeated release | **MUST** | If the platform exposes explicit release logic, multiple invocations MUST be idempotent (no-op); MUST NOT cause double-free |
 
 ### 16.2 Provider Lifecycle
 
 | Rule | Constraint | Description |
 |---|---|---|
 | Registration timing | **SHOULD** | Providers SHOULD be registered after `loadDocument()` to ensure valid document data in the Context |
-| Cleanup during release | **MUST** | During the platform-defined editor release / dispose / close / teardown phase, MUST automatically unregister all registered Providers and cancel or mark stale all in-flight async requests so late results are ignored |
+| Cleanup during release | **MUST** | If the platform defines an explicit editor release / dispose / close / teardown phase, it MUST automatically unregister all registered Providers and cancel or mark stale all in-flight async requests so late results are ignored; platforms that rely solely on automatic reclamation SHOULD still ensure late async results cannot mutate freed native resources or host-visible editor state |
 | Provider references | **SHOULD** | Platform implementations SHOULD avoid Providers holding strong references to the widget instance to prevent circular references causing memory leaks (Java/Kotlin: WeakReference; Swift: weak/unowned; Dart: no special handling needed) |
 
 ### 16.3 `SweetEditorController` Lifecycle (Declarative Frameworks)
@@ -1405,8 +1405,8 @@ All platforms MUST support at least the following two construction methods:
 | `languageId` | String | **MUST** | Language identifier (e.g. `"java"`, `"cpp"`, `"swift"`) |
 | `brackets` | List\<BracketPair\>? | **MAY** | Bracket pair list (null = not configured; platform MUST NOT sync to Core when null) |
 | `autoClosingPairs` | List\<BracketPair\>? | **MAY** | Auto-closing bracket pair list (null = not configured; platform MUST NOT sync to Core when null) |
-| `tabSize` | int? | **MAY** | Tab stop width (null means use editor default) |
-| `insertSpaces` | bool? | **MAY** | Whether pressing Tab inserts spaces instead of a hard tab character (null means use editor default) |
+| `tabSize` | int / int? | **MAY** | Tab stop width |
+| `insertSpaces` | bool / bool? | **MAY** | Whether pressing Tab inserts spaces instead of a hard tab character |
 
 **`BracketPair`** sub-type:
 
@@ -1419,6 +1419,7 @@ All platforms MUST support at least the following two construction methods:
 |---|---|---|
 | Construction | **SHOULD** | SHOULD provide Builder pattern construction (Java/Kotlin); MAY use direct constructors or named-parameter constructors (Swift/C#/Dart/ArkTS) |
 | Immutability | **SHOULD** | SHOULD be immutable after construction |
+| Optionality and defaults | **MUST** | Platforms MAY expose `tabSize` / `insertSpaces` as nullable or non-null fields. If nullable, `null` MAY mean "use editor default". If non-null, their default values MUST match the editor defaults |
 | Runtime effect | **MUST** | When `setLanguageConfiguration()` is called, bracket matching, auto-closing behavior, and Tab insertion behavior visible to the editor MUST be updated consistently with the new configuration |
 | `tabSize` semantics | **MUST** | `tabSize` and `insertSpaces` MUST be treated as independent dimensions: `tabSize` controls tab-stop width, while `insertSpaces` controls whether the Tab key inserts spaces or a hard tab character |
 | `insertSpaces=true` behavior | **MUST** | If `insertSpaces` is `true`, the Tab key / `INSERT_TAB` command MUST insert the number of spaces required to reach the next tab stop, rather than always inserting a fixed `tabSize` count |
