@@ -10,14 +10,33 @@ class SweetEditorController {
   final EditorEventBus _eventBus = EditorEventBus();
   final EditorSettings settings = EditorSettings();
   String? _pendingText;
+  core.Document? _pendingDocument;
+  EditorTheme? _pendingTheme;
   LanguageConfiguration? _languageConfiguration;
   bool _closed = false;
+  final List<VoidCallback> _readyCallbacks = <VoidCallback>[];
 
   void _attach(_SweetEditorWidgetState state) {
     if (_closed) {
       throw StateError('SweetEditorController is already closed');
     }
+    final currentState = _state;
+    if (currentState != null && !identical(currentState, state)) {
+      throw StateError(
+        'SweetEditorController cannot be attached to multiple widgets',
+      );
+    }
     _state = state;
+    final pendingTheme = _pendingTheme;
+    if (pendingTheme != null) {
+      _pendingTheme = null;
+      state._applyTheme(pendingTheme);
+    }
+    final pendingDocument = _pendingDocument;
+    if (pendingDocument != null) {
+      _pendingDocument = null;
+      state._loadDocument(pendingDocument);
+    }
     final pendingText = _pendingText;
     if (pendingText != null) {
       _pendingText = null;
@@ -25,6 +44,11 @@ class SweetEditorController {
     }
     if (_languageConfiguration != null) {
       state._applyLanguageConfiguration(_languageConfiguration);
+    }
+    final callbacks = List<VoidCallback>.from(_readyCallbacks);
+    _readyCallbacks.clear();
+    for (final callback in callbacks) {
+      callback();
     }
   }
 
@@ -34,18 +58,45 @@ class SweetEditorController {
 
   bool get isAttached => _state != null;
 
+  void whenReady(VoidCallback callback) {
+    if (_closed) return;
+    if (_state != null) {
+      callback();
+      return;
+    }
+    _readyCallbacks.add(callback);
+  }
+
+  void loadDocument(core.Document document) {
+    if (_closed) return;
+    if (_state != null) {
+      _state!._loadDocument(document);
+    } else {
+      _pendingText = null;
+      _pendingDocument = document;
+    }
+  }
+
   void loadText(String text) {
     if (_closed) return;
     if (_state != null) {
       _state!._loadText(text);
     } else {
+      _pendingDocument = null;
       _pendingText = text;
     }
   }
 
-  String getContent() => _state?._getContent() ?? (_pendingText ?? '');
-  int get lineCount => _state?._document?.lineCount ?? 0;
-  String getLineText(int line) => _state?._document?.getLineText(line) ?? '';
+  core.Document? getDocument() => _state?._document ?? _pendingDocument;
+
+  String getContent() =>
+      _state?._getContent() ?? _pendingDocument?.text ?? (_pendingText ?? '');
+  int get lineCount =>
+      _state?._document?.lineCount ?? _pendingDocument?.lineCount ?? 0;
+  String getLineText(int line) =>
+      _state?._document?.getLineText(line) ??
+      _pendingDocument?.getLineText(line) ??
+      '';
 
   LanguageConfiguration? get languageConfiguration => _languageConfiguration;
 
@@ -54,6 +105,7 @@ class SweetEditorController {
     _languageConfiguration = value;
     _state?._applyLanguageConfiguration(value);
   }
+
   EditorMetadata? metadata;
 
   core.TextPosition getCursorPosition() =>
@@ -157,11 +209,8 @@ class SweetEditorController {
   void removeNewLineActionProvider(NewLineActionProvider provider) =>
       _state?._newLineActionProviderManager.removeProvider(provider);
 
-  void triggerCompletion() =>
-      _state?._completionProviderManager.triggerCompletion(
-        CompletionTriggerKind.invoked,
-        null,
-      );
+  void triggerCompletion() => _state?._completionProviderManager
+      .triggerCompletion(CompletionTriggerKind.invoked, null);
 
   void dismissCompletion() => _state?._completionProviderManager.dismiss();
 
@@ -185,7 +234,8 @@ class SweetEditorController {
   void setSelectionMenuItemProvider(SelectionMenuItemProvider? provider) =>
       _state?._selectionMenuController.setItemProvider(provider);
 
-  Stream<TextChangedEvent> get onTextChanged => _eventBus.on<TextChangedEvent>();
+  Stream<TextChangedEvent> get onTextChanged =>
+      _eventBus.on<TextChangedEvent>();
 
   Stream<CursorChangedEvent> get onCursorChanged =>
       _eventBus.on<CursorChangedEvent>();
@@ -196,7 +246,8 @@ class SweetEditorController {
   Stream<ScrollChangedEvent> get onScrollChanged =>
       _eventBus.on<ScrollChangedEvent>();
 
-  Stream<ScaleChangedEvent> get onScaleChanged => _eventBus.on<ScaleChangedEvent>();
+  Stream<ScaleChangedEvent> get onScaleChanged =>
+      _eventBus.on<ScaleChangedEvent>();
 
   Stream<LongPressEvent> get onLongPress => _eventBus.on<LongPressEvent>();
 
@@ -219,8 +270,20 @@ class SweetEditorController {
   Stream<SelectionMenuItemClickEvent> get onSelectionMenuItemClick =>
       _eventBus.on<SelectionMenuItemClickEvent>();
 
-  void toggleFold(int line) {
+  void toggleFoldAt(int line) {
     _state?._editorCore?.toggleFold(line);
+    _state?._flush();
+  }
+
+  void toggleFold(int line) => toggleFoldAt(line);
+
+  void foldAt(int line) {
+    _state?._editorCore?.foldAt(line);
+    _state?._flush();
+  }
+
+  void unfoldAt(int line) {
+    _state?._editorCore?.unfoldAt(line);
     _state?._flush();
   }
 
@@ -245,18 +308,35 @@ class SweetEditorController {
     _state?._flush();
   }
 
-  void setTheme(EditorTheme theme) => _state?._applyTheme(theme);
+  bool isLineVisible(int line) =>
+      _state?._editorCore?.isLineVisible(line) ?? true;
+
+  void applyTheme(EditorTheme theme) {
+    if (_closed) return;
+    if (_state != null) {
+      _state!._applyTheme(theme);
+    } else {
+      _pendingTheme = theme;
+    }
+  }
+
+  void setTheme(EditorTheme theme) => applyTheme(theme);
+
+  EditorTheme? getTheme() => _state?._theme ?? _pendingTheme;
 
   void flush() => _state?._flush();
 
   Future<void> close() async {
     if (_closed) return;
-    if (_state != null) {
-      throw StateError(
-        'Cannot close SweetEditorController while it is attached to a widget',
-      );
-    }
     _closed = true;
+    _pendingText = null;
+    _pendingDocument = null;
+    _pendingTheme = null;
+    _languageConfiguration = null;
+    _readyCallbacks.clear();
+    _state?._releaseFromController();
     await _eventBus.close();
   }
+
+  Future<void> dispose() => close();
 }

@@ -43,6 +43,7 @@ class EditorSession implements EditorSettingsHost {
   late final EditorCanvasPainter _painter;
   core.EditorCore? _editorCore;
   core.Document? _document;
+  bool _ownsDocument = false;
   core.EditorRenderModel _renderModel = core.EditorRenderModel.empty;
   EditorTheme _theme;
   Size _viewportSize = Size.zero;
@@ -78,7 +79,7 @@ class EditorSession implements EditorSettingsHost {
     controller.settings.unbind(this);
     inlineSuggestionController.dispose();
     _editorCore?.close();
-    _document?.close();
+    _releaseDocument();
     _measurer.dispose();
     _painter.dispose();
   }
@@ -138,9 +139,16 @@ class EditorSession implements EditorSettingsHost {
   }
 
   void loadText(String text) {
-    _document?.close();
-    _document = core.Document.fromString(text);
-    _editorCore?.setDocument(_document!);
+    loadDocument(core.Document.fromString(text), takeOwnership: true);
+  }
+
+  void loadDocument(core.Document document, {required bool takeOwnership}) {
+    if (!identical(_document, document)) {
+      _releaseDocument();
+    }
+    _document = document;
+    _ownsDocument = takeOwnership;
+    _editorCore?.setDocument(document);
   }
 
   String getContent() => _document?.text ?? '';
@@ -189,6 +197,14 @@ class EditorSession implements EditorSettingsHost {
         fontStyle: entry.value.fontStyle,
       );
     }
+  }
+
+  void _releaseDocument() {
+    if (_ownsDocument) {
+      _document?.close();
+    }
+    _document = null;
+    _ownsDocument = false;
   }
 
   @override

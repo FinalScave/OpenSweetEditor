@@ -28,7 +28,7 @@ class LanguageConfiguration {
     this.brackets,
     this.autoClosingPairs,
     this.tabSize = defaultTabSize,
-    this.insertSpaces = true,
+    this.insertSpaces = false,
   });
 
   final String languageId;
@@ -37,8 +37,6 @@ class LanguageConfiguration {
   final int tabSize;
   final bool insertSpaces;
 }
-
-
 
 /// Editor theme with color definitions and text styles.
 class EditorTheme {

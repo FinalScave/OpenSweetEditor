@@ -9,7 +9,7 @@ part of '../sweeteditor.dart';
 /// ```
 /// final controller = SweetEditorController();
 /// SweetEditorWidget(controller: controller);
-/// controller.loadText('hello world');
+/// controller.loadDocument(core.Document.fromString('hello world'));
 /// ```
 class SweetEditorWidget extends StatefulWidget {
   const SweetEditorWidget({
@@ -44,6 +44,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   bool _pendingShowTextInput = false;
   Size? _pendingViewportSize;
   bool _viewportUpdateScheduled = false;
+  bool _released = false;
 
   EditorEventBus get _eventBus => widget.controller._eventBus;
   core.EditorCore? get _editorCore => _session.editorCore;
@@ -76,12 +77,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     _closeTextInputConnection();
     _focusNode.removeListener(_handleFocusChanged);
     _focusNode.dispose();
-    _interactionController.dispose();
-    _overlayCoordinator.dispose();
-    _completionProviderManager.dispose();
-    _decorationProviderManager.dispose();
-    widget.controller._detach();
-    _session.dispose();
+    _releaseEditorResources();
     super.dispose();
   }
 
@@ -197,6 +193,15 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   void _loadText(String text) {
     _session.loadText(text);
+    _onDocumentLoaded();
+  }
+
+  void _loadDocument(core.Document document) {
+    _session.loadDocument(document, takeOwnership: false);
+    _onDocumentLoaded();
+  }
+
+  void _onDocumentLoaded() {
     _decorationProviderManager.onDocumentLoaded();
     _eventBus.publish(DocumentLoadedEvent());
     _flush();
@@ -242,6 +247,26 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     _session.applyLanguageConfiguration(config);
     _decorationProviderManager.requestRefresh();
     _flush();
+  }
+
+  void _releaseFromController() {
+    if (_released) return;
+    _closeTextInputConnection();
+    _releaseEditorResources();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _releaseEditorResources() {
+    if (_released) return;
+    _released = true;
+    _interactionController.dispose();
+    _overlayCoordinator.dispose();
+    _completionProviderManager.dispose();
+    _decorationProviderManager.dispose();
+    widget.controller._detach();
+    _session.dispose();
   }
 
   bool get _usesPlatformTextInput =>
@@ -565,6 +590,9 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   @override
   Widget build(BuildContext context) {
+    if (_released) {
+      return const SizedBox.shrink();
+    }
     return Focus(
       focusNode: _focusNode,
       autofocus: widget.autofocus,

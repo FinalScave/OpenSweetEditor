@@ -34,7 +34,11 @@ class EditorInteractionController {
   core.GestureResult? onPointerDown(PointerDownEvent event) {
     final isTouch = event.kind == PointerDeviceKind.touch;
     final gestureEvent = core.GestureEvent(
-      type: isTouch ? core.EventType.touchDown : core.EventType.mouseDown,
+      type: isTouch
+          ? core.EventType.touchDown
+          : (event.buttons & kSecondaryMouseButton) != 0
+          ? core.EventType.mouseRightDown
+          : core.EventType.mouseDown,
       points: [
         core.PointF(x: event.localPosition.dx, y: event.localPosition.dy),
       ],
@@ -74,7 +78,9 @@ class EditorInteractionController {
     if (event is! PointerScrollEvent) return null;
     final gestureEvent = core.GestureEvent(
       type: core.EventType.mouseWheel,
-      points: [core.PointF(x: event.localPosition.dx, y: event.localPosition.dy)],
+      points: [
+        core.PointF(x: event.localPosition.dx, y: event.localPosition.dy),
+      ],
       wheelDeltaX: event.scrollDelta.dx,
       wheelDeltaY: event.scrollDelta.dy,
     );
@@ -211,7 +217,10 @@ class EditorInteractionController {
     if (result == null) return null;
     _fireGestureEvents(result);
     _flush();
-    _session.selectionMenuController.onGestureResult(result, result.hasSelection);
+    _session.selectionMenuController.onGestureResult(
+      result,
+      result.hasSelection,
+    );
     _updateAnimationState(result);
     _resetCursorBlink();
     return result;
@@ -245,6 +254,11 @@ class EditorInteractionController {
       case core.GestureType.longPress:
         _session.eventBus.publish(
           LongPressEvent(cursorPosition: pos, screenPoint: result.tapPoint),
+        );
+        _session.eventBus.publish(CursorChangedEvent(cursorPosition: pos));
+      case core.GestureType.contextMenu:
+        _session.eventBus.publish(
+          ContextMenuEvent(cursorPosition: pos, screenPoint: result.tapPoint),
         );
         _session.eventBus.publish(CursorChangedEvent(cursorPosition: pos));
       case core.GestureType.scroll:
@@ -353,7 +367,10 @@ class EditorInteractionController {
     return false;
   }
 
-  void insertText(String text, {TextChangeAction action = TextChangeAction.insert}) {
+  void insertText(
+    String text, {
+    TextChangeAction action = TextChangeAction.insert,
+  }) {
     final editorCore = _session.editorCore;
     if (editorCore == null) return;
     final result = editorCore.insertText(text);
@@ -437,7 +454,10 @@ class EditorInteractionController {
     _flush();
   }
 
-  void _dispatchTextChanged(TextChangeAction action, core.TextEditResult result) {
+  void _dispatchTextChanged(
+    TextChangeAction action,
+    core.TextEditResult result,
+  ) {
     if (!result.changed || result.changes.isEmpty) return;
     for (final change in result.changes) {
       _session.eventBus.publish(

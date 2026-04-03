@@ -41,7 +41,7 @@ class EditorSettings {
   bool _gutterVisible = true;
   core.CurrentLineRenderMode _currentLineRenderMode =
       core.CurrentLineRenderMode.background;
-  core.AutoIndentMode _autoIndentMode = core.AutoIndentMode.none;
+  core.AutoIndentMode _autoIndentMode = core.AutoIndentMode.keepIndent;
   bool _backspaceUnindent = true;
   bool _readOnly = false;
   bool _compositionEnabled = false;
