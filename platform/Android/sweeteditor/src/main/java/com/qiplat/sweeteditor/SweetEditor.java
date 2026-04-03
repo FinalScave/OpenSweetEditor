@@ -24,6 +24,7 @@ import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.MainThread;
 import androidx.annotation.Nullable;
 
 import java.util.Map;
@@ -99,7 +100,9 @@ import java.util.List;
  * <p>
  * Based on C++ core ({@link EditorCore}) for text layout and editing logic,
  * this class handles Android platform rendering, gestures, input method integration and public APIs.
+ * Unless otherwise noted, public APIs on this class are main-thread only.
  */
+@MainThread
 public class SweetEditor extends View {
     private static final String TAG = SweetEditor.class.getSimpleName();
     private static final boolean ENABLE_PERF_LOG = true;

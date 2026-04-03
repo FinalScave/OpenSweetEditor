@@ -5,6 +5,7 @@ import android.util.SparseArray;
 import android.view.MotionEvent;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.MainThread;
 import androidx.annotation.Nullable;
 
 import com.qiplat.sweeteditor.core.adornment.Diagnostic;
@@ -40,9 +41,11 @@ import dalvik.annotation.optimization.FastNative;
  * Encapsulates all low-level functionalities including text editing, cursor management,
  * selection operations, gesture/keyboard event handling, code folding, and diagnostic
  * decorations through JNI bridging.
+ * Unless otherwise noted, public APIs on this class are main-thread only.
  *
  * @author Scave
  */
+@MainThread
 public class EditorCore {
 
     public static final int EVENT_TYPE_UNDEFINED = 0;

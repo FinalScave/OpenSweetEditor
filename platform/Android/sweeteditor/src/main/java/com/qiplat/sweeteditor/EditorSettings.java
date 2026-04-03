@@ -3,6 +3,7 @@ package com.qiplat.sweeteditor;
 import android.graphics.Typeface;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.MainThread;
 
 import com.qiplat.sweeteditor.core.foundation.AutoIndentMode;
 import com.qiplat.sweeteditor.core.foundation.CurrentLineRenderMode;
@@ -13,7 +14,9 @@ import com.qiplat.sweeteditor.core.foundation.WrapMode;
  * Centralized configuration for {@link SweetEditor}.
  * <p>
  * Obtain via {@link SweetEditor#getSettings()}. All setters take effect immediately.
+ * Public APIs on this class are main-thread only.
  */
+@MainThread
 public class EditorSettings {
 
     private final SweetEditor mEditor;

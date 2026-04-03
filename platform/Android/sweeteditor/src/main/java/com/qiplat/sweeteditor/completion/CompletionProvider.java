@@ -1,6 +1,7 @@
 package com.qiplat.sweeteditor.completion;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.MainThread;
 
 /**
  * Completion provider interface.
@@ -16,9 +17,11 @@ public interface CompletionProvider {
 
     /**
      * Asynchronously provide completion candidates.
-     * <p>Provider should complete computation on a background thread and submit results via receiver.accept().</p>
+     * <p>This method is invoked on the main/UI thread. Providers MAY offload heavy computation
+     * to a background thread and later submit results via {@code receiver.accept()}.</p>
      * @param context completion context
      * @param receiver result callback
      */
+    @MainThread
     void provideCompletions(@NonNull CompletionContext context, @NonNull CompletionReceiver receiver);
 }
