@@ -34,7 +34,7 @@ namespace SweetEditor {
 		public IReadOnlyList<TextChange> TextChanges { get; }
 		/// <summary>Current language configuration (from LanguageConfiguration).</summary>
 		public LanguageConfiguration? LanguageConfiguration { get; }
-		/// <summary>Current editor metadata (from EditorControl).</summary>
+		/// <summary>Current editor metadata (from SweetEditorControl).</summary>
 		public IEditorMetadata? EditorMetadata { get; }
 
 		public DecorationContext(int visibleStartLine, int visibleEndLine, int totalLineCount,
@@ -143,7 +143,7 @@ namespace SweetEditor {
 	}
 
 	internal sealed class DecorationProviderManager {
-		private readonly EditorControl editor;
+		private readonly SweetEditorControl editor;
 		private readonly List<IDecorationProvider> providers = new();
 		private readonly Dictionary<IDecorationProvider, ProviderState> states = new();
 		private readonly System.Windows.Forms.Timer debounceTimer;
@@ -158,7 +158,7 @@ namespace SweetEditor {
 		private bool pendingScrollRefresh;
 		private long lastScrollRefreshTickMs;
 
-		public DecorationProviderManager(EditorControl editor) {
+		public DecorationProviderManager(SweetEditorControl editor) {
 			this.editor = editor;
 			debounceTimer = new System.Windows.Forms.Timer { Interval = 50 };
 			debounceTimer.Tick += (_, _) => {

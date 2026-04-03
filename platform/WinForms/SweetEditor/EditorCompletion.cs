@@ -57,7 +57,7 @@ namespace SweetEditor {
 		public TextRange? WordRange { get; }
 		/// <summary>Current language configuration (from LanguageConfiguration).</summary>
 		public LanguageConfiguration? LanguageConfiguration { get; }
-		/// <summary>Current editor metadata (from EditorControl).</summary>
+		/// <summary>Current editor metadata (from SweetEditorControl).</summary>
 		public IEditorMetadata? EditorMetadata { get; }
 
 		public CompletionContext(CompletionTriggerKind triggerKind, string? triggerCharacter,
@@ -114,7 +114,7 @@ namespace SweetEditor {
 		private readonly List<ICompletionProvider> providers = new();
 		private readonly Dictionary<ICompletionProvider, ManagedReceiver> activeReceivers = new();
 		private readonly Dictionary<ICompletionProvider, SemaphoreSlim> providerGates = new();
-		private readonly EditorControl editor;
+		private readonly SweetEditorControl editor;
 		private readonly System.Windows.Forms.Timer debounceTimer;
 
 		private int generation;
@@ -122,7 +122,7 @@ namespace SweetEditor {
 		private CompletionTriggerKind lastTriggerKind;
 		private string? lastTriggerChar;
 
-		public CompletionProviderManager(EditorControl editor) {
+		public CompletionProviderManager(SweetEditorControl editor) {
 			this.editor = editor;
 			debounceTimer = new System.Windows.Forms.Timer { Interval = 50 };
 			debounceTimer.Tick += (_, _) => { debounceTimer.Stop(); ExecuteRefresh(lastTriggerKind, lastTriggerChar); };

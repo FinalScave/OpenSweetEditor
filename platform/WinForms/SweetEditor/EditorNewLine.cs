@@ -47,10 +47,10 @@ namespace SweetEditor {
 
 	/// <summary>Manages new-line providers as a chain and uses the first provider that returns a non-null result.</summary>
 	internal sealed class NewLineActionProviderManager {
-		private readonly EditorControl editor;
+		private readonly SweetEditorControl editor;
 		private readonly List<INewLineActionProvider> providers = new();
 
-		public NewLineActionProviderManager(EditorControl editor) {
+		public NewLineActionProviderManager(SweetEditorControl editor) {
 			this.editor = editor;
 		}
 

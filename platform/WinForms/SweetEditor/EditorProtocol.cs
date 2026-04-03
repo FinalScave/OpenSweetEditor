@@ -1039,6 +1039,9 @@ namespace SweetEditor {
 						result.EditResult = new TextEditResult { Changes = changes };
 					}
 				}
+				if (TryReadInt32(data, ref offset, out int command)) {
+					result.Command = command;
+				}
 				return result;
 			} finally {
 				NativeMethods.FreeBinaryData(payloadPtr);

@@ -15,7 +15,7 @@ namespace Demo {
 
 		private void InitializeComponent() {
 			components = new System.ComponentModel.Container();
-			editorControl1 = new EditorControl(components);
+			editorControl1 = new SweetEditorControl(components);
 			SuspendLayout();
 			// 
 			// editorControl1
@@ -39,6 +39,6 @@ namespace Demo {
 
 		#endregion
 
-		private EditorControl editorControl1;
+		private SweetEditorControl editorControl1;
 	}
 }

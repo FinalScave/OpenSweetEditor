@@ -11,7 +11,7 @@ namespace SweetEditor {
 	/// <summary>
 	/// Platform-independent rendering engine for the WinForms editor.
 	/// Owns all Font objects, implements text measurement callbacks, and contains all draw methods.
-	/// EditorControl delegates all rendering to this class.
+	/// SweetEditorControl delegates all rendering to this class.
 	/// </summary>
 	public class EditorRenderer : IDisposable {
 
@@ -130,8 +130,8 @@ namespace SweetEditor {
 		}
 
 		private static int GetFontVariantIndex(int fontStyle) {
-			bool isBold = (fontStyle & EditorControl.FONT_STYLE_BOLD) != 0;
-			bool isItalic = (fontStyle & EditorControl.FONT_STYLE_ITALIC) != 0;
+			bool isBold = (fontStyle & SweetEditorControl.FONT_STYLE_BOLD) != 0;
+			bool isItalic = (fontStyle & SweetEditorControl.FONT_STYLE_ITALIC) != 0;
 			return (isBold ? 1 : 0) | (isItalic ? 2 : 0);
 		}
 
@@ -604,7 +604,7 @@ namespace SweetEditor {
 				TextRenderer.DrawText(g, drawTextContent, font, rect, drawColor, TextMeasureDrawFlags);
 			}
 
-			if ((visualRun.Style.FontStyle & EditorControl.FONT_STYLE_STRIKETHROUGH) != 0) {
+			if ((visualRun.Style.FontStyle & SweetEditorControl.FONT_STYLE_STRIKETHROUGH) != 0) {
 				float strikeY = topY + metrics.Ascent * 0.5f;
 				using var pen = new Pen(color, 1f);
 				g.DrawLine(pen, visualRun.X, strikeY, visualRun.X + visualRun.Width, strikeY);

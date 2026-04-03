@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -104,6 +105,165 @@ namespace SweetEditor {
 		CTRL = 1 << 1,
 		ALT = 1 << 2,
 		META = 1 << 3
+	}
+
+	/// <summary>
+	/// Keyboard key code constants matching the C++ KeyCode enum.
+	/// </summary>
+	public enum KeyCode : ushort {
+		NONE = 0,
+		BACKSPACE = 8,
+		TAB = 9,
+		ENTER = 13,
+		ESCAPE = 27,
+		SPACE = 32,
+		PAGE_UP = 33,
+		PAGE_DOWN = 34,
+		END = 35,
+		HOME = 36,
+		LEFT = 37,
+		UP = 38,
+		RIGHT = 39,
+		DOWN = 40,
+		DELETE_KEY = 46,
+		A = 65,
+		C = 67,
+		D = 68,
+		K = 75,
+		V = 86,
+		X = 88,
+		Y = 89,
+		Z = 90,
+	}
+
+	/// <summary>
+	/// Modifier flag constants matching the C++ KeyModifier enum.
+	/// </summary>
+	[Flags]
+	public enum KeyModifier : byte {
+		NONE = 0,
+		SHIFT = 1 << 0,
+		CTRL = 1 << 1,
+		ALT = 1 << 2,
+		META = 1 << 3,
+	}
+
+	/// <summary>
+	/// Built-in editor command ids matching the C++ EditorCommand enum.
+	/// </summary>
+	public enum EditorCommand : uint {
+		NONE = 0,
+		CURSOR_LEFT = 1,
+		CURSOR_RIGHT = 2,
+		CURSOR_UP = 3,
+		CURSOR_DOWN = 4,
+		CURSOR_LINE_START = 5,
+		CURSOR_LINE_END = 6,
+		CURSOR_PAGE_UP = 7,
+		CURSOR_PAGE_DOWN = 8,
+		SELECT_LEFT = 9,
+		SELECT_RIGHT = 10,
+		SELECT_UP = 11,
+		SELECT_DOWN = 12,
+		SELECT_LINE_START = 13,
+		SELECT_LINE_END = 14,
+		SELECT_PAGE_UP = 15,
+		SELECT_PAGE_DOWN = 16,
+		SELECT_ALL = 17,
+		BACKSPACE = 18,
+		DELETE_FORWARD = 19,
+		INSERT_TAB = 20,
+		INSERT_NEWLINE = 21,
+		INSERT_LINE_ABOVE = 22,
+		INSERT_LINE_BELOW = 23,
+		UNDO = 24,
+		REDO = 25,
+		MOVE_LINE_UP = 26,
+		MOVE_LINE_DOWN = 27,
+		COPY_LINE_UP = 28,
+		COPY_LINE_DOWN = 29,
+		DELETE_LINE = 30,
+		COPY = 31,
+		PASTE = 32,
+		CUT = 33,
+		TRIGGER_COMPLETION = 34,
+	}
+
+	/// <summary>
+	/// A single key chord: one key press with optional modifiers.
+	/// </summary>
+	public readonly struct KeyChord : IEquatable<KeyChord> {
+		public static readonly KeyChord EMPTY = new(KeyModifier.NONE, KeyCode.NONE);
+
+		public KeyModifier Modifiers { get; }
+		public KeyCode KeyCode { get; }
+
+		public KeyChord(KeyModifier modifiers, KeyCode keyCode) {
+			Modifiers = modifiers;
+			KeyCode = keyCode;
+		}
+
+		public bool IsEmpty => KeyCode == KeyCode.NONE;
+
+		public bool Equals(KeyChord other) => Modifiers == other.Modifiers && KeyCode == other.KeyCode;
+
+		public override bool Equals(object? obj) => obj is KeyChord other && Equals(other);
+
+		public override int GetHashCode() => HashCode.Combine((byte)Modifiers, (ushort)KeyCode);
+	}
+
+	/// <summary>
+	/// A key binding entry: one or two chords mapped to a command id.
+	/// </summary>
+	public sealed class KeyBinding : IEquatable<KeyBinding> {
+		public KeyChord First { get; }
+		public KeyChord Second { get; }
+		public int Command { get; }
+
+		public KeyBinding(KeyChord first, int command) : this(first, KeyChord.EMPTY, command) { }
+
+		public KeyBinding(KeyChord first, KeyChord second, int command) {
+			First = first;
+			Second = second;
+			Command = command;
+		}
+
+		public KeyBinding(KeyModifier modifiers, KeyCode keyCode, int command)
+			: this(new KeyChord(modifiers, keyCode), KeyChord.EMPTY, command) { }
+
+		public KeyBinding(KeyModifier firstModifiers, KeyCode firstKeyCode,
+						  KeyModifier secondModifiers, KeyCode secondKeyCode, int command)
+			: this(new KeyChord(firstModifiers, firstKeyCode), new KeyChord(secondModifiers, secondKeyCode), command) { }
+
+		public KeyBinding WithCommand(int command) => new KeyBinding(First, Second, command);
+
+		public bool Equals(KeyBinding? other) {
+			if (other is null) return false;
+			return First.Equals(other.First) && Second.Equals(other.Second);
+		}
+
+		public override bool Equals(object? obj) => Equals(obj as KeyBinding);
+
+		public override int GetHashCode() => HashCode.Combine(First, Second);
+	}
+
+	/// <summary>
+	/// Pure data container for keyboard shortcut bindings.
+	/// </summary>
+	public class KeyMap {
+		private readonly Dictionary<KeyBinding, int> bindings = new();
+
+		public void AddBinding(KeyBinding binding) {
+			bindings[binding] = binding.Command;
+		}
+
+		public void RemoveBinding(KeyBinding binding) {
+			bindings.Remove(binding);
+		}
+
+		public IReadOnlyDictionary<KeyBinding, int> GetBindings() {
+			return bindings;
+		}
 	}
 
 	/// <summary>
@@ -1308,6 +1468,9 @@ namespace SweetEditor {
 		/// <summary>Precise text change info (valid when content_changed is true).</summary>
 		[JsonPropertyName("edit_result")]
 		public TextEditResult? EditResult { get; set; }
+		/// <summary>Resolved keymap command id.</summary>
+		[JsonPropertyName("command")]
+		public int Command { get; set; }
 	}
 
 	/// <summary>
@@ -1388,6 +1551,9 @@ namespace SweetEditor {
 
 		[DllImport(LibraryName, EntryPoint = "handle_editor_key_event", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr HandleKeyEvent(IntPtr handle, ushort keyCode, [MarshalAs(UnmanagedType.LPUTF8Str)] string? text, byte modifiers, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_set_keymap", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern void SetKeyMap(IntPtr handle, byte[] data, UIntPtr size);
 
 		[DllImport(LibraryName, EntryPoint = "editor_insert_text", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr InsertText(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, out UIntPtr outSize);
@@ -1919,6 +2085,13 @@ namespace SweetEditor {
 		public KeyEventResult HandleKeyEvent(ushort keyCode, string? text, byte modifiers) {
 			IntPtr payloadPtr = NativeMethods.HandleKeyEvent(nativeHandle, keyCode, text, modifiers, out UIntPtr payloadSize);
 			return ProtocolDecoder.ParseKeyEventResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Replaces the current keymap with the provided binding table.</summary>
+		public void SetKeyMap(KeyMap keyMap) {
+			if (nativeHandle == IntPtr.Zero || keyMap == null) return;
+			byte[] payload = PackKeyMap(keyMap);
+			NativeMethods.SetKeyMap(nativeHandle, payload, (UIntPtr)payload.Length);
 		}
 
 		#endregion
@@ -2733,6 +2906,23 @@ namespace SweetEditor {
 		/// <summary>Clears externally supplied bracket match results (falls back to built-in scanning).</summary>
 		public void ClearMatchedBrackets() {
 			NativeMethods.ClearMatchedBrackets(nativeHandle);
+		}
+
+		private static byte[] PackKeyMap(KeyMap keyMap) {
+			var bindings = keyMap.GetBindings();
+			using var stream = new MemoryStream(4 + bindings.Count * 10);
+			using var writer = new BinaryWriter(stream);
+			writer.Write(bindings.Count);
+			foreach (var entry in bindings) {
+				KeyBinding binding = entry.Key;
+				writer.Write((byte)binding.First.Modifiers);
+				writer.Write((ushort)binding.First.KeyCode);
+				writer.Write((byte)binding.Second.Modifiers);
+				writer.Write((ushort)binding.Second.KeyCode);
+				writer.Write(entry.Value);
+			}
+			writer.Flush();
+			return stream.ToArray();
 		}
 
 		#endregion

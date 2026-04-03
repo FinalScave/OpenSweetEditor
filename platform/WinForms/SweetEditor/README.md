@@ -39,7 +39,7 @@ using SweetEditor;
 
 public sealed class MainForm : Form
 {
-    private readonly EditorControl editor = new EditorControl { Dock = DockStyle.Fill };
+    private readonly SweetEditorControl editor = new SweetEditorControl { Dock = DockStyle.Fill };
 
     public MainForm()
     {
@@ -74,7 +74,7 @@ editor.TriggerCompletion();
 
 ```csharp
 var theme = EditorTheme.Dark()
-    .DefineTextStyle(EditorTheme.STYLE_KEYWORD, new TextStyle(unchecked((int)0xFF7AA2F7), EditorControl.FONT_STYLE_BOLD));
+    .DefineTextStyle(EditorTheme.STYLE_KEYWORD, new TextStyle(unchecked((int)0xFF7AA2F7), SweetEditorControl.FONT_STYLE_BOLD));
 editor.ApplyTheme(theme);
 ```
 

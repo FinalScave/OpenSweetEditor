@@ -1,13 +1,13 @@
 namespace SweetEditor {
 	/// <summary>
-	/// Centralized configuration for <see cref="EditorControl"/>.
+	/// Centralized configuration for <see cref="SweetEditorControl"/>.
 	/// <para>
-	/// Obtain via <see cref="EditorControl.Settings"/>. All setters take effect immediately.
+	/// Obtain via <see cref="SweetEditorControl.Settings"/>. All setters take effect immediately.
 	/// </para>
 	/// </summary>
 	public class EditorSettings {
 
-		private readonly EditorControl editor;
+		private readonly SweetEditorControl editor;
 
 		private float scale = 1.0f;
 		private FoldArrowMode foldArrowMode = FoldArrowMode.ALWAYS;
@@ -27,7 +27,7 @@ namespace SweetEditor {
 		private int decorationScrollRefreshMinIntervalMs = 16;
 		private float decorationOverscanViewportMultiplier = 1.5f;
 
-		internal EditorSettings(EditorControl editor) {
+		internal EditorSettings(SweetEditorControl editor) {
 			this.editor = editor;
 		}
 
