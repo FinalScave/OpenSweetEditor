@@ -4,6 +4,7 @@ import {
   Document,
   FoldArrowMode,
   InlayHintClickEvent,
+  InlayType,
   InlineSuggestion,
   InlineSuggestionListener,
   SelectionChangedEvent,
@@ -320,17 +321,17 @@ struct Index {
     this.editorController.applyTheme(createDemoTheme(this.isDarkTheme));
 
     if (!this.subscribedEvents) {
-      this.editorController.subscribe<InlayHintClickEvent>('InlayHintClickEvent', (event: InlayHintClickEvent) => {
-        if (event.isColor) {
-          this.statusMessage = `Color hint: 0x${event.colorValue.toString(16).toUpperCase()}`;
-        } else {
-          this.statusMessage = `Inlay hint: ${event.line + 1}:${event.column + 1}`;
+      this.editorController.onInlayHintClick((event: InlayHintClickEvent) => {
+        if (event.type === InlayType.Color) {
+          this.statusMessage = `Color hint: 0x${event.intValue.toString(16).toUpperCase()}`;
+          return;
         }
+        this.statusMessage = `Inlay hint: ${event.line + 1}:${event.column + 1}`;
       });
-      this.editorController.subscribe<CursorChangedEvent>('CursorChangedEvent', (event: CursorChangedEvent) => {
+      this.editorController.onCursorChanged((event: CursorChangedEvent) => {
         this.scheduleSuggestionIfAtLineEnd(event);
       });
-      this.editorController.subscribe<SelectionChangedEvent>('SelectionChangedEvent', (event: SelectionChangedEvent) => {
+      this.editorController.onSelectionChanged((event: SelectionChangedEvent) => {
         this.selectionActive = event.hasSelection;
         if (this.selectionActive) {
           this.cancelPendingSuggestion();

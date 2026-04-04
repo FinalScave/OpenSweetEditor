@@ -889,6 +889,10 @@ public:
     return setBinaryData(env, info, editor_set_fold_regions);
   }
 
+  static napi_value setKeyMap(napi_env env, napi_callback_info info) {
+    return setBinaryData(env, info, editor_set_keymap);
+  }
+
   static napi_value startLinkedEditing(napi_env env, napi_callback_info info) {
     return setBinaryData(env, info, editor_start_linked_editing);
   }

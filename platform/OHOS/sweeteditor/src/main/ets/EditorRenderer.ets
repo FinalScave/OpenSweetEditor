@@ -24,8 +24,8 @@ import {
   SelectionRect,
   VisualRun,
   VisualRunType
-} from './core/EditorVisual';
-import { CurrentLineRenderMode } from './core/EditorFoundation';
+} from './core/CoreVisual';
+import { CurrentLineRenderMode } from './core/CoreFoundation';
 import { PerfOverlay } from './perf/PerfOverlay';
 import { TextMeasurer } from 'libsweeteditor.so';
 
@@ -1030,3 +1030,4 @@ function multiplyAlpha(argb: number, alphaMultiplier: number): number {
   const outAlpha = Math.round(baseAlpha * m);
   return (outAlpha << 24) | (argb & 0x00FFFFFF);
 }
+

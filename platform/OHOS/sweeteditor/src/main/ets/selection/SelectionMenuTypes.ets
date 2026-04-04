@@ -31,3 +31,4 @@ export interface SelectionMenuState {
 export interface SelectionMenuItemProvider {
   provideMenuItems(): SelectionMenuItem[];
 }
+

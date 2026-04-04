@@ -1,4 +1,4 @@
-import { AutoIndentMode, CurrentLineRenderMode, FoldArrowMode, WrapMode } from './core/EditorFoundation';
+import { AutoIndentMode, CurrentLineRenderMode, FoldArrowMode, WrapMode } from './core/CoreFoundation';
 import { SweetEditor } from './SweetEditor';
 
 export class EditorSettings {
@@ -15,7 +15,7 @@ export class EditorSettings {
   private gutterSticky: boolean = true;
   private gutterVisible: boolean = true;
   private currentLineRenderMode: CurrentLineRenderMode = CurrentLineRenderMode.BACKGROUND;
-  private autoIndentMode: AutoIndentMode = AutoIndentMode.NONE;
+  private autoIndentMode: AutoIndentMode = AutoIndentMode.KEEP_INDENT;
   private backspaceUnindent: boolean = true;
   private readOnly: boolean = false;
   private compositionEnabled: boolean = true;
@@ -56,11 +56,7 @@ export class EditorSettings {
 
   setFoldArrowMode(mode: FoldArrowMode): void {
     this.foldArrowMode = mode;
-    const core = this.editor.getEditorCore();
-    if (!core) {
-      return;
-    }
-    core.setFoldArrowMode(mode);
+    this.editor.applyFoldArrowMode(mode);
   }
 
   getFoldArrowMode(): FoldArrowMode {
@@ -69,12 +65,7 @@ export class EditorSettings {
 
   setWrapMode(mode: WrapMode): void {
     this.wrapMode = mode;
-    const core = this.editor.getEditorCore();
-    if (!core) {
-      return;
-    }
-    core.setWrapMode(mode);
-    this.editor.flush();
+    this.editor.applyWrapMode(mode);
   }
 
   getWrapMode(): WrapMode {
@@ -84,12 +75,7 @@ export class EditorSettings {
   setLineSpacing(add: number, mult: number): void {
     this.lineSpacingAdd = add;
     this.lineSpacingMult = mult;
-    const core = this.editor.getEditorCore();
-    if (!core) {
-      return;
-    }
-    core.setLineSpacing(add, mult);
-    this.editor.flush();
+    this.editor.applyLineSpacing(add, mult);
   }
 
   getLineSpacingAdd(): number {
@@ -102,12 +88,7 @@ export class EditorSettings {
 
   setContentStartPadding(padding: number): void {
     this.contentStartPadding = Math.max(0, padding);
-    const core = this.editor.getEditorCore();
-    if (!core) {
-      return;
-    }
-    core.setContentStartPadding(this.contentStartPadding);
-    this.editor.flush();
+    this.editor.applyContentStartPadding(this.contentStartPadding);
   }
 
   getContentStartPadding(): number {
@@ -116,12 +97,7 @@ export class EditorSettings {
 
   setShowSplitLine(show: boolean): void {
     this.showSplitLine = show;
-    const core = this.editor.getEditorCore();
-    if (!core) {
-      return;
-    }
-    core.setShowSplitLine(show);
-    this.editor.flush();
+    this.editor.applyShowSplitLine(show);
   }
 
   isShowSplitLine(): boolean {
@@ -130,12 +106,7 @@ export class EditorSettings {
 
   setGutterSticky(sticky: boolean): void {
     this.gutterSticky = sticky;
-    const core = this.editor.getEditorCore();
-    if (!core) {
-      return;
-    }
-    core.setGutterSticky(sticky);
-    this.editor.flush();
+    this.editor.applyGutterSticky(sticky);
   }
 
   isGutterSticky(): boolean {
@@ -144,12 +115,7 @@ export class EditorSettings {
 
   setGutterVisible(visible: boolean): void {
     this.gutterVisible = visible;
-    const core = this.editor.getEditorCore();
-    if (!core) {
-      return;
-    }
-    core.setGutterVisible(visible);
-    this.editor.flush();
+    this.editor.applyGutterVisible(visible);
   }
 
   isGutterVisible(): boolean {
@@ -158,12 +124,7 @@ export class EditorSettings {
 
   setCurrentLineRenderMode(mode: CurrentLineRenderMode): void {
     this.currentLineRenderMode = mode;
-    const core = this.editor.getEditorCore();
-    if (!core) {
-      return;
-    }
-    core.setCurrentLineRenderMode(mode);
-    this.editor.flush();
+    this.editor.applyCurrentLineRenderMode(mode);
   }
 
   getCurrentLineRenderMode(): CurrentLineRenderMode {
@@ -172,11 +133,7 @@ export class EditorSettings {
 
   setAutoIndentMode(mode: AutoIndentMode): void {
     this.autoIndentMode = mode;
-    const core = this.editor.getEditorCore();
-    if (!core) {
-      return;
-    }
-    core.setAutoIndentMode(mode);
+    this.editor.applyAutoIndentMode(mode);
   }
 
   getAutoIndentMode(): AutoIndentMode {
@@ -185,11 +142,7 @@ export class EditorSettings {
 
   setBackspaceUnindent(enabled: boolean): void {
     this.backspaceUnindent = enabled;
-    const core = this.editor.getEditorCore();
-    if (!core) {
-      return;
-    }
-    core.setBackspaceUnindent(enabled);
+    this.editor.applyBackspaceUnindent(enabled);
   }
 
   isBackspaceUnindent(): boolean {
@@ -198,11 +151,7 @@ export class EditorSettings {
 
   setReadOnly(readOnly: boolean): void {
     this.readOnly = readOnly;
-    const core = this.editor.getEditorCore();
-    if (!core) {
-      return;
-    }
-    core.setReadOnly(readOnly);
+    this.editor.applyReadOnly(readOnly);
   }
 
   isReadOnly(): boolean {
@@ -211,12 +160,7 @@ export class EditorSettings {
 
   setCompositionEnabled(enabled: boolean): void {
     this.compositionEnabled = enabled;
-    const core = this.editor.getEditorCore();
-    if (!core) {
-      return;
-    }
-    core.setCompositionEnabled(enabled);
-    this.editor.flush();
+    this.editor.applyCompositionEnabled(enabled);
   }
 
   isCompositionEnabled(): boolean {
@@ -225,11 +169,7 @@ export class EditorSettings {
 
   setMaxGutterIcons(count: number): void {
     this.maxGutterIcons = count;
-    const core = this.editor.getEditorCore();
-    if (!core) {
-      return;
-    }
-    core.setMaxGutterIcons(count);
+    this.editor.applyMaxGutterIcons(count);
   }
 
   getMaxGutterIcons(): number {
@@ -254,3 +194,4 @@ export class EditorSettings {
     return this.decorationOverscanViewportMultiplier;
   }
 }
+

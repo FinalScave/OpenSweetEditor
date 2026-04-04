@@ -1,5 +1,5 @@
 import native from 'libsweeteditor.so';
-import { ProtocolDecoder, ProtocolEncoder } from './EditorProtocol';
+import { ProtocolDecoder, ProtocolEncoder } from './CoreProtocol';
 import {
   AutoIndentMode,
   CurrentLineRenderMode,
@@ -8,7 +8,8 @@ import {
   TextPosition,
   TextRange,
   WrapMode
-} from './EditorFoundation';
+} from './CoreFoundation';
+import { KeyMap } from './CoreKeymap';
 import {
   BracketGuide,
   DiagnosticItem,
@@ -22,9 +23,9 @@ import {
   SpanLayer,
   StyleSpan,
   TextStyle
-} from './EditorAdornments';
-import { CursorRect, EditorRenderModel, PointF, ScrollMetrics } from './EditorVisual';
-import { LinkedEditingModel } from './EditorLinkedEditing';
+} from './CoreAdornments';
+import { CursorRect, EditorRenderModel, PointF, ScrollMetrics } from './CoreVisual';
+import { LinkedEditingModel } from './CoreLinkedEditing';
 
 export enum EventType {
   UNDEFINED = 0,
@@ -137,6 +138,7 @@ export interface KeyEventResult {
   cursorChanged: boolean;
   selectionChanged: boolean;
   editResult: TextEditResult | null;
+  command: number;
 }
 
 export interface GestureEvent {
@@ -289,6 +291,11 @@ export class EditorCore {
     native.editorSetInsertSpaces(this.handle, enabled ? 1 : 0);
   }
 
+  setKeyMap(keyMap: KeyMap): void {
+    const data = keyMap.toArrayBuffer();
+    native.editorSetKeyMap(this.handle, data, data.byteLength);
+  }
+
   setScale(scale: number): void {
     native.editorSetScale(this.handle, scale);
   }
@@ -346,6 +353,10 @@ export class EditorCore {
       event.directScale
     );
     return ProtocolDecoder.decodeGestureResult(payload);
+  }
+
+  handleGestureEventEx(event: GestureEvent): GestureResult {
+    return this.handleGestureEvent(event);
   }
 
   handleSimpleGestureEvent(type: EventType, pointerCount: number, points: number[]): GestureResult {
@@ -931,10 +942,6 @@ export class EditorCore {
     native.editorClearHighlightsLayer(this.handle, layer as number);
   }
 
-  clearHighlightsLayer(layer: SpanLayer): void {
-    this.clearHighlights(layer);
-  }
-
   clearInlayHints(): void {
     native.editorClearInlayHints(this.handle);
   }
@@ -959,3 +966,4 @@ export class EditorCore {
     native.editorClearAllDecorations(this.handle);
   }
 }
+

@@ -17,8 +17,12 @@ import {
   PhantomText,
   SeparatorGuide,
   StyleSpan
-} from '../core/EditorAdornments';
+} from '../core/CoreAdornments';
 import { SweetEditor } from '../SweetEditor';
+import hilog from '@ohos.hilog';
+
+const HILOG_DOMAIN = 0x3D12;
+const TAG = 'DecorationMgr';
 
 interface ProviderState {
   snapshot: DecorationResult | null;
@@ -45,12 +49,16 @@ export class DecorationProviderManager {
   private refreshTimerId: number = -1;
   private scrollRefreshTimerId: number = -1;
   private applyTimerId: number = -1;
+  private tornDown: boolean = false;
 
   constructor(editor: SweetEditor) {
     this.editor = editor;
   }
 
   addProvider(provider: DecorationProvider): void {
+    if (this.tornDown) {
+      return;
+    }
     if (!this.providers.includes(provider)) {
       this.providers.push(provider);
       this.providerStates.set(provider, { snapshot: null, activeReceiver: null });
@@ -59,6 +67,9 @@ export class DecorationProviderManager {
   }
 
   removeProvider(provider: DecorationProvider): void {
+    if (this.tornDown) {
+      return;
+    }
     const idx = this.providers.indexOf(provider);
     if (idx >= 0) {
       this.providers.splice(idx, 1);
@@ -72,18 +83,30 @@ export class DecorationProviderManager {
   }
 
   requestRefresh(): void {
+    if (this.tornDown) {
+      return;
+    }
     this.scheduleRefresh(0, null);
   }
 
   onDocumentLoaded(): void {
+    if (this.tornDown) {
+      return;
+    }
     this.scheduleRefresh(0, null);
   }
 
   onTextChanged(changes: TextChange[]): void {
+    if (this.tornDown) {
+      return;
+    }
     this.scheduleRefresh(50, changes);
   }
 
   onScrollChanged(): void {
+    if (this.tornDown) {
+      return;
+    }
     this.scheduleScrollRefresh();
   }
 
@@ -128,6 +151,9 @@ export class DecorationProviderManager {
   }
 
   private doRefresh(): void {
+    if (this.tornDown) {
+      return;
+    }
     this.generation++;
     const currentGeneration = this.generation;
 
@@ -165,12 +191,15 @@ export class DecorationProviderManager {
       try {
         provider.provideDecorations(context, receiver);
       } catch (e) {
-        // Provider error, skip
+        hilog.error(HILOG_DOMAIN, TAG, 'provider failed: %{public}s', `${e}`);
       }
     }
   }
 
   private scheduleApply(): void {
+    if (this.tornDown) {
+      return;
+    }
     if (this.applyScheduled) {
       return;
     }
@@ -182,6 +211,9 @@ export class DecorationProviderManager {
   }
 
   private applyMerged(): void {
+    if (this.tornDown) {
+      return;
+    }
     this.applyScheduled = false;
 
     const syntaxSpans = new Map<number, StyleSpan[]>();
@@ -291,6 +323,39 @@ export class DecorationProviderManager {
     this.editor.setBatchLinePhantomTexts(phantomTexts);
 
     this.editor.flush();
+  }
+
+  teardown(): void {
+    if (this.tornDown) {
+      return;
+    }
+    this.tornDown = true;
+    if (this.refreshTimerId >= 0) {
+      clearTimeout(this.refreshTimerId);
+      this.refreshTimerId = -1;
+    }
+    if (this.scrollRefreshTimerId >= 0) {
+      clearTimeout(this.scrollRefreshTimerId);
+      this.scrollRefreshTimerId = -1;
+    }
+    if (this.applyTimerId >= 0) {
+      clearTimeout(this.applyTimerId);
+      this.applyTimerId = -1;
+    }
+    this.applyScheduled = false;
+    this.scrollRefreshScheduled = false;
+    this.pendingScrollRefresh = false;
+    this.pendingTextChanges = [];
+    this.generation++;
+    for (const state of this.providerStates.values()) {
+      if (state.activeReceiver) {
+        state.activeReceiver.cancel();
+      }
+      state.activeReceiver = null;
+      state.snapshot = null;
+    }
+    this.providers = [];
+    this.providerStates.clear();
   }
 
   private applySpanMode(layer: number, mode: ApplyMode): void {
@@ -535,7 +600,12 @@ class ManagedReceiver implements DecorationReceiver {
       return false;
     }
     const snapshot = result.copy();
-    this.manager.onProviderResult(this.provider, snapshot, this.receiverGeneration);
+    setTimeout(() => {
+      if (this.cancelled || this.receiverGeneration !== this.manager.getGeneration()) {
+        return;
+      }
+      this.manager.onProviderResult(this.provider, snapshot, this.receiverGeneration);
+    }, 0);
     return true;
   }
 
@@ -585,3 +655,4 @@ function appendMapOfArrays<T>(out: Map<number, T[]>, patch: Map<number, T[]>): v
     target.push(...(src || []));
   });
 }
+

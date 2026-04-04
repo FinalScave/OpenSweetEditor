@@ -1,4 +1,4 @@
-import { CompletionItem, CompletionItemViewBuilder, CompletionItemViewFactory } from './CompletionTypes';
+import { CompletionItem, CompletionItemViewBuilder } from './CompletionTypes';
 import { CompletionUpdateListener } from './CompletionProviderManager';
 
 const MAX_VISIBLE_ITEMS = 6;
@@ -56,10 +56,6 @@ export class CompletionPopupController implements CompletionUpdateListener {
 
   setViewBuilder(builder: CompletionItemViewBuilder | null): void {
     this.viewBuilder = builder;
-  }
-
-  setViewFactory(factory: CompletionItemViewFactory | null): void {
-    this.setViewBuilder(factory);
   }
 
   setOnShowCallback(cb: ((items: CompletionItem[], selectedIndex: number,
@@ -224,3 +220,4 @@ export interface CompletionThemeColors {
   labelColor: number;
   detailColor: number;
 }
+

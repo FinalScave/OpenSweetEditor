@@ -135,15 +135,31 @@ public requestDecorationRefresh(): void
 ### 事件与撤销重做
 
 ```ts
-public subscribe<T extends EditorEvent>(eventName: string, listener: EditorEventListener<T>): void
-public unsubscribe<T extends EditorEvent>(eventName: string, listener: EditorEventListener<T>): void
+public onTextChanged(listener: EditorEventListener<TextChangedEvent>): void
+public offTextChanged(listener: EditorEventListener<TextChangedEvent>): void
+public onCursorChanged(listener: EditorEventListener<CursorChangedEvent>): void
+public offCursorChanged(listener: EditorEventListener<CursorChangedEvent>): void
+public onSelectionChanged(listener: EditorEventListener<SelectionChangedEvent>): void
+public offSelectionChanged(listener: EditorEventListener<SelectionChangedEvent>): void
+public onScrollChanged(listener: EditorEventListener<ScrollChangedEvent>): void
+public offScrollChanged(listener: EditorEventListener<ScrollChangedEvent>): void
+public onScaleChanged(listener: EditorEventListener<ScaleChangedEvent>): void
+public offScaleChanged(listener: EditorEventListener<ScaleChangedEvent>): void
+public onDocumentLoaded(listener: EditorEventListener<DocumentLoadedEvent>): void
+public offDocumentLoaded(listener: EditorEventListener<DocumentLoadedEvent>): void
+public onFoldToggle(listener: EditorEventListener<FoldToggleEvent>): void
+public offFoldToggle(listener: EditorEventListener<FoldToggleEvent>): void
+public onGutterIconClick(listener: EditorEventListener<GutterIconClickEvent>): void
+public offGutterIconClick(listener: EditorEventListener<GutterIconClickEvent>): void
+public onInlayHintClick(listener: EditorEventListener<InlayHintClickEvent>): void
+public offInlayHintClick(listener: EditorEventListener<InlayHintClickEvent>): void
 public undo(): TextEditResult | null
 public redo(): TextEditResult | null
 public canUndo(): boolean
 public canRedo(): boolean
 ```
 
-常用事件名来自 `event/EditorEvent.ets` 中的具体事件类型，例如 `TextChangedEvent`、`CursorChangedEvent`、`SelectionChangedEvent`、`ScrollChangedEvent`、`ScaleChangedEvent`、`GutterIconClickEvent`、`FoldToggleEvent`。
+移动端相关事件（如 `LongPressEvent`、`DoubleTapEvent`）以及 OHOS 特有的 `SelectionMenuItemClickEvent` 也都通过对应的 `onXxx` / `offXxx` 方法暴露。
 
 ## 运行时配置：`EditorSettings`
 

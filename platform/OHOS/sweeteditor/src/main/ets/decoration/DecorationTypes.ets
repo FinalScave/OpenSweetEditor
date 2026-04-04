@@ -9,7 +9,7 @@ import {
   PhantomText,
   SeparatorGuide,
   StyleSpan
-} from '../core/EditorAdornments';
+} from '../core/CoreAdornments';
 import { TextChange } from '../core/EditorCore';
 import { EditorMetadata, LanguageConfiguration } from '../EditorTypes';
 
@@ -50,12 +50,23 @@ export class DecorationContext {
   }
 }
 
+/**
+ * Async callback for providers to submit decoration snapshots.
+ * `accept(...)` may be called synchronously or asynchronously, including from a
+ * background thread. The manager will switch back to the UI event loop before
+ * applying the result to editor state or updating host-visible UI.
+ */
 export interface DecorationReceiver {
   accept(result: DecorationResult): boolean;
 
   isCancelled(): boolean;
 }
 
+/**
+ * Decoration provider interface.
+ * `provideDecorations(...)` is invoked from the editor's UI thread / UI event loop.
+ * Providers may publish 0..n snapshots asynchronously through the receiver.
+ */
 export interface DecorationProvider {
   getCapabilities(): Set<DecorationType>;
 
@@ -208,3 +219,4 @@ function copyMapOfArrays<T>(source: Map<number, T[]> | null): Map<number, T[]> |
   });
   return out;
 }
+

@@ -7,12 +7,19 @@ import { NewLineAction, NewLineActionProvider, NewLineContext } from './NewLineT
  */
 export class NewLineActionProviderManager {
   private providers: NewLineActionProvider[] = [];
+  private tornDown: boolean = false;
 
   addProvider(provider: NewLineActionProvider): void {
+    if (this.tornDown) {
+      return;
+    }
     this.providers.push(provider);
   }
 
   removeProvider(provider: NewLineActionProvider): void {
+    if (this.tornDown) {
+      return;
+    }
     const idx = this.providers.indexOf(provider);
     if (idx >= 0) {
       this.providers.splice(idx, 1);
@@ -22,6 +29,9 @@ export class NewLineActionProviderManager {
   provideNewLineAction(lineNumber: number, column: number, lineText: string,
     languageConfiguration: LanguageConfiguration | null,
     editorMetadata: EditorMetadata | null): NewLineAction | null {
+    if (this.tornDown) {
+      return null;
+    }
     const context = new NewLineContext(lineNumber, column, lineText,
       languageConfiguration, editorMetadata);
     for (const provider of this.providers) {
@@ -32,4 +42,13 @@ export class NewLineActionProviderManager {
     }
     return null;
   }
+
+  teardown(): void {
+    if (this.tornDown) {
+      return;
+    }
+    this.tornDown = true;
+    this.providers = [];
+  }
 }
+

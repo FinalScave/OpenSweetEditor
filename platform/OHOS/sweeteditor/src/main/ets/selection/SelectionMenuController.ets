@@ -2,7 +2,7 @@ import { SelectionMenuItem, SelectionMenuItemProvider, SelectionMenuState } from
 import { EditorEventBus } from '../event/EditorEventBus';
 import { SelectionMenuItemClickEvent } from '../event/EditorEvent';
 import { GestureResult, GestureType } from '../core/EditorCore';
-import { PointF } from '../core/EditorVisual';
+import { PointF } from '../core/CoreVisual';
 import { SweetEditor } from '../SweetEditor';
 
 const SHOW_DELAY_MS = 100;
@@ -19,7 +19,7 @@ export interface SelectionHandleInfo {
 
 /**
  * Controls the lifecycle of the selection context menu.
- * State machine: HIDDEN → VISIBLE (on double-tap + selection) → HIDDEN (on tap/scroll/scale).
+ * State machine: HIDDEN �?VISIBLE (on double-tap + selection) �?HIDDEN (on tap/scroll/scale).
  */
 export class SelectionMenuController {
   private editor: SweetEditor;
@@ -176,7 +176,7 @@ export class SelectionMenuController {
         this.editor.selectAll();
         break;
       default:
-        this.eventBus.publish(new SelectionMenuItemClickEvent(item.id, item.label));
+        this.eventBus.emit('selectionMenuItemClick', new SelectionMenuItemClickEvent(item));
         this.hide();
         break;
     }
@@ -333,3 +333,4 @@ export class SelectionMenuController {
     });
   }
 }
+

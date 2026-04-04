@@ -1,36 +1,36 @@
 import { EditorEvent, EditorEventListener } from './EditorEvent';
 
 /**
- * Generic editor event bus (platform layer event system).
- * Dispatches by event name, each event type has its own subscriber list.
+ * Internal editor event bus. Public APIs expose typed onXxx/offXxx methods,
+ * while the bus keeps a single listener registry keyed by fixed event names.
  */
 export class EditorEventBus {
   private listeners: Map<string, EditorEventListener<EditorEvent>[]> = new Map();
 
-  subscribe<T extends EditorEvent>(eventName: string, listener: EditorEventListener<T>): void {
-    let list = this.listeners.get(eventName);
+  on(type: string, listener: EditorEventListener<EditorEvent>): void {
+    let list = this.listeners.get(type);
     if (!list) {
       list = [];
-      this.listeners.set(eventName, list);
+      this.listeners.set(type, list);
     }
-    if (!list.includes(listener as EditorEventListener<EditorEvent>)) {
-      list.push(listener as EditorEventListener<EditorEvent>);
+    if (!list.includes(listener)) {
+      list.push(listener);
     }
   }
 
-  unsubscribe<T extends EditorEvent>(eventName: string, listener: EditorEventListener<T>): void {
-    const list = this.listeners.get(eventName);
+  off(type: string, listener: EditorEventListener<EditorEvent>): void {
+    const list = this.listeners.get(type);
     if (!list) {
       return;
     }
-    const idx = list.indexOf(listener as EditorEventListener<EditorEvent>);
+    const idx = list.indexOf(listener);
     if (idx >= 0) {
       list.splice(idx, 1);
     }
   }
 
-  publish<T extends EditorEvent>(event: T): void {
-    const list = this.listeners.get(event.eventName);
+  emit(type: string, event: EditorEvent): void {
+    const list = this.listeners.get(type);
     if (!list || list.length === 0) {
       return;
     }

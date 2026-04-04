@@ -36,7 +36,10 @@ export class NewLineContext {
  * Smart newline provider interface.
  * Return null to indicate the current provider does not handle this,
  * pass to the next provider in the chain.
+ * `provideNewLineAction(...)` runs on the editor input path on the UI thread /
+ * UI event loop and must return synchronously.
  */
 export interface NewLineActionProvider {
   provideNewLineAction(context: NewLineContext | null): NewLineAction | null;
 }
+

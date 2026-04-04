@@ -1,4 +1,4 @@
-import { TextPosition } from './EditorFoundation';
+import { TextPosition } from './CoreFoundation';
 
 export enum SpanLayer {
   SYNTAX = 0,
@@ -73,3 +73,4 @@ export interface SeparatorGuide {
   count: number;
   textEndColumn: number;
 }
+

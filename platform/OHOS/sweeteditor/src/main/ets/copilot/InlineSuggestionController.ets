@@ -1,7 +1,7 @@
 import { InlineSuggestion, InlineSuggestionListener } from './InlineSuggestionTypes';
-import { PhantomText } from '../core/EditorAdornments';
-import { TextPosition } from '../core/EditorFoundation';
-import { CursorChangedEvent, EditorEventListener, ScrollChangedEvent, TextChangedEvent } from '../event/EditorEvent';
+import { PhantomText } from '../core/CoreAdornments';
+import { TextPosition } from '../core/CoreFoundation';
+import { CursorChangedEvent, EditorEvent, EditorEventListener, ScrollChangedEvent, TextChangedEvent } from '../event/EditorEvent';
 import { EditorEventBus } from '../event/EditorEventBus';
 import { SweetEditor } from '../SweetEditor';
 
@@ -131,7 +131,7 @@ export class InlineSuggestionController implements InlineSuggestionActionCallbac
 
   /**
    * Handle key codes. Returns true if consumed.
-   * Tab → accept, Escape → dismiss.
+   * Tab �?accept, Escape �?dismiss.
    */
   handleKeyCode(keyCode: number): boolean {
     if (!this.showing) {
@@ -201,14 +201,15 @@ export class InlineSuggestionController implements InlineSuggestionActionCallbac
   }
 
   private subscribeEvents(): void {
-    this.eventBus.subscribe('TextChangedEvent', this.textWatcher);
-    this.eventBus.subscribe('CursorChangedEvent', this.cursorWatcher);
-    this.eventBus.subscribe('ScrollChangedEvent', this.scrollWatcher);
+    this.eventBus.on('textChanged', this.textWatcher as EditorEventListener<EditorEvent>);
+    this.eventBus.on('cursorChanged', this.cursorWatcher as EditorEventListener<EditorEvent>);
+    this.eventBus.on('scrollChanged', this.scrollWatcher as EditorEventListener<EditorEvent>);
   }
 
   private unsubscribeEvents(): void {
-    this.eventBus.unsubscribe('TextChangedEvent', this.textWatcher);
-    this.eventBus.unsubscribe('CursorChangedEvent', this.cursorWatcher);
-    this.eventBus.unsubscribe('ScrollChangedEvent', this.scrollWatcher);
+    this.eventBus.off('textChanged', this.textWatcher as EditorEventListener<EditorEvent>);
+    this.eventBus.off('cursorChanged', this.cursorWatcher as EditorEventListener<EditorEvent>);
+    this.eventBus.off('scrollChanged', this.scrollWatcher as EditorEventListener<EditorEvent>);
   }
 }
+

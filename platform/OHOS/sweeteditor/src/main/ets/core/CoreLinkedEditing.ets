@@ -14,3 +14,4 @@ export interface TabStopGroup {
 export interface LinkedEditingModel {
   groups: TabStopGroup[];
 }
+

@@ -1,5 +1,5 @@
-import { TextPosition } from './EditorFoundation';
-import { TextStyle } from './EditorAdornments';
+import { TextPosition } from './CoreFoundation';
+import { TextStyle } from './CoreAdornments';
 
 export interface PointF {
   x: number;
@@ -199,3 +199,4 @@ export interface EditorRenderModel {
   gutterSticky: boolean;
   gutterVisible: boolean;
 }
+

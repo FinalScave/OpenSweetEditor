@@ -8,7 +8,7 @@ import {
   TextChange,
   TextEditResult
 } from './EditorCore';
-import { TextPosition, TextRange } from './EditorFoundation';
+import { TextPosition, TextRange } from './CoreFoundation';
 import {
   BracketGuide,
   DiagnosticItem,
@@ -22,7 +22,7 @@ import {
   SeparatorGuide,
   StyleSpan,
   TextStyle
-} from './EditorAdornments';
+} from './CoreAdornments';
 import {
   BracketHighlightRect,
   CompositionDecoration,
@@ -46,8 +46,8 @@ import {
   VisualLine,
   VisualRun,
   VisualRunType
-} from './EditorVisual';
-import { LinkedEditingModel } from './EditorLinkedEditing';
+} from './CoreVisual';
+import { LinkedEditingModel } from './CoreLinkedEditing';
 import util from '@ohos.util';
 
 class BinaryReader {
@@ -545,7 +545,8 @@ export class ProtocolDecoder {
       contentChanged: false,
       cursorChanged: false,
       selectionChanged: false,
-      editResult: null
+      editResult: null,
+      command: 0
     };
     if (!payload || payload.byteLength === 0) {
       return empty;
@@ -574,7 +575,8 @@ export class ProtocolDecoder {
       contentChanged,
       cursorChanged,
       selectionChanged,
-      editResult
+      editResult,
+      command: reader.readInt32()
     };
   }
 
@@ -956,3 +958,4 @@ export class ProtocolDecoder {
     };
   }
 }
+

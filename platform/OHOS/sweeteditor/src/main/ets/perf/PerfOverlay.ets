@@ -337,3 +337,4 @@ export class PerfOverlay {
     }
   }
 }
+

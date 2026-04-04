@@ -135,15 +135,31 @@ public requestDecorationRefresh(): void
 ### Events and Undo/Redo
 
 ```ts
-public subscribe<T extends EditorEvent>(eventName: string, listener: EditorEventListener<T>): void
-public unsubscribe<T extends EditorEvent>(eventName: string, listener: EditorEventListener<T>): void
+public onTextChanged(listener: EditorEventListener<TextChangedEvent>): void
+public offTextChanged(listener: EditorEventListener<TextChangedEvent>): void
+public onCursorChanged(listener: EditorEventListener<CursorChangedEvent>): void
+public offCursorChanged(listener: EditorEventListener<CursorChangedEvent>): void
+public onSelectionChanged(listener: EditorEventListener<SelectionChangedEvent>): void
+public offSelectionChanged(listener: EditorEventListener<SelectionChangedEvent>): void
+public onScrollChanged(listener: EditorEventListener<ScrollChangedEvent>): void
+public offScrollChanged(listener: EditorEventListener<ScrollChangedEvent>): void
+public onScaleChanged(listener: EditorEventListener<ScaleChangedEvent>): void
+public offScaleChanged(listener: EditorEventListener<ScaleChangedEvent>): void
+public onDocumentLoaded(listener: EditorEventListener<DocumentLoadedEvent>): void
+public offDocumentLoaded(listener: EditorEventListener<DocumentLoadedEvent>): void
+public onFoldToggle(listener: EditorEventListener<FoldToggleEvent>): void
+public offFoldToggle(listener: EditorEventListener<FoldToggleEvent>): void
+public onGutterIconClick(listener: EditorEventListener<GutterIconClickEvent>): void
+public offGutterIconClick(listener: EditorEventListener<GutterIconClickEvent>): void
+public onInlayHintClick(listener: EditorEventListener<InlayHintClickEvent>): void
+public offInlayHintClick(listener: EditorEventListener<InlayHintClickEvent>): void
 public undo(): TextEditResult | null
 public redo(): TextEditResult | null
 public canUndo(): boolean
 public canRedo(): boolean
 ```
 
-Typical event names come from the concrete event types in `event/EditorEvent.ets`, such as `TextChangedEvent`, `CursorChangedEvent`, `SelectionChangedEvent`, `ScrollChangedEvent`, `ScaleChangedEvent`, `GutterIconClickEvent`, and `FoldToggleEvent`.
+Mobile-specific events such as `LongPressEvent`, `DoubleTapEvent`, and OHOS-specific `SelectionMenuItemClickEvent` are also exposed through matching `onXxx` / `offXxx` methods.
 
 ## Runtime Settings: `EditorSettings`
 

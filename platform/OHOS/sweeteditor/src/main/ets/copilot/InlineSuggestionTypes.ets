@@ -21,3 +21,4 @@ export interface InlineSuggestionListener {
 
   onSuggestionDismissed(suggestion: InlineSuggestion): void;
 }
+

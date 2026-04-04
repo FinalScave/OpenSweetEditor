@@ -7,9 +7,12 @@ import {
   CompletionTriggerKind
 } from './CompletionTypes';
 import { SweetEditor } from '../SweetEditor';
+import hilog from '@ohos.hilog';
 
 const DEBOUNCE_CHARACTER_MS = 50;
 const DEBOUNCE_INVOKED_MS = 0;
+const HILOG_DOMAIN = 0x3D12;
+const TAG = 'CompletionMgr';
 
 /**
  * Listener for completion item updates and dismissals.
@@ -35,22 +38,32 @@ export class CompletionProviderManager {
   private lastTriggerChar: string | null = null;
   private debounceTimerId: number = -1;
   private editor: SweetEditor;
+  private tornDown: boolean = false;
 
   constructor(editor: SweetEditor) {
     this.editor = editor;
   }
 
   setListener(listener: CompletionUpdateListener | null): void {
+    if (this.tornDown) {
+      return;
+    }
     this.listener = listener;
   }
 
   addProvider(provider: CompletionProvider): void {
+    if (this.tornDown) {
+      return;
+    }
     if (!this.providers.includes(provider)) {
       this.providers.push(provider);
     }
   }
 
   removeProvider(provider: CompletionProvider): void {
+    if (this.tornDown) {
+      return;
+    }
     const idx = this.providers.indexOf(provider);
     if (idx >= 0) {
       this.providers.splice(idx, 1);
@@ -63,6 +76,9 @@ export class CompletionProviderManager {
   }
 
   triggerCompletion(triggerKind: CompletionTriggerKind, triggerCharacter: string | null): void {
+    if (this.tornDown) {
+      return;
+    }
     if (this.providers.length === 0) {
       return;
     }
@@ -82,6 +98,9 @@ export class CompletionProviderManager {
   }
 
   dismiss(): void {
+    if (this.tornDown) {
+      return;
+    }
     this.clearDebounce();
     this.generation++;
     this.cancelAllReceivers();
@@ -92,6 +111,9 @@ export class CompletionProviderManager {
   }
 
   isTriggerCharacter(ch: string): boolean {
+    if (this.tornDown) {
+      return false;
+    }
     for (const provider of this.providers) {
       if (provider.isTriggerCharacter(ch)) {
         return true;
@@ -101,6 +123,9 @@ export class CompletionProviderManager {
   }
 
   showItems(items: CompletionItem[]): void {
+    if (this.tornDown) {
+      return;
+    }
     this.clearDebounce();
     this.generation++;
     this.cancelAllReceivers();
@@ -111,6 +136,9 @@ export class CompletionProviderManager {
   }
 
   private executeRefresh(triggerKind: CompletionTriggerKind, triggerCharacter: string | null): void {
+    if (this.tornDown) {
+      return;
+    }
     const currentGen = ++this.generation;
     this.cancelAllReceivers();
     this.mergedItems = [];
@@ -127,7 +155,7 @@ export class CompletionProviderManager {
       try {
         provider.provideCompletions(context, receiver);
       } catch (e) {
-        // Provider error, skip
+        hilog.error(HILOG_DOMAIN, TAG, 'provider failed: %{public}s', `${e}`);
       }
     }
   }
@@ -154,6 +182,9 @@ export class CompletionProviderManager {
 
   /** @internal Called by ManagedReceiver when a provider submits results. */
   onProviderResult(provider: CompletionProvider, result: CompletionResult, receiverGeneration: number): void {
+    if (this.tornDown) {
+      return;
+    }
     if (receiverGeneration !== this.generation) {
       return;
     }
@@ -178,6 +209,20 @@ export class CompletionProviderManager {
 
   getGeneration(): number {
     return this.generation;
+  }
+
+  teardown(): void {
+    if (this.tornDown) {
+      return;
+    }
+    this.tornDown = true;
+    this.clearDebounce();
+    this.generation++;
+    this.cancelAllReceivers();
+    this.providers = [];
+    this.mergedItems = [];
+    this.listener = null;
+    this.lastTriggerChar = null;
   }
 
   private clearDebounce(): void {
@@ -208,7 +253,12 @@ class ManagedReceiver implements CompletionReceiver {
     if (this.cancelled || this.receiverGeneration !== this.manager.getGeneration()) {
       return false;
     }
-    this.manager.onProviderResult(this.provider, result, this.receiverGeneration);
+    setTimeout(() => {
+      if (this.cancelled || this.receiverGeneration !== this.manager.getGeneration()) {
+        return;
+      }
+      this.manager.onProviderResult(this.provider, result, this.receiverGeneration);
+    }, 0);
     return true;
   }
 
@@ -216,3 +266,4 @@ class ManagedReceiver implements CompletionReceiver {
     return this.cancelled || this.receiverGeneration !== this.manager.getGeneration();
   }
 }
+

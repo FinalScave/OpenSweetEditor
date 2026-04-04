@@ -1,13 +1,14 @@
-import { TextPosition, TextRange } from '../core/EditorFoundation';
-import { PointF } from '../core/EditorVisual';
+import { InlayType } from '../core/CoreAdornments';
+import { TextPosition, TextRange } from '../core/CoreFoundation';
+import { TextChange } from '../core/EditorCore';
+import { PointF } from '../core/CoreVisual';
+import { SelectionMenuItem } from '../selection/SelectionMenuTypes';
 
 /**
  * Base interface for editor events.
  * Each concrete event is an immutable data object that implements this interface.
  */
-export interface EditorEvent {
-  readonly eventName: string;
-}
+export interface EditorEvent {}
 
 /**
  * Editor event listener callback type.
@@ -24,20 +25,16 @@ export enum TextChangeAction {
 }
 
 export class TextChangedEvent implements EditorEvent {
-  readonly eventName = 'TextChangedEvent';
-  readonly action: TextChangeAction;
-  readonly changeRange: TextRange | null;
-  readonly text: string | null;
+  readonly changes: TextChange[];
+  readonly action: TextChangeAction | null;
 
-  constructor(action: TextChangeAction, changeRange: TextRange | null, text: string | null) {
+  constructor(changes: TextChange[], action: TextChangeAction | null = null) {
+    this.changes = [...changes];
     this.action = action;
-    this.changeRange = changeRange;
-    this.text = text;
   }
 }
 
 export class CursorChangedEvent implements EditorEvent {
-  readonly eventName = 'CursorChangedEvent';
   readonly cursorPosition: TextPosition;
 
   constructor(cursorPosition: TextPosition) {
@@ -46,7 +43,6 @@ export class CursorChangedEvent implements EditorEvent {
 }
 
 export class SelectionChangedEvent implements EditorEvent {
-  readonly eventName = 'SelectionChangedEvent';
   readonly hasSelection: boolean;
   readonly selection: TextRange | null;
   readonly cursorPosition: TextPosition;
@@ -59,7 +55,6 @@ export class SelectionChangedEvent implements EditorEvent {
 }
 
 export class ScrollChangedEvent implements EditorEvent {
-  readonly eventName = 'ScrollChangedEvent';
   readonly scrollX: number;
   readonly scrollY: number;
 
@@ -70,7 +65,6 @@ export class ScrollChangedEvent implements EditorEvent {
 }
 
 export class ScaleChangedEvent implements EditorEvent {
-  readonly eventName = 'ScaleChangedEvent';
   readonly scale: number;
 
   constructor(scale: number) {
@@ -79,7 +73,6 @@ export class ScaleChangedEvent implements EditorEvent {
 }
 
 export class LongPressEvent implements EditorEvent {
-  readonly eventName = 'LongPressEvent';
   readonly cursorPosition: TextPosition;
   readonly screenPoint: PointF;
 
@@ -90,7 +83,6 @@ export class LongPressEvent implements EditorEvent {
 }
 
 export class DoubleTapEvent implements EditorEvent {
-  readonly eventName = 'DoubleTapEvent';
   readonly cursorPosition: TextPosition;
   readonly hasSelection: boolean;
   readonly selection: TextRange | null;
@@ -106,7 +98,6 @@ export class DoubleTapEvent implements EditorEvent {
 }
 
 export class ContextMenuEvent implements EditorEvent {
-  readonly eventName = 'ContextMenuEvent';
   readonly cursorPosition: TextPosition;
   readonly screenPoint: PointF;
 
@@ -117,7 +108,6 @@ export class ContextMenuEvent implements EditorEvent {
 }
 
 export class GutterIconClickEvent implements EditorEvent {
-  readonly eventName = 'GutterIconClickEvent';
   readonly line: number;
   readonly iconId: number;
   readonly screenPoint: PointF;
@@ -130,43 +120,22 @@ export class GutterIconClickEvent implements EditorEvent {
 }
 
 export class InlayHintClickEvent implements EditorEvent {
-  readonly eventName = 'InlayHintClickEvent';
   readonly line: number;
   readonly column: number;
-  readonly iconId: number;
-  readonly isIcon: boolean;
-  readonly isColor: boolean;
-  readonly colorValue: number;
+  readonly type: InlayType;
+  readonly intValue: number;
   readonly screenPoint: PointF;
 
-  constructor(line: number, column: number, iconId: number, isIcon: boolean,
-    screenPoint: PointF);
-
-  constructor(line: number, column: number, colorValue: number,
-    screenPoint: PointF);
-
-  constructor(line: number, column: number, idOrColor: number,
-    isIconOrPoint: boolean | PointF, screenPoint?: PointF) {
+  constructor(line: number, column: number, type: InlayType, intValue: number, screenPoint: PointF) {
     this.line = line;
     this.column = column;
-    if (typeof isIconOrPoint === 'boolean') {
-      this.iconId = idOrColor;
-      this.isIcon = isIconOrPoint;
-      this.isColor = false;
-      this.colorValue = 0;
-      this.screenPoint = screenPoint!;
-    } else {
-      this.iconId = 0;
-      this.isIcon = false;
-      this.isColor = true;
-      this.colorValue = idOrColor;
-      this.screenPoint = isIconOrPoint;
-    }
+    this.type = type;
+    this.intValue = intValue;
+    this.screenPoint = screenPoint;
   }
 }
 
 export class FoldToggleEvent implements EditorEvent {
-  readonly eventName = 'FoldToggleEvent';
   readonly line: number;
   readonly isGutter: boolean;
   readonly screenPoint: PointF;
@@ -179,16 +148,13 @@ export class FoldToggleEvent implements EditorEvent {
 }
 
 export class DocumentLoadedEvent implements EditorEvent {
-  readonly eventName = 'DocumentLoadedEvent';
 }
 
 export class SelectionMenuItemClickEvent implements EditorEvent {
-  readonly eventName = 'SelectionMenuItemClickEvent';
-  readonly itemId: string;
-  readonly itemLabel: string;
+  readonly item: SelectionMenuItem;
 
-  constructor(itemId: string, itemLabel: string) {
-    this.itemId = itemId;
-    this.itemLabel = itemLabel;
+  constructor(item: SelectionMenuItem) {
+    this.item = new SelectionMenuItem(item.id, item.label, item.enabled);
   }
 }
+

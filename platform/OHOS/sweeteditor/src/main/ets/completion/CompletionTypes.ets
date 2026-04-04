@@ -1,4 +1,4 @@
-import { TextPosition, TextRange } from '../core/EditorFoundation';
+import { TextPosition, TextRange } from '../core/CoreFoundation';
 import { EditorMetadata, LanguageConfiguration } from '../EditorTypes';
 
 /**
@@ -83,6 +83,9 @@ export class CompletionResult {
 
 /**
  * Async callback for providers to submit completion results.
+ * `accept(...)` may be called synchronously or asynchronously, including from a
+ * background thread. The manager will switch back to the UI event loop before
+ * applying the result to editor state or updating host-visible UI.
  */
 export interface CompletionReceiver {
   accept(result: CompletionResult): boolean;
@@ -93,6 +96,8 @@ export interface CompletionReceiver {
 /**
  * Completion provider interface.
  * Host applications implement this to provide completion candidates.
+ * `provideCompletions(...)` is invoked from the editor's UI thread / UI event loop.
+ * Providers may compute results asynchronously and call the receiver later.
  */
 export interface CompletionProvider {
   isTriggerCharacter(ch: string): boolean;
@@ -109,4 +114,3 @@ export interface CompletionItemViewBuilder {
   buildItemView(item: CompletionItem, isSelected: boolean): void;
 }
 
-export interface CompletionItemViewFactory extends CompletionItemViewBuilder {}

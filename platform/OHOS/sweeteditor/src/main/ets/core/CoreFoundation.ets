@@ -36,3 +36,4 @@ export interface TextRange {
   start: TextPosition;
   end: TextPosition;
 }
+

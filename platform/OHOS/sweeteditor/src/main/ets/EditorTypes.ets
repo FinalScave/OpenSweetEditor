@@ -1,5 +1,5 @@
 import image from '@ohos.multimedia.image';
-import { TextStyle } from './core/EditorAdornments';
+import { TextStyle } from './core/CoreAdornments';
 
 /**
  * Editor metadata marker interface.
@@ -35,7 +35,7 @@ export class LanguageConfiguration {
     brackets: BracketPair[] | null = null,
     autoClosingPairs: BracketPair[] | null = null,
     tabSize: number = LanguageConfiguration.DEFAULT_TAB_SIZE,
-    insertSpaces: boolean = true,
+    insertSpaces: boolean = false,
   ) {
     this.languageId = languageId;
     this.brackets = brackets ? [...brackets] : null;
@@ -49,8 +49,6 @@ export interface BracketPair {
   readonly open: string;
   readonly close: string;
 }
-
-
 
 export class EditorTheme {
   static readonly STYLE_KEYWORD: number = 1;
@@ -231,3 +229,4 @@ export class EditorTheme {
     return theme;
   }
 }
+

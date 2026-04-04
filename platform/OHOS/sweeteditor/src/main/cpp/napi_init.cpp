@@ -104,6 +104,7 @@ static napi_value Init(napi_env env, napi_value exports)
         NAPI_METHOD("editorGetAutoIndentMode", EditorCoreNapi::getAutoIndentMode),
         NAPI_METHOD("editorSetBackspaceUnindent", EditorCoreNapi::setBackspaceUnindent),
         NAPI_METHOD("editorSetInsertSpaces", EditorCoreNapi::setInsertSpaces),
+        NAPI_METHOD("editorSetKeyMap", EditorCoreNapi::setKeyMap),
 
         // Handle/scrollbar config
         NAPI_METHOD("editorSetHandleConfig", EditorCoreNapi::setHandleConfig),
@@ -186,7 +187,7 @@ static napi_value Init(napi_env env, napi_value exports)
 }
 EXTERN_C_END
 
-static napi_module demoModule = {
+static napi_module sweetEditorModule = {
     .nm_version = 1,
     .nm_flags = 0,
     .nm_filename = nullptr,
@@ -198,5 +199,5 @@ static napi_module demoModule = {
 
 extern "C" __attribute__((constructor)) void RegisterSweeteditorModule(void)
 {
-    napi_module_register(&demoModule);
+    napi_module_register(&sweetEditorModule);
 }
