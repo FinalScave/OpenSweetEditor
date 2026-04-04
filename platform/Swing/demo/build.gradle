@@ -29,6 +29,8 @@ application {
         nativeLibSubDir = '../../cmake-build-debug-visual-studio/bin/Debug'
     } else if (osName.contains('mac')) {
         nativeLibSubDir = '../../build/lib'
+    } else if (osName.contains('linux')) {
+        nativeLibSubDir = '../../cmake-build-debug/lib'
     } else {
         throw new GradleException("Unsupported OS for Swing demo nativeLibDir: ${System.getProperty('os.name')}")
     }
