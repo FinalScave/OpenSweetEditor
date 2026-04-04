@@ -480,15 +480,27 @@ void free_document(intptr_t document_handle) {
   deleteCPtrHolder<Document>(document_handle);
 }
 
-const char* get_document_text(intptr_t document_handle) {
+static char* allocU8Chars(const U8String& text) {
+  char* result = new char[text.size() + 1];
+  std::strcpy(result, text.c_str());
+  return result;
+}
+
+char* get_document_utf8(intptr_t document_handle) {
   Ptr<Document> document = getCPtrHolderValue<Document>(document_handle);
   if (document == nullptr) {
-    return "";
+    return nullptr;
   }
-  U8String u8_text = document->getU8Text();
-  char* result = new char[u8_text.size() + 1];
-  std::strcpy(result, u8_text.c_str());
-  return result;
+  return allocU8Chars(document->getU8Text());
+}
+
+U16Char* get_document_utf16(intptr_t document_handle) {
+  Ptr<Document> document = getCPtrHolderValue<Document>(document_handle);
+  if (document == nullptr) {
+    return nullptr;
+  }
+  U16String u16_text = document->getU16Text();
+  return StrUtil::allocU16Chars(u16_text);
 }
 
 size_t get_document_line_count(intptr_t document_handle) {
@@ -499,10 +511,23 @@ size_t get_document_line_count(intptr_t document_handle) {
   return document->getLineCount();
 }
 
-const U16Char* get_document_line_text(intptr_t document_handle, size_t line) {
+char* get_document_line_utf8(intptr_t document_handle, size_t line) {
   Ptr<Document> document = getCPtrHolderValue<Document>(document_handle);
   if (document == nullptr) {
-    return CHAR16_NONE;
+    return nullptr;
+  }
+  U16String u16_text = document->getLineU16Text(line);
+  U8String u8_text;
+  if (!u16_text.empty()) {
+    StrUtil::convertUTF16ToUTF8(u16_text, u8_text);
+  }
+  return allocU8Chars(u8_text);
+}
+
+U16Char* get_document_line_utf16(intptr_t document_handle, size_t line) {
+  Ptr<Document> document = getCPtrHolderValue<Document>(document_handle);
+  if (document == nullptr) {
+    return nullptr;
   }
   U16String u16_text = document->getLineU16Text(line);
   return StrUtil::allocU16Chars(u16_text);
@@ -2122,7 +2147,12 @@ void editor_cancel_linked_editing(intptr_t editor_handle) {
 }
 
 void free_u16_string(intptr_t string_ptr) {
-  const U16Char* ptr = reinterpret_cast<const U16Char*>(string_ptr);
+  U16Char* ptr = reinterpret_cast<U16Char*>(string_ptr);
+  delete[] ptr;
+}
+
+void free_u8_string(intptr_t string_ptr) {
+  char* ptr = reinterpret_cast<char*>(string_ptr);
   delete[] ptr;
 }
 

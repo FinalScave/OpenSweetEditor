@@ -72,17 +72,26 @@ EDITOR_API intptr_t create_document_from_file(const char* path);
 EDITOR_API void free_document(intptr_t document_handle);
 
 /// Get Document UTF8 text
-/// @return UTF8 text content
-EDITOR_API const char* get_document_text(intptr_t document_handle);
+/// @return UTF8 text content; caller owns returned buffer and must free it with free_u8_string
+EDITOR_API char* get_document_utf8(intptr_t document_handle);
+
+/// Get Document UTF16 text
+/// @return UTF16 text content; caller owns returned buffer and must free it with free_u16_string
+EDITOR_API U16Char* get_document_utf16(intptr_t document_handle);
 
 /// Get total line count of Document
 /// @return total line count of Document
 EDITOR_API size_t get_document_line_count(intptr_t document_handle);
 
-/// Get text of a specific Document line
+/// Get UTF8 text of a specific Document line
 /// @param line Line number
-/// @return UTF16 text content of the specified line
-EDITOR_API const U16Char* get_document_line_text(intptr_t document_handle, size_t line);
+/// @return UTF8 text content of the specified line; caller owns returned buffer and must free it with free_u8_string
+EDITOR_API char* get_document_line_utf8(intptr_t document_handle, size_t line);
+
+/// Get UTF16 text of a specific Document line
+/// @param line Line number
+/// @return UTF16 text content of the specified line; caller owns returned buffer and must free it with free_u16_string
+EDITOR_API U16Char* get_document_line_utf16(intptr_t document_handle, size_t line);
 
 /// Create EditorCore and return its handle
 /// @param measurer Text measurement callback set
@@ -936,6 +945,10 @@ EDITOR_API void editor_cancel_linked_editing(intptr_t editor_handle);
 /// Free string memory allocated on C++ side
 /// @param string_ptr String pointer
 EDITOR_API void free_u16_string(intptr_t string_ptr);
+
+/// Free UTF-8 string memory allocated on C++ side
+/// @param string_ptr String pointer
+EDITOR_API void free_u8_string(intptr_t string_ptr);
 
 /// Free binary memory returned by C++ side
 /// Applies to all APIs that return const uint8_t* + out_size.
