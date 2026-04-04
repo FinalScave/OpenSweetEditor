@@ -189,9 +189,7 @@ class EditorInteractionController {
       case SelectionMenuItem.actionSelectAll:
         selectAll();
       default:
-        _session.eventBus.publish(
-          SelectionMenuItemClickEvent(itemId: item.id, itemLabel: item.label),
-        );
+        _session.eventBus.publish(SelectionMenuItemClickEvent(item: item));
         _session.selectionMenuController.hide();
     }
   }
@@ -508,6 +506,15 @@ class EditorInteractionController {
     if (editorCore == null) return;
     final result = editorCore.redo();
     _dispatchTextChanged(TextChangeAction.redo, result);
+    _resetCursorBlink();
+    _flush();
+  }
+
+  void dispatchTextChangedForController(
+    TextChangeAction action,
+    core.TextEditResult result,
+  ) {
+    _dispatchTextChanged(action, result);
     _resetCursorBlink();
     _flush();
   }

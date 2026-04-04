@@ -893,7 +893,7 @@ class EditorCore {
 
   void scrollToLine(
     int line, {
-    ScrollBehavior behavior = ScrollBehavior.gotoCenter,
+    ScrollBehavior behavior = ScrollBehavior.center,
   }) {
     _ensureOpen();
     bindings.editor_scroll_to_line(_handle, line, behavior.value);
@@ -1249,6 +1249,27 @@ class EditorCore {
     });
   }
 
+  void setMatchedBrackets(
+    int openLine,
+    int openColumn,
+    int closeLine,
+    int closeColumn,
+  ) {
+    _ensureOpen();
+    bindings.editor_set_matched_brackets(
+      _handle,
+      openLine,
+      openColumn,
+      closeLine,
+      closeColumn,
+    );
+  }
+
+  void clearMatchedBrackets() {
+    _ensureOpen();
+    bindings.editor_clear_matched_brackets(_handle);
+  }
+
   void setFoldRegions(List<FoldRegion> regions) {
     setFoldRegionsRaw(ProtocolEncoder.packFoldRegions(regions));
   }
@@ -1302,6 +1323,19 @@ class EditorCore {
         ProtocolDecoder.decodeTextEditResult,
       );
     });
+  }
+
+  void startLinkedEditing(LinkedEditingModel model) {
+    _ensureOpen();
+    startLinkedEditingRaw(ProtocolEncoder.packLinkedEditingModel(model));
+  }
+
+  void startLinkedEditingRaw(Uint8List data) {
+    _ensureOpen();
+    _callWithBinaryData(
+      data,
+      (ptr, len) => bindings.editor_start_linked_editing(_handle, ptr, len),
+    );
   }
 
   bool get isInLinkedEditing {

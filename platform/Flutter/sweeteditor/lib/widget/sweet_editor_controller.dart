@@ -185,6 +185,76 @@ class SweetEditorController {
     _state?._interactionController.insertSnippet(snippetTemplate);
   }
 
+  void moveLineUp() {
+    _withEditorCore((editorCore) {
+      final result = editorCore.moveLineUp();
+      _state?._interactionController.dispatchTextChangedForController(
+        TextChangeAction.insert,
+        result,
+      );
+    });
+  }
+
+  void moveLineDown() {
+    _withEditorCore((editorCore) {
+      final result = editorCore.moveLineDown();
+      _state?._interactionController.dispatchTextChangedForController(
+        TextChangeAction.insert,
+        result,
+      );
+    });
+  }
+
+  void copyLineUp() {
+    _withEditorCore((editorCore) {
+      final result = editorCore.copyLineUp();
+      _state?._interactionController.dispatchTextChangedForController(
+        TextChangeAction.insert,
+        result,
+      );
+    });
+  }
+
+  void copyLineDown() {
+    _withEditorCore((editorCore) {
+      final result = editorCore.copyLineDown();
+      _state?._interactionController.dispatchTextChangedForController(
+        TextChangeAction.insert,
+        result,
+      );
+    });
+  }
+
+  void deleteLine() {
+    _withEditorCore((editorCore) {
+      final result = editorCore.deleteLine();
+      _state?._interactionController.dispatchTextChangedForController(
+        TextChangeAction.delete_,
+        result,
+      );
+    });
+  }
+
+  void insertLineAbove() {
+    _withEditorCore((editorCore) {
+      final result = editorCore.insertLineAbove();
+      _state?._interactionController.dispatchTextChangedForController(
+        TextChangeAction.insert,
+        result,
+      );
+    });
+  }
+
+  void insertLineBelow() {
+    _withEditorCore((editorCore) {
+      final result = editorCore.insertLineBelow();
+      _state?._interactionController.dispatchTextChangedForController(
+        TextChangeAction.insert,
+        result,
+      );
+    });
+  }
+
   void undo() {
     _state?._interactionController.undo();
   }
@@ -195,6 +265,12 @@ class SweetEditorController {
 
   bool get canUndo => _state?._editorCore?.canUndo ?? false;
   bool get canRedo => _state?._editorCore?.canRedo ?? false;
+
+  core.TextRange getWordRangeAtCursor() =>
+      _state?._editorCore?.getWordRangeAtCursor() ??
+      const core.TextRange(core.TextPosition(0, 0), core.TextPosition(0, 0));
+
+  String getWordAtCursor() => _state?._editorCore?.getWordAtCursor() ?? '';
 
   void addCompletionProvider(CompletionProvider provider) =>
       _state?._completionProviderManager.addProvider(provider);
@@ -220,7 +296,13 @@ class SweetEditorController {
   void triggerCompletion() => _state?._completionProviderManager
       .triggerCompletion(CompletionTriggerKind.invoked, null);
 
+  void showCompletionItems(List<CompletionItem> items) =>
+      _state?._completionProviderManager.showItems(items);
+
   void dismissCompletion() => _state?._completionProviderManager.dismiss();
+
+  void setCompletionItemRenderer(CompletionItemViewBuilder? renderer) =>
+      _state?._completionPopupController.setViewBuilder(renderer);
 
   bool get isCompletionShowing =>
       _state?._completionPopupController.isShowing ?? false;
@@ -334,7 +416,7 @@ class SweetEditorController {
 
   void scrollToLine(
     int line, {
-    core.ScrollBehavior behavior = core.ScrollBehavior.gotoCenter,
+    core.ScrollBehavior behavior = core.ScrollBehavior.center,
   }) {
     _state?._editorCore?.scrollToLine(line, behavior: behavior);
     _state?._flush();
@@ -493,6 +575,26 @@ class SweetEditorController {
     _withEditorCore((editorCore) {
       editorCore.setFoldRegions(regions);
     });
+  }
+
+  void setMatchedBrackets(
+    int openLine,
+    int openColumn,
+    int closeLine,
+    int closeColumn,
+  ) {
+    _withEditorCore((editorCore) {
+      editorCore.setMatchedBrackets(
+        openLine,
+        openColumn,
+        closeLine,
+        closeColumn,
+      );
+    });
+  }
+
+  void clearMatchedBrackets() {
+    _withEditorCore((editorCore) => editorCore.clearMatchedBrackets());
   }
 
   void clearHighlights([core.SpanLayer? layer]) {

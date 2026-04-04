@@ -218,6 +218,7 @@ class EditorSettings {
   void setMaxGutterIcons(int count) {
     _maxGutterIcons = count;
     _host?.applyMaxGutterIcons(count);
+    _host?.flushEditor();
   }
 
   int getMaxGutterIcons() => _maxGutterIcons;

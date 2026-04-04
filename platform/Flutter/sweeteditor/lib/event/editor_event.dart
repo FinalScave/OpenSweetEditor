@@ -1,4 +1,5 @@
 import '../editor_core.dart' as core;
+import '../selection/selection_types.dart';
 
 /// Base class for editor events.
 abstract class EditorEvent {}
@@ -124,11 +125,7 @@ class FoldToggleEvent implements EditorEvent {
 class DocumentLoadedEvent implements EditorEvent {}
 
 class SelectionMenuItemClickEvent implements EditorEvent {
-  final String itemId;
-  final String itemLabel;
+  final SelectionMenuItem item;
 
-  const SelectionMenuItemClickEvent({
-    required this.itemId,
-    required this.itemLabel,
-  });
+  const SelectionMenuItemClickEvent({required this.item});
 }

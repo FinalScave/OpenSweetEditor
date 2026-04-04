@@ -63,9 +63,9 @@ enum CurrentLineRenderMode {
 
 /// Scroll behavior.
 enum ScrollBehavior {
-  gotoTop(0),
-  gotoCenter(1),
-  gotoBottom(2);
+  top(0),
+  center(1),
+  bottom(2);
 
   const ScrollBehavior(this.value);
   final int value;
