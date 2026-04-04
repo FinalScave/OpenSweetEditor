@@ -1190,7 +1190,7 @@ Public APIs adopt defensive handling for invalid inputs without throwing excepti
 | Scenario | Constraint | Behavior |
 |---|---|---|
 | Line / column out of bounds | **MUST** | Automatically clamp to valid range `[0, max)`; MUST NOT throw exceptions |
-| null / empty parameters | **MUST** | For MUST-non-null parameters receiving null, MUST silently ignore (no-op); MUST NOT throw exceptions or crash. Platforms MAY log a warning, especially in debug builds |
+| null / empty parameters | **MUST** | Platforms MUST honor the nullable semantics of parameters that are defined as nullable. For MUST-non-null parameters, managed-language public APIs SHOULD fail fast using platform-idiomatic errors (for example Java `NullPointerException` / `IllegalArgumentException`, C# `ArgumentNullException`) and MUST NOT cause native / C++ crashes or undefined behavior; bridge / FFI boundaries MUST handle invalid input safely |
 | Invalid enum values | **MUST** | Use default value (e.g. `WrapMode.NONE`); MUST NOT throw exceptions |
 | Calls when widget not mounted | **SHOULD** | Getters return null or default values; imperative methods SHOULD queue or silently ignore (consistent with Section 3.0.3) |
 
