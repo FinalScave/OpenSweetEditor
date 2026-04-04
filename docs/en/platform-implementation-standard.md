@@ -1220,18 +1220,18 @@ Resource creation and destruction follow explicit ordering constraints to preven
 | Phase | Constraint | Rule |
 |---|---|---|
 | Creation | **MUST** | `EditorCore` instance MUST be created during widget initialization (imperative frameworks: constructor or init; declarative frameworks: on first widget mount) |
-| Release path | **MUST** | The platform MUST ensure that `EditorCore` and its native / C++ resources are eventually released; the mechanism MAY be an explicit `dispose()` / `close()`, a host-managed lifecycle, GC / finalizer / ARC-backed automatic reclamation, an equivalent platform cleanup hook, or another platform-idiomatic mechanism. View detachment, widget unmount, or temporary removal from the view tree is NOT by itself required to be the release moment |
-| Post-release calls | **MUST** | If the platform exposes an explicit release API, or otherwise keeps the object reachable after internal release, post-release calls MUST NOT access freed native / C++ resources and MUST NOT trigger further editor side effects or callbacks. Mutating calls MUST be a no-op or throw an explicit "already destroyed" exception. Getter calls MAY return `null`, default values, or last-known managed snapshots, as long as they do not require released native state or trigger lazy recomputation against destroyed resources |
+| Release path | **MUST** | The platform MUST ensure that `EditorCore` and its native / C++ resources are eventually released. For GC-managed languages, the primary conformance target is logical teardown plus eventual native reclamation, not a mandatory explicit release method. The mechanism MAY be an explicit `dispose()` / `close()`, a host-managed lifecycle, GC / finalizer / ARC-backed automatic reclamation, an equivalent platform cleanup hook, or another platform-idiomatic strategy. View detachment, widget unmount, or temporary removal from the view tree is NOT by itself required to be the final reclamation moment |
+| Post-teardown calls | **MUST** | If the platform exposes an explicit release API, or otherwise keeps the object reachable after logical teardown or internal release, subsequent calls MUST NOT access freed native / C++ resources and MUST NOT trigger further editor side effects or callbacks. Mutating calls MUST be a no-op or throw an explicit "already destroyed" exception. Getter calls MAY return `null`, default values, or last-known managed snapshots, as long as they do not require released native state or trigger lazy recomputation against destroyed resources |
 | Repeated release | **MUST** | If the platform exposes explicit release logic, multiple invocations MUST be idempotent (no-op); MUST NOT cause double-free |
 
-> The standard requires eventual native-resource release, but does **not** require every managed-language `Document` / bridge wrapper to expose an additional explicit release API beyond the platform's own lifecycle model. If a platform chooses to keep returning last-known managed snapshots after release, it SHOULD document that those values are stale snapshots rather than live editor state.
+> The standard requires eventual native-resource release, but does **not** require every managed-language `Document` / bridge wrapper to expose an additional explicit release API beyond the platform's own lifecycle model. For GC-managed languages, platforms SHOULD prioritize logical teardown: stop timers, detach listeners, cancel or stale-mark async receivers, and break reference chains that would otherwise keep the editor object graph alive. If a platform chooses to keep returning last-known managed snapshots after teardown, it SHOULD document that those values are stale snapshots rather than live editor state.
 
 ### 16.2 Provider Lifecycle
 
 | Rule | Constraint | Description |
 |---|---|---|
 | Registration timing | **SHOULD** | Providers SHOULD be registered after `loadDocument()` to ensure valid document data in the Context |
-| Cleanup during release | **MUST** | If the platform defines an explicit editor release / dispose / close / teardown phase, it MUST automatically unregister all registered Providers and cancel or mark stale all in-flight async requests so late results are ignored; platforms that rely solely on automatic reclamation SHOULD still ensure late async results cannot mutate freed native resources or host-visible editor state |
+| Cleanup during release | **MUST** | If the platform defines an explicit editor release / dispose / close / teardown phase, it MUST automatically unregister all registered Providers and cancel or mark stale all in-flight async requests so late results are ignored. On GC-managed platforms, an equivalent logical teardown MUST still detach listeners, stop timers, and cancel or stale-mark async receivers so late results cannot keep the editor object graph alive or mutate freed native resources / host-visible editor state |
 | Provider references | **SHOULD** | Platform implementations SHOULD avoid Providers holding strong references to the widget instance to prevent circular references causing memory leaks (Java/Kotlin: WeakReference; Swift: weak/unowned; Dart: no special handling needed) |
 
 ### 16.3 `SweetEditorController` Lifecycle (Declarative Frameworks)
@@ -1247,7 +1247,7 @@ Resource creation and destruction follow explicit ordering constraints to preven
 
 ### 16.4 Resource Release Order
 
-When the platform performs editor release / dispose / close / final teardown, it MUST satisfy the following safety constraints:
+When the platform performs editor release / dispose / close / final teardown, it MUST satisfy the following safety constraints. For GC-managed platforms, these constraints primarily apply to logical teardown and reference-chain cleanup; final native reclamation MAY happen later, as long as the torn-down object graph can no longer produce user-visible effects or touch invalid native state.
 
 - All in-flight async Provider requests MUST be cancelled or marked stale before their results can reach invalid native state
 - Provider registrations MUST be cleared before they can emit further callbacks into a destroyed editor
