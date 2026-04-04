@@ -19,8 +19,8 @@ public class CompletionPopupController implements CompletionProviderManager.Comp
     }
 
     private static final int MAX_VISIBLE_ITEMS = 6;
-    private static final int ITEM_HEIGHT = 30;
-    private static final int POPUP_WIDTH = 300;
+    private static final int ITEM_HEIGHT = 50;
+    private static final int POPUP_WIDTH = 600;
     private static final int GAP = 4;
 
     private Color panelBg;
@@ -189,7 +189,7 @@ public class CompletionPopupController implements CompletionProviderManager.Comp
         if (popupWindow != null) return;
         Window ancestor = SwingUtilities.getWindowAncestor(anchorComponent);
         popupWindow = new JWindow(ancestor);
-        popupWindow.setType(Window.Type.POPUP);
+        popupWindow.setType(Window.Type.NORMAL);
         popupWindow.setFocusable(false);
         popupWindow.setFocusableWindowState(false);
 
@@ -306,10 +306,10 @@ public class CompletionPopupController implements CompletionProviderManager.Comp
         private CompletionItem currentItem;
         private boolean currentSelected;
 
-        private static final Font LABEL_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
-        private static final Font DETAIL_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 10);
-        private static final Font BADGE_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 10);
-        private static final int BADGE_SIZE = 18;
+        private static final Font LABEL_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 26);
+        private static final Font DETAIL_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 24);
+        private static final Font BADGE_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 24);
+        private static final int BADGE_SIZE = 36;
         private static final int BADGE_ARC = 6;
 
         private Color bgColor;

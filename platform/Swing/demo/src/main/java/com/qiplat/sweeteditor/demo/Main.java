@@ -15,10 +15,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
-import java.awt.BorderLayout;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Insets;
+import java.awt.*;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -56,6 +53,7 @@ public class Main extends JFrame {
         setLocationRelativeTo(null);
 
         editor = new SweetEditor(EditorTheme.dark());
+        editor.getSettings().setEditorTextSize(26);
         statusLabel = new JLabel("Ready");
         statusLabel.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 4));
 

@@ -15,7 +15,7 @@ public final class PerfOverlay {
     private static final int PADDING_V = 8;
     private static final int LINE_SPACING = 4;
 
-    private final Font overlayFont = new Font(Font.MONOSPACED, Font.PLAIN, 12);
+    private final Font overlayFont = new Font(Font.MONOSPACED, Font.PLAIN, 20);
     private final Color backgroundColor = new Color(0, 0, 0, 180);
     private final Color okTextColor = new Color(0, 255, 0);
     private final Color warnTextColor = new Color(255, 96, 96);

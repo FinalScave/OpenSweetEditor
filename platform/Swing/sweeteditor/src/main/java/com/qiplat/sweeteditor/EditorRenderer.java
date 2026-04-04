@@ -185,7 +185,7 @@ final class EditorRenderer implements EditorCore.TextMeasureCallback {
     }
 
     public void render(Graphics2D g2, EditorRenderModel model,
-                       int viewWidth, int viewHeight, boolean cursorVisible) {
+                       int viewWidth, int viewHeight, boolean cursorVisible, float cursorTranslationX, float cursorTranslationY) {
         PerfStepRecorder drawPerf = perfOverlay.isEnabled() ? PerfStepRecorder.start() : null;
         g2.setColor(theme.backgroundColor);
         g2.fillRect(0, 0, viewWidth, viewHeight);
@@ -218,7 +218,7 @@ final class EditorRenderer implements EditorCore.TextMeasureCallback {
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_LINKED);
         drawBracketHighlightRects(g2, model);
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_BRACKET);
-        drawCursor(g2, model, cursorVisible);
+        drawCursor(g2, model, cursorVisible, cursorTranslationX, cursorTranslationY);
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_CURSOR);
         drawGutterOverlay(g2, model, viewWidth, viewHeight);
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_GUTTER);
@@ -579,11 +579,16 @@ final class EditorRenderer implements EditorCore.TextMeasureCallback {
         }
     }
 
-    private void drawCursor(Graphics2D g, EditorRenderModel model, boolean cursorVisible) {
+    private void drawCursor(Graphics2D g, EditorRenderModel model, boolean cursorVisible, float cursorTranslationX, float cursorTranslationY) {
         if (model.cursor == null || !model.cursor.visible || !cursorVisible) return;
         g.setColor(theme.cursorColor);
-        g.fillRect((int) model.cursor.position.x, (int) model.cursor.position.y,
-                2, (int) model.cursor.height);
+        if (cursorTranslationX == -1 || cursorTranslationY == -1) {
+            g.fillRect((int) model.cursor.position.x, (int) model.cursor.position.y,
+                    2, (int) model.cursor.height);
+        } else {
+            g.fillRect((int) cursorTranslationX, (int) cursorTranslationY,
+                    2, (int) model.cursor.height);
+        }
     }
 
     private void drawCompositionDecoration(Graphics2D g, CompositionDecoration comp) {
@@ -715,13 +720,13 @@ final class EditorRenderer implements EditorCore.TextMeasureCallback {
 
     private static Font findMonospaceFont(int size) {
         String[] candidates = {
-            "JetBrains Mono", "Menlo", "SF Mono", "Consolas",
-            "Fira Code", "Source Code Pro", "DejaVu Sans Mono",
-            "Liberation Mono", "Courier New", Font.MONOSPACED
+                "JetBrains Mono", "Menlo", "SF Mono", "Consolas",
+                "Fira Code", "Source Code Pro", "DejaVu Sans Mono",
+                "Liberation Mono", "Courier New", Font.MONOSPACED
         };
         java.util.Set<String> available = new java.util.HashSet<>(
-            java.util.Arrays.asList(java.awt.GraphicsEnvironment
-                .getLocalGraphicsEnvironment().getAvailableFontFamilyNames()));
+                java.util.Arrays.asList(java.awt.GraphicsEnvironment
+                        .getLocalGraphicsEnvironment().getAvailableFontFamilyNames()));
         for (String name : candidates) {
             if (available.contains(name)) {
                 return new Font(name, Font.PLAIN, size);
