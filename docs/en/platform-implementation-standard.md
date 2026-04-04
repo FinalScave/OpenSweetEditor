@@ -23,9 +23,9 @@ The Core layer does not involve UI rendering. It contains only bridging, data mo
 | Category | Required Types | Description |
 |---|---|---|
 | **Core Bridge** | `EditorCore`, `Document`, `ProtocolEncoder`, `ProtocolDecoder`, `TextMeasurer`, `EditorOptions` | Native bridge + public core API wrapper |
-| **Foundation** | `TextPosition`, `TextRange`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollBehavior` | Fundamental value types and enums |
+| **Foundation** | `TextPosition`, `TextRange`, `TextChange`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollBehavior` | Fundamental value types and enums |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | Decoration data types |
-| **Visual** | `EditorRenderModel`, `VisualLine`, `VisualRun`, `VisualRunType`, `Cursor`, `CursorRect`, `SelectionRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `ScrollbarRect`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `DiagnosticDecoration`, `CompositionDecoration`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem`, `LinkedEditingRect`, `BracketHighlightRect`, `PointF` | Render model types |
+| **Visual** | `EditorRenderModel`, `VisualLine`, `VisualRun`, `VisualRunType`, `Cursor`, `CursorRect`, `SelectionRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `ScrollbarRect`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `DiagnosticDecoration`, `CompositionDecoration`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem`, `LinkedEditingRect`, `BracketHighlightRect` | Render model types (geometry semantics follow Section 2.4) |
 | **Snippet** | `LinkedEditingModel`, `TabStopGroup` | Linked editing / tab stop groups |
 | **Keymap** | `KeyMap`, `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorCommand` | Shortcut mapping data types and command identifiers |
 
@@ -44,6 +44,8 @@ The Widget layer handles platform-native rendering, user interaction, and extens
 | **Copilot** *(SHOULD)* | `InlineSuggestion`, `InlineSuggestionListener` or an equivalent host-visible accept/dismiss callback mechanism; MAY: `InlineSuggestionController` | Inline suggestion data + callback; listener shape is the primary path when exposed |
 | **Selection** *(MAY, mobile-only)* | `SelectionMenuController`, `SelectionMenuItem`, `SelectionMenuItemProvider`, a host-visible custom-item click callback mechanism; MAY: `SelectionMenuListener` | Selection menu (MAY omit on desktop) |
 | **Perf** *(SHOULD)* | `PerfOverlay`, `MeasurePerfStats`, `PerfStepRecorder` | Performance overlay |
+
+> `TextChangeAction` is a SHOULD-level auxiliary event enum. Platforms MAY expose it to classify a text-change cycle at a coarse level (for example: `INSERT`, `DELETE`, `UNDO`, `REDO`, `KEY`, `COMPOSITION`), but it MUST NOT replace `changes: List<TextChange>` as the primary incremental payload.
 
 ### 1.3 Recommended Internal Implementation Patterns (SHOULD)
 
@@ -309,7 +311,7 @@ controller.applyTheme(EditorTheme.dark());
 | Set line spans | `setLineSpans(line, layer, spans)` | — |
 | Batch set line spans | `setBatchLineSpans(layer, entries)` | — |
 | Clear line spans | `clearLineSpans(line, layer)` | — |
-| Clear highlights layer | `clearHighlightsLayer(layer)` | — |
+| Clear highlights by layer | `clearHighlights(layer)` | — |
 | Clear all highlights | `clearHighlights()` | — |
 | **Inlay Hint** | | |
 | Set line inlay hints | `setLineInlayHints(line, hints)` | — |
@@ -720,15 +722,15 @@ The callback contract MUST satisfy all of the following:
 
 | Callback | Constraint | Trigger Condition |
 |---|---|---|
-| `onSuggestionAccepted` | **MUST** | When the user accepts the suggestion (Tab key or Accept button) |
-| `onSuggestionDismissed` | **MUST** | When the user dismisses the suggestion (Esc key or Dismiss button) |
+| `onSuggestionAccepted` | **MUST** | When the user accepts the currently visible suggestion |
+| `onSuggestionDismissed` | **MUST** | When the user dismisses the currently visible suggestion |
 
 ### 6.3 `SweetEditor` Copilot API
 
 | Method | Constraint | Description |
 |---|---|---|
-| `showInlineSuggestion(suggestion)` | **MUST** | Show inline suggestion: inject PhantomText and display Accept/Dismiss action bar |
-| `dismissInlineSuggestion()` | **MUST** | Dismiss current inline suggestion (clear PhantomText and hide action bar) |
+| `showInlineSuggestion(suggestion)` | **MUST** | Show the inline suggestion and make it available for accept / dismiss interaction |
+| `dismissInlineSuggestion()` | **MUST** | Dismiss the current inline suggestion and remove its visible presentation |
 | `isInlineSuggestionShowing()` | **MUST** | Query whether an inline suggestion is currently showing |
 | `setInlineSuggestionListener(listener)` | **MUST** | Register the host-visible accepted / dismissed listener; passing `null` clears it |
 
@@ -740,16 +742,16 @@ The callback contract MUST satisfy all of the following:
 |---|---|---|
 | Text change | **MUST** | MUST automatically dismiss the current inline suggestion when the user types text |
 | Cursor movement | **MUST** | MUST automatically dismiss the current inline suggestion when the cursor position changes |
-| Scrolling | **SHOULD** | SHOULD update the action bar position on scroll; SHOULD NOT auto-dismiss |
+| Scrolling | **SHOULD** | SHOULD update the visible suggestion affordance position on scroll when applicable; SHOULD NOT auto-dismiss |
 
 ### 6.5 `InlineSuggestionController` (MAY)
 
 `InlineSuggestionController` is the recommended internal implementation pattern (see Section 1.3), responsible for managing the complete lifecycle of inline suggestions:
 
-- PhantomText injection and removal
+- Suggestion presentation and removal
 - Event listener (TextChanged / CursorChanged / ScrollChanged) subscription and unsubscription
-- Accept/Dismiss action bar display, positioning, and hiding
-- Tab/Esc key interception
+- Accept / dismiss interaction and any associated visual affordance positioning
+- Accept / dismiss key handling where applicable
 
 Platforms MAY choose not to use the Controller pattern, but MUST implement equivalent functionality.
 
@@ -981,8 +983,8 @@ All platforms MUST expose the following settings through getter/setter pairs (or
 | `backspaceUnindent` | boolean | true | `setBackspaceUnindent(enabled)` | `isBackspaceUnindent()` | `runtime-transition` | Whether backspace key unindents at line start |
 | `readOnly` | boolean | false | `setReadOnly(readOnly)` | `isReadOnly()` | `runtime-transition` | Read-only mode, blocks all edit operations |
 | `maxGutterIcons` | int | 0 | `setMaxGutterIcons(count)` | `getMaxGutterIcons()` | `relayout` | Maximum gutter icon count |
-| `decorationScrollRefreshMinIntervalMs` | long | 16 | `setDecorationScrollRefreshMinIntervalMs(ms)` | `getDecorationScrollRefreshMinIntervalMs()` | `runtime-transition` | Decoration scroll refresh minimum interval (ms) |
-| `decorationOverscanViewportMultiplier` | float | 1.5 | `setDecorationOverscanViewportMultiplier(mult)` | `getDecorationOverscanViewportMultiplier()` | `runtime-transition` | Decoration overscan viewport multiplier |
+| `decorationScrollRefreshMinIntervalMs` | long | 16 | `setDecorationScrollRefreshMinIntervalMs(ms)` | `getDecorationScrollRefreshMinIntervalMs()` | `provider-policy` | Decoration scroll refresh minimum interval (ms) |
+| `decorationOverscanViewportMultiplier` | float | 1.5 | `setDecorationOverscanViewportMultiplier(mult)` | `getDecorationOverscanViewportMultiplier()` | `provider-policy` | Decoration overscan viewport multiplier |
 
 > All setter calls MUST take effect immediately.
 >
@@ -990,6 +992,7 @@ All platforms MUST expose the following settings through getter/setter pairs (or
 > - `repaint`: MUST trigger an immediate repaint or equivalent visual refresh, without requiring text relayout.
 > - `relayout`: MUST trigger layout invalidation and rebuild the render model or an equivalent relayout path immediately.
 > - `runtime-transition`: MUST apply immediately and safely handle active runtime state transitions required by the setting. A `runtime-transition` setting does not require repaint or relayout unless the current visible state actually changes.
+> - `provider-policy`: MUST immediately affect subsequent provider scheduling / refresh behavior. It does not require repaint or relayout unless the implementation explicitly triggers a refresh as part of applying the new policy.
 >
 > `compositionEnabled` is the canonical example of `runtime-transition`: when switching from enabled to disabled while an IME composition is active, the platform MUST cancel or otherwise safely terminate the active composition before the new setting takes effect.
 >
@@ -1075,7 +1078,7 @@ Event payloads MUST be defined per-event. Platforms MUST NOT assume or require a
 
 | Event | Fields | Description |
 |---|---|---|
-| `TextChangedEvent` | `action: TextChangeAction`, `changeRange: TextRange?`, `text: String?` | Text change action, changed range before the operation, and inserted/replaced text |
+| `TextChangedEvent` | `changes: List<TextChange>`, `action: TextChangeAction?` *(SHOULD)* | Incremental text changes for the current edit cycle; `action` is an optional coarse-grained semantic hint |
 | `CursorChangedEvent` | `cursorPosition: TextPosition` | Current cursor position |
 | `SelectionChangedEvent` | `hasSelection: boolean`, `selection: TextRange?`, `cursorPosition: TextPosition` | Current selection state and cursor position |
 | `ScrollChangedEvent` | `scrollX: float`, `scrollY: float` | Current view scroll offset |
@@ -1268,7 +1271,16 @@ The Core layer defines numerous decoration data types. All platforms MUST implem
 | Field names | **MUST** | Field names MUST follow the cross-platform naming rules in Section 2.2 |
 | Coordinate basis | **MUST** | All line numbers (`line`) and column numbers (`column`) MUST be 0-based; columns are measured in UTF-16 character offsets |
 
-### 17.2 Adornment Data Types
+### 17.2 Shared Data Types
+
+**`TextChange`** — Incremental text change
+
+| Field | Type | MUST/MAY | Description |
+|---|---|---|---|
+| `range` | TextRange | **MUST** | Changed range in document coordinates |
+| `text` | String | **MUST** | Replacement text; empty string means pure deletion |
+
+### 17.3 Adornment Data Types
 
 **`StyleSpan`** — Inline highlight range
 
@@ -1318,6 +1330,8 @@ The Core layer defines numerous decoration data types. All platforms MUST implem
 | `length` | int | **MUST** | Character length |
 | `severity` | int | **MUST** | Severity level: ERROR=0, WARNING=1, INFO=2, HINT=3 |
 | `color` | int | **MUST** | Custom color (ARGB), 0 means use severity default color |
+
+> `Diagnostic` in this standard is a minimal diagnostic decoration model. It is intended for diagnostic rendering and lightweight interactions, not as a full IDE diagnostic object.
 
 **`FoldRegion`** — Foldable region
 
