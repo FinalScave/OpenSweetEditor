@@ -135,7 +135,15 @@ Data model fields MUST use the same semantic names across platforms, adapted to 
 
 Public API methods MUST follow each language's casing convention. Canonical names use Java/ArkTS camelCase as the baseline; each language adapts per its own convention (e.g. C# PascalCase, Go capitalized exports). See Section 3 for the full method list and allowed variants.
 
-### 2.4 Geometry Carrier Types (MUST)
+### 2.4 Host-Facing Public API Enum Types (MUST)
+
+For host-facing public APIs (such as `SweetEditor`, `SweetEditorController`, `EditorSettings`, event payloads, and provider / context / result types consumed directly by host code), platforms MUST use enums or equivalent strong types for discrete value sets when the target language supports them.
+
+- Host-facing public APIs MUST NOT prefer raw `int` values when the language already supports enums / strong typed constants
+- If platform or framework constraints force a host-facing public API to expose integer constants, that layer MUST handle invalid values explicitly (see Section 15)
+- `EditorCore`, bridge layers, FFI layers, and other internal numeric transport layers are not considered host-facing public APIs for this rule
+
+### 2.5 Geometry Carrier Types (MUST)
 
 For simple geometry carriers used in public APIs and event payloads, platforms MAY use either the canonical SweetEditor geometry names or platform-native equivalents when the semantics are identical.
 
@@ -1022,6 +1030,8 @@ If the platform exposes `KeyCode`, `KeyModifier`, or built-in `EditorCommand` co
 
 - `KeyModifier` MUST use bit flags so combined modifiers can be represented by bitwise OR
 - `KeyCode.NONE`, the empty second chord, and `EditorCommand.NONE` MUST preserve the same semantics as the C++ core
+- `EditorCore`, bridge layers, or FFI layers MAY continue using raw integer enum values aligned with the C++ core as internal transport representations
+- For such bridge-layer integer enums, platforms are not required to repeat host-facing business-level enum validation, but MUST ensure invalid input cannot cause native / C++ crashes or undefined behavior
 
 ### 10.3 Widget-Layer Extension
 
@@ -1184,7 +1194,7 @@ State-mutating editor operations and host-visible callbacks are UI-thread-affine
 | Thread safety annotations | **SHOULD** | Platforms SHOULD annotate thread constraints in public API documentation (e.g. Java `@MainThread`, Swift `@MainActor`) |
 ## 15. Error Handling (MUST)
 
-Public APIs adopt defensive handling for invalid inputs without throwing exceptions; exceptions in Provider callbacks are isolated by the Manager.
+Public APIs use defensive handling for invalid inputs; managed-language host-facing public APIs MAY fail fast using language-idiomatic errors, but bridge / FFI boundaries MUST ensure invalid input cannot cause native / C++ crashes or undefined behavior; exceptions in Provider callbacks are isolated by the Manager.
 
 ### 15.1 Public API Parameter Validation
 
@@ -1192,7 +1202,7 @@ Public APIs adopt defensive handling for invalid inputs without throwing excepti
 |---|---|---|
 | Line / column out of bounds | **MUST** | Automatically clamp to valid range `[0, max)`; MUST NOT throw exceptions |
 | null / empty parameters | **MUST** | Platforms MUST honor the nullable semantics of parameters that are defined as nullable. For MUST-non-null parameters, managed-language public APIs SHOULD fail fast using platform-idiomatic errors (for example Java `NullPointerException` / `IllegalArgumentException`, C# `ArgumentNullException`) and MUST NOT cause native / C++ crashes or undefined behavior; bridge / FFI boundaries MUST handle invalid input safely |
-| Invalid enum values | **MUST** | Use default value (e.g. `WrapMode.NONE`); MUST NOT throw exceptions |
+| Invalid enum values | **MUST** | For host-facing public APIs that are forced to expose integer enum values, platforms MUST handle invalid values explicitly; managed-language public APIs SHOULD fail fast using platform-idiomatic errors (for example `IllegalArgumentException`), and MAY instead fall back to a default value. For raw integer enum values used by `EditorCore`, bridge layers, or FFI layers, platforms are not required to repeat host-level business validation, but MUST NOT allow invalid input to cause native / C++ crashes or undefined behavior |
 | Calls when widget not mounted | **SHOULD** | Getters return null or default values; imperative methods SHOULD queue or silently ignore (consistent with Section 3.0.3) |
 
 ### 15.2 Provider Exception Handling
