@@ -141,6 +141,7 @@ public class SweetEditor extends JPanel {
     // ==================== Document Loading ====================
 
     public void loadDocument(Document document) {
+        if (document == null) return;
         editorCore.loadDocument(document);
         renderModel = null;
         cachedVisibleStartLine = 0;
@@ -169,6 +170,7 @@ public class SweetEditor extends JPanel {
     }
 
     public void setKeyMap(EditorKeyMap keyMap) {
+        if (keyMap == null) return;
         this.keyMap = keyMap;
         editorCore.setKeyMap(keyMap);
     }
@@ -178,6 +180,7 @@ public class SweetEditor extends JPanel {
     }
 
     public void applyTheme(EditorTheme theme) {
+        if (theme == null) return;
         this.currentTheme = theme;
         renderer.applyTheme(theme);
         setBackground(theme.backgroundColor);
@@ -595,7 +598,14 @@ public class SweetEditor extends JPanel {
 
     public void setLanguageConfiguration(LanguageConfiguration config) {
         this.languageConfiguration = config;
-        if (config == null) return;
+        if (config == null) {
+            editorCore.setBracketPairs(new int[0], new int[0]);
+            editorCore.setAutoClosingPairs(new int[0], new int[0]);
+            editorCore.setTabSize(LanguageConfiguration.DEFAULT_TAB_SIZE);
+            editorCore.setInsertSpaces(false);
+            flush();
+            return;
+        }
 
         List<LanguageConfiguration.BracketPair> brackets = config.getBrackets();
         if (brackets != null && !brackets.isEmpty()) {
@@ -608,6 +618,8 @@ public class SweetEditor extends JPanel {
                 closes[i] = pair.close.isEmpty() ? 0 : pair.close.codePointAt(0);
             }
             editorCore.setBracketPairs(opens, closes);
+        } else {
+            editorCore.setBracketPairs(new int[0], new int[0]);
         }
         List<LanguageConfiguration.BracketPair> acPairs = config.getAutoClosingPairs();
         if (acPairs != null && !acPairs.isEmpty()) {
@@ -620,13 +632,16 @@ public class SweetEditor extends JPanel {
                 acCloses[i] = pair.close.isEmpty() ? 0 : pair.close.codePointAt(0);
             }
             editorCore.setAutoClosingPairs(acOpens, acCloses);
+        } else {
+            editorCore.setAutoClosingPairs(new int[0], new int[0]);
         }
-        if (config.getTabSize() != null && config.getTabSize() > 0) {
-            editorCore.setTabSize(config.getTabSize());
-        }
-        if (config.getInsertSpaces() != null) {
-            editorCore.setInsertSpaces(config.getInsertSpaces());
-        }
+        Integer tabSize = config.getTabSize();
+        editorCore.setTabSize(tabSize != null && tabSize > 0 ? tabSize : LanguageConfiguration.DEFAULT_TAB_SIZE);
+
+        Boolean insertSpaces = config.getInsertSpaces();
+        editorCore.setInsertSpaces(insertSpaces != null ? insertSpaces : false);
+
+        flush();
     }
 
     public LanguageConfiguration getLanguageConfiguration() {

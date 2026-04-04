@@ -6,6 +6,7 @@ import com.qiplat.sweeteditor.core.keymap.KeyMap;
 import com.qiplat.sweeteditor.core.visual.*;
 import com.qiplat.sweeteditor.core.snippet.*;
 
+import java.lang.ref.Cleaner;
 import java.lang.foreign.*;
 import java.lang.invoke.MethodType;
 import java.nio.ByteBuffer;
@@ -18,12 +19,33 @@ import java.util.Map;
  * Provides upcall stub setup for text measurement callbacks, binary payload decoding,
  * and Java-friendly interfaces for all editor operations.
  */
-public class EditorCore implements AutoCloseable {
+public class EditorCore {
+    private static final Cleaner CLEANER = Cleaner.create();
 
     private final long nativeHandle;
     private final Arena arena;
+    private final Cleaner.Cleanable cleanable;
     private HandleConfig handleConfig = new HandleConfig();
     private ScrollbarConfig scrollbarConfig = new ScrollbarConfig();
+
+    private static final class CleanupAction implements Runnable {
+        private final long nativeHandle;
+        private final Arena arena;
+        private boolean cleaned;
+
+        private CleanupAction(long nativeHandle, Arena arena) {
+            this.nativeHandle = nativeHandle;
+            this.arena = arena;
+        }
+
+        @Override
+        public synchronized void run() {
+            if (cleaned) return;
+            cleaned = true;
+            EditorNative.freeEditor(nativeHandle);
+            arena.close();
+        }
+    }
 
     public interface TextMeasureCallback {
         float measureTextWidth(MemorySegment textPtr, int fontStyle);
@@ -64,6 +86,7 @@ public class EditorCore implements AutoCloseable {
 
         MemorySegment optionsSeg = ProtocolEncoder.packEditorOptions(options, arena);
         this.nativeHandle = EditorNative.createEditor(measurer, optionsSeg, ProtocolEncoder.EDITOR_OPTIONS_SIZE);
+        this.cleanable = CLEANER.register(this, new CleanupAction(nativeHandle, arena));
     }
 
     // ===================== Lifecycle =====================
@@ -71,18 +94,13 @@ public class EditorCore implements AutoCloseable {
     private Document mDocument;
 
     public void loadDocument(Document document) {
+        if (document == null) return;
         mDocument = document;
         EditorNative.setEditorDocument(nativeHandle, document.nativeHandle);
     }
 
     public Document getDocument() {
         return mDocument;
-    }
-
-    @Override
-    public void close() {
-        EditorNative.freeEditor(nativeHandle);
-        arena.close();
     }
 
     // ===================== Viewport/Appearance =====================

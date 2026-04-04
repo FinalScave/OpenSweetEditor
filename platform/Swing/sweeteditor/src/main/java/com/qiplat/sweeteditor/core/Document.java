@@ -1,28 +1,54 @@
 package com.qiplat.sweeteditor.core;
 
 import java.lang.foreign.Arena;
+import java.lang.ref.Cleaner;
 import java.io.File;
 import java.nio.file.Path;
+import java.util.Objects;
 
 /**
  * Document object, encapsulating the native document handle from the C++ layer.
  */
-public class Document implements AutoCloseable {
+public class Document {
+    private static final Cleaner CLEANER = Cleaner.create();
+
     final long nativeHandle;
     private final Arena arena;
+    private final Cleaner.Cleanable cleanable;
+
+    private static final class CleanupAction implements Runnable {
+        private final long nativeHandle;
+        private final Arena arena;
+        private boolean cleaned;
+
+        private CleanupAction(long nativeHandle, Arena arena) {
+            this.nativeHandle = nativeHandle;
+            this.arena = arena;
+        }
+
+        @Override
+        public synchronized void run() {
+            if (cleaned) return;
+            cleaned = true;
+            EditorNative.freeDocument(nativeHandle);
+            arena.close();
+        }
+    }
 
     public Document(String text) {
         this.arena = Arena.ofConfined();
         this.nativeHandle = EditorNative.createDocument(arena, text);
+        this.cleanable = CLEANER.register(this, new CleanupAction(nativeHandle, arena));
     }
 
     public Document(Path path) {
         this.arena = Arena.ofConfined();
-        this.nativeHandle = EditorNative.createDocumentFromFile(arena, path != null ? path.toString() : null);
+        this.nativeHandle = EditorNative.createDocumentFromFile(arena, Objects.requireNonNull(path, "path").toString());
+        this.cleanable = CLEANER.register(this, new CleanupAction(nativeHandle, arena));
     }
 
     public Document(File file) {
-        this(file == null ? null : file.toPath());
+        this(Objects.requireNonNull(file, "file").toPath());
     }
 
     public long getHandle() {
@@ -64,9 +90,4 @@ public class Document implements AutoCloseable {
         return sb.toString();
     }
 
-    @Override
-    public void close() {
-        EditorNative.freeDocument(nativeHandle);
-        arena.close();
-    }
 }

@@ -471,6 +471,9 @@ intptr_t create_document_from_utf16(const U16Char* text) {
 }
 
 intptr_t create_document_from_file(const char* path) {
+  if (path == nullptr) {
+    return 0;
+  }
   UPtr<Buffer> buffer = makeUPtr<MappedFileBuffer>(path);
   Ptr<Document> document = makePtr<LineArrayDocument>(std::move(buffer));
   return toIntPtr(document);
