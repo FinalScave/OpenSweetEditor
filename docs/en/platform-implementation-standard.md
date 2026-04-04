@@ -1221,10 +1221,10 @@ Resource creation and destruction follow explicit ordering constraints to preven
 |---|---|---|
 | Creation | **MUST** | `EditorCore` instance MUST be created during widget initialization (imperative frameworks: constructor or init; declarative frameworks: on first widget mount) |
 | Release path | **MUST** | The platform MUST ensure that `EditorCore` and its native / C++ resources are eventually released; the mechanism MAY be an explicit `dispose()` / `close()`, a host-managed lifecycle, GC / finalizer / ARC-backed automatic reclamation, an equivalent platform cleanup hook, or another platform-idiomatic mechanism. View detachment, widget unmount, or temporary removal from the view tree is NOT by itself required to be the release moment |
-| Post-release calls | **MUST** | If the platform exposes an explicit release API, or otherwise keeps the object reachable after internal release, any method call after release MUST be a no-op or throw an explicit "already destroyed" exception; MUST NOT access freed C++ memory |
+| Post-release calls | **MUST** | If the platform exposes an explicit release API, or otherwise keeps the object reachable after internal release, post-release calls MUST NOT access freed native / C++ resources and MUST NOT trigger further editor side effects or callbacks. Mutating calls MUST be a no-op or throw an explicit "already destroyed" exception. Getter calls MAY return `null`, default values, or last-known managed snapshots, as long as they do not require released native state or trigger lazy recomputation against destroyed resources |
 | Repeated release | **MUST** | If the platform exposes explicit release logic, multiple invocations MUST be idempotent (no-op); MUST NOT cause double-free |
 
-> The standard requires eventual native-resource release, but does **not** require every managed-language `Document` / bridge wrapper to expose an additional explicit release API beyond the platform's own lifecycle model.
+> The standard requires eventual native-resource release, but does **not** require every managed-language `Document` / bridge wrapper to expose an additional explicit release API beyond the platform's own lifecycle model. If a platform chooses to keep returning last-known managed snapshots after release, it SHOULD document that those values are stale snapshots rather than live editor state.
 
 ### 16.2 Provider Lifecycle
 
