@@ -47,7 +47,7 @@ namespace {
   }
 
   U8String getLineTextUtf8(intptr_t document_handle, size_t line) {
-    const U16Char* u16 = get_document_line_text(document_handle, line);
+    const U16Char* u16 = get_document_line_utf16(document_handle, line);
     U8String out = toUtf8(u16);
     if (u16 != nullptr) {
       free_u16_string(reinterpret_cast<intptr_t>(u16));

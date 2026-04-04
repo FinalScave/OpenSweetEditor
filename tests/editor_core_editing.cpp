@@ -80,6 +80,197 @@ TEST_CASE("EditorCore backspace removes one surrogate pair as a single glyph") {
   CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
 }
 
+TEST_CASE("EditorCore clamps cursor positions away from surrogate middles") {
+  EditorOptions options;
+  EditorCore editor(makePtr<FixedWidthTextMeasurer>(), options);
+
+  Ptr<Document> document = makePtr<LineArrayDocument>("A\xF0\x9F\x98\x80" "B");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  editor.setCursorPosition({0, 2});
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
+
+  editor.moveCursorRight();
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
+
+  editor.moveCursorLeft();
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
+}
+
+TEST_CASE("EditorCore keeps zero-length selection collapsed when clamped around a surrogate pair") {
+  EditorOptions options;
+  EditorCore editor(makePtr<FixedWidthTextMeasurer>(), options);
+
+  Ptr<Document> document = makePtr<LineArrayDocument>("A\xF0\x9F\x98\x80" "B");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  editor.setSelection({{0, 2}, {0, 2}});
+
+  CHECK(editor.getSelection() == (TextRange{{0, 1}, {0, 1}}));
+  CHECK_FALSE(editor.hasSelection());
+}
+
+TEST_CASE("EditorCore deleteForward removes one surrogate pair as a single glyph") {
+  EditorOptions options;
+  EditorCore editor(makePtr<FixedWidthTextMeasurer>(), options);
+
+  Ptr<Document> document = makePtr<LineArrayDocument>("A\xF0\x9F\x98\x80" "B");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 1});
+
+  TextEditResult result = editor.deleteForward();
+
+  REQUIRE(result.changed);
+  CHECK(document->getU8Text() == "AB");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
+}
+
+TEST_CASE("EditorCore treats emoji modifier grapheme clusters as one editing unit") {
+  EditorOptions options;
+  EditorCore editor(makePtr<FixedWidthTextMeasurer>(), options);
+
+  Ptr<Document> document = makePtr<LineArrayDocument>("\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  editor.setCursorPosition({0, 2}); // between base emoji and skin-tone modifier
+  editor.moveCursorLeft();
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
+
+  editor.setCursorPosition({0, 2});
+  editor.moveCursorRight();
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
+
+  editor.setCursorPosition({0, 4});
+  TextEditResult backspace_result = editor.backspace();
+  REQUIRE(backspace_result.changed);
+  CHECK(document->getU8Text() == "");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
+
+  document = makePtr<LineArrayDocument>("\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 0});
+  TextEditResult delete_result = editor.deleteForward();
+  REQUIRE(delete_result.changed);
+  CHECK(document->getU8Text() == "");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
+}
+
+TEST_CASE("EditorCore clamps direct cursor and range APIs to grapheme boundaries") {
+  EditorOptions options;
+  EditorCore editor(makePtr<FixedWidthTextMeasurer>(), options);
+
+  Ptr<Document> document = makePtr<LineArrayDocument>("\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  editor.setCursorPosition({0, 2});
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
+
+  editor.setSelection({{0, 2}, {0, 2}});
+  CHECK(editor.getSelection() == (TextRange{{0, 0}, {0, 0}}));
+  CHECK_FALSE(editor.hasSelection());
+
+  TextEditResult replace_result = editor.replaceText({{0, 2}, {0, 2}}, "X");
+  REQUIRE(replace_result.changed);
+  CHECK(document->getU8Text() == "X\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
+
+  document = makePtr<LineArrayDocument>("\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  TextEditResult delete_result = editor.deleteText({{0, 2}, {0, 4}});
+  REQUIRE(delete_result.changed);
+  CHECK(document->getU8Text() == "");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
+}
+
+TEST_CASE("EditorCore treats ZWJ emoji families as one editing unit") {
+  EditorOptions options;
+  EditorCore editor(makePtr<FixedWidthTextMeasurer>(), options);
+
+  Ptr<Document> document = makePtr<LineArrayDocument>(
+      "\xF0\x9F\x91\xA8\xE2\x80\x8D\xF0\x9F\x91\xA9\xE2\x80\x8D\xF0\x9F\x91\xA7\xE2\x80\x8D\xF0\x9F\x91\xA6");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  editor.setCursorPosition({0, 0});
+  editor.moveCursorRight();
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 11}));
+
+  TextEditResult backspace_result = editor.backspace();
+  REQUIRE(backspace_result.changed);
+  CHECK(document->getU8Text() == "");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
+}
+
+TEST_CASE("EditorCore expands ZWJ family ranges to full grapheme boundaries") {
+  EditorOptions options;
+  EditorCore editor(makePtr<FixedWidthTextMeasurer>(), options);
+
+  Ptr<Document> document = makePtr<LineArrayDocument>(
+      "\xF0\x9F\x91\xA8\xE2\x80\x8D\xF0\x9F\x91\xA9\xE2\x80\x8D\xF0\x9F\x91\xA7\xE2\x80\x8D\xF0\x9F\x91\xA6");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  editor.setSelection({{0, 2}, {0, 2}});
+  CHECK(editor.getSelection() == (TextRange{{0, 0}, {0, 0}}));
+  CHECK_FALSE(editor.hasSelection());
+
+  TextEditResult delete_result = editor.deleteText({{0, 2}, {0, 4}});
+  REQUIRE(delete_result.changed);
+  CHECK(document->getU8Text() == "");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
+}
+
+TEST_CASE("EditorCore getWordRangeAtCursor keeps combining graphemes intact") {
+  EditorOptions options;
+  EditorCore editor(makePtr<FixedWidthTextMeasurer>(), options);
+
+  Ptr<Document> document = makePtr<LineArrayDocument>("a\xCC\x81" "bc");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  editor.setCursorPosition({0, 2});
+
+  CHECK(editor.getWordRangeAtCursor() == (TextRange{{0, 0}, {0, 4}}));
+  CHECK(editor.getWordAtCursor() == "a\xCC\x81" "bc");
+}
+
+TEST_CASE("EditorCore replaceText normalizes insert positions away from surrogate middles") {
+  EditorOptions options;
+  EditorCore editor(makePtr<FixedWidthTextMeasurer>(), options);
+
+  Ptr<Document> document = makePtr<LineArrayDocument>("A\xF0\x9F\x98\x80" "B");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  TextEditResult result = editor.replaceText({{0, 2}, {0, 2}}, "X");
+
+  REQUIRE(result.changed);
+  CHECK(document->getU8Text() == "AX\xF0\x9F\x98\x80" "B");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
+}
+
+TEST_CASE("EditorCore deleteText expands surrogate-spanning ranges to full code-point boundaries") {
+  EditorOptions options;
+  EditorCore editor(makePtr<FixedWidthTextMeasurer>(), options);
+
+  Ptr<Document> document = makePtr<LineArrayDocument>("A\xF0\x9F\x98\x80" "B");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  TextEditResult result = editor.deleteText({{0, 2}, {0, 3}});
+
+  REQUIRE(result.changed);
+  CHECK(document->getU8Text() == "AB");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
+}
+
 TEST_CASE("EditorCore rebuilds text run styles after style re-registration") {
   EditorOptions options;
   EditorCore editor(makePtr<FixedWidthTextMeasurer>(), options);

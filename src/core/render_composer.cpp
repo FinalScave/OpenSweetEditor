@@ -276,7 +276,7 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  void RenderComposer::buildBracketHighlightRects(EditorRenderModel& model, const Document* document,
+  void RenderComposer::buildBracketHighlightRects(EditorRenderModel& model, Document* document,
                                                   const TextPosition& cursor_position, const Vector<BracketPair>& bracket_pairs,
                                                   const TextPosition& external_bracket_open, const TextPosition& external_bracket_close,
                                                   bool has_external_brackets, float line_height) const {
@@ -295,7 +295,7 @@ namespace NS_SWEETEDITOR {
       size_t line_count = document->getLineCount();
       if (cursor_line >= line_count) return;
 
-      U16String line_text = document->getLineU16Text(cursor_line);
+      const U16String& line_text = document->getLineU16TextRef(cursor_line);
 
       auto checkChar = [&](size_t line, size_t col) -> bool {
         if (col >= line_text.length()) return false;
@@ -308,7 +308,7 @@ namespace NS_SWEETEDITOR {
             size_t scan_line = line;
             size_t scan_col = col + 1;
             while (depth > 0 && scanned < kMaxBracketScanChars && scan_line < line_count) {
-              U16String scan_text = (scan_line == line) ? line_text : document->getLineU16Text(scan_line);
+              const U16String& scan_text = (scan_line == line) ? line_text : document->getLineU16TextRef(scan_line);
               while (scan_col < scan_text.length() && scanned < kMaxBracketScanChars) {
                 char16_t sc = scan_text[scan_col];
                 if (sc == static_cast<char16_t>(bp.open)) ++depth;
@@ -334,9 +334,9 @@ namespace NS_SWEETEDITOR {
             int64_t scan_line_s = static_cast<int64_t>(line);
             int64_t scan_col_s = static_cast<int64_t>(col) - 1;
             while (depth > 0 && scanned < kMaxBracketScanChars && scan_line_s >= 0) {
-              U16String scan_text = (static_cast<size_t>(scan_line_s) == line)
+              const U16String& scan_text = (static_cast<size_t>(scan_line_s) == line)
                   ? line_text
-                  : document->getLineU16Text(static_cast<size_t>(scan_line_s));
+                  : document->getLineU16TextRef(static_cast<size_t>(scan_line_s));
               while (scan_col_s >= 0 && scanned < kMaxBracketScanChars) {
                 char16_t sc = scan_text[static_cast<size_t>(scan_col_s)];
                 if (sc == static_cast<char16_t>(bp.close)) ++depth;
@@ -352,7 +352,7 @@ namespace NS_SWEETEDITOR {
               }
               --scan_line_s;
               if (scan_line_s >= 0) {
-                U16String prev_text = document->getLineU16Text(static_cast<size_t>(scan_line_s));
+                const U16String& prev_text = document->getLineU16TextRef(static_cast<size_t>(scan_line_s));
                 scan_col_s = static_cast<int64_t>(prev_text.length()) - 1;
               }
             }

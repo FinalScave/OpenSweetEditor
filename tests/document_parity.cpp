@@ -337,3 +337,22 @@ TEST_CASE("Replace: delete line ending to merge lines") {
   CHECK(line_doc.getLineCount() == 2);
   CHECK(line_doc.getU8Text() == "abcdef\nghi");
 }
+
+TEST_CASE("Document range extraction honors UTF-16 surrogate boundaries") {
+  LineArrayDocument line_doc("A\xf0\x9f\x98\x80" "B\n\xe4\xb8\xad\xf0\x9f\x98\x80x");
+  PieceTableDocument piece_doc("A\xf0\x9f\x98\x80" "B\n\xe4\xb8\xad\xf0\x9f\x98\x80x");
+
+  CHECK(line_doc.getU8Text({{0, 0}, {0, 1}}) == "A");
+  CHECK(piece_doc.getU8Text({{0, 0}, {0, 1}}) == "A");
+  CHECK(line_doc.getU8Text({{0, 1}, {0, 3}}) == "\xf0\x9f\x98\x80");
+  CHECK(piece_doc.getU8Text({{0, 1}, {0, 3}}) == "\xf0\x9f\x98\x80");
+  CHECK(line_doc.getU8Text({{0, 3}, {0, 4}}) == "B");
+  CHECK(piece_doc.getU8Text({{0, 3}, {0, 4}}) == "B");
+
+  CHECK(line_doc.getU8Text({{1, 0}, {1, 1}}) == "\xe4\xb8\xad");
+  CHECK(piece_doc.getU8Text({{1, 0}, {1, 1}}) == "\xe4\xb8\xad");
+  CHECK(line_doc.getU8Text({{1, 1}, {1, 3}}) == "\xf0\x9f\x98\x80");
+  CHECK(piece_doc.getU8Text({{1, 1}, {1, 3}}) == "\xf0\x9f\x98\x80");
+  CHECK(line_doc.getU8Text({{1, 3}, {1, 4}}) == "x");
+  CHECK(piece_doc.getU8Text({{1, 3}, {1, 4}}) == "x");
+}

@@ -215,7 +215,7 @@ namespace NS_SWEETEDITOR {
     }
 
     const LogicalLine& ll = logical_lines[hit_line];
-    const U16String& line_text = ll.cached_text;
+    const U16String& line_text = ll.cached_u16_text;
 
     // In wrap mode, find the exact VisualLine (subline)
     size_t target_wrap = findHitWrapIndex(ll, abs_y, line_height);
@@ -272,26 +272,25 @@ namespace NS_SWEETEDITOR {
         }
 
         float char_x = run_x;
-        auto text_begin = run.text.begin();
-        auto text_end = run.text.end();
-        size_t col_offset = 0;
+        size_t cluster_start = 0;
 
-        while (text_begin != text_end) {
-          auto char_start = text_begin;
-          utf8::next16(text_begin, text_end);
-          size_t char_u16_len = static_cast<size_t>(text_begin - char_start);
-          U16String u16_char(char_start, text_begin);
-          float char_width = measureWidth(u16_char, run.style.font_style);
+        while (cluster_start < run.text.length()) {
+          size_t cluster_end = UnicodeUtil::nextGraphemeBoundaryColumn(run.text, cluster_start);
+          if (cluster_end <= cluster_start) {
+            break;
+          }
+          U16String grapheme = run.text.substr(cluster_start, cluster_end - cluster_start);
+          float char_width = measureWidth(grapheme, run.style.font_style);
 
-          // If click is left of char center, place on this char; else next char
+          // If click is left of cluster center, place on this cluster; else next cluster boundary.
           if (click_x < char_x + char_width * 0.5f) {
-            return {hit_line, run.column + col_offset};
+            return {hit_line, run.column + cluster_start};
           }
           char_x += char_width;
-          col_offset += char_u16_len;
+          cluster_start = cluster_end;
         }
         // Click after run end
-        return {hit_line, run.column + col_offset};
+        return {hit_line, run.column + cluster_start};
       }
       run_x = run_right;
     }
@@ -428,7 +427,7 @@ namespace NS_SWEETEDITOR {
 
     LogicalLine& ll = logical_lines[position.line];
     layoutLine(position.line, ll);
-    const U16String& line_text = ll.cached_text;
+    const U16String& line_text = ll.cached_u16_text;
     size_t target_col = std::min(position.column, line_text.length());
 
     // Compute width from line start to target_col
@@ -501,7 +500,7 @@ namespace NS_SWEETEDITOR {
 
     LogicalLine& ll = logical_lines[line];
     layoutLine(line, ll);
-    const U16String& line_text = ll.cached_text;
+    const U16String& line_text = ll.cached_u16_text;
     size_t safe_start = std::min(col_start, line_text.length());
     size_t safe_end = std::min(col_end, line_text.length());
 
@@ -588,7 +587,7 @@ namespace NS_SWEETEDITOR {
         // layoutLine was called in getColumnScreenRange above; ll is already up to date
         const float scroll_y = m_view_state_.scroll_y;
         // Find y of the visual line containing col_start
-        size_t safe_col = std::min(col_start, ll.cached_text.length());
+        size_t safe_col = std::min(col_start, ll.cached_u16_text.length());
         for (const VisualLine& vl : ll.visual_lines) {
           for (const VisualRun& run : vl.runs) {
             if ((run.type == VisualRunType::TEXT || run.type == VisualRunType::TAB) &&
@@ -619,7 +618,7 @@ namespace NS_SWEETEDITOR {
     LogicalLine& ll = logical_lines[line];
     layoutLine(line, ll);
 
-    const U16String& line_text = ll.cached_text;
+    const U16String& line_text = ll.cached_u16_text;
     size_t safe_start = std::min(col_start, line_text.length());
     size_t safe_end = std::min(col_end, line_text.length());
     if (safe_start > safe_end) std::swap(safe_start, safe_end);
@@ -1345,7 +1344,7 @@ namespace NS_SWEETEDITOR {
       bool need_crop_right = (run_right > visible_right);
 
       if (need_crop_left || need_crop_right) {
-        if (m_is_monospace_ && run.length > 0) {
+        if (m_is_monospace_ && run.length > 0 && !UnicodeUtil::hasComplexGrapheme(run.text)) {
           float char_width = run.width / run.length;
           if (char_width > 0) {
             size_t skip_left = 0;
@@ -1361,17 +1360,11 @@ namespace NS_SWEETEDITOR {
             }
             size_t visible_start = skip_left;
             size_t visible_len = run.length - skip_left - skip_right;
+            size_t visible_end = visible_start + visible_len;
 
-            // Align to surrogate pair boundaries to avoid splitting emoji
-            if (visible_start > 0 && visible_start < run.length &&
-                utf8::internal::is_lead_surrogate(run.text[visible_start - 1])) {
-              visible_start--;
-              visible_len++;
-            }
-            if (visible_len > 0 && (visible_start + visible_len) < run.length &&
-                utf8::internal::is_lead_surrogate(run.text[visible_start + visible_len - 1])) {
-              visible_len++;
-            }
+            visible_start = UnicodeUtil::clampColumnToGraphemeBoundaryLeft(run.text, visible_start);
+            visible_end = UnicodeUtil::clampColumnToGraphemeBoundaryRight(run.text, visible_end);
+            visible_len = (visible_end > visible_start) ? (visible_end - visible_start) : 0;
 
             if (visible_len == 0) {
               current_x = run_right;
@@ -1387,9 +1380,7 @@ namespace NS_SWEETEDITOR {
             }
           }
         } else {
-          // Non-monospace font: crop char by char
-          auto text_begin = run.text.begin();
-          auto text_end = run.text.end();
+          // Non-monospace font: crop grapheme by grapheme
           size_t start_u16_index = 0;
           size_t end_u16_index = run.text.length();
           size_t current_u16_index = 0;
@@ -1397,10 +1388,12 @@ namespace NS_SWEETEDITOR {
           float crop_start_x = run_left;
           bool found_start = !need_crop_left;
 
-          while (text_begin != text_end) {
-            auto char_start = text_begin;
-            utf8::next16(text_begin, text_end);
-            U16String u16_char_text(char_start, text_begin);
+          while (current_u16_index < run.text.length()) {
+            size_t next_u16_index = UnicodeUtil::nextGraphemeBoundaryColumn(run.text, current_u16_index);
+            if (next_u16_index <= current_u16_index) {
+              break;
+            }
+            U16String u16_char_text = run.text.substr(current_u16_index, next_u16_index - current_u16_index);
             float char_width = measureWidth(u16_char_text, run.style.font_style);
 
             if (!found_start) {
@@ -1411,11 +1404,11 @@ namespace NS_SWEETEDITOR {
               }
             }
             if (found_start && char_x + char_width > visible_right) {
-              end_u16_index = current_u16_index + u16_char_text.length();
+              end_u16_index = next_u16_index;
               break;
             }
             char_x += char_width;
-            current_u16_index += u16_char_text.length();
+            current_u16_index = next_u16_index;
           }
 
           if (!found_start || start_u16_index >= end_u16_index) {
@@ -1475,7 +1468,7 @@ namespace NS_SWEETEDITOR {
         continue;
       }
 
-      // TEXT / PHANTOM_TEXT: wrap char by char
+      // TEXT / PHANTOM_TEXT: wrap grapheme by grapheme
       const U16String& run_text = run.text;
       if (run_text.empty()) {
         current_line.runs.push_back(run);
@@ -1491,8 +1484,6 @@ namespace NS_SWEETEDITOR {
       }
 
       // Need to split run
-      auto text_begin = run_text.begin();
-      auto text_end = run_text.end();
       size_t seg_start_u16 = 0;
       size_t current_u16 = 0;
       float seg_width = 0;
@@ -1501,18 +1492,20 @@ namespace NS_SWEETEDITOR {
       float last_word_break_width = 0;
       bool has_word_break = false;
 
-      while (text_begin != text_end) {
-        auto char_start = text_begin;
-        utf8::next16(text_begin, text_end);
-        size_t char_u16_len = static_cast<size_t>(text_begin - char_start);
-        U16String u16_char(char_start, text_begin);
-        float char_width = measureWidth(u16_char, run.style.font_style);
+      while (current_u16 < run_text.length()) {
+        const size_t grapheme_end = UnicodeUtil::nextGraphemeBoundaryColumn(run_text, current_u16);
+        if (grapheme_end <= current_u16) {
+          break;
+        }
+        const size_t grapheme_u16_len = grapheme_end - current_u16;
+        U16String grapheme_text = run_text.substr(current_u16, grapheme_u16_len);
+        float char_width = measureWidth(grapheme_text, run.style.font_style);
 
-        // WORD_BREAK mode: check whether there is a word boundary after this char
-        if (m_wrap_mode_ == WrapMode::WORD_BREAK && char_u16_len > 0) {
-          U16Char ch = *char_start;
+        // WORD_BREAK mode: check whether there is a word boundary after this grapheme.
+        if (m_wrap_mode_ == WrapMode::WORD_BREAK && grapheme_u16_len > 0) {
+          U16Char ch = run_text[current_u16];
           if (isWordBreakChar(ch)) {
-            last_word_break_u16 = current_u16 + char_u16_len;
+            last_word_break_u16 = grapheme_end;
             last_word_break_width = seg_width + char_width;
             has_word_break = true;
           }
@@ -1562,14 +1555,14 @@ namespace NS_SWEETEDITOR {
             U16String leftover = run_text.substr(seg_start_u16, current_u16 - seg_start_u16);
             seg_width = measureWidth(leftover, run.style.font_style);
           }
-          // Add current character
+          // Add current grapheme
           seg_width += char_width;
-          current_u16 += char_u16_len;
+          current_u16 = grapheme_end;
           continue;
         }
 
         seg_width += char_width;
-        current_u16 += char_u16_len;
+        current_u16 = grapheme_end;
       }
 
       // Output remaining segment

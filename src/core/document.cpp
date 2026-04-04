@@ -1,4 +1,4 @@
-//
+﻿//
 // Created by Scave on 2025/12/2.
 //
 #include <stdexcept>
@@ -50,8 +50,8 @@ namespace NS_SWEETEDITOR {
     if (line >= m_logical_lines_.size()) {
       throw std::out_of_range("PieceTableDocument::getLineU16Text line index out of range");
     }
-    if (!m_logical_lines_[line].is_char_dirty) {
-      return m_logical_lines_[line].cached_text;
+    if (!m_logical_lines_[line].is_u16_dirty) {
+      return m_logical_lines_[line].cached_u16_text;
     }
     const size_t byte_length = getByteLengthOfLine(line);
     U8String utf8_text = getU8Text(m_logical_lines_[line].start_byte, byte_length);
@@ -65,7 +65,7 @@ namespace NS_SWEETEDITOR {
       throw std::out_of_range("PieceTableDocument::getLineColumns line index out of range");
     }
     updateDirtyLine(line, m_logical_lines_[line]);
-    return m_logical_lines_[line].cached_text.size();
+    return m_logical_lines_[line].cached_u16_text.size();
   }
 
   TextPosition PieceTableDocument::getPositionFromCharIndex(size_t char_index) {
@@ -79,7 +79,7 @@ namespace NS_SWEETEDITOR {
       updateDirtyLine(i, m_logical_lines_[i]);
     }
     const size_t target_line = getLineFromCharIndex(char_index);
-    size_t column = char_index - m_logical_lines_[target_line].start_char;
+    size_t column = char_index - m_logical_lines_[target_line].start_utf16;
     size_t byte_len = getByteLengthOfLine(target_line);
     U8String line_u8 = getU8Text(m_logical_lines_[target_line].start_byte, byte_len);
     size_t max_col = simdutf::count_utf8(line_u8.data(), line_u8.size());
@@ -102,7 +102,7 @@ namespace NS_SWEETEDITOR {
     if (column > line_chars) {
       column = line_chars;
     }
-    return line_snapshot.start_char + column;
+    return line_snapshot.start_utf16 + column;
   }
 
   void PieceTableDocument::insertU8Text(const TextPosition& position, const U8String& text) {
@@ -208,7 +208,7 @@ namespace NS_SWEETEDITOR {
 
     // Logical lines: single combined update for delete + insert
     size_t line = getLineFromByteOffset(start_byte);
-    m_logical_lines_[line].is_char_dirty = true;
+    m_logical_lines_[line].is_u16_dirty = true;
     m_logical_lines_[line].is_layout_dirty = true;
     m_logical_lines_[line].height = -1;
 
@@ -248,7 +248,7 @@ namespace NS_SWEETEDITOR {
         if (i + 1 < text.size() && text[i + 1] == '\n') {
           LogicalLine ll;
           ll.start_byte = start_byte + i + 2;
-          ll.is_char_dirty = true;
+          ll.is_u16_dirty = true;
           new_lines.push_back(ll);
           if (new_lines.size() == 1) {
             m_logical_lines_[line].line_ending = LineEnding::CRLF;
@@ -259,7 +259,7 @@ namespace NS_SWEETEDITOR {
         } else {
           LogicalLine ll;
           ll.start_byte = start_byte + i + 1;
-          ll.is_char_dirty = true;
+          ll.is_u16_dirty = true;
           new_lines.push_back(ll);
           if (new_lines.size() == 1) {
             m_logical_lines_[line].line_ending = LineEnding::CR;
@@ -270,7 +270,7 @@ namespace NS_SWEETEDITOR {
       } else if (text[i] == '\n') {
         LogicalLine ll;
         ll.start_byte = start_byte + i + 1;
-        ll.is_char_dirty = true;
+        ll.is_u16_dirty = true;
         new_lines.push_back(ll);
         if (new_lines.size() == 1) {
           m_logical_lines_[line].line_ending = LineEnding::LF;
@@ -294,7 +294,7 @@ namespace NS_SWEETEDITOR {
     for (size_t i = start_shift_line; i < m_logical_lines_.size(); ++i) {
       m_logical_lines_[i].start_byte = static_cast<size_t>(
           static_cast<long>(m_logical_lines_[i].start_byte) + net_shift);
-      m_logical_lines_[i].is_char_dirty = true;
+      m_logical_lines_[i].is_u16_dirty = true;
     }
   }
 
@@ -336,29 +336,29 @@ namespace NS_SWEETEDITOR {
       throw std::out_of_range("PieceTableDocument::getLineU16TextRef line index out of range");
     }
     updateDirtyLine(line, m_logical_lines_[line]);
-    return m_logical_lines_[line].cached_text;
+    return m_logical_lines_[line].cached_u16_text;
   }
 
   void PieceTableDocument::updateDirtyLine(size_t line, LogicalLine& logical_line) {
-    if (logical_line.is_char_dirty) {
+    if (logical_line.is_u16_dirty) {
       const size_t byte_length = getByteLengthOfLine(line);
       U8String u8_text = getU8Text(logical_line.start_byte, byte_length);
-      StrUtil::convertUTF8ToUTF16(u8_text, logical_line.cached_text);
+      StrUtil::convertUTF8ToUTF16(u8_text, logical_line.cached_u16_text);
       if (line > 0) {
         LogicalLine& prev_line = m_logical_lines_[line - 1];
-        if (prev_line.is_char_dirty) {
+        if (prev_line.is_u16_dirty) {
           U8String prev_texts = getU8Text(0, prev_line.start_byte);
           const size_t prev_chars_count = simdutf::count_utf8(prev_texts.data(), prev_texts.length());
-          prev_line.start_char = prev_chars_count;
+          prev_line.start_utf16 = prev_chars_count;
         }
         const size_t prev_byte_length = getByteLengthOfLine(line - 1);
         U8String prev_line_text = getU8Text(prev_line.start_byte, prev_byte_length);
         size_t eol_chars = (prev_line.line_ending != LineEnding::NONE) ? 1 : 0;
-        logical_line.start_char = prev_line.start_char + simdutf::count_utf8(prev_line_text.data(), prev_line_text.length()) + eol_chars;
+        logical_line.start_utf16 = prev_line.start_utf16 + simdutf::count_utf8(prev_line_text.data(), prev_line_text.length()) + eol_chars;
       } else {
-        logical_line.start_char = 0;
+        logical_line.start_utf16 = 0;
       }
-      logical_line.is_char_dirty = false;
+      logical_line.is_u16_dirty = false;
     }
   }
 
@@ -536,7 +536,7 @@ namespace NS_SWEETEDITOR {
   void PieceTableDocument::updateLogicalLinesByInsertText(size_t start_byte, const U8String& text) {
     const size_t line = getLineFromByteOffset(start_byte);
     // Inserted text may change the current line ending, mark it dirty first
-    m_logical_lines_[line].is_char_dirty = true;
+    m_logical_lines_[line].is_u16_dirty = true;
     m_logical_lines_[line].is_layout_dirty = true;
 
     LineEnding original_line_ending = m_logical_lines_[line].line_ending;
@@ -548,7 +548,7 @@ namespace NS_SWEETEDITOR {
           // CRLF
           LogicalLine logical_line;
           logical_line.start_byte = start_byte + i + 2;
-          logical_line.is_char_dirty = true;
+          logical_line.is_u16_dirty = true;
           new_lines.push_back(logical_line);
            // Set the previous logical line's line_ending
           if (new_lines.size() == 1) {
@@ -561,7 +561,7 @@ namespace NS_SWEETEDITOR {
           // CR
           LogicalLine logical_line;
           logical_line.start_byte = start_byte + i + 1;
-          logical_line.is_char_dirty = true;
+          logical_line.is_u16_dirty = true;
           new_lines.push_back(logical_line);
           if (new_lines.size() == 1) {
             m_logical_lines_[line].line_ending = LineEnding::CR;
@@ -573,7 +573,7 @@ namespace NS_SWEETEDITOR {
         // LF
         LogicalLine logical_line;
         logical_line.start_byte = start_byte + i + 1;
-        logical_line.is_char_dirty = true;
+        logical_line.is_u16_dirty = true;
         new_lines.push_back(logical_line);
         if (new_lines.size() == 1) {
           m_logical_lines_[line].line_ending = LineEnding::LF;
@@ -591,7 +591,7 @@ namespace NS_SWEETEDITOR {
     size_t start_shift_line = line + 1 + new_lines.size();
     for (size_t i = start_shift_line; i < m_logical_lines_.size(); ++i) {
       m_logical_lines_[i].start_byte += shift_amount;
-      m_logical_lines_[i].is_char_dirty = true;
+      m_logical_lines_[i].is_u16_dirty = true;
     }
   }
 
@@ -612,7 +612,7 @@ namespace NS_SWEETEDITOR {
     // Mark the line at deletion start as dirty
     // (its content changed and needs relayout)
     if (line_to_remove > 0) {
-      m_logical_lines_[line_to_remove - 1].is_char_dirty = true;
+      m_logical_lines_[line_to_remove - 1].is_u16_dirty = true;
       m_logical_lines_[line_to_remove - 1].is_layout_dirty = true;
       m_logical_lines_[line_to_remove - 1].height = -1;
     }
@@ -637,7 +637,7 @@ namespace NS_SWEETEDITOR {
     // Shift following lines: all lines after deleted range subtract length from offset
     for (size_t i = line_to_remove; i < m_logical_lines_.size(); ++i) {
       m_logical_lines_[i].start_byte -= byte_length;
-      m_logical_lines_[i].is_char_dirty = true;
+      m_logical_lines_[i].is_u16_dirty = true;
     }
   }
 
@@ -670,34 +670,13 @@ namespace NS_SWEETEDITOR {
             const char* seg_data = getSegmentData(*it);
             // Local read start inside segment
             size_t local_start = intersect_start - current_byte;
-            size_t local_end = intersect_end - intersect_start;
-            size_t i = 0;
-            while (i < local_end && scanned_u16_count < position.column) {
-                unsigned char c = static_cast<unsigned char>(seg_data[local_start + i]);
-
-                size_t step = 1;
-                size_t u16_count = 1;
-
-                if (c < 0x80) { //ASCII
-                  step = 1;
-                  u16_count = 1;
-                } else if ((c & 0xE0) == 0xC0) { // Latin/Greek
-                  step = 2;
-                  u16_count = 1;
-                } else if ((c & 0xF0) == 0xE0) { // Common CJK
-                  step = 3;
-                  u16_count = 1;
-                } else if ((c & 0xF8) == 0xF0) { // emoji
-                  step = 4;
-                  u16_count = 2;
-                } else {  // invalid
-                  step = 1;
-                  u16_count = 1;
-                }
-                scanned_u16_count += u16_count;
-                i += step;
+            const char* local_it = seg_data + local_start;
+            const char* local_end = seg_data + intersect_end - current_byte;
+            while (local_it < local_end && scanned_u16_count < position.column) {
+                uint32_t cp = utf8::next(local_it, local_end);
+                scanned_u16_count += (cp > 0xFFFF) ? 2 : 1;
             }
-            result += i;
+            result += static_cast<size_t>(local_it - (seg_data + local_start));
             if (scanned_u16_count >= position.column) {
                 return result;
             }
@@ -733,7 +712,7 @@ namespace NS_SWEETEDITOR {
     size_t high = m_logical_lines_.size();
     while (low < high) {
       size_t mid = low + (high - low) / 2;
-      if (m_logical_lines_[mid].start_char <= char_index) {
+      if (m_logical_lines_[mid].start_utf16 <= char_index) {
         low = mid + 1;
       } else {
         high = mid;
@@ -821,8 +800,8 @@ namespace NS_SWEETEDITOR {
     if (line >= m_logical_lines_.size()) {
       throw std::out_of_range("LineArrayDocument::getLineU16Text line index out of range");
     }
-    if (!m_logical_lines_[line].is_char_dirty) {
-      return m_logical_lines_[line].cached_text;
+    if (!m_logical_lines_[line].is_u16_dirty) {
+      return m_logical_lines_[line].cached_u16_text;
     }
     U16String result;
     StrUtil::convertUTF8ToUTF16(m_lines_[line], result);
@@ -834,7 +813,7 @@ namespace NS_SWEETEDITOR {
       throw std::out_of_range("LineArrayDocument::getLineColumns line index out of range");
     }
     updateDirtyLine(line, m_logical_lines_[line]);
-    return m_logical_lines_[line].cached_text.size();
+    return m_logical_lines_[line].cached_u16_text.size();
   }
 
   TextPosition LineArrayDocument::getPositionFromCharIndex(size_t char_index) {
@@ -922,13 +901,13 @@ namespace NS_SWEETEDITOR {
     if (new_parts.size() == 1) {
       // No line ending: concatenate directly
       m_lines_[line] = before + new_parts[0] + after;
-      m_logical_lines_[line].is_char_dirty = true;
+      m_logical_lines_[line].is_u16_dirty = true;
       m_logical_lines_[line].is_layout_dirty = true;
     } else {
       // Concatenate the first part with `before`, using the first line ending
       m_lines_[line] = before + new_parts[0];
       m_logical_lines_[line].line_ending = new_endings[0];
-      m_logical_lines_[line].is_char_dirty = true;
+      m_logical_lines_[line].is_u16_dirty = true;
       m_logical_lines_[line].is_layout_dirty = true;
 
       // Middle lines and last line
@@ -938,7 +917,7 @@ namespace NS_SWEETEDITOR {
         insert_lines.push_back(new_parts[i]);
         LogicalLine ll;
         ll.line_ending = new_endings[i];
-        ll.is_char_dirty = true;
+        ll.is_u16_dirty = true;
         ll.is_layout_dirty = true;
         new_logical.push_back(ll);
       }
@@ -946,7 +925,7 @@ namespace NS_SWEETEDITOR {
       insert_lines.push_back(new_parts.back() + after);
       LogicalLine last_ll;
       last_ll.line_ending = original_ending;
-      last_ll.is_char_dirty = true;
+      last_ll.is_u16_dirty = true;
       last_ll.is_layout_dirty = true;
       new_logical.push_back(last_ll);
 
@@ -972,7 +951,7 @@ namespace NS_SWEETEDITOR {
     if (start_line == end_line) {
       U8String& line_text = m_lines_[start_line];
       line_text = line_text.substr(0, start_byte_col) + line_text.substr(end_byte_col);
-      m_logical_lines_[start_line].is_char_dirty = true;
+      m_logical_lines_[start_line].is_u16_dirty = true;
       m_logical_lines_[start_line].is_layout_dirty = true;
     } else {
       // Multi-line delete: first-line prefix + last-line suffix,
@@ -981,7 +960,7 @@ namespace NS_SWEETEDITOR {
                       + m_lines_[end_line].substr(end_byte_col);
       m_lines_[start_line] = merged;
       m_logical_lines_[start_line].line_ending = m_logical_lines_[end_line].line_ending;
-      m_logical_lines_[start_line].is_char_dirty = true;
+      m_logical_lines_[start_line].is_u16_dirty = true;
       m_logical_lines_[start_line].is_layout_dirty = true;
 
       m_lines_.erase(m_lines_.begin() + start_line + 1, m_lines_.begin() + end_line + 1);
@@ -1069,12 +1048,12 @@ namespace NS_SWEETEDITOR {
       throw std::out_of_range("LineArrayDocument::getLineU16TextRef line index out of range");
     }
     updateDirtyLine(line, m_logical_lines_[line]);
-    return m_logical_lines_[line].cached_text;
+    return m_logical_lines_[line].cached_u16_text;
   }
 
   void LineArrayDocument::updateDirtyLine(size_t line, LogicalLine& logical_line) {
-    if (logical_line.is_char_dirty) {
-      StrUtil::convertUTF8ToUTF16(m_lines_[line], logical_line.cached_text);
+    if (logical_line.is_u16_dirty) {
+      StrUtil::convertUTF8ToUTF16(m_lines_[line], logical_line.cached_u16_text);
 
       size_t char_offset = 0;
       for (size_t i = 0; i < line; ++i) {
@@ -1083,8 +1062,8 @@ namespace NS_SWEETEDITOR {
           char_offset += 1;
         }
       }
-      logical_line.start_char = char_offset;
-      logical_line.is_char_dirty = false;
+      logical_line.start_utf16 = char_offset;
+      logical_line.is_u16_dirty = false;
     }
   }
 
@@ -1096,7 +1075,7 @@ namespace NS_SWEETEDITOR {
       if (text[i] == '\r') {
         m_lines_.push_back(text.substr(start, i - start));
         LogicalLine ll;
-        ll.is_char_dirty = true;
+        ll.is_u16_dirty = true;
         ll.is_layout_dirty = true;
         if (i + 1 < text.size() && text[i + 1] == '\n') {
           ll.line_ending = LineEnding::CRLF;
@@ -1110,7 +1089,7 @@ namespace NS_SWEETEDITOR {
       } else if (text[i] == '\n') {
         m_lines_.push_back(text.substr(start, i - start));
         LogicalLine ll;
-        ll.is_char_dirty = true;
+        ll.is_u16_dirty = true;
         ll.is_layout_dirty = true;
         ll.line_ending = LineEnding::LF;
         m_logical_lines_.push_back(ll);
@@ -1120,7 +1099,7 @@ namespace NS_SWEETEDITOR {
     // Last line (or the only line)
     m_lines_.push_back(text.substr(start));
     LogicalLine last_ll;
-    last_ll.is_char_dirty = true;
+    last_ll.is_u16_dirty = true;
     last_ll.is_layout_dirty = true;
     last_ll.line_ending = LineEnding::NONE;
     m_logical_lines_.push_back(last_ll);
@@ -1144,11 +1123,11 @@ namespace NS_SWEETEDITOR {
       m_logical_lines_[i].start_byte = m_logical_lines_[i - 1].start_byte
                                      + m_lines_[i - 1].size()
                                      + lineEndingBytes(m_logical_lines_[i - 1].line_ending);
-      m_logical_lines_[i].is_char_dirty = true;
+      m_logical_lines_[i].is_u16_dirty = true;
     }
     // Mark from_line itself as dirty too
     if (from_line > 0) {
-      m_logical_lines_[from_line - 1].is_char_dirty = true;
+      m_logical_lines_[from_line - 1].is_u16_dirty = true;
     }
   }
 
@@ -1179,3 +1158,4 @@ namespace NS_SWEETEDITOR {
   }
 #pragma endregion
 }
+

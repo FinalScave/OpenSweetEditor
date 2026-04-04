@@ -6,6 +6,7 @@
 #define SWEETEDITOR_UTILITY_H
 
 #include <cstdint>
+#include <foundation.h>
 #include <macro.h>
 
 namespace NS_SWEETEDITOR {
@@ -51,6 +52,51 @@ namespace NS_SWEETEDITOR {
     /// Heap-allocate a copy of a UTF-16 string for C-style APIs that need longer lifetime data
     /// @note Caller must release the returned pointer with delete[]
     static U16Char* allocU16Chars(const U16String& utf16_str);
+  };
+
+  class UnicodeUtil {
+  public:
+    /// Whether the UTF-16 code unit is a lead surrogate.
+    static bool isLeadSurrogate(U16Char ch);
+
+    /// Whether the UTF-16 code unit is a trail surrogate.
+    static bool isTrailSurrogate(U16Char ch);
+
+    /// Whether the given UTF-16 column is on a code-point boundary.
+    static bool isCodePointBoundary(const U16String& text, size_t column);
+
+    /// Clamp the column to a valid code-point boundary, preferring the left side.
+    static size_t clampColumnToCodePointBoundary(const U16String& text, size_t column);
+
+    /// Clamp the column to a valid code-point boundary on the left side.
+    static size_t clampColumnToCodePointBoundaryLeft(const U16String& text, size_t column);
+
+    /// Clamp the column to a valid code-point boundary on the right side.
+    static size_t clampColumnToCodePointBoundaryRight(const U16String& text, size_t column);
+
+    /// Move to the previous code-point boundary.
+    static size_t prevCodePointColumn(const U16String& text, size_t column);
+
+    /// Move to the next code-point boundary.
+    static size_t nextCodePointColumn(const U16String& text, size_t column);
+
+    /// Clamp the column to a valid grapheme boundary on the left side.
+    static size_t clampColumnToGraphemeBoundaryLeft(const U16String& text, size_t column);
+
+    /// Clamp the column to a valid grapheme boundary on the right side.
+    static size_t clampColumnToGraphemeBoundaryRight(const U16String& text, size_t column);
+
+    /// Move to the previous grapheme boundary.
+    static size_t prevGraphemeBoundaryColumn(const U16String& text, size_t column);
+
+    /// Move to the next grapheme boundary.
+    static size_t nextGraphemeBoundaryColumn(const U16String& text, size_t column);
+
+    /// Whether the text contains complex grapheme sequences that should avoid UTF-16-unit-based monospace shortcuts.
+    static bool hasComplexGrapheme(const U16String& text);
+
+    /// Clamp a same-line range to valid code-point boundaries.
+    static TextRange clampRangeToCodePointBoundary(const U16String& text, const TextRange& range);
   };
 }
 

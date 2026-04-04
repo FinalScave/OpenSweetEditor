@@ -3,6 +3,7 @@ add_definitions(-DCATCH_AMALGAMATED_CUSTOM_MAIN=ON)
 add_executable(${TEST_PRODUCT_NAME}
         ${3DPARTY_DIR}/include/catch2/catch_amalgamated.cpp
         tests_main.cpp
+        unicode_util.cpp
         edit_document.cpp
         document_parity.cpp
         editor_core_editing.cpp
