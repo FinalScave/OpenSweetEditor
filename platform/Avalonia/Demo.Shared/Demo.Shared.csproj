@@ -32,4 +32,11 @@
       <LogicalName>SweetEditor.Demo.Icons.%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../../prebuilt/linux/x86_64/libsweetline.so" Condition="Exists('../../../prebuilt/linux/x86_64/libsweetline.so')" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../../prebuilt/windows/x64/sweetline.dll" Condition="Exists('../../../prebuilt/windows/x64/sweetline.dll')" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../../prebuilt/osx/x86_64/libsweetline.dylib" Condition="Exists('../../../prebuilt/osx/x86_64/libsweetline.dylib')" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../../prebuilt/osx/arm64/libsweetline.dylib" Condition="Exists('../../../prebuilt/osx/arm64/libsweetline.dylib')" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

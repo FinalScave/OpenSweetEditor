@@ -31,9 +31,6 @@ internal sealed class DemoSweetLineRuntime : IDisposable
 
     public static DemoSweetLineRuntime? TryGetOrCreate()
     {
-        if (!OperatingSystem.IsAndroid())
-            return null;
-
         lock (SyncRoot)
         {
             if (instance != null)
@@ -46,6 +43,13 @@ internal sealed class DemoSweetLineRuntime : IDisposable
             {
                 instance = new DemoSweetLineRuntime();
                 return instance;
+            }
+            catch (DllNotFoundException ex)
+            {
+                initError = ex;
+                Console.Error.WriteLine($"SweetLine native library not found: {ex.Message}");
+                Console.Error.WriteLine("Falling back to managed highlight implementation.");
+                return null;
             }
             catch (Exception ex)
             {

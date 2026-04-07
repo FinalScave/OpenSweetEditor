@@ -1,3 +1,4 @@
+.gitignore
 .build-tools/
 .tmp/
 .adb-screen.png

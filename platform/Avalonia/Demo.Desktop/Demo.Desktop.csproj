@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>SweetEditor.Avalonia.Demo.Desktop</AssemblyName>
+    <RootNamespace>SweetEditor.Avalonia.Demo.Desktop</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Demo.Shared\Demo.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\..\prebuilt\windows\x64\sweeteditor.dll" Condition="Exists('..\..\..\prebuilt\windows\x64\sweeteditor.dll')" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\prebuilt\linux\x86_64\libsweeteditor.so" Condition="Exists('..\..\..\prebuilt\linux\x86_64\libsweeteditor.so')" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\prebuilt\osx\x86_64\libsweeteditor.dylib" Condition="Exists('..\..\..\prebuilt\osx\x86_64\libsweeteditor.dylib')" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\prebuilt\osx\arm64\libsweeteditor.dylib" Condition="Exists('..\..\..\prebuilt\osx\arm64\libsweeteditor.dylib')" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

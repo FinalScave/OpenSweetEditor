@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-ios</TargetFramework>
+    <SupportedOSPlatformVersion>13.0</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>SweetEditor.Avalonia.Demo.iOS</AssemblyName>
+    <RootNamespace>SweetEditor.Avalonia.Demo.iOS</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <ApplicationId>com.qiplat.sweeteditor.avalonia.demo.ios</ApplicationId>
+    <ApplicationVersion>1</ApplicationVersion>
+    <ApplicationDisplayVersion>1.0.0</ApplicationDisplayVersion>
+    <RuntimeIdentifier>ios-arm64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <Optimize>true</Optimize>
+    <MtouchLink>None</MtouchLink>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <MtouchLink>Full</MtouchLink>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.12" />
+    <PackageReference Include="Avalonia.iOS" Version="11.3.12" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Demo.Shared\Demo.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <NativeReference Include="..\..\..\prebuilt\ios\arm64\libsweeteditor.dylib" Condition="Exists('..\..\..\prebuilt\ios\arm64\libsweeteditor.dylib')" />
+    <NativeReference Include="..\..\..\prebuilt\ios\arm64\libsweetline.dylib" Condition="Exists('..\..\..\prebuilt\ios\arm64\libsweetline.dylib')" />
+    <NativeReference Include="..\..\..\prebuilt\ios\simulator-arm64\libsweeteditor.dylib" Condition="Exists('..\..\..\prebuilt\ios\simulator-arm64\libsweeteditor.dylib') AND '$(RuntimeIdentifier)' == 'iossimulator-arm64'" />
+    <NativeReference Include="..\..\..\prebuilt\ios\simulator-arm64\libsweetline.dylib" Condition="Exists('..\..\..\prebuilt\ios\simulator-arm64\libsweetline.dylib') AND '$(RuntimeIdentifier)' == 'iossimulator-arm64'" />
+  </ItemGroup>
+</Project>

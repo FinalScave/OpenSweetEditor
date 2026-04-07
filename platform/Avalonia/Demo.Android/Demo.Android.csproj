@@ -56,8 +56,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <AndroidNativeLibrary Remove="native\**\*.so" />
-
     <AndroidNativeLibrary Include="..\..\..\prebuilt\android\arm64-v8a\libsweeteditor.so"
                           Condition="Exists('..\..\..\prebuilt\android\arm64-v8a\libsweeteditor.so')">
       <Link>lib\arm64-v8a\libsweeteditor.so</Link>
@@ -68,13 +66,13 @@
       <Link>lib\x86_64\libsweeteditor.so</Link>
     </AndroidNativeLibrary>
 
-    <AndroidNativeLibrary Include="native\sweetline\arm64-v8a\libsweetline.so"
-                          Condition="Exists('native\sweetline\arm64-v8a\libsweetline.so')">
+    <AndroidNativeLibrary Include="..\..\..\prebuilt\android\arm64-v8a\libsweetline.so"
+                          Condition="Exists('..\..\..\prebuilt\android\arm64-v8a\libsweetline.so')">
       <Link>lib\arm64-v8a\libsweetline.so</Link>
     </AndroidNativeLibrary>
 
-    <AndroidNativeLibrary Include="native\sweetline\x86_64\libsweetline.so"
-                          Condition="Exists('native\sweetline\x86_64\libsweetline.so')">
+    <AndroidNativeLibrary Include="..\..\..\prebuilt\android\x86_64\libsweetline.so"
+                          Condition="Exists('..\..\..\prebuilt\android\x86_64\libsweetline.so')">
       <Link>lib\x86_64\libsweetline.so</Link>
     </AndroidNativeLibrary>
   </ItemGroup>
