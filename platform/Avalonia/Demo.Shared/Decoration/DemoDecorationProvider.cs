@@ -249,7 +249,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
         int pad = largeMode ? 0 : 24;
         int start = Math.Max(0, context.VisibleStartLine - pad);
         int end = Math.Min(total - 1, Math.Max(context.VisibleEndLine, context.VisibleStartLine) + pad);
-        bool requireNativeSyntax = DemoPlatformServices.Current?.IsAndroid == true;
+        bool preferNativeSyntax = true;
         EnsureSmallDocumentLineCache(doc, context.TextChanges);
 
         var syntax = new Dictionary<int, List<StyleSpan>>();
@@ -265,17 +265,17 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
         DecorationApplyMode syntaxApplyMode = largeMode ? DecorationApplyMode.MERGE : DecorationApplyMode.REPLACE_ALL;
         bool usedSweetLine = TryBuildSyntaxWithSweetLine(doc, context, start, end, syntax, indentGuides, flowGuides, out DecorationApplyMode resolvedSyntaxApplyMode);
         syntaxApplyMode = resolvedSyntaxApplyMode;
-        SetHighlightBackendLabel(usedSweetLine, requireNativeSyntax);
+        SetHighlightBackendLabel(usedSweetLine, preferNativeSyntax);
         var braceStack = new Stack<(int line, int column)>();
         int separatorEvery = richDemoMode ? 32 : 0;
-        bool needLineText = richDemoMode || (!usedSweetLine && !requireNativeSyntax);
+        bool needLineText = richDemoMode || (!usedSweetLine && !preferNativeSyntax);
 
         if (needLineText)
         {
             for (int lineIndex = start; lineIndex <= end; lineIndex++)
             {
                 string line = GetDocumentLineText(doc, lineIndex);
-                if (!usedSweetLine && !requireNativeSyntax)
+                if (!usedSweetLine && !preferNativeSyntax)
                     BuildSyntaxFallback(lineIndex, line, syntax);
                 if (richDemoMode)
                 {
@@ -528,7 +528,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
         sweetLineAvailable = false;
     }
 
-    private void SetHighlightBackendLabel(bool usedSweetLine, bool requireNativeSyntax)
+    private void SetHighlightBackendLabel(bool usedSweetLine, bool preferNativeSyntax)
     {
         string nextLabel;
         lock (gate)
@@ -540,7 +540,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
                 sweetLineLargeDocumentAnalyzer != null ||
                 sweetLineLargeDocumentSliceAnalyzer != null;
 
-            if (activeDocumentLargeMode && requireNativeSyntax && !largeDocumentNativeCacheReady && hasAsyncSweetLinePipeline)
+            if (activeDocumentLargeMode && preferNativeSyntax && !largeDocumentNativeCacheReady && hasAsyncSweetLinePipeline)
             {
                 nextLabel = "SweetLine async";
             }
@@ -548,7 +548,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
             {
                 nextLabel = "SweetLine native";
             }
-            else if (requireNativeSyntax)
+            else if (preferNativeSyntax)
             {
                 nextLabel = string.IsNullOrWhiteSpace(DemoSweetLineRuntime.LastInitErrorMessage)
                     ? "SweetLine unavailable"

@@ -1,9 +1,14 @@
+using System;
 using Avalonia;
 using Avalonia.Controls;
 using SweetEditor.Avalonia.Demo.Host;
 
 namespace SweetEditor.Avalonia.Demo.Android.Platform;
 
+/// <summary>
+/// Android platform services implementation.
+/// Provides Android-specific functionality for the demo application.
+/// </summary>
 internal sealed class AndroidDemoPlatformServices : IDemoPlatformServices
 {
     public bool IsAndroid => true;
@@ -35,5 +40,9 @@ internal sealed class AndroidDemoPlatformServices : IDemoPlatformServices
 
         imeTopInHostDip = imeTopInWindowDip - hostTopDip;
         return imeTopInHostDip > 0;
+    }
+
+    public void Dispose()
+    {
     }
 }

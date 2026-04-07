@@ -1,3 +1,5 @@
+using System;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Themes.Fluent;
@@ -18,13 +20,21 @@ public sealed class App : global::Avalonia.Application
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new Window
+            try
             {
-                Title = "SweetEditor Avalonia Demo",
-                Width = 1440,
-                Height = 920,
-                Content = new global::SweetEditor.Avalonia.Demo.MainView(),
-            };
+                desktop.MainWindow = new Window
+                {
+                    Title = "SweetEditor Avalonia Demo",
+                    Width = 1440,
+                    Height = 920,
+                    Content = new global::SweetEditor.Avalonia.Demo.MainView(),
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Failed to create main window: {ex}");
+                throw;
+            }
         }
 
         base.OnFrameworkInitializationCompleted();

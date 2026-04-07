@@ -1,3 +1,4 @@
+using System;
 using Android.App;
 using Android.Content.PM;
 using Android.OS;
@@ -8,10 +9,11 @@ using Avalonia.Android;
 namespace SweetEditor.Avalonia.Demo.Android;
 
 [Activity(
-    Label = "SweetEditor Avalonia Demo.Android",
+    Label = "SweetEditor Demo",
     Theme = "@style/Theme.AppCompat.DayNight.NoActionBar",
     MainLauncher = true,
     LaunchMode = LaunchMode.SingleTask,
+    HardwareAccelerated = true,
     ConfigurationChanges =
         ConfigChanges.Orientation |
         ConfigChanges.ScreenSize |
@@ -38,7 +40,10 @@ public sealed class MainActivity : AvaloniaMainActivity<App>
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         Window?.AddFlags(WindowManagerFlags.HardwareAccelerated);
+        Window?.SetSoftInputMode(SoftInput.AdjustResize);
+        
         base.OnCreate(savedInstanceState);
+        
         lock (ActivityLock)
         {
             current = this;

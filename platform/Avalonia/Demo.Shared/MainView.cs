@@ -17,8 +17,10 @@ using SweetEditor;
 using SweetEditor.Avalonia.Demo.Decoration;
 using SweetEditor.Avalonia.Demo.Editor;
 using SweetEditor.Avalonia.Demo.Host;
+using SweetEditor.Avalonia.Demo.UI;
 using SweetEditor.Avalonia.Demo.UI.Samples;
 using SweetEditor.Avalonia.Demo.UI.Toolbar;
+using SweetEditor.Avalonia.Demo.ViewModels;
 using AvaControls = global::Avalonia.Controls;
 using AvaInteractivity = global::Avalonia.Interactivity;
 using AvaPath = global::Avalonia.Controls.Shapes.Path;
@@ -74,6 +76,11 @@ public sealed class MainView : UserControl
     private readonly StackPanel completionItemsPanel = new();
     private readonly StackPanel selectionActionItemsPanel = new();
 
+    private readonly MainViewModel viewModel;
+    private readonly Border welcomeOverlay = new();
+    private readonly LoadingIndicator loadingIndicator = new();
+    private readonly NotificationPanel notificationPanel = new();
+
     private readonly DemoDecorationProvider decorationProvider;
     private readonly DemoCompletionProvider completionProvider = new();
     private readonly DemoIconProvider iconProvider = new();
@@ -108,6 +115,9 @@ public sealed class MainView : UserControl
 
     public MainView()
     {
+        viewModel = new MainViewModel();
+        viewModel.SaveSettingsRequested += () => viewModel.SaveCurrentSettings();
+
         decorationProvider = new DemoDecorationProvider(() => controller.GetDocument(), controller.RequestDecorationRefresh);
         selectionMenuProvider = new DemoSelectionMenuItemProvider(
             () => inlineSuggestionAutoEnabled,
@@ -124,10 +134,45 @@ public sealed class MainView : UserControl
         decorationProvider.HighlightBackendChanged += () =>
             Dispatcher.UIThread.Post(() => ScheduleChromeRefresh(DeferredChromeWork.Summary), DispatcherPriority.Background);
 
+        ApplyViewModelSettings();
         BuildLayout();
         WireEvents();
+        SetupWelcomeOverlay();
 
         ScheduleEditorInitialization();
+    }
+
+    private void ApplyViewModelSettings()
+    {
+        DemoSettings settings = viewModel.GetSettings();
+        darkTheme = settings.DarkTheme;
+        wrapMode = settings.WrapMode;
+        currentScale = settings.CurrentScale > 0 ? settings.CurrentScale : 1f;
+        perfOverlayEnabled = settings.PerfOverlayEnabled;
+        useVsCodeKeyMap = settings.UseVsCodeKeyMap;
+        inlineSuggestionAutoEnabled = settings.InlineSuggestionAutoEnabled;
+    }
+
+    private void SetupWelcomeOverlay()
+    {
+        WelcomeOverlayView welcomeView = new();
+        welcomeView.CloseRequested += () =>
+        {
+            welcomeOverlay.IsVisible = false;
+            viewModel.ShowWelcome = false;
+            editor?.Focus();
+        };
+        welcomeView.DontShowAgainRequested += () =>
+        {
+            viewModel.ShowWelcome = false;
+        };
+
+        welcomeOverlay.Background = Brushes.Transparent;
+        welcomeOverlay.HorizontalAlignment = HorizontalAlignment.Stretch;
+        welcomeOverlay.VerticalAlignment = VerticalAlignment.Stretch;
+        welcomeOverlay.ZIndex = 80;
+        welcomeOverlay.Child = welcomeView;
+        welcomeOverlay.IsVisible = viewModel.ShowWelcome;
     }
 
     private void BuildLayout()
@@ -184,6 +229,15 @@ public sealed class MainView : UserControl
         editorHost.Children.Add(completionPopup);
         editorHost.Children.Add(selectionActionBar);
 
+        loadingIndicator.IsLoading = false;
+        loadingIndicator.LoadingText = "Loading sample...";
+        loadingIndicator.ZIndex = 60;
+        editorHost.Children.Add(loadingIndicator);
+
+        notificationPanel.DarkTheme = darkTheme;
+        notificationPanel.ZIndex = 90;
+        editorHost.Children.Add(notificationPanel);
+
         statusText.Text = "Ready";
         statusText.FontSize = 11.5;
         statusText.TextTrimming = TextTrimming.CharacterEllipsis;
@@ -213,10 +267,12 @@ public sealed class MainView : UserControl
         Grid.SetRow(editorHost, 1);
         Grid.SetRow(statusBar, 2);
         Grid.SetRowSpan(samplePickerPopup, 3);
+        Grid.SetRowSpan(welcomeOverlay, 3);
         layoutRoot.Children.Add(toolbarContainer);
         layoutRoot.Children.Add(editorHost);
         layoutRoot.Children.Add(statusBar);
         layoutRoot.Children.Add(samplePickerPopup);
+        layoutRoot.Children.Add(welcomeOverlay);
         Content = layoutRoot;
     }
 
@@ -235,6 +291,7 @@ public sealed class MainView : UserControl
         toolbarController.ZoomOutButton.Click += (_, _) => StepScale(-1);
         toolbarController.ZoomInButton.Click += (_, _) => StepScale(1);
         toolbarController.PerfButton.Click += (_, _) => TogglePerfOverlay();
+        toolbarController.HelpButton.Click += (_, _) => ShowKeyboardShortcutsDialog();
 
         controller.DocumentLoaded += (_, _) =>
         {
@@ -497,6 +554,8 @@ public sealed class MainView : UserControl
         selectionActionBar.Background = CreateBrush(darkTheme ? 0xFF1B1E24u : 0xFFFFFFFFu);
         selectionActionBar.BorderBrush = CreateBrush(darkTheme ? 0xFF313844u : 0xFFD7DEE8u);
 
+        notificationPanel.DarkTheme = darkTheme;
+
         toolbarController.SamplePickerChrome.Background = CreateBrush(surfaceMuted);
         toolbarController.SamplePickerChrome.BorderBrush = CreateBrush(border);
         toolbarController.SamplePickerChrome.BorderThickness = new Thickness(1);
@@ -542,6 +601,9 @@ public sealed class MainView : UserControl
         HideCompletionPopup();
         HideSelectionActionBar();
         controller.GetSettings()?.SetGutterSticky(DemoPlatformServices.Current?.IsAndroid != true);
+
+        loadingIndicator.IsLoading = true;
+        loadingIndicator.LoadingText = $"Loading {sample.FileName}...";
 
         UpdateFeatureStrip();
     }
@@ -1875,7 +1937,11 @@ public sealed class MainView : UserControl
 
     private void UpdateStatus(string message)
     {
-        Dispatcher.UIThread.Post(() => statusText.Text = message);
+        Dispatcher.UIThread.Post(() =>
+        {
+            statusText.Text = message;
+            loadingIndicator.IsLoading = false;
+        });
     }
 
     private void RenderCompletionItems()
@@ -2097,6 +2163,31 @@ public sealed class MainView : UserControl
         CompletionItem.KIND_SNIPPET => 0xFFBE5046u,
         _ => 0xFF7A8494u,
     };
+
+    private void ShowNotification(string message, NotificationType type = NotificationType.Info)
+    {
+        notificationPanel.ShowNotification(message, type);
+    }
+
+    private void ShowError(string message, Exception? exception = null)
+    {
+        notificationPanel.ShowError(message, exception);
+    }
+
+    private void ShowSuccess(string message)
+    {
+        notificationPanel.ShowSuccess(message);
+    }
+
+    private void ShowWarning(string message)
+    {
+        notificationPanel.ShowWarning(message);
+    }
+
+    private void ShowKeyboardShortcutsDialog()
+    {
+        KeyboardShortcutsDialog.Open((Window)this.VisualRoot!);
+    }
 
     private static SolidColorBrush CreateBrush(uint argb) => new(Color.FromUInt32(argb));
 }

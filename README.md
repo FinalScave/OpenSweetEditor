@@ -45,10 +45,10 @@ It is suited for long-term editor infrastructure in IDEs, AI programming tools, 
 | Swing | Implemented | Java2D                  | Swing | [./platform/Swing](./platform/Swing)                                                                                |
 | OHOS | Implemented | ArkUI Canvas            | ArkUI | [./platform/OHOS](./platform/OHOS)                                                                                  |
 | Flutter | Implemented | TextPainter             | Flutter | [./platform/Flutter](./platform/Flutter)                                                                               |
+| Avalonia | Implemented | Direct2D / Skia         | Avalonia UI | [./platform/Avalonia](./platform/Avalonia)                                                                           |
 | Compose Multiplatform | In Progress | Compose Canvas          | Compose | [lumkit/SweetEditor-Compose](https://github.com/lumkit/SweetEditor-Compose)                                              |
 | Web | Testing (Unofficial) | -                       | - | [LangLang03/OpenSweetEditor-Web](https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten) |
 | Qt | Planned | -                       | Qt | -                                                                                                                            |
-| C# Avalonia UI | Planned | -                       | - | -                                                                                                                            |
 | C# WinUI | Planned | -                       | - | -                                                                                                                            |
 
 ## Overall Architecture

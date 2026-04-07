@@ -42,13 +42,13 @@ SweetEditor 是一套跨平台代码编辑器内核，面向需要在 Android、
 | iOS | 已实现 | CoreText + CoreGraphics | UIKit / SwiftUI（正在完善） | [./platform/Apple](./platform/Apple)                                                                                   |
 | macOS | 已实现 | CoreText + CoreGraphics | AppKit / SwiftUI（正在完善） | [./platform/Apple](./platform/Apple)                                                                                   |
 | Windows | 已实现 | GDI+                    | WinForms | [./platform/WinForms](./platform/WinForms)                                                                             |
-| Swing | 已实现 | Java2D                  | Swing | ./[platform/Swing](./platform/Swing)                                                                                   |
+| Swing | 已实现 | Java2D                  | Swing | [./platform/Swing](./platform/Swing)                                                                                   |
 | OHOS | 已实现 | ArkUI Canvas            | ArkUI | [./platform/OHOS](./platform/OHOS)                                                                                     |
 | Flutter | 已实现 | TextPainter             | Flutter | [./platform/Flutter](./platform/Flutter)                                                                               |
+| Avalonia | 已实现 | Direct2D / Skia         | Avalonia UI | [./platform/Avalonia](./platform/Avalonia)                                                                             |
 | Compose Multiplatform | 进行中 | Compose Canvas          | Compose | [lumkit/SweetEditor-Compose](https://github.com/lumkit/SweetEditor-Compose)                                              |
 | Web | 测试中（非官方） | -                       | - | [LangLang03/OpenSweetEditor-Web](https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten) |
 | Qt | 待实现 | -                       | Qt | -                                                                                                                         |
-| C# Avalonia UI | 待实现 | -                       | - | -                                                                                                                         |
 | C# WinUI | 待实现 | -                       | - | -                                                                                                                         |
 
 ## 整体架构

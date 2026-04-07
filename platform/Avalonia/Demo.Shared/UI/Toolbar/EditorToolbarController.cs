@@ -15,6 +15,7 @@ public sealed class EditorToolbarController
     private const string ThemeIcon = "M20,8.69V4h-4.69L12,0.69 8.69,4H4v4.69L0.69,12 4,15.31V20h4.69L12,23.31 15.31,20H20v-4.69L23.31,12 20,8.69zM12,18c-3.31,0 -6,-2.69 -6,-6s2.69,-6 6,-6 6,2.69 6,6 -2.69,6 -6,6zM12,8v8c2.21,0 4,-1.79 4,-4s-1.79,-4 -4,-4z";
     private const string WrapIcon = "M4,19h6v-2H4v2zM20,5H4v2h16V5zM17,11H4v2h13.25c1.1,0 2,0.9 2,2s-0.9,2 -2,2H15v-2l-3,3 3,3v-2h2.25c2.21,0 4,-1.79 4,-4s-1.79,-4 -4,-4z";
     private const string ChevronDownIcon = "M7,10l5,5 5,-5";
+    private const string HelpIcon = "M11,18h2v-2h-2v2zM12,2C6.48,2 2,6.48 2,12s4.48,10 10,10 10,-4.48 10,-10S17.52,2 12,2zM12,20c-4.41,0 -8,-3.59 -8,-8s3.59,-8 8,-8 8,3.59 8,8 -3.59,8 -8,8zM12,6c-2.21,0 -4,1.79 -4,4h2c0,-1.1 0.9,-2 2,-2s2,0.9 2,2c0,2 -3,1.75 -3,5h2c0,-2.25 3,-2.5 3,-5 0,-2.21 -1.79,-4 -4,-4z";
 
     private readonly TextBlock wrapBadgeText;
     private readonly TextBlock samplePickerLabel;
@@ -30,6 +31,7 @@ public sealed class EditorToolbarController
         ZoomOutButton = CreateTextButton("A-", "Smaller UI");
         ZoomInButton = CreateTextButton("A+", "Larger UI");
         PerfButton = CreateTextButton("FPS", "Toggle performance overlay");
+        HelpButton = CreateIconButton(HelpIcon, "Keyboard shortcuts");
         SamplePickerButton = CreateSamplePickerButton(out samplePickerChrome, out samplePickerLabel, out samplePickerChevron);
         wrapBadgeText = FindWrapBadge(WrapButton);
         SetSamplePickerLabel(null);
@@ -47,6 +49,7 @@ public sealed class EditorToolbarController
     public Button ZoomOutButton { get; }
     public Button ZoomInButton { get; }
     public Button PerfButton { get; }
+    public Button HelpButton { get; }
     public Border SamplePickerChrome => samplePickerChrome;
     public TextBlock SamplePickerLabel => samplePickerLabel;
     public AvaPath SamplePickerChevron => samplePickerChevron;
@@ -62,6 +65,7 @@ public sealed class EditorToolbarController
             yield return ZoomOutButton;
             yield return ZoomInButton;
             yield return PerfButton;
+            yield return HelpButton;
         }
     }
 
