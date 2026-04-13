@@ -11,11 +11,14 @@ public sealed class App : global::Avalonia.Application
 {
     public override void Initialize()
     {
+        DemoHostDiagnostics.InstallGlobalHandlers("Android.App.Initialize");
+        DemoHostDiagnostics.WriteLine("App.Initialize");
         Styles.Add(new FluentTheme());
     }
 
     public override void OnFrameworkInitializationCompleted()
     {
+        DemoHostDiagnostics.WriteLine("App.OnFrameworkInitializationCompleted enter");
         DemoPlatformServices.Current = new AndroidDemoPlatformServices();
         Control mainView = new DeferredMainViewHost();
 
@@ -35,6 +38,7 @@ public sealed class App : global::Avalonia.Application
                 break;
         }
 
+        DemoHostDiagnostics.WriteLine("App.OnFrameworkInitializationCompleted exit");
         base.OnFrameworkInitializationCompleted();
     }
 }

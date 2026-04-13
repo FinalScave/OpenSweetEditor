@@ -311,7 +311,8 @@ namespace SweetEditor {
 				bool drawWhitespaceText = run.Type is not (VisualRunType.WHITESPACE or VisualRunType.TAB);
 				bool hasBackground = run.Style.BackgroundColor != 0;
 				bool hasStrike = (run.Style.FontStyle & FontStyleStrike) != 0;
-				bool needsLayout = hasBackground || hasStrike || isInlay;
+				bool isActiveCodeLens = run.Type == VisualRunType.CODELENS && run.Active;
+				bool needsLayout = hasBackground || hasStrike || isInlay || isActiveCodeLens;
 				float textSize = run.Type == VisualRunType.INLAY_HINT ? EffectiveInlaySize : EffectiveTextSize;
 
 				Typeface typeface = GetTypefaceCached(run.Style.FontStyle);
@@ -397,7 +398,17 @@ namespace SweetEditor {
 					float y = Snap(topY + layout.Baseline * 0.5f);
 					context.DrawLine(GetPen(textColor, 1), new Point(drawX, y), new Point(drawX + drawWidth, y));
 				}
+
+				if (isActiveCodeLens) {
+					float underlineY = ComputeCodeLensUnderlineY(topY, layout);
+					context.DrawLine(GetPen(textColor, 1), new Point(drawX, underlineY), new Point(drawX + drawWidth, underlineY));
+				}
 			}
+		}
+
+		private float ComputeCodeLensUnderlineY(float topY, LayoutMetrics layout) {
+			float gap = Math.Clamp(layout.Height * 0.14f, 2.0f, 3.0f);
+			return Snap(topY + layout.Height + gap);
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -431,7 +442,10 @@ namespace SweetEditor {
 		}
 
 		private Pen GetPen(int argb, double thickness, PenLineCap lineCap = PenLineCap.Flat, PenLineJoin lineJoin = PenLineJoin.Miter) {
-			long key = ((long)argb << 32) | ((long)QuantizeSize((float)thickness) << 8) | ((int)lineCap << 4) | (int)lineJoin;
+			long key = unchecked((long)(((ulong)(uint)argb << 32) |
+				((ulong)(uint)QuantizeSize((float)thickness) << 8) |
+				((ulong)(uint)lineCap << 4) |
+				(uint)lineJoin));
 			if (_penCache.TryGet(key, out Pen? pen)) {
 				return pen!;
 			}
@@ -575,7 +589,7 @@ namespace SweetEditor {
 			Span<VisualLine> lines = CollectionsMarshal.AsSpan(model.VisualLines);
 			for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++) {
 				ref readonly VisualLine line = ref lines[lineIndex];
-				if (line.WrapIndex != 0 || line.IsPhantomLine) {
+				if (!line.OwnsGutterSemantics) {
 					continue;
 				}
 
@@ -766,11 +780,15 @@ namespace SweetEditor {
 		}
 
 		private int ResolveRunTextColor(VisualRun run) {
-			return run.Type == VisualRunType.INLAY_HINT
-				? (int)_theme.InlayHintTextColor
-				: run.Style.Color != 0
-					? run.Style.Color
-					: (int)_theme.TextColor;
+			if (run.Type == VisualRunType.INLAY_HINT) {
+				return (int)_theme.InlayHintTextColor;
+			}
+			if (run.Type == VisualRunType.CODELENS) {
+				return run.Active ? GetActiveLineNumberColor() : (int)_theme.InlayHintTextColor;
+			}
+			return run.Style.Color != 0
+				? run.Style.Color
+				: (int)_theme.TextColor;
 		}
 
 		private string GetLineNumberText(int logicalLineNumber) {

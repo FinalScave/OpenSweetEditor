@@ -271,60 +271,144 @@ namespace SweetEditor {
 
 		#endregion
 
+		#region CodeLens
+
+		internal static byte[] PackLineCodeLens(int line, IList<CodeLensItem> items) {
+			CodeLensItem[] orderedItems = NormalizeCodeLensItems(items);
+			int count = orderedItems.Length;
+			int totalSize = 8;
+			byte[][] textBytes = new byte[count][];
+			for (int i = 0; i < count; i++) {
+				byte[] bytes = Encoding.UTF8.GetBytes(orderedItems[i].Text ?? string.Empty);
+				textBytes[i] = bytes;
+				totalSize += 12 + bytes.Length;
+			}
+			byte[] payload = new byte[totalSize];
+			int offset = 0;
+			WriteInt32LE(payload, ref offset, Math.Max(0, line));
+			WriteInt32LE(payload, ref offset, count);
+			for (int i = 0; i < count; i++) {
+				WriteInt32LE(payload, ref offset, Math.Max(0, orderedItems[i].Column));
+				WriteInt32LE(payload, ref offset, orderedItems[i].CommandId);
+				byte[] bytes = textBytes[i];
+				WriteInt32LE(payload, ref offset, bytes.Length);
+				if (bytes.Length > 0) {
+					Buffer.BlockCopy(bytes, 0, payload, offset, bytes.Length);
+					offset += bytes.Length;
+				}
+			}
+			return payload;
+		}
+
+		internal static byte[] PackBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine) {
+			int totalSize = 4;
+			var orderedItemsByLine = new Dictionary<int, CodeLensItem[]>(itemsByLine.Count);
+			var allTextBytes = new Dictionary<int, byte[][]>(itemsByLine.Count);
+			foreach (var kv in itemsByLine) {
+				CodeLensItem[] items = NormalizeCodeLensItems(kv.Value);
+				orderedItemsByLine[kv.Key] = items;
+				totalSize += 8;
+				var lineTextBytes = new byte[items.Length][];
+				for (int i = 0; i < items.Length; i++) {
+					byte[] bytes = Encoding.UTF8.GetBytes(items[i].Text ?? string.Empty);
+					lineTextBytes[i] = bytes;
+					totalSize += 12 + bytes.Length;
+				}
+				allTextBytes[kv.Key] = lineTextBytes;
+			}
+			byte[] payload = new byte[totalSize];
+			int offset = 0;
+			WriteInt32LE(payload, ref offset, itemsByLine.Count);
+			foreach (var kv in itemsByLine) {
+				WriteInt32LE(payload, ref offset, Math.Max(0, kv.Key));
+				CodeLensItem[] items = orderedItemsByLine[kv.Key];
+				WriteInt32LE(payload, ref offset, items.Length);
+				byte[][] lineTextBytes = allTextBytes[kv.Key];
+				for (int i = 0; i < items.Length; i++) {
+					WriteInt32LE(payload, ref offset, Math.Max(0, items[i].Column));
+					WriteInt32LE(payload, ref offset, items[i].CommandId);
+					byte[] bytes = lineTextBytes[i];
+					WriteInt32LE(payload, ref offset, bytes.Length);
+					if (bytes.Length > 0) {
+						Buffer.BlockCopy(bytes, 0, payload, offset, bytes.Length);
+						offset += bytes.Length;
+					}
+				}
+			}
+			return payload;
+		}
+
+		private static CodeLensItem[] NormalizeCodeLensItems(IList<CodeLensItem> items) {
+			var orderedItems = new CodeLensItem[items.Count];
+			for (int i = 0; i < items.Count; i++) {
+				orderedItems[i] = items[i];
+			}
+
+			Array.Sort(orderedItems, static (left, right) => {
+				int columnCompare = Math.Max(0, left.Column).CompareTo(Math.Max(0, right.Column));
+				return columnCompare != 0
+					? columnCompare
+					: left.CommandId.CompareTo(right.CommandId);
+			});
+			return orderedItems;
+		}
+
+		#endregion
+
 		#region Diagnostics
 
-		internal static byte[] PackLineDiagnostics(int line, IList<DiagnosticItem> items) {
+		internal static byte[] PackLineDiagnostics<TDiagnostic>(int line, IList<TDiagnostic> items) where TDiagnostic : Diagnostic {
 			int count = items.Count;
 			byte[] payload = new byte[8 + count * 16];
 			int offset = 0;
-			WriteInt32LE(payload, ref offset, line);
+			WriteInt32LE(payload, ref offset, Math.Max(0, line));
 			WriteInt32LE(payload, ref offset, count);
 			for (int i = 0; i < count; i++) {
 				var d = items[i];
-				WriteInt32LE(payload, ref offset, d.Column);
-				WriteInt32LE(payload, ref offset, d.Length);
-				WriteInt32LE(payload, ref offset, d.Severity);
+				WriteInt32LE(payload, ref offset, Math.Max(0, d.Column));
+				WriteInt32LE(payload, ref offset, Math.Max(0, d.Length));
+				WriteInt32LE(payload, ref offset, Math.Clamp(d.Severity, 0, 3));
 				WriteInt32LE(payload, ref offset, d.Color);
 			}
 			return payload;
 		}
 
-		internal static byte[] PackBatchLineDiagnostics(Dictionary<int, IList<DiagnosticItem>> diagsByLine) {
+		internal static byte[] PackBatchLineDiagnostics<TDiagnostic>(Dictionary<int, IList<TDiagnostic>> diagsByLine) where TDiagnostic : Diagnostic {
 			int totalDiags = 0;
 			foreach (var kv in diagsByLine) totalDiags += kv.Value.Count;
 			byte[] payload = new byte[4 + diagsByLine.Count * 8 + totalDiags * 16];
 			int offset = 0;
 			WriteInt32LE(payload, ref offset, diagsByLine.Count);
 			foreach (var kv in diagsByLine) {
-				WriteInt32LE(payload, ref offset, kv.Key);
+				WriteInt32LE(payload, ref offset, Math.Max(0, kv.Key));
 				var items = kv.Value;
 				WriteInt32LE(payload, ref offset, items.Count);
 				for (int i = 0; i < items.Count; i++) {
 					var d = items[i];
-					WriteInt32LE(payload, ref offset, d.Column);
-					WriteInt32LE(payload, ref offset, d.Length);
-					WriteInt32LE(payload, ref offset, d.Severity);
+					WriteInt32LE(payload, ref offset, Math.Max(0, d.Column));
+					WriteInt32LE(payload, ref offset, Math.Max(0, d.Length));
+					WriteInt32LE(payload, ref offset, Math.Clamp(d.Severity, 0, 3));
 					WriteInt32LE(payload, ref offset, d.Color);
 				}
 			}
 			return payload;
 		}
 
-		internal static byte[] PackBatchLineDiagnostics(Dictionary<int, List<DiagnosticItem>> diagsByLine) {
+		internal static byte[] PackBatchLineDiagnostics<TDiagnostic>(Dictionary<int, List<TDiagnostic>> diagsByLine) where TDiagnostic : Diagnostic {
 			int totalDiags = 0;
 			foreach (var kv in diagsByLine) totalDiags += kv.Value.Count;
 			byte[] payload = new byte[4 + diagsByLine.Count * 8 + totalDiags * 16];
 			int offset = 0;
 			WriteInt32LE(payload, ref offset, diagsByLine.Count);
 			foreach (var kv in diagsByLine) {
-				WriteInt32LE(payload, ref offset, kv.Key);
-				List<DiagnosticItem> items = kv.Value;
+				WriteInt32LE(payload, ref offset, Math.Max(0, kv.Key));
+				List<TDiagnostic> items = kv.Value;
 				WriteInt32LE(payload, ref offset, items.Count);
 				for (int i = 0; i < items.Count; i++) {
 					var d = items[i];
-					WriteInt32LE(payload, ref offset, d.Column);
-					WriteInt32LE(payload, ref offset, d.Length);
-					WriteInt32LE(payload, ref offset, d.Severity);
+					WriteInt32LE(payload, ref offset, Math.Max(0, d.Column));
+					WriteInt32LE(payload, ref offset, Math.Max(0, d.Length));
+					WriteInt32LE(payload, ref offset, Math.Clamp(d.Severity, 0, 3));
 					WriteInt32LE(payload, ref offset, d.Color);
 				}
 			}
@@ -502,6 +586,10 @@ namespace SweetEditor {
 		private static readonly ConcurrentBag<List<GutterIconRenderItem>> GutterIconListPool = new();
 		private static readonly ConcurrentBag<List<FoldMarkerRenderItem>> FoldMarkerListPool = new();
 		private static readonly ConcurrentBag<List<SelectionRect>> SelectionRectListPool = new();
+		private static readonly ConcurrentBag<List<GuideSegment>> GuideSegmentListPool = new();
+		private static readonly ConcurrentBag<List<DiagnosticDecoration>> DiagnosticDecorationListPool = new();
+		private static readonly ConcurrentBag<List<LinkedEditingRect>> LinkedEditingRectListPool = new();
+		private static readonly ConcurrentBag<List<BracketHighlightRect>> BracketHighlightRectListPool = new();
 		private static readonly List<VisualLine> EmptyVisualLines = new(0);
 		private static readonly List<VisualRun> EmptyVisualRuns = new(0);
 		private static readonly List<GutterIconRenderItem> EmptyGutterIcons = new(0);
@@ -516,6 +604,10 @@ namespace SweetEditor {
 		private const int MaxPooledGutterIconListCapacity = 128;
 		private const int MaxPooledFoldMarkerListCapacity = 128;
 		private const int MaxPooledSelectionRectListCapacity = 128;
+		private const int MaxPooledGuideSegmentListCapacity = 256;
+		private const int MaxPooledDiagnosticDecorationListCapacity = 256;
+		private const int MaxPooledLinkedEditingRectListCapacity = 128;
+		private const int MaxPooledBracketHighlightRectListCapacity = 128;
 
 		internal static int GetPayloadLength(IntPtr payloadPtr, UIntPtr payloadSize) {
 			if (payloadPtr == IntPtr.Zero) {
@@ -632,13 +724,18 @@ namespace SweetEditor {
 		};
 
 		internal static HitTargetType ToHitTargetType(int value) => value switch {
-			>= (int)HitTargetType.NONE and <= (int)HitTargetType.INLAY_HINT_COLOR => (HitTargetType)value,
+			>= (int)HitTargetType.NONE and <= (int)HitTargetType.CODELENS => (HitTargetType)value,
 			_ => HitTargetType.NONE,
 		};
 
 		internal static VisualRunType ToVisualRunType(int value) => value switch {
-			>= (int)VisualRunType.TEXT and <= (int)VisualRunType.TAB => (VisualRunType)value,
+			>= (int)VisualRunType.TEXT and <= (int)VisualRunType.CODELENS => (VisualRunType)value,
 			_ => VisualRunType.TEXT,
+		};
+
+		internal static VisualLineKind ToVisualLineKind(int value) => value switch {
+			>= (int)VisualLineKind.CONTENT and <= (int)VisualLineKind.CODELENS => (VisualLineKind)value,
+			_ => VisualLineKind.CONTENT,
 		};
 
 		internal static FoldState ToFoldState(int value) => value switch {
@@ -683,37 +780,30 @@ namespace SweetEditor {
 			run = default;
 			if (!TryReadInt32(data, ref offset, out int typeValue) ||
 				!TryReadFloat(data, ref offset, out float x) ||
-				!TryReadFloat(data, ref offset, out float y)) {
-				return false;
-			}
-
-			VisualRunType runType = ToVisualRunType(typeValue);
-			string text;
-			if (runType is VisualRunType.WHITESPACE or VisualRunType.NEWLINE or VisualRunType.TAB) {
-				if (!TrySkipUtf8String(data, ref offset)) {
-					return false;
-				}
-				text = string.Empty;
-			} else if (!TryReadUtf8String(data, ref offset, out text)) {
-				return false;
-			}
-
-			if (!TryReadTextStyle(data, ref offset, out TextStyle style) ||
+				!TryReadFloat(data, ref offset, out float y) ||
+				!TryReadUtf8String(data, ref offset, out string text) ||
+				!TryReadTextStyle(data, ref offset, out TextStyle style) ||
 				!TryReadInt32(data, ref offset, out int iconId) ||
-				!TrySkipBytes(data, ref offset, 4) ||
+				!TryReadInt32(data, ref offset, out int colorValue) ||
 				!TryReadFloat(data, ref offset, out float width) ||
-				!TrySkipBytes(data, ref offset, 8)) {
+				!TryReadFloat(data, ref offset, out float padding) ||
+				!TryReadFloat(data, ref offset, out float margin) ||
+				!TryReadInt32(data, ref offset, out int active)) {
 				return false;
 			}
 
 			run = new VisualRun {
-				Type = runType,
+				Type = ToVisualRunType(typeValue),
 				X = x,
 				Y = y,
 				Text = text,
 				Style = style,
 				IconId = iconId,
+				ColorValue = colorValue,
 				Width = width,
+				Padding = padding,
+				Margin = margin,
+				Active = active != 0,
 			};
 			return true;
 		}
@@ -723,7 +813,8 @@ namespace SweetEditor {
 			if (!TryReadInt32(data, ref offset, out int logicalLine) ||
 				!TryReadInt32(data, ref offset, out int wrapIndex) ||
 				!TryReadPointF(data, ref offset, out PointF lineNumberPosition) ||
-				!TryReadInt32(data, ref offset, out int isPhantomLine) ||
+				!TryReadInt32(data, ref offset, out int kindValue) ||
+				!TryReadInt32(data, ref offset, out int ownsGutterSemanticsValue) ||
 				!TryReadInt32(data, ref offset, out int foldStateValue)) {
 				return false;
 			}
@@ -740,12 +831,15 @@ namespace SweetEditor {
 					runs.Add(run);
 				}
 			}
+			VisualLineKind kind = ToVisualLineKind(kindValue);
 			line = new VisualLine {
 				LogicalLine = logicalLine,
 				WrapIndex = wrapIndex,
 				LineNumberPosition = lineNumberPosition,
 				Runs = runs,
-				IsPhantomLine = isPhantomLine != 0,
+				Kind = kind,
+				OwnsGutterSemantics = ownsGutterSemanticsValue != 0,
+				IsPhantomLine = kind == VisualLineKind.PHANTOM,
 				FoldState = ToFoldState(foldStateValue),
 			};
 			return true;
@@ -1056,24 +1150,38 @@ namespace SweetEditor {
 
 				if (!TryReadSelectionHandle(data, ref offset, out SelectionHandle startHandle) ||
 					!TryReadSelectionHandle(data, ref offset, out SelectionHandle endHandle) ||
-					!TrySkipBytes(data, ref offset, 20) ||
+					!TryReadCompositionDecoration(data, ref offset, out CompositionDecoration compositionDecoration) ||
 					!TryReadInt32(data, ref offset, out int guideCount) ||
 					guideCount < 0) {
 					return model;
 				}
 				model.SelectionStartHandle = startHandle;
 				model.SelectionEndHandle = endHandle;
-				model.CompositionDecoration = default;
+				model.CompositionDecoration = compositionDecoration;
 
-				if (!TrySkipBytes(data, ref offset, guideCount * 32)) {
-					return model;
+				if (guideCount > 0) {
+					List<GuideSegment> guideSegments = RentPooledList(GuideSegmentListPool, guideCount);
+					for (int i = 0; i < guideCount; i++) {
+						if (!TryReadGuideSegment(data, ref offset, out GuideSegment segment)) {
+							return model;
+						}
+						guideSegments.Add(segment);
+					}
+					model.GuideSegments = guideSegments;
 				}
 
 				if (!TryReadInt32(data, ref offset, out int diagnosticCount) || diagnosticCount < 0) {
 					return model;
 				}
-				if (!TrySkipBytes(data, ref offset, diagnosticCount * 24)) {
-					return model;
+				if (diagnosticCount > 0) {
+					List<DiagnosticDecoration> diagnosticDecorations = RentPooledList(DiagnosticDecorationListPool, diagnosticCount);
+					for (int i = 0; i < diagnosticCount; i++) {
+						if (!TryReadDiagnosticDecoration(data, ref offset, out DiagnosticDecoration decoration)) {
+							return model;
+						}
+						diagnosticDecorations.Add(decoration);
+					}
+					model.DiagnosticDecorations = diagnosticDecorations;
 				}
 
 				if (!TryReadInt32(data, ref offset, out int maxGutterIcons) ||
@@ -1083,15 +1191,29 @@ namespace SweetEditor {
 				}
 				model.MaxGutterIcons = maxGutterIcons;
 
-				if (!TrySkipBytes(data, ref offset, linkedRectCount * 20)) {
-					return model;
+				if (linkedRectCount > 0) {
+					List<LinkedEditingRect> linkedEditingRects = RentPooledList(LinkedEditingRectListPool, linkedRectCount);
+					for (int i = 0; i < linkedRectCount; i++) {
+						if (!TryReadLinkedEditingRect(data, ref offset, out LinkedEditingRect rect)) {
+							return model;
+						}
+						linkedEditingRects.Add(rect);
+					}
+					model.LinkedEditingRects = linkedEditingRects;
 				}
 
 				if (!TryReadInt32(data, ref offset, out int bracketRectCount) || bracketRectCount < 0) {
 					return model;
 				}
-				if (!TrySkipBytes(data, ref offset, bracketRectCount * 16)) {
-					return model;
+				if (bracketRectCount > 0) {
+					List<BracketHighlightRect> bracketHighlightRects = RentPooledList(BracketHighlightRectListPool, bracketRectCount);
+					for (int i = 0; i < bracketRectCount; i++) {
+						if (!TryReadBracketHighlightRect(data, ref offset, out BracketHighlightRect rect)) {
+							return model;
+						}
+						bracketHighlightRects.Add(rect);
+					}
+					model.BracketHighlightRects = bracketHighlightRects;
 				}
 
 				if (offset < data.Length) {
@@ -1196,6 +1318,10 @@ namespace SweetEditor {
 			ReturnPooledList(GutterIconListPool, model.GutterIcons, MaxPooledGutterIconListCapacity, EmptyGutterIcons);
 			ReturnPooledList(FoldMarkerListPool, model.FoldMarkers, MaxPooledFoldMarkerListCapacity, EmptyFoldMarkers);
 			ReturnPooledList(SelectionRectListPool, model.SelectionRects, MaxPooledSelectionRectListCapacity, EmptySelectionRects);
+			ReturnPooledList(GuideSegmentListPool, model.GuideSegments, MaxPooledGuideSegmentListCapacity, EmptyGuideSegments);
+			ReturnPooledList(DiagnosticDecorationListPool, model.DiagnosticDecorations, MaxPooledDiagnosticDecorationListCapacity, EmptyDiagnosticDecorations);
+			ReturnPooledList(LinkedEditingRectListPool, model.LinkedEditingRects, MaxPooledLinkedEditingRectListCapacity, EmptyLinkedEditingRects);
+			ReturnPooledList(BracketHighlightRectListPool, model.BracketHighlightRects, MaxPooledBracketHighlightRectListCapacity, EmptyBracketHighlightRects);
 		}
 
 		private static List<T> RentPooledList<T>(ConcurrentBag<List<T>> pool, int capacity) {

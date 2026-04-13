@@ -17,6 +17,7 @@
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <RuntimeIdentifier>android-arm64</RuntimeIdentifier>
+    <AndroidDebuggable>true</AndroidDebuggable>
     <Optimize>true</Optimize>
     <DebuggerSupport>false</DebuggerSupport>
     <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
@@ -66,14 +67,14 @@
       <Link>lib\x86_64\libsweeteditor.so</Link>
     </AndroidNativeLibrary>
 
-    <AndroidNativeLibrary Include="..\..\..\prebuilt\android\arm64-v8a\libsweetline.so"
-                          Condition="Exists('..\..\..\prebuilt\android\arm64-v8a\libsweetline.so')">
-      <Link>lib\arm64-v8a\libsweetline.so</Link>
-    </AndroidNativeLibrary>
+    <AndroidAsset Include="native\sweetline\arm64-v8a\libsweetline.asset"
+                  Condition="Exists('native\sweetline\arm64-v8a\libsweetline.asset')">
+      <Link>sweetline\arm64-v8a\libsweetline.asset</Link>
+    </AndroidAsset>
 
-    <AndroidNativeLibrary Include="..\..\..\prebuilt\android\x86_64\libsweetline.so"
-                          Condition="Exists('..\..\..\prebuilt\android\x86_64\libsweetline.so')">
-      <Link>lib\x86_64\libsweetline.so</Link>
-    </AndroidNativeLibrary>
+    <AndroidAsset Include="native\sweetline\x86_64\libsweetline.asset"
+                  Condition="Exists('native\sweetline\x86_64\libsweetline.asset')">
+      <Link>sweetline\x86_64\libsweetline.asset</Link>
+    </AndroidAsset>
   </ItemGroup>
 </Project>

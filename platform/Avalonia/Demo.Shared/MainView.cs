@@ -395,6 +395,8 @@ public sealed class MainView : UserControl
         };
         controller.ContextMenu += (_, _) => UpdateStatus("Context menu requested");
         controller.GutterIconClick += (_, e) => UpdateStatus($"Gutter icon at line {e.Line}");
+        controller.CodeLensClick += (_, e) =>
+            UpdateStatus($"CodeLens {DescribeCodeLensCommand(e.CommandId)} at line {e.Line + 1}");
         controller.FoldToggle += (_, e) =>
         {
             foldCollapsed = !controller.IsLineVisible(e.Line + 1);
@@ -1942,6 +1944,16 @@ public sealed class MainView : UserControl
             statusText.Text = message;
             loadingIndicator.IsLoading = false;
         });
+    }
+
+    private static string DescribeCodeLensCommand(int commandId)
+    {
+        return commandId switch
+        {
+            DemoDecorationProvider.CodeLensRun => "▶ Run",
+            DemoDecorationProvider.CodeLensDebug => "◎ Debug",
+            _ => $"Command#{commandId}",
+        };
     }
 
     private void RenderCompletionItems()

@@ -16,6 +16,7 @@ namespace SweetEditor {
 		public event EventHandler<ContextMenuEventArgs>? ContextMenu;
 		public event EventHandler<InlayHintClickEventArgs>? InlayHintClick;
 		public event EventHandler<GutterIconClickEventArgs>? GutterIconClick;
+		public event EventHandler<CodeLensClickEventArgs>? CodeLensClick;
 		public event EventHandler<FoldToggleEventArgs>? FoldToggle;
 		public event EventHandler<SelectionMenuItemClickEventArgs>? SelectionMenuItemClick;
 		public event Action<IReadOnlyList<CompletionItem>>? CompletionItemsUpdated;
@@ -325,9 +326,18 @@ namespace SweetEditor {
 		public void SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine) =>
 			Invoke(e => e.SetBatchLineGutterIcons(iconsByLine));
 
-		public void SetLineDiagnostics(int line, IList<DiagnosticItem> items) => Invoke(e => e.SetLineDiagnostics(line, items));
+		public void SetMaxGutterIcons(int count) => Invoke(e => e.SetMaxGutterIcons(count));
 
-		public void SetBatchLineDiagnostics(Dictionary<int, IList<DiagnosticItem>> diagsByLine) =>
+		public int GetMaxGutterIcons() => Read(e => e.GetMaxGutterIcons(), 0);
+
+		public void SetLineCodeLens(int line, IList<CodeLensItem> items) => Invoke(e => e.SetLineCodeLens(line, items));
+
+		public void SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine) =>
+			Invoke(e => e.SetBatchLineCodeLens(itemsByLine));
+
+		public void SetLineDiagnostics<TDiagnostic>(int line, IList<TDiagnostic> items) where TDiagnostic : Diagnostic => Invoke(e => e.SetLineDiagnostics(line, items));
+
+		public void SetBatchLineDiagnostics<TDiagnostic>(Dictionary<int, IList<TDiagnostic>> diagsByLine) where TDiagnostic : Diagnostic =>
 			Invoke(e => e.SetBatchLineDiagnostics(diagsByLine));
 
 		public void SetIndentGuides(IList<IndentGuide> guides) => Invoke(e => e.SetIndentGuides(guides));
@@ -350,11 +360,16 @@ namespace SweetEditor {
 
 		public void ClearGutterIcons() => Invoke(e => e.ClearGutterIcons());
 
+		public void ClearCodeLens() => Invoke(e => e.ClearCodeLens());
+
 		public void ClearGuides() => Invoke(e => e.ClearGuides());
 
 		public void ClearDiagnostics() => Invoke(e => e.ClearDiagnostics());
 
 		public void ClearAllDecorations() => Invoke(e => e.ClearAllDecorations());
+
+		public void SetMatchedBrackets(int openLine, int openColumn, int closeLine, int closeColumn) =>
+			Invoke(e => e.SetMatchedBrackets(openLine, openColumn, closeLine, closeColumn));
 
 		public void ClearMatchedBrackets() => Invoke(e => e.ClearMatchedBrackets());
 
@@ -477,6 +492,7 @@ namespace SweetEditor {
 			editor.ContextMenu += HandleContextMenu;
 			editor.InlayHintClick += HandleInlayHintClick;
 			editor.GutterIconClick += HandleGutterIconClick;
+			editor.CodeLensClick += HandleCodeLensClick;
 			editor.FoldToggle += HandleFoldToggle;
 			editor.SelectionMenuItemClick += HandleSelectionMenuItemClick;
 			editor.CompletionItemsUpdated += HandleCompletionItemsUpdated;
@@ -497,6 +513,7 @@ namespace SweetEditor {
 			editor.ContextMenu -= HandleContextMenu;
 			editor.InlayHintClick -= HandleInlayHintClick;
 			editor.GutterIconClick -= HandleGutterIconClick;
+			editor.CodeLensClick -= HandleCodeLensClick;
 			editor.FoldToggle -= HandleFoldToggle;
 			editor.SelectionMenuItemClick -= HandleSelectionMenuItemClick;
 			editor.CompletionItemsUpdated -= HandleCompletionItemsUpdated;
@@ -516,6 +533,7 @@ namespace SweetEditor {
 		private void HandleContextMenu(object? sender, ContextMenuEventArgs e) => ContextMenu?.Invoke(this, e);
 		private void HandleInlayHintClick(object? sender, InlayHintClickEventArgs e) => InlayHintClick?.Invoke(this, e);
 		private void HandleGutterIconClick(object? sender, GutterIconClickEventArgs e) => GutterIconClick?.Invoke(this, e);
+		private void HandleCodeLensClick(object? sender, CodeLensClickEventArgs e) => CodeLensClick?.Invoke(this, e);
 		private void HandleFoldToggle(object? sender, FoldToggleEventArgs e) => FoldToggle?.Invoke(this, e);
 		private void HandleSelectionMenuItemClick(object? sender, SelectionMenuItemClickEventArgs e) => SelectionMenuItemClick?.Invoke(this, e);
 		private void HandleCompletionItemsUpdated(IReadOnlyList<CompletionItem> items) => CompletionItemsUpdated?.Invoke(items);

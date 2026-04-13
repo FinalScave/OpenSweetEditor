@@ -188,10 +188,7 @@ public sealed class LoadingIndicator : Border
 
 public sealed class ProgressBar : Control
 {
-    private readonly Rectangle progressRect;
     private readonly DispatcherTimer animationTimer;
-    private double progress;
-    private bool isIndeterminate;
     private double indeterminateOffset;
 
     public static readonly StyledProperty<double> ValueProperty =
@@ -223,7 +220,6 @@ public sealed class ProgressBar : Control
 
     public ProgressBar()
     {
-        progressRect = new Rectangle();
         animationTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromMilliseconds(16),

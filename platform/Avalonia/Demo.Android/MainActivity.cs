@@ -1,10 +1,14 @@
 using System;
+using System.IO;
 using Android.App;
 using Android.Content.PM;
 using Android.OS;
+using Android.Runtime;
+using Android.Util;
 using Android.Views;
 using Avalonia;
 using Avalonia.Android;
+using SweetEditor.Avalonia.Demo.Host;
 
 namespace SweetEditor.Avalonia.Demo.Android;
 
@@ -23,8 +27,13 @@ namespace SweetEditor.Avalonia.Demo.Android;
         ConfigChanges.Density)]
 public sealed class MainActivity : AvaloniaMainActivity<App>
 {
+    private const string LogTag = "SweetEditorDemo";
+    private const string SweetLineEnvironmentVariable = "SWEETLINE_LIB_PATH";
+    private const string SweetLineLibraryName = "libsweetline.so";
+    private const string SweetLineAssetName = "libsweetline.asset";
     private static readonly object ActivityLock = new();
     private static MainActivity? current;
+    private static bool diagnosticsHooked;
 
     public static MainActivity? Current
     {
@@ -39,6 +48,9 @@ public sealed class MainActivity : AvaloniaMainActivity<App>
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
+        EnsureDiagnostics();
+        DemoHostDiagnostics.WriteLine("MainActivity.OnCreate enter");
+        EnsureSweetLineLibraryPath();
         Window?.AddFlags(WindowManagerFlags.HardwareAccelerated);
         Window?.SetSoftInputMode(SoftInput.AdjustResize);
         
@@ -48,10 +60,13 @@ public sealed class MainActivity : AvaloniaMainActivity<App>
         {
             current = this;
         }
+
+        DemoHostDiagnostics.WriteLine("MainActivity.OnCreate exit");
     }
 
     protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
     {
+        DemoHostDiagnostics.WriteLine("MainActivity.CustomizeAppBuilder");
         return base.CustomizeAppBuilder(builder)
             .With(new AndroidPlatformOptions
             {
@@ -65,6 +80,7 @@ public sealed class MainActivity : AvaloniaMainActivity<App>
 
     protected override void OnDestroy()
     {
+        DemoHostDiagnostics.WriteLine("MainActivity.OnDestroy");
         lock (ActivityLock)
         {
             if (ReferenceEquals(current, this))
@@ -125,5 +141,76 @@ public sealed class MainActivity : AvaloniaMainActivity<App>
             visibleFrame.Bottom = imeTopOnScreen;
 
         return true;
+    }
+
+    private static void EnsureDiagnostics()
+    {
+        lock (ActivityLock)
+        {
+            if (diagnosticsHooked)
+                return;
+
+            DemoHostDiagnostics.InstallGlobalHandlers("Android.MainActivity");
+            AndroidEnvironment.UnhandledExceptionRaiser += (_, e) =>
+            {
+                DemoHostDiagnostics.WriteException("AndroidEnvironment.UnhandledExceptionRaiser", e.Exception);
+                try
+                {
+                    Log.Error(LogTag, e.Exception.ToString());
+                }
+                catch
+                {
+                    // ignore logcat failures
+                }
+            };
+
+            diagnosticsHooked = true;
+        }
+    }
+
+    private void EnsureSweetLineLibraryPath()
+    {
+        try
+        {
+            string? abi = ResolveSweetLineAbi();
+            if (string.IsNullOrWhiteSpace(abi) || Assets == null)
+                return;
+
+            string assetPath = $"sweetline/{abi}/{SweetLineAssetName}";
+            string rootDirectory = Path.Combine(FilesDir?.AbsolutePath ?? CacheDir?.AbsolutePath ?? AppContext.BaseDirectory, "sweetline", abi);
+            Directory.CreateDirectory(rootDirectory);
+
+            string libraryPath = Path.Combine(rootDirectory, SweetLineLibraryName);
+            using (var assetStream = Assets.Open(assetPath))
+            using (var output = File.Open(libraryPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            {
+                assetStream.CopyTo(output);
+            }
+
+            System.Environment.SetEnvironmentVariable(SweetLineEnvironmentVariable, libraryPath);
+            DemoHostDiagnostics.WriteLine($"SweetLine library staged from {assetPath} to {libraryPath}");
+        }
+        catch (Exception ex)
+        {
+            DemoHostDiagnostics.WriteException("MainActivity.EnsureSweetLineLibraryPath", ex);
+        }
+    }
+
+    private static string? ResolveSweetLineAbi()
+    {
+        var supportedAbis = Build.SupportedAbis;
+        if (supportedAbis == null || supportedAbis.Count == 0)
+            return null;
+
+        foreach (string abi in supportedAbis)
+        {
+            if (string.Equals(abi, "arm64-v8a", StringComparison.Ordinal) ||
+                string.Equals(abi, "x86_64", StringComparison.Ordinal))
+            {
+                return abi;
+            }
+        }
+
+        return null;
     }
 }
