@@ -29,10 +29,11 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
     private sealed class CachedRichLineDecorations
     {
         public string LineText = string.Empty;
-        public List<DiagnosticItem> Diagnostics = new();
+        public List<Diagnostic> Diagnostics = new();
         public List<InlayHint> Inlays = new();
         public List<GutterIcon> GutterIcons = new();
         public List<PhantomText> Phantoms = new();
+        public List<CodeLensItem> CodeLensItems = new();
     }
 
     private static readonly Regex NumberRegex = new(@"\b\d+(?:\.\d+)?\b", RegexOptions.Compiled);
@@ -88,6 +89,8 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
     public const int IconType = 1;
     public const int IconNote = 2;
     public const int StyleColor = unchecked((int)EditorTheme.STYLE_USER_BASE) + 1;
+    public const int CodeLensRun = 1;
+    public const int CodeLensDebug = 2;
 
     public event Action? HighlightBackendChanged;
 
@@ -118,7 +121,8 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
         DecorationType.FlowGuide |
         DecorationType.SeparatorGuide |
         DecorationType.GutterIcon |
-        DecorationType.PhantomText;
+        DecorationType.PhantomText |
+        DecorationType.CodeLens;
 
     public void PrimeDocument(string fileName, string content)
     {
@@ -254,9 +258,10 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
 
         var syntax = new Dictionary<int, List<StyleSpan>>();
         var inlays = new Dictionary<int, List<InlayHint>>();
-        var diagnostics = new Dictionary<int, List<DiagnosticItem>>();
+        var diagnostics = new Dictionary<int, List<Diagnostic>>();
         var gutterIcons = new Dictionary<int, List<GutterIcon>>();
         var phantoms = new Dictionary<int, List<PhantomText>>();
+        var codeLensItems = new Dictionary<int, List<CodeLensItem>>();
         var folds = new List<FoldRegion>();
         var indentGuides = new List<IndentGuide>();
         var bracketGuides = new List<BracketGuide>();
@@ -280,7 +285,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
                 if (richDemoMode)
                 {
                     CachedRichLineDecorations cachedLine = GetCachedRichLineDecorations(lineIndex, line);
-                    CopyCachedLineDecorations(cachedLine, lineIndex, diagnostics, inlays, gutterIcons, phantoms);
+                    CopyCachedLineDecorations(cachedLine, lineIndex, diagnostics, inlays, gutterIcons, phantoms, codeLensItems);
                     if (!usedSweetLine)
                         BuildGuidesFallback(lineIndex, line, indentGuides, flowGuides);
                     BuildBraces(lineIndex, line, braceStack, folds, bracketGuides);
@@ -298,6 +303,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
             Diagnostics = diagnostics,
             GutterIcons = gutterIcons,
             PhantomTexts = phantoms,
+            CodeLensItems = codeLensItems,
             FoldRegions = folds,
             IndentGuides = indentGuides,
             BracketGuides = bracketGuides,
@@ -308,6 +314,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
             DiagnosticsMode = DecorationApplyMode.REPLACE_ALL,
             GutterIconsMode = DecorationApplyMode.REPLACE_ALL,
             PhantomTextsMode = DecorationApplyMode.REPLACE_ALL,
+            CodeLensItemsMode = DecorationApplyMode.REPLACE_ALL,
             FoldRegionsMode = DecorationApplyMode.REPLACE_ALL,
             IndentGuidesMode = DecorationApplyMode.REPLACE_ALL,
             BracketGuidesMode = DecorationApplyMode.REPLACE_ALL,
@@ -443,49 +450,6 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
         }
 
         sweetLineGuides = sweetLineAnalyzer.AnalyzeIndentGuides();
-    }
-
-    private SlDocumentHighlightSlice ApplyIncrementalChangesInLineRange(
-        IReadOnlyList<TextChange> changes,
-        SlLineRange visibleRange)
-    {
-        if (sweetLineAnalyzer == null)
-            return new SlDocumentHighlightSlice();
-
-        if (changes == null || changes.Count == 0)
-            return EnsureVisibleHighlightSlice(visibleRange);
-
-        SlDocumentHighlightSlice? latestSlice = null;
-        foreach (TextChange change in changes)
-        {
-            TextRange? range = change.Range;
-            if (range == null)
-                continue;
-
-            string newText = change.Text ?? change.NewText ?? string.Empty;
-            SlTextRange slRange = new(
-                new SlTextPosition(range.Value.Start.Line, range.Value.Start.Column),
-                new SlTextPosition(range.Value.End.Line, range.Value.End.Column));
-            latestSlice = sweetLineAnalyzer.AnalyzeIncrementalInLineRange(slRange, newText, visibleRange);
-        }
-
-        if (latestSlice != null && HasUsableSlice(latestSlice, visibleRange))
-            return latestSlice;
-
-        return EnsureVisibleHighlightSlice(visibleRange);
-    }
-
-    private SlDocumentHighlightSlice EnsureVisibleHighlightSlice(SlLineRange visibleRange)
-    {
-        if (sweetLineAnalyzer == null)
-            return new SlDocumentHighlightSlice();
-
-        SlDocumentHighlightSlice slice = sweetLineAnalyzer.GetHighlightSlice(visibleRange);
-        if (HasUsableSlice(slice, visibleRange))
-            return slice;
-
-        sweetLineAnalyzer.PrimeHighlightCache();
-        return sweetLineAnalyzer.GetHighlightSlice(visibleRange);
     }
 
     private static bool HasUsableSlice(SlDocumentHighlightSlice slice, SlLineRange visibleRange)
@@ -692,9 +656,14 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
 
         try
         {
-            SlDocumentHighlightSlice slice = changes == null || changes.Count == 0
-                ? sweetLineLargeDocumentSliceAnalyzer.GetHighlightSlice(visibleRange)
-                : ApplyLargeDocumentIncrementalChangesLocked(changes, visibleRange);
+            if (DemoPlatformServices.Current?.IsAndroid == true &&
+                changes != null &&
+                changes.Count > 0)
+            {
+                return false;
+            }
+
+            SlDocumentHighlightSlice slice = sweetLineLargeDocumentSliceAnalyzer.GetHighlightSlice(visibleRange);
 
             if (!HasUsableSlice(slice, visibleRange))
                 return false;
@@ -709,30 +678,6 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
             StartLargeDocumentPrimeLocked(activeContent);
             return false;
         }
-    }
-
-    private SlDocumentHighlightSlice ApplyLargeDocumentIncrementalChangesLocked(
-        IReadOnlyList<TextChange> changes,
-        SlLineRange visibleRange)
-    {
-        if (sweetLineLargeDocumentSliceAnalyzer == null || changes == null || changes.Count == 0)
-            return new SlDocumentHighlightSlice();
-
-        SlDocumentHighlightSlice? latestSlice = null;
-        foreach (TextChange change in changes)
-        {
-            TextRange? range = change.Range;
-            if (range == null)
-                continue;
-
-            string newText = change.Text ?? change.NewText ?? string.Empty;
-            SlTextRange slRange = new(
-                new SlTextPosition(range.Value.Start.Line, range.Value.Start.Column),
-                new SlTextPosition(range.Value.End.Line, range.Value.End.Column));
-            latestSlice = sweetLineLargeDocumentSliceAnalyzer.AnalyzeIncrementalInLineRange(slRange, newText, visibleRange);
-        }
-
-        return latestSlice ?? new SlDocumentHighlightSlice();
     }
 
     private void AppendCachedLargeDocumentSyntaxLocked(
@@ -918,24 +863,27 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
         if (changes == null || changes.Count == 0)
             return;
 
+        bool requiresNativeSliceReset = DemoPlatformServices.Current?.IsAndroid == true;
         largeDocumentSyntaxCache.Clear();
         largeDocumentLineEndStates.Clear();
         largeDocumentCacheStartLine = -1;
         largeDocumentCachedUntilLine = -1;
-        if (largeDocumentNativeCacheReady && sweetLineLargeDocumentSliceAnalyzer != null)
-            return;
 
-        if (activeDocumentStreamingLoad)
+        if (!requiresNativeSliceReset &&
+            largeDocumentNativeCacheReady &&
+            sweetLineLargeDocumentSliceAnalyzer != null)
         {
-            largeDocumentGeneration++;
-            largeDocumentNativeCacheReady = false;
-            DisposeLargeDocumentSliceSessionLocked();
             return;
         }
 
         largeDocumentGeneration++;
         largeDocumentNativeCacheReady = false;
         DisposeLargeDocumentSliceSessionLocked();
+        if (activeDocumentStreamingLoad)
+        {
+            return;
+        }
+
         activeContent = doc.GetText();
         StartLargeDocumentPrimeLocked(activeContent);
     }
@@ -985,7 +933,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
                     return;
                 }
 
-                analyzer.PrimeHighlightCache();
+                _ = analyzer.Analyze();
 
                 SlDocumentAnalyzer? previousAnalyzer = null;
                 SlDocument? previousDocument = null;
@@ -1119,6 +1067,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
             BuildCachedInlays(line, cached.Inlays);
             BuildCachedIcons(line, cached.GutterIcons);
             BuildCachedPhantoms(line, cached.Phantoms);
+            BuildCachedCodeLens(line, cached.CodeLensItems);
             smallDocumentRichLineCache[lineIndex] = cached;
         }
 
@@ -1128,22 +1077,25 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
     private static void CopyCachedLineDecorations(
         CachedRichLineDecorations cached,
         int lineIndex,
-        Dictionary<int, List<DiagnosticItem>> diagnostics,
+        Dictionary<int, List<Diagnostic>> diagnostics,
         Dictionary<int, List<InlayHint>> inlays,
         Dictionary<int, List<GutterIcon>> gutterIcons,
-        Dictionary<int, List<PhantomText>> phantoms)
+        Dictionary<int, List<PhantomText>> phantoms,
+        Dictionary<int, List<CodeLensItem>> codeLensItems)
     {
         if (cached.Diagnostics.Count > 0)
-            diagnostics[lineIndex] = new List<DiagnosticItem>(cached.Diagnostics);
+            diagnostics[lineIndex] = new List<Diagnostic>(cached.Diagnostics);
         if (cached.Inlays.Count > 0)
             inlays[lineIndex] = new List<InlayHint>(cached.Inlays);
         if (cached.GutterIcons.Count > 0)
             gutterIcons[lineIndex] = new List<GutterIcon>(cached.GutterIcons);
         if (cached.Phantoms.Count > 0)
             phantoms[lineIndex] = new List<PhantomText>(cached.Phantoms);
+        if (cached.CodeLensItems.Count > 0)
+            codeLensItems[lineIndex] = new List<CodeLensItem>(cached.CodeLensItems);
     }
 
-    private static void BuildCachedDiagnostics(string line, List<DiagnosticItem> diagnostics)
+    private static void BuildCachedDiagnostics(string line, List<Diagnostic> diagnostics)
     {
         diagnostics.Clear();
         if (string.IsNullOrWhiteSpace(line))
@@ -1151,14 +1103,14 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
 
         int todo = line.IndexOf("TODO", StringComparison.OrdinalIgnoreCase);
         if (todo >= 0)
-            diagnostics.Add(new DiagnosticItem(todo, 4, 1, unchecked((int)0xFFE0AF68)));
+            diagnostics.Add(new Diagnostic(todo, 4, 1, unchecked((int)0xFFE0AF68)));
 
         int fixme = line.IndexOf("FIXME", StringComparison.OrdinalIgnoreCase);
         if (fixme >= 0)
-            diagnostics.Add(new DiagnosticItem(fixme, 5, 0, unchecked((int)0xFFF7768E)));
+            diagnostics.Add(new Diagnostic(fixme, 5, 0, unchecked((int)0xFFF7768E)));
 
         if (line.Length > 120)
-            diagnostics.Add(new DiagnosticItem(120, line.Length - 120, 2, unchecked((int)0xFF7DCFFF)));
+            diagnostics.Add(new Diagnostic(120, line.Length - 120, 2, unchecked((int)0xFF7DCFFF)));
     }
 
     private static void BuildCachedInlays(string line, List<InlayHint> inlays)
@@ -1192,6 +1144,20 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
         phantoms.Clear();
         if (line.Contains("return", StringComparison.Ordinal) || line.Contains("println", StringComparison.OrdinalIgnoreCase))
             phantoms.Add(new PhantomText(Math.Max(0, line.Length), "  // phantom"));
+    }
+
+    private static void BuildCachedCodeLens(string line, List<CodeLensItem> codeLensItems)
+    {
+        codeLensItems.Clear();
+
+        int column = line.IndexOf("class ", StringComparison.Ordinal);
+        if (column < 0)
+            column = line.IndexOf("struct ", StringComparison.Ordinal);
+        if (column < 0)
+            return;
+
+        codeLensItems.Add(new CodeLensItem(column, "▶ Run", CodeLensRun));
+        codeLensItems.Add(new CodeLensItem(column, "◎ Debug", CodeLensDebug));
     }
 
     private static void AppendHighlightLine(
@@ -1235,11 +1201,11 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
         items.Add(item);
     }
 
-    private static void AddDiag(Dictionary<int, List<DiagnosticItem>> map, int line, DiagnosticItem item)
+    private static void AddDiag(Dictionary<int, List<Diagnostic>> map, int line, Diagnostic item)
     {
-        if (!map.TryGetValue(line, out List<DiagnosticItem>? items))
+        if (!map.TryGetValue(line, out List<Diagnostic>? items))
         {
-            items = new List<DiagnosticItem>();
+            items = new List<Diagnostic>();
             map[line] = items;
         }
         items.Add(item);
@@ -1326,21 +1292,21 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
             AddSpan(syntax, lineIndex, 0, scanLimit, (int)EditorTheme.STYLE_PREPROCESSOR);
     }
 
-    private static void BuildDiagnostics(int lineIndex, string line, Dictionary<int, List<DiagnosticItem>> diagnostics)
+    private static void BuildDiagnostics(int lineIndex, string line, Dictionary<int, List<Diagnostic>> diagnostics)
     {
         if (string.IsNullOrWhiteSpace(line))
             return;
 
         int todo = line.IndexOf("TODO", StringComparison.OrdinalIgnoreCase);
         if (todo >= 0)
-            AddDiag(diagnostics, lineIndex, new DiagnosticItem(todo, 4, 1, unchecked((int)0xFFE0AF68)));
+            AddDiag(diagnostics, lineIndex, new Diagnostic(todo, 4, 1, unchecked((int)0xFFE0AF68)));
 
         int fixme = line.IndexOf("FIXME", StringComparison.OrdinalIgnoreCase);
         if (fixme >= 0)
-            AddDiag(diagnostics, lineIndex, new DiagnosticItem(fixme, 5, 0, unchecked((int)0xFFF7768E)));
+            AddDiag(diagnostics, lineIndex, new Diagnostic(fixme, 5, 0, unchecked((int)0xFFF7768E)));
 
         if (line.Length > 120)
-            AddDiag(diagnostics, lineIndex, new DiagnosticItem(120, line.Length - 120, 2, unchecked((int)0xFF7DCFFF)));
+            AddDiag(diagnostics, lineIndex, new Diagnostic(120, line.Length - 120, 2, unchecked((int)0xFF7DCFFF)));
     }
 
     private static void BuildInlays(int lineIndex, string line, Dictionary<int, List<InlayHint>> inlays)

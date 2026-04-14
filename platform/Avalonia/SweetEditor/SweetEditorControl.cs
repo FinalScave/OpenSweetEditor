@@ -41,6 +41,7 @@ namespace SweetEditor {
 		public new event EventHandler<ContextMenuEventArgs>? ContextMenu;
 		public event EventHandler<InlayHintClickEventArgs>? InlayHintClick;
 		public event EventHandler<GutterIconClickEventArgs>? GutterIconClick;
+		public event EventHandler<CodeLensClickEventArgs>? CodeLensClick;
 		public event EventHandler<FoldToggleEventArgs>? FoldToggle;
 		public event EventHandler<SelectionMenuItemClickEventArgs>? SelectionMenuItemClick;
 		public event Action<IReadOnlyList<CompletionItem>>? CompletionItemsUpdated;
@@ -1258,11 +1259,21 @@ namespace SweetEditor {
 
 		internal void SetBatchLineGutterIcons(Dictionary<int, List<GutterIcon>> iconsByLine) => editorCore.SetBatchLineGutterIcons(iconsByLine);
 
-		public void SetLineDiagnostics(int line, IList<DiagnosticItem> items) => editorCore.SetLineDiagnostics(line, items);
+		public void SetMaxGutterIcons(int count) => settings.SetMaxGutterIcons(count);
 
-		public void SetBatchLineDiagnostics(Dictionary<int, IList<DiagnosticItem>> diagsByLine) => editorCore.SetBatchLineDiagnostics(diagsByLine);
+		public int GetMaxGutterIcons() => settings.GetMaxGutterIcons();
 
-		internal void SetBatchLineDiagnostics(Dictionary<int, List<DiagnosticItem>> diagsByLine) => editorCore.SetBatchLineDiagnostics(diagsByLine);
+		public void SetLineCodeLens(int line, IList<CodeLensItem> items) => editorCore.SetLineCodeLens(line, items);
+
+		public void SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine) => editorCore.SetBatchLineCodeLens(itemsByLine);
+
+		internal void SetBatchLineCodeLens(Dictionary<int, List<CodeLensItem>> itemsByLine) => editorCore.SetBatchLineCodeLens(itemsByLine);
+
+		public void SetLineDiagnostics<TDiagnostic>(int line, IList<TDiagnostic> items) where TDiagnostic : Diagnostic => editorCore.SetLineDiagnostics(line, items);
+
+		public void SetBatchLineDiagnostics<TDiagnostic>(Dictionary<int, IList<TDiagnostic>> diagsByLine) where TDiagnostic : Diagnostic => editorCore.SetBatchLineDiagnostics(diagsByLine);
+
+		internal void SetBatchLineDiagnostics<TDiagnostic>(Dictionary<int, List<TDiagnostic>> diagsByLine) where TDiagnostic : Diagnostic => editorCore.SetBatchLineDiagnostics(diagsByLine);
 
 		public void SetIndentGuides(IList<IndentGuide> guides) => editorCore.SetIndentGuides(guides);
 
@@ -1284,6 +1295,8 @@ namespace SweetEditor {
 
 		public void ClearGutterIcons() => editorCore.ClearGutterIcons();
 
+		public void ClearCodeLens() => editorCore.ClearCodeLens();
+
 		public void ClearGuides() => editorCore.ClearGuides();
 
 		public void ClearDiagnostics() => editorCore.ClearDiagnostics();
@@ -1291,6 +1304,12 @@ namespace SweetEditor {
 		public void ClearAllDecorations() {
 			editorCore.ClearAllDecorations();
 			editorCore.ClearDiagnostics();
+			editorCore.ClearCodeLens();
+		}
+
+		public void SetMatchedBrackets(int openLine, int openColumn, int closeLine, int closeColumn) {
+			editorCore.SetMatchedBrackets(openLine, openColumn, closeLine, closeColumn);
+			Flush();
 		}
 
 		public void ClearMatchedBrackets() {
@@ -1757,6 +1776,13 @@ namespace SweetEditor {
 								break;
 							case HitTargetType.GUTTER_ICON:
 								GutterIconClick?.Invoke(this, new GutterIconClickEventArgs(result.HitTarget.Line, result.HitTarget.IconId, sp));
+								break;
+							case HitTargetType.CODELENS:
+								CodeLensClick?.Invoke(this, new CodeLensClickEventArgs(
+									result.HitTarget.Line,
+									result.HitTarget.Column,
+									result.HitTarget.IconId,
+									sp));
 								break;
 							case HitTargetType.FOLD_PLACEHOLDER:
 								case HitTargetType.FOLD_GUTTER:

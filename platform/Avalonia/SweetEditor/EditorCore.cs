@@ -57,7 +57,10 @@ namespace SweetEditor {
 		/// <returns>Text of the line; returns empty string when handle is invalid</returns>
 		public string GetLineText(int line) {
 			if (nativeHandle == IntPtr.Zero) return "";
-			IntPtr ptr = NativeMethods.GetDocumentLineText(nativeHandle, (UIntPtr)line);
+			int lineCount = GetLineCount();
+			if (lineCount <= 0) return "";
+			int safeLine = Math.Clamp(line, 0, lineCount - 1);
+			IntPtr ptr = NativeMethods.GetDocumentLineText(nativeHandle, (UIntPtr)safeLine);
 			if (ptr == IntPtr.Zero) return "";
 			string text = Marshal.PtrToStringUni(ptr) ?? "";
 			NativeMethods.FreeUtf16String(ptr);
@@ -536,6 +539,17 @@ namespace SweetEditor {
 		public PhantomText(int column, string text) { Column = column; Text = text; }
 	}
 
+	/// <summary>Immutable value object representing a single CodeLens item.</summary>
+	public sealed class CodeLensItem {
+		/// <summary>Column anchor within the logical line (0-based, UTF-16 offset).</summary>
+		public int Column { get; }
+		/// <summary>Display text (for example "3 references").</summary>
+		public string Text { get; }
+		/// <summary>Command ID (platform-defined, passed back on click).</summary>
+		public int CommandId { get; }
+		public CodeLensItem(int column, string text, int commandId) { Column = column; Text = text; CommandId = commandId; }
+	}
+
 	/// <summary>Immutable value object describing a single gutter icon.</summary>
 	public sealed class GutterIcon {
 		/// <summary>Icon resource ID</summary>
@@ -544,14 +558,22 @@ namespace SweetEditor {
 	}
 
 	/// <summary>Immutable value object describing a diagnostic entry on a line.</summary>
-	public sealed class DiagnosticItem {
+	public class Diagnostic {
 		/// <summary>Start column (0-based, UTF-16 offset)</summary>
 		public int Column { get; }
 		/// <summary>Character length</summary>
 		public int Length { get; }
 		/// <summary>Severity (0=error, 1=warning, 2=info, 3=hint)</summary>
 		public int Severity { get; }
-		public DiagnosticItem(int column, int length, int severity) { Column = column; Length = length; Severity = severity; }
+		/// <summary>Underline/marker color (ARGB)</summary>
+		public int Color { get; }
+		public Diagnostic(int column, int length, int severity, int color) { Column = column; Length = length; Severity = severity; Color = color; }
+	}
+
+	/// <summary>Compatibility alias for the previous Avalonia diagnostic model name.</summary>
+	[Obsolete("Use Diagnostic.")]
+	public sealed class DiagnosticItem : Diagnostic {
+		public DiagnosticItem(int column, int length, int severity, int color) : base(column, length, severity, color) { }
 	}
 
 	/// <summary>Immutable value object describing a foldable region.</summary>
@@ -625,6 +647,8 @@ namespace SweetEditor {
 		FOLD_GUTTER = 5,
 		/// <summary>Hit InlayHint (color block type).</summary>
 		INLAY_HINT_COLOR = 6,
+		/// <summary>Hit a CodeLens item.</summary>
+		CODELENS = 7,
 	}
 
 	/// <summary>
@@ -636,7 +660,7 @@ namespace SweetEditor {
 		/// <summary>Hit logical line (0-based)</summary>
 		[JsonPropertyName("line")]
 		public int Line { get; set; }
-		/// <summary>Hit column (0-based, meaningful only for InlayHint).</summary>
+		/// <summary>Hit column (0-based, meaningful for InlayHint and CodeLens).</summary>
 		[JsonPropertyName("column")]
 		public int Column { get; set; }
 		/// <summary>Icon ID (valid for INLAY_HINT_ICON / GUTTER_ICON).</summary>
@@ -729,7 +753,9 @@ namespace SweetEditor {
 		/// <summary>Fold placeholder (" ... " at the end of the first line of a folded region).</summary>
 		FOLD_PLACEHOLDER,
 		/// <summary>Tab character (width computed by core based on tab_size and column position).</summary>
-		TAB
+		TAB,
+		/// <summary>CodeLens clickable label (above code line).</summary>
+		CODELENS
 	}
 
 	/// <summary>
@@ -766,6 +792,9 @@ namespace SweetEditor {
 		/// <summary>Color value (ARGB, used only for INLAY_HINT(COLOR)).</summary>
 		[JsonPropertyName("color_value")]
 		public int ColorValue { get; set; }
+		/// <summary>Whether this run is in active state (hovered/pressed).</summary>
+		[JsonPropertyName("active")]
+		public bool Active { get; set; }
 	}
 
 	/// <summary>
@@ -779,6 +808,12 @@ namespace SweetEditor {
 		EXPANDED,
 		/// <summary>Folded (click to expand).</summary>
 		COLLAPSED,
+	}
+
+	public enum VisualLineKind {
+		CONTENT = 0,
+		PHANTOM = 1,
+		CODELENS = 2,
 	}
 
 	/// <summary>
@@ -797,7 +832,13 @@ namespace SweetEditor {
 		/// <summary>Text segments in this visual row</summary>
 		[JsonPropertyName("runs")]
 		public List<VisualRun> Runs { get; set; }
-		/// <summary>Whether this is a ghost-text continuation row (2nd, 3rd, ... rows of multi-line phantom text).</summary>
+		/// <summary>Visual line kind.</summary>
+		[JsonPropertyName("kind")]
+		public VisualLineKind Kind { get; set; }
+		/// <summary>Whether this visual row owns line number, gutter icon, and fold marker semantics.</summary>
+		[JsonPropertyName("owns_gutter_semantics")]
+		public bool OwnsGutterSemantics { get; set; }
+		/// <summary>Compatibility alias for older renderers using phantom-line semantics.</summary>
 		[JsonPropertyName("is_phantom_line")]
 		public bool IsPhantomLine { get; set; }
 		/// <summary>Fold state</summary>
@@ -895,6 +936,8 @@ namespace SweetEditor {
 		ContextMenu,
 		/// <summary>GutterIcon Click</summary>
 		GutterIconClick,
+		/// <summary>CodeLens Click</summary>
+		CodeLensClick,
 		/// <summary>InlayHint Click</summary>
 		InlayHintClick,
 		/// <summary>Fold region click.</summary>
@@ -1108,6 +1151,24 @@ namespace SweetEditor {
 		public FoldToggleEventArgs(int line, bool isGutter, PointF point)
 			: base(EditorEventType.FoldToggle) {
 			Line = line; IsGutter = isGutter; ScreenPoint = point;
+		}
+	}
+
+	/// <summary>
+	/// CodeLens click event args.
+	/// </summary>
+	public class CodeLensClickEventArgs : EditorEventArgs {
+		/// <summary>Hit logical line (0-based)</summary>
+		public int Line { get; }
+		/// <summary>Column anchor of the clicked CodeLens (0-based, UTF-16 offset)</summary>
+		public int Column { get; }
+		/// <summary>Command ID (from <see cref="CodeLensItem"/>)</summary>
+		public int CommandId { get; }
+		/// <summary>Tap screen position</summary>
+		public PointF ScreenPoint { get; }
+		public CodeLensClickEventArgs(int line, int column, int commandId, PointF point)
+			: base(EditorEventType.CodeLensClick) {
+			Line = line; Column = column; CommandId = commandId; ScreenPoint = point;
 		}
 	}
 
@@ -1339,6 +1400,9 @@ namespace SweetEditor {
 		/// <summary>Severity level (0=ERROR, 1=WARNING, 2=INFO, 3=HINT)</summary>
 		[JsonPropertyName("severity")]
 		public int Severity { get; set; }
+		/// <summary>Color value (ARGB), 0 means use the default color for this severity.</summary>
+		[JsonPropertyName("color")]
+		public int Color { get; set; }
 	}
 
 	/// <summary>
@@ -1457,6 +1521,9 @@ namespace SweetEditor {
 
 		[DllImport(LibraryName, EntryPoint = "create_editor", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr CreateEditor(EditorCore.TextMeasurer measurer, byte[] optionsData, UIntPtr optionsSize);
+
+		[DllImport(LibraryName, EntryPoint = "free_editor", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern void FreeEditor(IntPtr handle);
 
 		[DllImport(LibraryName, EntryPoint = "set_editor_document", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetEditorDocument(IntPtr handle, IntPtr documentHandle);
@@ -1716,6 +1783,15 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_set_batch_line_gutter_icons", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void SetBatchLineGutterIcons(IntPtr handle, byte[] data, nuint size);
 
+		[DllImport(LibraryName, EntryPoint = "editor_set_line_codelens", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern void SetLineCodeLens(IntPtr handle, byte[] data, nuint size);
+
+		[DllImport(LibraryName, EntryPoint = "editor_set_batch_line_codelens", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern void SetBatchLineCodeLens(IntPtr handle, byte[] data, nuint size);
+
+		[DllImport(LibraryName, EntryPoint = "editor_clear_codelens", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern void ClearCodeLens(IntPtr handle);
+
 		[DllImport(LibraryName, EntryPoint = "editor_set_batch_line_diagnostics", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void SetBatchLineDiagnostics(IntPtr handle, byte[] data, nuint size);
 
@@ -1830,7 +1906,16 @@ namespace SweetEditor {
 		private static bool exceptionHandlerInitialized = false;
 		private static bool exceptionHandlerInitAttempted = false;
 		private static readonly object exceptionHandlerInitLock = new object();
-		private readonly IntPtr nativeHandle;
+		private IntPtr nativeHandleValue;
+		private IntPtr nativeHandle {
+			get {
+				if (disposed || nativeHandleValue == IntPtr.Zero) {
+					throw new ObjectDisposedException(nameof(EditorCore));
+				}
+				return nativeHandleValue;
+			}
+			set => nativeHandleValue = value;
+		}
 		private TextMeasurer measurer;
 		private HandleConfig _handleConfig = new HandleConfig();
 		private ScrollbarConfig _scrollbarConfig = new ScrollbarConfig();
@@ -1842,6 +1927,7 @@ namespace SweetEditor {
 		private KeyMap keyMap = KeyMap.DefaultKeyMap();
 		private bool insertSpaces;
 		private bool backspaceUnindent;
+		private bool disposed;
 		private IReadOnlyList<BracketPair> autoClosingPairs = Array.Empty<BracketPair>();
 
 		#region Delegate/callback types
@@ -1927,8 +2013,39 @@ namespace SweetEditor {
 		/// <summary>Gets the currently loaded document instance.</summary>
 		public Document? GetDocument() => currentDocument;
 
+		private int ClampLineForNative(int line) {
+			int lineCount = currentDocument?.GetLineCount() ?? 0;
+			if (lineCount <= 0) {
+				return 0;
+			}
+			return Math.Clamp(line, 0, lineCount - 1);
+		}
+
+		private (int Line, int Column) ClampPositionForNative(int line, int column) {
+			int safeLine = ClampLineForNative(line);
+			if (column <= 0) {
+				return (safeLine, 0);
+			}
+			string lineText = currentDocument?.GetLineText(safeLine) ?? string.Empty;
+			return (safeLine, Math.Min(column, lineText.Length));
+		}
+
 		/// <summary>Releases unmanaged resources.</summary>
 		public void Dispose() {
+			Dispose(true);
+			GC.SuppressFinalize(this);
+		}
+
+		~EditorCore() {
+			Dispose(false);
+		}
+
+		private void Dispose(bool disposing) {
+			if (disposed) {
+				return;
+			}
+
+			disposed = true;
 			if (textMeasurerGCHandle.IsAllocated) {
 				textMeasurerGCHandle.Free();
 			}
@@ -1941,6 +2058,11 @@ namespace SweetEditor {
 			if (fontMetricsGCHandle.IsAllocated) {
 				fontMetricsGCHandle.Free();
 			}
+			if (nativeHandleValue != IntPtr.Zero) {
+				NativeMethods.FreeEditor(nativeHandleValue);
+				nativeHandleValue = IntPtr.Zero;
+			}
+			currentDocument = null;
 		}
 
 		#endregion
@@ -2506,8 +2628,9 @@ namespace SweetEditor {
 		/// <param name="column">Column (0-based)</param>
 		/// <returns>CursorRect; coordinates are relative to the top-left corner of the editor control.</returns>
 		public CursorRect GetPositionRect(int line, int column) {
+			(int safeLine, int safeColumn) = ClampPositionForNative(line, column);
 			float x = 0, y = 0, h = 0;
-			NativeMethods.GetPositionRect(nativeHandle, (nuint)line, (nuint)column, ref x, ref y, ref h);
+			NativeMethods.GetPositionRect(nativeHandle, (nuint)safeLine, (nuint)safeColumn, ref x, ref y, ref h);
 			return new CursorRect { X = x, Y = y, Height = h };
 		}
 
@@ -2631,7 +2754,7 @@ namespace SweetEditor {
 		/// <param name="line">Target line (0-based).</param>
 		/// <param name="layer">Target layer (see <see cref="SpanLayer"/>).</param>
 		public void ClearLineSpans(int line, int layer) {
-			NativeMethods.ClearLineSpans(nativeHandle, (nuint)line, (byte)layer);
+			NativeMethods.ClearLineSpans(nativeHandle, (nuint)ClampLineForNative(line), (byte)layer);
 		}
 
 		#endregion
@@ -2745,7 +2868,53 @@ namespace SweetEditor {
 
 		/// <summary>Sets maximum icon count shown in the gutter.</summary>
 		public void SetMaxGutterIcons(int count) {
-			NativeMethods.SetMaxGutterIcons(nativeHandle, (uint)count);
+			NativeMethods.SetMaxGutterIcons(nativeHandle, (uint)Math.Max(0, count));
+		}
+
+		#endregion
+
+		#region CodeLens
+
+		/// <summary>Sets CodeLens items for the specified line (model overload).</summary>
+		public void SetLineCodeLens(int line, IList<CodeLensItem> items) {
+			if (items == null) return;
+			byte[] payload = ProtocolEncoder.PackLineCodeLens(line, items);
+			NativeMethods.SetLineCodeLens(nativeHandle, payload, (nuint)payload.Length);
+		}
+
+		/// <summary>Sets CodeLens items for the specified line (buffer overload).</summary>
+		public void SetLineCodeLens(byte[] payload) {
+			if (payload == null) return;
+			NativeMethods.SetLineCodeLens(nativeHandle, payload, (nuint)payload.Length);
+		}
+
+		/// <summary>Batch sets CodeLens items for multiple lines (model overload).</summary>
+		public void SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine) {
+			if (itemsByLine == null || itemsByLine.Count == 0) return;
+			byte[] payload = ProtocolEncoder.PackBatchLineCodeLens(itemsByLine);
+			NativeMethods.SetBatchLineCodeLens(nativeHandle, payload, (nuint)payload.Length);
+		}
+
+		/// <summary>Batch sets CodeLens items for multiple lines (list overload).</summary>
+		public void SetBatchLineCodeLens(Dictionary<int, List<CodeLensItem>> itemsByLine) {
+			if (itemsByLine == null || itemsByLine.Count == 0) return;
+			var normalized = new Dictionary<int, IList<CodeLensItem>>(itemsByLine.Count);
+			foreach (var kv in itemsByLine) {
+				normalized[kv.Key] = kv.Value;
+			}
+			byte[] payload = ProtocolEncoder.PackBatchLineCodeLens(normalized);
+			NativeMethods.SetBatchLineCodeLens(nativeHandle, payload, (nuint)payload.Length);
+		}
+
+		/// <summary>Batch sets CodeLens items for multiple lines (buffer overload).</summary>
+		public void SetBatchLineCodeLens(byte[] payload) {
+			if (payload == null) return;
+			NativeMethods.SetBatchLineCodeLens(nativeHandle, payload, (nuint)payload.Length);
+		}
+
+		/// <summary>Clears all CodeLens items.</summary>
+		public void ClearCodeLens() {
+			NativeMethods.ClearCodeLens(nativeHandle);
 		}
 
 		#endregion
@@ -2753,7 +2922,7 @@ namespace SweetEditor {
 		#region Diagnostic decorations
 
 		/// <summary>Sets diagnostic decorations for the specified line (model overload).</summary>
-		public void SetLineDiagnostics(int line, IList<DiagnosticItem> items) {
+		public void SetLineDiagnostics<TDiagnostic>(int line, IList<TDiagnostic> items) where TDiagnostic : Diagnostic {
 			if (items == null) return;
 			byte[] payload = ProtocolEncoder.PackLineDiagnostics(line, items);
 			NativeMethods.SetLineDiagnostics(nativeHandle, payload, (nuint)payload.Length);
@@ -2766,13 +2935,13 @@ namespace SweetEditor {
 		}
 
 		/// <summary>Batch sets diagnostic decorations for multiple lines (model overload).</summary>
-		public void SetBatchLineDiagnostics(Dictionary<int, IList<DiagnosticItem>> diagsByLine) {
+		public void SetBatchLineDiagnostics<TDiagnostic>(Dictionary<int, IList<TDiagnostic>> diagsByLine) where TDiagnostic : Diagnostic {
 			if (diagsByLine == null || diagsByLine.Count == 0) return;
 			byte[] payload = ProtocolEncoder.PackBatchLineDiagnostics(diagsByLine);
 			NativeMethods.SetBatchLineDiagnostics(nativeHandle, payload, (nuint)payload.Length);
 		}
 
-		public void SetBatchLineDiagnostics(Dictionary<int, List<DiagnosticItem>> diagsByLine) {
+		public void SetBatchLineDiagnostics<TDiagnostic>(Dictionary<int, List<TDiagnostic>> diagsByLine) where TDiagnostic : Diagnostic {
 			if (diagsByLine == null || diagsByLine.Count == 0) return;
 			byte[] payload = ProtocolEncoder.PackBatchLineDiagnostics(diagsByLine);
 			NativeMethods.SetBatchLineDiagnostics(nativeHandle, payload, (nuint)payload.Length);
@@ -2871,21 +3040,21 @@ namespace SweetEditor {
 		/// <param name="line">Line (0-based)</param>
 		/// <returns><c>true</c> means a region was found and toggled.</returns>
 		public bool ToggleFold(int line) {
-			return NativeMethods.ToggleFold(nativeHandle, (nuint)line) != 0;
+			return NativeMethods.ToggleFold(nativeHandle, (nuint)ClampLineForNative(line)) != 0;
 		}
 
 		/// <summary>Folds the region containing the specified line.</summary>
 		/// <param name="line">Line (0-based)</param>
 		/// <returns><c>true</c> means folding succeeded.</returns>
 		public bool FoldAt(int line) {
-			return NativeMethods.FoldAt(nativeHandle, (nuint)line) != 0;
+			return NativeMethods.FoldAt(nativeHandle, (nuint)ClampLineForNative(line)) != 0;
 		}
 
 		/// <summary>Unfolds the region containing the specified line.</summary>
 		/// <param name="line">Line (0-based)</param>
 		/// <returns><c>true</c> means unfolding succeeded.</returns>
 		public bool UnfoldAt(int line) {
-			return NativeMethods.UnfoldAt(nativeHandle, (nuint)line) != 0;
+			return NativeMethods.UnfoldAt(nativeHandle, (nuint)ClampLineForNative(line)) != 0;
 		}
 
 		/// <summary>Folds all regions.</summary>
@@ -2902,7 +3071,7 @@ namespace SweetEditor {
 		/// <param name="line">Line (0-based)</param>
 		/// <returns><c>true</c> means visible.</returns>
 		public bool IsLineVisible(int line) {
-			return NativeMethods.IsLineVisible(nativeHandle, (nuint)line) != 0;
+			return NativeMethods.IsLineVisible(nativeHandle, (nuint)ClampLineForNative(line)) != 0;
 		}
 
 		#endregion
@@ -2933,6 +3102,8 @@ namespace SweetEditor {
 		/// <summary>Clears all decoration data (highlights, Inlay Hints, ghost text, icons, and guide lines).</summary>
 		public void ClearAllDecorations() {
 			NativeMethods.ClearAllDecorations(nativeHandle);
+			NativeMethods.ClearDiagnostics(nativeHandle);
+			NativeMethods.ClearCodeLens(nativeHandle);
 		}
 
 		#endregion
@@ -2994,7 +3165,9 @@ namespace SweetEditor {
 
 		/// <summary>Sets externally computed exact bracket pair positions (takes priority over built-in scanning).</summary>
 		public void SetMatchedBrackets(int openLine, int openColumn, int closeLine, int closeColumn) {
-			NativeMethods.SetMatchedBrackets(nativeHandle, (nuint)openLine, (nuint)openColumn, (nuint)closeLine, (nuint)closeColumn);
+			(int safeOpenLine, int safeOpenColumn) = ClampPositionForNative(openLine, openColumn);
+			(int safeCloseLine, int safeCloseColumn) = ClampPositionForNative(closeLine, closeColumn);
+			NativeMethods.SetMatchedBrackets(nativeHandle, (nuint)safeOpenLine, (nuint)safeOpenColumn, (nuint)safeCloseLine, (nuint)safeCloseColumn);
 		}
 
 		/// <summary>Clears externally supplied bracket match results (falls back to built-in scanning).</summary>

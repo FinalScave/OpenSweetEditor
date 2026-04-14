@@ -31,7 +31,17 @@ public sealed class DeferredMainViewHost : UserControl
         if (Content is MainView)
             return;
 
-        Content = new MainView();
+        DemoHostDiagnostics.WriteLine("DeferredMainViewHost.LoadMainView enter");
+        try
+        {
+            Content = new MainView();
+            DemoHostDiagnostics.WriteLine("DeferredMainViewHost.LoadMainView completed");
+        }
+        catch (Exception ex)
+        {
+            DemoHostDiagnostics.WriteException("DeferredMainViewHost.LoadMainView failed", ex);
+            Content = BuildErrorPlaceholder(ex);
+        }
     }
 
     private static Control BuildPlaceholder()
@@ -97,6 +107,48 @@ public sealed class DeferredMainViewHost : UserControl
                                 progressTrack,
                             },
                         },
+                    },
+                },
+            },
+        };
+    }
+
+    private static Control BuildErrorPlaceholder(Exception ex)
+    {
+        return new Border
+        {
+            Background = new SolidColorBrush(Color.FromUInt32(0xFF1B1E24)),
+            Padding = new Thickness(20),
+            Child = new StackPanel
+            {
+                Spacing = 10,
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = "OpenSweetEditor failed to initialize",
+                        Foreground = new SolidColorBrush(Color.FromUInt32(0xFFF7768E)),
+                        FontSize = 18,
+                        FontWeight = FontWeight.SemiBold,
+                    },
+                    new TextBlock
+                    {
+                        Text = ex.GetType().Name,
+                        Foreground = new SolidColorBrush(Color.FromUInt32(0xFFD7DEE9)),
+                        FontSize = 14,
+                    },
+                    new TextBlock
+                    {
+                        Text = ex.Message,
+                        Foreground = new SolidColorBrush(Color.FromUInt32(0xFF9AA4B2)),
+                        TextWrapping = TextWrapping.Wrap,
+                    },
+                    new TextBlock
+                    {
+                        Text = $"Log: {DemoHostDiagnostics.GetLogFilePath()}",
+                        Foreground = new SolidColorBrush(Color.FromUInt32(0xFF7A8494)),
+                        FontSize = 12,
+                        TextWrapping = TextWrapping.Wrap,
                     },
                 },
             },

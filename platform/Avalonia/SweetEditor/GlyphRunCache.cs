@@ -159,7 +159,7 @@ namespace SweetEditor {
 			public bool Equals(GlyphCacheKey other) {
 				return _fontStyle == other._fontStyle &&
 					   _size == other._size &&
-					   ReferenceEquals(_typeface, other._typeface) &&
+					   EqualityComparer<Typeface>.Default.Equals(_typeface, other._typeface) &&
 					   string.Equals(_text, other._text, StringComparison.Ordinal);
 			}
 

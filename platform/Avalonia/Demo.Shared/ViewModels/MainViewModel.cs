@@ -53,7 +53,9 @@ public sealed class MainViewModel : INotifyPropertyChanged, IDisposable
     /// <summary>
     /// 加载示例文件请求事件。
     /// </summary>
+#pragma warning disable CS0067
     public event Func<string, Task>? LoadSampleRequested;
+#pragma warning restore CS0067
 
     /// <summary>
     /// 保存设置请求事件。

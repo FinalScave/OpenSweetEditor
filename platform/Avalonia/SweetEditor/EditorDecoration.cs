@@ -19,6 +19,7 @@ namespace SweetEditor {
 		SeparatorGuide = 1 << 8,
 		GutterIcon = 1 << 9,
 		PhantomText = 1 << 10,
+		CodeLens = 1 << 11,
 	}
 
 	public enum DecorationApplyMode {
@@ -65,7 +66,7 @@ namespace SweetEditor {
 		public Dictionary<int, List<StyleSpan>>? SyntaxSpans { get; set; }
 		public Dictionary<int, List<StyleSpan>>? SemanticSpans { get; set; }
 		public Dictionary<int, List<InlayHint>>? InlayHints { get; set; }
-		public Dictionary<int, List<DiagnosticItem>>? Diagnostics { get; set; }
+		public Dictionary<int, List<Diagnostic>>? Diagnostics { get; set; }
 		public List<IndentGuide>? IndentGuides { get; set; }
 		public List<BracketGuide>? BracketGuides { get; set; }
 		public List<FlowGuide>? FlowGuides { get; set; }
@@ -73,6 +74,7 @@ namespace SweetEditor {
 		public List<FoldRegion>? FoldRegions { get; set; }
 		public Dictionary<int, List<GutterIcon>>? GutterIcons { get; set; }
 		public Dictionary<int, List<PhantomText>>? PhantomTexts { get; set; }
+		public Dictionary<int, List<CodeLensItem>>? CodeLensItems { get; set; }
 
 		public DecorationApplyMode SyntaxSpansMode { get; set; } = DecorationApplyMode.MERGE;
 		public DecorationApplyMode SemanticSpansMode { get; set; } = DecorationApplyMode.MERGE;
@@ -85,6 +87,7 @@ namespace SweetEditor {
 		public DecorationApplyMode FoldRegionsMode { get; set; } = DecorationApplyMode.MERGE;
 		public DecorationApplyMode GutterIconsMode { get; set; } = DecorationApplyMode.MERGE;
 		public DecorationApplyMode PhantomTextsMode { get; set; } = DecorationApplyMode.MERGE;
+		public DecorationApplyMode CodeLensItemsMode { get; set; } = DecorationApplyMode.MERGE;
 
 		public DecorationResult Clone() {
 			return new DecorationResult {
@@ -99,6 +102,7 @@ namespace SweetEditor {
 				FoldRegions = FoldRegions == null ? null : new List<FoldRegion>(FoldRegions),
 				GutterIcons = CopyMap(GutterIcons),
 				PhantomTexts = CopyMap(PhantomTexts),
+				CodeLensItems = CopyMap(CodeLensItems),
 				SyntaxSpansMode = SyntaxSpansMode,
 				SemanticSpansMode = SemanticSpansMode,
 				InlayHintsMode = InlayHintsMode,
@@ -110,6 +114,7 @@ namespace SweetEditor {
 				FoldRegionsMode = FoldRegionsMode,
 				GutterIconsMode = GutterIconsMode,
 				PhantomTextsMode = PhantomTextsMode,
+				CodeLensItemsMode = CodeLensItemsMode,
 			};
 		}
 
@@ -225,6 +230,7 @@ namespace SweetEditor {
 			}
 
 			editor.ClearAllDecorations();
+			editor.ClearCodeLens();
 			editor.SetFoldRegions(Array.Empty<FoldRegion>());
 			editor.Flush();
 			ScheduleRefresh(0, null);
@@ -371,7 +377,7 @@ namespace SweetEditor {
 			var syntaxSpans = new Dictionary<int, List<StyleSpan>>();
 			var semanticSpans = new Dictionary<int, List<StyleSpan>>();
 			var inlayHints = new Dictionary<int, List<InlayHint>>();
-			var diagnostics = new Dictionary<int, List<DiagnosticItem>>();
+			var diagnostics = new Dictionary<int, List<Diagnostic>>();
 			List<IndentGuide>? indentGuides = null;
 			List<BracketGuide>? bracketGuides = null;
 			List<FlowGuide>? flowGuides = null;
@@ -379,6 +385,7 @@ namespace SweetEditor {
 			var foldRegions = new List<FoldRegion>();
 			var gutterIcons = new Dictionary<int, List<GutterIcon>>();
 			var phantomTexts = new Dictionary<int, List<PhantomText>>();
+			var codeLensItems = new Dictionary<int, List<CodeLensItem>>();
 
 			DecorationApplyMode syntaxMode = DecorationApplyMode.MERGE;
 			DecorationApplyMode semanticMode = DecorationApplyMode.MERGE;
@@ -391,6 +398,7 @@ namespace SweetEditor {
 			DecorationApplyMode foldMode = DecorationApplyMode.MERGE;
 			DecorationApplyMode gutterMode = DecorationApplyMode.MERGE;
 			DecorationApplyMode phantomMode = DecorationApplyMode.MERGE;
+			DecorationApplyMode codeLensMode = DecorationApplyMode.MERGE;
 
 			foreach (var provider in providers) {
 				if (!states.TryGetValue(provider, out var state) || state.Snapshot == null) {
@@ -420,6 +428,10 @@ namespace SweetEditor {
 				phantomMode = MergeMode(phantomMode, result.PhantomTextsMode);
 				if (result.PhantomTexts != null) {
 					AppendMap(phantomTexts, result.PhantomTexts);
+				}
+				codeLensMode = MergeMode(codeLensMode, result.CodeLensItemsMode);
+				if (result.CodeLensItems != null) {
+					AppendMap(codeLensItems, result.CodeLensItems);
 				}
 				indentMode = MergeMode(indentMode, result.IndentGuidesMode);
 				if (result.IndentGuides != null) {
@@ -456,6 +468,8 @@ namespace SweetEditor {
 			changed |= ApplyGutterIcons(gutterIcons);
 			changed |= ApplyPhantomMode(phantomMode, currentContextStartLine, currentContextEndLine);
 			changed |= ApplyPhantomTexts(phantomTexts);
+			changed |= ApplyCodeLensMode(codeLensMode, currentContextStartLine, currentContextEndLine);
+			changed |= ApplyCodeLensItems(codeLensItems);
 			changed |= ApplyIndentGuides(indentMode, indentGuides);
 			changed |= ApplyBracketGuides(bracketMode, bracketGuides);
 			changed |= ApplyFlowGuides(flowMode, flowGuides);
@@ -551,7 +565,7 @@ namespace SweetEditor {
 			return false;
 		}
 
-		private bool ApplyDiagnostics(Dictionary<int, List<DiagnosticItem>> source) {
+		private bool ApplyDiagnostics(Dictionary<int, List<Diagnostic>> source) {
 			if (source.Count == 0) {
 				return false;
 			}
@@ -597,6 +611,25 @@ namespace SweetEditor {
 			return true;
 		}
 
+		private bool ApplyCodeLensMode(DecorationApplyMode mode, int currentVisibleStartLine, int currentVisibleEndLine) {
+			if (mode == DecorationApplyMode.REPLACE_ALL) {
+				editor.ClearCodeLens();
+				return true;
+			}
+			if (mode == DecorationApplyMode.REPLACE_RANGE) {
+				return ClearPreviousAndCurrentRange(ClearCodeLensRange, currentVisibleStartLine, currentVisibleEndLine);
+			}
+			return false;
+		}
+
+		private bool ApplyCodeLensItems(Dictionary<int, List<CodeLensItem>> source) {
+			if (source.Count == 0) {
+				return false;
+			}
+			editor.SetBatchLineCodeLens(source);
+			return true;
+		}
+
 		private bool ClearSpanRange(SpanLayer layer, int startLine, int endLine) {
 			var empty = BuildEmptyRangeMap<StyleSpan>(startLine, endLine);
 			if (empty.Count == 0) {
@@ -616,7 +649,7 @@ namespace SweetEditor {
 		}
 
 		private bool ClearDiagnosticRange(int startLine, int endLine) {
-			var empty = BuildEmptyRangeMap<DiagnosticItem>(startLine, endLine);
+			var empty = BuildEmptyRangeMap<Diagnostic>(startLine, endLine);
 			if (empty.Count == 0) {
 				return false;
 			}
@@ -639,6 +672,15 @@ namespace SweetEditor {
 				return false;
 			}
 			editor.SetBatchLinePhantomTexts(empty);
+			return true;
+		}
+
+		private bool ClearCodeLensRange(int startLine, int endLine) {
+			var empty = BuildEmptyRangeMap<CodeLensItem>(startLine, endLine);
+			if (empty.Count == 0) {
+				return false;
+			}
+			editor.SetBatchLineCodeLens(empty);
 			return true;
 		}
 
@@ -917,6 +959,14 @@ namespace SweetEditor {
 			} else if (patchResult.PhantomTextsMode != DecorationApplyMode.MERGE) {
 				snapshot.PhantomTexts = null;
 				snapshot.PhantomTextsMode = patchResult.PhantomTextsMode;
+			}
+
+			if (patchResult.CodeLensItems != null) {
+				snapshot.CodeLensItems = patchResult.CodeLensItems;
+				snapshot.CodeLensItemsMode = patchResult.CodeLensItemsMode;
+			} else if (patchResult.CodeLensItemsMode != DecorationApplyMode.MERGE) {
+				snapshot.CodeLensItems = null;
+				snapshot.CodeLensItemsMode = patchResult.CodeLensItemsMode;
 			}
 		}
 
