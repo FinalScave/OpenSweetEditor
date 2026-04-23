@@ -74,9 +74,22 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     public boolean setComposingText(CharSequence text, int newCursorPosition) {
         mPendingFallbackDeleteBeforeLength = 0;
         if (!mEditor.isCompositionEnabled()) {
-            return super.setComposingText(text, newCursorPosition);
+            if (text != null && text.length() > 0) {
+                // Just insert it as if it's already committed text to prevent shadow composition states
+                mEditor.insertText(text.toString());
+            }
+            return true;
         }
         mEditor.compositionUpdate(text != null ? text.toString() : "");
+        return true;
+    }
+
+    @Override
+    public boolean setComposingRegion(int start, int end) {
+        if (!mEditor.isCompositionEnabled()) {
+            return true;
+        }
+        mEditor.setComposingRegion(start, end);
         return true;
     }
 
@@ -208,7 +221,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     }
 
     private boolean shouldExposeShadowText() {
-        return !mEditor.isCompositionEnabled() && mEditable.length() > 0;
+        return false;
     }
 
     private void clearShadowEditable() {

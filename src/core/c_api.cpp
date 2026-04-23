@@ -1193,6 +1193,17 @@ void editor_move_cursor_to_line_end(intptr_t editor_handle, int extend_selection
   editor_core->moveCursorToLineEnd(extend_selection != 0);
 }
 
+void editor_set_composing_region(intptr_t editor_handle, size_t start_line, size_t start_column, size_t end_line, size_t end_column) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    return;
+  }
+  TextRange range;
+  range.start = {start_line, start_column};
+  range.end = {end_line, end_column};
+  editor_core->setComposingRegion(range);
+}
+
 void editor_composition_start(intptr_t editor_handle) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {

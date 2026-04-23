@@ -273,6 +273,9 @@ namespace NS_SWEETEDITOR {
     /// @param extend_selection Whether to extend selection
     void moveCursorPageDown(bool extend_selection = false);
 
+    /// Set composition dynamically by IME directly based on text region
+    void setComposingRegion(const TextRange& range);
+
     /// Notify editor that IME composition starts
     /// Called by platform side when compositionstart / composingText starts
     void compositionStart();

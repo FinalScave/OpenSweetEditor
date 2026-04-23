@@ -1797,6 +1797,18 @@ public class SweetEditor extends View {
         return mEditorCore.isComposing();
     }
 
+    void setComposingRegion(int startOffset, int endOffset) {
+        if (mDocument == null) {
+            return;
+        }
+        TextRange range = new TextRange();
+        range.start = mDocument.getPositionFromCharIndex(startOffset);
+        range.end = mDocument.getPositionFromCharIndex(endOffset);
+        mEditorCore.setComposingRegion(range);
+        flush();
+        updateImeSelectionState();
+    }
+
     void compositionUpdate(@NonNull String text) {
         long t0 = ENABLE_PERF_LOG ? System.nanoTime() : 0;
         mEditorCore.compositionUpdate(text);

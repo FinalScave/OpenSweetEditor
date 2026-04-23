@@ -1060,7 +1060,26 @@ namespace NS_SWEETEDITOR {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
     if (m_composition_.is_composing) {
-      compositionCancel();
+      if (m_composition_.composing_text.empty()) {
+        compositionCancel();
+        return {};
+      }
+      U16String composing_u16;
+      StrUtil::convertUTF8ToUTF16(m_composition_.composing_text, composing_u16);
+      size_t cursor_column = composing_u16.length();
+      if (cursor_column > 0) {
+        size_t prev_col = UnicodeUtil::prevGraphemeBoundaryColumn(composing_u16, cursor_column);
+        composing_u16.erase(prev_col, cursor_column - prev_col);
+        U8String next_text;
+        StrUtil::convertUTF16ToUTF8(composing_u16, next_text);
+        if (next_text.empty()) {
+          compositionCancel();
+        } else {
+          compositionUpdate(next_text);
+        }
+      } else {
+        compositionCancel();
+      }
       return {};
     }
 
@@ -1639,6 +1658,9 @@ namespace NS_SWEETEDITOR {
   }
 
   void EditorCore::setCursorPosition(const TextPosition& position) {
+    if (m_composition_.is_composing && position != m_caret_.cursor) {
+      compositionEnd("");
+    }
     m_caret_.cursor = position;
     if (m_document_ != nullptr) {
       size_t line_count = m_document_->getLineCount();
@@ -1669,6 +1691,9 @@ namespace NS_SWEETEDITOR {
   }
 
   void EditorCore::setSelection(const TextRange& range) {
+    if (m_composition_.is_composing && (range.start != m_caret_.selection.start || range.end != m_caret_.selection.end)) {
+      compositionEnd("");
+    }
     TextRange safe_range = range;
     if (m_document_ != nullptr) {
       size_t line_count = m_document_->getLineCount();
@@ -1921,6 +1946,49 @@ namespace NS_SWEETEDITOR {
     }
   }
 
+  void EditorCore::setComposingRegion(const TextRange& range) {
+    if (m_document_ == nullptr || m_settings_.read_only || !m_settings_.enable_composition) return;
+    if (m_composition_.is_composing) {
+      compositionEnd("");
+    }
+    
+    TextRange safe_range = range;
+    size_t line_count = m_document_->getLineCount();
+    auto clamp_position = [&](TextPosition& position, bool prefer_right) {
+      if (line_count == 0) {
+        position = {};
+        return;
+      }
+      if (position.line >= line_count) {
+        position.line = line_count - 1;
+        position.column = m_document_->getLineColumns(position.line);
+      }
+      const U16String& line_text = m_document_->getLineU16TextRef(position.line);
+      size_t clamped_column = std::min<size_t>(position.column, line_text.length());
+      position.column = prefer_right
+                      ? UnicodeUtil::clampColumnToGraphemeBoundaryRight(line_text, clamped_column)
+                      : UnicodeUtil::clampColumnToGraphemeBoundaryLeft(line_text, clamped_column);
+    };
+    clamp_position(safe_range.start, false);
+    clamp_position(safe_range.end, true);
+
+    if (safe_range.start == safe_range.end) return;
+
+    U8String text = m_document_->getU8Text(safe_range);
+    m_composition_.is_composing = true;
+    m_composition_.start_position = safe_range.start;
+    m_composition_.composing_text = text;
+    m_composition_.composing_columns = calcUtf16Columns(text);
+    m_composition_text_in_document_ = true;
+
+    // Move cursor to the end of the newly designated composition region
+    setCursorPosition(safe_range.end);
+    setSelection({safe_range.end, safe_range.end});
+    ensureCursorVisible();
+    LOGD("EditorCore::setComposingRegion: %s -> %s, text='%s'",
+         safe_range.start.dump().c_str(), safe_range.end.dump().c_str(), text.c_str());
+  }
+
   void EditorCore::compositionStart() {
     if (m_document_ == nullptr || m_settings_.read_only) return;
 
@@ -1988,8 +2056,8 @@ namespace NS_SWEETEDITOR {
       m_composition_.composing_text.clear();
       m_composition_.composing_columns = 0;
       m_composition_text_in_document_ = false;
+      setCursorPosition(m_composition_.start_position);
     }
-
     m_text_layout_->invalidateContentMetrics(m_composition_.start_position.line);
     ensureCursorVisible();
     LOGD("EditorCore::compositionUpdate, text = %s, columns = %zu",
@@ -2793,7 +2861,7 @@ namespace NS_SWEETEDITOR {
       {m_composition_.start_position.line, m_composition_.start_position.column + m_composition_.composing_columns}
     };
     m_document_->deleteU8Text(comp_range);
-    setCursorPosition(m_composition_.start_position);
+    m_caret_.cursor = m_composition_.start_position; // Avoid recursive hooks or composition commits
     m_composition_text_in_document_ = false;
   }
 

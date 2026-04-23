@@ -416,6 +416,10 @@ public:
     editor_composition_start(static_cast<intptr_t>(handle));
   }
 
+  static void setComposingRegion(JNIEnv* env, jclass clazz, jlong handle, jlong startLine, jlong startColumn, jlong endLine, jlong endColumn) {
+    editor_set_composing_region(static_cast<intptr_t>(handle), startLine, startColumn, endLine, endColumn);
+  }
+
   static void compositionUpdate(JNIEnv* env, jclass clazz, jlong handle, jstring text) {
     const char* text_str = text != nullptr ? env->GetStringUTFChars(text, JNI_FALSE) : nullptr;
     editor_composition_update(static_cast<intptr_t>(handle), text_str);
@@ -1037,6 +1041,7 @@ public:
       {"nativeInsertLineBelow", "(J)Ljava/nio/ByteBuffer;", (void*) insertLineBelow},
       {"nativeGetSelectedText", "(J)Ljava/lang/String;", (void*) getSelectedText},
       {"nativeCompositionStart", "(J)V", (void*) compositionStart},
+      {"nativeSetComposingRegion", "(JJJJJ)V", (void*) setComposingRegion},
       {"nativeCompositionUpdate", "(JLjava/lang/String;)V", (void*) compositionUpdate},
       {"nativeCompositionEnd", "(JLjava/lang/String;)Ljava/nio/ByteBuffer;", (void*) compositionEnd},
       {"nativeCompositionCancel", "(J)V", (void*) compositionCancel},

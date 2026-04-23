@@ -695,6 +695,11 @@ public class EditorCore {
         nativeCompositionStart(mNativeHandle);
     }
 
+    public void setComposingRegion(TextRange range) {
+        if (mNativeHandle == 0 || range == null) return;
+        nativeSetComposingRegion(mNativeHandle, range.start.line, range.start.column, range.end.line, range.end.column);
+    }
+
     public void compositionUpdate(String text) {
         if (mNativeHandle == 0) return;
         nativeCompositionUpdate(mNativeHandle, text);
@@ -2131,6 +2136,9 @@ public class EditorCore {
 
     @CriticalNative
     private static native void nativeCompositionStart(long handle);
+
+    @CriticalNative
+    private static native void nativeSetComposingRegion(long handle, long startLine, long startColumn, long endLine, long endColumn);
 
     @FastNative
     private static native void nativeCompositionUpdate(long handle, String text);

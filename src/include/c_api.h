@@ -604,6 +604,8 @@ EDITOR_API void editor_move_cursor_to_line_start(intptr_t editor_handle, int ext
 /// @param extend_selection Whether to extend selection
 EDITOR_API void editor_move_cursor_to_line_end(intptr_t editor_handle, int extend_selection);
 
+EDITOR_API void editor_set_composing_region(intptr_t editor_handle, size_t start_line, size_t start_column, size_t end_line, size_t end_column);
+
 /// Notify editor that IME composition starts
 EDITOR_API void editor_composition_start(intptr_t editor_handle);
 
