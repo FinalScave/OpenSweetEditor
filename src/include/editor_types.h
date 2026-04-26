@@ -166,10 +166,19 @@ namespace NS_SWEETEDITOR {
     EditorCommand command {EditorCommand::NONE};
   };
 
+  /// IME composition ownership.
+  enum struct CompositionKind {
+    NONE,
+    PREEDIT_TEXT,
+    DOCUMENT_RANGE,
+  };
+
   /// IME composition state
   struct CompositionState {
     /// Whether composition is active
     bool is_composing {false};
+    /// Source and ownership of the active composition
+    CompositionKind kind {CompositionKind::NONE};
     /// Start position of composition (position in document)
     TextPosition start_position;
     /// Current composing text (UTF8)

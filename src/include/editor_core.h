@@ -570,8 +570,14 @@ namespace NS_SWEETEDITOR {
 
     /// IME composition state
     CompositionState m_composition_;
-    /// Whether current composing text is already inserted into document (for safe remove)
-    bool m_composition_text_in_document_ {false};
+    /// Whether current preedit text is already inserted into document for safe removal
+    bool m_preedit_text_in_document_ {false};
+    /// Whether current preedit text temporarily replaces an existing document range
+    bool m_preedit_replaces_document_range_ {false};
+    /// Original range replaced by current preedit text
+    TextRange m_preedit_replaced_range_;
+    /// Original text replaced by current preedit text
+    U8String m_preedit_replaced_text_;
 
     /// Linked editing session (nullptr means not in linked editing mode)
     UniquePtr<LinkedEditingSession> m_linked_editing_session_;
@@ -609,6 +615,8 @@ namespace NS_SWEETEDITOR {
     void placeCursorAt(const PointF& screen_point);
     /// Select word at screen coordinates
     void selectWordAt(const PointF& screen_point);
+    void setCursorPositionInternal(const TextPosition& position, bool commit_composition);
+    void setSelectionInternal(const TextRange& range, bool commit_composition);
     /// Update cursor movement (handle selection extension logic)
     void moveCursorTo(const TextPosition& new_pos, bool extend_selection);
     /// Calculate UTF16 column count for UTF8 text

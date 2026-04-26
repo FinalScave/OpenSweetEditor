@@ -1248,6 +1248,32 @@ int editor_is_composing(intptr_t editor_handle) {
   return editor_core->isComposing() ? 1 : 0;
 }
 
+void editor_get_composing_range(intptr_t editor_handle,
+                                int32_t* out_start_line,
+                                int32_t* out_start_column,
+                                int32_t* out_end_line,
+                                int32_t* out_end_column) {
+  if (out_start_line) *out_start_line = -1;
+  if (out_start_column) *out_start_column = -1;
+  if (out_end_line) *out_end_line = -1;
+  if (out_end_column) *out_end_column = -1;
+
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr || !editor_core->isComposing()) {
+    return;
+  }
+
+  const CompositionState& state = editor_core->getCompositionState();
+  if (!state.is_composing) {
+    return;
+  }
+
+  if (out_start_line) *out_start_line = static_cast<int32_t>(state.start_position.line);
+  if (out_start_column) *out_start_column = static_cast<int32_t>(state.start_position.column);
+  if (out_end_line) *out_end_line = static_cast<int32_t>(state.start_position.line);
+  if (out_end_column) *out_end_column = static_cast<int32_t>(state.start_position.column + state.composing_columns);
+}
+
 void editor_set_composition_enabled(intptr_t editor_handle, int enabled) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {

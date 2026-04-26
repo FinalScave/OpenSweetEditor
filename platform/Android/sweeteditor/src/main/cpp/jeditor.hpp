@@ -416,7 +416,7 @@ public:
     editor_composition_start(static_cast<intptr_t>(handle));
   }
 
-  static void setComposingRegion(JNIEnv* env, jclass clazz, jlong handle, jlong startLine, jlong startColumn, jlong endLine, jlong endColumn) {
+  static void setComposingRegion(jlong handle, jlong startLine, jlong startColumn, jlong endLine, jlong endColumn) {
     editor_set_composing_region(static_cast<intptr_t>(handle), startLine, startColumn, endLine, endColumn);
   }
 
@@ -443,6 +443,22 @@ public:
 
   static jboolean isComposing(jlong handle) {
     return toJBoolean(editor_is_composing(static_cast<intptr_t>(handle)));
+  }
+
+  static jlongArray getComposingRange(JNIEnv* env, jclass clazz, jlong handle) {
+    int32_t start_line = -1;
+    int32_t start_column = -1;
+    int32_t end_line = -1;
+    int32_t end_column = -1;
+    editor_get_composing_range(static_cast<intptr_t>(handle),
+                               &start_line,
+                               &start_column,
+                               &end_line,
+                               &end_column);
+    jlong values[4] = {start_line, start_column, end_line, end_column};
+    jlongArray result = env->NewLongArray(4);
+    env->SetLongArrayRegion(result, 0, 4, values);
+    return result;
   }
 
   static void setCompositionEnabled(jlong handle, jboolean enabled) {
@@ -1046,6 +1062,7 @@ public:
       {"nativeCompositionEnd", "(JLjava/lang/String;)Ljava/nio/ByteBuffer;", (void*) compositionEnd},
       {"nativeCompositionCancel", "(J)V", (void*) compositionCancel},
       {"nativeIsComposing", "(J)Z", (void*) isComposing},
+      {"nativeGetComposingRange", "(J)[J", (void*) getComposingRange},
       {"nativeSetCompositionEnabled", "(JZ)V", (void*) setCompositionEnabled},
       {"nativeIsCompositionEnabled", "(J)Z", (void*) isCompositionEnabled},
       {"nativeSetReadOnly", "(JZ)V", (void*) setReadOnly},

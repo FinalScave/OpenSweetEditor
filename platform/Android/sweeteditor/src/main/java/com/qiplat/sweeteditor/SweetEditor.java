@@ -133,6 +133,10 @@ public class SweetEditor extends View {
     private int mAppliedViewportHeight = -1;
     @Nullable
     private PointF mLastHoverPoint;
+    private int mLastImeSelectionStart = Integer.MIN_VALUE;
+    private int mLastImeSelectionEnd = Integer.MIN_VALUE;
+    private int mLastImeComposingStart = Integer.MIN_VALUE;
+    private int mLastImeComposingEnd = Integer.MIN_VALUE;
 
     // ==================== Construction/Init/Lifecycle ====================
 
@@ -283,14 +287,23 @@ public class SweetEditor extends View {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         long t0 = ENABLE_PERF_LOG ? System.nanoTime() : 0;
+        boolean wasComposing = isComposing();
         EditorCore.GestureResult result = mEditorCore.handleGestureEvent(event);
         Log.d(TAG, "result: " + result);
         PointF locationInView = new PointF(event.getX(), event.getY());
         fireGestureEvents(result, locationInView, event.getActionMasked());
+        boolean imeStateChanged = result.type == EditorCore.GestureType.TAP
+                || result.type == EditorCore.GestureType.DOUBLE_TAP
+                || result.type == EditorCore.GestureType.LONG_PRESS
+                || result.type == EditorCore.GestureType.DRAG_SELECT
+                || result.isHandleDrag;
         if (result.type == EditorCore.GestureType.TAP) {
             requestFocus();
             if (result.hitTarget == null || result.hitTarget.type == EditorCore.HitTargetType.NONE) {
                 showSoftKeyboard();
+            }
+            if (wasComposing && !result.hasSelection && isCompositionEnabled()) {
+                imeStateChanged |= restartCompositionAtCursorWord();
             }
             resetCursorBlink();
         } else if (result.type == EditorCore.GestureType.SCALE) {
@@ -298,6 +311,9 @@ public class SweetEditor extends View {
             syncPlatformScale(result.viewScale);
         }
         flush();
+        if (imeStateChanged) {
+            updateImeSelectionState();
+        }
         updateGestureAnimationState(result);
         if (ENABLE_PERF_LOG) {
             float ms = (System.nanoTime() - t0) / 1_000_000f;
@@ -354,8 +370,16 @@ public class SweetEditor extends View {
 
     @Override
     public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
-        outAttrs.inputType = EditorInfo.TYPE_CLASS_TEXT | EditorInfo.TYPE_TEXT_FLAG_MULTI_LINE;
-        outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI | EditorInfo.IME_ACTION_NONE;
+        clearImeSelectionCache();
+        int inputType = EditorInfo.TYPE_CLASS_TEXT | EditorInfo.TYPE_TEXT_FLAG_MULTI_LINE;
+        int imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI | EditorInfo.IME_ACTION_NONE;
+        if (!isCompositionEnabled()) {
+            inputType |= EditorInfo.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+                    | EditorInfo.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD;
+            imeOptions |= EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING;
+        }
+        outAttrs.inputType = inputType;
+        outAttrs.imeOptions = imeOptions;
         IntRange selectionOffsets = getImeSelectionOffsets();
         outAttrs.initialSelStart = selectionOffsets.start;
         outAttrs.initialSelEnd = selectionOffsets.end;
@@ -807,6 +831,7 @@ public class SweetEditor extends View {
      */
     public void setSelection(int startLine, int startColumn, int endLine, int endColumn) {
         mEditorCore.setSelection(startLine, startColumn, endLine, endColumn);
+        updateImeSelectionState();
         flush();
     }
 
@@ -815,6 +840,7 @@ public class SweetEditor extends View {
      */
     public void setSelection(@NonNull TextRange range) {
         mEditorCore.setSelection(range);
+        updateImeSelectionState();
         flush();
     }
 
@@ -919,7 +945,12 @@ public class SweetEditor extends View {
      * @param position target position
      */
     public void setCursorPosition(@NonNull TextPosition position) {
+        boolean wasComposing = isComposing();
         mEditorCore.setCursorPosition(position);
+        if (wasComposing && isCompositionEnabled()) {
+            restartCompositionAtCursorWord();
+        }
+        updateImeSelectionState();
         flush();
     }
 
@@ -1797,16 +1828,99 @@ public class SweetEditor extends View {
         return mEditorCore.isComposing();
     }
 
-    void setComposingRegion(int startOffset, int endOffset) {
+    @Nullable
+    TextRange setComposingRegion(int startOffset, int endOffset) {
         if (mDocument == null) {
-            return;
+            return null;
         }
-        TextRange range = new TextRange();
-        range.start = mDocument.getPositionFromCharIndex(startOffset);
-        range.end = mDocument.getPositionFromCharIndex(endOffset);
+        TextRange range = resolveImeComposingRegion(startOffset, endOffset);
+        if (range == null || isCollapsed(range)) {
+            updateImeSelectionState();
+            return null;
+        }
+        if (isCurrentComposingRange(range)) {
+            return copyRange(range);
+        }
         mEditorCore.setComposingRegion(range);
         flush();
         updateImeSelectionState();
+        return copyRange(range);
+    }
+
+    @NonNull
+    String getTextInRange(@NonNull TextRange range) {
+        if (mDocument == null) {
+            return "";
+        }
+        String text = mDocument.getText();
+        int start = mDocument.getCharIndexFromPosition(range.start);
+        int end = mDocument.getCharIndexFromPosition(range.end);
+        int safeStart = Math.max(0, Math.min(Math.min(start, end), text.length()));
+        int safeEnd = Math.max(0, Math.min(Math.max(start, end), text.length()));
+        return text.substring(safeStart, safeEnd);
+    }
+
+    boolean replaceImeTextRange(@NonNull TextRange range, @NonNull String expectedText, @NonNull String newText) {
+        if (!expectedText.equals(getTextInRange(range))) {
+            return false;
+        }
+        replaceText(range, newText);
+        updateImeSelectionState();
+        return true;
+    }
+
+    @Nullable
+    private TextRange resolveImeComposingRegion(int startOffset, int endOffset) {
+        int start = Math.max(0, Math.min(startOffset, endOffset));
+        int end = Math.max(0, Math.max(startOffset, endOffset));
+        if (mDocument == null || start == end) {
+            return null;
+        }
+
+        TextPosition cursor = getCursorPosition();
+        String lineText = mDocument.getLineText(cursor.line);
+        int lineLength = lineText != null ? lineText.length() : 0;
+        if (start <= lineLength && end <= lineLength) {
+            TextRange lineRange = new TextRange(
+                    new TextPosition(cursor.line, start),
+                    new TextPosition(cursor.line, end));
+            return containsPosition(lineRange, cursor) ? lineRange : null;
+        }
+
+        TextRange documentRange = new TextRange(
+                mDocument.getPositionFromCharIndex(start),
+                mDocument.getPositionFromCharIndex(end));
+        return containsPosition(documentRange, cursor) ? documentRange : null;
+    }
+
+    private boolean isCurrentComposingRange(@NonNull TextRange range) {
+        if (!mEditorCore.isComposing()) {
+            return false;
+        }
+        TextRange currentRange = mEditorCore.getComposingRange();
+        return currentRange != null && rangesEqual(currentRange, range);
+    }
+
+    private static boolean containsPosition(@NonNull TextRange range, @NonNull TextPosition position) {
+        return comparePosition(range.start, position) <= 0 && comparePosition(position, range.end) <= 0;
+    }
+
+    private static boolean rangesEqual(@NonNull TextRange left, @NonNull TextRange right) {
+        return comparePosition(left.start, right.start) == 0 && comparePosition(left.end, right.end) == 0;
+    }
+
+    @NonNull
+    private static TextRange copyRange(@NonNull TextRange range) {
+        return new TextRange(
+                new TextPosition(range.start.line, range.start.column),
+                new TextPosition(range.end.line, range.end.column));
+    }
+
+    private static int comparePosition(@NonNull TextPosition left, @NonNull TextPosition right) {
+        if (left.line != right.line) {
+            return Integer.compare(left.line, right.line);
+        }
+        return Integer.compare(left.column, right.column);
     }
 
     void compositionUpdate(@NonNull String text) {
@@ -1840,14 +1954,64 @@ public class SweetEditor extends View {
             return;
         }
         IntRange selectionOffsets = getImeSelectionOffsets();
-        imm.updateSelection(this, selectionOffsets.start, selectionOffsets.end, -1, -1);
+        IntRange composingOffsets = getImeComposingOffsets();
+        if (mLastImeSelectionStart == selectionOffsets.start
+                && mLastImeSelectionEnd == selectionOffsets.end
+                && mLastImeComposingStart == composingOffsets.start
+                && mLastImeComposingEnd == composingOffsets.end) {
+            return;
+        }
+        mLastImeSelectionStart = selectionOffsets.start;
+        mLastImeSelectionEnd = selectionOffsets.end;
+        mLastImeComposingStart = composingOffsets.start;
+        mLastImeComposingEnd = composingOffsets.end;
+        imm.updateSelection(this, selectionOffsets.start, selectionOffsets.end, composingOffsets.start, composingOffsets.end);
     }
 
     void restartImeInput() {
+        clearImeSelectionCache();
         InputMethodManager imm = getInputMethodManager();
         if (imm != null) {
             imm.restartInput(this);
         }
+    }
+
+    private void clearImeSelectionCache() {
+        mLastImeSelectionStart = Integer.MIN_VALUE;
+        mLastImeSelectionEnd = Integer.MIN_VALUE;
+        mLastImeComposingStart = Integer.MIN_VALUE;
+        mLastImeComposingEnd = Integer.MIN_VALUE;
+    }
+
+    private boolean restartCompositionAtCursorWord() {
+        if (mDocument == null || !isCompositionEnabled()) {
+            return false;
+        }
+        TextRange range = mEditorCore.getWordRangeAtCursor();
+        if (range == null || isCollapsed(range)) {
+            return false;
+        }
+        mEditorCore.setComposingRegion(range);
+        return true;
+    }
+
+    @NonNull
+    private IntRange getImeComposingOffsets() {
+        if (mDocument == null || !mEditorCore.isComposing()) {
+            return new IntRange(-1, -1);
+        }
+        TextRange range = mEditorCore.getComposingRange();
+        if (range == null || isCollapsed(range)) {
+            return new IntRange(-1, -1);
+        }
+
+        int start = mDocument.getCharIndexFromPosition(range.start);
+        int end = mDocument.getCharIndexFromPosition(range.end);
+        return start <= end ? new IntRange(start, end) : new IntRange(end, start);
+    }
+
+    private boolean isCollapsed(@NonNull TextRange range) {
+        return range.start.line == range.end.line && range.start.column == range.end.column;
     }
 
     // ==================== Event Dispatch (Internal) ====================
@@ -2126,16 +2290,26 @@ public class SweetEditor extends View {
             if (event.isCtrlPressed()) modifiers |= KeyModifier.CTRL;
             if (event.isAltPressed()) modifiers |= KeyModifier.ALT;
             if (event.isMetaPressed()) modifiers |= KeyModifier.META;
+            boolean wasComposing = isComposing();
             EditorCore.KeyEventResult result = mEditorCore.handleKeyEvent(nativeKeyCode, null, modifiers);
             if (result.handled && dispatchKeyMapCommand(result.command, nativeKeyCode, modifiers)) {
                 resetCursorBlink();
                 flush();
+                updateImeSelectionState();
                 logInputPerf(t0, "key-cmd");
                 return;
             }
             dispatchKeyEventResult(result);
+            if (wasComposing && !isComposing()
+                    && result.cursorChanged
+                    && !result.selectionChanged
+                    && isCompositionEnabled()
+                    && isCompositionRestartNavigationKey(nativeKeyCode)) {
+                restartCompositionAtCursorWord();
+            }
             resetCursorBlink();
             flush();
+            updateImeSelectionState();
             logInputPerf(t0, "key");
         }
     }
@@ -2374,6 +2548,22 @@ public class SweetEditor extends View {
     @Nullable
     private InputMethodManager getInputMethodManager() {
         return (InputMethodManager) getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+    }
+
+    private static boolean isCompositionRestartNavigationKey(int nativeKeyCode) {
+        switch (nativeKeyCode) {
+            case KeyCode.LEFT:
+            case KeyCode.UP:
+            case KeyCode.RIGHT:
+            case KeyCode.DOWN:
+            case KeyCode.HOME:
+            case KeyCode.END:
+            case KeyCode.PAGE_UP:
+            case KeyCode.PAGE_DOWN:
+                return true;
+            default:
+                return false;
+        }
     }
 
     private static int mapAndroidKeyCode(int androidKeyCode) {

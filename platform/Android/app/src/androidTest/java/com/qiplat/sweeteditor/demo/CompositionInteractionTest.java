@@ -1,22 +1,24 @@
 package com.qiplat.sweeteditor.demo;
 
-import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.InputConnection;
 
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+
+import com.qiplat.sweeteditor.SweetEditor;
+import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
+import com.qiplat.sweeteditor.core.foundation.TextRange;
 
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import androidx.test.ext.junit.runners.AndroidJUnit4;
+import java.lang.reflect.Method;
 
 import static org.junit.Assert.*;
 
 /**
- * Tests IME composition (composing text) flow through InputConnection.
- * Since SweetEditor's composition methods are package-private, we drive
- * the flow through the standard Android InputConnection API.
+ * Tests IME composition flow through InputConnection.
  */
 @RunWith(AndroidJUnit4.class)
 public class CompositionInteractionTest {
@@ -29,6 +31,24 @@ public class CompositionInteractionTest {
             android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
             return editor.onCreateInputConnection(info);
         });
+    }
+
+    private EditorCore getEditorCore(SweetEditor editor) {
+        try {
+            Method method = SweetEditor.class.getDeclaredMethod("getEditorCore");
+            method.setAccessible(true);
+            return (EditorCore) method.invoke(editor);
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    private boolean isComposing() {
+        return editorRule.runOnEditorSync(editor -> getEditorCore(editor).isComposing());
+    }
+
+    private TextRange getComposingRange() {
+        return editorRule.runOnEditorSync(editor -> getEditorCore(editor).getComposingRange());
     }
 
     @Test
@@ -50,7 +70,7 @@ public class CompositionInteractionTest {
         });
         editorRule.waitForIdle();
         String text = editorRule.runOnEditorSync(editor -> editor.getDocument().getText());
-        assertFalse("Document should contain committed text", text.isEmpty());
+        assertEquals("pin", text);
     }
 
     @Test
@@ -126,6 +146,363 @@ public class CompositionInteractionTest {
     }
 
     @Test
+    public void testCompositionCandidateReplacesPreeditText() {
+        editorRule.loadText("");
+        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
+        editorRule.runOnEditor(editor -> {
+            android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
+            InputConnection conn = editor.onCreateInputConnection(info);
+            conn.setComposingText("n", 1);
+            conn.setComposingText("ni", 1);
+            conn.commitText("you", 1);
+        });
+        editorRule.waitForIdle();
+        String text = editorRule.runOnEditorSync(editor -> editor.getDocument().getText());
+        assertEquals("you", text);
+        assertFalse(isComposing());
+    }
+
+    @Test
+    public void testCompositionBackspaceShrinksThenDeletesLastCharacter() {
+        String initialText = "package demo;\nclass Example {}";
+        editorRule.loadText(initialText);
+        editorRule.runOnEditor(editor -> {
+            editor.getSettings().setCompositionEnabled(true);
+            editor.setCursorPosition(new TextPosition(1, 0));
+        });
+        InputConnection conn = getInputConnection();
+
+        editorRule.runOnEditor(editor -> conn.setComposingText("how", 1));
+        editorRule.waitForIdle();
+        assertEquals("package demo;\nhowclass Example {}", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertTrue(isComposing());
+
+        editorRule.runOnEditor(editor -> conn.deleteSurroundingText(1, 0));
+        editorRule.waitForIdle();
+        assertEquals("package demo;\nhoclass Example {}", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertTrue(isComposing());
+
+        editorRule.runOnEditor(editor -> conn.deleteSurroundingText(1, 0));
+        editorRule.waitForIdle();
+        assertEquals("package demo;\nhclass Example {}", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertTrue(isComposing());
+
+        editorRule.runOnEditor(editor -> conn.deleteSurroundingText(1, 0));
+        editorRule.waitForIdle();
+        assertEquals(initialText, editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(isComposing());
+        assertNull(getComposingRange());
+        TextPosition cursor = editorRule.runOnEditorSync(SweetEditor::getCursorPosition);
+        assertEquals(1, cursor.line);
+        assertEquals(0, cursor.column);
+    }
+
+    @Test
+    public void testCompositionFinishAfterShrinkDeletesLastCharacterWithoutJumpingToDocumentStart() {
+        String initialText = "package demo;\nclass Example {}";
+        editorRule.loadText(initialText);
+        editorRule.runOnEditor(editor -> {
+            editor.getSettings().setCompositionEnabled(true);
+            editor.setCursorPosition(new TextPosition(1, 0));
+        });
+        InputConnection conn = getInputConnection();
+
+        editorRule.runOnEditor(editor -> {
+            conn.setComposingText("how", 1);
+            conn.setComposingText("ho", 1);
+            conn.setComposingText("h", 1);
+            conn.finishComposingText();
+            conn.setComposingRegion(0, 1);
+        });
+        editorRule.waitForIdle();
+        assertEquals(initialText, editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(isComposing());
+        TextPosition cursor = editorRule.runOnEditorSync(SweetEditor::getCursorPosition);
+        assertEquals(1, cursor.line);
+        assertEquals(0, cursor.column);
+    }
+
+    @Test
+    public void testCompositionCommitAfterShrinkDeletesLastCharacterWithoutJumpingToDocumentStart() {
+        String initialText = "package demo;\nclass Example {}";
+        editorRule.loadText(initialText);
+        editorRule.runOnEditor(editor -> {
+            editor.getSettings().setCompositionEnabled(true);
+            editor.setCursorPosition(new TextPosition(1, 0));
+        });
+        InputConnection conn = getInputConnection();
+
+        editorRule.runOnEditor(editor -> {
+            conn.setComposingText("how", 1);
+            conn.setComposingText("ho", 1);
+            conn.setComposingText("h", 1);
+            conn.commitText("h", 1);
+            conn.setComposingRegion(0, 1);
+        });
+        editorRule.waitForIdle();
+        assertEquals(initialText, editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(isComposing());
+        TextPosition cursor = editorRule.runOnEditorSync(SweetEditor::getCursorPosition);
+        assertEquals(1, cursor.line);
+        assertEquals(0, cursor.column);
+    }
+
+    @Test
+    public void testCompositionEndsWhenCursorMovesToWhitespace() {
+        editorRule.loadText("abc  ");
+        editorRule.runOnEditor(editor -> {
+            editor.getSettings().setCompositionEnabled(true);
+            editor.setCursorPosition(new TextPosition(0, 5));
+            android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
+            InputConnection conn = editor.onCreateInputConnection(info);
+            conn.setComposingText("how", 1);
+            editor.setCursorPosition(new TextPosition(0, 4));
+        });
+        editorRule.waitForIdle();
+        assertEquals("abc  how", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(isComposing());
+        TextPosition cursor = editorRule.runOnEditorSync(SweetEditor::getCursorPosition);
+        assertEquals(0, cursor.line);
+        assertEquals(4, cursor.column);
+    }
+
+    @Test
+    public void testCompositionRestartsAtCursorWordAfterCursorMove() {
+        editorRule.loadText("abc  ");
+        editorRule.runOnEditor(editor -> {
+            editor.getSettings().setCompositionEnabled(true);
+            editor.setCursorPosition(new TextPosition(0, 5));
+            android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
+            InputConnection conn = editor.onCreateInputConnection(info);
+            conn.setComposingText("how", 1);
+            editor.setCursorPosition(new TextPosition(0, 1));
+        });
+        editorRule.waitForIdle();
+        assertEquals("abc  how", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertTrue(isComposing());
+        TextRange range = getComposingRange();
+        assertNotNull(range);
+        assertEquals(0, range.start.line);
+        assertEquals(0, range.start.column);
+        assertEquals(0, range.end.line);
+        assertEquals(3, range.end.column);
+        TextPosition cursor = editorRule.runOnEditorSync(SweetEditor::getCursorPosition);
+        assertEquals(0, cursor.line);
+        assertEquals(1, cursor.column);
+
+        editorRule.runOnEditor(editor -> {
+            android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
+            InputConnection conn = editor.onCreateInputConnection(info);
+            conn.finishComposingText();
+            conn.setComposingRegion(0, 3);
+        });
+        editorRule.waitForIdle();
+        cursor = editorRule.runOnEditorSync(SweetEditor::getCursorPosition);
+        assertEquals(0, cursor.line);
+        assertEquals(1, cursor.column);
+    }
+
+    @Test
+    public void testStaleComposingRegionAfterMovingToBlankLineDoesNotJumpToDocumentStart() {
+        String colorLine = "static int[] colors = new int[0];";
+        int colorsStart = colorLine.indexOf("colors");
+        int colorsEnd = colorsStart + "colors".length();
+        editorRule.loadText("package demo;\n" + colorLine + "\n\nclass Example {}");
+        editorRule.runOnEditor(editor -> {
+            editor.getSettings().setCompositionEnabled(true);
+            editor.setCursorPosition(new TextPosition(1, colorsStart + 2));
+        });
+        InputConnection conn = getInputConnection();
+
+        editorRule.runOnEditor(editor -> conn.setComposingRegion(colorsStart, colorsEnd));
+        editorRule.waitForIdle();
+        assertTrue(isComposing());
+        TextRange range = getComposingRange();
+        assertNotNull(range);
+        assertEquals(1, range.start.line);
+        assertEquals(colorsStart, range.start.column);
+        assertEquals(1, range.end.line);
+        assertEquals(colorsEnd, range.end.column);
+
+        editorRule.runOnEditor(editor -> {
+            editor.setCursorPosition(new TextPosition(2, 0));
+            conn.setComposingRegion(0, colorsEnd - colorsStart);
+        });
+        editorRule.waitForIdle();
+
+        assertFalse(isComposing());
+        TextPosition cursor = editorRule.runOnEditorSync(SweetEditor::getCursorPosition);
+        assertEquals(2, cursor.line);
+        assertEquals(0, cursor.column);
+    }
+
+    @Test
+    public void testRepeatedDocumentRangeCandidateCommitReplacesWord() {
+        String initialText = "record Point(double x, double y) {}";
+        int pointStart = initialText.indexOf("Point");
+        int pointEnd = pointStart + "Point".length();
+        editorRule.loadText(initialText);
+        editorRule.runOnEditor(editor -> {
+            editor.getSettings().setCompositionEnabled(true);
+            editor.setCursorPosition(new TextPosition(0, pointStart + 2));
+        });
+        InputConnection conn = getInputConnection();
+
+        editorRule.runOnEditor(editor -> {
+            conn.setComposingRegion(pointStart, pointEnd);
+            conn.setComposingRegion(pointStart, pointEnd);
+            conn.setComposingRegion(pointStart, pointEnd);
+            conn.commitText("Points", 1);
+        });
+        editorRule.waitForIdle();
+
+        assertEquals("record Points(double x, double y) {}", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(isComposing());
+        TextPosition cursor = editorRule.runOnEditorSync(SweetEditor::getCursorPosition);
+        assertEquals(0, cursor.line);
+        assertEquals(pointStart + "Points".length(), cursor.column);
+    }
+
+    @Test
+    public void testDocumentRangePreeditCandidateFinishReplacesWord() {
+        String initialText = "record Point(double x, double y) {}";
+        int pointStart = initialText.indexOf("Point");
+        int pointEnd = pointStart + "Point".length();
+        editorRule.loadText(initialText);
+        editorRule.runOnEditor(editor -> {
+            editor.getSettings().setCompositionEnabled(true);
+            editor.setCursorPosition(new TextPosition(0, pointStart + 2));
+        });
+        InputConnection conn = getInputConnection();
+
+        editorRule.runOnEditor(editor -> {
+            conn.setComposingRegion(pointStart, pointEnd);
+            conn.setComposingText("Points", 1);
+            conn.finishComposingText();
+        });
+        editorRule.waitForIdle();
+
+        assertEquals("record Points(double x, double y) {}", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(isComposing());
+        TextPosition cursor = editorRule.runOnEditorSync(SweetEditor::getCursorPosition);
+        assertEquals(0, cursor.line);
+        assertEquals(pointStart + "Points".length(), cursor.column);
+    }
+
+    @Test
+    public void testFinishedDocumentRangeCandidateCommitReplacesOriginalWordAfterCursorMove() {
+        String initialText = "record Point(double x, double y) {}\nclass Other {}";
+        int pointStart = initialText.indexOf("Point");
+        int pointEnd = pointStart + "Point".length();
+        editorRule.loadText(initialText);
+        editorRule.runOnEditor(editor -> {
+            editor.getSettings().setCompositionEnabled(true);
+            editor.setCursorPosition(new TextPosition(0, pointStart + 2));
+        });
+        InputConnection conn = getInputConnection();
+
+        editorRule.runOnEditor(editor -> {
+            conn.setComposingRegion(pointStart, pointEnd);
+            conn.finishComposingText();
+            editor.setCursorPosition(new TextPosition(1, 0));
+            conn.commitText("Points", 1);
+        });
+        editorRule.waitForIdle();
+
+        assertEquals("record Points(double x, double y) {}\nclass Other {}", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(isComposing());
+        TextPosition cursor = editorRule.runOnEditorSync(SweetEditor::getCursorPosition);
+        assertEquals(0, cursor.line);
+        assertEquals(pointStart + "Points".length(), cursor.column);
+    }
+
+    @Test
+    public void testFinishedDocumentRangeCandidateCommitIsIgnoredWhenOriginalRangeChanged() {
+        String initialText = "record Point(double x, double y) {}\nclass Other {}";
+        int pointStart = initialText.indexOf("Point");
+        int pointEnd = pointStart + "Point".length();
+        editorRule.loadText(initialText);
+        editorRule.runOnEditor(editor -> {
+            editor.getSettings().setCompositionEnabled(true);
+            editor.setCursorPosition(new TextPosition(0, pointStart + 2));
+        });
+        InputConnection conn = getInputConnection();
+
+        editorRule.runOnEditor(editor -> {
+            conn.setComposingRegion(pointStart, pointEnd);
+            conn.finishComposingText();
+            editor.setCursorPosition(new TextPosition(1, 0));
+            editor.replaceText(
+                    new TextRange(new TextPosition(0, pointStart), new TextPosition(0, pointEnd)),
+                    "Spot");
+            conn.commitText("Points", 1);
+        });
+        editorRule.waitForIdle();
+
+        assertEquals("record Spot(double x, double y) {}\nclass Other {}", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(isComposing());
+        TextPosition cursor = editorRule.runOnEditorSync(SweetEditor::getCursorPosition);
+        assertEquals(1, cursor.line);
+        assertEquals(0, cursor.column);
+    }
+
+    @Test
+    public void testFinishedDocumentRangeSetComposingTextReplacesOriginalWordAfterCursorMove() {
+        String initialText = "record Point(double x, double y) {}\nclass Other {}";
+        int pointStart = initialText.indexOf("Point");
+        int pointEnd = pointStart + "Point".length();
+        editorRule.loadText(initialText);
+        editorRule.runOnEditor(editor -> {
+            editor.getSettings().setCompositionEnabled(true);
+            editor.setCursorPosition(new TextPosition(0, pointStart + 2));
+        });
+        InputConnection conn = getInputConnection();
+
+        editorRule.runOnEditor(editor -> {
+            conn.setComposingRegion(pointStart, pointEnd);
+            conn.finishComposingText();
+            editor.setCursorPosition(new TextPosition(1, 0));
+            conn.setComposingText("Points", 1);
+            conn.finishComposingText();
+        });
+        editorRule.waitForIdle();
+
+        assertEquals("record Points(double x, double y) {}\nclass Other {}", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(isComposing());
+        TextPosition cursor = editorRule.runOnEditorSync(SweetEditor::getCursorPosition);
+        assertEquals(0, cursor.line);
+        assertEquals(pointStart + "Points".length(), cursor.column);
+    }
+
+    @Test
+    public void testFinishedDocumentRangeSetComposingTextThenCommitDoesNotDuplicate() {
+        String initialText = "record Point(double x, double y) {}\nclass Other {}";
+        int pointStart = initialText.indexOf("Point");
+        int pointEnd = pointStart + "Point".length();
+        editorRule.loadText(initialText);
+        editorRule.runOnEditor(editor -> {
+            editor.getSettings().setCompositionEnabled(true);
+            editor.setCursorPosition(new TextPosition(0, pointStart + 2));
+        });
+        InputConnection conn = getInputConnection();
+
+        editorRule.runOnEditor(editor -> {
+            conn.setComposingRegion(pointStart, pointEnd);
+            conn.finishComposingText();
+            editor.setCursorPosition(new TextPosition(1, 0));
+            conn.setComposingText("Points", 1);
+            conn.commitText("Points", 1);
+        });
+        editorRule.waitForIdle();
+
+        assertEquals("record Points(double x, double y) {}\nclass Other {}", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(isComposing());
+        TextPosition cursor = editorRule.runOnEditorSync(SweetEditor::getCursorPosition);
+        assertEquals(0, cursor.line);
+        assertEquals(pointStart + "Points".length(), cursor.column);
+    }
+
+    @Test
     public void testDisabledCompositionCandidateCommit() {
         editorRule.loadText("");
         editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(false));
@@ -133,11 +510,11 @@ public class CompositionInteractionTest {
             android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
             InputConnection conn = editor.onCreateInputConnection(info);
             conn.setComposingText("ni", 1);
-            conn.commitText("你", 1);
+            conn.commitText("you", 1);
         });
         editorRule.waitForIdle();
         String text = editorRule.runOnEditorSync(editor -> editor.getDocument().getText());
-        assertEquals("你", text);
+        assertEquals("you", text);
     }
 
     @Test
@@ -149,11 +526,32 @@ public class CompositionInteractionTest {
             android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
             InputConnection conn = editor.onCreateInputConnection(info);
             conn.setComposingText("ni", 1);
-            conn.commitText("你", 1);
+            conn.commitText("you", 1);
             conn.deleteSurroundingText(2, 0);
         });
         editorRule.waitForIdle();
         String text = editorRule.runOnEditorSync(editor -> editor.getDocument().getText());
-        assertEquals("a你", text);
+        assertEquals("ayou", text);
+    }
+
+    @Test
+    public void testDisabledCompositionDoesNotExposeContext() {
+        editorRule.loadText("hello");
+        editorRule.runOnEditor(editor -> {
+            editor.getSettings().setCompositionEnabled(false);
+            editor.setCursorPosition(new TextPosition(0, 5));
+        });
+        InputConnection conn = getInputConnection();
+
+        assertEquals("", conn.getTextBeforeCursor(5, 0).toString());
+        assertEquals("", conn.getTextAfterCursor(5, 0).toString());
+
+        editorRule.runOnEditor(editor -> conn.setComposingText("how", 1));
+        editorRule.waitForIdle();
+        assertEquals("hello", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+
+        editorRule.runOnEditor(editor -> conn.commitText("how", 1));
+        editorRule.waitForIdle();
+        assertEquals("hellohow", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
     }
 }

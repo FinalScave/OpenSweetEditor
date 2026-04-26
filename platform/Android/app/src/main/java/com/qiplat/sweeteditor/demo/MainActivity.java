@@ -112,6 +112,7 @@ public class MainActivity extends AppCompatActivity {
         settings.setFoldArrowMode(FoldArrowMode.AUTO);
         settings.setMaxGutterIcons(1);
         settings.setCurrentLineRenderMode(CurrentLineRenderMode.BORDER);
+        settings.setCompositionEnabled(true);
 
         LanguageConfiguration configuration = new LanguageConfiguration.Builder("test")
                 .addAutoClosingPair("\"", "\"")

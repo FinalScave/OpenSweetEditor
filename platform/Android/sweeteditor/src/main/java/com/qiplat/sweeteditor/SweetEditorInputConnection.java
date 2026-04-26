@@ -23,6 +23,13 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     private final SweetEditor mEditor;
     private final SpannableStringBuilder mEditable;
     private int mPendingFallbackDeleteBeforeLength = 0;
+    private String mLastComposingText = "";
+    private boolean mComposingTextWasReduced = false;
+    private boolean mSuppressNextComposingRegion = false;
+    private TextRange mPendingDocumentComposingRange = null;
+    private String mPendingDocumentComposingText = "";
+    private boolean mPendingDocumentRangeAwaitingCommit = false;
+    private String mSuppressNextCommitText = null;
 
     public SweetEditorInputConnection(SweetEditor editor, boolean fullEditor) {
         super(editor, fullEditor);
@@ -39,6 +46,9 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     @Override
     public CharSequence getTextBeforeCursor(int n, int flags) {
         n = Math.min(n, MAX_IME_TEXT_LENGTH);
+        if (!mEditor.isCompositionEnabled()) {
+            return "";
+        }
         if (shouldExposeShadowText()) {
             return super.getTextBeforeCursor(n, flags);
         }
@@ -49,6 +59,9 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     @Override
     public CharSequence getTextAfterCursor(int n, int flags) {
         n = Math.min(n, MAX_IME_TEXT_LENGTH);
+        if (!mEditor.isCompositionEnabled()) {
+            return "";
+        }
         if (shouldExposeShadowText()) {
             return super.getTextAfterCursor(n, flags);
         }
@@ -58,6 +71,9 @@ public class SweetEditorInputConnection extends BaseInputConnection {
 
     @Override
     public CharSequence getSelectedText(int flags) {
+        if (!mEditor.isCompositionEnabled()) {
+            return "";
+        }
         if (shouldExposeShadowText()) {
             CharSequence selected = super.getSelectedText(flags);
             return selected != null ? selected : "";
@@ -73,14 +89,28 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     @Override
     public boolean setComposingText(CharSequence text, int newCursorPosition) {
         mPendingFallbackDeleteBeforeLength = 0;
+        String textStr = text != null ? text.toString() : "";
         if (!mEditor.isCompositionEnabled()) {
             if (text != null && text.length() > 0) {
-                // Just insert it as if it's already committed text to prevent shadow composition states
-                mEditor.insertText(text.toString());
+                mEditable.replace(0, mEditable.length(), text);
+                BaseInputConnection.setComposingSpans(mEditable);
+                Selection.setSelection(mEditable, mEditable.length());
+            } else {
+                clearShadowEditable();
             }
             return true;
         }
-        mEditor.compositionUpdate(text != null ? text.toString() : "");
+        if (!mEditor.isComposing() && consumePendingDocumentRangeCommit(textStr)) {
+            clearShadowEditable();
+            suppressNextMatchingCommitText(textStr);
+            resetCompositionTracking();
+            return true;
+        }
+        clearShadowEditable();
+        clearPendingDocumentRangeCommit();
+        mSuppressNextCommitText = null;
+        trackComposingTextUpdate(textStr);
+        mEditor.compositionUpdate(textStr);
         return true;
     }
 
@@ -89,15 +119,38 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         if (!mEditor.isCompositionEnabled()) {
             return true;
         }
-        mEditor.setComposingRegion(start, end);
+        if (mSuppressNextComposingRegion) {
+            mSuppressNextComposingRegion = false;
+            return true;
+        }
+        TextRange acceptedRange = mEditor.setComposingRegion(start, end);
+        if (acceptedRange != null) {
+            rememberDocumentComposingRange(acceptedRange);
+            mSuppressNextCommitText = null;
+        }
         return true;
     }
 
     @Override
     public boolean commitText(CharSequence text, int newCursorPosition) {
         String textStr = text != null ? text.toString() : "";
+        if (mSuppressNextCommitText != null) {
+            if (mSuppressNextCommitText.equals(textStr)) {
+                mSuppressNextCommitText = null;
+                clearShadowEditable();
+                resetCompositionTracking();
+                return true;
+            }
+            mSuppressNextCommitText = null;
+        }
+        if (mEditor.isCompositionEnabled()
+                && !mEditor.isComposing()
+                && consumePendingDocumentRangeCommit(textStr)) {
+            resetCompositionTracking();
+            return true;
+        }
         if (!mEditor.isCompositionEnabled() || !mEditor.isComposing()) {
-            mPendingFallbackDeleteBeforeLength = mEditable.length();
+            int pendingCleanupLength = !mEditor.isCompositionEnabled() ? mEditable.length() : 0;
             clearShadowEditable();
             if (textStr.equals("\n")) {
                 mEditor.handleKeyEventFromIME(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER));
@@ -105,10 +158,17 @@ public class SweetEditorInputConnection extends BaseInputConnection {
                 mEditor.insertText(textStr);
             }
             if (!mEditor.isCompositionEnabled()) {
+                mPendingFallbackDeleteBeforeLength = Math.max(mPendingFallbackDeleteBeforeLength, pendingCleanupLength);
                 mEditor.updateImeSelectionState();
             }
+            clearPendingDocumentRangeCommit();
+            resetCompositionTracking();
+        } else if (shouldDeleteLastComposingTextOnFinish(textStr)) {
+            deleteLastComposingTextAndFinish();
         } else {
             mEditor.commitComposition(textStr);
+            clearPendingDocumentRangeCommit();
+            resetCompositionTracking();
         }
         return true;
     }
@@ -116,7 +176,18 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     @Override
     public boolean finishComposingText() {
         if (mEditor.isCompositionEnabled() && mEditor.isComposing()) {
-            mEditor.commitComposition("");
+            if (shouldDeleteLastComposingTextOnFinish("")) {
+                deleteLastComposingTextAndFinish();
+            } else {
+                boolean keepPendingDocumentCommit = markPendingDocumentRangeAwaitingCommit();
+                if (keepPendingDocumentCommit) {
+                    resetCompositionTracking();
+                    return true;
+                }
+                mEditor.commitComposition("");
+                clearPendingDocumentRangeCommit();
+                resetCompositionTracking();
+            }
             return true;
         }
 
@@ -125,16 +196,17 @@ public class SweetEditorInputConnection extends BaseInputConnection {
             clearShadowEditable();
             mEditor.updateImeSelectionState();
         }
+        resetCompositionTracking();
         return true;
     }
 
     @Override
     public boolean deleteSurroundingText(int beforeLength, int afterLength) {
         if (!mEditor.isCompositionEnabled()) {
-            int remainingBefore = consumePendingFallbackDelete(beforeLength);
             if (mEditable.length() > 0) {
-                return super.deleteSurroundingText(remainingBefore, afterLength);
+                return super.deleteSurroundingText(beforeLength, afterLength);
             }
+            int remainingBefore = consumePendingFallbackDelete(beforeLength);
             if (remainingBefore == 0 && afterLength == 0) {
                 return true;
             }
@@ -153,12 +225,16 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         }
 
         for (int i = 0; i < beforeLength; i++) {
+            trackComposingBackspace();
             sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
             sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL));
         }
         for (int i = 0; i < afterLength; i++) {
             sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_FORWARD_DEL));
             sendKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_FORWARD_DEL));
+        }
+        if (!mEditor.isComposing()) {
+            resetCompositionTracking();
         }
         return true;
     }
@@ -228,6 +304,96 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         BaseInputConnection.removeComposingSpans(mEditable);
         mEditable.clear();
         Selection.setSelection(mEditable, 0);
+    }
+
+    private void trackComposingTextUpdate(String text) {
+        mComposingTextWasReduced = !mLastComposingText.isEmpty()
+                && text.length() < mLastComposingText.length()
+                && mLastComposingText.startsWith(text);
+        mLastComposingText = text;
+    }
+
+    private void trackComposingBackspace() {
+        if (mLastComposingText.isEmpty()) {
+            return;
+        }
+        int end = mLastComposingText.length();
+        int start = mLastComposingText.offsetByCodePoints(end, -1);
+        mLastComposingText = mLastComposingText.substring(0, start);
+        mComposingTextWasReduced = true;
+    }
+
+    private boolean shouldDeleteLastComposingTextOnFinish(String committedText) {
+        return mComposingTextWasReduced
+                && hasSingleCodePoint(mLastComposingText)
+                && (committedText.isEmpty() || committedText.equals(mLastComposingText));
+    }
+
+    private void deleteLastComposingTextAndFinish() {
+        mEditor.compositionUpdate("");
+        mEditor.commitComposition("");
+        mSuppressNextComposingRegion = true;
+        clearPendingDocumentRangeCommit();
+        resetCompositionTracking();
+    }
+
+    private void resetCompositionTracking() {
+        mLastComposingText = "";
+        mComposingTextWasReduced = false;
+    }
+
+    private void rememberDocumentComposingRange(TextRange range) {
+        mPendingDocumentComposingRange = copyRange(range);
+        mPendingDocumentComposingText = mEditor.getTextInRange(range);
+        mPendingDocumentRangeAwaitingCommit = false;
+    }
+
+    private boolean markPendingDocumentRangeAwaitingCommit() {
+        if (mPendingDocumentComposingRange == null || !mLastComposingText.isEmpty()) {
+            return false;
+        }
+        mPendingDocumentRangeAwaitingCommit = true;
+        return true;
+    }
+
+    private boolean consumePendingDocumentRangeCommit(String committedText) {
+        if (!mPendingDocumentRangeAwaitingCommit || mPendingDocumentComposingRange == null) {
+            return false;
+        }
+        if (committedText.equals("\n")) {
+            clearPendingDocumentRangeCommit();
+            return false;
+        }
+
+        TextRange range = copyRange(mPendingDocumentComposingRange);
+        String expectedText = mPendingDocumentComposingText;
+        clearPendingDocumentRangeCommit();
+        if (committedText.isEmpty() || committedText.equals(expectedText)) {
+            mEditor.updateImeSelectionState();
+            return true;
+        }
+        mEditor.replaceImeTextRange(range, expectedText, committedText);
+        return true;
+    }
+
+    private void clearPendingDocumentRangeCommit() {
+        mPendingDocumentComposingRange = null;
+        mPendingDocumentComposingText = "";
+        mPendingDocumentRangeAwaitingCommit = false;
+    }
+
+    private void suppressNextMatchingCommitText(String committedText) {
+        mSuppressNextCommitText = committedText.isEmpty() || committedText.equals("\n") ? null : committedText;
+    }
+
+    private static TextRange copyRange(TextRange range) {
+        return new TextRange(
+                new TextPosition(range.start.line, range.start.column),
+                new TextPosition(range.end.line, range.end.column));
+    }
+
+    private boolean hasSingleCodePoint(String text) {
+        return !text.isEmpty() && text.codePointCount(0, text.length()) == 1;
     }
 
     private int consumePendingFallbackDelete(int beforeLength) {

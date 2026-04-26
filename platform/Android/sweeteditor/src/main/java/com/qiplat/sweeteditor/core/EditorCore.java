@@ -726,9 +726,20 @@ public class EditorCore {
         return nativeIsComposing(mNativeHandle);
     }
 
+    @Nullable
+    public TextRange getComposingRange() {
+        if (mNativeHandle == 0) return null;
+        long[] vals = nativeGetComposingRange(mNativeHandle);
+        if (vals == null || vals[0] == -1) return null;
+        return new TextRange(
+                new TextPosition((int) vals[0], (int) vals[1]),
+                new TextPosition((int) vals[2], (int) vals[3])
+        );
+    }
+
     /**
      * Sets whether IME composition is enabled.
-     * <p>When disabled, setComposingText falls back to direct commitText.
+     * <p>When disabled, composing updates are ignored and committed text is inserted directly.
      *
      * @param enabled {@code true}=enable, {@code false}=disable
      */
@@ -2151,6 +2162,9 @@ public class EditorCore {
 
     @CriticalNative
     private static native boolean nativeIsComposing(long handle);
+
+    @FastNative
+    private static native long[] nativeGetComposingRange(long handle);
 
     @CriticalNative
     private static native void nativeSetCompositionEnabled(long handle, boolean enabled);

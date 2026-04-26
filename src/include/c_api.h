@@ -625,6 +625,13 @@ EDITOR_API void editor_composition_cancel(intptr_t editor_handle);
 /// @return 1=composing, 0=not composing
 EDITOR_API int editor_is_composing(intptr_t editor_handle);
 
+/// Get current composition range, or -1 values when composition is inactive
+EDITOR_API void editor_get_composing_range(intptr_t editor_handle,
+                                           int32_t* out_start_line,
+                                           int32_t* out_start_column,
+                                           int32_t* out_end_line,
+                                           int32_t* out_end_column);
+
 /// Set whether IME composition is enabled
 /// @param enabled 1=enabled, 0=disabled
 EDITOR_API void editor_set_composition_enabled(intptr_t editor_handle, int enabled);

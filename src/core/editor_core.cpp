@@ -1060,27 +1060,31 @@ namespace NS_SWEETEDITOR {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
     if (m_composition_.is_composing) {
-      if (m_composition_.composing_text.empty()) {
-        compositionCancel();
-        return {};
-      }
-      U16String composing_u16;
-      StrUtil::convertUTF8ToUTF16(m_composition_.composing_text, composing_u16);
-      size_t cursor_column = composing_u16.length();
-      if (cursor_column > 0) {
-        size_t prev_col = UnicodeUtil::prevGraphemeBoundaryColumn(composing_u16, cursor_column);
-        composing_u16.erase(prev_col, cursor_column - prev_col);
-        U8String next_text;
-        StrUtil::convertUTF16ToUTF8(composing_u16, next_text);
-        if (next_text.empty()) {
+      if (m_composition_.kind == CompositionKind::PREEDIT_TEXT) {
+        if (m_composition_.composing_text.empty()) {
           compositionCancel();
         } else {
-          compositionUpdate(next_text);
+          U16String composing_u16;
+          StrUtil::convertUTF8ToUTF16(m_composition_.composing_text, composing_u16);
+          size_t cursor_column = composing_u16.length();
+          if (cursor_column > 0) {
+            size_t prev_col = UnicodeUtil::prevGraphemeBoundaryColumn(composing_u16, cursor_column);
+            composing_u16.erase(prev_col, cursor_column - prev_col);
+            U8String next_text;
+            StrUtil::convertUTF16ToUTF8(composing_u16, next_text);
+            if (next_text.empty()) {
+              compositionCancel();
+            } else {
+              compositionUpdate(next_text);
+            }
+          } else {
+            compositionCancel();
+          }
         }
+        return {};
       } else {
-        compositionCancel();
+        compositionEnd("");
       }
-      return {};
     }
 
     if (isInLinkedEditing()) {
@@ -1204,8 +1208,11 @@ namespace NS_SWEETEDITOR {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
     if (m_composition_.is_composing) {
-      compositionCancel();
-      return {};
+      if (m_composition_.kind == CompositionKind::PREEDIT_TEXT) {
+        compositionCancel();
+        return {};
+      }
+      compositionEnd("");
     }
 
     if (isInLinkedEditing() && hasSelection()) {
@@ -1658,7 +1665,11 @@ namespace NS_SWEETEDITOR {
   }
 
   void EditorCore::setCursorPosition(const TextPosition& position) {
-    if (m_composition_.is_composing && position != m_caret_.cursor) {
+    setCursorPositionInternal(position, true);
+  }
+
+  void EditorCore::setCursorPositionInternal(const TextPosition& position, bool commit_composition) {
+    if (commit_composition && m_composition_.is_composing && position != m_caret_.cursor) {
       compositionEnd("");
     }
     m_caret_.cursor = position;
@@ -1691,8 +1702,17 @@ namespace NS_SWEETEDITOR {
   }
 
   void EditorCore::setSelection(const TextRange& range) {
-    if (m_composition_.is_composing && (range.start != m_caret_.selection.start || range.end != m_caret_.selection.end)) {
-      compositionEnd("");
+    setSelectionInternal(range, true);
+  }
+
+  void EditorCore::setSelectionInternal(const TextRange& range, bool commit_composition) {
+    if (commit_composition && m_composition_.is_composing) {
+      TextRange current_range = hasSelection()
+          ? m_caret_.selection
+          : TextRange {m_caret_.cursor, m_caret_.cursor};
+      if (!(range == current_range)) {
+        compositionEnd("");
+      }
     }
     TextRange safe_range = range;
     if (m_document_ != nullptr) {
@@ -1948,10 +1968,8 @@ namespace NS_SWEETEDITOR {
 
   void EditorCore::setComposingRegion(const TextRange& range) {
     if (m_document_ == nullptr || m_settings_.read_only || !m_settings_.enable_composition) return;
-    if (m_composition_.is_composing) {
-      compositionEnd("");
-    }
-    
+    TextPosition previous_cursor = m_caret_.cursor;
+
     TextRange safe_range = range;
     size_t line_count = m_document_->getLineCount();
     auto clamp_position = [&](TextPosition& position, bool prefer_right) {
@@ -1974,16 +1992,35 @@ namespace NS_SWEETEDITOR {
 
     if (safe_range.start == safe_range.end) return;
 
+    if (m_composition_.is_composing && m_composition_.kind == CompositionKind::DOCUMENT_RANGE) {
+      TextRange current_range = {
+        m_composition_.start_position,
+        {m_composition_.start_position.line, m_composition_.start_position.column + m_composition_.composing_columns}
+      };
+      if (current_range == safe_range) {
+        TextPosition target_cursor = safe_range.contains(previous_cursor) ? previous_cursor : safe_range.end;
+        setCursorPositionInternal(target_cursor, false);
+        setSelectionInternal({target_cursor, target_cursor}, false);
+        ensureCursorVisible();
+        return;
+      }
+    }
+
+    if (m_composition_.is_composing) {
+      compositionEnd("");
+    }
+
     U8String text = m_document_->getU8Text(safe_range);
     m_composition_.is_composing = true;
     m_composition_.start_position = safe_range.start;
     m_composition_.composing_text = text;
     m_composition_.composing_columns = calcUtf16Columns(text);
-    m_composition_text_in_document_ = true;
+    m_composition_.kind = CompositionKind::DOCUMENT_RANGE;
+    m_preedit_text_in_document_ = false;
 
-    // Move cursor to the end of the newly designated composition region
-    setCursorPosition(safe_range.end);
-    setSelection({safe_range.end, safe_range.end});
+    TextPosition target_cursor = safe_range.contains(previous_cursor) ? previous_cursor : safe_range.end;
+    setCursorPositionInternal(target_cursor, false);
+    setSelectionInternal({target_cursor, target_cursor}, false);
     ensureCursorVisible();
     LOGD("EditorCore::setComposingRegion: %s -> %s, text='%s'",
          safe_range.start.dump().c_str(), safe_range.end.dump().c_str(), text.c_str());
@@ -1994,8 +2031,7 @@ namespace NS_SWEETEDITOR {
 
     // If already in composition state, cancel current composition first
     if (m_composition_.is_composing) {
-      removeComposingText();
-      resetCompositionState();
+      compositionCancel();
     }
 
     // If there is a selection, delete it first (keep selection in linked editing and replace in insertText)
@@ -2010,6 +2046,8 @@ namespace NS_SWEETEDITOR {
     }
     m_composition_.composing_text.clear();
     m_composition_.composing_columns = 0;
+    m_composition_.kind = CompositionKind::PREEDIT_TEXT;
+    m_preedit_text_in_document_ = false;
 
     LOGD("EditorCore::compositionStart, pos = %s", m_caret_.cursor.dump().c_str());
   }
@@ -2030,17 +2068,32 @@ namespace NS_SWEETEDITOR {
     if (isInLinkedEditing()) {
       m_composition_.composing_text = text;
       m_composition_.composing_columns = calcUtf16Columns(text);
-      m_composition_text_in_document_ = false;
+      m_composition_.kind = CompositionKind::PREEDIT_TEXT;
+      m_preedit_text_in_document_ = false;
       TextPosition new_pos = calcPositionAfterInsert(m_composition_.start_position, text);
-      setCursorPosition(new_pos);
+      setCursorPositionInternal(new_pos, false);
       ensureCursorVisible();
       LOGD("EditorCore::compositionUpdate(linked), text = %s, columns = %zu",
            text.c_str(), m_composition_.composing_columns);
       return;
     }
 
-    // Remove previous composing text first
-    removeComposingText();
+    if (m_composition_.kind == CompositionKind::DOCUMENT_RANGE) {
+      TextRange composing_range = {
+        m_composition_.start_position,
+        {m_composition_.start_position.line, m_composition_.start_position.column + m_composition_.composing_columns}
+      };
+      m_preedit_replaces_document_range_ = true;
+      m_preedit_replaced_range_ = composing_range;
+      m_preedit_replaced_text_ = m_composition_.composing_text;
+      m_document_->deleteU8Text(composing_range);
+      m_caret_.cursor = m_composition_.start_position;
+      m_composition_.kind = CompositionKind::PREEDIT_TEXT;
+      m_preedit_text_in_document_ = false;
+    } else {
+      // Remove previous composing text first
+      removeComposingText();
+    }
 
     // Insert new composing text into document
     if (!text.empty()) {
@@ -2048,15 +2101,17 @@ namespace NS_SWEETEDITOR {
       size_t new_columns = calcUtf16Columns(text);
       m_composition_.composing_text = text;
       m_composition_.composing_columns = new_columns;
-      m_composition_text_in_document_ = true;
+      m_composition_.kind = CompositionKind::PREEDIT_TEXT;
+      m_preedit_text_in_document_ = true;
       // Move cursor to end of composing text
       TextPosition new_pos = calcPositionAfterInsert(m_composition_.start_position, text);
-      setCursorPosition(new_pos);
+      setCursorPositionInternal(new_pos, false);
     } else {
       m_composition_.composing_text.clear();
       m_composition_.composing_columns = 0;
-      m_composition_text_in_document_ = false;
-      setCursorPosition(m_composition_.start_position);
+      m_composition_.kind = CompositionKind::PREEDIT_TEXT;
+      m_preedit_text_in_document_ = false;
+      setCursorPositionInternal(m_composition_.start_position, false);
     }
     m_text_layout_->invalidateContentMetrics(m_composition_.start_position.line);
     ensureCursorVisible();
@@ -2083,16 +2138,64 @@ namespace NS_SWEETEDITOR {
       return {};
     }
 
-    // Decide final text to commit
+    TextRange composing_range = {
+      m_composition_.start_position,
+      {m_composition_.start_position.line, m_composition_.start_position.column + m_composition_.composing_columns}
+    };
+    TextPosition previous_cursor = m_caret_.cursor;
     U8String final_text = committed_text.empty() ? m_composition_.composing_text : committed_text;
+    size_t comp_start_line = m_composition_.start_position.line;
+    if (m_composition_.kind == CompositionKind::DOCUMENT_RANGE) {
+      U8String existing_text = m_composition_.composing_text;
+      resetCompositionState();
+      m_text_layout_->invalidateContentMetrics(comp_start_line);
+      setCursorPositionInternal(previous_cursor, false);
+      if (committed_text.empty() || committed_text == existing_text) {
+        ensureCursorVisible();
+        TextEditResult edit_result;
+        edit_result.cursor_before = previous_cursor;
+        edit_result.cursor_after = previous_cursor;
+        LOGD("EditorCore::compositionEnd(document range), cursor = %s", m_caret_.cursor.dump().c_str());
+        return edit_result;
+      }
+      auto edit_result = applyEdit(composing_range, committed_text);
+      ensureCursorVisible();
+      LOGD("EditorCore::compositionEnd(document range replace), cursor = %s", m_caret_.cursor.dump().c_str());
+      return edit_result;
+    }
+
+    bool replaces_document_range = m_preedit_replaces_document_range_;
+    TextRange replaced_range = m_preedit_replaced_range_;
+    U8String replaced_text = m_preedit_replaced_text_;
+    bool should_restore_cursor = committed_text.empty()
+                              && !replaces_document_range
+                              && m_preedit_text_in_document_
+                              && composing_range.contains(previous_cursor);
 
     removeComposingText();
+    if (replaces_document_range) {
+      m_document_->insertU8Text(replaced_range.start, replaced_text);
+      m_caret_.cursor = replaced_range.start;
+    }
 
     resetCompositionState();
 
     TextEditResult edit_result;
-    if (!final_text.empty()) {
+    if (replaces_document_range) {
+      if (final_text != replaced_text) {
+        edit_result = applyEdit(replaced_range, final_text);
+      } else {
+        setCursorPositionInternal(previous_cursor, false);
+        m_text_layout_->invalidateContentMetrics(comp_start_line);
+        edit_result.cursor_before = previous_cursor;
+        edit_result.cursor_after = previous_cursor;
+      }
+    } else if (!final_text.empty()) {
       edit_result = insertText(final_text);
+      if (should_restore_cursor) {
+        setCursorPositionInternal(previous_cursor, false);
+        edit_result.cursor_after = previous_cursor;
+      }
     }
 
     ensureCursorVisible();
@@ -2103,10 +2206,17 @@ namespace NS_SWEETEDITOR {
   void EditorCore::compositionCancel() {
     if (!m_composition_.is_composing) return;
 
-    removeComposingText();
-
-    // Save start line first, then clear composition state (resetCompositionState resets start_position)
     size_t comp_start_line = m_composition_.start_position.line;
+    bool replaces_document_range = m_preedit_replaces_document_range_;
+    TextRange replaced_range = m_preedit_replaced_range_;
+    U8String replaced_text = m_preedit_replaced_text_;
+
+    removeComposingText();
+    if (replaces_document_range) {
+      m_document_->insertU8Text(replaced_range.start, replaced_text);
+      m_caret_.cursor = replaced_range.start;
+    }
+
     resetCompositionState();
 
     m_text_layout_->invalidateContentMetrics(comp_start_line);
@@ -2852,7 +2962,8 @@ namespace NS_SWEETEDITOR {
 
   void EditorCore::removeComposingText() {
     if (!m_composition_.is_composing || m_composition_.composing_columns == 0) return;
-    if (!m_composition_text_in_document_) return;
+    if (m_composition_.kind != CompositionKind::PREEDIT_TEXT) return;
+    if (!m_preedit_text_in_document_) return;
     if (m_document_ == nullptr) return;
 
     // Composing text range: from start_position to start_position + composing_columns
@@ -2862,7 +2973,7 @@ namespace NS_SWEETEDITOR {
     };
     m_document_->deleteU8Text(comp_range);
     m_caret_.cursor = m_composition_.start_position; // Avoid recursive hooks or composition commits
-    m_composition_text_in_document_ = false;
+    m_preedit_text_in_document_ = false;
   }
 
   TextEditResult EditorCore::applyEdit(const TextRange& range, const U8String& new_text, bool record_undo) {
@@ -3044,7 +3155,11 @@ namespace NS_SWEETEDITOR {
     m_composition_.composing_text.clear();
     m_composition_.composing_columns = 0;
     m_composition_.start_position = {};
-    m_composition_text_in_document_ = false;
+    m_composition_.kind = CompositionKind::NONE;
+    m_preedit_text_in_document_ = false;
+    m_preedit_replaces_document_range_ = false;
+    m_preedit_replaced_range_ = {};
+    m_preedit_replaced_text_.clear();
   }
 
 #pragma endregion
