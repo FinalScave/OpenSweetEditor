@@ -995,7 +995,7 @@ public class SweetEditor extends JPanel {
                     if (committed.length() > 0) {
                         TextEditResult editResult;
                         if (settings.isCompositionEnabled() && editorCore.isComposing()) {
-                            editResult = editorCore.compositionEnd(committed.toString());
+                            editResult = editorCore.handleImeEvent(EditorCore.IME_EVENT_COMMIT_TEXT, committed.toString());
                             dispatchTextChanged(TextChangeAction.COMPOSITION, editResult);
                         } else {
                             editResult = editorCore.insertText(committed.toString());
@@ -1005,15 +1005,12 @@ public class SweetEditor extends JPanel {
                         flush();
                     }
                     if (composed.length() > 0) {
-                        if (settings.isCompositionEnabled() && !editorCore.isComposing()) {
-                            editorCore.compositionStart();
-                        }
                         if (settings.isCompositionEnabled()) {
-                            editorCore.compositionUpdate(composed.toString());
+                            editorCore.handleImeEvent(EditorCore.IME_EVENT_UPDATE_PREEDIT, composed.toString());
                             flush();
                         }
                     } else if (settings.isCompositionEnabled() && editorCore.isComposing() && committed.length() == 0) {
-                        editorCore.compositionCancel();
+                        editorCore.handleImeEvent(EditorCore.IME_EVENT_CANCEL_PREEDIT, null);
                         flush();
                     }
 

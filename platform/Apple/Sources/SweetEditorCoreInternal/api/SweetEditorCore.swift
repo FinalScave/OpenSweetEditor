@@ -1157,42 +1157,84 @@ class SweetEditorCore {
 
     // MARK: - IME Composition
 
-    func compositionStart() {
-        performCoreCall {
-            editor_composition_start(handle)
-        }
+    private enum ImeEventType: Int32 {
+        case updatePreedit = 0
+        case commitText = 1
+        case finishPreedit = 2
+        case cancelPreedit = 3
+        case markDocumentRange = 4
     }
 
-    func compositionUpdate(_ text: String) {
-        performCoreCall {
-            text.withCString { cStr in
-                editor_composition_update(handle, cStr)
-            }
-        }
-    }
-
-    func compositionEnd(_ committedText: String?) -> TextEditResultLite? {
+    @discardableResult
+    func handleImeEvent(type: Int32,
+                        text: String? = nil,
+                        hasRange: Bool = false,
+                        startLine: Int = 0,
+                        startColumn: Int = 0,
+                        endLine: Int = 0,
+                        endColumn: Int = 0,
+                        hasCursor: Bool = false,
+                        cursorLine: Int = 0,
+                        cursorColumn: Int = 0,
+                        beforeLength: Int = 0,
+                        afterLength: Int = 0) -> TextEditResultLite? {
         return performCoreCall {
             var size: Int = 0
-            if let text = committedText {
-                let ptr = text.withCString { cStr in
-                    let ptr = editor_composition_end(handle, cStr, &size)
-                    return ptr
-                }
-                let payload = copyBinaryPayloadAndFree(ptr, size: size)
-                return protocolDecoder.decodeTextEditResultLite(payload)
-            } else {
-                let ptr = editor_composition_end(handle, nil, &size)
-                let payload = copyBinaryPayloadAndFree(ptr, size: size)
-                return protocolDecoder.decodeTextEditResultLite(payload)
+            let call: (UnsafePointer<CChar>?) -> UnsafePointer<UInt8>? = { cStr in
+                editor_handle_ime_event(handle,
+                                        type,
+                                        cStr,
+                                        hasRange ? 1 : 0,
+                                        startLine,
+                                        startColumn,
+                                        endLine,
+                                        endColumn,
+                                        hasCursor ? 1 : 0,
+                                        cursorLine,
+                                        cursorColumn,
+                                        beforeLength,
+                                        afterLength,
+                                        0,
+                                        0,
+                                        &size)
             }
+            let ptr: UnsafePointer<UInt8>?
+            if let value = text {
+                ptr = value.withCString { call($0) }
+            } else {
+                ptr = call(nil)
+            }
+            let payload = copyBinaryPayloadAndFree(ptr, size: size)
+            return protocolDecoder.decodeImeEventEditResultLite(payload)
         }
     }
 
-    func compositionCancel() {
-        performCoreCall {
-            editor_composition_cancel(handle)
-        }
+    @discardableResult
+    func updateImePreedit(_ text: String) -> TextEditResultLite? {
+        handleImeEvent(type: ImeEventType.updatePreedit.rawValue, text: text)
+    }
+
+    @discardableResult
+    func commitImeText(_ text: String?) -> TextEditResultLite? {
+        handleImeEvent(type: ImeEventType.commitText.rawValue, text: text)
+    }
+
+    @discardableResult
+    func finishImePreedit() -> TextEditResultLite? {
+        handleImeEvent(type: ImeEventType.finishPreedit.rawValue)
+    }
+
+    func cancelImePreedit() {
+        handleImeEvent(type: ImeEventType.cancelPreedit.rawValue)
+    }
+
+    func markImeDocumentRange(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) {
+        handleImeEvent(type: ImeEventType.markDocumentRange.rawValue,
+                       hasRange: true,
+                       startLine: startLine,
+                       startColumn: startColumn,
+                       endLine: endLine,
+                       endColumn: endColumn)
     }
 
     func isComposing() -> Bool {

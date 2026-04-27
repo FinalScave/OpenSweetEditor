@@ -80,10 +80,7 @@ export const editorMoveCursorToLineStart: (handle: number, extendSelection: bool
 export const editorMoveCursorToLineEnd: (handle: number, extendSelection: boolean) => void;
 
 // IME composition
-export const editorCompositionStart: (handle: number) => void;
-export const editorCompositionUpdate: (handle: number, text: string | null) => void;
-export const editorCompositionEnd: (handle: number, committedText?: string | null) => ArrayBuffer | undefined;
-export const editorCompositionCancel: (handle: number) => void;
+export const editorHandleImeEvent: (handle: number, type: number, text: string | null, hasRange: boolean, startLine: number, startColumn: number, endLine: number, endColumn: number, hasCursor: boolean, cursorLine: number, cursorColumn: number, beforeLength: number, afterLength: number, textUnit: number, scriptHint: number) => ArrayBuffer | undefined;
 export const editorIsComposing: (handle: number) => boolean;
 export const editorSetCompositionEnabled: (handle: number, enabled: boolean) => void;
 export const editorIsCompositionEnabled: (handle: number) => boolean;

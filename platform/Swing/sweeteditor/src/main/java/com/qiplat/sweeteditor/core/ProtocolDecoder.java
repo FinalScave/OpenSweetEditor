@@ -76,6 +76,27 @@ final class ProtocolDecoder {
         return result;
     }
 
+    static TextEditResult decodeImeEventEditResult(ByteBuffer data) {
+        if (data == null || data.remaining() < 20) return TextEditResult.EMPTY;
+        data.getInt();
+        data.getInt();
+        data.getInt();
+        data.getInt();
+        boolean hasEdit = data.getInt() != 0;
+        if (!hasEdit || data.remaining() < 4) return TextEditResult.EMPTY;
+        int count = data.getInt();
+        if (count <= 0) return TextEditResult.EMPTY;
+        ArrayList<TextChange> changes = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            if (data.remaining() < 20) break;
+            changes.add(readTextChange(data));
+        }
+        if (changes.isEmpty()) return TextEditResult.EMPTY;
+        TextEditResult result = new TextEditResult();
+        result.changes = changes;
+        return result;
+    }
+
     static KeyEventResult decodeKeyEventResult(ByteBuffer data) {
         KeyEventResult result = new KeyEventResult();
         if (data == null || data.remaining() < 20) return result;

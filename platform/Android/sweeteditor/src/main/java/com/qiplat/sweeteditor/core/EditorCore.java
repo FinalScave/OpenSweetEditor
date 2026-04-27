@@ -690,37 +690,6 @@ public class EditorCore {
 
     // ==================== IME Composition Input ====================
 
-    public void compositionStart() {
-        if (mNativeHandle == 0) return;
-        nativeCompositionStart(mNativeHandle);
-    }
-
-    public void setComposingRegion(TextRange range) {
-        if (mNativeHandle == 0 || range == null) return;
-        nativeSetComposingRegion(mNativeHandle, range.start.line, range.start.column, range.end.line, range.end.column);
-    }
-
-    public void compositionUpdate(String text) {
-        if (mNativeHandle == 0) return;
-        nativeCompositionUpdate(mNativeHandle, text);
-    }
-
-    @NonNull
-    public TextEditResult compositionEnd(String committedText) {
-        if (mNativeHandle == 0) return TextEditResult.EMPTY;
-        ByteBuffer data = nativeCompositionEnd(mNativeHandle, committedText);
-        try {
-            return ProtocolDecoder.decodeTextEditResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    public void compositionCancel() {
-        if (mNativeHandle == 0) return;
-        nativeCompositionCancel(mNativeHandle);
-    }
-
     public boolean isComposing() {
         if (mNativeHandle == 0) return false;
         return nativeIsComposing(mNativeHandle);
@@ -735,6 +704,64 @@ public class EditorCore {
                 new TextPosition((int) vals[0], (int) vals[1]),
                 new TextPosition((int) vals[2], (int) vals[3])
         );
+    }
+
+    @Nullable
+    public TextRange getComposingSessionRange() {
+        if (mNativeHandle == 0) return null;
+        long[] vals = nativeGetComposingSessionRange(mNativeHandle);
+        if (vals == null || vals[0] == -1) return null;
+        return new TextRange(
+                new TextPosition((int) vals[0], (int) vals[1]),
+                new TextPosition((int) vals[2], (int) vals[3])
+        );
+    }
+
+    @NonNull
+    public ImeEventResult handleImeEvent(int type, @Nullable String text,
+                                         @Nullable TextRange range,
+                                         @Nullable TextPosition cursor,
+                                         long beforeLength,
+                                         long afterLength,
+                                         int textUnit,
+                                         int scriptHint) {
+        if (mNativeHandle == 0) return new ImeEventResult();
+        TextRange safeRange = range != null
+                ? range
+                : new TextRange(new TextPosition(0, 0), new TextPosition(0, 0));
+        TextPosition safeCursor = cursor != null ? cursor : new TextPosition(0, 0);
+        ByteBuffer data = nativeHandleImeEvent(
+                mNativeHandle,
+                type,
+                text != null ? text : "",
+                range != null ? 1 : 0,
+                safeRange.start.line,
+                safeRange.start.column,
+                safeRange.end.line,
+                safeRange.end.column,
+                cursor != null ? 1 : 0,
+                safeCursor.line,
+                safeCursor.column,
+                beforeLength,
+                afterLength,
+                textUnit,
+                scriptHint);
+        try {
+            return ProtocolDecoder.decodeImeEventResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    @NonNull
+    public ImeSyncSnapshot getImeSyncSnapshot() {
+        if (mNativeHandle == 0) return new ImeSyncSnapshot();
+        ByteBuffer data = nativeGetImeSyncSnapshot(mNativeHandle);
+        try {
+            return ProtocolDecoder.decodeImeSyncSnapshot(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
     }
 
     /**
@@ -1039,7 +1066,7 @@ public class EditorCore {
     /**
      * Sets highlight spans for the specified line (already packed by caller via ProtocolEncoder).
      *
-     * @param payload Packed ByteBuffer (format: line, layer, count, [col, len, style]脳N)
+     * @param payload Packed ByteBuffer (format: line, layer, count, repeated col, len, style)
      */
     public void setLineSpans(ByteBuffer payload) {
         if (mNativeHandle == 0 || payload == null) return;
@@ -1050,7 +1077,7 @@ public class EditorCore {
      * Batch sets highlight spans for multiple lines (reduces JNI calls, marks dirty once).
      *
      * @param layer       Highlight layer (0=SYNTAX, 1=SEMANTIC)
-     * @param spansByLine Sparse array of line鈫抯pan list
+     * @param spansByLine Sparse array of line to span list
      */
     public void setBatchLineSpans(int layer, @Nullable SparseArray<? extends List<? extends StyleSpan>> spansByLine) {
         if (mNativeHandle == 0 || spansByLine == null || spansByLine.size() == 0) return;
@@ -1094,7 +1121,7 @@ public class EditorCore {
     /**
      * Batch sets Inlay Hints for multiple lines (reduces JNI calls, marks dirty once).
      *
-     * @param hintsByLine Sparse array of line鈫抙int list
+     * @param hintsByLine Sparse array of line to hint list
      */
     public void setBatchLineInlayHints(@Nullable SparseArray<? extends List<? extends InlayHint>> hintsByLine) {
         if (mNativeHandle == 0 || hintsByLine == null || hintsByLine.size() == 0) return;
@@ -1136,7 +1163,7 @@ public class EditorCore {
     /**
      * Batch sets phantom text for multiple lines (reduces JNI calls, marks dirty once).
      *
-     * @param phantomsByLine Sparse array of line鈫抪hantom list
+     * @param phantomsByLine Sparse array of line to phantom list
      */
     public void setBatchLinePhantomTexts(@Nullable SparseArray<? extends List<? extends PhantomText>> phantomsByLine) {
         if (mNativeHandle == 0 || phantomsByLine == null || phantomsByLine.size() == 0) return;
@@ -1180,7 +1207,7 @@ public class EditorCore {
     /**
      * Batch sets gutter icons for multiple lines (reduces JNI calls).
      *
-     * @param iconsByLine Sparse array of line鈫抜con list
+     * @param iconsByLine Sparse array of line to icon list
      */
     public void setBatchLineGutterIcons(@Nullable SparseArray<? extends List<? extends GutterIcon>> iconsByLine) {
         if (mNativeHandle == 0 || iconsByLine == null || iconsByLine.size() == 0) return;
@@ -1225,7 +1252,7 @@ public class EditorCore {
     /**
      * Sets diagnostic decorations for the specified line (already packed by caller via ProtocolEncoder).
      *
-     * @param payload Packed ByteBuffer (format: line, count, [col, len, severity, color]脳N)
+     * @param payload Packed ByteBuffer (format: line, count, repeated col, len, severity, color)
      */
     public void setLineDiagnostics(ByteBuffer payload) {
         if (mNativeHandle == 0 || payload == null) return;
@@ -1235,7 +1262,7 @@ public class EditorCore {
     /**
      * Batch sets diagnostic decorations for multiple lines (reduces JNI calls).
      *
-     * @param diagsByLine Sparse array of line鈫抎iagnostic list
+     * @param diagsByLine Sparse array of line to diagnostic list
      */
     public void setBatchLineDiagnostics(@Nullable SparseArray<? extends List<? extends Diagnostic>> diagsByLine) {
         if (mNativeHandle == 0 || diagsByLine == null || diagsByLine.size() == 0) return;
@@ -1737,6 +1764,131 @@ public class EditorCore {
         }
     }
 
+    public static final class ImeEventType {
+        public static final int UPDATE_PREEDIT = 0;
+        public static final int COMMIT_TEXT = 1;
+        public static final int FINISH_PREEDIT = 2;
+        public static final int CANCEL_PREEDIT = 3;
+        public static final int MARK_DOCUMENT_RANGE = 4;
+        public static final int DELETE_BACKWARD = 5;
+        public static final int DELETE_FORWARD = 6;
+        public static final int DELETE_SURROUNDING = 7;
+        public static final int SELECTION_CHANGED = 8;
+
+        private ImeEventType() {
+        }
+    }
+
+    public static final class ImeTextUnit {
+        public static final int UTF16_CODE_UNIT = 0;
+        public static final int CODE_POINT = 1;
+
+        private ImeTextUnit() {
+        }
+    }
+
+    public static final class ImeScriptClass {
+        public static final int UNKNOWN = 0;
+        public static final int LATIN = 1;
+        public static final int CJK = 2;
+        public static final int KANA = 3;
+        public static final int HANGUL = 4;
+
+        private ImeScriptClass() {
+        }
+    }
+
+    public static final class ImePreeditStorage {
+        public static final int NONE = 0;
+        public static final int VISIBLE_DOCUMENT_COMPOSITION = 1;
+        public static final int PLAIN_DOCUMENT_TEXT = 2;
+        public static final int SHADOW_ONLY = 3;
+        public static final int HIDDEN_AWAITING_COMMIT = 4;
+
+        private ImePreeditStorage() {
+        }
+    }
+
+    public static final class ImeContextPolicy {
+        public static final int NONE = 0;
+        public static final int LIMITED_FOR_CANDIDATES = 1;
+        public static final int CURRENT_TOKEN = 2;
+        public static final int CURRENT_LINE = 3;
+
+        private ImeContextPolicy() {
+        }
+    }
+
+    public static class ImeSyncSnapshot {
+        @NonNull
+        public final TextPosition cursor;
+        @Nullable
+        public final TextRange selection;
+        public final boolean hasComposingSession;
+        @Nullable
+        public final TextRange visibleCompositionRange;
+        @Nullable
+        public final TextRange platformMarkedRange;
+        public final int preeditStorage;
+        public final int contextPolicy;
+        public final boolean requestRestartInput;
+        public final boolean clearPlatformPreedit;
+
+        public ImeSyncSnapshot() {
+            this(new TextPosition(0, 0), null, false, null, null,
+                    ImePreeditStorage.NONE, ImeContextPolicy.NONE, false, false);
+        }
+
+        public ImeSyncSnapshot(@NonNull TextPosition cursor,
+                               @Nullable TextRange selection,
+                               boolean hasComposingSession,
+                               @Nullable TextRange visibleCompositionRange,
+                               @Nullable TextRange platformMarkedRange,
+                               int preeditStorage,
+                               int contextPolicy,
+                               boolean requestRestartInput,
+                               boolean clearPlatformPreedit) {
+            this.cursor = cursor;
+            this.selection = selection;
+            this.hasComposingSession = hasComposingSession;
+            this.visibleCompositionRange = visibleCompositionRange;
+            this.platformMarkedRange = platformMarkedRange;
+            this.preeditStorage = preeditStorage;
+            this.contextPolicy = contextPolicy;
+            this.requestRestartInput = requestRestartInput;
+            this.clearPlatformPreedit = clearPlatformPreedit;
+        }
+    }
+
+    public static class ImeEventResult {
+        public final boolean handled;
+        public final boolean contentChanged;
+        public final boolean cursorChanged;
+        public final boolean selectionChanged;
+        @NonNull
+        public final TextEditResult editResult;
+        @NonNull
+        public final ImeSyncSnapshot sync;
+
+        public ImeEventResult() {
+            this(false, false, false, false, TextEditResult.EMPTY, new ImeSyncSnapshot());
+        }
+
+        public ImeEventResult(boolean handled,
+                              boolean contentChanged,
+                              boolean cursorChanged,
+                              boolean selectionChanged,
+                              @NonNull TextEditResult editResult,
+                              @NonNull ImeSyncSnapshot sync) {
+            this.handled = handled;
+            this.contentChanged = contentChanged;
+            this.cursorChanged = cursorChanged;
+            this.selectionChanged = selectionChanged;
+            this.editResult = editResult;
+            this.sync = sync;
+        }
+    }
+
     /** Click hit target types. */
     public enum HitTargetType {
         /**
@@ -2146,25 +2298,23 @@ public class EditorCore {
     private static native String nativeGetSelectedText(long handle);
 
     @CriticalNative
-    private static native void nativeCompositionStart(long handle);
-
-    @CriticalNative
-    private static native void nativeSetComposingRegion(long handle, long startLine, long startColumn, long endLine, long endColumn);
-
-    @FastNative
-    private static native void nativeCompositionUpdate(long handle, String text);
-
-    @FastNative
-    private static native ByteBuffer nativeCompositionEnd(long handle, String committedText);
-
-    @CriticalNative
-    private static native void nativeCompositionCancel(long handle);
-
-    @CriticalNative
     private static native boolean nativeIsComposing(long handle);
 
     @FastNative
     private static native long[] nativeGetComposingRange(long handle);
+
+    @FastNative
+    private static native long[] nativeGetComposingSessionRange(long handle);
+
+    @FastNative
+    private static native ByteBuffer nativeHandleImeEvent(long handle, int type, String text,
+                                                          int hasRange, long startLine, long startColumn, long endLine, long endColumn,
+                                                          int hasCursor, long cursorLine, long cursorColumn,
+                                                          long beforeLength, long afterLength,
+                                                          int textUnit, int scriptHint);
+
+    @FastNative
+    private static native ByteBuffer nativeGetImeSyncSnapshot(long handle);
 
     @CriticalNative
     private static native void nativeSetCompositionEnabled(long handle, boolean enabled);

@@ -87,10 +87,7 @@ static napi_value Init(napi_env env, napi_value exports)
         NAPI_METHOD("editorMoveCursorToLineEnd", EditorCoreNapi::moveCursorToLineEnd),
 
         // IME composition
-        NAPI_METHOD("editorCompositionStart", EditorCoreNapi::compositionStart),
-        NAPI_METHOD("editorCompositionUpdate", EditorCoreNapi::compositionUpdate),
-        NAPI_METHOD("editorCompositionEnd", EditorCoreNapi::compositionEnd),
-        NAPI_METHOD("editorCompositionCancel", EditorCoreNapi::compositionCancel),
+        NAPI_METHOD("editorHandleImeEvent", EditorCoreNapi::handleImeEvent),
         NAPI_METHOD("editorIsComposing", EditorCoreNapi::isComposing),
         NAPI_METHOD("editorSetCompositionEnabled", EditorCoreNapi::setCompositionEnabled),
         NAPI_METHOD("editorIsCompositionEnabled", EditorCoreNapi::isCompositionEnabled),

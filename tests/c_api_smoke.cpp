@@ -55,6 +55,27 @@ namespace {
     return out;
   }
 
+  const uint8_t* handleImeEvent(intptr_t editor_handle, int type, const char* text, size_t* out_size) {
+    return editor_handle_ime_event(
+      editor_handle,
+      type,
+      text,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      out_size
+    );
+  }
+
   struct ScrollMetricsData {
     float scale = 1.0f;
     float scroll_x = 0.0f;
@@ -251,9 +272,13 @@ TEST_CASE("C API null handles return safe defaults") {
 
   editor_set_cursor_position(0, 0, 0);
   editor_set_selection(0, 0, 0, 0, 0);
-  editor_composition_start(0);
-  editor_composition_update(0, "a");
-  editor_composition_cancel(0);
+  size_t null_ime_size = 0;
+  const uint8_t* null_ime = handleImeEvent(0, 0, "a", &null_ime_size);
+  CHECK(null_ime == nullptr);
+  CHECK(null_ime_size == 0);
+  null_ime = handleImeEvent(0, 3, nullptr, &null_ime_size);
+  CHECK(null_ime == nullptr);
+  CHECK(null_ime_size == 0);
   editor_fold_all(0);
   editor_unfold_all(0);
   editor_set_scroll(0, 12.0f, 34.0f);
@@ -325,13 +350,16 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
 
   editor_set_composition_enabled(editor, 1);
   editor_set_cursor_position(editor, 0, 4);
-  editor_composition_start(editor);
-  editor_composition_update(editor, "q");
+  size_t ime_size = 0;
+  const uint8_t* ime_result = handleImeEvent(editor, 0, "q", &ime_size);
+  REQUIRE(ime_result != nullptr);
+  CHECK(ime_size > 0);
+  free_binary_data(reinterpret_cast<intptr_t>(ime_result));
   CHECK(editor_is_composing(editor) == 1);
   CHECK(getLineTextUtf8(document, 0) == "Xabcq");
 
   size_t comp_size = 0;
-  const uint8_t* comp_result = editor_composition_end(editor, "z", &comp_size);
+  const uint8_t* comp_result = handleImeEvent(editor, 1, "z", &comp_size);
   REQUIRE(comp_result != nullptr);
   CHECK(comp_size > 0);
   free_binary_data(reinterpret_cast<intptr_t>(comp_result));

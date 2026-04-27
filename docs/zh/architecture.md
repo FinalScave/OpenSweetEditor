@@ -301,7 +301,7 @@ class EditorCore {
 | `insertText()` / `backspace()` / `deleteForward()` | 原子文本操作 |
 | `moveCursor*()` | 光标移动（上下左右、行首行尾） |
 | `setSelection()` / `selectAll()` | 选区管理 |
-| `compositionStart/Update/End/Cancel()` | IME 组合输入 |
+| `handleImeEvent()` | IME 组合输入 |
 | `undo()` / `redo()` | 撤销/重做 |
 | `registerTextStyle()` / `setLineSpans()` / `setBatchLineSpans()` / `setLineInlayHints()` / `setLinePhantomTexts()` | 装饰设置 |
 | `setFoldRegions()` / `foldAt()` / `unfoldAt()` | 代码折叠 |

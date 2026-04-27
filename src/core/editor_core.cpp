@@ -20,6 +20,53 @@ namespace NS_SWEETEDITOR {
            ch > 0x7F; // Treat non-ASCII characters as word characters (supports CJK, etc.)
   }
 
+  static bool isCjkCodePoint(uint32_t cp) {
+    return (cp >= 0x3400 && cp <= 0x4DBF)
+        || (cp >= 0x4E00 && cp <= 0x9FFF)
+        || (cp >= 0xF900 && cp <= 0xFAFF)
+        || (cp >= 0x20000 && cp <= 0x2A6DF)
+        || (cp >= 0x2A700 && cp <= 0x2B73F)
+        || (cp >= 0x2B740 && cp <= 0x2B81F)
+        || (cp >= 0x2B820 && cp <= 0x2CEAF);
+  }
+
+  static bool isKanaCodePoint(uint32_t cp) {
+    return (cp >= 0x3040 && cp <= 0x30FF)
+        || (cp >= 0x31F0 && cp <= 0x31FF)
+        || (cp >= 0xFF66 && cp <= 0xFF9D);
+  }
+
+  static bool isHangulCodePoint(uint32_t cp) {
+    return (cp >= 0x1100 && cp <= 0x11FF)
+        || (cp >= 0x3130 && cp <= 0x318F)
+        || (cp >= 0xAC00 && cp <= 0xD7AF);
+  }
+
+  static bool isLatinCodePoint(uint32_t cp) {
+    return (cp >= 'A' && cp <= 'Z')
+        || (cp >= 'a' && cp <= 'z')
+        || (cp >= 0x00C0 && cp <= 0x024F);
+  }
+
+  static bool isNonLatinImeScript(ImeScriptClass script_class) {
+    return script_class == ImeScriptClass::CJK
+        || script_class == ImeScriptClass::KANA
+        || script_class == ImeScriptClass::HANGUL;
+  }
+
+  static ImeScriptClass classifyImeScriptFromText(const U8String& text) {
+    bool has_latin = false;
+    auto it = text.begin();
+    while (it != text.end()) {
+      uint32_t cp = utf8::next(it, text.end());
+      if (isHangulCodePoint(cp)) return ImeScriptClass::HANGUL;
+      if (isKanaCodePoint(cp)) return ImeScriptClass::KANA;
+      if (isCjkCodePoint(cp)) return ImeScriptClass::CJK;
+      if (isLatinCodePoint(cp)) has_latin = true;
+    }
+    return has_latin ? ImeScriptClass::LATIN : ImeScriptClass::UNKNOWN;
+  }
+
   static TextRange findWordRangeInLine(size_t line, const U16String& line_text, size_t anchor_column) {
     if (line_text.empty()) {
       return {{line, 0}, {line, 0}};
@@ -159,6 +206,7 @@ namespace NS_SWEETEDITOR {
     cancelLinkedEditing();
     removeComposingText();
     resetCompositionState();
+    clearImeCandidateCommitWindow();
     m_undo_manager_->clear();
     m_interaction_->resetForDocumentLoad();
     clearMatchedBrackets();
@@ -628,7 +676,7 @@ namespace NS_SWEETEDITOR {
     if (m_composition_.is_composing) {
       switch (event.key_code) {
       case KeyCode::ESCAPE:
-        compositionCancel();
+        cancelComposing();
         result.handled = true;
         result.content_changed = true;
         result.cursor_changed = true;
@@ -907,7 +955,7 @@ namespace NS_SWEETEDITOR {
 
     // If composition is active, end it first (commit current composing text before new input)
     if (m_composition_.is_composing) {
-      compositionCancel();
+      cancelComposing();
     }
 
     // Auto-indent: when inserting a newline with KEEP_INDENT enabled, append previous line's leading whitespace
@@ -1035,7 +1083,7 @@ namespace NS_SWEETEDITOR {
 
     // If composition is active, cancel it first
     if (m_composition_.is_composing) {
-      compositionCancel();
+      cancelComposing();
     }
 
     if (isInLinkedEditing()) {
@@ -1062,7 +1110,7 @@ namespace NS_SWEETEDITOR {
     if (m_composition_.is_composing) {
       if (m_composition_.kind == CompositionKind::PREEDIT_TEXT) {
         if (m_composition_.composing_text.empty()) {
-          compositionCancel();
+          cancelComposing();
         } else {
           U16String composing_u16;
           StrUtil::convertUTF8ToUTF16(m_composition_.composing_text, composing_u16);
@@ -1073,17 +1121,17 @@ namespace NS_SWEETEDITOR {
             U8String next_text;
             StrUtil::convertUTF16ToUTF8(composing_u16, next_text);
             if (next_text.empty()) {
-              compositionCancel();
+              cancelComposing();
             } else {
-              compositionUpdate(next_text);
+              setComposingText(next_text);
             }
           } else {
-            compositionCancel();
+            cancelComposing();
           }
         }
         return {};
       } else {
-        compositionEnd("");
+        commitComposingText("");
       }
     }
 
@@ -1209,10 +1257,10 @@ namespace NS_SWEETEDITOR {
 
     if (m_composition_.is_composing) {
       if (m_composition_.kind == CompositionKind::PREEDIT_TEXT) {
-        compositionCancel();
+        cancelComposing();
         return {};
       }
-      compositionEnd("");
+      commitComposingText("");
     }
 
     if (isInLinkedEditing() && hasSelection()) {
@@ -1252,6 +1300,79 @@ namespace NS_SWEETEDITOR {
     return {};
   }
 
+  TextEditResult EditorCore::deleteCodePointBackward() {
+    if (m_document_ == nullptr || m_settings_.read_only) return {};
+    if (m_composition_.is_composing || isInLinkedEditing()) {
+      return backspace();
+    }
+    if (hasSelection()) {
+      TextRange range = m_caret_.normalizedSelection();
+      return applyEdit(range, "");
+    }
+
+    if (m_caret_.cursor.column > 0) {
+      const U16String& line_text = m_document_->getLineU16TextRef(m_caret_.cursor.line);
+      const size_t col = std::min<size_t>(m_caret_.cursor.column, line_text.size());
+      const size_t code_point_start = UnicodeUtil::clampColumnToCodePointBoundaryLeft(line_text, col);
+      const size_t code_point_end = UnicodeUtil::clampColumnToCodePointBoundaryRight(line_text, col);
+      const bool cursor_inside_code_point = code_point_start < col && code_point_end > col;
+      const size_t delete_start = cursor_inside_code_point
+          ? code_point_start
+          : UnicodeUtil::prevCodePointColumn(line_text, col);
+      const size_t delete_end = cursor_inside_code_point ? code_point_end : col;
+      if (delete_start == delete_end) return {};
+      TextRange del_range = {
+        {m_caret_.cursor.line, static_cast<uint32_t>(delete_start)},
+        {m_caret_.cursor.line, static_cast<uint32_t>(delete_end)}
+      };
+      return applyEdit(del_range, "");
+    }
+
+    if (m_caret_.cursor.line > 0) {
+      size_t prev_line = m_caret_.cursor.line - 1;
+      uint32_t prev_cols = m_document_->getLineColumns(prev_line);
+      TextRange del_range = {{prev_line, prev_cols}, {m_caret_.cursor.line, 0}};
+      return applyEdit(del_range, "");
+    }
+    return {};
+  }
+
+  TextEditResult EditorCore::deleteCodePointForward() {
+    if (m_document_ == nullptr || m_settings_.read_only) return {};
+    if (m_composition_.is_composing || isInLinkedEditing()) {
+      return deleteForward();
+    }
+    if (hasSelection()) {
+      TextRange range = m_caret_.normalizedSelection();
+      return applyEdit(range, "");
+    }
+
+    uint32_t line_cols = m_document_->getLineColumns(m_caret_.cursor.line);
+    if (m_caret_.cursor.column < line_cols) {
+      const U16String& line_text = m_document_->getLineU16TextRef(m_caret_.cursor.line);
+      const size_t col = std::min<size_t>(m_caret_.cursor.column, line_text.size());
+      const size_t code_point_start = UnicodeUtil::clampColumnToCodePointBoundaryLeft(line_text, col);
+      const size_t code_point_end = UnicodeUtil::clampColumnToCodePointBoundaryRight(line_text, col);
+      const bool cursor_inside_code_point = code_point_start < col && code_point_end > col;
+      const size_t delete_start = cursor_inside_code_point ? code_point_start : col;
+      const size_t delete_end = cursor_inside_code_point
+          ? code_point_end
+          : UnicodeUtil::nextCodePointColumn(line_text, col);
+      if (delete_start == delete_end) return {};
+      TextRange del_range = {
+        {m_caret_.cursor.line, static_cast<uint32_t>(delete_start)},
+        {m_caret_.cursor.line, static_cast<uint32_t>(delete_end)}
+      };
+      return applyEdit(del_range, "");
+    }
+
+    if (m_caret_.cursor.line + 1 < m_document_->getLineCount()) {
+      TextRange del_range = {{m_caret_.cursor.line, line_cols}, {m_caret_.cursor.line + 1, 0}};
+      return applyEdit(del_range, "");
+    }
+    return {};
+  }
+
   void EditorCore::deleteSelection() {
     if (!hasSelection() || m_document_ == nullptr) return;
     TextRange range = m_caret_.normalizedSelection();
@@ -1265,7 +1386,7 @@ namespace NS_SWEETEDITOR {
   }
   TextEditResult EditorCore::moveLineUp() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (m_composition_.is_composing) compositionCancel();
+    if (m_composition_.is_composing) cancelComposing();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1306,7 +1427,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::moveLineDown() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (m_composition_.is_composing) compositionCancel();
+    if (m_composition_.is_composing) cancelComposing();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1348,7 +1469,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::copyLineUp() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (m_composition_.is_composing) compositionCancel();
+    if (m_composition_.is_composing) cancelComposing();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1380,7 +1501,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::copyLineDown() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (m_composition_.is_composing) compositionCancel();
+    if (m_composition_.is_composing) cancelComposing();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1413,7 +1534,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::deleteLine() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (m_composition_.is_composing) compositionCancel();
+    if (m_composition_.is_composing) cancelComposing();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1443,7 +1564,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::insertLineAbove() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (m_composition_.is_composing) compositionCancel();
+    if (m_composition_.is_composing) cancelComposing();
 
     size_t line = m_caret_.cursor.line;
     TextPosition insert_pos = {line, 0};
@@ -1460,7 +1581,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::insertLineBelow() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (m_composition_.is_composing) compositionCancel();
+    if (m_composition_.is_composing) cancelComposing();
 
     size_t line = m_caret_.cursor.line;
     uint32_t line_cols = m_document_->getLineColumns(line);
@@ -1475,7 +1596,7 @@ namespace NS_SWEETEDITOR {
 
     // If composition input is active, cancel it first
     if (m_composition_.is_composing) {
-      compositionCancel();
+      cancelComposing();
     }
 
     // Exit linked editing mode when undoing
@@ -1580,7 +1701,7 @@ namespace NS_SWEETEDITOR {
 
     // If composition input is active, cancel it first
     if (m_composition_.is_composing) {
-      compositionCancel();
+      cancelComposing();
     }
 
     // Exit linked editing mode when redoing
@@ -1670,7 +1791,7 @@ namespace NS_SWEETEDITOR {
 
   void EditorCore::setCursorPositionInternal(const TextPosition& position, bool commit_composition) {
     if (commit_composition && m_composition_.is_composing && position != m_caret_.cursor) {
-      compositionEnd("");
+      commitComposingText("");
     }
     m_caret_.cursor = position;
     if (m_document_ != nullptr) {
@@ -1711,7 +1832,7 @@ namespace NS_SWEETEDITOR {
           ? m_caret_.selection
           : TextRange {m_caret_.cursor, m_caret_.cursor};
       if (!(range == current_range)) {
-        compositionEnd("");
+        commitComposingText("");
       }
     }
     TextRange safe_range = range;
@@ -1966,9 +2087,434 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  void EditorCore::setComposingRegion(const TextRange& range) {
+  ImeEventResult EditorCore::handleImeEvent(const ImeEvent& event) {
+    ImeEventResult result;
+    result.handled = true;
+
+    TextPosition cursor_before = m_caret_.cursor;
+    bool had_selection_before = m_caret_.has_selection;
+    TextRange selection_before = m_caret_.selection;
+
+    switch (event.type) {
+      case ImeEventType::UPDATE_PREEDIT:
+        handleImeUpdatePreeditEvent(result, event);
+        break;
+      case ImeEventType::COMMIT_TEXT:
+        handleImeCommitTextEvent(result, event);
+        break;
+      case ImeEventType::FINISH_PREEDIT:
+        handleImeFinishPreeditEvent(result);
+        break;
+      case ImeEventType::CANCEL_PREEDIT:
+        handleImeCancelPreeditEvent();
+        break;
+      case ImeEventType::MARK_DOCUMENT_RANGE:
+        handleImeMarkDocumentRangeEvent(result, event);
+        break;
+      case ImeEventType::DELETE_BACKWARD:
+      case ImeEventType::DELETE_FORWARD:
+      case ImeEventType::DELETE_SURROUNDING:
+        handleImeDeleteEvent(result, event);
+        break;
+      case ImeEventType::SELECTION_CHANGED:
+        handleImeSelectionChangedEvent(result, event);
+        break;
+    }
+
+    result.cursor_changed = cursor_before != m_caret_.cursor;
+    result.selection_changed = had_selection_before != m_caret_.has_selection
+                               || !(selection_before == m_caret_.selection);
+    bool request_restart_input = result.sync.request_restart_input;
+    bool clear_platform_preedit = result.sync.clear_platform_preedit;
+    result.sync = buildImeSyncSnapshot();
+    result.sync.request_restart_input = result.sync.request_restart_input || request_restart_input;
+    result.sync.clear_platform_preedit = result.sync.clear_platform_preedit || clear_platform_preedit;
+    return result;
+  }
+
+  void EditorCore::mergeImeEditResult(ImeEventResult& result, const TextEditResult& edit_result) const {
+    if (!edit_result.changed) return;
+    if (!result.edit_result.changed) {
+      result.edit_result = edit_result;
+    } else {
+      result.edit_result.changes.insert(result.edit_result.changes.end(),
+                                        edit_result.changes.begin(),
+                                        edit_result.changes.end());
+      result.edit_result.cursor_after = edit_result.cursor_after;
+    }
+    result.edit_result.changed = true;
+    result.content_changed = true;
+  }
+
+  ImeScriptClass EditorCore::resolveImeScriptClass(const ImeEvent& event) const {
+    if (event.script_hint != ImeScriptClass::UNKNOWN) {
+      return event.script_hint;
+    }
+    return classifyImeScriptFromText(event.text);
+  }
+
+  bool EditorCore::shouldUseShadowImePreedit(const ImeEvent& event) const {
+    if (event.text.empty()) {
+      return m_ime_session_.has_shadow_preedit;
+    }
+    if (!m_settings_.enable_composition || !m_ime_composition_policy_.allow_preedit) {
+      return true;
+    }
+    ImeScriptClass script_class = resolveImeScriptClass(event);
+    return isNonLatinImeScript(script_class)
+        && !m_ime_composition_policy_.allow_non_latin_preedit;
+  }
+
+  bool EditorCore::isImeDocumentRangeEligible(const TextRange& range) const {
+    if (!m_ime_composition_policy_.allow_document_range_preedit) {
+      return false;
+    }
+    if (range.start == range.end) {
+      return false;
+    }
+    if (!m_ime_composition_policy_.keep_preedit_at_word_end) {
+      return true;
+    }
+    return m_caret_.cursor == range.end;
+  }
+
+  bool EditorCore::isDocumentRangeReadable(const TextRange& range) const {
+    if (m_document_ == nullptr || range.end < range.start) {
+      return false;
+    }
+    size_t line_count = m_document_->getLineCount();
+    if (range.start.line >= line_count || range.end.line >= line_count) {
+      return false;
+    }
+    return range.start.column <= m_document_->getLineColumns(range.start.line)
+        && range.end.column <= m_document_->getLineColumns(range.end.line);
+  }
+
+  void EditorCore::clearImeShadowPreedit() {
+    m_ime_session_.has_shadow_preedit = false;
+    m_ime_session_.shadow_preedit_text.clear();
+    m_ime_session_.shadow_script_class = ImeScriptClass::UNKNOWN;
+  }
+
+  void EditorCore::openImeCandidateCommitWindow(const TextRange& range, const U8String& text) {
+    if (!isInlineImeCandidateText(text) || range.start == range.end) {
+      clearImeCandidateCommitWindow();
+      return;
+    }
+    m_ime_session_.has_candidate_commit_window = true;
+    m_ime_session_.candidate_committed_range = range;
+    m_ime_session_.candidate_committed_text = text;
+    m_ime_session_.candidate_deleted_to_prefix = false;
+    m_ime_session_.suppress_candidate_exact_range = true;
+    m_ime_session_.candidate_exact_range_suppressed = false;
+  }
+
+  void EditorCore::clearImeCandidateCommitWindow() {
+    m_ime_session_.has_candidate_commit_window = false;
+    m_ime_session_.candidate_committed_range = {};
+    m_ime_session_.candidate_committed_text.clear();
+    m_ime_session_.candidate_deleted_to_prefix = false;
+    m_ime_session_.suppress_candidate_exact_range = false;
+    m_ime_session_.candidate_exact_range_suppressed = false;
+  }
+
+  bool EditorCore::isInlineImeCandidateText(const U8String& text) const {
+    return !text.empty()
+        && text.find('\n') == U8String::npos
+        && text.find('\r') == U8String::npos;
+  }
+
+  bool EditorCore::trySuppressImeCandidateRange(const TextRange& range) {
+    if (!m_ime_session_.has_candidate_commit_window
+        || !m_ime_session_.suppress_candidate_exact_range
+        || !(range == m_ime_session_.candidate_committed_range)) {
+      return false;
+    }
+    if (isDocumentRangeReadable(range)) {
+      U8String current_text = m_document_->getU8Text(range);
+      if (current_text != m_ime_session_.candidate_committed_text
+          && !m_ime_session_.candidate_deleted_to_prefix) {
+        clearImeCandidateCommitWindow();
+        return false;
+      }
+    }
+    m_ime_session_.candidate_exact_range_suppressed = true;
+    return true;
+  }
+
+  bool EditorCore::trySuppressImeCandidateCommit(const U8String& text) {
+    if (!m_ime_session_.has_candidate_commit_window || hasComposingSession()) {
+      return false;
+    }
+    if (!isInlineImeCandidateText(text)) {
+      if (!text.empty()) {
+        clearImeCandidateCommitWindow();
+      }
+      return false;
+    }
+    const U8String& committed_text = m_ime_session_.candidate_committed_text;
+    if (text == committed_text && m_ime_session_.suppress_candidate_exact_range) {
+      return true;
+    }
+    if (!m_ime_session_.candidate_deleted_to_prefix) {
+      return false;
+    }
+
+    TextPosition start = m_ime_session_.candidate_committed_range.start;
+    if (m_caret_.cursor < start || m_caret_.cursor.line != start.line) {
+      clearImeCandidateCommitWindow();
+      return false;
+    }
+    TextRange prefix_range {start, m_caret_.cursor};
+    U8String current_text;
+    if (!(prefix_range.start == prefix_range.end)) {
+      if (!isDocumentRangeReadable(prefix_range)) {
+        clearImeCandidateCommitWindow();
+        return false;
+      }
+      current_text = m_document_->getU8Text(prefix_range);
+    }
+    if (committed_text.rfind(current_text, 0) == 0
+        && (committed_text.rfind(text, 0) == 0 || current_text.rfind(text, 0) == 0)) {
+      if (current_text.empty()) {
+        clearImeCandidateCommitWindow();
+      }
+      return true;
+    }
+    clearImeCandidateCommitWindow();
+    return false;
+  }
+
+  bool EditorCore::tryReopenImeCandidatePrefix(ImeEventResult& result, const U8String& text) {
+    if (!m_ime_session_.has_candidate_commit_window || hasComposingSession()) {
+      return false;
+    }
+    if (!isInlineImeCandidateText(text)) {
+      if (!text.empty()) {
+        clearImeCandidateCommitWindow();
+      }
+      return false;
+    }
+    const U8String& committed_text = m_ime_session_.candidate_committed_text;
+    if (committed_text.rfind(text, 0) != 0) {
+      clearImeCandidateCommitWindow();
+      return false;
+    }
+    if (text == committed_text && m_ime_session_.suppress_candidate_exact_range) {
+      return true;
+    }
+
+    if (m_ime_session_.candidate_exact_range_suppressed && text.size() < committed_text.size()) {
+      TextRange committed_range = m_ime_session_.candidate_committed_range;
+      if (!isDocumentRangeReadable(committed_range)
+          || m_document_->getU8Text(committed_range) != committed_text) {
+        clearImeCandidateCommitWindow();
+        return false;
+      }
+      m_ime_session_.suppress_candidate_exact_range = false;
+      m_ime_session_.candidate_exact_range_suppressed = false;
+      setComposingRange(committed_range);
+      mergeImeEditResult(result, setComposingText(text));
+      return hasComposingSession();
+    }
+
+    if (!m_ime_session_.candidate_deleted_to_prefix || text == committed_text) {
+      return false;
+    }
+
+    TextPosition start = m_ime_session_.candidate_committed_range.start;
+    TextRange prefix_range {start, calcPositionAfterInsert(start, text)};
+    if (!(prefix_range.end == m_caret_.cursor) || !isDocumentRangeReadable(prefix_range)) {
+      clearImeCandidateCommitWindow();
+      return false;
+    }
+    if (m_document_->getU8Text(prefix_range) != text) {
+      clearImeCandidateCommitWindow();
+      return false;
+    }
+
+    m_ime_session_.suppress_candidate_exact_range = false;
+    m_ime_session_.candidate_exact_range_suppressed = false;
+    setComposingRange(prefix_range);
+    return hasVisibleComposition();
+  }
+
+  void EditorCore::updateImeCandidateWindowAfterDelete() {
+    if (!m_ime_session_.has_candidate_commit_window || m_document_ == nullptr || hasComposingSession()) {
+      return;
+    }
+    TextPosition start = m_ime_session_.candidate_committed_range.start;
+    if (m_caret_.cursor == start) {
+      m_ime_session_.candidate_deleted_to_prefix = true;
+      m_ime_session_.suppress_candidate_exact_range = false;
+      m_ime_session_.candidate_exact_range_suppressed = false;
+      return;
+    }
+    if (m_caret_.cursor < start) {
+      clearImeCandidateCommitWindow();
+      return;
+    }
+    if (m_caret_.cursor.line != start.line || m_ime_session_.candidate_committed_range.end < m_caret_.cursor) {
+      clearImeCandidateCommitWindow();
+      return;
+    }
+
+    TextRange prefix_range {start, m_caret_.cursor};
+    if (!isDocumentRangeReadable(prefix_range)) {
+      clearImeCandidateCommitWindow();
+      return;
+    }
+    U8String current_text = m_document_->getU8Text(prefix_range);
+    const U8String& committed_text = m_ime_session_.candidate_committed_text;
+    if (!current_text.empty()
+        && current_text.size() < committed_text.size()
+        && committed_text.rfind(current_text, 0) == 0) {
+      m_ime_session_.candidate_deleted_to_prefix = true;
+      m_ime_session_.suppress_candidate_exact_range = false;
+      m_ime_session_.candidate_exact_range_suppressed = false;
+      return;
+    }
+    if (current_text != committed_text) {
+      clearImeCandidateCommitWindow();
+    }
+  }
+
+  void EditorCore::handleImeUpdatePreeditEvent(ImeEventResult& result, const ImeEvent& event) {
+    if (event.text.empty() && !hasComposingSession()) {
+      clearImeShadowPreedit();
+      return;
+    }
+    if (tryReopenImeCandidatePrefix(result, event.text)) {
+      return;
+    }
+    if (!shouldUseShadowImePreedit(event)) {
+      clearImeShadowPreedit();
+      clearImeCandidateCommitWindow();
+      mergeImeEditResult(result, setComposingText(event.text));
+      return;
+    }
+    if (hasComposingSession()) {
+      mergeImeEditResult(result, commitComposingText(""));
+    }
+    if (event.text.empty()) {
+      clearImeShadowPreedit();
+      return;
+    }
+    m_ime_session_.has_shadow_preedit = true;
+    m_ime_session_.shadow_preedit_text = event.text;
+    m_ime_session_.shadow_script_class = resolveImeScriptClass(event);
+  }
+
+  void EditorCore::handleImeCommitTextEvent(ImeEventResult& result, const ImeEvent& event) {
+    bool had_session = hasComposingSession() || m_ime_session_.has_shadow_preedit;
+    clearImeShadowPreedit();
+    if (trySuppressImeCandidateCommit(event.text)) {
+      bool has_session_after = hasComposingSession() || m_ime_session_.has_shadow_preedit;
+      if (had_session && !has_session_after) {
+        result.sync.request_restart_input = true;
+      }
+      return;
+    }
+    mergeImeEditResult(result, commitComposingText(event.text));
+    bool has_session_after = hasComposingSession() || m_ime_session_.has_shadow_preedit;
+    if (had_session && !has_session_after) {
+      result.sync.request_restart_input = true;
+    }
+  }
+
+  void EditorCore::handleImeFinishPreeditEvent(ImeEventResult& result) {
+    bool had_session = hasComposingSession() || m_ime_session_.has_shadow_preedit;
+    if (m_ime_session_.has_shadow_preedit) {
+      clearImeShadowPreedit();
+      if (had_session) {
+        result.sync.request_restart_input = true;
+      }
+      return;
+    }
+    mergeImeEditResult(result, finishComposing());
+    bool has_session_after = hasComposingSession() || m_ime_session_.has_shadow_preedit;
+    if (had_session && !has_session_after) {
+      result.sync.request_restart_input = true;
+    }
+  }
+
+  void EditorCore::handleImeCancelPreeditEvent() {
+    clearImeShadowPreedit();
+    clearImeCandidateCommitWindow();
+    cancelComposing();
+  }
+
+  void EditorCore::handleImeMarkDocumentRangeEvent(ImeEventResult& result, const ImeEvent& event) {
+    if (!event.has_range) {
+      result.handled = false;
+      return;
+    }
+    if (trySuppressImeCandidateRange(event.range)) {
+      return;
+    }
+    setComposingRange(event.range);
+  }
+
+  void EditorCore::handleImeDeleteEvent(ImeEventResult& result, const ImeEvent& event) {
+    if (hasSelection()) {
+      mergeImeEditResult(result, backspace());
+      updateImeCandidateWindowAfterDelete();
+      return;
+    }
+    size_t before_length = event.before_length;
+    size_t after_length = event.after_length;
+    if (event.type == ImeEventType::DELETE_BACKWARD && before_length == 0) {
+      before_length = 1;
+    }
+    if (event.type == ImeEventType::DELETE_FORWARD && after_length == 0) {
+      after_length = 1;
+    }
+    const bool delete_code_points = event.text_unit == ImeTextUnit::CODE_POINT;
+    for (size_t i = 0; i < before_length; ++i) {
+      mergeImeEditResult(result, delete_code_points ? deleteCodePointBackward() : backspace());
+    }
+    for (size_t i = 0; i < after_length; ++i) {
+      mergeImeEditResult(result, delete_code_points ? deleteCodePointForward() : deleteForward());
+    }
+    updateImeCandidateWindowAfterDelete();
+  }
+
+  void EditorCore::handleImeSelectionChangedEvent(ImeEventResult& result, const ImeEvent& event) {
+    clearImeCandidateCommitWindow();
+    if (event.has_range) {
+      if (event.range.start == event.range.end) {
+        setCursorPosition(event.range.start);
+      } else {
+        setSelection(event.range);
+      }
+      clearImeCandidateCommitWindow();
+      return;
+    }
+    if (event.has_cursor) {
+      setCursorPosition(event.cursor);
+      clearImeCandidateCommitWindow();
+      return;
+    }
+    result.handled = false;
+  }
+
+  ImeSyncSnapshot EditorCore::getImeSyncSnapshot() const {
+    return buildImeSyncSnapshot();
+  }
+
+  void EditorCore::setImeCompositionPolicy(const ImeCompositionPolicy& policy) {
+    m_ime_composition_policy_ = policy;
+  }
+
+  const ImeCompositionPolicy& EditorCore::getImeCompositionPolicy() const {
+    return m_ime_composition_policy_;
+  }
+
+  void EditorCore::setComposingRange(const TextRange& range) {
     if (m_document_ == nullptr || m_settings_.read_only || !m_settings_.enable_composition) return;
     TextPosition previous_cursor = m_caret_.cursor;
+    m_ime_session_.suppress_next_composing_commit = false;
+    m_ime_session_.suppressed_composing_commit_text.clear();
 
     TextRange safe_range = range;
     size_t line_count = m_document_->getLineCount();
@@ -1991,12 +2537,10 @@ namespace NS_SWEETEDITOR {
     clamp_position(safe_range.end, true);
 
     if (safe_range.start == safe_range.end) return;
+    if (!isImeDocumentRangeEligible(safe_range)) return;
 
-    if (m_composition_.is_composing && m_composition_.kind == CompositionKind::DOCUMENT_RANGE) {
-      TextRange current_range = {
-        m_composition_.start_position,
-        {m_composition_.start_position.line, m_composition_.start_position.column + m_composition_.composing_columns}
-      };
+    if (hasVisibleComposition() && m_composition_.kind == CompositionKind::DOCUMENT_RANGE) {
+      TextRange current_range = getCurrentComposingRange();
       if (current_range == safe_range) {
         TextPosition target_cursor = safe_range.contains(previous_cursor) ? previous_cursor : safe_range.end;
         setCursorPositionInternal(target_cursor, false);
@@ -2006,123 +2550,167 @@ namespace NS_SWEETEDITOR {
       }
     }
 
-    if (m_composition_.is_composing) {
-      compositionEnd("");
+    if (hasVisibleComposition()) {
+      commitComposingText("");
+    } else if (hasComposingSession()) {
+      resetCompositionState();
     }
 
     U8String text = m_document_->getU8Text(safe_range);
     m_composition_.is_composing = true;
+    m_composition_.has_session = true;
+    m_composition_.phase = CompositionPhase::ACTIVE;
+    m_composition_.visible = true;
     m_composition_.start_position = safe_range.start;
+    m_composition_.anchor_range = safe_range;
+    m_composition_.original_text = text;
     m_composition_.composing_text = text;
     m_composition_.composing_columns = calcUtf16Columns(text);
     m_composition_.kind = CompositionKind::DOCUMENT_RANGE;
-    m_preedit_text_in_document_ = false;
+    m_ime_session_.preedit_text_in_document = false;
 
     TextPosition target_cursor = safe_range.contains(previous_cursor) ? previous_cursor : safe_range.end;
     setCursorPositionInternal(target_cursor, false);
     setSelectionInternal({target_cursor, target_cursor}, false);
     ensureCursorVisible();
-    LOGD("EditorCore::setComposingRegion: %s -> %s, text='%s'",
+    LOGD("EditorCore::setComposingRange: %s -> %s, text='%s'",
          safe_range.start.dump().c_str(), safe_range.end.dump().c_str(), text.c_str());
   }
 
-  void EditorCore::compositionStart() {
+  void EditorCore::beginComposingTextSession() {
     if (m_document_ == nullptr || m_settings_.read_only) return;
 
-    // If already in composition state, cancel current composition first
-    if (m_composition_.is_composing) {
-      compositionCancel();
+    // Cancel the previous session before starting a new preedit text session.
+    if (hasComposingSession()) {
+      cancelComposing();
     }
+    m_ime_session_.suppress_next_composing_commit = false;
+    m_ime_session_.suppressed_composing_commit_text.clear();
 
-    // If there is a selection, delete it first (keep selection in linked editing and replace in insertText)
+    // Replace selected text unless linked editing owns the active selection.
     if (hasSelection() && !isInLinkedEditing()) {
       deleteSelection();
     }
 
     m_composition_.is_composing = true;
+    m_composition_.has_session = true;
+    m_composition_.phase = CompositionPhase::ACTIVE;
+    m_composition_.visible = true;
     m_composition_.start_position = m_caret_.cursor;
     if (isInLinkedEditing() && hasSelection()) {
       m_composition_.start_position = m_caret_.normalizedSelection().start;
     }
+    m_composition_.anchor_range = {m_composition_.start_position, m_composition_.start_position};
+    m_composition_.original_text.clear();
     m_composition_.composing_text.clear();
     m_composition_.composing_columns = 0;
     m_composition_.kind = CompositionKind::PREEDIT_TEXT;
-    m_preedit_text_in_document_ = false;
+    m_ime_session_.preedit_text_in_document = false;
 
-    LOGD("EditorCore::compositionStart, pos = %s", m_caret_.cursor.dump().c_str());
+    LOGD("EditorCore::beginComposingTextSession, pos = %s", m_caret_.cursor.dump().c_str());
   }
 
-  void EditorCore::compositionUpdate(const U8String& text) {
-    if (m_document_ == nullptr || m_settings_.read_only) return;
+  TextEditResult EditorCore::setComposingText(const U8String& text) {
+    if (m_document_ == nullptr || m_settings_.read_only) return {};
 
-    // When composition is disabled, ignore intermediate composing text and handle at compositionEnd
+    // Disabled composition keeps platform preedit outside the document.
     if (!m_settings_.enable_composition) {
-      return;
+      return {};
     }
 
-    // If composition has not started yet, start it automatically
-    if (!m_composition_.is_composing) {
-      compositionStart();
+    if (hasAwaitingDocumentRangeCommit()) {
+      TextEditResult result = commitComposingText(text);
+      suppressNextComposingCommit(text);
+      return result;
+    }
+
+    if (!hasVisibleComposition()) {
+      beginComposingTextSession();
     }
 
     if (isInLinkedEditing()) {
       m_composition_.composing_text = text;
       m_composition_.composing_columns = calcUtf16Columns(text);
       m_composition_.kind = CompositionKind::PREEDIT_TEXT;
-      m_preedit_text_in_document_ = false;
+      m_composition_.anchor_range = {m_composition_.start_position, calcPositionAfterInsert(m_composition_.start_position, text)};
+      m_ime_session_.preedit_text_in_document = false;
       TextPosition new_pos = calcPositionAfterInsert(m_composition_.start_position, text);
       setCursorPositionInternal(new_pos, false);
       ensureCursorVisible();
-      LOGD("EditorCore::compositionUpdate(linked), text = %s, columns = %zu",
+      LOGD("EditorCore::setComposingText(linked), text = %s, columns = %zu",
            text.c_str(), m_composition_.composing_columns);
-      return;
+      return {};
     }
 
     if (m_composition_.kind == CompositionKind::DOCUMENT_RANGE) {
-      TextRange composing_range = {
-        m_composition_.start_position,
-        {m_composition_.start_position.line, m_composition_.start_position.column + m_composition_.composing_columns}
-      };
-      m_preedit_replaces_document_range_ = true;
-      m_preedit_replaced_range_ = composing_range;
-      m_preedit_replaced_text_ = m_composition_.composing_text;
+      TextRange composing_range = getCurrentComposingRange();
+      m_ime_session_.preedit_replaces_document_range = true;
+      m_ime_session_.preedit_replaced_range = composing_range;
+      m_ime_session_.preedit_replaced_text = m_composition_.composing_text;
       m_document_->deleteU8Text(composing_range);
       m_caret_.cursor = m_composition_.start_position;
       m_composition_.kind = CompositionKind::PREEDIT_TEXT;
-      m_preedit_text_in_document_ = false;
+      m_ime_session_.preedit_text_in_document = false;
     } else {
       // Remove previous composing text first
       removeComposingText();
     }
 
-    // Insert new composing text into document
     if (!text.empty()) {
       m_document_->insertU8Text(m_composition_.start_position, text);
       size_t new_columns = calcUtf16Columns(text);
       m_composition_.composing_text = text;
       m_composition_.composing_columns = new_columns;
       m_composition_.kind = CompositionKind::PREEDIT_TEXT;
-      m_preedit_text_in_document_ = true;
-      // Move cursor to end of composing text
+      m_composition_.anchor_range = {m_composition_.start_position, calcPositionAfterInsert(m_composition_.start_position, text)};
+      m_ime_session_.preedit_text_in_document = true;
       TextPosition new_pos = calcPositionAfterInsert(m_composition_.start_position, text);
       setCursorPositionInternal(new_pos, false);
     } else {
       m_composition_.composing_text.clear();
       m_composition_.composing_columns = 0;
       m_composition_.kind = CompositionKind::PREEDIT_TEXT;
-      m_preedit_text_in_document_ = false;
+      m_composition_.anchor_range = {m_composition_.start_position, m_composition_.start_position};
+      m_ime_session_.preedit_text_in_document = false;
       setCursorPositionInternal(m_composition_.start_position, false);
     }
     m_text_layout_->invalidateContentMetrics(m_composition_.start_position.line);
     ensureCursorVisible();
-    LOGD("EditorCore::compositionUpdate, text = %s, columns = %zu",
+    LOGD("EditorCore::setComposingText, text = %s, columns = %zu",
          text.c_str(), m_composition_.composing_columns);
+    return {};
   }
 
-  TextEditResult EditorCore::compositionEnd(const U8String& committed_text) {
+  TextEditResult EditorCore::finishComposing(CompositionFinishReason reason) {
+    if (m_document_ == nullptr || m_settings_.read_only) return {};
+    if (!hasComposingSession()) return {};
+    if (!m_settings_.enable_composition) {
+      resetCompositionState();
+      return {};
+    }
+    if (hasVisibleComposition()
+        && m_composition_.kind == CompositionKind::DOCUMENT_RANGE
+        && !m_ime_session_.preedit_text_in_document
+        && !m_ime_session_.preedit_replaces_document_range) {
+      TextPosition previous_cursor = m_caret_.cursor;
+      m_composition_.is_composing = false;
+      m_composition_.visible = false;
+      m_composition_.phase = CompositionPhase::AWAITING_COMMIT;
+      m_text_layout_->invalidateContentMetrics(m_composition_.start_position.line);
+      ensureCursorVisible();
+      TextEditResult result;
+      result.cursor_before = previous_cursor;
+      result.cursor_after = previous_cursor;
+      LOGD("EditorCore::finishComposing(document range), reason = %d, cursor = %s",
+           static_cast<int>(reason), m_caret_.cursor.dump().c_str());
+      return result;
+    }
+    return commitComposingText("");
+  }
+
+  TextEditResult EditorCore::commitComposingText(const U8String& committed_text) {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
-    // When composition is disabled, fall back to direct insertion
     if (!m_settings_.enable_composition) {
       if (!committed_text.empty()) {
         return insertText(committed_text);
@@ -2130,47 +2718,68 @@ namespace NS_SWEETEDITOR {
       return {};
     }
 
-    if (!m_composition_.is_composing) {
-      // Not in composition state, insert committed text directly
+    if (!hasComposingSession()) {
+      if (m_ime_session_.suppress_next_composing_commit) {
+        bool should_suppress = committed_text == m_ime_session_.suppressed_composing_commit_text;
+        m_ime_session_.suppress_next_composing_commit = false;
+        m_ime_session_.suppressed_composing_commit_text.clear();
+        if (should_suppress) {
+          return {};
+        }
+      }
       if (!committed_text.empty()) {
+        clearImeCandidateCommitWindow();
         return insertText(committed_text);
       }
       return {};
     }
 
-    TextRange composing_range = {
-      m_composition_.start_position,
-      {m_composition_.start_position.line, m_composition_.start_position.column + m_composition_.composing_columns}
-    };
+    TextRange composing_range = getCurrentComposingRange();
     TextPosition previous_cursor = m_caret_.cursor;
     U8String final_text = committed_text.empty() ? m_composition_.composing_text : committed_text;
     size_t comp_start_line = m_composition_.start_position.line;
-    if (m_composition_.kind == CompositionKind::DOCUMENT_RANGE) {
-      U8String existing_text = m_composition_.composing_text;
+    if (m_composition_.kind == CompositionKind::DOCUMENT_RANGE || hasAwaitingDocumentRangeCommit()) {
+      TextRange commit_range = m_composition_.anchor_range;
+      U8String original_text = m_composition_.original_text;
+      U8String current_text = m_document_->getU8Text(commit_range);
+      TextRange candidate_range {commit_range.start, calcPositionAfterInsert(commit_range.start, final_text)};
       resetCompositionState();
       m_text_layout_->invalidateContentMetrics(comp_start_line);
       setCursorPositionInternal(previous_cursor, false);
-      if (committed_text.empty() || committed_text == existing_text) {
+      if (committed_text.empty() || committed_text == original_text) {
+        openImeCandidateCommitWindow(candidate_range, final_text);
         ensureCursorVisible();
         TextEditResult edit_result;
         edit_result.cursor_before = previous_cursor;
         edit_result.cursor_after = previous_cursor;
-        LOGD("EditorCore::compositionEnd(document range), cursor = %s", m_caret_.cursor.dump().c_str());
+        LOGD("EditorCore::commitComposingText(document range), cursor = %s", m_caret_.cursor.dump().c_str());
         return edit_result;
       }
-      auto edit_result = applyEdit(composing_range, committed_text);
+      if (current_text != original_text) {
+        clearImeCandidateCommitWindow();
+        ensureCursorVisible();
+        TextEditResult edit_result;
+        edit_result.cursor_before = previous_cursor;
+        edit_result.cursor_after = previous_cursor;
+        LOGD("EditorCore::commitComposingText(document range stale), cursor = %s", m_caret_.cursor.dump().c_str());
+        return edit_result;
+      }
+      auto edit_result = applyEdit(commit_range, committed_text);
+      openImeCandidateCommitWindow(candidate_range, final_text);
       ensureCursorVisible();
-      LOGD("EditorCore::compositionEnd(document range replace), cursor = %s", m_caret_.cursor.dump().c_str());
+      LOGD("EditorCore::commitComposingText(document range replace), cursor = %s", m_caret_.cursor.dump().c_str());
       return edit_result;
     }
 
-    bool replaces_document_range = m_preedit_replaces_document_range_;
-    TextRange replaced_range = m_preedit_replaced_range_;
-    U8String replaced_text = m_preedit_replaced_text_;
+    bool replaces_document_range = m_ime_session_.preedit_replaces_document_range;
+    TextRange replaced_range = m_ime_session_.preedit_replaced_range;
+    U8String replaced_text = m_ime_session_.preedit_replaced_text;
     bool should_restore_cursor = committed_text.empty()
                               && !replaces_document_range
-                              && m_preedit_text_in_document_
+                              && m_ime_session_.preedit_text_in_document
                               && composing_range.contains(previous_cursor);
+    TextPosition candidate_start = replaces_document_range ? replaced_range.start : m_composition_.start_position;
+    TextRange candidate_range {candidate_start, calcPositionAfterInsert(candidate_start, final_text)};
 
     removeComposingText();
     if (replaces_document_range) {
@@ -2198,18 +2807,26 @@ namespace NS_SWEETEDITOR {
       }
     }
 
+    openImeCandidateCommitWindow(candidate_range, final_text);
     ensureCursorVisible();
-    LOGD("EditorCore::compositionEnd, cursor = %s", m_caret_.cursor.dump().c_str());
+    LOGD("EditorCore::commitComposingText, cursor = %s", m_caret_.cursor.dump().c_str());
     return edit_result;
   }
 
-  void EditorCore::compositionCancel() {
-    if (!m_composition_.is_composing) return;
+  void EditorCore::cancelComposing() {
+    if (!hasComposingSession()) return;
+
+    if (!hasVisibleComposition()) {
+      resetCompositionState();
+      clearImeCandidateCommitWindow();
+      ensureCursorVisible();
+      return;
+    }
 
     size_t comp_start_line = m_composition_.start_position.line;
-    bool replaces_document_range = m_preedit_replaces_document_range_;
-    TextRange replaced_range = m_preedit_replaced_range_;
-    U8String replaced_text = m_preedit_replaced_text_;
+    bool replaces_document_range = m_ime_session_.preedit_replaces_document_range;
+    TextRange replaced_range = m_ime_session_.preedit_replaced_range;
+    U8String replaced_text = m_ime_session_.preedit_replaced_text;
 
     removeComposingText();
     if (replaces_document_range) {
@@ -2218,10 +2835,11 @@ namespace NS_SWEETEDITOR {
     }
 
     resetCompositionState();
+    clearImeCandidateCommitWindow();
 
     m_text_layout_->invalidateContentMetrics(comp_start_line);
     ensureCursorVisible();
-    LOGD("EditorCore::compositionCancel, cursor = %s", m_caret_.cursor.dump().c_str());
+    LOGD("EditorCore::cancelComposing, cursor = %s", m_caret_.cursor.dump().c_str());
   }
 
   const CompositionState& EditorCore::getCompositionState() const {
@@ -2229,12 +2847,16 @@ namespace NS_SWEETEDITOR {
   }
 
   bool EditorCore::isComposing() const {
-    return m_composition_.is_composing;
+    return hasVisibleComposition();
+  }
+
+  bool EditorCore::hasComposingSession() const {
+    return m_composition_.has_session;
   }
 
   void EditorCore::setCompositionEnabled(bool enabled) {
-    if (!enabled && m_composition_.is_composing) {
-      compositionCancel();
+    if (!enabled && hasComposingSession()) {
+      cancelComposing();
     }
     m_settings_.enable_composition = enabled;
     LOGD("EditorCore::setCompositionEnabled, enabled = %s", enabled ? "true" : "false");
@@ -2245,7 +2867,7 @@ namespace NS_SWEETEDITOR {
   }
   void EditorCore::setReadOnly(bool read_only) {
     if (read_only && m_composition_.is_composing) {
-      compositionCancel();
+      cancelComposing();
     }
     m_settings_.read_only = read_only;
     LOGD("EditorCore::setReadOnly, read_only = %s", read_only ? "true" : "false");
@@ -2277,7 +2899,7 @@ namespace NS_SWEETEDITOR {
 
     // If composition is active, cancel it first
     if (m_composition_.is_composing) {
-      compositionCancel();
+      cancelComposing();
     }
 
     // Exit existing linked editing session
@@ -2316,7 +2938,7 @@ namespace NS_SWEETEDITOR {
 
     // If composition is active, cancel it first
     if (m_composition_.is_composing) {
-      compositionCancel();
+      cancelComposing();
     }
 
     // Exit existing linked editing session
@@ -2963,7 +3585,7 @@ namespace NS_SWEETEDITOR {
   void EditorCore::removeComposingText() {
     if (!m_composition_.is_composing || m_composition_.composing_columns == 0) return;
     if (m_composition_.kind != CompositionKind::PREEDIT_TEXT) return;
-    if (!m_preedit_text_in_document_) return;
+    if (!m_ime_session_.preedit_text_in_document) return;
     if (m_document_ == nullptr) return;
 
     // Composing text range: from start_position to start_position + composing_columns
@@ -2973,7 +3595,7 @@ namespace NS_SWEETEDITOR {
     };
     m_document_->deleteU8Text(comp_range);
     m_caret_.cursor = m_composition_.start_position; // Avoid recursive hooks or composition commits
-    m_preedit_text_in_document_ = false;
+    m_ime_session_.preedit_text_in_document = false;
   }
 
   TextEditResult EditorCore::applyEdit(const TextRange& range, const U8String& new_text, bool record_undo) {
@@ -3151,15 +3773,100 @@ namespace NS_SWEETEDITOR {
   }
 
   void EditorCore::resetCompositionState() {
+    bool has_candidate_commit_window = m_ime_session_.has_candidate_commit_window;
+    TextRange candidate_committed_range = m_ime_session_.candidate_committed_range;
+    U8String candidate_committed_text = m_ime_session_.candidate_committed_text;
+    bool candidate_deleted_to_prefix = m_ime_session_.candidate_deleted_to_prefix;
+    bool suppress_candidate_exact_range = m_ime_session_.suppress_candidate_exact_range;
+    bool candidate_exact_range_suppressed = m_ime_session_.candidate_exact_range_suppressed;
+
     m_composition_.is_composing = false;
+    m_composition_.has_session = false;
+    m_composition_.phase = CompositionPhase::INACTIVE;
+    m_composition_.visible = false;
     m_composition_.composing_text.clear();
     m_composition_.composing_columns = 0;
     m_composition_.start_position = {};
+    m_composition_.anchor_range = {};
+    m_composition_.original_text.clear();
     m_composition_.kind = CompositionKind::NONE;
-    m_preedit_text_in_document_ = false;
-    m_preedit_replaces_document_range_ = false;
-    m_preedit_replaced_range_ = {};
-    m_preedit_replaced_text_.clear();
+    m_ime_session_ = {};
+    m_ime_session_.has_candidate_commit_window = has_candidate_commit_window;
+    m_ime_session_.candidate_committed_range = candidate_committed_range;
+    m_ime_session_.candidate_committed_text = candidate_committed_text;
+    m_ime_session_.candidate_deleted_to_prefix = candidate_deleted_to_prefix;
+    m_ime_session_.suppress_candidate_exact_range = suppress_candidate_exact_range;
+    m_ime_session_.candidate_exact_range_suppressed = candidate_exact_range_suppressed;
+  }
+
+  bool EditorCore::hasVisibleComposition() const {
+    return m_composition_.has_session
+           && m_composition_.is_composing
+           && m_composition_.visible
+           && m_composition_.phase == CompositionPhase::ACTIVE;
+  }
+
+  bool EditorCore::hasAwaitingDocumentRangeCommit() const {
+    return m_composition_.has_session
+           && m_composition_.phase == CompositionPhase::AWAITING_COMMIT
+           && m_composition_.kind == CompositionKind::DOCUMENT_RANGE;
+  }
+
+  TextRange EditorCore::getCurrentComposingRange() const {
+    if (m_composition_.anchor_range.start != m_composition_.anchor_range.end) {
+      return m_composition_.anchor_range;
+    }
+    return {
+      m_composition_.start_position,
+      {m_composition_.start_position.line, m_composition_.start_position.column + m_composition_.composing_columns}
+    };
+  }
+
+  ImeSyncSnapshot EditorCore::buildImeSyncSnapshot() const {
+    ImeSyncSnapshot snapshot;
+    snapshot.cursor = m_caret_.cursor;
+    snapshot.has_selection = m_caret_.has_selection;
+    snapshot.selection = m_caret_.selection;
+    snapshot.has_composing_session = hasComposingSession() || m_ime_session_.has_shadow_preedit;
+    snapshot.context_policy = m_settings_.enable_composition
+                              ? m_ime_composition_policy_.enabled_context_policy
+                              : m_ime_composition_policy_.disabled_context_policy;
+
+    if (hasVisibleComposition()) {
+      TextRange composing_range = getCurrentComposingRange();
+      snapshot.has_visible_composition_range = composing_range.start != composing_range.end;
+      snapshot.visible_composition_range = composing_range;
+      snapshot.has_platform_marked_range = snapshot.has_visible_composition_range;
+      snapshot.platform_marked_range = composing_range;
+      snapshot.preedit_storage = ImePreeditStorage::VISIBLE_DOCUMENT_COMPOSITION;
+      snapshot.clear_platform_preedit = false;
+      return snapshot;
+    }
+
+    if (hasAwaitingDocumentRangeCommit()) {
+      snapshot.has_platform_marked_range = m_composition_.anchor_range.start != m_composition_.anchor_range.end;
+      snapshot.platform_marked_range = m_composition_.anchor_range;
+      snapshot.preedit_storage = ImePreeditStorage::HIDDEN_AWAITING_COMMIT;
+      snapshot.clear_platform_preedit = true;
+      return snapshot;
+    }
+
+    if (m_ime_session_.has_shadow_preedit) {
+      snapshot.preedit_storage = ImePreeditStorage::SHADOW_ONLY;
+      snapshot.clear_platform_preedit = false;
+      return snapshot;
+    }
+
+    snapshot.clear_platform_preedit = true;
+    return snapshot;
+  }
+
+  void EditorCore::suppressNextComposingCommit(const U8String& text) {
+    if (text.empty() || text == "\n") {
+      return;
+    }
+    m_ime_session_.suppress_next_composing_commit = true;
+    m_ime_session_.suppressed_composing_commit_text = text;
   }
 
 #pragma endregion

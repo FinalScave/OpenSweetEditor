@@ -55,6 +55,18 @@ export enum Modifier {
   META = 8
 }
 
+export enum ImeEventType {
+  UPDATE_PREEDIT = 0,
+  COMMIT_TEXT = 1,
+  FINISH_PREEDIT = 2,
+  CANCEL_PREEDIT = 3,
+  MARK_DOCUMENT_RANGE = 4,
+  DELETE_BACKWARD = 5,
+  DELETE_FORWARD = 6,
+  DELETE_SURROUNDING = 7,
+  SELECTION_CHANGED = 8
+}
+
 export enum GestureType {
   UNDEFINED = 0,
   TAP = 1,
@@ -549,20 +561,29 @@ export class EditorCore {
 
   // ==================== IME Composition Input ====================
 
-  compositionStart(): void {
-    native.editorCompositionStart(this.handle);
-  }
-
-  compositionUpdate(text: string | null): void {
-    native.editorCompositionUpdate(this.handle, text);
-  }
-
-  compositionEnd(committedText?: string | null): TextEditResult {
-    return ProtocolDecoder.decodeTextEditResult(native.editorCompositionEnd(this.handle, committedText));
-  }
-
-  compositionCancel(): void {
-    native.editorCompositionCancel(this.handle);
+  handleImeEvent(type: ImeEventType,
+                 text: string | null = null,
+                 range: TextRange | null = null,
+                 cursor: TextPosition | null = null,
+                 beforeLength: number = 0,
+                 afterLength: number = 0): TextEditResult {
+    const payload = native.editorHandleImeEvent(
+      this.handle,
+      type as number,
+      text,
+      range !== null,
+      range !== null ? range.start.line : 0,
+      range !== null ? range.start.column : 0,
+      range !== null ? range.end.line : 0,
+      range !== null ? range.end.column : 0,
+      cursor !== null,
+      cursor !== null ? cursor.line : 0,
+      cursor !== null ? cursor.column : 0,
+      beforeLength,
+      afterLength,
+      0,
+      0);
+    return ProtocolDecoder.decodeImeEventEditResult(payload);
   }
 
   isComposing(): boolean {

@@ -588,60 +588,53 @@ public:
     return napi_create_string_value(env, selected.c_str());
   }
 
-  static napi_value compositionStart(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_composition_start(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
-  }
-
-  static napi_value compositionUpdate(napi_env env, napi_callback_info info) {
-    size_t argc = 2;
-    napi_value args[2];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-
-    const char* text_str = nullptr;
-    std::string text_buf;
-    if (!napi_is_null_or_undefined(env, args[1])) {
-      text_buf = napi_get_utf8_string(env, args[1]);
-      text_str = text_buf.c_str();
-    }
-    editor_composition_update(static_cast<intptr_t>(napi_get_handle(env, args[0])), text_str);
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
-  }
-
-  static napi_value compositionEnd(napi_env env, napi_callback_info info) {
-    size_t argc = 2;
-    napi_value args[2];
+  static napi_value handleImeEvent(napi_env env, napi_callback_info info) {
+    size_t argc = 16;
+    napi_value args[16];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
     int64_t handle = napi_get_handle(env, args[0]);
     if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
 
+    int32_t type = argc > 1 ? napi_get_int32(env, args[1]) : 0;
     const char* text_str = nullptr;
     std::string text_buf;
-    if (argc > 1 && !napi_is_null_or_undefined(env, args[1])) {
-      text_buf = napi_get_utf8_string(env, args[1]);
+    if (argc > 2 && !napi_is_null_or_undefined(env, args[2])) {
+      text_buf = napi_get_utf8_string(env, args[2]);
       text_str = text_buf.c_str();
     }
-    size_t out_size = 0;
-    const uint8_t* payload = editor_composition_end(static_cast<intptr_t>(handle), text_str, &out_size);
-    return wrap_binary_payload(env, payload, out_size);
-  }
 
-  static napi_value compositionCancel(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_composition_cancel(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    int32_t has_range = argc > 3 && napi_get_bool(env, args[3]) ? 1 : 0;
+    size_t start_line = argc > 4 ? static_cast<size_t>(napi_get_int32(env, args[4])) : 0;
+    size_t start_column = argc > 5 ? static_cast<size_t>(napi_get_int32(env, args[5])) : 0;
+    size_t end_line = argc > 6 ? static_cast<size_t>(napi_get_int32(env, args[6])) : 0;
+    size_t end_column = argc > 7 ? static_cast<size_t>(napi_get_int32(env, args[7])) : 0;
+    int32_t has_cursor = argc > 8 && napi_get_bool(env, args[8]) ? 1 : 0;
+    size_t cursor_line = argc > 9 ? static_cast<size_t>(napi_get_int32(env, args[9])) : 0;
+    size_t cursor_column = argc > 10 ? static_cast<size_t>(napi_get_int32(env, args[10])) : 0;
+    size_t before_length = argc > 11 ? static_cast<size_t>(napi_get_int32(env, args[11])) : 0;
+    size_t after_length = argc > 12 ? static_cast<size_t>(napi_get_int32(env, args[12])) : 0;
+    int32_t text_unit = argc > 13 ? napi_get_int32(env, args[13]) : 0;
+    int32_t script_hint = argc > 14 ? napi_get_int32(env, args[14]) : 0;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_handle_ime_event(
+      static_cast<intptr_t>(handle),
+      type,
+      text_str,
+      has_range,
+      start_line,
+      start_column,
+      end_line,
+      end_column,
+      has_cursor,
+      cursor_line,
+      cursor_column,
+      before_length,
+      after_length,
+      text_unit,
+      script_hint,
+      &out_size);
+    return wrap_binary_payload(env, payload, out_size);
   }
 
   static napi_value isComposing(napi_env env, napi_callback_info info) {

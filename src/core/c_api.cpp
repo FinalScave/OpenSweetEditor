@@ -133,6 +133,11 @@ static void appendTextPosition(std::vector<uint8_t>& buffer, const TextPosition&
   appendI32(buffer, static_cast<int32_t>(position.column));
 }
 
+static void appendTextRange(std::vector<uint8_t>& buffer, const TextRange& range) {
+  appendTextPosition(buffer, range.start);
+  appendTextPosition(buffer, range.end);
+}
+
 static void appendTextStyle(std::vector<uint8_t>& buffer, const TextStyle& style) {
   appendI32(buffer, style.color);
   appendI32(buffer, style.background_color);
@@ -323,6 +328,44 @@ static const uint8_t* textEditResultToBinary(const TextEditResult& result, size_
   buffer.reserve(sizeof(int32_t) * 2 + result.changes.size() * (sizeof(int32_t) * 5));
   appendI32(buffer, 1);  // changed
   appendTextEditChanges(buffer, result.changes);
+  return allocBinaryPayload(buffer.data(), buffer.size(), out_size);
+}
+
+static void appendImeSyncSnapshot(std::vector<uint8_t>& buffer, const ImeSyncSnapshot& snapshot) {
+  appendTextPosition(buffer, snapshot.cursor);
+  appendBool(buffer, snapshot.has_selection);
+  appendTextRange(buffer, snapshot.selection);
+  appendBool(buffer, snapshot.has_composing_session);
+  appendBool(buffer, snapshot.has_visible_composition_range);
+  appendTextRange(buffer, snapshot.visible_composition_range);
+  appendBool(buffer, snapshot.has_platform_marked_range);
+  appendTextRange(buffer, snapshot.platform_marked_range);
+  appendI32(buffer, static_cast<int32_t>(snapshot.preedit_storage));
+  appendI32(buffer, static_cast<int32_t>(snapshot.context_policy));
+  appendBool(buffer, snapshot.request_restart_input);
+  appendBool(buffer, snapshot.clear_platform_preedit);
+}
+
+static const uint8_t* imeSyncSnapshotToBinary(const ImeSyncSnapshot& snapshot, size_t* out_size) {
+  std::vector<uint8_t> buffer;
+  buffer.reserve(sizeof(int32_t) * 23);
+  appendImeSyncSnapshot(buffer, snapshot);
+  return allocBinaryPayload(buffer.data(), buffer.size(), out_size);
+}
+
+static const uint8_t* imeEventResultToBinary(const ImeEventResult& result, size_t* out_size) {
+  std::vector<uint8_t> buffer;
+  buffer.reserve(sizeof(int32_t) * 30);
+  appendBool(buffer, result.handled);
+  appendBool(buffer, result.content_changed);
+  appendBool(buffer, result.cursor_changed);
+  appendBool(buffer, result.selection_changed);
+  const bool has_edit = result.content_changed && result.edit_result.changed;
+  appendBool(buffer, has_edit);
+  if (has_edit) {
+    appendTextEditChanges(buffer, result.edit_result.changes);
+  }
+  appendImeSyncSnapshot(buffer, result.sync);
   return allocBinaryPayload(buffer.data(), buffer.size(), out_size);
 }
 
@@ -1193,53 +1236,6 @@ void editor_move_cursor_to_line_end(intptr_t editor_handle, int extend_selection
   editor_core->moveCursorToLineEnd(extend_selection != 0);
 }
 
-void editor_set_composing_region(intptr_t editor_handle, size_t start_line, size_t start_column, size_t end_line, size_t end_column) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    return;
-  }
-  TextRange range;
-  range.start = {start_line, start_column};
-  range.end = {end_line, end_column};
-  editor_core->setComposingRegion(range);
-}
-
-void editor_composition_start(intptr_t editor_handle) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    return;
-  }
-  editor_core->compositionStart();
-}
-
-void editor_composition_update(intptr_t editor_handle, const char* text) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    return;
-  }
-  editor_core->compositionUpdate(text != nullptr ? text : "");
-}
-
-const uint8_t* editor_composition_end(intptr_t editor_handle, const char* committed_text, size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-  TextEditResult result = editor_core->compositionEnd(committed_text != nullptr ? committed_text : "");
-  return textEditResultToBinary(result, out_size);
-}
-
-void editor_composition_cancel(intptr_t editor_handle) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    return;
-  }
-  editor_core->compositionCancel();
-}
-
 int editor_is_composing(intptr_t editor_handle) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
@@ -1264,14 +1260,95 @@ void editor_get_composing_range(intptr_t editor_handle,
   }
 
   const CompositionState& state = editor_core->getCompositionState();
-  if (!state.is_composing) {
+  if (!state.is_composing || !state.visible) {
     return;
   }
 
-  if (out_start_line) *out_start_line = static_cast<int32_t>(state.start_position.line);
-  if (out_start_column) *out_start_column = static_cast<int32_t>(state.start_position.column);
-  if (out_end_line) *out_end_line = static_cast<int32_t>(state.start_position.line);
-  if (out_end_column) *out_end_column = static_cast<int32_t>(state.start_position.column + state.composing_columns);
+  TextRange range = state.anchor_range.start == state.anchor_range.end
+      ? TextRange {state.start_position, {state.start_position.line, state.start_position.column + state.composing_columns}}
+      : state.anchor_range;
+  if (out_start_line) *out_start_line = static_cast<int32_t>(range.start.line);
+  if (out_start_column) *out_start_column = static_cast<int32_t>(range.start.column);
+  if (out_end_line) *out_end_line = static_cast<int32_t>(range.end.line);
+  if (out_end_column) *out_end_column = static_cast<int32_t>(range.end.column);
+}
+
+void editor_get_composing_session_range(intptr_t editor_handle,
+                                        int32_t* out_start_line,
+                                        int32_t* out_start_column,
+                                        int32_t* out_end_line,
+                                        int32_t* out_end_column) {
+  if (out_start_line) *out_start_line = -1;
+  if (out_start_column) *out_start_column = -1;
+  if (out_end_line) *out_end_line = -1;
+  if (out_end_column) *out_end_column = -1;
+
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr || !editor_core->hasComposingSession()) {
+    return;
+  }
+
+  const CompositionState& state = editor_core->getCompositionState();
+  if (!state.has_session) {
+    return;
+  }
+
+  TextRange range = state.anchor_range.start == state.anchor_range.end
+      ? TextRange {state.start_position, {state.start_position.line, state.start_position.column + state.composing_columns}}
+      : state.anchor_range;
+  if (out_start_line) *out_start_line = static_cast<int32_t>(range.start.line);
+  if (out_start_column) *out_start_column = static_cast<int32_t>(range.start.column);
+  if (out_end_line) *out_end_line = static_cast<int32_t>(range.end.line);
+  if (out_end_column) *out_end_column = static_cast<int32_t>(range.end.column);
+}
+
+const uint8_t* editor_handle_ime_event(intptr_t editor_handle,
+                                       int type,
+                                       const char* text,
+                                       int has_range,
+                                       size_t start_line,
+                                       size_t start_column,
+                                       size_t end_line,
+                                       size_t end_column,
+                                       int has_cursor,
+                                       size_t cursor_line,
+                                       size_t cursor_column,
+                                       size_t before_length,
+                                       size_t after_length,
+                                       int text_unit,
+                                       int script_hint,
+                                       size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    if (out_size != nullptr) {
+      *out_size = 0;
+    }
+    return nullptr;
+  }
+
+  ImeEvent event;
+  event.type = static_cast<ImeEventType>(type);
+  event.text = text != nullptr ? text : "";
+  event.has_range = has_range != 0;
+  event.range = {{start_line, start_column}, {end_line, end_column}};
+  event.has_cursor = has_cursor != 0;
+  event.cursor = {cursor_line, cursor_column};
+  event.before_length = before_length;
+  event.after_length = after_length;
+  event.text_unit = static_cast<ImeTextUnit>(text_unit);
+  event.script_hint = static_cast<ImeScriptClass>(script_hint);
+  return imeEventResultToBinary(editor_core->handleImeEvent(event), out_size);
+}
+
+const uint8_t* editor_get_ime_sync_snapshot(intptr_t editor_handle, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    if (out_size != nullptr) {
+      *out_size = 0;
+    }
+    return nullptr;
+  }
+  return imeSyncSnapshotToBinary(editor_core->getImeSyncSnapshot(), out_size);
 }
 
 void editor_set_composition_enabled(intptr_t editor_handle, int enabled) {

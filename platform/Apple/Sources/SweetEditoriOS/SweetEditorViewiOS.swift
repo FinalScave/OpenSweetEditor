@@ -472,7 +472,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
     }
 
     func cancelCoreCompositionForTesting() {
-        editorCore.compositionCancel()
+        editorCore.cancelImePreedit()
     }
 
     func getDocument() -> SweetDocument? {

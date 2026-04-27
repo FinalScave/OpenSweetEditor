@@ -661,6 +661,33 @@ export class ProtocolDecoder {
     return { changes };
   }
 
+  static decodeImeEventEditResult(payload: ArrayBuffer | undefined): TextEditResult {
+    const empty: TextEditResult = { changes: [] };
+    if (!payload || payload.byteLength < 20) {
+      return empty;
+    }
+    const reader = new BinaryReader(payload);
+    reader.readInt32();
+    reader.readInt32();
+    reader.readInt32();
+    reader.readInt32();
+    const hasEdit = reader.readInt32() !== 0;
+    if (!hasEdit || !reader.hasRemaining(4)) {
+      return empty;
+    }
+    const count = reader.readInt32();
+    const changes: TextChange[] = [];
+    for (let i = 0; i < count; i++) {
+      const range: TextRange = {
+        start: reader.readTextPosition(),
+        end: reader.readTextPosition()
+      };
+      const newText = reader.readUtf8String();
+      changes.push({ range, newText });
+    }
+    return { changes };
+  }
+
   static decodeKeyEventResult(payload: ArrayBuffer | undefined): KeyEventResult {
     const empty: KeyEventResult = {
       handled: false,

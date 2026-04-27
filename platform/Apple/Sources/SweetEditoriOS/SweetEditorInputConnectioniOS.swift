@@ -48,7 +48,7 @@ final class SweetEditorInputConnectioniOS {
                 let staysWithinMarkedRange = selectionStart >= markedStart && selectionEnd <= markedEnd
 
                 if !staysWithinMarkedRange {
-                    owner.editorCore.compositionCancel()
+                    owner.editorCore.cancelImePreedit()
                     clearLocalCompositionState()
                 }
             }
@@ -89,7 +89,7 @@ final class SweetEditorInputConnectioniOS {
         inputDelegate?.selectionWillChange(owner)
         inputDelegate?.textWillChange(owner)
 
-        _ = owner.editorCore.compositionEnd(text)
+        _ = owner.editorCore.commitImeText(text)
 
         clearLocalCompositionState()
         selectedRangeValue = owner.currentSelectionNSRange()
@@ -114,22 +114,21 @@ final class SweetEditorInputConnectioniOS {
             let staysWithinMarkedRange = selectionStart >= markedStart && selectionEnd <= markedEnd
 
             if !staysWithinMarkedRange {
-            _ = owner.editorCore.compositionEnd(nil)
-            clearLocalCompositionState()
+                _ = owner.editorCore.finishImePreedit()
+                clearLocalCompositionState()
             }
         }
 
         let baseRange = markedRangeValue ?? currentSelection
 
         if !isComposing {
-            owner.editorCore.compositionStart()
             isComposing = true
         }
 
         inputDelegate?.selectionWillChange(owner)
         inputDelegate?.textWillChange(owner)
 
-        owner.editorCore.compositionUpdate(text)
+        _ = owner.editorCore.updateImePreedit(text)
 
         markedRangeValue = NSRange(location: baseRange.location, length: text.utf16.count)
         markedTextValue = text
@@ -152,7 +151,11 @@ final class SweetEditorInputConnectioniOS {
         inputDelegate?.textWillChange(owner)
         if isComposing {
             let committedText = markedTextValue ?? ""
-            _ = owner.editorCore.compositionEnd(committedText.isEmpty ? nil : committedText)
+            if committedText.isEmpty {
+                _ = owner.editorCore.finishImePreedit()
+            } else {
+                _ = owner.editorCore.commitImeText(committedText)
+            }
         }
         clearLocalCompositionState()
         selectedRangeValue = owner.currentSelectionNSRange()

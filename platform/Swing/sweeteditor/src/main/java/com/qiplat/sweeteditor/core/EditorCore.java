@@ -21,6 +21,17 @@ import java.util.Map;
  */
 public class EditorCore {
     private static final Cleaner CLEANER = Cleaner.create();
+    public static final int IME_EVENT_UPDATE_PREEDIT = 0;
+    public static final int IME_EVENT_COMMIT_TEXT = 1;
+    public static final int IME_EVENT_FINISH_PREEDIT = 2;
+    public static final int IME_EVENT_CANCEL_PREEDIT = 3;
+    public static final int IME_EVENT_MARK_DOCUMENT_RANGE = 4;
+    public static final int IME_EVENT_DELETE_BACKWARD = 5;
+    public static final int IME_EVENT_DELETE_FORWARD = 6;
+    public static final int IME_EVENT_DELETE_SURROUNDING = 7;
+    public static final int IME_EVENT_SELECTION_CHANGED = 8;
+    private static final int IME_TEXT_UNIT_UTF16_CODE_UNIT = 0;
+    private static final int IME_SCRIPT_UNKNOWN = 0;
 
     private final long nativeHandle;
     private final Arena arena;
@@ -471,26 +482,48 @@ public class EditorCore {
 
     // ===================== IME =====================
 
-    public void compositionStart() { EditorNative.compositionStart(nativeHandle); }
-
-    public void compositionUpdate(String text) {
-        try (Arena tempArena = Arena.ofConfined()) {
-            EditorNative.compositionUpdate(nativeHandle, text, tempArena);
-        }
+    public TextEditResult handleImeEvent(int type, String text) {
+        return handleImeEvent(type, text, false, 0, 0, 0, 0, false, 0, 0, 0, 0);
     }
 
-    public TextEditResult compositionEnd(String text) {
+    public TextEditResult handleImeEvent(int type,
+                                         String text,
+                                         boolean hasRange,
+                                         int startLine,
+                                         int startColumn,
+                                         int endLine,
+                                         int endColumn,
+                                         boolean hasCursor,
+                                         int cursorLine,
+                                         int cursorColumn,
+                                         long beforeLength,
+                                         long afterLength) {
         try (Arena tempArena = Arena.ofConfined()) {
-            EditorNative.NativeBinaryResult result = EditorNative.compositionEnd(nativeHandle, text, tempArena);
+            EditorNative.NativeBinaryResult result = EditorNative.handleImeEvent(
+                    nativeHandle,
+                    type,
+                    text,
+                    hasRange,
+                    startLine,
+                    startColumn,
+                    endLine,
+                    endColumn,
+                    hasCursor,
+                    cursorLine,
+                    cursorColumn,
+                    beforeLength,
+                    afterLength,
+                    IME_TEXT_UNIT_UTF16_CODE_UNIT,
+                    IME_SCRIPT_UNKNOWN,
+                    tempArena);
             try {
-                return ProtocolDecoder.decodeTextEditResult(result.asByteBuffer());
+                return ProtocolDecoder.decodeImeEventEditResult(result.asByteBuffer());
             } finally {
                 result.free();
             }
         }
     }
 
-    public void compositionCancel() { EditorNative.compositionCancel(nativeHandle); }
     public boolean isComposing() { return EditorNative.isComposing(nativeHandle); }
     public void setCompositionEnabled(boolean enabled) { EditorNative.setCompositionEnabled(nativeHandle, enabled); }
     public boolean isCompositionEnabled() { return EditorNative.isCompositionEnabled(nativeHandle); }

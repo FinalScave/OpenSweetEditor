@@ -7,6 +7,7 @@ import {
   GestureResult,
   GestureType,
   HitTargetType,
+  ImeEventType,
   ScrollbarConfig,
   ScrollbarMode,
   ScrollbarTrackTapMode,
@@ -187,7 +188,7 @@ export struct SweetEditor {
   private editorGlobalY: number = 0;
   private readonly onImeInsertText = (text: string): void => {
     if (this.editorCore && this.isCompositionEnabled() && this.editorCore.isComposing()) {
-      this.commitComposition(text);
+      this.commitImeComposition(text);
       return;
     }
     this.insertText(text);
@@ -1926,11 +1927,11 @@ export struct SweetEditor {
 
   // ==================== IME Internal Methods (package-private) ====================
 
-  compositionUpdate(text: string): void {
+  updateImeComposition(text: string): void {
     if (!this.editorCore) {
       return;
     }
-    this.editorCore.compositionUpdate(text);
+    this.editorCore.handleImeEvent(ImeEventType.UPDATE_PREEDIT, text);
     this.flush();
   }
 
@@ -1938,11 +1939,11 @@ export struct SweetEditor {
     return this.settings.isCompositionEnabled();
   }
 
-  commitComposition(text: string): void {
+  commitImeComposition(text: string): void {
     if (!this.editorCore) {
       return;
     }
-    const result = this.editorCore.compositionEnd(text);
+    const result = this.editorCore.handleImeEvent(ImeEventType.COMMIT_TEXT, text);
     this.dispatchTextChanged(TextChangeAction.COMPOSITION, result);
     this.flush();
   }
@@ -2956,15 +2957,21 @@ export struct SweetEditor {
     if (!this.editorCore || !this.isCompositionEnabled()) {
       return;
     }
-    this.selectRangeByIme(range);
-    this.compositionUpdate(text);
+    const normalizedStart = Math.max(0, Math.min(range.start, range.end));
+    const normalizedEnd = Math.max(normalizedStart, Math.max(range.start, range.end));
+    const previewRange: TextRange = {
+      start: this.offsetToTextPosition(normalizedStart),
+      end: this.offsetToTextPosition(normalizedEnd)
+    };
+    this.editorCore.handleImeEvent(ImeEventType.MARK_DOCUMENT_RANGE, null, previewRange);
+    this.updateImeComposition(text);
   }
 
   private finishImePreviewText(): void {
     if (!this.editorCore || !this.isCompositionEnabled() || !this.editorCore.isComposing()) {
       return;
     }
-    this.editorCore.compositionCancel();
+    this.editorCore.handleImeEvent(ImeEventType.CANCEL_PREEDIT, null);
     this.resetCursorBlink();
     this.flush();
   }

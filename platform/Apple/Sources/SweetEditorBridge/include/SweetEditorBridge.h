@@ -102,10 +102,22 @@ const uint8_t* editor_insert_line_below(intptr_t editor_handle, size_t* out_size
 
 // ===================== IME Composition API =====================
 
-void editor_composition_start(intptr_t editor_handle);
-void editor_composition_update(intptr_t editor_handle, const char* text);
-const uint8_t* editor_composition_end(intptr_t editor_handle, const char* committed_text, size_t* out_size);
-void editor_composition_cancel(intptr_t editor_handle);
+const uint8_t* editor_handle_ime_event(intptr_t editor_handle,
+    int type,
+    const char* text,
+    int has_range,
+    size_t start_line,
+    size_t start_column,
+    size_t end_line,
+    size_t end_column,
+    int has_cursor,
+    size_t cursor_line,
+    size_t cursor_column,
+    size_t before_length,
+    size_t after_length,
+    int text_unit,
+    int script_hint,
+    size_t* out_size);
 int  editor_is_composing(intptr_t editor_handle);
 void editor_set_composition_enabled(intptr_t editor_handle, int enabled);
 int  editor_is_composition_enabled(intptr_t editor_handle);

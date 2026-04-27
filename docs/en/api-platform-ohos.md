@@ -271,10 +271,8 @@ public setCursorPosition(line: number, column: number): void
 public setSelection(...): void
 public getSelection(): TextRange | null
 public getSelectedText(): string
-public compositionStart(): void
-public compositionUpdate(text: string | null): void
-public compositionEnd(committedText?: string | null): TextEditResult
-public compositionCancel(): void
+public handleImeEvent(type: ImeEventType, text?: string | null, range?: TextRange | null): TextEditResult
+public isComposing(): boolean
 ```
 
 ### Styles / Decorations / Folding / Linked Editing

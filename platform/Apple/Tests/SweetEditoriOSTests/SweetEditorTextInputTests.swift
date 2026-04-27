@@ -249,7 +249,7 @@ final class SweetEditorTextInputTests: XCTestCase {
         XCTAssertEqual(textInput.offset(from: textInput.beginningOfDocument, to: selected!.end), 2)
     }
 
-    func testMarkedTextRangeStaysAnchoredAtOriginalCaretAcrossCompositionUpdates() {
+    func testMarkedTextRangeStaysAnchoredAtOriginalCaretAcrossMarkedTextUpdates() {
         let view = IOSEditorView(frame: .zero)
         view.loadDocument(text: "abc")
 

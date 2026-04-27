@@ -12,6 +12,10 @@ final class ProtocolDecoder {
         owner.parseTextEditResultLite(data)
     }
 
+    func decodeImeEventEditResultLite(_ data: Data?) -> TextEditResultLite? {
+        owner.parseImeEventEditResultLite(data)
+    }
+
     func decodeKeyEventResult(_ data: Data?) -> KeyEventResultData? {
         owner.parseKeyEventResult(data)
     }
@@ -149,6 +153,30 @@ extension SweetEditorCore {
         var reader = BinaryReader(data: data)
         guard let changed = reader.readInt32(), changed != 0,
               let count = reader.readInt32(), count > 0 else {
+            return nil
+        }
+        var changes: [TextChangeData] = []
+        let changeCount = Int(count)
+        changes.reserveCapacity(changeCount)
+        for _ in 0..<changeCount {
+            guard let change = parseTextChange(&reader) else { break }
+            changes.append(change)
+        }
+        guard !changes.isEmpty else { return nil }
+        return TextEditResultLite(changes: changes)
+    }
+
+    fileprivate func parseImeEventEditResultLite(_ data: Data?) -> TextEditResultLite? {
+        guard let data = data else { return nil }
+        var reader = BinaryReader(data: data)
+        guard reader.readInt32() != nil,
+              reader.readInt32() != nil,
+              reader.readInt32() != nil,
+              reader.readInt32() != nil,
+              let hasEdit = reader.readInt32(),
+              hasEdit != 0,
+              let count = reader.readInt32(),
+              count > 0 else {
             return nil
         }
         var changes: [TextChangeData] = []

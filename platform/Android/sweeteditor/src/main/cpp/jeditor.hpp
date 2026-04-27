@@ -412,35 +412,6 @@ public:
     return env->NewStringUTF(selected.c_str());
   }
 
-  static void compositionStart(jlong handle) {
-    editor_composition_start(static_cast<intptr_t>(handle));
-  }
-
-  static void setComposingRegion(jlong handle, jlong startLine, jlong startColumn, jlong endLine, jlong endColumn) {
-    editor_set_composing_region(static_cast<intptr_t>(handle), startLine, startColumn, endLine, endColumn);
-  }
-
-  static void compositionUpdate(JNIEnv* env, jclass clazz, jlong handle, jstring text) {
-    const char* text_str = text != nullptr ? env->GetStringUTFChars(text, JNI_FALSE) : nullptr;
-    editor_composition_update(static_cast<intptr_t>(handle), text_str);
-    if (text != nullptr) {
-      env->ReleaseStringUTFChars(text, text_str);
-    }
-  }
-
-  static jobject compositionEnd(JNIEnv* env, jclass clazz, jlong handle, jstring committed_text) {
-    if (handle == 0) return nullptr;
-    const char* text_str = committed_text != nullptr ? env->GetStringUTFChars(committed_text, JNI_FALSE) : "";
-    size_t out_size = 0;
-    const uint8_t* payload = editor_composition_end(static_cast<intptr_t>(handle), text_str, &out_size);
-    if (committed_text != nullptr) env->ReleaseStringUTFChars(committed_text, text_str);
-    return wrapBinaryPayload(env, payload, out_size);
-  }
-
-  static void compositionCancel(jlong handle) {
-    editor_composition_cancel(static_cast<intptr_t>(handle));
-  }
-
   static jboolean isComposing(jlong handle) {
     return toJBoolean(editor_is_composing(static_cast<intptr_t>(handle)));
   }
@@ -459,6 +430,57 @@ public:
     jlongArray result = env->NewLongArray(4);
     env->SetLongArrayRegion(result, 0, 4, values);
     return result;
+  }
+
+  static jlongArray getComposingSessionRange(JNIEnv* env, jclass clazz, jlong handle) {
+    int32_t start_line = -1;
+    int32_t start_column = -1;
+    int32_t end_line = -1;
+    int32_t end_column = -1;
+    editor_get_composing_session_range(static_cast<intptr_t>(handle),
+                                       &start_line,
+                                       &start_column,
+                                       &end_line,
+                                       &end_column);
+    jlong values[4] = {start_line, start_column, end_line, end_column};
+    jlongArray result = env->NewLongArray(4);
+    env->SetLongArrayRegion(result, 0, 4, values);
+    return result;
+  }
+
+  static jobject handleImeEvent(JNIEnv* env, jclass clazz, jlong handle,
+                                jint type, jstring text,
+                                jint hasRange, jlong startLine, jlong startColumn, jlong endLine, jlong endColumn,
+                                jint hasCursor, jlong cursorLine, jlong cursorColumn,
+                                jlong beforeLength, jlong afterLength,
+                                jint textUnit, jint scriptHint) {
+    if (handle == 0) return nullptr;
+    const char* text_str = text != nullptr ? env->GetStringUTFChars(text, JNI_FALSE) : "";
+    size_t out_size = 0;
+    const uint8_t* payload = editor_handle_ime_event(static_cast<intptr_t>(handle),
+                                                     static_cast<int>(type),
+                                                     text_str,
+                                                     static_cast<int>(hasRange),
+                                                     static_cast<size_t>(startLine),
+                                                     static_cast<size_t>(startColumn),
+                                                     static_cast<size_t>(endLine),
+                                                     static_cast<size_t>(endColumn),
+                                                     static_cast<int>(hasCursor),
+                                                     static_cast<size_t>(cursorLine),
+                                                     static_cast<size_t>(cursorColumn),
+                                                     static_cast<size_t>(beforeLength),
+                                                     static_cast<size_t>(afterLength),
+                                                     static_cast<int>(textUnit),
+                                                     static_cast<int>(scriptHint),
+                                                     &out_size);
+    if (text != nullptr) env->ReleaseStringUTFChars(text, text_str);
+    return wrapBinaryPayload(env, payload, out_size);
+  }
+
+  static jobject getImeSyncSnapshot(JNIEnv* env, jclass clazz, jlong handle) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    return wrapBinaryPayload(env, editor_get_ime_sync_snapshot(static_cast<intptr_t>(handle), &out_size), out_size);
   }
 
   static void setCompositionEnabled(jlong handle, jboolean enabled) {
@@ -1056,13 +1078,11 @@ public:
       {"nativeInsertLineAbove", "(J)Ljava/nio/ByteBuffer;", (void*) insertLineAbove},
       {"nativeInsertLineBelow", "(J)Ljava/nio/ByteBuffer;", (void*) insertLineBelow},
       {"nativeGetSelectedText", "(J)Ljava/lang/String;", (void*) getSelectedText},
-      {"nativeCompositionStart", "(J)V", (void*) compositionStart},
-      {"nativeSetComposingRegion", "(JJJJJ)V", (void*) setComposingRegion},
-      {"nativeCompositionUpdate", "(JLjava/lang/String;)V", (void*) compositionUpdate},
-      {"nativeCompositionEnd", "(JLjava/lang/String;)Ljava/nio/ByteBuffer;", (void*) compositionEnd},
-      {"nativeCompositionCancel", "(J)V", (void*) compositionCancel},
       {"nativeIsComposing", "(J)Z", (void*) isComposing},
       {"nativeGetComposingRange", "(J)[J", (void*) getComposingRange},
+      {"nativeGetComposingSessionRange", "(J)[J", (void*) getComposingSessionRange},
+      {"nativeHandleImeEvent", "(JILjava/lang/String;IJJJJIJJJJII)Ljava/nio/ByteBuffer;", (void*) handleImeEvent},
+      {"nativeGetImeSyncSnapshot", "(J)Ljava/nio/ByteBuffer;", (void*) getImeSyncSnapshot},
       {"nativeSetCompositionEnabled", "(JZ)V", (void*) setCompositionEnabled},
       {"nativeIsCompositionEnabled", "(J)Z", (void*) isCompositionEnabled},
       {"nativeSetReadOnly", "(JZ)V", (void*) setReadOnly},

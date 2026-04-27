@@ -342,11 +342,24 @@ public final class EditorNative {
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
-    private static final MethodHandle COMP_START = downcall("editor_composition_start",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
-
-    private static final MethodHandle COMP_END = downcall("editor_composition_end",
-            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+    private static final MethodHandle HANDLE_IME_EVENT = downcall("editor_handle_ime_event",
+            FunctionDescriptor.of(ValueLayout.ADDRESS,
+                    ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_INT,
+                    ValueLayout.ADDRESS,
+                    ValueLayout.JAVA_INT,
+                    ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_INT,
+                    ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_INT,
+                    ValueLayout.JAVA_INT,
+                    ValueLayout.ADDRESS));
 
     private static final MethodHandle IS_COMPOSING = downcall("editor_is_composing",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
@@ -476,9 +489,6 @@ public final class EditorNative {
     private static final MethodHandle GET_LINK_TARGET_AT = downcall("editor_get_link_target_at",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
 
-    private static final MethodHandle COMP_UPDATE = downcall("editor_composition_update",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-
     private static final MethodHandle GET_AUTO_INDENT_MODE = downcall("editor_get_auto_indent_mode",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
 
@@ -563,9 +573,6 @@ public final class EditorNative {
     private static final MethodHandle SET_SELECTION = downcall("editor_set_selection",
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
                     ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
-
-    private static final MethodHandle COMP_CANCEL = downcall("editor_composition_cancel",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
 
     private static final MethodHandle LINKED_EDITING_NEXT = downcall("editor_linked_editing_next",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
@@ -1014,27 +1021,40 @@ public final class EditorNative {
 
     // ===================== IME =====================
 
-    public static void compositionStart(long handle) {
-        invokeVoid(() -> {
-            COMP_START.invokeExact(handle);
-        });
-    }
-
-    public static void compositionUpdate(long handle, String text, Arena arena) {
-        invokeVoid(() -> {
-            COMP_UPDATE.invokeExact(handle, arena.allocateFrom(text));
-        });
-    }
-
-    public static NativeBinaryResult compositionEnd(long handle, String text, Arena arena) {
+    public static NativeBinaryResult handleImeEvent(long handle,
+                                                    int type,
+                                                    String text,
+                                                    boolean hasRange,
+                                                    int startLine,
+                                                    int startColumn,
+                                                    int endLine,
+                                                    int endColumn,
+                                                    boolean hasCursor,
+                                                    int cursorLine,
+                                                    int cursorColumn,
+                                                    long beforeLength,
+                                                    long afterLength,
+                                                    int textUnit,
+                                                    int scriptHint,
+                                                    Arena arena) {
         return invokeBinaryResult(arena, outSize ->
-                (MemorySegment) COMP_END.invokeExact(handle, nullableString(arena, text), outSize));
-    }
-
-    public static void compositionCancel(long handle) {
-        invokeVoid(() -> {
-            COMP_CANCEL.invokeExact(handle);
-        });
+                (MemorySegment) HANDLE_IME_EVENT.invokeExact(
+                        handle,
+                        type,
+                        nullableString(arena, text),
+                        hasRange ? 1 : 0,
+                        (long) startLine,
+                        (long) startColumn,
+                        (long) endLine,
+                        (long) endColumn,
+                        hasCursor ? 1 : 0,
+                        (long) cursorLine,
+                        (long) cursorColumn,
+                        beforeLength,
+                        afterLength,
+                        textUnit,
+                        scriptHint,
+                        outSize));
     }
 
     public static boolean isComposing(long handle) {

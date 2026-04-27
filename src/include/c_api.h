@@ -604,23 +604,6 @@ EDITOR_API void editor_move_cursor_to_line_start(intptr_t editor_handle, int ext
 /// @param extend_selection Whether to extend selection
 EDITOR_API void editor_move_cursor_to_line_end(intptr_t editor_handle, int extend_selection);
 
-EDITOR_API void editor_set_composing_region(intptr_t editor_handle, size_t start_line, size_t start_column, size_t end_line, size_t end_column);
-
-/// Notify editor that IME composition starts
-EDITOR_API void editor_composition_start(intptr_t editor_handle);
-
-/// Update IME composition text
-/// @param text Current composition text (UTF8), full composition text each time not incremental
-EDITOR_API void editor_composition_update(intptr_t editor_handle, const char* text);
-
-/// End IME composition and commit final text
-/// @param committed_text Final committed text (UTF8); if NULL, use current composition text
-/// @return TextEditResult binary payload, returns NULL if there is no change
-EDITOR_API const uint8_t* editor_composition_end(intptr_t editor_handle, const char* committed_text, size_t* out_size);
-
-/// Cancel IME composition (do not commit any text)
-EDITOR_API void editor_composition_cancel(intptr_t editor_handle);
-
 /// Get whether composition is currently active
 /// @return 1=composing, 0=not composing
 EDITOR_API int editor_is_composing(intptr_t editor_handle);
@@ -631,6 +614,36 @@ EDITOR_API void editor_get_composing_range(intptr_t editor_handle,
                                            int32_t* out_start_column,
                                            int32_t* out_end_line,
                                            int32_t* out_end_column);
+
+/// Get current composition session range, including hidden sessions awaiting commit
+EDITOR_API void editor_get_composing_session_range(intptr_t editor_handle,
+                                                   int32_t* out_start_line,
+                                                   int32_t* out_start_column,
+                                                   int32_t* out_end_line,
+                                                   int32_t* out_end_column);
+
+/// Handle a normalized IME event.
+/// @return ImeEventResult binary payload, returns NULL when editor handle is invalid
+EDITOR_API const uint8_t* editor_handle_ime_event(intptr_t editor_handle,
+                                                  int type,
+                                                  const char* text,
+                                                  int has_range,
+                                                  size_t start_line,
+                                                  size_t start_column,
+                                                  size_t end_line,
+                                                  size_t end_column,
+                                                  int has_cursor,
+                                                  size_t cursor_line,
+                                                  size_t cursor_column,
+                                                  size_t before_length,
+                                                  size_t after_length,
+                                                  int text_unit,
+                                                  int script_hint,
+                                                  size_t* out_size);
+
+/// Get the current IME synchronization snapshot.
+/// @return ImeSyncSnapshot binary payload, returns NULL when editor handle is invalid
+EDITOR_API const uint8_t* editor_get_ime_sync_snapshot(intptr_t editor_handle, size_t* out_size);
 
 /// Set whether IME composition is enabled
 /// @param enabled 1=enabled, 0=disabled

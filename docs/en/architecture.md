@@ -301,7 +301,7 @@ class EditorCore {
 | `insertText()` / `backspace()` / `deleteForward()` | atomic text operations |
 | `moveCursor*()` | cursor movement (up/down/left/right, line start/end) |
 | `setSelection()` / `selectAll()` | selection management |
-| `compositionStart/Update/End/Cancel()` | IME composition |
+| `handleImeEvent()` | IME composition |
 | `undo()` / `redo()` | undo/redo |
 | `registerTextStyle()` / `setLineSpans()` / `setBatchLineSpans()` / `setLineInlayHints()` / `setLinePhantomTexts()` | decoration setting |
 | `setFoldRegions()` / `foldAt()` / `unfoldAt()` | code folding |

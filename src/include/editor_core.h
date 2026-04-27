@@ -273,26 +273,35 @@ namespace NS_SWEETEDITOR {
     /// @param extend_selection Whether to extend selection
     void moveCursorPageDown(bool extend_selection = false);
 
-    /// Set composition dynamically by IME directly based on text region
-    void setComposingRegion(const TextRange& range);
+    /// Handle a normalized IME event and return the platform synchronization snapshot
+    ImeEventResult handleImeEvent(const ImeEvent& event);
 
-    /// Notify editor that IME composition starts
-    /// Called by platform side when compositionstart / composingText starts
-    void compositionStart();
+    /// Get the current IME synchronization snapshot
+    ImeSyncSnapshot getImeSyncSnapshot() const;
 
-    /// Update IME composition text
-    /// Called by platform side when compositionupdate / setComposingText is received
-    /// @param text Current composing text (UTF8), full text each time instead of delta
-    void compositionUpdate(const U8String& text);
+    /// Set the core IME composition policy
+    void setImeCompositionPolicy(const ImeCompositionPolicy& policy);
 
-    /// End IME composition and commit final text
-    /// Called by platform side when compositionend / commitText / finishComposingText is received
-    /// @param committed_text Final committed text (UTF8); if empty, use current composing text
-    /// @return Exact change info
-    TextEditResult compositionEnd(const U8String& committed_text);
+    /// Get the core IME composition policy
+    const ImeCompositionPolicy& getImeCompositionPolicy() const;
 
-    /// Cancel IME composition (commit no text)
-    void compositionCancel();
+    /// Mark a document range as the current IME composition target
+    void setComposingRange(const TextRange& range);
+
+    /// Update IME composing text and return committed edits when a pending anchor is consumed
+    TextEditResult setComposingText(const U8String& text);
+
+    /// Hide or commit the current composition according to its session kind
+    TextEditResult finishComposing(CompositionFinishReason reason = CompositionFinishReason::FINISH);
+
+    /// Commit final composing text, or insert directly when no session exists
+    TextEditResult commitComposingText(const U8String& committed_text);
+
+    /// Cancel active or pending composition without committing new text
+    void cancelComposing();
+
+    /// Whether a visible or hidden composition session exists
+    bool hasComposingSession() const;
 
     /// Get current composition state
     const CompositionState& getCompositionState() const;
@@ -570,14 +579,10 @@ namespace NS_SWEETEDITOR {
 
     /// IME composition state
     CompositionState m_composition_;
-    /// Whether current preedit text is already inserted into document for safe removal
-    bool m_preedit_text_in_document_ {false};
-    /// Whether current preedit text temporarily replaces an existing document range
-    bool m_preedit_replaces_document_range_ {false};
-    /// Original range replaced by current preedit text
-    TextRange m_preedit_replaced_range_;
-    /// Original text replaced by current preedit text
-    U8String m_preedit_replaced_text_;
+    /// Cross-platform IME behavior policy
+    ImeCompositionPolicy m_ime_composition_policy_;
+    /// Core-owned IME session bookkeeping
+    ImeSessionState m_ime_session_;
 
     /// Linked editing session (nullptr means not in linked editing mode)
     UniquePtr<LinkedEditingSession> m_linked_editing_session_;
@@ -648,6 +653,34 @@ namespace NS_SWEETEDITOR {
     void finalizeGestureResult(GestureResult& result) const;
     /// Reset composition state (clear composing flag and text)
     void resetCompositionState();
+    bool hasVisibleComposition() const;
+    bool hasAwaitingDocumentRangeCommit() const;
+    TextRange getCurrentComposingRange() const;
+    ImeSyncSnapshot buildImeSyncSnapshot() const;
+    void mergeImeEditResult(ImeEventResult& result, const TextEditResult& edit_result) const;
+    ImeScriptClass resolveImeScriptClass(const ImeEvent& event) const;
+    bool shouldUseShadowImePreedit(const ImeEvent& event) const;
+    bool isImeDocumentRangeEligible(const TextRange& range) const;
+    bool isDocumentRangeReadable(const TextRange& range) const;
+    void clearImeShadowPreedit();
+    void beginComposingTextSession();
+    void openImeCandidateCommitWindow(const TextRange& range, const U8String& text);
+    void clearImeCandidateCommitWindow();
+    bool isInlineImeCandidateText(const U8String& text) const;
+    bool trySuppressImeCandidateRange(const TextRange& range);
+    bool trySuppressImeCandidateCommit(const U8String& text);
+    bool tryReopenImeCandidatePrefix(ImeEventResult& result, const U8String& text);
+    void updateImeCandidateWindowAfterDelete();
+    TextEditResult deleteCodePointBackward();
+    TextEditResult deleteCodePointForward();
+    void handleImeUpdatePreeditEvent(ImeEventResult& result, const ImeEvent& event);
+    void handleImeCommitTextEvent(ImeEventResult& result, const ImeEvent& event);
+    void handleImeFinishPreeditEvent(ImeEventResult& result);
+    void handleImeCancelPreeditEvent();
+    void handleImeMarkDocumentRangeEvent(ImeEventResult& result, const ImeEvent& event);
+    void handleImeDeleteEvent(ImeEventResult& result, const ImeEvent& event);
+    void handleImeSelectionChangedEvent(ImeEventResult& result, const ImeEvent& event);
+    void suppressNextComposingCommit(const U8String& text);
     void normalizeScrollState();
 
     /// Linked editing: apply synced replace to all linked ranges in current tab stop, return all changes

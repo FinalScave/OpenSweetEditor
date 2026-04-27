@@ -1436,7 +1436,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         }
 
         if isComposing {
-            let editResult = editorCore.compositionEnd(text)
+            let editResult = editorCore.commitImeText(text)
             isComposing = false
             currentMarkedRange = nil
             currentMarkedSelectionRange = nil
@@ -1567,7 +1567,6 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         }
 
         if !isComposing {
-            editorCore.compositionStart()
             isComposing = true
         }
 
@@ -1588,14 +1587,14 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         currentMarkedSelectionRange = NSRange(location: baseRange.location + selectedLocation,
                                               length: selectedLength)
 
-        editorCore.compositionUpdate(text)
+        _ = editorCore.updateImePreedit(text)
         rebuildAndRedraw()
     }
 
     func unmarkText() {
         resetCursorBlink()
         if isComposing {
-            _ = editorCore.compositionEnd(nil)
+            _ = editorCore.finishImePreedit()
             isComposing = false
             currentMarkedRange = nil
             currentMarkedSelectionRange = nil

@@ -1,5 +1,6 @@
 package com.qiplat.sweeteditor.demo;
 
+import android.view.KeyEvent;
 import android.view.inputmethod.InputConnection;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;
@@ -248,7 +249,7 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testCompositionEndsWhenCursorMovesToWhitespace() {
+    public void testComposingSessionEndsWhenCursorMovesToWhitespace() {
         editorRule.loadText("abc  ");
         editorRule.runOnEditor(editor -> {
             editor.getSettings().setCompositionEnabled(true);
@@ -267,7 +268,7 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testCompositionRestartsAtCursorWordAfterCursorMove() {
+    public void testCompositionDoesNotRestartAtWordMiddleAfterCursorMove() {
         editorRule.loadText("abc  ");
         editorRule.runOnEditor(editor -> {
             editor.getSettings().setCompositionEnabled(true);
@@ -276,6 +277,25 @@ public class CompositionInteractionTest {
             InputConnection conn = editor.onCreateInputConnection(info);
             conn.setComposingText("how", 1);
             editor.setCursorPosition(new TextPosition(0, 1));
+        });
+        editorRule.waitForIdle();
+        assertEquals("abc  how", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(isComposing());
+        TextPosition cursor = editorRule.runOnEditorSync(SweetEditor::getCursorPosition);
+        assertEquals(0, cursor.line);
+        assertEquals(1, cursor.column);
+    }
+
+    @Test
+    public void testCompositionRestartsAtWordEndAfterCursorMove() {
+        editorRule.loadText("abc  ");
+        editorRule.runOnEditor(editor -> {
+            editor.getSettings().setCompositionEnabled(true);
+            editor.setCursorPosition(new TextPosition(0, 5));
+            android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
+            InputConnection conn = editor.onCreateInputConnection(info);
+            conn.setComposingText("how", 1);
+            editor.setCursorPosition(new TextPosition(0, 3));
         });
         editorRule.waitForIdle();
         assertEquals("abc  how", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
@@ -288,18 +308,7 @@ public class CompositionInteractionTest {
         assertEquals(3, range.end.column);
         TextPosition cursor = editorRule.runOnEditorSync(SweetEditor::getCursorPosition);
         assertEquals(0, cursor.line);
-        assertEquals(1, cursor.column);
-
-        editorRule.runOnEditor(editor -> {
-            android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
-            InputConnection conn = editor.onCreateInputConnection(info);
-            conn.finishComposingText();
-            conn.setComposingRegion(0, 3);
-        });
-        editorRule.waitForIdle();
-        cursor = editorRule.runOnEditorSync(SweetEditor::getCursorPosition);
-        assertEquals(0, cursor.line);
-        assertEquals(1, cursor.column);
+        assertEquals(3, cursor.column);
     }
 
     @Test
@@ -310,7 +319,7 @@ public class CompositionInteractionTest {
         editorRule.loadText("package demo;\n" + colorLine + "\n\nclass Example {}");
         editorRule.runOnEditor(editor -> {
             editor.getSettings().setCompositionEnabled(true);
-            editor.setCursorPosition(new TextPosition(1, colorsStart + 2));
+            editor.setCursorPosition(new TextPosition(1, colorsEnd));
         });
         InputConnection conn = getInputConnection();
 
@@ -344,7 +353,7 @@ public class CompositionInteractionTest {
         editorRule.loadText(initialText);
         editorRule.runOnEditor(editor -> {
             editor.getSettings().setCompositionEnabled(true);
-            editor.setCursorPosition(new TextPosition(0, pointStart + 2));
+            editor.setCursorPosition(new TextPosition(0, pointEnd));
         });
         InputConnection conn = getInputConnection();
 
@@ -371,7 +380,7 @@ public class CompositionInteractionTest {
         editorRule.loadText(initialText);
         editorRule.runOnEditor(editor -> {
             editor.getSettings().setCompositionEnabled(true);
-            editor.setCursorPosition(new TextPosition(0, pointStart + 2));
+            editor.setCursorPosition(new TextPosition(0, pointEnd));
         });
         InputConnection conn = getInputConnection();
 
@@ -397,7 +406,7 @@ public class CompositionInteractionTest {
         editorRule.loadText(initialText);
         editorRule.runOnEditor(editor -> {
             editor.getSettings().setCompositionEnabled(true);
-            editor.setCursorPosition(new TextPosition(0, pointStart + 2));
+            editor.setCursorPosition(new TextPosition(0, pointEnd));
         });
         InputConnection conn = getInputConnection();
 
@@ -424,7 +433,7 @@ public class CompositionInteractionTest {
         editorRule.loadText(initialText);
         editorRule.runOnEditor(editor -> {
             editor.getSettings().setCompositionEnabled(true);
-            editor.setCursorPosition(new TextPosition(0, pointStart + 2));
+            editor.setCursorPosition(new TextPosition(0, pointEnd));
         });
         InputConnection conn = getInputConnection();
 
@@ -454,7 +463,7 @@ public class CompositionInteractionTest {
         editorRule.loadText(initialText);
         editorRule.runOnEditor(editor -> {
             editor.getSettings().setCompositionEnabled(true);
-            editor.setCursorPosition(new TextPosition(0, pointStart + 2));
+            editor.setCursorPosition(new TextPosition(0, pointEnd));
         });
         InputConnection conn = getInputConnection();
 
@@ -482,7 +491,7 @@ public class CompositionInteractionTest {
         editorRule.loadText(initialText);
         editorRule.runOnEditor(editor -> {
             editor.getSettings().setCompositionEnabled(true);
-            editor.setCursorPosition(new TextPosition(0, pointStart + 2));
+            editor.setCursorPosition(new TextPosition(0, pointEnd));
         });
         InputConnection conn = getInputConnection();
 
@@ -518,6 +527,184 @@ public class CompositionInteractionTest {
     }
 
     @Test
+    public void testCommittedCandidateBackspaceIgnoresStaleComposingPrefix() {
+        editorRule.loadText("");
+        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
+        InputConnection conn = getInputConnection();
+
+        editorRule.runOnEditor(editor -> {
+            conn.setComposingText("how", 1);
+            conn.commitText("how", 1);
+            conn.deleteSurroundingText(1, 0);
+            conn.commitText("h", 1);
+            conn.setComposingRegion(0, 1);
+        });
+        editorRule.waitForIdle();
+        assertEquals("ho", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+
+        editorRule.runOnEditor(editor -> {
+            conn.deleteSurroundingText(1, 0);
+            conn.setComposingText("h", 1);
+            conn.commitText("h", 1);
+        });
+        editorRule.waitForIdle();
+        assertEquals("h", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+
+        editorRule.runOnEditor(editor -> {
+            conn.deleteSurroundingText(1, 0);
+            conn.commitText("h", 1);
+        });
+        editorRule.waitForIdle();
+        assertEquals("", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+    }
+
+    @Test
+    public void testFinishedCandidateBackspaceIgnoresStaleComposingPrefix() {
+        editorRule.loadText("");
+        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
+        InputConnection conn = getInputConnection();
+
+        editorRule.runOnEditor(editor -> {
+            conn.setComposingText("how", 1);
+            conn.finishComposingText();
+            conn.deleteSurroundingText(1, 0);
+            conn.commitText("h", 1);
+            conn.setComposingText("h", 1);
+        });
+        editorRule.waitForIdle();
+        assertEquals("ho", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+
+        editorRule.runOnEditor(editor -> {
+            conn.deleteSurroundingText(1, 0);
+            conn.commitText("h", 1);
+        });
+        editorRule.waitForIdle();
+        assertEquals("h", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+
+        editorRule.runOnEditor(editor -> {
+            conn.deleteSurroundingText(1, 0);
+            conn.setComposingText("h", 1);
+        });
+        editorRule.waitForIdle();
+        assertEquals("", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+    }
+
+    @Test
+    public void testCommittedCandidateDoesNotReopenCompositionForSameWord() {
+        editorRule.loadText("");
+        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
+        InputConnection conn = getInputConnection();
+
+        editorRule.runOnEditor(editor -> {
+            conn.setComposingText("how", 1);
+            conn.commitText("how", 1);
+            android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
+            InputConnection restartedConnection = editor.onCreateInputConnection(info);
+            restartedConnection.setComposingRegion(0, 3);
+            restartedConnection.setComposingText("how", 1);
+        });
+        editorRule.waitForIdle();
+
+        assertEquals("how", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(isComposing());
+    }
+
+    @Test
+    public void testFinishedCandidateSuppressedRegionBackspaceSyncsCommittedText() {
+        editorRule.loadText("");
+        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
+        InputConnection conn = getInputConnection();
+        InputConnection[] activeConnection = new InputConnection[]{conn};
+
+        editorRule.runOnEditor(editor -> {
+            conn.setComposingText("how", 1);
+            conn.finishComposingText();
+            android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
+            InputConnection restartedConnection = editor.onCreateInputConnection(info);
+            activeConnection[0] = restartedConnection;
+            restartedConnection.setComposingRegion(0, 3);
+            restartedConnection.setComposingText("ho", 1);
+        });
+        editorRule.waitForIdle();
+        assertEquals("ho", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertTrue(isComposing());
+
+        editorRule.runOnEditor(editor -> activeConnection[0].setComposingText("h", 1));
+        editorRule.waitForIdle();
+        assertEquals("h", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertTrue(isComposing());
+
+        editorRule.runOnEditor(editor -> activeConnection[0].finishComposingText());
+        editorRule.waitForIdle();
+        assertEquals("", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(isComposing());
+    }
+
+    @Test
+    public void testCompositionEnabledDeleteSurroundingTextDeletesSelection() {
+        editorRule.loadText("hello world");
+        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
+        InputConnection conn = getInputConnection();
+
+        editorRule.runOnEditor(editor -> {
+            editor.setSelection(0, 0, 0, 5);
+            conn.deleteSurroundingText(1, 0);
+        });
+        editorRule.waitForIdle();
+
+        assertEquals(" world", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(editorRule.runOnEditorSync(SweetEditor::hasSelection));
+    }
+
+    @Test
+    public void testCompositionEnabledDeleteSurroundingTextInCodePointsDeletesSelection() {
+        editorRule.loadText("hello world");
+        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
+        InputConnection conn = getInputConnection();
+
+        editorRule.runOnEditor(editor -> {
+            editor.setSelection(0, 6, 0, 11);
+            conn.deleteSurroundingTextInCodePoints(1, 0);
+        });
+        editorRule.waitForIdle();
+
+        assertEquals("hello ", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(editorRule.runOnEditorSync(SweetEditor::hasSelection));
+    }
+
+    @Test
+    public void testCompositionEnabledSendDeleteKeyDeletesSelection() {
+        editorRule.loadText("hello world");
+        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
+        InputConnection conn = getInputConnection();
+
+        editorRule.runOnEditor(editor -> {
+            editor.setSelection(0, 0, 0, 5);
+            conn.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
+        });
+        editorRule.waitForIdle();
+
+        assertEquals(" world", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(editorRule.runOnEditorSync(SweetEditor::hasSelection));
+    }
+
+    @Test
+    public void testCompositionEnabledEmptyCommitDeletesSelection() {
+        editorRule.loadText("hello world");
+        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
+        InputConnection conn = getInputConnection();
+
+        editorRule.runOnEditor(editor -> {
+            editor.setSelection(0, 0, 0, 5);
+            conn.commitText("", 1);
+        });
+        editorRule.waitForIdle();
+
+        assertEquals(" world", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(editorRule.runOnEditorSync(SweetEditor::hasSelection));
+    }
+
+    @Test
     public void testDisabledCompositionCleanupDeleteDoesNotRemoveCommittedText() {
         editorRule.loadText("a");
         editorRule.runOnEditor(editor -> {
@@ -535,23 +722,28 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testDisabledCompositionDoesNotExposeContext() {
+    public void testDisabledCompositionExposesLimitedCandidateContextWithoutVisibleComposition() {
         editorRule.loadText("hello");
         editorRule.runOnEditor(editor -> {
             editor.getSettings().setCompositionEnabled(false);
-            editor.setCursorPosition(new TextPosition(0, 5));
+            editor.setSelection(0, 0, 0, 5);
         });
         InputConnection conn = getInputConnection();
 
-        assertEquals("", conn.getTextBeforeCursor(5, 0).toString());
-        assertEquals("", conn.getTextAfterCursor(5, 0).toString());
+        assertEquals("hello", conn.getSelectedText(0).toString());
+
+        editorRule.runOnEditor(editor -> editor.setCursorPosition(new TextPosition(0, 2)));
+        editorRule.waitForIdle();
+        assertEquals("he", conn.getTextBeforeCursor(5, 0).toString());
+        assertEquals("llo", conn.getTextAfterCursor(5, 0).toString());
 
         editorRule.runOnEditor(editor -> conn.setComposingText("how", 1));
         editorRule.waitForIdle();
         assertEquals("hello", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertFalse(isComposing());
 
         editorRule.runOnEditor(editor -> conn.commitText("how", 1));
         editorRule.waitForIdle();
-        assertEquals("hellohow", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+        assertEquals("hehowllo", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
     }
 }

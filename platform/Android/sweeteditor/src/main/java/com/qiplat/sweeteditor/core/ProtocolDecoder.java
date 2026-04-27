@@ -87,6 +87,37 @@ final class ProtocolDecoder {
         return new EditorCore.KeyEventResult(handled, contentChanged, cursorChanged, selectionChanged, editResult, command);
     }
 
+    static EditorCore.ImeEventResult decodeImeEventResult(@Nullable ByteBuffer data) {
+        if (data == null) return new EditorCore.ImeEventResult();
+        data.order(ByteOrder.nativeOrder());
+        boolean handled = data.getInt() != 0;
+        boolean contentChanged = data.getInt() != 0;
+        boolean cursorChanged = data.getInt() != 0;
+        boolean selectionChanged = data.getInt() != 0;
+        boolean hasEdit = data.getInt() != 0;
+        EditorCore.TextEditResult editResult = EditorCore.TextEditResult.EMPTY;
+        if (hasEdit) {
+            int count = data.getInt();
+            java.util.List<TextChange> changes = new java.util.ArrayList<>(count);
+            for (int i = 0; i < count; i++) {
+                TextRange range = new TextRange(
+                        new TextPosition(data.getInt(), data.getInt()),
+                        new TextPosition(data.getInt(), data.getInt()));
+                String newText = readBufferString(data);
+                changes.add(new TextChange(range, newText));
+            }
+            editResult = new EditorCore.TextEditResult(true, changes);
+        }
+        EditorCore.ImeSyncSnapshot sync = readImeSyncSnapshot(data);
+        return new EditorCore.ImeEventResult(handled, contentChanged, cursorChanged, selectionChanged, editResult, sync);
+    }
+
+    static EditorCore.ImeSyncSnapshot decodeImeSyncSnapshot(@Nullable ByteBuffer data) {
+        if (data == null) return new EditorCore.ImeSyncSnapshot();
+        data.order(ByteOrder.nativeOrder());
+        return readImeSyncSnapshot(data);
+    }
+
     static EditorCore.GestureResult decodeGestureResult(@Nullable ByteBuffer data) {
         if (data == null) return new EditorCore.GestureResult();
         data.order(ByteOrder.nativeOrder());
@@ -262,6 +293,35 @@ final class ProtocolDecoder {
 
     private static TextPosition readTextPosition(ByteBuffer data) {
         return new TextPosition(data.getInt(), data.getInt());
+    }
+
+    private static TextRange readTextRange(ByteBuffer data) {
+        return new TextRange(readTextPosition(data), readTextPosition(data));
+    }
+
+    private static EditorCore.ImeSyncSnapshot readImeSyncSnapshot(ByteBuffer data) {
+        TextPosition cursor = readTextPosition(data);
+        boolean hasSelection = data.getInt() != 0;
+        TextRange selectionRange = readTextRange(data);
+        boolean hasComposingSession = data.getInt() != 0;
+        boolean hasVisibleCompositionRange = data.getInt() != 0;
+        TextRange visibleCompositionRange = readTextRange(data);
+        boolean hasPlatformMarkedRange = data.getInt() != 0;
+        TextRange platformMarkedRange = readTextRange(data);
+        int preeditStorage = data.getInt();
+        int contextPolicy = data.getInt();
+        boolean requestRestartInput = data.getInt() != 0;
+        boolean clearPlatformPreedit = data.getInt() != 0;
+        return new EditorCore.ImeSyncSnapshot(
+                cursor,
+                hasSelection ? selectionRange : null,
+                hasComposingSession,
+                hasVisibleCompositionRange ? visibleCompositionRange : null,
+                hasPlatformMarkedRange ? platformMarkedRange : null,
+                preeditStorage,
+                contextPolicy,
+                requestRestartInput,
+                clearPlatformPreedit);
     }
 
     private static TextStyle readTextStyle(ByteBuffer data) {

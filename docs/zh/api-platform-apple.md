@@ -75,10 +75,12 @@ func getCursorPosition() -> (line: Int, column: Int)?
 func getWordRangeAtCursor() -> (startLine: Int, startColumn: Int, endLine: Int, endColumn: Int)
 func getWordAtCursor() -> String
 
-func compositionStart()
-func compositionUpdate(_ text: String)
-func compositionEnd(_ committedText: String?)
-func compositionCancel()
+func handleImeEvent(type: Int32, text: String?, hasRange: Bool, ...) -> TextEditResultLite?
+func updateImePreedit(_ text: String) -> TextEditResultLite?
+func commitImeText(_ text: String?) -> TextEditResultLite?
+func finishImePreedit() -> TextEditResultLite?
+func cancelImePreedit()
+func markImeDocumentRange(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int)
 func isComposing() -> Bool
 
 func setReadOnly(_ readOnly: Bool)
