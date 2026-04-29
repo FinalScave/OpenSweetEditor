@@ -1,46 +1,10 @@
 #include <catch2/catch_amalgamated.hpp>
-#include <algorithm>
 #include <string>
 #include "editor_core.h"
 #include "test_measurer.h"
+#include "test_render_helpers.h"
 
 using namespace NS_SWEETEDITOR;
-
-namespace {
-  const VisualLine& findCodeLensVisualLine(const EditorRenderModel& model, size_t logical_line) {
-    auto it = std::find_if(model.lines.begin(), model.lines.end(), [logical_line](const VisualLine& line) {
-      return line.logical_line == logical_line && line.kind == VisualLineKind::CODELENS;
-    });
-    REQUIRE(it != model.lines.end());
-    return *it;
-  }
-
-  const VisualRun& findNthCodeLensRun(const VisualLine& line, size_t index) {
-    size_t current = 0;
-    for (const VisualRun& run : line.runs) {
-      if (run.type != VisualRunType::CODELENS) continue;
-      if (current == index) return run;
-      ++current;
-    }
-    REQUIRE(false);
-    return line.runs.front();
-  }
-
-  Vector<const VisualRun*> findRunsOfType(const EditorRenderModel& model,
-                                          size_t logical_line,
-                                          VisualRunType type) {
-    Vector<const VisualRun*> runs;
-    for (const VisualLine& line : model.lines) {
-      if (line.logical_line != logical_line) continue;
-      for (const VisualRun& run : line.runs) {
-        if (run.type == type) {
-          runs.push_back(&run);
-        }
-      }
-    }
-    return runs;
-  }
-}
 
 TEST_CASE("EditorCore buildRenderModel exposes normalized selection handles") {
   EditorOptions options;

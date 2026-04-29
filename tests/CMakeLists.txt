@@ -1,33 +1,39 @@
 set(TEST_PRODUCT_NAME unit_tests)
+set(PERF_TEST_PRODUCT_NAME perf_tests)
+
 add_definitions(-DCATCH_AMALGAMATED_CUSTOM_MAIN=ON)
+
+file(GLOB_RECURSE UNIT_TEST_SOURCES
+        core/*.cpp
+        c_api/*.cpp
+)
+
+file(GLOB_RECURSE PERF_TEST_SOURCES
+        perf/*.cpp
+)
+
+function(configure_sweeteditor_test_target target_name)
+    target_sources(${target_name} PRIVATE $<TARGET_OBJECTS:${CORE_OBJECT_TARGET}>)
+    target_include_directories(${target_name} PRIVATE
+            ${3DPARTY_DIR}/include
+            ${SRC_DIR}/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/support
+    )
+    target_link_libraries(${target_name} PRIVATE ${LINK_LIB})
+endfunction()
+
 add_executable(${TEST_PRODUCT_NAME}
         ${3DPARTY_DIR}/include/catch2/catch_amalgamated.cpp
         tests_main.cpp
-        unicode_util.cpp
-        edit_document.cpp
-        document_parity.cpp
-        editor_core_editing.cpp
-        editor_render.cpp
-        editor_undo_redo.cpp
-        editor_scroll.cpp
-        gesture.cpp
-        interaction_behavior.cpp
-        keymap.cpp
-        layout_mapping.cpp
-        layout_decorations.cpp
-        decoration_adjust.cpp
-        editor_composition.cpp
-        editor_linked_editing.cpp
-        c_api_smoke.cpp
-        performance_baseline.cpp
+        ${UNIT_TEST_SOURCES}
 )
+configure_sweeteditor_test_target(${TEST_PRODUCT_NAME})
 
-target_include_directories(${TEST_PRODUCT_NAME} PRIVATE
-        ${3DPARTY_DIR}/include
-        ${SRC_DIR}/include
+add_executable(${PERF_TEST_PRODUCT_NAME}
+        ${3DPARTY_DIR}/include/catch2/catch_amalgamated.cpp
+        tests_main.cpp
+        ${PERF_TEST_SOURCES}
 )
+configure_sweeteditor_test_target(${PERF_TEST_PRODUCT_NAME})
 
-target_link_libraries(${TEST_PRODUCT_NAME} PRIVATE ${STATIC_LIB_NAME})
-
-enable_testing()
 add_test(NAME UnitTests COMMAND ${TEST_PRODUCT_NAME})
