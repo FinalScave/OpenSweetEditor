@@ -381,9 +381,9 @@ public class SweetEditor extends View {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        handleKeyEventFromIME(event);
+        boolean handled = handleKeyEventFromIME(event);
         refreshHoverActivation(event);
-        return true;
+        return handled || super.onKeyDown(keyCode, event);
     }
 
     @Override
@@ -2050,18 +2050,18 @@ public class SweetEditor extends View {
         }
     }
 
-    void handleKeyEventFromIME(KeyEvent event) {
+    boolean handleKeyEventFromIME(KeyEvent event) {
         long t0 = ENABLE_PERF_LOG ? System.nanoTime() : 0;
         // Inline suggestion keyboard interception (Tab/Escape)
         if (mInlineSuggestionController != null && mInlineSuggestionController.isShowing()) {
             if (mInlineSuggestionController.handleAndroidKeyCode(event.getKeyCode())) {
-                return;
+                return true;
             }
         }
         // Completion panel keyboard interception (Enter/Escape/Up/Down)
         if (mCompletionPopupController != null && mCompletionPopupController.isShowing()) {
             if (mCompletionPopupController.handleAndroidKeyCode(event.getKeyCode())) {
-                return;
+                return true;
             }
         }
         int nativeKeyCode = mapAndroidKeyCode(event.getKeyCode());
@@ -2082,7 +2082,7 @@ public class SweetEditor extends View {
                     resetCursorBlink();
                     flush();
                     logInputPerf(t0, "key-enter");
-                    return;
+                    return true;
                 }
             }
             if (nativeKeyCode == KeyCode.BACKSPACE) {
@@ -2100,7 +2100,7 @@ public class SweetEditor extends View {
                 flush();
                 updateInputConnectionSelectionState();
                 logInputPerf(t0, "key-cmd");
-                return;
+                return true;
             }
             dispatchKeyEventResult(result);
             if (wasComposing && !mEditorCore.isComposing()
@@ -2114,7 +2114,18 @@ public class SweetEditor extends View {
             flush();
             updateInputConnectionSelectionState();
             logInputPerf(t0, "key");
+            return true;
         }
+        if (!event.isCtrlPressed() && !event.isAltPressed() && !event.isMetaPressed()) {
+            int unicode = event.getUnicodeChar();
+            if (unicode > 0 && !Character.isISOControl(unicode)) {
+                insertText(new String(Character.toChars(unicode)));
+                updateInputConnectionSelectionState();
+                logInputPerf(t0, "key-text");
+                return true;
+            }
+        }
+        return false;
     }
 
     void logInputPerf(long startNanos, String tag) {
