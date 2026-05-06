@@ -13,11 +13,12 @@
 #include "render_composer.h"
 #include "undo.h"
 #include "linked_editing.h"
+#include "ime.h"
 
 namespace NS_SWEETEDITOR {
 
   /// Editor core class
-  class EditorCore {
+  class EditorCore : private CompositionController::Host {
   public:
     explicit EditorCore(const SharedPtr<TextMeasurer>& measurer, const EditorOptions& options);
 
@@ -273,9 +274,6 @@ namespace NS_SWEETEDITOR {
     /// @param extend_selection Whether to extend selection
     void moveCursorPageDown(bool extend_selection = false);
 
-    /// Handle a normalized IME event and return the platform synchronization snapshot
-    ImeEventResult handleImeEvent(const ImeEvent& event);
-
     /// Get the current IME synchronization snapshot
     ImeSyncSnapshot getImeSyncSnapshot() const;
 
@@ -285,20 +283,36 @@ namespace NS_SWEETEDITOR {
     /// Get the core IME composition policy
     const ImeCompositionPolicy& getImeCompositionPolicy() const;
 
-    /// Mark a document range as the current IME composition target
-    void setComposingRange(const TextRange& range);
+    ImeActionResult updateImePreedit(const U8String& text,
+                                     ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
-    /// Update IME composing text and return committed edits when a pending anchor is consumed
-    TextEditResult setComposingText(const U8String& text);
+    ImeActionResult commitImeText(const U8String& text,
+                                  ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
-    /// Hide or commit the current composition according to its session kind
-    TextEditResult finishComposing(CompositionFinishReason reason = CompositionFinishReason::FINISH);
+    ImeActionResult finishImePreedit();
 
-    /// Commit final composing text, or insert directly when no session exists
-    TextEditResult commitComposingText(const U8String& committed_text);
+    ImeActionResult cancelImePreedit();
 
-    /// Cancel active or pending composition without committing new text
-    void cancelComposing();
+    ImeActionResult markImeDocumentRange(const TextRange& range,
+                                         ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
+    ImeActionResult replaceImeText(const TextRange& range,
+                                   const U8String& text,
+                                   ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
+    ImeActionResult deleteImeBackward(size_t before_length = 1,
+                                      ImeTextUnit text_unit = ImeTextUnit::UTF16_CODE_UNIT);
+
+    ImeActionResult deleteImeForward(size_t after_length = 1,
+                                     ImeTextUnit text_unit = ImeTextUnit::UTF16_CODE_UNIT);
+
+    ImeActionResult deleteImeSurrounding(size_t before_length,
+                                         size_t after_length,
+                                         ImeTextUnit text_unit = ImeTextUnit::UTF16_CODE_UNIT);
+
+    ImeActionResult notifyImeSelectionChanged(const TextRange& range);
+
+    ImeActionResult notifyImeCursorChanged(const TextPosition& cursor);
 
     /// Whether a visible or hidden composition session exists
     bool hasComposingSession() const;
@@ -577,12 +591,8 @@ namespace NS_SWEETEDITOR {
     /// Unified caret state: cursor position + selection
     CaretState m_caret_;
 
-    /// IME composition state
-    CompositionState m_composition_;
-    /// Cross-platform IME behavior policy
-    ImeCompositionPolicy m_ime_composition_policy_;
-    /// Core-owned IME session bookkeeping
-    ImeSessionState m_ime_session_;
+    /// Core-owned IME composition controller
+    CompositionController m_composition_controller_;
 
     /// Linked editing session (nullptr means not in linked editing mode)
     UniquePtr<LinkedEditingSession> m_linked_editing_session_;
@@ -628,8 +638,6 @@ namespace NS_SWEETEDITOR {
     static size_t calcUtf16Columns(const U8String& text);
     /// Calculate new cursor position after inserting UTF8 text
     TextPosition calcPositionAfterInsert(const TextPosition& start, const U8String& text) const;
-    /// Remove temporary composing text (remove from document)
-    void removeComposingText();
     /// Unified edit entry: apply document edit and record undo operation
     /// @param range Range to replace (for pure insert, start == end)
     /// @param new_text New text (for pure delete, use empty string)
@@ -651,36 +659,37 @@ namespace NS_SWEETEDITOR {
     HitTarget getActiveHitTarget() const;
     PointerProbeResult probePointer(const PointF& point, KeyModifier modifiers) const;
     void finalizeGestureResult(GestureResult& result) const;
-    /// Reset composition state (clear composing flag and text)
-    void resetCompositionState();
-    bool hasVisibleComposition() const;
-    bool hasAwaitingDocumentRangeCommit() const;
-    TextRange getCurrentComposingRange() const;
-    ImeSyncSnapshot buildImeSyncSnapshot() const;
-    void mergeImeEditResult(ImeEventResult& result, const TextEditResult& edit_result) const;
-    ImeScriptClass resolveImeScriptClass(const ImeEvent& event) const;
-    bool shouldUseShadowImePreedit(const ImeEvent& event) const;
-    bool isImeDocumentRangeEligible(const TextRange& range) const;
     bool isDocumentRangeReadable(const TextRange& range) const;
-    void clearImeShadowPreedit();
-    void beginComposingTextSession();
-    void openImeCandidateCommitWindow(const TextRange& range, const U8String& text);
-    void clearImeCandidateCommitWindow();
-    bool isInlineImeCandidateText(const U8String& text) const;
-    bool trySuppressImeCandidateRange(const TextRange& range);
-    bool trySuppressImeCandidateCommit(const U8String& text);
-    bool tryReopenImeCandidatePrefix(ImeEventResult& result, const U8String& text);
-    void updateImeCandidateWindowAfterDelete();
     TextEditResult deleteCodePointBackward();
     TextEditResult deleteCodePointForward();
-    void handleImeUpdatePreeditEvent(ImeEventResult& result, const ImeEvent& event);
-    void handleImeCommitTextEvent(ImeEventResult& result, const ImeEvent& event);
-    void handleImeFinishPreeditEvent(ImeEventResult& result);
-    void handleImeCancelPreeditEvent();
-    void handleImeMarkDocumentRangeEvent(ImeEventResult& result, const ImeEvent& event);
-    void handleImeDeleteEvent(ImeEventResult& result, const ImeEvent& event);
-    void handleImeSelectionChangedEvent(ImeEventResult& result, const ImeEvent& event);
-    void suppressNextComposingCommit(const U8String& text);
+    bool imeCompositionEnabled() const override;
+    bool imeHasDocument() const override;
+    bool imeReadOnly() const override;
+    bool imeIsLinkedEditingActive() const override;
+    TextPosition imeCursor() const override;
+    bool imeHasSelection() const override;
+    TextRange imeSelection() const override;
+    TextRange imeClampDocumentRange(const TextRange& range) const override;
+    bool imeIsDocumentRangeReadable(const TextRange& range) const override;
+    U8String imeDocumentText(const TextRange& range) const override;
+    TextPosition imePositionAfterInsert(const TextPosition& start, const U8String& text) const override;
+    size_t imeUtf16Columns(const U8String& text) const override;
+    TextEditResult imeApplyEdit(const TextRange& range, const U8String& text) override;
+    TextEditResult imeInsertText(const U8String& text) override;
+    void imeDeleteSelectionForComposition() override;
+    void imeDeleteDocumentRange(const TextRange& range) override;
+    void imeInsertDocumentText(const TextPosition& position, const U8String& text) override;
+    TextEditResult imeBackspace() override;
+    TextEditResult imeDeleteForward() override;
+    TextEditResult imeDeleteCodePointBackward() override;
+    TextEditResult imeDeleteCodePointForward() override;
+    void imeSetCursorPosition(const TextPosition& cursor) override;
+    void imeSetSelection(const TextRange& range) override;
+    void imeSetCursorPositionInternal(const TextPosition& cursor) override;
+    void imeSetSelectionInternal(const TextRange& range) override;
+    void imeSetRawCursorPosition(const TextPosition& cursor) override;
+    void imeInvalidateContentMetrics(size_t line) override;
+    void imeEnsureCursorVisible() override;
     void normalizeScrollState();
 
     /// Linked editing: apply synced replace to all linked ranges in current tab stop, return all changes

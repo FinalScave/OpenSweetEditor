@@ -334,10 +334,11 @@ controller.whenReady(() {
 | 光标移至行首 | `moveCursorToLineStart(extend)` | — |
 | 光标移至行尾 | `moveCursorToLineEnd(extend)` | — |
 | **IME** | | |
-| 处理标准化 IME 事件 | `handleImeEvent(event)` | - |
-| 更新 preedit | `handleImeEvent(UPDATE_PREEDIT, text)` | - |
-| 提交文本 | `handleImeEvent(COMMIT_TEXT, text)` | - |
-| 结束或取消 preedit | `handleImeEvent(FINISH_PREEDIT/CANCEL_PREEDIT)` | - |
+| 更新 preedit | `updateImePreedit(text, script)` | - |
+| 提交文本 | `commitImeText(text, script)` | - |
+| 标记候选替换范围 | `markImeDocumentRange(range, script)` | - |
+| 候选替换文本 | `replaceImeText(range, text, script)` | - |
+| 结束或取消 preedit | `finishImePreedit()` / `cancelImePreedit()` | - |
 | 是否组合中 | `isComposing()` | property: `isComposing` / `IsComposing { get; }` |
 | 启用/禁用组合 | `setCompositionEnabled(enabled)` | — |
 | 组合是否启用 | `isCompositionEnabled()` | property: `isCompositionEnabled` / `IsCompositionEnabled { get; }` |

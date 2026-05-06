@@ -271,7 +271,10 @@ public setCursorPosition(line: number, column: number): void
 public setSelection(...): void
 public getSelection(): TextRange | null
 public getSelectedText(): string
-public handleImeEvent(type: ImeEventType, text?: string | null, range?: TextRange | null): TextEditResult
+public updateImePreedit(text: string, scriptHint?: number): TextEditResult
+public commitImeText(text: string, scriptHint?: number): TextEditResult
+public cancelImePreedit(): TextEditResult
+public markImeDocumentRange(range: TextRange, scriptHint?: number): TextEditResult
 public isComposing(): boolean
 ```
 

@@ -622,24 +622,86 @@ EDITOR_API void editor_get_composing_session_range(intptr_t editor_handle,
                                                    int32_t* out_end_line,
                                                    int32_t* out_end_column);
 
-/// Handle a normalized IME event.
-/// @return ImeEventResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_handle_ime_event(intptr_t editor_handle,
-                                                  int type,
-                                                  const char* text,
-                                                  int has_range,
+/// Update platform IME preedit text.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+EDITOR_API const uint8_t* editor_ime_update_preedit(intptr_t editor_handle,
+                                                    const char* text,
+                                                    int script_hint,
+                                                    size_t* out_size);
+
+/// Commit platform IME text.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+EDITOR_API const uint8_t* editor_ime_commit_text(intptr_t editor_handle,
+                                                 const char* text,
+                                                 int script_hint,
+                                                 size_t* out_size);
+
+/// Finish the current platform IME preedit.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+EDITOR_API const uint8_t* editor_ime_finish_preedit(intptr_t editor_handle, size_t* out_size);
+
+/// Cancel the current platform IME preedit.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+EDITOR_API const uint8_t* editor_ime_cancel_preedit(intptr_t editor_handle, size_t* out_size);
+
+/// Mark a document range as an IME candidate target.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+EDITOR_API const uint8_t* editor_ime_mark_document_range(intptr_t editor_handle,
+                                                         size_t start_line,
+                                                         size_t start_column,
+                                                         size_t end_line,
+                                                         size_t end_column,
+                                                         int script_hint,
+                                                         size_t* out_size);
+
+/// Report platform candidate replacement text.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+EDITOR_API const uint8_t* editor_ime_replace_text(intptr_t editor_handle,
                                                   size_t start_line,
                                                   size_t start_column,
                                                   size_t end_line,
                                                   size_t end_column,
-                                                  int has_cursor,
-                                                  size_t cursor_line,
-                                                  size_t cursor_column,
-                                                  size_t before_length,
-                                                  size_t after_length,
-                                                  int text_unit,
+                                                  const char* text,
                                                   int script_hint,
                                                   size_t* out_size);
+
+/// Delete text before the caret through IME.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+EDITOR_API const uint8_t* editor_ime_delete_backward(intptr_t editor_handle,
+                                                     size_t before_length,
+                                                     int text_unit,
+                                                     size_t* out_size);
+
+/// Delete text after the caret through IME.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+EDITOR_API const uint8_t* editor_ime_delete_forward(intptr_t editor_handle,
+                                                    size_t after_length,
+                                                    int text_unit,
+                                                    size_t* out_size);
+
+/// Delete surrounding text through IME.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+EDITOR_API const uint8_t* editor_ime_delete_surrounding(intptr_t editor_handle,
+                                                        size_t before_length,
+                                                        size_t after_length,
+                                                        int text_unit,
+                                                        size_t* out_size);
+
+/// Notify IME-driven selection movement.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+EDITOR_API const uint8_t* editor_ime_notify_selection_changed(intptr_t editor_handle,
+                                                              size_t start_line,
+                                                              size_t start_column,
+                                                              size_t end_line,
+                                                              size_t end_column,
+                                                              size_t* out_size);
+
+/// Notify IME-driven cursor movement.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+EDITOR_API const uint8_t* editor_ime_notify_cursor_changed(intptr_t editor_handle,
+                                                           size_t cursor_line,
+                                                           size_t cursor_column,
+                                                           size_t* out_size);
 
 /// Get the current IME synchronization snapshot.
 /// @return ImeSyncSnapshot binary payload, returns NULL when editor handle is invalid

@@ -334,10 +334,11 @@ Section 3.1 defines the bridge/runtime API carried by `EditorCore`. It includes 
 | Move cursor to line start | `moveCursorToLineStart(extend)` | — |
 | Move cursor to line end | `moveCursorToLineEnd(extend)` | — |
 | **IME** | | |
-| Handle normalized IME event | `handleImeEvent(event)` | - |
-| Update preedit | `handleImeEvent(UPDATE_PREEDIT, text)` | - |
-| Commit text | `handleImeEvent(COMMIT_TEXT, text)` | - |
-| Finish or cancel preedit | `handleImeEvent(FINISH_PREEDIT/CANCEL_PREEDIT)` | - |
+| Update preedit | `updateImePreedit(text, script)` | - |
+| Commit text | `commitImeText(text, script)` | - |
+| Mark candidate replacement range | `markImeDocumentRange(range, script)` | - |
+| Candidate replacement text | `replaceImeText(range, text, script)` | - |
+| Finish or cancel preedit | `finishImePreedit()` / `cancelImePreedit()` | - |
 | Is composing | `isComposing()` | property: `isComposing` / `IsComposing { get; }` |
 | Set composition enabled | `setCompositionEnabled(enabled)` | — |
 | Is composition enabled | `isCompositionEnabled()` | property: `isCompositionEnabled` / `IsCompositionEnabled { get; }` |

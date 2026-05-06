@@ -196,22 +196,54 @@ void editor_move_cursor_to_line_end(intptr_t editor_handle, int extend_selection
 ### 11) IME composition
 
 ```c
-const uint8_t* editor_handle_ime_event(intptr_t editor_handle,
-                                       int type,
-                                       const char* text,
-                                       int has_range,
+const uint8_t* editor_ime_update_preedit(intptr_t editor_handle,
+                                         const char* text,
+                                         int script_hint,
+                                         size_t* out_size);
+const uint8_t* editor_ime_commit_text(intptr_t editor_handle,
+                                      const char* text,
+                                      int script_hint,
+                                      size_t* out_size);
+const uint8_t* editor_ime_finish_preedit(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_ime_cancel_preedit(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_ime_mark_document_range(intptr_t editor_handle,
+                                              size_t start_line,
+                                              size_t start_column,
+                                              size_t end_line,
+                                              size_t end_column,
+                                              int script_hint,
+                                              size_t* out_size);
+const uint8_t* editor_ime_replace_text(intptr_t editor_handle,
                                        size_t start_line,
                                        size_t start_column,
                                        size_t end_line,
                                        size_t end_column,
-                                       int has_cursor,
-                                       size_t cursor_line,
-                                       size_t cursor_column,
-                                       size_t before_length,
-                                       size_t after_length,
-                                       int text_unit,
+                                       const char* text,
                                        int script_hint,
                                        size_t* out_size);
+const uint8_t* editor_ime_delete_backward(intptr_t editor_handle,
+                                          size_t before_length,
+                                          int text_unit,
+                                          size_t* out_size);
+const uint8_t* editor_ime_delete_forward(intptr_t editor_handle,
+                                         size_t after_length,
+                                         int text_unit,
+                                         size_t* out_size);
+const uint8_t* editor_ime_delete_surrounding(intptr_t editor_handle,
+                                             size_t before_length,
+                                             size_t after_length,
+                                             int text_unit,
+                                             size_t* out_size);
+const uint8_t* editor_ime_notify_selection_changed(intptr_t editor_handle,
+                                                   size_t start_line,
+                                                   size_t start_column,
+                                                   size_t end_line,
+                                                   size_t end_column,
+                                                   size_t* out_size);
+const uint8_t* editor_ime_notify_cursor_changed(intptr_t editor_handle,
+                                                size_t cursor_line,
+                                                size_t cursor_column,
+                                                size_t* out_size);
 const uint8_t* editor_get_ime_sync_snapshot(intptr_t editor_handle, size_t* out_size);
 int            editor_is_composing(intptr_t editor_handle);
 void           editor_set_composition_enabled(intptr_t editor_handle, int enabled);

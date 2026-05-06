@@ -285,7 +285,6 @@ public class SweetEditor extends View {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         long t0 = ENABLE_PERF_LOG ? System.nanoTime() : 0;
-        boolean wasComposing = mEditorCore.isComposing();
         EditorCore.GestureResult result = mEditorCore.handleGestureEvent(event);
         Log.d(TAG, "result: " + result);
         PointF locationInView = new PointF(event.getX(), event.getY());
@@ -300,7 +299,7 @@ public class SweetEditor extends View {
             if (result.hitTarget == null || result.hitTarget.type == EditorCore.HitTargetType.NONE) {
                 showSoftKeyboard();
             }
-            if (wasComposing && !result.hasSelection && isCompositionEnabled()) {
+            if (!result.hasSelection && isCompositionEnabled()) {
                 imeStateChanged |= restartInputConnectionCompositionAtCursorWord();
             }
             resetCursorBlink();
@@ -381,9 +380,9 @@ public class SweetEditor extends View {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        boolean handled = handleKeyEventFromIME(event);
+        handleKeyEventFromIME(event);
         refreshHoverActivation(event);
-        return handled || super.onKeyDown(keyCode, event);
+        return true;
     }
 
     @Override
@@ -2050,18 +2049,18 @@ public class SweetEditor extends View {
         }
     }
 
-    boolean handleKeyEventFromIME(KeyEvent event) {
+    void handleKeyEventFromIME(KeyEvent event) {
         long t0 = ENABLE_PERF_LOG ? System.nanoTime() : 0;
         // Inline suggestion keyboard interception (Tab/Escape)
         if (mInlineSuggestionController != null && mInlineSuggestionController.isShowing()) {
             if (mInlineSuggestionController.handleAndroidKeyCode(event.getKeyCode())) {
-                return true;
+                return;
             }
         }
         // Completion panel keyboard interception (Enter/Escape/Up/Down)
         if (mCompletionPopupController != null && mCompletionPopupController.isShowing()) {
             if (mCompletionPopupController.handleAndroidKeyCode(event.getKeyCode())) {
-                return true;
+                return;
             }
         }
         int nativeKeyCode = mapAndroidKeyCode(event.getKeyCode());
@@ -2082,7 +2081,7 @@ public class SweetEditor extends View {
                     resetCursorBlink();
                     flush();
                     logInputPerf(t0, "key-enter");
-                    return true;
+                    return;
                 }
             }
             if (nativeKeyCode == KeyCode.BACKSPACE) {
@@ -2100,7 +2099,7 @@ public class SweetEditor extends View {
                 flush();
                 updateInputConnectionSelectionState();
                 logInputPerf(t0, "key-cmd");
-                return true;
+                return;
             }
             dispatchKeyEventResult(result);
             if (wasComposing && !mEditorCore.isComposing()
@@ -2114,18 +2113,7 @@ public class SweetEditor extends View {
             flush();
             updateInputConnectionSelectionState();
             logInputPerf(t0, "key");
-            return true;
         }
-        if (!event.isCtrlPressed() && !event.isAltPressed() && !event.isMetaPressed()) {
-            int unicode = event.getUnicodeChar();
-            if (unicode > 0 && !Character.isISOControl(unicode)) {
-                insertText(new String(Character.toChars(unicode)));
-                updateInputConnectionSelectionState();
-                logInputPerf(t0, "key-text");
-                return true;
-            }
-        }
-        return false;
     }
 
     void logInputPerf(long startNanos, String tag) {

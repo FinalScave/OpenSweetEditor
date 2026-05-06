@@ -87,8 +87,8 @@ final class ProtocolDecoder {
         return new EditorCore.KeyEventResult(handled, contentChanged, cursorChanged, selectionChanged, editResult, command);
     }
 
-    static EditorCore.ImeEventResult decodeImeEventResult(@Nullable ByteBuffer data) {
-        if (data == null) return new EditorCore.ImeEventResult();
+    static EditorCore.ImeActionResult decodeImeActionResult(@Nullable ByteBuffer data) {
+        if (data == null) return new EditorCore.ImeActionResult();
         data.order(ByteOrder.nativeOrder());
         boolean handled = data.getInt() != 0;
         boolean contentChanged = data.getInt() != 0;
@@ -109,7 +109,7 @@ final class ProtocolDecoder {
             editResult = new EditorCore.TextEditResult(true, changes);
         }
         EditorCore.ImeSyncSnapshot sync = readImeSyncSnapshot(data);
-        return new EditorCore.ImeEventResult(handled, contentChanged, cursorChanged, selectionChanged, editResult, sync);
+        return new EditorCore.ImeActionResult(handled, contentChanged, cursorChanged, selectionChanged, editResult, sync);
     }
 
     static EditorCore.ImeSyncSnapshot decodeImeSyncSnapshot(@Nullable ByteBuffer data) {
@@ -310,7 +310,6 @@ final class ProtocolDecoder {
         TextRange platformMarkedRange = readTextRange(data);
         int preeditStorage = data.getInt();
         int contextPolicy = data.getInt();
-        boolean requestRestartInput = data.getInt() != 0;
         boolean clearPlatformPreedit = data.getInt() != 0;
         return new EditorCore.ImeSyncSnapshot(
                 cursor,
@@ -320,7 +319,6 @@ final class ProtocolDecoder {
                 hasPlatformMarkedRange ? platformMarkedRange : null,
                 preeditStorage,
                 contextPolicy,
-                requestRestartInput,
                 clearPlatformPreedit);
     }
 

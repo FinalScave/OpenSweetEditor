@@ -166,18 +166,6 @@ namespace NS_SWEETEDITOR {
     EditorCommand command {EditorCommand::NONE};
   };
 
-  enum struct ImeEventType {
-    UPDATE_PREEDIT,
-    COMMIT_TEXT,
-    FINISH_PREEDIT,
-    CANCEL_PREEDIT,
-    MARK_DOCUMENT_RANGE,
-    DELETE_BACKWARD,
-    DELETE_FORWARD,
-    DELETE_SURROUNDING,
-    SELECTION_CHANGED,
-  };
-
   enum struct ImeTextUnit {
     UTF16_CODE_UNIT,
     CODE_POINT,
@@ -194,7 +182,6 @@ namespace NS_SWEETEDITOR {
   enum struct ImePreeditStorage {
     NONE,
     VISIBLE_DOCUMENT_COMPOSITION,
-    PLAIN_DOCUMENT_TEXT,
     SHADOW_ONLY,
     HIDDEN_AWAITING_COMMIT,
   };
@@ -206,28 +193,13 @@ namespace NS_SWEETEDITOR {
     CURRENT_LINE,
   };
 
-  /// Cross-platform IME command normalized from platform-specific callbacks.
-  struct ImeEvent {
-    ImeEventType type {ImeEventType::UPDATE_PREEDIT};
-    U8String text;
-    TextRange range;
-    TextPosition cursor;
-    bool has_range {false};
-    bool has_cursor {false};
-    size_t before_length {0};
-    size_t after_length {0};
-    ImeTextUnit text_unit {ImeTextUnit::UTF16_CODE_UNIT};
-    ImeScriptClass script_hint {ImeScriptClass::UNKNOWN};
-  };
-
   /// Core-owned policy that decides how platform IME state is represented.
   struct ImeCompositionPolicy {
     bool allow_preedit {true};
     bool allow_document_range_preedit {true};
     bool allow_latin_reconversion {true};
     bool allow_non_latin_preedit {false};
-    bool keep_preedit_at_word_end {true};
-    bool cancel_preedit_when_cursor_leaves_anchor {true};
+    bool keep_preedit_at_word_end {false};
     ImeContextPolicy enabled_context_policy {ImeContextPolicy::LIMITED_FOR_CANDIDATES};
     ImeContextPolicy disabled_context_policy {ImeContextPolicy::LIMITED_FOR_CANDIDATES};
   };
@@ -238,6 +210,7 @@ namespace NS_SWEETEDITOR {
     bool preedit_replaces_document_range {false};
     TextRange preedit_replaced_range;
     U8String preedit_replaced_text;
+    bool visible_composition_exposed_to_platform {false};
     bool has_shadow_preedit {false};
     U8String shadow_preedit_text;
     ImeScriptClass shadow_script_class {ImeScriptClass::UNKNOWN};
@@ -249,6 +222,8 @@ namespace NS_SWEETEDITOR {
     bool candidate_deleted_to_prefix {false};
     bool suppress_candidate_exact_range {false};
     bool candidate_exact_range_suppressed {false};
+    bool plain_latin_input_lock {false};
+    U8String plain_latin_preedit_text;
   };
 
   /// Snapshot that platform layers use to synchronize IME selection and marked ranges.
@@ -263,12 +238,11 @@ namespace NS_SWEETEDITOR {
     TextRange platform_marked_range;
     ImePreeditStorage preedit_storage {ImePreeditStorage::NONE};
     ImeContextPolicy context_policy {ImeContextPolicy::NONE};
-    bool request_restart_input {false};
     bool clear_platform_preedit {false};
   };
 
-  /// Result of a normalized IME event handled by the core.
-  struct ImeEventResult {
+  /// Result of a semantic IME action handled by the core.
+  struct ImeActionResult {
     bool handled {false};
     bool content_changed {false};
     bool cursor_changed {false};
