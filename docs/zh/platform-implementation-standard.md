@@ -340,7 +340,6 @@ controller.whenReady(() {
 | 请求候选替换文本 | `replaceImeText(range, text, script)` | - |
 | 结束或取消 preedit | `finishImePreedit()` / `cancelImePreedit()` | - |
 | 是否组合中 | `isComposing()` | property: `isComposing` / `IsComposing { get; }` |
-| 兼容 IME composition 查询 | `isCompositionEnabled()` | 历史 API，固定表示可编辑时支持平台 composition |
 | **只读 / 缩进** | | |
 | 设置只读 | `setReadOnly(readOnly)` | — |
 | 是否只读 | `isReadOnly()` | property: `isReadOnly` / `IsReadOnly { get; }` |
@@ -419,11 +418,7 @@ controller.whenReady(() {
 
 IME API 是平台输入事件进入 core 的请求入口。平台层 MUST NOT 因为系统 IME 请求 surrounding text、候选上下文或光标矩形，就创建 editor composition。是否建立 composition 只取决于系统 IME 是否通过 composing / marked / preedit API 明确声明了组合文本或组合范围；提交、替换、删除和 selection 同步仍由 core 按 `docs/zh/ime-composition-standard.md` 裁决。
 
-平台层向 core 标记 document range 时 MUST 明确这是平台 IME 声明的 composing / marked range，并使用 `PLATFORM_PREFIX_PREEDIT` 或等价语义。Android 的 `InputConnection.setComposingRegion`、Apple marked range、Windows TSF composition range 都不能由平台层直接当成整词替换命令。`WORD_TARGET` 是历史兼容角色，不属于新的 IME 标准；光标进入英文单词时平台层和 core 都不得自动开启整词 composition。
-
-Android 平台层判定当前输入态时，可以使用 `InputMethodSubtype.languageTag` / `locale`，也可以使用明确语言或脚本含义的 extra value；`isAsciiCapable()` 和 extra value 中的 `AsciiCapable` 只表示该 subtype 能输入 ASCII，MUST NOT 单独映射为 Latin 键盘。
-
-Android 平台层处理 tap 时 SHOULD 通知系统 IME view clicked，并随后同步 selection / surrounding text。`setComposingRegion` 是 IME 明确声明的 composition range，即使 cursor 不在该 range 内也 MUST 被接收；平台层只能裁剪到合法文档范围，不能用 cursor containment 拒绝。
+平台层向 core 标记 document range 时 MUST 明确这是平台 IME 声明的 composing / marked range，并调用 `markImeDocumentRange(range, script)`。Android 的 `InputConnection.setComposingRegion`、Apple marked range、Windows TSF composition range 都不能由平台层直接当成整词替换命令。光标进入英文单词时平台层和 core 都不得自动开启整词 composition。
 
 平台层 MUST 将光标变化、选区变化、composition 更新、候选提交、删除、finish/cancel 等事件同步给 core。中文键盘未声明 composition 时只表示不建立 SweetEditor 可见 composition；这不能被实现成禁用系统 IME、阻断中文候选提交或阻断中文联想候选。
 
@@ -1333,18 +1328,19 @@ interface ContextMenuItemProvider {
 
 ### 13.2 输入法接入（平台 API MAY 不同，core 语义 MUST 一致）
 
-输入法集成天然是平台特定的，但 SweetEditor 的 composition 语义 MUST 在各平台保持一致。平台实现可以使用不同系统 API 接入 IME，但必须把系统事件归一化到 core 的 IME 标准行为：只有系统 IME 明确声明 composing / marked / preedit 时才建立 editor composition；candidate context、surrounding text、键盘语言或光标进入 Latin 单词都不能自动创建 composition。
+输入法集成天然是平台特定的，但 SweetEditor 的 composition 语义 MUST 在各平台保持一致。平台实现可以使用不同系统 API 接入 IME，但必须把原生 IME 事件归一化到 core 的 IME API：只有系统 IME 明确声明 composing / marked / preedit 时才建立 editor composition；candidate context、surrounding text、光标矩形、键盘语言或光标进入 Latin 单词都不能自动创建 composition。
 
-| 平台 | IME API |
-|---|---|
-| Android | `InputConnection` |
-| iOS | `UITextInput` |
-| macOS | `NSTextInputClient` |
-| Swing | `InputMethodRequests` |
-| WinForms | `ImmAssociateContext` / TSF |
-| OHOS | IME Kit |
+| 平台 | IME API | Composition 来源 |
+|---|---|---|
+| Android | `InputConnection` | `setComposingText` / `setComposingRegion` |
+| iOS | `UITextInput` | marked text / `markedTextRange` |
+| macOS | `NSTextInputClient` | `setMarkedText` / marked range |
+| Swing | `InputMethodEvent` / `InputMethodRequests` | `InputMethodEvent` 中的 composed text 段 |
+| WinForms | TSF / IMM | TSF composition range 或 IMM composition string |
+| OHOS | IME Kit | 平台 composing / preedit 回调或范围 |
+| Flutter | `TextInputClient` | 有效的 `TextEditingValue.composing` 范围 |
 
-Android `InputConnection` 实现 MUST 覆盖 selection、batch edit、surrounding text、empty commit、`newCursorPosition`、`setComposingRegion`、`finishComposingText`、subtype 脚本判定和 stale connection 处理。`commitText("")` 在活动 composing session 内是空文本替换，不是 finish/cancel；`setSelection` 与 cursor movement 必须同步给 core；`isAsciiCapable()` 不得单独推断 Latin 输入态；batch edit 期间必须延迟渲染刷新和 `updateSelection`；surrounding text 必须来自文档全局 UTF-16 offset，并保留跨行上下文。`setComposingText` 和 `setComposingRegion` 是 Android composition 的事实来源；没有这两类声明时不得显示 composition。其他平台的 marked text / composition session API 也 MUST 满足这些等价语义。
+各平台 MUST 将原生 composition 来源映射为 `updateImePreedit(text, script)` 或 `markImeDocumentRange(range, script)`，将原生提交映射为 `commitImeText(text, script)`，将明确替换映射为 `replaceImeText(range, text, script)`，将原生 finish/cancel 映射为 `finishImePreedit()` / `cancelImePreedit()`。传入 core 的 range MUST 是文档坐标，不能是平台 surrounding-text window 的临时坐标。可编辑状态下始终支持平台 IME composition；只读模式负责阻止文本变更，MUST NOT 实现为 composition enable / disable 开关。
 
 ### 13.3 可选模块
 

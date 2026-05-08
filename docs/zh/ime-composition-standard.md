@@ -6,8 +6,6 @@
 
 SweetEditor 的 IME composition 只能来自平台 IME 明确声明的 composing / marked / preedit 状态。Core 不得因为光标进入 Latin 单词、候选栏可能需要上下文、或输入法 subtype 看起来支持 ASCII，就自行创建 IME composition。
 
-`compositionEnabled` 不再是标准能力开关。可编辑状态下编辑器必须始终支持平台 IME composition；只读状态负责阻止文本变更。历史 API 可以暂时保留为兼容 no-op，但不能改变 IME 行为，也不能让平台进入另一套输入路径。
-
 ## 术语
 
 | 术语 | 含义 |
@@ -29,7 +27,7 @@ Candidate context 不是 composition。输入法需要上下文做候选、联�
 | 语义事件 | 触发来源 | Core 行为 |
 |---|---|---|
 | `updatePreedit(text, script)` | 平台提供新的 composing / marked text | 建立或更新 editor composition |
-| `markDocumentRange(range, script, PLATFORM_PREFIX_PREEDIT)` | 平台声明文档内已有文本属于 composing / marked range | 建立 editor composition，范围由平台负责声明 |
+| `markDocumentRange(range, script)` | 平台声明文档内已有文本属于 composing / marked range | 建立 editor composition，范围由平台负责声明 |
 | `commitText(text, script)` | 平台提交文本 | 替换当前 composition；没有 composition 时按普通插入 |
 | `replaceText(range, text, script)` | 平台明确请求替换范围 | 按平台声明范围替换，不隐式扩展到整词 |
 | `finishPreedit()` | 平台结束 composition | 结束当前 composition，不创建新 composition |
@@ -62,7 +60,7 @@ Android 平台层必须以 `InputConnection` 为事实来源：
 | Android API | SweetEditor 事件 |
 |---|---|
 | `setComposingText(text, newCursorPosition)` | `updatePreedit(text, script)` |
-| `setComposingRegion(start, end)` | `markDocumentRange(range, script, PLATFORM_PREFIX_PREEDIT)` |
+| `setComposingRegion(start, end)` | `markDocumentRange(range, script)` |
 | `commitText(text, newCursorPosition)` | `commitText(text, script)` |
 | `replaceText(start, end, text, ...)` | `replaceText(range, text, script)` |
 | `finishComposingText()` | `finishPreedit()` |
@@ -130,18 +128,7 @@ Core 负责：
 - 把 candidate context 当作 composition 下划线。
 - 把 `isAsciiCapable()`、键盘语言、候选栏状态单独当作 composition 证据。
 - 在没有平台 composing / marked / preedit 的情况下，为了“看起来像其他编辑器”绘制 composition。
-- 禁用 composition 时走独立 shadow editable 路径来提交中文候选。
+- 为中文候选实现独立 shadow editable 提交流程，绕过 core IME 语义。
 - 平台层直接替换整词，除非平台 IME 明确给出 replacement range。
-
-## 兼容迁移
-
-历史 API 暂时按下列方式兼容：
-
-| API / 概念 | 新语义 |
-|---|---|
-| `compositionEnabled` | 废弃；设置为 no-op，查询固定视为支持 composition |
-| `WORD_TARGET` | 废弃；不再作为 IME composition 标准角色 |
-| `refreshCompositionAtCursor` | 废弃；不得创建新的 Latin word composition |
-| `PLATFORM_PREFIX_PREEDIT` | 保留；表示平台声明的文档 range composition |
 
 如果后续需要拼写纠错、整词替换、补全或重命名目标，应定义独立的 editor replacement / completion / linked-editing API，不应复用 IME composition。

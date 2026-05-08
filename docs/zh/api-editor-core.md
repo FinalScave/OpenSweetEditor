@@ -246,8 +246,6 @@ const uint8_t* editor_ime_notify_cursor_changed(intptr_t editor_handle,
                                                 size_t* out_size);
 const uint8_t* editor_get_ime_sync_snapshot(intptr_t editor_handle, size_t* out_size);
 int            editor_is_composing(intptr_t editor_handle);
-void           editor_set_composition_enabled(intptr_t editor_handle, int enabled);
-int            editor_is_composition_enabled(intptr_t editor_handle);
 ```
 
 ### 12) 只读、自动缩进与手柄配置

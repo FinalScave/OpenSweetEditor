@@ -332,7 +332,15 @@ public void cancelLinkedEditing()
   - `setBracketPairs(int[] openChars, int[] closeChars)`
   - `setMatchedBrackets(int openLine, int openCol, int closeLine, int closeCol)`
   - `clearMatchedBrackets()`
-- IME 组合开关通过 `EditorSettings.setCompositionEnabled(...)` / `EditorSettings.isCompositionEnabled()` 配置。
+- 可编辑状态下始终支持 IME composition；只读模式负责阻止文本变更。
+- Android `InputConnection` 必须覆盖 selection、batch edit、surrounding text、empty commit、`newCursorPosition`、`setComposingRegion`、`finishComposingText`、subtype 脚本判定和 stale connection 处理。
+- `commitText("")` 在活动 composing session 内是空文本替换，不是 finish/cancel。
+- `setSelection` 与 cursor movement 必须同步给 core；batch edit 期间应延迟渲染刷新和 `updateSelection`。
+- `isAsciiCapable()` 不得单独推断 Latin 输入态。
+- 平台层处理 tap 时应通知系统 IME view clicked，并随后同步 selection / surrounding text。
+- `setComposingRegion` 是 IME 明确声明的 composition range，即使 cursor 不在该 range 内也必须接收；平台层只能裁剪到合法文档范围，不能用 cursor containment 拒绝。
+- surrounding text 必须来自文档全局 UTF-16 offset，并保留跨行上下文。
+- `setComposingText` 和 `setComposingRegion` 是 Android composition 的事实来源；没有这两类声明时不得显示 composition。
 - Android 主路径虽不经过 `c_api.h`，但复杂返回仍走统一的 binary payload 解码流程。
 - 装饰相关接口同时提供 `ByteBuffer payload` 重载（`EditorCore` 层），可用于绕过对象装箱并减少 JNI 往返。
 

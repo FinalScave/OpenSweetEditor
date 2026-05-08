@@ -333,7 +333,15 @@ public void cancelLinkedEditing()
   - `setBracketPairs(int[] openChars, int[] closeChars)`
   - `setMatchedBrackets(int openLine, int openCol, int closeLine, int closeCol)`
   - `clearMatchedBrackets()`
-- IME composition enablement is configured through `EditorSettings.setCompositionEnabled(...)` / `EditorSettings.isCompositionEnabled()`.
+- IME composition is always supported while editable; read-only mode blocks text changes.
+- Android `InputConnection` must cover selection, batch edit, surrounding text, empty commit, `newCursorPosition`, `setComposingRegion`, `finishComposingText`, subtype script detection, and stale connection handling.
+- `commitText("")` inside an active composing session is an empty-text replacement, not finish/cancel.
+- `setSelection` and cursor movement must be synchronized to core; batch edit should defer render refresh and `updateSelection`.
+- `isAsciiCapable()` must not independently infer Latin input mode.
+- Tap handling should notify the system IME that the view was clicked, then synchronize selection and surrounding text.
+- `setComposingRegion` is an explicit IME composition range and must be accepted even when the cursor is outside that range; platform code may only clamp it to a valid document range and must not reject it by cursor containment.
+- Surrounding text must use document-global UTF-16 offsets and preserve cross-line context.
+- `setComposingText` and `setComposingRegion` are Android composition sources of truth; without those declarations, editor composition must not be shown.
 - Android main path does not go through `c_api.h`, but complex return data still uses the shared binary payload decoding flow.
 - Decoration APIs also provide `ByteBuffer payload` overloads (`EditorCore` layer), which can skip object boxing and reduce JNI round trips.
 

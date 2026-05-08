@@ -336,12 +336,10 @@ Section 3.1 defines the bridge/runtime API carried by `EditorCore`. It includes 
 | **IME** | | |
 | Update preedit | `updateImePreedit(text, script)` | - |
 | Commit text | `commitImeText(text, script)` | - |
-| Mark candidate replacement range | `markImeDocumentRange(range, script)` | - |
+| Mark platform composition range | `markImeDocumentRange(range, script)` | - |
 | Candidate replacement text | `replaceImeText(range, text, script)` | - |
 | Finish or cancel preedit | `finishImePreedit()` / `cancelImePreedit()` | - |
 | Is composing | `isComposing()` | property: `isComposing` / `IsComposing { get; }` |
-| Set composition enabled | `setCompositionEnabled(enabled)` | — |
-| Is composition enabled | `isCompositionEnabled()` | property: `isCompositionEnabled` / `IsCompositionEnabled { get; }` |
 | **Read-only / Indent** | | |
 | Set read-only | `setReadOnly(readOnly)` | — |
 | Is read-only | `isReadOnly()` | property: `isReadOnly` / `IsReadOnly { get; }` |
@@ -1069,7 +1067,7 @@ Every `EditorTheme` MUST contain a `textStyles` map (`Map<int, TextStyle>`) and 
 
 ## 9. EditorSettings (MUST)
 
-Editor options and behavior/layout configuration MUST be centralized through the `EditorSettings` object. This includes settings-like editor options such as wrap mode, scale, composition behavior, spacing, padding, and similar editor-option fields. `EditorTheme` and `EditorKeyMap` remain separate host-facing configuration objects and are not folded into `EditorSettings` by this rule. The host-facing API carrier MUST NOT directly expose settings-like configuration setters (e.g. `setWrapMode`, `setScale`, `setCompositionEnabled`). Instead, it exposes a `getSettings()` method, and callers configure those settings through that object once it is available. On imperative platforms the host-facing carrier is `SweetEditor`; on declarative platforms it is `SweetEditorController`. On declarative platforms, `getSettings()` becomes valid only after `whenReady()` or an equivalent ready signal. Before that point it SHOULD return `null` or a default unavailable value, MUST NOT create a hidden runtime or hidden staging object, and MUST NOT be treated as a pre-ready configuration channel. Initial settings required before first attachment MUST be supplied through declarative construction parameters or an equivalent platform-native initialization path. This host-facing rule does not change the `EditorCore` public API defined in Section 3.1.
+Editor options and behavior/layout configuration MUST be centralized through the `EditorSettings` object. This includes settings-like editor options such as wrap mode, scale, spacing, padding, and similar editor-option fields. `EditorTheme` and `EditorKeyMap` remain separate host-facing configuration objects and are not folded into `EditorSettings` by this rule. The host-facing API carrier MUST NOT directly expose settings-like configuration setters (e.g. `setWrapMode`, `setScale`). Instead, it exposes a `getSettings()` method, and callers configure those settings through that object once it is available. On imperative platforms the host-facing carrier is `SweetEditor`; on declarative platforms it is `SweetEditorController`. On declarative platforms, `getSettings()` becomes valid only after `whenReady()` or an equivalent ready signal. Before that point it SHOULD return `null` or a default unavailable value, MUST NOT create a hidden runtime or hidden staging object, and MUST NOT be treated as a pre-ready configuration channel. Initial settings required before first attachment MUST be supplied through declarative construction parameters or an equivalent platform-native initialization path. This host-facing rule does not change the `EditorCore` public API defined in Section 3.1.
 
 All platforms MUST expose the following settings through getter/setter pairs (or properties):
 
@@ -1080,7 +1078,6 @@ All platforms MUST expose the following settings through getter/setter pairs (or
 | `scale` | float | 1.0 | `setScale(scale)` | `getScale()` | `relayout` | Scale factor |
 | `foldArrowMode` | FoldArrowMode | ALWAYS | `setFoldArrowMode(mode)` | `getFoldArrowMode()` | `repaint` | Fold arrow display mode |
 | `wrapMode` | WrapMode | NONE | `setWrapMode(mode)` | `getWrapMode()` | `relayout` | Auto-wrap mode |
-| `compositionEnabled` | boolean | Platform-dependent | `setCompositionEnabled(enabled)` | `isCompositionEnabled()` | `runtime-transition` | Whether IME composition mode is enabled |
 | `lineSpacingAdd` | float | 0 | `setLineSpacing(add, mult)` | `getLineSpacingAdd()` | `relayout` | Line spacing extra (pixels) |
 | `lineSpacingMult` | float | 1.0 | *(same as above)* | `getLineSpacingMult()` | `relayout` | Line spacing multiplier |
 | `contentStartPadding` | float | Platform-dependent | `setContentStartPadding(padding)` | `getContentStartPadding()` | `relayout` | Extra horizontal padding between gutter split and text rendering start (pixels) |
@@ -1103,7 +1100,7 @@ All platforms MUST expose the following settings through getter/setter pairs (or
 > - `runtime-transition`: MUST apply immediately and safely handle active runtime state transitions required by the setting. A `runtime-transition` setting does not require repaint or relayout unless the current visible state actually changes.
 > - `provider-policy`: MUST immediately affect subsequent provider scheduling / refresh behavior. It does not require repaint or relayout unless the implementation explicitly triggers a refresh as part of applying the new policy.
 >
-> `compositionEnabled` is the canonical example of `runtime-transition`: when switching from enabled to disabled while an IME composition is active, the platform MUST cancel or otherwise safely terminate the active composition before the new setting takes effect.
+> `readOnly` is a `runtime-transition` setting: when switching to read-only while an IME composition is active, the platform MUST finish or cancel the active platform composition before blocking subsequent edit requests.
 >
 > `contentStartPadding` is platform-dependent by default. It MUST be `>= 0`. `0` is the neutral baseline, but platforms MAY choose a non-zero visual default.
 >
@@ -1326,16 +1323,19 @@ Each platform uses its own native bridge technology. This is expected and not co
 
 ### 13.2 Input Method Handling (MAY differ)
 
-IME integration is inherently platform-specific:
+IME integration is inherently platform-specific, but SweetEditor composition semantics MUST remain consistent across platforms. Platform implementations MAY use different system APIs, but MUST normalize native IME events to the core IME API. Only explicit platform composing / marked / preedit declarations create editor composition. Candidate context, surrounding text, cursor rectangles, keyboard language, or moving the cursor into a Latin word MUST NOT create editor composition.
 
-| Platform | IME API |
-|---|---|
-| Android | `InputConnection` |
-| iOS | `UITextInput` |
-| macOS | `NSTextInputClient` |
-| Swing | `InputMethodRequests` |
-| WinForms | `ImmAssociateContext` / TSF |
-| OHOS | IME Kit |
+| Platform | IME API | Composition source |
+|---|---|---|
+| Android | `InputConnection` | `setComposingText` / `setComposingRegion` |
+| iOS | `UITextInput` | marked text / `markedTextRange` |
+| macOS | `NSTextInputClient` | `setMarkedText` / marked range |
+| Swing | `InputMethodEvent` / `InputMethodRequests` | composed text segment from `InputMethodEvent` |
+| WinForms | TSF / IMM | TSF composition range or IMM composition string |
+| OHOS | IME Kit | platform composing / preedit callback or range |
+| Flutter | `TextInputClient` | valid `TextEditingValue.composing` range |
+
+Every platform MUST map native composition sources to `updateImePreedit(text, script)` or `markImeDocumentRange(range, script)`, native commits to `commitImeText(text, script)`, explicit replacements to `replaceImeText(range, text, script)`, and native finish/cancel events to `finishImePreedit()` / `cancelImePreedit()`. Ranges passed to core MUST use document coordinates, not a platform-specific surrounding-text window. Editable editors always support platform IME composition; read-only mode blocks text changes and MUST NOT be implemented as a composition enable / disable switch.
 
 ### 13.3 Optional Modules
 
