@@ -644,15 +644,26 @@ EDITOR_API const uint8_t* editor_ime_finish_preedit(intptr_t editor_handle, size
 /// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_cancel_preedit(intptr_t editor_handle, size_t* out_size);
 
-/// Mark a document range as an IME candidate target.
+/// Mark a document range that the platform IME explicitly reports as composing.
 /// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_mark_document_range(intptr_t editor_handle,
-                                                         size_t start_line,
-                                                         size_t start_column,
-                                                         size_t end_line,
-                                                         size_t end_column,
-                                                         int script_hint,
-                                                         size_t* out_size);
+                                                          size_t start_line,
+                                                          size_t start_column,
+                                                          size_t end_line,
+                                                          size_t end_column,
+                                                          int script_hint,
+                                                          size_t* out_size);
+
+/// Mark a document range with an explicit IME document range role.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+EDITOR_API const uint8_t* editor_ime_mark_document_range_with_role(intptr_t editor_handle,
+                                                                   size_t start_line,
+                                                                   size_t start_column,
+                                                                   size_t end_line,
+                                                                   size_t end_column,
+                                                                   int script_hint,
+                                                                   int role,
+                                                                   size_t* out_size);
 
 /// Report platform candidate replacement text.
 /// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
@@ -703,15 +714,27 @@ EDITOR_API const uint8_t* editor_ime_notify_cursor_changed(intptr_t editor_handl
                                                            size_t cursor_column,
                                                            size_t* out_size);
 
+/// Set the current IME keyboard script class.
+EDITOR_API void editor_ime_set_keyboard_script_class(intptr_t editor_handle, int script_class);
+
+/// Get the current IME keyboard script class.
+EDITOR_API int editor_ime_get_keyboard_script_class(intptr_t editor_handle);
+
+/// Refresh Core-owned IME composition for the current cursor.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+EDITOR_API const uint8_t* editor_ime_refresh_composition_at_cursor(intptr_t editor_handle,
+                                                                   int script_hint,
+                                                                   size_t* out_size);
+
 /// Get the current IME synchronization snapshot.
 /// @return ImeSyncSnapshot binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_get_ime_sync_snapshot(intptr_t editor_handle, size_t* out_size);
 
-/// Set whether IME composition is enabled
+/// Legacy no-op; IME composition is always supported when editable.
 /// @param enabled 1=enabled, 0=disabled
 EDITOR_API void editor_set_composition_enabled(intptr_t editor_handle, int enabled);
 
-/// Get whether IME composition is enabled
+/// Legacy compatibility query; returns true when the editor handle is valid.
 /// @return 1=enabled, 0=disabled
 EDITOR_API int editor_is_composition_enabled(intptr_t editor_handle);
 

@@ -299,9 +299,6 @@ public class SweetEditor extends View {
             if (result.hitTarget == null || result.hitTarget.type == EditorCore.HitTargetType.NONE) {
                 showSoftKeyboard();
             }
-            if (!result.hasSelection && isCompositionEnabled()) {
-                imeStateChanged |= restartInputConnectionCompositionAtCursorWord();
-            }
             resetCursorBlink();
         } else if (result.type == EditorCore.GestureType.SCALE) {
             // C++ core already applies scale during gesture handling; only sync platform-side measurer/paints here.
@@ -310,6 +307,9 @@ public class SweetEditor extends View {
         flush();
         if (imeStateChanged) {
             updateInputConnectionSelectionState();
+        }
+        if (result.type == EditorCore.GestureType.TAP) {
+            notifyImeViewClicked();
         }
         updateGestureAnimationState(result);
         if (ENABLE_PERF_LOG) {
@@ -367,6 +367,9 @@ public class SweetEditor extends View {
 
     @Override
     public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
+        if (mInputConnection != null) {
+            mInputConnection.closeConnection();
+        }
         SweetEditorInputConnection inputConnection = new SweetEditorInputConnection(this, true);
         inputConnection.configureEditorInfo(outAttrs);
         mInputConnection = inputConnection;
@@ -477,7 +480,10 @@ public class SweetEditor extends View {
         if (mContextMenuController != null) {
             mContextMenuController.dismiss();
         }
-        mInputConnection = null;
+        if (mInputConnection != null) {
+            mInputConnection.closeConnection();
+            mInputConnection = null;
+        }
     }
 
     @Override
@@ -933,11 +939,7 @@ public class SweetEditor extends View {
      * @param position target position
      */
     public void setCursorPosition(@NonNull TextPosition position) {
-        boolean wasComposing = mEditorCore.isComposing();
         mEditorCore.setCursorPosition(position);
-        if (wasComposing && isCompositionEnabled()) {
-            restartInputConnectionCompositionAtCursorWord();
-        }
         updateInputConnectionSelectionState();
         flush();
     }
@@ -1807,7 +1809,7 @@ public class SweetEditor extends View {
     }
 
     boolean isCompositionEnabled() {
-        return mSettings != null ? mSettings.isCompositionEnabled() : mEditorCore.isCompositionEnabled();
+        return true;
     }
 
     void dispatchImeTextChanged(@NonNull EditorCore.TextEditResult editResult) {
@@ -1822,12 +1824,18 @@ public class SweetEditor extends View {
 
     void restartInputConnection() {
         if (mInputConnection != null) {
+            mInputConnection.closeConnection();
             mInputConnection.restartImeInput();
+            mInputConnection = null;
         }
     }
 
-    private boolean restartInputConnectionCompositionAtCursorWord() {
-        return mInputConnection != null && mInputConnection.restartCompositionAtCursorWord();
+    @SuppressWarnings("deprecation")
+    private void notifyImeViewClicked() {
+        InputMethodManager imm = getInputMethodManager();
+        if (imm != null) {
+            imm.viewClicked(this);
+        }
     }
 
     // ==================== Event Dispatch (Internal) ====================
@@ -2105,9 +2113,8 @@ public class SweetEditor extends View {
             if (wasComposing && !mEditorCore.isComposing()
                     && result.cursorChanged
                     && !result.selectionChanged
-                    && isCompositionEnabled()
                     && isCompositionRestartNavigationKey(nativeKeyCode)) {
-                restartInputConnectionCompositionAtCursorWord();
+                updateInputConnectionSelectionState();
             }
             resetCursorBlink();
             flush();
@@ -2247,7 +2254,6 @@ public class SweetEditor extends View {
         mEditorCore.registerBatchTextStyles(mTheme.textStyles);
 
         mSettings = new EditorSettings(this);
-        mEditorCore.setCompositionEnabled(mSettings.isCompositionEnabled());
         mKeyMap = createDefaultKeyMap();
         mSettings.setContentStartPadding(DEFAULT_CONTENT_START_PADDING_DP * density);
         mSettings.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL));

@@ -89,8 +89,8 @@ namespace NS_SWEETEDITOR {
     bool backspace_unindent {true};
     /// When true, Tab inserts spaces up to the next tab stop instead of a literal '\t'
     bool insert_spaces {false};
-    /// Whether to allow visible IME preedit in the document
-    bool enable_composition {false};
+    /// Legacy compatibility flag; platform IME composition is always supported when editable.
+    bool enable_composition {true};
     /// Selection handle configuration
     HandleConfig handle;
     /// Scrollbar geometry configuration
@@ -197,8 +197,8 @@ namespace NS_SWEETEDITOR {
   struct ImeCompositionPolicy {
     bool allow_preedit {true};
     bool allow_document_range_preedit {true};
-    bool allow_latin_reconversion {true};
-    bool allow_non_latin_preedit {false};
+    bool allow_latin_reconversion {false};
+    bool allow_non_latin_preedit {true};
     bool keep_preedit_at_word_end {false};
     ImeContextPolicy enabled_context_policy {ImeContextPolicy::LIMITED_FOR_CANDIDATES};
     ImeContextPolicy disabled_context_policy {ImeContextPolicy::LIMITED_FOR_CANDIDATES};
@@ -210,7 +210,6 @@ namespace NS_SWEETEDITOR {
     bool preedit_replaces_document_range {false};
     TextRange preedit_replaced_range;
     U8String preedit_replaced_text;
-    bool visible_composition_exposed_to_platform {false};
     bool has_shadow_preedit {false};
     U8String shadow_preedit_text;
     ImeScriptClass shadow_script_class {ImeScriptClass::UNKNOWN};
@@ -224,6 +223,8 @@ namespace NS_SWEETEDITOR {
     bool candidate_exact_range_suppressed {false};
     bool plain_latin_input_lock {false};
     U8String plain_latin_preedit_text;
+    U8String document_range_end_plain_preedit_text;
+    U8String document_range_end_plain_inserted_text;
   };
 
   /// Snapshot that platform layers use to synchronize IME selection and marked ranges.
@@ -236,6 +237,12 @@ namespace NS_SWEETEDITOR {
     TextRange visible_composition_range;
     bool has_platform_marked_range {false};
     TextRange platform_marked_range;
+    U8String platform_text_window_text;
+    int32_t platform_text_window_start_offset {0};
+    int32_t platform_text_window_selection_start_offset {0};
+    int32_t platform_text_window_selection_end_offset {0};
+    int32_t platform_text_window_composing_start_offset {-1};
+    int32_t platform_text_window_composing_end_offset {-1};
     ImePreeditStorage preedit_storage {ImePreeditStorage::NONE};
     ImeContextPolicy context_policy {ImeContextPolicy::NONE};
     bool clear_platform_preedit {false};
@@ -256,6 +263,13 @@ namespace NS_SWEETEDITOR {
     NONE,
     PREEDIT_TEXT,
     DOCUMENT_RANGE,
+  };
+
+  enum struct ImeDocumentRangeRole {
+    NONE = 0,
+    /// Legacy role kept for ABI compatibility; platform IME must not use it.
+    WORD_TARGET = 1,
+    PLATFORM_PREFIX_PREEDIT = 2,
   };
 
   enum struct CompositionPhase {
@@ -284,6 +298,8 @@ namespace NS_SWEETEDITOR {
     bool visible {false};
     /// Source and ownership of the active composition
     CompositionKind kind {CompositionKind::NONE};
+    /// Semantic role for document range compositions
+    ImeDocumentRangeRole document_range_role {ImeDocumentRangeRole::NONE};
     /// Start position of composition (position in document)
     TextPosition start_position;
     /// Authoritative document range owned by this composition session

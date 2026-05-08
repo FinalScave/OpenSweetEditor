@@ -340,6 +340,12 @@ static void appendImeSyncSnapshot(std::vector<uint8_t>& buffer, const ImeSyncSna
   appendTextRange(buffer, snapshot.visible_composition_range);
   appendBool(buffer, snapshot.has_platform_marked_range);
   appendTextRange(buffer, snapshot.platform_marked_range);
+  appendU8String(buffer, snapshot.platform_text_window_text);
+  appendI32(buffer, snapshot.platform_text_window_start_offset);
+  appendI32(buffer, snapshot.platform_text_window_selection_start_offset);
+  appendI32(buffer, snapshot.platform_text_window_selection_end_offset);
+  appendI32(buffer, snapshot.platform_text_window_composing_start_offset);
+  appendI32(buffer, snapshot.platform_text_window_composing_end_offset);
   appendI32(buffer, static_cast<int32_t>(snapshot.preedit_storage));
   appendI32(buffer, static_cast<int32_t>(snapshot.context_policy));
   appendBool(buffer, snapshot.clear_platform_preedit);
@@ -347,14 +353,14 @@ static void appendImeSyncSnapshot(std::vector<uint8_t>& buffer, const ImeSyncSna
 
 static const uint8_t* imeSyncSnapshotToBinary(const ImeSyncSnapshot& snapshot, size_t* out_size) {
   std::vector<uint8_t> buffer;
-  buffer.reserve(sizeof(int32_t) * 23);
+  buffer.reserve(sizeof(int32_t) * 29 + snapshot.platform_text_window_text.size());
   appendImeSyncSnapshot(buffer, snapshot);
   return allocBinaryPayload(buffer.data(), buffer.size(), out_size);
 }
 
 static const uint8_t* imeActionResultToBinary(const ImeActionResult& result, size_t* out_size) {
   std::vector<uint8_t> buffer;
-  buffer.reserve(sizeof(int32_t) * 30);
+  buffer.reserve(sizeof(int32_t) * 36 + result.sync.platform_text_window_text.size());
   appendBool(buffer, result.handled);
   appendBool(buffer, result.content_changed);
   appendBool(buffer, result.cursor_changed);
@@ -1379,6 +1385,28 @@ const uint8_t* editor_ime_mark_document_range(intptr_t editor_handle,
       static_cast<ImeScriptClass>(script_hint)), out_size);
 }
 
+const uint8_t* editor_ime_mark_document_range_with_role(intptr_t editor_handle,
+                                                        size_t start_line,
+                                                        size_t start_column,
+                                                        size_t end_line,
+                                                        size_t end_column,
+                                                        int script_hint,
+                                                        int role,
+                                                        size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    if (out_size != nullptr) {
+      *out_size = 0;
+    }
+    return nullptr;
+  }
+
+  return imeActionResultToBinary(editor_core->markImeDocumentRange(
+      {{start_line, start_column}, {end_line, end_column}},
+      static_cast<ImeScriptClass>(script_hint),
+      static_cast<ImeDocumentRangeRole>(role)), out_size);
+}
+
 const uint8_t* editor_ime_replace_text(intptr_t editor_handle,
                                        size_t start_line,
                                        size_t start_column,
@@ -1486,6 +1514,36 @@ const uint8_t* editor_ime_notify_cursor_changed(intptr_t editor_handle,
 
   return imeActionResultToBinary(editor_core->notifyImeCursorChanged(
       {cursor_line, cursor_column}), out_size);
+}
+
+void editor_ime_set_keyboard_script_class(intptr_t editor_handle, int script_class) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    return;
+  }
+  editor_core->setImeKeyboardScriptClass(static_cast<ImeScriptClass>(script_class));
+}
+
+int editor_ime_get_keyboard_script_class(intptr_t editor_handle) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    return static_cast<int>(ImeScriptClass::UNKNOWN);
+  }
+  return static_cast<int>(editor_core->getImeKeyboardScriptClass());
+}
+
+const uint8_t* editor_ime_refresh_composition_at_cursor(intptr_t editor_handle,
+                                                        int script_hint,
+                                                        size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    if (out_size != nullptr) {
+      *out_size = 0;
+    }
+    return nullptr;
+  }
+  return imeActionResultToBinary(editor_core->refreshImeCompositionAtCursor(
+      static_cast<ImeScriptClass>(script_hint)), out_size);
 }
 
 const uint8_t* editor_get_ime_sync_snapshot(intptr_t editor_handle, size_t* out_size) {

@@ -22,9 +22,15 @@
             </intent-filter>
         </activity>
         <activity
-            android:title="Markdown"
-            android:name=".MarkwonActivity"
-            android:exported="false" />
+            android:title="IME Trace"
+            android:name=".ImeTraceActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".EditorTestActivity"
             android:exported="false" />

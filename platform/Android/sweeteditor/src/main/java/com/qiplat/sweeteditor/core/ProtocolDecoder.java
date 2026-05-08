@@ -2,6 +2,7 @@ package com.qiplat.sweeteditor.core;
 
 import androidx.annotation.Nullable;
 
+import com.qiplat.sweeteditor.core.foundation.IntRange;
 import com.qiplat.sweeteditor.core.visual.BracketHighlightRect;
 import com.qiplat.sweeteditor.core.visual.CompositionDecoration;
 import com.qiplat.sweeteditor.core.visual.Cursor;
@@ -308,6 +309,10 @@ final class ProtocolDecoder {
         TextRange visibleCompositionRange = readTextRange(data);
         boolean hasPlatformMarkedRange = data.getInt() != 0;
         TextRange platformMarkedRange = readTextRange(data);
+        String platformTextWindowText = readBufferString(data);
+        int platformTextWindowStartOffset = data.getInt();
+        IntRange platformTextWindowSelectionOffsets = new IntRange(data.getInt(), data.getInt());
+        IntRange platformTextWindowComposingOffsets = new IntRange(data.getInt(), data.getInt());
         int preeditStorage = data.getInt();
         int contextPolicy = data.getInt();
         boolean clearPlatformPreedit = data.getInt() != 0;
@@ -317,6 +322,10 @@ final class ProtocolDecoder {
                 hasComposingSession,
                 hasVisibleCompositionRange ? visibleCompositionRange : null,
                 hasPlatformMarkedRange ? platformMarkedRange : null,
+                platformTextWindowText,
+                platformTextWindowStartOffset,
+                platformTextWindowSelectionOffsets,
+                platformTextWindowComposingOffsets,
                 preeditStorage,
                 contextPolicy,
                 clearPlatformPreedit);

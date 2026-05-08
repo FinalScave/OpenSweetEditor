@@ -11,6 +11,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.inputmethod.BaseInputConnection;
+import android.view.inputmethod.CompletionInfo;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.InputMethodSubtype;
@@ -35,18 +36,36 @@ import java.util.Locale;
 public class SweetEditorInputConnection extends BaseInputConnection {
     private static final String TAG = "SweetEditorIME";
     private static final boolean TRACE_IME = false;
-    private static final int MAX_IME_TEXT_LENGTH = 512;
-    private static final int LIMITED_IME_CONTEXT_LENGTH = 64;
+    private static final int MAX_IME_TEXT_LENGTH = 32768;
+    private static final int LIMITED_IME_CONTEXT_LENGTH = 2048;
+    private static final int INITIAL_SURROUNDING_TEXT_LENGTH = 2048;
+    private static final int IME_TEXT_WINDOW_HISTORY_SIZE = 8;
     private static int sNextConnectionId = 1;
 
     private final SweetEditor mEditor;
     private final SpannableStringBuilder mEditable;
     private final int mConnectionId;
-    private int mPendingFallbackDeleteBeforeLength = 0;
+    private boolean mDocumentMirrorActive = false;
+    private boolean mClosed = false;
+    private int mBatchEditDepth = 0;
+    private boolean mDeferredEditorFlush = false;
+    private boolean mDeferredSelectionUpdate = false;
     private int mLastImeSelectionStart = Integer.MIN_VALUE;
     private int mLastImeSelectionEnd = Integer.MIN_VALUE;
     private int mLastImeComposingStart = Integer.MIN_VALUE;
     private int mLastImeComposingEnd = Integer.MIN_VALUE;
+    private final ImeTextWindow[] mImeTextWindows = new ImeTextWindow[IME_TEXT_WINDOW_HISTORY_SIZE];
+    private int mImeTextWindowWriteIndex = 0;
+
+    private static class InitialSurroundingText {
+        final CharSequence text;
+        final int offset;
+
+        InitialSurroundingText(CharSequence text, int offset) {
+            this.text = text;
+            this.offset = offset;
+        }
+    }
 
     public SweetEditorInputConnection(SweetEditor editor, boolean fullEditor) {
         super(editor, fullEditor);
@@ -57,20 +76,101 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         trace("create");
     }
 
+    @Override
+    public void closeConnection() {
+        mClosed = true;
+        clearEditableMirror();
+        clearImeSelectionCache();
+        clearImeTextWindows();
+        trace("close");
+    }
+
+    private boolean isActive() {
+        return !mClosed;
+    }
+
     void configureEditorInfo(EditorInfo outAttrs) {
         clearImeSelectionCache();
-        int inputType = EditorInfo.TYPE_CLASS_TEXT | EditorInfo.TYPE_TEXT_FLAG_MULTI_LINE;
+        clearImeTextWindows();
+        EditorCore.ImeSyncSnapshot snapshot = mEditor.getEditorCore().getImeSyncSnapshot();
+        syncPlatformTextInputState(snapshot);
+        int contextPolicy = snapshot.contextPolicy;
+        int inputType = EditorInfo.TYPE_CLASS_TEXT
+                | EditorInfo.TYPE_TEXT_FLAG_MULTI_LINE
+                | EditorInfo.TYPE_TEXT_FLAG_AUTO_CORRECT;
         int imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI | EditorInfo.IME_ACTION_NONE;
         outAttrs.inputType = inputType;
         outAttrs.imeOptions = imeOptions;
         IntRange selectionOffsets = getImeSelectionOffsets();
         outAttrs.initialSelStart = selectionOffsets.start;
         outAttrs.initialSelEnd = selectionOffsets.end;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                && shouldExposeDocumentContext(contextPolicy)) {
+            InitialSurroundingText initialText = buildInitialSurroundingText(snapshot, contextPolicy);
+            if (initialText != null) {
+                outAttrs.setInitialSurroundingSubText(initialText.text, initialText.offset);
+            }
+        }
+    }
+
+    private static class ImeTextWindow {
+        final int startOffset;
+        final int endOffset;
+        final int selectionStartOffset;
+        final int selectionEndOffset;
+        final int composingStartOffset;
+        final int composingEndOffset;
+        final int documentLength;
+
+        ImeTextWindow(int startOffset,
+                      int endOffset,
+                      int selectionStartOffset,
+                      int selectionEndOffset,
+                      int composingStartOffset,
+                      int composingEndOffset,
+                      int documentLength) {
+            this.startOffset = startOffset;
+            this.endOffset = endOffset;
+            this.selectionStartOffset = selectionStartOffset;
+            this.selectionEndOffset = selectionEndOffset;
+            this.composingStartOffset = composingStartOffset;
+            this.composingEndOffset = composingEndOffset;
+            this.documentLength = documentLength;
+        }
+
+        int length() {
+            return Math.max(0, endOffset - startOffset);
+        }
     }
 
     @Override
     public Editable getEditable() {
         return mEditable;
+    }
+
+    @Override
+    public boolean beginBatchEdit() {
+        if (!isActive()) {
+            return false;
+        }
+        mBatchEditDepth++;
+        trace("beginBatchEdit depth=" + mBatchEditDepth);
+        return true;
+    }
+
+    @Override
+    public boolean endBatchEdit() {
+        if (!isActive()) {
+            return false;
+        }
+        if (mBatchEditDepth > 0) {
+            mBatchEditDepth--;
+        }
+        trace("endBatchEdit depth=" + mBatchEditDepth);
+        if (mBatchEditDepth == 0) {
+            flushDeferredImeWork();
+        }
+        return true;
     }
 
     @Override
@@ -86,47 +186,91 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     }
 
     @Override
+    public boolean setSelection(int start, int end) {
+        trace("before setSelection start=" + start + " end=" + end);
+        if (!isActive()) {
+            return false;
+        }
+        TextRange range = resolveAbsoluteImeTextRange(start, end);
+        if (range == null) {
+            return false;
+        }
+        EditorCore.ImeActionResult result = mEditor.getEditorCore().notifyImeSelectionChanged(range);
+        dispatchImeActionResult(result);
+        flushEditorAfterImeAction();
+        updateImeSelectionState();
+        trace("after setSelection");
+        return result.handled;
+    }
+
+    @Override
     public CharSequence getTextBeforeCursor(int n, int flags) {
-        int contextPolicy = getImeContextPolicy();
+        EditorCore.ImeSyncSnapshot snapshot = mEditor.getEditorCore().getImeSyncSnapshot();
+        syncPlatformTextInputState(snapshot);
+        int contextPolicy = snapshot.contextPolicy;
         if (!shouldExposeDocumentContext(contextPolicy)) {
             return "";
         }
-        if (shouldExposeShadowText()) {
-            return super.getTextBeforeCursor(limitContextLength(n, contextPolicy), flags);
+        Document doc = mEditor.getDocument();
+        if (doc == null) {
+            return "";
         }
-
-        return getDocumentTextBeforeCursor(limitContextLength(n, contextPolicy), contextPolicy);
+        String documentText = doc.getText();
+        IntRange selection = getImeSelectionOffsets(snapshot);
+        int selectionStart = clampEditableOffset(selection.start, documentText.length());
+        int selectionEnd = clampEditableOffset(selection.end, documentText.length());
+        int before = limitContextLength(n, contextPolicy);
+        int start = Math.max(0, selectionStart - before);
+        rememberSnapshotTextWindow(snapshot, documentText.length());
+        rememberImeTextWindow(start, selectionStart, selectionStart, selectionEnd, documentText.length());
+        return applyComposingSpan(documentText.substring(start, selectionStart), flags, start);
     }
 
     @Override
     public CharSequence getTextAfterCursor(int n, int flags) {
-        int contextPolicy = getImeContextPolicy();
+        EditorCore.ImeSyncSnapshot snapshot = mEditor.getEditorCore().getImeSyncSnapshot();
+        syncPlatformTextInputState(snapshot);
+        int contextPolicy = snapshot.contextPolicy;
         if (!shouldExposeDocumentContext(contextPolicy)) {
             return "";
         }
-        if (shouldExposeShadowText()) {
-            return super.getTextAfterCursor(limitContextLength(n, contextPolicy), flags);
+        Document doc = mEditor.getDocument();
+        if (doc == null) {
+            return "";
         }
-
-        return getDocumentTextAfterCursor(limitContextLength(n, contextPolicy), contextPolicy);
+        String documentText = doc.getText();
+        IntRange selection = getImeSelectionOffsets(snapshot);
+        int selectionStart = clampEditableOffset(selection.start, documentText.length());
+        int selectionEnd = clampEditableOffset(selection.end, documentText.length());
+        int after = limitContextLength(n, contextPolicy);
+        int end = Math.min(documentText.length(), selectionEnd + after);
+        rememberSnapshotTextWindow(snapshot, documentText.length());
+        rememberImeTextWindow(selectionEnd, end, selectionStart, selectionEnd, documentText.length());
+        return applyComposingSpan(documentText.substring(selectionEnd, end), flags, selectionEnd);
     }
 
     @Override
     public CharSequence getSelectedText(int flags) {
-        int contextPolicy = getImeContextPolicy();
+        EditorCore.ImeSyncSnapshot snapshot = mEditor.getEditorCore().getImeSyncSnapshot();
+        syncPlatformTextInputState(snapshot);
+        int contextPolicy = snapshot.contextPolicy;
         if (!shouldExposeDocumentContext(contextPolicy)) {
             return "";
         }
-        if (shouldExposeShadowText()) {
-            CharSequence selected = super.getSelectedText(flags);
-            return selected != null ? selected : "";
-        }
-        if (mEditor.getSelection() == null) {
+        Document doc = mEditor.getDocument();
+        if (doc == null) {
             return "";
         }
-
-        String selected = mEditor.getSelectedText();
-        return selected != null ? selected : "";
+        String documentText = doc.getText();
+        IntRange selection = getImeSelectionOffsets(snapshot);
+        int selectionStart = clampEditableOffset(selection.start, documentText.length());
+        int selectionEnd = clampEditableOffset(selection.end, documentText.length());
+        if (selectionStart == selectionEnd) {
+            return "";
+        }
+        rememberSnapshotTextWindow(snapshot, documentText.length());
+        rememberImeTextWindow(selectionStart, selectionEnd, selectionStart, selectionEnd, documentText.length());
+        return applyComposingSpan(documentText.substring(selectionStart, selectionEnd), flags, selectionStart);
     }
 
     @Override
@@ -140,79 +284,54 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         if (!shouldExposeDocumentContext(contextPolicy)) {
             return new SurroundingText("", 0, 0, -1);
         }
-        if (shouldExposeShadowText()) {
-            return super.getSurroundingText(
-                    limitContextLength(beforeLength, contextPolicy),
-                    limitContextLength(afterLength, contextPolicy),
-                    flags);
-        }
-
+        EditorCore.ImeSyncSnapshot snapshot = mEditor.getEditorCore().getImeSyncSnapshot();
+        syncPlatformTextInputState(snapshot);
         Document doc = mEditor.getDocument();
         if (doc == null) {
             return new SurroundingText("", 0, 0, -1);
         }
-        EditorCore.ImeSyncSnapshot snapshot = mEditor.getEditorCore().getImeSyncSnapshot();
-        TextPosition startPosition = snapshot.cursor;
-        TextPosition endPosition = snapshot.cursor;
-        if (snapshot.selection != null && snapshot.selection.start.line == snapshot.selection.end.line) {
-            startPosition = comparePosition(snapshot.selection.start, snapshot.selection.end) <= 0
-                    ? snapshot.selection.start
-                    : snapshot.selection.end;
-            endPosition = comparePosition(snapshot.selection.start, snapshot.selection.end) <= 0
-                    ? snapshot.selection.end
-                    : snapshot.selection.start;
-        }
-        if (startPosition.line != endPosition.line) {
-            startPosition = snapshot.cursor;
-            endPosition = snapshot.cursor;
-        }
-        String lineText = doc.getLineText(startPosition.line);
-        if (lineText == null) {
-            lineText = "";
-        }
-        int lineLength = lineText.length();
-        int selectionStart = Math.max(0, Math.min(startPosition.column, lineLength));
-        int selectionEnd = Math.max(0, Math.min(endPosition.column, lineLength));
+        String documentText = doc.getText();
+        IntRange selection = getImeSelectionOffsets();
+        int selectionStart = Math.max(0, Math.min(selection.start, documentText.length()));
+        int selectionEnd = Math.max(0, Math.min(selection.end, documentText.length()));
         int before = limitContextLength(beforeLength, contextPolicy);
         int after = limitContextLength(afterLength, contextPolicy);
         int start = Math.max(0, selectionStart - before);
-        int end = Math.min(lineLength, selectionEnd + after);
-        int documentOffset = doc.getCharIndexFromPosition(new TextPosition(startPosition.line, start));
-        CharSequence surrounding = applyComposingSpan(lineText.substring(start, end), flags, documentOffset);
+        int end = Math.min(documentText.length(), selectionEnd + after);
+        String surroundingText = documentText.substring(start, end);
+        IntRange localSelection = new IntRange(selectionStart - start, selectionEnd - start);
+        CharSequence surrounding = applyComposingSpan(surroundingText, flags, start);
+        rememberSnapshotTextWindow(snapshot, documentText.length());
+        rememberImeTextWindow(start, end, selectionStart, selectionEnd, documentText.length());
         return new SurroundingText(surrounding,
-                selectionStart - start,
-                selectionEnd - start,
-                documentOffset);
+                localSelection.start,
+                localSelection.end,
+                start);
     }
 
     @Override
     public boolean setComposingText(CharSequence text, int newCursorPosition) {
         trace("before setComposingText text=" + quote(text) + " newCursor=" + newCursorPosition);
-        mPendingFallbackDeleteBeforeLength = 0;
-        String textStr = text != null ? text.toString() : "";
-        if (!mEditor.isCompositionEnabled()) {
-            if (text != null && text.length() > 0) {
-                mEditable.replace(0, mEditable.length(), text);
-                BaseInputConnection.setComposingSpans(mEditable);
-                Selection.setSelection(mEditable, mEditable.length());
-            } else {
-                clearShadowEditable();
-            }
-            trace("after setComposingText disabled");
-            return true;
+        if (!isActive()) {
+            return false;
         }
-        clearShadowEditable();
-        updateComposition(textStr, resolveImeScriptHint());
+        String textStr = text != null ? text.toString() : "";
+        updateComposition(textStr, resolveAndReportImeScriptHint(), newCursorPosition);
         trace("after setComposingText text=" + quote(textStr));
         return true;
     }
 
     @Override
+    @TargetApi(Build.VERSION_CODES.TIRAMISU)
+    public boolean setComposingText(CharSequence text, int newCursorPosition, TextAttribute textAttribute) {
+        return setComposingText(text, newCursorPosition);
+    }
+
+    @Override
     public boolean setComposingRegion(int start, int end) {
         trace("before setComposingRegion start=" + start + " end=" + end);
-        if (!mEditor.isCompositionEnabled()) {
-            trace("after setComposingRegion disabled");
-            return true;
+        if (!isActive()) {
+            return false;
         }
         markComposingRegion(start, end);
         trace("after setComposingRegion start=" + start + " end=" + end);
@@ -220,27 +339,30 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     }
 
     @Override
+    @TargetApi(Build.VERSION_CODES.TIRAMISU)
+    public boolean setComposingRegion(int start, int end, TextAttribute textAttribute) {
+        return setComposingRegion(start, end);
+    }
+
+    @Override
     public boolean commitText(CharSequence text, int newCursorPosition) {
         trace("before commitText text=" + quote(text) + " newCursor=" + newCursorPosition);
+        if (!isActive()) {
+            return false;
+        }
         String textStr = text != null ? text.toString() : "";
-        if (textStr.isEmpty() && deleteImeSelection("commitText empty")) {
+        if (textStr.isEmpty() && !hasImeComposingSession() && deleteImeSelection("commitText empty")) {
             return true;
         }
-        if (!mEditor.isCompositionEnabled()) {
-            int pendingCleanupLength = mEditable.length();
-            clearShadowEditable();
-            if (!textStr.isEmpty()) {
-                commitComposition(textStr, resolveImeScriptHint());
-            }
-            mPendingFallbackDeleteBeforeLength = Math.max(mPendingFallbackDeleteBeforeLength, pendingCleanupLength);
-            updateImeSelectionState();
-            trace("after commitText disabled text=" + quote(textStr));
-        } else {
-            clearShadowEditable();
-            commitComposition(textStr, resolveImeScriptHint());
-            trace("after commitText text=" + quote(textStr));
-        }
+        commitComposition(textStr, resolveAndReportImeScriptHint(), newCursorPosition);
+        trace("after commitText text=" + quote(textStr));
         return true;
+    }
+
+    @Override
+    @TargetApi(Build.VERSION_CODES.TIRAMISU)
+    public boolean commitText(CharSequence text, int newCursorPosition, TextAttribute textAttribute) {
+        return commitText(text, newCursorPosition);
     }
 
     @Override
@@ -249,21 +371,24 @@ public class SweetEditorInputConnection extends BaseInputConnection {
                                int newCursorPosition, TextAttribute textAttribute) {
         trace("before replaceText start=" + start + " end=" + end
                 + " text=" + quote(text) + " newCursor=" + newCursorPosition);
+        if (!isActive()) {
+            return false;
+        }
         Document doc = mEditor.getDocument();
         if (doc == null || start < 0 || end < 0) {
             return false;
         }
-        int rangeStart = Math.min(start, end);
-        int rangeEnd = Math.max(start, end);
-        TextRange range = new TextRange(
-                doc.getPositionFromCharIndex(rangeStart),
-                doc.getPositionFromCharIndex(rangeEnd));
+        TextRange range = resolveImeTextRange(start, end);
+        if (range == null) {
+            return false;
+        }
         EditorCore.ImeActionResult result = mEditor.getEditorCore().replaceImeText(
                 range,
                 text != null ? text.toString() : "",
-                resolveImeScriptHint());
+                resolveAndReportImeScriptHint());
         dispatchImeActionResult(result);
-        mEditor.flush();
+        applyImeCursorPosition(newCursorPosition, text != null ? text.toString() : "", result);
+        flushEditorAfterImeAction();
         updateImeSelectionState();
         trace("after replaceText result=" + result.handled);
         return result.handled;
@@ -272,19 +397,25 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     @Override
     public boolean finishComposingText() {
         trace("before finishComposingText");
-        if (mEditor.isCompositionEnabled() && hasImeComposingSession()) {
+        if (!isActive()) {
+            return false;
+        }
+        if (hasImeComposingSession()) {
             finishComposition();
             trace("after finishComposingText session");
             return true;
         }
-
-        if (!mEditor.isCompositionEnabled() && mEditable.length() > 0) {
-            mPendingFallbackDeleteBeforeLength = mEditable.length();
-            clearShadowEditable();
-            updateImeSelectionState();
-            trace("after finishComposingText disabled cleanup");
-        }
         trace("after finishComposingText no-op");
+        return true;
+    }
+
+    @Override
+    public boolean commitCompletion(CompletionInfo text) {
+        trace("before commitCompletion text=" + quote(text != null ? text.getText() : null));
+        if (!isActive()) {
+            return false;
+        }
+        trace("after commitCompletion");
         return true;
     }
 
@@ -307,6 +438,9 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     @Override
     public boolean deleteSurroundingText(int beforeLength, int afterLength) {
         trace("before deleteSurroundingText before=" + beforeLength + " after=" + afterLength);
+        if (!isActive()) {
+            return false;
+        }
         return deleteSurroundingTextInternal(beforeLength, afterLength,
                 EditorCore.ImeTextUnit.UTF16_CODE_UNIT, "deleteSurroundingText");
     }
@@ -314,43 +448,14 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     @Override
     public boolean deleteSurroundingTextInCodePoints(int beforeLength, int afterLength) {
         trace("before deleteSurroundingTextInCodePoints before=" + beforeLength + " after=" + afterLength);
+        if (!isActive()) {
+            return false;
+        }
         return deleteSurroundingTextInternal(beforeLength, afterLength,
                 EditorCore.ImeTextUnit.CODE_POINT, "deleteSurroundingTextInCodePoints");
     }
 
     private boolean deleteSurroundingTextInternal(int beforeLength, int afterLength, int textUnit, String source) {
-        if (!mEditor.isCompositionEnabled()) {
-            if (deleteImeSelection(source)) {
-                return true;
-            }
-            if (mEditable.length() > 0) {
-                boolean result = textUnit == EditorCore.ImeTextUnit.CODE_POINT
-                        ? super.deleteSurroundingTextInCodePoints(beforeLength, afterLength)
-                        : super.deleteSurroundingText(beforeLength, afterLength);
-                trace("after " + source + " disabled shadow result=" + result);
-                return result;
-            }
-            int remainingBefore = consumePendingFallbackDelete(beforeLength);
-            if (remainingBefore == 0 && afterLength == 0) {
-                trace("after " + source + " disabled consumed fallback");
-                return true;
-            }
-            mPendingFallbackDeleteBeforeLength = 0;
-            if (remainingBefore == 1 && afterLength == 0 && hasCollapsedImeSelection()) {
-                deleteImeBackward(textUnit);
-                trace("after " + source + " disabled backspace fallback");
-                return true;
-            }
-            if (remainingBefore == 0 && afterLength == 1 && hasCollapsedImeSelection()) {
-                deleteImeForward(textUnit);
-                trace("after " + source + " disabled forward fallback");
-                return true;
-            }
-            boolean result = deleteImeSurroundingText(remainingBefore, afterLength, textUnit);
-            trace("after " + source + " disabled direct result=" + result);
-            return result;
-        }
-
         clearShadowEditable();
         boolean result = deleteImeSurroundingText(beforeLength, afterLength, textUnit);
         trace("after " + source + " before=" + beforeLength + " after=" + afterLength
@@ -360,6 +465,9 @@ public class SweetEditorInputConnection extends BaseInputConnection {
 
     @Override
     public boolean performContextMenuAction(int id) {
+        if (!isActive()) {
+            return false;
+        }
         if (id == android.R.id.selectAll) {
             mEditor.selectAll();
             return true;
@@ -376,15 +484,18 @@ public class SweetEditorInputConnection extends BaseInputConnection {
 
     @Override
     public boolean sendKeyEvent(KeyEvent event) {
+        if (!isActive()) {
+            return false;
+        }
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             int keyCode = event.getKeyCode();
-            if (mEditor.isCompositionEnabled() && keyCode == KeyEvent.KEYCODE_DEL) {
+            if (keyCode == KeyEvent.KEYCODE_DEL) {
                 clearShadowEditable();
                 deleteImeBackward();
                 trace("after sendKeyEvent delete backward");
                 return true;
             }
-            if (mEditor.isCompositionEnabled() && keyCode == KeyEvent.KEYCODE_FORWARD_DEL) {
+            if (keyCode == KeyEvent.KEYCODE_FORWARD_DEL) {
                 clearShadowEditable();
                 deleteImeForward();
                 trace("after sendKeyEvent delete forward");
@@ -402,6 +513,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     private boolean hasImeComposingSession() {
         EditorCore.ImeSyncSnapshot snapshot = mEditor.getEditorCore().getImeSyncSnapshot();
         return snapshot.platformMarkedRange != null
+                || snapshot.visibleCompositionRange != null
                 || snapshot.preeditStorage == EditorCore.ImePreeditStorage.SHADOW_ONLY
                 || snapshot.preeditStorage == EditorCore.ImePreeditStorage.HIDDEN_AWAITING_COMMIT;
     }
@@ -409,8 +521,73 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     private void dispatchImeActionResult(EditorCore.ImeActionResult result) {
         mEditor.dispatchImeTextChanged(result.editResult);
         if (result.sync.clearPlatformPreedit) {
-            clearShadowEditable();
+            BaseInputConnection.removeComposingSpans(mEditable);
         }
+        syncPlatformTextInputState(result.sync);
+    }
+
+    private void flushEditorAfterImeAction() {
+        if (mBatchEditDepth > 0) {
+            mDeferredEditorFlush = true;
+            return;
+        }
+        mEditor.flush();
+    }
+
+    private void flushDeferredImeWork() {
+        if (mDeferredEditorFlush) {
+            mDeferredEditorFlush = false;
+            mEditor.flush();
+        }
+        if (mDeferredSelectionUpdate) {
+            mDeferredSelectionUpdate = false;
+            updateImeSelectionState();
+        }
+    }
+
+    private void applyImeCursorPosition(int newCursorPosition,
+                                        String text,
+                                        EditorCore.ImeActionResult result) {
+        if (newCursorPosition == 1) {
+            return;
+        }
+        Document doc = mEditor.getDocument();
+        if (doc == null) {
+            return;
+        }
+        IntRange editRange = resolveImeCursorEditRange(text, result);
+        if (editRange == null) {
+            return;
+        }
+        int targetOffset = newCursorPosition > 0
+                ? editRange.end + newCursorPosition - 1
+                : editRange.start + newCursorPosition;
+        targetOffset = Math.max(0, Math.min(targetOffset, doc.getText().length()));
+        TextPosition target = doc.getPositionFromCharIndex(targetOffset);
+        EditorCore.ImeActionResult selectionResult = mEditor.getEditorCore().notifyImeCursorChanged(target);
+        dispatchImeActionResult(selectionResult);
+    }
+
+    private IntRange resolveImeCursorEditRange(String text, EditorCore.ImeActionResult result) {
+        Document doc = mEditor.getDocument();
+        if (doc == null) {
+            return null;
+        }
+        TextRange range = result.sync.platformMarkedRange != null
+                ? result.sync.platformMarkedRange
+                : result.sync.visibleCompositionRange;
+        if (range != null) {
+            int start = doc.getCharIndexFromPosition(range.start);
+            int end = doc.getCharIndexFromPosition(range.end);
+            return start <= end ? new IntRange(start, end) : new IntRange(end, start);
+        }
+        if (result.editResult.changed && !result.editResult.changes.isEmpty()) {
+            TextRange changedRange = result.editResult.changes.get(0).range;
+            int start = doc.getCharIndexFromPosition(changedRange.start);
+            return new IntRange(start, start + (text != null ? text.length() : 0));
+        }
+        int cursor = doc.getCharIndexFromPosition(result.sync.cursor);
+        return new IntRange(cursor, cursor);
     }
 
     private TextRange markComposingRegion(int startOffset, int endOffset) {
@@ -420,7 +597,9 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         }
         TextRange range = resolveImeComposingRegion(startOffset, endOffset);
         if (range == null || isCollapsed(range)) {
-            updateImeSelectionState();
+            if (hasImeComposingSession()) {
+                finishComposition(false);
+            }
             return null;
         }
         if (isCurrentComposingRange(range)) {
@@ -428,35 +607,146 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         }
         EditorCore.ImeActionResult result = mEditor.getEditorCore().markImeDocumentRange(
                 range,
-                resolveImeScriptHint());
+                resolveAndReportImeScriptHint(),
+                EditorCore.ImeDocumentRangeRole.PLATFORM_PREFIX_PREEDIT);
         dispatchImeActionResult(result);
-        mEditor.flush();
-        updateImeSelectionState();
+        flushEditorAfterImeAction();
         return copyRange(range);
     }
 
     private TextRange resolveImeComposingRegion(int startOffset, int endOffset) {
-        int start = Math.max(0, Math.min(startOffset, endOffset));
-        int end = Math.max(0, Math.max(startOffset, endOffset));
-        Document doc = mEditor.getDocument();
-        if (doc == null || start == end) {
+        TextRange range = resolveImeTextRange(startOffset, endOffset);
+        if (range == null || isCollapsed(range)) {
             return null;
         }
+        return range;
+    }
 
-        TextPosition cursor = mEditor.getCursorPosition();
-        String lineText = doc.getLineText(cursor.line);
-        int lineLength = lineText != null ? lineText.length() : 0;
-        if (start <= lineLength && end <= lineLength) {
-            TextRange lineRange = new TextRange(
-                    new TextPosition(cursor.line, start),
-                    new TextPosition(cursor.line, end));
-            return containsPosition(lineRange, cursor) ? lineRange : null;
+    private TextRange resolveAbsoluteImeTextRange(int startOffset, int endOffset) {
+        return resolveImeTextRange(startOffset, endOffset, false);
+    }
+
+    private TextRange resolveImeTextRange(int startOffset, int endOffset) {
+        return resolveImeTextRange(startOffset, endOffset, true);
+    }
+
+    private TextRange resolveImeTextRange(int startOffset, int endOffset, boolean allowWindowOffsets) {
+        Document doc = mEditor.getDocument();
+        if (doc == null) {
+            return null;
         }
+        int documentLength = doc.getText().length();
+        IntRange offsets = resolveImeTextOffsets(startOffset, endOffset, documentLength, allowWindowOffsets);
+        if (offsets == null) {
+            return null;
+        }
+        return new TextRange(
+                doc.getPositionFromCharIndex(offsets.start),
+                doc.getPositionFromCharIndex(offsets.end));
+    }
 
-        TextRange documentRange = new TextRange(
-                doc.getPositionFromCharIndex(start),
-                doc.getPositionFromCharIndex(end));
-        return containsPosition(documentRange, cursor) ? documentRange : null;
+    private IntRange resolveImeTextOffsets(int startOffset,
+                                           int endOffset,
+                                           int documentLength,
+                                           boolean allowWindowOffsets) {
+        int rawStart = Math.min(startOffset, endOffset);
+        int rawEnd = Math.max(startOffset, endOffset);
+        IntRange absolute = new IntRange(
+                clampEditableOffset(rawStart, documentLength),
+                clampEditableOffset(rawEnd, documentLength));
+        if (!allowWindowOffsets) {
+            return absolute;
+        }
+        IntRange window = resolveWindowRelativeImeOffsets(rawStart, rawEnd, documentLength);
+        return shouldPreferWindowOffsets(absolute, window) ? window : absolute;
+    }
+
+    private IntRange resolveWindowRelativeImeOffsets(int rawStart, int rawEnd, int documentLength) {
+        if (rawStart < 0 || rawEnd < 0) {
+            return null;
+        }
+        IntRange best = null;
+        int bestScore = Integer.MAX_VALUE;
+        for (int i = 0; i < IME_TEXT_WINDOW_HISTORY_SIZE; i++) {
+            int index = (mImeTextWindowWriteIndex - 1 - i + IME_TEXT_WINDOW_HISTORY_SIZE)
+                    % IME_TEXT_WINDOW_HISTORY_SIZE;
+            ImeTextWindow window = mImeTextWindows[index];
+            if (window == null || window.documentLength != documentLength) {
+                continue;
+            }
+            int windowLength = window.length();
+            if (rawStart > windowLength || rawEnd > windowLength) {
+                continue;
+            }
+            if (!rawRangeTouchesWindowTarget(rawStart, rawEnd, window)) {
+                continue;
+            }
+            int translatedStart = window.startOffset + rawStart;
+            int translatedEnd = window.startOffset + rawEnd;
+            if (translatedStart < 0 || translatedEnd < 0
+                    || translatedStart > documentLength || translatedEnd > documentLength) {
+                continue;
+            }
+            int score = distanceToWindowTarget(rawStart, rawEnd, window) * IME_TEXT_WINDOW_HISTORY_SIZE + i;
+            if (score < bestScore) {
+                bestScore = score;
+                best = new IntRange(translatedStart, translatedEnd);
+            }
+        }
+        return best;
+    }
+
+    private boolean shouldPreferWindowOffsets(IntRange absolute, IntRange window) {
+        if (window == null || rangesEqual(absolute, window)) {
+            return false;
+        }
+        IntRange composing = getImeComposingOffsets();
+        if (rangesEqual(absolute, composing)) {
+            return false;
+        }
+        if (rangesEqual(window, composing)) {
+            return true;
+        }
+        IntRange selection = getImeSelectionOffsets();
+        int absoluteDistance = distanceToDocumentTarget(absolute, selection);
+        int windowDistance = distanceToDocumentTarget(window, selection);
+        return windowDistance < absoluteDistance;
+    }
+
+    private boolean rawRangeTouchesWindowTarget(int rawStart, int rawEnd, ImeTextWindow window) {
+        if (rangesTouch(rawStart, rawEnd, window.selectionStartOffset, window.selectionEndOffset)) {
+            return true;
+        }
+        return window.composingStartOffset >= 0
+                && window.composingEndOffset >= 0
+                && rangesTouch(rawStart, rawEnd, window.composingStartOffset, window.composingEndOffset);
+    }
+
+    private int distanceToWindowTarget(int rawStart, int rawEnd, ImeTextWindow window) {
+        int selectionDistance = distanceToOffsets(rawStart, rawEnd,
+                window.selectionStartOffset,
+                window.selectionEndOffset);
+        if (window.composingStartOffset < 0 || window.composingEndOffset < 0) {
+            return selectionDistance;
+        }
+        return Math.min(selectionDistance,
+                distanceToOffsets(rawStart, rawEnd,
+                        window.composingStartOffset,
+                        window.composingEndOffset));
+    }
+
+    private int distanceToDocumentTarget(IntRange range, IntRange target) {
+        return distanceToOffsets(range.start, range.end, target.start, target.end);
+    }
+
+    private static int distanceToOffsets(int start, int end, int targetStart, int targetEnd) {
+        if (rangesTouch(start, end, targetStart, targetEnd)) {
+            return 0;
+        }
+        if (end < targetStart) {
+            return targetStart - end;
+        }
+        return start - targetEnd;
     }
 
     private boolean isCurrentComposingRange(TextRange range) {
@@ -468,37 +758,53 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     }
 
     private void updateComposition(String text) {
-        updateComposition(text, EditorCore.ImeScriptClass.UNKNOWN);
+        updateComposition(text, EditorCore.ImeScriptClass.UNKNOWN, 1);
     }
 
     private void updateComposition(String text, int scriptHint) {
+        updateComposition(text, scriptHint, 1);
+    }
+
+    private void updateComposition(String text, int scriptHint, int newCursorPosition) {
         long t0 = System.nanoTime();
         EditorCore.ImeActionResult result = mEditor.getEditorCore().updateImePreedit(text, scriptHint);
         dispatchImeActionResult(result);
-        mEditor.flush();
+        applyImeCursorPosition(newCursorPosition, text, result);
+        flushEditorAfterImeAction();
         updateImeSelectionState();
         mEditor.logInputPerf(t0, "ime-update");
     }
 
     private void commitComposition(String text) {
-        commitComposition(text, EditorCore.ImeScriptClass.UNKNOWN);
+        commitComposition(text, EditorCore.ImeScriptClass.UNKNOWN, 1);
     }
 
     private void commitComposition(String text, int scriptHint) {
+        commitComposition(text, scriptHint, 1);
+    }
+
+    private void commitComposition(String text, int scriptHint, int newCursorPosition) {
         long t0 = System.nanoTime();
         EditorCore.ImeActionResult result = mEditor.getEditorCore().commitImeText(text, scriptHint);
         dispatchImeActionResult(result);
-        mEditor.flush();
+        applyImeCursorPosition(newCursorPosition, text, result);
+        flushEditorAfterImeAction();
         updateImeSelectionState();
         mEditor.logInputPerf(t0, "ime-commit");
     }
 
     private void finishComposition() {
+        finishComposition(true);
+    }
+
+    private void finishComposition(boolean updateSelection) {
         long t0 = System.nanoTime();
         EditorCore.ImeActionResult result = mEditor.getEditorCore().finishImePreedit();
         dispatchImeActionResult(result);
-        mEditor.flush();
-        updateImeSelectionState();
+        flushEditorAfterImeAction();
+        if (updateSelection) {
+            updateImeSelectionState();
+        }
         mEditor.logInputPerf(t0, "ime-finish");
     }
 
@@ -533,19 +839,22 @@ public class SweetEditorInputConnection extends BaseInputConnection {
 
     private boolean finishImeDelete(EditorCore.ImeActionResult result, long startTimeNanos) {
         dispatchImeActionResult(result);
-        mEditor.flush();
+        flushEditorAfterImeAction();
         updateImeSelectionState();
         mEditor.logInputPerf(startTimeNanos, "ime-delete");
         return result.handled;
     }
 
     IntRange getImeSelectionOffsets() {
+        return getImeSelectionOffsets(mEditor.getEditorCore().getImeSyncSnapshot());
+    }
+
+    private IntRange getImeSelectionOffsets(EditorCore.ImeSyncSnapshot snapshot) {
         Document doc = mEditor.getDocument();
         if (doc == null) {
             return new IntRange(0, 0);
         }
 
-        EditorCore.ImeSyncSnapshot snapshot = mEditor.getEditorCore().getImeSyncSnapshot();
         TextRange selection = snapshot.selection;
         if (selection != null) {
             int start = doc.getCharIndexFromPosition(selection.start);
@@ -558,12 +867,18 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     }
 
     void updateImeSelectionState() {
+        if (mBatchEditDepth > 0) {
+            mDeferredSelectionUpdate = true;
+            return;
+        }
         InputMethodManager imm = getInputMethodManager();
         if (imm == null) {
             return;
         }
-        IntRange selectionOffsets = getImeSelectionOffsets();
-        IntRange composingOffsets = getImeComposingOffsets();
+        EditorCore.ImeSyncSnapshot snapshot = mEditor.getEditorCore().getImeSyncSnapshot();
+        syncPlatformTextInputState(snapshot);
+        IntRange selectionOffsets = getImeSelectionOffsets(snapshot);
+        IntRange composingOffsets = getImeComposingOffsets(snapshot);
         if (mLastImeSelectionStart == selectionOffsets.start
                 && mLastImeSelectionEnd == selectionOffsets.end
                 && mLastImeComposingStart == composingOffsets.start
@@ -580,32 +895,22 @@ public class SweetEditorInputConnection extends BaseInputConnection {
 
     void restartImeInput() {
         clearImeSelectionCache();
+        clearImeTextWindows();
         InputMethodManager imm = getInputMethodManager();
         if (imm != null) {
             imm.restartInput(mEditor);
         }
     }
 
-    boolean restartCompositionAtCursorWord() {
-        if (mEditor.getDocument() == null || !mEditor.isCompositionEnabled()) {
-            return false;
-        }
-        TextRange range = mEditor.getEditorCore().getWordRangeAtCursor();
-        if (range == null || isCollapsed(range)) {
-            return false;
-        }
-        EditorCore.ImeActionResult result = mEditor.getEditorCore().markImeDocumentRange(
-                range,
-                resolveImeScriptHint());
-        return result.sync.visibleCompositionRange != null;
+    private IntRange getImeComposingOffsets() {
+        return getImeComposingOffsets(mEditor.getEditorCore().getImeSyncSnapshot());
     }
 
-    private IntRange getImeComposingOffsets() {
+    private IntRange getImeComposingOffsets(EditorCore.ImeSyncSnapshot snapshot) {
         Document doc = mEditor.getDocument();
         if (doc == null) {
             return new IntRange(-1, -1);
         }
-        EditorCore.ImeSyncSnapshot snapshot = mEditor.getEditorCore().getImeSyncSnapshot();
         TextRange range = snapshot.platformMarkedRange;
         if (range == null || isCollapsed(range)) {
             return new IntRange(-1, -1);
@@ -614,6 +919,33 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         int start = doc.getCharIndexFromPosition(range.start);
         int end = doc.getCharIndexFromPosition(range.end);
         return start <= end ? new IntRange(start, end) : new IntRange(end, start);
+    }
+
+    private InitialSurroundingText buildInitialSurroundingText(EditorCore.ImeSyncSnapshot snapshot,
+                                                               int contextPolicy) {
+        Document doc = mEditor.getDocument();
+        if (doc == null) {
+            return null;
+        }
+        String documentText = doc.getText();
+        IntRange selection = getImeSelectionOffsets();
+        int selectionStart = Math.max(0, Math.min(selection.start, documentText.length()));
+        int selectionEnd = Math.max(0, Math.min(selection.end, documentText.length()));
+        int before = limitContextLength(MAX_IME_TEXT_LENGTH / 2, contextPolicy);
+        int after = limitContextLength(MAX_IME_TEXT_LENGTH / 2, contextPolicy);
+        before = Math.min(before, INITIAL_SURROUNDING_TEXT_LENGTH / 2);
+        after = Math.min(after, INITIAL_SURROUNDING_TEXT_LENGTH / 2);
+        int start = Math.max(0, selectionStart - before);
+        int end = Math.min(documentText.length(), selectionEnd + after);
+        if (start == end) {
+            return null;
+        }
+        CharSequence text = applyComposingSpan(documentText.substring(start, end),
+                GET_TEXT_WITH_STYLES,
+                start);
+        rememberSnapshotTextWindow(snapshot, documentText.length());
+        rememberImeTextWindow(start, end, selectionStart, selectionEnd, documentText.length());
+        return new InitialSurroundingText(text, start);
     }
 
     private CharSequence applyComposingSpan(String text, int flags, int documentOffset) {
@@ -635,6 +967,123 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         return styled;
     }
 
+    private void syncPlatformTextInputState(EditorCore.ImeSyncSnapshot snapshot) {
+        Document doc = mEditor.getDocument();
+        if (!shouldExposeDocumentContext(snapshot.contextPolicy) || doc == null) {
+            if (mDocumentMirrorActive) {
+                clearEditableMirror();
+            }
+            return;
+        }
+
+        syncPlatformTextInputState(doc.getText(),
+                getImeSelectionOffsets(snapshot),
+                getImeComposingOffsets(snapshot));
+    }
+
+    private void syncPlatformTextInputState(String text,
+                                            IntRange selectionOffsets,
+                                            IntRange composingOffsets) {
+        boolean hasComposingRange = isValidEditableRange(composingOffsets, text.length());
+
+        BaseInputConnection.removeComposingSpans(mEditable);
+        mEditable.replace(0, mEditable.length(), text);
+        mDocumentMirrorActive = true;
+
+        int selectionStart = clampEditableOffset(selectionOffsets.start, mEditable.length());
+        int selectionEnd = clampEditableOffset(selectionOffsets.end, mEditable.length());
+        Selection.setSelection(mEditable, selectionStart, selectionEnd);
+        if (hasComposingRange && composingOffsets.start != composingOffsets.end) {
+            super.setComposingRegion(
+                    clampEditableOffset(composingOffsets.start, mEditable.length()),
+                    clampEditableOffset(composingOffsets.end, mEditable.length()));
+        }
+    }
+
+    private boolean isValidEditableRange(IntRange range, int textLength) {
+        return range != null
+                && range.start >= 0
+                && range.end >= 0
+                && range.start <= textLength
+                && range.end <= textLength
+                && range.start != range.end;
+    }
+
+    private int clampEditableOffset(int offset, int textLength) {
+        return Math.max(0, Math.min(offset, textLength));
+    }
+
+    private void rememberSnapshotTextWindow(EditorCore.ImeSyncSnapshot snapshot, int documentLength) {
+        if (snapshot.platformTextWindowText == null || snapshot.platformTextWindowText.isEmpty()) {
+            return;
+        }
+        int start = clampEditableOffset(snapshot.platformTextWindowStartOffset, documentLength);
+        int end = clampEditableOffset(start + snapshot.platformTextWindowText.length(), documentLength);
+        int selectionStart = start + snapshot.platformTextWindowSelectionOffsets.start;
+        int selectionEnd = start + snapshot.platformTextWindowSelectionOffsets.end;
+        int composingStart = snapshot.platformTextWindowComposingOffsets.start >= 0
+                ? start + snapshot.platformTextWindowComposingOffsets.start
+                : -1;
+        int composingEnd = snapshot.platformTextWindowComposingOffsets.end >= 0
+                ? start + snapshot.platformTextWindowComposingOffsets.end
+                : -1;
+        rememberImeTextWindow(start, end, selectionStart, selectionEnd,
+                composingStart, composingEnd, documentLength);
+    }
+
+    private void rememberImeTextWindow(int startOffset,
+                                       int endOffset,
+                                       int selectionStartOffset,
+                                       int selectionEndOffset,
+                                       int documentLength) {
+        IntRange composing = getImeComposingOffsets();
+        rememberImeTextWindow(startOffset, endOffset, selectionStartOffset, selectionEndOffset,
+                composing.start, composing.end, documentLength);
+    }
+
+    private void rememberImeTextWindow(int startOffset,
+                                       int endOffset,
+                                       int selectionStartOffset,
+                                       int selectionEndOffset,
+                                       int composingStartOffset,
+                                       int composingEndOffset,
+                                       int documentLength) {
+        int start = clampEditableOffset(startOffset, documentLength);
+        int end = clampEditableOffset(endOffset, documentLength);
+        if (end < start) {
+            int tmp = start;
+            start = end;
+            end = tmp;
+        }
+        if (start == end) {
+            return;
+        }
+        int selectionStart = clampEditableOffset(selectionStartOffset, documentLength) - start;
+        int selectionEnd = clampEditableOffset(selectionEndOffset, documentLength) - start;
+        int composingStart = composingStartOffset >= 0
+                ? clampEditableOffset(composingStartOffset, documentLength) - start
+                : -1;
+        int composingEnd = composingEndOffset >= 0
+                ? clampEditableOffset(composingEndOffset, documentLength) - start
+                : -1;
+        mImeTextWindows[mImeTextWindowWriteIndex] = new ImeTextWindow(
+                start,
+                end,
+                selectionStart,
+                selectionEnd,
+                composingStart,
+                composingEnd,
+                documentLength);
+        mImeTextWindowWriteIndex = (mImeTextWindowWriteIndex + 1) % IME_TEXT_WINDOW_HISTORY_SIZE;
+    }
+
+    private void clearImeTextWindows() {
+        for (int i = 0; i < IME_TEXT_WINDOW_HISTORY_SIZE; i++) {
+            mImeTextWindows[i] = null;
+        }
+        mImeTextWindowWriteIndex = 0;
+    }
+
     private void clearImeSelectionCache() {
         mLastImeSelectionStart = Integer.MIN_VALUE;
         mLastImeSelectionEnd = Integer.MIN_VALUE;
@@ -650,12 +1099,16 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         return range.start.line == range.end.line && range.start.column == range.end.column;
     }
 
-    private static boolean containsPosition(TextRange range, TextPosition position) {
-        return comparePosition(range.start, position) <= 0 && comparePosition(position, range.end) <= 0;
-    }
-
     private static boolean rangesEqual(TextRange left, TextRange right) {
         return comparePosition(left.start, right.start) == 0 && comparePosition(left.end, right.end) == 0;
+    }
+
+    private static boolean rangesEqual(IntRange left, IntRange right) {
+        return left != null && right != null && left.start == right.start && left.end == right.end;
+    }
+
+    private static boolean rangesTouch(int start, int end, int targetStart, int targetEnd) {
+        return end >= targetStart && start <= targetEnd;
     }
 
     private static TextRange copyRange(TextRange range) {
@@ -671,45 +1124,6 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         return Integer.compare(left.column, right.column);
     }
 
-    private CharSequence getDocumentTextBeforeCursor(int n, int contextPolicy) {
-        Document doc = mEditor.getDocument();
-        if (doc == null) return "";
-
-        TextPosition cursorPos = mEditor.getCursorPosition();
-
-        String lineText = doc.getLineText(cursorPos.line);
-        if (lineText == null) lineText = "";
-
-        int col = Math.min(cursorPos.column, lineText.length());
-        int start = contextPolicy == EditorCore.ImeContextPolicy.CURRENT_TOKEN
-                ? findTokenStart(lineText, col)
-                : 0;
-
-        String beforeInLine = lineText.substring(start, col);
-        return beforeInLine.length() > n
-                ? beforeInLine.substring(beforeInLine.length() - n)
-                : beforeInLine;
-    }
-
-    private CharSequence getDocumentTextAfterCursor(int n, int contextPolicy) {
-        Document doc = mEditor.getDocument();
-        if (doc == null) return "";
-
-        TextPosition cursorPos = mEditor.getCursorPosition();
-
-        String lineText = doc.getLineText(cursorPos.line);
-        if (lineText == null) lineText = "";
-
-        int col = Math.min(cursorPos.column, lineText.length());
-        int end = contextPolicy == EditorCore.ImeContextPolicy.CURRENT_TOKEN
-                ? findTokenEnd(lineText, col)
-                : lineText.length();
-        String afterInLine = lineText.substring(col, end);
-        return afterInLine.length() > n
-                ? afterInLine.substring(0, n)
-                : afterInLine;
-    }
-
     private boolean shouldExposeDocumentContext(int contextPolicy) {
         return contextPolicy != EditorCore.ImeContextPolicy.NONE;
     }
@@ -723,41 +1137,16 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         return length;
     }
 
-    private int findTokenStart(String text, int column) {
-        int index = Math.min(column, text.length());
-        while (index > 0) {
-            int previous = text.offsetByCodePoints(index, -1);
-            int codePoint = text.codePointAt(previous);
-            if (!isTokenCodePoint(codePoint)) {
-                break;
-            }
-            index = previous;
-        }
-        return index;
-    }
-
-    private int findTokenEnd(String text, int column) {
-        int index = Math.min(column, text.length());
-        while (index < text.length()) {
-            int codePoint = text.codePointAt(index);
-            if (!isTokenCodePoint(codePoint)) {
-                break;
-            }
-            index += Character.charCount(codePoint);
-        }
-        return index;
-    }
-
-    private boolean isTokenCodePoint(int codePoint) {
-        return Character.isLetterOrDigit(codePoint) || codePoint == '_' || codePoint > 0x7F;
-    }
-
-    private boolean shouldExposeShadowText() {
-        return false;
-    }
-
     private int resolveImeScriptHint() {
         return resolveSubtypeImeScriptHint();
+    }
+
+    private int resolveAndReportImeScriptHint() {
+        int scriptHint = resolveImeScriptHint();
+        if (scriptHint != EditorCore.ImeScriptClass.UNKNOWN) {
+            mEditor.getEditorCore().setImeKeyboardScriptClass(scriptHint);
+        }
+        return scriptHint;
     }
 
     private int resolveSubtypeImeScriptHint() {
@@ -769,16 +1158,43 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         if (subtype == null) {
             return EditorCore.ImeScriptClass.UNKNOWN;
         }
-        String locale = subtype.getLocale();
+        String languageTag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N ? subtype.getLanguageTag() : "";
+        return resolveSubtypeImeScriptHint(languageTag,
+                subtype.getLocale(),
+                subtype.getExtraValue(),
+                subtype.isAsciiCapable());
+    }
+
+    private static int resolveSubtypeImeScriptHint(String languageTag,
+                                                   String locale,
+                                                   String extraValue,
+                                                   boolean asciiCapable) {
+        int languageTagScript = resolveLanguageImeScriptHint(languageTag);
+        if (languageTagScript != EditorCore.ImeScriptClass.UNKNOWN) {
+            return languageTagScript;
+        }
+        int localeScript = resolveLanguageImeScriptHint(locale);
+        if (localeScript != EditorCore.ImeScriptClass.UNKNOWN) {
+            return localeScript;
+        }
+        int extraScript = resolveExtraValueImeScriptHint(extraValue);
+        if (extraScript != EditorCore.ImeScriptClass.UNKNOWN) {
+            return extraScript;
+        }
+        return EditorCore.ImeScriptClass.UNKNOWN;
+    }
+
+    private static int resolveLanguageImeScriptHint(String locale) {
         if (locale == null || locale.isEmpty()) {
             return EditorCore.ImeScriptClass.UNKNOWN;
         }
-        int separator = locale.indexOf('_');
-        int dash = locale.indexOf('-');
-        if (separator < 0 || (dash >= 0 && dash < separator)) {
-            separator = dash;
+        String normalized = locale.replace('_', '-');
+        String language = Locale.forLanguageTag(normalized).getLanguage();
+        if (language == null || language.isEmpty()) {
+            int separator = normalized.indexOf('-');
+            language = (separator >= 0 ? normalized.substring(0, separator) : normalized)
+                    .toLowerCase(Locale.ROOT);
         }
-        String language = (separator >= 0 ? locale.substring(0, separator) : locale).toLowerCase(Locale.ROOT);
         if ("zh".equals(language)) {
             return EditorCore.ImeScriptClass.CJK;
         }
@@ -788,12 +1204,45 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         if ("ko".equals(language)) {
             return EditorCore.ImeScriptClass.HANGUL;
         }
+        String script = Locale.forLanguageTag(normalized).getScript();
+        if ("Latn".equalsIgnoreCase(script)) {
+            return EditorCore.ImeScriptClass.LATIN;
+        }
+        return EditorCore.ImeScriptClass.UNKNOWN;
+    }
+
+    private static int resolveExtraValueImeScriptHint(String extraValue) {
+        if (extraValue == null || extraValue.isEmpty()) {
+            return EditorCore.ImeScriptClass.UNKNOWN;
+        }
+        String value = extraValue.toLowerCase(Locale.ROOT);
+        if (value.contains("zh") || value.contains("pinyin")
+                || value.contains("cangjie") || value.contains("wubi")) {
+            return EditorCore.ImeScriptClass.CJK;
+        }
+        if (value.contains("ja") || value.contains("kana")) {
+            return EditorCore.ImeScriptClass.KANA;
+        }
+        if (value.contains("ko") || value.contains("hangul")) {
+            return EditorCore.ImeScriptClass.HANGUL;
+        }
+        if (value.contains("latin") || value.contains("alphabet")) {
+            return EditorCore.ImeScriptClass.LATIN;
+        }
         return EditorCore.ImeScriptClass.UNKNOWN;
     }
 
     private void clearShadowEditable() {
         BaseInputConnection.removeComposingSpans(mEditable);
+        if (Selection.getSelectionStart(mEditable) < 0) {
+            Selection.setSelection(mEditable, 0);
+        }
+    }
+
+    private void clearEditableMirror() {
+        BaseInputConnection.removeComposingSpans(mEditable);
         mEditable.clear();
+        mDocumentMirrorActive = false;
         Selection.setSelection(mEditable, 0);
     }
 
@@ -807,21 +1256,6 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         deleteImeSurroundingText(0, 0, EditorCore.ImeTextUnit.UTF16_CODE_UNIT);
         trace("after " + source + " deleted selection");
         return true;
-    }
-
-    private int consumePendingFallbackDelete(int beforeLength) {
-        if (beforeLength <= 0 || mPendingFallbackDeleteBeforeLength <= 0) {
-            return beforeLength;
-        }
-
-        int consumed = Math.min(beforeLength, mPendingFallbackDeleteBeforeLength);
-        mPendingFallbackDeleteBeforeLength -= consumed;
-        return beforeLength - consumed;
-    }
-
-    private boolean hasCollapsedImeSelection() {
-        IntRange selectionOffsets = getImeSelectionOffsets();
-        return selectionOffsets.start == selectionOffsets.end;
     }
 
     private void trace(String event) {

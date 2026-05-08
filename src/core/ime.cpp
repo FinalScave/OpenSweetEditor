@@ -4,6 +4,7 @@
 #include <utf8/utf8.h>
 #include <simdutf/simdutf.h>
 #include <algorithm>
+#include <limits>
 #include <ime.h>
 #include <utility.h>
 #include "logging.h"
@@ -44,6 +45,18 @@ namespace NS_SWEETEDITOR {
 
   void CompositionController::setPolicy(const ImeCompositionPolicy& policy) {
     m_policy_ = policy;
+  }
+
+  void CompositionController::setKeyboardScriptClass(ImeScriptClass script_class) {
+    m_keyboard_script_class_ = script_class;
+    if (isNonLatinScript(script_class)) {
+      clearPlainLatinInputLock();
+      clearCandidateCommitWindow();
+    }
+  }
+
+  ImeScriptClass CompositionController::keyboardScriptClass() const {
+    return m_keyboard_script_class_;
   }
 
   const CompositionState& CompositionController::composition() const {
@@ -88,6 +101,7 @@ namespace NS_SWEETEDITOR {
     m_composition_.anchor_range = {};
     m_composition_.original_text.clear();
     m_composition_.kind = CompositionKind::NONE;
+    m_composition_.document_range_role = ImeDocumentRangeRole::NONE;
     resetSessionPreservingCandidateWindow();
   }
 
@@ -149,11 +163,18 @@ namespace NS_SWEETEDITOR {
     result.content_changed = true;
   }
 
+  void CompositionController::observeKeyboardScriptClass(ImeScriptClass script_class) {
+    if (script_class != ImeScriptClass::UNKNOWN) {
+      setKeyboardScriptClass(script_class);
+    }
+  }
+
   ImeActionResult CompositionController::updatePreedit(Host& host,
                                                        const U8String& text,
                                                        ImeScriptClass script_class) {
     ImeActionResult result;
     result.handled = true;
+    observeKeyboardScriptClass(script_class);
     HostState state = captureHostState(host);
     handleUpdatePreedit(host, result, text, script_class);
     finishAction(host, result, state);
@@ -165,6 +186,7 @@ namespace NS_SWEETEDITOR {
                                                     ImeScriptClass script_class) {
     ImeActionResult result;
     result.handled = true;
+    observeKeyboardScriptClass(script_class);
     HostState state = captureHostState(host);
     handleCommitText(host, result, text, script_class);
     finishAction(host, result, state);
@@ -191,11 +213,13 @@ namespace NS_SWEETEDITOR {
 
   ImeActionResult CompositionController::markDocumentRange(Host& host,
                                                            const TextRange& range,
-                                                           ImeScriptClass script_class) {
+                                                           ImeScriptClass script_class,
+                                                           ImeDocumentRangeRole role) {
     ImeActionResult result;
     result.handled = true;
+    observeKeyboardScriptClass(script_class);
     HostState state = captureHostState(host);
-    handleMarkDocumentRange(host, result, range, script_class);
+    handleMarkDocumentRange(host, result, range, script_class, role);
     finishAction(host, result, state);
     return result;
   }
@@ -204,9 +228,9 @@ namespace NS_SWEETEDITOR {
                                                      const TextRange& range,
                                                      const U8String& text,
                                                      ImeScriptClass script_class) {
-    (void) script_class;
     ImeActionResult result;
     result.handled = true;
+    observeKeyboardScriptClass(script_class);
     HostState state = captureHostState(host);
     handleReplaceText(host, result, range, text);
     finishAction(host, result, state);
@@ -265,39 +289,65 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
+  ImeActionResult CompositionController::refreshCompositionAtCursor(Host& host, ImeScriptClass script_class) {
+    ImeActionResult result;
+    result.handled = true;
+    observeKeyboardScriptClass(script_class);
+    HostState state = captureHostState(host);
+    handleRefreshCompositionAtCursor(host);
+    finishAction(host, result, state);
+    return result;
+  }
+
   ImeScriptClass CompositionController::resolveScriptClass(const U8String& text,
                                                      ImeScriptClass script_class) const {
+    ImeScriptClass text_script = classifyScriptFromText(text);
+    if (text_script != ImeScriptClass::UNKNOWN) {
+      return text_script;
+    }
     if (script_class != ImeScriptClass::UNKNOWN) {
       return script_class;
     }
-    return classifyScriptFromText(text);
+    return m_keyboard_script_class_;
   }
 
-  bool CompositionController::shouldUseShadowPreedit(bool composition_enabled,
-                                               const U8String& text,
-                                               ImeScriptClass script_class) const {
+  bool CompositionController::shouldUseShadowPreedit(const U8String& text,
+                                                     ImeScriptClass script_class) const {
+    (void) script_class;
     if (text.empty()) {
       return m_session_.has_shadow_preedit;
     }
-    if (!composition_enabled || !m_policy_.allow_preedit) {
+    if (!m_policy_.allow_preedit) {
       return true;
     }
-    ImeScriptClass resolved_script = resolveScriptClass(text, script_class);
-    return isNonLatinScript(resolved_script) && !m_policy_.allow_non_latin_preedit;
+    return false;
   }
 
   bool CompositionController::isDocumentRangeEligible(const TextRange& range,
-                                                const TextPosition& cursor) const {
+                                                      const TextPosition& cursor,
+                                                      ImeDocumentRangeRole role) const {
     if (!m_policy_.allow_document_range_preedit) {
       return false;
     }
     if (range.start == range.end) {
       return false;
     }
+    if (role == ImeDocumentRangeRole::PLATFORM_PREFIX_PREEDIT) {
+      (void) cursor;
+      return true;
+    }
     if (!m_policy_.keep_preedit_at_word_end) {
       return range.contains(cursor);
     }
     return cursor == range.end;
+  }
+
+  bool CompositionController::canMoveSelectionInsideComposition(const TextRange& range) const {
+    if (!hasVisibleComposition()) {
+      return false;
+    }
+    TextRange composing_range = currentComposingRange();
+    return composing_range.contains(range.start) && composing_range.contains(range.end);
   }
 
   bool CompositionController::hasMidDocumentRangeComposition(const CompositionState& composition,
@@ -338,6 +388,31 @@ namespace NS_SWEETEDITOR {
       return false;
     }
 
+    if (updated.size() >= original.size()
+        && std::equal(original.begin(), original.end(), updated.begin())) {
+      return false;
+    }
+
+    U16String original_prefix(original.begin(), original.begin() + cursor_offset);
+    U16String original_suffix(original.begin() + cursor_offset, original.end());
+    if (updated.size() >= original_prefix.size()
+        && std::equal(original_prefix.begin(), original_prefix.end(), updated.begin())) {
+      bool preserves_suffix = updated.size() >= original_prefix.size() + original_suffix.size()
+          && std::equal(original_suffix.rbegin(), original_suffix.rend(), updated.rbegin());
+      U16String inserted_u16;
+      if (preserves_suffix) {
+        const size_t inserted_end = updated.size() - original_suffix.size();
+        inserted_u16 = U16String(updated.begin() + cursor_offset, updated.begin() + inserted_end);
+      } else {
+        inserted_u16 = U16String(updated.begin() + cursor_offset, updated.end());
+      }
+      if (!inserted_u16.empty() && inserted_u16.size() <= 2) {
+        StrUtil::convertUTF16ToUTF8(inserted_u16, replacement);
+        range = {cursor, cursor};
+        return true;
+      }
+    }
+
     size_t prefix = 0;
     while (prefix < original.size()
            && prefix < updated.size()
@@ -354,23 +429,20 @@ namespace NS_SWEETEDITOR {
 
     const size_t original_end = original.size() - suffix;
     const size_t updated_end = updated.size() - suffix;
-    if (prefix == original.size()
-        && updated.size() > original.size()
-        && updated.size() - original.size() <= 2
-        && cursor != anchor.end) {
-      U16String replacement_u16(updated.begin() + original.size(), updated.end());
-      StrUtil::convertUTF16ToUTF8(replacement_u16, replacement);
-      range = {cursor, cursor};
-      return true;
-    }
     if (prefix == 0 && original_end == original.size() && original.size() > 1) {
       return false;
     }
     if (!(prefix <= cursor_offset && cursor_offset <= original_end)) {
       return false;
     }
+    if (original_end != cursor_offset && prefix != cursor_offset) {
+      return false;
+    }
 
     U16String replacement_u16(updated.begin() + prefix, updated.begin() + updated_end);
+    if (replacement_u16.size() > 2) {
+      return false;
+    }
     StrUtil::convertUTF16ToUTF8(replacement_u16, replacement);
     range = {
       {anchor.start.line, anchor.start.column + static_cast<uint32_t>(prefix)},
@@ -515,47 +587,108 @@ namespace NS_SWEETEDITOR {
     snapshot.has_selection = host.imeHasSelection();
     snapshot.selection = host.imeSelection();
     snapshot.has_composing_session = hasComposingSession() || m_session_.has_shadow_preedit;
-    snapshot.context_policy = host.imeCompositionEnabled()
-                              ? m_policy_.enabled_context_policy
-                              : m_policy_.disabled_context_policy;
+    snapshot.context_policy = m_policy_.enabled_context_policy;
+    if (m_session_.plain_latin_input_lock) {
+      snapshot.context_policy = ImeContextPolicy::NONE;
+    }
+
+    auto to_i32_offset = [](size_t value) -> int32_t {
+      return value > static_cast<size_t>(std::numeric_limits<int32_t>::max())
+          ? std::numeric_limits<int32_t>::max()
+          : static_cast<int32_t>(value);
+    };
+
+    auto fill_platform_text_window = [&]() {
+      if (!host.imeHasDocument() || snapshot.context_policy == ImeContextPolicy::NONE) {
+        return;
+      }
+      size_t line_count = host.imeDocumentLineCount();
+      if (line_count == 0) {
+        return;
+      }
+      size_t line = std::min(snapshot.cursor.line, line_count - 1);
+      TextRange window_range {{line, 0}, {line, host.imeLineColumns(line)}};
+      size_t window_start = host.imeCharIndexFromPosition(window_range.start);
+      snapshot.platform_text_window_text = host.imeDocumentText(window_range);
+      snapshot.platform_text_window_start_offset = to_i32_offset(window_start);
+
+      auto relative_offset = [&](const TextPosition& position) -> int32_t {
+        size_t absolute = host.imeCharIndexFromPosition(position);
+        if (absolute < window_start) {
+          return 0;
+        }
+        return to_i32_offset(absolute - window_start);
+      };
+
+      if (snapshot.has_selection) {
+        snapshot.platform_text_window_selection_start_offset = relative_offset(snapshot.selection.start);
+        snapshot.platform_text_window_selection_end_offset = relative_offset(snapshot.selection.end);
+      } else {
+        int32_t cursor_offset = relative_offset(snapshot.cursor);
+        snapshot.platform_text_window_selection_start_offset = cursor_offset;
+        snapshot.platform_text_window_selection_end_offset = cursor_offset;
+      }
+      if (snapshot.has_platform_marked_range) {
+        snapshot.platform_text_window_composing_start_offset = relative_offset(snapshot.platform_marked_range.start);
+        snapshot.platform_text_window_composing_end_offset = relative_offset(snapshot.platform_marked_range.end);
+      }
+    };
 
     if (hasVisibleComposition()) {
       TextRange composing_range = currentComposingRange();
+      bool expose_platform_marked_range =
+          m_composition_.kind == CompositionKind::PREEDIT_TEXT
+          || m_composition_.document_range_role == ImeDocumentRangeRole::PLATFORM_PREFIX_PREEDIT;
       snapshot.has_visible_composition_range = composing_range.start != composing_range.end;
       snapshot.visible_composition_range = composing_range;
       snapshot.has_platform_marked_range = snapshot.has_visible_composition_range
-          && m_session_.visible_composition_exposed_to_platform;
+          && expose_platform_marked_range;
       if (snapshot.has_platform_marked_range) {
         snapshot.platform_marked_range = composing_range;
       }
       snapshot.preedit_storage = ImePreeditStorage::VISIBLE_DOCUMENT_COMPOSITION;
       snapshot.clear_platform_preedit = false;
+      fill_platform_text_window();
       return snapshot;
     }
 
     if (hasAwaitingDocumentRangeCommit()) {
-      snapshot.has_platform_marked_range = m_composition_.anchor_range.start != m_composition_.anchor_range.end
-          && m_session_.visible_composition_exposed_to_platform;
-      if (snapshot.has_platform_marked_range) {
-        snapshot.platform_marked_range = m_composition_.anchor_range;
-      }
+      snapshot.has_platform_marked_range = false;
       snapshot.preedit_storage = ImePreeditStorage::HIDDEN_AWAITING_COMMIT;
       snapshot.clear_platform_preedit = true;
+      fill_platform_text_window();
       return snapshot;
     }
 
     if (m_session_.has_shadow_preedit) {
       snapshot.preedit_storage = ImePreeditStorage::SHADOW_ONLY;
       snapshot.clear_platform_preedit = false;
+      fill_platform_text_window();
       return snapshot;
     }
 
     snapshot.clear_platform_preedit = true;
+    fill_platform_text_window();
     return snapshot;
   }
 
   bool CompositionController::hasMidDocumentRangeComposition(const Host& host) const {
     return hasMidDocumentRangeComposition(m_composition_, host.imeCursor());
+  }
+
+  bool CompositionController::hasEndDocumentRangeComposition(const Host& host) const {
+    bool visible = m_composition_.has_session
+        && m_composition_.is_composing
+        && m_composition_.visible
+        && m_composition_.phase == CompositionPhase::ACTIVE;
+    if (!visible || m_composition_.kind != CompositionKind::DOCUMENT_RANGE) {
+      return false;
+    }
+    if (m_session_.preedit_text_in_document || m_session_.preedit_replaces_document_range) {
+      return false;
+    }
+    const TextRange& range = m_composition_.anchor_range;
+    return range.start != range.end && host.imeCursor() == range.end;
   }
 
   bool CompositionController::resolveDocumentRangePlainEdit(const Host& host,
@@ -565,8 +698,64 @@ namespace NS_SWEETEDITOR {
     return resolveDocumentRangePlainEdit(m_composition_, host.imeCursor(), text, range, replacement);
   }
 
-  void CompositionController::setComposingRange(Host& host, const TextRange& range) {
-    if (!host.imeHasDocument() || host.imeReadOnly() || !host.imeCompositionEnabled()) return;
+  bool CompositionController::resolveDocumentRangeInsertedText(const Host& host,
+                                                               const U8String& text,
+                                                               U8String& replacement) const {
+    if (text.empty()) {
+      return false;
+    }
+    const U8String& original = m_composition_.original_text;
+    if (!original.empty()
+        && text.size() > original.size()
+        && text.rfind(original, 0) == 0) {
+      replacement = text.substr(original.size());
+      return !replacement.empty();
+    }
+    if (host.imeUtf16Columns(text) <= 2) {
+      replacement = text;
+      return true;
+    }
+    return false;
+  }
+
+  TextEditResult CompositionController::applyDocumentRangeEndReplacement(Host& host,
+                                                                         const TextRange& range,
+                                                                         const U8String& replacement,
+                                                                         const U8String& preedit_text,
+                                                                         const U8String& inserted_text,
+                                                                         bool is_commit) {
+    TextEditResult result = host.imeApplyEdit(range, replacement);
+    TextPosition new_end = host.imePositionAfterInsert(range.start, replacement);
+    TextRange updated_anchor {m_composition_.anchor_range.start, new_end};
+
+    m_composition_.is_composing = true;
+    m_composition_.has_session = true;
+    m_composition_.phase = CompositionPhase::ACTIVE;
+    m_composition_.visible = true;
+    m_composition_.start_position = updated_anchor.start;
+    m_composition_.anchor_range = updated_anchor;
+    m_composition_.original_text = host.imeDocumentText(updated_anchor);
+    m_composition_.composing_text = m_composition_.original_text;
+    m_composition_.composing_columns = host.imeUtf16Columns(m_composition_.composing_text);
+    m_composition_.kind = CompositionKind::DOCUMENT_RANGE;
+    m_session_.preedit_text_in_document = false;
+    m_session_.preedit_replaces_document_range = false;
+    m_session_.preedit_replaced_range = {};
+    m_session_.preedit_replaced_text.clear();
+    m_session_.document_range_end_plain_preedit_text = is_commit ? U8String {} : preedit_text;
+    m_session_.document_range_end_plain_inserted_text = is_commit ? U8String {} : inserted_text;
+
+    host.imeSetCursorPositionInternal(new_end);
+    host.imeSetSelectionInternal({new_end, new_end});
+    host.imeInvalidateContentMetrics(updated_anchor.start.line);
+    host.imeEnsureCursorVisible();
+    return result;
+  }
+
+  void CompositionController::setComposingRange(Host& host,
+                                                const TextRange& range,
+                                                ImeDocumentRangeRole role) {
+    if (!host.imeHasDocument() || host.imeReadOnly()) return;
 
     TextPosition previous_cursor = host.imeCursor();
     m_session_.suppress_next_composing_commit = false;
@@ -574,12 +763,15 @@ namespace NS_SWEETEDITOR {
 
     TextRange safe_range = host.imeClampDocumentRange(range);
     if (safe_range.start == safe_range.end) return;
-    if (!isDocumentRangeEligible(safe_range, previous_cursor)) return;
+    if (!isDocumentRangeEligible(safe_range, previous_cursor, role)) return;
 
     if (hasVisibleComposition() && m_composition_.kind == CompositionKind::DOCUMENT_RANGE) {
       TextRange current_range = currentComposingRange();
       if (current_range == safe_range) {
-        TextPosition target_cursor = safe_range.contains(previous_cursor) ? previous_cursor : safe_range.end;
+        m_composition_.document_range_role = role;
+        TextPosition target_cursor = role == ImeDocumentRangeRole::PLATFORM_PREFIX_PREEDIT
+            ? previous_cursor
+            : (safe_range.contains(previous_cursor) ? previous_cursor : safe_range.end);
         host.imeSetCursorPositionInternal(target_cursor);
         host.imeSetSelectionInternal({target_cursor, target_cursor});
         host.imeEnsureCursorVisible();
@@ -588,7 +780,7 @@ namespace NS_SWEETEDITOR {
     }
 
     if (hasVisibleComposition()) {
-      commitComposingText(host, "");
+      commitComposingText(host, "", true);
     } else if (hasComposingSession()) {
       resetCompositionState();
     }
@@ -604,10 +796,12 @@ namespace NS_SWEETEDITOR {
     m_composition_.composing_text = text;
     m_composition_.composing_columns = host.imeUtf16Columns(text);
     m_composition_.kind = CompositionKind::DOCUMENT_RANGE;
+    m_composition_.document_range_role = role;
     m_session_.preedit_text_in_document = false;
-    m_session_.visible_composition_exposed_to_platform = previous_cursor == safe_range.end;
 
-    TextPosition target_cursor = safe_range.contains(previous_cursor) ? previous_cursor : safe_range.end;
+    TextPosition target_cursor = role == ImeDocumentRangeRole::PLATFORM_PREFIX_PREEDIT
+        ? previous_cursor
+        : (safe_range.contains(previous_cursor) ? previous_cursor : safe_range.end);
     host.imeSetCursorPositionInternal(target_cursor);
     host.imeSetSelectionInternal({target_cursor, target_cursor});
     host.imeEnsureCursorVisible();
@@ -642,15 +836,14 @@ namespace NS_SWEETEDITOR {
     m_composition_.composing_text.clear();
     m_composition_.composing_columns = 0;
     m_composition_.kind = CompositionKind::PREEDIT_TEXT;
+    m_composition_.document_range_role = ImeDocumentRangeRole::NONE;
     m_session_.preedit_text_in_document = false;
-    m_session_.visible_composition_exposed_to_platform = true;
 
     LOGD("CompositionController::beginComposingTextSession, pos = %s", host.imeCursor().dump().c_str());
   }
 
   TextEditResult CompositionController::setComposingText(Host& host, const U8String& text) {
     if (!host.imeHasDocument() || host.imeReadOnly()) return {};
-    if (!host.imeCompositionEnabled()) return {};
 
     if (hasAwaitingDocumentRangeCommit()) {
       TextEditResult result = commitComposingText(host, text);
@@ -662,9 +855,33 @@ namespace NS_SWEETEDITOR {
       beginComposingTextSession(host);
     }
 
+    TextPosition cursor_before = host.imeCursor();
+    TextRange replacement_range = currentComposingRange();
+    U8String replaced_text = m_composition_.composing_text;
+
+    if (m_composition_.kind == CompositionKind::DOCUMENT_RANGE
+        && m_composition_.document_range_role == ImeDocumentRangeRole::PLATFORM_PREFIX_PREEDIT) {
+      TextRange composing_range = currentComposingRange();
+      m_session_.preedit_replaces_document_range = true;
+      m_session_.preedit_replaced_range = composing_range;
+      m_session_.preedit_replaced_text = m_composition_.composing_text;
+      host.imeDeleteDocumentRange(composing_range);
+      host.imeSetRawCursorPosition(m_composition_.start_position);
+      m_composition_.kind = CompositionKind::PREEDIT_TEXT;
+      m_composition_.document_range_role = ImeDocumentRangeRole::NONE;
+      m_session_.preedit_text_in_document = false;
+    }
+
     if (hasMidDocumentRangeComposition(host)) {
       TextEditResult plain_edit = applyDocumentRangePlainEdit(host, text);
       if (plain_edit.changed || text.empty() || host.imeUtf16Columns(text) <= 2) {
+        return plain_edit;
+      }
+    }
+
+    if (hasEndDocumentRangeComposition(host)) {
+      TextEditResult plain_edit = applyDocumentRangeEndPlainEdit(host, text, false);
+      if (plain_edit.changed || text.empty()) {
         return plain_edit;
       }
     }
@@ -673,6 +890,7 @@ namespace NS_SWEETEDITOR {
       m_composition_.composing_text = text;
       m_composition_.composing_columns = host.imeUtf16Columns(text);
       m_composition_.kind = CompositionKind::PREEDIT_TEXT;
+      m_composition_.document_range_role = ImeDocumentRangeRole::NONE;
       m_composition_.anchor_range = {
         m_composition_.start_position,
         host.imePositionAfterInsert(m_composition_.start_position, text)
@@ -694,8 +912,8 @@ namespace NS_SWEETEDITOR {
       host.imeDeleteDocumentRange(composing_range);
       host.imeSetRawCursorPosition(m_composition_.start_position);
       m_composition_.kind = CompositionKind::PREEDIT_TEXT;
+      m_composition_.document_range_role = ImeDocumentRangeRole::NONE;
       m_session_.preedit_text_in_document = false;
-      m_session_.visible_composition_exposed_to_platform = true;
     } else {
       removeComposingText(host);
     }
@@ -706,42 +924,56 @@ namespace NS_SWEETEDITOR {
       m_composition_.composing_text = text;
       m_composition_.composing_columns = new_columns;
       m_composition_.kind = CompositionKind::PREEDIT_TEXT;
+      m_composition_.document_range_role = ImeDocumentRangeRole::NONE;
       m_composition_.anchor_range = {
         m_composition_.start_position,
         host.imePositionAfterInsert(m_composition_.start_position, text)
       };
       m_session_.preedit_text_in_document = true;
-      m_session_.visible_composition_exposed_to_platform = true;
       TextPosition new_pos = host.imePositionAfterInsert(m_composition_.start_position, text);
       host.imeSetCursorPositionInternal(new_pos);
     } else {
       m_composition_.composing_text.clear();
       m_composition_.composing_columns = 0;
       m_composition_.kind = CompositionKind::PREEDIT_TEXT;
+      m_composition_.document_range_role = ImeDocumentRangeRole::NONE;
       m_composition_.anchor_range = {m_composition_.start_position, m_composition_.start_position};
       m_session_.preedit_text_in_document = false;
-      m_session_.visible_composition_exposed_to_platform = true;
       host.imeSetCursorPositionInternal(m_composition_.start_position);
     }
     host.imeInvalidateContentMetrics(m_composition_.start_position.line);
     host.imeEnsureCursorVisible();
     LOGD("CompositionController::setComposingText, text = %s, columns = %zu",
          text.c_str(), m_composition_.composing_columns);
-    return {};
+    TextEditResult result;
+    if (replaced_text != text) {
+      result.changed = true;
+      result.cursor_before = cursor_before;
+      result.cursor_after = host.imeCursor();
+      result.changes.push_back({replacement_range, replaced_text, text});
+    }
+    return result;
   }
 
   TextEditResult CompositionController::finishComposing(Host& host, CompositionFinishReason reason) {
     if (!host.imeHasDocument() || host.imeReadOnly()) return {};
     if (!hasComposingSession()) return {};
-    if (!host.imeCompositionEnabled()) {
-      resetCompositionState();
-      return {};
-    }
     if (hasVisibleComposition()
         && m_composition_.kind == CompositionKind::DOCUMENT_RANGE
         && !m_session_.preedit_text_in_document
         && !m_session_.preedit_replaces_document_range) {
       TextPosition previous_cursor = host.imeCursor();
+      if (m_composition_.document_range_role == ImeDocumentRangeRole::PLATFORM_PREFIX_PREEDIT) {
+        size_t comp_start_line = m_composition_.start_position.line;
+        resetCompositionState();
+        host.imeSetCursorPositionInternal(previous_cursor);
+        host.imeInvalidateContentMetrics(comp_start_line);
+        host.imeEnsureCursorVisible();
+        TextEditResult result;
+        result.cursor_before = previous_cursor;
+        result.cursor_after = previous_cursor;
+        return result;
+      }
       m_composition_.is_composing = false;
       m_composition_.visible = false;
       m_composition_.phase = CompositionPhase::AWAITING_COMMIT;
@@ -754,18 +986,13 @@ namespace NS_SWEETEDITOR {
            static_cast<int>(reason), host.imeCursor().dump().c_str());
       return result;
     }
-    return commitComposingText(host, "");
+    return commitComposingText(host, "", true);
   }
 
-  TextEditResult CompositionController::commitComposingText(Host& host, const U8String& committed_text) {
+  TextEditResult CompositionController::commitComposingText(Host& host,
+                                                            const U8String& committed_text,
+                                                            bool empty_text_keeps_composition) {
     if (!host.imeHasDocument() || host.imeReadOnly()) return {};
-
-    if (!host.imeCompositionEnabled()) {
-      if (!committed_text.empty()) {
-        return host.imeInsertText(committed_text);
-      }
-      return {};
-    }
 
     if (!hasComposingSession()) {
       if (m_session_.suppress_next_composing_commit) {
@@ -785,12 +1012,15 @@ namespace NS_SWEETEDITOR {
 
     TextRange composing_range = currentComposingRange();
     TextPosition previous_cursor = host.imeCursor();
-    U8String final_text = committed_text.empty() ? m_composition_.composing_text : committed_text;
+    U8String final_text = committed_text.empty() && empty_text_keeps_composition
+        ? m_composition_.composing_text
+        : committed_text;
     size_t comp_start_line = m_composition_.start_position.line;
     if (m_composition_.kind == CompositionKind::DOCUMENT_RANGE || hasAwaitingDocumentRangeCommit()) {
       TextRange commit_range = m_composition_.anchor_range;
       U8String original_text = m_composition_.original_text;
       U8String current_text = host.imeDocumentText(commit_range);
+      bool is_platform_prefix = m_composition_.document_range_role == ImeDocumentRangeRole::PLATFORM_PREFIX_PREEDIT;
       TextRange candidate_range {
         commit_range.start,
         host.imePositionAfterInsert(commit_range.start, final_text)
@@ -798,7 +1028,26 @@ namespace NS_SWEETEDITOR {
       resetCompositionState();
       host.imeInvalidateContentMetrics(comp_start_line);
       host.imeSetCursorPositionInternal(previous_cursor);
-      if (committed_text.empty() || committed_text == original_text) {
+      if (is_platform_prefix) {
+        if ((committed_text.empty() && empty_text_keeps_composition) || committed_text == current_text) {
+          host.imeEnsureCursorVisible();
+          TextEditResult edit_result;
+          edit_result.cursor_before = previous_cursor;
+          edit_result.cursor_after = previous_cursor;
+          return edit_result;
+        }
+        if (current_text != original_text) {
+          host.imeEnsureCursorVisible();
+          TextEditResult edit_result;
+          edit_result.cursor_before = previous_cursor;
+          edit_result.cursor_after = previous_cursor;
+          return edit_result;
+        }
+        auto edit_result = host.imeApplyEdit(commit_range, committed_text);
+        host.imeEnsureCursorVisible();
+        return edit_result;
+      }
+      if ((committed_text.empty() && empty_text_keeps_composition) || committed_text == original_text) {
         openCandidateCommitWindow(candidate_range, final_text);
         host.imeEnsureCursorVisible();
         TextEditResult edit_result;
@@ -943,6 +1192,107 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
+  TextEditResult CompositionController::applyDocumentRangeEndPlainEdit(Host& host,
+                                                                       const U8String& text,
+                                                                       bool is_commit) {
+    if (!hasEndDocumentRangeComposition(host)) {
+      return {};
+    }
+    const U8String previous_preedit = m_session_.document_range_end_plain_preedit_text;
+    const U8String previous_inserted = m_session_.document_range_end_plain_inserted_text;
+    if (!previous_preedit.empty() || !previous_inserted.empty()) {
+      if (is_commit && !text.empty() && (text == previous_preedit || text == previous_inserted)) {
+        m_session_.document_range_end_plain_preedit_text.clear();
+        m_session_.document_range_end_plain_inserted_text.clear();
+        return {};
+      }
+
+      TextRange anchor = m_composition_.anchor_range;
+      U8String current_text = host.imeDocumentText(anchor);
+      U8String base_text = current_text;
+      if (!previous_inserted.empty()
+          && current_text.size() >= previous_inserted.size()
+          && current_text.compare(current_text.size() - previous_inserted.size(),
+                                  previous_inserted.size(),
+                                  previous_inserted) == 0) {
+        base_text = current_text.substr(0, current_text.size() - previous_inserted.size());
+      }
+
+      bool text_includes_base = !base_text.empty()
+          && text.size() >= base_text.size()
+          && text.rfind(base_text, 0) == 0;
+      bool text_updates_previous = !previous_inserted.empty()
+          && text.size() > previous_inserted.size()
+          && text.rfind(previous_inserted, 0) == 0;
+
+      if (is_commit && !text_includes_base && !text_updates_previous) {
+        U8String replacement;
+        if (!resolveDocumentRangeInsertedText(host, text, replacement)) {
+          return {};
+        }
+        return applyDocumentRangeEndReplacement(host,
+                                                {anchor.end, anchor.end},
+                                                replacement,
+                                                {},
+                                                {},
+                                                true);
+      }
+
+      U8String inserted_text = text_includes_base ? text.substr(base_text.size()) : text;
+      if (inserted_text == previous_inserted) {
+        if (is_commit) {
+          m_session_.document_range_end_plain_preedit_text.clear();
+          m_session_.document_range_end_plain_inserted_text.clear();
+        } else {
+          m_session_.document_range_end_plain_preedit_text = text;
+        }
+        return {};
+      }
+      if (!previous_inserted.empty()
+          && inserted_text.size() > previous_inserted.size()
+          && inserted_text.rfind(previous_inserted, 0) == 0) {
+        U8String replacement = inserted_text.substr(previous_inserted.size());
+        return applyDocumentRangeEndReplacement(host,
+                                                {anchor.end, anchor.end},
+                                                replacement,
+                                                text,
+                                                inserted_text,
+                                                is_commit);
+      }
+      size_t previous_columns = host.imeUtf16Columns(previous_inserted);
+      if (anchor.end.column < previous_columns) {
+        return {};
+      }
+      TextRange previous_range {
+        {anchor.end.line, anchor.end.column - static_cast<uint32_t>(previous_columns)},
+        anchor.end
+      };
+      return applyDocumentRangeEndReplacement(host,
+                                              previous_range,
+                                              inserted_text,
+                                              text,
+                                              inserted_text,
+                                              is_commit);
+    }
+
+    const U8String& original = m_composition_.original_text;
+    if (!original.empty() && original.rfind(text, 0) == 0) {
+      return {};
+    }
+    U8String replacement;
+    if (!resolveDocumentRangeInsertedText(host, text, replacement)) {
+      return {};
+    }
+
+    TextRange anchor = m_composition_.anchor_range;
+    return applyDocumentRangeEndReplacement(host,
+                                            {anchor.end, anchor.end},
+                                            replacement,
+                                            text,
+                                            replacement,
+                                            is_commit);
+  }
+
   TextEditResult CompositionController::applyPlainLatinInputLockEdit(Host& host,
                                                                      const U8String& text,
                                                                      bool is_commit) {
@@ -1039,9 +1389,6 @@ namespace NS_SWEETEDITOR {
     }
     if (committed_text.rfind(current_text, 0) == 0
         && (committed_text.rfind(text, 0) == 0 || current_text.rfind(text, 0) == 0)) {
-      if (current_text.empty()) {
-        clearCandidateCommitWindow();
-      }
       return true;
     }
     clearCandidateCommitWindow();
@@ -1051,55 +1398,10 @@ namespace NS_SWEETEDITOR {
   bool CompositionController::tryReopenCandidatePrefix(Host& host,
                                                        ImeActionResult& result,
                                                        const U8String& text) {
-    if (!m_session_.has_candidate_commit_window || hasComposingSession()) {
-      return false;
-    }
-    if (!isInlineCandidateText(text)) {
-      if (!text.empty()) {
-        clearCandidateCommitWindow();
-      }
-      return false;
-    }
-    const U8String& committed_text = m_session_.candidate_committed_text;
-    if (committed_text.rfind(text, 0) != 0) {
-      clearCandidateCommitWindow();
-      return false;
-    }
-    if (text == committed_text && m_session_.suppress_candidate_exact_range) {
-      return true;
-    }
-
-    if (m_session_.candidate_exact_range_suppressed && text.size() < committed_text.size()) {
-      TextRange committed_range = m_session_.candidate_committed_range;
-      if (!host.imeIsDocumentRangeReadable(committed_range)
-          || host.imeDocumentText(committed_range) != committed_text) {
-        clearCandidateCommitWindow();
-        return false;
-      }
-      clearCandidateExactRangeSuppression();
-      setComposingRange(host, committed_range);
-      mergeEditResult(result, setComposingText(host, text));
-      return hasComposingSession();
-    }
-
-    if (!m_session_.candidate_deleted_to_prefix || text == committed_text) {
-      return false;
-    }
-
-    TextPosition start = m_session_.candidate_committed_range.start;
-    TextRange prefix_range {start, host.imePositionAfterInsert(start, text)};
-    if (!(prefix_range.end == host.imeCursor()) || !host.imeIsDocumentRangeReadable(prefix_range)) {
-      clearCandidateCommitWindow();
-      return false;
-    }
-    if (host.imeDocumentText(prefix_range) != text) {
-      clearCandidateCommitWindow();
-      return false;
-    }
-
-    clearCandidateExactRangeSuppression();
-    setComposingRange(host, prefix_range);
-    return hasVisibleComposition();
+    (void) host;
+    (void) result;
+    (void) text;
+    return false;
   }
 
   void CompositionController::updateCandidateWindowAfterDelete(Host& host) {
@@ -1162,14 +1464,14 @@ namespace NS_SWEETEDITOR {
     if (tryReopenCandidatePrefix(host, result, text)) {
       return;
     }
-    if (!shouldUseShadowPreedit(host.imeCompositionEnabled(), text, script_class)) {
+    if (!shouldUseShadowPreedit(text, script_class)) {
       clearShadowPreedit();
       clearCandidateCommitWindow();
       mergeEditResult(result, setComposingText(host, text));
       return;
     }
     if (hasComposingSession()) {
-      mergeEditResult(result, commitComposingText(host, ""));
+      mergeEditResult(result, commitComposingText(host, "", true));
     }
     if (text.empty()) {
       clearShadowPreedit();
@@ -1195,6 +1497,24 @@ namespace NS_SWEETEDITOR {
     if (trySuppressCandidateCommit(host, text)) {
       (void) had_session;
       return;
+    }
+    if (hasEndDocumentRangeComposition(host)
+        && !text.empty()
+        && text == m_session_.document_range_end_plain_preedit_text) {
+      m_session_.document_range_end_plain_preedit_text.clear();
+      m_session_.document_range_end_plain_inserted_text.clear();
+      (void) had_session;
+      return;
+    }
+    if (hasEndDocumentRangeComposition(host)
+        && !text.empty()
+        && (!m_session_.document_range_end_plain_inserted_text.empty() || host.imeUtf16Columns(text) <= 1)) {
+      TextEditResult plain_edit = applyDocumentRangeEndPlainEdit(host, text, true);
+      if (plain_edit.changed) {
+        mergeEditResult(result, plain_edit);
+        (void) had_session;
+        return;
+      }
     }
     if (hasMidDocumentRangeComposition(host)) {
       TextRange plain_range;
@@ -1234,23 +1554,102 @@ namespace NS_SWEETEDITOR {
   void CompositionController::handleMarkDocumentRange(Host& host,
                                                       ImeActionResult& result,
                                                       const TextRange& range,
-                                                      ImeScriptClass script_class) {
-    if (isNonLatinScript(resolveScriptClass({}, script_class))) {
-      clearPlainLatinInputLock();
-      clearShadowPreedit();
+                                                      ImeScriptClass script_class,
+                                                      ImeDocumentRangeRole role) {
+    (void) result;
+    (void) script_class;
+    clearPlainLatinInputLock();
+    clearShadowPreedit();
+    clearCandidateCommitWindow();
+    TextRange safe_range = host.imeClampDocumentRange(range);
+    ImeDocumentRangeRole effective_role = role == ImeDocumentRangeRole::WORD_TARGET
+        ? ImeDocumentRangeRole::PLATFORM_PREFIX_PREEDIT
+        : role;
+    setComposingRange(host, safe_range, effective_role);
+  }
+
+  bool CompositionController::tryDeleteFromDocumentRangeEnd(Host& host,
+                                                            ImeActionResult& result,
+                                                            size_t before_length,
+                                                            size_t after_length,
+                                                            ImeTextUnit text_unit) {
+    if (!hasVisibleComposition()
+        || m_composition_.kind != CompositionKind::DOCUMENT_RANGE
+        || m_session_.preedit_text_in_document
+        || m_session_.preedit_replaces_document_range) {
+      return false;
+    }
+    TextRange anchor = m_composition_.anchor_range;
+    TextPosition cursor = host.imeCursor();
+    if (cursor != anchor.end || anchor.start.line != anchor.end.line || cursor.line != anchor.start.line) {
+      return false;
+    }
+    if (before_length == 0 && after_length == 0) {
+      return true;
+    }
+
+    U8String current_text = host.imeDocumentText(anchor);
+    U16String current_u16;
+    StrUtil::convertUTF8ToUTF16(current_text, current_u16);
+    size_t cursor_offset = std::min<size_t>(cursor.column - anchor.start.column, current_u16.size());
+    size_t delete_start_offset = cursor_offset;
+    size_t delete_end_offset = cursor_offset;
+
+    for (size_t i = 0; i < before_length && delete_start_offset > 0; ++i) {
+      delete_start_offset = text_unit == ImeTextUnit::CODE_POINT
+                            ? UnicodeUtil::prevCodePointColumn(current_u16, delete_start_offset)
+                            : UnicodeUtil::prevGraphemeBoundaryColumn(current_u16, delete_start_offset);
+    }
+    for (size_t i = 0; i < after_length && delete_end_offset < current_u16.size(); ++i) {
+      delete_end_offset = text_unit == ImeTextUnit::CODE_POINT
+                          ? UnicodeUtil::nextCodePointColumn(current_u16, delete_end_offset)
+                          : UnicodeUtil::nextGraphemeBoundaryColumn(current_u16, delete_end_offset);
+    }
+    if (delete_start_offset == delete_end_offset) {
+      return true;
+    }
+
+    TextRange delete_range {
+      {anchor.start.line, anchor.start.column + static_cast<uint32_t>(delete_start_offset)},
+      {anchor.start.line, anchor.start.column + static_cast<uint32_t>(delete_end_offset)}
+    };
+    U8String deleted_text = host.imeDocumentText(delete_range);
+    host.imeDeleteDocumentRange(delete_range);
+
+    TextPosition new_cursor = delete_range.start;
+    const size_t deleted_columns = delete_end_offset - delete_start_offset;
+    TextRange updated_anchor {
+      anchor.start,
+      {anchor.end.line, anchor.end.column - static_cast<uint32_t>(deleted_columns)}
+    };
+
+    TextEditResult edit_result;
+    edit_result.changed = true;
+    edit_result.cursor_before = cursor;
+    edit_result.cursor_after = new_cursor;
+    edit_result.changes.push_back({delete_range, deleted_text, ""});
+    mergeEditResult(result, edit_result);
+
+    if (updated_anchor.start == updated_anchor.end) {
+      resetCompositionState();
       clearCandidateCommitWindow();
-      if (hasComposingSession()) {
-        mergeEditResult(result, commitComposingText(host, ""));
-      }
-      return;
+      host.imeSetCursorPositionInternal(new_cursor);
+      host.imeSetSelectionInternal({new_cursor, new_cursor});
+      host.imeInvalidateContentMetrics(anchor.start.line);
+      host.imeEnsureCursorVisible();
+      return true;
     }
-    if (m_session_.plain_latin_input_lock) {
-      return;
-    }
-    if (trySuppressCandidateRange(host, range)) {
-      return;
-    }
-    setComposingRange(host, range);
+
+    m_composition_.anchor_range = updated_anchor;
+    m_composition_.start_position = updated_anchor.start;
+    m_composition_.original_text = host.imeDocumentText(updated_anchor);
+    m_composition_.composing_text = m_composition_.original_text;
+    m_composition_.composing_columns = host.imeUtf16Columns(m_composition_.composing_text);
+    host.imeSetCursorPositionInternal(new_cursor);
+    host.imeSetSelectionInternal({new_cursor, new_cursor});
+    host.imeInvalidateContentMetrics(anchor.start.line);
+    host.imeEnsureCursorVisible();
+    return true;
   }
 
   void CompositionController::handleDelete(Host& host,
@@ -1258,6 +1657,9 @@ namespace NS_SWEETEDITOR {
                                            size_t before_length,
                                            size_t after_length,
                                            ImeTextUnit text_unit) {
+    if (tryDeleteFromDocumentRangeEnd(host, result, before_length, after_length, text_unit)) {
+      return;
+    }
     bool keep_plain_latin_input = hasMidDocumentRangeComposition(host) || m_session_.plain_latin_input_lock;
     U8String plain_latin_text = m_session_.plain_latin_preedit_text;
     if (host.imeHasSelection()) {
@@ -1285,33 +1687,64 @@ namespace NS_SWEETEDITOR {
   void CompositionController::handleSelectionChanged(Host& host, const TextRange& range) {
     clearPlainLatinInputLock();
     clearCandidateCommitWindow();
-    if (range.start == range.end) {
-      host.imeSetCursorPosition(range.start);
-    } else {
-      host.imeSetSelection(range);
+    clearShadowPreedit();
+    if (canMoveSelectionInsideComposition(range)) {
+      if (range.start == range.end) {
+        host.imeSetCursorPositionInternal(range.start);
+        host.imeSetSelectionInternal({range.start, range.start});
+      } else {
+        host.imeSetSelectionInternal(range);
+      }
+      host.imeEnsureCursorVisible();
+      return;
     }
-    clearCandidateCommitWindow();
+    if (hasComposingSession()) {
+      commitComposingText(host, "", true);
+    }
+    if (range.start == range.end) {
+      host.imeSetCursorPositionInternal(range.start);
+      host.imeSetSelectionInternal({range.start, range.start});
+    } else {
+      host.imeSetSelectionInternal(range);
+    }
   }
 
   void CompositionController::handleCursorChanged(Host& host, const TextPosition& cursor) {
     clearPlainLatinInputLock();
     clearCandidateCommitWindow();
-    host.imeSetCursorPosition(cursor);
+    clearShadowPreedit();
+    TextRange cursor_range {cursor, cursor};
+    if (canMoveSelectionInsideComposition(cursor_range)) {
+      host.imeSetCursorPositionInternal(cursor);
+      host.imeSetSelectionInternal({cursor, cursor});
+      host.imeEnsureCursorVisible();
+      return;
+    }
+    if (hasComposingSession() && cursor != host.imeCursor()) {
+      commitComposingText(host, "", true);
+    }
+    host.imeSetCursorPositionInternal(cursor);
+    host.imeSetSelectionInternal({cursor, cursor});
+  }
+
+  void CompositionController::handleRefreshCompositionAtCursor(Host& host) {
+    (void) host;
+    clearPlainLatinInputLock();
     clearCandidateCommitWindow();
+    clearShadowPreedit();
   }
 
   void CompositionController::handleReplaceText(Host& host,
                                                 ImeActionResult& result,
                                                 const TextRange& range,
                                                 const U8String& text) {
-    (void) range;
     clearShadowPreedit();
     clearCandidateCommitWindow();
     if (hasComposingSession()) {
-      mergeEditResult(result, commitComposingText(host, text));
-      return;
+      mergeEditResult(result, finishComposing(host));
     }
-    mergeEditResult(result, host.imeInsertText(text));
+    TextRange safe_range = host.imeClampDocumentRange(range);
+    mergeEditResult(result, host.imeApplyEdit(safe_range, text));
   }
 
 }

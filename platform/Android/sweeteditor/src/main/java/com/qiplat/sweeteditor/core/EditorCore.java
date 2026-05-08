@@ -763,6 +763,11 @@ public class EditorCore {
 
     @NonNull
     public ImeActionResult markImeDocumentRange(@NonNull TextRange range, int scriptHint) {
+        return markImeDocumentRange(range, scriptHint, ImeDocumentRangeRole.PLATFORM_PREFIX_PREEDIT);
+    }
+
+    @NonNull
+    public ImeActionResult markImeDocumentRange(@NonNull TextRange range, int scriptHint, int role) {
         if (mNativeHandle == 0) return new ImeActionResult();
         ByteBuffer data = nativeImeMarkDocumentRange(
                 mNativeHandle,
@@ -770,7 +775,8 @@ public class EditorCore {
                 range.start.column,
                 range.end.line,
                 range.end.column,
-                scriptHint);
+                scriptHint,
+                role);
         try {
             return ProtocolDecoder.decodeImeActionResult(data);
         } finally {
@@ -832,6 +838,57 @@ public class EditorCore {
     }
 
     @NonNull
+    public ImeActionResult notifyImeSelectionChanged(@NonNull TextRange range) {
+        if (mNativeHandle == 0) return new ImeActionResult();
+        ByteBuffer data = nativeImeNotifySelectionChanged(
+                mNativeHandle,
+                range.start.line,
+                range.start.column,
+                range.end.line,
+                range.end.column);
+        try {
+            return ProtocolDecoder.decodeImeActionResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    @NonNull
+    public ImeActionResult notifyImeCursorChanged(@NonNull TextPosition cursor) {
+        if (mNativeHandle == 0) return new ImeActionResult();
+        ByteBuffer data = nativeImeNotifyCursorChanged(
+                mNativeHandle,
+                cursor.line,
+                cursor.column);
+        try {
+            return ProtocolDecoder.decodeImeActionResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    public void setImeKeyboardScriptClass(int scriptClass) {
+        if (mNativeHandle == 0) return;
+        nativeImeSetKeyboardScriptClass(mNativeHandle, scriptClass);
+    }
+
+    public int getImeKeyboardScriptClass() {
+        if (mNativeHandle == 0) return ImeScriptClass.UNKNOWN;
+        return nativeImeGetKeyboardScriptClass(mNativeHandle);
+    }
+
+    @NonNull
+    public ImeActionResult refreshImeCompositionAtCursor(int scriptHint) {
+        if (mNativeHandle == 0) return new ImeActionResult();
+        ByteBuffer data = nativeImeRefreshCompositionAtCursor(mNativeHandle, scriptHint);
+        try {
+            return ProtocolDecoder.decodeImeActionResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    @NonNull
     public ImeSyncSnapshot getImeSyncSnapshot() {
         if (mNativeHandle == 0) return new ImeSyncSnapshot();
         ByteBuffer data = nativeGetImeSyncSnapshot(mNativeHandle);
@@ -843,24 +900,18 @@ public class EditorCore {
     }
 
     /**
-     * Sets whether IME composition is enabled.
-     * <p>When disabled, composing updates are ignored and committed text is inserted directly.
-     *
-     * @param enabled {@code true}=enable, {@code false}=disable
+     * Legacy no-op. IME composition is always supported when the editor is editable.
      */
     public void setCompositionEnabled(boolean enabled) {
         if (mNativeHandle == 0) return;
-        nativeSetCompositionEnabled(mNativeHandle, enabled);
+        nativeSetCompositionEnabled(mNativeHandle, true);
     }
 
     /**
-     * Gets whether IME composition is enabled.
-     *
-     * @return {@code true} if enabled
+     * Legacy compatibility query.
      */
     public boolean isCompositionEnabled() {
-        if (mNativeHandle == 0) return false;
-        return nativeIsCompositionEnabled(mNativeHandle);
+        return true;
     }
 
     // ==================== Read-Only Mode ====================
@@ -1871,6 +1922,15 @@ public class EditorCore {
         }
     }
 
+    public static final class ImeDocumentRangeRole {
+        public static final int NONE = 0;
+        public static final int WORD_TARGET = 1;
+        public static final int PLATFORM_PREFIX_PREEDIT = 2;
+
+        private ImeDocumentRangeRole() {
+        }
+    }
+
     public static final class ImeContextPolicy {
         public static final int NONE = 0;
         public static final int LIMITED_FOR_CANDIDATES = 1;
@@ -1891,12 +1951,20 @@ public class EditorCore {
         public final TextRange visibleCompositionRange;
         @Nullable
         public final TextRange platformMarkedRange;
+        @NonNull
+        public final String platformTextWindowText;
+        public final int platformTextWindowStartOffset;
+        @NonNull
+        public final IntRange platformTextWindowSelectionOffsets;
+        @NonNull
+        public final IntRange platformTextWindowComposingOffsets;
         public final int preeditStorage;
         public final int contextPolicy;
         public final boolean clearPlatformPreedit;
 
         public ImeSyncSnapshot() {
             this(new TextPosition(0, 0), null, false, null, null,
+                    "", 0, new IntRange(0, 0), new IntRange(-1, -1),
                     ImePreeditStorage.NONE, ImeContextPolicy.NONE, false);
         }
 
@@ -1905,6 +1973,10 @@ public class EditorCore {
                                boolean hasComposingSession,
                                @Nullable TextRange visibleCompositionRange,
                                @Nullable TextRange platformMarkedRange,
+                               @NonNull String platformTextWindowText,
+                               int platformTextWindowStartOffset,
+                               @NonNull IntRange platformTextWindowSelectionOffsets,
+                               @NonNull IntRange platformTextWindowComposingOffsets,
                                int preeditStorage,
                                int contextPolicy,
                                boolean clearPlatformPreedit) {
@@ -1913,6 +1985,10 @@ public class EditorCore {
             this.hasComposingSession = hasComposingSession;
             this.visibleCompositionRange = visibleCompositionRange;
             this.platformMarkedRange = platformMarkedRange;
+            this.platformTextWindowText = platformTextWindowText;
+            this.platformTextWindowStartOffset = platformTextWindowStartOffset;
+            this.platformTextWindowSelectionOffsets = platformTextWindowSelectionOffsets;
+            this.platformTextWindowComposingOffsets = platformTextWindowComposingOffsets;
             this.preeditStorage = preeditStorage;
             this.contextPolicy = contextPolicy;
             this.clearPlatformPreedit = clearPlatformPreedit;
@@ -2383,7 +2459,8 @@ public class EditorCore {
                                                                 long startColumn,
                                                                 long endLine,
                                                                 long endColumn,
-                                                                int scriptHint);
+                                                                int scriptHint,
+                                                                int role);
 
     @FastNative
     private static native ByteBuffer nativeImeReplaceText(long handle,
@@ -2405,6 +2482,27 @@ public class EditorCore {
                                                                 long beforeLength,
                                                                 long afterLength,
                                                                 int textUnit);
+
+    @FastNative
+    private static native ByteBuffer nativeImeNotifySelectionChanged(long handle,
+                                                                     long startLine,
+                                                                     long startColumn,
+                                                                     long endLine,
+                                                                     long endColumn);
+
+    @FastNative
+    private static native ByteBuffer nativeImeNotifyCursorChanged(long handle,
+                                                                  long cursorLine,
+                                                                  long cursorColumn);
+
+    @CriticalNative
+    private static native void nativeImeSetKeyboardScriptClass(long handle, int scriptClass);
+
+    @CriticalNative
+    private static native int nativeImeGetKeyboardScriptClass(long handle);
+
+    @FastNative
+    private static native ByteBuffer nativeImeRefreshCompositionAtCursor(long handle, int scriptHint);
 
     @FastNative
     private static native ByteBuffer nativeGetImeSyncSnapshot(long handle);

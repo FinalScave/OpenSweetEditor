@@ -336,12 +336,11 @@ controller.whenReady(() {
 | **IME** | | |
 | 更新 preedit | `updateImePreedit(text, script)` | - |
 | 提交文本 | `commitImeText(text, script)` | - |
-| 标记候选替换范围 | `markImeDocumentRange(range, script)` | - |
-| 候选替换文本 | `replaceImeText(range, text, script)` | - |
+| 标记平台 composition 范围 | `markImeDocumentRange(range, script)` | - |
+| 请求候选替换文本 | `replaceImeText(range, text, script)` | - |
 | 结束或取消 preedit | `finishImePreedit()` / `cancelImePreedit()` | - |
 | 是否组合中 | `isComposing()` | property: `isComposing` / `IsComposing { get; }` |
-| 启用/禁用组合 | `setCompositionEnabled(enabled)` | — |
-| 组合是否启用 | `isCompositionEnabled()` | property: `isCompositionEnabled` / `IsCompositionEnabled { get; }` |
+| 兼容 IME composition 查询 | `isCompositionEnabled()` | 历史 API，固定表示可编辑时支持平台 composition |
 | **只读 / 缩进** | | |
 | 设置只读 | `setReadOnly(readOnly)` | — |
 | 是否只读 | `isReadOnly()` | property: `isReadOnly` / `IsReadOnly { get; }` |
@@ -417,6 +416,16 @@ controller.whenReady(() {
 | 下一个 Tab Stop | `linkedEditingNext()` | — |
 | 上一个 Tab Stop | `linkedEditingPrev()` | — |
 | 取消联动编辑 | `cancelLinkedEditing()` | — |
+
+IME API 是平台输入事件进入 core 的请求入口。平台层 MUST NOT 因为系统 IME 请求 surrounding text、候选上下文或光标矩形，就创建 editor composition。是否建立 composition 只取决于系统 IME 是否通过 composing / marked / preedit API 明确声明了组合文本或组合范围；提交、替换、删除和 selection 同步仍由 core 按 `docs/zh/ime-composition-standard.md` 裁决。
+
+平台层向 core 标记 document range 时 MUST 明确这是平台 IME 声明的 composing / marked range，并使用 `PLATFORM_PREFIX_PREEDIT` 或等价语义。Android 的 `InputConnection.setComposingRegion`、Apple marked range、Windows TSF composition range 都不能由平台层直接当成整词替换命令。`WORD_TARGET` 是历史兼容角色，不属于新的 IME 标准；光标进入英文单词时平台层和 core 都不得自动开启整词 composition。
+
+Android 平台层判定当前输入态时，可以使用 `InputMethodSubtype.languageTag` / `locale`，也可以使用明确语言或脚本含义的 extra value；`isAsciiCapable()` 和 extra value 中的 `AsciiCapable` 只表示该 subtype 能输入 ASCII，MUST NOT 单独映射为 Latin 键盘。
+
+Android 平台层处理 tap 时 SHOULD 通知系统 IME view clicked，并随后同步 selection / surrounding text。`setComposingRegion` 是 IME 明确声明的 composition range，即使 cursor 不在该 range 内也 MUST 被接收；平台层只能裁剪到合法文档范围，不能用 cursor containment 拒绝。
+
+平台层 MUST 将光标变化、选区变化、composition 更新、候选提交、删除、finish/cancel 等事件同步给 core。中文键盘未声明 composition 时只表示不建立 SweetEditor 可见 composition；这不能被实现成禁用系统 IME、阻断中文候选提交或阻断中文联想候选。
 
 > payload 类 API（如 `setLineSpans`、`setBatchLineSpans`）各平台 MUST 提供高层 typed 封装（如 `setLineSpans(line, layer, spans: List<StyleSpan>)`）。当宿主语言存在自然的公开二进制载体（如 `ByteBuffer`、`NSData`、`byte[]`、`Uint8List`）时，平台 SHOULD 额外公开 raw/binary payload API。若 typed API 与 payload API 同时存在，两者的参数语义与最终 Core 行为 MUST 完全一致。payload 的编码格式由平台自行定义。
 
@@ -1070,7 +1079,7 @@ interface SelectionMenuListener {
 
 ## 9. EditorSettings（MUST）
 
-编辑器选项以及行为/布局类配置 MUST 通过 `EditorSettings` 对象统一收拢管理。这里指的是 wrap mode、scale、composition behavior、spacing、padding 等 settings-like editor options。`EditorTheme` 与 `EditorKeyMap` 仍然是独立的宿主配置对象，不受本条“并入 `EditorSettings`”约束。宿主可见 API 载体 MUST NOT 直接暴露 settings-like 配置 setter（如 `setWrapMode`、`setScale`、`setCompositionEnabled` 等），而是通过 `getSettings()` 暴露配置对象，并在该对象可用后由调用方进行配置。命令式平台上，该宿主 API 载体是 `SweetEditor`；声明式平台上则是 `SweetEditorController`。在声明式平台上，`getSettings()` 只有在 `whenReady()` 或其他等价 ready 信号之后才有效。在此之前，它 SHOULD 返回 `null` 或默认的不可用值，MUST NOT 为此创建隐藏运行时或隐藏暂存对象，也 MUST NOT 被视为 pre-ready 配置通道。若首个 attach 前就必须确定初始 settings，MUST 通过声明式构造参数或等价的平台原生初始化路径提供。这个宿主接口规则不改变第 3.1 节定义的 `EditorCore` Public API。
+编辑器选项以及行为/布局类配置 MUST 通过 `EditorSettings` 对象统一收拢管理。这里指的是 wrap mode、scale、spacing、padding 等 settings-like editor options。`EditorTheme` 与 `EditorKeyMap` 仍然是独立的宿主配置对象，不受本条“并入 `EditorSettings`”约束。宿主可见 API 载体 MUST NOT 直接暴露 settings-like 配置 setter（如 `setWrapMode`、`setScale` 等），而是通过 `getSettings()` 暴露配置对象，并在该对象可用后由调用方进行配置。命令式平台上，该宿主 API 载体是 `SweetEditor`；声明式平台上则是 `SweetEditorController`。在声明式平台上，`getSettings()` 只有在 `whenReady()` 或其他等价 ready 信号之后才有效。在此之前，它 SHOULD 返回 `null` 或默认的不可用值，MUST NOT 为此创建隐藏运行时或隐藏暂存对象，也 MUST NOT 被视为 pre-ready 配置通道。若首个 attach 前就必须确定初始 settings，MUST 通过声明式构造参数或等价的平台原生初始化路径提供。这个宿主接口规则不改变第 3.1 节定义的 `EditorCore` Public API。
 
 所有平台 MUST 通过 getter/setter 对（或属性）暴露以下设置：
 
@@ -1081,7 +1090,6 @@ interface SelectionMenuListener {
 | `scale` | float | 1.0 | `setScale(scale)` | `getScale()` | `relayout` | 缩放比例 |
 | `foldArrowMode` | FoldArrowMode | ALWAYS | `setFoldArrowMode(mode)` | `getFoldArrowMode()` | `repaint` | 折叠箭头显示模式 |
 | `wrapMode` | WrapMode | NONE | `setWrapMode(mode)` | `getWrapMode()` | `relayout` | 自动换行模式 |
-| `compositionEnabled` | boolean | 平台相关 | `setCompositionEnabled(enabled)` | `isCompositionEnabled()` | `runtime-transition` | 是否启用 IME 组合输入模式 |
 | `lineSpacingAdd` | float | 0 | `setLineSpacing(add, mult)` | `getLineSpacingAdd()` | `relayout` | 行间距附加值（像素） |
 | `lineSpacingMult` | float | 1.0 | *(同上)* | `getLineSpacingMult()` | `relayout` | 行间距倍数 |
 | `contentStartPadding` | float | 平台相关 | `setContentStartPadding(padding)` | `getContentStartPadding()` | `relayout` | gutter 分割线与文本渲染起始之间的额外水平内边距（像素） |
@@ -1103,8 +1111,6 @@ interface SelectionMenuListener {
 > - `relayout`：MUST 立即触发布局失效，并重建 render model 或走等效的重新布局路径。
 > - `runtime-transition`：MUST 立即生效，并安全处理该设置要求的运行态切换。`runtime-transition` 设置只有在当前可见状态实际发生变化时，才要求重绘或重新布局。
 > - `provider-policy`：MUST 立即影响后续 provider 的调度 / 刷新策略。除非实现明确在应用新策略时主动触发 refresh，否则不要求重绘或重新布局。
->
-> `compositionEnabled` 是 `runtime-transition` 的典型例子：当设置从启用切换为禁用且当前存在活动 IME composition 时，平台 MUST 在新设置生效前先取消或安全终止当前 composition。
 >
 > `autoIndentMode`、`backspaceUnindent` 和 `readOnly` 也属于 `runtime-transition` 设置。它们必须立即影响后续编辑行为，但在 setter 调用当下若没有可见状态变化，则不要求 `flush()`、重绘或重新布局。
 >
@@ -1325,9 +1331,9 @@ interface ContextMenuItemProvider {
 | OHOS | NAPI (`napi_editor.hpp`) |
 | Flutter | FFI (Dart) |
 
-### 13.2 输入法处理（MAY 不同）
+### 13.2 输入法接入（平台 API MAY 不同，core 语义 MUST 一致）
 
-输入法集成天然是平台特定的：
+输入法集成天然是平台特定的，但 SweetEditor 的 composition 语义 MUST 在各平台保持一致。平台实现可以使用不同系统 API 接入 IME，但必须把系统事件归一化到 core 的 IME 标准行为：只有系统 IME 明确声明 composing / marked / preedit 时才建立 editor composition；candidate context、surrounding text、键盘语言或光标进入 Latin 单词都不能自动创建 composition。
 
 | 平台 | IME API |
 |---|---|
@@ -1337,6 +1343,8 @@ interface ContextMenuItemProvider {
 | Swing | `InputMethodRequests` |
 | WinForms | `ImmAssociateContext` / TSF |
 | OHOS | IME Kit |
+
+Android `InputConnection` 实现 MUST 覆盖 selection、batch edit、surrounding text、empty commit、`newCursorPosition`、`setComposingRegion`、`finishComposingText`、subtype 脚本判定和 stale connection 处理。`commitText("")` 在活动 composing session 内是空文本替换，不是 finish/cancel；`setSelection` 与 cursor movement 必须同步给 core；`isAsciiCapable()` 不得单独推断 Latin 输入态；batch edit 期间必须延迟渲染刷新和 `updateSelection`；surrounding text 必须来自文档全局 UTF-16 offset，并保留跨行上下文。`setComposingText` 和 `setComposingRegion` 是 Android composition 的事实来源；没有这两类声明时不得显示 composition。其他平台的 marked text / composition session API 也 MUST 满足这些等价语义。
 
 ### 13.3 可选模块
 

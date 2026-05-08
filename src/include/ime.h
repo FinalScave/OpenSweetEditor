@@ -14,7 +14,6 @@ namespace NS_SWEETEDITOR {
     public:
       virtual ~Host() = default;
 
-      virtual bool imeCompositionEnabled() const = 0;
       virtual bool imeHasDocument() const = 0;
       virtual bool imeReadOnly() const = 0;
       virtual bool imeIsLinkedEditingActive() const = 0;
@@ -24,6 +23,9 @@ namespace NS_SWEETEDITOR {
       virtual TextRange imeClampDocumentRange(const TextRange& range) const = 0;
       virtual bool imeIsDocumentRangeReadable(const TextRange& range) const = 0;
       virtual U8String imeDocumentText(const TextRange& range) const = 0;
+      virtual size_t imeDocumentLineCount() const = 0;
+      virtual uint32_t imeLineColumns(size_t line) const = 0;
+      virtual size_t imeCharIndexFromPosition(const TextPosition& position) const = 0;
       virtual TextPosition imePositionAfterInsert(const TextPosition& start, const U8String& text) const = 0;
       virtual size_t imeUtf16Columns(const U8String& text) const = 0;
       virtual TextEditResult imeApplyEdit(const TextRange& range, const U8String& text) = 0;
@@ -53,8 +55,9 @@ namespace NS_SWEETEDITOR {
     ImeActionResult finishPreedit(Host& host);
     ImeActionResult cancelPreedit(Host& host);
     ImeActionResult markDocumentRange(Host& host,
-                                      const TextRange& range,
-                                      ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+                                       const TextRange& range,
+                                       ImeScriptClass script_class = ImeScriptClass::UNKNOWN,
+                                       ImeDocumentRangeRole role = ImeDocumentRangeRole::PLATFORM_PREFIX_PREEDIT);
     ImeActionResult replaceText(Host& host,
                                 const TextRange& range,
                                 const U8String& text,
@@ -71,12 +74,18 @@ namespace NS_SWEETEDITOR {
                                       ImeTextUnit text_unit = ImeTextUnit::UTF16_CODE_UNIT);
     ImeActionResult notifySelectionChanged(Host& host, const TextRange& range);
     ImeActionResult notifyCursorChanged(Host& host, const TextPosition& cursor);
+    ImeActionResult refreshCompositionAtCursor(Host& host,
+                                               ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
     ImeSyncSnapshot buildSyncSnapshot(const Host& host) const;
 
-    void setComposingRange(Host& host, const TextRange& range);
+    void setComposingRange(Host& host,
+                           const TextRange& range,
+                           ImeDocumentRangeRole role = ImeDocumentRangeRole::PLATFORM_PREFIX_PREEDIT);
     TextEditResult setComposingText(Host& host, const U8String& text);
     TextEditResult finishComposing(Host& host, CompositionFinishReason reason = CompositionFinishReason::FINISH);
-    TextEditResult commitComposingText(Host& host, const U8String& committed_text);
+    TextEditResult commitComposingText(Host& host,
+                                       const U8String& committed_text,
+                                       bool empty_text_keeps_composition = false);
     void cancelComposing(Host& host);
     void removeComposingText(Host& host);
     void resetCompositionState();
@@ -91,15 +100,19 @@ namespace NS_SWEETEDITOR {
 
     const ImeCompositionPolicy& policy() const;
     void setPolicy(const ImeCompositionPolicy& policy);
+    void setKeyboardScriptClass(ImeScriptClass script_class);
+    ImeScriptClass keyboardScriptClass() const;
 
     static bool isNonLatinScript(ImeScriptClass script_class);
     static bool isInlineCandidateText(const U8String& text);
 
     ImeScriptClass resolveScriptClass(const U8String& text, ImeScriptClass script_class) const;
-    bool shouldUseShadowPreedit(bool composition_enabled,
-                                const U8String& text,
+    bool shouldUseShadowPreedit(const U8String& text,
                                 ImeScriptClass script_class) const;
-    bool isDocumentRangeEligible(const TextRange& range, const TextPosition& cursor) const;
+    bool isDocumentRangeEligible(const TextRange& range,
+                                 const TextPosition& cursor,
+                                 ImeDocumentRangeRole role) const;
+    bool canMoveSelectionInsideComposition(const TextRange& range) const;
 
     void clearShadowPreedit();
     void setShadowPreedit(const U8String& text, ImeScriptClass script_class);
@@ -134,10 +147,12 @@ namespace NS_SWEETEDITOR {
     static HostState captureHostState(const Host& host);
     void finishAction(Host& host, ImeActionResult& result, const HostState& state) const;
     static void mergeEditResult(ImeActionResult& result, const TextEditResult& edit_result);
+    void observeKeyboardScriptClass(ImeScriptClass script_class);
 
     ImeCompositionPolicy m_policy_;
     ImeSessionState m_session_;
     CompositionState m_composition_;
+    ImeScriptClass m_keyboard_script_class_ {ImeScriptClass::UNKNOWN};
 
     void beginComposingTextSession(Host& host);
     bool hasMidDocumentRangeComposition(const CompositionState& composition,
@@ -152,6 +167,17 @@ namespace NS_SWEETEDITOR {
                                        const U8String& text,
                                        TextRange& range,
                                        U8String& replacement) const;
+    bool hasEndDocumentRangeComposition(const Host& host) const;
+    bool resolveDocumentRangeInsertedText(const Host& host,
+                                          const U8String& text,
+                                          U8String& replacement) const;
+    TextEditResult applyDocumentRangeEndReplacement(Host& host,
+                                                    const TextRange& range,
+                                                    const U8String& replacement,
+                                                    const U8String& preedit_text,
+                                                    const U8String& inserted_text,
+                                                    bool is_commit);
+    TextEditResult applyDocumentRangeEndPlainEdit(Host& host, const U8String& text, bool is_commit);
     TextEditResult applyPlainLatinInputLockEdit(Host& host, const U8String& text, bool is_commit);
     bool trySuppressCandidateRange(Host& host, const TextRange& range);
     bool trySuppressCandidateCommit(Host& host, const U8String& text);
@@ -164,7 +190,8 @@ namespace NS_SWEETEDITOR {
     void handleMarkDocumentRange(Host& host,
                                  ImeActionResult& result,
                                  const TextRange& range,
-                                 ImeScriptClass script_class);
+                                 ImeScriptClass script_class,
+                                 ImeDocumentRangeRole role);
     void handleDelete(Host& host,
                       ImeActionResult& result,
                       size_t before_length,
@@ -172,6 +199,12 @@ namespace NS_SWEETEDITOR {
                       ImeTextUnit text_unit);
     void handleSelectionChanged(Host& host, const TextRange& range);
     void handleCursorChanged(Host& host, const TextPosition& cursor);
+    void handleRefreshCompositionAtCursor(Host& host);
+    bool tryDeleteFromDocumentRangeEnd(Host& host,
+                                       ImeActionResult& result,
+                                       size_t before_length,
+                                       size_t after_length,
+                                       ImeTextUnit text_unit);
     void handleReplaceText(Host& host, ImeActionResult& result, const TextRange& range, const U8String& text);
   };
 

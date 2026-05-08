@@ -8,6 +8,14 @@ android {
     namespace 'com.qiplat.sweeteditor.demo'
     compileSdk 34
 
+    def traceGitSha = providers.exec {
+        commandLine 'git', 'rev-parse', '--short=12', 'HEAD'
+    }.standardOutput.asText.get().trim()
+    def traceGitBranch = providers.exec {
+        commandLine 'git', 'rev-parse', '--abbrev-ref', 'HEAD'
+    }.standardOutput.asText.get().trim()
+    def traceBuildTime = new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+
     defaultConfig {
         applicationId "com.qiplat.sweeteditor.demo"
         minSdk 21
@@ -16,6 +24,9 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "String", "GIT_SHA", "\"${traceGitSha}\""
+        buildConfigField "String", "GIT_BRANCH", "\"${traceGitBranch}\""
+        buildConfigField "String", "BUILD_TIME", "\"${traceBuildTime}\""
     }
 
     buildTypes {
@@ -36,10 +47,10 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
-    lintOptions {
-        checkReleaseBuilds false
-        abortOnError false
+    buildFeatures {
+        buildConfig true
     }
+
 
     applicationVariants.all { variant ->
         variant.outputs.all {
@@ -51,6 +62,10 @@ android {
         main {
             assets.srcDirs = ['../../_res']
         }
+    }
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
     }
 }
 

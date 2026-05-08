@@ -283,6 +283,12 @@ namespace NS_SWEETEDITOR {
     /// Get the core IME composition policy
     const ImeCompositionPolicy& getImeCompositionPolicy() const;
 
+    void setImeKeyboardScriptClass(ImeScriptClass script_class);
+
+    ImeScriptClass getImeKeyboardScriptClass() const;
+
+    ImeActionResult refreshImeCompositionAtCursor(ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
     ImeActionResult updateImePreedit(const U8String& text,
                                      ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
@@ -294,7 +300,8 @@ namespace NS_SWEETEDITOR {
     ImeActionResult cancelImePreedit();
 
     ImeActionResult markImeDocumentRange(const TextRange& range,
-                                         ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+                                         ImeScriptClass script_class = ImeScriptClass::UNKNOWN,
+                                         ImeDocumentRangeRole role = ImeDocumentRangeRole::PLATFORM_PREFIX_PREEDIT);
 
     ImeActionResult replaceImeText(const TextRange& range,
                                    const U8String& text,
@@ -323,10 +330,10 @@ namespace NS_SWEETEDITOR {
     /// Whether composition is active
     bool isComposing() const;
 
-    /// Set whether IME composition is enabled
+    /// Legacy no-op; IME composition is always supported when editable.
     void setCompositionEnabled(bool enabled);
 
-    /// Get whether IME composition is enabled
+    /// Legacy compatibility query; returns true while editable IME is supported.
     bool isCompositionEnabled() const;
     /// Set read-only mode
     /// @param read_only true=read-only (block all edit actions), false=editable
@@ -662,7 +669,6 @@ namespace NS_SWEETEDITOR {
     bool isDocumentRangeReadable(const TextRange& range) const;
     TextEditResult deleteCodePointBackward();
     TextEditResult deleteCodePointForward();
-    bool imeCompositionEnabled() const override;
     bool imeHasDocument() const override;
     bool imeReadOnly() const override;
     bool imeIsLinkedEditingActive() const override;
@@ -672,6 +678,9 @@ namespace NS_SWEETEDITOR {
     TextRange imeClampDocumentRange(const TextRange& range) const override;
     bool imeIsDocumentRangeReadable(const TextRange& range) const override;
     U8String imeDocumentText(const TextRange& range) const override;
+    size_t imeDocumentLineCount() const override;
+    uint32_t imeLineColumns(size_t line) const override;
+    size_t imeCharIndexFromPosition(const TextPosition& position) const override;
     TextPosition imePositionAfterInsert(const TextPosition& start, const U8String& text) const override;
     size_t imeUtf16Columns(const U8String& text) const override;
     TextEditResult imeApplyEdit(const TextRange& range, const U8String& text) override;

@@ -133,29 +133,53 @@ public:
   }
 
   float measureWidth(const U16String &text, int32_t font_style) override {
+    JniEnvScope env_scope = makeEnvScope();
+    JNIEnv* env = env_scope.env();
+    if (env == nullptr) {
+      return 0.0f;
+    }
     U8String u8_text;
     StrUtil::convertUTF16ToUTF8(text, u8_text);
-    jstring java_text = m_env_->NewStringUTF(u8_text.c_str());
-    return m_env_->CallNonvirtualFloatMethod(m_java_obj_,m_jclass_TextMeasurer_,
-                                             m_jmethod_measureWidth_, java_text, (jint)font_style);
+    jstring java_text = env->NewStringUTF(u8_text.c_str());
+    float result = env->CallNonvirtualFloatMethod(m_java_obj_,m_jclass_TextMeasurer_,
+                                                  m_jmethod_measureWidth_, java_text, (jint)font_style);
+    env->DeleteLocalRef(java_text);
+    return result;
   }
 
   float measureInlayHintWidth(const U16String &text) override {
+    JniEnvScope env_scope = makeEnvScope();
+    JNIEnv* env = env_scope.env();
+    if (env == nullptr) {
+      return 0.0f;
+    }
     U8String u8_text;
     StrUtil::convertUTF16ToUTF8(text, u8_text);
-    jstring java_text = m_env_->NewStringUTF(u8_text.c_str());
-    return m_env_->CallNonvirtualFloatMethod(m_java_obj_,m_jclass_TextMeasurer_,
-                                             m_jmethod_measureInlayHintWidth_, java_text);
+    jstring java_text = env->NewStringUTF(u8_text.c_str());
+    float result = env->CallNonvirtualFloatMethod(m_java_obj_,m_jclass_TextMeasurer_,
+                                                  m_jmethod_measureInlayHintWidth_, java_text);
+    env->DeleteLocalRef(java_text);
+    return result;
   }
 
   float measureIconWidth(int32_t icon_id) override {
-    return m_env_->CallNonvirtualFloatMethod(m_java_obj_,m_jclass_TextMeasurer_,
-                                             m_jmethod_measureIconWidth_, (jint)icon_id);
+    JniEnvScope env_scope = makeEnvScope();
+    JNIEnv* env = env_scope.env();
+    if (env == nullptr) {
+      return 0.0f;
+    }
+    return env->CallNonvirtualFloatMethod(m_java_obj_,m_jclass_TextMeasurer_,
+                                          m_jmethod_measureIconWidth_, (jint)icon_id);
   }
 
   FontMetrics getFontMetrics() override {
-    float ascent = m_env_->CallNonvirtualFloatMethod(m_java_obj_,m_jclass_TextMeasurer_,m_jmethod_getFontAscent_);
-    float descent = m_env_->CallNonvirtualFloatMethod(m_java_obj_,m_jclass_TextMeasurer_,m_jmethod_getFontDescent_);
+    JniEnvScope env_scope = makeEnvScope();
+    JNIEnv* env = env_scope.env();
+    if (env == nullptr) {
+      return {0.0f, 0.0f};
+    }
+    float ascent = env->CallNonvirtualFloatMethod(m_java_obj_,m_jclass_TextMeasurer_,m_jmethod_getFontAscent_);
+    float descent = env->CallNonvirtualFloatMethod(m_java_obj_,m_jclass_TextMeasurer_,m_jmethod_getFontDescent_);
     return {ascent, descent};
   }
 
@@ -486,16 +510,17 @@ public:
 
   static jobject imeMarkDocumentRange(JNIEnv* env, jclass clazz, jlong handle,
                                       jlong startLine, jlong startColumn, jlong endLine, jlong endColumn,
-                                      jint scriptHint) {
+                                      jint scriptHint, jint role) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
-    const uint8_t* payload = editor_ime_mark_document_range(static_cast<intptr_t>(handle),
-                                                            static_cast<size_t>(startLine),
-                                                            static_cast<size_t>(startColumn),
-                                                            static_cast<size_t>(endLine),
-                                                            static_cast<size_t>(endColumn),
-                                                            static_cast<int>(scriptHint),
-                                                            &out_size);
+    const uint8_t* payload = editor_ime_mark_document_range_with_role(static_cast<intptr_t>(handle),
+                                                                      static_cast<size_t>(startLine),
+                                                                      static_cast<size_t>(startColumn),
+                                                                      static_cast<size_t>(endLine),
+                                                                      static_cast<size_t>(endColumn),
+                                                                      static_cast<int>(scriptHint),
+                                                                      static_cast<int>(role),
+                                                                      &out_size);
     return wrapBinaryPayload(env, payload, out_size);
   }
 
@@ -545,7 +570,49 @@ public:
                                                            static_cast<size_t>(beforeLength),
                                                            static_cast<size_t>(afterLength),
                                                            static_cast<int>(textUnit),
-                                                           &out_size);
+                                                            &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
+  }
+
+  static jobject imeNotifySelectionChanged(JNIEnv* env, jclass clazz, jlong handle,
+                                           jlong startLine, jlong startColumn,
+                                           jlong endLine, jlong endColumn) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_ime_notify_selection_changed(static_cast<intptr_t>(handle),
+                                                                 static_cast<size_t>(startLine),
+                                                                 static_cast<size_t>(startColumn),
+                                                                 static_cast<size_t>(endLine),
+                                                                 static_cast<size_t>(endColumn),
+                                                                 &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
+  }
+
+  static jobject imeNotifyCursorChanged(JNIEnv* env, jclass clazz, jlong handle,
+                                        jlong cursorLine, jlong cursorColumn) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_ime_notify_cursor_changed(static_cast<intptr_t>(handle),
+                                                              static_cast<size_t>(cursorLine),
+                                                              static_cast<size_t>(cursorColumn),
+                                                              &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
+  }
+
+  static void imeSetKeyboardScriptClass(jlong handle, jint scriptClass) {
+    editor_ime_set_keyboard_script_class(static_cast<intptr_t>(handle), static_cast<int>(scriptClass));
+  }
+
+  static jint imeGetKeyboardScriptClass(jlong handle) {
+    return static_cast<jint>(editor_ime_get_keyboard_script_class(static_cast<intptr_t>(handle)));
+  }
+
+  static jobject imeRefreshCompositionAtCursor(JNIEnv* env, jclass clazz, jlong handle, jint scriptHint) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_ime_refresh_composition_at_cursor(static_cast<intptr_t>(handle),
+                                                                      static_cast<int>(scriptHint),
+                                                                      &out_size);
     return wrapBinaryPayload(env, payload, out_size);
   }
 
@@ -1157,11 +1224,16 @@ public:
       {"nativeImeCommitText", "(JLjava/lang/String;I)Ljava/nio/ByteBuffer;", (void*) imeCommitText},
       {"nativeImeFinishPreedit", "(J)Ljava/nio/ByteBuffer;", (void*) imeFinishPreedit},
       {"nativeImeCancelPreedit", "(J)Ljava/nio/ByteBuffer;", (void*) imeCancelPreedit},
-      {"nativeImeMarkDocumentRange", "(JJJJJI)Ljava/nio/ByteBuffer;", (void*) imeMarkDocumentRange},
+      {"nativeImeMarkDocumentRange", "(JJJJJII)Ljava/nio/ByteBuffer;", (void*) imeMarkDocumentRange},
       {"nativeImeReplaceText", "(JJJJJLjava/lang/String;I)Ljava/nio/ByteBuffer;", (void*) imeReplaceText},
       {"nativeImeDeleteBackward", "(JJI)Ljava/nio/ByteBuffer;", (void*) imeDeleteBackward},
       {"nativeImeDeleteForward", "(JJI)Ljava/nio/ByteBuffer;", (void*) imeDeleteForward},
       {"nativeImeDeleteSurrounding", "(JJJI)Ljava/nio/ByteBuffer;", (void*) imeDeleteSurrounding},
+      {"nativeImeNotifySelectionChanged", "(JJJJJ)Ljava/nio/ByteBuffer;", (void*) imeNotifySelectionChanged},
+      {"nativeImeNotifyCursorChanged", "(JJJ)Ljava/nio/ByteBuffer;", (void*) imeNotifyCursorChanged},
+      {"nativeImeSetKeyboardScriptClass", "(JI)V", (void*) imeSetKeyboardScriptClass},
+      {"nativeImeGetKeyboardScriptClass", "(J)I", (void*) imeGetKeyboardScriptClass},
+      {"nativeImeRefreshCompositionAtCursor", "(JI)Ljava/nio/ByteBuffer;", (void*) imeRefreshCompositionAtCursor},
       {"nativeGetImeSyncSnapshot", "(J)Ljava/nio/ByteBuffer;", (void*) getImeSyncSnapshot},
       {"nativeSetCompositionEnabled", "(JZ)V", (void*) setCompositionEnabled},
       {"nativeIsCompositionEnabled", "(J)Z", (void*) isCompositionEnabled},

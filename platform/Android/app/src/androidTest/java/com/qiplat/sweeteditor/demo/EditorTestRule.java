@@ -73,7 +73,7 @@ public class EditorTestRule extends ExternalResource {
             intent.setClass(targetContext, EditorTestActivity.class);
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             targetContext.startActivity(intent);
-            if (!activityCreated.await(10, TimeUnit.SECONDS)) {
+            if (!activityCreated.await(30, TimeUnit.SECONDS)) {
                 throw new AssertionError("Timed out launching EditorTestActivity");
             }
         } catch (InterruptedException e) {
