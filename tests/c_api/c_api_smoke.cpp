@@ -229,7 +229,6 @@ TEST_CASE("C API null handles return safe defaults") {
   CHECK(editor_can_undo(0) == 0);
   CHECK(editor_can_redo(0) == 0);
   CHECK(editor_is_composing(0) == 0);
-  CHECK(editor_is_composition_enabled(0) == 0);
   CHECK(editor_is_line_visible(0, 0) == 1);
 
   size_t metrics_size = 0;
@@ -327,7 +326,6 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   free_binary_data(reinterpret_cast<intptr_t>(insert_result));
   CHECK(getLineTextUtf8(document, 0) == "Xabc");
 
-  editor_set_composition_enabled(editor, 1);
   editor_set_cursor_position(editor, 0, 4);
   size_t ime_size = 0;
   const uint8_t* ime_result = editor_ime_update_preedit(editor, "q", 1, &ime_size);

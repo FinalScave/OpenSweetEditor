@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include "foundation.h"
+#include "editor_types.h"
 #include "decoration.h"
 #include "utility.h"
 

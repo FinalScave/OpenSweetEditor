@@ -2068,9 +2068,8 @@ namespace NS_SWEETEDITOR {
   }
 
   ImeActionResult EditorCore::markImeDocumentRange(const TextRange& range,
-                                                   ImeScriptClass script_class,
-                                                   ImeDocumentRangeRole role) {
-    return m_composition_controller_.markDocumentRange(*this, range, script_class, role);
+                                                   ImeScriptClass script_class) {
+    return m_composition_controller_.markDocumentRange(*this, range, script_class);
   }
 
   ImeActionResult EditorCore::replaceImeText(const TextRange& range,
@@ -2117,24 +2116,12 @@ namespace NS_SWEETEDITOR {
     return m_composition_controller_.buildSyncSnapshot(*this);
   }
 
-  void EditorCore::setImeCompositionPolicy(const ImeCompositionPolicy& policy) {
-    m_composition_controller_.setPolicy(policy);
-  }
-
-  const ImeCompositionPolicy& EditorCore::getImeCompositionPolicy() const {
-    return m_composition_controller_.policy();
-  }
-
   void EditorCore::setImeKeyboardScriptClass(ImeScriptClass script_class) {
     m_composition_controller_.setKeyboardScriptClass(script_class);
   }
 
   ImeScriptClass EditorCore::getImeKeyboardScriptClass() const {
     return m_composition_controller_.keyboardScriptClass();
-  }
-
-  ImeActionResult EditorCore::refreshImeCompositionAtCursor(ImeScriptClass script_class) {
-    return m_composition_controller_.refreshCompositionAtCursor(*this, script_class);
   }
 
   const CompositionState& EditorCore::getCompositionState() const {
@@ -2149,15 +2136,6 @@ namespace NS_SWEETEDITOR {
     return m_composition_controller_.hasComposingSession();
   }
 
-  void EditorCore::setCompositionEnabled(bool enabled) {
-    (void) enabled;
-    m_settings_.enable_composition = true;
-    LOGD("EditorCore::setCompositionEnabled is deprecated and ignored");
-  }
-
-  bool EditorCore::isCompositionEnabled() const {
-    return true;
-  }
   void EditorCore::setReadOnly(bool read_only) {
     if (read_only && isComposing()) {
       m_composition_controller_.cancelComposing(*this);

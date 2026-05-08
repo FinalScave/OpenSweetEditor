@@ -2,6 +2,7 @@
 #define SWEETEDITOR_RENDER_COMPOSER_H
 
 #include "editor_types.h"
+#include "ime_types.h"
 #include "layout.h"
 #include "visual.h"
 

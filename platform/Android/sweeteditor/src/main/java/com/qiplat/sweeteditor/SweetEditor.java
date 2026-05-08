@@ -1808,10 +1808,6 @@ public class SweetEditor extends View {
         return mRenderer.isPerfOverlayEnabled();
     }
 
-    boolean isCompositionEnabled() {
-        return true;
-    }
-
     void dispatchImeTextChanged(@NonNull EditorCore.TextEditResult editResult) {
         dispatchTextChanged(TextChangeAction.COMPOSITION, editResult);
     }

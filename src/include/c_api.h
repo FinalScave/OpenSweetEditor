@@ -615,7 +615,7 @@ EDITOR_API void editor_get_composing_range(intptr_t editor_handle,
                                            int32_t* out_end_line,
                                            int32_t* out_end_column);
 
-/// Get current composition session range, including hidden sessions awaiting commit
+/// Get current active composition session range
 EDITOR_API void editor_get_composing_session_range(intptr_t editor_handle,
                                                    int32_t* out_start_line,
                                                    int32_t* out_start_column,
@@ -653,17 +653,6 @@ EDITOR_API const uint8_t* editor_ime_mark_document_range(intptr_t editor_handle,
                                                           size_t end_column,
                                                           int script_hint,
                                                           size_t* out_size);
-
-/// Mark a document range with an explicit IME document range role.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_mark_document_range_with_role(intptr_t editor_handle,
-                                                                   size_t start_line,
-                                                                   size_t start_column,
-                                                                   size_t end_line,
-                                                                   size_t end_column,
-                                                                   int script_hint,
-                                                                   int role,
-                                                                   size_t* out_size);
 
 /// Report platform candidate replacement text.
 /// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
@@ -720,23 +709,9 @@ EDITOR_API void editor_ime_set_keyboard_script_class(intptr_t editor_handle, int
 /// Get the current IME keyboard script class.
 EDITOR_API int editor_ime_get_keyboard_script_class(intptr_t editor_handle);
 
-/// Refresh Core-owned IME composition for the current cursor.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_refresh_composition_at_cursor(intptr_t editor_handle,
-                                                                   int script_hint,
-                                                                   size_t* out_size);
-
 /// Get the current IME synchronization snapshot.
 /// @return ImeSyncSnapshot binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_get_ime_sync_snapshot(intptr_t editor_handle, size_t* out_size);
-
-/// Legacy no-op; IME composition is always supported when editable.
-/// @param enabled 1=enabled, 0=disabled
-EDITOR_API void editor_set_composition_enabled(intptr_t editor_handle, int enabled);
-
-/// Legacy compatibility query; returns true when the editor handle is valid.
-/// @return 1=enabled, 0=disabled
-EDITOR_API int editor_is_composition_enabled(intptr_t editor_handle);
 
 /// Set read-only mode
 /// @param read_only 1=read-only, 0=editable

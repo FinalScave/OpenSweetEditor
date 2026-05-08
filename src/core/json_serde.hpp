@@ -7,6 +7,7 @@
 
 #include <nlohmann/json.hpp>
 #include <editor_types.h>
+#include <gesture.h>
 #include <visual.h>
 
 namespace NS_SWEETEDITOR {

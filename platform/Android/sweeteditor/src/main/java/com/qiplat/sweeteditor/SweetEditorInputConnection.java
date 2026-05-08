@@ -514,8 +514,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         EditorCore.ImeSyncSnapshot snapshot = mEditor.getEditorCore().getImeSyncSnapshot();
         return snapshot.platformMarkedRange != null
                 || snapshot.visibleCompositionRange != null
-                || snapshot.preeditStorage == EditorCore.ImePreeditStorage.SHADOW_ONLY
-                || snapshot.preeditStorage == EditorCore.ImePreeditStorage.HIDDEN_AWAITING_COMMIT;
+                || snapshot.preeditStorage == EditorCore.ImePreeditStorage.SHADOW_ONLY;
     }
 
     private void dispatchImeActionResult(EditorCore.ImeActionResult result) {
@@ -607,8 +606,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         }
         EditorCore.ImeActionResult result = mEditor.getEditorCore().markImeDocumentRange(
                 range,
-                resolveAndReportImeScriptHint(),
-                EditorCore.ImeDocumentRangeRole.PLATFORM_PREFIX_PREEDIT);
+                resolveAndReportImeScriptHint());
         dispatchImeActionResult(result);
         flushEditorAfterImeAction();
         return copyRange(range);
@@ -1130,8 +1128,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
 
     private int limitContextLength(int requestedLength, int contextPolicy) {
         int length = Math.max(0, Math.min(requestedLength, MAX_IME_TEXT_LENGTH));
-        if (contextPolicy == EditorCore.ImeContextPolicy.LIMITED_FOR_CANDIDATES
-                || contextPolicy == EditorCore.ImeContextPolicy.CURRENT_TOKEN) {
+        if (contextPolicy == EditorCore.ImeContextPolicy.LIMITED_FOR_CANDIDATES) {
             return Math.min(length, LIMITED_IME_CONTEXT_LENGTH);
         }
         return length;

@@ -2,9 +2,98 @@
 #define SWEETEDITOR_EDITOR_TYPES_H
 
 #include "foundation.h"
-#include "gesture.h"
+#include "keymap.h"
 
 namespace NS_SWEETEDITOR {
+  struct TouchConfig;
+
+  /// Editor viewport.
+  struct Viewport {
+    /// Editor width.
+    float width {0};
+    /// Editor height.
+    float height {0};
+
+    bool valid() const;
+    U8String dump() const;
+  };
+
+  /// Editor view state.
+  struct ViewState {
+    /// Scale factor.
+    float scale {1};
+    /// Horizontal scroll offset.
+    float scroll_x {0};
+    /// Vertical scroll offset.
+    float scroll_y {0};
+
+    U8String dump() const;
+  };
+
+  /// Keyboard event data.
+  struct KeyEvent {
+    /// Key code.
+    KeyCode key_code {KeyCode::NONE};
+    /// Input text used for regular character input.
+    U8String text;
+    /// Modifier key state.
+    KeyModifier modifiers {KeyModifier::NONE};
+
+    /// Whether this is plain text input.
+    bool isTextInput() const;
+  };
+
+  enum struct ScrollBehavior {
+    /// Make the target line visible at the top.
+    GOTO_TOP,
+    /// Scroll the target line to the center.
+    GOTO_CENTER,
+    /// Scroll the target line to the bottom.
+    GOTO_BOTTOM,
+  };
+
+  /// Unified caret state.
+  struct CaretState {
+    /// Logical cursor position in text.
+    TextPosition cursor;
+    /// Selection range where start is the anchor and end is the active side.
+    TextRange selection;
+    /// Whether there is an active selection.
+    bool has_selection {false};
+
+    void setSelection(const TextRange& range);
+    void clearSelection();
+    TextRange normalizedSelection() const;
+  };
+
+  /// Auto-indent modes.
+  enum struct AutoIndentMode {
+    /// No auto-indent; new line starts at column 0.
+    NONE = 0,
+    /// Keep previous line indent.
+    KEEP_INDENT = 1,
+  };
+
+  /// Auto-wrap modes.
+  enum struct WrapMode {
+    /// No wrapping.
+    NONE,
+    /// Character-level wrapping.
+    CHAR_BREAK,
+    /// Word-level wrapping.
+    WORD_BREAK,
+  };
+
+  /// Current line render modes.
+  enum struct CurrentLineRenderMode {
+    /// Fill full line background.
+    BACKGROUND = 0,
+    /// Draw line border only.
+    BORDER = 1,
+    /// Disable current-line decoration.
+    NONE = 2,
+  };
+
   /// Bracket pair definition (open/close character pair)
   struct BracketPair {
     char32_t open;            ///< Opening bracket char, like '('
@@ -89,8 +178,6 @@ namespace NS_SWEETEDITOR {
     bool backspace_unindent {true};
     /// When true, Tab inserts spaces up to the next tab stop instead of a literal '\t'
     bool insert_spaces {false};
-    /// Legacy compatibility flag; platform IME composition is always supported when editable.
-    bool enable_composition {true};
     /// Selection handle configuration
     HandleConfig handle;
     /// Scrollbar geometry configuration
@@ -164,152 +251,6 @@ namespace NS_SWEETEDITOR {
     TextEditResult edit_result;
     /// Resolved command (for platform-handled commands like COPY/PASTE/CUT)
     EditorCommand command {EditorCommand::NONE};
-  };
-
-  enum struct ImeTextUnit {
-    UTF16_CODE_UNIT,
-    CODE_POINT,
-  };
-
-  enum struct ImeScriptClass {
-    UNKNOWN,
-    LATIN,
-    CJK,
-    KANA,
-    HANGUL,
-  };
-
-  enum struct ImePreeditStorage {
-    NONE,
-    VISIBLE_DOCUMENT_COMPOSITION,
-    SHADOW_ONLY,
-    HIDDEN_AWAITING_COMMIT,
-  };
-
-  enum struct ImeContextPolicy {
-    NONE,
-    LIMITED_FOR_CANDIDATES,
-    CURRENT_TOKEN,
-    CURRENT_LINE,
-  };
-
-  /// Core-owned policy that decides how platform IME state is represented.
-  struct ImeCompositionPolicy {
-    bool allow_preedit {true};
-    bool allow_document_range_preedit {true};
-    bool allow_latin_reconversion {false};
-    bool allow_non_latin_preedit {true};
-    bool keep_preedit_at_word_end {false};
-    ImeContextPolicy enabled_context_policy {ImeContextPolicy::LIMITED_FOR_CANDIDATES};
-    ImeContextPolicy disabled_context_policy {ImeContextPolicy::LIMITED_FOR_CANDIDATES};
-  };
-
-  /// Core-owned IME session bookkeeping that is not exposed to platform layers.
-  struct ImeSessionState {
-    bool preedit_text_in_document {false};
-    bool preedit_replaces_document_range {false};
-    TextRange preedit_replaced_range;
-    U8String preedit_replaced_text;
-    bool has_shadow_preedit {false};
-    U8String shadow_preedit_text;
-    ImeScriptClass shadow_script_class {ImeScriptClass::UNKNOWN};
-    bool suppress_next_composing_commit {false};
-    U8String suppressed_composing_commit_text;
-    bool has_candidate_commit_window {false};
-    TextRange candidate_committed_range;
-    U8String candidate_committed_text;
-    bool candidate_deleted_to_prefix {false};
-    bool suppress_candidate_exact_range {false};
-    bool candidate_exact_range_suppressed {false};
-    bool plain_latin_input_lock {false};
-    U8String plain_latin_preedit_text;
-    U8String document_range_end_plain_preedit_text;
-    U8String document_range_end_plain_inserted_text;
-  };
-
-  /// Snapshot that platform layers use to synchronize IME selection and marked ranges.
-  struct ImeSyncSnapshot {
-    TextPosition cursor;
-    TextRange selection;
-    bool has_selection {false};
-    bool has_composing_session {false};
-    bool has_visible_composition_range {false};
-    TextRange visible_composition_range;
-    bool has_platform_marked_range {false};
-    TextRange platform_marked_range;
-    U8String platform_text_window_text;
-    int32_t platform_text_window_start_offset {0};
-    int32_t platform_text_window_selection_start_offset {0};
-    int32_t platform_text_window_selection_end_offset {0};
-    int32_t platform_text_window_composing_start_offset {-1};
-    int32_t platform_text_window_composing_end_offset {-1};
-    ImePreeditStorage preedit_storage {ImePreeditStorage::NONE};
-    ImeContextPolicy context_policy {ImeContextPolicy::NONE};
-    bool clear_platform_preedit {false};
-  };
-
-  /// Result of a semantic IME action handled by the core.
-  struct ImeActionResult {
-    bool handled {false};
-    bool content_changed {false};
-    bool cursor_changed {false};
-    bool selection_changed {false};
-    TextEditResult edit_result;
-    ImeSyncSnapshot sync;
-  };
-
-  /// IME composition ownership.
-  enum struct CompositionKind {
-    NONE,
-    PREEDIT_TEXT,
-    DOCUMENT_RANGE,
-  };
-
-  enum struct ImeDocumentRangeRole {
-    NONE = 0,
-    /// Legacy role kept for ABI compatibility; platform IME must not use it.
-    WORD_TARGET = 1,
-    PLATFORM_PREFIX_PREEDIT = 2,
-  };
-
-  enum struct CompositionPhase {
-    INACTIVE,
-    ACTIVE,
-    AWAITING_COMMIT,
-  };
-
-  enum struct CompositionFinishReason {
-    FINISH,
-    FOCUS_LOST,
-    CURSOR_MOVED,
-    SELECTION_CHANGED,
-    CANCELED_BY_PLATFORM,
-  };
-
-  /// IME composition state
-  struct CompositionState {
-    /// Whether composition is visible and active
-    bool is_composing {false};
-    /// Whether there is an active or pending composition session
-    bool has_session {false};
-    /// Current session phase
-    CompositionPhase phase {CompositionPhase::INACTIVE};
-    /// Whether composition decoration and IME composing offsets should be exposed
-    bool visible {false};
-    /// Source and ownership of the active composition
-    CompositionKind kind {CompositionKind::NONE};
-    /// Semantic role for document range compositions
-    ImeDocumentRangeRole document_range_role {ImeDocumentRangeRole::NONE};
-    /// Start position of composition (position in document)
-    TextPosition start_position;
-    /// Authoritative document range owned by this composition session
-    TextRange anchor_range;
-    /// Original text captured from anchor_range
-    U8String original_text;
-    /// Current composing text (UTF8)
-    U8String composing_text;
-    /// UTF16 column count of current composing text (for exact cursor placement)
-    size_t composing_columns {0};
   };
 
   /// Screen-space rectangle for cursor/text position (for panel placement)

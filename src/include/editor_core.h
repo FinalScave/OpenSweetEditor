@@ -277,17 +277,9 @@ namespace NS_SWEETEDITOR {
     /// Get the current IME synchronization snapshot
     ImeSyncSnapshot getImeSyncSnapshot() const;
 
-    /// Set the core IME composition policy
-    void setImeCompositionPolicy(const ImeCompositionPolicy& policy);
-
-    /// Get the core IME composition policy
-    const ImeCompositionPolicy& getImeCompositionPolicy() const;
-
     void setImeKeyboardScriptClass(ImeScriptClass script_class);
 
     ImeScriptClass getImeKeyboardScriptClass() const;
-
-    ImeActionResult refreshImeCompositionAtCursor(ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
     ImeActionResult updateImePreedit(const U8String& text,
                                      ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
@@ -300,8 +292,7 @@ namespace NS_SWEETEDITOR {
     ImeActionResult cancelImePreedit();
 
     ImeActionResult markImeDocumentRange(const TextRange& range,
-                                         ImeScriptClass script_class = ImeScriptClass::UNKNOWN,
-                                         ImeDocumentRangeRole role = ImeDocumentRangeRole::PLATFORM_PREFIX_PREEDIT);
+                                         ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
     ImeActionResult replaceImeText(const TextRange& range,
                                    const U8String& text,
@@ -321,7 +312,7 @@ namespace NS_SWEETEDITOR {
 
     ImeActionResult notifyImeCursorChanged(const TextPosition& cursor);
 
-    /// Whether a visible or hidden composition session exists
+    /// Whether a composition session exists
     bool hasComposingSession() const;
 
     /// Get current composition state
@@ -330,11 +321,6 @@ namespace NS_SWEETEDITOR {
     /// Whether composition is active
     bool isComposing() const;
 
-    /// Legacy no-op; IME composition is always supported when editable.
-    void setCompositionEnabled(bool enabled);
-
-    /// Legacy compatibility query; returns true while editable IME is supported.
-    bool isCompositionEnabled() const;
     /// Set read-only mode
     /// @param read_only true=read-only (block all edit actions), false=editable
     void setReadOnly(bool read_only);

@@ -30,7 +30,6 @@ TEST_CASE("EditorCore buildRenderModel exposes active composition decoration") {
 
   editor.loadDocument(makeShared<LineArrayDocument>("ab"));
   editor.setViewport({320, 120});
-  editor.setCompositionEnabled(true);
   editor.setCursorPosition({0, 1});
   editor.updateImePreedit("xy", ImeScriptClass::LATIN);
 

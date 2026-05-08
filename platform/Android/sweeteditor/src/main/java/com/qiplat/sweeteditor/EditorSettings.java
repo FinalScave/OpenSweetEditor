@@ -191,14 +191,6 @@ public class EditorSettings {
         return mReadOnly;
     }
 
-    public void setCompositionEnabled(boolean enabled) {
-        mEditor.getEditorCore().setCompositionEnabled(true);
-    }
-
-    public boolean isCompositionEnabled() {
-        return true;
-    }
-
     public void setMaxGutterIcons(int count) {
         mMaxGutterIcons = count;
         mEditor.getEditorCore().setMaxGutterIcons(count);

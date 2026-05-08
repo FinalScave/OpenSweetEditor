@@ -156,7 +156,6 @@ public class CompositionInteractionTest {
     @Test
     public void testCompositionFlowCommit() {
         editorRule.loadText("");
-        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
         InputConnection ic = getInputConnection();
         assertNotNull("InputConnection should not be null", ic);
         editorRule.runOnEditor(editor -> {
@@ -246,7 +245,6 @@ public class CompositionInteractionTest {
     @Test
     public void testComposingTextUpdate() {
         editorRule.loadText("");
-        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
         editorRule.runOnEditor(editor -> {
             android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
             InputConnection conn = editor.onCreateInputConnection(info);
@@ -263,7 +261,6 @@ public class CompositionInteractionTest {
     @Test
     public void testCompositionCandidateReplacesPreeditText() {
         editorRule.loadText("");
-        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
         editorRule.runOnEditor(editor -> {
             android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
             InputConnection conn = editor.onCreateInputConnection(info);
@@ -282,7 +279,6 @@ public class CompositionInteractionTest {
         String initialText = "package demo;\nclass Example {}";
         editorRule.loadText(initialText);
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(1, 0));
         });
         InputConnection conn = getInputConnection();
@@ -317,7 +313,6 @@ public class CompositionInteractionTest {
         String initialText = "package demo;\nclass Example {}";
         editorRule.loadText(initialText);
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(1, 0));
         });
         InputConnection conn = getInputConnection();
@@ -342,7 +337,6 @@ public class CompositionInteractionTest {
         String initialText = "package demo;\nclass Example {}";
         editorRule.loadText(initialText);
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(1, 0));
         });
         InputConnection conn = getInputConnection();
@@ -366,7 +360,6 @@ public class CompositionInteractionTest {
     public void testComposingSessionEndsWhenCursorMovesToWhitespace() {
         editorRule.loadText("abc  ");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 5));
             android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
             InputConnection conn = editor.onCreateInputConnection(info);
@@ -385,7 +378,6 @@ public class CompositionInteractionTest {
     public void testCompositionDoesNotRestartAtWordMiddleAfterCursorMove() {
         editorRule.loadText("abc  ");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 5));
             android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
             InputConnection conn = editor.onCreateInputConnection(info);
@@ -404,7 +396,6 @@ public class CompositionInteractionTest {
     public void testCompositionRestartsAtWordEndAfterCursorMove() {
         editorRule.loadText("abc  ");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 5));
             android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
             InputConnection conn = editor.onCreateInputConnection(info);
@@ -433,7 +424,6 @@ public class CompositionInteractionTest {
         int colorsEnd = colorsStart + "colors".length();
         editorRule.loadText("package demo;\n" + colorLine + "\n\nclass Example {}");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(1, colorsEnd));
         });
         InputConnection conn = getInputConnection();
@@ -467,7 +457,6 @@ public class CompositionInteractionTest {
         int pointEnd = pointStart + "Point".length();
         editorRule.loadText(initialText);
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, pointEnd));
         });
         InputConnection conn = getInputConnection();
@@ -494,7 +483,6 @@ public class CompositionInteractionTest {
         int pointEnd = pointStart + "Point".length();
         editorRule.loadText(initialText);
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, pointEnd));
         });
         InputConnection conn = getInputConnection();
@@ -520,7 +508,6 @@ public class CompositionInteractionTest {
         int pointEnd = pointStart + "Point".length();
         editorRule.loadText(initialText);
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, pointEnd));
         });
         InputConnection conn = getInputConnection();
@@ -547,7 +534,6 @@ public class CompositionInteractionTest {
         int pointEnd = pointStart + "Point".length();
         editorRule.loadText(initialText);
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, pointEnd));
         });
         InputConnection conn = getInputConnection();
@@ -577,7 +563,6 @@ public class CompositionInteractionTest {
         int pointEnd = pointStart + "Point".length();
         editorRule.loadText(initialText);
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, pointEnd));
         });
         InputConnection conn = getInputConnection();
@@ -605,7 +590,6 @@ public class CompositionInteractionTest {
         int pointEnd = pointStart + "Point".length();
         editorRule.loadText(initialText);
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, pointEnd));
         });
         InputConnection conn = getInputConnection();
@@ -629,7 +613,6 @@ public class CompositionInteractionTest {
     @Test
     public void testDisabledCompositionCandidateCommit() {
         editorRule.loadText("");
-        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(false));
         editorRule.runOnEditor(editor -> {
             android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
             InputConnection conn = editor.onCreateInputConnection(info);
@@ -644,7 +627,6 @@ public class CompositionInteractionTest {
     @Test
     public void testCommittedCandidateBackspaceIgnoresStaleComposingPrefix() {
         editorRule.loadText("");
-        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
         InputConnection conn = getInputConnection();
 
         editorRule.runOnEditor(editor -> {
@@ -676,7 +658,6 @@ public class CompositionInteractionTest {
     @Test
     public void testFinishedCandidateBackspaceIgnoresStaleComposingPrefix() {
         editorRule.loadText("");
-        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
         InputConnection conn = getInputConnection();
 
         editorRule.runOnEditor(editor -> {
@@ -707,7 +688,6 @@ public class CompositionInteractionTest {
     @Test
     public void testCommittedCandidateDoesNotReopenCompositionForSameWord() {
         editorRule.loadText("");
-        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
         InputConnection conn = getInputConnection();
 
         editorRule.runOnEditor(editor -> {
@@ -727,7 +707,6 @@ public class CompositionInteractionTest {
     @Test
     public void testFinishedCandidateSuppressedRegionBackspaceSyncsCommittedText() {
         editorRule.loadText("");
-        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
         InputConnection conn = getInputConnection();
         InputConnection[] activeConnection = new InputConnection[]{conn};
 
@@ -758,7 +737,6 @@ public class CompositionInteractionTest {
     @Test
     public void testCompositionEnabledDeleteSurroundingTextDeletesSelection() {
         editorRule.loadText("hello world");
-        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
         InputConnection conn = getInputConnection();
 
         editorRule.runOnEditor(editor -> {
@@ -774,7 +752,6 @@ public class CompositionInteractionTest {
     @Test
     public void testCompositionEnabledDeleteSurroundingTextInCodePointsDeletesSelection() {
         editorRule.loadText("hello world");
-        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
         InputConnection conn = getInputConnection();
 
         editorRule.runOnEditor(editor -> {
@@ -790,7 +767,6 @@ public class CompositionInteractionTest {
     @Test
     public void testCompositionEnabledSendDeleteKeyDeletesSelection() {
         editorRule.loadText("hello world");
-        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
         InputConnection conn = getInputConnection();
 
         editorRule.runOnEditor(editor -> {
@@ -806,7 +782,6 @@ public class CompositionInteractionTest {
     @Test
     public void testCompositionEnabledEmptyCommitDeletesSelection() {
         editorRule.loadText("hello world");
-        editorRule.runOnEditor(editor -> editor.getSettings().setCompositionEnabled(true));
         InputConnection conn = getInputConnection();
 
         editorRule.runOnEditor(editor -> {
@@ -823,7 +798,6 @@ public class CompositionInteractionTest {
     public void testDisabledCompositionCleanupDeleteDoesNotRemoveCommittedText() {
         editorRule.loadText("a");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(false);
             editor.setCursorPosition(new TextPosition(0, 1));
             android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
             InputConnection conn = editor.onCreateInputConnection(info);
@@ -840,7 +814,6 @@ public class CompositionInteractionTest {
     public void testDisabledCompositionExposesLimitedCandidateContextWithoutVisibleComposition() {
         editorRule.loadText("hello");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(false);
             editor.setSelection(0, 0, 0, 5);
         });
         InputConnection conn = getInputConnection();
@@ -869,7 +842,6 @@ public class CompositionInteractionTest {
         }
         editorRule.loadText("hello world");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 5));
         });
         InputConnection conn = getInputConnection();
@@ -890,7 +862,6 @@ public class CompositionInteractionTest {
         }
         editorRule.loadText("hello world");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 5));
         });
         InputConnection conn = getInputConnection();
@@ -916,7 +887,6 @@ public class CompositionInteractionTest {
         }
         editorRule.loadText("hello");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 5));
         });
         InputConnection conn = getInputConnection();
@@ -937,7 +907,6 @@ public class CompositionInteractionTest {
         }
         editorRule.loadText("hello");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 2));
         });
         InputConnection conn = getInputConnection();
@@ -968,7 +937,6 @@ public class CompositionInteractionTest {
     public void testMiddleWordSuffixCandidateReplacesCompositionRange() {
         editorRule.loadText("default");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 4));
         });
         InputConnection conn = getInputConnection();
@@ -986,7 +954,6 @@ public class CompositionInteractionTest {
     public void testUnknownRestartDoesNotOpenEditorComposition() {
         editorRule.loadText("hello");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 2));
         });
         InputConnection conn = getInputConnection();
@@ -1002,7 +969,6 @@ public class CompositionInteractionTest {
     public void testUnknownRestartClearsExistingEditorComposition() {
         editorRule.loadText("hello");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 2));
             EditorCore core = getEditorCore(editor);
             core.markImeDocumentRange(
@@ -1036,7 +1002,6 @@ public class CompositionInteractionTest {
     public void testNonLatinDocumentRangeDoesNotOpenEditorComposition() {
         editorRule.loadText("hello");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 2));
             EditorCore core = getEditorCore(editor);
             core.markImeDocumentRange(
@@ -1056,7 +1021,6 @@ public class CompositionInteractionTest {
         }
         editorRule.loadText("value");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(false);
             editor.setCursorPosition(new TextPosition(0, 2));
         });
         InputConnection conn = getInputConnection();
@@ -1072,7 +1036,6 @@ public class CompositionInteractionTest {
     public void testMiddleWordEditorCompositionDoesNotReplaceAfterFinish() {
         editorRule.loadText("hello");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 2));
         });
         InputConnection conn = getInputConnection();
@@ -1109,7 +1072,6 @@ public class CompositionInteractionTest {
         for (int script : nonLatinScripts) {
             editorRule.loadText("hello");
             editorRule.runOnEditor(editor -> {
-                editor.getSettings().setCompositionEnabled(true);
                 editor.setCursorPosition(new TextPosition(0, 5));
             });
             InputConnection conn = getInputConnection();
@@ -1132,7 +1094,6 @@ public class CompositionInteractionTest {
     public void testAndroidWordEndBackspaceKeepsCoreCompositionRange() {
         editorRule.loadText("hello");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 5));
         });
         InputConnection conn = getInputConnection();
@@ -1158,7 +1119,6 @@ public class CompositionInteractionTest {
     public void testAndroidMiddleWordEditCancelsCompositionAndHidesContext() {
         editorRule.loadText("hello");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 2));
         });
         InputConnection conn = getInputConnection();
@@ -1188,7 +1148,6 @@ public class CompositionInteractionTest {
     public void testAndroidSogouStyleMiddleWordSuffixPreeditReplacesWord() {
         editorRule.loadText("String");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 3));
         });
         InputConnection conn = getInputConnection();
@@ -1214,7 +1173,6 @@ public class CompositionInteractionTest {
     public void testAndroidMiddleWordPrefixPreeditInsertsAndLocks() {
         editorRule.loadText("colors");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 2));
         });
         InputConnection conn = getInputConnection();
@@ -1237,7 +1195,6 @@ public class CompositionInteractionTest {
     public void testAndroidPlatformPrefixCompositionUpdatesOnlyPrefix() {
         editorRule.loadText("value");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 2));
         });
         InputConnection conn = getInputConnection();
@@ -1263,7 +1220,6 @@ public class CompositionInteractionTest {
     public void testAndroidPlatformFullWordRegionPromotesToWordTarget() {
         editorRule.loadText("String");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             getEditorCore(editor).setImeKeyboardScriptClass(EditorCore.ImeScriptClass.LATIN);
             editor.setCursorPosition(new TextPosition(0, 3));
         });
@@ -1285,7 +1241,6 @@ public class CompositionInteractionTest {
     public void testAndroidPlatformFullWordRegionKeepsWordEndFullPayloadIncremental() {
         editorRule.loadText("value");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             getEditorCore(editor).setImeKeyboardScriptClass(EditorCore.ImeScriptClass.LATIN);
             editor.setCursorPosition(new TextPosition(0, 5));
         });
@@ -1322,7 +1277,6 @@ public class CompositionInteractionTest {
     public void testAndroidSogouStyleWordEndInputInsertsInsteadOfReplacingWord() {
         editorRule.loadText("hello");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 5));
         });
         InputConnection conn = getInputConnection();
@@ -1360,7 +1314,6 @@ public class CompositionInteractionTest {
     public void testAndroidSogouLineLocalComposingRegionUsesCurrentLineWindow() {
         editorRule.loadText(TRACE_SAMPLE_TEXT);
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(2, 13));
         });
         InputConnection conn = getInputConnection();
@@ -1384,7 +1337,6 @@ public class CompositionInteractionTest {
     public void testAndroidSogouLineLocalReplaceTextUsesCurrentLineWindow() {
         editorRule.loadText(TRACE_SAMPLE_TEXT);
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(15, 16));
         });
         InputConnection conn = getInputConnection();
@@ -1417,7 +1369,6 @@ public class CompositionInteractionTest {
     public void testAndroidCjkAndDisabledCompositionUseCandidateContextWithoutVisibleComposition() {
         editorRule.loadText("hello");
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(true);
             editor.setCursorPosition(new TextPosition(0, 5));
         });
         InputConnection conn = getInputConnection();
@@ -1440,7 +1391,6 @@ public class CompositionInteractionTest {
         assertTrue(conn.getTextBeforeCursor(16, 0).length() > 0);
 
         editorRule.runOnEditor(editor -> {
-            editor.getSettings().setCompositionEnabled(false);
             editor.setCursorPosition(new TextPosition(0, 6));
         });
         editorRule.waitForIdle();

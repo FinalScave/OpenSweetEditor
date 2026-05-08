@@ -1385,28 +1385,6 @@ const uint8_t* editor_ime_mark_document_range(intptr_t editor_handle,
       static_cast<ImeScriptClass>(script_hint)), out_size);
 }
 
-const uint8_t* editor_ime_mark_document_range_with_role(intptr_t editor_handle,
-                                                        size_t start_line,
-                                                        size_t start_column,
-                                                        size_t end_line,
-                                                        size_t end_column,
-                                                        int script_hint,
-                                                        int role,
-                                                        size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return imeActionResultToBinary(editor_core->markImeDocumentRange(
-      {{start_line, start_column}, {end_line, end_column}},
-      static_cast<ImeScriptClass>(script_hint),
-      static_cast<ImeDocumentRangeRole>(role)), out_size);
-}
-
 const uint8_t* editor_ime_replace_text(intptr_t editor_handle,
                                        size_t start_line,
                                        size_t start_column,
@@ -1532,20 +1510,6 @@ int editor_ime_get_keyboard_script_class(intptr_t editor_handle) {
   return static_cast<int>(editor_core->getImeKeyboardScriptClass());
 }
 
-const uint8_t* editor_ime_refresh_composition_at_cursor(intptr_t editor_handle,
-                                                        int script_hint,
-                                                        size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-  return imeActionResultToBinary(editor_core->refreshImeCompositionAtCursor(
-      static_cast<ImeScriptClass>(script_hint)), out_size);
-}
-
 const uint8_t* editor_get_ime_sync_snapshot(intptr_t editor_handle, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
@@ -1555,22 +1519,6 @@ const uint8_t* editor_get_ime_sync_snapshot(intptr_t editor_handle, size_t* out_
     return nullptr;
   }
   return imeSyncSnapshotToBinary(editor_core->getImeSyncSnapshot(), out_size);
-}
-
-void editor_set_composition_enabled(intptr_t editor_handle, int enabled) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    return;
-  }
-  editor_core->setCompositionEnabled(enabled != 0);
-}
-
-int editor_is_composition_enabled(intptr_t editor_handle) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    return 0;
-  }
-  return editor_core->isCompositionEnabled() ? 1 : 0;
 }
 
 void editor_set_read_only(intptr_t editor_handle, int read_only) {

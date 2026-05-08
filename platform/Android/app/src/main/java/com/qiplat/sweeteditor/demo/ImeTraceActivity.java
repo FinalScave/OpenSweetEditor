@@ -96,71 +96,71 @@ public class ImeTraceActivity extends AppCompatActivity {
     private static final String TARGET_EDITTEXT = "edittext";
     private static final String UNKNOWN_IME_PACKAGE = "unknown_ime";
     private static final TraceCase[] TRACE_CASES = new TraceCase[]{
-            new TraceCase("CN_WORD_MID_USER_TAP", "cn", true, VALUE_MID_COLUMN,
+            new TraceCase("CN_WORD_MID_USER_TAP", "cn", VALUE_MID_COLUMN,
                     "Before Start, switch the IME to Chinese mode.",
                     "After this case starts, manually tap the visible word value in the EditText.",
                     "Place the caret after a, so the text position is va|lue.",
                     "Do not type, delete, or tap candidates.",
                     "Wait about one second, then tap Next."),
-            new TraceCase("CN_WORD_MID_PINYIN_PREEDIT", "cn", true, VALUE_MID_COLUMN,
+            new TraceCase("CN_WORD_MID_PINYIN_PREEDIT", "cn", VALUE_MID_COLUMN,
                     "Before Start, switch the IME to Chinese mode.",
                     "After this case starts, manually tap the visible word value in the EditText.",
                     "Place the caret after a, so the text position is va|lue.",
                     "Type exactly nihao on the soft keyboard.",
                     "Do not tap any candidate and do not press Enter.",
                     "Tap Next while nihao/candidates are still visible in the IME UI."),
-            new TraceCase("CN_WORD_MID_CANDIDATE", "cn", true, VALUE_MID_COLUMN,
+            new TraceCase("CN_WORD_MID_CANDIDATE", "cn", VALUE_MID_COLUMN,
                     "Before Start, switch the IME to Chinese mode.",
                     "After this case starts, manually tap the visible word value in the EditText.",
                     "Place the caret after a, so the text position is va|lue.",
                     "Type exactly nihao on the soft keyboard.",
                     "Tap the first Chinese candidate, usually 你好.",
                     "After the candidate appears in the editor, tap Next."),
-            new TraceCase("CN_WORD_TAIL_USER_TAP", "cn", true, VALUE_END_COLUMN,
+            new TraceCase("CN_WORD_TAIL_USER_TAP", "cn", VALUE_END_COLUMN,
                     "Before Start, switch the IME to Chinese mode.",
                     "After this case starts, manually tap the visible word value in the EditText.",
                     "Place the caret after e, so the text position is value|.",
                     "Do not type, delete, or tap candidates.",
                     "Wait about one second, then tap Next."),
-            new TraceCase("CN_WORD_TAIL_CANDIDATE", "cn", true, VALUE_END_COLUMN,
+            new TraceCase("CN_WORD_TAIL_CANDIDATE", "cn", VALUE_END_COLUMN,
                     "Before Start, switch the IME to Chinese mode.",
                     "After this case starts, manually tap the visible word value in the EditText.",
                     "Place the caret after e, so the text position is value|.",
                     "Type exactly nihao on the soft keyboard.",
                     "Tap the first Chinese candidate, usually 你好.",
                     "After the candidate appears in the editor, tap Next."),
-            new TraceCase("EN_WORD_MID_USER_TAP", "en", true, VALUE_MID_COLUMN,
+            new TraceCase("EN_WORD_MID_USER_TAP", "en", VALUE_MID_COLUMN,
                     "Before Start, switch the IME to English mode.",
                     "After this case starts, manually tap the visible word value in the EditText.",
                     "Place the caret after a, so the text position is va|lue.",
                     "Do not type, delete, or tap candidates.",
                     "Wait about one second, then tap Next."),
-            new TraceCase("EN_WORD_MID_TYPE", "en", true, VALUE_MID_COLUMN,
+            new TraceCase("EN_WORD_MID_TYPE", "en", VALUE_MID_COLUMN,
                     "Before Start, switch the IME to English mode.",
                     "After this case starts, manually tap the visible word value in the EditText.",
                     "Place the caret after a, so the text position is va|lue.",
                     "Type exactly x on the soft keyboard.",
                     "After the editor shows vax|lue or equivalent cursor state, tap Next."),
-            new TraceCase("EN_WORD_MID_DELETE", "en", true, VALUE_MID_COLUMN,
+            new TraceCase("EN_WORD_MID_DELETE", "en", VALUE_MID_COLUMN,
                     "Before Start, switch the IME to English mode.",
                     "After this case starts, manually tap the visible word value in the EditText.",
                     "Place the caret after a, so the text position is va|lue.",
                     "Press the soft keyboard delete key once.",
                     "After deletion is reflected in the editor or IME UI, tap Next."),
-            new TraceCase("EN_WORD_TAIL_TYPE", "en", true, VALUE_END_COLUMN,
+            new TraceCase("EN_WORD_TAIL_TYPE", "en", VALUE_END_COLUMN,
                     "Before Start, switch the IME to English mode.",
                     "After this case starts, manually tap the visible word value in the EditText.",
                     "Place the caret after e, so the text position is value|.",
                     "Type exactly x on the soft keyboard.",
                     "After the editor shows valuex| or equivalent cursor state, tap Next."),
-            new TraceCase("EN_WORD_MID_CANDIDATE", "en", true, VALUE_MID_COLUMN,
+            new TraceCase("EN_WORD_MID_CANDIDATE", "en", VALUE_MID_COLUMN,
                     "Before Start, switch the IME to English mode with suggestions enabled.",
                     "After this case starts, manually tap the visible word value in the EditText.",
                     "Place the caret after a, so the text position is va|lue.",
                     "If the IME shows an English suggestion for value or a replacement candidate, tap that candidate.",
                     "If no English suggestion appears after about two seconds, tap Next without typing.",
                     "After the candidate action or timeout, tap Next."),
-            new TraceCase("EN_WORD_TAIL_CANDIDATE", "en", true, VALUE_END_COLUMN,
+            new TraceCase("EN_WORD_TAIL_CANDIDATE", "en", VALUE_END_COLUMN,
                     "Before Start, switch the IME to English mode with suggestions enabled.",
                     "After this case starts, manually tap the visible word value in the EditText.",
                     "Place the caret after e, so the text position is value|.",
@@ -326,7 +326,6 @@ public class ImeTraceActivity extends AppCompatActivity {
 
     private void resetTargets(@NonNull TraceCase traceCase) {
         mSweetEditor.loadDocument(new Document(SAMPLE_TEXT));
-        mSweetEditor.getSettings().setCompositionEnabled(traceCase.compositionEnabled);
         mSweetEditor.setCursorPosition(new TextPosition(0, 0));
         mEditText.setText(SAMPLE_TEXT);
         mEditText.setSelection(0);
@@ -337,11 +336,10 @@ public class ImeTraceActivity extends AppCompatActivity {
         for (int i = 0; i < TRACE_CASES.length; i++) {
             TraceCase traceCase = TRACE_CASES[i];
             labels[i] = String.format(Locale.US,
-                    "%02d  %s  [%s, %s]",
+                    "%02d  %s  [%s]",
                     i + 1,
                     traceCase.caseId,
-                    traceCase.keyboardMode,
-                    traceCase.compositionEnabled ? "composition" : "disabled");
+                    traceCase.keyboardMode);
         }
         new AlertDialog.Builder(this)
                 .setTitle("Start from case")
@@ -449,7 +447,6 @@ public class ImeTraceActivity extends AppCompatActivity {
         manifest.put("caseIndex", mCurrentCaseIndex);
         manifest.put("caseCount", TRACE_CASES.length);
         manifest.put("keyboardMode", traceCase.keyboardMode);
-        manifest.put("compositionEnabled", traceCase.compositionEnabled);
         manifest.put("steps", stepsToJson(traceCase));
         manifest.put("startedAt", wallClockNow());
         manifest.put("appPackage", getPackageName());
@@ -561,10 +558,6 @@ public class ImeTraceActivity extends AppCompatActivity {
         return mCurrentCase != null ? mCurrentCase.keyboardMode : "unknown";
     }
 
-    private boolean currentCompositionEnabled() {
-        return mCurrentCase == null || mCurrentCase.compositionEnabled;
-    }
-
     private void prepareForManualTap() {
         mSweetEditor.clearFocus();
         mEditText.clearFocus();
@@ -611,13 +604,12 @@ public class ImeTraceActivity extends AppCompatActivity {
             return;
         }
         String title = String.format(Locale.US,
-                "%02d/%02d  %s  [%s, %s, %s]",
+                "%02d/%02d  %s  [%s, %s]",
                 mCurrentCaseIndex + 1,
                 TRACE_CASES.length,
                 mCurrentCase.caseId,
                 mActiveTarget,
-                mCurrentCase.keyboardMode,
-                mCurrentCase.compositionEnabled ? "composition" : "disabled");
+                mCurrentCase.keyboardMode);
         mCaseTitleText.setText(title);
         StringBuilder steps = new StringBuilder();
         for (int i = 0; i < mCurrentCase.steps.length; i++) {
@@ -638,7 +630,6 @@ public class ImeTraceActivity extends AppCompatActivity {
             JSONObject args = new JSONObject();
             args.put("marker", marker);
             args.put("keyboardMode", currentKeyboardMode());
-            args.put("compositionEnabled", currentCompositionEnabled());
             args.put("target", mActiveTarget);
             if (mCurrentCase != null) {
                 args.put("caseId", mCurrentCase.caseId);
@@ -708,18 +699,15 @@ public class ImeTraceActivity extends AppCompatActivity {
     private static final class TraceCase {
         final String caseId;
         final String keyboardMode;
-        final boolean compositionEnabled;
         final int focusColumn;
         final String[] steps;
 
         TraceCase(String caseId,
                   String keyboardMode,
-                  boolean compositionEnabled,
                   int focusColumn,
                   String... steps) {
             this.caseId = caseId;
             this.keyboardMode = keyboardMode;
-            this.compositionEnabled = compositionEnabled;
             this.focusColumn = focusColumn;
             this.steps = steps;
         }
@@ -784,7 +772,6 @@ public class ImeTraceActivity extends AppCompatActivity {
                 json.put("selectionStartOffset", JSONObject.NULL);
                 json.put("selectionEndOffset", JSONObject.NULL);
             }
-            json.put("compositionEnabled", getSettings().isCompositionEnabled());
             appendCoreSnapshot(json);
             return json;
         }

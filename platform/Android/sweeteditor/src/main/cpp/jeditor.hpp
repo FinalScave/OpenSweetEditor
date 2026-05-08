@@ -510,17 +510,16 @@ public:
 
   static jobject imeMarkDocumentRange(JNIEnv* env, jclass clazz, jlong handle,
                                       jlong startLine, jlong startColumn, jlong endLine, jlong endColumn,
-                                      jint scriptHint, jint role) {
+                                      jint scriptHint) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
-    const uint8_t* payload = editor_ime_mark_document_range_with_role(static_cast<intptr_t>(handle),
-                                                                      static_cast<size_t>(startLine),
-                                                                      static_cast<size_t>(startColumn),
-                                                                      static_cast<size_t>(endLine),
-                                                                      static_cast<size_t>(endColumn),
-                                                                      static_cast<int>(scriptHint),
-                                                                      static_cast<int>(role),
-                                                                      &out_size);
+    const uint8_t* payload = editor_ime_mark_document_range(static_cast<intptr_t>(handle),
+                                                            static_cast<size_t>(startLine),
+                                                            static_cast<size_t>(startColumn),
+                                                            static_cast<size_t>(endLine),
+                                                            static_cast<size_t>(endColumn),
+                                                            static_cast<int>(scriptHint),
+                                                            &out_size);
     return wrapBinaryPayload(env, payload, out_size);
   }
 
@@ -607,27 +606,10 @@ public:
     return static_cast<jint>(editor_ime_get_keyboard_script_class(static_cast<intptr_t>(handle)));
   }
 
-  static jobject imeRefreshCompositionAtCursor(JNIEnv* env, jclass clazz, jlong handle, jint scriptHint) {
-    if (handle == 0) return nullptr;
-    size_t out_size = 0;
-    const uint8_t* payload = editor_ime_refresh_composition_at_cursor(static_cast<intptr_t>(handle),
-                                                                      static_cast<int>(scriptHint),
-                                                                      &out_size);
-    return wrapBinaryPayload(env, payload, out_size);
-  }
-
   static jobject getImeSyncSnapshot(JNIEnv* env, jclass clazz, jlong handle) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
     return wrapBinaryPayload(env, editor_get_ime_sync_snapshot(static_cast<intptr_t>(handle), &out_size), out_size);
-  }
-
-  static void setCompositionEnabled(jlong handle, jboolean enabled) {
-    editor_set_composition_enabled(static_cast<intptr_t>(handle), enabled == JNI_TRUE ? 1 : 0);
-  }
-
-  static jboolean isCompositionEnabled(jlong handle) {
-    return toJBoolean(editor_is_composition_enabled(static_cast<intptr_t>(handle)));
   }
 
   static void setReadOnly(jlong handle, jboolean readOnly) {
@@ -1224,7 +1206,7 @@ public:
       {"nativeImeCommitText", "(JLjava/lang/String;I)Ljava/nio/ByteBuffer;", (void*) imeCommitText},
       {"nativeImeFinishPreedit", "(J)Ljava/nio/ByteBuffer;", (void*) imeFinishPreedit},
       {"nativeImeCancelPreedit", "(J)Ljava/nio/ByteBuffer;", (void*) imeCancelPreedit},
-      {"nativeImeMarkDocumentRange", "(JJJJJII)Ljava/nio/ByteBuffer;", (void*) imeMarkDocumentRange},
+      {"nativeImeMarkDocumentRange", "(JJJJJI)Ljava/nio/ByteBuffer;", (void*) imeMarkDocumentRange},
       {"nativeImeReplaceText", "(JJJJJLjava/lang/String;I)Ljava/nio/ByteBuffer;", (void*) imeReplaceText},
       {"nativeImeDeleteBackward", "(JJI)Ljava/nio/ByteBuffer;", (void*) imeDeleteBackward},
       {"nativeImeDeleteForward", "(JJI)Ljava/nio/ByteBuffer;", (void*) imeDeleteForward},
@@ -1233,10 +1215,7 @@ public:
       {"nativeImeNotifyCursorChanged", "(JJJ)Ljava/nio/ByteBuffer;", (void*) imeNotifyCursorChanged},
       {"nativeImeSetKeyboardScriptClass", "(JI)V", (void*) imeSetKeyboardScriptClass},
       {"nativeImeGetKeyboardScriptClass", "(J)I", (void*) imeGetKeyboardScriptClass},
-      {"nativeImeRefreshCompositionAtCursor", "(JI)Ljava/nio/ByteBuffer;", (void*) imeRefreshCompositionAtCursor},
       {"nativeGetImeSyncSnapshot", "(J)Ljava/nio/ByteBuffer;", (void*) getImeSyncSnapshot},
-      {"nativeSetCompositionEnabled", "(JZ)V", (void*) setCompositionEnabled},
-      {"nativeIsCompositionEnabled", "(J)Z", (void*) isCompositionEnabled},
       {"nativeSetReadOnly", "(JZ)V", (void*) setReadOnly},
       {"nativeIsReadOnly", "(J)Z", (void*) isReadOnly},
       {"nativeSetAutoIndentMode", "(JI)V", (void*) setAutoIndentMode},

@@ -1,9 +1,44 @@
 //
 // Created by Scave on 2026/4/4.
 //
+#include <algorithm>
 #include <editor_types.h>
+#include <gesture.h>
 
 namespace NS_SWEETEDITOR {
+  bool Viewport::valid() const {
+    return width > 1 && height > 1;
+  }
+
+  U8String Viewport::dump() const {
+    return "Viewport {width = " + std::to_string(width) + ", height = " + std::to_string(height) + "}";
+  }
+
+  U8String ViewState::dump() const {
+    return "ViewState {scale = " + std::to_string(scale) + ", scroll_x = " + std::to_string(scroll_x) + ", scroll_y = " + std::to_string(scroll_y) + "}";
+  }
+
+  bool KeyEvent::isTextInput() const {
+    return key_code == KeyCode::NONE && !text.empty();
+  }
+
+  void CaretState::setSelection(const TextRange& range) {
+    selection = range;
+    has_selection = !(range.start == range.end);
+    cursor = range.end;
+  }
+
+  void CaretState::clearSelection() {
+    selection = {};
+    has_selection = false;
+  }
+
+  TextRange CaretState::normalizedSelection() const {
+    TextRange r = selection;
+    if (r.end < r.start) std::swap(r.start, r.end);
+    return r;
+  }
+
   TouchConfig EditorOptions::simpleAsTouchConfig() const {
     return TouchConfig {touch_slop, double_tap_timeout, long_press_ms, fling_friction, fling_min_velocity, fling_max_velocity};
   }
@@ -24,7 +59,6 @@ namespace NS_SWEETEDITOR {
   U8String EditorSettings::dump() const {
     return "EditorSettings {max_scale = " + std::to_string(max_scale)
         + ", read_only = " + (read_only ? "true" : "false")
-        + ", enable_composition = " + (enable_composition ? "true" : "false")
         + ", insert_spaces = " + (insert_spaces ? "true" : "false")
         + ", content_start_padding = " + std::to_string(content_start_padding)
         + ", show_split_line = " + (show_split_line ? "true" : "false")

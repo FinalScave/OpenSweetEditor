@@ -763,11 +763,6 @@ public class EditorCore {
 
     @NonNull
     public ImeActionResult markImeDocumentRange(@NonNull TextRange range, int scriptHint) {
-        return markImeDocumentRange(range, scriptHint, ImeDocumentRangeRole.PLATFORM_PREFIX_PREEDIT);
-    }
-
-    @NonNull
-    public ImeActionResult markImeDocumentRange(@NonNull TextRange range, int scriptHint, int role) {
         if (mNativeHandle == 0) return new ImeActionResult();
         ByteBuffer data = nativeImeMarkDocumentRange(
                 mNativeHandle,
@@ -775,8 +770,7 @@ public class EditorCore {
                 range.start.column,
                 range.end.line,
                 range.end.column,
-                scriptHint,
-                role);
+                scriptHint);
         try {
             return ProtocolDecoder.decodeImeActionResult(data);
         } finally {
@@ -878,17 +872,6 @@ public class EditorCore {
     }
 
     @NonNull
-    public ImeActionResult refreshImeCompositionAtCursor(int scriptHint) {
-        if (mNativeHandle == 0) return new ImeActionResult();
-        ByteBuffer data = nativeImeRefreshCompositionAtCursor(mNativeHandle, scriptHint);
-        try {
-            return ProtocolDecoder.decodeImeActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
     public ImeSyncSnapshot getImeSyncSnapshot() {
         if (mNativeHandle == 0) return new ImeSyncSnapshot();
         ByteBuffer data = nativeGetImeSyncSnapshot(mNativeHandle);
@@ -897,21 +880,6 @@ public class EditorCore {
         } finally {
             nativeFreeBinaryData(data);
         }
-    }
-
-    /**
-     * Legacy no-op. IME composition is always supported when the editor is editable.
-     */
-    public void setCompositionEnabled(boolean enabled) {
-        if (mNativeHandle == 0) return;
-        nativeSetCompositionEnabled(mNativeHandle, true);
-    }
-
-    /**
-     * Legacy compatibility query.
-     */
-    public boolean isCompositionEnabled() {
-        return true;
     }
 
     // ==================== Read-Only Mode ====================
@@ -1916,26 +1884,14 @@ public class EditorCore {
         public static final int NONE = 0;
         public static final int VISIBLE_DOCUMENT_COMPOSITION = 1;
         public static final int SHADOW_ONLY = 2;
-        public static final int HIDDEN_AWAITING_COMMIT = 3;
 
         private ImePreeditStorage() {
-        }
-    }
-
-    public static final class ImeDocumentRangeRole {
-        public static final int NONE = 0;
-        public static final int WORD_TARGET = 1;
-        public static final int PLATFORM_PREFIX_PREEDIT = 2;
-
-        private ImeDocumentRangeRole() {
         }
     }
 
     public static final class ImeContextPolicy {
         public static final int NONE = 0;
         public static final int LIMITED_FOR_CANDIDATES = 1;
-        public static final int CURRENT_TOKEN = 2;
-        public static final int CURRENT_LINE = 3;
 
         private ImeContextPolicy() {
         }
@@ -2459,8 +2415,7 @@ public class EditorCore {
                                                                 long startColumn,
                                                                 long endLine,
                                                                 long endColumn,
-                                                                int scriptHint,
-                                                                int role);
+                                                                int scriptHint);
 
     @FastNative
     private static native ByteBuffer nativeImeReplaceText(long handle,
@@ -2502,16 +2457,7 @@ public class EditorCore {
     private static native int nativeImeGetKeyboardScriptClass(long handle);
 
     @FastNative
-    private static native ByteBuffer nativeImeRefreshCompositionAtCursor(long handle, int scriptHint);
-
-    @FastNative
     private static native ByteBuffer nativeGetImeSyncSnapshot(long handle);
-
-    @CriticalNative
-    private static native void nativeSetCompositionEnabled(long handle, boolean enabled);
-
-    @CriticalNative
-    private static native boolean nativeIsCompositionEnabled(long handle);
 
     @CriticalNative
     private static native void nativeSetReadOnly(long handle, boolean readOnly);

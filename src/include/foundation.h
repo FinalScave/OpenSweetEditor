@@ -6,7 +6,6 @@
 
 #include <cstdint>
 #include "macro.h"
-#include "keymap.h"
 
 namespace NS_SWEETEDITOR {
   /// Text position
@@ -69,92 +68,6 @@ namespace NS_SWEETEDITOR {
     bool contains(float dx, float dy) const;
   };
 
-  /// Editor viewport
-  struct Viewport {
-    /// Editor width
-    float width {0};
-    /// Editor height
-    float height {0};
-
-    bool valid() const;
-    U8String dump() const;
-  };
-
-  /// Editor view state
-  struct ViewState {
-    /// Scale factor
-    float scale {1};
-    /// Horizontal scroll offset
-    float scroll_x {0};
-    /// Vertical scroll offset
-    float scroll_y {0};
-
-    U8String dump() const;
-  };
-
-  /// Keyboard event data
-  struct KeyEvent {
-    /// Key code
-    KeyCode key_code {KeyCode::NONE};
-    /// Input text (used for regular character input, such as letters, numbers, symbols)
-    U8String text;
-    /// Modifier key state
-    KeyModifier modifiers {KeyModifier::NONE};
-
-    /// Whether this is plain text input (no special key code, text only)
-    bool isTextInput() const;
-  };
-
-  enum struct ScrollBehavior {
-    /// Make the target line visible at the top
-    GOTO_TOP,
-    /// Scroll the target line to the center
-    GOTO_CENTER,
-    /// Scroll the target line to the bottom
-    GOTO_BOTTOM,
-  };
-
-  /// Unified caret state: cursor position + selection
-  struct CaretState {
-    /// Logical cursor position in text
-    TextPosition cursor;
-    /// Selection range (start is anchor, end is active end / cursor side)
-    TextRange selection;
-    /// Whether there is an active selection
-    bool has_selection {false};
-
-    void setSelection(const TextRange& range);
-    void clearSelection();
-    TextRange normalizedSelection() const;
-  };
-
-  /// Auto-indent modes
-  enum struct AutoIndentMode {
-    /// No auto-indent; new line starts at column 0
-    NONE = 0,
-    /// Keep previous line indent (copy leading whitespace)
-    KEEP_INDENT = 1,
-  };
-
-  /// Auto-wrap modes
-  enum struct WrapMode {
-    /// No wrapping
-    NONE,
-    /// Character-level wrapping
-    CHAR_BREAK,
-    /// Word-level wrapping
-    WORD_BREAK,
-  };
-
-  /// Current line render modes
-  enum struct CurrentLineRenderMode {
-    /// Fill full line background
-    BACKGROUND = 0,
-    /// Draw line border only
-    BORDER = 1,
-    /// Disable current-line decoration
-    NONE = 2,
-  };
 }
 
 #endif //SWEETEDITOR_FOUNDATION_H
