@@ -81,10 +81,6 @@ public class CompositionInteractionTest {
         return editorRule.runOnEditorSync(editor -> getEditorCore(editor).getImeSyncSnapshot());
     }
 
-    private int getImeKeyboardScriptClass() {
-        return editorRule.runOnEditorSync(editor -> getEditorCore(editor).getImeKeyboardScriptClass());
-    }
-
     private void assertComposingRange(int startLine, int startColumn, int endLine, int endColumn) {
         TextRange range = getComposingRange();
         assertNotNull(range);
@@ -94,31 +90,15 @@ public class CompositionInteractionTest {
         assertEquals(endColumn, range.end.column);
     }
 
-    private boolean restartCompositionAtCursorWord(InputConnection conn) {
-        try {
-            Method method = conn.getClass().getDeclaredMethod("restartCompositionAtCursorWord");
-            method.setAccessible(true);
-            return (Boolean) method.invoke(conn);
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        }
-    }
-
-    private boolean restartCompositionAtCursorWord(InputConnection conn, int scriptHint) {
-        try {
-            Method method = conn.getClass().getDeclaredMethod("restartCompositionAtCursorWord", int.class);
-            method.setAccessible(true);
-            return (Boolean) method.invoke(conn, scriptHint);
-        } catch (Exception e) {
-            throw new AssertionError(e);
-        }
-    }
-
     private void updateComposition(InputConnection conn, String text, int scriptHint) {
         try {
-            Method method = conn.getClass().getDeclaredMethod("updateComposition", String.class, int.class);
+            Method method = conn.getClass().getDeclaredMethod(
+                    "updateComposition",
+                    String.class,
+                    int.class,
+                    int.class);
             method.setAccessible(true);
-            method.invoke(conn, text, scriptHint);
+            method.invoke(conn, text, scriptHint, 1);
         } catch (Exception e) {
             throw new AssertionError(e);
         }
@@ -126,9 +106,13 @@ public class CompositionInteractionTest {
 
     private void commitComposition(InputConnection conn, String text, int scriptHint) {
         try {
-            Method method = conn.getClass().getDeclaredMethod("commitComposition", String.class, int.class);
+            Method method = conn.getClass().getDeclaredMethod(
+                    "commitComposition",
+                    String.class,
+                    int.class,
+                    int.class);
             method.setAccessible(true);
-            method.invoke(conn, text, scriptHint);
+            method.invoke(conn, text, scriptHint, 1);
         } catch (Exception e) {
             throw new AssertionError(e);
         }
@@ -137,17 +121,15 @@ public class CompositionInteractionTest {
     private int resolveSubtypeImeScriptHint(InputConnection conn,
                                             String languageTag,
                                             String locale,
-                                            String extraValue,
-                                            boolean asciiCapable) {
+                                            String extraValue) {
         try {
             Method method = conn.getClass().getDeclaredMethod(
                     "resolveSubtypeImeScriptHint",
                     String.class,
                     String.class,
-                    String.class,
-                    boolean.class);
+                    String.class);
             method.setAccessible(true);
-            return (Integer) method.invoke(null, languageTag, locale, extraValue, asciiCapable);
+            return (Integer) method.invoke(null, languageTag, locale, extraValue);
         } catch (Exception e) {
             throw new AssertionError(e);
         }
@@ -375,7 +357,7 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testCompositionDoesNotRestartAtWordMiddleAfterCursorMove() {
+    public void testCompositionEndsAtWordMiddleAfterCursorMove() {
         editorRule.loadText("abc  ");
         editorRule.runOnEditor(editor -> {
             editor.setCursorPosition(new TextPosition(0, 5));
@@ -393,7 +375,7 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testCompositionRestartsAtWordEndAfterCursorMove() {
+    public void testCompositionRegionCanMarkWordAfterCursorMove() {
         editorRule.loadText("abc  ");
         editorRule.runOnEditor(editor -> {
             editor.setCursorPosition(new TextPosition(0, 5));
@@ -401,7 +383,7 @@ public class CompositionInteractionTest {
             InputConnection conn = editor.onCreateInputConnection(info);
             conn.setComposingText("how", 1);
             editor.setCursorPosition(new TextPosition(0, 3));
-            assertTrue(restartCompositionAtCursorWord(conn, EditorCore.ImeScriptClass.LATIN));
+            assertTrue(conn.setComposingRegion(0, 3));
         });
         editorRule.waitForIdle();
         assertEquals("abc  how", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
@@ -611,7 +593,7 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testDisabledCompositionCandidateCommit() {
+    public void testShadowPreeditCandidateCommit() {
         editorRule.loadText("");
         editorRule.runOnEditor(editor -> {
             android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
@@ -735,7 +717,7 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testCompositionEnabledDeleteSurroundingTextDeletesSelection() {
+    public void testDeleteSurroundingTextDeletesSelection() {
         editorRule.loadText("hello world");
         InputConnection conn = getInputConnection();
 
@@ -750,7 +732,7 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testCompositionEnabledDeleteSurroundingTextInCodePointsDeletesSelection() {
+    public void testDeleteSurroundingTextInCodePointsDeletesSelection() {
         editorRule.loadText("hello world");
         InputConnection conn = getInputConnection();
 
@@ -765,7 +747,7 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testCompositionEnabledSendDeleteKeyDeletesSelection() {
+    public void testSendDeleteKeyDeletesSelection() {
         editorRule.loadText("hello world");
         InputConnection conn = getInputConnection();
 
@@ -780,7 +762,7 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testCompositionEnabledEmptyCommitDeletesSelection() {
+    public void testEmptyCommitDeletesSelection() {
         editorRule.loadText("hello world");
         InputConnection conn = getInputConnection();
 
@@ -795,7 +777,7 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testDisabledCompositionCleanupDeleteDoesNotRemoveCommittedText() {
+    public void testShadowPreeditCleanupDeleteDoesNotRemoveCommittedText() {
         editorRule.loadText("a");
         editorRule.runOnEditor(editor -> {
             editor.setCursorPosition(new TextPosition(0, 1));
@@ -811,7 +793,7 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testDisabledCompositionExposesLimitedCandidateContextWithoutVisibleComposition() {
+    public void testShadowPreeditExposesLimitedCandidateContextWithoutVisibleComposition() {
         editorRule.loadText("hello");
         editorRule.runOnEditor(editor -> {
             editor.setSelection(0, 0, 0, 5);
@@ -856,7 +838,7 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testInitialSurroundingTextAfterCursorWordCompositionRestart() {
+    public void testInitialSurroundingTextAfterDocumentRangeComposition() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
             return;
         }
@@ -866,7 +848,7 @@ public class CompositionInteractionTest {
         });
         InputConnection conn = getInputConnection();
 
-        editorRule.runOnEditor(editor -> assertTrue(restartCompositionAtCursorWord(conn, EditorCore.ImeScriptClass.LATIN)));
+        editorRule.runOnEditor(editor -> assertTrue(conn.setComposingRegion(0, 5)));
         editorRule.waitForIdle();
 
         android.view.inputmethod.EditorInfo info = new android.view.inputmethod.EditorInfo();
@@ -901,7 +883,7 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testMiddleWordRestartKeepsPlatformCompositionClearAndCandidateReplaces() {
+    public void testMiddleWordRegionCandidateReplacesCompositionRange() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             return;
         }
@@ -911,7 +893,7 @@ public class CompositionInteractionTest {
         });
         InputConnection conn = getInputConnection();
 
-        editorRule.runOnEditor(editor -> assertTrue(restartCompositionAtCursorWord(conn, EditorCore.ImeScriptClass.LATIN)));
+        editorRule.runOnEditor(editor -> assertTrue(conn.setComposingRegion(0, 5)));
         editorRule.waitForIdle();
 
         TextRange range = getComposingRange();
@@ -923,8 +905,8 @@ public class CompositionInteractionTest {
 
         TextSnapshot snapshot = conn.takeSnapshot();
         assertNotNull(snapshot);
-        assertEquals(-1, snapshot.getCompositionStart());
-        assertEquals(-1, snapshot.getCompositionEnd());
+        assertEquals(0, snapshot.getCompositionStart());
+        assertEquals(5, snapshot.getCompositionEnd());
 
         editorRule.runOnEditor(editor -> conn.commitText("helloWorld", 1));
         editorRule.waitForIdle();
@@ -941,7 +923,7 @@ public class CompositionInteractionTest {
         });
         InputConnection conn = getInputConnection();
 
-        editorRule.runOnEditor(editor -> assertTrue(restartCompositionAtCursorWord(conn, EditorCore.ImeScriptClass.LATIN)));
+        editorRule.runOnEditor(editor -> assertTrue(conn.setComposingRegion(0, 7)));
         editorRule.waitForIdle();
         editorRule.runOnEditor(editor -> conn.commitText("defaults", 1));
         editorRule.waitForIdle();
@@ -951,67 +933,15 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testUnknownRestartDoesNotOpenEditorComposition() {
-        editorRule.loadText("hello");
-        editorRule.runOnEditor(editor -> {
-            editor.setCursorPosition(new TextPosition(0, 2));
-        });
-        InputConnection conn = getInputConnection();
-
-        editorRule.runOnEditor(editor -> assertFalse(restartCompositionAtCursorWord(conn, EditorCore.ImeScriptClass.UNKNOWN)));
-        editorRule.waitForIdle();
-
-        assertFalse(isComposing());
-        assertEquals("hello", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
-    }
-
-    @Test
-    public void testUnknownRestartClearsExistingEditorComposition() {
-        editorRule.loadText("hello");
-        editorRule.runOnEditor(editor -> {
-            editor.setCursorPosition(new TextPosition(0, 2));
-            EditorCore core = getEditorCore(editor);
-            core.markImeDocumentRange(
-                    new TextRange(new TextPosition(0, 0), new TextPosition(0, 5)),
-                    EditorCore.ImeScriptClass.LATIN);
-        });
-        editorRule.waitForIdle();
-        assertTrue(isComposing());
-        InputConnection conn = getInputConnection();
-
-        editorRule.runOnEditor(editor -> assertTrue(restartCompositionAtCursorWord(conn, EditorCore.ImeScriptClass.UNKNOWN)));
-        editorRule.waitForIdle();
-
-        assertFalse(isComposing());
-        assertEquals("hello", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
-    }
-
-    @Test
     public void testAsciiCapableSubtypeDoesNotInferLatinKeyboard() {
         InputConnection conn = getInputConnection();
 
         assertEquals(EditorCore.ImeScriptClass.UNKNOWN,
-                resolveSubtypeImeScriptHint(conn, "", "", "AsciiCapable", true));
+                resolveSubtypeImeScriptHint(conn, "", "", "AsciiCapable"));
         assertEquals(EditorCore.ImeScriptClass.CJK,
-                resolveSubtypeImeScriptHint(conn, "zh-CN", "", "AsciiCapable", true));
+                resolveSubtypeImeScriptHint(conn, "zh-CN", "", "AsciiCapable"));
         assertEquals(EditorCore.ImeScriptClass.LATIN,
-                resolveSubtypeImeScriptHint(conn, "en-US", "", "AsciiCapable", true));
-    }
-
-    @Test
-    public void testNonLatinDocumentRangeDoesNotOpenEditorComposition() {
-        editorRule.loadText("hello");
-        editorRule.runOnEditor(editor -> {
-            editor.setCursorPosition(new TextPosition(0, 2));
-            EditorCore core = getEditorCore(editor);
-            core.markImeDocumentRange(
-                    new TextRange(new TextPosition(0, 0), new TextPosition(0, 5)),
-                    EditorCore.ImeScriptClass.CJK);
-        });
-        editorRule.waitForIdle();
-
-        assertFalse(isComposing());
-        assertEquals("hello", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+                resolveSubtypeImeScriptHint(conn, "en-US", "", "AsciiCapable"));
     }
 
     @Test
@@ -1061,36 +991,6 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testAndroidRefreshMatrixHonorsKeyboardScriptClass() {
-        int[] nonLatinScripts = new int[]{
-                EditorCore.ImeScriptClass.CJK,
-                EditorCore.ImeScriptClass.KANA,
-                EditorCore.ImeScriptClass.HANGUL,
-                EditorCore.ImeScriptClass.UNKNOWN
-        };
-
-        for (int script : nonLatinScripts) {
-            editorRule.loadText("hello");
-            editorRule.runOnEditor(editor -> {
-                editor.setCursorPosition(new TextPosition(0, 5));
-            });
-            InputConnection conn = getInputConnection();
-
-            editorRule.runOnEditor(editor -> assertTrue(restartCompositionAtCursorWord(conn, EditorCore.ImeScriptClass.LATIN)));
-            editorRule.waitForIdle();
-            assertTrue(isComposing());
-            assertEquals(EditorCore.ImeScriptClass.LATIN, getImeKeyboardScriptClass());
-
-            editorRule.runOnEditor(editor -> assertTrue(restartCompositionAtCursorWord(conn, script)));
-            editorRule.waitForIdle();
-            assertFalse(isComposing());
-            assertNull(getComposingRange());
-            assertEquals(script, getImeKeyboardScriptClass());
-            assertEquals("hello", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
-        }
-    }
-
-    @Test
     public void testAndroidWordEndBackspaceKeepsCoreCompositionRange() {
         editorRule.loadText("hello");
         editorRule.runOnEditor(editor -> {
@@ -1098,7 +998,7 @@ public class CompositionInteractionTest {
         });
         InputConnection conn = getInputConnection();
 
-        editorRule.runOnEditor(editor -> assertTrue(restartCompositionAtCursorWord(conn, EditorCore.ImeScriptClass.LATIN)));
+        editorRule.runOnEditor(editor -> assertTrue(conn.setComposingRegion(0, 5)));
         editorRule.waitForIdle();
         assertComposingRange(0, 0, 0, 5);
 
@@ -1113,82 +1013,6 @@ public class CompositionInteractionTest {
         assertEquals("hel", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
         assertTrue(isComposing());
         assertComposingRange(0, 0, 0, 3);
-    }
-
-    @Test
-    public void testAndroidMiddleWordEditCancelsCompositionAndHidesContext() {
-        editorRule.loadText("hello");
-        editorRule.runOnEditor(editor -> {
-            editor.setCursorPosition(new TextPosition(0, 2));
-        });
-        InputConnection conn = getInputConnection();
-
-        editorRule.runOnEditor(editor -> assertTrue(restartCompositionAtCursorWord(conn, EditorCore.ImeScriptClass.LATIN)));
-        editorRule.waitForIdle();
-        assertComposingRange(0, 0, 0, 5);
-
-        editorRule.runOnEditor(editor -> conn.setComposingText("x", 1));
-        editorRule.waitForIdle();
-        assertEquals("hexllo", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
-        assertFalse(isComposing());
-        EditorCore.ImeSyncSnapshot lockedSnapshot = getImeSyncSnapshot();
-        assertEquals(EditorCore.ImeContextPolicy.NONE, lockedSnapshot.contextPolicy);
-        assertEquals("", conn.getTextBeforeCursor(16, 0).toString());
-        assertEquals("", conn.getTextAfterCursor(16, 0).toString());
-
-        editorRule.runOnEditor(editor -> editor.setCursorPosition(new TextPosition(0, 6)));
-        editorRule.waitForIdle();
-        editorRule.runOnEditor(editor -> assertTrue(restartCompositionAtCursorWord(conn, EditorCore.ImeScriptClass.LATIN)));
-        editorRule.waitForIdle();
-        assertTrue(isComposing());
-        assertComposingRange(0, 0, 0, 6);
-    }
-
-    @Test
-    public void testAndroidSogouStyleMiddleWordSuffixPreeditReplacesWord() {
-        editorRule.loadText("String");
-        editorRule.runOnEditor(editor -> {
-            editor.setCursorPosition(new TextPosition(0, 3));
-        });
-        InputConnection conn = getInputConnection();
-
-        editorRule.runOnEditor(editor -> assertTrue(restartCompositionAtCursorWord(conn, EditorCore.ImeScriptClass.LATIN)));
-        editorRule.waitForIdle();
-        assertComposingRange(0, 0, 0, 6);
-
-        editorRule.runOnEditor(editor -> conn.setComposingText("Strings", 1));
-        editorRule.waitForIdle();
-
-        assertEquals("Strings", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
-        assertTrue(isComposing());
-
-        editorRule.runOnEditor(editor -> conn.finishComposingText());
-        editorRule.waitForIdle();
-
-        assertEquals("Strings", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
-        assertFalse(isComposing());
-    }
-
-    @Test
-    public void testAndroidMiddleWordPrefixPreeditInsertsAndLocks() {
-        editorRule.loadText("colors");
-        editorRule.runOnEditor(editor -> {
-            editor.setCursorPosition(new TextPosition(0, 2));
-        });
-        InputConnection conn = getInputConnection();
-
-        editorRule.runOnEditor(editor -> assertTrue(restartCompositionAtCursorWord(conn, EditorCore.ImeScriptClass.LATIN)));
-        editorRule.waitForIdle();
-        assertComposingRange(0, 0, 0, 6);
-
-        editorRule.runOnEditor(editor -> conn.setComposingText("cox", 1));
-        editorRule.waitForIdle();
-
-        assertEquals("coxlors", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
-        assertFalse(isComposing());
-        assertEquals(EditorCore.ImeContextPolicy.NONE, getImeSyncSnapshot().contextPolicy);
-        assertEquals("", conn.getTextBeforeCursor(16, 0).toString());
-        assertEquals("", conn.getTextAfterCursor(16, 0).toString());
     }
 
     @Test
@@ -1274,43 +1098,6 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testAndroidSogouStyleWordEndInputInsertsInsteadOfReplacingWord() {
-        editorRule.loadText("hello");
-        editorRule.runOnEditor(editor -> {
-            editor.setCursorPosition(new TextPosition(0, 5));
-        });
-        InputConnection conn = getInputConnection();
-
-        editorRule.runOnEditor(editor -> assertTrue(restartCompositionAtCursorWord(conn, EditorCore.ImeScriptClass.LATIN)));
-        editorRule.waitForIdle();
-        assertComposingRange(0, 0, 0, 5);
-
-        editorRule.runOnEditor(editor -> conn.setComposingText("x", 1));
-        editorRule.waitForIdle();
-        assertEquals("hellox", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
-        assertTrue(isComposing());
-        assertComposingRange(0, 0, 0, 6);
-
-        editorRule.runOnEditor(editor -> conn.setComposingText("xy", 1));
-        editorRule.waitForIdle();
-        assertEquals("helloxy", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
-        assertTrue(isComposing());
-        assertComposingRange(0, 0, 0, 7);
-
-        editorRule.runOnEditor(editor -> conn.setComposingText("x", 1));
-        editorRule.waitForIdle();
-        assertEquals("hellox", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
-        assertTrue(isComposing());
-        assertComposingRange(0, 0, 0, 6);
-
-        editorRule.runOnEditor(editor -> conn.commitText("y", 1));
-        editorRule.waitForIdle();
-        assertEquals("helloxy", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
-        assertTrue(isComposing());
-        assertComposingRange(0, 0, 0, 7);
-    }
-
-    @Test
     public void testAndroidSogouLineLocalComposingRegionUsesCurrentLineWindow() {
         editorRule.loadText(TRACE_SAMPLE_TEXT);
         editorRule.runOnEditor(editor -> {
@@ -1366,17 +1153,12 @@ public class CompositionInteractionTest {
     }
 
     @Test
-    public void testAndroidCjkAndDisabledCompositionUseCandidateContextWithoutVisibleComposition() {
+    public void testAndroidCjkShadowPreeditUsesCandidateContextWithoutVisibleComposition() {
         editorRule.loadText("hello");
         editorRule.runOnEditor(editor -> {
             editor.setCursorPosition(new TextPosition(0, 5));
         });
         InputConnection conn = getInputConnection();
-
-        editorRule.runOnEditor(editor -> assertFalse(restartCompositionAtCursorWord(conn, EditorCore.ImeScriptClass.CJK)));
-        editorRule.waitForIdle();
-        assertFalse(isComposing());
-        assertEquals(EditorCore.ImeScriptClass.CJK, getImeKeyboardScriptClass());
 
         editorRule.runOnEditor(editor -> updateComposition(conn, "ni", EditorCore.ImeScriptClass.CJK));
         editorRule.waitForIdle();
@@ -1394,14 +1176,12 @@ public class CompositionInteractionTest {
             editor.setCursorPosition(new TextPosition(0, 6));
         });
         editorRule.waitForIdle();
-        editorRule.runOnEditor(editor -> assertFalse(restartCompositionAtCursorWord(conn, EditorCore.ImeScriptClass.LATIN)));
-        editorRule.waitForIdle();
         assertFalse(isComposing());
-        InputConnection disabledConn = getInputConnection();
+        InputConnection candidateConn = getInputConnection();
 
         editorRule.runOnEditor(editor -> {
-            disabledConn.setComposingText("ma", 1);
-            disabledConn.commitText("吗", 1);
+            candidateConn.setComposingText("ma", 1);
+            candidateConn.commitText("吗", 1);
         });
         editorRule.waitForIdle();
         assertEquals("hello你吗", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));

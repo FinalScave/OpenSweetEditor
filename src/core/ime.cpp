@@ -203,7 +203,7 @@ namespace NS_SWEETEDITOR {
     result.handled = true;
     observeKeyboardScriptClass(script_class);
     HostState state = captureHostState(host);
-    handleMarkDocumentRange(host, result, range, script_class);
+    handleMarkDocumentRange(host, range);
     finishAction(host, result, state);
     return result;
   }
@@ -283,20 +283,6 @@ namespace NS_SWEETEDITOR {
       return script_class;
     }
     return m_keyboard_script_class_;
-  }
-
-  bool CompositionController::shouldUseShadowPreedit(const U8String& text) const {
-    if (text.empty()) {
-      return m_session_.has_shadow_preedit;
-    }
-    return false;
-  }
-
-  bool CompositionController::isDocumentRangeEligible(const TextRange& range) const {
-    if (range.start == range.end) {
-      return false;
-    }
-    return true;
   }
 
   bool CompositionController::canMoveSelectionInsideComposition(const TextRange& range) const {
@@ -682,7 +668,6 @@ namespace NS_SWEETEDITOR {
 
     TextRange safe_range = host.imeClampDocumentRange(range);
     if (safe_range.start == safe_range.end) return;
-    if (!isDocumentRangeEligible(safe_range)) return;
 
     if (hasVisibleComposition() && m_composition_.kind == CompositionKind::DOCUMENT_RANGE) {
       TextRange current_range = currentComposingRange();
@@ -1278,24 +1263,22 @@ namespace NS_SWEETEDITOR {
     if (m_session_.plain_latin_input_lock && !text.empty()) {
       clearPlainLatinInputLock();
     }
-    if (text.empty() && !hasComposingSession()) {
-      clearShadowPreedit();
-      return;
-    }
-    if (!shouldUseShadowPreedit(text)) {
-      clearShadowPreedit();
-      clearCandidateCommitWindow();
-      mergeEditResult(result, setComposingText(host, text));
-      return;
-    }
-    if (hasComposingSession()) {
-      mergeEditResult(result, commitComposingText(host, "", true));
-    }
     if (text.empty()) {
-      clearShadowPreedit();
-      return;
+      if (m_session_.has_shadow_preedit) {
+        if (hasComposingSession()) {
+          mergeEditResult(result, commitComposingText(host, "", true));
+        }
+        clearShadowPreedit();
+        return;
+      }
+      if (!hasComposingSession()) {
+        clearShadowPreedit();
+        return;
+      }
     }
-    setShadowPreedit(text, script_class);
+    clearShadowPreedit();
+    clearCandidateCommitWindow();
+    mergeEditResult(result, setComposingText(host, text));
   }
 
   void CompositionController::handleCommitText(Host& host,
@@ -1310,10 +1293,8 @@ namespace NS_SWEETEDITOR {
     if (m_session_.plain_latin_input_lock && !text.empty()) {
       clearPlainLatinInputLock();
     }
-    bool had_session = hasComposingSession() || m_session_.has_shadow_preedit;
     clearShadowPreedit();
     if (trySuppressCandidateCommit(host, text)) {
-      (void) had_session;
       return;
     }
     if (hasEndDocumentRangeComposition(host)
@@ -1321,7 +1302,6 @@ namespace NS_SWEETEDITOR {
         && text == m_session_.document_range_end_plain_preedit_text) {
       m_session_.document_range_end_plain_preedit_text.clear();
       m_session_.document_range_end_plain_inserted_text.clear();
-      (void) had_session;
       return;
     }
     if (hasEndDocumentRangeComposition(host)
@@ -1330,7 +1310,6 @@ namespace NS_SWEETEDITOR {
       TextEditResult plain_edit = applyDocumentRangeEndPlainEdit(host, text, true);
       if (plain_edit.changed) {
         mergeEditResult(result, plain_edit);
-        (void) had_session;
         return;
       }
     }
@@ -1344,23 +1323,18 @@ namespace NS_SWEETEDITOR {
           plain_replacement);
       if (looks_like_plain_edit || host.imeUtf16Columns(text) <= 1) {
         mergeEditResult(result, applyDocumentRangePlainEdit(host, text));
-        (void) had_session;
         return;
       }
     }
     mergeEditResult(result, commitComposingText(host, text));
-    (void) had_session;
   }
 
   void CompositionController::handleFinishPreedit(Host& host, ImeActionResult& result) {
-    bool had_session = hasComposingSession() || m_session_.has_shadow_preedit;
     if (m_session_.has_shadow_preedit) {
       clearShadowPreedit();
-      (void) had_session;
       return;
     }
     mergeEditResult(result, finishComposing(host));
-    (void) had_session;
   }
 
   void CompositionController::handleCancelPreedit(Host& host) {
@@ -1369,12 +1343,7 @@ namespace NS_SWEETEDITOR {
     cancelComposing(host);
   }
 
-  void CompositionController::handleMarkDocumentRange(Host& host,
-                                                      ImeActionResult& result,
-                                                      const TextRange& range,
-                                                      ImeScriptClass script_class) {
-    (void) result;
-    (void) script_class;
+  void CompositionController::handleMarkDocumentRange(Host& host, const TextRange& range) {
     clearPlainLatinInputLock();
     clearShadowPreedit();
     clearCandidateCommitWindow();
