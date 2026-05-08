@@ -189,6 +189,19 @@ public class CompositionInteractionTest {
     }
 
     @Test
+    public void testHardwareKeyboardPrintableKeyInsertsText() {
+        editorRule.loadText("");
+
+        editorRule.runOnEditor(editor -> {
+            KeyEvent event = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_A);
+            assertTrue(editor.onKeyDown(KeyEvent.KEYCODE_A, event));
+        });
+        editorRule.waitForIdle();
+
+        assertEquals("a", editorRule.runOnEditorSync(editor -> editor.getDocument().getText()));
+    }
+
+    @Test
     public void testCompositionMultipleCommits() {
         editorRule.loadText("");
         editorRule.runOnEditor(editor -> {
