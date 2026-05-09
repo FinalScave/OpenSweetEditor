@@ -27,6 +27,9 @@ class _BinaryReader {
 
   TextPosition readTextPosition() => TextPosition(readInt32(), readInt32());
 
+  TextRange readTextRange() =>
+      TextRange(readTextPosition(), readTextPosition());
+
   TextStyle readTextStyle() => TextStyle(
     color: readInt32(),
     backgroundColor: readInt32(),
@@ -38,7 +41,7 @@ class _BinaryReader {
     if (len <= 0) return '';
     final bytes = _ptr.asTypedList(_size).sublist(_offset, _offset + len);
     _offset += len;
-    return String.fromCharCodes(bytes);
+    return utf8.decode(bytes);
   }
 }
 
@@ -670,14 +673,40 @@ class ProtocolDecoder {
     final r = _BinaryReader(ptr, size);
     final changed = r.readInt32();
     if (changed == 0) return TextEditResult.empty;
-    final count = r.readInt32();
-    final changes = <TextChange>[];
-    for (var i = 0; i < count; i++) {
-      final range = TextRange(r.readTextPosition(), r.readTextPosition());
-      final text = r.readUtf8String();
-      changes.add(TextChange(range, text));
+    return _readTextEditResultBody(r);
+  }
+
+  static ImeActionResult decodeImeActionResult(
+    ffi.Pointer<ffi.Uint8> ptr,
+    int size,
+  ) {
+    if (ptr == ffi.nullptr || size == 0) return ImeActionResult.empty;
+    final r = _BinaryReader(ptr, size);
+    final handled = r.readInt32() != 0;
+    final contentChanged = r.readInt32() != 0;
+    final cursorChanged = r.readInt32() != 0;
+    final selectionChanged = r.readInt32() != 0;
+    final hasEdit = r.readInt32() != 0;
+    var editResult = TextEditResult.empty;
+    if (hasEdit) {
+      editResult = _readTextEditResultBody(r);
     }
-    return TextEditResult(changed: true, changes: changes);
+    return ImeActionResult(
+      handled: handled,
+      contentChanged: contentChanged,
+      cursorChanged: cursorChanged,
+      selectionChanged: selectionChanged,
+      editResult: editResult,
+      sync: _readImeSyncSnapshot(r),
+    );
+  }
+
+  static ImeSyncSnapshot decodeImeSyncSnapshot(
+    ffi.Pointer<ffi.Uint8> ptr,
+    int size,
+  ) {
+    if (ptr == ffi.nullptr || size == 0) return ImeSyncSnapshot.empty;
+    return _readImeSyncSnapshot(_BinaryReader(ptr, size));
   }
 
   static KeyEventResult decodeKeyEventResult(
@@ -693,20 +722,48 @@ class ProtocolDecoder {
     final hasEdit = r.readInt32() != 0;
     TextEditResult? editResult;
     if (hasEdit) {
-      final count = r.readInt32();
-      final changes = <TextChange>[];
-      for (var i = 0; i < count; i++) {
-        final range = TextRange(r.readTextPosition(), r.readTextPosition());
-        changes.add(TextChange(range, r.readUtf8String()));
-      }
-      editResult = TextEditResult(changed: true, changes: changes);
+      editResult = _readTextEditResultBody(r);
     }
+    final command = r.hasRemaining(4) ? r.readInt32() : EditorCommand.none;
     return KeyEventResult(
       handled: handled,
       contentChanged: contentChanged,
       cursorChanged: cursorChanged,
       selectionChanged: selectionChanged,
       editResult: editResult,
+      command: command,
+    );
+  }
+
+  static TextEditResult _readTextEditResultBody(_BinaryReader r) {
+    final count = r.readInt32();
+    final changes = <TextChange>[];
+    for (var i = 0; i < count; i++) {
+      final range = r.readTextRange();
+      changes.add(TextChange(range, r.readUtf8String()));
+    }
+    return TextEditResult(changed: true, changes: changes);
+  }
+
+  static ImeSyncSnapshot _readImeSyncSnapshot(_BinaryReader r) {
+    return ImeSyncSnapshot(
+      cursor: r.readTextPosition(),
+      hasSelection: r.readInt32() != 0,
+      selection: r.readTextRange(),
+      hasComposingSession: r.readInt32() != 0,
+      hasVisibleCompositionRange: r.readInt32() != 0,
+      visibleCompositionRange: r.readTextRange(),
+      hasPlatformMarkedRange: r.readInt32() != 0,
+      platformMarkedRange: r.readTextRange(),
+      platformTextWindowText: r.readUtf8String(),
+      platformTextWindowStartOffset: r.readInt32(),
+      platformTextWindowSelectionStartOffset: r.readInt32(),
+      platformTextWindowSelectionEndOffset: r.readInt32(),
+      platformTextWindowComposingStartOffset: r.readInt32(),
+      platformTextWindowComposingEndOffset: r.readInt32(),
+      preeditStorage: ImePreeditStorage.fromValue(r.readInt32()),
+      contextPolicy: ImeContextPolicy.fromValue(r.readInt32()),
+      clearPlatformPreedit: r.readInt32() != 0,
     );
   }
 

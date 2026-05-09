@@ -42,6 +42,7 @@ part 'completion/completion_popup_controller.dart';
 part 'completion/completion_popup_widget.dart';
 part 'copilot/inline_suggestion_controller.dart';
 part 'decoration/decoration_provider_manager.dart';
+part 'widget/editor_platform_behavior.dart';
 part 'widget/editor_session.dart';
 part 'widget/editor_interaction_controller.dart';
 part 'widget/editor_overlay_coordinator.dart';

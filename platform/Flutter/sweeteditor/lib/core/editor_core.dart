@@ -214,6 +214,7 @@ class KeyEventResult {
     this.cursorChanged = false,
     this.selectionChanged = false,
     this.editResult,
+    this.command = EditorCommand.none,
   });
 
   static const KeyEventResult empty = KeyEventResult();
@@ -223,6 +224,7 @@ class KeyEventResult {
   final bool cursorChanged;
   final bool selectionChanged;
   final TextEditResult? editResult;
+  final int command;
 }
 
 /// Editor options passed to create_editor as binary payload.
@@ -863,50 +865,255 @@ class EditorCore {
     bindings.editor_move_cursor_to_line_end(_handle, extendSelection ? 1 : 0);
   }
 
-  void compositionStart() {
-    _ensureOpen();
-    bindings.editor_composition_start(_handle);
-  }
-
-  void compositionUpdate(String text) {
-    _ensureOpen();
-    using((arena) {
-      bindings.editor_composition_update(_handle, _toNativeUtf8(text, arena));
-    });
-  }
-
-  TextEditResult compositionEnd({String? committedText}) {
-    _ensureOpen();
-    return using((arena) {
-      final textPtr = committedText != null
-          ? _toNativeUtf8(committedText, arena)
-          : ffi.nullptr.cast<ffi.Char>();
-      return _callAndParse(
-        TextEditResult.empty,
-        (outSize) => bindings.editor_composition_end(_handle, textPtr, outSize),
-        ProtocolDecoder.decodeTextEditResult,
-      );
-    });
-  }
-
-  void compositionCancel() {
-    _ensureOpen();
-    bindings.editor_composition_cancel(_handle);
-  }
-
   bool get isComposing {
     _ensureOpen();
     return bindings.editor_is_composing(_handle) != 0;
   }
 
-  void setCompositionEnabled(bool enabled) {
+  TextRange? getComposingRange() {
     _ensureOpen();
-    bindings.editor_set_composition_enabled(_handle, enabled ? 1 : 0);
+    return using((arena) {
+      final sl = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
+      final sc = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
+      final el = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
+      final ec = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
+      bindings.editor_get_composing_range(_handle, sl, sc, el, ec);
+      return _readNullableRange(sl.value, sc.value, el.value, ec.value);
+    });
   }
 
-  bool get isCompositionEnabled {
+  TextRange? getComposingSessionRange() {
     _ensureOpen();
-    return bindings.editor_is_composition_enabled(_handle) != 0;
+    return using((arena) {
+      final sl = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
+      final sc = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
+      final el = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
+      final ec = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
+      bindings.editor_get_composing_session_range(_handle, sl, sc, el, ec);
+      return _readNullableRange(sl.value, sc.value, el.value, ec.value);
+    });
+  }
+
+  ImeActionResult updateImePreedit(
+    String text, {
+    ImeScriptClass scriptClass = ImeScriptClass.unknown,
+  }) {
+    _ensureOpen();
+    return using((arena) {
+      final textPtr = _toNativeUtf8(text, arena);
+      return _callAndParse(
+        ImeActionResult.empty,
+        (outSize) => bindings.editor_ime_update_preedit(
+          _handle,
+          textPtr,
+          scriptClass.value,
+          outSize,
+        ),
+        ProtocolDecoder.decodeImeActionResult,
+      );
+    });
+  }
+
+  ImeActionResult commitImeText(
+    String text, {
+    ImeScriptClass scriptClass = ImeScriptClass.unknown,
+  }) {
+    _ensureOpen();
+    return using((arena) {
+      final textPtr = _toNativeUtf8(text, arena);
+      return _callAndParse(
+        ImeActionResult.empty,
+        (outSize) => bindings.editor_ime_commit_text(
+          _handle,
+          textPtr,
+          scriptClass.value,
+          outSize,
+        ),
+        ProtocolDecoder.decodeImeActionResult,
+      );
+    });
+  }
+
+  ImeActionResult finishImePreedit() {
+    _ensureOpen();
+    return _callAndParse(
+      ImeActionResult.empty,
+      (outSize) => bindings.editor_ime_finish_preedit(_handle, outSize),
+      ProtocolDecoder.decodeImeActionResult,
+    );
+  }
+
+  ImeActionResult cancelImePreedit() {
+    _ensureOpen();
+    return _callAndParse(
+      ImeActionResult.empty,
+      (outSize) => bindings.editor_ime_cancel_preedit(_handle, outSize),
+      ProtocolDecoder.decodeImeActionResult,
+    );
+  }
+
+  ImeActionResult markImeDocumentRange(
+    TextRange range, {
+    ImeScriptClass scriptClass = ImeScriptClass.unknown,
+  }) {
+    _ensureOpen();
+    return _callAndParse(
+      ImeActionResult.empty,
+      (outSize) => bindings.editor_ime_mark_document_range(
+        _handle,
+        range.start.line,
+        range.start.column,
+        range.end.line,
+        range.end.column,
+        scriptClass.value,
+        outSize,
+      ),
+      ProtocolDecoder.decodeImeActionResult,
+    );
+  }
+
+  ImeActionResult replaceImeText(
+    TextRange range,
+    String text, {
+    ImeScriptClass scriptClass = ImeScriptClass.unknown,
+  }) {
+    _ensureOpen();
+    return using((arena) {
+      final textPtr = _toNativeUtf8(text, arena);
+      return _callAndParse(
+        ImeActionResult.empty,
+        (outSize) => bindings.editor_ime_replace_text(
+          _handle,
+          range.start.line,
+          range.start.column,
+          range.end.line,
+          range.end.column,
+          textPtr,
+          scriptClass.value,
+          outSize,
+        ),
+        ProtocolDecoder.decodeImeActionResult,
+      );
+    });
+  }
+
+  ImeActionResult deleteImeBackward({
+    int beforeLength = 1,
+    ImeTextUnit textUnit = ImeTextUnit.utf16CodeUnit,
+  }) {
+    _ensureOpen();
+    return _callAndParse(
+      ImeActionResult.empty,
+      (outSize) => bindings.editor_ime_delete_backward(
+        _handle,
+        beforeLength,
+        textUnit.value,
+        outSize,
+      ),
+      ProtocolDecoder.decodeImeActionResult,
+    );
+  }
+
+  ImeActionResult deleteImeForward({
+    int afterLength = 1,
+    ImeTextUnit textUnit = ImeTextUnit.utf16CodeUnit,
+  }) {
+    _ensureOpen();
+    return _callAndParse(
+      ImeActionResult.empty,
+      (outSize) => bindings.editor_ime_delete_forward(
+        _handle,
+        afterLength,
+        textUnit.value,
+        outSize,
+      ),
+      ProtocolDecoder.decodeImeActionResult,
+    );
+  }
+
+  ImeActionResult deleteImeSurrounding({
+    required int beforeLength,
+    required int afterLength,
+    ImeTextUnit textUnit = ImeTextUnit.utf16CodeUnit,
+  }) {
+    _ensureOpen();
+    return _callAndParse(
+      ImeActionResult.empty,
+      (outSize) => bindings.editor_ime_delete_surrounding(
+        _handle,
+        beforeLength,
+        afterLength,
+        textUnit.value,
+        outSize,
+      ),
+      ProtocolDecoder.decodeImeActionResult,
+    );
+  }
+
+  ImeActionResult notifyImeSelectionChanged(TextRange range) {
+    _ensureOpen();
+    return _callAndParse(
+      ImeActionResult.empty,
+      (outSize) => bindings.editor_ime_notify_selection_changed(
+        _handle,
+        range.start.line,
+        range.start.column,
+        range.end.line,
+        range.end.column,
+        outSize,
+      ),
+      ProtocolDecoder.decodeImeActionResult,
+    );
+  }
+
+  ImeActionResult notifyImeCursorChanged(TextPosition cursor) {
+    _ensureOpen();
+    return _callAndParse(
+      ImeActionResult.empty,
+      (outSize) => bindings.editor_ime_notify_cursor_changed(
+        _handle,
+        cursor.line,
+        cursor.column,
+        outSize,
+      ),
+      ProtocolDecoder.decodeImeActionResult,
+    );
+  }
+
+  void setImeKeyboardScriptClass(ImeScriptClass scriptClass) {
+    _ensureOpen();
+    bindings.editor_ime_set_keyboard_script_class(_handle, scriptClass.value);
+  }
+
+  ImeScriptClass getImeKeyboardScriptClass() {
+    _ensureOpen();
+    return ImeScriptClass.fromValue(
+      bindings.editor_ime_get_keyboard_script_class(_handle),
+    );
+  }
+
+  ImeSyncSnapshot getImeSyncSnapshot() {
+    _ensureOpen();
+    return _callAndParse(
+      ImeSyncSnapshot.empty,
+      (outSize) => bindings.editor_get_ime_sync_snapshot(_handle, outSize),
+      ProtocolDecoder.decodeImeSyncSnapshot,
+    );
+  }
+
+  TextRange? _readNullableRange(
+    int startLine,
+    int startColumn,
+    int endLine,
+    int endColumn,
+  ) {
+    if (startLine < 0 || startColumn < 0 || endLine < 0 || endColumn < 0) {
+      return null;
+    }
+    return TextRange(
+      TextPosition(startLine, startColumn),
+      TextPosition(endLine, endColumn),
+    );
   }
 
   void scrollToLine(

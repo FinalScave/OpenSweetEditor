@@ -960,56 +960,262 @@ external void editor_move_cursor_to_line_end(
   int extend_selection,
 );
 
-/// Notify editor that IME composition starts
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_composition_start(int editor_handle);
-
-/// Update IME composition text
-/// @param text Current composition text (UTF8), full composition text each time not incremental
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Char>)>(
-  assetId: _sweeteditorAssetId,
-)
-external void editor_composition_update(
-  int editor_handle,
-  ffi.Pointer<ffi.Char> text,
-);
-
-/// End IME composition and commit final text
-/// @param committed_text Final committed text (UTF8); if NULL, use current composition text
-/// @return TextEditResult binary payload, returns NULL if there is no change
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(
-    ffi.IntPtr,
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Size>,
-  )
->(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> editor_composition_end(
-  int editor_handle,
-  ffi.Pointer<ffi.Char> committed_text,
-  ffi.Pointer<ffi.Size> out_size,
-);
-
-/// Cancel IME composition (do not commit any text)
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_composition_cancel(int editor_handle);
-
 /// Get whether composition is currently active
 /// @return 1=composing, 0=not composing
 @ffi.Native<ffi.Int Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
 external int editor_is_composing(int editor_handle);
 
-/// Set whether IME composition is enabled
-/// @param enabled 1=enabled, 0=disabled
+/// Get current composition range, or -1 values when composition is inactive
+@ffi.Native<
+  ffi.Void Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int32>,
+  )
+>(assetId: _sweeteditorAssetId)
+external void editor_get_composing_range(
+  int editor_handle,
+  ffi.Pointer<ffi.Int32> out_start_line,
+  ffi.Pointer<ffi.Int32> out_start_column,
+  ffi.Pointer<ffi.Int32> out_end_line,
+  ffi.Pointer<ffi.Int32> out_end_column,
+);
+
+/// Get current active composition session range
+@ffi.Native<
+  ffi.Void Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int32>,
+    ffi.Pointer<ffi.Int32>,
+  )
+>(assetId: _sweeteditorAssetId)
+external void editor_get_composing_session_range(
+  int editor_handle,
+  ffi.Pointer<ffi.Int32> out_start_line,
+  ffi.Pointer<ffi.Int32> out_start_column,
+  ffi.Pointer<ffi.Int32> out_end_line,
+  ffi.Pointer<ffi.Int32> out_end_column,
+);
+
+/// Update platform IME preedit text.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Char>,
+    ffi.Int,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_ime_update_preedit(
+  int editor_handle,
+  ffi.Pointer<ffi.Char> text,
+  int script_hint,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Commit platform IME text.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Char>,
+    ffi.Int,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_ime_commit_text(
+  int editor_handle,
+  ffi.Pointer<ffi.Char> text,
+  int script_hint,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Finish the current platform IME preedit.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_ime_finish_preedit(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Cancel the current platform IME preedit.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_ime_cancel_preedit(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Mark a document range that the platform IME explicitly reports as composing.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Size,
+    ffi.Size,
+    ffi.Size,
+    ffi.Size,
+    ffi.Int,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_ime_mark_document_range(
+  int editor_handle,
+  int start_line,
+  int start_column,
+  int end_line,
+  int end_column,
+  int script_hint,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Report platform candidate replacement text.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Size,
+    ffi.Size,
+    ffi.Size,
+    ffi.Size,
+    ffi.Pointer<ffi.Char>,
+    ffi.Int,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_ime_replace_text(
+  int editor_handle,
+  int start_line,
+  int start_column,
+  int end_line,
+  int end_column,
+  ffi.Pointer<ffi.Char> text,
+  int script_hint,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Delete text before the caret through IME.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Size,
+    ffi.Int,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_ime_delete_backward(
+  int editor_handle,
+  int before_length,
+  int text_unit,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Delete text after the caret through IME.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Size,
+    ffi.Int,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_ime_delete_forward(
+  int editor_handle,
+  int after_length,
+  int text_unit,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Delete surrounding text through IME.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Size,
+    ffi.Size,
+    ffi.Int,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_ime_delete_surrounding(
+  int editor_handle,
+  int before_length,
+  int after_length,
+  int text_unit,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Notify IME-driven selection movement.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Size,
+    ffi.Size,
+    ffi.Size,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_ime_notify_selection_changed(
+  int editor_handle,
+  int start_line,
+  int start_column,
+  int end_line,
+  int end_column,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Notify IME-driven cursor movement.
+/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Size,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_ime_notify_cursor_changed(
+  int editor_handle,
+  int cursor_line,
+  int cursor_column,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set the current IME keyboard script class.
 @ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(
   assetId: _sweeteditorAssetId,
 )
-external void editor_set_composition_enabled(int editor_handle, int enabled);
+external void editor_ime_set_keyboard_script_class(
+  int editor_handle,
+  int script_class,
+);
 
-/// Get whether IME composition is enabled
-/// @return 1=enabled, 0=disabled
+/// Get the current IME keyboard script class.
 @ffi.Native<ffi.Int Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external int editor_is_composition_enabled(int editor_handle);
+external int editor_ime_get_keyboard_script_class(int editor_handle);
+
+/// Get the current IME synchronization snapshot.
+/// @return ImeSyncSnapshot binary payload, returns NULL when editor handle is invalid
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_get_ime_sync_snapshot(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
 /// Set read-only mode
 /// @param read_only 1=read-only, 0=editable
@@ -1110,11 +1316,7 @@ external ffi.Pointer<ffi.Uint8> editor_get_scroll_metrics(
 /// @param out_start_line Output first visible logical line (inclusive)
 /// @param out_end_line Output last visible logical line (inclusive), or -1 when empty
 @ffi.Native<
-  ffi.Void Function(
-    ffi.IntPtr,
-    ffi.Pointer<ffi.Int32>,
-    ffi.Pointer<ffi.Int32>,
-  )
+  ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Int32>, ffi.Pointer<ffi.Int32>)
 >(assetId: _sweeteditorAssetId)
 external void editor_get_visible_line_range(
   int editor_handle,

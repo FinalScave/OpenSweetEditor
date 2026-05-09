@@ -13,15 +13,18 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
     required EditorTheme theme,
     required EditorTextMeasurer measurer,
     EditorIconProvider? iconProvider,
+    required bool showSelectionHandles,
   }) : _theme = theme,
        _measurer = measurer,
-       _iconProvider = iconProvider;
+       _iconProvider = iconProvider,
+       _showSelectionHandles = showSelectionHandles;
 
   core.EditorRenderModel _model = core.EditorRenderModel.empty;
   EditorTheme _theme;
   final EditorTextMeasurer _measurer;
   bool _cursorVisible = true;
   EditorIconProvider? _iconProvider;
+  final bool _showSelectionHandles;
   final Map<int, _ResolvedEditorIcon> _resolvedIcons = {};
 
   void updateModel(core.EditorRenderModel model, bool cursorVisible) {
@@ -137,7 +140,9 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
 
     _drawFoldMarkers(canvas, m);
 
-    _drawSelectionHandles(canvas, m);
+    if (_showSelectionHandles) {
+      _drawSelectionHandles(canvas, m);
+    }
 
     // Bracket highlight borders
     for (final rect in m.bracketHighlightRects) {

@@ -87,3 +87,122 @@ enum ScrollBehavior {
   const ScrollBehavior(this.value);
   final int value;
 }
+
+/// Unit used by IME delete requests.
+enum ImeTextUnit {
+  utf16CodeUnit(0),
+  codePoint(1);
+
+  const ImeTextUnit(this.value);
+  final int value;
+}
+
+/// Script class hint reported by platform IMEs.
+enum ImeScriptClass {
+  unknown(0),
+  latin(1),
+  cjk(2),
+  kana(3),
+  hangul(4);
+
+  const ImeScriptClass(this.value);
+  final int value;
+
+  static ImeScriptClass fromValue(int value) => ImeScriptClass.values
+      .firstWhere((e) => e.value == value, orElse: () => unknown);
+}
+
+/// Where the current IME preedit is stored.
+enum ImePreeditStorage {
+  none(0),
+  visibleDocumentComposition(1),
+  shadowOnly(2);
+
+  const ImePreeditStorage(this.value);
+  final int value;
+
+  static ImePreeditStorage fromValue(int value) => ImePreeditStorage.values
+      .firstWhere((e) => e.value == value, orElse: () => none);
+}
+
+/// Platform text context policy requested by the core IME state.
+enum ImeContextPolicy {
+  none(0),
+  limitedForCandidates(1);
+
+  const ImeContextPolicy(this.value);
+  final int value;
+
+  static ImeContextPolicy fromValue(int value) => ImeContextPolicy.values
+      .firstWhere((e) => e.value == value, orElse: () => none);
+}
+
+/// Snapshot used to synchronize Flutter's platform text input state.
+class ImeSyncSnapshot {
+  const ImeSyncSnapshot({
+    this.cursor = const TextPosition(0, 0),
+    this.hasSelection = false,
+    this.selection = const TextRange(TextPosition(0, 0), TextPosition(0, 0)),
+    this.hasComposingSession = false,
+    this.hasVisibleCompositionRange = false,
+    this.visibleCompositionRange = const TextRange(
+      TextPosition(0, 0),
+      TextPosition(0, 0),
+    ),
+    this.hasPlatformMarkedRange = false,
+    this.platformMarkedRange = const TextRange(
+      TextPosition(0, 0),
+      TextPosition(0, 0),
+    ),
+    this.platformTextWindowText = '',
+    this.platformTextWindowStartOffset = 0,
+    this.platformTextWindowSelectionStartOffset = 0,
+    this.platformTextWindowSelectionEndOffset = 0,
+    this.platformTextWindowComposingStartOffset = -1,
+    this.platformTextWindowComposingEndOffset = -1,
+    this.preeditStorage = ImePreeditStorage.none,
+    this.contextPolicy = ImeContextPolicy.none,
+    this.clearPlatformPreedit = false,
+  });
+
+  static const ImeSyncSnapshot empty = ImeSyncSnapshot();
+
+  final TextPosition cursor;
+  final bool hasSelection;
+  final TextRange selection;
+  final bool hasComposingSession;
+  final bool hasVisibleCompositionRange;
+  final TextRange visibleCompositionRange;
+  final bool hasPlatformMarkedRange;
+  final TextRange platformMarkedRange;
+  final String platformTextWindowText;
+  final int platformTextWindowStartOffset;
+  final int platformTextWindowSelectionStartOffset;
+  final int platformTextWindowSelectionEndOffset;
+  final int platformTextWindowComposingStartOffset;
+  final int platformTextWindowComposingEndOffset;
+  final ImePreeditStorage preeditStorage;
+  final ImeContextPolicy contextPolicy;
+  final bool clearPlatformPreedit;
+}
+
+/// Result of a semantic IME action handled by the native editor core.
+class ImeActionResult {
+  const ImeActionResult({
+    this.handled = false,
+    this.contentChanged = false,
+    this.cursorChanged = false,
+    this.selectionChanged = false,
+    this.editResult = TextEditResult.empty,
+    this.sync = ImeSyncSnapshot.empty,
+  });
+
+  static const ImeActionResult empty = ImeActionResult();
+
+  final bool handled;
+  final bool contentChanged;
+  final bool cursorChanged;
+  final bool selectionChanged;
+  final TextEditResult editResult;
+  final ImeSyncSnapshot sync;
+}

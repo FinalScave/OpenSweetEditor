@@ -52,10 +52,12 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   late EditorSession _session;
   late EditorOverlayCoordinator _overlayCoordinator;
   late EditorInteractionController _interactionController;
+  late final EditorPlatformBehavior _platformBehavior;
   late final FocusNode _focusNode;
   final GlobalKey _editorKey = GlobalKey();
   TextInputConnection? _textInputConnection;
   TextEditingValue _textEditingValue = TextEditingValue.empty;
+  int _textInputWindowStartOffset = 0;
   bool _handlingTextInputUpdate = false;
   bool _pendingShowTextInput = false;
   Size? _pendingViewportSize;
@@ -85,6 +87,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   @override
   void initState() {
     super.initState();
+    _platformBehavior = EditorPlatformBehavior.resolve();
     _focusNode = FocusNode(debugLabel: 'SweetEditor');
     _focusNode.addListener(_handleFocusChanged);
     _initEditor();
@@ -105,7 +108,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       widget.settings,
       fontSize: widget.fontSize,
       fontFamily: widget.fontFamily,
-      gutterSticky: _isDesktopStylePlatform,
+      gutterSticky: _platformBehavior.gutterStickyDefault,
     );
     _applyKeyMap(widget.keyMap ?? EditorKeyMap.defaultKeyMap());
     _applyIconProvider(widget.iconProvider);
@@ -146,9 +149,10 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
         setState(() {});
       }
     };
+    _session.onPlatformScaleChanged = _updateTextInputStyle;
     _session.bindSettings();
-    _session.setHandleConfig(_computeHandleHitConfig());
-    _session.setScrollbarConfig(_buildScrollbarConfig());
+    _session.setHandleConfig(_platformBehavior.handleConfig);
+    _session.setScrollbarConfig(_platformBehavior.scrollbarConfig);
     _applyDeclarativeInputs();
     widget.controller._attach(this);
     _interactionController.startCursorBlink();
@@ -161,7 +165,8 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       initialSettings: widget.settings,
       fontFamily: widget.fontFamily,
       fontSize: widget.fontSize,
-      gutterSticky: _isDesktopStylePlatform,
+      gutterSticky: _platformBehavior.gutterStickyDefault,
+      platformBehavior: _platformBehavior,
       initialKeyMap: widget.keyMap ?? EditorKeyMap.defaultKeyMap(),
       initialIconProvider: widget.iconProvider,
       initialLanguageConfiguration: widget.languageConfiguration,
@@ -183,11 +188,16 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
             widget.theme?.completionDetailColor ??
             EditorTheme.dark().completionDetailColor,
       ),
-      selectionMenuController: SelectionMenuController(),
+      selectionMenuController: SelectionMenuController(
+        enabled: _platformBehavior.showsFloatingSelectionMenu,
+      ),
     );
 
     final completionProviderManager = _session.completionProviderManager;
-    _overlayCoordinator = EditorOverlayCoordinator(session: _session);
+    _overlayCoordinator = EditorOverlayCoordinator(
+      session: _session,
+      platformBehavior: _platformBehavior,
+    );
     _interactionController = EditorInteractionController(
       session: _session,
       tickerProvider: this,
@@ -209,61 +219,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     if (text != null) {
       _loadText(text);
     }
-  }
-
-  static core.HandleConfig _computeHandleHitConfig() {
-    const double r = 10.0;
-    const double d = 24.0;
-    const double angle = 45.0 * math.pi / 180.0;
-    final cos = math.cos(angle);
-    final sin = math.sin(angle);
-
-    final points = <List<double>>[
-      [0, 0],
-      [-r, d],
-      [r, d],
-      [0, d + r],
-      [0, d - r * 0.8],
-    ];
-
-    var minX = double.infinity;
-    var minY = double.infinity;
-    var maxX = double.negativeInfinity;
-    var maxY = double.negativeInfinity;
-    for (final p in points) {
-      final rx = p[0] * cos - p[1] * sin;
-      final ry = p[0] * sin + p[1] * cos;
-      minX = math.min(minX, rx);
-      minY = math.min(minY, ry);
-      maxX = math.max(maxX, rx);
-      maxY = math.max(maxY, ry);
-    }
-
-    const pad = 8.0;
-    return core.HandleConfig(
-      startLeft: minX - pad,
-      startTop: minY - pad,
-      startRight: maxX + pad,
-      startBottom: maxY + pad,
-      endLeft: -maxX - pad,
-      endTop: minY - pad,
-      endRight: -minX + pad,
-      endBottom: maxY + pad,
-    );
-  }
-
-  core.ScrollbarConfig _buildScrollbarConfig() {
-    final isMobile = !_isDesktopStylePlatform;
-    return core.ScrollbarConfig(
-      thickness: isMobile ? 8.0 : 6.0,
-      minThumb: isMobile ? 40.0 : 32.0,
-      thumbHitPadding: isMobile ? 20.0 : 0.0,
-      mode: core.ScrollbarMode.transient,
-      thumbDraggable: true,
-      trackTapMode: core.ScrollbarTrackTapMode.disabled,
-      fadeDelayMs: 700,
-      fadeDurationMs: 300,
-    );
   }
 
   void _loadText(String text) {
@@ -350,16 +305,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     _session.dispose();
   }
 
-  bool get _usesPlatformTextInput =>
-      !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.android ||
-          defaultTargetPlatform == TargetPlatform.iOS);
-
-  bool get _isDesktopStylePlatform =>
-      kIsWeb ||
-      (defaultTargetPlatform != TargetPlatform.android &&
-          defaultTargetPlatform != TargetPlatform.iOS);
-
   @override
   TextEditingValue? get currentTextEditingValue => _textEditingValue;
 
@@ -380,30 +325,12 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     final previousValue = _textEditingValue;
     _handlingTextInputUpdate = true;
     try {
-      if (value.text != previousValue.text) {
-        final change = _computeTextReplacement(previousValue.text, value.text);
-        final replaceRange = core.TextRange(
-          _offsetToTextPosition(previousValue.text, change.$1),
-          _offsetToTextPosition(previousValue.text, change.$2),
-        );
-        _interactionController.replaceText(
-          replaceRange,
-          change.$3,
-          action: value.composing.isValid && !value.composing.isCollapsed
-              ? TextChangeAction.composition
-              : TextChangeAction.key,
-        );
-      }
-
-      if (value.selection != previousValue.selection ||
-          value.text != previousValue.text) {
-        _applySelectionFromTextInput(value.selection, value.text);
-      }
+      _applyImeEditingValue(editorCore, previousValue, value);
     } finally {
       _handlingTextInputUpdate = false;
     }
 
-    _syncTextInputState(force: true);
+    _textEditingValue = value;
   }
 
   @override
@@ -437,7 +364,9 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   void showToolbar() {}
 
   @override
-  void performSelector(String selectorName) {}
+  void performSelector(String selectorName) {
+    _interactionController.performSelector(selectorName);
+  }
 
   void _handleFocusChanged() {
     if (_editorResourcesReleased) {
@@ -457,7 +386,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   void _openTextInputConnection({required bool show}) {
     if (_editorResourcesReleased ||
-        !_usesPlatformTextInput ||
+        !_platformBehavior.usesPlatformTextInput ||
         !_focusNode.hasFocus ||
         !mounted) {
       return;
@@ -478,7 +407,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     _updateTextInputStyle();
     _syncTextInputState(force: true);
     _updateTextInputGeometry();
-    if (show) {
+    if (show || !_platformBehavior.showsSoftKeyboard) {
       _textInputConnection?.show();
     }
   }
@@ -506,7 +435,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     }
     _textInputConnection!.setStyle(
       fontFamily: _settings.getFontFamily(),
-      fontSize: _settings.getEditorTextSize() * _settings.getScale(),
+      fontSize: _settings.getEditorTextSize() * _session.effectiveScale,
       fontWeight: FontWeight.w400,
       textDirection: TextDirection.ltr,
       textAlign: TextAlign.left,
@@ -536,60 +465,189 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   }
 
   TextEditingValue _buildEditingValueFromEditor() {
-    final text = _getContent();
-    final selection = _buildTextSelection(text);
+    final snapshot = _editorCore?.getImeSyncSnapshot();
+    if (snapshot == null) {
+      _textInputWindowStartOffset = 0;
+      return TextEditingValue.empty;
+    }
+    final documentText = _getContent();
+    final cursorOffset = _textPositionToOffset(documentText, snapshot.cursor);
+    final exposesTextWindow =
+        snapshot.contextPolicy != core.ImeContextPolicy.none ||
+        snapshot.platformTextWindowText.isNotEmpty;
+    final text = exposesTextWindow ? snapshot.platformTextWindowText : '';
+    _textInputWindowStartOffset = exposesTextWindow
+        ? _normalizeDocumentOffset(
+            snapshot.platformTextWindowStartOffset,
+            documentText,
+          )
+        : cursorOffset;
+    final selectionStart = _normalizeTextInputOffset(
+      exposesTextWindow ? snapshot.platformTextWindowSelectionStartOffset : 0,
+      text,
+    );
+    final selectionEnd = _normalizeTextInputOffset(
+      exposesTextWindow ? snapshot.platformTextWindowSelectionEndOffset : 0,
+      text,
+    );
+    final selection = TextSelection(
+      baseOffset: selectionStart,
+      extentOffset: selectionEnd,
+    );
+    var composing = TextRange.empty;
+    if (snapshot.platformTextWindowComposingStartOffset >= 0 &&
+        snapshot.platformTextWindowComposingEndOffset >= 0) {
+      final composingStart = _normalizeTextInputOffset(
+        snapshot.platformTextWindowComposingStartOffset,
+        text,
+      );
+      final composingEnd = _normalizeTextInputOffset(
+        snapshot.platformTextWindowComposingEndOffset,
+        text,
+      );
+      if (composingEnd > composingStart) {
+        composing = TextRange(start: composingStart, end: composingEnd);
+      }
+    }
     return TextEditingValue(
       text: text,
       selection: selection,
-      composing: TextRange.empty,
+      composing: composing,
     );
   }
 
-  TextSelection _buildTextSelection(String text) {
-    final selection = _editorCore?.getSelection();
-    if (selection != null) {
-      return TextSelection(
-        baseOffset: _textPositionToOffset(text, selection.start),
-        extentOffset: _textPositionToOffset(text, selection.end),
+  void _applyImeEditingValue(
+    core.EditorCore editorCore,
+    TextEditingValue previousValue,
+    TextEditingValue value,
+  ) {
+    final textChanged = value.text != previousValue.text;
+    final composingActive = _isActiveTextRange(value.composing, value.text);
+    final previousComposingActive = _isActiveTextRange(
+      previousValue.composing,
+      previousValue.text,
+    );
+
+    if (textChanged) {
+      final change = _computeTextReplacement(previousValue.text, value.text);
+      if (composingActive) {
+        final preeditText = value.text.substring(
+          value.composing.start,
+          value.composing.end,
+        );
+        _dispatchImeAction(editorCore.updateImePreedit(preeditText));
+      } else {
+        final documentText = _getContent();
+        final range = _textInputOffsetsToDocumentRange(
+          documentText,
+          change.$1,
+          change.$2,
+        );
+        final replacingComposition =
+            previousComposingActive || editorCore.isComposing;
+        final core.ImeActionResult result;
+        if (replacingComposition || change.$1 == change.$2) {
+          result = editorCore.commitImeText(change.$3);
+        } else {
+          result = editorCore.replaceImeText(range, change.$3);
+        }
+        _dispatchImeAction(result);
+      }
+    } else if (composingActive) {
+      final documentText = _getContent();
+      final range = _textInputOffsetsToDocumentRange(
+        documentText,
+        value.composing.start,
+        value.composing.end,
       );
+      final result = previousComposingActive
+          ? editorCore.markImeDocumentRange(range)
+          : editorCore.updateImePreedit(
+              value.text.substring(value.composing.start, value.composing.end),
+            );
+      _dispatchImeAction(result);
+    } else if (previousComposingActive || editorCore.isComposing) {
+      _dispatchImeAction(editorCore.finishImePreedit());
     }
-    final cursor =
-        _editorCore?.getCursorPosition() ?? const core.TextPosition(0, 0);
-    final offset = _textPositionToOffset(text, cursor);
-    return TextSelection.collapsed(offset: offset);
+
+    if (!textChanged &&
+        !composingActive &&
+        !previousComposingActive &&
+        !editorCore.isComposing &&
+        value.selection != previousValue.selection) {
+      _notifyImeSelectionFromTextInput(editorCore, value);
+    }
   }
 
-  void _applySelectionFromTextInput(TextSelection selection, String text) {
-    final editorCore = _editorCore;
-    if (editorCore == null) return;
-    final startOffset = selection.start.clamp(0, text.length);
-    final endOffset = selection.end.clamp(0, text.length);
-    final start = _offsetToTextPosition(text, startOffset);
-    final end = _offsetToTextPosition(text, endOffset);
-    if (selection.isCollapsed) {
-      editorCore.setCursorPosition(end.line, end.column);
-      _eventBus.publish(CursorChangedEvent(cursorPosition: end));
-      _eventBus.publish(
-        SelectionChangedEvent(
-          hasSelection: false,
-          selection: null,
-          cursorPosition: end,
-        ),
-      );
-    } else {
-      final range = core.TextRange(start, end);
-      editorCore.setSelection(start.line, start.column, end.line, end.column);
-      _eventBus.publish(CursorChangedEvent(cursorPosition: end));
-      _eventBus.publish(
-        SelectionChangedEvent(
-          hasSelection: true,
-          selection: range,
-          cursorPosition: end,
-        ),
-      );
+  void _notifyImeSelectionFromTextInput(
+    core.EditorCore editorCore,
+    TextEditingValue value,
+  ) {
+    if (!_isValidSelection(value.selection, value.text)) {
+      return;
     }
-    _selectionMenuController.hide();
-    _flush();
+    final documentText = _getContent();
+    final start = _textInputOffsetToDocumentPosition(
+      documentText,
+      value.selection.start,
+    );
+    final end = _textInputOffsetToDocumentPosition(
+      documentText,
+      value.selection.end,
+    );
+    final result = value.selection.isCollapsed
+        ? editorCore.notifyImeCursorChanged(end)
+        : editorCore.notifyImeSelectionChanged(core.TextRange(start, end));
+    _dispatchImeAction(result);
+  }
+
+  void _dispatchImeAction(core.ImeActionResult result) {
+    _interactionController.dispatchImeActionResult(result);
+  }
+
+  bool _isActiveTextRange(TextRange range, String text) {
+    return range.isValid &&
+        !range.isCollapsed &&
+        range.start >= 0 &&
+        range.end <= text.length;
+  }
+
+  bool _isValidSelection(TextSelection selection, String text) {
+    return selection.isValid &&
+        selection.start >= 0 &&
+        selection.end >= 0 &&
+        selection.start <= text.length &&
+        selection.end <= text.length;
+  }
+
+  int _normalizeTextInputOffset(int offset, String text) {
+    return math.max(0, math.min(offset, text.length));
+  }
+
+  int _normalizeDocumentOffset(int offset, String documentText) {
+    return math.max(0, math.min(offset, documentText.length));
+  }
+
+  core.TextPosition _textInputOffsetToDocumentPosition(
+    String documentText,
+    int localOffset,
+  ) {
+    final documentOffset = _normalizeDocumentOffset(
+      _textInputWindowStartOffset + localOffset,
+      documentText,
+    );
+    return _offsetToTextPosition(documentText, documentOffset);
+  }
+
+  core.TextRange _textInputOffsetsToDocumentRange(
+    String documentText,
+    int localStart,
+    int localEnd,
+  ) {
+    return core.TextRange(
+      _textInputOffsetToDocumentPosition(documentText, localStart),
+      _textInputOffsetToDocumentPosition(documentText, localEnd),
+    );
   }
 
   (int, int, String) _computeTextReplacement(String oldText, String newText) {
@@ -663,7 +721,9 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       return;
     }
 
-    final shouldShowKeyboard = result.hitTarget.type == core.HitTargetType.none;
+    final shouldShowKeyboard =
+        _platformBehavior.showsSoftKeyboard &&
+        result.hitTarget.type == core.HitTargetType.none;
     if (!_focusNode.hasFocus) {
       _pendingShowTextInput = shouldShowKeyboard;
       _focusNode.requestFocus();
@@ -677,7 +737,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   }
 
   MouseCursor _resolveMouseCursor() {
-    if (_editorResourcesReleased) {
+    if (_editorResourcesReleased || !_platformBehavior.usesMouseCursor) {
       return SystemMouseCursors.basic;
     }
     switch (_pointerCursorType) {
@@ -713,7 +773,12 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
               final result = _interactionController.onPointerUp(event);
               _handleGestureInputResult(result);
             },
+            onPointerCancel: _interactionController.onPointerCancel,
             onPointerSignal: _interactionController.onPointerSignal,
+            onPointerPanZoomStart: _interactionController.onPointerPanZoomStart,
+            onPointerPanZoomUpdate:
+                _interactionController.onPointerPanZoomUpdate,
+            onPointerPanZoomEnd: _interactionController.onPointerPanZoomEnd,
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final newSize = constraints.biggest;

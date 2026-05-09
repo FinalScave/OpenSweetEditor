@@ -18,7 +18,6 @@ abstract class EditorSettingsHost {
   void applyAutoIndentMode(core.AutoIndentMode mode);
   void applyBackspaceUnindent(bool enabled);
   void applyReadOnly(bool readOnly);
-  void applyCompositionEnabled(bool enabled);
   void applyMaxGutterIcons(int count);
   void requestDecorationRefresh();
   void flushEditor();
@@ -44,7 +43,6 @@ class EditorSettings {
   core.AutoIndentMode _autoIndentMode = core.AutoIndentMode.keepIndent;
   bool _backspaceUnindent = true;
   bool _readOnly = false;
-  bool _compositionEnabled = false;
   int _maxGutterIcons = 0;
   int _decorationScrollRefreshMinIntervalMs = 16;
   double _decorationOverscanViewportMultiplier = 1.5;
@@ -70,7 +68,6 @@ class EditorSettings {
     copy._autoIndentMode = _autoIndentMode;
     copy._backspaceUnindent = _backspaceUnindent;
     copy._readOnly = _readOnly;
-    copy._compositionEnabled = _compositionEnabled;
     copy._maxGutterIcons = _maxGutterIcons;
     copy._decorationScrollRefreshMinIntervalMs =
         _decorationScrollRefreshMinIntervalMs;
@@ -98,7 +95,6 @@ class EditorSettings {
     _autoIndentMode = other._autoIndentMode;
     _backspaceUnindent = other._backspaceUnindent;
     _readOnly = other._readOnly;
-    _compositionEnabled = other._compositionEnabled;
     _maxGutterIcons = other._maxGutterIcons;
     _decorationScrollRefreshMinIntervalMs =
         other._decorationScrollRefreshMinIntervalMs;
@@ -267,14 +263,6 @@ class EditorSettings {
 
   bool isReadOnly() => _readOnly;
 
-  void setCompositionEnabled(bool enabled) {
-    _compositionEnabled = enabled;
-    _host?.applyCompositionEnabled(enabled);
-    _host?.flushEditor();
-  }
-
-  bool isCompositionEnabled() => _compositionEnabled;
-
   void setMaxGutterIcons(int count) {
     _maxGutterIcons = count;
     _host?.applyMaxGutterIcons(count);
@@ -319,7 +307,6 @@ class EditorSettings {
     host.applyAutoIndentMode(_autoIndentMode);
     host.applyBackspaceUnindent(_backspaceUnindent);
     host.applyReadOnly(_readOnly);
-    host.applyCompositionEnabled(_compositionEnabled);
     host.applyMaxGutterIcons(_maxGutterIcons);
     host.requestDecorationRefresh();
     host.flushEditor();

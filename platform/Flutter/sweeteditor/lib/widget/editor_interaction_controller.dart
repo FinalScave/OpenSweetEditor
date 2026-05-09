@@ -1,5 +1,8 @@
 part of '../sweeteditor.dart';
 
+const double _kDirectScaleEpsilon = 0.0001;
+const double _kDirectScrollEpsilon = 0.0001;
+
 class EditorInteractionController {
   EditorInteractionController({
     required EditorSession session,
@@ -14,6 +17,8 @@ class EditorInteractionController {
   bool _cursorVisible = true;
   Ticker? _animationTicker;
   bool _animating = false;
+  final Map<int, core.PointF> _activeTouchPoints = <int, core.PointF>{};
+  final Map<int, double> _activePanZoomScales = <int, double>{};
 
   void startCursorBlink() {
     _stopCursorBlink();
@@ -35,86 +40,239 @@ class EditorInteractionController {
     _stopCursorBlink();
     _animationTicker?.stop();
     _animationTicker?.dispose();
+    _activeTouchPoints.clear();
+    _activePanZoomScales.clear();
   }
 
   core.GestureResult? onPointerDown(PointerDownEvent event) {
-    final isTouch = event.kind == PointerDeviceKind.touch;
-    final gestureEvent = core.GestureEvent(
-      type: isTouch
-          ? core.EventType.touchDown
-          : (event.buttons & kSecondaryMouseButton) != 0
+    if (event.kind == PointerDeviceKind.touch) {
+      return _handleTouchDown(event);
+    }
+    return _sendGestureEvent(
+      type: (event.buttons & kSecondaryMouseButton) != 0
           ? core.EventType.mouseRightDown
           : core.EventType.mouseDown,
-      points: [
-        core.PointF(x: event.localPosition.dx, y: event.localPosition.dy),
-      ],
-    );
-    return _processGestureResult(
-      _session.editorCore?.handleGestureEvent(gestureEvent),
+      points: [_pointFromEvent(event)],
     );
   }
 
   core.GestureResult? onPointerMove(PointerMoveEvent event) {
-    final isTouch = event.kind == PointerDeviceKind.touch;
-    final gestureEvent = core.GestureEvent(
-      type: isTouch ? core.EventType.touchMove : core.EventType.mouseMove,
-      points: [
-        core.PointF(x: event.localPosition.dx, y: event.localPosition.dy),
-      ],
-    );
-    return _processGestureResult(
-      _session.editorCore?.handleGestureEvent(gestureEvent),
+    if (event.kind == PointerDeviceKind.touch) {
+      return _handleTouchMove(event);
+    }
+    return _sendGestureEvent(
+      type: core.EventType.mouseMove,
+      points: [_pointFromEvent(event)],
     );
   }
 
   core.GestureResult? onPointerHover(PointerHoverEvent event) {
-    final gestureEvent = core.GestureEvent(
+    return _sendGestureEvent(
       type: core.EventType.mouseMove,
-      points: [
-        core.PointF(x: event.localPosition.dx, y: event.localPosition.dy),
-      ],
-    );
-    return _processGestureResult(
-      _session.editorCore?.handleGestureEvent(gestureEvent),
+      points: [_pointFromEvent(event)],
     );
   }
 
   core.GestureResult? onPointerExit(PointerExitEvent event) {
-    final gestureEvent = core.GestureEvent(
+    return _sendGestureEvent(
       type: core.EventType.mouseMove,
       points: const [core.PointF(x: -1, y: -1)],
-    );
-    return _processGestureResult(
-      _session.editorCore?.handleGestureEvent(gestureEvent),
     );
   }
 
   core.GestureResult? onPointerUp(PointerUpEvent event) {
-    final isTouch = event.kind == PointerDeviceKind.touch;
+    if (event.kind == PointerDeviceKind.touch) {
+      return _handleTouchUp(event);
+    }
+    return _sendGestureEvent(
+      type: core.EventType.mouseUp,
+      points: [_pointFromEvent(event)],
+    );
+  }
+
+  core.GestureResult? onPointerCancel(PointerCancelEvent event) {
+    if (event.kind != PointerDeviceKind.touch) {
+      return null;
+    }
+    _activeTouchPoints[event.pointer] = _pointFromEvent(event);
+    final result = _sendGestureEvent(
+      type: core.EventType.touchCancel,
+      points: _touchPoints(),
+    );
+    _activeTouchPoints.clear();
+    return result;
+  }
+
+  core.GestureResult? onPointerSignal(PointerSignalEvent event) {
+    if (event is! PointerScrollEvent) return null;
+    return _sendGestureEvent(
+      type: core.EventType.mouseWheel,
+      points: [_pointFromEvent(event)],
+      modifiers: _currentGestureModifiers(
+        allowCtrl: _session.platformBehavior.supportsCtrlWheelScale,
+      ),
+      wheelDeltaX: -event.scrollDelta.dx,
+      wheelDeltaY: -event.scrollDelta.dy,
+    );
+  }
+
+  core.GestureResult? onPointerPanZoomStart(PointerPanZoomStartEvent event) {
+    if (!_session.platformBehavior.supportsTrackpadPanZoom) {
+      return null;
+    }
+    _activePanZoomScales[event.pointer] = 1.0;
+    return null;
+  }
+
+  core.GestureResult? onPointerPanZoomUpdate(PointerPanZoomUpdateEvent event) {
+    if (!_session.platformBehavior.supportsTrackpadPanZoom) {
+      return null;
+    }
+    final point = _pointFromEvent(event);
+    core.GestureResult? result;
+
+    final previousScale = _activePanZoomScales[event.pointer] ?? 1.0;
+    final currentScale = _normalizeDirectScale(event.scale);
+    _activePanZoomScales[event.pointer] = currentScale;
+    final directScale = previousScale == 0
+        ? currentScale
+        : currentScale / previousScale;
+    if ((directScale - 1.0).abs() > _kDirectScaleEpsilon) {
+      result = _sendGestureEvent(
+        type: core.EventType.directScale,
+        points: [point],
+        directScale: _normalizeDirectScale(directScale),
+      );
+    }
+
+    final deltaX = _normalizeDirectScrollDelta(event.localPanDelta.dx);
+    final deltaY = _normalizeDirectScrollDelta(event.localPanDelta.dy);
+    if (deltaX.abs() > _kDirectScrollEpsilon ||
+        deltaY.abs() > _kDirectScrollEpsilon) {
+      result = _sendGestureEvent(
+        type: core.EventType.directScroll,
+        points: [point],
+        wheelDeltaX: deltaX,
+        wheelDeltaY: deltaY,
+      );
+    }
+
+    return result;
+  }
+
+  core.GestureResult? onPointerPanZoomEnd(PointerPanZoomEndEvent event) {
+    _activePanZoomScales.remove(event.pointer);
+    return null;
+  }
+
+  core.GestureResult? _handleTouchDown(PointerDownEvent event) {
+    if (!_session.platformBehavior.supportsTouchScale &&
+        _activeTouchPoints.isNotEmpty) {
+      return null;
+    }
+    _activeTouchPoints[event.pointer] = _pointFromEvent(event);
+    return _sendGestureEvent(
+      type: _activeTouchPoints.length > 1
+          ? core.EventType.touchPointerDown
+          : core.EventType.touchDown,
+      points: _touchPoints(),
+    );
+  }
+
+  core.GestureResult? _handleTouchMove(PointerMoveEvent event) {
+    if (!_activeTouchPoints.containsKey(event.pointer) &&
+        !_session.platformBehavior.supportsTouchScale &&
+        _activeTouchPoints.isNotEmpty) {
+      return null;
+    }
+    _activeTouchPoints[event.pointer] = _pointFromEvent(event);
+    return _sendGestureEvent(
+      type: core.EventType.touchMove,
+      points: _touchPoints(),
+    );
+  }
+
+  core.GestureResult? _handleTouchUp(PointerUpEvent event) {
+    if (!_activeTouchPoints.containsKey(event.pointer) &&
+        !_session.platformBehavior.supportsTouchScale &&
+        _activeTouchPoints.isNotEmpty) {
+      _activeTouchPoints.remove(event.pointer);
+      return null;
+    }
+    final point = _pointFromEvent(event);
+    _activeTouchPoints[event.pointer] = point;
+    final wasMultiTouch = _activeTouchPoints.length > 1;
+    if (wasMultiTouch) {
+      _activeTouchPoints.remove(event.pointer);
+      final points = _touchPoints();
+      return _sendGestureEvent(
+        type: core.EventType.touchPointerUp,
+        points: points.isEmpty ? [point] : points,
+      );
+    }
+    final result = _sendGestureEvent(
+      type: core.EventType.touchUp,
+      points: [point],
+    );
+    _activeTouchPoints.remove(event.pointer);
+    return result;
+  }
+
+  core.PointF _pointFromEvent(PointerEvent event) {
+    return core.PointF(x: event.localPosition.dx, y: event.localPosition.dy);
+  }
+
+  List<core.PointF> _touchPoints() {
+    return _activeTouchPoints.values.toList(growable: false);
+  }
+
+  core.GestureResult? _sendGestureEvent({
+    required int type,
+    required List<core.PointF> points,
+    int? modifiers,
+    double wheelDeltaX = 0,
+    double wheelDeltaY = 0,
+    double directScale = 1,
+  }) {
     final gestureEvent = core.GestureEvent(
-      type: isTouch ? core.EventType.touchUp : core.EventType.mouseUp,
-      points: [
-        core.PointF(x: event.localPosition.dx, y: event.localPosition.dy),
-      ],
+      type: type,
+      points: points,
+      modifiers: modifiers ?? _currentGestureModifiers(),
+      wheelDeltaX: wheelDeltaX,
+      wheelDeltaY: wheelDeltaY,
+      directScale: directScale,
     );
     return _processGestureResult(
       _session.editorCore?.handleGestureEvent(gestureEvent),
     );
   }
 
-  core.GestureResult? onPointerSignal(PointerSignalEvent event) {
-    if (event is! PointerScrollEvent) return null;
-    final gestureEvent = core.GestureEvent(
-      type: core.EventType.mouseWheel,
-      points: [
-        core.PointF(x: event.localPosition.dx, y: event.localPosition.dy),
-      ],
-      wheelDeltaX: event.scrollDelta.dx,
-      wheelDeltaY: event.scrollDelta.dy,
-    );
-    return _processGestureResult(
-      _session.editorCore?.handleGestureEvent(gestureEvent),
-    );
+  int _currentGestureModifiers({bool allowCtrl = true}) {
+    final keyboard = HardwareKeyboard.instance;
+    var modifiers = core.Modifier.none;
+    if (keyboard.isShiftPressed) {
+      modifiers |= core.Modifier.shift;
+    }
+    if (allowCtrl && keyboard.isControlPressed) {
+      modifiers |= core.Modifier.ctrl;
+    }
+    if (keyboard.isAltPressed) {
+      modifiers |= core.Modifier.alt;
+    }
+    if (keyboard.isMetaPressed) {
+      modifiers |= core.Modifier.meta;
+    }
+    return modifiers;
+  }
+
+  double _normalizeDirectScale(double scale) {
+    if (!scale.isFinite) return 1.0;
+    return scale.clamp(0.25, 4.0).toDouble();
+  }
+
+  double _normalizeDirectScrollDelta(double delta) {
+    if (!delta.isFinite) return 0.0;
+    return delta.clamp(-4096.0, 4096.0).toDouble();
   }
 
   KeyEventResult handleKeyEvent(FocusNode node, KeyEvent event) {
@@ -149,6 +307,10 @@ class EditorInteractionController {
       return KeyEventResult.ignored;
     }
 
+    if (_tryHandleComposingKey(keyCode)) {
+      return KeyEventResult.handled;
+    }
+
     final resolvedCommand = keyCode == core.KeyCode.none
         ? null
         : _session.keyMap.resolve(
@@ -176,19 +338,25 @@ class EditorInteractionController {
       return KeyEventResult.handled;
     }
 
-    final suppressTextForCore =
+    final matchedCommand =
         resolvedCommand != null &&
-        resolvedCommand.status == KeyResolveStatus.matched &&
-        _isHostCommand(resolvedCommand.command);
+            resolvedCommand.status == KeyResolveStatus.matched
+        ? resolvedCommand.command
+        : core.EditorCommand.none;
+    final suppressTextForCore =
+        _session.platformBehavior.usesPlatformTextInput ||
+        (matchedCommand != core.EditorCommand.none &&
+            _isHostCommand(matchedCommand));
     final result = editorCore.handleKeyEvent(
       keyCode,
       text: suppressTextForCore ? null : text,
       modifiers: modifiers,
     );
+    final command = result.command != core.EditorCommand.none
+        ? result.command
+        : matchedCommand;
     final handledByPlatformCommand =
-        resolvedCommand != null &&
-        resolvedCommand.status == KeyResolveStatus.matched &&
-        _handleResolvedCommand(resolvedCommand.command);
+        command != core.EditorCommand.none && _handleResolvedCommand(command);
 
     if (handledByPlatformCommand) {
       _resetCursorBlink();
@@ -200,7 +368,32 @@ class EditorInteractionController {
     _resetCursorBlink();
     _flush();
 
-    return result.handled ? KeyEventResult.handled : KeyEventResult.ignored;
+    return result.handled || handledByPlatformCommand
+        ? KeyEventResult.handled
+        : KeyEventResult.ignored;
+  }
+
+  bool performSelector(String selectorName) {
+    switch (selectorName) {
+      case 'copy':
+      case 'copy:':
+        _copyToClipboard();
+        return true;
+      case 'cut':
+      case 'cut:':
+        _cutToClipboard();
+        return true;
+      case 'paste':
+      case 'paste:':
+        _pasteFromClipboard();
+        return true;
+      case 'selectAll':
+      case 'selectAll:':
+        selectAll();
+        return true;
+      default:
+        return false;
+    }
   }
 
   void onSelectionMenuItemTap(SelectionMenuItem item) {
@@ -308,6 +501,7 @@ class EditorInteractionController {
       case core.GestureType.fastScroll:
         _handleScrollChanged(result);
       case core.GestureType.scale:
+        _session.syncPlatformScale(result.viewScale);
         _session.eventBus.publish(ScaleChangedEvent(scale: result.viewScale));
       case core.GestureType.dragSelect:
         if (_didScrollSinceLastFrame(result)) {
@@ -509,6 +703,29 @@ class EditorInteractionController {
     return false;
   }
 
+  bool _tryHandleComposingKey(core.KeyCode keyCode) {
+    if (keyCode == core.KeyCode.none) return false;
+    final editorCore = _session.editorCore;
+    if (editorCore == null) return false;
+    final snapshot = editorCore.getImeSyncSnapshot();
+    if (!snapshot.hasComposingSession && !snapshot.hasPlatformMarkedRange) {
+      return false;
+    }
+    switch (keyCode) {
+      case core.KeyCode.backspace:
+        dispatchImeActionResult(editorCore.deleteImeBackward());
+        return true;
+      case core.KeyCode.deleteKey:
+        dispatchImeActionResult(editorCore.deleteImeForward());
+        return true;
+      case core.KeyCode.escape:
+        dispatchImeActionResult(editorCore.cancelImePreedit());
+        return true;
+      default:
+        return false;
+    }
+  }
+
   void insertText(
     String text, {
     TextChangeAction action = TextChangeAction.insert,
@@ -592,6 +809,35 @@ class EditorInteractionController {
     core.TextEditResult result,
   ) {
     _dispatchTextChanged(action, result);
+    _resetCursorBlink();
+    _flush();
+  }
+
+  void dispatchImeActionResult(core.ImeActionResult result) {
+    if (!result.handled &&
+        !result.contentChanged &&
+        !result.cursorChanged &&
+        !result.selectionChanged) {
+      return;
+    }
+    if (result.contentChanged) {
+      _dispatchTextChanged(TextChangeAction.composition, result.editResult);
+    }
+    if (result.cursorChanged) {
+      _session.eventBus.publish(
+        CursorChangedEvent(cursorPosition: result.sync.cursor),
+      );
+    }
+    if (result.selectionChanged) {
+      _session.eventBus.publish(
+        SelectionChangedEvent(
+          hasSelection: result.sync.hasSelection,
+          selection: result.sync.hasSelection ? result.sync.selection : null,
+          cursorPosition: result.sync.cursor,
+        ),
+      );
+    }
+    _session.selectionMenuController.hide();
     _resetCursorBlink();
     _flush();
   }

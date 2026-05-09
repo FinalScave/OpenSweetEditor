@@ -8,6 +8,7 @@ class EditorSession implements EditorSettingsHost {
     required String fontFamily,
     required double fontSize,
     required bool gutterSticky,
+    required this.platformBehavior,
     required EditorKeyMap initialKeyMap,
     EditorIconProvider? initialIconProvider,
     LanguageConfiguration? initialLanguageConfiguration,
@@ -21,24 +22,24 @@ class EditorSession implements EditorSettingsHost {
         fontFamily: fontFamily,
         gutterSticky: gutterSticky,
       );
+    _platformScale = _settings.getScale();
     _measurer = EditorTextMeasurer(
       fontFamily: _settings.getFontFamily(),
-      fontSize: _settings.getEditorTextSize() * _settings.getScale(),
+      fontSize: _settings.getEditorTextSize() * _platformScale,
     );
     _iconProvider = initialIconProvider;
     _painter = EditorCanvasPainter(
       theme: _theme,
       measurer: _measurer,
       iconProvider: _iconProvider,
+      showSelectionHandles: platformBehavior.showsSelectionHandles,
     );
     final nativeMeasurer = _measurer.buildNativeMeasurer();
     _editorCore = core.EditorCore(
       measurer: nativeMeasurer,
       options: core.EditorOptions(
         revealSelectionEndOnSelectAll:
-            !kIsWeb &&
-            (defaultTargetPlatform == TargetPlatform.android ||
-                defaultTargetPlatform == TargetPlatform.iOS),
+            platformBehavior.revealSelectionEndOnSelectAll,
       ),
     );
     _keyMap = initialKeyMap;
@@ -54,6 +55,7 @@ class EditorSession implements EditorSettingsHost {
   }
 
   final SweetEditorController controller;
+  final EditorPlatformBehavior platformBehavior;
   late final CompletionProviderManager completionProviderManager;
   final CompletionPopupController completionPopupController;
   late final DecorationProviderManager decorationProviderManager;
@@ -79,9 +81,11 @@ class EditorSession implements EditorSettingsHost {
   bool _renderModelDirty = false;
   bool _flushScheduled = false;
   bool _disposed = false;
+  double _platformScale = 1.0;
 
   void Function(core.EditorRenderModel model)? onRenderModelUpdated;
   VoidCallback? onRequestDecorationRefresh;
+  VoidCallback? onPlatformScaleChanged;
 
   EditorEventBus get eventBus => controller._eventBus;
   EditorSettings get settings => _settings;
@@ -95,6 +99,7 @@ class EditorSession implements EditorSettingsHost {
   EditorCanvasPainter get painter => _painter;
   Size get viewportSize => _viewportSize;
   bool get viewportReady => _viewportReady;
+  double get effectiveScale => _platformScale;
   LanguageConfiguration? get languageConfiguration => _languageConfiguration;
   EditorMetadata? get metadata => _metadata;
 
@@ -273,9 +278,23 @@ class EditorSession implements EditorSettingsHost {
   }) {
     final ec = _editorCore;
     if (ec == null) return;
+    _platformScale = scale;
     _measurer.updateFont(fontFamily, textSize * scale);
     ec.setScale(scale);
     ec.onFontMetricsChanged();
+    onPlatformScaleChanged?.call();
+  }
+
+  void syncPlatformScale(double scale) {
+    final ec = _editorCore;
+    if (ec == null) return;
+    _platformScale = scale;
+    _measurer.updateFont(
+      _settings.getFontFamily(),
+      _settings.getEditorTextSize() * scale,
+    );
+    ec.onFontMetricsChanged();
+    onPlatformScaleChanged?.call();
   }
 
   @override
@@ -331,11 +350,6 @@ class EditorSession implements EditorSettingsHost {
   @override
   void applyReadOnly(bool readOnly) {
     _editorCore?.setReadOnly(readOnly);
-  }
-
-  @override
-  void applyCompositionEnabled(bool enabled) {
-    _editorCore?.setCompositionEnabled(enabled);
   }
 
   @override

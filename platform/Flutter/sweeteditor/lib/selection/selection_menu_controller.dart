@@ -20,6 +20,9 @@ class SelectionMenuOverlayState {
 class SelectionMenuController {
   static const int _showDelayMs = 100;
 
+  SelectionMenuController({bool enabled = true}) : _enabled = enabled;
+
+  final bool _enabled;
   SelectionMenuItemProvider? _itemProvider;
   bool _handleDragActive = false;
   bool _hiddenByViewportGesture = false;
@@ -41,6 +44,11 @@ class SelectionMenuController {
   }
 
   void onGestureResult(core.GestureResult result, bool hasSelection) {
+    if (!_enabled) {
+      _hideImmediate();
+      return;
+    }
+
     if (result.isHandleDrag) {
       if (!_handleDragActive) {
         _handleDragActive = true;
@@ -79,6 +87,10 @@ class SelectionMenuController {
   }
 
   void onSelectAll() {
+    if (!_enabled) {
+      _hideImmediate();
+      return;
+    }
     _scheduleShow(true);
   }
 
@@ -122,6 +134,10 @@ class SelectionMenuController {
   }
 
   void _scheduleShow(bool hasSelection) {
+    if (!_enabled) {
+      _hideImmediate();
+      return;
+    }
     _showTimer?.cancel();
     _showTimer = Timer(const Duration(milliseconds: _showDelayMs), () {
       _currentItems = _buildItems(hasSelection);

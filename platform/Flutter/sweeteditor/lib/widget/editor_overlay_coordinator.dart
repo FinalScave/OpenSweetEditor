@@ -7,7 +7,11 @@ const double _kSelectionMenuMeasureFontSize = 12;
 const double _kSelectionMenuMeasureDividerWidth = 1;
 
 class EditorOverlayCoordinator {
-  EditorOverlayCoordinator({required EditorSession session}) : _session = session {
+  EditorOverlayCoordinator({
+    required EditorSession session,
+    required EditorPlatformBehavior platformBehavior,
+  }) : _session = session,
+       _platformBehavior = platformBehavior {
     _session.completionPopupController.bindOverlay(
       _createOverlayBinding(_completionOverlay),
     );
@@ -21,6 +25,7 @@ class EditorOverlayCoordinator {
   }
 
   final EditorSession _session;
+  final EditorPlatformBehavior _platformBehavior;
   final ValueNotifier<EditorOverlayState<CompletionPopupOverlayState>>
   _completionOverlay = ValueNotifier(const EditorOverlayState.hidden());
   final ValueNotifier<EditorOverlayState<InlineSuggestionOverlayState>>
@@ -99,7 +104,7 @@ class EditorOverlayCoordinator {
     final menuWidth = _measureSelectionMenuWidth(items);
     const menuHeight = _kSelectionMenuMeasureHeight;
     const offsetY = 8.0;
-    const handleClearance = 32.0;
+    final handleClearance = _platformBehavior.selectionMenuHandleClearance;
 
     final x = (anchorX - menuWidth / 2)
         .clamp(0.0, math.max(0.0, viewportSize.width - menuWidth))
