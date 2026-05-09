@@ -384,7 +384,7 @@ function build_linux() {
         echo "Missing aarch64-linux-gnu-g++. Install g++-aarch64-linux-gnu."
         return 1
       }
-      linux_toolchain_args+=("-DCMAKE_TOOLCHAIN_FILE=$PROJECT_DIR/scripts/cmake/linux-aarch64-toolchain.cmake")
+      linux_toolchain_args+=("-DCMAKE_TOOLCHAIN_FILE=$PROJECT_DIR/cmake/linux-aarch64-toolchain.cmake")
     elif [ "$linux_arch" = "x86_64" ]; then
       linux_prebuilt_dir="$OUTPUT_DIR/linux/x86_64"
     else

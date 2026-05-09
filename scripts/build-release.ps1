@@ -376,7 +376,7 @@ function Build-LinuxWsl {
     $projectDirWsl = Convert-ToWslPath -Path $ProjectDir
     $linuxBuildDirWsl = Convert-ToWslPath -Path $linuxBuildDir
     $linuxPrebuiltDirWsl = Convert-ToWslPath -Path $linuxPrebuiltDir
-    $linuxToolchainFileWsl = Convert-ToWslPath -Path (Join-Path $ProjectDir "scripts\cmake\linux-aarch64-toolchain.cmake")
+    $linuxToolchainFileWsl = Convert-ToWslPath -Path (Join-Path $ProjectDir "cmake\linux-aarch64-toolchain.cmake")
 
     Write-Section "Linux $Arch (WSL)"
     $resolvedWslDistro = Resolve-WslBuildDistroName -WslPath $wsl -RequestedName $WslDistro

@@ -89,8 +89,9 @@ set_target_properties(${CORE_OBJECT_TARGET} PROPERTIES POSITION_INDEPENDENT_CODE
 # project shared/static lib
 if (BUILD_SHARED_LIB)
     message(STATUS "add target: ${SHARED_LIB_NAME} as dynamic lib")
-    add_library(${SHARED_LIB_NAME} SHARED $<TARGET_OBJECTS:${CORE_OBJECT_TARGET}>)
     if (APPLE)
+        # must config sources for shared lib on Apple
+        add_library(${SHARED_LIB_NAME} SHARED ${CORE_SOURCE_FILES} ${PLATFORM_FILES})
         file(GLOB_RECURSE APPLE_PUBLIC_HEADERS ${SRC_DIR}/include/*.h ${SRC_DIR}/include/*.hpp)
         set_target_properties(${SHARED_LIB_NAME} PROPERTIES
                 FRAMEWORK TRUE
@@ -101,6 +102,8 @@ if (BUILD_SHARED_LIB)
                 OUTPUT_NAME "${APPLE_FRAMEWORK_NAME}"
                 XCODE_GENERATE_SCHEME TRUE
         )
+    else ()
+        add_library(${SHARED_LIB_NAME} SHARED $<TARGET_OBJECTS:${CORE_OBJECT_TARGET}>)
     endif ()
 endif ()
 if (BUILD_STATIC_LIB)
@@ -193,7 +196,7 @@ endif ()
 # merge static libs
 if (BUILD_STATIC_LIB)
     target_link_libraries(${STATIC_LIB_NAME} PRIVATE ${LINK_LIB})
-    include(scripts/MergeStaticLib.cmake)
+    include(cmake/MergeStaticLib.cmake)
     get_target_property(SIMDUTF_PATH simdutf IMPORTED_LOCATION)
     merge_static_libs(${STATIC_LIB_NAME} ${SIMDUTF_PATH})
 endif ()
