@@ -4,11 +4,15 @@ import {
   GestureType,
   HitTarget,
   HitTargetType,
+  ImeActionResult,
+  ImeContextPolicy,
+  ImePreeditStorage,
+  ImeSyncSnapshot,
   KeyEventResult,
   TextChange,
   TextEditResult
 } from './EditorCore';
-import { TextPosition, TextRange } from './CoreFoundation';
+import { IntRange, TextPosition, TextRange } from './CoreFoundation';
 import {
   BracketGuide,
   CodeLensItem,
@@ -661,31 +665,50 @@ export class ProtocolDecoder {
     return { changes };
   }
 
-  static decodeImeEventEditResult(payload: ArrayBuffer | undefined): TextEditResult {
-    const empty: TextEditResult = { changes: [] };
+  static decodeImeActionResult(payload: ArrayBuffer | undefined): ImeActionResult {
+    const empty = ProtocolDecoder.createEmptyImeActionResult();
     if (!payload || payload.byteLength < 20) {
       return empty;
     }
     const reader = new BinaryReader(payload);
-    reader.readInt32();
-    reader.readInt32();
-    reader.readInt32();
-    reader.readInt32();
+    const handled = reader.readInt32() !== 0;
+    const contentChanged = reader.readInt32() !== 0;
+    const cursorChanged = reader.readInt32() !== 0;
+    const selectionChanged = reader.readInt32() !== 0;
     const hasEdit = reader.readInt32() !== 0;
-    if (!hasEdit || !reader.hasRemaining(4)) {
-      return empty;
+    let editResult: TextEditResult = { changes: [] };
+    if (hasEdit && reader.hasRemaining(4)) {
+      const count = reader.readInt32();
+      const changes: TextChange[] = [];
+      for (let i = 0; i < count; i++) {
+        const range: TextRange = {
+          start: reader.readTextPosition(),
+          end: reader.readTextPosition()
+        };
+        const newText = reader.readUtf8String();
+        changes.push({ range, newText });
+      }
+      editResult = { changes };
     }
-    const count = reader.readInt32();
-    const changes: TextChange[] = [];
-    for (let i = 0; i < count; i++) {
-      const range: TextRange = {
-        start: reader.readTextPosition(),
-        end: reader.readTextPosition()
-      };
-      const newText = reader.readUtf8String();
-      changes.push({ range, newText });
+    const sync = reader.hasRemaining(8)
+      ? ProtocolDecoder.readImeSyncSnapshot(reader)
+      : ProtocolDecoder.createEmptyImeSyncSnapshot();
+    return {
+      handled,
+      contentChanged,
+      cursorChanged,
+      selectionChanged,
+      editResult,
+      sync
+    };
+  }
+
+  static decodeImeSyncSnapshot(payload: ArrayBuffer | undefined): ImeSyncSnapshot {
+    if (!payload || payload.byteLength === 0) {
+      return ProtocolDecoder.createEmptyImeSyncSnapshot();
     }
-    return { changes };
+    const reader = new BinaryReader(payload);
+    return ProtocolDecoder.readImeSyncSnapshot(reader);
   }
 
   static decodeKeyEventResult(payload: ArrayBuffer | undefined): KeyEventResult {
@@ -1028,6 +1051,79 @@ export class ProtocolDecoder {
       origin: reader.readPoint(),
       width: reader.readFloat32(),
       height: reader.readFloat32()
+    };
+  }
+
+  private static readTextRange(reader: BinaryReader): TextRange {
+    return {
+      start: reader.readTextPosition(),
+      end: reader.readTextPosition()
+    };
+  }
+
+  private static readImeSyncSnapshot(reader: BinaryReader): ImeSyncSnapshot {
+    const cursor = reader.readTextPosition();
+    const hasSelection = reader.readInt32() !== 0;
+    const selection = ProtocolDecoder.readTextRange(reader);
+    const hasComposingSession = reader.readInt32() !== 0;
+    const hasVisibleCompositionRange = reader.readInt32() !== 0;
+    const visibleCompositionRange = ProtocolDecoder.readTextRange(reader);
+    const hasPlatformMarkedRange = reader.readInt32() !== 0;
+    const platformMarkedRange = ProtocolDecoder.readTextRange(reader);
+    const platformTextWindowText = reader.readUtf8String();
+    const platformTextWindowStartOffset = reader.readInt32();
+    const platformTextWindowSelectionOffsets: IntRange = {
+      start: reader.readInt32(),
+      end: reader.readInt32()
+    };
+    const platformTextWindowComposingOffsets: IntRange = {
+      start: reader.readInt32(),
+      end: reader.readInt32()
+    };
+    const preeditStorage = reader.readInt32() as ImePreeditStorage;
+    const contextPolicy = reader.readInt32() as ImeContextPolicy;
+    const clearPlatformPreedit = reader.readInt32() !== 0;
+    return {
+      cursor,
+      selection: hasSelection ? selection : null,
+      hasComposingSession,
+      visibleCompositionRange: hasVisibleCompositionRange ? visibleCompositionRange : null,
+      platformMarkedRange: hasPlatformMarkedRange ? platformMarkedRange : null,
+      platformTextWindowText,
+      platformTextWindowStartOffset,
+      platformTextWindowSelectionOffsets,
+      platformTextWindowComposingOffsets,
+      preeditStorage,
+      contextPolicy,
+      clearPlatformPreedit
+    };
+  }
+
+  private static createEmptyImeActionResult(): ImeActionResult {
+    return {
+      handled: false,
+      contentChanged: false,
+      cursorChanged: false,
+      selectionChanged: false,
+      editResult: { changes: [] },
+      sync: ProtocolDecoder.createEmptyImeSyncSnapshot()
+    };
+  }
+
+  private static createEmptyImeSyncSnapshot(): ImeSyncSnapshot {
+    return {
+      cursor: { line: 0, column: 0 },
+      selection: null,
+      hasComposingSession: false,
+      visibleCompositionRange: null,
+      platformMarkedRange: null,
+      platformTextWindowText: '',
+      platformTextWindowStartOffset: 0,
+      platformTextWindowSelectionOffsets: { start: 0, end: 0 },
+      platformTextWindowComposingOffsets: { start: -1, end: -1 },
+      preeditStorage: ImePreeditStorage.NONE,
+      contextPolicy: ImeContextPolicy.NONE,
+      clearPlatformPreedit: false
     };
   }
 

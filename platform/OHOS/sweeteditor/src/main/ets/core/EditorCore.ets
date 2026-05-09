@@ -55,18 +55,6 @@ export enum Modifier {
   META = 8
 }
 
-export enum ImeEventType {
-  UPDATE_PREEDIT = 0,
-  COMMIT_TEXT = 1,
-  FINISH_PREEDIT = 2,
-  CANCEL_PREEDIT = 3,
-  MARK_DOCUMENT_RANGE = 4,
-  DELETE_BACKWARD = 5,
-  DELETE_FORWARD = 6,
-  DELETE_SURROUNDING = 7,
-  SELECTION_CHANGED = 8
-}
-
 export enum GestureType {
   UNDEFINED = 0,
   TAP = 1,
@@ -123,6 +111,54 @@ export interface TextChange {
 
 export interface TextEditResult {
   changes: TextChange[];
+}
+
+export enum ImeTextUnit {
+  UTF16_CODE_UNIT = 0,
+  CODE_POINT = 1
+}
+
+export enum ImeScriptClass {
+  UNKNOWN = 0,
+  LATIN = 1,
+  CJK = 2,
+  KANA = 3,
+  HANGUL = 4
+}
+
+export enum ImePreeditStorage {
+  NONE = 0,
+  VISIBLE_DOCUMENT_COMPOSITION = 1,
+  SHADOW_ONLY = 2
+}
+
+export enum ImeContextPolicy {
+  NONE = 0,
+  LIMITED_FOR_CANDIDATES = 1
+}
+
+export interface ImeSyncSnapshot {
+  cursor: TextPosition;
+  selection: TextRange | null;
+  hasComposingSession: boolean;
+  visibleCompositionRange: TextRange | null;
+  platformMarkedRange: TextRange | null;
+  platformTextWindowText: string;
+  platformTextWindowStartOffset: number;
+  platformTextWindowSelectionOffsets: IntRange;
+  platformTextWindowComposingOffsets: IntRange;
+  preeditStorage: ImePreeditStorage;
+  contextPolicy: ImeContextPolicy;
+  clearPlatformPreedit: boolean;
+}
+
+export interface ImeActionResult {
+  handled: boolean;
+  contentChanged: boolean;
+  cursorChanged: boolean;
+  selectionChanged: boolean;
+  editResult: TextEditResult;
+  sync: ImeSyncSnapshot;
 }
 
 export interface HitTarget {
@@ -561,41 +597,130 @@ export class EditorCore {
 
   // ==================== IME Composition Input ====================
 
-  handleImeEvent(type: ImeEventType,
-                 text: string | null = null,
-                 range: TextRange | null = null,
-                 cursor: TextPosition | null = null,
-                 beforeLength: number = 0,
-                 afterLength: number = 0): TextEditResult {
-    const payload = native.editorHandleImeEvent(
-      this.handle,
-      type as number,
-      text,
-      range !== null,
-      range !== null ? range.start.line : 0,
-      range !== null ? range.start.column : 0,
-      range !== null ? range.end.line : 0,
-      range !== null ? range.end.column : 0,
-      cursor !== null,
-      cursor !== null ? cursor.line : 0,
-      cursor !== null ? cursor.column : 0,
-      beforeLength,
-      afterLength,
-      0,
-      0);
-    return ProtocolDecoder.decodeImeEventEditResult(payload);
+  updateImePreedit(text: string | null, scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeUpdatePreedit(this.handle, text, scriptHint as number)
+    );
+  }
+
+  commitImeText(text: string | null, scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeCommitText(this.handle, text, scriptHint as number)
+    );
+  }
+
+  finishImePreedit(): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(native.editorImeFinishPreedit(this.handle));
+  }
+
+  cancelImePreedit(): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(native.editorImeCancelPreedit(this.handle));
+  }
+
+  markImeDocumentRange(range: TextRange, scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeMarkDocumentRange(
+        this.handle,
+        range.start.line,
+        range.start.column,
+        range.end.line,
+        range.end.column,
+        scriptHint as number
+      )
+    );
+  }
+
+  replaceImeText(range: TextRange, text: string | null,
+                 scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeReplaceText(
+        this.handle,
+        range.start.line,
+        range.start.column,
+        range.end.line,
+        range.end.column,
+        text,
+        scriptHint as number
+      )
+    );
+  }
+
+  deleteImeBackward(beforeLength: number = 1,
+                    textUnit: ImeTextUnit = ImeTextUnit.UTF16_CODE_UNIT): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeDeleteBackward(this.handle, beforeLength, textUnit as number)
+    );
+  }
+
+  deleteImeForward(afterLength: number = 1,
+                   textUnit: ImeTextUnit = ImeTextUnit.UTF16_CODE_UNIT): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeDeleteForward(this.handle, afterLength, textUnit as number)
+    );
+  }
+
+  deleteImeSurrounding(beforeLength: number,
+                       afterLength: number,
+                       textUnit: ImeTextUnit = ImeTextUnit.UTF16_CODE_UNIT): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeDeleteSurrounding(this.handle, beforeLength, afterLength, textUnit as number)
+    );
+  }
+
+  notifyImeSelectionChanged(range: TextRange): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeNotifySelectionChanged(
+        this.handle,
+        range.start.line,
+        range.start.column,
+        range.end.line,
+        range.end.column
+      )
+    );
+  }
+
+  notifyImeCursorChanged(cursor: TextPosition): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeNotifyCursorChanged(this.handle, cursor.line, cursor.column)
+    );
   }
 
   isComposing(): boolean {
     return native.editorIsComposing(this.handle);
   }
 
-  setCompositionEnabled(enabled: boolean): void {
-    native.editorSetCompositionEnabled(this.handle, enabled);
+  getComposingRange(): TextRange | null {
+    const arr = native.editorGetComposingRange(this.handle);
+    if (arr === null || arr[0] < 0) {
+      return null;
+    }
+    return {
+      start: { line: arr[0], column: arr[1] },
+      end: { line: arr[2], column: arr[3] }
+    };
   }
 
-  isCompositionEnabled(): boolean {
-    return native.editorIsCompositionEnabled(this.handle);
+  getComposingSessionRange(): TextRange | null {
+    const arr = native.editorGetComposingSessionRange(this.handle);
+    if (arr === null || arr[0] < 0) {
+      return null;
+    }
+    return {
+      start: { line: arr[0], column: arr[1] },
+      end: { line: arr[2], column: arr[3] }
+    };
+  }
+
+  setImeKeyboardScriptClass(scriptClass: ImeScriptClass): void {
+    native.editorImeSetKeyboardScriptClass(this.handle, scriptClass as number);
+  }
+
+  getImeKeyboardScriptClass(): ImeScriptClass {
+    return native.editorImeGetKeyboardScriptClass(this.handle) as ImeScriptClass;
+  }
+
+  getImeSyncSnapshot(): ImeSyncSnapshot {
+    return ProtocolDecoder.decodeImeSyncSnapshot(native.editorGetImeSyncSnapshot(this.handle));
   }
 
   // ==================== Read-Only Mode ====================

@@ -7,7 +7,11 @@ import {
   GestureResult,
   GestureType,
   HitTargetType,
-  ImeEventType,
+  ImeActionResult,
+  ImeContextPolicy,
+  ImeScriptClass,
+  ImeSyncSnapshot,
+  ImeTextUnit,
   ScrollbarConfig,
   ScrollbarMode,
   ScrollbarTrackTapMode,
@@ -105,6 +109,8 @@ const HILOG_DOMAIN = 0x3D12;
 const CURSOR_BLINK_INTERVAL_MS = 500;
 const ANIMATION_FRAME_INTERVAL_MS = 16;
 const TRANSIENT_SCROLLBAR_REFRESH_MIN_MS = 16;
+const MAX_IME_TEXT_LENGTH = 32768;
+const LIMITED_IME_CONTEXT_LENGTH = 2048;
 const EDITOR_FOCUS_ID = 'sweeteditor-canvas';
 const SELECTION_MENU_ITEM_HEIGHT = 26;
 const SELECTION_MENU_ITEM_MIN_WIDTH = 40;
@@ -147,10 +153,10 @@ interface PreviewCapableInputController {
  */
 @Component
 export struct SweetEditor {
-  controller: SweetEditorController;
+  controller: SweetEditorController = new SweetEditorController();
   private editorCore: EditorCore | null = null;
   private renderer: EditorRenderer | null = null;
-  private settings: EditorSettings = new EditorSettings();
+  private settings: EditorSettings = new EditorSettings(this);
   private theme: EditorTheme = EditorTheme.dark();
   private keyMap: EditorKeyMap = EditorKeyMap.defaultKeyMap();
   private eventBus: EditorEventBus = new EditorEventBus();
@@ -187,11 +193,7 @@ export struct SweetEditor {
   private editorGlobalX: number = 0;
   private editorGlobalY: number = 0;
   private readonly onImeInsertText = (text: string): void => {
-    if (this.editorCore && this.isCompositionEnabled() && this.editorCore.isComposing()) {
-      this.commitImeComposition(text);
-      return;
-    }
-    this.insertText(text);
+    this.commitImeComposition(text);
   };
   private readonly onImeDeleteLeft = (length: number): void => {
     this.deleteLeftByLength(length);
@@ -208,8 +210,8 @@ export struct SweetEditor {
   private readonly onImeSelectByRange = (range: inputMethod.Range): void => {
     this.selectRangeByIme(range);
   };
-  private readonly onImeFunctionKey = (_functionKey: inputMethod.FunctionKey): void => {
-    this.handleImeEnterKey();
+  private readonly onImeFunctionKey = (functionKey: inputMethod.FunctionKey): void => {
+    this.handleImeFunctionKey(functionKey);
   };
   private readonly onImeExtendAction = (action: inputMethod.ExtendAction): void => {
     this.handleImeExtendAction(action);
@@ -225,25 +227,14 @@ export struct SweetEditor {
   private readonly onImeFinishTextPreview = (): void => {
     this.finishImePreviewText();
   };
-  private readonly settingsHost = {
-    applyEditorTextSize: (size: number): void => this.applySettingsTextSize(size),
-    applyFontFamily: (fontFamily: string): void => this.applySettingsFontFamily(fontFamily),
-    applyScale: (scale: number): void => this.applySettingsScale(scale),
-    applyFoldArrowMode: (mode: FoldArrowMode): void => this.applySettingsFoldArrowMode(mode),
-    applyWrapMode: (mode: WrapMode): void => this.applySettingsWrapMode(mode),
-    applyLineSpacing: (add: number, mult: number): void => this.applySettingsLineSpacing(add, mult),
-    applyContentStartPadding: (padding: number): void => this.applySettingsContentStartPadding(padding),
-    applyShowSplitLine: (show: boolean): void => this.applySettingsShowSplitLine(show),
-    applyGutterSticky: (sticky: boolean): void => this.applySettingsGutterSticky(sticky),
-    applyGutterVisible: (visible: boolean): void => this.applySettingsGutterVisible(visible),
-    applyCurrentLineRenderMode: (mode: CurrentLineRenderMode): void =>
-      this.applySettingsCurrentLineRenderMode(mode),
-    applyAutoIndentMode: (mode: AutoIndentMode): void => this.applySettingsAutoIndentMode(mode),
-    applyBackspaceUnindent: (enabled: boolean): void => this.applySettingsBackspaceUnindent(enabled),
-    applyReadOnly: (readOnly: boolean): void => this.applySettingsReadOnly(readOnly),
-    applyCompositionEnabled: (enabled: boolean): void => this.applySettingsCompositionEnabled(enabled),
-    applyMaxGutterIcons: (count: number): void => this.applySettingsMaxGutterIcons(count),
-    requestDecorationRefresh: (): void => this.requestDecorationRefresh()
+  private readonly onImeGetLeftTextOfCursor = (length: number): string => {
+    return this.getImeTextBeforeCursor(length);
+  };
+  private readonly onImeGetRightTextOfCursor = (length: number): string => {
+    return this.getImeTextAfterCursor(length);
+  };
+  private readonly onImeGetTextIndexAtCursor = (): number => {
+    return this.getImeTextIndexAtCursor();
   };
   @State private canvasWidth: number = 0;
   @State private canvasHeight: number = 0;
@@ -307,7 +298,6 @@ export struct SweetEditor {
       this.editorCore = null;
     }
     this.renderer = null;
-    this.settings.unbind(this.settingsHost);
     this.cachedModel = null;
     this.modelDirty = true;
     this.initialized = false;
@@ -319,7 +309,6 @@ export struct SweetEditor {
     Stack({ alignContent: Alignment.TopStart }) {
       Canvas(this.canvasContext = new CanvasRenderingContext2D(this.canvasSettings))
         .id(EDITOR_FOCUS_ID)
-        .key(EDITOR_FOCUS_ID)
         .tabIndex(0)
         .focusOnTouch(true)
         .width('100%')
@@ -748,9 +737,6 @@ export struct SweetEditor {
     this.editorCore.setKeyMap(this.keyMap);
     this.registerImeCallbacks();
 
-    this.settings.bind(this.settingsHost);
-    this.editorCore.setCompositionEnabled(this.settings.isCompositionEnabled());
-
     this.editorCore.registerBatchTextStyles(this.theme.textStyles);
 
     this.initSubsystems();
@@ -836,7 +822,11 @@ export struct SweetEditor {
     return this.settings;
   }
 
-  private applySettingsTextSize(size: number): void {
+  getEditorCore(): EditorCore | null {
+    return this.editorCore;
+  }
+
+  applySettingsTextSize(size: number): void {
     if (this.renderer) {
       this.renderer.applyTextSize(size);
     }
@@ -846,7 +836,7 @@ export struct SweetEditor {
     this.flush();
   }
 
-  private applySettingsFontFamily(fontFamily: string): void {
+  applySettingsFontFamily(fontFamily: string): void {
     if (this.renderer) {
       this.renderer.applyFontFamily(fontFamily);
     }
@@ -856,98 +846,12 @@ export struct SweetEditor {
     this.flush();
   }
 
-  private applySettingsScale(scale: number): void {
+  applySettingsScale(scale: number): void {
     if (this.editorCore) {
       this.editorCore.setScale(scale);
     }
     this.syncPlatformScale(scale);
     this.flush();
-  }
-
-  private applySettingsFoldArrowMode(mode: FoldArrowMode): void {
-    if (this.editorCore) {
-      this.editorCore.setFoldArrowMode(mode);
-    }
-  }
-
-  private applySettingsWrapMode(mode: WrapMode): void {
-    if (this.editorCore) {
-      this.editorCore.setWrapMode(mode);
-      this.flush();
-    }
-  }
-
-  private applySettingsLineSpacing(add: number, mult: number): void {
-    if (this.editorCore) {
-      this.editorCore.setLineSpacing(add, mult);
-      this.flush();
-    }
-  }
-
-  private applySettingsContentStartPadding(padding: number): void {
-    if (this.editorCore) {
-      this.editorCore.setContentStartPadding(padding);
-      this.flush();
-    }
-  }
-
-  private applySettingsShowSplitLine(show: boolean): void {
-    if (this.editorCore) {
-      this.editorCore.setShowSplitLine(show);
-      this.flush();
-    }
-  }
-
-  private applySettingsGutterSticky(sticky: boolean): void {
-    if (this.editorCore) {
-      this.editorCore.setGutterSticky(sticky);
-      this.flush();
-    }
-  }
-
-  private applySettingsGutterVisible(visible: boolean): void {
-    if (this.editorCore) {
-      this.editorCore.setGutterVisible(visible);
-      this.flush();
-    }
-  }
-
-  private applySettingsCurrentLineRenderMode(mode: CurrentLineRenderMode): void {
-    if (this.editorCore) {
-      this.editorCore.setCurrentLineRenderMode(mode);
-      this.flush();
-    }
-  }
-
-  private applySettingsAutoIndentMode(mode: AutoIndentMode): void {
-    if (this.editorCore) {
-      this.editorCore.setAutoIndentMode(mode);
-    }
-  }
-
-  private applySettingsBackspaceUnindent(enabled: boolean): void {
-    if (this.editorCore) {
-      this.editorCore.setBackspaceUnindent(enabled);
-    }
-  }
-
-  private applySettingsReadOnly(readOnly: boolean): void {
-    if (this.editorCore) {
-      this.editorCore.setReadOnly(readOnly);
-    }
-  }
-
-  private applySettingsCompositionEnabled(enabled: boolean): void {
-    if (this.editorCore) {
-      this.editorCore.setCompositionEnabled(enabled);
-      this.flush();
-    }
-  }
-
-  private applySettingsMaxGutterIcons(count: number): void {
-    if (this.editorCore) {
-      this.editorCore.setMaxGutterIcons(count);
-    }
   }
 
   getTheme(): EditorTheme {
@@ -1931,20 +1835,19 @@ export struct SweetEditor {
     if (!this.editorCore) {
       return;
     }
-    this.editorCore.handleImeEvent(ImeEventType.UPDATE_PREEDIT, text);
+    const result = this.editorCore.updateImePreedit(text, this.resolveAndReportImeScriptClass());
+    this.dispatchImeActionResult(result);
+    this.resetCursorBlink();
     this.flush();
-  }
-
-  isCompositionEnabled(): boolean {
-    return this.settings.isCompositionEnabled();
   }
 
   commitImeComposition(text: string): void {
     if (!this.editorCore) {
       return;
     }
-    const result = this.editorCore.handleImeEvent(ImeEventType.COMMIT_TEXT, text);
-    this.dispatchTextChanged(TextChangeAction.COMPOSITION, result);
+    const result = this.editorCore.commitImeText(text, this.resolveAndReportImeScriptClass());
+    this.dispatchImeActionResult(result);
+    this.resetCursorBlink();
     this.flush();
   }
 
@@ -2489,6 +2392,25 @@ export struct SweetEditor {
     }
   }
 
+  private dispatchImeActionResult(result: ImeActionResult): void {
+    if (result.contentChanged) {
+      this.dispatchTextChanged(TextChangeAction.COMPOSITION, result.editResult);
+    }
+    if (!this.editorCore) {
+      return;
+    }
+    if (result.cursorChanged) {
+      this.eventBus.emit('cursorChanged', new CursorChangedEvent(result.sync.cursor));
+    }
+    if (result.selectionChanged) {
+      this.eventBus.emit('selectionChanged', new SelectionChangedEvent(
+        result.sync.selection !== null, result.sync.selection, result.sync.cursor));
+    }
+    if (result.handled) {
+      this.scheduleImeSync();
+    }
+  }
+
   private maybeTriggerCompletionFromChanges(textChanges: TextChange[]): void {
     if (!this.completionProviderManager || !this.editorCore || this.editorCore.isInLinkedEditing()) {
       return;
@@ -2693,6 +2615,9 @@ export struct SweetEditor {
       this.inputController.on('sendFunctionKey', this.onImeFunctionKey);
       this.inputController.on('handleExtendAction', this.onImeExtendAction);
       this.inputController.on('sendKeyboardStatus', this.onImeKeyboardStatus);
+      this.inputController.on('getLeftTextOfCursor', this.onImeGetLeftTextOfCursor);
+      this.inputController.on('getRightTextOfCursor', this.onImeGetRightTextOfCursor);
+      this.inputController.on('getTextIndexAtCursor', this.onImeGetTextIndexAtCursor);
     } catch (e) {
       hilog.error(HILOG_DOMAIN, TAG, 'registerImeCallbacks failed %{public}s', JSON.stringify(e));
     }
@@ -2716,6 +2641,9 @@ export struct SweetEditor {
       this.inputController.off('sendFunctionKey', this.onImeFunctionKey);
       this.inputController.off('handleExtendAction', this.onImeExtendAction);
       this.inputController.off('sendKeyboardStatus', this.onImeKeyboardStatus);
+      this.inputController.off('getLeftTextOfCursor', this.onImeGetLeftTextOfCursor);
+      this.inputController.off('getRightTextOfCursor', this.onImeGetRightTextOfCursor);
+      this.inputController.off('getTextIndexAtCursor', this.onImeGetTextIndexAtCursor);
     } catch (e) {
       hilog.error(HILOG_DOMAIN, TAG, 'unregisterImeCallbacks failed %{public}s', JSON.stringify(e));
     }
@@ -2732,13 +2660,14 @@ export struct SweetEditor {
     if (!this.editorCore) {
       return;
     }
+    const snapshot = this.editorCore.getImeSyncSnapshot();
     const textConfig: inputMethod.TextConfig = {
       inputAttribute: {
         textInputType: inputMethod.TextInputType.MULTILINE,
         enterKeyType: inputMethod.EnterKeyType.NONE
       },
-      cursorInfo: this.buildImeCursorInfo(),
-      selection: this.buildImeSelectionRange()
+      cursorInfo: this.buildImeCursorInfo(snapshot),
+      selection: this.buildImeSelectionRange(snapshot)
     };
     if (this.imeWindowId >= 0) {
       textConfig.windowId = this.imeWindowId;
@@ -2808,16 +2737,21 @@ export struct SweetEditor {
     if (!this.imeAttached || !this.editorCore) {
       return;
     }
-    const selection = this.buildImeSelectionRange();
-    const selectedText = this.getSelectedText();
-    const cursorInfo = this.buildImeCursorInfo();
+    const snapshot = this.editorCore.getImeSyncSnapshot();
+    const selection = this.buildImeSelectionRange(snapshot);
+    const selectedText = this.buildImeSelectedText(snapshot);
+    const cursorInfo = this.buildImeCursorInfo(snapshot);
     this.inputController.changeSelection(selectedText, selection.start, selection.end).catch(() => {
     });
     this.inputController.updateCursor(cursorInfo).catch(() => {
     });
   }
 
-  private buildImeSelectionRange(): inputMethod.Range {
+  private buildImeSelectionRange(snapshot?: ImeSyncSnapshot): inputMethod.Range {
+    if (snapshot !== undefined) {
+      const offsets = this.getImeSelectionOffsets(snapshot);
+      return { start: offsets.start, end: offsets.end };
+    }
     const selection = this.getSelection();
     if (selection !== null) {
       return {
@@ -2830,14 +2764,115 @@ export struct SweetEditor {
     return { start: offset, end: offset };
   }
 
-  private buildImeCursorInfo(): inputMethod.CursorInfo {
-    const rect = this.getCursorRect();
+  private buildImeCursorInfo(snapshot?: ImeSyncSnapshot): inputMethod.CursorInfo {
+    const rect = snapshot !== undefined && this.editorCore !== null
+      ? this.editorCore.getPositionRect(snapshot.cursor.line, snapshot.cursor.column)
+      : this.getCursorRect();
     return {
       left: this.editorGlobalX + rect.x,
       top: this.editorGlobalY + rect.y,
       width: 1,
       height: rect.height
     };
+  }
+
+  private buildImeSelectedText(snapshot: ImeSyncSnapshot): string {
+    if (snapshot.selection === null) {
+      return '';
+    }
+    const documentText = this.getImeDocumentText();
+    const selection = this.getImeSelectionOffsets(snapshot);
+    if (selection.start === selection.end) {
+      return '';
+    }
+    return this.getImeTextRange(selection.start, selection.end, documentText);
+  }
+
+  private getImeSelectionOffsets(snapshot: ImeSyncSnapshot): IntRange {
+    const documentText = this.getImeDocumentText();
+    const documentLength = documentText.length;
+    if (snapshot.selection !== null) {
+      const start = this.textPositionToOffset(snapshot.selection.start);
+      const end = this.textPositionToOffset(snapshot.selection.end);
+      return this.normalizeImeOffsetRange(start, end, documentLength);
+    }
+    const cursor = this.textPositionToOffset(snapshot.cursor);
+    return this.normalizeImeOffsetRange(cursor, cursor, documentLength);
+  }
+
+  private normalizeImeOffsetRange(startOffset: number, endOffset: number, documentLength: number): IntRange {
+    const start = Math.max(0, Math.min(startOffset, documentLength));
+    const end = Math.max(0, Math.min(endOffset, documentLength));
+    const range: IntRange = start <= end ? { start: start, end: end } : { start: end, end: start };
+    return range;
+  }
+
+  private getImeTextBeforeCursor(length: number): string {
+    if (!this.editorCore) {
+      return '';
+    }
+    const snapshot = this.editorCore.getImeSyncSnapshot();
+    if (!this.shouldExposeImeDocumentContext(snapshot.contextPolicy)) {
+      return '';
+    }
+    const documentText = this.getImeDocumentText();
+    const selection = this.getImeSelectionOffsets(snapshot);
+    const end = Math.max(0, Math.min(selection.start, documentText.length));
+    const start = Math.max(0, end - this.limitImeContextLength(length, snapshot.contextPolicy));
+    return this.getImeTextRange(start, end, documentText);
+  }
+
+  private getImeTextAfterCursor(length: number): string {
+    if (!this.editorCore) {
+      return '';
+    }
+    const snapshot = this.editorCore.getImeSyncSnapshot();
+    if (!this.shouldExposeImeDocumentContext(snapshot.contextPolicy)) {
+      return '';
+    }
+    const documentText = this.getImeDocumentText();
+    const selection = this.getImeSelectionOffsets(snapshot);
+    const start = Math.max(0, Math.min(selection.end, documentText.length));
+    const end = Math.min(documentText.length, start + this.limitImeContextLength(length, snapshot.contextPolicy));
+    return this.getImeTextRange(start, end, documentText);
+  }
+
+  private getImeTextIndexAtCursor(): number {
+    if (!this.editorCore) {
+      return 0;
+    }
+    const snapshot = this.editorCore.getImeSyncSnapshot();
+    const documentLength = this.getImeDocumentText().length;
+    if (snapshot.platformTextWindowText.length > 0) {
+      const windowOffset = snapshot.platformTextWindowStartOffset + snapshot.platformTextWindowSelectionOffsets.start;
+      return Math.max(0, Math.min(windowOffset, documentLength));
+    }
+    return this.getImeSelectionOffsets(snapshot).start;
+  }
+
+  private getImeDocumentText(): string {
+    if (!this.editorCore) {
+      return '';
+    }
+    const document: Document | null = this.editorCore.getDocument();
+    return document === null ? '' : document.getText();
+  }
+
+  private getImeTextRange(startOffset: number, endOffset: number, documentText: string): string {
+    const range = this.normalizeImeOffsetRange(startOffset, endOffset, documentText.length);
+    return documentText.substring(range.start, range.end);
+  }
+
+  private shouldExposeImeDocumentContext(contextPolicy: ImeContextPolicy): boolean {
+    return contextPolicy !== ImeContextPolicy.NONE;
+  }
+
+  private limitImeContextLength(requestedLength: number, contextPolicy: ImeContextPolicy): number {
+    const length = Math.max(0, Math.min(requestedLength, MAX_IME_TEXT_LENGTH));
+    if (contextPolicy === ImeContextPolicy.LIMITED_FOR_CANDIDATES) {
+      return Math.min(length, LIMITED_IME_CONTEXT_LENGTH);
+    }
+    return length;
   }
 
   private getPreviewInputController(): PreviewCapableInputController {
@@ -2893,14 +2928,8 @@ export struct SweetEditor {
     if (!this.editorCore || length <= 0) {
       return;
     }
-    if (this.hasSelection()) {
-      this.insertText('');
-      return;
-    }
-    for (let i = 0; i < length; i++) {
-      const result = this.editorCore.backspace();
-      this.dispatchTextChanged(TextChangeAction.KEY, result);
-    }
+    const result = this.editorCore.deleteImeBackward(length, ImeTextUnit.UTF16_CODE_UNIT);
+    this.dispatchImeActionResult(result);
     this.resetCursorBlink();
     this.flush();
   }
@@ -2909,14 +2938,8 @@ export struct SweetEditor {
     if (!this.editorCore || length <= 0) {
       return;
     }
-    if (this.hasSelection()) {
-      this.insertText('');
-      return;
-    }
-    for (let i = 0; i < length; i++) {
-      const result = this.editorCore.deleteForward();
-      this.dispatchTextChanged(TextChangeAction.KEY, result);
-    }
+    const result = this.editorCore.deleteImeForward(length, ImeTextUnit.UTF16_CODE_UNIT);
+    this.dispatchImeActionResult(result);
     this.resetCursorBlink();
     this.flush();
   }
@@ -2941,39 +2964,73 @@ export struct SweetEditor {
       default:
         return;
     }
+    const selection = this.editorCore.getSelection();
+    if (selection !== null) {
+      this.dispatchImeActionResult(this.editorCore.notifyImeSelectionChanged(selection));
+    } else {
+      this.dispatchImeActionResult(this.editorCore.notifyImeCursorChanged(this.editorCore.getCursorPosition()));
+    }
     this.resetCursorBlink();
     this.flush();
   }
 
   private selectRangeByIme(range: inputMethod.Range): void {
+    if (!this.editorCore) {
+      return;
+    }
     const normalizedStart = Math.max(0, Math.min(range.start, range.end));
     const normalizedEnd = Math.max(normalizedStart, Math.max(range.start, range.end));
     const start = this.offsetToTextPosition(normalizedStart);
     const end = this.offsetToTextPosition(normalizedEnd);
-    this.setSelection({ start, end });
+    const selection: TextRange = { start: start, end: end };
+    const result = this.editorCore.notifyImeSelectionChanged(selection);
+    this.dispatchImeActionResult(result);
+    this.resetCursorBlink();
+    this.flush();
   }
 
   private handleImePreviewText(text: string, range: inputMethod.Range): void {
-    if (!this.editorCore || !this.isCompositionEnabled()) {
+    if (!this.editorCore) {
       return;
     }
     const normalizedStart = Math.max(0, Math.min(range.start, range.end));
     const normalizedEnd = Math.max(normalizedStart, Math.max(range.start, range.end));
+    const script = this.resolveAndReportImeScriptClass();
     const previewRange: TextRange = {
       start: this.offsetToTextPosition(normalizedStart),
       end: this.offsetToTextPosition(normalizedEnd)
     };
-    this.editorCore.handleImeEvent(ImeEventType.MARK_DOCUMENT_RANGE, null, previewRange);
-    this.updateImeComposition(text);
+    this.dispatchImeActionResult(
+      this.editorCore.markImeDocumentRange(previewRange, script)
+    );
+    this.dispatchImeActionResult(
+      this.editorCore.updateImePreedit(text, script)
+    );
+    this.resetCursorBlink();
+    this.flush();
   }
 
   private finishImePreviewText(): void {
-    if (!this.editorCore || !this.isCompositionEnabled() || !this.editorCore.isComposing()) {
+    if (!this.editorCore || !this.editorCore.isComposing()) {
       return;
     }
-    this.editorCore.handleImeEvent(ImeEventType.CANCEL_PREEDIT, null);
+    const result = this.editorCore.finishImePreedit();
+    this.dispatchImeActionResult(result);
     this.resetCursorBlink();
     this.flush();
+  }
+
+  private handleImeFunctionKey(functionKey: inputMethod.FunctionKey): void {
+    switch (functionKey.enterKeyType) {
+      case inputMethod.EnterKeyType.NONE:
+      case inputMethod.EnterKeyType.UNSPECIFIED:
+      case inputMethod.EnterKeyType.NEWLINE:
+        this.handleImeEnterKey();
+        break;
+      default:
+        this.scheduleImeSync();
+        break;
+    }
   }
 
   private handleImeEnterKey(): void {
@@ -2987,6 +3044,64 @@ export struct SweetEditor {
     this.dispatchKeyEventResult(result);
     this.resetCursorBlink();
     this.flush();
+  }
+
+  private resolveAndReportImeScriptClass(): ImeScriptClass {
+    const script = this.resolveCurrentImeScriptClass();
+    if (script !== ImeScriptClass.UNKNOWN && this.editorCore) {
+      this.editorCore.setImeKeyboardScriptClass(script);
+    }
+    return script;
+  }
+
+  private resolveCurrentImeScriptClass(): ImeScriptClass {
+    try {
+      const subtype = inputMethod.getCurrentInputMethodSubtype();
+      let script = this.resolveTextImeScriptClass(subtype.locale);
+      if (script !== ImeScriptClass.UNKNOWN) {
+        return script;
+      }
+      script = this.resolveTextImeScriptClass(subtype.language);
+      if (script !== ImeScriptClass.UNKNOWN) {
+        return script;
+      }
+      script = this.resolveTextImeScriptClass(subtype.name);
+      if (script !== ImeScriptClass.UNKNOWN) {
+        return script;
+      }
+      script = this.resolveTextImeScriptClass(subtype.id);
+      if (script !== ImeScriptClass.UNKNOWN) {
+        return script;
+      }
+      const extra = subtype.extra === undefined ? '' : JSON.stringify(subtype.extra);
+      return this.resolveTextImeScriptClass(extra);
+    } catch (e) {
+      return ImeScriptClass.UNKNOWN;
+    }
+  }
+
+  private resolveTextImeScriptClass(text: string | undefined): ImeScriptClass {
+    if (text === undefined || text.length === 0) {
+      return ImeScriptClass.UNKNOWN;
+    }
+    const value = text.toLowerCase().replace('_', '-');
+    if (value.indexOf('zh') >= 0 || value.indexOf('chinese') >= 0
+      || value.indexOf('pinyin') >= 0 || value.indexOf('wubi') >= 0
+      || value.indexOf('cangjie') >= 0 || value.indexOf('zhuyin') >= 0) {
+      return ImeScriptClass.CJK;
+    }
+    if (value.indexOf('ja') >= 0 || value.indexOf('japanese') >= 0 || value.indexOf('kana') >= 0) {
+      return ImeScriptClass.KANA;
+    }
+    if (value.indexOf('ko') >= 0 || value.indexOf('korean') >= 0 || value.indexOf('hangul') >= 0) {
+      return ImeScriptClass.HANGUL;
+    }
+    if (value.indexOf('latn') >= 0 || value.indexOf('latin') >= 0
+      || value.indexOf('ascii') >= 0 || value.indexOf('alphabet') >= 0
+      || value.indexOf('en') === 0) {
+      return ImeScriptClass.LATIN;
+    }
+    return ImeScriptClass.UNKNOWN;
   }
 
   private handleImeExtendAction(action: inputMethod.ExtendAction): void {

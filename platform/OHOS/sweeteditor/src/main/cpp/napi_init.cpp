@@ -87,10 +87,23 @@ static napi_value Init(napi_env env, napi_value exports)
         NAPI_METHOD("editorMoveCursorToLineEnd", EditorCoreNapi::moveCursorToLineEnd),
 
         // IME composition
-        NAPI_METHOD("editorHandleImeEvent", EditorCoreNapi::handleImeEvent),
         NAPI_METHOD("editorIsComposing", EditorCoreNapi::isComposing),
-        NAPI_METHOD("editorSetCompositionEnabled", EditorCoreNapi::setCompositionEnabled),
-        NAPI_METHOD("editorIsCompositionEnabled", EditorCoreNapi::isCompositionEnabled),
+        NAPI_METHOD("editorGetComposingRange", EditorCoreNapi::getComposingRange),
+        NAPI_METHOD("editorGetComposingSessionRange", EditorCoreNapi::getComposingSessionRange),
+        NAPI_METHOD("editorImeUpdatePreedit", EditorCoreNapi::imeUpdatePreedit),
+        NAPI_METHOD("editorImeCommitText", EditorCoreNapi::imeCommitText),
+        NAPI_METHOD("editorImeFinishPreedit", EditorCoreNapi::imeFinishPreedit),
+        NAPI_METHOD("editorImeCancelPreedit", EditorCoreNapi::imeCancelPreedit),
+        NAPI_METHOD("editorImeMarkDocumentRange", EditorCoreNapi::imeMarkDocumentRange),
+        NAPI_METHOD("editorImeReplaceText", EditorCoreNapi::imeReplaceText),
+        NAPI_METHOD("editorImeDeleteBackward", EditorCoreNapi::imeDeleteBackward),
+        NAPI_METHOD("editorImeDeleteForward", EditorCoreNapi::imeDeleteForward),
+        NAPI_METHOD("editorImeDeleteSurrounding", EditorCoreNapi::imeDeleteSurrounding),
+        NAPI_METHOD("editorImeNotifySelectionChanged", EditorCoreNapi::imeNotifySelectionChanged),
+        NAPI_METHOD("editorImeNotifyCursorChanged", EditorCoreNapi::imeNotifyCursorChanged),
+        NAPI_METHOD("editorImeSetKeyboardScriptClass", EditorCoreNapi::imeSetKeyboardScriptClass),
+        NAPI_METHOD("editorImeGetKeyboardScriptClass", EditorCoreNapi::imeGetKeyboardScriptClass),
+        NAPI_METHOD("editorGetImeSyncSnapshot", EditorCoreNapi::getImeSyncSnapshot),
 
         // Read-only
         NAPI_METHOD("editorSetReadOnly", EditorCoreNapi::setReadOnly),

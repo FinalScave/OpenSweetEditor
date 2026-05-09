@@ -588,55 +588,6 @@ public:
     return napi_create_string_value(env, selected.c_str());
   }
 
-  static napi_value handleImeEvent(napi_env env, napi_callback_info info) {
-    size_t argc = 16;
-    napi_value args[16];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-
-    int64_t handle = napi_get_handle(env, args[0]);
-    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
-
-    int32_t type = argc > 1 ? napi_get_int32(env, args[1]) : 0;
-    const char* text_str = nullptr;
-    std::string text_buf;
-    if (argc > 2 && !napi_is_null_or_undefined(env, args[2])) {
-      text_buf = napi_get_utf8_string(env, args[2]);
-      text_str = text_buf.c_str();
-    }
-
-    int32_t has_range = argc > 3 && napi_get_bool(env, args[3]) ? 1 : 0;
-    size_t start_line = argc > 4 ? static_cast<size_t>(napi_get_int32(env, args[4])) : 0;
-    size_t start_column = argc > 5 ? static_cast<size_t>(napi_get_int32(env, args[5])) : 0;
-    size_t end_line = argc > 6 ? static_cast<size_t>(napi_get_int32(env, args[6])) : 0;
-    size_t end_column = argc > 7 ? static_cast<size_t>(napi_get_int32(env, args[7])) : 0;
-    int32_t has_cursor = argc > 8 && napi_get_bool(env, args[8]) ? 1 : 0;
-    size_t cursor_line = argc > 9 ? static_cast<size_t>(napi_get_int32(env, args[9])) : 0;
-    size_t cursor_column = argc > 10 ? static_cast<size_t>(napi_get_int32(env, args[10])) : 0;
-    size_t before_length = argc > 11 ? static_cast<size_t>(napi_get_int32(env, args[11])) : 0;
-    size_t after_length = argc > 12 ? static_cast<size_t>(napi_get_int32(env, args[12])) : 0;
-    int32_t text_unit = argc > 13 ? napi_get_int32(env, args[13]) : 0;
-    int32_t script_hint = argc > 14 ? napi_get_int32(env, args[14]) : 0;
-    size_t out_size = 0;
-    const uint8_t* payload = editor_handle_ime_event(
-      static_cast<intptr_t>(handle),
-      type,
-      text_str,
-      has_range,
-      start_line,
-      start_column,
-      end_line,
-      end_column,
-      has_cursor,
-      cursor_line,
-      cursor_column,
-      before_length,
-      after_length,
-      text_unit,
-      script_hint,
-      &out_size);
-    return wrap_binary_payload(env, payload, out_size);
-  }
-
   static napi_value isComposing(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
@@ -644,22 +595,278 @@ public:
     return napi_create_bool_value(env, editor_is_composing(static_cast<intptr_t>(napi_get_handle(env, args[0]))) != 0);
   }
 
-  static napi_value setCompositionEnabled(napi_env env, napi_callback_info info) {
+  static napi_value getComposingRange(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    int32_t sl = -1, sc = -1, el = -1, ec = -1;
+    editor_get_composing_range(static_cast<intptr_t>(napi_get_handle(env, args[0])), &sl, &sc, &el, &ec);
+
+    napi_value result;
+    napi_create_array_with_length(env, 4, &result);
+    napi_value v;
+    napi_create_int32(env, sl, &v); napi_set_element(env, result, 0, v);
+    napi_create_int32(env, sc, &v); napi_set_element(env, result, 1, v);
+    napi_create_int32(env, el, &v); napi_set_element(env, result, 2, v);
+    napi_create_int32(env, ec, &v); napi_set_element(env, result, 3, v);
+    return result;
+  }
+
+  static napi_value getComposingSessionRange(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    int32_t sl = -1, sc = -1, el = -1, ec = -1;
+    editor_get_composing_session_range(static_cast<intptr_t>(napi_get_handle(env, args[0])), &sl, &sc, &el, &ec);
+
+    napi_value result;
+    napi_create_array_with_length(env, 4, &result);
+    napi_value v;
+    napi_create_int32(env, sl, &v); napi_set_element(env, result, 0, v);
+    napi_create_int32(env, sc, &v); napi_set_element(env, result, 1, v);
+    napi_create_int32(env, el, &v); napi_set_element(env, result, 2, v);
+    napi_create_int32(env, ec, &v); napi_set_element(env, result, 3, v);
+    return result;
+  }
+
+  static napi_value imeUpdatePreedit(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value args[3];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
+
+    const char* text_str = "";
+    std::string text_buf;
+    if (argc > 1 && !napi_is_null_or_undefined(env, args[1])) {
+      text_buf = napi_get_utf8_string(env, args[1]);
+      text_str = text_buf.c_str();
+    }
+    int32_t script_hint = argc > 2 ? napi_get_int32(env, args[2]) : 0;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_ime_update_preedit(
+      static_cast<intptr_t>(handle),
+      text_str,
+      static_cast<int>(script_hint),
+      &out_size);
+    return wrap_binary_payload(env, payload, out_size);
+  }
+
+  static napi_value imeCommitText(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value args[3];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
+
+    const char* text_str = "";
+    std::string text_buf;
+    if (argc > 1 && !napi_is_null_or_undefined(env, args[1])) {
+      text_buf = napi_get_utf8_string(env, args[1]);
+      text_str = text_buf.c_str();
+    }
+    int32_t script_hint = argc > 2 ? napi_get_int32(env, args[2]) : 0;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_ime_commit_text(
+      static_cast<intptr_t>(handle),
+      text_str,
+      static_cast<int>(script_hint),
+      &out_size);
+    return wrap_binary_payload(env, payload, out_size);
+  }
+
+  static napi_value imeFinishPreedit(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
+
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_ime_finish_preedit(static_cast<intptr_t>(handle), &out_size), out_size);
+  }
+
+  static napi_value imeCancelPreedit(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
+
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_ime_cancel_preedit(static_cast<intptr_t>(handle), &out_size), out_size);
+  }
+
+  static napi_value imeMarkDocumentRange(napi_env env, napi_callback_info info) {
+    size_t argc = 6;
+    napi_value args[6];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
+
+    size_t out_size = 0;
+    const uint8_t* payload = editor_ime_mark_document_range(
+      static_cast<intptr_t>(handle),
+      static_cast<size_t>(napi_get_int32(env, args[1])),
+      static_cast<size_t>(napi_get_int32(env, args[2])),
+      static_cast<size_t>(napi_get_int32(env, args[3])),
+      static_cast<size_t>(napi_get_int32(env, args[4])),
+      argc > 5 ? napi_get_int32(env, args[5]) : 0,
+      &out_size);
+    return wrap_binary_payload(env, payload, out_size);
+  }
+
+  static napi_value imeReplaceText(napi_env env, napi_callback_info info) {
+    size_t argc = 7;
+    napi_value args[7];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
+
+    const char* text_str = "";
+    std::string text_buf;
+    if (argc > 5 && !napi_is_null_or_undefined(env, args[5])) {
+      text_buf = napi_get_utf8_string(env, args[5]);
+      text_str = text_buf.c_str();
+    }
+    size_t out_size = 0;
+    const uint8_t* payload = editor_ime_replace_text(
+      static_cast<intptr_t>(handle),
+      static_cast<size_t>(napi_get_int32(env, args[1])),
+      static_cast<size_t>(napi_get_int32(env, args[2])),
+      static_cast<size_t>(napi_get_int32(env, args[3])),
+      static_cast<size_t>(napi_get_int32(env, args[4])),
+      text_str,
+      argc > 6 ? napi_get_int32(env, args[6]) : 0,
+      &out_size);
+    return wrap_binary_payload(env, payload, out_size);
+  }
+
+  static napi_value imeDeleteBackward(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value args[3];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
+
+    size_t out_size = 0;
+    const uint8_t* payload = editor_ime_delete_backward(
+      static_cast<intptr_t>(handle),
+      argc > 1 ? static_cast<size_t>(napi_get_int32(env, args[1])) : 1,
+      argc > 2 ? napi_get_int32(env, args[2]) : 0,
+      &out_size);
+    return wrap_binary_payload(env, payload, out_size);
+  }
+
+  static napi_value imeDeleteForward(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value args[3];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
+
+    size_t out_size = 0;
+    const uint8_t* payload = editor_ime_delete_forward(
+      static_cast<intptr_t>(handle),
+      argc > 1 ? static_cast<size_t>(napi_get_int32(env, args[1])) : 1,
+      argc > 2 ? napi_get_int32(env, args[2]) : 0,
+      &out_size);
+    return wrap_binary_payload(env, payload, out_size);
+  }
+
+  static napi_value imeDeleteSurrounding(napi_env env, napi_callback_info info) {
+    size_t argc = 4;
+    napi_value args[4];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
+
+    size_t out_size = 0;
+    const uint8_t* payload = editor_ime_delete_surrounding(
+      static_cast<intptr_t>(handle),
+      argc > 1 ? static_cast<size_t>(napi_get_int32(env, args[1])) : 0,
+      argc > 2 ? static_cast<size_t>(napi_get_int32(env, args[2])) : 0,
+      argc > 3 ? napi_get_int32(env, args[3]) : 0,
+      &out_size);
+    return wrap_binary_payload(env, payload, out_size);
+  }
+
+  static napi_value imeNotifySelectionChanged(napi_env env, napi_callback_info info) {
+    size_t argc = 5;
+    napi_value args[5];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
+
+    size_t out_size = 0;
+    const uint8_t* payload = editor_ime_notify_selection_changed(
+      static_cast<intptr_t>(handle),
+      static_cast<size_t>(napi_get_int32(env, args[1])),
+      static_cast<size_t>(napi_get_int32(env, args[2])),
+      static_cast<size_t>(napi_get_int32(env, args[3])),
+      static_cast<size_t>(napi_get_int32(env, args[4])),
+      &out_size);
+    return wrap_binary_payload(env, payload, out_size);
+  }
+
+  static napi_value imeNotifyCursorChanged(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value args[3];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
+
+    size_t out_size = 0;
+    const uint8_t* payload = editor_ime_notify_cursor_changed(
+      static_cast<intptr_t>(handle),
+      static_cast<size_t>(napi_get_int32(env, args[1])),
+      static_cast<size_t>(napi_get_int32(env, args[2])),
+      &out_size);
+    return wrap_binary_payload(env, payload, out_size);
+  }
+
+  static napi_value imeSetKeyboardScriptClass(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_composition_enabled(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                                   napi_get_bool(env, args[1]) ? 1 : 0);
+    editor_ime_set_keyboard_script_class(static_cast<intptr_t>(napi_get_handle(env, args[0])),
+                                         argc > 1 ? napi_get_int32(env, args[1]) : 0);
     napi_value undefined;
     napi_get_undefined(env, &undefined);
     return undefined;
   }
 
-  static napi_value isCompositionEnabled(napi_env env, napi_callback_info info) {
+  static napi_value imeGetKeyboardScriptClass(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    return napi_create_bool_value(env, editor_is_composition_enabled(static_cast<intptr_t>(napi_get_handle(env, args[0]))) != 0);
+    return napi_create_int32_value(env, editor_ime_get_keyboard_script_class(
+      static_cast<intptr_t>(napi_get_handle(env, args[0]))));
+  }
+
+  static napi_value getImeSyncSnapshot(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
+
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_get_ime_sync_snapshot(static_cast<intptr_t>(handle), &out_size), out_size);
   }
 
   static napi_value setReadOnly(napi_env env, napi_callback_info info) {

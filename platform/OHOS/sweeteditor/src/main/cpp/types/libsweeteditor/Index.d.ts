@@ -80,10 +80,23 @@ export const editorMoveCursorToLineStart: (handle: number, extendSelection: bool
 export const editorMoveCursorToLineEnd: (handle: number, extendSelection: boolean) => void;
 
 // IME composition
-export const editorHandleImeEvent: (handle: number, type: number, text: string | null, hasRange: boolean, startLine: number, startColumn: number, endLine: number, endColumn: number, hasCursor: boolean, cursorLine: number, cursorColumn: number, beforeLength: number, afterLength: number, textUnit: number, scriptHint: number) => ArrayBuffer | undefined;
 export const editorIsComposing: (handle: number) => boolean;
-export const editorSetCompositionEnabled: (handle: number, enabled: boolean) => void;
-export const editorIsCompositionEnabled: (handle: number) => boolean;
+export const editorGetComposingRange: (handle: number) => number[];
+export const editorGetComposingSessionRange: (handle: number) => number[];
+export const editorImeUpdatePreedit: (handle: number, text: string | null, scriptHint: number) => ArrayBuffer | undefined;
+export const editorImeCommitText: (handle: number, text: string | null, scriptHint: number) => ArrayBuffer | undefined;
+export const editorImeFinishPreedit: (handle: number) => ArrayBuffer | undefined;
+export const editorImeCancelPreedit: (handle: number) => ArrayBuffer | undefined;
+export const editorImeMarkDocumentRange: (handle: number, startLine: number, startColumn: number, endLine: number, endColumn: number, scriptHint: number) => ArrayBuffer | undefined;
+export const editorImeReplaceText: (handle: number, startLine: number, startColumn: number, endLine: number, endColumn: number, text: string | null, scriptHint: number) => ArrayBuffer | undefined;
+export const editorImeDeleteBackward: (handle: number, beforeLength: number, textUnit: number) => ArrayBuffer | undefined;
+export const editorImeDeleteForward: (handle: number, afterLength: number, textUnit: number) => ArrayBuffer | undefined;
+export const editorImeDeleteSurrounding: (handle: number, beforeLength: number, afterLength: number, textUnit: number) => ArrayBuffer | undefined;
+export const editorImeNotifySelectionChanged: (handle: number, startLine: number, startColumn: number, endLine: number, endColumn: number) => ArrayBuffer | undefined;
+export const editorImeNotifyCursorChanged: (handle: number, cursorLine: number, cursorColumn: number) => ArrayBuffer | undefined;
+export const editorImeSetKeyboardScriptClass: (handle: number, scriptClass: number) => void;
+export const editorImeGetKeyboardScriptClass: (handle: number) => number;
+export const editorGetImeSyncSnapshot: (handle: number) => ArrayBuffer | undefined;
 
 // Read-only
 export const editorSetReadOnly: (handle: number, readOnly: boolean) => void;
