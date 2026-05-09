@@ -21,10 +21,9 @@ namespace SweetEditor {
 		private bool gutterSticky = true;
 		private bool gutterVisible = true;
 		private CurrentLineRenderMode currentLineRenderMode = CurrentLineRenderMode.BACKGROUND;
-			private AutoIndentMode autoIndentMode = AutoIndentMode.KEEP_INDENT;
+		private AutoIndentMode autoIndentMode = AutoIndentMode.KEEP_INDENT;
 		private bool backspaceUnindent = true;
 		private bool readOnly = false;
-		private bool compositionEnabled = true;
 		private int maxGutterIcons = 0;
 		private int decorationScrollRefreshMinIntervalMs = 16;
 		private float decorationOverscanViewportMultiplier = 1.5f;
@@ -176,16 +175,6 @@ namespace SweetEditor {
 
 		/// <summary>Gets read-only mode.</summary>
 		public bool IsReadOnly() => readOnly;
-
-		/// <summary>Enables or disables IME composition.</summary>
-		public void SetCompositionEnabled(bool enabled) {
-			compositionEnabled = enabled;
-			editor.EditorCoreInternal.SetCompositionEnabled(enabled);
-			editor.Flush();
-		}
-
-		/// <summary>Gets whether IME composition is enabled.</summary>
-		public bool IsCompositionEnabled() => compositionEnabled;
 
 		/// <summary>Sets max gutter icons.</summary>
 		public void SetMaxGutterIcons(int count) {

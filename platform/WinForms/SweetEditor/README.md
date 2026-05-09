@@ -82,7 +82,6 @@ All settings are available via `editor.Settings` and take effect immediately.
 | `SetAutoIndentMode(AutoIndentMode)` | `NONE` / `KEEP_INDENT` |
 | `SetBackspaceUnindent(bool)` | Smart backspace unindent |
 | `SetReadOnly(bool)` | Read-only mode |
-| `SetCompositionEnabled(bool)` | IME composition |
 | `SetMaxGutterIcons(int)` | Max gutter icon columns |
 
 ## Theme and Styles

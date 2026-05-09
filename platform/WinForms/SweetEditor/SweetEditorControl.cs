@@ -84,26 +84,26 @@ namespace SweetEditor {
 	/// All colors are in ARGB format.
 	/// Apply a theme via <see cref="SweetEditorControl.ApplyTheme(EditorTheme)"/>.
 	/// </summary>
-		public class EditorTheme {
-			public const int STYLE_KEYWORD = 1;
-			public const int STYLE_STRING = 2;
-			public const int STYLE_COMMENT = 3;
-			public const int STYLE_NUMBER = 4;
-			public const int STYLE_BUILTIN = 5;
-			public const int STYLE_TYPE = 6;
-			public const int STYLE_CLASS = 7;
-			public const int STYLE_FUNCTION = 8;
-			public const int STYLE_VARIABLE = 9;
-			public const int STYLE_PUNCTUATION = 10;
-			public const int STYLE_ANNOTATION = 11;
-			public const int STYLE_PREPROCESSOR = 12;
+	public class EditorTheme {
+		public const int STYLE_KEYWORD = 1;
+		public const int STYLE_STRING = 2;
+		public const int STYLE_COMMENT = 3;
+		public const int STYLE_NUMBER = 4;
+		public const int STYLE_BUILTIN = 5;
+		public const int STYLE_TYPE = 6;
+		public const int STYLE_CLASS = 7;
+		public const int STYLE_FUNCTION = 8;
+		public const int STYLE_VARIABLE = 9;
+		public const int STYLE_PUNCTUATION = 10;
+		public const int STYLE_ANNOTATION = 11;
+		public const int STYLE_PREPROCESSOR = 12;
 		/// <summary>
 		/// Base style ID reserved for application-defined/custom text styles.
 		/// Built-in styles in this library currently use low IDs (1..12); to avoid conflicts
 		/// with current/future built-in IDs and keep style IDs consistent across platform bindings,
 		/// allocate custom style IDs starting from <see cref="STYLE_USER_BASE"/> and above.
 		/// </summary>
-			public const int STYLE_USER_BASE = 100;
+		public const int STYLE_USER_BASE = 100;
 
 		/// <summary>Editor background color (ARGB).</summary>
 		public Color BackgroundColor { get; set; }
@@ -117,13 +117,13 @@ namespace SweetEditor {
 		public Color LineNumberColor { get; set; }
 		/// <summary>Current line number text color (ARGB).</summary>
 		public Color CurrentLineNumberColor { get; set; }
-			/// <summary>Current line highlight background color (ARGB, typically semi-transparent).</summary>
-			public Color CurrentLineColor { get; set; }
+		/// <summary>Current line highlight background color (ARGB, typically semi-transparent).</summary>
+		public Color CurrentLineColor { get; set; }
 
-			/// <summary>Code structure line color (indent/bracket/flow guides, ARGB).</summary>
-			public Color GuideColor { get; set; }
-			/// <summary>Separator line color (SeparatorGuide, ARGB).</summary>
-			public Color SeparatorLineColor { get; set; }
+		/// <summary>Code structure line color (indent/bracket/flow guides, ARGB).</summary>
+		public Color GuideColor { get; set; }
+		/// <summary>Separator line color (SeparatorGuide, ARGB).</summary>
+		public Color SeparatorLineColor { get; set; }
 
 		/// <summary>Line number area split line color (ARGB).</summary>
 		public Color SplitLineColor { get; set; }
@@ -134,8 +134,8 @@ namespace SweetEditor {
 		/// <summary>Scrollbar thumb active (dragging) color (ARGB).</summary>
 		public Color ScrollbarThumbActiveColor { get; set; } = Color.FromArgb(unchecked((int)0xFFBBBBBB));
 
-			/// <summary>IME composition underline color (ARGB).</summary>
-			public Color CompositionUnderlineColor { get; set; }
+		/// <summary>IME composition underline color (ARGB).</summary>
+		public Color CompositionUnderlineColor { get; set; }
 
 		/// <summary>CodeLens text color (ARGB); Color.Empty falls back to a compatible theme color.</summary>
 		public Color CodeLensColor { get; set; } = Color.Empty;
@@ -197,7 +197,7 @@ namespace SweetEditor {
 		/// Key: style ID. Value: text style definition.
 		/// Applied to the C++ core when a theme is applied.
 		/// </summary>
-			public Dictionary<int, TextStyle> TextStyles { get; set; } = new();
+		public Dictionary<int, TextStyle> TextStyles { get; set; } = new();
 
 		/// <summary>
 		/// Defines a text style in the theme.
@@ -205,10 +205,10 @@ namespace SweetEditor {
 		/// <param name="styleId">Style ID.</param>
 		/// <param name="style">Text style definition.</param>
 		/// <returns>This theme instance (for chaining).</returns>
-			public EditorTheme DefineTextStyle(int styleId, TextStyle style) {
-				TextStyles[styleId] = style;
-				return this;
-			}
+		public EditorTheme DefineTextStyle(int styleId, TextStyle style) {
+			TextStyles[styleId] = style;
+			return this;
+		}
 
 		/// <summary>
 		/// Creates refined dark theme preset.
@@ -221,13 +221,13 @@ namespace SweetEditor {
 			LineNumberColor = Color.FromArgb(unchecked((int)0xFF5E6778)),
 			CurrentLineNumberColor = Color.FromArgb(unchecked((int)0xFF9CB3D6)),
 			CurrentLineColor = Color.FromArgb(unchecked((int)0x163A4A66)),
-				GuideColor = Color.FromArgb(unchecked((int)0x2E56617A)),
-				SeparatorLineColor = Color.FromArgb(unchecked((int)0xFF4A8F7A)),
+			GuideColor = Color.FromArgb(unchecked((int)0x2E56617A)),
+			SeparatorLineColor = Color.FromArgb(unchecked((int)0xFF4A8F7A)),
 			SplitLineColor = Color.FromArgb(unchecked((int)0x3356617A)),
 			ScrollbarTrackColor = Color.FromArgb(unchecked((int)0x2AFFFFFF)),
 			ScrollbarThumbColor = Color.FromArgb(unchecked((int)0x9A7282A0)),
-				ScrollbarThumbActiveColor = Color.FromArgb(unchecked((int)0xFFAABEDD)),
-				CompositionUnderlineColor = Color.FromArgb(unchecked((int)0xFF7AA2F7)),
+			ScrollbarThumbActiveColor = Color.FromArgb(unchecked((int)0xFFAABEDD)),
+			CompositionUnderlineColor = Color.FromArgb(unchecked((int)0xFF7AA2F7)),
 			CodeLensColor = Color.FromArgb(unchecked((int)0x8CD4D4D4)),
 			CodeLensActiveColor = Color.FromArgb(unchecked((int)0xFFAEAFAD)),
 			LinkColor = Color.FromArgb(unchecked((int)0xFF4C9DFF)),
@@ -278,13 +278,13 @@ namespace SweetEditor {
 			LineNumberColor = Color.FromArgb(unchecked((int)0xFF8A94A6)),
 			CurrentLineNumberColor = Color.FromArgb(unchecked((int)0xFF3A5FA0)),
 			CurrentLineColor = Color.FromArgb(unchecked((int)0x120D3B66)),
-				GuideColor = Color.FromArgb(unchecked((int)0x2229426B)),
-				SeparatorLineColor = Color.FromArgb(unchecked((int)0xFF2F855A)),
+			GuideColor = Color.FromArgb(unchecked((int)0x2229426B)),
+			SeparatorLineColor = Color.FromArgb(unchecked((int)0xFF2F855A)),
 			SplitLineColor = Color.FromArgb(unchecked((int)0x1F29426B)),
 			ScrollbarTrackColor = Color.FromArgb(unchecked((int)0x1F2A3B55)),
 			ScrollbarThumbColor = Color.FromArgb(unchecked((int)0x80446C9C)),
-				ScrollbarThumbActiveColor = Color.FromArgb(unchecked((int)0xEE6A9AD0)),
-				CompositionUnderlineColor = Color.FromArgb(unchecked((int)0xFF2563EB)),
+			ScrollbarThumbActiveColor = Color.FromArgb(unchecked((int)0xEE6A9AD0)),
+			CompositionUnderlineColor = Color.FromArgb(unchecked((int)0xFF2563EB)),
 			CodeLensColor = Color.FromArgb(unchecked((int)0x8C000000)),
 			CodeLensActiveColor = Color.FromArgb(unchecked((int)0xFF237893)),
 			LinkColor = Color.FromArgb(unchecked((int)0xFF005FB8)),
@@ -628,7 +628,7 @@ namespace SweetEditor {
 		[DllImport("imm32.dll")]
 		private static extern bool ImmReleaseContext(IntPtr hWnd, IntPtr hIMC);
 		[DllImport("imm32.dll", CharSet = CharSet.Unicode)]
-		private static extern int ImmGetCompositionString(IntPtr hIMC, int dwIndex, byte[] lpBuf, int dwBufLen);
+		private static extern int ImmGetCompositionString(IntPtr hIMC, int dwIndex, byte[]? lpBuf, int dwBufLen);
 
 		private EditorCore editorCore;
 		private EditorRenderModel? renderModel;
@@ -967,8 +967,8 @@ namespace SweetEditor {
 		/// <summary>Gets document.</summary>
 		public Document? GetDocument() => IsReleased ? null : editorCore.GetDocument();
 
-			/// <summary>Gets word range at cursor.</summary>
-			public TextRange GetWordRangeAtCursor() => IsReleased ? default : editorCore.GetWordRangeAtCursor();
+		/// <summary>Gets word range at cursor.</summary>
+		public TextRange GetWordRangeAtCursor() => IsReleased ? default : editorCore.GetWordRangeAtCursor();
 
 		/// <summary>Gets word at cursor.</summary>
 		public string GetWordAtCursor() => IsReleased ? string.Empty : editorCore.GetWordAtCursor();
@@ -1071,15 +1071,15 @@ namespace SweetEditor {
 			SetLineSpans(line, SpanLayer.SYNTAX, spans);
 		}
 
-			/// <summary>Sets batch line spans.</summary>
-			public void SetBatchLineSpans(SpanLayer layer, Dictionary<int, IList<StyleSpan>> spansByLine) {
-				editorCore.SetBatchLineSpans((int)layer, spansByLine);
-			}
+		/// <summary>Sets batch line spans.</summary>
+		public void SetBatchLineSpans(SpanLayer layer, Dictionary<int, IList<StyleSpan>> spansByLine) {
+			editorCore.SetBatchLineSpans((int)layer, spansByLine);
+		}
 
-			/// <summary>Clears line spans for the specified layer.</summary>
-			public void ClearLineSpans(int line, SpanLayer layer) {
-				editorCore.ClearLineSpans(line, (int)layer);
-			}
+		/// <summary>Clears line spans for the specified layer.</summary>
+		public void ClearLineSpans(int line, SpanLayer layer) {
+			editorCore.ClearLineSpans(line, (int)layer);
+		}
 
 		/// <summary>Sets line inlay hints.</summary>
 		public void SetLineInlayHints(int line, IList<InlayHint> hints) {
@@ -1351,7 +1351,6 @@ namespace SweetEditor {
 
 			settings = new EditorSettings(this);
 			editorCore.SetAutoIndentMode((int)settings.GetAutoIndentMode());
-			editorCore.SetCompositionEnabled(settings.IsCompositionEnabled());
 			settings.SetContentStartPadding(DpToPx(DefaultContentStartPaddingDp));
 		}
 
@@ -1392,17 +1391,12 @@ namespace SweetEditor {
 
 		protected override void OnKeyDown(KeyEventArgs e) {
 			using var perf = StartInputPerf($"OnKeyDown({e.KeyCode})");
-			// Ignore normal key handling while IME composition is active (except Escape).
-			// IME (ProcessKey), composing .
-			if (editorCore.IsComposing() && e.KeyCode != Keys.Escape) {
-				if (e.KeyCode != Keys.ProcessKey && !e.Control && !e.Alt) {
-					editorCore.CompositionCancel();
-					FireTextChanged(TextChangeAction.Composition);
-					Flush();
-				} else {
-					base.OnKeyDown(e);
+			if (editorCore.IsComposing()) {
+				if (TryHandleComposingKeyDown(e)) {
 					return;
 				}
+				base.OnKeyDown(e);
+				return;
 			}
 
 			// completion
@@ -1489,53 +1483,45 @@ namespace SweetEditor {
 			switch (m.Msg) {
 				case WM_IME_STARTCOMPOSITION: {
 					using var perf = StartInputPerf("WndProc(IME_START)");
-					// START composing, START .
 					base.WndProc(ref m);
 					return;
 				}
 				case WM_IME_COMPOSITION: {
 					using var perf = StartInputPerf("WndProc(IME_COMPOSITION)");
 					int imeFlags = (int)m.LParam;
-					bool compositionEnabled = settings?.IsCompositionEnabled() ?? true;
 					IntPtr hIMC = ImmGetContext(this.Handle);
 					if (hIMC != IntPtr.Zero) {
-						// Final committed IME text.
-						if ((imeFlags & GCS_RESULTSTR) != 0) {
-							string resultStr = GetImmCompositionString(hIMC, GCS_RESULTSTR);
-							if (compositionEnabled && !string.IsNullOrEmpty(resultStr)) {
-								var editResult = editorCore.CompositionEnd(resultStr);
-								FireTextChanged(TextChangeAction.Composition, editResult);
-								Flush();
-							} else if (compositionEnabled && editorCore.IsComposing()) {
-								var editResult = editorCore.CompositionEnd("");
-								FireTextChanged(TextChangeAction.Composition, editResult);
-								Flush();
-							} else if (!string.IsNullOrEmpty(resultStr)) {
-								var editResult = editorCore.InsertText(resultStr);
-								FireTextChanged(TextChangeAction.Insert, editResult);
+						try {
+							bool dispatched = false;
+							if ((imeFlags & GCS_RESULTSTR) != 0) {
+								string resultStr = GetImmCompositionString(hIMC, GCS_RESULTSTR);
+								if (!string.IsNullOrEmpty(resultStr)) {
+									DispatchImeActionResult(editorCore.CommitImeText(resultStr, ImeScriptClass.UNKNOWN));
+									dispatched = true;
+								} else if ((imeFlags & GCS_COMPSTR) == 0 && HasImeComposingSession()) {
+									DispatchImeActionResult(editorCore.FinishImePreedit());
+									dispatched = true;
+								}
+							}
+							if ((imeFlags & GCS_COMPSTR) != 0) {
+								string compStr = GetImmCompositionString(hIMC, GCS_COMPSTR);
+								DispatchImeActionResult(editorCore.UpdateImePreedit(compStr, ImeScriptClass.UNKNOWN));
+								dispatched = true;
+							}
+							if (dispatched) {
 								Flush();
 							}
+						} finally {
+							ImmReleaseContext(this.Handle, hIMC);
 						}
-						// IME composition text update.
-						else if (compositionEnabled && (imeFlags & GCS_COMPSTR) != 0) {
-							if (!editorCore.IsComposing()) {
-								editorCore.CompositionStart();
-							}
-							string compStr = GetImmCompositionString(hIMC, GCS_COMPSTR);
-							editorCore.CompositionUpdate(compStr ?? "");
-							Flush();
-						}
-						ImmReleaseContext(this.Handle, hIMC);
 					}
 					// Do not call base.WndProc here to avoid default IME side effects.
 					return;
 				}
 				case WM_IME_ENDCOMPOSITION: {
 					using var perf = StartInputPerf("WndProc(IME_END)");
-					// In some cases this arrives after GCS_RESULTSTR.
-					if ((settings?.IsCompositionEnabled() ?? true) && editorCore.IsComposing()) {
-						var editResult = editorCore.CompositionEnd("");
-						FireTextChanged(TextChangeAction.Composition, editResult);
+					if (HasImeComposingSession()) {
+						DispatchImeActionResult(editorCore.FinishImePreedit());
 						Flush();
 					}
 					base.WndProc(ref m);
@@ -1551,6 +1537,32 @@ namespace SweetEditor {
 			byte[] buffer = new byte[byteLen];
 			ImmGetCompositionString(hIMC, dwIndex, buffer, byteLen);
 			return System.Text.Encoding.Unicode.GetString(buffer, 0, byteLen);
+		}
+
+		private bool HasImeComposingSession() {
+			return editorCore.IsComposing() || editorCore.GetImeSyncSnapshot().HasComposingSession;
+		}
+
+		private bool TryHandleComposingKeyDown(KeyEventArgs e) {
+			ImeActionResult? result = null;
+			switch (e.KeyCode) {
+				case Keys.Back:
+					result = editorCore.DeleteImeBackward(1, ImeTextUnit.UTF16_CODE_UNIT);
+					break;
+				case Keys.Delete:
+					result = editorCore.DeleteImeForward(1, ImeTextUnit.UTF16_CODE_UNIT);
+					break;
+				case Keys.Escape:
+					result = editorCore.CancelImePreedit();
+					break;
+				default:
+					return false;
+			}
+			e.Handled = true;
+			e.SuppressKeyPress = true;
+			DispatchImeActionResult(result);
+			Flush();
+			return true;
 		}
 
 		private static ushort MapKeysToKeyCode(Keys key) {
@@ -1905,6 +1917,22 @@ namespace SweetEditor {
 			}
 			if (result.SelectionChanged) {
 				SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(false, null, editorCore.GetCursorPosition()));
+			}
+		}
+
+		private void DispatchImeActionResult(ImeActionResult result) {
+			if (IsReleased) return;
+			if (result.ContentChanged) {
+				FireTextChanged(TextChangeAction.Composition, result.EditResult);
+			}
+			if (result.CursorChanged) {
+				CursorChanged?.Invoke(this, new CursorChangedEventArgs(result.Sync.Cursor));
+			}
+			if (result.SelectionChanged) {
+				SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(
+					result.Sync.Selection.HasValue,
+					result.Sync.Selection,
+					result.Sync.Cursor));
 			}
 		}
 

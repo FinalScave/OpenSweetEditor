@@ -150,9 +150,9 @@ namespace SweetEditor {
 		DIRECT_SCROLL = 13
 	}
 
-		/// <summary>
-		/// Keyboard key code constants matching the C++ KeyCode enum.
-		/// </summary>
+	/// <summary>
+	/// Keyboard key code constants matching the C++ KeyCode enum.
+	/// </summary>
 	public enum KeyCode : ushort {
 		NONE = 0,
 		BACKSPACE = 8,
@@ -312,15 +312,15 @@ namespace SweetEditor {
 	/// <summary>
 	/// Gesture input event.
 	/// </summary>
-		public struct GestureEvent {
-			/// <summary>Event type.</summary>
-			public EventType Type { get; set; }
-			/// <summary>Touch point list.</summary>
-			public List<PointF> Points { get; set; }
-			/// <summary>Modifier key state.</summary>
-			public KeyModifier Modifiers { get; set; }
-			/// <summary>Mouse wheel horizontal delta.</summary>
-			public float WheelDeltaX { get; set; }
+	public struct GestureEvent {
+		/// <summary>Event type.</summary>
+		public EventType Type { get; set; }
+		/// <summary>Touch point list.</summary>
+		public List<PointF> Points { get; set; }
+		/// <summary>Modifier key state.</summary>
+		public KeyModifier Modifiers { get; set; }
+		/// <summary>Mouse wheel horizontal delta.</summary>
+		public float WheelDeltaX { get; set; }
 		/// <summary>Mouse wheel vertical delta.</summary>
 		public float WheelDeltaY { get; set; }
 		/// <summary>Direct scale factor.</summary>
@@ -725,17 +725,17 @@ namespace SweetEditor {
 				   new TextPosition { Line = endLine, Column = endColumn }) { }
 	}
 
-		/// <summary>Immutable value object describing a bracket branch line.</summary>
-		public sealed class BracketGuide {
-			public TextPosition Parent { get; }
-			public TextPosition End { get; }
-			public IReadOnlyList<TextPosition> Children { get; }
-			public BracketGuide(TextPosition parent, TextPosition end, IReadOnlyList<TextPosition> children) {
-				Parent = parent;
-				End = end;
-				Children = children ?? Array.Empty<TextPosition>();
-			}
+	/// <summary>Immutable value object describing a bracket branch line.</summary>
+	public sealed class BracketGuide {
+		public TextPosition Parent { get; }
+		public TextPosition End { get; }
+		public IReadOnlyList<TextPosition> Children { get; }
+		public BracketGuide(TextPosition parent, TextPosition end, IReadOnlyList<TextPosition> children) {
+			Parent = parent;
+			End = end;
+			Children = children ?? Array.Empty<TextPosition>();
 		}
+	}
 
 	/// <summary>Immutable value object describing a control-flow back-edge arrow.</summary>
 	public sealed class FlowGuide {
@@ -747,23 +747,23 @@ namespace SweetEditor {
 				   new TextPosition { Line = endLine, Column = endColumn }) { }
 	}
 
-		/// <summary>Immutable value object describing a horizontal separator line.</summary>
-		public sealed class SeparatorGuide {
-			/// <summary>Line number (0-based)</summary>
-			public int Line { get; }
-			/// <summary>Separator style.</summary>
-			public SeparatorStyle Style { get; }
-			/// <summary>Symbol count</summary>
-			public int Count { get; }
-			/// <summary>Comment text end column</summary>
-			public int TextEndColumn { get; }
-			public SeparatorGuide(int line, SeparatorStyle style, int count, int textEndColumn) {
-				Line = line;
-				Style = style;
-				Count = count;
-				TextEndColumn = textEndColumn;
-			}
+	/// <summary>Immutable value object describing a horizontal separator line.</summary>
+	public sealed class SeparatorGuide {
+		/// <summary>Line number (0-based)</summary>
+		public int Line { get; }
+		/// <summary>Separator style.</summary>
+		public SeparatorStyle Style { get; }
+		/// <summary>Symbol count</summary>
+		public int Count { get; }
+		/// <summary>Comment text end column</summary>
+		public int TextEndColumn { get; }
+		public SeparatorGuide(int line, SeparatorStyle style, int count, int textEndColumn) {
+			Line = line;
+			Style = style;
+			Count = count;
+			TextEndColumn = textEndColumn;
 		}
+	}
 
 	#endregion
 
@@ -1129,6 +1129,90 @@ namespace SweetEditor {
 	}
 
 	/// <summary>
+	/// Text unit used by IME deletion requests.
+	/// </summary>
+	public enum ImeTextUnit {
+		UTF16_CODE_UNIT = 0,
+		CODE_POINT = 1
+	}
+
+	/// <summary>
+	/// Script class reported by a platform IME.
+	/// </summary>
+	public enum ImeScriptClass {
+		UNKNOWN = 0,
+		LATIN = 1,
+		CJK = 2,
+		KANA = 3,
+		HANGUL = 4
+	}
+
+	/// <summary>
+	/// Storage used for the active IME preedit.
+	/// </summary>
+	public enum ImePreeditStorage {
+		NONE = 0,
+		VISIBLE_DOCUMENT_COMPOSITION = 1,
+		SHADOW_ONLY = 2
+	}
+
+	/// <summary>
+	/// Surrounding context policy exposed to platform IME APIs.
+	/// </summary>
+	public enum ImeContextPolicy {
+		NONE = 0,
+		LIMITED_FOR_CANDIDATES = 1
+	}
+
+	/// <summary>
+	/// Snapshot used by platform layers to synchronize IME selection and marked ranges.
+	/// </summary>
+	public sealed class ImeSyncSnapshot {
+		[JsonPropertyName("cursor")]
+		public TextPosition Cursor { get; set; }
+		[JsonPropertyName("selection")]
+		public TextRange? Selection { get; set; }
+		[JsonPropertyName("has_composing_session")]
+		public bool HasComposingSession { get; set; }
+		[JsonPropertyName("visible_composition_range")]
+		public TextRange? VisibleCompositionRange { get; set; }
+		[JsonPropertyName("platform_marked_range")]
+		public TextRange? PlatformMarkedRange { get; set; }
+		[JsonPropertyName("platform_text_window_text")]
+		public string PlatformTextWindowText { get; set; } = string.Empty;
+		[JsonPropertyName("platform_text_window_start_offset")]
+		public int PlatformTextWindowStartOffset { get; set; }
+		[JsonPropertyName("platform_text_window_selection_offsets")]
+		public IntRange PlatformTextWindowSelectionOffsets { get; set; } = new IntRange(0, 0);
+		[JsonPropertyName("platform_text_window_composing_offsets")]
+		public IntRange PlatformTextWindowComposingOffsets { get; set; } = new IntRange(-1, -1);
+		[JsonPropertyName("preedit_storage")]
+		public ImePreeditStorage PreeditStorage { get; set; } = ImePreeditStorage.NONE;
+		[JsonPropertyName("context_policy")]
+		public ImeContextPolicy ContextPolicy { get; set; } = ImeContextPolicy.NONE;
+		[JsonPropertyName("clear_platform_preedit")]
+		public bool ClearPlatformPreedit { get; set; }
+	}
+
+	/// <summary>
+	/// Result of a semantic IME action handled by the core.
+	/// </summary>
+	public sealed class ImeActionResult {
+		[JsonPropertyName("handled")]
+		public bool Handled { get; set; }
+		[JsonPropertyName("content_changed")]
+		public bool ContentChanged { get; set; }
+		[JsonPropertyName("cursor_changed")]
+		public bool CursorChanged { get; set; }
+		[JsonPropertyName("selection_changed")]
+		public bool SelectionChanged { get; set; }
+		[JsonPropertyName("edit_result")]
+		public TextEditResult EditResult { get; set; } = TextEditResult.Empty;
+		[JsonPropertyName("sync")]
+		public ImeSyncSnapshot Sync { get; set; } = new ImeSyncSnapshot();
+	}
+
+	/// <summary>
 	/// Text change event args.
 	/// </summary>
 	public class TextChangedEventArgs : EventArgs {
@@ -1184,138 +1268,138 @@ namespace SweetEditor {
 	/// <summary>
 	/// Document loaded event args.
 	/// </summary>
-		public class DocumentLoadedEventArgs : EventArgs { }
+	public class DocumentLoadedEventArgs : EventArgs { }
 
-		/// <summary>
-		/// Long-press event args.
-		/// </summary>
-		public class LongPressEventArgs : EventArgs {
-			public TextPosition CursorPosition { get; }
-			public PointF LocationInEditor { get; }
-			public LongPressEventArgs(TextPosition cursor, PointF point) { CursorPosition = cursor; LocationInEditor = point; }
-		}
+	/// <summary>
+	/// Long-press event args.
+	/// </summary>
+	public class LongPressEventArgs : EventArgs {
+		public TextPosition CursorPosition { get; }
+		public PointF LocationInEditor { get; }
+		public LongPressEventArgs(TextPosition cursor, PointF point) { CursorPosition = cursor; LocationInEditor = point; }
+	}
 
-		/// <summary>
-		/// Double-click selection event args.
-		/// </summary>
-		public class DoubleTapEventArgs : EventArgs {
-			public TextPosition CursorPosition { get; }
-			public bool HasSelection { get; }
-			public TextRange? Selection { get; }
-			public PointF LocationInEditor { get; }
-			public DoubleTapEventArgs(TextPosition cursor, bool has, TextRange? sel, PointF point) {
-				CursorPosition = cursor;
-				HasSelection = has;
-				Selection = sel;
-				LocationInEditor = point;
-			}
+	/// <summary>
+	/// Double-click selection event args.
+	/// </summary>
+	public class DoubleTapEventArgs : EventArgs {
+		public TextPosition CursorPosition { get; }
+		public bool HasSelection { get; }
+		public TextRange? Selection { get; }
+		public PointF LocationInEditor { get; }
+		public DoubleTapEventArgs(TextPosition cursor, bool has, TextRange? sel, PointF point) {
+			CursorPosition = cursor;
+			HasSelection = has;
+			Selection = sel;
+			LocationInEditor = point;
 		}
+	}
 
-		/// <summary>
-		/// Context-menu event args.
-		/// </summary>
-		public class ContextMenuEventArgs : EventArgs {
-			public TextPosition CursorPosition { get; }
-			public PointF LocationInEditor { get; }
-			public ContextMenuEventArgs(TextPosition cursor, PointF point) { CursorPosition = cursor; LocationInEditor = point; }
-		}
+	/// <summary>
+	/// Context-menu event args.
+	/// </summary>
+	public class ContextMenuEventArgs : EventArgs {
+		public TextPosition CursorPosition { get; }
+		public PointF LocationInEditor { get; }
+		public ContextMenuEventArgs(TextPosition cursor, PointF point) { CursorPosition = cursor; LocationInEditor = point; }
+	}
 
-		/// <summary>
-		/// InlayHint click event args.
-		/// </summary>
-		public class InlayHintClickEventArgs : EventArgs {
-			/// <summary>Hit logical line (0-based)</summary>
-			public int Line { get; }
-			/// <summary>Hit column (0-based)</summary>
-			public int Column { get; }
-			/// <summary>Inlay type.</summary>
-			public InlayType Type { get; }
-			/// <summary>Type-specific integer payload. Icon uses icon id, color uses ARGB, text uses 0.</summary>
-			public int IntValue { get; }
-			/// <summary>Pointer location in editor coordinates.</summary>
-			public PointF LocationInEditor { get; }
-			public InlayHintClickEventArgs(int line, int column, InlayType type, int intValue, PointF point) {
-				Line = line;
-				Column = column;
-				Type = type;
-				IntValue = intValue;
-				LocationInEditor = point;
-			}
+	/// <summary>
+	/// InlayHint click event args.
+	/// </summary>
+	public class InlayHintClickEventArgs : EventArgs {
+		/// <summary>Hit logical line (0-based)</summary>
+		public int Line { get; }
+		/// <summary>Hit column (0-based)</summary>
+		public int Column { get; }
+		/// <summary>Inlay type.</summary>
+		public InlayType Type { get; }
+		/// <summary>Type-specific integer payload. Icon uses icon id, color uses ARGB, text uses 0.</summary>
+		public int IntValue { get; }
+		/// <summary>Pointer location in editor coordinates.</summary>
+		public PointF LocationInEditor { get; }
+		public InlayHintClickEventArgs(int line, int column, InlayType type, int intValue, PointF point) {
+			Line = line;
+			Column = column;
+			Type = type;
+			IntValue = intValue;
+			LocationInEditor = point;
 		}
+	}
 
-		/// <summary>
-		/// GutterIcon click event args.
-		/// </summary>
-		public class GutterIconClickEventArgs : EventArgs {
-			/// <summary>Hit logical line (0-based)</summary>
-			public int Line { get; }
-			/// <summary>Icon ID</summary>
-			public int IconId { get; }
-			/// <summary>Pointer location in editor coordinates.</summary>
-			public PointF LocationInEditor { get; }
-			public GutterIconClickEventArgs(int line, int iconId, PointF point) {
-				Line = line;
-				IconId = iconId;
-				LocationInEditor = point;
-			}
+	/// <summary>
+	/// GutterIcon click event args.
+	/// </summary>
+	public class GutterIconClickEventArgs : EventArgs {
+		/// <summary>Hit logical line (0-based)</summary>
+		public int Line { get; }
+		/// <summary>Icon ID</summary>
+		public int IconId { get; }
+		/// <summary>Pointer location in editor coordinates.</summary>
+		public PointF LocationInEditor { get; }
+		public GutterIconClickEventArgs(int line, int iconId, PointF point) {
+			Line = line;
+			IconId = iconId;
+			LocationInEditor = point;
 		}
+	}
 
-		/// <summary>
-		/// Fold region click event args (toggleFold is already executed by the C++ layer).
-		/// </summary>
-		public class FoldToggleEventArgs : EventArgs {
-			/// <summary>Line index of the fold region (0-based).</summary>
-			public int Line { get; }
-			/// <summary>Whether the click hit the gutter fold arrow (false means the fold placeholder was clicked).</summary>
-			public bool IsGutter { get; }
-			/// <summary>Pointer location in editor coordinates.</summary>
-			public PointF LocationInEditor { get; }
-			public FoldToggleEventArgs(int line, bool isGutter, PointF point) {
-				Line = line;
-				IsGutter = isGutter;
-				LocationInEditor = point;
-			}
+	/// <summary>
+	/// Fold region click event args (toggleFold is already executed by the C++ layer).
+	/// </summary>
+	public class FoldToggleEventArgs : EventArgs {
+		/// <summary>Line index of the fold region (0-based).</summary>
+		public int Line { get; }
+		/// <summary>Whether the click hit the gutter fold arrow (false means the fold placeholder was clicked).</summary>
+		public bool IsGutter { get; }
+		/// <summary>Pointer location in editor coordinates.</summary>
+		public PointF LocationInEditor { get; }
+		public FoldToggleEventArgs(int line, bool isGutter, PointF point) {
+			Line = line;
+			IsGutter = isGutter;
+			LocationInEditor = point;
 		}
+	}
 
-		/// <summary>
-		/// CodeLens click event args.
-		/// </summary>
-		public class CodeLensClickEventArgs : EventArgs {
-			/// <summary>Hit logical line (0-based)</summary>
-			public int Line { get; }
-			/// <summary>Column anchor of the clicked CodeLens (0-based, UTF-16 offset)</summary>
-			public int Column { get; }
-			/// <summary>Command ID (from CodeLensItem)</summary>
-			public int CommandId { get; }
-			/// <summary>Pointer location in editor coordinates.</summary>
-			public PointF LocationInEditor { get; }
-			public CodeLensClickEventArgs(int line, int column, int commandId, PointF point) {
-				Line = line;
-				Column = column;
-				CommandId = commandId;
-				LocationInEditor = point;
-			}
+	/// <summary>
+	/// CodeLens click event args.
+	/// </summary>
+	public class CodeLensClickEventArgs : EventArgs {
+		/// <summary>Hit logical line (0-based)</summary>
+		public int Line { get; }
+		/// <summary>Column anchor of the clicked CodeLens (0-based, UTF-16 offset)</summary>
+		public int Column { get; }
+		/// <summary>Command ID (from CodeLensItem)</summary>
+		public int CommandId { get; }
+		/// <summary>Pointer location in editor coordinates.</summary>
+		public PointF LocationInEditor { get; }
+		public CodeLensClickEventArgs(int line, int column, int commandId, PointF point) {
+			Line = line;
+			Column = column;
+			CommandId = commandId;
+			LocationInEditor = point;
 		}
+	}
 
-		/// <summary>
-		/// Link click event args.
-		/// </summary>
-		public class LinkClickEventArgs : EventArgs {
-			/// <summary>Hit logical line (0-based)</summary>
-			public int Line { get; }
-			/// <summary>Column anchor of the clicked link (0-based, UTF-16 offset)</summary>
-			public int Column { get; }
-			/// <summary>Link target string resolved by the native core.</summary>
-			public string Target { get; }
-			/// <summary>Pointer location in editor coordinates.</summary>
-			public PointF LocationInEditor { get; }
-			public LinkClickEventArgs(int line, int column, string target, PointF point) {
-				Line = line;
-				Column = column;
-				Target = target ?? string.Empty;
-				LocationInEditor = point;
-			}
+	/// <summary>
+	/// Link click event args.
+	/// </summary>
+	public class LinkClickEventArgs : EventArgs {
+		/// <summary>Hit logical line (0-based)</summary>
+		public int Line { get; }
+		/// <summary>Column anchor of the clicked link (0-based, UTF-16 offset)</summary>
+		public int Column { get; }
+		/// <summary>Link target string resolved by the native core.</summary>
+		public string Target { get; }
+		/// <summary>Pointer location in editor coordinates.</summary>
+		public PointF LocationInEditor { get; }
+		public LinkClickEventArgs(int line, int column, string target, PointF point) {
+			Line = line;
+			Column = column;
+			Target = target ?? string.Empty;
+			LocationInEditor = point;
 		}
+	}
 
 	#endregion
 
@@ -1837,26 +1921,56 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_move_cursor_to_line_end", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void MoveCursorToLineEnd(IntPtr handle, int extendSelection);
 
-		[DllImport(LibraryName, EntryPoint = "editor_composition_start", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void CompositionStart(IntPtr handle);
-
-		[DllImport(LibraryName, EntryPoint = "editor_composition_update", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void CompositionUpdate(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string text);
-
-		[DllImport(LibraryName, EntryPoint = "editor_composition_end", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr CompositionEnd(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, out UIntPtr outSize);
-
-		[DllImport(LibraryName, EntryPoint = "editor_composition_cancel", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void CompositionCancel(IntPtr handle);
-
 		[DllImport(LibraryName, EntryPoint = "editor_is_composing", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern int IsComposing(IntPtr handle);
 
-		[DllImport(LibraryName, EntryPoint = "editor_set_composition_enabled", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetCompositionEnabled(IntPtr handle, int enabled);
+		[DllImport(LibraryName, EntryPoint = "editor_get_composing_range", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern void GetComposingRange(IntPtr handle, ref int outStartLine, ref int outStartColumn, ref int outEndLine, ref int outEndColumn);
 
-		[DllImport(LibraryName, EntryPoint = "editor_is_composition_enabled", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern int IsCompositionEnabled(IntPtr handle);
+		[DllImport(LibraryName, EntryPoint = "editor_get_composing_session_range", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern void GetComposingSessionRange(IntPtr handle, ref int outStartLine, ref int outStartColumn, ref int outEndLine, ref int outEndColumn);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_update_preedit", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeUpdatePreedit(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int scriptHint, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_commit_text", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeCommitText(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int scriptHint, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_finish_preedit", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeFinishPreedit(IntPtr handle, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_cancel_preedit", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeCancelPreedit(IntPtr handle, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_mark_document_range", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeMarkDocumentRange(IntPtr handle, nuint startLine, nuint startColumn, nuint endLine, nuint endColumn, int scriptHint, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_replace_text", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeReplaceText(IntPtr handle, nuint startLine, nuint startColumn, nuint endLine, nuint endColumn, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int scriptHint, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_delete_backward", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeDeleteBackward(IntPtr handle, nuint beforeLength, int textUnit, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_delete_forward", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeDeleteForward(IntPtr handle, nuint afterLength, int textUnit, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_delete_surrounding", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeDeleteSurrounding(IntPtr handle, nuint beforeLength, nuint afterLength, int textUnit, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_notify_selection_changed", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeNotifySelectionChanged(IntPtr handle, nuint startLine, nuint startColumn, nuint endLine, nuint endColumn, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_notify_cursor_changed", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeNotifyCursorChanged(IntPtr handle, nuint cursorLine, nuint cursorColumn, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_set_keyboard_script_class", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern void ImeSetKeyboardScriptClass(IntPtr handle, int scriptClass);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_get_keyboard_script_class", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern int ImeGetKeyboardScriptClass(IntPtr handle);
+
+		[DllImport(LibraryName, EntryPoint = "editor_get_ime_sync_snapshot", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr GetImeSyncSnapshot(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_read_only", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void SetReadOnly(IntPtr handle, int readOnly);
@@ -1908,14 +2022,14 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_register_text_style", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void registerTextStyle(IntPtr handle, uint styleId, int color, int backgroundColor, int fontStyle);
 
-			[DllImport(LibraryName, EntryPoint = "editor_register_batch_text_styles", CallingConvention = CallingConvention.Cdecl)]
-			internal static extern void registerBatchTextStyles(IntPtr handle, byte[] data, nuint size);
+		[DllImport(LibraryName, EntryPoint = "editor_register_batch_text_styles", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern void registerBatchTextStyles(IntPtr handle, byte[] data, nuint size);
 
-			[DllImport(LibraryName, EntryPoint = "editor_set_line_spans", CallingConvention = CallingConvention.Cdecl)]
-			internal static extern void SetLineSpans(IntPtr handle, byte[] data, nuint size);
+		[DllImport(LibraryName, EntryPoint = "editor_set_line_spans", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern void SetLineSpans(IntPtr handle, byte[] data, nuint size);
 
-			[DllImport(LibraryName, EntryPoint = "editor_clear_line_spans", CallingConvention = CallingConvention.Cdecl)]
-			internal static extern void ClearLineSpans(IntPtr handle, nuint line, byte layer);
+		[DllImport(LibraryName, EntryPoint = "editor_clear_line_spans", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern void ClearLineSpans(IntPtr handle, nuint line, byte layer);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_line_inlay_hints", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void SetLineInlayHints(IntPtr handle, byte[] data, nuint size);
@@ -2631,51 +2745,152 @@ namespace SweetEditor {
 			NativeMethods.MoveCursorToLineEnd(nativeHandle, extendSelection ? 1 : 0);
 		}
 
-		/// <summary>Notifies the editor that IME composition has started.</summary>
-		public void CompositionStart() {
-			if (IsReleased) return;
-			NativeMethods.CompositionStart(nativeHandle);
-		}
-
-		/// <summary>Updates IME composition text.</summary>
-		/// <param name="text">Current composition text</param>
-		public void CompositionUpdate(string text) {
-			if (IsReleased || text == null) return;
-			NativeMethods.CompositionUpdate(nativeHandle, text);
-		}
-
-		/// <summary>Ends IME composition and commits the text.</summary>
-		/// <param name="committedText">Final committed text</param>
-		/// <returns>Edit result.</returns>
-		public TextEditResult CompositionEnd(string committedText) {
-			if (IsReleased || committedText == null) return TextEditResult.Empty;
-			IntPtr payloadPtr = NativeMethods.CompositionEnd(nativeHandle, committedText, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseTextEditResult(payloadPtr, payloadSize);
-		}
-
-		/// <summary>Cancels IME composition.</summary>
-		public void CompositionCancel() {
-			if (IsReleased) return;
-			NativeMethods.CompositionCancel(nativeHandle);
-		}
-
-		/// <summary>Whether IME composition is currently active.</summary>
+		/// <summary>Whether visible IME composition is currently active.</summary>
 		/// <returns>Returns <c>true</c> when IME composition is active.</returns>
 		public bool IsComposing() {
 			if (IsReleased) return false;
 			return NativeMethods.IsComposing(nativeHandle) != 0;
 		}
 
-		/// <summary>Enables or disables IME composition.</summary>
-		public void SetCompositionEnabled(bool enabled) {
-			if (IsReleased) return;
-			NativeMethods.SetCompositionEnabled(nativeHandle, enabled ? 1 : 0);
+		/// <summary>Gets the visible IME composition range.</summary>
+		public TextRange? GetComposingRange() {
+			if (IsReleased) return null;
+			int startLine = -1;
+			int startColumn = -1;
+			int endLine = -1;
+			int endColumn = -1;
+			NativeMethods.GetComposingRange(nativeHandle, ref startLine, ref startColumn, ref endLine, ref endColumn);
+			return CreateOptionalRange(startLine, startColumn, endLine, endColumn);
 		}
 
-		/// <summary>Returns whether IME composition is enabled.</summary>
-		public bool IsCompositionEnabled() {
-			if (IsReleased) return false;
-			return NativeMethods.IsCompositionEnabled(nativeHandle) != 0;
+		/// <summary>Gets the active IME composition session range.</summary>
+		public TextRange? GetComposingSessionRange() {
+			if (IsReleased) return null;
+			int startLine = -1;
+			int startColumn = -1;
+			int endLine = -1;
+			int endColumn = -1;
+			NativeMethods.GetComposingSessionRange(nativeHandle, ref startLine, ref startColumn, ref endLine, ref endColumn);
+			return CreateOptionalRange(startLine, startColumn, endLine, endColumn);
+		}
+
+		/// <summary>Updates platform IME preedit text.</summary>
+		public ImeActionResult UpdateImePreedit(string? text, ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeUpdatePreedit(nativeHandle, text ?? string.Empty, (int)scriptHint, out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Commits platform IME text.</summary>
+		public ImeActionResult CommitImeText(string? text, ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeCommitText(nativeHandle, text ?? string.Empty, (int)scriptHint, out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Finishes the current platform IME preedit.</summary>
+		public ImeActionResult FinishImePreedit() {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeFinishPreedit(nativeHandle, out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Cancels the current platform IME preedit.</summary>
+		public ImeActionResult CancelImePreedit() {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeCancelPreedit(nativeHandle, out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Marks a document range explicitly reported by the platform IME.</summary>
+		public ImeActionResult MarkImeDocumentRange(TextRange range, ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeMarkDocumentRange(nativeHandle,
+				ToNativeSize(range.Start.Line), ToNativeSize(range.Start.Column),
+				ToNativeSize(range.End.Line), ToNativeSize(range.End.Column),
+				(int)scriptHint, out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Replaces text through an explicit platform IME replacement request.</summary>
+		public ImeActionResult ReplaceImeText(TextRange range, string? text, ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeReplaceText(nativeHandle,
+				ToNativeSize(range.Start.Line), ToNativeSize(range.Start.Column),
+				ToNativeSize(range.End.Line), ToNativeSize(range.End.Column),
+				text ?? string.Empty, (int)scriptHint, out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Deletes text before the caret through IME semantics.</summary>
+		public ImeActionResult DeleteImeBackward(int beforeLength = 1, ImeTextUnit textUnit = ImeTextUnit.UTF16_CODE_UNIT) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeDeleteBackward(nativeHandle, ToNativeSize(beforeLength), (int)textUnit, out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Deletes text after the caret through IME semantics.</summary>
+		public ImeActionResult DeleteImeForward(int afterLength = 1, ImeTextUnit textUnit = ImeTextUnit.UTF16_CODE_UNIT) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeDeleteForward(nativeHandle, ToNativeSize(afterLength), (int)textUnit, out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Deletes surrounding text through IME semantics.</summary>
+		public ImeActionResult DeleteImeSurrounding(int beforeLength, int afterLength, ImeTextUnit textUnit = ImeTextUnit.UTF16_CODE_UNIT) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeDeleteSurrounding(nativeHandle, ToNativeSize(beforeLength), ToNativeSize(afterLength), (int)textUnit, out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Notifies core about an IME-driven selection change.</summary>
+		public ImeActionResult NotifyImeSelectionChanged(TextRange range) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeNotifySelectionChanged(nativeHandle,
+				ToNativeSize(range.Start.Line), ToNativeSize(range.Start.Column),
+				ToNativeSize(range.End.Line), ToNativeSize(range.End.Column),
+				out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Notifies core about an IME-driven cursor change.</summary>
+		public ImeActionResult NotifyImeCursorChanged(TextPosition cursor) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeNotifyCursorChanged(nativeHandle,
+				ToNativeSize(cursor.Line), ToNativeSize(cursor.Column), out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Sets the current IME keyboard script class.</summary>
+		public void SetImeKeyboardScriptClass(ImeScriptClass scriptClass) {
+			if (IsReleased) return;
+			NativeMethods.ImeSetKeyboardScriptClass(nativeHandle, (int)scriptClass);
+		}
+
+		/// <summary>Gets the current IME keyboard script class.</summary>
+		public ImeScriptClass GetImeKeyboardScriptClass() {
+			if (IsReleased) return ImeScriptClass.UNKNOWN;
+			int value = NativeMethods.ImeGetKeyboardScriptClass(nativeHandle);
+			return Enum.IsDefined(typeof(ImeScriptClass), value) ? (ImeScriptClass)value : ImeScriptClass.UNKNOWN;
+		}
+
+		/// <summary>Gets the current IME synchronization snapshot.</summary>
+		public ImeSyncSnapshot GetImeSyncSnapshot() {
+			if (IsReleased) return new ImeSyncSnapshot();
+			IntPtr payloadPtr = NativeMethods.GetImeSyncSnapshot(nativeHandle, out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeSyncSnapshot(payloadPtr, payloadSize);
+		}
+
+		private static TextRange? CreateOptionalRange(int startLine, int startColumn, int endLine, int endColumn) {
+			if (startLine < 0 || startColumn < 0 || endLine < 0 || endColumn < 0) return null;
+			return new TextRange {
+				Start = new TextPosition { Line = startLine, Column = startColumn },
+				End = new TextPosition { Line = endLine, Column = endColumn }
+			};
+		}
+
+		private static nuint ToNativeSize(int value) {
+			return (nuint)Math.Max(0, value);
 		}
 
 		/// <summary>Sets read-only mode.</summary>

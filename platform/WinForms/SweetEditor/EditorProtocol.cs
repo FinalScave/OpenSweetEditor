@@ -611,20 +611,90 @@ namespace SweetEditor {
 			return true;
 		}
 
+		internal static bool TryReadTextRange(ReadOnlySpan<byte> data, ref int offset, out TextRange range) {
+			range = default;
+			if (!TryReadTextPosition(data, ref offset, out TextPosition start) ||
+				!TryReadTextPosition(data, ref offset, out TextPosition end)) {
+				return false;
+			}
+			range = new TextRange { Start = start, End = end };
+			return true;
+		}
+
 		internal static bool TryReadTextChange(ReadOnlySpan<byte> data, ref int offset, out TextChange change) {
 			change = default!;
-			if (!TryReadInt32(data, ref offset, out int startLine) ||
-				!TryReadInt32(data, ref offset, out int startColumn) ||
-				!TryReadInt32(data, ref offset, out int endLine) ||
-				!TryReadInt32(data, ref offset, out int endColumn) ||
+			if (!TryReadTextRange(data, ref offset, out TextRange range) ||
 				!TryReadUtf8String(data, ref offset, out string newText)) {
 				return false;
 			}
-			TextRange range = new TextRange {
-				Start = new TextPosition { Line = startLine, Column = startColumn },
-				End = new TextPosition { Line = endLine, Column = endColumn },
-			};
 			change = new TextChange(range, newText);
+			return true;
+		}
+
+		internal static bool TryReadTextEditChanges(ReadOnlySpan<byte> data, ref int offset, out TextEditResult editResult) {
+			editResult = TextEditResult.Empty;
+			if (!TryReadInt32(data, ref offset, out int count) || count <= 0) {
+				return false;
+			}
+
+			List<TextChange> changes = new(count);
+			for (int i = 0; i < count; i++) {
+				if (!TryReadTextChange(data, ref offset, out TextChange change)) {
+					break;
+				}
+				changes.Add(change);
+			}
+			if (changes.Count == 0) {
+				return false;
+			}
+			editResult = new TextEditResult { Changes = changes };
+			return true;
+		}
+
+		internal static bool TryReadImeSyncSnapshot(ReadOnlySpan<byte> data, ref int offset, out ImeSyncSnapshot snapshot) {
+			snapshot = new ImeSyncSnapshot();
+			if (data.Length - offset < 76) {
+				return false;
+			}
+			if (!TryReadTextPosition(data, ref offset, out TextPosition cursor) ||
+				!TryReadInt32(data, ref offset, out int hasSelection) ||
+				!TryReadTextRange(data, ref offset, out TextRange selection) ||
+				!TryReadInt32(data, ref offset, out int hasComposingSession) ||
+				!TryReadInt32(data, ref offset, out int hasVisibleCompositionRange) ||
+				!TryReadTextRange(data, ref offset, out TextRange visibleCompositionRange) ||
+				!TryReadInt32(data, ref offset, out int hasPlatformMarkedRange) ||
+				!TryReadTextRange(data, ref offset, out TextRange platformMarkedRange) ||
+				!TryReadUtf8String(data, ref offset, out string platformTextWindowText)) {
+				return false;
+			}
+
+			snapshot.Cursor = cursor;
+			snapshot.Selection = hasSelection != 0 ? selection : null;
+			snapshot.HasComposingSession = hasComposingSession != 0;
+			snapshot.VisibleCompositionRange = hasVisibleCompositionRange != 0 ? visibleCompositionRange : null;
+			snapshot.PlatformMarkedRange = hasPlatformMarkedRange != 0 ? platformMarkedRange : null;
+			snapshot.PlatformTextWindowText = platformTextWindowText;
+
+			if (data.Length - offset < 32) {
+				return true;
+			}
+			if (!TryReadInt32(data, ref offset, out int platformTextWindowStartOffset) ||
+				!TryReadInt32(data, ref offset, out int selectionStartOffset) ||
+				!TryReadInt32(data, ref offset, out int selectionEndOffset) ||
+				!TryReadInt32(data, ref offset, out int composingStartOffset) ||
+				!TryReadInt32(data, ref offset, out int composingEndOffset) ||
+				!TryReadInt32(data, ref offset, out int preeditStorage) ||
+				!TryReadInt32(data, ref offset, out int contextPolicy) ||
+				!TryReadInt32(data, ref offset, out int clearPlatformPreedit)) {
+				return true;
+			}
+
+			snapshot.PlatformTextWindowStartOffset = platformTextWindowStartOffset;
+			snapshot.PlatformTextWindowSelectionOffsets = new IntRange(selectionStartOffset, selectionEndOffset);
+			snapshot.PlatformTextWindowComposingOffsets = new IntRange(composingStartOffset, composingEndOffset);
+			snapshot.PreeditStorage = ToImePreeditStorage(preeditStorage);
+			snapshot.ContextPolicy = ToImeContextPolicy(contextPolicy);
+			snapshot.ClearPlatformPreedit = clearPlatformPreedit != 0;
 			return true;
 		}
 
@@ -638,6 +708,14 @@ namespace SweetEditor {
 
 		internal static PointerCursorType ToPointerCursorType(int value) {
 			return Enum.IsDefined(typeof(PointerCursorType), value) ? (PointerCursorType)value : PointerCursorType.TEXT;
+		}
+
+		internal static ImePreeditStorage ToImePreeditStorage(int value) {
+			return Enum.IsDefined(typeof(ImePreeditStorage), value) ? (ImePreeditStorage)value : ImePreeditStorage.NONE;
+		}
+
+		internal static ImeContextPolicy ToImeContextPolicy(int value) {
+			return Enum.IsDefined(typeof(ImeContextPolicy), value) ? (ImeContextPolicy)value : ImeContextPolicy.NONE;
 		}
 
 		internal static VisualRunType ToVisualRunType(int value) {
@@ -1128,21 +1206,9 @@ namespace SweetEditor {
 				if (!TryReadInt32(data, ref offset, out int changedInt) || changedInt == 0) {
 					return TextEditResult.Empty;
 				}
-				if (!TryReadInt32(data, ref offset, out int count) || count <= 0) {
-					return TextEditResult.Empty;
-				}
-
-				List<TextChange> changes = new(count);
-				for (int i = 0; i < count; i++) {
-					if (!TryReadTextChange(data, ref offset, out TextChange change)) {
-						break;
-					}
-					changes.Add(change);
-				}
-				if (changes.Count == 0) {
-					return TextEditResult.Empty;
-				}
-				return new TextEditResult { Changes = changes };
+				return TryReadTextEditChanges(data, ref offset, out TextEditResult editResult)
+					? editResult
+					: TextEditResult.Empty;
 			} finally {
 				NativeMethods.FreeBinaryData(payloadPtr);
 			}
@@ -1170,22 +1236,63 @@ namespace SweetEditor {
 				result.CursorChanged = cursorChanged != 0;
 				result.SelectionChanged = selectionChanged != 0;
 
-				if (hasEdit != 0 && TryReadInt32(data, ref offset, out int count) && count > 0) {
-					List<TextChange> changes = new(count);
-					for (int i = 0; i < count; i++) {
-						if (!TryReadTextChange(data, ref offset, out TextChange change)) {
-							break;
-						}
-						changes.Add(change);
-					}
-					if (changes.Count > 0) {
-						result.EditResult = new TextEditResult { Changes = changes };
-					}
+				if (hasEdit != 0 && TryReadTextEditChanges(data, ref offset, out TextEditResult editResult)) {
+					result.EditResult = editResult;
 				}
 				if (TryReadInt32(data, ref offset, out int command)) {
 					result.Command = command;
 				}
 				return result;
+			} finally {
+				NativeMethods.FreeBinaryData(payloadPtr);
+			}
+		}
+
+		internal static unsafe ImeActionResult ParseImeActionResult(IntPtr payloadPtr, UIntPtr payloadSize) {
+			ImeActionResult result = new();
+			int payloadLength = GetPayloadLength(payloadPtr, payloadSize);
+			if (payloadLength == 0) {
+				return result;
+			}
+			try {
+				ReadOnlySpan<byte> data = new(payloadPtr.ToPointer(), payloadLength);
+				int offset = 0;
+				if (!TryReadInt32(data, ref offset, out int handled) ||
+					!TryReadInt32(data, ref offset, out int contentChanged) ||
+					!TryReadInt32(data, ref offset, out int cursorChanged) ||
+					!TryReadInt32(data, ref offset, out int selectionChanged) ||
+					!TryReadInt32(data, ref offset, out int hasEdit)) {
+					return result;
+				}
+
+				result.Handled = handled != 0;
+				result.ContentChanged = contentChanged != 0;
+				result.CursorChanged = cursorChanged != 0;
+				result.SelectionChanged = selectionChanged != 0;
+
+				if (hasEdit != 0 && TryReadTextEditChanges(data, ref offset, out TextEditResult editResult)) {
+					result.EditResult = editResult;
+				}
+				if (TryReadImeSyncSnapshot(data, ref offset, out ImeSyncSnapshot sync)) {
+					result.Sync = sync;
+				}
+				return result;
+			} finally {
+				NativeMethods.FreeBinaryData(payloadPtr);
+			}
+		}
+
+		internal static unsafe ImeSyncSnapshot ParseImeSyncSnapshot(IntPtr payloadPtr, UIntPtr payloadSize) {
+			int payloadLength = GetPayloadLength(payloadPtr, payloadSize);
+			if (payloadLength == 0) {
+				return new ImeSyncSnapshot();
+			}
+			try {
+				ReadOnlySpan<byte> data = new(payloadPtr.ToPointer(), payloadLength);
+				int offset = 0;
+				return TryReadImeSyncSnapshot(data, ref offset, out ImeSyncSnapshot snapshot)
+					? snapshot
+					: new ImeSyncSnapshot();
 			} finally {
 				NativeMethods.FreeBinaryData(payloadPtr);
 			}
