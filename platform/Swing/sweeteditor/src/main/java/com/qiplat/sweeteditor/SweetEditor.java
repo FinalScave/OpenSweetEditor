@@ -10,6 +10,10 @@ import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.EditorOptions;
 import com.qiplat.sweeteditor.core.adornment.*;
 import com.qiplat.sweeteditor.core.foundation.*;
+import com.qiplat.sweeteditor.core.ime.ImeActionResult;
+import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
+import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
+import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
 import com.qiplat.sweeteditor.core.keymap.EditorCommand;
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
 import com.qiplat.sweeteditor.core.keymap.KeyCode;
@@ -29,11 +33,18 @@ import java.awt.*;
 import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
+import java.awt.font.TextHitInfo;
 import java.awt.im.InputMethodRequests;
 import java.text.AttributedCharacterIterator;
 import java.text.AttributedString;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+
+import static java.awt.Cursor.DEFAULT_CURSOR;
+import static java.awt.Cursor.HAND_CURSOR;
+import static java.awt.Cursor.TEXT_CURSOR;
+import static java.awt.Cursor.getPredefinedCursor;
 
 /**
  * SweetEditor Swing editor component.
@@ -92,7 +103,7 @@ public class SweetEditor extends JPanel {
         this.currentTheme = theme;
         setFocusable(true);
         setFocusTraversalKeysEnabled(false);
-        setCursor(java.awt.Cursor.getPredefinedCursor(java.awt.Cursor.TEXT_CURSOR));
+        setCursor(getPredefinedCursor(TEXT_CURSOR));
         setDoubleBuffered(true);
 
         renderer = new EditorRenderer(theme);
@@ -121,7 +132,6 @@ public class SweetEditor extends JPanel {
         completionPopupController.setConfirmListener(this::applyCompletionItem);
 
         settings = new EditorSettings(this);
-        editorCore.setCompositionEnabled(settings.isCompositionEnabled());
 
         inlineSuggestionController = new InlineSuggestionController(this);
 
@@ -728,7 +738,7 @@ public class SweetEditor extends JPanel {
         }
     }
 
-    public void showCompletionItems(java.util.List<CompletionItem> items) {
+    public void showCompletionItems(List<CompletionItem> items) {
         if (completionProviderManager != null) completionProviderManager.showItems(items);
     }
 
@@ -870,7 +880,10 @@ public class SweetEditor extends JPanel {
             public void keyPressed(KeyEvent e) {
                 long inputPerfStart = startInputPerf();
                 try {
-                    if (editorCore.isComposing() && e.getKeyCode() != KeyEvent.VK_ESCAPE) return;
+                    if (editorCore.isComposing()) {
+                        handleComposingKeyPressed(e);
+                        return;
+                    }
 
                     // Inline suggestion keyboard interception (Tab=accept, Esc=dismiss)
                     if (inlineSuggestionController != null && inlineSuggestionController.isShowing()) {
@@ -971,9 +984,9 @@ public class SweetEditor extends JPanel {
             }
         });
 
-        addInputMethodListener(new java.awt.event.InputMethodListener() {
+        addInputMethodListener(new InputMethodListener() {
             @Override
-            public void inputMethodTextChanged(java.awt.event.InputMethodEvent event) {
+            public void inputMethodTextChanged(InputMethodEvent event) {
                 long inputPerfStart = startInputPerf();
                 try {
                     AttributedCharacterIterator aci = event.getText();
@@ -992,25 +1005,21 @@ public class SweetEditor extends JPanel {
                         c = aci.next();
                     }
 
+                    boolean changed = false;
+                    int scriptHint = resolveImeScriptHint();
                     if (committed.length() > 0) {
-                        TextEditResult editResult;
-                        if (settings.isCompositionEnabled() && editorCore.isComposing()) {
-                            editResult = editorCore.handleImeEvent(EditorCore.IME_EVENT_COMMIT_TEXT, committed.toString());
-                            dispatchTextChanged(TextChangeAction.COMPOSITION, editResult);
-                        } else {
-                            editResult = editorCore.insertText(committed.toString());
-                            dispatchTextChanged(TextChangeAction.INSERT, editResult);
-                        }
-                        resetCursorBlink();
-                        flush();
+                        dispatchImeActionResult(editorCore.commitImeText(committed.toString(), scriptHint));
+                        changed = true;
                     }
                     if (composed.length() > 0) {
-                        if (settings.isCompositionEnabled()) {
-                            editorCore.handleImeEvent(EditorCore.IME_EVENT_UPDATE_PREEDIT, composed.toString());
-                            flush();
-                        }
-                    } else if (settings.isCompositionEnabled() && editorCore.isComposing() && committed.length() == 0) {
-                        editorCore.handleImeEvent(EditorCore.IME_EVENT_CANCEL_PREEDIT, null);
+                        dispatchImeActionResult(editorCore.updateImePreedit(composed.toString(), scriptHint));
+                        changed = true;
+                    } else if (editorCore.isComposing() && committed.length() == 0) {
+                        dispatchImeActionResult(editorCore.cancelImePreedit());
+                        changed = true;
+                    }
+                    if (changed) {
+                        resetCursorBlink();
                         flush();
                     }
 
@@ -1021,7 +1030,7 @@ public class SweetEditor extends JPanel {
             }
 
             @Override
-            public void caretPositionChanged(java.awt.event.InputMethodEvent event) {
+            public void caretPositionChanged(InputMethodEvent event) {
                 event.consume();
             }
         });
@@ -1039,37 +1048,44 @@ public class SweetEditor extends JPanel {
     public InputMethodRequests getInputMethodRequests() {
         return new InputMethodRequests() {
             @Override
-            public Rectangle getTextLocation(java.awt.font.TextHitInfo offset) {
+            public Rectangle getTextLocation(TextHitInfo offset) {
                 ensureRenderModelUpToDate();
                 if (renderModel != null && renderModel.cursor != null) {
-                    java.awt.Point p = getLocationOnScreen();
+                    Point p = getLocationOnScreen();
                     return new Rectangle(
                             p.x + (int) renderModel.cursor.position.x,
                             p.y + (int) renderModel.cursor.position.y,
                             0, (int) renderModel.cursor.height);
                 }
-                java.awt.Point p = getLocationOnScreen();
+                Point p = getLocationOnScreen();
                 return new Rectangle(p.x, p.y, 0, 20);
             }
 
             @Override
-            public java.awt.font.TextHitInfo getLocationOffset(int x, int y) {
+            public TextHitInfo getLocationOffset(int x, int y) {
                 return null;
             }
 
             @Override
             public int getInsertPositionOffset() {
-                return 0;
+                ImeSyncSnapshot snapshot = editorCore.getImeSyncSnapshot();
+                return snapshot.platformTextWindowStartOffset + snapshot.platformTextWindowSelectionOffsets.start();
             }
 
             @Override
             public AttributedCharacterIterator getCommittedText(int beginIndex, int endIndex, AttributedCharacterIterator.Attribute[] attributes) {
-                return new AttributedString("").getIterator();
+                String text = getDocumentTextForInputMethod();
+                int start = clampTextOffset(beginIndex, text.length());
+                int end = clampTextOffset(endIndex, text.length());
+                if (end < start) {
+                    end = start;
+                }
+                return new AttributedString(text.substring(start, end)).getIterator();
             }
 
             @Override
             public int getCommittedTextLength() {
-                return 0;
+                return getDocumentTextForInputMethod().length();
             }
 
             @Override
@@ -1079,9 +1095,90 @@ public class SweetEditor extends JPanel {
 
             @Override
             public AttributedCharacterIterator getSelectedText(AttributedCharacterIterator.Attribute[] attributes) {
-                return null;
+                String selectedText = editorCore.getSelectedText();
+                return selectedText == null || selectedText.isEmpty()
+                        ? null
+                        : new AttributedString(selectedText).getIterator();
             }
         };
+    }
+
+    private void handleComposingKeyPressed(KeyEvent e) {
+        ImeActionResult result = null;
+        switch (e.getKeyCode()) {
+            case KeyEvent.VK_BACK_SPACE:
+                result = editorCore.deleteImeBackward(1, ImeTextUnit.UTF16_CODE_UNIT);
+                break;
+            case KeyEvent.VK_DELETE:
+                result = editorCore.deleteImeForward(1, ImeTextUnit.UTF16_CODE_UNIT);
+                break;
+            case KeyEvent.VK_ESCAPE:
+                result = editorCore.cancelImePreedit();
+                break;
+            default:
+                return;
+        }
+        e.consume();
+        dispatchImeActionResult(result);
+        resetCursorBlink();
+        flush();
+    }
+
+    private void dispatchImeActionResult(ImeActionResult result) {
+        if (result == null) {
+            return;
+        }
+        if (result.contentChanged) {
+            dispatchTextChanged(TextChangeAction.COMPOSITION,
+                    result.editResult != null ? result.editResult : TextEditResult.EMPTY);
+        }
+    }
+
+    private int resolveImeScriptHint() {
+        Locale locale = null;
+        if (getInputContext() != null) {
+            locale = getInputContext().getLocale();
+        }
+        if (locale == null) {
+            return ImeScriptClass.UNKNOWN;
+        }
+        String script = locale.getScript();
+        if ("Hani".equalsIgnoreCase(script) || "Hans".equalsIgnoreCase(script) || "Hant".equalsIgnoreCase(script)) {
+            return ImeScriptClass.CJK;
+        }
+        if ("Kana".equalsIgnoreCase(script) || "Hira".equalsIgnoreCase(script) || "Jpan".equalsIgnoreCase(script)) {
+            return ImeScriptClass.KANA;
+        }
+        if ("Hang".equalsIgnoreCase(script) || "Kore".equalsIgnoreCase(script)) {
+            return ImeScriptClass.HANGUL;
+        }
+        if ("Latn".equalsIgnoreCase(script)) {
+            return ImeScriptClass.LATIN;
+        }
+
+        String language = locale.getLanguage();
+        if ("zh".equalsIgnoreCase(language)) {
+            return ImeScriptClass.CJK;
+        }
+        if ("ja".equalsIgnoreCase(language)) {
+            return ImeScriptClass.KANA;
+        }
+        if ("ko".equalsIgnoreCase(language)) {
+            return ImeScriptClass.HANGUL;
+        }
+        if (language != null && !language.isEmpty()) {
+            return ImeScriptClass.LATIN;
+        }
+        return ImeScriptClass.UNKNOWN;
+    }
+
+    private String getDocumentTextForInputMethod() {
+        Document document = getDocument();
+        return document != null ? document.getText() : "";
+    }
+
+    private int clampTextOffset(int offset, int length) {
+        return Math.max(0, Math.min(offset, length));
     }
 
     private void handleGesture(int type, float x, float y, int modifiers, float wheelDeltaX, float wheelDeltaY, float directScale) {
@@ -1494,16 +1591,16 @@ public class SweetEditor extends JPanel {
         int awtCursor;
         switch (pointerCursorType) {
             case HAND:
-                awtCursor = java.awt.Cursor.HAND_CURSOR;
+                awtCursor = HAND_CURSOR;
                 break;
             case DEFAULT:
-                awtCursor = java.awt.Cursor.DEFAULT_CURSOR;
+                awtCursor = DEFAULT_CURSOR;
                 break;
             default:
-                awtCursor = java.awt.Cursor.TEXT_CURSOR;
+                awtCursor = TEXT_CURSOR;
                 break;
         }
-        setCursor(java.awt.Cursor.getPredefinedCursor(awtCursor));
+        setCursor(getPredefinedCursor(awtCursor));
     }
 
     private void updateCompletionPopupCursorAnchor() {

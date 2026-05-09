@@ -1,10 +1,12 @@
 package com.qiplat.sweeteditor.core;
 
+import java.lang.foreign.Arena;
+
 /**
  * Construction-time immutable options for EditorCore.
  * <p>
  * Fields mirror the C++ {@code EditorOptions} struct.
- * Use {@link ProtocolEncoder#packEditorOptions(EditorOptions, java.lang.foreign.Arena)} to encode into the binary payload
+ * Use {@link ProtocolEncoder#packEditorOptions(EditorOptions, Arena)} to encode into the binary payload
  * expected by the native C API.
  * <p>
  * Binary layout (LE byte order):

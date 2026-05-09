@@ -665,7 +665,7 @@ final class ProtocolEncoder {
     // ==================== LinkedEditing ====================
 
     static byte[] packLinkedEditingModel(LinkedEditingModel model) {
-        java.util.List<LinkedEditingModel.TabStopGroup> groups = model.getGroups();
+        List<LinkedEditingModel.TabStopGroup> groups = model.getGroups();
         int groupCount = groups.size();
         int rangeCount = 0;
         byte[][] groupTexts = new byte[groupCount][];

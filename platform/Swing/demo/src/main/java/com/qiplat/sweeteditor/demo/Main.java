@@ -18,6 +18,7 @@ import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 import java.awt.*;
+import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -134,7 +135,7 @@ public class Main extends JFrame {
         setupFileSpinner();
     }
 
-    private JButton makeButton(String text, java.awt.event.ActionListener action) {
+    private JButton makeButton(String text, ActionListener action) {
         JButton btn = new JButton(text);
         btn.setMargin(new Insets(2, 6, 2, 6));
         btn.addActionListener(action);

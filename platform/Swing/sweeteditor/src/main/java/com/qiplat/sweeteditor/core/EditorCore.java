@@ -2,6 +2,9 @@ package com.qiplat.sweeteditor.core;
 
 import com.qiplat.sweeteditor.core.adornment.*;
 import com.qiplat.sweeteditor.core.foundation.*;
+import com.qiplat.sweeteditor.core.ime.ImeActionResult;
+import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
+import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
 import com.qiplat.sweeteditor.core.keymap.KeyMap;
 import com.qiplat.sweeteditor.core.visual.*;
 import com.qiplat.sweeteditor.core.snippet.*;
@@ -21,17 +24,6 @@ import java.util.Map;
  */
 public class EditorCore {
     private static final Cleaner CLEANER = Cleaner.create();
-    public static final int IME_EVENT_UPDATE_PREEDIT = 0;
-    public static final int IME_EVENT_COMMIT_TEXT = 1;
-    public static final int IME_EVENT_FINISH_PREEDIT = 2;
-    public static final int IME_EVENT_CANCEL_PREEDIT = 3;
-    public static final int IME_EVENT_MARK_DOCUMENT_RANGE = 4;
-    public static final int IME_EVENT_DELETE_BACKWARD = 5;
-    public static final int IME_EVENT_DELETE_FORWARD = 6;
-    public static final int IME_EVENT_DELETE_SURROUNDING = 7;
-    public static final int IME_EVENT_SELECTION_CHANGED = 8;
-    private static final int IME_TEXT_UNIT_UTF16_CODE_UNIT = 0;
-    private static final int IME_SCRIPT_UNKNOWN = 0;
 
     private final long nativeHandle;
     private final Arena arena;
@@ -482,51 +474,142 @@ public class EditorCore {
 
     // ===================== IME =====================
 
-    public TextEditResult handleImeEvent(int type, String text) {
-        return handleImeEvent(type, text, false, 0, 0, 0, 0, false, 0, 0, 0, 0);
+    public boolean isComposing() {
+        return EditorNative.isComposing(nativeHandle);
     }
 
-    public TextEditResult handleImeEvent(int type,
-                                         String text,
-                                         boolean hasRange,
-                                         int startLine,
-                                         int startColumn,
-                                         int endLine,
-                                         int endColumn,
-                                         boolean hasCursor,
-                                         int cursorLine,
-                                         int cursorColumn,
-                                         long beforeLength,
-                                         long afterLength) {
+    public TextRange getComposingRange() {
         try (Arena tempArena = Arena.ofConfined()) {
-            EditorNative.NativeBinaryResult result = EditorNative.handleImeEvent(
-                    nativeHandle,
-                    type,
-                    text,
-                    hasRange,
-                    startLine,
-                    startColumn,
-                    endLine,
-                    endColumn,
-                    hasCursor,
-                    cursorLine,
-                    cursorColumn,
-                    beforeLength,
-                    afterLength,
-                    IME_TEXT_UNIT_UTF16_CODE_UNIT,
-                    IME_SCRIPT_UNKNOWN,
-                    tempArena);
-            try {
-                return ProtocolDecoder.decodeImeEventEditResult(result.asByteBuffer());
-            } finally {
-                result.free();
-            }
+            return rangeFromNative(EditorNative.getComposingRange(nativeHandle, tempArena));
         }
     }
 
-    public boolean isComposing() { return EditorNative.isComposing(nativeHandle); }
-    public void setCompositionEnabled(boolean enabled) { EditorNative.setCompositionEnabled(nativeHandle, enabled); }
-    public boolean isCompositionEnabled() { return EditorNative.isCompositionEnabled(nativeHandle); }
+    public TextRange getComposingSessionRange() {
+        try (Arena tempArena = Arena.ofConfined()) {
+            return rangeFromNative(EditorNative.getComposingSessionRange(nativeHandle, tempArena));
+        }
+    }
+
+    private TextRange rangeFromNative(int[] values) {
+        if (values == null || values.length < 4 || values[0] < 0) {
+            return null;
+        }
+        return new TextRange(
+                new TextPosition(values[0], values[1]),
+                new TextPosition(values[2], values[3]));
+    }
+
+    public ImeActionResult updateImePreedit(String text, int scriptHint) {
+        try (Arena tempArena = Arena.ofConfined()) {
+            return decodeImeActionResult(EditorNative.updateImePreedit(
+                    nativeHandle, text != null ? text : "", scriptHint, tempArena));
+        }
+    }
+
+    public ImeActionResult commitImeText(String text, int scriptHint) {
+        try (Arena tempArena = Arena.ofConfined()) {
+            return decodeImeActionResult(EditorNative.commitImeText(
+                    nativeHandle, text != null ? text : "", scriptHint, tempArena));
+        }
+    }
+
+    public ImeActionResult finishImePreedit() {
+        return decodeImeActionResult(EditorNative.finishImePreedit(nativeHandle));
+    }
+
+    public ImeActionResult cancelImePreedit() {
+        return decodeImeActionResult(EditorNative.cancelImePreedit(nativeHandle));
+    }
+
+    public ImeActionResult markImeDocumentRange(TextRange range, int scriptHint) {
+        if (range == null || range.start == null || range.end == null) {
+            return new ImeActionResult();
+        }
+        return decodeImeActionResult(EditorNative.markImeDocumentRange(
+                nativeHandle,
+                range.start.line, range.start.column,
+                range.end.line, range.end.column,
+                scriptHint));
+    }
+
+    public ImeActionResult replaceImeText(TextRange range, String text, int scriptHint) {
+        if (range == null || range.start == null || range.end == null) {
+            return new ImeActionResult();
+        }
+        try (Arena tempArena = Arena.ofConfined()) {
+            return decodeImeActionResult(EditorNative.replaceImeText(
+                    nativeHandle,
+                    range.start.line, range.start.column,
+                    range.end.line, range.end.column,
+                    text != null ? text : "",
+                    scriptHint,
+                    tempArena));
+        }
+    }
+
+    public ImeActionResult deleteImeBackward(long beforeLength, int textUnit) {
+        return decodeImeActionResult(EditorNative.deleteImeBackward(nativeHandle, beforeLength, textUnit));
+    }
+
+    public ImeActionResult deleteImeBackward(long beforeLength) {
+        return deleteImeBackward(beforeLength, ImeTextUnit.UTF16_CODE_UNIT);
+    }
+
+    public ImeActionResult deleteImeForward(long afterLength, int textUnit) {
+        return decodeImeActionResult(EditorNative.deleteImeForward(nativeHandle, afterLength, textUnit));
+    }
+
+    public ImeActionResult deleteImeForward(long afterLength) {
+        return deleteImeForward(afterLength, ImeTextUnit.UTF16_CODE_UNIT);
+    }
+
+    public ImeActionResult deleteImeSurrounding(long beforeLength, long afterLength, int textUnit) {
+        return decodeImeActionResult(EditorNative.deleteImeSurrounding(
+                nativeHandle, beforeLength, afterLength, textUnit));
+    }
+
+    public ImeActionResult notifyImeSelectionChanged(TextRange range) {
+        if (range == null || range.start == null || range.end == null) {
+            return new ImeActionResult();
+        }
+        return decodeImeActionResult(EditorNative.notifyImeSelectionChanged(
+                nativeHandle,
+                range.start.line, range.start.column,
+                range.end.line, range.end.column));
+    }
+
+    public ImeActionResult notifyImeCursorChanged(TextPosition cursor) {
+        if (cursor == null) {
+            return new ImeActionResult();
+        }
+        return decodeImeActionResult(EditorNative.notifyImeCursorChanged(
+                nativeHandle, cursor.line, cursor.column));
+    }
+
+    private ImeActionResult decodeImeActionResult(EditorNative.NativeBinaryResult result) {
+        try {
+            return ProtocolDecoder.decodeImeActionResult(result.asByteBuffer());
+        } finally {
+            result.free();
+        }
+    }
+
+    public ImeSyncSnapshot getImeSyncSnapshot() {
+        EditorNative.NativeBinaryResult result = EditorNative.getImeSyncSnapshot(nativeHandle);
+        try {
+            return ProtocolDecoder.decodeImeSyncSnapshot(result.asByteBuffer());
+        } finally {
+            result.free();
+        }
+    }
+
+    public void setImeKeyboardScriptClass(int scriptClass) {
+        EditorNative.setImeKeyboardScriptClass(nativeHandle, scriptClass);
+    }
+
+    public int getImeKeyboardScriptClass() {
+        return EditorNative.getImeKeyboardScriptClass(nativeHandle);
+    }
 
     // ===================== Read-only =====================
 

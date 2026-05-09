@@ -342,31 +342,74 @@ public final class EditorNative {
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
-    private static final MethodHandle HANDLE_IME_EVENT = downcall("editor_handle_ime_event",
-            FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_INT,
-                    ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_INT,
-                    ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_INT,
-                    ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_INT,
-                    ValueLayout.JAVA_INT,
-                    ValueLayout.ADDRESS));
-
     private static final MethodHandle IS_COMPOSING = downcall("editor_is_composing",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
-    private static final MethodHandle SET_COMPOSITION_ENABLED = downcall("editor_set_composition_enabled",
+
+    private static final MethodHandle GET_COMPOSING_RANGE = downcall("editor_get_composing_range",
+            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+
+    private static final MethodHandle GET_COMPOSING_SESSION_RANGE = downcall("editor_get_composing_session_range",
+            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
+
+    private static final MethodHandle IME_UPDATE_PREEDIT = downcall("editor_ime_update_preedit",
+            FunctionDescriptor.of(ValueLayout.ADDRESS,
+                    ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+
+    private static final MethodHandle IME_COMMIT_TEXT = downcall("editor_ime_commit_text",
+            FunctionDescriptor.of(ValueLayout.ADDRESS,
+                    ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+
+    private static final MethodHandle IME_FINISH_PREEDIT = downcall("editor_ime_finish_preedit",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+
+    private static final MethodHandle IME_CANCEL_PREEDIT = downcall("editor_ime_cancel_preedit",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+
+    private static final MethodHandle IME_MARK_DOCUMENT_RANGE = downcall("editor_ime_mark_document_range",
+            FunctionDescriptor.of(ValueLayout.ADDRESS,
+                    ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+
+    private static final MethodHandle IME_REPLACE_TEXT = downcall("editor_ime_replace_text",
+            FunctionDescriptor.of(ValueLayout.ADDRESS,
+                    ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+
+    private static final MethodHandle IME_DELETE_BACKWARD = downcall("editor_ime_delete_backward",
+            FunctionDescriptor.of(ValueLayout.ADDRESS,
+                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+
+    private static final MethodHandle IME_DELETE_FORWARD = downcall("editor_ime_delete_forward",
+            FunctionDescriptor.of(ValueLayout.ADDRESS,
+                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+
+    private static final MethodHandle IME_DELETE_SURROUNDING = downcall("editor_ime_delete_surrounding",
+            FunctionDescriptor.of(ValueLayout.ADDRESS,
+                    ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+
+    private static final MethodHandle IME_NOTIFY_SELECTION_CHANGED = downcall("editor_ime_notify_selection_changed",
+            FunctionDescriptor.of(ValueLayout.ADDRESS,
+                    ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS));
+
+    private static final MethodHandle IME_NOTIFY_CURSOR_CHANGED = downcall("editor_ime_notify_cursor_changed",
+            FunctionDescriptor.of(ValueLayout.ADDRESS,
+                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+
+    private static final MethodHandle IME_SET_KEYBOARD_SCRIPT_CLASS = downcall("editor_ime_set_keyboard_script_class",
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
-    private static final MethodHandle IS_COMPOSITION_ENABLED = downcall("editor_is_composition_enabled",
+
+    private static final MethodHandle IME_GET_KEYBOARD_SCRIPT_CLASS = downcall("editor_ime_get_keyboard_script_class",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
+
+    private static final MethodHandle GET_IME_SYNC_SNAPSHOT = downcall("editor_get_ime_sync_snapshot",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_READ_ONLY = downcall("editor_set_read_only",
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
@@ -1021,54 +1064,118 @@ public final class EditorNative {
 
     // ===================== IME =====================
 
-    public static NativeBinaryResult handleImeEvent(long handle,
-                                                    int type,
-                                                    String text,
-                                                    boolean hasRange,
-                                                    int startLine,
-                                                    int startColumn,
-                                                    int endLine,
-                                                    int endColumn,
-                                                    boolean hasCursor,
-                                                    int cursorLine,
-                                                    int cursorColumn,
-                                                    long beforeLength,
-                                                    long afterLength,
-                                                    int textUnit,
-                                                    int scriptHint,
-                                                    Arena arena) {
-        return invokeBinaryResult(arena, outSize ->
-                (MemorySegment) HANDLE_IME_EVENT.invokeExact(
-                        handle,
-                        type,
-                        nullableString(arena, text),
-                        hasRange ? 1 : 0,
-                        (long) startLine,
-                        (long) startColumn,
-                        (long) endLine,
-                        (long) endColumn,
-                        hasCursor ? 1 : 0,
-                        (long) cursorLine,
-                        (long) cursorColumn,
-                        beforeLength,
-                        afterLength,
-                        textUnit,
-                        scriptHint,
-                        outSize));
-    }
-
     public static boolean isComposing(long handle) {
         return invokeBoolean(() -> (int) IS_COMPOSING.invokeExact(handle));
     }
 
-    public static void setCompositionEnabled(long handle, boolean enabled) {
+    public static int[] getComposingRange(long handle, Arena arena) {
+        return readNativeRange(arena, GET_COMPOSING_RANGE, handle);
+    }
+
+    public static int[] getComposingSessionRange(long handle, Arena arena) {
+        return readNativeRange(arena, GET_COMPOSING_SESSION_RANGE, handle);
+    }
+
+    private static int[] readNativeRange(Arena arena, MethodHandle method, long handle) {
+        try {
+            MemorySegment outSL = arena.allocate(ValueLayout.JAVA_INT);
+            MemorySegment outSC = arena.allocate(ValueLayout.JAVA_INT);
+            MemorySegment outEL = arena.allocate(ValueLayout.JAVA_INT);
+            MemorySegment outEC = arena.allocate(ValueLayout.JAVA_INT);
+            method.invokeExact(handle, outSL, outSC, outEL, outEC);
+            return new int[]{
+                    outSL.get(ValueLayout.JAVA_INT, 0), outSC.get(ValueLayout.JAVA_INT, 0),
+                    outEL.get(ValueLayout.JAVA_INT, 0), outEC.get(ValueLayout.JAVA_INT, 0)
+            };
+        } catch (Throwable t) {
+            throw new RuntimeException(t);
+        }
+    }
+
+    public static NativeBinaryResult updateImePreedit(long handle, String text, int scriptHint, Arena arena) {
+        return invokeBinaryResult(arena, outSize ->
+                (MemorySegment) IME_UPDATE_PREEDIT.invokeExact(handle, nullableString(arena, text), scriptHint, outSize));
+    }
+
+    public static NativeBinaryResult commitImeText(long handle, String text, int scriptHint, Arena arena) {
+        return invokeBinaryResult(arena, outSize ->
+                (MemorySegment) IME_COMMIT_TEXT.invokeExact(handle, nullableString(arena, text), scriptHint, outSize));
+    }
+
+    public static NativeBinaryResult finishImePreedit(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_FINISH_PREEDIT.invokeExact(handle, outSize));
+    }
+
+    public static NativeBinaryResult cancelImePreedit(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_CANCEL_PREEDIT.invokeExact(handle, outSize));
+    }
+
+    public static NativeBinaryResult markImeDocumentRange(long handle,
+                                                          int startLine, int startColumn,
+                                                          int endLine, int endColumn,
+                                                          int scriptHint) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_MARK_DOCUMENT_RANGE.invokeExact(
+                handle,
+                (long) startLine, (long) startColumn, (long) endLine, (long) endColumn,
+                scriptHint, outSize));
+    }
+
+    public static NativeBinaryResult replaceImeText(long handle,
+                                                    int startLine, int startColumn,
+                                                    int endLine, int endColumn,
+                                                    String text,
+                                                    int scriptHint,
+                                                    Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) IME_REPLACE_TEXT.invokeExact(
+                handle,
+                (long) startLine, (long) startColumn, (long) endLine, (long) endColumn,
+                nullableString(arena, text), scriptHint, outSize));
+    }
+
+    public static NativeBinaryResult deleteImeBackward(long handle, long beforeLength, int textUnit) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) IME_DELETE_BACKWARD.invokeExact(handle, beforeLength, textUnit, outSize));
+    }
+
+    public static NativeBinaryResult deleteImeForward(long handle, long afterLength, int textUnit) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) IME_DELETE_FORWARD.invokeExact(handle, afterLength, textUnit, outSize));
+    }
+
+    public static NativeBinaryResult deleteImeSurrounding(long handle,
+                                                          long beforeLength,
+                                                          long afterLength,
+                                                          int textUnit) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_DELETE_SURROUNDING.invokeExact(
+                handle, beforeLength, afterLength, textUnit, outSize));
+    }
+
+    public static NativeBinaryResult notifyImeSelectionChanged(long handle,
+                                                               int startLine, int startColumn,
+                                                               int endLine, int endColumn) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_NOTIFY_SELECTION_CHANGED.invokeExact(
+                handle,
+                (long) startLine, (long) startColumn, (long) endLine, (long) endColumn,
+                outSize));
+    }
+
+    public static NativeBinaryResult notifyImeCursorChanged(long handle, int cursorLine, int cursorColumn) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_NOTIFY_CURSOR_CHANGED.invokeExact(
+                handle, (long) cursorLine, (long) cursorColumn, outSize));
+    }
+
+    public static void setImeKeyboardScriptClass(long handle, int scriptClass) {
         invokeVoid(() -> {
-            SET_COMPOSITION_ENABLED.invokeExact(handle, enabled ? 1 : 0);
+            IME_SET_KEYBOARD_SCRIPT_CLASS.invokeExact(handle, scriptClass);
         });
     }
 
-    public static boolean isCompositionEnabled(long handle) {
-        return invokeValue(() -> (int) IS_COMPOSITION_ENABLED.invokeExact(handle)) != 0;
+    public static int getImeKeyboardScriptClass(long handle) {
+        return invokeValue(() -> (int) IME_GET_KEYBOARD_SCRIPT_CLASS.invokeExact(handle));
+    }
+
+    public static NativeBinaryResult getImeSyncSnapshot(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) GET_IME_SYNC_SNAPSHOT.invokeExact(handle, outSize));
     }
 
     // ===================== Read-only =====================

@@ -2,6 +2,8 @@ package com.qiplat.sweeteditor.core;
 
 import com.qiplat.sweeteditor.core.foundation.*;
 import com.qiplat.sweeteditor.core.adornment.TextStyle;
+import com.qiplat.sweeteditor.core.ime.ImeActionResult;
+import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
 import com.qiplat.sweeteditor.core.visual.*;
 
 import java.nio.ByteBuffer;
@@ -76,14 +78,28 @@ final class ProtocolDecoder {
         return result;
     }
 
-    static TextEditResult decodeImeEventEditResult(ByteBuffer data) {
-        if (data == null || data.remaining() < 20) return TextEditResult.EMPTY;
-        data.getInt();
-        data.getInt();
-        data.getInt();
-        data.getInt();
+    static ImeActionResult decodeImeActionResult(ByteBuffer data) {
+        if (data == null || data.remaining() < 20) return new ImeActionResult();
+        ImeActionResult result = new ImeActionResult();
+        result.handled = data.getInt() != 0;
+        result.contentChanged = data.getInt() != 0;
+        result.cursorChanged = data.getInt() != 0;
+        result.selectionChanged = data.getInt() != 0;
         boolean hasEdit = data.getInt() != 0;
-        if (!hasEdit || data.remaining() < 4) return TextEditResult.EMPTY;
+        if (hasEdit && data.remaining() >= 4) {
+            result.editResult = readTextEditChanges(data);
+        }
+        result.sync = readImeSyncSnapshot(data);
+        return result;
+    }
+
+    static ImeSyncSnapshot decodeImeSyncSnapshot(ByteBuffer data) {
+        if (data == null || data.remaining() == 0) return new ImeSyncSnapshot();
+        return readImeSyncSnapshot(data);
+    }
+
+    private static TextEditResult readTextEditChanges(ByteBuffer data) {
+        if (data == null || data.remaining() < 4) return TextEditResult.EMPTY;
         int count = data.getInt();
         if (count <= 0) return TextEditResult.EMPTY;
         ArrayList<TextChange> changes = new ArrayList<>(count);
@@ -231,6 +247,35 @@ final class ProtocolDecoder {
 
     private static TextPosition readTextPosition(ByteBuffer data) {
         return new TextPosition(data.getInt(), data.getInt());
+    }
+
+    private static TextRange readTextRange(ByteBuffer data) {
+        return new TextRange(readTextPosition(data), readTextPosition(data));
+    }
+
+    private static ImeSyncSnapshot readImeSyncSnapshot(ByteBuffer data) {
+        if (data == null || data.remaining() < 76) return new ImeSyncSnapshot();
+        ImeSyncSnapshot snapshot = new ImeSyncSnapshot();
+        snapshot.cursor = readTextPosition(data);
+        boolean hasSelection = data.getInt() != 0;
+        TextRange selection = readTextRange(data);
+        snapshot.selection = hasSelection ? selection : null;
+        snapshot.hasComposingSession = data.getInt() != 0;
+        boolean hasVisibleCompositionRange = data.getInt() != 0;
+        TextRange visibleCompositionRange = readTextRange(data);
+        snapshot.visibleCompositionRange = hasVisibleCompositionRange ? visibleCompositionRange : null;
+        boolean hasPlatformMarkedRange = data.getInt() != 0;
+        TextRange platformMarkedRange = readTextRange(data);
+        snapshot.platformMarkedRange = hasPlatformMarkedRange ? platformMarkedRange : null;
+        snapshot.platformTextWindowText = readBufferString(data);
+        if (data.remaining() < 28) return snapshot;
+        snapshot.platformTextWindowStartOffset = data.getInt();
+        snapshot.platformTextWindowSelectionOffsets = new IntRange(data.getInt(), data.getInt());
+        snapshot.platformTextWindowComposingOffsets = new IntRange(data.getInt(), data.getInt());
+        snapshot.preeditStorage = data.getInt();
+        snapshot.contextPolicy = data.getInt();
+        snapshot.clearPlatformPreedit = data.getInt() != 0;
+        return snapshot;
     }
 
     private static TextStyle readTextStyle(ByteBuffer data) {

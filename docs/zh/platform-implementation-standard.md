@@ -24,6 +24,7 @@ Core 层不涉及 UI 渲染，仅包含桥接、数据模型和协议编解码�
 |---|---|---|
 | **Core Bridge** | `EditorCore`, `Document`, `ProtocolEncoder`, `ProtocolDecoder`, `TextMeasurer`, `EditorOptions` | 原生桥接 + 公共核心 API 封装 |
 | **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollBehavior` | 基础值类型与枚举 |
+| **IME** | `ImeActionResult`, `ImeSyncSnapshot`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`；暴露 unit-aware 删除 API 时包含 `ImeTextUnit` | IME 语义动作结果与同步快照类型 |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | 装饰数据类型 |
 | **Visual** | `EditorRenderModel`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `ScrollbarRect`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `DiagnosticDecoration`, `CompositionDecoration`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem`, `LinkedEditingRect`, `BracketHighlightRect` | 渲染模型类型（几何语义见第 2.4 节） |
 | **Snippet** | `LinkedEditingModel`, `TabStopGroup` | 联动编辑 / Tab stop 分组 |
@@ -169,7 +170,7 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 - 第 3.1 节定义 `EditorCore` 的 bridge/runtime API
 - 第 3.2 节定义宿主可见的编辑器 API
 
-各平台 MUST 在正确的 API 载体上实现所有列出的方法。第 3.1 节的方法归属于 `EditorCore`，并不自动属于宿主可见的编辑器接口表面。命令式框架中，第 3.2 节的 API 载体是控件入口类本身（例如 `SweetEditor`）；声明式框架中，第 3.2 节的 API 载体是 `SweetEditorController`。在声明式平台上，`SweetEditor` 仍然是 runtime/session owner，只是宿主可见的 API 通过 controller 暴露。
+除明确标注为条件性或可选的条目外，各平台 MUST 在正确的 API 载体上实现所有列出的方法。第 3.1 节的方法归属于 `EditorCore`，并不自动属于宿主可见的编辑器接口表面。命令式框架中，第 3.2 节的 API 载体是控件入口类本身（例如 `SweetEditor`）；声明式框架中，第 3.2 节的 API 载体是 `SweetEditorController`。在声明式平台上，`SweetEditor` 仍然是 runtime/session owner，只是宿主可见的 API 通过 controller 暴露。
 
 > 生命周期 / 内存管理 API（如 `create`、`destroy`、`freeBinaryData`）不在此列，各平台按自身惯例实现。
 
@@ -334,11 +335,16 @@ controller.whenReady(() {
 | 光标移至行首 | `moveCursorToLineStart(extend)` | — |
 | 光标移至行尾 | `moveCursorToLineEnd(extend)` | — |
 | **IME** | | |
-| 更新 preedit | `updateImePreedit(text, script)` | - |
-| 提交文本 | `commitImeText(text, script)` | - |
-| 标记平台 composition 范围 | `markImeDocumentRange(range, script)` | - |
-| 请求候选替换文本 | `replaceImeText(range, text, script)` | - |
-| 结束或取消 preedit | `finishImePreedit()` / `cancelImePreedit()` | - |
+| IME 同步快照 | `getImeSyncSnapshot()` | — |
+| 键盘脚本分类 | `setImeKeyboardScriptClass(script)` / `getImeKeyboardScriptClass()` | — |
+| 更新 preedit | `updateImePreedit(text, script)` | — |
+| 提交文本 | `commitImeText(text, script)` | — |
+| 结束或取消 preedit | `finishImePreedit()` / `cancelImePreedit()` | — |
+| 标记平台 composition 范围 | `markImeDocumentRange(range, script)` | — |
+| 请求候选替换文本 | `replaceImeText(range, text, script)` | — |
+| IME 删除 | `deleteImeBackward(length, unit)` / `deleteImeForward(length, unit)` / `deleteImeSurrounding(before, after, unit)` | — |
+| IME 驱动选区同步 | `notifyImeSelectionChanged(range)` / `notifyImeCursorChanged(cursor)` | — |
+| Composition 范围 | `getComposingRange()` / `getComposingSessionRange()` | — |
 | 是否组合中 | `isComposing()` | property: `isComposing` / `IsComposing { get; }` |
 | **只读 / 缩进** | | |
 | 设置只读 | `setReadOnly(readOnly)` | — |
@@ -424,7 +430,36 @@ IME API 是平台输入事件进入 core 的请求入口。平台层 MUST NOT �
 
 > payload 类 API（如 `setLineSpans`、`setBatchLineSpans`）各平台 MUST 提供高层 typed 封装（如 `setLineSpans(line, layer, spans: List<StyleSpan>)`）。当宿主语言存在自然的公开二进制载体（如 `ByteBuffer`、`NSData`、`byte[]`、`Uint8List`）时，平台 SHOULD 额外公开 raw/binary payload API。若 typed API 与 payload API 同时存在，两者的参数语义与最终 Core 行为 MUST 完全一致。payload 的编码格式由平台自行定义。
 
-#### 3.1.1 `EditorOptions` 标准字段
+#### 3.1.1 IME API 要求级别
+
+`EditorCore` IME API 是 bridge/runtime API。它们用于标准化平台输入适配和可测试性，不要求全部暴露在宿主可见的 `SweetEditor` / controller API 上。条件性 MUST 表示平台不需要凭空合成自身不会收到的原生 IME 能力，但一旦平台存在该能力，就 MUST 映射到对应的 core 语义动作。
+
+| API / 类型 | 要求 | 说明 |
+|---|---|---|
+| `ImeTextUnit` | SHOULD / 条件性 MUST | SHOULD 包含 `UTF16_CODE_UNIT = 0` 和 `CODE_POINT = 1`；暴露 unit-aware 删除 API 时 MUST 存在 |
+| `ImeScriptClass` | MUST | MUST 包含第 13.2 节定义的稳定枚举值 |
+| `ImePreeditStorage` | MUST | MUST 包含第 13.2 节定义的稳定枚举值 |
+| `ImeContextPolicy` | MUST | MUST 包含第 13.2 节定义的稳定枚举值 |
+| `ImeActionResult` | MUST | MUST 保留第 13.2 节定义的二进制协议字段 |
+| `ImeSyncSnapshot` | MUST | MUST 保留第 13.2 节定义的二进制协议字段 |
+| `getImeSyncSnapshot()` | MUST | 供平台输入适配层同步 surrounding text、composition 状态和选区 |
+| `setImeKeyboardScriptClass(script)` / `getImeKeyboardScriptClass()` | SHOULD / 条件性 MUST | SHOULD 记录键盘脚本 hint；平台提供 script hint 时 MUST 映射 |
+| `updateImePreedit(text, script)` | MUST | 标准平台 preedit 更新动作 |
+| `commitImeText(text, script)` | MUST | 标准平台提交动作 |
+| `finishImePreedit()` | SHOULD / 条件性 MUST | SHOULD 暴露；平台能区分 finish 与 cancel 时 MUST 映射原生 finish |
+| `cancelImePreedit()` | MUST | 取消当前 preedit |
+| `markImeDocumentRange(range, script)` | SHOULD / 条件性 MUST | SHOULD 暴露；平台报告明确 composing / marked range 时 MUST 映射 |
+| `replaceImeText(range, text, script)` | SHOULD / 条件性 MUST | SHOULD 暴露；平台报告明确 replacement range 时 MUST 映射 |
+| `deleteImeBackward(length, unit)` | SHOULD / 条件性 MUST | SHOULD 暴露；平台请求向后删除时 MUST 映射 |
+| `deleteImeForward(length, unit)` | SHOULD / 条件性 MUST | SHOULD 暴露；平台请求向前删除时 MUST 映射 |
+| `deleteImeSurrounding(before, after, unit)` | SHOULD / 条件性 MUST | SHOULD 暴露；平台请求 surrounding 删除时 MUST 映射 |
+| `notifyImeSelectionChanged(range)` | SHOULD / 条件性 MUST | SHOULD 暴露；IME 驱动 selection 同步时 MUST 映射 |
+| `notifyImeCursorChanged(cursor)` | SHOULD / 条件性 MUST | SHOULD 暴露；IME 驱动 cursor 同步时 MUST 映射 |
+| `isComposing()` | MUST | 报告 editor-visible composition 是否活跃 |
+| `getComposingRange()` | SHOULD | 供平台同步和诊断使用；未活跃时返回无 range |
+| `getComposingSessionRange()` | SHOULD | 供平台同步和诊断使用；未活跃时返回无 range |
+
+#### 3.1.2 `EditorOptions` 标准字段
 
 `EditorOptions` 是 bridge 层配置 payload。平台 MAY 将其暴露为公共类型，也 MAY 仅在内部使用；但若它跨越 bridge 边界或被序列化为二进制 payload，下列字段语义与顺序 MUST 与 Core 保持一致：
 

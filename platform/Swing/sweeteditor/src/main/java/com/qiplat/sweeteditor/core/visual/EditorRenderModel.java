@@ -23,8 +23,8 @@ public class EditorRenderModel {
     @SerializedName("guide_segments") public List<GuideSegment> guideSegments;
     @SerializedName("diagnostic_decorations") public List<DiagnosticDecoration> diagnosticDecorations;
     @SerializedName("max_gutter_icons") public int maxGutterIcons;
-    @SerializedName("linked_editing_rects") public java.util.List<LinkedEditingRect> linkedEditingRects;
-    @SerializedName("bracket_highlight_rects") public java.util.List<BracketHighlightRect> bracketHighlightRects;
+    @SerializedName("linked_editing_rects") public List<LinkedEditingRect> linkedEditingRects;
+    @SerializedName("bracket_highlight_rects") public List<BracketHighlightRect> bracketHighlightRects;
     @SerializedName("vertical_scrollbar") public ScrollbarModel verticalScrollbar;
     @SerializedName("horizontal_scrollbar") public ScrollbarModel horizontalScrollbar;
     @SerializedName("gutter_sticky") public boolean gutterSticky = true;

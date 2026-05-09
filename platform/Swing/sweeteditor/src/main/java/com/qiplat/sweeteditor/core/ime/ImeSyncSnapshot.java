@@ -1,0 +1,20 @@
+package com.qiplat.sweeteditor.core.ime;
+
+import com.qiplat.sweeteditor.core.foundation.IntRange;
+import com.qiplat.sweeteditor.core.foundation.TextPosition;
+import com.qiplat.sweeteditor.core.foundation.TextRange;
+
+public class ImeSyncSnapshot {
+    public TextPosition cursor = new TextPosition(0, 0);
+    public TextRange selection;
+    public boolean hasComposingSession;
+    public TextRange visibleCompositionRange;
+    public TextRange platformMarkedRange;
+    public String platformTextWindowText = "";
+    public int platformTextWindowStartOffset;
+    public IntRange platformTextWindowSelectionOffsets = new IntRange(0, 0);
+    public IntRange platformTextWindowComposingOffsets = new IntRange(-1, -1);
+    public int preeditStorage = ImePreeditStorage.NONE;
+    public int contextPolicy = ImeContextPolicy.NONE;
+    public boolean clearPlatformPreedit;
+}

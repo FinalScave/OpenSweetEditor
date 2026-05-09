@@ -16,7 +16,10 @@ import java.awt.font.LineMetrics;
 import java.awt.geom.*;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Platform-independent rendering engine for the Swing editor.
@@ -253,12 +256,12 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
     }
 
     private float getFontAscent(Graphics2D g, Font font) {
-        java.awt.FontMetrics fm = g.getFontMetrics(font);
+        FontMetrics fm = g.getFontMetrics(font);
         return fm.getAscent();
     }
 
     private float getFontHeight(Graphics2D g, Font font) {
-        java.awt.FontMetrics fm = g.getFontMetrics(font);
+        FontMetrics fm = g.getFontMetrics(font);
         return fm.getAscent() + fm.getDescent();
     }
 
@@ -793,8 +796,8 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
                 "Fira Code", "Source Code Pro", "DejaVu Sans Mono",
                 "Liberation Mono", "Courier New", Font.MONOSPACED
         };
-        java.util.Set<String> available = new java.util.HashSet<>(
-                java.util.Arrays.asList(java.awt.GraphicsEnvironment
+        Set<String> available = new HashSet<>(
+                Arrays.asList(GraphicsEnvironment
                         .getLocalGraphicsEnvironment().getAvailableFontFamilyNames()));
         for (String name : candidates) {
             if (available.contains(name)) {

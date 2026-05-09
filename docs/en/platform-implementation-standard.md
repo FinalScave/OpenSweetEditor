@@ -24,6 +24,7 @@ The Core layer does not involve UI rendering. It contains only bridging, data mo
 |---|---|---|
 | **Core Bridge** | `EditorCore`, `Document`, `ProtocolEncoder`, `ProtocolDecoder`, `TextMeasurer`, `EditorOptions` | Native bridge + public core API wrapper |
 | **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollBehavior` | Fundamental value types and enums |
+| **IME** | `ImeActionResult`, `ImeSyncSnapshot`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`; `ImeTextUnit` when exposing unit-aware deletion APIs | IME semantic action result and synchronization snapshot types |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | Decoration data types |
 | **Visual** | `EditorRenderModel`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `ScrollbarRect`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `DiagnosticDecoration`, `CompositionDecoration`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem`, `LinkedEditingRect`, `BracketHighlightRect` | Render model types (geometry semantics follow Section 2.4) |
 | **Snippet** | `LinkedEditingModel`, `TabStopGroup` | Linked editing / tab stop groups |
@@ -169,7 +170,7 @@ The following defines two distinct public API layers:
 - Section 3.1 defines the `EditorCore` bridge/runtime API
 - Section 3.2 defines the host-facing editor API
 
-Platforms MUST implement every listed method on the appropriate API carrier. Section 3.1 methods belong to `EditorCore`; they are not implicitly part of the host-facing editor surface. In imperative frameworks the Section 3.2 carrier is the widget entry class itself (for example `SweetEditor`), while in declarative frameworks the Section 3.2 carrier is `SweetEditorController`. On declarative platforms, `SweetEditor` remains the runtime/session owner even though the host-facing API is exposed through the controller.
+Platforms MUST implement every listed method on the appropriate API carrier unless a later section assigns a weaker requirement level to that method. Section 3.1 methods belong to `EditorCore`; they are not implicitly part of the host-facing editor surface. In imperative frameworks the Section 3.2 carrier is the widget entry class itself (for example `SweetEditor`), while in declarative frameworks the Section 3.2 carrier is `SweetEditorController`. On declarative platforms, `SweetEditor` remains the runtime/session owner even though the host-facing API is exposed through the controller.
 
 > Lifecycle / memory management APIs (e.g. `create`, `destroy`, `freeBinaryData`) are not listed here; each platform implements them per its own conventions.
 
@@ -334,11 +335,16 @@ Section 3.1 defines the bridge/runtime API carried by `EditorCore`. It includes 
 | Move cursor to line start | `moveCursorToLineStart(extend)` | — |
 | Move cursor to line end | `moveCursorToLineEnd(extend)` | — |
 | **IME** | | |
-| Update preedit | `updateImePreedit(text, script)` | - |
-| Commit text | `commitImeText(text, script)` | - |
-| Mark platform composition range | `markImeDocumentRange(range, script)` | - |
-| Candidate replacement text | `replaceImeText(range, text, script)` | - |
-| Finish or cancel preedit | `finishImePreedit()` / `cancelImePreedit()` | - |
+| IME sync snapshot | `getImeSyncSnapshot()` | — |
+| Keyboard script class | `setImeKeyboardScriptClass(script)` / `getImeKeyboardScriptClass()` | — |
+| Update preedit | `updateImePreedit(text, script)` | — |
+| Commit text | `commitImeText(text, script)` | — |
+| Finish or cancel preedit | `finishImePreedit()` / `cancelImePreedit()` | — |
+| Mark platform composition range | `markImeDocumentRange(range, script)` | — |
+| Candidate replacement text | `replaceImeText(range, text, script)` | — |
+| IME deletion | `deleteImeBackward(length, unit)` / `deleteImeForward(length, unit)` / `deleteImeSurrounding(before, after, unit)` | — |
+| IME-driven selection sync | `notifyImeSelectionChanged(range)` / `notifyImeCursorChanged(cursor)` | — |
+| Composition ranges | `getComposingRange()` / `getComposingSessionRange()` | — |
 | Is composing | `isComposing()` | property: `isComposing` / `IsComposing { get; }` |
 | **Read-only / Indent** | | |
 | Set read-only | `setReadOnly(readOnly)` | — |
@@ -418,7 +424,36 @@ Section 3.1 defines the bridge/runtime API carried by `EditorCore`. It includes 
 
 > Payload-level APIs (e.g. `setLineSpans`, `setBatchLineSpans`) — all platforms MUST provide high-level typed wrappers (e.g. `setLineSpans(line, layer, spans: List<StyleSpan>)`). Platforms SHOULD additionally expose raw/binary payload APIs when the host language has a natural public binary carrier (e.g. `ByteBuffer`, `NSData`, `byte[]`, `Uint8List`). If both typed and payload APIs are exposed, their parameter semantics and final Core behavior MUST be identical. Payload encoding format remains platform-defined.
 
-#### 3.1.1 `EditorOptions` Standard Fields
+#### 3.1.1 IME API Requirement Levels
+
+`EditorCore` IME APIs are bridge/runtime APIs. They standardize platform input adaptation and testability; they are not required to be exposed on the host-facing `SweetEditor` / controller API. Conditional MUST means a platform is not required to synthesize a native IME capability it does not receive, but if that capability exists it MUST map to the named core semantic action.
+
+| API / Type | Requirement | Notes |
+|---|---|---|
+| `ImeTextUnit` | SHOULD / conditional MUST | SHOULD include `UTF16_CODE_UNIT = 0` and `CODE_POINT = 1`; MUST be present when exposing unit-aware deletion APIs |
+| `ImeScriptClass` | MUST | MUST include the stable enum values defined in Section 13.2 |
+| `ImePreeditStorage` | MUST | MUST include the stable enum values defined in Section 13.2 |
+| `ImeContextPolicy` | MUST | MUST include the stable enum values defined in Section 13.2 |
+| `ImeActionResult` | MUST | MUST preserve the binary protocol fields defined in Section 13.2 |
+| `ImeSyncSnapshot` | MUST | MUST preserve the binary protocol fields defined in Section 13.2 |
+| `getImeSyncSnapshot()` | MUST | Used by platform input adapters to synchronize surrounding text, composing state, and selection |
+| `setImeKeyboardScriptClass(script)` / `getImeKeyboardScriptClass()` | SHOULD / conditional MUST | SHOULD track keyboard script hints; MUST map platform-provided script hints when they are available |
+| `updateImePreedit(text, script)` | MUST | The canonical platform preedit update action |
+| `commitImeText(text, script)` | MUST | The canonical platform commit action |
+| `finishImePreedit()` | SHOULD / conditional MUST | SHOULD be exposed; MUST map native finish when the platform distinguishes finish from cancel |
+| `cancelImePreedit()` | MUST | Cancels active preedit |
+| `markImeDocumentRange(range, script)` | SHOULD / conditional MUST | SHOULD be exposed; MUST map explicit native composing / marked ranges |
+| `replaceImeText(range, text, script)` | SHOULD / conditional MUST | SHOULD be exposed; MUST map explicit native replacement ranges |
+| `deleteImeBackward(length, unit)` | SHOULD / conditional MUST | SHOULD be exposed; MUST map native backward deletion requests |
+| `deleteImeForward(length, unit)` | SHOULD / conditional MUST | SHOULD be exposed; MUST map native forward deletion requests |
+| `deleteImeSurrounding(before, after, unit)` | SHOULD / conditional MUST | SHOULD be exposed; MUST map native surrounding deletion requests |
+| `notifyImeSelectionChanged(range)` | SHOULD / conditional MUST | SHOULD be exposed; MUST map IME-driven selection synchronization |
+| `notifyImeCursorChanged(cursor)` | SHOULD / conditional MUST | SHOULD be exposed; MUST map IME-driven cursor synchronization |
+| `isComposing()` | MUST | Reports whether editor-visible composition is active |
+| `getComposingRange()` | SHOULD | Useful for platform synchronization and diagnostics; returns no range when inactive |
+| `getComposingSessionRange()` | SHOULD | Useful for platform synchronization and diagnostics; returns no range when inactive |
+
+#### 3.1.2 `EditorOptions` Standard Fields
 
 `EditorOptions` is a bridge-layer configuration payload. Platforms MAY expose it as a public type or keep it internal, but if it crosses the bridge boundary or is serialized into a binary payload, the following field semantics and ordering MUST remain aligned with Core:
 

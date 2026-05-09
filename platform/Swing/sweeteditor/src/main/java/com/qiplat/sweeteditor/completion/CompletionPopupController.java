@@ -4,6 +4,9 @@ import com.qiplat.sweeteditor.EditorTheme;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.geom.RoundRectangle2D;
 import java.util.ArrayList;
 import java.util.List;
@@ -154,16 +157,16 @@ public class CompletionPopupController implements CompletionProviderManager.Comp
     public boolean handleSwingKeyCode(int vkKeyCode) {
         if (!isShowing() || items.isEmpty()) return false;
         switch (vkKeyCode) {
-            case java.awt.event.KeyEvent.VK_ENTER:
+            case KeyEvent.VK_ENTER:
                 confirmSelected();
                 return true;
-            case java.awt.event.KeyEvent.VK_ESCAPE:
+            case KeyEvent.VK_ESCAPE:
                 dismiss();
                 return true;
-            case java.awt.event.KeyEvent.VK_UP:
+            case KeyEvent.VK_UP:
                 moveSelection(-1);
                 return true;
-            case java.awt.event.KeyEvent.VK_DOWN:
+            case KeyEvent.VK_DOWN:
                 moveSelection(1);
                 return true;
             default:
@@ -205,9 +208,9 @@ public class CompletionPopupController implements CompletionProviderManager.Comp
                     cellRenderer.getCompletionCellRendererComponent(jList, value, index, isSelected));
         }
 
-        list.addMouseListener(new java.awt.event.MouseAdapter() {
+        list.addMouseListener(new MouseAdapter() {
             @Override
-            public void mouseClicked(java.awt.event.MouseEvent e) {
+            public void mouseClicked(MouseEvent e) {
                 int index = list.locationToIndex(e.getPoint());
                 if (index >= 0) {
                     selectedIndex = index;
