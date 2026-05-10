@@ -1,6 +1,6 @@
 {
   "name": "java",
-  "fileExtensions": [".java"],
+  "fileSuffixes": [".java"],
   "variables": {
     "identifierStart": "[\\p{Han}\\w_$]+",
     "identifierPart": "[\\p{Han}\\w_$0-9]*",
@@ -8,6 +8,14 @@
     "whiteSpace": "[ \\t\\f]",
     "any": "[\\S\\s]",
     "primitiveType": "void|boolean|byte|char|short|int|long|float|double"
+  },
+  "fragments": {
+    "urlRule": [
+      {
+        "pattern": "(?:(?:https?|ftp)://|www\\.)[A-Za-z0-9._~:/?#\\[\\]@!$&()*+,;=%-]*[A-Za-z0-9_~/#@%=+-]",
+        "style": "url"
+      }
+    ]
   },
   "states": {
     "default": [
@@ -128,17 +136,14 @@
         "styles": [1, "method", 2, "punctuation"]
       },
       {
-        "pattern": "(\")(https?://[^\\s\"'<>]+)(\")",
-        "styles": [1, "string", 2, "link", 3, "string"]
-      },
-      {
         "pattern": "\"\"\"",
         "style": "string",
         "state": "textBlock"
       },
       {
-        "pattern": "\"(?:[^\"\\\\]|\\\\.)*\"",
-        "style": "string"
+        "pattern": "\"",
+        "style": "string",
+        "state": "doubleString"
       },
       {
         "pattern": "'(?:[^'\\\\]|\\\\.)*'",
@@ -147,6 +152,10 @@
       {
         "pattern": "\\b0[xX][0-9a-fA-F_]+[lL]?\\b",
         "style": "color"
+      },
+      {
+        "pattern": "\\b0[xX][0-9a-fA-F_]+[lL]?\\b",
+        "style": "number"
       },
       {
         "pattern": "\\b0[bB][01_]+[lL]?\\b",
@@ -167,8 +176,9 @@
         "state": "longComment"
       },
       {
-        "pattern": "//${any}*",
-        "style": "comment"
+        "pattern": "//",
+        "style": "comment",
+        "state": "lineComment"
       },
       {
         "pattern": "->|::",
@@ -293,8 +303,9 @@
         "styles": [1, "class", 2, "punctuation", 3, "variable"]
       },
       {
-        "pattern": "\"(?:[^\"\\\\]|\\\\.)*\"",
-        "style": "string"
+        "pattern": "\"",
+        "style": "string",
+        "state": "doubleString"
       },
       {
         "pattern": "'(?:[^'\\\\]|\\\\.)*'",
@@ -328,6 +339,9 @@
         "state": "default"
       },
       {
+        "include": "urlRule"
+      },
+      {
         "pattern": "\\\\.",
         "style": "string"
       },
@@ -336,11 +350,47 @@
         "style": "string"
       }
     ],
+    "doubleString": [
+      {
+        "pattern": "\"",
+        "style": "string",
+        "state": "default"
+      },
+      {
+        "include": "urlRule"
+      },
+      {
+        "pattern": "\\\\.",
+        "style": "string"
+      },
+      {
+        "pattern": "${any}",
+        "style": "string"
+      },
+      {
+        "onLineEndState": "default"
+      }
+    ],
+    "lineComment": [
+      {
+        "include": "urlRule"
+      },
+      {
+        "pattern": "${any}",
+        "style": "comment"
+      },
+      {
+        "onLineEndState": "default"
+      }
+    ],
     "docComment": [
       {
         "pattern": "\\*/",
         "style": "comment",
         "state": "default"
+      },
+      {
+        "include": "urlRule"
       },
       {
         "pattern": "(@param)${whiteSpace}+(<)(${identifier})(>)",
@@ -384,6 +434,9 @@
         "pattern": "\\*/",
         "style": "comment",
         "state": "default"
+      },
+      {
+        "include": "urlRule"
       },
       {
         "pattern": "${any}",

@@ -27,11 +27,13 @@ import com.qiplat.sweeteditor.decoration.DecorationResult;
 import com.qiplat.sweeteditor.decoration.DecorationType;
 import com.qiplat.sweetline.DocumentAnalyzer;
 import com.qiplat.sweetline.DocumentHighlight;
+import com.qiplat.sweetline.DocumentHighlightSlice;
 import com.qiplat.sweetline.HighlightConfig;
 import com.qiplat.sweetline.HighlightEngine;
 import com.qiplat.sweetline.IndentGuideLine;
 import com.qiplat.sweetline.IndentGuideResult;
 import com.qiplat.sweetline.LineHighlight;
+import com.qiplat.sweetline.LineRange;
 import com.qiplat.sweetline.SyntaxCompileError;
 import com.qiplat.sweetline.TokenSpan;
 
@@ -72,7 +74,6 @@ public class DemoDecorationProvider implements DecorationProvider {
 
     private static HighlightEngine highlightEngine;
     private DocumentAnalyzer documentAnalyzer;
-    private DocumentHighlight cacheHighlight;
     @NonNull
     private String analyzedFileName = DEFAULT_ANALYSIS_FILE_NAME;
 
@@ -149,21 +150,27 @@ public class DemoDecorationProvider implements DecorationProvider {
         String text = editorDocument.getText();
         String currentFileName = resolveCurrentFileName(context);
 
+        DocumentHighlightSlice highlightSlice = null;
+        LineRange visibleRange = new LineRange(context.visibleLineRange.start,
+                context.visibleLineRange.end - context.visibleLineRange.start);
         boolean fileChanged = !currentFileName.equals(analyzedFileName);
-        if (cacheHighlight == null || documentAnalyzer == null || fileChanged) {
+        if (documentAnalyzer == null || fileChanged) {
             documentAnalyzer = highlightEngine.loadDocument(
                     new com.qiplat.sweetline.Document(buildAnalysisUri(currentFileName), text));
-            cacheHighlight = documentAnalyzer.analyze();
             analyzedFileName = currentFileName;
-        } else if (!context.textChanges.isEmpty()) {
+        }
+        if (context.textChanges.isEmpty()) {
+            highlightSlice = documentAnalyzer.analyzeLineRange(visibleRange);
+        } else {
             for (TextChange change : context.textChanges) {
-                cacheHighlight = documentAnalyzer.analyzeIncremental(
+                highlightSlice = documentAnalyzer.analyzeIncrementalInLineRange(
                         convertAsSLTextRange(change.range),
-                        change.newText
+                        change.newText,
+                        visibleRange
                 );
             }
         }
-        if (cacheHighlight == null || cacheHighlight.lines == null || cacheHighlight.lines.isEmpty()) {
+        if (highlightSlice == null) {
             return new DecorationResult.Builder()
                     .syntaxSpans(syntaxSpans, DecorationResult.ApplyMode.MERGE)
                     .inlayHints(colorInlayHints, DecorationResult.ApplyMode.REPLACE_RANGE)
@@ -174,13 +181,7 @@ public class DemoDecorationProvider implements DecorationProvider {
                     .links(links, DecorationResult.ApplyMode.REPLACE_RANGE)
                     .build();
         }
-        int renderStartLine = Math.max(0, context.visibleLineRange.start);
-        int maxLine = Math.min(context.visibleLineRange.end, cacheHighlight.lines.size() - 1);
-        for (int i = renderStartLine; i <= maxLine; i++) {
-            if (receiver.isCancelled()) {
-                return new DecorationResult.Builder().build();
-            }
-            LineHighlight lineHighlight = cacheHighlight.lines.get(i);
+        for (LineHighlight lineHighlight : highlightSlice.lines) {
             for (TokenSpan token : lineHighlight.spans) {
                 if (receiver.isCancelled()) {
                     return new DecorationResult.Builder().build();

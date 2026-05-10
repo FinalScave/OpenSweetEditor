@@ -71,7 +71,7 @@ android {
 
 dependencies {
     implementation project(":sweeteditor")
-    implementation 'com.qiplat:sweetline:1.1.1'
+    implementation 'com.qiplat:sweetline:1.2.4'
     implementation libs.activity
     implementation libs.constraintlayout
     implementation libs.appcompat

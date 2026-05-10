@@ -1,12 +1,18 @@
 {
   "name": "kotlin",
-  "fileExtensions": [".kt", ".kts"],
+  "fileSuffixes": [".kt", ".kts"],
   "variables": {
     "identifier": "[a-zA-Z_]\\w*",
     "whiteSpace": "[ \\t\\f]",
     "any": "[\\S\\s]"
   },
   "fragments": {
+    "urlRule": [
+      {
+        "pattern": "(?:(?:https?|ftp)://|www\\.)[A-Za-z0-9._~:/?#\\[\\]@!$&()*+,;=%-]*[A-Za-z0-9_~/#@%=+-]",
+        "style": "url"
+      }
+    ],
     "builtinBooleanLiteralRule": [
       {
         "pattern": "\\b(true|false|null)\\b",
@@ -24,6 +30,20 @@
       {
         "pattern": "'(?:[^'\\\\]|\\\\.)*'",
         "style": "string"
+      }
+    ],
+    "doubleQuotedStringRule": [
+      {
+        "pattern": "(\")((?:[^\"\\\\]|\\\\.)*)(\")",
+        "styles": [1, "string", 3, "string"],
+        "subStates": [2, "doubleStringContent"]
+      }
+    ],
+    "lineCommentRule": [
+      {
+        "pattern": "(//)(.*)",
+        "styles": [1, "comment", 2, "comment"],
+        "subStates": [2, "lineCommentContent"]
       }
     ],
     "numberLiteralRule": [
@@ -155,10 +175,6 @@
         "include": "genericTypeRefRule"
       },
       {
-        "pattern": "(\")(https?://[^\\s\"'<>]+)(\")",
-        "styles": [1, "string", 2, "link", 3, "string"]
-      },
-      {
         "pattern": "\"\"\"",
         "style": "string",
         "state": "rawString"
@@ -193,8 +209,7 @@
         "state": "longComment"
       },
       {
-        "pattern": "//${any}*",
-        "style": "comment"
+        "include": "lineCommentRule"
       },
       {
         "pattern": "->|::|\\?\\.|\\?:|\\.\\.|\\.\\.<|\\+\\+|--|<=|>=|==|!=|===|!==|&&|\\|\\||[.()\\[\\]?!@%^&|+\\-*/<>=,{};:]",
@@ -213,8 +228,7 @@
         "state": "longComment"
       },
       {
-        "pattern": "//${any}*",
-        "style": "comment"
+        "include": "lineCommentRule"
       },
       {
         "pattern": "(<)([^()]*)(>)",
@@ -287,8 +301,7 @@
         "includes": ["builtinBooleanLiteralRule", "numberLiteralRule"]
       },
       {
-        "pattern": "\"(?:[^\"\\\\]|\\\\.)*\"",
-        "style": "string"
+        "include": "doubleQuotedStringRule"
       },
       {
         "include": "singleQuotedStringRule"
@@ -325,8 +338,7 @@
         "includes": ["builtinBooleanLiteralRule", "numberLiteralRule"]
       },
       {
-        "pattern": "\"(?:[^\"\\\\]|\\\\.)*\"",
-        "style": "string"
+        "include": "doubleQuotedStringRule"
       },
       {
         "include": "singleQuotedStringRule"
@@ -379,6 +391,9 @@
         "state": "default"
       },
       {
+        "include": "urlRule"
+      },
+      {
         "pattern": "\\$\\{[^}]*\\}",
         "style": "annotation"
       },
@@ -396,6 +411,9 @@
         "pattern": "\"",
         "style": "string",
         "state": "default"
+      },
+      {
+        "include": "urlRule"
       },
       {
         "pattern": "\\$\\{[^}]*\\}",
@@ -417,11 +435,44 @@
         "onLineEndState": "default"
       }
     ],
+    "doubleStringContent": [
+      {
+        "include": "urlRule"
+      },
+      {
+        "pattern": "\\$\\{[^}]*\\}",
+        "style": "annotation"
+      },
+      {
+        "pattern": "\\$${identifier}",
+        "style": "annotation"
+      },
+      {
+        "pattern": "\\\\.",
+        "style": "string"
+      },
+      {
+        "pattern": "${any}",
+        "style": "string"
+      }
+    ],
+    "lineCommentContent": [
+      {
+        "include": "urlRule"
+      },
+      {
+        "pattern": "${any}",
+        "style": "comment"
+      }
+    ],
     "docComment": [
       {
         "pattern": "\\*/",
         "style": "comment",
         "state": "default"
+      },
+      {
+        "include": "urlRule"
       },
       {
         "pattern": "(@param)${whiteSpace}+(${identifier})",
@@ -457,6 +508,9 @@
         "pattern": "\\*/",
         "style": "comment",
         "state": "default"
+      },
+      {
+        "include": "urlRule"
       },
       {
         "pattern": "${any}",

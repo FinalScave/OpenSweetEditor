@@ -1,10 +1,39 @@
 {
   "name": "lua",
-  "fileExtensions": [".lua"],
+  "fileSuffixes": [".lua"],
   "variables": {
     "identifier": "[a-zA-Z_]\\w*",
     "whiteSpace": "[ \\t\\f]",
     "any": "[\\S\\s]"
+  },
+  "fragments": {
+    "urlRule": [
+      {
+        "pattern": "(?:(?:https?|ftp)://|www\\.)[A-Za-z0-9._~:/?#\\[\\]@!$&()*+,;=%-]*[A-Za-z0-9_~/#@%=+-]",
+        "style": "url"
+      }
+    ],
+    "doubleQuotedStringRule": [
+      {
+        "pattern": "(\")((?:[^\"\\\\]|\\\\.)*)(\")",
+        "styles": [1, "string", 3, "string"],
+        "subStates": [2, "stringContent"]
+      }
+    ],
+    "singleQuotedStringRule": [
+      {
+        "pattern": "(')((?:[^'\\\\]|\\\\.)*)(')",
+        "styles": [1, "string", 3, "string"],
+        "subStates": [2, "stringContent"]
+      }
+    ],
+    "lineCommentRule": [
+      {
+        "pattern": "(--)(.*)",
+        "styles": [1, "comment", 2, "comment"],
+        "subStates": [2, "lineCommentContent"]
+      }
+    ]
   },
   "states": {
     "default": [
@@ -69,25 +98,12 @@
         "styles": [1, "variable", 2, "punctuation", 3, "variable"]
       },
       {
-        "pattern": "(\")(https?://[^\\s\"'<>]+)(\")",
-        "styles": [1, "string", 2, "link", 3, "string"]
-      },
-      {
-        "pattern": "(')(https?://[^\\s\"'<>]+)(')",
-        "styles": [1, "string", 2, "link", 3, "string"]
-      },
-      {
         "pattern": "\\[\\[",
         "style": "string",
         "state": "longString"
       },
       {
-        "pattern": "\"(?:[^\"\\\\]|\\\\.)*\"",
-        "style": "string"
-      },
-      {
-        "pattern": "'(?:[^'\\\\]|\\\\.)*'",
-        "style": "string"
+        "includes": ["doubleQuotedStringRule", "singleQuotedStringRule"]
       },
       {
         "pattern": "\\b0[xX][0-9a-fA-F]+\\b",
@@ -103,8 +119,7 @@
         "state": "longComment"
       },
       {
-        "pattern": "--${any}*",
-        "style": "comment"
+        "include": "lineCommentRule"
       },
       {
         "pattern": "\\.\\.\\.|\\.\\.|\\.\\.|<=|>=|==|~=|<<|>>|[.()\\[\\]#%^&|+\\-*/<>=,{};:]",
@@ -133,11 +148,36 @@
         "onLineEndState": "default"
       }
     ],
+    "stringContent": [
+      {
+        "include": "urlRule"
+      },
+      {
+        "pattern": "\\\\.",
+        "style": "string"
+      },
+      {
+        "pattern": "${any}",
+        "style": "string"
+      }
+    ],
+    "lineCommentContent": [
+      {
+        "include": "urlRule"
+      },
+      {
+        "pattern": "${any}",
+        "style": "comment"
+      }
+    ],
     "longString": [
       {
         "pattern": "\\]\\]",
         "style": "string",
         "state": "default"
+      },
+      {
+        "include": "urlRule"
       },
       {
         "pattern": "${any}",
@@ -149,6 +189,9 @@
         "pattern": "\\]\\]",
         "style": "comment",
         "state": "default"
+      },
+      {
+        "include": "urlRule"
       },
       {
         "pattern": "${any}",
