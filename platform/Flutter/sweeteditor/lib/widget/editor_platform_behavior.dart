@@ -8,9 +8,11 @@ class EditorPlatformBehavior {
     required this.showsSelectionHandles,
     required this.showsFloatingSelectionMenu,
     required this.revealSelectionEndOnSelectAll,
+    required this.usesDeltaTextInputModel,
     required this.supportsTouchScale,
     required this.supportsCtrlWheelScale,
     required this.supportsTrackpadPanZoom,
+    required this.retainsPlainTextInputContextAfterPreeditClear,
     required this.gutterStickyDefault,
     required this.handleConfig,
     required this.scrollbarConfig,
@@ -18,10 +20,10 @@ class EditorPlatformBehavior {
   });
 
   factory EditorPlatformBehavior.resolve() {
+    final isAndroid =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
     final isMobileStyle =
-        !kIsWeb &&
-        (defaultTargetPlatform == TargetPlatform.android ||
-            defaultTargetPlatform == TargetPlatform.iOS);
+        !kIsWeb && (isAndroid || defaultTargetPlatform == TargetPlatform.iOS);
     final usesPlatformTextInput = !kIsWeb;
     return EditorPlatformBehavior._(
       usesPlatformTextInput: usesPlatformTextInput,
@@ -30,9 +32,11 @@ class EditorPlatformBehavior {
       showsSelectionHandles: isMobileStyle,
       showsFloatingSelectionMenu: isMobileStyle,
       revealSelectionEndOnSelectAll: isMobileStyle,
+      usesDeltaTextInputModel: isAndroid,
       supportsTouchScale: isMobileStyle,
       supportsCtrlWheelScale: !isMobileStyle,
       supportsTrackpadPanZoom: !isMobileStyle,
+      retainsPlainTextInputContextAfterPreeditClear: isAndroid,
       gutterStickyDefault: !isMobileStyle,
       handleConfig: isMobileStyle
           ? _buildMobileHandleConfig()
@@ -48,9 +52,11 @@ class EditorPlatformBehavior {
   final bool showsSelectionHandles;
   final bool showsFloatingSelectionMenu;
   final bool revealSelectionEndOnSelectAll;
+  final bool usesDeltaTextInputModel;
   final bool supportsTouchScale;
   final bool supportsCtrlWheelScale;
   final bool supportsTrackpadPanZoom;
+  final bool retainsPlainTextInputContextAfterPreeditClear;
   final bool gutterStickyDefault;
   final core.HandleConfig handleConfig;
   final core.ScrollbarConfig scrollbarConfig;
