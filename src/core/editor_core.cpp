@@ -339,7 +339,7 @@ namespace NS_SWEETEDITOR {
   }
 
 #pragma region [Setup & View State]
-  EditorCore::EditorCore(const SharedPtr<TextMeasurer>& measurer, const EditorOptions& options): m_measurer_(measurer), m_options_(options), m_key_resolver_(options.key_chord_timeout_ms) {
+  EditorCore::EditorCore(const SharedPtr<TextMeasurer>& measurer, const EditorOptions& options): m_measurer_(measurer), m_options_(options), m_key_resolver_(options.key_chord_timeout_ms), m_composition_controller_(*this) {
     m_decorations_ = makeShared<DecorationManager>();
     m_text_layout_ = makeUnique<TextLayout>(measurer, m_decorations_);
     InteractionContext interaction_context;
@@ -389,7 +389,7 @@ namespace NS_SWEETEDITOR {
 
   void EditorCore::loadDocument(const SharedPtr<Document>& document) {
     cancelLinkedEditing();
-    m_composition_controller_.removeComposingText(*this);
+    m_composition_controller_.removeComposingText();
     m_composition_controller_.resetCompositionState();
     m_composition_controller_.clearCandidateCommitWindow();
     m_undo_manager_->clear();
@@ -861,7 +861,7 @@ namespace NS_SWEETEDITOR {
     if (isComposing()) {
       switch (event.key_code) {
       case KeyCode::ESCAPE:
-        m_composition_controller_.cancelComposing(*this);
+        m_composition_controller_.cancelComposing();
         result.handled = true;
         result.content_changed = true;
         result.cursor_changed = true;
@@ -1140,7 +1140,7 @@ namespace NS_SWEETEDITOR {
 
     // If composition is active, end it first (commit current composing text before new input)
     if (isComposing()) {
-      m_composition_controller_.cancelComposing(*this);
+      m_composition_controller_.cancelComposing();
     }
 
     // Auto-indent: when inserting a newline with KEEP_INDENT enabled, append previous line's leading whitespace
@@ -1268,7 +1268,7 @@ namespace NS_SWEETEDITOR {
 
     // If composition is active, cancel it first
     if (isComposing()) {
-      m_composition_controller_.cancelComposing(*this);
+      m_composition_controller_.cancelComposing();
     }
 
     if (isInLinkedEditing()) {
@@ -1296,7 +1296,7 @@ namespace NS_SWEETEDITOR {
       const CompositionState& composition = getCompositionState();
       if (composition.kind == CompositionKind::PREEDIT_TEXT) {
         if (composition.composing_text.empty()) {
-          m_composition_controller_.cancelComposing(*this);
+          m_composition_controller_.cancelComposing();
         } else {
           U16String composing_u16;
           StrUtil::convertUTF8ToUTF16(composition.composing_text, composing_u16);
@@ -1307,21 +1307,21 @@ namespace NS_SWEETEDITOR {
             U8String next_text;
             StrUtil::convertUTF16ToUTF8(composing_u16, next_text);
             if (next_text.empty()) {
-              m_composition_controller_.cancelComposing(*this);
+              m_composition_controller_.cancelComposing();
             } else {
-              m_composition_controller_.setComposingText(*this, next_text);
+              m_composition_controller_.setComposingText(next_text);
             }
           } else {
-            m_composition_controller_.cancelComposing(*this);
+            m_composition_controller_.cancelComposing();
           }
         }
         return {};
       } else {
         const TextRange range = composition.anchor_range;
         if (composition.kind == CompositionKind::DOCUMENT_RANGE && m_caret_.cursor == range.end) {
-          return m_composition_controller_.deleteBackward(*this, 1).edit_result;
+          return m_composition_controller_.deleteBackward(1).edit_result;
         }
-        m_composition_controller_.commitComposingText(*this, "", true);
+        m_composition_controller_.commitComposingText("", true);
       }
     }
 
@@ -1448,10 +1448,10 @@ namespace NS_SWEETEDITOR {
     if (isComposing()) {
       const CompositionState& composition = getCompositionState();
       if (composition.kind == CompositionKind::PREEDIT_TEXT) {
-        m_composition_controller_.cancelComposing(*this);
+        m_composition_controller_.cancelComposing();
         return {};
       }
-      m_composition_controller_.commitComposingText(*this, "", true);
+      m_composition_controller_.commitComposingText("", true);
     }
 
     if (isInLinkedEditing() && hasSelection()) {
@@ -1577,7 +1577,7 @@ namespace NS_SWEETEDITOR {
   }
   TextEditResult EditorCore::moveLineUp() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (isComposing()) m_composition_controller_.cancelComposing(*this);
+    if (isComposing()) m_composition_controller_.cancelComposing();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1618,7 +1618,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::moveLineDown() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (isComposing()) m_composition_controller_.cancelComposing(*this);
+    if (isComposing()) m_composition_controller_.cancelComposing();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1660,7 +1660,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::copyLineUp() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (isComposing()) m_composition_controller_.cancelComposing(*this);
+    if (isComposing()) m_composition_controller_.cancelComposing();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1692,7 +1692,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::copyLineDown() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (isComposing()) m_composition_controller_.cancelComposing(*this);
+    if (isComposing()) m_composition_controller_.cancelComposing();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1725,7 +1725,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::deleteLine() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (isComposing()) m_composition_controller_.cancelComposing(*this);
+    if (isComposing()) m_composition_controller_.cancelComposing();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1755,7 +1755,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::insertLineAbove() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (isComposing()) m_composition_controller_.cancelComposing(*this);
+    if (isComposing()) m_composition_controller_.cancelComposing();
 
     size_t line = m_caret_.cursor.line;
     TextPosition insert_pos = {line, 0};
@@ -1772,7 +1772,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::insertLineBelow() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (isComposing()) m_composition_controller_.cancelComposing(*this);
+    if (isComposing()) m_composition_controller_.cancelComposing();
 
     size_t line = m_caret_.cursor.line;
     uint32_t line_cols = m_document_->getLineColumns(line);
@@ -1787,7 +1787,7 @@ namespace NS_SWEETEDITOR {
 
     // If composition input is active, cancel it first
     if (isComposing()) {
-      m_composition_controller_.cancelComposing(*this);
+      m_composition_controller_.cancelComposing();
     }
 
     // Exit linked editing mode when undoing
@@ -1892,7 +1892,7 @@ namespace NS_SWEETEDITOR {
 
     // If composition input is active, cancel it first
     if (isComposing()) {
-      m_composition_controller_.cancelComposing(*this);
+      m_composition_controller_.cancelComposing();
     }
 
     // Exit linked editing mode when redoing
@@ -1986,7 +1986,7 @@ namespace NS_SWEETEDITOR {
 
   void EditorCore::setCursorPositionInternal(const TextPosition& position, bool commit_composition) {
     if (commit_composition && isComposing() && position != m_caret_.cursor) {
-      m_composition_controller_.commitComposingText(*this, "", true);
+      m_composition_controller_.commitComposingText("", true);
     }
     m_caret_.cursor = position;
     if (m_document_ != nullptr) {
@@ -2028,7 +2028,7 @@ namespace NS_SWEETEDITOR {
           ? m_caret_.selection
           : TextRange {m_caret_.cursor, m_caret_.cursor};
       if (!(range == current_range)) {
-        m_composition_controller_.commitComposingText(*this, "", true);
+        m_composition_controller_.commitComposingText("", true);
       }
     }
     TextRange safe_range = range;
@@ -2285,7 +2285,7 @@ namespace NS_SWEETEDITOR {
 
   void EditorCore::setReadOnly(bool read_only) {
     if (read_only && isComposing()) {
-      m_composition_controller_.cancelComposing(*this);
+      m_composition_controller_.cancelComposing();
     }
     m_settings_.read_only = read_only;
     LOGD("EditorCore::setReadOnly, read_only = %s", read_only ? "true" : "false");
@@ -2317,7 +2317,7 @@ namespace NS_SWEETEDITOR {
 
     // If composition is active, cancel it first
     if (isComposing()) {
-      m_composition_controller_.cancelComposing(*this);
+      m_composition_controller_.cancelComposing();
     }
 
     // Exit existing linked editing session
@@ -2356,7 +2356,7 @@ namespace NS_SWEETEDITOR {
 
     // If composition is active, cancel it first
     if (isComposing()) {
-      m_composition_controller_.cancelComposing(*this);
+      m_composition_controller_.cancelComposing();
     }
 
     // Exit existing linked editing session
@@ -2501,7 +2501,7 @@ namespace NS_SWEETEDITOR {
 #pragma region [IME]
 
   ImeActionResult EditorCore::updateImePreedit(const U8String& text, ImeScriptClass script_class) {
-    return m_composition_controller_.updatePreedit(*this, text, script_class);
+    return m_composition_controller_.updatePreedit(text, script_class);
   }
 
   ImeActionResult EditorCore::setImeComposingText(const U8String& text,
@@ -2542,7 +2542,7 @@ namespace NS_SWEETEDITOR {
   }
 
   ImeActionResult EditorCore::commitImeText(const U8String& text, ImeScriptClass script_class) {
-    return m_composition_controller_.commitText(*this, text, script_class);
+    return m_composition_controller_.commitText(text, script_class);
   }
 
   ImeActionResult EditorCore::commitImeText(const U8String& text,
@@ -2554,16 +2554,16 @@ namespace NS_SWEETEDITOR {
   }
 
   ImeActionResult EditorCore::finishImePreedit() {
-    return m_composition_controller_.finishPreedit(*this);
+    return m_composition_controller_.finishPreedit();
   }
 
   ImeActionResult EditorCore::cancelImePreedit() {
-    return m_composition_controller_.cancelPreedit(*this);
+    return m_composition_controller_.cancelPreedit();
   }
 
   ImeActionResult EditorCore::markImeDocumentRange(const TextRange& range,
                                                    ImeScriptClass script_class) {
-    return m_composition_controller_.markDocumentRange(*this, range, script_class);
+    return m_composition_controller_.markDocumentRange(range, script_class);
   }
 
   ImeActionResult EditorCore::markImeDocumentRange(size_t start_offset,
@@ -2579,7 +2579,7 @@ namespace NS_SWEETEDITOR {
   ImeActionResult EditorCore::replaceImeText(const TextRange& range,
                                              const U8String& text,
                                              ImeScriptClass script_class) {
-    return m_composition_controller_.replaceText(*this, range, text, script_class);
+    return m_composition_controller_.replaceText(range, text, script_class);
   }
 
   ImeActionResult EditorCore::replaceImeDocumentText(size_t start_offset,
@@ -3064,7 +3064,6 @@ namespace NS_SWEETEDITOR {
     }
 
     result = m_composition_controller_.commitDocumentRangeReplacement(
-        *this,
         range,
         text,
         script_class);
@@ -3073,25 +3072,25 @@ namespace NS_SWEETEDITOR {
   }
 
   ImeActionResult EditorCore::deleteImeBackward(size_t before_length, ImeTextUnit text_unit) {
-    return m_composition_controller_.deleteBackward(*this, before_length, text_unit);
+    return m_composition_controller_.deleteBackward(before_length, text_unit);
   }
 
   ImeActionResult EditorCore::deleteImeForward(size_t after_length, ImeTextUnit text_unit) {
-    return m_composition_controller_.deleteForward(*this, after_length, text_unit);
+    return m_composition_controller_.deleteForward(after_length, text_unit);
   }
 
   ImeActionResult EditorCore::deleteImeSurrounding(size_t before_length,
                                                   size_t after_length,
                                                   ImeTextUnit text_unit) {
-    return m_composition_controller_.deleteSurrounding(*this, before_length, after_length, text_unit);
+    return m_composition_controller_.deleteSurrounding(before_length, after_length, text_unit);
   }
 
   ImeActionResult EditorCore::notifyImeSelectionChanged(const TextRange& range) {
-    return m_composition_controller_.notifySelectionChanged(*this, range);
+    return m_composition_controller_.notifySelectionChanged(range);
   }
 
   ImeActionResult EditorCore::notifyImeCursorChanged(const TextPosition& cursor) {
-    return m_composition_controller_.notifyCursorChanged(*this, cursor);
+    return m_composition_controller_.notifyCursorChanged(cursor);
   }
 
   ImeInputContext EditorCore::getImeInputContext(size_t before_length, size_t after_length) {
@@ -3175,7 +3174,7 @@ namespace NS_SWEETEDITOR {
   }
 
   ImeSyncSnapshot EditorCore::getImeSyncSnapshot() const {
-    return m_composition_controller_.buildSyncSnapshot(*this);
+    return m_composition_controller_.buildSyncSnapshot();
   }
 
   void EditorCore::setImeKeyboardScriptClass(ImeScriptClass script_class) {
@@ -3359,163 +3358,6 @@ namespace NS_SWEETEDITOR {
     m_ime_input_context_.id = m_next_ime_input_context_id_++;
     m_ime_input_context_.revision = ++m_ime_input_context_revision_;
     resetImeTextModelPendingState();
-  }
-
-  bool EditorCore::imeHasDocument() const {
-    return m_document_ != nullptr;
-  }
-
-  bool EditorCore::imeReadOnly() const {
-    return m_settings_.read_only;
-  }
-
-  bool EditorCore::imeIsLinkedEditingActive() const {
-    return isInLinkedEditing();
-  }
-
-  TextPosition EditorCore::imeCursor() const {
-    return m_caret_.cursor;
-  }
-
-  bool EditorCore::imeHasSelection() const {
-    return m_caret_.has_selection;
-  }
-
-  TextRange EditorCore::imeSelection() const {
-    return m_caret_.selection;
-  }
-
-  TextRange EditorCore::imeClampDocumentRange(const TextRange& range) const {
-    TextRange safe_range = range;
-    if (m_document_ == nullptr) {
-      return {};
-    }
-    size_t line_count = m_document_->getLineCount();
-    auto clamp_position = [&](TextPosition& position, bool prefer_right) {
-      if (line_count == 0) {
-        position = {};
-        return;
-      }
-      if (position.line >= line_count) {
-        position.line = line_count - 1;
-        position.column = m_document_->getLineColumns(position.line);
-      }
-      const U16String& line_text = m_document_->getLineU16TextRef(position.line);
-      size_t clamped_column = std::min<size_t>(position.column, line_text.length());
-      position.column = prefer_right
-                        ? UnicodeUtil::clampColumnToGraphemeBoundaryRight(line_text, clamped_column)
-                        : UnicodeUtil::clampColumnToGraphemeBoundaryLeft(line_text, clamped_column);
-    };
-    clamp_position(safe_range.start, false);
-    clamp_position(safe_range.end, true);
-    return safe_range;
-  }
-
-  bool EditorCore::imeIsDocumentRangeReadable(const TextRange& range) const {
-    return isDocumentRangeReadable(range);
-  }
-
-  U8String EditorCore::imeDocumentText(const TextRange& range) const {
-    if (m_document_ == nullptr) {
-      return {};
-    }
-    return m_document_->getU8Text(range);
-  }
-
-  size_t EditorCore::imeDocumentLineCount() const {
-    return m_document_ != nullptr ? m_document_->getLineCount() : 0;
-  }
-
-  uint32_t EditorCore::imeLineColumns(size_t line) const {
-    if (m_document_ == nullptr || line >= m_document_->getLineCount()) {
-      return 0;
-    }
-    return m_document_->getLineColumns(line);
-  }
-
-  size_t EditorCore::imeCharIndexFromPosition(const TextPosition& position) const {
-    if (m_document_ == nullptr) {
-      return 0;
-    }
-    return m_document_->getCharIndexFromPosition(position);
-  }
-
-  TextPosition EditorCore::imePositionAfterInsert(const TextPosition& start, const U8String& text) const {
-    return calcPositionAfterInsert(start, text);
-  }
-
-  size_t EditorCore::imeUtf16Columns(const U8String& text) const {
-    return calcUtf16Columns(text);
-  }
-
-  TextEditResult EditorCore::imeApplyEdit(const TextRange& range, const U8String& text) {
-    return applyEdit(range, text);
-  }
-
-  TextEditResult EditorCore::imeInsertText(const U8String& text) {
-    return insertText(text);
-  }
-
-  void EditorCore::imeDeleteSelectionForComposition() {
-    deleteSelection();
-  }
-
-  void EditorCore::imeDeleteDocumentRange(const TextRange& range) {
-    if (m_document_ != nullptr) {
-      m_document_->deleteU8Text(range);
-    }
-  }
-
-  void EditorCore::imeInsertDocumentText(const TextPosition& position, const U8String& text) {
-    if (m_document_ != nullptr) {
-      m_document_->insertU8Text(position, text);
-    }
-  }
-
-  TextEditResult EditorCore::imeBackspace() {
-    return backspace();
-  }
-
-  TextEditResult EditorCore::imeDeleteForward() {
-    return deleteForward();
-  }
-
-  TextEditResult EditorCore::imeDeleteCodePointBackward() {
-    return deleteCodePointBackward();
-  }
-
-  TextEditResult EditorCore::imeDeleteCodePointForward() {
-    return deleteCodePointForward();
-  }
-
-  void EditorCore::imeSetCursorPosition(const TextPosition& cursor) {
-    setCursorPosition(cursor);
-  }
-
-  void EditorCore::imeSetSelection(const TextRange& range) {
-    setSelection(range);
-  }
-
-  void EditorCore::imeSetCursorPositionInternal(const TextPosition& cursor) {
-    setCursorPositionInternal(cursor, false);
-  }
-
-  void EditorCore::imeSetSelectionInternal(const TextRange& range) {
-    setSelectionInternal(range, false);
-  }
-
-  void EditorCore::imeSetRawCursorPosition(const TextPosition& cursor) {
-    m_caret_.cursor = cursor;
-  }
-
-  void EditorCore::imeInvalidateContentMetrics(size_t line) {
-    if (m_text_layout_ != nullptr) {
-      m_text_layout_->invalidateContentMetrics(line);
-    }
-  }
-
-  void EditorCore::imeEnsureCursorVisible() {
-    ensureCursorVisible();
   }
 
 #pragma endregion

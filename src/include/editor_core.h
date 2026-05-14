@@ -18,7 +18,8 @@
 namespace NS_SWEETEDITOR {
 
   /// Editor core class
-  class EditorCore : private CompositionController::Host {
+  class EditorCore {
+    friend class CompositionController;
   public:
     explicit EditorCore(const SharedPtr<TextMeasurer>& measurer, const EditorOptions& options);
 
@@ -794,36 +795,6 @@ namespace NS_SWEETEDITOR {
     bool isDocumentRangeReadable(const TextRange& range) const;
     TextEditResult deleteCodePointBackward();
     TextEditResult deleteCodePointForward();
-    bool imeHasDocument() const override;
-    bool imeReadOnly() const override;
-    bool imeIsLinkedEditingActive() const override;
-    TextPosition imeCursor() const override;
-    bool imeHasSelection() const override;
-    TextRange imeSelection() const override;
-    TextRange imeClampDocumentRange(const TextRange& range) const override;
-    bool imeIsDocumentRangeReadable(const TextRange& range) const override;
-    U8String imeDocumentText(const TextRange& range) const override;
-    size_t imeDocumentLineCount() const override;
-    uint32_t imeLineColumns(size_t line) const override;
-    size_t imeCharIndexFromPosition(const TextPosition& position) const override;
-    TextPosition imePositionAfterInsert(const TextPosition& start, const U8String& text) const override;
-    size_t imeUtf16Columns(const U8String& text) const override;
-    TextEditResult imeApplyEdit(const TextRange& range, const U8String& text) override;
-    TextEditResult imeInsertText(const U8String& text) override;
-    void imeDeleteSelectionForComposition() override;
-    void imeDeleteDocumentRange(const TextRange& range) override;
-    void imeInsertDocumentText(const TextPosition& position, const U8String& text) override;
-    TextEditResult imeBackspace() override;
-    TextEditResult imeDeleteForward() override;
-    TextEditResult imeDeleteCodePointBackward() override;
-    TextEditResult imeDeleteCodePointForward() override;
-    void imeSetCursorPosition(const TextPosition& cursor) override;
-    void imeSetSelection(const TextRange& range) override;
-    void imeSetCursorPositionInternal(const TextPosition& cursor) override;
-    void imeSetSelectionInternal(const TextRange& range) override;
-    void imeSetRawCursorPosition(const TextPosition& cursor) override;
-    void imeInvalidateContentMetrics(size_t line) override;
-    void imeEnsureCursorVisible() override;
 
 #pragma endregion
   };
