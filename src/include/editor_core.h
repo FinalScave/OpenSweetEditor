@@ -143,7 +143,7 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
-#pragma region [Editing & Cursor/IME]
+#pragma region [Editing & Cursor]
 
     /// Insert text at cursor position (replace selection if any)
     /// @param text UTF8 text
@@ -273,6 +273,58 @@ namespace NS_SWEETEDITOR {
     /// Move cursor down by one page (viewport height / line height)
     /// @param extend_selection Whether to extend selection
     void moveCursorPageDown(bool extend_selection = false);
+
+    /// Set read-only mode
+    /// @param read_only true=read-only (block all edit actions), false=editable
+    void setReadOnly(bool read_only);
+
+    /// Get whether read-only mode is active
+    bool isReadOnly() const;
+    /// Set auto indent mode
+    /// @param mode Auto indent mode
+    void setAutoIndentMode(AutoIndentMode mode);
+
+    /// Get current auto indent mode
+    AutoIndentMode getAutoIndentMode() const;
+
+    /// Set backspace unindent behavior
+    /// @param enabled true = backspace on leading whitespace unindents or merges blank line
+    void setBackspaceUnindent(bool enabled);
+
+    /// Set whether Tab inserts spaces up to the next tab stop instead of a literal '\t'
+    /// @param enabled true = insert spaces, false = insert '\t'
+    void setInsertSpaces(bool enabled);
+
+    /// Insert VSCode snippet template and enter linked editing mode (helper method)
+    /// @param snippet_template VSCode snippet syntax template
+    /// @return Exact change info (changes from inserting template text)
+    TextEditResult insertSnippet(const U8String& snippet_template);
+
+    /// Start linked editing mode with generic LinkedEditingModel
+    /// Model is built outside; ranges must already point to correct positions in document
+    /// @param model Linked editing model
+    void startLinkedEditing(LinkedEditingModel&& model);
+
+    /// Whether linked editing mode is active
+    bool isInLinkedEditing() const;
+
+    /// Linked editing: jump to next tab stop
+    /// @return false means already at end; session ends automatically
+    bool linkedEditingNextTabStop();
+
+    /// Linked editing: jump to previous tab stop
+    /// @return false means already at first
+    bool linkedEditingPrevTabStop();
+
+    /// Cancel linked editing mode
+    void cancelLinkedEditing();
+
+    /// Finish linked editing mode and place cursor at $0 position (called after Enter/Tab flow)
+    void finishLinkedEditing();
+
+#pragma endregion
+
+#pragma region [IME]
 
     /// Get the current IME synchronization snapshot
     ImeSyncSnapshot getImeSyncSnapshot() const;
@@ -416,54 +468,6 @@ namespace NS_SWEETEDITOR {
 
     /// Whether composition is active
     bool isComposing() const;
-
-    /// Set read-only mode
-    /// @param read_only true=read-only (block all edit actions), false=editable
-    void setReadOnly(bool read_only);
-
-    /// Get whether read-only mode is active
-    bool isReadOnly() const;
-    /// Set auto indent mode
-    /// @param mode Auto indent mode
-    void setAutoIndentMode(AutoIndentMode mode);
-
-    /// Get current auto indent mode
-    AutoIndentMode getAutoIndentMode() const;
-
-    /// Set backspace unindent behavior
-    /// @param enabled true = backspace on leading whitespace unindents or merges blank line
-    void setBackspaceUnindent(bool enabled);
-
-    /// Set whether Tab inserts spaces up to the next tab stop instead of a literal '\t'
-    /// @param enabled true = insert spaces, false = insert '\t'
-    void setInsertSpaces(bool enabled);
-
-    /// Insert VSCode snippet template and enter linked editing mode (helper method)
-    /// @param snippet_template VSCode snippet syntax template
-    /// @return Exact change info (changes from inserting template text)
-    TextEditResult insertSnippet(const U8String& snippet_template);
-
-    /// Start linked editing mode with generic LinkedEditingModel
-    /// Model is built outside; ranges must already point to correct positions in document
-    /// @param model Linked editing model
-    void startLinkedEditing(LinkedEditingModel&& model);
-
-    /// Whether linked editing mode is active
-    bool isInLinkedEditing() const;
-
-    /// Linked editing: jump to next tab stop
-    /// @return false means already at end; session ends automatically
-    bool linkedEditingNextTabStop();
-
-    /// Linked editing: jump to previous tab stop
-    /// @return false means already at first
-    bool linkedEditingPrevTabStop();
-
-    /// Cancel linked editing mode
-    void cancelLinkedEditing();
-
-    /// Finish linked editing mode and place cursor at $0 position (called after Enter/Tab flow)
-    void finishLinkedEditing();
 
 #pragma endregion
 
@@ -733,24 +737,6 @@ namespace NS_SWEETEDITOR {
     static size_t calcUtf16Columns(const U8String& text);
     size_t documentUtf16Length() const;
     TextRange textRangeFromUtf16Offsets(size_t start_offset, size_t end_offset) const;
-    TextRange textRangeFromImeInputContextOffsets(size_t start_offset, size_t end_offset) const;
-    TextRange textRangeFromImeInputStateOffsets(uint64_t context_id,
-                                                int32_t document_start_offset,
-                                                size_t start_offset,
-                                                size_t end_offset) const;
-    TextRange textRangeFromImeCompositionOffsets(const ImeActionResult& result,
-                                                size_t start_offset,
-                                                size_t end_offset) const;
-    void applyImeCursorOffset(ImeActionResult& result, const U8String& text, int cursor_offset);
-    void rememberImeInputState(uint64_t context_id,
-                               int32_t document_start_offset,
-                               const U8String& text,
-                               int32_t selection_start_offset,
-                               int32_t selection_end_offset,
-                               int32_t composing_start_offset,
-                               int32_t composing_end_offset);
-    void resetImeTextModelPendingState();
-    void invalidateImeInputContext();
     /// Calculate new cursor position after inserting UTF8 text
     TextPosition calcPositionAfterInsert(const TextPosition& start, const U8String& text) const;
     /// Unified edit entry: apply document edit and record undo operation
@@ -774,6 +760,37 @@ namespace NS_SWEETEDITOR {
     HitTarget getActiveHitTarget() const;
     PointerProbeResult probePointer(const PointF& point, KeyModifier modifiers) const;
     void finalizeGestureResult(GestureResult& result) const;
+    void normalizeScrollState();
+
+    /// Linked editing: apply synced replace to all linked ranges in current tab stop, return all changes
+    std::vector<TextChange> performLinkedEdits(const U8String& new_text);
+
+    /// Linked editing: apply replace and return one edit result (based on primary range)
+    TextEditResult applyLinkedEditsWithResult(const U8String& new_text);
+
+    /// Linked editing: jump to target tab stop and select default text
+    void activateCurrentTabStop();
+
+#pragma region [IME Internals]
+
+    TextRange textRangeFromImeInputContextOffsets(size_t start_offset, size_t end_offset) const;
+    TextRange textRangeFromImeInputStateOffsets(uint64_t context_id,
+                                                int32_t document_start_offset,
+                                                size_t start_offset,
+                                                size_t end_offset) const;
+    TextRange textRangeFromImeCompositionOffsets(const ImeActionResult& result,
+                                                size_t start_offset,
+                                                size_t end_offset) const;
+    void applyImeCursorOffset(ImeActionResult& result, const U8String& text, int cursor_offset);
+    void rememberImeInputState(uint64_t context_id,
+                               int32_t document_start_offset,
+                               const U8String& text,
+                               int32_t selection_start_offset,
+                               int32_t selection_end_offset,
+                               int32_t composing_start_offset,
+                               int32_t composing_end_offset);
+    void resetImeTextModelPendingState();
+    void invalidateImeInputContext();
     bool isDocumentRangeReadable(const TextRange& range) const;
     TextEditResult deleteCodePointBackward();
     TextEditResult deleteCodePointForward();
@@ -807,16 +824,8 @@ namespace NS_SWEETEDITOR {
     void imeSetRawCursorPosition(const TextPosition& cursor) override;
     void imeInvalidateContentMetrics(size_t line) override;
     void imeEnsureCursorVisible() override;
-    void normalizeScrollState();
 
-    /// Linked editing: apply synced replace to all linked ranges in current tab stop, return all changes
-    std::vector<TextChange> performLinkedEdits(const U8String& new_text);
-
-    /// Linked editing: apply replace and return one edit result (based on primary range)
-    TextEditResult applyLinkedEditsWithResult(const U8String& new_text);
-
-    /// Linked editing: jump to target tab stop and select default text
-    void activateCurrentTabStop();
+#pragma endregion
   };
 
 }

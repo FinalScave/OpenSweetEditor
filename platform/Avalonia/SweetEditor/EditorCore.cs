@@ -1683,26 +1683,14 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_move_cursor_to_line_end", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void MoveCursorToLineEnd(IntPtr handle, int extendSelection);
 
-		[DllImport(LibraryName, EntryPoint = "editor_composition_start", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void CompositionStart(IntPtr handle);
+		[DllImport(LibraryName, EntryPoint = "editor_ime_update_preedit", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeUpdatePreedit(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int scriptHint, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "editor_composition_update", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void CompositionUpdate(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string text);
-
-		[DllImport(LibraryName, EntryPoint = "editor_composition_end", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr CompositionEnd(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, out UIntPtr outSize);
-
-		[DllImport(LibraryName, EntryPoint = "editor_composition_cancel", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void CompositionCancel(IntPtr handle);
+		[DllImport(LibraryName, EntryPoint = "editor_ime_cancel_preedit", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeCancelPreedit(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_is_composing", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern int IsComposing(IntPtr handle);
-
-		[DllImport(LibraryName, EntryPoint = "editor_set_composition_enabled", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetCompositionEnabled(IntPtr handle, int enabled);
-
-		[DllImport(LibraryName, EntryPoint = "editor_is_composition_enabled", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern int IsCompositionEnabled(IntPtr handle);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_read_only", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void SetReadOnly(IntPtr handle, int readOnly);
@@ -1927,6 +1915,7 @@ namespace SweetEditor {
 		private KeyMap keyMap = KeyMap.DefaultKeyMap();
 		private bool insertSpaces;
 		private bool backspaceUnindent;
+		private bool compositionEnabled = true;
 		private bool disposed;
 		private IReadOnlyList<BracketPair> autoClosingPairs = Array.Empty<BracketPair>();
 
@@ -2000,6 +1989,12 @@ namespace SweetEditor {
 				} finally {
 					exceptionHandlerInitAttempted = true;
 				}
+			}
+		}
+
+		private static void FreeBinaryPayload(IntPtr payloadPtr) {
+			if (payloadPtr != IntPtr.Zero) {
+				NativeMethods.FreeBinaryData(payloadPtr);
 			}
 		}
 
@@ -2502,28 +2497,17 @@ namespace SweetEditor {
 
 		#region IME composition
 
-		/// <summary>Notifies the editor that IME composition has started.</summary>
-		public void CompositionStart() {
-			NativeMethods.CompositionStart(nativeHandle);
-		}
-
 		/// <summary>Updates IME composition text.</summary>
 		/// <param name="text">Current composition text</param>
-		public void CompositionUpdate(string text) {
-			NativeMethods.CompositionUpdate(nativeHandle, text);
-		}
-
-		/// <summary>Ends IME composition and commits the text.</summary>
-		/// <param name="committedText">Final committed text</param>
-		/// <returns>Edit result.</returns>
-		public TextEditResult CompositionEnd(string committedText) {
-			IntPtr payloadPtr = NativeMethods.CompositionEnd(nativeHandle, committedText, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseTextEditResult(payloadPtr, payloadSize);
+		public void UpdateImePreedit(string? text) {
+			IntPtr payloadPtr = NativeMethods.ImeUpdatePreedit(nativeHandle, text ?? string.Empty, 0, out _);
+			FreeBinaryPayload(payloadPtr);
 		}
 
 		/// <summary>Cancels IME composition.</summary>
-		public void CompositionCancel() {
-			NativeMethods.CompositionCancel(nativeHandle);
+		public void CancelImePreedit() {
+			IntPtr payloadPtr = NativeMethods.ImeCancelPreedit(nativeHandle, out _);
+			FreeBinaryPayload(payloadPtr);
 		}
 
 		/// <summary>Whether IME composition is currently active.</summary>
@@ -2535,13 +2519,16 @@ namespace SweetEditor {
 		/// <summary>Enables or disables IME composition handling.</summary>
 		/// <param name="enabled"><c>true</c> to enable composition; otherwise <c>false</c>.</param>
 		public void SetCompositionEnabled(bool enabled) {
-			NativeMethods.SetCompositionEnabled(nativeHandle, enabled ? 1 : 0);
+			compositionEnabled = enabled;
+			if (!enabled && IsComposing()) {
+				CancelImePreedit();
+			}
 		}
 
 		/// <summary>Gets whether IME composition handling is enabled.</summary>
 		/// <returns><c>true</c> when composition is enabled.</returns>
 		public bool IsCompositionEnabled() {
-			return NativeMethods.IsCompositionEnabled(nativeHandle) != 0;
+			return compositionEnabled;
 		}
 
 		#endregion

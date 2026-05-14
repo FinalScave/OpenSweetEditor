@@ -158,8 +158,6 @@ const uint8_t* editor_ime_replace_input_state_text(intptr_t editor_handle,
     int script_hint,
     size_t* out_size);
 int  editor_is_composing(intptr_t editor_handle);
-void editor_set_composition_enabled(intptr_t editor_handle, int enabled);
-int  editor_is_composition_enabled(intptr_t editor_handle);
 
 // ===================== ReadOnly API =====================
 

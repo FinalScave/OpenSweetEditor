@@ -1132,7 +1132,7 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
-#pragma region [Editing & Cursor/IME]
+#pragma region [Editing & Cursor]
 
   TextEditResult EditorCore::insertText(const U8String& text) {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
@@ -2283,6 +2283,223 @@ namespace NS_SWEETEDITOR {
     }
   }
 
+  void EditorCore::setReadOnly(bool read_only) {
+    if (read_only && isComposing()) {
+      m_composition_controller_.cancelComposing(*this);
+    }
+    m_settings_.read_only = read_only;
+    LOGD("EditorCore::setReadOnly, read_only = %s", read_only ? "true" : "false");
+  }
+
+  bool EditorCore::isReadOnly() const {
+    return m_settings_.read_only;
+  }
+  void EditorCore::setAutoIndentMode(AutoIndentMode mode) {
+    m_settings_.auto_indent_mode = mode;
+    LOGD("EditorCore::setAutoIndentMode, mode = %d", (int)mode);
+  }
+
+  AutoIndentMode EditorCore::getAutoIndentMode() const {
+    return m_settings_.auto_indent_mode;
+  }
+
+  void EditorCore::setBackspaceUnindent(bool enabled) {
+    m_settings_.backspace_unindent = enabled;
+    LOGD("EditorCore::setBackspaceUnindent, enabled = %s", enabled ? "true" : "false");
+  }
+
+  void EditorCore::setInsertSpaces(bool enabled) {
+    m_settings_.insert_spaces = enabled;
+    LOGD("EditorCore::setInsertSpaces, enabled = %s", enabled ? "true" : "false");
+  }
+  TextEditResult EditorCore::insertSnippet(const U8String& snippet_template) {
+    if (m_document_ == nullptr || snippet_template.empty() || m_settings_.read_only) return {};
+
+    // If composition is active, cancel it first
+    if (isComposing()) {
+      m_composition_controller_.cancelComposing(*this);
+    }
+
+    // Exit existing linked editing session
+    if (m_linked_editing_session_) {
+      m_linked_editing_session_->cancel();
+      m_linked_editing_session_.reset();
+    }
+
+    // Determine insertion position
+    TextPosition insert_pos = m_caret_.cursor;
+    TextRange replace_range = {insert_pos, insert_pos};
+    if (hasSelection()) {
+      replace_range = m_caret_.normalizedSelection();
+      insert_pos = replace_range.start;
+    }
+
+    // Parse snippet
+    SnippetParseResult parse_result = SnippetParser::parse(snippet_template, insert_pos);
+
+    // Insert expanded plain text
+    TextEditResult edit_result = applyEdit(replace_range, parse_result.text);
+
+    // If tab stops exist, start linked editing
+    if (!parse_result.model.groups.empty()) {
+      m_linked_editing_session_ = makeUnique<LinkedEditingSession>(std::move(parse_result.model));
+      activateCurrentTabStop();
+    }
+
+    LOGD("EditorCore::insertSnippet, cursor = %s", m_caret_.cursor.dump().c_str());
+    return edit_result;
+  }
+
+  void EditorCore::startLinkedEditing(LinkedEditingModel&& model) {
+    if (m_document_ == nullptr || m_settings_.read_only) return;
+    if (model.groups.empty()) return;
+
+    // If composition is active, cancel it first
+    if (isComposing()) {
+      m_composition_controller_.cancelComposing(*this);
+    }
+
+    // Exit existing linked editing session
+    if (m_linked_editing_session_) {
+      m_linked_editing_session_->cancel();
+      m_linked_editing_session_.reset();
+    }
+
+    m_linked_editing_session_ = makeUnique<LinkedEditingSession>(std::move(model));
+    activateCurrentTabStop();
+
+    LOGD("EditorCore::startLinkedEditing, cursor = %s", m_caret_.cursor.dump().c_str());
+  }
+
+  bool EditorCore::isInLinkedEditing() const {
+    return m_linked_editing_session_ != nullptr && m_linked_editing_session_->isActive();
+  }
+
+  bool EditorCore::linkedEditingNextTabStop() {
+    if (!isInLinkedEditing()) return false;
+    bool has_next = m_linked_editing_session_->nextTabStop();
+    if (has_next) {
+      activateCurrentTabStop();
+    } else {
+      // At the end: finish session and move cursor to $0
+      finishLinkedEditing();
+    }
+    return has_next;
+  }
+
+  bool EditorCore::linkedEditingPrevTabStop() {
+    if (!isInLinkedEditing()) return false;
+    bool has_prev = m_linked_editing_session_->prevTabStop();
+    if (has_prev) {
+      activateCurrentTabStop();
+    }
+    return has_prev;
+  }
+
+  void EditorCore::finishLinkedEditing() {
+    if (!m_linked_editing_session_) return;
+    // Get final cursor position for $0 before cancel
+    TextPosition final_pos = m_linked_editing_session_->finalCursorPosition();
+    m_linked_editing_session_->cancel();
+    m_linked_editing_session_.reset();
+    setCursorPosition(final_pos);
+    clearSelection();
+    ensureCursorVisible();
+  }
+
+  void EditorCore::cancelLinkedEditing() {
+    if (m_linked_editing_session_) {
+      m_linked_editing_session_->cancel();
+      m_linked_editing_session_.reset();
+    }
+  }
+
+  TextEditResult EditorCore::applyLinkedEditsWithResult(const U8String& new_text) {
+    TextEditResult result;
+    if (!isInLinkedEditing() || m_document_ == nullptr) return result;
+
+    const TabStopGroup* group = m_linked_editing_session_->currentGroup();
+    if (group == nullptr || group->ranges.empty()) return result;
+
+    const TextRange primary_before = group->ranges[0];
+    const U8String old_text = m_document_->getU8Text(primary_before);
+    if (old_text == new_text) return result;
+
+    const TextPosition cursor_before = m_caret_.cursor;
+    auto changes = performLinkedEdits(new_text);
+
+    result.changed = true;
+    result.changes = std::move(changes);
+    result.cursor_before = cursor_before;
+    result.cursor_after = m_caret_.cursor;
+    return result;
+  }
+
+  std::vector<TextChange> EditorCore::performLinkedEdits(const U8String& new_text) {
+    std::vector<TextChange> changes;
+    if (!isInLinkedEditing()) return changes;
+
+    auto edits = m_linked_editing_session_->computeLinkedEdits(new_text);
+    if (edits.empty()) return changes;
+
+    // Begin undo group
+    m_undo_manager_->beginGroup(m_caret_.cursor, hasSelection(), getSelection());
+
+    // Replace from back to front to avoid offset issues
+    for (const auto& [range, text] : edits) {
+      // Collect change info (coordinates before replacement)
+      TextChange change;
+      change.range = range;
+      if (range.start != range.end) {
+        change.old_text = m_document_->getU8Text(range);
+      }
+      change.new_text = text;
+      changes.push_back(std::move(change));
+
+      applyEdit(range, text, true);
+      // After each applyEdit, update session range offsets
+      TextPosition new_end = calcPositionAfterInsert(range.start, text);
+      m_linked_editing_session_->adjustRangesForEdit(range, new_end);
+    }
+
+    // End undo group
+    m_undo_manager_->endGroup(m_caret_.cursor);
+
+    // Reverse to forward order (edits were back-to-front; now sorted by document position)
+    std::reverse(changes.begin(), changes.end());
+
+    // Move cursor to end of primary range
+    const TabStopGroup* group = m_linked_editing_session_->currentGroup();
+    if (group && !group->ranges.empty()) {
+      setCursorPosition(group->ranges[0].end);
+      clearSelection();
+    }
+
+    ensureCursorVisible();
+    return changes;
+  }
+
+  void EditorCore::activateCurrentTabStop() {
+    if (!isInLinkedEditing()) return;
+    const TabStopGroup* group = m_linked_editing_session_->currentGroup();
+    if (group == nullptr || group->ranges.empty()) return;
+
+    const TextRange& primary = group->ranges[0];
+    if (primary.start == primary.end) {
+      // Empty range: only move cursor
+      setCursorPosition(primary.start);
+      clearSelection();
+    } else {
+      // Has default text: select it
+      setSelection(primary);
+    }
+    ensureCursorVisible();
+  }
+
+#pragma endregion
+
+#pragma region [IME]
+
   ImeActionResult EditorCore::updateImePreedit(const U8String& text, ImeScriptClass script_class) {
     return m_composition_controller_.updatePreedit(*this, text, script_class);
   }
@@ -2981,216 +3198,323 @@ namespace NS_SWEETEDITOR {
     return m_composition_controller_.hasComposingSession();
   }
 
-  void EditorCore::setReadOnly(bool read_only) {
-    if (read_only && isComposing()) {
-      m_composition_controller_.cancelComposing(*this);
+  TextRange EditorCore::textRangeFromImeInputContextOffsets(size_t start_offset, size_t end_offset) const {
+    if (m_ime_input_context_.id == 0) {
+      return textRangeFromUtf16Offsets(start_offset, end_offset);
     }
-    m_settings_.read_only = read_only;
-    LOGD("EditorCore::setReadOnly, read_only = %s", read_only ? "true" : "false");
+    if (start_offset > end_offset) {
+      std::swap(start_offset, end_offset);
+    }
+    const size_t context_length = calcUtf16Columns(m_ime_input_context_.text);
+    start_offset = std::min(start_offset, context_length);
+    end_offset = std::min(end_offset, context_length);
+    const size_t base = static_cast<size_t>(std::max(0, m_ime_input_context_.document_start_offset));
+    return textRangeFromUtf16Offsets(base + start_offset, base + end_offset);
   }
 
-  bool EditorCore::isReadOnly() const {
+  TextRange EditorCore::textRangeFromImeInputStateOffsets(uint64_t context_id,
+                                                          int32_t document_start_offset,
+                                                          size_t start_offset,
+                                                          size_t end_offset) const {
+    if (context_id != 0 && context_id == m_ime_input_context_.id) {
+      return textRangeFromImeInputContextOffsets(start_offset, end_offset);
+    }
+    if (start_offset > end_offset) {
+      std::swap(start_offset, end_offset);
+    }
+    const size_t base = static_cast<size_t>(std::max<int32_t>(0, document_start_offset));
+    return textRangeFromUtf16Offsets(base + start_offset, base + end_offset);
+  }
+
+  TextRange EditorCore::textRangeFromImeCompositionOffsets(const ImeActionResult& result,
+                                                          size_t start_offset,
+                                                          size_t end_offset) const {
+    TextRange composition_range;
+    bool has_range = false;
+    if (result.sync.has_platform_marked_range) {
+      composition_range = result.sync.platform_marked_range;
+      has_range = true;
+    } else if (result.sync.has_visible_composition_range) {
+      composition_range = result.sync.visible_composition_range;
+      has_range = true;
+    } else if (result.edit_result.changed && !result.edit_result.changes.empty()) {
+      const TextChange& change = result.edit_result.changes.front();
+      composition_range = {
+        change.range.start,
+        calcPositionAfterInsert(change.range.start, change.new_text)
+      };
+      has_range = true;
+    }
+
+    if (!has_range || m_document_ == nullptr) {
+      const size_t cursor_offset = m_document_ == nullptr
+                                   ? 0
+                                   : m_document_->getCharIndexFromPosition(result.sync.cursor);
+      return textRangeFromUtf16Offsets(cursor_offset, cursor_offset);
+    }
+
+    size_t base = m_document_->getCharIndexFromPosition(composition_range.start);
+    size_t end = m_document_->getCharIndexFromPosition(composition_range.end);
+    if (base > end) {
+      std::swap(base, end);
+    }
+    if (start_offset > end_offset) {
+      std::swap(start_offset, end_offset);
+    }
+    const size_t length = end - base;
+    start_offset = std::min(start_offset, length);
+    end_offset = std::min(end_offset, length);
+    return textRangeFromUtf16Offsets(base + start_offset, base + end_offset);
+  }
+
+  void EditorCore::applyImeCursorOffset(ImeActionResult& result, const U8String& text, int cursor_offset) {
+    if (m_document_ == nullptr || cursor_offset == 1) {
+      return;
+    }
+
+    size_t edit_start = m_document_->getCharIndexFromPosition(result.sync.cursor);
+    size_t edit_end = edit_start;
+    if (result.edit_result.changed && !result.edit_result.changes.empty()) {
+      const TextRange& changed_range = result.edit_result.changes.front().range;
+      edit_start = m_document_->getCharIndexFromPosition(changed_range.start);
+      edit_end = edit_start + calcUtf16Columns(text);
+    } else if (result.sync.has_platform_marked_range) {
+      edit_start = m_document_->getCharIndexFromPosition(result.sync.platform_marked_range.start);
+      edit_end = m_document_->getCharIndexFromPosition(result.sync.platform_marked_range.end);
+    } else if (result.sync.has_visible_composition_range) {
+      edit_start = m_document_->getCharIndexFromPosition(result.sync.visible_composition_range.start);
+      edit_end = m_document_->getCharIndexFromPosition(result.sync.visible_composition_range.end);
+    }
+    if (edit_start > edit_end) {
+      std::swap(edit_start, edit_end);
+    }
+
+    const int64_t raw_target = cursor_offset > 0
+                               ? static_cast<int64_t>(edit_end) + cursor_offset - 1
+                               : static_cast<int64_t>(edit_start) + cursor_offset;
+    const size_t document_length = documentUtf16Length();
+    const size_t target_offset = static_cast<size_t>(
+        std::max<int64_t>(0, std::min<int64_t>(raw_target, static_cast<int64_t>(document_length))));
+    ImeActionResult cursor_result = notifyImeCursorChanged(
+        m_document_->getPositionFromCharIndex(target_offset));
+
+    result.handled = result.handled || cursor_result.handled;
+    result.content_changed = result.content_changed || cursor_result.content_changed;
+    result.cursor_changed = result.cursor_changed || cursor_result.cursor_changed;
+    result.selection_changed = result.selection_changed || cursor_result.selection_changed;
+    if (cursor_result.edit_result.changed) {
+      if (!result.edit_result.changed) {
+        result.edit_result = cursor_result.edit_result;
+      } else {
+        result.edit_result.changes.insert(result.edit_result.changes.end(),
+                                          cursor_result.edit_result.changes.begin(),
+                                          cursor_result.edit_result.changes.end());
+        result.edit_result.cursor_after = cursor_result.edit_result.cursor_after;
+      }
+    }
+    result.sync = cursor_result.sync;
+  }
+
+  void EditorCore::rememberImeInputState(uint64_t context_id,
+                                         int32_t document_start_offset,
+                                         const U8String& text,
+                                         int32_t selection_start_offset,
+                                         int32_t selection_end_offset,
+                                         int32_t composing_start_offset,
+                                         int32_t composing_end_offset) {
+    const size_t text_length = calcUtf16Columns(text);
+    const ImeInputStateRange selection = normalizeImeSelectionRange(
+        selection_start_offset,
+        selection_end_offset,
+        text_length);
+    const ImeInputStateRange composition = normalizeImeComposingRange(
+        composing_start_offset,
+        composing_end_offset,
+        text_length);
+
+    m_ime_input_context_.id = context_id != 0 ? context_id : m_next_ime_input_context_id_++;
+    m_ime_input_context_.revision = ++m_ime_input_context_revision_;
+    m_ime_input_context_.document_start_offset = std::max<int32_t>(0, document_start_offset);
+    m_ime_input_context_.text = text;
+    m_ime_input_context_.selection = {
+      static_cast<int32_t>(selection.start),
+      static_cast<int32_t>(selection.end)
+    };
+    m_ime_input_context_.has_composition = composition.active;
+    m_ime_input_context_.composition = composition.active
+                                       ? ImeTextRange {
+                                           static_cast<int32_t>(composition.start),
+                                           static_cast<int32_t>(composition.end)
+                                         }
+                                       : ImeTextRange {-1, -1};
+  }
+
+  void EditorCore::resetImeTextModelPendingState() {
+    m_ime_text_model_has_pending_composition_clear_ = false;
+    m_ime_text_model_pending_composition_clear_ = {-1, -1};
+  }
+
+  void EditorCore::invalidateImeInputContext() {
+    m_ime_input_context_ = {};
+    m_ime_input_context_.id = m_next_ime_input_context_id_++;
+    m_ime_input_context_.revision = ++m_ime_input_context_revision_;
+    resetImeTextModelPendingState();
+  }
+
+  bool EditorCore::imeHasDocument() const {
+    return m_document_ != nullptr;
+  }
+
+  bool EditorCore::imeReadOnly() const {
     return m_settings_.read_only;
   }
-  void EditorCore::setAutoIndentMode(AutoIndentMode mode) {
-    m_settings_.auto_indent_mode = mode;
-    LOGD("EditorCore::setAutoIndentMode, mode = %d", (int)mode);
+
+  bool EditorCore::imeIsLinkedEditingActive() const {
+    return isInLinkedEditing();
   }
 
-  AutoIndentMode EditorCore::getAutoIndentMode() const {
-    return m_settings_.auto_indent_mode;
+  TextPosition EditorCore::imeCursor() const {
+    return m_caret_.cursor;
   }
 
-  void EditorCore::setBackspaceUnindent(bool enabled) {
-    m_settings_.backspace_unindent = enabled;
-    LOGD("EditorCore::setBackspaceUnindent, enabled = %s", enabled ? "true" : "false");
+  bool EditorCore::imeHasSelection() const {
+    return m_caret_.has_selection;
   }
 
-  void EditorCore::setInsertSpaces(bool enabled) {
-    m_settings_.insert_spaces = enabled;
-    LOGD("EditorCore::setInsertSpaces, enabled = %s", enabled ? "true" : "false");
+  TextRange EditorCore::imeSelection() const {
+    return m_caret_.selection;
   }
-  TextEditResult EditorCore::insertSnippet(const U8String& snippet_template) {
-    if (m_document_ == nullptr || snippet_template.empty() || m_settings_.read_only) return {};
 
-    // If composition is active, cancel it first
-    if (isComposing()) {
-      m_composition_controller_.cancelComposing(*this);
+  TextRange EditorCore::imeClampDocumentRange(const TextRange& range) const {
+    TextRange safe_range = range;
+    if (m_document_ == nullptr) {
+      return {};
     }
-
-    // Exit existing linked editing session
-    if (m_linked_editing_session_) {
-      m_linked_editing_session_->cancel();
-      m_linked_editing_session_.reset();
-    }
-
-    // Determine insertion position
-    TextPosition insert_pos = m_caret_.cursor;
-    TextRange replace_range = {insert_pos, insert_pos};
-    if (hasSelection()) {
-      replace_range = m_caret_.normalizedSelection();
-      insert_pos = replace_range.start;
-    }
-
-    // Parse snippet
-    SnippetParseResult parse_result = SnippetParser::parse(snippet_template, insert_pos);
-
-    // Insert expanded plain text
-    TextEditResult edit_result = applyEdit(replace_range, parse_result.text);
-
-    // If tab stops exist, start linked editing
-    if (!parse_result.model.groups.empty()) {
-      m_linked_editing_session_ = makeUnique<LinkedEditingSession>(std::move(parse_result.model));
-      activateCurrentTabStop();
-    }
-
-    LOGD("EditorCore::insertSnippet, cursor = %s", m_caret_.cursor.dump().c_str());
-    return edit_result;
-  }
-
-  void EditorCore::startLinkedEditing(LinkedEditingModel&& model) {
-    if (m_document_ == nullptr || m_settings_.read_only) return;
-    if (model.groups.empty()) return;
-
-    // If composition is active, cancel it first
-    if (isComposing()) {
-      m_composition_controller_.cancelComposing(*this);
-    }
-
-    // Exit existing linked editing session
-    if (m_linked_editing_session_) {
-      m_linked_editing_session_->cancel();
-      m_linked_editing_session_.reset();
-    }
-
-    m_linked_editing_session_ = makeUnique<LinkedEditingSession>(std::move(model));
-    activateCurrentTabStop();
-
-    LOGD("EditorCore::startLinkedEditing, cursor = %s", m_caret_.cursor.dump().c_str());
-  }
-
-  bool EditorCore::isInLinkedEditing() const {
-    return m_linked_editing_session_ != nullptr && m_linked_editing_session_->isActive();
-  }
-
-  bool EditorCore::linkedEditingNextTabStop() {
-    if (!isInLinkedEditing()) return false;
-    bool has_next = m_linked_editing_session_->nextTabStop();
-    if (has_next) {
-      activateCurrentTabStop();
-    } else {
-      // At the end: finish session and move cursor to $0
-      finishLinkedEditing();
-    }
-    return has_next;
-  }
-
-  bool EditorCore::linkedEditingPrevTabStop() {
-    if (!isInLinkedEditing()) return false;
-    bool has_prev = m_linked_editing_session_->prevTabStop();
-    if (has_prev) {
-      activateCurrentTabStop();
-    }
-    return has_prev;
-  }
-
-  void EditorCore::finishLinkedEditing() {
-    if (!m_linked_editing_session_) return;
-    // Get final cursor position for $0 before cancel
-    TextPosition final_pos = m_linked_editing_session_->finalCursorPosition();
-    m_linked_editing_session_->cancel();
-    m_linked_editing_session_.reset();
-    setCursorPosition(final_pos);
-    clearSelection();
-    ensureCursorVisible();
-  }
-
-  void EditorCore::cancelLinkedEditing() {
-    if (m_linked_editing_session_) {
-      m_linked_editing_session_->cancel();
-      m_linked_editing_session_.reset();
-    }
-  }
-
-  TextEditResult EditorCore::applyLinkedEditsWithResult(const U8String& new_text) {
-    TextEditResult result;
-    if (!isInLinkedEditing() || m_document_ == nullptr) return result;
-
-    const TabStopGroup* group = m_linked_editing_session_->currentGroup();
-    if (group == nullptr || group->ranges.empty()) return result;
-
-    const TextRange primary_before = group->ranges[0];
-    const U8String old_text = m_document_->getU8Text(primary_before);
-    if (old_text == new_text) return result;
-
-    const TextPosition cursor_before = m_caret_.cursor;
-    auto changes = performLinkedEdits(new_text);
-
-    result.changed = true;
-    result.changes = std::move(changes);
-    result.cursor_before = cursor_before;
-    result.cursor_after = m_caret_.cursor;
-    return result;
-  }
-
-  std::vector<TextChange> EditorCore::performLinkedEdits(const U8String& new_text) {
-    std::vector<TextChange> changes;
-    if (!isInLinkedEditing()) return changes;
-
-    auto edits = m_linked_editing_session_->computeLinkedEdits(new_text);
-    if (edits.empty()) return changes;
-
-    // Begin undo group
-    m_undo_manager_->beginGroup(m_caret_.cursor, hasSelection(), getSelection());
-
-    // Replace from back to front to avoid offset issues
-    for (const auto& [range, text] : edits) {
-      // Collect change info (coordinates before replacement)
-      TextChange change;
-      change.range = range;
-      if (range.start != range.end) {
-        change.old_text = m_document_->getU8Text(range);
+    size_t line_count = m_document_->getLineCount();
+    auto clamp_position = [&](TextPosition& position, bool prefer_right) {
+      if (line_count == 0) {
+        position = {};
+        return;
       }
-      change.new_text = text;
-      changes.push_back(std::move(change));
-
-      applyEdit(range, text, true);
-      // After each applyEdit, update session range offsets
-      TextPosition new_end = calcPositionAfterInsert(range.start, text);
-      m_linked_editing_session_->adjustRangesForEdit(range, new_end);
-    }
-
-    // End undo group
-    m_undo_manager_->endGroup(m_caret_.cursor);
-
-    // Reverse to forward order (edits were back-to-front; now sorted by document position)
-    std::reverse(changes.begin(), changes.end());
-
-    // Move cursor to end of primary range
-    const TabStopGroup* group = m_linked_editing_session_->currentGroup();
-    if (group && !group->ranges.empty()) {
-      setCursorPosition(group->ranges[0].end);
-      clearSelection();
-    }
-
-    ensureCursorVisible();
-    return changes;
+      if (position.line >= line_count) {
+        position.line = line_count - 1;
+        position.column = m_document_->getLineColumns(position.line);
+      }
+      const U16String& line_text = m_document_->getLineU16TextRef(position.line);
+      size_t clamped_column = std::min<size_t>(position.column, line_text.length());
+      position.column = prefer_right
+                        ? UnicodeUtil::clampColumnToGraphemeBoundaryRight(line_text, clamped_column)
+                        : UnicodeUtil::clampColumnToGraphemeBoundaryLeft(line_text, clamped_column);
+    };
+    clamp_position(safe_range.start, false);
+    clamp_position(safe_range.end, true);
+    return safe_range;
   }
 
-  void EditorCore::activateCurrentTabStop() {
-    if (!isInLinkedEditing()) return;
-    const TabStopGroup* group = m_linked_editing_session_->currentGroup();
-    if (group == nullptr || group->ranges.empty()) return;
+  bool EditorCore::imeIsDocumentRangeReadable(const TextRange& range) const {
+    return isDocumentRangeReadable(range);
+  }
 
-    const TextRange& primary = group->ranges[0];
-    if (primary.start == primary.end) {
-      // Empty range: only move cursor
-      setCursorPosition(primary.start);
-      clearSelection();
-    } else {
-      // Has default text: select it
-      setSelection(primary);
+  U8String EditorCore::imeDocumentText(const TextRange& range) const {
+    if (m_document_ == nullptr) {
+      return {};
     }
+    return m_document_->getU8Text(range);
+  }
+
+  size_t EditorCore::imeDocumentLineCount() const {
+    return m_document_ != nullptr ? m_document_->getLineCount() : 0;
+  }
+
+  uint32_t EditorCore::imeLineColumns(size_t line) const {
+    if (m_document_ == nullptr || line >= m_document_->getLineCount()) {
+      return 0;
+    }
+    return m_document_->getLineColumns(line);
+  }
+
+  size_t EditorCore::imeCharIndexFromPosition(const TextPosition& position) const {
+    if (m_document_ == nullptr) {
+      return 0;
+    }
+    return m_document_->getCharIndexFromPosition(position);
+  }
+
+  TextPosition EditorCore::imePositionAfterInsert(const TextPosition& start, const U8String& text) const {
+    return calcPositionAfterInsert(start, text);
+  }
+
+  size_t EditorCore::imeUtf16Columns(const U8String& text) const {
+    return calcUtf16Columns(text);
+  }
+
+  TextEditResult EditorCore::imeApplyEdit(const TextRange& range, const U8String& text) {
+    return applyEdit(range, text);
+  }
+
+  TextEditResult EditorCore::imeInsertText(const U8String& text) {
+    return insertText(text);
+  }
+
+  void EditorCore::imeDeleteSelectionForComposition() {
+    deleteSelection();
+  }
+
+  void EditorCore::imeDeleteDocumentRange(const TextRange& range) {
+    if (m_document_ != nullptr) {
+      m_document_->deleteU8Text(range);
+    }
+  }
+
+  void EditorCore::imeInsertDocumentText(const TextPosition& position, const U8String& text) {
+    if (m_document_ != nullptr) {
+      m_document_->insertU8Text(position, text);
+    }
+  }
+
+  TextEditResult EditorCore::imeBackspace() {
+    return backspace();
+  }
+
+  TextEditResult EditorCore::imeDeleteForward() {
+    return deleteForward();
+  }
+
+  TextEditResult EditorCore::imeDeleteCodePointBackward() {
+    return deleteCodePointBackward();
+  }
+
+  TextEditResult EditorCore::imeDeleteCodePointForward() {
+    return deleteCodePointForward();
+  }
+
+  void EditorCore::imeSetCursorPosition(const TextPosition& cursor) {
+    setCursorPosition(cursor);
+  }
+
+  void EditorCore::imeSetSelection(const TextRange& range) {
+    setSelection(range);
+  }
+
+  void EditorCore::imeSetCursorPositionInternal(const TextPosition& cursor) {
+    setCursorPositionInternal(cursor, false);
+  }
+
+  void EditorCore::imeSetSelectionInternal(const TextRange& range) {
+    setSelectionInternal(range, false);
+  }
+
+  void EditorCore::imeSetRawCursorPosition(const TextPosition& cursor) {
+    m_caret_.cursor = cursor;
+  }
+
+  void EditorCore::imeInvalidateContentMetrics(size_t line) {
+    if (m_text_layout_ != nullptr) {
+      m_text_layout_->invalidateContentMetrics(line);
+    }
+  }
+
+  void EditorCore::imeEnsureCursorVisible() {
     ensureCursorVisible();
   }
 
@@ -3699,169 +4023,6 @@ namespace NS_SWEETEDITOR {
     };
   }
 
-  TextRange EditorCore::textRangeFromImeInputContextOffsets(size_t start_offset, size_t end_offset) const {
-    if (m_ime_input_context_.id == 0) {
-      return textRangeFromUtf16Offsets(start_offset, end_offset);
-    }
-    if (start_offset > end_offset) {
-      std::swap(start_offset, end_offset);
-    }
-    const size_t context_length = calcUtf16Columns(m_ime_input_context_.text);
-    start_offset = std::min(start_offset, context_length);
-    end_offset = std::min(end_offset, context_length);
-    const size_t base = static_cast<size_t>(std::max(0, m_ime_input_context_.document_start_offset));
-    return textRangeFromUtf16Offsets(base + start_offset, base + end_offset);
-  }
-
-  TextRange EditorCore::textRangeFromImeInputStateOffsets(uint64_t context_id,
-                                                          int32_t document_start_offset,
-                                                          size_t start_offset,
-                                                          size_t end_offset) const {
-    if (context_id != 0 && context_id == m_ime_input_context_.id) {
-      return textRangeFromImeInputContextOffsets(start_offset, end_offset);
-    }
-    if (start_offset > end_offset) {
-      std::swap(start_offset, end_offset);
-    }
-    const size_t base = static_cast<size_t>(std::max<int32_t>(0, document_start_offset));
-    return textRangeFromUtf16Offsets(base + start_offset, base + end_offset);
-  }
-
-  TextRange EditorCore::textRangeFromImeCompositionOffsets(const ImeActionResult& result,
-                                                          size_t start_offset,
-                                                          size_t end_offset) const {
-    TextRange composition_range;
-    bool has_range = false;
-    if (result.sync.has_platform_marked_range) {
-      composition_range = result.sync.platform_marked_range;
-      has_range = true;
-    } else if (result.sync.has_visible_composition_range) {
-      composition_range = result.sync.visible_composition_range;
-      has_range = true;
-    } else if (result.edit_result.changed && !result.edit_result.changes.empty()) {
-      const TextChange& change = result.edit_result.changes.front();
-      composition_range = {
-        change.range.start,
-        calcPositionAfterInsert(change.range.start, change.new_text)
-      };
-      has_range = true;
-    }
-
-    if (!has_range || m_document_ == nullptr) {
-      const size_t cursor_offset = m_document_ == nullptr
-                                   ? 0
-                                   : m_document_->getCharIndexFromPosition(result.sync.cursor);
-      return textRangeFromUtf16Offsets(cursor_offset, cursor_offset);
-    }
-
-    size_t base = m_document_->getCharIndexFromPosition(composition_range.start);
-    size_t end = m_document_->getCharIndexFromPosition(composition_range.end);
-    if (base > end) {
-      std::swap(base, end);
-    }
-    if (start_offset > end_offset) {
-      std::swap(start_offset, end_offset);
-    }
-    const size_t length = end - base;
-    start_offset = std::min(start_offset, length);
-    end_offset = std::min(end_offset, length);
-    return textRangeFromUtf16Offsets(base + start_offset, base + end_offset);
-  }
-
-  void EditorCore::applyImeCursorOffset(ImeActionResult& result, const U8String& text, int cursor_offset) {
-    if (m_document_ == nullptr || cursor_offset == 1) {
-      return;
-    }
-
-    size_t edit_start = m_document_->getCharIndexFromPosition(result.sync.cursor);
-    size_t edit_end = edit_start;
-    if (result.edit_result.changed && !result.edit_result.changes.empty()) {
-      const TextRange& changed_range = result.edit_result.changes.front().range;
-      edit_start = m_document_->getCharIndexFromPosition(changed_range.start);
-      edit_end = edit_start + calcUtf16Columns(text);
-    } else if (result.sync.has_platform_marked_range) {
-      edit_start = m_document_->getCharIndexFromPosition(result.sync.platform_marked_range.start);
-      edit_end = m_document_->getCharIndexFromPosition(result.sync.platform_marked_range.end);
-    } else if (result.sync.has_visible_composition_range) {
-      edit_start = m_document_->getCharIndexFromPosition(result.sync.visible_composition_range.start);
-      edit_end = m_document_->getCharIndexFromPosition(result.sync.visible_composition_range.end);
-    }
-    if (edit_start > edit_end) {
-      std::swap(edit_start, edit_end);
-    }
-
-    const int64_t raw_target = cursor_offset > 0
-                               ? static_cast<int64_t>(edit_end) + cursor_offset - 1
-                               : static_cast<int64_t>(edit_start) + cursor_offset;
-    const size_t document_length = documentUtf16Length();
-    const size_t target_offset = static_cast<size_t>(
-        std::max<int64_t>(0, std::min<int64_t>(raw_target, static_cast<int64_t>(document_length))));
-    ImeActionResult cursor_result = notifyImeCursorChanged(
-        m_document_->getPositionFromCharIndex(target_offset));
-
-    result.handled = result.handled || cursor_result.handled;
-    result.content_changed = result.content_changed || cursor_result.content_changed;
-    result.cursor_changed = result.cursor_changed || cursor_result.cursor_changed;
-    result.selection_changed = result.selection_changed || cursor_result.selection_changed;
-    if (cursor_result.edit_result.changed) {
-      if (!result.edit_result.changed) {
-        result.edit_result = cursor_result.edit_result;
-      } else {
-        result.edit_result.changes.insert(result.edit_result.changes.end(),
-                                          cursor_result.edit_result.changes.begin(),
-                                          cursor_result.edit_result.changes.end());
-        result.edit_result.cursor_after = cursor_result.edit_result.cursor_after;
-      }
-    }
-    result.sync = cursor_result.sync;
-  }
-
-  void EditorCore::rememberImeInputState(uint64_t context_id,
-                                         int32_t document_start_offset,
-                                         const U8String& text,
-                                         int32_t selection_start_offset,
-                                         int32_t selection_end_offset,
-                                         int32_t composing_start_offset,
-                                         int32_t composing_end_offset) {
-    const size_t text_length = calcUtf16Columns(text);
-    const ImeInputStateRange selection = normalizeImeSelectionRange(
-        selection_start_offset,
-        selection_end_offset,
-        text_length);
-    const ImeInputStateRange composition = normalizeImeComposingRange(
-        composing_start_offset,
-        composing_end_offset,
-        text_length);
-
-    m_ime_input_context_.id = context_id != 0 ? context_id : m_next_ime_input_context_id_++;
-    m_ime_input_context_.revision = ++m_ime_input_context_revision_;
-    m_ime_input_context_.document_start_offset = std::max<int32_t>(0, document_start_offset);
-    m_ime_input_context_.text = text;
-    m_ime_input_context_.selection = {
-      static_cast<int32_t>(selection.start),
-      static_cast<int32_t>(selection.end)
-    };
-    m_ime_input_context_.has_composition = composition.active;
-    m_ime_input_context_.composition = composition.active
-                                       ? ImeTextRange {
-                                           static_cast<int32_t>(composition.start),
-                                           static_cast<int32_t>(composition.end)
-                                         }
-                                       : ImeTextRange {-1, -1};
-  }
-
-  void EditorCore::resetImeTextModelPendingState() {
-    m_ime_text_model_has_pending_composition_clear_ = false;
-    m_ime_text_model_pending_composition_clear_ = {-1, -1};
-  }
-
-  void EditorCore::invalidateImeInputContext() {
-    m_ime_input_context_ = {};
-    m_ime_input_context_.id = m_next_ime_input_context_id_++;
-    m_ime_input_context_.revision = ++m_ime_input_context_revision_;
-    resetImeTextModelPendingState();
-  }
-
   TextPosition EditorCore::calcPositionAfterInsert(const TextPosition& start, const U8String& text) const {
     size_t new_line = start.line;
     size_t new_col = start.column;
@@ -4059,162 +4220,6 @@ namespace NS_SWEETEDITOR {
     m_text_layout_->normalizeViewState(m_view_state_);
   }
 
-  bool EditorCore::imeHasDocument() const {
-    return m_document_ != nullptr;
-  }
-
-  bool EditorCore::imeReadOnly() const {
-    return m_settings_.read_only;
-  }
-
-  bool EditorCore::imeIsLinkedEditingActive() const {
-    return isInLinkedEditing();
-  }
-
-  TextPosition EditorCore::imeCursor() const {
-    return m_caret_.cursor;
-  }
-
-  bool EditorCore::imeHasSelection() const {
-    return m_caret_.has_selection;
-  }
-
-  TextRange EditorCore::imeSelection() const {
-    return m_caret_.selection;
-  }
-
-  TextRange EditorCore::imeClampDocumentRange(const TextRange& range) const {
-    TextRange safe_range = range;
-    if (m_document_ == nullptr) {
-      return {};
-    }
-    size_t line_count = m_document_->getLineCount();
-    auto clamp_position = [&](TextPosition& position, bool prefer_right) {
-      if (line_count == 0) {
-        position = {};
-        return;
-      }
-      if (position.line >= line_count) {
-        position.line = line_count - 1;
-        position.column = m_document_->getLineColumns(position.line);
-      }
-      const U16String& line_text = m_document_->getLineU16TextRef(position.line);
-      size_t clamped_column = std::min<size_t>(position.column, line_text.length());
-      position.column = prefer_right
-                        ? UnicodeUtil::clampColumnToGraphemeBoundaryRight(line_text, clamped_column)
-                        : UnicodeUtil::clampColumnToGraphemeBoundaryLeft(line_text, clamped_column);
-    };
-    clamp_position(safe_range.start, false);
-    clamp_position(safe_range.end, true);
-    return safe_range;
-  }
-
-  bool EditorCore::imeIsDocumentRangeReadable(const TextRange& range) const {
-    return isDocumentRangeReadable(range);
-  }
-
-  U8String EditorCore::imeDocumentText(const TextRange& range) const {
-    if (m_document_ == nullptr) {
-      return {};
-    }
-    return m_document_->getU8Text(range);
-  }
-
-  size_t EditorCore::imeDocumentLineCount() const {
-    return m_document_ != nullptr ? m_document_->getLineCount() : 0;
-  }
-
-  uint32_t EditorCore::imeLineColumns(size_t line) const {
-    if (m_document_ == nullptr || line >= m_document_->getLineCount()) {
-      return 0;
-    }
-    return m_document_->getLineColumns(line);
-  }
-
-  size_t EditorCore::imeCharIndexFromPosition(const TextPosition& position) const {
-    if (m_document_ == nullptr) {
-      return 0;
-    }
-    return m_document_->getCharIndexFromPosition(position);
-  }
-
-  TextPosition EditorCore::imePositionAfterInsert(const TextPosition& start, const U8String& text) const {
-    return calcPositionAfterInsert(start, text);
-  }
-
-  size_t EditorCore::imeUtf16Columns(const U8String& text) const {
-    return calcUtf16Columns(text);
-  }
-
-  TextEditResult EditorCore::imeApplyEdit(const TextRange& range, const U8String& text) {
-    return applyEdit(range, text);
-  }
-
-  TextEditResult EditorCore::imeInsertText(const U8String& text) {
-    return insertText(text);
-  }
-
-  void EditorCore::imeDeleteSelectionForComposition() {
-    deleteSelection();
-  }
-
-  void EditorCore::imeDeleteDocumentRange(const TextRange& range) {
-    if (m_document_ != nullptr) {
-      m_document_->deleteU8Text(range);
-    }
-  }
-
-  void EditorCore::imeInsertDocumentText(const TextPosition& position, const U8String& text) {
-    if (m_document_ != nullptr) {
-      m_document_->insertU8Text(position, text);
-    }
-  }
-
-  TextEditResult EditorCore::imeBackspace() {
-    return backspace();
-  }
-
-  TextEditResult EditorCore::imeDeleteForward() {
-    return deleteForward();
-  }
-
-  TextEditResult EditorCore::imeDeleteCodePointBackward() {
-    return deleteCodePointBackward();
-  }
-
-  TextEditResult EditorCore::imeDeleteCodePointForward() {
-    return deleteCodePointForward();
-  }
-
-  void EditorCore::imeSetCursorPosition(const TextPosition& cursor) {
-    setCursorPosition(cursor);
-  }
-
-  void EditorCore::imeSetSelection(const TextRange& range) {
-    setSelection(range);
-  }
-
-  void EditorCore::imeSetCursorPositionInternal(const TextPosition& cursor) {
-    setCursorPositionInternal(cursor, false);
-  }
-
-  void EditorCore::imeSetSelectionInternal(const TextRange& range) {
-    setSelectionInternal(range, false);
-  }
-
-  void EditorCore::imeSetRawCursorPosition(const TextPosition& cursor) {
-    m_caret_.cursor = cursor;
-  }
-
-  void EditorCore::imeInvalidateContentMetrics(size_t line) {
-    if (m_text_layout_ != nullptr) {
-      m_text_layout_->invalidateContentMetrics(line);
-    }
-  }
-
-  void EditorCore::imeEnsureCursorVisible() {
-    ensureCursorVisible();
-  }
 
 #pragma endregion
 

@@ -2827,7 +2827,7 @@ namespace SweetEditor {
 			}
 
 			if (editorCore.IsComposing()) {
-				editorCore.CompositionCancel();
+				editorCore.CancelImePreedit();
 				NotifyTextInputStateChanged(force: true);
 				Flush();
 				e.Handled = true;
@@ -3775,17 +3775,14 @@ namespace SweetEditor {
 			string text = preeditText ?? string.Empty;
 			if (string.IsNullOrEmpty(text)) {
 				if (editorCore.IsComposing()) {
-					editorCore.CompositionCancel();
+					editorCore.CancelImePreedit();
 					NotifyTextInputStateChanged();
 					Flush();
 				}
 				return;
 			}
 
-			if (!editorCore.IsComposing()) {
-				editorCore.CompositionStart();
-			}
-			editorCore.CompositionUpdate(text);
+			editorCore.UpdateImePreedit(text);
 			NotifyTextInputStateChanged();
 			Flush();
 		}

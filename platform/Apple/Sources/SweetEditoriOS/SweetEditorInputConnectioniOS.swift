@@ -60,7 +60,7 @@ final class SweetEditorInputConnectioniOS {
     }
 
     var markedTextRange: UITextRange? {
-        guard owner.editorCore.isComposing() else {
+        guard owner.editorCore.isCompositionEnabled(), owner.editorCore.isComposing() else {
             clearLocalCompositionState()
             return nil
         }
@@ -102,6 +102,8 @@ final class SweetEditorInputConnectioniOS {
     }
 
     func setMarkedText(_ markedText: String?, selectedRange: NSRange) {
+        guard owner.editorCore.isCompositionEnabled() else { return }
+
         let text = markedText ?? ""
 
         let currentSelection = owner.currentSelectionNSRange()

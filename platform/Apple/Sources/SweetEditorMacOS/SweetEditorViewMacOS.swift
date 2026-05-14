@@ -1556,6 +1556,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
     func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
         resetCursorBlink()
         textInputHandledInCurrentKeyDown = true
+        guard editorCore.isCompositionEnabled() else { return }
 
         let text: String
         if let attrStr = string as? NSAttributedString {

@@ -67,6 +67,7 @@ class SweetEditorCore {
     private lazy var protocolDecoder = ProtocolDecoder(owner: self)
     private lazy var protocolEncoder = ProtocolEncoder(owner: self)
     private(set) var scrollbarConfig = ScrollbarConfig()
+    private var compositionEnabled = true
 
     struct InlayHintPayload {
         enum Kind {
@@ -1324,15 +1325,14 @@ class SweetEditorCore {
     }
 
     func setCompositionEnabled(_ enabled: Bool) {
-        performCoreCall {
-            editor_set_composition_enabled(handle, enabled ? 1 : 0)
+        compositionEnabled = enabled
+        if !enabled {
+            cancelImePreedit()
         }
     }
 
     func isCompositionEnabled() -> Bool {
-        return performCoreCall {
-            editor_is_composition_enabled(handle) != 0
-        }
+        return compositionEnabled
     }
 
     // MARK: - ReadOnly
