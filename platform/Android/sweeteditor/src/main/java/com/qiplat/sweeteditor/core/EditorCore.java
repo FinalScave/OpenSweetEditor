@@ -729,6 +729,17 @@ public class EditorCore {
     }
 
     @NonNull
+    public ImeActionResult setImeComposingText(@Nullable String text, int cursorOffset, int scriptHint) {
+        if (mNativeHandle == 0) return new ImeActionResult();
+        ByteBuffer data = nativeImeSetComposingText(mNativeHandle, text != null ? text : "", cursorOffset, scriptHint);
+        try {
+            return ProtocolDecoder.decodeImeActionResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    @NonNull
     public ImeActionResult commitImeText(@Nullable String text, int scriptHint) {
         if (mNativeHandle == 0) return new ImeActionResult();
         ByteBuffer data = nativeImeCommitText(mNativeHandle, text != null ? text : "", scriptHint);
@@ -779,9 +790,20 @@ public class EditorCore {
     }
 
     @NonNull
+    public ImeActionResult markImeDocumentRange(long startOffset, long endOffset, int scriptHint) {
+        if (mNativeHandle == 0) return new ImeActionResult();
+        ByteBuffer data = nativeImeMarkDocumentRangeByOffset(mNativeHandle, startOffset, endOffset, scriptHint);
+        try {
+            return ProtocolDecoder.decodeImeActionResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    @NonNull
     public ImeActionResult replaceImeText(@NonNull TextRange range,
-                                         @Nullable String text,
-                                         int scriptHint) {
+                                          @Nullable String text,
+                                          int scriptHint) {
         if (mNativeHandle == 0) return new ImeActionResult();
         ByteBuffer data = nativeImeReplaceText(
                 mNativeHandle,
@@ -790,6 +812,152 @@ public class EditorCore {
                 range.end.line,
                 range.end.column,
                 text != null ? text : "",
+                scriptHint);
+        try {
+            return ProtocolDecoder.decodeImeActionResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    @NonNull
+    public ImeActionResult replaceImeDocumentText(long startOffset,
+                                                  long endOffset,
+                                                  @Nullable String text,
+                                                  int cursorOffset,
+                                                  int scriptHint) {
+        if (mNativeHandle == 0) return new ImeActionResult();
+        ByteBuffer data = nativeImeReplaceDocumentText(
+                mNativeHandle,
+                startOffset,
+                endOffset,
+                text != null ? text : "",
+                cursorOffset,
+                scriptHint);
+        try {
+            return ProtocolDecoder.decodeImeActionResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    @NonNull
+    public ImeActionResult replaceImeInputContextText(long startOffset,
+                                                      long endOffset,
+                                                      @Nullable String text,
+                                                      int cursorOffset,
+                                                      int scriptHint) {
+        if (mNativeHandle == 0) return new ImeActionResult();
+        ByteBuffer data = nativeImeReplaceInputContextText(
+                mNativeHandle,
+                startOffset,
+                endOffset,
+                text != null ? text : "",
+                cursorOffset,
+                scriptHint);
+        try {
+            return ProtocolDecoder.decodeImeActionResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    @NonNull
+    public ImeActionResult markImeInputContextRange(long startOffset, long endOffset, int scriptHint) {
+        if (mNativeHandle == 0) return new ImeActionResult();
+        ByteBuffer data = nativeImeMarkInputContextRange(mNativeHandle, startOffset, endOffset, scriptHint);
+        try {
+            return ProtocolDecoder.decodeImeActionResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    @NonNull
+    public ImeActionResult notifyImeDocumentSelectionChanged(long startOffset, long endOffset) {
+        if (mNativeHandle == 0) return new ImeActionResult();
+        ByteBuffer data = nativeImeNotifyDocumentSelectionChanged(mNativeHandle, startOffset, endOffset);
+        try {
+            return ProtocolDecoder.decodeImeActionResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    @NonNull
+    public ImeActionResult notifyImeInputContextSelectionChanged(long startOffset, long endOffset) {
+        if (mNativeHandle == 0) return new ImeActionResult();
+        ByteBuffer data = nativeImeNotifyInputContextSelectionChanged(mNativeHandle, startOffset, endOffset);
+        try {
+            return ProtocolDecoder.decodeImeActionResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    @NonNull
+    public ImeActionResult updateImeInputStateText(long contextId,
+                                                   int documentStartOffset,
+                                                   @Nullable String text,
+                                                   int selectionStartOffset,
+                                                   int selectionEndOffset,
+                                                   int composingStartOffset,
+                                                   int composingEndOffset,
+                                                   int scriptHint) {
+        if (mNativeHandle == 0) return new ImeActionResult();
+        ByteBuffer data = nativeImeUpdateInputStateText(
+                mNativeHandle,
+                contextId,
+                documentStartOffset,
+                text != null ? text : "",
+                selectionStartOffset,
+                selectionEndOffset,
+                composingStartOffset,
+                composingEndOffset,
+                scriptHint);
+        try {
+            return ProtocolDecoder.decodeImeActionResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    @NonNull
+    public ImeActionResult updateImeInputStateSelection(long contextId,
+                                                        int documentStartOffset,
+                                                        int selectionStartOffset,
+                                                        int selectionEndOffset) {
+        if (mNativeHandle == 0) return new ImeActionResult();
+        ByteBuffer data = nativeImeUpdateInputStateSelection(
+                mNativeHandle,
+                contextId,
+                documentStartOffset,
+                selectionStartOffset,
+                selectionEndOffset);
+        try {
+            return ProtocolDecoder.decodeImeActionResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    @NonNull
+    public ImeActionResult replaceImeInputStateText(long contextId,
+                                                    int documentStartOffset,
+                                                    long startOffset,
+                                                    long endOffset,
+                                                    @Nullable String text,
+                                                    int cursorOffset,
+                                                    int scriptHint) {
+        if (mNativeHandle == 0) return new ImeActionResult();
+        ByteBuffer data = nativeImeReplaceInputStateText(
+                mNativeHandle,
+                contextId,
+                documentStartOffset,
+                startOffset,
+                endOffset,
+                text != null ? text : "",
+                cursorOffset,
                 scriptHint);
         try {
             return ProtocolDecoder.decodeImeActionResult(data);
@@ -824,6 +992,17 @@ public class EditorCore {
     public ImeActionResult deleteImeSurrounding(long beforeLength, long afterLength, int textUnit) {
         if (mNativeHandle == 0) return new ImeActionResult();
         ByteBuffer data = nativeImeDeleteSurrounding(mNativeHandle, beforeLength, afterLength, textUnit);
+        try {
+            return ProtocolDecoder.decodeImeActionResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    @NonNull
+    public ImeActionResult commitImeText(@Nullable String text, int cursorOffset, int scriptHint) {
+        if (mNativeHandle == 0) return new ImeActionResult();
+        ByteBuffer data = nativeImeCommitTextWithCursor(mNativeHandle, text != null ? text : "", cursorOffset, scriptHint);
         try {
             return ProtocolDecoder.decodeImeActionResult(data);
         } finally {
@@ -877,6 +1056,17 @@ public class EditorCore {
         ByteBuffer data = nativeGetImeSyncSnapshot(mNativeHandle);
         try {
             return ProtocolDecoder.decodeImeSyncSnapshot(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    @NonNull
+    public ImeInputContext getImeInputContext(long beforeLength, long afterLength) {
+        if (mNativeHandle == 0) return new ImeInputContext();
+        ByteBuffer data = nativeGetImeInputContext(mNativeHandle, beforeLength, afterLength);
+        try {
+            return ProtocolDecoder.decodeImeInputContext(data);
         } finally {
             nativeFreeBinaryData(data);
         }
@@ -1862,10 +2052,25 @@ public class EditorCore {
     }
 
     public static final class ImeTextUnit {
+        public static final int GRAPHEME = 0;
         public static final int UTF16_CODE_UNIT = 0;
         public static final int CODE_POINT = 1;
 
         private ImeTextUnit() {
+        }
+    }
+
+    public static class ImeTextRange {
+        public final int start;
+        public final int end;
+
+        public ImeTextRange() {
+            this(0, 0);
+        }
+
+        public ImeTextRange(int start, int end) {
+            this.start = start;
+            this.end = end;
         }
     }
 
@@ -1948,6 +2153,39 @@ public class EditorCore {
             this.preeditStorage = preeditStorage;
             this.contextPolicy = contextPolicy;
             this.clearPlatformPreedit = clearPlatformPreedit;
+        }
+    }
+
+    public static class ImeInputContext {
+        public final long id;
+        public final int revision;
+        public final int documentStartOffset;
+        @NonNull
+        public final String text;
+        @NonNull
+        public final ImeTextRange selection;
+        public final boolean hasComposition;
+        @NonNull
+        public final ImeTextRange composition;
+
+        public ImeInputContext() {
+            this(0, 0, 0, "", new ImeTextRange(), false, new ImeTextRange(-1, -1));
+        }
+
+        public ImeInputContext(long id,
+                               int revision,
+                               int documentStartOffset,
+                               @NonNull String text,
+                               @NonNull ImeTextRange selection,
+                               boolean hasComposition,
+                               @NonNull ImeTextRange composition) {
+            this.id = id;
+            this.revision = revision;
+            this.documentStartOffset = documentStartOffset;
+            this.text = text;
+            this.selection = selection;
+            this.hasComposition = hasComposition;
+            this.composition = composition;
         }
     }
 
@@ -2401,7 +2639,13 @@ public class EditorCore {
     private static native ByteBuffer nativeImeUpdatePreedit(long handle, String text, int scriptHint);
 
     @FastNative
+    private static native ByteBuffer nativeImeSetComposingText(long handle, String text, int cursorOffset, int scriptHint);
+
+    @FastNative
     private static native ByteBuffer nativeImeCommitText(long handle, String text, int scriptHint);
+
+    @FastNative
+    private static native ByteBuffer nativeImeCommitTextWithCursor(long handle, String text, int cursorOffset, int scriptHint);
 
     @FastNative
     private static native ByteBuffer nativeImeFinishPreedit(long handle);
@@ -2418,6 +2662,12 @@ public class EditorCore {
                                                                 int scriptHint);
 
     @FastNative
+    private static native ByteBuffer nativeImeMarkDocumentRangeByOffset(long handle,
+                                                                        long startOffset,
+                                                                        long endOffset,
+                                                                        int scriptHint);
+
+    @FastNative
     private static native ByteBuffer nativeImeReplaceText(long handle,
                                                           long startLine,
                                                           long startColumn,
@@ -2425,6 +2675,66 @@ public class EditorCore {
                                                           long endColumn,
                                                           String text,
                                                           int scriptHint);
+
+    @FastNative
+    private static native ByteBuffer nativeImeReplaceDocumentText(long handle,
+                                                                  long startOffset,
+                                                                  long endOffset,
+                                                                  String text,
+                                                                  int cursorOffset,
+                                                                  int scriptHint);
+
+    @FastNative
+    private static native ByteBuffer nativeImeReplaceInputContextText(long handle,
+                                                                      long startOffset,
+                                                                      long endOffset,
+                                                                      String text,
+                                                                      int cursorOffset,
+                                                                      int scriptHint);
+
+    @FastNative
+    private static native ByteBuffer nativeImeMarkInputContextRange(long handle,
+                                                                    long startOffset,
+                                                                    long endOffset,
+                                                                    int scriptHint);
+
+    @FastNative
+    private static native ByteBuffer nativeImeNotifyDocumentSelectionChanged(long handle,
+                                                                            long startOffset,
+                                                                            long endOffset);
+
+    @FastNative
+    private static native ByteBuffer nativeImeNotifyInputContextSelectionChanged(long handle,
+                                                                                long startOffset,
+                                                                                long endOffset);
+
+    @FastNative
+    private static native ByteBuffer nativeImeUpdateInputStateText(long handle,
+                                                                   long contextId,
+                                                                   int documentStartOffset,
+                                                                   String text,
+                                                                   int selectionStartOffset,
+                                                                   int selectionEndOffset,
+                                                                   int composingStartOffset,
+                                                                   int composingEndOffset,
+                                                                   int scriptHint);
+
+    @FastNative
+    private static native ByteBuffer nativeImeUpdateInputStateSelection(long handle,
+                                                                       long contextId,
+                                                                       int documentStartOffset,
+                                                                       int selectionStartOffset,
+                                                                       int selectionEndOffset);
+
+    @FastNative
+    private static native ByteBuffer nativeImeReplaceInputStateText(long handle,
+                                                                    long contextId,
+                                                                    int documentStartOffset,
+                                                                    long startOffset,
+                                                                    long endOffset,
+                                                                    String text,
+                                                                    int cursorOffset,
+                                                                    int scriptHint);
 
     @FastNative
     private static native ByteBuffer nativeImeDeleteBackward(long handle, long beforeLength, int textUnit);
@@ -2458,6 +2768,9 @@ public class EditorCore {
 
     @FastNative
     private static native ByteBuffer nativeGetImeSyncSnapshot(long handle);
+
+    @FastNative
+    private static native ByteBuffer nativeGetImeInputContext(long handle, long beforeLength, long afterLength);
 
     @CriticalNative
     private static native void nativeSetReadOnly(long handle, boolean readOnly);

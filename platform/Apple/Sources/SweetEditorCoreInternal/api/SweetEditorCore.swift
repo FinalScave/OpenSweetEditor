@@ -1157,46 +1157,40 @@ class SweetEditorCore {
 
     // MARK: - IME Composition
 
-    private enum ImeEventType: Int32 {
-        case updatePreedit = 0
-        case commitText = 1
-        case finishPreedit = 2
-        case cancelPreedit = 3
-        case markDocumentRange = 4
+    @discardableResult
+    func updateImePreedit(_ text: String) -> TextEditResultLite? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = text.withCString {
+                editor_ime_update_preedit(handle, $0, 0, &size)
+            }
+            let payload = copyBinaryPayloadAndFree(ptr, size: size)
+            return protocolDecoder.decodeImeEventEditResultLite(payload)
+        }
     }
 
     @discardableResult
-    func handleImeEvent(type: Int32,
-                        text: String? = nil,
-                        hasRange: Bool = false,
-                        startLine: Int = 0,
-                        startColumn: Int = 0,
-                        endLine: Int = 0,
-                        endColumn: Int = 0,
-                        hasCursor: Bool = false,
-                        cursorLine: Int = 0,
-                        cursorColumn: Int = 0,
-                        beforeLength: Int = 0,
-                        afterLength: Int = 0) -> TextEditResultLite? {
+    func setImeComposingTextSelection(_ text: String,
+                                      selectionStartOffset: Int,
+                                      selectionEndOffset: Int) -> TextEditResultLite? {
+        return performCoreCall {
+            var size: Int = 0
+            let safeStart = max(0, selectionStartOffset)
+            let safeEnd = max(0, selectionEndOffset)
+            let ptr = text.withCString {
+                editor_ime_set_composing_text_selection(handle, $0, safeStart, safeEnd, 0, &size)
+            }
+            let payload = copyBinaryPayloadAndFree(ptr, size: size)
+            return protocolDecoder.decodeImeEventEditResultLite(payload)
+        }
+    }
+
+    @discardableResult
+    func commitImeText(_ text: String?) -> TextEditResultLite? {
         return performCoreCall {
             var size: Int = 0
             let call: (UnsafePointer<CChar>?) -> UnsafePointer<UInt8>? = { cStr in
-                editor_handle_ime_event(handle,
-                                        type,
-                                        cStr,
-                                        hasRange ? 1 : 0,
-                                        startLine,
-                                        startColumn,
-                                        endLine,
-                                        endColumn,
-                                        hasCursor ? 1 : 0,
-                                        cursorLine,
-                                        cursorColumn,
-                                        beforeLength,
-                                        afterLength,
-                                        0,
-                                        0,
-                                        &size)
+                editor_ime_commit_text(handle, cStr, 0, &size)
             }
             let ptr: UnsafePointer<UInt8>?
             if let value = text {
@@ -1210,31 +1204,117 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func updateImePreedit(_ text: String) -> TextEditResultLite? {
-        handleImeEvent(type: ImeEventType.updatePreedit.rawValue, text: text)
-    }
-
-    @discardableResult
-    func commitImeText(_ text: String?) -> TextEditResultLite? {
-        handleImeEvent(type: ImeEventType.commitText.rawValue, text: text)
-    }
-
-    @discardableResult
     func finishImePreedit() -> TextEditResultLite? {
-        handleImeEvent(type: ImeEventType.finishPreedit.rawValue)
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_ime_finish_preedit(handle, &size)
+            let payload = copyBinaryPayloadAndFree(ptr, size: size)
+            return protocolDecoder.decodeImeEventEditResultLite(payload)
+        }
     }
 
     func cancelImePreedit() {
-        handleImeEvent(type: ImeEventType.cancelPreedit.rawValue)
+        performCoreCall {
+            var size: Int = 0
+            let ptr = editor_ime_cancel_preedit(handle, &size)
+            _ = copyBinaryPayloadAndFree(ptr, size: size)
+        }
     }
 
     func markImeDocumentRange(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) {
-        handleImeEvent(type: ImeEventType.markDocumentRange.rawValue,
-                       hasRange: true,
-                       startLine: startLine,
-                       startColumn: startColumn,
-                       endLine: endLine,
-                       endColumn: endColumn)
+        performCoreCall {
+            var size: Int = 0
+            let ptr = editor_ime_mark_document_range(handle,
+                                                     startLine,
+                                                     startColumn,
+                                                     endLine,
+                                                     endColumn,
+                                                     0,
+                                                     &size)
+            _ = copyBinaryPayloadAndFree(ptr, size: size)
+        }
+    }
+
+    func markImeDocumentRange(startOffset: Int, endOffset: Int) {
+        performCoreCall {
+            var size: Int = 0
+            let ptr = editor_ime_mark_document_range_by_offset(handle,
+                                                               startOffset,
+                                                               endOffset,
+                                                               0,
+                                                               &size)
+            _ = copyBinaryPayloadAndFree(ptr, size: size)
+        }
+    }
+
+    @discardableResult
+    func updateImeInputStateText(contextId: Int64,
+                                 documentStartOffset: Int,
+                                 text: String,
+                                 selectionStartOffset: Int,
+                                 selectionEndOffset: Int,
+                                 composingStartOffset: Int,
+                                 composingEndOffset: Int) -> TextEditResultLite? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = text.withCString {
+                editor_ime_update_input_state_text(handle,
+                                                   UInt64(max(0, contextId)),
+                                                   Int32(max(0, documentStartOffset)),
+                                                   $0,
+                                                   Int32(selectionStartOffset),
+                                                   Int32(selectionEndOffset),
+                                                   Int32(composingStartOffset),
+                                                   Int32(composingEndOffset),
+                                                   0,
+                                                   &size)
+            }
+            let payload = copyBinaryPayloadAndFree(ptr, size: size)
+            return protocolDecoder.decodeImeEventEditResultLite(payload)
+        }
+    }
+
+    @discardableResult
+    func updateImeInputStateSelection(contextId: Int64,
+                                      documentStartOffset: Int,
+                                      selectionStartOffset: Int,
+                                      selectionEndOffset: Int) -> TextEditResultLite? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_ime_update_input_state_selection(handle,
+                                                              UInt64(max(0, contextId)),
+                                                              Int32(max(0, documentStartOffset)),
+                                                              Int32(selectionStartOffset),
+                                                              Int32(selectionEndOffset),
+                                                              &size)
+            let payload = copyBinaryPayloadAndFree(ptr, size: size)
+            return protocolDecoder.decodeImeEventEditResultLite(payload)
+        }
+    }
+
+    @discardableResult
+    func replaceImeInputStateText(contextId: Int64,
+                                  documentStartOffset: Int,
+                                  startOffset: Int,
+                                  endOffset: Int,
+                                  text: String,
+                                  cursorOffset: Int = 1) -> TextEditResultLite? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = text.withCString {
+                editor_ime_replace_input_state_text(handle,
+                                                    UInt64(max(0, contextId)),
+                                                    Int32(max(0, documentStartOffset)),
+                                                    max(0, startOffset),
+                                                    max(0, endOffset),
+                                                    $0,
+                                                    Int32(cursorOffset),
+                                                    0,
+                                                    &size)
+            }
+            let payload = copyBinaryPayloadAndFree(ptr, size: size)
+            return protocolDecoder.decodeImeEventEditResultLite(payload)
+        }
     }
 
     func isComposing() -> Bool {

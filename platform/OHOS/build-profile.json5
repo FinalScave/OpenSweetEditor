@@ -1,6 +1,20 @@
 {
   "app": {
-    "signingConfigs": [],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\iscav\\.ohos\\config\\default_OHOS_N_D4nDQobGT3ygXSaHCZdQCBctbyAfxVuaTot78zC3k=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B52B3B4160D96DC03D20A2DDD4E3E26DA154ACDFCECFF576B640A612C2C913255AAF8469B432819",
+          "profile": "C:\\Users\\iscav\\.ohos\\config\\default_OHOS_N_D4nDQobGT3ygXSaHCZdQCBctbyAfxVuaTot78zC3k=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\iscav\\.ohos\\config\\default_OHOS_N_D4nDQobGT3ygXSaHCZdQCBctbyAfxVuaTot78zC3k=.p12",
+          "storePassword": "0000001B5D6E44F6DAEE6E384ADACDA96A96ADADBF08E07C3392168B94D12EC675CE3F6AB1A1C8483D394E"
+        }
+      }
+    ],
     "products": [
       {
         "name": "default",

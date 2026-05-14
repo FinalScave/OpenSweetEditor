@@ -621,6 +621,7 @@ namespace SweetEditor {
 		private const int WM_IME_ENDCOMPOSITION = 0x010E;
 		private const int WM_IME_COMPOSITION = 0x010F;
 		private const int GCS_COMPSTR = 0x0008;
+		private const int GCS_CURSORPOS = 0x0080;
 		private const int GCS_RESULTSTR = 0x0800;
 
 		[DllImport("imm32.dll")]
@@ -1505,7 +1506,9 @@ namespace SweetEditor {
 							}
 							if ((imeFlags & GCS_COMPSTR) != 0) {
 								string compStr = GetImmCompositionString(hIMC, GCS_COMPSTR);
-								DispatchImeActionResult(editorCore.UpdateImePreedit(compStr, ImeScriptClass.UNKNOWN));
+								int cursorPos = GetImmCompositionCursorPosition(hIMC, compStr.Length);
+								DispatchImeActionResult(editorCore.SetImeComposingTextSelection(
+									compStr, cursorPos, cursorPos, ImeScriptClass.UNKNOWN));
 								dispatched = true;
 							}
 							if (dispatched) {
@@ -1539,6 +1542,12 @@ namespace SweetEditor {
 			return System.Text.Encoding.Unicode.GetString(buffer, 0, byteLen);
 		}
 
+		private static int GetImmCompositionCursorPosition(IntPtr hIMC, int fallback) {
+			int cursorPosition = ImmGetCompositionString(hIMC, GCS_CURSORPOS, null, 0);
+			if (cursorPosition < 0) return fallback;
+			return Math.Max(0, Math.Min(cursorPosition, fallback));
+		}
+
 		private bool HasImeComposingSession() {
 			return editorCore.IsComposing() || editorCore.GetImeSyncSnapshot().HasComposingSession;
 		}
@@ -1547,10 +1556,10 @@ namespace SweetEditor {
 			ImeActionResult? result = null;
 			switch (e.KeyCode) {
 				case Keys.Back:
-					result = editorCore.DeleteImeBackward(1, ImeTextUnit.UTF16_CODE_UNIT);
+					result = editorCore.DeleteImeBackward(1, ImeTextUnit.GRAPHEME);
 					break;
 				case Keys.Delete:
-					result = editorCore.DeleteImeForward(1, ImeTextUnit.UTF16_CODE_UNIT);
+					result = editorCore.DeleteImeForward(1, ImeTextUnit.GRAPHEME);
 					break;
 				case Keys.Escape:
 					result = editorCore.CancelImePreedit();

@@ -6,6 +6,7 @@ import {
   HitTargetType,
   ImeActionResult,
   ImeContextPolicy,
+  ImeInputContext,
   ImePreeditStorage,
   ImeSyncSnapshot,
   KeyEventResult,
@@ -73,6 +74,13 @@ class BinaryReader {
     const val = this.view.getInt32(this.offset, true);
     this.offset += 4;
     return val;
+  }
+
+  readInt64(): number {
+    const lo = this.view.getUint32(this.offset, true);
+    const hi = this.view.getInt32(this.offset + 4, true);
+    this.offset += 8;
+    return hi * 0x100000000 + lo;
   }
 
   readFloat32(): number {
@@ -711,6 +719,28 @@ export class ProtocolDecoder {
     return ProtocolDecoder.readImeSyncSnapshot(reader);
   }
 
+  static decodeImeInputContext(payload: ArrayBuffer | undefined): ImeInputContext {
+    if (!payload || payload.byteLength === 0) {
+      return ProtocolDecoder.createEmptyImeInputContext();
+    }
+    const reader = new BinaryReader(payload);
+    return {
+      id: reader.readInt64(),
+      revision: reader.readInt32(),
+      documentStartOffset: reader.readInt32(),
+      text: reader.readUtf8String(),
+      selection: {
+        start: reader.readInt32(),
+        end: reader.readInt32()
+      },
+      hasComposition: reader.readInt32() !== 0,
+      composition: {
+        start: reader.readInt32(),
+        end: reader.readInt32()
+      }
+    };
+  }
+
   static decodeKeyEventResult(payload: ArrayBuffer | undefined): KeyEventResult {
     const empty: KeyEventResult = {
       handled: false,
@@ -1124,6 +1154,18 @@ export class ProtocolDecoder {
       preeditStorage: ImePreeditStorage.NONE,
       contextPolicy: ImeContextPolicy.NONE,
       clearPlatformPreedit: false
+    };
+  }
+
+  private static createEmptyImeInputContext(): ImeInputContext {
+    return {
+      id: 0,
+      revision: 0,
+      documentStartOffset: 0,
+      text: '',
+      selection: { start: 0, end: 0 },
+      hasComposition: false,
+      composition: { start: -1, end: -1 }
     };
   }
 

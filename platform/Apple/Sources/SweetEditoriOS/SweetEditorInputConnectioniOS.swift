@@ -128,8 +128,6 @@ final class SweetEditorInputConnectioniOS {
         inputDelegate?.selectionWillChange(owner)
         inputDelegate?.textWillChange(owner)
 
-        _ = owner.editorCore.updateImePreedit(text)
-
         markedRangeValue = NSRange(location: baseRange.location, length: text.utf16.count)
         markedTextValue = text
 
@@ -137,6 +135,11 @@ final class SweetEditorInputConnectioniOS {
         let clampedLength = min(max(selectedRange.length, 0), max(text.utf16.count - clampedLocation, 0))
         let absoluteRange = NSRange(location: markedRangeValue!.location + clampedLocation, length: clampedLength)
         markedSelectionRangeValue = absoluteRange
+
+        _ = owner.editorCore.setImeComposingTextSelection(
+            text,
+            selectionStartOffset: clampedLocation,
+            selectionEndOffset: clampedLocation + clampedLength)
 
         selectedRangeValue = absoluteRange
         owner.rehighlightAndRedraw()

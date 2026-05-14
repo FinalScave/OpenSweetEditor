@@ -1132,9 +1132,12 @@ namespace SweetEditor {
 	/// Text unit used by IME deletion requests.
 	/// </summary>
 	public enum ImeTextUnit {
+		GRAPHEME = 0,
 		UTF16_CODE_UNIT = 0,
 		CODE_POINT = 1
 	}
+
+	public readonly record struct ImeTextRange(int Start, int End);
 
 	/// <summary>
 	/// Script class reported by a platform IME.
@@ -1192,6 +1195,16 @@ namespace SweetEditor {
 		public ImeContextPolicy ContextPolicy { get; set; } = ImeContextPolicy.NONE;
 		[JsonPropertyName("clear_platform_preedit")]
 		public bool ClearPlatformPreedit { get; set; }
+	}
+
+	public sealed class ImeInputContext {
+		public long Id { get; set; }
+		public int Revision { get; set; }
+		public int DocumentStartOffset { get; set; }
+		public string Text { get; set; } = string.Empty;
+		public ImeTextRange Selection { get; set; } = new(0, 0);
+		public bool HasComposition { get; set; }
+		public ImeTextRange Composition { get; set; } = new(-1, -1);
 	}
 
 	/// <summary>
@@ -1933,8 +1946,17 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_ime_update_preedit", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr ImeUpdatePreedit(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int scriptHint, out UIntPtr outSize);
 
+		[DllImport(LibraryName, EntryPoint = "editor_ime_set_composing_text", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeSetComposingText(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int cursorOffset, int scriptHint, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_set_composing_text_selection", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeSetComposingTextSelection(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, nuint selectionStartOffset, nuint selectionEndOffset, int scriptHint, out UIntPtr outSize);
+
 		[DllImport(LibraryName, EntryPoint = "editor_ime_commit_text", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr ImeCommitText(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int scriptHint, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_commit_text_with_cursor", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeCommitTextWithCursor(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int cursorOffset, int scriptHint, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_ime_finish_preedit", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr ImeFinishPreedit(IntPtr handle, out UIntPtr outSize);
@@ -1945,8 +1967,35 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_ime_mark_document_range", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr ImeMarkDocumentRange(IntPtr handle, nuint startLine, nuint startColumn, nuint endLine, nuint endColumn, int scriptHint, out UIntPtr outSize);
 
+		[DllImport(LibraryName, EntryPoint = "editor_ime_mark_document_range_by_offset", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeMarkDocumentRangeByOffset(IntPtr handle, nuint startOffset, nuint endOffset, int scriptHint, out UIntPtr outSize);
+
 		[DllImport(LibraryName, EntryPoint = "editor_ime_replace_text", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr ImeReplaceText(IntPtr handle, nuint startLine, nuint startColumn, nuint endLine, nuint endColumn, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int scriptHint, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_replace_document_text", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeReplaceDocumentText(IntPtr handle, nuint startOffset, nuint endOffset, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int cursorOffset, int scriptHint, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_replace_input_context_text", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeReplaceInputContextText(IntPtr handle, nuint startOffset, nuint endOffset, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int cursorOffset, int scriptHint, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_mark_input_context_range", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeMarkInputContextRange(IntPtr handle, nuint startOffset, nuint endOffset, int scriptHint, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_notify_document_selection_changed", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeNotifyDocumentSelectionChanged(IntPtr handle, nuint startOffset, nuint endOffset, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_notify_input_context_selection_changed", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeNotifyInputContextSelectionChanged(IntPtr handle, nuint startOffset, nuint endOffset, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_update_input_state_text", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeUpdateInputStateText(IntPtr handle, ulong contextId, int documentStartOffset, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int selectionStartOffset, int selectionEndOffset, int composingStartOffset, int composingEndOffset, int scriptHint, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_update_input_state_selection", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeUpdateInputStateSelection(IntPtr handle, ulong contextId, int documentStartOffset, int selectionStartOffset, int selectionEndOffset, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_ime_replace_input_state_text", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeReplaceInputStateText(IntPtr handle, ulong contextId, int documentStartOffset, nuint startOffset, nuint endOffset, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int cursorOffset, int scriptHint, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_ime_delete_backward", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr ImeDeleteBackward(IntPtr handle, nuint beforeLength, int textUnit, out UIntPtr outSize);
@@ -1971,6 +2020,9 @@ namespace SweetEditor {
 
 		[DllImport(LibraryName, EntryPoint = "editor_get_ime_sync_snapshot", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr GetImeSyncSnapshot(IntPtr handle, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_get_ime_input_context", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr GetImeInputContext(IntPtr handle, nuint beforeLength, nuint afterLength, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_read_only", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void SetReadOnly(IntPtr handle, int readOnly);
@@ -2781,10 +2833,32 @@ namespace SweetEditor {
 			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
 		}
 
+		/// <summary>Sets composing text and applies platform cursor placement in core.</summary>
+		public ImeActionResult SetImeComposingText(string? text, int cursorOffset = 1, ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeSetComposingText(nativeHandle, text ?? string.Empty, cursorOffset, (int)scriptHint, out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Sets composing text and applies an in-composition selection in core.</summary>
+		public ImeActionResult SetImeComposingTextSelection(string? text, int selectionStartOffset, int selectionEndOffset, ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeSetComposingTextSelection(nativeHandle,
+				text ?? string.Empty, ToNativeSize(selectionStartOffset), ToNativeSize(selectionEndOffset), (int)scriptHint, out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
 		/// <summary>Commits platform IME text.</summary>
 		public ImeActionResult CommitImeText(string? text, ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
 			if (IsReleased) return new ImeActionResult();
 			IntPtr payloadPtr = NativeMethods.ImeCommitText(nativeHandle, text ?? string.Empty, (int)scriptHint, out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Commits platform IME text and applies platform cursor placement in core.</summary>
+		public ImeActionResult CommitImeText(string? text, int cursorOffset, ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeCommitTextWithCursor(nativeHandle, text ?? string.Empty, cursorOffset, (int)scriptHint, out UIntPtr payloadSize);
 			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
 		}
 
@@ -2812,6 +2886,14 @@ namespace SweetEditor {
 			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
 		}
 
+		/// <summary>Marks a document UTF-16 offset range explicitly reported by the platform IME.</summary>
+		public ImeActionResult MarkImeDocumentRange(int startOffset, int endOffset, ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeMarkDocumentRangeByOffset(nativeHandle,
+				ToNativeSize(startOffset), ToNativeSize(endOffset), (int)scriptHint, out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
 		/// <summary>Replaces text through an explicit platform IME replacement request.</summary>
 		public ImeActionResult ReplaceImeText(TextRange range, string? text, ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
 			if (IsReleased) return new ImeActionResult();
@@ -2822,22 +2904,121 @@ namespace SweetEditor {
 			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
 		}
 
+		/// <summary>Replaces a document UTF-16 offset range through an explicit platform IME replacement request.</summary>
+		public ImeActionResult ReplaceImeDocumentText(int startOffset, int endOffset, string? text, int cursorOffset = 1, ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeReplaceDocumentText(nativeHandle,
+				ToNativeSize(startOffset), ToNativeSize(endOffset), text ?? string.Empty, cursorOffset, (int)scriptHint, out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Replaces text using offsets in the last core input context.</summary>
+		public ImeActionResult ReplaceImeInputContextText(int startOffset, int endOffset, string? text, int cursorOffset = 1, ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeReplaceInputContextText(nativeHandle,
+				ToNativeSize(startOffset), ToNativeSize(endOffset), text ?? string.Empty, cursorOffset, (int)scriptHint, out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Marks composing text using offsets in the last core input context.</summary>
+		public ImeActionResult MarkImeInputContextRange(int startOffset, int endOffset, ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeMarkInputContextRange(nativeHandle,
+				ToNativeSize(startOffset), ToNativeSize(endOffset), (int)scriptHint, out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Moves selection using document UTF-16 offsets.</summary>
+		public ImeActionResult NotifyImeDocumentSelectionChanged(int startOffset, int endOffset) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeNotifyDocumentSelectionChanged(nativeHandle,
+				ToNativeSize(startOffset), ToNativeSize(endOffset), out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Moves selection using offsets in the last core input context.</summary>
+		public ImeActionResult NotifyImeInputContextSelectionChanged(int startOffset, int endOffset) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeNotifyInputContextSelectionChanged(nativeHandle,
+				ToNativeSize(startOffset), ToNativeSize(endOffset), out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Updates text, selection, and composing offsets from a platform text input state.</summary>
+		public ImeActionResult UpdateImeInputStateText(long contextId,
+			int documentStartOffset,
+			string? text,
+			int selectionStartOffset,
+			int selectionEndOffset,
+			int composingStartOffset,
+			int composingEndOffset,
+			ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeUpdateInputStateText(nativeHandle,
+				(ulong)Math.Max(0, contextId),
+				Math.Max(0, documentStartOffset),
+				text ?? string.Empty,
+				selectionStartOffset,
+				selectionEndOffset,
+				composingStartOffset,
+				composingEndOffset,
+				(int)scriptHint,
+				out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Updates selection from a platform text input state.</summary>
+		public ImeActionResult UpdateImeInputStateSelection(long contextId,
+			int documentStartOffset,
+			int selectionStartOffset,
+			int selectionEndOffset) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeUpdateInputStateSelection(nativeHandle,
+				(ulong)Math.Max(0, contextId),
+				Math.Max(0, documentStartOffset),
+				selectionStartOffset,
+				selectionEndOffset,
+				out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Replaces text using offsets in a platform text input state.</summary>
+		public ImeActionResult ReplaceImeInputStateText(long contextId,
+			int documentStartOffset,
+			int startOffset,
+			int endOffset,
+			string? text,
+			int cursorOffset = 1,
+			ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+			if (IsReleased) return new ImeActionResult();
+			IntPtr payloadPtr = NativeMethods.ImeReplaceInputStateText(nativeHandle,
+				(ulong)Math.Max(0, contextId),
+				Math.Max(0, documentStartOffset),
+				ToNativeSize(startOffset),
+				ToNativeSize(endOffset),
+				text ?? string.Empty,
+				cursorOffset,
+				(int)scriptHint,
+				out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
+		}
+
 		/// <summary>Deletes text before the caret through IME semantics.</summary>
-		public ImeActionResult DeleteImeBackward(int beforeLength = 1, ImeTextUnit textUnit = ImeTextUnit.UTF16_CODE_UNIT) {
+		public ImeActionResult DeleteImeBackward(int beforeLength = 1, ImeTextUnit textUnit = ImeTextUnit.GRAPHEME) {
 			if (IsReleased) return new ImeActionResult();
 			IntPtr payloadPtr = NativeMethods.ImeDeleteBackward(nativeHandle, ToNativeSize(beforeLength), (int)textUnit, out UIntPtr payloadSize);
 			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Deletes text after the caret through IME semantics.</summary>
-		public ImeActionResult DeleteImeForward(int afterLength = 1, ImeTextUnit textUnit = ImeTextUnit.UTF16_CODE_UNIT) {
+		public ImeActionResult DeleteImeForward(int afterLength = 1, ImeTextUnit textUnit = ImeTextUnit.GRAPHEME) {
 			if (IsReleased) return new ImeActionResult();
 			IntPtr payloadPtr = NativeMethods.ImeDeleteForward(nativeHandle, ToNativeSize(afterLength), (int)textUnit, out UIntPtr payloadSize);
 			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Deletes surrounding text through IME semantics.</summary>
-		public ImeActionResult DeleteImeSurrounding(int beforeLength, int afterLength, ImeTextUnit textUnit = ImeTextUnit.UTF16_CODE_UNIT) {
+		public ImeActionResult DeleteImeSurrounding(int beforeLength, int afterLength, ImeTextUnit textUnit = ImeTextUnit.GRAPHEME) {
 			if (IsReleased) return new ImeActionResult();
 			IntPtr payloadPtr = NativeMethods.ImeDeleteSurrounding(nativeHandle, ToNativeSize(beforeLength), ToNativeSize(afterLength), (int)textUnit, out UIntPtr payloadSize);
 			return ProtocolDecoder.ParseImeActionResult(payloadPtr, payloadSize);
@@ -2879,6 +3060,14 @@ namespace SweetEditor {
 			if (IsReleased) return new ImeSyncSnapshot();
 			IntPtr payloadPtr = NativeMethods.GetImeSyncSnapshot(nativeHandle, out UIntPtr payloadSize);
 			return ProtocolDecoder.ParseImeSyncSnapshot(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Gets an input method text context centered around the current selection.</summary>
+		public ImeInputContext GetImeInputContext(int beforeLength, int afterLength) {
+			if (IsReleased) return new ImeInputContext();
+			IntPtr payloadPtr = NativeMethods.GetImeInputContext(nativeHandle,
+				ToNativeSize(beforeLength), ToNativeSize(afterLength), out UIntPtr payloadSize);
+			return ProtocolDecoder.ParseImeInputContext(payloadPtr, payloadSize);
 		}
 
 		private static TextRange? CreateOptionalRange(int startLine, int startColumn, int endLine, int endColumn) {

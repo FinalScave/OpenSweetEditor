@@ -1,13 +1,35 @@
 #ifndef SWEETEDITOR_IME_TYPES_H
 #define SWEETEDITOR_IME_TYPES_H
 
+#include <cstdint>
 #include "editor_types.h"
 
 namespace NS_SWEETEDITOR {
 
   enum struct ImeTextUnit {
-    UTF16_CODE_UNIT,
-    CODE_POINT,
+    GRAPHEME = 0,
+    UTF16_CODE_UNIT = 0,
+    CODE_POINT = 1,
+  };
+
+  enum struct ImeTextModelMode {
+    DOCUMENT_WINDOW = 0,
+    TRANSIENT_INPUT = 1,
+  };
+
+  struct ImeTextRange {
+    int32_t start {0};
+    int32_t end {0};
+  };
+
+  struct ImeInputContext {
+    uint64_t id {0};
+    int32_t revision {0};
+    int32_t document_start_offset {0};
+    U8String text;
+    ImeTextRange selection;
+    bool has_composition {false};
+    ImeTextRange composition {-1, -1};
   };
 
   enum struct ImeScriptClass {

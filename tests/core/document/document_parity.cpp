@@ -356,3 +356,38 @@ TEST_CASE("Document range extraction honors UTF-16 surrogate boundaries") {
   CHECK(line_doc.getU8Text({{1, 3}, {1, 4}}) == "x");
   CHECK(piece_doc.getU8Text({{1, 3}, {1, 4}}) == "x");
 }
+
+TEST_CASE("Document global offsets use UTF-16 code units") {
+  const U8String text = "A\xf0\x9f\x98\x80" "B\nC\xf0\x9f\x98\x80" "D";
+  LineArrayDocument line_doc(text);
+  PieceTableDocument piece_doc(text);
+
+  auto check_document = [&](Document& document) {
+    CHECK(document.getLineColumns(0) == 4);
+    CHECK(document.getLineColumns(1) == 4);
+
+    CHECK(document.getCharIndexFromPosition({0, 0}) == 0);
+    CHECK(document.getCharIndexFromPosition({0, 1}) == 1);
+    CHECK(document.getCharIndexFromPosition({0, 3}) == 3);
+    CHECK(document.getCharIndexFromPosition({0, 4}) == 4);
+    CHECK(document.getCharIndexFromPosition({1, 0}) == 5);
+    CHECK(document.getCharIndexFromPosition({1, 1}) == 6);
+    CHECK(document.getCharIndexFromPosition({1, 3}) == 8);
+    CHECK(document.getCharIndexFromPosition({1, 4}) == 9);
+
+    CHECK(document.getPositionFromCharIndex(0) == (TextPosition{0, 0}));
+    CHECK(document.getPositionFromCharIndex(1) == (TextPosition{0, 1}));
+    CHECK(document.getPositionFromCharIndex(3) == (TextPosition{0, 3}));
+    CHECK(document.getPositionFromCharIndex(4) == (TextPosition{0, 4}));
+    CHECK(document.getPositionFromCharIndex(5) == (TextPosition{1, 0}));
+    CHECK(document.getPositionFromCharIndex(6) == (TextPosition{1, 1}));
+    CHECK(document.getPositionFromCharIndex(8) == (TextPosition{1, 3}));
+    CHECK(document.getPositionFromCharIndex(9) == (TextPosition{1, 4}));
+
+    CHECK(document.countChars(0, text.size()) == 9);
+    CHECK(document.countChars(1, 4) == 2);
+  };
+
+  check_document(line_doc);
+  check_document(piece_doc);
+}

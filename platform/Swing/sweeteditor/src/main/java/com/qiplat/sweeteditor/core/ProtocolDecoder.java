@@ -3,7 +3,9 @@ package com.qiplat.sweeteditor.core;
 import com.qiplat.sweeteditor.core.foundation.*;
 import com.qiplat.sweeteditor.core.adornment.TextStyle;
 import com.qiplat.sweeteditor.core.ime.ImeActionResult;
+import com.qiplat.sweeteditor.core.ime.ImeInputContext;
 import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
+import com.qiplat.sweeteditor.core.ime.ImeTextRange;
 import com.qiplat.sweeteditor.core.visual.*;
 
 import java.nio.ByteBuffer;
@@ -96,6 +98,20 @@ final class ProtocolDecoder {
     static ImeSyncSnapshot decodeImeSyncSnapshot(ByteBuffer data) {
         if (data == null || data.remaining() == 0) return new ImeSyncSnapshot();
         return readImeSyncSnapshot(data);
+    }
+
+    static ImeInputContext decodeImeInputContext(ByteBuffer data) {
+        if (data == null || data.remaining() < 28) return new ImeInputContext();
+        ImeInputContext context = new ImeInputContext();
+        context.id = data.getLong();
+        context.revision = data.getInt();
+        context.documentStartOffset = data.getInt();
+        context.text = readBufferString(data);
+        if (data.remaining() < 20) return context;
+        context.selection = new ImeTextRange(data.getInt(), data.getInt());
+        context.hasComposition = data.getInt() != 0;
+        context.composition = new ImeTextRange(data.getInt(), data.getInt());
+        return context;
     }
 
     private static TextEditResult readTextEditChanges(ByteBuffer data) {

@@ -136,6 +136,592 @@ TEST_CASE("EditorCore composition end commits final text once and supports undo"
   CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
 }
 
+TEST_CASE("EditorCore IME commit cursor offset is applied in core") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("abCD");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 2});
+
+  editor.commitImeText("X", 1, ImeScriptClass::LATIN);
+  CHECK(document->getU8Text() == "abXCD");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
+
+  editor.commitImeText("Y", 0, ImeScriptClass::LATIN);
+  CHECK(document->getU8Text() == "abXYCD");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
+}
+
+TEST_CASE("EditorCore IME composing selection offsets are applied in core") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("ab");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 2});
+
+  editor.setImeComposingText("xyz", 1, 2, ImeScriptClass::LATIN);
+  CHECK(document->getU8Text() == "abxyz");
+  REQUIRE(editor.isComposing());
+  CHECK(editor.hasSelection());
+  CHECK(editor.getSelection() == (TextRange{{0, 3}, {0, 4}}));
+
+  editor.setImeComposingText("pq", 2, 2, ImeScriptClass::LATIN);
+  CHECK(document->getU8Text() == "abpq");
+  CHECK_FALSE(editor.hasSelection());
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
+}
+
+TEST_CASE("EditorCore IME input context offsets resolve inside core") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("0123456789");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 5});
+
+  ImeInputContext context = editor.getImeInputContext(2, 3);
+  CHECK(context.document_start_offset == 3);
+  CHECK(context.text == "34567");
+  CHECK(context.selection.start == 2);
+  CHECK(context.selection.end == 2);
+
+  editor.markImeInputContextRange(1, 3, ImeScriptClass::LATIN);
+  REQUIRE(editor.isComposing());
+  CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 4}, {0, 6}}));
+
+  editor.replaceImeInputContextText(1, 3, "AB", 1, ImeScriptClass::LATIN);
+  CHECK(document->getU8Text() == "0123AB6789");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 6}));
+}
+
+TEST_CASE("EditorCore IME document offsets resolve inside core") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("0123456789");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 5});
+
+  editor.markImeDocumentRange(2, 5, ImeScriptClass::LATIN);
+  REQUIRE(editor.isComposing());
+  CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 2}, {0, 5}}));
+
+  editor.replaceImeDocumentText(2, 5, "AB", 1, ImeScriptClass::LATIN);
+  CHECK(document->getU8Text() == "01AB56789");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
+
+  editor.notifyImeDocumentSelectionChanged(1, 4);
+  CHECK(editor.hasSelection());
+  CHECK(editor.getSelection() == (TextRange{{0, 1}, {0, 4}}));
+}
+
+TEST_CASE("EditorCore IME input state text update inserts and finishes composition") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("ab");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 2});
+
+  ImeInputContext context = editor.getImeInputContext(8, 8);
+  editor.updateImeInputStateText(
+      context.id,
+      context.document_start_offset,
+      "abx",
+      3,
+      3,
+      2,
+      3,
+      ImeScriptClass::LATIN);
+  CHECK(document->getU8Text() == "abx");
+  REQUIRE(editor.isComposing());
+  CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 2}, {0, 3}}));
+
+  editor.updateImeInputStateText(
+      context.id,
+      context.document_start_offset,
+      "abxy",
+      4,
+      4,
+      2,
+      4,
+      ImeScriptClass::LATIN);
+  CHECK(document->getU8Text() == "abxy");
+  REQUIRE(editor.isComposing());
+  CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 2}, {0, 4}}));
+
+  editor.updateImeInputStateText(
+      context.id,
+      context.document_start_offset,
+      "abxy",
+      4,
+      4,
+      -1,
+      -1,
+      ImeScriptClass::LATIN);
+  CHECK_FALSE(editor.isComposing());
+  CHECK(document->getU8Text() == "abxy");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
+}
+
+TEST_CASE("EditorCore IME input state composing text replaces previous composing span") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("ab");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 2});
+
+  ImeInputContext context = editor.getImeInputContext(8, 8);
+  ImeActionResult insert_result = editor.updateImeInputStateText(
+      context.id,
+      context.document_start_offset,
+      "abhow",
+      5,
+      5,
+      2,
+      5,
+      ImeScriptClass::LATIN);
+  REQUIRE(insert_result.content_changed);
+  REQUIRE(editor.isComposing());
+  CHECK(document->getU8Text() == "abhow");
+
+  context = editor.getImeInputContext(8, 8);
+  ImeActionResult first_delete_result = editor.updateImeInputStateText(
+      context.id,
+      context.document_start_offset,
+      "abho",
+      4,
+      4,
+      2,
+      4,
+      ImeScriptClass::LATIN);
+  REQUIRE(first_delete_result.content_changed);
+  REQUIRE(editor.isComposing());
+  CHECK(document->getU8Text() == "abho");
+  CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 2}, {0, 4}}));
+
+  context = editor.getImeInputContext(8, 8);
+  ImeActionResult second_delete_result = editor.updateImeInputStateText(
+      context.id,
+      context.document_start_offset,
+      "abh",
+      3,
+      3,
+      2,
+      3,
+      ImeScriptClass::LATIN);
+  REQUIRE(second_delete_result.content_changed);
+  REQUIRE(editor.isComposing());
+  CHECK(document->getU8Text() == "abh");
+  CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 2}, {0, 3}}));
+
+  context = editor.getImeInputContext(8, 8);
+  ImeActionResult clear_result = editor.updateImeInputStateText(
+      context.id,
+      context.document_start_offset,
+      "ab",
+      2,
+      2,
+      2,
+      2,
+      ImeScriptClass::LATIN);
+  REQUIRE(clear_result.content_changed);
+  CHECK_FALSE(editor.isComposing());
+  CHECK(document->getU8Text() == "ab");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
+}
+
+TEST_CASE("EditorCore IME input state commit replaces previous composing span") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("ab");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 2});
+
+  ImeInputContext context = editor.getImeInputContext(8, 8);
+  editor.updateImeInputStateText(
+      context.id,
+      context.document_start_offset,
+      "abhow",
+      5,
+      5,
+      2,
+      5,
+      ImeScriptClass::LATIN);
+  REQUIRE(editor.isComposing());
+
+  context = editor.getImeInputContext(8, 8);
+  ImeActionResult commit_result = editor.updateImeInputStateText(
+      context.id,
+      context.document_start_offset,
+      "abhello",
+      7,
+      7,
+      -1,
+      -1,
+      ImeScriptClass::LATIN);
+
+  REQUIRE(commit_result.content_changed);
+  CHECK_FALSE(editor.isComposing());
+  CHECK(document->getU8Text() == "abhello");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
+}
+
+TEST_CASE("EditorCore IME input state text update replaces document text") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("hello");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setSelection({{0, 1}, {0, 4}});
+
+  ImeInputContext context = editor.getImeInputContext(8, 8);
+  editor.updateImeInputStateText(
+      context.id,
+      context.document_start_offset,
+      "hXo",
+      2,
+      2,
+      -1,
+      -1,
+      ImeScriptClass::LATIN);
+  CHECK(document->getU8Text() == "hXo");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
+}
+
+TEST_CASE("EditorCore IME input state mark-only composing stays document range") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("hello");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 5});
+
+  ImeInputContext context = editor.getImeInputContext(8, 8);
+  ImeActionResult mark_result = editor.updateImeInputStateText(
+      context.id,
+      context.document_start_offset,
+      "hello",
+      5,
+      5,
+      0,
+      5,
+      ImeScriptClass::LATIN);
+
+  CHECK_FALSE(mark_result.content_changed);
+  REQUIRE(editor.isComposing());
+  CHECK(editor.getCompositionState().kind == CompositionKind::DOCUMENT_RANGE);
+  CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 0}, {0, 5}}));
+  CHECK(document->getU8Text() == "hello");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 5}));
+
+  context = editor.getImeInputContext(8, 8);
+  ImeActionResult finish_result = editor.updateImeInputStateText(
+      context.id,
+      context.document_start_offset,
+      "hello",
+      5,
+      5,
+      -1,
+      -1,
+      ImeScriptClass::LATIN);
+
+  CHECK_FALSE(finish_result.content_changed);
+  CHECK_FALSE(editor.isComposing());
+  CHECK(document->getU8Text() == "hello");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 5}));
+}
+
+TEST_CASE("EditorCore IME input state replacement commits matching document range") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("enabled");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 7});
+
+  ImeInputContext context = editor.getImeInputContext(8, 8);
+  ImeActionResult mark_result = editor.updateImeInputStateText(
+      context.id,
+      context.document_start_offset,
+      "enabled",
+      7,
+      7,
+      0,
+      7,
+      ImeScriptClass::LATIN);
+
+  CHECK_FALSE(mark_result.content_changed);
+  REQUIRE(editor.isComposing());
+  CHECK(editor.getCompositionState().kind == CompositionKind::DOCUMENT_RANGE);
+  CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 0}, {0, 7}}));
+
+  context = editor.getImeInputContext(8, 8);
+  ImeActionResult commit_result = editor.commitImeInputStateTextReplacement(
+      context.id,
+      context.document_start_offset,
+      0,
+      7,
+      "enable",
+      1,
+      ImeScriptClass::LATIN);
+
+  REQUIRE(commit_result.content_changed);
+  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasComposingSession());
+  CHECK(commit_result.sync.clear_platform_preedit);
+  CHECK(document->getU8Text() == "enable");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 6}));
+
+  context = editor.getImeInputContext(8, 8);
+  CHECK_FALSE(context.has_composition);
+}
+
+TEST_CASE("EditorCore IME text model transient input defers composing text") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 0});
+
+  ImeInputContext context = editor.getImeTextModelInputContext(
+      ImeTextModelMode::TRANSIENT_INPUT,
+      8,
+      8);
+  ImeActionResult composing_result = editor.updateImeTextModelState(
+      ImeTextModelMode::TRANSIENT_INPUT,
+      context.id,
+      context.document_start_offset,
+      "nih",
+      3,
+      3,
+      0,
+      3,
+      ImeScriptClass::CJK);
+
+  CHECK(composing_result.handled);
+  CHECK_FALSE(composing_result.content_changed);
+  CHECK_FALSE(composing_result.sync.clear_platform_preedit);
+  CHECK_FALSE(editor.isComposing());
+  CHECK(document->getU8Text().empty());
+
+  context = editor.getImeTextModelInputContext(ImeTextModelMode::TRANSIENT_INPUT, 8, 8);
+  CHECK(context.text == "nih");
+  CHECK(context.has_composition);
+  CHECK(context.composition.start == 0);
+  CHECK(context.composition.end == 3);
+
+  ImeActionResult commit_result = editor.updateImeTextModelState(
+      ImeTextModelMode::TRANSIENT_INPUT,
+      context.id,
+      context.document_start_offset,
+      "你好",
+      2,
+      2,
+      -1,
+      -1,
+      ImeScriptClass::CJK);
+
+  REQUIRE(commit_result.content_changed);
+  CHECK(commit_result.sync.clear_platform_preedit);
+  CHECK_FALSE(editor.isComposing());
+  CHECK(document->getU8Text() == "你好");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
+}
+
+TEST_CASE("EditorCore IME text model delta commits replacement after composing clear") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("enabled");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 7});
+
+  ImeInputContext context = editor.getImeTextModelInputContext(
+      ImeTextModelMode::DOCUMENT_WINDOW,
+      8,
+      8);
+  ImeActionResult mark_result = editor.updateImeTextModelState(
+      ImeTextModelMode::DOCUMENT_WINDOW,
+      context.id,
+      context.document_start_offset,
+      "enabled",
+      7,
+      7,
+      0,
+      7,
+      ImeScriptClass::LATIN);
+  REQUIRE(mark_result.handled);
+  REQUIRE(editor.isComposing());
+
+  context = editor.getImeTextModelInputContext(ImeTextModelMode::DOCUMENT_WINDOW, 8, 8);
+  ImeActionResult clear_result = editor.updateImeTextModelDelta(
+      ImeTextModelMode::DOCUMENT_WINDOW,
+      context.id,
+      context.document_start_offset,
+      "enabled",
+      -1,
+      -1,
+      "",
+      7,
+      7,
+      -1,
+      -1,
+      ImeScriptClass::LATIN);
+  CHECK(clear_result.handled);
+  CHECK_FALSE(clear_result.content_changed);
+  REQUIRE(editor.isComposing());
+
+  ImeActionResult commit_result = editor.updateImeTextModelDelta(
+      ImeTextModelMode::DOCUMENT_WINDOW,
+      context.id,
+      context.document_start_offset,
+      "enabled",
+      0,
+      7,
+      "enables",
+      7,
+      7,
+      -1,
+      -1,
+      ImeScriptClass::LATIN);
+
+  REQUIRE(commit_result.content_changed);
+  CHECK(commit_result.sync.clear_platform_preedit);
+  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasComposingSession());
+  CHECK(document->getU8Text() == "enables");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
+}
+
+TEST_CASE("EditorCore IME input state replacement ignores mid-range plain edit heuristic") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("enabled");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 6});
+
+  ImeInputContext context = editor.getImeInputContext(8, 8);
+  ImeActionResult mark_result = editor.updateImeInputStateText(
+      context.id,
+      context.document_start_offset,
+      "enabled",
+      6,
+      6,
+      0,
+      7,
+      ImeScriptClass::LATIN);
+
+  CHECK_FALSE(mark_result.content_changed);
+  REQUIRE(editor.isComposing());
+  CHECK(editor.getCompositionState().kind == CompositionKind::DOCUMENT_RANGE);
+  CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 0}, {0, 7}}));
+
+  context = editor.getImeInputContext(8, 8);
+  ImeActionResult commit_result = editor.commitImeInputStateTextReplacement(
+      context.id,
+      context.document_start_offset,
+      0,
+      7,
+      "enables",
+      1,
+      ImeScriptClass::LATIN);
+
+  REQUIRE(commit_result.content_changed);
+  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasComposingSession());
+  CHECK(commit_result.sync.clear_platform_preedit);
+  CHECK(document->getU8Text() == "enables");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
+}
+
+TEST_CASE("EditorCore IME input state replacement ignores preedit text composition") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 0});
+
+  ImeInputContext context = editor.getImeInputContext(8, 8);
+  ImeActionResult preedit_result = editor.updateImeInputStateText(
+      context.id,
+      context.document_start_offset,
+      "how",
+      3,
+      3,
+      0,
+      3,
+      ImeScriptClass::LATIN);
+
+  REQUIRE(preedit_result.content_changed);
+  REQUIRE(editor.isComposing());
+  CHECK(editor.getCompositionState().kind == CompositionKind::PREEDIT_TEXT);
+  CHECK(document->getU8Text() == "how");
+
+  context = editor.getImeInputContext(8, 8);
+  ImeActionResult commit_result = editor.commitImeInputStateTextReplacement(
+      context.id,
+      context.document_start_offset,
+      0,
+      3,
+      "ho",
+      1,
+      ImeScriptClass::LATIN);
+
+  CHECK_FALSE(commit_result.handled);
+  REQUIRE(editor.isComposing());
+  CHECK(editor.getCompositionState().kind == CompositionKind::PREEDIT_TEXT);
+  CHECK(document->getU8Text() == "how");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
+}
+
+TEST_CASE("EditorCore IME input state composing replacement maps to previous range") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("abc");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setSelection({{0, 1}, {0, 2}});
+
+  ImeInputContext context = editor.getImeInputContext(8, 8);
+  editor.updateImeInputStateText(
+      context.id,
+      context.document_start_offset,
+      "a你c",
+      2,
+      2,
+      1,
+      2,
+      ImeScriptClass::CJK);
+
+  CHECK(document->getU8Text() == "a你c");
+  REQUIRE(editor.isComposing());
+  CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 1}, {0, 2}}));
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
+}
+
 
 TEST_CASE("EditorCore backspace during composition shrinks text step-by-step") {
   EditorOptions options;
@@ -648,6 +1234,69 @@ TEST_CASE("EditorCore IME document range candidate replaces word from middle cur
   CHECK_FALSE(editor.isComposing());
   CHECK_FALSE(editor.hasComposingSession());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 10}));
+}
+
+TEST_CASE("EditorCore suppresses candidate exact re-mark after commit") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 0});
+  ImeReplayRunner ime(editor);
+
+  ime.updatePreedit("how");
+  ImeActionResult commit_result = ime.commitText("how");
+  REQUIRE(commit_result.handled);
+  CHECK(document->getU8Text() == "how");
+  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasComposingSession());
+
+  ImeActionResult mark_result = ime.markDocumentRange({{0, 0}, {0, 3}});
+  CHECK(mark_result.handled);
+  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasComposingSession());
+
+  ImeActionResult preedit_result = ime.updatePreedit("how");
+  CHECK(preedit_result.handled);
+  CHECK_FALSE(preedit_result.content_changed);
+  CHECK(document->getU8Text() == "how");
+  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasComposingSession());
+}
+
+TEST_CASE("EditorCore suppresses document range candidate exact re-mark after commit") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("enabled");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 7});
+  ImeReplayRunner ime(editor);
+
+  ImeActionResult mark_result = ime.markDocumentRange({{0, 0}, {0, 7}});
+  REQUIRE(mark_result.sync.has_visible_composition_range);
+  CHECK(mark_result.sync.visible_composition_range == (TextRange{{0, 0}, {0, 7}}));
+
+  ImeActionResult commit_result = ime.commitText("enable");
+  REQUIRE(commit_result.handled);
+  CHECK(document->getU8Text() == "enable");
+  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasComposingSession());
+
+  ImeActionResult remark_result = ime.markDocumentRange({{0, 0}, {0, 6}});
+  CHECK(remark_result.handled);
+  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasComposingSession());
+
+  ImeActionResult preedit_result = ime.updatePreedit("enable");
+  CHECK(preedit_result.handled);
+  CHECK_FALSE(preedit_result.content_changed);
+  CHECK(document->getU8Text() == "enable");
+  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasComposingSession());
 }
 
 

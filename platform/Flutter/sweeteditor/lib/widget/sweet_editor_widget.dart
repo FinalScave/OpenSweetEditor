@@ -49,10 +49,6 @@ class SweetEditorWidget extends StatefulWidget {
 
 class _SweetEditorWidgetState extends State<SweetEditorWidget>
     with TickerProviderStateMixin, DeltaTextInputClient {
-  static const bool _debugImeDeltaTraceEnabled = bool.fromEnvironment(
-    'SWEETEDITOR_DEBUG_IME',
-  );
-
   late EditorSession _session;
   late EditorOverlayCoordinator _overlayCoordinator;
   late EditorInteractionController _interactionController;
@@ -61,11 +57,8 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   final GlobalKey _editorKey = GlobalKey();
   TextInputConnection? _textInputConnection;
   TextEditingValue _textEditingValue = TextEditingValue.empty;
+  int _textInputContextId = 0;
   int _textInputWindowStartOffset = 0;
-  bool _textInputMarkedDocumentRange = false;
-  TextRange? _textInputMarkedRange;
-  bool _textInputPlainInputLockActive = false;
-  bool _textInputRetainedPlainContextActive = false;
   bool _handlingTextInputUpdate = false;
   bool _pendingShowTextInput = false;
   Size? _pendingViewportSize;
@@ -239,13 +232,13 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     _onDocumentLoaded();
   }
 
+  String _getContent() => _session.getContent();
+
   void _onDocumentLoaded() {
     _decorationProviderManager.onDocumentLoaded();
     _eventBus.publish(DocumentLoadedEvent());
     _flush();
   }
-
-  String _getContent() => _session.getContent();
 
   void _flush() {
     if (!mounted) return;
@@ -321,49 +314,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   @override
   void updateEditingValue(TextEditingValue value) {
-    final editorCore = _editorCore;
-    if (editorCore == null) {
-      _debugImeTrace(
-        () =>
-            'updateEditingValue core=null next=${_debugTextEditingValue(value)}',
-      );
-      _textEditingValue = value;
-      _clearTextInputMarkedDocumentRange();
-      _textInputPlainInputLockActive = false;
-      _textInputRetainedPlainContextActive = false;
-      return;
-    }
-    if (value == _textEditingValue) {
-      return;
-    }
-
-    final previousValue = _textEditingValue;
-    var forceTextInputStateSync = false;
-    _debugImeTrace(
-      () =>
-          'updateEditingValue previous=${_debugTextEditingValue(previousValue)} '
-          'next=${_debugTextEditingValue(value)}',
-    );
-    _handlingTextInputUpdate = true;
-    try {
-      forceTextInputStateSync = _applyImeEditingValue(
-        editorCore,
-        previousValue,
-        value,
-      );
-    } finally {
-      _handlingTextInputUpdate = false;
-    }
-
-    _textEditingValue = value;
-    _debugImeTrace(
-      () =>
-          'updateEditingValue result forceSync=$forceTextInputStateSync '
-          'stored=${_debugTextEditingValue(_textEditingValue)}',
-    );
-    if (forceTextInputStateSync) {
-      _syncTextInputState(force: true);
-    }
+    _handleTextEditingValue(value);
   }
 
   @override
@@ -373,64 +324,153 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     }
     final editorCore = _editorCore;
     var nextValue = _textEditingValue;
-    _debugImeTrace(
-      () =>
-          'updateEditingValueWithDeltas count=${textEditingDeltas.length} '
-          'base=${_debugTextEditingValue(nextValue)}',
-    );
+    final traceOldValue = nextValue;
+    _traceImeDeltas('delta-in', textEditingDeltas, traceOldValue, null);
     if (editorCore == null) {
       for (final delta in textEditingDeltas) {
+        if (delta.oldText != nextValue.text) {
+          _clearTextInputStateContext();
+          return;
+        }
         nextValue = delta.apply(nextValue);
-        _debugImeTrace(
-          () =>
-              'delta core=null ${_debugTextEditingDelta(delta)} '
-              'next=${_debugTextEditingValue(nextValue)}',
-        );
       }
       _textEditingValue = nextValue;
-      _clearTextInputMarkedDocumentRange();
-      _textInputPlainInputLockActive = false;
-      _textInputRetainedPlainContextActive = false;
+      _clearTextInputStateContext();
+      return;
+    }
+
+    var hasStaleDelta = false;
+    var probedValue = nextValue;
+    for (final delta in textEditingDeltas) {
+      if (delta.oldText != probedValue.text) {
+        hasStaleDelta = true;
+        break;
+      }
+      probedValue = delta.apply(probedValue);
+    }
+
+    if (hasStaleDelta) {
+      _syncTextInputState(force: true);
       return;
     }
 
     var forceTextInputStateSync = false;
     _handlingTextInputUpdate = true;
     try {
-      var deltaIndex = 0;
       for (final delta in textEditingDeltas) {
-        deltaIndex++;
-        final previousValue = nextValue;
-        nextValue = delta.apply(previousValue);
-        final forceTextInputStateSyncFromDelta = _applyImeEditingDelta(
+        final appliedValue = delta.apply(nextValue);
+        final result = _updateImeTextModelDelta(
           editorCore,
-          previousValue,
-          nextValue,
           delta,
+          appliedValue,
         );
-        forceTextInputStateSync =
-            forceTextInputStateSyncFromDelta || forceTextInputStateSync;
-        _debugImeTrace(
-          () =>
-              'delta $deltaIndex/${textEditingDeltas.length} '
-              '${_debugTextEditingDelta(delta)} '
-              'previous=${_debugTextEditingValue(previousValue)} '
-              'next=${_debugTextEditingValue(nextValue)} '
-              'forceSync=$forceTextInputStateSyncFromDelta '
-              'aggregateForceSync=$forceTextInputStateSync',
-        );
+        _traceImeActionResult('updateImeTextModelDelta', result);
+        forceTextInputStateSync = _dispatchImeAction(result) ||
+            forceTextInputStateSync;
+        nextValue = appliedValue;
       }
     } finally {
       _handlingTextInputUpdate = false;
     }
 
+    _traceImeDeltas('delta-applied', textEditingDeltas, traceOldValue, nextValue);
     _textEditingValue = nextValue;
-    _debugImeTrace(
-      () =>
-          'updateEditingValueWithDeltas result '
-          'forceSync=$forceTextInputStateSync '
-          'stored=${_debugTextEditingValue(_textEditingValue)}',
+    if (forceTextInputStateSync) {
+      _syncTextInputState(force: true);
+    }
+  }
+
+  core.ImeActionResult _updateImeInputStateText(
+    core.EditorCore editorCore,
+    TextEditingValue value,
+  ) {
+    final composingActive = _isActiveTextRange(value.composing, value.text);
+    final selectionValid = _isValidSelection(value.selection, value.text);
+    if (_platformBehavior.imeTextModelMode ==
+        core.ImeTextModelMode.documentWindow) {
+      return editorCore.updateImeInputStateText(
+        contextId: _textInputContextId,
+        documentStartOffset: _textInputWindowStartOffset,
+        text: value.text,
+        selectionStartOffset: selectionValid ? value.selection.start : -1,
+        selectionEndOffset: selectionValid ? value.selection.end : -1,
+        composingStartOffset: composingActive ? value.composing.start : -1,
+        composingEndOffset: composingActive ? value.composing.end : -1,
+      );
+    }
+    return editorCore.updateImeTextModelState(
+      mode: _platformBehavior.imeTextModelMode,
+      contextId: _textInputContextId,
+      documentStartOffset: _textInputWindowStartOffset,
+      text: value.text,
+      selectionStartOffset: selectionValid ? value.selection.start : -1,
+      selectionEndOffset: selectionValid ? value.selection.end : -1,
+      composingStartOffset: composingActive ? value.composing.start : -1,
+      composingEndOffset: composingActive ? value.composing.end : -1,
     );
+  }
+
+  core.ImeActionResult _updateImeTextModelDelta(
+    core.EditorCore editorCore,
+    TextEditingDelta delta,
+    TextEditingValue appliedValue,
+  ) {
+    final composingActive =
+        _isActiveTextRange(appliedValue.composing, appliedValue.text);
+    final selectionValid =
+        _isValidSelection(appliedValue.selection, appliedValue.text);
+    var deltaStartOffset = -1;
+    var deltaEndOffset = -1;
+    var deltaText = '';
+    if (delta is TextEditingDeltaInsertion) {
+      deltaStartOffset = delta.insertionOffset;
+      deltaEndOffset = delta.insertionOffset;
+      deltaText = delta.textInserted;
+    } else if (delta is TextEditingDeltaDeletion) {
+      deltaStartOffset = delta.deletedRange.start;
+      deltaEndOffset = delta.deletedRange.end;
+    } else if (delta is TextEditingDeltaReplacement) {
+      deltaStartOffset = delta.replacedRange.start;
+      deltaEndOffset = delta.replacedRange.end;
+      deltaText = delta.replacementText;
+    }
+
+    return editorCore.updateImeTextModelDelta(
+      mode: _platformBehavior.imeTextModelMode,
+      contextId: _textInputContextId,
+      documentStartOffset: _textInputWindowStartOffset,
+      oldText: delta.oldText,
+      deltaStartOffset: deltaStartOffset,
+      deltaEndOffset: deltaEndOffset,
+      deltaText: deltaText,
+      selectionStartOffset: selectionValid ? appliedValue.selection.start : -1,
+      selectionEndOffset: selectionValid ? appliedValue.selection.end : -1,
+      composingStartOffset: composingActive ? appliedValue.composing.start : -1,
+      composingEndOffset: composingActive ? appliedValue.composing.end : -1,
+    );
+  }
+
+  void _handleTextEditingValue(TextEditingValue value) {
+    final editorCore = _editorCore;
+    if (editorCore == null) {
+      _textEditingValue = value;
+      _clearTextInputStateContext();
+      return;
+    }
+    if (value == _textEditingValue) {
+      return;
+    }
+
+    var forceTextInputStateSync = false;
+    _handlingTextInputUpdate = true;
+    try {
+      final result = _updateImeInputStateText(editorCore, value);
+      forceTextInputStateSync = _dispatchImeAction(result);
+    } finally {
+      _handlingTextInputUpdate = false;
+    }
+
+    _textEditingValue = value;
     if (forceTextInputStateSync) {
       _syncTextInputState(force: true);
     }
@@ -512,7 +552,9 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     final configuration = TextInputConfiguration(
       viewId: View.of(context).viewId,
       inputType: TextInputType.multiline,
-      inputAction: TextInputAction.newline,
+      inputAction: _platformBehavior.usesTextInputNewlineAction
+          ? TextInputAction.newline
+          : TextInputAction.none,
       readOnly: _settings.isReadOnly(),
       autocorrect: true,
       enableSuggestions: true,
@@ -534,38 +576,19 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   void _closeTextInputConnection() {
     _textInputConnection?.close();
     _textInputConnection = null;
-    _clearTextInputMarkedDocumentRange();
-    _textInputPlainInputLockActive = false;
-    _textInputRetainedPlainContextActive = false;
+    _clearTextInputStateContext();
   }
 
   void _syncTextInputState({bool force = false}) {
     final nextValue = _buildEditingValueFromEditor();
-    if (!_isActiveTextRange(nextValue.composing, nextValue.text)) {
-      _clearTextInputMarkedDocumentRange();
-    }
-    final usesRetainedPlainContext =
-        _textInputRetainedPlainContextActive &&
-        nextValue.text.isNotEmpty &&
-        !_isActiveTextRange(nextValue.composing, nextValue.text);
-    if (!usesRetainedPlainContext &&
-        (nextValue.text.isNotEmpty ||
-            _isActiveTextRange(nextValue.composing, nextValue.text))) {
-      _textInputPlainInputLockActive = false;
-    }
     if (!force && nextValue == _textEditingValue) {
-      _debugImeTrace(
-        () =>
-            'syncTextInputState skip force=$force next=${_debugTextEditingValue(nextValue)}',
-      );
       return;
     }
-    _textEditingValue = nextValue;
-    _debugImeTrace(
-      () =>
-          'syncTextInputState force=$force attached=${_textInputConnection?.attached ?? false} '
-          'next=${_debugTextEditingValue(nextValue)}',
+    _traceImeEditingValue(
+      force ? 'syncTextInputState.force' : 'syncTextInputState',
+      nextValue,
     );
+    _textEditingValue = nextValue;
     if (_textInputConnection?.attached ?? false) {
       _updateTextInputStyle();
       _textInputConnection!.setEditingState(nextValue);
@@ -608,42 +631,42 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   }
 
   TextEditingValue _buildEditingValueFromEditor() {
-    final snapshot = _editorCore?.getImeSyncSnapshot();
-    if (snapshot == null) {
-      _textInputWindowStartOffset = 0;
-      _textInputRetainedPlainContextActive = false;
+    final editorCore = _editorCore;
+    if (editorCore == null) {
+      _clearTextInputStateContext();
       return TextEditingValue.empty;
     }
-    final documentText = _getContent();
-    final cursorOffset = _textPositionToOffset(documentText, snapshot.cursor);
-    final exposesTextWindow =
-        snapshot.contextPolicy != core.ImeContextPolicy.none ||
-        snapshot.platformTextWindowText.isNotEmpty;
-    final retainedPlainContext = exposesTextWindow
-        ? null
-        : _buildRetainedPlainTextInputContext(snapshot, documentText);
-    final text = exposesTextWindow
-        ? snapshot.platformTextWindowText
-        : retainedPlainContext?.$1 ?? '';
-    if (exposesTextWindow) {
-      _textInputRetainedPlainContextActive = false;
+
+    final usesDocumentWindow =
+        _platformBehavior.imeTextModelMode == core.ImeTextModelMode.documentWindow;
+    var exposesTextWindow = true;
+    core.ImeInputContext inputContext;
+    if (usesDocumentWindow) {
+      final snapshot = editorCore.getImeSyncSnapshot();
+      exposesTextWindow =
+          snapshot.contextPolicy != core.ImeContextPolicy.none ||
+          snapshot.platformTextWindowText.isNotEmpty;
+      inputContext = editorCore.getImeInputContext(
+        exposesTextWindow ? 1024 : 0,
+        exposesTextWindow ? 1024 : 0,
+      );
+    } else {
+      inputContext = editorCore.getImeTextModelInputContext(
+        _platformBehavior.imeTextModelMode,
+        1024,
+        1024,
+      );
     }
-    _textInputWindowStartOffset = exposesTextWindow
-        ? _normalizeDocumentOffset(
-            snapshot.platformTextWindowStartOffset,
-            documentText,
-          )
-        : retainedPlainContext?.$2 ?? cursorOffset;
+    _textInputContextId = inputContext.id;
+    _textInputWindowStartOffset = inputContext.documentStartOffset;
+
+    final text = exposesTextWindow ? inputContext.text : '';
     final selectionStart = _normalizeTextInputOffset(
-      exposesTextWindow
-          ? snapshot.platformTextWindowSelectionStartOffset
-          : retainedPlainContext?.$3 ?? 0,
+      exposesTextWindow ? inputContext.selection.start : 0,
       text,
     );
     final selectionEnd = _normalizeTextInputOffset(
-      exposesTextWindow
-          ? snapshot.platformTextWindowSelectionEndOffset
-          : retainedPlainContext?.$3 ?? 0,
+      exposesTextWindow ? inputContext.selection.end : 0,
       text,
     );
     final selection = TextSelection(
@@ -651,15 +674,13 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       extentOffset: selectionEnd,
     );
     var composing = TextRange.empty;
-    if (exposesTextWindow &&
-        snapshot.platformTextWindowComposingStartOffset >= 0 &&
-        snapshot.platformTextWindowComposingEndOffset >= 0) {
+    if (exposesTextWindow && inputContext.hasComposition) {
       final composingStart = _normalizeTextInputOffset(
-        snapshot.platformTextWindowComposingStartOffset,
+        inputContext.composition.start,
         text,
       );
       final composingEnd = _normalizeTextInputOffset(
-        snapshot.platformTextWindowComposingEndOffset,
+        inputContext.composition.end,
         text,
       );
       if (composingEnd > composingStart) {
@@ -671,793 +692,126 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       selection: selection,
       composing: composing,
     );
-    _debugImeTrace(
-      () =>
-          'buildEditingValue context=${snapshot.contextPolicy} '
-          'clear=${snapshot.clearPlatformPreedit} '
-          'hasComposing=${snapshot.hasComposingSession} '
-          'hasMarked=${snapshot.hasPlatformMarkedRange} '
-          'retainedPlainContext=${retainedPlainContext != null} '
-          'windowStart=$_textInputWindowStartOffset '
-          'windowText=${_debugString(text)} '
-          'value=${_debugTextEditingValue(editingValue)}',
-    );
     return editingValue;
   }
 
-  bool _applyImeEditingValue(
-    core.EditorCore editorCore,
-    TextEditingValue previousValue,
-    TextEditingValue value,
-  ) {
-    var forceTextInputStateSync = false;
-    final textChanged = value.text != previousValue.text;
-    final composingActive = _isActiveTextRange(value.composing, value.text);
-    final previousComposingActive = _isActiveTextRange(
-      previousValue.composing,
-      previousValue.text,
-    );
-
-    if (textChanged) {
-      final change = _computeTextReplacement(previousValue.text, value.text);
-      if (composingActive) {
-        forceTextInputStateSync =
-            _markDocumentRangeForComposingDeltaIfNeeded(
-              editorCore,
-              previousValue,
-              value,
-              change.$1,
-              change.$2,
-              change.$3,
-            ) ||
-            forceTextInputStateSync;
-        forceTextInputStateSync =
-            _markPreviousComposingRangeForTextDeltaIfNeeded(
-              editorCore,
-              previousValue,
-            ) ||
-            forceTextInputStateSync;
-        if (_textInputMarkedDocumentRange) {
-          forceTextInputStateSync =
-              _commitMarkedDocumentRangeTextChange(
-                editorCore,
-                previousValue,
-                value,
-                change.$1,
-                change.$2,
-                change.$3,
-              ) ||
-              forceTextInputStateSync;
-        } else {
-          final preeditText = value.text.substring(
-            value.composing.start,
-            value.composing.end,
-          );
-          forceTextInputStateSync =
-              _dispatchImeAction(editorCore.updateImePreedit(preeditText)) ||
-              forceTextInputStateSync;
-        }
-      } else {
-        final documentText = _getContent();
-        final range = _textInputOffsetsToDocumentRange(
-          documentText,
-          change.$1,
-          change.$2,
-        );
-        final replacingComposition =
-            previousComposingActive || editorCore.isComposing;
-        if (_textInputMarkedDocumentRange) {
-          forceTextInputStateSync =
-              _commitMarkedDocumentRangeTextChange(
-                editorCore,
-                previousValue,
-                value,
-                change.$1,
-                change.$2,
-                change.$3,
-              ) ||
-              forceTextInputStateSync;
-        } else if (replacingComposition || change.$1 == change.$2) {
-          _clearTextInputMarkedDocumentRange();
-          forceTextInputStateSync =
-              _dispatchImeCommitAction(
-                editorCore.commitImeText(change.$3),
-                change.$3,
-              ) ||
-              forceTextInputStateSync;
-        } else {
-          _clearTextInputMarkedDocumentRange();
-          forceTextInputStateSync =
-              _dispatchImeAction(editorCore.replaceImeText(range, change.$3)) ||
-              forceTextInputStateSync;
-        }
-      }
-    } else if (composingActive) {
-      forceTextInputStateSync =
-          _applyImeComposingStateUpdate(editorCore, previousValue, value) ||
-          forceTextInputStateSync;
-    } else if (previousComposingActive || editorCore.isComposing) {
-      _clearTextInputMarkedDocumentRange();
-      forceTextInputStateSync =
-          _dispatchImeAction(editorCore.finishImePreedit()) ||
-          forceTextInputStateSync;
-    }
-
-    if (!textChanged &&
-        !composingActive &&
-        !previousComposingActive &&
-        !editorCore.isComposing &&
-        value.selection != previousValue.selection) {
-      _notifyImeSelectionFromTextInput(editorCore, value);
-    }
-    return forceTextInputStateSync;
-  }
-
-  bool _applyImeEditingDelta(
-    core.EditorCore editorCore,
-    TextEditingValue previousValue,
-    TextEditingValue value,
-    TextEditingDelta delta,
-  ) {
-    if (delta is TextEditingDeltaInsertion) {
-      return _applyImeInsertionDelta(editorCore, previousValue, value, delta);
-    }
-    if (delta is TextEditingDeltaReplacement) {
-      return _applyImeReplacementDelta(editorCore, previousValue, value, delta);
-    }
-    if (delta is TextEditingDeltaDeletion) {
-      return _applyImeDeletionDelta(editorCore, previousValue, delta);
-    }
-    if (delta is TextEditingDeltaNonTextUpdate) {
-      return _applyImeComposingStateUpdate(editorCore, previousValue, value);
-    }
-    return _applyImeEditingValue(editorCore, previousValue, value);
-  }
-
-  bool _applyImeInsertionDelta(
-    core.EditorCore editorCore,
-    TextEditingValue previousValue,
-    TextEditingValue value,
-    TextEditingDeltaInsertion delta,
-  ) {
-    final composingActive = _isActiveTextRange(value.composing, value.text);
-    if (_shouldCommitPlainLockedDelta(
-      previousValue,
-      value,
-      delta.textInserted,
-      delta.insertionOffset,
-      delta.insertionOffset,
-    )) {
-      _clearTextInputMarkedDocumentRange();
-      _dispatchImeCommitAction(
-        editorCore.commitImeText(delta.textInserted),
-        delta.textInserted,
-      );
-      return true;
-    }
-    var forceTextInputStateSync = _markDocumentRangeForComposingDeltaIfNeeded(
-      editorCore,
-      previousValue,
-      value,
-      delta.insertionOffset,
-      delta.insertionOffset,
-      delta.textInserted,
-    );
-    forceTextInputStateSync =
-        _markPreviousComposingRangeForTextDeltaIfNeeded(
-          editorCore,
-          previousValue,
-        ) ||
-        forceTextInputStateSync;
-
-    if (_textInputMarkedDocumentRange) {
-      return _commitMarkedDocumentRangeTextChange(
-            editorCore,
-            previousValue,
-            value,
-            delta.insertionOffset,
-            delta.insertionOffset,
-            delta.textInserted,
-          ) ||
-          forceTextInputStateSync;
-    }
-    if (composingActive) {
-      final preeditText = value.text.substring(
-        value.composing.start,
-        value.composing.end,
-      );
-      return _dispatchImeAction(editorCore.updateImePreedit(preeditText)) ||
-          forceTextInputStateSync;
-    }
-
-    _clearTextInputMarkedDocumentRange();
-    return _dispatchImeCommitAction(
-          editorCore.commitImeText(delta.textInserted),
-          delta.textInserted,
-        ) ||
-        forceTextInputStateSync;
-  }
-
-  bool _applyImeReplacementDelta(
-    core.EditorCore editorCore,
-    TextEditingValue previousValue,
-    TextEditingValue value,
-    TextEditingDeltaReplacement delta,
-  ) {
-    final composingActive = _isActiveTextRange(value.composing, value.text);
-    if (delta.replacementText.isEmpty &&
-        _isActiveTextRange(delta.replacedRange, previousValue.text)) {
-      return _applyImeDeletionRange(editorCore, delta.replacedRange);
-    }
-    if (_shouldCommitPlainLockedDelta(
-      previousValue,
-      value,
-      delta.replacementText,
-      delta.replacedRange.start,
-      delta.replacedRange.end,
-    )) {
-      _clearTextInputMarkedDocumentRange();
-      _dispatchImeCommitAction(
-        editorCore.commitImeText(delta.replacementText),
-        delta.replacementText,
-      );
-      return true;
-    }
-    final previousComposingActive = _isActiveTextRange(
-      previousValue.composing,
-      previousValue.text,
-    );
-    var forceTextInputStateSync = _markDocumentRangeForComposingDeltaIfNeeded(
-      editorCore,
-      previousValue,
-      value,
-      delta.replacedRange.start,
-      delta.replacedRange.end,
-      delta.replacementText,
-    );
-    forceTextInputStateSync =
-        _markPreviousComposingRangeForTextDeltaIfNeeded(
-          editorCore,
-          previousValue,
-        ) ||
-        forceTextInputStateSync;
-
-    if (_textInputMarkedDocumentRange) {
-      return _commitMarkedDocumentRangeTextChange(
-            editorCore,
-            previousValue,
-            value,
-            delta.replacedRange.start,
-            delta.replacedRange.end,
-            delta.replacementText,
-          ) ||
-          forceTextInputStateSync;
-    }
-    if (composingActive) {
-      final preeditText = value.text.substring(
-        value.composing.start,
-        value.composing.end,
-      );
-      return _dispatchImeAction(editorCore.updateImePreedit(preeditText)) ||
-          forceTextInputStateSync;
-    }
-
-    _clearTextInputMarkedDocumentRange();
-    if (previousComposingActive || editorCore.isComposing) {
-      return _dispatchImeCommitAction(
-            editorCore.commitImeText(delta.replacementText),
-            delta.replacementText,
-          ) ||
-          forceTextInputStateSync;
-    }
-    final documentText = _getContent();
-    final range = _textInputOffsetsToDocumentRange(
-      documentText,
-      delta.replacedRange.start,
-      delta.replacedRange.end,
-    );
-    return _dispatchImeAction(
-          editorCore.replaceImeText(range, delta.replacementText),
-        ) ||
-        forceTextInputStateSync;
-  }
-
-  bool _applyImeDeletionDelta(
-    core.EditorCore editorCore,
-    TextEditingValue previousValue,
-    TextEditingDeltaDeletion delta,
-  ) {
-    if (!_isActiveTextRange(delta.deletedRange, previousValue.text)) {
-      return false;
-    }
-    return _applyImeDeletionRange(editorCore, delta.deletedRange);
-  }
-
-  bool _applyImeDeletionRange(
-    core.EditorCore editorCore,
-    TextRange deletedRange,
-  ) {
-    _clearTextInputMarkedDocumentRange();
-    final documentText = _getContent();
-    final range = _textInputOffsetsToDocumentRange(
-      documentText,
-      deletedRange.start,
-      deletedRange.end,
-    );
-    return _dispatchImePlainEditAction(editorCore.replaceImeText(range, ''));
-  }
-
-  bool _applyImeComposingStateUpdate(
-    core.EditorCore editorCore,
-    TextEditingValue previousValue,
-    TextEditingValue value,
-  ) {
-    final composingActive = _isActiveTextRange(value.composing, value.text);
-    final previousComposingActive = _isActiveTextRange(
-      previousValue.composing,
-      previousValue.text,
-    );
-
-    if (composingActive) {
-      if (previousComposingActive &&
-          !_textInputMarkedDocumentRange &&
-          !editorCore.isComposing) {
-        return false;
-      }
-      final shouldMarkDocumentRange =
-          _textInputMarkedDocumentRange ||
-          (!previousComposingActive && !editorCore.isComposing);
-      final core.ImeActionResult result;
-      if (shouldMarkDocumentRange) {
-        result = editorCore.markImeDocumentRange(
-          _textInputOffsetsToDocumentRange(
-            _getContent(),
-            value.composing.start,
-            value.composing.end,
-          ),
-        );
-        _setTextInputMarkedDocumentRange(value.composing, result);
-      } else {
-        result = editorCore.updateImePreedit(
-          value.text.substring(value.composing.start, value.composing.end),
-        );
-        _clearTextInputMarkedDocumentRange();
-      }
-      return _dispatchImeAction(result);
-    }
-    if (previousComposingActive || editorCore.isComposing) {
-      _clearTextInputMarkedDocumentRange();
-      return _dispatchImeAction(editorCore.finishImePreedit());
-    }
-    if (value.selection != previousValue.selection) {
-      _notifyImeSelectionFromTextInput(editorCore, value);
-    }
-    return false;
-  }
-
-  bool _markDocumentRangeForComposingDeltaIfNeeded(
-    core.EditorCore editorCore,
-    TextEditingValue previousValue,
-    TextEditingValue value,
-    int replacedStart,
-    int replacedEnd,
-    String replacementText,
-  ) {
-    if (_textInputMarkedDocumentRange ||
-        !_isActiveTextRange(value.composing, value.text) ||
-        _isActiveTextRange(previousValue.composing, previousValue.text) ||
-        editorCore.isComposing) {
-      return false;
-    }
-
-    final previousRange = _transformTextInputRangeToPreviousValue(
-      value.composing,
-      replacedStart,
-      replacedEnd,
-      replacementText,
-      previousValue.text,
-    );
-    if (!_isActiveTextRange(previousRange, previousValue.text)) {
-      return false;
-    }
-
-    final result = editorCore.markImeDocumentRange(
-      _textInputOffsetsToDocumentRange(
-        _getContent(),
-        previousRange.start,
-        previousRange.end,
-      ),
-    );
-    _setTextInputMarkedDocumentRange(previousRange, result);
-    return _dispatchImeAction(result);
-  }
-
-  bool _markPreviousComposingRangeForTextDeltaIfNeeded(
-    core.EditorCore editorCore,
-    TextEditingValue previousValue,
-  ) {
-    if (_textInputMarkedDocumentRange ||
-        !_isActiveTextRange(previousValue.composing, previousValue.text) ||
-        editorCore.isComposing) {
-      return false;
-    }
-
-    final result = editorCore.markImeDocumentRange(
-      _textInputOffsetsToDocumentRange(
-        _getContent(),
-        previousValue.composing.start,
-        previousValue.composing.end,
-      ),
-    );
-    _setTextInputMarkedDocumentRange(previousValue.composing, result);
-    return _dispatchImeAction(result);
-  }
-
-  bool _commitMarkedDocumentRangeTextChange(
-    core.EditorCore editorCore,
-    TextEditingValue previousValue,
-    TextEditingValue value,
-    int replacedStart,
-    int replacedEnd,
-    String replacementText,
-  ) {
-    final plainInputAtCursor =
-        replacementText.isNotEmpty &&
-        replacementText.length <= 2 &&
-        _isReplacementAtCollapsedSelection(
-          previousValue.selection,
-          replacedStart,
-          replacedEnd,
-        );
-    if (plainInputAtCursor) {
-      final documentText = _getContent();
-      final range = _textInputOffsetsToDocumentRange(
-        documentText,
-        replacedStart,
-        replacedEnd,
-      );
-      _clearTextInputMarkedDocumentRange();
-      final forceTextInputStateSync = _dispatchImePlainEditAction(
-        editorCore.replaceImeText(range, replacementText),
-      );
-      return forceTextInputStateSync || plainInputAtCursor;
-    }
-
-    var committedText = replacementText;
-    final rangeSource =
-        _isActiveTextRange(previousValue.composing, previousValue.text)
-        ? previousValue.composing
-        : _isActiveTextRange(value.composing, value.text)
-        ? value.composing
-        : _textInputMarkedRange;
-    if (rangeSource != null &&
-        rangeSource.isValid &&
-        !rangeSource.isCollapsed) {
-      final replacementRange = _transformTextInputRangeByReplacement(
-        rangeSource,
-        replacedStart,
-        replacedEnd,
-        replacementText,
-        value.text,
-      );
-      committedText = value.text.substring(
-        replacementRange.start,
-        replacementRange.end,
-      );
-    }
-    _clearTextInputMarkedDocumentRange();
-    return _dispatchImeCommitAction(
-      editorCore.commitImeText(committedText),
-      committedText,
-    );
-  }
-
-  void _setTextInputMarkedDocumentRange(
-    TextRange range,
-    core.ImeActionResult result,
-  ) {
-    if (result.handled && result.sync.hasPlatformMarkedRange) {
-      _textInputMarkedDocumentRange = true;
-      _textInputMarkedRange = range;
-    } else {
-      _clearTextInputMarkedDocumentRange();
-    }
-  }
-
-  void _clearTextInputMarkedDocumentRange() {
-    _textInputMarkedDocumentRange = false;
-    _textInputMarkedRange = null;
-  }
-
-  bool _shouldCommitPlainLockedDelta(
-    TextEditingValue previousValue,
-    TextEditingValue value,
-    String replacementText,
-    int replacedStart,
-    int replacedEnd,
-  ) {
-    if (!_textInputPlainInputLockActive ||
-        !_isActiveTextRange(value.composing, value.text) ||
-        replacementText.isEmpty ||
-        replacementText.length > 2) {
-      return false;
-    }
-    if (previousValue.text.isEmpty) {
-      return true;
-    }
-    if (!_textInputRetainedPlainContextActive ||
-        !_isSingleAsciiIdentifierText(replacementText) ||
-        !_isReplacementAtCollapsedSelection(
-          previousValue.selection,
-          replacedStart,
-          replacedEnd,
-        )) {
-      return false;
-    }
-    final insertedStart = _normalizeTextInputOffset(replacedStart, value.text);
-    final insertedEnd = _normalizeTextInputOffset(
-      replacedStart + replacementText.length,
-      value.text,
-    );
-    return value.composing.start <= insertedStart &&
-        value.composing.end >= insertedEnd;
-  }
-
-  void _notifyImeSelectionFromTextInput(
-    core.EditorCore editorCore,
-    TextEditingValue value,
-  ) {
-    if (!_isValidSelection(value.selection, value.text)) {
-      return;
-    }
-    final documentText = _getContent();
-    final start = _textInputOffsetToDocumentPosition(
-      documentText,
-      value.selection.start,
-    );
-    final end = _textInputOffsetToDocumentPosition(
-      documentText,
-      value.selection.end,
-    );
-    final result = value.selection.isCollapsed
-        ? editorCore.notifyImeCursorChanged(end)
-        : editorCore.notifyImeSelectionChanged(core.TextRange(start, end));
-    _dispatchImeAction(result);
+  void _clearTextInputStateContext() {
+    _textInputContextId = 0;
+    _textInputWindowStartOffset = 0;
   }
 
   bool _dispatchImeAction(core.ImeActionResult result) {
-    final plainInputLockBefore = _textInputPlainInputLockActive;
-    final retainedPlainContextBefore = _textInputRetainedPlainContextActive;
     _interactionController.dispatchImeActionResult(result);
     if (result.sync.clearPlatformPreedit &&
         result.sync.contextPolicy == core.ImeContextPolicy.none) {
-      _textInputPlainInputLockActive = true;
-      _textInputRetainedPlainContextActive = false;
+      _clearTextInputStateContext();
     } else if (result.sync.contextPolicy != core.ImeContextPolicy.none) {
-      _textInputPlainInputLockActive = false;
-      _textInputRetainedPlainContextActive = false;
+      _textInputWindowStartOffset = result.sync.platformTextWindowStartOffset;
     }
-    _debugImeTrace(
-      () =>
-          'imeAction ${_debugImeActionResult(result)} '
-          'plainLock=$plainInputLockBefore->$_textInputPlainInputLockActive '
-          'retainedPlainContext=$retainedPlainContextBefore->$_textInputRetainedPlainContextActive',
-    );
     return result.sync.clearPlatformPreedit;
   }
 
-  bool _dispatchImeCommitAction(
-    core.ImeActionResult result,
-    String committedText,
+  bool _shouldTraceIme() {
+    return kDebugMode && _platformBehavior.usesDeltaTextInputModel;
+  }
+
+  void _traceImeDeltas(
+    String event,
+    List<TextEditingDelta> deltas,
+    TextEditingValue before,
+    TextEditingValue? after,
   ) {
-    final clearPlatformPreedit = _dispatchImeAction(result);
-    _retainPlainTextInputContextAfterCommit(result, committedText);
-    return clearPlatformPreedit;
-  }
-
-  bool _dispatchImePlainEditAction(core.ImeActionResult result) {
-    final clearPlatformPreedit = _dispatchImeAction(result);
-    _retainPlainTextInputContextAfterPlainEdit(result);
-    return clearPlatformPreedit;
-  }
-
-  void _retainPlainTextInputContextAfterCommit(
-    core.ImeActionResult result,
-    String committedText,
-  ) {
-    if (!_platformBehavior.retainsPlainTextInputContextAfterPreeditClear ||
-        !result.sync.clearPlatformPreedit ||
-        result.sync.contextPolicy != core.ImeContextPolicy.none ||
-        !_isSingleAsciiIdentifierText(committedText)) {
+    if (!_shouldTraceIme()) {
       return;
     }
-    _retainPlainTextInputContextAfterPlainEdit(result);
+    debugPrint(
+      '[SweetEditor][IME] $event context=$_textInputContextId '
+      'window=$_textInputWindowStartOffset '
+      'before=${_formatImeEditingValue(before)}'
+      '${after == null ? '' : ' after=${_formatImeEditingValue(after)}'}',
+    );
+    for (var i = 0; i < deltas.length; i++) {
+      debugPrint('[SweetEditor][IME] delta[$i] ${_formatImeDelta(deltas[i])}');
+    }
   }
 
-  void _retainPlainTextInputContextAfterPlainEdit(core.ImeActionResult result) {
-    if (!_platformBehavior.retainsPlainTextInputContextAfterPreeditClear ||
-        !result.sync.clearPlatformPreedit ||
-        result.sync.contextPolicy != core.ImeContextPolicy.none) {
+  void _traceImeActionResult(String event, core.ImeActionResult result) {
+    if (!_shouldTraceIme()) {
       return;
     }
-    final documentText = _getContent();
-    final lineContext = _lineTextInputContext(documentText, result.sync.cursor);
-    if (lineContext == null ||
-        !_isMidAsciiIdentifierTextInputOffset(lineContext.$1, lineContext.$3)) {
-      return;
-    }
-    _textInputRetainedPlainContextActive = true;
-    _debugImeTrace(
-      () =>
-          'retainPlainContext start=${lineContext.$2} '
-          'cursor=${lineContext.$3} text=${_debugString(lineContext.$1)}',
+    final sync = result.sync;
+    debugPrint(
+      '[SweetEditor][IME] $event result handled=${result.handled} '
+      'content=${result.contentChanged} cursor=${result.cursorChanged} '
+      'selection=${result.selectionChanged} '
+      'clear=${sync.clearPlatformPreedit} policy=${sync.contextPolicy} '
+      'windowStart=${sync.platformTextWindowStartOffset} '
+      'windowText=${_formatImeTraceText(sync.platformTextWindowText)} '
+      'windowSelection=${sync.platformTextWindowSelectionStartOffset}'
+      '..${sync.platformTextWindowSelectionEndOffset} '
+      'windowComposing=${sync.platformTextWindowComposingStartOffset}'
+      '..${sync.platformTextWindowComposingEndOffset}',
     );
   }
 
-  (String, int, int)? _buildRetainedPlainTextInputContext(
-    core.ImeSyncSnapshot snapshot,
-    String documentText,
-  ) {
-    if (!_textInputRetainedPlainContextActive ||
-        !_platformBehavior.retainsPlainTextInputContextAfterPreeditClear) {
-      return null;
-    }
-    if (snapshot.contextPolicy != core.ImeContextPolicy.none ||
-        !snapshot.clearPlatformPreedit ||
-        snapshot.hasComposingSession ||
-        snapshot.hasPlatformMarkedRange) {
-      _textInputRetainedPlainContextActive = false;
-      return null;
-    }
-    final lineContext = _lineTextInputContext(documentText, snapshot.cursor);
-    if (lineContext == null ||
-        !_isMidAsciiIdentifierTextInputOffset(lineContext.$1, lineContext.$3)) {
-      _textInputRetainedPlainContextActive = false;
-      return null;
-    }
-    return lineContext;
-  }
-
-  void _debugImeTrace(String Function() messageBuilder) {
-    if (!kDebugMode || !_debugImeDeltaTraceEnabled) {
+  void _traceImeEditingValue(String event, TextEditingValue value) {
+    if (!_shouldTraceIme()) {
       return;
     }
-    debugPrint('[SweetEditorIME] ${messageBuilder()}');
+    debugPrint('[SweetEditor][IME] $event ${_formatImeEditingValue(value)}');
   }
 
-  String _debugTextEditingDelta(TextEditingDelta delta) {
-    final base =
-        'old=${_debugString(delta.oldText)} '
-        'selection=${_debugSelection(delta.selection)} '
-        'composing=${_debugTextRange(delta.composing)}';
+  String _formatImeDelta(TextEditingDelta delta) {
+    final buffer = StringBuffer(
+      '${delta.runtimeType} old=${_formatImeTraceText(delta.oldText)} '
+      'selection=${_formatImeSelection(delta.selection)} '
+      'composing=${_formatImeRange(delta.composing)}',
+    );
     if (delta is TextEditingDeltaInsertion) {
-      return 'Insertion(offset=${delta.insertionOffset}, '
-          'text=${_debugString(delta.textInserted)}, $base)';
+      buffer.write(
+        ' insert=${_formatImeTraceText(delta.textInserted)} '
+        'at=${delta.insertionOffset}',
+      );
+    } else if (delta is TextEditingDeltaDeletion) {
+      buffer.write(' delete=${_formatImeRange(delta.deletedRange)}');
+    } else if (delta is TextEditingDeltaReplacement) {
+      buffer.write(
+        ' replace=${_formatImeRange(delta.replacedRange)} '
+        'with=${_formatImeTraceText(delta.replacementText)}',
+      );
     }
-    if (delta is TextEditingDeltaDeletion) {
-      return 'Deletion(range=${_debugTextRange(delta.deletedRange)}, $base)';
-    }
-    if (delta is TextEditingDeltaReplacement) {
-      return 'Replacement(range=${_debugTextRange(delta.replacedRange)}, '
-          'text=${_debugString(delta.replacementText)}, $base)';
-    }
-    if (delta is TextEditingDeltaNonTextUpdate) {
-      return 'NonTextUpdate($base)';
-    }
-    return '${delta.runtimeType}($base)';
+    return buffer.toString();
   }
 
-  String _debugTextEditingValue(TextEditingValue value) {
-    return 'text=${_debugString(value.text)} '
-        'selection=${_debugSelection(value.selection)} '
-        'composing=${_debugTextRange(value.composing)}';
+  String _formatImeEditingValue(TextEditingValue value) {
+    return 'text=${_formatImeTraceText(value.text)} '
+        'selection=${_formatImeSelection(value.selection)} '
+        'composing=${_formatImeRange(value.composing)}';
   }
 
-  String _debugImeActionResult(core.ImeActionResult result) {
-    final sync = result.sync;
-    return 'handled=${result.handled} '
-        'content=${result.contentChanged} '
-        'cursor=${result.cursorChanged} '
-        'selection=${result.selectionChanged} '
-        'syncContext=${sync.contextPolicy} '
-        'syncClear=${sync.clearPlatformPreedit} '
-        'syncComposing=${sync.hasComposingSession} '
-        'syncVisible=${sync.hasVisibleCompositionRange} '
-        'syncMarked=${sync.hasPlatformMarkedRange} '
-        'windowStart=${sync.platformTextWindowStartOffset} '
-        'windowSelection=${sync.platformTextWindowSelectionStartOffset}:'
-        '${sync.platformTextWindowSelectionEndOffset} '
-        'windowComposing=${sync.platformTextWindowComposingStartOffset}:'
-        '${sync.platformTextWindowComposingEndOffset} '
-        'windowText=${_debugString(sync.platformTextWindowText)}';
-  }
-
-  String _debugSelection(TextSelection selection) {
+  String _formatImeSelection(TextSelection selection) {
     if (!selection.isValid) {
-      return 'invalid(${selection.baseOffset}:${selection.extentOffset})';
+      return 'invalid';
     }
-    return '${selection.baseOffset}:${selection.extentOffset}';
+    return '${selection.baseOffset}..${selection.extentOffset}';
   }
 
-  String _debugTextRange(TextRange range) {
+  String _formatImeRange(TextRange range) {
     if (!range.isValid) {
-      return 'invalid(${range.start}:${range.end})';
+      return 'invalid';
     }
-    return '${range.start}:${range.end}';
+    return '${range.start}..${range.end}';
   }
 
-  String _debugString(String value) {
-    final escaped = value
+  String _formatImeTraceText(String text) {
+    final escaped = text
+        .replaceAll('\\', r'\\')
         .replaceAll('\r', r'\r')
-        .replaceAll('\n', r'\n')
-        .replaceAll('\t', r'\t');
-    if (escaped.length <= 120) {
-      return '"$escaped"';
+        .replaceAll('\n', r'\n');
+    if (escaped.length <= 80) {
+      return "'$escaped'";
     }
-    return '"${escaped.substring(0, 120)}"...(${value.length})';
-  }
-
-  (String, int, int)? _lineTextInputContext(
-    String documentText,
-    core.TextPosition cursor,
-  ) {
-    var line = 0;
-    var index = 0;
-    var logicalOffset = 0;
-    var lineStartIndex = 0;
-    var lineStartOffset = 0;
-    while (index < documentText.length && line < cursor.line) {
-      final codeUnit = documentText.codeUnitAt(index++);
-      if (codeUnit == 0x0D) {
-        if (index < documentText.length &&
-            documentText.codeUnitAt(index) == 0x0A) {
-          index++;
-        }
-        line++;
-        logicalOffset++;
-        lineStartIndex = index;
-        lineStartOffset = logicalOffset;
-      } else if (codeUnit == 0x0A) {
-        line++;
-        logicalOffset++;
-        lineStartIndex = index;
-        lineStartOffset = logicalOffset;
-      } else {
-        logicalOffset++;
-      }
-    }
-    if (line != cursor.line) {
-      return null;
-    }
-    var lineEndIndex = lineStartIndex;
-    while (lineEndIndex < documentText.length) {
-      final codeUnit = documentText.codeUnitAt(lineEndIndex);
-      if (codeUnit == 0x0D || codeUnit == 0x0A) {
-        break;
-      }
-      lineEndIndex++;
-    }
-    final lineText = documentText.substring(lineStartIndex, lineEndIndex);
-    final cursorOffset = _normalizeTextInputOffset(cursor.column, lineText);
-    return (lineText, lineStartOffset, cursorOffset);
-  }
-
-  bool _isMidAsciiIdentifierTextInputOffset(String text, int offset) {
-    return offset > 0 &&
-        offset < text.length &&
-        _isAsciiIdentifierCodeUnit(text.codeUnitAt(offset - 1)) &&
-        _isAsciiIdentifierCodeUnit(text.codeUnitAt(offset));
-  }
-
-  bool _isSingleAsciiIdentifierText(String text) {
-    return text.length == 1 && _isAsciiIdentifierCodeUnit(text.codeUnitAt(0));
-  }
-
-  bool _isAsciiIdentifierCodeUnit(int codeUnit) {
-    return (codeUnit >= 0x30 && codeUnit <= 0x39) ||
-        (codeUnit >= 0x41 && codeUnit <= 0x5A) ||
-        codeUnit == 0x5F ||
-        (codeUnit >= 0x61 && codeUnit <= 0x7A);
+    return "'${escaped.substring(0, 80)}...'(${text.length})";
   }
 
   bool _isActiveTextRange(TextRange range, String text) {
@@ -1475,205 +829,8 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
         selection.end <= text.length;
   }
 
-  bool _isReplacementAtCollapsedSelection(
-    TextSelection selection,
-    int replacementStart,
-    int replacementEnd,
-  ) {
-    return selection.isValid &&
-        selection.isCollapsed &&
-        selection.extentOffset == replacementStart &&
-        selection.extentOffset == replacementEnd;
-  }
-
   int _normalizeTextInputOffset(int offset, String text) {
     return math.max(0, math.min(offset, text.length));
-  }
-
-  int _normalizeDocumentOffset(int offset, String documentText) {
-    return math.max(0, math.min(offset, _logicalDocumentLength(documentText)));
-  }
-
-  int _logicalDocumentLength(String text) {
-    var length = 0;
-    var index = 0;
-    while (index < text.length) {
-      final codeUnit = text.codeUnitAt(index++);
-      if (codeUnit == 0x0D &&
-          index < text.length &&
-          text.codeUnitAt(index) == 0x0A) {
-        index++;
-      }
-      length++;
-    }
-    return length;
-  }
-
-  core.TextPosition _textInputOffsetToDocumentPosition(
-    String documentText,
-    int localOffset,
-  ) {
-    final documentOffset = _normalizeDocumentOffset(
-      _textInputWindowStartOffset + localOffset,
-      documentText,
-    );
-    return _offsetToTextPosition(documentText, documentOffset);
-  }
-
-  core.TextRange _textInputOffsetsToDocumentRange(
-    String documentText,
-    int localStart,
-    int localEnd,
-  ) {
-    return core.TextRange(
-      _textInputOffsetToDocumentPosition(documentText, localStart),
-      _textInputOffsetToDocumentPosition(documentText, localEnd),
-    );
-  }
-
-  (int, int, String) _computeTextReplacement(String oldText, String newText) {
-    var prefix = 0;
-    final maxPrefix = math.min(oldText.length, newText.length);
-    while (prefix < maxPrefix &&
-        oldText.codeUnitAt(prefix) == newText.codeUnitAt(prefix)) {
-      prefix++;
-    }
-
-    var oldSuffix = oldText.length;
-    var newSuffix = newText.length;
-    while (oldSuffix > prefix &&
-        newSuffix > prefix &&
-        oldText.codeUnitAt(oldSuffix - 1) ==
-            newText.codeUnitAt(newSuffix - 1)) {
-      oldSuffix--;
-      newSuffix--;
-    }
-
-    return (prefix, oldSuffix, newText.substring(prefix, newSuffix));
-  }
-
-  TextRange _transformTextInputRangeToPreviousValue(
-    TextRange range,
-    int replacedStart,
-    int replacedEnd,
-    String replacement,
-    String previousText,
-  ) {
-    final normalizedStart = _normalizeTextInputOffset(
-      math.min(replacedStart, replacedEnd),
-      previousText,
-    );
-    final normalizedEnd = _normalizeTextInputOffset(
-      math.max(replacedStart, replacedEnd),
-      previousText,
-    );
-    final insertedEnd = normalizedStart + replacement.length;
-    int start;
-    int end;
-    if (range.end <= normalizedStart) {
-      start = range.start;
-      end = range.end;
-    } else if (range.start >= insertedEnd) {
-      final replacementDelta =
-          normalizedEnd - normalizedStart - replacement.length;
-      start = range.start + replacementDelta;
-      end = range.end + replacementDelta;
-    } else {
-      start = range.start < normalizedStart ? range.start : normalizedStart;
-      final unchangedTail = range.end > insertedEnd
-          ? range.end - insertedEnd
-          : 0;
-      end = normalizedEnd + unchangedTail;
-    }
-    start = _normalizeTextInputOffset(start, previousText);
-    end = _normalizeTextInputOffset(end, previousText);
-    if (end < start) {
-      return TextRange(start: end, end: start);
-    }
-    return TextRange(start: start, end: end);
-  }
-
-  TextRange _transformTextInputRangeByReplacement(
-    TextRange range,
-    int replacedStart,
-    int replacedEnd,
-    String replacement,
-    String text,
-  ) {
-    final replacedLength = replacedEnd > replacedStart
-        ? replacedEnd - replacedStart
-        : 0;
-    final replacementDelta = replacement.length - replacedLength;
-    int start;
-    int end;
-    if (replacedEnd < range.start) {
-      start = range.start + replacementDelta;
-      end = range.end + replacementDelta;
-    } else if (replacedStart > range.end) {
-      start = range.start;
-      end = range.end;
-    } else {
-      start = range.start < replacedStart ? range.start : replacedStart;
-      final unchangedTail = range.end > replacedEnd
-          ? range.end - replacedEnd
-          : 0;
-      end = replacedStart + replacement.length + unchangedTail;
-    }
-    start = _normalizeTextInputOffset(start, text);
-    end = _normalizeTextInputOffset(end, text);
-    if (end < start) {
-      return TextRange(start: end, end: start);
-    }
-    return TextRange(start: start, end: end);
-  }
-
-  int _textPositionToOffset(String text, core.TextPosition position) {
-    var line = 0;
-    var index = 0;
-    var offset = 0;
-    while (line < position.line && index < text.length) {
-      final codeUnit = text.codeUnitAt(index++);
-      if (codeUnit == 0x0D) {
-        if (index < text.length && text.codeUnitAt(index) == 0x0A) {
-          index++;
-        }
-        line++;
-        offset++;
-      } else if (codeUnit == 0x0A) {
-        line++;
-        offset++;
-      } else {
-        offset++;
-      }
-    }
-    return _normalizeDocumentOffset(offset + position.column, text);
-  }
-
-  core.TextPosition _offsetToTextPosition(String text, int offset) {
-    final clampedOffset = _normalizeDocumentOffset(offset, text);
-    var line = 0;
-    var column = 0;
-    var index = 0;
-    var logicalOffset = 0;
-    while (index < text.length && logicalOffset < clampedOffset) {
-      final codeUnit = text.codeUnitAt(index++);
-      if (codeUnit == 0x0D) {
-        if (index < text.length && text.codeUnitAt(index) == 0x0A) {
-          index++;
-        }
-        line++;
-        column = 0;
-        logicalOffset++;
-      } else if (codeUnit == 0x0A) {
-        line++;
-        column = 0;
-        logicalOffset++;
-      } else {
-        column++;
-        logicalOffset++;
-      }
-    }
-    return core.TextPosition(line, column);
   }
 
   void _handleGestureInputResult(core.GestureResult? result) {

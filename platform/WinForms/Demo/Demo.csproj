@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="SweetLine" Version="1.2.1" />
+    <PackageReference Include="SweetLine" Version="1.2.4" />
   </ItemGroup>
 
   <ItemGroup>

@@ -914,8 +914,9 @@ class EditorCore {
     });
   }
 
-  ImeActionResult commitImeText(
+  ImeActionResult setImeComposingText(
     String text, {
+    int cursorOffset = 1,
     ImeScriptClass scriptClass = ImeScriptClass.unknown,
   }) {
     _ensureOpen();
@@ -923,12 +924,66 @@ class EditorCore {
       final textPtr = _toNativeUtf8(text, arena);
       return _callAndParse(
         ImeActionResult.empty,
-        (outSize) => bindings.editor_ime_commit_text(
+        (outSize) => bindings.editor_ime_set_composing_text(
           _handle,
           textPtr,
+          cursorOffset,
           scriptClass.value,
           outSize,
         ),
+        ProtocolDecoder.decodeImeActionResult,
+      );
+    });
+  }
+
+  ImeActionResult setImeComposingTextSelection(
+    String text, {
+    required int selectionStartOffset,
+    required int selectionEndOffset,
+    ImeScriptClass scriptClass = ImeScriptClass.unknown,
+  }) {
+    _ensureOpen();
+    return using((arena) {
+      final textPtr = _toNativeUtf8(text, arena);
+      return _callAndParse(
+        ImeActionResult.empty,
+        (outSize) => bindings.editor_ime_set_composing_text_selection(
+          _handle,
+          textPtr,
+          selectionStartOffset,
+          selectionEndOffset,
+          scriptClass.value,
+          outSize,
+        ),
+        ProtocolDecoder.decodeImeActionResult,
+      );
+    });
+  }
+
+  ImeActionResult commitImeText(
+    String text, {
+    int? cursorOffset,
+    ImeScriptClass scriptClass = ImeScriptClass.unknown,
+  }) {
+    _ensureOpen();
+    return using((arena) {
+      final textPtr = _toNativeUtf8(text, arena);
+      return _callAndParse(
+        ImeActionResult.empty,
+        (outSize) => cursorOffset == null
+            ? bindings.editor_ime_commit_text(
+                _handle,
+                textPtr,
+                scriptClass.value,
+                outSize,
+              )
+            : bindings.editor_ime_commit_text_with_cursor(
+                _handle,
+                textPtr,
+                cursorOffset,
+                scriptClass.value,
+                outSize,
+              ),
         ProtocolDecoder.decodeImeActionResult,
       );
     });
@@ -972,6 +1027,25 @@ class EditorCore {
     );
   }
 
+  ImeActionResult markImeDocumentRangeByOffset(
+    int startOffset,
+    int endOffset, {
+    ImeScriptClass scriptClass = ImeScriptClass.unknown,
+  }) {
+    _ensureOpen();
+    return _callAndParse(
+      ImeActionResult.empty,
+      (outSize) => bindings.editor_ime_mark_document_range_by_offset(
+        _handle,
+        startOffset,
+        endOffset,
+        scriptClass.value,
+        outSize,
+      ),
+      ProtocolDecoder.decodeImeActionResult,
+    );
+  }
+
   ImeActionResult replaceImeText(
     TextRange range,
     String text, {
@@ -997,9 +1071,302 @@ class EditorCore {
     });
   }
 
+  ImeActionResult replaceImeDocumentText(
+    int startOffset,
+    int endOffset,
+    String text, {
+    int cursorOffset = 1,
+    ImeScriptClass scriptClass = ImeScriptClass.unknown,
+  }) {
+    _ensureOpen();
+    return using((arena) {
+      final textPtr = _toNativeUtf8(text, arena);
+      return _callAndParse(
+        ImeActionResult.empty,
+        (outSize) => bindings.editor_ime_replace_document_text(
+          _handle,
+          startOffset,
+          endOffset,
+          textPtr,
+          cursorOffset,
+          scriptClass.value,
+          outSize,
+        ),
+        ProtocolDecoder.decodeImeActionResult,
+      );
+    });
+  }
+
+  ImeActionResult replaceImeInputContextText(
+    int startOffset,
+    int endOffset,
+    String text, {
+    int cursorOffset = 1,
+    ImeScriptClass scriptClass = ImeScriptClass.unknown,
+  }) {
+    _ensureOpen();
+    return using((arena) {
+      final textPtr = _toNativeUtf8(text, arena);
+      return _callAndParse(
+        ImeActionResult.empty,
+        (outSize) => bindings.editor_ime_replace_input_context_text(
+          _handle,
+          startOffset,
+          endOffset,
+          textPtr,
+          cursorOffset,
+          scriptClass.value,
+          outSize,
+        ),
+        ProtocolDecoder.decodeImeActionResult,
+      );
+    });
+  }
+
+  ImeActionResult markImeInputContextRange(
+    int startOffset,
+    int endOffset, {
+    ImeScriptClass scriptClass = ImeScriptClass.unknown,
+  }) {
+    _ensureOpen();
+    return _callAndParse(
+      ImeActionResult.empty,
+      (outSize) => bindings.editor_ime_mark_input_context_range(
+        _handle,
+        startOffset,
+        endOffset,
+        scriptClass.value,
+        outSize,
+      ),
+      ProtocolDecoder.decodeImeActionResult,
+    );
+  }
+
+  ImeActionResult notifyImeDocumentSelectionChanged(
+    int startOffset,
+    int endOffset,
+  ) {
+    _ensureOpen();
+    return _callAndParse(
+      ImeActionResult.empty,
+      (outSize) => bindings.editor_ime_notify_document_selection_changed(
+        _handle,
+        startOffset,
+        endOffset,
+        outSize,
+      ),
+      ProtocolDecoder.decodeImeActionResult,
+    );
+  }
+
+  ImeActionResult notifyImeInputContextSelectionChanged(
+    int startOffset,
+    int endOffset,
+  ) {
+    _ensureOpen();
+    return _callAndParse(
+      ImeActionResult.empty,
+      (outSize) => bindings.editor_ime_notify_input_context_selection_changed(
+        _handle,
+        startOffset,
+        endOffset,
+        outSize,
+      ),
+      ProtocolDecoder.decodeImeActionResult,
+    );
+  }
+
+  ImeActionResult updateImeInputStateText({
+    required int contextId,
+    required int documentStartOffset,
+    required String text,
+    required int selectionStartOffset,
+    required int selectionEndOffset,
+    required int composingStartOffset,
+    required int composingEndOffset,
+    ImeScriptClass scriptClass = ImeScriptClass.unknown,
+  }) {
+    _ensureOpen();
+    return using((arena) {
+      final textPtr = _toNativeUtf8(text, arena);
+      return _callAndParse(
+        ImeActionResult.empty,
+        (outSize) => bindings.editor_ime_update_input_state_text(
+          _handle,
+          contextId,
+          documentStartOffset,
+          textPtr,
+          selectionStartOffset,
+          selectionEndOffset,
+          composingStartOffset,
+          composingEndOffset,
+          scriptClass.value,
+          outSize,
+        ),
+        ProtocolDecoder.decodeImeActionResult,
+      );
+    });
+  }
+
+  ImeActionResult updateImeTextModelState({
+    required ImeTextModelMode mode,
+    required int contextId,
+    required int documentStartOffset,
+    required String text,
+    required int selectionStartOffset,
+    required int selectionEndOffset,
+    required int composingStartOffset,
+    required int composingEndOffset,
+    ImeScriptClass scriptClass = ImeScriptClass.unknown,
+  }) {
+    _ensureOpen();
+    return using((arena) {
+      final textPtr = _toNativeUtf8(text, arena);
+      return _callAndParse(
+        ImeActionResult.empty,
+        (outSize) => bindings.editor_ime_update_text_model_state(
+          _handle,
+          mode.value,
+          contextId,
+          documentStartOffset,
+          textPtr,
+          selectionStartOffset,
+          selectionEndOffset,
+          composingStartOffset,
+          composingEndOffset,
+          scriptClass.value,
+          outSize,
+        ),
+        ProtocolDecoder.decodeImeActionResult,
+      );
+    });
+  }
+
+  ImeActionResult updateImeTextModelDelta({
+    required ImeTextModelMode mode,
+    required int contextId,
+    required int documentStartOffset,
+    required String oldText,
+    required int deltaStartOffset,
+    required int deltaEndOffset,
+    required String deltaText,
+    required int selectionStartOffset,
+    required int selectionEndOffset,
+    required int composingStartOffset,
+    required int composingEndOffset,
+    ImeScriptClass scriptClass = ImeScriptClass.unknown,
+  }) {
+    _ensureOpen();
+    return using((arena) {
+      final oldTextPtr = _toNativeUtf8(oldText, arena);
+      final deltaTextPtr = _toNativeUtf8(deltaText, arena);
+      return _callAndParse(
+        ImeActionResult.empty,
+        (outSize) => bindings.editor_ime_update_text_model_delta(
+          _handle,
+          mode.value,
+          contextId,
+          documentStartOffset,
+          oldTextPtr,
+          deltaStartOffset,
+          deltaEndOffset,
+          deltaTextPtr,
+          selectionStartOffset,
+          selectionEndOffset,
+          composingStartOffset,
+          composingEndOffset,
+          scriptClass.value,
+          outSize,
+        ),
+        ProtocolDecoder.decodeImeActionResult,
+      );
+    });
+  }
+
+  ImeActionResult updateImeInputStateSelection({
+    required int contextId,
+    required int documentStartOffset,
+    required int selectionStartOffset,
+    required int selectionEndOffset,
+  }) {
+    _ensureOpen();
+    return _callAndParse(
+      ImeActionResult.empty,
+      (outSize) => bindings.editor_ime_update_input_state_selection(
+        _handle,
+        contextId,
+        documentStartOffset,
+        selectionStartOffset,
+        selectionEndOffset,
+        outSize,
+      ),
+      ProtocolDecoder.decodeImeActionResult,
+    );
+  }
+
+  ImeActionResult replaceImeInputStateText(
+    int contextId,
+    int documentStartOffset,
+    int startOffset,
+    int endOffset,
+    String text, {
+    int cursorOffset = 1,
+    ImeScriptClass scriptClass = ImeScriptClass.unknown,
+  }) {
+    _ensureOpen();
+    return using((arena) {
+      final textPtr = _toNativeUtf8(text, arena);
+      return _callAndParse(
+        ImeActionResult.empty,
+        (outSize) => bindings.editor_ime_replace_input_state_text(
+          _handle,
+          contextId,
+          documentStartOffset,
+          startOffset,
+          endOffset,
+          textPtr,
+          cursorOffset,
+          scriptClass.value,
+          outSize,
+        ),
+        ProtocolDecoder.decodeImeActionResult,
+      );
+    });
+  }
+
+  ImeActionResult commitImeInputStateTextReplacement(
+    int contextId,
+    int documentStartOffset,
+    int startOffset,
+    int endOffset,
+    String text, {
+    int cursorOffset = 1,
+    ImeScriptClass scriptClass = ImeScriptClass.unknown,
+  }) {
+    _ensureOpen();
+    return using((arena) {
+      final textPtr = _toNativeUtf8(text, arena);
+      return _callAndParse(
+        ImeActionResult.empty,
+        (outSize) => bindings.editor_ime_commit_input_state_text_replacement(
+          _handle,
+          contextId,
+          documentStartOffset,
+          startOffset,
+          endOffset,
+          textPtr,
+          cursorOffset,
+          scriptClass.value,
+          outSize,
+        ),
+        ProtocolDecoder.decodeImeActionResult,
+      );
+    });
+  }
+
   ImeActionResult deleteImeBackward({
     int beforeLength = 1,
-    ImeTextUnit textUnit = ImeTextUnit.utf16CodeUnit,
+    ImeTextUnit textUnit = ImeTextUnit.grapheme,
   }) {
     _ensureOpen();
     return _callAndParse(
@@ -1016,7 +1383,7 @@ class EditorCore {
 
   ImeActionResult deleteImeForward({
     int afterLength = 1,
-    ImeTextUnit textUnit = ImeTextUnit.utf16CodeUnit,
+    ImeTextUnit textUnit = ImeTextUnit.grapheme,
   }) {
     _ensureOpen();
     return _callAndParse(
@@ -1034,7 +1401,7 @@ class EditorCore {
   ImeActionResult deleteImeSurrounding({
     required int beforeLength,
     required int afterLength,
-    ImeTextUnit textUnit = ImeTextUnit.utf16CodeUnit,
+    ImeTextUnit textUnit = ImeTextUnit.grapheme,
   }) {
     _ensureOpen();
     return _callAndParse(
@@ -1098,6 +1465,39 @@ class EditorCore {
       ImeSyncSnapshot.empty,
       (outSize) => bindings.editor_get_ime_sync_snapshot(_handle, outSize),
       ProtocolDecoder.decodeImeSyncSnapshot,
+    );
+  }
+
+  ImeInputContext getImeInputContext(int beforeLength, int afterLength) {
+    _ensureOpen();
+    return _callAndParse(
+      ImeInputContext.empty,
+      (outSize) => bindings.editor_get_ime_input_context(
+        _handle,
+        beforeLength,
+        afterLength,
+        outSize,
+      ),
+      ProtocolDecoder.decodeImeInputContext,
+    );
+  }
+
+  ImeInputContext getImeTextModelInputContext(
+    ImeTextModelMode mode,
+    int beforeLength,
+    int afterLength,
+  ) {
+    _ensureOpen();
+    return _callAndParse(
+      ImeInputContext.empty,
+      (outSize) => bindings.editor_get_ime_text_model_input_context(
+        _handle,
+        mode.value,
+        beforeLength,
+        afterLength,
+        outSize,
+      ),
+      ProtocolDecoder.decodeImeInputContext,
     );
   }
 

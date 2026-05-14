@@ -90,11 +90,31 @@ enum ScrollBehavior {
 
 /// Unit used by IME delete requests.
 enum ImeTextUnit {
+  grapheme(0),
   utf16CodeUnit(0),
   codePoint(1);
 
   const ImeTextUnit(this.value);
   final int value;
+}
+
+/// Platform text model shape used by IME state synchronization.
+enum ImeTextModelMode {
+  documentWindow(0),
+  transientInput(1);
+
+  const ImeTextModelMode(this.value);
+  final int value;
+}
+
+class ImeTextRange {
+  const ImeTextRange(this.start, this.end);
+
+  static const empty = ImeTextRange(0, 0);
+  static const none = ImeTextRange(-1, -1);
+
+  final int start;
+  final int end;
 }
 
 /// Script class hint reported by platform IMEs.
@@ -184,6 +204,28 @@ class ImeSyncSnapshot {
   final ImePreeditStorage preeditStorage;
   final ImeContextPolicy contextPolicy;
   final bool clearPlatformPreedit;
+}
+
+class ImeInputContext {
+  const ImeInputContext({
+    this.id = 0,
+    this.revision = 0,
+    this.documentStartOffset = 0,
+    this.text = '',
+    this.selection = ImeTextRange.empty,
+    this.hasComposition = false,
+    this.composition = ImeTextRange.none,
+  });
+
+  static const empty = ImeInputContext();
+
+  final int id;
+  final int revision;
+  final int documentStartOffset;
+  final String text;
+  final ImeTextRange selection;
+  final bool hasComposition;
+  final ImeTextRange composition;
 }
 
 /// Result of a semantic IME action handled by the native editor core.

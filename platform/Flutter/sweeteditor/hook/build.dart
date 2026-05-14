@@ -95,6 +95,7 @@ void main(List<String> args) async {
 
     final outFile = input.outputDirectory.resolve(nativeBinary.fileName);
     await sourceFile.copy(outFile.toFilePath());
+    output.dependencies.add(sourceUri);
 
     output.assets.code.add(
       CodeAsset(

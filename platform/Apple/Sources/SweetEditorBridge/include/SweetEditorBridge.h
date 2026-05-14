@@ -102,20 +102,59 @@ const uint8_t* editor_insert_line_below(intptr_t editor_handle, size_t* out_size
 
 // ===================== IME Composition API =====================
 
-const uint8_t* editor_handle_ime_event(intptr_t editor_handle,
-    int type,
+const uint8_t* editor_ime_update_preedit(intptr_t editor_handle,
     const char* text,
-    int has_range,
+    int script_hint,
+    size_t* out_size);
+const uint8_t* editor_ime_set_composing_text_selection(intptr_t editor_handle,
+    const char* text,
+    size_t selection_start_offset,
+    size_t selection_end_offset,
+    int script_hint,
+    size_t* out_size);
+const uint8_t* editor_ime_commit_text(intptr_t editor_handle,
+    const char* text,
+    int script_hint,
+    size_t* out_size);
+const uint8_t* editor_ime_finish_preedit(intptr_t editor_handle,
+    size_t* out_size);
+const uint8_t* editor_ime_cancel_preedit(intptr_t editor_handle,
+    size_t* out_size);
+const uint8_t* editor_ime_mark_document_range(intptr_t editor_handle,
     size_t start_line,
     size_t start_column,
     size_t end_line,
     size_t end_column,
-    int has_cursor,
-    size_t cursor_line,
-    size_t cursor_column,
-    size_t before_length,
-    size_t after_length,
-    int text_unit,
+    int script_hint,
+    size_t* out_size);
+const uint8_t* editor_ime_mark_document_range_by_offset(intptr_t editor_handle,
+    size_t start_offset,
+    size_t end_offset,
+    int script_hint,
+    size_t* out_size);
+const uint8_t* editor_ime_update_input_state_text(intptr_t editor_handle,
+    uint64_t context_id,
+    int32_t document_start_offset,
+    const char* text,
+    int32_t selection_start_offset,
+    int32_t selection_end_offset,
+    int32_t composing_start_offset,
+    int32_t composing_end_offset,
+    int script_hint,
+    size_t* out_size);
+const uint8_t* editor_ime_update_input_state_selection(intptr_t editor_handle,
+    uint64_t context_id,
+    int32_t document_start_offset,
+    int32_t selection_start_offset,
+    int32_t selection_end_offset,
+    size_t* out_size);
+const uint8_t* editor_ime_replace_input_state_text(intptr_t editor_handle,
+    uint64_t context_id,
+    int32_t document_start_offset,
+    size_t start_offset,
+    size_t end_offset,
+    const char* text,
+    int cursor_offset,
     int script_hint,
     size_t* out_size);
 int  editor_is_composing(intptr_t editor_handle);

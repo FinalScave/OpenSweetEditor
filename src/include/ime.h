@@ -61,16 +61,20 @@ namespace NS_SWEETEDITOR {
                                 const TextRange& range,
                                 const U8String& text,
                                 ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    ImeActionResult commitDocumentRangeReplacement(Host& host,
+                                                   const TextRange& range,
+                                                   const U8String& text,
+                                                   ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
     ImeActionResult deleteBackward(Host& host,
                                    size_t before_length = 1,
-                                   ImeTextUnit text_unit = ImeTextUnit::UTF16_CODE_UNIT);
+                                   ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
     ImeActionResult deleteForward(Host& host,
                                   size_t after_length = 1,
-                                  ImeTextUnit text_unit = ImeTextUnit::UTF16_CODE_UNIT);
+                                  ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
     ImeActionResult deleteSurrounding(Host& host,
                                       size_t before_length,
                                       size_t after_length,
-                                      ImeTextUnit text_unit = ImeTextUnit::UTF16_CODE_UNIT);
+                                      ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
     ImeActionResult notifySelectionChanged(Host& host, const TextRange& range);
     ImeActionResult notifyCursorChanged(Host& host, const TextPosition& cursor);
     ImeSyncSnapshot buildSyncSnapshot(const Host& host) const;
@@ -148,7 +152,7 @@ namespace NS_SWEETEDITOR {
                                       bool is_commit) const;
     bool shouldShadowPlainLatinLockedPreedit(const U8String& text,
                                              ImeScriptClass script_class) const;
-    void openCandidateCommitWindow(const TextRange& range, const U8String& text);
+    void openCandidateCommitWindow(const TextRange& range, const U8String& text, bool suppress_exact_range);
     void markCandidateDeletedToPrefix();
     void resetSessionPreservingCandidateWindow();
 
@@ -178,6 +182,7 @@ namespace NS_SWEETEDITOR {
     TextEditResult applyDocumentRangeEndPlainEdit(Host& host, const U8String& text, bool is_commit);
     TextEditResult applyPlainLatinInputLockEdit(Host& host, const U8String& text, bool is_commit);
     bool trySuppressCandidateCommit(Host& host, const U8String& text);
+    bool trySuppressCandidateMark(Host& host, const TextRange& range);
     void updateCandidateWindowAfterDelete(Host& host);
     void handleUpdatePreedit(Host& host, ImeActionResult& result, const U8String& text, ImeScriptClass script_class);
     void handleCommitText(Host& host, ImeActionResult& result, const U8String& text, ImeScriptClass script_class);

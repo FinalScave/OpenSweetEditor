@@ -7,7 +7,7 @@
   "license": "",
   "dependencies": {
     "@qiplat/sweeteditor": "file:../sweeteditor",
-    "@qiplat/sweetline": "1.0.0"
+    "@qiplat/sweetline": "1.2.4"
   },
   "devDependencies": {},
   "dynamicDependencies": {}

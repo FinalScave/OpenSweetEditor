@@ -3,6 +3,7 @@ package com.qiplat.sweeteditor.core;
 import com.qiplat.sweeteditor.core.adornment.*;
 import com.qiplat.sweeteditor.core.foundation.*;
 import com.qiplat.sweeteditor.core.ime.ImeActionResult;
+import com.qiplat.sweeteditor.core.ime.ImeInputContext;
 import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
 import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
 import com.qiplat.sweeteditor.core.keymap.KeyMap;
@@ -506,6 +507,28 @@ public class EditorCore {
         }
     }
 
+    public ImeActionResult setImeComposingText(String text, int cursorOffset, int scriptHint) {
+        try (Arena tempArena = Arena.ofConfined()) {
+            return decodeImeActionResult(EditorNative.setImeComposingText(
+                    nativeHandle, text != null ? text : "", cursorOffset, scriptHint, tempArena));
+        }
+    }
+
+    public ImeActionResult setImeComposingTextSelection(String text,
+                                                        long selectionStartOffset,
+                                                        long selectionEndOffset,
+                                                        int scriptHint) {
+        try (Arena tempArena = Arena.ofConfined()) {
+            return decodeImeActionResult(EditorNative.setImeComposingTextSelection(
+                    nativeHandle,
+                    text != null ? text : "",
+                    Math.max(0, selectionStartOffset),
+                    Math.max(0, selectionEndOffset),
+                    scriptHint,
+                    tempArena));
+        }
+    }
+
     public ImeActionResult commitImeText(String text, int scriptHint) {
         try (Arena tempArena = Arena.ofConfined()) {
             return decodeImeActionResult(EditorNative.commitImeText(
@@ -532,6 +555,11 @@ public class EditorCore {
                 scriptHint));
     }
 
+    public ImeActionResult markImeDocumentRange(long startOffset, long endOffset, int scriptHint) {
+        return decodeImeActionResult(EditorNative.markImeDocumentRangeByOffset(
+                nativeHandle, Math.max(0, startOffset), Math.max(0, endOffset), scriptHint));
+    }
+
     public ImeActionResult replaceImeText(TextRange range, String text, int scriptHint) {
         if (range == null || range.start == null || range.end == null) {
             return new ImeActionResult();
@@ -547,12 +575,117 @@ public class EditorCore {
         }
     }
 
+    public ImeActionResult replaceImeDocumentText(long startOffset,
+                                                  long endOffset,
+                                                  String text,
+                                                  int cursorOffset,
+                                                  int scriptHint) {
+        try (Arena tempArena = Arena.ofConfined()) {
+            return decodeImeActionResult(EditorNative.replaceImeDocumentText(
+                    nativeHandle,
+                    Math.max(0, startOffset),
+                    Math.max(0, endOffset),
+                    text != null ? text : "",
+                    cursorOffset,
+                    scriptHint,
+                    tempArena));
+        }
+    }
+
+    public ImeActionResult replaceImeInputContextText(long startOffset,
+                                                      long endOffset,
+                                                      String text,
+                                                      int cursorOffset,
+                                                      int scriptHint) {
+        try (Arena tempArena = Arena.ofConfined()) {
+            return decodeImeActionResult(EditorNative.replaceImeInputContextText(
+                    nativeHandle,
+                    Math.max(0, startOffset),
+                    Math.max(0, endOffset),
+                    text != null ? text : "",
+                    cursorOffset,
+                    scriptHint,
+                    tempArena));
+        }
+    }
+
+    public ImeActionResult markImeInputContextRange(long startOffset, long endOffset, int scriptHint) {
+        return decodeImeActionResult(EditorNative.markImeInputContextRange(
+                nativeHandle, Math.max(0, startOffset), Math.max(0, endOffset), scriptHint));
+    }
+
+    public ImeActionResult notifyImeDocumentSelectionChanged(long startOffset, long endOffset) {
+        return decodeImeActionResult(EditorNative.notifyImeDocumentSelectionChanged(
+                nativeHandle, Math.max(0, startOffset), Math.max(0, endOffset)));
+    }
+
+    public ImeActionResult notifyImeInputContextSelectionChanged(long startOffset, long endOffset) {
+        return decodeImeActionResult(EditorNative.notifyImeInputContextSelectionChanged(
+                nativeHandle, Math.max(0, startOffset), Math.max(0, endOffset)));
+    }
+
+    public ImeActionResult updateImeInputStateText(long contextId,
+                                                   int documentStartOffset,
+                                                   String text,
+                                                   int selectionStartOffset,
+                                                   int selectionEndOffset,
+                                                   int composingStartOffset,
+                                                   int composingEndOffset,
+                                                   int scriptHint) {
+        try (Arena tempArena = Arena.ofConfined()) {
+            return decodeImeActionResult(EditorNative.updateImeInputStateText(
+                    nativeHandle,
+                    contextId,
+                    Math.max(0, documentStartOffset),
+                    text != null ? text : "",
+                    selectionStartOffset,
+                    selectionEndOffset,
+                    composingStartOffset,
+                    composingEndOffset,
+                    scriptHint,
+                    tempArena));
+        }
+    }
+
+    public ImeActionResult updateImeInputStateSelection(long contextId,
+                                                        int documentStartOffset,
+                                                        int selectionStartOffset,
+                                                        int selectionEndOffset) {
+        return decodeImeActionResult(EditorNative.updateImeInputStateSelection(
+                nativeHandle,
+                contextId,
+                Math.max(0, documentStartOffset),
+                selectionStartOffset,
+                selectionEndOffset));
+    }
+
+    public ImeActionResult replaceImeInputStateText(long contextId,
+                                                    int documentStartOffset,
+                                                    long startOffset,
+                                                    long endOffset,
+                                                    String text,
+                                                    int cursorOffset,
+                                                    int scriptHint) {
+        try (Arena tempArena = Arena.ofConfined()) {
+            return decodeImeActionResult(EditorNative.replaceImeInputStateText(
+                    nativeHandle,
+                    contextId,
+                    Math.max(0, documentStartOffset),
+                    Math.max(0, startOffset),
+                    Math.max(0, endOffset),
+                    text != null ? text : "",
+                    cursorOffset,
+                    scriptHint,
+                    tempArena));
+        }
+    }
+
     public ImeActionResult deleteImeBackward(long beforeLength, int textUnit) {
         return decodeImeActionResult(EditorNative.deleteImeBackward(nativeHandle, beforeLength, textUnit));
     }
 
     public ImeActionResult deleteImeBackward(long beforeLength) {
-        return deleteImeBackward(beforeLength, ImeTextUnit.UTF16_CODE_UNIT);
+        return deleteImeBackward(beforeLength, ImeTextUnit.GRAPHEME);
     }
 
     public ImeActionResult deleteImeForward(long afterLength, int textUnit) {
@@ -560,7 +693,7 @@ public class EditorCore {
     }
 
     public ImeActionResult deleteImeForward(long afterLength) {
-        return deleteImeForward(afterLength, ImeTextUnit.UTF16_CODE_UNIT);
+        return deleteImeForward(afterLength, ImeTextUnit.GRAPHEME);
     }
 
     public ImeActionResult deleteImeSurrounding(long beforeLength, long afterLength, int textUnit) {
@@ -598,6 +731,16 @@ public class EditorCore {
         EditorNative.NativeBinaryResult result = EditorNative.getImeSyncSnapshot(nativeHandle);
         try {
             return ProtocolDecoder.decodeImeSyncSnapshot(result.asByteBuffer());
+        } finally {
+            result.free();
+        }
+    }
+
+    public ImeInputContext getImeInputContext(long beforeLength, long afterLength) {
+        EditorNative.NativeBinaryResult result = EditorNative.getImeInputContext(
+                nativeHandle, Math.max(0, beforeLength), Math.max(0, afterLength));
+        try {
+            return ProtocolDecoder.decodeImeInputContext(result.asByteBuffer());
         } finally {
             result.free();
         }

@@ -17,6 +17,12 @@ class _BinaryReader {
     return v;
   }
 
+  int readInt64() {
+    final v = _data.getInt64(_offset, Endian.little);
+    _offset += 8;
+    return v;
+  }
+
   double readFloat32() {
     final v = _data.getFloat32(_offset, Endian.little);
     _offset += 4;
@@ -707,6 +713,23 @@ class ProtocolDecoder {
   ) {
     if (ptr == ffi.nullptr || size == 0) return ImeSyncSnapshot.empty;
     return _readImeSyncSnapshot(_BinaryReader(ptr, size));
+  }
+
+  static ImeInputContext decodeImeInputContext(
+    ffi.Pointer<ffi.Uint8> ptr,
+    int size,
+  ) {
+    if (ptr == ffi.nullptr || size == 0) return ImeInputContext.empty;
+    final r = _BinaryReader(ptr, size);
+    return ImeInputContext(
+      id: r.readInt64(),
+      revision: r.readInt32(),
+      documentStartOffset: r.readInt32(),
+      text: r.readUtf8String(),
+      selection: ImeTextRange(r.readInt32(), r.readInt32()),
+      hasComposition: r.readInt32() != 0,
+      composition: ImeTextRange(r.readInt32(), r.readInt32()),
+    );
   }
 
   static KeyEventResult decodeKeyEventResult(

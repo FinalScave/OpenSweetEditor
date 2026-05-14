@@ -569,6 +569,16 @@ namespace SweetEditor {
 			return true;
 		}
 
+		internal static bool TryReadInt64(ReadOnlySpan<byte> data, ref int offset, out long value) {
+			if ((uint)(offset + 8) > (uint)data.Length) {
+				value = 0;
+				return false;
+			}
+			value = BinaryPrimitives.ReadInt64LittleEndian(data.Slice(offset, 8));
+			offset += 8;
+			return true;
+		}
+
 		internal static bool TryReadFloat(ReadOnlySpan<byte> data, ref int offset, out float value) {
 			if (!TryReadInt32(data, ref offset, out int bits)) {
 				value = 0;
@@ -1293,6 +1303,39 @@ namespace SweetEditor {
 				return TryReadImeSyncSnapshot(data, ref offset, out ImeSyncSnapshot snapshot)
 					? snapshot
 					: new ImeSyncSnapshot();
+			} finally {
+				NativeMethods.FreeBinaryData(payloadPtr);
+			}
+		}
+
+		internal static unsafe ImeInputContext ParseImeInputContext(IntPtr payloadPtr, UIntPtr payloadSize) {
+			int payloadLength = GetPayloadLength(payloadPtr, payloadSize);
+			if (payloadLength == 0) {
+				return new ImeInputContext();
+			}
+			try {
+				ReadOnlySpan<byte> data = new(payloadPtr.ToPointer(), payloadLength);
+				int offset = 0;
+				if (!TryReadInt64(data, ref offset, out long id) ||
+					!TryReadInt32(data, ref offset, out int revision) ||
+					!TryReadInt32(data, ref offset, out int documentStartOffset) ||
+					!TryReadUtf8String(data, ref offset, out string text) ||
+					!TryReadInt32(data, ref offset, out int selectionStart) ||
+					!TryReadInt32(data, ref offset, out int selectionEnd) ||
+					!TryReadInt32(data, ref offset, out int hasComposition) ||
+					!TryReadInt32(data, ref offset, out int compositionStart) ||
+					!TryReadInt32(data, ref offset, out int compositionEnd)) {
+					return new ImeInputContext();
+				}
+				return new ImeInputContext {
+					Id = id,
+					Revision = revision,
+					DocumentStartOffset = documentStartOffset,
+					Text = text,
+					Selection = new ImeTextRange(selectionStart, selectionEnd),
+					HasComposition = hasComposition != 0,
+					Composition = new ImeTextRange(compositionStart, compositionEnd)
+				};
 			} finally {
 				NativeMethods.FreeBinaryData(payloadPtr);
 			}

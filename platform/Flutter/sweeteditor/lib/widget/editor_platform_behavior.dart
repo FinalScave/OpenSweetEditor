@@ -9,10 +9,11 @@ class EditorPlatformBehavior {
     required this.showsFloatingSelectionMenu,
     required this.revealSelectionEndOnSelectAll,
     required this.usesDeltaTextInputModel,
+    required this.usesTextInputNewlineAction,
+    required this.imeTextModelMode,
     required this.supportsTouchScale,
     required this.supportsCtrlWheelScale,
     required this.supportsTrackpadPanZoom,
-    required this.retainsPlainTextInputContextAfterPreeditClear,
     required this.gutterStickyDefault,
     required this.handleConfig,
     required this.scrollbarConfig,
@@ -22,6 +23,8 @@ class EditorPlatformBehavior {
   factory EditorPlatformBehavior.resolve() {
     final isAndroid =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    final isWindows =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
     final isMobileStyle =
         !kIsWeb && (isAndroid || defaultTargetPlatform == TargetPlatform.iOS);
     final usesPlatformTextInput = !kIsWeb;
@@ -33,10 +36,13 @@ class EditorPlatformBehavior {
       showsFloatingSelectionMenu: isMobileStyle,
       revealSelectionEndOnSelectAll: isMobileStyle,
       usesDeltaTextInputModel: isAndroid,
+      usesTextInputNewlineAction: !isWindows,
+      imeTextModelMode: isWindows
+          ? core.ImeTextModelMode.transientInput
+          : core.ImeTextModelMode.documentWindow,
       supportsTouchScale: isMobileStyle,
       supportsCtrlWheelScale: !isMobileStyle,
       supportsTrackpadPanZoom: !isMobileStyle,
-      retainsPlainTextInputContextAfterPreeditClear: isAndroid,
       gutterStickyDefault: !isMobileStyle,
       handleConfig: isMobileStyle
           ? _buildMobileHandleConfig()
@@ -53,10 +59,11 @@ class EditorPlatformBehavior {
   final bool showsFloatingSelectionMenu;
   final bool revealSelectionEndOnSelectAll;
   final bool usesDeltaTextInputModel;
+  final bool usesTextInputNewlineAction;
+  final core.ImeTextModelMode imeTextModelMode;
   final bool supportsTouchScale;
   final bool supportsCtrlWheelScale;
   final bool supportsTrackpadPanZoom;
-  final bool retainsPlainTextInputContextAfterPreeditClear;
   final bool gutterStickyDefault;
   final core.HandleConfig handleConfig;
   final core.ScrollbarConfig scrollbarConfig;

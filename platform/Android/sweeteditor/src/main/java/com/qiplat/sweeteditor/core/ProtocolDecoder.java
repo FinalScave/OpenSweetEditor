@@ -119,6 +119,26 @@ final class ProtocolDecoder {
         return readImeSyncSnapshot(data);
     }
 
+    static EditorCore.ImeInputContext decodeImeInputContext(@Nullable ByteBuffer data) {
+        if (data == null) return new EditorCore.ImeInputContext();
+        data.order(ByteOrder.nativeOrder());
+        long id = data.getLong();
+        int revision = data.getInt();
+        int documentStartOffset = data.getInt();
+        String text = readBufferString(data);
+        EditorCore.ImeTextRange selection = new EditorCore.ImeTextRange(data.getInt(), data.getInt());
+        boolean hasComposition = data.getInt() != 0;
+        EditorCore.ImeTextRange composition = new EditorCore.ImeTextRange(data.getInt(), data.getInt());
+        return new EditorCore.ImeInputContext(
+                id,
+                revision,
+                documentStartOffset,
+                text,
+                selection,
+                hasComposition,
+                composition);
+    }
+
     static EditorCore.GestureResult decodeGestureResult(@Nullable ByteBuffer data) {
         if (data == null) return new EditorCore.GestureResult();
         data.order(ByteOrder.nativeOrder());

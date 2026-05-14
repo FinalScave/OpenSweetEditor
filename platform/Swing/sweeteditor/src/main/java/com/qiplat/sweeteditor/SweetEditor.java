@@ -11,8 +11,8 @@ import com.qiplat.sweeteditor.core.EditorOptions;
 import com.qiplat.sweeteditor.core.adornment.*;
 import com.qiplat.sweeteditor.core.foundation.*;
 import com.qiplat.sweeteditor.core.ime.ImeActionResult;
+import com.qiplat.sweeteditor.core.ime.ImeInputContext;
 import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
-import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
 import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
 import com.qiplat.sweeteditor.core.keymap.EditorCommand;
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
@@ -38,7 +38,6 @@ import java.awt.im.InputMethodRequests;
 import java.text.AttributedCharacterIterator;
 import java.text.AttributedString;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 import static java.awt.Cursor.DEFAULT_CURSOR;
@@ -1006,13 +1005,14 @@ public class SweetEditor extends JPanel {
                     }
 
                     boolean changed = false;
-                    int scriptHint = resolveImeScriptHint();
                     if (committed.length() > 0) {
-                        dispatchImeActionResult(editorCore.commitImeText(committed.toString(), scriptHint));
+                        dispatchImeActionResult(editorCore.commitImeText(committed.toString(), ImeScriptClass.UNKNOWN));
                         changed = true;
                     }
                     if (composed.length() > 0) {
-                        dispatchImeActionResult(editorCore.updateImePreedit(composed.toString(), scriptHint));
+                        int caretOffset = getComposedCaretOffset(event, committedCount, composed.length());
+                        dispatchImeActionResult(editorCore.setImeComposingTextSelection(
+                                composed.toString(), caretOffset, caretOffset, ImeScriptClass.UNKNOWN));
                         changed = true;
                     } else if (editorCore.isComposing() && committed.length() == 0) {
                         dispatchImeActionResult(editorCore.cancelImePreedit());
@@ -1068,8 +1068,8 @@ public class SweetEditor extends JPanel {
 
             @Override
             public int getInsertPositionOffset() {
-                ImeSyncSnapshot snapshot = editorCore.getImeSyncSnapshot();
-                return snapshot.platformTextWindowStartOffset + snapshot.platformTextWindowSelectionOffsets.start();
+                ImeInputContext context = editorCore.getImeInputContext(0, 0);
+                return context.documentStartOffset + context.selection.start;
             }
 
             @Override
@@ -1107,10 +1107,10 @@ public class SweetEditor extends JPanel {
         ImeActionResult result = null;
         switch (e.getKeyCode()) {
             case KeyEvent.VK_BACK_SPACE:
-                result = editorCore.deleteImeBackward(1, ImeTextUnit.UTF16_CODE_UNIT);
+                result = editorCore.deleteImeBackward(1, ImeTextUnit.GRAPHEME);
                 break;
             case KeyEvent.VK_DELETE:
-                result = editorCore.deleteImeForward(1, ImeTextUnit.UTF16_CODE_UNIT);
+                result = editorCore.deleteImeForward(1, ImeTextUnit.GRAPHEME);
                 break;
             case KeyEvent.VK_ESCAPE:
                 result = editorCore.cancelImePreedit();
@@ -1134,42 +1134,16 @@ public class SweetEditor extends JPanel {
         }
     }
 
-    private int resolveImeScriptHint() {
-        Locale locale = null;
-        if (getInputContext() != null) {
-            locale = getInputContext().getLocale();
+    private int getComposedCaretOffset(InputMethodEvent event, int committedCount, int composedLength) {
+        TextHitInfo caret = event.getCaret();
+        if (caret == null) {
+            return composedLength;
         }
-        if (locale == null) {
-            return ImeScriptClass.UNKNOWN;
+        int insertionIndex = caret.getInsertionIndex();
+        if (insertionIndex > composedLength && insertionIndex >= committedCount) {
+            insertionIndex -= committedCount;
         }
-        String script = locale.getScript();
-        if ("Hani".equalsIgnoreCase(script) || "Hans".equalsIgnoreCase(script) || "Hant".equalsIgnoreCase(script)) {
-            return ImeScriptClass.CJK;
-        }
-        if ("Kana".equalsIgnoreCase(script) || "Hira".equalsIgnoreCase(script) || "Jpan".equalsIgnoreCase(script)) {
-            return ImeScriptClass.KANA;
-        }
-        if ("Hang".equalsIgnoreCase(script) || "Kore".equalsIgnoreCase(script)) {
-            return ImeScriptClass.HANGUL;
-        }
-        if ("Latn".equalsIgnoreCase(script)) {
-            return ImeScriptClass.LATIN;
-        }
-
-        String language = locale.getLanguage();
-        if ("zh".equalsIgnoreCase(language)) {
-            return ImeScriptClass.CJK;
-        }
-        if ("ja".equalsIgnoreCase(language)) {
-            return ImeScriptClass.KANA;
-        }
-        if ("ko".equalsIgnoreCase(language)) {
-            return ImeScriptClass.HANGUL;
-        }
-        if (language != null && !language.isEmpty()) {
-            return ImeScriptClass.LATIN;
-        }
-        return ImeScriptClass.UNKNOWN;
+        return clampTextOffset(insertionIndex, composedLength);
     }
 
     private String getDocumentTextForInputMethod() {

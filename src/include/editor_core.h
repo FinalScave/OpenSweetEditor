@@ -284,7 +284,20 @@ namespace NS_SWEETEDITOR {
     ImeActionResult updateImePreedit(const U8String& text,
                                      ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
+    ImeActionResult setImeComposingText(const U8String& text,
+                                        int cursor_offset,
+                                        ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
+    ImeActionResult setImeComposingText(const U8String& text,
+                                        size_t selection_start_offset,
+                                        size_t selection_end_offset,
+                                        ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
     ImeActionResult commitImeText(const U8String& text,
+                                  ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
+    ImeActionResult commitImeText(const U8String& text,
+                                  int cursor_offset,
                                   ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
     ImeActionResult finishImePreedit();
@@ -294,23 +307,106 @@ namespace NS_SWEETEDITOR {
     ImeActionResult markImeDocumentRange(const TextRange& range,
                                          ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
+    ImeActionResult markImeDocumentRange(size_t start_offset,
+                                         size_t end_offset,
+                                         ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
     ImeActionResult replaceImeText(const TextRange& range,
                                    const U8String& text,
                                    ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
+    ImeActionResult replaceImeDocumentText(size_t start_offset,
+                                           size_t end_offset,
+                                           const U8String& text,
+                                           int cursor_offset,
+                                           ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
+    ImeActionResult replaceImeInputContextText(size_t start_offset,
+                                               size_t end_offset,
+                                               const U8String& text,
+                                               int cursor_offset,
+                                               ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
+    ImeActionResult markImeInputContextRange(size_t start_offset,
+                                             size_t end_offset,
+                                             ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
+    ImeActionResult notifyImeDocumentSelectionChanged(size_t start_offset, size_t end_offset);
+
+    ImeActionResult notifyImeInputContextSelectionChanged(size_t start_offset, size_t end_offset);
+
+    ImeActionResult updateImeInputStateText(uint64_t context_id,
+                                            int32_t document_start_offset,
+                                            const U8String& text,
+                                            int32_t selection_start_offset,
+                                            int32_t selection_end_offset,
+                                            int32_t composing_start_offset,
+                                            int32_t composing_end_offset,
+                                            ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
+    ImeActionResult updateImeTextModelState(ImeTextModelMode mode,
+                                            uint64_t context_id,
+                                            int32_t document_start_offset,
+                                            const U8String& text,
+                                            int32_t selection_start_offset,
+                                            int32_t selection_end_offset,
+                                            int32_t composing_start_offset,
+                                            int32_t composing_end_offset,
+                                            ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
+    ImeActionResult updateImeTextModelDelta(ImeTextModelMode mode,
+                                            uint64_t context_id,
+                                            int32_t document_start_offset,
+                                            const U8String& old_text,
+                                            int32_t delta_start_offset,
+                                            int32_t delta_end_offset,
+                                            const U8String& delta_text,
+                                            int32_t selection_start_offset,
+                                            int32_t selection_end_offset,
+                                            int32_t composing_start_offset,
+                                            int32_t composing_end_offset,
+                                            ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
+    ImeActionResult updateImeInputStateSelection(uint64_t context_id,
+                                                 int32_t document_start_offset,
+                                                 int32_t selection_start_offset,
+                                                 int32_t selection_end_offset);
+
+    ImeActionResult replaceImeInputStateText(uint64_t context_id,
+                                             int32_t document_start_offset,
+                                             size_t start_offset,
+                                             size_t end_offset,
+                                             const U8String& text,
+                                             int cursor_offset,
+                                             ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
+    ImeActionResult commitImeInputStateTextReplacement(uint64_t context_id,
+                                                       int32_t document_start_offset,
+                                                       size_t start_offset,
+                                                       size_t end_offset,
+                                                       const U8String& text,
+                                                       int cursor_offset,
+                                                       ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
     ImeActionResult deleteImeBackward(size_t before_length = 1,
-                                      ImeTextUnit text_unit = ImeTextUnit::UTF16_CODE_UNIT);
+                                      ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
 
     ImeActionResult deleteImeForward(size_t after_length = 1,
-                                     ImeTextUnit text_unit = ImeTextUnit::UTF16_CODE_UNIT);
+                                     ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
 
     ImeActionResult deleteImeSurrounding(size_t before_length,
                                          size_t after_length,
-                                         ImeTextUnit text_unit = ImeTextUnit::UTF16_CODE_UNIT);
+                                         ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
 
     ImeActionResult notifyImeSelectionChanged(const TextRange& range);
 
     ImeActionResult notifyImeCursorChanged(const TextPosition& cursor);
+
+    ImeInputContext getImeInputContext(size_t before_length, size_t after_length);
+
+    ImeInputContext getImeTextModelInputContext(ImeTextModelMode mode,
+                                                size_t before_length,
+                                                size_t after_length);
 
     /// Whether a composition session exists
     bool hasComposingSession() const;
@@ -587,6 +683,12 @@ namespace NS_SWEETEDITOR {
     /// Core-owned IME composition controller
     CompositionController m_composition_controller_;
 
+    ImeInputContext m_ime_input_context_;
+    uint64_t m_next_ime_input_context_id_ {1};
+    int32_t m_ime_input_context_revision_ {0};
+    bool m_ime_text_model_has_pending_composition_clear_ {false};
+    ImeTextRange m_ime_text_model_pending_composition_clear_ {-1, -1};
+
     /// Linked editing session (nullptr means not in linked editing mode)
     UniquePtr<LinkedEditingSession> m_linked_editing_session_;
 
@@ -629,6 +731,26 @@ namespace NS_SWEETEDITOR {
     void moveCursorTo(const TextPosition& new_pos, bool extend_selection);
     /// Calculate UTF16 column count for UTF8 text
     static size_t calcUtf16Columns(const U8String& text);
+    size_t documentUtf16Length() const;
+    TextRange textRangeFromUtf16Offsets(size_t start_offset, size_t end_offset) const;
+    TextRange textRangeFromImeInputContextOffsets(size_t start_offset, size_t end_offset) const;
+    TextRange textRangeFromImeInputStateOffsets(uint64_t context_id,
+                                                int32_t document_start_offset,
+                                                size_t start_offset,
+                                                size_t end_offset) const;
+    TextRange textRangeFromImeCompositionOffsets(const ImeActionResult& result,
+                                                size_t start_offset,
+                                                size_t end_offset) const;
+    void applyImeCursorOffset(ImeActionResult& result, const U8String& text, int cursor_offset);
+    void rememberImeInputState(uint64_t context_id,
+                               int32_t document_start_offset,
+                               const U8String& text,
+                               int32_t selection_start_offset,
+                               int32_t selection_end_offset,
+                               int32_t composing_start_offset,
+                               int32_t composing_end_offset);
+    void resetImeTextModelPendingState();
+    void invalidateImeInputContext();
     /// Calculate new cursor position after inserting UTF8 text
     TextPosition calcPositionAfterInsert(const TextPosition& start, const U8String& text) const;
     /// Unified edit entry: apply document edit and record undo operation

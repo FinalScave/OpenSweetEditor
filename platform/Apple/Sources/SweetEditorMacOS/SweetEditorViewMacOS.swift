@@ -1573,6 +1573,8 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         let baseRange: NSRange
         if let replacementRange = normalizedReplacementRange(replacementRange) {
             baseRange = replacementRange
+            editorCore.markImeDocumentRange(startOffset: replacementRange.location,
+                                            endOffset: replacementRange.location + replacementRange.length)
         } else if let currentMarkedRange {
             baseRange = currentMarkedRange
         } else {
@@ -1587,7 +1589,9 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         currentMarkedSelectionRange = NSRange(location: baseRange.location + selectedLocation,
                                               length: selectedLength)
 
-        _ = editorCore.updateImePreedit(text)
+        _ = editorCore.setImeComposingTextSelection(text,
+                                                    selectionStartOffset: selectedLocation,
+                                                    selectionEndOffset: selectedLocation + selectedLength)
         rebuildAndRedraw()
     }
 

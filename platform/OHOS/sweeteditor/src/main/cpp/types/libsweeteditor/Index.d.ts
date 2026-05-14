@@ -84,11 +84,22 @@ export const editorIsComposing: (handle: number) => boolean;
 export const editorGetComposingRange: (handle: number) => number[];
 export const editorGetComposingSessionRange: (handle: number) => number[];
 export const editorImeUpdatePreedit: (handle: number, text: string | null, scriptHint: number) => ArrayBuffer | undefined;
+export const editorImeSetComposingText: (handle: number, text: string | null, cursorOffset: number, scriptHint: number) => ArrayBuffer | undefined;
+export const editorImeSetComposingTextSelection: (handle: number, text: string | null, selectionStartOffset: number, selectionEndOffset: number, scriptHint: number) => ArrayBuffer | undefined;
 export const editorImeCommitText: (handle: number, text: string | null, scriptHint: number) => ArrayBuffer | undefined;
 export const editorImeFinishPreedit: (handle: number) => ArrayBuffer | undefined;
 export const editorImeCancelPreedit: (handle: number) => ArrayBuffer | undefined;
 export const editorImeMarkDocumentRange: (handle: number, startLine: number, startColumn: number, endLine: number, endColumn: number, scriptHint: number) => ArrayBuffer | undefined;
+export const editorImeMarkDocumentRangeByOffset: (handle: number, startOffset: number, endOffset: number, scriptHint: number) => ArrayBuffer | undefined;
 export const editorImeReplaceText: (handle: number, startLine: number, startColumn: number, endLine: number, endColumn: number, text: string | null, scriptHint: number) => ArrayBuffer | undefined;
+export const editorImeReplaceDocumentText: (handle: number, startOffset: number, endOffset: number, text: string | null, cursorOffset: number, scriptHint: number) => ArrayBuffer | undefined;
+export const editorImeReplaceInputContextText: (handle: number, startOffset: number, endOffset: number, text: string | null, cursorOffset: number, scriptHint: number) => ArrayBuffer | undefined;
+export const editorImeMarkInputContextRange: (handle: number, startOffset: number, endOffset: number, scriptHint: number) => ArrayBuffer | undefined;
+export const editorImeNotifyDocumentSelectionChanged: (handle: number, startOffset: number, endOffset: number) => ArrayBuffer | undefined;
+export const editorImeNotifyInputContextSelectionChanged: (handle: number, startOffset: number, endOffset: number) => ArrayBuffer | undefined;
+export const editorImeUpdateInputStateText: (handle: number, contextId: number, documentStartOffset: number, text: string | null, selectionStartOffset: number, selectionEndOffset: number, composingStartOffset: number, composingEndOffset: number, scriptHint: number) => ArrayBuffer | undefined;
+export const editorImeUpdateInputStateSelection: (handle: number, contextId: number, documentStartOffset: number, selectionStartOffset: number, selectionEndOffset: number) => ArrayBuffer | undefined;
+export const editorImeReplaceInputStateText: (handle: number, contextId: number, documentStartOffset: number, startOffset: number, endOffset: number, text: string | null, cursorOffset: number, scriptHint: number) => ArrayBuffer | undefined;
 export const editorImeDeleteBackward: (handle: number, beforeLength: number, textUnit: number) => ArrayBuffer | undefined;
 export const editorImeDeleteForward: (handle: number, afterLength: number, textUnit: number) => ArrayBuffer | undefined;
 export const editorImeDeleteSurrounding: (handle: number, beforeLength: number, afterLength: number, textUnit: number) => ArrayBuffer | undefined;
@@ -97,6 +108,7 @@ export const editorImeNotifyCursorChanged: (handle: number, cursorLine: number, 
 export const editorImeSetKeyboardScriptClass: (handle: number, scriptClass: number) => void;
 export const editorImeGetKeyboardScriptClass: (handle: number) => number;
 export const editorGetImeSyncSnapshot: (handle: number) => ArrayBuffer | undefined;
+export const editorGetImeInputContext: (handle: number, beforeLength: number, afterLength: number) => ArrayBuffer | undefined;
 
 // Read-only
 export const editorSetReadOnly: (handle: number, readOnly: boolean) => void;

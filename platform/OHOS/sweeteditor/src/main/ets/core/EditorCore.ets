@@ -114,6 +114,7 @@ export interface TextEditResult {
 }
 
 export enum ImeTextUnit {
+  GRAPHEME = 0,
   UTF16_CODE_UNIT = 0,
   CODE_POINT = 1
 }
@@ -150,6 +151,21 @@ export interface ImeSyncSnapshot {
   preeditStorage: ImePreeditStorage;
   contextPolicy: ImeContextPolicy;
   clearPlatformPreedit: boolean;
+}
+
+export interface ImeTextRange {
+  start: number;
+  end: number;
+}
+
+export interface ImeInputContext {
+  id: number;
+  revision: number;
+  documentStartOffset: number;
+  text: string;
+  selection: ImeTextRange;
+  hasComposition: boolean;
+  composition: ImeTextRange;
 }
 
 export interface ImeActionResult {
@@ -603,6 +619,28 @@ export class EditorCore {
     );
   }
 
+  setImeComposingText(text: string | null,
+                      cursorOffset: number = 1,
+                      scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeSetComposingText(this.handle, text, cursorOffset, scriptHint as number)
+    );
+  }
+
+  setImeComposingTextSelection(text: string | null,
+                               selectionStartOffset: number,
+                               selectionEndOffset: number,
+                               scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeSetComposingTextSelection(
+        this.handle,
+        text,
+        selectionStartOffset,
+        selectionEndOffset,
+        scriptHint as number)
+    );
+  }
+
   commitImeText(text: string | null, scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): ImeActionResult {
     return ProtocolDecoder.decodeImeActionResult(
       native.editorImeCommitText(this.handle, text, scriptHint as number)
@@ -630,6 +668,14 @@ export class EditorCore {
     );
   }
 
+  markImeDocumentRangeByOffset(startOffset: number,
+                               endOffset: number,
+                               scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeMarkDocumentRangeByOffset(this.handle, startOffset, endOffset, scriptHint as number)
+    );
+  }
+
   replaceImeText(range: TextRange, text: string | null,
                  scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): ImeActionResult {
     return ProtocolDecoder.decodeImeActionResult(
@@ -645,15 +691,123 @@ export class EditorCore {
     );
   }
 
+  replaceImeDocumentText(startOffset: number,
+                         endOffset: number,
+                         text: string | null,
+                         cursorOffset: number = 1,
+                         scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeReplaceDocumentText(
+        this.handle,
+        startOffset,
+        endOffset,
+        text,
+        cursorOffset,
+        scriptHint as number)
+    );
+  }
+
+  replaceImeInputContextText(startOffset: number,
+                             endOffset: number,
+                             text: string | null,
+                             cursorOffset: number = 1,
+                             scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeReplaceInputContextText(
+        this.handle,
+        startOffset,
+        endOffset,
+        text,
+        cursorOffset,
+        scriptHint as number)
+    );
+  }
+
+  markImeInputContextRange(startOffset: number,
+                           endOffset: number,
+                           scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeMarkInputContextRange(this.handle, startOffset, endOffset, scriptHint as number)
+    );
+  }
+
+  notifyImeDocumentSelectionChanged(startOffset: number, endOffset: number): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeNotifyDocumentSelectionChanged(this.handle, startOffset, endOffset)
+    );
+  }
+
+  notifyImeInputContextSelectionChanged(startOffset: number, endOffset: number): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeNotifyInputContextSelectionChanged(this.handle, startOffset, endOffset)
+    );
+  }
+
+  updateImeInputStateText(contextId: number,
+                          documentStartOffset: number,
+                          text: string | null,
+                          selectionStartOffset: number,
+                          selectionEndOffset: number,
+                          composingStartOffset: number,
+                          composingEndOffset: number,
+                          scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeUpdateInputStateText(
+        this.handle,
+        contextId,
+        documentStartOffset,
+        text,
+        selectionStartOffset,
+        selectionEndOffset,
+        composingStartOffset,
+        composingEndOffset,
+        scriptHint as number)
+    );
+  }
+
+  updateImeInputStateSelection(contextId: number,
+                               documentStartOffset: number,
+                               selectionStartOffset: number,
+                               selectionEndOffset: number): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeUpdateInputStateSelection(
+        this.handle,
+        contextId,
+        documentStartOffset,
+        selectionStartOffset,
+        selectionEndOffset)
+    );
+  }
+
+  replaceImeInputStateText(contextId: number,
+                           documentStartOffset: number,
+                           startOffset: number,
+                           endOffset: number,
+                           text: string | null,
+                           cursorOffset: number = 1,
+                           scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): ImeActionResult {
+    return ProtocolDecoder.decodeImeActionResult(
+      native.editorImeReplaceInputStateText(
+        this.handle,
+        contextId,
+        documentStartOffset,
+        startOffset,
+        endOffset,
+        text,
+        cursorOffset,
+        scriptHint as number)
+    );
+  }
+
   deleteImeBackward(beforeLength: number = 1,
-                    textUnit: ImeTextUnit = ImeTextUnit.UTF16_CODE_UNIT): ImeActionResult {
+                    textUnit: ImeTextUnit = ImeTextUnit.GRAPHEME): ImeActionResult {
     return ProtocolDecoder.decodeImeActionResult(
       native.editorImeDeleteBackward(this.handle, beforeLength, textUnit as number)
     );
   }
 
   deleteImeForward(afterLength: number = 1,
-                   textUnit: ImeTextUnit = ImeTextUnit.UTF16_CODE_UNIT): ImeActionResult {
+                   textUnit: ImeTextUnit = ImeTextUnit.GRAPHEME): ImeActionResult {
     return ProtocolDecoder.decodeImeActionResult(
       native.editorImeDeleteForward(this.handle, afterLength, textUnit as number)
     );
@@ -661,7 +815,7 @@ export class EditorCore {
 
   deleteImeSurrounding(beforeLength: number,
                        afterLength: number,
-                       textUnit: ImeTextUnit = ImeTextUnit.UTF16_CODE_UNIT): ImeActionResult {
+                       textUnit: ImeTextUnit = ImeTextUnit.GRAPHEME): ImeActionResult {
     return ProtocolDecoder.decodeImeActionResult(
       native.editorImeDeleteSurrounding(this.handle, beforeLength, afterLength, textUnit as number)
     );
@@ -721,6 +875,12 @@ export class EditorCore {
 
   getImeSyncSnapshot(): ImeSyncSnapshot {
     return ProtocolDecoder.decodeImeSyncSnapshot(native.editorGetImeSyncSnapshot(this.handle));
+  }
+
+  getImeInputContext(beforeLength: number, afterLength: number): ImeInputContext {
+    return ProtocolDecoder.decodeImeInputContext(
+      native.editorGetImeInputContext(this.handle, beforeLength, afterLength)
+    );
   }
 
   // ==================== Read-Only Mode ====================
