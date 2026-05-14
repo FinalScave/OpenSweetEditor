@@ -1,8 +1,8 @@
 //
 // Created by Scave on 2025/12/1.
 //
-#ifndef SWEETEDITOR_IME_H
-#define SWEETEDITOR_IME_H
+#ifndef SWEETEDITOR_IME_COMPOSITION_H
+#define SWEETEDITOR_IME_COMPOSITION_H
 
 #include "ime_types.h"
 
@@ -193,4 +193,4 @@ namespace NS_SWEETEDITOR {
 
 }
 
-#endif //SWEETEDITOR_IME_H
+#endif //SWEETEDITOR_IME_COMPOSITION_H

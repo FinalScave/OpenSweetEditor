@@ -13,7 +13,7 @@
 #include "render_composer.h"
 #include "undo.h"
 #include "linked_editing.h"
-#include "ime.h"
+#include "ime_composition.h"
 
 namespace NS_SWEETEDITOR {
 
