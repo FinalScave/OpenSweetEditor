@@ -1327,6 +1327,9 @@ namespace SweetEditor {
 					!TryReadInt32(data, ref offset, out int compositionEnd)) {
 					return new ImeInputContext();
 				}
+				int kind = TryReadInt32(data, ref offset, out int parsedKind)
+					? parsedKind
+					: (int)ImeInputContextKind.NONE;
 				return new ImeInputContext {
 					Id = id,
 					Revision = revision,
@@ -1334,7 +1337,8 @@ namespace SweetEditor {
 					Text = text,
 					Selection = new ImeTextRange(selectionStart, selectionEnd),
 					HasComposition = hasComposition != 0,
-					Composition = new ImeTextRange(compositionStart, compositionEnd)
+					Composition = new ImeTextRange(compositionStart, compositionEnd),
+					Kind = (ImeInputContextKind)kind
 				};
 			} finally {
 				NativeMethods.FreeBinaryData(payloadPtr);

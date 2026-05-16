@@ -782,6 +782,11 @@ namespace NS_SWEETEDITOR {
     TextRange textRangeFromImeCompositionOffsets(const ImeActionResult& result,
                                                 size_t start_offset,
                                                 size_t end_offset) const;
+    ImeInputContext buildImeInputContext(size_t before_length,
+                                         size_t after_length,
+                                         ImeInputContextKind kind);
+    ImeInputContextKind resolveImeDocumentInputContextKind(size_t before_length,
+                                                           size_t after_length) const;
     void applyImeCursorOffset(ImeActionResult& result, const U8String& text, int cursor_offset);
     void rememberImeInputState(uint64_t context_id,
                                int32_t document_start_offset,
@@ -789,7 +794,8 @@ namespace NS_SWEETEDITOR {
                                int32_t selection_start_offset,
                                int32_t selection_end_offset,
                                int32_t composing_start_offset,
-                               int32_t composing_end_offset);
+                               int32_t composing_end_offset,
+                               ImeInputContextKind kind);
     void resetImeTextModelPendingState();
     void invalidateImeInputContext();
     bool isDocumentRangeReadable(const TextRange& range) const;

@@ -4,6 +4,7 @@ import com.qiplat.sweeteditor.core.foundation.*;
 import com.qiplat.sweeteditor.core.adornment.TextStyle;
 import com.qiplat.sweeteditor.core.ime.ImeActionResult;
 import com.qiplat.sweeteditor.core.ime.ImeInputContext;
+import com.qiplat.sweeteditor.core.ime.ImeInputContextKind;
 import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
 import com.qiplat.sweeteditor.core.ime.ImeTextRange;
 import com.qiplat.sweeteditor.core.visual.*;
@@ -111,6 +112,7 @@ final class ProtocolDecoder {
         context.selection = new ImeTextRange(data.getInt(), data.getInt());
         context.hasComposition = data.getInt() != 0;
         context.composition = new ImeTextRange(data.getInt(), data.getInt());
+        context.kind = data.remaining() >= 4 ? data.getInt() : ImeInputContextKind.NONE;
         return context;
     }
 

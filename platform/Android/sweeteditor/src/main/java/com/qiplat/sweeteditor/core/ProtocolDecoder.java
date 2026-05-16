@@ -129,6 +129,7 @@ final class ProtocolDecoder {
         EditorCore.ImeTextRange selection = new EditorCore.ImeTextRange(data.getInt(), data.getInt());
         boolean hasComposition = data.getInt() != 0;
         EditorCore.ImeTextRange composition = new EditorCore.ImeTextRange(data.getInt(), data.getInt());
+        int kind = data.remaining() >= 4 ? data.getInt() : EditorCore.ImeInputContextKind.NONE;
         return new EditorCore.ImeInputContext(
                 id,
                 revision,
@@ -136,7 +137,8 @@ final class ProtocolDecoder {
                 text,
                 selection,
                 hasComposition,
-                composition);
+                composition,
+                kind);
     }
 
     static EditorCore.GestureResult decodeGestureResult(@Nullable ByteBuffer data) {

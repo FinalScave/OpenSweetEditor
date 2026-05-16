@@ -637,26 +637,14 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       return TextEditingValue.empty;
     }
 
-    final usesDocumentWindow =
-        _platformBehavior.imeTextModelMode == core.ImeTextModelMode.documentWindow;
-    var exposesTextWindow = true;
-    core.ImeInputContext inputContext;
-    if (usesDocumentWindow) {
-      final snapshot = editorCore.getImeSyncSnapshot();
-      exposesTextWindow =
-          snapshot.contextPolicy != core.ImeContextPolicy.none ||
-          snapshot.platformTextWindowText.isNotEmpty;
-      inputContext = editorCore.getImeInputContext(
-        exposesTextWindow ? 1024 : 0,
-        exposesTextWindow ? 1024 : 0,
-      );
-    } else {
-      inputContext = editorCore.getImeTextModelInputContext(
-        _platformBehavior.imeTextModelMode,
-        1024,
-        1024,
-      );
-    }
+    final inputContext = editorCore.getImeTextModelInputContext(
+      _platformBehavior.imeTextModelMode,
+      1024,
+      1024,
+    );
+    final exposesTextWindow =
+        inputContext.kind == core.ImeInputContextKind.documentWindow ||
+        inputContext.kind == core.ImeInputContextKind.transientInput;
     _textInputContextId = inputContext.id;
     _textInputWindowStartOffset = inputContext.documentStartOffset;
 
@@ -702,11 +690,8 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   bool _dispatchImeAction(core.ImeActionResult result) {
     _interactionController.dispatchImeActionResult(result);
-    if (result.sync.clearPlatformPreedit &&
-        result.sync.contextPolicy == core.ImeContextPolicy.none) {
+    if (result.sync.clearPlatformPreedit) {
       _clearTextInputStateContext();
-    } else if (result.sync.contextPolicy != core.ImeContextPolicy.none) {
-      _textInputWindowStartOffset = result.sync.platformTextWindowStartOffset;
     }
     return result.sync.clearPlatformPreedit;
   }
@@ -744,13 +729,8 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       '[SweetEditor][IME] $event result handled=${result.handled} '
       'content=${result.contentChanged} cursor=${result.cursorChanged} '
       'selection=${result.selectionChanged} '
-      'clear=${sync.clearPlatformPreedit} policy=${sync.contextPolicy} '
-      'windowStart=${sync.platformTextWindowStartOffset} '
-      'windowText=${_formatImeTraceText(sync.platformTextWindowText)} '
-      'windowSelection=${sync.platformTextWindowSelectionStartOffset}'
-      '..${sync.platformTextWindowSelectionEndOffset} '
-      'windowComposing=${sync.platformTextWindowComposingStartOffset}'
-      '..${sync.platformTextWindowComposingEndOffset}',
+      'clear=${sync.clearPlatformPreedit} preedit=${sync.preeditStorage} '
+      'marked=${sync.hasPlatformMarkedRange}',
     );
   }
 

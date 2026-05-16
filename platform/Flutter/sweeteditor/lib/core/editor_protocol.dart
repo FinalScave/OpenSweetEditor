@@ -729,6 +729,9 @@ class ProtocolDecoder {
       selection: ImeTextRange(r.readInt32(), r.readInt32()),
       hasComposition: r.readInt32() != 0,
       composition: ImeTextRange(r.readInt32(), r.readInt32()),
+      kind: r.hasRemaining(4)
+          ? ImeInputContextKind.fromValue(r.readInt32())
+          : ImeInputContextKind.none,
     );
   }
 

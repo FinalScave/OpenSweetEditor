@@ -698,10 +698,7 @@ namespace NS_SWEETEDITOR {
     snapshot.has_selection = coreHasSelection();
     snapshot.selection = coreSelection();
     snapshot.has_composing_session = hasComposingSession() || m_session_.has_shadow_preedit;
-    snapshot.context_policy = ImeContextPolicy::LIMITED_FOR_CANDIDATES;
-    if (m_session_.plain_latin_input_lock) {
-      snapshot.context_policy = ImeContextPolicy::NONE;
-    }
+    snapshot.context_policy = inputContextPolicy();
 
     auto to_i32_offset = [](size_t value) -> int32_t {
       return value > static_cast<size_t>(std::numeric_limits<int32_t>::max())
@@ -769,6 +766,20 @@ namespace NS_SWEETEDITOR {
     snapshot.clear_platform_preedit = true;
     fill_platform_text_window();
     return snapshot;
+  }
+
+  ImeContextPolicy CompositionController::inputContextPolicy() const {
+    return m_session_.plain_latin_input_lock
+           ? ImeContextPolicy::NONE
+           : ImeContextPolicy::LIMITED_FOR_CANDIDATES;
+  }
+
+  bool CompositionController::currentPlatformMarkedRange(TextRange& range) const {
+    if (!hasVisibleComposition()) {
+      return false;
+    }
+    range = currentComposingRange();
+    return range.start != range.end;
   }
 
   bool CompositionController::hasMidDocumentRangeComposition() const {

@@ -2101,6 +2101,16 @@ public class EditorCore {
         }
     }
 
+    public static final class ImeInputContextKind {
+        public static final int NONE = 0;
+        public static final int SELECTION_ONLY = 1;
+        public static final int DOCUMENT_WINDOW = 2;
+        public static final int TRANSIENT_INPUT = 3;
+
+        private ImeInputContextKind() {
+        }
+    }
+
     public static class ImeSyncSnapshot {
         @NonNull
         public final TextPosition cursor;
@@ -2166,9 +2176,11 @@ public class EditorCore {
         public final boolean hasComposition;
         @NonNull
         public final ImeTextRange composition;
+        public final int kind;
 
         public ImeInputContext() {
-            this(0, 0, 0, "", new ImeTextRange(), false, new ImeTextRange(-1, -1));
+            this(0, 0, 0, "", new ImeTextRange(), false,
+                    new ImeTextRange(-1, -1), ImeInputContextKind.NONE);
         }
 
         public ImeInputContext(long id,
@@ -2177,7 +2189,8 @@ public class EditorCore {
                                @NonNull String text,
                                @NonNull ImeTextRange selection,
                                boolean hasComposition,
-                               @NonNull ImeTextRange composition) {
+                               @NonNull ImeTextRange composition,
+                               int kind) {
             this.id = id;
             this.revision = revision;
             this.documentStartOffset = documentStartOffset;
@@ -2185,6 +2198,7 @@ public class EditorCore {
             this.selection = selection;
             this.hasComposition = hasComposition;
             this.composition = composition;
+            this.kind = kind;
         }
     }
 

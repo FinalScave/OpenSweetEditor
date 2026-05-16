@@ -49,6 +49,8 @@ namespace NS_SWEETEDITOR {
     bool hasComposingSession() const;
     bool hasVisibleComposition() const;
     TextRange currentComposingRange() const;
+    bool currentPlatformMarkedRange(TextRange& range) const;
+    ImeContextPolicy inputContextPolicy() const;
     const CompositionState& composition() const;
 
     void setKeyboardScriptClass(ImeScriptClass script_class);

@@ -7,6 +7,8 @@
 
 namespace NS_SWEETEDITOR {
 
+  constexpr size_t LIMITED_IME_DOCUMENT_CONTEXT_LENGTH = 2048;
+
   struct ImeInputStateRange {
     bool active {false};
     size_t start {0};
@@ -372,6 +374,7 @@ namespace NS_SWEETEDITOR {
     } else {
       previous_context.id = context_id;
       previous_context.document_start_offset = document_start_offset;
+      previous_context.kind = ImeInputContextKind::DOCUMENT_WINDOW;
       const size_t text_length = calcUtf16Columns(text);
       const size_t base = static_cast<size_t>(std::max<int32_t>(0, document_start_offset));
       previous_context.text = m_document_->getU8Text(textRangeFromUtf16Offsets(base, base + text_length));
@@ -521,7 +524,8 @@ namespace NS_SWEETEDITOR {
                           selection_start_offset,
                           selection_end_offset,
                           composing_start_offset,
-                          composing_end_offset);
+                          composing_end_offset,
+                          previous_context.kind);
     return result;
   }
 
@@ -576,7 +580,8 @@ namespace NS_SWEETEDITOR {
                             selection_start_offset,
                             selection_end_offset,
                             composing_start_offset,
-                            composing_end_offset);
+                            composing_end_offset,
+                            ImeInputContextKind::TRANSIENT_INPUT);
       result.handled = true;
       result.sync = getImeSyncSnapshot();
       result.sync.clear_platform_preedit = false;
@@ -741,7 +746,8 @@ namespace NS_SWEETEDITOR {
                             selection_start_offset,
                             selection_end_offset,
                             m_ime_input_context_.has_composition ? m_ime_input_context_.composition.start : -1,
-                            m_ime_input_context_.has_composition ? m_ime_input_context_.composition.end : -1);
+                            m_ime_input_context_.has_composition ? m_ime_input_context_.composition.end : -1,
+                            m_ime_input_context_.kind);
     }
     return result;
   }
@@ -819,8 +825,11 @@ namespace NS_SWEETEDITOR {
     return m_composition_controller_.notifyCursorChanged(cursor);
   }
 
-  ImeInputContext EditorCore::getImeInputContext(size_t before_length, size_t after_length) {
+  ImeInputContext EditorCore::buildImeInputContext(size_t before_length,
+                                                   size_t after_length,
+                                                   ImeInputContextKind kind) {
     ImeInputContext context;
+    context.kind = kind;
     if (m_document_ == nullptr) {
       m_ime_input_context_ = context;
       return context;
@@ -849,10 +858,10 @@ namespace NS_SWEETEDITOR {
       static_cast<int32_t>(selection_end - context_start)
     };
 
-    ImeSyncSnapshot snapshot = getImeSyncSnapshot();
-    if (snapshot.has_platform_marked_range) {
-      size_t composing_start = m_document_->getCharIndexFromPosition(snapshot.platform_marked_range.start);
-      size_t composing_end = m_document_->getCharIndexFromPosition(snapshot.platform_marked_range.end);
+    TextRange platform_marked_range;
+    if (m_composition_controller_.currentPlatformMarkedRange(platform_marked_range)) {
+      size_t composing_start = m_document_->getCharIndexFromPosition(platform_marked_range.start);
+      size_t composing_end = m_document_->getCharIndexFromPosition(platform_marked_range.end);
       if (composing_start > composing_end) {
         std::swap(composing_start, composing_end);
       }
@@ -869,22 +878,44 @@ namespace NS_SWEETEDITOR {
     return context;
   }
 
+  ImeInputContextKind EditorCore::resolveImeDocumentInputContextKind(size_t before_length,
+                                                                     size_t after_length) const {
+    if (before_length != 0 || after_length != 0) {
+      return ImeInputContextKind::DOCUMENT_WINDOW;
+    }
+    return hasSelection()
+           ? ImeInputContextKind::SELECTION_ONLY
+           : ImeInputContextKind::NONE;
+  }
+
+  ImeInputContext EditorCore::getImeInputContext(size_t before_length, size_t after_length) {
+    const ImeContextPolicy policy = m_composition_controller_.inputContextPolicy();
+    if (policy == ImeContextPolicy::NONE) {
+      return buildImeInputContext(0, 0, resolveImeDocumentInputContextKind(0, 0));
+    }
+
+    const size_t context_before = std::min(before_length, LIMITED_IME_DOCUMENT_CONTEXT_LENGTH);
+    const size_t context_after = std::min(after_length, LIMITED_IME_DOCUMENT_CONTEXT_LENGTH);
+    return buildImeInputContext(
+        context_before,
+        context_after,
+        resolveImeDocumentInputContextKind(context_before, context_after));
+  }
+
   ImeInputContext EditorCore::getImeTextModelInputContext(ImeTextModelMode mode,
                                                           size_t before_length,
                                                           size_t after_length) {
     if (mode == ImeTextModelMode::TRANSIENT_INPUT) {
       if (m_ime_input_context_.id != 0
           && (!m_ime_input_context_.text.empty() || m_ime_input_context_.has_composition)) {
-        return m_ime_input_context_;
+        ImeInputContext context = m_ime_input_context_;
+        context.kind = ImeInputContextKind::TRANSIENT_INPUT;
+        return context;
       }
-      return getImeInputContext(0, 0);
+      return buildImeInputContext(0, 0, ImeInputContextKind::TRANSIENT_INPUT);
     }
 
-    const ImeSyncSnapshot snapshot = getImeSyncSnapshot();
-    const bool exposes_text_window = snapshot.context_policy != ImeContextPolicy::NONE
-        || !snapshot.platform_text_window_text.empty();
-    return getImeInputContext(exposes_text_window ? before_length : 0,
-                              exposes_text_window ? after_length : 0);
+    return getImeInputContext(before_length, after_length);
   }
 
   bool EditorCore::isDocumentRangeReadable(const TextRange& range) const {
@@ -1031,7 +1062,8 @@ namespace NS_SWEETEDITOR {
                                          int32_t selection_start_offset,
                                          int32_t selection_end_offset,
                                          int32_t composing_start_offset,
-                                         int32_t composing_end_offset) {
+                                         int32_t composing_end_offset,
+                                         ImeInputContextKind kind) {
     const size_t text_length = calcUtf16Columns(text);
     const ImeInputStateRange selection = normalizeImeSelectionRange(
         selection_start_offset,
@@ -1046,6 +1078,7 @@ namespace NS_SWEETEDITOR {
     m_ime_input_context_.revision = ++m_ime_input_context_revision_;
     m_ime_input_context_.document_start_offset = std::max<int32_t>(0, document_start_offset);
     m_ime_input_context_.text = text;
+    m_ime_input_context_.kind = kind;
     m_ime_input_context_.selection = {
       static_cast<int32_t>(selection.start),
       static_cast<int32_t>(selection.end)

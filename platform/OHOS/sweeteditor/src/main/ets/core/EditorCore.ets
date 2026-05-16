@@ -137,6 +137,13 @@ export enum ImeContextPolicy {
   LIMITED_FOR_CANDIDATES = 1
 }
 
+export enum ImeInputContextKind {
+  NONE = 0,
+  SELECTION_ONLY = 1,
+  DOCUMENT_WINDOW = 2,
+  TRANSIENT_INPUT = 3
+}
+
 export interface ImeSyncSnapshot {
   cursor: TextPosition;
   selection: TextRange | null;
@@ -165,6 +172,7 @@ export interface ImeInputContext {
   selection: ImeTextRange;
   hasComposition: boolean;
   composition: ImeTextRange;
+  kind: ImeInputContextKind;
 }
 
 export interface ImeActionResult {

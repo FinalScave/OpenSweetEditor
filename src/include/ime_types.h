@@ -16,6 +16,13 @@ namespace NS_SWEETEDITOR {
     TRANSIENT_INPUT = 1,
   };
 
+  enum struct ImeInputContextKind {
+    NONE = 0,
+    SELECTION_ONLY = 1,
+    DOCUMENT_WINDOW = 2,
+    TRANSIENT_INPUT = 3,
+  };
+
   struct ImeTextRange {
     int32_t start {0};
     int32_t end {0};
@@ -29,6 +36,7 @@ namespace NS_SWEETEDITOR {
     ImeTextRange selection;
     bool has_composition {false};
     ImeTextRange composition {-1, -1};
+    ImeInputContextKind kind {ImeInputContextKind::NONE};
   };
 
   enum struct ImeScriptClass {

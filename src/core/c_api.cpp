@@ -365,7 +365,7 @@ static const uint8_t* imeSyncSnapshotToBinary(const ImeSyncSnapshot& snapshot, s
 
 static const uint8_t* imeInputContextToBinary(const ImeInputContext& context, size_t* out_size) {
   std::vector<uint8_t> buffer;
-  buffer.reserve(sizeof(int32_t) * 8 + sizeof(int64_t) + context.text.size());
+  buffer.reserve(sizeof(int32_t) * 9 + sizeof(int64_t) + context.text.size());
   appendI64(buffer, static_cast<int64_t>(context.id));
   appendI32(buffer, context.revision);
   appendI32(buffer, context.document_start_offset);
@@ -375,6 +375,7 @@ static const uint8_t* imeInputContextToBinary(const ImeInputContext& context, si
   appendBool(buffer, context.has_composition);
   appendI32(buffer, context.composition.start);
   appendI32(buffer, context.composition.end);
+  appendI32(buffer, static_cast<int32_t>(context.kind));
   return allocBinaryPayload(buffer.data(), buffer.size(), out_size);
 }
 

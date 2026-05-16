@@ -8,8 +8,8 @@ import {
   GestureType,
   HitTargetType,
   ImeActionResult,
-  ImeContextPolicy,
   ImeInputContext,
+  ImeInputContextKind,
   ImeScriptClass,
   ImeSyncSnapshot,
   ImeTextUnit,
@@ -111,7 +111,6 @@ const CURSOR_BLINK_INTERVAL_MS = 500;
 const ANIMATION_FRAME_INTERVAL_MS = 16;
 const TRANSIENT_SCROLLBAR_REFRESH_MIN_MS = 16;
 const MAX_IME_TEXT_LENGTH = 32768;
-const LIMITED_IME_CONTEXT_LENGTH = 2048;
 const EDITOR_FOCUS_ID = 'sweeteditor-canvas';
 const SELECTION_MENU_ITEM_HEIGHT = 26;
 const SELECTION_MENU_ITEM_MIN_WIDTH = 40;
@@ -2741,12 +2740,11 @@ export struct SweetEditor {
     if (!this.editorCore) {
       return '';
     }
-    const snapshot = this.editorCore.getImeSyncSnapshot();
-    if (!this.shouldExposeImeDocumentContext(snapshot.contextPolicy)) {
+    const beforeLength = Math.max(0, Math.min(length, MAX_IME_TEXT_LENGTH));
+    const context: ImeInputContext = this.editorCore.getImeInputContext(beforeLength, 0);
+    if (context.kind !== ImeInputContextKind.DOCUMENT_WINDOW) {
       return '';
     }
-    const beforeLength = this.limitImeContextLength(length, snapshot.contextPolicy);
-    const context: ImeInputContext = this.editorCore.getImeInputContext(beforeLength, 0);
     const end = Math.max(0, Math.min(context.selection.start, context.text.length));
     return context.text.substring(0, end);
   }
@@ -2755,12 +2753,11 @@ export struct SweetEditor {
     if (!this.editorCore) {
       return '';
     }
-    const snapshot = this.editorCore.getImeSyncSnapshot();
-    if (!this.shouldExposeImeDocumentContext(snapshot.contextPolicy)) {
+    const afterLength = Math.max(0, Math.min(length, MAX_IME_TEXT_LENGTH));
+    const context: ImeInputContext = this.editorCore.getImeInputContext(0, afterLength);
+    if (context.kind !== ImeInputContextKind.DOCUMENT_WINDOW) {
       return '';
     }
-    const afterLength = this.limitImeContextLength(length, snapshot.contextPolicy);
-    const context: ImeInputContext = this.editorCore.getImeInputContext(0, afterLength);
     const start = Math.max(0, Math.min(context.selection.end, context.text.length));
     return context.text.substring(start);
   }
@@ -2771,18 +2768,6 @@ export struct SweetEditor {
     }
     const context = this.editorCore.getImeInputContext(0, 0);
     return context.documentStartOffset + context.selection.start;
-  }
-
-  private shouldExposeImeDocumentContext(contextPolicy: ImeContextPolicy): boolean {
-    return contextPolicy !== ImeContextPolicy.NONE;
-  }
-
-  private limitImeContextLength(requestedLength: number, contextPolicy: ImeContextPolicy): number {
-    const length = Math.max(0, Math.min(requestedLength, MAX_IME_TEXT_LENGTH));
-    if (contextPolicy === ImeContextPolicy.LIMITED_FOR_CANDIDATES) {
-      return Math.min(length, LIMITED_IME_CONTEXT_LENGTH);
-    }
-    return length;
   }
 
   private deleteLeftByLength(length: number): void {

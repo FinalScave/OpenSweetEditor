@@ -1166,6 +1166,13 @@ namespace SweetEditor {
 		LIMITED_FOR_CANDIDATES = 1
 	}
 
+	public enum ImeInputContextKind {
+		NONE = 0,
+		SELECTION_ONLY = 1,
+		DOCUMENT_WINDOW = 2,
+		TRANSIENT_INPUT = 3
+	}
+
 	/// <summary>
 	/// Snapshot used by platform layers to synchronize IME selection and marked ranges.
 	/// </summary>
@@ -1204,6 +1211,7 @@ namespace SweetEditor {
 		public ImeTextRange Selection { get; set; } = new(0, 0);
 		public bool HasComposition { get; set; }
 		public ImeTextRange Composition { get; set; } = new(-1, -1);
+		public ImeInputContextKind Kind { get; set; } = ImeInputContextKind.NONE;
 	}
 
 	/// <summary>

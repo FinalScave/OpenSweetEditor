@@ -8,4 +8,5 @@ public class ImeInputContext {
     public ImeTextRange selection = new ImeTextRange();
     public boolean hasComposition;
     public ImeTextRange composition = new ImeTextRange(-1, -1);
+    public int kind = ImeInputContextKind.NONE;
 }

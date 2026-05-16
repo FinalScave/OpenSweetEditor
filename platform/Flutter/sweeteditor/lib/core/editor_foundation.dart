@@ -106,6 +106,20 @@ enum ImeTextModelMode {
   final int value;
 }
 
+/// Shape of an IME input context returned by the core.
+enum ImeInputContextKind {
+  none(0),
+  selectionOnly(1),
+  documentWindow(2),
+  transientInput(3);
+
+  const ImeInputContextKind(this.value);
+  final int value;
+
+  static ImeInputContextKind fromValue(int value) => ImeInputContextKind.values
+      .firstWhere((e) => e.value == value, orElse: () => none);
+}
+
 class ImeTextRange {
   const ImeTextRange(this.start, this.end);
 
@@ -214,6 +228,7 @@ class ImeInputContext {
     this.selection = ImeTextRange.empty,
     this.hasComposition = false,
     this.composition = ImeTextRange.none,
+    this.kind = ImeInputContextKind.none,
   });
 
   static const empty = ImeInputContext();
@@ -225,6 +240,7 @@ class ImeInputContext {
   final ImeTextRange selection;
   final bool hasComposition;
   final ImeTextRange composition;
+  final ImeInputContextKind kind;
 }
 
 /// Result of a semantic IME action handled by the native editor core.

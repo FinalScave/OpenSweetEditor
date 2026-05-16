@@ -17,7 +17,6 @@ import com.qiplat.sweeteditor.core.foundation.IntRange;
 
 public class SweetEditorInputConnection extends BaseInputConnection {
     private static final int MAX_IME_TEXT_LENGTH = 32768;
-    private static final int LIMITED_IME_CONTEXT_LENGTH = 2048;
 
     private final SweetEditor mEditor;
     private final SpannableStringBuilder mEditable = new SpannableStringBuilder();
@@ -29,7 +28,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         super(editor, fullEditor);
         mEditor = editor;
         Selection.setSelection(mEditable, 0);
-        syncEditableFromCore(mEditor.getEditorCore().getImeSyncSnapshot());
+        syncEditableFromCore();
     }
 
     @Override
@@ -45,8 +44,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     }
 
     void configureEditorInfo(EditorInfo outAttrs) {
-        EditorCore.ImeSyncSnapshot snapshot = mEditor.getEditorCore().getImeSyncSnapshot();
-        syncEditableFromCore(snapshot);
+        EditorCore.ImeInputContext context = syncEditableFromCore();
         outAttrs.inputType = EditorInfo.TYPE_CLASS_TEXT
                 | EditorInfo.TYPE_TEXT_FLAG_MULTI_LINE
                 | EditorInfo.TYPE_TEXT_FLAG_AUTO_CORRECT;
@@ -55,7 +53,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         outAttrs.initialSelStart = selectionOffsets.start;
         outAttrs.initialSelEnd = selectionOffsets.end;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-                && shouldExposeDocumentContext(snapshot.contextPolicy)
+                && context.kind == EditorCore.ImeInputContextKind.DOCUMENT_WINDOW
                 && mEditable.length() > 0) {
             outAttrs.setInitialSurroundingSubText(mEditable, mInputDocumentStartOffset);
         }
@@ -208,7 +206,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         if (imm == null) {
             return;
         }
-        syncEditableFromCore(mEditor.getEditorCore().getImeSyncSnapshot());
+        syncEditableFromCore();
         IntRange selectionOffsets = getImeSelectionOffsets();
         IntRange composingOffsets = getImeComposingOffsets();
         imm.updateSelection(mEditor, selectionOffsets.start, selectionOffsets.end,
@@ -260,25 +258,22 @@ public class SweetEditorInputConnection extends BaseInputConnection {
 
     private void finishImeAction(EditorCore.ImeActionResult result, String perfName, long startTimeNanos) {
         mEditor.dispatchImeTextChanged(result.editResult);
-        syncEditableFromCore(result.sync);
+        syncEditableFromCore();
         mEditor.flush();
         updateImeSelectionState();
         mEditor.logInputPerf(startTimeNanos, perfName);
     }
 
-    private void syncEditableFromCore(EditorCore.ImeSyncSnapshot snapshot) {
-        int before = shouldExposeDocumentContext(snapshot.contextPolicy)
-                ? limitContextLength(MAX_IME_TEXT_LENGTH / 2, snapshot.contextPolicy)
-                : 0;
-        int after = shouldExposeDocumentContext(snapshot.contextPolicy)
-                ? limitContextLength(MAX_IME_TEXT_LENGTH / 2, snapshot.contextPolicy)
-                : 0;
-        EditorCore.ImeInputContext context = mEditor.getEditorCore().getImeInputContext(before, after);
+    private EditorCore.ImeInputContext syncEditableFromCore() {
+        EditorCore.ImeInputContext context = mEditor.getEditorCore().getImeInputContext(
+                MAX_IME_TEXT_LENGTH / 2,
+                MAX_IME_TEXT_LENGTH / 2);
         if (context.id == 0) {
             clearEditableState();
-            return;
+            return context;
         }
         syncEditableFromContext(context);
+        return context;
     }
 
     private void syncEditableFromContext(EditorCore.ImeInputContext context) {
@@ -309,18 +304,6 @@ public class SweetEditorInputConnection extends BaseInputConnection {
 
     private boolean isActive() {
         return !mClosed;
-    }
-
-    private boolean shouldExposeDocumentContext(int contextPolicy) {
-        return contextPolicy != EditorCore.ImeContextPolicy.NONE;
-    }
-
-    private int limitContextLength(int requestedLength, int contextPolicy) {
-        int length = Math.max(0, Math.min(requestedLength, MAX_IME_TEXT_LENGTH));
-        if (contextPolicy == EditorCore.ImeContextPolicy.LIMITED_FOR_CANDIDATES) {
-            return Math.min(length, LIMITED_IME_CONTEXT_LENGTH);
-        }
-        return length;
     }
 
     private int clampEditableOffset(int offset, int textLength) {

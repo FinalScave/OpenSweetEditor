@@ -7,6 +7,7 @@ import {
   ImeActionResult,
   ImeContextPolicy,
   ImeInputContext,
+  ImeInputContextKind,
   ImePreeditStorage,
   ImeSyncSnapshot,
   KeyEventResult,
@@ -737,7 +738,8 @@ export class ProtocolDecoder {
       composition: {
         start: reader.readInt32(),
         end: reader.readInt32()
-      }
+      },
+      kind: reader.hasRemaining(4) ? reader.readInt32() as ImeInputContextKind : ImeInputContextKind.NONE
     };
   }
 
@@ -1165,7 +1167,8 @@ export class ProtocolDecoder {
       text: '',
       selection: { start: 0, end: 0 },
       hasComposition: false,
-      composition: { start: -1, end: -1 }
+      composition: { start: -1, end: -1 },
+      kind: ImeInputContextKind.NONE
     };
   }
 
