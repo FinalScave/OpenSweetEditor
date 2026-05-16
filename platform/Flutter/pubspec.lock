@@ -444,10 +444,10 @@ packages:
     dependency: transitive
     description:
       name: sweetline
-      sha256: ed79fb552698898b67a230c79635e759d36e635fb68e0b51a06bbe5f9d1ec95d
+      sha256: ad2da3e4e2442fd57240adc0113bfb47d7e9bd49866ae55a99b162a288a53d5b
       url: "https://pub.dev"
     source: hosted
-    version: "1.0.2"
+    version: "1.2.4"
   term_glyph:
     dependency: transitive
     description:

@@ -21,12 +21,13 @@ import com.qiplat.sweeteditor.decoration.DecorationReceiver;
 import com.qiplat.sweeteditor.decoration.DecorationResult;
 import com.qiplat.sweeteditor.decoration.DecorationType;
 import com.qiplat.sweetline.DocumentAnalyzer;
-import com.qiplat.sweetline.DocumentHighlight;
+import com.qiplat.sweetline.DocumentHighlightSlice;
 import com.qiplat.sweetline.HighlightConfig;
 import com.qiplat.sweetline.HighlightEngine;
 import com.qiplat.sweetline.IndentGuideLine;
 import com.qiplat.sweetline.IndentGuideResult;
 import com.qiplat.sweetline.LineHighlight;
+import com.qiplat.sweetline.LineRange;
 import com.qiplat.sweetline.SyntaxCompileError;
 import com.qiplat.sweetline.TokenSpan;
 
@@ -64,7 +65,7 @@ public class DemoDecorationProvider implements DecorationProvider {
     private final Object stateLock = new Object();
 
     private DocumentAnalyzer documentAnalyzer;
-    private DocumentHighlight cacheHighlight;
+    private DocumentHighlightSlice cacheHighlight;
     private String sourceFileName = DEFAULT_ANALYSIS_FILE_NAME;
     private String sourceText = "";
     private String analyzedFileName = DEFAULT_ANALYSIS_FILE_NAME;
@@ -136,7 +137,7 @@ public class DemoDecorationProvider implements DecorationProvider {
         TokenRangeInfo firstKeywordRange = null;
 
         DocumentAnalyzer analyzerSnapshot;
-        DocumentHighlight highlightSnapshot;
+        DocumentHighlightSlice highlightSnapshot;
         String textSnapshot;
         synchronized (stateLock) {
             if (highlightEngine == null) {
@@ -147,26 +148,39 @@ public class DemoDecorationProvider implements DecorationProvider {
             }
 
             String currentFileName = resolveCurrentFileName(context);
+            LineRange visibleRange = new LineRange(
+                    Math.max(0, context.visibleLineRange.start()),
+                    Math.max(0, context.visibleLineRange.end() - Math.max(0, context.visibleLineRange.start()) + 1)
+            );
             if (!currentFileName.equals(sourceFileName)) {
                 sourceFileName = currentFileName;
             }
 
             if (cacheHighlight == null || documentAnalyzer == null || !currentFileName.equals(analyzedFileName)) {
+                documentAnalyzer = null;
+                cacheHighlight = null;
                 try (com.qiplat.sweetline.Document sweetDoc =
                              new com.qiplat.sweetline.Document(buildAnalysisUri(currentFileName), sourceText)) {
                     documentAnalyzer = highlightEngine.loadDocument(sweetDoc);
-                    cacheHighlight = documentAnalyzer != null ? documentAnalyzer.analyze() : null;
                     analyzedFileName = currentFileName;
                 }
-            } else if (context.textChanges != null && !context.textChanges.isEmpty()) {
+            }
+
+            if (documentAnalyzer != null && context.textChanges != null && !context.textChanges.isEmpty()) {
                 for (TextChange change : context.textChanges) {
-                    if (change == null || change.range == null || documentAnalyzer == null) {
+                    if (change == null || change.range == null) {
                         continue;
                     }
                     String newText = change.newText != null ? change.newText : "";
-                    cacheHighlight = documentAnalyzer.analyzeIncremental(convertAsSLTextRange(change.range), newText);
+                    cacheHighlight = documentAnalyzer.analyzeIncrementalInLineRange(
+                            convertAsSLTextRange(change.range),
+                            newText,
+                            visibleRange
+                    );
                     sourceText = applyTextChange(sourceText, change.range, newText);
                 }
+            } else if (documentAnalyzer != null) {
+                cacheHighlight = documentAnalyzer.analyzeLineRange(visibleRange);
             }
 
             analyzerSnapshot = documentAnalyzer;
@@ -188,10 +202,7 @@ public class DemoDecorationProvider implements DecorationProvider {
         }
 
         List<String> textLines = splitLines(textSnapshot);
-        int renderStartLine = Math.max(0, context.visibleLineRange.start());
-        int maxLine = Math.min(context.visibleLineRange.end(), highlightSnapshot.lines().size() - 1);
-        for (int i = renderStartLine; i <= maxLine; i++) {
-            LineHighlight lineHighlight = highlightSnapshot.lines().get(i);
+        for (LineHighlight lineHighlight : highlightSnapshot.lines()) {
             if (lineHighlight == null || lineHighlight.spans() == null) {
                 continue;
             }

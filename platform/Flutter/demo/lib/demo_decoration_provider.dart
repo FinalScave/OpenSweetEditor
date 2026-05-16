@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/services.dart';
 import 'package:sweeteditor/editor_core.dart' as core;
 import 'package:sweeteditor/sweeteditor.dart';
@@ -29,7 +31,7 @@ class DemoDecorationProvider implements DecorationProvider {
   final SweetEditorController _controller;
   sweetline.Document? _document;
   sweetline.DocumentAnalyzer? _documentAnalyzer;
-  sweetline.DocumentHighlight? _cacheHighlight;
+  sweetline.DocumentHighlightSlice? _cacheHighlight;
   String _analyzedFileName = _defaultAnalysisFileName;
 
   static Future<void> ensureSweetLineReady() {
@@ -127,35 +129,41 @@ class DemoDecorationProvider implements DecorationProvider {
 
     final currentFileName = _resolveCurrentFileName(context);
     final fileChanged = currentFileName != _analyzedFileName;
+    final visibleRange = sweetline.LineRange(
+      math.max(0, context.visibleLineRange.start).toInt(),
+      math
+          .max(
+            0,
+            context.visibleLineRange.end -
+                math.max(0, context.visibleLineRange.start).toInt() +
+                1,
+          )
+          .toInt(),
+    );
     if (_cacheHighlight == null || _documentAnalyzer == null || fileChanged) {
       _documentAnalyzer?.dispose();
       _document?.dispose();
       _document = sweetline.Document('file:///$currentFileName', content);
+      _cacheHighlight = null;
       _documentAnalyzer = highlightEngine.loadDocument(_document!);
-      _cacheHighlight = _documentAnalyzer?.analyze();
       _analyzedFileName = currentFileName;
-    } else if (context.textChanges.isNotEmpty) {
+    }
+    if (context.textChanges.isNotEmpty) {
       for (final change in context.textChanges) {
-        _cacheHighlight = _documentAnalyzer?.analyzeIncremental(
+        _cacheHighlight = _documentAnalyzer?.analyzeIncrementalInLineRange(
           _convertRange(change.range),
           change.newText,
+          visibleRange,
         );
       }
+    } else {
+      _cacheHighlight = _documentAnalyzer?.analyzeLineRange(visibleRange);
     }
 
     final cacheHighlight = _cacheHighlight;
     if (cacheHighlight != null && cacheHighlight.lines.isNotEmpty) {
-      final startLine = context.visibleLineRange.start.clamp(
-        0,
-        cacheHighlight.lines.length - 1,
-      );
-      final endLine = context.visibleLineRange.end.clamp(
-        0,
-        cacheHighlight.lines.length - 1,
-      );
       _TokenRangeInfo? firstKeywordRange;
-      for (var line = startLine; line <= endLine; line++) {
-        final lineHighlight = cacheHighlight.lines[line];
+      for (final lineHighlight in cacheHighlight.lines) {
         for (final token in lineHighlight.spans) {
           _appendStyleSpan(syntaxSpans, token);
           _appendColorInlayHint(inlayHints, seenColorHints, token);
@@ -323,11 +331,7 @@ class DemoDecorationProvider implements DecorationProvider {
     diagnostics
         .putIfAbsent(line, () => [])
         .add(
-          core.Diagnostic(
-            column: column,
-            length: length,
-            severity: severity,
-          ),
+          core.Diagnostic(column: column, length: length, severity: severity),
         );
     diagnosticCount[0]++;
   }
@@ -551,8 +555,16 @@ class DemoDecorationProvider implements DecorationProvider {
     final literal = _getTokenLiteral(range);
     if (literal == 'class' || literal == 'struct') {
       codeLensItems[range.line] = [
-        core.CodeLensItem(column: range.startColumn, text: '▶ Run', commandId: codeLensRun),
-        core.CodeLensItem(column: range.startColumn, text: '◎ Debug', commandId: codeLensDebug),
+        core.CodeLensItem(
+          column: range.startColumn,
+          text: '▶ Run',
+          commandId: codeLensRun,
+        ),
+        core.CodeLensItem(
+          column: range.startColumn,
+          text: '◎ Debug',
+          commandId: codeLensDebug,
+        ),
       ];
     }
   }

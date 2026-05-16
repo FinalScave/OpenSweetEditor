@@ -5,6 +5,7 @@ using SweetEditor;
 using SweetLine;
 using EditorTextPosition = SweetEditor.TextPosition;
 using EditorTextRange = SweetEditor.TextRange;
+using SweetLineLineRange = SweetLine.LineRange;
 using SweetLineTextPosition = SweetLine.TextPosition;
 using SweetLineTextRange = SweetLine.TextRange;
 
@@ -323,7 +324,7 @@ namespace Demo {
 			private readonly SemaphoreSlim analysisSemaphore = new(1, 1);
 			private readonly object stateLock = new();
 			private DocumentAnalyzer? documentAnalyzer;
-			private DocumentHighlight? cacheHighlight;
+			private DocumentHighlightSlice? cacheHighlight;
 			private string sourceFileName = DefaultAnalysisFileName;
 			private string sourceText = string.Empty;
 			private string analyzedFileName = DefaultAnalysisFileName;
@@ -431,7 +432,7 @@ namespace Demo {
 				TokenRangeInfo? firstKeywordRange = null;
 
 				DocumentAnalyzer? analyzerSnapshot;
-				DocumentHighlight? highlightSnapshot;
+				DocumentHighlightSlice? highlightSnapshot;
 				string textSnapshot;
 
 				lock (stateLock) {
@@ -446,19 +447,30 @@ namespace Demo {
 					if (!string.Equals(currentFileName, sourceFileName, StringComparison.Ordinal)) {
 						sourceFileName = currentFileName;
 					}
+					var visibleRange = new SweetLineLineRange(
+						StartLine: Math.Max(0, context.VisibleLineRange.Start),
+						LineCount: Math.Max(0, context.VisibleLineRange.End - Math.Max(0, context.VisibleLineRange.Start) + 1));
 
 					if (cacheHighlight == null || documentAnalyzer == null || !string.Equals(currentFileName, analyzedFileName, StringComparison.Ordinal)) {
+						documentAnalyzer = null;
+						cacheHighlight = null;
 						using var sweetDoc = new SweetLine.Document(BuildAnalysisUri(currentFileName), sourceText);
 						documentAnalyzer = highlightEngine.LoadDocument(sweetDoc);
-						cacheHighlight = documentAnalyzer?.Analyze();
 						analyzedFileName = currentFileName;
-						} else if (context.TextChanges.Count > 0 && documentAnalyzer != null) {
-							foreach (TextChange change in context.TextChanges) {
-								string newText = change.NewText;
-								cacheHighlight = documentAnalyzer.AnalyzeIncremental(ConvertAsSLTextRange(change.Range), newText);
-								sourceText = ApplyTextChange(sourceText, change.Range, newText);
-							}
+					}
+
+					if (context.TextChanges.Count > 0 && documentAnalyzer != null) {
+						foreach (TextChange change in context.TextChanges) {
+							string newText = change.NewText;
+							cacheHighlight = documentAnalyzer.AnalyzeIncrementalInLineRange(
+								ConvertAsSLTextRange(change.Range),
+								newText,
+								visibleRange);
+							sourceText = ApplyTextChange(sourceText, change.Range, newText);
 						}
+					} else if (documentAnalyzer != null) {
+						cacheHighlight = documentAnalyzer.AnalyzeLineRange(visibleRange);
+					}
 
 					analyzerSnapshot = documentAnalyzer;
 					highlightSnapshot = cacheHighlight;
@@ -485,10 +497,7 @@ namespace Demo {
 				}
 
 				List<string> textLines = SplitLines(textSnapshot);
-				int renderStartLine = Math.Max(0, context.VisibleLineRange.Start);
-				int maxLine = Math.Min(context.VisibleLineRange.End, highlightSnapshot.Lines.Count - 1);
-				for (int i = renderStartLine; i <= maxLine; i++) {
-					LineHighlight lineHighlight = highlightSnapshot.Lines[i];
+				foreach (LineHighlight lineHighlight in highlightSnapshot.Lines) {
 					if (lineHighlight?.Spans == null) {
 						continue;
 					}

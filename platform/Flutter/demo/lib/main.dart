@@ -39,10 +39,9 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
   static const int _styleColor = EditorTheme.styleUserBase + 1;
   static const List<MapEntry<String, String>> _sampleAssets = [
     MapEntry('example.java', 'assets/demo_shared/files/example.java'),
-    MapEntry('View.java', 'assets/demo_shared/files/View.java'),
     MapEntry('example.kt', 'assets/demo_shared/files/example.kt'),
     MapEntry('example.lua', 'assets/demo_shared/files/example.lua'),
-    MapEntry('nlohmann-json.hpp', 'assets/demo_shared/files/nlohmann-json.hpp'),
+    MapEntry('gc.cpp', 'assets/demo_shared/files/gc.cpp'),
   ];
 
   late final SweetEditorController _controller;

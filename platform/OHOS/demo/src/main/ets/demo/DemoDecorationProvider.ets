@@ -55,7 +55,7 @@ export class DemoDecorationProvider implements DecorationProvider {
   private static initPromise: Promise<boolean> | null = null;
   private readonly documentProvider: () => EditorDocument | null;
   private documentAnalyzer: sweetline.DocumentAnalyzer | null = null;
-  private cacheHighlight: sweetline.DocumentHighlight | null = null;
+  private cacheHighlight: sweetline.DocumentHighlightSlice | null = null;
   private analyzedFileName: string = DEFAULT_ANALYSIS_FILE_NAME;
 
   constructor(documentProvider: () => EditorDocument | null) {
@@ -134,8 +134,14 @@ export class DemoDecorationProvider implements DecorationProvider {
     const currentFileName = DemoDecorationProvider.resolveCurrentFileName(context);
     const text = editorDocument.getText();
     const fileChanged = currentFileName !== this.analyzedFileName;
+    const visibleRange = new sweetline.LineRange(
+      Math.max(0, context.visibleLineRange.start),
+      Math.max(0, context.visibleLineRange.end - Math.max(0, context.visibleLineRange.start) + 1)
+    );
 
     if (this.cacheHighlight === null || this.documentAnalyzer === null || fileChanged) {
+      this.documentAnalyzer = null;
+      this.cacheHighlight = null;
       const analyzer = DemoDecorationProvider.highlightEngine.loadDocument(
         new sweetline.Document(DemoDecorationProvider.buildAnalysisUri(currentFileName), text)
       );
@@ -143,25 +149,27 @@ export class DemoDecorationProvider implements DecorationProvider {
         return this.buildEmptyResult();
       }
       this.documentAnalyzer = analyzer;
-      this.cacheHighlight = analyzer.analyze();
       this.analyzedFileName = currentFileName;
-    } else if (context.textChanges.length > 0) {
+    }
+
+    if (this.documentAnalyzer !== null && context.textChanges.length > 0) {
       for (let index = 0; index < context.textChanges.length; index++) {
         const change = context.textChanges[index];
-        this.cacheHighlight = this.documentAnalyzer.analyzeIncremental(
+        this.cacheHighlight = this.documentAnalyzer.analyzeIncrementalInLineRange(
           DemoDecorationProvider.convertAsSLTextRange(change.range),
-          change.newText
+          change.newText,
+          visibleRange
         );
       }
+    } else if (this.documentAnalyzer !== null) {
+      this.cacheHighlight = this.documentAnalyzer.analyzeLineRange(visibleRange);
     }
 
     if (this.cacheHighlight === null || this.cacheHighlight.lines.length === 0) {
       return this.buildEmptyResult();
     }
 
-    const renderStartLine = Math.max(0, context.visibleLineRange.start);
-    const maxLine = Math.min(context.visibleLineRange.end, this.cacheHighlight.lines.length - 1);
-    for (let line = renderStartLine; line <= maxLine; line++) {
+    for (let line = 0; line < this.cacheHighlight.lines.length; line++) {
       const lineHighlight = this.cacheHighlight.lines[line];
       for (let spanIndex = 0; spanIndex < lineHighlight.spans.length; spanIndex++) {
         const token = lineHighlight.spans[spanIndex];
