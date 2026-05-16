@@ -8,7 +8,6 @@ namespace NS_SWEETEDITOR {
 
   enum struct ImeTextUnit {
     GRAPHEME = 0,
-    UTF16_CODE_UNIT = 0,
     CODE_POINT = 1,
   };
 

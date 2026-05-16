@@ -263,22 +263,7 @@ namespace NS_SWEETEDITOR {
         selection_start_offset,
         selection_end_offset);
     ImeActionResult selection_result = notifyImeSelectionChanged(selection_range);
-
-    result.handled = result.handled || selection_result.handled;
-    result.content_changed = result.content_changed || selection_result.content_changed;
-    result.cursor_changed = result.cursor_changed || selection_result.cursor_changed;
-    result.selection_changed = result.selection_changed || selection_result.selection_changed;
-    if (selection_result.edit_result.changed) {
-      if (!result.edit_result.changed) {
-        result.edit_result = selection_result.edit_result;
-      } else {
-        result.edit_result.changes.insert(result.edit_result.changes.end(),
-                                          selection_result.edit_result.changes.begin(),
-                                          selection_result.edit_result.changes.end());
-        result.edit_result.cursor_after = selection_result.edit_result.cursor_after;
-      }
-    }
-    result.sync = selection_result.sync;
+    mergeImeActionResult(result, selection_result);
     return result;
   }
 
@@ -1037,22 +1022,7 @@ namespace NS_SWEETEDITOR {
         std::max<int64_t>(0, std::min<int64_t>(raw_target, static_cast<int64_t>(document_length))));
     ImeActionResult cursor_result = notifyImeCursorChanged(
         m_document_->getPositionFromCharIndex(target_offset));
-
-    result.handled = result.handled || cursor_result.handled;
-    result.content_changed = result.content_changed || cursor_result.content_changed;
-    result.cursor_changed = result.cursor_changed || cursor_result.cursor_changed;
-    result.selection_changed = result.selection_changed || cursor_result.selection_changed;
-    if (cursor_result.edit_result.changed) {
-      if (!result.edit_result.changed) {
-        result.edit_result = cursor_result.edit_result;
-      } else {
-        result.edit_result.changes.insert(result.edit_result.changes.end(),
-                                          cursor_result.edit_result.changes.begin(),
-                                          cursor_result.edit_result.changes.end());
-        result.edit_result.cursor_after = cursor_result.edit_result.cursor_after;
-      }
-    }
-    result.sync = cursor_result.sync;
+    mergeImeActionResult(result, cursor_result);
   }
 
   void EditorCore::rememberImeInputState(uint64_t context_id,

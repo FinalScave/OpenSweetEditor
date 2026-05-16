@@ -91,7 +91,6 @@ enum ScrollBehavior {
 /// Unit used by IME delete requests.
 enum ImeTextUnit {
   grapheme(0),
-  utf16CodeUnit(0),
   codePoint(1);
 
   const ImeTextUnit(this.value);
