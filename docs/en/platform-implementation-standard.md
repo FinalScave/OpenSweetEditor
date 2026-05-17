@@ -24,7 +24,7 @@ The Core layer does not involve UI rendering. It contains only bridging, data mo
 |---|---|---|
 | **Core Bridge** | `EditorCore`, `Document`, `ProtocolEncoder`, `ProtocolDecoder`, `TextMeasurer`, `EditorOptions` | Native bridge + public core API wrapper |
 | **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollBehavior` | Fundamental value types and enums |
-| **IME** | `ImeActionResult`, `ImeSyncSnapshot`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`; `ImeTextUnit` when exposing unit-aware deletion APIs | IME semantic action result and synchronization snapshot types |
+| **IME** | `ImeActionResult`, `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextModelMode`; `ImeTextUnit` when exposing unit-aware deletion APIs | IME semantic action, synchronization snapshot, and text-context protocol types |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | Decoration data types |
 | **Visual** | `EditorRenderModel`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `ScrollbarRect`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `DiagnosticDecoration`, `CompositionDecoration`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem`, `LinkedEditingRect`, `BracketHighlightRect` | Render model types (geometry semantics follow Section 2.4) |
 | **Snippet** | `LinkedEditingModel`, `TabStopGroup` | Linked editing / tab stop groups |
@@ -335,13 +335,13 @@ Section 3.1 defines the bridge/runtime API carried by `EditorCore`. It includes 
 | Move cursor to line start | `moveCursorToLineStart(extend)` | — |
 | Move cursor to line end | `moveCursorToLineEnd(extend)` | — |
 | **IME** | | |
-| IME sync snapshot | `getImeSyncSnapshot()` | — |
+| IME synchronization and context | `getImeSyncSnapshot()` / `getImeInputContext(...)` / `getImeTextModelInputContext(...)` | Representative entrypoints; platforms choose based on their native IME model |
 | Keyboard script class | `setImeKeyboardScriptClass(script)` / `getImeKeyboardScriptClass()` | — |
-| Update preedit | `updateImePreedit(text, script)` | — |
-| Commit text | `commitImeText(text, script)` | — |
+| Preedit / composing update | `updateImePreedit(...)` / `setImeComposingText(...)` | Representative entrypoints |
+| Commit and replacement | `commitImeText(...)` / `replaceImeText(...)` | Representative entrypoints; offset / context variants depend on platform capability |
 | Finish or cancel preedit | `finishImePreedit()` / `cancelImePreedit()` | — |
-| Mark platform composition range | `markImeDocumentRange(range, script)` | — |
-| Candidate replacement text | `replaceImeText(range, text, script)` | — |
+| Mark composition range | `markImeDocumentRange(...)` / `markImeInputContextRange(...)` | Representative entrypoints |
+| Text model state synchronization | `updateImeTextModelState(...)` / `updateImeTextModelDelta(...)` | For platforms that expose a complete text model |
 | IME deletion | `deleteImeBackward(length, unit)` / `deleteImeForward(length, unit)` / `deleteImeSurrounding(before, after, unit)` | — |
 | IME-driven selection sync | `notifyImeSelectionChanged(range)` / `notifyImeCursorChanged(cursor)` | — |
 | Composition ranges | `getComposingRange()` / `getComposingSessionRange()` | — |
@@ -422,36 +422,40 @@ Section 3.1 defines the bridge/runtime API carried by `EditorCore`. It includes 
 | Previous tab stop | `linkedEditingPrev()` | — |
 | Cancel linked editing | `cancelLinkedEditing()` | — |
 
+IME APIs are the request entrypoints through which platform input events enter core. The platform standard constrains semantic capability families, not the complete bridge function list that each platform must call. Platform layers MUST NOT create editor composition just because the system IME requests surrounding text, candidate context, or cursor rectangles. Composition is created only when the system IME explicitly declares composing / marked / preedit text or range; commits, replacements, deletion, and selection synchronization are still adjudicated by core according to `docs/zh/ime-composition-standard.md`.
+
+When a platform marks a composition range in core, it MUST be an explicit composing / marked range reported by the platform IME. Android `InputConnection.setComposingRegion`, Apple marked ranges, and Windows TSF composition ranges MUST NOT be treated as whole-word replacement commands by the platform layer. Neither platform code nor core may automatically start whole-word composition when the cursor enters a Latin word.
+
+Platform layers MUST synchronize cursor changes, selection changes, composition updates, candidate commits, deletion, finish/cancel, and equivalent text-model state changes into core. When a Chinese keyboard does not declare composition, that only means SweetEditor has no visible composition; it MUST NOT be implemented by disabling the system IME, blocking Chinese candidate commits, or blocking Chinese predictive candidates.
+
+IME offsets MUST state their coordinate space explicitly: document line/column APIs use `TextRange`; document-offset APIs use full document offsets; input-context / text-model APIs use context offsets relative to `documentStartOffset`. Platform implementations MUST NOT implicitly mix these coordinate spaces.
+
 > Payload-level APIs (e.g. `setLineSpans`, `setBatchLineSpans`) — all platforms MUST provide high-level typed wrappers (e.g. `setLineSpans(line, layer, spans: List<StyleSpan>)`). Platforms SHOULD additionally expose raw/binary payload APIs when the host language has a natural public binary carrier (e.g. `ByteBuffer`, `NSData`, `byte[]`, `Uint8List`). If both typed and payload APIs are exposed, their parameter semantics and final Core behavior MUST be identical. Payload encoding format remains platform-defined.
 
 #### 3.1.1 IME API Requirement Levels
 
-`EditorCore` IME APIs are bridge/runtime APIs. They standardize platform input adaptation and testability; they are not required to be exposed on the host-facing `SweetEditor` / controller API. Conditional MUST means a platform is not required to synthesize a native IME capability it does not receive, but if that capability exists it MUST map to the named core semantic action.
+`EditorCore` IME APIs are bridge/runtime APIs. They standardize platform input adaptation and testability; they are not required to be exposed on the host-facing `SweetEditor` / controller API, and a platform is not required to call the complete function set. Conditional MUST means a platform is not required to synthesize a native IME capability it does not receive, but if that capability exists it MUST map to the corresponding core semantic capability family.
 
 | API / Type | Requirement | Notes |
 |---|---|---|
-| `ImeTextUnit` | SHOULD / conditional MUST | SHOULD include `UTF16_CODE_UNIT = 0` and `CODE_POINT = 1`; MUST be present when exposing unit-aware deletion APIs |
-| `ImeScriptClass` | MUST | MUST include the stable enum values defined in Section 13.2 |
-| `ImePreeditStorage` | MUST | MUST include the stable enum values defined in Section 13.2 |
-| `ImeContextPolicy` | MUST | MUST include the stable enum values defined in Section 13.2 |
-| `ImeActionResult` | MUST | MUST preserve the binary protocol fields defined in Section 13.2 |
-| `ImeSyncSnapshot` | MUST | MUST preserve the binary protocol fields defined in Section 13.2 |
-| `getImeSyncSnapshot()` | MUST | Used by platform input adapters to synchronize surrounding text, composing state, and selection |
-| `setImeKeyboardScriptClass(script)` / `getImeKeyboardScriptClass()` | SHOULD / conditional MUST | SHOULD track keyboard script hints; MUST map platform-provided script hints when they are available |
-| `updateImePreedit(text, script)` | MUST | The canonical platform preedit update action |
-| `commitImeText(text, script)` | MUST | The canonical platform commit action |
-| `finishImePreedit()` | SHOULD / conditional MUST | SHOULD be exposed; MUST map native finish when the platform distinguishes finish from cancel |
-| `cancelImePreedit()` | MUST | Cancels active preedit |
-| `markImeDocumentRange(range, script)` | SHOULD / conditional MUST | SHOULD be exposed; MUST map explicit native composing / marked ranges |
-| `replaceImeText(range, text, script)` | SHOULD / conditional MUST | SHOULD be exposed; MUST map explicit native replacement ranges |
-| `deleteImeBackward(length, unit)` | SHOULD / conditional MUST | SHOULD be exposed; MUST map native backward deletion requests |
-| `deleteImeForward(length, unit)` | SHOULD / conditional MUST | SHOULD be exposed; MUST map native forward deletion requests |
-| `deleteImeSurrounding(before, after, unit)` | SHOULD / conditional MUST | SHOULD be exposed; MUST map native surrounding deletion requests |
-| `notifyImeSelectionChanged(range)` | SHOULD / conditional MUST | SHOULD be exposed; MUST map IME-driven selection synchronization |
-| `notifyImeCursorChanged(cursor)` | SHOULD / conditional MUST | SHOULD be exposed; MUST map IME-driven cursor synchronization |
+| IME protocol types | MUST | At minimum include `ImeActionResult`, `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, and `ImeInputContextKind`; platforms that support text-model synchronization MUST also include `ImeTextModelMode` |
+| `ImeTextUnit` | SHOULD / conditional MUST | MUST be present when exposing unit-aware deletion APIs; stable values are `GRAPHEME = 0` and `CODE_POINT = 1` |
+| Synchronization snapshot capability | MUST | Platform input adapters MUST process `ImeActionResult.sync` returned by core; use `getImeSyncSnapshot()` or an equivalent bridge entrypoint when an explicit query is needed |
+| Keyboard script hint capability | SHOULD / conditional MUST | SHOULD track keyboard script hints; MUST map platform-provided script hints when they are available |
+| Preedit / composing capability | SHOULD / conditional MUST | Native preedit, composing text, or marked text MUST map to core's preedit / composing semantic family |
+| Commit / replacement capability | MUST / conditional MUST | Native commits MUST map to core; explicit replacement ranges MUST map to the corresponding document, input-context, or text-model replacement semantic family |
+| Document range / offset capability | conditional MUST | Native document ranges or document offsets MUST use document coordinate semantics and MUST NOT be mixed with input-context offsets |
+| Input-context capability | conditional MUST | Platforms that operate on surrounding text / extracted text windows MUST use context offsets relative to `documentStartOffset` |
+| Text-model state / delta capability | conditional MUST | Platforms whose native API exposes a complete text model snapshot or delta SHOULD use the text-model semantic family rather than forcing the flow into legacy preedit / commit actions |
+| Deletion capability | SHOULD / conditional MUST | Native backward, forward, or surrounding deletion requests MUST map to core deletion semantics |
+| Selection / cursor synchronization capability | SHOULD / conditional MUST | IME-driven selection, cursor, or text-model selection synchronization MUST map to core |
 | `isComposing()` | MUST | Reports whether editor-visible composition is active |
 | `getComposingRange()` | SHOULD | Useful for platform synchronization and diagnostics; returns no range when inactive |
 | `getComposingSessionRange()` | SHOULD | Useful for platform synchronization and diagnostics; returns no range when inactive |
+
+`ImeSyncSnapshot` semantics MUST cover: document cursor, document selection, whether a composition session exists, visible composition range, platform marked range, platform text window text and start offset, selection/composing offsets, `ImePreeditStorage`, `ImeContextPolicy`, and whether the platform should clear preedit. `ImeInputContext` semantics MUST cover: `id`, `revision`, `documentStartOffset`, `text`, `selection`, `hasComposition`, `composition`, and `kind`. `ImeActionResult` semantics MUST cover: `handled`, `contentChanged`, `cursorChanged`, `selectionChanged`, `editResult`, and `sync`.
+
+The complete core bridge function list is defined by `src/include/editor_core.h` and `src/include/c_api.h`. This standard constrains IME semantics and protocol fields, not whether every core bridge function is exposed as a host-facing API.
 
 #### 3.1.2 `EditorOptions` Standard Fields
 
@@ -1358,19 +1362,21 @@ Each platform uses its own native bridge technology. This is expected and not co
 
 ### 13.2 Input Method Handling (MAY differ)
 
-IME integration is inherently platform-specific, but SweetEditor composition semantics MUST remain consistent across platforms. Platform implementations MAY use different system APIs, but MUST normalize native IME events to the core IME API. Only explicit platform composing / marked / preedit declarations create editor composition. Candidate context, surrounding text, cursor rectangles, keyboard language, or moving the cursor into a Latin word MUST NOT create editor composition.
+IME integration is inherently platform-specific, but SweetEditor composition semantics MUST remain consistent across platforms. Platform implementations MAY use different system APIs, but MUST normalize native IME events to core IME semantic capability families. Only explicit platform composing / marked / preedit declarations create editor composition. Candidate context, surrounding text, cursor rectangles, keyboard language, or moving the cursor into a Latin word MUST NOT create editor composition.
 
-| Platform | IME API | Composition source |
+| Platform | IME API | Recommended mapping |
 |---|---|---|
-| Android | `InputConnection` | `setComposingText` / `setComposingRegion` |
-| iOS | `UITextInput` | marked text / `markedTextRange` |
-| macOS | `NSTextInputClient` | `setMarkedText` / marked range |
-| Swing | `InputMethodEvent` / `InputMethodRequests` | composed text segment from `InputMethodEvent` |
-| WinForms | TSF / IMM | TSF composition range or IMM composition string |
-| OHOS | IME Kit | platform composing / preedit callback or range |
-| Flutter | `TextInputClient` | valid `TextEditingValue.composing` range |
+| Android | `InputConnection` | Choose preedit, document-range, input-context, or deletion semantics based on `setComposingText` / `setComposingRegion` / `commitText` / delete / extracted-text capabilities |
+| iOS | `UITextInput` | Map marked text / `markedTextRange` to marked/preedit semantics; choose document or input-context semantics based on the coordinate capability exposed by the platform text range |
+| macOS | `NSTextInputClient` | Map `setMarkedText` / marked ranges to marked/preedit semantics; selected ranges and replacement ranges must preserve coordinate-space consistency |
+| Swing | `InputMethodEvent` / `InputMethodRequests` | Map composed text segments from `InputMethodEvent` to preedit/commit; use `InputMethodRequests` for candidate context and cursor rectangles |
+| WinForms | TSF / IMM | Map TSF composition ranges or IMM composition strings to preedit, document-range, or input-context semantics according to the available native data |
+| OHOS | IME Kit | Map platform composing / preedit callbacks or ranges to preedit, document-range, input-context, or text-model semantics according to their coordinate space |
+| Flutter | `TextInputClient` | Prefer text-model state / delta semantics from `TextEditingValue`; a valid `composing` range means the platform declared composition |
 
-Every platform MUST map native composition sources to `updateImePreedit(text, script)` or `markImeDocumentRange(range, script)`, native commits to `commitImeText(text, script)`, explicit replacements to `replaceImeText(range, text, script)`, and native finish/cancel events to `finishImePreedit()` / `cancelImePreedit()`. Ranges passed to core MUST use document coordinates, not a platform-specific surrounding-text window. Editable editors always support platform IME composition; read-only mode blocks text changes and MUST NOT be implemented as a composition enable / disable switch.
+Every platform MUST map native composition sources to core's preedit / composing / marked-range semantic family, native commits to the commit semantic family, explicit replacements to the replacement semantic family, and native finish/cancel events to the finish/cancel semantic family. A platform MAY choose document line/column, document offset, input-context offset, or text-model state/delta paths based on its native API, but the coordinate space MUST be explicit and consistent.
+
+Document ranges passed to core MUST use document coordinates. Input-context / text-model offsets MUST be relative to the corresponding `documentStartOffset`. Temporary offsets from a platform-specific surrounding-text window MUST NOT be treated as document offsets. Editable editors always support platform IME composition; read-only mode blocks text changes and MUST NOT be implemented as a composition enable / disable switch.
 
 ### 13.3 Optional Modules
 

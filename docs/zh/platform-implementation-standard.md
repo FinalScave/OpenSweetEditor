@@ -24,7 +24,7 @@ Core 层不涉及 UI 渲染，仅包含桥接、数据模型和协议编解码�
 |---|---|---|
 | **Core Bridge** | `EditorCore`, `Document`, `ProtocolEncoder`, `ProtocolDecoder`, `TextMeasurer`, `EditorOptions` | 原生桥接 + 公共核心 API 封装 |
 | **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollBehavior` | 基础值类型与枚举 |
-| **IME** | `ImeActionResult`, `ImeSyncSnapshot`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`；暴露 unit-aware 删除 API 时包含 `ImeTextUnit` | IME 语义动作结果与同步快照类型 |
+| **IME** | `ImeActionResult`, `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextModelMode`；暴露 unit-aware 删除 API 时包含 `ImeTextUnit` | IME 语义动作、同步快照和文本上下文协议类型 |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | 装饰数据类型 |
 | **Visual** | `EditorRenderModel`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `ScrollbarRect`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `DiagnosticDecoration`, `CompositionDecoration`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem`, `LinkedEditingRect`, `BracketHighlightRect` | 渲染模型类型（几何语义见第 2.4 节） |
 | **Snippet** | `LinkedEditingModel`, `TabStopGroup` | 联动编辑 / Tab stop 分组 |
@@ -335,13 +335,13 @@ controller.whenReady(() {
 | 光标移至行首 | `moveCursorToLineStart(extend)` | — |
 | 光标移至行尾 | `moveCursorToLineEnd(extend)` | — |
 | **IME** | | |
-| IME 同步快照 | `getImeSyncSnapshot()` | — |
+| IME 同步与上下文 | `getImeSyncSnapshot()` / `getImeInputContext(...)` / `getImeTextModelInputContext(...)` | 代表入口；平台按自身 IME 模型选择 |
 | 键盘脚本分类 | `setImeKeyboardScriptClass(script)` / `getImeKeyboardScriptClass()` | — |
-| 更新 preedit | `updateImePreedit(text, script)` | — |
-| 提交文本 | `commitImeText(text, script)` | — |
+| preedit / composing 更新 | `updateImePreedit(...)` / `setImeComposingText(...)` | 代表入口 |
+| 提交与替换 | `commitImeText(...)` / `replaceImeText(...)` | 代表入口；offset / context 变体按平台能力选择 |
 | 结束或取消 preedit | `finishImePreedit()` / `cancelImePreedit()` | — |
-| 标记平台 composition 范围 | `markImeDocumentRange(range, script)` | — |
-| 请求候选替换文本 | `replaceImeText(range, text, script)` | — |
+| 标记 composition 范围 | `markImeDocumentRange(...)` / `markImeInputContextRange(...)` | 代表入口 |
+| 文本模型状态同步 | `updateImeTextModelState(...)` / `updateImeTextModelDelta(...)` | 适用于暴露完整 text model 的平台 |
 | IME 删除 | `deleteImeBackward(length, unit)` / `deleteImeForward(length, unit)` / `deleteImeSurrounding(before, after, unit)` | — |
 | IME 驱动选区同步 | `notifyImeSelectionChanged(range)` / `notifyImeCursorChanged(cursor)` | — |
 | Composition 范围 | `getComposingRange()` / `getComposingSessionRange()` | — |
@@ -422,42 +422,40 @@ controller.whenReady(() {
 | 上一个 Tab Stop | `linkedEditingPrev()` | — |
 | 取消联动编辑 | `cancelLinkedEditing()` | — |
 
-IME API 是平台输入事件进入 core 的请求入口。平台层 MUST NOT 因为系统 IME 请求 surrounding text、候选上下文或光标矩形，就创建 editor composition。是否建立 composition 只取决于系统 IME 是否通过 composing / marked / preedit API 明确声明了组合文本或组合范围；提交、替换、删除和 selection 同步仍由 core 按 `docs/zh/ime-composition-standard.md` 裁决。
+IME API 是平台输入事件进入 core 的请求入口。平台标准约束的是语义能力族，而不是要求每个平台调用全部 bridge 函数。平台层 MUST NOT 因为系统 IME 请求 surrounding text、候选上下文或光标矩形，就创建 editor composition。是否建立 composition 只取决于系统 IME 是否通过 composing / marked / preedit API 明确声明了组合文本或组合范围；提交、替换、删除和 selection 同步仍由 core 按 `docs/zh/ime-composition-standard.md` 裁决。
 
-平台层向 core 标记 document range 时 MUST 明确这是平台 IME 声明的 composing / marked range，并调用 `markImeDocumentRange(range, script)`。Android 的 `InputConnection.setComposingRegion`、Apple marked range、Windows TSF composition range 都不能由平台层直接当成整词替换命令。光标进入英文单词时平台层和 core 都不得自动开启整词 composition。
+平台层向 core 标记 composition 范围时 MUST 明确这是平台 IME 声明的 composing / marked range。Android 的 `InputConnection.setComposingRegion`、Apple marked range、Windows TSF composition range 都不能由平台层直接当成整词替换命令。光标进入英文单词时平台层和 core 都不得自动开启整词 composition。
 
 平台层 MUST 将光标变化、选区变化、composition 更新、候选提交、删除、finish/cancel 等事件同步给 core。中文键盘未声明 composition 时只表示不建立 SweetEditor 可见 composition；这不能被实现成禁用系统 IME、阻断中文候选提交或阻断中文联想候选。
+
+IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextRange`；文档 offset API 使用完整文档 offset；input-context / text-model API 使用以 `documentStartOffset` 为基准的上下文 offset。平台实现 MUST NOT 在这些坐标空间之间隐式混用。
 
 > payload 类 API（如 `setLineSpans`、`setBatchLineSpans`）各平台 MUST 提供高层 typed 封装（如 `setLineSpans(line, layer, spans: List<StyleSpan>)`）。当宿主语言存在自然的公开二进制载体（如 `ByteBuffer`、`NSData`、`byte[]`、`Uint8List`）时，平台 SHOULD 额外公开 raw/binary payload API。若 typed API 与 payload API 同时存在，两者的参数语义与最终 Core 行为 MUST 完全一致。payload 的编码格式由平台自行定义。
 
 #### 3.1.1 IME API 要求级别
 
-`EditorCore` IME API 是 bridge/runtime API。它们用于标准化平台输入适配和可测试性，不要求全部暴露在宿主可见的 `SweetEditor` / controller API 上。条件性 MUST 表示平台不需要凭空合成自身不会收到的原生 IME 能力，但一旦平台存在该能力，就 MUST 映射到对应的 core 语义动作。
+`EditorCore` IME API 是 bridge/runtime API。它们用于标准化平台输入适配和可测试性，不要求全部暴露在宿主可见的 `SweetEditor` / controller API 上，也不要求每个平台调用完整函数集合。条件性 MUST 表示平台不需要凭空合成自身不会收到的原生 IME 能力，但一旦平台存在该能力，就 MUST 映射到对应的 core 语义能力族。
 
 | API / 类型 | 要求 | 说明 |
 |---|---|---|
-| `ImeTextUnit` | SHOULD / 条件性 MUST | SHOULD 包含 `UTF16_CODE_UNIT = 0` 和 `CODE_POINT = 1`；暴露 unit-aware 删除 API 时 MUST 存在 |
-| `ImeScriptClass` | MUST | MUST 包含第 13.2 节定义的稳定枚举值 |
-| `ImePreeditStorage` | MUST | MUST 包含第 13.2 节定义的稳定枚举值 |
-| `ImeContextPolicy` | MUST | MUST 包含第 13.2 节定义的稳定枚举值 |
-| `ImeActionResult` | MUST | MUST 保留第 13.2 节定义的二进制协议字段 |
-| `ImeSyncSnapshot` | MUST | MUST 保留第 13.2 节定义的二进制协议字段 |
-| `getImeSyncSnapshot()` | MUST | 供平台输入适配层同步 surrounding text、composition 状态和选区 |
-| `setImeKeyboardScriptClass(script)` / `getImeKeyboardScriptClass()` | SHOULD / 条件性 MUST | SHOULD 记录键盘脚本 hint；平台提供 script hint 时 MUST 映射 |
-| `updateImePreedit(text, script)` | MUST | 标准平台 preedit 更新动作 |
-| `commitImeText(text, script)` | MUST | 标准平台提交动作 |
-| `finishImePreedit()` | SHOULD / 条件性 MUST | SHOULD 暴露；平台能区分 finish 与 cancel 时 MUST 映射原生 finish |
-| `cancelImePreedit()` | MUST | 取消当前 preedit |
-| `markImeDocumentRange(range, script)` | SHOULD / 条件性 MUST | SHOULD 暴露；平台报告明确 composing / marked range 时 MUST 映射 |
-| `replaceImeText(range, text, script)` | SHOULD / 条件性 MUST | SHOULD 暴露；平台报告明确 replacement range 时 MUST 映射 |
-| `deleteImeBackward(length, unit)` | SHOULD / 条件性 MUST | SHOULD 暴露；平台请求向后删除时 MUST 映射 |
-| `deleteImeForward(length, unit)` | SHOULD / 条件性 MUST | SHOULD 暴露；平台请求向前删除时 MUST 映射 |
-| `deleteImeSurrounding(before, after, unit)` | SHOULD / 条件性 MUST | SHOULD 暴露；平台请求 surrounding 删除时 MUST 映射 |
-| `notifyImeSelectionChanged(range)` | SHOULD / 条件性 MUST | SHOULD 暴露；IME 驱动 selection 同步时 MUST 映射 |
-| `notifyImeCursorChanged(cursor)` | SHOULD / 条件性 MUST | SHOULD 暴露；IME 驱动 cursor 同步时 MUST 映射 |
+| IME 协议类型 | MUST | 至少包含 `ImeActionResult`、`ImeSyncSnapshot`、`ImeInputContext`、`ImeTextRange`、`ImeScriptClass`、`ImePreeditStorage`、`ImeContextPolicy`、`ImeInputContextKind`；支持 text-model 同步的平台还 MUST 包含 `ImeTextModelMode` |
+| `ImeTextUnit` | SHOULD / 条件性 MUST | 暴露 unit-aware 删除 API 时 MUST 存在；稳定值为 `GRAPHEME = 0`、`CODE_POINT = 1` |
+| 同步快照能力 | MUST | 平台输入适配层 MUST 能处理 core 返回的 `ImeActionResult.sync`；需要主动查询时使用 `getImeSyncSnapshot()` 或等价桥接入口 |
+| 键盘脚本 hint 能力 | SHOULD / 条件性 MUST | SHOULD 记录键盘脚本 hint；平台提供 script hint 时 MUST 映射 |
+| preedit / composing 能力 | SHOULD / 条件性 MUST | 平台收到原生 preedit、composing text 或 marked text 时 MUST 映射到 core 的 preedit / composing 语义族 |
+| commit / replacement 能力 | MUST / 条件性 MUST | 原生提交 MUST 映射；平台报告明确 replacement 范围时 MUST 映射到 document、input-context 或 text-model 中对应的 replacement 语义族 |
+| document range / offset 能力 | 条件性 MUST | 平台报告文档范围或文档 offset 时 MUST 使用文档坐标语义，不能混入 input-context offset |
+| input-context 能力 | 条件性 MUST | 平台基于 surrounding text / extracted text window 操作时 MUST 使用以 `documentStartOffset` 为基准的上下文 offset 语义 |
+| text-model state / delta 能力 | 条件性 MUST | 平台原生 API 暴露完整文本模型快照或增量时 SHOULD 使用 text-model 语义族，而不是强行拆成旧 preedit / commit 流程 |
+| 删除能力 | SHOULD / 条件性 MUST | 平台请求 backward、forward 或 surrounding 删除时 MUST 映射到 core 删除语义族 |
+| selection / cursor 同步能力 | SHOULD / 条件性 MUST | IME 驱动 selection、cursor 或 text-model selection 同步时 MUST 映射到 core |
 | `isComposing()` | MUST | 报告 editor-visible composition 是否活跃 |
 | `getComposingRange()` | SHOULD | 供平台同步和诊断使用；未活跃时返回无 range |
 | `getComposingSessionRange()` | SHOULD | 供平台同步和诊断使用；未活跃时返回无 range |
+
+`ImeSyncSnapshot` 的语义字段 MUST 覆盖：文档光标、文档选区、是否存在 composition session、可见 composition 范围、平台 marked range、platform text window 文本及其 start offset、selection/composing offsets、`ImePreeditStorage`、`ImeContextPolicy`、以及是否要求平台清除 preedit。`ImeInputContext` 的语义字段 MUST 覆盖：`id`、`revision`、`documentStartOffset`、`text`、`selection`、`hasComposition`、`composition`、`kind`。`ImeActionResult` 的语义字段 MUST 覆盖：`handled`、`contentChanged`、`cursorChanged`、`selectionChanged`、`editResult`、`sync`。
+
+完整 core bridge 函数列表以 `src/include/editor_core.h` 与 `src/include/c_api.h` 为准。本标准只约束平台必须保持的 IME 语义和协议字段，不要求把每个 core bridge 函数都暴露为宿主可见 API。
 
 #### 3.1.2 `EditorOptions` 标准字段
 
@@ -1363,19 +1361,21 @@ interface ContextMenuItemProvider {
 
 ### 13.2 输入法接入（平台 API MAY 不同，core 语义 MUST 一致）
 
-输入法集成天然是平台特定的，但 SweetEditor 的 composition 语义 MUST 在各平台保持一致。平台实现可以使用不同系统 API 接入 IME，但必须把原生 IME 事件归一化到 core 的 IME API：只有系统 IME 明确声明 composing / marked / preedit 时才建立 editor composition；candidate context、surrounding text、光标矩形、键盘语言或光标进入 Latin 单词都不能自动创建 composition。
+输入法集成天然是平台特定的，但 SweetEditor 的 composition 语义 MUST 在各平台保持一致。平台实现可以使用不同系统 API 接入 IME，但必须把原生 IME 事件归一化到 core 的 IME 语义能力族：只有系统 IME 明确声明 composing / marked / preedit 时才建立 editor composition；candidate context、surrounding text、光标矩形、键盘语言或光标进入 Latin 单词都不能自动创建 composition。
 
-| 平台 | IME API | Composition 来源 |
+| 平台 | IME API | 推荐映射 |
 |---|---|---|
-| Android | `InputConnection` | `setComposingText` / `setComposingRegion` |
-| iOS | `UITextInput` | marked text / `markedTextRange` |
-| macOS | `NSTextInputClient` | `setMarkedText` / marked range |
-| Swing | `InputMethodEvent` / `InputMethodRequests` | `InputMethodEvent` 中的 composed text 段 |
-| WinForms | TSF / IMM | TSF composition range 或 IMM composition string |
-| OHOS | IME Kit | 平台 composing / preedit 回调或范围 |
-| Flutter | `TextInputClient` | 有效的 `TextEditingValue.composing` 范围 |
+| Android | `InputConnection` | 根据 `setComposingText` / `setComposingRegion` / `commitText` / delete / extracted-text 能力选择 preedit、document range、input-context 或 deletion 语义族 |
+| iOS | `UITextInput` | marked text / `markedTextRange` 映射到 marked/preedit 语义；text range 操作按平台提供的坐标能力选择 document 或 input-context 语义 |
+| macOS | `NSTextInputClient` | `setMarkedText` / marked range 映射到 marked/preedit 语义；selected range 和 replacement range 必须保持坐标空间一致 |
+| Swing | `InputMethodEvent` / `InputMethodRequests` | `InputMethodEvent` 中的 composed text 段映射到 preedit/commit；`InputMethodRequests` 用于同步候选上下文和光标矩形 |
+| WinForms | TSF / IMM | TSF composition range 或 IMM composition string 按可获得的信息映射到 preedit、document range 或 input-context 语义 |
+| OHOS | IME Kit | 平台 composing / preedit 回调或范围按其坐标空间映射到 preedit、document range、input-context 或 text-model 语义 |
+| Flutter | `TextInputClient` | 优先使用 `TextEditingValue` 的 text-model state / delta 语义；有效 `composing` range 表示平台声明的 composition |
 
-各平台 MUST 将原生 composition 来源映射为 `updateImePreedit(text, script)` 或 `markImeDocumentRange(range, script)`，将原生提交映射为 `commitImeText(text, script)`，将明确替换映射为 `replaceImeText(range, text, script)`，将原生 finish/cancel 映射为 `finishImePreedit()` / `cancelImePreedit()`。传入 core 的 range MUST 是文档坐标，不能是平台 surrounding-text window 的临时坐标。可编辑状态下始终支持平台 IME composition；只读模式负责阻止文本变更，MUST NOT 实现为 composition enable / disable 开关。
+各平台 MUST 将原生 composition 来源映射到 core 的 preedit / composing / marked-range 语义族，将原生提交映射到 commit 语义族，将明确替换映射到 replacement 语义族，将原生 finish/cancel 映射到 finish/cancel 语义族。平台 MAY 根据原生 API 选择 document line/column、document offset、input-context offset 或 text-model state/delta 路径；但 MUST 明确坐标空间并保持一致。
+
+传入 core 的 document range MUST 使用文档坐标；传入 input-context / text-model 的 offset MUST 相对于对应 `documentStartOffset`；平台 surrounding-text window 的临时 offset 不能被当成文档 offset。可编辑状态下始终支持平台 IME composition；只读模式负责阻止文本变更，MUST NOT 实现为 composition enable / disable 开关。
 
 ### 13.3 可选模块
 
