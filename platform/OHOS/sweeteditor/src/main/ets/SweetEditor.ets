@@ -144,11 +144,15 @@ import display from '@ohos.display';
 import hilog from '@ohos.hilog';
 import { inputMethod } from '@kit.IMEKit';
 import { window } from '@kit.ArkUI';
+import { displaySync } from '@kit.ArkGraphics2D';
 
 const TAG = 'SweetEditor';
 const HILOG_DOMAIN = 0x3D12;
 const CURSOR_BLINK_INTERVAL_MS = 500;
 const ANIMATION_FRAME_INTERVAL_MS = 16;
+const DISPLAY_SYNC_MIN_FPS = 30;
+const DISPLAY_SYNC_MAX_FPS = 120;
+const DISPLAY_SYNC_EXPECTED_FPS = 60;
 const TRANSIENT_SCROLLBAR_REFRESH_MIN_MS = 16;
 const MAX_IME_TEXT_LENGTH = 32768;
 const EDITOR_FOCUS_ID = 'sweeteditor-canvas';
@@ -204,8 +208,11 @@ export struct SweetEditor {
   private modelDirty: boolean = true;
   private cursorVisible: boolean = true;
   private cursorBlinkTimerId: number = -1;
+  private renderTimerId: number = -1;
   private animationActive: boolean = false;
-  private animationTimerId: number = -1;
+  private renderScheduled: boolean = false;
+  private frameSync: displaySync.DisplaySync | null = null;
+  private frameSyncRunning: boolean = false;
   private transientScrollbarTimerId: number = -1;
   private density: number = 2.0;
   private viewWidth: number = 0;
@@ -245,6 +252,7 @@ export struct SweetEditor {
   private readonly onImeGetLeftTextOfCursor = (length: number): string => this.getImeTextBeforeCursor(length);
   private readonly onImeGetRightTextOfCursor = (length: number): string => this.getImeTextAfterCursor(length);
   private readonly onImeGetTextIndexAtCursor = (): number => this.getImeTextIndexAtCursor();
+  private readonly onDisplayFrame = (_info: displaySync.IntervalInfo): void => this.handleDisplayFrame();
   @State private canvasWidth: number = 0;
   @State private canvasHeight: number = 0;
   @State private completionPopupVisible: boolean = false;
@@ -274,6 +282,8 @@ export struct SweetEditor {
   aboutToDisappear(): void {
     this.stopCursorBlink();
     this.stopAnimation();
+    this.stopFrameSync();
+    this.clearRenderTimer();
     this.clearTransientScrollbarTimer();
     this.unregisterImeCallbacks();
     this.detachInputMethod();
@@ -633,12 +643,14 @@ export struct SweetEditor {
 
   loadDocument(document: Document): void {
     this.document = document;
-      if (this.editorCore) {
-        this.editorCore.loadDocument(document);
-        this.eventBus.emit('documentLoaded', new DocumentLoadedEvent());
-        if (this.decorationProviderManager) {
-          this.decorationProviderManager.onDocumentLoaded();
-        }
+    if (this.editorCore) {
+      this.editorCore.loadDocument(document);
+      this.cachedModel = null;
+      this.modelDirty = true;
+      this.eventBus.emit('documentLoaded', new DocumentLoadedEvent());
+      if (this.decorationProviderManager) {
+        this.decorationProviderManager.onDocumentLoaded();
+      }
       this.flush();
     }
   }
@@ -879,6 +891,7 @@ export struct SweetEditor {
       this.selectionMenuController.onSelectAll();
     }
     this.flush();
+    this.scheduleImeSync();
   }
 
   getSelectedText(): string {
@@ -892,6 +905,7 @@ export struct SweetEditor {
     }
     this.editorCore.setSelection(startLineOrRange, startColumn, endLine, endColumn);
     this.flush();
+    this.scheduleImeSync();
   }
 
   getSelection(): TextRange | null {
@@ -927,6 +941,7 @@ export struct SweetEditor {
     }
     this.editorCore.setCursorPosition(position.line, position.column);
     this.flush();
+    this.scheduleImeSync();
   }
 
   setSelectionRange(range: TextRange): void {
@@ -1000,6 +1015,7 @@ export struct SweetEditor {
     }
     this.editorCore.gotoPosition(line, column);
     this.flush();
+    this.scheduleImeSync();
   }
 
   scrollToLine(line: number, behavior: ScrollBehavior = ScrollBehavior.CENTER): void {
@@ -1262,6 +1278,7 @@ export struct SweetEditor {
     this.editorCore.startLinkedEditing(model);
     this.resetCursorBlink();
     this.flush();
+    this.scheduleImeSync();
   }
 
   isInLinkedEditing(): boolean {
@@ -1275,6 +1292,7 @@ export struct SweetEditor {
     const result = this.editorCore.linkedEditingNext();
     this.resetCursorBlink();
     this.flush();
+    this.scheduleImeSync();
     return result;
   }
 
@@ -1285,6 +1303,7 @@ export struct SweetEditor {
     const result = this.editorCore.linkedEditingPrev();
     this.resetCursorBlink();
     this.flush();
+    this.scheduleImeSync();
     return result;
   }
 
@@ -1294,6 +1313,7 @@ export struct SweetEditor {
     }
     this.editorCore.cancelLinkedEditing();
     this.flush();
+    this.scheduleImeSync();
   }
 
   clearHighlights(layer?: SpanLayer): void {
@@ -1352,8 +1372,7 @@ export struct SweetEditor {
 
   flush(): void {
     this.modelDirty = true;
-    this.invalidateCanvas();
-    this.scheduleImeSync();
+    this.scheduleCanvasInvalidation();
   }
 
   setLanguageConfiguration(config: LanguageConfiguration | null): void {
@@ -1627,6 +1646,12 @@ export struct SweetEditor {
     return this.renderer ? this.renderer.getPerfOverlay().isEnabled() : false;
   }
 
+  recordDecorationPerf(tag: string, elapsedMs: number): void {
+    if (this.renderer) {
+      this.renderer.getPerfOverlay().recordDecoration(tag, elapsedMs);
+    }
+  }
+
   updateImeComposition(text: string): void {
     if (!this.editorCore) {
       return;
@@ -1676,6 +1701,7 @@ export struct SweetEditor {
       if (result.handled && this.dispatchKeyMapCommand(result.command, nativeKeyCode as KeyCode, modifiers)) {
         this.resetCursorBlink();
         this.flush();
+        this.scheduleImeSync();
         return;
       }
       this.dispatchKeyEventResult(result);
@@ -1804,6 +1830,11 @@ export struct SweetEditor {
     }
 
     const result = this.editorCore.handleGestureEvent(gestureEvent);
+    const imeStateChanged = result.type === GestureType.TAP ||
+      result.type === GestureType.DOUBLE_TAP ||
+      result.type === GestureType.LONG_PRESS ||
+      result.type === GestureType.DRAG_SELECT ||
+      result.isHandleDrag;
     this.fireGestureEvents(result, locationInEditor);
 
     if (this.selectionMenuController) {
@@ -1820,6 +1851,9 @@ export struct SweetEditor {
     }
 
     this.flush();
+    if (imeStateChanged) {
+      this.scheduleImeSync();
+    }
 
     if (result.needsAnimation && !this.animationActive) {
       this.startAnimation();
@@ -2015,6 +2049,9 @@ export struct SweetEditor {
     }
 
     this.maybeTriggerCompletionFromChanges(textChanges);
+    if (textChanges.length > 0) {
+      this.scheduleImeSync();
+    }
   }
 
   private dispatchKeyEventResult(result: KeyEventResult): void {
@@ -2036,6 +2073,9 @@ export struct SweetEditor {
     }
     if (result.cursorChanged && this.editorCore) {
       this.eventBus.emit('cursorChanged', new CursorChangedEvent(this.editorCore.getCursorPosition()));
+    }
+    if (result.handled) {
+      this.scheduleImeSync();
     }
   }
 
@@ -2096,8 +2136,13 @@ export struct SweetEditor {
       return;
     }
 
+    const frameStartMs = Date.now();
+    let buildMs = 0;
+    this.renderer.beginFrame();
     if (this.modelDirty) {
+      const buildStartMs = Date.now();
       this.cachedModel = this.editorCore.buildRenderModel();
+      buildMs = Date.now() - buildStartMs;
       this.modelDirty = false;
     }
 
@@ -2105,11 +2150,20 @@ export struct SweetEditor {
     if (!model) {
       this.canvasContext.fillStyle = argbToCssColor(this.theme.backgroundColor);
       this.canvasContext.fillRect(0, 0, this.viewWidth, this.viewHeight);
+      this.renderer.getPerfOverlay().recordFrame(
+        buildMs, 0, Date.now() - frameStartMs, null, this.renderer.getMeasurePerfStats());
       return;
     }
 
     const needsTransientRefresh = this.renderer.render(
       this.canvasContext, model, this.viewWidth, this.viewHeight, this.cursorVisible);
+    this.renderer.getPerfOverlay().recordFrame(
+      buildMs,
+      this.renderer.getLastDrawMs(),
+      Date.now() - frameStartMs,
+      this.renderer.getLastDrawPerf(),
+      this.renderer.getMeasurePerfStats()
+    );
 
     // Update subsystem positions
     if (model.cursor && model.cursor.visible && model.cursor.position) {
@@ -2150,7 +2204,7 @@ export struct SweetEditor {
     this.stopCursorBlink();
     this.cursorBlinkTimerId = setInterval(() => {
       this.cursorVisible = !this.cursorVisible;
-      this.invalidateCanvas();
+      this.scheduleCanvasInvalidation();
     }, CURSOR_BLINK_INTERVAL_MS);
   }
 
@@ -2171,26 +2225,40 @@ export struct SweetEditor {
       return;
     }
     this.animationActive = true;
-    this.animationTimerId = setInterval(() => {
-      if (!this.animationActive || !this.editorCore) {
-        this.stopAnimation();
-        return;
-      }
-      const result = this.editorCore.tickAnimations();
-      this.fireGestureEvents(result, { x: 0, y: 0 });
-      this.flush();
-      if (!result.needsAnimation) {
-        this.stopAnimation();
-      }
-    }, ANIMATION_FRAME_INTERVAL_MS);
+    if (!this.startFrameSync()) {
+      this.scheduleFallbackFrame();
+    }
   }
 
   private stopAnimation(): void {
     this.animationActive = false;
-    if (this.animationTimerId >= 0) {
-      clearInterval(this.animationTimerId);
-      this.animationTimerId = -1;
+    this.stopFrameSyncIfIdle();
+  }
+
+  private handleDisplayFrame(): void {
+    if (!this.editorCore) {
+      this.renderScheduled = false;
+      this.stopAnimation();
+      this.stopFrameSync();
+      return;
     }
+
+    let shouldRender = this.renderScheduled;
+    if (this.animationActive) {
+      const result = this.editorCore.tickAnimations();
+      this.fireGestureEvents(result, { x: 0, y: 0 });
+      this.flush();
+      shouldRender = true;
+      if (!result.needsAnimation) {
+        this.animationActive = false;
+      }
+    }
+
+    if (shouldRender || this.renderScheduled) {
+      this.renderScheduled = false;
+      this.invalidateCanvas();
+    }
+    this.stopFrameSyncIfIdle();
   }
 
   private scheduleTransientScrollbarRefresh(delayMs: number): void {
@@ -2203,6 +2271,85 @@ export struct SweetEditor {
     this.transientScrollbarTimerId = setTimeout(() => {
       this.flush();
     }, Math.max(TRANSIENT_SCROLLBAR_REFRESH_MIN_MS, delayMs));
+  }
+
+  private scheduleCanvasInvalidation(): void {
+    this.renderScheduled = true;
+    if (this.startFrameSync()) {
+      return;
+    }
+    this.scheduleFallbackFrame();
+  }
+
+  private scheduleFallbackFrame(): void {
+    if (this.renderTimerId >= 0) {
+      return;
+    }
+    this.renderTimerId = setTimeout(() => {
+      this.renderTimerId = -1;
+      this.handleDisplayFrame();
+    }, ANIMATION_FRAME_INTERVAL_MS);
+  }
+
+  private clearRenderTimer(): void {
+    if (this.renderTimerId >= 0) {
+      clearTimeout(this.renderTimerId);
+      this.renderTimerId = -1;
+    }
+  }
+
+  private startFrameSync(): boolean {
+    const sync = this.ensureFrameSync();
+    if (sync === null) {
+      return false;
+    }
+    if (!this.frameSyncRunning) {
+      try {
+        sync.start();
+        this.frameSyncRunning = true;
+      } catch (error) {
+        hilog.warn(HILOG_DOMAIN, TAG, 'display sync start failed: %{public}s', `${error}`);
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private stopFrameSyncIfIdle(): void {
+    if (this.animationActive || this.renderScheduled) {
+      return;
+    }
+    this.stopFrameSync();
+  }
+
+  private stopFrameSync(): void {
+    if (this.frameSync !== null && this.frameSyncRunning) {
+      try {
+        this.frameSync.stop();
+      } catch (_error) {
+      }
+    }
+    this.frameSyncRunning = false;
+  }
+
+  private ensureFrameSync(): displaySync.DisplaySync | null {
+    if (this.frameSync !== null) {
+      return this.frameSync;
+    }
+    try {
+      const sync = displaySync.create();
+      sync.setExpectedFrameRateRange({
+        min: DISPLAY_SYNC_MIN_FPS,
+        max: DISPLAY_SYNC_MAX_FPS,
+        expected: DISPLAY_SYNC_EXPECTED_FPS
+      });
+      sync.on('frame', this.onDisplayFrame);
+      this.frameSync = sync;
+      return sync;
+    } catch (error) {
+      hilog.warn(HILOG_DOMAIN, TAG, 'display sync create failed: %{public}s', `${error}`);
+      return null;
+    }
   }
 
   private clearTransientScrollbarTimer(): void {

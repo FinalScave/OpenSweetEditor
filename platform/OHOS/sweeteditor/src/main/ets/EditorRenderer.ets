@@ -27,7 +27,7 @@ import {
 } from './core/CoreVisual';
 import { CurrentLineRenderMode } from './core/CoreFoundation';
 import { DiagnosticSeverity, FontStyle } from './core/CoreAdornments';
-import { PerfOverlay } from './perf/PerfOverlay';
+import { MeasurePerfStats, PerfOverlay, PerfStepRecorder } from './perf/PerfOverlay';
 import { argbToCssColor, multiplyArgbAlpha } from './ui/EditorColor';
 import { TextMeasurer } from 'libsweeteditor.so';
 
@@ -35,6 +35,7 @@ const HANDLE_LINE_WIDTH = 1.5;
 const HANDLE_DROP_RADIUS = 10.0;
 const HANDLE_CENTER_DIST = 24.0;
 const DEFAULT_TEXT_SIZE = 28;
+const NANOS_PER_MILLISECOND = 1000000;
 
 interface FontMetricsSnapshot {
   ascent: number;
@@ -56,6 +57,9 @@ export class EditorRenderer {
   private fontFamily: string = 'monospace';
   private iconProvider: EditorIconProvider | null = null;
   private perfOverlay: PerfOverlay = new PerfOverlay();
+  private measurePerfStats: MeasurePerfStats = new MeasurePerfStats();
+  private lastDrawPerf: PerfStepRecorder | null = null;
+  private lastDrawMs: number = 0;
   private measurementCtx: CanvasRenderingContext2D | null = null;
   private readonly fontStringCache: Map<string, string> = new Map();
   private readonly fontMetricsCache: Map<string, FontMetricsSnapshot> = new Map();
@@ -94,6 +98,22 @@ export class EditorRenderer {
 
   getPerfOverlay(): PerfOverlay {
     return this.perfOverlay;
+  }
+
+  getMeasurePerfStats(): MeasurePerfStats {
+    return this.measurePerfStats;
+  }
+
+  getLastDrawPerf(): PerfStepRecorder | null {
+    return this.lastDrawPerf;
+  }
+
+  getLastDrawMs(): number {
+    return this.lastDrawMs;
+  }
+
+  beginFrame(): void {
+    this.measurePerfStats.reset();
   }
 
   getEditorIconProvider(): EditorIconProvider | null {
@@ -162,20 +182,31 @@ export class EditorRenderer {
    */
   render(ctx: CanvasRenderingContext2D, model: EditorRenderModel,
     viewWidth: number, viewHeight: number, cursorVisible: boolean): boolean {
+    const perf = PerfStepRecorder.start();
     this.currentFontKey = '';
     ctx.clearRect(0, 0, viewWidth, viewHeight);
     ctx.fillStyle = argbToCssColor(this.theme.backgroundColor);
     ctx.fillRect(0, 0, viewWidth, viewHeight);
+    perf.mark(PerfStepRecorder.STEP_CLEAR);
 
     this.drawCurrentLineDecoration(ctx, model, 0, viewWidth);
+    perf.mark(PerfStepRecorder.STEP_CURRENT);
     this.drawSelectionRects(ctx, model.selectionRects);
+    perf.mark(PerfStepRecorder.STEP_SELECTION);
     this.drawLines(ctx, model);
+    perf.mark(PerfStepRecorder.STEP_LINES);
     this.drawGuideSegments(ctx, model.guideSegments);
+    perf.mark(PerfStepRecorder.STEP_GUIDES);
     this.drawCompositionDecoration(ctx, model.compositionDecoration);
+    perf.mark(PerfStepRecorder.STEP_COMPOSITION);
     this.drawDiagnosticDecorations(ctx, model.diagnosticDecorations);
+    perf.mark(PerfStepRecorder.STEP_DIAGNOSTICS);
     this.drawLinkedEditingRects(ctx, model.linkedEditingRects);
+    perf.mark(PerfStepRecorder.STEP_LINKED);
     this.drawBracketHighlightRects(ctx, model.bracketHighlightRects);
+    perf.mark(PerfStepRecorder.STEP_BRACKET);
     this.drawCursor(ctx, model.cursor, cursorVisible);
+    perf.mark(PerfStepRecorder.STEP_CURSOR);
 
     if (model.splitX > 0) {
       ctx.fillStyle = argbToCssColor(this.theme.backgroundColor);
@@ -192,10 +223,16 @@ export class EditorRenderer {
     }
 
     this.drawLineNumbers(ctx, model);
+    perf.mark(PerfStepRecorder.STEP_LINE_NO);
     this.drawSelectionHandles(ctx, model.selectionStartHandle, model.selectionEndHandle);
+    perf.mark(PerfStepRecorder.STEP_HANDLES);
     const needsTransientRefresh = this.drawScrollbars(ctx, model);
+    perf.mark(PerfStepRecorder.STEP_SCROLLBARS);
 
     this.perfOverlay.draw(ctx, viewWidth);
+    perf.finish();
+    this.lastDrawPerf = perf;
+    this.lastDrawMs = perf.getTotalMs();
 
     return needsTransientRefresh;
   }
@@ -933,17 +970,25 @@ export class EditorRenderer {
   private measureTextWidth(text: string, fontStyle: number): number {
     const ctx = this.getMeasurementContext();
     this.setCanvasFont(ctx, fontStyle, this.getScaledTextSize(), this.fontFamily);
-    return ctx.measureText(text).width;
+    const startMs = Date.now();
+    const width = ctx.measureText(text).width;
+    this.measurePerfStats.recordText((Date.now() - startMs) * NANOS_PER_MILLISECOND, text.length, fontStyle);
+    return width;
   }
 
   private measureInlayHintWidth(text: string): number {
     const ctx = this.getMeasurementContext();
     this.setCanvasFont(ctx, 0, this.getScaledInlayHintSize(), 'sans-serif');
-    return ctx.measureText(text).width;
+    const startMs = Date.now();
+    const width = ctx.measureText(text).width;
+    this.measurePerfStats.recordInlay((Date.now() - startMs) * NANOS_PER_MILLISECOND, text.length);
+    return width;
   }
 
   private measureIconWidth(): number {
+    const startMs = Date.now();
     const metrics = this.getMainFontMetrics();
+    this.measurePerfStats.recordIcon((Date.now() - startMs) * NANOS_PER_MILLISECOND);
     return metrics.ascent + metrics.descent;
   }
 

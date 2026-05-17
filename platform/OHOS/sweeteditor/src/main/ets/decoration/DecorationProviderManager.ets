@@ -160,6 +160,7 @@ export class DecorationProviderManager {
     if (this.tornDown) {
       return;
     }
+    const refreshStartMs = Date.now();
     this.generation++;
     const currentGeneration = this.generation;
 
@@ -199,6 +200,7 @@ export class DecorationProviderManager {
         hilog.error(HILOG_DOMAIN, TAG, 'provider failed: %{public}s', `${e}`);
       }
     }
+    this.editor.recordDecorationPerf('refresh', Date.now() - refreshStartMs);
   }
 
   private scheduleApply(): void {
@@ -219,6 +221,7 @@ export class DecorationProviderManager {
     if (this.tornDown) {
       return;
     }
+    const applyStartMs = Date.now();
     this.applyScheduled = false;
 
     const syntaxSpans = new Map<number, StyleSpan[]>();
@@ -346,6 +349,7 @@ export class DecorationProviderManager {
     this.editor.setBatchLineLinks(links);
 
     this.editor.flush();
+    this.editor.recordDecorationPerf('apply', Date.now() - applyStartMs);
   }
 
   teardown(): void {

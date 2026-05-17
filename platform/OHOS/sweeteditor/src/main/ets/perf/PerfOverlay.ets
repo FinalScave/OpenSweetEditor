@@ -60,10 +60,6 @@ export class MeasurePerfStats {
     }
   }
 
-  shouldLog(): boolean {
-    return this.textNanosTotal / 1_000_000 >= 2.0 || this.inlayNanosTotal / 1_000_000 >= 1.0;
-  }
-
   buildSummary(): string {
     return `measure{text=${this.textCount}/${(this.textNanosTotal / 1_000_000).toFixed(2)}ms ` +
       `max=${(this.textNanosMax / 1_000_000).toFixed(2)}ms(len=${this.textMaxLen},style=${this.textMaxStyle}) ` +
@@ -77,7 +73,6 @@ export class MeasurePerfStats {
  */
 export class PerfStepRecorder {
   static readonly MAX_STEPS = 32;
-  static readonly STEP_BUILD = 'build';
   static readonly STEP_CLEAR = 'clear';
   static readonly STEP_CURRENT = 'current';
   static readonly STEP_SELECTION = 'selection';
@@ -88,7 +83,6 @@ export class PerfStepRecorder {
   static readonly STEP_LINKED = 'linked';
   static readonly STEP_BRACKET = 'bracket';
   static readonly STEP_CURSOR = 'cursor';
-  static readonly STEP_GUTTER = 'gutter';
   static readonly STEP_LINE_NO = 'lineNo';
   static readonly STEP_HANDLES = 'handles';
   static readonly STEP_SCROLLBARS = 'scrollbars';
@@ -127,32 +121,6 @@ export class PerfStepRecorder {
     return end - this.startTimeMs;
   }
 
-  getStepMs(stepName: string): number {
-    for (let i = 0; i < this.stepNames.length; i++) {
-      if (this.stepNames[i] === stepName) {
-        return this.stepMs[i];
-      }
-    }
-    return 0;
-  }
-
-  anyStepOver(thresholdMs: number): boolean {
-    for (const ms of this.stepMs) {
-      if (ms >= thresholdMs) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  buildSummary(): string {
-    let sb = `total=${this.getTotalMs().toFixed(2)}ms`;
-    for (let i = 0; i < this.stepNames.length; i++) {
-      sb += ` ${this.stepNames[i]}=${this.stepMs[i].toFixed(2)}ms`;
-    }
-    return sb;
-  }
-
   getStepCount(): number {
     return this.stepNames.length;
   }
@@ -166,10 +134,10 @@ export class PerfStepRecorder {
   }
 }
 
-const WARN_BUILD_MS = 8.0;
-const WARN_PAINT_MS = 8.0;
 const WARN_INPUT_MS = 3.0;
 const WARN_PAINT_STEP_MS = 2.0;
+const WARN_FRAME_MS = 16.6;
+const WARN_DECORATION_MS = 8.0;
 const TEXT_SIZE = 24;
 const LINE_SPACING = 4;
 const PADDING_H = 10;
@@ -191,6 +159,8 @@ export class PerfOverlay {
   private lastMeasureStats: MeasurePerfStats | null = null;
   private lastInputTag: string = '';
   private lastInputMs: number = 0;
+  private lastDecorationTag: string = '';
+  private lastDecorationMs: number = 0;
 
   isEnabled(): boolean {
     return this.enabled;
@@ -213,6 +183,11 @@ export class PerfOverlay {
   recordInput(tag: string, inputMs: number): void {
     this.lastInputTag = tag;
     this.lastInputMs = inputMs;
+  }
+
+  recordDecoration(tag: string, elapsedMs: number): void {
+    this.lastDecorationTag = tag;
+    this.lastDecorationMs = elapsedMs;
   }
 
   draw(ctx: CanvasRenderingContext2D, viewWidth: number): void {
@@ -257,7 +232,7 @@ export class PerfOverlay {
 
     lines.push(`FPS: ${this.currentFps.toFixed(0)}`);
 
-    const frameSuffix = this.lastTotalMs > 16.6 ? ' SLOW' : '';
+    const frameSuffix = this.lastTotalMs > WARN_FRAME_MS ? ' SLOW' : '';
     lines.push(`Frame: ${this.lastTotalMs.toFixed(2)}ms (build=${this.lastBuildMs.toFixed(2)} draw=${this.lastDrawMs.toFixed(2)})${frameSuffix}`);
 
     if (this.lastDrawPerf) {
@@ -274,6 +249,11 @@ export class PerfOverlay {
     if (this.lastInputTag.length > 0) {
       const suffix = this.lastInputMs > WARN_INPUT_MS ? ' SLOW' : '';
       lines.push(`Input[${this.lastInputTag}]: ${this.lastInputMs.toFixed(2)}ms${suffix}`);
+    }
+
+    if (this.lastDecorationTag.length > 0) {
+      const suffix = this.lastDecorationMs > WARN_DECORATION_MS ? ' SLOW' : '';
+      lines.push(`Decoration[${this.lastDecorationTag}]: ${this.lastDecorationMs.toFixed(2)}ms${suffix}`);
     }
 
     return lines;

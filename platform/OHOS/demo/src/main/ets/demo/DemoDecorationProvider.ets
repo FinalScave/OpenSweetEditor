@@ -1,69 +1,58 @@
 import { resourceManager } from '@kit.LocalizationKit';
-import { util } from '@kit.ArkTS';
+import { ErrorEvent, MessageEvents, util, worker } from '@kit.ArkTS';
 import {
   ApplyMode,
+  CodeLensItem,
   DecorationContext,
   DecorationProvider,
   DecorationReceiver,
   DecorationResult,
   DecorationResultBuilder,
   DecorationType,
-  Diagnostic,
   Document as EditorDocument,
-  EditorTheme,
-  FoldRegion,
   GutterIcon,
-  IndentGuide,
   InlayHint,
-  InlayType,
-  CodeLensItem,
-  SeparatorStyle,
-  SeparatorGuide,
-  StyleSpan,
-  TextRange
+  StyleSpan
 } from '@qiplat/sweeteditor';
-import { sweetline } from '@qiplat/sweetline';
-import { DEMO_RAWFILE_SYNTAX_ROOT, DEMO_STYLE_COLOR } from './DemoSamples';
+import hilog from '@ohos.hilog';
+import { DEMO_RAWFILE_SYNTAX_ROOT } from './DemoSamples';
 import { DemoFileMetadata } from './DemoTypes';
+import {
+  DecorationWorkerAnalyzeMessage,
+  DecorationWorkerResultMessage,
+  LineDecorationItems
+} from './DemoDecorationWorkerTypes';
 
+const TAG = 'DemoDecoration';
+const HILOG_DOMAIN = 0x3D12;
 const DEFAULT_ANALYSIS_FILE_NAME: string = 'sample.cpp';
-const MAX_DYNAMIC_DIAGNOSTICS: number = 8;
-const CODELENS_RUN: number = 1;
-const CODELENS_DEBUG: number = 2;
+const DIAGNOSTIC_DELAY_MS: number = 500;
+const WORKER_ANALYSIS_WARN_MS: number = 16;
+const WORKER_SCRIPT_URL: string = 'demo/ets/workers/DemoDecorationWorker.ets';
 
-class TokenRangeInfo {
-  readonly line: number;
-  readonly startColumn: number;
-  readonly endColumn: number;
-
-  constructor(line: number, startColumn: number, endColumn: number) {
-    this.line = line;
-    this.startColumn = startColumn;
-    this.endColumn = endColumn;
-  }
-
-  length(): number {
-    return this.endColumn - this.startColumn;
-  }
+interface PendingDecorationRequest {
+  receiver: DecorationReceiver;
+  startedAt: number;
 }
 
 export class DemoDecorationProvider implements DecorationProvider {
-  static readonly ICON_TYPE: number = 1;
-  static readonly ICON_AT: number = 2;
   private static readonly textDecoder: util.TextDecoder = util.TextDecoder.create('utf-8', { ignoreBOM: true });
-  private static highlightEngine: sweetline.HighlightEngine | null = null;
+  private static syntaxJsons: string[] = [];
   private static initPromise: Promise<boolean> | null = null;
+
   private readonly documentProvider: () => EditorDocument | null;
-  private documentAnalyzer: sweetline.DocumentAnalyzer | null = null;
-  private cacheHighlight: sweetline.DocumentHighlightSlice | null = null;
-  private analyzedFileName: string = DEFAULT_ANALYSIS_FILE_NAME;
+  private workerInstance: worker.ThreadWorker | null = null;
+  private workerDocumentFileName: string | null = null;
+  private nextRequestId: number = 0;
+  private readonly pendingRequests: Map<number, PendingDecorationRequest> = new Map();
+  private readonly diagnosticTimerIds: Map<number, number> = new Map();
 
   constructor(documentProvider: () => EditorDocument | null) {
     this.documentProvider = documentProvider;
   }
 
   static async ensureSweetLineReady(manager: resourceManager.ResourceManager | null): Promise<boolean> {
-    if (DemoDecorationProvider.highlightEngine !== null) {
+    if (DemoDecorationProvider.syntaxJsons.length > 0) {
       return true;
     }
     if (DemoDecorationProvider.initPromise !== null) {
@@ -72,7 +61,7 @@ export class DemoDecorationProvider implements DecorationProvider {
     if (manager === null) {
       return false;
     }
-    const initTask = DemoDecorationProvider.createHighlightEngine(manager);
+    const initTask = DemoDecorationProvider.loadSyntaxJsons(manager);
     DemoDecorationProvider.initPromise = initTask;
     try {
       return await initTask;
@@ -95,146 +84,173 @@ export class DemoDecorationProvider implements DecorationProvider {
   }
 
   provideDecorations(context: DecorationContext, receiver: DecorationReceiver): void {
-    const diagnostics = new Map<number, Diagnostic[]>();
-    receiver.accept(this.buildSweetLineDecorationResult(context, diagnostics));
-
-    setTimeout(() => {
-      if (receiver.isCancelled()) {
-        return;
-      }
-      receiver.accept(new DecorationResultBuilder()
-        .diagnostics(diagnostics, ApplyMode.REPLACE_ALL)
-        .build());
-    }, 500);
-  }
-
-  private buildSweetLineDecorationResult(context: DecorationContext,
-    dynamicDiagnostics: Map<number, Diagnostic[]>): DecorationResult {
-    if (DemoDecorationProvider.highlightEngine === null) {
-      return this.buildEmptyResult();
+    if (DemoDecorationProvider.syntaxJsons.length === 0) {
+      receiver.accept(this.buildEmptyResult());
+      return;
     }
-
-    const syntaxSpans = new Map<number, StyleSpan[]>();
-    const inlayHints = new Map<number, InlayHint[]>();
-    const gutterIcons = new Map<number, GutterIcon[]>();
-    const codeLensItems = new Map<number, CodeLensItem[]>();
-    const indentGuides: IndentGuide[] = [];
-    const foldRegions: FoldRegion[] = [];
-    const separatorGuides: SeparatorGuide[] = [];
-    const seenColorHints = new Set<string>();
-    const seenDiagnostics = new Set<string>();
-    const diagnosticCount: number[] = [0];
-    let firstKeywordRange: TokenRangeInfo | null = null;
 
     const editorDocument = this.documentProvider();
     if (editorDocument === null) {
-      return this.buildEmptyResult();
+      receiver.accept(this.buildEmptyResult());
+      return;
     }
 
     const currentFileName = DemoDecorationProvider.resolveCurrentFileName(context);
-    const text = editorDocument.getText();
-    const fileChanged = currentFileName !== this.analyzedFileName;
-    const visibleRange = new sweetline.LineRange(
-      Math.max(0, context.visibleLineRange.start),
-      Math.max(0, context.visibleLineRange.end - Math.max(0, context.visibleLineRange.start) + 1)
-    );
+    const needsText = this.workerDocumentFileName !== currentFileName || context.textChanges.length > 0;
+    const text = needsText ? editorDocument.getText() : null;
+    const workerInstance = this.ensureWorker();
+    if (workerInstance === null) {
+      receiver.accept(this.buildEmptyResult());
+      return;
+    }
 
-    if (this.cacheHighlight === null || this.documentAnalyzer === null || fileChanged) {
-      this.documentAnalyzer = null;
-      this.cacheHighlight = null;
-      const analyzer = DemoDecorationProvider.highlightEngine.loadDocument(
-        new sweetline.Document(DemoDecorationProvider.buildAnalysisUri(currentFileName), text)
+    const requestId = ++this.nextRequestId;
+    const message: DecorationWorkerAnalyzeMessage = {
+      type: 'analyze',
+      requestId,
+      fileName: currentFileName,
+      totalLineCount: context.totalLineCount,
+      visibleStartLine: context.visibleLineRange.start,
+      visibleEndLine: context.visibleLineRange.end,
+      text
+    };
+
+    this.pendingRequests.set(requestId, { receiver, startedAt: Date.now() });
+    try {
+      workerInstance.postMessage(message);
+      if (needsText) {
+        this.workerDocumentFileName = currentFileName;
+      }
+    } catch (error) {
+      this.pendingRequests.delete(requestId);
+      hilog.error(HILOG_DOMAIN, TAG, 'post worker request failed: %{public}s', `${error}`);
+      receiver.accept(this.buildEmptyResult());
+    }
+  }
+
+  dispose(): void {
+    this.pendingRequests.clear();
+    this.diagnosticTimerIds.forEach((timerId) => clearTimeout(timerId));
+    this.diagnosticTimerIds.clear();
+    if (this.workerInstance !== null) {
+      try {
+        this.workerInstance.terminate();
+      } catch (_error) {
+      }
+      this.workerInstance = null;
+    }
+    this.workerDocumentFileName = null;
+  }
+
+  private ensureWorker(): worker.ThreadWorker | null {
+    if (this.workerInstance !== null) {
+      return this.workerInstance;
+    }
+    try {
+      const instance = new worker.ThreadWorker(WORKER_SCRIPT_URL, { name: 'SweetEditorDecorationWorker' });
+      instance.onmessage = (event: MessageEvents): void => this.handleWorkerMessage(event);
+      instance.onerror = (event: ErrorEvent): void => this.handleWorkerError(event);
+      instance.onmessageerror = (event: MessageEvents): void => {
+        this.handleWorkerFailure(`message error: ${event.type}`);
+      };
+      if (!this.sendWorkerInit(instance)) {
+        instance.terminate();
+        return null;
+      }
+      this.workerInstance = instance;
+      return instance;
+    } catch (error) {
+      hilog.error(HILOG_DOMAIN, TAG, 'create worker failed: %{public}s', `${error}`);
+      this.workerInstance = null;
+      this.workerDocumentFileName = null;
+      return null;
+    }
+  }
+
+  private sendWorkerInit(instance: worker.ThreadWorker): boolean {
+    try {
+      instance.postMessage({
+        type: 'init',
+        syntaxJsons: [...DemoDecorationProvider.syntaxJsons]
+      });
+      return true;
+    } catch (error) {
+      hilog.error(HILOG_DOMAIN, TAG, 'init worker failed: %{public}s', `${error}`);
+      return false;
+    }
+  }
+
+  private handleWorkerMessage(event: MessageEvents): void {
+    const message = event.data as DecorationWorkerResultMessage;
+    if (!message || message.type !== 'result') {
+      return;
+    }
+    const pending = this.pendingRequests.get(message.requestId);
+    if (!pending) {
+      return;
+    }
+    this.pendingRequests.delete(message.requestId);
+    if (pending.receiver.isCancelled()) {
+      return;
+    }
+
+    if (message.error !== null) {
+      hilog.warn(HILOG_DOMAIN, TAG, 'worker result error: %{public}s', message.error);
+    }
+    if (message.analysisMs >= WORKER_ANALYSIS_WARN_MS) {
+      hilog.info(
+        HILOG_DOMAIN,
+        TAG,
+        'worker analysis=%{public}dms total=%{public}dms',
+        message.analysisMs,
+        Date.now() - pending.startedAt
       );
-      if (analyzer === null) {
-        return this.buildEmptyResult();
+    }
+
+    pending.receiver.accept(new DecorationResultBuilder()
+      .syntaxSpans(DemoDecorationProvider.mapFromLineItems(message.syntaxSpans), ApplyMode.MERGE)
+      .inlayHints(DemoDecorationProvider.mapFromLineItems(message.inlayHints), ApplyMode.REPLACE_RANGE)
+      .indentGuides(message.indentGuides, ApplyMode.REPLACE_ALL)
+      .foldRegions(message.foldRegions, ApplyMode.REPLACE_ALL)
+      .separatorGuides(message.separatorGuides, ApplyMode.REPLACE_ALL)
+      .gutterIcons(DemoDecorationProvider.mapFromLineItems(message.gutterIcons), ApplyMode.REPLACE_ALL)
+      .codeLensItems(DemoDecorationProvider.mapFromLineItems(message.codeLensItems), ApplyMode.REPLACE_ALL)
+      .build());
+
+    const diagnostics = DemoDecorationProvider.mapFromLineItems(message.diagnostics);
+    const timerId = setTimeout(() => {
+      this.diagnosticTimerIds.delete(message.requestId);
+      if (pending.receiver.isCancelled()) {
+        return;
       }
-      this.documentAnalyzer = analyzer;
-      this.analyzedFileName = currentFileName;
-    }
+      pending.receiver.accept(new DecorationResultBuilder()
+        .diagnostics(diagnostics, ApplyMode.REPLACE_ALL)
+        .build());
+    }, DIAGNOSTIC_DELAY_MS);
+    this.diagnosticTimerIds.set(message.requestId, timerId);
+  }
 
-    if (this.documentAnalyzer !== null && context.textChanges.length > 0) {
-      for (let index = 0; index < context.textChanges.length; index++) {
-        const change = context.textChanges[index];
-        this.cacheHighlight = this.documentAnalyzer.analyzeIncrementalInLineRange(
-          DemoDecorationProvider.convertAsSLTextRange(change.range),
-          change.newText,
-          visibleRange
-        );
-      }
-    } else if (this.documentAnalyzer !== null) {
-      this.cacheHighlight = this.documentAnalyzer.analyzeLineRange(visibleRange);
-    }
+  private handleWorkerError(event: ErrorEvent): void {
+    this.handleWorkerFailure(`${event.message} (${event.filename}:${event.lineno}:${event.colno})`);
+  }
 
-    if (this.cacheHighlight === null || this.cacheHighlight.lines.length === 0) {
-      return this.buildEmptyResult();
-    }
-
-    for (let line = 0; line < this.cacheHighlight.lines.length; line++) {
-      const lineHighlight = this.cacheHighlight.lines[line];
-      for (let spanIndex = 0; spanIndex < lineHighlight.spans.length; spanIndex++) {
-        const token = lineHighlight.spans[spanIndex];
-        this.appendStyleSpan(syntaxSpans, token);
-        this.appendColorInlayHint(inlayHints, seenColorHints, editorDocument, token);
-        this.appendTextInlayHint(inlayHints, editorDocument, token);
-        this.appendSeparator(separatorGuides, editorDocument, token);
-        this.appendGutterIcons(gutterIcons, editorDocument, token);
-        this.appendCodeLens(codeLensItems, editorDocument, token);
-        firstKeywordRange = this.appendDynamicDemoDecorations(
-          dynamicDiagnostics,
-          seenDiagnostics,
-          diagnosticCount,
-          firstKeywordRange,
-          editorDocument,
-          token
-        );
+  private handleWorkerFailure(reason: string): void {
+    hilog.error(HILOG_DOMAIN, TAG, 'worker failed: %{public}s', reason);
+    const pending = Array.from(this.pendingRequests.values());
+    this.pendingRequests.clear();
+    for (const request of pending) {
+      if (!request.receiver.isCancelled()) {
+        request.receiver.accept(this.buildEmptyResult());
       }
     }
-
-    DemoDecorationProvider.appendDiagnosticFallbackIfNeeded(
-      dynamicDiagnostics,
-      seenDiagnostics,
-      diagnosticCount,
-      firstKeywordRange
-    );
-
-    if (context.totalLineCount < 2048 && this.documentAnalyzer !== null) {
-      const guideResult = this.documentAnalyzer.analyzeIndentGuides();
-      const seenFolds = new Set<string>();
-      for (let index = 0; index < guideResult.guideLines.length; index++) {
-        const guide = guideResult.guideLines[index];
-        if (guide.endLine < guide.startLine) {
-          continue;
-        }
-        const column = Math.max(guide.column, 0);
-        indentGuides.push({
-          start: { line: guide.startLine, column },
-          end: { line: guide.endLine, column }
-        });
-
-        if (guide.endLine <= guide.startLine) {
-          continue;
-        }
-        const key = `${guide.startLine}:${guide.endLine}`;
-        if (seenFolds.has(key)) {
-          continue;
-        }
-        seenFolds.add(key);
-        foldRegions.push({
-          startLine: guide.startLine,
-          endLine: guide.endLine
-        });
+    if (this.workerInstance !== null) {
+      try {
+        this.workerInstance.terminate();
+      } catch (_error) {
       }
     }
-
-    return new DecorationResultBuilder()
-      .syntaxSpans(syntaxSpans, ApplyMode.MERGE)
-      .inlayHints(inlayHints, ApplyMode.REPLACE_RANGE)
-      .indentGuides(indentGuides, ApplyMode.REPLACE_ALL)
-      .foldRegions(foldRegions, ApplyMode.REPLACE_ALL)
-      .separatorGuides(separatorGuides, ApplyMode.REPLACE_ALL)
-      .gutterIcons(gutterIcons, ApplyMode.REPLACE_ALL)
-      .codeLensItems(codeLensItems, ApplyMode.REPLACE_ALL)
-      .build();
+    this.workerInstance = null;
+    this.workerDocumentFileName = null;
   }
 
   private buildEmptyResult(): DecorationResult {
@@ -245,311 +261,17 @@ export class DemoDecorationProvider implements DecorationProvider {
       .foldRegions([], ApplyMode.REPLACE_ALL)
       .separatorGuides([], ApplyMode.REPLACE_ALL)
       .gutterIcons(new Map<number, GutterIcon[]>(), ApplyMode.REPLACE_ALL)
+      .codeLensItems(new Map<number, CodeLensItem[]>(), ApplyMode.REPLACE_ALL)
       .build();
   }
 
-  private appendDynamicDemoDecorations(diagnostics: Map<number, Diagnostic[]>,
-    seenDiagnostics: Set<string>,
-    diagnosticCount: number[],
-    firstKeywordRange: TokenRangeInfo | null,
-    editorDocument: EditorDocument,
-    token: sweetline.TokenSpan): TokenRangeInfo | null {
-    const range = DemoDecorationProvider.extractSingleLineTokenRange(token);
-    if (range === null) {
-      return firstKeywordRange;
+  private static mapFromLineItems<T>(items: LineDecorationItems<T>[]): Map<number, T[]> {
+    const out = new Map<number, T[]>();
+    for (let index = 0; index < items.length; index++) {
+      const entry = items[index];
+      out.set(entry.line, entry.items ? entry.items : []);
     }
-    const literal = DemoDecorationProvider.getTokenLiteral(editorDocument, range);
-    if (literal.length === 0) {
-      return firstKeywordRange;
-    }
-
-    if (token.styleId === EditorTheme.STYLE_KEYWORD) {
-      return firstKeywordRange === null ? range : firstKeywordRange;
-    }
-
-    if (token.styleId === EditorTheme.STYLE_COMMENT) {
-      const upper = literal.toUpperCase();
-      const fixmeIndex = upper.indexOf('FIXME');
-      if (fixmeIndex >= 0) {
-        DemoDecorationProvider.appendDiagnostic(
-          diagnostics,
-          seenDiagnostics,
-          diagnosticCount,
-          range.line,
-          range.startColumn + fixmeIndex,
-          5,
-          0
-        );
-      }
-      const todoIndex = upper.indexOf('TODO');
-      if (todoIndex >= 0) {
-        DemoDecorationProvider.appendDiagnostic(
-          diagnostics,
-          seenDiagnostics,
-          diagnosticCount,
-          range.line,
-          range.startColumn + todoIndex,
-          4,
-          1
-        );
-      }
-      return firstKeywordRange;
-    }
-
-    if (token.styleId === DEMO_STYLE_COLOR) {
-      return firstKeywordRange;
-    }
-
-    if (token.styleId === EditorTheme.STYLE_ANNOTATION) {
-      DemoDecorationProvider.appendDiagnostic(
-        diagnostics,
-        seenDiagnostics,
-        diagnosticCount,
-        range.line,
-        range.startColumn,
-        range.length(),
-        3
-      );
-    }
-    return firstKeywordRange;
-  }
-
-  private appendStyleSpan(syntaxSpans: Map<number, StyleSpan[]>, token: sweetline.TokenSpan): void {
-    if (token.styleId <= 0) {
-      return;
-    }
-    const range = DemoDecorationProvider.extractSingleLineTokenRange(token);
-    if (range === null) {
-      return;
-    }
-    let lineSpans = syntaxSpans.get(range.line);
-    if (lineSpans === undefined) {
-      lineSpans = [];
-      syntaxSpans.set(range.line, lineSpans);
-    }
-    lineSpans.push({
-      column: range.startColumn,
-      length: range.length(),
-      styleId: token.styleId
-    });
-  }
-
-  private appendColorInlayHint(inlayHints: Map<number, InlayHint[]>,
-    seenHints: Set<string>,
-    editorDocument: EditorDocument,
-    token: sweetline.TokenSpan): void {
-    if (token.styleId !== DEMO_STYLE_COLOR) {
-      return;
-    }
-    const range = DemoDecorationProvider.extractSingleLineTokenRange(token);
-    if (range === null) {
-      return;
-    }
-    const literal = DemoDecorationProvider.getTokenLiteral(editorDocument, range);
-    const color = DemoDecorationProvider.parseColorLiteral(literal);
-    if (color === null) {
-      return;
-    }
-    const key = `${range.line}:${range.startColumn}:${literal}`;
-    if (seenHints.has(key)) {
-      return;
-    }
-    seenHints.add(key);
-    let lineHints = inlayHints.get(range.line);
-    if (lineHints === undefined) {
-      lineHints = [];
-      inlayHints.set(range.line, lineHints);
-    }
-    lineHints.push({
-      type: InlayType.Color,
-      column: range.startColumn,
-      text: null,
-      intValue: color
-    });
-  }
-
-  private appendTextInlayHint(inlayHints: Map<number, InlayHint[]>,
-    editorDocument: EditorDocument,
-    token: sweetline.TokenSpan): void {
-    if (token.styleId !== EditorTheme.STYLE_KEYWORD) {
-      return;
-    }
-    const range = DemoDecorationProvider.extractSingleLineTokenRange(token);
-    if (range === null) {
-      return;
-    }
-    const literal = DemoDecorationProvider.getTokenLiteral(editorDocument, range);
-    let hintText = '';
-    if (literal === 'const') {
-      hintText = 'immutable';
-    } else if (literal === 'return') {
-      hintText = 'value: ';
-    } else if (literal === 'case') {
-      hintText = 'condition: ';
-    }
-    if (hintText.length === 0) {
-      return;
-    }
-    let lineHints = inlayHints.get(range.line);
-    if (lineHints === undefined) {
-      lineHints = [];
-      inlayHints.set(range.line, lineHints);
-    }
-    lineHints.push({
-      type: InlayType.Text,
-      column: range.endColumn + 1,
-      text: hintText,
-      intValue: 0
-    });
-  }
-
-  private appendSeparator(separatorGuides: SeparatorGuide[],
-    editorDocument: EditorDocument,
-    token: sweetline.TokenSpan): void {
-    if (token.styleId !== EditorTheme.STYLE_COMMENT) {
-      return;
-    }
-    const range = DemoDecorationProvider.extractSingleLineTokenRange(token);
-    if (range === null) {
-      return;
-    }
-    const lineText = editorDocument.getLineText(range.line);
-    if (range.endColumn > lineText.length) {
-      return;
-    }
-    let count = -1;
-    let isDouble = false;
-    for (let index = 0; index < lineText.length; index++) {
-      const ch = lineText[index];
-      if (count < 0) {
-        if (ch === '/') {
-          continue;
-        }
-        if (ch === '=') {
-          count = 1;
-          isDouble = true;
-        } else if (ch === '-') {
-          count = 1;
-          isDouble = false;
-        }
-      } else if (isDouble && ch === '=') {
-        count++;
-      } else if (!isDouble && ch === '-') {
-        count++;
-      } else {
-        break;
-      }
-    }
-    if (count > 0) {
-      separatorGuides.push({
-        line: range.line,
-        style: isDouble ? SeparatorStyle.DOUBLE : SeparatorStyle.SINGLE,
-        count,
-        textEndColumn: lineText.length
-      });
-    }
-  }
-
-  private appendGutterIcons(gutterIcons: Map<number, GutterIcon[]>,
-    editorDocument: EditorDocument,
-    token: sweetline.TokenSpan): void {
-    if (token.styleId !== EditorTheme.STYLE_KEYWORD && token.styleId !== EditorTheme.STYLE_ANNOTATION) {
-      return;
-    }
-    const range = DemoDecorationProvider.extractSingleLineTokenRange(token);
-    if (range === null) {
-      return;
-    }
-    let iconId = 0;
-    if (token.styleId === EditorTheme.STYLE_KEYWORD) {
-      const literal = DemoDecorationProvider.getTokenLiteral(editorDocument, range);
-      if (literal === 'class' || literal === 'struct') {
-        iconId = DemoDecorationProvider.ICON_TYPE;
-      }
-    } else {
-      iconId = DemoDecorationProvider.ICON_AT;
-    }
-    if (iconId === 0) {
-      return;
-    }
-    let lineIcons = gutterIcons.get(range.line);
-    if (lineIcons === undefined) {
-      lineIcons = [];
-      gutterIcons.set(range.line, lineIcons);
-    }
-    lineIcons.push({ iconId });
-  }
-
-  private appendCodeLens(codeLensItems: Map<number, CodeLensItem[]>,
-    editorDocument: EditorDocument,
-    token: sweetline.TokenSpan): void {
-    if (codeLensItems.size > 0) {
-      return;
-    }
-    if (token.styleId !== EditorTheme.STYLE_KEYWORD) {
-      return;
-    }
-    const range = DemoDecorationProvider.extractSingleLineTokenRange(token);
-    if (range === null) {
-      return;
-    }
-    const literal = DemoDecorationProvider.getTokenLiteral(editorDocument, range);
-    if (literal === 'class' || literal === 'struct') {
-      codeLensItems.set(range.line, [
-        { column: range.startColumn, text: '▶ Run', commandId: CODELENS_RUN },
-        { column: range.startColumn, text: '◎ Debug', commandId: CODELENS_DEBUG }
-      ]);
-    }
-  }
-
-  private static appendDiagnostic(diagnostics: Map<number, Diagnostic[]>,
-    seenDiagnostics: Set<string>,
-    diagnosticCount: number[],
-    line: number,
-    column: number,
-    length: number,
-    severity: number): void {
-    if (diagnosticCount[0] >= MAX_DYNAMIC_DIAGNOSTICS || line < 0 || column < 0 || length <= 0) {
-      return;
-    }
-    const key = `${line}:${column}:${length}:${severity}`;
-    if (seenDiagnostics.has(key)) {
-      return;
-    }
-    seenDiagnostics.add(key);
-    let lineItems = diagnostics.get(line);
-    if (lineItems === undefined) {
-      lineItems = [];
-      diagnostics.set(line, lineItems);
-    }
-    lineItems.push({
-      column,
-      length,
-      severity
-    });
-    diagnosticCount[0]++;
-  }
-
-  private static appendDiagnosticFallbackIfNeeded(diagnostics: Map<number, Diagnostic[]>,
-    seenDiagnostics: Set<string>,
-    diagnosticCount: number[],
-    firstKeywordRange: TokenRangeInfo | null): void {
-    if (diagnosticCount[0] > 0 || firstKeywordRange === null) {
-      return;
-    }
-    DemoDecorationProvider.appendDiagnostic(
-      diagnostics,
-      seenDiagnostics,
-      diagnosticCount,
-      firstKeywordRange.line,
-      firstKeywordRange.startColumn,
-      firstKeywordRange.length(),
-      3
-    );
-  }
-
-  private static buildAnalysisUri(fileName: string): string {
-    return `file:///${fileName}`;
+    return out;
   }
 
   private static resolveCurrentFileName(context: DecorationContext): string {
@@ -559,53 +281,7 @@ export class DemoDecorationProvider implements DecorationProvider {
     return DEFAULT_ANALYSIS_FILE_NAME;
   }
 
-  private static parseColorLiteral(literal: string): number | null {
-    if (literal.length > 2 && literal[0] === '0' && (literal[1] === 'x' || literal[1] === 'X')) {
-      const hex = literal.slice(2).replace(/[_uUlL]/g, '');
-      const parsed = Number.parseInt(hex, 16);
-      if (!Number.isNaN(parsed)) {
-        return parsed;
-      }
-    }
-    return null;
-  }
-
-  private static extractSingleLineTokenRange(token: sweetline.TokenSpan | null): TokenRangeInfo | null {
-    if (token === null || token.range === null || token.range.start === null || token.range.end === null) {
-      return null;
-    }
-    const startLine = token.range.start.line;
-    const endLine = token.range.end.line;
-    const startColumn = token.range.start.column;
-    const endColumn = token.range.end.column;
-    if (startLine < 0 || startLine !== endLine || startColumn < 0 || endColumn <= startColumn) {
-      return null;
-    }
-    return new TokenRangeInfo(startLine, startColumn, endColumn);
-  }
-
-  private static getTokenLiteral(editorDocument: EditorDocument, range: TokenRangeInfo): string {
-    const lineText = editorDocument.getLineText(range.line);
-    if (range.endColumn > lineText.length) {
-      return '';
-    }
-    return lineText.slice(range.startColumn, range.endColumn);
-  }
-
-  private static convertAsSLTextRange(range: TextRange): sweetline.TextRange {
-    return new sweetline.TextRange(
-      new sweetline.TextPosition(range.start.line, range.start.column),
-      new sweetline.TextPosition(range.end.line, range.end.column)
-    );
-  }
-
-  private static async createHighlightEngine(manager: resourceManager.ResourceManager): Promise<boolean> {
-    if (DemoDecorationProvider.highlightEngine !== null) {
-      return true;
-    }
-    const engine = new sweetline.HighlightEngine(new sweetline.HighlightConfig(false, false, 4));
-    DemoDecorationProvider.registerDemoStyleMap(engine);
-
+  private static async loadSyntaxJsons(manager: resourceManager.ResourceManager): Promise<boolean> {
     let syntaxFiles: string[] = [];
     try {
       syntaxFiles = await manager.getRawFileList(DEMO_RAWFILE_SYNTAX_ROOT);
@@ -617,6 +293,7 @@ export class DemoDecorationProvider implements DecorationProvider {
       throw new Error(`No syntax files found under rawfile/${DEMO_RAWFILE_SYNTAX_ROOT}`);
     }
 
+    const syntaxJsons: string[] = [];
     for (let index = 0; index < sortedSyntaxFiles.length; index++) {
       const assetName = sortedSyntaxFiles[index];
       let syntaxContent: Uint8Array;
@@ -625,32 +302,9 @@ export class DemoDecorationProvider implements DecorationProvider {
       } catch (error) {
         throw new Error(`Failed to load syntax rawfile ${assetName}: ${String(error)}`);
       }
-      const syntaxJson = DemoDecorationProvider.textDecoder.decodeToString(syntaxContent);
-      const compiled = engine.compileSyntaxFromJson(syntaxJson);
-      if (compiled === null) {
-        throw new Error(`Failed to compile syntax rawfile: ${assetName}`);
-      }
+      syntaxJsons.push(DemoDecorationProvider.textDecoder.decodeToString(syntaxContent));
     }
-
-    DemoDecorationProvider.highlightEngine = engine;
+    DemoDecorationProvider.syntaxJsons = syntaxJsons;
     return true;
-  }
-
-  private static registerDemoStyleMap(engine: sweetline.HighlightEngine): void {
-    engine.registerStyleName('keyword', EditorTheme.STYLE_KEYWORD);
-    engine.registerStyleName('type', EditorTheme.STYLE_TYPE);
-    engine.registerStyleName('string', EditorTheme.STYLE_STRING);
-    engine.registerStyleName('comment', EditorTheme.STYLE_COMMENT);
-    engine.registerStyleName('preprocessor', EditorTheme.STYLE_PREPROCESSOR);
-    engine.registerStyleName('macro', EditorTheme.STYLE_PREPROCESSOR);
-    engine.registerStyleName('method', EditorTheme.STYLE_FUNCTION);
-    engine.registerStyleName('function', EditorTheme.STYLE_FUNCTION);
-    engine.registerStyleName('variable', EditorTheme.STYLE_VARIABLE);
-    engine.registerStyleName('field', EditorTheme.STYLE_VARIABLE);
-    engine.registerStyleName('number', EditorTheme.STYLE_NUMBER);
-    engine.registerStyleName('class', EditorTheme.STYLE_CLASS);
-    engine.registerStyleName('builtin', EditorTheme.STYLE_BUILTIN);
-    engine.registerStyleName('annotation', EditorTheme.STYLE_ANNOTATION);
-    engine.registerStyleName('color', DEMO_STYLE_COLOR);
   }
 }

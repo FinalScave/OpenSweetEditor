@@ -136,6 +136,7 @@ struct Index {
   aboutToDisappear(): void {
     this.cancelPendingSuggestion();
     this.editorController.dismissInlineSuggestion();
+    this.demoDecorationProvider.dispose();
   }
 
   build() {
