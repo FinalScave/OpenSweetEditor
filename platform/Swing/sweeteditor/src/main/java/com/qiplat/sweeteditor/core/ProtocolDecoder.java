@@ -272,7 +272,7 @@ final class ProtocolDecoder {
     }
 
     private static ImeSyncSnapshot readImeSyncSnapshot(ByteBuffer data) {
-        if (data == null || data.remaining() < 76) return new ImeSyncSnapshot();
+        if (data == null || data.remaining() < 84) return new ImeSyncSnapshot();
         ImeSyncSnapshot snapshot = new ImeSyncSnapshot();
         snapshot.cursor = readTextPosition(data);
         boolean hasSelection = data.getInt() != 0;
@@ -285,11 +285,6 @@ final class ProtocolDecoder {
         boolean hasPlatformMarkedRange = data.getInt() != 0;
         TextRange platformMarkedRange = readTextRange(data);
         snapshot.platformMarkedRange = hasPlatformMarkedRange ? platformMarkedRange : null;
-        snapshot.platformTextWindowText = readBufferString(data);
-        if (data.remaining() < 28) return snapshot;
-        snapshot.platformTextWindowStartOffset = data.getInt();
-        snapshot.platformTextWindowSelectionOffsets = new IntRange(data.getInt(), data.getInt());
-        snapshot.platformTextWindowComposingOffsets = new IntRange(data.getInt(), data.getInt());
         snapshot.preeditStorage = data.getInt();
         snapshot.contextPolicy = data.getInt();
         snapshot.clearPlatformPreedit = data.getInt() != 0;

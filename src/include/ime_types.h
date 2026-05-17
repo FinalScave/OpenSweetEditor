@@ -68,12 +68,6 @@ namespace NS_SWEETEDITOR {
     TextRange visible_composition_range;
     bool has_platform_marked_range {false};
     TextRange platform_marked_range;
-    U8String platform_text_window_text;
-    int32_t platform_text_window_start_offset {0};
-    int32_t platform_text_window_selection_start_offset {0};
-    int32_t platform_text_window_selection_end_offset {0};
-    int32_t platform_text_window_composing_start_offset {-1};
-    int32_t platform_text_window_composing_end_offset {-1};
     ImePreeditStorage preedit_storage {ImePreeditStorage::NONE};
     ImeContextPolicy context_policy {ImeContextPolicy::NONE};
     bool clear_platform_preedit {false};

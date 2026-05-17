@@ -663,7 +663,7 @@ namespace SweetEditor {
 
 		internal static bool TryReadImeSyncSnapshot(ReadOnlySpan<byte> data, ref int offset, out ImeSyncSnapshot snapshot) {
 			snapshot = new ImeSyncSnapshot();
-			if (data.Length - offset < 76) {
+			if (data.Length - offset < 84) {
 				return false;
 			}
 			if (!TryReadTextPosition(data, ref offset, out TextPosition cursor) ||
@@ -674,7 +674,9 @@ namespace SweetEditor {
 				!TryReadTextRange(data, ref offset, out TextRange visibleCompositionRange) ||
 				!TryReadInt32(data, ref offset, out int hasPlatformMarkedRange) ||
 				!TryReadTextRange(data, ref offset, out TextRange platformMarkedRange) ||
-				!TryReadUtf8String(data, ref offset, out string platformTextWindowText)) {
+				!TryReadInt32(data, ref offset, out int preeditStorage) ||
+				!TryReadInt32(data, ref offset, out int contextPolicy) ||
+				!TryReadInt32(data, ref offset, out int clearPlatformPreedit)) {
 				return false;
 			}
 
@@ -683,25 +685,6 @@ namespace SweetEditor {
 			snapshot.HasComposingSession = hasComposingSession != 0;
 			snapshot.VisibleCompositionRange = hasVisibleCompositionRange != 0 ? visibleCompositionRange : null;
 			snapshot.PlatformMarkedRange = hasPlatformMarkedRange != 0 ? platformMarkedRange : null;
-			snapshot.PlatformTextWindowText = platformTextWindowText;
-
-			if (data.Length - offset < 32) {
-				return true;
-			}
-			if (!TryReadInt32(data, ref offset, out int platformTextWindowStartOffset) ||
-				!TryReadInt32(data, ref offset, out int selectionStartOffset) ||
-				!TryReadInt32(data, ref offset, out int selectionEndOffset) ||
-				!TryReadInt32(data, ref offset, out int composingStartOffset) ||
-				!TryReadInt32(data, ref offset, out int composingEndOffset) ||
-				!TryReadInt32(data, ref offset, out int preeditStorage) ||
-				!TryReadInt32(data, ref offset, out int contextPolicy) ||
-				!TryReadInt32(data, ref offset, out int clearPlatformPreedit)) {
-				return true;
-			}
-
-			snapshot.PlatformTextWindowStartOffset = platformTextWindowStartOffset;
-			snapshot.PlatformTextWindowSelectionOffsets = new IntRange(selectionStartOffset, selectionEndOffset);
-			snapshot.PlatformTextWindowComposingOffsets = new IntRange(composingStartOffset, composingEndOffset);
 			snapshot.PreeditStorage = ToImePreeditStorage(preeditStorage);
 			snapshot.ContextPolicy = ToImeContextPolicy(contextPolicy);
 			snapshot.ClearPlatformPreedit = clearPlatformPreedit != 0;

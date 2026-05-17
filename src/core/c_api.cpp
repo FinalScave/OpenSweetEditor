@@ -345,12 +345,6 @@ static void appendImeSyncSnapshot(std::vector<uint8_t>& buffer, const ImeSyncSna
   appendTextRange(buffer, snapshot.visible_composition_range);
   appendBool(buffer, snapshot.has_platform_marked_range);
   appendTextRange(buffer, snapshot.platform_marked_range);
-  appendU8String(buffer, snapshot.platform_text_window_text);
-  appendI32(buffer, snapshot.platform_text_window_start_offset);
-  appendI32(buffer, snapshot.platform_text_window_selection_start_offset);
-  appendI32(buffer, snapshot.platform_text_window_selection_end_offset);
-  appendI32(buffer, snapshot.platform_text_window_composing_start_offset);
-  appendI32(buffer, snapshot.platform_text_window_composing_end_offset);
   appendI32(buffer, static_cast<int32_t>(snapshot.preedit_storage));
   appendI32(buffer, static_cast<int32_t>(snapshot.context_policy));
   appendBool(buffer, snapshot.clear_platform_preedit);
@@ -358,7 +352,7 @@ static void appendImeSyncSnapshot(std::vector<uint8_t>& buffer, const ImeSyncSna
 
 static const uint8_t* imeSyncSnapshotToBinary(const ImeSyncSnapshot& snapshot, size_t* out_size) {
   std::vector<uint8_t> buffer;
-  buffer.reserve(sizeof(int32_t) * 29 + snapshot.platform_text_window_text.size());
+  buffer.reserve(sizeof(int32_t) * 21);
   appendImeSyncSnapshot(buffer, snapshot);
   return allocBinaryPayload(buffer.data(), buffer.size(), out_size);
 }
@@ -381,7 +375,7 @@ static const uint8_t* imeInputContextToBinary(const ImeInputContext& context, si
 
 static const uint8_t* imeActionResultToBinary(const ImeActionResult& result, size_t* out_size) {
   std::vector<uint8_t> buffer;
-  buffer.reserve(sizeof(int32_t) * 36 + result.sync.platform_text_window_text.size());
+  buffer.reserve(sizeof(int32_t) * 28);
   appendBool(buffer, result.handled);
   appendBool(buffer, result.content_changed);
   appendBool(buffer, result.cursor_changed);

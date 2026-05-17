@@ -1016,10 +1016,6 @@ TEST_CASE("EditorCore IME finish clears platform document range") {
   CHECK_FALSE(result.sync.has_composing_session);
   CHECK_FALSE(result.sync.has_visible_composition_range);
   CHECK_FALSE(result.sync.has_platform_marked_range);
-  CHECK(result.sync.platform_text_window_text == "record Point(double x) {}");
-  CHECK(result.sync.platform_text_window_start_offset == 0);
-  CHECK(result.sync.platform_text_window_composing_start_offset == -1);
-  CHECK(result.sync.platform_text_window_composing_end_offset == -1);
   CHECK(result.sync.preedit_storage == ImePreeditStorage::NONE);
   CHECK(result.sync.clear_platform_preedit);
 }
@@ -1166,11 +1162,14 @@ TEST_CASE("EditorCore IME document range accepts cursor inside word for latin sc
   CHECK(middle_result.sync.has_visible_composition_range);
   CHECK(middle_result.sync.visible_composition_range == (TextRange{{0, 0}, {0, 5}}));
   CHECK(middle_result.sync.has_platform_marked_range);
-  CHECK(middle_result.sync.platform_text_window_text == "hello");
-  CHECK(middle_result.sync.platform_text_window_selection_start_offset == 2);
-  CHECK(middle_result.sync.platform_text_window_selection_end_offset == 2);
-  CHECK(middle_result.sync.platform_text_window_composing_start_offset == 0);
-  CHECK(middle_result.sync.platform_text_window_composing_end_offset == 5);
+  ImeInputContext middle_context = editor.getImeInputContext(5, 5);
+  CHECK(middle_context.kind == ImeInputContextKind::DOCUMENT_WINDOW);
+  CHECK(middle_context.text == "hello");
+  CHECK(middle_context.selection.start == 2);
+  CHECK(middle_context.selection.end == 2);
+  CHECK(middle_context.has_composition);
+  CHECK(middle_context.composition.start == 0);
+  CHECK(middle_context.composition.end == 5);
 
   cancelPreedit(editor);
   editor.setCursorPosition({0, 5});
@@ -1180,11 +1179,14 @@ TEST_CASE("EditorCore IME document range accepts cursor inside word for latin sc
   CHECK(end_result.sync.has_visible_composition_range);
   CHECK(end_result.sync.visible_composition_range == (TextRange{{0, 0}, {0, 5}}));
   CHECK(end_result.sync.has_platform_marked_range);
-  CHECK(end_result.sync.platform_text_window_text == "hello");
-  CHECK(end_result.sync.platform_text_window_selection_start_offset == 5);
-  CHECK(end_result.sync.platform_text_window_selection_end_offset == 5);
-  CHECK(end_result.sync.platform_text_window_composing_start_offset == 0);
-  CHECK(end_result.sync.platform_text_window_composing_end_offset == 5);
+  ImeInputContext end_context = editor.getImeInputContext(5, 5);
+  CHECK(end_context.kind == ImeInputContextKind::DOCUMENT_WINDOW);
+  CHECK(end_context.text == "hello");
+  CHECK(end_context.selection.start == 5);
+  CHECK(end_context.selection.end == 5);
+  CHECK(end_context.has_composition);
+  CHECK(end_context.composition.start == 0);
+  CHECK(end_context.composition.end == 5);
 }
 
 TEST_CASE("EditorCore IME unknown document range can start platform composition") {

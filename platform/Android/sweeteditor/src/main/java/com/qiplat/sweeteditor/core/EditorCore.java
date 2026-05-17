@@ -2121,20 +2121,12 @@ public class EditorCore {
         public final TextRange visibleCompositionRange;
         @Nullable
         public final TextRange platformMarkedRange;
-        @NonNull
-        public final String platformTextWindowText;
-        public final int platformTextWindowStartOffset;
-        @NonNull
-        public final IntRange platformTextWindowSelectionOffsets;
-        @NonNull
-        public final IntRange platformTextWindowComposingOffsets;
         public final int preeditStorage;
         public final int contextPolicy;
         public final boolean clearPlatformPreedit;
 
         public ImeSyncSnapshot() {
             this(new TextPosition(0, 0), null, false, null, null,
-                    "", 0, new IntRange(0, 0), new IntRange(-1, -1),
                     ImePreeditStorage.NONE, ImeContextPolicy.NONE, false);
         }
 
@@ -2143,10 +2135,6 @@ public class EditorCore {
                                boolean hasComposingSession,
                                @Nullable TextRange visibleCompositionRange,
                                @Nullable TextRange platformMarkedRange,
-                               @NonNull String platformTextWindowText,
-                               int platformTextWindowStartOffset,
-                               @NonNull IntRange platformTextWindowSelectionOffsets,
-                               @NonNull IntRange platformTextWindowComposingOffsets,
                                int preeditStorage,
                                int contextPolicy,
                                boolean clearPlatformPreedit) {
@@ -2155,10 +2143,6 @@ public class EditorCore {
             this.hasComposingSession = hasComposingSession;
             this.visibleCompositionRange = visibleCompositionRange;
             this.platformMarkedRange = platformMarkedRange;
-            this.platformTextWindowText = platformTextWindowText;
-            this.platformTextWindowStartOffset = platformTextWindowStartOffset;
-            this.platformTextWindowSelectionOffsets = platformTextWindowSelectionOffsets;
-            this.platformTextWindowComposingOffsets = platformTextWindowComposingOffsets;
             this.preeditStorage = preeditStorage;
             this.contextPolicy = contextPolicy;
             this.clearPlatformPreedit = clearPlatformPreedit;

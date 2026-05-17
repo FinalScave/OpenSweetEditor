@@ -4,7 +4,6 @@
 #include <utf8/utf8.h>
 #include <simdutf/simdutf.h>
 #include <algorithm>
-#include <limits>
 #include <editor_core.h>
 #include <utility.h>
 #include "logging.h"
@@ -700,48 +699,6 @@ namespace NS_SWEETEDITOR {
     snapshot.has_composing_session = hasComposingSession() || m_session_.has_shadow_preedit;
     snapshot.context_policy = inputContextPolicy();
 
-    auto to_i32_offset = [](size_t value) -> int32_t {
-      return value > static_cast<size_t>(std::numeric_limits<int32_t>::max())
-          ? std::numeric_limits<int32_t>::max()
-          : static_cast<int32_t>(value);
-    };
-
-    auto fill_platform_text_window = [&]() {
-      if (!coreHasDocument() || snapshot.context_policy == ImeContextPolicy::NONE) {
-        return;
-      }
-      size_t line_count = coreDocumentLineCount();
-      if (line_count == 0) {
-        return;
-      }
-      size_t line = std::min(snapshot.cursor.line, line_count - 1);
-      TextRange window_range {{line, 0}, {line, coreLineColumns(line)}};
-      size_t window_start = coreCharIndexFromPosition(window_range.start);
-      snapshot.platform_text_window_text = coreDocumentText(window_range);
-      snapshot.platform_text_window_start_offset = to_i32_offset(window_start);
-
-      auto relative_offset = [&](const TextPosition& position) -> int32_t {
-        size_t absolute = coreCharIndexFromPosition(position);
-        if (absolute < window_start) {
-          return 0;
-        }
-        return to_i32_offset(absolute - window_start);
-      };
-
-      if (snapshot.has_selection) {
-        snapshot.platform_text_window_selection_start_offset = relative_offset(snapshot.selection.start);
-        snapshot.platform_text_window_selection_end_offset = relative_offset(snapshot.selection.end);
-      } else {
-        int32_t cursor_offset = relative_offset(snapshot.cursor);
-        snapshot.platform_text_window_selection_start_offset = cursor_offset;
-        snapshot.platform_text_window_selection_end_offset = cursor_offset;
-      }
-      if (snapshot.has_platform_marked_range) {
-        snapshot.platform_text_window_composing_start_offset = relative_offset(snapshot.platform_marked_range.start);
-        snapshot.platform_text_window_composing_end_offset = relative_offset(snapshot.platform_marked_range.end);
-      }
-    };
-
     if (hasVisibleComposition()) {
       TextRange composing_range = currentComposingRange();
       snapshot.has_visible_composition_range = composing_range.start != composing_range.end;
@@ -752,19 +709,16 @@ namespace NS_SWEETEDITOR {
       }
       snapshot.preedit_storage = ImePreeditStorage::VISIBLE_DOCUMENT_COMPOSITION;
       snapshot.clear_platform_preedit = false;
-      fill_platform_text_window();
       return snapshot;
     }
 
     if (m_session_.has_shadow_preedit) {
       snapshot.preedit_storage = ImePreeditStorage::SHADOW_ONLY;
       snapshot.clear_platform_preedit = false;
-      fill_platform_text_window();
       return snapshot;
     }
 
     snapshot.clear_platform_preedit = true;
-    fill_platform_text_window();
     return snapshot;
   }
 

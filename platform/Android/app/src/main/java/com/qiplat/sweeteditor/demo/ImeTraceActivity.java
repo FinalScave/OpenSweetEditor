@@ -791,10 +791,6 @@ public class ImeTraceActivity extends AppCompatActivity {
                 sync.put("hasComposingSession", snapshot.hasComposingSession);
                 sync.put("visibleCompositionRange", rangeToJson(snapshot.visibleCompositionRange));
                 sync.put("platformMarkedRange", rangeToJson(snapshot.platformMarkedRange));
-                sync.put("platformTextWindowText", snapshot.platformTextWindowText);
-                sync.put("platformTextWindowStartOffset", snapshot.platformTextWindowStartOffset);
-                sync.put("platformTextWindowSelectionOffsets", intRangeToJson(snapshot.platformTextWindowSelectionOffsets));
-                sync.put("platformTextWindowComposingOffsets", intRangeToJson(snapshot.platformTextWindowComposingOffsets));
                 sync.put("preeditStorage", snapshot.preeditStorage);
                 sync.put("contextPolicy", snapshot.contextPolicy);
                 sync.put("clearPlatformPreedit", snapshot.clearPlatformPreedit);

@@ -564,7 +564,6 @@ namespace NS_SWEETEDITOR {
       result.sync = getImeSyncSnapshot();
       result.sync.clear_platform_preedit = true;
       result.sync.context_policy = ImeContextPolicy::NONE;
-      result.sync.platform_text_window_text.clear();
       return result;
     }
 
@@ -586,12 +585,6 @@ namespace NS_SWEETEDITOR {
       result.sync = getImeSyncSnapshot();
       result.sync.clear_platform_preedit = false;
       result.sync.context_policy = ImeContextPolicy::NONE;
-      result.sync.platform_text_window_text.clear();
-      result.sync.platform_text_window_start_offset = 0;
-      result.sync.platform_text_window_selection_start_offset = 0;
-      result.sync.platform_text_window_selection_end_offset = 0;
-      result.sync.platform_text_window_composing_start_offset = -1;
-      result.sync.platform_text_window_composing_end_offset = -1;
       return result;
     }
 
@@ -602,12 +595,6 @@ namespace NS_SWEETEDITOR {
       invalidateImeInputContext();
       result.sync.clear_platform_preedit = true;
       result.sync.context_policy = ImeContextPolicy::NONE;
-      result.sync.platform_text_window_text.clear();
-      result.sync.platform_text_window_start_offset = 0;
-      result.sync.platform_text_window_selection_start_offset = 0;
-      result.sync.platform_text_window_selection_end_offset = 0;
-      result.sync.platform_text_window_composing_start_offset = -1;
-      result.sync.platform_text_window_composing_end_offset = -1;
       return result;
     }
 
@@ -615,12 +602,6 @@ namespace NS_SWEETEDITOR {
     result.sync = getImeSyncSnapshot();
     result.sync.clear_platform_preedit = had_text_model_state;
     result.sync.context_policy = ImeContextPolicy::NONE;
-    result.sync.platform_text_window_text.clear();
-    result.sync.platform_text_window_start_offset = 0;
-    result.sync.platform_text_window_selection_start_offset = 0;
-    result.sync.platform_text_window_selection_end_offset = 0;
-    result.sync.platform_text_window_composing_start_offset = -1;
-    result.sync.platform_text_window_composing_end_offset = -1;
     if (had_text_model_state) {
       invalidateImeInputContext();
     }

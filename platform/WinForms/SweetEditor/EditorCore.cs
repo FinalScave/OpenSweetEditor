@@ -1187,14 +1187,6 @@ namespace SweetEditor {
 		public TextRange? VisibleCompositionRange { get; set; }
 		[JsonPropertyName("platform_marked_range")]
 		public TextRange? PlatformMarkedRange { get; set; }
-		[JsonPropertyName("platform_text_window_text")]
-		public string PlatformTextWindowText { get; set; } = string.Empty;
-		[JsonPropertyName("platform_text_window_start_offset")]
-		public int PlatformTextWindowStartOffset { get; set; }
-		[JsonPropertyName("platform_text_window_selection_offsets")]
-		public IntRange PlatformTextWindowSelectionOffsets { get; set; } = new IntRange(0, 0);
-		[JsonPropertyName("platform_text_window_composing_offsets")]
-		public IntRange PlatformTextWindowComposingOffsets { get; set; } = new IntRange(-1, -1);
 		[JsonPropertyName("preedit_storage")]
 		public ImePreeditStorage PreeditStorage { get; set; } = ImePreeditStorage.NONE;
 		[JsonPropertyName("context_policy")]

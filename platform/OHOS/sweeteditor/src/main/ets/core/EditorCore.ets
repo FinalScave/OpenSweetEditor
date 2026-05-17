@@ -150,10 +150,6 @@ export interface ImeSyncSnapshot {
   hasComposingSession: boolean;
   visibleCompositionRange: TextRange | null;
   platformMarkedRange: TextRange | null;
-  platformTextWindowText: string;
-  platformTextWindowStartOffset: number;
-  platformTextWindowSelectionOffsets: IntRange;
-  platformTextWindowComposingOffsets: IntRange;
   preeditStorage: ImePreeditStorage;
   contextPolicy: ImeContextPolicy;
   clearPlatformPreedit: boolean;

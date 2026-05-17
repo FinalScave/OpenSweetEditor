@@ -14,7 +14,7 @@ import {
   TextChange,
   TextEditResult
 } from './EditorCore';
-import { IntRange, TextPosition, TextRange } from './CoreFoundation';
+import { TextPosition, TextRange } from './CoreFoundation';
 import {
   BracketGuide,
   CodeLensItem,
@@ -1102,16 +1102,6 @@ export class ProtocolDecoder {
     const visibleCompositionRange = ProtocolDecoder.readTextRange(reader);
     const hasPlatformMarkedRange = reader.readInt32() !== 0;
     const platformMarkedRange = ProtocolDecoder.readTextRange(reader);
-    const platformTextWindowText = reader.readUtf8String();
-    const platformTextWindowStartOffset = reader.readInt32();
-    const platformTextWindowSelectionOffsets: IntRange = {
-      start: reader.readInt32(),
-      end: reader.readInt32()
-    };
-    const platformTextWindowComposingOffsets: IntRange = {
-      start: reader.readInt32(),
-      end: reader.readInt32()
-    };
     const preeditStorage = reader.readInt32() as ImePreeditStorage;
     const contextPolicy = reader.readInt32() as ImeContextPolicy;
     const clearPlatformPreedit = reader.readInt32() !== 0;
@@ -1121,10 +1111,6 @@ export class ProtocolDecoder {
       hasComposingSession,
       visibleCompositionRange: hasVisibleCompositionRange ? visibleCompositionRange : null,
       platformMarkedRange: hasPlatformMarkedRange ? platformMarkedRange : null,
-      platformTextWindowText,
-      platformTextWindowStartOffset,
-      platformTextWindowSelectionOffsets,
-      platformTextWindowComposingOffsets,
       preeditStorage,
       contextPolicy,
       clearPlatformPreedit
@@ -1149,10 +1135,6 @@ export class ProtocolDecoder {
       hasComposingSession: false,
       visibleCompositionRange: null,
       platformMarkedRange: null,
-      platformTextWindowText: '',
-      platformTextWindowStartOffset: 0,
-      platformTextWindowSelectionOffsets: { start: 0, end: 0 },
-      platformTextWindowComposingOffsets: { start: -1, end: -1 },
       preeditStorage: ImePreeditStorage.NONE,
       contextPolicy: ImeContextPolicy.NONE,
       clearPlatformPreedit: false

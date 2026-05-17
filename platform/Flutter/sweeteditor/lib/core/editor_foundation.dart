@@ -187,12 +187,6 @@ class ImeSyncSnapshot {
       TextPosition(0, 0),
       TextPosition(0, 0),
     ),
-    this.platformTextWindowText = '',
-    this.platformTextWindowStartOffset = 0,
-    this.platformTextWindowSelectionStartOffset = 0,
-    this.platformTextWindowSelectionEndOffset = 0,
-    this.platformTextWindowComposingStartOffset = -1,
-    this.platformTextWindowComposingEndOffset = -1,
     this.preeditStorage = ImePreeditStorage.none,
     this.contextPolicy = ImeContextPolicy.none,
     this.clearPlatformPreedit = false,
@@ -208,12 +202,6 @@ class ImeSyncSnapshot {
   final TextRange visibleCompositionRange;
   final bool hasPlatformMarkedRange;
   final TextRange platformMarkedRange;
-  final String platformTextWindowText;
-  final int platformTextWindowStartOffset;
-  final int platformTextWindowSelectionStartOffset;
-  final int platformTextWindowSelectionEndOffset;
-  final int platformTextWindowComposingStartOffset;
-  final int platformTextWindowComposingEndOffset;
   final ImePreeditStorage preeditStorage;
   final ImeContextPolicy contextPolicy;
   final bool clearPlatformPreedit;
