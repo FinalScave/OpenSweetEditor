@@ -936,6 +936,11 @@ class EditorInteractionController {
     final editorCore = _session.editorCore;
     if (editorCore == null || !_animating) return;
     final result = editorCore.tickAnimations();
+    _fireGestureEvents(result);
+    _session.selectionMenuController.onGestureResult(
+      result,
+      result.hasSelection,
+    );
     _flush();
     if (!result.needsAnimation) {
       _animating = false;
