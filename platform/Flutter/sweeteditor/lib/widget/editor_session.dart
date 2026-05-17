@@ -1,6 +1,6 @@
 part of '../sweeteditor.dart';
 
-class EditorSession implements EditorSettingsHost {
+class EditorSession {
   EditorSession({
     required this.controller,
     required EditorTheme theme,
@@ -13,8 +13,6 @@ class EditorSession implements EditorSettingsHost {
     EditorIconProvider? initialIconProvider,
     LanguageConfiguration? initialLanguageConfiguration,
     EditorMetadata? initialMetadata,
-    required this.completionPopupController,
-    required this.selectionMenuController,
   }) : _theme = theme {
     _settings = (initialSettings ?? EditorSettings()).copy()
       ..seedDefaults(
@@ -24,7 +22,7 @@ class EditorSession implements EditorSettingsHost {
       );
     _platformScale = _settings.getScale();
     _measurer = EditorTextMeasurer(
-      fontFamily: _settings.getFontFamily(),
+      fontFamily: platformBehavior.resolveFontFamily(_settings.getFontFamily()),
       fontSize: _settings.getEditorTextSize() * _platformScale,
     );
     _iconProvider = initialIconProvider;
@@ -46,6 +44,11 @@ class EditorSession implements EditorSettingsHost {
     _editorCore!.setKeyMap(_keyMap);
     _languageConfiguration = initialLanguageConfiguration;
     _metadata = initialMetadata;
+    completionPopupController = CompletionPopupController();
+    selectionMenuController = SelectionMenuController(
+      enabled: platformBehavior.showsFloatingSelectionMenu,
+      buildContext: _buildSelectionMenuContext,
+    );
     completionProviderManager = CompletionProviderManager(session: this);
     decorationProviderManager = DecorationProviderManager(session: this);
     inlineSuggestionController = InlineSuggestionController(session: this);
@@ -57,10 +60,10 @@ class EditorSession implements EditorSettingsHost {
   final SweetEditorController controller;
   final EditorPlatformBehavior platformBehavior;
   late final CompletionProviderManager completionProviderManager;
-  final CompletionPopupController completionPopupController;
+  late final CompletionPopupController completionPopupController;
   late final DecorationProviderManager decorationProviderManager;
   late final NewLineActionProviderManager newLineActionProviderManager;
-  final SelectionMenuController selectionMenuController;
+  late final SelectionMenuController selectionMenuController;
   late final InlineSuggestionController inlineSuggestionController;
 
   late final EditorTextMeasurer _measurer;
@@ -84,7 +87,6 @@ class EditorSession implements EditorSettingsHost {
   double _platformScale = 1.0;
 
   void Function(core.EditorRenderModel model)? onRenderModelUpdated;
-  VoidCallback? onRequestDecorationRefresh;
   VoidCallback? onPlatformScaleChanged;
 
   EditorEventBus get eventBus => controller._eventBus;
@@ -99,6 +101,7 @@ class EditorSession implements EditorSettingsHost {
   EditorCanvasPainter get painter => _painter;
   Size get viewportSize => _viewportSize;
   bool get viewportReady => _viewportReady;
+  String get effectiveFontFamily => _measurer.fontFamily;
   double get effectiveScale => _platformScale;
   LanguageConfiguration? get languageConfiguration => _languageConfiguration;
   EditorMetadata? get metadata => _metadata;
@@ -111,6 +114,7 @@ class EditorSession implements EditorSettingsHost {
     _disposed = true;
     _settings.unbind(this);
     inlineSuggestionController.dispose();
+    selectionMenuController.dispose();
     _editorCore?.close();
     _releaseDocument();
     _measurer.dispose();
@@ -225,10 +229,6 @@ class EditorSession implements EditorSettingsHost {
     SchedulerBinding.instance.ensureVisualUpdate();
   }
 
-  void flush() {
-    requestFlush();
-  }
-
   void _handleFlushFrame(Duration _) {
     _flushScheduled = false;
     _performFlush();
@@ -270,7 +270,18 @@ class EditorSession implements EditorSettingsHost {
     _ownsDocument = false;
   }
 
-  @override
+  SelectionMenuContext _buildSelectionMenuContext(bool hasSelection) {
+    final editorCore = _editorCore;
+    final cursorPosition =
+        editorCore?.getCursorPosition() ?? const core.TextPosition(0, 0);
+    return SelectionMenuContext(
+      hasSelection: hasSelection,
+      cursorPosition: cursorPosition,
+      selection: editorCore?.getSelection(),
+      selectedText: editorCore?.getSelectedText() ?? '',
+    );
+  }
+
   void applyTypography({
     required double textSize,
     required String fontFamily,
@@ -279,7 +290,10 @@ class EditorSession implements EditorSettingsHost {
     final ec = _editorCore;
     if (ec == null) return;
     _platformScale = scale;
-    _measurer.updateFont(fontFamily, textSize * scale);
+    _measurer.updateFont(
+      platformBehavior.resolveFontFamily(fontFamily),
+      textSize * scale,
+    );
     ec.setScale(scale);
     ec.onFontMetricsChanged();
     onPlatformScaleChanged?.call();
@@ -290,80 +304,58 @@ class EditorSession implements EditorSettingsHost {
     if (ec == null) return;
     _platformScale = scale;
     _measurer.updateFont(
-      _settings.getFontFamily(),
+      platformBehavior.resolveFontFamily(_settings.getFontFamily()),
       _settings.getEditorTextSize() * scale,
     );
     ec.onFontMetricsChanged();
     onPlatformScaleChanged?.call();
   }
 
-  @override
   void applyFoldArrowMode(core.FoldArrowMode mode) {
     _editorCore?.setFoldArrowMode(mode);
   }
 
-  @override
   void applyWrapMode(core.WrapMode mode) {
     _editorCore?.setWrapMode(mode);
   }
 
-  @override
   void applyLineSpacing(double add, double mult) {
     _editorCore?.setLineSpacing(add: add, mult: mult);
   }
 
-  @override
   void applyContentStartPadding(double padding) {
     _editorCore?.setContentStartPadding(padding);
   }
 
-  @override
   void applyShowSplitLine(bool show) {
     _editorCore?.setShowSplitLine(show);
   }
 
-  @override
   void applyGutterSticky(bool sticky) {
     _editorCore?.setGutterSticky(sticky);
   }
 
-  @override
   void applyGutterVisible(bool visible) {
     _editorCore?.setGutterVisible(visible);
   }
 
-  @override
   void applyCurrentLineRenderMode(core.CurrentLineRenderMode mode) {
     _editorCore?.setCurrentLineRenderMode(mode);
   }
 
-  @override
   void applyAutoIndentMode(core.AutoIndentMode mode) {
     _editorCore?.setAutoIndentMode(mode);
   }
 
-  @override
   void applyBackspaceUnindent(bool enabled) {
     _editorCore?.setBackspaceUnindent(enabled);
   }
 
-  @override
   void applyReadOnly(bool readOnly) {
     _editorCore?.setReadOnly(readOnly);
   }
 
-  @override
   void applyMaxGutterIcons(int count) {
     _editorCore?.setMaxGutterIcons(count);
-  }
-
-  @override
-  void requestDecorationRefresh() {
-    onRequestDecorationRefresh?.call();
-  }
-
-  @override
-  void flushEditor() {
-    requestFlush();
   }
 }

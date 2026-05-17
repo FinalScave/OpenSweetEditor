@@ -33,11 +33,9 @@ class SweetEditorController {
 
   bool get isAttached => _state != null;
 
-  core.EditorCore? get _editorCore => _state?._editorCore;
-
   void _withEditorCore(void Function(core.EditorCore editorCore) action) {
     if (_terminated) return;
-    final editorCore = _editorCore;
+    final editorCore = _state?._session.editorCore;
     if (editorCore == null) return;
     action(editorCore);
   }
@@ -61,11 +59,12 @@ class SweetEditorController {
     _state?._loadText(text);
   }
 
-  core.Document? getDocument() => _state?._document;
+  core.Document? getDocument() => _state?._session.document;
 
-  String getContent() => _state?._getContent() ?? '';
-  int get lineCount => _state?._document?.lineCount ?? 0;
-  String getLineText(int line) => _state?._document?.getLineText(line) ?? '';
+  String getContent() => _state?._session.getContent() ?? '';
+  int get lineCount => _state?._session.document?.lineCount ?? 0;
+  String getLineText(int line) =>
+      _state?._session.document?.getLineText(line) ?? '';
 
   EditorSettings? get settings => getSettings();
 
@@ -97,7 +96,8 @@ class SweetEditorController {
   }
 
   core.TextPosition getCursorPosition() =>
-      _state?._editorCore?.getCursorPosition() ?? const core.TextPosition(0, 0);
+      _state?._session.editorCore?.getCursorPosition() ??
+      const core.TextPosition(0, 0);
 
   void setCursorPosition(Object positionOrLine, [int? column]) {
     final position = _resolveTextPositionArgument(
@@ -105,16 +105,19 @@ class SweetEditorController {
       column,
       methodName: 'setCursorPosition',
     );
-    _state?._editorCore?.setCursorPosition(position.line, position.column);
+    _state?._session.editorCore?.setCursorPosition(
+      position.line,
+      position.column,
+    );
     _state?._flush();
   }
 
   void gotoPosition(int line, int column) {
-    _state?._editorCore?.gotoPosition(line, column);
+    _state?._session.editorCore?.gotoPosition(line, column);
     _state?._flush();
   }
 
-  core.TextRange? getSelection() => _state?._editorCore?.getSelection();
+  core.TextRange? getSelection() => _state?._session.editorCore?.getSelection();
 
   void setSelection(
     int startLine,
@@ -122,7 +125,7 @@ class SweetEditorController {
     int endLine,
     int endColumn,
   ) {
-    _state?._editorCore?.setSelection(
+    _state?._session.editorCore?.setSelection(
       startLine,
       startColumn,
       endLine,
@@ -135,7 +138,8 @@ class SweetEditorController {
     _state?._interactionController.selectAll();
   }
 
-  String getSelectedText() => _state?._editorCore?.getSelectedText() ?? '';
+  String getSelectedText() =>
+      _state?._session.editorCore?.getSelectedText() ?? '';
 
   void insertText(String text) {
     _state?._interactionController.insertText(text);
@@ -256,66 +260,68 @@ class SweetEditorController {
     _state?._interactionController.redo();
   }
 
-  bool get canUndo => _state?._editorCore?.canUndo ?? false;
-  bool get canRedo => _state?._editorCore?.canRedo ?? false;
+  bool get canUndo => _state?._session.editorCore?.canUndo ?? false;
+  bool get canRedo => _state?._session.editorCore?.canRedo ?? false;
 
   core.TextRange getWordRangeAtCursor() =>
-      _state?._editorCore?.getWordRangeAtCursor() ??
+      _state?._session.editorCore?.getWordRangeAtCursor() ??
       const core.TextRange(core.TextPosition(0, 0), core.TextPosition(0, 0));
 
-  String getWordAtCursor() => _state?._editorCore?.getWordAtCursor() ?? '';
+  String getWordAtCursor() =>
+      _state?._session.editorCore?.getWordAtCursor() ?? '';
 
   void addCompletionProvider(CompletionProvider provider) =>
-      _state?._completionProviderManager.addProvider(provider);
+      _state?._session.completionProviderManager.addProvider(provider);
 
   void removeCompletionProvider(CompletionProvider provider) =>
-      _state?._completionProviderManager.removeProvider(provider);
+      _state?._session.completionProviderManager.removeProvider(provider);
 
   void addDecorationProvider(DecorationProvider provider) =>
-      _state?._decorationProviderManager.addProvider(provider);
+      _state?._session.decorationProviderManager.addProvider(provider);
 
   void removeDecorationProvider(DecorationProvider provider) =>
-      _state?._decorationProviderManager.removeProvider(provider);
+      _state?._session.decorationProviderManager.removeProvider(provider);
 
   void requestDecorationRefresh() =>
-      _state?._decorationProviderManager.requestRefresh();
+      _state?._session.decorationProviderManager.requestRefresh();
 
   void addNewLineActionProvider(NewLineActionProvider provider) =>
-      _state?._newLineActionProviderManager.addProvider(provider);
+      _state?._session.newLineActionProviderManager.addProvider(provider);
 
   void removeNewLineActionProvider(NewLineActionProvider provider) =>
-      _state?._newLineActionProviderManager.removeProvider(provider);
+      _state?._session.newLineActionProviderManager.removeProvider(provider);
 
-  void triggerCompletion() => _state?._completionProviderManager
+  void triggerCompletion() => _state?._session.completionProviderManager
       .triggerCompletion(CompletionTriggerKind.invoked, null);
 
   void showCompletionItems(List<CompletionItem> items) =>
-      _state?._completionProviderManager.showItems(items);
+      _state?._session.completionProviderManager.showItems(items);
 
-  void dismissCompletion() => _state?._completionProviderManager.dismiss();
+  void dismissCompletion() =>
+      _state?._session.completionProviderManager.dismiss();
 
-  void setCompletionItemRenderer(CompletionItemViewBuilder? renderer) =>
-      _state?._completionPopupController.setViewBuilder(renderer);
+  void setCompletionItemRenderer(CompletionItemWidgetBuilder? renderer) =>
+      _state?._session.completionPopupController.setItemBuilder(renderer);
 
   bool get isCompletionShowing =>
-      _state?._completionPopupController.isShowing ?? false;
+      _state?._session.completionPopupController.isShowing ?? false;
 
   void showInlineSuggestion(InlineSuggestion suggestion) =>
-      _state?._inlineSuggestionController.show(suggestion);
+      _state?._session.inlineSuggestionController.show(suggestion);
 
   void dismissInlineSuggestion() =>
-      _state?._inlineSuggestionController.dismiss();
+      _state?._session.inlineSuggestionController.dismiss();
 
   bool get isInlineSuggestionShowing =>
-      _state?._inlineSuggestionController.isShowing ?? false;
+      _state?._session.inlineSuggestionController.isShowing ?? false;
 
   void setInlineSuggestionListener(InlineSuggestionListener? listener) =>
-      _state?._inlineSuggestionController.setListener(listener);
+      _state?._session.inlineSuggestionController.setListener(listener);
 
-  bool get hasSelection => _state?._editorCore?.getSelection() != null;
+  bool get hasSelection => _state?._session.editorCore?.getSelection() != null;
 
   void setSelectionMenuItemProvider(SelectionMenuItemProvider? provider) =>
-      _state?._selectionMenuController.setItemProvider(provider);
+      _state?._session.selectionMenuController.setItemProvider(provider);
 
   Stream<TextChangedEvent> get onTextChanged =>
       _eventBus.on<TextChangedEvent>();
@@ -359,47 +365,48 @@ class SweetEditorController {
       _eventBus.on<SelectionMenuItemClickEvent>();
 
   void toggleFoldAt(int line) {
-    _state?._editorCore?.toggleFoldAt(line);
+    _state?._session.editorCore?.toggleFoldAt(line);
     _state?._flush();
   }
 
   void foldAt(int line) {
-    _state?._editorCore?.foldAt(line);
+    _state?._session.editorCore?.foldAt(line);
     _state?._flush();
   }
 
   void unfoldAt(int line) {
-    _state?._editorCore?.unfoldAt(line);
+    _state?._session.editorCore?.unfoldAt(line);
     _state?._flush();
   }
 
   void foldAll() {
-    _state?._editorCore?.foldAll();
+    _state?._session.editorCore?.foldAll();
     _state?._flush();
   }
 
   void unfoldAll() {
-    _state?._editorCore?.unfoldAll();
+    _state?._session.editorCore?.unfoldAll();
     _state?._flush();
   }
 
   core.ScrollMetrics getScrollMetrics() =>
-      _state?._editorCore?.getScrollMetrics() ?? core.ScrollMetrics.empty;
+      _state?._session.editorCore?.getScrollMetrics() ??
+      core.ScrollMetrics.empty;
 
   void setScroll(double scrollX, double scrollY) {
-    _state?._editorCore?.setScroll(scrollX, scrollY);
+    _state?._session.editorCore?.setScroll(scrollX, scrollY);
     _state?._flush();
   }
 
   core.CursorRect getPositionRect(int line, int column) =>
-      _state?._editorCore?.getPositionRect(line, column) ??
+      _state?._session.editorCore?.getPositionRect(line, column) ??
       const core.CursorRect();
 
   core.CursorRect getCursorRect() =>
-      _state?._editorCore?.getCursorRect() ?? const core.CursorRect();
+      _state?._session.editorCore?.getCursorRect() ?? const core.CursorRect();
 
   core.IntRange getVisibleLineRange() {
-    final editorCore = _state?._editorCore;
+    final editorCore = _state?._session.editorCore;
     if (editorCore == null) {
       return const core.IntRange(0, -1);
     }
@@ -409,18 +416,18 @@ class SweetEditorController {
     return editorCore.getVisibleLineRange();
   }
 
-  int getTotalLineCount() => _state?._document?.lineCount ?? 0;
+  int getTotalLineCount() => _state?._session.document?.lineCount ?? 0;
 
   void scrollToLine(
     int line, {
     core.ScrollBehavior behavior = core.ScrollBehavior.center,
   }) {
-    _state?._editorCore?.scrollToLine(line, behavior: behavior);
+    _state?._session.editorCore?.scrollToLine(line, behavior: behavior);
     _state?._flush();
   }
 
   bool isLineVisible(int line) =>
-      _state?._editorCore?.isLineVisible(line) ?? true;
+      _state?._session.editorCore?.isLineVisible(line) ?? true;
 
   int get totalLineCount => getTotalLineCount();
 
@@ -444,7 +451,7 @@ class SweetEditorController {
 
   void setTheme(EditorTheme theme) => applyTheme(theme);
 
-  EditorTheme? getTheme() => _state?._theme;
+  EditorTheme? getTheme() => _state?._session.theme;
 
   void registerTextStyle(
     int styleId,
@@ -550,7 +557,7 @@ class SweetEditorController {
   }
 
   String getLinkTargetAt(int line, int column) =>
-      _state?._editorCore?.getLinkTargetAt(line, column) ?? '';
+      _state?._session.editorCore?.getLinkTargetAt(line, column) ?? '';
 
   void setLineDiagnostics(int line, List<core.Diagnostic> items) {
     _withEditorCore((editorCore) {

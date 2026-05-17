@@ -1,27 +1,4 @@
-import 'editor_core.dart' as core;
-
-abstract class EditorSettingsHost {
-  void applyTypography({
-    required double textSize,
-    required String fontFamily,
-    required double scale,
-  });
-
-  void applyFoldArrowMode(core.FoldArrowMode mode);
-  void applyWrapMode(core.WrapMode mode);
-  void applyLineSpacing(double add, double mult);
-  void applyContentStartPadding(double padding);
-  void applyShowSplitLine(bool show);
-  void applyGutterSticky(bool sticky);
-  void applyGutterVisible(bool visible);
-  void applyCurrentLineRenderMode(core.CurrentLineRenderMode mode);
-  void applyAutoIndentMode(core.AutoIndentMode mode);
-  void applyBackspaceUnindent(bool enabled);
-  void applyReadOnly(bool readOnly);
-  void applyMaxGutterIcons(int count);
-  void requestDecorationRefresh();
-  void flushEditor();
-}
+part of 'sweeteditor.dart';
 
 /// Settings wrapper for the editor.
 class EditorSettings {
@@ -49,7 +26,7 @@ class EditorSettings {
   bool _textSizeCustomized = false;
   bool _fontFamilyCustomized = false;
   bool _gutterStickyCustomized = false;
-  EditorSettingsHost? _host;
+  EditorSession? _session;
 
   EditorSettings copy() {
     final copy = EditorSettings();
@@ -103,9 +80,9 @@ class EditorSettings {
     _textSizeCustomized = other._textSizeCustomized;
     _fontFamilyCustomized = other._fontFamilyCustomized;
     _gutterStickyCustomized = other._gutterStickyCustomized;
-    final host = _host;
-    if (host != null) {
-      _applyAll(host);
+    final session = _session;
+    if (session != null) {
+      _applyAll(session);
     }
   }
 
@@ -125,26 +102,26 @@ class EditorSettings {
     }
   }
 
-  void bind(EditorSettingsHost host) {
-    _host = host;
-    _applyAll(host);
+  void bind(EditorSession session) {
+    _session = session;
+    _applyAll(session);
   }
 
-  void unbind(EditorSettingsHost host) {
-    if (identical(_host, host)) {
-      _host = null;
+  void unbind(EditorSession session) {
+    if (identical(_session, session)) {
+      _session = null;
     }
   }
 
   void setEditorTextSize(double size) {
     _textSize = size;
     _textSizeCustomized = true;
-    _host?.applyTypography(
+    _session?.applyTypography(
       textSize: _textSize,
       fontFamily: _fontFamily,
       scale: _scale,
     );
-    _host?.flushEditor();
+    _session?.requestFlush();
   }
 
   double getEditorTextSize() => _textSize;
@@ -152,40 +129,40 @@ class EditorSettings {
   void setFontFamily(String fontFamily) {
     _fontFamily = fontFamily;
     _fontFamilyCustomized = true;
-    _host?.applyTypography(
+    _session?.applyTypography(
       textSize: _textSize,
       fontFamily: _fontFamily,
       scale: _scale,
     );
-    _host?.flushEditor();
+    _session?.requestFlush();
   }
 
   String getFontFamily() => _fontFamily;
 
   void setScale(double scale) {
     _scale = scale;
-    _host?.applyTypography(
+    _session?.applyTypography(
       textSize: _textSize,
       fontFamily: _fontFamily,
       scale: _scale,
     );
-    _host?.flushEditor();
+    _session?.requestFlush();
   }
 
   double getScale() => _scale;
 
   void setFoldArrowMode(core.FoldArrowMode mode) {
     _foldArrowMode = mode;
-    _host?.applyFoldArrowMode(mode);
-    _host?.flushEditor();
+    _session?.applyFoldArrowMode(mode);
+    _session?.requestFlush();
   }
 
   core.FoldArrowMode getFoldArrowMode() => _foldArrowMode;
 
   void setWrapMode(core.WrapMode mode) {
     _wrapMode = mode;
-    _host?.applyWrapMode(mode);
-    _host?.flushEditor();
+    _session?.applyWrapMode(mode);
+    _session?.requestFlush();
   }
 
   core.WrapMode getWrapMode() => _wrapMode;
@@ -193,8 +170,8 @@ class EditorSettings {
   void setLineSpacing(double add, double mult) {
     _lineSpacingAdd = add;
     _lineSpacingMult = mult;
-    _host?.applyLineSpacing(add, mult);
-    _host?.flushEditor();
+    _session?.applyLineSpacing(add, mult);
+    _session?.requestFlush();
   }
 
   double getLineSpacingAdd() => _lineSpacingAdd;
@@ -202,16 +179,16 @@ class EditorSettings {
 
   void setContentStartPadding(double padding) {
     _contentStartPadding = padding.clamp(0, double.infinity);
-    _host?.applyContentStartPadding(_contentStartPadding);
-    _host?.flushEditor();
+    _session?.applyContentStartPadding(_contentStartPadding);
+    _session?.requestFlush();
   }
 
   double getContentStartPadding() => _contentStartPadding;
 
   void setShowSplitLine(bool show) {
     _showSplitLine = show;
-    _host?.applyShowSplitLine(show);
-    _host?.flushEditor();
+    _session?.applyShowSplitLine(show);
+    _session?.requestFlush();
   }
 
   bool isShowSplitLine() => _showSplitLine;
@@ -219,24 +196,24 @@ class EditorSettings {
   void setGutterSticky(bool sticky) {
     _gutterSticky = sticky;
     _gutterStickyCustomized = true;
-    _host?.applyGutterSticky(sticky);
-    _host?.flushEditor();
+    _session?.applyGutterSticky(sticky);
+    _session?.requestFlush();
   }
 
   bool isGutterSticky() => _gutterSticky;
 
   void setGutterVisible(bool visible) {
     _gutterVisible = visible;
-    _host?.applyGutterVisible(visible);
-    _host?.flushEditor();
+    _session?.applyGutterVisible(visible);
+    _session?.requestFlush();
   }
 
   bool isGutterVisible() => _gutterVisible;
 
   void setCurrentLineRenderMode(core.CurrentLineRenderMode mode) {
     _currentLineRenderMode = mode;
-    _host?.applyCurrentLineRenderMode(mode);
-    _host?.flushEditor();
+    _session?.applyCurrentLineRenderMode(mode);
+    _session?.requestFlush();
   }
 
   core.CurrentLineRenderMode getCurrentLineRenderMode() =>
@@ -244,36 +221,36 @@ class EditorSettings {
 
   void setAutoIndentMode(core.AutoIndentMode mode) {
     _autoIndentMode = mode;
-    _host?.applyAutoIndentMode(mode);
+    _session?.applyAutoIndentMode(mode);
   }
 
   core.AutoIndentMode getAutoIndentMode() => _autoIndentMode;
 
   void setBackspaceUnindent(bool enabled) {
     _backspaceUnindent = enabled;
-    _host?.applyBackspaceUnindent(enabled);
+    _session?.applyBackspaceUnindent(enabled);
   }
 
   bool isBackspaceUnindent() => _backspaceUnindent;
 
   void setReadOnly(bool readOnly) {
     _readOnly = readOnly;
-    _host?.applyReadOnly(readOnly);
+    _session?.applyReadOnly(readOnly);
   }
 
   bool isReadOnly() => _readOnly;
 
   void setMaxGutterIcons(int count) {
     _maxGutterIcons = count;
-    _host?.applyMaxGutterIcons(count);
-    _host?.flushEditor();
+    _session?.applyMaxGutterIcons(count);
+    _session?.requestFlush();
   }
 
   int getMaxGutterIcons() => _maxGutterIcons;
 
   void setDecorationScrollRefreshMinIntervalMs(int intervalMs) {
     _decorationScrollRefreshMinIntervalMs = intervalMs.clamp(0, 1 << 30);
-    _host?.requestDecorationRefresh();
+    _session?.decorationProviderManager.requestRefresh();
   }
 
   int getDecorationScrollRefreshMinIntervalMs() =>
@@ -284,31 +261,31 @@ class EditorSettings {
       0,
       double.infinity,
     );
-    _host?.requestDecorationRefresh();
+    _session?.decorationProviderManager.requestRefresh();
   }
 
   double getDecorationOverscanViewportMultiplier() =>
       _decorationOverscanViewportMultiplier;
 
-  void _applyAll(EditorSettingsHost host) {
-    host.applyTypography(
+  void _applyAll(EditorSession session) {
+    session.applyTypography(
       textSize: _textSize,
       fontFamily: _fontFamily,
       scale: _scale,
     );
-    host.applyFoldArrowMode(_foldArrowMode);
-    host.applyWrapMode(_wrapMode);
-    host.applyLineSpacing(_lineSpacingAdd, _lineSpacingMult);
-    host.applyContentStartPadding(_contentStartPadding);
-    host.applyShowSplitLine(_showSplitLine);
-    host.applyGutterSticky(_gutterSticky);
-    host.applyGutterVisible(_gutterVisible);
-    host.applyCurrentLineRenderMode(_currentLineRenderMode);
-    host.applyAutoIndentMode(_autoIndentMode);
-    host.applyBackspaceUnindent(_backspaceUnindent);
-    host.applyReadOnly(_readOnly);
-    host.applyMaxGutterIcons(_maxGutterIcons);
-    host.requestDecorationRefresh();
-    host.flushEditor();
+    session.applyFoldArrowMode(_foldArrowMode);
+    session.applyWrapMode(_wrapMode);
+    session.applyLineSpacing(_lineSpacingAdd, _lineSpacingMult);
+    session.applyContentStartPadding(_contentStartPadding);
+    session.applyShowSplitLine(_showSplitLine);
+    session.applyGutterSticky(_gutterSticky);
+    session.applyGutterVisible(_gutterVisible);
+    session.applyCurrentLineRenderMode(_currentLineRenderMode);
+    session.applyAutoIndentMode(_autoIndentMode);
+    session.applyBackspaceUnindent(_backspaceUnindent);
+    session.applyReadOnly(_readOnly);
+    session.applyMaxGutterIcons(_maxGutterIcons);
+    session.decorationProviderManager.requestRefresh();
+    session.requestFlush();
   }
 }

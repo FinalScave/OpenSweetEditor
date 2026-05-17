@@ -5,12 +5,6 @@ import '../widget/editor_overlay.dart';
 
 import 'selection_types.dart';
 
-class SelectionMenuOverlayState {
-  const SelectionMenuOverlayState({required this.items});
-
-  final List<SelectionMenuItem> items;
-}
-
 /// Controls the lifecycle of the selection context menu.
 ///
 /// State machine:
@@ -20,17 +14,21 @@ class SelectionMenuOverlayState {
 class SelectionMenuController {
   static const int _showDelayMs = 100;
 
-  SelectionMenuController({bool enabled = true}) : _enabled = enabled;
+  SelectionMenuController({
+    bool enabled = true,
+    required SelectionMenuContext Function(bool hasSelection) buildContext,
+  }) : _enabled = enabled,
+       _buildContext = buildContext;
 
   final bool _enabled;
+  final SelectionMenuContext Function(bool hasSelection) _buildContext;
   SelectionMenuItemProvider? _itemProvider;
   bool _handleDragActive = false;
   bool _hiddenByViewportGesture = false;
   bool _visible = false;
   Timer? _showTimer;
   List<SelectionMenuItem> _currentItems = [];
-  SelectionMenuContext Function(bool hasSelection)? buildContext;
-  EditorOverlayBinding<SelectionMenuOverlayState>? _overlayBinding;
+  EditorOverlayUpdater<List<SelectionMenuItem>>? _overlayUpdater;
 
   bool get isVisible => _visible;
   List<SelectionMenuItem> get currentItems => _currentItems;
@@ -39,8 +37,8 @@ class SelectionMenuController {
     _itemProvider = provider;
   }
 
-  void bindOverlay(EditorOverlayBinding<SelectionMenuOverlayState>? binding) {
-    _overlayBinding = binding;
+  void bindOverlay(EditorOverlayUpdater<List<SelectionMenuItem>>? updater) {
+    _overlayUpdater = updater;
   }
 
   void onGestureResult(core.GestureResult result, bool hasSelection) {
@@ -102,13 +100,7 @@ class SelectionMenuController {
 
   List<SelectionMenuItem> _buildItems(bool hasSelection) {
     if (_itemProvider != null) {
-      final context =
-          buildContext?.call(hasSelection) ??
-          SelectionMenuContext(
-            hasSelection: hasSelection,
-            cursorPosition: const core.TextPosition(0, 0),
-          );
-      return _itemProvider!.provideMenuItems(context);
+      return _itemProvider!.provideMenuItems(_buildContext(hasSelection));
     }
     return _buildDefaultItems(hasSelection);
   }
@@ -141,17 +133,10 @@ class SelectionMenuController {
     _showTimer?.cancel();
     _showTimer = Timer(const Duration(milliseconds: _showDelayMs), () {
       _currentItems = _buildItems(hasSelection);
-      final wasVisible = _visible;
       _visible = true;
       _hiddenByViewportGesture = false;
-      final overlayState = SelectionMenuOverlayState(
-        items: List<SelectionMenuItem>.unmodifiable(_currentItems),
-      );
-      if (wasVisible) {
-        _overlayBinding?.update(overlayState);
-      } else {
-        _overlayBinding?.show(overlayState);
-      }
+      final overlayItems = List<SelectionMenuItem>.unmodifiable(_currentItems);
+      _overlayUpdater?.call(overlayItems);
     });
   }
 
@@ -159,7 +144,7 @@ class SelectionMenuController {
     _showTimer?.cancel();
     if (_visible) {
       _visible = false;
-      _overlayBinding?.hide();
+      _overlayUpdater?.call(null);
     }
   }
 
@@ -167,6 +152,6 @@ class SelectionMenuController {
 
   void dispose() {
     _showTimer?.cancel();
-    _overlayBinding = null;
+    _overlayUpdater = null;
   }
 }

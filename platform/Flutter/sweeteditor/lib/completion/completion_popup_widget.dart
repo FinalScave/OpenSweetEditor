@@ -13,7 +13,8 @@ class CompletionPopupWidget extends StatelessWidget {
     required this.items,
     required this.selectedIndex,
     required this.position,
-    required this.themeColors,
+    required this.theme,
+    this.itemBuilder,
     required this.viewportSize,
     required this.onItemTap,
   });
@@ -21,7 +22,8 @@ class CompletionPopupWidget extends StatelessWidget {
   final List<CompletionItem> items;
   final int selectedIndex;
   final PopupPosition position;
-  final CompletionThemeColors themeColors;
+  final EditorTheme theme;
+  final CompletionItemWidgetBuilder? itemBuilder;
   final Size viewportSize;
   final void Function(int index) onItemTap;
 
@@ -60,9 +62,9 @@ class CompletionPopupWidget extends StatelessWidget {
         width: popupWidth,
         height: popupHeight,
         decoration: BoxDecoration(
-          color: Color(themeColors.panelBgColor),
+          color: Color(theme.completionBgColor),
           border: Border.all(
-            color: Color(themeColors.panelBorderColor),
+            color: Color(theme.completionBorderColor),
             width: 1,
           ),
           borderRadius: BorderRadius.circular(6),
@@ -82,47 +84,67 @@ class CompletionPopupWidget extends StatelessWidget {
           itemBuilder: (context, index) {
             final item = items[index];
             final isSelected = index == selectedIndex;
+            final customItemBuilder = itemBuilder;
             return GestureDetector(
               onTap: () => onItemTap(index),
               child: Container(
-                color: isSelected ? Color(themeColors.selectedBgColor) : null,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                alignment: Alignment.centerLeft,
-                child: Row(
-                  children: [
-                    if (item.kind != CompletionItem.kindText) ...[
-                      _CompletionKindBadge(kind: item.kind),
-                      const SizedBox(width: 6),
-                    ],
-                    Expanded(
-                      child: Text(
-                        item.label,
-                        style: TextStyle(
-                          color: Color(themeColors.labelColor),
-                          fontSize: 13,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    if (item.detail != null && item.detail!.isNotEmpty) ...[
-                      // detail is nullable
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: Text(
-                          item.detail!,
-                          style: TextStyle(
-                            color: Color(themeColors.detailColor),
-                            fontSize: 11,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+                color: isSelected
+                    ? Color(theme.completionSelectedBgColor)
+                    : null,
+                child: customItemBuilder == null
+                    ? _DefaultCompletionItem(item: item, theme: theme)
+                    : customItemBuilder(context, item, index, isSelected),
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+class _DefaultCompletionItem extends StatelessWidget {
+  const _DefaultCompletionItem({required this.item, required this.theme});
+
+  final CompletionItem item;
+  final EditorTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Row(
+          children: [
+            if (item.kind != CompletionItem.kindText) ...[
+              _CompletionKindBadge(kind: item.kind),
+              const SizedBox(width: 6),
+            ],
+            Expanded(
+              child: Text(
+                item.label,
+                style: TextStyle(
+                  color: Color(theme.completionLabelColor),
+                  fontSize: 13,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (item.detail != null && item.detail!.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  item.detail!,
+                  style: TextStyle(
+                    color: Color(theme.completionDetailColor),
+                    fontSize: 11,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );

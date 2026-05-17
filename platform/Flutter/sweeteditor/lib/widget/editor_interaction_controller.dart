@@ -859,11 +859,6 @@ class EditorInteractionController {
           CompletionTriggerKind.retrigger,
           null,
         );
-      } else if (_isCompletionIdentifier(ch)) {
-        _session.completionProviderManager.triggerCompletion(
-          CompletionTriggerKind.invoked,
-          null,
-        );
       }
     } else if (_session.completionPopupController.isShowing) {
       _session.completionProviderManager.triggerCompletion(
@@ -910,7 +905,7 @@ class EditorInteractionController {
 
   void _flush() {
     if (_session.controller.isAttached) {
-      _session.flush();
+      _session.requestFlush();
     }
   }
 
@@ -951,15 +946,6 @@ class EditorInteractionController {
   static bool _isCollapsedRange(core.TextRange range) {
     return range.start.line == range.end.line &&
         range.start.column == range.end.column;
-  }
-
-  static bool _isCompletionIdentifier(String text) {
-    if (text.length != 1) return false;
-    final code = text.codeUnitAt(0);
-    return (code >= 48 && code <= 57) ||
-        (code >= 65 && code <= 90) ||
-        (code >= 97 && code <= 122) ||
-        code == 95;
   }
 
   static core.KeyCode _mapLogicalKey(LogicalKeyboardKey key) {

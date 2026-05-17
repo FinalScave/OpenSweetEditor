@@ -1,11 +1,5 @@
 part of '../sweeteditor.dart';
 
-/// Callback for inline suggestion action bar Accept/Dismiss interaction.
-abstract class InlineSuggestionActionCallback {
-  void onAcceptClicked();
-  void onDismissClicked();
-}
-
 class InlineSuggestionOverlayState {
   const InlineSuggestionOverlayState({
     required this.x,
@@ -20,7 +14,7 @@ class InlineSuggestionOverlayState {
 
 /// Manages inline suggestion lifecycle: phantom text injection, event subscriptions,
 /// Tab/Esc key interception, and action bar state.
-class InlineSuggestionController implements InlineSuggestionActionCallback {
+class InlineSuggestionController {
   InlineSuggestionController({required EditorSession session})
     : _session = session,
       _eventBus = session.eventBus;
@@ -35,7 +29,7 @@ class InlineSuggestionController implements InlineSuggestionActionCallback {
   double _cachedCursorX = 0;
   double _cachedCursorY = 0;
   double _cachedCursorHeight = 0;
-  EditorOverlayBinding<InlineSuggestionOverlayState>? _overlayBinding;
+  EditorOverlayUpdater<InlineSuggestionOverlayState>? _overlayUpdater;
   StreamSubscription<TextChangedEvent>? _textChangedSub;
   StreamSubscription<CursorChangedEvent>? _cursorChangedSub;
   StreamSubscription<ScrollChangedEvent>? _scrollChangedSub;
@@ -46,7 +40,7 @@ class InlineSuggestionController implements InlineSuggestionActionCallback {
 
   void _onScrollChanged(ScrollChangedEvent _) {
     if (_showing) {
-      _overlayBinding?.update(_buildOverlayState());
+      _overlayUpdater?.call(_buildOverlayState());
     }
   }
 
@@ -54,8 +48,10 @@ class InlineSuggestionController implements InlineSuggestionActionCallback {
     _listener = listener;
   }
 
-  void bindOverlay(EditorOverlayBinding<InlineSuggestionOverlayState>? binding) {
-    _overlayBinding = binding;
+  void bindOverlay(
+    EditorOverlayUpdater<InlineSuggestionOverlayState>? updater,
+  ) {
+    _overlayUpdater = updater;
   }
 
   bool get isShowing => _showing;
@@ -71,7 +67,7 @@ class InlineSuggestionController implements InlineSuggestionActionCallback {
     _cachedCursorHeight = cursor.height;
 
     _showing = true;
-    _overlayBinding?.show(_buildOverlayState());
+    _overlayUpdater?.call(_buildOverlayState());
     _subscribeEvents();
     _session.requestFlush();
   }
@@ -91,7 +87,7 @@ class InlineSuggestionController implements InlineSuggestionActionCallback {
         suggestion.text,
       );
       _showing = false;
-      _overlayBinding?.hide();
+      _overlayUpdater?.call(null);
       _currentSuggestion = null;
       _session.requestFlush();
     });
@@ -106,7 +102,7 @@ class InlineSuggestionController implements InlineSuggestionActionCallback {
       _session.editorCore?.clearPhantomTexts();
       _session.requestFlush();
       _showing = false;
-      _overlayBinding?.hide();
+      _overlayUpdater?.call(null);
       _currentSuggestion = null;
     });
     _listener?.onSuggestionDismissed(suggestion);
@@ -132,19 +128,13 @@ class InlineSuggestionController implements InlineSuggestionActionCallback {
     _cachedCursorY = cursorY;
     _cachedCursorHeight = cursorHeight;
     if (_showing) {
-      _overlayBinding?.update(_buildOverlayState());
+      _overlayUpdater?.call(_buildOverlayState());
     }
   }
 
-  @override
-  void onAcceptClicked() => accept();
-
-  @override
-  void onDismissClicked() => dismiss();
-
   void dispose() {
     _unsubscribeEvents();
-    _overlayBinding = null;
+    _overlayUpdater = null;
     _currentSuggestion = null;
     _showing = false;
   }
@@ -159,7 +149,7 @@ class InlineSuggestionController implements InlineSuggestionActionCallback {
       _unsubscribeEvents();
       _session.editorCore?.clearPhantomTexts();
       _showing = false;
-      _overlayBinding?.hide();
+      _overlayUpdater?.call(null);
       _currentSuggestion = null;
     });
   }
@@ -192,10 +182,12 @@ class InlineSuggestionController implements InlineSuggestionActionCallback {
 
   void _subscribeEvents() {
     _textChangedSub ??= _eventBus.on<TextChangedEvent>().listen(_onTextChanged);
-    _cursorChangedSub ??=
-        _eventBus.on<CursorChangedEvent>().listen(_onCursorChanged);
-    _scrollChangedSub ??=
-        _eventBus.on<ScrollChangedEvent>().listen(_onScrollChanged);
+    _cursorChangedSub ??= _eventBus.on<CursorChangedEvent>().listen(
+      _onCursorChanged,
+    );
+    _scrollChangedSub ??= _eventBus.on<ScrollChangedEvent>().listen(
+      _onScrollChanged,
+    );
   }
 
   void _unsubscribeEvents() {

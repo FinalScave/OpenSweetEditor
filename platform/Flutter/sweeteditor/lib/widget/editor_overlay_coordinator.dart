@@ -7,54 +7,39 @@ const double _kSelectionMenuMeasureFontSize = 12;
 const double _kSelectionMenuMeasureDividerWidth = 1;
 
 class EditorOverlayCoordinator {
-  EditorOverlayCoordinator({
-    required EditorSession session,
-    required EditorPlatformBehavior platformBehavior,
-  }) : _session = session,
-       _platformBehavior = platformBehavior {
+  EditorOverlayCoordinator({required EditorSession session})
+    : _session = session {
     _session.completionPopupController.bindOverlay(
-      _createOverlayBinding(_completionOverlay),
+      _createOverlayUpdater(_completionOverlay),
     );
     _session.inlineSuggestionController.bindOverlay(
-      _createOverlayBinding(_inlineSuggestionOverlay),
+      _createOverlayUpdater(_inlineSuggestionOverlay),
     );
-    _session.selectionMenuController.buildContext = _buildSelectionMenuContext;
     _session.selectionMenuController.bindOverlay(
-      _createOverlayBinding(_selectionMenuOverlay),
+      _createOverlayUpdater(_selectionMenuOverlay),
     );
   }
 
   final EditorSession _session;
-  final EditorPlatformBehavior _platformBehavior;
-  final ValueNotifier<EditorOverlayState<CompletionPopupOverlayState>>
-  _completionOverlay = ValueNotifier(const EditorOverlayState.hidden());
-  final ValueNotifier<EditorOverlayState<InlineSuggestionOverlayState>>
-  _inlineSuggestionOverlay = ValueNotifier(const EditorOverlayState.hidden());
-  final ValueNotifier<EditorOverlayState<SelectionMenuOverlayState>>
-  _selectionMenuOverlay = ValueNotifier(const EditorOverlayState.hidden());
+  final ValueNotifier<CompletionPopupOverlayState?> _completionOverlay =
+      ValueNotifier(null);
+  final ValueNotifier<InlineSuggestionOverlayState?> _inlineSuggestionOverlay =
+      ValueNotifier(null);
+  final ValueNotifier<List<SelectionMenuItem>?> _selectionMenuOverlay =
+      ValueNotifier(null);
   late final Listenable _overlayListenable = Listenable.merge([
     _completionOverlay,
     _inlineSuggestionOverlay,
     _selectionMenuOverlay,
   ]);
 
-  ValueNotifier<EditorOverlayState<CompletionPopupOverlayState>>
-  get completionOverlay => _completionOverlay;
-  ValueNotifier<EditorOverlayState<InlineSuggestionOverlayState>>
-  get inlineSuggestionOverlay => _inlineSuggestionOverlay;
-  ValueNotifier<EditorOverlayState<SelectionMenuOverlayState>>
-  get selectionMenuOverlay => _selectionMenuOverlay;
+  ValueNotifier<CompletionPopupOverlayState?> get completionOverlay =>
+      _completionOverlay;
+  ValueNotifier<InlineSuggestionOverlayState?> get inlineSuggestionOverlay =>
+      _inlineSuggestionOverlay;
+  ValueNotifier<List<SelectionMenuItem>?> get selectionMenuOverlay =>
+      _selectionMenuOverlay;
   Listenable get overlayListenable => _overlayListenable;
-
-  void applyTheme(EditorTheme theme) {
-    _session.completionPopupController.applyTheme(
-      theme.completionBgColor,
-      theme.completionBorderColor,
-      theme.completionSelectedBgColor,
-      theme.completionLabelColor,
-      theme.completionDetailColor,
-    );
-  }
 
   void onRenderModelUpdated(core.EditorRenderModel model) {
     if (_session.completionPopupController.isShowing && model.cursor.visible) {
@@ -104,7 +89,8 @@ class EditorOverlayCoordinator {
     final menuWidth = _measureSelectionMenuWidth(items);
     const menuHeight = _kSelectionMenuMeasureHeight;
     const offsetY = 8.0;
-    final handleClearance = _platformBehavior.selectionMenuHandleClearance;
+    final handleClearance =
+        _session.platformBehavior.selectionMenuHandleClearance;
 
     final x = (anchorX - menuWidth / 2)
         .clamp(0.0, math.max(0.0, viewportSize.width - menuWidth))
@@ -126,33 +112,8 @@ class EditorOverlayCoordinator {
     _selectionMenuOverlay.dispose();
   }
 
-  SelectionMenuContext _buildSelectionMenuContext(bool hasSelection) {
-    final editorCore = _session.editorCore;
-    final cursorPosition =
-        editorCore?.getCursorPosition() ?? const core.TextPosition(0, 0);
-    return SelectionMenuContext(
-      hasSelection: hasSelection,
-      cursorPosition: cursorPosition,
-      selection: editorCore?.getSelection(),
-      selectedText: editorCore?.getSelectedText() ?? '',
-    );
-  }
-
-  EditorOverlayBinding<T> _createOverlayBinding<T>(
-    ValueNotifier<EditorOverlayState<T>> target,
-  ) {
-    void updateOverlay(T? data) {
-      target.value = data == null
-          ? EditorOverlayState<T>.hidden()
-          : EditorOverlayState<T>.visible(data);
-    }
-
-    return EditorOverlayBinding<T>(
-      show: (data) => updateOverlay(data),
-      update: (data) => updateOverlay(data),
-      hide: () => updateOverlay(null),
-    );
-  }
+  EditorOverlayUpdater<T> _createOverlayUpdater<T>(ValueNotifier<T?> target) =>
+      (data) => target.value = data;
 
   double _measureSelectionMenuWidth(List<SelectionMenuItem> items) {
     if (items.isEmpty) return 0;

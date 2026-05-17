@@ -68,23 +68,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   core.PointerCursorType _pointerCursorType = core.PointerCursorType.text;
 
   EditorEventBus get _eventBus => widget.controller._eventBus;
-  core.EditorCore? get _editorCore => _session.editorCore;
-  core.Document? get _document => _session.document;
-  EditorTheme get _theme => _session.theme;
-  EditorCanvasPainter get _painter => _session.painter;
-  CompletionProviderManager get _completionProviderManager =>
-      _session.completionProviderManager;
-  CompletionPopupController get _completionPopupController =>
-      _session.completionPopupController;
-  InlineSuggestionController get _inlineSuggestionController =>
-      _session.inlineSuggestionController;
-  DecorationProviderManager get _decorationProviderManager =>
-      _session.decorationProviderManager;
-  NewLineActionProviderManager get _newLineActionProviderManager =>
-      _session.newLineActionProviderManager;
-  SelectionMenuController get _selectionMenuController =>
-      _session.selectionMenuController;
-  EditorSettings get _settings => _session.settings;
 
   @override
   void initState() {
@@ -139,8 +122,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   void _initEditor() {
     _initSubsystems();
-    _session.onRequestDecorationRefresh =
-        _decorationProviderManager.requestRefresh;
     _session.onRenderModelUpdated = (model) {
       final pointerCursorChanged =
           model.pointerCursorType != _pointerCursorType;
@@ -174,33 +155,9 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       initialIconProvider: widget.iconProvider,
       initialLanguageConfiguration: widget.languageConfiguration,
       initialMetadata: widget.metadata,
-      completionPopupController: CompletionPopupController(
-        panelBgColor:
-            widget.theme?.completionBgColor ??
-            EditorTheme.dark().completionBgColor,
-        panelBorderColor:
-            widget.theme?.completionBorderColor ??
-            EditorTheme.dark().completionBorderColor,
-        selectedBgColor:
-            widget.theme?.completionSelectedBgColor ??
-            EditorTheme.dark().completionSelectedBgColor,
-        labelColor:
-            widget.theme?.completionLabelColor ??
-            EditorTheme.dark().completionLabelColor,
-        detailColor:
-            widget.theme?.completionDetailColor ??
-            EditorTheme.dark().completionDetailColor,
-      ),
-      selectionMenuController: SelectionMenuController(
-        enabled: _platformBehavior.showsFloatingSelectionMenu,
-      ),
     );
 
-    final completionProviderManager = _session.completionProviderManager;
-    _overlayCoordinator = EditorOverlayCoordinator(
-      session: _session,
-      platformBehavior: _platformBehavior,
-    );
+    _overlayCoordinator = EditorOverlayCoordinator(session: _session);
     _interactionController = EditorInteractionController(
       session: _session,
       tickerProvider: this,
@@ -209,7 +166,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     _session.completionPopupController.setConfirmHandler(
       _interactionController.onCompletionItemConfirmed,
     );
-    completionProviderManager.setListener(_session.completionPopupController);
   }
 
   void _applyDeclarativeInputs() {
@@ -234,8 +190,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     _onDocumentLoaded();
   }
 
-  String _getContent() => _session.getContent();
-
   void _onDocumentLoaded() {
     _pendingDocumentLoadedNotification = true;
     _flush();
@@ -244,7 +198,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   void _dispatchPendingDocumentLoaded() {
     if (!_pendingDocumentLoadedNotification || !mounted) return;
     _pendingDocumentLoadedNotification = false;
-    _decorationProviderManager.onDocumentLoaded();
+    _session.decorationProviderManager.onDocumentLoaded();
     _eventBus.publish(DocumentLoadedEvent());
   }
 
@@ -275,7 +229,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   void _applyTheme(EditorTheme theme) {
     _session.applyTheme(theme);
-    _overlayCoordinator.applyTheme(theme);
     if (mounted) {
       setState(() {});
     }
@@ -293,7 +246,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   void _applyLanguageConfiguration(LanguageConfiguration? config) {
     _session.applyLanguageConfiguration(config);
-    _decorationProviderManager.requestRefresh();
+    _session.decorationProviderManager.requestRefresh();
     _flush();
   }
 
@@ -306,8 +259,8 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     _editorResourcesReleased = true;
     _interactionController.dispose();
     _overlayCoordinator.dispose();
-    _completionProviderManager.dispose();
-    _decorationProviderManager.dispose();
+    _session.completionProviderManager.dispose();
+    _session.decorationProviderManager.dispose();
     widget.controller._detach();
     _session.dispose();
   }
@@ -328,7 +281,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     if (textEditingDeltas.isEmpty) {
       return;
     }
-    final editorCore = _editorCore;
+    final editorCore = _session.editorCore;
     var nextValue = _textEditingValue;
     final traceOldValue = nextValue;
     _traceImeDeltas('delta-in', textEditingDeltas, traceOldValue, null);
@@ -371,15 +324,20 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
           appliedValue,
         );
         _traceImeActionResult('updateImeTextModelDelta', result);
-        forceTextInputStateSync = _dispatchImeAction(result) ||
-            forceTextInputStateSync;
+        forceTextInputStateSync =
+            _dispatchImeAction(result) || forceTextInputStateSync;
         nextValue = appliedValue;
       }
     } finally {
       _handlingTextInputUpdate = false;
     }
 
-    _traceImeDeltas('delta-applied', textEditingDeltas, traceOldValue, nextValue);
+    _traceImeDeltas(
+      'delta-applied',
+      textEditingDeltas,
+      traceOldValue,
+      nextValue,
+    );
     _textEditingValue = nextValue;
     if (forceTextInputStateSync) {
       _syncTextInputState(force: true);
@@ -421,10 +379,14 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     TextEditingDelta delta,
     TextEditingValue appliedValue,
   ) {
-    final composingActive =
-        _isActiveTextRange(appliedValue.composing, appliedValue.text);
-    final selectionValid =
-        _isValidSelection(appliedValue.selection, appliedValue.text);
+    final composingActive = _isActiveTextRange(
+      appliedValue.composing,
+      appliedValue.text,
+    );
+    final selectionValid = _isValidSelection(
+      appliedValue.selection,
+      appliedValue.text,
+    );
     var deltaStartOffset = -1;
     var deltaEndOffset = -1;
     var deltaText = '';
@@ -457,7 +419,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   }
 
   void _handleTextEditingValue(TextEditingValue value) {
-    final editorCore = _editorCore;
+    final editorCore = _session.editorCore;
     if (editorCore == null) {
       _textEditingValue = value;
       _clearTextInputStateContext();
@@ -561,7 +523,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       inputAction: _platformBehavior.usesTextInputNewlineAction
           ? TextInputAction.newline
           : TextInputAction.none,
-      readOnly: _settings.isReadOnly(),
+      readOnly: _session.settings.isReadOnly(),
       autocorrect: true,
       enableSuggestions: true,
       enableDeltaModel: _platformBehavior.usesDeltaTextInputModel,
@@ -606,8 +568,8 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       return;
     }
     _textInputConnection!.setStyle(
-      fontFamily: _settings.getFontFamily(),
-      fontSize: _settings.getEditorTextSize() * _session.effectiveScale,
+      fontFamily: _session.effectiveFontFamily,
+      fontSize: _session.settings.getEditorTextSize() * _session.effectiveScale,
       fontWeight: FontWeight.w400,
       textDirection: TextDirection.ltr,
       textAlign: TextAlign.left,
@@ -637,7 +599,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   }
 
   TextEditingValue _buildEditingValueFromEditor() {
-    final editorCore = _editorCore;
+    final editorCore = _session.editorCore;
     if (editorCore == null) {
       _clearTextInputStateContext();
       return TextEditingValue.empty;
@@ -899,13 +861,11 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
                     animation: _overlayCoordinator.overlayListenable,
                     builder: (context, child) {
                       final completionOverlay =
-                          _overlayCoordinator.completionOverlay.value.data;
-                      final inlineSuggestionOverlay = _overlayCoordinator
-                          .inlineSuggestionOverlay
-                          .value
-                          .data;
+                          _overlayCoordinator.completionOverlay.value;
+                      final inlineSuggestionOverlay =
+                          _overlayCoordinator.inlineSuggestionOverlay.value;
                       final selectionMenuOverlay =
-                          _overlayCoordinator.selectionMenuOverlay.value.data;
+                          _overlayCoordinator.selectionMenuOverlay.value;
 
                       return Stack(
                         clipBehavior: Clip.hardEdge,
@@ -916,11 +876,14 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
                               items: completionOverlay.items,
                               selectedIndex: completionOverlay.selectedIndex,
                               position: completionOverlay.position,
-                              themeColors:
-                                  _completionPopupController.themeColors,
+                              theme: _session.theme,
+                              itemBuilder: _session
+                                  .completionPopupController
+                                  .itemBuilder,
                               viewportSize: newSize,
-                              onItemTap: (index) =>
-                                  _completionPopupController.confirmItem(index),
+                              onItemTap: (index) => _session
+                                  .completionPopupController
+                                  .confirmItem(index),
                             ),
                           if (inlineSuggestionOverlay != null)
                             InlineSuggestionBarWidget(
@@ -928,23 +891,22 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
                               y: inlineSuggestionOverlay.y,
                               cursorHeight:
                                   inlineSuggestionOverlay.cursorHeight,
-                              theme: _theme,
+                              theme: _session.theme,
                               onAccept: () =>
-                                  _inlineSuggestionController.accept(),
+                                  _session.inlineSuggestionController.accept(),
                               onDismiss: () =>
-                                  _inlineSuggestionController.dismiss(),
+                                  _session.inlineSuggestionController.dismiss(),
                             ),
                           if (selectionMenuOverlay != null &&
-                              selectionMenuOverlay.items.isNotEmpty)
+                              selectionMenuOverlay.isNotEmpty)
                             SelectionMenuWidget(
                               position: _overlayCoordinator
                                   .computeSelectionMenuPosition(
                                     newSize,
-                                    selectionMenuOverlay.items,
+                                    selectionMenuOverlay,
                                   ),
-                              items: selectionMenuOverlay.items,
-                              bgColor: _theme.completionBgColor,
-                              textColor: _theme.completionLabelColor,
+                              items: selectionMenuOverlay,
+                              theme: _session.theme,
                               onItemTap:
                                   _interactionController.onSelectionMenuItemTap,
                             ),
@@ -953,7 +915,10 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
                     },
                     child: SizedBox.expand(
                       key: _editorKey,
-                      child: CustomPaint(size: newSize, painter: _painter),
+                      child: CustomPaint(
+                        size: newSize,
+                        painter: _session.painter,
+                      ),
                     ),
                   ),
                 );

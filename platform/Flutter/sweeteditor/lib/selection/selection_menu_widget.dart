@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../editor_types.dart';
 import 'selection_types.dart';
 
 const double _kSelectionMenuHeight = 36;
@@ -16,17 +17,13 @@ class SelectionMenuWidget extends StatelessWidget {
     required this.position,
     required this.items,
     required this.onItemTap,
-    this.bgColor = 0xFF2D3139,
-    this.textColor = 0xFFD7DEE9,
-    this.disabledTextColor = 0x50D7DEE9,
+    required this.theme,
   });
 
   final Offset position;
   final List<SelectionMenuItem> items;
   final void Function(SelectionMenuItem item) onItemTap;
-  final int bgColor;
-  final int textColor;
-  final int disabledTextColor;
+  final EditorTheme theme;
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +34,7 @@ class SelectionMenuWidget extends StatelessWidget {
         color: Colors.transparent,
         child: Container(
           decoration: BoxDecoration(
-            color: Color(bgColor),
+            color: Color(theme.selectionMenuBgColor),
             borderRadius: BorderRadius.circular(8),
             boxShadow: const [
               BoxShadow(
@@ -76,7 +73,7 @@ class SelectionMenuWidget extends StatelessWidget {
           child: Text(
             item.label,
             style: TextStyle(
-              color: Color(item.enabled ? textColor : disabledTextColor),
+              color: _itemTextColor(item),
               fontSize: _kSelectionMenuFontSize,
             ),
           ),
@@ -89,7 +86,12 @@ class SelectionMenuWidget extends StatelessWidget {
     return Container(
       width: _kSelectionMenuDividerWidth,
       height: _kSelectionMenuDividerHeight,
-      color: Color(textColor).withValues(alpha: 0.15),
+      color: Color(theme.selectionMenuDividerColor),
     );
+  }
+
+  Color _itemTextColor(SelectionMenuItem item) {
+    final color = Color(theme.selectionMenuTextColor);
+    return item.enabled ? color : color.withValues(alpha: 0.31);
   }
 }

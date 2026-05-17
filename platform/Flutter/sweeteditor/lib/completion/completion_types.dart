@@ -1,3 +1,5 @@
+import 'package:flutter/widgets.dart';
+
 import '../editor_core.dart' as core;
 import '../editor_types.dart';
 
@@ -86,7 +88,10 @@ abstract class CompletionProvider {
   void dispose();
 }
 
-/// Custom completion item view builder interface.
-abstract class CompletionItemViewBuilder {
-  void buildItemView(CompletionItem item, bool isSelected);
-}
+typedef CompletionItemWidgetBuilder =
+    Widget Function(
+      BuildContext context,
+      CompletionItem item,
+      int index,
+      bool selected,
+    );

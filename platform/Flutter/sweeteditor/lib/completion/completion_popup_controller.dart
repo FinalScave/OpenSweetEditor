@@ -22,23 +22,6 @@ class PopupPosition {
   final double popupHeight;
 }
 
-/// Theme colors for the completion panel.
-class CompletionThemeColors {
-  const CompletionThemeColors({
-    required this.panelBgColor,
-    required this.panelBorderColor,
-    required this.selectedBgColor,
-    required this.labelColor,
-    required this.detailColor,
-  });
-
-  final int panelBgColor;
-  final int panelBorderColor;
-  final int selectedBgColor;
-  final int labelColor;
-  final int detailColor;
-}
-
 class CompletionPopupOverlayState {
   const CompletionPopupOverlayState({
     required this.items,
@@ -52,72 +35,40 @@ class CompletionPopupOverlayState {
 }
 
 /// Completion popup controller (logic layer).
-class CompletionPopupController implements CompletionUpdateListener {
-  CompletionPopupController({
-    required int panelBgColor,
-    required int panelBorderColor,
-    required int selectedBgColor,
-    required int labelColor,
-    required int detailColor,
-  }) : _panelBgColor = panelBgColor,
-       _panelBorderColor = panelBorderColor,
-       _selectedBgColor = selectedBgColor,
-       _labelColor = labelColor,
-       _detailColor = detailColor;
+class CompletionPopupController {
+  CompletionPopupController();
 
   List<CompletionItem> _items = [];
   int _selectedIndex = 0;
   bool _showing = false;
   void Function(CompletionItem)? _confirmHandler;
+  CompletionItemWidgetBuilder? _itemBuilder;
   double _cachedCursorX = 0;
   double _cachedCursorY = 0;
   double _cachedCursorHeight = 0;
-  int _panelBgColor;
-  int _panelBorderColor;
-  int _selectedBgColor;
-  int _labelColor;
-  int _detailColor;
-  EditorOverlayBinding<CompletionPopupOverlayState>? _overlayBinding;
-
-  void applyTheme(
-    int panelBgColor,
-    int panelBorderColor,
-    int selectedBgColor,
-    int labelColor,
-    int detailColor,
-  ) {
-    _panelBgColor = panelBgColor;
-    _panelBorderColor = panelBorderColor;
-    _selectedBgColor = selectedBgColor;
-    _labelColor = labelColor;
-    _detailColor = detailColor;
-  }
+  EditorOverlayUpdater<CompletionPopupOverlayState>? _overlayUpdater;
 
   void setConfirmHandler(void Function(CompletionItem)? handler) {
     _confirmHandler = handler;
   }
 
-  void setViewBuilder(CompletionItemViewBuilder? builder) {
-    // Reserved for future custom rendering support.
+  void setItemBuilder(CompletionItemWidgetBuilder? builder) {
+    _itemBuilder = builder;
+    if (_showing) {
+      _overlayUpdater?.call(_buildOverlayState());
+    }
   }
 
-  void bindOverlay(EditorOverlayBinding<CompletionPopupOverlayState>? binding) {
-    _overlayBinding = binding;
+  void bindOverlay(EditorOverlayUpdater<CompletionPopupOverlayState>? updater) {
+    _overlayUpdater = updater;
   }
 
   bool get isShowing => _showing;
   List<CompletionItem> get items => _items;
   int get selectedIndex => _selectedIndex;
-  CompletionThemeColors get themeColors => CompletionThemeColors(
-    panelBgColor: _panelBgColor,
-    panelBorderColor: _panelBorderColor,
-    selectedBgColor: _selectedBgColor,
-    labelColor: _labelColor,
-    detailColor: _detailColor,
-  );
+  CompletionItemWidgetBuilder? get itemBuilder => _itemBuilder;
 
-  @override
-  void onCompletionItemsUpdated(List<CompletionItem> newItems) {
+  void showItems(List<CompletionItem> newItems) {
     _items = List.of(newItems);
     _selectedIndex = 0;
     if (_items.isEmpty) {
@@ -126,9 +77,6 @@ class CompletionPopupController implements CompletionUpdateListener {
       _show();
     }
   }
-
-  @override
-  void onCompletionDismissed() => dismiss();
 
   bool handleKeyCode(int keyCode) {
     if (!_showing || _items.isEmpty) return false;
@@ -159,14 +107,14 @@ class CompletionPopupController implements CompletionUpdateListener {
     _cachedCursorY = cursorY;
     _cachedCursorHeight = cursorHeight;
     if (_showing) {
-      _overlayBinding?.update(_buildOverlayState());
+      _overlayUpdater?.call(_buildOverlayState());
     }
   }
 
   void dismiss() {
     if (!_showing) return;
     _showing = false;
-    _overlayBinding?.hide();
+    _overlayUpdater?.call(null);
   }
 
   void confirmSelected() {
@@ -185,14 +133,8 @@ class CompletionPopupController implements CompletionUpdateListener {
   }
 
   void _show() {
-    final wasShowing = _showing;
     _showing = true;
-    final overlayState = _buildOverlayState();
-    if (wasShowing) {
-      _overlayBinding?.update(overlayState);
-    } else {
-      _overlayBinding?.show(overlayState);
-    }
+    _overlayUpdater?.call(_buildOverlayState());
   }
 
   void _moveSelection(int delta) {
@@ -200,7 +142,7 @@ class CompletionPopupController implements CompletionUpdateListener {
     final old = _selectedIndex;
     _selectedIndex = (_selectedIndex + delta).clamp(0, _items.length - 1);
     if (old != _selectedIndex) {
-      _overlayBinding?.update(_buildOverlayState());
+      _overlayUpdater?.call(_buildOverlayState());
     }
   }
 

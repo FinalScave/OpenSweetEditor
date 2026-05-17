@@ -3,12 +3,6 @@ part of '../sweeteditor.dart';
 const int _debounceCharacterMs = 50;
 const int _debounceInvokedMs = 0;
 
-/// Listener for completion item updates and dismissals.
-abstract class CompletionUpdateListener {
-  void onCompletionItemsUpdated(List<CompletionItem> items);
-  void onCompletionDismissed();
-}
-
 /// Completion provider manager.
 /// Handles provider registration/removal, debounce, context building,
 /// dispatching requests, merging/sorting/filtering results, and driving panel updates.
@@ -20,17 +14,12 @@ class CompletionProviderManager {
   final List<CompletionProvider> _providers = [];
   final Map<CompletionProvider, _ManagedCompletionReceiver> _activeReceivers =
       {};
-  CompletionUpdateListener? _listener;
   int _generation = 0;
   List<CompletionItem> _mergedItems = [];
   CompletionTriggerKind _lastTriggerKind = CompletionTriggerKind.invoked;
   String? _lastTriggerChar;
   bool _disposed = false;
   Timer? _debounceTimer;
-
-  void setListener(CompletionUpdateListener? listener) {
-    _listener = listener;
-  }
 
   void addProvider(CompletionProvider provider) {
     if (_disposed) return;
@@ -76,7 +65,7 @@ class CompletionProviderManager {
     _generation++;
     _cancelAllReceivers();
     _mergedItems = [];
-    _listener?.onCompletionDismissed();
+    session.completionPopupController.dismiss();
   }
 
   bool isTriggerCharacter(String ch) {
@@ -92,7 +81,7 @@ class CompletionProviderManager {
     _generation++;
     _cancelAllReceivers();
     _mergedItems = List.of(items);
-    _listener?.onCompletionItemsUpdated(List.of(_mergedItems));
+    session.completionPopupController.showItems(List.of(_mergedItems));
   }
 
   void _executeRefresh(
@@ -165,9 +154,9 @@ class CompletionProviderManager {
       return sa.compareTo(sb);
     });
     if (_mergedItems.isEmpty) {
-      _listener?.onCompletionDismissed();
+      session.completionPopupController.dismiss();
     } else {
-      _listener?.onCompletionItemsUpdated(List.of(_mergedItems));
+      session.completionPopupController.showItems(List.of(_mergedItems));
     }
   }
 
@@ -189,7 +178,6 @@ class CompletionProviderManager {
       provider.dispose();
     }
     _mergedItems = [];
-    _listener = null;
   }
 }
 

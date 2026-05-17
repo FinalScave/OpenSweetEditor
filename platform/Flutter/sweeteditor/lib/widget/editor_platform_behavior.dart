@@ -18,6 +18,7 @@ class EditorPlatformBehavior {
     required this.handleConfig,
     required this.scrollbarConfig,
     required this.selectionMenuHandleClearance,
+    required this.monospaceFontFamily,
   });
 
   factory EditorPlatformBehavior.resolve() {
@@ -27,6 +28,7 @@ class EditorPlatformBehavior {
         !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
     final isMobileStyle =
         !kIsWeb && (isAndroid || defaultTargetPlatform == TargetPlatform.iOS);
+    final monospaceFontFamily = _resolveMonospaceFontFamily();
     final usesPlatformTextInput = !kIsWeb;
     return EditorPlatformBehavior._(
       usesPlatformTextInput: usesPlatformTextInput,
@@ -49,6 +51,7 @@ class EditorPlatformBehavior {
           : _buildDisabledHandleConfig(),
       scrollbarConfig: _buildScrollbarConfig(isMobileStyle: isMobileStyle),
       selectionMenuHandleClearance: isMobileStyle ? 32.0 : 0.0,
+      monospaceFontFamily: monospaceFontFamily,
     );
   }
 
@@ -68,6 +71,28 @@ class EditorPlatformBehavior {
   final core.HandleConfig handleConfig;
   final core.ScrollbarConfig scrollbarConfig;
   final double selectionMenuHandleClearance;
+  final String monospaceFontFamily;
+
+  String resolveFontFamily(String fontFamily) {
+    final family = fontFamily.trim();
+    if (family.isEmpty || family.toLowerCase() == 'monospace') {
+      return monospaceFontFamily;
+    }
+    return family;
+  }
+
+  static String _resolveMonospaceFontFamily() {
+    if (kIsWeb) return 'monospace';
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.windows:
+        return 'Consolas';
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        return 'Menlo';
+      default:
+        return 'monospace';
+    }
+  }
 
   static core.HandleConfig _buildMobileHandleConfig() {
     const r = 10.0;
