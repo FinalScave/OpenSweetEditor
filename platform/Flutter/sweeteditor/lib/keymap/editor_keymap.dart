@@ -5,236 +5,315 @@ export '../editor_core.dart'
 
 typedef EditorCommandHandler = bool Function();
 
-enum KeyResolveStatus { matched, pending, noMatch }
-
-class KeyResolveResult {
-  const KeyResolveResult({required this.status, required this.command});
-
-  final KeyResolveStatus status;
-  final int command;
-}
-
 class EditorKeyMap extends core.KeyMap {
   EditorKeyMap({Iterable<core.KeyBinding>? bindings}) : super(bindings);
 
   final Map<int, EditorCommandHandler> _handlers =
       <int, EditorCommandHandler>{};
-  final Map<core.KeyChord, Object> _entries = <core.KeyChord, Object>{};
   int _nextCustomCommandId = core.EditorCommand.builtInMax + 1;
-
-  bool _pending = false;
-  int _pendingTimeMs = 0;
-  Map<core.KeyChord, int>? _pendingSubMap;
-
-  static const int _pendingTimeoutMs = 2000;
 
   factory EditorKeyMap.defaultKeyMap() => EditorKeyMap.vscode();
 
-  factory EditorKeyMap.vscode() {
-    final keyMap = EditorKeyMap();
+  static void _bind(
+    EditorKeyMap keyMap,
+    int modifiers,
+    core.KeyCode keyCode,
+    int command,
+  ) {
+    keyMap.addBinding(
+      core.KeyBinding(
+        first: core.KeyChord(modifiers: modifiers, keyCode: keyCode),
+        command: command,
+      ),
+    );
+  }
 
-    void addBuiltIn(int modifiers, core.KeyCode keyCode, int command) {
-      keyMap.addBinding(
-        core.KeyBinding(
-          first: core.KeyChord(modifiers: modifiers, keyCode: keyCode),
-          command: command,
-        ),
-      );
-    }
-
-    addBuiltIn(
+  static void _addCommonBindings(EditorKeyMap keyMap) {
+    _bind(
+      keyMap,
       core.KeyModifier.none,
       core.KeyCode.left,
       core.EditorCommand.cursorLeft,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.none,
       core.KeyCode.right,
       core.EditorCommand.cursorRight,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.none,
       core.KeyCode.up,
       core.EditorCommand.cursorUp,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.none,
       core.KeyCode.down,
       core.EditorCommand.cursorDown,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.none,
       core.KeyCode.home,
       core.EditorCommand.cursorLineStart,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.none,
       core.KeyCode.end,
       core.EditorCommand.cursorLineEnd,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.none,
       core.KeyCode.pageUp,
       core.EditorCommand.cursorPageUp,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.none,
       core.KeyCode.pageDown,
       core.EditorCommand.cursorPageDown,
     );
 
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.shift,
       core.KeyCode.left,
       core.EditorCommand.selectLeft,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.shift,
       core.KeyCode.right,
       core.EditorCommand.selectRight,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.shift,
       core.KeyCode.up,
       core.EditorCommand.selectUp,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.shift,
       core.KeyCode.down,
       core.EditorCommand.selectDown,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.shift,
       core.KeyCode.home,
       core.EditorCommand.selectLineStart,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.shift,
       core.KeyCode.end,
       core.EditorCommand.selectLineEnd,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.shift,
       core.KeyCode.pageUp,
       core.EditorCommand.selectPageUp,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.shift,
       core.KeyCode.pageDown,
       core.EditorCommand.selectPageDown,
     );
 
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.none,
       core.KeyCode.backspace,
       core.EditorCommand.backspace,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.none,
       core.KeyCode.deleteKey,
       core.EditorCommand.deleteForward,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.none,
       core.KeyCode.tab,
       core.EditorCommand.insertTab,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.none,
       core.KeyCode.enter,
       core.EditorCommand.insertNewline,
     );
 
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.ctrl,
       core.KeyCode.a,
       core.EditorCommand.selectAll,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.meta,
       core.KeyCode.a,
       core.EditorCommand.selectAll,
     );
-    addBuiltIn(core.KeyModifier.ctrl, core.KeyCode.z, core.EditorCommand.undo);
-    addBuiltIn(core.KeyModifier.meta, core.KeyCode.z, core.EditorCommand.undo);
-    addBuiltIn(
-      core.KeyModifier.ctrl | core.KeyModifier.shift,
+    _bind(
+      keyMap,
+      core.KeyModifier.ctrl,
       core.KeyCode.z,
-      core.EditorCommand.redo,
+      core.EditorCommand.undo,
     );
-    addBuiltIn(
-      core.KeyModifier.meta | core.KeyModifier.shift,
+    _bind(
+      keyMap,
+      core.KeyModifier.meta,
       core.KeyCode.z,
-      core.EditorCommand.redo,
+      core.EditorCommand.undo,
     );
-    addBuiltIn(core.KeyModifier.ctrl, core.KeyCode.y, core.EditorCommand.redo);
-    addBuiltIn(core.KeyModifier.meta, core.KeyCode.y, core.EditorCommand.redo);
 
-    addBuiltIn(core.KeyModifier.ctrl, core.KeyCode.c, core.EditorCommand.copy);
-    addBuiltIn(core.KeyModifier.meta, core.KeyCode.c, core.EditorCommand.copy);
-    addBuiltIn(core.KeyModifier.ctrl, core.KeyCode.v, core.EditorCommand.paste);
-    addBuiltIn(core.KeyModifier.meta, core.KeyCode.v, core.EditorCommand.paste);
-    addBuiltIn(core.KeyModifier.ctrl, core.KeyCode.x, core.EditorCommand.cut);
-    addBuiltIn(core.KeyModifier.meta, core.KeyCode.x, core.EditorCommand.cut);
-    addBuiltIn(
+    _bind(
+      keyMap,
+      core.KeyModifier.ctrl,
+      core.KeyCode.c,
+      core.EditorCommand.copy,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.meta,
+      core.KeyCode.c,
+      core.EditorCommand.copy,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.ctrl,
+      core.KeyCode.v,
+      core.EditorCommand.paste,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.meta,
+      core.KeyCode.v,
+      core.EditorCommand.paste,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.ctrl,
+      core.KeyCode.x,
+      core.EditorCommand.cut,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.meta,
+      core.KeyCode.x,
+      core.EditorCommand.cut,
+    );
+    _bind(
+      keyMap,
       core.KeyModifier.ctrl,
       core.KeyCode.space,
       core.EditorCommand.triggerCompletion,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.meta,
       core.KeyCode.space,
       core.EditorCommand.triggerCompletion,
     );
+  }
 
-    addBuiltIn(
+  factory EditorKeyMap.vscode() {
+    final keyMap = EditorKeyMap();
+    _addCommonBindings(keyMap);
+
+    _bind(
+      keyMap,
+      core.KeyModifier.ctrl | core.KeyModifier.shift,
+      core.KeyCode.z,
+      core.EditorCommand.redo,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.meta | core.KeyModifier.shift,
+      core.KeyCode.z,
+      core.EditorCommand.redo,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.ctrl,
+      core.KeyCode.y,
+      core.EditorCommand.redo,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.meta,
+      core.KeyCode.y,
+      core.EditorCommand.redo,
+    );
+
+    _bind(
+      keyMap,
       core.KeyModifier.ctrl,
       core.KeyCode.enter,
       core.EditorCommand.insertLineBelow,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.meta,
       core.KeyCode.enter,
       core.EditorCommand.insertLineBelow,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.ctrl | core.KeyModifier.shift,
       core.KeyCode.enter,
       core.EditorCommand.insertLineAbove,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.meta | core.KeyModifier.shift,
       core.KeyCode.enter,
       core.EditorCommand.insertLineAbove,
     );
 
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.alt,
       core.KeyCode.up,
       core.EditorCommand.moveLineUp,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.alt,
       core.KeyCode.down,
       core.EditorCommand.moveLineDown,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.alt | core.KeyModifier.shift,
       core.KeyCode.up,
       core.EditorCommand.copyLineUp,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.alt | core.KeyModifier.shift,
       core.KeyCode.down,
       core.EditorCommand.copyLineDown,
     );
 
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.ctrl | core.KeyModifier.shift,
       core.KeyCode.k,
       core.EditorCommand.deleteLine,
     );
-    addBuiltIn(
+    _bind(
+      keyMap,
       core.KeyModifier.meta | core.KeyModifier.shift,
       core.KeyCode.k,
       core.EditorCommand.deleteLine,
@@ -243,14 +322,158 @@ class EditorKeyMap extends core.KeyMap {
     return keyMap;
   }
 
-  factory EditorKeyMap.jetbrains() => EditorKeyMap.vscode();
+  factory EditorKeyMap.jetbrains() {
+    final keyMap = EditorKeyMap();
+    _addCommonBindings(keyMap);
 
-  factory EditorKeyMap.sublime() => EditorKeyMap.vscode();
+    _bind(
+      keyMap,
+      core.KeyModifier.ctrl | core.KeyModifier.shift,
+      core.KeyCode.z,
+      core.EditorCommand.redo,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.meta | core.KeyModifier.shift,
+      core.KeyCode.z,
+      core.EditorCommand.redo,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.shift,
+      core.KeyCode.enter,
+      core.EditorCommand.insertLineBelow,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.ctrl | core.KeyModifier.alt,
+      core.KeyCode.enter,
+      core.EditorCommand.insertLineAbove,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.meta | core.KeyModifier.alt,
+      core.KeyCode.enter,
+      core.EditorCommand.insertLineAbove,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.alt | core.KeyModifier.shift,
+      core.KeyCode.up,
+      core.EditorCommand.moveLineUp,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.alt | core.KeyModifier.shift,
+      core.KeyCode.down,
+      core.EditorCommand.moveLineDown,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.ctrl,
+      core.KeyCode.d,
+      core.EditorCommand.copyLineDown,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.meta,
+      core.KeyCode.d,
+      core.EditorCommand.copyLineDown,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.ctrl,
+      core.KeyCode.y,
+      core.EditorCommand.deleteLine,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.meta,
+      core.KeyCode.y,
+      core.EditorCommand.deleteLine,
+    );
 
-  @override
-  void addBinding(core.KeyBinding binding) {
-    super.addBinding(binding);
-    _registerBindingEntry(binding);
+    return keyMap;
+  }
+
+  factory EditorKeyMap.sublime() {
+    final keyMap = EditorKeyMap();
+    _addCommonBindings(keyMap);
+
+    _bind(
+      keyMap,
+      core.KeyModifier.ctrl,
+      core.KeyCode.y,
+      core.EditorCommand.redo,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.meta | core.KeyModifier.shift,
+      core.KeyCode.z,
+      core.EditorCommand.redo,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.ctrl | core.KeyModifier.shift,
+      core.KeyCode.z,
+      core.EditorCommand.redo,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.meta,
+      core.KeyCode.y,
+      core.EditorCommand.redo,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.ctrl,
+      core.KeyCode.enter,
+      core.EditorCommand.insertLineBelow,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.meta,
+      core.KeyCode.enter,
+      core.EditorCommand.insertLineBelow,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.ctrl | core.KeyModifier.shift,
+      core.KeyCode.enter,
+      core.EditorCommand.insertLineAbove,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.meta | core.KeyModifier.shift,
+      core.KeyCode.enter,
+      core.EditorCommand.insertLineAbove,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.ctrl | core.KeyModifier.shift,
+      core.KeyCode.up,
+      core.EditorCommand.moveLineUp,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.ctrl | core.KeyModifier.shift,
+      core.KeyCode.down,
+      core.EditorCommand.moveLineDown,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.ctrl | core.KeyModifier.shift,
+      core.KeyCode.k,
+      core.EditorCommand.deleteLine,
+    );
+    _bind(
+      keyMap,
+      core.KeyModifier.meta | core.KeyModifier.shift,
+      core.KeyCode.k,
+      core.EditorCommand.deleteLine,
+    );
+
+    return keyMap;
   }
 
   int registerCommand(core.KeyBinding binding, EditorCommandHandler handler) {
@@ -268,76 +491,5 @@ class EditorKeyMap extends core.KeyMap {
     return command;
   }
 
-  KeyResolveResult resolve(core.KeyChord chord, {int? timeMs}) {
-    final nowMs = timeMs ?? DateTime.now().millisecondsSinceEpoch;
-    if (_pending) {
-      final subMap = _pendingSubMap;
-      final expired =
-          subMap == null || (nowMs - _pendingTimeMs > _pendingTimeoutMs);
-      if (expired) {
-        _cancelPending();
-      } else {
-        final command = subMap[chord];
-        _cancelPending();
-        if (command != null) {
-          return KeyResolveResult(
-            status: KeyResolveStatus.matched,
-            command: command,
-          );
-        }
-        return const KeyResolveResult(
-          status: KeyResolveStatus.noMatch,
-          command: core.EditorCommand.none,
-        );
-      }
-    }
-
-    final entry = _entries[chord];
-    if (entry == null) {
-      return const KeyResolveResult(
-        status: KeyResolveStatus.noMatch,
-        command: core.EditorCommand.none,
-      );
-    }
-    if (entry is int) {
-      return KeyResolveResult(status: KeyResolveStatus.matched, command: entry);
-    }
-    if (entry is Map<core.KeyChord, int>) {
-      _pending = true;
-      _pendingTimeMs = nowMs;
-      _pendingSubMap = entry;
-      return const KeyResolveResult(
-        status: KeyResolveStatus.pending,
-        command: core.EditorCommand.none,
-      );
-    }
-    return const KeyResolveResult(
-      status: KeyResolveStatus.noMatch,
-      command: core.EditorCommand.none,
-    );
-  }
-
   bool invokeHandler(int command) => _handlers[command]?.call() ?? false;
-
-  void _registerBindingEntry(core.KeyBinding binding) {
-    final first = binding.first;
-    if (binding.second.isEmpty) {
-      _entries[first] = binding.command;
-      return;
-    }
-
-    final existing = _entries[first];
-    if (existing is Map<core.KeyChord, int>) {
-      existing[binding.second] = binding.command;
-      return;
-    }
-
-    _entries[first] = <core.KeyChord, int>{binding.second: binding.command};
-  }
-
-  void _cancelPending() {
-    _pending = false;
-    _pendingTimeMs = 0;
-    _pendingSubMap = null;
-  }
 }

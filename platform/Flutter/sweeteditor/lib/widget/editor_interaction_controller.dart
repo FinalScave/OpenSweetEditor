@@ -311,12 +311,6 @@ class EditorInteractionController {
       return KeyEventResult.handled;
     }
 
-    final resolvedCommand = keyCode == core.KeyCode.none
-        ? null
-        : _session.keyMap.resolve(
-            core.KeyChord(modifiers: modifiers, keyCode: keyCode),
-          );
-
     if (_session.inlineSuggestionController.isShowing) {
       final androidCode = keyCode.value;
       if (androidCode != 0 &&
@@ -338,25 +332,15 @@ class EditorInteractionController {
       return KeyEventResult.handled;
     }
 
-    final matchedCommand =
-        resolvedCommand != null &&
-            resolvedCommand.status == KeyResolveStatus.matched
-        ? resolvedCommand.command
-        : core.EditorCommand.none;
-    final suppressTextForCore =
-        _session.platformBehavior.usesPlatformTextInput ||
-        (matchedCommand != core.EditorCommand.none &&
-            _isHostCommand(matchedCommand));
     final result = editorCore.handleKeyEvent(
       keyCode,
-      text: suppressTextForCore ? null : text,
+      text: _session.platformBehavior.usesPlatformTextInput ? null : text,
       modifiers: modifiers,
     );
-    final command = result.command != core.EditorCommand.none
-        ? result.command
-        : matchedCommand;
     final handledByPlatformCommand =
-        command != core.EditorCommand.none && _handleResolvedCommand(command);
+        result.handled &&
+        result.command != core.EditorCommand.none &&
+        _handleResolvedCommand(result.command);
 
     if (handledByPlatformCommand) {
       _resetCursorBlink();
@@ -646,11 +630,6 @@ class EditorInteractionController {
       default:
         return false;
     }
-  }
-
-  bool _isHostCommand(int command) {
-    return command > core.EditorCommand.builtInMax ||
-        core.EditorCommand.isPlatformHandled(command);
   }
 
   void _copyToClipboard() {

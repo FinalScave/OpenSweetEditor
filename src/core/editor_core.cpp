@@ -679,8 +679,8 @@ namespace NS_SWEETEDITOR {
       EditorCommand cmd = resolve.command;
       result.command = cmd;
 
-      // Platform-handled commands: mark but don't execute
-      if (cmd == EditorCommand::COPY || cmd == EditorCommand::PASTE || cmd == EditorCommand::CUT) {
+      if (cmd == EditorCommand::COPY || cmd == EditorCommand::PASTE || cmd == EditorCommand::CUT
+        || cmd == EditorCommand::TRIGGER_COMPLETION || static_cast<uint32_t>(cmd) > static_cast<uint32_t>(EditorCommand::TRIGGER_COMPLETION)) {
         result.handled = true;
         return result;
       }

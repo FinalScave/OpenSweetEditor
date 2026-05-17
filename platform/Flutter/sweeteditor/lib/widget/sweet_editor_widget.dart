@@ -64,6 +64,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   Size? _pendingViewportSize;
   bool _viewportUpdateScheduled = false;
   bool _editorResourcesReleased = false;
+  bool _pendingDocumentLoadedNotification = false;
   core.PointerCursorType _pointerCursorType = core.PointerCursorType.text;
 
   EditorEventBus get _eventBus => widget.controller._eventBus;
@@ -149,6 +150,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       if (pointerCursorChanged && mounted) {
         setState(() {});
       }
+      _dispatchPendingDocumentLoaded();
     };
     _session.onPlatformScaleChanged = _updateTextInputStyle;
     _session.bindSettings();
@@ -235,9 +237,15 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   String _getContent() => _session.getContent();
 
   void _onDocumentLoaded() {
+    _pendingDocumentLoadedNotification = true;
+    _flush();
+  }
+
+  void _dispatchPendingDocumentLoaded() {
+    if (!_pendingDocumentLoadedNotification || !mounted) return;
+    _pendingDocumentLoadedNotification = false;
     _decorationProviderManager.onDocumentLoaded();
     _eventBus.publish(DocumentLoadedEvent());
-    _flush();
   }
 
   void _flush() {
@@ -291,8 +299,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   void _applyMetadata(EditorMetadata? metadata) {
     _session.applyMetadata(metadata);
-    _decorationProviderManager.requestRefresh();
-    _flush();
   }
 
   void _releaseEditorResources() {

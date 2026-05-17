@@ -78,16 +78,11 @@ class DecorationProviderManager {
       _pendingTextChanges.addAll(changes);
     }
     _refreshTimer?.cancel();
-    _refreshTimer = null;
-    if (delayMs > 0) {
-      _refreshTimer = Timer(Duration(milliseconds: delayMs), () {
-        _refreshTimer = null;
-        if (_disposed) return;
-        _doRefresh();
-      });
-    } else {
+    _refreshTimer = Timer(Duration(milliseconds: delayMs > 0 ? delayMs : 0), () {
+      _refreshTimer = null;
+      if (_disposed) return;
       _doRefresh();
-    }
+    });
   }
 
   void _scheduleScrollRefresh() {
@@ -117,8 +112,7 @@ class DecorationProviderManager {
     _generation++;
     final currentGeneration = _generation;
 
-    final visible =
-        session.editorCore?.getVisibleLineRange() ?? const core.IntRange(0, -1);
+    final visible = session.controller.getVisibleLineRange();
     final total = session.document?.lineCount ?? 0;
     final changes = List<core.TextChange>.of(_pendingTextChanges);
     _pendingTextChanges.clear();
