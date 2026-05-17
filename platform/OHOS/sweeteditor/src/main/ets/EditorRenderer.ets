@@ -26,7 +26,9 @@ import {
   VisualRunType
 } from './core/CoreVisual';
 import { CurrentLineRenderMode } from './core/CoreFoundation';
+import { DiagnosticSeverity, FontStyle } from './core/CoreAdornments';
 import { PerfOverlay } from './perf/PerfOverlay';
+import { argbToCssColor, multiplyArgbAlpha } from './ui/EditorColor';
 import { TextMeasurer } from 'libsweeteditor.so';
 
 const HANDLE_LINE_WIDTH = 1.5;
@@ -162,7 +164,7 @@ export class EditorRenderer {
     viewWidth: number, viewHeight: number, cursorVisible: boolean): boolean {
     this.currentFontKey = '';
     ctx.clearRect(0, 0, viewWidth, viewHeight);
-    ctx.fillStyle = colorToString(this.theme.backgroundColor);
+    ctx.fillStyle = argbToCssColor(this.theme.backgroundColor);
     ctx.fillRect(0, 0, viewWidth, viewHeight);
 
     this.drawCurrentLineDecoration(ctx, model, 0, viewWidth);
@@ -176,11 +178,11 @@ export class EditorRenderer {
     this.drawCursor(ctx, model.cursor, cursorVisible);
 
     if (model.splitX > 0) {
-      ctx.fillStyle = colorToString(this.theme.backgroundColor);
+      ctx.fillStyle = argbToCssColor(this.theme.backgroundColor);
       ctx.fillRect(0, 0, model.splitX, viewHeight);
       this.drawCurrentLineDecoration(ctx, model, 0, model.splitX);
       if (model.splitLineVisible) {
-        ctx.strokeStyle = colorToString(this.theme.splitLineColor);
+        ctx.strokeStyle = argbToCssColor(this.theme.splitLineColor);
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(model.splitX, 0);
@@ -231,7 +233,7 @@ export class EditorRenderer {
   }
 
   private drawTextRun(ctx: CanvasRenderingContext2D, run: VisualRun, textSize: number): void {
-    const fontStyle = run.style ? run.style.fontStyle : 0;
+    const fontStyle = run.style ? run.style.fontStyle : FontStyle.NORMAL;
     let color = (run.style && run.style.color !== 0) ? run.style.color : this.theme.textColor;
     let metrics: FontMetricsSnapshot | null = null;
     if (run.type === VisualRunType.CODELENS) {
@@ -242,25 +244,25 @@ export class EditorRenderer {
 
     if (run.style && run.style.backgroundColor !== 0) {
       metrics = this.getFontMetrics(ctx, fontStyle, textSize, this.fontFamily);
-      ctx.fillStyle = colorToString(run.style.backgroundColor);
+      ctx.fillStyle = argbToCssColor(run.style.backgroundColor);
       ctx.fillRect(run.x, run.y - metrics.ascent, run.width, metrics.ascent + metrics.descent);
     } else {
       this.setCanvasFont(ctx, fontStyle, textSize, this.fontFamily);
     }
 
     if (run.type === VisualRunType.PHANTOM_TEXT) {
-      ctx.fillStyle = colorToString(this.theme.phantomTextColor);
+      ctx.fillStyle = argbToCssColor(this.theme.phantomTextColor);
     } else {
-      ctx.fillStyle = colorToString(color);
+      ctx.fillStyle = argbToCssColor(color);
     }
     ctx.fillText(run.text, run.x, run.y);
-    if ((fontStyle & 4) !== 0) {
+    if ((fontStyle & FontStyle.STRIKETHROUGH) !== FontStyle.NORMAL) {
       if (!metrics) {
         metrics = this.getFontMetrics(ctx, fontStyle, textSize, this.fontFamily);
       }
       const strikeY = run.y - metrics.ascent * 0.35;
       ctx.beginPath();
-      ctx.strokeStyle = colorToString(color);
+      ctx.strokeStyle = argbToCssColor(color);
       ctx.lineWidth = 1;
       ctx.moveTo(run.x, strikeY);
       ctx.lineTo(run.x + run.width, strikeY);
@@ -269,7 +271,7 @@ export class EditorRenderer {
     if ((run.type === VisualRunType.CODELENS || run.type === VisualRunType.LINK) && run.active) {
       const underlineY = run.y + 1;
       ctx.beginPath();
-      ctx.strokeStyle = colorToString(color);
+      ctx.strokeStyle = argbToCssColor(color);
       ctx.lineWidth = 1;
       ctx.moveTo(run.x, underlineY);
       ctx.lineTo(run.x + run.width, underlineY);
@@ -289,11 +291,11 @@ export class EditorRenderer {
     const bgRight = run.x + run.width - mgn;
     const radius = (bgBottom - bgTop) * 0.2;
 
-    ctx.fillStyle = colorToString(this.theme.foldPlaceholderBgColor);
+    ctx.fillStyle = argbToCssColor(this.theme.foldPlaceholderBgColor);
     drawRoundRect(ctx, bgLeft, bgTop, bgRight - bgLeft, bgBottom - bgTop, radius);
     ctx.fill();
 
-    ctx.fillStyle = colorToString(this.theme.foldPlaceholderTextColor);
+    ctx.fillStyle = argbToCssColor(this.theme.foldPlaceholderTextColor);
     ctx.fillText(run.text, run.x + mgn + run.padding, run.y);
   }
 
@@ -307,13 +309,13 @@ export class EditorRenderer {
 
     if (run.colorValue !== 0) {
       const blockSize = bgBottom - bgTop;
-      ctx.fillStyle = colorToString(run.colorValue);
+      ctx.fillStyle = argbToCssColor(run.colorValue);
       ctx.globalAlpha = 1.0;
       ctx.fillRect(run.x + mgn, bgTop, blockSize, blockSize);
       ctx.globalAlpha = 1.0;
     } else {
       const radius = (bgBottom - bgTop) * 0.2;
-      ctx.fillStyle = colorToString(this.theme.inlayHintBgColor);
+      ctx.fillStyle = argbToCssColor(this.theme.inlayHintBgColor);
       drawRoundRect(ctx, bgLeft, bgTop, bgRight - bgLeft, bgBottom - bgTop, radius);
       ctx.fill();
 
@@ -337,7 +339,7 @@ export class EditorRenderer {
           color = this.theme.inlayHintTextColor;
         }
         this.setCanvasFont(ctx, fontStyle, hintSize, 'sans-serif');
-        ctx.fillStyle = colorToString(color);
+        ctx.fillStyle = argbToCssColor(color);
         ctx.fillText(run.text, run.x + mgn + run.padding, run.y);
       }
     }
@@ -389,7 +391,7 @@ export class EditorRenderer {
           this.drawGutterIconItem(ctx, gutterIcons[iconStart]);
         } else {
           this.setCanvasFont(ctx, 0, lineNumSize, this.fontFamily);
-          ctx.fillStyle = colorToString(isCurrentLine ? activeColor : normalColor);
+          ctx.fillStyle = argbToCssColor(isCurrentLine ? activeColor : normalColor);
           ctx.fillText(
             String(line.logicalLine + 1),
             line.lineNumberPosition.x,
@@ -445,7 +447,7 @@ export class EditorRenderer {
     const centerY = item.origin.y + item.height * 0.5;
     const halfSize = Math.min(item.width, item.height) * 0.28;
 
-    ctx.strokeStyle = colorToString(color);
+    ctx.strokeStyle = argbToCssColor(color);
     ctx.lineWidth = Math.max(1, item.height * 0.1);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
@@ -481,13 +483,13 @@ export class EditorRenderer {
 
     if (model.currentLineRenderMode === CurrentLineRenderMode.BORDER) {
       const borderColor = this.getCurrentLineBorderColor();
-      ctx.strokeStyle = colorToString(borderColor);
+      ctx.strokeStyle = argbToCssColor(borderColor);
       ctx.lineWidth = 1;
       ctx.strokeRect(left, top, right - left, bottom - top);
       return;
     }
 
-    ctx.fillStyle = colorToString(this.theme.currentLineColor);
+    ctx.fillStyle = argbToCssColor(this.theme.currentLineColor);
     ctx.fillRect(left, top, right - left, bottom - top);
   }
 
@@ -497,7 +499,7 @@ export class EditorRenderer {
       return;
     }
     const cursorWidth = HANDLE_LINE_WIDTH;
-    ctx.fillStyle = colorToString(this.theme.cursorColor);
+    ctx.fillStyle = argbToCssColor(this.theme.cursorColor);
     ctx.fillRect(cursor.position.x, cursor.position.y, cursorWidth, cursor.height);
   }
 
@@ -505,7 +507,7 @@ export class EditorRenderer {
     if (!rects || rects.length === 0) {
       return;
     }
-    ctx.fillStyle = colorToString(this.theme.selectionColor);
+    ctx.fillStyle = argbToCssColor(this.theme.selectionColor);
     for (const rect of rects) {
       if (!rect.origin) {
         continue;
@@ -533,7 +535,7 @@ export class EditorRenderer {
     const dropRadius = HANDLE_DROP_RADIUS;
     const dropLength = HANDLE_CENTER_DIST;
 
-    ctx.fillStyle = colorToString(this.theme.cursorColor);
+    ctx.fillStyle = argbToCssColor(this.theme.cursorColor);
     ctx.fillRect(x - lineWidth / 2, y, lineWidth, height);
 
     const tipX = x;
@@ -579,7 +581,7 @@ export class EditorRenderer {
         continue;
       }
       const isSeparator = seg.type === GuideType.SEPARATOR;
-      ctx.strokeStyle = colorToString(isSeparator ? this.theme.separatorLineColor : this.theme.guideColor);
+      ctx.strokeStyle = argbToCssColor(isSeparator ? this.theme.separatorLineColor : this.theme.guideColor);
       ctx.lineWidth = 1;
 
       if (seg.style === GuideStyle.DOUBLE) {
@@ -656,7 +658,7 @@ export class EditorRenderer {
       return;
     }
     const y = decoration.origin.y + decoration.height;
-    ctx.strokeStyle = colorToString(this.theme.compositionUnderlineColor);
+    ctx.strokeStyle = argbToCssColor(this.theme.compositionUnderlineColor);
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(decoration.origin.x, y);
@@ -676,13 +678,13 @@ export class EditorRenderer {
       }
       let color: number;
       switch (diag.severity) {
-        case 0:
+        case DiagnosticSeverity.ERROR:
           color = this.theme.diagnosticErrorColor;
           break;
-        case 1:
+        case DiagnosticSeverity.WARNING:
           color = this.theme.diagnosticWarningColor;
           break;
-        case 2:
+        case DiagnosticSeverity.INFO:
           color = this.theme.diagnosticInfoColor;
           break;
         default:
@@ -690,7 +692,7 @@ export class EditorRenderer {
       }
 
       ctx.save();
-      ctx.strokeStyle = colorToString(color);
+      ctx.strokeStyle = argbToCssColor(color);
       const strokeWidth = Math.max(1.25, Math.min(2.25, diag.height * 0.09));
       const halfWave = Math.max(6.0, Math.min(10.0, diag.height * 0.42));
       const amplitude = Math.max(1.5, Math.min(3.0, diag.height * 0.12));
@@ -704,7 +706,7 @@ export class EditorRenderer {
       const endX = startX + diag.width;
       const baseY = diag.origin.y + diag.height - 1.0;
 
-      if (diag.severity === 3) {
+      if (diag.severity === DiagnosticSeverity.HINT) {
         ctx.setLineDash([dashOn, dashOff]);
         ctx.beginPath();
         ctx.moveTo(startX, baseY);
@@ -741,12 +743,12 @@ export class EditorRenderer {
       }
       if (rect.isActive) {
         const bgColor = (this.theme.linkedEditingActiveColor & 0x00FFFFFF) | 0x20000000;
-        ctx.fillStyle = colorToString(bgColor);
+        ctx.fillStyle = argbToCssColor(bgColor);
         ctx.fillRect(rect.origin.x, rect.origin.y, rect.width, rect.height);
-        ctx.strokeStyle = colorToString(this.theme.linkedEditingActiveColor);
+        ctx.strokeStyle = argbToCssColor(this.theme.linkedEditingActiveColor);
         ctx.lineWidth = 2;
       } else {
-        ctx.strokeStyle = colorToString(this.theme.linkedEditingInactiveColor);
+        ctx.strokeStyle = argbToCssColor(this.theme.linkedEditingInactiveColor);
         ctx.lineWidth = 1;
       }
       ctx.strokeRect(rect.origin.x, rect.origin.y, rect.width, rect.height);
@@ -762,9 +764,9 @@ export class EditorRenderer {
       if (!rect.origin) {
         continue;
       }
-      ctx.fillStyle = colorToString(this.theme.bracketHighlightBgColor);
+      ctx.fillStyle = argbToCssColor(this.theme.bracketHighlightBgColor);
       ctx.fillRect(rect.origin.x, rect.origin.y, rect.width, rect.height);
-      ctx.strokeStyle = colorToString(this.theme.bracketHighlightBorderColor);
+      ctx.strokeStyle = argbToCssColor(this.theme.bracketHighlightBorderColor);
       ctx.lineWidth = 1.5;
       ctx.strokeRect(rect.origin.x, rect.origin.y, rect.width, rect.height);
     }
@@ -794,12 +796,12 @@ export class EditorRenderer {
       verticalTrackX = trackX;
       verticalTrackWidth = vertical.track.width;
 
-      ctx.fillStyle = colorToString(multiplyAlpha(this.theme.scrollbarTrackColor, verticalAlpha));
+      ctx.fillStyle = argbToCssColor(multiplyArgbAlpha(this.theme.scrollbarTrackColor, verticalAlpha));
       ctx.fillRect(trackX, trackY, vertical.track.width, vertical.track.height);
 
       const vThumbColor = vertical.thumbActive
         ? this.theme.scrollbarThumbActiveColor : this.theme.scrollbarThumbColor;
-      ctx.fillStyle = colorToString(multiplyAlpha(vThumbColor, verticalAlpha));
+      ctx.fillStyle = argbToCssColor(multiplyArgbAlpha(vThumbColor, verticalAlpha));
       ctx.fillRect(thumbX, thumbY, vertical.thumb.width, vertical.thumb.height);
     }
 
@@ -811,17 +813,17 @@ export class EditorRenderer {
       horizontalTrackY = trackY;
       horizontalTrackHeight = horizontal.track.height;
 
-      ctx.fillStyle = colorToString(multiplyAlpha(this.theme.scrollbarTrackColor, horizontalAlpha));
+      ctx.fillStyle = argbToCssColor(multiplyArgbAlpha(this.theme.scrollbarTrackColor, horizontalAlpha));
       ctx.fillRect(trackX, trackY, horizontal.track.width, horizontal.track.height);
 
       const hThumbColor = horizontal.thumbActive
         ? this.theme.scrollbarThumbActiveColor : this.theme.scrollbarThumbColor;
-      ctx.fillStyle = colorToString(multiplyAlpha(hThumbColor, horizontalAlpha));
+      ctx.fillStyle = argbToCssColor(multiplyArgbAlpha(hThumbColor, horizontalAlpha));
       ctx.fillRect(thumbX, thumbY, horizontal.thumb.width, horizontal.thumb.height);
     }
 
     if (hasVertical && hasHorizontal) {
-      ctx.fillStyle = colorToString(multiplyAlpha(
+      ctx.fillStyle = argbToCssColor(multiplyArgbAlpha(
         this.theme.scrollbarTrackColor, Math.max(verticalAlpha, horizontalAlpha)));
       ctx.fillRect(verticalTrackX, horizontalTrackY, verticalTrackWidth, horizontalTrackHeight);
     }
@@ -1035,20 +1037,9 @@ export class EditorRenderer {
     }
   }
 
-function colorToString(argb: number): string {
-  const a = ((argb >>> 24) & 0xFF) / 255;
-  const r = (argb >>> 16) & 0xFF;
-  const g = (argb >>> 8) & 0xFF;
-  const b = argb & 0xFF;
-  if (a >= 1.0) {
-    return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-  }
-  return `rgba(${r},${g},${b},${a.toFixed(3)})`;
-}
-
 function buildFont(fontStyle: number, size: number, family: string): string {
-  const bold = (fontStyle & 1) !== 0;
-  const italic = (fontStyle & 2) !== 0;
+  const bold = (fontStyle & FontStyle.BOLD) !== FontStyle.NORMAL;
+  const italic = (fontStyle & FontStyle.ITALIC) !== FontStyle.NORMAL;
   let prefix = '';
   if (italic) {
     prefix += 'italic ';
@@ -1092,11 +1083,4 @@ function getScrollbarAlpha(scrollbar: ScrollbarModel | null): number {
     return 0;
   }
   return Math.max(0, Math.min(1, scrollbar.alpha));
-}
-
-function multiplyAlpha(argb: number, alphaMultiplier: number): number {
-  const m = Math.max(0, Math.min(1, alphaMultiplier));
-  const baseAlpha = (argb >>> 24) & 0xFF;
-  const outAlpha = Math.round(baseAlpha * m);
-  return (outAlpha << 24) | (argb & 0x00FFFFFF);
 }

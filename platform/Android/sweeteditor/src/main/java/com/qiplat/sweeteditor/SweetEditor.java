@@ -1861,9 +1861,6 @@ public class SweetEditor extends View {
                     } else if (mCompletionPopupController != null && mCompletionPopupController.isShowing()) {
                         mCompletionProviderManager.triggerCompletion(
                                 CompletionContext.TriggerKind.RETRIGGER, null);
-                    } else if (Character.isLetterOrDigit(ch.charAt(0)) || ch.charAt(0) == '_') {
-                        mCompletionProviderManager.triggerCompletion(
-                                CompletionContext.TriggerKind.INVOKED, null);
                     }
                 } else if (mCompletionPopupController != null && mCompletionPopupController.isShowing()) {
                     if (mCompletionProviderManager != null) {
@@ -2088,9 +2085,6 @@ public class SweetEditor extends View {
                     return true;
                 }
             }
-            if (nativeKeyCode == KeyCode.BACKSPACE) {
-                mCompletionProviderManager.triggerCompletion(CompletionContext.TriggerKind.RETRIGGER, null);
-            }
             int modifiers = KeyModifier.NONE;
             if (event.isShiftPressed()) modifiers |= KeyModifier.SHIFT;
             if (event.isCtrlPressed()) modifiers |= KeyModifier.CTRL;
@@ -2106,6 +2100,11 @@ public class SweetEditor extends View {
                 return true;
             }
             dispatchKeyEventResult(result);
+            if ((nativeKeyCode == KeyCode.BACKSPACE || nativeKeyCode == KeyCode.DELETE_KEY)
+                    && result.contentChanged && mCompletionPopupController != null
+                    && mCompletionPopupController.isShowing() && mCompletionProviderManager != null) {
+                mCompletionProviderManager.triggerCompletion(CompletionContext.TriggerKind.RETRIGGER, null);
+            }
             if (wasComposing && !mEditorCore.isComposing()
                     && result.cursorChanged
                     && !result.selectionChanged

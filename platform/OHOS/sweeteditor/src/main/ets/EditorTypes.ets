@@ -1,5 +1,5 @@
 import image from '@ohos.multimedia.image';
-import { TextStyle } from './core/CoreAdornments';
+import { FontStyle, TextStyle } from './core/CoreAdornments';
 
 /**
  * Editor metadata marker interface.
@@ -162,18 +162,18 @@ export class EditorTheme {
     theme.selectionMenuBorderColor = theme.completionBorderColor;
     theme.selectionMenuDividerColor = 0x1FD8DEE9;
     theme.textStyles = new Map<number, TextStyle>([
-      [EditorTheme.STYLE_KEYWORD, { color: 0xFF7AA2F7, backgroundColor: 0, fontStyle: 1 } as TextStyle],
-      [EditorTheme.STYLE_STRING, { color: 0xFF9ECE6A, backgroundColor: 0, fontStyle: 0 } as TextStyle],
-      [EditorTheme.STYLE_COMMENT, { color: 0xFF7A8294, backgroundColor: 0, fontStyle: 2 } as TextStyle],
-      [EditorTheme.STYLE_NUMBER, { color: 0xFFFF9E64, backgroundColor: 0, fontStyle: 0 } as TextStyle],
-      [EditorTheme.STYLE_BUILTIN, { color: 0xFF7DCFFF, backgroundColor: 0, fontStyle: 0 } as TextStyle],
-      [EditorTheme.STYLE_TYPE, { color: 0xFFBB9AF7, backgroundColor: 0, fontStyle: 0 } as TextStyle],
-      [EditorTheme.STYLE_CLASS, { color: 0xFFE0AF68, backgroundColor: 0, fontStyle: 1 } as TextStyle],
-      [EditorTheme.STYLE_FUNCTION, { color: 0xFF73DACA, backgroundColor: 0, fontStyle: 0 } as TextStyle],
-      [EditorTheme.STYLE_VARIABLE, { color: 0xFFD7DEE9, backgroundColor: 0, fontStyle: 0 } as TextStyle],
-      [EditorTheme.STYLE_PUNCTUATION, { color: 0xFFB0BED3, backgroundColor: 0, fontStyle: 0 } as TextStyle],
-      [EditorTheme.STYLE_ANNOTATION, { color: 0xFF2AC3DE, backgroundColor: 0, fontStyle: 0 } as TextStyle],
-      [EditorTheme.STYLE_PREPROCESSOR, { color: 0xFFF7768E, backgroundColor: 0, fontStyle: 0 } as TextStyle],
+      [EditorTheme.STYLE_KEYWORD, { color: 0xFF7AA2F7, backgroundColor: 0, fontStyle: FontStyle.BOLD } as TextStyle],
+      [EditorTheme.STYLE_STRING, { color: 0xFF9ECE6A, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
+      [EditorTheme.STYLE_COMMENT, { color: 0xFF7A8294, backgroundColor: 0, fontStyle: FontStyle.ITALIC } as TextStyle],
+      [EditorTheme.STYLE_NUMBER, { color: 0xFFFF9E64, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
+      [EditorTheme.STYLE_BUILTIN, { color: 0xFF7DCFFF, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
+      [EditorTheme.STYLE_TYPE, { color: 0xFFBB9AF7, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
+      [EditorTheme.STYLE_CLASS, { color: 0xFFE0AF68, backgroundColor: 0, fontStyle: FontStyle.BOLD } as TextStyle],
+      [EditorTheme.STYLE_FUNCTION, { color: 0xFF73DACA, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
+      [EditorTheme.STYLE_VARIABLE, { color: 0xFFD7DEE9, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
+      [EditorTheme.STYLE_PUNCTUATION, { color: 0xFFB0BED3, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
+      [EditorTheme.STYLE_ANNOTATION, { color: 0xFF2AC3DE, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
+      [EditorTheme.STYLE_PREPROCESSOR, { color: 0xFFF7768E, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
     ]);
     return theme;
   }
@@ -225,18 +225,18 @@ export class EditorTheme {
     theme.selectionMenuBorderColor = theme.completionBorderColor;
     theme.selectionMenuDividerColor = 0x1F1F2937;
     theme.textStyles = new Map<number, TextStyle>([
-      [EditorTheme.STYLE_KEYWORD, { color: 0xFF3559D6, backgroundColor: 0, fontStyle: 1 } as TextStyle],
-      [EditorTheme.STYLE_STRING, { color: 0xFF0F7B6C, backgroundColor: 0, fontStyle: 0 } as TextStyle],
-      [EditorTheme.STYLE_COMMENT, { color: 0xFF7B8798, backgroundColor: 0, fontStyle: 2 } as TextStyle],
-      [EditorTheme.STYLE_NUMBER, { color: 0xFFB45309, backgroundColor: 0, fontStyle: 0 } as TextStyle],
-      [EditorTheme.STYLE_BUILTIN, { color: 0xFF006E7F, backgroundColor: 0, fontStyle: 0 } as TextStyle],
-      [EditorTheme.STYLE_TYPE, { color: 0xFF6D28D9, backgroundColor: 0, fontStyle: 0 } as TextStyle],
-      [EditorTheme.STYLE_CLASS, { color: 0xFFC2410C, backgroundColor: 0, fontStyle: 1 } as TextStyle],
-      [EditorTheme.STYLE_FUNCTION, { color: 0xFF0D9488, backgroundColor: 0, fontStyle: 0 } as TextStyle],
-      [EditorTheme.STYLE_VARIABLE, { color: 0xFF1F2937, backgroundColor: 0, fontStyle: 0 } as TextStyle],
-      [EditorTheme.STYLE_PUNCTUATION, { color: 0xFF4B5563, backgroundColor: 0, fontStyle: 0 } as TextStyle],
-      [EditorTheme.STYLE_ANNOTATION, { color: 0xFF0891B2, backgroundColor: 0, fontStyle: 0 } as TextStyle],
-      [EditorTheme.STYLE_PREPROCESSOR, { color: 0xFFDC2626, backgroundColor: 0, fontStyle: 0 } as TextStyle],
+      [EditorTheme.STYLE_KEYWORD, { color: 0xFF3559D6, backgroundColor: 0, fontStyle: FontStyle.BOLD } as TextStyle],
+      [EditorTheme.STYLE_STRING, { color: 0xFF0F7B6C, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
+      [EditorTheme.STYLE_COMMENT, { color: 0xFF7B8798, backgroundColor: 0, fontStyle: FontStyle.ITALIC } as TextStyle],
+      [EditorTheme.STYLE_NUMBER, { color: 0xFFB45309, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
+      [EditorTheme.STYLE_BUILTIN, { color: 0xFF006E7F, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
+      [EditorTheme.STYLE_TYPE, { color: 0xFF6D28D9, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
+      [EditorTheme.STYLE_CLASS, { color: 0xFFC2410C, backgroundColor: 0, fontStyle: FontStyle.BOLD } as TextStyle],
+      [EditorTheme.STYLE_FUNCTION, { color: 0xFF0D9488, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
+      [EditorTheme.STYLE_VARIABLE, { color: 0xFF1F2937, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
+      [EditorTheme.STYLE_PUNCTUATION, { color: 0xFF4B5563, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
+      [EditorTheme.STYLE_ANNOTATION, { color: 0xFF0891B2, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
+      [EditorTheme.STYLE_PREPROCESSOR, { color: 0xFFDC2626, backgroundColor: 0, fontStyle: FontStyle.NORMAL } as TextStyle],
     ]);
     return theme;
   }

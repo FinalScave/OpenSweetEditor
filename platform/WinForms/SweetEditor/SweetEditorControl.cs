@@ -1470,8 +1470,6 @@ namespace SweetEditor {
 							completionProviderManager.TriggerCompletion(CompletionTriggerKind.Character, charStr);
 						} else if (completionPopupController != null && completionPopupController.IsShowing) {
 							completionProviderManager.TriggerCompletion(CompletionTriggerKind.Retrigger, null);
-						} else if (char.IsLetterOrDigit(e.KeyChar) || e.KeyChar == '_') {
-							completionProviderManager.TriggerCompletion(CompletionTriggerKind.Invoked, null);
 						}
 					}
 				}

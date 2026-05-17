@@ -6,9 +6,9 @@ import {
 import { EditorEventBus } from '../event/EditorEventBus';
 import { SelectionMenuItemClickEvent } from '../event/EditorEvent';
 import { GestureResult, GestureType } from '../core/EditorCore';
-import { PointF } from '../core/CoreVisual';
 import { SweetEditorController } from '../SweetEditorController';
 import { SweetEditor } from '../SweetEditor';
+import { popupRect, PopupRect } from '../ui/PopupPositioner';
 
 const SHOW_DELAY_MS = 100;
 
@@ -24,7 +24,6 @@ export interface SelectionHandleInfo {
 
 /**
  * Controls the lifecycle of the selection context menu.
- * State machine: HIDDEN �?VISIBLE (on double-tap + selection) �?HIDDEN (on tap/scroll/scale).
  */
 export class SelectionMenuController {
   private editor: SweetEditor;
@@ -40,7 +39,7 @@ export class SelectionMenuController {
   private showing: boolean = false;
   private showTimerId: number = -1;
   private stateListener: ((state: SelectionMenuState) => void) | null = null;
-  private state: SelectionMenuState = { visible: false, items: [], x: 0, y: 0 };
+  private state: SelectionMenuState = { visible: false, items: [], anchorRect: popupRect(0, 0, 0, 0) };
 
   constructor(editor: SweetEditor, controller: SweetEditorController, eventBus: EditorEventBus) {
     this.editor = editor;
@@ -58,15 +57,6 @@ export class SelectionMenuController {
   setStateListener(listener: ((state: SelectionMenuState) => void) | null): void {
     this.stateListener = listener;
     this.emitState();
-  }
-
-  getState(): SelectionMenuState {
-    return {
-      visible: this.state.visible,
-      items: [...this.state.items],
-      x: this.state.x,
-      y: this.state.y
-    };
   }
 
   updateSelectionHandles(start: SelectionHandleInfo | null, end: SelectionHandleInfo | null): void {
@@ -236,13 +226,11 @@ export class SelectionMenuController {
       return;
     }
 
-    const pos = this.computeMenuPosition();
     this.showing = true;
     this.state = {
       visible: true,
       items: [...items],
-      x: pos.x,
-      y: pos.y
+      anchorRect: this.computeMenuAnchorRect()
     };
     this.emitState();
   }
@@ -264,7 +252,7 @@ export class SelectionMenuController {
     ];
   }
 
-  private computeMenuPosition(): PointF {
+  private computeMenuAnchorRect(): PopupRect {
     let anchorX: number;
     let topY: number;
     let bottomY: number;
@@ -283,37 +271,30 @@ export class SelectionMenuController {
         endBottom = endY + this.endHandle.height;
       }
 
-      anchorX = (startX + endX) * 0.5;
-      topY = Math.min(startY, endY);
-      bottomY = Math.max(startBottom, endBottom);
+      return popupRect(
+        Math.min(startX, endX),
+        Math.min(startY, endY),
+        Math.max(startX, endX),
+        Math.max(startBottom, endBottom)
+      );
     } else {
       anchorX = this.editor.getViewWidth() * 0.5;
       topY = 0;
       bottomY = 0;
     }
 
-    const menuHeight = 36;
-    const offsetY = 8;
-    const handleClearance = 32;
-
-    let screenY = topY - menuHeight - offsetY;
-    if (screenY < 0) {
-      screenY = bottomY + offsetY + handleClearance;
-    }
-
-    return { x: anchorX, y: screenY };
+    return popupRect(anchorX, topY, anchorX, bottomY);
   }
 
   private updateVisibleState(items: SelectionMenuItem[]): void {
     if (!this.showing) {
       return;
     }
-    const pos = this.computeMenuPosition();
+    const anchorRect = this.computeMenuAnchorRect();
     this.state = {
       visible: true,
       items: [...items],
-      x: pos.x,
-      y: pos.y
+      anchorRect: anchorRect
     };
     this.emitState();
   }
@@ -322,8 +303,12 @@ export class SelectionMenuController {
     this.state = {
       visible: false,
       items: [],
-      x: this.state.x,
-      y: this.state.y
+      anchorRect: popupRect(
+        this.state.anchorRect.left,
+        this.state.anchorRect.top,
+        this.state.anchorRect.right,
+        this.state.anchorRect.bottom
+      )
     };
     this.emitState();
   }
@@ -335,8 +320,12 @@ export class SelectionMenuController {
     this.stateListener({
       visible: this.state.visible,
       items: [...this.state.items],
-      x: this.state.x,
-      y: this.state.y
+      anchorRect: popupRect(
+        this.state.anchorRect.left,
+        this.state.anchorRect.top,
+        this.state.anchorRect.right,
+        this.state.anchorRect.bottom
+      )
     });
   }
 }

@@ -84,7 +84,6 @@ export enum ApplyMode {
 
 /**
  * Decoration result returned by a provider.
- * Uses Map<number, T[]> instead of Android SparseArray<List<T>>.
  */
 export class DecorationResult {
   syntaxSpans: Map<number, StyleSpan[]> | null = null;

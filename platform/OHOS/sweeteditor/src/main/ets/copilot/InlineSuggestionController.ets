@@ -4,6 +4,7 @@ import { TextPosition } from '../core/CoreFoundation';
 import { CursorChangedEvent, EditorEvent, EditorEventListener, ScrollChangedEvent, TextChangedEvent } from '../event/EditorEvent';
 import { EditorEventBus } from '../event/EditorEventBus';
 import { SweetEditor } from '../SweetEditor';
+import { OverlayKeyAction } from '../EditorKeyboard';
 
 /**
  * Callback for inline suggestion action bar Accept/Dismiss interaction.
@@ -129,19 +130,15 @@ export class InlineSuggestionController implements InlineSuggestionActionCallbac
     }
   }
 
-  /**
-   * Handle key codes. Returns true if consumed.
-   * Tab �?accept, Escape �?dismiss.
-   */
-  handleKeyCode(keyCode: number): boolean {
+  handleKeyAction(action: OverlayKeyAction): boolean {
     if (!this.showing) {
       return false;
     }
-    if (keyCode === 61) { // Tab
+    if (action === OverlayKeyAction.TAB) {
       this.accept();
       return true;
     }
-    if (keyCode === 111) { // Escape
+    if (action === OverlayKeyAction.ESCAPE) {
       this.dismiss();
       return true;
     }

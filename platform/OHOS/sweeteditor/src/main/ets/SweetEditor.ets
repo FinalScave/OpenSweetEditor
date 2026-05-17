@@ -59,6 +59,13 @@ import {
 import { LinkedEditingModel } from './core/CoreLinkedEditing';
 import { EditorIconProvider, EditorMetadata, EditorTheme, LanguageConfiguration } from './EditorTypes';
 import { EditorKeyMap } from './EditorKeymap';
+import {
+  extractPrintableKeyText,
+  getNativeModifiers,
+  OverlayKeyAction,
+  resolveNativeKeyCode,
+  resolveOverlayKeyAction
+} from './EditorKeyboard';
 import { EditorSettings } from './EditorSettings';
 import { SweetEditorController } from './SweetEditorController';
 import { EditorRenderer } from './EditorRenderer';
@@ -85,6 +92,14 @@ import {
 } from './event/EditorEvent';
 import { CompletionProviderManager } from './completion/CompletionProviderManager';
 import { CompletionPopupController, PopupPosition } from './completion/CompletionPopupController';
+import { CompletionPopupView } from './completion/CompletionPopupView';
+import {
+  COMPLETION_ITEM_HEIGHT,
+  COMPLETION_POPUP_MIN_WIDTH,
+  COMPLETION_POPUP_SIDE_MARGIN,
+  COMPLETION_POPUP_TOP_MARGIN,
+  COMPLETION_POPUP_WIDTH
+} from './completion/CompletionPopupLayout';
 import {
   CompletionItem,
   CompletionItemViewBuilder,
@@ -92,6 +107,13 @@ import {
   CompletionTriggerKind
 } from './completion/CompletionTypes';
 import { InlineSuggestionController } from './copilot/InlineSuggestionController';
+import {
+  InlineSuggestionBarView,
+  INLINE_SUGGESTION_BAR_ESTIMATED_WIDTH,
+  INLINE_SUGGESTION_BAR_GAP,
+  INLINE_SUGGESTION_BAR_HEIGHT,
+  INLINE_SUGGESTION_BAR_SIDE_MARGIN
+} from './copilot/InlineSuggestionBarView';
 import { InlineSuggestion, InlineSuggestionListener } from './copilot/InlineSuggestionTypes';
 import { DecorationProviderManager } from './decoration/DecorationProviderManager';
 import { DecorationProvider } from './decoration/DecorationTypes';
@@ -99,6 +121,24 @@ import { NewLineActionProvider } from './newline/NewLineTypes';
 import { NewLineActionProviderManager } from './newline/NewLineActionProviderManager';
 import { SelectionMenuController } from './selection/SelectionMenuController';
 import { SelectionMenuItem, SelectionMenuItemProvider, SelectionMenuState } from './selection/SelectionMenuTypes';
+import {
+  getSelectionMenuPanelHeight,
+  getSelectionMenuPanelWidth,
+  SelectionMenuView,
+  SELECTION_MENU_SIDE_MARGIN,
+  SELECTION_MENU_TOP_MARGIN
+} from './selection/SelectionMenuView';
+import { argbToCssColor } from './ui/EditorColor';
+import {
+  computePopupPosition,
+  insetPopupRect,
+  popupPlacement,
+  popupRect,
+  PopupAlign,
+  PopupPlacement,
+  PopupRect,
+  PopupSide
+} from './ui/PopupPositioner';
 import pasteboard from '@ohos.pasteboard';
 import display from '@ohos.display';
 import hilog from '@ohos.hilog';
@@ -112,26 +152,20 @@ const ANIMATION_FRAME_INTERVAL_MS = 16;
 const TRANSIENT_SCROLLBAR_REFRESH_MIN_MS = 16;
 const MAX_IME_TEXT_LENGTH = 32768;
 const EDITOR_FOCUS_ID = 'sweeteditor-canvas';
-const SELECTION_MENU_ITEM_HEIGHT = 26;
-const SELECTION_MENU_ITEM_MIN_WIDTH = 40;
-const SELECTION_MENU_HORIZONTAL_PADDING = 8;
-const SELECTION_MENU_SIDE_MARGIN = 8;
-const SELECTION_MENU_TOP_MARGIN = 8;
-const COMPLETION_POPUP_SIDE_MARGIN = 8;
-const COMPLETION_POPUP_TOP_MARGIN = 8;
-const COMPLETION_ITEM_HEIGHT = 32;
-const COMPLETION_KIND_BADGE_SIZE = 18;
-const COMPLETION_KIND_BADGE_RADIUS = 4;
-const COMPLETION_KIND_BADGE_GAP = 8;
-const INLINE_SUGGESTION_BAR_HEIGHT = 28;
-const INLINE_SUGGESTION_BAR_RADIUS = 6;
-const INLINE_SUGGESTION_BAR_HORIZONTAL_PADDING = 4;
-const INLINE_SUGGESTION_BAR_BUTTON_HORIZONTAL_PADDING = 10;
-const INLINE_SUGGESTION_BAR_DIVIDER_WIDTH = 1;
-const INLINE_SUGGESTION_BAR_DIVIDER_VERTICAL_MARGIN = 6;
-const INLINE_SUGGESTION_BAR_GAP = 2;
-const INLINE_SUGGESTION_BAR_SIDE_MARGIN = 8;
-const INLINE_SUGGESTION_BAR_ESTIMATED_WIDTH = 132;
+const SELECTION_MENU_GAP = 8;
+const SELECTION_MENU_HANDLE_CLEARANCE = 32;
+const COMPLETION_POPUP_PLACEMENTS: PopupPlacement[] = [
+  popupPlacement(PopupSide.BELOW, PopupAlign.START),
+  popupPlacement(PopupSide.ABOVE, PopupAlign.START)
+];
+const INLINE_SUGGESTION_BAR_PLACEMENTS: PopupPlacement[] = [
+  popupPlacement(PopupSide.ABOVE, PopupAlign.START),
+  popupPlacement(PopupSide.BELOW, PopupAlign.START)
+];
+const SELECTION_MENU_PLACEMENTS: PopupPlacement[] = [
+  popupPlacement(PopupSide.ABOVE, PopupAlign.CENTER),
+  popupPlacement(PopupSide.BELOW, PopupAlign.CENTER)
+];
 
 interface PreviewCapableInputController {
   on(type: 'setPreviewText', callback: (text: string, range: inputMethod.Range) => void): void;
@@ -181,6 +215,7 @@ export struct SweetEditor {
   private decorationProviderManager: DecorationProviderManager | null = null;
   private completionProviderManager: CompletionProviderManager | null = null;
   private completionPopupController: CompletionPopupController | null = null;
+  private completionItemViewBuilder: CompletionItemViewBuilder | null = null;
   private inlineSuggestionController: InlineSuggestionController | null = null;
   private selectionMenuController: SelectionMenuController | null = null;
   private newLineActionProviderManager: NewLineActionProviderManager | null = null;
@@ -217,7 +252,7 @@ export struct SweetEditor {
   @State private completionPopupSelectedIndex: number = 0;
   @State private completionPopupLeft: number = 0;
   @State private completionPopupTop: number = 0;
-  @State private completionPopupWidth: number = 300;
+  @State private completionPopupWidth: number = COMPLETION_POPUP_WIDTH;
   @State private inlineSuggestionBarVisible: boolean = false;
   @State private inlineSuggestionBarLeft: number = 0;
   @State private inlineSuggestionBarTop: number = 0;
@@ -340,192 +375,82 @@ export struct SweetEditor {
         .focusable(true)
 
       if (this.selectionMenuVisible && this.selectionMenuItems.length > 0) {
-        this.buildSelectionMenuOverlay()
+        SelectionMenuView({
+          items: this.selectionMenuItems,
+          left: this.selectionMenuLeft,
+          top: this.selectionMenuTop,
+          bgColor: this.theme.selectionMenuBgColor,
+          menuBorderColor: this.theme.selectionMenuBorderColor,
+          dividerColor: this.theme.selectionMenuDividerColor,
+          textColor: this.theme.selectionMenuTextColor,
+          onItemClick: (item: SelectionMenuItem): void => {
+            if (!this.selectionMenuController) {
+              return;
+            }
+            this.selectionMenuController.onMenuItemClicked(item);
+          }
+        })
       }
 
       if (this.inlineSuggestionBarVisible) {
-        this.buildInlineSuggestionBarOverlay()
+        InlineSuggestionBarView({
+          left: this.inlineSuggestionBarLeft,
+          top: this.inlineSuggestionBarTop,
+          bgColor: this.theme.inlineSuggestionBarBgColor,
+          acceptColor: this.theme.inlineSuggestionBarAcceptColor,
+          dismissColor: this.theme.inlineSuggestionBarDismissColor,
+          onAccept: (): void => {
+            if (this.inlineSuggestionController) {
+              this.inlineSuggestionController.onAcceptClicked();
+            }
+          },
+          onDismiss: (): void => {
+            if (this.inlineSuggestionController) {
+              this.inlineSuggestionController.onDismissClicked();
+            }
+          }
+        })
       }
 
       if (this.completionPopupVisible && this.completionPopupItems.length > 0) {
-        this.buildCompletionPopupOverlay()
+        if (this.completionItemViewBuilder !== null) {
+          CompletionPopupView({
+            items: this.completionPopupItems,
+            selectedIndex: this.completionPopupSelectedIndex,
+            left: this.completionPopupLeft,
+            top: this.completionPopupTop,
+            panelWidth: this.completionPopupWidth,
+            hasCustomItemViewBuilder: true,
+            theme: this.theme,
+            itemViewBuilder: this.completionItemViewBuilder,
+            onConfirmItem: (index: number): void => {
+              if (!this.completionPopupController) {
+                return;
+              }
+              this.completionPopupController.confirmItem(index);
+            }
+          })
+        } else {
+          CompletionPopupView({
+            items: this.completionPopupItems,
+            selectedIndex: this.completionPopupSelectedIndex,
+            left: this.completionPopupLeft,
+            top: this.completionPopupTop,
+            panelWidth: this.completionPopupWidth,
+            hasCustomItemViewBuilder: false,
+            theme: this.theme,
+            onConfirmItem: (index: number): void => {
+              if (!this.completionPopupController) {
+                return;
+              }
+              this.completionPopupController.confirmItem(index);
+            }
+          })
+        }
       }
     }
     .width('100%')
     .height('100%')
-  }
-
-  @Builder
-  private buildSelectionMenuOverlay(): void {
-    Row() {
-      ForEach(this.selectionMenuItems, (item: SelectionMenuItem, index: number) => {
-        this.buildSelectionMenuItem(item)
-        if (index < this.selectionMenuItems.length - 1) {
-          Blank()
-            .width(1)
-            .height(14)
-            .backgroundColor(colorToHex(this.theme.selectionMenuDividerColor))
-        }
-      }, (item: SelectionMenuItem) => `${item.id}-${item.label}`)
-    }
-    .padding(4)
-    .backgroundColor(colorToHex(this.theme.selectionMenuBgColor))
-    .borderRadius(6)
-    .border({
-      width: 1,
-      color: colorToHex(this.theme.selectionMenuBorderColor)
-    })
-    .position({
-      x: this.selectionMenuLeft,
-      y: this.selectionMenuTop
-    })
-    .zIndex(10)
-  }
-
-  @Builder
-  private buildSelectionMenuItem(item: SelectionMenuItem): void {
-    Text(item.label)
-      .fontSize(11)
-      .fontWeight('400')
-      .fontColor(colorToHex(this.theme.selectionMenuTextColor))
-      .textAlign(TextAlign.Center)
-      .padding({ left: SELECTION_MENU_HORIZONTAL_PADDING, right: SELECTION_MENU_HORIZONTAL_PADDING })
-      .width(this.getSelectionMenuItemWidth(item))
-      .height(SELECTION_MENU_ITEM_HEIGHT)
-      .opacity(item.enabled ? 1.0 : 0.45)
-      .onClick(() => {
-        if (!item.enabled || !this.selectionMenuController) {
-          return;
-        }
-        this.selectionMenuController.onMenuItemClicked(item);
-      })
-  }
-
-  @Builder
-  private buildInlineSuggestionBarOverlay(): void {
-    Row() {
-      this.buildInlineSuggestionBarButton('Accept', true)
-
-      Blank()
-        .width(INLINE_SUGGESTION_BAR_DIVIDER_WIDTH)
-        .height(INLINE_SUGGESTION_BAR_HEIGHT - INLINE_SUGGESTION_BAR_DIVIDER_VERTICAL_MARGIN * 2)
-        .backgroundColor(this.getInlineSuggestionOverlayColor())
-        .margin({ top: INLINE_SUGGESTION_BAR_DIVIDER_VERTICAL_MARGIN, bottom: INLINE_SUGGESTION_BAR_DIVIDER_VERTICAL_MARGIN })
-
-      this.buildInlineSuggestionBarButton('Dismiss', false)
-    }
-    .height(INLINE_SUGGESTION_BAR_HEIGHT)
-    .padding({ left: INLINE_SUGGESTION_BAR_HORIZONTAL_PADDING, right: INLINE_SUGGESTION_BAR_HORIZONTAL_PADDING })
-    .backgroundColor(colorToHex(this.theme.inlineSuggestionBarBgColor))
-    .borderRadius(INLINE_SUGGESTION_BAR_RADIUS)
-    .shadow({
-      radius: 8,
-      color: '#22000000',
-      offsetX: 0,
-      offsetY: 2
-    })
-    .position({
-      x: this.inlineSuggestionBarLeft,
-      y: this.inlineSuggestionBarTop
-    })
-    .zIndex(8)
-  }
-
-  @Builder
-  private buildInlineSuggestionBarButton(label: string, isAccept: boolean): void {
-    Text(label)
-      .fontSize(11)
-      .fontWeight(isAccept ? '700' : '400')
-      .fontColor(isAccept
-        ? colorToHex(this.theme.inlineSuggestionBarAcceptColor)
-        : colorToHex(this.theme.inlineSuggestionBarDismissColor))
-      .height('100%')
-      .textAlign(TextAlign.Center)
-      .padding({ left: INLINE_SUGGESTION_BAR_BUTTON_HORIZONTAL_PADDING, right: INLINE_SUGGESTION_BAR_BUTTON_HORIZONTAL_PADDING })
-      .onClick(() => {
-        if (!this.inlineSuggestionController) {
-          return;
-        }
-        if (isAccept) {
-          this.inlineSuggestionController.onAcceptClicked();
-        } else {
-          this.inlineSuggestionController.onDismissClicked();
-        }
-      })
-  }
-
-  @Builder
-  private buildCompletionPopupOverlay(): void {
-    Column() {
-      ForEach(this.completionPopupItems, (item: CompletionItem, index: number) => {
-        this.buildCompletionPopupItem(item, index)
-      }, (item: CompletionItem, index: number) => `${item.label}-${index}`)
-    }
-    .padding({ left: 4, right: 4, top: 6, bottom: 6 })
-    .width(this.completionPopupWidth)
-    .backgroundColor(colorToHex(this.theme.completionBgColor))
-    .borderRadius(12)
-    .border({
-      width: 1,
-      color: colorToHex(this.theme.completionBorderColor)
-    })
-    .shadow({
-      radius: 16,
-      color: '#32000000',
-      offsetX: 0,
-      offsetY: 4
-    })
-    .position({
-      x: this.completionPopupLeft,
-      y: this.completionPopupTop
-    })
-    .zIndex(9)
-  }
-
-  @Builder
-  private buildCompletionPopupItem(item: CompletionItem, index: number): void {
-    Row() {
-      Text(this.getCompletionKindBadgeText(item.kind))
-        .width(COMPLETION_KIND_BADGE_SIZE)
-        .height(COMPLETION_KIND_BADGE_SIZE)
-        .textAlign(TextAlign.Center)
-        .fontSize(10)
-        .fontWeight('700')
-        .fontColor('#FFFFFFFF')
-        .backgroundColor(this.getCompletionKindBadgeColor(item.kind))
-        .borderRadius(COMPLETION_KIND_BADGE_RADIUS)
-        .margin({ right: COMPLETION_KIND_BADGE_GAP })
-
-      Text(item.label)
-        .layoutWeight(1)
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .fontSize(13)
-        .fontWeight('400')
-        .fontColor(colorToHex(this.theme.completionLabelColor))
-
-      if (item.detail !== null && item.detail.length > 0) {
-        Text(item.detail)
-          .margin({ left: 8 })
-          .maxLines(1)
-          .textOverflow({ overflow: TextOverflow.Ellipsis })
-          .fontSize(11)
-          .fontColor(colorToHex(this.theme.completionDetailColor))
-      }
-    }
-    .width('100%')
-    .height(COMPLETION_ITEM_HEIGHT)
-    .padding({ left: 8, right: 8, top: 2, bottom: 2 })
-    .backgroundColor(index === this.completionPopupSelectedIndex
-      ? colorToHex(this.theme.completionSelectedBgColor)
-      : '#00000000')
-    .borderRadius(6)
-    .onClick(() => {
-      if (!this.completionPopupController) {
-        return;
-      }
-      this.completionPopupController.confirmItem(index);
-    })
   }
 
   private applyCompletionPopupState(items: CompletionItem[], selectedIndex: number, position: PopupPosition): void {
@@ -534,19 +459,27 @@ export struct SweetEditor {
       return;
     }
 
-    const popupWidth = Math.min(position.popupWidth, Math.max(220, this.viewWidth - COMPLETION_POPUP_SIDE_MARGIN * 2));
-    const popupHeight = Math.min(position.popupHeight, Math.max(COMPLETION_ITEM_HEIGHT, items.length * COMPLETION_ITEM_HEIGHT));
-    const belowTop = this.clampNumber(position.belowY, COMPLETION_POPUP_TOP_MARGIN,
-      Math.max(COMPLETION_POPUP_TOP_MARGIN, this.viewHeight - popupHeight - COMPLETION_POPUP_TOP_MARGIN));
-    const aboveTop = this.clampNumber(position.aboveY, COMPLETION_POPUP_TOP_MARGIN,
-      Math.max(COMPLETION_POPUP_TOP_MARGIN, this.viewHeight - popupHeight - COMPLETION_POPUP_TOP_MARGIN));
-    const preferBelow = position.belowY + popupHeight <= this.viewHeight - COMPLETION_POPUP_TOP_MARGIN ||
-      position.aboveY < COMPLETION_POPUP_TOP_MARGIN;
+    const availableFrame = this.getOverlayAvailableFrame(COMPLETION_POPUP_SIDE_MARGIN, COMPLETION_POPUP_TOP_MARGIN);
+    const frameWidth = Math.max(1, availableFrame.right - availableFrame.left);
+    const frameHeight = Math.max(COMPLETION_ITEM_HEIGHT, availableFrame.bottom - availableFrame.top);
+    let popupWidth = Math.min(position.popupWidth, Math.max(COMPLETION_POPUP_MIN_WIDTH, frameWidth));
+    if (popupWidth > frameWidth) {
+      popupWidth = frameWidth;
+    }
+    const popupHeight = Math.min(position.popupHeight, frameHeight);
+    const placement = computePopupPosition({
+      availableFrame: availableFrame,
+      anchorRect: position.anchorRect,
+      popupWidth: popupWidth,
+      popupHeight: popupHeight,
+      gap: position.gap,
+      clearance: 0,
+      preferredPlacements: COMPLETION_POPUP_PLACEMENTS
+    });
 
     this.completionPopupWidth = popupWidth;
-    this.completionPopupLeft = this.clampNumber(position.x, COMPLETION_POPUP_SIDE_MARGIN,
-      Math.max(COMPLETION_POPUP_SIDE_MARGIN, this.viewWidth - popupWidth - COMPLETION_POPUP_SIDE_MARGIN));
-    this.completionPopupTop = preferBelow ? belowTop : aboveTop;
+    this.completionPopupLeft = placement.x;
+    this.completionPopupTop = placement.y;
     this.completionPopupItems = [...items];
     this.completionPopupSelectedIndex = Math.max(0, Math.min(items.length - 1, selectedIndex));
     this.completionPopupVisible = true;
@@ -559,81 +492,26 @@ export struct SweetEditor {
   }
 
   private applyInlineSuggestionBarState(x: number, y: number, cursorHeight: number): void {
-    const maxLeft = Math.max(INLINE_SUGGESTION_BAR_SIDE_MARGIN,
-      this.viewWidth - INLINE_SUGGESTION_BAR_ESTIMATED_WIDTH - INLINE_SUGGESTION_BAR_SIDE_MARGIN);
-    const aboveTop = y - INLINE_SUGGESTION_BAR_HEIGHT - INLINE_SUGGESTION_BAR_GAP;
-    const belowTop = y + cursorHeight + INLINE_SUGGESTION_BAR_GAP;
-    let top = aboveTop;
-    if (top < INLINE_SUGGESTION_BAR_SIDE_MARGIN) {
-      top = belowTop;
-    }
-    this.inlineSuggestionBarLeft = this.clampNumber(x, INLINE_SUGGESTION_BAR_SIDE_MARGIN, maxLeft);
-    this.inlineSuggestionBarTop = this.clampNumber(
-      top,
+    const availableFrame = this.getOverlayAvailableFrame(
       INLINE_SUGGESTION_BAR_SIDE_MARGIN,
-      Math.max(INLINE_SUGGESTION_BAR_SIDE_MARGIN,
-        this.viewHeight - INLINE_SUGGESTION_BAR_HEIGHT - INLINE_SUGGESTION_BAR_SIDE_MARGIN)
+      INLINE_SUGGESTION_BAR_SIDE_MARGIN
     );
+    const placement = computePopupPosition({
+      availableFrame: availableFrame,
+      anchorRect: popupRect(x, y, x, y + cursorHeight),
+      popupWidth: INLINE_SUGGESTION_BAR_ESTIMATED_WIDTH,
+      popupHeight: INLINE_SUGGESTION_BAR_HEIGHT,
+      gap: INLINE_SUGGESTION_BAR_GAP,
+      clearance: 0,
+      preferredPlacements: INLINE_SUGGESTION_BAR_PLACEMENTS
+    });
+    this.inlineSuggestionBarLeft = placement.x;
+    this.inlineSuggestionBarTop = placement.y;
     this.inlineSuggestionBarVisible = true;
   }
 
   private dismissInlineSuggestionBarState(): void {
     this.inlineSuggestionBarVisible = false;
-  }
-
-  private getInlineSuggestionOverlayColor(): string {
-    const bgColor = this.theme.inlineSuggestionBarBgColor;
-    const r = (bgColor >>> 16) & 0xFF;
-    const g = (bgColor >>> 8) & 0xFF;
-    const b = bgColor & 0xFF;
-    const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-    return luminance > 128 ? 'rgba(0, 0, 0, 0.133)' : 'rgba(255, 255, 255, 0.133)';
-  }
-
-  private getCompletionKindBadgeText(kind: number): string {
-    switch (kind) {
-      case CompletionItem.KIND_KEYWORD:
-        return 'K';
-      case CompletionItem.KIND_FUNCTION:
-        return 'F';
-      case CompletionItem.KIND_VARIABLE:
-        return 'V';
-      case CompletionItem.KIND_CLASS:
-        return 'C';
-      case CompletionItem.KIND_INTERFACE:
-        return 'I';
-      case CompletionItem.KIND_MODULE:
-        return 'M';
-      case CompletionItem.KIND_PROPERTY:
-        return 'P';
-      case CompletionItem.KIND_SNIPPET:
-        return 'S';
-      default:
-        return 'T';
-    }
-  }
-
-  private getCompletionKindBadgeColor(kind: number): string {
-    switch (kind) {
-      case CompletionItem.KIND_KEYWORD:
-        return '#FFC678DD';
-      case CompletionItem.KIND_FUNCTION:
-        return '#FF61AFEF';
-      case CompletionItem.KIND_VARIABLE:
-        return '#FFE5C07B';
-      case CompletionItem.KIND_CLASS:
-        return '#FFE06C75';
-      case CompletionItem.KIND_INTERFACE:
-        return '#FF56B6C2';
-      case CompletionItem.KIND_MODULE:
-        return '#FFD19A66';
-      case CompletionItem.KIND_PROPERTY:
-        return '#FF98C379';
-      case CompletionItem.KIND_SNIPPET:
-        return '#FFBE5046';
-      default:
-        return '#FF7A8494';
-    }
   }
 
   private applySelectionMenuState(state: SelectionMenuState): void {
@@ -643,37 +521,22 @@ export struct SweetEditor {
       return;
     }
 
-    const menuWidth = this.getSelectionMenuPanelWidth(state.items);
-    const menuHeight = SELECTION_MENU_ITEM_HEIGHT + 8;
-    const maxLeft = Math.max(SELECTION_MENU_SIDE_MARGIN, this.viewWidth - menuWidth - SELECTION_MENU_SIDE_MARGIN);
-    const maxTop = Math.max(SELECTION_MENU_TOP_MARGIN, this.viewHeight - menuHeight - SELECTION_MENU_TOP_MARGIN);
+    const menuWidth = getSelectionMenuPanelWidth(state.items);
+    const menuHeight = getSelectionMenuPanelHeight();
+    const placement = computePopupPosition({
+      availableFrame: this.getOverlayAvailableFrame(SELECTION_MENU_SIDE_MARGIN, SELECTION_MENU_TOP_MARGIN),
+      anchorRect: state.anchorRect,
+      popupWidth: menuWidth,
+      popupHeight: menuHeight,
+      gap: SELECTION_MENU_GAP,
+      clearance: SELECTION_MENU_HANDLE_CLEARANCE,
+      preferredPlacements: SELECTION_MENU_PLACEMENTS
+    });
 
-    this.selectionMenuLeft = this.clampNumber(
-      state.x - menuWidth * 0.5,
-      SELECTION_MENU_SIDE_MARGIN,
-      maxLeft
-    );
-    this.selectionMenuTop = this.clampNumber(state.y, SELECTION_MENU_TOP_MARGIN, maxTop);
+    this.selectionMenuLeft = placement.x;
+    this.selectionMenuTop = placement.y;
     this.selectionMenuItems = [...state.items];
     this.selectionMenuVisible = true;
-  }
-
-  private getSelectionMenuPanelWidth(items: SelectionMenuItem[]): number {
-    let width = 8;
-    for (let i = 0; i < items.length; i++) {
-      width += this.getSelectionMenuItemWidth(items[i]);
-      if (i < items.length - 1) {
-        width += 1;
-      }
-    }
-    return width;
-  }
-
-  private getSelectionMenuItemWidth(item: SelectionMenuItem): number {
-    return Math.max(
-      SELECTION_MENU_ITEM_MIN_WIDTH,
-      item.label.length * 9 + SELECTION_MENU_HORIZONTAL_PADDING * 2
-    );
   }
 
   private initEditor(): void {
@@ -730,11 +593,7 @@ export struct SweetEditor {
 
     // CompletionProviderManager + CompletionPopupController
     this.completionProviderManager = new CompletionProviderManager(this);
-    const tc = this.theme;
-    this.completionPopupController = new CompletionPopupController(
-      tc.completionBgColor, tc.completionBorderColor,
-      tc.completionSelectedBgColor, tc.completionLabelColor, tc.completionDetailColor
-    );
+    this.completionPopupController = new CompletionPopupController();
     this.completionProviderManager.setListener(this.completionPopupController);
     this.completionPopupController.setConfirmHandler(
       (item: CompletionItem): void => this.applyCompletionItemInternal(item));
@@ -772,8 +631,6 @@ export struct SweetEditor {
     this.newLineActionProviderManager = new NewLineActionProviderManager();
   }
 
-  // ==================== Document Loading ====================
-
   loadDocument(document: Document): void {
     this.document = document;
       if (this.editorCore) {
@@ -789,8 +646,6 @@ export struct SweetEditor {
   getDocument(): Document | null {
     return this.document;
   }
-
-  // ==================== Settings ====================
 
   getSettings(): EditorSettings {
     return this.settings;
@@ -852,12 +707,6 @@ export struct SweetEditor {
     if (this.editorCore) {
       this.editorCore.registerBatchTextStyles(theme.textStyles);
     }
-    if (this.completionPopupController) {
-      this.completionPopupController.applyTheme(
-        theme.completionBgColor, theme.completionBorderColor,
-        theme.completionSelectedBgColor, theme.completionLabelColor, theme.completionDetailColor
-      );
-    }
     this.flush();
   }
 
@@ -874,8 +723,6 @@ export struct SweetEditor {
   getTotalLineCount(): number {
     return this.document ? this.document.getLineCount() : -1;
   }
-
-  // ==================== Text Editing ====================
 
   insertText(text: string): TextEditResult {
     if (!this.editorCore) {
@@ -915,8 +762,6 @@ export struct SweetEditor {
     this.flush();
     return result;
   }
-
-  // ==================== Line Operations ====================
 
   moveLineUp(): TextEditResult {
     if (!this.editorCore) {
@@ -995,8 +840,6 @@ export struct SweetEditor {
     return result;
   }
 
-  // ==================== Undo/Redo ====================
-
   undo(): TextEditResult {
     if (!this.editorCore) {
       return { changes: [] };
@@ -1026,8 +869,6 @@ export struct SweetEditor {
   canRedo(): boolean {
     return this.editorCore ? this.editorCore.canRedo() : false;
   }
-
-  // ==================== Cursor/Selection Management ====================
 
   selectAll(): void {
     if (!this.editorCore) {
@@ -1092,8 +933,6 @@ export struct SweetEditor {
     this.setSelection(range);
   }
 
-  // ==================== Clipboard Operations ====================
-
   async copyToClipboard(): Promise<void> {
     const selected = this.getSelectedText();
     if (selected && selected.length > 0) {
@@ -1137,8 +976,6 @@ export struct SweetEditor {
     }
   }
 
-  // ==================== Position/Coordinate Query API ====================
-
   getPositionRect(line: number, column: number): CursorRect {
     return this.editorCore ? this.editorCore.getPositionRect(line, column)
       : { x: 0, y: 0, height: 0 };
@@ -1156,8 +993,6 @@ export struct SweetEditor {
   getViewHeight(): number {
     return this.viewHeight;
   }
-
-  // ==================== Scroll/Navigation ====================
 
   gotoPosition(line: number, column: number): void {
     if (!this.editorCore) {
@@ -1203,8 +1038,6 @@ export struct SweetEditor {
     }
     return this.editorCore.getScrollMetrics();
   }
-
-  // ==================== Decoration System ====================
 
   registerTextStyle(styleId: number, color: number, backgroundColorOrFontStyle: number, fontStyle?: number): void {
     if (this.editorCore) {
@@ -1523,8 +1356,6 @@ export struct SweetEditor {
     this.scheduleImeSync();
   }
 
-  // ==================== View Layer Extension Configuration ====================
-
   setLanguageConfiguration(config: LanguageConfiguration | null): void {
     this.languageConfiguration = config;
     if (!this.editorCore) {
@@ -1577,8 +1408,6 @@ export struct SweetEditor {
     }
   }
 
-  // ==================== Extension Provider API ====================
-
   addDecorationProvider(provider: DecorationProvider): void {
     if (this.decorationProviderManager) {
       this.decorationProviderManager.addProvider(provider);
@@ -1628,12 +1457,11 @@ export struct SweetEditor {
   }
 
   setCompletionItemViewBuilder(builder: CompletionItemViewBuilder | null): void {
-    if (this.completionPopupController) {
-      this.completionPopupController.setViewBuilder(builder);
+    this.completionItemViewBuilder = builder;
+    if (this.completionPopupVisible) {
+      this.completionPopupItems = [...this.completionPopupItems];
     }
   }
-
-  // ==================== Inline Suggestion (Copilot) API ====================
 
   showInlineSuggestion(suggestion: InlineSuggestion): void {
     if (this.inlineSuggestionController) {
@@ -1668,8 +1496,6 @@ export struct SweetEditor {
       this.newLineActionProviderManager.removeProvider(provider);
     }
   }
-
-  // ==================== Event Subscription ====================
 
   onTextChanged(listener: EditorEventListener<TextChangedEvent>): void {
     this.eventBus.on('textChanged', listener as EditorEventListener<EditorEvent>);
@@ -1791,8 +1617,6 @@ export struct SweetEditor {
     this.eventBus.off('selectionMenuItemClick', listener as EditorEventListener<EditorEvent>);
   }
 
-  // ==================== Performance Debug API ====================
-
   setPerfOverlayEnabled(enabled: boolean): void {
     if (this.renderer) {
       this.renderer.getPerfOverlay().setEnabled(enabled);
@@ -1802,8 +1626,6 @@ export struct SweetEditor {
   isPerfOverlayEnabled(): boolean {
     return this.renderer ? this.renderer.getPerfOverlay().isEnabled() : false;
   }
-
-  // ==================== IME Internal Methods (package-private) ====================
 
   updateImeComposition(text: string): void {
     if (!this.editorCore) {
@@ -1821,36 +1643,32 @@ export struct SweetEditor {
     this.finishImeAction(result);
   }
 
-  // ==================== Keyboard Event Handling ====================
-
   private handleKeyEvent(event: KeyEvent, allowTextFallback: boolean): void {
     if (!this.editorCore) {
       return;
     }
 
-    const keyCode = event.keyCode;
-    const modifiers = this.getNativeModifiers(event);
+    const modifiers = getNativeModifiers(event);
 
     // Inline suggestion interception (Tab/Escape)
     if (this.inlineSuggestionController && this.inlineSuggestionController.isShowing()) {
-      const ohosToAndroid = this.mapOhosKeyCodeToAndroid(keyCode);
-      if (ohosToAndroid !== 0 && this.inlineSuggestionController.handleKeyCode(ohosToAndroid)) {
+      const overlayAction = resolveOverlayKeyAction(event);
+      if (overlayAction !== OverlayKeyAction.NONE && this.inlineSuggestionController.handleKeyAction(overlayAction)) {
         return;
       }
     }
 
     // Completion panel interception (Enter/Escape/Up/Down)
     if (this.completionPopupController && this.completionPopupController.isShowing()) {
-      const ohosToAndroid = this.mapOhosKeyCodeToAndroid(keyCode);
-      if (ohosToAndroid !== 0 && this.completionPopupController.handleKeyCode(ohosToAndroid)) {
+      const overlayAction = resolveOverlayKeyAction(event);
+      if (overlayAction !== OverlayKeyAction.NONE && this.completionPopupController.handleKeyAction(overlayAction)) {
         return;
       }
     }
 
-    const nativeKeyCode = this.resolveNativeKeyCode(event, modifiers);
-    if (nativeKeyCode !== 0) {
-      // Enter key: check NewLineActionProvider first
-      if (nativeKeyCode === 13 && this.tryHandleNewLineAction()) {
+    const nativeKeyCode = resolveNativeKeyCode(event, modifiers);
+    if (nativeKeyCode !== KeyCode.NONE) {
+      if (nativeKeyCode === KeyCode.ENTER && this.tryHandleNewLineAction()) {
         return;
       }
 
@@ -1866,16 +1684,16 @@ export struct SweetEditor {
       return;
     }
 
-    if (!allowTextFallback || (modifiers & ~1) !== 0) {
+    if (!allowTextFallback || (modifiers & ~KeyModifier.SHIFT) !== KeyModifier.NONE) {
       return;
     }
 
-    const text = this.extractPrintableKeyText(event);
+    const text = extractPrintableKeyText(event);
     if (text === null) {
       return;
     }
 
-    const result = this.editorCore.handleKeyEvent(0, text, modifiers);
+    const result = this.editorCore.handleKeyEvent(KeyCode.NONE, text, modifiers);
     this.dispatchKeyEventResult(result);
     this.resetCursorBlink();
     this.flush();
@@ -1896,143 +1714,6 @@ export struct SweetEditor {
     }
     return false;
   }
-
-  private resolveNativeKeyCode(event: KeyEvent, modifiers: number): number {
-    const nativeKeyCode = this.mapOhosKeyCodeToNative(event.keyCode);
-    if (nativeKeyCode !== 0) {
-      return nativeKeyCode;
-    }
-
-    if ((modifiers & (KeyModifier.CTRL | KeyModifier.META | KeyModifier.ALT)) === 0) {
-      return 0;
-    }
-
-    const text = this.extractPrintableKeyText(event);
-    if (!text) {
-      return 0;
-    }
-
-    const mappedKeyCode = this.mapPrintableKeyCode(text);
-    if (mappedKeyCode === KeyCode.NONE) {
-      return 0;
-    }
-    return mappedKeyCode as number;
-  }
-
-  private mapPrintableKeyCode(text: string): KeyCode {
-    const normalized = text.toUpperCase();
-    switch (normalized) {
-      case 'A':
-        return KeyCode.A;
-      case 'C':
-        return KeyCode.C;
-      case 'D':
-        return KeyCode.D;
-      case 'K':
-        return KeyCode.K;
-      case 'V':
-        return KeyCode.V;
-      case 'X':
-        return KeyCode.X;
-      case 'Y':
-        return KeyCode.Y;
-      case 'Z':
-        return KeyCode.Z;
-      case ' ':
-        return KeyCode.SPACE;
-      default:
-        return KeyCode.NONE;
-    }
-  }
-
-  private mapOhosKeyCodeToNative(ohosKeyCode: number): number {
-    switch (ohosKeyCode) {
-      case 2055:
-        return 8; // BACKSPACE
-      case 2049:
-        return 9; // TAB
-      case 2054:
-        return 13; // ENTER
-      case 2070:
-        return 27; // ESCAPE
-      case 2071:
-        return 46; // DELETE (FORWARD_DEL)
-      case 2012:
-        return 37; // DPAD_LEFT
-      case 2013:
-        return 38; // DPAD_UP
-      case 2014:
-        return 39; // DPAD_RIGHT
-      case 2015:
-        return 40; // DPAD_DOWN
-      case 2081:
-        return 36; // HOME
-      case 2082:
-        return 35; // END
-      case 2059:
-        return 33; // PAGE_UP
-      case 2060:
-        return 34; // PAGE_DOWN
-      default:
-        return 0;
-    }
-  }
-
-  private mapOhosKeyCodeToAndroid(ohosKeyCode: number): number {
-    switch (ohosKeyCode) {
-      case 2049:
-        return 61; // TAB
-      case 2054:
-        return 66; // ENTER
-      case 2070:
-        return 111; // ESCAPE
-      case 2013:
-        return 19; // UP
-      case 2015:
-        return 20; // DOWN
-      default:
-        return 0;
-    }
-  }
-
-  private isModifierPressed(event: KeyEvent, key: string): boolean {
-    if (!event.getModifierKeyState) {
-      return false;
-    }
-    return event.getModifierKeyState([key]);
-  }
-
-  private getNativeModifiers(event: KeyEvent): number {
-    let modifiers = 0;
-    if (this.isModifierPressed(event, 'shift')) {
-      modifiers |= 1;
-    }
-    if (this.isModifierPressed(event, 'ctrl')) {
-      modifiers |= 2;
-    }
-    if (this.isModifierPressed(event, 'alt')) {
-      modifiers |= 4;
-    }
-    if (event.metaKey === 1) {
-      modifiers |= 8;
-    }
-    return modifiers;
-  }
-
-  private extractPrintableKeyText(event: KeyEvent): string | null {
-    const keyText = event.keyText;
-    if (!keyText || Array.from(keyText).length !== 1) {
-      return null;
-    }
-
-    return this.isPrintableText(keyText) ? keyText : null;
-  }
-
-  private isPrintableText(text: string): boolean {
-    return text.length > 0 && !/[\u0000-\u001f\u007f]/.test(text);
-  }
-
-  // ==================== Completion Internal ====================
 
   applyCompletionItemInternal(item: CompletionItem): void {
     if (!this.editorCore) {
@@ -2061,8 +1742,6 @@ export struct SweetEditor {
       this.insertText(text);
     }
   }
-
-  // ==================== Touch Event Handling ====================
 
   private handleTouchEvent(event: TouchEvent): void {
     if (!this.editorCore) {
@@ -2219,8 +1898,6 @@ export struct SweetEditor {
       directScale: 0
     };
   }
-
-  // ==================== Event Dispatch ====================
 
   private fireGestureEvents(result: GestureResult, locationInEditor: PointF): void {
     switch (result.type) {
@@ -2395,9 +2072,6 @@ export struct SweetEditor {
     const popupShowing = this.completionPopupController !== null && this.completionPopupController.isShowing();
 
     if (textChanges.length === 0) {
-      if (popupShowing) {
-        this.completionProviderManager.dismiss();
-      }
       return;
     }
 
@@ -2407,30 +2081,15 @@ export struct SweetEditor {
       if (this.completionProviderManager.isTriggerCharacter(newText)) {
         this.completionProviderManager.triggerCompletion(CompletionTriggerKind.CHARACTER, newText);
       } else if (popupShowing) {
-        this.completionProviderManager.dismiss();
-      } else if (this.isCompletionInvokeCharacter(newText)) {
-        this.completionProviderManager.triggerCompletion(CompletionTriggerKind.INVOKED, null);
+        this.completionProviderManager.triggerCompletion(CompletionTriggerKind.RETRIGGER, null);
       }
       return;
     }
 
     if (popupShowing) {
-      this.completionProviderManager.dismiss();
+      this.completionProviderManager.triggerCompletion(CompletionTriggerKind.RETRIGGER, null);
     }
   }
-
-  private isCompletionInvokeCharacter(ch: string): boolean {
-    if (ch.length !== 1) {
-      return false;
-    }
-    const code = ch.charCodeAt(0);
-    return ch === '_' ||
-      (code >= 48 && code <= 57) ||
-      (code >= 65 && code <= 90) ||
-      (code >= 97 && code <= 122);
-  }
-
-  // ==================== Rendering ====================
 
   private invalidateCanvas(): void {
     if (!this.canvasContext || !this.renderer || !this.editorCore) {
@@ -2444,7 +2103,7 @@ export struct SweetEditor {
 
     const model = this.cachedModel;
     if (!model) {
-      this.canvasContext.fillStyle = colorToHex(this.theme.backgroundColor);
+      this.canvasContext.fillStyle = argbToCssColor(this.theme.backgroundColor);
       this.canvasContext.fillRect(0, 0, this.viewWidth, this.viewHeight);
       return;
     }
@@ -2486,8 +2145,6 @@ export struct SweetEditor {
       this.clearTransientScrollbarTimer();
     }
   }
-
-  // ==================== Animation & Timers ====================
 
   private startCursorBlink(): void {
     this.stopCursorBlink();
@@ -2855,7 +2512,7 @@ export struct SweetEditor {
         if (!this.editorCore || this.tryHandleNewLineAction()) {
           return;
         }
-        this.dispatchKeyEventResult(this.editorCore.handleKeyEvent(13, null, 0));
+        this.dispatchKeyEventResult(this.editorCore.handleKeyEvent(KeyCode.ENTER, null, KeyModifier.NONE));
         this.resetCursorBlink();
         this.flush();
         break;
@@ -2895,11 +2552,8 @@ export struct SweetEditor {
     return 0;
   }
 
-  private clampNumber(value: number, min: number, max: number): number {
-    if (max < min) {
-      return min;
-    }
-    return Math.min(Math.max(value, min), max);
+  private getOverlayAvailableFrame(horizontalMargin: number, verticalMargin: number): PopupRect {
+    return insetPopupRect(popupRect(0, 0, this.viewWidth, this.viewHeight), horizontalMargin, verticalMargin);
   }
 
   private tryHandleNewLineAction(): boolean {
@@ -2935,12 +2589,4 @@ export struct SweetEditor {
       }
     }, 0);
   }
-}
-
-function colorToHex(argb: number): string {
-  const a = ((argb >>> 24) & 0xFF) / 255;
-  const r = (argb >>> 16) & 0xFF;
-  const g = (argb >>> 8) & 0xFF;
-  const b = argb & 0xFF;
-  return `rgba(${r}, ${g}, ${b}, ${a.toFixed(3)})`;
 }

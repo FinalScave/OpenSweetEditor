@@ -969,8 +969,6 @@ public class SweetEditor extends JPanel {
                                     completionProviderManager.triggerCompletion(CompletionContext.TriggerKind.CHARACTER, charStr);
                                 } else if (completionPopupController != null && completionPopupController.isShowing()) {
                                     completionProviderManager.triggerCompletion(CompletionContext.TriggerKind.RETRIGGER, null);
-                                } else if (Character.isLetterOrDigit(ch) || ch == '_') {
-                                    completionProviderManager.triggerCompletion(CompletionContext.TriggerKind.INVOKED, null);
                                 }
                             }
                         }

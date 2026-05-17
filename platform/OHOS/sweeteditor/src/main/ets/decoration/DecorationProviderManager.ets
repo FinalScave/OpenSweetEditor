@@ -32,6 +32,10 @@ interface ProviderState {
   activeReceiver: ManagedReceiver | null;
 }
 
+const APPLY_MODE_PRIORITY_MERGE = 0;
+const APPLY_MODE_PRIORITY_REPLACE_RANGE = 1;
+const APPLY_MODE_PRIORITY_REPLACE_ALL = 2;
+
 /**
  * Decoration provider manager.
  * Handles provider registration, refresh scheduling, debounce, scroll throttle,
@@ -318,10 +322,10 @@ export class DecorationProviderManager {
     this.applyDiagnosticMode(diagnosticMode);
     this.editor.setBatchLineDiagnostics(diagnostics);
 
-    this.applyGuidesMode(indentMode, indentGuides, 0);
-    this.applyGuidesMode(bracketMode, bracketGuides, 1);
-    this.applyGuidesMode(flowMode, flowGuides, 2);
-    this.applyGuidesMode(separatorMode, separatorGuides, 3);
+    this.applyIndentGuidesMode(indentMode, indentGuides);
+    this.applyBracketGuidesMode(bracketMode, bracketGuides);
+    this.applyFlowGuidesMode(flowMode, flowGuides);
+    this.applySeparatorGuidesMode(separatorMode, separatorGuides);
 
     if (foldMode === ApplyMode.REPLACE_ALL || foldMode === ApplyMode.REPLACE_RANGE) {
       this.editor.setFoldRegions(foldRegions);
@@ -433,30 +437,35 @@ export class DecorationProviderManager {
     }
   }
 
-  private applyGuidesMode(mode: ApplyMode, data: Object[] | null, guideType: number): void {
-    const shouldReplace = mode === ApplyMode.REPLACE_ALL || mode === ApplyMode.REPLACE_RANGE;
-    const items: Object[] = data || [];
-    switch (guideType) {
-      case 0:
-        if (shouldReplace || items.length > 0) {
-          this.editor.setIndentGuides(items as IndentGuide[]);
-        }
-        break;
-      case 1:
-        if (shouldReplace || items.length > 0) {
-          this.editor.setBracketGuides(items as BracketGuide[]);
-        }
-        break;
-      case 2:
-        if (shouldReplace || items.length > 0) {
-          this.editor.setFlowGuides(items as FlowGuide[]);
-        }
-        break;
-      case 3:
-        if (shouldReplace || items.length > 0) {
-          this.editor.setSeparatorGuides(items as SeparatorGuide[]);
-        }
-        break;
+  private applyIndentGuidesMode(mode: ApplyMode, data: IndentGuide[] | null): void {
+    if (mode === ApplyMode.REPLACE_ALL || mode === ApplyMode.REPLACE_RANGE) {
+      this.editor.setIndentGuides(data || []);
+    } else if (data !== null) {
+      this.editor.setIndentGuides(data);
+    }
+  }
+
+  private applyBracketGuidesMode(mode: ApplyMode, data: BracketGuide[] | null): void {
+    if (mode === ApplyMode.REPLACE_ALL || mode === ApplyMode.REPLACE_RANGE) {
+      this.editor.setBracketGuides(data || []);
+    } else if (data !== null) {
+      this.editor.setBracketGuides(data);
+    }
+  }
+
+  private applyFlowGuidesMode(mode: ApplyMode, data: FlowGuide[] | null): void {
+    if (mode === ApplyMode.REPLACE_ALL || mode === ApplyMode.REPLACE_RANGE) {
+      this.editor.setFlowGuides(data || []);
+    } else if (data !== null) {
+      this.editor.setFlowGuides(data);
+    }
+  }
+
+  private applySeparatorGuidesMode(mode: ApplyMode, data: SeparatorGuide[] | null): void {
+    if (mode === ApplyMode.REPLACE_ALL || mode === ApplyMode.REPLACE_RANGE) {
+      this.editor.setSeparatorGuides(data || []);
+    } else if (data !== null) {
+      this.editor.setSeparatorGuides(data);
     }
   }
 
@@ -689,13 +698,13 @@ function mergeMode(current: ApplyMode, next: ApplyMode): ApplyMode {
 function priority(mode: ApplyMode): number {
   switch (mode) {
     case ApplyMode.MERGE:
-      return 0;
+      return APPLY_MODE_PRIORITY_MERGE;
     case ApplyMode.REPLACE_RANGE:
-      return 1;
+      return APPLY_MODE_PRIORITY_REPLACE_RANGE;
     case ApplyMode.REPLACE_ALL:
-      return 2;
+      return APPLY_MODE_PRIORITY_REPLACE_ALL;
     default:
-      return 0;
+      return APPLY_MODE_PRIORITY_MERGE;
   }
 }
 

@@ -1,4 +1,5 @@
 import { SweetEditorController } from '../SweetEditorController';
+import { PopupRect } from '../ui/PopupPositioner';
 
 /**
  * Data class representing a single item in the selection context menu.
@@ -22,8 +23,7 @@ export class SelectionMenuItem {
 export interface SelectionMenuState {
   visible: boolean;
   items: SelectionMenuItem[];
-  x: number;
-  y: number;
+  anchorRect: PopupRect;
 }
 
 /**

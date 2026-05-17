@@ -1,5 +1,5 @@
 import { TextPosition, TextRange } from '../core/CoreFoundation';
-import { EditorMetadata, LanguageConfiguration } from '../EditorTypes';
+import { EditorMetadata, EditorTheme, LanguageConfiguration } from '../EditorTypes';
 
 /**
  * Completion item data model.
@@ -106,11 +106,8 @@ export interface CompletionProvider {
 }
 
 /**
- * Custom completion item view builder interface.
- * Host applications implement this to customize completion item appearance.
- * Returns an ArkUI @Builder function reference for rendering each item.
+ * Custom completion item view builder.
+ * Host applications pass an ArkUI @Builder function to customize completion item appearance.
  */
-export interface CompletionItemViewBuilder {
-  buildItemView(item: CompletionItem, isSelected: boolean): void;
-}
+export type CompletionItemViewBuilder = (item: CompletionItem, isSelected: boolean, theme: EditorTheme) => void;
 

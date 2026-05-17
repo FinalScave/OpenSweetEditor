@@ -16,6 +16,20 @@ export enum SeparatorStyle {
   DOUBLE = 1
 }
 
+export class FontStyle {
+  static readonly NORMAL: number = 0;
+  static readonly BOLD: number = 1;
+  static readonly ITALIC: number = 2;
+  static readonly STRIKETHROUGH: number = 4;
+}
+
+export enum DiagnosticSeverity {
+  ERROR = 0,
+  WARNING = 1,
+  INFO = 2,
+  HINT = 3
+}
+
 export interface TextStyle {
   color: number;
   backgroundColor: number;

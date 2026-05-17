@@ -1,61 +1,36 @@
-import { CompletionItem, CompletionItemViewBuilder } from './CompletionTypes';
+import { CompletionItem } from './CompletionTypes';
 import { CompletionUpdateListener } from './CompletionProviderManager';
-
-const MAX_VISIBLE_ITEMS = 6;
-const ITEM_HEIGHT_VP = 32;
-const POPUP_WIDTH_VP = 300;
-const GAP_VP = 4;
+import { OverlayKeyAction } from '../EditorKeyboard';
+import {
+  COMPLETION_ITEM_HEIGHT,
+  COMPLETION_MAX_VISIBLE_ITEMS,
+  COMPLETION_PANEL_VERTICAL_PADDING,
+  COMPLETION_POPUP_GAP,
+  COMPLETION_POPUP_WIDTH
+} from './CompletionPopupLayout';
+import { popupRect, PopupRect } from '../ui/PopupPositioner';
 
 /**
  * Completion popup controller (logic layer).
  * Manages items, selected index, keyboard navigation, and cursor-following positioning.
- * UI rendering is delegated to the host via callbacks, since OHOS does not have
- * a direct equivalent to Android PopupWindow + RecyclerView.
+ * UI rendering is delegated to the host via callbacks.
  */
 export class CompletionPopupController implements CompletionUpdateListener {
   private items: CompletionItem[] = [];
   private selectedIndex: number = 0;
   private showing: boolean = false;
   private confirmHandler: ((item: CompletionItem) => void) | null = null;
-  private viewBuilder: CompletionItemViewBuilder | null = null;
   private cachedCursorX: number = 0;
   private cachedCursorY: number = 0;
   private cachedCursorHeight: number = 0;
-  private panelBgColor: number;
-  private panelBorderColor: number;
-  private selectedBgColor: number;
-  private labelColor: number;
-  private detailColor: number;
   private onShowCallback: ((items: CompletionItem[], selectedIndex: number, position: PopupPosition) => void) | null =
     null;
   private onUpdateCallback: ((items: CompletionItem[], selectedIndex: number, position: PopupPosition) => void) | null =
     null;
   private onDismissCallback: (() => void) | null = null;
 
-  constructor(panelBgColor: number, panelBorderColor: number, selectedBgColor: number,
-    labelColor: number, detailColor: number) {
-    this.panelBgColor = panelBgColor;
-    this.panelBorderColor = panelBorderColor;
-    this.selectedBgColor = selectedBgColor;
-    this.labelColor = labelColor;
-    this.detailColor = detailColor;
-  }
-
-  applyTheme(panelBgColor: number, panelBorderColor: number, selectedBgColor: number,
-    labelColor: number, detailColor: number): void {
-    this.panelBgColor = panelBgColor;
-    this.panelBorderColor = panelBorderColor;
-    this.selectedBgColor = selectedBgColor;
-    this.labelColor = labelColor;
-    this.detailColor = detailColor;
-  }
-
   setConfirmHandler(handler: ((item: CompletionItem) => void) | null): void {
     this.confirmHandler = handler;
-  }
-
-  setViewBuilder(builder: CompletionItemViewBuilder | null): void {
-    this.viewBuilder = builder;
   }
 
   setOnShowCallback(cb: ((items: CompletionItem[], selectedIndex: number,
@@ -76,24 +51,6 @@ export class CompletionPopupController implements CompletionUpdateListener {
     return this.showing;
   }
 
-  getItems(): CompletionItem[] {
-    return this.items;
-  }
-
-  getSelectedIndex(): number {
-    return this.selectedIndex;
-  }
-
-  getThemeColors(): CompletionThemeColors {
-    return {
-      panelBgColor: this.panelBgColor,
-      panelBorderColor: this.panelBorderColor,
-      selectedBgColor: this.selectedBgColor,
-      labelColor: this.labelColor,
-      detailColor: this.detailColor
-    };
-  }
-
   onCompletionItemsUpdated(newItems: CompletionItem[]): void {
     this.items = [...newItems];
     this.selectedIndex = 0;
@@ -108,25 +65,21 @@ export class CompletionPopupController implements CompletionUpdateListener {
     this.dismiss();
   }
 
-  /**
-   * Handle key codes for navigation.
-   * Returns true if consumed.
-   */
-  handleKeyCode(keyCode: number): boolean {
+  handleKeyAction(action: OverlayKeyAction): boolean {
     if (!this.showing || this.items.length === 0) {
       return false;
     }
-    switch (keyCode) {
-      case 66: // Enter
+    switch (action) {
+      case OverlayKeyAction.ENTER:
         this.confirmSelected();
         return true;
-      case 111: // Escape
+      case OverlayKeyAction.ESCAPE:
         this.dismiss();
         return true;
-      case 19: // Up
+      case OverlayKeyAction.UP:
         this.moveSelection(-1);
         return true;
-      case 20: // Down
+      case OverlayKeyAction.DOWN:
         this.moveSelection(1);
         return true;
       default:
@@ -190,34 +143,23 @@ export class CompletionPopupController implements CompletionUpdateListener {
   }
 
   private computePosition(): PopupPosition {
-    const gap = GAP_VP;
-    const popupHeight = ITEM_HEIGHT_VP * Math.min(this.items.length, MAX_VISIBLE_ITEMS);
-    const belowY = this.cachedCursorY + this.cachedCursorHeight + gap;
-    const aboveY = this.cachedCursorY - popupHeight - gap;
+    const popupHeight = COMPLETION_ITEM_HEIGHT * Math.min(this.items.length, COMPLETION_MAX_VISIBLE_ITEMS) +
+      COMPLETION_PANEL_VERTICAL_PADDING * 2;
 
     return {
-      x: this.cachedCursorX,
-      belowY: belowY,
-      aboveY: aboveY,
-      popupWidth: POPUP_WIDTH_VP,
-      popupHeight: popupHeight
+      anchorRect: popupRect(this.cachedCursorX, this.cachedCursorY,
+        this.cachedCursorX, this.cachedCursorY + this.cachedCursorHeight),
+      popupWidth: COMPLETION_POPUP_WIDTH,
+      popupHeight: popupHeight,
+      gap: COMPLETION_POPUP_GAP
     };
   }
 }
 
 export interface PopupPosition {
-  x: number;
-  belowY: number;
-  aboveY: number;
+  anchorRect: PopupRect;
   popupWidth: number;
   popupHeight: number;
-}
-
-export interface CompletionThemeColors {
-  panelBgColor: number;
-  panelBorderColor: number;
-  selectedBgColor: number;
-  labelColor: number;
-  detailColor: number;
+  gap: number;
 }
 
