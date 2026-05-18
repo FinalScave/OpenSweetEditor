@@ -45,10 +45,10 @@ It is suited for long-term editor infrastructure in IDEs, AI programming tools, 
 | Swing                 | Implemented          | Java2D                  | Swing                            | [./platform/Swing](./platform/Swing)                                                                              |
 | OHOS                  | Implemented          | ArkUI Canvas            | ArkUI                            | [./platform/OHOS](./platform/OHOS)                                                                                |
 | Flutter               | Implemented          | TextPainter             | Flutter                          | [./platform/Flutter](./platform/Flutter)                                                                          |
+| C# Avalonia               | Implemented          | -             | Avalonia                          | [./platform/Avalonia](./platform/Avalonia)                                                                          |
 | Qt                    | Implemented          | QPainter                | Qt                               | [FinalScave/SweetEditor-Qt](https://github.com/FinalScave/SweetEditor-Qt)                                         |
 | Compose Multiplatform | In Progress          | Compose Canvas          | Compose                          | [lumkit/SweetEditor-Compose](https://github.com/lumkit/SweetEditor-Compose)                                       |
 | Web                   | Testing (Unofficial) | -                       | -                                | [LangLang03/OpenSweetEditor-Web](https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten) |
-| C# Avalonia UI        | Planned              | -                       | -                                | -                                                                                                                 |
 | C# WinUI              | Planned              | -                       | -                                | -                                                                                                                 |
 
 ## Overall Architecture
@@ -178,13 +178,3 @@ See [Contributing Guide](docs/en/join.md) for details.
 ## License
 
 SweetEditor is licensed under the [GNU Lesser General Public License v2.1 or later](LICENSE) (LGPL-2.1+), with an additional [Static Linking Exception](EXCEPTION) provided as a supplementary clarification.
-
-## Star History
-
-<a href="https://www.star-history.com/#FinalScave/OpenSweetEditor&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=FinalScave/OpenSweetEditor&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=FinalScave/OpenSweetEditor&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=FinalScave/OpenSweetEditor&type=date&legend=top-left" />
- </picture>
-</a>

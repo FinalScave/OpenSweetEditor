@@ -45,10 +45,10 @@ SweetEditor 是一套跨平台代码编辑器内核，面向需要在 Android、
 | Swing                 | 已实现      | Java2D                  | Swing                  | ./[platform/Swing](./platform/Swing)                                                                              |
 | OHOS                  | 已实现      | ArkUI Canvas            | ArkUI                  | [./platform/OHOS](./platform/OHOS)                                                                                |
 | Flutter               | 已实现      | TextPainter             | Flutter                | [./platform/Flutter](./platform/Flutter)                                                                          |
+| C# Avalonia               | 已实现          | -             | Avalonia                          | [./platform/Avalonia](./platform/Avalonia)                                                                          |
 | Qt                    | 已实现      | QPainter                | Qt                     | [FinalScave/SweetEditor-Qt](https://github.com/FinalScave/SweetEditor-Qt)                                         |
 | Compose Multiplatform | 进行中      | Compose Canvas          | Compose                | [lumkit/SweetEditor-Compose](https://github.com/lumkit/SweetEditor-Compose)                                       |
 | Web                   | 测试中（非官方） | -                       | -                      | [LangLang03/OpenSweetEditor-Web](https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten) |
-| C# Avalonia UI        | 待实现      | -                       | -                      | -                                                                                                                 |
 | C# WinUI              | 待实现      | -                       | -                      | -                                                                                                                 |
 
 ## 整体架构
@@ -178,13 +178,3 @@ SweetEditor 正在构建开放的跨平台编辑器基础设施生态，欢迎�
 ## License
 
 SweetEditor 采用 [GNU Lesser General Public License v2.1 or later](LICENSE)（LGPL-2.1+）授权，并附加 [Static Linking Exception](EXCEPTION) 作为补充说明。
-
-## Star History
-
-<a href="https://www.star-history.com/#FinalScave/OpenSweetEditor&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=FinalScave/OpenSweetEditor&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=FinalScave/OpenSweetEditor&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=FinalScave/OpenSweetEditor&type=date&legend=top-left" />
- </picture>
-</a>
