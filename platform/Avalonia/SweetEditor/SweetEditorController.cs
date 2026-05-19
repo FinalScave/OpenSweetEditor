@@ -373,8 +373,8 @@ namespace SweetEditor {
 
 		public void ClearMatchedBrackets() => Invoke(e => e.ClearMatchedBrackets());
 
-		public TextEditResult InsertSnippet(string snippetTemplate) =>
-			Read(e => e.InsertSnippet(snippetTemplate), TextEditResult.Empty);
+		public EditorActionResult InsertSnippet(string snippetTemplate) =>
+			Read(e => e.InsertSnippet(snippetTemplate), EditorActionResult.Empty);
 
 		public void StartLinkedEditing(LinkedEditingModel model) => Invoke(e => e.StartLinkedEditing(model));
 

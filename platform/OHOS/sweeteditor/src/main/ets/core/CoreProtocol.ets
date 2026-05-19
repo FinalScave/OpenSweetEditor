@@ -1,18 +1,16 @@
 import {
+  EditorActionReason,
+  EditorActionResult,
   EditorOptions,
-  GestureResult,
   GestureType,
   HitTarget,
   HitTargetType,
-  ImeActionResult,
   ImeContextPolicy,
   ImeInputContext,
   ImeInputContextKind,
   ImePreeditStorage,
   ImeSyncSnapshot,
-  KeyEventResult,
-  TextChange,
-  TextEditResult
+  TextChange
 } from './EditorCore';
 import { TextPosition, TextRange } from './CoreFoundation';
 import {
@@ -651,64 +649,50 @@ export class ProtocolEncoder {
 }
 
 export class ProtocolDecoder {
-  static decodeTextEditResult(payload: ArrayBuffer | undefined): TextEditResult {
-    const empty: TextEditResult = { changes: [] };
+  static decodeEditorActionResult(payload: ArrayBuffer | undefined): EditorActionResult {
     if (!payload || payload.byteLength === 0) {
-      return empty;
+      return ProtocolDecoder.createEmptyEditorActionResult();
     }
     const reader = new BinaryReader(payload);
-    const changed = reader.readInt32();
-    if (changed === 0) {
-      return empty;
-    }
-    const count = reader.readInt32();
-    const changes: TextChange[] = [];
-    for (let i = 0; i < count; i++) {
-      const range: TextRange = {
-        start: reader.readTextPosition(),
-        end: reader.readTextPosition()
-      };
-      const newText = reader.readUtf8String();
-      changes.push({ range, newText });
-    }
-    return { changes };
-  }
-
-  static decodeImeActionResult(payload: ArrayBuffer | undefined): ImeActionResult {
-    const empty = ProtocolDecoder.createEmptyImeActionResult();
-    if (!payload || payload.byteLength < 20) {
-      return empty;
-    }
-    const reader = new BinaryReader(payload);
-    const handled = reader.readInt32() !== 0;
-    const contentChanged = reader.readInt32() !== 0;
-    const cursorChanged = reader.readInt32() !== 0;
-    const selectionChanged = reader.readInt32() !== 0;
-    const hasEdit = reader.readInt32() !== 0;
-    let editResult: TextEditResult = { changes: [] };
-    if (hasEdit && reader.hasRemaining(4)) {
-      const count = reader.readInt32();
-      const changes: TextChange[] = [];
-      for (let i = 0; i < count; i++) {
-        const range: TextRange = {
-          start: reader.readTextPosition(),
-          end: reader.readTextPosition()
-        };
-        const newText = reader.readUtf8String();
-        changes.push({ range, newText });
-      }
-      editResult = { changes };
-    }
-    const sync = reader.hasRemaining(8)
-      ? ProtocolDecoder.readImeSyncSnapshot(reader)
-      : ProtocolDecoder.createEmptyImeSyncSnapshot();
     return {
-      handled,
-      contentChanged,
-      cursorChanged,
-      selectionChanged,
-      editResult,
-      sync
+      handled: reader.readInt32() !== 0,
+      needsRedraw: reader.readInt32() !== 0,
+      reason: reader.readInt32() as EditorActionReason,
+      contentChanged: reader.readInt32() !== 0,
+      cursorChanged: reader.readInt32() !== 0,
+      selectionChanged: reader.readInt32() !== 0,
+      scrollChanged: reader.readInt32() !== 0,
+      scaleChanged: reader.readInt32() !== 0,
+      pointerCursorChanged: reader.readInt32() !== 0,
+      compositionChanged: reader.readInt32() !== 0,
+      decorationChanged: reader.readInt32() !== 0,
+      needsImeSync: reader.readInt32() !== 0,
+      needsEdgeScroll: reader.readInt32() !== 0,
+      needsFling: reader.readInt32() !== 0,
+      needsAnimation: reader.readInt32() !== 0,
+      isHandleDrag: reader.readInt32() !== 0,
+      changes: ProtocolDecoder.readTextChanges(reader),
+      cursorBefore: reader.readTextPosition(),
+      cursorAfter: reader.readTextPosition(),
+      hasSelectionBefore: reader.readInt32() !== 0,
+      selectionBefore: ProtocolDecoder.readTextRange(reader),
+      hasSelectionAfter: reader.readInt32() !== 0,
+      selectionAfter: ProtocolDecoder.readTextRange(reader),
+      scrollXBefore: reader.readFloat32(),
+      scrollYBefore: reader.readFloat32(),
+      scrollXAfter: reader.readFloat32(),
+      scrollYAfter: reader.readFloat32(),
+      scaleBefore: reader.readFloat32(),
+      scaleAfter: reader.readFloat32(),
+      pointerCursorBefore: reader.readInt32(),
+      pointerCursorAfter: reader.readInt32(),
+      imeSync: ProtocolDecoder.readImeSyncSnapshot(reader),
+      gestureType: reader.readInt32() as GestureType,
+      gestureEventType: reader.readInt32() as EventType,
+      tapPoint: reader.readPoint(),
+      hitTarget: ProtocolDecoder.readHitTarget(reader),
+      modifiers: reader.readInt32(),
+      command: reader.readInt32()
     };
   }
 
@@ -740,131 +724,6 @@ export class ProtocolDecoder {
         end: reader.readInt32()
       },
       kind: reader.hasRemaining(4) ? reader.readInt32() as ImeInputContextKind : ImeInputContextKind.NONE
-    };
-  }
-
-  static decodeKeyEventResult(payload: ArrayBuffer | undefined): KeyEventResult {
-    const empty: KeyEventResult = {
-      handled: false,
-      contentChanged: false,
-      cursorChanged: false,
-      selectionChanged: false,
-      editResult: null,
-      command: 0
-    };
-    if (!payload || payload.byteLength === 0) {
-      return empty;
-    }
-    const reader = new BinaryReader(payload);
-    const handled = reader.readInt32() !== 0;
-    const contentChanged = reader.readInt32() !== 0;
-    const cursorChanged = reader.readInt32() !== 0;
-    const selectionChanged = reader.readInt32() !== 0;
-    const hasEdit = reader.readInt32() !== 0;
-    let editResult: TextEditResult | null = null;
-    if (hasEdit) {
-      const count = reader.readInt32();
-      const changes: TextChange[] = [];
-      for (let i = 0; i < count; i++) {
-        const range: TextRange = {
-          start: reader.readTextPosition(),
-          end: reader.readTextPosition()
-        };
-        changes.push({ range, newText: reader.readUtf8String() });
-      }
-      editResult = { changes };
-    }
-    return {
-      handled,
-      contentChanged,
-      cursorChanged,
-      selectionChanged,
-      editResult,
-      command: reader.readInt32()
-    };
-  }
-
-  static decodeGestureResult(payload: ArrayBuffer | undefined): GestureResult {
-    const defaultResult: GestureResult = {
-      type: GestureType.UNDEFINED,
-      tapPoint: { x: 0, y: 0 },
-      cursorPosition: { line: 0, column: 0 },
-      hasSelection: false,
-      selection: { start: { line: 0, column: 0 }, end: { line: 0, column: 0 } },
-      viewScrollX: 0,
-      viewScrollY: 0,
-      viewScale: 1,
-      hitTarget: {
-        type: HitTargetType.NONE,
-        line: 0,
-        column: 0,
-        iconId: 0,
-        colorValue: 0
-      },
-      isHandleDrag: false,
-      needsEdgeScroll: false,
-      needsFling: false,
-      needsAnimation: false
-    };
-    if (!payload || payload.byteLength === 0) {
-      return defaultResult;
-    }
-    const reader = new BinaryReader(payload);
-    const gestureType = reader.readInt32() as GestureType;
-    let tapPoint: PointF = { x: 0, y: 0 };
-    if (gestureType === GestureType.TAP || gestureType === GestureType.DOUBLE_TAP ||
-      gestureType === GestureType.LONG_PRESS || gestureType === GestureType.DRAG_SELECT ||
-      gestureType === GestureType.CONTEXT_MENU) {
-      tapPoint = reader.readPoint();
-    }
-    const cursorPosition = reader.readTextPosition();
-    const hasSelection = reader.readInt32() !== 0;
-    const selection: TextRange = { start: reader.readTextPosition(), end: reader.readTextPosition() };
-    const viewScrollX = reader.readFloat32();
-    const viewScrollY = reader.readFloat32();
-    const viewScale = reader.readFloat32();
-    let hitTarget: HitTarget = {
-      type: HitTargetType.NONE,
-      line: 0,
-      column: 0,
-      iconId: 0,
-      colorValue: 0
-    };
-    if (reader.hasRemaining(20)) {
-      hitTarget = {
-        type: reader.readInt32() as HitTargetType,
-        line: reader.readInt32(),
-        column: reader.readInt32(),
-        iconId: reader.readInt32(),
-        colorValue: reader.readInt32()
-      };
-    }
-    let needsEdgeScroll = false;
-    if (reader.hasRemaining(4)) {
-      needsEdgeScroll = reader.readInt32() !== 0;
-    }
-    let needsFling = false;
-    if (reader.hasRemaining(4)) {
-      needsFling = reader.readInt32() !== 0;
-    }
-    let needsAnimation = false;
-    if (reader.hasRemaining(4)) {
-      needsAnimation = reader.readInt32() !== 0;
-    }
-    return {
-      type: gestureType,
-      tapPoint,
-      cursorPosition,
-      hasSelection,
-      selection,
-      viewScrollX,
-      viewScrollY,
-      viewScale,
-      hitTarget,
-      isHandleDrag: false,
-      needsEdgeScroll,
-      needsFling,
-      needsAnimation
     };
   }
 
@@ -1093,6 +952,28 @@ export class ProtocolDecoder {
     };
   }
 
+  private static readTextChanges(reader: BinaryReader): TextChange[] {
+    const count = reader.readInt32();
+    const changes: TextChange[] = [];
+    for (let i = 0; i < count; i++) {
+      changes.push({
+        range: ProtocolDecoder.readTextRange(reader),
+        newText: reader.readUtf8String()
+      });
+    }
+    return changes;
+  }
+
+  private static readHitTarget(reader: BinaryReader): HitTarget {
+    return {
+      type: reader.readInt32() as HitTargetType,
+      line: reader.readInt32(),
+      column: reader.readInt32(),
+      iconId: reader.readInt32(),
+      colorValue: reader.readInt32()
+    };
+  }
+
   private static readImeSyncSnapshot(reader: BinaryReader): ImeSyncSnapshot {
     const cursor = reader.readTextPosition();
     const hasSelection = reader.readInt32() !== 0;
@@ -1117,14 +998,54 @@ export class ProtocolDecoder {
     };
   }
 
-  private static createEmptyImeActionResult(): ImeActionResult {
+  private static createEmptyEditorActionResult(): EditorActionResult {
+    const emptyPosition: TextPosition = { line: 0, column: 0 };
+    const emptyRange: TextRange = { start: emptyPosition, end: emptyPosition };
     return {
       handled: false,
+      needsRedraw: false,
+      reason: EditorActionReason.NONE,
       contentChanged: false,
       cursorChanged: false,
       selectionChanged: false,
-      editResult: { changes: [] },
-      sync: ProtocolDecoder.createEmptyImeSyncSnapshot()
+      scrollChanged: false,
+      scaleChanged: false,
+      pointerCursorChanged: false,
+      compositionChanged: false,
+      decorationChanged: false,
+      needsImeSync: false,
+      needsEdgeScroll: false,
+      needsFling: false,
+      needsAnimation: false,
+      isHandleDrag: false,
+      changes: [],
+      cursorBefore: emptyPosition,
+      cursorAfter: emptyPosition,
+      hasSelectionBefore: false,
+      selectionBefore: emptyRange,
+      hasSelectionAfter: false,
+      selectionAfter: emptyRange,
+      scrollXBefore: 0,
+      scrollYBefore: 0,
+      scrollXAfter: 0,
+      scrollYAfter: 0,
+      scaleBefore: 1,
+      scaleAfter: 1,
+      pointerCursorBefore: 0,
+      pointerCursorAfter: 0,
+      imeSync: ProtocolDecoder.createEmptyImeSyncSnapshot(),
+      gestureType: GestureType.UNDEFINED,
+      gestureEventType: EventType.UNDEFINED,
+      tapPoint: { x: 0, y: 0 },
+      hitTarget: {
+        type: HitTargetType.NONE,
+        line: 0,
+        column: 0,
+        iconId: 0,
+        colorValue: 0
+      },
+      modifiers: 0,
+      command: 0
     };
   }
 

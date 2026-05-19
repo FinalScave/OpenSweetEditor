@@ -92,7 +92,7 @@ public class SelectionMenuController {
      * Called from {@code SweetEditor.onTouchEvent} after gesture processing.
      * Drives the show/hide state machine.
      */
-    public void onGestureResult(@NonNull EditorCore.GestureResult result, int actionMasked) {
+    public void onEditorActionResult(@NonNull EditorCore.EditorActionResult result, int actionMasked) {
         if (result.isHandleDrag) {
             if (!handleDragActive) {
                 handleDragActive = true;
@@ -103,15 +103,15 @@ public class SelectionMenuController {
 
         if (handleDragActive) {
             handleDragActive = false;
-            if (result.hasSelection) {
+            if (result.hasSelectionAfter) {
                 scheduleShow();
             }
         }
 
-        switch (result.type) {
+        switch (result.gestureType) {
             case DOUBLE_TAP:
                 hiddenByViewportGesture = false;
-                if (result.hasSelection) {
+                if (result.hasSelectionAfter) {
                     scheduleShow();
                 }
                 break;
@@ -141,7 +141,7 @@ public class SelectionMenuController {
         boolean canRestoreNow = (pointerReleased && !result.needsAnimation) || animationTickEnded;
         if (hiddenByViewportGesture && canRestoreNow) {
             hiddenByViewportGesture = false;
-            if (result.hasSelection) {
+            if (result.hasSelectionAfter) {
                 scheduleShow();
             }
         }

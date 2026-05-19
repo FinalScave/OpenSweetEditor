@@ -250,23 +250,23 @@ public:
     size_t argc = 3;
     napi_value args[3];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    set_editor_viewport(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                        static_cast<int16_t>(napi_get_int32(env, args[1])),
-                        static_cast<int16_t>(napi_get_int32(env, args[2])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, set_editor_viewport(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      static_cast<int16_t>(napi_get_int32(env, args[1])),
+      static_cast<int16_t>(napi_get_int32(env, args[2])),
+      &out_size), out_size);
   }
 
   static napi_value loadDocument(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    set_editor_document(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                        static_cast<intptr_t>(napi_get_handle(env, args[1])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, set_editor_document(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      static_cast<intptr_t>(napi_get_handle(env, args[1])),
+      &out_size), out_size);
   }
 
   static napi_value handleGestureEvent(napi_env env, napi_callback_info info) {
@@ -346,10 +346,10 @@ public:
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_on_font_metrics_changed(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_on_font_metrics_changed(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 
   static napi_value tickEdgeScroll(napi_env env, napi_callback_info info) {
@@ -1091,11 +1091,11 @@ public:
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_ime_set_keyboard_script_class(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                                         argc > 1 ? napi_get_int32(env, args[1]) : 0);
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_ime_set_keyboard_script_class(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      argc > 1 ? napi_get_int32(env, args[1]) : 0,
+      &out_size), out_size);
   }
 
   static napi_value imeGetKeyboardScriptClass(napi_env env, napi_callback_info info) {
@@ -1139,11 +1139,11 @@ public:
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_read_only(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                         napi_get_bool(env, args[1]) ? 1 : 0);
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_read_only(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_bool(env, args[1]) ? 1 : 0,
+      &out_size), out_size);
   }
 
   static napi_value isReadOnly(napi_env env, napi_callback_info info) {
@@ -1157,11 +1157,11 @@ public:
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_auto_indent_mode(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                                napi_get_int32(env, args[1]));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_auto_indent_mode(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_int32(env, args[1]),
+      &out_size), out_size);
   }
 
   static napi_value getAutoIndentMode(napi_env env, napi_callback_info info) {
@@ -1175,52 +1175,52 @@ public:
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_backspace_unindent(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                                  napi_get_int32(env, args[1]));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_backspace_unindent(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_int32(env, args[1]),
+      &out_size), out_size);
   }
 
   static napi_value setInsertSpaces(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_insert_spaces(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                             napi_get_int32(env, args[1]));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_insert_spaces(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_int32(env, args[1]),
+      &out_size), out_size);
   }
 
   static napi_value setHandleConfig(napi_env env, napi_callback_info info) {
     size_t argc = 9;
     napi_value args[9];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_handle_config(static_cast<intptr_t>(napi_get_handle(env, args[0])),
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_handle_config(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
       napi_get_float(env, args[1]), napi_get_float(env, args[2]),
       napi_get_float(env, args[3]), napi_get_float(env, args[4]),
       napi_get_float(env, args[5]), napi_get_float(env, args[6]),
-      napi_get_float(env, args[7]), napi_get_float(env, args[8]));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+      napi_get_float(env, args[7]), napi_get_float(env, args[8]),
+      &out_size), out_size);
   }
 
   static napi_value setScrollbarConfig(napi_env env, napi_callback_info info) {
     size_t argc = 9;
     napi_value args[9];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_scrollbar_config(static_cast<intptr_t>(napi_get_handle(env, args[0])),
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_scrollbar_config(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
       napi_get_float(env, args[1]), napi_get_float(env, args[2]), napi_get_float(env, args[3]),
       napi_get_int32(env, args[4]),
       napi_get_bool(env, args[5]) ? 1 : 0,
       napi_get_int32(env, args[6]),
       napi_get_int32(env, args[7]),
-      napi_get_int32(env, args[8]));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+      napi_get_int32(env, args[8]),
+      &out_size), out_size);
   }
 
   static napi_value getPositionRect(napi_env env, napi_callback_info info) {
@@ -1264,18 +1264,18 @@ public:
     size_t argc = 5;
     napi_value args[5];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_register_text_style(static_cast<intptr_t>(napi_get_handle(env, args[0])),
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_register_text_style(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
       static_cast<uint32_t>(napi_get_int32(env, args[1])),
       napi_get_int32(env, args[2]),
       napi_get_int32(env, args[3]),
-      napi_get_int32(env, args[4]));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+      napi_get_int32(env, args[4]),
+      &out_size), out_size);
   }
 
   static napi_value setBinaryData(napi_env env, napi_callback_info info,
-      void (*c_api_fn)(intptr_t, const uint8_t*, size_t)) {
+      const uint8_t* (*c_api_fn)(intptr_t, const uint8_t*, size_t, size_t*)) {
     size_t argc = 3;
     napi_value args[3];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
@@ -1288,14 +1288,18 @@ public:
     napi_get_arraybuffer_info(env, args[1], &data, &byte_length);
     int32_t size = napi_get_int32(env, args[2]);
 
-    if (data != nullptr && size > 0) {
-      c_api_fn(static_cast<intptr_t>(handle),
-               reinterpret_cast<const uint8_t*>(data),
-               static_cast<size_t>(size));
+    if (data == nullptr || size <= 0) {
+      napi_value undefined;
+      napi_get_undefined(env, &undefined);
+      return undefined;
     }
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    const uint8_t* payload = c_api_fn(
+      static_cast<intptr_t>(handle),
+      reinterpret_cast<const uint8_t*>(data),
+      static_cast<size_t>(size),
+      &out_size);
+    return wrap_binary_payload(env, payload, out_size);
   }
 
   static napi_value setLineSpans(napi_env env, napi_callback_info info) {
@@ -1390,113 +1394,113 @@ public:
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_clear_highlights(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_clear_highlights(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 
   static napi_value clearHighlightsLayer(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_clear_highlights_layer(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                                  static_cast<uint8_t>(napi_get_int32(env, args[1])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_clear_highlights_layer(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      static_cast<uint8_t>(napi_get_int32(env, args[1])),
+      &out_size), out_size);
   }
 
   static napi_value clearLineSpans(napi_env env, napi_callback_info info) {
     size_t argc = 3;
     napi_value args[3];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_clear_line_spans(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                            static_cast<size_t>(napi_get_int32(env, args[1])),
-                            static_cast<uint8_t>(napi_get_int32(env, args[2])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_clear_line_spans(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      static_cast<size_t>(napi_get_int32(env, args[1])),
+      static_cast<uint8_t>(napi_get_int32(env, args[2])),
+      &out_size), out_size);
   }
 
   static napi_value clearInlayHints(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_clear_inlay_hints(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_clear_inlay_hints(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 
   static napi_value clearPhantomTexts(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_clear_phantom_texts(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_clear_phantom_texts(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 
   static napi_value clearGutterIcons(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_clear_gutter_icons(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_clear_gutter_icons(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 
   static napi_value clearCodeLens(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_clear_codelens(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_clear_codelens(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 
   static napi_value clearLinks(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_clear_links(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_clear_links(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 
   static napi_value clearGuides(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_clear_guides(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_clear_guides(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 
   static napi_value clearDiagnostics(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_clear_diagnostics(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_clear_diagnostics(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 
   static napi_value clearAllDecorations(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_clear_all_decorations(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_clear_all_decorations(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 
   static napi_value setBracketPairs(napi_env env, napi_callback_info info) {
@@ -1516,10 +1520,9 @@ public:
       napi_get_element(env, args[2], i, &elem);
       closes[i] = static_cast<uint32_t>(napi_get_int32(env, elem));
     }
-    editor_set_bracket_pairs(static_cast<intptr_t>(handle), opens.data(), closes.data(), count);
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_bracket_pairs(
+      static_cast<intptr_t>(handle), opens.data(), closes.data(), count, &out_size), out_size);
   }
 
   static napi_value setAutoClosingPairs(napi_env env, napi_callback_info info) {
@@ -1539,81 +1542,86 @@ public:
       napi_get_element(env, args[2], i, &elem);
       closes[i] = static_cast<uint32_t>(napi_get_int32(env, elem));
     }
-    editor_set_auto_closing_pairs(static_cast<intptr_t>(handle), opens.data(), closes.data(), count);
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_auto_closing_pairs(
+      static_cast<intptr_t>(handle), opens.data(), closes.data(), count, &out_size), out_size);
   }
 
   static napi_value setMatchedBrackets(napi_env env, napi_callback_info info) {
     size_t argc = 5;
     napi_value args[5];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_matched_brackets(static_cast<intptr_t>(napi_get_handle(env, args[0])),
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_matched_brackets(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
       static_cast<size_t>(napi_get_int32(env, args[1])),
       static_cast<size_t>(napi_get_int32(env, args[2])),
       static_cast<size_t>(napi_get_int32(env, args[3])),
-      static_cast<size_t>(napi_get_int32(env, args[4])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+      static_cast<size_t>(napi_get_int32(env, args[4])),
+      &out_size), out_size);
   }
 
   static napi_value clearMatchedBrackets(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_clear_matched_brackets(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_clear_matched_brackets(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 
   static napi_value toggleFold(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    int result = editor_toggle_fold(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                                    static_cast<size_t>(napi_get_int32(env, args[1])));
-    return napi_create_bool_value(env, result != 0);
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_toggle_fold(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      static_cast<size_t>(napi_get_int32(env, args[1])),
+      &out_size), out_size);
   }
 
   static napi_value foldAt(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    int result = editor_fold_at(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                                static_cast<size_t>(napi_get_int32(env, args[1])));
-    return napi_create_bool_value(env, result != 0);
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_fold_at(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      static_cast<size_t>(napi_get_int32(env, args[1])),
+      &out_size), out_size);
   }
 
   static napi_value unfoldAt(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    int result = editor_unfold_at(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                                  static_cast<size_t>(napi_get_int32(env, args[1])));
-    return napi_create_bool_value(env, result != 0);
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_unfold_at(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      static_cast<size_t>(napi_get_int32(env, args[1])),
+      &out_size), out_size);
   }
 
   static napi_value foldAll(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_fold_all(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_fold_all(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 
   static napi_value unfoldAll(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_unfold_all(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_unfold_all(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 
   static napi_value isLineVisible(napi_env env, napi_callback_info info) {
@@ -1646,122 +1654,122 @@ public:
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_max_gutter_icons(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                                static_cast<uint32_t>(napi_get_int32(env, args[1])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_max_gutter_icons(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      static_cast<uint32_t>(napi_get_int32(env, args[1])),
+      &out_size), out_size);
   }
 
   static napi_value setFoldArrowMode(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_fold_arrow_mode(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                               napi_get_int32(env, args[1]));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_fold_arrow_mode(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_int32(env, args[1]),
+      &out_size), out_size);
   }
 
   static napi_value setWrapMode(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_wrap_mode(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                         napi_get_int32(env, args[1]));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_wrap_mode(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_int32(env, args[1]),
+      &out_size), out_size);
   }
 
   static napi_value setTabSize(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_tab_size(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                        napi_get_int32(env, args[1]));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_tab_size(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_int32(env, args[1]),
+      &out_size), out_size);
   }
 
   static napi_value setScale(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_scale(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                     napi_get_float(env, args[1]));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_scale(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_float(env, args[1]),
+      &out_size), out_size);
   }
 
   static napi_value setLineSpacing(napi_env env, napi_callback_info info) {
     size_t argc = 3;
     napi_value args[3];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_line_spacing(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                            napi_get_float(env, args[1]),
-                            napi_get_float(env, args[2]));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_line_spacing(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_float(env, args[1]),
+      napi_get_float(env, args[2]),
+      &out_size), out_size);
   }
 
   static napi_value setContentStartPadding(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_content_start_padding(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                                     napi_get_float(env, args[1]));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_content_start_padding(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_float(env, args[1]),
+      &out_size), out_size);
   }
 
   static napi_value setShowSplitLine(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_show_split_line(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                               napi_get_bool(env, args[1]) ? 1 : 0);
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_show_split_line(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_bool(env, args[1]) ? 1 : 0,
+      &out_size), out_size);
   }
 
   static napi_value setGutterSticky(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_gutter_sticky(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                             napi_get_bool(env, args[1]) ? 1 : 0);
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_gutter_sticky(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_bool(env, args[1]) ? 1 : 0,
+      &out_size), out_size);
   }
 
   static napi_value setGutterVisible(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_gutter_visible(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                              napi_get_bool(env, args[1]) ? 1 : 0);
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_gutter_visible(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_bool(env, args[1]) ? 1 : 0,
+      &out_size), out_size);
   }
 
   static napi_value setCurrentLineRenderMode(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_current_line_render_mode(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                                        napi_get_int32(env, args[1]));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_current_line_render_mode(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_int32(env, args[1]),
+      &out_size), out_size);
   }
 
   static napi_value undo(napi_env env, napi_callback_info info) {
@@ -1802,12 +1810,12 @@ public:
     size_t argc = 3;
     napi_value args[3];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_cursor_position(static_cast<intptr_t>(napi_get_handle(env, args[0])),
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_cursor_position(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
       static_cast<size_t>(napi_get_int32(env, args[1])),
-      static_cast<size_t>(napi_get_int32(env, args[2])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+      static_cast<size_t>(napi_get_int32(env, args[2])),
+      &out_size), out_size);
   }
 
   static napi_value getCursorPosition(napi_env env, napi_callback_info info) {
@@ -1830,24 +1838,24 @@ public:
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_select_all(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_select_all(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 
   static napi_value setSelection(napi_env env, napi_callback_info info) {
     size_t argc = 5;
     napi_value args[5];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_selection(static_cast<intptr_t>(napi_get_handle(env, args[0])),
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_selection(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
       static_cast<size_t>(napi_get_int32(env, args[1])),
       static_cast<size_t>(napi_get_int32(env, args[2])),
       static_cast<size_t>(napi_get_int32(env, args[3])),
-      static_cast<size_t>(napi_get_int32(env, args[4])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+      static_cast<size_t>(napi_get_int32(env, args[4])),
+      &out_size), out_size);
   }
 
   static napi_value getSelection(napi_env env, napi_callback_info info) {
@@ -1920,46 +1928,46 @@ public:
     size_t argc = 3;
     napi_value args[3];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_scroll_to_line(static_cast<intptr_t>(napi_get_handle(env, args[0])),
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_scroll_to_line(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
       static_cast<size_t>(napi_get_int32(env, args[1])),
-      static_cast<uint8_t>(napi_get_int32(env, args[2])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+      static_cast<uint8_t>(napi_get_int32(env, args[2])),
+      &out_size), out_size);
   }
 
   static napi_value gotoPosition(napi_env env, napi_callback_info info) {
     size_t argc = 3;
     napi_value args[3];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_goto_position(static_cast<intptr_t>(napi_get_handle(env, args[0])),
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_goto_position(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
       static_cast<size_t>(napi_get_int32(env, args[1])),
-      static_cast<size_t>(napi_get_int32(env, args[2])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+      static_cast<size_t>(napi_get_int32(env, args[2])),
+      &out_size), out_size);
   }
 
   static napi_value ensureCursorVisible(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_ensure_cursor_visible(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_ensure_cursor_visible(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 
   static napi_value setScroll(napi_env env, napi_callback_info info) {
     size_t argc = 3;
     napi_value args[3];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_set_scroll(static_cast<intptr_t>(napi_get_handle(env, args[0])),
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_scroll(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
       napi_get_float(env, args[1]),
-      napi_get_float(env, args[2]));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+      napi_get_float(env, args[2]),
+      &out_size), out_size);
   }
 
   static napi_value getScrollMetrics(napi_env env, napi_callback_info info) {
@@ -1975,66 +1983,66 @@ public:
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_move_cursor_left(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                            napi_get_bool(env, args[1]) ? 1 : 0);
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_move_cursor_left(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_bool(env, args[1]) ? 1 : 0,
+      &out_size), out_size);
   }
 
   static napi_value moveCursorRight(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_move_cursor_right(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                             napi_get_bool(env, args[1]) ? 1 : 0);
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_move_cursor_right(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_bool(env, args[1]) ? 1 : 0,
+      &out_size), out_size);
   }
 
   static napi_value moveCursorUp(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_move_cursor_up(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                          napi_get_bool(env, args[1]) ? 1 : 0);
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_move_cursor_up(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_bool(env, args[1]) ? 1 : 0,
+      &out_size), out_size);
   }
 
   static napi_value moveCursorDown(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_move_cursor_down(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                            napi_get_bool(env, args[1]) ? 1 : 0);
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_move_cursor_down(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_bool(env, args[1]) ? 1 : 0,
+      &out_size), out_size);
   }
 
   static napi_value moveCursorToLineStart(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_move_cursor_to_line_start(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                                     napi_get_bool(env, args[1]) ? 1 : 0);
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_move_cursor_to_line_start(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_bool(env, args[1]) ? 1 : 0,
+      &out_size), out_size);
   }
 
   static napi_value moveCursorToLineEnd(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_move_cursor_to_line_end(static_cast<intptr_t>(napi_get_handle(env, args[0])),
-                                   napi_get_bool(env, args[1]) ? 1 : 0);
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_move_cursor_to_line_end(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_bool(env, args[1]) ? 1 : 0,
+      &out_size), out_size);
   }
 
   static napi_value insertSnippet(napi_env env, napi_callback_info info) {
@@ -2062,24 +2070,30 @@ public:
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    return napi_create_bool_value(env, editor_linked_editing_next(static_cast<intptr_t>(napi_get_handle(env, args[0]))) != 0);
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_linked_editing_next(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 
   static napi_value linkedEditingPrev(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    return napi_create_bool_value(env, editor_linked_editing_prev(static_cast<intptr_t>(napi_get_handle(env, args[0]))) != 0);
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_linked_editing_prev(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 
   static napi_value cancelLinkedEditing(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    editor_cancel_linked_editing(static_cast<intptr_t>(napi_get_handle(env, args[0])));
-    napi_value undefined;
-    napi_get_undefined(env, &undefined);
-    return undefined;
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_cancel_linked_editing(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
   }
 };
 

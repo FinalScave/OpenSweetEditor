@@ -227,7 +227,7 @@ namespace NS_SWEETEDITOR {
   }
 
   TextEditResult CompositionController::coreInsertText(const U8String& text) {
-    return m_editor_.insertText(text);
+    return m_editor_.insertTextInternal(text);
   }
 
   void CompositionController::coreDeleteSelectionForComposition() {
@@ -247,11 +247,11 @@ namespace NS_SWEETEDITOR {
   }
 
   TextEditResult CompositionController::coreBackspace() {
-    return m_editor_.backspace();
+    return m_editor_.backspaceInternal();
   }
 
   TextEditResult CompositionController::coreDeleteForward() {
-    return m_editor_.deleteForward();
+    return m_editor_.deleteForwardInternal();
   }
 
   TextEditResult CompositionController::coreDeleteCodePointBackward() {

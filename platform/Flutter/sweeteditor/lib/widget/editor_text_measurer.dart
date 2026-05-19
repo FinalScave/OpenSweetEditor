@@ -45,20 +45,23 @@ class EditorTextMeasurer {
   _getFontMetricsCallable;
 
   void _buildCallbackPointers() {
-    _measureTextWidthCallable = ffi.NativeCallable<
-      ffi.Float Function(ffi.Pointer<ffi.Uint16>, ffi.Int32)
-    >.isolateLocal(_nativeMeasureTextWidth, exceptionalReturn: 0.0);
-    _measureInlayHintWidthCallable = ffi.NativeCallable<
-      ffi.Float Function(ffi.Pointer<ffi.Uint16>)
-    >.isolateLocal(_nativeMeasureInlayHintWidth, exceptionalReturn: 0.0);
+    _measureTextWidthCallable =
+        ffi.NativeCallable<
+          ffi.Float Function(ffi.Pointer<ffi.Uint16>, ffi.Int32)
+        >.isolateLocal(_nativeMeasureTextWidth, exceptionalReturn: 0.0);
+    _measureInlayHintWidthCallable =
+        ffi.NativeCallable<
+          ffi.Float Function(ffi.Pointer<ffi.Uint16>)
+        >.isolateLocal(_nativeMeasureInlayHintWidth, exceptionalReturn: 0.0);
     _measureIconWidthCallable =
         ffi.NativeCallable<ffi.Float Function(ffi.Int32)>.isolateLocal(
           _nativeMeasureIconWidth,
           exceptionalReturn: 0.0,
         );
-    _getFontMetricsCallable = ffi.NativeCallable<
-      ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Size)
-    >.isolateLocal(_nativeGetFontMetrics);
+    _getFontMetricsCallable =
+        ffi.NativeCallable<
+          ffi.Void Function(ffi.Pointer<ffi.Float>, ffi.Size)
+        >.isolateLocal(_nativeGetFontMetrics);
   }
 
   /// Build the native text_measurer_t struct for EditorCore.

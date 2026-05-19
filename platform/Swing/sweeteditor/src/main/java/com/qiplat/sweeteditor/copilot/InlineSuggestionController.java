@@ -38,16 +38,12 @@ public class InlineSuggestionController {
         currentSuggestion = suggestion;
         showing = true;
 
-        // Inject phantom text
         editor.setLinePhantomTexts(suggestion.line,
                 List.of(new PhantomText(suggestion.column, suggestion.text)));
-        editor.flush();
 
-        // Subscribe to events for auto-dismiss
         editor.subscribe(TextChangedEvent.class, textListener);
         editor.subscribe(CursorChangedEvent.class, cursorListener);
 
-        // Show action bar
         if (actionBar == null) {
             actionBar = new InlineSuggestionActionBar(editor, editor.getTheme(),
                     this::accept, this::dismiss);
@@ -61,7 +57,6 @@ public class InlineSuggestionController {
 
         clearAndUnsubscribe();
 
-        // Insert text at suggestion position
         if (suggestion != null) {
             editor.getEditorCore().setCursorPosition(suggestion.line, suggestion.column);
             editor.insertText(suggestion.text);
@@ -152,7 +147,6 @@ public class InlineSuggestionController {
     private void clearPhantomText() {
         if (currentSuggestion != null) {
             editor.setLinePhantomTexts(currentSuggestion.line, List.of());
-            editor.flush();
         }
     }
 }

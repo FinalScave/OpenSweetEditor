@@ -8,6 +8,7 @@
 #include "document.h"
 #include "visual.h"
 #include "gesture.h"
+#include "ime_types.h"
 #include "layout.h"
 #include "interaction.h"
 #include "render_composer.h"
@@ -16,6 +17,73 @@
 #include "ime_composition.h"
 
 namespace NS_SWEETEDITOR {
+
+  enum struct EditorActionReason : uint8_t {
+    NONE = 0,
+    SETUP = 1,
+    TEXT_EDIT = 2,
+    KEY_INPUT = 3,
+    IME = 4,
+    GESTURE = 5,
+    ANIMATION = 6,
+    PROGRAMMATIC = 7,
+    DECORATION = 8,
+    FOLDING = 9,
+    LINKED_EDITING = 10,
+    TEXT_INSERT = 11,
+    TEXT_REPLACE = 12,
+    TEXT_DELETE = 13,
+    TEXT_UNDO = 14,
+    TEXT_REDO = 15,
+  };
+
+  struct EditorActionResult {
+    bool handled {false};
+    bool needs_redraw {false};
+    EditorActionReason reason {EditorActionReason::NONE};
+
+    bool content_changed {false};
+    bool cursor_changed {false};
+    bool selection_changed {false};
+    bool scroll_changed {false};
+    bool scale_changed {false};
+    bool pointer_cursor_changed {false};
+    bool composition_changed {false};
+    bool decoration_changed {false};
+    bool needs_ime_sync {false};
+
+    bool needs_edge_scroll {false};
+    bool needs_fling {false};
+    bool needs_animation {false};
+    bool is_handle_drag {false};
+
+    Vector<TextChange> changes;
+
+    TextPosition cursor_before;
+    TextPosition cursor_after;
+    bool has_selection_before {false};
+    bool has_selection_after {false};
+    TextRange selection_before;
+    TextRange selection_after;
+
+    float scroll_x_before {0};
+    float scroll_y_before {0};
+    float scroll_x_after {0};
+    float scroll_y_after {0};
+    float scale_before {1};
+    float scale_after {1};
+
+    PointerCursorType pointer_cursor_before {PointerCursorType::TEXT};
+    PointerCursorType pointer_cursor_after {PointerCursorType::TEXT};
+
+    ImeSyncSnapshot ime_sync;
+    GestureType gesture_type {GestureType::UNDEFINED};
+    EventType gesture_event_type {EventType::UNDEFINED};
+    PointF tap_point {};
+    HitTarget hit_target;
+    KeyModifier modifiers {KeyModifier::NONE};
+    EditorCommand command {EditorCommand::NONE};
+  };
 
   /// Editor core class
   class EditorCore {
@@ -27,62 +95,62 @@ namespace NS_SWEETEDITOR {
 
     /// Set selection handle configuration at runtime
     /// @param config Handle appearance and touch parameters
-    void setHandleConfig(const HandleConfig& config);
+    EditorActionResult setHandleConfig(const HandleConfig& config);
 
     /// Set scrollbar configuration at runtime
     /// @param config Scrollbar geometry/behavior parameters
-    void setScrollbarConfig(const ScrollbarConfig& config);
+    EditorActionResult setScrollbarConfig(const ScrollbarConfig& config);
 
     /// Load text content
     /// @param document Document instance
-    void loadDocument(const SharedPtr<Document>& document);
+    EditorActionResult loadDocument(const SharedPtr<Document>& document);
     /// Set editor viewport size
     /// @param viewport Viewport area
-    void setViewport(const Viewport& viewport);
+    EditorActionResult setViewport(const Viewport& viewport);
 
     /// Reset text measurement, usually called when editor font is reset
-    void onFontMetricsChanged();
+    EditorActionResult onFontMetricsChanged();
 
     /// Set auto wrap mode
     /// @param mode WrapMode
-    void setWrapMode(WrapMode mode);
+    EditorActionResult setWrapMode(WrapMode mode);
 
     /// Set tab size (number of spaces per tab stop)
     /// @param tab_size Tab size (default 4, minimum 1)
-    void setTabSize(uint32_t tab_size);
+    EditorActionResult setTabSize(uint32_t tab_size);
 
     /// Manually set editor scale factor
     /// @param scale Scale factor
-    void setScale(float scale);
+    EditorActionResult setScale(float scale);
 
     /// Set fold arrow display mode (affects reserved gutter width)
     /// @param mode AUTO=show when fold regions exist, ALWAYS=always reserve, HIDDEN=always hide
-    void setFoldArrowMode(FoldArrowMode mode);
+    EditorActionResult setFoldArrowMode(FoldArrowMode mode);
 
     /// Set line spacing params (formula: line_height = font_height * mult + add)
     /// @param add Extra line spacing in pixels (default 0)
     /// @param mult Line spacing multiplier (default 1.0)
-    void setLineSpacing(float add, float mult);
+    EditorActionResult setLineSpacing(float add, float mult);
 
     /// Set extra horizontal padding between gutter split and text content start
     /// @param padding Padding in pixels (clamped to >= 0)
-    void setContentStartPadding(float padding);
+    EditorActionResult setContentStartPadding(float padding);
 
     /// Set whether to show gutter split line
     /// @param show true=show split line, false=hide split line
-    void setShowSplitLine(bool show);
+    EditorActionResult setShowSplitLine(bool show);
 
     /// Set current line render mode
     /// @param mode BACKGROUND=fill line background, BORDER=draw line border, NONE=disable
-    void setCurrentLineRenderMode(CurrentLineRenderMode mode);
+    EditorActionResult setCurrentLineRenderMode(CurrentLineRenderMode mode);
 
     /// Set whether gutter stays fixed during horizontal scroll
     /// @param sticky true=gutter fixed (desktop style), false=gutter scrolls with content (mobile style)
-    void setGutterSticky(bool sticky);
+    EditorActionResult setGutterSticky(bool sticky);
 
     /// Set whether gutter area is visible
     /// @param visible true=show gutter (line numbers, icons, fold arrows), false=hide entire gutter
-    void setGutterVisible(bool visible);
+    EditorActionResult setGutterVisible(bool visible);
 
 #pragma endregion
 
@@ -111,36 +179,36 @@ namespace NS_SWEETEDITOR {
     /// Handle gesture event
     /// @param event Gesture data
     /// @return Gesture handling result (includes editor state)
-    GestureResult handleGestureEvent(const GestureEvent& event);
+    EditorActionResult handleGestureEvent(const GestureEvent& event);
 
     /// Called by platform timer (~16ms interval) while needs_edge_scroll is true.
     /// Scrolls the viewport and updates the selection based on saved edge-scroll state.
     /// @return Updated gesture result (platform should redraw; check needs_edge_scroll to decide
     ///         whether to continue the timer)
-    GestureResult tickEdgeScroll();
+    EditorActionResult tickEdgeScroll();
 
     /// Called by platform each frame while needs_fling is true.
     /// Advances fling animation using real elapsed time and applies scroll delta.
     /// @return Updated gesture result (platform should redraw; check needs_fling to decide
     ///         whether to continue the timer)
-    GestureResult tickFling();
+    EditorActionResult tickFling();
 
     /// Unified animation tick: advances all active animations (edge-scroll, fling).
     /// Platform can use a single frame callback driven by needs_animation and call this
     /// instead of tickEdgeScroll() / tickFling() separately.
     /// @return Updated gesture result with needs_animation reflecting whether any animation is still active
-    GestureResult tickAnimations();
+    EditorActionResult tickAnimations();
 
     /// Immediately stop any active fling animation
-    void stopFling();
+    EditorActionResult stopFling();
 
     /// Handle keyboard event (optional default key mapping; platform can bypass and call atomic edit APIs directly)
     /// @param event Keyboard event data
     /// @return Keyboard event handling result
-    KeyEventResult handleKeyEvent(const KeyEvent& event);
+    EditorActionResult handleKeyEvent(const KeyEvent& event);
 
     /// Replace the current key map with a custom one
-    void setKeyMap(KeyMap key_map);
+    EditorActionResult setKeyMap(KeyMap key_map);
 
 #pragma endregion
 
@@ -149,60 +217,60 @@ namespace NS_SWEETEDITOR {
     /// Insert text at cursor position (replace selection if any)
     /// @param text UTF8 text
     /// @return Exact change info
-    TextEditResult insertText(const U8String& text);
+    EditorActionResult insertText(const U8String& text);
 
     /// Replace text in given range (atomic op, for exact replace cases like textEdit)
     /// @param range Text range to replace (same as insert when start == end)
     /// @param new_text New text after replace (same as delete when empty)
     /// @return Exact change info
-    TextEditResult replaceText(const TextRange& range, const U8String& new_text);
+    EditorActionResult replaceText(const TextRange& range, const U8String& new_text);
 
     /// Delete text in given range
     /// @param range Text range to delete
     /// @return Exact change info
-    TextEditResult deleteText(const TextRange& range);
+    EditorActionResult deleteText(const TextRange& range);
 
     /// Delete selection; if no selection, delete one char before cursor (Backspace behavior)
     /// @return Exact change info
-    TextEditResult backspace();
+    EditorActionResult backspace();
 
     /// Delete selection; if no selection, delete one char after cursor (Delete behavior)
     /// @return Exact change info
-    TextEditResult deleteForward();
+    EditorActionResult deleteForward();
     /// Move current line (or lines covered by selection) up by one line
     /// @return Exact change info
-    TextEditResult moveLineUp();
+    EditorActionResult moveLineUp();
 
     /// Move current line (or lines covered by selection) down by one line
     /// @return Exact change info
-    TextEditResult moveLineDown();
+    EditorActionResult moveLineDown();
 
     /// Copy current line (or lines covered by selection) upward
     /// @return Exact change info
-    TextEditResult copyLineUp();
+    EditorActionResult copyLineUp();
 
     /// Copy current line (or lines covered by selection) downward
     /// @return Exact change info
-    TextEditResult copyLineDown();
+    EditorActionResult copyLineDown();
 
     /// Delete current line (or all lines covered by selection)
     /// @return Exact change info
-    TextEditResult deleteLine();
+    EditorActionResult deleteLine();
 
     /// Insert empty line above current line
     /// @return Exact change info
-    TextEditResult insertLineAbove();
+    EditorActionResult insertLineAbove();
 
     /// Insert empty line below current line
     /// @return Exact change info
-    TextEditResult insertLineBelow();
+    EditorActionResult insertLineBelow();
     /// Undo last edit operation
     /// @return Exact change info (changed=false means nothing to undo)
-    TextEditResult undo();
+    EditorActionResult undo();
 
     /// Redo last undone operation
     /// @return Exact change info (changed=false means nothing to redo)
-    TextEditResult redo();
+    EditorActionResult redo();
 
     /// Whether undo is available
     bool canUndo() const;
@@ -211,14 +279,14 @@ namespace NS_SWEETEDITOR {
     bool canRedo() const;
     /// Set cursor position
     /// @param position Text position
-    void setCursorPosition(const TextPosition& position);
+    EditorActionResult setCursorPosition(const TextPosition& position);
 
     /// Get cursor position
     TextPosition getCursorPosition() const;
 
     /// Set text selection range
     /// @param range Selection range (start is anchor, end is active end)
-    void setSelection(const TextRange& range);
+    EditorActionResult setSelection(const TextRange& range);
 
     /// Get current selection range
     TextRange getSelection() const;
@@ -227,10 +295,10 @@ namespace NS_SWEETEDITOR {
     bool hasSelection() const;
 
     /// Clear selection
-    void clearSelection();
+    EditorActionResult clearSelection();
 
     /// Select all
-    void selectAll();
+    EditorActionResult selectAll();
 
     /// Get selected text (UTF8)
     U8String getSelectedText() const;
@@ -245,83 +313,83 @@ namespace NS_SWEETEDITOR {
 
     /// Move cursor left
     /// @param extend_selection Whether to extend selection (Shift key)
-    void moveCursorLeft(bool extend_selection = false);
+    EditorActionResult moveCursorLeft(bool extend_selection = false);
 
     /// Move cursor right
     /// @param extend_selection Whether to extend selection
-    void moveCursorRight(bool extend_selection = false);
+    EditorActionResult moveCursorRight(bool extend_selection = false);
 
     /// Move cursor up
     /// @param extend_selection Whether to extend selection
-    void moveCursorUp(bool extend_selection = false);
+    EditorActionResult moveCursorUp(bool extend_selection = false);
 
     /// Move cursor down
     /// @param extend_selection Whether to extend selection
-    void moveCursorDown(bool extend_selection = false);
+    EditorActionResult moveCursorDown(bool extend_selection = false);
 
     /// Move cursor to line start
     /// @param extend_selection Whether to extend selection
-    void moveCursorToLineStart(bool extend_selection = false);
+    EditorActionResult moveCursorToLineStart(bool extend_selection = false);
 
     /// Move cursor to line end
     /// @param extend_selection Whether to extend selection
-    void moveCursorToLineEnd(bool extend_selection = false);
+    EditorActionResult moveCursorToLineEnd(bool extend_selection = false);
 
     /// Move cursor up by one page (viewport height / line height)
     /// @param extend_selection Whether to extend selection
-    void moveCursorPageUp(bool extend_selection = false);
+    EditorActionResult moveCursorPageUp(bool extend_selection = false);
 
     /// Move cursor down by one page (viewport height / line height)
     /// @param extend_selection Whether to extend selection
-    void moveCursorPageDown(bool extend_selection = false);
+    EditorActionResult moveCursorPageDown(bool extend_selection = false);
 
     /// Set read-only mode
     /// @param read_only true=read-only (block all edit actions), false=editable
-    void setReadOnly(bool read_only);
+    EditorActionResult setReadOnly(bool read_only);
 
     /// Get whether read-only mode is active
     bool isReadOnly() const;
     /// Set auto indent mode
     /// @param mode Auto indent mode
-    void setAutoIndentMode(AutoIndentMode mode);
+    EditorActionResult setAutoIndentMode(AutoIndentMode mode);
 
     /// Get current auto indent mode
     AutoIndentMode getAutoIndentMode() const;
 
     /// Set backspace unindent behavior
     /// @param enabled true = backspace on leading whitespace unindents or merges blank line
-    void setBackspaceUnindent(bool enabled);
+    EditorActionResult setBackspaceUnindent(bool enabled);
 
     /// Set whether Tab inserts spaces up to the next tab stop instead of a literal '\t'
     /// @param enabled true = insert spaces, false = insert '\t'
-    void setInsertSpaces(bool enabled);
+    EditorActionResult setInsertSpaces(bool enabled);
 
     /// Insert VSCode snippet template and enter linked editing mode (helper method)
     /// @param snippet_template VSCode snippet syntax template
     /// @return Exact change info (changes from inserting template text)
-    TextEditResult insertSnippet(const U8String& snippet_template);
+    EditorActionResult insertSnippet(const U8String& snippet_template);
 
     /// Start linked editing mode with generic LinkedEditingModel
     /// Model is built outside; ranges must already point to correct positions in document
     /// @param model Linked editing model
-    void startLinkedEditing(LinkedEditingModel&& model);
+    EditorActionResult startLinkedEditing(LinkedEditingModel&& model);
 
     /// Whether linked editing mode is active
     bool isInLinkedEditing() const;
 
     /// Linked editing: jump to next tab stop
     /// @return false means already at end; session ends automatically
-    bool linkedEditingNextTabStop();
+    EditorActionResult linkedEditingNextTabStop();
 
     /// Linked editing: jump to previous tab stop
     /// @return false means already at first
-    bool linkedEditingPrevTabStop();
+    EditorActionResult linkedEditingPrevTabStop();
 
     /// Cancel linked editing mode
-    void cancelLinkedEditing();
+    EditorActionResult cancelLinkedEditing();
 
     /// Finish linked editing mode and place cursor at $0 position (called after Enter/Tab flow)
-    void finishLinkedEditing();
+    EditorActionResult finishLinkedEditing();
 
 #pragma endregion
 
@@ -330,65 +398,65 @@ namespace NS_SWEETEDITOR {
     /// Get the current IME synchronization snapshot
     ImeSyncSnapshot getImeSyncSnapshot() const;
 
-    void setImeKeyboardScriptClass(ImeScriptClass script_class);
+    EditorActionResult setImeKeyboardScriptClass(ImeScriptClass script_class);
 
     ImeScriptClass getImeKeyboardScriptClass() const;
 
-    ImeActionResult updateImePreedit(const U8String& text,
+    EditorActionResult updateImePreedit(const U8String& text,
                                      ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
-    ImeActionResult setImeComposingText(const U8String& text,
-                                        int cursor_offset,
-                                        ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
-
-    ImeActionResult setImeComposingText(const U8String& text,
-                                        size_t selection_start_offset,
-                                        size_t selection_end_offset,
-                                        ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
-
-    ImeActionResult commitImeText(const U8String& text,
-                                  ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
-
-    ImeActionResult commitImeText(const U8String& text,
-                                  int cursor_offset,
-                                  ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
-
-    ImeActionResult finishImePreedit();
-
-    ImeActionResult cancelImePreedit();
-
-    ImeActionResult markImeDocumentRange(const TextRange& range,
+    EditorActionResult setImeComposingText(const U8String& text,
+                                         int cursor_offset,
                                          ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
-    ImeActionResult markImeDocumentRange(size_t start_offset,
-                                         size_t end_offset,
+    EditorActionResult setImeComposingText(const U8String& text,
+                                         size_t selection_start_offset,
+                                         size_t selection_end_offset,
                                          ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
-    ImeActionResult replaceImeText(const TextRange& range,
+    EditorActionResult commitImeText(const U8String& text,
+                                   ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
+    EditorActionResult commitImeText(const U8String& text,
+                                   int cursor_offset,
+                                   ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
+    EditorActionResult finishImePreedit();
+
+    EditorActionResult cancelImePreedit();
+
+    EditorActionResult markImeDocumentRange(const TextRange& range,
+                                         ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
+    EditorActionResult markImeDocumentRange(size_t start_offset,
+                                          size_t end_offset,
+                                          ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+
+    EditorActionResult replaceImeText(const TextRange& range,
                                    const U8String& text,
                                    ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
-    ImeActionResult replaceImeDocumentText(size_t start_offset,
-                                           size_t end_offset,
-                                           const U8String& text,
-                                           int cursor_offset,
-                                           ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    EditorActionResult replaceImeDocumentText(size_t start_offset,
+                                            size_t end_offset,
+                                            const U8String& text,
+                                            int cursor_offset,
+                                            ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
-    ImeActionResult replaceImeInputContextText(size_t start_offset,
-                                               size_t end_offset,
-                                               const U8String& text,
-                                               int cursor_offset,
-                                               ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    EditorActionResult replaceImeInputContextText(size_t start_offset,
+                                                size_t end_offset,
+                                                const U8String& text,
+                                                int cursor_offset,
+                                                ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
-    ImeActionResult markImeInputContextRange(size_t start_offset,
-                                             size_t end_offset,
-                                             ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    EditorActionResult markImeInputContextRange(size_t start_offset,
+                                              size_t end_offset,
+                                              ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
-    ImeActionResult notifyImeDocumentSelectionChanged(size_t start_offset, size_t end_offset);
+    EditorActionResult notifyImeDocumentSelectionChanged(size_t start_offset, size_t end_offset);
 
-    ImeActionResult notifyImeInputContextSelectionChanged(size_t start_offset, size_t end_offset);
+    EditorActionResult notifyImeInputContextSelectionChanged(size_t start_offset, size_t end_offset);
 
-    ImeActionResult updateImeInputStateText(uint64_t context_id,
+    EditorActionResult updateImeInputStateText(uint64_t context_id,
                                             int32_t document_start_offset,
                                             const U8String& text,
                                             int32_t selection_start_offset,
@@ -397,7 +465,7 @@ namespace NS_SWEETEDITOR {
                                             int32_t composing_end_offset,
                                             ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
-    ImeActionResult updateImeTextModelState(ImeTextModelMode mode,
+    EditorActionResult updateImeTextModelState(ImeTextModelMode mode,
                                             uint64_t context_id,
                                             int32_t document_start_offset,
                                             const U8String& text,
@@ -407,7 +475,7 @@ namespace NS_SWEETEDITOR {
                                             int32_t composing_end_offset,
                                             ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
-    ImeActionResult updateImeTextModelDelta(ImeTextModelMode mode,
+    EditorActionResult updateImeTextModelDelta(ImeTextModelMode mode,
                                             uint64_t context_id,
                                             int32_t document_start_offset,
                                             const U8String& old_text,
@@ -420,20 +488,20 @@ namespace NS_SWEETEDITOR {
                                             int32_t composing_end_offset,
                                             ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
-    ImeActionResult updateImeInputStateSelection(uint64_t context_id,
-                                                 int32_t document_start_offset,
-                                                 int32_t selection_start_offset,
-                                                 int32_t selection_end_offset);
+    EditorActionResult updateImeInputStateSelection(uint64_t context_id,
+                                                  int32_t document_start_offset,
+                                                  int32_t selection_start_offset,
+                                                  int32_t selection_end_offset);
 
-    ImeActionResult replaceImeInputStateText(uint64_t context_id,
-                                             int32_t document_start_offset,
-                                             size_t start_offset,
+    EditorActionResult replaceImeInputStateText(uint64_t context_id,
+                                              int32_t document_start_offset,
+                                              size_t start_offset,
                                              size_t end_offset,
                                              const U8String& text,
                                              int cursor_offset,
                                              ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
-    ImeActionResult commitImeInputStateTextReplacement(uint64_t context_id,
+    EditorActionResult commitImeInputStateTextReplacement(uint64_t context_id,
                                                        int32_t document_start_offset,
                                                        size_t start_offset,
                                                        size_t end_offset,
@@ -441,19 +509,19 @@ namespace NS_SWEETEDITOR {
                                                        int cursor_offset,
                                                        ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
-    ImeActionResult deleteImeBackward(size_t before_length = 1,
+    EditorActionResult deleteImeBackward(size_t before_length = 1,
+                                       ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
+
+    EditorActionResult deleteImeForward(size_t after_length = 1,
                                       ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
 
-    ImeActionResult deleteImeForward(size_t after_length = 1,
-                                     ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
+    EditorActionResult deleteImeSurrounding(size_t before_length,
+                                          size_t after_length,
+                                          ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
 
-    ImeActionResult deleteImeSurrounding(size_t before_length,
-                                         size_t after_length,
-                                         ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
+    EditorActionResult notifyImeSelectionChanged(const TextRange& range);
 
-    ImeActionResult notifyImeSelectionChanged(const TextRange& range);
-
-    ImeActionResult notifyImeCursorChanged(const TextPosition& cursor);
+    EditorActionResult notifyImeCursorChanged(const TextPosition& cursor);
 
     ImeInputContext getImeInputContext(size_t before_length, size_t after_length);
 
@@ -477,20 +545,20 @@ namespace NS_SWEETEDITOR {
     /// Scroll to target line
     /// @param line Line number
     /// @param behavior Scroll behavior
-    void scrollToLine(size_t line, ScrollBehavior behavior);
+    EditorActionResult scrollToLine(size_t line, ScrollBehavior behavior);
 
     /// Go to target line and column (scroll + cursor placement)
     /// @param line Line number (0-based)
     /// @param column Column number (0-based)
-    void gotoPosition(size_t line, size_t column);
+    EditorActionResult gotoPosition(size_t line, size_t column);
 
     /// Adjust scroll offset just enough to keep current cursor inside viewport
-    void ensureCursorVisible();
+    EditorActionResult ensureCursorVisible();
 
     /// Manually set editor scroll offset
     /// @param scroll_x Horizontal scroll offset
     /// @param scroll_y Vertical scroll offset
-    void setScroll(float scroll_x, float scroll_y);
+    EditorActionResult setScroll(float scroll_x, float scroll_y);
 
     /// Get screen-space rectangle for any text position (for floating panel placement)
     /// @param position Text position (line, column)
@@ -504,74 +572,74 @@ namespace NS_SWEETEDITOR {
     /// Register a highlight style
     /// @param style_id Style ID
     /// @param style Text style definition
-    void registerTextStyle(uint32_t style_id, TextStyle&& style);
+    EditorActionResult registerTextStyle(uint32_t style_id, TextStyle&& style);
 
     /// Batch register highlight styles (loop register in registry + mark dirty once)
     /// @param entries Array of style_id->text style pairs (passed with move semantics)
-    void registerBatchTextStyles(Vector<std::pair<uint32_t, TextStyle>>&& entries);
+    EditorActionResult registerBatchTextStyles(Vector<std::pair<uint32_t, TextStyle>>&& entries);
 
     /// Set highlight spans for given line and layer
     /// @param line Line number
     /// @param layer Highlight layer (SYNTAX / SEMANTIC)
     /// @param spans Highlight span list
-    void setLineSpans(size_t line, SpanLayer layer, Vector<StyleSpan>&& spans);
+    EditorActionResult setLineSpans(size_t line, SpanLayer layer, Vector<StyleSpan>&& spans);
 
     /// Batch set highlight spans for multiple lines (loop setLineSpans + mark dirty once)
     /// @param layer Highlight layer (SYNTAX / SEMANTIC)
     /// @param entries Array of line->span list pairs (passed with move semantics)
-    void setBatchLineSpans(SpanLayer layer, Vector<std::pair<size_t, Vector<StyleSpan>>>&& entries);
+    EditorActionResult setBatchLineSpans(SpanLayer layer, Vector<std::pair<size_t, Vector<StyleSpan>>>&& entries);
 
     /// Set inlay hints for given line (replace whole line, already sorted by column ascending)
     /// @param line Line number
     /// @param hints Inlay hint list
-    void setLineInlayHints(size_t line, Vector<InlayHint>&& hints);
+    EditorActionResult setLineInlayHints(size_t line, Vector<InlayHint>&& hints);
 
     /// Batch set inlay hints for multiple lines (loop setLineInlayHints + mark dirty once)
     /// @param entries Array of line->hint list pairs
-    void setBatchLineInlayHints(Vector<std::pair<size_t, Vector<InlayHint>>>&& entries);
+    EditorActionResult setBatchLineInlayHints(Vector<std::pair<size_t, Vector<InlayHint>>>&& entries);
 
     /// Set phantom texts for given line (replace whole line, already sorted by column ascending)
     /// @param line Line number
     /// @param phantoms Phantom text list
-    void setLinePhantomTexts(size_t line, Vector<PhantomText>&& phantoms);
+    EditorActionResult setLinePhantomTexts(size_t line, Vector<PhantomText>&& phantoms);
 
     /// Batch set phantom texts for multiple lines (loop setLinePhantomTexts + mark dirty once)
     /// @param entries Array of line->phantom list pairs
-    void setBatchLinePhantomTexts(Vector<std::pair<size_t, Vector<PhantomText>>>&& entries);
+    EditorActionResult setBatchLinePhantomTexts(Vector<std::pair<size_t, Vector<PhantomText>>>&& entries);
 
     /// Set gutter icons for given line (replace whole line)
     /// @param line Line number
     /// @param icons Icon list
-    void setLineGutterIcons(size_t line, Vector<GutterIcon>&& icons);
+    EditorActionResult setLineGutterIcons(size_t line, Vector<GutterIcon>&& icons);
 
     /// Batch set gutter icons for multiple lines (loop setLineGutterIcons, no dirty mark)
     /// @param entries Array of line->icon list pairs
-    void setBatchLineGutterIcons(Vector<std::pair<size_t, Vector<GutterIcon>>>&& entries);
+    EditorActionResult setBatchLineGutterIcons(Vector<std::pair<size_t, Vector<GutterIcon>>>&& entries);
 
     /// Set max icon count in gutter (affects reserved gutter width)
     /// @param count Max icon count (0=no reserved space, default 0)
-    void setMaxGutterIcons(uint32_t count);
+    EditorActionResult setMaxGutterIcons(uint32_t count);
 
     /// Set CodeLens items for given line (replace whole line)
     /// @param line Line number
     /// @param items CodeLens item list
-    void setLineCodeLens(size_t line, Vector<CodeLensItem>&& items);
+    EditorActionResult setLineCodeLens(size_t line, Vector<CodeLensItem>&& items);
 
     /// Batch set CodeLens items for multiple lines
     /// @param entries Array of line->items pairs
-    void setBatchLineCodeLens(Vector<std::pair<size_t, Vector<CodeLensItem>>>&& entries);
+    EditorActionResult setBatchLineCodeLens(Vector<std::pair<size_t, Vector<CodeLensItem>>>&& entries);
 
     /// Clear all CodeLens items
-    void clearCodeLens();
+    EditorActionResult clearCodeLens();
 
     /// Set link ranges for a given line (replace whole line)
-    void setLineLinks(size_t line, Vector<LinkSpan>&& links);
+    EditorActionResult setLineLinks(size_t line, Vector<LinkSpan>&& links);
 
     /// Batch set link ranges for multiple lines
-    void setBatchLineLinks(Vector<std::pair<size_t, Vector<LinkSpan>>>&& entries);
+    EditorActionResult setBatchLineLinks(Vector<std::pair<size_t, Vector<LinkSpan>>>&& entries);
 
     /// Clear all link ranges
-    void clearLinks();
+    EditorActionResult clearLinks();
 
     /// Resolve link target by logical line and column inside that link.
     /// Returns an empty string when no link matches the requested position.
@@ -580,84 +648,84 @@ namespace NS_SWEETEDITOR {
     /// Set diagnostic decorations for given line (wavy underline/underline)
     /// @param line Line number
     /// @param diagnostics Diagnostic span list
-    void setLineDiagnostics(size_t line, Vector<DiagnosticSpan>&& diagnostics);
+    EditorActionResult setLineDiagnostics(size_t line, Vector<DiagnosticSpan>&& diagnostics);
 
     /// Batch set diagnostic decorations for multiple lines (loop setLineDiagnostics, no dirty mark)
     /// @param entries Array of line->diagnostic list pairs
-    void setBatchLineDiagnostics(Vector<std::pair<size_t, Vector<DiagnosticSpan>>>&& entries);
+    EditorActionResult setBatchLineDiagnostics(Vector<std::pair<size_t, Vector<DiagnosticSpan>>>&& entries);
 
     /// Clear all diagnostic decorations
-    void clearDiagnostics();
+    EditorActionResult clearDiagnostics();
 
-    void setIndentGuides(Vector<IndentGuide>&& guides);
-    void setBracketGuides(Vector<BracketGuide>&& guides);
-    void setFlowGuides(Vector<FlowGuide>&& guides);
-    void setSeparatorGuides(Vector<SeparatorGuide>&& guides);
+    EditorActionResult setIndentGuides(Vector<IndentGuide>&& guides);
+    EditorActionResult setBracketGuides(Vector<BracketGuide>&& guides);
+    EditorActionResult setFlowGuides(Vector<FlowGuide>&& guides);
+    EditorActionResult setSeparatorGuides(Vector<SeparatorGuide>&& guides);
 
     /// Set fold region list (replace existing list)
     /// @param regions Fold region list
-    void setFoldRegions(Vector<FoldRegion>&& regions);
+    EditorActionResult setFoldRegions(Vector<FoldRegion>&& regions);
 
     /// Fold region at given line
     /// @param line Line number (usually fold start line)
     /// @return true means region was found and folded
-    bool foldAt(size_t line);
+    EditorActionResult foldAt(size_t line);
 
     /// Unfold region at given line
     /// @param line Line number
     /// @return true means region was found and unfolded
-    bool unfoldAt(size_t line);
+    EditorActionResult unfoldAt(size_t line);
 
     /// Toggle fold state of region at given line
     /// @param line Line number
     /// @return true means region was found
-    bool toggleFoldAt(size_t line);
+    EditorActionResult toggleFoldAt(size_t line);
 
     /// Fold all regions
-    void foldAll();
+    EditorActionResult foldAll();
 
     /// Unfold all regions
-    void unfoldAll();
+    EditorActionResult unfoldAll();
 
     /// Check whether given line is visible (not hidden by folding)
     bool isLineVisible(size_t line) const;
 
     /// Clear highlight spans in given layer (affects layout, mark dirty)
-    void clearHighlights(SpanLayer layer);
+    EditorActionResult clearHighlights(SpanLayer layer);
 
     /// Clear highlight spans in all layers (affects layout, mark dirty)
-    void clearHighlights();
+    EditorActionResult clearHighlights();
 
     /// Clear all inlay hints (affects layout, mark dirty)
-    void clearInlayHints();
+    EditorActionResult clearInlayHints();
 
     /// Clear all phantom texts (affects layout, mark dirty)
-    void clearPhantomTexts();
+    EditorActionResult clearPhantomTexts();
 
     /// Clear all gutter icons (mark dirty)
-    void clearGutterIcons();
+    EditorActionResult clearGutterIcons();
 
     /// Clear all code structure guides (indent lines, bracket pair lines, control flow arrows, separators)
-    void clearGuides();
+    EditorActionResult clearGuides();
 
     /// Clear all decoration data (highlights, inlay hints, phantom texts, icons, guide lines)
-    void clearAllDecorations();
+    EditorActionResult clearAllDecorations();
 
     /// Set bracket pair list (override default (){}[])
     /// @param pairs Bracket pair list
-    void setBracketPairs(Vector<BracketPair>&& pairs);
+    EditorActionResult setBracketPairs(Vector<BracketPair>&& pairs);
 
     /// Set auto-closing pair list (empty = disable auto-closing)
     /// @param pairs Auto-closing pair list
-    void setAutoClosingPairs(Vector<BracketPair>&& pairs);
+    EditorActionResult setAutoClosingPairs(Vector<BracketPair>&& pairs);
 
     /// Set exact bracket match result from outside (override built-in char scan)
     /// @param open Opening bracket position
     /// @param close Closing bracket position
-    void setMatchedBrackets(const TextPosition& open, const TextPosition& close);
+    EditorActionResult setMatchedBrackets(const TextPosition& open, const TextPosition& close);
 
     /// Clear external bracket match result (fall back to built-in char scan)
-    void clearMatchedBrackets();
+    EditorActionResult clearMatchedBrackets();
 
 #pragma endregion
 
@@ -665,6 +733,17 @@ namespace NS_SWEETEDITOR {
     struct PointerProbeResult {
       HitTarget hot_target;
       PointerCursorType cursor_type {PointerCursorType::TEXT};
+    };
+
+    struct ActionSnapshot {
+      TextPosition cursor;
+      bool has_selection {false};
+      TextRange selection;
+      float scroll_x {0};
+      float scroll_y {0};
+      float scale {1};
+      PointerCursorType pointer_cursor_type {PointerCursorType::TEXT};
+      CompositionState composition;
     };
 
     SharedPtr<TextMeasurer> m_measurer_;
@@ -726,6 +805,31 @@ namespace NS_SWEETEDITOR {
 
     /// Delete selection and place cursor at selection start
     void deleteSelection();
+    TextEditResult insertTextInternal(const U8String& text);
+    TextEditResult replaceTextInternal(const TextRange& range, const U8String& new_text);
+    TextEditResult deleteTextInternal(const TextRange& range);
+    TextEditResult backspaceInternal();
+    TextEditResult deleteForwardInternal();
+    TextEditResult moveLineUpInternal();
+    TextEditResult moveLineDownInternal();
+    TextEditResult copyLineUpInternal();
+    TextEditResult copyLineDownInternal();
+    TextEditResult deleteLineInternal();
+    TextEditResult insertLineAboveInternal();
+    TextEditResult insertLineBelowInternal();
+    TextEditResult undoInternal();
+    TextEditResult redoInternal();
+    TextEditResult insertSnippetInternal(const U8String& snippet_template);
+    void startLinkedEditingInternal(LinkedEditingModel&& model);
+    bool linkedEditingNextTabStopInternal();
+    bool linkedEditingPrevTabStopInternal();
+    void cancelLinkedEditingInternal();
+    void finishLinkedEditingInternal();
+    bool foldAtInternal(size_t line);
+    bool unfoldAtInternal(size_t line);
+    bool toggleFoldAtInternal(size_t line);
+    void foldAllInternal();
+    void unfoldAllInternal();
     /// Place cursor by screen coordinates
     void placeCursorAt(const PointF& screen_point);
     /// Select word at screen coordinates
@@ -761,6 +865,19 @@ namespace NS_SWEETEDITOR {
     HitTarget getActiveHitTarget() const;
     PointerProbeResult probePointer(const PointF& point, KeyModifier modifiers) const;
     void finalizeGestureResult(GestureResult& result) const;
+    ActionSnapshot captureActionSnapshot() const;
+    EditorActionResult finishAction(const ActionSnapshot& before,
+                                    EditorActionReason reason,
+                                    bool handled,
+                                    TextEditResult edit_result = {},
+                                    bool force_redraw = false,
+                                    bool decoration_changed = false) const;
+    EditorActionResult finishGestureAction(const ActionSnapshot& before,
+                                           GestureResult gesture_result,
+                                           EditorActionReason reason,
+                                           EventType event_type = EventType::UNDEFINED) const;
+    EditorActionResult finishImeAction(const ActionSnapshot& before,
+                                       const ImeActionResult& ime_result) const;
     void normalizeScrollState();
 
     /// Linked editing: apply synced replace to all linked ranges in current tab stop, return all changes
@@ -774,6 +891,101 @@ namespace NS_SWEETEDITOR {
 
 #pragma region [IME Internals]
 
+    ImeActionResult updateImePreeditInternal(const U8String& text,
+                                             ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    ImeActionResult setImeComposingTextInternal(const U8String& text,
+                                                int cursor_offset,
+                                                ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    ImeActionResult setImeComposingTextInternal(const U8String& text,
+                                                size_t selection_start_offset,
+                                                size_t selection_end_offset,
+                                                ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    ImeActionResult commitImeTextInternal(const U8String& text,
+                                          ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    ImeActionResult commitImeTextInternal(const U8String& text,
+                                          int cursor_offset,
+                                          ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    ImeActionResult finishImePreeditInternal();
+    ImeActionResult cancelImePreeditInternal();
+    ImeActionResult markImeDocumentRangeInternal(const TextRange& range,
+                                                 ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    ImeActionResult markImeDocumentRangeInternal(size_t start_offset,
+                                                 size_t end_offset,
+                                                 ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    ImeActionResult replaceImeTextInternal(const TextRange& range,
+                                           const U8String& text,
+                                           ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    ImeActionResult replaceImeDocumentTextInternal(size_t start_offset,
+                                                   size_t end_offset,
+                                                   const U8String& text,
+                                                   int cursor_offset,
+                                                   ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    ImeActionResult replaceImeInputContextTextInternal(size_t start_offset,
+                                                       size_t end_offset,
+                                                       const U8String& text,
+                                                       int cursor_offset,
+                                                       ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    ImeActionResult markImeInputContextRangeInternal(size_t start_offset,
+                                                     size_t end_offset,
+                                                     ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    ImeActionResult notifyImeDocumentSelectionChangedInternal(size_t start_offset, size_t end_offset);
+    ImeActionResult notifyImeInputContextSelectionChangedInternal(size_t start_offset, size_t end_offset);
+    ImeActionResult updateImeInputStateTextInternal(uint64_t context_id,
+                                                    int32_t document_start_offset,
+                                                    const U8String& text,
+                                                    int32_t selection_start_offset,
+                                                    int32_t selection_end_offset,
+                                                    int32_t composing_start_offset,
+                                                    int32_t composing_end_offset,
+                                                    ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    ImeActionResult updateImeTextModelStateInternal(ImeTextModelMode mode,
+                                                    uint64_t context_id,
+                                                    int32_t document_start_offset,
+                                                    const U8String& text,
+                                                    int32_t selection_start_offset,
+                                                    int32_t selection_end_offset,
+                                                    int32_t composing_start_offset,
+                                                    int32_t composing_end_offset,
+                                                    ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    ImeActionResult updateImeTextModelDeltaInternal(ImeTextModelMode mode,
+                                                    uint64_t context_id,
+                                                    int32_t document_start_offset,
+                                                    const U8String& old_text,
+                                                    int32_t delta_start_offset,
+                                                    int32_t delta_end_offset,
+                                                    const U8String& delta_text,
+                                                    int32_t selection_start_offset,
+                                                    int32_t selection_end_offset,
+                                                    int32_t composing_start_offset,
+                                                    int32_t composing_end_offset,
+                                                    ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    ImeActionResult updateImeInputStateSelectionInternal(uint64_t context_id,
+                                                         int32_t document_start_offset,
+                                                         int32_t selection_start_offset,
+                                                         int32_t selection_end_offset);
+    ImeActionResult replaceImeInputStateTextInternal(uint64_t context_id,
+                                                     int32_t document_start_offset,
+                                                     size_t start_offset,
+                                                     size_t end_offset,
+                                                     const U8String& text,
+                                                     int cursor_offset,
+                                                     ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    ImeActionResult commitImeInputStateTextReplacementInternal(uint64_t context_id,
+                                                               int32_t document_start_offset,
+                                                               size_t start_offset,
+                                                               size_t end_offset,
+                                                               const U8String& text,
+                                                               int cursor_offset,
+                                                               ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    ImeActionResult deleteImeBackwardInternal(size_t before_length = 1,
+                                              ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
+    ImeActionResult deleteImeForwardInternal(size_t after_length = 1,
+                                             ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
+    ImeActionResult deleteImeSurroundingInternal(size_t before_length,
+                                                 size_t after_length,
+                                                 ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
+    ImeActionResult notifyImeSelectionChangedInternal(const TextRange& range);
+    ImeActionResult notifyImeCursorChangedInternal(const TextPosition& cursor);
     TextRange textRangeFromImeInputContextOffsets(size_t start_offset, size_t end_offset) const;
     TextRange textRangeFromImeInputStateOffsets(uint64_t context_id,
                                                 int32_t document_start_offset,

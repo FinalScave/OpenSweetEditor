@@ -37,7 +37,7 @@ namespace SweetEditor {
 			editorTextSize = System.Math.Max(1f, size);
 			editor.RendererInternal.baseTextFontSize = editorTextSize;
 			editor.RebuildFontsInternal(scale);
-			editor.Flush();
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.OnFontMetricsChanged());
 		}
 
 		/// <summary>Gets editor text size (points).</summary>
@@ -48,7 +48,7 @@ namespace SweetEditor {
 			fontFamily = family ?? "Consolas";
 			editor.RendererInternal.baseTextFontFamily = fontFamily;
 			editor.RebuildFontsInternal(scale);
-			editor.Flush();
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.OnFontMetricsChanged());
 		}
 
 		/// <summary>Gets editor font family.</summary>
@@ -57,9 +57,7 @@ namespace SweetEditor {
 		/// <summary>Sets editor scale.</summary>
 		public void SetScale(float scale) {
 			this.scale = scale;
-			editor.EditorCoreInternal.SetScale(scale);
-			editor.RebuildFontsInternal(scale);
-			editor.Flush();
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetScale(scale));
 		}
 
 		/// <summary>Gets editor scale.</summary>
@@ -68,8 +66,7 @@ namespace SweetEditor {
 		/// <summary>Sets fold arrow mode.</summary>
 		public void SetFoldArrowMode(FoldArrowMode mode) {
 			foldArrowMode = mode;
-			editor.EditorCoreInternal.SetFoldArrowMode((int)mode);
-			editor.Flush();
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetFoldArrowMode((int)mode));
 		}
 
 		/// <summary>Gets fold arrow mode.</summary>
@@ -78,8 +75,7 @@ namespace SweetEditor {
 		/// <summary>Sets wrap mode.</summary>
 		public void SetWrapMode(WrapMode mode) {
 			wrapMode = mode;
-			editor.EditorCoreInternal.SetWrapMode((int)mode);
-			editor.Flush();
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetWrapMode((int)mode));
 		}
 
 		/// <summary>Gets wrap mode.</summary>
@@ -89,8 +85,7 @@ namespace SweetEditor {
 		public void SetLineSpacing(float add, float mult) {
 			lineSpacingAdd = add;
 			lineSpacingMult = mult;
-			editor.EditorCoreInternal.SetLineSpacing(add, mult);
-			editor.Flush();
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetLineSpacing(add, mult));
 		}
 
 		/// <summary>Gets line spacing add.</summary>
@@ -102,8 +97,7 @@ namespace SweetEditor {
 		/// <summary>Sets extra horizontal padding between gutter split and text content start.</summary>
 		public void SetContentStartPadding(float padding) {
 			contentStartPadding = System.Math.Max(0f, padding);
-			editor.EditorCoreInternal.SetContentStartPadding(contentStartPadding);
-			editor.Flush();
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetContentStartPadding(contentStartPadding));
 		}
 
 		/// <summary>Gets content start padding.</summary>
@@ -112,8 +106,7 @@ namespace SweetEditor {
 		/// <summary>Sets whether gutter split line should be rendered.</summary>
 		public void SetShowSplitLine(bool show) {
 			showSplitLine = show;
-			editor.EditorCoreInternal.SetShowSplitLine(show);
-			editor.Flush();
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetShowSplitLine(show));
 		}
 
 		/// <summary>Gets whether gutter split line should be rendered.</summary>
@@ -122,8 +115,7 @@ namespace SweetEditor {
 		/// <summary>Sets whether gutter stays fixed during horizontal scroll.</summary>
 		public void SetGutterSticky(bool sticky) {
 			gutterSticky = sticky;
-			editor.EditorCoreInternal.SetGutterSticky(sticky);
-			editor.Flush();
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetGutterSticky(sticky));
 		}
 
 		/// <summary>Gets whether gutter stays fixed during horizontal scroll.</summary>
@@ -132,8 +124,7 @@ namespace SweetEditor {
 		/// <summary>Sets whether gutter area is visible.</summary>
 		public void SetGutterVisible(bool visible) {
 			gutterVisible = visible;
-			editor.EditorCoreInternal.SetGutterVisible(visible);
-			editor.Flush();
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetGutterVisible(visible));
 		}
 
 		/// <summary>Gets whether gutter area is visible.</summary>
@@ -142,8 +133,7 @@ namespace SweetEditor {
 		/// <summary>Sets current line render mode.</summary>
 		public void SetCurrentLineRenderMode(CurrentLineRenderMode mode) {
 			currentLineRenderMode = mode;
-			editor.EditorCoreInternal.SetCurrentLineRenderMode(mode);
-			editor.Flush();
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetCurrentLineRenderMode(mode));
 		}
 
 		/// <summary>Gets current line render mode.</summary>
@@ -152,7 +142,7 @@ namespace SweetEditor {
 		/// <summary>Sets auto indent mode.</summary>
 		public void SetAutoIndentMode(AutoIndentMode mode) {
 			autoIndentMode = mode;
-			editor.EditorCoreInternal.SetAutoIndentMode((int)mode);
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetAutoIndentMode((int)mode));
 		}
 
 		/// <summary>Gets auto indent mode.</summary>
@@ -161,7 +151,7 @@ namespace SweetEditor {
 		/// <summary>Sets backspace unindent behavior.</summary>
 		public void SetBackspaceUnindent(bool enabled) {
 			backspaceUnindent = enabled;
-			editor.EditorCoreInternal.SetBackspaceUnindent(enabled);
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetBackspaceUnindent(enabled));
 		}
 
 		/// <summary>Gets backspace unindent behavior.</summary>
@@ -170,7 +160,7 @@ namespace SweetEditor {
 		/// <summary>Sets read-only mode.</summary>
 		public void SetReadOnly(bool readOnly) {
 			this.readOnly = readOnly;
-			editor.EditorCoreInternal.SetReadOnly(readOnly);
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetReadOnly(readOnly));
 		}
 
 		/// <summary>Gets read-only mode.</summary>
@@ -179,8 +169,7 @@ namespace SweetEditor {
 		/// <summary>Sets max gutter icons.</summary>
 		public void SetMaxGutterIcons(int count) {
 			maxGutterIcons = count;
-			editor.EditorCoreInternal.SetMaxGutterIcons(count);
-			editor.Flush();
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetMaxGutterIcons(count));
 		}
 
 		/// <summary>Gets max gutter icons.</summary>

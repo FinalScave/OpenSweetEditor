@@ -43,7 +43,7 @@ struct SEModifier: OptionSet {
 }
 
 // MARK: - EventType (matches C++ EventType in gesture.h)
-enum SEEventType: UInt8 {
+enum SEEventType: UInt8, Codable {
     case undefined         = 0
     case touchDown         = 1
     case touchPointerDown  = 2
@@ -860,10 +860,10 @@ class SweetEditorCore {
         return data
     }
 
-    private func withPayload(_ payload: Data, _ block: (UnsafePointer<UInt8>?, Int) -> Void) {
-        payload.withUnsafeBytes { raw in
+    private func withPayload<T>(_ payload: Data, _ block: (UnsafePointer<UInt8>?, Int) -> T) -> T {
+        return payload.withUnsafeBytes { raw in
             let ptr = raw.bindMemory(to: UInt8.self).baseAddress
-            block(ptr, payload.count)
+            return block(ptr, payload.count)
         }
     }
 
@@ -872,6 +872,24 @@ class SweetEditorCore {
         defer { free_binary_data(Int(bitPattern: ptr)) }
         guard size > 0 else { return nil }
         return Data(bytes: ptr, count: size)
+    }
+
+    private func decodeEditorActionPayload(_ ptr: UnsafePointer<UInt8>?, size: Int) -> EditorActionResultData? {
+        let payload = copyBinaryPayloadAndFree(ptr, size: size)
+        return protocolDecoder.decodeEditorActionResult(payload)
+    }
+
+    private func performPayloadEditorAction(
+        _ payload: Data,
+        _ block: (UnsafePointer<UInt8>?, Int, inout Int) -> UnsafePointer<UInt8>?
+    ) -> EditorActionResultData? {
+        return performCoreCall {
+            var outSize: Int = 0
+            let ptr = withPayload(payload) { ptr, size in
+                block(ptr, size, &outSize)
+            }
+            return decodeEditorActionPayload(ptr, size: outSize)
+        }
     }
 
     // MARK: - C Callbacks (static, @convention(c))
@@ -915,18 +933,24 @@ class SweetEditorCore {
 
     // MARK: - Editor Operations
 
-    func setViewport(width: Int, height: Int) {
-        performCoreCall {
-            set_editor_viewport(handle, Int16(width), Int16(height))
+    @discardableResult
+    func setViewport(width: Int, height: Int) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = set_editor_viewport(handle, Int16(width), Int16(height), &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     private(set) var document: SweetDocument?
 
-    func setDocument(_ document: SweetDocument) {
+    @discardableResult
+    func setDocument(_ document: SweetDocument) -> EditorActionResultData? {
         self.document = document
-        performCoreCall {
-            set_editor_document(handle, document.handle)
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = set_editor_document(handle, document.handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
@@ -951,7 +975,7 @@ class SweetEditorCore {
     func handleGestureEvent(type: SEEventType, points: [(Float, Float)],
                             modifiers: SEModifier = [],
                             wheelDeltaX: Float = 0, wheelDeltaY: Float = 0,
-                            directScale: Float = 1) -> GestureResultData? {
+                            directScale: Float = 1) -> EditorActionResultData? {
         return performCoreCall {
             var pointsArr: [Float] = []
             for p in points {
@@ -969,12 +993,11 @@ class SweetEditorCore {
                     &size
                 )
             }
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeGestureResult(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func handleKeyEvent(keyCode: SEKeyCode, text: String? = nil, modifiers: SEModifier = []) -> KeyEventResultData? {
+    func handleKeyEvent(keyCode: SEKeyCode, text: String? = nil, modifiers: SEModifier = []) -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr: UnsafePointer<UInt8>?
@@ -985,27 +1008,25 @@ class SweetEditorCore {
             } else {
                 ptr = handle_editor_key_event(handle, keyCode.rawValue, nil, modifiers.rawValue, &size)
             }
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeKeyEventResult(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func insertText(_ text: String) -> TextEditResultLite? {
+    func insertText(_ text: String) -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = text.withCString { cStr in
                 let ptr = editor_insert_text(handle, cStr, &size)
                 return ptr
             }
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeTextEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    /// Replaces text in a target range atomically and returns TextEditResultLite.
+    /// Replaces text in a target range atomically.
     func replaceText(startLine: Int, startColumn: Int,
                      endLine: Int, endColumn: Int,
-                     newText: String) -> TextEditResultLite? {
+                     newText: String) -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = newText.withCString { cStr in
@@ -1013,86 +1034,77 @@ class SweetEditorCore {
                                     startLine, startColumn,
                                     endLine, endColumn, cStr, &size)
             }
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeTextEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    /// Deletes text in a target range atomically and returns TextEditResultLite.
+    /// Deletes text in a target range atomically.
     func deleteText(startLine: Int, startColumn: Int,
-                    endLine: Int, endColumn: Int) -> TextEditResultLite? {
+                    endLine: Int, endColumn: Int) -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_delete_text(handle,
                                          startLine, startColumn,
                                          endLine, endColumn, &size)
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeTextEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     // MARK: - Line operations
 
-    func moveLineUp() -> TextEditResultLite? {
+    func moveLineUp() -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_move_line_up(handle, &size)
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeTextEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func moveLineDown() -> TextEditResultLite? {
+    func moveLineDown() -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_move_line_down(handle, &size)
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeTextEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func copyLineUp() -> TextEditResultLite? {
+    func copyLineUp() -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_copy_line_up(handle, &size)
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeTextEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func copyLineDown() -> TextEditResultLite? {
+    func copyLineDown() -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_copy_line_down(handle, &size)
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeTextEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func deleteLine() -> TextEditResultLite? {
+    func deleteLine() -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_delete_line(handle, &size)
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeTextEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func insertLineAbove() -> TextEditResultLite? {
+    func insertLineAbove() -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_insert_line_above(handle, &size)
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeTextEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func insertLineBelow() -> TextEditResultLite? {
+    func insertLineBelow() -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_insert_line_below(handle, &size)
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeTextEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
@@ -1114,9 +1126,12 @@ class SweetEditorCore {
     }
 
     /// Moves caret to the given document position.
-    func gotoPosition(line: Int, column: Int) {
-        performCoreCall {
-            editor_goto_position(handle, line, column)
+    @discardableResult
+    func gotoPosition(line: Int, column: Int) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_goto_position(handle, line, column, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
@@ -1150,30 +1165,32 @@ class SweetEditorCore {
     }
 
     /// Sets selection range in document coordinates.
-    func setSelectionRange(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) {
-        performCoreCall {
-            editor_set_selection(handle, startLine, startColumn, endLine, endColumn)
+    @discardableResult
+    func setSelectionRange(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_selection(handle, startLine, startColumn, endLine, endColumn, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     // MARK: - IME Composition
 
     @discardableResult
-    func updateImePreedit(_ text: String) -> TextEditResultLite? {
+    func updateImePreedit(_ text: String) -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = text.withCString {
                 editor_ime_update_preedit(handle, $0, 0, &size)
             }
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeImeEventEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     @discardableResult
     func setImeComposingTextSelection(_ text: String,
                                       selectionStartOffset: Int,
-                                      selectionEndOffset: Int) -> TextEditResultLite? {
+                                      selectionEndOffset: Int) -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let safeStart = max(0, selectionStartOffset)
@@ -1181,13 +1198,12 @@ class SweetEditorCore {
             let ptr = text.withCString {
                 editor_ime_set_composing_text_selection(handle, $0, safeStart, safeEnd, 0, &size)
             }
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeImeEventEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     @discardableResult
-    func commitImeText(_ text: String?) -> TextEditResultLite? {
+    func commitImeText(_ text: String?) -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let call: (UnsafePointer<CChar>?) -> UnsafePointer<UInt8>? = { cStr in
@@ -1199,52 +1215,53 @@ class SweetEditorCore {
             } else {
                 ptr = call(nil)
             }
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeImeEventEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     @discardableResult
-    func finishImePreedit() -> TextEditResultLite? {
+    func finishImePreedit() -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_ime_finish_preedit(handle, &size)
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeImeEventEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func cancelImePreedit() {
-        performCoreCall {
+    @discardableResult
+    func cancelImePreedit() -> EditorActionResultData? {
+        return performCoreCall {
             var size: Int = 0
             let ptr = editor_ime_cancel_preedit(handle, &size)
-            _ = copyBinaryPayloadAndFree(ptr, size: size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func markImeDocumentRange(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) {
-        performCoreCall {
+    @discardableResult
+    func markImeDocumentRange(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) -> EditorActionResultData? {
+        return performCoreCall {
             var size: Int = 0
             let ptr = editor_ime_mark_document_range(handle,
                                                      startLine,
                                                      startColumn,
                                                      endLine,
-                                                     endColumn,
-                                                     0,
-                                                     &size)
-            _ = copyBinaryPayloadAndFree(ptr, size: size)
+                                                      endColumn,
+                                                      0,
+                                                      &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func markImeDocumentRange(startOffset: Int, endOffset: Int) {
-        performCoreCall {
+    @discardableResult
+    func markImeDocumentRange(startOffset: Int, endOffset: Int) -> EditorActionResultData? {
+        return performCoreCall {
             var size: Int = 0
             let ptr = editor_ime_mark_document_range_by_offset(handle,
                                                                startOffset,
-                                                               endOffset,
-                                                               0,
-                                                               &size)
-            _ = copyBinaryPayloadAndFree(ptr, size: size)
+                                                                endOffset,
+                                                                0,
+                                                                &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
@@ -1255,7 +1272,7 @@ class SweetEditorCore {
                                  selectionStartOffset: Int,
                                  selectionEndOffset: Int,
                                  composingStartOffset: Int,
-                                 composingEndOffset: Int) -> TextEditResultLite? {
+                                 composingEndOffset: Int) -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = text.withCString {
@@ -1270,8 +1287,7 @@ class SweetEditorCore {
                                                    0,
                                                    &size)
             }
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeImeEventEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
@@ -1279,7 +1295,7 @@ class SweetEditorCore {
     func updateImeInputStateSelection(contextId: Int64,
                                       documentStartOffset: Int,
                                       selectionStartOffset: Int,
-                                      selectionEndOffset: Int) -> TextEditResultLite? {
+                                      selectionEndOffset: Int) -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_ime_update_input_state_selection(handle,
@@ -1288,8 +1304,7 @@ class SweetEditorCore {
                                                               Int32(selectionStartOffset),
                                                               Int32(selectionEndOffset),
                                                               &size)
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeImeEventEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
@@ -1299,7 +1314,7 @@ class SweetEditorCore {
                                   startOffset: Int,
                                   endOffset: Int,
                                   text: String,
-                                  cursorOffset: Int = 1) -> TextEditResultLite? {
+                                  cursorOffset: Int = 1) -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = text.withCString {
@@ -1313,8 +1328,7 @@ class SweetEditorCore {
                                                     0,
                                                     &size)
             }
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeImeEventEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
@@ -1324,11 +1338,13 @@ class SweetEditorCore {
         }
     }
 
-    func setCompositionEnabled(_ enabled: Bool) {
+    @discardableResult
+    func setCompositionEnabled(_ enabled: Bool) -> EditorActionResultData? {
         compositionEnabled = enabled
         if !enabled {
-            cancelImePreedit()
+            return cancelImePreedit()
         }
+        return nil
     }
 
     func isCompositionEnabled() -> Bool {
@@ -1337,9 +1353,12 @@ class SweetEditorCore {
 
     // MARK: - ReadOnly
 
-    func setReadOnly(_ readOnly: Bool) {
-        performCoreCall {
-            editor_set_read_only(handle, readOnly ? 1 : 0)
+    @discardableResult
+    func setReadOnly(_ readOnly: Bool) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_read_only(handle, readOnly ? 1 : 0, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
@@ -1360,9 +1379,12 @@ class SweetEditorCore {
     }
 
     /// Sets the auto-indentation mode.
-    func setAutoIndentMode(_ mode: AutoIndentMode) {
-        performCoreCall {
-            editor_set_auto_indent_mode(handle, mode.rawValue)
+    @discardableResult
+    func setAutoIndentMode(_ mode: AutoIndentMode) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_auto_indent_mode(handle, mode.rawValue, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
@@ -1374,16 +1396,22 @@ class SweetEditorCore {
     }
 
     /// Sets backspace unindent behavior.
-    func setBackspaceUnindent(_ enabled: Bool) {
-        performCoreCall {
-            editor_set_backspace_unindent(handle, enabled ? 1 : 0)
+    @discardableResult
+    func setBackspaceUnindent(_ enabled: Bool) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_backspace_unindent(handle, enabled ? 1 : 0, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     /// Sets whether Tab inserts spaces instead of a tab character.
-    func setInsertSpaces(_ enabled: Bool) {
-        performCoreCall {
-            editor_set_insert_spaces(handle, enabled ? 1 : 0)
+    @discardableResult
+    func setInsertSpaces(_ enabled: Bool) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_insert_spaces(handle, enabled ? 1 : 0, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
@@ -1475,10 +1503,12 @@ class SweetEditorCore {
         let canScrollY: Bool
     }
 
-    func setScrollbarConfig(_ config: ScrollbarConfig) {
+    @discardableResult
+    func setScrollbarConfig(_ config: ScrollbarConfig) -> EditorActionResultData? {
         scrollbarConfig = config
-        performCoreCall {
-            editor_set_scrollbar_config(
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_scrollbar_config(
                 handle,
                 config.thickness,
                 config.minThumb,
@@ -1487,20 +1517,28 @@ class SweetEditorCore {
                 config.thumbDraggable ? 1 : 0,
                 config.trackTapMode.rawValue,
                 config.fadeDelayMs,
-                config.fadeDurationMs
+                config.fadeDurationMs,
+                &size
             )
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func scrollToLine(line: Int, behavior: UInt8) {
-        performCoreCall {
-            editor_scroll_to_line(handle, line, behavior)
+    @discardableResult
+    func scrollToLine(line: Int, behavior: UInt8) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_scroll_to_line(handle, line, behavior, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func setScroll(scrollX: Float, scrollY: Float) {
-        performCoreCall {
-            editor_set_scroll(handle, scrollX, scrollY)
+    @discardableResult
+    func setScroll(scrollX: Float, scrollY: Float) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_scroll(handle, scrollX, scrollY, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
@@ -1522,88 +1560,88 @@ class SweetEditorCore {
         }
     }
 
-    func onFontMetricsChanged() {
-        performCoreCall {
-            editor_on_font_metrics_changed(handle)
+    @discardableResult
+    func onFontMetricsChanged() -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_on_font_metrics_changed(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     // MARK: - Style / Highlight
 
-    func registerStyle(styleId: UInt32, color: Int32, fontStyle: Int32) {
-        performCoreCall {
-            editor_register_text_style(handle, styleId, color, 0, fontStyle)
+    @discardableResult
+    func registerStyle(styleId: UInt32, color: Int32, fontStyle: Int32) -> EditorActionResultData? {
+        registerStyle(styleId: styleId, color: color, backgroundColor: 0, fontStyle: fontStyle)
+    }
+
+    @discardableResult
+    func registerStyle(styleId: UInt32, color: Int32, backgroundColor: Int32, fontStyle: Int32) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_register_text_style(handle, styleId, color, backgroundColor, fontStyle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func registerStyle(styleId: UInt32, color: Int32, backgroundColor: Int32, fontStyle: Int32) {
-        performCoreCall {
-            editor_register_text_style(handle, styleId, color, backgroundColor, fontStyle)
-        }
-    }
-
-    func registerBatchStyles(_ stylesById: [UInt32: (color: Int32, backgroundColor: Int32, fontStyle: Int32)]) {
-        if stylesById.isEmpty { return }
+    @discardableResult
+    func registerBatchStyles(_ stylesById: [UInt32: (color: Int32, backgroundColor: Int32, fontStyle: Int32)]) -> EditorActionResultData? {
+        if stylesById.isEmpty { return nil }
         let payload = protocolEncoder.packBatchTextStyles(stylesById)
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_register_batch_text_styles(handle, ptr, size)
+        return performCoreCall {
+            var outSize: Int = 0
+            let ptr = withPayload(payload) { ptr, size in
+                editor_register_batch_text_styles(handle, ptr, size, &outSize)
             }
+            return decodeEditorActionPayload(ptr, size: outSize)
         }
     }
 
     /// Clears all highlight layers.
-    func clearHighlights() {
-        performCoreCall {
-            editor_clear_highlights(handle)
+    @discardableResult
+    func clearHighlights() -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_clear_highlights(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     /// Clears a specific highlight layer (0=SYNTAX, 1=SEMANTIC).
-    func clearHighlights(layer: UInt8) {
-        performCoreCall {
-            editor_clear_highlights_layer(handle, layer)
+    @discardableResult
+    func clearHighlights(layer: UInt8) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_clear_highlights_layer(handle, layer, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func setLineSpans(line: Int, layer: UInt8 = 0, spans: [StyleSpan]) {
+    @discardableResult
+    func setLineSpans(line: Int, layer: UInt8 = 0, spans: [StyleSpan]) -> EditorActionResultData? {
         let payload = protocolEncoder.packLineSpans(line: line, layer: Int(layer), spans: spans)
-        setLineSpans(payload: payload)
+        return setLineSpans(payload: payload)
     }
 
-    @available(*, deprecated, message: "Use setLineSpans(line:layer:spans:) with StyleSpan model")
-    func setLineSpans(line: Int, spans: [(column: UInt32, length: UInt32, styleId: UInt32)], layer: UInt8 = 0) {
-        let mapped = spans.map { StyleSpan(column: $0.column, length: $0.length, styleId: $0.styleId) }
-        setLineSpans(line: line, layer: layer, spans: mapped)
-    }
-
-    func setLineSpans(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_line_spans(handle, ptr, size)
-            }
+    @discardableResult
+    func setLineSpans(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_line_spans(handle, ptr, size, &outSize)
         }
     }
 
-    func setBatchLineSpans(layer: UInt8, spansByLine: [Int: [StyleSpan]]) {
-        if spansByLine.isEmpty { return }
+    @discardableResult
+    func setBatchLineSpans(layer: UInt8, spansByLine: [Int: [StyleSpan]]) -> EditorActionResultData? {
+        if spansByLine.isEmpty { return nil }
         let payload = protocolEncoder.packBatchLineSpans(layer: Int(layer), spansByLine: spansByLine)
-        setBatchLineSpans(payload: payload)
+        return setBatchLineSpans(payload: payload)
     }
 
-    @available(*, deprecated, message: "Use setBatchLineSpans(layer:spansByLine:) with StyleSpan model")
-    func setBatchLineSpans(layer: UInt8, spansByLine: [Int: [(column: UInt32, length: UInt32, styleId: UInt32)]]) {
-        let mapped = spansByLine.mapValues { spans in
-            spans.map { StyleSpan(column: $0.column, length: $0.length, styleId: $0.styleId) }
-        }
-        setBatchLineSpans(layer: layer, spansByLine: mapped)
-    }
-
-    func setBatchLineSpans(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_batch_line_spans(handle, ptr, size)
-            }
+    @discardableResult
+    func setBatchLineSpans(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_batch_line_spans(handle, ptr, size, &outSize)
         }
     }
 
@@ -1612,252 +1650,262 @@ class SweetEditorCore {
     /// Sets diagnostic decorations for a specific line (wavy/underline).
     /// - Parameters:
     ///   - line: Line number (0-based).
-    func setLineDiagnostics(line: Int, items: [DiagnosticItem]) {
+    @discardableResult
+    func setLineDiagnostics(line: Int, items: [DiagnosticItem]) -> EditorActionResultData? {
         let payload = protocolEncoder.packLineDiagnostics(line: line, items: items)
-        setLineDiagnostics(payload: payload)
+        return setLineDiagnostics(payload: payload)
     }
 
-    func setLineDiagnostics(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_line_diagnostics(handle, ptr, size)
-            }
+    @discardableResult
+    func setLineDiagnostics(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_line_diagnostics(handle, ptr, size, &outSize)
         }
     }
 
     /// Sets diagnostic decorations for multiple lines.
-    func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [DiagnosticItem]]) {
-        if diagnosticsByLine.isEmpty { return }
+    @discardableResult
+    func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [DiagnosticItem]]) -> EditorActionResultData? {
+        if diagnosticsByLine.isEmpty { return nil }
         let payload = protocolEncoder.packBatchLineDiagnostics(diagnosticsByLine)
-        setBatchLineDiagnostics(payload: payload)
+        return setBatchLineDiagnostics(payload: payload)
     }
 
     /// Sets diagnostic decorations for multiple lines.
-    func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [DiagnosticPayload]]) {
-        if diagnosticsByLine.isEmpty { return }
+    @discardableResult
+    func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [DiagnosticPayload]]) -> EditorActionResultData? {
+        if diagnosticsByLine.isEmpty { return nil }
         let payload = protocolEncoder.packBatchLineDiagnostics(diagnosticsByLine)
-        setBatchLineDiagnostics(payload: payload)
+        return setBatchLineDiagnostics(payload: payload)
     }
 
-    func setBatchLineDiagnostics(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_batch_line_diagnostics(handle, ptr, size)
-            }
+    @discardableResult
+    func setBatchLineDiagnostics(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_batch_line_diagnostics(handle, ptr, size, &outSize)
         }
     }
 
     /// Clears all diagnostic decorations.
-    func clearDiagnostics() {
-        performCoreCall {
-            editor_clear_diagnostics(handle)
+    @discardableResult
+    func clearDiagnostics() -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_clear_diagnostics(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     // MARK: - Inlay Hints & Phantom Text
 
     /// Replaces all inlay hints on a specific line.
-    func setLineInlayHints(line: Int, hints: [InlayHintPayload]) {
+    @discardableResult
+    func setLineInlayHints(line: Int, hints: [InlayHintPayload]) -> EditorActionResultData? {
         let payload = protocolEncoder.packLineInlayHints(line: line, hints: hints)
-        setLineInlayHints(payload: payload)
+        return setLineInlayHints(payload: payload)
     }
 
-    func setLineInlayHints(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_line_inlay_hints(handle, ptr, size)
-            }
+    @discardableResult
+    func setLineInlayHints(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_line_inlay_hints(handle, ptr, size, &outSize)
         }
     }
 
     /// Replaces inlay hints for multiple lines in one call.
-    func setBatchLineInlayHints(_ hintsByLine: [Int: [InlayHintPayload]]) {
-        if hintsByLine.isEmpty { return }
+    @discardableResult
+    func setBatchLineInlayHints(_ hintsByLine: [Int: [InlayHintPayload]]) -> EditorActionResultData? {
+        if hintsByLine.isEmpty { return nil }
         let payload = protocolEncoder.packBatchLineInlayHints(hintsByLine)
-        setBatchLineInlayHints(payload: payload)
+        return setBatchLineInlayHints(payload: payload)
     }
 
-    func setBatchLineInlayHints(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_batch_line_inlay_hints(handle, ptr, size)
-            }
+    @discardableResult
+    func setBatchLineInlayHints(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_batch_line_inlay_hints(handle, ptr, size, &outSize)
         }
     }
 
     /// Clears all inlay hints.
-    func clearInlayHints() {
-        performCoreCall {
-            editor_clear_inlay_hints(handle)
+    @discardableResult
+    func clearInlayHints() -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_clear_inlay_hints(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     /// Replaces phantom texts on a specific line.
-    func setLinePhantomTexts(line: Int, phantoms: [PhantomTextPayload]) {
+    @discardableResult
+    func setLinePhantomTexts(line: Int, phantoms: [PhantomTextPayload]) -> EditorActionResultData? {
         let payload = protocolEncoder.packLinePhantomTexts(line: line, phantoms: phantoms)
-        setLinePhantomTexts(payload: payload)
+        return setLinePhantomTexts(payload: payload)
     }
 
-    func setLinePhantomTexts(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_line_phantom_texts(handle, ptr, size)
-            }
+    @discardableResult
+    func setLinePhantomTexts(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_line_phantom_texts(handle, ptr, size, &outSize)
         }
     }
 
     /// Replaces phantom texts for multiple lines in one call.
-    func setBatchLinePhantomTexts(_ phantomsByLine: [Int: [PhantomTextPayload]]) {
-        if phantomsByLine.isEmpty { return }
+    @discardableResult
+    func setBatchLinePhantomTexts(_ phantomsByLine: [Int: [PhantomTextPayload]]) -> EditorActionResultData? {
+        if phantomsByLine.isEmpty { return nil }
         let payload = protocolEncoder.packBatchLinePhantomTexts(phantomsByLine)
-        setBatchLinePhantomTexts(payload: payload)
+        return setBatchLinePhantomTexts(payload: payload)
     }
 
-    func setBatchLinePhantomTexts(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_batch_line_phantom_texts(handle, ptr, size)
-            }
+    @discardableResult
+    func setBatchLinePhantomTexts(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_batch_line_phantom_texts(handle, ptr, size, &outSize)
         }
     }
 
     /// Clears all phantom texts.
-    func clearPhantomTexts() {
-        performCoreCall {
-            editor_clear_phantom_texts(handle)
+    @discardableResult
+    func clearPhantomTexts() -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_clear_phantom_texts(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     /// Clears all decorations (highlight/inlay/phantom/gutter/guides/diagnostics).
-    func clearAllDecorations() {
-        performCoreCall {
-            editor_clear_all_decorations(handle)
-            editor_clear_diagnostics(handle)
+    @discardableResult
+    func clearAllDecorations() -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_clear_all_decorations(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     // MARK: - Gutter Icons
 
-    func setLineGutterIcons(line: Int, icons: [GutterIcon]) {
+    @discardableResult
+    func setLineGutterIcons(line: Int, icons: [GutterIcon]) -> EditorActionResultData? {
         let payload = protocolEncoder.packLineGutterIcons(line: line, icons: icons)
-        setLineGutterIcons(payload: payload)
+        return setLineGutterIcons(payload: payload)
     }
 
-    @available(*, deprecated, message: "Use setLineGutterIcons(line:icons:) with GutterIcon model")
-    func setLineGutterIcons(line: Int, iconIds: [Int32]) {
-        let mapped = iconIds.map { GutterIcon(iconId: $0) }
-        setLineGutterIcons(line: line, icons: mapped)
-    }
-
-    func setLineGutterIcons(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_line_gutter_icons(handle, ptr, size)
-            }
+    @discardableResult
+    func setLineGutterIcons(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_line_gutter_icons(handle, ptr, size, &outSize)
         }
     }
 
-    func setBatchLineGutterIcons(_ iconsByLine: [Int: [GutterIcon]]) {
-        if iconsByLine.isEmpty { return }
+    @discardableResult
+    func setBatchLineGutterIcons(_ iconsByLine: [Int: [GutterIcon]]) -> EditorActionResultData? {
+        if iconsByLine.isEmpty { return nil }
         let payload = protocolEncoder.packBatchLineGutterIcons(iconsByLine)
-        setBatchLineGutterIcons(payload: payload)
+        return setBatchLineGutterIcons(payload: payload)
     }
 
-    @available(*, deprecated, message: "Use setBatchLineGutterIcons(_:) with GutterIcon model")
-    func setBatchLineGutterIcons(_ iconIdsByLine: [Int: [Int32]]) {
-        let mapped = iconIdsByLine.mapValues { ids in
-            ids.map { GutterIcon(iconId: $0) }
-        }
-        setBatchLineGutterIcons(mapped)
-    }
-
-    func setBatchLineGutterIcons(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_batch_line_gutter_icons(handle, ptr, size)
-            }
+    @discardableResult
+    func setBatchLineGutterIcons(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_batch_line_gutter_icons(handle, ptr, size, &outSize)
         }
     }
 
-    func clearGutterIcons() {
-        performCoreCall {
-            editor_clear_gutter_icons(handle)
+    @discardableResult
+    func clearGutterIcons() -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_clear_gutter_icons(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func setMaxGutterIcons(_ count: UInt32) {
-        performCoreCall {
-            editor_set_max_gutter_icons(handle, count)
+    @discardableResult
+    func setMaxGutterIcons(_ count: UInt32) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_max_gutter_icons(handle, count, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     // MARK: - CodeLens
 
-    func setLineCodeLens(line: Int, items: [CodeLensPayload]) {
+    @discardableResult
+    func setLineCodeLens(line: Int, items: [CodeLensPayload]) -> EditorActionResultData? {
         let payload = protocolEncoder.packLineCodeLens(line: line, items: items)
-        setLineCodeLens(payload: payload)
+        return setLineCodeLens(payload: payload)
     }
 
-    func setLineCodeLens(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_line_codelens(handle, ptr, size)
-            }
+    @discardableResult
+    func setLineCodeLens(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_line_codelens(handle, ptr, size, &outSize)
         }
     }
 
-    func setBatchLineCodeLens(_ itemsByLine: [Int: [CodeLensPayload]]) {
-        if itemsByLine.isEmpty { return }
+    @discardableResult
+    func setBatchLineCodeLens(_ itemsByLine: [Int: [CodeLensPayload]]) -> EditorActionResultData? {
+        if itemsByLine.isEmpty { return nil }
         let payload = protocolEncoder.packBatchLineCodeLens(itemsByLine)
-        setBatchLineCodeLens(payload: payload)
+        return setBatchLineCodeLens(payload: payload)
     }
 
-    func setBatchLineCodeLens(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_batch_line_codelens(handle, ptr, size)
-            }
+    @discardableResult
+    func setBatchLineCodeLens(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_batch_line_codelens(handle, ptr, size, &outSize)
         }
     }
 
-    func clearCodeLens() {
-        performCoreCall {
-            editor_clear_codelens(handle)
+    @discardableResult
+    func clearCodeLens() -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_clear_codelens(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     // MARK: - Links
 
-    func setLineLinks(line: Int, links: [LinkSpan]) {
+    @discardableResult
+    func setLineLinks(line: Int, links: [LinkSpan]) -> EditorActionResultData? {
         let payload = protocolEncoder.packLineLinks(line: line, links: links)
-        setLineLinks(payload: payload)
+        return setLineLinks(payload: payload)
     }
 
-    func setLineLinks(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_line_links(handle, ptr, size)
-            }
+    @discardableResult
+    func setLineLinks(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_line_links(handle, ptr, size, &outSize)
         }
     }
 
-    func setBatchLineLinks(_ linksByLine: [Int: [LinkSpan]]) {
-        if linksByLine.isEmpty { return }
+    @discardableResult
+    func setBatchLineLinks(_ linksByLine: [Int: [LinkSpan]]) -> EditorActionResultData? {
+        if linksByLine.isEmpty { return nil }
         let payload = protocolEncoder.packBatchLineLinks(linksByLine)
-        setBatchLineLinks(payload: payload)
+        return setBatchLineLinks(payload: payload)
     }
 
-    func setBatchLineLinks(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_batch_line_links(handle, ptr, size)
-            }
+    @discardableResult
+    func setBatchLineLinks(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_batch_line_links(handle, ptr, size, &outSize)
         }
     }
 
-    func clearLinks() {
-        performCoreCall {
-            editor_clear_links(handle)
+    @discardableResult
+    func clearLinks() -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_clear_links(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
@@ -1871,81 +1919,82 @@ class SweetEditorCore {
 
     // MARK: - Guides
 
-    func setIndentGuides(_ guides: [IndentGuidePayload]) {
+    @discardableResult
+    func setIndentGuides(_ guides: [IndentGuidePayload]) -> EditorActionResultData? {
         let payload = protocolEncoder.packIndentGuides(guides)
-        setIndentGuides(payload: payload)
+        return setIndentGuides(payload: payload)
     }
 
-    func setIndentGuides(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_indent_guides(handle, ptr, size)
-            }
+    @discardableResult
+    func setIndentGuides(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_indent_guides(handle, ptr, size, &outSize)
         }
     }
 
-    func setBracketGuides(_ guides: [BracketGuidePayload]) {
+    @discardableResult
+    func setBracketGuides(_ guides: [BracketGuidePayload]) -> EditorActionResultData? {
         let payload = protocolEncoder.packBracketGuides(guides)
-        setBracketGuides(payload: payload)
+        return setBracketGuides(payload: payload)
     }
 
-    func setBracketGuides(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_bracket_guides(handle, ptr, size)
-            }
+    @discardableResult
+    func setBracketGuides(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_bracket_guides(handle, ptr, size, &outSize)
         }
     }
 
-    func setFlowGuides(_ guides: [FlowGuidePayload]) {
+    @discardableResult
+    func setFlowGuides(_ guides: [FlowGuidePayload]) -> EditorActionResultData? {
         let payload = protocolEncoder.packFlowGuides(guides)
-        setFlowGuides(payload: payload)
+        return setFlowGuides(payload: payload)
     }
 
-    func setFlowGuides(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_flow_guides(handle, ptr, size)
-            }
+    @discardableResult
+    func setFlowGuides(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_flow_guides(handle, ptr, size, &outSize)
         }
     }
 
-    func setSeparatorGuides(_ guides: [SeparatorGuidePayload]) {
+    @discardableResult
+    func setSeparatorGuides(_ guides: [SeparatorGuidePayload]) -> EditorActionResultData? {
         let payload = protocolEncoder.packSeparatorGuides(guides)
-        setSeparatorGuides(payload: payload)
+        return setSeparatorGuides(payload: payload)
     }
 
-    func setSeparatorGuides(payload: Data) {
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_separator_guides(handle, ptr, size)
-            }
+    @discardableResult
+    func setSeparatorGuides(payload: Data) -> EditorActionResultData? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_separator_guides(handle, ptr, size, &outSize)
         }
     }
 
-    func clearGuides() {
-        performCoreCall {
-            editor_clear_guides(handle)
+    @discardableResult
+    func clearGuides() -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_clear_guides(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     // MARK: - Undo/Redo
 
-    func undo() -> TextEditResultLite? {
+    func undo() -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_undo(handle, &size)
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeTextEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func redo() -> TextEditResultLite? {
+    func redo() -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_redo(handle, &size)
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeTextEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
     func canUndo() -> Bool { performCoreCall { editor_can_undo(handle) != 0 } }
@@ -1953,53 +2002,53 @@ class SweetEditorCore {
 
     // MARK: - Fold (code folding)
 
-    func setFoldRegions(_ regions: [FoldRegion]) {
+    @discardableResult
+    func setFoldRegions(_ regions: [FoldRegion]) -> EditorActionResultData? {
         let payload = protocolEncoder.packFoldRegions(regions)
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_set_fold_regions(handle, ptr, size)
-            }
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_fold_regions(handle, ptr, size, &outSize)
         }
     }
 
-    @available(*, deprecated, message: "Use setFoldRegions(_:) with FoldRegion model")
-    func setFoldRegions(startLines: [Int], endLines: [Int], collapsed: [Bool]) {
-        let count = min(startLines.count, min(endLines.count, collapsed.count))
-        var regions: [FoldRegion] = []
-        regions.reserveCapacity(count)
-        for i in 0..<count {
-            regions.append(FoldRegion(startLine: startLines[i], endLine: endLines[i], collapsed: collapsed[i]))
-        }
-        setFoldRegions(regions)
-    }
-
-    func toggleFold(line: Int) -> Bool {
+    func toggleFold(line: Int) -> EditorActionResultData? {
         return performCoreCall {
-            editor_toggle_fold(handle, line) != 0
+            var size: Int = 0
+            let ptr = editor_toggle_fold(handle, line, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func foldAt(line: Int) -> Bool {
+    func foldAt(line: Int) -> EditorActionResultData? {
         return performCoreCall {
-            editor_fold_at(handle, line) != 0
+            var size: Int = 0
+            let ptr = editor_fold_at(handle, line, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func unfoldAt(line: Int) -> Bool {
+    func unfoldAt(line: Int) -> EditorActionResultData? {
         return performCoreCall {
-            editor_unfold_at(handle, line) != 0
+            var size: Int = 0
+            let ptr = editor_unfold_at(handle, line, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func foldAll() {
-        performCoreCall {
-            editor_fold_all(handle)
+    @discardableResult
+    func foldAll() -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_fold_all(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func unfoldAll() {
-        performCoreCall {
-            editor_unfold_all(handle)
+    @discardableResult
+    func unfoldAll() -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_unfold_all(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
@@ -2020,9 +2069,12 @@ class SweetEditorCore {
     }
 
     /// Sets fold-arrow visibility mode (affects reserved gutter width).
-    func setFoldArrowMode(_ mode: FoldArrowMode) {
-        performCoreCall {
-            editor_set_fold_arrow_mode(handle, mode.rawValue)
+    @discardableResult
+    func setFoldArrowMode(_ mode: FoldArrowMode) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_fold_arrow_mode(handle, mode.rawValue, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
@@ -2037,54 +2089,71 @@ class SweetEditorCore {
     }
 
     /// Sets wrap mode.
-    func setWrapMode(_ mode: WrapMode) {
-        performCoreCall {
-            editor_set_wrap_mode(handle, mode.rawValue)
+    @discardableResult
+    func setWrapMode(_ mode: WrapMode) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_wrap_mode(handle, mode.rawValue, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     /// Sets editor scale in the C++ core.
     /// Use `syncPlatformScale(_:)` to update platform-side fonts and measurer.
-    func setScale(_ scale: Float) {
-        performCoreCall {
-            editor_set_scale(handle, scale)
+    @discardableResult
+    func setScale(_ scale: Float) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_scale(handle, scale, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func setContentStartPadding(_ padding: Float) {
-        performCoreCall {
-            editor_set_content_start_padding(handle, padding)
+    @discardableResult
+    func setContentStartPadding(_ padding: Float) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_content_start_padding(handle, padding, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func setShowSplitLine(_ show: Bool) {
-        performCoreCall {
-            editor_set_show_split_line(handle, show ? 1 : 0)
+    @discardableResult
+    func setShowSplitLine(_ show: Bool) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_show_split_line(handle, show ? 1 : 0, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    func setCurrentLineRenderMode(_ mode: Int32) {
-        performCoreCall {
-            editor_set_current_line_render_mode(handle, mode)
+    @discardableResult
+    func setCurrentLineRenderMode(_ mode: Int32) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_current_line_render_mode(handle, mode, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     /// Syncs platform-side font/measurer to the latest scale from the core.
-    func syncPlatformScale(_ scale: Float) {
-        guard scale > 0 else { return }
+    @discardableResult
+    func syncPlatformScale(_ scale: Float) -> EditorActionResultData? {
+        guard scale > 0 else { return nil }
         rebuildFontsForScale(CGFloat(scale))
-        performCoreCall {
-            editor_on_font_metrics_changed(handle)
-        }
+        return onFontMetricsChanged()
     }
 
     /// Sets line-spacing parameters (`line_height = font_height * mult + add`).
     /// - Parameters:
     ///   - add: Extra line-spacing pixels (default 0).
     ///   - mult: Line-spacing multiplier (default 1.0).
-    func setLineSpacing(add: Float, mult: Float) {
-        performCoreCall {
-            editor_set_line_spacing(handle, add, mult)
+    @discardableResult
+    func setLineSpacing(add: Float, mult: Float) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_line_spacing(handle, add, mult, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
@@ -2101,24 +2170,22 @@ class SweetEditorCore {
     }
 
     /// Inserts a VSCode snippet template and enters linked-editing mode.
-    func insertSnippet(_ template: String) -> TextEditResultLite? {
+    func insertSnippet(_ template: String) -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0
             let ptr = template.withCString { cStr in
                 editor_insert_snippet(handle, cStr, &size)
             }
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeTextEditResultLite(payload)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     /// Starts linked-editing mode with a generic LinkedEditingModel.
-    func startLinkedEditing(model: LinkedEditingModel) {
+    @discardableResult
+    func startLinkedEditing(model: LinkedEditingModel) -> EditorActionResultData? {
         let payload = protocolEncoder.packLinkedEditing(model: model)
-        performCoreCall {
-            withPayload(payload) { ptr, size in
-                editor_start_linked_editing(handle, ptr, size)
-            }
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_start_linked_editing(handle, ptr, size, &outSize)
         }
     }
 
@@ -2130,66 +2197,88 @@ class SweetEditorCore {
     }
 
     /// Linked editing: jump to the next tab stop.
-    func linkedEditingNext() -> Bool {
+    func linkedEditingNext() -> EditorActionResultData? {
         return performCoreCall {
-            editor_linked_editing_next(handle) != 0
+            var size: Int = 0
+            let ptr = editor_linked_editing_next(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     /// Linked editing: jump to the previous tab stop.
-    func linkedEditingPrev() -> Bool {
+    func linkedEditingPrev() -> EditorActionResultData? {
         return performCoreCall {
-            editor_linked_editing_prev(handle) != 0
+            var size: Int = 0
+            let ptr = editor_linked_editing_prev(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     /// Cancels linked-editing mode.
-    func cancelLinkedEditing() {
-        performCoreCall {
-            editor_cancel_linked_editing(handle)
+    @discardableResult
+    func cancelLinkedEditing() -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_cancel_linked_editing(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     // MARK: - Bracket Highlight
 
     /// Sets custom bracket pairs.
-    func setBracketPairs(openChars: [Int32], closeChars: [Int32]) {
+    @discardableResult
+    func setBracketPairs(openChars: [Int32], closeChars: [Int32]) -> EditorActionResultData? {
         assert(openChars.count == closeChars.count, "open/close arrays must have same length")
         var opens = openChars.map(UInt32.init(bitPattern:))
         var closes = closeChars.map(UInt32.init(bitPattern:))
-        performCoreCall {
-            editor_set_bracket_pairs(handle, &opens, &closes, opens.count)
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_bracket_pairs(handle, &opens, &closes, opens.count, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     /// Sets auto-closing pairs for automatic bracket completion.
-    func setAutoClosingPairs(openChars: [Int32], closeChars: [Int32]) {
+    @discardableResult
+    func setAutoClosingPairs(openChars: [Int32], closeChars: [Int32]) -> EditorActionResultData? {
         assert(openChars.count == closeChars.count, "open/close arrays must have same length")
         var opens = openChars.map(UInt32.init(bitPattern:))
         var closes = closeChars.map(UInt32.init(bitPattern:))
-        performCoreCall {
-            editor_set_auto_closing_pairs(handle, &opens, &closes, opens.count)
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_auto_closing_pairs(handle, &opens, &closes, opens.count, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     /// Sets tab size (number of spaces per tab stop).
-    func setTabSize(_ tabSize: Int) {
-        performCoreCall {
-            editor_set_tab_size(handle, Int32(tabSize))
+    @discardableResult
+    func setTabSize(_ tabSize: Int) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_tab_size(handle, Int32(tabSize), &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     /// Sets externally computed exact bracket-match positions (higher priority than built-in scan).
-    func setMatchedBrackets(openLine: Int, openColumn: Int, closeLine: Int, closeColumn: Int) {
-        performCoreCall {
-            editor_set_matched_brackets(handle, openLine, openColumn, closeLine, closeColumn)
+    @discardableResult
+    func setMatchedBrackets(openLine: Int, openColumn: Int, closeLine: Int, closeColumn: Int) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_matched_brackets(handle, openLine, openColumn, closeLine, closeColumn, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     /// Clears externally provided bracket-match results (falls back to built-in scan).
-    func clearMatchedBrackets() {
-        performCoreCall {
-            editor_clear_matched_brackets(handle)
+    @discardableResult
+    func clearMatchedBrackets() -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_clear_matched_brackets(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
         }
     }
 }

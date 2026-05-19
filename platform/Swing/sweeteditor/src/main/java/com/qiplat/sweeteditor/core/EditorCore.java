@@ -2,7 +2,6 @@ package com.qiplat.sweeteditor.core;
 
 import com.qiplat.sweeteditor.core.adornment.*;
 import com.qiplat.sweeteditor.core.foundation.*;
-import com.qiplat.sweeteditor.core.ime.ImeActionResult;
 import com.qiplat.sweeteditor.core.ime.ImeInputContext;
 import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
 import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
@@ -97,10 +96,10 @@ public class EditorCore {
 
     private Document mDocument;
 
-    public void loadDocument(Document document) {
-        if (document == null) return;
+    public EditorActionResult loadDocument(Document document) {
+        if (document == null) return EditorActionResult.EMPTY;
         mDocument = document;
-        EditorNative.setEditorDocument(nativeHandle, document.nativeHandle);
+        return decodeAction(EditorNative.setEditorDocument(nativeHandle, document.nativeHandle));
     }
 
     public Document getDocument() {
@@ -109,56 +108,56 @@ public class EditorCore {
 
     // ===================== Viewport/Appearance =====================
 
-    public void setViewport(int width, int height) {
-        EditorNative.setViewport(nativeHandle, width, height);
+    public EditorActionResult setViewport(int width, int height) {
+        return decodeAction(EditorNative.setViewport(nativeHandle, width, height));
     }
 
-    public void onFontMetricsChanged() {
-        EditorNative.onFontMetricsChanged(nativeHandle);
+    public EditorActionResult onFontMetricsChanged() {
+        return decodeAction(EditorNative.onFontMetricsChanged(nativeHandle));
     }
 
-    public void setFoldArrowMode(int mode) {
-        EditorNative.setFoldArrowMode(nativeHandle, mode);
+    public EditorActionResult setFoldArrowMode(int mode) {
+        return decodeAction(EditorNative.setFoldArrowMode(nativeHandle, mode));
     }
 
-    public void setWrapMode(int mode) {
-        EditorNative.setWrapMode(nativeHandle, mode);
+    public EditorActionResult setWrapMode(int mode) {
+        return decodeAction(EditorNative.setWrapMode(nativeHandle, mode));
     }
 
-    public void setTabSize(int tabSize) {
-        EditorNative.setTabSize(nativeHandle, tabSize);
+    public EditorActionResult setTabSize(int tabSize) {
+        return decodeAction(EditorNative.setTabSize(nativeHandle, tabSize));
     }
 
-    public void setInsertSpaces(boolean enabled) {
-        EditorNative.setInsertSpaces(nativeHandle, enabled ? 1 : 0);
+    public EditorActionResult setInsertSpaces(boolean enabled) {
+        return decodeAction(EditorNative.setInsertSpaces(nativeHandle, enabled ? 1 : 0));
     }
 
-    public void setScale(float scale) {
-        EditorNative.setScale(nativeHandle, scale);
+    public EditorActionResult setScale(float scale) {
+        return decodeAction(EditorNative.setScale(nativeHandle, scale));
     }
 
-    public void setLineSpacing(float add, float mult) {
-        EditorNative.setLineSpacing(nativeHandle, add, mult);
+    public EditorActionResult setLineSpacing(float add, float mult) {
+        return decodeAction(EditorNative.setLineSpacing(nativeHandle, add, mult));
     }
 
-    public void setContentStartPadding(float padding) {
-        EditorNative.setContentStartPadding(nativeHandle, padding);
+    public EditorActionResult setContentStartPadding(float padding) {
+        return decodeAction(EditorNative.setContentStartPadding(nativeHandle, padding));
     }
 
-    public void setShowSplitLine(boolean show) {
-        EditorNative.setShowSplitLine(nativeHandle, show);
+    public EditorActionResult setShowSplitLine(boolean show) {
+        return decodeAction(EditorNative.setShowSplitLine(nativeHandle, show));
     }
 
-    public void setGutterSticky(boolean sticky) {
-        EditorNative.setGutterSticky(nativeHandle, sticky);
+    public EditorActionResult setGutterSticky(boolean sticky) {
+        return decodeAction(EditorNative.setGutterSticky(nativeHandle, sticky));
     }
 
-    public void setGutterVisible(boolean visible) {
-        EditorNative.setGutterVisible(nativeHandle, visible);
+    public EditorActionResult setGutterVisible(boolean visible) {
+        return decodeAction(EditorNative.setGutterVisible(nativeHandle, visible));
     }
 
-    public void setCurrentLineRenderMode(int mode) {
-        EditorNative.setCurrentLineRenderMode(nativeHandle, mode);
+    public EditorActionResult setCurrentLineRenderMode(int mode) {
+        return decodeAction(EditorNative.setCurrentLineRenderMode(nativeHandle, mode));
     }
 
     // ===================== Rendering =====================
@@ -191,127 +190,82 @@ public class EditorCore {
 
     // ===================== Gesture/Keyboard =====================
 
-    public GestureResult handleGestureEvent(int type, float[] points, int modifiers,
-                                            float wheelDeltaX, float wheelDeltaY, float directScale) {
+    public EditorActionResult handleGestureEvent(int type, float[] points, int modifiers,
+                                                 float wheelDeltaX, float wheelDeltaY, float directScale) {
         return handleGestureEventEx(type, points, modifiers, wheelDeltaX, wheelDeltaY, directScale);
     }
 
-    public GestureResult handleGestureEventEx(int type, float[] points, int modifiers,
-                                              float wheelDeltaX, float wheelDeltaY, float directScale) {
+    public EditorActionResult handleGestureEventEx(int type, float[] points, int modifiers,
+                                                   float wheelDeltaX, float wheelDeltaY, float directScale) {
         try (Arena tempArena = Arena.ofConfined()) {
             int pointerCount = (points != null) ? points.length / 2 : 0;
             if (points == null) points = new float[0];
             EditorNative.NativeBinaryResult result = EditorNative.handleGestureEventEx(nativeHandle, type, pointerCount,
                     tempArena, points, modifiers, wheelDeltaX, wheelDeltaY, directScale);
-            try {
-                return ProtocolDecoder.decodeGestureResult(result.asByteBuffer());
-            } finally {
-                result.free();
-            }
+            return decodeAction(result);
         }
     }
 
     /** Advances edge-scroll by one tick and returns an updated gesture result. */
-    public GestureResult tickEdgeScroll() {
-        EditorNative.NativeBinaryResult result = EditorNative.tickEdgeScroll(nativeHandle);
-        try {
-            return ProtocolDecoder.decodeGestureResult(result.asByteBuffer());
-        } finally {
-            result.free();
-        }
+    public EditorActionResult tickEdgeScroll() {
+        return decodeAction(EditorNative.tickEdgeScroll(nativeHandle));
     }
 
-    public GestureResult tickFling() {
-        EditorNative.NativeBinaryResult result = EditorNative.tickFling(nativeHandle);
-        try {
-            return ProtocolDecoder.decodeGestureResult(result.asByteBuffer());
-        } finally {
-            result.free();
-        }
+    public EditorActionResult tickFling() {
+        return decodeAction(EditorNative.tickFling(nativeHandle));
     }
 
     /** Unified animation tick: advances all active animations (edge-scroll, fling). */
-    public GestureResult tickAnimations() {
-        EditorNative.NativeBinaryResult result = EditorNative.tickAnimations(nativeHandle);
-        try {
-            return ProtocolDecoder.decodeGestureResult(result.asByteBuffer());
-        } finally {
-            result.free();
-        }
+    public EditorActionResult tickAnimations() {
+        return decodeAction(EditorNative.tickAnimations(nativeHandle));
     }
 
-    public KeyEventResult handleKeyEvent(int keyCode, String text, int modifiers) {
+    public EditorActionResult handleKeyEvent(int keyCode, String text, int modifiers) {
         try (Arena tempArena = Arena.ofConfined()) {
             EditorNative.NativeBinaryResult result = EditorNative.handleKeyEvent(nativeHandle, keyCode, text, modifiers, tempArena);
-            try {
-                return ProtocolDecoder.decodeKeyEventResult(result.asByteBuffer());
-            } finally {
-                result.free();
-            }
+            return decodeAction(result);
         }
     }
 
-    public void setKeyMap(KeyMap keyMap) {
-        if (keyMap == null) return;
+    public EditorActionResult setKeyMap(KeyMap keyMap) {
+        if (keyMap == null) return EditorActionResult.EMPTY;
         byte[] payload = ProtocolEncoder.packKeyMap(keyMap);
         try (Arena tempArena = Arena.ofConfined()) {
-            EditorNative.setKeyMap(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setKeyMap(nativeHandle, payload, tempArena));
         }
     }
 
     // ===================== Text Editing =====================
 
-    public TextEditResult insertText(String text) {
+    public EditorActionResult insertText(String text) {
         try (Arena tempArena = Arena.ofConfined()) {
             EditorNative.NativeBinaryResult result = EditorNative.insertText(nativeHandle, text, tempArena);
-            try {
-                return ProtocolDecoder.decodeTextEditResult(result.asByteBuffer());
-            } finally {
-                result.free();
-            }
+            return decodeAction(result);
         }
     }
 
-    public TextEditResult replaceText(TextRange range, String newText) {
+    public EditorActionResult replaceText(TextRange range, String newText) {
         try (Arena tempArena = Arena.ofConfined()) {
             EditorNative.NativeBinaryResult result = EditorNative.replaceText(nativeHandle,
                     range.start.line, range.start.column,
                     range.end.line, range.end.column, newText, tempArena);
-            try {
-                return ProtocolDecoder.decodeTextEditResult(result.asByteBuffer());
-            } finally {
-                result.free();
-            }
+            return decodeAction(result);
         }
     }
 
-    public TextEditResult deleteText(TextRange range) {
+    public EditorActionResult deleteText(TextRange range) {
         EditorNative.NativeBinaryResult result = EditorNative.deleteText(nativeHandle,
                 range.start.line, range.start.column,
                 range.end.line, range.end.column);
-        try {
-            return ProtocolDecoder.decodeTextEditResult(result.asByteBuffer());
-        } finally {
-            result.free();
-        }
+        return decodeAction(result);
     }
 
-    public TextEditResult backspace() {
-        EditorNative.NativeBinaryResult result = EditorNative.backspace(nativeHandle);
-        try {
-            return ProtocolDecoder.decodeTextEditResult(result.asByteBuffer());
-        } finally {
-            result.free();
-        }
+    public EditorActionResult backspace() {
+        return decodeAction(EditorNative.backspace(nativeHandle));
     }
 
-    public TextEditResult deleteForward() {
-        EditorNative.NativeBinaryResult result = EditorNative.deleteForward(nativeHandle);
-        try {
-            return ProtocolDecoder.decodeTextEditResult(result.asByteBuffer());
-        } finally {
-            result.free();
-        }
+    public EditorActionResult deleteForward() {
+        return decodeAction(EditorNative.deleteForward(nativeHandle));
     }
 
     public String getSelectedText() {
@@ -320,87 +274,42 @@ public class EditorCore {
 
     // ===================== Line Operations =====================
 
-    public TextEditResult moveLineUp() {
-        EditorNative.NativeBinaryResult result = EditorNative.moveLineUp(nativeHandle);
-        try {
-            return ProtocolDecoder.decodeTextEditResult(result.asByteBuffer());
-        } finally {
-            result.free();
-        }
+    public EditorActionResult moveLineUp() {
+        return decodeAction(EditorNative.moveLineUp(nativeHandle));
     }
 
-    public TextEditResult moveLineDown() {
-        EditorNative.NativeBinaryResult result = EditorNative.moveLineDown(nativeHandle);
-        try {
-            return ProtocolDecoder.decodeTextEditResult(result.asByteBuffer());
-        } finally {
-            result.free();
-        }
+    public EditorActionResult moveLineDown() {
+        return decodeAction(EditorNative.moveLineDown(nativeHandle));
     }
 
-    public TextEditResult copyLineUp() {
-        EditorNative.NativeBinaryResult result = EditorNative.copyLineUp(nativeHandle);
-        try {
-            return ProtocolDecoder.decodeTextEditResult(result.asByteBuffer());
-        } finally {
-            result.free();
-        }
+    public EditorActionResult copyLineUp() {
+        return decodeAction(EditorNative.copyLineUp(nativeHandle));
     }
 
-    public TextEditResult copyLineDown() {
-        EditorNative.NativeBinaryResult result = EditorNative.copyLineDown(nativeHandle);
-        try {
-            return ProtocolDecoder.decodeTextEditResult(result.asByteBuffer());
-        } finally {
-            result.free();
-        }
+    public EditorActionResult copyLineDown() {
+        return decodeAction(EditorNative.copyLineDown(nativeHandle));
     }
 
-    public TextEditResult deleteLine() {
-        EditorNative.NativeBinaryResult result = EditorNative.deleteLine(nativeHandle);
-        try {
-            return ProtocolDecoder.decodeTextEditResult(result.asByteBuffer());
-        } finally {
-            result.free();
-        }
+    public EditorActionResult deleteLine() {
+        return decodeAction(EditorNative.deleteLine(nativeHandle));
     }
 
-    public TextEditResult insertLineAbove() {
-        EditorNative.NativeBinaryResult result = EditorNative.insertLineAbove(nativeHandle);
-        try {
-            return ProtocolDecoder.decodeTextEditResult(result.asByteBuffer());
-        } finally {
-            result.free();
-        }
+    public EditorActionResult insertLineAbove() {
+        return decodeAction(EditorNative.insertLineAbove(nativeHandle));
     }
 
-    public TextEditResult insertLineBelow() {
-        EditorNative.NativeBinaryResult result = EditorNative.insertLineBelow(nativeHandle);
-        try {
-            return ProtocolDecoder.decodeTextEditResult(result.asByteBuffer());
-        } finally {
-            result.free();
-        }
+    public EditorActionResult insertLineBelow() {
+        return decodeAction(EditorNative.insertLineBelow(nativeHandle));
     }
 
     // ===================== Undo/Redo =====================
 
-    public TextEditResult undo() {
-        EditorNative.NativeBinaryResult result = EditorNative.undo(nativeHandle);
-        try {
-            return ProtocolDecoder.decodeTextEditResult(result.asByteBuffer());
-        } finally {
-            result.free();
-        }
+    public EditorActionResult undo() {
+        return decodeAction(EditorNative.undo(nativeHandle));
     }
 
-    public TextEditResult redo() {
-        EditorNative.NativeBinaryResult result = EditorNative.redo(nativeHandle);
-        try {
-            return ProtocolDecoder.decodeTextEditResult(result.asByteBuffer());
-        } finally {
-            result.free();
-        }
+    public EditorActionResult redo() {
+        return decodeAction(EditorNative.redo(nativeHandle));
     }
 
     public boolean canUndo() { return EditorNative.canUndo(nativeHandle); }
@@ -408,32 +317,32 @@ public class EditorCore {
 
     // ===================== Cursor/Selection =====================
 
-    public void setCursorPosition(int line, int column) {
-        EditorNative.setCursorPosition(nativeHandle, line, column);
+    public EditorActionResult setCursorPosition(int line, int column) {
+        return decodeAction(EditorNative.setCursorPosition(nativeHandle, line, column));
     }
 
-    public void moveCursorLeft(boolean extendSelection) {
-        EditorNative.moveCursorLeft(nativeHandle, extendSelection);
+    public EditorActionResult moveCursorLeft(boolean extendSelection) {
+        return decodeAction(EditorNative.moveCursorLeft(nativeHandle, extendSelection));
     }
 
-    public void moveCursorRight(boolean extendSelection) {
-        EditorNative.moveCursorRight(nativeHandle, extendSelection);
+    public EditorActionResult moveCursorRight(boolean extendSelection) {
+        return decodeAction(EditorNative.moveCursorRight(nativeHandle, extendSelection));
     }
 
-    public void moveCursorUp(boolean extendSelection) {
-        EditorNative.moveCursorUp(nativeHandle, extendSelection);
+    public EditorActionResult moveCursorUp(boolean extendSelection) {
+        return decodeAction(EditorNative.moveCursorUp(nativeHandle, extendSelection));
     }
 
-    public void moveCursorDown(boolean extendSelection) {
-        EditorNative.moveCursorDown(nativeHandle, extendSelection);
+    public EditorActionResult moveCursorDown(boolean extendSelection) {
+        return decodeAction(EditorNative.moveCursorDown(nativeHandle, extendSelection));
     }
 
-    public void moveCursorToLineStart(boolean extendSelection) {
-        EditorNative.moveCursorToLineStart(nativeHandle, extendSelection);
+    public EditorActionResult moveCursorToLineStart(boolean extendSelection) {
+        return decodeAction(EditorNative.moveCursorToLineStart(nativeHandle, extendSelection));
     }
 
-    public void moveCursorToLineEnd(boolean extendSelection) {
-        EditorNative.moveCursorToLineEnd(nativeHandle, extendSelection);
+    public EditorActionResult moveCursorToLineEnd(boolean extendSelection) {
+        return decodeAction(EditorNative.moveCursorToLineEnd(nativeHandle, extendSelection));
     }
 
     public TextPosition getCursorPosition() {
@@ -456,12 +365,12 @@ public class EditorCore {
         return EditorNative.getWordAtCursor(nativeHandle);
     }
 
-    public void selectAll() {
-        EditorNative.selectAll(nativeHandle);
+    public EditorActionResult selectAll() {
+        return decodeAction(EditorNative.selectAll(nativeHandle));
     }
 
-    public void setSelection(int startLine, int startColumn, int endLine, int endColumn) {
-        EditorNative.setSelection(nativeHandle, startLine, startColumn, endLine, endColumn);
+    public EditorActionResult setSelection(int startLine, int startColumn, int endLine, int endColumn) {
+        return decodeAction(EditorNative.setSelection(nativeHandle, startLine, startColumn, endLine, endColumn));
     }
 
     public TextRange getSelection() {
@@ -500,26 +409,34 @@ public class EditorCore {
                 new TextPosition(values[2], values[3]));
     }
 
-    public ImeActionResult updateImePreedit(String text, int scriptHint) {
+    private EditorActionResult decodeAction(EditorNative.NativeBinaryResult result) {
+        try {
+            return ProtocolDecoder.decodeEditorActionResult(result.asByteBuffer());
+        } finally {
+            result.free();
+        }
+    }
+
+    public EditorActionResult updateImePreedit(String text, int scriptHint) {
         try (Arena tempArena = Arena.ofConfined()) {
-            return decodeImeActionResult(EditorNative.updateImePreedit(
+            return decodeAction(EditorNative.updateImePreedit(
                     nativeHandle, text != null ? text : "", scriptHint, tempArena));
         }
     }
 
-    public ImeActionResult setImeComposingText(String text, int cursorOffset, int scriptHint) {
+    public EditorActionResult setImeComposingText(String text, int cursorOffset, int scriptHint) {
         try (Arena tempArena = Arena.ofConfined()) {
-            return decodeImeActionResult(EditorNative.setImeComposingText(
+            return decodeAction(EditorNative.setImeComposingText(
                     nativeHandle, text != null ? text : "", cursorOffset, scriptHint, tempArena));
         }
     }
 
-    public ImeActionResult setImeComposingTextSelection(String text,
-                                                        long selectionStartOffset,
-                                                        long selectionEndOffset,
-                                                        int scriptHint) {
+    public EditorActionResult setImeComposingTextSelection(String text,
+                                                           long selectionStartOffset,
+                                                           long selectionEndOffset,
+                                                           int scriptHint) {
         try (Arena tempArena = Arena.ofConfined()) {
-            return decodeImeActionResult(EditorNative.setImeComposingTextSelection(
+            return decodeAction(EditorNative.setImeComposingTextSelection(
                     nativeHandle,
                     text != null ? text : "",
                     Math.max(0, selectionStartOffset),
@@ -529,43 +446,43 @@ public class EditorCore {
         }
     }
 
-    public ImeActionResult commitImeText(String text, int scriptHint) {
+    public EditorActionResult commitImeText(String text, int scriptHint) {
         try (Arena tempArena = Arena.ofConfined()) {
-            return decodeImeActionResult(EditorNative.commitImeText(
+            return decodeAction(EditorNative.commitImeText(
                     nativeHandle, text != null ? text : "", scriptHint, tempArena));
         }
     }
 
-    public ImeActionResult finishImePreedit() {
-        return decodeImeActionResult(EditorNative.finishImePreedit(nativeHandle));
+    public EditorActionResult finishImePreedit() {
+        return decodeAction(EditorNative.finishImePreedit(nativeHandle));
     }
 
-    public ImeActionResult cancelImePreedit() {
-        return decodeImeActionResult(EditorNative.cancelImePreedit(nativeHandle));
+    public EditorActionResult cancelImePreedit() {
+        return decodeAction(EditorNative.cancelImePreedit(nativeHandle));
     }
 
-    public ImeActionResult markImeDocumentRange(TextRange range, int scriptHint) {
+    public EditorActionResult markImeDocumentRange(TextRange range, int scriptHint) {
         if (range == null || range.start == null || range.end == null) {
-            return new ImeActionResult();
+            return EditorActionResult.EMPTY;
         }
-        return decodeImeActionResult(EditorNative.markImeDocumentRange(
+        return decodeAction(EditorNative.markImeDocumentRange(
                 nativeHandle,
                 range.start.line, range.start.column,
                 range.end.line, range.end.column,
                 scriptHint));
     }
 
-    public ImeActionResult markImeDocumentRange(long startOffset, long endOffset, int scriptHint) {
-        return decodeImeActionResult(EditorNative.markImeDocumentRangeByOffset(
+    public EditorActionResult markImeDocumentRange(long startOffset, long endOffset, int scriptHint) {
+        return decodeAction(EditorNative.markImeDocumentRangeByOffset(
                 nativeHandle, Math.max(0, startOffset), Math.max(0, endOffset), scriptHint));
     }
 
-    public ImeActionResult replaceImeText(TextRange range, String text, int scriptHint) {
+    public EditorActionResult replaceImeText(TextRange range, String text, int scriptHint) {
         if (range == null || range.start == null || range.end == null) {
-            return new ImeActionResult();
+            return EditorActionResult.EMPTY;
         }
         try (Arena tempArena = Arena.ofConfined()) {
-            return decodeImeActionResult(EditorNative.replaceImeText(
+            return decodeAction(EditorNative.replaceImeText(
                     nativeHandle,
                     range.start.line, range.start.column,
                     range.end.line, range.end.column,
@@ -575,13 +492,13 @@ public class EditorCore {
         }
     }
 
-    public ImeActionResult replaceImeDocumentText(long startOffset,
-                                                  long endOffset,
-                                                  String text,
-                                                  int cursorOffset,
-                                                  int scriptHint) {
+    public EditorActionResult replaceImeDocumentText(long startOffset,
+                                                     long endOffset,
+                                                     String text,
+                                                     int cursorOffset,
+                                                     int scriptHint) {
         try (Arena tempArena = Arena.ofConfined()) {
-            return decodeImeActionResult(EditorNative.replaceImeDocumentText(
+            return decodeAction(EditorNative.replaceImeDocumentText(
                     nativeHandle,
                     Math.max(0, startOffset),
                     Math.max(0, endOffset),
@@ -592,13 +509,13 @@ public class EditorCore {
         }
     }
 
-    public ImeActionResult replaceImeInputContextText(long startOffset,
-                                                      long endOffset,
-                                                      String text,
-                                                      int cursorOffset,
-                                                      int scriptHint) {
+    public EditorActionResult replaceImeInputContextText(long startOffset,
+                                                         long endOffset,
+                                                         String text,
+                                                         int cursorOffset,
+                                                         int scriptHint) {
         try (Arena tempArena = Arena.ofConfined()) {
-            return decodeImeActionResult(EditorNative.replaceImeInputContextText(
+            return decodeAction(EditorNative.replaceImeInputContextText(
                     nativeHandle,
                     Math.max(0, startOffset),
                     Math.max(0, endOffset),
@@ -609,31 +526,31 @@ public class EditorCore {
         }
     }
 
-    public ImeActionResult markImeInputContextRange(long startOffset, long endOffset, int scriptHint) {
-        return decodeImeActionResult(EditorNative.markImeInputContextRange(
+    public EditorActionResult markImeInputContextRange(long startOffset, long endOffset, int scriptHint) {
+        return decodeAction(EditorNative.markImeInputContextRange(
                 nativeHandle, Math.max(0, startOffset), Math.max(0, endOffset), scriptHint));
     }
 
-    public ImeActionResult notifyImeDocumentSelectionChanged(long startOffset, long endOffset) {
-        return decodeImeActionResult(EditorNative.notifyImeDocumentSelectionChanged(
+    public EditorActionResult notifyImeDocumentSelectionChanged(long startOffset, long endOffset) {
+        return decodeAction(EditorNative.notifyImeDocumentSelectionChanged(
                 nativeHandle, Math.max(0, startOffset), Math.max(0, endOffset)));
     }
 
-    public ImeActionResult notifyImeInputContextSelectionChanged(long startOffset, long endOffset) {
-        return decodeImeActionResult(EditorNative.notifyImeInputContextSelectionChanged(
+    public EditorActionResult notifyImeInputContextSelectionChanged(long startOffset, long endOffset) {
+        return decodeAction(EditorNative.notifyImeInputContextSelectionChanged(
                 nativeHandle, Math.max(0, startOffset), Math.max(0, endOffset)));
     }
 
-    public ImeActionResult updateImeInputStateText(long contextId,
-                                                   int documentStartOffset,
-                                                   String text,
-                                                   int selectionStartOffset,
-                                                   int selectionEndOffset,
-                                                   int composingStartOffset,
-                                                   int composingEndOffset,
-                                                   int scriptHint) {
+    public EditorActionResult updateImeInputStateText(long contextId,
+                                                      int documentStartOffset,
+                                                      String text,
+                                                      int selectionStartOffset,
+                                                      int selectionEndOffset,
+                                                      int composingStartOffset,
+                                                      int composingEndOffset,
+                                                      int scriptHint) {
         try (Arena tempArena = Arena.ofConfined()) {
-            return decodeImeActionResult(EditorNative.updateImeInputStateText(
+            return decodeAction(EditorNative.updateImeInputStateText(
                     nativeHandle,
                     contextId,
                     Math.max(0, documentStartOffset),
@@ -647,11 +564,11 @@ public class EditorCore {
         }
     }
 
-    public ImeActionResult updateImeInputStateSelection(long contextId,
-                                                        int documentStartOffset,
-                                                        int selectionStartOffset,
-                                                        int selectionEndOffset) {
-        return decodeImeActionResult(EditorNative.updateImeInputStateSelection(
+    public EditorActionResult updateImeInputStateSelection(long contextId,
+                                                           int documentStartOffset,
+                                                           int selectionStartOffset,
+                                                           int selectionEndOffset) {
+        return decodeAction(EditorNative.updateImeInputStateSelection(
                 nativeHandle,
                 contextId,
                 Math.max(0, documentStartOffset),
@@ -659,15 +576,15 @@ public class EditorCore {
                 selectionEndOffset));
     }
 
-    public ImeActionResult replaceImeInputStateText(long contextId,
-                                                    int documentStartOffset,
-                                                    long startOffset,
-                                                    long endOffset,
-                                                    String text,
-                                                    int cursorOffset,
-                                                    int scriptHint) {
+    public EditorActionResult replaceImeInputStateText(long contextId,
+                                                       int documentStartOffset,
+                                                       long startOffset,
+                                                       long endOffset,
+                                                       String text,
+                                                       int cursorOffset,
+                                                       int scriptHint) {
         try (Arena tempArena = Arena.ofConfined()) {
-            return decodeImeActionResult(EditorNative.replaceImeInputStateText(
+            return decodeAction(EditorNative.replaceImeInputStateText(
                     nativeHandle,
                     contextId,
                     Math.max(0, documentStartOffset),
@@ -680,51 +597,43 @@ public class EditorCore {
         }
     }
 
-    public ImeActionResult deleteImeBackward(long beforeLength, int textUnit) {
-        return decodeImeActionResult(EditorNative.deleteImeBackward(nativeHandle, beforeLength, textUnit));
+    public EditorActionResult deleteImeBackward(long beforeLength, int textUnit) {
+        return decodeAction(EditorNative.deleteImeBackward(nativeHandle, beforeLength, textUnit));
     }
 
-    public ImeActionResult deleteImeBackward(long beforeLength) {
+    public EditorActionResult deleteImeBackward(long beforeLength) {
         return deleteImeBackward(beforeLength, ImeTextUnit.GRAPHEME);
     }
 
-    public ImeActionResult deleteImeForward(long afterLength, int textUnit) {
-        return decodeImeActionResult(EditorNative.deleteImeForward(nativeHandle, afterLength, textUnit));
+    public EditorActionResult deleteImeForward(long afterLength, int textUnit) {
+        return decodeAction(EditorNative.deleteImeForward(nativeHandle, afterLength, textUnit));
     }
 
-    public ImeActionResult deleteImeForward(long afterLength) {
+    public EditorActionResult deleteImeForward(long afterLength) {
         return deleteImeForward(afterLength, ImeTextUnit.GRAPHEME);
     }
 
-    public ImeActionResult deleteImeSurrounding(long beforeLength, long afterLength, int textUnit) {
-        return decodeImeActionResult(EditorNative.deleteImeSurrounding(
+    public EditorActionResult deleteImeSurrounding(long beforeLength, long afterLength, int textUnit) {
+        return decodeAction(EditorNative.deleteImeSurrounding(
                 nativeHandle, beforeLength, afterLength, textUnit));
     }
 
-    public ImeActionResult notifyImeSelectionChanged(TextRange range) {
+    public EditorActionResult notifyImeSelectionChanged(TextRange range) {
         if (range == null || range.start == null || range.end == null) {
-            return new ImeActionResult();
+            return EditorActionResult.EMPTY;
         }
-        return decodeImeActionResult(EditorNative.notifyImeSelectionChanged(
+        return decodeAction(EditorNative.notifyImeSelectionChanged(
                 nativeHandle,
                 range.start.line, range.start.column,
                 range.end.line, range.end.column));
     }
 
-    public ImeActionResult notifyImeCursorChanged(TextPosition cursor) {
+    public EditorActionResult notifyImeCursorChanged(TextPosition cursor) {
         if (cursor == null) {
-            return new ImeActionResult();
+            return EditorActionResult.EMPTY;
         }
-        return decodeImeActionResult(EditorNative.notifyImeCursorChanged(
+        return decodeAction(EditorNative.notifyImeCursorChanged(
                 nativeHandle, cursor.line, cursor.column));
-    }
-
-    private ImeActionResult decodeImeActionResult(EditorNative.NativeBinaryResult result) {
-        try {
-            return ProtocolDecoder.decodeImeActionResult(result.asByteBuffer());
-        } finally {
-            result.free();
-        }
     }
 
     public ImeSyncSnapshot getImeSyncSnapshot() {
@@ -746,8 +655,8 @@ public class EditorCore {
         }
     }
 
-    public void setImeKeyboardScriptClass(int scriptClass) {
-        EditorNative.setImeKeyboardScriptClass(nativeHandle, scriptClass);
+    public EditorActionResult setImeKeyboardScriptClass(int scriptClass) {
+        return decodeAction(EditorNative.setImeKeyboardScriptClass(nativeHandle, scriptClass));
     }
 
     public int getImeKeyboardScriptClass() {
@@ -756,15 +665,17 @@ public class EditorCore {
 
     // ===================== Read-only =====================
 
-    public void setReadOnly(boolean readOnly) { EditorNative.setReadOnly(nativeHandle, readOnly); }
+    public EditorActionResult setReadOnly(boolean readOnly) { return decodeAction(EditorNative.setReadOnly(nativeHandle, readOnly)); }
     public boolean isReadOnly() { return EditorNative.isReadOnly(nativeHandle); }
 
     // ===================== Auto-indent =====================
 
-    public void setAutoIndentMode(int mode) { EditorNative.setAutoIndentMode(nativeHandle, mode); }
+    public EditorActionResult setAutoIndentMode(int mode) { return decodeAction(EditorNative.setAutoIndentMode(nativeHandle, mode)); }
     public int getAutoIndentMode() { return EditorNative.getAutoIndentMode(nativeHandle); }
 
-    public void setBackspaceUnindent(boolean enabled) { EditorNative.setBackspaceUnindent(nativeHandle, enabled ? 1 : 0); }
+    public EditorActionResult setBackspaceUnindent(boolean enabled) {
+        return decodeAction(EditorNative.setBackspaceUnindent(nativeHandle, enabled ? 1 : 0));
+    }
 
     // ===================== Handle Config =====================
 
@@ -790,11 +701,12 @@ public class EditorCore {
         }
     }
 
-    public void setHandleConfig(HandleConfig config) {
+    public EditorActionResult setHandleConfig(HandleConfig config) {
+        if (config == null) return EditorActionResult.EMPTY;
         this.handleConfig = config;
-        EditorNative.setHandleConfig(nativeHandle,
+        return decodeAction(EditorNative.setHandleConfig(nativeHandle,
                 config.startLeft, config.startTop, config.startRight, config.startBottom,
-                config.endLeft, config.endTop, config.endRight, config.endBottom);
+                config.endLeft, config.endTop, config.endRight, config.endBottom));
     }
 
     public HandleConfig getHandleConfig() {
@@ -859,9 +771,10 @@ public class EditorCore {
         }
     }
 
-    public void setScrollbarConfig(ScrollbarConfig config) {
+    public EditorActionResult setScrollbarConfig(ScrollbarConfig config) {
+        if (config == null) return EditorActionResult.EMPTY;
         this.scrollbarConfig = config;
-        EditorNative.setScrollbarConfig(
+        return decodeAction(EditorNative.setScrollbarConfig(
                 nativeHandle,
                 config.thickness,
                 config.minThumb,
@@ -870,7 +783,7 @@ public class EditorCore {
                 config.thumbDraggable,
                 config.trackTapMode.value,
                 config.fadeDelayMs,
-                config.fadeDurationMs);
+                config.fadeDurationMs));
     }
 
     public ScrollbarConfig getScrollbarConfig() {
@@ -895,20 +808,20 @@ public class EditorCore {
 
     // ===================== Scroll/Navigation =====================
 
-    public void scrollToLine(int line, int behavior) {
-        EditorNative.scrollToLine(nativeHandle, line, behavior);
+    public EditorActionResult scrollToLine(int line, int behavior) {
+        return decodeAction(EditorNative.scrollToLine(nativeHandle, line, behavior));
     }
 
-    public void gotoPosition(int line, int column) {
-        EditorNative.gotoLine(nativeHandle, line, column);
+    public EditorActionResult gotoPosition(int line, int column) {
+        return decodeAction(EditorNative.gotoLine(nativeHandle, line, column));
     }
 
-    public void ensureCursorVisible() {
-        EditorNative.ensureCursorVisible(nativeHandle);
+    public EditorActionResult ensureCursorVisible() {
+        return decodeAction(EditorNative.ensureCursorVisible(nativeHandle));
     }
 
-    public void setScroll(float scrollX, float scrollY) {
-        EditorNative.setScroll(nativeHandle, scrollX, scrollY);
+    public EditorActionResult setScroll(float scrollX, float scrollY) {
+        return decodeAction(EditorNative.setScroll(nativeHandle, scrollX, scrollY));
     }
 
     public ScrollMetrics getScrollMetrics() {
@@ -924,219 +837,219 @@ public class EditorCore {
 
     // ===================== Style Registration + Highlight Spans =====================
 
-    public void registerTextStyle(int styleId, int color, int bgColor, int fontStyle) {
-        EditorNative.registerTextStyle(nativeHandle, styleId, color, bgColor, fontStyle);
+    public EditorActionResult registerTextStyle(int styleId, int color, int bgColor, int fontStyle) {
+        return decodeAction(EditorNative.registerTextStyle(nativeHandle, styleId, color, bgColor, fontStyle));
     }
 
-    public void registerTextStyle(int styleId, int color, int fontStyle) {
-        registerTextStyle(styleId, color, 0, fontStyle);
+    public EditorActionResult registerTextStyle(int styleId, int color, int fontStyle) {
+        return registerTextStyle(styleId, color, 0, fontStyle);
     }
 
-    public void registerBatchTextStyles(Map<Integer, ? extends TextStyle> textStyles) {
-        if (textStyles == null || textStyles.isEmpty()) return;
+    public EditorActionResult registerBatchTextStyles(Map<Integer, ? extends TextStyle> textStyles) {
+        if (textStyles == null || textStyles.isEmpty()) return EditorActionResult.EMPTY;
         byte[] payload = ProtocolEncoder.packBatchTextStyles(textStyles);
-        if (payload == null) return;
+        if (payload == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
-            EditorNative.registerBatchTextStyles(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.registerBatchTextStyles(nativeHandle, payload, tempArena));
         }
     }
 
     /** Set highlight spans for a specific line (model overload) */
-    public void setLineSpans(int line, int layer, List<? extends StyleSpan> spans) {
-        if (spans == null) return;
+    public EditorActionResult setLineSpans(int line, int layer, List<? extends StyleSpan> spans) {
+        if (spans == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
             byte[] payload = ProtocolEncoder.packLineSpans(line, layer, spans);
-            EditorNative.setLineSpans(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setLineSpans(nativeHandle, payload, tempArena));
         }
     }
 
     /** Set highlight spans for a specific line (zero-copy overload, accepts pre-encoded MemorySegment) */
-    public void setLineSpans(MemorySegment payload, long size) {
-        EditorNative.setLineSpans(nativeHandle, payload, size);
+    public EditorActionResult setLineSpans(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setLineSpans(nativeHandle, payload, size));
     }
 
     /** Batch set highlight spans for multiple lines (model overload) */
-    public void setBatchLineSpans(int layer, Map<Integer, ? extends List<? extends StyleSpan>> spansByLine) {
-        if (spansByLine == null || spansByLine.isEmpty()) return;
+    public EditorActionResult setBatchLineSpans(int layer, Map<Integer, ? extends List<? extends StyleSpan>> spansByLine) {
+        if (spansByLine == null || spansByLine.isEmpty()) return EditorActionResult.EMPTY;
         byte[] payload = ProtocolEncoder.packBatchLineSpans(layer, spansByLine);
-        if (payload == null) return;
+        if (payload == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
-            EditorNative.setBatchLineSpans(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setBatchLineSpans(nativeHandle, payload, tempArena));
         }
     }
 
     /** Batch set highlight spans for multiple lines (zero-copy overload, accepts pre-encoded MemorySegment) */
-    public void setBatchLineSpans(MemorySegment payload, long size) {
-        EditorNative.setBatchLineSpans(nativeHandle, payload, size);
+    public EditorActionResult setBatchLineSpans(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setBatchLineSpans(nativeHandle, payload, size));
     }
 
     // ===================== InlayHint =====================
 
     /** Set Inlay Hints for a specific line (model overload, replaces entire line) */
-    public void setLineInlayHints(int line, List<? extends InlayHint> hints) {
-        if (hints == null) return;
+    public EditorActionResult setLineInlayHints(int line, List<? extends InlayHint> hints) {
+        if (hints == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
             byte[] payload = ProtocolEncoder.packLineInlayHints(line, hints);
-            EditorNative.setLineInlayHints(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setLineInlayHints(nativeHandle, payload, tempArena));
         }
     }
 
     /** Set Inlay Hints for a specific line (zero-copy overload, accepts pre-encoded MemorySegment) */
-    public void setLineInlayHints(MemorySegment payload, long size) {
-        EditorNative.setLineInlayHints(nativeHandle, payload, size);
+    public EditorActionResult setLineInlayHints(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setLineInlayHints(nativeHandle, payload, size));
     }
 
     /** Batch set Inlay Hints for multiple lines */
-    public void setBatchLineInlayHints(Map<Integer, ? extends List<? extends InlayHint>> hintsByLine) {
-        if (hintsByLine == null || hintsByLine.isEmpty()) return;
+    public EditorActionResult setBatchLineInlayHints(Map<Integer, ? extends List<? extends InlayHint>> hintsByLine) {
+        if (hintsByLine == null || hintsByLine.isEmpty()) return EditorActionResult.EMPTY;
         byte[] payload = ProtocolEncoder.packBatchLineInlayHints(hintsByLine);
-        if (payload == null) return;
+        if (payload == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
-            EditorNative.setBatchLineInlayHints(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setBatchLineInlayHints(nativeHandle, payload, tempArena));
         }
     }
 
     /** Batch set Inlay Hints for multiple lines (zero-copy overload, accepts pre-encoded MemorySegment) */
-    public void setBatchLineInlayHints(MemorySegment payload, long size) {
-        EditorNative.setBatchLineInlayHints(nativeHandle, payload, size);
+    public EditorActionResult setBatchLineInlayHints(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setBatchLineInlayHints(nativeHandle, payload, size));
     }
 
     // ===================== PhantomText =====================
 
     /** Set phantom texts for a specific line (model overload, replaces entire line) */
-    public void setLinePhantomTexts(int line, List<? extends PhantomText> phantoms) {
-        if (phantoms == null) return;
+    public EditorActionResult setLinePhantomTexts(int line, List<? extends PhantomText> phantoms) {
+        if (phantoms == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
             byte[] payload = ProtocolEncoder.packLinePhantomTexts(line, phantoms);
-            EditorNative.setLinePhantomTexts(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setLinePhantomTexts(nativeHandle, payload, tempArena));
         }
     }
 
     /** Set phantom texts for a specific line (zero-copy overload, accepts pre-encoded MemorySegment) */
-    public void setLinePhantomTexts(MemorySegment payload, long size) {
-        EditorNative.setLinePhantomTexts(nativeHandle, payload, size);
+    public EditorActionResult setLinePhantomTexts(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setLinePhantomTexts(nativeHandle, payload, size));
     }
 
     /** Batch set phantom texts for multiple lines */
-    public void setBatchLinePhantomTexts(Map<Integer, ? extends List<? extends PhantomText>> phantomsByLine) {
-        if (phantomsByLine == null || phantomsByLine.isEmpty()) return;
+    public EditorActionResult setBatchLinePhantomTexts(Map<Integer, ? extends List<? extends PhantomText>> phantomsByLine) {
+        if (phantomsByLine == null || phantomsByLine.isEmpty()) return EditorActionResult.EMPTY;
         byte[] payload = ProtocolEncoder.packBatchLinePhantomTexts(phantomsByLine);
-        if (payload == null) return;
+        if (payload == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
-            EditorNative.setBatchLinePhantomTexts(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setBatchLinePhantomTexts(nativeHandle, payload, tempArena));
         }
     }
 
     /** Batch set phantom texts for multiple lines (zero-copy overload, accepts pre-encoded MemorySegment) */
-    public void setBatchLinePhantomTexts(MemorySegment payload, long size) {
-        EditorNative.setBatchLinePhantomTexts(nativeHandle, payload, size);
+    public EditorActionResult setBatchLinePhantomTexts(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setBatchLinePhantomTexts(nativeHandle, payload, size));
     }
 
     // ===================== Gutter Icons =====================
 
     /** Set gutter icons for a specific line (model overload, replaces entire line) */
-    public void setLineGutterIcons(int line, List<? extends GutterIcon> icons) {
-        if (icons == null) return;
+    public EditorActionResult setLineGutterIcons(int line, List<? extends GutterIcon> icons) {
+        if (icons == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
             byte[] payload = ProtocolEncoder.packLineGutterIcons(line, icons);
-            EditorNative.setLineGutterIcons(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setLineGutterIcons(nativeHandle, payload, tempArena));
         }
     }
 
     /** Set gutter icons for a specific line (zero-copy overload, accepts pre-encoded MemorySegment) */
-    public void setLineGutterIcons(MemorySegment payload, long size) {
-        EditorNative.setLineGutterIcons(nativeHandle, payload, size);
+    public EditorActionResult setLineGutterIcons(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setLineGutterIcons(nativeHandle, payload, size));
     }
 
     /** Batch set gutter icons for multiple lines */
-    public void setBatchLineGutterIcons(Map<Integer, ? extends List<? extends GutterIcon>> iconsByLine) {
-        if (iconsByLine == null || iconsByLine.isEmpty()) return;
+    public EditorActionResult setBatchLineGutterIcons(Map<Integer, ? extends List<? extends GutterIcon>> iconsByLine) {
+        if (iconsByLine == null || iconsByLine.isEmpty()) return EditorActionResult.EMPTY;
         byte[] payload = ProtocolEncoder.packBatchLineGutterIcons(iconsByLine);
-        if (payload == null) return;
+        if (payload == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
-            EditorNative.setBatchLineGutterIcons(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setBatchLineGutterIcons(nativeHandle, payload, tempArena));
         }
     }
 
     /** Batch set gutter icons for multiple lines (zero-copy overload, accepts pre-encoded MemorySegment) */
-    public void setBatchLineGutterIcons(MemorySegment payload, long size) {
-        EditorNative.setBatchLineGutterIcons(nativeHandle, payload, size);
+    public EditorActionResult setBatchLineGutterIcons(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setBatchLineGutterIcons(nativeHandle, payload, size));
     }
 
-    public void setMaxGutterIcons(int count) {
-        EditorNative.setMaxGutterIcons(nativeHandle, count);
+    public EditorActionResult setMaxGutterIcons(int count) {
+        return decodeAction(EditorNative.setMaxGutterIcons(nativeHandle, count));
     }
 
     // ===================== CodeLens =====================
 
     /** Set CodeLens items for a specific line */
-    public void setLineCodeLens(int line, List<? extends CodeLensItem> items) {
-        if (items == null) return;
+    public EditorActionResult setLineCodeLens(int line, List<? extends CodeLensItem> items) {
+        if (items == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
             byte[] payload = ProtocolEncoder.packLineCodeLens(line, items);
-            EditorNative.setLineCodeLens(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setLineCodeLens(nativeHandle, payload, tempArena));
         }
     }
 
     /** Set CodeLens items for a specific line (zero-copy overload) */
-    public void setLineCodeLens(MemorySegment payload, long size) {
-        EditorNative.setLineCodeLens(nativeHandle, payload, size);
+    public EditorActionResult setLineCodeLens(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setLineCodeLens(nativeHandle, payload, size));
     }
 
     /** Batch set CodeLens items for multiple lines */
-    public void setBatchLineCodeLens(Map<Integer, ? extends List<? extends CodeLensItem>> itemsByLine) {
-        if (itemsByLine == null || itemsByLine.isEmpty()) return;
+    public EditorActionResult setBatchLineCodeLens(Map<Integer, ? extends List<? extends CodeLensItem>> itemsByLine) {
+        if (itemsByLine == null || itemsByLine.isEmpty()) return EditorActionResult.EMPTY;
         byte[] payload = ProtocolEncoder.packBatchLineCodeLens(itemsByLine);
-        if (payload == null) return;
+        if (payload == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
-            EditorNative.setBatchLineCodeLens(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setBatchLineCodeLens(nativeHandle, payload, tempArena));
         }
     }
 
     /** Batch set CodeLens items for multiple lines (zero-copy overload) */
-    public void setBatchLineCodeLens(MemorySegment payload, long size) {
-        EditorNative.setBatchLineCodeLens(nativeHandle, payload, size);
+    public EditorActionResult setBatchLineCodeLens(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setBatchLineCodeLens(nativeHandle, payload, size));
     }
 
     /** Clears all CodeLens items */
-    public void clearCodeLens() {
-        EditorNative.clearCodeLens(nativeHandle);
+    public EditorActionResult clearCodeLens() {
+        return decodeAction(EditorNative.clearCodeLens(nativeHandle));
     }
 
     // ===================== Links =====================
 
     /** Set link spans for a specific line */
-    public void setLineLinks(int line, List<? extends LinkSpan> links) {
-        if (links == null) return;
+    public EditorActionResult setLineLinks(int line, List<? extends LinkSpan> links) {
+        if (links == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
             byte[] payload = ProtocolEncoder.packLineLinks(line, links);
-            EditorNative.setLineLinks(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setLineLinks(nativeHandle, payload, tempArena));
         }
     }
 
     /** Set link spans for a specific line (zero-copy overload) */
-    public void setLineLinks(MemorySegment payload, long size) {
-        EditorNative.setLineLinks(nativeHandle, payload, size);
+    public EditorActionResult setLineLinks(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setLineLinks(nativeHandle, payload, size));
     }
 
     /** Batch set link spans for multiple lines */
-    public void setBatchLineLinks(Map<Integer, ? extends List<? extends LinkSpan>> linksByLine) {
-        if (linksByLine == null || linksByLine.isEmpty()) return;
+    public EditorActionResult setBatchLineLinks(Map<Integer, ? extends List<? extends LinkSpan>> linksByLine) {
+        if (linksByLine == null || linksByLine.isEmpty()) return EditorActionResult.EMPTY;
         byte[] payload = ProtocolEncoder.packBatchLineLinks(linksByLine);
-        if (payload == null) return;
+        if (payload == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
-            EditorNative.setBatchLineLinks(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setBatchLineLinks(nativeHandle, payload, tempArena));
         }
     }
 
     /** Batch set link spans for multiple lines (zero-copy overload) */
-    public void setBatchLineLinks(MemorySegment payload, long size) {
-        EditorNative.setBatchLineLinks(nativeHandle, payload, size);
+    public EditorActionResult setBatchLineLinks(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setBatchLineLinks(nativeHandle, payload, size));
     }
 
     /** Clears all link spans */
-    public void clearLinks() {
-        EditorNative.clearLinks(nativeHandle);
+    public EditorActionResult clearLinks() {
+        return decodeAction(EditorNative.clearLinks(nativeHandle));
     }
 
     /** Returns the link target at the given position, or null if no link exists there */
@@ -1147,167 +1060,318 @@ public class EditorCore {
     // ===================== Diagnostics =====================
 
     /** Set diagnostic decorations for a specific line (model overload) */
-    public void setLineDiagnostics(int line, List<? extends Diagnostic> items) {
-        if (items == null) return;
+    public EditorActionResult setLineDiagnostics(int line, List<? extends Diagnostic> items) {
+        if (items == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
             byte[] payload = ProtocolEncoder.packLineDiagnostics(line, items);
-            EditorNative.setLineDiagnostics(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setLineDiagnostics(nativeHandle, payload, tempArena));
         }
     }
 
     /** Set diagnostic decorations for a specific line (zero-copy overload, accepts pre-encoded MemorySegment) */
-    public void setLineDiagnostics(MemorySegment payload, long size) {
-        EditorNative.setLineDiagnostics(nativeHandle, payload, size);
+    public EditorActionResult setLineDiagnostics(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setLineDiagnostics(nativeHandle, payload, size));
     }
 
     /** Batch set diagnostic decorations for multiple lines */
-    public void setBatchLineDiagnostics(Map<Integer, ? extends List<? extends Diagnostic>> diagsByLine) {
-        if (diagsByLine == null || diagsByLine.isEmpty()) return;
+    public EditorActionResult setBatchLineDiagnostics(Map<Integer, ? extends List<? extends Diagnostic>> diagsByLine) {
+        if (diagsByLine == null || diagsByLine.isEmpty()) return EditorActionResult.EMPTY;
         byte[] payload = ProtocolEncoder.packBatchLineDiagnostics(diagsByLine);
-        if (payload == null) return;
+        if (payload == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
-            EditorNative.setBatchLineDiagnostics(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setBatchLineDiagnostics(nativeHandle, payload, tempArena));
         }
     }
 
     /** Batch set diagnostic decorations for multiple lines (zero-copy overload, accepts pre-encoded MemorySegment) */
-    public void setBatchLineDiagnostics(MemorySegment payload, long size) {
-        EditorNative.setBatchLineDiagnostics(nativeHandle, payload, size);
+    public EditorActionResult setBatchLineDiagnostics(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setBatchLineDiagnostics(nativeHandle, payload, size));
     }
 
     // ===================== Guide (Code Structure Lines) =====================
 
     /** Set indent guide list (global replacement) */
-    public void setIndentGuides(List<? extends IndentGuide> guides) {
-        if (guides == null) return;
+    public EditorActionResult setIndentGuides(List<? extends IndentGuide> guides) {
+        if (guides == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
             byte[] payload = ProtocolEncoder.packIndentGuides(guides);
-            EditorNative.setIndentGuides(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setIndentGuides(nativeHandle, payload, tempArena));
         }
     }
 
     /** Set indent guide list (zero-copy overload, accepts pre-encoded MemorySegment) */
-    public void setIndentGuides(MemorySegment payload, long size) {
-        EditorNative.setIndentGuides(nativeHandle, payload, size);
+    public EditorActionResult setIndentGuides(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setIndentGuides(nativeHandle, payload, size));
     }
 
     /** Set bracket pair guide list (global replacement) */
-    public void setBracketGuides(List<? extends BracketGuide> guides) {
-        if (guides == null) return;
+    public EditorActionResult setBracketGuides(List<? extends BracketGuide> guides) {
+        if (guides == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
             byte[] payload = ProtocolEncoder.packBracketGuides(guides);
-            EditorNative.setBracketGuides(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setBracketGuides(nativeHandle, payload, tempArena));
         }
     }
 
     /** Set bracket pair guide list (zero-copy overload, accepts pre-encoded MemorySegment) */
-    public void setBracketGuides(MemorySegment payload, long size) {
-        EditorNative.setBracketGuides(nativeHandle, payload, size);
+    public EditorActionResult setBracketGuides(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setBracketGuides(nativeHandle, payload, size));
     }
 
     /** Set control flow return arrow list (global replacement) */
-    public void setFlowGuides(List<? extends FlowGuide> guides) {
-        if (guides == null) return;
+    public EditorActionResult setFlowGuides(List<? extends FlowGuide> guides) {
+        if (guides == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
             byte[] payload = ProtocolEncoder.packFlowGuides(guides);
-            EditorNative.setFlowGuides(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setFlowGuides(nativeHandle, payload, tempArena));
         }
     }
 
     /** Set control flow return arrow list (zero-copy overload, accepts pre-encoded MemorySegment) */
-    public void setFlowGuides(MemorySegment payload, long size) {
-        EditorNative.setFlowGuides(nativeHandle, payload, size);
+    public EditorActionResult setFlowGuides(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setFlowGuides(nativeHandle, payload, size));
     }
 
     /** Set separator guide list (global replacement) */
-    public void setSeparatorGuides(List<? extends SeparatorGuide> guides) {
-        if (guides == null) return;
+    public EditorActionResult setSeparatorGuides(List<? extends SeparatorGuide> guides) {
+        if (guides == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
             byte[] payload = ProtocolEncoder.packSeparatorGuides(guides);
-            EditorNative.setSeparatorGuides(nativeHandle, payload, tempArena);
+            return decodeAction(EditorNative.setSeparatorGuides(nativeHandle, payload, tempArena));
         }
     }
 
     /** Set separator guide list (zero-copy overload, accepts pre-encoded MemorySegment) */
-    public void setSeparatorGuides(MemorySegment payload, long size) {
-        EditorNative.setSeparatorGuides(nativeHandle, payload, size);
+    public EditorActionResult setSeparatorGuides(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setSeparatorGuides(nativeHandle, payload, size));
     }
 
     // ===================== Bracket Pair Highlight =====================
 
-    public void setBracketPairs(int[] openChars, int[] closeChars) {
+    public EditorActionResult setBracketPairs(int[] openChars, int[] closeChars) {
         try (Arena arena = Arena.ofConfined()) {
-            EditorNative.setBracketPairs(nativeHandle, openChars, closeChars, arena);
+            return decodeAction(EditorNative.setBracketPairs(nativeHandle, openChars, closeChars, arena));
         }
     }
 
-    public void setAutoClosingPairs(int[] openChars, int[] closeChars) {
+    public EditorActionResult setAutoClosingPairs(int[] openChars, int[] closeChars) {
         try (Arena arena = Arena.ofConfined()) {
-            EditorNative.setAutoClosingPairs(nativeHandle, openChars, closeChars, arena);
+            return decodeAction(EditorNative.setAutoClosingPairs(nativeHandle, openChars, closeChars, arena));
         }
     }
 
-    public void setMatchedBrackets(int openLine, int openCol, int closeLine, int closeCol) {
-        EditorNative.setMatchedBrackets(nativeHandle, openLine, openCol, closeLine, closeCol);
+    public EditorActionResult setMatchedBrackets(int openLine, int openCol, int closeLine, int closeCol) {
+        return decodeAction(EditorNative.setMatchedBrackets(nativeHandle, openLine, openCol, closeLine, closeCol));
     }
 
     // ===================== Fold =====================
 
     /** Set foldable regions using a FoldRegion list (model overload) */
-    public void setFoldRegions(List<? extends FoldRegion> regions) {
-        if (regions == null) return;
+    public EditorActionResult setFoldRegions(List<? extends FoldRegion> regions) {
+        if (regions == null) return EditorActionResult.EMPTY;
         try (Arena tempArena = Arena.ofConfined()) {
-            EditorNative.setFoldRegions(nativeHandle, ProtocolEncoder.packFoldRegions(regions), tempArena);
+            return decodeAction(EditorNative.setFoldRegions(nativeHandle, ProtocolEncoder.packFoldRegions(regions), tempArena));
         }
     }
 
     /** Set foldable regions (zero-copy overload, accepts pre-encoded MemorySegment) */
-    public void setFoldRegions(MemorySegment payload, long size) {
-        EditorNative.setFoldRegions(nativeHandle, payload, size);
+    public EditorActionResult setFoldRegions(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setFoldRegions(nativeHandle, payload, size));
     }
 
-    public boolean toggleFoldAt(int line) { return EditorNative.toggleFold(nativeHandle, line); }
-    public boolean foldAt(int line) { return EditorNative.foldAt(nativeHandle, line); }
-    public boolean unfoldAt(int line) { return EditorNative.unfoldAt(nativeHandle, line); }
-    public void foldAll() { EditorNative.foldAll(nativeHandle); }
-    public void unfoldAll() { EditorNative.unfoldAll(nativeHandle); }
+    public EditorActionResult toggleFoldAt(int line) { return decodeAction(EditorNative.toggleFold(nativeHandle, line)); }
+    public EditorActionResult foldAt(int line) { return decodeAction(EditorNative.foldAt(nativeHandle, line)); }
+    public EditorActionResult unfoldAt(int line) { return decodeAction(EditorNative.unfoldAt(nativeHandle, line)); }
+    public EditorActionResult foldAll() { return decodeAction(EditorNative.foldAll(nativeHandle)); }
+    public EditorActionResult unfoldAll() { return decodeAction(EditorNative.unfoldAll(nativeHandle)); }
     public boolean isLineVisible(int line) { return EditorNative.isLineVisible(nativeHandle, line); }
 
     // ===================== Linked Editing =====================
 
-    public TextEditResult insertSnippet(String snippetTemplate) {
+    public EditorActionResult insertSnippet(String snippetTemplate) {
         try (Arena tempArena = Arena.ofConfined()) {
             EditorNative.NativeBinaryResult result = EditorNative.insertSnippet(nativeHandle, snippetTemplate, tempArena);
-            try {
-                return ProtocolDecoder.decodeTextEditResult(result.asByteBuffer());
-            } finally {
-                result.free();
-            }
+            return decodeAction(result);
         }
     }
 
-    public void startLinkedEditing(LinkedEditingModel model) {
+    public EditorActionResult startLinkedEditing(LinkedEditingModel model) {
         try (Arena tempArena = Arena.ofConfined()) {
-            EditorNative.startLinkedEditing(nativeHandle, ProtocolEncoder.packLinkedEditingModel(model), tempArena);
+            return decodeAction(EditorNative.startLinkedEditing(nativeHandle, ProtocolEncoder.packLinkedEditingModel(model), tempArena));
         }
     }
 
     public boolean isInLinkedEditing() { return EditorNative.isInLinkedEditing(nativeHandle); }
-    public boolean linkedEditingNext() { return EditorNative.linkedEditingNext(nativeHandle); }
-    public boolean linkedEditingPrev() { return EditorNative.linkedEditingPrev(nativeHandle); }
-    public void cancelLinkedEditing() { EditorNative.cancelLinkedEditing(nativeHandle); }
+    public EditorActionResult linkedEditingNext() { return decodeAction(EditorNative.linkedEditingNext(nativeHandle)); }
+    public EditorActionResult linkedEditingPrev() { return decodeAction(EditorNative.linkedEditingPrev(nativeHandle)); }
+    public EditorActionResult cancelLinkedEditing() { return decodeAction(EditorNative.cancelLinkedEditing(nativeHandle)); }
 
     // ===================== Clear =====================
 
-    public void clearHighlights() { EditorNative.clearHighlights(nativeHandle); }
-    public void clearHighlightsLayer(int layer) { EditorNative.clearHighlightsLayer(nativeHandle, layer); }
-    public void clearLineSpans(int line, int layer) { EditorNative.clearLineSpans(nativeHandle, line, layer); }
-    public void clearHighlights(int layer) { EditorNative.clearHighlightsLayer(nativeHandle, layer); }
-    public void clearInlayHints() { EditorNative.clearInlayHints(nativeHandle); }
-    public void clearPhantomTexts() { EditorNative.clearPhantomTexts(nativeHandle); }
-    public void clearGutterIcons() { EditorNative.clearGutterIcons(nativeHandle); }
-    public void clearGuides() { EditorNative.clearGuides(nativeHandle); }
-    public void clearDiagnostics() { EditorNative.clearDiagnostics(nativeHandle); }
-    public void clearMatchedBrackets() { EditorNative.clearMatchedBrackets(nativeHandle); }
-    public void clearAllDecorations() { EditorNative.clearAllDecorations(nativeHandle); }
+    public EditorActionResult clearHighlights() { return decodeAction(EditorNative.clearHighlights(nativeHandle)); }
+    public EditorActionResult clearHighlightsLayer(int layer) { return decodeAction(EditorNative.clearHighlightsLayer(nativeHandle, layer)); }
+    public EditorActionResult clearLineSpans(int line, int layer) { return decodeAction(EditorNative.clearLineSpans(nativeHandle, line, layer)); }
+    public EditorActionResult clearHighlights(int layer) { return decodeAction(EditorNative.clearHighlightsLayer(nativeHandle, layer)); }
+    public EditorActionResult clearInlayHints() { return decodeAction(EditorNative.clearInlayHints(nativeHandle)); }
+    public EditorActionResult clearPhantomTexts() { return decodeAction(EditorNative.clearPhantomTexts(nativeHandle)); }
+    public EditorActionResult clearGutterIcons() { return decodeAction(EditorNative.clearGutterIcons(nativeHandle)); }
+    public EditorActionResult clearGuides() { return decodeAction(EditorNative.clearGuides(nativeHandle)); }
+    public EditorActionResult clearDiagnostics() { return decodeAction(EditorNative.clearDiagnostics(nativeHandle)); }
+    public EditorActionResult clearMatchedBrackets() { return decodeAction(EditorNative.clearMatchedBrackets(nativeHandle)); }
+    public EditorActionResult clearAllDecorations() { return decodeAction(EditorNative.clearAllDecorations(nativeHandle)); }
+
+    public static final class EditorActionResult {
+        public final boolean handled;
+        public final boolean needsRedraw;
+        public final int reason;
+        public final boolean contentChanged;
+        public final boolean cursorChanged;
+        public final boolean selectionChanged;
+        public final boolean scrollChanged;
+        public final boolean scaleChanged;
+        public final boolean pointerCursorChanged;
+        public final boolean compositionChanged;
+        public final boolean decorationChanged;
+        public final boolean needsImeSync;
+        public final boolean needsEdgeScroll;
+        public final boolean needsFling;
+        public final boolean needsAnimation;
+        public final boolean isHandleDrag;
+        public final List<TextChange> changes;
+        public final TextPosition cursorBefore;
+        public final TextPosition cursorAfter;
+        public final boolean hasSelectionBefore;
+        public final TextRange selectionBefore;
+        public final boolean hasSelectionAfter;
+        public final TextRange selectionAfter;
+        public final float scrollXBefore;
+        public final float scrollYBefore;
+        public final float scrollXAfter;
+        public final float scrollYAfter;
+        public final float scaleBefore;
+        public final float scaleAfter;
+        public final int pointerCursorBefore;
+        public final int pointerCursorAfter;
+        public final ImeSyncSnapshot imeSync;
+        public final GestureType gestureType;
+        public final int gestureEventType;
+        public final PointF tapPoint;
+        public final HitTarget hitTarget;
+        public final int modifiers;
+        public final int command;
+
+        public static final EditorActionResult EMPTY = new EditorActionResult();
+
+        public EditorActionResult() {
+            this(false, false, 0,
+                    false, false, false, false, false, false, false, false, false,
+                    false, false, false, false,
+                    java.util.Collections.emptyList(),
+                    new TextPosition(-1, -1),
+                    new TextPosition(-1, -1),
+                    false,
+                    new TextRange(),
+                    false,
+                    new TextRange(),
+                    0f,
+                    0f,
+                    0f,
+                    0f,
+                    1f,
+                    1f,
+                    0,
+                    0,
+                    new ImeSyncSnapshot(),
+                    GestureType.UNDEFINED,
+                    0,
+                    new PointF(),
+                    defaultHitTarget(),
+                    0,
+                    0);
+        }
+
+        public EditorActionResult(boolean handled,
+                                  boolean needsRedraw,
+                                  int reason,
+                                  boolean contentChanged,
+                                  boolean cursorChanged,
+                                  boolean selectionChanged,
+                                  boolean scrollChanged,
+                                  boolean scaleChanged,
+                                  boolean pointerCursorChanged,
+                                  boolean compositionChanged,
+                                  boolean decorationChanged,
+                                  boolean needsImeSync,
+                                  boolean needsEdgeScroll,
+                                  boolean needsFling,
+                                  boolean needsAnimation,
+                                  boolean isHandleDrag,
+                                  List<TextChange> changes,
+                                  TextPosition cursorBefore,
+                                  TextPosition cursorAfter,
+                                  boolean hasSelectionBefore,
+                                  TextRange selectionBefore,
+                                  boolean hasSelectionAfter,
+                                  TextRange selectionAfter,
+                                  float scrollXBefore,
+                                  float scrollYBefore,
+                                  float scrollXAfter,
+                                  float scrollYAfter,
+                                  float scaleBefore,
+                                  float scaleAfter,
+                                  int pointerCursorBefore,
+                                  int pointerCursorAfter,
+                                  ImeSyncSnapshot imeSync,
+                                  GestureType gestureType,
+                                  int gestureEventType,
+                                  PointF tapPoint,
+                                  HitTarget hitTarget,
+                                  int modifiers,
+                                  int command) {
+            this.handled = handled;
+            this.needsRedraw = needsRedraw;
+            this.reason = reason;
+            this.contentChanged = contentChanged;
+            this.cursorChanged = cursorChanged;
+            this.selectionChanged = selectionChanged;
+            this.scrollChanged = scrollChanged;
+            this.scaleChanged = scaleChanged;
+            this.pointerCursorChanged = pointerCursorChanged;
+            this.compositionChanged = compositionChanged;
+            this.decorationChanged = decorationChanged;
+            this.needsImeSync = needsImeSync;
+            this.needsEdgeScroll = needsEdgeScroll;
+            this.needsFling = needsFling;
+            this.needsAnimation = needsAnimation;
+            this.isHandleDrag = isHandleDrag;
+            this.changes = changes;
+            this.cursorBefore = cursorBefore;
+            this.cursorAfter = cursorAfter;
+            this.hasSelectionBefore = hasSelectionBefore;
+            this.selectionBefore = selectionBefore;
+            this.hasSelectionAfter = hasSelectionAfter;
+            this.selectionAfter = selectionAfter;
+            this.scrollXBefore = scrollXBefore;
+            this.scrollYBefore = scrollYBefore;
+            this.scrollXAfter = scrollXAfter;
+            this.scrollYAfter = scrollYAfter;
+            this.scaleBefore = scaleBefore;
+            this.scaleAfter = scaleAfter;
+            this.pointerCursorBefore = pointerCursorBefore;
+            this.pointerCursorAfter = pointerCursorAfter;
+            this.imeSync = imeSync;
+            this.gestureType = gestureType;
+            this.gestureEventType = gestureEventType;
+            this.tapPoint = tapPoint;
+            this.hitTarget = hitTarget;
+            this.modifiers = modifiers;
+            this.command = command;
+        }
+
+        private static HitTarget defaultHitTarget() {
+            HitTarget target = new HitTarget();
+            target.type = HitTargetType.NONE;
+            return target;
+        }
+    }
 }

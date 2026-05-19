@@ -649,6 +649,8 @@ namespace SweetEditor {
 		INLAY_HINT_COLOR = 6,
 		/// <summary>Hit a CodeLens item.</summary>
 		CODELENS = 7,
+		/// <summary>Hit a clickable document link.</summary>
+		LINK = 8,
 	}
 
 	/// <summary>
@@ -672,68 +674,13 @@ namespace SweetEditor {
 	}
 
 	/// <summary>
-	/// Gesture handling result.
+	/// Pointer cursor type hint returned by the core.
 	/// </summary>
-	public struct GestureResult {
-		/// <summary>Recognized gesture type.</summary>
-		[JsonPropertyName("type")]
-		public GestureType Type { get; set; }
-		/// <summary>Tap position.</summary>
-		[JsonPropertyName("tap_point")]
-		public PointF? TapPoint { get; set; }
-		/// <summary>Modifier key state (bit flags).</summary>
-		[JsonPropertyName("modifiers")]
-		public byte Modifiers { get; set; }
-
-		/// <summary>Post-operation caret position.</summary>
-		[JsonPropertyName("cursor_position")]
-		public TextPosition CursorPosition { get; set; }
-		/// <summary>Whether a selection exists after operation.</summary>
-		[JsonPropertyName("has_selection")]
-		public bool HasSelection { get; set; }
-		/// <summary>Post-operation selection range.</summary>
-		[JsonPropertyName("selection")]
-		public TextRange Selection { get; set; }
-		/// <summary>Post-operation horizontal scroll offset.</summary>
-		[JsonPropertyName("view_scroll_x")]
-		public float ViewScrollX { get; set; }
-		/// <summary>Post-operation vertical scroll offset.</summary>
-		[JsonPropertyName("view_scroll_y")]
-		public float ViewScrollY { get; set; }
-		/// <summary>Post-operation scale factor.</summary>
-		[JsonPropertyName("view_scale")]
-		public float ViewScale { get; set; }
-
-		/// <summary>Tap hit target info (filled by C++ on TAP).</summary>
-		[JsonPropertyName("hit_target")]
-		public HitTarget HitTarget { get; set; }
-
-		/// <summary>Whether the platform should start/continue an edge-scroll timer.</summary>
-		[JsonPropertyName("needs_edge_scroll")]
-		public bool NeedsEdgeScroll { get; set; }
-
-		/// <summary>Whether the platform should start/continue a fling animation callback.</summary>
-		[JsonPropertyName("needs_fling")]
-		public bool NeedsFling { get; set; }
-
-		/// <summary>Whether any animation is still active; platform can use a single callback.</summary>
-		[JsonPropertyName("needs_animation")]
-		public bool NeedsAnimation { get; set; }
-
-		/// <summary>Creates the default gesture result.</summary>
-		public GestureResult() {
-			Type = GestureType.UNDEFINED;
-			TapPoint = new PointF();
-		}
-
-		/// <summary>Creates a gesture result with the specified type and position.</summary>
-		/// <param name="type">Gesture type</param>
-		/// <param name="position">Tap screen position</param>
-		public GestureResult(GestureType type, PointF position) {
-			Type = type;
-			TapPoint = position;
-		}
-
+	[JsonConverter(typeof(JsonStringEnumConverter))]
+	public enum PointerCursorType {
+		DEFAULT = 0,
+		TEXT = 1,
+		HAND = 2,
 	}
 
 	/// <summary>
@@ -954,6 +901,25 @@ namespace SweetEditor {
 		public EditorEventArgs(EditorEventType type) { EventType = type; }
 	}
 
+	public enum EditorActionReason {
+		None = 0,
+		Setup = 1,
+		TextEdit = 2,
+		KeyInput = 3,
+		Ime = 4,
+		Gesture = 5,
+		Animation = 6,
+		Programmatic = 7,
+		Decoration = 8,
+		Folding = 9,
+		LinkedEditing = 10,
+		TextInsert = 11,
+		TextReplace = 12,
+		TextDelete = 13,
+		TextUndo = 14,
+		TextRedo = 15
+	}
+
 	/// <summary>
 	/// Text change operation type enum.
 	/// </summary>
@@ -985,16 +951,96 @@ namespace SweetEditor {
 		public string? NewText { get => text; set => text = value; }
 	}
 
-	/// <summary>
-	/// Result of a text edit operation with precise changed ranges and text.
-	/// </summary>
-	public class TextEditResult {
-		/// <summary>List of all changes</summary>
-		[JsonPropertyName("changes")]
-		public List<TextChange>? Changes { get; set; }
+	public enum ImePreeditStorage {
+		NONE = 0,
+		VISIBLE_DOCUMENT_COMPOSITION = 1,
+		SHADOW_ONLY = 2
+	}
 
-		/// <summary>Empty result (no changes).</summary>
-		public static readonly TextEditResult Empty = new TextEditResult();
+	public enum ImeContextPolicy {
+		NONE = 0,
+		LIMITED_FOR_CANDIDATES = 1
+	}
+
+	public sealed class ImeSyncSnapshot {
+		[JsonPropertyName("cursor")]
+		public TextPosition Cursor { get; set; }
+		[JsonPropertyName("selection")]
+		public TextRange? Selection { get; set; }
+		[JsonPropertyName("has_composing_session")]
+		public bool HasComposingSession { get; set; }
+		[JsonPropertyName("visible_composition_range")]
+		public TextRange? VisibleCompositionRange { get; set; }
+		[JsonPropertyName("platform_marked_range")]
+		public TextRange? PlatformMarkedRange { get; set; }
+		[JsonPropertyName("preedit_storage")]
+		public ImePreeditStorage PreeditStorage { get; set; } = ImePreeditStorage.NONE;
+		[JsonPropertyName("context_policy")]
+		public ImeContextPolicy ContextPolicy { get; set; } = ImeContextPolicy.NONE;
+		[JsonPropertyName("clear_platform_preedit")]
+		public bool ClearPlatformPreedit { get; set; }
+	}
+
+	/// <summary>
+	/// Result of a state-changing editor action.
+	/// </summary>
+	public sealed class EditorActionResult {
+		[JsonPropertyName("handled")]
+		public bool Handled { get; set; }
+		[JsonPropertyName("needs_redraw")]
+		public bool NeedsRedraw { get; set; }
+		[JsonPropertyName("reason")]
+		public int Reason { get; set; }
+		[JsonPropertyName("content_changed")]
+		public bool ContentChanged { get; set; }
+		[JsonPropertyName("cursor_changed")]
+		public bool CursorChanged { get; set; }
+		[JsonPropertyName("selection_changed")]
+		public bool SelectionChanged { get; set; }
+		[JsonPropertyName("scroll_changed")]
+		public bool ScrollChanged { get; set; }
+		[JsonPropertyName("scale_changed")]
+		public bool ScaleChanged { get; set; }
+		[JsonPropertyName("pointer_cursor_changed")]
+		public bool PointerCursorChanged { get; set; }
+		[JsonPropertyName("composition_changed")]
+		public bool CompositionChanged { get; set; }
+		[JsonPropertyName("decoration_changed")]
+		public bool DecorationChanged { get; set; }
+		[JsonPropertyName("needs_ime_sync")]
+		public bool NeedsImeSync { get; set; }
+		[JsonPropertyName("needs_edge_scroll")]
+		public bool NeedsEdgeScroll { get; set; }
+		[JsonPropertyName("needs_fling")]
+		public bool NeedsFling { get; set; }
+		[JsonPropertyName("needs_animation")]
+		public bool NeedsAnimation { get; set; }
+		[JsonPropertyName("is_handle_drag")]
+		public bool IsHandleDrag { get; set; }
+		[JsonPropertyName("changes")]
+		public List<TextChange> Changes { get; set; } = new();
+		public TextPosition CursorBefore { get; set; }
+		public TextPosition CursorAfter { get; set; }
+		public bool HasSelectionBefore { get; set; }
+		public TextRange SelectionBefore { get; set; }
+		public bool HasSelectionAfter { get; set; }
+		public TextRange SelectionAfter { get; set; }
+		public float ScrollXBefore { get; set; }
+		public float ScrollYBefore { get; set; }
+		public float ScrollXAfter { get; set; }
+		public float ScrollYAfter { get; set; }
+		public float ScaleBefore { get; set; } = 1f;
+		public float ScaleAfter { get; set; } = 1f;
+		public PointerCursorType PointerCursorBefore { get; set; } = PointerCursorType.TEXT;
+		public PointerCursorType PointerCursorAfter { get; set; } = PointerCursorType.TEXT;
+		public ImeSyncSnapshot ImeSync { get; set; } = new();
+		public GestureType GestureType { get; set; } = GestureType.UNDEFINED;
+		public EventType GestureEventType { get; set; } = EventType.UNDEFINED;
+		public PointF? TapPoint { get; set; }
+		public HitTarget HitTarget { get; set; }
+		public byte Modifiers { get; set; }
+		public int Command { get; set; }
+		public static readonly EditorActionResult Empty = new();
 	}
 
 	/// <summary>
@@ -1475,27 +1521,6 @@ namespace SweetEditor {
 	}
 
 	/// <summary>
-	/// Keyboard event handling result.
-	/// </summary>
-	public struct KeyEventResult {
-		/// <summary>Whether the event was handled</summary>
-		[JsonPropertyName("handled")]
-		public bool Handled { get; set; }
-		/// <summary>Whether content changed</summary>
-		[JsonPropertyName("content_changed")]
-		public bool ContentChanged { get; set; }
-		/// <summary>Whether the caret changed.</summary>
-		[JsonPropertyName("cursor_changed")]
-		public bool CursorChanged { get; set; }
-		/// <summary>Whether selection changed</summary>
-		[JsonPropertyName("selection_changed")]
-		public bool SelectionChanged { get; set; }
-		/// <summary>Precise text change info (valid when content_changed is true).</summary>
-		[JsonPropertyName("edit_result")]
-		public TextEditResult? EditResult { get; set; }
-	}
-
-	/// <summary>
 	/// Native method entry points for the WinForms platform, centralized management of all P/Invoke declarations.
 	/// </summary>
 	internal static class NativeMethods {
@@ -1526,46 +1551,49 @@ namespace SweetEditor {
 		internal static extern void FreeEditor(IntPtr handle);
 
 		[DllImport(LibraryName, EntryPoint = "set_editor_document", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr SetEditorDocument(IntPtr handle, IntPtr documentHandle);
+		internal static extern IntPtr SetEditorDocument(IntPtr handle, IntPtr documentHandle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "set_editor_viewport", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr SetViewport(IntPtr handle, int width, int height);
+		internal static extern IntPtr SetViewport(IntPtr handle, int width, int height, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_on_font_metrics_changed", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void OnFontMetricsChanged(IntPtr handle);
+		internal static extern IntPtr OnFontMetricsChanged(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_fold_arrow_mode", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetFoldArrowMode(IntPtr handle, int mode);
+		internal static extern IntPtr SetFoldArrowMode(IntPtr handle, int mode, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_wrap_mode", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetWrapMode(IntPtr handle, int mode);
+		internal static extern IntPtr SetWrapMode(IntPtr handle, int mode, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_tab_size", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetTabSize(IntPtr handle, int tabSize);
+		internal static extern IntPtr SetTabSize(IntPtr handle, int tabSize, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_set_insert_spaces", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr SetInsertSpaces(IntPtr handle, int enabled, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_scale", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetScale(IntPtr handle, float scale);
+		internal static extern IntPtr SetScale(IntPtr handle, float scale, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_line_spacing", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetLineSpacing(IntPtr handle, float add, float mult);
+		internal static extern IntPtr SetLineSpacing(IntPtr handle, float add, float mult, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_content_start_padding", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetContentStartPadding(IntPtr handle, float padding);
+		internal static extern IntPtr SetContentStartPadding(IntPtr handle, float padding, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_show_split_line", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetShowSplitLine(IntPtr handle, int show);
+		internal static extern IntPtr SetShowSplitLine(IntPtr handle, int show, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_gutter_sticky", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetGutterSticky(IntPtr handle, int sticky);
+		internal static extern IntPtr SetGutterSticky(IntPtr handle, int sticky, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_gutter_visible", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetGutterVisible(IntPtr handle, int visible);
+		internal static extern IntPtr SetGutterVisible(IntPtr handle, int visible, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_current_line_render_mode", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetCurrentLineRenderMode(IntPtr handle, int mode);
+		internal static extern IntPtr SetCurrentLineRenderMode(IntPtr handle, int mode, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_keymap", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetKeyMap(IntPtr handle, byte[] payload, UIntPtr payloadSize);
+		internal static extern IntPtr SetKeyMap(IntPtr handle, byte[] payload, UIntPtr payloadSize, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "build_editor_render_model", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr BuildRenderModel(IntPtr handle, out UIntPtr outSize);
@@ -1645,7 +1673,7 @@ namespace SweetEditor {
 		internal static extern int CanRedo(IntPtr handle);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_cursor_position", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetCursorPosition(IntPtr handle, nuint line, nuint column);
+		internal static extern IntPtr SetCursorPosition(IntPtr handle, nuint line, nuint column, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_get_cursor_position", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void GetCursorPosition(IntPtr handle, ref nuint outLine, ref nuint outColumn);
@@ -1657,31 +1685,31 @@ namespace SweetEditor {
 		internal static extern IntPtr GetWordAtCursor(IntPtr handle);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_selection", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetSelection(IntPtr handle, int startLine, int startColumn, int endLine, int endColumn);
+		internal static extern IntPtr SetSelection(IntPtr handle, int startLine, int startColumn, int endLine, int endColumn, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_get_selection", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern int GetSelection(IntPtr handle, ref nuint outStartLine, ref nuint outStartColumn, ref nuint outEndLine, ref nuint outEndColumn);
 
 		[DllImport(LibraryName, EntryPoint = "editor_select_all", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SelectAll(IntPtr handle);
+		internal static extern IntPtr SelectAll(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_move_cursor_left", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void MoveCursorLeft(IntPtr handle, int extendSelection);
+		internal static extern IntPtr MoveCursorLeft(IntPtr handle, int extendSelection, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_move_cursor_right", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void MoveCursorRight(IntPtr handle, int extendSelection);
+		internal static extern IntPtr MoveCursorRight(IntPtr handle, int extendSelection, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_move_cursor_up", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void MoveCursorUp(IntPtr handle, int extendSelection);
+		internal static extern IntPtr MoveCursorUp(IntPtr handle, int extendSelection, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_move_cursor_down", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void MoveCursorDown(IntPtr handle, int extendSelection);
+		internal static extern IntPtr MoveCursorDown(IntPtr handle, int extendSelection, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_move_cursor_to_line_start", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void MoveCursorToLineStart(IntPtr handle, int extendSelection);
+		internal static extern IntPtr MoveCursorToLineStart(IntPtr handle, int extendSelection, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_move_cursor_to_line_end", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void MoveCursorToLineEnd(IntPtr handle, int extendSelection);
+		internal static extern IntPtr MoveCursorToLineEnd(IntPtr handle, int extendSelection, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_ime_update_preedit", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr ImeUpdatePreedit(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int scriptHint, out UIntPtr outSize);
@@ -1693,27 +1721,32 @@ namespace SweetEditor {
 		internal static extern int IsComposing(IntPtr handle);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_read_only", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetReadOnly(IntPtr handle, int readOnly);
+		internal static extern IntPtr SetReadOnly(IntPtr handle, int readOnly, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_is_read_only", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern int IsReadOnly(IntPtr handle);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_auto_indent_mode", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetAutoIndentMode(IntPtr handle, int mode);
+		internal static extern IntPtr SetAutoIndentMode(IntPtr handle, int mode, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_get_auto_indent_mode", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern int GetAutoIndentMode(IntPtr handle);
 
+		[DllImport(LibraryName, EntryPoint = "editor_set_backspace_unindent", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr SetBackspaceUnindent(IntPtr handle, int enabled, out UIntPtr outSize);
+
 		[DllImport(LibraryName, EntryPoint = "editor_set_handle_config", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetHandleConfig(IntPtr handle,
+		internal static extern IntPtr SetHandleConfig(IntPtr handle,
 			float startLeft, float startTop, float startRight, float startBottom,
-			float endLeft, float endTop, float endRight, float endBottom);
+			float endLeft, float endTop, float endRight, float endBottom,
+			out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_scrollbar_config", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetScrollbarConfig(IntPtr handle,
+		internal static extern IntPtr SetScrollbarConfig(IntPtr handle,
 			float thickness, float minThumb, float thumbHitPadding,
 			int mode, int thumbDraggable, int trackTapMode,
-			int fadeDelayMs, int fadeDurationMs);
+			int fadeDelayMs, int fadeDurationMs,
+			out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_get_position_rect", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void GetPositionRect(IntPtr handle, nuint line, nuint column, ref float outX, ref float outY, ref float outHeight);
@@ -1722,140 +1755,140 @@ namespace SweetEditor {
 		internal static extern void GetCursorRect(IntPtr handle, ref float outX, ref float outY, ref float outHeight);
 
 		[DllImport(LibraryName, EntryPoint = "editor_scroll_to_line", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void ScrollToLine(IntPtr handle, int line, byte behavior);
+		internal static extern IntPtr ScrollToLine(IntPtr handle, int line, byte behavior, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_goto_position", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void GotoPosition(IntPtr handle, int line, int column);
+		internal static extern IntPtr GotoPosition(IntPtr handle, int line, int column, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_ensure_cursor_visible", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void EnsureCursorVisible(IntPtr handle);
+		internal static extern IntPtr EnsureCursorVisible(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_scroll", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetScroll(IntPtr handle, float scrollX, float scrollY);
+		internal static extern IntPtr SetScroll(IntPtr handle, float scrollX, float scrollY, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_get_scroll_metrics", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr GetScrollMetrics(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_register_text_style", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void registerTextStyle(IntPtr handle, uint styleId, int color, int backgroundColor, int fontStyle);
+		internal static extern IntPtr registerTextStyle(IntPtr handle, uint styleId, int color, int backgroundColor, int fontStyle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_register_batch_text_styles", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void registerBatchTextStyles(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr registerBatchTextStyles(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_line_spans", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetLineSpans(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr SetLineSpans(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_line_inlay_hints", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetLineInlayHints(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr SetLineInlayHints(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_line_phantom_texts", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetLinePhantomTexts(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr SetLinePhantomTexts(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_line_gutter_icons", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetLineGutterIcons(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr SetLineGutterIcons(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		// ===================== Batch APIs =====================
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_batch_line_spans", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetBatchLineSpans(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr SetBatchLineSpans(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_clear_line_spans", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void ClearLineSpans(IntPtr handle, nuint line, byte layer);
+		internal static extern IntPtr ClearLineSpans(IntPtr handle, nuint line, byte layer, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_batch_line_inlay_hints", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetBatchLineInlayHints(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr SetBatchLineInlayHints(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_batch_line_phantom_texts", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetBatchLinePhantomTexts(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr SetBatchLinePhantomTexts(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_batch_line_gutter_icons", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetBatchLineGutterIcons(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr SetBatchLineGutterIcons(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_line_codelens", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetLineCodeLens(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr SetLineCodeLens(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_batch_line_codelens", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetBatchLineCodeLens(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr SetBatchLineCodeLens(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_clear_codelens", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void ClearCodeLens(IntPtr handle);
+		internal static extern IntPtr ClearCodeLens(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_batch_line_diagnostics", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetBatchLineDiagnostics(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr SetBatchLineDiagnostics(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_clear_gutter_icons", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void ClearGutterIcons(IntPtr handle);
+		internal static extern IntPtr ClearGutterIcons(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_max_gutter_icons", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetMaxGutterIcons(IntPtr handle, uint count);
+		internal static extern IntPtr SetMaxGutterIcons(IntPtr handle, uint count, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_line_diagnostics", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetLineDiagnostics(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr SetLineDiagnostics(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_clear_diagnostics", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void ClearDiagnostics(IntPtr handle);
+		internal static extern IntPtr ClearDiagnostics(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_indent_guides", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetIndentGuides(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr SetIndentGuides(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_bracket_guides", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetBracketGuides(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr SetBracketGuides(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_flow_guides", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetFlowGuides(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr SetFlowGuides(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_separator_guides", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetSeparatorGuides(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr SetSeparatorGuides(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_clear_guides", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void ClearGuides(IntPtr handle);
+		internal static extern IntPtr ClearGuides(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_fold_regions", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetFoldRegions(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr SetFoldRegions(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_toggle_fold", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern int ToggleFold(IntPtr handle, nuint line);
+		internal static extern IntPtr ToggleFold(IntPtr handle, nuint line, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_fold_at", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern int FoldAt(IntPtr handle, nuint line);
+		internal static extern IntPtr FoldAt(IntPtr handle, nuint line, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_unfold_at", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern int UnfoldAt(IntPtr handle, nuint line);
+		internal static extern IntPtr UnfoldAt(IntPtr handle, nuint line, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_fold_all", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void FoldAll(IntPtr handle);
+		internal static extern IntPtr FoldAll(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_unfold_all", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void UnfoldAll(IntPtr handle);
+		internal static extern IntPtr UnfoldAll(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_is_line_visible", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern int IsLineVisible(IntPtr handle, nuint line);
 
 		[DllImport(LibraryName, EntryPoint = "editor_clear_highlights", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void ClearHighlights(IntPtr handle);
+		internal static extern IntPtr ClearHighlights(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_clear_highlights_layer", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void ClearHighlightsLayer(IntPtr handle, byte layer);
+		internal static extern IntPtr ClearHighlightsLayer(IntPtr handle, byte layer, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_clear_inlay_hints", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void ClearInlayHints(IntPtr handle);
+		internal static extern IntPtr ClearInlayHints(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_clear_phantom_texts", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void ClearPhantomTexts(IntPtr handle);
+		internal static extern IntPtr ClearPhantomTexts(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_clear_all_decorations", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void ClearAllDecorations(IntPtr handle);
+		internal static extern IntPtr ClearAllDecorations(IntPtr handle, out UIntPtr outSize);
 
 		// ===================== BracketHighlight =====================
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_bracket_pairs", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetBracketPairs(IntPtr handle, int[] openChars, int[] closeChars, nuint count);
+		internal static extern IntPtr SetBracketPairs(IntPtr handle, int[] openChars, int[] closeChars, nuint count, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_matched_brackets", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void SetMatchedBrackets(IntPtr handle, nuint openLine, nuint openCol, nuint closeLine, nuint closeCol);
+		internal static extern IntPtr SetMatchedBrackets(IntPtr handle, nuint openLine, nuint openCol, nuint closeLine, nuint closeCol, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_clear_matched_brackets", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void ClearMatchedBrackets(IntPtr handle);
+		internal static extern IntPtr ClearMatchedBrackets(IntPtr handle, out UIntPtr outSize);
 
 		// ===================== LinkedEditing =====================
 
@@ -1863,19 +1896,19 @@ namespace SweetEditor {
 		internal static extern IntPtr InsertSnippet(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string snippetTemplate, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_start_linked_editing", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void StartLinkedEditing(IntPtr handle, byte[] data, nuint size);
+		internal static extern IntPtr StartLinkedEditing(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_is_in_linked_editing", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern int IsInLinkedEditing(IntPtr handle);
 
 		[DllImport(LibraryName, EntryPoint = "editor_linked_editing_next", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern int LinkedEditingNext(IntPtr handle);
+		internal static extern IntPtr LinkedEditingNext(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_linked_editing_prev", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern int LinkedEditingPrev(IntPtr handle);
+		internal static extern IntPtr LinkedEditingPrev(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_cancel_linked_editing", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void CancelLinkedEditing(IntPtr handle);
+		internal static extern IntPtr CancelLinkedEditing(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "free_binary_data", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void FreeBinaryData(IntPtr ptr);
@@ -1992,17 +2025,16 @@ namespace SweetEditor {
 			}
 		}
 
-		private static void FreeBinaryPayload(IntPtr payloadPtr) {
-			if (payloadPtr != IntPtr.Zero) {
-				NativeMethods.FreeBinaryData(payloadPtr);
-			}
+		private static EditorActionResult DecodeAction(IntPtr payloadPtr, UIntPtr payloadSize) {
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Loads a document into the editor.</summary>
 		/// <param name="document">Document object to load.</param>
-		public void LoadDocument(Document document) {
+		public EditorActionResult LoadDocument(Document document) {
 			currentDocument = document;
-			NativeMethods.SetEditorDocument(nativeHandle, document.nativeHandle);
+			IntPtr payloadPtr = NativeMethods.SetEditorDocument(nativeHandle, document.nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Gets the currently loaded document instance.</summary>
@@ -2067,36 +2099,43 @@ namespace SweetEditor {
 		/// <summary>Sets editor viewport size.</summary>
 		/// <param name="width">Viewport width (pixels).</param>
 		/// <param name="height">Viewport height (pixels).</param>
-		public void SetViewport(int width, int height) {
-			NativeMethods.SetViewport(nativeHandle, width, height);
+		public EditorActionResult SetViewport(int width, int height) {
+			IntPtr payloadPtr = NativeMethods.SetViewport(nativeHandle, width, height, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Notifies the editor that font metrics have changed (call after font/scale/DPI changes).</summary>
-		public void OnFontMetricsChanged() {
-			NativeMethods.OnFontMetricsChanged(nativeHandle);
+		public EditorActionResult OnFontMetricsChanged() {
+			IntPtr payloadPtr = NativeMethods.OnFontMetricsChanged(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets fold-arrow display mode.</summary>
 		/// <param name="mode">Mode value (0=AUTO, 1=ALWAYS, 2=HIDDEN)</param>
-		public void SetFoldArrowMode(int mode) {
-			NativeMethods.SetFoldArrowMode(nativeHandle, mode);
+		public EditorActionResult SetFoldArrowMode(int mode) {
+			IntPtr payloadPtr = NativeMethods.SetFoldArrowMode(nativeHandle, mode, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets auto-wrap mode.</summary>
 		/// <param name="mode">Mode value (0=NONE, 1=CHAR_BREAK, 2=WORD_BREAK)</param>
-		public void SetWrapMode(int mode) {
-			NativeMethods.SetWrapMode(nativeHandle, mode);
+		public EditorActionResult SetWrapMode(int mode) {
+			IntPtr payloadPtr = NativeMethods.SetWrapMode(nativeHandle, mode, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets tab size (number of spaces per tab stop).</summary>
 		/// <param name="tabSize">Tab size (default 4, minimum 1).</param>
-		public void SetTabSize(int tabSize) {
-			NativeMethods.SetTabSize(nativeHandle, tabSize);
+		public EditorActionResult SetTabSize(int tabSize) {
+			IntPtr payloadPtr = NativeMethods.SetTabSize(nativeHandle, tabSize, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Controls whether indentation should insert spaces instead of a tab character.</summary>
-		public void SetInsertSpaces(bool enabled) {
+		public EditorActionResult SetInsertSpaces(bool enabled) {
 			insertSpaces = enabled;
+			IntPtr payloadPtr = NativeMethods.SetInsertSpaces(nativeHandle, enabled ? 1 : 0, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		public bool IsInsertSpaces() => insertSpaces;
@@ -2109,53 +2148,62 @@ namespace SweetEditor {
 		public IReadOnlyList<BracketPair> GetAutoClosingPairs() => autoClosingPairs;
 
 		/// <summary>Controls whether backspace at indentation boundaries should unindent by one indent unit.</summary>
-		public void SetBackspaceUnindent(bool enabled) {
+		public EditorActionResult SetBackspaceUnindent(bool enabled) {
 			backspaceUnindent = enabled;
+			IntPtr payloadPtr = NativeMethods.SetBackspaceUnindent(nativeHandle, enabled ? 1 : 0, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		public bool IsBackspaceUnindent() => backspaceUnindent;
 
 		/// <summary>Sets editor scale factor.</summary>
 		/// <param name="scale">Scale factor (1.0 = 100%).</param>
-		public void SetScale(float scale) {
-			NativeMethods.SetScale(nativeHandle, scale);
+		public EditorActionResult SetScale(float scale) {
+			IntPtr payloadPtr = NativeMethods.SetScale(nativeHandle, scale, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets line spacing.</summary>
 		/// <param name="add">Additional line spacing (pixels).</param>
 		/// <param name="mult">Line spacing multiplier</param>
-		public void SetLineSpacing(float add, float mult) {
-			NativeMethods.SetLineSpacing(nativeHandle, add, mult);
+		public EditorActionResult SetLineSpacing(float add, float mult) {
+			IntPtr payloadPtr = NativeMethods.SetLineSpacing(nativeHandle, add, mult, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets extra horizontal padding between gutter split and text content start.</summary>
 		/// <param name="padding">Padding in pixels (clamped to &gt;= 0 on native side).</param>
-		public void SetContentStartPadding(float padding) {
-			NativeMethods.SetContentStartPadding(nativeHandle, padding);
+		public EditorActionResult SetContentStartPadding(float padding) {
+			IntPtr payloadPtr = NativeMethods.SetContentStartPadding(nativeHandle, padding, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets whether gutter split line should be rendered.</summary>
 		/// <param name="show">true=show, false=hide.</param>
-		public void SetShowSplitLine(bool show) {
-			NativeMethods.SetShowSplitLine(nativeHandle, show ? 1 : 0);
+		public EditorActionResult SetShowSplitLine(bool show) {
+			IntPtr payloadPtr = NativeMethods.SetShowSplitLine(nativeHandle, show ? 1 : 0, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets whether gutter stays fixed during horizontal scroll.</summary>
 		/// <param name="sticky">true=gutter fixed (desktop style), false=gutter scrolls with content (mobile style).</param>
-		public void SetGutterSticky(bool sticky) {
-			NativeMethods.SetGutterSticky(nativeHandle, sticky ? 1 : 0);
+		public EditorActionResult SetGutterSticky(bool sticky) {
+			IntPtr payloadPtr = NativeMethods.SetGutterSticky(nativeHandle, sticky ? 1 : 0, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets whether gutter area is visible.</summary>
 		/// <param name="visible">true=show gutter, false=hide entire gutter.</param>
-		public void SetGutterVisible(bool visible) {
-			NativeMethods.SetGutterVisible(nativeHandle, visible ? 1 : 0);
+		public EditorActionResult SetGutterVisible(bool visible) {
+			IntPtr payloadPtr = NativeMethods.SetGutterVisible(nativeHandle, visible ? 1 : 0, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets current line render mode.</summary>
 		/// <param name="mode">BACKGROUND(fill), BORDER(stroke), or NONE(disabled).</param>
-		public void SetCurrentLineRenderMode(CurrentLineRenderMode mode) {
-			NativeMethods.SetCurrentLineRenderMode(nativeHandle, (int)mode);
+		public EditorActionResult SetCurrentLineRenderMode(CurrentLineRenderMode mode) {
+			IntPtr payloadPtr = NativeMethods.SetCurrentLineRenderMode(nativeHandle, (int)mode, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		#endregion
@@ -2178,38 +2226,38 @@ namespace SweetEditor {
 		/// <summary>Handles gesture events (touch/mouse/wheel, etc.).</summary>
 		/// <param name="gestureEvent">Gesture event data.</param>
 		/// <returns>Gesture recognition result.</returns>
-		public GestureResult HandleGestureEvent(GestureEvent gestureEvent) {
+		public EditorActionResult HandleGestureEvent(GestureEvent gestureEvent) {
 			float[] pointsArr = gestureEvent.GetPointsArray();
 			IntPtr payloadPtr = NativeMethods.HandleGestureEventEx(nativeHandle, (uint)gestureEvent.Type,
 				(uint)(gestureEvent.Points?.Count ?? 0), pointsArr,
 				(byte)gestureEvent.Modifiers, gestureEvent.WheelDeltaX, gestureEvent.WheelDeltaY, gestureEvent.DirectScale,
 				out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseGestureResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Extended gesture handler alias (same payload contract as <see cref="HandleGestureEvent"/>).</summary>
 		/// <param name="gestureEvent">Gesture event data.</param>
 		/// <returns>Gesture recognition result.</returns>
-		public GestureResult HandleGestureEventEx(GestureEvent gestureEvent) {
+		public EditorActionResult HandleGestureEventEx(GestureEvent gestureEvent) {
 			return HandleGestureEvent(gestureEvent);
 		}
 
 		/// <summary>Advances edge-scroll by one tick and returns an updated gesture result.</summary>
-		public GestureResult TickEdgeScroll() {
+		public EditorActionResult TickEdgeScroll() {
 			IntPtr payloadPtr = NativeMethods.TickEdgeScroll(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseGestureResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Advances fling by one tick and returns an updated gesture result.</summary>
-		public GestureResult TickFling() {
+		public EditorActionResult TickFling() {
 			IntPtr payloadPtr = NativeMethods.TickFling(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseGestureResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Unified animation tick: advances all active animations (edge-scroll, fling).</summary>
-		public GestureResult TickAnimations() {
+		public EditorActionResult TickAnimations() {
 			IntPtr payloadPtr = NativeMethods.TickAnimations(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseGestureResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>
@@ -2219,26 +2267,27 @@ namespace SweetEditor {
 		/// <param name="text">Text mapped to the key (nullable).</param>
 		/// <param name="modifiers">Modifier key flags</param>
 		/// <returns>Keyboard event handling result.</returns>
-		public KeyEventResult HandleKeyEvent(ushort keyCode, string? text, byte modifiers) {
+		public EditorActionResult HandleKeyEvent(ushort keyCode, string? text, byte modifiers) {
 			IntPtr payloadPtr = NativeMethods.HandleKeyEvent(nativeHandle, keyCode, text, modifiers, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseKeyEventResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>
 		/// Replaces the current keymap and synchronizes the complete binding table to the native core.
 		/// </summary>
 		/// <param name="map">Keymap data.</param>
-		public void SetKeyMap(KeyMap map) {
+		public EditorActionResult SetKeyMap(KeyMap map) {
 			if (map == null) {
 				throw new ArgumentNullException(nameof(map));
 			}
 			keyMap = map.Clone();
-			SyncKeyMapToNative();
+			return SyncKeyMapToNative();
 		}
 
-		private void SyncKeyMapToNative() {
+		private EditorActionResult SyncKeyMapToNative() {
 			byte[] payload = PackKeyMap(keyMap);
-			NativeMethods.SetKeyMap(nativeHandle, payload, (UIntPtr)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetKeyMap(nativeHandle, payload, (UIntPtr)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		private static byte[] PackKeyMap(KeyMap keyMap) {
@@ -2264,86 +2313,86 @@ namespace SweetEditor {
 		/// <summary>Inserts text at the caret position.</summary>
 		/// <param name="text">Text to insert</param>
 		/// <returns>Edit result containing changed ranges and new text.</returns>
-		public TextEditResult InsertText(string text) {
+		public EditorActionResult InsertText(string text) {
 			IntPtr payloadPtr = NativeMethods.InsertText(nativeHandle, text, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseTextEditResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Replaces text in the specified range (atomic operation).</summary>
 		/// <param name="range">Text range to replace.</param>
 		/// <param name="newText">New replacement text</param>
 		/// <returns>Edit result containing changed ranges and new text.</returns>
-		public TextEditResult ReplaceText(TextRange range, string newText) {
+		public EditorActionResult ReplaceText(TextRange range, string newText) {
 			IntPtr payloadPtr = NativeMethods.ReplaceText(nativeHandle,
 				range.Start.Line, range.Start.Column,
 				range.End.Line, range.End.Column, newText, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseTextEditResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Deletes text in the specified range (atomic operation).</summary>
 		/// <param name="range">Text range to delete.</param>
 		/// <returns>Edit result.</returns>
-		public TextEditResult DeleteText(TextRange range) {
+		public EditorActionResult DeleteText(TextRange range) {
 			IntPtr payloadPtr = NativeMethods.DeleteText(nativeHandle,
 				range.Start.Line, range.Start.Column,
 				range.End.Line, range.End.Column, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseTextEditResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Deletes one character backward (Backspace).</summary>
 		/// <returns>Edit result.</returns>
-		public TextEditResult Backspace() {
+		public EditorActionResult Backspace() {
 			IntPtr payloadPtr = NativeMethods.Backspace(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseTextEditResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Deletes one character forward (Delete key).</summary>
 		/// <returns>Edit result.</returns>
-		public TextEditResult DeleteForward() {
+		public EditorActionResult DeleteForward() {
 			IntPtr payloadPtr = NativeMethods.DeleteForward(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseTextEditResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Moves the current line (or selected lines) up by one line.</summary>
-		public TextEditResult MoveLineUp() {
+		public EditorActionResult MoveLineUp() {
 			IntPtr payloadPtr = NativeMethods.MoveLineUp(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseTextEditResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Moves the current line (or selected lines) down by one line.</summary>
-		public TextEditResult MoveLineDown() {
+		public EditorActionResult MoveLineDown() {
 			IntPtr payloadPtr = NativeMethods.MoveLineDown(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseTextEditResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Duplicates the current line (or selected lines) upward.</summary>
-		public TextEditResult CopyLineUp() {
+		public EditorActionResult CopyLineUp() {
 			IntPtr payloadPtr = NativeMethods.CopyLineUp(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseTextEditResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Duplicates the current line (or selected lines) downward.</summary>
-		public TextEditResult CopyLineDown() {
+		public EditorActionResult CopyLineDown() {
 			IntPtr payloadPtr = NativeMethods.CopyLineDown(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseTextEditResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Deletes the current line (or all selected lines).</summary>
-		public TextEditResult DeleteLine() {
+		public EditorActionResult DeleteLine() {
 			IntPtr payloadPtr = NativeMethods.DeleteLine(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseTextEditResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Inserts an empty line above the current line.</summary>
-		public TextEditResult InsertLineAbove() {
+		public EditorActionResult InsertLineAbove() {
 			IntPtr payloadPtr = NativeMethods.InsertLineAbove(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseTextEditResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Inserts an empty line below the current line.</summary>
-		public TextEditResult InsertLineBelow() {
+		public EditorActionResult InsertLineBelow() {
 			IntPtr payloadPtr = NativeMethods.InsertLineBelow(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseTextEditResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Gets the currently selected text.</summary>
@@ -2362,18 +2411,18 @@ namespace SweetEditor {
 
 		/// <summary>Performs undo.</summary>
 		/// <returns>Edit result; null means there is nothing to undo.</returns>
-		public TextEditResult? Undo() {
+		public EditorActionResult? Undo() {
 			IntPtr payloadPtr = NativeMethods.Undo(nativeHandle, out UIntPtr payloadSize);
 			if (payloadPtr == IntPtr.Zero) return null;
-			return ProtocolDecoder.ParseTextEditResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Performs redo.</summary>
 		/// <returns>Edit result; null means there is nothing to redo.</returns>
-		public TextEditResult? Redo() {
+		public EditorActionResult? Redo() {
 			IntPtr payloadPtr = NativeMethods.Redo(nativeHandle, out UIntPtr payloadSize);
 			if (payloadPtr == IntPtr.Zero) return null;
-			return ProtocolDecoder.ParseTextEditResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Whether undo is available.</summary>
@@ -2394,8 +2443,9 @@ namespace SweetEditor {
 
 		/// <summary>Sets caret position (without scrolling viewport).</summary>
 		/// <param name="position">Target position</param>
-		public void SetCursorPosition(TextPosition position) {
-			NativeMethods.SetCursorPosition(nativeHandle, (nuint)position.Line, (nuint)position.Column);
+		public EditorActionResult SetCursorPosition(TextPosition position) {
+			IntPtr payloadPtr = NativeMethods.SetCursorPosition(nativeHandle, (nuint)position.Line, (nuint)position.Column, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Gets current caret position.</summary>
@@ -2432,8 +2482,9 @@ namespace SweetEditor {
 		/// <param name="startColumn">Selection start column (0-based).</param>
 		/// <param name="endLine">Selection end line (0-based).</param>
 		/// <param name="endColumn">Selection end column (0-based).</param>
-		public void SetSelection(int startLine, int startColumn, int endLine, int endColumn) {
-			NativeMethods.SetSelection(nativeHandle, startLine, startColumn, endLine, endColumn);
+		public EditorActionResult SetSelection(int startLine, int startColumn, int endLine, int endColumn) {
+			IntPtr payloadPtr = NativeMethods.SetSelection(nativeHandle, startLine, startColumn, endLine, endColumn, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Gets current selection range.</summary>
@@ -2449,8 +2500,9 @@ namespace SweetEditor {
 		}
 
 		/// <summary>Selects all document content.</summary>
-		public void SelectAll() {
-			NativeMethods.SelectAll(nativeHandle);
+		public EditorActionResult SelectAll() {
+			IntPtr payloadPtr = NativeMethods.SelectAll(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		#endregion
@@ -2459,38 +2511,44 @@ namespace SweetEditor {
 
 		/// <summary>Moves caret left.</summary>
 		/// <param name="extendSelection">Whether to extend selection</param>
-		public void MoveCursorLeft(bool extendSelection = false) {
-			NativeMethods.MoveCursorLeft(nativeHandle, extendSelection ? 1 : 0);
+		public EditorActionResult MoveCursorLeft(bool extendSelection = false) {
+			IntPtr payloadPtr = NativeMethods.MoveCursorLeft(nativeHandle, extendSelection ? 1 : 0, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Moves caret right.</summary>
 		/// <param name="extendSelection">Whether to extend selection</param>
-		public void MoveCursorRight(bool extendSelection = false) {
-			NativeMethods.MoveCursorRight(nativeHandle, extendSelection ? 1 : 0);
+		public EditorActionResult MoveCursorRight(bool extendSelection = false) {
+			IntPtr payloadPtr = NativeMethods.MoveCursorRight(nativeHandle, extendSelection ? 1 : 0, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Moves caret up.</summary>
 		/// <param name="extendSelection">Whether to extend selection</param>
-		public void MoveCursorUp(bool extendSelection = false) {
-			NativeMethods.MoveCursorUp(nativeHandle, extendSelection ? 1 : 0);
+		public EditorActionResult MoveCursorUp(bool extendSelection = false) {
+			IntPtr payloadPtr = NativeMethods.MoveCursorUp(nativeHandle, extendSelection ? 1 : 0, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Moves caret down.</summary>
 		/// <param name="extendSelection">Whether to extend selection</param>
-		public void MoveCursorDown(bool extendSelection = false) {
-			NativeMethods.MoveCursorDown(nativeHandle, extendSelection ? 1 : 0);
+		public EditorActionResult MoveCursorDown(bool extendSelection = false) {
+			IntPtr payloadPtr = NativeMethods.MoveCursorDown(nativeHandle, extendSelection ? 1 : 0, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Moves caret to line start.</summary>
 		/// <param name="extendSelection">Whether to extend selection</param>
-		public void MoveCursorToLineStart(bool extendSelection = false) {
-			NativeMethods.MoveCursorToLineStart(nativeHandle, extendSelection ? 1 : 0);
+		public EditorActionResult MoveCursorToLineStart(bool extendSelection = false) {
+			IntPtr payloadPtr = NativeMethods.MoveCursorToLineStart(nativeHandle, extendSelection ? 1 : 0, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Moves caret to line end.</summary>
 		/// <param name="extendSelection">Whether to extend selection</param>
-		public void MoveCursorToLineEnd(bool extendSelection = false) {
-			NativeMethods.MoveCursorToLineEnd(nativeHandle, extendSelection ? 1 : 0);
+		public EditorActionResult MoveCursorToLineEnd(bool extendSelection = false) {
+			IntPtr payloadPtr = NativeMethods.MoveCursorToLineEnd(nativeHandle, extendSelection ? 1 : 0, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		#endregion
@@ -2499,15 +2557,15 @@ namespace SweetEditor {
 
 		/// <summary>Updates IME composition text.</summary>
 		/// <param name="text">Current composition text</param>
-		public void UpdateImePreedit(string? text) {
-			IntPtr payloadPtr = NativeMethods.ImeUpdatePreedit(nativeHandle, text ?? string.Empty, 0, out _);
-			FreeBinaryPayload(payloadPtr);
+		public EditorActionResult UpdateImePreedit(string? text) {
+			IntPtr payloadPtr = NativeMethods.ImeUpdatePreedit(nativeHandle, text ?? string.Empty, 0, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Cancels IME composition.</summary>
-		public void CancelImePreedit() {
-			IntPtr payloadPtr = NativeMethods.ImeCancelPreedit(nativeHandle, out _);
-			FreeBinaryPayload(payloadPtr);
+		public EditorActionResult CancelImePreedit() {
+			IntPtr payloadPtr = NativeMethods.ImeCancelPreedit(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Whether IME composition is currently active.</summary>
@@ -2518,11 +2576,12 @@ namespace SweetEditor {
 
 		/// <summary>Enables or disables IME composition handling.</summary>
 		/// <param name="enabled"><c>true</c> to enable composition; otherwise <c>false</c>.</param>
-		public void SetCompositionEnabled(bool enabled) {
+		public EditorActionResult SetCompositionEnabled(bool enabled) {
 			compositionEnabled = enabled;
 			if (!enabled && IsComposing()) {
-				CancelImePreedit();
+				return CancelImePreedit();
 			}
+			return EditorActionResult.Empty;
 		}
 
 		/// <summary>Gets whether IME composition handling is enabled.</summary>
@@ -2537,8 +2596,9 @@ namespace SweetEditor {
 
 		/// <summary>Sets read-only mode.</summary>
 		/// <param name="readOnly">Whether read-only</param>
-		public void SetReadOnly(bool readOnly) {
-			NativeMethods.SetReadOnly(nativeHandle, readOnly ? 1 : 0);
+		public EditorActionResult SetReadOnly(bool readOnly) {
+			IntPtr payloadPtr = NativeMethods.SetReadOnly(nativeHandle, readOnly ? 1 : 0, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Checks whether the editor is in read-only mode.</summary>
@@ -2553,8 +2613,9 @@ namespace SweetEditor {
 
 		/// <summary>Sets auto-indent mode.</summary>
 		/// <param name="mode">Auto-indent mode</param>
-		public void SetAutoIndentMode(int mode) {
-			NativeMethods.SetAutoIndentMode(nativeHandle, mode);
+		public EditorActionResult SetAutoIndentMode(int mode) {
+			IntPtr payloadPtr = NativeMethods.SetAutoIndentMode(nativeHandle, mode, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Gets current auto-indent mode.</summary>
@@ -2569,11 +2630,13 @@ namespace SweetEditor {
 
 		/// <summary>Sets the selection handle hit-test configuration.</summary>
 		/// <param name="config">HandleConfig instance</param>
-		public void SetHandleConfig(HandleConfig config) {
+		public EditorActionResult SetHandleConfig(HandleConfig config) {
 			_handleConfig = config;
-			NativeMethods.SetHandleConfig(nativeHandle,
+			IntPtr payloadPtr = NativeMethods.SetHandleConfig(nativeHandle,
 				config.StartLeft, config.StartTop, config.StartRight, config.StartBottom,
-				config.EndLeft, config.EndTop, config.EndRight, config.EndBottom);
+				config.EndLeft, config.EndTop, config.EndRight, config.EndBottom,
+				out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Gets the current handle configuration.</summary>
@@ -2587,9 +2650,9 @@ namespace SweetEditor {
 
 		/// <summary>Sets scrollbar geometry configuration.</summary>
 		/// <param name="config">ScrollbarConfig instance</param>
-		public void SetScrollbarConfig(ScrollbarConfig config) {
+		public EditorActionResult SetScrollbarConfig(ScrollbarConfig config) {
 			_scrollbarConfig = config;
-			NativeMethods.SetScrollbarConfig(
+			IntPtr payloadPtr = NativeMethods.SetScrollbarConfig(
 				nativeHandle,
 				config.Thickness,
 				config.MinThumb,
@@ -2598,7 +2661,9 @@ namespace SweetEditor {
 				config.ThumbDraggable ? 1 : 0,
 				(int)config.TrackTapMode,
 				config.FadeDelayMs,
-				config.FadeDurationMs);
+				config.FadeDurationMs,
+				out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Gets the current scrollbar geometry configuration.</summary>
@@ -2636,27 +2701,31 @@ namespace SweetEditor {
 		/// <summary>Jumps to the specified line and column.</summary>
 		/// <param name="line">Target line (0-based).</param>
 		/// <param name="column">Target column (0-based).</param>
-		public void GotoPosition(int line, int column) {
-			NativeMethods.GotoPosition(nativeHandle, line, column);
+		public EditorActionResult GotoPosition(int line, int column) {
+			IntPtr payloadPtr = NativeMethods.GotoPosition(nativeHandle, line, column, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Scrolls minimally to keep the current caret visible inside the viewport.</summary>
-		public void EnsureCursorVisible() {
-			NativeMethods.EnsureCursorVisible(nativeHandle);
+		public EditorActionResult EnsureCursorVisible() {
+			IntPtr payloadPtr = NativeMethods.EnsureCursorVisible(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Scrolls to the specified line.</summary>
 		/// <param name="line">Target line (0-based).</param>
 		/// <param name="behavior">Scroll alignment behavior (see <see cref="ScrollBehavior"/>).</param>
-		public void ScrollToLine(int line, int behavior = (int)ScrollBehavior.CENTER) {
-			NativeMethods.ScrollToLine(nativeHandle, line, (byte)behavior);
+		public EditorActionResult ScrollToLine(int line, int behavior = (int)ScrollBehavior.CENTER) {
+			IntPtr payloadPtr = NativeMethods.ScrollToLine(nativeHandle, line, (byte)behavior, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Manually sets scroll position (automatically clamped to valid range).</summary>
 		/// <param name="scrollX">Horizontal scroll offset</param>
 		/// <param name="scrollY">Vertical scroll offset</param>
-		public void SetScroll(float scrollX, float scrollY) {
-			NativeMethods.SetScroll(nativeHandle, scrollX, scrollY);
+		public EditorActionResult SetScroll(float scrollX, float scrollY) {
+			IntPtr payloadPtr = NativeMethods.SetScroll(nativeHandle, scrollX, scrollY, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Gets scrollbar metrics (used by platform-side scrollbar rendering).</summary>
@@ -2678,70 +2747,79 @@ namespace SweetEditor {
 		/// <param name="color">Text color (ARGB)</param>
 		/// <param name="backgroundColor">Background color (ARGB)</param>
 		/// <param name="fontStyle">Font style (bit flags: BOLD | ITALIC | STRIKETHROUGH).</param>
-		public void RegisterTextStyle(uint styleId, int color, int backgroundColor, int fontStyle) {
-			NativeMethods.registerTextStyle(nativeHandle, styleId, color, backgroundColor, fontStyle);
+		public EditorActionResult RegisterTextStyle(uint styleId, int color, int backgroundColor, int fontStyle) {
+			IntPtr payloadPtr = NativeMethods.registerTextStyle(nativeHandle, styleId, color, backgroundColor, fontStyle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Registers a highlight style (without background color).</summary>
 		/// <param name="styleId">Style ID</param>
 		/// <param name="color">Text color (ARGB)</param>
 		/// <param name="fontStyle">Font style (bit flags: BOLD | ITALIC | STRIKETHROUGH).</param>
-		public void RegisterTextStyle(uint styleId, int color, int fontStyle) {
-			NativeMethods.registerTextStyle(nativeHandle, styleId, color, 0, fontStyle);
+		public EditorActionResult RegisterTextStyle(uint styleId, int color, int fontStyle) {
+			IntPtr payloadPtr = NativeMethods.registerTextStyle(nativeHandle, styleId, color, 0, fontStyle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Registers multiple highlight styles in one native call.</summary>
 		/// <param name="stylesById">Style definitions keyed by style ID.</param>
-		public void RegisterBatchTextStyles(IReadOnlyDictionary<uint, TextStyle> stylesById) {
+		public EditorActionResult RegisterBatchTextStyles(IReadOnlyDictionary<uint, TextStyle> stylesById) {
 			if (stylesById == null || stylesById.Count == 0) {
-				return;
+				return EditorActionResult.Empty;
 			}
 
 			byte[] payload = ProtocolEncoder.PackBatchTextStyles(stylesById);
 			if (payload.Length == 0) {
-				return;
+				return EditorActionResult.Empty;
 			}
 
-			NativeMethods.registerBatchTextStyles(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.registerBatchTextStyles(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets highlight spans for the specified line (model overload).</summary>
-		public void SetLineSpans(int line, int layer, IList<StyleSpan> spans) {
-			if (spans == null) return;
+		public EditorActionResult SetLineSpans(int line, int layer, IList<StyleSpan> spans) {
+			if (spans == null) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackLineSpans(line, layer, spans);
-			NativeMethods.SetLineSpans(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetLineSpans(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets highlight spans for the specified line (buffer overload, accepts pre-encoded data).</summary>
-		public void SetLineSpans(byte[] payload) {
-			if (payload == null) return;
-			NativeMethods.SetLineSpans(nativeHandle, payload, (nuint)payload.Length);
+		public EditorActionResult SetLineSpans(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetLineSpans(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Batch sets highlight spans for multiple lines (model overload).</summary>
-		public void SetBatchLineSpans(int layer, Dictionary<int, IList<StyleSpan>> spansByLine) {
-			if (spansByLine == null || spansByLine.Count == 0) return;
+		public EditorActionResult SetBatchLineSpans(int layer, Dictionary<int, IList<StyleSpan>> spansByLine) {
+			if (spansByLine == null || spansByLine.Count == 0) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackBatchLineSpans(layer, spansByLine);
-			NativeMethods.SetBatchLineSpans(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetBatchLineSpans(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
-		public void SetBatchLineSpans(int layer, Dictionary<int, List<StyleSpan>> spansByLine) {
-			if (spansByLine == null || spansByLine.Count == 0) return;
+		public EditorActionResult SetBatchLineSpans(int layer, Dictionary<int, List<StyleSpan>> spansByLine) {
+			if (spansByLine == null || spansByLine.Count == 0) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackBatchLineSpans(layer, spansByLine);
-			NativeMethods.SetBatchLineSpans(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetBatchLineSpans(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Batch sets highlight spans for multiple lines (buffer overload, accepts pre-encoded data).</summary>
-		public void SetBatchLineSpans(byte[] payload) {
-			if (payload == null) return;
-			NativeMethods.SetBatchLineSpans(nativeHandle, payload, (nuint)payload.Length);
+		public EditorActionResult SetBatchLineSpans(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetBatchLineSpans(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Clears highlight spans for a single line and layer.</summary>
 		/// <param name="line">Target line (0-based).</param>
 		/// <param name="layer">Target layer (see <see cref="SpanLayer"/>).</param>
-		public void ClearLineSpans(int line, int layer) {
-			NativeMethods.ClearLineSpans(nativeHandle, (nuint)ClampLineForNative(line), (byte)layer);
+		public EditorActionResult ClearLineSpans(int line, int layer) {
+			IntPtr payloadPtr = NativeMethods.ClearLineSpans(nativeHandle, (nuint)ClampLineForNative(line), (byte)layer, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		#endregion
@@ -2749,67 +2827,77 @@ namespace SweetEditor {
 		#region InlayHint / PhantomText
 
 		/// <summary>Sets Inlay Hints for the specified line (model overload, replaces whole line).</summary>
-		public void SetLineInlayHints(int line, IList<InlayHint> hints) {
-			if (hints == null) return;
+		public EditorActionResult SetLineInlayHints(int line, IList<InlayHint> hints) {
+			if (hints == null) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackLineInlayHints(line, hints);
-			NativeMethods.SetLineInlayHints(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetLineInlayHints(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets Inlay Hints for the specified line (buffer overload).</summary>
-		public void SetLineInlayHints(byte[] payload) {
-			if (payload == null) return;
-			NativeMethods.SetLineInlayHints(nativeHandle, payload, (nuint)payload.Length);
+		public EditorActionResult SetLineInlayHints(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetLineInlayHints(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Batch sets Inlay Hints for multiple lines (model overload).</summary>
-		public void SetBatchLineInlayHints(Dictionary<int, IList<InlayHint>> hintsByLine) {
-			if (hintsByLine == null || hintsByLine.Count == 0) return;
+		public EditorActionResult SetBatchLineInlayHints(Dictionary<int, IList<InlayHint>> hintsByLine) {
+			if (hintsByLine == null || hintsByLine.Count == 0) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackBatchLineInlayHints(hintsByLine);
-			NativeMethods.SetBatchLineInlayHints(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetBatchLineInlayHints(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
-		public void SetBatchLineInlayHints(Dictionary<int, List<InlayHint>> hintsByLine) {
-			if (hintsByLine == null || hintsByLine.Count == 0) return;
+		public EditorActionResult SetBatchLineInlayHints(Dictionary<int, List<InlayHint>> hintsByLine) {
+			if (hintsByLine == null || hintsByLine.Count == 0) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackBatchLineInlayHints(hintsByLine);
-			NativeMethods.SetBatchLineInlayHints(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetBatchLineInlayHints(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Batch sets Inlay Hints for multiple lines (buffer overload).</summary>
-		public void SetBatchLineInlayHints(byte[] payload) {
-			if (payload == null) return;
-			NativeMethods.SetBatchLineInlayHints(nativeHandle, payload, (nuint)payload.Length);
+		public EditorActionResult SetBatchLineInlayHints(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetBatchLineInlayHints(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets ghost text for the specified line (model overload, replaces whole line).</summary>
-		public void SetLinePhantomTexts(int line, IList<PhantomText> phantoms) {
-			if (phantoms == null) return;
+		public EditorActionResult SetLinePhantomTexts(int line, IList<PhantomText> phantoms) {
+			if (phantoms == null) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackLinePhantomTexts(line, phantoms);
-			NativeMethods.SetLinePhantomTexts(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetLinePhantomTexts(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets ghost text for the specified line (buffer overload).</summary>
-		public void SetLinePhantomTexts(byte[] payload) {
-			if (payload == null) return;
-			NativeMethods.SetLinePhantomTexts(nativeHandle, payload, (nuint)payload.Length);
+		public EditorActionResult SetLinePhantomTexts(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetLinePhantomTexts(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Batch sets ghost text for multiple lines (model overload).</summary>
-		public void SetBatchLinePhantomTexts(Dictionary<int, IList<PhantomText>> phantomsByLine) {
-			if (phantomsByLine == null || phantomsByLine.Count == 0) return;
+		public EditorActionResult SetBatchLinePhantomTexts(Dictionary<int, IList<PhantomText>> phantomsByLine) {
+			if (phantomsByLine == null || phantomsByLine.Count == 0) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackBatchLinePhantomTexts(phantomsByLine);
-			NativeMethods.SetBatchLinePhantomTexts(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetBatchLinePhantomTexts(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
-		public void SetBatchLinePhantomTexts(Dictionary<int, List<PhantomText>> phantomsByLine) {
-			if (phantomsByLine == null || phantomsByLine.Count == 0) return;
+		public EditorActionResult SetBatchLinePhantomTexts(Dictionary<int, List<PhantomText>> phantomsByLine) {
+			if (phantomsByLine == null || phantomsByLine.Count == 0) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackBatchLinePhantomTexts(phantomsByLine);
-			NativeMethods.SetBatchLinePhantomTexts(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetBatchLinePhantomTexts(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Batch sets ghost text for multiple lines (buffer overload).</summary>
-		public void SetBatchLinePhantomTexts(byte[] payload) {
-			if (payload == null) return;
-			NativeMethods.SetBatchLinePhantomTexts(nativeHandle, payload, (nuint)payload.Length);
+		public EditorActionResult SetBatchLinePhantomTexts(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetBatchLinePhantomTexts(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		#endregion
@@ -2817,45 +2905,52 @@ namespace SweetEditor {
 		#region Gutter icons
 
 		/// <summary>Sets gutter icons for the specified line (model overload, replaces whole line).</summary>
-		public void SetLineGutterIcons(int line, IList<GutterIcon> icons) {
-			if (icons == null) return;
+		public EditorActionResult SetLineGutterIcons(int line, IList<GutterIcon> icons) {
+			if (icons == null) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackLineGutterIcons(line, icons);
-			NativeMethods.SetLineGutterIcons(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetLineGutterIcons(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets gutter icons for the specified line (buffer overload).</summary>
-		public void SetLineGutterIcons(byte[] payload) {
-			if (payload == null) return;
-			NativeMethods.SetLineGutterIcons(nativeHandle, payload, (nuint)payload.Length);
+		public EditorActionResult SetLineGutterIcons(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetLineGutterIcons(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Batch sets gutter icons for multiple lines (model overload).</summary>
-		public void SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine) {
-			if (iconsByLine == null || iconsByLine.Count == 0) return;
+		public EditorActionResult SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine) {
+			if (iconsByLine == null || iconsByLine.Count == 0) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackBatchLineGutterIcons(iconsByLine);
-			NativeMethods.SetBatchLineGutterIcons(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetBatchLineGutterIcons(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
-		public void SetBatchLineGutterIcons(Dictionary<int, List<GutterIcon>> iconsByLine) {
-			if (iconsByLine == null || iconsByLine.Count == 0) return;
+		public EditorActionResult SetBatchLineGutterIcons(Dictionary<int, List<GutterIcon>> iconsByLine) {
+			if (iconsByLine == null || iconsByLine.Count == 0) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackBatchLineGutterIcons(iconsByLine);
-			NativeMethods.SetBatchLineGutterIcons(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetBatchLineGutterIcons(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Batch sets gutter icons for multiple lines (buffer overload).</summary>
-		public void SetBatchLineGutterIcons(byte[] payload) {
-			if (payload == null) return;
-			NativeMethods.SetBatchLineGutterIcons(nativeHandle, payload, (nuint)payload.Length);
+		public EditorActionResult SetBatchLineGutterIcons(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetBatchLineGutterIcons(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Clears all gutter icons.</summary>
-		public void ClearGutterIcons() {
-			NativeMethods.ClearGutterIcons(nativeHandle);
+		public EditorActionResult ClearGutterIcons() {
+			IntPtr payloadPtr = NativeMethods.ClearGutterIcons(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets maximum icon count shown in the gutter.</summary>
-		public void SetMaxGutterIcons(int count) {
-			NativeMethods.SetMaxGutterIcons(nativeHandle, (uint)Math.Max(0, count));
+		public EditorActionResult SetMaxGutterIcons(int count) {
+			IntPtr payloadPtr = NativeMethods.SetMaxGutterIcons(nativeHandle, (uint)Math.Max(0, count), out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		#endregion
@@ -2863,45 +2958,51 @@ namespace SweetEditor {
 		#region CodeLens
 
 		/// <summary>Sets CodeLens items for the specified line (model overload).</summary>
-		public void SetLineCodeLens(int line, IList<CodeLensItem> items) {
-			if (items == null) return;
+		public EditorActionResult SetLineCodeLens(int line, IList<CodeLensItem> items) {
+			if (items == null) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackLineCodeLens(line, items);
-			NativeMethods.SetLineCodeLens(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetLineCodeLens(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets CodeLens items for the specified line (buffer overload).</summary>
-		public void SetLineCodeLens(byte[] payload) {
-			if (payload == null) return;
-			NativeMethods.SetLineCodeLens(nativeHandle, payload, (nuint)payload.Length);
+		public EditorActionResult SetLineCodeLens(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetLineCodeLens(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Batch sets CodeLens items for multiple lines (model overload).</summary>
-		public void SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine) {
-			if (itemsByLine == null || itemsByLine.Count == 0) return;
+		public EditorActionResult SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine) {
+			if (itemsByLine == null || itemsByLine.Count == 0) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackBatchLineCodeLens(itemsByLine);
-			NativeMethods.SetBatchLineCodeLens(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetBatchLineCodeLens(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Batch sets CodeLens items for multiple lines (list overload).</summary>
-		public void SetBatchLineCodeLens(Dictionary<int, List<CodeLensItem>> itemsByLine) {
-			if (itemsByLine == null || itemsByLine.Count == 0) return;
+		public EditorActionResult SetBatchLineCodeLens(Dictionary<int, List<CodeLensItem>> itemsByLine) {
+			if (itemsByLine == null || itemsByLine.Count == 0) return EditorActionResult.Empty;
 			var normalized = new Dictionary<int, IList<CodeLensItem>>(itemsByLine.Count);
 			foreach (var kv in itemsByLine) {
 				normalized[kv.Key] = kv.Value;
 			}
 			byte[] payload = ProtocolEncoder.PackBatchLineCodeLens(normalized);
-			NativeMethods.SetBatchLineCodeLens(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetBatchLineCodeLens(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Batch sets CodeLens items for multiple lines (buffer overload).</summary>
-		public void SetBatchLineCodeLens(byte[] payload) {
-			if (payload == null) return;
-			NativeMethods.SetBatchLineCodeLens(nativeHandle, payload, (nuint)payload.Length);
+		public EditorActionResult SetBatchLineCodeLens(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetBatchLineCodeLens(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Clears all CodeLens items.</summary>
-		public void ClearCodeLens() {
-			NativeMethods.ClearCodeLens(nativeHandle);
+		public EditorActionResult ClearCodeLens() {
+			IntPtr payloadPtr = NativeMethods.ClearCodeLens(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		#endregion
@@ -2909,40 +3010,46 @@ namespace SweetEditor {
 		#region Diagnostic decorations
 
 		/// <summary>Sets diagnostic decorations for the specified line (model overload).</summary>
-		public void SetLineDiagnostics<TDiagnostic>(int line, IList<TDiagnostic> items) where TDiagnostic : Diagnostic {
-			if (items == null) return;
+		public EditorActionResult SetLineDiagnostics<TDiagnostic>(int line, IList<TDiagnostic> items) where TDiagnostic : Diagnostic {
+			if (items == null) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackLineDiagnostics(line, items);
-			NativeMethods.SetLineDiagnostics(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetLineDiagnostics(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets diagnostic decorations for the specified line (buffer overload).</summary>
-		public void SetLineDiagnostics(byte[] payload) {
-			if (payload == null) return;
-			NativeMethods.SetLineDiagnostics(nativeHandle, payload, (nuint)payload.Length);
+		public EditorActionResult SetLineDiagnostics(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetLineDiagnostics(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Batch sets diagnostic decorations for multiple lines (model overload).</summary>
-		public void SetBatchLineDiagnostics<TDiagnostic>(Dictionary<int, IList<TDiagnostic>> diagsByLine) where TDiagnostic : Diagnostic {
-			if (diagsByLine == null || diagsByLine.Count == 0) return;
+		public EditorActionResult SetBatchLineDiagnostics<TDiagnostic>(Dictionary<int, IList<TDiagnostic>> diagsByLine) where TDiagnostic : Diagnostic {
+			if (diagsByLine == null || diagsByLine.Count == 0) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackBatchLineDiagnostics(diagsByLine);
-			NativeMethods.SetBatchLineDiagnostics(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetBatchLineDiagnostics(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
-		public void SetBatchLineDiagnostics<TDiagnostic>(Dictionary<int, List<TDiagnostic>> diagsByLine) where TDiagnostic : Diagnostic {
-			if (diagsByLine == null || diagsByLine.Count == 0) return;
+		public EditorActionResult SetBatchLineDiagnostics<TDiagnostic>(Dictionary<int, List<TDiagnostic>> diagsByLine) where TDiagnostic : Diagnostic {
+			if (diagsByLine == null || diagsByLine.Count == 0) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackBatchLineDiagnostics(diagsByLine);
-			NativeMethods.SetBatchLineDiagnostics(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetBatchLineDiagnostics(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Batch sets diagnostic decorations for multiple lines (buffer overload).</summary>
-		public void SetBatchLineDiagnostics(byte[] payload) {
-			if (payload == null) return;
-			NativeMethods.SetBatchLineDiagnostics(nativeHandle, payload, (nuint)payload.Length);
+		public EditorActionResult SetBatchLineDiagnostics(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetBatchLineDiagnostics(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Clears all diagnostic decorations.</summary>
-		public void ClearDiagnostics() {
-			NativeMethods.ClearDiagnostics(nativeHandle);
+		public EditorActionResult ClearDiagnostics() {
+			IntPtr payloadPtr = NativeMethods.ClearDiagnostics(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		#endregion
@@ -2950,60 +3057,69 @@ namespace SweetEditor {
 		#region Guide Lines
 
 		/// <summary>Sets indent guide list (global replace, model overload).</summary>
-		public void SetIndentGuides(IList<IndentGuide> guides) {
-			if (guides == null) return;
+		public EditorActionResult SetIndentGuides(IList<IndentGuide> guides) {
+			if (guides == null) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackIndentGuides(guides);
-			NativeMethods.SetIndentGuides(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetIndentGuides(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets indent guide list (buffer overload).</summary>
-		public void SetIndentGuides(byte[] payload) {
-			if (payload == null) return;
-			NativeMethods.SetIndentGuides(nativeHandle, payload, (nuint)payload.Length);
+		public EditorActionResult SetIndentGuides(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetIndentGuides(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets bracket branch guide list (global replace, model overload).</summary>
-		public void SetBracketGuides(IList<BracketGuide> guides) {
-			if (guides == null) return;
+		public EditorActionResult SetBracketGuides(IList<BracketGuide> guides) {
+			if (guides == null) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackBracketGuides(guides);
-			NativeMethods.SetBracketGuides(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetBracketGuides(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets bracket branch guide list (buffer overload).</summary>
-		public void SetBracketGuides(byte[] payload) {
-			if (payload == null) return;
-			NativeMethods.SetBracketGuides(nativeHandle, payload, (nuint)payload.Length);
+		public EditorActionResult SetBracketGuides(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetBracketGuides(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets control-flow back-edge arrow list (global replace, model overload).</summary>
-		public void SetFlowGuides(IList<FlowGuide> guides) {
-			if (guides == null) return;
+		public EditorActionResult SetFlowGuides(IList<FlowGuide> guides) {
+			if (guides == null) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackFlowGuides(guides);
-			NativeMethods.SetFlowGuides(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetFlowGuides(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets control-flow back-edge arrow list (buffer overload).</summary>
-		public void SetFlowGuides(byte[] payload) {
-			if (payload == null) return;
-			NativeMethods.SetFlowGuides(nativeHandle, payload, (nuint)payload.Length);
+		public EditorActionResult SetFlowGuides(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetFlowGuides(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets horizontal separator list (global replace, model overload).</summary>
-		public void SetSeparatorGuides(IList<SeparatorGuide> guides) {
-			if (guides == null) return;
+		public EditorActionResult SetSeparatorGuides(IList<SeparatorGuide> guides) {
+			if (guides == null) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackSeparatorGuides(guides);
-			NativeMethods.SetSeparatorGuides(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetSeparatorGuides(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets horizontal separator list (buffer overload).</summary>
-		public void SetSeparatorGuides(byte[] payload) {
-			if (payload == null) return;
-			NativeMethods.SetSeparatorGuides(nativeHandle, payload, (nuint)payload.Length);
+		public EditorActionResult SetSeparatorGuides(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetSeparatorGuides(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Clears all code guide lines.</summary>
-		public void ClearGuides() {
-			NativeMethods.ClearGuides(nativeHandle);
+		public EditorActionResult ClearGuides() {
+			IntPtr payloadPtr = NativeMethods.ClearGuides(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		#endregion
@@ -3011,47 +3127,54 @@ namespace SweetEditor {
 		#region Code folding
 
 		/// <summary>Sets foldable region list (model overload).</summary>
-		public void SetFoldRegions(IList<FoldRegion> regions) {
-			if (regions == null) return;
+		public EditorActionResult SetFoldRegions(IList<FoldRegion> regions) {
+			if (regions == null) return EditorActionResult.Empty;
 			byte[] payload = ProtocolEncoder.PackFoldRegions(regions);
-			NativeMethods.SetFoldRegions(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.SetFoldRegions(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets foldable region list (buffer overload).</summary>
-		public void SetFoldRegions(byte[] payload) {
-			if (payload == null) return;
-			NativeMethods.SetFoldRegions(nativeHandle, payload, (nuint)payload.Length);
+		public EditorActionResult SetFoldRegions(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetFoldRegions(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Toggles fold/unfold state of the region containing the specified line.</summary>
 		/// <param name="line">Line (0-based)</param>
 		/// <returns><c>true</c> means a region was found and toggled.</returns>
-		public bool ToggleFold(int line) {
-			return NativeMethods.ToggleFold(nativeHandle, (nuint)ClampLineForNative(line)) != 0;
+		public EditorActionResult ToggleFold(int line) {
+			IntPtr payloadPtr = NativeMethods.ToggleFold(nativeHandle, (nuint)ClampLineForNative(line), out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Folds the region containing the specified line.</summary>
 		/// <param name="line">Line (0-based)</param>
 		/// <returns><c>true</c> means folding succeeded.</returns>
-		public bool FoldAt(int line) {
-			return NativeMethods.FoldAt(nativeHandle, (nuint)ClampLineForNative(line)) != 0;
+		public EditorActionResult FoldAt(int line) {
+			IntPtr payloadPtr = NativeMethods.FoldAt(nativeHandle, (nuint)ClampLineForNative(line), out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Unfolds the region containing the specified line.</summary>
 		/// <param name="line">Line (0-based)</param>
 		/// <returns><c>true</c> means unfolding succeeded.</returns>
-		public bool UnfoldAt(int line) {
-			return NativeMethods.UnfoldAt(nativeHandle, (nuint)ClampLineForNative(line)) != 0;
+		public EditorActionResult UnfoldAt(int line) {
+			IntPtr payloadPtr = NativeMethods.UnfoldAt(nativeHandle, (nuint)ClampLineForNative(line), out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Folds all regions.</summary>
-		public void FoldAll() {
-			NativeMethods.FoldAll(nativeHandle);
+		public EditorActionResult FoldAll() {
+			IntPtr payloadPtr = NativeMethods.FoldAll(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Unfolds all regions.</summary>
-		public void UnfoldAll() {
-			NativeMethods.UnfoldAll(nativeHandle);
+		public EditorActionResult UnfoldAll() {
+			IntPtr payloadPtr = NativeMethods.UnfoldAll(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Checks whether the specified line is visible (not hidden by folding).</summary>
@@ -3066,31 +3189,34 @@ namespace SweetEditor {
 		#region Clear operations
 
 		/// <summary>Clears all highlight spans.</summary>
-		public void ClearHighlights() {
-			NativeMethods.ClearHighlights(nativeHandle);
+		public EditorActionResult ClearHighlights() {
+			IntPtr payloadPtr = NativeMethods.ClearHighlights(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Clears highlight spans in the specified layer.</summary>
 		/// <param name="layer">Target layer (see <see cref="SpanLayer"/>).</param>
-		public void ClearHighlights(int layer) {
-			NativeMethods.ClearHighlightsLayer(nativeHandle, (byte)layer);
+		public EditorActionResult ClearHighlights(int layer) {
+			IntPtr payloadPtr = NativeMethods.ClearHighlightsLayer(nativeHandle, (byte)layer, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Clears all Inlay Hints.</summary>
-		public void ClearInlayHints() {
-			NativeMethods.ClearInlayHints(nativeHandle);
+		public EditorActionResult ClearInlayHints() {
+			IntPtr payloadPtr = NativeMethods.ClearInlayHints(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Clears all ghost text.</summary>
-		public void ClearPhantomTexts() {
-			NativeMethods.ClearPhantomTexts(nativeHandle);
+		public EditorActionResult ClearPhantomTexts() {
+			IntPtr payloadPtr = NativeMethods.ClearPhantomTexts(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Clears all decoration data (highlights, Inlay Hints, ghost text, icons, and guide lines).</summary>
-		public void ClearAllDecorations() {
-			NativeMethods.ClearAllDecorations(nativeHandle);
-			NativeMethods.ClearDiagnostics(nativeHandle);
-			NativeMethods.ClearCodeLens(nativeHandle);
+		public EditorActionResult ClearAllDecorations() {
+			IntPtr payloadPtr = NativeMethods.ClearAllDecorations(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		#endregion
@@ -3098,15 +3224,16 @@ namespace SweetEditor {
 		#region LinkedEditing
 
 		/// <summary>Inserts a VSCode snippet template and enters linked editing mode.</summary>
-		public TextEditResult InsertSnippet(string snippetTemplate) {
+		public EditorActionResult InsertSnippet(string snippetTemplate) {
 			IntPtr payloadPtr = NativeMethods.InsertSnippet(nativeHandle, snippetTemplate, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseTextEditResult(payloadPtr, payloadSize);
+			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Starts linked editing mode with a generic LinkedEditingModel.</summary>
-		public void StartLinkedEditing(LinkedEditingModel model) {
+		public EditorActionResult StartLinkedEditing(LinkedEditingModel model) {
 			byte[] payload = ProtocolEncoder.PackLinkedEditingPayload(model);
-			NativeMethods.StartLinkedEditing(nativeHandle, payload, (nuint)payload.Length);
+			IntPtr payloadPtr = NativeMethods.StartLinkedEditing(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Whether linked editing mode is active.</summary>
@@ -3115,18 +3242,21 @@ namespace SweetEditor {
 		}
 
 		/// <summary>Linked editing: jump to next tab stop.</summary>
-		public bool LinkedEditingNext() {
-			return NativeMethods.LinkedEditingNext(nativeHandle) != 0;
+		public EditorActionResult LinkedEditingNext() {
+			IntPtr payloadPtr = NativeMethods.LinkedEditingNext(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Linked editing: jump to previous tab stop.</summary>
-		public bool LinkedEditingPrev() {
-			return NativeMethods.LinkedEditingPrev(nativeHandle) != 0;
+		public EditorActionResult LinkedEditingPrev() {
+			IntPtr payloadPtr = NativeMethods.LinkedEditingPrev(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Cancels linked editing mode.</summary>
-		public void CancelLinkedEditing() {
-			NativeMethods.CancelLinkedEditing(nativeHandle);
+		public EditorActionResult CancelLinkedEditing() {
+			IntPtr payloadPtr = NativeMethods.CancelLinkedEditing(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		#endregion
@@ -3134,9 +3264,9 @@ namespace SweetEditor {
 		#region Bracket highlight APIs
 
 		/// <summary>Sets custom bracket pair list.</summary>
-		public void SetBracketPairs(int[]? openChars, int[]? closeChars) {
+		public EditorActionResult SetBracketPairs(int[]? openChars, int[]? closeChars) {
 			if (openChars == null || closeChars == null) {
-				return;
+				return EditorActionResult.Empty;
 			}
 			int count = Math.Min(openChars.Length, closeChars.Length);
 			if (count != openChars.Length || count != closeChars.Length) {
@@ -3147,19 +3277,22 @@ namespace SweetEditor {
 				openChars = Array.Empty<int>();
 				closeChars = Array.Empty<int>();
 			}
-			NativeMethods.SetBracketPairs(nativeHandle, openChars, closeChars, (nuint)count);
+			IntPtr payloadPtr = NativeMethods.SetBracketPairs(nativeHandle, openChars, closeChars, (nuint)count, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Sets externally computed exact bracket pair positions (takes priority over built-in scanning).</summary>
-		public void SetMatchedBrackets(int openLine, int openColumn, int closeLine, int closeColumn) {
+		public EditorActionResult SetMatchedBrackets(int openLine, int openColumn, int closeLine, int closeColumn) {
 			(int safeOpenLine, int safeOpenColumn) = ClampPositionForNative(openLine, openColumn);
 			(int safeCloseLine, int safeCloseColumn) = ClampPositionForNative(closeLine, closeColumn);
-			NativeMethods.SetMatchedBrackets(nativeHandle, (nuint)safeOpenLine, (nuint)safeOpenColumn, (nuint)safeCloseLine, (nuint)safeCloseColumn);
+			IntPtr payloadPtr = NativeMethods.SetMatchedBrackets(nativeHandle, (nuint)safeOpenLine, (nuint)safeOpenColumn, (nuint)safeCloseLine, (nuint)safeCloseColumn, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Clears externally supplied bracket match results (falls back to built-in scanning).</summary>
-		public void ClearMatchedBrackets() {
-			NativeMethods.ClearMatchedBrackets(nativeHandle);
+		public EditorActionResult ClearMatchedBrackets() {
+			IntPtr payloadPtr = NativeMethods.ClearMatchedBrackets(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		#endregion

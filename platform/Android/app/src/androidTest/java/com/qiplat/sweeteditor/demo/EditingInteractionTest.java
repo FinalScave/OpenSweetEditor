@@ -1,6 +1,5 @@
 package com.qiplat.sweeteditor.demo;
 
-import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
 import com.qiplat.sweeteditor.event.TextChangedEvent;
@@ -34,9 +33,12 @@ public class EditingInteractionTest {
     @Test
     public void testInsertTextResult() {
         editorRule.loadText("");
-        EditorCore.TextEditResult result = editorRule.runOnEditorSync(editor -> editor.insertText("abc"));
-        assertTrue(result.changed);
-        assertFalse(result.changes.isEmpty());
+        AtomicBoolean textChanged = new AtomicBoolean(false);
+        editorRule.runOnEditor(editor -> editor.subscribe(TextChangedEvent.class, event -> textChanged.set(true)));
+        editorRule.runOnEditor(editor -> editor.insertText("abc"));
+        String text = editorRule.runOnEditorSync(editor -> editor.getDocument().getText());
+        assertEquals("abc", text);
+        assertTrue(textChanged.get());
     }
 
     @Test

@@ -78,11 +78,14 @@ class DecorationProviderManager {
       _pendingTextChanges.addAll(changes);
     }
     _refreshTimer?.cancel();
-    _refreshTimer = Timer(Duration(milliseconds: delayMs > 0 ? delayMs : 0), () {
-      _refreshTimer = null;
-      if (_disposed) return;
-      _doRefresh();
-    });
+    _refreshTimer = Timer(
+      Duration(milliseconds: delayMs > 0 ? delayMs : 0),
+      () {
+        _refreshTimer = null;
+        if (_disposed) return;
+        _doRefresh();
+      },
+    );
   }
 
   void _scheduleScrollRefresh() {
@@ -299,8 +302,6 @@ class DecorationProviderManager {
 
     _applyLinksMode(linksMode);
     _setBatchLineLinks(links);
-
-    session.requestFlush();
   }
 
   void _applySpanMode(int layer, ApplyMode mode) {
@@ -679,103 +680,107 @@ class DecorationProviderManager {
   }
 
   void _clearHighlights(int layer) {
-    session.editorCore?.clearHighlights(core.SpanLayer.values[layer]);
+    session.dispatchEditorActionResult(
+      session.editorCore?.clearHighlights(core.SpanLayer.values[layer]),
+    );
   }
 
   void _setBatchLineSpans(int layer, Map<int, List<core.StyleSpan>> spans) {
     final ec = session.editorCore;
     if (ec == null) return;
-    ec.setBatchLineSpans(core.SpanLayer.values[layer], spans);
+    session.dispatchEditorActionResult(
+      ec.setBatchLineSpans(core.SpanLayer.values[layer], spans),
+    );
   }
 
   void _clearInlayHints() {
-    session.editorCore?.clearInlayHints();
+    session.dispatchEditorActionResult(session.editorCore?.clearInlayHints());
   }
 
   void _setBatchLineInlayHints(Map<int, List<core.InlayHint>> hints) {
     final ec = session.editorCore;
     if (ec == null) return;
-    ec.setBatchLineInlayHints(hints);
+    session.dispatchEditorActionResult(ec.setBatchLineInlayHints(hints));
   }
 
   void _clearDiagnostics() {
-    session.editorCore?.clearDiagnostics();
+    session.dispatchEditorActionResult(session.editorCore?.clearDiagnostics());
   }
 
   void _setBatchLineDiagnostics(Map<int, List<core.Diagnostic>> items) {
     final ec = session.editorCore;
     if (ec == null) return;
-    ec.setBatchLineDiagnostics(items);
+    session.dispatchEditorActionResult(ec.setBatchLineDiagnostics(items));
   }
 
   void _clearGutterIcons() {
-    session.editorCore?.clearGutterIcons();
+    session.dispatchEditorActionResult(session.editorCore?.clearGutterIcons());
   }
 
   void _setBatchLineGutterIcons(Map<int, List<core.GutterIcon>> icons) {
     final ec = session.editorCore;
     if (ec == null) return;
-    ec.setBatchLineGutterIcons(icons);
+    session.dispatchEditorActionResult(ec.setBatchLineGutterIcons(icons));
   }
 
   void _clearPhantomTexts() {
-    session.editorCore?.clearPhantomTexts();
+    session.dispatchEditorActionResult(session.editorCore?.clearPhantomTexts());
   }
 
   void _setBatchLinePhantomTexts(Map<int, List<core.PhantomText>> texts) {
     final ec = session.editorCore;
     if (ec == null) return;
-    ec.setBatchLinePhantomTexts(texts);
+    session.dispatchEditorActionResult(ec.setBatchLinePhantomTexts(texts));
   }
 
   void _clearCodeLens() {
-    session.editorCore?.clearCodeLens();
+    session.dispatchEditorActionResult(session.editorCore?.clearCodeLens());
   }
 
   void _setBatchLineCodeLens(Map<int, List<core.CodeLensItem>> items) {
     final ec = session.editorCore;
     if (ec == null) return;
-    ec.setBatchLineCodeLens(items);
+    session.dispatchEditorActionResult(ec.setBatchLineCodeLens(items));
   }
 
   void _clearLinks() {
-    session.editorCore?.clearLinks();
+    session.dispatchEditorActionResult(session.editorCore?.clearLinks());
   }
 
   void _setBatchLineLinks(Map<int, List<core.LinkSpan>> links) {
     final ec = session.editorCore;
     if (ec == null) return;
-    ec.setBatchLineLinks(links);
+    session.dispatchEditorActionResult(ec.setBatchLineLinks(links));
   }
 
   void _setIndentGuides(List<core.IndentGuide> guides) {
     final ec = session.editorCore;
     if (ec == null) return;
-    ec.setIndentGuides(guides);
+    session.dispatchEditorActionResult(ec.setIndentGuides(guides));
   }
 
   void _setBracketGuides(List<core.BracketGuide> guides) {
     final ec = session.editorCore;
     if (ec == null) return;
-    ec.setBracketGuides(guides);
+    session.dispatchEditorActionResult(ec.setBracketGuides(guides));
   }
 
   void _setFlowGuides(List<core.FlowGuide> guides) {
     final ec = session.editorCore;
     if (ec == null) return;
-    ec.setFlowGuides(guides);
+    session.dispatchEditorActionResult(ec.setFlowGuides(guides));
   }
 
   void _setSeparatorGuides(List<core.SeparatorGuide> guides) {
     final ec = session.editorCore;
     if (ec == null) return;
-    ec.setSeparatorGuides(guides);
+    session.dispatchEditorActionResult(ec.setSeparatorGuides(guides));
   }
 
   void _setFoldRegions(List<core.FoldRegion> regions) {
     final ec = session.editorCore;
     if (ec == null) return;
-    ec.setFoldRegions(regions);
+    session.dispatchEditorActionResult(ec.setFoldRegions(regions));
   }
 
   static Map<int, List<T>> _buildEmptyMapRange<T>(int startLine, int endLine) {

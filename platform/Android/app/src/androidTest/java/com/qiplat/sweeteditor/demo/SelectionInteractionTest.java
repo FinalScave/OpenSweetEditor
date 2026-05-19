@@ -181,24 +181,49 @@ public class SelectionInteractionTest {
 
                 Method fireGestureEvents = editor.getClass().getDeclaredMethod(
                         "fireGestureEvents",
-                        EditorCore.GestureResult.class,
+                        EditorCore.EditorActionResult.class,
                         android.graphics.PointF.class,
                         int.class);
                 fireGestureEvents.setAccessible(true);
-                EditorCore.GestureResult result = new EditorCore.GestureResult(
-                        EditorCore.GestureType.DRAG_SELECT,
-                        new android.graphics.PointF(10f, 10f),
+                EditorCore.EditorActionResult result = new EditorCore.EditorActionResult(
+                        true,
+                        true,
+                        0,
+                        false,
+                        true,
+                        true,
+                        true,
+                        false,
+                        false,
+                        false,
+                        false,
+                        false,
+                        false,
+                        false,
+                        true,
+                        false,
+                        java.util.Collections.emptyList(),
+                        TextPosition.NONE,
                         new TextPosition(20, 0),
+                        false,
+                        new TextRange(),
                         true,
                         new TextRange(new TextPosition(0, 0), new TextPosition(20, 0)),
                         0f,
+                        0f,
+                        0f,
                         240f,
                         1f,
+                        1f,
+                        0,
+                        0,
+                        new EditorCore.ImeSyncSnapshot(),
+                        EditorCore.GestureType.DRAG_SELECT,
+                        EditorCore.EVENT_TYPE_TOUCH_MOVE,
+                        new android.graphics.PointF(10f, 10f),
                         EditorCore.HitTarget.NONE,
-                        true,
-                        false,
-                        true,
-                        false);
+                        0,
+                        0);
                 fireGestureEvents.invoke(editor, result, null, -1);
             } catch (ReflectiveOperationException e) {
                 throw new AssertionError(e);

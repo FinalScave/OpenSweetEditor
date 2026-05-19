@@ -348,7 +348,6 @@ export class DecorationProviderManager {
     this.applyLinksMode(linksMode);
     this.editor.setBatchLineLinks(links);
 
-    this.editor.flush();
     this.editor.recordDecorationPerf('apply', Date.now() - applyStartMs);
   }
 

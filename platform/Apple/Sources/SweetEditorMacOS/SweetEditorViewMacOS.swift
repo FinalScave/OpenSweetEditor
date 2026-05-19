@@ -136,7 +136,14 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
             self?.applyCompletionItem(item)
         }
 
-        loadDocument(text: "")
+        let doc = SweetDocument(text: "")
+        document = doc
+        _ = editorCore.setDocument(doc)
+        decorationProviderManager?.onDocumentLoaded()
+        if highlighter == nil {
+            highlighter = SyntaxHighlighter(editorCore: editorCore)
+        }
+        highlighter?.highlightAll(document: doc)
         // Ensure initial theme (default EditorRenderer.theme) is applied to Core for syntax style sync.
         applyTheme(EditorRenderer.theme)
 
@@ -146,18 +153,16 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
     private func setupNotifications() {
         NotificationCenter.default.addObserver(forName: .editorUndo, object: nil, queue: .main) { [weak self] _ in
             let editResult = self?.editorCore.undo()
-            self?.decorationProviderManager?.onTextChanged(changes: self?.textChanges(from: editResult) ?? [])
-            self?.rehighlightAndRedraw()
+            self?.dispatchEditorActionResult(editResult)
         }
         NotificationCenter.default.addObserver(forName: .editorRedo, object: nil, queue: .main) { [weak self] _ in
             let editResult = self?.editorCore.redo()
-            self?.decorationProviderManager?.onTextChanged(changes: self?.textChanges(from: editResult) ?? [])
-            self?.rehighlightAndRedraw()
+            self?.dispatchEditorActionResult(editResult)
         }
         NotificationCenter.default.addObserver(forName: .editorSelectAll, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
-            _ = self.editorCore.handleKeyEvent(keyCode: .a, modifiers: .meta)
-            self.rebuildAndRedraw()
+            let result = self.editorCore.handleKeyEvent(keyCode: .a, modifiers: .meta)
+            self.dispatchEditorActionResult(result)
         }
         NotificationCenter.default.addObserver(forName: .editorGetSelection, object: nil, queue: .main) { [weak self] _ in
             guard let self else { return }
@@ -173,101 +178,87 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
     public func loadDocument(text: String) {
         let doc = SweetDocument(text: text)
         document = doc
-        editorCore.setDocument(doc)
+        let result = editorCore.setDocument(doc)
         decorationProviderManager?.onDocumentLoaded()
         if highlighter == nil {
             highlighter = SyntaxHighlighter(editorCore: editorCore)
         }
         highlighter?.highlightAll(document: doc)
+        dispatchEditorActionResult(result)
     }
 
     public func applyDecorations(_ decorations: EditorResolvedDecorations, clearExisting: Bool = true) {
         if clearExisting {
-            editorCore.clearAllDecorations()
+            dispatchEditorActionResult(editorCore.clearAllDecorations())
         }
         if let doc = document {
             highlighter?.highlightAll(document: doc)
         }
         applyResolvedDecorations(decorations)
-        rehighlightAndRedraw()
     }
 
     public func clearAllDecorations() {
-        editorCore.clearAllDecorations()
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.clearAllDecorations())
     }
 
     public func registerStyle(styleId: UInt32, color: Int32, fontStyle: Int32) {
-        editorCore.registerStyle(styleId: styleId, color: color, fontStyle: fontStyle)
+        dispatchEditorActionResult(editorCore.registerStyle(styleId: styleId, color: color, fontStyle: fontStyle))
     }
 
     public func registerStyle(styleId: UInt32, color: Int32, backgroundColor: Int32, fontStyle: Int32) {
-        editorCore.registerStyle(styleId: styleId, color: color, backgroundColor: backgroundColor, fontStyle: fontStyle)
+        dispatchEditorActionResult(editorCore.registerStyle(styleId: styleId, color: color, backgroundColor: backgroundColor, fontStyle: fontStyle))
     }
 
     public func registerBatchStyles(_ stylesById: [UInt32: (color: Int32, backgroundColor: Int32, fontStyle: Int32)]) {
-        editorCore.registerBatchStyles(stylesById)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.registerBatchStyles(stylesById))
     }
 
     public func setLineSpans(line: Int, layer: SpanLayer, spans: [SweetEditorCore.StyleSpan]) {
-        editorCore.setLineSpans(line: line, layer: layer.rawValue, spans: spans)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setLineSpans(line: line, layer: layer.rawValue, spans: spans))
     }
 
     public func setBatchLineSpans(layer: SpanLayer, spansByLine: [Int: [SweetEditorCore.StyleSpan]]) {
-        editorCore.setBatchLineSpans(layer: layer.rawValue, spansByLine: spansByLine)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setBatchLineSpans(layer: layer.rawValue, spansByLine: spansByLine))
     }
 
     public func setLineInlayHints(line: Int, hints: [SweetEditorCore.InlayHintPayload]) {
-        editorCore.setLineInlayHints(line: line, hints: hints)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setLineInlayHints(line: line, hints: hints))
     }
 
     public func setBatchLineInlayHints(_ hintsByLine: [Int: [SweetEditorCore.InlayHintPayload]]) {
-        editorCore.setBatchLineInlayHints(hintsByLine)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setBatchLineInlayHints(hintsByLine))
     }
 
     public func setLinePhantomTexts(line: Int, phantoms: [SweetEditorCore.PhantomTextPayload]) {
-        editorCore.setLinePhantomTexts(line: line, phantoms: phantoms)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setLinePhantomTexts(line: line, phantoms: phantoms))
     }
 
     public func setBatchLinePhantomTexts(_ phantomsByLine: [Int: [SweetEditorCore.PhantomTextPayload]]) {
-        editorCore.setBatchLinePhantomTexts(phantomsByLine)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setBatchLinePhantomTexts(phantomsByLine))
     }
 
     public func setLineGutterIcons(line: Int, icons: [SweetEditorCore.GutterIcon]) {
-        editorCore.setLineGutterIcons(line: line, icons: icons)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setLineGutterIcons(line: line, icons: icons))
     }
 
     public func setBatchLineGutterIcons(_ iconsByLine: [Int: [SweetEditorCore.GutterIcon]]) {
-        editorCore.setBatchLineGutterIcons(iconsByLine)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setBatchLineGutterIcons(iconsByLine))
     }
 
     public func setLineCodeLens(line: Int, items: [SweetEditorCore.CodeLensPayload]) {
-        editorCore.setLineCodeLens(line: line, items: items)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setLineCodeLens(line: line, items: items))
     }
 
     public func setBatchLineCodeLens(_ itemsByLine: [Int: [SweetEditorCore.CodeLensPayload]]) {
-        editorCore.setBatchLineCodeLens(itemsByLine)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setBatchLineCodeLens(itemsByLine))
     }
 
     public func setLineLinks(line: Int, links: [SweetEditorCore.LinkSpan]) {
-        editorCore.setLineLinks(line: line, links: links)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setLineLinks(line: line, links: links))
     }
 
     public func setBatchLineLinks(_ linksByLine: [Int: [SweetEditorCore.LinkSpan]]) {
-        editorCore.setBatchLineLinks(linksByLine)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setBatchLineLinks(linksByLine))
     }
 
     public func getLinkTargetAt(line: Int, column: Int) -> String {
@@ -310,83 +301,67 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
     }
 
     public func setLineDiagnostics(line: Int, items: [SweetEditorCore.DiagnosticItem]) {
-        editorCore.setLineDiagnostics(line: line, items: items)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setLineDiagnostics(line: line, items: items))
     }
 
     public func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [SweetEditorCore.DiagnosticItem]]) {
-        editorCore.setBatchLineDiagnostics(diagnosticsByLine)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setBatchLineDiagnostics(diagnosticsByLine))
     }
 
     public func setIndentGuides(_ guides: [SweetEditorCore.IndentGuidePayload]) {
-        editorCore.setIndentGuides(guides)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setIndentGuides(guides))
     }
 
     public func setBracketGuides(_ guides: [SweetEditorCore.BracketGuidePayload]) {
-        editorCore.setBracketGuides(guides)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setBracketGuides(guides))
     }
 
     public func setFlowGuides(_ guides: [SweetEditorCore.FlowGuidePayload]) {
-        editorCore.setFlowGuides(guides)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setFlowGuides(guides))
     }
 
     public func setSeparatorGuides(_ guides: [SweetEditorCore.SeparatorGuidePayload]) {
-        editorCore.setSeparatorGuides(guides)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setSeparatorGuides(guides))
     }
 
     public func setFoldRegions(_ regions: [SweetEditorCore.FoldRegion]) {
-        editorCore.setFoldRegions(regions)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setFoldRegions(regions))
     }
 
     public func clearHighlights() {
-        editorCore.clearHighlights()
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.clearHighlights())
     }
 
     public func clearHighlights(layer: SpanLayer) {
-        editorCore.clearHighlights(layer: layer.rawValue)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.clearHighlights(layer: layer.rawValue))
     }
 
     public func clearInlayHints() {
-        editorCore.clearInlayHints()
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.clearInlayHints())
     }
 
     public func clearPhantomTexts() {
-        editorCore.clearPhantomTexts()
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.clearPhantomTexts())
     }
 
     public func clearGutterIcons() {
-        editorCore.clearGutterIcons()
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.clearGutterIcons())
     }
 
     public func clearCodeLens() {
-        editorCore.clearCodeLens()
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.clearCodeLens())
     }
 
     public func clearLinks() {
-        editorCore.clearLinks()
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.clearLinks())
     }
 
     public func clearGuides() {
-        editorCore.clearGuides()
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.clearGuides())
     }
 
     public func clearDiagnostics() {
-        editorCore.clearDiagnostics()
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.clearDiagnostics())
     }
 
     public func documentLines() -> [String] {
@@ -410,11 +385,11 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
 
     private func applyResolvedDecorations(_ decorations: EditorResolvedDecorations) {
         if !decorations.foldRegions.isEmpty {
-            editorCore.setFoldRegions(
+            dispatchEditorActionResult(editorCore.setFoldRegions(
                 decorations.foldRegions.map {
                     SweetEditorCore.FoldRegion(startLine: $0.startLine, endLine: $0.endLine, collapsed: $0.collapsed)
                 }
-            )
+            ))
         }
 
         if !decorations.diagnostics.isEmpty {
@@ -429,7 +404,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
                 }
                 diagnosticsByLine[lineDiagnostics.line, default: []].append(contentsOf: mapped)
             }
-            editorCore.setBatchLineDiagnostics(diagnosticsByLine)
+            dispatchEditorActionResult(editorCore.setBatchLineDiagnostics(diagnosticsByLine))
         }
 
         var inlayHintsByLine: [Int: [SweetEditorCore.InlayHintPayload]] = [:]
@@ -444,7 +419,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
             )
         }
         if !inlayHintsByLine.isEmpty {
-            editorCore.setBatchLineInlayHints(inlayHintsByLine)
+            dispatchEditorActionResult(editorCore.setBatchLineInlayHints(inlayHintsByLine))
         }
 
         var phantomsByLine: [Int: [SweetEditorCore.PhantomTextPayload]] = [:]
@@ -454,7 +429,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
             )
         }
         if !phantomsByLine.isEmpty {
-            editorCore.setBatchLinePhantomTexts(phantomsByLine)
+            dispatchEditorActionResult(editorCore.setBatchLinePhantomTexts(phantomsByLine))
         }
 
         var linksByLine: [Int: [SweetEditorCore.LinkSpan]] = [:]
@@ -464,7 +439,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
             )
         }
         if !linksByLine.isEmpty {
-            editorCore.setBatchLineLinks(linksByLine)
+            dispatchEditorActionResult(editorCore.setBatchLineLinks(linksByLine))
         }
     }
 
@@ -546,18 +521,18 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         if let brackets = config.brackets {
             let opens = brackets.map { Int32(($0.open.unicodeScalars.first?.value ?? 0)) }
             let closes = brackets.map { Int32(($0.close.unicodeScalars.first?.value ?? 0)) }
-            editorCore.setBracketPairs(openChars: opens, closeChars: closes)
+            dispatchEditorActionResult(editorCore.setBracketPairs(openChars: opens, closeChars: closes))
         }
         if let acPairs = config.autoClosingPairs {
             let acOpens = acPairs.map { Int32(($0.open.unicodeScalars.first?.value ?? 0)) }
             let acCloses = acPairs.map { Int32(($0.close.unicodeScalars.first?.value ?? 0)) }
-            editorCore.setAutoClosingPairs(openChars: acOpens, closeChars: acCloses)
+            dispatchEditorActionResult(editorCore.setAutoClosingPairs(openChars: acOpens, closeChars: acCloses))
         }
         if let tabSize = config.tabSize, tabSize > 0 {
-            editorCore.setTabSize(tabSize)
+            dispatchEditorActionResult(editorCore.setTabSize(tabSize))
         }
         if let insertSpaces = config.insertSpaces {
-            editorCore.setInsertSpaces(insertSpaces)
+            dispatchEditorActionResult(editorCore.setInsertSpaces(insertSpaces))
         }
     }
 
@@ -673,8 +648,8 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
     private func updateViewportAndRedraw() {
         let size = bounds.size
         guard size.width > 0 && size.height > 0 else { return }
-        editorCore.setViewport(width: Int(size.width), height: Int(size.height))
-        rebuildAndRedraw()
+        let result = editorCore.setViewport(width: Int(size.width), height: Int(size.height))
+        dispatchEditorActionResult(result)
     }
 
     private func rebuildAndRedraw() {
@@ -693,6 +668,38 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         needsDisplay = true
     }
 
+    private func dispatchEditorActionResult(_ result: EditorActionResultData?) {
+        guard let result else { return }
+        if result.gesture_type != .UNDEFINED {
+            if result.gesture_type == .SCALE {
+                _ = editorCore.syncPlatformScale(result.scale_after)
+            }
+            if result.gesture_type == .TAP {
+                fireGestureEvents(result)
+                if completionPopupController?.isShowing == true {
+                    completionProviderManager?.dismiss()
+                }
+            }
+            if result.scroll_changed {
+                decorationProviderManager?.onScrollChanged()
+                if completionPopupController?.isShowing == true {
+                    completionProviderManager?.dismiss()
+                }
+            }
+        } else {
+            let changes = textChanges(from: result)
+            if result.content_changed || !changes.isEmpty {
+                decorationProviderManager?.onTextChanged(changes: changes)
+                if let doc = document {
+                    highlighter?.highlightAll(document: doc)
+                }
+            }
+        }
+        if result.needs_redraw {
+            rebuildAndRedraw()
+        }
+    }
+
     /// Switches the editor theme.
     func applyTheme(_ theme: EditorTheme) {
         let bgColor = EditorRenderer.applyTheme(theme, core: editorCore)
@@ -705,20 +712,19 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
     }
 
     public func applyEditorSettings(_ settings: EditorSettings) {
-        editorCore.setScale(settings.scale)
-        editorCore.syncPlatformScale(settings.scale)
-        editorCore.setCompositionEnabled(settings.compositionEnabled)
-        editorCore.setFoldArrowMode(SweetEditorCore.FoldArrowMode(settings.foldArrowMode))
-        editorCore.setWrapMode(SweetEditorCore.WrapMode(settings.wrapMode))
-        editorCore.setLineSpacing(add: settings.lineSpacingAdd, mult: settings.lineSpacingMult)
-        editorCore.setContentStartPadding(settings.contentStartPadding)
-        editorCore.setShowSplitLine(settings.showSplitLine)
-        editorCore.setCurrentLineRenderMode(settings.currentLineRenderMode.rawValue)
-        editorCore.setAutoIndentMode(SweetEditorCore.AutoIndentMode(settings.autoIndentMode))
-        editorCore.setBackspaceUnindent(settings.backspaceUnindent)
-        editorCore.setReadOnly(settings.readOnly)
-        editorCore.setMaxGutterIcons(settings.maxGutterIcons)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(editorCore.setScale(settings.scale))
+        dispatchEditorActionResult(editorCore.syncPlatformScale(settings.scale))
+        dispatchEditorActionResult(editorCore.setCompositionEnabled(settings.compositionEnabled))
+        dispatchEditorActionResult(editorCore.setFoldArrowMode(SweetEditorCore.FoldArrowMode(settings.foldArrowMode)))
+        dispatchEditorActionResult(editorCore.setWrapMode(SweetEditorCore.WrapMode(settings.wrapMode)))
+        dispatchEditorActionResult(editorCore.setLineSpacing(add: settings.lineSpacingAdd, mult: settings.lineSpacingMult))
+        dispatchEditorActionResult(editorCore.setContentStartPadding(settings.contentStartPadding))
+        dispatchEditorActionResult(editorCore.setShowSplitLine(settings.showSplitLine))
+        dispatchEditorActionResult(editorCore.setCurrentLineRenderMode(settings.currentLineRenderMode.rawValue))
+        dispatchEditorActionResult(editorCore.setAutoIndentMode(SweetEditorCore.AutoIndentMode(settings.autoIndentMode)))
+        dispatchEditorActionResult(editorCore.setBackspaceUnindent(settings.backspaceUnindent))
+        dispatchEditorActionResult(editorCore.setReadOnly(settings.readOnly))
+        dispatchEditorActionResult(editorCore.setMaxGutterIcons(settings.maxGutterIcons))
     }
 
     private func rehighlightAndRedraw() {
@@ -947,12 +953,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         let mods = modifiersFromEvent(event)
         let result = editorCore.handleGestureEvent(type: .mouseDown, points: [(Float(point.x), Float(point.y))],
                                                    modifiers: mods)
-        handleGestureResult(result)
-        // Dismiss completion popup on click.
-        if completionPopupController?.isShowing == true {
-            completionProviderManager?.dismiss()
-        }
-        rebuildAndRedraw()
+        dispatchEditorActionResult(result)
     }
 
     override func mouseDragged(with event: NSEvent) {
@@ -961,8 +962,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         let mods = modifiersFromEvent(event)
         let result = editorCore.handleGestureEvent(type: .mouseMove, points: [(Float(point.x), Float(point.y))],
                                                    modifiers: mods)
-        handleGestureResult(result)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(result)
     }
 
     override func mouseMoved(with event: NSEvent) {
@@ -981,14 +981,12 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
                 wheelDeltaX: request.wheelDeltaX,
                 wheelDeltaY: request.wheelDeltaY
             )
-            handleGestureResult(result)
-            rebuildAndRedraw()
+            dispatchEditorActionResult(result)
             return
         }
         let result = editorCore.handleGestureEvent(type: .mouseMove, points: [(Float(point.x), Float(point.y))],
                                                    modifiers: mods)
-        handleGestureResult(result)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(result)
     }
 
     override func mouseExited(with event: NSEvent) {
@@ -996,8 +994,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         let mods = modifiersFromEvent(event)
         let result = editorCore.handleGestureEvent(type: .mouseMove, points: [(-1, -1)],
                                                    modifiers: mods)
-        handleGestureResult(result)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(result)
     }
 
     override func mouseUp(with event: NSEvent) {
@@ -1006,8 +1003,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         let mods = modifiersFromEvent(event)
         let result = editorCore.handleGestureEvent(type: .mouseUp, points: [(Float(point.x), Float(point.y))],
                                                    modifiers: mods)
-        handleGestureResult(result)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(result)
     }
 
     override func rightMouseDown(with event: NSEvent) {
@@ -1016,8 +1012,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         let mods = modifiersFromEvent(event)
         let result = editorCore.handleGestureEvent(type: .mouseRightDown, points: [(Float(point.x), Float(point.y))],
                                                    modifiers: mods)
-        handleGestureResult(result)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(result)
     }
 
     override func scrollWheel(with event: NSEvent) {
@@ -1025,33 +1020,27 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         let point = convert(event.locationInWindow, from: nil)
         let mods = modifiersFromEvent(event)
 
+        let result: EditorActionResultData?
         if event.phase != [] || event.momentumPhase != [] {
             // Trackpad two-finger scroll (continuous)
-            let result = editorCore.handleGestureEvent(
+            result = editorCore.handleGestureEvent(
                 type: .directScroll,
                 points: [(Float(point.x), Float(point.y))],
                 modifiers: mods,
                 wheelDeltaX: Float(event.scrollingDeltaX),
                 wheelDeltaY: Float(event.scrollingDeltaY)
             )
-            handleGestureResult(result)
         } else {
             // Mouse scroll wheel (discrete)
-            let result = editorCore.handleGestureEvent(
+            result = editorCore.handleGestureEvent(
                 type: .mouseWheel,
                 points: [(Float(point.x), Float(point.y))],
                 modifiers: mods,
                 wheelDeltaX: Float(event.scrollingDeltaX * 40),
                 wheelDeltaY: Float(event.scrollingDeltaY * 40)
             )
-            handleGestureResult(result)
         }
-        decorationProviderManager?.onScrollChanged()
-        // Dismiss completion popup while scrolling.
-        if completionPopupController?.isShowing == true {
-            completionProviderManager?.dismiss()
-        }
-        rebuildAndRedraw()
+        dispatchEditorActionResult(result)
     }
 
     override func magnify(with event: NSEvent) {
@@ -1062,20 +1051,11 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
             points: [(Float(point.x), Float(point.y))],
             directScale: Float(1.0 + event.magnification)
         )
-        handleGestureResult(result)
-        rebuildAndRedraw()
+        dispatchEditorActionResult(result)
     }
 
-    private func handleGestureResult(_ result: GestureResultData?) {
-        guard let result else { return }
-
-        if result.type == .SCALE {
-            // Core gesture handling already updated C++ scale, only sync platform-side fonts/measurer.
-            editorCore.syncPlatformScale(result.view_scale)
-            return
-        }
-
-        guard result.type == .TAP else { return }
+    private func fireGestureEvents(_ result: EditorActionResultData) {
+        guard result.gesture_type == .TAP else { return }
 
         switch result.hit_target.type {
         case .INLAY_HINT_TEXT:
@@ -1212,20 +1192,14 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         }
 
         let mods = currentModifiers()
-        var contentChanged = false
-        var changedTextChanges: [TextChange] = []
 
         switch selector {
         case #selector(deleteBackward(_:)):
             textInputHandledInCurrentKeyDown = true
-            let result = editorCore.handleKeyEvent(keyCode: .backspace, modifiers: mods)
-            changedTextChanges.append(contentsOf: textChanges(from: result))
-            contentChanged = true
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .backspace, modifiers: mods))
         case #selector(deleteForward(_:)):
             textInputHandledInCurrentKeyDown = true
-            let result = editorCore.handleKeyEvent(keyCode: .deleteKey, modifiers: mods)
-            changedTextChanges.append(contentsOf: textChanges(from: result))
-            contentChanged = true
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .deleteKey, modifiers: mods))
         case #selector(insertNewline(_:)):
             textInputHandledInCurrentKeyDown = true
             // Let NewLineActionProvider handle newline first (provider decides indentation).
@@ -1240,116 +1214,101 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
                     languageConfiguration: languageConfiguration
                 )
                 if let action = manager.provideNewLineAction(context: context) {
-                    let editResult = editorCore.insertText(action.text)
-                    changedTextChanges.append(contentsOf: textChanges(from: editResult))
-                    contentChanged = true
+                    dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .none, text: action.text, modifiers: mods))
                     break
                 }
             }
-            let result = editorCore.handleKeyEvent(keyCode: .enter, modifiers: mods)
-            changedTextChanges.append(contentsOf: textChanges(from: result))
-            contentChanged = true
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .enter, modifiers: mods))
         case #selector(insertTab(_:)):
             textInputHandledInCurrentKeyDown = true
-            let result = editorCore.handleKeyEvent(keyCode: .tab, modifiers: mods)
-            changedTextChanges.append(contentsOf: textChanges(from: result))
-            contentChanged = true
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .tab, modifiers: mods))
         case #selector(insertBacktab(_:)):
             textInputHandledInCurrentKeyDown = true
             var shiftMods = mods
             shiftMods.insert(.shift)
-            let result = editorCore.handleKeyEvent(keyCode: .tab, modifiers: shiftMods)
-            changedTextChanges.append(contentsOf: textChanges(from: result))
-            contentChanged = true
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .tab, modifiers: shiftMods))
         case #selector(moveLeft(_:)):
             textInputHandledInCurrentKeyDown = true
-            _ = editorCore.handleKeyEvent(keyCode: .left, modifiers: mods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .left, modifiers: mods))
         case #selector(moveRight(_:)):
             textInputHandledInCurrentKeyDown = true
-            _ = editorCore.handleKeyEvent(keyCode: .right, modifiers: mods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .right, modifiers: mods))
         case #selector(moveWordLeft(_:)), NSSelectorFromString("moveWordBackward:"):
             textInputHandledInCurrentKeyDown = true
             var wordMods = mods
             wordMods.insert(.alt)
-            _ = editorCore.handleKeyEvent(keyCode: .left, modifiers: wordMods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .left, modifiers: wordMods))
         case #selector(moveWordRight(_:)), NSSelectorFromString("moveWordForward:"):
             textInputHandledInCurrentKeyDown = true
             var wordMods = mods
             wordMods.insert(.alt)
-            _ = editorCore.handleKeyEvent(keyCode: .right, modifiers: wordMods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .right, modifiers: wordMods))
         case #selector(moveUp(_:)):
             textInputHandledInCurrentKeyDown = true
-            _ = editorCore.handleKeyEvent(keyCode: .up, modifiers: mods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .up, modifiers: mods))
         case #selector(moveDown(_:)):
             textInputHandledInCurrentKeyDown = true
-            _ = editorCore.handleKeyEvent(keyCode: .down, modifiers: mods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .down, modifiers: mods))
         case #selector(moveLeftAndModifySelection(_:)):
             textInputHandledInCurrentKeyDown = true
             var shiftMods = mods
             shiftMods.insert(.shift)
-            _ = editorCore.handleKeyEvent(keyCode: .left, modifiers: shiftMods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .left, modifiers: shiftMods))
         case #selector(moveRightAndModifySelection(_:)):
             textInputHandledInCurrentKeyDown = true
             var shiftMods = mods
             shiftMods.insert(.shift)
-            _ = editorCore.handleKeyEvent(keyCode: .right, modifiers: shiftMods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .right, modifiers: shiftMods))
         case #selector(moveWordLeftAndModifySelection(_:)), NSSelectorFromString("moveWordBackwardAndModifySelection:"):
             textInputHandledInCurrentKeyDown = true
             var shiftMods = mods
             shiftMods.insert(.shift)
             shiftMods.insert(.alt)
-            _ = editorCore.handleKeyEvent(keyCode: .left, modifiers: shiftMods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .left, modifiers: shiftMods))
         case #selector(moveWordRightAndModifySelection(_:)), NSSelectorFromString("moveWordForwardAndModifySelection:"):
             textInputHandledInCurrentKeyDown = true
             var shiftMods = mods
             shiftMods.insert(.shift)
             shiftMods.insert(.alt)
-            _ = editorCore.handleKeyEvent(keyCode: .right, modifiers: shiftMods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .right, modifiers: shiftMods))
         case #selector(moveUpAndModifySelection(_:)):
             textInputHandledInCurrentKeyDown = true
             var shiftMods = mods
             shiftMods.insert(.shift)
-            _ = editorCore.handleKeyEvent(keyCode: .up, modifiers: shiftMods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .up, modifiers: shiftMods))
         case #selector(moveDownAndModifySelection(_:)):
             textInputHandledInCurrentKeyDown = true
             var shiftMods = mods
             shiftMods.insert(.shift)
-            _ = editorCore.handleKeyEvent(keyCode: .down, modifiers: shiftMods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .down, modifiers: shiftMods))
         case #selector(moveToBeginningOfLine(_:)):
             textInputHandledInCurrentKeyDown = true
-            _ = editorCore.handleKeyEvent(keyCode: .home, modifiers: mods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .home, modifiers: mods))
         case #selector(moveToEndOfLine(_:)):
             textInputHandledInCurrentKeyDown = true
-            _ = editorCore.handleKeyEvent(keyCode: .end, modifiers: mods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .end, modifiers: mods))
         case #selector(moveToBeginningOfLineAndModifySelection(_:)):
             textInputHandledInCurrentKeyDown = true
             var shiftMods = mods
             shiftMods.insert(.shift)
-            _ = editorCore.handleKeyEvent(keyCode: .home, modifiers: shiftMods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .home, modifiers: shiftMods))
         case #selector(moveToEndOfLineAndModifySelection(_:)):
             textInputHandledInCurrentKeyDown = true
             var shiftMods = mods
             shiftMods.insert(.shift)
-            _ = editorCore.handleKeyEvent(keyCode: .end, modifiers: shiftMods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .end, modifiers: shiftMods))
         case #selector(pageUp(_:)):
             textInputHandledInCurrentKeyDown = true
-            _ = editorCore.handleKeyEvent(keyCode: .pageUp, modifiers: mods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .pageUp, modifiers: mods))
         case #selector(pageDown(_:)):
             textInputHandledInCurrentKeyDown = true
-            _ = editorCore.handleKeyEvent(keyCode: .pageDown, modifiers: mods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .pageDown, modifiers: mods))
         case #selector(cancelOperation(_:)):
             textInputHandledInCurrentKeyDown = true
-            _ = editorCore.handleKeyEvent(keyCode: .escape, modifiers: mods)
+            dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .escape, modifiers: mods))
         default:
             super.doCommand(by: selector)
             return
-        }
-
-        if contentChanged {
-            decorationProviderManager?.onTextChanged(changes: changedTextChanges)
-            rehighlightAndRedraw()
-        } else {
-            rebuildAndRedraw()
         }
     }
 
@@ -1369,7 +1328,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         switch event.charactersIgnoringModifiers {
         case "a":
             let result = editorCore.handleKeyEvent(keyCode: .a, modifiers: mods)
-            if result?.handled == true { rebuildAndRedraw() }
+            dispatchEditorActionResult(result)
             return true
         case "c":
             let result = editorCore.handleKeyEvent(keyCode: .c, modifiers: mods)
@@ -1383,9 +1342,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
             return true
         case "v":
             if let text = NSPasteboard.general.string(forType: .string) {
-                let editResult = editorCore.insertText(text)
-                decorationProviderManager?.onTextChanged(changes: textChanges(from: editResult))
-                rehighlightAndRedraw()
+                dispatchEditorActionResult(editorCore.insertText(text))
             }
             return true
         case "x":
@@ -1396,19 +1353,17 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(text, forType: .string)
                 }
-                decorationProviderManager?.onTextChanged(changes: textChanges(from: result))
-                rehighlightAndRedraw()
+                dispatchEditorActionResult(result)
             }
             return true
         case "z":
-            let editResult: TextEditResultLite?
+            let editResult: EditorActionResultData?
             if event.modifierFlags.contains(.shift) {
                 editResult = editorCore.redo()
             } else {
                 editResult = editorCore.undo()
             }
-            decorationProviderManager?.onTextChanged(changes: textChanges(from: editResult))
-            rehighlightAndRedraw()
+            dispatchEditorActionResult(editResult)
             return true
         default:
             return false
@@ -1440,7 +1395,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
             isComposing = false
             currentMarkedRange = nil
             currentMarkedSelectionRange = nil
-            decorationProviderManager?.onTextChanged(changes: textChanges(from: editResult))
+            dispatchEditorActionResult(editResult)
         } else {
             if let replacementTextRange = textRange(for: replacementRange) {
                 replaceText(startLine: replacementTextRange.startLine,
@@ -1457,13 +1412,12 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
                 if keyCode != .none {
                     let mods = currentModifiers()
                     let keyResult = editorCore.handleKeyEvent(keyCode: keyCode, modifiers: mods)
-                    decorationProviderManager?.onTextChanged(changes: textChanges(from: keyResult))
-                    rehighlightAndRedraw()
+                    dispatchEditorActionResult(keyResult)
                     return
                 }
             }
             let editResult = editorCore.insertText(text)
-            decorationProviderManager?.onTextChanged(changes: textChanges(from: editResult))
+            dispatchEditorActionResult(editResult)
             // Suppress completion triggers during linked editing to avoid Enter/Tab conflicts.
             if !editorCore.isInLinkedEditing(), text.count == 1, let manager = completionProviderManager {
                 let ch = text.unicodeScalars.first!
@@ -1477,7 +1431,6 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
                 }
             }
         }
-        rehighlightAndRedraw()
     }
 
     /// Replaces text in a target range atomically, then refreshes decorations and redraws.
@@ -1488,8 +1441,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
             startLine: startLine, startColumn: startColumn,
             endLine: endLine, endColumn: endColumn,
             newText: newText)
-        decorationProviderManager?.onTextChanged(changes: textChanges(from: editResult))
-        rehighlightAndRedraw()
+        dispatchEditorActionResult(editResult)
     }
 
     /// Deletes text in a target range atomically, then refreshes decorations and redraws.
@@ -1498,8 +1450,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         let editResult = editorCore.deleteText(
             startLine: startLine, startColumn: startColumn,
             endLine: endLine, endColumn: endColumn)
-        decorationProviderManager?.onTextChanged(changes: textChanges(from: editResult))
-        rehighlightAndRedraw()
+        dispatchEditorActionResult(editResult)
     }
 
     // MARK: - Line operations
@@ -1507,50 +1458,43 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
     /// Moves the current line (or selected lines) up by one line.
     func moveLineUp() {
         let editResult = editorCore.moveLineUp()
-        decorationProviderManager?.onTextChanged(changes: textChanges(from: editResult))
-        rehighlightAndRedraw()
+        dispatchEditorActionResult(editResult)
     }
 
     /// Moves the current line (or selected lines) down by one line.
     func moveLineDown() {
         let editResult = editorCore.moveLineDown()
-        decorationProviderManager?.onTextChanged(changes: textChanges(from: editResult))
-        rehighlightAndRedraw()
+        dispatchEditorActionResult(editResult)
     }
 
     /// Copies the current line (or selected lines) upward.
     func copyLineUp() {
         let editResult = editorCore.copyLineUp()
-        decorationProviderManager?.onTextChanged(changes: textChanges(from: editResult))
-        rehighlightAndRedraw()
+        dispatchEditorActionResult(editResult)
     }
 
     /// Copies the current line (or selected lines) downward.
     func copyLineDown() {
         let editResult = editorCore.copyLineDown()
-        decorationProviderManager?.onTextChanged(changes: textChanges(from: editResult))
-        rehighlightAndRedraw()
+        dispatchEditorActionResult(editResult)
     }
 
     /// Deletes the current line (or all selected lines).
     func deleteLine() {
         let editResult = editorCore.deleteLine()
-        decorationProviderManager?.onTextChanged(changes: textChanges(from: editResult))
-        rehighlightAndRedraw()
+        dispatchEditorActionResult(editResult)
     }
 
     /// Inserts an empty line above the current line.
     func insertLineAbove() {
         let editResult = editorCore.insertLineAbove()
-        decorationProviderManager?.onTextChanged(changes: textChanges(from: editResult))
-        rehighlightAndRedraw()
+        dispatchEditorActionResult(editResult)
     }
 
     /// Inserts an empty line below the current line.
     func insertLineBelow() {
         let editResult = editorCore.insertLineBelow()
-        decorationProviderManager?.onTextChanged(changes: textChanges(from: editResult))
-        rehighlightAndRedraw()
+        dispatchEditorActionResult(editResult)
     }
 
     func setMarkedText(_ string: Any, selectedRange: NSRange, replacementRange: NSRange) {
@@ -1574,8 +1518,8 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         let baseRange: NSRange
         if let replacementRange = normalizedReplacementRange(replacementRange) {
             baseRange = replacementRange
-            editorCore.markImeDocumentRange(startOffset: replacementRange.location,
-                                            endOffset: replacementRange.location + replacementRange.length)
+            dispatchEditorActionResult(editorCore.markImeDocumentRange(startOffset: replacementRange.location,
+                                                          endOffset: replacementRange.location + replacementRange.length))
         } else if let currentMarkedRange {
             baseRange = currentMarkedRange
         } else {
@@ -1590,20 +1534,20 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         currentMarkedSelectionRange = NSRange(location: baseRange.location + selectedLocation,
                                               length: selectedLength)
 
-        _ = editorCore.setImeComposingTextSelection(text,
-                                                    selectionStartOffset: selectedLocation,
-                                                    selectionEndOffset: selectedLocation + selectedLength)
-        rebuildAndRedraw()
+        let result = editorCore.setImeComposingTextSelection(text,
+                                                             selectionStartOffset: selectedLocation,
+                                                             selectionEndOffset: selectedLocation + selectedLength)
+        dispatchEditorActionResult(result)
     }
 
     func unmarkText() {
         resetCursorBlink()
         if isComposing {
-            _ = editorCore.finishImePreedit()
+            let result = editorCore.finishImePreedit()
             isComposing = false
             currentMarkedRange = nil
             currentMarkedSelectionRange = nil
-            rebuildAndRedraw()
+            dispatchEditorActionResult(result)
         }
     }
 
@@ -1677,12 +1621,10 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         let mappedKeyCode = mapNSKeyCodeToSEKeyCode(event.keyCode)
         if mappedKeyCode != .none {
             let result = editorCore.handleKeyEvent(keyCode: mappedKeyCode, modifiers: mods)
-            switch mappedKeyCode {
-            case .backspace, .deleteKey, .enter, .tab:
-                decorationProviderManager?.onTextChanged(changes: textChanges(from: result))
-                rehighlightAndRedraw()
-            default:
-                rebuildAndRedraw()
+            if result?.content_changed == true || !textChanges(from: result).isEmpty {
+                dispatchEditorActionResult(result)
+            } else {
+                dispatchEditorActionResult(result)
             }
             return true
         }
@@ -1727,21 +1669,15 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         }
         if isSnippet {
             let editResult = editorCore.insertSnippet(text)
-            decorationProviderManager?.onTextChanged(changes: textChanges(from: editResult))
-            rehighlightAndRedraw()
+            dispatchEditorActionResult(editResult)
         } else {
             insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
         }
     }
 
-    private func textChanges(from editResult: TextEditResultLite?) -> [TextChange] {
-        guard let editResult else { return [] }
-        return textChanges(from: editResult.changes)
-    }
-
-    private func textChanges(from keyResult: KeyEventResultData?) -> [TextChange] {
-        guard let keyResult, keyResult.content_changed else { return [] }
-        return textChanges(from: keyResult.edit_result.changes)
+    private func textChanges(from result: EditorActionResultData?) -> [TextChange] {
+        guard let result, result.content_changed || !result.changes.isEmpty else { return [] }
+        return textChanges(from: result.changes)
     }
 
     private func textChanges(from rawChanges: [TextChangeData]) -> [TextChange] {

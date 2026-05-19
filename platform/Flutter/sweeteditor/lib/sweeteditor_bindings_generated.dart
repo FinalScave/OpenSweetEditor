@@ -9,19 +9,25 @@ const _sweeteditorAssetId = 'package:sweeteditor/lib/sweeteditor.dart';
 /// Create a Document and return its handle
 /// @param text UTF8 text content
 /// @return Document handle
-@ffi.Native<ffi.IntPtr Function(ffi.Pointer<ffi.Char>)>(assetId: _sweeteditorAssetId)
+@ffi.Native<ffi.IntPtr Function(ffi.Pointer<ffi.Char>)>(
+  assetId: _sweeteditorAssetId,
+)
 external int create_document_from_utf8(ffi.Pointer<ffi.Char> text);
 
 /// Create a Document and return its handle
 /// @param text UTF16 text content
 /// @return Document handle
-@ffi.Native<ffi.IntPtr Function(ffi.Pointer<ffi.Uint16>)>(assetId: _sweeteditorAssetId)
+@ffi.Native<ffi.IntPtr Function(ffi.Pointer<ffi.Uint16>)>(
+  assetId: _sweeteditorAssetId,
+)
 external int create_document_from_utf16(ffi.Pointer<ffi.Uint16> text);
 
 /// Create a Document and return its handle(created from local file)
 /// @param path Local file path
 /// @return Document handle
-@ffi.Native<ffi.IntPtr Function(ffi.Pointer<ffi.Char>)>(assetId: _sweeteditorAssetId)
+@ffi.Native<ffi.IntPtr Function(ffi.Pointer<ffi.Char>)>(
+  assetId: _sweeteditorAssetId,
+)
 external int create_document_from_file(ffi.Pointer<ffi.Char> path);
 
 /// Free Document
@@ -30,12 +36,16 @@ external void free_document(int document_handle);
 
 /// Get Document UTF8 text
 /// @return UTF8 text content; caller owns returned buffer and must free it with free_u8_string
-@ffi.Native<ffi.Pointer<ffi.Char> Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
+@ffi.Native<ffi.Pointer<ffi.Char> Function(ffi.IntPtr)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Char> get_document_utf8(int document_handle);
 
 /// Get Document UTF16 text
 /// @return UTF16 text content; caller owns returned buffer and must free it with free_u16_string
-@ffi.Native<ffi.Pointer<ffi.Uint16> Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
+@ffi.Native<ffi.Pointer<ffi.Uint16> Function(ffi.IntPtr)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint16> get_document_utf16(int document_handle);
 
 /// Get total line count of Document
@@ -46,7 +56,9 @@ external int get_document_line_count(int document_handle);
 /// Get UTF8 text of a specific Document line
 /// @param line Line number
 /// @return UTF8 text content of the specified line; caller owns returned buffer and must free it with free_u8_string
-@ffi.Native<ffi.Pointer<ffi.Char> Function(ffi.IntPtr, ffi.Size)>(assetId: _sweeteditorAssetId)
+@ffi.Native<ffi.Pointer<ffi.Char> Function(ffi.IntPtr, ffi.Size)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Char> get_document_line_utf8(
   int document_handle,
   int line,
@@ -55,7 +67,9 @@ external ffi.Pointer<ffi.Char> get_document_line_utf8(
 /// Get UTF16 text of a specific Document line
 /// @param line Line number
 /// @return UTF16 text content of the specified line; caller owns returned buffer and must free it with free_u16_string
-@ffi.Native<ffi.Pointer<ffi.Uint16> Function(ffi.IntPtr, ffi.Size)>(assetId: _sweeteditorAssetId)
+@ffi.Native<ffi.Pointer<ffi.Uint16> Function(ffi.IntPtr, ffi.Size)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint16> get_document_line_utf16(
   int document_handle,
   int line,
@@ -89,82 +103,164 @@ external int create_editor(
 external void free_editor(int editor_handle);
 
 /// Load Document
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void set_editor_document(int editor_handle, int document_handle);
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.IntPtr, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> set_editor_document(
+  int editor_handle,
+  int document_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
 /// Set editor viewport
 /// @param width Editor view width
 /// @param height Editor view height
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int16, ffi.Int16)>(assetId: _sweeteditorAssetId)
-external void set_editor_viewport(int editor_handle, int width, int height);
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Int16,
+    ffi.Int16,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> set_editor_viewport(
+  int editor_handle,
+  int width,
+  int height,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
 /// Notify editor that font metrics have changed (call after font/scale changes)
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_on_font_metrics_changed(int editor_handle);
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_on_font_metrics_changed(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
 /// Set fold arrow display mode (affects reserved gutter width)
 /// @param mode 0=AUTO(auto show when fold regions exist), 1=ALWAYS(always reserve), 2=HIDDEN(always hide)
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_set_fold_arrow_mode(int editor_handle, int mode);
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_fold_arrow_mode(
+  int editor_handle,
+  int mode,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
 /// Set auto wrap mode
 /// @param mode 0=NONE(no wrap), 1=CHAR_BREAK(character-level wrap), 2=WORD_BREAK(word-level wrap)
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_set_wrap_mode(int editor_handle, int mode);
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_wrap_mode(
+  int editor_handle,
+  int mode,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
 /// Set tab size (number of spaces per tab stop)
 /// @param tab_size Tab size (default 4, minimum 1)
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_set_tab_size(int editor_handle, int tab_size);
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_tab_size(
+  int editor_handle,
+  int tab_size,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
 /// Set editor scale factor
 /// @param scale Scale factor (1.0 = 100%)
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Float)>(assetId: _sweeteditorAssetId)
-external void editor_set_scale(int editor_handle, double scale);
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Float, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_scale(
+  int editor_handle,
+  double scale,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
 /// Set line spacing parameters (formula: line_height = font_height * mult + add)
 /// @param add Extra line spacing in pixels (default 0)
 /// @param mult Line spacing multiplier (default 1.0)
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Float, ffi.Float)>(assetId: _sweeteditorAssetId)
-external void editor_set_line_spacing(
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Float,
+    ffi.Float,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_line_spacing(
   int editor_handle,
   double add,
   double mult,
+  ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Set extra horizontal padding between gutter split and text content start
 /// @param padding Padding in pixels (clamped to >= 0)
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Float)>(assetId: _sweeteditorAssetId)
-external void editor_set_content_start_padding(
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Float, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_content_start_padding(
   int editor_handle,
   double padding,
+  ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Set whether to render gutter split line
 /// @param show 0=hide, non-zero=show
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_set_show_split_line(int editor_handle, int show);
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_show_split_line(
+  int editor_handle,
+  int show,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
 /// Set current line render mode
 /// @param mode 0=BACKGROUND(fill), 1=BORDER(stroke), 2=NONE(disabled)
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_set_current_line_render_mode(int editor_handle, int mode);
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_current_line_render_mode(
+  int editor_handle,
+  int mode,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
 /// Set whether gutter stays fixed during horizontal scroll
 /// @param sticky 0=gutter scrolls with content (mobile style), non-zero=gutter fixed (desktop style)
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_set_gutter_sticky(int editor_handle, int sticky);
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_gutter_sticky(
+  int editor_handle,
+  int sticky,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
 /// Set whether gutter area is visible
 /// @param visible 0=hide entire gutter, non-zero=show gutter
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_set_gutter_visible(int editor_handle, int visible);
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_gutter_visible(
+  int editor_handle,
+  int visible,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
 /// Set selection handle hit-test configuration using offset rects
 /// @param start_left/start_top/start_right/start_bottom  Start handle hit area offset from cursor bottom anchor (handle tip)
 /// @param end_left/end_top/end_right/end_bottom  End handle hit area offset from cursor bottom anchor (handle tip)
 @ffi.Native<
-  ffi.Void Function(
+  ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
     ffi.Float,
     ffi.Float,
@@ -174,9 +270,10 @@ external void editor_set_gutter_visible(int editor_handle, int visible);
     ffi.Float,
     ffi.Float,
     ffi.Float,
+    ffi.Pointer<ffi.Size>,
   )
 >(assetId: _sweeteditorAssetId)
-external void editor_set_handle_config(
+external ffi.Pointer<ffi.Uint8> editor_set_handle_config(
   int editor_handle,
   double start_left,
   double start_top,
@@ -186,6 +283,7 @@ external void editor_set_handle_config(
   double end_top,
   double end_right,
   double end_bottom,
+  ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Set scrollbar full configuration (geometry + behavior)
@@ -198,7 +296,7 @@ external void editor_set_handle_config(
 /// @param fade_delay_ms Delay before hide in TRANSIENT mode
 /// @param fade_duration_ms Fade duration in TRANSIENT mode (used for both fade-in and fade-out)
 @ffi.Native<
-  ffi.Void Function(
+  ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
     ffi.Float,
     ffi.Float,
@@ -208,9 +306,10 @@ external void editor_set_handle_config(
     ffi.Int,
     ffi.Int,
     ffi.Int,
+    ffi.Pointer<ffi.Size>,
   )
 >(assetId: _sweeteditorAssetId)
-external void editor_set_scrollbar_config(
+external ffi.Pointer<ffi.Uint8> editor_set_scrollbar_config(
   int editor_handle,
   double thickness,
   double min_thumb,
@@ -220,6 +319,7 @@ external void editor_set_scrollbar_config(
   int track_tap_mode,
   int fade_delay_ms,
   int fade_duration_ms,
+  ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Build render model for one editor frame
@@ -349,9 +449,9 @@ external void editor_set_scrollbar_config(
 /// 33. i32 gutter_visible (0=hidden, 1=visible)
 /// 34. i32 pointer_cursor_type (0=DEFAULT, 1=TEXT, 2=HAND)
 /// Call free_binary_data after use; returns NULL on failure
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> build_editor_render_model(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
@@ -373,48 +473,23 @@ external ffi.Pointer<ffi.Uint8> build_editor_render_model(
 /// 10. i32 fold_arrow_mode (0=AUTO, 1=ALWAYS, 2=HIDDEN)
 /// 11. i32 has_fold_regions (0=false, 1=true)
 /// Call free_binary_data after use; returns NULL on failure
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> get_layout_metrics(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
 
-/// GestureResult binary return layout (payload uses native byte order; all supported platforms are currently LE):
-/// 1. i32 gesture_type
-/// 2. Only when gesture_type is TAP / DOUBLE_TAP / LONG_PRESS / DRAG_SELECT / CONTEXT_MENU, append:
-/// f32 tap_x, f32 tap_y
-/// 3. Always append editor state:
-/// i32 cursor_line
-/// i32 cursor_column
-/// i32 has_selection
-/// i32 selection_start_line
-/// i32 selection_start_column
-/// i32 selection_end_line
-/// i32 selection_end_column
-/// f32 view_scroll_x
-/// f32 view_scroll_y
-/// f32 view_scale
-/// i32 hit_target_type
-/// i32 hit_target_line
-/// i32 hit_target_column
-/// i32 hit_target_icon_id
-/// i32 hit_target_color_value
-/// i32 needs_edge_scroll (1 = platform should start/continue 16ms timer calling
-/// editor_tick_edge_scroll; 0 = platform should stop the timer)
-/// i32 needs_fling (1 = platform should start/continue per-frame callback calling
-/// editor_tick_fling; 0 = platform should stop the callback)
-/// i32 needs_animation (1 = any animation still active; platform can use a single
-/// frame callback calling editor_tick_animations instead of separate tick calls)
-/// i32 is_handle_drag
-/// i32 pointer_cursor_type (0=DEFAULT, 1=TEXT, 2=HAND)
+/// EditorActionResult binary return layout (payload uses native byte order; all supported platforms are currently LE).
+/// This is the only result payload for core state-changing APIs. Platforms should use needs_redraw from this payload
+/// to decide whether to flush editor state and schedule repaint.
 ///
 /// Handle gesture event
 /// @param type Event type
 /// @param pointer_count Finger point count
 /// @param points Data for each point
-/// @return GestureResult binary payload, returns NULL on failure
+/// @return EditorActionResult binary payload, returns NULL on failure
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -440,7 +515,7 @@ external ffi.Pointer<ffi.Uint8> handle_editor_gesture_event(
 /// @param wheel_delta_x Horizontal wheel delta (used for MOUSE_WHEEL/DIRECT_SCROLL)
 /// @param wheel_delta_y Vertical wheel delta (used for MOUSE_WHEEL/DIRECT_SCROLL)
 /// @param direct_scale Direct scale value (used for DIRECT_SCALE)
-/// @return GestureResult binary payload, returns NULL on failure
+/// @return EditorActionResult binary payload, returns NULL on failure
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -467,27 +542,27 @@ external ffi.Pointer<ffi.Uint8> handle_editor_gesture_event_ex(
 );
 
 /// Tick edge-scroll during drag selection / handle drag.
-/// Call at ~16ms intervals while the previous GestureResult.needs_edge_scroll was true.
-/// Returns the same GestureResult binary layout as handle_editor_gesture_event.
+/// Call at ~16ms intervals while the previous EditorActionResult.needs_edge_scroll was true.
+/// Returns the same EditorActionResult binary layout as handle_editor_gesture_event.
 /// When needs_edge_scroll becomes false in the returned payload, stop the timer.
-/// @return GestureResult binary payload
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+/// @return EditorActionResult binary payload
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> editor_tick_edge_scroll(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Tick fling (inertial scroll) animation.
-/// Call each frame while the previous GestureResult.needs_fling was true.
+/// Call each frame while the previous EditorActionResult.needs_fling was true.
 /// The core tracks real elapsed time internally; any frame interval is fine.
-/// Returns the same GestureResult binary layout as handle_editor_gesture_event.
+/// Returns the same EditorActionResult binary layout as handle_editor_gesture_event.
 /// When needs_fling becomes false in the returned payload, stop the timer.
-/// @return GestureResult binary payload
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+/// @return EditorActionResult binary payload
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> editor_tick_fling(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
@@ -496,38 +571,22 @@ external ffi.Pointer<ffi.Uint8> editor_tick_fling(
 /// Unified animation tick: advances all active animations (edge-scroll, fling).
 /// Platform can use a single frame callback driven by needs_animation and call this
 /// instead of editor_tick_edge_scroll() / editor_tick_fling() separately.
-/// Returns the same GestureResult binary layout as handle_editor_gesture_event.
+/// Returns the same EditorActionResult binary layout as handle_editor_gesture_event.
 /// When needs_animation becomes false in the returned payload, stop the callback.
-/// @return GestureResult binary payload
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+/// @return EditorActionResult binary payload
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> editor_tick_animations(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
 
-/// KeyEventResult binary return layout (payload uses native byte order; all supported platforms are currently LE):
-/// 1. i32 handled
-/// 2. i32 content_changed
-/// 3. i32 cursor_changed
-/// 4. i32 selection_changed
-/// 5. i32 has_edit
-/// 6. If has_edit != 0, append a TextEditResult.changes array:
-/// i32 change_count
-/// Repeat for change_count groups:
-/// i32 range_start_line
-/// i32 range_start_column
-/// i32 range_end_line
-/// i32 range_end_column
-/// i32 new_text_len
-/// u8[new_text_len] new_text_utf8
-///
 /// Handle keyboard event (optional default key mapping; platform layer can bypass this API and call atomic operation APIs directly)
 /// @param key_code Key code (KeyCode enum value)
 /// @param text Input text (UTF8; pass for normal character input, pass NULL for special keys)
 /// @param modifiers Modifier key flags(SHIFT=1, CTRL=2, ALT=4, META=8)
-/// @return KeyEventResult binary payload, returns NULL on failure
+/// @return EditorActionResult binary payload, returns NULL on failure
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -555,28 +614,24 @@ external ffi.Pointer<ffi.Uint8> handle_editor_key_event(
 /// u16 second_key_code  (0 = single-chord)
 /// u32 command          (EditorCommand enum value)
 /// Invalid or empty payload is ignored (current key map is preserved).
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_keymap(
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_keymap(
   int editor_handle,
   ffi.Pointer<ffi.Uint8> data,
   int size,
+  ffi.Pointer<ffi.Size> out_size,
 );
 
-/// TextEditResult binary return layout (payload uses native byte order; all supported platforms are currently LE):
-/// 1. i32 changed
-/// 2. When changed != 0, append change array:
-/// i32 change_count
-/// Repeat for change_count groups:
-/// i32 range_start_line
-/// i32 range_start_column
-/// i32 range_end_line
-/// i32 range_end_column
-/// i32 new_text_len
-/// u8[new_text_len] new_text_utf8
-///
 /// Insert text at cursor position (replace selected text if selection exists)
 /// @param text UTF8 text to insert
-/// @return TextEditResult binary payload, returns NULL if there is no change
+/// @return EditorActionResult binary payload, returns NULL on failure
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -596,7 +651,7 @@ external ffi.Pointer<ffi.Uint8> editor_insert_text(
 /// @param end_line end line of replacement range(0-based)
 /// @param end_column End column of replacement range (0-based)
 /// @param text Replacement UTF8 text
-/// @return TextEditResult binary payload, returns NULL if there is no change
+/// @return EditorActionResult binary payload, returns NULL on failure
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -623,7 +678,7 @@ external ffi.Pointer<ffi.Uint8> editor_replace_text(
 /// @param start_column Start column of deletion range (0-based)
 /// @param end_line end line of deletion range(0-based)
 /// @param end_column End column of deletion range (0-based)
-/// @return TextEditResult binary payload, returns NULL if there is no change
+/// @return EditorActionResult binary payload, returns NULL on failure
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -644,110 +699,110 @@ external ffi.Pointer<ffi.Uint8> editor_delete_text(
 );
 
 /// Delete one character before cursor (Backspace behavior); delete selection if present
-/// @return TextEditResult binary payload, returns NULL if there is no change
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> editor_backspace(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Delete one character after cursor (Delete behavior); delete selection if present
-/// @return TextEditResult binary payload, returns NULL if there is no change
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> editor_delete_forward(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Move current line (or lines covered by selection) up by one line
-/// @return TextEditResult binary payload, returns NULL if there is no change
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> editor_move_line_up(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Move current line (or lines covered by selection) down by one line
-/// @return TextEditResult binary payload, returns NULL if there is no change
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> editor_move_line_down(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Copy current line (or lines covered by selection) upward
-/// @return TextEditResult binary payload, returns NULL if there is no change
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> editor_copy_line_up(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Copy current line (or lines covered by selection) downward
-/// @return TextEditResult binary payload, returns NULL if there is no change
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> editor_copy_line_down(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Delete current line (or all lines covered by selection)
-/// @return TextEditResult binary payload, returns NULL if there is no change
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> editor_delete_line(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Insert empty line above current line
-/// @return TextEditResult binary payload, returns NULL if there is no change
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> editor_insert_line_above(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Insert empty line below current line
-/// @return TextEditResult binary payload, returns NULL if there is no change
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> editor_insert_line_below(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Undo last edit operation
-/// @return TextEditResult binary payload, returns NULL when nothing can be undone
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> editor_undo(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Redo last undone operation
-/// @return TextEditResult binary payload, returns NULL when nothing can be redone
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> editor_redo(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
@@ -766,11 +821,19 @@ external int editor_can_redo(int editor_handle);
 /// Set cursor position
 /// @param line Line number(0-based)
 /// @param column Column number (0-based)
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Size, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_cursor_position(
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Size,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_cursor_position(
   int editor_handle,
   int line,
   int column,
+  ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Get cursor position
@@ -786,8 +849,13 @@ external void editor_get_cursor_position(
 );
 
 /// Select all
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_select_all(int editor_handle);
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_select_all(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
 /// Set selection range
 /// @param start_line selection start line(0-based)
@@ -795,14 +863,22 @@ external void editor_select_all(int editor_handle);
 /// @param end_line selection end line(0-based)
 /// @param end_column selection end column (0-based)
 @ffi.Native<
-  ffi.Void Function(ffi.IntPtr, ffi.Size, ffi.Size, ffi.Size, ffi.Size)
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Size,
+    ffi.Size,
+    ffi.Size,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
 >(assetId: _sweeteditorAssetId)
-external void editor_set_selection(
+external ffi.Pointer<ffi.Uint8> editor_set_selection(
   int editor_handle,
   int start_line,
   int start_column,
   int end_line,
   int end_column,
+  ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Get current selection range (two cursor positions)
@@ -830,7 +906,9 @@ external int editor_get_selection(
 
 /// Get selected text
 /// @return Selected text (UTF8)
-@ffi.Native<ffi.Pointer<ffi.Char> Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
+@ffi.Native<ffi.Pointer<ffi.Char> Function(ffi.IntPtr)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Char> editor_get_selected_text(int editor_handle);
 
 /// Get text range of word at cursor (scan continuous word chars to the left)
@@ -857,44 +935,1064 @@ external void editor_get_word_range_at_cursor(
 
 /// Get text content of word at cursor
 /// @return Word text (UTF8); returns empty string when cursor is not on a word
-@ffi.Native<ffi.Pointer<ffi.Char> Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
+@ffi.Native<ffi.Pointer<ffi.Char> Function(ffi.IntPtr)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Char> editor_get_word_at_cursor(int editor_handle);
 
 /// Move cursor left
 /// @param extend_selection Whether to extend selection (Shift behavior)
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_move_cursor_left(int editor_handle, int extend_selection);
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_move_cursor_left(
+  int editor_handle,
+  int extend_selection,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
 /// Move cursor right
 /// @param extend_selection Whether to extend selection
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_move_cursor_right(int editor_handle, int extend_selection);
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_move_cursor_right(
+  int editor_handle,
+  int extend_selection,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
 /// Move cursor up
 /// @param extend_selection Whether to extend selection
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_move_cursor_up(int editor_handle, int extend_selection);
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_move_cursor_up(
+  int editor_handle,
+  int extend_selection,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
 /// Move cursor down
 /// @param extend_selection Whether to extend selection
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_move_cursor_down(int editor_handle, int extend_selection);
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_move_cursor_down(
+  int editor_handle,
+  int extend_selection,
+  ffi.Pointer<ffi.Size> out_size,
+);
 
 /// Move cursor to line start
 /// @param extend_selection Whether to extend selection
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_move_cursor_to_line_start(
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_move_cursor_to_line_start(
   int editor_handle,
   int extend_selection,
+  ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Move cursor to line end
 /// @param extend_selection Whether to extend selection
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_move_cursor_to_line_end(
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_move_cursor_to_line_end(
   int editor_handle,
   int extend_selection,
+  ffi.Pointer<ffi.Size> out_size,
 );
+
+/// Set read-only mode
+/// @param read_only 1=read-only, 0=editable
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_read_only(
+  int editor_handle,
+  int read_only,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Get whether read-only mode is active
+/// @return 1=read-only, 0=editable
+@ffi.Native<ffi.Int Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
+external int editor_is_read_only(int editor_handle);
+
+/// Set auto indent mode
+/// @param mode 0=NONE(no auto indent),1=KEEP_INDENT(keep previous line indent)
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_auto_indent_mode(
+  int editor_handle,
+  int mode,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Get current auto indent mode
+/// @return 0=NONE, 1=KEEP_INDENT
+@ffi.Native<ffi.Int Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
+external int editor_get_auto_indent_mode(int editor_handle);
+
+/// Set backspace unindent behavior
+/// @param enabled 1=enabled, 0=disabled
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_backspace_unindent(
+  int editor_handle,
+  int enabled,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set whether Tab inserts spaces up to the next tab stop instead of a literal '\t'
+/// @param enabled 1=insert spaces, 0=insert '\t'
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_insert_spaces(
+  int editor_handle,
+  int enabled,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Scroll to specified line
+/// @param line Line number(0-based)
+/// @param behavior Scroll behavior(0=GOTO_TOP, 1=GOTO_CENTER, 2=GOTO_BOTTOM)
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Size,
+    ffi.Uint8,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_scroll_to_line(
+  int editor_handle,
+  int line,
+  int behavior,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Go to specified line and column (scroll + cursor positioning)
+/// @param line Line number(0-based)
+/// @param column Column number (0-based)
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Size,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_goto_position(
+  int editor_handle,
+  int line,
+  int column,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Adjust scroll offset just enough to keep current cursor visible in viewport
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_ensure_cursor_visible(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Manually set scroll position (automatically clamped to valid range)
+/// @param scroll_x Horizontal scroll offset
+/// @param scroll_y Vertical scroll offset
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Float,
+    ffi.Float,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_scroll(
+  int editor_handle,
+  double scroll_x,
+  double scroll_y,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// ScrollMetrics binary return layout (payload uses native byte order; all supported platforms are currently LE):
+/// 1. f32 scale
+/// 2. f32 scroll_x
+/// 3. f32 scroll_y
+/// 4. f32 max_scroll_x
+/// 5. f32 max_scroll_y
+/// 6. f32 content_width
+/// 7. f32 content_height
+/// 8. f32 viewport_width
+/// 9. f32 viewport_height
+/// 10. f32 text_area_x
+/// 11. f32 text_area_width
+/// 12. i32 can_scroll_x
+/// 13. i32 can_scroll_y
+///
+/// Get scrollbar metrics
+/// @return ScrollMetrics binary payload; Returns default payload for invalid handle
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_get_scroll_metrics(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Get screen coordinate rect for any text position (for floating panel positioning)
+/// @param line Line number(0-based)
+/// @param column Column number (0-based)
+/// @param out_x Output: x coordinate in viewport
+/// @param out_y Output: y coordinate in viewport (line top)
+/// @param out_height Output: line height
+@ffi.Native<
+  ffi.Void Function(
+    ffi.IntPtr,
+    ffi.Size,
+    ffi.Size,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+  )
+>(assetId: _sweeteditorAssetId)
+external void editor_get_position_rect(
+  int editor_handle,
+  int line,
+  int column,
+  ffi.Pointer<ffi.Float> out_x,
+  ffi.Pointer<ffi.Float> out_y,
+  ffi.Pointer<ffi.Float> out_height,
+);
+
+/// Get screen coordinate rect at current cursor position (shortcut)
+/// @param out_x Output: x coordinate in viewport
+/// @param out_y Output: y coordinate in viewport (line top)
+/// @param out_height Output: line height
+@ffi.Native<
+  ffi.Void Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Float>,
+  )
+>(assetId: _sweeteditorAssetId)
+external void editor_get_cursor_rect(
+  int editor_handle,
+  ffi.Pointer<ffi.Float> out_x,
+  ffi.Pointer<ffi.Float> out_y,
+  ffi.Pointer<ffi.Float> out_height,
+);
+
+/// Register text style (color + background color + font style)
+/// @param style_id Style ID
+/// @param color Foreground color value (ARGB)
+/// @param background_color Background color value (ARGB), 0 means transparent
+/// @param font_style Font style (FontStyle enum value)
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Uint32,
+    ffi.Int32,
+    ffi.Int32,
+    ffi.Int32,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_register_text_style(
+  int editor_handle,
+  int style_id,
+  int color,
+  int background_color,
+  int font_style,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set style ranges for specified line and layer (compact binary)
+/// @param data payload(LE):
+/// u32 line, u32 layer, u32 span_count, then repeat for span_count groups
+/// [u32 column, u32 length, u32 style_id]
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_line_spans(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Batch set highlight spans for multiple lines (compact binary)
+/// @param data payload(LE):
+/// u32 layer, u32 entry_count,
+/// [u32 line, u32 span_count, [u32 column, u32 length, u32 style_id] x span_count] x entry_count
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_batch_line_spans(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Batch register highlight text styles (compact binary)
+/// @param data payload(LE):
+/// u32 entry_count,
+/// [u32 style_id, i32 color, i32 background_color, i32 font_style] x entry_count
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_register_batch_text_styles(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Clear all style ranges for specified line and layer
+/// @param line Line number(0-based)
+/// @param layer Highlight layer (0=SYNTAX, 1=SEMANTIC)
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Size,
+    ffi.Uint8,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_clear_line_spans(
+  int editor_handle,
+  int line,
+  int layer,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Clear all highlight spans in specified layer
+/// @param layer Highlight layer (0=SYNTAX, 1=SEMANTIC)
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Uint8, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_clear_highlights_layer(
+  int editor_handle,
+  int layer,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set inlay hints for specified line (compact binary, replace whole line)
+/// @param data payload(LE):
+/// u32 line, u32 hint_count, then repeat for hint_count groups:
+/// [u32 type(0=TEXT,1=ICON,2=COLOR), u32 column, i32 int_value(icon_id/color/0),
+/// u32 text_len, u8[text_len] text_utf8]
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_line_inlay_hints(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Batch set inlay hints for multiple lines (compact binary, variable length)
+/// @param data payload(LE):
+/// u32 entry_count,
+/// [u32 line, u32 hint_count,
+/// [u32 type, u32 column, i32 int_value, u32 text_len, u8[text_len] text_utf8] x hint_count] x entry_count
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_batch_line_inlay_hints(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Add one inlay hint (append to specified line, do not replace existing hints)
+/// Set phantom texts for specified line (compact binary, replace whole line)
+/// @param data payload(LE):
+/// u32 line, u32 phantom_count, then repeat for phantom_count groups:
+/// [u32 column, u32 text_len, u8[text_len] text_utf8]
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_line_phantom_texts(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Batch set phantom texts for multiple lines (compact binary, variable length)
+/// @param data payload(LE):
+/// u32 entry_count,
+/// [u32 line, u32 phantom_count,
+/// [u32 column, u32 text_len, u8[text_len] text_utf8] x phantom_count] x entry_count
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_batch_line_phantom_texts(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set gutter icons for specified line (compact binary, replace whole line)
+/// @param data payload(LE):
+/// u32 line, u32 icon_count, then repeat for icon_count groups
+/// [i32 icon_id]
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_line_gutter_icons(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Batch set gutter icons for multiple lines (compact binary, fixed length)
+/// @param data payload(LE):
+/// u32 entry_count,
+/// [u32 line, u32 icon_count, [i32 icon_id] x icon_count] x entry_count
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_batch_line_gutter_icons(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set max gutter icon count (affects reserved gutter width)
+/// @param count Max icon count (0=no reserved space)
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Uint32, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_max_gutter_icons(
+  int editor_handle,
+  int count,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Clear all gutter icons
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_clear_gutter_icons(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set CodeLens items for specified line (compact binary)
+/// @param data payload(LE):
+/// u32 line, u32 item_count, then repeat for item_count groups:
+/// [i32 column, i32 command_id, u32 text_len, u8[text_len] text_utf8]
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_line_codelens(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Batch set CodeLens items for multiple lines (compact binary)
+/// @param data payload(LE):
+/// u32 entry_count,
+/// [u32 line, u32 item_count,
+/// [i32 column, i32 command_id, u32 text_len, u8[text_len] text_utf8] x item_count] x entry_count
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_batch_line_codelens(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Clear all CodeLens items
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_clear_codelens(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set link ranges for specified line (compact binary)
+/// @param data payload(LE):
+/// u32 line, u32 link_count, then repeat for link_count groups:
+/// [u32 column, u32 length, u32 target_len, u8[target_len] target_utf8]
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_line_links(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Batch set link ranges for multiple lines (compact binary)
+/// @param data payload(LE):
+/// u32 entry_count,
+/// [u32 line, u32 link_count,
+/// [u32 column, u32 length, u32 target_len, u8[target_len] target_utf8] x link_count] x entry_count
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_batch_line_links(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Clear all link ranges
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_clear_links(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Resolve link target by line and column inside that link
+/// @return UTF8 target string; caller owns returned buffer and must free it with free_u8_string.
+/// Returns an empty string when no link matches the requested position.
+@ffi.Native<ffi.Pointer<ffi.Char> Function(ffi.IntPtr, ffi.Size, ffi.Size)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Char> editor_get_link_target_at(
+  int editor_handle,
+  int line,
+  int column,
+);
+
+/// Set diagnostic decoration ranges for specified line (compact binary)
+/// @param data payload(LE):
+/// u32 line, u32 diag_count, then repeat for diag_count groups
+/// [u32 column, u32 length, i32 severity]
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_line_diagnostics(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Batch set diagnostic decorations for multiple lines (compact binary, fixed length)
+/// @param data payload(LE):
+/// u32 entry_count,
+/// [u32 line, u32 diag_count, [u32 column, u32 length, i32 severity] x diag_count] x entry_count
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_batch_line_diagnostics(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Clear all diagnostic decorations
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_clear_diagnostics(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set indent guide list (compact binary, global replace)
+/// @param data payload(LE):
+/// u32 count, then repeat count groups
+/// [u32 start_line, u32 start_column, u32 end_line, u32 end_column]
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_indent_guides(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set bracket branch guide list (compact binary, global replace)
+/// @param data payload(LE):
+/// u32 count, then repeat count groups:
+/// [u32 parent_line, u32 parent_column, u32 end_line, u32 end_column,
+/// u32 child_count, then repeat child_count groups: [u32 child_line, u32 child_column]]
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_bracket_guides(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set control-flow back-arrow guide list (compact binary, global replace)
+/// @param data payload(LE):
+/// u32 count, then repeat count groups
+/// [u32 start_line, u32 start_column, u32 end_line, u32 end_column]
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_flow_guides(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set horizontal separator guide list (compact binary, global replace)
+/// @param data payload(LE):
+/// u32 count, then repeat count groups
+/// [i32 line, i32 style, i32 count, u32 text_end_column]
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_separator_guides(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Clear all code structure lines (indent guides, bracket guides, control-flow arrows, separators)
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_clear_guides(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set bracket pair list (override default (){}[])
+/// @param open_chars Open bracket char array (UTF-32)
+/// @param close_chars Close bracket char array (UTF-32)
+/// @param count Bracket pair count
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint32>,
+    ffi.Pointer<ffi.Uint32>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_bracket_pairs(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint32> open_chars,
+  ffi.Pointer<ffi.Uint32> close_chars,
+  int count,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set auto-closing pair list (empty count = disable auto-closing)
+/// @param open_chars Open char array (UTF-32)
+/// @param close_chars Close char array (UTF-32)
+/// @param count Pair count
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint32>,
+    ffi.Pointer<ffi.Uint32>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_auto_closing_pairs(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint32> open_chars,
+  ffi.Pointer<ffi.Uint32> close_chars,
+  int count,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Externally set exact bracket match result (override built-in char scan)
+/// @param open_line open bracket line number(0-based)
+/// @param open_col open bracket column number (0-based)
+/// @param close_line close bracket line number(0-based)
+/// @param close_col close bracket column number (0-based)
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Size,
+    ffi.Size,
+    ffi.Size,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_matched_brackets(
+  int editor_handle,
+  int open_line,
+  int open_col,
+  int close_line,
+  int close_col,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Clear externally set bracket match result (fall back to built-in char scan)
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_clear_matched_brackets(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set foldable region list (compact binary)
+/// @param data payload(LE):
+/// u32 region_count, then repeat for region_count groups
+/// [u32 start_line, u32 end_line]
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_fold_regions(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Toggle fold state of specified line
+/// @param line Line number(0-based)
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Size, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_toggle_fold(
+  int editor_handle,
+  int line,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Fold region containing specified line
+/// @param line Line number(0-based)
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Size, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_fold_at(
+  int editor_handle,
+  int line,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Unfold region containing specified line
+/// @param line Line number(0-based)
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Size, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_unfold_at(
+  int editor_handle,
+  int line,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Fold all regions
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_fold_all(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Unfold all regions
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_unfold_all(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Check whether specified line is visible (not hidden by folding)
+/// @param line Line number(0-based)
+/// @return 1=visible, 0=hidden
+@ffi.Native<ffi.Int Function(ffi.IntPtr, ffi.Size)>(
+  assetId: _sweeteditorAssetId,
+)
+external int editor_is_line_visible(int editor_handle, int line);
+
+/// Get visible logical line range from the most recent completed layout pass
+/// @param out_start_line Output first visible logical line (inclusive)
+/// @param out_end_line Output last visible logical line (inclusive), or -1 when empty
+@ffi.Native<
+  ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Int32>, ffi.Pointer<ffi.Int32>)
+>(assetId: _sweeteditorAssetId)
+external void editor_get_visible_line_range(
+  int editor_handle,
+  ffi.Pointer<ffi.Int32> out_start_line,
+  ffi.Pointer<ffi.Int32> out_end_line,
+);
+
+/// Clear all highlight spans
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_clear_highlights(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Clear all inlay hints
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_clear_inlay_hints(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Clear all phantom texts
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_clear_phantom_texts(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Clear all decoration data
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_clear_all_decorations(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Insert VSCode snippet template and enter linked editing mode (convenience API)
+/// @param snippet_template VSCode snippet template (UTF8)
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Char>,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_insert_snippet(
+  int editor_handle,
+  ffi.Pointer<ffi.Char> snippet_template,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Start linked editing mode with generic LinkedEditingModel (compact binary)
+/// @param data payload(LE):
+/// u32 group_count, u32 range_count, u32 string_blob_size
+/// group_count groups: [u32 index, u32 default_text_offset, u32 default_text_len]
+/// range_count groups: [u32 group_ordinal, u32 start_line, u32 start_col, u32 end_line, u32 end_col]
+/// UTF-8 string blob(default_text_offset=0xFFFFFFFF means null)
+/// @param size payload byte length
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_start_linked_editing(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Whether linked editing mode is active
+/// @return 1=yes, 0=no
+@ffi.Native<ffi.Int Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
+external int editor_is_in_linked_editing(int editor_handle);
+
+/// Linked editing: jump to next tab stop
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_linked_editing_next(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Linked editing: jump to previous tab stop
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_linked_editing_prev(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Cancel linked editing mode
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
+external ffi.Pointer<ffi.Uint8> editor_cancel_linked_editing(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Free string memory allocated on C++ side
+/// @param string_ptr String pointer
+@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
+external void free_u16_string(int string_ptr);
+
+/// Free UTF-8 string memory allocated on C++ side
+/// @param string_ptr String pointer
+@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
+external void free_u8_string(int string_ptr);
+
+/// Free binary memory returned by C++ side
+/// Applies to all APIs that return const uint8_t* + out_size.
+/// Platform must call once after reading payload; NULL/0 can be safely ignored.
+/// @param data_ptr Start address of binary payload
+@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
+external void free_binary_data(int data_ptr);
 
 /// Get whether composition is currently active
 /// @return 1=composing, 0=not composing
@@ -938,7 +2036,7 @@ external void editor_get_composing_session_range(
 );
 
 /// Update platform IME preedit text.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -991,7 +2089,7 @@ external ffi.Pointer<ffi.Uint8> editor_ime_set_composing_text_selection(
 );
 
 /// Commit platform IME text.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -1025,27 +2123,27 @@ external ffi.Pointer<ffi.Uint8> editor_ime_commit_text_with_cursor(
 );
 
 /// Finish the current platform IME preedit.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> editor_ime_finish_preedit(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Cancel the current platform IME preedit.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> editor_ime_cancel_preedit(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Mark a document range that the platform IME explicitly reports as composing.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -1085,7 +2183,7 @@ external ffi.Pointer<ffi.Uint8> editor_ime_mark_document_range_by_offset(
 );
 
 /// Report platform candidate replacement text.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -1360,7 +2458,7 @@ external ffi.Pointer<ffi.Uint8> editor_ime_commit_input_state_text_replacement(
 );
 
 /// Delete text before the caret through IME.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -1377,7 +2475,7 @@ external ffi.Pointer<ffi.Uint8> editor_ime_delete_backward(
 );
 
 /// Delete text after the caret through IME.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -1394,7 +2492,7 @@ external ffi.Pointer<ffi.Uint8> editor_ime_delete_forward(
 );
 
 /// Delete surrounding text through IME.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -1413,7 +2511,7 @@ external ffi.Pointer<ffi.Uint8> editor_ime_delete_surrounding(
 );
 
 /// Notify IME-driven selection movement.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -1434,7 +2532,7 @@ external ffi.Pointer<ffi.Uint8> editor_ime_notify_selection_changed(
 );
 
 /// Notify IME-driven cursor movement.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -1451,10 +2549,13 @@ external ffi.Pointer<ffi.Uint8> editor_ime_notify_cursor_changed(
 );
 
 /// Set the current IME keyboard script class.
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_ime_set_keyboard_script_class(
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_ime_set_keyboard_script_class(
   int editor_handle,
   int script_class,
+  ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Get the current IME keyboard script class.
@@ -1463,9 +2564,9 @@ external int editor_ime_get_keyboard_script_class(int editor_handle);
 
 /// Get the current IME synchronization snapshot.
 /// @return ImeSyncSnapshot binary payload, returns NULL when editor handle is invalid
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
+@ffi.Native<ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)>(
+  assetId: _sweeteditorAssetId,
+)
 external ffi.Pointer<ffi.Uint8> editor_get_ime_sync_snapshot(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
@@ -1502,624 +2603,6 @@ external ffi.Pointer<ffi.Uint8> editor_get_ime_text_model_input_context(
   int after_length,
   ffi.Pointer<ffi.Size> out_size,
 );
-
-/// Set read-only mode
-/// @param read_only 1=read-only, 0=editable
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_set_read_only(int editor_handle, int read_only);
-
-/// Get whether read-only mode is active
-/// @return 1=read-only, 0=editable
-@ffi.Native<ffi.Int Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external int editor_is_read_only(int editor_handle);
-
-/// Set auto indent mode
-/// @param mode 0=NONE(no auto indent),1=KEEP_INDENT(keep previous line indent)
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_set_auto_indent_mode(int editor_handle, int mode);
-
-/// Get current auto indent mode
-/// @return 0=NONE, 1=KEEP_INDENT
-@ffi.Native<ffi.Int Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external int editor_get_auto_indent_mode(int editor_handle);
-
-/// Set backspace unindent behavior
-/// @param enabled 1=enabled, 0=disabled
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_set_backspace_unindent(int editor_handle, int enabled);
-
-/// Set whether Tab inserts spaces up to the next tab stop instead of a literal '\t'
-/// @param enabled 1=insert spaces, 0=insert '\t'
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Int)>(assetId: _sweeteditorAssetId)
-external void editor_set_insert_spaces(int editor_handle, int enabled);
-
-/// Scroll to specified line
-/// @param line Line number(0-based)
-/// @param behavior Scroll behavior(0=GOTO_TOP, 1=GOTO_CENTER, 2=GOTO_BOTTOM)
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Size, ffi.Uint8)>(assetId: _sweeteditorAssetId)
-external void editor_scroll_to_line(int editor_handle, int line, int behavior);
-
-/// Go to specified line and column (scroll + cursor positioning)
-/// @param line Line number(0-based)
-/// @param column Column number (0-based)
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Size, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_goto_position(int editor_handle, int line, int column);
-
-/// Adjust scroll offset just enough to keep current cursor visible in viewport
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_ensure_cursor_visible(int editor_handle);
-
-/// Manually set scroll position (automatically clamped to valid range)
-/// @param scroll_x Horizontal scroll offset
-/// @param scroll_y Vertical scroll offset
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Float, ffi.Float)>(assetId: _sweeteditorAssetId)
-external void editor_set_scroll(
-  int editor_handle,
-  double scroll_x,
-  double scroll_y,
-);
-
-/// ScrollMetrics binary return layout (payload uses native byte order; all supported platforms are currently LE):
-/// 1. f32 scale
-/// 2. f32 scroll_x
-/// 3. f32 scroll_y
-/// 4. f32 max_scroll_x
-/// 5. f32 max_scroll_y
-/// 6. f32 content_width
-/// 7. f32 content_height
-/// 8. f32 viewport_width
-/// 9. f32 viewport_height
-/// 10. f32 text_area_x
-/// 11. f32 text_area_width
-/// 12. i32 can_scroll_x
-/// 13. i32 can_scroll_y
-///
-/// Get scrollbar metrics
-/// @return ScrollMetrics binary payload; Returns default payload for invalid handle
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> editor_get_scroll_metrics(
-  int editor_handle,
-  ffi.Pointer<ffi.Size> out_size,
-);
-
-/// Get screen coordinate rect for any text position (for floating panel positioning)
-/// @param line Line number(0-based)
-/// @param column Column number (0-based)
-/// @param out_x Output: x coordinate in viewport
-/// @param out_y Output: y coordinate in viewport (line top)
-/// @param out_height Output: line height
-@ffi.Native<
-  ffi.Void Function(
-    ffi.IntPtr,
-    ffi.Size,
-    ffi.Size,
-    ffi.Pointer<ffi.Float>,
-    ffi.Pointer<ffi.Float>,
-    ffi.Pointer<ffi.Float>,
-  )
->(assetId: _sweeteditorAssetId)
-external void editor_get_position_rect(
-  int editor_handle,
-  int line,
-  int column,
-  ffi.Pointer<ffi.Float> out_x,
-  ffi.Pointer<ffi.Float> out_y,
-  ffi.Pointer<ffi.Float> out_height,
-);
-
-/// Get screen coordinate rect at current cursor position (shortcut)
-/// @param out_x Output: x coordinate in viewport
-/// @param out_y Output: y coordinate in viewport (line top)
-/// @param out_height Output: line height
-@ffi.Native<
-  ffi.Void Function(
-    ffi.IntPtr,
-    ffi.Pointer<ffi.Float>,
-    ffi.Pointer<ffi.Float>,
-    ffi.Pointer<ffi.Float>,
-  )
->(assetId: _sweeteditorAssetId)
-external void editor_get_cursor_rect(
-  int editor_handle,
-  ffi.Pointer<ffi.Float> out_x,
-  ffi.Pointer<ffi.Float> out_y,
-  ffi.Pointer<ffi.Float> out_height,
-);
-
-/// Register text style (color + background color + font style)
-/// @param style_id Style ID
-/// @param color Foreground color value (ARGB)
-/// @param background_color Background color value (ARGB), 0 means transparent
-/// @param font_style Font style (FontStyle enum value)
-@ffi.Native<
-  ffi.Void Function(ffi.IntPtr, ffi.Uint32, ffi.Int32, ffi.Int32, ffi.Int32)
->(assetId: _sweeteditorAssetId)
-external void editor_register_text_style(
-  int editor_handle,
-  int style_id,
-  int color,
-  int background_color,
-  int font_style,
-);
-
-/// Set style ranges for specified line and layer (compact binary)
-/// @param data payload(LE):
-/// u32 line, u32 layer, u32 span_count, then repeat for span_count groups
-/// [u32 column, u32 length, u32 style_id]
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_line_spans(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Batch set highlight spans for multiple lines (compact binary)
-/// @param data payload(LE):
-/// u32 layer, u32 entry_count,
-/// [u32 line, u32 span_count, [u32 column, u32 length, u32 style_id] x span_count] x entry_count
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_batch_line_spans(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Batch register highlight text styles (compact binary)
-/// @param data payload(LE):
-/// u32 entry_count,
-/// [u32 style_id, i32 color, i32 background_color, i32 font_style] x entry_count
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_register_batch_text_styles(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Clear all style ranges for specified line and layer
-/// @param line Line number(0-based)
-/// @param layer Highlight layer (0=SYNTAX, 1=SEMANTIC)
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Size, ffi.Uint8)>(assetId: _sweeteditorAssetId)
-external void editor_clear_line_spans(int editor_handle, int line, int layer);
-
-/// Clear all highlight spans in specified layer
-/// @param layer Highlight layer (0=SYNTAX, 1=SEMANTIC)
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Uint8)>(assetId: _sweeteditorAssetId)
-external void editor_clear_highlights_layer(int editor_handle, int layer);
-
-/// Set inlay hints for specified line (compact binary, replace whole line)
-/// @param data payload(LE):
-/// u32 line, u32 hint_count, then repeat for hint_count groups:
-/// [u32 type(0=TEXT,1=ICON,2=COLOR), u32 column, i32 int_value(icon_id/color/0),
-/// u32 text_len, u8[text_len] text_utf8]
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_line_inlay_hints(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Batch set inlay hints for multiple lines (compact binary, variable length)
-/// @param data payload(LE):
-/// u32 entry_count,
-/// [u32 line, u32 hint_count,
-/// [u32 type, u32 column, i32 int_value, u32 text_len, u8[text_len] text_utf8] x hint_count] x entry_count
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_batch_line_inlay_hints(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Add one inlay hint (append to specified line, do not replace existing hints)
-/// Set phantom texts for specified line (compact binary, replace whole line)
-/// @param data payload(LE):
-/// u32 line, u32 phantom_count, then repeat for phantom_count groups:
-/// [u32 column, u32 text_len, u8[text_len] text_utf8]
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_line_phantom_texts(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Batch set phantom texts for multiple lines (compact binary, variable length)
-/// @param data payload(LE):
-/// u32 entry_count,
-/// [u32 line, u32 phantom_count,
-/// [u32 column, u32 text_len, u8[text_len] text_utf8] x phantom_count] x entry_count
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_batch_line_phantom_texts(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Set gutter icons for specified line (compact binary, replace whole line)
-/// @param data payload(LE):
-/// u32 line, u32 icon_count, then repeat for icon_count groups
-/// [i32 icon_id]
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_line_gutter_icons(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Batch set gutter icons for multiple lines (compact binary, fixed length)
-/// @param data payload(LE):
-/// u32 entry_count,
-/// [u32 line, u32 icon_count, [i32 icon_id] x icon_count] x entry_count
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_batch_line_gutter_icons(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Set max gutter icon count (affects reserved gutter width)
-/// @param count Max icon count (0=no reserved space)
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Uint32)>(assetId: _sweeteditorAssetId)
-external void editor_set_max_gutter_icons(int editor_handle, int count);
-
-/// Clear all gutter icons
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_clear_gutter_icons(int editor_handle);
-
-/// Set CodeLens items for specified line (compact binary)
-/// @param data payload(LE):
-/// u32 line, u32 item_count, then repeat for item_count groups:
-/// [i32 column, i32 command_id, u32 text_len, u8[text_len] text_utf8]
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_line_codelens(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Batch set CodeLens items for multiple lines (compact binary)
-/// @param data payload(LE):
-/// u32 entry_count,
-/// [u32 line, u32 item_count,
-/// [i32 column, i32 command_id, u32 text_len, u8[text_len] text_utf8] x item_count] x entry_count
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_batch_line_codelens(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Clear all CodeLens items
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_clear_codelens(int editor_handle);
-
-/// Set link ranges for specified line (compact binary)
-/// @param data payload(LE):
-/// u32 line, u32 link_count, then repeat for link_count groups:
-/// [u32 column, u32 length, u32 target_len, u8[target_len] target_utf8]
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_line_links(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Batch set link ranges for multiple lines (compact binary)
-/// @param data payload(LE):
-/// u32 entry_count,
-/// [u32 line, u32 link_count,
-/// [u32 column, u32 length, u32 target_len, u8[target_len] target_utf8] x link_count] x entry_count
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_batch_line_links(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Clear all link ranges
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_clear_links(int editor_handle);
-
-/// Resolve link target by line and column inside that link
-/// @return UTF8 target string; caller owns returned buffer and must free it with free_u8_string.
-/// Returns an empty string when no link matches the requested position.
-@ffi.Native<ffi.Pointer<ffi.Char> Function(ffi.IntPtr, ffi.Size, ffi.Size)>(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Char> editor_get_link_target_at(
-  int editor_handle,
-  int line,
-  int column,
-);
-
-/// Set diagnostic decoration ranges for specified line (compact binary)
-/// @param data payload(LE):
-/// u32 line, u32 diag_count, then repeat for diag_count groups
-/// [u32 column, u32 length, i32 severity]
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_line_diagnostics(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Batch set diagnostic decorations for multiple lines (compact binary, fixed length)
-/// @param data payload(LE):
-/// u32 entry_count,
-/// [u32 line, u32 diag_count, [u32 column, u32 length, i32 severity] x diag_count] x entry_count
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_batch_line_diagnostics(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Clear all diagnostic decorations
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_clear_diagnostics(int editor_handle);
-
-/// Set indent guide list (compact binary, global replace)
-/// @param data payload(LE):
-/// u32 count, then repeat count groups
-/// [u32 start_line, u32 start_column, u32 end_line, u32 end_column]
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_indent_guides(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Set bracket branch guide list (compact binary, global replace)
-/// @param data payload(LE):
-/// u32 count, then repeat count groups:
-/// [u32 parent_line, u32 parent_column, u32 end_line, u32 end_column,
-/// u32 child_count, then repeat child_count groups: [u32 child_line, u32 child_column]]
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_bracket_guides(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Set control-flow back-arrow guide list (compact binary, global replace)
-/// @param data payload(LE):
-/// u32 count, then repeat count groups
-/// [u32 start_line, u32 start_column, u32 end_line, u32 end_column]
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_flow_guides(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Set horizontal separator guide list (compact binary, global replace)
-/// @param data payload(LE):
-/// u32 count, then repeat count groups
-/// [i32 line, i32 style, i32 count, u32 text_end_column]
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_separator_guides(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Clear all code structure lines (indent guides, bracket guides, control-flow arrows, separators)
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_clear_guides(int editor_handle);
-
-/// Set bracket pair list (override default (){}[])
-/// @param open_chars Open bracket char array (UTF-32)
-/// @param close_chars Close bracket char array (UTF-32)
-/// @param count Bracket pair count
-@ffi.Native<
-  ffi.Void Function(
-    ffi.IntPtr,
-    ffi.Pointer<ffi.Uint32>,
-    ffi.Pointer<ffi.Uint32>,
-    ffi.Size,
-  )
->(assetId: _sweeteditorAssetId)
-external void editor_set_bracket_pairs(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint32> open_chars,
-  ffi.Pointer<ffi.Uint32> close_chars,
-  int count,
-);
-
-/// Set auto-closing pair list (empty count = disable auto-closing)
-/// @param open_chars Open char array (UTF-32)
-/// @param close_chars Close char array (UTF-32)
-/// @param count Pair count
-@ffi.Native<
-  ffi.Void Function(
-    ffi.IntPtr,
-    ffi.Pointer<ffi.Uint32>,
-    ffi.Pointer<ffi.Uint32>,
-    ffi.Size,
-  )
->(assetId: _sweeteditorAssetId)
-external void editor_set_auto_closing_pairs(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint32> open_chars,
-  ffi.Pointer<ffi.Uint32> close_chars,
-  int count,
-);
-
-/// Externally set exact bracket match result (override built-in char scan)
-/// @param open_line open bracket line number(0-based)
-/// @param open_col open bracket column number (0-based)
-/// @param close_line close bracket line number(0-based)
-/// @param close_col close bracket column number (0-based)
-@ffi.Native<
-  ffi.Void Function(ffi.IntPtr, ffi.Size, ffi.Size, ffi.Size, ffi.Size)
->(assetId: _sweeteditorAssetId)
-external void editor_set_matched_brackets(
-  int editor_handle,
-  int open_line,
-  int open_col,
-  int close_line,
-  int close_col,
-);
-
-/// Clear externally set bracket match result (fall back to built-in char scan)
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_clear_matched_brackets(int editor_handle);
-
-/// Set foldable region list (compact binary)
-/// @param data payload(LE):
-/// u32 region_count, then repeat for region_count groups
-/// [u32 start_line, u32 end_line]
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_set_fold_regions(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Toggle fold state of specified line
-/// @param line Line number(0-based)
-/// @return 1=found and toggled, 0=region not found
-@ffi.Native<ffi.Int Function(ffi.IntPtr, ffi.Size)>(assetId: _sweeteditorAssetId)
-external int editor_toggle_fold(int editor_handle, int line);
-
-/// Fold region containing specified line
-/// @param line Line number(0-based)
-/// @return 1=success, 0=not found
-@ffi.Native<ffi.Int Function(ffi.IntPtr, ffi.Size)>(assetId: _sweeteditorAssetId)
-external int editor_fold_at(int editor_handle, int line);
-
-/// Unfold region containing specified line
-/// @param line Line number(0-based)
-/// @return 1=success, 0=not found
-@ffi.Native<ffi.Int Function(ffi.IntPtr, ffi.Size)>(assetId: _sweeteditorAssetId)
-external int editor_unfold_at(int editor_handle, int line);
-
-/// Fold all regions
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_fold_all(int editor_handle);
-
-/// Unfold all regions
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_unfold_all(int editor_handle);
-
-/// Check whether specified line is visible (not hidden by folding)
-/// @param line Line number(0-based)
-/// @return 1=visible, 0=hidden
-@ffi.Native<ffi.Int Function(ffi.IntPtr, ffi.Size)>(assetId: _sweeteditorAssetId)
-external int editor_is_line_visible(int editor_handle, int line);
-
-/// Get visible logical line range from the most recent completed layout pass
-/// @param out_start_line Output first visible logical line (inclusive)
-/// @param out_end_line Output last visible logical line (inclusive), or -1 when empty
-@ffi.Native<
-  ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Int32>, ffi.Pointer<ffi.Int32>)
->(assetId: _sweeteditorAssetId)
-external void editor_get_visible_line_range(
-  int editor_handle,
-  ffi.Pointer<ffi.Int32> out_start_line,
-  ffi.Pointer<ffi.Int32> out_end_line,
-);
-
-/// Clear all highlight spans
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_clear_highlights(int editor_handle);
-
-/// Clear all inlay hints
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_clear_inlay_hints(int editor_handle);
-
-/// Clear all phantom texts
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_clear_phantom_texts(int editor_handle);
-
-/// Clear all decoration data
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_clear_all_decorations(int editor_handle);
-
-/// Insert VSCode snippet template and enter linked editing mode (convenience API)
-/// @param snippet_template VSCode snippet template (UTF8)
-/// @return TextEditResult binary payload, returns NULL if there is no change
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(
-    ffi.IntPtr,
-    ffi.Pointer<ffi.Char>,
-    ffi.Pointer<ffi.Size>,
-  )
->(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> editor_insert_snippet(
-  int editor_handle,
-  ffi.Pointer<ffi.Char> snippet_template,
-  ffi.Pointer<ffi.Size> out_size,
-);
-
-/// Start linked editing mode with generic LinkedEditingModel (compact binary)
-/// @param data payload(LE):
-/// u32 group_count, u32 range_count, u32 string_blob_size
-/// group_count groups: [u32 index, u32 default_text_offset, u32 default_text_len]
-/// range_count groups: [u32 group_ordinal, u32 start_line, u32 start_col, u32 end_line, u32 end_col]
-/// UTF-8 string blob(default_text_offset=0xFFFFFFFF means null)
-/// @param size payload byte length
-@ffi.Native<ffi.Void Function(ffi.IntPtr, ffi.Pointer<ffi.Uint8>, ffi.Size)>(assetId: _sweeteditorAssetId)
-external void editor_start_linked_editing(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-);
-
-/// Whether linked editing mode is active
-/// @return 1=yes, 0=no
-@ffi.Native<ffi.Int Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external int editor_is_in_linked_editing(int editor_handle);
-
-/// Linked editing: jump to next tab stop
-/// @return 1=jumped successfully, 0=already at end (session ends automatically)
-@ffi.Native<ffi.Int Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external int editor_linked_editing_next(int editor_handle);
-
-/// Linked editing: jump to previous tab stop
-/// @return 1=jumped successfully, 0=already at first
-@ffi.Native<ffi.Int Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external int editor_linked_editing_prev(int editor_handle);
-
-/// Cancel linked editing mode
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void editor_cancel_linked_editing(int editor_handle);
-
-/// Free string memory allocated on C++ side
-/// @param string_ptr String pointer
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void free_u16_string(int string_ptr);
-
-/// Free UTF-8 string memory allocated on C++ side
-/// @param string_ptr String pointer
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void free_u8_string(int string_ptr);
-
-/// Free binary memory returned by C++ side
-/// Applies to all APIs that return const uint8_t* + out_size.
-/// Platform must call once after reading payload; NULL/0 can be safely ignored.
-/// @param data_ptr Start address of binary payload
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void free_binary_data(int data_ptr);
 
 /// Text measurement callback set, passed when creating EditorCore
 final class text_measurer_t extends ffi.Struct {

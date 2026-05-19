@@ -1,5 +1,6 @@
 package com.qiplat.sweeteditor;
 
+import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.foundation.AutoIndentMode;
 import com.qiplat.sweeteditor.core.foundation.CurrentLineRenderMode;
 import com.qiplat.sweeteditor.core.foundation.FoldArrowMode;
@@ -41,9 +42,8 @@ public class EditorSettings {
 
     public void setScale(float scale) {
         mScale = scale;
-        mEditor.getEditorCore().setScale(scale);
-        mEditor.syncPlatformScale(scale);
-        mEditor.flush();
+        EditorCore.EditorActionResult result = mEditor.getEditorCore().setScale(scale);
+        mEditor.dispatchEditorActionResult(result);
     }
 
     public float getScale() {
@@ -53,7 +53,6 @@ public class EditorSettings {
     public void setEditorTextSize(float textSize) {
         mEditorTextSize = textSize;
         mEditor.updateFonts(mFontFamily, mEditorTextSize);
-        mEditor.flush();
     }
 
     public float getEditorTextSize() {
@@ -63,7 +62,6 @@ public class EditorSettings {
     public void setFontFamily(String fontFamily) {
         mFontFamily = fontFamily;
         mEditor.updateFonts(mFontFamily, mEditorTextSize);
-        mEditor.flush();
     }
 
     public String getFontFamily() {
@@ -72,8 +70,7 @@ public class EditorSettings {
 
     public void setGutterVisible(boolean visible) {
         mGutterVisible = visible;
-        mEditor.getEditorCore().setGutterVisible(visible);
-        mEditor.flush();
+        mEditor.dispatchEditorActionResult(mEditor.getEditorCore().setGutterVisible(visible));
     }
 
     public boolean isGutterVisible() {
@@ -82,8 +79,7 @@ public class EditorSettings {
 
     public void setFoldArrowMode(FoldArrowMode mode) {
         mFoldArrowMode = mode;
-        mEditor.getEditorCore().setFoldArrowMode(mode.value);
-        mEditor.flush();
+        mEditor.dispatchEditorActionResult(mEditor.getEditorCore().setFoldArrowMode(mode.value));
     }
 
     public FoldArrowMode getFoldArrowMode() {
@@ -92,8 +88,7 @@ public class EditorSettings {
 
     public void setWrapMode(WrapMode mode) {
         mWrapMode = mode;
-        mEditor.getEditorCore().setWrapMode(mode.value);
-        mEditor.flush();
+        mEditor.dispatchEditorActionResult(mEditor.getEditorCore().setWrapMode(mode.value));
     }
 
     public WrapMode getWrapMode() {
@@ -103,8 +98,7 @@ public class EditorSettings {
     public void setLineSpacing(float add, float mult) {
         mLineSpacingAdd = add;
         mLineSpacingMult = mult;
-        mEditor.getEditorCore().setLineSpacing(add, mult);
-        mEditor.flush();
+        mEditor.dispatchEditorActionResult(mEditor.getEditorCore().setLineSpacing(add, mult));
     }
 
     public float getLineSpacingAdd() {
@@ -117,8 +111,7 @@ public class EditorSettings {
 
     public void setContentStartPadding(float padding) {
         mContentStartPadding = Math.max(0f, padding);
-        mEditor.getEditorCore().setContentStartPadding(mContentStartPadding);
-        mEditor.flush();
+        mEditor.dispatchEditorActionResult(mEditor.getEditorCore().setContentStartPadding(mContentStartPadding));
     }
 
     public float getContentStartPadding() {
@@ -127,8 +120,7 @@ public class EditorSettings {
 
     public void setShowSplitLine(boolean show) {
         mShowSplitLine = show;
-        mEditor.getEditorCore().setShowSplitLine(show);
-        mEditor.flush();
+        mEditor.dispatchEditorActionResult(mEditor.getEditorCore().setShowSplitLine(show));
     }
 
     public boolean isShowSplitLine() {
@@ -137,8 +129,7 @@ public class EditorSettings {
 
     public void setGutterSticky(boolean sticky) {
         mGutterSticky = sticky;
-        mEditor.getEditorCore().setGutterSticky(sticky);
-        mEditor.flush();
+        mEditor.dispatchEditorActionResult(mEditor.getEditorCore().setGutterSticky(sticky));
     }
 
     public boolean isGutterSticky() {
@@ -147,8 +138,7 @@ public class EditorSettings {
 
     public void setCurrentLineRenderMode(CurrentLineRenderMode mode) {
         mCurrentLineRenderMode = mode;
-        mEditor.getEditorCore().setCurrentLineRenderMode(mode.value);
-        mEditor.flush();
+        mEditor.dispatchEditorActionResult(mEditor.getEditorCore().setCurrentLineRenderMode(mode.value));
     }
 
     public CurrentLineRenderMode getCurrentLineRenderMode() {
@@ -157,7 +147,7 @@ public class EditorSettings {
 
     public void setAutoIndentMode(AutoIndentMode mode) {
         mAutoIndentMode = mode;
-        mEditor.getEditorCore().setAutoIndentMode(mode.value);
+        mEditor.dispatchEditorActionResult(mEditor.getEditorCore().setAutoIndentMode(mode.value));
     }
 
     public AutoIndentMode getAutoIndentMode() {
@@ -166,7 +156,7 @@ public class EditorSettings {
 
     public void setBackspaceUnindent(boolean enabled) {
         mBackspaceUnindent = enabled;
-        mEditor.getEditorCore().setBackspaceUnindent(enabled);
+        mEditor.dispatchEditorActionResult(mEditor.getEditorCore().setBackspaceUnindent(enabled));
     }
 
     public boolean isBackspaceUnindent() {
@@ -175,7 +165,7 @@ public class EditorSettings {
 
     public void setReadOnly(boolean readOnly) {
         mReadOnly = readOnly;
-        mEditor.getEditorCore().setReadOnly(readOnly);
+        mEditor.dispatchEditorActionResult(mEditor.getEditorCore().setReadOnly(readOnly));
     }
 
     public boolean isReadOnly() {
@@ -184,8 +174,7 @@ public class EditorSettings {
 
     public void setMaxGutterIcons(int count) {
         mMaxGutterIcons = count;
-        mEditor.getEditorCore().setMaxGutterIcons(count);
-        mEditor.flush();
+        mEditor.dispatchEditorActionResult(mEditor.getEditorCore().setMaxGutterIcons(count));
     }
 
     public int getMaxGutterIcons() {

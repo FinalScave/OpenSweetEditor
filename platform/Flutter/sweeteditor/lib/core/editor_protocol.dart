@@ -671,39 +671,89 @@ class ProtocolEncoder {
 class ProtocolDecoder {
   ProtocolDecoder._();
 
-  static TextEditResult decodeTextEditResult(
+  static EditorActionResult decodeEditorActionResult(
     ffi.Pointer<ffi.Uint8> ptr,
     int size,
   ) {
-    if (ptr == ffi.nullptr || size == 0) return TextEditResult.empty;
-    final r = _BinaryReader(ptr, size);
-    final changed = r.readInt32();
-    if (changed == 0) return TextEditResult.empty;
-    return _readTextEditResultBody(r);
-  }
-
-  static ImeActionResult decodeImeActionResult(
-    ffi.Pointer<ffi.Uint8> ptr,
-    int size,
-  ) {
-    if (ptr == ffi.nullptr || size == 0) return ImeActionResult.empty;
+    if (ptr == ffi.nullptr || size == 0) return EditorActionResult.empty;
     final r = _BinaryReader(ptr, size);
     final handled = r.readInt32() != 0;
+    final needsRedraw = r.readInt32() != 0;
+    final reason = EditorActionReason.fromValue(r.readInt32());
     final contentChanged = r.readInt32() != 0;
     final cursorChanged = r.readInt32() != 0;
     final selectionChanged = r.readInt32() != 0;
-    final hasEdit = r.readInt32() != 0;
-    var editResult = TextEditResult.empty;
-    if (hasEdit) {
-      editResult = _readTextEditResultBody(r);
-    }
-    return ImeActionResult(
+    final scrollChanged = r.readInt32() != 0;
+    final scaleChanged = r.readInt32() != 0;
+    final pointerCursorChanged = r.readInt32() != 0;
+    final compositionChanged = r.readInt32() != 0;
+    final decorationChanged = r.readInt32() != 0;
+    final needsImeSync = r.readInt32() != 0;
+    final needsEdgeScroll = r.readInt32() != 0;
+    final needsFling = r.readInt32() != 0;
+    final needsAnimation = r.readInt32() != 0;
+    final isHandleDrag = r.readInt32() != 0;
+    final changes = _readTextChanges(r);
+    final cursorBefore = r.readTextPosition();
+    final cursorAfter = r.readTextPosition();
+    final hasSelectionBefore = r.readInt32() != 0;
+    final selectionBefore = r.readTextRange();
+    final hasSelectionAfter = r.readInt32() != 0;
+    final selectionAfter = r.readTextRange();
+    final scrollXBefore = r.readFloat32();
+    final scrollYBefore = r.readFloat32();
+    final scrollXAfter = r.readFloat32();
+    final scrollYAfter = r.readFloat32();
+    final scaleBefore = r.readFloat32();
+    final scaleAfter = r.readFloat32();
+    final pointerCursorBefore = PointerCursorType.fromValue(r.readInt32());
+    final pointerCursorAfter = PointerCursorType.fromValue(r.readInt32());
+    final imeSync = _readImeSyncSnapshot(r);
+    final gestureType = GestureType.fromValue(r.readInt32());
+    final gestureEventType = r.readInt32();
+    final tapPoint = r.readPoint();
+    final hitTarget = _readHitTarget(r);
+    final modifiers = r.readInt32();
+    final command = r.readInt32();
+    return EditorActionResult(
       handled: handled,
+      needsRedraw: needsRedraw,
+      reason: reason,
       contentChanged: contentChanged,
       cursorChanged: cursorChanged,
       selectionChanged: selectionChanged,
-      editResult: editResult,
-      sync: _readImeSyncSnapshot(r),
+      scrollChanged: scrollChanged,
+      scaleChanged: scaleChanged,
+      pointerCursorChanged: pointerCursorChanged,
+      compositionChanged: compositionChanged,
+      decorationChanged: decorationChanged,
+      needsImeSync: needsImeSync,
+      needsEdgeScroll: needsEdgeScroll,
+      needsFling: needsFling,
+      needsAnimation: needsAnimation,
+      isHandleDrag: isHandleDrag,
+      changes: changes,
+      cursorBefore: cursorBefore,
+      cursorAfter: cursorAfter,
+      hasSelectionBefore: hasSelectionBefore,
+      selectionBefore: selectionBefore,
+      hasSelectionAfter: hasSelectionAfter,
+      selectionAfter: selectionAfter,
+      scrollXBefore: scrollXBefore,
+      scrollYBefore: scrollYBefore,
+      scrollXAfter: scrollXAfter,
+      scrollYAfter: scrollYAfter,
+      scaleBefore: scaleBefore,
+      scaleAfter: scaleAfter,
+      pointerCursorBefore: pointerCursorBefore,
+      pointerCursorAfter: pointerCursorAfter,
+      imeSync: imeSync,
+      gestureType: gestureType,
+      gestureEventType: gestureEventType,
+      tapPoint: tapPoint,
+      hitTarget: hitTarget,
+      modifiers: modifiers,
+      command: command,
     );
   }
 
@@ -735,40 +785,14 @@ class ProtocolDecoder {
     );
   }
 
-  static KeyEventResult decodeKeyEventResult(
-    ffi.Pointer<ffi.Uint8> ptr,
-    int size,
-  ) {
-    if (ptr == ffi.nullptr || size == 0) return KeyEventResult.empty;
-    final r = _BinaryReader(ptr, size);
-    final handled = r.readInt32() != 0;
-    final contentChanged = r.readInt32() != 0;
-    final cursorChanged = r.readInt32() != 0;
-    final selectionChanged = r.readInt32() != 0;
-    final hasEdit = r.readInt32() != 0;
-    TextEditResult? editResult;
-    if (hasEdit) {
-      editResult = _readTextEditResultBody(r);
-    }
-    final command = r.hasRemaining(4) ? r.readInt32() : EditorCommand.none;
-    return KeyEventResult(
-      handled: handled,
-      contentChanged: contentChanged,
-      cursorChanged: cursorChanged,
-      selectionChanged: selectionChanged,
-      editResult: editResult,
-      command: command,
-    );
-  }
-
-  static TextEditResult _readTextEditResultBody(_BinaryReader r) {
+  static List<TextChange> _readTextChanges(_BinaryReader r) {
     final count = r.readInt32();
     final changes = <TextChange>[];
     for (var i = 0; i < count; i++) {
       final range = r.readTextRange();
       changes.add(TextChange(range, r.readUtf8String()));
     }
-    return TextEditResult(changed: true, changes: changes);
+    return changes;
   }
 
   static ImeSyncSnapshot _readImeSyncSnapshot(_BinaryReader r) {
@@ -787,65 +811,13 @@ class ProtocolDecoder {
     );
   }
 
-  static GestureResult decodeGestureResult(
-    ffi.Pointer<ffi.Uint8> ptr,
-    int size,
-  ) {
-    if (ptr == ffi.nullptr || size == 0) return GestureResult.empty;
-    final r = _BinaryReader(ptr, size);
-    final gestureTypeValue = r.readInt32();
-    final gestureType = GestureType.fromValue(gestureTypeValue);
-    var tapPoint = const PointF();
-    if (gestureType == GestureType.tap ||
-        gestureType == GestureType.doubleTap ||
-        gestureType == GestureType.longPress ||
-        gestureType == GestureType.dragSelect ||
-        gestureType == GestureType.contextMenu) {
-      tapPoint = r.readPoint();
-    }
-    final cursorPosition = r.readTextPosition();
-    final hasSelection = r.readInt32() != 0;
-    final selection = TextRange(r.readTextPosition(), r.readTextPosition());
-    final viewScrollX = r.readFloat32();
-    final viewScrollY = r.readFloat32();
-    final viewScale = r.readFloat32();
-    var hitTarget = const HitTarget();
-    if (r.hasRemaining(20)) {
-      hitTarget = HitTarget(
-        type: HitTargetType.fromValue(r.readInt32()),
-        line: r.readInt32(),
-        column: r.readInt32(),
-        iconId: r.readInt32(),
-        colorValue: r.readInt32(),
-      );
-    }
-    var needsEdgeScroll = false;
-    if (r.hasRemaining(4)) needsEdgeScroll = r.readInt32() != 0;
-    var needsFling = false;
-    if (r.hasRemaining(4)) needsFling = r.readInt32() != 0;
-    var needsAnimation = false;
-    if (r.hasRemaining(4)) needsAnimation = r.readInt32() != 0;
-    var isHandleDrag = false;
-    if (r.hasRemaining(4)) isHandleDrag = r.readInt32() != 0;
-    var pointerCursorType = PointerCursorType.text;
-    if (r.hasRemaining(4)) {
-      pointerCursorType = PointerCursorType.fromValue(r.readInt32());
-    }
-    return GestureResult(
-      type: gestureType,
-      tapPoint: tapPoint,
-      cursorPosition: cursorPosition,
-      hasSelection: hasSelection,
-      selection: selection,
-      viewScrollX: viewScrollX,
-      viewScrollY: viewScrollY,
-      viewScale: viewScale,
-      hitTarget: hitTarget,
-      needsEdgeScroll: needsEdgeScroll,
-      needsFling: needsFling,
-      needsAnimation: needsAnimation,
-      isHandleDrag: isHandleDrag,
-      pointerCursorType: pointerCursorType,
+  static HitTarget _readHitTarget(_BinaryReader r) {
+    return HitTarget(
+      type: HitTargetType.fromValue(r.readInt32()),
+      line: r.readInt32(),
+      column: r.readInt32(),
+      iconId: r.readInt32(),
+      colorValue: r.readInt32(),
     );
   }
 
@@ -1228,14 +1200,35 @@ T _callAndParse<T>(
   });
 }
 
-/// Copy a Dart [Uint8List] to native memory and call [fn].
-void _callWithBinaryData(
-  Uint8List data,
-  void Function(ffi.Pointer<ffi.Uint8>, int) fn,
+EditorActionResult _callAndParseAction(
+  ffi.Pointer<ffi.Uint8> Function(ffi.Pointer<ffi.Size> outSize) nativeCall,
 ) {
-  using((arena) {
+  return _callAndParse(
+    EditorActionResult.empty,
+    nativeCall,
+    ProtocolDecoder.decodeEditorActionResult,
+  );
+}
+
+EditorActionResult _callWithBinaryActionData(
+  Uint8List data,
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.Pointer<ffi.Uint8>,
+    int,
+    ffi.Pointer<ffi.Size>,
+  )
+  fn,
+) {
+  return using((arena) {
     final ptr = arena.allocate<ffi.Uint8>(data.length);
     ptr.asTypedList(data.length).setAll(0, data);
-    fn(ptr, data.length);
+    final outSize = arena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
+    final resultPtr = fn(ptr, data.length, outSize);
+    if (resultPtr == ffi.nullptr) return EditorActionResult.empty;
+    try {
+      return ProtocolDecoder.decodeEditorActionResult(resultPtr, outSize.value);
+    } finally {
+      bindings.free_binary_data(resultPtr.address);
+    }
   });
 }

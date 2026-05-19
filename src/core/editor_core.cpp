@@ -82,6 +82,19 @@ namespace NS_SWEETEDITOR {
            && lhs.color_value == rhs.color_value;
   }
 
+  static bool sameCompositionState(const CompositionState& lhs, const CompositionState& rhs) {
+    return lhs.is_composing == rhs.is_composing
+           && lhs.has_session == rhs.has_session
+           && lhs.phase == rhs.phase
+           && lhs.visible == rhs.visible
+           && lhs.kind == rhs.kind
+           && lhs.start_position == rhs.start_position
+           && lhs.anchor_range == rhs.anchor_range
+           && lhs.original_text == rhs.original_text
+           && lhs.composing_text == rhs.composing_text
+           && lhs.composing_columns == rhs.composing_columns;
+  }
+
   static HitTarget toHotInteractiveTarget(const HitTarget& target, KeyModifier modifiers) {
     if (target.type == HitTargetType::CODELENS) {
       return target;
@@ -125,16 +138,19 @@ namespace NS_SWEETEDITOR {
     LOGD("EditorCore::EditorCore(), options = %s", options.dump().c_str());
   }
 
-  void EditorCore::setHandleConfig(const HandleConfig& config) {
+  EditorActionResult EditorCore::setHandleConfig(const HandleConfig& config) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_settings_.handle = config;
     LOGD("EditorCore::setHandleConfig(), start_hit=[%.1f,%.1f,%.1f,%.1f], end_hit=[%.1f,%.1f,%.1f,%.1f]",
          config.start_hit_offset.left, config.start_hit_offset.top,
          config.start_hit_offset.right, config.start_hit_offset.bottom,
          config.end_hit_offset.left, config.end_hit_offset.top,
          config.end_hit_offset.right, config.end_hit_offset.bottom);
+    return finishAction(before, EditorActionReason::SETUP, true);
   }
 
-  void EditorCore::setScrollbarConfig(const ScrollbarConfig& config) {
+  EditorActionResult EditorCore::setScrollbarConfig(const ScrollbarConfig& config) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_settings_.scrollbar.thickness = std::max(1.0f, config.thickness);
     m_settings_.scrollbar.min_thumb = std::max(m_settings_.scrollbar.thickness, config.min_thumb);
     m_settings_.scrollbar.thumb_hit_padding = std::max(0.0f, config.thumb_hit_padding);
@@ -153,10 +169,12 @@ namespace NS_SWEETEDITOR {
          static_cast<int>(m_settings_.scrollbar.track_tap_mode),
          m_settings_.scrollbar.fade_delay_ms,
          m_settings_.scrollbar.fade_duration_ms);
+    return finishAction(before, EditorActionReason::SETUP, true, {}, true);
   }
 
-  void EditorCore::loadDocument(const SharedPtr<Document>& document) {
-    cancelLinkedEditing();
+  EditorActionResult EditorCore::loadDocument(const SharedPtr<Document>& document) {
+    const ActionSnapshot before = captureActionSnapshot();
+    cancelLinkedEditingInternal();
     m_composition_controller_.removeComposingText();
     m_composition_controller_.resetCompositionState();
     m_composition_controller_.clearCandidateCommitWindow();
@@ -179,9 +197,11 @@ namespace NS_SWEETEDITOR {
     m_visible_line_range_ = {};
     normalizeScrollState();
     LOGD("EditorCore::loadDocument()");
+    return finishAction(before, EditorActionReason::SETUP, true, {}, true);
   }
 
-  void EditorCore::setViewport(const Viewport& viewport) {
+  EditorActionResult EditorCore::setViewport(const Viewport& viewport) {
+    const ActionSnapshot before = captureActionSnapshot();
     PERF_TIMER("setViewport");
     bool width_changed = (m_viewport_.width != viewport.width);
     LOGW("setViewport: old=%s new=%s widthChanged=%d", m_viewport_.dump().c_str(), viewport.dump().c_str(), width_changed);
@@ -192,9 +212,11 @@ namespace NS_SWEETEDITOR {
     }
     normalizeScrollState();
     LOGD("EditorCore::setViewport, viewport = %s", m_viewport_.dump().c_str());
+    return finishAction(before, EditorActionReason::SETUP, true, {}, true);
   }
 
-  void EditorCore::onFontMetricsChanged() {
+  EditorActionResult EditorCore::onFontMetricsChanged() {
+    const ActionSnapshot before = captureActionSnapshot();
     float old_line_height = m_text_layout_->getLineHeight();
     EditorInteraction::PendingScaleAnchor scale_anchor = m_interaction_->takePendingScaleAnchor();
     // Anchor-based scroll preservation
@@ -336,78 +358,113 @@ namespace NS_SWEETEDITOR {
            old_scroll_y, m_view_state_.scroll_y);
     }
     normalizeScrollState();
+    return finishAction(before, EditorActionReason::SETUP, true, {}, true);
   }
 
-  void EditorCore::setWrapMode(WrapMode mode) {
+  EditorActionResult EditorCore::setWrapMode(WrapMode mode) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_settings_.wrap_mode = mode;
     m_text_layout_->setWrapMode(mode);
     markAllLinesDirty();
     normalizeScrollState();
+    return finishAction(before, EditorActionReason::SETUP, true, {}, true);
   }
 
-  void EditorCore::setTabSize(uint32_t tab_size) {
+  EditorActionResult EditorCore::setTabSize(uint32_t tab_size) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_text_layout_->setTabSize(tab_size);
     normalizeScrollState();
+    return finishAction(before, EditorActionReason::SETUP, true, {}, true);
   }
 
-  void EditorCore::setScale(float scale) {
+  EditorActionResult EditorCore::setScale(float scale) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_interaction_->resetScaleState();
     m_view_state_.scale = scale;
     normalizeScrollState();
     LOGD("EditorCore::setScale, m_view_state_ = %s", m_view_state_.dump().c_str());
+    return finishAction(before, EditorActionReason::SETUP, true);
   }
 
-  void EditorCore::setFoldArrowMode(FoldArrowMode mode) {
-    if (m_text_layout_->getLayoutMetrics().fold_arrow_mode == mode) return;
+  EditorActionResult EditorCore::setFoldArrowMode(FoldArrowMode mode) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_text_layout_->getLayoutMetrics().fold_arrow_mode == mode) {
+      return finishAction(before, EditorActionReason::SETUP, true);
+    }
     m_text_layout_->getLayoutMetrics().fold_arrow_mode = mode;
     markAllLinesDirty();
     normalizeScrollState();
+    return finishAction(before, EditorActionReason::SETUP, true, {}, true);
   }
 
-  void EditorCore::setLineSpacing(float add, float mult) {
+  EditorActionResult EditorCore::setLineSpacing(float add, float mult) {
+    const ActionSnapshot before = captureActionSnapshot();
     auto& params = m_text_layout_->getLayoutMetrics();
-    if (params.line_spacing_add == add && params.line_spacing_mult == mult) return;
+    if (params.line_spacing_add == add && params.line_spacing_mult == mult) {
+      return finishAction(before, EditorActionReason::SETUP, true);
+    }
     params.line_spacing_add = add;
     params.line_spacing_mult = mult;
     // After line height changes, all lines must be relaid out
     markAllLinesDirty();
     normalizeScrollState();
+    return finishAction(before, EditorActionReason::SETUP, true, {}, true);
   }
 
-  void EditorCore::setContentStartPadding(float padding) {
+  EditorActionResult EditorCore::setContentStartPadding(float padding) {
+    const ActionSnapshot before = captureActionSnapshot();
     padding = std::max(0.0f, padding);
     auto& params = m_text_layout_->getLayoutMetrics();
-    if (params.content_start_padding == padding) return;
+    if (params.content_start_padding == padding) {
+      return finishAction(before, EditorActionReason::SETUP, true);
+    }
     params.content_start_padding = padding;
     m_settings_.content_start_padding = padding;
     markAllLinesDirty();
     normalizeScrollState();
+    return finishAction(before, EditorActionReason::SETUP, true, {}, true);
   }
 
-  void EditorCore::setShowSplitLine(bool show) {
-    if (m_settings_.show_split_line == show) return;
+  EditorActionResult EditorCore::setShowSplitLine(bool show) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_settings_.show_split_line == show) {
+      return finishAction(before, EditorActionReason::SETUP, true);
+    }
     m_settings_.show_split_line = show;
+    return finishAction(before, EditorActionReason::SETUP, true, {}, true);
   }
 
-  void EditorCore::setGutterSticky(bool sticky) {
-    if (m_settings_.gutter_sticky == sticky) return;
+  EditorActionResult EditorCore::setGutterSticky(bool sticky) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_settings_.gutter_sticky == sticky) {
+      return finishAction(before, EditorActionReason::SETUP, true);
+    }
     m_settings_.gutter_sticky = sticky;
     m_text_layout_->getLayoutMetrics().gutter_sticky = sticky;
     markAllLinesDirty();
     normalizeScrollState();
+    return finishAction(before, EditorActionReason::SETUP, true, {}, true);
   }
 
-  void EditorCore::setGutterVisible(bool visible) {
-    if (m_settings_.gutter_visible == visible) return;
+  EditorActionResult EditorCore::setGutterVisible(bool visible) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_settings_.gutter_visible == visible) {
+      return finishAction(before, EditorActionReason::SETUP, true);
+    }
     m_settings_.gutter_visible = visible;
     m_text_layout_->getLayoutMetrics().gutter_visible = visible;
     markAllLinesDirty();
     normalizeScrollState();
+    return finishAction(before, EditorActionReason::SETUP, true, {}, true);
   }
 
-  void EditorCore::setCurrentLineRenderMode(CurrentLineRenderMode mode) {
-    if (m_settings_.current_line_render_mode == mode) return;
+  EditorActionResult EditorCore::setCurrentLineRenderMode(CurrentLineRenderMode mode) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_settings_.current_line_render_mode == mode) {
+      return finishAction(before, EditorActionReason::SETUP, true);
+    }
     m_settings_.current_line_render_mode = mode;
+    return finishAction(before, EditorActionReason::SETUP, true, {}, true);
   }
 
 #pragma endregion
@@ -506,7 +563,8 @@ namespace NS_SWEETEDITOR {
     return m_text_layout_->getLayoutMetrics();
   }
 
-  GestureResult EditorCore::handleGestureEvent(const GestureEvent& event) {
+  EditorActionResult EditorCore::handleGestureEvent(const GestureEvent& event) {
+    const ActionSnapshot before = captureActionSnapshot();
     const bool has_primary_point = !event.points.empty();
     PointerProbeResult primary_probe;
     bool primary_probe_ready = false;
@@ -580,7 +638,7 @@ namespace NS_SWEETEDITOR {
           if (hl.range.contains(tap_pos)) { in_tab_stop = true; break; }
         }
         if (!in_tab_stop) {
-          cancelLinkedEditing();
+          cancelLinkedEditingInternal();
         }
       }
     }
@@ -591,205 +649,150 @@ namespace NS_SWEETEDITOR {
       selectWordAt(result.tap_point);
     }
     if (intent.toggle_fold) {
-      toggleFoldAt(intent.fold_line);
+      toggleFoldAtInternal(intent.fold_line);
     }
 
     finalizeGestureResult(result);
-    return result;
+    return finishGestureAction(before, result, EditorActionReason::GESTURE, event.type);
   }
 
-  GestureResult EditorCore::tickFling() {
+  EditorActionResult EditorCore::tickFling() {
+    const ActionSnapshot before = captureActionSnapshot();
     GestureResult result = m_interaction_->tickFling();
     finalizeGestureResult(result);
-    return result;
+    return finishGestureAction(before, result, EditorActionReason::ANIMATION);
   }
 
-  GestureResult EditorCore::tickEdgeScroll() {
+  EditorActionResult EditorCore::tickEdgeScroll() {
+    const ActionSnapshot before = captureActionSnapshot();
     GestureResult result = m_interaction_->tickEdgeScroll();
     finalizeGestureResult(result);
-    return result;
+    return finishGestureAction(before, result, EditorActionReason::ANIMATION);
   }
 
-  GestureResult EditorCore::tickAnimations() {
+  EditorActionResult EditorCore::tickAnimations() {
+    const ActionSnapshot before = captureActionSnapshot();
     GestureResult result = m_interaction_->tickAnimations();
     finalizeGestureResult(result);
-    return result;
+    return finishGestureAction(before, result, EditorActionReason::ANIMATION);
   }
 
-  void EditorCore::stopFling() {
+  EditorActionResult EditorCore::stopFling() {
+    const ActionSnapshot before = captureActionSnapshot();
     m_interaction_->stopFling();
+    return finishAction(before, EditorActionReason::ANIMATION, true);
   }
 
-  KeyEventResult EditorCore::handleKeyEvent(const KeyEvent& event) {
+  EditorActionResult EditorCore::handleKeyEvent(const KeyEvent& event) {
     PERF_TIMER("handleKeyEvent");
-    KeyEventResult result;
-    if (m_document_ == nullptr) return result;
+    const ActionSnapshot before = captureActionSnapshot();
+    EditorCommand command = EditorCommand::NONE;
+    auto make_result = [&](bool handled, TextEditResult edit_result = {}) -> EditorActionResult {
+      EditorActionResult action = finishAction(before, EditorActionReason::KEY_INPUT, handled, std::move(edit_result));
+      action.command = command;
+      return action;
+    };
+    if (m_document_ == nullptr) return make_result(false);
 
-    // If composition input is active, some keys need special handling
-    if (isComposing()) {
-      switch (event.key_code) {
-      case KeyCode::ESCAPE:
-        m_composition_controller_.cancelComposing();
-        result.handled = true;
-        result.content_changed = true;
-        result.cursor_changed = true;
-        return result;
-      default:
-        break;
-      }
+    if (isComposing() && event.key_code == KeyCode::ESCAPE) {
+      m_composition_controller_.cancelComposing();
+      return make_result(true);
     }
 
-    // Linked editing overrides for Tab/Shift+Tab/Enter/Escape
     if (m_linked_editing_session_ && m_linked_editing_session_->isActive()) {
       bool shift = static_cast<uint8_t>(event.modifiers & KeyModifier::SHIFT) != 0;
       if (event.key_code == KeyCode::TAB) {
         if (shift) {
-          linkedEditingPrevTabStop();
+          linkedEditingPrevTabStopInternal();
         } else {
-          linkedEditingNextTabStop();
+          linkedEditingNextTabStopInternal();
         }
-        result.handled = true;
-        result.cursor_changed = true;
-        result.selection_changed = true;
-        return result;
+        return make_result(true);
       }
       if (event.key_code == KeyCode::ENTER) {
-        finishLinkedEditing();
-        result.handled = true;
-        result.cursor_changed = true;
-        return result;
+        finishLinkedEditingInternal();
+        return make_result(true);
       }
       if (event.key_code == KeyCode::ESCAPE) {
-        cancelLinkedEditing();
-        result.handled = true;
-        return result;
+        cancelLinkedEditingInternal();
+        return make_result(true);
       }
     }
 
-    // Resolve key chord through KeyMap
     KeyChord chord {event.modifiers, event.key_code};
     ResolveResult resolve = m_key_resolver_.resolve(chord);
 
     if (resolve.status == ResolveStatus::PENDING) {
-      result.handled = true;
-      return result;
+      return make_result(true);
     }
 
     if (resolve.status == ResolveStatus::MATCHED) {
-      EditorCommand cmd = resolve.command;
-      result.command = cmd;
+      command = resolve.command;
 
-      if (cmd == EditorCommand::COPY || cmd == EditorCommand::PASTE || cmd == EditorCommand::CUT
-        || cmd == EditorCommand::TRIGGER_COMPLETION || static_cast<uint32_t>(cmd) > static_cast<uint32_t>(EditorCommand::TRIGGER_COMPLETION)) {
-        result.handled = true;
-        return result;
+      if (command == EditorCommand::COPY || command == EditorCommand::PASTE || command == EditorCommand::CUT
+        || command == EditorCommand::TRIGGER_COMPLETION || static_cast<uint32_t>(command) > static_cast<uint32_t>(EditorCommand::TRIGGER_COMPLETION)) {
+        return make_result(true);
       }
 
-      switch (cmd) {
+      bool handled = true;
+      TextEditResult edit_result;
+      switch (command) {
       case EditorCommand::CURSOR_LEFT:
         moveCursorLeft(false);
-        result.handled = true;
-        result.cursor_changed = true;
         break;
       case EditorCommand::CURSOR_RIGHT:
         moveCursorRight(false);
-        result.handled = true;
-        result.cursor_changed = true;
         break;
       case EditorCommand::CURSOR_UP:
         moveCursorUp(false);
-        result.handled = true;
-        result.cursor_changed = true;
         break;
       case EditorCommand::CURSOR_DOWN:
         moveCursorDown(false);
-        result.handled = true;
-        result.cursor_changed = true;
         break;
       case EditorCommand::CURSOR_LINE_START:
         moveCursorToLineStart(false);
-        result.handled = true;
-        result.cursor_changed = true;
         break;
       case EditorCommand::CURSOR_LINE_END:
         moveCursorToLineEnd(false);
-        result.handled = true;
-        result.cursor_changed = true;
         break;
       case EditorCommand::CURSOR_PAGE_UP:
         moveCursorPageUp(false);
-        result.handled = true;
-        result.cursor_changed = true;
         break;
       case EditorCommand::CURSOR_PAGE_DOWN:
         moveCursorPageDown(false);
-        result.handled = true;
-        result.cursor_changed = true;
         break;
       case EditorCommand::SELECT_LEFT:
         moveCursorLeft(true);
-        result.handled = true;
-        result.cursor_changed = true;
-        result.selection_changed = true;
         break;
       case EditorCommand::SELECT_RIGHT:
         moveCursorRight(true);
-        result.handled = true;
-        result.cursor_changed = true;
-        result.selection_changed = true;
         break;
       case EditorCommand::SELECT_UP:
         moveCursorUp(true);
-        result.handled = true;
-        result.cursor_changed = true;
-        result.selection_changed = true;
         break;
       case EditorCommand::SELECT_DOWN:
         moveCursorDown(true);
-        result.handled = true;
-        result.cursor_changed = true;
-        result.selection_changed = true;
         break;
       case EditorCommand::SELECT_LINE_START:
         moveCursorToLineStart(true);
-        result.handled = true;
-        result.cursor_changed = true;
-        result.selection_changed = true;
         break;
       case EditorCommand::SELECT_LINE_END:
         moveCursorToLineEnd(true);
-        result.handled = true;
-        result.cursor_changed = true;
-        result.selection_changed = true;
         break;
       case EditorCommand::SELECT_PAGE_UP:
         moveCursorPageUp(true);
-        result.handled = true;
-        result.cursor_changed = true;
-        result.selection_changed = true;
         break;
       case EditorCommand::SELECT_PAGE_DOWN:
         moveCursorPageDown(true);
-        result.handled = true;
-        result.cursor_changed = true;
-        result.selection_changed = true;
         break;
       case EditorCommand::SELECT_ALL:
         selectAll();
-        result.handled = true;
-        result.selection_changed = true;
         break;
       case EditorCommand::BACKSPACE:
-        result.edit_result = backspace();
-        result.handled = true;
-        result.cursor_changed = true;
-        result.content_changed = result.edit_result.changed;
+        edit_result = backspaceInternal();
         break;
       case EditorCommand::DELETE_FORWARD:
-        result.edit_result = deleteForward();
-        result.handled = true;
-        result.cursor_changed = true;
-        result.content_changed = result.edit_result.changed;
+        edit_result = deleteForwardInternal();
         break;
       case EditorCommand::INSERT_TAB:
         if (m_settings_.insert_spaces && m_document_ != nullptr) {
@@ -800,109 +803,105 @@ namespace NS_SWEETEDITOR {
           if (spaces_to_insert == 0) {
             spaces_to_insert = tab_size;
           }
-          result.edit_result = insertText(U8String(spaces_to_insert, ' '));
+          edit_result = insertTextInternal(U8String(spaces_to_insert, ' '));
         } else {
-          result.edit_result = insertText("\t");
+          edit_result = insertTextInternal("\t");
         }
-        result.handled = true;
-        result.cursor_changed = true;
-        result.content_changed = result.edit_result.changed;
         break;
       case EditorCommand::INSERT_NEWLINE:
-        result.edit_result = insertText("\n");
-        result.handled = true;
-        result.cursor_changed = true;
-        result.content_changed = result.edit_result.changed;
+        edit_result = insertTextInternal("\n");
         break;
       case EditorCommand::INSERT_LINE_ABOVE:
-        result.edit_result = insertLineAbove();
-        result.handled = true;
-        result.cursor_changed = true;
-        result.content_changed = result.edit_result.changed;
+        edit_result = insertLineAboveInternal();
         break;
       case EditorCommand::INSERT_LINE_BELOW:
-        result.edit_result = insertLineBelow();
-        result.handled = true;
-        result.cursor_changed = true;
-        result.content_changed = result.edit_result.changed;
+        edit_result = insertLineBelowInternal();
         break;
       case EditorCommand::UNDO:
-        result.edit_result = undo();
-        if (result.edit_result.changed) {
-          result.handled = true;
-          result.content_changed = true;
-          result.cursor_changed = true;
-        }
+        edit_result = undoInternal();
+        handled = edit_result.changed;
         break;
       case EditorCommand::REDO:
-        result.edit_result = redo();
-        if (result.edit_result.changed) {
-          result.handled = true;
-          result.content_changed = true;
-          result.cursor_changed = true;
-        }
+        edit_result = redoInternal();
+        handled = edit_result.changed;
         break;
       case EditorCommand::MOVE_LINE_UP:
-        result.edit_result = moveLineUp();
-        result.handled = true;
-        result.cursor_changed = true;
-        result.content_changed = result.edit_result.changed;
+        edit_result = moveLineUpInternal();
         break;
       case EditorCommand::MOVE_LINE_DOWN:
-        result.edit_result = moveLineDown();
-        result.handled = true;
-        result.cursor_changed = true;
-        result.content_changed = result.edit_result.changed;
+        edit_result = moveLineDownInternal();
         break;
       case EditorCommand::COPY_LINE_UP:
-        result.edit_result = copyLineUp();
-        result.handled = true;
-        result.cursor_changed = true;
-        result.content_changed = result.edit_result.changed;
+        edit_result = copyLineUpInternal();
         break;
       case EditorCommand::COPY_LINE_DOWN:
-        result.edit_result = copyLineDown();
-        result.handled = true;
-        result.cursor_changed = true;
-        result.content_changed = result.edit_result.changed;
+        edit_result = copyLineDownInternal();
         break;
       case EditorCommand::DELETE_LINE:
-        result.edit_result = deleteLine();
-        result.handled = true;
-        result.cursor_changed = true;
-        result.content_changed = result.edit_result.changed;
+        edit_result = deleteLineInternal();
         break;
       default:
+        handled = false;
         break;
       }
 
-      if (result.handled) {
-        LOGD("EditorCore::handleKeyEvent, key_code = %d, command = %d, handled = %d", (int)event.key_code, (int)cmd, result.handled);
-        return result;
+      if (handled) {
+        LOGD("EditorCore::handleKeyEvent, key_code = %d, command = %d, handled = %d", (int)event.key_code, (int)command, handled);
+        return make_result(handled, std::move(edit_result));
       }
     }
 
-    // Handle plain text input (direct character input when not in IME composition)
-    if (!result.handled && event.isTextInput()) {
-      result.edit_result = insertText(event.text);
-      result.handled = true;
-      result.cursor_changed = true;
-      result.content_changed = result.edit_result.changed;
+    if (event.isTextInput()) {
+      TextEditResult edit_result = insertTextInternal(event.text);
+      LOGD("EditorCore::handleKeyEvent, key_code = %d, handled = %d", (int)event.key_code, 1);
+      return make_result(true, std::move(edit_result));
     }
 
-    LOGD("EditorCore::handleKeyEvent, key_code = %d, handled = %d", (int)event.key_code, result.handled);
-    return result;
+    LOGD("EditorCore::handleKeyEvent, key_code = %d, handled = %d", (int)event.key_code, 0);
+    return make_result(false);
   }
 
-  void EditorCore::setKeyMap(KeyMap key_map) {
+  EditorActionResult EditorCore::setKeyMap(KeyMap key_map) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_key_resolver_.setKeyMap(std::move(key_map));
+    return finishAction(before, EditorActionReason::SETUP, true);
   }
 
 #pragma endregion
 
 #pragma region [Editing & Cursor]
 
-  TextEditResult EditorCore::insertText(const U8String& text) {
+  EditorActionResult EditorCore::insertText(const U8String& text) {
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult edit_result = insertTextInternal(text);
+    return finishAction(before, EditorActionReason::TEXT_INSERT, edit_result.changed, std::move(edit_result));
+  }
+
+  EditorActionResult EditorCore::replaceText(const TextRange& range, const U8String& new_text) {
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult edit_result = replaceTextInternal(range, new_text);
+    return finishAction(before, EditorActionReason::TEXT_REPLACE, edit_result.changed, std::move(edit_result));
+  }
+
+  EditorActionResult EditorCore::deleteText(const TextRange& range) {
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult edit_result = deleteTextInternal(range);
+    return finishAction(before, EditorActionReason::TEXT_DELETE, edit_result.changed, std::move(edit_result));
+  }
+
+  EditorActionResult EditorCore::backspace() {
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult edit_result = backspaceInternal();
+    return finishAction(before, EditorActionReason::TEXT_DELETE, edit_result.changed, std::move(edit_result));
+  }
+
+  EditorActionResult EditorCore::deleteForward() {
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult edit_result = deleteForwardInternal();
+    return finishAction(before, EditorActionReason::TEXT_DELETE, edit_result.changed, std::move(edit_result));
+  }
+
+  TextEditResult EditorCore::insertTextInternal(const U8String& text) {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
     if (text.empty() && !hasSelection()) return {};
 
@@ -1031,7 +1030,7 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
-  TextEditResult EditorCore::replaceText(const TextRange& range, const U8String& new_text) {
+  TextEditResult EditorCore::replaceTextInternal(const TextRange& range, const U8String& new_text) {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
     // If composition is active, cancel it first
@@ -1053,11 +1052,11 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
-  TextEditResult EditorCore::deleteText(const TextRange& range) {
-    return replaceText(range, "");
+  TextEditResult EditorCore::deleteTextInternal(const TextRange& range) {
+    return replaceTextInternal(range, "");
   }
 
-  TextEditResult EditorCore::backspace() {
+  TextEditResult EditorCore::backspaceInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
     if (isComposing()) {
@@ -1113,7 +1112,7 @@ namespace NS_SWEETEDITOR {
             return result;
           }
         } else {
-          cancelLinkedEditing();
+          cancelLinkedEditingInternal();
         }
       }
     }
@@ -1210,7 +1209,7 @@ namespace NS_SWEETEDITOR {
     return {};
   }
 
-  TextEditResult EditorCore::deleteForward() {
+  TextEditResult EditorCore::deleteForwardInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
     if (isComposing()) {
@@ -1262,7 +1261,7 @@ namespace NS_SWEETEDITOR {
   TextEditResult EditorCore::deleteCodePointBackward() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
     if (isComposing() || isInLinkedEditing()) {
-      return backspace();
+      return backspaceInternal();
     }
     if (hasSelection()) {
       TextRange range = m_caret_.normalizedSelection();
@@ -1299,7 +1298,7 @@ namespace NS_SWEETEDITOR {
   TextEditResult EditorCore::deleteCodePointForward() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
     if (isComposing() || isInLinkedEditing()) {
-      return deleteForward();
+      return deleteForwardInternal();
     }
     if (hasSelection()) {
       TextRange range = m_caret_.normalizedSelection();
@@ -1343,7 +1342,61 @@ namespace NS_SWEETEDITOR {
     m_caret_.cursor = range.start;
     clearSelection();
   }
-  TextEditResult EditorCore::moveLineUp() {
+  EditorActionResult EditorCore::moveLineUp() {
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult edit_result = moveLineUpInternal();
+    return finishAction(before, EditorActionReason::TEXT_INSERT, edit_result.changed, std::move(edit_result));
+  }
+
+  EditorActionResult EditorCore::moveLineDown() {
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult edit_result = moveLineDownInternal();
+    return finishAction(before, EditorActionReason::TEXT_INSERT, edit_result.changed, std::move(edit_result));
+  }
+
+  EditorActionResult EditorCore::copyLineUp() {
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult edit_result = copyLineUpInternal();
+    return finishAction(before, EditorActionReason::TEXT_INSERT, edit_result.changed, std::move(edit_result));
+  }
+
+  EditorActionResult EditorCore::copyLineDown() {
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult edit_result = copyLineDownInternal();
+    return finishAction(before, EditorActionReason::TEXT_INSERT, edit_result.changed, std::move(edit_result));
+  }
+
+  EditorActionResult EditorCore::deleteLine() {
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult edit_result = deleteLineInternal();
+    return finishAction(before, EditorActionReason::TEXT_DELETE, edit_result.changed, std::move(edit_result));
+  }
+
+  EditorActionResult EditorCore::insertLineAbove() {
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult edit_result = insertLineAboveInternal();
+    return finishAction(before, EditorActionReason::TEXT_INSERT, edit_result.changed, std::move(edit_result));
+  }
+
+  EditorActionResult EditorCore::insertLineBelow() {
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult edit_result = insertLineBelowInternal();
+    return finishAction(before, EditorActionReason::TEXT_INSERT, edit_result.changed, std::move(edit_result));
+  }
+
+  EditorActionResult EditorCore::undo() {
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult edit_result = undoInternal();
+    return finishAction(before, EditorActionReason::TEXT_UNDO, edit_result.changed, std::move(edit_result));
+  }
+
+  EditorActionResult EditorCore::redo() {
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult edit_result = redoInternal();
+    return finishAction(before, EditorActionReason::TEXT_REDO, edit_result.changed, std::move(edit_result));
+  }
+
+  TextEditResult EditorCore::moveLineUpInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
     if (isComposing()) m_composition_controller_.cancelComposing();
 
@@ -1384,7 +1437,7 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
-  TextEditResult EditorCore::moveLineDown() {
+  TextEditResult EditorCore::moveLineDownInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
     if (isComposing()) m_composition_controller_.cancelComposing();
 
@@ -1426,7 +1479,7 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
-  TextEditResult EditorCore::copyLineUp() {
+  TextEditResult EditorCore::copyLineUpInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
     if (isComposing()) m_composition_controller_.cancelComposing();
 
@@ -1458,7 +1511,7 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
-  TextEditResult EditorCore::copyLineDown() {
+  TextEditResult EditorCore::copyLineDownInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
     if (isComposing()) m_composition_controller_.cancelComposing();
 
@@ -1491,7 +1544,7 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
-  TextEditResult EditorCore::deleteLine() {
+  TextEditResult EditorCore::deleteLineInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
     if (isComposing()) m_composition_controller_.cancelComposing();
 
@@ -1521,7 +1574,7 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
-  TextEditResult EditorCore::insertLineAbove() {
+  TextEditResult EditorCore::insertLineAboveInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
     if (isComposing()) m_composition_controller_.cancelComposing();
 
@@ -1538,7 +1591,7 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
-  TextEditResult EditorCore::insertLineBelow() {
+  TextEditResult EditorCore::insertLineBelowInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
     if (isComposing()) m_composition_controller_.cancelComposing();
 
@@ -1550,7 +1603,7 @@ namespace NS_SWEETEDITOR {
     // applyEdit has already moved cursor to the start of the new line
     return result;
   }
-  TextEditResult EditorCore::undo() {
+  TextEditResult EditorCore::undoInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
     // If composition input is active, cancel it first
@@ -1655,7 +1708,7 @@ namespace NS_SWEETEDITOR {
     return edit_result;
   }
 
-  TextEditResult EditorCore::redo() {
+  TextEditResult EditorCore::redoInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
     // If composition input is active, cancel it first
@@ -1744,12 +1797,14 @@ namespace NS_SWEETEDITOR {
     return m_undo_manager_->canRedo();
   }
 
-  void EditorCore::setCursorPosition(const TextPosition& position) {
+  EditorActionResult EditorCore::setCursorPosition(const TextPosition& position) {
+    const ActionSnapshot before = captureActionSnapshot();
     if (position != m_caret_.cursor || hasSelection()) {
       m_composition_controller_.clearPlainLatinInputLock();
     }
     setCursorPositionInternal(position, true);
     clearSelection();
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
   void EditorCore::setCursorPositionInternal(const TextPosition& position, bool commit_composition) {
@@ -1785,9 +1840,11 @@ namespace NS_SWEETEDITOR {
     return m_caret_.cursor;
   }
 
-  void EditorCore::setSelection(const TextRange& range) {
+  EditorActionResult EditorCore::setSelection(const TextRange& range) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_composition_controller_.clearPlainLatinInputLock();
     setSelectionInternal(range, true);
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
   void EditorCore::setSelectionInternal(const TextRange& range, bool commit_composition) {
@@ -1836,18 +1893,22 @@ namespace NS_SWEETEDITOR {
     return m_caret_.has_selection;
   }
 
-  void EditorCore::clearSelection() {
+  EditorActionResult EditorCore::clearSelection() {
+    const ActionSnapshot before = captureActionSnapshot();
     m_caret_.clearSelection();
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
-  void EditorCore::selectAll() {
-    if (m_document_ == nullptr) return;
+  EditorActionResult EditorCore::selectAll() {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
     size_t last_line = m_document_->getLineCount() > 0 ? m_document_->getLineCount() - 1 : 0;
     uint32_t last_col = m_document_->getLineColumns(last_line);
     setSelection({{0, 0}, {last_line, last_col}});
     if (m_options_.reveal_selection_end_on_select_all) {
       ensureCursorVisible();
     }
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
   U8String EditorCore::getSelectedText() const {
@@ -1910,13 +1971,14 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
-  void EditorCore::moveCursorLeft(bool extend_selection) {
-    if (m_document_ == nullptr) return;
+  EditorActionResult EditorCore::moveCursorLeft(bool extend_selection) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
 
     if (hasSelection() && !extend_selection) {
       TextRange range = m_caret_.normalizedSelection();
       moveCursorTo(range.start, false);
-      return;
+      return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
     }
 
     TextPosition new_pos = m_caret_.cursor;
@@ -1933,15 +1995,17 @@ namespace NS_SWEETEDITOR {
       new_pos.column = m_document_->getLineColumns(new_pos.line);
     }
     moveCursorTo(new_pos, extend_selection);
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
-  void EditorCore::moveCursorRight(bool extend_selection) {
-    if (m_document_ == nullptr) return;
+  EditorActionResult EditorCore::moveCursorRight(bool extend_selection) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
 
     if (hasSelection() && !extend_selection) {
       TextRange range = m_caret_.normalizedSelection();
       moveCursorTo(range.end, false);
-      return;
+      return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
     }
 
     TextPosition new_pos = m_caret_.cursor;
@@ -1959,14 +2023,16 @@ namespace NS_SWEETEDITOR {
       new_pos.column = 0;
     }
     moveCursorTo(new_pos, extend_selection);
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
-  void EditorCore::moveCursorUp(bool extend_selection) {
-    if (m_document_ == nullptr) return;
+  EditorActionResult EditorCore::moveCursorUp(bool extend_selection) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
 
     if (m_caret_.cursor.line == 0) {
       moveCursorTo({0, 0}, extend_selection);
-      return;
+      return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
     }
 
     // Find the nearest visible line above
@@ -1975,7 +2041,7 @@ namespace NS_SWEETEDITOR {
     do {
       if (target_line == 0) {
         moveCursorTo({0, 0}, extend_selection);
-        return;
+        return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
       }
       --target_line;
     } while (target_line < lines.size() && lines[target_line].is_fold_hidden);
@@ -1986,16 +2052,18 @@ namespace NS_SWEETEDITOR {
     PointF target_point = {current_screen.x, target_coord.y + line_height * 0.5f};
     TextPosition new_pos = m_text_layout_->hitTestPointer(target_point);
     moveCursorTo(new_pos, extend_selection);
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
-  void EditorCore::moveCursorDown(bool extend_selection) {
-    if (m_document_ == nullptr) return;
+  EditorActionResult EditorCore::moveCursorDown(bool extend_selection) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
 
     size_t line_count = m_document_->getLineCount();
     if (m_caret_.cursor.line + 1 >= line_count) {
       uint32_t cols = m_document_->getLineColumns(m_caret_.cursor.line);
       moveCursorTo({m_caret_.cursor.line, cols}, extend_selection);
-      return;
+      return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
     }
 
     // Find the nearest visible line below
@@ -2006,7 +2074,7 @@ namespace NS_SWEETEDITOR {
       if (target_line >= line_count) {
         uint32_t cols = m_document_->getLineColumns(line_count - 1);
         moveCursorTo({line_count - 1, cols}, extend_selection);
-        return;
+        return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
       }
     } while (target_line < lines.size() && lines[target_line].is_fold_hidden);
 
@@ -2016,71 +2084,94 @@ namespace NS_SWEETEDITOR {
     PointF target_point = {current_screen.x, target_coord.y + line_height * 0.5f};
     TextPosition new_pos = m_text_layout_->hitTestPointer(target_point);
     moveCursorTo(new_pos, extend_selection);
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
-  void EditorCore::moveCursorToLineStart(bool extend_selection) {
-    if (m_document_ == nullptr) return;
+  EditorActionResult EditorCore::moveCursorToLineStart(bool extend_selection) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
     moveCursorTo({m_caret_.cursor.line, 0}, extend_selection);
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
-  void EditorCore::moveCursorToLineEnd(bool extend_selection) {
-    if (m_document_ == nullptr) return;
+  EditorActionResult EditorCore::moveCursorToLineEnd(bool extend_selection) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
     uint32_t cols = m_document_->getLineColumns(m_caret_.cursor.line);
     moveCursorTo({m_caret_.cursor.line, cols}, extend_selection);
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
-  void EditorCore::moveCursorPageUp(bool extend_selection) {
-    if (m_document_ == nullptr || m_text_layout_ == nullptr) return;
+  EditorActionResult EditorCore::moveCursorPageUp(bool extend_selection) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_document_ == nullptr || m_text_layout_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
     float line_height = m_text_layout_->getLineHeight();
-    if (line_height <= 0) return;
+    if (line_height <= 0) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
     int page_lines = static_cast<int>(m_viewport_.height / line_height);
     if (page_lines < 1) page_lines = 1;
     for (int i = 0; i < page_lines; ++i) {
       moveCursorUp(extend_selection);
     }
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
-  void EditorCore::moveCursorPageDown(bool extend_selection) {
-    if (m_document_ == nullptr || m_text_layout_ == nullptr) return;
+  EditorActionResult EditorCore::moveCursorPageDown(bool extend_selection) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_document_ == nullptr || m_text_layout_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
     float line_height = m_text_layout_->getLineHeight();
-    if (line_height <= 0) return;
+    if (line_height <= 0) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
     int page_lines = static_cast<int>(m_viewport_.height / line_height);
     if (page_lines < 1) page_lines = 1;
     for (int i = 0; i < page_lines; ++i) {
       moveCursorDown(extend_selection);
     }
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
-  void EditorCore::setReadOnly(bool read_only) {
+  EditorActionResult EditorCore::setReadOnly(bool read_only) {
+    const ActionSnapshot before = captureActionSnapshot();
     if (read_only && isComposing()) {
       m_composition_controller_.cancelComposing();
     }
     m_settings_.read_only = read_only;
     LOGD("EditorCore::setReadOnly, read_only = %s", read_only ? "true" : "false");
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
   bool EditorCore::isReadOnly() const {
     return m_settings_.read_only;
   }
-  void EditorCore::setAutoIndentMode(AutoIndentMode mode) {
+  EditorActionResult EditorCore::setAutoIndentMode(AutoIndentMode mode) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_settings_.auto_indent_mode = mode;
     LOGD("EditorCore::setAutoIndentMode, mode = %d", (int)mode);
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
   AutoIndentMode EditorCore::getAutoIndentMode() const {
     return m_settings_.auto_indent_mode;
   }
 
-  void EditorCore::setBackspaceUnindent(bool enabled) {
+  EditorActionResult EditorCore::setBackspaceUnindent(bool enabled) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_settings_.backspace_unindent = enabled;
     LOGD("EditorCore::setBackspaceUnindent, enabled = %s", enabled ? "true" : "false");
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
-  void EditorCore::setInsertSpaces(bool enabled) {
+  EditorActionResult EditorCore::setInsertSpaces(bool enabled) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_settings_.insert_spaces = enabled;
     LOGD("EditorCore::setInsertSpaces, enabled = %s", enabled ? "true" : "false");
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
-  TextEditResult EditorCore::insertSnippet(const U8String& snippet_template) {
+  EditorActionResult EditorCore::insertSnippet(const U8String& snippet_template) {
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult edit_result = insertSnippetInternal(snippet_template);
+    return finishAction(before, EditorActionReason::TEXT_INSERT, edit_result.changed, std::move(edit_result));
+  }
+
+  TextEditResult EditorCore::insertSnippetInternal(const U8String& snippet_template) {
     if (m_document_ == nullptr || snippet_template.empty() || m_settings_.read_only) return {};
 
     // If composition is active, cancel it first
@@ -2118,7 +2209,13 @@ namespace NS_SWEETEDITOR {
     return edit_result;
   }
 
-  void EditorCore::startLinkedEditing(LinkedEditingModel&& model) {
+  EditorActionResult EditorCore::startLinkedEditing(LinkedEditingModel&& model) {
+    const ActionSnapshot before = captureActionSnapshot();
+    startLinkedEditingInternal(std::move(model));
+    return finishAction(before, EditorActionReason::LINKED_EDITING, true);
+  }
+
+  void EditorCore::startLinkedEditingInternal(LinkedEditingModel&& model) {
     if (m_document_ == nullptr || m_settings_.read_only) return;
     if (model.groups.empty()) return;
 
@@ -2143,19 +2240,31 @@ namespace NS_SWEETEDITOR {
     return m_linked_editing_session_ != nullptr && m_linked_editing_session_->isActive();
   }
 
-  bool EditorCore::linkedEditingNextTabStop() {
+  EditorActionResult EditorCore::linkedEditingNextTabStop() {
+    const ActionSnapshot before = captureActionSnapshot();
+    bool handled = linkedEditingNextTabStopInternal();
+    return finishAction(before, EditorActionReason::LINKED_EDITING, handled);
+  }
+
+  bool EditorCore::linkedEditingNextTabStopInternal() {
     if (!isInLinkedEditing()) return false;
     bool has_next = m_linked_editing_session_->nextTabStop();
     if (has_next) {
       activateCurrentTabStop();
     } else {
       // At the end: finish session and move cursor to $0
-      finishLinkedEditing();
+      finishLinkedEditingInternal();
     }
     return has_next;
   }
 
-  bool EditorCore::linkedEditingPrevTabStop() {
+  EditorActionResult EditorCore::linkedEditingPrevTabStop() {
+    const ActionSnapshot before = captureActionSnapshot();
+    bool handled = linkedEditingPrevTabStopInternal();
+    return finishAction(before, EditorActionReason::LINKED_EDITING, handled);
+  }
+
+  bool EditorCore::linkedEditingPrevTabStopInternal() {
     if (!isInLinkedEditing()) return false;
     bool has_prev = m_linked_editing_session_->prevTabStop();
     if (has_prev) {
@@ -2164,7 +2273,13 @@ namespace NS_SWEETEDITOR {
     return has_prev;
   }
 
-  void EditorCore::finishLinkedEditing() {
+  EditorActionResult EditorCore::finishLinkedEditing() {
+    const ActionSnapshot before = captureActionSnapshot();
+    finishLinkedEditingInternal();
+    return finishAction(before, EditorActionReason::LINKED_EDITING, true);
+  }
+
+  void EditorCore::finishLinkedEditingInternal() {
     if (!m_linked_editing_session_) return;
     // Get final cursor position for $0 before cancel
     TextPosition final_pos = m_linked_editing_session_->finalCursorPosition();
@@ -2175,7 +2290,13 @@ namespace NS_SWEETEDITOR {
     ensureCursorVisible();
   }
 
-  void EditorCore::cancelLinkedEditing() {
+  EditorActionResult EditorCore::cancelLinkedEditing() {
+    const ActionSnapshot before = captureActionSnapshot();
+    cancelLinkedEditingInternal();
+    return finishAction(before, EditorActionReason::LINKED_EDITING, true);
+  }
+
+  void EditorCore::cancelLinkedEditingInternal() {
     if (m_linked_editing_session_) {
       m_linked_editing_session_->cancel();
       m_linked_editing_session_.reset();
@@ -2268,11 +2389,12 @@ namespace NS_SWEETEDITOR {
 
 #pragma region [Navigation & Decorations]
 
-  void EditorCore::scrollToLine(size_t line, ScrollBehavior behavior) {
-    if (m_document_ == nullptr) return;
+  EditorActionResult EditorCore::scrollToLine(size_t line, ScrollBehavior behavior) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
 
     Vector<LogicalLine>& logical_lines = m_document_->getLogicalLines();
-    if (logical_lines.empty()) return;
+    if (logical_lines.empty()) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
 
     // Clamp line number to valid range
     if (line >= logical_lines.size()) {
@@ -2301,10 +2423,12 @@ namespace NS_SWEETEDITOR {
 
     normalizeScrollState();
     LOGD("EditorCore::scrollToLine, line = %zu, m_view_state_ = %s", line, m_view_state_.dump().c_str());
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
-  void EditorCore::gotoPosition(size_t line, size_t column) {
-    if (m_document_ == nullptr) return;
+  EditorActionResult EditorCore::gotoPosition(size_t line, size_t column) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
 
     scrollToLine(line, ScrollBehavior::GOTO_CENTER);
     clearSelection();
@@ -2312,13 +2436,16 @@ namespace NS_SWEETEDITOR {
     ensureCursorVisible();
     LOGD("EditorCore::gotoLine, line = %zu, column = %zu, cursor = %s",
          line, column, m_caret_.cursor.dump().c_str());
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
-  void EditorCore::setScroll(float scroll_x, float scroll_y) {
+  EditorActionResult EditorCore::setScroll(float scroll_x, float scroll_y) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_view_state_.scroll_x = scroll_x;
     m_view_state_.scroll_y = scroll_y;
     normalizeScrollState();
     LOGD("EditorCore::setScroll, m_view_state_ = %s", m_view_state_.dump().c_str());
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
   CursorRect EditorCore::getPositionScreenRect(const TextPosition& position) {
@@ -2335,31 +2462,38 @@ namespace NS_SWEETEDITOR {
     return getPositionScreenRect(m_caret_.cursor);
   }
 
-  void EditorCore::registerTextStyle(uint32_t style_id, TextStyle&& style) {
+  EditorActionResult EditorCore::registerTextStyle(uint32_t style_id, TextStyle&& style) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->getTextStyleRegistry()->registerTextStyle(style_id, std::move(style));
     markAllLinesDirty();
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::registerBatchTextStyles(Vector<std::pair<uint32_t, TextStyle>>&& entries) {
-    if (entries.empty()) return;
+  EditorActionResult EditorCore::registerBatchTextStyles(Vector<std::pair<uint32_t, TextStyle>>&& entries) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
     auto registry = m_decorations_->getTextStyleRegistry();
     for (auto& [style_id, style] : entries) {
       registry->registerTextStyle(style_id, std::move(style));
     }
     markAllLinesDirty();
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setLineSpans(size_t line, SpanLayer layer, Vector<StyleSpan>&& spans) {
+  EditorActionResult EditorCore::setLineSpans(size_t line, SpanLayer layer, Vector<StyleSpan>&& spans) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineSpans(line, layer, std::move(spans));
     auto& lines = m_document_->getLogicalLines();
     if (line < lines.size()) {
       lines[line].is_layout_dirty = true;
     }
     m_text_layout_->invalidateContentMetrics(line);
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setBatchLineSpans(SpanLayer layer, Vector<std::pair<size_t, Vector<StyleSpan>>>&& entries) {
-    if (entries.empty()) return;
+  EditorActionResult EditorCore::setBatchLineSpans(SpanLayer layer, Vector<std::pair<size_t, Vector<StyleSpan>>>&& entries) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
     auto& lines = m_document_->getLogicalLines();
     size_t min_line = entries[0].first;
     for (auto& [line, spans] : entries) {
@@ -2370,19 +2504,23 @@ namespace NS_SWEETEDITOR {
       if (line < min_line) min_line = line;
     }
     m_text_layout_->invalidateContentMetrics(min_line);
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setLineInlayHints(size_t line, Vector<InlayHint>&& hints) {
+  EditorActionResult EditorCore::setLineInlayHints(size_t line, Vector<InlayHint>&& hints) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineInlayHints(line, std::move(hints));
     auto& lines = m_document_->getLogicalLines();
     if (line < lines.size()) {
       lines[line].is_layout_dirty = true;
     }
     m_text_layout_->invalidateContentMetrics(line);
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setBatchLineInlayHints(Vector<std::pair<size_t, Vector<InlayHint>>>&& entries) {
-    if (entries.empty()) return;
+  EditorActionResult EditorCore::setBatchLineInlayHints(Vector<std::pair<size_t, Vector<InlayHint>>>&& entries) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
     auto& lines = m_document_->getLogicalLines();
     size_t min_line = entries[0].first;
     for (auto& [line, hints] : entries) {
@@ -2393,19 +2531,23 @@ namespace NS_SWEETEDITOR {
       if (line < min_line) min_line = line;
     }
     m_text_layout_->invalidateContentMetrics(min_line);
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setLinePhantomTexts(size_t line, Vector<PhantomText>&& phantoms) {
+  EditorActionResult EditorCore::setLinePhantomTexts(size_t line, Vector<PhantomText>&& phantoms) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLinePhantomTexts(line, std::move(phantoms));
     auto& lines = m_document_->getLogicalLines();
     if (line < lines.size()) {
       lines[line].is_layout_dirty = true;
     }
     m_text_layout_->invalidateContentMetrics(line);
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setBatchLinePhantomTexts(Vector<std::pair<size_t, Vector<PhantomText>>>&& entries) {
-    if (entries.empty()) return;
+  EditorActionResult EditorCore::setBatchLinePhantomTexts(Vector<std::pair<size_t, Vector<PhantomText>>>&& entries) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
     auto& lines = m_document_->getLogicalLines();
     size_t min_line = entries[0].first;
     for (auto& [line, phantoms] : entries) {
@@ -2416,37 +2558,47 @@ namespace NS_SWEETEDITOR {
       if (line < min_line) min_line = line;
     }
     m_text_layout_->invalidateContentMetrics(min_line);
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setLineGutterIcons(size_t line, Vector<GutterIcon>&& icons) {
+  EditorActionResult EditorCore::setLineGutterIcons(size_t line, Vector<GutterIcon>&& icons) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineGutterIcons(line, std::move(icons));
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setBatchLineGutterIcons(Vector<std::pair<size_t, Vector<GutterIcon>>>&& entries) {
-    if (entries.empty()) return;
+  EditorActionResult EditorCore::setBatchLineGutterIcons(Vector<std::pair<size_t, Vector<GutterIcon>>>&& entries) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
     for (auto& [line, icons] : entries) {
       m_decorations_->setLineGutterIcons(line, std::move(icons));
     }
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setMaxGutterIcons(uint32_t count) {
-    if (m_text_layout_->getLayoutMetrics().max_gutter_icons == count) return;
+  EditorActionResult EditorCore::setMaxGutterIcons(uint32_t count) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_text_layout_->getLayoutMetrics().max_gutter_icons == count) return finishAction(before, EditorActionReason::DECORATION, true);
     m_text_layout_->getLayoutMetrics().max_gutter_icons = count;
     markAllLinesDirty();
     normalizeScrollState();
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setLineCodeLens(size_t line, Vector<CodeLensItem>&& items) {
+  EditorActionResult EditorCore::setLineCodeLens(size_t line, Vector<CodeLensItem>&& items) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineCodeLens(line, std::move(items));
     auto& lines = m_document_->getLogicalLines();
     if (line < lines.size()) {
       lines[line].is_layout_dirty = true;
     }
     m_text_layout_->invalidateContentMetrics(line);
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setBatchLineCodeLens(Vector<std::pair<size_t, Vector<CodeLensItem>>>&& entries) {
-    if (entries.empty()) return;
+  EditorActionResult EditorCore::setBatchLineCodeLens(Vector<std::pair<size_t, Vector<CodeLensItem>>>&& entries) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
     auto& lines = m_document_->getLogicalLines();
     size_t min_line = entries[0].first;
     for (auto& [line, items] : entries) {
@@ -2457,25 +2609,31 @@ namespace NS_SWEETEDITOR {
       if (line < min_line) min_line = line;
     }
     m_text_layout_->invalidateContentMetrics(min_line);
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::clearCodeLens() {
+  EditorActionResult EditorCore::clearCodeLens() {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearCodeLens();
     markAllLinesDirty();
     normalizeScrollState();
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setLineLinks(size_t line, Vector<LinkSpan>&& links) {
+  EditorActionResult EditorCore::setLineLinks(size_t line, Vector<LinkSpan>&& links) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineLinks(line, std::move(links));
     auto& lines = m_document_->getLogicalLines();
     if (line < lines.size()) {
       lines[line].is_layout_dirty = true;
     }
     m_text_layout_->invalidateContentMetrics(line);
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setBatchLineLinks(Vector<std::pair<size_t, Vector<LinkSpan>>>&& entries) {
-    if (entries.empty()) return;
+  EditorActionResult EditorCore::setBatchLineLinks(Vector<std::pair<size_t, Vector<LinkSpan>>>&& entries) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
     auto& lines = m_document_->getLogicalLines();
     size_t min_line = entries[0].first;
     for (auto& [line, links] : entries) {
@@ -2486,12 +2644,15 @@ namespace NS_SWEETEDITOR {
       if (line < min_line) min_line = line;
     }
     m_text_layout_->invalidateContentMetrics(min_line);
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::clearLinks() {
+  EditorActionResult EditorCore::clearLinks() {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearLinks();
     markAllLinesDirty();
     normalizeScrollState();
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
   U8String EditorCore::getLinkTargetAt(size_t line, size_t column) const {
@@ -2499,35 +2660,49 @@ namespace NS_SWEETEDITOR {
     return link != nullptr ? link->target : U8String {};
   }
 
-  void EditorCore::setLineDiagnostics(size_t line, Vector<DiagnosticSpan>&& diagnostics) {
+  EditorActionResult EditorCore::setLineDiagnostics(size_t line, Vector<DiagnosticSpan>&& diagnostics) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineDiagnostics(line, std::move(diagnostics));
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setBatchLineDiagnostics(Vector<std::pair<size_t, Vector<DiagnosticSpan>>>&& entries) {
-    if (entries.empty()) return;
+  EditorActionResult EditorCore::setBatchLineDiagnostics(Vector<std::pair<size_t, Vector<DiagnosticSpan>>>&& entries) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
     for (auto& [line, diagnostics] : entries) {
       m_decorations_->setLineDiagnostics(line, std::move(diagnostics));
     }
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::clearDiagnostics() {
+  EditorActionResult EditorCore::clearDiagnostics() {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearDiagnostics();
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setIndentGuides(Vector<IndentGuide>&& guides) {
+  EditorActionResult EditorCore::setIndentGuides(Vector<IndentGuide>&& guides) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setIndentGuides(std::move(guides));
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setBracketGuides(Vector<BracketGuide>&& guides) {
+  EditorActionResult EditorCore::setBracketGuides(Vector<BracketGuide>&& guides) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setBracketGuides(std::move(guides));
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setFlowGuides(Vector<FlowGuide>&& guides) {
+  EditorActionResult EditorCore::setFlowGuides(Vector<FlowGuide>&& guides) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setFlowGuides(std::move(guides));
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setSeparatorGuides(Vector<SeparatorGuide>&& guides) {
+  EditorActionResult EditorCore::setSeparatorGuides(Vector<SeparatorGuide>&& guides) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setSeparatorGuides(std::move(guides));
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
 
@@ -2572,7 +2747,8 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  void EditorCore::setFoldRegions(Vector<FoldRegion>&& regions) {
+  EditorActionResult EditorCore::setFoldRegions(Vector<FoldRegion>&& regions) {
+    const ActionSnapshot before = captureActionSnapshot();
     bool had_fold_regions = m_text_layout_->getLayoutMetrics().has_fold_regions;
     m_text_layout_->getLayoutMetrics().has_fold_regions = !regions.empty();
     if (had_fold_regions != m_text_layout_->getLayoutMetrics().has_fold_regions) {
@@ -2580,32 +2756,63 @@ namespace NS_SWEETEDITOR {
     }
     m_decorations_->setFoldRegions(std::move(regions));
     syncFoldState();
+    return finishAction(before, EditorActionReason::FOLDING, true, {}, true, true);
   }
 
-  bool EditorCore::foldAt(size_t line) {
+  EditorActionResult EditorCore::foldAt(size_t line) {
+    const ActionSnapshot before = captureActionSnapshot();
+    bool handled = foldAtInternal(line);
+    return finishAction(before, EditorActionReason::FOLDING, handled, {}, handled, handled);
+  }
+
+  bool EditorCore::foldAtInternal(size_t line) {
     bool result = m_decorations_->foldAt(line);
     if (result) syncFoldState();
     return result;
   }
 
-  bool EditorCore::unfoldAt(size_t line) {
+  EditorActionResult EditorCore::unfoldAt(size_t line) {
+    const ActionSnapshot before = captureActionSnapshot();
+    bool handled = unfoldAtInternal(line);
+    return finishAction(before, EditorActionReason::FOLDING, handled, {}, handled, handled);
+  }
+
+  bool EditorCore::unfoldAtInternal(size_t line) {
     bool result = m_decorations_->unfoldAt(line);
     if (result) syncFoldState();
     return result;
   }
 
-  bool EditorCore::toggleFoldAt(size_t line) {
+  EditorActionResult EditorCore::toggleFoldAt(size_t line) {
+    const ActionSnapshot before = captureActionSnapshot();
+    bool handled = toggleFoldAtInternal(line);
+    return finishAction(before, EditorActionReason::FOLDING, handled, {}, handled, handled);
+  }
+
+  bool EditorCore::toggleFoldAtInternal(size_t line) {
     bool result = m_decorations_->toggleFoldAt(line);
     if (result) syncFoldState();
     return result;
   }
 
-  void EditorCore::foldAll() {
+  EditorActionResult EditorCore::foldAll() {
+    const ActionSnapshot before = captureActionSnapshot();
+    foldAllInternal();
+    return finishAction(before, EditorActionReason::FOLDING, true, {}, true, true);
+  }
+
+  void EditorCore::foldAllInternal() {
     m_decorations_->foldAll();
     syncFoldState();
   }
 
-  void EditorCore::unfoldAll() {
+  EditorActionResult EditorCore::unfoldAll() {
+    const ActionSnapshot before = captureActionSnapshot();
+    unfoldAllInternal();
+    return finishAction(before, EditorActionReason::FOLDING, true, {}, true, true);
+  }
+
+  void EditorCore::unfoldAllInternal() {
     m_decorations_->unfoldAll();
     syncFoldState();
   }
@@ -2614,61 +2821,83 @@ namespace NS_SWEETEDITOR {
     return !m_decorations_->isLineHidden(line);
   }
 
-  void EditorCore::clearHighlights(SpanLayer layer) {
+  EditorActionResult EditorCore::clearHighlights(SpanLayer layer) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearHighlights(layer);
     markAllLinesDirty();
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::clearHighlights() {
+  EditorActionResult EditorCore::clearHighlights() {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearHighlights();
     markAllLinesDirty();
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::clearInlayHints() {
+  EditorActionResult EditorCore::clearInlayHints() {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearInlayHints();
     markAllLinesDirty();
     normalizeScrollState();
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::clearPhantomTexts() {
+  EditorActionResult EditorCore::clearPhantomTexts() {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearPhantomTexts();
     markAllLinesDirty();
     normalizeScrollState();
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::clearGutterIcons() {
+  EditorActionResult EditorCore::clearGutterIcons() {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearGutterIcons();
     markAllLinesDirty();
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::clearGuides() {
+  EditorActionResult EditorCore::clearGuides() {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearGuides();
     markAllLinesDirty();
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::clearAllDecorations() {
+  EditorActionResult EditorCore::clearAllDecorations() {
+    const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearAll();
     markAllLinesDirty();
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::setBracketPairs(Vector<BracketPair>&& pairs) {
+  EditorActionResult EditorCore::setBracketPairs(Vector<BracketPair>&& pairs) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_bracket_pairs_ = std::move(pairs);
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true, {}, true);
   }
 
-  void EditorCore::setAutoClosingPairs(Vector<BracketPair>&& pairs) {
+  EditorActionResult EditorCore::setAutoClosingPairs(Vector<BracketPair>&& pairs) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_auto_closing_pairs_ = std::move(pairs);
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
-  void EditorCore::setMatchedBrackets(const TextPosition& open, const TextPosition& close) {
+  EditorActionResult EditorCore::setMatchedBrackets(const TextPosition& open, const TextPosition& close) {
+    const ActionSnapshot before = captureActionSnapshot();
     m_external_bracket_open_ = open;
     m_external_bracket_close_ = close;
     m_has_external_brackets_ = true;
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  void EditorCore::clearMatchedBrackets() {
+  EditorActionResult EditorCore::clearMatchedBrackets() {
+    const ActionSnapshot before = captureActionSnapshot();
     m_has_external_brackets_ = false;
     m_external_bracket_open_ = {};
     m_external_bracket_close_ = {};
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
   void EditorCore::placeCursorAt(const PointF& screen_point) {
@@ -2709,7 +2938,8 @@ namespace NS_SWEETEDITOR {
     LOGD("EditorCore::selectWordAt, selection = %s", range.dump().c_str());
   }
 
-  void EditorCore::ensureCursorVisible() {
+  EditorActionResult EditorCore::ensureCursorVisible() {
+    const ActionSnapshot before = captureActionSnapshot();
     PointF cursor_screen = m_text_layout_->getPositionScreenCoord(m_caret_.cursor);
     float line_height = m_text_layout_->getLineHeight();
 
@@ -2727,6 +2957,7 @@ namespace NS_SWEETEDITOR {
     }
 
     normalizeScrollState();
+    return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
   void EditorCore::moveCursorTo(const TextPosition& new_pos, bool extend_selection) {
@@ -2958,6 +3189,111 @@ namespace NS_SWEETEDITOR {
     result.view_scroll_y = m_view_state_.scroll_y;
     result.view_scale = m_view_state_.scale;
     result.pointer_cursor_type = m_pointer_cursor_type_;
+  }
+
+  EditorCore::ActionSnapshot EditorCore::captureActionSnapshot() const {
+    ActionSnapshot snapshot;
+    snapshot.cursor = m_caret_.cursor;
+    snapshot.has_selection = hasSelection();
+    snapshot.selection = m_caret_.selection;
+    snapshot.scroll_x = m_view_state_.scroll_x;
+    snapshot.scroll_y = m_view_state_.scroll_y;
+    snapshot.scale = m_view_state_.scale;
+    snapshot.pointer_cursor_type = m_pointer_cursor_type_;
+    snapshot.composition = m_composition_controller_.composition();
+    return snapshot;
+  }
+
+  EditorActionResult EditorCore::finishAction(const ActionSnapshot& before,
+                                              EditorActionReason reason,
+                                              bool handled,
+                                              TextEditResult edit_result,
+                                              bool force_redraw,
+                                              bool decoration_changed) const {
+    EditorActionResult result;
+    result.handled = handled;
+    result.reason = reason;
+    result.changes = std::move(edit_result.changes);
+    result.content_changed = !result.changes.empty();
+
+    result.cursor_before = before.cursor;
+    result.cursor_after = m_caret_.cursor;
+    result.cursor_changed = result.cursor_before != result.cursor_after;
+
+    result.has_selection_before = before.has_selection;
+    result.has_selection_after = hasSelection();
+    result.selection_before = before.selection;
+    result.selection_after = m_caret_.selection;
+    result.selection_changed = result.has_selection_before != result.has_selection_after
+                               || (result.has_selection_after && !(result.selection_before == result.selection_after));
+
+    result.scroll_x_before = before.scroll_x;
+    result.scroll_y_before = before.scroll_y;
+    result.scroll_x_after = m_view_state_.scroll_x;
+    result.scroll_y_after = m_view_state_.scroll_y;
+    result.scroll_changed = result.scroll_x_before != result.scroll_x_after
+                            || result.scroll_y_before != result.scroll_y_after;
+
+    result.scale_before = before.scale;
+    result.scale_after = m_view_state_.scale;
+    result.scale_changed = result.scale_before != result.scale_after;
+
+    result.pointer_cursor_before = before.pointer_cursor_type;
+    result.pointer_cursor_after = m_pointer_cursor_type_;
+    result.pointer_cursor_changed = result.pointer_cursor_before != result.pointer_cursor_after;
+
+    result.composition_changed = !sameCompositionState(before.composition, m_composition_controller_.composition());
+    result.decoration_changed = decoration_changed;
+    result.needs_ime_sync = result.content_changed || result.cursor_changed || result.selection_changed || result.composition_changed;
+    if (result.needs_ime_sync) {
+      result.ime_sync = getImeSyncSnapshot();
+    }
+    result.needs_redraw = force_redraw
+                          || result.content_changed
+                          || result.cursor_changed
+                          || result.selection_changed
+                          || result.scroll_changed
+                          || result.scale_changed
+                          || result.composition_changed
+                          || result.decoration_changed;
+    return result;
+  }
+
+  EditorActionResult EditorCore::finishGestureAction(const ActionSnapshot& before,
+                                                     GestureResult gesture_result,
+                                                     EditorActionReason reason,
+                                                     EventType event_type) const {
+    EditorActionResult result = finishAction(before, reason, true);
+    result.gesture_type = gesture_result.type;
+    result.gesture_event_type = event_type;
+    result.tap_point = gesture_result.tap_point;
+    result.hit_target = gesture_result.hit_target;
+    result.modifiers = gesture_result.modifiers;
+    result.needs_edge_scroll = gesture_result.needs_edge_scroll;
+    result.needs_fling = gesture_result.needs_fling;
+    result.needs_animation = gesture_result.needs_animation;
+    result.is_handle_drag = gesture_result.is_handle_drag;
+    result.pointer_cursor_after = gesture_result.pointer_cursor_type;
+    result.pointer_cursor_changed = result.pointer_cursor_before != result.pointer_cursor_after;
+    result.handled = gesture_result.type != GestureType::UNDEFINED
+                     || result.needs_redraw
+                     || result.needs_edge_scroll
+                     || result.needs_fling
+                     || result.needs_animation
+                     || result.pointer_cursor_changed;
+    return result;
+  }
+
+  EditorActionResult EditorCore::finishImeAction(const ActionSnapshot& before,
+                                                 const ImeActionResult& ime_result) const {
+    EditorActionResult result = finishAction(before,
+                                             EditorActionReason::IME,
+                                             ime_result.handled,
+                                             ime_result.edit_result);
+    result.ime_sync = ime_result.sync;
+    result.needs_ime_sync = true;
+    result.needs_redraw = result.needs_redraw || result.composition_changed || result.content_changed;
+    return result;
   }
 
   void EditorCore::normalizeScrollState() {

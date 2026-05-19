@@ -12,24 +12,24 @@ TEST_CASE("EditorCore snippet linked editing mirrors placeholders and exits at t
   editor.loadDocument(document);
   editor.setViewport({800, 600});
 
-  TextEditResult insert_result = editor.insertSnippet("${1:foo} + ${1:foo} -> $0");
-  REQUIRE(insert_result.changed);
+  EditorActionResult insert_result = editor.insertSnippet("${1:foo} + ${1:foo} -> $0");
+  REQUIRE(insert_result.content_changed);
   REQUIRE(editor.isInLinkedEditing());
   CHECK(document->getU8Text() == "foo + foo -> ");
   CHECK(editor.hasSelection());
   CHECK(editor.getSelection() == (TextRange{{0, 0}, {0, 3}}));
 
-  TextEditResult linked_edit = editor.insertText("bar");
-  REQUIRE(linked_edit.changed);
+  EditorActionResult linked_edit = editor.insertText("bar");
+  REQUIRE(linked_edit.content_changed);
   CHECK(document->getU8Text() == "bar + bar -> ");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
   CHECK_FALSE(editor.hasSelection());
 
-  REQUIRE(editor.linkedEditingNextTabStop());
+  REQUIRE(editor.linkedEditingNextTabStop().handled);
   CHECK(editor.getCursorPosition() == (TextPosition{0, 13}));
   CHECK(editor.isInLinkedEditing());
 
-  CHECK_FALSE(editor.linkedEditingNextTabStop());
+  CHECK_FALSE(editor.linkedEditingNextTabStop().handled);
   CHECK_FALSE(editor.isInLinkedEditing());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 13}));
 }
@@ -42,20 +42,20 @@ TEST_CASE("EditorCore linked editing supports prev navigation and explicit cance
   editor.loadDocument(document);
   editor.setViewport({800, 600});
 
-  TextEditResult insert_result = editor.insertSnippet("${1:a}-${2:b}-$0");
-  REQUIRE(insert_result.changed);
+  EditorActionResult insert_result = editor.insertSnippet("${1:a}-${2:b}-$0");
+  REQUIRE(insert_result.content_changed);
   REQUIRE(editor.isInLinkedEditing());
 
-  CHECK_FALSE(editor.linkedEditingPrevTabStop());
+  CHECK_FALSE(editor.linkedEditingPrevTabStop().handled);
   CHECK(editor.isInLinkedEditing());
   CHECK(editor.hasSelection());
   CHECK(editor.getSelection() == (TextRange{{0, 0}, {0, 1}}));
 
-  REQUIRE(editor.linkedEditingNextTabStop());
+  REQUIRE(editor.linkedEditingNextTabStop().handled);
   CHECK(editor.hasSelection());
   CHECK(editor.getSelection() == (TextRange{{0, 2}, {0, 3}}));
 
-  REQUIRE(editor.linkedEditingPrevTabStop());
+  REQUIRE(editor.linkedEditingPrevTabStop().handled);
   CHECK(editor.hasSelection());
   CHECK(editor.getSelection() == (TextRange{{0, 0}, {0, 1}}));
 

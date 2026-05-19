@@ -135,8 +135,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     };
     _session.onPlatformScaleChanged = _updateTextInputStyle;
     _session.bindSettings();
-    _session.setHandleConfig(_platformBehavior.handleConfig);
-    _session.setScrollbarConfig(_platformBehavior.scrollbarConfig);
     _applyDeclarativeInputs();
     widget.controller._attach(this);
     _interactionController.startCursorBlink();
@@ -161,7 +159,9 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     _interactionController = EditorInteractionController(
       session: _session,
       tickerProvider: this,
+      onTextInputActionResult: _handleGestureInputResult,
     );
+    _session.onEditorActionResult = _dispatchEditorActionResult;
 
     _session.completionPopupController.setConfirmHandler(
       _interactionController.onCompletionItemConfirmed,
@@ -192,7 +192,9 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   void _onDocumentLoaded() {
     _pendingDocumentLoadedNotification = true;
-    _flush();
+    if (!_handlingTextInputUpdate) {
+      _syncTextInputState();
+    }
   }
 
   void _dispatchPendingDocumentLoaded() {
@@ -222,7 +224,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       if (pendingSize.width <= 0 || pendingSize.height <= 0) return;
       if (pendingSize != _session.viewportSize) {
         _session.setViewport(pendingSize);
-        _flush();
       }
     });
   }
@@ -247,7 +248,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   void _applyLanguageConfiguration(LanguageConfiguration? config) {
     _session.applyLanguageConfiguration(config);
     _session.decorationProviderManager.requestRefresh();
-    _flush();
   }
 
   void _applyMetadata(EditorMetadata? metadata) {
@@ -323,7 +323,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
           delta,
           appliedValue,
         );
-        _traceImeActionResult('updateImeTextModelDelta', result);
+        _traceImeEditorActionResult('updateImeTextModelDelta', result);
         forceTextInputStateSync =
             _dispatchImeAction(result) || forceTextInputStateSync;
         nextValue = appliedValue;
@@ -344,7 +344,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     }
   }
 
-  core.ImeActionResult _updateImeInputStateText(
+  core.EditorActionResult _updateImeInputStateText(
     core.EditorCore editorCore,
     TextEditingValue value,
   ) {
@@ -374,7 +374,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     );
   }
 
-  core.ImeActionResult _updateImeTextModelDelta(
+  core.EditorActionResult _updateImeTextModelDelta(
     core.EditorCore editorCore,
     TextEditingDelta delta,
     TextEditingValue appliedValue,
@@ -656,12 +656,12 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     _textInputWindowStartOffset = 0;
   }
 
-  bool _dispatchImeAction(core.ImeActionResult result) {
-    _interactionController.dispatchImeActionResult(result);
-    if (result.sync.clearPlatformPreedit) {
+  bool _dispatchImeAction(core.EditorActionResult result) {
+    _dispatchEditorActionResult(result);
+    if (result.imeSync.clearPlatformPreedit) {
       _clearTextInputStateContext();
     }
-    return result.sync.clearPlatformPreedit;
+    return result.imeSync.clearPlatformPreedit;
   }
 
   bool _shouldTraceIme() {
@@ -688,11 +688,14 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     }
   }
 
-  void _traceImeActionResult(String event, core.ImeActionResult result) {
+  void _traceImeEditorActionResult(
+    String event,
+    core.EditorActionResult result,
+  ) {
     if (!_shouldTraceIme()) {
       return;
     }
-    final sync = result.sync;
+    final sync = result.imeSync;
     debugPrint(
       '[SweetEditor][IME] $event result handled=${result.handled} '
       'content=${result.contentChanged} cursor=${result.cursorChanged} '
@@ -781,10 +784,10 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     return math.max(0, math.min(offset, text.length));
   }
 
-  void _handleGestureInputResult(core.GestureResult? result) {
+  void _handleGestureInputResult(core.EditorActionResult? result) {
     if (_editorResourcesReleased) return;
     if (result == null) return;
-    if (result.type != core.GestureType.tap) {
+    if (result.gestureType != core.GestureType.tap) {
       _pendingShowTextInput = false;
       return;
     }
@@ -802,6 +805,10 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     if (shouldShowKeyboard) {
       _openTextInputConnection(show: true);
     }
+  }
+
+  void _dispatchEditorActionResult(core.EditorActionResult? result) {
+    _interactionController.dispatchEditorActionResult(result);
   }
 
   MouseCursor _resolveMouseCursor() {
@@ -837,10 +844,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
             onPointerDown: _interactionController.onPointerDown,
             onPointerMove: _interactionController.onPointerMove,
             onPointerHover: _interactionController.onPointerHover,
-            onPointerUp: (event) {
-              final result = _interactionController.onPointerUp(event);
-              _handleGestureInputResult(result);
-            },
+            onPointerUp: _interactionController.onPointerUp,
             onPointerCancel: _interactionController.onPointerCancel,
             onPointerSignal: _interactionController.onPointerSignal,
             onPointerPanZoomStart: _interactionController.onPointerPanZoomStart,

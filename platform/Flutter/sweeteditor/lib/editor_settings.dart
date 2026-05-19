@@ -104,7 +104,6 @@ class EditorSettings {
 
   void bind(EditorSession session) {
     _session = session;
-    _applyAll(session);
   }
 
   void unbind(EditorSession session) {
@@ -121,7 +120,6 @@ class EditorSettings {
       fontFamily: _fontFamily,
       scale: _scale,
     );
-    _session?.requestFlush();
   }
 
   double getEditorTextSize() => _textSize;
@@ -134,7 +132,6 @@ class EditorSettings {
       fontFamily: _fontFamily,
       scale: _scale,
     );
-    _session?.requestFlush();
   }
 
   String getFontFamily() => _fontFamily;
@@ -146,7 +143,6 @@ class EditorSettings {
       fontFamily: _fontFamily,
       scale: _scale,
     );
-    _session?.requestFlush();
   }
 
   double getScale() => _scale;
@@ -154,7 +150,6 @@ class EditorSettings {
   void setFoldArrowMode(core.FoldArrowMode mode) {
     _foldArrowMode = mode;
     _session?.applyFoldArrowMode(mode);
-    _session?.requestFlush();
   }
 
   core.FoldArrowMode getFoldArrowMode() => _foldArrowMode;
@@ -162,7 +157,6 @@ class EditorSettings {
   void setWrapMode(core.WrapMode mode) {
     _wrapMode = mode;
     _session?.applyWrapMode(mode);
-    _session?.requestFlush();
   }
 
   core.WrapMode getWrapMode() => _wrapMode;
@@ -171,7 +165,6 @@ class EditorSettings {
     _lineSpacingAdd = add;
     _lineSpacingMult = mult;
     _session?.applyLineSpacing(add, mult);
-    _session?.requestFlush();
   }
 
   double getLineSpacingAdd() => _lineSpacingAdd;
@@ -180,7 +173,6 @@ class EditorSettings {
   void setContentStartPadding(double padding) {
     _contentStartPadding = padding.clamp(0, double.infinity);
     _session?.applyContentStartPadding(_contentStartPadding);
-    _session?.requestFlush();
   }
 
   double getContentStartPadding() => _contentStartPadding;
@@ -188,7 +180,6 @@ class EditorSettings {
   void setShowSplitLine(bool show) {
     _showSplitLine = show;
     _session?.applyShowSplitLine(show);
-    _session?.requestFlush();
   }
 
   bool isShowSplitLine() => _showSplitLine;
@@ -197,7 +188,6 @@ class EditorSettings {
     _gutterSticky = sticky;
     _gutterStickyCustomized = true;
     _session?.applyGutterSticky(sticky);
-    _session?.requestFlush();
   }
 
   bool isGutterSticky() => _gutterSticky;
@@ -205,7 +195,6 @@ class EditorSettings {
   void setGutterVisible(bool visible) {
     _gutterVisible = visible;
     _session?.applyGutterVisible(visible);
-    _session?.requestFlush();
   }
 
   bool isGutterVisible() => _gutterVisible;
@@ -213,7 +202,6 @@ class EditorSettings {
   void setCurrentLineRenderMode(core.CurrentLineRenderMode mode) {
     _currentLineRenderMode = mode;
     _session?.applyCurrentLineRenderMode(mode);
-    _session?.requestFlush();
   }
 
   core.CurrentLineRenderMode getCurrentLineRenderMode() =>
@@ -243,7 +231,6 @@ class EditorSettings {
   void setMaxGutterIcons(int count) {
     _maxGutterIcons = count;
     _session?.applyMaxGutterIcons(count);
-    _session?.requestFlush();
   }
 
   int getMaxGutterIcons() => _maxGutterIcons;
@@ -286,6 +273,5 @@ class EditorSettings {
     session.applyReadOnly(_readOnly);
     session.applyMaxGutterIcons(_maxGutterIcons);
     session.decorationProviderManager.requestRefresh();
-    session.requestFlush();
   }
 }

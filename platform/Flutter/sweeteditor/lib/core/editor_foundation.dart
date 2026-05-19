@@ -230,24 +230,3 @@ class ImeInputContext {
   final ImeTextRange composition;
   final ImeInputContextKind kind;
 }
-
-/// Result of a semantic IME action handled by the native editor core.
-class ImeActionResult {
-  const ImeActionResult({
-    this.handled = false,
-    this.contentChanged = false,
-    this.cursorChanged = false,
-    this.selectionChanged = false,
-    this.editResult = TextEditResult.empty,
-    this.sync = ImeSyncSnapshot.empty,
-  });
-
-  static const ImeActionResult empty = ImeActionResult();
-
-  final bool handled;
-  final bool contentChanged;
-  final bool cursorChanged;
-  final bool selectionChanged;
-  final TextEditResult editResult;
-  final ImeSyncSnapshot sync;
-}

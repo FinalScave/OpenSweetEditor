@@ -5,7 +5,7 @@ import {
 } from './SelectionMenuTypes';
 import { EditorEventBus } from '../event/EditorEventBus';
 import { SelectionMenuItemClickEvent } from '../event/EditorEvent';
-import { GestureResult, GestureType } from '../core/EditorCore';
+import { EditorActionResult, GestureType } from '../core/EditorCore';
 import { SweetEditorController } from '../SweetEditorController';
 import { SweetEditor } from '../SweetEditor';
 import { popupRect, PopupRect } from '../ui/PopupPositioner';
@@ -76,7 +76,7 @@ export class SelectionMenuController {
     return this.showing;
   }
 
-  onGestureResult(result: GestureResult, isPointerReleased: boolean): void {
+  onGestureActionResult(result: EditorActionResult, isPointerReleased: boolean): void {
     let shouldShowAfterRelease = false;
 
     if (result.isHandleDrag) {
@@ -90,15 +90,15 @@ export class SelectionMenuController {
 
     if (this.handleDragActive) {
       this.handleDragActive = false;
-      if (result.hasSelection) {
+      if (result.hasSelectionAfter) {
         shouldShowAfterRelease = true;
       }
     }
 
-    switch (result.type) {
+    switch (result.gestureType) {
       case GestureType.DOUBLE_TAP:
         this.hiddenByViewportGesture = false;
-        if (result.hasSelection) {
+        if (result.hasSelectionAfter) {
           this.scheduleShow();
         }
         break;
@@ -122,14 +122,14 @@ export class SelectionMenuController {
     const canRestoreNow = (isPointerReleased && !result.needsAnimation) || animationTickEnded;
     if (this.hiddenByViewportGesture && canRestoreNow) {
       this.hiddenByViewportGesture = false;
-      if (result.hasSelection) {
+      if (result.hasSelectionAfter) {
         this.scheduleShow();
       }
     }
 
     if (isPointerReleased) {
       const shouldShowFromSelectionInteraction = this.selectionInteractionActive &&
-        result.hasSelection &&
+        result.hasSelectionAfter &&
         !this.hiddenByViewportGesture &&
         !result.needsAnimation;
       this.selectionInteractionActive = false;

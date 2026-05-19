@@ -8,20 +8,8 @@ final class ProtocolDecoder {
         self.owner = owner
     }
 
-    func decodeTextEditResultLite(_ data: Data?) -> TextEditResultLite? {
-        owner.parseTextEditResultLite(data)
-    }
-
-    func decodeImeEventEditResultLite(_ data: Data?) -> TextEditResultLite? {
-        owner.parseImeEventEditResultLite(data)
-    }
-
-    func decodeKeyEventResult(_ data: Data?) -> KeyEventResultData? {
-        owner.parseKeyEventResult(data)
-    }
-
-    func decodeGestureResult(_ data: Data?) -> GestureResultData? {
-        owner.parseGestureResult(data)
+    func decodeEditorActionResult(_ data: Data?) -> EditorActionResultData? {
+        owner.parseEditorActionResult(data)
     }
 
     func decodeRenderModel(_ data: Data) -> EditorRenderModel? {
@@ -119,6 +107,10 @@ extension SweetEditorCore {
         }
     }
 
+    fileprivate func eventType(from value: Int32) -> SEEventType {
+        return SEEventType(rawValue: UInt8(clamping: value)) ?? .undefined
+    }
+
     fileprivate func hitTargetType(from value: Int32) -> HitTargetType {
         switch value {
         case 1: return .INLAY_HINT_TEXT
@@ -131,6 +123,10 @@ extension SweetEditorCore {
         case 8: return .LINK
         default: return .NONE
         }
+    }
+
+    fileprivate func editorActionReason(from value: Int32) -> EditorActionReason {
+        return EditorActionReason(rawValue: value) ?? .NONE
     }
 
     fileprivate func parseTextChange(_ reader: inout BinaryReader) -> TextChangeData? {
@@ -148,142 +144,163 @@ extension SweetEditorCore {
         return TextChangeData(range: range, new_text: newText)
     }
 
-    fileprivate func parseTextEditResultLite(_ data: Data?) -> TextEditResultLite? {
-        guard let data = data else { return nil }
-        var reader = BinaryReader(data: data)
-        guard let changed = reader.readInt32(), changed != 0,
-              let count = reader.readInt32(), count > 0 else {
+    fileprivate func parseTextPosition(_ reader: inout BinaryReader) -> TextPositionData? {
+        guard let line = reader.readInt32(),
+              let column = reader.readInt32() else {
             return nil
         }
+        return TextPositionData(line: Int(line), column: Int(column))
+    }
+
+    fileprivate func parseTextRange(_ reader: inout BinaryReader) -> TextRangeData? {
+        guard let start = parseTextPosition(&reader),
+              let end = parseTextPosition(&reader) else {
+            return nil
+        }
+        return TextRangeData(start: start, end: end)
+    }
+
+    fileprivate func parseHitTarget(_ reader: inout BinaryReader) -> HitTargetData? {
+        guard let hitType = reader.readInt32(),
+              let hitLine = reader.readInt32(),
+              let hitColumn = reader.readInt32(),
+              let hitIcon = reader.readInt32(),
+              let hitColor = reader.readInt32() else {
+            return nil
+        }
+        return HitTargetData(
+            type: hitTargetType(from: hitType),
+            line: Int(hitLine),
+            column: Int(hitColumn),
+            icon_id: Int32(hitIcon),
+            color_value: Int32(hitColor)
+        )
+    }
+
+    fileprivate func parseTextChanges(_ reader: inout BinaryReader) -> [TextChangeData]? {
+        guard let count = reader.readInt32(), count >= 0 else { return nil }
         var changes: [TextChangeData] = []
         let changeCount = Int(count)
         changes.reserveCapacity(changeCount)
         for _ in 0..<changeCount {
-            guard let change = parseTextChange(&reader) else { break }
+            guard let change = parseTextChange(&reader) else { return nil }
             changes.append(change)
         }
-        guard !changes.isEmpty else { return nil }
-        return TextEditResultLite(changes: changes)
+        return changes
     }
 
-    fileprivate func parseImeEventEditResultLite(_ data: Data?) -> TextEditResultLite? {
-        guard let data = data else { return nil }
-        var reader = BinaryReader(data: data)
-        guard reader.readInt32() != nil,
-              reader.readInt32() != nil,
-              reader.readInt32() != nil,
-              reader.readInt32() != nil,
-              let hasEdit = reader.readInt32(),
-              hasEdit != 0,
-              let count = reader.readInt32(),
-              count > 0 else {
+    fileprivate func parseImeSyncSnapshot(_ reader: inout BinaryReader) -> ImeSyncSnapshotData? {
+        guard let cursor = parseTextPosition(&reader),
+              let hasSelection = reader.readInt32(),
+              let selection = parseTextRange(&reader),
+              let hasComposingSession = reader.readInt32(),
+              let hasVisibleCompositionRange = reader.readInt32(),
+              let visibleCompositionRange = parseTextRange(&reader),
+              let hasPlatformMarkedRange = reader.readInt32(),
+              let platformMarkedRange = parseTextRange(&reader),
+              let preeditStorage = reader.readInt32(),
+              let contextPolicy = reader.readInt32(),
+              let clearPlatformPreedit = reader.readInt32() else {
             return nil
         }
-        var changes: [TextChangeData] = []
-        let changeCount = Int(count)
-        changes.reserveCapacity(changeCount)
-        for _ in 0..<changeCount {
-            guard let change = parseTextChange(&reader) else { break }
-            changes.append(change)
-        }
-        guard !changes.isEmpty else { return nil }
-        return TextEditResultLite(changes: changes)
+        return ImeSyncSnapshotData(
+            cursor: cursor,
+            has_selection: hasSelection != 0,
+            selection: selection,
+            has_composing_session: hasComposingSession != 0,
+            has_visible_composition_range: hasVisibleCompositionRange != 0,
+            visible_composition_range: visibleCompositionRange,
+            has_platform_marked_range: hasPlatformMarkedRange != 0,
+            platform_marked_range: platformMarkedRange,
+            preedit_storage: preeditStorage,
+            context_policy: contextPolicy,
+            clear_platform_preedit: clearPlatformPreedit != 0
+        )
     }
 
-    fileprivate func parseKeyEventResult(_ data: Data?) -> KeyEventResultData? {
+    fileprivate func parseEditorActionResult(_ data: Data?) -> EditorActionResultData? {
         guard let data = data else { return nil }
         var reader = BinaryReader(data: data)
         guard let handled = reader.readInt32(),
+              let needsRedraw = reader.readInt32(),
+              let reasonValue = reader.readInt32(),
               let contentChanged = reader.readInt32(),
               let cursorChanged = reader.readInt32(),
               let selectionChanged = reader.readInt32(),
-              let hasEdit = reader.readInt32() else {
+              let scrollChanged = reader.readInt32(),
+              let scaleChanged = reader.readInt32(),
+              let pointerCursorChanged = reader.readInt32(),
+              let compositionChanged = reader.readInt32(),
+              let decorationChanged = reader.readInt32(),
+              let needsImeSync = reader.readInt32(),
+              let needsEdgeScroll = reader.readInt32(),
+              let needsFling = reader.readInt32(),
+              let needsAnimation = reader.readInt32(),
+              let isHandleDrag = reader.readInt32(),
+              let changes = parseTextChanges(&reader),
+              let cursorBefore = parseTextPosition(&reader),
+              let cursorAfter = parseTextPosition(&reader),
+              let hasSelectionBefore = reader.readInt32(),
+              let selectionBefore = parseTextRange(&reader),
+              let hasSelectionAfter = reader.readInt32(),
+              let selectionAfter = parseTextRange(&reader),
+              let scrollXBefore = reader.readFloat(),
+              let scrollYBefore = reader.readFloat(),
+              let scrollXAfter = reader.readFloat(),
+              let scrollYAfter = reader.readFloat(),
+              let scaleBefore = reader.readFloat(),
+              let scaleAfter = reader.readFloat(),
+              let pointerCursorBefore = reader.readInt32(),
+              let pointerCursorAfter = reader.readInt32(),
+              let imeSync = parseImeSyncSnapshot(&reader),
+              let gestureTypeValue = reader.readInt32(),
+              let gestureEventTypeValue = reader.readInt32(),
+              let tapX = reader.readFloat(),
+              let tapY = reader.readFloat(),
+              let hitTarget = parseHitTarget(&reader),
+              let modifiers = reader.readInt32(),
+              let command = reader.readInt32() else {
             return nil
         }
-
-        var editChanges: [TextChangeData] = []
-        if hasEdit != 0, let count = reader.readInt32(), count > 0 {
-            let changeCount = Int(count)
-            editChanges.reserveCapacity(changeCount)
-            for _ in 0..<changeCount {
-                guard let change = parseTextChange(&reader) else { break }
-                editChanges.append(change)
-            }
-        }
-        let zeroPos = TextPositionData(line: 0, column: 0)
-        let edit = TextEditResultData(
-            changed: !editChanges.isEmpty,
-            changes: editChanges,
-            cursor_before: zeroPos,
-            cursor_after: zeroPos
-        )
-        return KeyEventResultData(
+        return EditorActionResultData(
             handled: handled != 0,
+            needs_redraw: needsRedraw != 0,
+            reason: editorActionReason(from: reasonValue),
             content_changed: contentChanged != 0,
             cursor_changed: cursorChanged != 0,
             selection_changed: selectionChanged != 0,
-            edit_result: edit
-        )
-    }
-
-    fileprivate func parseGestureResult(_ data: Data?) -> GestureResultData? {
-        guard let data = data else { return nil }
-        var reader = BinaryReader(data: data)
-        guard let typeValue = reader.readInt32() else { return nil }
-        let type = gestureType(from: typeValue)
-        var tapPoint = PointData(x: 0, y: 0)
-        if type == .TAP || type == .DOUBLE_TAP || type == .LONG_PRESS || type == .DRAG_SELECT || type == .CONTEXT_MENU {
-            guard let x = reader.readFloat(), let y = reader.readFloat() else { return nil }
-            tapPoint = PointData(x: x, y: y)
-        }
-
-        guard let cursorLine = reader.readInt32(),
-              let cursorColumn = reader.readInt32(),
-              let hasSelectionI32 = reader.readInt32(),
-              let selStartLine = reader.readInt32(),
-              let selStartColumn = reader.readInt32(),
-              let selEndLine = reader.readInt32(),
-              let selEndColumn = reader.readInt32(),
-              let viewScrollX = reader.readFloat(),
-              let viewScrollY = reader.readFloat(),
-              let viewScale = reader.readFloat() else {
-            return nil
-        }
-
-        var hitTarget = HitTargetData(type: .NONE, line: 0, column: 0, icon_id: 0, color_value: 0)
-        if let hitType = reader.readInt32(),
-           let hitLine = reader.readInt32(),
-           let hitColumn = reader.readInt32(),
-           let hitIcon = reader.readInt32(),
-           let hitColor = reader.readInt32() {
-            hitTarget = HitTargetData(
-                type: hitTargetType(from: hitType),
-                line: Int(hitLine),
-                column: Int(hitColumn),
-                icon_id: Int32(hitIcon),
-                color_value: Int32(hitColor)
-            )
-        }
-
-        let cursor = TextPositionData(line: Int(cursorLine), column: Int(cursorColumn))
-        let selection = TextRangeData(
-            start: TextPositionData(line: Int(selStartLine), column: Int(selStartColumn)),
-            end: TextPositionData(line: Int(selEndLine), column: Int(selEndColumn))
-        )
-        return GestureResultData(
-            type: type,
-            tap_point: tapPoint,
-            modifiers: 0,
-            scale: 1,
-            scroll_x: 0,
-            scroll_y: 0,
-            cursor_position: cursor,
-            has_selection: hasSelectionI32 != 0,
-            selection: selection,
-            view_scroll_x: viewScrollX,
-            view_scroll_y: viewScrollY,
-            view_scale: viewScale,
-            hit_target: hitTarget
+            scroll_changed: scrollChanged != 0,
+            scale_changed: scaleChanged != 0,
+            pointer_cursor_changed: pointerCursorChanged != 0,
+            composition_changed: compositionChanged != 0,
+            decoration_changed: decorationChanged != 0,
+            needs_ime_sync: needsImeSync != 0,
+            needs_edge_scroll: needsEdgeScroll != 0,
+            needs_fling: needsFling != 0,
+            needs_animation: needsAnimation != 0,
+            is_handle_drag: isHandleDrag != 0,
+            changes: changes,
+            cursor_before: cursorBefore,
+            cursor_after: cursorAfter,
+            has_selection_before: hasSelectionBefore != 0,
+            selection_before: selectionBefore,
+            has_selection_after: hasSelectionAfter != 0,
+            selection_after: selectionAfter,
+            scroll_x_before: scrollXBefore,
+            scroll_y_before: scrollYBefore,
+            scroll_x_after: scrollXAfter,
+            scroll_y_after: scrollYAfter,
+            scale_before: scaleBefore,
+            scale_after: scaleAfter,
+            pointer_cursor_before: pointerCursorBefore,
+            pointer_cursor_after: pointerCursorAfter,
+            ime_sync: imeSync,
+            gesture_type: gestureType(from: gestureTypeValue),
+            gesture_event_type: eventType(from: gestureEventTypeValue),
+            tap_point: PointData(x: tapX, y: tapY),
+            hit_target: hitTarget,
+            modifiers: UInt8(clamping: modifiers),
+            command: command
         )
     }
 

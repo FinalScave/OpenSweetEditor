@@ -117,63 +117,63 @@ EDITOR_API intptr_t create_editor(text_measurer_t measurer, const uint8_t* optio
 EDITOR_API void free_editor(intptr_t editor_handle);
 
 /// Load Document
-EDITOR_API void set_editor_document(intptr_t editor_handle, intptr_t document_handle);
+EDITOR_API const uint8_t* set_editor_document(intptr_t editor_handle, intptr_t document_handle, size_t* out_size);
 
 /// Set editor viewport
 /// @param width Editor view width
 /// @param height Editor view height
-EDITOR_API void set_editor_viewport(intptr_t editor_handle, int16_t width, int16_t height);
+EDITOR_API const uint8_t* set_editor_viewport(intptr_t editor_handle, int16_t width, int16_t height, size_t* out_size);
 
 /// Notify editor that font metrics have changed (call after font/scale changes)
-EDITOR_API void editor_on_font_metrics_changed(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_on_font_metrics_changed(intptr_t editor_handle, size_t* out_size);
 
 /// Set fold arrow display mode (affects reserved gutter width)
 /// @param mode 0=AUTO(auto show when fold regions exist), 1=ALWAYS(always reserve), 2=HIDDEN(always hide)
-EDITOR_API void editor_set_fold_arrow_mode(intptr_t editor_handle, int mode);
+EDITOR_API const uint8_t* editor_set_fold_arrow_mode(intptr_t editor_handle, int mode, size_t* out_size);
 
 /// Set auto wrap mode
 /// @param mode 0=NONE(no wrap), 1=CHAR_BREAK(character-level wrap), 2=WORD_BREAK(word-level wrap)
-EDITOR_API void editor_set_wrap_mode(intptr_t editor_handle, int mode);
+EDITOR_API const uint8_t* editor_set_wrap_mode(intptr_t editor_handle, int mode, size_t* out_size);
 
 /// Set tab size (number of spaces per tab stop)
 /// @param tab_size Tab size (default 4, minimum 1)
-EDITOR_API void editor_set_tab_size(intptr_t editor_handle, int tab_size);
+EDITOR_API const uint8_t* editor_set_tab_size(intptr_t editor_handle, int tab_size, size_t* out_size);
 
 /// Set editor scale factor
 /// @param scale Scale factor (1.0 = 100%)
-EDITOR_API void editor_set_scale(intptr_t editor_handle, float scale);
+EDITOR_API const uint8_t* editor_set_scale(intptr_t editor_handle, float scale, size_t* out_size);
 
 /// Set line spacing parameters (formula: line_height = font_height * mult + add)
 /// @param add Extra line spacing in pixels (default 0)
 /// @param mult Line spacing multiplier (default 1.0)
-EDITOR_API void editor_set_line_spacing(intptr_t editor_handle, float add, float mult);
+EDITOR_API const uint8_t* editor_set_line_spacing(intptr_t editor_handle, float add, float mult, size_t* out_size);
 
 /// Set extra horizontal padding between gutter split and text content start
 /// @param padding Padding in pixels (clamped to >= 0)
-EDITOR_API void editor_set_content_start_padding(intptr_t editor_handle, float padding);
+EDITOR_API const uint8_t* editor_set_content_start_padding(intptr_t editor_handle, float padding, size_t* out_size);
 
 /// Set whether to render gutter split line
 /// @param show 0=hide, non-zero=show
-EDITOR_API void editor_set_show_split_line(intptr_t editor_handle, int show);
+EDITOR_API const uint8_t* editor_set_show_split_line(intptr_t editor_handle, int show, size_t* out_size);
 
 /// Set current line render mode
 /// @param mode 0=BACKGROUND(fill), 1=BORDER(stroke), 2=NONE(disabled)
-EDITOR_API void editor_set_current_line_render_mode(intptr_t editor_handle, int mode);
+EDITOR_API const uint8_t* editor_set_current_line_render_mode(intptr_t editor_handle, int mode, size_t* out_size);
 
 /// Set whether gutter stays fixed during horizontal scroll
 /// @param sticky 0=gutter scrolls with content (mobile style), non-zero=gutter fixed (desktop style)
-EDITOR_API void editor_set_gutter_sticky(intptr_t editor_handle, int sticky);
+EDITOR_API const uint8_t* editor_set_gutter_sticky(intptr_t editor_handle, int sticky, size_t* out_size);
 
 /// Set whether gutter area is visible
 /// @param visible 0=hide entire gutter, non-zero=show gutter
-EDITOR_API void editor_set_gutter_visible(intptr_t editor_handle, int visible);
+EDITOR_API const uint8_t* editor_set_gutter_visible(intptr_t editor_handle, int visible, size_t* out_size);
 
 /// Set selection handle hit-test configuration using offset rects
 /// @param start_left/start_top/start_right/start_bottom  Start handle hit area offset from cursor bottom anchor (handle tip)
 /// @param end_left/end_top/end_right/end_bottom  End handle hit area offset from cursor bottom anchor (handle tip)
-EDITOR_API void editor_set_handle_config(intptr_t editor_handle,
+EDITOR_API const uint8_t* editor_set_handle_config(intptr_t editor_handle,
     float start_left, float start_top, float start_right, float start_bottom,
-    float end_left, float end_top, float end_right, float end_bottom);
+    float end_left, float end_top, float end_right, float end_bottom, size_t* out_size);
 
 /// Set scrollbar full configuration (geometry + behavior)
 /// @param thickness Scrollbar thickness in pixels
@@ -184,10 +184,10 @@ EDITOR_API void editor_set_handle_config(intptr_t editor_handle,
 /// @param track_tap_mode 0=JUMP, 1=DISABLED
 /// @param fade_delay_ms Delay before hide in TRANSIENT mode
 /// @param fade_duration_ms Fade duration in TRANSIENT mode (used for both fade-in and fade-out)
-EDITOR_API void editor_set_scrollbar_config(intptr_t editor_handle,
+EDITOR_API const uint8_t* editor_set_scrollbar_config(intptr_t editor_handle,
     float thickness, float min_thumb, float thumb_hit_padding,
     int mode, int thumb_draggable, int track_tap_mode,
-    int fade_delay_ms, int fade_duration_ms);
+    int fade_delay_ms, int fade_duration_ms, size_t* out_size);
 
 /// Build render model for one editor frame
 /// @param out_size Output: payload byte length (bytes, excluding extra '\0' terminator)
@@ -336,40 +336,15 @@ EDITOR_API const uint8_t* build_editor_render_model(intptr_t editor_handle, size
 ///         Call free_binary_data after use; returns NULL on failure
 EDITOR_API const uint8_t* get_layout_metrics(intptr_t editor_handle, size_t* out_size);
 
-/// GestureResult binary return layout (payload uses native byte order; all supported platforms are currently LE):
-/// 1. i32 gesture_type
-/// 2. Only when gesture_type is TAP / DOUBLE_TAP / LONG_PRESS / DRAG_SELECT / CONTEXT_MENU, append:
-///    f32 tap_x, f32 tap_y
-/// 3. Always append editor state:
-///    i32 cursor_line
-///    i32 cursor_column
-///    i32 has_selection
-///    i32 selection_start_line
-///    i32 selection_start_column
-///    i32 selection_end_line
-///    i32 selection_end_column
-///    f32 view_scroll_x
-///    f32 view_scroll_y
-///    f32 view_scale
-///    i32 hit_target_type
-///    i32 hit_target_line
-///    i32 hit_target_column
-///    i32 hit_target_icon_id
-///    i32 hit_target_color_value
-///    i32 needs_edge_scroll (1 = platform should start/continue 16ms timer calling
-///        editor_tick_edge_scroll; 0 = platform should stop the timer)
-///    i32 needs_fling (1 = platform should start/continue per-frame callback calling
-///        editor_tick_fling; 0 = platform should stop the callback)
-///    i32 needs_animation (1 = any animation still active; platform can use a single
-///        frame callback calling editor_tick_animations instead of separate tick calls)
-///    i32 is_handle_drag
-///    i32 pointer_cursor_type (0=DEFAULT, 1=TEXT, 2=HAND)
+/// EditorActionResult binary return layout (payload uses native byte order; all supported platforms are currently LE).
+/// This is the only result payload for core state-changing APIs. Platforms should use needs_redraw from this payload
+/// to decide whether to flush editor state and schedule repaint.
 ///
 /// Handle gesture event
 /// @param type Event type
 /// @param pointer_count Finger point count
 /// @param points Data for each point
-/// @return GestureResult binary payload, returns NULL on failure
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* handle_editor_gesture_event(intptr_t editor_handle, uint8_t type, uint8_t pointer_count, float* points, size_t* out_size);
 
 /// Handle gesture event(extended version, supports modifier keys and wheel/scale parameters)
@@ -380,54 +355,38 @@ EDITOR_API const uint8_t* handle_editor_gesture_event(intptr_t editor_handle, ui
 /// @param wheel_delta_x Horizontal wheel delta (used for MOUSE_WHEEL/DIRECT_SCROLL)
 /// @param wheel_delta_y Vertical wheel delta (used for MOUSE_WHEEL/DIRECT_SCROLL)
 /// @param direct_scale Direct scale value (used for DIRECT_SCALE)
-/// @return GestureResult binary payload, returns NULL on failure
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* handle_editor_gesture_event_ex(intptr_t editor_handle, uint8_t type, uint8_t pointer_count, float* points,
     uint8_t modifiers, float wheel_delta_x, float wheel_delta_y, float direct_scale, size_t* out_size);
 
 /// Tick edge-scroll during drag selection / handle drag.
-/// Call at ~16ms intervals while the previous GestureResult.needs_edge_scroll was true.
-/// Returns the same GestureResult binary layout as handle_editor_gesture_event.
+/// Call at ~16ms intervals while the previous EditorActionResult.needs_edge_scroll was true.
+/// Returns the same EditorActionResult binary layout as handle_editor_gesture_event.
 /// When needs_edge_scroll becomes false in the returned payload, stop the timer.
-/// @return GestureResult binary payload
+/// @return EditorActionResult binary payload
 EDITOR_API const uint8_t* editor_tick_edge_scroll(intptr_t editor_handle, size_t* out_size);
 
 /// Tick fling (inertial scroll) animation.
-/// Call each frame while the previous GestureResult.needs_fling was true.
+/// Call each frame while the previous EditorActionResult.needs_fling was true.
 /// The core tracks real elapsed time internally; any frame interval is fine.
-/// Returns the same GestureResult binary layout as handle_editor_gesture_event.
+/// Returns the same EditorActionResult binary layout as handle_editor_gesture_event.
 /// When needs_fling becomes false in the returned payload, stop the timer.
-/// @return GestureResult binary payload
+/// @return EditorActionResult binary payload
 EDITOR_API const uint8_t* editor_tick_fling(intptr_t editor_handle, size_t* out_size);
 
 /// Unified animation tick: advances all active animations (edge-scroll, fling).
 /// Platform can use a single frame callback driven by needs_animation and call this
 /// instead of editor_tick_edge_scroll() / editor_tick_fling() separately.
-/// Returns the same GestureResult binary layout as handle_editor_gesture_event.
+/// Returns the same EditorActionResult binary layout as handle_editor_gesture_event.
 /// When needs_animation becomes false in the returned payload, stop the callback.
-/// @return GestureResult binary payload
+/// @return EditorActionResult binary payload
 EDITOR_API const uint8_t* editor_tick_animations(intptr_t editor_handle, size_t* out_size);
 
-/// KeyEventResult binary return layout (payload uses native byte order; all supported platforms are currently LE):
-/// 1. i32 handled
-/// 2. i32 content_changed
-/// 3. i32 cursor_changed
-/// 4. i32 selection_changed
-/// 5. i32 has_edit
-/// 6. If has_edit != 0, append a TextEditResult.changes array:
-///    i32 change_count
-///    Repeat for change_count groups:
-///    i32 range_start_line
-///    i32 range_start_column
-///    i32 range_end_line
-///    i32 range_end_column
-///    i32 new_text_len
-///    u8[new_text_len] new_text_utf8
-///
 /// Handle keyboard event (optional default key mapping; platform layer can bypass this API and call atomic operation APIs directly)
 /// @param key_code Key code (KeyCode enum value)
 /// @param text Input text (UTF8; pass for normal character input, pass NULL for special keys)
 /// @param modifiers Modifier key flags(SHIFT=1, CTRL=2, ALT=4, META=8)
-/// @return KeyEventResult binary payload, returns NULL on failure
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* handle_editor_key_event(intptr_t editor_handle, uint16_t key_code, const char* text, uint8_t modifiers, size_t* out_size);
 
 /// Set custom key map from binary payload.
@@ -440,27 +399,15 @@ EDITOR_API const uint8_t* handle_editor_key_event(intptr_t editor_handle, uint16
 ///     u16 second_key_code  (0 = single-chord)
 ///     u32 command          (EditorCommand enum value)
 /// Invalid or empty payload is ignored (current key map is preserved).
-EDITOR_API void editor_set_keymap(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_keymap(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 #pragma endregion
 
 #pragma region [Editing, Cursor & Interaction]
 
-/// TextEditResult binary return layout (payload uses native byte order; all supported platforms are currently LE):
-/// 1. i32 changed
-/// 2. When changed != 0, append change array:
-///    i32 change_count
-///    Repeat for change_count groups:
-///    i32 range_start_line
-///    i32 range_start_column
-///    i32 range_end_line
-///    i32 range_end_column
-///    i32 new_text_len
-///    u8[new_text_len] new_text_utf8
-///
 /// Insert text at cursor position (replace selected text if selection exists)
 /// @param text UTF8 text to insert
-/// @return TextEditResult binary payload, returns NULL if there is no change
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_insert_text(intptr_t editor_handle, const char* text, size_t* out_size);
 
 /// Replace text in the specified range (atomic operation for precise replacements such as textEdit)
@@ -469,7 +416,7 @@ EDITOR_API const uint8_t* editor_insert_text(intptr_t editor_handle, const char*
 /// @param end_line end line of replacement range(0-based)
 /// @param end_column End column of replacement range (0-based)
 /// @param text Replacement UTF8 text
-/// @return TextEditResult binary payload, returns NULL if there is no change
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_replace_text(intptr_t editor_handle,
     size_t start_line, size_t start_column,
     size_t end_line, size_t end_column,
@@ -480,53 +427,53 @@ EDITOR_API const uint8_t* editor_replace_text(intptr_t editor_handle,
 /// @param start_column Start column of deletion range (0-based)
 /// @param end_line end line of deletion range(0-based)
 /// @param end_column End column of deletion range (0-based)
-/// @return TextEditResult binary payload, returns NULL if there is no change
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_delete_text(intptr_t editor_handle,
     size_t start_line, size_t start_column,
     size_t end_line, size_t end_column, size_t* out_size);
 
 /// Delete one character before cursor (Backspace behavior); delete selection if present
-/// @return TextEditResult binary payload, returns NULL if there is no change
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_backspace(intptr_t editor_handle, size_t* out_size);
 
 /// Delete one character after cursor (Delete behavior); delete selection if present
-/// @return TextEditResult binary payload, returns NULL if there is no change
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_delete_forward(intptr_t editor_handle, size_t* out_size);
 
 /// Move current line (or lines covered by selection) up by one line
-/// @return TextEditResult binary payload, returns NULL if there is no change
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_move_line_up(intptr_t editor_handle, size_t* out_size);
 
 /// Move current line (or lines covered by selection) down by one line
-/// @return TextEditResult binary payload, returns NULL if there is no change
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_move_line_down(intptr_t editor_handle, size_t* out_size);
 
 /// Copy current line (or lines covered by selection) upward
-/// @return TextEditResult binary payload, returns NULL if there is no change
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_copy_line_up(intptr_t editor_handle, size_t* out_size);
 
 /// Copy current line (or lines covered by selection) downward
-/// @return TextEditResult binary payload, returns NULL if there is no change
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_copy_line_down(intptr_t editor_handle, size_t* out_size);
 
 /// Delete current line (or all lines covered by selection)
-/// @return TextEditResult binary payload, returns NULL if there is no change
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_delete_line(intptr_t editor_handle, size_t* out_size);
 
 /// Insert empty line above current line
-/// @return TextEditResult binary payload, returns NULL if there is no change
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_insert_line_above(intptr_t editor_handle, size_t* out_size);
 
 /// Insert empty line below current line
-/// @return TextEditResult binary payload, returns NULL if there is no change
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_insert_line_below(intptr_t editor_handle, size_t* out_size);
 
 /// Undo last edit operation
-/// @return TextEditResult binary payload, returns NULL when nothing can be undone
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_undo(intptr_t editor_handle, size_t* out_size);
 
 /// Redo last undone operation
-/// @return TextEditResult binary payload, returns NULL when nothing can be redone
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_redo(intptr_t editor_handle, size_t* out_size);
 
 /// Whether undo is available
@@ -540,7 +487,7 @@ EDITOR_API int editor_can_redo(intptr_t editor_handle);
 /// Set cursor position
 /// @param line Line number(0-based)
 /// @param column Column number (0-based)
-EDITOR_API void editor_set_cursor_position(intptr_t editor_handle, size_t line, size_t column);
+EDITOR_API const uint8_t* editor_set_cursor_position(intptr_t editor_handle, size_t line, size_t column, size_t* out_size);
 
 /// Get cursor position
 /// @param out_line Output: line number
@@ -548,14 +495,14 @@ EDITOR_API void editor_set_cursor_position(intptr_t editor_handle, size_t line, 
 EDITOR_API void editor_get_cursor_position(intptr_t editor_handle, size_t* out_line, size_t* out_column);
 
 /// Select all
-EDITOR_API void editor_select_all(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_select_all(intptr_t editor_handle, size_t* out_size);
 
 /// Set selection range
 /// @param start_line selection start line(0-based)
 /// @param start_column selection start column (0-based)
 /// @param end_line selection end line(0-based)
 /// @param end_column selection end column (0-based)
-EDITOR_API void editor_set_selection(intptr_t editor_handle, size_t start_line, size_t start_column, size_t end_line, size_t end_column);
+EDITOR_API const uint8_t* editor_set_selection(intptr_t editor_handle, size_t start_line, size_t start_column, size_t end_line, size_t end_column, size_t* out_size);
 
 /// Get current selection range (two cursor positions)
 /// @param out_start_line Output: selection start line
@@ -582,31 +529,31 @@ EDITOR_API const char* editor_get_word_at_cursor(intptr_t editor_handle);
 
 /// Move cursor left
 /// @param extend_selection Whether to extend selection (Shift behavior)
-EDITOR_API void editor_move_cursor_left(intptr_t editor_handle, int extend_selection);
+EDITOR_API const uint8_t* editor_move_cursor_left(intptr_t editor_handle, int extend_selection, size_t* out_size);
 
 /// Move cursor right
 /// @param extend_selection Whether to extend selection
-EDITOR_API void editor_move_cursor_right(intptr_t editor_handle, int extend_selection);
+EDITOR_API const uint8_t* editor_move_cursor_right(intptr_t editor_handle, int extend_selection, size_t* out_size);
 
 /// Move cursor up
 /// @param extend_selection Whether to extend selection
-EDITOR_API void editor_move_cursor_up(intptr_t editor_handle, int extend_selection);
+EDITOR_API const uint8_t* editor_move_cursor_up(intptr_t editor_handle, int extend_selection, size_t* out_size);
 
 /// Move cursor down
 /// @param extend_selection Whether to extend selection
-EDITOR_API void editor_move_cursor_down(intptr_t editor_handle, int extend_selection);
+EDITOR_API const uint8_t* editor_move_cursor_down(intptr_t editor_handle, int extend_selection, size_t* out_size);
 
 /// Move cursor to line start
 /// @param extend_selection Whether to extend selection
-EDITOR_API void editor_move_cursor_to_line_start(intptr_t editor_handle, int extend_selection);
+EDITOR_API const uint8_t* editor_move_cursor_to_line_start(intptr_t editor_handle, int extend_selection, size_t* out_size);
 
 /// Move cursor to line end
 /// @param extend_selection Whether to extend selection
-EDITOR_API void editor_move_cursor_to_line_end(intptr_t editor_handle, int extend_selection);
+EDITOR_API const uint8_t* editor_move_cursor_to_line_end(intptr_t editor_handle, int extend_selection, size_t* out_size);
 
 /// Set read-only mode
 /// @param read_only 1=read-only, 0=editable
-EDITOR_API void editor_set_read_only(intptr_t editor_handle, int read_only);
+EDITOR_API const uint8_t* editor_set_read_only(intptr_t editor_handle, int read_only, size_t* out_size);
 
 /// Get whether read-only mode is active
 /// @return 1=read-only, 0=editable
@@ -614,7 +561,7 @@ EDITOR_API int editor_is_read_only(intptr_t editor_handle);
 
 /// Set auto indent mode
 /// @param mode 0=NONE(no auto indent),1=KEEP_INDENT(keep previous line indent)
-EDITOR_API void editor_set_auto_indent_mode(intptr_t editor_handle, int mode);
+EDITOR_API const uint8_t* editor_set_auto_indent_mode(intptr_t editor_handle, int mode, size_t* out_size);
 
 /// Get current auto indent mode
 /// @return 0=NONE, 1=KEEP_INDENT
@@ -622,11 +569,11 @@ EDITOR_API int editor_get_auto_indent_mode(intptr_t editor_handle);
 
 /// Set backspace unindent behavior
 /// @param enabled 1=enabled, 0=disabled
-EDITOR_API void editor_set_backspace_unindent(intptr_t editor_handle, int enabled);
+EDITOR_API const uint8_t* editor_set_backspace_unindent(intptr_t editor_handle, int enabled, size_t* out_size);
 
 /// Set whether Tab inserts spaces up to the next tab stop instead of a literal '\t'
 /// @param enabled 1=insert spaces, 0=insert '\t'
-EDITOR_API void editor_set_insert_spaces(intptr_t editor_handle, int enabled);
+EDITOR_API const uint8_t* editor_set_insert_spaces(intptr_t editor_handle, int enabled, size_t* out_size);
 
 #pragma endregion
 
@@ -635,20 +582,20 @@ EDITOR_API void editor_set_insert_spaces(intptr_t editor_handle, int enabled);
 /// Scroll to specified line
 /// @param line Line number(0-based)
 /// @param behavior Scroll behavior(0=GOTO_TOP, 1=GOTO_CENTER, 2=GOTO_BOTTOM)
-EDITOR_API void editor_scroll_to_line(intptr_t editor_handle, size_t line, uint8_t behavior);
+EDITOR_API const uint8_t* editor_scroll_to_line(intptr_t editor_handle, size_t line, uint8_t behavior, size_t* out_size);
 
 /// Go to specified line and column (scroll + cursor positioning)
 /// @param line Line number(0-based)
 /// @param column Column number (0-based)
-EDITOR_API void editor_goto_position(intptr_t editor_handle, size_t line, size_t column);
+EDITOR_API const uint8_t* editor_goto_position(intptr_t editor_handle, size_t line, size_t column, size_t* out_size);
 
 /// Adjust scroll offset just enough to keep current cursor visible in viewport
-EDITOR_API void editor_ensure_cursor_visible(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_ensure_cursor_visible(intptr_t editor_handle, size_t* out_size);
 
 /// Manually set scroll position (automatically clamped to valid range)
 /// @param scroll_x Horizontal scroll offset
 /// @param scroll_y Vertical scroll offset
-EDITOR_API void editor_set_scroll(intptr_t editor_handle, float scroll_x, float scroll_y);
+EDITOR_API const uint8_t* editor_set_scroll(intptr_t editor_handle, float scroll_x, float scroll_y, size_t* out_size);
 
 /// ScrollMetrics binary return layout (payload uses native byte order; all supported platforms are currently LE):
 /// 1. f32 scale
@@ -691,37 +638,37 @@ EDITOR_API void editor_get_cursor_rect(intptr_t editor_handle,
 /// @param color Foreground color value (ARGB)
 /// @param background_color Background color value (ARGB), 0 means transparent
 /// @param font_style Font style (FontStyle enum value)
-EDITOR_API void editor_register_text_style(intptr_t editor_handle, uint32_t style_id, int32_t color, int32_t background_color, int32_t font_style);
+EDITOR_API const uint8_t* editor_register_text_style(intptr_t editor_handle, uint32_t style_id, int32_t color, int32_t background_color, int32_t font_style, size_t* out_size);
 
 /// Set style ranges for specified line and layer (compact binary)
 /// @param data payload(LE):
 ///             u32 line, u32 layer, u32 span_count, then repeat for span_count groups
 ///             [u32 column, u32 length, u32 style_id]
 /// @param size payload byte length
-EDITOR_API void editor_set_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Batch set highlight spans for multiple lines (compact binary)
 /// @param data payload(LE):
 ///             u32 layer, u32 entry_count,
 ///             [u32 line, u32 span_count, [u32 column, u32 length, u32 style_id] x span_count] x entry_count
 /// @param size payload byte length
-EDITOR_API void editor_set_batch_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_batch_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Batch register highlight text styles (compact binary)
 /// @param data payload(LE):
 ///             u32 entry_count,
 ///             [u32 style_id, i32 color, i32 background_color, i32 font_style] x entry_count
 /// @param size payload byte length
-EDITOR_API void editor_register_batch_text_styles(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_register_batch_text_styles(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Clear all style ranges for specified line and layer
 /// @param line Line number(0-based)
 /// @param layer Highlight layer (0=SYNTAX, 1=SEMANTIC)
-EDITOR_API void editor_clear_line_spans(intptr_t editor_handle, size_t line, uint8_t layer);
+EDITOR_API const uint8_t* editor_clear_line_spans(intptr_t editor_handle, size_t line, uint8_t layer, size_t* out_size);
 
 /// Clear all highlight spans in specified layer
 /// @param layer Highlight layer (0=SYNTAX, 1=SEMANTIC)
-EDITOR_API void editor_clear_highlights_layer(intptr_t editor_handle, uint8_t layer);
+EDITOR_API const uint8_t* editor_clear_highlights_layer(intptr_t editor_handle, uint8_t layer, size_t* out_size);
 
 /// Set inlay hints for specified line (compact binary, replace whole line)
 /// @param data payload(LE):
@@ -729,7 +676,7 @@ EDITOR_API void editor_clear_highlights_layer(intptr_t editor_handle, uint8_t la
 ///             [u32 type(0=TEXT,1=ICON,2=COLOR), u32 column, i32 int_value(icon_id/color/0),
 ///              u32 text_len, u8[text_len] text_utf8]
 /// @param size payload byte length
-EDITOR_API void editor_set_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Batch set inlay hints for multiple lines (compact binary, variable length)
 /// @param data payload(LE):
@@ -737,7 +684,7 @@ EDITOR_API void editor_set_line_inlay_hints(intptr_t editor_handle, const uint8_
 ///             [u32 line, u32 hint_count,
 ///              [u32 type, u32 column, i32 int_value, u32 text_len, u8[text_len] text_utf8] x hint_count] x entry_count
 /// @param size payload byte length
-EDITOR_API void editor_set_batch_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_batch_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Add one inlay hint (append to specified line, do not replace existing hints)
 /// Set phantom texts for specified line (compact binary, replace whole line)
@@ -745,7 +692,7 @@ EDITOR_API void editor_set_batch_line_inlay_hints(intptr_t editor_handle, const 
 ///             u32 line, u32 phantom_count, then repeat for phantom_count groups:
 ///             [u32 column, u32 text_len, u8[text_len] text_utf8]
 /// @param size payload byte length
-EDITOR_API void editor_set_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Batch set phantom texts for multiple lines (compact binary, variable length)
 /// @param data payload(LE):
@@ -753,35 +700,35 @@ EDITOR_API void editor_set_line_phantom_texts(intptr_t editor_handle, const uint
 ///             [u32 line, u32 phantom_count,
 ///              [u32 column, u32 text_len, u8[text_len] text_utf8] x phantom_count] x entry_count
 /// @param size payload byte length
-EDITOR_API void editor_set_batch_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_batch_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Set gutter icons for specified line (compact binary, replace whole line)
 /// @param data payload(LE):
 ///             u32 line, u32 icon_count, then repeat for icon_count groups
 ///             [i32 icon_id]
 /// @param size payload byte length
-EDITOR_API void editor_set_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Batch set gutter icons for multiple lines (compact binary, fixed length)
 /// @param data payload(LE):
 ///             u32 entry_count,
 ///             [u32 line, u32 icon_count, [i32 icon_id] x icon_count] x entry_count
 /// @param size payload byte length
-EDITOR_API void editor_set_batch_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_batch_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Set max gutter icon count (affects reserved gutter width)
 /// @param count Max icon count (0=no reserved space)
-EDITOR_API void editor_set_max_gutter_icons(intptr_t editor_handle, uint32_t count);
+EDITOR_API const uint8_t* editor_set_max_gutter_icons(intptr_t editor_handle, uint32_t count, size_t* out_size);
 
 /// Clear all gutter icons
-EDITOR_API void editor_clear_gutter_icons(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_clear_gutter_icons(intptr_t editor_handle, size_t* out_size);
 
 /// Set CodeLens items for specified line (compact binary)
 /// @param data payload(LE):
 ///             u32 line, u32 item_count, then repeat for item_count groups:
 ///             [i32 column, i32 command_id, u32 text_len, u8[text_len] text_utf8]
 /// @param size payload byte length
-EDITOR_API void editor_set_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Batch set CodeLens items for multiple lines (compact binary)
 /// @param data payload(LE):
@@ -789,17 +736,17 @@ EDITOR_API void editor_set_line_codelens(intptr_t editor_handle, const uint8_t* 
 ///             [u32 line, u32 item_count,
 ///              [i32 column, i32 command_id, u32 text_len, u8[text_len] text_utf8] x item_count] x entry_count
 /// @param size payload byte length
-EDITOR_API void editor_set_batch_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_batch_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Clear all CodeLens items
-EDITOR_API void editor_clear_codelens(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_clear_codelens(intptr_t editor_handle, size_t* out_size);
 
 /// Set link ranges for specified line (compact binary)
 /// @param data payload(LE):
 ///             u32 line, u32 link_count, then repeat for link_count groups:
 ///             [u32 column, u32 length, u32 target_len, u8[target_len] target_utf8]
 /// @param size payload byte length
-EDITOR_API void editor_set_line_links(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_line_links(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Batch set link ranges for multiple lines (compact binary)
 /// @param data payload(LE):
@@ -807,10 +754,10 @@ EDITOR_API void editor_set_line_links(intptr_t editor_handle, const uint8_t* dat
 ///             [u32 line, u32 link_count,
 ///              [u32 column, u32 length, u32 target_len, u8[target_len] target_utf8] x link_count] x entry_count
 /// @param size payload byte length
-EDITOR_API void editor_set_batch_line_links(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_batch_line_links(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Clear all link ranges
-EDITOR_API void editor_clear_links(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_clear_links(intptr_t editor_handle, size_t* out_size);
 
 /// Resolve link target by line and column inside that link
 /// @return UTF8 target string; caller owns returned buffer and must free it with free_u8_string.
@@ -822,24 +769,24 @@ EDITOR_API const char* editor_get_link_target_at(intptr_t editor_handle, size_t 
 ///             u32 line, u32 diag_count, then repeat for diag_count groups
 ///             [u32 column, u32 length, i32 severity]
 /// @param size payload byte length
-EDITOR_API void editor_set_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Batch set diagnostic decorations for multiple lines (compact binary, fixed length)
 /// @param data payload(LE):
 ///             u32 entry_count,
 ///             [u32 line, u32 diag_count, [u32 column, u32 length, i32 severity] x diag_count] x entry_count
 /// @param size payload byte length
-EDITOR_API void editor_set_batch_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_batch_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Clear all diagnostic decorations
-EDITOR_API void editor_clear_diagnostics(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_clear_diagnostics(intptr_t editor_handle, size_t* out_size);
 
 /// Set indent guide list (compact binary, global replace)
 /// @param data payload(LE):
 ///             u32 count, then repeat count groups
 ///             [u32 start_line, u32 start_column, u32 end_line, u32 end_column]
 /// @param size payload byte length
-EDITOR_API void editor_set_indent_guides(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_indent_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Set bracket branch guide list (compact binary, global replace)
 /// @param data payload(LE):
@@ -847,74 +794,74 @@ EDITOR_API void editor_set_indent_guides(intptr_t editor_handle, const uint8_t* 
 ///             [u32 parent_line, u32 parent_column, u32 end_line, u32 end_column,
 ///              u32 child_count, then repeat child_count groups: [u32 child_line, u32 child_column]]
 /// @param size payload byte length
-EDITOR_API void editor_set_bracket_guides(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_bracket_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Set control-flow back-arrow guide list (compact binary, global replace)
 /// @param data payload(LE):
 ///             u32 count, then repeat count groups
 ///             [u32 start_line, u32 start_column, u32 end_line, u32 end_column]
 /// @param size payload byte length
-EDITOR_API void editor_set_flow_guides(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_flow_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Set horizontal separator guide list (compact binary, global replace)
 /// @param data payload(LE):
 ///             u32 count, then repeat count groups
 ///             [i32 line, i32 style, i32 count, u32 text_end_column]
 /// @param size payload byte length
-EDITOR_API void editor_set_separator_guides(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_separator_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Clear all code structure lines (indent guides, bracket guides, control-flow arrows, separators)
-EDITOR_API void editor_clear_guides(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_clear_guides(intptr_t editor_handle, size_t* out_size);
 
 /// Set bracket pair list (override default (){}[])
 /// @param open_chars Open bracket char array (UTF-32)
 /// @param close_chars Close bracket char array (UTF-32)
 /// @param count Bracket pair count
-EDITOR_API void editor_set_bracket_pairs(intptr_t editor_handle, const uint32_t* open_chars, const uint32_t* close_chars, size_t count);
+EDITOR_API const uint8_t* editor_set_bracket_pairs(intptr_t editor_handle, const uint32_t* open_chars, const uint32_t* close_chars, size_t count, size_t* out_size);
 
 /// Set auto-closing pair list (empty count = disable auto-closing)
 /// @param open_chars Open char array (UTF-32)
 /// @param close_chars Close char array (UTF-32)
 /// @param count Pair count
-EDITOR_API void editor_set_auto_closing_pairs(intptr_t editor_handle, const uint32_t* open_chars, const uint32_t* close_chars, size_t count);
+EDITOR_API const uint8_t* editor_set_auto_closing_pairs(intptr_t editor_handle, const uint32_t* open_chars, const uint32_t* close_chars, size_t count, size_t* out_size);
 
 /// Externally set exact bracket match result (override built-in char scan)
 /// @param open_line open bracket line number(0-based)
 /// @param open_col open bracket column number (0-based)
 /// @param close_line close bracket line number(0-based)
 /// @param close_col close bracket column number (0-based)
-EDITOR_API void editor_set_matched_brackets(intptr_t editor_handle, size_t open_line, size_t open_col, size_t close_line, size_t close_col);
+EDITOR_API const uint8_t* editor_set_matched_brackets(intptr_t editor_handle, size_t open_line, size_t open_col, size_t close_line, size_t close_col, size_t* out_size);
 
 /// Clear externally set bracket match result (fall back to built-in char scan)
-EDITOR_API void editor_clear_matched_brackets(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_clear_matched_brackets(intptr_t editor_handle, size_t* out_size);
 
 /// Set foldable region list (compact binary)
 /// @param data payload(LE):
 ///             u32 region_count, then repeat for region_count groups
 ///             [u32 start_line, u32 end_line]
 /// @param size payload byte length
-EDITOR_API void editor_set_fold_regions(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_set_fold_regions(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Toggle fold state of specified line
 /// @param line Line number(0-based)
-/// @return 1=found and toggled, 0=region not found
-EDITOR_API int editor_toggle_fold(intptr_t editor_handle, size_t line);
+/// @return EditorActionResult binary payload, returns NULL on failure
+EDITOR_API const uint8_t* editor_toggle_fold(intptr_t editor_handle, size_t line, size_t* out_size);
 
 /// Fold region containing specified line
 /// @param line Line number(0-based)
-/// @return 1=success, 0=not found
-EDITOR_API int editor_fold_at(intptr_t editor_handle, size_t line);
+/// @return EditorActionResult binary payload, returns NULL on failure
+EDITOR_API const uint8_t* editor_fold_at(intptr_t editor_handle, size_t line, size_t* out_size);
 
 /// Unfold region containing specified line
 /// @param line Line number(0-based)
-/// @return 1=success, 0=not found
-EDITOR_API int editor_unfold_at(intptr_t editor_handle, size_t line);
+/// @return EditorActionResult binary payload, returns NULL on failure
+EDITOR_API const uint8_t* editor_unfold_at(intptr_t editor_handle, size_t line, size_t* out_size);
 
 /// Fold all regions
-EDITOR_API void editor_fold_all(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_fold_all(intptr_t editor_handle, size_t* out_size);
 
 /// Unfold all regions
-EDITOR_API void editor_unfold_all(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_unfold_all(intptr_t editor_handle, size_t* out_size);
 
 /// Check whether specified line is visible (not hidden by folding)
 /// @param line Line number(0-based)
@@ -927,16 +874,16 @@ EDITOR_API int editor_is_line_visible(intptr_t editor_handle, size_t line);
 EDITOR_API void editor_get_visible_line_range(intptr_t editor_handle, int32_t* out_start_line, int32_t* out_end_line);
 
 /// Clear all highlight spans
-EDITOR_API void editor_clear_highlights(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_clear_highlights(intptr_t editor_handle, size_t* out_size);
 
 /// Clear all inlay hints
-EDITOR_API void editor_clear_inlay_hints(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_clear_inlay_hints(intptr_t editor_handle, size_t* out_size);
 
 /// Clear all phantom texts
-EDITOR_API void editor_clear_phantom_texts(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_clear_phantom_texts(intptr_t editor_handle, size_t* out_size);
 
 /// Clear all decoration data
-EDITOR_API void editor_clear_all_decorations(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_clear_all_decorations(intptr_t editor_handle, size_t* out_size);
 
 #pragma endregion
 
@@ -944,7 +891,7 @@ EDITOR_API void editor_clear_all_decorations(intptr_t editor_handle);
 
 /// Insert VSCode snippet template and enter linked editing mode (convenience API)
 /// @param snippet_template VSCode snippet template (UTF8)
-/// @return TextEditResult binary payload, returns NULL if there is no change
+/// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_insert_snippet(intptr_t editor_handle, const char* snippet_template, size_t* out_size);
 
 /// Start linked editing mode with generic LinkedEditingModel (compact binary)
@@ -954,22 +901,22 @@ EDITOR_API const uint8_t* editor_insert_snippet(intptr_t editor_handle, const ch
 ///             range_count groups: [u32 group_ordinal, u32 start_line, u32 start_col, u32 end_line, u32 end_col]
 ///             UTF-8 string blob(default_text_offset=0xFFFFFFFF means null)
 /// @param size payload byte length
-EDITOR_API void editor_start_linked_editing(intptr_t editor_handle, const uint8_t* data, size_t size);
+EDITOR_API const uint8_t* editor_start_linked_editing(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Whether linked editing mode is active
 /// @return 1=yes, 0=no
 EDITOR_API int editor_is_in_linked_editing(intptr_t editor_handle);
 
 /// Linked editing: jump to next tab stop
-/// @return 1=jumped successfully, 0=already at end (session ends automatically)
-EDITOR_API int editor_linked_editing_next(intptr_t editor_handle);
+/// @return EditorActionResult binary payload, returns NULL on failure
+EDITOR_API const uint8_t* editor_linked_editing_next(intptr_t editor_handle, size_t* out_size);
 
 /// Linked editing: jump to previous tab stop
-/// @return 1=jumped successfully, 0=already at first
-EDITOR_API int editor_linked_editing_prev(intptr_t editor_handle);
+/// @return EditorActionResult binary payload, returns NULL on failure
+EDITOR_API const uint8_t* editor_linked_editing_prev(intptr_t editor_handle, size_t* out_size);
 
 /// Cancel linked editing mode
-EDITOR_API void editor_cancel_linked_editing(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_cancel_linked_editing(intptr_t editor_handle, size_t* out_size);
 
 /// Free string memory allocated on C++ side
 /// @param string_ptr String pointer
@@ -1008,7 +955,7 @@ EDITOR_API void editor_get_composing_session_range(intptr_t editor_handle,
                                                    int32_t* out_end_column);
 
 /// Update platform IME preedit text.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_update_preedit(intptr_t editor_handle,
                                                     const char* text,
                                                     int script_hint,
@@ -1028,7 +975,7 @@ EDITOR_API const uint8_t* editor_ime_set_composing_text_selection(intptr_t edito
                                                                   size_t* out_size);
 
 /// Commit platform IME text.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_commit_text(intptr_t editor_handle,
                                                  const char* text,
                                                  int script_hint,
@@ -1041,15 +988,15 @@ EDITOR_API const uint8_t* editor_ime_commit_text_with_cursor(intptr_t editor_han
                                                              size_t* out_size);
 
 /// Finish the current platform IME preedit.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_finish_preedit(intptr_t editor_handle, size_t* out_size);
 
 /// Cancel the current platform IME preedit.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_cancel_preedit(intptr_t editor_handle, size_t* out_size);
 
 /// Mark a document range that the platform IME explicitly reports as composing.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_mark_document_range(intptr_t editor_handle,
                                                           size_t start_line,
                                                           size_t start_column,
@@ -1065,7 +1012,7 @@ EDITOR_API const uint8_t* editor_ime_mark_document_range_by_offset(intptr_t edit
                                                                    size_t* out_size);
 
 /// Report platform candidate replacement text.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_replace_text(intptr_t editor_handle,
                                                   size_t start_line,
                                                   size_t start_column,
@@ -1173,21 +1120,21 @@ EDITOR_API const uint8_t* editor_ime_commit_input_state_text_replacement(intptr_
                                                                          size_t* out_size);
 
 /// Delete text before the caret through IME.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_delete_backward(intptr_t editor_handle,
                                                      size_t before_length,
                                                      int text_unit,
                                                      size_t* out_size);
 
 /// Delete text after the caret through IME.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_delete_forward(intptr_t editor_handle,
                                                     size_t after_length,
                                                     int text_unit,
                                                     size_t* out_size);
 
 /// Delete surrounding text through IME.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_delete_surrounding(intptr_t editor_handle,
                                                         size_t before_length,
                                                         size_t after_length,
@@ -1195,7 +1142,7 @@ EDITOR_API const uint8_t* editor_ime_delete_surrounding(intptr_t editor_handle,
                                                         size_t* out_size);
 
 /// Notify IME-driven selection movement.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_notify_selection_changed(intptr_t editor_handle,
                                                               size_t start_line,
                                                               size_t start_column,
@@ -1204,14 +1151,14 @@ EDITOR_API const uint8_t* editor_ime_notify_selection_changed(intptr_t editor_ha
                                                               size_t* out_size);
 
 /// Notify IME-driven cursor movement.
-/// @return ImeActionResult binary payload, returns NULL when editor handle is invalid
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_notify_cursor_changed(intptr_t editor_handle,
                                                            size_t cursor_line,
                                                            size_t cursor_column,
                                                            size_t* out_size);
 
 /// Set the current IME keyboard script class.
-EDITOR_API void editor_ime_set_keyboard_script_class(intptr_t editor_handle, int script_class);
+EDITOR_API const uint8_t* editor_ime_set_keyboard_script_class(intptr_t editor_handle, int script_class, size_t* out_size);
 
 /// Get the current IME keyboard script class.
 EDITOR_API int editor_ime_get_keyboard_script_class(intptr_t editor_handle);

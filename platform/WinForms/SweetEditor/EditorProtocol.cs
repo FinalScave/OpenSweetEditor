@@ -641,23 +641,19 @@ namespace SweetEditor {
 			return true;
 		}
 
-		internal static bool TryReadTextEditChanges(ReadOnlySpan<byte> data, ref int offset, out TextEditResult editResult) {
-			editResult = TextEditResult.Empty;
-			if (!TryReadInt32(data, ref offset, out int count) || count <= 0) {
+		internal static bool TryReadTextEditChanges(ReadOnlySpan<byte> data, ref int offset, out List<TextChange> changes) {
+			changes = new List<TextChange>();
+			if (!TryReadInt32(data, ref offset, out int count) || count < 0) {
 				return false;
 			}
 
-			List<TextChange> changes = new(count);
+			changes = new List<TextChange>(count);
 			for (int i = 0; i < count; i++) {
 				if (!TryReadTextChange(data, ref offset, out TextChange change)) {
-					break;
+					return false;
 				}
 				changes.Add(change);
 			}
-			if (changes.Count == 0) {
-				return false;
-			}
-			editResult = new TextEditResult { Changes = changes };
 			return true;
 		}
 
@@ -695,8 +691,31 @@ namespace SweetEditor {
 			return Enum.IsDefined(typeof(GestureType), value) ? (GestureType)value : GestureType.UNDEFINED;
 		}
 
+		internal static EventType ToEventType(int value) {
+			return Enum.IsDefined(typeof(EventType), value) ? (EventType)value : EventType.UNDEFINED;
+		}
+
 		internal static HitTargetType ToHitTargetType(int value) {
 			return Enum.IsDefined(typeof(HitTargetType), value) ? (HitTargetType)value : HitTargetType.NONE;
+		}
+
+		internal static bool TryReadHitTarget(ReadOnlySpan<byte> data, ref int offset, out HitTarget target) {
+			target = new HitTarget { Type = HitTargetType.NONE };
+			if (!TryReadInt32(data, ref offset, out int type) ||
+				!TryReadInt32(data, ref offset, out int line) ||
+				!TryReadInt32(data, ref offset, out int column) ||
+				!TryReadInt32(data, ref offset, out int iconId) ||
+				!TryReadInt32(data, ref offset, out int colorValue)) {
+				return false;
+			}
+			target = new HitTarget {
+				Type = ToHitTargetType(type),
+				Line = line,
+				Column = column,
+				IconId = iconId,
+				ColorValue = colorValue
+			};
+			return true;
 		}
 
 		internal static PointerCursorType ToPointerCursorType(int value) {
@@ -1188,27 +1207,8 @@ namespace SweetEditor {
 			}
 		}
 
-		internal static unsafe TextEditResult ParseTextEditResult(IntPtr payloadPtr, UIntPtr payloadSize) {
-			int payloadLength = GetPayloadLength(payloadPtr, payloadSize);
-			if (payloadLength == 0) {
-				return TextEditResult.Empty;
-			}
-			try {
-				ReadOnlySpan<byte> data = new(payloadPtr.ToPointer(), payloadLength);
-				int offset = 0;
-				if (!TryReadInt32(data, ref offset, out int changedInt) || changedInt == 0) {
-					return TextEditResult.Empty;
-				}
-				return TryReadTextEditChanges(data, ref offset, out TextEditResult editResult)
-					? editResult
-					: TextEditResult.Empty;
-			} finally {
-				NativeMethods.FreeBinaryData(payloadPtr);
-			}
-		}
-
-		internal static unsafe KeyEventResult ParseKeyEventResult(IntPtr payloadPtr, UIntPtr payloadSize) {
-			KeyEventResult result = new();
+		internal static unsafe EditorActionResult ParseEditorActionResult(IntPtr payloadPtr, UIntPtr payloadSize) {
+			EditorActionResult result = new();
 			int payloadLength = GetPayloadLength(payloadPtr, payloadSize);
 			if (payloadLength == 0) {
 				return result;
@@ -1217,58 +1217,85 @@ namespace SweetEditor {
 				ReadOnlySpan<byte> data = new(payloadPtr.ToPointer(), payloadLength);
 				int offset = 0;
 				if (!TryReadInt32(data, ref offset, out int handled) ||
+					!TryReadInt32(data, ref offset, out int needsRedraw) ||
+					!TryReadInt32(data, ref offset, out int reason) ||
 					!TryReadInt32(data, ref offset, out int contentChanged) ||
 					!TryReadInt32(data, ref offset, out int cursorChanged) ||
 					!TryReadInt32(data, ref offset, out int selectionChanged) ||
-					!TryReadInt32(data, ref offset, out int hasEdit)) {
+					!TryReadInt32(data, ref offset, out int scrollChanged) ||
+					!TryReadInt32(data, ref offset, out int scaleChanged) ||
+					!TryReadInt32(data, ref offset, out int pointerCursorChanged) ||
+					!TryReadInt32(data, ref offset, out int compositionChanged) ||
+					!TryReadInt32(data, ref offset, out int decorationChanged) ||
+					!TryReadInt32(data, ref offset, out int needsImeSync) ||
+					!TryReadInt32(data, ref offset, out int needsEdgeScroll) ||
+					!TryReadInt32(data, ref offset, out int needsFling) ||
+					!TryReadInt32(data, ref offset, out int needsAnimation) ||
+					!TryReadInt32(data, ref offset, out int isHandleDrag) ||
+					!TryReadTextEditChanges(data, ref offset, out List<TextChange> changes) ||
+					!TryReadTextPosition(data, ref offset, out TextPosition cursorBefore) ||
+					!TryReadTextPosition(data, ref offset, out TextPosition cursorAfter) ||
+					!TryReadInt32(data, ref offset, out int hasSelectionBefore) ||
+					!TryReadTextRange(data, ref offset, out TextRange selectionBefore) ||
+					!TryReadInt32(data, ref offset, out int hasSelectionAfter) ||
+					!TryReadTextRange(data, ref offset, out TextRange selectionAfter) ||
+					!TryReadFloat(data, ref offset, out float scrollXBefore) ||
+					!TryReadFloat(data, ref offset, out float scrollYBefore) ||
+					!TryReadFloat(data, ref offset, out float scrollXAfter) ||
+					!TryReadFloat(data, ref offset, out float scrollYAfter) ||
+					!TryReadFloat(data, ref offset, out float scaleBefore) ||
+					!TryReadFloat(data, ref offset, out float scaleAfter) ||
+					!TryReadInt32(data, ref offset, out int pointerCursorBefore) ||
+					!TryReadInt32(data, ref offset, out int pointerCursorAfter) ||
+					!TryReadImeSyncSnapshot(data, ref offset, out ImeSyncSnapshot imeSync) ||
+					!TryReadInt32(data, ref offset, out int gestureType) ||
+					!TryReadInt32(data, ref offset, out int gestureEventType) ||
+					!TryReadFloat(data, ref offset, out float tapX) ||
+					!TryReadFloat(data, ref offset, out float tapY) ||
+					!TryReadHitTarget(data, ref offset, out HitTarget hitTarget) ||
+					!TryReadInt32(data, ref offset, out int modifiers) ||
+					!TryReadInt32(data, ref offset, out int command)) {
 					return result;
 				}
 
 				result.Handled = handled != 0;
+				result.NeedsRedraw = needsRedraw != 0;
+				result.Reason = reason;
 				result.ContentChanged = contentChanged != 0;
 				result.CursorChanged = cursorChanged != 0;
 				result.SelectionChanged = selectionChanged != 0;
-
-				if (hasEdit != 0 && TryReadTextEditChanges(data, ref offset, out TextEditResult editResult)) {
-					result.EditResult = editResult;
-				}
-				if (TryReadInt32(data, ref offset, out int command)) {
-					result.Command = command;
-				}
-				return result;
-			} finally {
-				NativeMethods.FreeBinaryData(payloadPtr);
-			}
-		}
-
-		internal static unsafe ImeActionResult ParseImeActionResult(IntPtr payloadPtr, UIntPtr payloadSize) {
-			ImeActionResult result = new();
-			int payloadLength = GetPayloadLength(payloadPtr, payloadSize);
-			if (payloadLength == 0) {
-				return result;
-			}
-			try {
-				ReadOnlySpan<byte> data = new(payloadPtr.ToPointer(), payloadLength);
-				int offset = 0;
-				if (!TryReadInt32(data, ref offset, out int handled) ||
-					!TryReadInt32(data, ref offset, out int contentChanged) ||
-					!TryReadInt32(data, ref offset, out int cursorChanged) ||
-					!TryReadInt32(data, ref offset, out int selectionChanged) ||
-					!TryReadInt32(data, ref offset, out int hasEdit)) {
-					return result;
-				}
-
-				result.Handled = handled != 0;
-				result.ContentChanged = contentChanged != 0;
-				result.CursorChanged = cursorChanged != 0;
-				result.SelectionChanged = selectionChanged != 0;
-
-				if (hasEdit != 0 && TryReadTextEditChanges(data, ref offset, out TextEditResult editResult)) {
-					result.EditResult = editResult;
-				}
-				if (TryReadImeSyncSnapshot(data, ref offset, out ImeSyncSnapshot sync)) {
-					result.Sync = sync;
-				}
+				result.ScrollChanged = scrollChanged != 0;
+				result.ScaleChanged = scaleChanged != 0;
+				result.PointerCursorChanged = pointerCursorChanged != 0;
+				result.CompositionChanged = compositionChanged != 0;
+				result.DecorationChanged = decorationChanged != 0;
+				result.NeedsImeSync = needsImeSync != 0;
+				result.NeedsEdgeScroll = needsEdgeScroll != 0;
+				result.NeedsFling = needsFling != 0;
+				result.NeedsAnimation = needsAnimation != 0;
+				result.IsHandleDrag = isHandleDrag != 0;
+				result.Changes = changes;
+				result.CursorBefore = cursorBefore;
+				result.CursorAfter = cursorAfter;
+				result.HasSelectionBefore = hasSelectionBefore != 0;
+				result.SelectionBefore = selectionBefore;
+				result.HasSelectionAfter = hasSelectionAfter != 0;
+				result.SelectionAfter = selectionAfter;
+				result.ScrollXBefore = scrollXBefore;
+				result.ScrollYBefore = scrollYBefore;
+				result.ScrollXAfter = scrollXAfter;
+				result.ScrollYAfter = scrollYAfter;
+				result.ScaleBefore = scaleBefore;
+				result.ScaleAfter = scaleAfter;
+				result.PointerCursorBefore = ToPointerCursorType(pointerCursorBefore);
+				result.PointerCursorAfter = ToPointerCursorType(pointerCursorAfter);
+				result.ImeSync = imeSync;
+				result.GestureType = ToGestureType(gestureType);
+				result.GestureEventType = ToEventType(gestureEventType);
+				result.TapPoint = new PointF(tapX, tapY);
+				result.HitTarget = hitTarget;
+				result.Modifiers = (byte)modifiers;
+				result.Command = command;
 				return result;
 			} finally {
 				NativeMethods.FreeBinaryData(payloadPtr);
@@ -1323,89 +1350,6 @@ namespace SweetEditor {
 					Composition = new ImeTextRange(compositionStart, compositionEnd),
 					Kind = (ImeInputContextKind)kind
 				};
-			} finally {
-				NativeMethods.FreeBinaryData(payloadPtr);
-			}
-		}
-
-		internal static unsafe GestureResult ParseGestureResult(IntPtr payloadPtr, UIntPtr payloadSize) {
-			GestureResult result = new();
-			int payloadLength = GetPayloadLength(payloadPtr, payloadSize);
-			if (payloadLength == 0) {
-				return result;
-			}
-			try {
-				ReadOnlySpan<byte> data = new(payloadPtr.ToPointer(), payloadLength);
-				int offset = 0;
-				if (!TryReadInt32(data, ref offset, out int gestureTypeValue)) {
-					return result;
-				}
-				result.Type = ToGestureType(gestureTypeValue);
-				result.TapPoint = new PointF(0, 0);
-				switch (result.Type) {
-					case GestureType.TAP:
-					case GestureType.DOUBLE_TAP:
-					case GestureType.LONG_PRESS:
-					case GestureType.DRAG_SELECT:
-					case GestureType.CONTEXT_MENU:
-						if (TryReadFloat(data, ref offset, out float tx) && TryReadFloat(data, ref offset, out float ty)) {
-							result.TapPoint = new PointF(tx, ty);
-						}
-						break;
-				}
-
-				if (!TryReadInt32(data, ref offset, out int cursorLine) ||
-					!TryReadInt32(data, ref offset, out int cursorColumn) ||
-					!TryReadInt32(data, ref offset, out int hasSelectionInt) ||
-					!TryReadInt32(data, ref offset, out int selStartLine) ||
-					!TryReadInt32(data, ref offset, out int selStartColumn) ||
-					!TryReadInt32(data, ref offset, out int selEndLine) ||
-					!TryReadInt32(data, ref offset, out int selEndColumn) ||
-					!TryReadFloat(data, ref offset, out float viewScrollX) ||
-					!TryReadFloat(data, ref offset, out float viewScrollY) ||
-					!TryReadFloat(data, ref offset, out float viewScale)) {
-					return result;
-				}
-
-				result.CursorPosition = new TextPosition { Line = cursorLine, Column = cursorColumn };
-				result.HasSelection = hasSelectionInt != 0;
-				result.Selection = new TextRange {
-					Start = new TextPosition { Line = selStartLine, Column = selStartColumn },
-					End = new TextPosition { Line = selEndLine, Column = selEndColumn }
-				};
-				result.ViewScrollX = viewScrollX;
-				result.ViewScrollY = viewScrollY;
-				result.ViewScale = viewScale;
-				result.HitTarget = new HitTarget { Type = HitTargetType.NONE };
-
-				if (TryReadInt32(data, ref offset, out int hitType) &&
-					TryReadInt32(data, ref offset, out int hitLine) &&
-					TryReadInt32(data, ref offset, out int hitColumn) &&
-					TryReadInt32(data, ref offset, out int hitIconId) &&
-					TryReadInt32(data, ref offset, out int hitColor)) {
-					result.HitTarget = new HitTarget {
-						Type = ToHitTargetType(hitType),
-						Line = hitLine,
-						Column = hitColumn,
-						IconId = hitIconId,
-						ColorValue = hitColor
-					};
-				}
-				if (TryReadInt32(data, ref offset, out int needsEdgeScrollInt)) {
-					result.NeedsEdgeScroll = needsEdgeScrollInt != 0;
-				}
-				if (TryReadInt32(data, ref offset, out int needsFlingInt)) {
-					result.NeedsFling = needsFlingInt != 0;
-				}
-				if (TryReadInt32(data, ref offset, out int needsAnimationInt)) {
-					result.NeedsAnimation = needsAnimationInt != 0;
-				}
-				if (TryReadInt32(data, ref offset, out int _)) {
-					if (TryReadInt32(data, ref offset, out int pointerCursorTypeInt)) {
-						result.PointerCursorType = ToPointerCursorType(pointerCursorTypeInt);
-					}
-				}
-				return result;
 			} finally {
 				NativeMethods.FreeBinaryData(payloadPtr);
 			}

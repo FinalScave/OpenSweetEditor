@@ -92,7 +92,6 @@ public class InlineSuggestionController implements InlineSuggestionActionBar.Act
 
         actionBar.showAt(editor, cachedCursorX, cachedCursorY, cachedCursorHeight);
         subscribeEvents();
-        editor.flush();
     }
 
     /**
@@ -124,7 +123,6 @@ public class InlineSuggestionController implements InlineSuggestionActionBar.Act
         withSuppressedAutoDismiss(() -> {
             unsubscribeEvents();
             editor.clearPhantomTexts();
-            editor.flush();
             actionBar.dismiss();
             currentSuggestion = null;
         });

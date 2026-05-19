@@ -69,7 +69,6 @@ class InlineSuggestionController {
     _showing = true;
     _overlayUpdater?.call(_buildOverlayState());
     _subscribeEvents();
-    _session.requestFlush();
   }
 
   void accept() {
@@ -77,19 +76,22 @@ class InlineSuggestionController {
     final suggestion = _currentSuggestion!;
     _withSuppressedAutoDismiss(() {
       _unsubscribeEvents();
-      _session.editorCore?.clearPhantomTexts();
+      _session.dispatchEditorActionResult(
+        _session.editorCore?.clearPhantomTexts(),
+      );
       final pos = core.TextPosition(suggestion.line, suggestion.column);
-      _session.editorCore?.replaceText(
-        pos.line,
-        pos.column,
-        pos.line,
-        pos.column,
-        suggestion.text,
+      _session.dispatchEditorActionResult(
+        _session.editorCore?.replaceText(
+          pos.line,
+          pos.column,
+          pos.line,
+          pos.column,
+          suggestion.text,
+        ),
       );
       _showing = false;
       _overlayUpdater?.call(null);
       _currentSuggestion = null;
-      _session.requestFlush();
     });
     _listener?.onSuggestionAccepted(suggestion);
   }
@@ -99,8 +101,9 @@ class InlineSuggestionController {
     final suggestion = _currentSuggestion!;
     _withSuppressedAutoDismiss(() {
       _unsubscribeEvents();
-      _session.editorCore?.clearPhantomTexts();
-      _session.requestFlush();
+      _session.dispatchEditorActionResult(
+        _session.editorCore?.clearPhantomTexts(),
+      );
       _showing = false;
       _overlayUpdater?.call(null);
       _currentSuggestion = null;
@@ -147,7 +150,9 @@ class InlineSuggestionController {
   void _clearQuietly() {
     _withSuppressedAutoDismiss(() {
       _unsubscribeEvents();
-      _session.editorCore?.clearPhantomTexts();
+      _session.dispatchEditorActionResult(
+        _session.editorCore?.clearPhantomTexts(),
+      );
       _showing = false;
       _overlayUpdater?.call(null);
       _currentSuggestion = null;
@@ -164,12 +169,16 @@ class InlineSuggestionController {
   }
 
   void _injectPhantomText(InlineSuggestion suggestion) {
-    _session.editorCore?.clearPhantomTexts();
-    _session.editorCore?.setBatchLinePhantomTexts({
-      suggestion.line: [
-        core.PhantomText(column: suggestion.column, text: suggestion.text),
-      ],
-    });
+    _session.dispatchEditorActionResult(
+      _session.editorCore?.clearPhantomTexts(),
+    );
+    _session.dispatchEditorActionResult(
+      _session.editorCore?.setBatchLinePhantomTexts({
+        suggestion.line: [
+          core.PhantomText(column: suggestion.column, text: suggestion.text),
+        ],
+      }),
+    );
   }
 
   InlineSuggestionOverlayState _buildOverlayState() {

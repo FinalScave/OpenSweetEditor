@@ -18,14 +18,14 @@ TEST_CASE("Sequential single-char insertions are merged into one undo step") {
   REQUIRE(document->getU8Text() == "abc");
   REQUIRE(editor.canUndo());
 
-  TextEditResult undo_result = editor.undo();
-  REQUIRE(undo_result.changed);
+  EditorActionResult undo_result = editor.undo();
+  REQUIRE(undo_result.content_changed);
   CHECK(document->getU8Text().empty());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
   CHECK(editor.canRedo());
 
-  TextEditResult redo_result = editor.redo();
-  REQUIRE(redo_result.changed);
+  EditorActionResult redo_result = editor.redo();
+  REQUIRE(redo_result.content_changed);
   CHECK(document->getU8Text() == "abc");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
 }
@@ -39,18 +39,18 @@ TEST_CASE("Move line down is undoable as one grouped operation") {
   editor.setViewport({800, 600});
   editor.setCursorPosition({0, 0});
 
-  TextEditResult move_result = editor.moveLineDown();
-  REQUIRE(move_result.changed);
+  EditorActionResult move_result = editor.moveLineDown();
+  REQUIRE(move_result.content_changed);
   CHECK(document->getU8Text() == "b\na\nc");
   CHECK(editor.getCursorPosition() == (TextPosition{1, 0}));
 
-  TextEditResult undo_result = editor.undo();
-  REQUIRE(undo_result.changed);
+  EditorActionResult undo_result = editor.undo();
+  REQUIRE(undo_result.content_changed);
   CHECK(document->getU8Text() == "a\nb\nc");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
 
-  TextEditResult redo_result = editor.redo();
-  REQUIRE(redo_result.changed);
+  EditorActionResult redo_result = editor.redo();
+  REQUIRE(redo_result.content_changed);
   CHECK(document->getU8Text() == "b\na\nc");
   CHECK(editor.getCursorPosition() == (TextPosition{1, 0}));
 }
@@ -67,7 +67,7 @@ TEST_CASE("New edit clears redo stack after undo") {
   editor.insertText("d");
   REQUIRE(document->getU8Text() == "abcd");
 
-  REQUIRE(editor.undo().changed);
+  REQUIRE(editor.undo().content_changed);
   CHECK(document->getU8Text() == "abc");
   REQUIRE(editor.canRedo());
 

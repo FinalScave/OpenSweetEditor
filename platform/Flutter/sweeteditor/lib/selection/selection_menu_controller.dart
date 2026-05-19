@@ -41,7 +41,10 @@ class SelectionMenuController {
     _overlayUpdater = updater;
   }
 
-  void onGestureResult(core.GestureResult result, bool hasSelection) {
+  void onGestureActionResult(
+    core.EditorActionResult result,
+    bool hasSelection,
+  ) {
     if (!_enabled) {
       _hideImmediate();
       return;
@@ -63,7 +66,7 @@ class SelectionMenuController {
       return;
     }
 
-    switch (result.type) {
+    switch (result.gestureType) {
       case core.GestureType.doubleTap:
       case core.GestureType.longPress:
         if (hasSelection) {

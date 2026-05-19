@@ -67,8 +67,8 @@ public final class ContextMenuController {
                 theme.contextMenuDividerColor);
     }
 
-    public void onGestureResult(@NonNull EditorCore.GestureResult result, @NonNull PointF locationInEditor) {
-        switch (result.type) {
+    public void onEditorActionResult(@NonNull EditorCore.EditorActionResult result, @NonNull PointF locationInEditor) {
+        switch (result.gestureType) {
             case LONG_PRESS:
                 showMenu(buildRequest(ContextMenuTriggerKind.LONG_PRESS, result, locationInEditor));
                 break;
@@ -108,7 +108,7 @@ public final class ContextMenuController {
 
     @NonNull
     private ContextMenuRequest buildRequest(@NonNull ContextMenuTriggerKind triggerKind,
-                                            @NonNull EditorCore.GestureResult result,
+                                            @NonNull EditorCore.EditorActionResult result,
                                             @NonNull PointF locationInEditor) {
         EditorCore.HitTarget hitTarget = result.hitTarget != null ? result.hitTarget : EditorCore.HitTarget.NONE;
         String linkTarget = "";
@@ -117,10 +117,10 @@ public final class ContextMenuController {
         }
         return new ContextMenuRequest(
                 triggerKind,
-                copyPosition(result.cursorPosition),
+                copyPosition(result.cursorAfter),
                 new PointF(locationInEditor.x, locationInEditor.y),
-                result.hasSelection,
-                result.hasSelection ? copyRange(result.selection) : null,
+                result.hasSelectionAfter,
+                result.hasSelectionAfter ? copyRange(result.selectionAfter) : null,
                 hitTarget,
                 linkTarget
         );

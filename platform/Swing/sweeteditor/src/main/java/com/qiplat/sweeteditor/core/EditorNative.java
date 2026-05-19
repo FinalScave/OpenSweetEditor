@@ -239,31 +239,33 @@ public final class EditorNative {
             FunctionDescriptor.of(ValueLayout.JAVA_LONG, MEASURER_LAYOUT, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
 
     private static final MethodHandle SET_EDITOR_DOCUMENT = downcall("set_editor_document",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_VIEWPORT = downcall("set_editor_viewport",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_SHORT, ValueLayout.JAVA_SHORT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_SHORT, ValueLayout.JAVA_SHORT,
+                    ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_FOLD_ARROW_MODE = downcall("editor_set_fold_arrow_mode",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_LINE_SPACING = downcall("editor_set_line_spacing",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT,
+                    ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_CONTENT_START_PADDING = downcall("editor_set_content_start_padding",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_FLOAT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_FLOAT, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_SHOW_SPLIT_LINE = downcall("editor_set_show_split_line",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_GUTTER_STICKY = downcall("editor_set_gutter_sticky",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_GUTTER_VISIBLE = downcall("editor_set_gutter_visible",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_CURRENT_LINE_RENDER_MODE = downcall("editor_set_current_line_render_mode",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle BUILD_RENDER_MODEL = downcall("build_editor_render_model",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
@@ -311,28 +313,29 @@ public final class EditorNative {
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
 
     private static final MethodHandle SET_CURSOR = downcall("editor_set_cursor_position",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS));
 
     private static final MethodHandle MOVE_CURSOR_LEFT = downcall("editor_move_cursor_left",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle MOVE_CURSOR_RIGHT = downcall("editor_move_cursor_right",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle MOVE_CURSOR_UP = downcall("editor_move_cursor_up",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle MOVE_CURSOR_DOWN = downcall("editor_move_cursor_down",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle MOVE_CURSOR_TO_LINE_START = downcall("editor_move_cursor_to_line_start",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle MOVE_CURSOR_TO_LINE_END = downcall("editor_move_cursor_to_line_end",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle SELECT_ALL = downcall("editor_select_all",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle GET_SELECTION = downcall("editor_get_selection",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG,
@@ -476,7 +479,7 @@ public final class EditorNative {
                     ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle IME_SET_KEYBOARD_SCRIPT_CLASS = downcall("editor_ime_set_keyboard_script_class",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle IME_GET_KEYBOARD_SCRIPT_CLASS = downcall("editor_ime_get_keyboard_script_class",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
@@ -489,16 +492,16 @@ public final class EditorNative {
                     ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_READ_ONLY = downcall("editor_set_read_only",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle IS_READ_ONLY = downcall("editor_is_read_only",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
 
     private static final MethodHandle SET_AUTO_INDENT_MODE = downcall("editor_set_auto_indent_mode",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_BACKSPACE_UNINDENT = downcall("editor_set_backspace_unindent",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle GET_POSITION_RECT = downcall("editor_get_position_rect",
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
@@ -511,61 +514,68 @@ public final class EditorNative {
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
 
     private static final MethodHandle LINKED_EDITING_PREV = downcall("editor_linked_editing_prev",
-            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle SCROLL_TO_LINE = downcall("editor_scroll_to_line",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_BYTE));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_BYTE,
+                    ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_SCROLL = downcall("editor_set_scroll",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT,
+                    ValueLayout.ADDRESS));
 
     private static final MethodHandle REGISTER_TEXT_STYLE = downcall("editor_register_text_style",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
-                    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
+                    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
 
     private static final MethodHandle CLEAR_GUTTER_ICONS = downcall("editor_clear_gutter_icons",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_LINE_DIAGNOSTICS = downcall("editor_set_line_diagnostics",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS));
 
 
     private static final MethodHandle CLEAR_GUIDES = downcall("editor_clear_guides",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_BRACKET_PAIRS = downcall("editor_set_bracket_pairs",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS,
+                    ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_AUTO_CLOSING_PAIRS = downcall("editor_set_auto_closing_pairs",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS,
+                    ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle CLEAR_MATCHED_BRACKETS = downcall("editor_clear_matched_brackets",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_FOLD_REGIONS = downcall("editor_set_fold_regions",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS));
 
     private static final MethodHandle FOLD_AT = downcall("editor_fold_at",
-            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle FOLD_ALL = downcall("editor_fold_all",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle IS_LINE_VISIBLE = downcall("editor_is_line_visible",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
 
     private static final MethodHandle CLEAR_HIGHLIGHTS = downcall("editor_clear_highlights",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle CLEAR_LINE_SPANS = downcall("editor_clear_line_spans",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_BYTE));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_BYTE,
+                    ValueLayout.ADDRESS));
 
     private static final MethodHandle CLEAR_INLAY_HINTS = downcall("editor_clear_inlay_hints",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle CLEAR_ALL_DECORATIONS = downcall("editor_clear_all_decorations",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle FREE_BINARY_DATA = downcall("free_binary_data",
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
@@ -577,7 +587,7 @@ public final class EditorNative {
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
 
     private static final MethodHandle ON_FONT_METRICS_CHANGED = downcall("editor_on_font_metrics_changed",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle HANDLE_KEY_EVENT = downcall("handle_editor_key_event",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
@@ -613,52 +623,56 @@ public final class EditorNative {
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
 
     private static final MethodHandle SET_HANDLE_CONFIG = downcall("editor_set_handle_config",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
                     ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT,
-                    ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT));
+                    ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT,
+                    ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_SCROLLBAR_CONFIG = downcall("editor_set_scrollbar_config",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
                     ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT,
                     ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
-                    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
+                    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle GET_CURSOR_RECT = downcall("editor_get_cursor_rect",
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
     private static final MethodHandle START_LINKED_EDITING = downcall("editor_start_linked_editing",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS));
 
     private static final MethodHandle CANCEL_LINKED_EDITING = downcall("editor_cancel_linked_editing",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle GOTO_LINE = downcall("editor_goto_position",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS));
 
     private static final MethodHandle ENSURE_CURSOR_VISIBLE = downcall("editor_ensure_cursor_visible",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_LINE_SPANS = downcall("editor_set_line_spans",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS));
 
 
     private static final MethodHandle CLEAR_DIAGNOSTICS = downcall("editor_clear_diagnostics",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
 
     private static final MethodHandle SET_MATCHED_BRACKETS = downcall("editor_set_matched_brackets",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle TOGGLE_FOLD = downcall("editor_toggle_fold",
-            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle UNFOLD_ALL = downcall("editor_unfold_all",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle CLEAR_HIGHLIGHTS_LAYER = downcall("editor_clear_highlights_layer",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_BYTE));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS));
 
     private static final MethodHandle FREE_U8_STRING = downcall("free_u8_string",
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
@@ -667,16 +681,16 @@ public final class EditorNative {
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
 
     private static final MethodHandle SET_WRAP_MODE = downcall("editor_set_wrap_mode",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_TAB_SIZE = downcall("editor_set_tab_size",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_INSERT_SPACES = downcall("editor_set_insert_spaces",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_SCALE = downcall("editor_set_scale",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_FLOAT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_FLOAT, ValueLayout.ADDRESS));
 
     private static final MethodHandle BACKSPACE = downcall("editor_backspace",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
@@ -691,11 +705,11 @@ public final class EditorNative {
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
 
     private static final MethodHandle SET_SELECTION = downcall("editor_set_selection",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
+                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle LINKED_EDITING_NEXT = downcall("editor_linked_editing_next",
-            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle GET_SCROLL_METRICS = downcall("editor_get_scroll_metrics",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
@@ -705,19 +719,20 @@ public final class EditorNative {
 
 
     private static final MethodHandle SET_MAX_GUTTER_ICONS = downcall("editor_set_max_gutter_icons",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
 
     private static final MethodHandle UNFOLD_AT = downcall("editor_unfold_at",
-            FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle CLEAR_PHANTOM_TEXTS = downcall("editor_clear_phantom_texts",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     // ===================== Binary payload API =====================
 
     private static final FunctionDescriptor BINARY_PAYLOAD_DESC =
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG);
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS);
 
     private static final MethodHandle SET_LINE_INLAY_HINTS = downcall("editor_set_line_inlay_hints", BINARY_PAYLOAD_DESC);
     private static final MethodHandle SET_BATCH_LINE_INLAY_HINTS = downcall("editor_set_batch_line_inlay_hints", BINARY_PAYLOAD_DESC);
@@ -738,9 +753,9 @@ public final class EditorNative {
     private static final MethodHandle SET_SEPARATOR_GUIDES = downcall("editor_set_separator_guides", BINARY_PAYLOAD_DESC);
     private static final MethodHandle SET_KEYMAP = downcall("editor_set_keymap", BINARY_PAYLOAD_DESC);
     private static final MethodHandle CLEAR_CODELENS = downcall("editor_clear_codelens",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
     private static final MethodHandle CLEAR_LINKS = downcall("editor_clear_links",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG));
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     // ===================== Document API =====================
 
@@ -806,90 +821,69 @@ public final class EditorNative {
         });
     }
 
-    public static void setEditorDocument(long editorHandle, long documentHandle) {
-        invokeVoid(() -> {
-            SET_EDITOR_DOCUMENT.invokeExact(editorHandle, documentHandle);
-        });
+    public static NativeBinaryResult setEditorDocument(long editorHandle, long documentHandle) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_EDITOR_DOCUMENT.invokeExact(editorHandle, documentHandle, outSize));
     }
 
     // ===================== Viewport/Font/Appearance =====================
 
-    public static void setViewport(long handle, int width, int height) {
-        invokeVoid(() -> {
-            SET_VIEWPORT.invokeExact(handle, (short) width, (short) height);
-        });
+    public static NativeBinaryResult setViewport(long handle, int width, int height) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_VIEWPORT.invokeExact(handle, (short) width, (short) height, outSize));
     }
 
-    public static void onFontMetricsChanged(long handle) {
-        invokeVoid(() -> {
-            ON_FONT_METRICS_CHANGED.invokeExact(handle);
-        });
+    public static NativeBinaryResult onFontMetricsChanged(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) ON_FONT_METRICS_CHANGED.invokeExact(handle, outSize));
     }
 
-    public static void setFoldArrowMode(long handle, int mode) {
-        invokeVoid(() -> {
-            SET_FOLD_ARROW_MODE.invokeExact(handle, mode);
-        });
+    public static NativeBinaryResult setFoldArrowMode(long handle, int mode) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_FOLD_ARROW_MODE.invokeExact(handle, mode, outSize));
     }
 
-    public static void setWrapMode(long handle, int mode) {
-        invokeVoid(() -> {
-            SET_WRAP_MODE.invokeExact(handle, mode);
-        });
+    public static NativeBinaryResult setWrapMode(long handle, int mode) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_WRAP_MODE.invokeExact(handle, mode, outSize));
     }
 
-    public static void setTabSize(long handle, int tabSize) {
-        invokeVoid(() -> {
-            SET_TAB_SIZE.invokeExact(handle, tabSize);
-        });
+    public static NativeBinaryResult setTabSize(long handle, int tabSize) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_TAB_SIZE.invokeExact(handle, tabSize, outSize));
     }
 
-    public static void setInsertSpaces(long handle, int enabled) {
-        invokeVoid(() -> {
-            SET_INSERT_SPACES.invokeExact(handle, enabled);
-        });
+    public static NativeBinaryResult setInsertSpaces(long handle, int enabled) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_INSERT_SPACES.invokeExact(handle, enabled, outSize));
     }
 
-    public static void setScale(long handle, float scale) {
-        invokeVoid(() -> {
-            SET_SCALE.invokeExact(handle, scale);
-        });
+    public static NativeBinaryResult setScale(long handle, float scale) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_SCALE.invokeExact(handle, scale, outSize));
     }
 
-    public static void setLineSpacing(long handle, float add, float mult) {
-        invokeVoid(() -> {
-            SET_LINE_SPACING.invokeExact(handle, add, mult);
-        });
+    public static NativeBinaryResult setLineSpacing(long handle, float add, float mult) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_LINE_SPACING.invokeExact(handle, add, mult, outSize));
     }
 
-    public static void setContentStartPadding(long handle, float padding) {
-        invokeVoid(() -> {
-            SET_CONTENT_START_PADDING.invokeExact(handle, padding);
-        });
+    public static NativeBinaryResult setContentStartPadding(long handle, float padding) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_CONTENT_START_PADDING.invokeExact(handle, padding, outSize));
     }
 
-    public static void setShowSplitLine(long handle, boolean show) {
-        invokeVoid(() -> {
-            SET_SHOW_SPLIT_LINE.invokeExact(handle, show ? 1 : 0);
-        });
+    public static NativeBinaryResult setShowSplitLine(long handle, boolean show) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_SHOW_SPLIT_LINE.invokeExact(handle, show ? 1 : 0, outSize));
     }
 
-    public static void setGutterSticky(long handle, boolean sticky) {
-        invokeVoid(() -> {
-            SET_GUTTER_STICKY.invokeExact(handle, sticky ? 1 : 0);
-        });
+    public static NativeBinaryResult setGutterSticky(long handle, boolean sticky) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_GUTTER_STICKY.invokeExact(handle, sticky ? 1 : 0, outSize));
     }
 
-    public static void setGutterVisible(long handle, boolean visible) {
-        invokeVoid(() -> {
-            SET_GUTTER_VISIBLE.invokeExact(handle, visible ? 1 : 0);
-        });
+    public static NativeBinaryResult setGutterVisible(long handle, boolean visible) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_GUTTER_VISIBLE.invokeExact(handle, visible ? 1 : 0, outSize));
     }
 
-    public static void setCurrentLineRenderMode(long handle, int mode) {
-        invokeVoid(() -> {
-            SET_CURRENT_LINE_RENDER_MODE.invokeExact(handle, mode);
-        });
+    public static NativeBinaryResult setCurrentLineRenderMode(long handle, int mode) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_CURRENT_LINE_RENDER_MODE.invokeExact(handle, mode, outSize));
     }
 
     // ===================== Rendering =====================
@@ -1008,46 +1002,39 @@ public final class EditorNative {
 
     // ===================== Cursor/Selection =====================
 
-    public static void setCursorPosition(long handle, int line, int column) {
-        invokeVoid(() -> {
-            SET_CURSOR.invokeExact(handle, (long) line, (long) column);
-        });
+    public static NativeBinaryResult setCursorPosition(long handle, int line, int column) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_CURSOR.invokeExact(handle, (long) line, (long) column, outSize));
     }
 
-    public static void moveCursorLeft(long handle, boolean extendSelection) {
-        invokeVoid(() -> {
-            MOVE_CURSOR_LEFT.invokeExact(handle, extendSelection ? 1 : 0);
-        });
+    public static NativeBinaryResult moveCursorLeft(long handle, boolean extendSelection) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) MOVE_CURSOR_LEFT.invokeExact(handle, extendSelection ? 1 : 0, outSize));
     }
 
-    public static void moveCursorRight(long handle, boolean extendSelection) {
-        invokeVoid(() -> {
-            MOVE_CURSOR_RIGHT.invokeExact(handle, extendSelection ? 1 : 0);
-        });
+    public static NativeBinaryResult moveCursorRight(long handle, boolean extendSelection) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) MOVE_CURSOR_RIGHT.invokeExact(handle, extendSelection ? 1 : 0, outSize));
     }
 
-    public static void moveCursorUp(long handle, boolean extendSelection) {
-        invokeVoid(() -> {
-            MOVE_CURSOR_UP.invokeExact(handle, extendSelection ? 1 : 0);
-        });
+    public static NativeBinaryResult moveCursorUp(long handle, boolean extendSelection) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) MOVE_CURSOR_UP.invokeExact(handle, extendSelection ? 1 : 0, outSize));
     }
 
-    public static void moveCursorDown(long handle, boolean extendSelection) {
-        invokeVoid(() -> {
-            MOVE_CURSOR_DOWN.invokeExact(handle, extendSelection ? 1 : 0);
-        });
+    public static NativeBinaryResult moveCursorDown(long handle, boolean extendSelection) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) MOVE_CURSOR_DOWN.invokeExact(handle, extendSelection ? 1 : 0, outSize));
     }
 
-    public static void moveCursorToLineStart(long handle, boolean extendSelection) {
-        invokeVoid(() -> {
-            MOVE_CURSOR_TO_LINE_START.invokeExact(handle, extendSelection ? 1 : 0);
-        });
+    public static NativeBinaryResult moveCursorToLineStart(long handle, boolean extendSelection) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) MOVE_CURSOR_TO_LINE_START.invokeExact(handle, extendSelection ? 1 : 0, outSize));
     }
 
-    public static void moveCursorToLineEnd(long handle, boolean extendSelection) {
-        invokeVoid(() -> {
-            MOVE_CURSOR_TO_LINE_END.invokeExact(handle, extendSelection ? 1 : 0);
-        });
+    public static NativeBinaryResult moveCursorToLineEnd(long handle, boolean extendSelection) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) MOVE_CURSOR_TO_LINE_END.invokeExact(handle, extendSelection ? 1 : 0, outSize));
     }
 
     public static int[] getCursorPosition(long handle, Arena arena) {
@@ -1061,10 +1048,8 @@ public final class EditorNative {
         }
     }
 
-    public static void selectAll(long handle) {
-        invokeVoid(() -> {
-            SELECT_ALL.invokeExact(handle);
-        });
+    public static NativeBinaryResult selectAll(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SELECT_ALL.invokeExact(handle, outSize));
     }
 
     public static int[] getSelection(long handle, Arena arena) {
@@ -1084,10 +1069,9 @@ public final class EditorNative {
         }
     }
 
-    public static void setSelection(long handle, int startLine, int startColumn, int endLine, int endColumn) {
-        invokeVoid(() -> {
-            SET_SELECTION.invokeExact(handle, (long) startLine, (long) startColumn, (long) endLine, (long) endColumn);
-        });
+    public static NativeBinaryResult setSelection(long handle, int startLine, int startColumn, int endLine, int endColumn) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_SELECTION.invokeExact(
+                handle, (long) startLine, (long) startColumn, (long) endLine, (long) endColumn, outSize));
     }
 
     public static String getSelectedText(long handle) {
@@ -1370,10 +1354,9 @@ public final class EditorNative {
                 handle, (long) cursorLine, (long) cursorColumn, outSize));
     }
 
-    public static void setImeKeyboardScriptClass(long handle, int scriptClass) {
-        invokeVoid(() -> {
-            IME_SET_KEYBOARD_SCRIPT_CLASS.invokeExact(handle, scriptClass);
-        });
+    public static NativeBinaryResult setImeKeyboardScriptClass(long handle, int scriptClass) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) IME_SET_KEYBOARD_SCRIPT_CLASS.invokeExact(handle, scriptClass, outSize));
     }
 
     public static int getImeKeyboardScriptClass(long handle) {
@@ -1391,10 +1374,9 @@ public final class EditorNative {
 
     // ===================== Read-only =====================
 
-    public static void setReadOnly(long handle, boolean readOnly) {
-        invokeVoid(() -> {
-            SET_READ_ONLY.invokeExact(handle, readOnly ? 1 : 0);
-        });
+    public static NativeBinaryResult setReadOnly(long handle, boolean readOnly) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_READ_ONLY.invokeExact(handle, readOnly ? 1 : 0, outSize));
     }
 
     public static boolean isReadOnly(long handle) {
@@ -1403,48 +1385,34 @@ public final class EditorNative {
 
     // ===================== Auto-indent =====================
 
-    public static void setAutoIndentMode(long handle, int mode) {
-        invokeVoid(() -> {
-            SET_AUTO_INDENT_MODE.invokeExact(handle, mode);
-        });
+    public static NativeBinaryResult setAutoIndentMode(long handle, int mode) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_AUTO_INDENT_MODE.invokeExact(handle, mode, outSize));
     }
 
     public static int getAutoIndentMode(long handle) {
         return invokeValue(() -> (int) GET_AUTO_INDENT_MODE.invokeExact(handle));
     }
 
-    public static void setBackspaceUnindent(long handle, int enabled) {
-        invokeVoid(() -> {
-            SET_BACKSPACE_UNINDENT.invokeExact(handle, enabled);
-        });
+    public static NativeBinaryResult setBackspaceUnindent(long handle, int enabled) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_BACKSPACE_UNINDENT.invokeExact(handle, enabled, outSize));
     }
 
     // ===================== Handle Config =====================
 
-    public static void setHandleConfig(long handle,
-                                       float startLeft, float startTop, float startRight, float startBottom,
-                                       float endLeft, float endTop, float endRight, float endBottom) {
-        invokeVoid(() -> {
-            SET_HANDLE_CONFIG.invokeExact(handle, startLeft, startTop, startRight, startBottom,
-                    endLeft, endTop, endRight, endBottom);
-        });
+    public static NativeBinaryResult setHandleConfig(long handle,
+                                                     float startLeft, float startTop, float startRight, float startBottom,
+                                                     float endLeft, float endTop, float endRight, float endBottom) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_HANDLE_CONFIG.invokeExact(
+                handle, startLeft, startTop, startRight, startBottom, endLeft, endTop, endRight, endBottom, outSize));
     }
 
-    public static void setScrollbarConfig(long handle, float thickness, float minThumb, float thumbHitPadding,
-                                          int mode, boolean thumbDraggable, int trackTapMode,
-                                          int fadeDelayMs, int fadeDurationMs) {
-        invokeVoid(() -> {
-            SET_SCROLLBAR_CONFIG.invokeExact(
-                    handle,
-                    thickness,
-                    minThumb,
-                    thumbHitPadding,
-                    mode,
-                    thumbDraggable ? 1 : 0,
-                    trackTapMode,
-                    fadeDelayMs,
-                    fadeDurationMs);
-        });
+    public static NativeBinaryResult setScrollbarConfig(long handle, float thickness, float minThumb, float thumbHitPadding,
+                                                        int mode, boolean thumbDraggable, int trackTapMode,
+                                                        int fadeDelayMs, int fadeDurationMs) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_SCROLLBAR_CONFIG.invokeExact(
+                handle, thickness, minThumb, thumbHitPadding, mode, thumbDraggable ? 1 : 0, trackTapMode,
+                fadeDelayMs, fadeDurationMs, outSize));
     }
 
     // ===================== Position/Coordinate Query =====================
@@ -1491,54 +1459,45 @@ public final class EditorNative {
                 (MemorySegment) INSERT_SNIPPET.invokeExact(handle, arena.allocateFrom(snippetTemplate), outSize));
     }
 
-    public static void startLinkedEditing(long handle, byte[] payload, Arena arena) {
-        invokeVoid(() -> {
-            START_LINKED_EDITING.invokeExact(handle, byteArraySegment(arena, payload), (long) payload.length);
-        });
+    public static NativeBinaryResult startLinkedEditing(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) START_LINKED_EDITING.invokeExact(
+                handle, byteArraySegment(arena, payload), (long) payload.length, outSize));
     }
 
     public static boolean isInLinkedEditing(long handle) {
         return invokeBoolean(() -> (int) IS_IN_LINKED_EDITING.invokeExact(handle));
     }
 
-    public static boolean linkedEditingNext(long handle) {
-        return invokeBoolean(() -> (int) LINKED_EDITING_NEXT.invokeExact(handle));
+    public static NativeBinaryResult linkedEditingNext(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) LINKED_EDITING_NEXT.invokeExact(handle, outSize));
     }
 
-    public static boolean linkedEditingPrev(long handle) {
-        return invokeBoolean(() -> (int) LINKED_EDITING_PREV.invokeExact(handle));
+    public static NativeBinaryResult linkedEditingPrev(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) LINKED_EDITING_PREV.invokeExact(handle, outSize));
     }
 
-    public static void cancelLinkedEditing(long handle) {
-        invokeVoid(() -> {
-            CANCEL_LINKED_EDITING.invokeExact(handle);
-        });
+    public static NativeBinaryResult cancelLinkedEditing(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) CANCEL_LINKED_EDITING.invokeExact(handle, outSize));
     }
 
     // ===================== Scroll/Navigation =====================
 
-    public static void scrollToLine(long handle, int line, int behavior) {
-        invokeVoid(() -> {
-            SCROLL_TO_LINE.invokeExact(handle, (long) line, (byte) behavior);
-        });
+    public static NativeBinaryResult scrollToLine(long handle, int line, int behavior) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SCROLL_TO_LINE.invokeExact(handle, (long) line, (byte) behavior, outSize));
     }
 
-    public static void gotoLine(long handle, int line, int column) {
-        invokeVoid(() -> {
-            GOTO_LINE.invokeExact(handle, (long) line, (long) column);
-        });
+    public static NativeBinaryResult gotoLine(long handle, int line, int column) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) GOTO_LINE.invokeExact(handle, (long) line, (long) column, outSize));
     }
 
-    public static void ensureCursorVisible(long handle) {
-        invokeVoid(() -> {
-            ENSURE_CURSOR_VISIBLE.invokeExact(handle);
-        });
+    public static NativeBinaryResult ensureCursorVisible(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) ENSURE_CURSOR_VISIBLE.invokeExact(handle, outSize));
     }
 
-    public static void setScroll(long handle, float scrollX, float scrollY) {
-        invokeVoid(() -> {
-            SET_SCROLL.invokeExact(handle, scrollX, scrollY);
-        });
+    public static NativeBinaryResult setScroll(long handle, float scrollX, float scrollY) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_SCROLL.invokeExact(handle, scrollX, scrollY, outSize));
     }
 
     public static NativeBinaryResult getScrollMetrics(long handle, Arena arena) {
@@ -1548,37 +1507,31 @@ public final class EditorNative {
 
     // ===================== Style/Highlight =====================
 
-    public static void registerTextStyle(long handle, int styleId, int color, int bgColor, int fontStyle) {
-        invokeVoid(() -> {
-            REGISTER_TEXT_STYLE.invokeExact(handle, styleId, color, bgColor, fontStyle);
-        });
+    public static NativeBinaryResult registerTextStyle(long handle, int styleId, int color, int bgColor, int fontStyle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) REGISTER_TEXT_STYLE.invokeExact(
+                handle, styleId, color, bgColor, fontStyle, outSize));
     }
 
-    public static void registerBatchTextStyles(long handle, byte[] payload, Arena arena) {
-        invokeVoid(() -> {
-            REGISTER_BATCH_TEXT_STYLES.invokeExact(handle, byteArraySegment(arena, payload), (long) payload.length);
-        });
+    public static NativeBinaryResult registerBatchTextStyles(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) REGISTER_BATCH_TEXT_STYLES.invokeExact(
+                handle, byteArraySegment(arena, payload), (long) payload.length, outSize));
     }
 
-    public static void registerBatchTextStyles(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            REGISTER_BATCH_TEXT_STYLES.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult registerBatchTextStyles(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) REGISTER_BATCH_TEXT_STYLES.invokeExact(handle, payload, size, outSize));
     }
 
-    public static void setLineSpans(long handle, byte[] payload, Arena arena) {
-        invokeVoid(() -> {
-            SET_LINE_SPANS.invokeExact(handle, byteArraySegment(arena, payload), (long) payload.length);
-        });
+    public static NativeBinaryResult setLineSpans(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_LINE_SPANS.invokeExact(
+                handle, byteArraySegment(arena, payload), (long) payload.length, outSize));
     }
 
     /**
      * Zero-copy overload: pass pre-encoded MemorySegment directly
      */
-    public static void setLineSpans(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_LINE_SPANS.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setLineSpans(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_LINE_SPANS.invokeExact(handle, payload, size, outSize));
     }
 
     // ===================== InlayHint / PhantomText =====================
@@ -1587,157 +1540,102 @@ public final class EditorNative {
     // ===================== Gutter Icons =====================
 
 
-    public static void clearGutterIcons(long handle) {
-        try {
-            CLEAR_GUTTER_ICONS.invokeExact(handle);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult clearGutterIcons(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) CLEAR_GUTTER_ICONS.invokeExact(handle, outSize));
     }
 
-    public static void setMaxGutterIcons(long handle, int count) {
-        try {
-            SET_MAX_GUTTER_ICONS.invokeExact(handle, count);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setMaxGutterIcons(long handle, int count) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_MAX_GUTTER_ICONS.invokeExact(handle, count, outSize));
     }
 
     // ===================== Diagnostic Decorations =====================
 
-    public static void setLineDiagnostics(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_LINE_DIAGNOSTICS.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setLineDiagnostics(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_LINE_DIAGNOSTICS.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
     /**
      * Zero-copy overload: pass pre-encoded MemorySegment directly
      */
-    public static void setLineDiagnostics(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_LINE_DIAGNOSTICS.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setLineDiagnostics(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_LINE_DIAGNOSTICS.invokeExact(handle, payload, size, outSize));
     }
 
-    public static void clearDiagnostics(long handle) {
-        try {
-            CLEAR_DIAGNOSTICS.invokeExact(handle);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult clearDiagnostics(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) CLEAR_DIAGNOSTICS.invokeExact(handle, outSize));
     }
 
     // ===================== Guide =====================
 
 
-    public static void clearGuides(long handle) {
-        try {
-            CLEAR_GUIDES.invokeExact(handle);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult clearGuides(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) CLEAR_GUIDES.invokeExact(handle, outSize));
     }
 
     // ===================== Bracket Pair Highlight =====================
 
-    public static void setBracketPairs(long handle, int[] openChars, int[] closeChars, Arena arena) {
-        try {
+    public static NativeBinaryResult setBracketPairs(long handle, int[] openChars, int[] closeChars, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> {
             MemorySegment openSeg = arena.allocateFrom(ValueLayout.JAVA_INT, openChars);
             MemorySegment closeSeg = arena.allocateFrom(ValueLayout.JAVA_INT, closeChars);
-            SET_BRACKET_PAIRS.invokeExact(handle, openSeg, closeSeg, (long) openChars.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+            return (MemorySegment) SET_BRACKET_PAIRS.invokeExact(handle, openSeg, closeSeg, (long) openChars.length,
+                    outSize);
+        });
     }
 
-    public static void setAutoClosingPairs(long handle, int[] openChars, int[] closeChars, Arena arena) {
-        try {
+    public static NativeBinaryResult setAutoClosingPairs(long handle, int[] openChars, int[] closeChars, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> {
             MemorySegment openSeg = arena.allocateFrom(ValueLayout.JAVA_INT, openChars);
             MemorySegment closeSeg = arena.allocateFrom(ValueLayout.JAVA_INT, closeChars);
-            SET_AUTO_CLOSING_PAIRS.invokeExact(handle, openSeg, closeSeg, (long) openChars.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+            return (MemorySegment) SET_AUTO_CLOSING_PAIRS.invokeExact(handle, openSeg, closeSeg,
+                    (long) openChars.length, outSize);
+        });
     }
 
-    public static void setMatchedBrackets(long handle, int openLine, int openCol, int closeLine, int closeCol) {
-        try {
-            SET_MATCHED_BRACKETS.invokeExact(handle, (long) openLine, (long) openCol, (long) closeLine, (long) closeCol);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setMatchedBrackets(long handle, int openLine, int openCol, int closeLine, int closeCol) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_MATCHED_BRACKETS.invokeExact(
+                handle, (long) openLine, (long) openCol, (long) closeLine, (long) closeCol, outSize));
     }
 
-    public static void clearMatchedBrackets(long handle) {
-        try {
-            CLEAR_MATCHED_BRACKETS.invokeExact(handle);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult clearMatchedBrackets(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) CLEAR_MATCHED_BRACKETS.invokeExact(handle, outSize));
     }
 
     // ===================== Fold =====================
 
-    public static void setFoldRegions(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_FOLD_REGIONS.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setFoldRegions(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_FOLD_REGIONS.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
     /**
      * Zero-copy overload: pass pre-encoded MemorySegment directly
      */
-    public static void setFoldRegions(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_FOLD_REGIONS.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setFoldRegions(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_FOLD_REGIONS.invokeExact(handle, payload, size, outSize));
     }
 
-    public static boolean toggleFold(long handle, int line) {
-        try {
-            return ((int) TOGGLE_FOLD.invokeExact(handle, (long) line)) != 0;
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult toggleFold(long handle, int line) {
+        return invokeBinaryResult(outSize -> (MemorySegment) TOGGLE_FOLD.invokeExact(handle, (long) line, outSize));
     }
 
-    public static boolean foldAt(long handle, int line) {
-        try {
-            return ((int) FOLD_AT.invokeExact(handle, (long) line)) != 0;
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult foldAt(long handle, int line) {
+        return invokeBinaryResult(outSize -> (MemorySegment) FOLD_AT.invokeExact(handle, (long) line, outSize));
     }
 
-    public static boolean unfoldAt(long handle, int line) {
-        try {
-            return ((int) UNFOLD_AT.invokeExact(handle, (long) line)) != 0;
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult unfoldAt(long handle, int line) {
+        return invokeBinaryResult(outSize -> (MemorySegment) UNFOLD_AT.invokeExact(handle, (long) line, outSize));
     }
 
-    public static void foldAll(long handle) {
-        try {
-            FOLD_ALL.invokeExact(handle);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult foldAll(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) FOLD_ALL.invokeExact(handle, outSize));
     }
 
-    public static void unfoldAll(long handle) {
-        try {
-            UNFOLD_ALL.invokeExact(handle);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult unfoldAll(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) UNFOLD_ALL.invokeExact(handle, outSize));
     }
 
     public static boolean isLineVisible(long handle, int line) {
@@ -1750,360 +1648,245 @@ public final class EditorNative {
 
     // ===================== Clear =====================
 
-    public static void clearHighlights(long handle) {
-        try {
-            CLEAR_HIGHLIGHTS.invokeExact(handle);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult clearHighlights(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) CLEAR_HIGHLIGHTS.invokeExact(handle, outSize));
     }
 
-    public static void clearLineSpans(long handle, int line, int layer) {
-        try {
-            CLEAR_LINE_SPANS.invokeExact(handle, (long) line, (byte) layer);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult clearLineSpans(long handle, int line, int layer) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) CLEAR_LINE_SPANS.invokeExact(handle, (long) line, (byte) layer, outSize));
     }
 
-    public static void clearHighlightsLayer(long handle, int layer) {
-        try {
-            CLEAR_HIGHLIGHTS_LAYER.invokeExact(handle, (byte) layer);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult clearHighlightsLayer(long handle, int layer) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) CLEAR_HIGHLIGHTS_LAYER.invokeExact(handle, (byte) layer, outSize));
     }
 
-    public static void clearInlayHints(long handle) {
-        try {
-            CLEAR_INLAY_HINTS.invokeExact(handle);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult clearInlayHints(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) CLEAR_INLAY_HINTS.invokeExact(handle, outSize));
     }
 
-    public static void clearPhantomTexts(long handle) {
-        try {
-            CLEAR_PHANTOM_TEXTS.invokeExact(handle);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult clearPhantomTexts(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) CLEAR_PHANTOM_TEXTS.invokeExact(handle, outSize));
     }
 
-    public static void clearAllDecorations(long handle) {
-        try {
-            CLEAR_ALL_DECORATIONS.invokeExact(handle);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult clearAllDecorations(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) CLEAR_ALL_DECORATIONS.invokeExact(handle, outSize));
     }
 
     // ===================== Binary Payload Methods =====================
 
-    public static void setLineInlayHints(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_LINE_INLAY_HINTS.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setLineInlayHints(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_LINE_INLAY_HINTS.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
     /**
      * Zero-copy overload: pass pre-encoded MemorySegment directly
      */
-    public static void setLineInlayHints(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_LINE_INLAY_HINTS.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setLineInlayHints(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_LINE_INLAY_HINTS.invokeExact(handle, payload, size, outSize));
     }
 
-    public static void setBatchLineInlayHints(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_BATCH_LINE_INLAY_HINTS.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setBatchLineInlayHints(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_BATCH_LINE_INLAY_HINTS.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
     /**
      * Zero-copy overload: pass pre-encoded MemorySegment directly
      */
-    public static void setBatchLineInlayHints(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_BATCH_LINE_INLAY_HINTS.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setBatchLineInlayHints(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_BATCH_LINE_INLAY_HINTS.invokeExact(handle, payload, size, outSize));
     }
 
-    public static void setLinePhantomTexts(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_LINE_PHANTOM_TEXTS.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setLinePhantomTexts(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_LINE_PHANTOM_TEXTS.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
     /**
      * Zero-copy overload: pass pre-encoded MemorySegment directly
      */
-    public static void setLinePhantomTexts(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_LINE_PHANTOM_TEXTS.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setLinePhantomTexts(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_LINE_PHANTOM_TEXTS.invokeExact(handle, payload, size, outSize));
     }
 
-    public static void setBatchLinePhantomTexts(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_BATCH_LINE_PHANTOM_TEXTS.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setBatchLinePhantomTexts(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_BATCH_LINE_PHANTOM_TEXTS.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
     /**
      * Zero-copy overload: pass pre-encoded MemorySegment directly
      */
-    public static void setBatchLinePhantomTexts(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_BATCH_LINE_PHANTOM_TEXTS.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setBatchLinePhantomTexts(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_BATCH_LINE_PHANTOM_TEXTS.invokeExact(handle, payload, size, outSize));
     }
 
-    public static void setLineGutterIcons(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_LINE_GUTTER_ICONS.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setLineGutterIcons(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_LINE_GUTTER_ICONS.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
     /**
      * Zero-copy overload: pass pre-encoded MemorySegment directly
      */
-    public static void setLineGutterIcons(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_LINE_GUTTER_ICONS.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setLineGutterIcons(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_LINE_GUTTER_ICONS.invokeExact(handle, payload, size, outSize));
     }
 
-    public static void setBatchLineGutterIcons(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_BATCH_LINE_GUTTER_ICONS.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setBatchLineGutterIcons(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_BATCH_LINE_GUTTER_ICONS.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
     /**
      * Zero-copy overload: pass pre-encoded MemorySegment directly
      */
-    public static void setBatchLineGutterIcons(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_BATCH_LINE_GUTTER_ICONS.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setBatchLineGutterIcons(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_BATCH_LINE_GUTTER_ICONS.invokeExact(handle, payload, size, outSize));
     }
 
     // ===================== CodeLens =====================
 
-    public static void clearCodeLens(long handle) {
-        try {
-            CLEAR_CODELENS.invokeExact(handle);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult clearCodeLens(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) CLEAR_CODELENS.invokeExact(handle, outSize));
     }
 
-    public static void setLineCodeLens(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_LINE_CODELENS.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setLineCodeLens(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_LINE_CODELENS.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
-    public static void setLineCodeLens(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_LINE_CODELENS.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setLineCodeLens(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_LINE_CODELENS.invokeExact(handle, payload, size, outSize));
     }
 
-    public static void setBatchLineCodeLens(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_BATCH_LINE_CODELENS.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setBatchLineCodeLens(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_BATCH_LINE_CODELENS.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
-    public static void setBatchLineCodeLens(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_BATCH_LINE_CODELENS.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setBatchLineCodeLens(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_BATCH_LINE_CODELENS.invokeExact(handle, payload, size, outSize));
     }
 
-    public static void clearLinks(long handle) {
-        try {
-            CLEAR_LINKS.invokeExact(handle);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult clearLinks(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) CLEAR_LINKS.invokeExact(handle, outSize));
     }
 
-    public static void setLineLinks(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_LINE_LINKS.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setLineLinks(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_LINE_LINKS.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
-    public static void setLineLinks(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_LINE_LINKS.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setLineLinks(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_LINE_LINKS.invokeExact(handle, payload, size, outSize));
     }
 
-    public static void setBatchLineLinks(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_BATCH_LINE_LINKS.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setBatchLineLinks(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_BATCH_LINE_LINKS.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
-    public static void setBatchLineLinks(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_BATCH_LINE_LINKS.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setBatchLineLinks(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_BATCH_LINE_LINKS.invokeExact(handle, payload, size, outSize));
     }
 
-    public static void setBatchLineSpans(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_BATCH_LINE_SPANS.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setBatchLineSpans(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_BATCH_LINE_SPANS.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
     /**
      * Zero-copy overload: pass pre-encoded MemorySegment directly
      */
-    public static void setBatchLineSpans(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_BATCH_LINE_SPANS.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setBatchLineSpans(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_BATCH_LINE_SPANS.invokeExact(handle, payload, size, outSize));
     }
 
-    public static void setBatchLineDiagnostics(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_BATCH_LINE_DIAGNOSTICS.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setBatchLineDiagnostics(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_BATCH_LINE_DIAGNOSTICS.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
     /**
      * Zero-copy overload: pass pre-encoded MemorySegment directly
      */
-    public static void setBatchLineDiagnostics(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_BATCH_LINE_DIAGNOSTICS.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setBatchLineDiagnostics(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_BATCH_LINE_DIAGNOSTICS.invokeExact(handle, payload, size, outSize));
     }
 
-    public static void setKeyMap(long handle, byte[] payload, Arena arena) {
-        invokeVoid(() -> {
-            SET_KEYMAP.invokeExact(handle, byteArraySegment(arena, payload), (long) payload.length);
-        });
+    public static NativeBinaryResult setKeyMap(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_KEYMAP.invokeExact(
+                handle, byteArraySegment(arena, payload), (long) payload.length, outSize));
     }
 
-    public static void setKeyMap(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_KEYMAP.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setKeyMap(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_KEYMAP.invokeExact(handle, payload, size, outSize));
     }
 
-    public static void setIndentGuides(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_INDENT_GUIDES.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setIndentGuides(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_INDENT_GUIDES.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
     /**
      * Zero-copy overload: pass pre-encoded MemorySegment directly
      */
-    public static void setIndentGuides(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_INDENT_GUIDES.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setIndentGuides(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_INDENT_GUIDES.invokeExact(handle, payload, size, outSize));
     }
 
-    public static void setBracketGuides(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_BRACKET_GUIDES.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setBracketGuides(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_BRACKET_GUIDES.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
     /**
      * Zero-copy overload: pass pre-encoded MemorySegment directly
      */
-    public static void setBracketGuides(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_BRACKET_GUIDES.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setBracketGuides(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_BRACKET_GUIDES.invokeExact(handle, payload, size, outSize));
     }
 
-    public static void setFlowGuides(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_FLOW_GUIDES.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setFlowGuides(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_FLOW_GUIDES.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
     /**
      * Zero-copy overload: pass pre-encoded MemorySegment directly
      */
-    public static void setFlowGuides(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_FLOW_GUIDES.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setFlowGuides(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_FLOW_GUIDES.invokeExact(handle, payload, size, outSize));
     }
 
-    public static void setSeparatorGuides(long handle, byte[] payload, Arena arena) {
-        try {
-            MemorySegment seg = arena.allocateFrom(ValueLayout.JAVA_BYTE, payload);
-            SET_SEPARATOR_GUIDES.invokeExact(handle, seg, (long) payload.length);
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static NativeBinaryResult setSeparatorGuides(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_SEPARATOR_GUIDES.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
     }
 
     /**
      * Zero-copy overload: pass pre-encoded MemorySegment directly
      */
-    public static void setSeparatorGuides(long handle, MemorySegment payload, long size) {
-        invokeVoid(() -> {
-            SET_SEPARATOR_GUIDES.invokeExact(handle, payload, size);
-        });
+    public static NativeBinaryResult setSeparatorGuides(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_SEPARATOR_GUIDES.invokeExact(handle, payload, size, outSize));
     }
 
     // ===================== Utilities =====================

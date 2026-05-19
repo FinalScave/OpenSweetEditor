@@ -53,19 +53,3 @@ enum GestureType: String, Codable {
     case DRAG_SELECT
     case CONTEXT_MENU
 }
-
-struct GestureResultData: Codable {
-    let type: GestureType
-    let tap_point: PointData
-    let modifiers: UInt8
-    let scale: Float
-    let scroll_x: Float
-    let scroll_y: Float
-    let cursor_position: TextPositionData
-    let has_selection: Bool
-    let selection: TextRangeData
-    let view_scroll_x: Float
-    let view_scroll_y: Float
-    let view_scale: Float
-    let hit_target: HitTargetData
-}

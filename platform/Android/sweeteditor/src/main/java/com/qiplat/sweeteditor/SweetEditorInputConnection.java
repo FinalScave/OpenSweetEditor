@@ -67,7 +67,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         int safeStart = clampEditableOffset(start, mEditable.length());
         int safeEnd = clampEditableOffset(end, mEditable.length());
         Selection.setSelection(mEditable, safeStart, safeEnd);
-        EditorCore.ImeActionResult result = mEditor.getEditorCore().updateImeInputStateSelection(
+        EditorCore.EditorActionResult result = mEditor.getEditorCore().updateImeInputStateSelection(
                 mInputContextId,
                 mInputDocumentStartOffset,
                 safeStart,
@@ -130,7 +130,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         if (!isActive() || start < 0 || end < 0) {
             return false;
         }
-        EditorCore.ImeActionResult result = mEditor.getEditorCore().replaceImeInputStateText(
+        EditorCore.EditorActionResult result = mEditor.getEditorCore().replaceImeInputStateText(
                 mInputContextId,
                 mInputDocumentStartOffset,
                 Math.min(start, end),
@@ -147,7 +147,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         if (!isActive()) {
             return false;
         }
-        EditorCore.ImeActionResult result = mEditor.getEditorCore().finishImePreedit();
+        EditorCore.EditorActionResult result = mEditor.getEditorCore().finishImePreedit();
         finishImeAction(result, "ime-finish");
         return true;
     }
@@ -170,14 +170,14 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             int keyCode = event.getKeyCode();
             if (keyCode == KeyEvent.KEYCODE_DEL) {
-                EditorCore.ImeActionResult result = mEditor.getEditorCore().deleteImeBackward(
+                EditorCore.EditorActionResult result = mEditor.getEditorCore().deleteImeBackward(
                         1,
                         EditorCore.ImeTextUnit.GRAPHEME);
                 finishImeAction(result, "ime-delete");
                 return result.handled;
             }
             if (keyCode == KeyEvent.KEYCODE_FORWARD_DEL) {
-                EditorCore.ImeActionResult result = mEditor.getEditorCore().deleteImeForward(
+                EditorCore.EditorActionResult result = mEditor.getEditorCore().deleteImeForward(
                         1,
                         EditorCore.ImeTextUnit.GRAPHEME);
                 finishImeAction(result, "ime-delete");
@@ -226,7 +226,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         int selectionEnd = Selection.getSelectionEnd(mEditable);
         int composingStart = BaseInputConnection.getComposingSpanStart(mEditable);
         int composingEnd = BaseInputConnection.getComposingSpanEnd(mEditable);
-        EditorCore.ImeActionResult result = mEditor.getEditorCore().updateImeInputStateText(
+        EditorCore.EditorActionResult result = mEditor.getEditorCore().updateImeInputStateText(
                 mInputContextId,
                 mInputDocumentStartOffset,
                 mEditable.toString(),
@@ -244,7 +244,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
             return false;
         }
         long t0 = System.nanoTime();
-        EditorCore.ImeActionResult result = mEditor.getEditorCore().deleteImeSurrounding(
+        EditorCore.EditorActionResult result = mEditor.getEditorCore().deleteImeSurrounding(
                 Math.max(0, beforeLength),
                 Math.max(0, afterLength),
                 textUnit);
@@ -252,16 +252,34 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         return result.handled;
     }
 
-    private void finishImeAction(EditorCore.ImeActionResult result, String perfName) {
+    private void finishImeAction(EditorCore.EditorActionResult result, String perfName) {
         finishImeAction(result, perfName, System.nanoTime());
     }
 
-    private void finishImeAction(EditorCore.ImeActionResult result, String perfName, long startTimeNanos) {
-        mEditor.dispatchImeTextChanged(result.editResult);
-        syncEditableFromCore();
-        mEditor.flush();
-        updateImeSelectionState();
+    private void finishImeAction(EditorCore.EditorActionResult result, String perfName, long startTimeNanos) {
+        mEditor.dispatchEditorActionResult(result);
         mEditor.logInputPerf(startTimeNanos, perfName);
+    }
+
+    void onEditorActionResult(EditorCore.EditorActionResult result) {
+        if (result.needsImeSync) {
+            syncEditableFromCore();
+        }
+        if (result.needsImeSync
+                || result.cursorChanged
+                || result.selectionChanged
+                || result.compositionChanged
+                || isImeSelectionGesture(result)) {
+            updateImeSelectionState();
+        }
+    }
+
+    private boolean isImeSelectionGesture(EditorCore.EditorActionResult result) {
+        return result.gestureType == EditorCore.GestureType.TAP
+                || result.gestureType == EditorCore.GestureType.DOUBLE_TAP
+                || result.gestureType == EditorCore.GestureType.LONG_PRESS
+                || result.gestureType == EditorCore.GestureType.DRAG_SELECT
+                || result.isHandleDrag;
     }
 
     private EditorCore.ImeInputContext syncEditableFromCore() {

@@ -43,8 +43,8 @@ intptr_t create_editor(se_text_measurer_t measurer,
                        size_t options_size);
 void free_editor(intptr_t editor_handle);
 
-void set_editor_viewport(intptr_t editor_handle, int16_t width, int16_t height);
-void set_editor_document(intptr_t editor_handle, intptr_t document_handle);
+const uint8_t* set_editor_viewport(intptr_t editor_handle, int16_t width, int16_t height, size_t* out_size);
+const uint8_t* set_editor_document(intptr_t editor_handle, intptr_t document_handle, size_t* out_size);
 
 const uint8_t* handle_editor_gesture_event(intptr_t editor_handle,
                                            uint8_t type,
@@ -62,7 +62,7 @@ const uint8_t* handle_editor_gesture_event_ex(intptr_t editor_handle,
                                               float direct_scale,
                                               size_t* out_size);
 
-void editor_on_font_metrics_changed(intptr_t editor_handle);
+const uint8_t* editor_on_font_metrics_changed(intptr_t editor_handle, size_t* out_size);
 
 const uint8_t* build_editor_render_model(intptr_t editor_handle, size_t* out_size);
 const uint8_t* get_layout_metrics(intptr_t editor_handle, size_t* out_size);
@@ -161,15 +161,15 @@ int  editor_is_composing(intptr_t editor_handle);
 
 // ===================== ReadOnly API =====================
 
-void editor_set_read_only(intptr_t editor_handle, int read_only);
+const uint8_t* editor_set_read_only(intptr_t editor_handle, int read_only, size_t* out_size);
 int  editor_is_read_only(intptr_t editor_handle);
 
 // ===================== AutoIndent API =====================
 
-void editor_set_auto_indent_mode(intptr_t editor_handle, int mode);
+const uint8_t* editor_set_auto_indent_mode(intptr_t editor_handle, int mode, size_t* out_size);
 int  editor_get_auto_indent_mode(intptr_t editor_handle);
-void editor_set_backspace_unindent(intptr_t editor_handle, int enabled);
-void editor_set_insert_spaces(intptr_t editor_handle, int enabled);
+const uint8_t* editor_set_backspace_unindent(intptr_t editor_handle, int enabled, size_t* out_size);
+const uint8_t* editor_set_insert_spaces(intptr_t editor_handle, int enabled, size_t* out_size);
 
 // ===================== Position Rect API =====================
 
@@ -181,21 +181,23 @@ void editor_get_cursor_rect(intptr_t editor_handle,
 
 // ===================== Navigation API =====================
 
-void editor_set_scrollbar_config(intptr_t editor_handle,
-                                 float thickness, float min_thumb, float thumb_hit_padding,
-                                 int mode, int thumb_draggable, int track_tap_mode,
-                                 int fade_delay_ms, int fade_duration_ms);
-void editor_scroll_to_line(intptr_t editor_handle, size_t line, uint8_t behavior);
-void editor_goto_position(intptr_t editor_handle, size_t line, size_t column);
-void editor_set_scroll(intptr_t editor_handle, float scroll_x, float scroll_y);
+const uint8_t* editor_set_scrollbar_config(intptr_t editor_handle,
+                                           float thickness, float min_thumb, float thumb_hit_padding,
+                                           int mode, int thumb_draggable, int track_tap_mode,
+                                           int fade_delay_ms, int fade_duration_ms,
+                                           size_t* out_size);
+const uint8_t* editor_scroll_to_line(intptr_t editor_handle, size_t line, uint8_t behavior, size_t* out_size);
+const uint8_t* editor_goto_position(intptr_t editor_handle, size_t line, size_t column, size_t* out_size);
+const uint8_t* editor_set_scroll(intptr_t editor_handle, float scroll_x, float scroll_y, size_t* out_size);
 const uint8_t* editor_get_scroll_metrics(intptr_t editor_handle, size_t* out_size);
 
 // ===================== Selection API =====================
 
-void editor_select_all(intptr_t editor_handle);
-void editor_set_selection(intptr_t editor_handle,
-                          size_t start_line, size_t start_column,
-                          size_t end_line, size_t end_column);
+const uint8_t* editor_select_all(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_set_selection(intptr_t editor_handle,
+                                    size_t start_line, size_t start_column,
+                                    size_t end_line, size_t end_column,
+                                    size_t* out_size);
 int  editor_get_selection(intptr_t editor_handle,
                           size_t* out_start_line, size_t* out_start_column,
                           size_t* out_end_line, size_t* out_end_column);
@@ -206,16 +208,16 @@ const char* editor_get_word_at_cursor(intptr_t editor_handle);
 
 // ===================== Gutter Icon API =====================
 
-void editor_clear_gutter_icons(intptr_t editor_handle);
-void editor_set_max_gutter_icons(intptr_t editor_handle, uint32_t count);
-void editor_set_fold_arrow_mode(intptr_t editor_handle, int mode);
-void editor_set_wrap_mode(intptr_t editor_handle, int mode);
-void editor_set_tab_size(intptr_t editor_handle, int tab_size);
-void editor_set_scale(intptr_t editor_handle, float scale);
-void editor_set_line_spacing(intptr_t editor_handle, float add, float mult);
-void editor_set_content_start_padding(intptr_t editor_handle, float padding);
-void editor_set_show_split_line(intptr_t editor_handle, int show);
-void editor_set_current_line_render_mode(intptr_t editor_handle, int mode);
+const uint8_t* editor_clear_gutter_icons(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_set_max_gutter_icons(intptr_t editor_handle, uint32_t count, size_t* out_size);
+const uint8_t* editor_set_fold_arrow_mode(intptr_t editor_handle, int mode, size_t* out_size);
+const uint8_t* editor_set_wrap_mode(intptr_t editor_handle, int mode, size_t* out_size);
+const uint8_t* editor_set_tab_size(intptr_t editor_handle, int tab_size, size_t* out_size);
+const uint8_t* editor_set_scale(intptr_t editor_handle, float scale, size_t* out_size);
+const uint8_t* editor_set_line_spacing(intptr_t editor_handle, float add, float mult, size_t* out_size);
+const uint8_t* editor_set_content_start_padding(intptr_t editor_handle, float padding, size_t* out_size);
+const uint8_t* editor_set_show_split_line(intptr_t editor_handle, int show, size_t* out_size);
+const uint8_t* editor_set_current_line_render_mode(intptr_t editor_handle, int mode, size_t* out_size);
 
 // ===================== Undo/Redo API =====================
 
@@ -226,85 +228,85 @@ int editor_can_redo(intptr_t editor_handle);
 
 // ===================== Style / Highlight API =====================
 
-void editor_register_text_style(intptr_t editor_handle, uint32_t style_id, int32_t color, int32_t background_color, int32_t font_style);
-void editor_register_batch_text_styles(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_batch_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_clear_line_spans(intptr_t editor_handle, size_t line, uint8_t layer);
-void editor_clear_highlights(intptr_t editor_handle);
-void editor_clear_highlights_layer(intptr_t editor_handle, uint8_t layer);
+const uint8_t* editor_register_text_style(intptr_t editor_handle, uint32_t style_id, int32_t color, int32_t background_color, int32_t font_style, size_t* out_size);
+const uint8_t* editor_register_batch_text_styles(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_set_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_set_batch_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_clear_line_spans(intptr_t editor_handle, size_t line, uint8_t layer, size_t* out_size);
+const uint8_t* editor_clear_highlights(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_clear_highlights_layer(intptr_t editor_handle, uint8_t layer, size_t* out_size);
 
 // ===================== Diagnostic API =====================
 
-void editor_set_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_batch_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_clear_diagnostics(intptr_t editor_handle);
+const uint8_t* editor_set_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_set_batch_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_clear_diagnostics(intptr_t editor_handle, size_t* out_size);
 
 // ===================== Inlay / Phantom API =====================
 
-void editor_set_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_batch_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_clear_inlay_hints(intptr_t editor_handle);
-void editor_set_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_batch_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_clear_phantom_texts(intptr_t editor_handle);
+const uint8_t* editor_set_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_set_batch_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_clear_inlay_hints(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_set_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_set_batch_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_clear_phantom_texts(intptr_t editor_handle, size_t* out_size);
 
 // ===================== Gutter Icon Batch API =====================
 
-void editor_set_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_batch_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size);
+const uint8_t* editor_set_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_set_batch_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 // ===================== CodeLens API =====================
 
-void editor_set_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_batch_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_clear_codelens(intptr_t editor_handle);
+const uint8_t* editor_set_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_set_batch_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_clear_codelens(intptr_t editor_handle, size_t* out_size);
 
 // ===================== Link API =====================
 
-void editor_set_line_links(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_batch_line_links(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_clear_links(intptr_t editor_handle);
+const uint8_t* editor_set_line_links(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_set_batch_line_links(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_clear_links(intptr_t editor_handle, size_t* out_size);
 const char* editor_get_link_target_at(intptr_t editor_handle, size_t line, size_t column);
 
 // ===================== Guide API =====================
 
-void editor_set_indent_guides(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_bracket_guides(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_flow_guides(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_separator_guides(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_clear_guides(intptr_t editor_handle);
+const uint8_t* editor_set_indent_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_set_bracket_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_set_flow_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_set_separator_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_clear_guides(intptr_t editor_handle, size_t* out_size);
 
 // ===================== Fold API =====================
 
-void editor_set_fold_regions(intptr_t editor_handle, const uint8_t* data, size_t size);
-int  editor_toggle_fold(intptr_t editor_handle, size_t line);
-int  editor_fold_at(intptr_t editor_handle, size_t line);
-int  editor_unfold_at(intptr_t editor_handle, size_t line);
-void editor_fold_all(intptr_t editor_handle);
-void editor_unfold_all(intptr_t editor_handle);
+const uint8_t* editor_set_fold_regions(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_toggle_fold(intptr_t editor_handle, size_t line, size_t* out_size);
+const uint8_t* editor_fold_at(intptr_t editor_handle, size_t line, size_t* out_size);
+const uint8_t* editor_unfold_at(intptr_t editor_handle, size_t line, size_t* out_size);
+const uint8_t* editor_fold_all(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_unfold_all(intptr_t editor_handle, size_t* out_size);
 int  editor_is_line_visible(intptr_t editor_handle, size_t line);
 void editor_get_visible_line_range(intptr_t editor_handle, int32_t* out_start_line, int32_t* out_end_line);
 
 // ===================== Decorations Clear API =====================
 
-void editor_clear_all_decorations(intptr_t editor_handle);
+const uint8_t* editor_clear_all_decorations(intptr_t editor_handle, size_t* out_size);
 
 // ===================== LinkedEditing API =====================
 
 const uint8_t* editor_insert_snippet(intptr_t editor_handle, const char* snippet_template, size_t* out_size);
-void     editor_start_linked_editing(intptr_t editor_handle, const uint8_t* data, size_t size);
+const uint8_t* editor_start_linked_editing(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 int      editor_is_in_linked_editing(intptr_t editor_handle);
-int      editor_linked_editing_next(intptr_t editor_handle);
-int      editor_linked_editing_prev(intptr_t editor_handle);
-void     editor_cancel_linked_editing(intptr_t editor_handle);
+const uint8_t* editor_linked_editing_next(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_linked_editing_prev(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_cancel_linked_editing(intptr_t editor_handle, size_t* out_size);
 
 // ===================== Bracket Highlight =====================
 
-void editor_set_bracket_pairs(intptr_t editor_handle, const uint32_t* open_chars, const uint32_t* close_chars, size_t count);
-void editor_set_auto_closing_pairs(intptr_t editor_handle, const uint32_t* open_chars, const uint32_t* close_chars, size_t count);
-void editor_set_matched_brackets(intptr_t editor_handle, size_t open_line, size_t open_col, size_t close_line, size_t close_col);
-void editor_clear_matched_brackets(intptr_t editor_handle);
+const uint8_t* editor_set_bracket_pairs(intptr_t editor_handle, const uint32_t* open_chars, const uint32_t* close_chars, size_t count, size_t* out_size);
+const uint8_t* editor_set_auto_closing_pairs(intptr_t editor_handle, const uint32_t* open_chars, const uint32_t* close_chars, size_t count, size_t* out_size);
+const uint8_t* editor_set_matched_brackets(intptr_t editor_handle, size_t open_line, size_t open_col, size_t close_line, size_t close_col, size_t* out_size);
+const uint8_t* editor_clear_matched_brackets(intptr_t editor_handle, size_t* out_size);
 
 // ===================== Memory Management =====================
 

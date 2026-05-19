@@ -304,8 +304,6 @@ public final class DecorationProviderManager {
 
         applyLinksMode(linksMode);
         editor.setBatchLineLinks(links);
-
-        editor.flush();
     }
 
     private void applySpanMode(@NonNull SpanLayer layer, @NonNull DecorationResult.ApplyMode mode) {

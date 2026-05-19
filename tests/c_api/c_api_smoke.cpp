@@ -143,13 +143,14 @@ namespace {
     return metrics;
   }
 
-  struct GesturePayloadData {
-    int32_t type = 0;
+  struct ActionPayloadData {
+    int32_t handled = 0;
+    int32_t gesture_type = 0;
     float view_scale = 1.0f;
   };
 
-  GesturePayloadData parseGesturePayload(const uint8_t* data, size_t size) {
-    GesturePayloadData payload;
+  ActionPayloadData parseActionPayload(const uint8_t* data, size_t size) {
+    ActionPayloadData payload;
     if (data == nullptr || size < sizeof(int32_t)) {
       return payload;
     }
@@ -167,20 +168,34 @@ namespace {
       return true;
     };
 
-    if (!readI32(payload.type)) return payload;
-    // TAP / DOUBLE_TAP / LONG_PRESS / DRAG_SELECT / CONTEXT_MENU include an extra tap point
-    if (payload.type == 1 || payload.type == 2 || payload.type == 3 || payload.type == 7 || payload.type == 8) {
-      float ignore = 0;
-      if (!readF32(ignore) || !readF32(ignore)) return payload;
-    }
-    // Skip cursor/selection/view_scroll
     int32_t ignore_i32 = 0;
-    for (int i = 0; i < 7; i++) {
+    if (!readI32(payload.handled)) return payload;
+    for (int i = 0; i < 15; ++i) {
+      if (!readI32(ignore_i32)) return payload;
+    }
+    int32_t change_count = 0;
+    if (!readI32(change_count)) return payload;
+    for (int32_t i = 0; i < change_count; ++i) {
+      for (int j = 0; j < 4; ++j) {
+        if (!readI32(ignore_i32)) return payload;
+      }
+      int32_t text_len = 0;
+      if (!readI32(text_len)) return payload;
+      if (text_len < 0 || offset + static_cast<size_t>(text_len) > size) return payload;
+      offset += static_cast<size_t>(text_len);
+    }
+    for (int i = 0; i < 14; ++i) {
       if (!readI32(ignore_i32)) return payload;
     }
     float ignore_f32 = 0;
-    if (!readF32(ignore_f32) || !readF32(ignore_f32)) return payload;
+    for (int i = 0; i < 5; ++i) {
+      if (!readF32(ignore_f32)) return payload;
+    }
     readF32(payload.view_scale);
+    for (int i = 0; i < 23; ++i) {
+      if (!readI32(ignore_i32)) return payload;
+    }
+    readI32(payload.gesture_type);
     return payload;
   }
 
@@ -248,8 +263,10 @@ TEST_CASE("C API null handles return safe defaults") {
   CHECK(no_change == nullptr);
   CHECK(no_change_size == 0);
 
-  editor_set_cursor_position(0, 0, 0);
-  editor_set_selection(0, 0, 0, 0, 0);
+  editor_set_cursor_position(0, 0, 0, &no_change_size);
+  CHECK(no_change_size == 0);
+  editor_set_selection(0, 0, 0, 0, 0, &no_change_size);
+  CHECK(no_change_size == 0);
   size_t null_ime_size = 0;
   const uint8_t* null_ime = editor_ime_update_preedit(0, "a", 0, &null_ime_size);
   CHECK(null_ime == nullptr);
@@ -257,9 +274,12 @@ TEST_CASE("C API null handles return safe defaults") {
   null_ime = editor_ime_cancel_preedit(0, &null_ime_size);
   CHECK(null_ime == nullptr);
   CHECK(null_ime_size == 0);
-  editor_fold_all(0);
-  editor_unfold_all(0);
-  editor_set_scroll(0, 12.0f, 34.0f);
+  editor_fold_all(0, &no_change_size);
+  CHECK(no_change_size == 0);
+  editor_unfold_all(0, &no_change_size);
+  CHECK(no_change_size == 0);
+  editor_set_scroll(0, 12.0f, 34.0f, &no_change_size);
+  CHECK(no_change_size == 0);
 }
 
 TEST_CASE("C API basic edit, composition and linked editing flow") {
@@ -270,8 +290,13 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
 
   intptr_t editor = create_editor(makeMeasurer(), nullptr, 0);
   REQUIRE(editor != 0);
-  set_editor_document(editor, document);
-  set_editor_viewport(editor, 100, 80);
+  size_t action_size = 0;
+  const uint8_t* action_payload = set_editor_document(editor, document, &action_size);
+  REQUIRE(action_payload != nullptr);
+  free_binary_data(reinterpret_cast<intptr_t>(action_payload));
+  action_payload = set_editor_viewport(editor, 100, 80, &action_size);
+  REQUIRE(action_payload != nullptr);
+  free_binary_data(reinterpret_cast<intptr_t>(action_payload));
 
   size_t scroll_metrics_size = 0;
   const uint8_t* scroll_metrics_payload = editor_get_scroll_metrics(editor, &scroll_metrics_size);
@@ -314,9 +339,9 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   float p2[4] = {95.0f, 100.0f, 205.0f, 100.0f};
   gesture_payload = handle_editor_gesture_event(editor, 3, 2, p2, &gesture_size);
   REQUIRE(gesture_payload != nullptr);
-  GesturePayloadData gesture = parseGesturePayload(gesture_payload, gesture_size);
+  ActionPayloadData gesture = parseActionPayload(gesture_payload, gesture_size);
   free_binary_data(reinterpret_cast<intptr_t>(gesture_payload));
-  CHECK(gesture.type == 4); // SCALE
+  CHECK(gesture.gesture_type == 4);
   CHECK(gesture.view_scale > 1.0f);
 
   size_t insert_size = 0;
@@ -326,7 +351,9 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   free_binary_data(reinterpret_cast<intptr_t>(insert_result));
   CHECK(getLineTextUtf8(document, 0) == "Xabc");
 
-  editor_set_cursor_position(editor, 0, 4);
+  action_payload = editor_set_cursor_position(editor, 0, 4, &action_size);
+  REQUIRE(action_payload != nullptr);
+  free_binary_data(reinterpret_cast<intptr_t>(action_payload));
   size_t ime_size = 0;
   const uint8_t* ime_result = editor_ime_update_preedit(editor, "q", 1, &ime_size);
   REQUIRE(ime_result != nullptr);
@@ -343,7 +370,9 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   CHECK(editor_is_composing(editor) == 0);
   CHECK(getLineTextUtf8(document, 0) == "Xabcz");
 
-  editor_set_cursor_position(editor, 0, 5);
+  action_payload = editor_set_cursor_position(editor, 0, 5, &action_size);
+  REQUIRE(action_payload != nullptr);
+  free_binary_data(reinterpret_cast<intptr_t>(action_payload));
   size_t snippet_size = 0;
   const uint8_t* snippet_result = editor_insert_snippet(editor, "${1:a}-${1:a}-$0", &snippet_size);
   REQUIRE(snippet_result != nullptr);
@@ -358,7 +387,9 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   free_binary_data(reinterpret_cast<intptr_t>(linked_change));
   CHECK(getLineTextUtf8(document, 0) == "Xabczbb-bb-");
 
-  editor_set_scroll(editor, 10000.0f, 10000.0f);
+  action_payload = editor_set_scroll(editor, 10000.0f, 10000.0f, &action_size);
+  REQUIRE(action_payload != nullptr);
+  free_binary_data(reinterpret_cast<intptr_t>(action_payload));
   scroll_metrics_payload = editor_get_scroll_metrics(editor, &scroll_metrics_size);
   REQUIRE(scroll_metrics_payload != nullptr);
   scroll_metrics = parseScrollMetrics(scroll_metrics_payload, scroll_metrics_size);
@@ -368,8 +399,16 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   CHECK(scroll_metrics.can_scroll_x == 1);
   CHECK(scroll_metrics.can_scroll_y == 0);
 
-  CHECK(editor_linked_editing_next(editor) == 1);
-  CHECK(editor_linked_editing_next(editor) == 0);
+  action_payload = editor_linked_editing_next(editor, &action_size);
+  REQUIRE(action_payload != nullptr);
+  ActionPayloadData linked_action = parseActionPayload(action_payload, action_size);
+  free_binary_data(reinterpret_cast<intptr_t>(action_payload));
+  CHECK(linked_action.handled == 1);
+  action_payload = editor_linked_editing_next(editor, &action_size);
+  REQUIRE(action_payload != nullptr);
+  linked_action = parseActionPayload(action_payload, action_size);
+  free_binary_data(reinterpret_cast<intptr_t>(action_payload));
+  CHECK(linked_action.handled == 0);
   CHECK(editor_is_in_linked_editing(editor) == 0);
 
   size_t model_size = 0;

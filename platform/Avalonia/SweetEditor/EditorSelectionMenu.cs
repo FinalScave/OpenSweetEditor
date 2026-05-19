@@ -140,17 +140,17 @@ namespace SweetEditor {
 			Dismiss();
 		}
 
-		public void OnGestureResult(GestureResult result) {
+		public void OnEditorActionResult(EditorActionResult result) {
 			if (disposed) {
 				return;
 			}
 
-			switch (result.Type) {
+			switch (result.GestureType) {
 				case GestureType.DOUBLE_TAP:
 				case GestureType.LONG_PRESS:
 					hiddenByViewportGesture = false;
 					viewportRestoreTimer.Stop();
-					if (result.HasSelection || editor.IsInlineSuggestionShowing()) {
+					if (result.HasSelectionAfter || editor.IsInlineSuggestionShowing()) {
 						ScheduleShow();
 					} else {
 						Dismiss();
@@ -159,7 +159,7 @@ namespace SweetEditor {
 				case GestureType.TAP:
 					hiddenByViewportGesture = false;
 					viewportRestoreTimer.Stop();
-					if (result.HasSelection || editor.IsInlineSuggestionShowing()) {
+					if (result.HasSelectionAfter || editor.IsInlineSuggestionShowing()) {
 						ScheduleShow();
 					} else {
 						Dismiss();
@@ -168,7 +168,7 @@ namespace SweetEditor {
 				case GestureType.DRAG_SELECT:
 					hiddenByViewportGesture = true;
 					Dismiss();
-					if (result.HasSelection || editor.IsInlineSuggestionShowing()) {
+					if (result.HasSelectionAfter || editor.IsInlineSuggestionShowing()) {
 						ScheduleViewportRestore();
 					}
 					break;
@@ -177,12 +177,12 @@ namespace SweetEditor {
 				case GestureType.SCALE:
 					hiddenByViewportGesture = true;
 					Dismiss();
-					if (result.HasSelection || editor.IsInlineSuggestionShowing()) {
+					if (result.HasSelectionAfter || editor.IsInlineSuggestionShowing()) {
 						ScheduleViewportRestore();
 					}
 					break;
 				default:
-					if (hiddenByViewportGesture && (result.HasSelection || editor.IsInlineSuggestionShowing())) {
+					if (hiddenByViewportGesture && (result.HasSelectionAfter || editor.IsInlineSuggestionShowing())) {
 						ScheduleViewportRestore();
 					}
 					break;

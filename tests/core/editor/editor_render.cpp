@@ -48,7 +48,7 @@ TEST_CASE("EditorCore buildRenderModel emits linked editing rectangles for snipp
 
   editor.loadDocument(makeShared<LineArrayDocument>(""));
   editor.setViewport({320, 120});
-  REQUIRE(editor.insertSnippet("${1:foo}-${2:bar}-$0").changed);
+  REQUIRE(editor.insertSnippet("${1:foo}-${2:bar}-$0").content_changed);
 
   EditorRenderModel model;
   editor.buildRenderModel(model);
@@ -109,13 +109,13 @@ TEST_CASE("EditorCore handleGestureEvent tap on CodeLens keeps cursor unchanged"
       codelens_run.y
   };
 
-  const GestureResult result = editor.handleGestureEvent(
+  const EditorActionResult result = editor.handleGestureEvent(
       GestureEvent::create(EventType::MOUSE_DOWN, 1, point));
 
   CHECK(result.hit_target.type == HitTargetType::CODELENS);
   CHECK(result.hit_target.column == 2);
   CHECK(result.hit_target.icon_id == 101);
-  CHECK(result.cursor_position == (TextPosition{0, 3}));
+  CHECK(result.cursor_after == (TextPosition{0, 3}));
   CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
 }
 
@@ -289,9 +289,9 @@ TEST_CASE("EditorCore exposes pointer cursor type for text, CodeLens, gutter and
       codelens_run.x + codelens_run.width * 0.5f,
       codelens_run.y
   };
-  const GestureResult hover_codelens = editor.handleGestureEvent(
+  const EditorActionResult hover_codelens = editor.handleGestureEvent(
       GestureEvent::create(EventType::MOUSE_MOVE, 1, code_lens_point));
-  CHECK(hover_codelens.pointer_cursor_type == PointerCursorType::HAND);
+  CHECK(hover_codelens.pointer_cursor_after == PointerCursorType::HAND);
 
   model = {};
   editor.buildRenderModel(model);
@@ -302,9 +302,9 @@ TEST_CASE("EditorCore exposes pointer cursor type for text, CodeLens, gutter and
       text_rect.x + 1.0f,
       text_rect.y + text_rect.height * 0.5f
   };
-  const GestureResult hover_text = editor.handleGestureEvent(
+  const EditorActionResult hover_text = editor.handleGestureEvent(
       GestureEvent::create(EventType::MOUSE_MOVE, 1, text_point));
-  CHECK(hover_text.pointer_cursor_type == PointerCursorType::TEXT);
+  CHECK(hover_text.pointer_cursor_after == PointerCursorType::TEXT);
 
   model = {};
   editor.buildRenderModel(model);
@@ -314,9 +314,9 @@ TEST_CASE("EditorCore exposes pointer cursor type for text, CodeLens, gutter and
       1.0f,
       text_rect.y + text_rect.height * 0.5f
   };
-  const GestureResult hover_gutter = editor.handleGestureEvent(
+  const EditorActionResult hover_gutter = editor.handleGestureEvent(
       GestureEvent::create(EventType::MOUSE_MOVE, 1, gutter_point));
-  CHECK(hover_gutter.pointer_cursor_type == PointerCursorType::DEFAULT);
+  CHECK(hover_gutter.pointer_cursor_after == PointerCursorType::DEFAULT);
 
   model = {};
   editor.buildRenderModel(model);
@@ -326,9 +326,9 @@ TEST_CASE("EditorCore exposes pointer cursor type for text, CodeLens, gutter and
       model.vertical_scrollbar.track.origin.x + model.vertical_scrollbar.track.width * 0.5f,
       model.vertical_scrollbar.track.origin.y + model.vertical_scrollbar.track.height * 0.5f
   };
-  const GestureResult hover_scrollbar = editor.handleGestureEvent(
+  const EditorActionResult hover_scrollbar = editor.handleGestureEvent(
       GestureEvent::create(EventType::MOUSE_MOVE, 1, scrollbar_point));
-  CHECK(hover_scrollbar.pointer_cursor_type == PointerCursorType::DEFAULT);
+  CHECK(hover_scrollbar.pointer_cursor_after == PointerCursorType::DEFAULT);
 
   model = {};
   editor.buildRenderModel(model);
@@ -355,17 +355,17 @@ TEST_CASE("EditorCore handleGestureEvent ctrl-tap on LINK resolves target and pl
       link_runs.front()->y
   };
 
-  const GestureResult result = editor.handleGestureEvent(
+  const EditorActionResult result = editor.handleGestureEvent(
       GestureEvent::createWithModifiers(EventType::MOUSE_DOWN, 1, point, KeyModifier::CTRL));
 
   CHECK(result.hit_target.type == HitTargetType::LINK);
   CHECK(result.hit_target.line == 0);
   CHECK(result.hit_target.column == 6);
   CHECK(editor.getLinkTargetAt(result.hit_target.line, result.hit_target.column) == "doc://link");
-  CHECK(result.cursor_position == editor.getCursorPosition());
-  CHECK(result.cursor_position.line == 0);
-  CHECK(result.cursor_position.column >= 6);
-  CHECK(result.cursor_position.column <= 10);
+  CHECK(result.cursor_after == editor.getCursorPosition());
+  CHECK(result.cursor_after.line == 0);
+  CHECK(result.cursor_after.column >= 6);
+  CHECK(result.cursor_after.column <= 10);
 }
 
 TEST_CASE("EditorCore buildRenderModel activates wrapped LINK runs together with ctrl hover") {
@@ -392,9 +392,9 @@ TEST_CASE("EditorCore buildRenderModel activates wrapped LINK runs together with
       hover_target->x + hover_target->width * 0.5f,
       hover_target->y
   };
-  const GestureResult plain_hover = editor.handleGestureEvent(
+  const EditorActionResult plain_hover = editor.handleGestureEvent(
       GestureEvent::create(EventType::MOUSE_MOVE, 1, hover_point));
-  CHECK(plain_hover.pointer_cursor_type == PointerCursorType::TEXT);
+  CHECK(plain_hover.pointer_cursor_after == PointerCursorType::TEXT);
 
   model = {};
   editor.buildRenderModel(model);
@@ -404,9 +404,9 @@ TEST_CASE("EditorCore buildRenderModel activates wrapped LINK runs together with
     CHECK_FALSE(run->active);
   }
 
-  const GestureResult hover = editor.handleGestureEvent(
+  const EditorActionResult hover = editor.handleGestureEvent(
       GestureEvent::createWithModifiers(EventType::MOUSE_MOVE, 1, hover_point, KeyModifier::CTRL));
-  CHECK(hover.pointer_cursor_type == PointerCursorType::HAND);
+  CHECK(hover.pointer_cursor_after == PointerCursorType::HAND);
 
   model = {};
   editor.buildRenderModel(model);
@@ -433,13 +433,13 @@ TEST_CASE("EditorCore long press inside selection keeps existing selection") {
   };
 
   editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_DOWN, 1, point));
-  const GestureResult result = editor.handleGestureEvent(
+  const EditorActionResult result = editor.handleGestureEvent(
       GestureEvent::create(EventType::TOUCH_MOVE, 1, point));
 
-  REQUIRE(result.type == GestureType::LONG_PRESS);
-  CHECK(result.has_selection);
-  CHECK(result.selection == (TextRange{{0, 1}, {0, 4}}));
-  CHECK(result.cursor_position == (TextPosition{0, 4}));
+  REQUIRE(result.gesture_type == GestureType::LONG_PRESS);
+  CHECK(result.has_selection_after);
+  CHECK(result.selection_after == (TextRange{{0, 1}, {0, 4}}));
+  CHECK(result.cursor_after == (TextPosition{0, 4}));
   CHECK(editor.getSelection() == (TextRange{{0, 1}, {0, 4}}));
   CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
 }
@@ -460,12 +460,12 @@ TEST_CASE("EditorCore long press outside selection places cursor and clears sele
   };
 
   editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_DOWN, 1, point));
-  const GestureResult result = editor.handleGestureEvent(
+  const EditorActionResult result = editor.handleGestureEvent(
       GestureEvent::create(EventType::TOUCH_MOVE, 1, point));
 
-  REQUIRE(result.type == GestureType::LONG_PRESS);
-  CHECK_FALSE(result.has_selection);
-  CHECK(result.cursor_position == (TextPosition{0, 5}));
+  REQUIRE(result.gesture_type == GestureType::LONG_PRESS);
+  CHECK_FALSE(result.has_selection_after);
+  CHECK(result.cursor_after == (TextPosition{0, 5}));
   CHECK(editor.getCursorPosition() == (TextPosition{0, 5}));
   CHECK_FALSE(editor.hasSelection());
 }
@@ -491,21 +491,21 @@ TEST_CASE("EditorCore line-start word selection end handle can cross CodeLens vi
       model.selection_end_handle.position.x + 12.0f,
       model.selection_end_handle.position.y + model.selection_end_handle.height + 12.0f
   };
-  const GestureResult down = editor.handleGestureEvent(
+  const EditorActionResult down = editor.handleGestureEvent(
       GestureEvent::create(EventType::TOUCH_DOWN, 1, down_point));
 
   CHECK(down.is_handle_drag);
-  CHECK(down.has_selection);
-  CHECK(down.selection == (TextRange{{1, 0}, {1, 4}}));
+  CHECK(down.has_selection_after);
+  CHECK(down.selection_after == (TextRange{{1, 0}, {1, 4}}));
 
   const float move_point[2] = {
       model.selection_end_handle.position.x + 12.0f,
       codelens_mid_y + 4.0f
   };
-  const GestureResult move = editor.handleGestureEvent(
+  const EditorActionResult move = editor.handleGestureEvent(
       GestureEvent::create(EventType::TOUCH_MOVE, 1, move_point));
 
   CHECK(move.is_handle_drag);
-  CHECK(move.has_selection);
-  CHECK(move.selection == (TextRange{{0, 5}, {1, 0}}));
+  CHECK(move.has_selection_after);
+  CHECK(move.selection_after == (TextRange{{0, 5}, {1, 0}}));
 }

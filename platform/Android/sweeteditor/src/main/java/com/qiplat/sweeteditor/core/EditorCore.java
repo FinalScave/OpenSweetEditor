@@ -91,12 +91,13 @@ public class EditorCore {
         mNativeHandle = 0;
     }
 
-    public void loadDocument(Document document) {
+    @NonNull
+    public EditorActionResult loadDocument(Document document) {
         if (mNativeHandle == 0) {
-            return;
+            return EditorActionResult.EMPTY;
         }
         mDocument = document;
-        nativeLoadDocument(mNativeHandle, document.mNativeHandle);
+        return decodeAction(nativeLoadDocument(mNativeHandle, document.mNativeHandle));
     }
 
     /**
@@ -109,18 +110,20 @@ public class EditorCore {
 
     // ==================== Viewport/Font/Appearance Configuration ====================
 
-    public void setViewport(int width, int height) {
+    @NonNull
+    public EditorActionResult setViewport(int width, int height) {
         if (mNativeHandle == 0) {
-            return;
+            return EditorActionResult.EMPTY;
         }
-        nativeSetViewport(mNativeHandle, width, height);
+        return decodeAction(nativeSetViewport(mNativeHandle, width, height));
     }
 
-    public void onFontMetricsChanged() {
+    @NonNull
+    public EditorActionResult onFontMetricsChanged() {
         if (mNativeHandle == 0) {
-            return;
+            return EditorActionResult.EMPTY;
         }
-        nativeOnFontMetricsChanged(mNativeHandle);
+        return decodeAction(nativeOnFontMetricsChanged(mNativeHandle));
     }
 
     /**
@@ -128,9 +131,10 @@ public class EditorCore {
      *
      * @param mode 0=AUTO (auto show when fold regions exist), 1=ALWAYS (always reserve), 2=HIDDEN (always hide)
      */
-    public void setFoldArrowMode(int mode) {
-        if (mNativeHandle == 0) return;
-        nativeSetFoldArrowMode(mNativeHandle, mode);
+    @NonNull
+    public EditorActionResult setFoldArrowMode(int mode) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetFoldArrowMode(mNativeHandle, mode));
     }
 
     /**
@@ -138,9 +142,10 @@ public class EditorCore {
      *
      * @param mode 0=NONE (no wrap), 1=CHAR_BREAK (character-level wrap), 2=WORD_BREAK (word-level wrap)
      */
-    public void setWrapMode(int mode) {
-        if (mNativeHandle == 0) return;
-        nativeSetWrapMode(mNativeHandle, mode);
+    @NonNull
+    public EditorActionResult setWrapMode(int mode) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetWrapMode(mNativeHandle, mode));
     }
 
     /**
@@ -148,9 +153,10 @@ public class EditorCore {
      *
      * @param tabSize tab size (default 4, minimum 1)
      */
-    public void setTabSize(int tabSize) {
-        if (mNativeHandle == 0) return;
-        nativeSetTabSize(mNativeHandle, tabSize);
+    @NonNull
+    public EditorActionResult setTabSize(int tabSize) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetTabSize(mNativeHandle, tabSize));
     }
 
     /**
@@ -158,9 +164,10 @@ public class EditorCore {
      *
      * @param scale scale factor (1.0 = 100%)
      */
-    public void setScale(float scale) {
-        if (mNativeHandle == 0) return;
-        nativeSetScale(mNativeHandle, scale);
+    @NonNull
+    public EditorActionResult setScale(float scale) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetScale(mNativeHandle, scale));
     }
 
     /**
@@ -169,9 +176,10 @@ public class EditorCore {
      * @param add  Extra line spacing in pixels (default 0)
      * @param mult Line spacing multiplier (default 1.0)
      */
-    public void setLineSpacing(float add, float mult) {
-        if (mNativeHandle == 0) return;
-        nativeSetLineSpacing(mNativeHandle, add, mult);
+    @NonNull
+    public EditorActionResult setLineSpacing(float add, float mult) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetLineSpacing(mNativeHandle, add, mult));
     }
 
     /**
@@ -179,9 +187,10 @@ public class EditorCore {
      *
      * @param padding padding in pixels (clamped to >= 0 on native side)
      */
-    public void setContentStartPadding(float padding) {
-        if (mNativeHandle == 0) return;
-        nativeSetContentStartPadding(mNativeHandle, padding);
+    @NonNull
+    public EditorActionResult setContentStartPadding(float padding) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetContentStartPadding(mNativeHandle, padding));
     }
 
     /**
@@ -189,9 +198,10 @@ public class EditorCore {
      *
      * @param show true to show split line, false to hide
      */
-    public void setShowSplitLine(boolean show) {
-        if (mNativeHandle == 0) return;
-        nativeSetShowSplitLine(mNativeHandle, show);
+    @NonNull
+    public EditorActionResult setShowSplitLine(boolean show) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetShowSplitLine(mNativeHandle, show));
     }
 
     /**
@@ -199,9 +209,10 @@ public class EditorCore {
      *
      * @param sticky true=gutter fixed (desktop style), false=gutter scrolls with content (mobile style)
      */
-    public void setGutterSticky(boolean sticky) {
-        if (mNativeHandle == 0) return;
-        nativeSetGutterSticky(mNativeHandle, sticky);
+    @NonNull
+    public EditorActionResult setGutterSticky(boolean sticky) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetGutterSticky(mNativeHandle, sticky));
     }
 
     /**
@@ -209,9 +220,10 @@ public class EditorCore {
      *
      * @param visible true=show gutter (line numbers, icons, fold arrows), false=hide entire gutter
      */
-    public void setGutterVisible(boolean visible) {
-        if (mNativeHandle == 0) return;
-        nativeSetGutterVisible(mNativeHandle, visible);
+    @NonNull
+    public EditorActionResult setGutterVisible(boolean visible) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetGutterVisible(mNativeHandle, visible));
     }
 
     /**
@@ -219,9 +231,10 @@ public class EditorCore {
      *
      * @param mode 0=BACKGROUND(fill), 1=BORDER(stroke), 2=NONE(disabled)
      */
-    public void setCurrentLineRenderMode(int mode) {
-        if (mNativeHandle == 0) return;
-        nativeSetCurrentLineRenderMode(mNativeHandle, mode);
+    @NonNull
+    public EditorActionResult setCurrentLineRenderMode(int mode) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetCurrentLineRenderMode(mNativeHandle, mode));
     }
 
     // ==================== Rendering ====================
@@ -252,11 +265,20 @@ public class EditorCore {
         }
     }
 
+    @NonNull
+    private EditorActionResult decodeAction(@Nullable ByteBuffer data) {
+        try {
+            return ProtocolDecoder.decodeEditorActionResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
     // ==================== Gesture/Keyboard Event Handling ====================
 
-    public GestureResult handleGestureEvent(MotionEvent event) {
+    public EditorActionResult handleGestureEvent(MotionEvent event) {
         if (mNativeHandle == 0) {
-            return new GestureResult();
+            return new EditorActionResult();
         }
         int eventType = getEventTypeInt(event);
         int pointerCount = event.getPointerCount();
@@ -275,20 +297,20 @@ public class EditorCore {
                 0f,
                 1f);
         try {
-            return ProtocolDecoder.decodeGestureResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
-    public GestureResult handleGestureEventEx(int eventType,
+    public EditorActionResult handleGestureEventEx(int eventType,
                                               @Nullable PointF[] points,
                                               int modifiers,
                                               float wheelDeltaX,
                                               float wheelDeltaY,
                                               float directScale) {
         if (mNativeHandle == 0) {
-            return new GestureResult();
+            return new EditorActionResult();
         }
         int pointerCount = points != null ? points.length : 0;
         float[] packedPoints = null;
@@ -310,7 +332,7 @@ public class EditorCore {
                 wheelDeltaY,
                 directScale);
         try {
-            return ProtocolDecoder.decodeGestureResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
@@ -318,15 +340,15 @@ public class EditorCore {
 
     /**
      * Tick edge-scroll during drag selection / handle drag.
-     * Call at ~16ms intervals while the previous GestureResult.needsEdgeScroll was true.
+     * Call at ~16ms intervals while the previous EditorActionResult.needsEdgeScroll was true.
      */
-    public GestureResult tickEdgeScroll() {
+    public EditorActionResult tickEdgeScroll() {
         if (mNativeHandle == 0) {
-            return new GestureResult();
+            return new EditorActionResult();
         }
         ByteBuffer data = nativeTickEdgeScroll(mNativeHandle);
         try {
-            return ProtocolDecoder.decodeGestureResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
@@ -334,15 +356,15 @@ public class EditorCore {
 
     /**
      * Tick fling (inertial scroll) animation.
-     * Call at ~16ms intervals while the previous GestureResult.needsFling was true.
+     * Call at ~16ms intervals while the previous EditorActionResult.needsFling was true.
      */
-    public GestureResult tickFling() {
+    public EditorActionResult tickFling() {
         if (mNativeHandle == 0) {
-            return new GestureResult();
+            return new EditorActionResult();
         }
         ByteBuffer data = nativeTickFling(mNativeHandle);
         try {
-            return ProtocolDecoder.decodeGestureResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
@@ -350,49 +372,51 @@ public class EditorCore {
 
     /**
      * Unified animation tick: advances all active animations (edge-scroll, fling).
-     * Platform can use a single frame callback driven by GestureResult.needsAnimation.
+     * Platform can use a single frame callback driven by EditorActionResult.needsAnimation.
      */
-    public GestureResult tickAnimations() {
+    public EditorActionResult tickAnimations() {
         if (mNativeHandle == 0) {
-            return new GestureResult();
+            return new EditorActionResult();
         }
         ByteBuffer data = nativeTickAnimations(mNativeHandle);
         try {
-            return ProtocolDecoder.decodeGestureResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
-    public KeyEventResult handleKeyEvent(int keyCode, String text, int modifiers) {
+    public EditorActionResult handleKeyEvent(int keyCode, String text, int modifiers) {
         if (mNativeHandle == 0) {
-            return new KeyEventResult();
+            return new EditorActionResult();
         }
         ByteBuffer data = nativeHandleKeyEvent(mNativeHandle, keyCode, text, modifiers);
         try {
-            return ProtocolDecoder.decodeKeyEventResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
-    public void setKeyMap(@NonNull ByteBuffer data) {
-        if (mNativeHandle == 0) return;
-        nativeSetKeyMap(mNativeHandle, data);
+    @NonNull
+    public EditorActionResult setKeyMap(@NonNull ByteBuffer data) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetKeyMap(mNativeHandle, data));
     }
 
-    public void setKeyMap(@NonNull KeyMap keyMap) {
-        setKeyMap(ProtocolEncoder.packKeyMap(keyMap));
+    @NonNull
+    public EditorActionResult setKeyMap(@NonNull KeyMap keyMap) {
+        return setKeyMap(ProtocolEncoder.packKeyMap(keyMap));
     }
 
     // ==================== Text Editing ====================
 
     @NonNull
-    public TextEditResult insertText(String text) {
-        if (mNativeHandle == 0) return TextEditResult.EMPTY;
+    public EditorActionResult insertText(String text) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
         ByteBuffer data = nativeInsertText(mNativeHandle, text);
         try {
-            return ProtocolDecoder.decodeTextEditResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
@@ -405,13 +429,13 @@ public class EditorCore {
      * @return Exact change information
      */
     @NonNull
-    public TextEditResult replaceText(@NonNull TextRange range, @NonNull String newText) {
-        if (mNativeHandle == 0) return TextEditResult.EMPTY;
+    public EditorActionResult replaceText(@NonNull TextRange range, @NonNull String newText) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
         ByteBuffer data = nativeReplaceText(mNativeHandle,
                 range.start.line, range.start.column,
                 range.end.line, range.end.column, newText);
         try {
-            return ProtocolDecoder.decodeTextEditResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
@@ -423,13 +447,13 @@ public class EditorCore {
      * @return Exact change information
      */
     @NonNull
-    public TextEditResult deleteText(@NonNull TextRange range) {
-        if (mNativeHandle == 0) return TextEditResult.EMPTY;
+    public EditorActionResult deleteText(@NonNull TextRange range) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
         ByteBuffer data = nativeDeleteText(mNativeHandle,
                 range.start.line, range.start.column,
                 range.end.line, range.end.column);
         try {
-            return ProtocolDecoder.decodeTextEditResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
@@ -438,77 +462,77 @@ public class EditorCore {
     // ==================== Line Operations ====================
 
     @NonNull
-    public TextEditResult moveLineUp() {
-        if (mNativeHandle == 0) return TextEditResult.EMPTY;
+    public EditorActionResult moveLineUp() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
         ByteBuffer data = nativeMoveLineUp(mNativeHandle);
         try {
-            return ProtocolDecoder.decodeTextEditResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public TextEditResult moveLineDown() {
-        if (mNativeHandle == 0) return TextEditResult.EMPTY;
+    public EditorActionResult moveLineDown() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
         ByteBuffer data = nativeMoveLineDown(mNativeHandle);
         try {
-            return ProtocolDecoder.decodeTextEditResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public TextEditResult copyLineUp() {
-        if (mNativeHandle == 0) return TextEditResult.EMPTY;
+    public EditorActionResult copyLineUp() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
         ByteBuffer data = nativeCopyLineUp(mNativeHandle);
         try {
-            return ProtocolDecoder.decodeTextEditResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public TextEditResult copyLineDown() {
-        if (mNativeHandle == 0) return TextEditResult.EMPTY;
+    public EditorActionResult copyLineDown() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
         ByteBuffer data = nativeCopyLineDown(mNativeHandle);
         try {
-            return ProtocolDecoder.decodeTextEditResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public TextEditResult deleteLine() {
-        if (mNativeHandle == 0) return TextEditResult.EMPTY;
+    public EditorActionResult deleteLine() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
         ByteBuffer data = nativeDeleteLine(mNativeHandle);
         try {
-            return ProtocolDecoder.decodeTextEditResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public TextEditResult insertLineAbove() {
-        if (mNativeHandle == 0) return TextEditResult.EMPTY;
+    public EditorActionResult insertLineAbove() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
         ByteBuffer data = nativeInsertLineAbove(mNativeHandle);
         try {
-            return ProtocolDecoder.decodeTextEditResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public TextEditResult insertLineBelow() {
-        if (mNativeHandle == 0) return TextEditResult.EMPTY;
+    public EditorActionResult insertLineBelow() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
         ByteBuffer data = nativeInsertLineBelow(mNativeHandle);
         try {
-            return ProtocolDecoder.decodeTextEditResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
@@ -517,22 +541,22 @@ public class EditorCore {
     // ==================== Undo/Redo ====================
 
     @NonNull
-    public TextEditResult undo() {
-        if (mNativeHandle == 0) return TextEditResult.EMPTY;
+    public EditorActionResult undo() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
         ByteBuffer data = nativeUndo(mNativeHandle);
         try {
-            return ProtocolDecoder.decodeTextEditResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public TextEditResult redo() {
-        if (mNativeHandle == 0) return TextEditResult.EMPTY;
+    public EditorActionResult redo() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
         ByteBuffer data = nativeRedo(mNativeHandle);
         try {
-            return ProtocolDecoder.decodeTextEditResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
@@ -599,34 +623,40 @@ public class EditorCore {
         return word != null ? word : "";
     }
 
-    public void moveCursorLeft(boolean extendSelection) {
-        if (mNativeHandle == 0) return;
-        nativeMoveCursorLeft(mNativeHandle, extendSelection);
+    @NonNull
+    public EditorActionResult moveCursorLeft(boolean extendSelection) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeMoveCursorLeft(mNativeHandle, extendSelection));
     }
 
-    public void moveCursorRight(boolean extendSelection) {
-        if (mNativeHandle == 0) return;
-        nativeMoveCursorRight(mNativeHandle, extendSelection);
+    @NonNull
+    public EditorActionResult moveCursorRight(boolean extendSelection) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeMoveCursorRight(mNativeHandle, extendSelection));
     }
 
-    public void moveCursorUp(boolean extendSelection) {
-        if (mNativeHandle == 0) return;
-        nativeMoveCursorUp(mNativeHandle, extendSelection);
+    @NonNull
+    public EditorActionResult moveCursorUp(boolean extendSelection) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeMoveCursorUp(mNativeHandle, extendSelection));
     }
 
-    public void moveCursorDown(boolean extendSelection) {
-        if (mNativeHandle == 0) return;
-        nativeMoveCursorDown(mNativeHandle, extendSelection);
+    @NonNull
+    public EditorActionResult moveCursorDown(boolean extendSelection) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeMoveCursorDown(mNativeHandle, extendSelection));
     }
 
-    public void moveCursorToLineStart(boolean extendSelection) {
-        if (mNativeHandle == 0) return;
-        nativeMoveCursorToLineStart(mNativeHandle, extendSelection);
+    @NonNull
+    public EditorActionResult moveCursorToLineStart(boolean extendSelection) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeMoveCursorToLineStart(mNativeHandle, extendSelection));
     }
 
-    public void moveCursorToLineEnd(boolean extendSelection) {
-        if (mNativeHandle == 0) return;
-        nativeMoveCursorToLineEnd(mNativeHandle, extendSelection);
+    @NonNull
+    public EditorActionResult moveCursorToLineEnd(boolean extendSelection) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeMoveCursorToLineEnd(mNativeHandle, extendSelection));
     }
 
     /**
@@ -634,15 +664,17 @@ public class EditorCore {
      *
      * @param position Target position
      */
-    public void setCursorPosition(@NonNull TextPosition position) {
-        if (mNativeHandle == 0) return;
-        nativeSetCursorPosition(mNativeHandle, position.line, position.column);
+    @NonNull
+    public EditorActionResult setCursorPosition(@NonNull TextPosition position) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetCursorPosition(mNativeHandle, position.line, position.column));
     }
 
     /** Selects all document content. */
-    public void selectAll() {
-        if (mNativeHandle == 0) return;
-        nativeSelectAll(mNativeHandle);
+    @NonNull
+    public EditorActionResult selectAll() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSelectAll(mNativeHandle));
     }
 
     /**
@@ -653,9 +685,10 @@ public class EditorCore {
      * @param endLine     Selection end line (0-based)
      * @param endColumn   Selection end column (0-based)
      */
-    public void setSelection(int startLine, int startColumn, int endLine, int endColumn) {
-        if (mNativeHandle == 0) return;
-        nativeSetSelection(mNativeHandle, startLine, startColumn, endLine, endColumn);
+    @NonNull
+    public EditorActionResult setSelection(int startLine, int startColumn, int endLine, int endColumn) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetSelection(mNativeHandle, startLine, startColumn, endLine, endColumn));
     }
 
     /**
@@ -663,8 +696,9 @@ public class EditorCore {
      *
      * @param range Selection range
      */
-    public void setSelection(@NonNull TextRange range) {
-        setSelection(range.start.line, range.start.column, range.end.line, range.end.column);
+    @NonNull
+    public EditorActionResult setSelection(@NonNull TextRange range) {
+        return setSelection(range.start.line, range.start.column, range.end.line, range.end.column);
     }
 
     /**
@@ -718,63 +752,63 @@ public class EditorCore {
     }
 
     @NonNull
-    public ImeActionResult updateImePreedit(@Nullable String text, int scriptHint) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+    public EditorActionResult updateImePreedit(@Nullable String text, int scriptHint) {
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeUpdatePreedit(mNativeHandle, text != null ? text : "", scriptHint);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult setImeComposingText(@Nullable String text, int cursorOffset, int scriptHint) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+    public EditorActionResult setImeComposingText(@Nullable String text, int cursorOffset, int scriptHint) {
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeSetComposingText(mNativeHandle, text != null ? text : "", cursorOffset, scriptHint);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult commitImeText(@Nullable String text, int scriptHint) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+    public EditorActionResult commitImeText(@Nullable String text, int scriptHint) {
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeCommitText(mNativeHandle, text != null ? text : "", scriptHint);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult finishImePreedit() {
-        if (mNativeHandle == 0) return new ImeActionResult();
+    public EditorActionResult finishImePreedit() {
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeFinishPreedit(mNativeHandle);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult cancelImePreedit() {
-        if (mNativeHandle == 0) return new ImeActionResult();
+    public EditorActionResult cancelImePreedit() {
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeCancelPreedit(mNativeHandle);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult markImeDocumentRange(@NonNull TextRange range, int scriptHint) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+    public EditorActionResult markImeDocumentRange(@NonNull TextRange range, int scriptHint) {
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeMarkDocumentRange(
                 mNativeHandle,
                 range.start.line,
@@ -783,28 +817,28 @@ public class EditorCore {
                 range.end.column,
                 scriptHint);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult markImeDocumentRange(long startOffset, long endOffset, int scriptHint) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+    public EditorActionResult markImeDocumentRange(long startOffset, long endOffset, int scriptHint) {
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeMarkDocumentRangeByOffset(mNativeHandle, startOffset, endOffset, scriptHint);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult replaceImeText(@NonNull TextRange range,
+    public EditorActionResult replaceImeText(@NonNull TextRange range,
                                           @Nullable String text,
                                           int scriptHint) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeReplaceText(
                 mNativeHandle,
                 range.start.line,
@@ -814,19 +848,19 @@ public class EditorCore {
                 text != null ? text : "",
                 scriptHint);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult replaceImeDocumentText(long startOffset,
+    public EditorActionResult replaceImeDocumentText(long startOffset,
                                                   long endOffset,
                                                   @Nullable String text,
                                                   int cursorOffset,
                                                   int scriptHint) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeReplaceDocumentText(
                 mNativeHandle,
                 startOffset,
@@ -835,19 +869,19 @@ public class EditorCore {
                 cursorOffset,
                 scriptHint);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult replaceImeInputContextText(long startOffset,
+    public EditorActionResult replaceImeInputContextText(long startOffset,
                                                       long endOffset,
                                                       @Nullable String text,
                                                       int cursorOffset,
                                                       int scriptHint) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeReplaceInputContextText(
                 mNativeHandle,
                 startOffset,
@@ -856,47 +890,47 @@ public class EditorCore {
                 cursorOffset,
                 scriptHint);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult markImeInputContextRange(long startOffset, long endOffset, int scriptHint) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+    public EditorActionResult markImeInputContextRange(long startOffset, long endOffset, int scriptHint) {
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeMarkInputContextRange(mNativeHandle, startOffset, endOffset, scriptHint);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult notifyImeDocumentSelectionChanged(long startOffset, long endOffset) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+    public EditorActionResult notifyImeDocumentSelectionChanged(long startOffset, long endOffset) {
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeNotifyDocumentSelectionChanged(mNativeHandle, startOffset, endOffset);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult notifyImeInputContextSelectionChanged(long startOffset, long endOffset) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+    public EditorActionResult notifyImeInputContextSelectionChanged(long startOffset, long endOffset) {
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeNotifyInputContextSelectionChanged(mNativeHandle, startOffset, endOffset);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult updateImeInputStateText(long contextId,
+    public EditorActionResult updateImeInputStateText(long contextId,
                                                    int documentStartOffset,
                                                    @Nullable String text,
                                                    int selectionStartOffset,
@@ -904,7 +938,7 @@ public class EditorCore {
                                                    int composingStartOffset,
                                                    int composingEndOffset,
                                                    int scriptHint) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeUpdateInputStateText(
                 mNativeHandle,
                 contextId,
@@ -916,18 +950,18 @@ public class EditorCore {
                 composingEndOffset,
                 scriptHint);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult updateImeInputStateSelection(long contextId,
+    public EditorActionResult updateImeInputStateSelection(long contextId,
                                                         int documentStartOffset,
                                                         int selectionStartOffset,
                                                         int selectionEndOffset) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeUpdateInputStateSelection(
                 mNativeHandle,
                 contextId,
@@ -935,21 +969,21 @@ public class EditorCore {
                 selectionStartOffset,
                 selectionEndOffset);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult replaceImeInputStateText(long contextId,
+    public EditorActionResult replaceImeInputStateText(long contextId,
                                                     int documentStartOffset,
                                                     long startOffset,
                                                     long endOffset,
                                                     @Nullable String text,
                                                     int cursorOffset,
                                                     int scriptHint) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeReplaceInputStateText(
                 mNativeHandle,
                 contextId,
@@ -960,59 +994,59 @@ public class EditorCore {
                 cursorOffset,
                 scriptHint);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult deleteImeBackward(long beforeLength, int textUnit) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+    public EditorActionResult deleteImeBackward(long beforeLength, int textUnit) {
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeDeleteBackward(mNativeHandle, beforeLength, textUnit);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult deleteImeForward(long afterLength, int textUnit) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+    public EditorActionResult deleteImeForward(long afterLength, int textUnit) {
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeDeleteForward(mNativeHandle, afterLength, textUnit);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult deleteImeSurrounding(long beforeLength, long afterLength, int textUnit) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+    public EditorActionResult deleteImeSurrounding(long beforeLength, long afterLength, int textUnit) {
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeDeleteSurrounding(mNativeHandle, beforeLength, afterLength, textUnit);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult commitImeText(@Nullable String text, int cursorOffset, int scriptHint) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+    public EditorActionResult commitImeText(@Nullable String text, int cursorOffset, int scriptHint) {
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeCommitTextWithCursor(mNativeHandle, text != null ? text : "", cursorOffset, scriptHint);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult notifyImeSelectionChanged(@NonNull TextRange range) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+    public EditorActionResult notifyImeSelectionChanged(@NonNull TextRange range) {
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeNotifySelectionChanged(
                 mNativeHandle,
                 range.start.line,
@@ -1020,29 +1054,30 @@ public class EditorCore {
                 range.end.line,
                 range.end.column);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
     @NonNull
-    public ImeActionResult notifyImeCursorChanged(@NonNull TextPosition cursor) {
-        if (mNativeHandle == 0) return new ImeActionResult();
+    public EditorActionResult notifyImeCursorChanged(@NonNull TextPosition cursor) {
+        if (mNativeHandle == 0) return new EditorActionResult();
         ByteBuffer data = nativeImeNotifyCursorChanged(
                 mNativeHandle,
                 cursor.line,
                 cursor.column);
         try {
-            return ProtocolDecoder.decodeImeActionResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
     }
 
-    public void setImeKeyboardScriptClass(int scriptClass) {
-        if (mNativeHandle == 0) return;
-        nativeImeSetKeyboardScriptClass(mNativeHandle, scriptClass);
+    @NonNull
+    public EditorActionResult setImeKeyboardScriptClass(int scriptClass) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeImeSetKeyboardScriptClass(mNativeHandle, scriptClass));
     }
 
     public int getImeKeyboardScriptClass() {
@@ -1079,9 +1114,10 @@ public class EditorCore {
      *
      * @param readOnly {@code true}=read-only (blocks all edit operations), {@code false}=editable
      */
-    public void setReadOnly(boolean readOnly) {
-        if (mNativeHandle == 0) return;
-        nativeSetReadOnly(mNativeHandle, readOnly);
+    @NonNull
+    public EditorActionResult setReadOnly(boolean readOnly) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetReadOnly(mNativeHandle, readOnly));
     }
 
     /**
@@ -1101,9 +1137,10 @@ public class EditorCore {
      *
      * @param mode Auto indent mode
      */
-    public void setAutoIndentMode(int mode) {
-        if (mNativeHandle == 0) return;
-        nativeSetAutoIndentMode(mNativeHandle, mode);
+    @NonNull
+    public EditorActionResult setAutoIndentMode(int mode) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetAutoIndentMode(mNativeHandle, mode));
     }
 
     /**
@@ -1121,9 +1158,10 @@ public class EditorCore {
      *
      * @param enabled true=enabled, false=disabled
      */
-    public void setBackspaceUnindent(boolean enabled) {
-        if (mNativeHandle == 0) return;
-        nativeSetBackspaceUnindent(mNativeHandle, enabled);
+    @NonNull
+    public EditorActionResult setBackspaceUnindent(boolean enabled) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetBackspaceUnindent(mNativeHandle, enabled));
     }
 
     /**
@@ -1131,9 +1169,10 @@ public class EditorCore {
      *
      * @param enabled true=insert spaces, false=insert '\t'
      */
-    public void setInsertSpaces(boolean enabled) {
-        if (mNativeHandle == 0) return;
-        nativeSetInsertSpaces(mNativeHandle, enabled);
+    @NonNull
+    public EditorActionResult setInsertSpaces(boolean enabled) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetInsertSpaces(mNativeHandle, enabled));
     }
 
     // ==================== Handle Config ==
@@ -1144,14 +1183,15 @@ public class EditorCore {
      *
      * @param config HandleConfig instance
      */
-    public void setHandleConfig(HandleConfig config) {
-        if (mNativeHandle == 0) return;
+    @NonNull
+    public EditorActionResult setHandleConfig(HandleConfig config) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
         mHandleConfig = config;
-        nativeSetHandleConfig(mNativeHandle,
+        return decodeAction(nativeSetHandleConfig(mNativeHandle,
                 config.startHitOffset.left, config.startHitOffset.top,
                 config.startHitOffset.right, config.startHitOffset.bottom,
                 config.endHitOffset.left, config.endHitOffset.top,
-                config.endHitOffset.right, config.endHitOffset.bottom);
+                config.endHitOffset.right, config.endHitOffset.bottom));
     }
 
     /**
@@ -1170,10 +1210,11 @@ public class EditorCore {
      *
      * @param config ScrollbarConfig instance
      */
-    public void setScrollbarConfig(ScrollbarConfig config) {
-        if (mNativeHandle == 0) return;
+    @NonNull
+    public EditorActionResult setScrollbarConfig(ScrollbarConfig config) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
         mScrollbarConfig = config;
-        nativeSetScrollbarConfig(
+        return decodeAction(nativeSetScrollbarConfig(
                 mNativeHandle,
                 config.thickness,
                 config.minThumb,
@@ -1182,7 +1223,7 @@ public class EditorCore {
                 config.thumbDraggable,
                 config.trackTapMode.value,
                 config.fadeDelayMs,
-                config.fadeDurationMs);
+                config.fadeDurationMs));
     }
 
     /**
@@ -1228,9 +1269,10 @@ public class EditorCore {
      * @param line     Line number (0-based)
      * @param behavior Scroll behavior (0=GOTO_TOP, 1=GOTO_CENTER, 2=GOTO_BOTTOM)
      */
-    public void scrollToLine(int line, int behavior) {
-        if (mNativeHandle == 0) return;
-        nativeScrollToLine(mNativeHandle, line, behavior);
+    @NonNull
+    public EditorActionResult scrollToLine(int line, int behavior) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeScrollToLine(mNativeHandle, line, behavior));
     }
 
     /**
@@ -1239,25 +1281,28 @@ public class EditorCore {
      * @param line   Line number (0-based)
      * @param column Column number (0-based)
      */
-    public void gotoPosition(int line, int column) {
-        if (mNativeHandle == 0) return;
-        nativeGotoPosition(mNativeHandle, line, column);
+    @NonNull
+    public EditorActionResult gotoPosition(int line, int column) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeGotoPosition(mNativeHandle, line, column));
     }
 
     /**
      * Adjusts scroll offset just enough to keep the current cursor visible in the viewport.
      */
-    public void ensureCursorVisible() {
-        if (mNativeHandle == 0) return;
-        nativeEnsureCursorVisible(mNativeHandle);
+    @NonNull
+    public EditorActionResult ensureCursorVisible() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeEnsureCursorVisible(mNativeHandle));
     }
 
     /**
      * Manually sets the scroll position (automatically clamped to valid range).
      */
-    public void setScroll(float scrollX, float scrollY) {
-        if (mNativeHandle == 0) return;
-        nativeSetScroll(mNativeHandle, scrollX, scrollY);
+    @NonNull
+    public EditorActionResult setScroll(float scrollX, float scrollY) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetScroll(mNativeHandle, scrollX, scrollY));
     }
 
     /**
@@ -1299,9 +1344,10 @@ public class EditorCore {
      * @param fontStyle       Font style bit flags ({@link TextStyle#NORMAL}, {@link TextStyle#BOLD},
      *                        {@link TextStyle#ITALIC}, {@link TextStyle#STRIKETHROUGH}, combinable via bitwise OR)
      */
-    public void registerTextStyle(int styleId, int color, int backgroundColor, int fontStyle) {
-        if (mNativeHandle == 0) return;
-        nativeRegisterTextStyle(mNativeHandle, styleId, color, backgroundColor, fontStyle);
+    @NonNull
+    public EditorActionResult registerTextStyle(int styleId, int color, int backgroundColor, int fontStyle) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeRegisterTextStyle(mNativeHandle, styleId, color, backgroundColor, fontStyle));
     }
 
     /**
@@ -1311,8 +1357,9 @@ public class EditorCore {
      * @param color     ARGB color value
      * @param fontStyle Font style bit flags
      */
-    public void registerTextStyle(int styleId, int color, int fontStyle) {
-        registerTextStyle(styleId, color, 0, fontStyle);
+    @NonNull
+    public EditorActionResult registerTextStyle(int styleId, int color, int fontStyle) {
+        return registerTextStyle(styleId, color, 0, fontStyle);
     }
 
     /**
@@ -1320,10 +1367,11 @@ public class EditorCore {
      *
      * @param stylesById style ID -> style mapping
      */
-    public void registerBatchTextStyles(@Nullable Map<Integer, TextStyle> stylesById) {
-        if (mNativeHandle == 0 || stylesById == null || stylesById.isEmpty()) return;
+    @NonNull
+    public EditorActionResult registerBatchTextStyles(@Nullable Map<Integer, TextStyle> stylesById) {
+        if (mNativeHandle == 0 || stylesById == null || stylesById.isEmpty()) return EditorActionResult.EMPTY;
         ByteBuffer payload = ProtocolEncoder.packBatchTextStyles(stylesById);
-        registerBatchTextStyles(payload);
+        return registerBatchTextStyles(payload);
     }
 
     /**
@@ -1331,9 +1379,10 @@ public class EditorCore {
      *
      * @param payload Packed ByteBuffer
      */
-    public void registerBatchTextStyles(@Nullable ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeRegisterBatchTextStyles(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult registerBatchTextStyles(@Nullable ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeRegisterBatchTextStyles(mNativeHandle, payload, payload.remaining()));
     }
 
     /**
@@ -1343,9 +1392,10 @@ public class EditorCore {
      * @param layer       Highlight layer (0=SYNTAX, 1=SEMANTIC)
      * @param styleSpans Span highlight sequence
      */
-    public void setLineSpans(int line, int layer, List<? extends StyleSpan> styleSpans) {
-        if (mNativeHandle == 0 || styleSpans == null) return;
-        setLineSpans(ProtocolEncoder.packLineSpans(line, layer, styleSpans));
+    @NonNull
+    public EditorActionResult setLineSpans(int line, int layer, List<? extends StyleSpan> styleSpans) {
+        if (mNativeHandle == 0 || styleSpans == null) return EditorActionResult.EMPTY;
+        return setLineSpans(ProtocolEncoder.packLineSpans(line, layer, styleSpans));
     }
 
 
@@ -1355,9 +1405,10 @@ public class EditorCore {
      *
      * @param payload Packed ByteBuffer (format: line, layer, count, repeated col, len, style)
      */
-    public void setLineSpans(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetLineSpans(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setLineSpans(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetLineSpans(mNativeHandle, payload, payload.remaining()));
     }
 
     /**
@@ -1366,10 +1417,11 @@ public class EditorCore {
      * @param layer       Highlight layer (0=SYNTAX, 1=SEMANTIC)
      * @param spansByLine Sparse array of line to span list
      */
-    public void setBatchLineSpans(int layer, @Nullable SparseArray<? extends List<? extends StyleSpan>> spansByLine) {
-        if (mNativeHandle == 0 || spansByLine == null || spansByLine.size() == 0) return;
+    @NonNull
+    public EditorActionResult setBatchLineSpans(int layer, @Nullable SparseArray<? extends List<? extends StyleSpan>> spansByLine) {
+        if (mNativeHandle == 0 || spansByLine == null || spansByLine.size() == 0) return EditorActionResult.EMPTY;
         ByteBuffer payload = ProtocolEncoder.packBatchLineSpans(layer, spansByLine);
-        setBatchLineSpans(payload);
+        return setBatchLineSpans(payload);
     }
 
     /**
@@ -1377,9 +1429,10 @@ public class EditorCore {
      *
      * @param payload Packed ByteBuffer
      */
-    public void setBatchLineSpans(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetBatchLineSpans(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setBatchLineSpans(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetBatchLineSpans(mNativeHandle, payload, payload.remaining()));
     }
 
     // ==================== InlayHint / PhantomText ====================
@@ -1390,9 +1443,10 @@ public class EditorCore {
      * @param line  Line number (0-based)
      * @param hints InlayHint list
      */
-    public void setLineInlayHints(int line, @NonNull List<? extends InlayHint> hints) {
+    @NonNull
+    public EditorActionResult setLineInlayHints(int line, @NonNull List<? extends InlayHint> hints) {
         ByteBuffer payload = ProtocolEncoder.packLineInlayHints(line, hints);
-        setLineInlayHints(payload);
+        return setLineInlayHints(payload);
     }
 
     /**
@@ -1400,9 +1454,10 @@ public class EditorCore {
      *
      * @param payload Packed ByteBuffer
      */
-    public void setLineInlayHints(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetLineInlayHints(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setLineInlayHints(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetLineInlayHints(mNativeHandle, payload, payload.remaining()));
     }
 
     /**
@@ -1410,10 +1465,11 @@ public class EditorCore {
      *
      * @param hintsByLine Sparse array of line to hint list
      */
-    public void setBatchLineInlayHints(@Nullable SparseArray<? extends List<? extends InlayHint>> hintsByLine) {
-        if (mNativeHandle == 0 || hintsByLine == null || hintsByLine.size() == 0) return;
+    @NonNull
+    public EditorActionResult setBatchLineInlayHints(@Nullable SparseArray<? extends List<? extends InlayHint>> hintsByLine) {
+        if (mNativeHandle == 0 || hintsByLine == null || hintsByLine.size() == 0) return EditorActionResult.EMPTY;
         ByteBuffer payload = ProtocolEncoder.packBatchLineInlayHints(hintsByLine);
-        setBatchLineInlayHints(payload);
+        return setBatchLineInlayHints(payload);
     }
 
     /**
@@ -1421,9 +1477,10 @@ public class EditorCore {
      *
      * @param payload Packed ByteBuffer
      */
-    public void setBatchLineInlayHints(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetBatchLineInlayHints(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setBatchLineInlayHints(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetBatchLineInlayHints(mNativeHandle, payload, payload.remaining()));
     }
 
     /**
@@ -1432,9 +1489,10 @@ public class EditorCore {
      * @param line     Line number (0-based)
      * @param phantoms Phantom text list (already sorted by column ascending)
      */
-    public void setLinePhantomTexts(int line, @NonNull List<? extends PhantomText> phantoms) {
-        if (mNativeHandle == 0 || phantoms == null) return;
-        setLinePhantomTexts(ProtocolEncoder.packLinePhantomTexts(line, phantoms));
+    @NonNull
+    public EditorActionResult setLinePhantomTexts(int line, @NonNull List<? extends PhantomText> phantoms) {
+        if (mNativeHandle == 0 || phantoms == null) return EditorActionResult.EMPTY;
+        return setLinePhantomTexts(ProtocolEncoder.packLinePhantomTexts(line, phantoms));
     }
 
     /**
@@ -1442,9 +1500,10 @@ public class EditorCore {
      *
      * @param payload Packed ByteBuffer
      */
-    public void setLinePhantomTexts(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetLinePhantomTexts(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setLinePhantomTexts(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetLinePhantomTexts(mNativeHandle, payload, payload.remaining()));
     }
 
     /**
@@ -1452,10 +1511,11 @@ public class EditorCore {
      *
      * @param phantomsByLine Sparse array of line to phantom list
      */
-    public void setBatchLinePhantomTexts(@Nullable SparseArray<? extends List<? extends PhantomText>> phantomsByLine) {
-        if (mNativeHandle == 0 || phantomsByLine == null || phantomsByLine.size() == 0) return;
+    @NonNull
+    public EditorActionResult setBatchLinePhantomTexts(@Nullable SparseArray<? extends List<? extends PhantomText>> phantomsByLine) {
+        if (mNativeHandle == 0 || phantomsByLine == null || phantomsByLine.size() == 0) return EditorActionResult.EMPTY;
         ByteBuffer payload = ProtocolEncoder.packBatchLinePhantomTexts(phantomsByLine);
-        setBatchLinePhantomTexts(payload);
+        return setBatchLinePhantomTexts(payload);
     }
 
     /**
@@ -1463,9 +1523,10 @@ public class EditorCore {
      *
      * @param payload Packed ByteBuffer
      */
-    public void setBatchLinePhantomTexts(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetBatchLinePhantomTexts(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setBatchLinePhantomTexts(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetBatchLinePhantomTexts(mNativeHandle, payload, payload.remaining()));
     }
 
     // ==================== Gutter Icons ====================
@@ -1476,9 +1537,10 @@ public class EditorCore {
      * @param line  Line number (0-based)
      * @param icons Icon list
      */
-    public void setLineGutterIcons(int line, @NonNull List<? extends GutterIcon> icons) {
-        if (mNativeHandle == 0 || icons == null) return;
-        setLineGutterIcons(ProtocolEncoder.packLineGutterIcons(line, icons));
+    @NonNull
+    public EditorActionResult setLineGutterIcons(int line, @NonNull List<? extends GutterIcon> icons) {
+        if (mNativeHandle == 0 || icons == null) return EditorActionResult.EMPTY;
+        return setLineGutterIcons(ProtocolEncoder.packLineGutterIcons(line, icons));
     }
 
     /**
@@ -1486,9 +1548,10 @@ public class EditorCore {
      *
      * @param payload Packed ByteBuffer
      */
-    public void setLineGutterIcons(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetLineGutterIcons(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setLineGutterIcons(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetLineGutterIcons(mNativeHandle, payload, payload.remaining()));
     }
 
     /**
@@ -1496,10 +1559,11 @@ public class EditorCore {
      *
      * @param iconsByLine Sparse array of line to icon list
      */
-    public void setBatchLineGutterIcons(@Nullable SparseArray<? extends List<? extends GutterIcon>> iconsByLine) {
-        if (mNativeHandle == 0 || iconsByLine == null || iconsByLine.size() == 0) return;
+    @NonNull
+    public EditorActionResult setBatchLineGutterIcons(@Nullable SparseArray<? extends List<? extends GutterIcon>> iconsByLine) {
+        if (mNativeHandle == 0 || iconsByLine == null || iconsByLine.size() == 0) return EditorActionResult.EMPTY;
         ByteBuffer payload = ProtocolEncoder.packBatchLineGutterIcons(iconsByLine);
-        setBatchLineGutterIcons(payload);
+        return setBatchLineGutterIcons(payload);
     }
 
     /**
@@ -1507,9 +1571,10 @@ public class EditorCore {
      *
      * @param payload Packed ByteBuffer
      */
-    public void setBatchLineGutterIcons(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetBatchLineGutterIcons(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setBatchLineGutterIcons(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetBatchLineGutterIcons(mNativeHandle, payload, payload.remaining()));
     }
 
     /**
@@ -1518,9 +1583,10 @@ public class EditorCore {
      *
      * @param count Maximum icon count (0=no reservation, default 0)
      */
-    public void setMaxGutterIcons(int count) {
-        if (mNativeHandle == 0) return;
-        nativeSetMaxGutterIcons(mNativeHandle, count);
+    @NonNull
+    public EditorActionResult setMaxGutterIcons(int count) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetMaxGutterIcons(mNativeHandle, count));
     }
 
     // ==================== Diagnostic Decorations ====================
@@ -1531,9 +1597,10 @@ public class EditorCore {
      * @param line  Line number (0-based)
      * @param items Diagnostic item list
      */
-    public void setLineDiagnostics(int line, @NonNull List<? extends Diagnostic> items) {
-        if (mNativeHandle == 0 || items == null) return;
-        setLineDiagnostics(ProtocolEncoder.packLineDiagnostics(line, items));
+    @NonNull
+    public EditorActionResult setLineDiagnostics(int line, @NonNull List<? extends Diagnostic> items) {
+        if (mNativeHandle == 0 || items == null) return EditorActionResult.EMPTY;
+        return setLineDiagnostics(ProtocolEncoder.packLineDiagnostics(line, items));
     }
 
     /**
@@ -1541,9 +1608,10 @@ public class EditorCore {
      *
      * @param payload Packed ByteBuffer (format: line, count, repeated col, len, severity, color)
      */
-    public void setLineDiagnostics(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetLineDiagnostics(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setLineDiagnostics(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetLineDiagnostics(mNativeHandle, payload, payload.remaining()));
     }
 
     /**
@@ -1551,10 +1619,11 @@ public class EditorCore {
      *
      * @param diagsByLine Sparse array of line to diagnostic list
      */
-    public void setBatchLineDiagnostics(@Nullable SparseArray<? extends List<? extends Diagnostic>> diagsByLine) {
-        if (mNativeHandle == 0 || diagsByLine == null || diagsByLine.size() == 0) return;
+    @NonNull
+    public EditorActionResult setBatchLineDiagnostics(@Nullable SparseArray<? extends List<? extends Diagnostic>> diagsByLine) {
+        if (mNativeHandle == 0 || diagsByLine == null || diagsByLine.size() == 0) return EditorActionResult.EMPTY;
         ByteBuffer payload = ProtocolEncoder.packBatchLineDiagnostics(diagsByLine);
-        setBatchLineDiagnostics(payload);
+        return setBatchLineDiagnostics(payload);
     }
 
     /**
@@ -1562,9 +1631,10 @@ public class EditorCore {
      *
      * @param payload Packed ByteBuffer
      */
-    public void setBatchLineDiagnostics(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetBatchLineDiagnostics(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setBatchLineDiagnostics(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetBatchLineDiagnostics(mNativeHandle, payload, payload.remaining()));
     }
 
     // ==================== Guide (Code Structure Lines) ====================
@@ -1574,9 +1644,10 @@ public class EditorCore {
      *
      * @param guides Indent guide list
      */
-    public void setIndentGuides(@NonNull List<? extends IndentGuide> guides) {
-        if (mNativeHandle == 0 || guides == null) return;
-        setIndentGuides(ProtocolEncoder.packIndentGuides(guides));
+    @NonNull
+    public EditorActionResult setIndentGuides(@NonNull List<? extends IndentGuide> guides) {
+        if (mNativeHandle == 0 || guides == null) return EditorActionResult.EMPTY;
+        return setIndentGuides(ProtocolEncoder.packIndentGuides(guides));
     }
 
     /**
@@ -1584,9 +1655,10 @@ public class EditorCore {
      *
      * @param payload Packed ByteBuffer
      */
-    public void setIndentGuides(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetIndentGuides(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setIndentGuides(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetIndentGuides(mNativeHandle, payload, payload.remaining()));
     }
 
     /**
@@ -1594,9 +1666,10 @@ public class EditorCore {
      *
      * @param guides Bracket guide list
      */
-    public void setBracketGuides(@NonNull List<? extends BracketGuide> guides) {
-        if (mNativeHandle == 0 || guides == null) return;
-        setBracketGuides(ProtocolEncoder.packBracketGuides(guides));
+    @NonNull
+    public EditorActionResult setBracketGuides(@NonNull List<? extends BracketGuide> guides) {
+        if (mNativeHandle == 0 || guides == null) return EditorActionResult.EMPTY;
+        return setBracketGuides(ProtocolEncoder.packBracketGuides(guides));
     }
 
     /**
@@ -1604,9 +1677,10 @@ public class EditorCore {
      *
      * @param payload Packed ByteBuffer
      */
-    public void setBracketGuides(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetBracketGuides(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setBracketGuides(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetBracketGuides(mNativeHandle, payload, payload.remaining()));
     }
 
     /**
@@ -1614,9 +1688,10 @@ public class EditorCore {
      *
      * @param guides Flow guide list
      */
-    public void setFlowGuides(@NonNull List<? extends FlowGuide> guides) {
-        if (mNativeHandle == 0 || guides == null) return;
-        setFlowGuides(ProtocolEncoder.packFlowGuides(guides));
+    @NonNull
+    public EditorActionResult setFlowGuides(@NonNull List<? extends FlowGuide> guides) {
+        if (mNativeHandle == 0 || guides == null) return EditorActionResult.EMPTY;
+        return setFlowGuides(ProtocolEncoder.packFlowGuides(guides));
     }
 
     /**
@@ -1624,9 +1699,10 @@ public class EditorCore {
      *
      * @param payload Packed ByteBuffer
      */
-    public void setFlowGuides(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetFlowGuides(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setFlowGuides(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetFlowGuides(mNativeHandle, payload, payload.remaining()));
     }
 
     /**
@@ -1634,9 +1710,10 @@ public class EditorCore {
      *
      * @param guides Separator guide list
      */
-    public void setSeparatorGuides(@NonNull List<? extends SeparatorGuide> guides) {
-        if (mNativeHandle == 0 || guides == null) return;
-        setSeparatorGuides(ProtocolEncoder.packSeparatorGuides(guides));
+    @NonNull
+    public EditorActionResult setSeparatorGuides(@NonNull List<? extends SeparatorGuide> guides) {
+        if (mNativeHandle == 0 || guides == null) return EditorActionResult.EMPTY;
+        return setSeparatorGuides(ProtocolEncoder.packSeparatorGuides(guides));
     }
 
     /**
@@ -1644,9 +1721,10 @@ public class EditorCore {
      *
      * @param payload Packed ByteBuffer
      */
-    public void setSeparatorGuides(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetSeparatorGuides(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setSeparatorGuides(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetSeparatorGuides(mNativeHandle, payload, payload.remaining()));
     }
 
     // ==================== Bracket Pair Highlight ====================
@@ -1656,9 +1734,10 @@ public class EditorCore {
      * @param openChars Open bracket character code array
      * @param closeChars Close bracket character code array
      */
-    public void setBracketPairs(int[] openChars, int[] closeChars) {
-        if (mNativeHandle == 0) return;
-        nativeSetBracketPairs(mNativeHandle, openChars, closeChars);
+    @NonNull
+    public EditorActionResult setBracketPairs(int[] openChars, int[] closeChars) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetBracketPairs(mNativeHandle, openChars, closeChars));
     }
 
     /**
@@ -1666,25 +1745,28 @@ public class EditorCore {
      * @param openChars Open bracket character code array
      * @param closeChars Close bracket character code array
      */
-    public void setAutoClosingPairs(int[] openChars, int[] closeChars) {
-        if (mNativeHandle == 0) return;
-        nativeSetAutoClosingPairs(mNativeHandle, openChars, closeChars);
+    @NonNull
+    public EditorActionResult setAutoClosingPairs(int[] openChars, int[] closeChars) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetAutoClosingPairs(mNativeHandle, openChars, closeChars));
     }
 
     /**
      * Sets exact bracket match result externally (overrides built-in character scan).
      */
-    public void setMatchedBrackets(int openLine, int openCol, int closeLine, int closeCol) {
-        if (mNativeHandle == 0) return;
-        nativeSetMatchedBrackets(mNativeHandle, openLine, openCol, closeLine, closeCol);
+    @NonNull
+    public EditorActionResult setMatchedBrackets(int openLine, int openCol, int closeLine, int closeCol) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetMatchedBrackets(mNativeHandle, openLine, openCol, closeLine, closeCol));
     }
 
     /**
      * Clears externally set bracket match result (falls back to built-in character scan).
      */
-    public void clearMatchedBrackets() {
-        if (mNativeHandle == 0) return;
-        nativeClearMatchedBrackets(mNativeHandle);
+    @NonNull
+    public EditorActionResult clearMatchedBrackets() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeClearMatchedBrackets(mNativeHandle));
     }
 
     // ==================== Code Folding ====================
@@ -1694,9 +1776,10 @@ public class EditorCore {
      *
      * @param regions Fold region list
      */
-    public void setFoldRegions(@NonNull List<? extends FoldRegion> regions) {
-        if (mNativeHandle == 0 || regions == null) return;
-        setFoldRegions(ProtocolEncoder.packFoldRegions(regions));
+    @NonNull
+    public EditorActionResult setFoldRegions(@NonNull List<? extends FoldRegion> regions) {
+        if (mNativeHandle == 0 || regions == null) return EditorActionResult.EMPTY;
+        return setFoldRegions(ProtocolEncoder.packFoldRegions(regions));
     }
 
     /**
@@ -1704,9 +1787,10 @@ public class EditorCore {
      *
      * @param payload Packed ByteBuffer
      */
-    public void setFoldRegions(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetFoldRegions(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setFoldRegions(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetFoldRegions(mNativeHandle, payload, payload.remaining()));
     }
 
     /**
@@ -1715,9 +1799,10 @@ public class EditorCore {
      * @param line Line number (0-based, usually the fold start line)
      * @return {@code true} if region was found and state was toggled
      */
-    public boolean toggleFoldAt(int line) {
-        if (mNativeHandle == 0) return false;
-        return nativeToggleFoldAt(mNativeHandle, line);
+    @NonNull
+    public EditorActionResult toggleFoldAt(int line) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeToggleFoldAt(mNativeHandle, line));
     }
 
     /**
@@ -1726,9 +1811,10 @@ public class EditorCore {
      * @param line Line number (0-based)
      * @return {@code true} if successfully folded
      */
-    public boolean foldAt(int line) {
-        if (mNativeHandle == 0) return false;
-        return nativeFoldAt(mNativeHandle, line);
+    @NonNull
+    public EditorActionResult foldAt(int line) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeFoldAt(mNativeHandle, line));
     }
 
     /**
@@ -1737,21 +1823,24 @@ public class EditorCore {
      * @param line Line number (0-based)
      * @return {@code true} if successfully unfolded
      */
-    public boolean unfoldAt(int line) {
-        if (mNativeHandle == 0) return false;
-        return nativeUnfoldAt(mNativeHandle, line);
+    @NonNull
+    public EditorActionResult unfoldAt(int line) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeUnfoldAt(mNativeHandle, line));
     }
 
     /** Folds all regions. */
-    public void foldAll() {
-        if (mNativeHandle == 0) return;
-        nativeFoldAll(mNativeHandle);
+    @NonNull
+    public EditorActionResult foldAll() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeFoldAll(mNativeHandle));
     }
 
     /** Unfolds all regions. */
-    public void unfoldAll() {
-        if (mNativeHandle == 0) return;
-        nativeUnfoldAll(mNativeHandle);
+    @NonNull
+    public EditorActionResult unfoldAll() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeUnfoldAll(mNativeHandle));
     }
 
     /**
@@ -1774,11 +1863,11 @@ public class EditorCore {
      * @return Exact change information
      */
     @NonNull
-    public TextEditResult insertSnippet(@NonNull String snippetTemplate) {
-        if (mNativeHandle == 0) return TextEditResult.EMPTY;
+    public EditorActionResult insertSnippet(@NonNull String snippetTemplate) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
         ByteBuffer data = nativeInsertSnippet(mNativeHandle, snippetTemplate);
         try {
-            return ProtocolDecoder.decodeTextEditResult(data);
+            return ProtocolDecoder.decodeEditorActionResult(data);
         } finally {
             nativeFreeBinaryData(data);
         }
@@ -1789,10 +1878,11 @@ public class EditorCore {
      *
      * @param model Linked editing model
      */
-    public void startLinkedEditing(@NonNull LinkedEditingModel model) {
-        if (mNativeHandle == 0) return;
+    @NonNull
+    public EditorActionResult startLinkedEditing(@NonNull LinkedEditingModel model) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
         ByteBuffer payload = ProtocolEncoder.packLinkedEditingModel(model);
-        nativeStartLinkedEditing(mNativeHandle, payload, payload.remaining());
+        return decodeAction(nativeStartLinkedEditing(mNativeHandle, payload, payload.remaining()));
     }
 
     /**
@@ -1808,9 +1898,10 @@ public class EditorCore {
      *
      * @return false if already at end, session ends automatically
      */
-    public boolean linkedEditingNext() {
-        if (mNativeHandle == 0) return false;
-        return nativeLinkedEditingNext(mNativeHandle);
+    @NonNull
+    public EditorActionResult linkedEditingNext() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeLinkedEditingNext(mNativeHandle));
     }
 
     /**
@@ -1818,25 +1909,28 @@ public class EditorCore {
      *
      * @return false if already at first
      */
-    public boolean linkedEditingPrev() {
-        if (mNativeHandle == 0) return false;
-        return nativeLinkedEditingPrev(mNativeHandle);
+    @NonNull
+    public EditorActionResult linkedEditingPrev() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeLinkedEditingPrev(mNativeHandle));
     }
 
     /**
      * Cancels linked editing mode.
      */
-    public void cancelLinkedEditing() {
-        if (mNativeHandle == 0) return;
-        nativeCancelLinkedEditing(mNativeHandle);
+    @NonNull
+    public EditorActionResult cancelLinkedEditing() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeCancelLinkedEditing(mNativeHandle));
     }
 
     // ==================== Clear Operations ====================
 
     /** Clears all highlight spans. */
-    public void clearHighlights() {
-        if (mNativeHandle == 0) return;
-        nativeClearHighlights(mNativeHandle);
+    @NonNull
+    public EditorActionResult clearHighlights() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeClearHighlights(mNativeHandle));
     }
 
     /**
@@ -1844,32 +1938,37 @@ public class EditorCore {
      *
      * @param layer Layer 0 / 1
      */
-    public void clearHighlights(int layer) {
-        if (mNativeHandle == 0) return;
-        nativeClearHighlightsLayer(mNativeHandle, layer);
+    @NonNull
+    public EditorActionResult clearHighlights(int layer) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeClearHighlightsLayer(mNativeHandle, layer));
     }
 
-    public void clearLineSpans(int line, int layer) {
-        if (mNativeHandle == 0) return;
-        nativeClearLineSpans(mNativeHandle, line, layer);
+    @NonNull
+    public EditorActionResult clearLineSpans(int line, int layer) {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeClearLineSpans(mNativeHandle, line, layer));
     }
 
     /** Clears all Inlay Hints. */
-    public void clearInlayHints() {
-        if (mNativeHandle == 0) return;
-        nativeClearInlayHints(mNativeHandle);
+    @NonNull
+    public EditorActionResult clearInlayHints() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeClearInlayHints(mNativeHandle));
     }
 
     /** Clears all phantom text. */
-    public void clearPhantomTexts() {
-        if (mNativeHandle == 0) return;
-        nativeClearPhantomTexts(mNativeHandle);
+    @NonNull
+    public EditorActionResult clearPhantomTexts() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeClearPhantomTexts(mNativeHandle));
     }
 
     /** Clears all gutter icons. */
-    public void clearGutterIcons() {
-        if (mNativeHandle == 0) return;
-        nativeClearGutterIcons(mNativeHandle);
+    @NonNull
+    public EditorActionResult clearGutterIcons() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeClearGutterIcons(mNativeHandle));
     }
 
     // ==================== CodeLens ====================
@@ -1880,40 +1979,45 @@ public class EditorCore {
      * @param line  Line number (0-based)
      * @param items CodeLensItem list
      */
-    public void setLineCodeLens(int line, @NonNull List<? extends CodeLensItem> items) {
-        if (mNativeHandle == 0 || items == null) return;
-        setLineCodeLens(ProtocolEncoder.packLineCodeLens(line, items));
+    @NonNull
+    public EditorActionResult setLineCodeLens(int line, @NonNull List<? extends CodeLensItem> items) {
+        if (mNativeHandle == 0 || items == null) return EditorActionResult.EMPTY;
+        return setLineCodeLens(ProtocolEncoder.packLineCodeLens(line, items));
     }
 
     /**
      * Sets CodeLens items for the specified line (already packed by caller via ProtocolEncoder).
      */
-    public void setLineCodeLens(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetLineCodeLens(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setLineCodeLens(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetLineCodeLens(mNativeHandle, payload, payload.remaining()));
     }
 
     /**
      * Batch sets CodeLens items for multiple lines (reduces JNI calls).
      */
-    public void setBatchLineCodeLens(@Nullable SparseArray<? extends List<? extends CodeLensItem>> itemsByLine) {
-        if (mNativeHandle == 0 || itemsByLine == null || itemsByLine.size() == 0) return;
+    @NonNull
+    public EditorActionResult setBatchLineCodeLens(@Nullable SparseArray<? extends List<? extends CodeLensItem>> itemsByLine) {
+        if (mNativeHandle == 0 || itemsByLine == null || itemsByLine.size() == 0) return EditorActionResult.EMPTY;
         ByteBuffer payload = ProtocolEncoder.packBatchLineCodeLens(itemsByLine);
-        setBatchLineCodeLens(payload);
+        return setBatchLineCodeLens(payload);
     }
 
     /**
      * Batch sets CodeLens items for multiple lines (already encoded as ByteBuffer by caller).
      */
-    public void setBatchLineCodeLens(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetBatchLineCodeLens(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setBatchLineCodeLens(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetBatchLineCodeLens(mNativeHandle, payload, payload.remaining()));
     }
 
     /** Clears all CodeLens items. */
-    public void clearCodeLens() {
-        if (mNativeHandle == 0) return;
-        nativeClearCodeLens(mNativeHandle);
+    @NonNull
+    public EditorActionResult clearCodeLens() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeClearCodeLens(mNativeHandle));
     }
 
     // ==================== Links ====================
@@ -1924,40 +2028,45 @@ public class EditorCore {
      * @param line  Line number (0-based)
      * @param links LinkSpan list
      */
-    public void setLineLinks(int line, @NonNull List<? extends LinkSpan> links) {
-        if (mNativeHandle == 0 || links == null) return;
-        setLineLinks(ProtocolEncoder.packLineLinks(line, links));
+    @NonNull
+    public EditorActionResult setLineLinks(int line, @NonNull List<? extends LinkSpan> links) {
+        if (mNativeHandle == 0 || links == null) return EditorActionResult.EMPTY;
+        return setLineLinks(ProtocolEncoder.packLineLinks(line, links));
     }
 
     /**
      * Sets link ranges for the specified line (already packed by caller via ProtocolEncoder).
      */
-    public void setLineLinks(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetLineLinks(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setLineLinks(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetLineLinks(mNativeHandle, payload, payload.remaining()));
     }
 
     /**
      * Batch sets link ranges for multiple lines (reduces JNI calls).
      */
-    public void setBatchLineLinks(@Nullable SparseArray<? extends List<? extends LinkSpan>> linksByLine) {
-        if (mNativeHandle == 0 || linksByLine == null || linksByLine.size() == 0) return;
+    @NonNull
+    public EditorActionResult setBatchLineLinks(@Nullable SparseArray<? extends List<? extends LinkSpan>> linksByLine) {
+        if (mNativeHandle == 0 || linksByLine == null || linksByLine.size() == 0) return EditorActionResult.EMPTY;
         ByteBuffer payload = ProtocolEncoder.packBatchLineLinks(linksByLine);
-        setBatchLineLinks(payload);
+        return setBatchLineLinks(payload);
     }
 
     /**
      * Batch sets link ranges for multiple lines (already encoded as ByteBuffer by caller).
      */
-    public void setBatchLineLinks(ByteBuffer payload) {
-        if (mNativeHandle == 0 || payload == null) return;
-        nativeSetBatchLineLinks(mNativeHandle, payload, payload.remaining());
+    @NonNull
+    public EditorActionResult setBatchLineLinks(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return EditorActionResult.EMPTY;
+        return decodeAction(nativeSetBatchLineLinks(mNativeHandle, payload, payload.remaining()));
     }
 
     /** Clears all link ranges. */
-    public void clearLinks() {
-        if (mNativeHandle == 0) return;
-        nativeClearLinks(mNativeHandle);
+    @NonNull
+    public EditorActionResult clearLinks() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeClearLinks(mNativeHandle));
     }
 
     /**
@@ -1971,83 +2080,193 @@ public class EditorCore {
     }
 
     /** Clears all code structure guides (indent guides, bracket guides, flow arrows, separators). */
-    public void clearGuides() {
-        if (mNativeHandle == 0) return;
-        nativeClearGuides(mNativeHandle);
+    @NonNull
+    public EditorActionResult clearGuides() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeClearGuides(mNativeHandle));
     }
 
     /** Clears all diagnostic decorations. */
-    public void clearDiagnostics() {
-        if (mNativeHandle == 0) return;
-        nativeClearDiagnostics(mNativeHandle);
+    @NonNull
+    public EditorActionResult clearDiagnostics() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeClearDiagnostics(mNativeHandle));
     }
 
     /** Clears all decoration data (highlights, Inlay Hints, phantom text, icons, guides, diagnostics). */
-    public void clearAllDecorations() {
-        if (mNativeHandle == 0) return;
-        nativeClearAllDecorations(mNativeHandle);
+    @NonNull
+    public EditorActionResult clearAllDecorations() {
+        if (mNativeHandle == 0) return EditorActionResult.EMPTY;
+        return decodeAction(nativeClearAllDecorations(mNativeHandle));
     }
 
     // ==================== Inner Classes/Enums ====================
 
-    public static class TextEditResult {
-        public final boolean changed;
-        @NonNull
-        public final java.util.List<TextChange> changes;
-
-        public static final TextEditResult EMPTY = new TextEditResult(false, java.util.Collections.emptyList());
-
-        public TextEditResult(boolean changed, @NonNull java.util.List<TextChange> changes) {
-            this.changed = changed;
-            this.changes = changes;
-        }
-
-        @NonNull
-        @Override
-        public String toString() {
-            return "TextEditResult{changed=" + changed + ", changes=" + changes + '}';
-        }
-    }
-
-    public static class KeyEventResult {
+    public static class EditorActionResult {
         public final boolean handled;
+        public final boolean needsRedraw;
+        public final int reason;
         public final boolean contentChanged;
         public final boolean cursorChanged;
         public final boolean selectionChanged;
+        public final boolean scrollChanged;
+        public final boolean scaleChanged;
+        public final boolean pointerCursorChanged;
+        public final boolean compositionChanged;
+        public final boolean decorationChanged;
+        public final boolean needsImeSync;
+        public final boolean needsEdgeScroll;
+        public final boolean needsFling;
+        public final boolean needsAnimation;
+        public final boolean isHandleDrag;
         @NonNull
-        public final TextEditResult editResult;
+        public final java.util.List<TextChange> changes;
+        @NonNull
+        public final TextPosition cursorBefore;
+        @NonNull
+        public final TextPosition cursorAfter;
+        public final boolean hasSelectionBefore;
+        @NonNull
+        public final TextRange selectionBefore;
+        public final boolean hasSelectionAfter;
+        @NonNull
+        public final TextRange selectionAfter;
+        public final float scrollXBefore;
+        public final float scrollYBefore;
+        public final float scrollXAfter;
+        public final float scrollYAfter;
+        public final float scaleBefore;
+        public final float scaleAfter;
+        public final int pointerCursorBefore;
+        public final int pointerCursorAfter;
+        @NonNull
+        public final ImeSyncSnapshot imeSync;
+        @NonNull
+        public final GestureType gestureType;
+        public final int gestureEventType;
+        @NonNull
+        public final PointF tapPoint;
+        @NonNull
+        public final HitTarget hitTarget;
+        public final int modifiers;
         public final int command;
 
-        public KeyEventResult() {
-            this.handled = false;
-            this.contentChanged = false;
-            this.cursorChanged = false;
-            this.selectionChanged = false;
-            this.editResult = TextEditResult.EMPTY;
-            this.command = 0;
+        public static final EditorActionResult EMPTY = new EditorActionResult();
+
+        public EditorActionResult() {
+            this(false, false, 0,
+                    false, false, false, false, false, false, false, false, false,
+                    false, false, false, false,
+                    java.util.Collections.emptyList(),
+                    TextPosition.NONE,
+                    TextPosition.NONE,
+                    false,
+                    new TextRange(),
+                    false,
+                    new TextRange(),
+                    0f,
+                    0f,
+                    0f,
+                    0f,
+                    1f,
+                    1f,
+                    0,
+                    0,
+                    new ImeSyncSnapshot(),
+                    GestureType.UNDEFINED,
+                    EVENT_TYPE_UNDEFINED,
+                    new PointF(),
+                    HitTarget.NONE,
+                    0,
+                    0);
         }
 
-        public KeyEventResult(boolean handled, boolean contentChanged, boolean cursorChanged,
-                              boolean selectionChanged, @NonNull TextEditResult editResult) {
-            this(handled, contentChanged, cursorChanged, selectionChanged, editResult, 0);
-        }
-
-        public KeyEventResult(boolean handled, boolean contentChanged, boolean cursorChanged,
-                              boolean selectionChanged, @NonNull TextEditResult editResult, int command) {
+        public EditorActionResult(boolean handled,
+                                  boolean needsRedraw,
+                                  int reason,
+                                  boolean contentChanged,
+                                  boolean cursorChanged,
+                                  boolean selectionChanged,
+                                  boolean scrollChanged,
+                                  boolean scaleChanged,
+                                  boolean pointerCursorChanged,
+                                  boolean compositionChanged,
+                                  boolean decorationChanged,
+                                  boolean needsImeSync,
+                                  boolean needsEdgeScroll,
+                                  boolean needsFling,
+                                  boolean needsAnimation,
+                                  boolean isHandleDrag,
+                                  @NonNull java.util.List<TextChange> changes,
+                                  @NonNull TextPosition cursorBefore,
+                                  @NonNull TextPosition cursorAfter,
+                                  boolean hasSelectionBefore,
+                                  @NonNull TextRange selectionBefore,
+                                  boolean hasSelectionAfter,
+                                  @NonNull TextRange selectionAfter,
+                                  float scrollXBefore,
+                                  float scrollYBefore,
+                                  float scrollXAfter,
+                                  float scrollYAfter,
+                                  float scaleBefore,
+                                  float scaleAfter,
+                                  int pointerCursorBefore,
+                                  int pointerCursorAfter,
+                                  @NonNull ImeSyncSnapshot imeSync,
+                                  @NonNull GestureType gestureType,
+                                  int gestureEventType,
+                                  @NonNull PointF tapPoint,
+                                  @NonNull HitTarget hitTarget,
+                                  int modifiers,
+                                  int command) {
             this.handled = handled;
+            this.needsRedraw = needsRedraw;
+            this.reason = reason;
             this.contentChanged = contentChanged;
             this.cursorChanged = cursorChanged;
             this.selectionChanged = selectionChanged;
-            this.editResult = editResult;
+            this.scrollChanged = scrollChanged;
+            this.scaleChanged = scaleChanged;
+            this.pointerCursorChanged = pointerCursorChanged;
+            this.compositionChanged = compositionChanged;
+            this.decorationChanged = decorationChanged;
+            this.needsImeSync = needsImeSync;
+            this.needsEdgeScroll = needsEdgeScroll;
+            this.needsFling = needsFling;
+            this.needsAnimation = needsAnimation;
+            this.isHandleDrag = isHandleDrag;
+            this.changes = changes;
+            this.cursorBefore = cursorBefore;
+            this.cursorAfter = cursorAfter;
+            this.hasSelectionBefore = hasSelectionBefore;
+            this.selectionBefore = selectionBefore;
+            this.hasSelectionAfter = hasSelectionAfter;
+            this.selectionAfter = selectionAfter;
+            this.scrollXBefore = scrollXBefore;
+            this.scrollYBefore = scrollYBefore;
+            this.scrollXAfter = scrollXAfter;
+            this.scrollYAfter = scrollYAfter;
+            this.scaleBefore = scaleBefore;
+            this.scaleAfter = scaleAfter;
+            this.pointerCursorBefore = pointerCursorBefore;
+            this.pointerCursorAfter = pointerCursorAfter;
+            this.imeSync = imeSync;
+            this.gestureType = gestureType;
+            this.gestureEventType = gestureEventType;
+            this.tapPoint = tapPoint;
+            this.hitTarget = hitTarget;
+            this.modifiers = modifiers;
             this.command = command;
         }
 
         @NonNull
         @Override
         public String toString() {
-            return "KeyEventResult{handled=" + handled + ", contentChanged=" + contentChanged +
+            return "EditorActionResult{handled=" + handled + ", needsRedraw=" + needsRedraw +
+                    ", contentChanged=" + contentChanged +
                     ", cursorChanged=" + cursorChanged + ", selectionChanged=" + selectionChanged +
-                    ", command=" + command + ", editResult=" + editResult + '}';
+                    ", scrollChanged=" + scrollChanged + ", scaleChanged=" + scaleChanged +
+                    ", gestureType=" + gestureType + ", command=" + command + '}';
         }
     }
 
@@ -2186,35 +2405,6 @@ public class EditorCore {
         }
     }
 
-    public static class ImeActionResult {
-        public final boolean handled;
-        public final boolean contentChanged;
-        public final boolean cursorChanged;
-        public final boolean selectionChanged;
-        @NonNull
-        public final TextEditResult editResult;
-        @NonNull
-        public final ImeSyncSnapshot sync;
-
-        public ImeActionResult() {
-            this(false, false, false, false, TextEditResult.EMPTY, new ImeSyncSnapshot());
-        }
-
-        public ImeActionResult(boolean handled,
-                              boolean contentChanged,
-                              boolean cursorChanged,
-                              boolean selectionChanged,
-                              @NonNull TextEditResult editResult,
-                              @NonNull ImeSyncSnapshot sync) {
-            this.handled = handled;
-            this.contentChanged = contentChanged;
-            this.cursorChanged = cursorChanged;
-            this.selectionChanged = selectionChanged;
-            this.editResult = editResult;
-            this.sync = sync;
-        }
-    }
-
     /** Click hit target types. */
     public enum HitTargetType {
         /**
@@ -2347,89 +2537,6 @@ public class EditorCore {
         }
     }
 
-    public static class GestureResult {
-        public final GestureType type;
-        public final PointF tapPoint;
-        // Editor state after the operation (filled by C++ EditorCore)
-        public final TextPosition cursorPosition;
-        public final boolean hasSelection;
-        public final TextRange selection;
-        public final float viewScrollX;
-        public final float viewScrollY;
-        public final float viewScale;
-        /**
-         * Decoration hit target at the gesture location.
-         */
-        public final HitTarget hitTarget;
-        /**
-         * Whether the platform should start/continue a ~16ms timer calling tickEdgeScroll().
-         */
-        public final boolean needsEdgeScroll;
-        /**
-         * Whether the platform should start/continue a ~16ms timer calling tickFling().
-         */
-        public final boolean needsFling;
-        /**
-         * Whether any animation is still active; platform can use a single
-         * frame callback calling tickAnimations() instead of separate tick calls.
-         */
-        public final boolean needsAnimation;
-        /**
-         * Whether this gesture event is part of a selection handle drag.
-         */
-        public final boolean isHandleDrag;
-
-        public GestureResult() {
-            this.type = GestureType.UNDEFINED;
-            this.tapPoint = new PointF();
-            this.cursorPosition = TextPosition.NONE;
-            this.hasSelection = false;
-            this.selection = new TextRange();
-            this.viewScrollX = 0;
-            this.viewScrollY = 0;
-            this.viewScale = 1;
-            this.hitTarget = HitTarget.NONE;
-            this.needsEdgeScroll = false;
-            this.needsFling = false;
-            this.needsAnimation = false;
-            this.isHandleDrag = false;
-        }
-
-        public GestureResult(GestureType type, PointF tapPoint,
-                             TextPosition cursorPosition, boolean hasSelection, TextRange selection,
-                             float viewScrollX, float viewScrollY, float viewScale,
-                             HitTarget hitTarget, boolean needsEdgeScroll, boolean needsFling,
-                             boolean needsAnimation, boolean isHandleDrag) {
-            this.type = type;
-            this.tapPoint = tapPoint;
-            this.cursorPosition = cursorPosition;
-            this.hasSelection = hasSelection;
-            this.selection = selection;
-            this.viewScrollX = viewScrollX;
-            this.viewScrollY = viewScrollY;
-            this.viewScale = viewScale;
-            this.hitTarget = hitTarget;
-            this.needsEdgeScroll = needsEdgeScroll;
-            this.needsFling = needsFling;
-            this.needsAnimation = needsAnimation;
-            this.isHandleDrag = isHandleDrag;
-        }
-
-        @NonNull
-        @Override
-        public String toString() {
-            return "GestureResult{" +
-                    "type=" + type +
-                    ", tapPoint=" + tapPoint +
-                    ", cursor=" + cursorPosition +
-                    ", hasSelection=" + hasSelection +
-                    ", viewScroll=(" + viewScrollX + "," + viewScrollY + ")" +
-                    ", viewScale=" + viewScale +
-                    ", hitTarget=" + hitTarget +
-                    '}';
-        }
-    }
-
     // ==================== Private Helpers/Internal Implementation ====================
 
     private static int getEventTypeInt(MotionEvent event) {
@@ -2469,44 +2576,44 @@ public class EditorCore {
     @CriticalNative
     private static native void nativeFinalizeEditorCore(long handle);
 
-    @CriticalNative
-    private static native void nativeSetViewport(long handle, int width, int height);
+    @FastNative
+    private static native ByteBuffer nativeSetViewport(long handle, int width, int height);
 
-    @CriticalNative
-    private static native void nativeLoadDocument(long handle, long documentHandle);
+    @FastNative
+    private static native ByteBuffer nativeLoadDocument(long handle, long documentHandle);
 
-    @CriticalNative
-    private static native void nativeOnFontMetricsChanged(long handle);
+    @FastNative
+    private static native ByteBuffer nativeOnFontMetricsChanged(long handle);
 
-    @CriticalNative
-    private static native void nativeSetFoldArrowMode(long handle, int mode);
+    @FastNative
+    private static native ByteBuffer nativeSetFoldArrowMode(long handle, int mode);
 
-    @CriticalNative
-    private static native void nativeSetWrapMode(long handle, int mode);
+    @FastNative
+    private static native ByteBuffer nativeSetWrapMode(long handle, int mode);
 
-    @CriticalNative
-    private static native void nativeSetTabSize(long handle, int tabSize);
+    @FastNative
+    private static native ByteBuffer nativeSetTabSize(long handle, int tabSize);
 
-    @CriticalNative
-    private static native void nativeSetScale(long handle, float scale);
+    @FastNative
+    private static native ByteBuffer nativeSetScale(long handle, float scale);
 
-    @CriticalNative
-    private static native void nativeSetLineSpacing(long handle, float add, float mult);
+    @FastNative
+    private static native ByteBuffer nativeSetLineSpacing(long handle, float add, float mult);
 
-    @CriticalNative
-    private static native void nativeSetContentStartPadding(long handle, float padding);
+    @FastNative
+    private static native ByteBuffer nativeSetContentStartPadding(long handle, float padding);
 
-    @CriticalNative
-    private static native void nativeSetShowSplitLine(long handle, boolean show);
+    @FastNative
+    private static native ByteBuffer nativeSetShowSplitLine(long handle, boolean show);
 
-    @CriticalNative
-    private static native void nativeSetGutterSticky(long handle, boolean sticky);
+    @FastNative
+    private static native ByteBuffer nativeSetGutterSticky(long handle, boolean sticky);
 
-    @CriticalNative
-    private static native void nativeSetGutterVisible(long handle, boolean visible);
+    @FastNative
+    private static native ByteBuffer nativeSetGutterVisible(long handle, boolean visible);
 
-    @CriticalNative
-    private static native void nativeSetCurrentLineRenderMode(long handle, int mode);
+    @FastNative
+    private static native ByteBuffer nativeSetCurrentLineRenderMode(long handle, int mode);
 
     @FastNative
     private static native ByteBuffer nativeBuildRenderModel(long handle);
@@ -2535,7 +2642,7 @@ public class EditorCore {
     private static native ByteBuffer nativeHandleKeyEvent(long handle, int keyCode, String text, int modifiers);
 
     @FastNative
-    private static native void nativeSetKeyMap(long handle, ByteBuffer data);
+    private static native ByteBuffer nativeSetKeyMap(long handle, ByteBuffer data);
 
     @FastNative
     private static native ByteBuffer nativeInsertText(long handle, String text);
@@ -2590,32 +2697,32 @@ public class EditorCore {
     @FastNative
     private static native String nativeGetWordAtCursor(long handle);
 
-    @CriticalNative
-    private static native void nativeMoveCursorLeft(long handle, boolean extendSelection);
+    @FastNative
+    private static native ByteBuffer nativeMoveCursorLeft(long handle, boolean extendSelection);
 
-    @CriticalNative
-    private static native void nativeMoveCursorRight(long handle, boolean extendSelection);
+    @FastNative
+    private static native ByteBuffer nativeMoveCursorRight(long handle, boolean extendSelection);
 
-    @CriticalNative
-    private static native void nativeMoveCursorUp(long handle, boolean extendSelection);
+    @FastNative
+    private static native ByteBuffer nativeMoveCursorUp(long handle, boolean extendSelection);
 
-    @CriticalNative
-    private static native void nativeMoveCursorDown(long handle, boolean extendSelection);
+    @FastNative
+    private static native ByteBuffer nativeMoveCursorDown(long handle, boolean extendSelection);
 
-    @CriticalNative
-    private static native void nativeMoveCursorToLineStart(long handle, boolean extendSelection);
+    @FastNative
+    private static native ByteBuffer nativeMoveCursorToLineStart(long handle, boolean extendSelection);
 
-    @CriticalNative
-    private static native void nativeMoveCursorToLineEnd(long handle, boolean extendSelection);
+    @FastNative
+    private static native ByteBuffer nativeMoveCursorToLineEnd(long handle, boolean extendSelection);
 
-    @CriticalNative
-    private static native void nativeSetCursorPosition(long handle, int line, int column);
+    @FastNative
+    private static native ByteBuffer nativeSetCursorPosition(long handle, int line, int column);
 
-    @CriticalNative
-    private static native void nativeSelectAll(long handle);
+    @FastNative
+    private static native ByteBuffer nativeSelectAll(long handle);
 
-    @CriticalNative
-    private static native void nativeSetSelection(long handle, int startLine, int startColumn, int endLine, int endColumn);
+    @FastNative
+    private static native ByteBuffer nativeSetSelection(long handle, int startLine, int startColumn, int endLine, int endColumn);
 
     @FastNative
     private static native long[] nativeGetSelection(long handle);
@@ -2757,8 +2864,8 @@ public class EditorCore {
                                                                   long cursorLine,
                                                                   long cursorColumn);
 
-    @CriticalNative
-    private static native void nativeImeSetKeyboardScriptClass(long handle, int scriptClass);
+    @FastNative
+    private static native ByteBuffer nativeImeSetKeyboardScriptClass(long handle, int scriptClass);
 
     @CriticalNative
     private static native int nativeImeGetKeyboardScriptClass(long handle);
@@ -2769,31 +2876,31 @@ public class EditorCore {
     @FastNative
     private static native ByteBuffer nativeGetImeInputContext(long handle, long beforeLength, long afterLength);
 
-    @CriticalNative
-    private static native void nativeSetReadOnly(long handle, boolean readOnly);
+    @FastNative
+    private static native ByteBuffer nativeSetReadOnly(long handle, boolean readOnly);
 
     @CriticalNative
     private static native boolean nativeIsReadOnly(long handle);
 
-    @CriticalNative
-    private static native void nativeSetAutoIndentMode(long handle, int mode);
+    @FastNative
+    private static native ByteBuffer nativeSetAutoIndentMode(long handle, int mode);
 
     @CriticalNative
     private static native int nativeGetAutoIndentMode(long handle);
 
-    @CriticalNative
-    private static native void nativeSetBackspaceUnindent(long handle, boolean enabled);
+    @FastNative
+    private static native ByteBuffer nativeSetBackspaceUnindent(long handle, boolean enabled);
 
-    @CriticalNative
-    private static native void nativeSetInsertSpaces(long handle, boolean enabled);
+    @FastNative
+    private static native ByteBuffer nativeSetInsertSpaces(long handle, boolean enabled);
 
-    @CriticalNative
-    private static native void nativeSetHandleConfig(long handle,
+    @FastNative
+    private static native ByteBuffer nativeSetHandleConfig(long handle,
             float startLeft, float startTop, float startRight, float startBottom,
             float endLeft, float endTop, float endRight, float endBottom);
 
-    @CriticalNative
-    private static native void nativeSetScrollbarConfig(long handle, float thickness, float minThumb, float thumbHitPadding,
+    @FastNative
+    private static native ByteBuffer nativeSetScrollbarConfig(long handle, float thickness, float minThumb, float thumbHitPadding,
                                                         int mode, boolean thumbDraggable, int trackTapMode,
                                                         int fadeDelayMs, int fadeDurationMs);
 
@@ -2803,17 +2910,17 @@ public class EditorCore {
     @FastNative
     private static native float[] nativeGetCursorRect(long handle);
 
-    @CriticalNative
-    private static native void nativeScrollToLine(long handle, int line, int behavior);
+    @FastNative
+    private static native ByteBuffer nativeScrollToLine(long handle, int line, int behavior);
 
-    @CriticalNative
-    private static native void nativeGotoPosition(long handle, int line, int column);
+    @FastNative
+    private static native ByteBuffer nativeGotoPosition(long handle, int line, int column);
 
-    @CriticalNative
-    private static native void nativeEnsureCursorVisible(long handle);
+    @FastNative
+    private static native ByteBuffer nativeEnsureCursorVisible(long handle);
 
-    @CriticalNative
-    private static native void nativeSetScroll(long handle, float scrollX, float scrollY);
+    @FastNative
+    private static native ByteBuffer nativeSetScroll(long handle, float scrollX, float scrollY);
 
     @FastNative
     private static native ByteBuffer nativeGetScrollMetrics(long handle);
@@ -2821,155 +2928,155 @@ public class EditorCore {
     @FastNative
     private static native int[] nativeGetVisibleLineRange(long handle);
 
-    @CriticalNative
-    private static native void nativeRegisterTextStyle(long handle, int styleId, int color, int backgroundColor, int fontStyle);
+    @FastNative
+    private static native ByteBuffer nativeRegisterTextStyle(long handle, int styleId, int color, int backgroundColor, int fontStyle);
 
     @FastNative
-    private static native void nativeRegisterBatchTextStyles(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeRegisterBatchTextStyles(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native void nativeSetLineSpans(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeSetLineSpans(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native void nativeSetLineInlayHints(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeSetLineInlayHints(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native void nativeSetLinePhantomTexts(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeSetLinePhantomTexts(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native void nativeSetLineGutterIcons(long handle, ByteBuffer data, int size);
-
-    @CriticalNative
-    private static native void nativeSetMaxGutterIcons(long handle, int count);
+    private static native ByteBuffer nativeSetLineGutterIcons(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native void nativeSetLineDiagnostics(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeSetMaxGutterIcons(long handle, int count);
 
     @FastNative
-    private static native void nativeSetBatchLineSpans(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeSetLineDiagnostics(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native void nativeSetBatchLineInlayHints(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeSetBatchLineSpans(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native void nativeSetBatchLinePhantomTexts(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeSetBatchLineInlayHints(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native void nativeSetBatchLineGutterIcons(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeSetBatchLinePhantomTexts(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native void nativeSetBatchLineDiagnostics(long handle, ByteBuffer data, int size);
-
-    @CriticalNative
-    private static native void nativeClearDiagnostics(long handle);
+    private static native ByteBuffer nativeSetBatchLineGutterIcons(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native void nativeSetIndentGuides(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeSetBatchLineDiagnostics(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native void nativeSetBracketGuides(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeClearDiagnostics(long handle);
 
     @FastNative
-    private static native void nativeSetFlowGuides(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeSetIndentGuides(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native void nativeSetSeparatorGuides(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeSetBracketGuides(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native void nativeSetBracketPairs(long handle, int[] openChars, int[] closeChars);
+    private static native ByteBuffer nativeSetFlowGuides(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native void nativeSetAutoClosingPairs(long handle, int[] openChars, int[] closeChars);
-
-    @CriticalNative
-    private static native void nativeSetMatchedBrackets(long handle, int openLine, int openCol, int closeLine, int closeCol);
-
-    @CriticalNative
-    private static native void nativeClearMatchedBrackets(long handle);
+    private static native ByteBuffer nativeSetSeparatorGuides(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native void nativeSetFoldRegions(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeSetBracketPairs(long handle, int[] openChars, int[] closeChars);
 
-    @CriticalNative
-    private static native boolean nativeToggleFoldAt(long handle, int line);
+    @FastNative
+    private static native ByteBuffer nativeSetAutoClosingPairs(long handle, int[] openChars, int[] closeChars);
 
-    @CriticalNative
-    private static native boolean nativeFoldAt(long handle, int line);
+    @FastNative
+    private static native ByteBuffer nativeSetMatchedBrackets(long handle, int openLine, int openCol, int closeLine, int closeCol);
 
-    @CriticalNative
-    private static native boolean nativeUnfoldAt(long handle, int line);
+    @FastNative
+    private static native ByteBuffer nativeClearMatchedBrackets(long handle);
 
-    @CriticalNative
-    private static native void nativeFoldAll(long handle);
+    @FastNative
+    private static native ByteBuffer nativeSetFoldRegions(long handle, ByteBuffer data, int size);
 
-    @CriticalNative
-    private static native void nativeUnfoldAll(long handle);
+    @FastNative
+    private static native ByteBuffer nativeToggleFoldAt(long handle, int line);
+
+    @FastNative
+    private static native ByteBuffer nativeFoldAt(long handle, int line);
+
+    @FastNative
+    private static native ByteBuffer nativeUnfoldAt(long handle, int line);
+
+    @FastNative
+    private static native ByteBuffer nativeFoldAll(long handle);
+
+    @FastNative
+    private static native ByteBuffer nativeUnfoldAll(long handle);
 
     @CriticalNative
     private static native boolean nativeIsLineVisible(long handle, int line);
 
-    @CriticalNative
-    private static native void nativeClearHighlights(long handle);
-
-    @CriticalNative
-    private static native void nativeClearHighlightsLayer(long handle, int layer);
-
-    @CriticalNative
-    private static native void nativeClearLineSpans(long handle, int line, int layer);
-
-    @CriticalNative
-    private static native void nativeClearInlayHints(long handle);
-
-    @CriticalNative
-    private static native void nativeClearPhantomTexts(long handle);
-
-    @CriticalNative
-    private static native void nativeClearGutterIcons(long handle);
+    @FastNative
+    private static native ByteBuffer nativeClearHighlights(long handle);
 
     @FastNative
-    private static native void nativeSetLineCodeLens(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeClearHighlightsLayer(long handle, int layer);
 
     @FastNative
-    private static native void nativeSetBatchLineCodeLens(long handle, ByteBuffer data, int size);
-
-    @CriticalNative
-    private static native void nativeClearCodeLens(long handle);
+    private static native ByteBuffer nativeClearLineSpans(long handle, int line, int layer);
 
     @FastNative
-    private static native void nativeSetLineLinks(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeClearInlayHints(long handle);
 
     @FastNative
-    private static native void nativeSetBatchLineLinks(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeClearPhantomTexts(long handle);
 
-    @CriticalNative
-    private static native void nativeClearLinks(long handle);
+    @FastNative
+    private static native ByteBuffer nativeClearGutterIcons(long handle);
+
+    @FastNative
+    private static native ByteBuffer nativeSetLineCodeLens(long handle, ByteBuffer data, int size);
+
+    @FastNative
+    private static native ByteBuffer nativeSetBatchLineCodeLens(long handle, ByteBuffer data, int size);
+
+    @FastNative
+    private static native ByteBuffer nativeClearCodeLens(long handle);
+
+    @FastNative
+    private static native ByteBuffer nativeSetLineLinks(long handle, ByteBuffer data, int size);
+
+    @FastNative
+    private static native ByteBuffer nativeSetBatchLineLinks(long handle, ByteBuffer data, int size);
+
+    @FastNative
+    private static native ByteBuffer nativeClearLinks(long handle);
 
     @FastNative
     private static native String nativeGetLinkTargetAt(long handle, int line, int column);
 
-    @CriticalNative
-    private static native void nativeClearGuides(long handle);
+    @FastNative
+    private static native ByteBuffer nativeClearGuides(long handle);
 
-    @CriticalNative
-    private static native void nativeClearAllDecorations(long handle);
+    @FastNative
+    private static native ByteBuffer nativeClearAllDecorations(long handle);
 
     @FastNative
     private static native ByteBuffer nativeInsertSnippet(long handle, String snippetTemplate);
 
     @FastNative
-    private static native void nativeStartLinkedEditing(long handle, ByteBuffer data, int size);
+    private static native ByteBuffer nativeStartLinkedEditing(long handle, ByteBuffer data, int size);
 
     @CriticalNative
     private static native boolean nativeIsInLinkedEditing(long handle);
 
-    @CriticalNative
-    private static native boolean nativeLinkedEditingNext(long handle);
+    @FastNative
+    private static native ByteBuffer nativeLinkedEditingNext(long handle);
 
-    @CriticalNative
-    private static native boolean nativeLinkedEditingPrev(long handle);
+    @FastNative
+    private static native ByteBuffer nativeLinkedEditingPrev(long handle);
 
-    @CriticalNative
-    private static native void nativeCancelLinkedEditing(long handle);
+    @FastNative
+    private static native ByteBuffer nativeCancelLinkedEditing(long handle);
 
     @FastNative
     private static native void nativeFreeBinaryData(@Nullable ByteBuffer data);

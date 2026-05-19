@@ -45,71 +45,86 @@ final class ProtocolDecoder {
                 0, 0, 0, 0, 0, 0, false, false);
     }
 
-    static EditorCore.TextEditResult decodeTextEditResult(@Nullable ByteBuffer data) {
-        if (data == null) return EditorCore.TextEditResult.EMPTY;
-        data.order(ByteOrder.nativeOrder());
-        boolean changed = data.getInt() != 0;
-        if (!changed) return EditorCore.TextEditResult.EMPTY;
-        int count = data.getInt();
-        java.util.List<TextChange> changes = new java.util.ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            TextRange range = new TextRange(
-                    new TextPosition(data.getInt(), data.getInt()),
-                    new TextPosition(data.getInt(), data.getInt()));
-            String newText = readBufferString(data);
-            changes.add(new TextChange(range, newText));
-        }
-        return new EditorCore.TextEditResult(true, changes);
-    }
-
-    static EditorCore.KeyEventResult decodeKeyEventResult(@Nullable ByteBuffer data) {
-        if (data == null) return new EditorCore.KeyEventResult();
+    static EditorCore.EditorActionResult decodeEditorActionResult(@Nullable ByteBuffer data) {
+        if (data == null) return EditorCore.EditorActionResult.EMPTY;
         data.order(ByteOrder.nativeOrder());
         boolean handled = data.getInt() != 0;
+        boolean needsRedraw = data.getInt() != 0;
+        int reason = data.getInt();
         boolean contentChanged = data.getInt() != 0;
         boolean cursorChanged = data.getInt() != 0;
         boolean selectionChanged = data.getInt() != 0;
-        boolean hasEdit = data.getInt() != 0;
-        EditorCore.TextEditResult editResult = EditorCore.TextEditResult.EMPTY;
-        if (hasEdit) {
-            int count = data.getInt();
-            java.util.List<TextChange> changes = new java.util.ArrayList<>(count);
-            for (int i = 0; i < count; i++) {
-                TextRange range = new TextRange(
-                        new TextPosition(data.getInt(), data.getInt()),
-                        new TextPosition(data.getInt(), data.getInt()));
-                String newText = readBufferString(data);
-                changes.add(new TextChange(range, newText));
-            }
-            editResult = new EditorCore.TextEditResult(true, changes);
-        }
-        int command = data.remaining() >= 4 ? data.getInt() : 0;
-        return new EditorCore.KeyEventResult(handled, contentChanged, cursorChanged, selectionChanged, editResult, command);
-    }
-
-    static EditorCore.ImeActionResult decodeImeActionResult(@Nullable ByteBuffer data) {
-        if (data == null) return new EditorCore.ImeActionResult();
-        data.order(ByteOrder.nativeOrder());
-        boolean handled = data.getInt() != 0;
-        boolean contentChanged = data.getInt() != 0;
-        boolean cursorChanged = data.getInt() != 0;
-        boolean selectionChanged = data.getInt() != 0;
-        boolean hasEdit = data.getInt() != 0;
-        EditorCore.TextEditResult editResult = EditorCore.TextEditResult.EMPTY;
-        if (hasEdit) {
-            int count = data.getInt();
-            java.util.List<TextChange> changes = new java.util.ArrayList<>(count);
-            for (int i = 0; i < count; i++) {
-                TextRange range = new TextRange(
-                        new TextPosition(data.getInt(), data.getInt()),
-                        new TextPosition(data.getInt(), data.getInt()));
-                String newText = readBufferString(data);
-                changes.add(new TextChange(range, newText));
-            }
-            editResult = new EditorCore.TextEditResult(true, changes);
-        }
-        EditorCore.ImeSyncSnapshot sync = readImeSyncSnapshot(data);
-        return new EditorCore.ImeActionResult(handled, contentChanged, cursorChanged, selectionChanged, editResult, sync);
+        boolean scrollChanged = data.getInt() != 0;
+        boolean scaleChanged = data.getInt() != 0;
+        boolean pointerCursorChanged = data.getInt() != 0;
+        boolean compositionChanged = data.getInt() != 0;
+        boolean decorationChanged = data.getInt() != 0;
+        boolean needsImeSync = data.getInt() != 0;
+        boolean needsEdgeScroll = data.getInt() != 0;
+        boolean needsFling = data.getInt() != 0;
+        boolean needsAnimation = data.getInt() != 0;
+        boolean isHandleDrag = data.getInt() != 0;
+        java.util.List<TextChange> changes = readTextEditChanges(data);
+        TextPosition cursorBefore = readTextPosition(data);
+        TextPosition cursorAfter = readTextPosition(data);
+        boolean hasSelectionBefore = data.getInt() != 0;
+        TextRange selectionBefore = readTextRange(data);
+        boolean hasSelectionAfter = data.getInt() != 0;
+        TextRange selectionAfter = readTextRange(data);
+        float scrollXBefore = data.getFloat();
+        float scrollYBefore = data.getFloat();
+        float scrollXAfter = data.getFloat();
+        float scrollYAfter = data.getFloat();
+        float scaleBefore = data.getFloat();
+        float scaleAfter = data.getFloat();
+        int pointerCursorBefore = data.getInt();
+        int pointerCursorAfter = data.getInt();
+        EditorCore.ImeSyncSnapshot imeSync = readImeSyncSnapshot(data);
+        EditorCore.GestureType gestureType = EditorCore.GestureType.fromValue(data.getInt());
+        int gestureEventType = data.getInt();
+        android.graphics.PointF tapPoint = new android.graphics.PointF(data.getFloat(), data.getFloat());
+        EditorCore.HitTarget hitTarget = readHitTarget(data);
+        int modifiers = data.getInt();
+        int command = data.getInt();
+        return new EditorCore.EditorActionResult(
+                handled,
+                needsRedraw,
+                reason,
+                contentChanged,
+                cursorChanged,
+                selectionChanged,
+                scrollChanged,
+                scaleChanged,
+                pointerCursorChanged,
+                compositionChanged,
+                decorationChanged,
+                needsImeSync,
+                needsEdgeScroll,
+                needsFling,
+                needsAnimation,
+                isHandleDrag,
+                changes,
+                cursorBefore,
+                cursorAfter,
+                hasSelectionBefore,
+                selectionBefore,
+                hasSelectionAfter,
+                selectionAfter,
+                scrollXBefore,
+                scrollYBefore,
+                scrollXAfter,
+                scrollYAfter,
+                scaleBefore,
+                scaleAfter,
+                pointerCursorBefore,
+                pointerCursorAfter,
+                imeSync,
+                gestureType,
+                gestureEventType,
+                tapPoint,
+                hitTarget,
+                modifiers,
+                command);
     }
 
     static EditorCore.ImeSyncSnapshot decodeImeSyncSnapshot(@Nullable ByteBuffer data) {
@@ -138,71 +153,6 @@ final class ProtocolDecoder {
                 hasComposition,
                 composition,
                 kind);
-    }
-
-    static EditorCore.GestureResult decodeGestureResult(@Nullable ByteBuffer data) {
-        if (data == null) return new EditorCore.GestureResult();
-        data.order(ByteOrder.nativeOrder());
-        EditorCore.GestureType gestureType = EditorCore.GestureType.fromValue(data.getInt());
-        android.graphics.PointF tapPoint = new android.graphics.PointF();
-
-        switch (gestureType) {
-            case TAP:
-            case DOUBLE_TAP:
-            case LONG_PRESS:
-            case DRAG_SELECT:
-            case CONTEXT_MENU:
-                tapPoint = new android.graphics.PointF(data.getFloat(), data.getFloat());
-                break;
-            default:
-                break;
-        }
-
-        TextPosition cursorPosition = new TextPosition(data.getInt(), data.getInt());
-        boolean hasSelection = data.getInt() != 0;
-        TextRange selection = new TextRange(
-                new TextPosition(data.getInt(), data.getInt()),
-                new TextPosition(data.getInt(), data.getInt())
-        );
-        float viewScrollX = data.getFloat();
-        float viewScrollY = data.getFloat();
-        float viewScale = data.getFloat();
-
-        EditorCore.HitTarget hitTarget = EditorCore.HitTarget.NONE;
-        if (data.remaining() >= 20) {
-            int hitTypeInt = data.getInt();
-            int hitLine = data.getInt();
-            int hitColumn = data.getInt();
-            int hitIconId = data.getInt();
-            int hitColorValue = data.getInt();
-            EditorCore.HitTargetType hitType = EditorCore.HitTargetType.fromValue(hitTypeInt);
-            if (hitType != EditorCore.HitTargetType.NONE) {
-                hitTarget = new EditorCore.HitTarget(hitType, hitLine, hitColumn, hitIconId, hitColorValue);
-            }
-        }
-
-        boolean needsEdgeScroll = false;
-        if (data.remaining() >= 4) {
-            needsEdgeScroll = data.getInt() != 0;
-        }
-
-        boolean needsFling = false;
-        if (data.remaining() >= 4) {
-            needsFling = data.getInt() != 0;
-        }
-
-        boolean needsAnimation = false;
-        if (data.remaining() >= 4) {
-            needsAnimation = data.getInt() != 0;
-        }
-
-        boolean isHandleDrag = false;
-        if (data.remaining() >= 4) {
-            isHandleDrag = data.getInt() != 0;
-        }
-
-        return new EditorCore.GestureResult(gestureType, tapPoint,
-                cursorPosition, hasSelection, selection, viewScrollX, viewScrollY, viewScale, hitTarget, needsEdgeScroll, needsFling, needsAnimation, isHandleDrag);
     }
 
     static ScrollMetrics decodeScrollMetrics(@Nullable ByteBuffer data) {
@@ -319,6 +269,27 @@ final class ProtocolDecoder {
 
     private static TextRange readTextRange(ByteBuffer data) {
         return new TextRange(readTextPosition(data), readTextPosition(data));
+    }
+
+    private static java.util.List<TextChange> readTextEditChanges(ByteBuffer data) {
+        int count = data.getInt();
+        java.util.List<TextChange> changes = new java.util.ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            TextRange range = readTextRange(data);
+            changes.add(new TextChange(range, readBufferString(data)));
+        }
+        return changes;
+    }
+
+    private static EditorCore.HitTarget readHitTarget(ByteBuffer data) {
+        EditorCore.HitTargetType type = EditorCore.HitTargetType.fromValue(data.getInt());
+        int line = data.getInt();
+        int column = data.getInt();
+        int iconId = data.getInt();
+        int colorValue = data.getInt();
+        return type == EditorCore.HitTargetType.NONE
+                ? EditorCore.HitTarget.NONE
+                : new EditorCore.HitTarget(type, line, column, iconId, colorValue);
     }
 
     private static EditorCore.ImeSyncSnapshot readImeSyncSnapshot(ByteBuffer data) {

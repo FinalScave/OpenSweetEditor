@@ -41,8 +41,9 @@ public class FoldingInteractionTest {
         editorRule.loadText(generateLines(20));
         editorRule.runOnEditor(editor ->
                 editor.setFoldRegions(Collections.singletonList(new FoldRegion(2, 8))));
-        boolean toggled = editorRule.runOnEditorSync(editor -> editor.toggleFoldAt(2));
-        assertTrue("toggleFoldAt should return true for valid fold region", toggled);
+        editorRule.runOnEditor(editor -> editor.toggleFoldAt(2));
+        boolean line5Visible = editorRule.runOnEditorSync(editor -> editor.isLineVisible(5));
+        assertFalse("toggleFoldAt should fold a valid fold region", line5Visible);
     }
 
     @Test
@@ -151,8 +152,9 @@ public class FoldingInteractionTest {
         editorRule.loadText(generateLines(20));
         editorRule.runOnEditor(editor ->
                 editor.setFoldRegions(Collections.singletonList(new FoldRegion(2, 8))));
-        boolean toggled = editorRule.runOnEditorSync(editor -> editor.toggleFoldAt(0));
-        assertFalse("toggleFoldAt on non-fold line should return false", toggled);
+        editorRule.runOnEditor(editor -> editor.toggleFoldAt(0));
+        boolean line5Visible = editorRule.runOnEditorSync(editor -> editor.isLineVisible(5));
+        assertTrue("toggleFoldAt on non-fold line should leave fold region visible", line5Visible);
     }
 
     @Test

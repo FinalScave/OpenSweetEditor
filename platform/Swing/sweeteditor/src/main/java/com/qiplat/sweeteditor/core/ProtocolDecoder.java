@@ -2,7 +2,6 @@ package com.qiplat.sweeteditor.core;
 
 import com.qiplat.sweeteditor.core.foundation.*;
 import com.qiplat.sweeteditor.core.adornment.TextStyle;
-import com.qiplat.sweeteditor.core.ime.ImeActionResult;
 import com.qiplat.sweeteditor.core.ime.ImeInputContext;
 import com.qiplat.sweeteditor.core.ime.ImeInputContextKind;
 import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
@@ -20,6 +19,88 @@ final class ProtocolDecoder {
 
     static ScrollMetrics defaultScrollMetrics() {
         return new ScrollMetrics(1.0f, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, false, false);
+    }
+
+    static EditorCore.EditorActionResult decodeEditorActionResult(ByteBuffer data) {
+        if (data == null) return EditorCore.EditorActionResult.EMPTY;
+        data.order(ByteOrder.nativeOrder());
+        boolean handled = data.getInt() != 0;
+        boolean needsRedraw = data.getInt() != 0;
+        int reason = data.getInt();
+        boolean contentChanged = data.getInt() != 0;
+        boolean cursorChanged = data.getInt() != 0;
+        boolean selectionChanged = data.getInt() != 0;
+        boolean scrollChanged = data.getInt() != 0;
+        boolean scaleChanged = data.getInt() != 0;
+        boolean pointerCursorChanged = data.getInt() != 0;
+        boolean compositionChanged = data.getInt() != 0;
+        boolean decorationChanged = data.getInt() != 0;
+        boolean needsImeSync = data.getInt() != 0;
+        boolean needsEdgeScroll = data.getInt() != 0;
+        boolean needsFling = data.getInt() != 0;
+        boolean needsAnimation = data.getInt() != 0;
+        boolean isHandleDrag = data.getInt() != 0;
+        java.util.List<TextChange> changes = readTextChanges(data);
+        TextPosition cursorBefore = readTextPosition(data);
+        TextPosition cursorAfter = readTextPosition(data);
+        boolean hasSelectionBefore = data.getInt() != 0;
+        TextRange selectionBefore = readTextRange(data);
+        boolean hasSelectionAfter = data.getInt() != 0;
+        TextRange selectionAfter = readTextRange(data);
+        float scrollXBefore = data.getFloat();
+        float scrollYBefore = data.getFloat();
+        float scrollXAfter = data.getFloat();
+        float scrollYAfter = data.getFloat();
+        float scaleBefore = data.getFloat();
+        float scaleAfter = data.getFloat();
+        int pointerCursorBefore = data.getInt();
+        int pointerCursorAfter = data.getInt();
+        ImeSyncSnapshot imeSync = readImeSyncSnapshot(data);
+        GestureType gestureType = GestureType.fromValue(data.getInt());
+        int gestureEventType = data.getInt();
+        PointF tapPoint = new PointF(data.getFloat(), data.getFloat());
+        HitTarget hitTarget = readHitTarget(data);
+        int modifiers = data.getInt();
+        int command = data.getInt();
+        return new EditorCore.EditorActionResult(
+                handled,
+                needsRedraw,
+                reason,
+                contentChanged,
+                cursorChanged,
+                selectionChanged,
+                scrollChanged,
+                scaleChanged,
+                pointerCursorChanged,
+                compositionChanged,
+                decorationChanged,
+                needsImeSync,
+                needsEdgeScroll,
+                needsFling,
+                needsAnimation,
+                isHandleDrag,
+                changes,
+                cursorBefore,
+                cursorAfter,
+                hasSelectionBefore,
+                selectionBefore,
+                hasSelectionAfter,
+                selectionAfter,
+                scrollXBefore,
+                scrollYBefore,
+                scrollXAfter,
+                scrollYAfter,
+                scaleBefore,
+                scaleAfter,
+                pointerCursorBefore,
+                pointerCursorAfter,
+                imeSync,
+                gestureType,
+                gestureEventType,
+                tapPoint,
+                hitTarget,
+                modifiers,
+                command);
     }
 
     static EditorRenderModel decodeRenderModel(ByteBuffer data) {
@@ -64,38 +145,6 @@ final class ProtocolDecoder {
         return model;
     }
 
-    static TextEditResult decodeTextEditResult(ByteBuffer data) {
-        if (data == null || data.remaining() < 4) return TextEditResult.EMPTY;
-        boolean changed = data.getInt() != 0;
-        if (!changed || data.remaining() < 4) return TextEditResult.EMPTY;
-        int count = data.getInt();
-        if (count <= 0) return TextEditResult.EMPTY;
-        ArrayList<TextChange> changes = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            if (data.remaining() < 20) break;
-            changes.add(readTextChange(data));
-        }
-        if (changes.isEmpty()) return TextEditResult.EMPTY;
-        TextEditResult result = new TextEditResult();
-        result.changes = changes;
-        return result;
-    }
-
-    static ImeActionResult decodeImeActionResult(ByteBuffer data) {
-        if (data == null || data.remaining() < 20) return new ImeActionResult();
-        ImeActionResult result = new ImeActionResult();
-        result.handled = data.getInt() != 0;
-        result.contentChanged = data.getInt() != 0;
-        result.cursorChanged = data.getInt() != 0;
-        result.selectionChanged = data.getInt() != 0;
-        boolean hasEdit = data.getInt() != 0;
-        if (hasEdit && data.remaining() >= 4) {
-            result.editResult = readTextEditChanges(data);
-        }
-        result.sync = readImeSyncSnapshot(data);
-        return result;
-    }
-
     static ImeSyncSnapshot decodeImeSyncSnapshot(ByteBuffer data) {
         if (data == null || data.remaining() == 0) return new ImeSyncSnapshot();
         return readImeSyncSnapshot(data);
@@ -116,103 +165,16 @@ final class ProtocolDecoder {
         return context;
     }
 
-    private static TextEditResult readTextEditChanges(ByteBuffer data) {
-        if (data == null || data.remaining() < 4) return TextEditResult.EMPTY;
+    private static java.util.List<TextChange> readTextChanges(ByteBuffer data) {
+        if (data == null || data.remaining() < 4) return java.util.Collections.emptyList();
         int count = data.getInt();
-        if (count <= 0) return TextEditResult.EMPTY;
+        if (count <= 0) return java.util.Collections.emptyList();
         ArrayList<TextChange> changes = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             if (data.remaining() < 20) break;
             changes.add(readTextChange(data));
         }
-        if (changes.isEmpty()) return TextEditResult.EMPTY;
-        TextEditResult result = new TextEditResult();
-        result.changes = changes;
-        return result;
-    }
-
-    static KeyEventResult decodeKeyEventResult(ByteBuffer data) {
-        KeyEventResult result = new KeyEventResult();
-        if (data == null || data.remaining() < 20) return result;
-        result.handled = data.getInt() != 0;
-        result.contentChanged = data.getInt() != 0;
-        result.cursorChanged = data.getInt() != 0;
-        result.selectionChanged = data.getInt() != 0;
-        boolean hasEdit = data.getInt() != 0;
-        if (hasEdit && data.remaining() >= 4) {
-            int count = data.getInt();
-            if (count > 0) {
-                ArrayList<TextChange> changes = new ArrayList<>(count);
-                for (int i = 0; i < count; i++) {
-                    if (data.remaining() < 20) break;
-                    changes.add(readTextChange(data));
-                }
-                if (!changes.isEmpty()) {
-                    TextEditResult editResult = new TextEditResult();
-                    editResult.changes = changes;
-                    result.editResult = editResult;
-                }
-            }
-        }
-        if (data.remaining() >= 4) {
-            result.command = data.getInt();
-        }
-        return result;
-    }
-
-    static GestureResult decodeGestureResult(ByteBuffer data) {
-        if (data == null || data.remaining() < 4) return null;
-        GestureResult result = new GestureResult();
-        result.type = gestureTypeFromValue(data.getInt());
-        result.tapPoint = new PointF();
-        result.modifiers = 0;
-
-        switch (result.type) {
-            case TAP, DOUBLE_TAP, LONG_PRESS, DRAG_SELECT, CONTEXT_MENU -> {
-                if (data.remaining() < 8) return result;
-                result.tapPoint = new PointF(data.getFloat(), data.getFloat());
-            }
-            default -> {
-            }
-        }
-
-        if (data.remaining() < 40) return result;
-        result.cursorPosition = new TextPosition(data.getInt(), data.getInt());
-        result.hasSelection = data.getInt() != 0;
-        result.selection = new TextRange(
-                new TextPosition(data.getInt(), data.getInt()),
-                new TextPosition(data.getInt(), data.getInt())
-        );
-        result.viewScrollX = data.getFloat();
-        result.viewScrollY = data.getFloat();
-        result.viewScale = data.getFloat();
-
-        HitTarget hitTarget = new HitTarget();
-        hitTarget.type = HitTargetType.NONE;
-        if (data.remaining() >= 20) {
-            hitTarget.type = hitTargetTypeFromValue(data.getInt());
-            hitTarget.line = data.getInt();
-            hitTarget.column = data.getInt();
-            hitTarget.iconId = data.getInt();
-            hitTarget.colorValue = data.getInt();
-        }
-        result.hitTarget = hitTarget;
-        if (data.remaining() >= 4) {
-            result.needsEdgeScroll = data.getInt() != 0;
-        }
-        if (data.remaining() >= 4) {
-            result.needsFling = data.getInt() != 0;
-        }
-        if (data.remaining() >= 4) {
-            result.needsAnimation = data.getInt() != 0;
-        }
-        if (data.remaining() >= 4) {
-            data.getInt();
-            if (data.remaining() >= 4) {
-                result.pointerCursorType = readPointerCursorType(data);
-            }
-        }
-        return result;
+        return changes.isEmpty() ? java.util.Collections.emptyList() : changes;
     }
 
     static ScrollMetrics decodeScrollMetrics(ByteBuffer data) {
@@ -298,32 +260,28 @@ final class ProtocolDecoder {
         return new TextStyle(color, backgroundColor, fontStyle);
     }
 
-    private static <T extends Enum<T>> T enumByOrdinal(int value, T[] values, T fallback) {
-        return value >= 0 && value < values.length ? values[value] : fallback;
-    }
-
     private static VisualRunType readVisualRunType(ByteBuffer data) {
-        return enumByOrdinal(data.getInt(), VisualRunType.values(), VisualRunType.TEXT);
+        return VisualRunType.fromValue(data.getInt());
     }
 
     private static FoldState readFoldState(ByteBuffer data) {
-        return enumByOrdinal(data.getInt(), FoldState.values(), FoldState.NONE);
+        return FoldState.fromValue(data.getInt());
     }
 
     private static GuideDirection readGuideDirection(ByteBuffer data) {
-        return enumByOrdinal(data.getInt(), GuideDirection.values(), GuideDirection.HORIZONTAL);
+        return GuideDirection.fromValue(data.getInt());
     }
 
     private static GuideType readGuideType(ByteBuffer data) {
-        return enumByOrdinal(data.getInt(), GuideType.values(), GuideType.INDENT);
+        return GuideType.fromValue(data.getInt());
     }
 
     private static GuideStyle readGuideStyle(ByteBuffer data) {
-        return enumByOrdinal(data.getInt(), GuideStyle.values(), GuideStyle.SOLID);
+        return GuideStyle.fromValue(data.getInt());
     }
 
     private static PointerCursorType readPointerCursorType(ByteBuffer data) {
-        return enumByOrdinal(data.getInt(), PointerCursorType.values(), PointerCursorType.TEXT);
+        return PointerCursorType.fromValue(data.getInt());
     }
 
     private static VisualRun readVisualRun(ByteBuffer data) {
@@ -356,7 +314,7 @@ final class ProtocolDecoder {
         line.logicalLine = data.getInt();
         line.wrapIndex = data.getInt();
         line.lineNumberPosition = readPoint(data);
-        line.kind = enumByOrdinal(data.getInt(), VisualLineKind.values(), VisualLineKind.CONTENT);
+        line.kind = VisualLineKind.fromValue(data.getInt());
         line.ownsGutterSemantics = data.getInt() != 0;
         line.foldState = readFoldState(data);
         line.runs = readVisualRuns(data);
@@ -573,19 +531,14 @@ final class ProtocolDecoder {
         return change;
     }
 
-    private static GestureType gestureTypeFromValue(int value) {
-        GestureType[] values = GestureType.values();
-        if (value >= 0 && value < values.length) {
-            return values[value];
-        }
-        return GestureType.UNDEFINED;
+    private static HitTarget readHitTarget(ByteBuffer data) {
+        HitTarget hitTarget = new HitTarget();
+        hitTarget.type = HitTargetType.fromValue(data.getInt());
+        hitTarget.line = data.getInt();
+        hitTarget.column = data.getInt();
+        hitTarget.iconId = data.getInt();
+        hitTarget.colorValue = data.getInt();
+        return hitTarget;
     }
 
-    private static HitTargetType hitTargetTypeFromValue(int value) {
-        HitTargetType[] values = HitTargetType.values();
-        if (value >= 0 && value < values.length) {
-            return values[value];
-        }
-        return HitTargetType.NONE;
-    }
 }

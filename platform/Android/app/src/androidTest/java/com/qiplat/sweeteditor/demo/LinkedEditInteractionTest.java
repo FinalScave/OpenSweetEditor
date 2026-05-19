@@ -1,6 +1,5 @@
 package com.qiplat.sweeteditor.demo;
 
-import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
 import com.qiplat.sweeteditor.core.snippet.LinkedEditingModel;
@@ -22,9 +21,10 @@ public class LinkedEditInteractionTest {
     @Test
     public void testInsertSnippet() {
         editorRule.loadText("");
-        EditorCore.TextEditResult result = editorRule.runOnEditorSync(editor ->
+        editorRule.runOnEditor(editor ->
                 editor.insertSnippet("for(${1:i}=0; ${1:i}<${2:n}; ${1:i}++)"));
-        assertTrue(result.changed);
+        String text = editorRule.runOnEditorSync(editor -> editor.getDocument().getText());
+        assertFalse(text.isEmpty());
         boolean inLinked = editorRule.runOnEditorSync(editor -> editor.isInLinkedEditing());
         assertTrue("Should be in linked editing after snippet insert", inLinked);
     }

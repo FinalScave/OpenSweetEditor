@@ -41,6 +41,8 @@ class EditorSession {
       ),
     );
     _keyMap = initialKeyMap;
+    _editorCore!.setHandleConfig(platformBehavior.handleConfig);
+    _editorCore!.setScrollbarConfig(platformBehavior.scrollbarConfig);
     _editorCore!.setKeyMap(_keyMap);
     _languageConfiguration = initialLanguageConfiguration;
     _metadata = initialMetadata;
@@ -53,8 +55,8 @@ class EditorSession {
     decorationProviderManager = DecorationProviderManager(session: this);
     inlineSuggestionController = InlineSuggestionController(session: this);
     newLineActionProviderManager = NewLineActionProviderManager();
-    _registerTextStyles();
-    applyLanguageConfiguration(_languageConfiguration);
+    _editorCore!.registerBatchTextStyles(_theme.textStyles);
+    _applyInitialLanguageConfiguration(_languageConfiguration);
   }
 
   final SweetEditorController controller;
@@ -88,6 +90,7 @@ class EditorSession {
 
   void Function(core.EditorRenderModel model)? onRenderModelUpdated;
   VoidCallback? onPlatformScaleChanged;
+  void Function(core.EditorActionResult? result)? onEditorActionResult;
 
   EditorEventBus get eventBus => controller._eventBus;
   EditorSettings get settings => _settings;
@@ -108,6 +111,32 @@ class EditorSession {
 
   void bindSettings() {
     _settings.bind(this);
+    final ec = _editorCore;
+    if (ec == null) return;
+    _platformScale = _settings.getScale();
+    _measurer.updateFont(
+      platformBehavior.resolveFontFamily(_settings.getFontFamily()),
+      _settings.getEditorTextSize() * _platformScale,
+    );
+    ec.setScale(_platformScale);
+    ec.onFontMetricsChanged();
+    onPlatformScaleChanged?.call();
+    ec.setFoldArrowMode(_settings.getFoldArrowMode());
+    ec.setWrapMode(_settings.getWrapMode());
+    ec.setLineSpacing(
+      add: _settings.getLineSpacingAdd(),
+      mult: _settings.getLineSpacingMult(),
+    );
+    ec.setContentStartPadding(_settings.getContentStartPadding());
+    ec.setShowSplitLine(_settings.isShowSplitLine());
+    ec.setGutterSticky(_settings.isGutterSticky());
+    ec.setGutterVisible(_settings.isGutterVisible());
+    ec.setCurrentLineRenderMode(_settings.getCurrentLineRenderMode());
+    ec.setAutoIndentMode(_settings.getAutoIndentMode());
+    ec.setBackspaceUnindent(_settings.isBackspaceUnindent());
+    ec.setReadOnly(_settings.isReadOnly());
+    ec.setMaxGutterIcons(_settings.getMaxGutterIcons());
+    decorationProviderManager.requestRefresh();
   }
 
   void dispose() {
@@ -121,15 +150,42 @@ class EditorSession {
     _painter.dispose();
   }
 
-  void setHandleConfig(core.HandleConfig config) {
-    _editorCore?.setHandleConfig(config);
-  }
-
-  void setScrollbarConfig(core.ScrollbarConfig config) {
-    _editorCore?.setScrollbarConfig(config);
-  }
-
   void applyLanguageConfiguration(LanguageConfiguration? config) {
+    _languageConfiguration = config;
+    final ec = _editorCore;
+    if (ec == null) return;
+
+    final brackets = config?.brackets;
+    if (brackets != null) {
+      final opens = brackets
+          .map((pair) => pair.open.runes.isEmpty ? 0 : pair.open.runes.first)
+          .toList(growable: false);
+      final closes = brackets
+          .map((pair) => pair.close.runes.isEmpty ? 0 : pair.close.runes.first)
+          .toList(growable: false);
+      dispatchEditorActionResult(ec.setBracketPairs(opens, closes));
+    }
+
+    final autoClosingPairs = config?.autoClosingPairs;
+    if (autoClosingPairs != null) {
+      final opens = autoClosingPairs
+          .map((pair) => pair.open.runes.isEmpty ? 0 : pair.open.runes.first)
+          .toList(growable: false);
+      final closes = autoClosingPairs
+          .map((pair) => pair.close.runes.isEmpty ? 0 : pair.close.runes.first)
+          .toList(growable: false);
+      dispatchEditorActionResult(ec.setAutoClosingPairs(opens, closes));
+    }
+
+    if (config != null) {
+      if (config.tabSize > 0) {
+        dispatchEditorActionResult(ec.setTabSize(config.tabSize));
+      }
+      dispatchEditorActionResult(ec.setInsertSpaces(config.insertSpaces));
+    }
+  }
+
+  void _applyInitialLanguageConfiguration(LanguageConfiguration? config) {
     _languageConfiguration = config;
     final ec = _editorCore;
     if (ec == null) return;
@@ -170,7 +226,7 @@ class EditorSession {
 
   void applyKeyMap(EditorKeyMap keyMap) {
     _keyMap = keyMap;
-    _editorCore?.setKeyMap(keyMap);
+    dispatchEditorActionResult(_editorCore?.setKeyMap(keyMap));
   }
 
   void applyIconProvider(EditorIconProvider? provider) {
@@ -196,7 +252,9 @@ class EditorSession {
   void setViewport(Size size) {
     if (size.width <= 0 || size.height <= 0) return;
     _viewportSize = size;
-    _editorCore?.setViewport(size.width.toInt(), size.height.toInt());
+    dispatchEditorActionResult(
+      _editorCore?.setViewport(size.width.toInt(), size.height.toInt()),
+    );
     _viewportReady = true;
   }
 
@@ -215,7 +273,7 @@ class EditorSession {
     }
     _document = document;
     _ownsDocument = takeOwnership;
-    _editorCore?.loadDocument(document);
+    dispatchEditorActionResult(_editorCore?.loadDocument(document));
   }
 
   String getContent() => _document?.text ?? '';
@@ -227,6 +285,10 @@ class EditorSession {
     _flushScheduled = true;
     SchedulerBinding.instance.scheduleFrameCallback(_handleFlushFrame);
     SchedulerBinding.instance.ensureVisualUpdate();
+  }
+
+  void dispatchEditorActionResult(core.EditorActionResult? result) {
+    onEditorActionResult?.call(result);
   }
 
   void _handleFlushFrame(Duration _) {
@@ -253,11 +315,13 @@ class EditorSession {
     final ec = _editorCore;
     if (ec == null) return;
     for (final entry in _theme.textStyles.entries) {
-      ec.registerTextStyle(
-        entry.key,
-        entry.value.color,
-        backgroundColor: entry.value.backgroundColor,
-        fontStyle: entry.value.fontStyle,
+      dispatchEditorActionResult(
+        ec.registerTextStyle(
+          entry.key,
+          entry.value.color,
+          backgroundColor: entry.value.backgroundColor,
+          fontStyle: entry.value.fontStyle,
+        ),
       );
     }
   }
@@ -294,9 +358,11 @@ class EditorSession {
       platformBehavior.resolveFontFamily(fontFamily),
       textSize * scale,
     );
-    ec.setScale(scale);
-    ec.onFontMetricsChanged();
+    final scaleResult = ec.setScale(scale);
+    final metricsResult = ec.onFontMetricsChanged();
     onPlatformScaleChanged?.call();
+    dispatchEditorActionResult(scaleResult);
+    dispatchEditorActionResult(metricsResult);
   }
 
   void syncPlatformScale(double scale) {
@@ -307,55 +373,57 @@ class EditorSession {
       platformBehavior.resolveFontFamily(_settings.getFontFamily()),
       _settings.getEditorTextSize() * scale,
     );
-    ec.onFontMetricsChanged();
+    dispatchEditorActionResult(ec.onFontMetricsChanged());
     onPlatformScaleChanged?.call();
   }
 
   void applyFoldArrowMode(core.FoldArrowMode mode) {
-    _editorCore?.setFoldArrowMode(mode);
+    dispatchEditorActionResult(_editorCore?.setFoldArrowMode(mode));
   }
 
   void applyWrapMode(core.WrapMode mode) {
-    _editorCore?.setWrapMode(mode);
+    dispatchEditorActionResult(_editorCore?.setWrapMode(mode));
   }
 
   void applyLineSpacing(double add, double mult) {
-    _editorCore?.setLineSpacing(add: add, mult: mult);
+    dispatchEditorActionResult(
+      _editorCore?.setLineSpacing(add: add, mult: mult),
+    );
   }
 
   void applyContentStartPadding(double padding) {
-    _editorCore?.setContentStartPadding(padding);
+    dispatchEditorActionResult(_editorCore?.setContentStartPadding(padding));
   }
 
   void applyShowSplitLine(bool show) {
-    _editorCore?.setShowSplitLine(show);
+    dispatchEditorActionResult(_editorCore?.setShowSplitLine(show));
   }
 
   void applyGutterSticky(bool sticky) {
-    _editorCore?.setGutterSticky(sticky);
+    dispatchEditorActionResult(_editorCore?.setGutterSticky(sticky));
   }
 
   void applyGutterVisible(bool visible) {
-    _editorCore?.setGutterVisible(visible);
+    dispatchEditorActionResult(_editorCore?.setGutterVisible(visible));
   }
 
   void applyCurrentLineRenderMode(core.CurrentLineRenderMode mode) {
-    _editorCore?.setCurrentLineRenderMode(mode);
+    dispatchEditorActionResult(_editorCore?.setCurrentLineRenderMode(mode));
   }
 
   void applyAutoIndentMode(core.AutoIndentMode mode) {
-    _editorCore?.setAutoIndentMode(mode);
+    dispatchEditorActionResult(_editorCore?.setAutoIndentMode(mode));
   }
 
   void applyBackspaceUnindent(bool enabled) {
-    _editorCore?.setBackspaceUnindent(enabled);
+    dispatchEditorActionResult(_editorCore?.setBackspaceUnindent(enabled));
   }
 
   void applyReadOnly(bool readOnly) {
-    _editorCore?.setReadOnly(readOnly);
+    dispatchEditorActionResult(_editorCore?.setReadOnly(readOnly));
   }
 
   void applyMaxGutterIcons(int count) {
-    _editorCore?.setMaxGutterIcons(count);
+    dispatchEditorActionResult(_editorCore?.setMaxGutterIcons(count));
   }
 }

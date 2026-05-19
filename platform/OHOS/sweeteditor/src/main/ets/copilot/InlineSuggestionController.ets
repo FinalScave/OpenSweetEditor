@@ -82,7 +82,6 @@ export class InlineSuggestionController implements InlineSuggestionActionCallbac
       this.onShowCallback(this.cachedCursorX, this.cachedCursorY, this.cachedCursorHeight);
     }
     this.subscribeEvents();
-    this.editor.flush();
   }
 
   accept(): void {
@@ -117,7 +116,6 @@ export class InlineSuggestionController implements InlineSuggestionActionCallbac
     this.withSuppressedAutoDismiss(() => {
       this.unsubscribeEvents();
       this.editor.clearPhantomTexts();
-      this.editor.flush();
       this.showing = false;
       if (this.onDismissCallback) {
         this.onDismissCallback();

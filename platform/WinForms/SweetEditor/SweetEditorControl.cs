@@ -680,10 +680,10 @@ namespace SweetEditor {
 				LogIgnoredCall(nameof(LoadDocument), "document is null");
 				return;
 			}
-			editorCore.LoadDocument(document);
+			EditorActionResult result = editorCore.LoadDocument(document);
 			decorationProviderManager?.OnDocumentLoaded();
 			DocumentLoaded?.Invoke(this, new DocumentLoadedEventArgs());
-			Flush();
+			DispatchEditorActionResult(result);
 		}
 
 		/// <summary>Gets the current editor theme.</summary>
@@ -705,7 +705,7 @@ namespace SweetEditor {
 			this.ForeColor = currentTheme.TextColor;
 
 			if (editorCore != null) {
-				editorCore.registerBatchTextStyles(theme.TextStyles);
+				DispatchEditorActionResult(editorCore.registerBatchTextStyles(theme.TextStyles));
 			}
 
 			completionPopupController?.ApplyTheme(theme);
@@ -737,7 +737,7 @@ namespace SweetEditor {
 				return;
 			}
 			keyMap = editorKeyMap;
-			editorCore.SetKeyMap(keyMap);
+			DispatchEditorActionResult(editorCore.SetKeyMap(keyMap));
 		}
 
 		/// <summary>Internal accessor for EditorCore, used by <see cref="EditorSettings"/>.</summary>
@@ -760,7 +760,7 @@ namespace SweetEditor {
 					opens[i] = string.IsNullOrEmpty(config.Brackets[i].Open) ? 0 : char.ConvertToUtf32(config.Brackets[i].Open, 0);
 					closes[i] = string.IsNullOrEmpty(config.Brackets[i].Close) ? 0 : char.ConvertToUtf32(config.Brackets[i].Close, 0);
 				}
-				editorCore.SetBracketPairs(opens, closes);
+				DispatchEditorActionResult(editorCore.SetBracketPairs(opens, closes));
 			}
 			if (config.AutoClosingPairs != null) {
 				int[] acOpens = new int[config.AutoClosingPairs.Count];
@@ -769,13 +769,13 @@ namespace SweetEditor {
 					acOpens[i] = string.IsNullOrEmpty(config.AutoClosingPairs[i].Open) ? 0 : char.ConvertToUtf32(config.AutoClosingPairs[i].Open, 0);
 					acCloses[i] = string.IsNullOrEmpty(config.AutoClosingPairs[i].Close) ? 0 : char.ConvertToUtf32(config.AutoClosingPairs[i].Close, 0);
 				}
-				editorCore.SetAutoClosingPairs(acOpens, acCloses);
+				DispatchEditorActionResult(editorCore.SetAutoClosingPairs(acOpens, acCloses));
 			}
 			if (config.TabSize.HasValue && config.TabSize.Value > 0) {
-				editorCore.SetTabSize(config.TabSize.Value);
+				DispatchEditorActionResult(editorCore.SetTabSize(config.TabSize.Value));
 			}
 			if (config.InsertSpaces.HasValue) {
-				editorCore.SetInsertSpaces(config.InsertSpaces.Value);
+				DispatchEditorActionResult(editorCore.SetInsertSpaces(config.InsertSpaces.Value));
 			}
 		}
 
@@ -825,8 +825,7 @@ namespace SweetEditor {
 		public void InsertText(string text) {
 			if (IsReleased || text == null) return;
 			var result = editorCore.InsertText(text);
-			FireTextChanged(TextChangeAction.Insert, result);
-			Flush();
+			DispatchEditorActionResult(result);
 		}
 
 		/// <summary>Replaces text.</summary>
@@ -835,8 +834,7 @@ namespace SweetEditor {
 		public void ReplaceText(TextRange range, string newText) {
 			if (IsReleased || newText == null) return;
 			var result = editorCore.ReplaceText(range, newText);
-			FireTextChanged(TextChangeAction.Insert, result);
-			Flush();
+			DispatchEditorActionResult(result);
 		}
 
 		/// <summary>Deletes text.</summary>
@@ -844,8 +842,7 @@ namespace SweetEditor {
 		public void DeleteText(TextRange range) {
 			if (IsReleased) return;
 			var result = editorCore.DeleteText(range);
-			FireTextChanged(TextChangeAction.Insert, result);
-			Flush();
+			DispatchEditorActionResult(result);
 		}
 
 		/// <summary>Copies selected text to the system clipboard.</summary>
@@ -893,50 +890,43 @@ namespace SweetEditor {
 		/// <summary>Moves line up.</summary>
 		public void MoveLineUp() {
 			var result = editorCore.MoveLineUp();
-			FireTextChanged(TextChangeAction.Insert, result);
-			Flush();
+			DispatchEditorActionResult(result);
 		}
 
 		/// <summary>Moves line down.</summary>
 		public void MoveLineDown() {
 			var result = editorCore.MoveLineDown();
-			FireTextChanged(TextChangeAction.Insert, result);
-			Flush();
+			DispatchEditorActionResult(result);
 		}
 
 		/// <summary>Copies line up.</summary>
 		public void CopyLineUp() {
 			var result = editorCore.CopyLineUp();
-			FireTextChanged(TextChangeAction.Insert, result);
-			Flush();
+			DispatchEditorActionResult(result);
 		}
 
 		/// <summary>Copies line down.</summary>
 		public void CopyLineDown() {
 			var result = editorCore.CopyLineDown();
-			FireTextChanged(TextChangeAction.Insert, result);
-			Flush();
+			DispatchEditorActionResult(result);
 		}
 
 		/// <summary>Deletes line.</summary>
 		public void DeleteLine() {
 			var result = editorCore.DeleteLine();
-			FireTextChanged(TextChangeAction.Insert, result);
-			Flush();
+			DispatchEditorActionResult(result);
 		}
 
 		/// <summary>Inserts line above.</summary>
 		public void InsertLineAbove() {
 			var result = editorCore.InsertLineAbove();
-			FireTextChanged(TextChangeAction.Insert, result);
-			Flush();
+			DispatchEditorActionResult(result);
 		}
 
 		/// <summary>Inserts line below.</summary>
 		public void InsertLineBelow() {
 			var result = editorCore.InsertLineBelow();
-			FireTextChanged(TextChangeAction.Insert, result);
-			Flush();
+			DispatchEditorActionResult(result);
 		}
 
 		/// <summary>Performs an undo operation.</summary>
@@ -944,8 +934,8 @@ namespace SweetEditor {
 		public bool Undo() {
 			if (IsReleased) return false;
 			var result = editorCore.Undo();
-			if (result != null) { FireTextChanged(TextChangeAction.Undo, result); Flush(); return true; }
-			return false;
+			DispatchEditorActionResult(result);
+			return result.Handled || result.ContentChanged;
 		}
 
 		/// <summary>Performs a redo operation.</summary>
@@ -953,8 +943,8 @@ namespace SweetEditor {
 		public bool Redo() {
 			if (IsReleased) return false;
 			var result = editorCore.Redo();
-			if (result != null) { FireTextChanged(TextChangeAction.Redo, result); Flush(); return true; }
-			return false;
+			DispatchEditorActionResult(result);
+			return result.Handled || result.ContentChanged;
 		}
 
 		/// <summary>Returns whether undo.</summary>
@@ -976,8 +966,7 @@ namespace SweetEditor {
 
 		/// <summary>Sets cursor position.</summary>
 		public void SetCursorPosition(TextPosition position) {
-			editorCore.SetCursorPosition(position);
-			Flush();
+			DispatchEditorActionResult(editorCore.SetCursorPosition(position));
 		}
 
 		/// <summary>Sets selection.</summary>
@@ -986,8 +975,7 @@ namespace SweetEditor {
 		/// <param name="endLine">End line index (0-based).</param>
 		/// <param name="endColumn">End column index (0-based).</param>
 		public void SetSelection(int startLine, int startColumn, int endLine, int endColumn) {
-			editorCore.SetSelection(startLine, startColumn, endLine, endColumn);
-			Flush();
+			DispatchEditorActionResult(editorCore.SetSelection(startLine, startColumn, endLine, endColumn));
 		}
 
 		/// <summary>Sets selection.</summary>
@@ -1001,30 +989,26 @@ namespace SweetEditor {
 
 		/// <summary>Select all.</summary>
 		public void SelectAll() {
-			editorCore.SelectAll();
-			Flush();
+			DispatchEditorActionResult(editorCore.SelectAll());
 		}
 
 		/// <summary>Goto position.</summary>
 		/// <param name="line">Line index (0-based).</param>
 		/// <param name="column">Column index (0-based).</param>
 		public void GotoPosition(int line, int column = 0) {
-			editorCore.GotoPosition(line, column);
-			Flush();
+			DispatchEditorActionResult(editorCore.GotoPosition(line, column));
 		}
 
 		/// <summary>Scroll to line.</summary>
 		/// <param name="line">Line index (0-based).</param>
 		/// <param name="behavior">Scroll behavior.</param>
 		public void ScrollToLine(int line, ScrollBehavior behavior = ScrollBehavior.CENTER) {
-			editorCore.ScrollToLine(line, (int)behavior);
-			Flush();
+			DispatchEditorActionResult(editorCore.ScrollToLine(line, (int)behavior));
 		}
 
 		/// <summary>Sets scroll.</summary>
 		public void SetScroll(float scrollX, float scrollY) {
-			editorCore.SetScroll(scrollX, scrollY);
-			Flush();
+			DispatchEditorActionResult(editorCore.SetScroll(scrollX, scrollY));
 		}
 
 		/// <summary>Gets scroll metrics.</summary>
@@ -1035,8 +1019,9 @@ namespace SweetEditor {
 		/// <param name="color">Color value (ARGB).</param>
 		/// <param name="backgroundColor">Background color value (ARGB).</param>
 		/// <param name="fontStyle">Font style flags.</param>
-		public void registerTextStyle(int styleId, int color, int backgroundColor, int fontStyle) =>
-			editorCore.registerTextStyle(styleId, color, backgroundColor, fontStyle);
+		public void registerTextStyle(int styleId, int color, int backgroundColor, int fontStyle) {
+			DispatchEditorActionResult(editorCore.registerTextStyle(styleId, color, backgroundColor, fontStyle));
+		}
 
 		/// <summary>Registers a text style.</summary>
 		public void RegisterTextStyle(int styleId, int color, int backgroundColor, int fontStyle) =>
@@ -1044,8 +1029,9 @@ namespace SweetEditor {
 
 		/// <summary>Register multiple styles in one batch call.</summary>
 		/// <param name="stylesById">Style definitions keyed by style identifier.</param>
-		public void registerBatchTextStyles(IReadOnlyDictionary<int, TextStyle> stylesById) =>
-			editorCore.registerBatchTextStyles(stylesById);
+		public void registerBatchTextStyles(IReadOnlyDictionary<int, TextStyle> stylesById) {
+			DispatchEditorActionResult(editorCore.registerBatchTextStyles(stylesById));
+		}
 
 		/// <summary>Registers multiple text styles in one batch call.</summary>
 		public void RegisterBatchTextStyles(IReadOnlyDictionary<int, TextStyle> stylesById) =>
@@ -1055,8 +1041,9 @@ namespace SweetEditor {
 		/// <param name="styleId">Style identifier.</param>
 		/// <param name="color">Color value (ARGB).</param>
 		/// <param name="fontStyle">Font style flags.</param>
-		public void registerTextStyle(int styleId, int color, int fontStyle) =>
-			editorCore.registerTextStyle(styleId, color, fontStyle);
+		public void registerTextStyle(int styleId, int color, int fontStyle) {
+			DispatchEditorActionResult(editorCore.registerTextStyle(styleId, color, fontStyle));
+		}
 
 		/// <summary>Registers a text style.</summary>
 		public void RegisterTextStyle(int styleId, int color, int fontStyle) =>
@@ -1064,7 +1051,7 @@ namespace SweetEditor {
 
 		/// <summary>Sets line spans.</summary>
 		public void SetLineSpans(int line, SpanLayer layer, IList<StyleSpan> spans) {
-			editorCore.SetLineSpans(line, (int)layer, spans);
+			DispatchEditorActionResult(editorCore.SetLineSpans(line, (int)layer, spans));
 		}
 
 		/// <summary>Sets line spans.</summary>
@@ -1074,32 +1061,32 @@ namespace SweetEditor {
 
 		/// <summary>Sets batch line spans.</summary>
 		public void SetBatchLineSpans(SpanLayer layer, Dictionary<int, IList<StyleSpan>> spansByLine) {
-			editorCore.SetBatchLineSpans((int)layer, spansByLine);
+			DispatchEditorActionResult(editorCore.SetBatchLineSpans((int)layer, spansByLine));
 		}
 
 		/// <summary>Clears line spans for the specified layer.</summary>
 		public void ClearLineSpans(int line, SpanLayer layer) {
-			editorCore.ClearLineSpans(line, (int)layer);
+			DispatchEditorActionResult(editorCore.ClearLineSpans(line, (int)layer));
 		}
 
 		/// <summary>Sets line inlay hints.</summary>
 		public void SetLineInlayHints(int line, IList<InlayHint> hints) {
-			editorCore.SetLineInlayHints(line, hints);
+			DispatchEditorActionResult(editorCore.SetLineInlayHints(line, hints));
 		}
 
 		/// <summary>Sets batch line inlay hints.</summary>
 		public void SetBatchLineInlayHints(Dictionary<int, IList<InlayHint>> hintsByLine) {
-			editorCore.SetBatchLineInlayHints(hintsByLine);
+			DispatchEditorActionResult(editorCore.SetBatchLineInlayHints(hintsByLine));
 		}
 
 		/// <summary>Sets line phantom texts.</summary>
 		public void SetLinePhantomTexts(int line, IList<PhantomText> phantoms) {
-			editorCore.SetLinePhantomTexts(line, phantoms);
+			DispatchEditorActionResult(editorCore.SetLinePhantomTexts(line, phantoms));
 		}
 
 		/// <summary>Sets batch line phantom texts.</summary>
 		public void SetBatchLinePhantomTexts(Dictionary<int, IList<PhantomText>> phantomsByLine) {
-			editorCore.SetBatchLinePhantomTexts(phantomsByLine);
+			DispatchEditorActionResult(editorCore.SetBatchLinePhantomTexts(phantomsByLine));
 		}
 
 		/// <summary>Sets editor icon provider.</summary>
@@ -1110,42 +1097,42 @@ namespace SweetEditor {
 
 		/// <summary>Sets line gutter icons.</summary>
 		public void SetLineGutterIcons(int line, IList<GutterIcon> icons) {
-			editorCore.SetLineGutterIcons(line, icons);
+			DispatchEditorActionResult(editorCore.SetLineGutterIcons(line, icons));
 		}
 
 		/// <summary>Sets batch line gutter icons.</summary>
 		public void SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine) {
-			editorCore.SetBatchLineGutterIcons(iconsByLine);
+			DispatchEditorActionResult(editorCore.SetBatchLineGutterIcons(iconsByLine));
 		}
 
 		/// <summary>Clears gutter icons.</summary>
-		public void ClearGutterIcons() { editorCore.ClearGutterIcons(); }
+		public void ClearGutterIcons() { DispatchEditorActionResult(editorCore.ClearGutterIcons()); }
 
 		/// <summary>Sets CodeLens items for a specified line.</summary>
 		public void SetLineCodeLens(int line, IList<CodeLensItem> items) {
-			editorCore.SetLineCodeLens(line, items);
+			DispatchEditorActionResult(editorCore.SetLineCodeLens(line, items));
 		}
 
 		/// <summary>Sets batch CodeLens items for multiple lines.</summary>
 		public void SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine) {
-			editorCore.SetBatchLineCodeLens(itemsByLine);
+			DispatchEditorActionResult(editorCore.SetBatchLineCodeLens(itemsByLine));
 		}
 
 		/// <summary>Clears all CodeLens items.</summary>
-		public void ClearCodeLens() { editorCore.ClearCodeLens(); }
+		public void ClearCodeLens() { DispatchEditorActionResult(editorCore.ClearCodeLens()); }
 
 		/// <summary>Sets links for a specified line.</summary>
 		public void SetLineLinks(int line, IList<LinkSpan> links) {
-			editorCore.SetLineLinks(line, links);
+			DispatchEditorActionResult(editorCore.SetLineLinks(line, links));
 		}
 
 		/// <summary>Sets links for multiple lines.</summary>
 		public void SetBatchLineLinks(Dictionary<int, IList<LinkSpan>> linksByLine) {
-			editorCore.SetBatchLineLinks(linksByLine);
+			DispatchEditorActionResult(editorCore.SetBatchLineLinks(linksByLine));
 		}
 
 		/// <summary>Clears all links.</summary>
-		public void ClearLinks() { editorCore.ClearLinks(); }
+		public void ClearLinks() { DispatchEditorActionResult(editorCore.ClearLinks()); }
 
 		/// <summary>Gets the link target at the specified position.</summary>
 		public string GetLinkTargetAt(int line, int column) {
@@ -1184,54 +1171,54 @@ namespace SweetEditor {
 
 		/// <summary>Sets line diagnostics.</summary>
 		public void SetLineDiagnostics(int line, IList<Diagnostic> items) {
-			editorCore.SetLineDiagnostics(line, items);
+			DispatchEditorActionResult(editorCore.SetLineDiagnostics(line, items));
 		}
 
 		/// <summary>Sets batch line diagnostics.</summary>
 		public void SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine) {
-			editorCore.SetBatchLineDiagnostics(diagsByLine);
+			DispatchEditorActionResult(editorCore.SetBatchLineDiagnostics(diagsByLine));
 		}
 
 		/// <summary>Clears diagnostics.</summary>
 		public void ClearDiagnostics() {
-			editorCore.ClearDiagnostics();
+			DispatchEditorActionResult(editorCore.ClearDiagnostics());
 		}
 
 		/// <summary>Sets indent guides.</summary>
 		public void SetIndentGuides(IList<IndentGuide> guides) {
-			editorCore.SetIndentGuides(guides);
+			DispatchEditorActionResult(editorCore.SetIndentGuides(guides));
 		}
 
 		/// <summary>Sets bracket guides.</summary>
 		public void SetBracketGuides(IList<BracketGuide> guides) {
-			editorCore.SetBracketGuides(guides);
+			DispatchEditorActionResult(editorCore.SetBracketGuides(guides));
 		}
 
 		/// <summary>Sets flow guides.</summary>
 		public void SetFlowGuides(IList<FlowGuide> guides) {
-			editorCore.SetFlowGuides(guides);
+			DispatchEditorActionResult(editorCore.SetFlowGuides(guides));
 		}
 
 		/// <summary>Sets separator guides.</summary>
 		public void SetSeparatorGuides(IList<SeparatorGuide> guides) {
-			editorCore.SetSeparatorGuides(guides);
+			DispatchEditorActionResult(editorCore.SetSeparatorGuides(guides));
 		}
 
 		/// <summary>Clears guides.</summary>
-		public void ClearGuides() { editorCore.ClearGuides(); }
+		public void ClearGuides() { DispatchEditorActionResult(editorCore.ClearGuides()); }
 
 		/// <summary>Sets fold regions.</summary>
 		public void SetFoldRegions(IList<FoldRegion> regions) {
-			editorCore.SetFoldRegions(regions);
+			DispatchEditorActionResult(editorCore.SetFoldRegions(regions));
 		}
 
 		/// <summary>Toggle fold.</summary>
 		/// <param name="line">Line index (0-based).</param>
 		/// <returns>Returns <c>true</c> when the operation succeeds.</returns>
 		public bool ToggleFold(int line) {
-			bool result = editorCore.ToggleFold(line);
-			if (result) Flush();
-			return result;
+			EditorActionResult result = editorCore.ToggleFold(line);
+			DispatchEditorActionResult(result);
+			return result.Handled;
 		}
 
 		/// <summary>Toggles fold state at the specified line.</summary>
@@ -1241,68 +1228,74 @@ namespace SweetEditor {
 		/// <param name="line">Line index (0-based).</param>
 		/// <returns>Returns <c>true</c> when the operation succeeds.</returns>
 		public bool FoldAt(int line) {
-			bool result = editorCore.FoldAt(line);
-			if (result) Flush();
-			return result;
+			EditorActionResult result = editorCore.FoldAt(line);
+			DispatchEditorActionResult(result);
+			return result.Handled;
 		}
 
 		/// <summary>Unfold at.</summary>
 		/// <param name="line">Line index (0-based).</param>
 		/// <returns>Returns <c>true</c> when the operation succeeds.</returns>
 		public bool UnfoldAt(int line) {
-			bool result = editorCore.UnfoldAt(line);
-			if (result) Flush();
-			return result;
+			EditorActionResult result = editorCore.UnfoldAt(line);
+			DispatchEditorActionResult(result);
+			return result.Handled;
 		}
 
 		/// <summary>Fold all.</summary>
-		public void FoldAll() { editorCore.FoldAll(); Flush(); }
+		public void FoldAll() { DispatchEditorActionResult(editorCore.FoldAll()); }
 		/// <summary>Unfold all.</summary>
-		public void UnfoldAll() { editorCore.UnfoldAll(); Flush(); }
+		public void UnfoldAll() { DispatchEditorActionResult(editorCore.UnfoldAll()); }
 		/// <summary>Returns whether line visible.</summary>
 		public bool IsLineVisible(int line) => editorCore.IsLineVisible(line);
 
 		/// <summary>Clears highlights.</summary>
-		public void ClearHighlights() { editorCore.ClearHighlights(); }
+		public void ClearHighlights() { DispatchEditorActionResult(editorCore.ClearHighlights()); }
 		/// <summary>Clears highlights.</summary>
-		public void ClearHighlights(SpanLayer layer) { editorCore.ClearHighlights((int)layer); }
+		public void ClearHighlights(SpanLayer layer) { DispatchEditorActionResult(editorCore.ClearHighlights((int)layer)); }
 		/// <summary>Clears inlay hints.</summary>
-		public void ClearInlayHints() { editorCore.ClearInlayHints(); }
+		public void ClearInlayHints() { DispatchEditorActionResult(editorCore.ClearInlayHints()); }
 		/// <summary>Clears phantom texts.</summary>
-		public void ClearPhantomTexts() { editorCore.ClearPhantomTexts(); }
+		public void ClearPhantomTexts() { DispatchEditorActionResult(editorCore.ClearPhantomTexts()); }
 		/// <summary>Clears all decorations.</summary>
 		public void ClearAllDecorations() {
-			editorCore.ClearAllDecorations();
-			editorCore.ClearDiagnostics();
+			DispatchEditorActionResult(editorCore.ClearAllDecorations());
+			DispatchEditorActionResult(editorCore.ClearDiagnostics());
 		}
 		/// <summary>Clears matched brackets.</summary>
-		public void ClearMatchedBrackets() { editorCore.ClearMatchedBrackets(); Flush(); }
+		public void ClearMatchedBrackets() { DispatchEditorActionResult(editorCore.ClearMatchedBrackets()); }
 
 		/// <summary>Inserts snippet.</summary>
-		public TextEditResult InsertSnippet(string snippetTemplate) {
+		public EditorActionResult InsertSnippet(string snippetTemplate) {
 			var result = editorCore.InsertSnippet(snippetTemplate);
-			FireTextChanged(TextChangeAction.Insert, result);
-			Flush();
+			DispatchEditorActionResult(result);
 			return result;
 		}
 
 		/// <summary>Starts linked editing.</summary>
 		public void StartLinkedEditing(LinkedEditingModel model) {
-			editorCore.StartLinkedEditing(model);
-			Flush();
+			DispatchEditorActionResult(editorCore.StartLinkedEditing(model));
 		}
 
 		/// <summary>Returns whether in linked editing.</summary>
 		public bool IsInLinkedEditing() { return editorCore.IsInLinkedEditing(); }
 
 		/// <summary>Linked editing next.</summary>
-		public bool LinkedEditingNext() { bool r = editorCore.LinkedEditingNext(); Flush(); return r; }
+		public bool LinkedEditingNext() {
+			EditorActionResult result = editorCore.LinkedEditingNext();
+			DispatchEditorActionResult(result);
+			return result.Handled;
+		}
 
 		/// <summary>Linked editing prev.</summary>
-		public bool LinkedEditingPrev() { bool r = editorCore.LinkedEditingPrev(); Flush(); return r; }
+		public bool LinkedEditingPrev() {
+			EditorActionResult result = editorCore.LinkedEditingPrev();
+			DispatchEditorActionResult(result);
+			return result.Handled;
+		}
 
 		/// <summary>Cancels linked editing.</summary>
-		public void CancelLinkedEditing() { editorCore.CancelLinkedEditing(); Flush(); }
+		public void CancelLinkedEditing() { DispatchEditorActionResult(editorCore.CancelLinkedEditing()); }
 
 		#endregion
 
@@ -1351,17 +1344,16 @@ namespace SweetEditor {
 			editorCore.SetKeyMap(keyMap);
 
 			settings = new EditorSettings(this);
-			editorCore.SetAutoIndentMode((int)settings.GetAutoIndentMode());
 			settings.SetContentStartPadding(DpToPx(DefaultContentStartPaddingDp));
+			editorCore.SetAutoIndentMode((int)settings.GetAutoIndentMode());
 		}
 
 		protected override void OnHandleCreated(EventArgs e) {
 			base.OnHandleCreated(e);
 			if (IsDesignMode() || editorCore == null) return;
 			renderer.RecreateTextGraphics(this);
-			editorCore.OnFontMetricsChanged();
+			DispatchEditorActionResult(editorCore.OnFontMetricsChanged());
 			lastMeasureDpi = DeviceDpi;
-			Flush();
 		}
 
 		protected override void OnPaint(PaintEventArgs e) {
@@ -1376,8 +1368,7 @@ namespace SweetEditor {
 			if (IsDesignMode()) {
 				return;
 			}
-			editorCore.SetViewport(this.ClientSize.Width, this.ClientSize.Height);
-			Flush();
+			DispatchEditorActionResult(editorCore.SetViewport(this.ClientSize.Width, this.ClientSize.Height));
 		}
 
 		protected override bool IsInputKey(Keys keyData) {
@@ -1421,11 +1412,10 @@ namespace SweetEditor {
 			if (keyCode == 13 && newLineActionProviderManager != null) {
 				var action = newLineActionProviderManager.ProvideNewLineAction();
 				if (action != null) {
-					var editResult = editorCore.InsertText(action.Text);
-					FireTextChanged(TextChangeAction.Key, editResult);
+					var editResult = editorCore.HandleKeyEvent(0, action.Text, 0);
+					DispatchEditorActionResult(editResult);
 					e.Handled = true;
 					e.SuppressKeyPress = true;
-					Flush();
 					return;
 				}
 			}
@@ -1435,15 +1425,12 @@ namespace SweetEditor {
 				if (keyCode == 0 && e.Control) {
 					keyCode = (ushort)e.KeyValue;
 				}
-				KeyEventResult result = editorCore.HandleKeyEvent(keyCode, null, modifiers);
+				EditorActionResult result = editorCore.HandleKeyEvent(keyCode, null, modifiers);
 				bool dispatchedKeyMapCommand = DispatchKeyMapCommand(result.Command, keyCode, modifiers);
 				if (result.Handled || dispatchedKeyMapCommand) {
 					e.Handled = true;
 					e.SuppressKeyPress = true;
-					if (result.Handled) {
-						FireKeyEventChanges(result, TextChangeAction.Key);
-					}
-					Flush();
+					DispatchEditorActionResult(result);
 					return;
 				}
 			}
@@ -1459,9 +1446,9 @@ namespace SweetEditor {
 			}
 
 			if (!char.IsControl(e.KeyChar)) {
-				var result = editorCore.InsertText(e.KeyChar.ToString());
+				var result = editorCore.HandleKeyEvent(0, e.KeyChar.ToString(), (byte)GetCurrentModifiers());
 				e.Handled = true;
-				FireTextChanged(TextChangeAction.Key, result);
+				DispatchEditorActionResult(result);
 				// linked editing completion, completion Enter/Tab
 				if (!editorCore.IsInLinkedEditing()) {
 					string charStr = e.KeyChar.ToString();
@@ -1473,7 +1460,6 @@ namespace SweetEditor {
 						}
 					}
 				}
-				Flush();
 			}
 			base.OnKeyPress(e);
 		}
@@ -1491,26 +1477,19 @@ namespace SweetEditor {
 					IntPtr hIMC = ImmGetContext(this.Handle);
 					if (hIMC != IntPtr.Zero) {
 						try {
-							bool dispatched = false;
 							if ((imeFlags & GCS_RESULTSTR) != 0) {
 								string resultStr = GetImmCompositionString(hIMC, GCS_RESULTSTR);
 								if (!string.IsNullOrEmpty(resultStr)) {
-									DispatchImeActionResult(editorCore.CommitImeText(resultStr, ImeScriptClass.UNKNOWN));
-									dispatched = true;
+									DispatchEditorActionResult(editorCore.CommitImeText(resultStr, ImeScriptClass.UNKNOWN));
 								} else if ((imeFlags & GCS_COMPSTR) == 0 && HasImeComposingSession()) {
-									DispatchImeActionResult(editorCore.FinishImePreedit());
-									dispatched = true;
+									DispatchEditorActionResult(editorCore.FinishImePreedit());
 								}
 							}
 							if ((imeFlags & GCS_COMPSTR) != 0) {
 								string compStr = GetImmCompositionString(hIMC, GCS_COMPSTR);
 								int cursorPos = GetImmCompositionCursorPosition(hIMC, compStr.Length);
-								DispatchImeActionResult(editorCore.SetImeComposingTextSelection(
+								DispatchEditorActionResult(editorCore.SetImeComposingTextSelection(
 									compStr, cursorPos, cursorPos, ImeScriptClass.UNKNOWN));
-								dispatched = true;
-							}
-							if (dispatched) {
-								Flush();
 							}
 						} finally {
 							ImmReleaseContext(this.Handle, hIMC);
@@ -1522,8 +1501,7 @@ namespace SweetEditor {
 				case WM_IME_ENDCOMPOSITION: {
 					using var perf = StartInputPerf("WndProc(IME_END)");
 					if (HasImeComposingSession()) {
-						DispatchImeActionResult(editorCore.FinishImePreedit());
-						Flush();
+						DispatchEditorActionResult(editorCore.FinishImePreedit());
 					}
 					base.WndProc(ref m);
 					return;
@@ -1551,7 +1529,7 @@ namespace SweetEditor {
 		}
 
 		private bool TryHandleComposingKeyDown(KeyEventArgs e) {
-			ImeActionResult? result = null;
+			EditorActionResult result;
 			switch (e.KeyCode) {
 				case Keys.Back:
 					result = editorCore.DeleteImeBackward(1, ImeTextUnit.GRAPHEME);
@@ -1567,8 +1545,7 @@ namespace SweetEditor {
 			}
 			e.Handled = true;
 			e.SuppressKeyPress = true;
-			DispatchImeActionResult(result);
-			Flush();
+			DispatchEditorActionResult(result);
 			return true;
 		}
 
@@ -1605,26 +1582,22 @@ namespace SweetEditor {
 			Focus();
 			KeyModifier mods = GetCurrentModifiers();
 			if (e.Button == MouseButtons.Left) {
-				GestureResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
+				EditorActionResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.MOUSE_DOWN,
 					Points = [new PointF(e.X, e.Y)],
 					Modifiers = mods,
 					DirectScale = 1
 				});
-				UpdateMouseCursor(gestureResult.PointerCursorType);
-				FireGestureEvents(gestureResult, new System.Drawing.PointF(e.X, e.Y));
-				Flush();
+				DispatchEditorActionResult(gestureResult);
 				UpdateAnimationTimer(gestureResult.NeedsAnimation);
 			} else if (e.Button == MouseButtons.Right) {
-				GestureResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
+				EditorActionResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.MOUSE_RIGHT_DOWN,
 					Points = [new PointF(e.X, e.Y)],
 					Modifiers = mods,
 					DirectScale = 1
 				});
-				UpdateMouseCursor(gestureResult.PointerCursorType);
-				FireGestureEvents(gestureResult, new System.Drawing.PointF(e.X, e.Y));
-				Flush();
+				DispatchEditorActionResult(gestureResult);
 			}
 			base.OnMouseDown(e);
 		}
@@ -1632,43 +1605,38 @@ namespace SweetEditor {
 		protected override void OnMouseMove(MouseEventArgs e) {
 			using var perf = StartInputPerf($"OnMouseMove({e.Button})");
 			KeyModifier mods = GetCurrentModifiers();
-			GestureResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
+			EditorActionResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.MOUSE_MOVE,
 				Points = [new PointF(e.X, e.Y)],
 				Modifiers = mods,
 				DirectScale = 1
 			});
-			UpdateMouseCursor(gestureResult.PointerCursorType);
-			FireGestureEvents(gestureResult, new System.Drawing.PointF(e.X, e.Y));
-			Flush();
+			DispatchEditorActionResult(gestureResult);
 			UpdateAnimationTimer(gestureResult.NeedsAnimation);
 			base.OnMouseMove(e);
 		}
 
 		protected override void OnMouseEnter(EventArgs e) {
 			System.Drawing.Point clientPoint = PointToClient(MousePosition);
-			GestureResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
+			EditorActionResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.MOUSE_MOVE,
 				Points = [new PointF(clientPoint.X, clientPoint.Y)],
 				Modifiers = GetCurrentModifiers(),
 				DirectScale = 1
 			});
-			UpdateMouseCursor(gestureResult.PointerCursorType);
-			Flush();
+			DispatchEditorActionResult(gestureResult);
 			UpdateAnimationTimer(gestureResult.NeedsAnimation);
 			base.OnMouseEnter(e);
 		}
 
 		protected override void OnMouseLeave(EventArgs e) {
-			GestureResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
+			EditorActionResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.MOUSE_MOVE,
 				Points = [new PointF(-1, -1)],
 				Modifiers = GetCurrentModifiers(),
 				DirectScale = 1
 			});
-			UpdateMouseCursor(gestureResult.PointerCursorType);
-			FireGestureEvents(gestureResult, new System.Drawing.PointF(-1, -1));
-			Flush();
+			DispatchEditorActionResult(gestureResult);
 			UpdateAnimationTimer(gestureResult.NeedsAnimation);
 			base.OnMouseLeave(e);
 		}
@@ -1677,14 +1645,13 @@ namespace SweetEditor {
 			using var perf = StartInputPerf($"OnMouseUp({e.Button})");
 			if (e.Button == MouseButtons.Left) {
 				KeyModifier mods = GetCurrentModifiers();
-				GestureResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
+				EditorActionResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.MOUSE_UP,
 					Points = [new PointF(e.X, e.Y)],
 					Modifiers = mods,
 					DirectScale = 1
 				});
-				UpdateMouseCursor(gestureResult.PointerCursorType);
-				FireGestureEvents(gestureResult, new System.Drawing.PointF(e.X, e.Y));
+				DispatchEditorActionResult(gestureResult);
 				UpdateAnimationTimer(gestureResult.NeedsAnimation);
 			}
 			base.OnMouseUp(e);
@@ -1694,16 +1661,14 @@ namespace SweetEditor {
 			using var perf = StartInputPerf($"OnMouseWheel({e.Delta})");
 			KeyModifier mods = GetCurrentModifiers();
 			float deltaY = e.Delta;
-			GestureResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
+			EditorActionResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.MOUSE_WHEEL,
 				Points = [new PointF(e.X, e.Y)],
 				Modifiers = mods,
 				WheelDeltaY = deltaY,
 				DirectScale = 1
 			});
-			UpdateMouseCursor(gestureResult.PointerCursorType);
-			FireGestureEvents(gestureResult, new System.Drawing.PointF(e.X, e.Y));
-			Flush();
+			DispatchEditorActionResult(gestureResult);
 			base.OnMouseWheel(e);
 		}
 
@@ -1712,9 +1677,8 @@ namespace SweetEditor {
 			animationTimer.Interval = AnimationIntervalMs;
 			animationTimer.Tick += (_, _) => {
 				if (!animationActive) return;
-				GestureResult result = editorCore.TickAnimations();
-				FireGestureEvents(result, System.Drawing.PointF.Empty);
-				Flush();
+				EditorActionResult result = editorCore.TickAnimations();
+				DispatchEditorActionResult(result);
 				if (!result.NeedsAnimation) {
 					animationActive = false;
 					animationTimer.Stop();
@@ -1744,26 +1708,26 @@ namespace SweetEditor {
 		#region Input Handling And Event Dispatch
 
 		/// <summary>Fire gesture events.</summary>
-		private void FireGestureEvents(GestureResult result, System.Drawing.PointF locationInEditor) {
+		private void FireGestureEvents(EditorActionResult result, System.Drawing.PointF locationInEditor) {
 			var point = new PointF(locationInEditor.X, locationInEditor.Y);
-			switch (result.Type) {
+			switch (result.GestureType) {
 				case GestureType.LONG_PRESS:
-					LongPress?.Invoke(this, new LongPressEventArgs(result.CursorPosition, point));
-					CursorChanged?.Invoke(this, new CursorChangedEventArgs(result.CursorPosition));
+					LongPress?.Invoke(this, new LongPressEventArgs(result.CursorAfter, point));
+					CursorChanged?.Invoke(this, new CursorChangedEventArgs(result.CursorAfter));
 					break;
 				case GestureType.DOUBLE_TAP:
 					DoubleTap?.Invoke(this, new DoubleTapEventArgs(
-						result.CursorPosition,
-						result.HasSelection,
-						result.HasSelection ? result.Selection : (TextRange?)null,
+						result.CursorAfter,
+						result.HasSelectionAfter,
+						result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null,
 						point));
-					CursorChanged?.Invoke(this, new CursorChangedEventArgs(result.CursorPosition));
-					if (result.HasSelection) {
-						SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(true, result.Selection, result.CursorPosition));
+					CursorChanged?.Invoke(this, new CursorChangedEventArgs(result.CursorAfter));
+					if (result.HasSelectionAfter) {
+						SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(true, result.SelectionAfter, result.CursorAfter));
 					}
 					break;
 				case GestureType.TAP:
-					CursorChanged?.Invoke(this, new CursorChangedEventArgs(result.CursorPosition));
+					CursorChanged?.Invoke(this, new CursorChangedEventArgs(result.CursorAfter));
 					// Dismiss completion on tap.
 					if (completionPopupController != null && completionPopupController.IsShowing) {
 						completionProviderManager?.Dismiss();
@@ -1831,39 +1795,39 @@ namespace SweetEditor {
 					break;
 				case GestureType.SCALE:
 					// C++ core already applied scale during gesture handling; only sync platform fonts/measurer.
-					RebuildFontsInternal(result.ViewScale);
-					ScaleChanged?.Invoke(this, new ScaleChangedEventArgs(result.ViewScale));
+					SyncPlatformScaleFromResult(result.ScaleAfter);
+					ScaleChanged?.Invoke(this, new ScaleChangedEventArgs(result.ScaleAfter));
 					break;
 				case GestureType.DRAG_SELECT:
 					if (DidScrollSinceLastFrame(result)) {
 						HandleScrollChanged(result);
 					}
 					SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(
-						result.HasSelection,
-						result.HasSelection ? result.Selection : (TextRange?)null,
-						result.CursorPosition));
+						result.HasSelectionAfter,
+						result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null,
+						result.CursorAfter));
 					break;
 				case GestureType.CONTEXT_MENU:
-					ContextMenu?.Invoke(this, new ContextMenuEventArgs(result.CursorPosition, point));
+					ContextMenu?.Invoke(this, new ContextMenuEventArgs(result.CursorAfter, point));
 					break;
 			}
 		}
 
-		private void HandleScrollChanged(GestureResult result) {
-			ScrollChanged?.Invoke(this, new ScrollChangedEventArgs(result.ViewScrollX, result.ViewScrollY));
+		private void HandleScrollChanged(EditorActionResult result) {
+			ScrollChanged?.Invoke(this, new ScrollChangedEventArgs(result.ScrollXAfter, result.ScrollYAfter));
 			decorationProviderManager?.OnScrollChanged();
 			if (completionPopupController != null && completionPopupController.IsShowing) {
 				completionProviderManager?.Dismiss();
 			}
 		}
 
-		private bool DidScrollSinceLastFrame(GestureResult result) {
+		private bool DidScrollSinceLastFrame(EditorActionResult result) {
 			if (!renderModel.HasValue) {
-				return result.ViewScrollX != 0f || result.ViewScrollY != 0f;
+				return result.ScrollXAfter != 0f || result.ScrollYAfter != 0f;
 			}
 
 			EditorRenderModel model = renderModel.Value;
-			return result.ViewScrollX != model.ScrollX || result.ViewScrollY != model.ScrollY;
+			return result.ScrollXAfter != model.ScrollX || result.ScrollYAfter != model.ScrollY;
 		}
 
 		/// <summary>Applies completion item.</summary>
@@ -1907,44 +1871,65 @@ namespace SweetEditor {
 			return true;
 		}
 
-		/// <summary>Fire key event changes.</summary>
-		private void FireKeyEventChanges(KeyEventResult result, TextChangeAction action) {
+		internal void DispatchEditorActionResult(EditorActionResult result) {
 			if (IsReleased) return;
-			if (result.ContentChanged) {
-				if (result.EditResult?.Changes != null && result.EditResult.Changes.Count > 0) {
-					TextChanged?.Invoke(this, new TextChangedEventArgs(action, result.EditResult.Changes));
-					decorationProviderManager?.OnTextChanged(result.EditResult.Changes);
-				} else {
-					TextChanged?.Invoke(this, new TextChangedEventArgs(action));
-					decorationProviderManager?.OnTextChanged(null);
+
+			if (result.PointerCursorChanged) {
+				UpdateMouseCursor(result.PointerCursorAfter);
+			}
+
+			if (result.GestureType != GestureType.UNDEFINED) {
+				var tapPoint = result.TapPoint;
+				FireGestureEvents(result, new System.Drawing.PointF(tapPoint.X, tapPoint.Y));
+			} else {
+				if (result.ContentChanged) {
+					FireTextChanged(TextChangeActionFromResult(result), result);
+				}
+				TextPosition cursor = result.NeedsImeSync ? result.ImeSync.Cursor : result.CursorAfter;
+				TextRange? selection = result.NeedsImeSync
+					? result.ImeSync.Selection
+					: (result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null);
+				if (result.CursorChanged) {
+					CursorChanged?.Invoke(this, new CursorChangedEventArgs(cursor));
+				}
+				if (result.SelectionChanged) {
+					SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(
+						selection.HasValue,
+						selection,
+						cursor));
+				}
+				if (result.ScrollChanged) {
+					HandleScrollChanged(result);
+				}
+				if (result.ScaleChanged) {
+					SyncPlatformScaleFromResult(result.ScaleAfter);
+					ScaleChanged?.Invoke(this, new ScaleChangedEventArgs(result.ScaleAfter));
 				}
 			}
-			if (result.CursorChanged) {
-				CursorChanged?.Invoke(this, new CursorChangedEventArgs(editorCore.GetCursorPosition()));
-			}
-			if (result.SelectionChanged) {
-				SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(false, null, editorCore.GetCursorPosition()));
+
+			if (result.NeedsRedraw) {
+				Flush();
 			}
 		}
 
-		private void DispatchImeActionResult(ImeActionResult result) {
-			if (IsReleased) return;
-			if (result.ContentChanged) {
-				FireTextChanged(TextChangeAction.Composition, result.EditResult);
-			}
-			if (result.CursorChanged) {
-				CursorChanged?.Invoke(this, new CursorChangedEventArgs(result.Sync.Cursor));
-			}
-			if (result.SelectionChanged) {
-				SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(
-					result.Sync.Selection.HasValue,
-					result.Sync.Selection,
-					result.Sync.Cursor));
-			}
+		private void SyncPlatformScaleFromResult(float scale) {
+			RebuildFontsInternal(scale);
+			DispatchEditorActionResult(editorCore.OnFontMetricsChanged());
+		}
+
+		private static TextChangeAction TextChangeActionFromResult(EditorActionResult result) {
+			return (EditorActionReason)result.Reason switch {
+				EditorActionReason.KeyInput => TextChangeAction.Key,
+				EditorActionReason.Ime => TextChangeAction.Composition,
+				EditorActionReason.TextDelete => TextChangeAction.Delete,
+				EditorActionReason.TextUndo => TextChangeAction.Undo,
+				EditorActionReason.TextRedo => TextChangeAction.Redo,
+				_ => TextChangeAction.Insert,
+			};
 		}
 
 		/// <summary>Fire text changed.</summary>
-		private void FireTextChanged(TextChangeAction action, TextEditResult? editResult = null) {
+		private void FireTextChanged(TextChangeAction action, EditorActionResult? editResult = null) {
 			if (IsReleased) return;
 			if (editResult?.Changes != null && editResult.Changes.Count > 0) {
 				TextChanged?.Invoke(this, new TextChangedEventArgs(action, editResult.Changes));
@@ -1991,7 +1976,7 @@ namespace SweetEditor {
 				fontMetricsDirty = true;
 			}
 			if (fontMetricsDirty) {
-				editorCore.OnFontMetricsChanged();
+				DispatchEditorActionResult(editorCore.OnFontMetricsChanged());
 			}
 			perf.Mark(PerfStepRecorder.StepPrep);
 
@@ -2026,14 +2011,11 @@ namespace SweetEditor {
 			};
 		}
 
-		/// <summary>Internal: rebuild fonts and notify core after font-related settings change.</summary>
+		/// <summary>Internal: rebuild platform fonts after font-related settings change.</summary>
 		internal void RebuildFontsInternal(float scale) {
 			if (IsReleased) return;
 			renderer.RebuildFonts(scale);
 			Font = renderer.RegularFont;
-			if (editorCore != null) {
-				editorCore.OnFontMetricsChanged();
-			}
 		}
 
 		private float DpToPx(float dp) {

@@ -237,12 +237,56 @@ public:
     deleteCPtrHolder<EditorCore>(handle);
   }
 
-  static void setViewport(jlong handle, jint width, jint height) {
-    set_editor_viewport(static_cast<intptr_t>(handle), static_cast<int16_t>(width), static_cast<int16_t>(height));
+  using HandleAction = const uint8_t* (*)(intptr_t, size_t*);
+  using BufferAction = const uint8_t* (*)(intptr_t, const uint8_t*, size_t, size_t*);
+  using LineAction = const uint8_t* (*)(intptr_t, size_t, size_t*);
+
+  static jobject wrapHandleAction(JNIEnv* env, jlong handle, HandleAction action) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = action(static_cast<intptr_t>(handle), &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void loadDocument(jlong handle, jlong doc_handle) {
-    set_editor_document(static_cast<intptr_t>(handle), static_cast<intptr_t>(doc_handle));
+  static jobject wrapBufferAction(JNIEnv* env, jlong handle, jobject buffer, jint size, BufferAction action) {
+    if (handle == 0 || buffer == nullptr || size <= 0) return nullptr;
+    void* ptr = env->GetDirectBufferAddress(buffer);
+    jlong capacity = env->GetDirectBufferCapacity(buffer);
+    if (ptr == nullptr || capacity < 0 || static_cast<jlong>(size) > capacity) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = action(static_cast<intptr_t>(handle),
+                                    reinterpret_cast<const uint8_t*>(ptr),
+                                    static_cast<size_t>(size),
+                                    &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
+  }
+
+  static jobject wrapLineAction(JNIEnv* env, jlong handle, jint line, LineAction action) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = action(static_cast<intptr_t>(handle),
+                                    static_cast<size_t>(line),
+                                    &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
+  }
+
+  static jobject setViewport(JNIEnv* env, jclass clazz, jlong handle, jint width, jint height) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = set_editor_viewport(static_cast<intptr_t>(handle),
+                                                 static_cast<int16_t>(width),
+                                                 static_cast<int16_t>(height),
+                                                 &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
+  }
+
+  static jobject loadDocument(JNIEnv* env, jclass clazz, jlong handle, jlong doc_handle) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = set_editor_document(static_cast<intptr_t>(handle),
+                                                 static_cast<intptr_t>(doc_handle),
+                                                 &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
   static jobject handleGestureEvent(JNIEnv* env, jclass clazz, jlong handle, jint type, jint pointer_count, jfloatArray points) {
@@ -286,8 +330,11 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void onFontMetricsChanged(jlong handle) {
-    editor_on_font_metrics_changed(static_cast<intptr_t>(handle));
+  static jobject onFontMetricsChanged(JNIEnv* env, jclass clazz, jlong handle) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_on_font_metrics_changed(static_cast<intptr_t>(handle), &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
   static jobject tickEdgeScroll(JNIEnv* env, jclass clazz, jlong handle) {
@@ -339,12 +386,17 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void setKeyMap(JNIEnv* env, jclass clazz, jlong handle, jobject buffer) {
-    if (handle == 0 || buffer == nullptr) return;
+  static jobject setKeyMap(JNIEnv* env, jclass clazz, jlong handle, jobject buffer) {
+    if (handle == 0 || buffer == nullptr) return nullptr;
     auto* data = static_cast<const uint8_t*>(env->GetDirectBufferAddress(buffer));
     jlong capacity = env->GetDirectBufferCapacity(buffer);
-    if (data == nullptr || capacity <= 0) return;
-    editor_set_keymap(static_cast<intptr_t>(handle), data, static_cast<size_t>(capacity));
+    if (data == nullptr || capacity <= 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_keymap(static_cast<intptr_t>(handle),
+                                               data,
+                                               static_cast<size_t>(capacity),
+                                               &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
   static jobject insertText(JNIEnv* env, jclass clazz, jlong handle, jstring text) {
@@ -767,8 +819,13 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void imeSetKeyboardScriptClass(jlong handle, jint scriptClass) {
-    editor_ime_set_keyboard_script_class(static_cast<intptr_t>(handle), static_cast<int>(scriptClass));
+  static jobject imeSetKeyboardScriptClass(JNIEnv* env, jclass clazz, jlong handle, jint scriptClass) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_ime_set_keyboard_script_class(static_cast<intptr_t>(handle),
+                                                                  static_cast<int>(scriptClass),
+                                                                  &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
   static jint imeGetKeyboardScriptClass(jlong handle) {
@@ -792,48 +849,75 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void setReadOnly(jlong handle, jboolean readOnly) {
-    editor_set_read_only(static_cast<intptr_t>(handle), readOnly == JNI_TRUE ? 1 : 0);
+  static jobject setReadOnly(JNIEnv* env, jclass clazz, jlong handle, jboolean readOnly) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_read_only(static_cast<intptr_t>(handle),
+                                                  readOnly == JNI_TRUE ? 1 : 0,
+                                                  &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
   static jboolean isReadOnly(jlong handle) {
     return toJBoolean(editor_is_read_only(static_cast<intptr_t>(handle)));
   }
 
-  static void setAutoIndentMode(jlong handle, jint mode) {
-    editor_set_auto_indent_mode(static_cast<intptr_t>(handle), static_cast<int>(mode));
+  static jobject setAutoIndentMode(JNIEnv* env, jclass clazz, jlong handle, jint mode) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_auto_indent_mode(static_cast<intptr_t>(handle),
+                                                         static_cast<int>(mode),
+                                                         &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
   static jint getAutoIndentMode(jlong handle) {
     return static_cast<jint>(editor_get_auto_indent_mode(static_cast<intptr_t>(handle)));
   }
 
-  static void setBackspaceUnindent(jlong handle, jboolean enabled) {
-    editor_set_backspace_unindent(static_cast<intptr_t>(handle), enabled ? 1 : 0);
+  static jobject setBackspaceUnindent(JNIEnv* env, jclass clazz, jlong handle, jboolean enabled) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_backspace_unindent(static_cast<intptr_t>(handle),
+                                                           enabled ? 1 : 0,
+                                                           &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void setInsertSpaces(jlong handle, jboolean enabled) {
-    editor_set_insert_spaces(static_cast<intptr_t>(handle), enabled ? 1 : 0);
+  static jobject setInsertSpaces(JNIEnv* env, jclass clazz, jlong handle, jboolean enabled) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_insert_spaces(static_cast<intptr_t>(handle),
+                                                      enabled ? 1 : 0,
+                                                      &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void setHandleConfig(jlong handle,
+  static jobject setHandleConfig(JNIEnv* env, jclass clazz, jlong handle,
       jfloat startLeft, jfloat startTop, jfloat startRight, jfloat startBottom,
       jfloat endLeft, jfloat endTop, jfloat endRight, jfloat endBottom) {
-    editor_set_handle_config(static_cast<intptr_t>(handle),
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_handle_config(static_cast<intptr_t>(handle),
         startLeft, startTop, startRight, startBottom,
-        endLeft, endTop, endRight, endBottom);
+        endLeft, endTop, endRight, endBottom, &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void setScrollbarConfig(jlong handle, jfloat thickness, jfloat minThumb, jfloat thumbHitPadding,
+  static jobject setScrollbarConfig(JNIEnv* env, jclass clazz, jlong handle, jfloat thickness, jfloat minThumb, jfloat thumbHitPadding,
                                  jint mode, jboolean thumbDraggable, jint trackTapMode,
                                  jint fadeDelayMs, jint fadeDurationMs) {
-    editor_set_scrollbar_config(static_cast<intptr_t>(handle),
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_scrollbar_config(static_cast<intptr_t>(handle),
                                 thickness, minThumb, thumbHitPadding,
                                 static_cast<int>(mode),
                                 thumbDraggable == JNI_TRUE ? 1 : 0,
                                 static_cast<int>(trackTapMode),
                                 static_cast<int>(fadeDelayMs),
-                                static_cast<int>(fadeDurationMs));
+                                static_cast<int>(fadeDurationMs),
+                                &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
   static jfloatArray getPositionRect(JNIEnv* env, jclass clazz, jlong handle, jint line, jint column) {
@@ -858,250 +942,217 @@ public:
     return result;
   }
 
-  static void registerTextStyle(jlong handle, jint styleId, jint color, jint backgroundColor, jint fontStyle) {
-    editor_register_text_style(static_cast<intptr_t>(handle),
+  static jobject registerTextStyle(JNIEnv* env, jclass clazz, jlong handle, jint styleId, jint color, jint backgroundColor, jint fontStyle) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_register_text_style(static_cast<intptr_t>(handle),
                                static_cast<uint32_t>(styleId),
                                static_cast<int32_t>(color),
                                static_cast<int32_t>(backgroundColor),
-                               static_cast<int32_t>(fontStyle));
+                               static_cast<int32_t>(fontStyle),
+                               &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void registerBatchTextStyles(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
-    if (handle == 0 || data == nullptr || size <= 0) return;
-    void* ptr = env->GetDirectBufferAddress(data);
-    jlong capacity = env->GetDirectBufferCapacity(data);
-    if (ptr == nullptr || capacity < 0 || static_cast<jlong>(size) > capacity) return;
-    editor_register_batch_text_styles(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject registerBatchTextStyles(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_register_batch_text_styles);
   }
 
-  static void setLineSpans(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
-    if (handle == 0 || data == nullptr || size <= 0) return;
-    void* ptr = env->GetDirectBufferAddress(data);
-    jlong capacity = env->GetDirectBufferCapacity(data);
-    if (ptr == nullptr || capacity < 0 || static_cast<jlong>(size) > capacity) return;
-    editor_set_line_spans(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setLineSpans(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_line_spans);
   }
 
-  static void setLineInlayHints(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
-    if (handle == 0 || data == nullptr || size <= 0) return;
-    void* ptr = env->GetDirectBufferAddress(data);
-    jlong capacity = env->GetDirectBufferCapacity(data);
-    if (ptr == nullptr || capacity < 0 || static_cast<jlong>(size) > capacity) return;
-    editor_set_line_inlay_hints(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setLineInlayHints(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_line_inlay_hints);
   }
 
-  static void setLinePhantomTexts(JNIEnv* env, jclass clazz, jlong handle, jobject buffer, jint size) {
-    auto* ptr = env->GetDirectBufferAddress(buffer);
-    editor_set_line_phantom_texts(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setLinePhantomTexts(JNIEnv* env, jclass clazz, jlong handle, jobject buffer, jint size) {
+    return wrapBufferAction(env, handle, buffer, size, editor_set_line_phantom_texts);
   }
 
-  static void clearHighlights(jlong handle) {
-    editor_clear_highlights(static_cast<intptr_t>(handle));
+  static jobject clearHighlights(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_clear_highlights);
   }
 
-  static void clearHighlightsLayer(jlong handle, jint layer) {
-    editor_clear_highlights_layer(static_cast<intptr_t>(handle), static_cast<uint8_t>(layer));
+  static jobject clearHighlightsLayer(JNIEnv* env, jclass clazz, jlong handle, jint layer) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_clear_highlights_layer(static_cast<intptr_t>(handle),
+                                                           static_cast<uint8_t>(layer),
+                                                           &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void clearLineSpans(jlong handle, jint line, jint layer) {
-    editor_clear_line_spans(static_cast<intptr_t>(handle), static_cast<size_t>(line), static_cast<uint8_t>(layer));
+  static jobject clearLineSpans(JNIEnv* env, jclass clazz, jlong handle, jint line, jint layer) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_clear_line_spans(static_cast<intptr_t>(handle),
+                                                     static_cast<size_t>(line),
+                                                     static_cast<uint8_t>(layer),
+                                                     &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void clearInlayHints(jlong handle) {
-    editor_clear_inlay_hints(static_cast<intptr_t>(handle));
+  static jobject clearInlayHints(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_clear_inlay_hints);
   }
 
-  static void clearPhantomTexts(jlong handle) {
-    editor_clear_phantom_texts(static_cast<intptr_t>(handle));
+  static jobject clearPhantomTexts(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_clear_phantom_texts);
   }
 
-  static void clearGutterIcons(jlong handle) {
-    editor_clear_gutter_icons(static_cast<intptr_t>(handle));
+  static jobject clearGutterIcons(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_clear_gutter_icons);
   }
 
-  static void clearCodeLens(jlong handle) {
-    editor_clear_codelens(static_cast<intptr_t>(handle));
+  static jobject clearCodeLens(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_clear_codelens);
   }
 
-  static void clearLinks(jlong handle) {
-    editor_clear_links(static_cast<intptr_t>(handle));
+  static jobject clearLinks(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_clear_links);
   }
 
-  static void clearGuides(jlong handle) {
-    editor_clear_guides(static_cast<intptr_t>(handle));
+  static jobject clearGuides(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_clear_guides);
   }
 
-  static void clearAllDecorations(jlong handle) {
-    editor_clear_all_decorations(static_cast<intptr_t>(handle));
+  static jobject clearAllDecorations(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_clear_all_decorations);
   }
 
-  static void setIndentGuides(JNIEnv* env, jclass clazz, jlong handle, jobject buffer, jint size) {
-    auto* ptr = env->GetDirectBufferAddress(buffer);
-    editor_set_indent_guides(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setIndentGuides(JNIEnv* env, jclass clazz, jlong handle, jobject buffer, jint size) {
+    return wrapBufferAction(env, handle, buffer, size, editor_set_indent_guides);
   }
 
-  static void setBracketGuides(JNIEnv* env, jclass clazz, jlong handle, jobject buffer, jint size) {
-    auto* ptr = env->GetDirectBufferAddress(buffer);
-    editor_set_bracket_guides(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setBracketGuides(JNIEnv* env, jclass clazz, jlong handle, jobject buffer, jint size) {
+    return wrapBufferAction(env, handle, buffer, size, editor_set_bracket_guides);
   }
 
-  static void setFlowGuides(JNIEnv* env, jclass clazz, jlong handle, jobject buffer, jint size) {
-    auto* ptr = env->GetDirectBufferAddress(buffer);
-    editor_set_flow_guides(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setFlowGuides(JNIEnv* env, jclass clazz, jlong handle, jobject buffer, jint size) {
+    return wrapBufferAction(env, handle, buffer, size, editor_set_flow_guides);
   }
 
-  static void setSeparatorGuides(JNIEnv* env, jclass clazz, jlong handle, jobject buffer, jint size) {
-    auto* ptr = env->GetDirectBufferAddress(buffer);
-    editor_set_separator_guides(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setSeparatorGuides(JNIEnv* env, jclass clazz, jlong handle, jobject buffer, jint size) {
+    return wrapBufferAction(env, handle, buffer, size, editor_set_separator_guides);
   }
 
-  static void setBracketPairs(JNIEnv* env, jclass clazz, jlong handle, jintArray openChars, jintArray closeChars) {
-    if (openChars == nullptr || closeChars == nullptr) return;
+  static jobject setBracketPairs(JNIEnv* env, jclass clazz, jlong handle, jintArray openChars, jintArray closeChars) {
+    if (handle == 0 || openChars == nullptr || closeChars == nullptr) return nullptr;
     jsize count = env->GetArrayLength(openChars);
     jint* opens = env->GetIntArrayElements(openChars, nullptr);
     jint* closes = env->GetIntArrayElements(closeChars, nullptr);
-    editor_set_bracket_pairs(static_cast<intptr_t>(handle),
-                             reinterpret_cast<const uint32_t*>(opens),
-                             reinterpret_cast<const uint32_t*>(closes),
-                             static_cast<size_t>(count));
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_bracket_pairs(static_cast<intptr_t>(handle),
+                                                      reinterpret_cast<const uint32_t*>(opens),
+                                                      reinterpret_cast<const uint32_t*>(closes),
+                                                      static_cast<size_t>(count),
+                                                      &out_size);
     env->ReleaseIntArrayElements(openChars, opens, JNI_ABORT);
     env->ReleaseIntArrayElements(closeChars, closes, JNI_ABORT);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void setAutoClosingPairs(JNIEnv* env, jclass clazz, jlong handle, jintArray openChars, jintArray closeChars) {
-    if (openChars == nullptr || closeChars == nullptr) return;
+  static jobject setAutoClosingPairs(JNIEnv* env, jclass clazz, jlong handle, jintArray openChars, jintArray closeChars) {
+    if (handle == 0 || openChars == nullptr || closeChars == nullptr) return nullptr;
     jsize count = env->GetArrayLength(openChars);
     jint* opens = env->GetIntArrayElements(openChars, nullptr);
     jint* closes = env->GetIntArrayElements(closeChars, nullptr);
-    editor_set_auto_closing_pairs(static_cast<intptr_t>(handle),
-                             reinterpret_cast<const uint32_t*>(opens),
-                             reinterpret_cast<const uint32_t*>(closes),
-                             static_cast<size_t>(count));
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_auto_closing_pairs(static_cast<intptr_t>(handle),
+                                                           reinterpret_cast<const uint32_t*>(opens),
+                                                           reinterpret_cast<const uint32_t*>(closes),
+                                                           static_cast<size_t>(count),
+                                                           &out_size);
     env->ReleaseIntArrayElements(openChars, opens, JNI_ABORT);
     env->ReleaseIntArrayElements(closeChars, closes, JNI_ABORT);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void setMatchedBrackets(jlong handle, jint openLine, jint openCol, jint closeLine, jint closeCol) {
-    editor_set_matched_brackets(static_cast<intptr_t>(handle),
-                                static_cast<size_t>(openLine),
-                                static_cast<size_t>(openCol),
-                                static_cast<size_t>(closeLine),
-                                static_cast<size_t>(closeCol));
+  static jobject setMatchedBrackets(JNIEnv* env, jclass clazz, jlong handle, jint openLine, jint openCol, jint closeLine, jint closeCol) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_matched_brackets(static_cast<intptr_t>(handle),
+                                                         static_cast<size_t>(openLine),
+                                                         static_cast<size_t>(openCol),
+                                                         static_cast<size_t>(closeLine),
+                                                         static_cast<size_t>(closeCol),
+                                                         &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void clearMatchedBrackets(jlong handle) {
-    editor_clear_matched_brackets(static_cast<intptr_t>(handle));
+  static jobject clearMatchedBrackets(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_clear_matched_brackets);
   }
 
-  static void setLineDiagnostics(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
-    if (handle == 0 || data == nullptr || size <= 0) return;
-    void* ptr = env->GetDirectBufferAddress(data);
-    jlong capacity = env->GetDirectBufferCapacity(data);
-    if (ptr == nullptr || capacity < 0 || static_cast<jlong>(size) > capacity) return;
-    editor_set_line_diagnostics(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setLineDiagnostics(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_line_diagnostics);
   }
 
-  static void clearDiagnostics(jlong handle) {
-    editor_clear_diagnostics(static_cast<intptr_t>(handle));
+  static jobject clearDiagnostics(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_clear_diagnostics);
   }
 
   // ==================== Set line decorations in batch ====================
 
-  static void setBatchLineSpans(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
-    if (handle == 0 || data == nullptr || size <= 0) return;
-    void* ptr = env->GetDirectBufferAddress(data);
-    jlong capacity = env->GetDirectBufferCapacity(data);
-    if (ptr == nullptr || capacity < 0 || static_cast<jlong>(size) > capacity) return;
-    editor_set_batch_line_spans(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setBatchLineSpans(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_batch_line_spans);
   }
 
-  static void setBatchLineInlayHints(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
-    if (handle == 0 || data == nullptr || size <= 0) return;
-    void* ptr = env->GetDirectBufferAddress(data);
-    jlong capacity = env->GetDirectBufferCapacity(data);
-    if (ptr == nullptr || capacity < 0 || static_cast<jlong>(size) > capacity) return;
-    editor_set_batch_line_inlay_hints(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setBatchLineInlayHints(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_batch_line_inlay_hints);
   }
 
-  static void setBatchLinePhantomTexts(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
-    if (handle == 0 || data == nullptr || size <= 0) return;
-    void* ptr = env->GetDirectBufferAddress(data);
-    jlong capacity = env->GetDirectBufferCapacity(data);
-    if (ptr == nullptr || capacity < 0 || static_cast<jlong>(size) > capacity) return;
-    editor_set_batch_line_phantom_texts(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setBatchLinePhantomTexts(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_batch_line_phantom_texts);
   }
 
-  static void setBatchLineGutterIcons(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
-    if (handle == 0 || data == nullptr || size <= 0) return;
-    void* ptr = env->GetDirectBufferAddress(data);
-    jlong capacity = env->GetDirectBufferCapacity(data);
-    if (ptr == nullptr || capacity < 0 || static_cast<jlong>(size) > capacity) return;
-    editor_set_batch_line_gutter_icons(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setBatchLineGutterIcons(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_batch_line_gutter_icons);
   }
 
-  static void setLineCodeLens(JNIEnv* env, jclass clazz, jlong handle, jobject buffer, jint size) {
-    auto* ptr = env->GetDirectBufferAddress(buffer);
-    editor_set_line_codelens(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setLineCodeLens(JNIEnv* env, jclass clazz, jlong handle, jobject buffer, jint size) {
+    return wrapBufferAction(env, handle, buffer, size, editor_set_line_codelens);
   }
 
-  static void setBatchLineCodeLens(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
-    if (handle == 0 || data == nullptr || size <= 0) return;
-    void* ptr = env->GetDirectBufferAddress(data);
-    jlong capacity = env->GetDirectBufferCapacity(data);
-    if (ptr == nullptr || capacity < 0 || static_cast<jlong>(size) > capacity) return;
-    editor_set_batch_line_codelens(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setBatchLineCodeLens(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_batch_line_codelens);
   }
 
-  static void setLineLinks(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
-    if (handle == 0 || data == nullptr || size <= 0) return;
-    void* ptr = env->GetDirectBufferAddress(data);
-    jlong capacity = env->GetDirectBufferCapacity(data);
-    if (ptr == nullptr || capacity < 0 || static_cast<jlong>(size) > capacity) return;
-    editor_set_line_links(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setLineLinks(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_line_links);
   }
 
-  static void setBatchLineLinks(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
-    if (handle == 0 || data == nullptr || size <= 0) return;
-    void* ptr = env->GetDirectBufferAddress(data);
-    jlong capacity = env->GetDirectBufferCapacity(data);
-    if (ptr == nullptr || capacity < 0 || static_cast<jlong>(size) > capacity) return;
-    editor_set_batch_line_links(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setBatchLineLinks(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_batch_line_links);
   }
 
-  static void setBatchLineDiagnostics(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
-    if (handle == 0 || data == nullptr || size <= 0) return;
-    void* ptr = env->GetDirectBufferAddress(data);
-    jlong capacity = env->GetDirectBufferCapacity(data);
-    if (ptr == nullptr || capacity < 0 || static_cast<jlong>(size) > capacity) return;
-    editor_set_batch_line_diagnostics(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setBatchLineDiagnostics(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_batch_line_diagnostics);
   }
 
-  static void setFoldRegions(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
-    if (handle == 0 || data == nullptr || size <= 0) return;
-    void* ptr = env->GetDirectBufferAddress(data);
-    jlong capacity = env->GetDirectBufferCapacity(data);
-    if (ptr == nullptr || capacity < 0 || static_cast<jlong>(size) > capacity) return;
-    editor_set_fold_regions(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setFoldRegions(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_fold_regions);
   }
 
-  static jboolean toggleFoldAt(jlong handle, jint line) {
-    return toJBoolean(editor_toggle_fold(static_cast<intptr_t>(handle), static_cast<size_t>(line)));
+  static jobject toggleFoldAt(JNIEnv* env, jclass clazz, jlong handle, jint line) {
+    return wrapLineAction(env, handle, line, editor_toggle_fold);
   }
 
-  static jboolean foldAt(jlong handle, jint line) {
-    return toJBoolean(editor_fold_at(static_cast<intptr_t>(handle), static_cast<size_t>(line)));
+  static jobject foldAt(JNIEnv* env, jclass clazz, jlong handle, jint line) {
+    return wrapLineAction(env, handle, line, editor_fold_at);
   }
 
-  static jboolean unfoldAt(jlong handle, jint line) {
-    return toJBoolean(editor_unfold_at(static_cast<intptr_t>(handle), static_cast<size_t>(line)));
+  static jobject unfoldAt(JNIEnv* env, jclass clazz, jlong handle, jint line) {
+    return wrapLineAction(env, handle, line, editor_unfold_at);
   }
 
-  static void foldAll(jlong handle) {
-    editor_fold_all(static_cast<intptr_t>(handle));
+  static jobject foldAll(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_fold_all);
   }
 
-  static void unfoldAll(jlong handle) {
-    editor_unfold_all(static_cast<intptr_t>(handle));
+  static jobject unfoldAll(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_unfold_all);
   }
 
   static jboolean isLineVisible(jlong handle, jint line) {
@@ -1119,55 +1170,106 @@ public:
     return result;
   }
 
-  static void setLineGutterIcons(JNIEnv* env, jclass clazz, jlong handle, jobject buffer, jint size) {
-    auto* ptr = env->GetDirectBufferAddress(buffer);
-    editor_set_line_gutter_icons(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject setLineGutterIcons(JNIEnv* env, jclass clazz, jlong handle, jobject buffer, jint size) {
+    return wrapBufferAction(env, handle, buffer, size, editor_set_line_gutter_icons);
   }
 
-  static void setMaxGutterIcons(jlong handle, jint count) {
-    editor_set_max_gutter_icons(static_cast<intptr_t>(handle), static_cast<uint32_t>(count));
+  static jobject setMaxGutterIcons(JNIEnv* env, jclass clazz, jlong handle, jint count) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_max_gutter_icons(static_cast<intptr_t>(handle),
+                                                         static_cast<uint32_t>(count),
+                                                         &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void setFoldArrowMode(jlong handle, jint mode) {
-    editor_set_fold_arrow_mode(static_cast<intptr_t>(handle), static_cast<int>(mode));
+  static jobject setFoldArrowMode(JNIEnv* env, jclass clazz, jlong handle, jint mode) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_fold_arrow_mode(static_cast<intptr_t>(handle),
+                                                        static_cast<int>(mode),
+                                                        &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void setWrapMode(jlong handle, jint mode) {
-    editor_set_wrap_mode(static_cast<intptr_t>(handle), static_cast<int>(mode));
+  static jobject setWrapMode(JNIEnv* env, jclass clazz, jlong handle, jint mode) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_wrap_mode(static_cast<intptr_t>(handle),
+                                                  static_cast<int>(mode),
+                                                  &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void setTabSize(jlong handle, jint tab_size) {
-    editor_set_tab_size(static_cast<intptr_t>(handle), static_cast<int>(tab_size));
+  static jobject setTabSize(JNIEnv* env, jclass clazz, jlong handle, jint tab_size) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_tab_size(static_cast<intptr_t>(handle),
+                                                 static_cast<int>(tab_size),
+                                                 &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void setScale(jlong handle, jfloat scale) {
-    SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(handle);
-    if (editor_core == nullptr) return;
-    editor_core->setScale(scale);
+  static jobject setScale(JNIEnv* env, jclass clazz, jlong handle, jfloat scale) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_scale(static_cast<intptr_t>(handle), scale, &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void setLineSpacing(jlong handle, jfloat add, jfloat mult) {
-    editor_set_line_spacing(static_cast<intptr_t>(handle), add, mult);
+  static jobject setLineSpacing(JNIEnv* env, jclass clazz, jlong handle, jfloat add, jfloat mult) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_line_spacing(static_cast<intptr_t>(handle),
+                                                     add,
+                                                     mult,
+                                                     &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void setContentStartPadding(jlong handle, jfloat padding) {
-    editor_set_content_start_padding(static_cast<intptr_t>(handle), padding);
+  static jobject setContentStartPadding(JNIEnv* env, jclass clazz, jlong handle, jfloat padding) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_content_start_padding(static_cast<intptr_t>(handle),
+                                                              padding,
+                                                              &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void setShowSplitLine(jlong handle, jboolean show) {
-    editor_set_show_split_line(static_cast<intptr_t>(handle), show == JNI_TRUE ? 1 : 0);
+  static jobject setShowSplitLine(JNIEnv* env, jclass clazz, jlong handle, jboolean show) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_show_split_line(static_cast<intptr_t>(handle),
+                                                        show == JNI_TRUE ? 1 : 0,
+                                                        &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void setGutterSticky(jlong handle, jboolean sticky) {
-    editor_set_gutter_sticky(static_cast<intptr_t>(handle), sticky == JNI_TRUE ? 1 : 0);
+  static jobject setGutterSticky(JNIEnv* env, jclass clazz, jlong handle, jboolean sticky) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_gutter_sticky(static_cast<intptr_t>(handle),
+                                                      sticky == JNI_TRUE ? 1 : 0,
+                                                      &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void setGutterVisible(jlong handle, jboolean visible) {
-    editor_set_gutter_visible(static_cast<intptr_t>(handle), visible == JNI_TRUE ? 1 : 0);
+  static jobject setGutterVisible(JNIEnv* env, jclass clazz, jlong handle, jboolean visible) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_gutter_visible(static_cast<intptr_t>(handle),
+                                                       visible == JNI_TRUE ? 1 : 0,
+                                                       &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void setCurrentLineRenderMode(jlong handle, jint mode) {
-    editor_set_current_line_render_mode(static_cast<intptr_t>(handle), static_cast<int>(mode));
+  static jobject setCurrentLineRenderMode(JNIEnv* env, jclass clazz, jlong handle, jint mode) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_current_line_render_mode(static_cast<intptr_t>(handle),
+                                                                 static_cast<int>(mode),
+                                                                 &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
   static jobject editorUndo(JNIEnv* env, jclass clazz, jlong handle) {
@@ -1190,20 +1292,38 @@ public:
     return toJBoolean(editor_can_redo(static_cast<intptr_t>(handle)));
   }
 
-  static void scrollToLine(jlong handle, jint line, jint behavior) {
-    editor_scroll_to_line(static_cast<intptr_t>(handle), static_cast<size_t>(line), static_cast<uint8_t>(behavior));
+  static jobject scrollToLine(JNIEnv* env, jclass clazz, jlong handle, jint line, jint behavior) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_scroll_to_line(static_cast<intptr_t>(handle),
+                                                   static_cast<size_t>(line),
+                                                   static_cast<uint8_t>(behavior),
+                                                   &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void gotoPosition(jlong handle, jint line, jint column) {
-    editor_goto_position(static_cast<intptr_t>(handle), static_cast<size_t>(line), static_cast<size_t>(column));
+  static jobject gotoPosition(JNIEnv* env, jclass clazz, jlong handle, jint line, jint column) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_goto_position(static_cast<intptr_t>(handle),
+                                                  static_cast<size_t>(line),
+                                                  static_cast<size_t>(column),
+                                                  &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void ensureCursorVisible(jlong handle) {
-    editor_ensure_cursor_visible(static_cast<intptr_t>(handle));
+  static jobject ensureCursorVisible(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_ensure_cursor_visible);
   }
 
-  static void setScroll(jlong handle, jfloat scrollX, jfloat scrollY) {
-    editor_set_scroll(static_cast<intptr_t>(handle), scrollX, scrollY);
+  static jobject setScroll(JNIEnv* env, jclass clazz, jlong handle, jfloat scrollX, jfloat scrollY) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_scroll(static_cast<intptr_t>(handle),
+                                               scrollX,
+                                               scrollY,
+                                               &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
   static jobject getScrollMetrics(JNIEnv* env, jclass clazz, jlong handle) {
@@ -1249,34 +1369,68 @@ public:
     return env->NewStringUTF(target.c_str());
   }
 
-  static void setCursorPosition(jlong handle, jint line, jint column) {
-    editor_set_cursor_position(static_cast<intptr_t>(handle),
-                               static_cast<size_t>(line),
-                               static_cast<size_t>(column));
+  static jobject setCursorPosition(JNIEnv* env, jclass clazz, jlong handle, jint line, jint column) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_cursor_position(static_cast<intptr_t>(handle),
+                                                        static_cast<size_t>(line),
+                                                        static_cast<size_t>(column),
+                                                        &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void moveCursorLeft(jlong handle, jboolean extendSelection) {
-    editor_move_cursor_left(static_cast<intptr_t>(handle), extendSelection == JNI_TRUE ? 1 : 0);
+  static jobject moveCursorLeft(JNIEnv* env, jclass clazz, jlong handle, jboolean extendSelection) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_move_cursor_left(static_cast<intptr_t>(handle),
+                                                     extendSelection == JNI_TRUE ? 1 : 0,
+                                                     &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void moveCursorRight(jlong handle, jboolean extendSelection) {
-    editor_move_cursor_right(static_cast<intptr_t>(handle), extendSelection == JNI_TRUE ? 1 : 0);
+  static jobject moveCursorRight(JNIEnv* env, jclass clazz, jlong handle, jboolean extendSelection) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_move_cursor_right(static_cast<intptr_t>(handle),
+                                                      extendSelection == JNI_TRUE ? 1 : 0,
+                                                      &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void moveCursorUp(jlong handle, jboolean extendSelection) {
-    editor_move_cursor_up(static_cast<intptr_t>(handle), extendSelection == JNI_TRUE ? 1 : 0);
+  static jobject moveCursorUp(JNIEnv* env, jclass clazz, jlong handle, jboolean extendSelection) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_move_cursor_up(static_cast<intptr_t>(handle),
+                                                   extendSelection == JNI_TRUE ? 1 : 0,
+                                                   &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void moveCursorDown(jlong handle, jboolean extendSelection) {
-    editor_move_cursor_down(static_cast<intptr_t>(handle), extendSelection == JNI_TRUE ? 1 : 0);
+  static jobject moveCursorDown(JNIEnv* env, jclass clazz, jlong handle, jboolean extendSelection) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_move_cursor_down(static_cast<intptr_t>(handle),
+                                                     extendSelection == JNI_TRUE ? 1 : 0,
+                                                     &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void moveCursorToLineStart(jlong handle, jboolean extendSelection) {
-    editor_move_cursor_to_line_start(static_cast<intptr_t>(handle), extendSelection == JNI_TRUE ? 1 : 0);
+  static jobject moveCursorToLineStart(JNIEnv* env, jclass clazz, jlong handle, jboolean extendSelection) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_move_cursor_to_line_start(static_cast<intptr_t>(handle),
+                                                              extendSelection == JNI_TRUE ? 1 : 0,
+                                                              &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void moveCursorToLineEnd(jlong handle, jboolean extendSelection) {
-    editor_move_cursor_to_line_end(static_cast<intptr_t>(handle), extendSelection == JNI_TRUE ? 1 : 0);
+  static jobject moveCursorToLineEnd(JNIEnv* env, jclass clazz, jlong handle, jboolean extendSelection) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_move_cursor_to_line_end(static_cast<intptr_t>(handle),
+                                                            extendSelection == JNI_TRUE ? 1 : 0,
+                                                            &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
   static jobject editorInsertSnippet(JNIEnv* env, jclass clazz, jlong handle, jstring snippetTemplate) {
@@ -1288,40 +1442,40 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static void editorStartLinkedEditing(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
-    if (handle == 0 || data == nullptr || size <= 0) return;
-    void* ptr = env->GetDirectBufferAddress(data);
-    jlong capacity = env->GetDirectBufferCapacity(data);
-    if (ptr == nullptr || capacity < 0 || static_cast<jlong>(size) > capacity) return;
-    editor_start_linked_editing(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(ptr), static_cast<size_t>(size));
+  static jobject editorStartLinkedEditing(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_start_linked_editing);
   }
 
   static jboolean editorIsInLinkedEditing(jlong handle) {
     return toJBoolean(editor_is_in_linked_editing(static_cast<intptr_t>(handle)));
   }
 
-  static jboolean editorLinkedEditingNext(jlong handle) {
-    return toJBoolean(editor_linked_editing_next(static_cast<intptr_t>(handle)));
+  static jobject editorLinkedEditingNext(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_linked_editing_next);
   }
 
-  static jboolean editorLinkedEditingPrev(jlong handle) {
-    return toJBoolean(editor_linked_editing_prev(static_cast<intptr_t>(handle)));
+  static jobject editorLinkedEditingPrev(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_linked_editing_prev);
   }
 
-  static void editorCancelLinkedEditing(jlong handle) {
-    editor_cancel_linked_editing(static_cast<intptr_t>(handle));
+  static jobject editorCancelLinkedEditing(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_cancel_linked_editing);
   }
 
-  static void selectAll(jlong handle) {
-    editor_select_all(static_cast<intptr_t>(handle));
+  static jobject selectAll(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_select_all);
   }
 
-  static void setSelection(jlong handle, jint startLine, jint startColumn, jint endLine, jint endColumn) {
-    editor_set_selection(static_cast<intptr_t>(handle),
-                         static_cast<size_t>(startLine),
-                         static_cast<size_t>(startColumn),
-                         static_cast<size_t>(endLine),
-                         static_cast<size_t>(endColumn));
+  static jobject setSelection(JNIEnv* env, jclass clazz, jlong handle, jint startLine, jint startColumn, jint endLine, jint endColumn) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_selection(static_cast<intptr_t>(handle),
+                                                  static_cast<size_t>(startLine),
+                                                  static_cast<size_t>(startColumn),
+                                                  static_cast<size_t>(endLine),
+                                                  static_cast<size_t>(endColumn),
+                                                  &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
   }
 
   static jlongArray getSelection(JNIEnv* env, jclass clazz, jlong handle) {
@@ -1356,18 +1510,18 @@ public:
   constexpr static const JNINativeMethod kJMethods[] = {
     {"nativeMakeEditorCore", "(Lcom/qiplat/sweeteditor/core/TextMeasurer;Ljava/nio/ByteBuffer;I)J", (void*) makeEditorCore},
       {"nativeFinalizeEditorCore", "(J)V", (void*) finalizeEditorCore},
-      {"nativeSetViewport", "(JII)V", (void*) setViewport},
-      {"nativeLoadDocument", "(JJ)V", (void*) loadDocument},
+      {"nativeSetViewport", "(JII)Ljava/nio/ByteBuffer;", (void*) setViewport},
+      {"nativeLoadDocument", "(JJ)Ljava/nio/ByteBuffer;", (void*) loadDocument},
       {"nativeHandleGestureEvent", "(JII[F)Ljava/nio/ByteBuffer;", (void*) handleGestureEvent},
       {"nativeHandleGestureEventEx", "(JII[FIFFF)Ljava/nio/ByteBuffer;", (void*) handleGestureEventEx},
       {"nativeTickEdgeScroll", "(J)Ljava/nio/ByteBuffer;", (void*) tickEdgeScroll},
       {"nativeTickFling", "(J)Ljava/nio/ByteBuffer;", (void*) tickFling},
       {"nativeTickAnimations", "(J)Ljava/nio/ByteBuffer;", (void*) tickAnimations},
-      {"nativeOnFontMetricsChanged", "(J)V", (void*) onFontMetricsChanged},
+      {"nativeOnFontMetricsChanged", "(J)Ljava/nio/ByteBuffer;", (void*) onFontMetricsChanged},
       {"nativeBuildRenderModel", "(J)Ljava/nio/ByteBuffer;", (void*) buildRenderModel},
       {"nativeGetLayoutMetrics", "(J)Ljava/nio/ByteBuffer;", (void*) getLayoutMetrics},
       {"nativeHandleKeyEvent", "(JILjava/lang/String;I)Ljava/nio/ByteBuffer;", (void*) handleKeyEvent},
-      {"nativeSetKeyMap", "(JLjava/nio/ByteBuffer;)V", (void*) setKeyMap},
+      {"nativeSetKeyMap", "(JLjava/nio/ByteBuffer;)Ljava/nio/ByteBuffer;", (void*) setKeyMap},
       {"nativeInsertText", "(JLjava/lang/String;)Ljava/nio/ByteBuffer;", (void*) insertText},
       {"nativeReplaceText", "(JIIIILjava/lang/String;)Ljava/nio/ByteBuffer;", (void*) replaceText},
       {"nativeDeleteText", "(JIIII)Ljava/nio/ByteBuffer;", (void*) deleteText},
@@ -1404,103 +1558,103 @@ public:
       {"nativeImeDeleteSurrounding", "(JJJI)Ljava/nio/ByteBuffer;", (void*) imeDeleteSurrounding},
       {"nativeImeNotifySelectionChanged", "(JJJJJ)Ljava/nio/ByteBuffer;", (void*) imeNotifySelectionChanged},
       {"nativeImeNotifyCursorChanged", "(JJJ)Ljava/nio/ByteBuffer;", (void*) imeNotifyCursorChanged},
-      {"nativeImeSetKeyboardScriptClass", "(JI)V", (void*) imeSetKeyboardScriptClass},
+      {"nativeImeSetKeyboardScriptClass", "(JI)Ljava/nio/ByteBuffer;", (void*) imeSetKeyboardScriptClass},
       {"nativeImeGetKeyboardScriptClass", "(J)I", (void*) imeGetKeyboardScriptClass},
       {"nativeGetImeSyncSnapshot", "(J)Ljava/nio/ByteBuffer;", (void*) getImeSyncSnapshot},
       {"nativeGetImeInputContext", "(JJJ)Ljava/nio/ByteBuffer;", (void*) getImeInputContext},
-      {"nativeSetReadOnly", "(JZ)V", (void*) setReadOnly},
+      {"nativeSetReadOnly", "(JZ)Ljava/nio/ByteBuffer;", (void*) setReadOnly},
       {"nativeIsReadOnly", "(J)Z", (void*) isReadOnly},
-      {"nativeSetAutoIndentMode", "(JI)V", (void*) setAutoIndentMode},
+      {"nativeSetAutoIndentMode", "(JI)Ljava/nio/ByteBuffer;", (void*) setAutoIndentMode},
       {"nativeGetAutoIndentMode", "(J)I", (void*) getAutoIndentMode},
-      {"nativeSetBackspaceUnindent", "(JZ)V", (void*) setBackspaceUnindent},
-      {"nativeSetInsertSpaces", "(JZ)V", (void*) setInsertSpaces},
-      {"nativeSetHandleConfig", "(JFFFFFFFF)V", (void*) setHandleConfig},
-      {"nativeSetScrollbarConfig", "(JFFFIZIII)V", (void*) setScrollbarConfig},
+      {"nativeSetBackspaceUnindent", "(JZ)Ljava/nio/ByteBuffer;", (void*) setBackspaceUnindent},
+      {"nativeSetInsertSpaces", "(JZ)Ljava/nio/ByteBuffer;", (void*) setInsertSpaces},
+      {"nativeSetHandleConfig", "(JFFFFFFFF)Ljava/nio/ByteBuffer;", (void*) setHandleConfig},
+      {"nativeSetScrollbarConfig", "(JFFFIZIII)Ljava/nio/ByteBuffer;", (void*) setScrollbarConfig},
       {"nativeGetPositionRect", "(JII)[F", (void*) getPositionRect},
       {"nativeGetCursorRect", "(J)[F", (void*) getCursorRect},
-      {"nativeRegisterTextStyle", "(JIIII)V", (void*) registerTextStyle},
-      {"nativeRegisterBatchTextStyles", "(JLjava/nio/ByteBuffer;I)V", (void*) registerBatchTextStyles},
-      {"nativeSetLineSpans", "(JLjava/nio/ByteBuffer;I)V", (void*) setLineSpans},
-      {"nativeSetLineInlayHints", "(JLjava/nio/ByteBuffer;I)V", (void*) setLineInlayHints},
-      {"nativeSetLinePhantomTexts", "(JLjava/nio/ByteBuffer;I)V", (void*) setLinePhantomTexts},
-      {"nativeClearHighlights", "(J)V", (void*) clearHighlights},
-      {"nativeClearHighlightsLayer", "(JI)V", (void*) clearHighlightsLayer},
-      {"nativeClearLineSpans", "(JII)V", (void*) clearLineSpans},
-      {"nativeClearInlayHints", "(J)V", (void*) clearInlayHints},
-      {"nativeClearPhantomTexts", "(J)V", (void*) clearPhantomTexts},
-      {"nativeClearGutterIcons", "(J)V", (void*) clearGutterIcons},
-      {"nativeClearCodeLens", "(J)V", (void*) clearCodeLens},
-      {"nativeClearLinks", "(J)V", (void*) clearLinks},
-      {"nativeClearGuides", "(J)V", (void*) clearGuides},
-      {"nativeClearAllDecorations", "(J)V", (void*) clearAllDecorations},
-      {"nativeSetIndentGuides", "(JLjava/nio/ByteBuffer;I)V", (void*) setIndentGuides},
-      {"nativeSetBracketGuides", "(JLjava/nio/ByteBuffer;I)V", (void*) setBracketGuides},
-      {"nativeSetFlowGuides", "(JLjava/nio/ByteBuffer;I)V", (void*) setFlowGuides},
-      {"nativeSetSeparatorGuides", "(JLjava/nio/ByteBuffer;I)V", (void*) setSeparatorGuides},
-      {"nativeSetBracketPairs", "(J[I[I)V", (void*) setBracketPairs},
-      {"nativeSetAutoClosingPairs", "(J[I[I)V", (void*) setAutoClosingPairs},
-      {"nativeSetMatchedBrackets", "(JIIII)V", (void*) setMatchedBrackets},
-      {"nativeClearMatchedBrackets", "(J)V", (void*) clearMatchedBrackets},
-      {"nativeSetLineDiagnostics", "(JLjava/nio/ByteBuffer;I)V", (void*) setLineDiagnostics},
-      {"nativeClearDiagnostics", "(J)V", (void*) clearDiagnostics},
-      {"nativeSetBatchLineSpans", "(JLjava/nio/ByteBuffer;I)V", (void*) setBatchLineSpans},
-      {"nativeSetBatchLineInlayHints", "(JLjava/nio/ByteBuffer;I)V", (void*) setBatchLineInlayHints},
-      {"nativeSetBatchLinePhantomTexts", "(JLjava/nio/ByteBuffer;I)V", (void*) setBatchLinePhantomTexts},
-      {"nativeSetBatchLineGutterIcons", "(JLjava/nio/ByteBuffer;I)V", (void*) setBatchLineGutterIcons},
-      {"nativeSetLineCodeLens", "(JLjava/nio/ByteBuffer;I)V", (void*) setLineCodeLens},
-      {"nativeSetBatchLineCodeLens", "(JLjava/nio/ByteBuffer;I)V", (void*) setBatchLineCodeLens},
-      {"nativeSetLineLinks", "(JLjava/nio/ByteBuffer;I)V", (void*) setLineLinks},
-      {"nativeSetBatchLineLinks", "(JLjava/nio/ByteBuffer;I)V", (void*) setBatchLineLinks},
-      {"nativeSetBatchLineDiagnostics", "(JLjava/nio/ByteBuffer;I)V", (void*) setBatchLineDiagnostics},
-      {"nativeSetFoldRegions", "(JLjava/nio/ByteBuffer;I)V", (void*) setFoldRegions},
-      {"nativeToggleFoldAt", "(JI)Z", (void*) toggleFoldAt},
-      {"nativeFoldAt", "(JI)Z", (void*) foldAt},
-      {"nativeUnfoldAt", "(JI)Z", (void*) unfoldAt},
-      {"nativeFoldAll", "(J)V", (void*) foldAll},
-      {"nativeUnfoldAll", "(J)V", (void*) unfoldAll},
+      {"nativeRegisterTextStyle", "(JIIII)Ljava/nio/ByteBuffer;", (void*) registerTextStyle},
+      {"nativeRegisterBatchTextStyles", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) registerBatchTextStyles},
+      {"nativeSetLineSpans", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setLineSpans},
+      {"nativeSetLineInlayHints", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setLineInlayHints},
+      {"nativeSetLinePhantomTexts", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setLinePhantomTexts},
+      {"nativeClearHighlights", "(J)Ljava/nio/ByteBuffer;", (void*) clearHighlights},
+      {"nativeClearHighlightsLayer", "(JI)Ljava/nio/ByteBuffer;", (void*) clearHighlightsLayer},
+      {"nativeClearLineSpans", "(JII)Ljava/nio/ByteBuffer;", (void*) clearLineSpans},
+      {"nativeClearInlayHints", "(J)Ljava/nio/ByteBuffer;", (void*) clearInlayHints},
+      {"nativeClearPhantomTexts", "(J)Ljava/nio/ByteBuffer;", (void*) clearPhantomTexts},
+      {"nativeClearGutterIcons", "(J)Ljava/nio/ByteBuffer;", (void*) clearGutterIcons},
+      {"nativeClearCodeLens", "(J)Ljava/nio/ByteBuffer;", (void*) clearCodeLens},
+      {"nativeClearLinks", "(J)Ljava/nio/ByteBuffer;", (void*) clearLinks},
+      {"nativeClearGuides", "(J)Ljava/nio/ByteBuffer;", (void*) clearGuides},
+      {"nativeClearAllDecorations", "(J)Ljava/nio/ByteBuffer;", (void*) clearAllDecorations},
+      {"nativeSetIndentGuides", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setIndentGuides},
+      {"nativeSetBracketGuides", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setBracketGuides},
+      {"nativeSetFlowGuides", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setFlowGuides},
+      {"nativeSetSeparatorGuides", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setSeparatorGuides},
+      {"nativeSetBracketPairs", "(J[I[I)Ljava/nio/ByteBuffer;", (void*) setBracketPairs},
+      {"nativeSetAutoClosingPairs", "(J[I[I)Ljava/nio/ByteBuffer;", (void*) setAutoClosingPairs},
+      {"nativeSetMatchedBrackets", "(JIIII)Ljava/nio/ByteBuffer;", (void*) setMatchedBrackets},
+      {"nativeClearMatchedBrackets", "(J)Ljava/nio/ByteBuffer;", (void*) clearMatchedBrackets},
+      {"nativeSetLineDiagnostics", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setLineDiagnostics},
+      {"nativeClearDiagnostics", "(J)Ljava/nio/ByteBuffer;", (void*) clearDiagnostics},
+      {"nativeSetBatchLineSpans", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setBatchLineSpans},
+      {"nativeSetBatchLineInlayHints", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setBatchLineInlayHints},
+      {"nativeSetBatchLinePhantomTexts", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setBatchLinePhantomTexts},
+      {"nativeSetBatchLineGutterIcons", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setBatchLineGutterIcons},
+      {"nativeSetLineCodeLens", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setLineCodeLens},
+      {"nativeSetBatchLineCodeLens", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setBatchLineCodeLens},
+      {"nativeSetLineLinks", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setLineLinks},
+      {"nativeSetBatchLineLinks", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setBatchLineLinks},
+      {"nativeSetBatchLineDiagnostics", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setBatchLineDiagnostics},
+      {"nativeSetFoldRegions", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setFoldRegions},
+      {"nativeToggleFoldAt", "(JI)Ljava/nio/ByteBuffer;", (void*) toggleFoldAt},
+      {"nativeFoldAt", "(JI)Ljava/nio/ByteBuffer;", (void*) foldAt},
+      {"nativeUnfoldAt", "(JI)Ljava/nio/ByteBuffer;", (void*) unfoldAt},
+      {"nativeFoldAll", "(J)Ljava/nio/ByteBuffer;", (void*) foldAll},
+      {"nativeUnfoldAll", "(J)Ljava/nio/ByteBuffer;", (void*) unfoldAll},
       {"nativeIsLineVisible", "(JI)Z", (void*) isLineVisible},
       {"nativeGetVisibleLineRange", "(J)[I", (void*) getVisibleLineRange},
-      {"nativeSetLineGutterIcons", "(JLjava/nio/ByteBuffer;I)V", (void*) setLineGutterIcons},
-      {"nativeSetMaxGutterIcons", "(JI)V", (void*) setMaxGutterIcons},
-      {"nativeSetFoldArrowMode", "(JI)V", (void*) setFoldArrowMode},
-      {"nativeSetWrapMode", "(JI)V", (void*) setWrapMode},
-      {"nativeSetTabSize", "(JI)V", (void*) setTabSize},
-      {"nativeSetScale", "(JF)V", (void*) setScale},
-      {"nativeSetLineSpacing", "(JFF)V", (void*) setLineSpacing},
-      {"nativeSetContentStartPadding", "(JF)V", (void*) setContentStartPadding},
-      {"nativeSetShowSplitLine", "(JZ)V", (void*) setShowSplitLine},
-      {"nativeSetGutterSticky", "(JZ)V", (void*) setGutterSticky},
-      {"nativeSetGutterVisible", "(JZ)V", (void*) setGutterVisible},
-      {"nativeSetCurrentLineRenderMode", "(JI)V", (void*) setCurrentLineRenderMode},
+      {"nativeSetLineGutterIcons", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setLineGutterIcons},
+      {"nativeSetMaxGutterIcons", "(JI)Ljava/nio/ByteBuffer;", (void*) setMaxGutterIcons},
+      {"nativeSetFoldArrowMode", "(JI)Ljava/nio/ByteBuffer;", (void*) setFoldArrowMode},
+      {"nativeSetWrapMode", "(JI)Ljava/nio/ByteBuffer;", (void*) setWrapMode},
+      {"nativeSetTabSize", "(JI)Ljava/nio/ByteBuffer;", (void*) setTabSize},
+      {"nativeSetScale", "(JF)Ljava/nio/ByteBuffer;", (void*) setScale},
+      {"nativeSetLineSpacing", "(JFF)Ljava/nio/ByteBuffer;", (void*) setLineSpacing},
+      {"nativeSetContentStartPadding", "(JF)Ljava/nio/ByteBuffer;", (void*) setContentStartPadding},
+      {"nativeSetShowSplitLine", "(JZ)Ljava/nio/ByteBuffer;", (void*) setShowSplitLine},
+      {"nativeSetGutterSticky", "(JZ)Ljava/nio/ByteBuffer;", (void*) setGutterSticky},
+      {"nativeSetGutterVisible", "(JZ)Ljava/nio/ByteBuffer;", (void*) setGutterVisible},
+      {"nativeSetCurrentLineRenderMode", "(JI)Ljava/nio/ByteBuffer;", (void*) setCurrentLineRenderMode},
       {"nativeUndo", "(J)Ljava/nio/ByteBuffer;", (void*) editorUndo},
       {"nativeRedo", "(J)Ljava/nio/ByteBuffer;", (void*) editorRedo},
       {"nativeCanUndo", "(J)Z", (void*) editorCanUndo},
       {"nativeCanRedo", "(J)Z", (void*) editorCanRedo},
-      {"nativeScrollToLine", "(JII)V", (void*) scrollToLine},
-      {"nativeGotoPosition", "(JII)V", (void*) gotoPosition},
-      {"nativeEnsureCursorVisible", "(J)V", (void*) ensureCursorVisible},
-      {"nativeSetScroll", "(JFF)V", (void*) setScroll},
+      {"nativeScrollToLine", "(JII)Ljava/nio/ByteBuffer;", (void*) scrollToLine},
+      {"nativeGotoPosition", "(JII)Ljava/nio/ByteBuffer;", (void*) gotoPosition},
+      {"nativeEnsureCursorVisible", "(J)Ljava/nio/ByteBuffer;", (void*) ensureCursorVisible},
+      {"nativeSetScroll", "(JFF)Ljava/nio/ByteBuffer;", (void*) setScroll},
       {"nativeGetScrollMetrics", "(J)Ljava/nio/ByteBuffer;", (void*) getScrollMetrics},
       {"nativeGetCursorPosition", "(J)J", (void*) getCursorPosition},
       {"nativeGetWordRangeAtCursor", "(J)[J", (void*) getWordRangeAtCursor},
       {"nativeGetWordAtCursor", "(J)Ljava/lang/String;", (void*) getWordAtCursor},
       {"nativeGetLinkTargetAt", "(JII)Ljava/lang/String;", (void*) getLinkTargetAt},
-      {"nativeMoveCursorLeft", "(JZ)V", (void*) moveCursorLeft},
-      {"nativeMoveCursorRight", "(JZ)V", (void*) moveCursorRight},
-      {"nativeMoveCursorUp", "(JZ)V", (void*) moveCursorUp},
-      {"nativeMoveCursorDown", "(JZ)V", (void*) moveCursorDown},
-      {"nativeMoveCursorToLineStart", "(JZ)V", (void*) moveCursorToLineStart},
-      {"nativeMoveCursorToLineEnd", "(JZ)V", (void*) moveCursorToLineEnd},
-      {"nativeSetCursorPosition", "(JII)V", (void*) setCursorPosition},
-      {"nativeSelectAll", "(J)V", (void*) selectAll},
-      {"nativeSetSelection", "(JIIII)V", (void*) setSelection},
+      {"nativeMoveCursorLeft", "(JZ)Ljava/nio/ByteBuffer;", (void*) moveCursorLeft},
+      {"nativeMoveCursorRight", "(JZ)Ljava/nio/ByteBuffer;", (void*) moveCursorRight},
+      {"nativeMoveCursorUp", "(JZ)Ljava/nio/ByteBuffer;", (void*) moveCursorUp},
+      {"nativeMoveCursorDown", "(JZ)Ljava/nio/ByteBuffer;", (void*) moveCursorDown},
+      {"nativeMoveCursorToLineStart", "(JZ)Ljava/nio/ByteBuffer;", (void*) moveCursorToLineStart},
+      {"nativeMoveCursorToLineEnd", "(JZ)Ljava/nio/ByteBuffer;", (void*) moveCursorToLineEnd},
+      {"nativeSetCursorPosition", "(JII)Ljava/nio/ByteBuffer;", (void*) setCursorPosition},
+      {"nativeSelectAll", "(J)Ljava/nio/ByteBuffer;", (void*) selectAll},
+      {"nativeSetSelection", "(JIIII)Ljava/nio/ByteBuffer;", (void*) setSelection},
       {"nativeGetSelection", "(J)[J", (void*) getSelection},
       {"nativeInsertSnippet", "(JLjava/lang/String;)Ljava/nio/ByteBuffer;", (void*) editorInsertSnippet},
-      {"nativeStartLinkedEditing", "(JLjava/nio/ByteBuffer;I)V", (void*) editorStartLinkedEditing},
+      {"nativeStartLinkedEditing", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) editorStartLinkedEditing},
       {"nativeIsInLinkedEditing", "(J)Z", (void*) editorIsInLinkedEditing},
-      {"nativeLinkedEditingNext", "(J)Z", (void*) editorLinkedEditingNext},
-      {"nativeLinkedEditingPrev", "(J)Z", (void*) editorLinkedEditingPrev},
-      {"nativeCancelLinkedEditing", "(J)V", (void*) editorCancelLinkedEditing},
+      {"nativeLinkedEditingNext", "(J)Ljava/nio/ByteBuffer;", (void*) editorLinkedEditingNext},
+      {"nativeLinkedEditingPrev", "(J)Ljava/nio/ByteBuffer;", (void*) editorLinkedEditingPrev},
+      {"nativeCancelLinkedEditing", "(J)Ljava/nio/ByteBuffer;", (void*) editorCancelLinkedEditing},
       {"nativeFreeBinaryData", "(Ljava/nio/ByteBuffer;)V", (void*) freeBinaryData},
   };
 

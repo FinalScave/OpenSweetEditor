@@ -105,16 +105,16 @@ class SweetEditorController {
       column,
       methodName: 'setCursorPosition',
     );
-    _state?._session.editorCore?.setCursorPosition(
+    final result = _state?._session.editorCore?.setCursorPosition(
       position.line,
       position.column,
     );
-    _state?._flush();
+    _state?._dispatchEditorActionResult(result);
   }
 
   void gotoPosition(int line, int column) {
-    _state?._session.editorCore?.gotoPosition(line, column);
-    _state?._flush();
+    final result = _state?._session.editorCore?.gotoPosition(line, column);
+    _state?._dispatchEditorActionResult(result);
   }
 
   core.TextRange? getSelection() => _state?._session.editorCore?.getSelection();
@@ -125,13 +125,13 @@ class SweetEditorController {
     int endLine,
     int endColumn,
   ) {
-    _state?._session.editorCore?.setSelection(
+    final result = _state?._session.editorCore?.setSelection(
       startLine,
       startColumn,
       endLine,
       endColumn,
     );
-    _state?._flush();
+    _state?._dispatchEditorActionResult(result);
   }
 
   void selectAll() {
@@ -185,70 +185,49 @@ class SweetEditorController {
   void moveLineUp() {
     _withEditorCore((editorCore) {
       final result = editorCore.moveLineUp();
-      _state?._interactionController.dispatchTextChangedForController(
-        TextChangeAction.insert,
-        result,
-      );
+      _state?._dispatchEditorActionResult(result);
     });
   }
 
   void moveLineDown() {
     _withEditorCore((editorCore) {
       final result = editorCore.moveLineDown();
-      _state?._interactionController.dispatchTextChangedForController(
-        TextChangeAction.insert,
-        result,
-      );
+      _state?._dispatchEditorActionResult(result);
     });
   }
 
   void copyLineUp() {
     _withEditorCore((editorCore) {
       final result = editorCore.copyLineUp();
-      _state?._interactionController.dispatchTextChangedForController(
-        TextChangeAction.insert,
-        result,
-      );
+      _state?._dispatchEditorActionResult(result);
     });
   }
 
   void copyLineDown() {
     _withEditorCore((editorCore) {
       final result = editorCore.copyLineDown();
-      _state?._interactionController.dispatchTextChangedForController(
-        TextChangeAction.insert,
-        result,
-      );
+      _state?._dispatchEditorActionResult(result);
     });
   }
 
   void deleteLine() {
     _withEditorCore((editorCore) {
       final result = editorCore.deleteLine();
-      _state?._interactionController.dispatchTextChangedForController(
-        TextChangeAction.delete_,
-        result,
-      );
+      _state?._dispatchEditorActionResult(result);
     });
   }
 
   void insertLineAbove() {
     _withEditorCore((editorCore) {
       final result = editorCore.insertLineAbove();
-      _state?._interactionController.dispatchTextChangedForController(
-        TextChangeAction.insert,
-        result,
-      );
+      _state?._dispatchEditorActionResult(result);
     });
   }
 
   void insertLineBelow() {
     _withEditorCore((editorCore) {
       final result = editorCore.insertLineBelow();
-      _state?._interactionController.dispatchTextChangedForController(
-        TextChangeAction.insert,
-        result,
-      );
+      _state?._dispatchEditorActionResult(result);
     });
   }
 
@@ -365,28 +344,28 @@ class SweetEditorController {
       _eventBus.on<SelectionMenuItemClickEvent>();
 
   void toggleFoldAt(int line) {
-    _state?._session.editorCore?.toggleFoldAt(line);
-    _state?._flush();
+    final result = _state?._session.editorCore?.toggleFoldAt(line);
+    _state?._dispatchEditorActionResult(result);
   }
 
   void foldAt(int line) {
-    _state?._session.editorCore?.foldAt(line);
-    _state?._flush();
+    final result = _state?._session.editorCore?.foldAt(line);
+    _state?._dispatchEditorActionResult(result);
   }
 
   void unfoldAt(int line) {
-    _state?._session.editorCore?.unfoldAt(line);
-    _state?._flush();
+    final result = _state?._session.editorCore?.unfoldAt(line);
+    _state?._dispatchEditorActionResult(result);
   }
 
   void foldAll() {
-    _state?._session.editorCore?.foldAll();
-    _state?._flush();
+    final result = _state?._session.editorCore?.foldAll();
+    _state?._dispatchEditorActionResult(result);
   }
 
   void unfoldAll() {
-    _state?._session.editorCore?.unfoldAll();
-    _state?._flush();
+    final result = _state?._session.editorCore?.unfoldAll();
+    _state?._dispatchEditorActionResult(result);
   }
 
   core.ScrollMetrics getScrollMetrics() =>
@@ -394,8 +373,8 @@ class SweetEditorController {
       core.ScrollMetrics.empty;
 
   void setScroll(double scrollX, double scrollY) {
-    _state?._session.editorCore?.setScroll(scrollX, scrollY);
-    _state?._flush();
+    final result = _state?._session.editorCore?.setScroll(scrollX, scrollY);
+    _state?._dispatchEditorActionResult(result);
   }
 
   core.CursorRect getPositionRect(int line, int column) =>
@@ -422,8 +401,11 @@ class SweetEditorController {
     int line, {
     core.ScrollBehavior behavior = core.ScrollBehavior.center,
   }) {
-    _state?._session.editorCore?.scrollToLine(line, behavior: behavior);
-    _state?._flush();
+    final result = _state?._session.editorCore?.scrollToLine(
+      line,
+      behavior: behavior,
+    );
+    _state?._dispatchEditorActionResult(result);
   }
 
   bool isLineVisible(int line) =>

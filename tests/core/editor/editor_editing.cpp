@@ -13,9 +13,9 @@ TEST_CASE("EditorCore normalizes selection before insert replacement") {
   editor.setViewport({800, 600});
 
   editor.setSelection({{0, 11}, {0, 6}});
-  TextEditResult result = editor.insertText("X");
+  EditorActionResult result = editor.insertText("X");
 
-  REQUIRE(result.changed);
+  REQUIRE(result.content_changed);
   CHECK(document->getU8Text() == "hello X");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
   CHECK_FALSE(editor.hasSelection());
@@ -33,9 +33,9 @@ TEST_CASE("EditorCore insertText with empty string deletes selection") {
   editor.setViewport({800, 600});
 
   editor.setSelection({{0, 6}, {0, 11}});
-  TextEditResult result = editor.insertText("");
+  EditorActionResult result = editor.insertText("");
 
-  REQUIRE(result.changed);
+  REQUIRE(result.content_changed);
   CHECK(document->getU8Text() == "hello ");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 6}));
   CHECK_FALSE(editor.hasSelection());
@@ -53,9 +53,9 @@ TEST_CASE("EditorCore insertText with empty string and no selection is no-op") {
   editor.setViewport({800, 600});
 
   editor.setCursorPosition({0, 3});
-  TextEditResult result = editor.insertText("");
+  EditorActionResult result = editor.insertText("");
 
-  CHECK_FALSE(result.changed);
+  CHECK_FALSE(result.content_changed);
   CHECK(document->getU8Text() == "hello");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
 }
@@ -71,7 +71,7 @@ TEST_CASE("EditorCore Enter keeps current line indent by default") {
 
   KeyEvent event;
   event.key_code = KeyCode::ENTER;
-  KeyEventResult key_result = editor.handleKeyEvent(event);
+  EditorActionResult key_result = editor.handleKeyEvent(event);
 
   REQUIRE(key_result.handled);
   REQUIRE(key_result.content_changed);
@@ -92,7 +92,7 @@ TEST_CASE("EditorCore Tab inserts spaces to the next tab stop when insertSpaces 
 
   KeyEvent event;
   event.key_code = KeyCode::TAB;
-  KeyEventResult key_result = editor.handleKeyEvent(event);
+  EditorActionResult key_result = editor.handleKeyEvent(event);
 
   REQUIRE(key_result.handled);
   REQUIRE(key_result.content_changed);
@@ -109,9 +109,9 @@ TEST_CASE("EditorCore backspace removes one surrogate pair as a single glyph") {
   editor.setViewport({800, 600});
   editor.setCursorPosition({0, 3}); // after 'A' (1) and emoji (2)
 
-  TextEditResult result = editor.backspace();
+  EditorActionResult result = editor.backspace();
 
-  REQUIRE(result.changed);
+  REQUIRE(result.content_changed);
   CHECK(document->getU8Text() == "AB");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
 }
@@ -157,9 +157,9 @@ TEST_CASE("EditorCore deleteForward removes one surrogate pair as a single glyph
   editor.setViewport({800, 600});
   editor.setCursorPosition({0, 1});
 
-  TextEditResult result = editor.deleteForward();
+  EditorActionResult result = editor.deleteForward();
 
-  REQUIRE(result.changed);
+  REQUIRE(result.content_changed);
   CHECK(document->getU8Text() == "AB");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
 }
@@ -181,8 +181,8 @@ TEST_CASE("EditorCore treats emoji modifier grapheme clusters as one editing uni
   CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
 
   editor.setCursorPosition({0, 4});
-  TextEditResult backspace_result = editor.backspace();
-  REQUIRE(backspace_result.changed);
+  EditorActionResult backspace_result = editor.backspace();
+  REQUIRE(backspace_result.content_changed);
   CHECK(document->getU8Text() == "");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
 
@@ -190,8 +190,8 @@ TEST_CASE("EditorCore treats emoji modifier grapheme clusters as one editing uni
   editor.loadDocument(document);
   editor.setViewport({800, 600});
   editor.setCursorPosition({0, 0});
-  TextEditResult delete_result = editor.deleteForward();
-  REQUIRE(delete_result.changed);
+  EditorActionResult delete_result = editor.deleteForward();
+  REQUIRE(delete_result.content_changed);
   CHECK(document->getU8Text() == "");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
 }
@@ -211,16 +211,16 @@ TEST_CASE("EditorCore clamps direct cursor and range APIs to grapheme boundaries
   CHECK(editor.getSelection() == (TextRange{{0, 0}, {0, 0}}));
   CHECK_FALSE(editor.hasSelection());
 
-  TextEditResult replace_result = editor.replaceText({{0, 2}, {0, 2}}, "X");
-  REQUIRE(replace_result.changed);
+  EditorActionResult replace_result = editor.replaceText({{0, 2}, {0, 2}}, "X");
+  REQUIRE(replace_result.content_changed);
   CHECK(document->getU8Text() == "X\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
 
   document = makeShared<LineArrayDocument>("\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
-  TextEditResult delete_result = editor.deleteText({{0, 2}, {0, 4}});
-  REQUIRE(delete_result.changed);
+  EditorActionResult delete_result = editor.deleteText({{0, 2}, {0, 4}});
+  REQUIRE(delete_result.content_changed);
   CHECK(document->getU8Text() == "");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
 }
@@ -238,8 +238,8 @@ TEST_CASE("EditorCore treats ZWJ emoji families as one editing unit") {
   editor.moveCursorRight();
   CHECK(editor.getCursorPosition() == (TextPosition{0, 11}));
 
-  TextEditResult backspace_result = editor.backspace();
-  REQUIRE(backspace_result.changed);
+  EditorActionResult backspace_result = editor.backspace();
+  REQUIRE(backspace_result.content_changed);
   CHECK(document->getU8Text() == "");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
 }
@@ -257,8 +257,8 @@ TEST_CASE("EditorCore expands ZWJ family ranges to full grapheme boundaries") {
   CHECK(editor.getSelection() == (TextRange{{0, 0}, {0, 0}}));
   CHECK_FALSE(editor.hasSelection());
 
-  TextEditResult delete_result = editor.deleteText({{0, 2}, {0, 4}});
-  REQUIRE(delete_result.changed);
+  EditorActionResult delete_result = editor.deleteText({{0, 2}, {0, 4}});
+  REQUIRE(delete_result.content_changed);
   CHECK(document->getU8Text() == "");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
 }
@@ -285,9 +285,9 @@ TEST_CASE("EditorCore replaceText normalizes insert positions away from surrogat
   editor.loadDocument(document);
   editor.setViewport({800, 600});
 
-  TextEditResult result = editor.replaceText({{0, 2}, {0, 2}}, "X");
+  EditorActionResult result = editor.replaceText({{0, 2}, {0, 2}}, "X");
 
-  REQUIRE(result.changed);
+  REQUIRE(result.content_changed);
   CHECK(document->getU8Text() == "AX\xF0\x9F\x98\x80" "B");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
 }
@@ -300,9 +300,9 @@ TEST_CASE("EditorCore deleteText expands surrogate-spanning ranges to full code-
   editor.loadDocument(document);
   editor.setViewport({800, 600});
 
-  TextEditResult result = editor.deleteText({{0, 2}, {0, 3}});
+  EditorActionResult result = editor.deleteText({{0, 2}, {0, 3}});
 
-  REQUIRE(result.changed);
+  REQUIRE(result.content_changed);
   CHECK(document->getU8Text() == "AB");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
 }

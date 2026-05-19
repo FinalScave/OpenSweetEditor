@@ -701,6 +701,16 @@ namespace SweetEditor {
 			return true;
 		}
 
+		internal static bool TryReadTextRange(ReadOnlySpan<byte> data, ref int offset, out TextRange range) {
+			range = default;
+			if (!TryReadTextPosition(data, ref offset, out TextPosition start) ||
+				!TryReadTextPosition(data, ref offset, out TextPosition end)) {
+				return false;
+			}
+			range = new TextRange { Start = start, End = end };
+			return true;
+		}
+
 		internal static bool TryReadTextChange(ReadOnlySpan<byte> data, ref int offset, out TextChange change) {
 			change = new TextChange();
 			if (!TryReadInt32(data, ref offset, out int startLine) ||
@@ -723,10 +733,90 @@ namespace SweetEditor {
 			_ => GestureType.UNDEFINED,
 		};
 
+		internal static EventType ToEventType(int value) => value switch {
+			>= (int)EventType.UNDEFINED and <= (int)EventType.DIRECT_SCROLL => (EventType)value,
+			_ => EventType.UNDEFINED,
+		};
+
 		internal static HitTargetType ToHitTargetType(int value) => value switch {
-			>= (int)HitTargetType.NONE and <= (int)HitTargetType.CODELENS => (HitTargetType)value,
+			>= (int)HitTargetType.NONE and <= (int)HitTargetType.LINK => (HitTargetType)value,
 			_ => HitTargetType.NONE,
 		};
+
+		internal static PointerCursorType ToPointerCursorType(int value) => value switch {
+			>= (int)PointerCursorType.DEFAULT and <= (int)PointerCursorType.HAND => (PointerCursorType)value,
+			_ => PointerCursorType.TEXT,
+		};
+
+		internal static ImePreeditStorage ToImePreeditStorage(int value) => value switch {
+			>= (int)ImePreeditStorage.NONE and <= (int)ImePreeditStorage.SHADOW_ONLY => (ImePreeditStorage)value,
+			_ => ImePreeditStorage.NONE,
+		};
+
+		internal static ImeContextPolicy ToImeContextPolicy(int value) => value switch {
+			>= (int)ImeContextPolicy.NONE and <= (int)ImeContextPolicy.LIMITED_FOR_CANDIDATES => (ImeContextPolicy)value,
+			_ => ImeContextPolicy.NONE,
+		};
+
+		internal static bool TryReadTextEditChanges(ReadOnlySpan<byte> data, ref int offset, out List<TextChange> changes) {
+			changes = new List<TextChange>();
+			if (!TryReadInt32(data, ref offset, out int count) || count < 0) {
+				return false;
+			}
+			changes = new List<TextChange>(count);
+			for (int i = 0; i < count; i++) {
+				if (!TryReadTextChange(data, ref offset, out TextChange change)) {
+					return false;
+				}
+				changes.Add(change);
+			}
+			return true;
+		}
+
+		internal static bool TryReadHitTarget(ReadOnlySpan<byte> data, ref int offset, out HitTarget target) {
+			target = new HitTarget { Type = HitTargetType.NONE };
+			if (!TryReadInt32(data, ref offset, out int type) ||
+				!TryReadInt32(data, ref offset, out int line) ||
+				!TryReadInt32(data, ref offset, out int column) ||
+				!TryReadInt32(data, ref offset, out int iconId) ||
+				!TryReadInt32(data, ref offset, out int colorValue)) {
+				return false;
+			}
+			target = new HitTarget {
+				Type = ToHitTargetType(type),
+				Line = line,
+				Column = column,
+				IconId = iconId,
+				ColorValue = colorValue
+			};
+			return true;
+		}
+
+		internal static bool TryReadImeSyncSnapshot(ReadOnlySpan<byte> data, ref int offset, out ImeSyncSnapshot snapshot) {
+			snapshot = new ImeSyncSnapshot();
+			if (!TryReadTextPosition(data, ref offset, out TextPosition cursor) ||
+				!TryReadInt32(data, ref offset, out int hasSelection) ||
+				!TryReadTextRange(data, ref offset, out TextRange selection) ||
+				!TryReadInt32(data, ref offset, out int hasComposingSession) ||
+				!TryReadInt32(data, ref offset, out int hasVisibleCompositionRange) ||
+				!TryReadTextRange(data, ref offset, out TextRange visibleCompositionRange) ||
+				!TryReadInt32(data, ref offset, out int hasPlatformMarkedRange) ||
+				!TryReadTextRange(data, ref offset, out TextRange platformMarkedRange) ||
+				!TryReadInt32(data, ref offset, out int preeditStorage) ||
+				!TryReadInt32(data, ref offset, out int contextPolicy) ||
+				!TryReadInt32(data, ref offset, out int clearPlatformPreedit)) {
+				return false;
+			}
+			snapshot.Cursor = cursor;
+			snapshot.Selection = hasSelection != 0 ? selection : null;
+			snapshot.HasComposingSession = hasComposingSession != 0;
+			snapshot.VisibleCompositionRange = hasVisibleCompositionRange != 0 ? visibleCompositionRange : null;
+			snapshot.PlatformMarkedRange = hasPlatformMarkedRange != 0 ? platformMarkedRange : null;
+			snapshot.PreeditStorage = ToImePreeditStorage(preeditStorage);
+			snapshot.ContextPolicy = ToImeContextPolicy(contextPolicy);
+			snapshot.ClearPlatformPreedit = clearPlatformPreedit != 0;
+			return true;
+		}
 
 		internal static VisualRunType ToVisualRunType(int value) => value switch {
 			>= (int)VisualRunType.TEXT and <= (int)VisualRunType.CODELENS => (VisualRunType)value,
@@ -1369,39 +1459,8 @@ namespace SweetEditor {
 			pool.Add(list);
 		}
 
-		internal static unsafe TextEditResult ParseTextEditResult(IntPtr payloadPtr, UIntPtr payloadSize) {
-			int payloadLength = GetPayloadLength(payloadPtr, payloadSize);
-			if (payloadLength == 0) {
-				return TextEditResult.Empty;
-			}
-			try {
-				ReadOnlySpan<byte> data = new(payloadPtr.ToPointer(), payloadLength);
-				int offset = 0;
-				if (!TryReadInt32(data, ref offset, out int changedInt) || changedInt == 0) {
-					return TextEditResult.Empty;
-				}
-				if (!TryReadInt32(data, ref offset, out int count) || count <= 0) {
-					return TextEditResult.Empty;
-				}
-
-				List<TextChange> changes = new(count);
-				for (int i = 0; i < count; i++) {
-					if (!TryReadTextChange(data, ref offset, out TextChange change)) {
-						break;
-					}
-					changes.Add(change);
-				}
-				if (changes.Count == 0) {
-					return TextEditResult.Empty;
-				}
-				return new TextEditResult { Changes = changes };
-			} finally {
-				NativeMethods.FreeBinaryData(payloadPtr);
-			}
-		}
-
-		internal static unsafe KeyEventResult ParseKeyEventResult(IntPtr payloadPtr, UIntPtr payloadSize) {
-			KeyEventResult result = new();
+		internal static unsafe EditorActionResult ParseEditorActionResult(IntPtr payloadPtr, UIntPtr payloadSize) {
+			EditorActionResult result = new();
 			int payloadLength = GetPayloadLength(payloadPtr, payloadSize);
 			if (payloadLength == 0) {
 				return result;
@@ -1410,108 +1469,85 @@ namespace SweetEditor {
 				ReadOnlySpan<byte> data = new(payloadPtr.ToPointer(), payloadLength);
 				int offset = 0;
 				if (!TryReadInt32(data, ref offset, out int handled) ||
+					!TryReadInt32(data, ref offset, out int needsRedraw) ||
+					!TryReadInt32(data, ref offset, out int reason) ||
 					!TryReadInt32(data, ref offset, out int contentChanged) ||
 					!TryReadInt32(data, ref offset, out int cursorChanged) ||
 					!TryReadInt32(data, ref offset, out int selectionChanged) ||
-					!TryReadInt32(data, ref offset, out int hasEdit)) {
+					!TryReadInt32(data, ref offset, out int scrollChanged) ||
+					!TryReadInt32(data, ref offset, out int scaleChanged) ||
+					!TryReadInt32(data, ref offset, out int pointerCursorChanged) ||
+					!TryReadInt32(data, ref offset, out int compositionChanged) ||
+					!TryReadInt32(data, ref offset, out int decorationChanged) ||
+					!TryReadInt32(data, ref offset, out int needsImeSync) ||
+					!TryReadInt32(data, ref offset, out int needsEdgeScroll) ||
+					!TryReadInt32(data, ref offset, out int needsFling) ||
+					!TryReadInt32(data, ref offset, out int needsAnimation) ||
+					!TryReadInt32(data, ref offset, out int isHandleDrag) ||
+					!TryReadTextEditChanges(data, ref offset, out List<TextChange> changes) ||
+					!TryReadTextPosition(data, ref offset, out TextPosition cursorBefore) ||
+					!TryReadTextPosition(data, ref offset, out TextPosition cursorAfter) ||
+					!TryReadInt32(data, ref offset, out int hasSelectionBefore) ||
+					!TryReadTextRange(data, ref offset, out TextRange selectionBefore) ||
+					!TryReadInt32(data, ref offset, out int hasSelectionAfter) ||
+					!TryReadTextRange(data, ref offset, out TextRange selectionAfter) ||
+					!TryReadFloat(data, ref offset, out float scrollXBefore) ||
+					!TryReadFloat(data, ref offset, out float scrollYBefore) ||
+					!TryReadFloat(data, ref offset, out float scrollXAfter) ||
+					!TryReadFloat(data, ref offset, out float scrollYAfter) ||
+					!TryReadFloat(data, ref offset, out float scaleBefore) ||
+					!TryReadFloat(data, ref offset, out float scaleAfter) ||
+					!TryReadInt32(data, ref offset, out int pointerCursorBefore) ||
+					!TryReadInt32(data, ref offset, out int pointerCursorAfter) ||
+					!TryReadImeSyncSnapshot(data, ref offset, out ImeSyncSnapshot imeSync) ||
+					!TryReadInt32(data, ref offset, out int gestureType) ||
+					!TryReadInt32(data, ref offset, out int gestureEventType) ||
+					!TryReadFloat(data, ref offset, out float tapX) ||
+					!TryReadFloat(data, ref offset, out float tapY) ||
+					!TryReadHitTarget(data, ref offset, out HitTarget hitTarget) ||
+					!TryReadInt32(data, ref offset, out int modifiers) ||
+					!TryReadInt32(data, ref offset, out int command)) {
 					return result;
 				}
 
 				result.Handled = handled != 0;
+				result.NeedsRedraw = needsRedraw != 0;
+				result.Reason = reason;
 				result.ContentChanged = contentChanged != 0;
 				result.CursorChanged = cursorChanged != 0;
 				result.SelectionChanged = selectionChanged != 0;
-
-				if (hasEdit != 0 && TryReadInt32(data, ref offset, out int count) && count > 0) {
-					List<TextChange> changes = new(count);
-					for (int i = 0; i < count; i++) {
-						if (!TryReadTextChange(data, ref offset, out TextChange change)) {
-							break;
-						}
-						changes.Add(change);
-					}
-					if (changes.Count > 0) {
-						result.EditResult = new TextEditResult { Changes = changes };
-					}
-				}
-				return result;
-			} finally {
-				NativeMethods.FreeBinaryData(payloadPtr);
-			}
-		}
-
-		internal static unsafe GestureResult ParseGestureResult(IntPtr payloadPtr, UIntPtr payloadSize) {
-			GestureResult result = new();
-			int payloadLength = GetPayloadLength(payloadPtr, payloadSize);
-			if (payloadLength == 0) {
-				return result;
-			}
-			try {
-				ReadOnlySpan<byte> data = new(payloadPtr.ToPointer(), payloadLength);
-				int offset = 0;
-				if (!TryReadInt32(data, ref offset, out int gestureTypeValue)) {
-					return result;
-				}
-				result.Type = ToGestureType(gestureTypeValue);
-				result.TapPoint = new PointF(0, 0);
-				switch (result.Type) {
-					case GestureType.TAP:
-					case GestureType.DOUBLE_TAP:
-					case GestureType.LONG_PRESS:
-					case GestureType.DRAG_SELECT:
-					case GestureType.CONTEXT_MENU:
-						if (TryReadFloat(data, ref offset, out float tx) && TryReadFloat(data, ref offset, out float ty)) {
-							result.TapPoint = new PointF(tx, ty);
-						}
-						break;
-				}
-
-				if (!TryReadInt32(data, ref offset, out int cursorLine) ||
-					!TryReadInt32(data, ref offset, out int cursorColumn) ||
-					!TryReadInt32(data, ref offset, out int hasSelectionInt) ||
-					!TryReadInt32(data, ref offset, out int selStartLine) ||
-					!TryReadInt32(data, ref offset, out int selStartColumn) ||
-					!TryReadInt32(data, ref offset, out int selEndLine) ||
-					!TryReadInt32(data, ref offset, out int selEndColumn) ||
-					!TryReadFloat(data, ref offset, out float viewScrollX) ||
-					!TryReadFloat(data, ref offset, out float viewScrollY) ||
-					!TryReadFloat(data, ref offset, out float viewScale)) {
-					return result;
-				}
-
-				result.CursorPosition = new TextPosition { Line = cursorLine, Column = cursorColumn };
-				result.HasSelection = hasSelectionInt != 0;
-				result.Selection = new TextRange {
-					Start = new TextPosition { Line = selStartLine, Column = selStartColumn },
-					End = new TextPosition { Line = selEndLine, Column = selEndColumn }
-				};
-				result.ViewScrollX = viewScrollX;
-				result.ViewScrollY = viewScrollY;
-				result.ViewScale = viewScale;
-				result.HitTarget = new HitTarget { Type = HitTargetType.NONE };
-
-				if (TryReadInt32(data, ref offset, out int hitType) &&
-					TryReadInt32(data, ref offset, out int hitLine) &&
-					TryReadInt32(data, ref offset, out int hitColumn) &&
-					TryReadInt32(data, ref offset, out int hitIconId) &&
-					TryReadInt32(data, ref offset, out int hitColor)) {
-					result.HitTarget = new HitTarget {
-						Type = ToHitTargetType(hitType),
-						Line = hitLine,
-						Column = hitColumn,
-						IconId = hitIconId,
-						ColorValue = hitColor
-					};
-				}
-				if (TryReadInt32(data, ref offset, out int needsEdgeScrollInt)) {
-					result.NeedsEdgeScroll = needsEdgeScrollInt != 0;
-				}
-				if (TryReadInt32(data, ref offset, out int needsFlingInt)) {
-					result.NeedsFling = needsFlingInt != 0;
-				}
-				if (TryReadInt32(data, ref offset, out int needsAnimationInt)) {
-					result.NeedsAnimation = needsAnimationInt != 0;
-				}
+				result.ScrollChanged = scrollChanged != 0;
+				result.ScaleChanged = scaleChanged != 0;
+				result.PointerCursorChanged = pointerCursorChanged != 0;
+				result.CompositionChanged = compositionChanged != 0;
+				result.DecorationChanged = decorationChanged != 0;
+				result.NeedsImeSync = needsImeSync != 0;
+				result.NeedsEdgeScroll = needsEdgeScroll != 0;
+				result.NeedsFling = needsFling != 0;
+				result.NeedsAnimation = needsAnimation != 0;
+				result.IsHandleDrag = isHandleDrag != 0;
+				result.Changes = changes;
+				result.CursorBefore = cursorBefore;
+				result.CursorAfter = cursorAfter;
+				result.HasSelectionBefore = hasSelectionBefore != 0;
+				result.SelectionBefore = selectionBefore;
+				result.HasSelectionAfter = hasSelectionAfter != 0;
+				result.SelectionAfter = selectionAfter;
+				result.ScrollXBefore = scrollXBefore;
+				result.ScrollYBefore = scrollYBefore;
+				result.ScrollXAfter = scrollXAfter;
+				result.ScrollYAfter = scrollYAfter;
+				result.ScaleBefore = scaleBefore;
+				result.ScaleAfter = scaleAfter;
+				result.PointerCursorBefore = ToPointerCursorType(pointerCursorBefore);
+				result.PointerCursorAfter = ToPointerCursorType(pointerCursorAfter);
+				result.ImeSync = imeSync;
+				result.GestureType = ToGestureType(gestureType);
+				result.GestureEventType = ToEventType(gestureEventType);
+				result.TapPoint = new PointF(tapX, tapY);
+				result.HitTarget = hitTarget;
+				result.Modifiers = (byte)modifiers;
+				result.Command = command;
 				return result;
 			} finally {
 				NativeMethods.FreeBinaryData(payloadPtr);

@@ -60,8 +60,7 @@ export class EditorSettings {
     this.foldArrowMode = mode;
     const editorCore = this.editor.getEditorCore();
     if (editorCore) {
-      editorCore.setFoldArrowMode(mode);
-      this.editor.flush();
+      this.editor.dispatchEditorActionResult(editorCore.setFoldArrowMode(mode));
     }
   }
 
@@ -73,8 +72,7 @@ export class EditorSettings {
     this.wrapMode = mode;
     const editorCore = this.editor.getEditorCore();
     if (editorCore) {
-      editorCore.setWrapMode(mode);
-      this.editor.flush();
+      this.editor.dispatchEditorActionResult(editorCore.setWrapMode(mode));
     }
   }
 
@@ -87,8 +85,7 @@ export class EditorSettings {
     this.lineSpacingMult = mult;
     const editorCore = this.editor.getEditorCore();
     if (editorCore) {
-      editorCore.setLineSpacing(add, mult);
-      this.editor.flush();
+      this.editor.dispatchEditorActionResult(editorCore.setLineSpacing(add, mult));
     }
   }
 
@@ -104,8 +101,7 @@ export class EditorSettings {
     this.contentStartPadding = Math.max(0, padding);
     const editorCore = this.editor.getEditorCore();
     if (editorCore) {
-      editorCore.setContentStartPadding(this.contentStartPadding);
-      this.editor.flush();
+      this.editor.dispatchEditorActionResult(editorCore.setContentStartPadding(this.contentStartPadding));
     }
   }
 
@@ -117,8 +113,7 @@ export class EditorSettings {
     this.showSplitLine = show;
     const editorCore = this.editor.getEditorCore();
     if (editorCore) {
-      editorCore.setShowSplitLine(show);
-      this.editor.flush();
+      this.editor.dispatchEditorActionResult(editorCore.setShowSplitLine(show));
     }
   }
 
@@ -130,8 +125,7 @@ export class EditorSettings {
     this.gutterSticky = sticky;
     const editorCore = this.editor.getEditorCore();
     if (editorCore) {
-      editorCore.setGutterSticky(sticky);
-      this.editor.flush();
+      this.editor.dispatchEditorActionResult(editorCore.setGutterSticky(sticky));
     }
   }
 
@@ -143,8 +137,7 @@ export class EditorSettings {
     this.gutterVisible = visible;
     const editorCore = this.editor.getEditorCore();
     if (editorCore) {
-      editorCore.setGutterVisible(visible);
-      this.editor.flush();
+      this.editor.dispatchEditorActionResult(editorCore.setGutterVisible(visible));
     }
   }
 
@@ -156,8 +149,7 @@ export class EditorSettings {
     this.currentLineRenderMode = mode;
     const editorCore = this.editor.getEditorCore();
     if (editorCore) {
-      editorCore.setCurrentLineRenderMode(mode);
-      this.editor.flush();
+      this.editor.dispatchEditorActionResult(editorCore.setCurrentLineRenderMode(mode));
     }
   }
 
@@ -169,7 +161,7 @@ export class EditorSettings {
     this.autoIndentMode = mode;
     const editorCore = this.editor.getEditorCore();
     if (editorCore) {
-      editorCore.setAutoIndentMode(mode);
+      this.editor.dispatchEditorActionResult(editorCore.setAutoIndentMode(mode));
     }
   }
 
@@ -181,7 +173,7 @@ export class EditorSettings {
     this.backspaceUnindent = enabled;
     const editorCore = this.editor.getEditorCore();
     if (editorCore) {
-      editorCore.setBackspaceUnindent(enabled);
+      this.editor.dispatchEditorActionResult(editorCore.setBackspaceUnindent(enabled));
     }
   }
 
@@ -193,7 +185,7 @@ export class EditorSettings {
     this.readOnly = readOnly;
     const editorCore = this.editor.getEditorCore();
     if (editorCore) {
-      editorCore.setReadOnly(readOnly);
+      this.editor.dispatchEditorActionResult(editorCore.setReadOnly(readOnly));
     }
   }
 
@@ -205,8 +197,7 @@ export class EditorSettings {
     this.maxGutterIcons = count;
     const editorCore = this.editor.getEditorCore();
     if (editorCore) {
-      editorCore.setMaxGutterIcons(count);
-      this.editor.flush();
+      this.editor.dispatchEditorActionResult(editorCore.setMaxGutterIcons(count));
     }
   }
 

@@ -353,8 +353,6 @@ public final class DecorationProviderManager {
 
         applyLinksMode(linksMode);
         editor.setBatchLineLinks(links);
-
-        editor.flush();
     }
 
     private static <T> void appendMapOfList(Map<Integer, List<T>> out, Map<Integer, List<T>> patch) {

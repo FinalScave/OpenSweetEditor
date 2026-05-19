@@ -48,7 +48,7 @@ final class SweetEditorInputConnectioniOS {
                 let staysWithinMarkedRange = selectionStart >= markedStart && selectionEnd <= markedEnd
 
                 if !staysWithinMarkedRange {
-                    owner.editorCore.cancelImePreedit()
+                    owner.dispatchEditorActionResult(owner.editorCore.cancelImePreedit())
                     clearLocalCompositionState()
                 }
             }
@@ -89,13 +89,12 @@ final class SweetEditorInputConnectioniOS {
         inputDelegate?.selectionWillChange(owner)
         inputDelegate?.textWillChange(owner)
 
-        _ = owner.editorCore.commitImeText(text)
+        let result = owner.editorCore.commitImeText(text)
 
         clearLocalCompositionState()
         selectedRangeValue = owner.currentSelectionNSRange()
 
-        owner.rehighlightAndRedraw()
-        owner.notifyDocumentTextChanged()
+        owner.dispatchEditorActionResult(result)
         inputDelegate?.textDidChange(owner)
         inputDelegate?.selectionDidChange(owner)
         return true
@@ -116,7 +115,7 @@ final class SweetEditorInputConnectioniOS {
             let staysWithinMarkedRange = selectionStart >= markedStart && selectionEnd <= markedEnd
 
             if !staysWithinMarkedRange {
-                _ = owner.editorCore.finishImePreedit()
+                owner.dispatchEditorActionResult(owner.editorCore.finishImePreedit())
                 clearLocalCompositionState()
             }
         }
@@ -138,14 +137,13 @@ final class SweetEditorInputConnectioniOS {
         let absoluteRange = NSRange(location: markedRangeValue!.location + clampedLocation, length: clampedLength)
         markedSelectionRangeValue = absoluteRange
 
-        _ = owner.editorCore.setImeComposingTextSelection(
+        let result = owner.editorCore.setImeComposingTextSelection(
             text,
             selectionStartOffset: clampedLocation,
             selectionEndOffset: clampedLocation + clampedLength)
 
         selectedRangeValue = absoluteRange
-        owner.rehighlightAndRedraw()
-        owner.notifyDocumentTextChanged()
+        owner.dispatchEditorActionResult(result)
         inputDelegate?.textDidChange(owner)
         inputDelegate?.selectionDidChange(owner)
     }
@@ -156,16 +154,16 @@ final class SweetEditorInputConnectioniOS {
         inputDelegate?.textWillChange(owner)
         if isComposing {
             let committedText = markedTextValue ?? ""
+            let result: EditorActionResultData?
             if committedText.isEmpty {
-                _ = owner.editorCore.finishImePreedit()
+                result = owner.editorCore.finishImePreedit()
             } else {
-                _ = owner.editorCore.commitImeText(committedText)
+                result = owner.editorCore.commitImeText(committedText)
             }
+            owner.dispatchEditorActionResult(result)
         }
         clearLocalCompositionState()
         selectedRangeValue = owner.currentSelectionNSRange()
-        owner.rehighlightAndRedraw()
-        owner.notifyDocumentTextChanged()
         inputDelegate?.textDidChange(owner)
         inputDelegate?.selectionDidChange(owner)
     }
@@ -222,7 +220,6 @@ final class SweetEditorInputConnectioniOS {
         markedTextValue = marked ? text : nil
         isComposing = marked
         selectedRangeValue = NSRange(location: newRange.location + newRange.length, length: 0)
-        owner.notifyDocumentTextChanged()
 
         inputDelegate?.textDidChange(owner)
         inputDelegate?.selectionDidChange(owner)
