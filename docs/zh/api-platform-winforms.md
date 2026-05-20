@@ -18,7 +18,7 @@
 - `EditorCore` 封装 native 调用，`EditorProtocol` 负责二进制 payload 解码。
 - 当前桥接协议为二进制 payload。
 - `EditorControl` 负责输入、绘制、事件发布、Provider 管理。
-- `Document` 创建 / 行文本查询走 UTF-16 边界；渲染模型与编辑结果里的文本字段当前按 UTF-8 解码。
+- `Document` 创建 / 行文本查询走 UTF-16 边界；渲染模型与 `EditorActionResult` payload 里的文本字段当前按 UTF-8 解码。
 
 ## 快速开始
 
@@ -115,7 +115,7 @@ public void SetMaxGutterIcons(int count)
 public void Flush()
 ```
 
-`Flush()` 用于提交待处理更新（装饰 / 布局 / 滚动 / 选区）并触发重绘。装饰批量更新时，建议在最后手动调用一次 `Flush()`。
+`Flush()` 是强制刷新 / 兼容入口。正常编辑、装饰、滚动和选区路径会通过统一分发 `EditorActionResult`，并由 `NeedsRedraw` 决定是否刷新 render model 与重绘；宿主通常不需要在批量装饰更新后手动调用。
 
 ### 编辑 / 行操作 / 撤销重做
 
@@ -209,7 +209,7 @@ public void ClearPhantomTexts()
 public void ClearAllDecorations()
 public void ClearMatchedBrackets()
 
-public TextEditResult InsertSnippet(string snippetTemplate)
+public EditorActionResult InsertSnippet(string snippetTemplate)
 public void StartLinkedEditing(LinkedEditingModel model)
 public bool IsInLinkedEditing()
 public bool LinkedEditingNext()

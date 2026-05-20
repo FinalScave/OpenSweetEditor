@@ -299,8 +299,8 @@ class EditorCore {
 | 方法组 | 说明 |
 |--------|------|
 | `loadDocument()` | 加载文档 |
-| `handleGestureEvent()` | 处理触摸/鼠标事件 → 返回 GestureResult |
-| `handleKeyEvent()` | 处理键盘事件 → 返回 KeyEventResult |
+| `handleGestureEvent()` | 处理触摸/鼠标事件 → 返回 `EditorActionResult` |
+| `handleKeyEvent()` | 处理键盘事件 → 返回 `EditorActionResult` |
 | `insertText()` / `backspace()` / `deleteForward()` | 原子文本操作 |
 | `moveCursor*()` | 光标移动（上下左右、行首行尾） |
 | `setSelection()` / `selectAll()` | 选区管理 |
@@ -313,20 +313,20 @@ class EditorCore {
 
 #### 统一编辑入口
 
-所有文本修改操作最终都通过 `applyEdit()` 执行：
+所有文本修改操作最终都通过内部 `applyEdit()` 执行：
 
 ```cpp
 TextEditResult applyEdit(const TextRange& range, const U8String& new_text, bool record_undo = true);
 ```
 
-这个方法：
+这个方法返回内部编辑原语结果 `TextEditResult`，随后由 `EditorCore` 汇入对外的 `EditorActionResult`。它的职责是：
 1. 记录旧文本（用于 undo）
 2. 执行文档编辑（`Document::replaceU8Text`）
 3. 调整所有 decoration 偏移（`DecorationManager::adjustForEdit`）
 4. 自动展开被编辑区域的折叠（`autoUnfoldForEdit`）
 5. 标记受影响行的布局为 dirty
 6. 推入 undo 栈
-7. 返回精确变更信息（`TextEditResult`）
+7. 返回精确变更信息，供外层 `EditorActionResult.changes` / `contentChanged` 使用
 
 ---
 
@@ -517,9 +517,9 @@ free_editor(editor);
 
 - `build_editor_render_model()` → `EditorRenderModel`
 - `get_layout_metrics()` → `LayoutMetrics`
-- `handle_editor_gesture_event*()` → `GestureResult`
-- `handle_editor_key_event()` → `KeyEventResult`
-- `editor_insert_text()` / `undo()` / `redo()` 等 → `TextEditResult`
+- `handle_editor_gesture_event*()` → `EditorActionResult`
+- `handle_editor_key_event()` → `EditorActionResult`
+- `editor_insert_text()` / `undo()` / `redo()` / IME 写入 / decoration 写入等变更类接口 → `EditorActionResult`
 - `editor_get_scroll_metrics()` → `ScrollMetrics`
 
 此外，`editor_set_line_spans()`、`editor_set_line_diagnostics()`、`editor_set_fold_regions()`、`editor_start_linked_editing()` 等输入型接口，也使用紧凑二进制 payload 传参。
@@ -545,7 +545,7 @@ free_editor(editor);
 
 补充：
 
-- Android 虽然是 JNI 直连，但 `buildRenderModel()`、手势结果、键盘结果、文本编辑结果、滚动度量同样通过二进制协议解码。
+- Android 虽然是 JNI 直连，但 `buildRenderModel()`、`EditorActionResult`、滚动度量等复杂返回同样通过二进制协议解码。
 - Swing / WinForms 当前都走 `ProtocolDecoder` / `EditorProtocol` 读取 UTF-8 字符串字段。
 - Apple 通过手工 bridge + Swift `BinaryReader` 消费同一套二进制布局。
 
@@ -578,10 +578,14 @@ free_editor(editor);
         │  · SCALE → setScale() 更新缩放
         │  · DRAG_SELECT → dragSelectTo() 拖拽选择
         ▼
-  返回 GestureResult (binary payload)
+  返回 EditorActionResult (binary payload)
         │
         ▼
-  平台层检查是否需要重绘
+  平台统一分发 EditorActionResult
+        │  · 根据 changes/contentChanged 派发文本事件
+        │  · 根据 needsImeSync 同步输入法状态
+        │  · 根据 needsAnimation 驱动动画 tick
+        │  · 根据 needsRedraw 决定是否刷新渲染模型
         │
         ▼
   C API: build_editor_render_model()
@@ -620,10 +624,16 @@ free_editor(editor);
         └──→ UndoManager.pushAction()          // 记录 undo
         │
         ▼
-  返回 TextEditResult
-        │  {changes:[{range:{start,end}, new_text}]}
+  生成 TextEditResult（内部）
+        │
         ▼
-  平台层收到变更 → 调用 buildRenderModel() 重绘
+  汇入 EditorActionResult
+        │  {contentChanged, changes, cursorChanged, selectionChanged, needsRedraw, ...}
+        ▼
+  平台统一分发 EditorActionResult
+        │
+        ▼
+  needsRedraw 为 true 时刷新 render model 并重绘
 ```
 
 ---
@@ -671,4 +681,4 @@ void free_editor(intptr_t handle) {
 | **文件内存映射** | `MappedFileBuffer` 使用 mmap 零拷贝打开大文件 |
 | **Undo 操作合并** | 连续单字符输入/删除自动合并，减少内存占用 |
 | **行高缓存** | `EditorCore` 维护 `HashMap<size_t, float> m_line_heights_` 缓存行高 |
-| **二进制 payload 传递** | 渲染模型、布局度量、事件结果、编辑结果走紧凑二进制协议，减少跨语言解析成本 |
+| **二进制 payload 传递** | 渲染模型、布局度量、`EditorActionResult` 等复杂返回走紧凑二进制协议，减少跨语言解析成本 |

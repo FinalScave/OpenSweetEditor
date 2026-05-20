@@ -11,7 +11,7 @@ This document maps to the current Android implementation:
 
 - The main Android path is JNI direct to C++ (not through `c_api.h`).
 - `EditorCore` keeps the native `int` protocol at JNI boundary.
-- `buildRenderModel()`, gesture result, key result, text edit result, and scroll metrics still return by binary protocol, then `ProtocolDecoder` decodes them.
+- Complex returns such as `buildRenderModel()`, `EditorActionResult`, and scroll metrics still return by binary protocol, then `ProtocolDecoder` decodes them.
 - `SweetEditor` exposes semantic enum APIs (`WrapMode`/`FoldArrowMode`/`AutoIndentMode`, etc.).
 
 ## Quick Start
@@ -136,20 +136,20 @@ public void setEditorIconProvider(@Nullable EditorIconProvider provider)
 ### Text Edit / Line Actions / Undo Redo
 
 ```java
-public EditorCore.TextEditResult insertText(String text)
-public EditorCore.TextEditResult replaceText(TextRange range, String newText)
-public EditorCore.TextEditResult deleteText(TextRange range)
+public EditorCore.EditorActionResult insertText(String text)
+public EditorCore.EditorActionResult replaceText(TextRange range, String newText)
+public EditorCore.EditorActionResult deleteText(TextRange range)
 
-public EditorCore.TextEditResult moveLineUp()
-public EditorCore.TextEditResult moveLineDown()
-public EditorCore.TextEditResult copyLineUp()
-public EditorCore.TextEditResult copyLineDown()
-public EditorCore.TextEditResult deleteLine()
-public EditorCore.TextEditResult insertLineAbove()
-public EditorCore.TextEditResult insertLineBelow()
+public EditorCore.EditorActionResult moveLineUp()
+public EditorCore.EditorActionResult moveLineDown()
+public EditorCore.EditorActionResult copyLineUp()
+public EditorCore.EditorActionResult copyLineDown()
+public EditorCore.EditorActionResult deleteLine()
+public EditorCore.EditorActionResult insertLineAbove()
+public EditorCore.EditorActionResult insertLineBelow()
 
-public EditorCore.TextEditResult undo()
-public EditorCore.TextEditResult redo()
+public EditorCore.EditorActionResult undo()
+public EditorCore.EditorActionResult redo()
 public boolean canUndo()
 public boolean canRedo()
 ```
@@ -213,7 +213,7 @@ public <T extends EditorEvent> void unsubscribe(@NonNull Class<T> eventType, @No
 public void flush()
 ```
 
-`flush()` applies pending updates (decoration / layout / scroll / selection) and triggers redraw. For batched decoration updates, call `flush()` once at the end.
+`flush()` is a force-refresh / compatibility entrypoint. Normal edit, decoration, scroll, selection, and IME synchronization paths dispatch `EditorActionResult` through the unified result path, and `needsRedraw` decides whether to refresh the render model and redraw; hosts usually do not need to call it after batched decoration updates.
 
 `CodeLensClickEvent` and `LinkClickEvent` are published through the same generic `subscribe(...)` API. `getLinkTargetAt(...)` returns an empty string when no link matches the requested position.
 
@@ -319,7 +319,7 @@ public void foldAll()
 public void unfoldAll()
 public boolean isLineVisible(int line)
 
-public EditorCore.TextEditResult insertSnippet(String snippetTemplate)
+public EditorCore.EditorActionResult insertSnippet(String snippetTemplate)
 public void startLinkedEditing(LinkedEditingModel model)
 public boolean isInLinkedEditing()
 public boolean linkedEditingNext()

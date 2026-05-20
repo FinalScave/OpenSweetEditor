@@ -50,28 +50,28 @@ func handleGestureEvent(
     modifiers: SEModifier = [],
     wheelDeltaX: Float = 0,
     wheelDeltaY: Float = 0,
-    directScale: Float = 1) -> GestureResultData?
+    directScale: Float = 1) -> EditorActionResultData?
 
 func handleKeyEvent(
     keyCode: SEKeyCode,
     text: String? = nil,
-    modifiers: SEModifier = []) -> KeyEventResultData?
+    modifiers: SEModifier = []) -> EditorActionResultData?
 
-func insertText(_ text: String) -> TextEditResultLite?
-func replaceText(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int, newText: String) -> TextEditResultLite?
-func deleteText(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) -> TextEditResultLite?
+func insertText(_ text: String) -> EditorActionResultData?
+func replaceText(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int, newText: String) -> EditorActionResultData?
+func deleteText(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) -> EditorActionResultData?
 ```
 
 ### Line Actions
 
 ```swift
-func moveLineUp() -> TextEditResultLite?
-func moveLineDown() -> TextEditResultLite?
-func copyLineUp() -> TextEditResultLite?
-func copyLineDown() -> TextEditResultLite?
-func deleteLine() -> TextEditResultLite?
-func insertLineAbove() -> TextEditResultLite?
-func insertLineBelow() -> TextEditResultLite?
+func moveLineUp() -> EditorActionResultData?
+func moveLineDown() -> EditorActionResultData?
+func copyLineUp() -> EditorActionResultData?
+func copyLineDown() -> EditorActionResultData?
+func deleteLine() -> EditorActionResultData?
+func insertLineAbove() -> EditorActionResultData?
+func insertLineBelow() -> EditorActionResultData?
 ```
 
 ### Cursor, Word, IME, Read-only, Auto Indent
@@ -82,9 +82,9 @@ func getCursorPosition() -> (line: Int, column: Int)?
 func getWordRangeAtCursor() -> (startLine: Int, startColumn: Int, endLine: Int, endColumn: Int)
 func getWordAtCursor() -> String
 
-func updateImePreedit(_ text: String, scriptClass: Int32 = 0) -> TextEditResultLite?
-func commitImeText(_ text: String?, scriptClass: Int32 = 0) -> TextEditResultLite?
-func finishImePreedit() -> TextEditResultLite?
+func updateImePreedit(_ text: String, scriptClass: Int32 = 0) -> EditorActionResultData?
+func commitImeText(_ text: String?, scriptClass: Int32 = 0) -> EditorActionResultData?
+func finishImePreedit() -> EditorActionResultData?
 func cancelImePreedit()
 func markImeDocumentRange(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int, scriptClass: Int32 = 0)
 func isComposing() -> Bool
@@ -155,7 +155,7 @@ func setFoldArrowMode(_ mode: FoldArrowMode)
 func setWrapMode(_ mode: WrapMode)
 func setLineSpacing(add: Float, mult: Float)
 
-func insertSnippet(_ template: String) -> TextEditResultLite?
+func insertSnippet(_ template: String) -> EditorActionResultData?
 func startLinkedEditing(model: LinkedEditingModel)
 func isInLinkedEditing() -> Bool
 func linkedEditingNext() -> Bool

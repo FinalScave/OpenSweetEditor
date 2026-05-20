@@ -1,6 +1,6 @@
 # EditorCore / C API 参考
 
-本文档以 `src/include/c_api.h` 为准，描述当前 SweetEditor 核心对外契约（2026-03）。
+本文档以 `src/include/c_api.h` 为准，描述当前 SweetEditor 核心对外契约（2026-05）。
 
 平台 API 文档：
 
@@ -11,7 +11,7 @@
 
 ## 契约边界
 
-- 稳定跨平台 ABI：`extern "C"` + `intptr_t` 句柄 + 二进制 payload（渲染 / 事件 / 编辑结果）。
+- 稳定跨平台 ABI：`extern "C"` + `intptr_t` 句柄 + 二进制 payload（渲染模型 / `EditorActionResult` / 度量）。
 - C++ 内部类（`EditorCore`/`Document`/`TextLayout`）属于实现细节。
 - 文档与代码冲突时，以 `c_api.h`/`c_api.cpp` 为准。
 
@@ -24,7 +24,7 @@
 ## 数据与内存约定
 
 - 对象通过 `intptr_t` 句柄创建/释放。
-- 渲染模型、手势结果、键盘结果、文本编辑结果、滚动度量等复杂返回值通常为 `const uint8_t* + out_size` 二进制 payload，调用方用 `free_binary_data` 释放。
+- 渲染模型、`EditorActionResult`、滚动度量等复杂返回值通常为 `const uint8_t* + out_size` 二进制 payload，调用方用 `free_binary_data` 释放。
 - `get_layout_metrics` 返回 `LayoutMetrics` 二进制 payload（`const uint8_t* + out_size`），同样用 `free_binary_data` 释放。
 - `get_document_line_text` 返回 UTF-16 文本，调用方用 `free_u16_string` 释放。
 - 少量文本查询返回 UTF-8 `const char*`（如 `get_document_text`、`editor_get_selected_text`、`editor_get_word_at_cursor`、`editor_get_link_target_at`）；调用方使用 `free_u8_string` 释放，平台封装层通常会立即复制。

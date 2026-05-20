@@ -17,9 +17,9 @@
 
 - OHOS 主路径是 ArkTS + NAPI 直连共享 C++ 核心，通过 `libsweeteditor.so` 调用。
 - `EditorCore` 在桥接边界保留原生数值协议。
-- `buildRenderModel()`、手势结果、键盘结果、文本编辑结果、滚动度量当前仍通过二进制 payload 返回，再由 `EditorProtocol.ets` 解码。
+- `buildRenderModel()`、`EditorActionResult`、滚动度量等复杂返回当前仍通过二进制 payload 返回，再由 `EditorProtocol.ets` 解码。
 - `Index.ets` 统一 re-export 公开 API，业务侧通常直接从 `@qiplat/sweeteditor` 导入，不需要使用深层路径。
-- 补全面板、Inline Suggestion 条、Selection Menu 等 ArkUI 浮层由平台层实现，但数据来源仍是 C++ render/result model。
+- 补全面板、Inline Suggestion 条、Selection Menu 等 ArkUI 浮层由平台层实现，但数据来源仍是 C++ render model 与 `EditorActionResult`。
 
 ## 快速开始
 
@@ -164,8 +164,8 @@ public onCodeLensClick(listener: EditorEventListener<CodeLensClickEvent>): void
 public offCodeLensClick(listener: EditorEventListener<CodeLensClickEvent>): void
 public onLinkClick(listener: EditorEventListener<LinkClickEvent>): void
 public offLinkClick(listener: EditorEventListener<LinkClickEvent>): void
-public undo(): TextEditResult | null
-public redo(): TextEditResult | null
+public undo(): EditorActionResult
+public redo(): EditorActionResult
 public canUndo(): boolean
 public canRedo(): boolean
 ```
@@ -248,22 +248,22 @@ public getScrollMetrics(): ScrollMetrics
 ### Gesture / Keyboard / Animation
 
 ```ts
-public handleGestureEvent(event: GestureEvent): GestureResult
-public handleSimpleGestureEvent(type: EventType, pointerCount: number, points: number[]): GestureResult
-public tickEdgeScroll(): GestureResult
-public tickFling(): GestureResult
-public tickAnimations(): GestureResult
-public handleKeyEvent(keyCode: number, text: string | null, modifiers: number): KeyEventResult
+public handleGestureEvent(event: GestureEvent): EditorActionResult
+public handleSimpleGestureEvent(type: EventType, pointerCount: number, points: number[]): EditorActionResult
+public tickEdgeScroll(): EditorActionResult
+public tickFling(): EditorActionResult
+public tickAnimations(): EditorActionResult
+public handleKeyEvent(keyCode: number, text: string | null, modifiers: number): EditorActionResult
 ```
 
 ### 文本编辑 / 光标选区 / IME Composition
 
 ```ts
-public insertText(text: string): TextEditResult
-public replaceText(...): TextEditResult
-public deleteText(...): TextEditResult
-public backspace(): TextEditResult
-public deleteForward(): TextEditResult
+public insertText(text: string): EditorActionResult
+public replaceText(...): EditorActionResult
+public deleteText(...): EditorActionResult
+public backspace(): EditorActionResult
+public deleteForward(): EditorActionResult
 public getCursorPosition(): TextPosition
 public getWordRangeAtCursor(): TextRange
 public getWordAtCursor(): string
@@ -271,10 +271,10 @@ public setCursorPosition(line: number, column: number): void
 public setSelection(...): void
 public getSelection(): TextRange | null
 public getSelectedText(): string
-public updateImePreedit(text: string, scriptHint?: number): TextEditResult
-public commitImeText(text: string, scriptHint?: number): TextEditResult
-public cancelImePreedit(): TextEditResult
-public markImeDocumentRange(range: TextRange, scriptHint?: number): TextEditResult
+public updateImePreedit(text: string, scriptHint?: number): EditorActionResult
+public commitImeText(text: string, scriptHint?: number): EditorActionResult
+public cancelImePreedit(): EditorActionResult
+public markImeDocumentRange(range: TextRange, scriptHint?: number): EditorActionResult
 public isComposing(): boolean
 ```
 
@@ -310,7 +310,7 @@ public foldAt(line: number): boolean
 public unfoldAt(line: number): boolean
 public foldAll(): void
 public unfoldAll(): void
-public insertSnippet(snippetTemplate: string): TextEditResult
+public insertSnippet(snippetTemplate: string): EditorActionResult
 public startLinkedEditing(modelOrData: LinkedEditingModel | ArrayBuffer, _size?: number): void
 public cancelLinkedEditing(): void
 public clearAllDecorations(): void

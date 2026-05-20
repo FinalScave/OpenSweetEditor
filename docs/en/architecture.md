@@ -299,8 +299,8 @@ class EditorCore {
 | Method group | Description |
 |--------|------|
 | `loadDocument()` | load document |
-| `handleGestureEvent()` | handle touch/mouse event -> returns `GestureResult` |
-| `handleKeyEvent()` | handle key event -> returns `KeyEventResult` |
+| `handleGestureEvent()` | handle touch/mouse event -> returns `EditorActionResult` |
+| `handleKeyEvent()` | handle key event -> returns `EditorActionResult` |
 | `insertText()` / `backspace()` / `deleteForward()` | atomic text operations |
 | `moveCursor*()` | cursor movement (up/down/left/right, line start/end) |
 | `setSelection()` / `selectAll()` | selection management |
@@ -313,20 +313,20 @@ class EditorCore {
 
 #### Unified edit entry
 
-All text modifications eventually go through `applyEdit()`:
+All text modifications eventually go through the internal `applyEdit()`:
 
 ```cpp
 TextEditResult applyEdit(const TextRange& range, const U8String& new_text, bool record_undo = true);
 ```
 
-This method:
+This method returns the internal edit primitive result `TextEditResult`, which `EditorCore` then folds into the externally visible `EditorActionResult`. Its responsibilities are:
 1. records old text (for undo)
 2. edits document (`Document::replaceU8Text`)
 3. adjusts all decoration offsets (`DecorationManager::adjustForEdit`)
 4. auto-unfolds edited folded area (`autoUnfoldForEdit`)
 5. marks affected lines as dirty
 6. pushes undo action
-7. returns precise change info (`TextEditResult`)
+7. returns precise change info for `EditorActionResult.changes` / `contentChanged`
 
 ---
 
@@ -517,9 +517,9 @@ Current C API path uses binary payload uniformly (native-endian; all supported p
 
 - `build_editor_render_model()` -> `EditorRenderModel`
 - `get_layout_metrics()` -> `LayoutMetrics`
-- `handle_editor_gesture_event*()` -> `GestureResult`
-- `handle_editor_key_event()` -> `KeyEventResult`
-- `editor_insert_text()` / `undo()` / `redo()` etc. -> `TextEditResult`
+- `handle_editor_gesture_event*()` -> `EditorActionResult`
+- `handle_editor_key_event()` -> `EditorActionResult`
+- state-changing APIs such as `editor_insert_text()` / `undo()` / `redo()` / IME writes / decoration writes -> `EditorActionResult`
 - `editor_get_scroll_metrics()` -> `ScrollMetrics`
 
 In addition, input-style APIs such as `editor_set_line_spans()`, `editor_set_line_diagnostics()`, `editor_set_fold_regions()`, `editor_start_linked_editing()` also use compact binary payload as parameters.
@@ -545,7 +545,7 @@ Note: Android currently does not use `c_api.h` call chain. New public features m
 
 Extra:
 
-- Android is JNI direct, but `buildRenderModel()`, gesture result, key result, text edit result, and scroll metrics still decode from binary protocol.
+- Android is JNI direct, but complex returns such as `buildRenderModel()`, `EditorActionResult`, and scroll metrics still decode from binary protocol.
 - Swing / WinForms currently read UTF-8 string fields via `ProtocolDecoder` / `EditorProtocol`.
 - Apple consumes the same binary layout via manual bridge + Swift `BinaryReader`.
 
@@ -578,10 +578,14 @@ Extra:
         │  · SCALE → setScale()
         │  · DRAG_SELECT → dragSelectTo()
         ▼
-  Return GestureResult (binary payload)
+  Return EditorActionResult (binary payload)
         │
         ▼
-  Platform checks if redraw is needed
+  Platform dispatches EditorActionResult through one path
+        │  · emit text events from changes/contentChanged
+        │  · synchronize IME state from needsImeSync
+        │  · drive animation ticks from needsAnimation
+        │  · refresh render model from needsRedraw
         │
         ▼
   C API: build_editor_render_model()
@@ -620,10 +624,16 @@ Extra:
         └──→ UndoManager.pushAction()          // record undo
         │
         ▼
-  Return TextEditResult
-        │  {changes:[{range:{start,end}, new_text}]}
+  Produce TextEditResult internally
+        │
         ▼
-  Platform receives changes -> calls buildRenderModel() to redraw
+  Fold into EditorActionResult
+        │  {contentChanged, changes, cursorChanged, selectionChanged, needsRedraw, ...}
+        ▼
+  Platform dispatches EditorActionResult
+        │
+        ▼
+  If needsRedraw is true, refresh render model and redraw
 ```
 
 ---
@@ -671,4 +681,4 @@ Platform side should ensure:
 | **File memory mapping** | `MappedFileBuffer` uses mmap for zero-copy large-file open |
 | **Undo merge** | adjacent single-char insert/delete auto-merge to reduce memory use |
 | **Line-height cache** | `EditorCore` keeps line-height cache in `HashMap<size_t, float> m_line_heights_` |
-| **Binary payload transport** | render model, layout metrics, event results, edit results all use compact binary protocol to lower cross-language parsing cost |
+| **Binary payload transport** | render model, layout metrics, `EditorActionResult`, and other complex returns use compact binary protocol to lower cross-language parsing cost |

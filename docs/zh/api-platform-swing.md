@@ -120,25 +120,25 @@ public EditorCore getEditorCore()
 public void flush()
 ```
 
-`flush()` 用于提交待处理更新（装饰 / 布局 / 滚动 / 选区）并触发重绘。装饰批量更新时，建议在最后手动调用一次 `flush()`。
+`flush()` 是强制刷新 / 兼容入口。正常编辑、装饰、滚动和选区路径会通过统一分发 `EditorActionResult`，并由 `needsRedraw` 决定是否刷新 render model 与重绘；宿主通常不需要在批量装饰更新后手动调用。
 
 ### 编辑 / 行操作 / 撤销重做
 
 ```java
-public void insertText(String text)
-public TextEditResult replaceText(TextRange range, String newText)
-public TextEditResult deleteText(TextRange range)
+public EditorCore.EditorActionResult insertText(String text)
+public EditorCore.EditorActionResult replaceText(TextRange range, String newText)
+public EditorCore.EditorActionResult deleteText(TextRange range)
 
-public TextEditResult moveLineUp()
-public TextEditResult moveLineDown()
-public TextEditResult copyLineUp()
-public TextEditResult copyLineDown()
-public TextEditResult deleteLine()
-public TextEditResult insertLineAbove()
-public TextEditResult insertLineBelow()
+public EditorCore.EditorActionResult moveLineUp()
+public EditorCore.EditorActionResult moveLineDown()
+public EditorCore.EditorActionResult copyLineUp()
+public EditorCore.EditorActionResult copyLineDown()
+public EditorCore.EditorActionResult deleteLine()
+public EditorCore.EditorActionResult insertLineAbove()
+public EditorCore.EditorActionResult insertLineBelow()
 
-public boolean undo()
-public boolean redo()
+public EditorCore.EditorActionResult undo()
+public EditorCore.EditorActionResult redo()
 public boolean canUndo()
 public boolean canRedo()
 ```
@@ -243,7 +243,7 @@ public void clearInlayHints()
 public void clearPhantomTexts()
 public void clearAllDecorations()
 
-public TextEditResult insertSnippet(String snippetTemplate)
+public EditorCore.EditorActionResult insertSnippet(String snippetTemplate)
 public void startLinkedEditing(LinkedEditingModel model)
 public boolean isInLinkedEditing()
 public boolean linkedEditingNext()

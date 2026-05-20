@@ -1,6 +1,6 @@
 # EditorCore / C API Reference
 
-This document follows `src/include/c_api.h` and describes the current external core contract of SweetEditor (2026-03).
+This document follows `src/include/c_api.h` and describes the current external core contract of SweetEditor (2026-05).
 
 Platform API docs:
 
@@ -11,7 +11,7 @@ Platform API docs:
 
 ## Contract Boundary
 
-- Stable cross-platform ABI: `extern "C"` + `intptr_t` handles + binary payload (render / event / edit result).
+- Stable cross-platform ABI: `extern "C"` + `intptr_t` handles + binary payload (render model / `EditorActionResult` / metrics).
 - Internal C++ classes (`EditorCore`/`Document`/`TextLayout`) are implementation details.
 - If document and code conflict, use `c_api.h`/`c_api.cpp`.
 
@@ -24,7 +24,7 @@ Current bridge status:
 ## Data and Memory Conventions
 
 - Objects are created/freed through `intptr_t` handles.
-- Complex return values like render model, gesture result, key result, text edit result, scroll metrics are usually returned as `const uint8_t* + out_size` binary payload, and caller frees with `free_binary_data`.
+- Complex return values like render model, `EditorActionResult`, and scroll metrics are usually returned as `const uint8_t* + out_size` binary payload, and caller frees with `free_binary_data`.
 - `get_layout_metrics` returns `LayoutMetrics` binary payload (`const uint8_t* + out_size`), also freed by `free_binary_data`.
 - `get_document_line_text` returns UTF-16 text, caller frees with `free_u16_string`.
 - A few text queries return UTF-8 `const char*` (for example `get_document_text`, `editor_get_selected_text`, `editor_get_word_at_cursor`, `editor_get_link_target_at`); caller frees them with `free_u8_string`, although platform wrappers usually copy immediately.

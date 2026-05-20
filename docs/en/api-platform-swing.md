@@ -120,25 +120,25 @@ public EditorCore getEditorCore()
 public void flush()
 ```
 
-`flush()` applies pending updates (decoration / layout / scroll / selection) and triggers redraw. For batched decoration updates, call `flush()` once at the end.
+`flush()` is a force-refresh / compatibility entrypoint. Normal edit, decoration, scroll, and selection paths dispatch `EditorActionResult` through the unified result path, and `needsRedraw` decides whether to refresh the render model and redraw; hosts usually do not need to call it after batched decoration updates.
 
 ### Edit / Line Actions / Undo Redo
 
 ```java
-public void insertText(String text)
-public TextEditResult replaceText(TextRange range, String newText)
-public TextEditResult deleteText(TextRange range)
+public EditorCore.EditorActionResult insertText(String text)
+public EditorCore.EditorActionResult replaceText(TextRange range, String newText)
+public EditorCore.EditorActionResult deleteText(TextRange range)
 
-public TextEditResult moveLineUp()
-public TextEditResult moveLineDown()
-public TextEditResult copyLineUp()
-public TextEditResult copyLineDown()
-public TextEditResult deleteLine()
-public TextEditResult insertLineAbove()
-public TextEditResult insertLineBelow()
+public EditorCore.EditorActionResult moveLineUp()
+public EditorCore.EditorActionResult moveLineDown()
+public EditorCore.EditorActionResult copyLineUp()
+public EditorCore.EditorActionResult copyLineDown()
+public EditorCore.EditorActionResult deleteLine()
+public EditorCore.EditorActionResult insertLineAbove()
+public EditorCore.EditorActionResult insertLineBelow()
 
-public boolean undo()
-public boolean redo()
+public EditorCore.EditorActionResult undo()
+public EditorCore.EditorActionResult redo()
 public boolean canUndo()
 public boolean canRedo()
 ```
@@ -243,7 +243,7 @@ public void clearInlayHints()
 public void clearPhantomTexts()
 public void clearAllDecorations()
 
-public TextEditResult insertSnippet(String snippetTemplate)
+public EditorCore.EditorActionResult insertSnippet(String snippetTemplate)
 public void startLinkedEditing(LinkedEditingModel model)
 public boolean isInLinkedEditing()
 public boolean linkedEditingNext()

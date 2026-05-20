@@ -18,7 +18,7 @@ This document maps to the current WinForms implementation:
 - `EditorCore` wraps native calls, and `EditorProtocol` decodes binary payload.
 - The current bridge protocol is binary payload.
 - `SweetEditorControl` handles input, drawing, event publishing, and provider management.
-- `Document` creation and line-text query use UTF-16 boundary; text fields in render model and edit results are currently decoded as UTF-8.
+- `Document` creation and line-text query use UTF-16 boundary; text fields in the render model and `EditorActionResult` payload are currently decoded as UTF-8.
 
 ## Quick Start
 
@@ -115,7 +115,7 @@ public void SetMaxGutterIcons(int count)
 public void Flush()
 ```
 
-`Flush()` applies pending updates (decoration / layout / scroll / selection) and triggers redraw. For batched decoration updates, call `Flush()` once at the end.
+`Flush()` is a force-refresh / compatibility entrypoint. Normal edit, decoration, scroll, and selection paths dispatch `EditorActionResult` through the unified result path, and `NeedsRedraw` decides whether to refresh the render model and redraw; hosts usually do not need to call it after batched decoration updates.
 
 ### Edit / Line Actions / Undo Redo
 
@@ -210,7 +210,7 @@ public void ClearPhantomTexts()
 public void ClearAllDecorations()
 public void ClearMatchedBrackets()
 
-public TextEditResult InsertSnippet(string snippetTemplate)
+public EditorActionResult InsertSnippet(string snippetTemplate)
 public void StartLinkedEditing(LinkedEditingModel model)
 public bool IsInLinkedEditing()
 public bool LinkedEditingNext()

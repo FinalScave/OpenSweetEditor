@@ -209,7 +209,7 @@ public (int start, int end) GetVisibleLineRange()
 public int GetTotalLineCount()
 ```
 
-`Flush()` commits pending decoration, layout, scroll, selection, and IME state updates and triggers redraw.
+`Flush()` is a force-refresh / compatibility entrypoint. Normal edit, decoration, scroll, selection, and IME synchronization paths dispatch `EditorActionResult` through the unified result path, and `NeedsRedraw` decides whether to refresh the render model and redraw.
 
 ### Providers / completion / ghost / selection menu
 
@@ -324,7 +324,7 @@ public void ClearDiagnostics()
 public void ClearAllDecorations()
 public void ClearMatchedBrackets()
 
-public TextEditResult InsertSnippet(string snippetTemplate)
+public EditorActionResult InsertSnippet(string snippetTemplate)
 public void StartLinkedEditing(LinkedEditingModel model)
 public bool IsInLinkedEditing()
 public bool LinkedEditingNext()

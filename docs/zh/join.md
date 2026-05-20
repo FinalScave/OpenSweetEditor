@@ -124,7 +124,7 @@
 
 - `c_api.h` 新增或修改函数
 - 二进制 payload 字段顺序、类型或枚举值变更
-- `TextEditResult` / `GestureResult` / `KeyEventResult` / `ScrollMetrics` / `LayoutMetrics` 变更
+- `EditorActionResult` / `ScrollMetrics` / `LayoutMetrics` 等 bridge 返回 payload 变更
 - 渲染模型字段变更
 - 和输入法、手势、折叠、装饰相关的核心行为变更
 

@@ -110,7 +110,7 @@ Flutter 以 `TextEditingValue.composing` 为事实来源。`composing` range 有
 Core 负责：
 
 - 维护平台声明的 composition 生命周期。
-- 对 commit / replace / delete / selection 事件给出一致文本编辑结果。
+- 对 commit / replace / delete / selection 事件给出一致文本变更结果，并由外层 action 汇入 `EditorActionResult`。
 - 生成 IME snapshot，包括 selection、platform marked range、surrounding text window、是否需要清理平台 preedit。
 - 渲染 editor composition 装饰，但只渲染真实平台 composition。
 

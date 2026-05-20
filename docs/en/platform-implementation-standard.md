@@ -3,7 +3,7 @@
 > This document defines the conventions and constraints that every SweetEditor platform implementation must follow.
 > The goal is to keep cross-platform behavior consistent while allowing platform-specific rendering and input handling.
 >
-> This document describes the current repository code state (2026-03). If the document and source code are different, use the source code.
+> This document describes the current repository code state (2026-05). If the document and source code are different, use the source code.
 >
 > Constraint levels:
 > - **MUST** — all platforms must comply; violation is a bug.
@@ -22,9 +22,9 @@ The Core layer does not involve UI rendering. It contains only bridging, data mo
 
 | Category | Required Types | Description |
 |---|---|---|
-| **Core Bridge** | `EditorCore`, `Document`, `ProtocolEncoder`, `ProtocolDecoder`, `TextMeasurer`, `EditorOptions` | Native bridge + public core API wrapper |
+| **Core Bridge** | `EditorCore`, `Document`, `ProtocolEncoder`, `ProtocolDecoder`, `TextMeasurer`, `EditorOptions`, `EditorActionResult`, `EditorActionReason` | Native bridge + public core API wrapper; `EditorActionResult` is the unified result carrier for core state-changing APIs |
 | **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollBehavior` | Fundamental value types and enums |
-| **IME** | `ImeActionResult`, `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextModelMode`; `ImeTextUnit` when exposing unit-aware deletion APIs | IME semantic action, synchronization snapshot, and text-context protocol types |
+| **IME** | `ImeActionResult`, `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextModelMode`; `ImeTextUnit` when exposing unit-aware deletion APIs | Internal IME semantic actions, synchronization snapshots, and text-context protocol types; platform synchronization decisions are carried by `EditorActionResult` |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | Decoration data types |
 | **Visual** | `EditorRenderModel`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `ScrollbarRect`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `DiagnosticDecoration`, `CompositionDecoration`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem`, `LinkedEditingRect`, `BracketHighlightRect` | Render model types (geometry semantics follow Section 2.4) |
 | **Snippet** | `LinkedEditingModel`, `TabStopGroup` | Linked editing / tab stop groups |
@@ -271,6 +271,8 @@ If a declarative platform exposes any of these initialization inputs, they MUST 
 
 Section 3.1 defines the bridge/runtime API carried by `EditorCore`. It includes low-level render snapshot, gesture loop, keyboard dispatch, and animation tick methods. These methods are not part of the default host-facing editor surface unless a platform explicitly chooses to expose `EditorCore` itself.
 
+All state-changing `EditorCore` APIs, including configuration writes, gestures, keyboard input, text edits, IME writes, cursor/selection writes, scrolling/navigation, decoration, folding, linked editing, and animation ticks, MUST return `EditorActionResult` or a platform-language equivalent. Query APIs keep their own semantic return values; `buildRenderModel()` is a render snapshot query and does not return `EditorActionResult`. Platform layers MUST pass every non-null `EditorActionResult` to one unified result dispatcher, and MUST NOT infer whether to emit text events, synchronize IME state, run animation, flush, or repaint from the invoked method name, setter category, or local side-effect assumptions.
+
 | Function | Canonical Name | Allowed Variants |
 |---|---|---|
 | **Configuration** | | |
@@ -440,7 +442,7 @@ IME offsets MUST state their coordinate space explicitly: document line/column A
 |---|---|---|
 | IME protocol types | MUST | At minimum include `ImeActionResult`, `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, and `ImeInputContextKind`; platforms that support text-model synchronization MUST also include `ImeTextModelMode` |
 | `ImeTextUnit` | SHOULD / conditional MUST | MUST be present when exposing unit-aware deletion APIs; stable values are `GRAPHEME = 0` and `CODE_POINT = 1` |
-| Synchronization snapshot capability | MUST | Platform input adapters MUST process `ImeActionResult.sync` returned by core; use `getImeSyncSnapshot()` or an equivalent bridge entrypoint when an explicit query is needed |
+| Synchronization snapshot capability | MUST | Platform input adapters MUST process `EditorActionResult.needsImeSync` and `EditorActionResult.imeSync`; use `getImeSyncSnapshot()` or an equivalent bridge entrypoint when an explicit query is needed |
 | Keyboard script hint capability | SHOULD / conditional MUST | SHOULD track keyboard script hints; MUST map platform-provided script hints when they are available |
 | Preedit / composing capability | SHOULD / conditional MUST | Native preedit, composing text, or marked text MUST map to core's preedit / composing semantic family |
 | Commit / replacement capability | MUST / conditional MUST | Native commits MUST map to core; explicit replacement ranges MUST map to the corresponding document, input-context, or text-model replacement semantic family |
@@ -453,7 +455,7 @@ IME offsets MUST state their coordinate space explicitly: document line/column A
 | `getComposingRange()` | SHOULD | Useful for platform synchronization and diagnostics; returns no range when inactive |
 | `getComposingSessionRange()` | SHOULD | Useful for platform synchronization and diagnostics; returns no range when inactive |
 
-`ImeSyncSnapshot` semantics MUST cover: document cursor, document selection, whether a composition session exists, visible composition range, platform marked range, platform text window text and start offset, selection/composing offsets, `ImePreeditStorage`, `ImeContextPolicy`, and whether the platform should clear preedit. `ImeInputContext` semantics MUST cover: `id`, `revision`, `documentStartOffset`, `text`, `selection`, `hasComposition`, `composition`, and `kind`. `ImeActionResult` semantics MUST cover: `handled`, `contentChanged`, `cursorChanged`, `selectionChanged`, `editResult`, and `sync`.
+`ImeSyncSnapshot` semantics MUST cover: document cursor, document selection, whether a composition session exists, visible composition range, platform marked range, platform text window text and start offset, selection/composing offsets, `ImePreeditStorage`, `ImeContextPolicy`, and whether the platform should clear preedit. `ImeInputContext` semantics MUST cover: `id`, `revision`, `documentStartOffset`, `text`, `selection`, `hasComposition`, `composition`, and `kind`. `ImeActionResult` is the core-internal IME semantic action result; when crossing the bridge to platform code, its contents MUST be folded into `EditorActionResult` and exposed through `needsImeSync` / `imeSync`.
 
 The complete core bridge function list is defined by `src/include/editor_core.h` and `src/include/c_api.h`. This standard constrains IME semantics and protocol fields, not whether every core bridge function is exposed as a host-facing API.
 
@@ -477,7 +479,7 @@ The complete core bridge function list is defined by `src/include/editor_core.h`
 
 ### 3.2 Host-Facing Editor Public API
 
-Section 3.2 defines the host-facing editor API. It intentionally excludes low-level `EditorCore` gesture-loop, animation-tick, and render-model production methods such as `handleGestureEvent(...)`, `tickEdgeScroll()`, and `buildRenderModel()`. `flush()` remains part of this layer as the host-triggered synchronization API. On imperative platforms this API is exposed directly by the widget entry class; on declarative platforms it is exposed by `SweetEditorController` and forwards to the associated `SweetEditor` runtime without implying controller-side ownership of editor/session state. Except for `whenReady(...)` itself and equivalent readiness helpers, imperative controller calls on declarative platforms are only valid after the associated editor instance becomes ready. Initial document, theme, settings, key map, or other first-frame configuration that must exist before initial attachment MUST be supplied through declarative construction parameters or an equivalent platform-native initialization path.
+Section 3.2 defines the host-facing editor API. It intentionally excludes low-level `EditorCore` gesture-loop, animation-tick, and render-model production methods such as `handleGestureEvent(...)`, `tickEdgeScroll()`, and `buildRenderModel()`. Host-facing state-changing APIs may return `void`, return `EditorActionResult`, or return a platform-equivalent result according to platform conventions; whenever the underlying call produces an `EditorActionResult`, the platform runtime MUST process it through the unified result dispatcher. `flush()` is no longer a required standard host-facing API. Platforms MAY keep it as a force-refresh, diagnostic, or compatibility API, but normal refresh/redraw decisions MUST come from `EditorActionResult.needsRedraw`. On imperative platforms this API is exposed directly by the widget entry class; on declarative platforms it is exposed by `SweetEditorController` and forwards to the associated `SweetEditor` runtime without implying controller-side ownership of editor/session state. Except for `whenReady(...)` itself and equivalent readiness helpers, imperative controller calls on declarative platforms are only valid after the associated editor instance becomes ready. Initial document, theme, settings, key map, or other first-frame configuration that must exist before initial attachment MUST be supplied through declarative construction parameters or an equivalent platform-native initialization path.
 
 | Function | Canonical Name | Allowed Variants |
 |---|---|---|
@@ -586,8 +588,6 @@ Section 3.2 defines the host-facing editor API. It intentionally excludes low-le
 | Clear guides | `clearGuides()` | — |
 | Clear diagnostics | `clearDiagnostics()` | — |
 | Clear all decorations | `clearAllDecorations()` | — |
-| **Flush** | | |
-| Flush | `flush()` | — |
 | **Query** | | |
 | Visible line range | `getVisibleLineRange()` | property: `visibleLineRange` / `VisibleLineRange { get; }` |
 | Total line count | `getTotalLineCount()` | property: `totalLineCount` / `TotalLineCount { get; }` |
@@ -1110,7 +1110,7 @@ Editor options and behavior/layout configuration MUST be centralized through the
 
 All platforms MUST expose the following settings through getter/setter pairs (or properties):
 
-| Field | Type | Default | setter | getter | Effect | Description |
+| Field | Type | Default | setter | getter | Typical Impact | Description |
 |---|---|---|---|---|---|---|
 | `editorTextSize` | float | Platform-dependent | `setEditorTextSize(size)` | `getEditorTextSize()` | `relayout` | Editor text size |
 | `typeface` / `fontFamily` | Platform font type | `monospace` | `setTypeface(typeface)` / `setFontFamily(family)` | `getTypeface()` / `getFontFamily()` | `relayout` | Font family |
@@ -1131,13 +1131,15 @@ All platforms MUST expose the following settings through getter/setter pairs (or
 | `decorationScrollRefreshMinIntervalMs` | long | 16 | `setDecorationScrollRefreshMinIntervalMs(ms)` | `getDecorationScrollRefreshMinIntervalMs()` | `provider-policy` | Decoration scroll refresh minimum interval (ms) |
 | `decorationOverscanViewportMultiplier` | float | 1.5 | `setDecorationOverscanViewportMultiplier(mult)` | `getDecorationOverscanViewportMultiplier()` | `provider-policy` | Decoration overscan viewport multiplier |
 
-> All setter calls MUST take effect immediately.
+> All setter calls MUST take effect immediately and pass the core-returned `EditorActionResult` to the unified result dispatcher.
 >
-> Effect classification:
-> - `repaint`: MUST trigger an immediate repaint or equivalent visual refresh, without requiring text relayout.
-> - `relayout`: MUST trigger layout invalidation and rebuild the render model or an equivalent relayout path immediately.
-> - `runtime-transition`: MUST apply immediately and safely handle active runtime state transitions required by the setting. A `runtime-transition` setting does not require repaint or relayout unless the current visible state actually changes.
-> - `provider-policy`: MUST immediately affect subsequent provider scheduling / refresh behavior. It does not require repaint or relayout unless the implementation explicitly triggers a refresh as part of applying the new policy.
+> Typical impact describes host-visible semantics only. It is not the basis for platform flush, repaint, or relayout decisions. Whether to rebuild the render model, synchronize IME state, continue animation, or repaint MUST be driven by `EditorActionResult` fields such as `needsRedraw`, `needsImeSync`, and `needsAnimation`.
+>
+> Typical impact categories:
+> - `repaint`: usually affects visual refresh without requiring text relayout.
+> - `relayout`: usually affects layout or render-model production.
+> - `runtime-transition`: immediately affects subsequent editing behavior and safely handles the active runtime transition required by the setting.
+> - `provider-policy`: immediately affects subsequent provider scheduling / refresh behavior.
 >
 > `readOnly` is a `runtime-transition` setting: when switching to read-only while an IME composition is active, the platform MUST finish or cancel the active platform composition before blocking subsequent edit requests.
 >
@@ -1145,7 +1147,7 @@ All platforms MUST expose the following settings through getter/setter pairs (or
 >
 > `gutterSticky` is platform-dependent by default. Desktop-style platforms SHOULD default to `true`; mobile / touch-first platforms SHOULD default to `false`.
 >
-> `autoIndentMode`, `backspaceUnindent`, and `readOnly` are also `runtime-transition` settings. They MUST affect subsequent editing behavior immediately, but they do not require `flush()`, repaint, or relayout if no visible state changes at the moment of the setter call.
+> `autoIndentMode`, `backspaceUnindent`, and `readOnly` are also `runtime-transition` settings. They MUST affect subsequent editing behavior immediately; if there is no visible state change at the moment of the setter call, the core-returned `EditorActionResult` should not ask the platform to refresh visible state.
 
 ---
 
@@ -1242,16 +1244,21 @@ Event payloads MUST be defined per-event. Platforms MUST NOT assume or require a
 | `ContextMenuItemClickEvent` *(platform-specific)* | `item: ContextMenuItem`, `request: ContextMenuRequest` | Clicked custom context-menu item and the immutable request snapshot used to build that menu |
 | `SelectionMenuItemClickEvent` *(platform-specific)* | `item: SelectionMenuItem` | Clicked custom selection-menu item |
 
-### 11.4 Gesture Result Contract
+### 11.4 `EditorActionResult` Gesture Field Contract
 
-Platforms MAY expose the raw return value of `handleGestureEvent(...)` / `handleGestureEventEx(...)` or MAY consume it internally, but if it is surfaced in public APIs or platform-internal bridge types, the following fields MUST preserve the Core semantics:
+Platforms MAY expose the return value of `handleGestureEvent(...)` / `handleGestureEventEx(...)` directly, or consume it internally only; however, the gesture return value MUST be `EditorActionResult` or a platform-equivalent type. The following gesture-related fields MUST keep semantics consistent with Core and be consumed by the unified result dispatcher:
 
 | Field | Type | MUST/MAY | Description |
 |---|---|---|---|
+| `gestureType` | `GestureType` | **MUST** | Gesture semantics recognized by core; `UNDEFINED` means the action was not produced by gesture handling |
+| `gestureEventType` | `EventType` | **MUST** | Original event type that produced this gesture semantics |
+| `tapPoint` | `PointF` | **MUST** | Gesture hit point in editor-local coordinates |
 | `hitTarget` | `HitTargetType` + platform-aligned payload | **MUST** | Hit-test result for the current gesture location |
-| `pointerCursorType` | `PointerCursorType` | **MUST** on desktop, **MAY** on touch-only platforms | Pointer cursor hint for the current mouse location |
+| `pointerCursorAfter` / `pointerCursorChanged` | `PointerCursorType` / boolean | **MUST** on desktop, **MAY** on touch-only platforms | Pointer cursor hint for the current mouse location, plus whether the platform cursor should update |
+| `needsEdgeScroll` / `needsFling` / `needsAnimation` | boolean | **MUST** | Whether the platform should continue edge-scroll, fling, or unified animation ticks |
+| `isHandleDrag` | boolean | Mobile **SHOULD** | Whether the current gesture is a selection-handle drag |
 
-> Desktop platforms SHOULD apply `pointerCursorType` immediately after gesture processing for responsive cursor updates. Touch-only platforms MAY omit this field entirely, or ignore the visual cursor change if they still surface it for compatibility.
+> Desktop platforms SHOULD apply `pointerCursorAfter` immediately when `pointerCursorChanged` is true for responsive cursor-shape feedback. Touch-only platforms MAY ignore cursor-shape changes entirely.
 
 ### 11.5 ContextMenu Standard Contract
 
@@ -1654,7 +1661,7 @@ Multiple CodeLens items on the same code line **MUST** be ordered by `column` as
 
 > Desktop platforms SHOULD map `pointerCursorType` to the native cursor shape, typically `TEXT` for text editing regions, `HAND` for clickable interactive content, and `DEFAULT` for neutral chrome such as scrollbars or gutter areas when appropriate.
 
-> On platforms that surface both fields, `GestureResult.pointerCursorType` and `EditorRenderModel.pointerCursorType` SHOULD remain semantically consistent. Platforms MAY use the gesture result for immediate cursor updates and the render model as the latest stable snapshot state.
+> On platforms that surface both fields, `EditorActionResult.pointerCursorAfter` and `EditorRenderModel.pointerCursorType` SHOULD remain semantically consistent. Platforms MAY use the former for immediate cursor updates and the render model as the latest stable snapshot state.
 
 **`VisualRun`** - One resolved render run
 
@@ -1868,7 +1875,7 @@ Accessibility support is at the MAY level, but implementations SHOULD follow the
 
 ## 23. Versioning
 
-This standard applies to SweetEditor platform implementations as of 2026-03. When the C++ core adds new enums, events, or API methods, all platforms MUST be updated to match within the same release cycle.
+This standard applies to SweetEditor platform implementations as of 2026-05. When the C++ core adds new enums, events, or API methods, all platforms MUST be updated to match within the same release cycle.
 
 ### 23.1 Platform Package Version Numbering
 

@@ -17,9 +17,9 @@ This document maps to the current OHOS implementation:
 
 - The main OHOS path is ArkTS + NAPI direct to the shared C++ core through `libsweeteditor.so`.
 - `EditorCore` keeps the native numeric protocol at the bridge boundary.
-- `buildRenderModel()`, gesture result, key result, text edit result, and scroll metrics still return by binary payload and are decoded by `EditorProtocol.ets`.
+- Complex returns such as `buildRenderModel()`, `EditorActionResult`, and scroll metrics still return by binary payload and are decoded by `EditorProtocol.ets`.
 - `Index.ets` re-exports the public API surface, so consumers normally import from `@qiplat/sweeteditor` instead of deep module paths.
-- ArkUI overlays such as completion popup, inline suggestion bar, and selection menu are platform-side UI built from the C++ render/result model.
+- ArkUI overlays such as completion popup, inline suggestion bar, and selection menu are platform-side UI built from the C++ render model and `EditorActionResult`.
 
 ## Quick Start
 
@@ -164,8 +164,8 @@ public onCodeLensClick(listener: EditorEventListener<CodeLensClickEvent>): void
 public offCodeLensClick(listener: EditorEventListener<CodeLensClickEvent>): void
 public onLinkClick(listener: EditorEventListener<LinkClickEvent>): void
 public offLinkClick(listener: EditorEventListener<LinkClickEvent>): void
-public undo(): TextEditResult | null
-public redo(): TextEditResult | null
+public undo(): EditorActionResult
+public redo(): EditorActionResult
 public canUndo(): boolean
 public canRedo(): boolean
 ```
@@ -248,22 +248,22 @@ public getScrollMetrics(): ScrollMetrics
 ### Gesture / Keyboard / Animation
 
 ```ts
-public handleGestureEvent(event: GestureEvent): GestureResult
-public handleSimpleGestureEvent(type: EventType, pointerCount: number, points: number[]): GestureResult
-public tickEdgeScroll(): GestureResult
-public tickFling(): GestureResult
-public tickAnimations(): GestureResult
-public handleKeyEvent(keyCode: number, text: string | null, modifiers: number): KeyEventResult
+public handleGestureEvent(event: GestureEvent): EditorActionResult
+public handleSimpleGestureEvent(type: EventType, pointerCount: number, points: number[]): EditorActionResult
+public tickEdgeScroll(): EditorActionResult
+public tickFling(): EditorActionResult
+public tickAnimations(): EditorActionResult
+public handleKeyEvent(keyCode: number, text: string | null, modifiers: number): EditorActionResult
 ```
 
 ### Text Edit / Cursor / Selection / Composition
 
 ```ts
-public insertText(text: string): TextEditResult
-public replaceText(...): TextEditResult
-public deleteText(...): TextEditResult
-public backspace(): TextEditResult
-public deleteForward(): TextEditResult
+public insertText(text: string): EditorActionResult
+public replaceText(...): EditorActionResult
+public deleteText(...): EditorActionResult
+public backspace(): EditorActionResult
+public deleteForward(): EditorActionResult
 public getCursorPosition(): TextPosition
 public getWordRangeAtCursor(): TextRange
 public getWordAtCursor(): string
@@ -271,10 +271,10 @@ public setCursorPosition(line: number, column: number): void
 public setSelection(...): void
 public getSelection(): TextRange | null
 public getSelectedText(): string
-public updateImePreedit(text: string, scriptHint?: number): TextEditResult
-public commitImeText(text: string, scriptHint?: number): TextEditResult
-public cancelImePreedit(): TextEditResult
-public markImeDocumentRange(range: TextRange, scriptHint?: number): TextEditResult
+public updateImePreedit(text: string, scriptHint?: number): EditorActionResult
+public commitImeText(text: string, scriptHint?: number): EditorActionResult
+public cancelImePreedit(): EditorActionResult
+public markImeDocumentRange(range: TextRange, scriptHint?: number): EditorActionResult
 public isComposing(): boolean
 ```
 
@@ -310,7 +310,7 @@ public foldAt(line: number): boolean
 public unfoldAt(line: number): boolean
 public foldAll(): void
 public unfoldAll(): void
-public insertSnippet(snippetTemplate: string): TextEditResult
+public insertSnippet(snippetTemplate: string): EditorActionResult
 public startLinkedEditing(modelOrData: LinkedEditingModel | ArrayBuffer, _size?: number): void
 public cancelLinkedEditing(): void
 public clearAllDecorations(): void

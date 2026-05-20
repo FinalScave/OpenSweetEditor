@@ -130,7 +130,7 @@ If any item below is touched, do not change only one layer:
 
 - New or changed function in `c_api.h`
 - Binary payload field order/type/enum value changed
-- `TextEditResult` / `GestureResult` / `KeyEventResult` / `ScrollMetrics` / `LayoutMetrics` changed
+- `EditorActionResult` / `ScrollMetrics` / `LayoutMetrics` or other bridge return payload changed
 - Render-model fields changed
 - Core behavior changed for IME, gesture, fold, or decorations
 

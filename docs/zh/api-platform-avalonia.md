@@ -212,7 +212,7 @@ public (int start, int end) GetVisibleLineRange()
 public int GetTotalLineCount()
 ```
 
-`Flush()` 用于提交待处理更新（装饰、布局、滚动、选区、IME 同步）并触发重绘。
+`Flush()` 是强制刷新 / 兼容入口。正常编辑、装饰、滚动、选区和 IME 同步路径会通过统一分发 `EditorActionResult`，并由 `NeedsRedraw` 决定是否刷新 render model 与重绘。
 
 ### Provider / Completion / Ghost / Selection Menu
 
@@ -332,7 +332,7 @@ public void ClearDiagnostics()
 public void ClearAllDecorations()
 public void ClearMatchedBrackets()
 
-public TextEditResult InsertSnippet(string snippetTemplate)
+public EditorActionResult InsertSnippet(string snippetTemplate)
 public void StartLinkedEditing(LinkedEditingModel model)
 public bool IsInLinkedEditing()
 public bool LinkedEditingNext()

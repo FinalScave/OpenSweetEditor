@@ -3,7 +3,7 @@
 > 本文档定义了每个 SweetEditor 平台实现必须遵循的约定和约束。
 > 目标是在允许平台特定渲染和输入处理的同时，保持跨平台行为一致。
 >
-> 本文档描述的是当前仓库代码状态（2026-03）。若文档与源码不一致，以源码为准。
+> 本文档描述的是当前仓库代码状态（2026-05）。若文档与源码不一致，以源码为准。
 >
 > 约束级别：
 > - **MUST（必须）** — 所有平台必须遵守；违反即为 bug。
@@ -22,9 +22,9 @@ Core 层不涉及 UI 渲染，仅包含桥接、数据模型和协议编解码�
 
 | 逻辑分类 | 必须包含的类型 | 说明 |
 |---|---|---|
-| **Core Bridge** | `EditorCore`, `Document`, `ProtocolEncoder`, `ProtocolDecoder`, `TextMeasurer`, `EditorOptions` | 原生桥接 + 公共核心 API 封装 |
+| **Core Bridge** | `EditorCore`, `Document`, `ProtocolEncoder`, `ProtocolDecoder`, `TextMeasurer`, `EditorOptions`, `EditorActionResult`, `EditorActionReason` | 原生桥接 + 公共核心 API 封装；`EditorActionResult` 是变更类 core API 的统一结果载体 |
 | **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollBehavior` | 基础值类型与枚举 |
-| **IME** | `ImeActionResult`, `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextModelMode`；暴露 unit-aware 删除 API 时包含 `ImeTextUnit` | IME 语义动作、同步快照和文本上下文协议类型 |
+| **IME** | `ImeActionResult`, `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextModelMode`；暴露 unit-aware 删除 API 时包含 `ImeTextUnit` | IME 内部语义动作、同步快照和文本上下文协议类型；平台侧同步决策由 `EditorActionResult` 承载 |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | 装饰数据类型 |
 | **Visual** | `EditorRenderModel`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `ScrollbarRect`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `DiagnosticDecoration`, `CompositionDecoration`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem`, `LinkedEditingRect`, `BracketHighlightRect` | 渲染模型类型（几何语义见第 2.4 节） |
 | **Snippet** | `LinkedEditingModel`, `TabStopGroup` | 联动编辑 / Tab stop 分组 |
@@ -271,6 +271,8 @@ controller.whenReady(() {
 
 第 3.1 节定义由 `EditorCore` 承载的 bridge/runtime API。这里包含低层渲染快照、手势循环、键盘分发和动画 tick 方法。除非平台显式选择对外暴露 `EditorCore` 本身，否则这些方法不属于默认的宿主可见编辑器接口表面。
 
+所有变更类 `EditorCore` API（包括配置写入、手势、键盘、文本编辑、IME 写入、光标/选区写入、滚动/导航、decoration、folding、linked editing 和动画 tick）MUST 返回 `EditorActionResult` 或平台语言中的等价类型。查询类 API 继续返回自身语义值；`buildRenderModel()` 属于渲染快照查询，不返回 `EditorActionResult`。平台层 MUST 将每个非空 `EditorActionResult` 交给统一结果分发入口处理，不能再根据调用的方法名、setter 类型或局部经验自行推断是否需要触发文本事件、IME 同步、动画、flush 或 repaint。
+
 | 功能 | 标准名称 | 允许的变体 |
 |---|---|---|
 | **配置** | | |
@@ -440,7 +442,7 @@ IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextR
 |---|---|---|
 | IME 协议类型 | MUST | 至少包含 `ImeActionResult`、`ImeSyncSnapshot`、`ImeInputContext`、`ImeTextRange`、`ImeScriptClass`、`ImePreeditStorage`、`ImeContextPolicy`、`ImeInputContextKind`；支持 text-model 同步的平台还 MUST 包含 `ImeTextModelMode` |
 | `ImeTextUnit` | SHOULD / 条件性 MUST | 暴露 unit-aware 删除 API 时 MUST 存在；稳定值为 `GRAPHEME = 0`、`CODE_POINT = 1` |
-| 同步快照能力 | MUST | 平台输入适配层 MUST 能处理 core 返回的 `ImeActionResult.sync`；需要主动查询时使用 `getImeSyncSnapshot()` 或等价桥接入口 |
+| 同步快照能力 | MUST | 平台输入适配层 MUST 能处理 `EditorActionResult.needsImeSync` 与 `EditorActionResult.imeSync`；需要主动查询时使用 `getImeSyncSnapshot()` 或等价桥接入口 |
 | 键盘脚本 hint 能力 | SHOULD / 条件性 MUST | SHOULD 记录键盘脚本 hint；平台提供 script hint 时 MUST 映射 |
 | preedit / composing 能力 | SHOULD / 条件性 MUST | 平台收到原生 preedit、composing text 或 marked text 时 MUST 映射到 core 的 preedit / composing 语义族 |
 | commit / replacement 能力 | MUST / 条件性 MUST | 原生提交 MUST 映射；平台报告明确 replacement 范围时 MUST 映射到 document、input-context 或 text-model 中对应的 replacement 语义族 |
@@ -453,7 +455,7 @@ IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextR
 | `getComposingRange()` | SHOULD | 供平台同步和诊断使用；未活跃时返回无 range |
 | `getComposingSessionRange()` | SHOULD | 供平台同步和诊断使用；未活跃时返回无 range |
 
-`ImeSyncSnapshot` 的语义字段 MUST 覆盖：文档光标、文档选区、是否存在 composition session、可见 composition 范围、平台 marked range、platform text window 文本及其 start offset、selection/composing offsets、`ImePreeditStorage`、`ImeContextPolicy`、以及是否要求平台清除 preedit。`ImeInputContext` 的语义字段 MUST 覆盖：`id`、`revision`、`documentStartOffset`、`text`、`selection`、`hasComposition`、`composition`、`kind`。`ImeActionResult` 的语义字段 MUST 覆盖：`handled`、`contentChanged`、`cursorChanged`、`selectionChanged`、`editResult`、`sync`。
+`ImeSyncSnapshot` 的语义字段 MUST 覆盖：文档光标、文档选区、是否存在 composition session、可见 composition 范围、平台 marked range、platform text window 文本及其 start offset、selection/composing offsets、`ImePreeditStorage`、`ImeContextPolicy`、以及是否要求平台清除 preedit。`ImeInputContext` 的语义字段 MUST 覆盖：`id`、`revision`、`documentStartOffset`、`text`、`selection`、`hasComposition`、`composition`、`kind`。`ImeActionResult` 是 core 内部 IME 语义动作结果；跨 bridge 返回给平台侧时，其内容 MUST 汇入 `EditorActionResult`，并通过 `needsImeSync` / `imeSync` 暴露给平台输入适配层。
 
 完整 core bridge 函数列表以 `src/include/editor_core.h` 与 `src/include/c_api.h` 为准。本标准只约束平台必须保持的 IME 语义和协议字段，不要求把每个 core bridge 函数都暴露为宿主可见 API。
 
@@ -477,7 +479,7 @@ IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextR
 
 ### 3.2 宿主可见的编辑器公共 API
 
-第 3.2 节定义宿主可见的编辑器 API。这里有意排除了低层 `EditorCore` 手势循环、动画 tick 和渲染模型生成方法，例如 `handleGestureEvent(...)`、`tickEdgeScroll()`、`buildRenderModel()`。`flush()` 继续保留在这一层，作为宿主触发的同步 API。命令式平台上，该 API 由控件入口类直接暴露；声明式平台上，该 API 由 `SweetEditorController` 暴露，并转发到关联的 `SweetEditor` runtime，而不意味着 controller 持有 editor/session 状态。除 `whenReady(...)` 本身及等价的 ready helper 外，声明式平台上的 controller 命令式调用只有在关联 editor 实例 ready 之后才有效。若 document、theme、settings、key map 或其他首帧前必须存在的配置需要在首次 attach 前确定，MUST 通过声明式构造参数或等价的平台原生初始化路径提供。
+第 3.2 节定义宿主可见的编辑器 API。这里有意排除了低层 `EditorCore` 手势循环、动画 tick 和渲染模型生成方法，例如 `handleGestureEvent(...)`、`tickEdgeScroll()`、`buildRenderModel()`。变更类宿主 API 可以按平台习惯返回 `void`、返回 `EditorActionResult`，或返回平台等价结果；但只要底层调用产生 `EditorActionResult`，平台 runtime 就 MUST 经统一结果分发入口处理它。`flush()` 不再是宿主可见 API 的标准必备项；平台 MAY 保留它作为强制刷新、诊断或兼容 API，但正常刷新/重绘决策 MUST 来自 `EditorActionResult.needsRedraw`。命令式平台上，该 API 由控件入口类直接暴露；声明式平台上，该 API 由 `SweetEditorController` 暴露，并转发到关联的 `SweetEditor` runtime，而不意味着 controller 持有 editor/session 状态。除 `whenReady(...)` 本身及等价的 ready helper 外，声明式平台上的 controller 命令式调用只有在关联 editor 实例 ready 之后才有效。若 document、theme、settings、key map 或其他首帧前必须存在的配置需要在首次 attach 前确定，MUST 通过声明式构造参数或等价的平台原生初始化路径提供。
 
 | 功能 | 标准名称 | 允许的变体 |
 |---|---|---|
@@ -586,8 +588,6 @@ IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextR
 | 清除 guides | `clearGuides()` | — |
 | 清除 diagnostics | `clearDiagnostics()` | — |
 | 清除所有装饰 | `clearAllDecorations()` | — |
-| **刷新** | | |
-| 刷新 | `flush()` | — |
 | **查询** | | |
 | 可见行范围 | `getVisibleLineRange()` | property: `visibleLineRange` / `VisibleLineRange { get; }` |
 | 总行数 | `getTotalLineCount()` | property: `totalLineCount` / `TotalLineCount { get; }` |
@@ -1111,7 +1111,7 @@ interface SelectionMenuListener {
 
 所有平台 MUST 通过 getter/setter 对（或属性）暴露以下设置：
 
-| 字段 | 类型 | 默认值 | setter | getter | 副作用 | 说明 |
+| 字段 | 类型 | 默认值 | setter | getter | 典型影响 | 说明 |
 |---|---|---|---|---|---|---|
 | `editorTextSize` | float | 平台相关 | `setEditorTextSize(size)` | `getEditorTextSize()` | `relayout` | 编辑器文本字号 |
 | `typeface` / `fontFamily` | 平台字体类型 | `monospace` | `setTypeface(typeface)` / `setFontFamily(family)` | `getTypeface()` / `getFontFamily()` | `relayout` | 字体 |
@@ -1132,15 +1132,17 @@ interface SelectionMenuListener {
 | `decorationScrollRefreshMinIntervalMs` | long | 16 | `setDecorationScrollRefreshMinIntervalMs(ms)` | `getDecorationScrollRefreshMinIntervalMs()` | `provider-policy` | 装饰滚动刷新最小间隔（毫秒） |
 | `decorationOverscanViewportMultiplier` | float | 1.5 | `setDecorationOverscanViewportMultiplier(mult)` | `getDecorationOverscanViewportMultiplier()` | `provider-policy` | 装饰预渲染视口倍数 |
 
-> 所有 setter 调用后 MUST 立即生效。
+> 所有 setter 调用后 MUST 立即生效，并将 core 返回的 `EditorActionResult` 交给统一结果分发入口处理。
 >
-> 副作用分类：
-> - `repaint`：MUST 立即触发重绘或等效的视觉刷新，不要求文本重新布局。
-> - `relayout`：MUST 立即触发布局失效，并重建 render model 或走等效的重新布局路径。
-> - `runtime-transition`：MUST 立即生效，并安全处理该设置要求的运行态切换。`runtime-transition` 设置只有在当前可见状态实际发生变化时，才要求重绘或重新布局。
-> - `provider-policy`：MUST 立即影响后续 provider 的调度 / 刷新策略。除非实现明确在应用新策略时主动触发 refresh，否则不要求重绘或重新布局。
+> 典型影响仅用于说明宿主可预期的语义，不是平台判断 flush、repaint 或 relayout 的依据。是否重建 render model、刷新 IME 状态、触发动画或重绘，MUST 由 `EditorActionResult` 的 `needsRedraw`、`needsImeSync`、`needsAnimation` 等字段决定。
 >
-> `autoIndentMode`、`backspaceUnindent` 和 `readOnly` 也属于 `runtime-transition` 设置。它们必须立即影响后续编辑行为，但在 setter 调用当下若没有可见状态变化，则不要求 `flush()`、重绘或重新布局。
+> 典型影响说明：
+> - `repaint`：通常只影响视觉刷新，不要求文本重新布局。
+> - `relayout`：通常影响布局或 render model。
+> - `runtime-transition`：立即影响后续编辑行为，并安全处理该设置要求的运行态切换。
+> - `provider-policy`：立即影响后续 provider 的调度 / 刷新策略。
+>
+> `autoIndentMode`、`backspaceUnindent` 和 `readOnly` 也属于 `runtime-transition` 设置。它们必须立即影响后续编辑行为；若 setter 调用当下没有可见状态变化，core 返回的 `EditorActionResult` 不应要求平台刷新可见状态。
 >
 > `contentStartPadding` 的默认值为平台相关，且 MUST `>= 0`。`0` 是中性的基线值，但平台 MAY 选择非零的视觉默认值。
 >
@@ -1241,16 +1243,21 @@ ContextMenuEvent      // 具有显式上下文菜单手势入口的平台
 | `ContextMenuItemClickEvent` *(平台特定)* | `item: ContextMenuItem`, `request: ContextMenuRequest` | 被点击的自定义上下文菜单项，以及构建该菜单时使用的不可变请求快照 |
 | `SelectionMenuItemClickEvent` *(平台特定)* | `item: SelectionMenuItem` | 被点击的自定义选择菜单项 |
 
-### 11.4 GestureResult 契约
+### 11.4 `EditorActionResult` 手势字段契约
 
-平台 MAY 直接暴露 `handleGestureEvent(...)` / `handleGestureEventEx(...)` 的返回值，也 MAY 仅在内部消费；但若它出现在公共 API 或平台内部桥接类型中，下列字段 MUST 保持与 Core 一致的语义：
+平台 MAY 直接暴露 `handleGestureEvent(...)` / `handleGestureEventEx(...)` 的返回值，也 MAY 仅在内部消费；但手势处理的返回值 MUST 是 `EditorActionResult` 或平台等价类型。下列手势相关字段 MUST 保持与 Core 一致的语义，并通过统一结果分发入口消费：
 
 | 字段 | 类型 | MUST/MAY | 说明 |
 |---|---|---|---|
+| `gestureType` | `GestureType` | **MUST** | 当前 core 识别出的手势语义；为 `UNDEFINED` 时表示本次 action 不是手势处理产生的语义动作 |
+| `gestureEventType` | `EventType` | **MUST** | 产生该手势语义动作的原始事件类型 |
+| `tapPoint` | `PointF` | **MUST** | 手势命中的 editor 本地坐标 |
 | `hitTarget` | `HitTargetType` + 与平台对齐的 payload | **MUST** | 当前手势位置的命中测试结果 |
-| `pointerCursorType` | `PointerCursorType` | 桌面端 **MUST**，纯触摸平台 **MAY** | 当前鼠标位置对应的指针样式提示 |
+| `pointerCursorAfter` / `pointerCursorChanged` | `PointerCursorType` / boolean | 桌面端 **MUST**，纯触摸平台 **MAY** | 当前鼠标位置对应的指针样式提示，以及是否需要更新平台鼠标形状 |
+| `needsEdgeScroll` / `needsFling` / `needsAnimation` | boolean | **MUST** | 平台是否需要继续边缘滚动、惯性滚动或统一动画 tick |
+| `isHandleDrag` | boolean | 移动端 **SHOULD** | 当前手势是否为选择手柄拖拽 |
 
-> 桌面平台 SHOULD 在手势处理后立即应用 `pointerCursorType`，以获得及时的鼠标形状反馈。纯触摸平台 MAY 完全省略该字段；若仍保留该字段用于兼容，也 MAY 忽略视觉上的鼠标形状变化。
+> 桌面平台 SHOULD 在 `pointerCursorChanged` 为 true 时立即应用 `pointerCursorAfter`，以获得及时的鼠标形状反馈。纯触摸平台 MAY 完全忽略鼠标形状变化。
 
 ### 11.5 ContextMenu 标准契约
 
@@ -1655,7 +1662,7 @@ Core 层定义了大量装饰数据类型，各平台 MUST 实现完全一致的
 
 > 桌面平台 SHOULD 将 `pointerCursorType` 映射到原生鼠标形状，通常文本编辑区域使用 `TEXT`，可点击交互内容使用 `HAND`，滚动条或 gutter 等中性区域在合适时使用 `DEFAULT`。
 
-> 在同时暴露这两个字段的平台上，`GestureResult.pointerCursorType` 与 `EditorRenderModel.pointerCursorType` SHOULD 保持语义一致。平台 MAY 用前者做即时鼠标更新，用后者作为最新稳定快照状态。
+> 在同时暴露这两个字段的平台上，`EditorActionResult.pointerCursorAfter` 与 `EditorRenderModel.pointerCursorType` SHOULD 保持语义一致。平台 MAY 用前者做即时鼠标更新，用后者作为最新稳定快照状态。
 
 **`VisualRun`** — 一条已解析的渲染 run
 
@@ -1875,7 +1882,7 @@ Core 层定义了大量装饰数据类型，各平台 MUST 实现完全一致的
 
 ## 23. 版本管理
 
-本标准适用于 2026-03 起的 SweetEditor 平台实现。当 C++ 核心新增枚举、事件或 API 方法时，所有平台 MUST 在同一发布周期内同步更新。
+本标准适用于 2026-05 起的 SweetEditor 平台实现。当 C++ 核心新增枚举、事件或 API 方法时，所有平台 MUST 在同一发布周期内同步更新。
 
 ### 23.1 平台包版本号规范
 
