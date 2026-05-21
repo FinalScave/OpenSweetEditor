@@ -219,8 +219,8 @@ func getLineCount() -> Int
 
 ## Gaps and Risks
 
-- Apple bridge/header is maintained manually, so there is risk of signature drift from `src/include/c_api.h`.
+- Apple bridge/header is maintained manually, so there is risk of signature drift from `include/sweeteditor/c_api.h`.
 - When core API changes, at least check these together:
-  - `src/include/c_api.h`
+  - `include/sweeteditor/c_api.h`
   - `platform/Apple/Sources/SweetEditorBridge/include/SweetEditorBridge.h`
   - `platform/Apple/Sources/SweetEditorCoreInternal/api/SweetEditorCore.swift`

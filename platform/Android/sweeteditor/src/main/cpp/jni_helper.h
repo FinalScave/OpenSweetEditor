@@ -3,7 +3,7 @@
 
 #include <jni.h>
 #include <memory>
-#include "../core/c_wrapper.hpp"
+#include "c_wrapper.hpp"
 
 class JniEnvScope {
 public:

@@ -1,8 +1,8 @@
 #include <catch2/catch_amalgamated.hpp>
-#include "interaction.h"
-#include "layout.h"
-#include "decoration.h"
-#include "document.h"
+#include <sweeteditor/interaction.h>
+#include <sweeteditor/layout.h>
+#include <sweeteditor/decoration.h>
+#include <sweeteditor/document.h>
 #include "test_measurer.h"
 
 using namespace NS_SWEETEDITOR;

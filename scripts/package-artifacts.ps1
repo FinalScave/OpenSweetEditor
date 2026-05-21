@@ -41,7 +41,7 @@ $ResolvedPrebuiltSourceDir = if ($PrebuiltSourceDir) {
 $ResolvedHeadersSourceDir = if ($HeadersSourceDir) {
     [System.IO.Path]::GetFullPath($HeadersSourceDir)
 } else {
-    Join-Path (Join-Path $ProjectDir "src") "include"
+    Join-Path (Join-Path $ProjectDir "include") "sweeteditor"
 }
 $ResolvedReleaseNotesTemplate = if ($ReleaseNotesTemplate) {
     [System.IO.Path]::GetFullPath($ReleaseNotesTemplate)

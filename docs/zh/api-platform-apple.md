@@ -212,8 +212,8 @@ func getLineCount() -> Int
 
 ## 差异与风险
 
-- Apple bridge/header 为手工维护，与 `src/include/c_api.h` 存在签名漂移风险。
+- Apple bridge/header 为手工维护，与 `include/sweeteditor/c_api.h` 存在签名漂移风险。
 - 变更核心 API 时，至少同步检查：
-  - `src/include/c_api.h`
+  - `include/sweeteditor/c_api.h`
   - `platform/Apple/Sources/SweetEditorBridge/include/SweetEditorBridge.h`
   - `platform/Apple/Sources/SweetEditorCoreInternal/api/SweetEditorCore.swift`

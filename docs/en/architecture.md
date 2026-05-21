@@ -81,7 +81,7 @@ Current integration status (code state):
 
 ### Document - Document Model
 
-**Files**: `src/include/document.h` · `src/core/document.cpp`
+**Files**: `include/sweeteditor/document.h` · `src/document.cpp`
 
 Document is the abstraction layer of text content and defines a unified text operation interface.
 
@@ -141,7 +141,7 @@ Key design: **dual dirty flags** - `is_char_dirty` marks stale text data, `is_la
 
 ### TextLayout - Layout Engine
 
-**Files**: `src/include/layout.h` · `src/core/layout.cpp`
+**Files**: `include/sweeteditor/layout.h` · `src/layout.cpp`
 
 The layout engine is one of the most critical modules. It transforms logical line text into renderable visual lines.
 
@@ -226,7 +226,7 @@ The layout engine uses `m_is_monospace_` internally:
 
 ### DecorationManager - Decoration System
 
-**Files**: `src/include/decoration.h` · `src/core/decoration.cpp`
+**Files**: `include/sweeteditor/decoration.h` · `src/decoration.cpp`
 
 This module manages all non-text visual elements.
 
@@ -273,11 +273,11 @@ When text changes, all decoration line/column offsets must be updated. `adjustFo
 
 ### EditorCore - Editor Coordinator
 
-**Files**: `src/include/editor_core.h` / `src/core/editor_core.cpp`
+**Files**: `include/sweeteditor/editor_core.h` / `src/editor_core.cpp`
 
 EditorCore is the top-level class. It composes all submodules and exposes full editor APIs.
 
-IME composition semantic actions and composition state are owned by `CompositionController` in `src/include/ime.h` and `src/core/ime.cpp`. `EditorCore` acts as the host that provides document, caret, selection, linked-editing, and invalidation adapters, while public APIs remain semantic entrypoints such as `updateImePreedit()` and `commitImeText()`.
+IME composition semantic actions and composition state are owned by `CompositionController` in `include/sweeteditor/ime_composition.h` and `src/ime_composition.cpp`. `EditorCore` acts as the host that provides document, caret, selection, linked-editing, and invalidation adapters, while public APIs remain semantic entrypoints such as `updateImePreedit()` and `commitImeText()`.
 
 #### Internal Components
 
@@ -332,7 +332,7 @@ This method returns the internal edit primitive result `TextEditResult`, which `
 
 ### GestureHandler - Gesture Recognition
 
-**Files**: `src/include/gesture.h` · `src/core/gesture.cpp`
+**Files**: `include/sweeteditor/gesture.h` · `src/gesture.cpp`
 
 A unified gesture recognition engine for touch and mouse input.
 
@@ -373,7 +373,7 @@ enum struct Modifier : uint8_t {
 
 ### UndoManager - Undo/Redo
 
-**File**: `src/include/undo.h`
+**File**: `include/sweeteditor/undo.h`
 
 Undo/redo is implemented with dual stacks (undo stack + redo stack).
 
@@ -400,7 +400,7 @@ Default max is 512 steps. Oldest actions are dropped when exceeded.
 
 ### Buffer - Data Source Abstraction
 
-**Files**: `src/include/buffer.h` · `src/core/buffer.cpp`
+**Files**: `include/sweeteditor/buffer.h` · `src/buffer.cpp`
 
 | Implementation | Usage |
 |------|------|

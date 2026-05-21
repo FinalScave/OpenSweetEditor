@@ -8,7 +8,7 @@
     },
     "externalNativeOptions": {
       "path": "../../../CMakeLists.txt",
-      "arguments": "",
+      "arguments": "-DSWEETEDITOR_BUILD_SHARED=ON -DSWEETEDITOR_BUILD_STATIC=OFF -DSWEETEDITOR_BUILD_TESTS=OFF",
       "cppFlags": "",
       "abiFilters": [
         "arm64-v8a",

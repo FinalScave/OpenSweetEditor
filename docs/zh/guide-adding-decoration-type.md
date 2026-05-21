@@ -21,7 +21,7 @@
 
 ### 第 1 层 — C++ 数据结构
 
-**文件**：`src/include/decoration.h`、`src/core/decoration.cpp`
+**文件**：`include/sweeteditor/decoration.h`、`src/decoration.cpp`
 
 - 定义结构体（如 `LinkSpan { column, length, target }`）。
 - 在 `DecorationManager` 中添加按行存储的 `HashMap` 或 `Vector` 成员。
@@ -33,7 +33,7 @@
 
 ### 第 2 层 — C++ EditorCore 桥接
 
-**文件**：`src/include/editor_core.h`、`src/core/editor_core.cpp`
+**文件**：`include/sweeteditor/editor_core.h`、`src/editor_core.cpp`
 
 - 声明并实现 `setLine*`、`setBatchLine*`、`clear*` 及查询方法（如 `getLinkTargetAt`）。
 - 每个 `setLine*` 调用需要标记受影响的逻辑行 `is_layout_dirty = true`，并调用 `invalidateContentMetrics(line)`。
@@ -41,7 +41,7 @@
 
 ### 第 3 层 — C++ 布局与命中测试
 
-**文件**：`src/include/visual.h`、`src/include/gesture.h`、`src/include/layout.h`、`src/core/layout.cpp`
+**文件**：`include/sweeteditor/visual.h`、`include/sweeteditor/gesture.h`、`include/sweeteditor/layout.h`、`src/layout.cpp`
 
 - 在 `VisualRunType` 枚举中添加新值。
 - `buildLineRuns()`：获取装饰数据，插入分割点，将受影响的文本段标记为新的 `VisualRunType`。对于行内装饰（如 LinkSpan），这意味着在装饰边界处分割已有的 TEXT run；对于块级装饰（如 CodeLens），这意味着插入占据整个虚拟行的独立 run；对于仅在行号区域显示的装饰（如 GutterIcon），可能完全不需要修改 layout。
@@ -58,7 +58,7 @@
 
 纯视觉装饰（SyntaxSpan、PhantomText、GutterIcon）可跳过此层。
 
-**文件**：`src/core/editor_core.cpp`、`src/core/interaction.cpp`
+**文件**：`src/editor_core.cpp`、`src/interaction.cpp`
 
 - `toHotInteractiveTarget()`：决定新类型是无条件激活（如 CodeLens）还是需要修饰键（如 Link 需要 Ctrl/Meta），添加对应分支。
 - `probePointer()`：当 `toHotInteractiveTarget()` 返回有效目标时，光标类型会自动设为 `PointerCursorType::HAND`，无需额外处理（除非行为有差异）。
@@ -66,7 +66,7 @@
 
 ### 第 5 层 — C API
 
-**文件**：`src/include/c_api.h`、`src/core/c_api.cpp`
+**文件**：`include/sweeteditor/c_api.h`、`src/c_api.cpp`
 
 - 声明 `editor_set_line_*`、`editor_set_batch_line_*`、`editor_clear_*` 及查询函数。
 - 在头文件注释中记录二进制载荷格式（小端字节序）。

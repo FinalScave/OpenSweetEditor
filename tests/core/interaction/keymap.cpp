@@ -1,7 +1,7 @@
 #include <catch2/catch_amalgamated.hpp>
 #include <chrono>
 #include <thread>
-#include "keymap.h"
+#include <sweeteditor/keymap.h>
 
 using namespace NS_SWEETEDITOR;
 

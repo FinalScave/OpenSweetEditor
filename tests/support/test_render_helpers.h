@@ -3,8 +3,8 @@
 
 #include <algorithm>
 #include <catch2/catch_amalgamated.hpp>
-#include "utility.h"
-#include "visual.h"
+#include <sweeteditor/utility.h>
+#include <sweeteditor/visual.h>
 
 namespace NS_SWEETEDITOR {
 

@@ -40,10 +40,10 @@ void main() {
     ),
     headers: Headers(
       entryPoints: [
-        packageRoot.resolve('../../../src/include/c_api.h'),
+        packageRoot.resolve('../../../include/sweeteditor/c_api.h'),
       ],
       compilerOptions: [
-        '-I${packageRoot.resolve('../../../src/include').toFilePath()}',
+        '-I${packageRoot.resolve('../../../include').toFilePath()}',
         '-DSWEETEDITOR_EXPORT',
       ],
     ),

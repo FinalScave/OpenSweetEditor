@@ -19,6 +19,9 @@ android {
             cmake {
                 arguments "-DANDROID_STL=c++_static"
                 arguments "-DANDROID=ON"
+                arguments "-DSWEETEDITOR_BUILD_SHARED=ON"
+                arguments "-DSWEETEDITOR_BUILD_STATIC=OFF"
+                arguments "-DSWEETEDITOR_BUILD_TESTS=OFF"
             }
         }
         ndk {

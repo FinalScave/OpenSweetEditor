@@ -457,7 +457,7 @@ IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextR
 
 `ImeSyncSnapshot` 的语义字段 MUST 覆盖：文档光标、文档选区、是否存在 composition session、可见 composition 范围、平台 marked range、platform text window 文本及其 start offset、selection/composing offsets、`ImePreeditStorage`、`ImeContextPolicy`、以及是否要求平台清除 preedit。`ImeInputContext` 的语义字段 MUST 覆盖：`id`、`revision`、`documentStartOffset`、`text`、`selection`、`hasComposition`、`composition`、`kind`。`ImeActionResult` 是 core 内部 IME 语义动作结果；跨 bridge 返回给平台侧时，其内容 MUST 汇入 `EditorActionResult`，并通过 `needsImeSync` / `imeSync` 暴露给平台输入适配层。
 
-完整 core bridge 函数列表以 `src/include/editor_core.h` 与 `src/include/c_api.h` 为准。本标准只约束平台必须保持的 IME 语义和协议字段，不要求把每个 core bridge 函数都暴露为宿主可见 API。
+完整 core bridge 函数列表以 `include/sweeteditor/editor_core.h` 与 `include/sweeteditor/c_api.h` 为准。本标准只约束平台必须保持的 IME 语义和协议字段，不要求把每个 core bridge 函数都暴露为宿主可见 API。
 
 #### 3.1.2 `EditorOptions` 标准字段
 

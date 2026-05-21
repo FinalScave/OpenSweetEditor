@@ -1,5 +1,5 @@
 #include <catch2/catch_amalgamated.hpp>
-#include "document.h"
+#include <sweeteditor/document.h>
 
 using namespace NS_SWEETEDITOR;
 

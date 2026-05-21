@@ -457,7 +457,7 @@ IME offsets MUST state their coordinate space explicitly: document line/column A
 
 `ImeSyncSnapshot` semantics MUST cover: document cursor, document selection, whether a composition session exists, visible composition range, platform marked range, platform text window text and start offset, selection/composing offsets, `ImePreeditStorage`, `ImeContextPolicy`, and whether the platform should clear preedit. `ImeInputContext` semantics MUST cover: `id`, `revision`, `documentStartOffset`, `text`, `selection`, `hasComposition`, `composition`, and `kind`. `ImeActionResult` is the core-internal IME semantic action result; when crossing the bridge to platform code, its contents MUST be folded into `EditorActionResult` and exposed through `needsImeSync` / `imeSync`.
 
-The complete core bridge function list is defined by `src/include/editor_core.h` and `src/include/c_api.h`. This standard constrains IME semantics and protocol fields, not whether every core bridge function is exposed as a host-facing API.
+The complete core bridge function list is defined by `include/sweeteditor/editor_core.h` and `include/sweeteditor/c_api.h`. This standard constrains IME semantics and protocol fields, not whether every core bridge function is exposed as a host-facing API.
 
 #### 3.1.2 `EditorOptions` Standard Fields
 

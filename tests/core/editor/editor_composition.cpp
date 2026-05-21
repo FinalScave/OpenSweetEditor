@@ -1,6 +1,6 @@
 #include <catch2/catch_amalgamated.hpp>
 #include <functional>
-#include "editor_core.h"
+#include <sweeteditor/editor_core.h>
 #include "test_measurer.h"
 
 using namespace NS_SWEETEDITOR;
@@ -1495,7 +1495,7 @@ TEST_CASE("EditorCore full word preedit selection commit keeps provider decorati
   const VisualRun* hint_run = nullptr;
   for (const auto& line : model.lines) {
     for (const auto& run : line.runs) {
-      if (run.type == VisualRunType::INLAY_HINT && run.text == u"hint") {
+      if (run.type == VisualRunType::INLAY_HINT && run.text == CHAR16("hint")) {
         hint_run = &run;
       }
     }

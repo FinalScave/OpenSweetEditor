@@ -1,5 +1,5 @@
 #include <catch2/catch_amalgamated.hpp>
-#include "editor_core.h"
+#include <sweeteditor/editor_core.h>
 #include "test_measurer.h"
 
 using namespace NS_SWEETEDITOR;

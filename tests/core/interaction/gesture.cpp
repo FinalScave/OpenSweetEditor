@@ -1,7 +1,7 @@
 #include <catch2/catch_amalgamated.hpp>
 #include <chrono>
 #include <thread>
-#include "gesture.h"
+#include <sweeteditor/gesture.h>
 
 using namespace NS_SWEETEDITOR;
 

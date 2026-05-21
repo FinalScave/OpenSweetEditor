@@ -1,6 +1,6 @@
 # EditorCore / C API Reference
 
-This document follows `src/include/c_api.h` and describes the current external core contract of SweetEditor (2026-05).
+This document follows `include/sweeteditor/c_api.h` and describes the current external core contract of SweetEditor (2026-05).
 
 Platform API docs:
 

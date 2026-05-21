@@ -27,7 +27,7 @@ while IFS= read -r -d '' file; do
   if [[ "${file_ts}" -gt "${latest_input_ts}" ]]; then
     latest_input_ts="${file_ts}"
   fi
-done < <(find "${REPO_ROOT}/src/core" "${REPO_ROOT}/src/include" -type f -print0)
+done < <(find "${REPO_ROOT}/src" "${REPO_ROOT}/include" -type f -print0)
 
 cmake_ts="$(stat -f "%m" "${REPO_ROOT}/CMakeLists.txt")"
 if [[ "${cmake_ts}" -gt "${latest_input_ts}" ]]; then

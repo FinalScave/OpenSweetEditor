@@ -1,6 +1,6 @@
 #include <catch2/catch_amalgamated.hpp>
-#include "document.h"
-#include "utility.h"
+#include <sweeteditor/document.h>
+#include <sweeteditor/utility.h>
 
 using namespace NS_SWEETEDITOR;
 

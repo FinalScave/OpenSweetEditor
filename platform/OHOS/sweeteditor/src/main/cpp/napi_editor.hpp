@@ -3,8 +3,8 @@
 
 #include <vector>
 #include <cstring>
-#include <editor_core.h>
-#include <document.h>
+#include <sweeteditor/editor_core.h>
+#include <sweeteditor/document.h>
 #include "napi_helper.h"
 
 using namespace NS_SWEETEDITOR;

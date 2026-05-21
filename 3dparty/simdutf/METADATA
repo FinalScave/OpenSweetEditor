@@ -9,9 +9,9 @@ Files:
   include/simdutf/simdutf/internal/*.h
   lib/android/arm64-v8a/release/libsimdutf.a
   lib/android/x86_64/release/libsimdutf.a
-  lib/emscripten/wasm32/release/libsimdutf.a
+  lib/emscripten/release/libsimdutf.a
   lib/ios/arm64/release/libsimdutf.a
-  lib/ios-simulator/arm64/release/libsimdutf.a
+  lib/ios/simulator-arm64/release/libsimdutf.a
   lib/linux/aarch64/release/libsimdutf.a
   lib/linux/x86_64/release/libsimdutf.a
   lib/macos/arm64/release/libsimdutf.a

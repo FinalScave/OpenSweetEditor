@@ -23,7 +23,7 @@ The layers below are listed bottom-up. Complete them in this order to ensure eac
 
 ### Layer 1 — C++ Data Structure
 
-**Files**: `src/include/decoration.h`, `src/core/decoration.cpp`
+**Files**: `include/sweeteditor/decoration.h`, `src/decoration.cpp`
 
 - Define the struct (e.g. `LinkSpan { column, length, target }`).
 - Add a `HashMap` or `Vector` member to `DecorationManager` for per-line storage.
@@ -35,7 +35,7 @@ The layers below are listed bottom-up. Complete them in this order to ensure eac
 
 ### Layer 2 — C++ EditorCore Bridge
 
-**Files**: `src/include/editor_core.h`, `src/core/editor_core.cpp`
+**Files**: `include/sweeteditor/editor_core.h`, `src/editor_core.cpp`
 
 - Declare and implement `setLine*`, `setBatchLine*`, `clear*`, and any query method (e.g. `getLinkTargetAt`).
 - For decorations that affect layout (most types), each `setLine*` call should mark the affected logical line as `is_layout_dirty = true` and call `invalidateContentMetrics(line)`. Decorations that do not affect layout (GutterIcon, Diagnostic) may skip this and just delegate to `DecorationManager`.
@@ -43,7 +43,7 @@ The layers below are listed bottom-up. Complete them in this order to ensure eac
 
 ### Layer 3 — C++ Layout and Hit Test
 
-**Files**: `src/include/visual.h`, `src/include/gesture.h`, `src/include/layout.h`, `src/core/layout.cpp`
+**Files**: `include/sweeteditor/visual.h`, `include/sweeteditor/gesture.h`, `include/sweeteditor/layout.h`, `src/layout.cpp`
 
 - Add a value to `VisualRunType` enum.
 - In `buildLineRuns()`: fetch the decoration data, insert split points, and assign the new `VisualRunType` to affected text segments. For inline decorations (LinkSpan), this means splitting existing TEXT runs at decoration boundaries. For block-level decorations (CodeLens), this means inserting a dedicated run that occupies an entire virtual line. For gutter-only decorations (GutterIcon), layout changes may not be needed at all.
@@ -60,7 +60,7 @@ The layers below are listed bottom-up. Complete them in this order to ensure eac
 
 Skip this layer entirely for pure-visual decorations (SyntaxSpan, PhantomText, GutterIcon).
 
-**Files**: `src/core/editor_core.cpp`, `src/core/interaction.cpp`
+**Files**: `src/editor_core.cpp`, `src/interaction.cpp`
 
 - `toHotInteractiveTarget()`: decide whether the new type activates unconditionally (like CodeLens) or requires modifier keys (like Link requires Ctrl/Meta). Add the corresponding branch.
 - `probePointer()`: when `toHotInteractiveTarget()` returns a valid target, the cursor type is set to `PointerCursorType::HAND` automatically. No extra work needed unless behavior differs.
@@ -68,7 +68,7 @@ Skip this layer entirely for pure-visual decorations (SyntaxSpan, PhantomText, G
 
 ### Layer 5 — C API
 
-**Files**: `src/include/c_api.h`, `src/core/c_api.cpp`
+**Files**: `include/sweeteditor/c_api.h`, `src/c_api.cpp`
 
 - Declare `editor_set_line_*`, `editor_set_batch_line_*`, `editor_clear_*`, and any query function.
 - Document the binary payload format (LE byte order) in the header comment.

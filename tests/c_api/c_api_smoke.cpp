@@ -1,11 +1,11 @@
 #include <catch2/catch_amalgamated.hpp>
 #include <cstring>
-#include "macro.h"
+#include <sweeteditor/macro.h>
 #ifndef __stdcall
 #define __stdcall
 #endif
-#include "c_api.h"
-#include "utility.h"
+#include <sweeteditor/c_api.h>
+#include <sweeteditor/utility.h>
 
 using namespace NS_SWEETEDITOR;
 

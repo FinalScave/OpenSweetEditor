@@ -1,5 +1,5 @@
 #include <catch2/catch_amalgamated.hpp>
-#include "decoration.h"
+#include <sweeteditor/decoration.h>
 
 using namespace NS_SWEETEDITOR;
 

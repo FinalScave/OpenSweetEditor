@@ -7,8 +7,8 @@
 1. `docs/zh/architecture.md`
 2. `docs/zh/api-editor-core.md`
 3. `docs/zh/platform-implementation-standard.md`
-4. `src/include/*.h`
-5. `src/core/*.cpp`
+4. `include/sweeteditor/*.h`
+5. `src/*.cpp`
 6. 最后再看 `platform/*`
 7. `docs/zh/guide-adding-decoration-type.md` — 添加新装饰类型的逐层指南
 
@@ -42,15 +42,15 @@
 
 ### 核心层
 
-- `src/include/document.h` / `src/core/document.cpp`
+- `include/sweeteditor/document.h` / `src/document.cpp`
   - 文本存储、位置映射、Piece Table / LineArray 实现
-- `src/include/layout.h` / `src/core/layout.cpp`
+- `include/sweeteditor/layout.h` / `src/layout.cpp`
   - 文本布局、自动换行、命中测试、测量缓存、可见区裁剪
-- `src/include/decoration.h` / `src/core/decoration.cpp`
+- `include/sweeteditor/decoration.h` / `src/decoration.cpp`
   - 高亮、Inlay Hint、Ghost Text、结构线、折叠、诊断等装饰
-- `src/include/editor_core.h` / `src/core/editor_core.cpp`
+- `include/sweeteditor/editor_core.h` / `src/editor_core.cpp`
   - 编辑语义总协调器：输入、选区、IME、撤销重做、渲染模型组装
-- `src/include/c_api.h` / `src/core/c_api.cpp`
+- `include/sweeteditor/c_api.h` / `src/c_api.cpp`
   - 非 Android 平台的稳定桥接边界
 
 ### Android

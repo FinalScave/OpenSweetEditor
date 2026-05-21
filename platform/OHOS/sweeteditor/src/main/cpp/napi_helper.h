@@ -5,8 +5,8 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
-#include <c_api.h>
-#include <macro.h>
+#include <sweeteditor/c_api.h>
+#include <sweeteditor/macro.h>
 
 using namespace NS_SWEETEDITOR;
 

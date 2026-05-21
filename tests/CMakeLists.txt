@@ -16,7 +16,7 @@ function(configure_sweeteditor_test_target target_name)
             $<TARGET_OBJECTS:${SWEETEDITOR_C_API_OBJECT_TARGET}>
     )
     target_include_directories(${target_name} PRIVATE
-            ${SWEETEDITOR_SRC_DIR}/include
+            ${SWEETEDITOR_PUBLIC_INCLUDE_DIR}
             ${CMAKE_CURRENT_SOURCE_DIR}/support
     )
     target_compile_definitions(${target_name} PRIVATE

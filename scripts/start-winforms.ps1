@@ -85,7 +85,7 @@ Invoke-Step -Title "Configure C++ core (CMake)" -Action {
             -S $repoRoot `
             -B $buildDir `
             -DSWEETEDITOR_BUILD_SHARED=ON `
-            -DSWEETEDITOR_BUILD_STATIC=ON `
+            -DSWEETEDITOR_BUILD_STATIC=OFF `
             -DSWEETEDITOR_BUILD_TESTS=OFF
     } else {
         $cmakeGenerator = "Visual Studio 17 2022"
@@ -96,7 +96,7 @@ Invoke-Step -Title "Configure C++ core (CMake)" -Action {
             -G $cmakeGenerator `
             -A x64 `
             -DSWEETEDITOR_BUILD_SHARED=ON `
-            -DSWEETEDITOR_BUILD_STATIC=ON `
+            -DSWEETEDITOR_BUILD_STATIC=OFF `
             -DSWEETEDITOR_BUILD_TESTS=OFF
     }
     if ($LASTEXITCODE -ne 0) {

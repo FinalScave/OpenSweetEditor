@@ -1,6 +1,6 @@
 # EditorCore / C API 参考
 
-本文档以 `src/include/c_api.h` 为准，描述当前 SweetEditor 核心对外契约（2026-05）。
+本文档以 `include/sweeteditor/c_api.h` 为准，描述当前 SweetEditor 核心对外契约（2026-05）。
 
 平台 API 文档：
 

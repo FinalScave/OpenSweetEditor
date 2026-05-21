@@ -1,7 +1,7 @@
 #include <catch2/catch_amalgamated.hpp>
-#include "layout.h"
-#include "decoration.h"
-#include "document.h"
+#include <sweeteditor/layout.h>
+#include <sweeteditor/decoration.h>
+#include <sweeteditor/document.h>
 #include "test_measurer.h"
 #include "test_render_helpers.h"
 

@@ -1,6 +1,6 @@
 #include <catch2/catch_amalgamated.hpp>
 #include <string>
-#include "editor_core.h"
+#include <sweeteditor/editor_core.h>
 #include "test_measurer.h"
 #include "test_render_helpers.h"
 

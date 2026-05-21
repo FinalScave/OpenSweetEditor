@@ -1,7 +1,7 @@
 #ifndef SWEETEDITOR_TEST_MEASURER_H
 #define SWEETEDITOR_TEST_MEASURER_H
 
-#include "layout.h"
+#include <sweeteditor/layout.h>
 
 namespace NS_SWEETEDITOR {
   class FixedWidthTextMeasurer final : public TextMeasurer {

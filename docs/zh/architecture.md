@@ -81,7 +81,7 @@ SweetEditor 的核心设计理念是 **"计算与渲染的彻底分离"**：
 
 ### Document — 文档模型
 
-**文件**：`src/include/document.h` · `src/core/document.cpp`
+**文件**：`include/sweeteditor/document.h` · `src/document.cpp`
 
 Document 是文本内容的抽象层，定义了统一的文本操作接口。
 
@@ -141,7 +141,7 @@ struct LogicalLine {
 
 ### TextLayout — 布局引擎
 
-**文件**：`src/include/layout.h` · `src/core/layout.cpp`
+**文件**：`include/sweeteditor/layout.h` · `src/layout.cpp`
 
 布局引擎是整个编辑器中最核心的模块，负责将逻辑行文本转化为可渲染的视觉行。
 
@@ -226,7 +226,7 @@ typedef struct {
 
 ### DecorationManager — 装饰系统
 
-**文件**：`src/include/decoration.h` · `src/core/decoration.cpp`
+**文件**：`include/sweeteditor/decoration.h` · `src/decoration.cpp`
 
 统一管理所有非文本内容的视觉元素。
 
@@ -273,11 +273,11 @@ void adjustForEdit(const TextRange& old_range, const TextPosition& new_end);
 
 ### EditorCore — 编辑器协调器
 
-**文件**：`src/include/editor_core.h` · `src/core/editor_core.cpp`
+**文件**：`include/sweeteditor/editor_core.h` · `src/editor_core.cpp`
 
 EditorCore 是最顶层的类，组合所有子模块并提供完整的编辑器 API。
 
-IME composition 的语义动作和 composition state 由 `CompositionController` 负责，文件为 `src/include/ime.h` 与 `src/core/ime.cpp`。`EditorCore` 只作为 host 提供文档、光标、选区、linked editing 和刷新 adapter，公开 API 仍通过 `updateImePreedit()`、`commitImeText()` 等语义入口暴露。
+IME composition 的语义动作和 composition state 由 `CompositionController` 负责，文件为 `include/sweeteditor/ime_composition.h` 与 `src/ime_composition.cpp`。`EditorCore` 只作为 host 提供文档、光标、选区、linked editing 和刷新 adapter，公开 API 仍通过 `updateImePreedit()`、`commitImeText()` 等语义入口暴露。
 
 #### 内部组件
 
@@ -332,7 +332,7 @@ TextEditResult applyEdit(const TextRange& range, const U8String& new_text, bool 
 
 ### GestureHandler — 手势识别
 
-**文件**：`src/include/gesture.h` · `src/core/gesture.cpp`
+**文件**：`include/sweeteditor/gesture.h` · `src/gesture.cpp`
 
 统一处理触摸和鼠标两种输入模式的手势识别引擎。
 
@@ -373,7 +373,7 @@ enum struct Modifier : uint8_t {
 
 ### UndoManager — 撤销/重做
 
-**文件**：`src/include/undo.h`
+**文件**：`include/sweeteditor/undo.h`
 
 基于双栈（undo stack + redo stack）的撤销/重做实现。
 
@@ -400,7 +400,7 @@ enum struct Modifier : uint8_t {
 
 ### Buffer — 数据源抽象
 
-**文件**：`src/include/buffer.h` · `src/core/buffer.cpp`
+**文件**：`include/sweeteditor/buffer.h` · `src/buffer.cpp`
 
 | 实现 | 用途 |
 |------|------|

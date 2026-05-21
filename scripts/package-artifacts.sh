@@ -30,7 +30,7 @@ Usage:
 Options:
   -v, --version <version>                 Release version.
       --prebuilt-source-dir <path>        Source directory for prebuilt binaries. Defaults to prebuilt.
-      --headers-source-dir <path>         Source directory for public headers. Defaults to src/include.
+      --headers-source-dir <path>         Source directory for public headers. Defaults to include/sweeteditor.
   -o, --output-dir <path>                 Output directory. Defaults to build/artifacts.
       --prebuilt-name-prefix <name>       Prebuilt archive prefix. Defaults to sweeteditor-prebuilt.
       --headers-name-prefix <name>        Headers archive prefix. Defaults to sweeteditor-headers.
@@ -481,7 +481,7 @@ if [ "$SKIP_PREBUILT" -eq 1 ] && [ "$SKIP_HEADERS" -eq 1 ]; then
 fi
 
 RESOLVED_PREBUILT_SOURCE_DIR="$(absolute_path "${PREBUILT_SOURCE_DIR:-$PROJECT_DIR/prebuilt}")"
-RESOLVED_HEADERS_SOURCE_DIR="$(absolute_path "${HEADERS_SOURCE_DIR:-$PROJECT_DIR/src/include}")"
+RESOLVED_HEADERS_SOURCE_DIR="$(absolute_path "${HEADERS_SOURCE_DIR:-$PROJECT_DIR/include/sweeteditor}")"
 RESOLVED_OUTPUT_DIR="$(absolute_path "${OUTPUT_DIR:-$PROJECT_DIR/build/artifacts}")"
 RESOLVED_RELEASE_NOTES_TEMPLATE="$(absolute_path "${RELEASE_NOTES_TEMPLATE:-$SCRIPT_DIR/RELEASE_NOTES.md}")"
 RESOLVED_COMMIT="$(resolve_commit "$COMMIT")"

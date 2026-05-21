@@ -7,8 +7,8 @@ This document gives practical development entry points based on the current repo
 1. `docs/en/architecture.md`
 2. `docs/en/api-editor-core.md`
 3. `docs/en/platform-implementation-standard.md`
-4. `src/include/*.h`
-5. `src/core/*.cpp`
+4. `include/sweeteditor/*.h`
+5. `src/*.cpp`
 6. Read `platform/*` last
 7. `docs/en/guide-adding-decoration-type.md` — step-by-step guide for adding a new decoration type
 
@@ -42,15 +42,15 @@ This document gives practical development entry points based on the current repo
 
 ### Core Layer
 
-- `src/include/document.h` / `src/core/document.cpp`
+- `include/sweeteditor/document.h` / `src/document.cpp`
   - text storage, position mapping, Piece Table / LineArray
-- `src/include/layout.h` / `src/core/layout.cpp`
+- `include/sweeteditor/layout.h` / `src/layout.cpp`
   - text layout, auto wrap, hit test, measure cache, visible-area clipping
-- `src/include/decoration.h` / `src/core/decoration.cpp`
+- `include/sweeteditor/decoration.h` / `src/decoration.cpp`
   - decorations: highlight, Inlay Hint, Ghost Text, guide lines, fold, diagnostics
-- `src/include/editor_core.h` / `src/core/editor_core.cpp`
+- `include/sweeteditor/editor_core.h` / `src/editor_core.cpp`
   - main edit coordinator: input, selection, IME, undo/redo, render model assembly
-- `src/include/c_api.h` / `src/core/c_api.cpp`
+- `include/sweeteditor/c_api.h` / `src/c_api.cpp`
   - stable bridge boundary for non-Android platforms
 
 ### Android

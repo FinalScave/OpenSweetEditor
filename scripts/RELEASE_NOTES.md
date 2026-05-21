@@ -30,4 +30,4 @@ Cross-platform release assets for OpenSweetEditor.
 
 - Commit: `{{COMMIT}}`
 - The prebuilt package is built from the repository `prebuilt/` artifacts.
-- The headers package is built from `src/include/` and uses the install-style layout `include/sweeteditor/`.
+- The headers package is built from `include/sweeteditor/` and uses the install-style layout `include/sweeteditor/`.
