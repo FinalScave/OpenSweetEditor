@@ -4,6 +4,7 @@
 #include <utf8/utf8.h>
 #include <simdutf/simdutf.h>
 #include <algorithm>
+#include <utility>
 #include <editor_core.h>
 #include <utility.h>
 #include "logging.h"
@@ -228,6 +229,25 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult CompositionController::coreInsertText(const U8String& text) {
     return m_editor_.insertTextInternal(text);
+  }
+
+  void CompositionController::coreRecordUndoAction(const TextRange& range,
+                                                   const U8String& old_text,
+                                                   const U8String& new_text,
+                                                   const TextPosition& cursor_before,
+                                                   const TextPosition& cursor_after,
+                                                   bool had_selection,
+                                                   const TextRange& selection_before) {
+    EditAction action;
+    action.range = range;
+    action.old_text = old_text;
+    action.new_text = new_text;
+    action.cursor_before = cursor_before;
+    action.cursor_after = cursor_after;
+    action.had_selection = had_selection;
+    action.selection_before = selection_before;
+    action.timestamp = std::chrono::steady_clock::now();
+    m_editor_.m_undo_manager_->pushAction(std::move(action));
   }
 
   void CompositionController::coreDeleteSelectionForComposition() {
@@ -1073,6 +1093,30 @@ namespace NS_SWEETEDITOR {
                               && composing_range.contains(previous_cursor);
     TextPosition candidate_start = replaces_document_range ? replaced_range.start : m_composition_.start_position;
     TextRange candidate_range {candidate_start, corePositionAfterInsert(candidate_start, final_text)};
+    if (replaces_document_range
+        && coreIsDocumentRangeReadable(candidate_range)
+        && coreDocumentText(candidate_range) == final_text) {
+      TextEditResult edit_result;
+      edit_result.cursor_before = previous_cursor;
+      TextPosition cursor_after = final_text != replaced_text ? candidate_range.end : previous_cursor;
+      if (final_text != replaced_text) {
+        coreRecordUndoAction(replaced_range,
+                             replaced_text,
+                             final_text,
+                             replaced_range.start,
+                             cursor_after,
+                             coreHasSelection(),
+                             coreSelection());
+      }
+      resetCompositionState();
+      coreSetSelectionInternal({cursor_after, cursor_after});
+      coreInvalidateContentMetrics(comp_start_line);
+      edit_result.cursor_after = cursor_after;
+      openCandidateCommitWindow(candidate_range, final_text, !committed_text.empty());
+      coreEnsureCursorVisible();
+      LOGD("CompositionController::commitComposingText, cursor = %s", coreCursor().dump().c_str());
+      return edit_result;
+    }
 
     removeComposingText();
     if (replaces_document_range) {

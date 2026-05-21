@@ -112,6 +112,13 @@ namespace NS_SWEETEDITOR {
     size_t coreUtf16Columns(const U8String& text) const;
     TextEditResult coreApplyEdit(const TextRange& range, const U8String& text);
     TextEditResult coreInsertText(const U8String& text);
+    void coreRecordUndoAction(const TextRange& range,
+                              const U8String& old_text,
+                              const U8String& new_text,
+                              const TextPosition& cursor_before,
+                              const TextPosition& cursor_after,
+                              bool had_selection,
+                              const TextRange& selection_before);
     void coreDeleteSelectionForComposition();
     void coreDeleteDocumentRange(const TextRange& range);
     void coreInsertDocumentText(const TextPosition& position, const U8String& text);

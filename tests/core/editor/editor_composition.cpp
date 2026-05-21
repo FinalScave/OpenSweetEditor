@@ -831,7 +831,7 @@ TEST_CASE("EditorCore IME empty commit replaces active composing text with empty
   CHECK(editor.getCursorPosition() == (TextPosition {0, 0}));
 }
 
-TEST_CASE("EditorCore composing text after document range replaces only on commit") {
+TEST_CASE("EditorCore document range preedit commit is undoable without duplicate text change") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
 
@@ -854,7 +854,8 @@ TEST_CASE("EditorCore composing text after document range replaces only on commi
   markDocumentRange(editor, {{0, 0}, {0, 4}});
   updatePreedit(editor, "how");
   EditorActionResult result = finishPreedit(editor);
-  REQUIRE(result.content_changed);
+  CHECK_FALSE(result.content_changed);
+  CHECK(result.changes.empty());
   CHECK_FALSE(editor.isComposing());
   CHECK(document->getU8Text() == "how tail");
   CHECK(editor.canUndo());
@@ -1447,8 +1448,11 @@ TEST_CASE("EditorCore IME platform full word range keeps word-end full payload i
   CHECK(editor.isComposing());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 6}));
 
-  ime.finishPreedit();
+  EditorActionResult finish_result = ime.finishPreedit();
+  CHECK_FALSE(finish_result.content_changed);
+  CHECK(finish_result.changes.empty());
   CHECK_FALSE(editor.isComposing());
+  CHECK(editor.canUndo());
   ime.markDocumentRange({{0, 0}, {0, 6}},
                         ImeScriptClass::UNKNOWN);
   REQUIRE(editor.isComposing());
@@ -1458,6 +1462,52 @@ TEST_CASE("EditorCore IME platform full word range keeps word-end full payload i
   CHECK(document->getU8Text() == "valuexy");
   CHECK(editor.isComposing());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
+}
+
+TEST_CASE("EditorCore full word preedit selection commit keeps provider decorations stable") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("value tail");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setImeKeyboardScriptClass(ImeScriptClass::LATIN);
+  editor.setCursorPosition({0, 5});
+  ImeReplayRunner ime(editor);
+
+  ime.markDocumentRange({{0, 0}, {0, 5}},
+                        ImeScriptClass::UNKNOWN);
+  EditorActionResult update_result = ime.updatePreedit("valuex");
+  REQUIRE(update_result.content_changed);
+  REQUIRE(document->getU8Text() == "valuex tail");
+
+  editor.setLineInlayHints(0, {InlayHint{InlayType::TEXT, 6, "hint", 0, 0}});
+
+  EditorActionResult selection_result = ime.selectionChanged({{0, 11}, {0, 11}});
+  CHECK_FALSE(selection_result.content_changed);
+  CHECK_FALSE(editor.isComposing());
+  CHECK(document->getU8Text() == "valuex tail");
+  CHECK(editor.canUndo());
+
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+
+  const VisualRun* hint_run = nullptr;
+  for (const auto& line : model.lines) {
+    for (const auto& run : line.runs) {
+      if (run.type == VisualRunType::INLAY_HINT && run.text == u"hint") {
+        hint_run = &run;
+      }
+    }
+  }
+
+  REQUIRE(hint_run != nullptr);
+  CHECK(hint_run->column == 6);
+
+  EditorActionResult undo_result = editor.undo();
+  REQUIRE(undo_result.content_changed);
+  CHECK(document->getU8Text() == "value tail");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
 }
 
 
