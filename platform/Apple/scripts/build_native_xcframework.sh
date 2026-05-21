@@ -27,9 +27,9 @@ function configure_apple_build() {
   cmake -S "${REPO_ROOT}" -B "${build_dir}" -G Xcode \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=14.0 \
-    -DBUILD_TESTING=OFF \
-    -DBUILD_SHARED_LIB=ON \
-    -DBUILD_STATIC_LIB=OFF \
+    -DSWEETEDITOR_BUILD_TESTS=OFF \
+    -DSWEETEDITOR_BUILD_SHARED=ON \
+    -DSWEETEDITOR_BUILD_STATIC=OFF \
     "$@"
 }
 

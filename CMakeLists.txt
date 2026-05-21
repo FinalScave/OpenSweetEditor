@@ -2,226 +2,252 @@ cmake_minimum_required(VERSION 3.10)
 project(sweeteditor)
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/bin)
 
-# compiler special
-if (MSVC)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /Zc:__cplusplus /utf-8 /D_CRT_SECURE_NO_WARNINGS")
-    add_definitions(-DNOMINMAX=1)
+# Build options
+option(SWEETEDITOR_BUILD_TESTS "Build SweetEditor tests" ON)
+option(SWEETEDITOR_BUILD_SHARED "Build SweetEditor dynamic library" ON)
+option(SWEETEDITOR_BUILD_STATIC "Build SweetEditor static library" ON)
+option(SWEETEDITOR_BUILD_WASM_C_ABI "Build SweetEditor WebAssembly C ABI module" ON)
+option(SWEETEDITOR_BUILD_WASM_EMBIND "Build SweetEditor WebAssembly embind module" ON)
+if (EMSCRIPTEN)
+    if (NOT SWEETEDITOR_BUILD_STATIC AND NOT SWEETEDITOR_BUILD_TESTS AND NOT SWEETEDITOR_BUILD_WASM_C_ABI AND NOT SWEETEDITOR_BUILD_WASM_EMBIND)
+        message(FATAL_ERROR "At least one of SWEETEDITOR_BUILD_STATIC, SWEETEDITOR_BUILD_TESTS, SWEETEDITOR_BUILD_WASM_C_ABI, or SWEETEDITOR_BUILD_WASM_EMBIND must be enabled for Emscripten")
+    endif ()
+elseif (NOT SWEETEDITOR_BUILD_SHARED AND NOT SWEETEDITOR_BUILD_STATIC AND NOT SWEETEDITOR_BUILD_TESTS)
+    message(FATAL_ERROR "At least one of SWEETEDITOR_BUILD_SHARED, SWEETEDITOR_BUILD_STATIC, or SWEETEDITOR_BUILD_TESTS must be enabled")
 endif ()
 
-# options
-option(BUILD_TESTING "Includes testing source for unit tests" ON)
-option(BUILD_SHARED_LIB "Build dynamic library" ON)
-option(BUILD_STATIC_LIB "Build static library" ON)
-if (NOT BUILD_SHARED_LIB AND NOT BUILD_STATIC_LIB AND NOT BUILD_TESTING)
-    message(FATAL_ERROR "At least one of BUILD_SHARED_LIB, BUILD_STATIC_LIB, or BUILD_TESTING must be enabled")
-endif()
-add_definitions(-DTESTS_DIR="${CMAKE_SOURCE_DIR}/tests")
-add_definitions(-DENABLE_LOG=1)
-add_definitions(-DENABLE_PERF_LOG=1)
-add_definitions(-DSWEETEDITOR_DEBUG=1)
-add_definitions(-DSWEETEDITOR_EXPORT=1)
+# Paths and target names
+set(SWEETEDITOR_LINK_LIB)
+set(SWEETEDITOR_PROJECT_DIR ${PROJECT_SOURCE_DIR})
+set(SWEETEDITOR_SRC_DIR ${SWEETEDITOR_PROJECT_DIR}/src)
+set(SWEETEDITOR_CORE_OBJECT_TARGET "${PROJECT_NAME}_core_objects")
+set(SWEETEDITOR_C_API_OBJECT_TARGET "${PROJECT_NAME}_c_api_objects")
+set(SWEETEDITOR_STATIC_LIB_NAME "${PROJECT_NAME}_static")
+set(SWEETEDITOR_SHARED_LIB_NAME "${PROJECT_NAME}")
+set(SWEETEDITOR_APPLE_FRAMEWORK_NAME "SweetEditorCore")
 
-# initial config
-set(LINK_LIB)
-set(CMAKE_PROJECT_DIR ${CMAKE_SOURCE_DIR})
-set(SRC_DIR ${CMAKE_PROJECT_DIR}/src)
-set(3DPARTY_DIR ${CMAKE_PROJECT_DIR}/3dparty)
-set(CORE_OBJECT_TARGET "${CMAKE_PROJECT_NAME}_core_objects")
-set(STATIC_LIB_NAME "${CMAKE_PROJECT_NAME}_static")
-set(SHARED_LIB_NAME "${CMAKE_PROJECT_NAME}")
-set(APPLE_FRAMEWORK_NAME "SweetEditorCore")
-
-# header search path
-list(APPEND INCLUDE_DIRS
-        ${SRC_DIR}/include
-        ${3DPARTY_DIR}/include
-        ${3DPARTY_DIR}/include/simdutf
+# Third-party dependencies
+include(cmake/SweetEditorThirdParty.cmake)
+set(SWEETEDITOR_THIRD_PARTY_INCLUDE_DIRS
+        $<TARGET_PROPERTY:SweetEditor3p::NlohmannJson,INTERFACE_INCLUDE_DIRECTORIES>
+        $<TARGET_PROPERTY:SweetEditor3p::UtfCpp,INTERFACE_INCLUDE_DIRECTORIES>
+        $<TARGET_PROPERTY:SweetEditor3p::Simdutf,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
-# platform special
+# Include paths
+list(APPEND INCLUDE_DIRS
+        ${SWEETEDITOR_SRC_DIR}/include
+)
+
+# Platform inputs
 set(PLATFORM_FILES)
 if (ANDROID)
-    file(GLOB_RECURSE PLATFORM_FILES ${CMAKE_PROJECT_DIR}/platform/Android/sweeteditor/src/main/cpp/*.*)
-    list(APPEND INCLUDE_DIRS ${CMAKE_PROJECT_DIR}/platform/Android/sweeteditor/src/main/cpp)
-    add_definitions(-DANDROID)
+    file(GLOB_RECURSE PLATFORM_FILES ${SWEETEDITOR_PROJECT_DIR}/platform/Android/sweeteditor/src/main/cpp/*.*)
+    list(APPEND INCLUDE_DIRS ${SWEETEDITOR_PROJECT_DIR}/platform/Android/sweeteditor/src/main/cpp)
 elseif (OHOS)
-    file(GLOB_RECURSE PLATFORM_FILES ${CMAKE_PROJECT_DIR}/platform/OHOS/sweeteditor/src/main/cpp/*.*)
-    list(APPEND INCLUDE_DIRS ${CMAKE_PROJECT_DIR}/platform/OHOS/sweeteditor/src/main/cpp)
-    add_definitions(-DOHOS)
-elseif (WIN32)
-    add_definitions(-DWINDOWS -D_POSIX -D_POSIX_THREAD_SAFE_FUNCTIONS)
-elseif (APPLE)
-    if (CMAKE_SYSTEM_NAME STREQUAL "iOS")
-        add_definitions(-DIOS)
-    else()
-        add_definitions(-DOSX)
-    endif()
-elseif (EMSCRIPTEN)
-    add_definitions(-DWASM)
-    set(BUILD_STATIC_LIB ON)
-    file(GLOB_RECURSE WASM_FILES ${CMAKE_PROJECT_DIR}/platform/Emscripten/*.*)
-    message(STATUS "add target: libsweeteditor for wasm")
-    add_executable("libsweeteditor" ${WASM_FILES})
-    target_link_libraries("libsweeteditor" PRIVATE ${CMAKE_PROJECT_NAME}
-            "--bind"
-            "-s WASM=1"
-            "-s MODULARIZE=1"
-            "-s EXPORT_NAME='libsweeteditor'"
-            "-s EXPORT_ES6=1"
-            "-s FORCE_FILESYSTEM=1"
-            "-s ALLOW_MEMORY_GROWTH=1"
-            "-s EXPORTED_RUNTIME_METHODS=[\"FS\"]"
-    )
-elseif (UNIX AND NOT APPLE)
-    add_definitions(-DLINUX)
+    file(GLOB_RECURSE PLATFORM_FILES ${SWEETEDITOR_PROJECT_DIR}/platform/OHOS/sweeteditor/src/main/cpp/*.*)
+    list(APPEND INCLUDE_DIRS ${SWEETEDITOR_PROJECT_DIR}/platform/OHOS/sweeteditor/src/main/cpp)
 endif ()
 
-include_directories(${INCLUDE_DIRS})
-file(GLOB_RECURSE CORE_SOURCE_FILES CONFIGURE_DEPENDS ${SRC_DIR}/core/*.*)
+# Sources
+file(GLOB_RECURSE CORE_SOURCE_FILES CONFIGURE_DEPENDS ${SWEETEDITOR_SRC_DIR}/core/*.*)
+set(C_API_SOURCE_FILE "${SWEETEDITOR_SRC_DIR}/core/c_api.cpp")
+list(REMOVE_ITEM CORE_SOURCE_FILES ${C_API_SOURCE_FILE})
 
-add_library(${CORE_OBJECT_TARGET} OBJECT ${CORE_SOURCE_FILES} ${PLATFORM_FILES})
-set_target_properties(${CORE_OBJECT_TARGET} PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
-# project shared/static lib
-if (BUILD_SHARED_LIB)
-    message(STATUS "add target: ${SHARED_LIB_NAME} as dynamic lib")
-    if (APPLE)
-        # must config sources for shared lib on Apple
-        add_library(${SHARED_LIB_NAME} SHARED ${CORE_SOURCE_FILES} ${PLATFORM_FILES})
-        file(GLOB_RECURSE APPLE_PUBLIC_HEADERS ${SRC_DIR}/include/*.h ${SRC_DIR}/include/*.hpp)
-        set_target_properties(${SHARED_LIB_NAME} PROPERTIES
-                FRAMEWORK TRUE
-                FRAMEWORK_VERSION A
-                MACOSX_FRAMEWORK_IDENTIFIER "com.qiplat.${APPLE_FRAMEWORK_NAME}"
-                XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.qiplat.${APPLE_FRAMEWORK_NAME}"
-                PUBLIC_HEADER "${APPLE_PUBLIC_HEADERS}"
-                OUTPUT_NAME "${APPLE_FRAMEWORK_NAME}"
-                XCODE_GENERATE_SCHEME TRUE
-        )
-    else ()
-        add_library(${SHARED_LIB_NAME} SHARED $<TARGET_OBJECTS:${CORE_OBJECT_TARGET}>)
-    endif ()
-endif ()
-if (BUILD_STATIC_LIB)
-    message(STATUS "add target: ${STATIC_LIB_NAME} as static lib")
-    add_library(${STATIC_LIB_NAME} STATIC $<TARGET_OBJECTS:${CORE_OBJECT_TARGET}>)
-endif ()
-
-# add library functions
-function(add_platform_library dir filename type)
-    if (${type} STREQUAL "STATIC")
-        add_library(${dir} STATIC IMPORTED)
-    elseif (${type} STREQUAL "SHARED")
-        add_library(${dir} SHARED IMPORTED)
-    else ()
-        message(FATAL_ERROR "Error: add_platform_library type must be STATIC/SHARED")
-    endif ()
-    set(LIB_PATH)
-    if (ANDROID)
-        set(LIB_PATH ${3DPARTY_DIR}/lib/${dir}/android/${CMAKE_ANDROID_ARCH_ABI}/${filename})
-    elseif (OHOS)
-        set(LIB_PATH ${3DPARTY_DIR}/lib/${dir}/ohos/${OHOS_ARCH}/${filename})
-    elseif (WIN32)
-        if (MSVC)
-            if(CMAKE_BUILD_TYPE STREQUAL "Release")
-                set(LIB_PATH ${3DPARTY_DIR}/lib/${dir}/windows/msvc/release/${filename})
-            else ()
-                set(LIB_PATH ${3DPARTY_DIR}/lib/${dir}/windows/msvc/debug/${filename})
-            endif ()
-        else ()
-            set(LIB_PATH ${3DPARTY_DIR}/lib/${dir}/windows/mingw64/${filename})
-        endif ()
-    elseif (APPLE)
-        if (CMAKE_SYSTEM_NAME STREQUAL "iOS")
-            if (CMAKE_OSX_SYSROOT MATCHES ".*simulator.*" OR CMAKE_OSX_SYSROOT STREQUAL "iphonesimulator")
-                set(LIB_PATH ${3DPARTY_DIR}/lib/${dir}/ios/simulator-${CMAKE_OSX_ARCHITECTURES}/${filename})
-            else()
-                set(LIB_PATH ${3DPARTY_DIR}/lib/${dir}/ios/${CMAKE_OSX_ARCHITECTURES}/${filename})
-            endif()
-        else()
-            set(_OSX_ARCH ${CMAKE_OSX_ARCHITECTURES})
-            if (NOT _OSX_ARCH OR _OSX_ARCH STREQUAL "")
-                # CMAKE_OSX_ARCHITECTURES fallback to empty if host arch matches target, so detect host arch here
-                execute_process(COMMAND uname -m OUTPUT_VARIABLE _OSX_ARCH OUTPUT_STRIP_TRAILING_WHITESPACE)
-            endif()
-            set(LIB_PATH ${3DPARTY_DIR}/lib/${dir}/osx/${_OSX_ARCH}/${filename})
-        endif()
-    elseif (EMSCRIPTEN)
-        set(LIB_PATH ${3DPARTY_DIR}/lib/${dir}/emscripten/${filename})
-    elseif (UNIX AND NOT APPLE)
-        if (CMAKE_SYSTEM_PROCESSOR MATCHES "^(aarch64|arm64)$")
-            set(LIB_PATH ${3DPARTY_DIR}/lib/${dir}/linux/aarch64/${filename})
-        elseif (CMAKE_SYSTEM_PROCESSOR MATCHES "^(x86_64|amd64)$")
-            set(LIB_PATH ${3DPARTY_DIR}/lib/${dir}/linux/x86_64/${filename})
-        else ()
-            message(FATAL_ERROR "Unsupported Linux processor for prebuilt ${dir}: ${CMAKE_SYSTEM_PROCESSOR}")
-        endif ()
-    endif ()
-    message(STATUS "Add platform library: ${LIB_PATH}")
-    set_target_properties(${dir} PROPERTIES IMPORTED_LOCATION ${LIB_PATH})
-    set(LINK_LIB ${LINK_LIB} ${dir} PARENT_SCOPE)
-endfunction()
-
-# add library
+# Dependencies
+list(APPEND SWEETEDITOR_LINK_LIB SweetEditor3p::Simdutf)
 if (ANDROID)
     find_library(ANDROID_LIB android)
     find_library(LOG_LIB log)
-    add_platform_library(simdutf libsimdutf.a STATIC)
-    set(LINK_LIB ${LINK_LIB} ${ANDROID_LIB} ${LOG_LIB})
+    set(SWEETEDITOR_LINK_LIB ${SWEETEDITOR_LINK_LIB} ${ANDROID_LIB} ${LOG_LIB})
 elseif (OHOS)
-    add_platform_library(simdutf libsimdutf.a STATIC)
-    set(LINK_LIB ${LINK_LIB} libace_napi.z.so libhilog_ndk.z.so)
+    set(SWEETEDITOR_LINK_LIB ${SWEETEDITOR_LINK_LIB} libace_napi.z.so libhilog_ndk.z.so)
 elseif (WIN32)
-    if (MSVC)
-        add_platform_library(simdutf simdutf.lib STATIC)
-    else ()
-        add_platform_library(simdutf libsimdutf.a STATIC)
-    endif ()
-    set(LINK_LIB ${LINK_LIB} DbgHelp)
-elseif (APPLE)
-    add_platform_library(simdutf libsimdutf.a STATIC)
-elseif (EMSCRIPTEN)
-    add_platform_library(simdutf libsimdutf.a STATIC)
-elseif (UNIX AND NOT APPLE)
-    add_platform_library(simdutf libsimdutf.a STATIC)
+    set(SWEETEDITOR_LINK_LIB ${SWEETEDITOR_LINK_LIB} DbgHelp)
 endif ()
 
-if (BUILD_SHARED_LIB)
-    target_link_libraries(${SHARED_LIB_NAME} PRIVATE ${LINK_LIB})
+# Object targets
+add_library(${SWEETEDITOR_CORE_OBJECT_TARGET} OBJECT ${CORE_SOURCE_FILES} ${PLATFORM_FILES})
+set_target_properties(${SWEETEDITOR_CORE_OBJECT_TARGET} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(${SWEETEDITOR_CORE_OBJECT_TARGET} PRIVATE
+        ${INCLUDE_DIRS}
+        ${SWEETEDITOR_THIRD_PARTY_INCLUDE_DIRS}
+)
+target_compile_definitions(${SWEETEDITOR_CORE_OBJECT_TARGET} PRIVATE
+        TESTS_DIR="${PROJECT_SOURCE_DIR}/tests"
+        ENABLE_LOG=1
+        ENABLE_PERF_LOG=1
+        SWEETEDITOR_DEBUG=1
+        SWEETEDITOR_EXPORT=1
+)
+if (MSVC)
+    target_compile_options(${SWEETEDITOR_CORE_OBJECT_TARGET} PRIVATE /Zc:__cplusplus /utf-8)
+    target_compile_definitions(${SWEETEDITOR_CORE_OBJECT_TARGET} PRIVATE _CRT_SECURE_NO_WARNINGS NOMINMAX=1)
 endif ()
-# merge static libs
-if (BUILD_STATIC_LIB)
-    target_link_libraries(${STATIC_LIB_NAME} PRIVATE ${LINK_LIB})
+if (ANDROID)
+    target_compile_definitions(${SWEETEDITOR_CORE_OBJECT_TARGET} PRIVATE ANDROID)
+elseif (OHOS)
+    target_compile_definitions(${SWEETEDITOR_CORE_OBJECT_TARGET} PRIVATE OHOS)
+elseif (WIN32)
+    target_compile_definitions(${SWEETEDITOR_CORE_OBJECT_TARGET} PRIVATE WINDOWS _POSIX _POSIX_THREAD_SAFE_FUNCTIONS)
+elseif (APPLE)
+    if (CMAKE_SYSTEM_NAME STREQUAL "iOS")
+        target_compile_definitions(${SWEETEDITOR_CORE_OBJECT_TARGET} PRIVATE IOS)
+    else ()
+        target_compile_definitions(${SWEETEDITOR_CORE_OBJECT_TARGET} PRIVATE OSX)
+    endif ()
+elseif (EMSCRIPTEN)
+    target_compile_definitions(${SWEETEDITOR_CORE_OBJECT_TARGET} PRIVATE WASM)
+elseif (UNIX AND NOT APPLE)
+    target_compile_definitions(${SWEETEDITOR_CORE_OBJECT_TARGET} PRIVATE LINUX)
+endif ()
+
+if (SWEETEDITOR_BUILD_STATIC OR (SWEETEDITOR_BUILD_TESTS AND NOT EMSCRIPTEN) OR (SWEETEDITOR_BUILD_SHARED AND NOT EMSCRIPTEN AND NOT APPLE))
+    add_library(${SWEETEDITOR_C_API_OBJECT_TARGET} OBJECT ${C_API_SOURCE_FILE})
+    set_target_properties(${SWEETEDITOR_C_API_OBJECT_TARGET} PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    target_include_directories(${SWEETEDITOR_C_API_OBJECT_TARGET} PRIVATE
+            ${INCLUDE_DIRS}
+            ${SWEETEDITOR_THIRD_PARTY_INCLUDE_DIRS}
+    )
+    target_compile_definitions(${SWEETEDITOR_C_API_OBJECT_TARGET} PRIVATE
+            TESTS_DIR="${PROJECT_SOURCE_DIR}/tests"
+            ENABLE_LOG=1
+            ENABLE_PERF_LOG=1
+            SWEETEDITOR_DEBUG=1
+            SWEETEDITOR_EXPORT=1
+    )
+    if (MSVC)
+        target_compile_options(${SWEETEDITOR_C_API_OBJECT_TARGET} PRIVATE /Zc:__cplusplus /utf-8)
+        target_compile_definitions(${SWEETEDITOR_C_API_OBJECT_TARGET} PRIVATE _CRT_SECURE_NO_WARNINGS NOMINMAX=1)
+    endif ()
+    if (ANDROID)
+        target_compile_definitions(${SWEETEDITOR_C_API_OBJECT_TARGET} PRIVATE ANDROID)
+    elseif (OHOS)
+        target_compile_definitions(${SWEETEDITOR_C_API_OBJECT_TARGET} PRIVATE OHOS)
+    elseif (WIN32)
+        target_compile_definitions(${SWEETEDITOR_C_API_OBJECT_TARGET} PRIVATE WINDOWS _POSIX _POSIX_THREAD_SAFE_FUNCTIONS)
+    elseif (APPLE)
+        if (CMAKE_SYSTEM_NAME STREQUAL "iOS")
+            target_compile_definitions(${SWEETEDITOR_C_API_OBJECT_TARGET} PRIVATE IOS)
+        else ()
+            target_compile_definitions(${SWEETEDITOR_C_API_OBJECT_TARGET} PRIVATE OSX)
+        endif ()
+    elseif (EMSCRIPTEN)
+        target_compile_definitions(${SWEETEDITOR_C_API_OBJECT_TARGET} PRIVATE WASM)
+    elseif (UNIX AND NOT APPLE)
+        target_compile_definitions(${SWEETEDITOR_C_API_OBJECT_TARGET} PRIVATE LINUX)
+    endif ()
+endif ()
+
+# Project libraries
+if (SWEETEDITOR_BUILD_SHARED AND NOT EMSCRIPTEN)
+    message(STATUS "add target: ${SWEETEDITOR_SHARED_LIB_NAME} as dynamic lib")
+    if (APPLE)
+        add_library(${SWEETEDITOR_SHARED_LIB_NAME} SHARED ${CORE_SOURCE_FILES} ${C_API_SOURCE_FILE} ${PLATFORM_FILES})
+        file(GLOB_RECURSE APPLE_PUBLIC_HEADERS ${SWEETEDITOR_SRC_DIR}/include/*.h ${SWEETEDITOR_SRC_DIR}/include/*.hpp)
+        set_target_properties(${SWEETEDITOR_SHARED_LIB_NAME} PROPERTIES
+                FRAMEWORK TRUE
+                FRAMEWORK_VERSION A
+                MACOSX_FRAMEWORK_IDENTIFIER "com.qiplat.${SWEETEDITOR_APPLE_FRAMEWORK_NAME}"
+                XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.qiplat.${SWEETEDITOR_APPLE_FRAMEWORK_NAME}"
+                PUBLIC_HEADER "${APPLE_PUBLIC_HEADERS}"
+                OUTPUT_NAME "${SWEETEDITOR_APPLE_FRAMEWORK_NAME}"
+                XCODE_GENERATE_SCHEME TRUE
+        )
+        target_include_directories(${SWEETEDITOR_SHARED_LIB_NAME}
+                PUBLIC
+                $<BUILD_INTERFACE:${SWEETEDITOR_SRC_DIR}/include>
+                $<INSTALL_INTERFACE:include/sweeteditor>
+                PRIVATE
+                ${INCLUDE_DIRS}
+                ${SWEETEDITOR_THIRD_PARTY_INCLUDE_DIRS}
+        )
+        target_compile_definitions(${SWEETEDITOR_SHARED_LIB_NAME} PRIVATE
+                TESTS_DIR="${PROJECT_SOURCE_DIR}/tests"
+                ENABLE_LOG=1
+                ENABLE_PERF_LOG=1
+                SWEETEDITOR_DEBUG=1
+                SWEETEDITOR_EXPORT=1
+        )
+        if (CMAKE_SYSTEM_NAME STREQUAL "iOS")
+            target_compile_definitions(${SWEETEDITOR_SHARED_LIB_NAME} PRIVATE IOS)
+        else ()
+            target_compile_definitions(${SWEETEDITOR_SHARED_LIB_NAME} PRIVATE OSX)
+        endif ()
+    else ()
+        add_library(${SWEETEDITOR_SHARED_LIB_NAME} SHARED
+                $<TARGET_OBJECTS:${SWEETEDITOR_CORE_OBJECT_TARGET}>
+                $<TARGET_OBJECTS:${SWEETEDITOR_C_API_OBJECT_TARGET}>
+        )
+        target_include_directories(${SWEETEDITOR_SHARED_LIB_NAME}
+                PUBLIC
+                $<BUILD_INTERFACE:${SWEETEDITOR_SRC_DIR}/include>
+                $<INSTALL_INTERFACE:include/sweeteditor>
+        )
+    endif ()
+elseif (SWEETEDITOR_BUILD_SHARED AND EMSCRIPTEN)
+    message(STATUS "skip target: ${SWEETEDITOR_SHARED_LIB_NAME} dynamic lib is not used for Emscripten")
+endif ()
+if (SWEETEDITOR_BUILD_STATIC)
+    message(STATUS "add target: ${SWEETEDITOR_STATIC_LIB_NAME} as static lib")
+    add_library(${SWEETEDITOR_STATIC_LIB_NAME} STATIC
+            $<TARGET_OBJECTS:${SWEETEDITOR_CORE_OBJECT_TARGET}>
+            $<TARGET_OBJECTS:${SWEETEDITOR_C_API_OBJECT_TARGET}>
+    )
+    target_include_directories(${SWEETEDITOR_STATIC_LIB_NAME}
+            PUBLIC
+            $<BUILD_INTERFACE:${SWEETEDITOR_SRC_DIR}/include>
+            $<INSTALL_INTERFACE:include/sweeteditor>
+    )
+endif ()
+
+# Link libraries
+if (TARGET ${SWEETEDITOR_SHARED_LIB_NAME})
+    target_link_libraries(${SWEETEDITOR_SHARED_LIB_NAME} PRIVATE
+            SweetEditor3p::NlohmannJson
+            SweetEditor3p::UtfCpp
+            ${SWEETEDITOR_LINK_LIB}
+    )
+endif ()
+if (TARGET ${SWEETEDITOR_STATIC_LIB_NAME})
+    target_link_libraries(${SWEETEDITOR_STATIC_LIB_NAME} PRIVATE
+            SweetEditor3p::NlohmannJson
+            SweetEditor3p::UtfCpp
+            ${SWEETEDITOR_LINK_LIB}
+    )
     include(cmake/MergeStaticLib.cmake)
-    get_target_property(SIMDUTF_PATH simdutf IMPORTED_LOCATION)
-    merge_static_libs(${STATIC_LIB_NAME} ${SIMDUTF_PATH})
+    merge_static_libs(${SWEETEDITOR_STATIC_LIB_NAME} ${SWEETEDITOR_3P_SIMDUTF_LIBRARY})
+endif ()
+
+# WebAssembly targets
+if (EMSCRIPTEN)
+    include(cmake/SweetEditorWasm.cmake)
 endif ()
 
 # Unit tests
-if (BUILD_TESTING)
+if (SWEETEDITOR_BUILD_TESTS)
     enable_testing()
     message(STATUS "Unit tests enabled")
     if (NOT ANDROID AND NOT OHOS AND NOT EMSCRIPTEN)
-        add_subdirectory(${CMAKE_PROJECT_DIR}/tests)
+        add_subdirectory(${SWEETEDITOR_PROJECT_DIR}/tests)
     endif ()
-endif()
+endif ()
 
-# config for installing
+# Install
 include(GNUInstallDirs)
 set(INSTALL_TARGETS)
-if (BUILD_SHARED_LIB)
-    list(APPEND INSTALL_TARGETS ${SHARED_LIB_NAME})
+if (TARGET ${SWEETEDITOR_SHARED_LIB_NAME})
+    list(APPEND INSTALL_TARGETS ${SWEETEDITOR_SHARED_LIB_NAME})
 endif ()
-if (BUILD_STATIC_LIB)
-    list(APPEND INSTALL_TARGETS ${STATIC_LIB_NAME})
+if (TARGET ${SWEETEDITOR_STATIC_LIB_NAME})
+    list(APPEND INSTALL_TARGETS ${SWEETEDITOR_STATIC_LIB_NAME})
 endif ()
-# install lib and executable
 if (INSTALL_TARGETS)
-    if (APPLE AND BUILD_SHARED_LIB)
+    if (APPLE AND SWEETEDITOR_BUILD_SHARED)
         install(TARGETS ${INSTALL_TARGETS}
                 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
                 LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -243,12 +269,11 @@ if (INSTALL_TARGETS)
                         DESTINATION ${CMAKE_INSTALL_BINDIR}
                         OPTIONAL
                 )
-            endif()
-        endforeach()
-    endif()
+            endif ()
+        endforeach ()
+    endif ()
 endif ()
-# install headers
-install(DIRECTORY ${SRC_DIR}/include/
+install(DIRECTORY ${SWEETEDITOR_SRC_DIR}/include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/sweeteditor
         FILES_MATCHING PATTERN "*.h" PATTERN "*.hpp"
 )

@@ -30,7 +30,7 @@ $OutputDir = if ($Output) {
 }
 
 $TargetName = "sweeteditor"
-$WasmTargetName = "libsweeteditor"
+$WasmTargetNames = @("sweeteditor_wasm_c_abi", "sweeteditor_wasm_embind")
 
 function Write-Section {
     param([Parameter(Mandatory = $true)][string]$Title)
@@ -234,8 +234,8 @@ function Build-WindowsMsvc {
         "-DCMAKE_CXX_STANDARD=17",
         "-DCMAKE_CXX_STANDARD_REQUIRED=ON",
         "-DCMAKE_CXX_FLAGS=/std:c++17 /EHsc /utf-8",
-        "-DBUILD_STATIC_LIB=OFF",
-        "-DBUILD_TESTING=OFF"
+        "-DSWEETEDITOR_BUILD_STATIC=OFF",
+        "-DSWEETEDITOR_BUILD_TESTS=OFF"
     )
 
     Invoke-External -FilePath "cmake" -Arguments @(
@@ -261,15 +261,17 @@ function Build-Emscripten {
         "-G", "Ninja",
         "-DCMAKE_CXX_FLAGS=-std=c++17",
         "-DCMAKE_BUILD_TYPE=Release",
-        "-DBUILD_STATIC_LIB=OFF",
-        "-DBUILD_TESTING=OFF"
+        "-DSWEETEDITOR_BUILD_STATIC=OFF",
+        "-DSWEETEDITOR_BUILD_TESTS=OFF"
     )
 
-    Invoke-External -FilePath "cmake" -Arguments @(
+    $wasmBuildArgs = @(
         "--build", $wasmBuildDir,
-        "--target", $WasmTargetName,
+        "--target"
+    ) + $WasmTargetNames + @(
         "-j", "24"
     )
+    Invoke-External -FilePath "cmake" -Arguments $wasmBuildArgs
 
     Copy-BuiltLibraries -SourceDir (Join-Path $wasmBuildDir "bin") -DestinationDir $wasmPrebuiltDir
 }
@@ -300,8 +302,8 @@ function Build-Android {
         "-DCMAKE_TOOLCHAIN_FILE=$toolchainFile",
         "-DANDROID_PLATFORM=android-21",
         "-DCMAKE_CXX_FLAGS=-std=c++17",
-        "-DBUILD_STATIC_LIB=OFF",
-        "-DBUILD_TESTING=OFF"
+        "-DSWEETEDITOR_BUILD_STATIC=OFF",
+        "-DSWEETEDITOR_BUILD_TESTS=OFF"
     )
 
     Invoke-External -FilePath "cmake" -Arguments @(
@@ -343,8 +345,8 @@ function Build-Ohos {
         "-DCMAKE_BUILD_TYPE=Release",
         "-DCMAKE_TOOLCHAIN_FILE=$OhosToolchain",
         "-DCMAKE_CXX_FLAGS=-std=c++17",
-        "-DBUILD_STATIC_LIB=OFF",
-        "-DBUILD_TESTING=OFF"
+        "-DSWEETEDITOR_BUILD_STATIC=OFF",
+        "-DSWEETEDITOR_BUILD_TESTS=OFF"
     )
 
     Invoke-External -FilePath "cmake" -Arguments @(
@@ -390,7 +392,7 @@ function Build-LinuxWsl {
         Write-Host "Distro: $resolvedWslDistro (auto-selected)"
     }
 
-    $cmakeConfigureCommand = "cmake '$projectDirWsl' -B '$linuxBuildDirWsl' -G 'Ninja' -DCMAKE_CXX_FLAGS='-std=c++17 -fPIC' -DCMAKE_BUILD_TYPE=Release -DBUILD_STATIC_LIB=OFF -DBUILD_TESTING=OFF"
+    $cmakeConfigureCommand = "cmake '$projectDirWsl' -B '$linuxBuildDirWsl' -G 'Ninja' -DCMAKE_CXX_FLAGS='-std=c++17 -fPIC' -DCMAKE_BUILD_TYPE=Release -DSWEETEDITOR_BUILD_STATIC=OFF -DSWEETEDITOR_BUILD_TESTS=OFF"
     if ($Arch -eq "aarch64") {
         $cmakeConfigureCommand += " -DCMAKE_TOOLCHAIN_FILE='$linuxToolchainFileWsl'"
     }

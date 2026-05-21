@@ -1,0 +1,9 @@
+Name: Catch2
+Version: v3.10.0
+Upstream: https://github.com/catchorg/Catch2
+License: BSL-1.0
+
+Files:
+  https://github.com/catchorg/Catch2/releases/download/v3.10.0/catch_amalgamated.hpp
+  https://github.com/catchorg/Catch2/releases/download/v3.10.0/catch_amalgamated.cpp
+  https://raw.githubusercontent.com/catchorg/Catch2/v3.10.0/LICENSE.txt

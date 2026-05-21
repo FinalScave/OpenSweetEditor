@@ -1,0 +1,9 @@
+Name: nlohmann/json
+Version: v3.12.0
+Upstream: https://github.com/nlohmann/json
+License: MIT
+
+Files:
+  https://raw.githubusercontent.com/nlohmann/json/v3.12.0/single_include/nlohmann/json.hpp
+  https://raw.githubusercontent.com/nlohmann/json/v3.12.0/single_include/nlohmann/json_fwd.hpp
+  https://raw.githubusercontent.com/nlohmann/json/v3.12.0/LICENSE.MIT

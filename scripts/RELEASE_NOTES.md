@@ -15,7 +15,7 @@ Cross-platform release assets for OpenSweetEditor.
 - Linux: `x86_64`, `aarch64`
 - Windows: `x64`
 - OHOS: `arm64-v8a`, `x86_64`
-- WebAssembly: `libsweeteditor.js`, `libsweeteditor.wasm`
+- WebAssembly: `sweeteditor_c_abi.js`, `sweeteditor_c_abi.wasm`, `sweeteditor_embind.js`, `sweeteditor_embind.wasm`
 
 ## Package Layout
 

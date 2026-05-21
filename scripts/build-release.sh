@@ -55,7 +55,7 @@ done
 set -- "${POSITIONAL_ARGS[@]}"
 
 TARGET_NAME=sweeteditor
-WASM_TARGET_NAME=libsweeteditor
+WASM_TARGET_NAMES=(sweeteditor_wasm_c_abi sweeteditor_wasm_embind)
 APPLE_XCFRAMEWORK_IOS="SweetEditorCoreIOS.xcframework"
 APPLE_XCFRAMEWORK_OSX="SweetEditorCoreOSX.xcframework"
 echo "============================= Start building: $PLATFORM ============================="
@@ -233,8 +233,8 @@ function build_windows_msvc() {
     -DCMAKE_CXX_STANDARD=17 \
     -DCMAKE_CXX_STANDARD_REQUIRED=ON \
     -DCMAKE_CXX_FLAGS="/std:c++17 /EHsc /utf-8" \
-    -DBUILD_STATIC_LIB=OFF \
-    -DBUILD_TESTING=OFF
+    -DSWEETEDITOR_BUILD_STATIC=OFF \
+    -DSWEETEDITOR_BUILD_TESTS=OFF
   cmake --build $WINDOWS_BUILD_DIR --target $TARGET_NAME -j 24 --config Release
   copy_built_libraries "$WINDOWS_BUILD_DIR/bin" "$WINDOWS_PREBUILT_DIR"
 }
@@ -266,9 +266,9 @@ function build_apple() {
     -G "$apple_generator"
     -DCMAKE_CXX_FLAGS=-std=c++17
     -DCMAKE_BUILD_TYPE=Release
-    -DBUILD_SHARED_LIB="$build_shared_lib"
-    -DBUILD_STATIC_LIB="$build_static_lib"
-    -DBUILD_TESTING=OFF
+    -DSWEETEDITOR_BUILD_SHARED="$build_shared_lib"
+    -DSWEETEDITOR_BUILD_STATIC="$build_static_lib"
+    -DSWEETEDITOR_BUILD_TESTS=OFF
     -DCMAKE_OSX_SYSROOT="$apple_sysroot"
     -DCMAKE_OSX_ARCHITECTURES="$apple_arch"
   )
@@ -397,8 +397,8 @@ function build_linux() {
       -G "Ninja" \
       -DCMAKE_CXX_FLAGS="-std=c++17 -fPIC" \
       -DCMAKE_BUILD_TYPE=Release \
-      -DBUILD_STATIC_LIB=OFF \
-      -DBUILD_TESTING=OFF \
+      -DSWEETEDITOR_BUILD_STATIC=OFF \
+      -DSWEETEDITOR_BUILD_TESTS=OFF \
       "${linux_toolchain_args[@]}"
     cmake --build "$linux_build_dir" --target "$TARGET_NAME" -j 12
     copy_built_libraries "$linux_build_dir/lib" "$linux_prebuilt_dir"
@@ -422,9 +422,9 @@ function build_emscripten() {
     -G "Ninja" \
     -DCMAKE_CXX_FLAGS="-std=c++17" \
     -DCMAKE_BUILD_TYPE=Release \
-    -DBUILD_STATIC_LIB=OFF \
-    -DBUILD_TESTING=OFF || return 1
-  cmake --build $WASM_BUILD_DIR --target $WASM_TARGET_NAME -j 24 || return 1
+    -DSWEETEDITOR_BUILD_STATIC=OFF \
+    -DSWEETEDITOR_BUILD_TESTS=OFF || return 1
+  cmake --build $WASM_BUILD_DIR --target "${WASM_TARGET_NAMES[@]}" -j 24 || return 1
   copy_built_libraries "$WASM_BUILD_DIR/bin" "$WASM_PREBUILT_DIR"
 }
 
@@ -449,8 +449,8 @@ function build_android() {
     -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK/build/cmake/android.toolchain.cmake \
     -DANDROID_PLATFORM=android-21 \
     -DCMAKE_CXX_FLAGS="-std=c++17" \
-    -DBUILD_STATIC_LIB=OFF \
-    -DBUILD_TESTING=OFF
+    -DSWEETEDITOR_BUILD_STATIC=OFF \
+    -DSWEETEDITOR_BUILD_TESTS=OFF
   cmake --build $ANDROID_BUILD_DIR --target $TARGET_NAME -j 24
 
   local strip_tool
@@ -484,8 +484,8 @@ function build_ohos() {
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_TOOLCHAIN_FILE="$OHOS_TOOLCHAIN" \
     -DCMAKE_CXX_FLAGS="-std=c++17" \
-    -DBUILD_STATIC_LIB=OFF \
-    -DBUILD_TESTING=OFF
+    -DSWEETEDITOR_BUILD_STATIC=OFF \
+    -DSWEETEDITOR_BUILD_TESTS=OFF
   cmake --build $OHOS_BUILD_DIR --target $TARGET_NAME -j 24
   copy_built_libraries "$OHOS_BUILD_DIR/lib" "$OHOS_PREBUILT_DIR"
 }

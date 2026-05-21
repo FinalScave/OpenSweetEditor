@@ -13,7 +13,19 @@
 #include <stdint.h>
 #endif
 
-#if defined(WINDOWS) || defined(_WIN32) || defined(_WIN64)
+#if defined(__EMSCRIPTEN__) && defined(SWEETEDITOR_BUILD_WASM_C_ABI)
+  #include <emscripten/emscripten.h>
+#endif
+
+#if defined(__EMSCRIPTEN__) && defined(SWEETEDITOR_BUILD_WASM_C_ABI)
+  #define EDITOR_API EMSCRIPTEN_KEEPALIVE
+  #define EDITOR_CALL
+  #ifdef __cplusplus
+    using U16Char = char16_t;
+  #else
+    typedef uint16_t U16Char;
+  #endif
+#elif defined(WINDOWS) || defined(_WIN32) || defined(_WIN64)
   #ifdef SWEETEDITOR_EXPORT
     #define EDITOR_API __declspec(dllexport)
   #else

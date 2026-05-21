@@ -84,9 +84,9 @@ Invoke-Step -Title "Configure C++ core (CMake)" -Action {
         & cmake `
             -S $repoRoot `
             -B $buildDir `
-            -DBUILD_SHARED_LIB=ON `
-            -DBUILD_STATIC_LIB=ON `
-            -DBUILD_TESTING=OFF
+            -DSWEETEDITOR_BUILD_SHARED=ON `
+            -DSWEETEDITOR_BUILD_STATIC=ON `
+            -DSWEETEDITOR_BUILD_TESTS=OFF
     } else {
         $cmakeGenerator = "Visual Studio 17 2022"
         $isMultiConfigGenerator = $true
@@ -95,9 +95,9 @@ Invoke-Step -Title "Configure C++ core (CMake)" -Action {
             -B $buildDir `
             -G $cmakeGenerator `
             -A x64 `
-            -DBUILD_SHARED_LIB=ON `
-            -DBUILD_STATIC_LIB=ON `
-            -DBUILD_TESTING=OFF
+            -DSWEETEDITOR_BUILD_SHARED=ON `
+            -DSWEETEDITOR_BUILD_STATIC=ON `
+            -DSWEETEDITOR_BUILD_TESTS=OFF
     }
     if ($LASTEXITCODE -ne 0) {
         throw "CMake configure failed."

@@ -1,0 +1,8 @@
+Name: utfcpp
+Version: unknown
+Upstream: https://github.com/nemtrif/utfcpp
+License: BSL-1.0
+
+Files:
+  include/utf8/utf8.h
+  include/utf8/utf8/*.h
