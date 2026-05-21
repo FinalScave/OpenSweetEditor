@@ -263,23 +263,8 @@ public class SweetEditorInputConnection extends BaseInputConnection {
 
     void onEditorActionResult(EditorCore.EditorActionResult result) {
         if (result.needsImeSync) {
-            syncEditableFromCore();
-        }
-        if (result.needsImeSync
-                || result.cursorChanged
-                || result.selectionChanged
-                || result.compositionChanged
-                || isImeSelectionGesture(result)) {
             updateImeSelectionState();
         }
-    }
-
-    private boolean isImeSelectionGesture(EditorCore.EditorActionResult result) {
-        return result.gestureType == EditorCore.GestureType.TAP
-                || result.gestureType == EditorCore.GestureType.DOUBLE_TAP
-                || result.gestureType == EditorCore.GestureType.LONG_PRESS
-                || result.gestureType == EditorCore.GestureType.DRAG_SELECT
-                || result.isHandleDrag;
     }
 
     private EditorCore.ImeInputContext syncEditableFromCore() {

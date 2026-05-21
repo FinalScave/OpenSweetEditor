@@ -40,6 +40,14 @@ class SweetEditorController {
     action(editorCore);
   }
 
+  void _runEditorCoreAction(
+    core.EditorActionResult Function(core.EditorCore editorCore) action,
+  ) {
+    _withEditorCore((editorCore) {
+      _state?._dispatchEditorActionResult(action(editorCore));
+    });
+  }
+
   void whenReady(VoidCallback callback) {
     if (_state != null) {
       callback();
@@ -441,7 +449,7 @@ class SweetEditorController {
     int backgroundColor = 0,
     int fontStyle = 0,
   }) {
-    _withEditorCore(
+    _runEditorCoreAction(
       (editorCore) => editorCore.registerTextStyle(
         styleId,
         color,
@@ -452,9 +460,9 @@ class SweetEditorController {
   }
 
   void registerBatchTextStyles(Map<int, core.TextStyle> stylesById) {
-    _withEditorCore((editorCore) {
-      editorCore.registerBatchTextStyles(stylesById);
-    });
+    _runEditorCoreAction(
+      (editorCore) => editorCore.registerBatchTextStyles(stylesById),
+    );
   }
 
   void setLineSpans(
@@ -462,125 +470,113 @@ class SweetEditorController {
     core.SpanLayer layer,
     List<core.StyleSpan> spans,
   ) {
-    _withEditorCore((editorCore) {
-      editorCore.setLineSpans(line, layer, spans);
-    });
+    _runEditorCoreAction(
+      (editorCore) => editorCore.setLineSpans(line, layer, spans),
+    );
   }
 
   void setBatchLineSpans(
     core.SpanLayer layer,
     Map<int, List<core.StyleSpan>> spansByLine,
   ) {
-    _withEditorCore((editorCore) {
-      editorCore.setBatchLineSpans(layer, spansByLine);
-    });
+    _runEditorCoreAction(
+      (editorCore) => editorCore.setBatchLineSpans(layer, spansByLine),
+    );
   }
 
   void setLineInlayHints(int line, List<core.InlayHint> hints) {
-    _withEditorCore((editorCore) {
-      editorCore.setLineInlayHints(line, hints);
-    });
+    _runEditorCoreAction(
+      (editorCore) => editorCore.setLineInlayHints(line, hints),
+    );
   }
 
   void setBatchLineInlayHints(Map<int, List<core.InlayHint>> hintsByLine) {
-    _withEditorCore((editorCore) {
-      editorCore.setBatchLineInlayHints(hintsByLine);
-    });
+    _runEditorCoreAction(
+      (editorCore) => editorCore.setBatchLineInlayHints(hintsByLine),
+    );
   }
 
   void setLinePhantomTexts(int line, List<core.PhantomText> phantoms) {
-    _withEditorCore((editorCore) {
-      editorCore.setLinePhantomTexts(line, phantoms);
-    });
+    _runEditorCoreAction(
+      (editorCore) => editorCore.setLinePhantomTexts(line, phantoms),
+    );
   }
 
   void setBatchLinePhantomTexts(
     Map<int, List<core.PhantomText>> phantomsByLine,
   ) {
-    _withEditorCore((editorCore) {
-      editorCore.setBatchLinePhantomTexts(phantomsByLine);
-    });
+    _runEditorCoreAction(
+      (editorCore) => editorCore.setBatchLinePhantomTexts(phantomsByLine),
+    );
   }
 
   void setLineGutterIcons(int line, List<core.GutterIcon> icons) {
-    _withEditorCore((editorCore) {
-      editorCore.setLineGutterIcons(line, icons);
-    });
+    _runEditorCoreAction(
+      (editorCore) => editorCore.setLineGutterIcons(line, icons),
+    );
   }
 
   void setBatchLineGutterIcons(Map<int, List<core.GutterIcon>> iconsByLine) {
-    _withEditorCore((editorCore) {
-      editorCore.setBatchLineGutterIcons(iconsByLine);
-    });
+    _runEditorCoreAction(
+      (editorCore) => editorCore.setBatchLineGutterIcons(iconsByLine),
+    );
   }
 
   void setLineCodeLens(int line, List<core.CodeLensItem> items) {
-    _withEditorCore((editorCore) {
-      editorCore.setLineCodeLens(line, items);
-    });
+    _runEditorCoreAction(
+      (editorCore) => editorCore.setLineCodeLens(line, items),
+    );
   }
 
   void setBatchLineCodeLens(Map<int, List<core.CodeLensItem>> itemsByLine) {
-    _withEditorCore((editorCore) {
-      editorCore.setBatchLineCodeLens(itemsByLine);
-    });
+    _runEditorCoreAction(
+      (editorCore) => editorCore.setBatchLineCodeLens(itemsByLine),
+    );
   }
 
   void setLineLinks(int line, List<core.LinkSpan> links) {
-    _withEditorCore((editorCore) {
-      editorCore.setLineLinks(line, links);
-    });
+    _runEditorCoreAction((editorCore) => editorCore.setLineLinks(line, links));
   }
 
   void setBatchLineLinks(Map<int, List<core.LinkSpan>> linksByLine) {
-    _withEditorCore((editorCore) {
-      editorCore.setBatchLineLinks(linksByLine);
-    });
+    _runEditorCoreAction(
+      (editorCore) => editorCore.setBatchLineLinks(linksByLine),
+    );
   }
 
   String getLinkTargetAt(int line, int column) =>
       _state?._session.editorCore?.getLinkTargetAt(line, column) ?? '';
 
   void setLineDiagnostics(int line, List<core.Diagnostic> items) {
-    _withEditorCore((editorCore) {
-      editorCore.setLineDiagnostics(line, items);
-    });
+    _runEditorCoreAction(
+      (editorCore) => editorCore.setLineDiagnostics(line, items),
+    );
   }
 
   void setBatchLineDiagnostics(Map<int, List<core.Diagnostic>> itemsByLine) {
-    _withEditorCore((editorCore) {
-      editorCore.setBatchLineDiagnostics(itemsByLine);
-    });
+    _runEditorCoreAction(
+      (editorCore) => editorCore.setBatchLineDiagnostics(itemsByLine),
+    );
   }
 
   void setIndentGuides(List<core.IndentGuide> guides) {
-    _withEditorCore((editorCore) {
-      editorCore.setIndentGuides(guides);
-    });
+    _runEditorCoreAction((editorCore) => editorCore.setIndentGuides(guides));
   }
 
   void setBracketGuides(List<core.BracketGuide> guides) {
-    _withEditorCore((editorCore) {
-      editorCore.setBracketGuides(guides);
-    });
+    _runEditorCoreAction((editorCore) => editorCore.setBracketGuides(guides));
   }
 
   void setFlowGuides(List<core.FlowGuide> guides) {
-    _withEditorCore((editorCore) {
-      editorCore.setFlowGuides(guides);
-    });
+    _runEditorCoreAction((editorCore) => editorCore.setFlowGuides(guides));
   }
 
   void setSeparatorGuides(List<core.SeparatorGuide> guides) {
-    _withEditorCore((editorCore) {
-      editorCore.setSeparatorGuides(guides);
-    });
+    _runEditorCoreAction((editorCore) => editorCore.setSeparatorGuides(guides));
   }
 
   void setFoldRegions(List<core.FoldRegion> regions) {
-    _withEditorCore((editorCore) {
-      editorCore.setFoldRegions(regions);
-    });
+    _runEditorCoreAction((editorCore) => editorCore.setFoldRegions(regions));
   }
 
   void setMatchedBrackets(
@@ -589,56 +585,54 @@ class SweetEditorController {
     int closeLine,
     int closeColumn,
   ) {
-    _withEditorCore((editorCore) {
-      editorCore.setMatchedBrackets(
+    _runEditorCoreAction(
+      (editorCore) => editorCore.setMatchedBrackets(
         openLine,
         openColumn,
         closeLine,
         closeColumn,
-      );
-    });
+      ),
+    );
   }
 
   void clearMatchedBrackets() {
-    _withEditorCore((editorCore) => editorCore.clearMatchedBrackets());
+    _runEditorCoreAction((editorCore) => editorCore.clearMatchedBrackets());
   }
 
   void clearHighlights([core.SpanLayer? layer]) {
-    _withEditorCore((editorCore) {
-      editorCore.clearHighlights(layer);
-    });
+    _runEditorCoreAction((editorCore) => editorCore.clearHighlights(layer));
   }
 
   void clearInlayHints() {
-    _withEditorCore((editorCore) => editorCore.clearInlayHints());
+    _runEditorCoreAction((editorCore) => editorCore.clearInlayHints());
   }
 
   void clearPhantomTexts() {
-    _withEditorCore((editorCore) => editorCore.clearPhantomTexts());
+    _runEditorCoreAction((editorCore) => editorCore.clearPhantomTexts());
   }
 
   void clearGutterIcons() {
-    _withEditorCore((editorCore) => editorCore.clearGutterIcons());
+    _runEditorCoreAction((editorCore) => editorCore.clearGutterIcons());
   }
 
   void clearCodeLens() {
-    _withEditorCore((editorCore) => editorCore.clearCodeLens());
+    _runEditorCoreAction((editorCore) => editorCore.clearCodeLens());
   }
 
   void clearLinks() {
-    _withEditorCore((editorCore) => editorCore.clearLinks());
+    _runEditorCoreAction((editorCore) => editorCore.clearLinks());
   }
 
   void clearGuides() {
-    _withEditorCore((editorCore) => editorCore.clearGuides());
+    _runEditorCoreAction((editorCore) => editorCore.clearGuides());
   }
 
   void clearDiagnostics() {
-    _withEditorCore((editorCore) => editorCore.clearDiagnostics());
+    _runEditorCoreAction((editorCore) => editorCore.clearDiagnostics());
   }
 
   void clearAllDecorations() {
-    _withEditorCore((editorCore) => editorCore.clearAllDecorations());
+    _runEditorCoreAction((editorCore) => editorCore.clearAllDecorations());
   }
 
   void flush() => _state?._flush();

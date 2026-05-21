@@ -56,10 +56,7 @@ namespace SweetEditor {
 
 		public void SetScale(float scale) {
 			this.scale = scale > 0 ? scale : 1.0f;
-			EditorActionResult scaleResult = editor.EditorCoreInternal.SetScale(this.scale);
-			editor.RendererInternal.SetScale(this.scale);
-			editor.DispatchEditorActionResult(scaleResult);
-			editor.DispatchEditorActionResult(editor.EditorCoreInternal.OnFontMetricsChanged());
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetScale(this.scale));
 		}
 
 		public float GetScale() => scale;

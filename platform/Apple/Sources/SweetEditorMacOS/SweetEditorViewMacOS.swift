@@ -670,33 +670,44 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
 
     private func dispatchEditorActionResult(_ result: EditorActionResultData?) {
         guard let result else { return }
+        if result.scale_changed {
+            dispatchEditorActionResult(editorCore.syncPlatformScale(result.scale_after))
+        }
         if result.gesture_type != .UNDEFINED {
-            if result.gesture_type == .SCALE {
-                _ = editorCore.syncPlatformScale(result.scale_after)
-            }
             if result.gesture_type == .TAP {
                 fireGestureEvents(result)
                 if completionPopupController?.isShowing == true {
                     completionProviderManager?.dismiss()
                 }
             }
-            if result.scroll_changed {
-                decorationProviderManager?.onScrollChanged()
-                if completionPopupController?.isShowing == true {
-                    completionProviderManager?.dismiss()
-                }
-            }
-        } else {
-            let changes = textChanges(from: result)
-            if result.content_changed || !changes.isEmpty {
-                decorationProviderManager?.onTextChanged(changes: changes)
-                if let doc = document {
-                    highlighter?.highlightAll(document: doc)
-                }
-            }
         }
+        dispatchStateEvents(result)
         if result.needs_redraw {
             rebuildAndRedraw()
+        }
+    }
+
+    private func dispatchStateEvents(_ result: EditorActionResultData) {
+        if result.cursor_changed || result.selection_changed {
+            resetCursorBlink()
+        }
+        if result.scroll_changed {
+            decorationProviderManager?.onScrollChanged()
+            if completionPopupController?.isShowing == true {
+                completionProviderManager?.dismiss()
+            }
+        }
+        let changes = textChanges(from: result)
+        if result.content_changed || !changes.isEmpty {
+            decorationProviderManager?.onTextChanged(changes: changes)
+            if let doc = document {
+                highlighter?.highlightAll(document: doc)
+            }
+        }
+        if result.needs_ime_sync && result.ime_sync.clear_platform_preedit {
+            isComposing = false
+            currentMarkedRange = nil
+            currentMarkedSelectionRange = nil
         }
     }
 
@@ -713,7 +724,6 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
 
     public func applyEditorSettings(_ settings: EditorSettings) {
         dispatchEditorActionResult(editorCore.setScale(settings.scale))
-        dispatchEditorActionResult(editorCore.syncPlatformScale(settings.scale))
         dispatchEditorActionResult(editorCore.setCompositionEnabled(settings.compositionEnabled))
         dispatchEditorActionResult(editorCore.setFoldArrowMode(SweetEditorCore.FoldArrowMode(settings.foldArrowMode)))
         dispatchEditorActionResult(editorCore.setWrapMode(SweetEditorCore.WrapMode(settings.wrapMode)))
@@ -1657,19 +1667,22 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
             text = textEdit.newText
         } else {
             let wr = getWordRangeAtCursor()
-            if wr.start.line != wr.end.line || wr.start.column != wr.end.column {
+            if !wr.isCollapsed {
                 replaceRange = (wr.start.line, wr.start.column, wr.end.line, wr.end.column)
             }
         }
 
-        // Delete replacement range (typed prefix) first, then insert new text.
-        if let range = replaceRange {
-            deleteText(startLine: range.startLine, startColumn: range.startColumn,
-                       endLine: range.endLine, endColumn: range.endColumn)
-        }
         if isSnippet {
+            if let range = replaceRange {
+                deleteText(startLine: range.startLine, startColumn: range.startColumn,
+                           endLine: range.endLine, endColumn: range.endColumn)
+            }
             let editResult = editorCore.insertSnippet(text)
             dispatchEditorActionResult(editResult)
+        } else if let range = replaceRange {
+            replaceText(startLine: range.startLine, startColumn: range.startColumn,
+                        endLine: range.endLine, endColumn: range.endColumn,
+                        newText: text)
         } else {
             insertText(text, replacementRange: NSRange(location: NSNotFound, length: 0))
         }

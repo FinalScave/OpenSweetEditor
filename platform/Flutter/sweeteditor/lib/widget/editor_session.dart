@@ -353,12 +353,16 @@ class EditorSession {
   }) {
     final ec = _editorCore;
     if (ec == null) return;
+    final scaleResult = ec.setScale(scale);
+    if (scaleResult.scaleChanged) {
+      dispatchEditorActionResult(scaleResult);
+      return;
+    }
     _platformScale = scale;
     _measurer.updateFont(
       platformBehavior.resolveFontFamily(fontFamily),
       textSize * scale,
     );
-    final scaleResult = ec.setScale(scale);
     final metricsResult = ec.onFontMetricsChanged();
     onPlatformScaleChanged?.call();
     dispatchEditorActionResult(scaleResult);

@@ -168,6 +168,13 @@ final class SweetEditorInputConnectioniOS {
         inputDelegate?.selectionDidChange(owner)
     }
 
+    func syncEditorActionResult(_ result: EditorActionResultData) {
+        if result.ime_sync.clear_platform_preedit {
+            clearLocalCompositionState()
+        }
+        selectedRangeValue = owner.currentSelectionNSRange()
+    }
+
     func beginningOfDocument() -> UITextPosition {
         SweetEditorTextPosition(offset: 0)
     }

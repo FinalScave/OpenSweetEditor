@@ -1713,7 +1713,6 @@ namespace SweetEditor {
 			switch (result.GestureType) {
 				case GestureType.LONG_PRESS:
 					LongPress?.Invoke(this, new LongPressEventArgs(result.CursorAfter, point));
-					CursorChanged?.Invoke(this, new CursorChangedEventArgs(result.CursorAfter));
 					break;
 				case GestureType.DOUBLE_TAP:
 					DoubleTap?.Invoke(this, new DoubleTapEventArgs(
@@ -1721,13 +1720,8 @@ namespace SweetEditor {
 						result.HasSelectionAfter,
 						result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null,
 						point));
-					CursorChanged?.Invoke(this, new CursorChangedEventArgs(result.CursorAfter));
-					if (result.HasSelectionAfter) {
-						SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(true, result.SelectionAfter, result.CursorAfter));
-					}
 					break;
 				case GestureType.TAP:
-					CursorChanged?.Invoke(this, new CursorChangedEventArgs(result.CursorAfter));
 					// Dismiss completion on tap.
 					if (completionPopupController != null && completionPopupController.IsShowing) {
 						completionProviderManager?.Dismiss();
@@ -1791,25 +1785,40 @@ namespace SweetEditor {
 					break;
 				case GestureType.SCROLL:
 				case GestureType.FAST_SCROLL:
-					HandleScrollChanged(result);
 					break;
 				case GestureType.SCALE:
-					// C++ core already applied scale during gesture handling; only sync platform fonts/measurer.
-					SyncPlatformScaleFromResult(result.ScaleAfter);
-					ScaleChanged?.Invoke(this, new ScaleChangedEventArgs(result.ScaleAfter));
 					break;
 				case GestureType.DRAG_SELECT:
-					if (DidScrollSinceLastFrame(result)) {
-						HandleScrollChanged(result);
-					}
-					SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(
-						result.HasSelectionAfter,
-						result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null,
-						result.CursorAfter));
 					break;
 				case GestureType.CONTEXT_MENU:
 					ContextMenu?.Invoke(this, new ContextMenuEventArgs(result.CursorAfter, point));
 					break;
+			}
+		}
+
+		private void DispatchStateEvents(EditorActionResult result) {
+			if (result.ContentChanged) {
+				FireTextChanged(TextChangeActionFromResult(result), result);
+			}
+			TextPosition cursor = result.NeedsImeSync ? result.ImeSync.Cursor : result.CursorAfter;
+			TextRange? selection = result.NeedsImeSync
+				? result.ImeSync.Selection
+				: (result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null);
+			if (result.CursorChanged) {
+				CursorChanged?.Invoke(this, new CursorChangedEventArgs(cursor));
+			}
+			if (result.SelectionChanged) {
+				SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(
+					selection.HasValue,
+					selection,
+					cursor));
+			}
+			if (result.ScrollChanged) {
+				HandleScrollChanged(result);
+			}
+			if (result.ScaleChanged) {
+				SyncPlatformScaleFromResult(result.ScaleAfter);
+				ScaleChanged?.Invoke(this, new ScaleChangedEventArgs(result.ScaleAfter));
 			}
 		}
 
@@ -1821,22 +1830,12 @@ namespace SweetEditor {
 			}
 		}
 
-		private bool DidScrollSinceLastFrame(EditorActionResult result) {
-			if (!renderModel.HasValue) {
-				return result.ScrollXAfter != 0f || result.ScrollYAfter != 0f;
-			}
-
-			EditorRenderModel model = renderModel.Value;
-			return result.ScrollXAfter != model.ScrollX || result.ScrollYAfter != model.ScrollY;
-		}
-
 		/// <summary>Applies completion item.</summary>
 		private void ApplyCompletionItem(CompletionItem item) {
 			var textEdit = item.TextEdit;
 			bool isSnippet = item.InsertTextFormat == CompletionItem.INSERT_TEXT_FORMAT_SNIPPET;
 			string text = item.InsertText ?? item.Label;
 
-			// Determine replacement range: textEdit first, fallback to wordRange.
 			TextRange replaceRange = default;
 			bool hasReplaceRange = false;
 			if (textEdit != null) {
@@ -1845,18 +1844,19 @@ namespace SweetEditor {
 				hasReplaceRange = true;
 			} else {
 				TextRange wordRange = GetWordRangeAtCursor();
-				if (wordRange.Start.Line != wordRange.End.Line || wordRange.Start.Column != wordRange.End.Column) {
+				if (!wordRange.IsCollapsed) {
 					replaceRange = wordRange;
 					hasReplaceRange = true;
 				}
 			}
 
-			// Delete the replacement range first, then insert the new text.
-			if (hasReplaceRange) {
-				DeleteText(replaceRange);
-			}
 			if (isSnippet) {
+				if (hasReplaceRange) {
+					DeleteText(replaceRange);
+				}
 				InsertSnippet(text);
+			} else if (hasReplaceRange) {
+				ReplaceText(replaceRange, text);
 			} else {
 				InsertText(text);
 			}
@@ -1881,31 +1881,8 @@ namespace SweetEditor {
 			if (result.GestureType != GestureType.UNDEFINED) {
 				var tapPoint = result.TapPoint;
 				FireGestureEvents(result, new System.Drawing.PointF(tapPoint.X, tapPoint.Y));
-			} else {
-				if (result.ContentChanged) {
-					FireTextChanged(TextChangeActionFromResult(result), result);
-				}
-				TextPosition cursor = result.NeedsImeSync ? result.ImeSync.Cursor : result.CursorAfter;
-				TextRange? selection = result.NeedsImeSync
-					? result.ImeSync.Selection
-					: (result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null);
-				if (result.CursorChanged) {
-					CursorChanged?.Invoke(this, new CursorChangedEventArgs(cursor));
-				}
-				if (result.SelectionChanged) {
-					SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(
-						selection.HasValue,
-						selection,
-						cursor));
-				}
-				if (result.ScrollChanged) {
-					HandleScrollChanged(result);
-				}
-				if (result.ScaleChanged) {
-					SyncPlatformScaleFromResult(result.ScaleAfter);
-					ScaleChanged?.Invoke(this, new ScaleChangedEventArgs(result.ScaleAfter));
-				}
 			}
+			DispatchStateEvents(result);
 
 			if (result.NeedsRedraw) {
 				Flush();

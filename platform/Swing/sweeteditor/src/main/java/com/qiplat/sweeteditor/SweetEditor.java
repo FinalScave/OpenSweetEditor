@@ -1194,18 +1194,12 @@ public class SweetEditor extends JPanel {
         switch (result.gestureType) {
             case LONG_PRESS:
                 eventBus.publish(new LongPressEvent(result.cursorAfter, locationInEditor));
-                eventBus.publish(new CursorChangedEvent(result.cursorAfter));
                 break;
             case DOUBLE_TAP:
                 eventBus.publish(new DoubleTapEvent(result.cursorAfter, result.hasSelectionAfter,
                         result.selectionAfter, locationInEditor));
-                eventBus.publish(new CursorChangedEvent(result.cursorAfter));
-                if (result.hasSelectionAfter) {
-                    eventBus.publish(new SelectionChangedEvent(true, result.selectionAfter, result.cursorAfter));
-                }
                 break;
             case TAP:
-                eventBus.publish(new CursorChangedEvent(result.cursorAfter));
                 // Close completion panel on tap
                 if (completionPopupController != null && completionPopupController.isShowing()) {
                     completionProviderManager.dismiss();
@@ -1260,21 +1254,35 @@ public class SweetEditor extends JPanel {
                 break;
             case SCROLL:
             case FAST_SCROLL:
-                handleScrollChanged(result);
                 break;
             case SCALE:
-                eventBus.publish(new ScaleChangedEvent(result.scaleAfter));
                 break;
             case DRAG_SELECT:
-                if (didScrollSinceLastFrame(result)) {
-                    handleScrollChanged(result);
-                }
-                eventBus.publish(new SelectionChangedEvent(result.hasSelectionAfter,
-                        result.selectionAfter, result.cursorAfter));
                 break;
             case CONTEXT_MENU:
                 eventBus.publish(new ContextMenuEvent(result.cursorAfter, locationInEditor));
                 break;
+        }
+    }
+
+    private void dispatchStateEvents(EditorCore.EditorActionResult result) {
+        if (result.contentChanged) {
+            dispatchTextChanged(textChangeActionFromResult(result), result);
+        }
+        if (result.cursorChanged) {
+            eventBus.publish(new CursorChangedEvent(result.cursorAfter));
+        }
+        if (result.selectionChanged) {
+            eventBus.publish(new SelectionChangedEvent(result.hasSelectionAfter,
+                    result.hasSelectionAfter ? result.selectionAfter : null,
+                    result.cursorAfter));
+        }
+        if (result.scrollChanged) {
+            handleScrollChanged(result);
+        }
+        if (result.scaleChanged) {
+            syncPlatformScale(result.scaleAfter);
+            eventBus.publish(new ScaleChangedEvent(result.scaleAfter));
         }
     }
 
@@ -1291,15 +1299,6 @@ public class SweetEditor extends JPanel {
         }
     }
 
-    private boolean didScrollSinceLastFrame(EditorCore.EditorActionResult result) {
-        if (renderModel == null) {
-            return Float.compare(result.scrollXAfter, 0f) != 0
-                    || Float.compare(result.scrollYAfter, 0f) != 0;
-        }
-        return Float.compare(renderModel.scrollX, result.scrollXAfter) != 0
-                || Float.compare(renderModel.scrollY, result.scrollYAfter) != 0;
-    }
-
     private void applyCompletionItem(CompletionItem item) {
         CompletionItem.TextEdit textEdit = item.textEdit;
         boolean isSnippet = item.insertTextFormat == CompletionItem.INSERT_TEXT_FORMAT_SNIPPET;
@@ -1312,15 +1311,18 @@ public class SweetEditor extends JPanel {
             text = textEdit.newText;
         } else {
             TextRange wr = getWordRangeAtCursor();
-            if (wr.start.line != wr.end.line || wr.start.column != wr.end.column) {
-                replaceRange = new TextRange(
-                        new TextPosition(wr.start.line, wr.start.column),
-                        new TextPosition(wr.end.line, wr.end.column));
+            if (!wr.isCollapsed()) {
+                replaceRange = wr;
             }
         }
 
         if (isSnippet) {
+            if (replaceRange != null) {
+                deleteText(replaceRange);
+            }
             insertSnippet(text);
+        } else if (replaceRange != null) {
+            replaceText(replaceRange, text);
         } else {
             insertText(text);
         }
@@ -1360,31 +1362,10 @@ public class SweetEditor extends JPanel {
             updateMouseCursor(pointerCursorTypeFromValue(result.pointerCursorAfter));
         }
         if (result.gestureType != null && result.gestureType != GestureType.UNDEFINED) {
-            if (result.gestureType == GestureType.SCALE) {
-                syncPlatformScale(result.scaleAfter);
-            }
             fireGestureEvents(result, result.tapPoint);
             updateAnimationTimer(result.needsAnimation);
-        } else {
-            if (result.contentChanged) {
-                dispatchTextChanged(textChangeActionFromResult(result), result);
-            }
-            if (result.cursorChanged) {
-                eventBus.publish(new CursorChangedEvent(result.cursorAfter));
-            }
-            if (result.selectionChanged) {
-                eventBus.publish(new SelectionChangedEvent(result.hasSelectionAfter,
-                        result.hasSelectionAfter ? result.selectionAfter : null,
-                        result.cursorAfter));
-            }
-            if (result.scrollChanged) {
-                handleScrollChanged(result);
-            }
-            if (result.scaleChanged) {
-                syncPlatformScale(result.scaleAfter);
-                eventBus.publish(new ScaleChangedEvent(result.scaleAfter));
-            }
         }
+        dispatchStateEvents(result);
         if (result.needsRedraw) {
             flush();
         }

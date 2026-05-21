@@ -827,7 +827,7 @@ namespace SweetEditor {
 			keyMap = map is EditorKeyMap editorKeyMap
 				? editorKeyMap.Clone()
 				: new EditorKeyMap(map.Bindings);
-			editorCore.SetKeyMap(keyMap);
+			DispatchEditorActionResult(editorCore.SetKeyMap(keyMap));
 			pendingKeyChord = KeyChord.Empty;
 		}
 
@@ -1312,41 +1312,8 @@ namespace SweetEditor {
 
 			if (result.GestureType != GestureType.UNDEFINED) {
 				FireGestureEvents(result, result.TapPoint.HasValue ? ToPoint(result.TapPoint.Value) : default);
-			} else {
-				bool keyInput = (EditorActionReason)result.Reason == EditorActionReason.KeyInput;
-				if (keyInput && (result.ContentChanged || result.CursorChanged)) {
-					DismissInlineSuggestionInternal(emitDismissedCallback: true);
-				}
-				if (result.ContentChanged) {
-					FireTextChanged(TextChangeActionFromResult(result), result);
-				}
-
-				TextPosition cursor = result.NeedsImeSync ? result.ImeSync.Cursor : result.CursorAfter;
-				TextRange? selection = result.NeedsImeSync
-					? result.ImeSync.Selection
-					: (result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null);
-				if (result.CursorChanged) {
-					CursorChanged?.Invoke(this, new CursorChangedEventArgs(cursor));
-				}
-				if (result.SelectionChanged) {
-					bool explicitSelectionSource = keyInput
-						? IsExplicitKeySelectionSource(result)
-						: selection.HasValue;
-					UpdateDestructiveSelectionAuthorization(selection.HasValue, explicitSelectionSource, selection ?? default);
-					SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(selection.HasValue, selection, cursor));
-					NotifySelectionMenuSelectionChanged(selection.HasValue);
-				}
-				if (result.ScrollChanged) {
-					ScrollChanged?.Invoke(this, new ScrollChangedEventArgs(result.ScrollXAfter, result.ScrollYAfter));
-					if (ShouldUpdateSelectionMenuPopupPosition()) {
-						selectionMenuController.UpdatePosition();
-					}
-				}
-				if (result.ScaleChanged) {
-					SyncPlatformScale(result.ScaleAfter);
-					ScaleChanged?.Invoke(this, new ScaleChangedEventArgs(result.ScaleAfter));
-				}
 			}
+			DispatchStateEvents(result);
 
 			if (result.NeedsRedraw) {
 				bool scheduleTextInputState = ShouldScheduleTextInputStateAfterResult(result);
@@ -1357,6 +1324,42 @@ namespace SweetEditor {
 				}
 			} else if (result.NeedsImeSync) {
 				ScheduleTextInputStateChanged();
+			}
+		}
+
+		private void DispatchStateEvents(EditorActionResult result) {
+			bool keyInput = (EditorActionReason)result.Reason == EditorActionReason.KeyInput;
+			if (keyInput && (result.ContentChanged || result.CursorChanged)) {
+				DismissInlineSuggestionInternal(emitDismissedCallback: true);
+			}
+			if (result.ContentChanged) {
+				FireTextChanged(TextChangeActionFromResult(result), result);
+			}
+
+			TextPosition cursor = result.NeedsImeSync ? result.ImeSync.Cursor : result.CursorAfter;
+			TextRange? selection = result.NeedsImeSync
+				? result.ImeSync.Selection
+				: (result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null);
+			if (result.CursorChanged) {
+				CursorChanged?.Invoke(this, new CursorChangedEventArgs(cursor));
+			}
+			if (result.SelectionChanged) {
+				bool explicitSelectionSource = keyInput
+					? IsExplicitKeySelectionSource(result)
+					: selection.HasValue;
+				UpdateDestructiveSelectionAuthorization(selection.HasValue, explicitSelectionSource, selection ?? default);
+				SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(selection.HasValue, selection, cursor));
+				NotifySelectionMenuSelectionChanged(selection.HasValue);
+			}
+			if (result.ScrollChanged) {
+				ScrollChanged?.Invoke(this, new ScrollChangedEventArgs(result.ScrollXAfter, result.ScrollYAfter));
+				if (ShouldUpdateSelectionMenuPopupPosition()) {
+					selectionMenuController.UpdatePosition();
+				}
+			}
+			if (result.ScaleChanged) {
+				SyncPlatformScale(result.ScaleAfter);
+				ScaleChanged?.Invoke(this, new ScaleChangedEventArgs(result.ScaleAfter));
 			}
 		}
 
@@ -1764,10 +1767,6 @@ namespace SweetEditor {
 						if (ShouldRaiseLongPressEvent()) {
 							LongPress?.Invoke(this, new LongPressEventArgs(result.CursorAfter, sp));
 						}
-						CursorChanged?.Invoke(this, new CursorChangedEventArgs(result.CursorAfter));
-						if (result.HasSelectionAfter) {
-							SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(true, result.SelectionAfter, result.CursorAfter));
-						}
 						break;
 					case GestureType.DOUBLE_TAP:
 						tapFallbackArmed = false;
@@ -1777,14 +1776,9 @@ namespace SweetEditor {
 						}
 						UpdateDestructiveSelectionAuthorization(result.HasSelectionAfter, explicitSelectionSource: result.HasSelectionAfter, result.SelectionAfter);
 						DoubleTap?.Invoke(this, new DoubleTapEventArgs(result.CursorAfter, result.HasSelectionAfter, result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null, sp));
-						CursorChanged?.Invoke(this, new CursorChangedEventArgs(result.CursorAfter));
-						if (result.HasSelectionAfter) {
-							SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(true, result.SelectionAfter, result.CursorAfter));
-					}
 					break;
 				case GestureType.TAP:
 					ClearAuthorizedDestructiveSelection();
-					CursorChanged?.Invoke(this, new CursorChangedEventArgs(result.CursorAfter));
 					if (completionItems.Count > 0) {
 						completionProviderManager.Dismiss();
 					}
@@ -1831,13 +1825,11 @@ namespace SweetEditor {
 						if (TryApplyTapFallbackDoubleTap(result, sp)) {
 							break;
 						}
-						SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(result.HasSelectionAfter, result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null, result.CursorAfter));
 						break;
 					case GestureType.SCROLL:
 					case GestureType.FAST_SCROLL:
 						tapFallbackArmed = false;
 						ClearAuthorizedDestructiveSelection();
-						ScrollChanged?.Invoke(this, new ScrollChangedEventArgs(result.ScrollXAfter, result.ScrollYAfter));
 						if (completionItems.Count > 0) {
 							completionProviderManager.Dismiss();
 						}
@@ -1845,13 +1837,10 @@ namespace SweetEditor {
 					case GestureType.SCALE:
 						tapFallbackArmed = false;
 						ClearAuthorizedDestructiveSelection();
-						SyncPlatformScale(result.ScaleAfter);
-						ScaleChanged?.Invoke(this, new ScaleChangedEventArgs(result.ScaleAfter));
 						break;
 					case GestureType.DRAG_SELECT:
 						tapFallbackArmed = false;
 						UpdateDestructiveSelectionAuthorization(result.HasSelectionAfter, explicitSelectionSource: result.HasSelectionAfter, result.SelectionAfter);
-						SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(result.HasSelectionAfter, result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null, result.CursorAfter));
 						break;
 					case GestureType.CONTEXT_MENU:
 						tapFallbackArmed = false;
@@ -1880,6 +1869,7 @@ namespace SweetEditor {
 					tapFallbackArmed = false;
 					if (TryGetPreferredDoubleTapSelection(result.CursorAfter, out TextRange range)) {
 						TryApplyValidatedSelection(range, out _);
+						RefreshGestureResultFromCoreSelection(result);
 						var selection = editorCore.GetSelection();
 						DoubleTap?.Invoke(this, new DoubleTapEventArgs(
 							editorCore.GetCursorPosition(),
@@ -1916,6 +1906,8 @@ namespace SweetEditor {
 
 				TextPosition effectiveCursor = cursorPosition;
 				TextRange? appliedSelection = null;
+				TextPosition cursorBefore = editorCore.GetCursorPosition();
+				var selectionBefore = editorCore.GetSelection();
 				if (TryGetPreferredDoubleTapSelection(cursorPosition, out TextRange requestedRange) &&
 					TryApplyValidatedSelection(requestedRange, out TextRange appliedRange)) {
 					appliedSelection = appliedRange;
@@ -1933,10 +1925,7 @@ namespace SweetEditor {
 						: $"Deferred large-document double tap collapsed to cursor {effectiveCursor.Line}:{effectiveCursor.Column}");
 				UpdateDestructiveSelectionAuthorization(hasSelection, explicitSelectionSource: hasSelection, selectedRange);
 				DoubleTap?.Invoke(this, new DoubleTapEventArgs(effectiveCursor, hasSelection, appliedSelection, screenPoint));
-				CursorChanged?.Invoke(this, new CursorChangedEventArgs(effectiveCursor));
-				if (hasSelection) {
-					SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(true, appliedSelection, effectiveCursor));
-				}
+				DispatchEditorActionResult(CreateSelectionStateResult(cursorBefore, selectionBefore.hasSelection, selectionBefore.range));
 			}, DispatcherPriority.Background);
 		}
 
@@ -1944,10 +1933,7 @@ namespace SweetEditor {
 			if (!result.HasSelectionAfter) {
 				if (TryGetPreferredDoubleTapSelection(result.CursorAfter, out TextRange fallbackRange)) {
 					if (TryApplyValidatedSelection(fallbackRange, out _)) {
-						var selection = editorCore.GetSelection();
-						result.HasSelectionAfter = selection.hasSelection;
-						result.SelectionAfter = selection.range;
-						result.CursorAfter = editorCore.GetCursorPosition();
+						RefreshGestureResultFromCoreSelection(result);
 					}
 				}
 				return;
@@ -1961,10 +1947,7 @@ namespace SweetEditor {
 				Console.Error.WriteLine(
 					$"Corrected invalid double-tap selection: {result.SelectionAfter.Start.Line}:{result.SelectionAfter.Start.Column}-{result.SelectionAfter.End.Line}:{result.SelectionAfter.End.Column}");
 				if (TryApplyValidatedSelection(correctedRange, out _)) {
-					var selection = editorCore.GetSelection();
-					result.HasSelectionAfter = selection.hasSelection;
-					result.SelectionAfter = selection.range;
-					result.CursorAfter = editorCore.GetCursorPosition();
+					RefreshGestureResultFromCoreSelection(result);
 					return;
 				}
 			}
@@ -1972,8 +1955,7 @@ namespace SweetEditor {
 			Console.Error.WriteLine(
 				$"Collapsed invalid double-tap selection: {result.SelectionAfter.Start.Line}:{result.SelectionAfter.Start.Column}-{result.SelectionAfter.End.Line}:{result.SelectionAfter.End.Column}");
 			editorCore.SetCursorPosition(result.CursorAfter);
-			result.HasSelectionAfter = false;
-			result.SelectionAfter = default;
+			RefreshGestureResultFromCoreSelection(result);
 		}
 
 		private void NormalizeImplicitGestureSelection(ref EditorActionResult result) {
@@ -1991,10 +1973,7 @@ namespace SweetEditor {
 					Console.Error.WriteLine(
 						$"Applied fallback long-press selection at {result.CursorAfter.Line}:{result.CursorAfter.Column}");
 					if (TryApplyValidatedSelection(fallbackRange, out _)) {
-						var selection = editorCore.GetSelection();
-						result.HasSelectionAfter = selection.hasSelection;
-						result.SelectionAfter = selection.range;
-						result.CursorAfter = editorCore.GetCursorPosition();
+						RefreshGestureResultFromCoreSelection(result);
 					}
 				}
 				return;
@@ -2010,10 +1989,7 @@ namespace SweetEditor {
 				Console.Error.WriteLine(
 					$"Corrected invalid long-press selection: {result.SelectionAfter.Start.Line}:{result.SelectionAfter.Start.Column}-{result.SelectionAfter.End.Line}:{result.SelectionAfter.End.Column}");
 				if (TryApplyValidatedSelection(correctedRange, out _)) {
-					var selection = editorCore.GetSelection();
-					result.HasSelectionAfter = selection.hasSelection;
-					result.SelectionAfter = selection.range;
-					result.CursorAfter = editorCore.GetCursorPosition();
+					RefreshGestureResultFromCoreSelection(result);
 					return;
 				}
 			}
@@ -2025,8 +2001,47 @@ namespace SweetEditor {
 			Console.Error.WriteLine(
 				$"Collapsed suspicious implicit gesture selection: {result.SelectionAfter.Start.Line}:{result.SelectionAfter.Start.Column}-{result.SelectionAfter.End.Line}:{result.SelectionAfter.End.Column}");
 			editorCore.SetCursorPosition(result.CursorAfter);
-			result.HasSelectionAfter = false;
-			result.SelectionAfter = default;
+			RefreshGestureResultFromCoreSelection(result);
+		}
+
+		private void RefreshGestureResultFromCoreSelection(EditorActionResult result) {
+			var selection = editorCore.GetSelection();
+			TextPosition cursor = editorCore.GetCursorPosition();
+			result.CursorAfter = cursor;
+			result.HasSelectionAfter = selection.hasSelection;
+			result.SelectionAfter = selection.hasSelection ? selection.range : default;
+			result.CursorChanged = true;
+			result.SelectionChanged = true;
+			result.NeedsImeSync = true;
+			result.ImeSync.Cursor = cursor;
+			result.ImeSync.Selection = selection.hasSelection ? selection.range : null;
+		}
+
+		private EditorActionResult CreateSelectionStateResult(TextPosition cursorBefore, bool hasSelectionBefore, TextRange selectionBefore) {
+			var selection = editorCore.GetSelection();
+			TextPosition cursor = editorCore.GetCursorPosition();
+			bool cursorChanged = !AreSamePosition(cursorBefore, cursor);
+			bool selectionChanged = hasSelectionBefore != selection.hasSelection ||
+				(selection.hasSelection && !AreSameRange(selectionBefore, selection.range));
+
+			return new EditorActionResult {
+				Handled = true,
+				Reason = (int)EditorActionReason.Programmatic,
+				CursorChanged = cursorChanged,
+				SelectionChanged = selectionChanged,
+				NeedsRedraw = cursorChanged || selectionChanged,
+				NeedsImeSync = cursorChanged || selectionChanged,
+				CursorBefore = cursorBefore,
+				CursorAfter = cursor,
+				HasSelectionBefore = hasSelectionBefore,
+				SelectionBefore = hasSelectionBefore ? selectionBefore : default,
+				HasSelectionAfter = selection.hasSelection,
+				SelectionAfter = selection.hasSelection ? selection.range : default,
+				ImeSync = new ImeSyncSnapshot {
+					Cursor = cursor,
+					Selection = selection.hasSelection ? selection.range : null
+				}
+			};
 		}
 
 		private bool TryGetPreferredDoubleTapSelection(TextPosition cursor, out TextRange range) {
@@ -2224,10 +2239,6 @@ namespace SweetEditor {
 				decorationProviderManager.OnTextChanged(null);
 			}
 
-			CursorChanged?.Invoke(this, new CursorChangedEventArgs(editorCore.GetCursorPosition()));
-			var selection = editorCore.GetSelection();
-			SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(selection.hasSelection, selection.hasSelection ? selection.range : (TextRange?)null, editorCore.GetCursorPosition()));
-			NotifySelectionMenuSelectionChanged(selection.hasSelection);
 			HandleCompletionAfterEdit(editResult);
 		}
 
@@ -3253,14 +3264,6 @@ namespace SweetEditor {
 			return true;
 		}
 
-		private void FireCursorAndSelectionStateChanged(bool explicitSelectionSource = false) {
-			CursorChanged?.Invoke(this, new CursorChangedEventArgs(editorCore.GetCursorPosition()));
-			var selection = editorCore.GetSelection();
-			UpdateDestructiveSelectionAuthorization(selection.hasSelection, explicitSelectionSource, selection.range);
-			SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(selection.hasSelection, selection.hasSelection ? selection.range : (TextRange?)null, editorCore.GetCursorPosition()));
-			NotifySelectionMenuSelectionChanged(selection.hasSelection);
-		}
-
 		private static bool TryMapCoreEditorCommandToKeyGesture(EditorCommand command, out KeyCode keyCode, out KeyModifier modifiers) {
 			switch (command) {
 				case EditorCommand.CURSOR_LEFT:
@@ -3424,9 +3427,7 @@ namespace SweetEditor {
 				}
 			}
 
-			if (result.Changes != null && result.Changes.Count > 0) {
-				DispatchEditorActionResult(result);
-			}
+			DispatchEditorActionResult(result);
 			return true;
 		}
 

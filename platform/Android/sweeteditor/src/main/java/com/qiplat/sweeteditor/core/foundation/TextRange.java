@@ -17,6 +17,10 @@ public class TextRange {
         this.end = end;
     }
 
+    public boolean isCollapsed() {
+        return start.line == end.line && start.column == end.column;
+    }
+
     @NonNull
     @Override
     public String toString() {

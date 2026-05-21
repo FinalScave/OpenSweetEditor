@@ -93,7 +93,7 @@ public final class PopupPositioner {
     }
 
     public static int dpToPx(@NonNull Context context, int dp) {
-        return (int) (dp * context.getResources().getDisplayMetrics().density + 0.5f);
+        return UiDimensions.dpToPx(context, dp);
     }
 
     @NonNull

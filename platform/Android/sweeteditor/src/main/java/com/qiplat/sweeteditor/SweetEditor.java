@@ -101,6 +101,7 @@ import com.qiplat.sweeteditor.event.ScrollChangedEvent;
 import com.qiplat.sweeteditor.event.SelectionChangedEvent;
 import com.qiplat.sweeteditor.event.TextChangeAction;
 import com.qiplat.sweeteditor.event.TextChangedEvent;
+import com.qiplat.sweeteditor.ui.UiDimensions;
 
 import java.util.List;
 
@@ -584,9 +585,10 @@ public class SweetEditor extends View {
     }
 
     public IntRange getVisibleLineRange() {
-        // Reuse cached model, build once if not exists
-        if (mCachedModel == null) {
-            mEditorCore.buildRenderModel();
+        // Keep the core visible-line range current before decoration providers query it.
+        if (mCachedModel == null || mModelDirty) {
+            mCachedModel = mEditorCore.buildRenderModel();
+            mModelDirty = false;
         }
         return mEditorCore.getVisibleLineRange();
     }
@@ -1822,13 +1824,25 @@ public class SweetEditor extends View {
         CompletionItem.TextEdit textEdit = item.textEdit;
         boolean isSnippet = item.insertTextFormat == CompletionItem.INSERT_TEXT_FORMAT_SNIPPET;
         String text = item.insertText != null ? item.insertText : item.label;
+        TextRange replaceRange = null;
 
         if (textEdit != null) {
+            replaceRange = textEdit.range;
             text = textEdit.newText;
+        } else {
+            TextRange wordRange = getWordRangeAtCursor();
+            if (!wordRange.isCollapsed()) {
+                replaceRange = wordRange;
+            }
         }
 
         if (isSnippet) {
+            if (replaceRange != null) {
+                deleteText(replaceRange);
+            }
             insertSnippet(text);
+        } else if (replaceRange != null) {
+            replaceText(replaceRange, text);
         } else {
             insertText(text);
         }
@@ -1844,17 +1858,11 @@ public class SweetEditor extends View {
         switch (result.gestureType) {
             case LONG_PRESS:
                 mEventBus.publish(new LongPressEvent(result.cursorAfter, locationInEditor));
-                mEventBus.publish(new CursorChangedEvent(result.cursorAfter));
                 break;
             case DOUBLE_TAP:
                 mEventBus.publish(new DoubleTapEvent(result.cursorAfter, result.hasSelectionAfter, result.selectionAfter, locationInEditor));
-                mEventBus.publish(new CursorChangedEvent(result.cursorAfter));
-                if (result.hasSelectionAfter) {
-                    mEventBus.publish(new SelectionChangedEvent(true, result.selectionAfter, result.cursorAfter));
-                }
                 break;
             case TAP:
-                mEventBus.publish(new CursorChangedEvent(result.cursorAfter));
                 // Dismiss completion panel on tap
                 if (mCompletionPopupController != null && mCompletionPopupController.isShowing()) {
                     mCompletionProviderManager.dismiss();
@@ -1918,17 +1926,10 @@ public class SweetEditor extends View {
                 break;
             case SCROLL:
             case FAST_SCROLL:
-                handleScrollChanged(result);
                 break;
             case SCALE:
-                syncPlatformScale(result.scaleAfter);
-                mEventBus.publish(new ScaleChangedEvent(result.scaleAfter));
                 break;
             case DRAG_SELECT:
-                if (didScrollSinceLastFrame(result)) {
-                    handleScrollChanged(result);
-                }
-                mEventBus.publish(new SelectionChangedEvent(result.hasSelectionAfter, result.selectionAfter, result.cursorAfter));
                 break;
             case CONTEXT_MENU:
                 mEventBus.publish(new ContextMenuEvent(result.cursorAfter, locationInEditor));
@@ -1951,6 +1952,25 @@ public class SweetEditor extends View {
         }
     }
 
+    private void dispatchStateEvents(@NonNull EditorCore.EditorActionResult result) {
+        if (result.contentChanged) {
+            dispatchTextChanged(textChangeActionFromResult(result), result);
+        }
+        if (result.cursorChanged) {
+            mEventBus.publish(new CursorChangedEvent(result.cursorAfter));
+        }
+        if (result.selectionChanged) {
+            mEventBus.publish(new SelectionChangedEvent(result.hasSelectionAfter, result.selectionAfter, result.cursorAfter));
+        }
+        if (result.scrollChanged) {
+            handleScrollChanged(result);
+        }
+        if (result.scaleChanged) {
+            syncPlatformScale(result.scaleAfter);
+            mEventBus.publish(new ScaleChangedEvent(result.scaleAfter));
+        }
+    }
+
     private void handleScrollChanged(@NonNull EditorCore.EditorActionResult result) {
         mEventBus.publish(new ScrollChangedEvent(result.scrollXAfter, result.scrollYAfter));
         if (mDecorationProviderManager != null) {
@@ -1965,14 +1985,6 @@ public class SweetEditor extends View {
         }
     }
 
-    private boolean didScrollSinceLastFrame(@NonNull EditorCore.EditorActionResult result) {
-        if (mCachedModel == null) {
-            return result.scrollXAfter != 0f || result.scrollYAfter != 0f;
-        }
-        return Float.compare(mCachedModel.scrollX, result.scrollXAfter) != 0
-                || Float.compare(mCachedModel.scrollY, result.scrollYAfter) != 0;
-    }
-
     void dispatchEditorActionResult(@NonNull EditorCore.EditorActionResult result) {
         if (result.gestureType != EditorCore.GestureType.UNDEFINED) {
             if (result.gestureType == EditorCore.GestureType.TAP) {
@@ -1984,23 +1996,8 @@ public class SweetEditor extends View {
             }
             fireGestureEvents(result, result.tapPoint, motionActionFromGestureEventType(result.gestureEventType));
             updateGestureAnimationState(result);
-        } else {
-            if (result.contentChanged) {
-                dispatchTextChanged(textChangeActionFromResult(result), result);
-            }
-            if (result.cursorChanged) {
-                mEventBus.publish(new CursorChangedEvent(result.cursorAfter));
-            }
-            if (result.selectionChanged) {
-                mEventBus.publish(new SelectionChangedEvent(result.hasSelectionAfter, result.selectionAfter, result.cursorAfter));
-            }
-            if (result.scrollChanged) {
-                handleScrollChanged(result);
-            }
-            if (result.scaleChanged) {
-                mEventBus.publish(new ScaleChangedEvent(result.scaleAfter));
-            }
         }
+        dispatchStateEvents(result);
         if (mInputConnection != null) {
             mInputConnection.onEditorActionResult(result);
         }
@@ -2199,15 +2196,15 @@ public class SweetEditor extends View {
     // ==================== Private Helper / Internal Implementation ====================
 
     private void initView(Context context) {
-        float density = getResources().getDisplayMetrics().density;
+        float density = UiDimensions.density(context);
         mRenderer = new EditorRenderer(mTheme, density);
         animationHolder = new AnimationHolder();
 
         mRenderer.setHandleConfig(EditorRenderer.computeHandleHitConfig(density));
 
-        float scrollbarThicknessPx = 5.0f * density;
-        float scrollbarMinThumbPx = 40.0f * density;
-        float scrollbarThumbHitPaddingPx = 20.0f * density;
+        float scrollbarThicknessPx = UiDimensions.dpToPxFloat(context, 5.0f);
+        float scrollbarMinThumbPx = UiDimensions.dpToPxFloat(context, 40.0f);
+        float scrollbarThumbHitPaddingPx = UiDimensions.dpToPxFloat(context, 20.0f);
         mRenderer.setScrollbarConfig(new ScrollbarConfig(
                 scrollbarThicknessPx,
                 scrollbarMinThumbPx,
@@ -2241,7 +2238,7 @@ public class SweetEditor extends View {
         mEditorCore.registerBatchTextStyles(mTheme.textStyles);
 
         mSettings = new EditorSettings(this);
-        mSettings.setContentStartPadding(DEFAULT_CONTENT_START_PADDING_DP * density);
+        mSettings.setContentStartPadding(UiDimensions.dpToPxFloat(context, DEFAULT_CONTENT_START_PADDING_DP));
         mKeyMap = createDefaultKeyMap();
         mEditorCore.setGutterSticky(mSettings.isGutterSticky());
         setFocusable(true);

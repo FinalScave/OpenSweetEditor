@@ -18,6 +18,8 @@ class TextRange {
   final TextPosition start;
   final TextPosition end;
 
+  bool get isCollapsed => start.line == end.line && start.column == end.column;
+
   @override
   String toString() => 'TextRange(start: $start, end: $end)';
 }

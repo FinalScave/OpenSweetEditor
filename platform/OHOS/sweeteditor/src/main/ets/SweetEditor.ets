@@ -27,6 +27,7 @@ import {
   FoldArrowMode,
   IntRange,
   ScrollBehavior,
+  isTextRangeCollapsed,
   TextPosition,
   TextRange,
   WrapMode
@@ -229,6 +230,7 @@ export struct SweetEditor {
   private inputController: inputMethod.InputMethodController = inputMethod.getController();
   private imeAttached: boolean = false;
   private imeSyncScheduled: boolean = false;
+  private pendingImeSyncSnapshot: ImeSyncSnapshot | undefined = undefined;
   private editorFocused: boolean = false;
   private pendingShowKeyboard: boolean = false;
   private imeWindowId: number = -1;
@@ -686,8 +688,8 @@ export struct SweetEditor {
   applySettingsScale(scale: number): void {
     if (this.editorCore) {
       const result = this.editorCore.setScale(scale);
-      scale = result.scaleAfter;
       this.dispatchEditorActionResult(result);
+      return;
     }
     this.syncPlatformScale(scale);
   }
@@ -1358,42 +1360,44 @@ export struct SweetEditor {
           this.showSoftKeyboard();
         }
         this.resetCursorBlink();
-      } else if (result.gestureType === GestureType.SCALE) {
-        this.syncPlatformScale(result.scaleAfter);
       }
       if (result.needsAnimation && !this.animationActive) {
         this.startAnimation();
       } else if (!result.needsAnimation && this.animationActive) {
         this.stopAnimation();
       }
-    } else {
-      if (result.contentChanged) {
-        this.dispatchTextChanged(this.textChangeActionFromResult(result), result);
-      }
-      if (result.cursorChanged) {
-        this.eventBus.emit('cursorChanged', new CursorChangedEvent(result.cursorAfter));
-      }
-      if (result.selectionChanged) {
-        this.eventBus.emit('selectionChanged', new SelectionChangedEvent(
-          result.hasSelectionAfter, result.hasSelectionAfter ? result.selectionAfter : null, result.cursorAfter));
-      }
-      if (result.scrollChanged) {
-        this.handleScrollChanged(result);
-      }
-      if (result.scaleChanged) {
-        this.syncPlatformScale(result.scaleAfter);
-        this.eventBus.emit('scaleChanged', new ScaleChangedEvent(result.scaleAfter));
-      }
     }
-    if (result.needsImeSync || result.gestureType === GestureType.TAP ||
-      result.gestureType === GestureType.DOUBLE_TAP ||
-      result.gestureType === GestureType.LONG_PRESS ||
-      result.gestureType === GestureType.DRAG_SELECT ||
-      result.isHandleDrag) {
-      this.scheduleImeSync();
+    this.dispatchStateEvents(result);
+    if (result.needsImeSync) {
+      this.scheduleImeSync(result.imeSync);
     }
     if (result.needsRedraw) {
       this.flush();
+    }
+  }
+
+  private dispatchStateEvents(result: EditorActionResult): void {
+    if (result.contentChanged) {
+      this.dispatchTextChanged(this.textChangeActionFromResult(result), result);
+    }
+    const useImeSync = result.needsImeSync;
+    if (result.cursorChanged) {
+      this.eventBus.emit('cursorChanged', new CursorChangedEvent(
+        useImeSync ? result.imeSync.cursor : result.cursorAfter));
+    }
+    if (result.selectionChanged) {
+      const selection = useImeSync ? result.imeSync.selection : result.selectionAfter;
+      const hasSelection = useImeSync ? selection !== null : result.hasSelectionAfter;
+      const cursor = useImeSync ? result.imeSync.cursor : result.cursorAfter;
+      this.eventBus.emit('selectionChanged', new SelectionChangedEvent(
+        hasSelection, hasSelection ? selection : null, cursor));
+    }
+    if (result.scrollChanged) {
+      this.handleScrollChanged(result);
+    }
+    if (result.scaleChanged) {
+      this.syncPlatformScale(result.scaleAfter);
+      this.eventBus.emit('scaleChanged', new ScaleChangedEvent(result.scaleAfter));
     }
   }
 
@@ -1860,16 +1864,18 @@ export struct SweetEditor {
       text = item.textEdit.newText;
     } else {
       const wr = this.getWordRangeAtCursor();
-      if (wr.start.line !== wr.end.line || wr.start.column !== wr.end.column) {
+      if (!isTextRangeCollapsed(wr)) {
         replaceRange = wr;
       }
     }
 
-    if (replaceRange !== null) {
-      this.deleteText(replaceRange);
-    }
     if (isSnippet) {
+      if (replaceRange !== null) {
+        this.deleteText(replaceRange);
+      }
       this.insertSnippet(text);
+    } else if (replaceRange !== null) {
+      this.replaceText(replaceRange, text);
     } else {
       this.insertText(text);
     }
@@ -2003,19 +2009,12 @@ export struct SweetEditor {
     switch (result.gestureType) {
       case GestureType.LONG_PRESS:
         this.eventBus.emit('longPress', new LongPressEvent(result.cursorAfter, locationInEditor));
-        this.eventBus.emit('cursorChanged', new CursorChangedEvent(result.cursorAfter));
         break;
       case GestureType.DOUBLE_TAP:
         this.eventBus.emit('doubleTap', new DoubleTapEvent(
           result.cursorAfter, result.hasSelectionAfter, result.selectionAfter, locationInEditor));
-        this.eventBus.emit('cursorChanged', new CursorChangedEvent(result.cursorAfter));
-        if (result.hasSelectionAfter) {
-          this.eventBus.emit('selectionChanged', new SelectionChangedEvent(
-            true, result.selectionAfter, result.cursorAfter));
-        }
         break;
       case GestureType.TAP:
-        this.eventBus.emit('cursorChanged', new CursorChangedEvent(result.cursorAfter));
         if (this.completionPopupController && this.completionPopupController.isShowing() &&
           this.completionProviderManager) {
           this.completionProviderManager.dismiss();
@@ -2026,17 +2025,10 @@ export struct SweetEditor {
         break;
       case GestureType.SCROLL:
       case GestureType.FAST_SCROLL:
-        this.handleScrollChanged(result);
         break;
       case GestureType.SCALE:
-        this.eventBus.emit('scaleChanged', new ScaleChangedEvent(result.scaleAfter));
         break;
       case GestureType.DRAG_SELECT:
-        if (this.didScrollSinceLastFrame(result)) {
-          this.handleScrollChanged(result);
-        }
-        this.eventBus.emit('selectionChanged', new SelectionChangedEvent(
-          result.hasSelectionAfter, result.selectionAfter, result.cursorAfter));
         break;
       case GestureType.CONTEXT_MENU:
         this.eventBus.emit('contextMenu', new ContextMenuEvent(result.cursorAfter, locationInEditor));
@@ -2053,14 +2045,6 @@ export struct SweetEditor {
       this.completionProviderManager) {
       this.completionProviderManager.dismiss();
     }
-  }
-
-  private didScrollSinceLastFrame(result: EditorActionResult): boolean {
-    if (!this.cachedModel) {
-      return result.scrollXAfter !== 0 || result.scrollYAfter !== 0;
-    }
-    return this.cachedModel.scrollX !== result.scrollXAfter ||
-      this.cachedModel.scrollY !== result.scrollYAfter;
   }
 
   private fireHitTargetEvent(result: EditorActionResult, locationInEditor: PointF): void {
@@ -2115,9 +2099,6 @@ export struct SweetEditor {
     }
 
     this.maybeTriggerCompletionFromChanges(textChanges);
-    if (textChanges.length > 0) {
-      this.scheduleImeSync();
-    }
   }
 
   private finishEditorAction(result: EditorActionResult): void {
@@ -2520,23 +2501,31 @@ export struct SweetEditor {
     this.imeAttached = false;
   }
 
-  private scheduleImeSync(): void {
+  private scheduleImeSync(snapshot?: ImeSyncSnapshot): void {
+    if (snapshot !== undefined) {
+      this.pendingImeSyncSnapshot = snapshot;
+    }
     if (!this.imeAttached || this.imeSyncScheduled || !this.editorCore) {
       return;
     }
     this.imeSyncScheduled = true;
-    setTimeout(() => { this.imeSyncScheduled = false; this.syncInputMethodState(); }, 0);
+    setTimeout(() => {
+      const pendingSnapshot = this.pendingImeSyncSnapshot;
+      this.pendingImeSyncSnapshot = undefined;
+      this.imeSyncScheduled = false;
+      this.syncInputMethodState(pendingSnapshot);
+    }, 0);
   }
 
-  private syncInputMethodState(): void {
+  private syncInputMethodState(snapshot?: ImeSyncSnapshot): void {
     if (!this.imeAttached || !this.editorCore) {
       return;
     }
-    const snapshot = this.editorCore.getImeSyncSnapshot();
+    const syncSnapshot = snapshot ?? this.editorCore.getImeSyncSnapshot();
     const context = this.editorCore.getImeInputContext(0, 0);
     const selection = this.getImeSelectionRange(context);
     const selectedText = context.selection.start === context.selection.end ? '' : context.text;
-    const cursorInfo = this.buildImeCursorInfo(snapshot);
+    const cursorInfo = this.buildImeCursorInfo(syncSnapshot);
     this.inputController.changeSelection(selectedText, selection.start, selection.end).catch(() => {});
     this.inputController.updateCursor(cursorInfo).catch(() => {});
   }
@@ -2634,12 +2623,7 @@ export struct SweetEditor {
       default:
         return;
     }
-    this.dispatchEditorActionResult(moveResult);
-    const selection = this.editorCore.getSelection();
-    const result = selection !== null
-      ? this.editorCore.notifyImeSelectionChanged(selection)
-      : this.editorCore.notifyImeCursorChanged(this.editorCore.getCursorPosition());
-    this.finishImeAction(result);
+    this.finishImeAction(moveResult);
   }
 
   private selectRangeByIme(range: inputMethod.Range): void {

@@ -18,6 +18,10 @@ public struct TextRange {
         self.start = start
         self.end = end
     }
+
+    public var isCollapsed: Bool {
+        start.line == end.line && start.column == end.column
+    }
 }
 
 public struct IntRange: Equatable {

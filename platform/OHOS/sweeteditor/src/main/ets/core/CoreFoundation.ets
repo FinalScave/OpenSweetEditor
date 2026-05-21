@@ -37,6 +37,10 @@ export interface TextRange {
   end: TextPosition;
 }
 
+export function isTextRangeCollapsed(range: TextRange): boolean {
+  return range.start.line === range.end.line && range.start.column === range.end.column;
+}
+
 export interface IntRange {
   start: number;
   end: number;

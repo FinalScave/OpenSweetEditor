@@ -376,6 +376,9 @@ public class EditorCore {
     public TextRange getSelection() {
         try (Arena tempArena = Arena.ofConfined()) {
             int[] sel = EditorNative.getSelection(nativeHandle, tempArena);
+            if (sel == null) {
+                return null;
+            }
             return new TextRange(
                     new TextPosition(sel[0], sel[1]),
                     new TextPosition(sel[2], sel[3]));

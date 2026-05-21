@@ -24,6 +24,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.qiplat.sweeteditor.EditorTheme;
 import com.qiplat.sweeteditor.ui.PopupAnimator;
 import com.qiplat.sweeteditor.ui.PopupPositioner;
+import com.qiplat.sweeteditor.ui.UiDimensions;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -428,10 +429,9 @@ public class CompletionPopupController implements CompletionProviderManager.Comp
         }
 
         private static View createDefaultItemView(@NonNull Context context) {
-            float density = context.getResources().getDisplayMetrics().density;
-            int hPadding = (int) (8 * density);
-            int vPadding = (int) (2 * density);
-            int height = (int) (ITEM_HEIGHT_DP * density);
+            int hPadding = UiDimensions.dpToPx(context, 8);
+            int vPadding = UiDimensions.dpToPx(context, 2);
+            int height = UiDimensions.dpToPx(context, ITEM_HEIGHT_DP);
 
             android.widget.LinearLayout layout = new android.widget.LinearLayout(context);
             layout.setOrientation(android.widget.LinearLayout.HORIZONTAL);
@@ -440,10 +440,10 @@ public class CompletionPopupController implements CompletionProviderManager.Comp
             layout.setLayoutParams(new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height));
 
             TextView kindBadge = new TextView(context);
-            int badgeSize = (int) (18 * density);
+            int badgeSize = UiDimensions.dpToPx(context, 18);
             android.widget.LinearLayout.LayoutParams badgeLp =
                     new android.widget.LinearLayout.LayoutParams(badgeSize, badgeSize);
-            badgeLp.setMarginEnd((int) (8 * density));
+            badgeLp.setMarginEnd(UiDimensions.dpToPx(context, 8));
             kindBadge.setLayoutParams(badgeLp);
             kindBadge.setGravity(Gravity.CENTER);
             kindBadge.setTextSize(10);
@@ -453,10 +453,10 @@ public class CompletionPopupController implements CompletionProviderManager.Comp
             layout.addView(kindBadge);
 
             ImageView icon = new ImageView(context);
-            int iconSize = (int) (16 * density);
+            int iconSize = UiDimensions.dpToPx(context, 16);
             android.widget.LinearLayout.LayoutParams iconLp =
                     new android.widget.LinearLayout.LayoutParams(iconSize, iconSize);
-            iconLp.setMarginEnd((int) (8 * density));
+            iconLp.setMarginEnd(UiDimensions.dpToPx(context, 8));
             icon.setLayoutParams(iconLp);
             icon.setTag("icon");
             icon.setVisibility(View.GONE);
@@ -482,7 +482,7 @@ public class CompletionPopupController implements CompletionProviderManager.Comp
             detail.setVisibility(View.GONE);
             android.widget.LinearLayout.LayoutParams detailLp =
                     new android.widget.LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            detailLp.setMarginStart((int) (8 * density));
+            detailLp.setMarginStart(UiDimensions.dpToPx(context, 8));
             detail.setLayoutParams(detailLp);
             layout.addView(detail);
 

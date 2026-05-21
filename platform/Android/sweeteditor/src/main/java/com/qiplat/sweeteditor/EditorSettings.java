@@ -69,7 +69,6 @@ public class EditorSettings {
         mScale = scale;
         EditorCore.EditorActionResult result = mEditor.getEditorCore().setScale(scale);
         mEditor.dispatchEditorActionResult(result);
-        mEditor.syncPlatformScale(scale);
     }
 
     public float getScale() {

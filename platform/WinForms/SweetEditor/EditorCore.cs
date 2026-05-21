@@ -993,6 +993,9 @@ namespace SweetEditor {
 		public TextPosition Start { get; set; }
 		[JsonPropertyName("end")]
 		public TextPosition End { get; set; }
+
+		[JsonIgnore]
+		public bool IsCollapsed => Start.Line == End.Line && Start.Column == End.Column;
 	}
 
 	/// <summary>

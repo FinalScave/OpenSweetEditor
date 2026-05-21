@@ -13,4 +13,8 @@ public class TextRange {
         this.start = start;
         this.end = end;
     }
+
+    public boolean isCollapsed() {
+        return start.line == end.line && start.column == end.column;
+    }
 }
