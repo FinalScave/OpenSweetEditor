@@ -2,6 +2,7 @@ import {
   EditorActionReason,
   EditorActionResult,
   EditorOptions,
+  EventType,
   GestureType,
   HitTarget,
   HitTargetType,

@@ -1476,6 +1476,7 @@ export struct SweetEditor {
         clearPlatformPreedit: false
       },
       gestureType: GestureType.UNDEFINED,
+      gestureEventType: EventType.UNDEFINED,
       tapPoint: { x: 0, y: 0 },
       hitTarget: {
         type: HitTargetType.NONE,
