@@ -743,6 +743,7 @@ namespace NS_SWEETEDITOR {
       float scroll_y {0};
       float scale {1};
       PointerCursorType pointer_cursor_type {PointerCursorType::TEXT};
+      HitTarget active_hit_target;
       CompositionState composition;
     };
 

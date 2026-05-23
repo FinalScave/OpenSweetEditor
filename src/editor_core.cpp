@@ -3205,6 +3205,7 @@ namespace NS_SWEETEDITOR {
     snapshot.scroll_y = m_view_state_.scroll_y;
     snapshot.scale = m_view_state_.scale;
     snapshot.pointer_cursor_type = m_pointer_cursor_type_;
+    snapshot.active_hit_target = getActiveHitTarget();
     snapshot.composition = m_composition_controller_.composition();
     return snapshot;
   }
@@ -3247,6 +3248,7 @@ namespace NS_SWEETEDITOR {
     result.pointer_cursor_after = m_pointer_cursor_type_;
     result.pointer_cursor_changed = result.pointer_cursor_before != result.pointer_cursor_after;
 
+    const bool active_hit_target_changed = !sameHitTarget(before.active_hit_target, getActiveHitTarget());
     result.composition_changed = !sameCompositionState(before.composition, m_composition_controller_.composition());
     result.decoration_changed = decoration_changed;
     result.needs_ime_sync = result.content_changed || result.cursor_changed || result.selection_changed || result.composition_changed;
@@ -3260,6 +3262,7 @@ namespace NS_SWEETEDITOR {
                           || result.scroll_changed
                           || result.scale_changed
                           || result.composition_changed
+                          || active_hit_target_changed
                           || result.decoration_changed;
     return result;
   }
