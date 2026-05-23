@@ -698,6 +698,16 @@ class EditorCore {
     });
   }
 
+  EditorActionResult updatePointerModifiers(int modifiers) {
+    _ensureOpen();
+    return _callAndParse(
+      EditorActionResult.empty,
+      (outSize) =>
+          bindings.editor_update_pointer_modifiers(_handle, modifiers, outSize),
+      ProtocolDecoder.decodeEditorActionResult,
+    );
+  }
+
   EditorActionResult tickEdgeScroll() {
     _ensureOpen();
     return _callAndParse(

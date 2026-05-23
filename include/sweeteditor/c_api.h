@@ -373,6 +373,11 @@ EDITOR_API const uint8_t* handle_editor_gesture_event(intptr_t editor_handle, ui
 EDITOR_API const uint8_t* handle_editor_gesture_event_ex(intptr_t editor_handle, uint8_t type, uint8_t pointer_count, float* points,
     uint8_t modifiers, float wheel_delta_x, float wheel_delta_y, float direct_scale, size_t* out_size);
 
+/// Recompute pointer presentation for the last observed mouse position after modifier keys change.
+/// @param modifiers Modifier key flags(SHIFT=1, CTRL=2, ALT=4, META=8)
+/// @return EditorActionResult binary payload, returns NULL on failure
+EDITOR_API const uint8_t* editor_update_pointer_modifiers(intptr_t editor_handle, uint8_t modifiers, size_t* out_size);
+
 /// Tick edge-scroll during drag selection / handle drag.
 /// Call at ~16ms intervals while the previous EditorActionResult.needs_edge_scroll was true.
 /// Returns the same EditorActionResult binary layout as handle_editor_gesture_event.

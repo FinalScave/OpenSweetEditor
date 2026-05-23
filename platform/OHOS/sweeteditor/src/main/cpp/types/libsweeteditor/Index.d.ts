@@ -22,6 +22,7 @@ export const handleEditorGestureEventEx: (handle: number, type: number, pointerC
 export const editorTickEdgeScroll: (handle: number) => ArrayBuffer | undefined;
 export const editorTickFling: (handle: number) => ArrayBuffer | undefined;
 export const editorTickAnimations: (handle: number) => ArrayBuffer | undefined;
+export const editorUpdatePointerModifiers: (handle: number, modifiers: number) => ArrayBuffer | undefined;
 export const handleEditorKeyEvent: (handle: number, keyCode: number, text: string | null, modifiers: number) => ArrayBuffer | undefined;
 
 // Font/appearance

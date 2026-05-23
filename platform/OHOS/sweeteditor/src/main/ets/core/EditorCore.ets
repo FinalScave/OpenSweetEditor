@@ -472,6 +472,11 @@ export class EditorCore {
     return ProtocolDecoder.decodeEditorActionResult(native.editorTickAnimations(this.handle));
   }
 
+  updatePointerModifiers(modifiers: number): EditorActionResult {
+    const payload = native.editorUpdatePointerModifiers(this.handle, modifiers);
+    return ProtocolDecoder.decodeEditorActionResult(payload);
+  }
+
   handleKeyEvent(keyCode: number, text: string | null, modifiers: number): EditorActionResult {
     const payload = native.handleEditorKeyEvent(this.handle, keyCode, text, modifiers);
     return ProtocolDecoder.decodeEditorActionResult(payload);

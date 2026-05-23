@@ -62,6 +62,10 @@ const uint8_t* handle_editor_gesture_event_ex(intptr_t editor_handle,
                                               float direct_scale,
                                               size_t* out_size);
 
+const uint8_t* editor_update_pointer_modifiers(intptr_t editor_handle,
+                                               uint8_t modifiers,
+                                               size_t* out_size);
+
 const uint8_t* editor_on_font_metrics_changed(intptr_t editor_handle, size_t* out_size);
 
 const uint8_t* build_editor_render_model(intptr_t editor_handle, size_t* out_size);

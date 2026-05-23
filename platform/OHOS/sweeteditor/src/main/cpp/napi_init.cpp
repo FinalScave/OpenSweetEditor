@@ -31,6 +31,7 @@ static napi_value Init(napi_env env, napi_value exports)
         NAPI_METHOD("editorTickEdgeScroll", EditorCoreNapi::tickEdgeScroll),
         NAPI_METHOD("editorTickFling", EditorCoreNapi::tickFling),
         NAPI_METHOD("editorTickAnimations", EditorCoreNapi::tickAnimations),
+        NAPI_METHOD("editorUpdatePointerModifiers", EditorCoreNapi::updatePointerModifiers),
         NAPI_METHOD("handleEditorKeyEvent", EditorCoreNapi::handleKeyEvent),
 
         // Font/appearance

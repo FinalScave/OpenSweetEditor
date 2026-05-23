@@ -362,6 +362,9 @@ export struct SweetEditor {
           this.handleHoverEvent(isHover, event);
         })
         .onKeyEvent((event: KeyEvent) => {
+          if (event.type === KeyType.Down || event.type === KeyType.Up) {
+            this.refreshPointerModifiers(event);
+          }
           if (event.type === KeyType.Down) {
             this.handleKeyEvent(event, true);
           }
@@ -1697,6 +1700,14 @@ export struct SweetEditor {
     }
     const result = this.editorCore.commitImeText(text, ImeScriptClass.UNKNOWN);
     this.finishImeAction(result);
+  }
+
+  private refreshPointerModifiers(event: KeyEvent): void {
+    if (!this.editorCore) {
+      return;
+    }
+    const result = this.editorCore.updatePointerModifiers(getNativeModifiers(event));
+    this.dispatchEditorActionResult(result);
   }
 
   private handleKeyEvent(event: KeyEvent, allowTextFallback: boolean): void {

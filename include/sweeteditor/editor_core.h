@@ -181,6 +181,11 @@ namespace NS_SWEETEDITOR {
     /// @return Gesture handling result (includes editor state)
     EditorActionResult handleGestureEvent(const GestureEvent& event);
 
+    /// Recompute pointer presentation for the last observed mouse position after modifier keys change.
+    /// @param modifiers Current modifier key flags
+    /// @return Editor state changes caused by pointer presentation refresh
+    EditorActionResult updatePointerModifiers(KeyModifier modifiers);
+
     /// Called by platform timer (~16ms interval) while needs_edge_scroll is true.
     /// Scrolls the viewport and updates the selection based on saved edge-scroll state.
     /// @return Updated gesture result (platform should redraw; check needs_edge_scroll to decide
@@ -798,6 +803,9 @@ namespace NS_SWEETEDITOR {
     HitTarget m_press_hit_target_;
     /// Whether the primary mouse button is currently pressed.
     bool m_mouse_button_down_ {false};
+    /// Last mouse point reported by the platform for pointer presentation refresh.
+    PointF m_last_mouse_point_;
+    bool m_has_last_mouse_point_ {false};
     /// Current pointer cursor type for the last observed mouse location.
     PointerCursorType m_pointer_cursor_type_ {PointerCursorType::TEXT};
 

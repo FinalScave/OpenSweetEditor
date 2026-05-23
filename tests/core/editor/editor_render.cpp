@@ -417,6 +417,52 @@ TEST_CASE("EditorCore buildRenderModel activates wrapped LINK runs together with
   }
 }
 
+TEST_CASE("EditorCore updatePointerModifiers refreshes hovered LINK presentation") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(makeShared<LineArrayDocument>("plain link tail"));
+  editor.setViewport({300, 160});
+  Vector<LinkSpan> links;
+  links.push_back({6, 4, "doc://link"});
+  editor.setLineLinks(0, std::move(links));
+
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+  auto link_runs = findRunsOfType(model, 0, VisualRunType::LINK);
+  REQUIRE(link_runs.size() == 1);
+  const float hover_point[2] = {
+      link_runs.front()->x + link_runs.front()->width * 0.5f,
+      link_runs.front()->y
+  };
+
+  const EditorActionResult plain_hover = editor.handleGestureEvent(
+      GestureEvent::create(EventType::MOUSE_MOVE, 1, hover_point));
+  CHECK(plain_hover.pointer_cursor_after == PointerCursorType::TEXT);
+
+  const EditorActionResult ctrl_refresh = editor.updatePointerModifiers(KeyModifier::CTRL);
+  CHECK(ctrl_refresh.needs_redraw);
+  CHECK(ctrl_refresh.pointer_cursor_changed);
+  CHECK(ctrl_refresh.pointer_cursor_after == PointerCursorType::HAND);
+
+  model = {};
+  editor.buildRenderModel(model);
+  auto active_link_runs = findRunsOfType(model, 0, VisualRunType::LINK);
+  REQUIRE(active_link_runs.size() == 1);
+  CHECK(active_link_runs.front()->active);
+
+  const EditorActionResult clear_refresh = editor.updatePointerModifiers(KeyModifier::NONE);
+  CHECK(clear_refresh.needs_redraw);
+  CHECK(clear_refresh.pointer_cursor_changed);
+  CHECK(clear_refresh.pointer_cursor_after == PointerCursorType::TEXT);
+
+  model = {};
+  editor.buildRenderModel(model);
+  auto inactive_link_runs = findRunsOfType(model, 0, VisualRunType::LINK);
+  REQUIRE(inactive_link_runs.size() == 1);
+  CHECK_FALSE(inactive_link_runs.front()->active);
+}
+
 TEST_CASE("EditorCore long press inside selection keeps existing selection") {
   EditorOptions options;
   options.long_press_ms = -1;

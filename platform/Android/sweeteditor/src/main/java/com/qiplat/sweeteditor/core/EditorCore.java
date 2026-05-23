@@ -338,6 +338,13 @@ public class EditorCore {
         }
     }
 
+    public EditorActionResult updatePointerModifiers(int modifiers) {
+        if (mNativeHandle == 0) {
+            return new EditorActionResult();
+        }
+        return decodeAction(nativeUpdatePointerModifiers(mNativeHandle, modifiers));
+    }
+
     /**
      * Tick edge-scroll during drag selection / handle drag.
      * Call at ~16ms intervals while the previous EditorActionResult.needsEdgeScroll was true.
@@ -2625,6 +2632,9 @@ public class EditorCore {
     private static native ByteBuffer nativeHandleGestureEventEx(long handle, int type, int pointerCount, float[] points,
                                                                 int modifiers, float wheelDeltaX, float wheelDeltaY,
                                                                 float directScale);
+
+    @FastNative
+    private static native ByteBuffer nativeUpdatePointerModifiers(long handle, int modifiers);
 
     @FastNative
     private static native ByteBuffer nativeTickEdgeScroll(long handle);

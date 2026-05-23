@@ -541,6 +541,22 @@ external ffi.Pointer<ffi.Uint8> handle_editor_gesture_event_ex(
   ffi.Pointer<ffi.Size> out_size,
 );
 
+/// Recompute pointer presentation for the last observed mouse position after modifier keys change.
+/// @param modifiers Modifier key flags(SHIFT=1, CTRL=2, ALT=4, META=8)
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Uint8,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_update_pointer_modifiers(
+  int editor_handle,
+  int modifiers,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
 /// Tick edge-scroll during drag selection / handle drag.
 /// Call at ~16ms intervals while the previous EditorActionResult.needs_edge_scroll was true.
 /// Returns the same EditorActionResult binary layout as handle_editor_gesture_event.

@@ -337,6 +337,17 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
+  static jobject updatePointerModifiers(JNIEnv* env, jclass clazz, jlong handle, jint modifiers) {
+    if (handle == 0) {
+      return nullptr;
+    }
+    size_t out_size = 0;
+    const uint8_t* payload = editor_update_pointer_modifiers(static_cast<intptr_t>(handle),
+                                                             static_cast<uint8_t>(modifiers),
+                                                             &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
+  }
+
   static jobject tickEdgeScroll(JNIEnv* env, jclass clazz, jlong handle) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
@@ -1514,6 +1525,7 @@ public:
       {"nativeLoadDocument", "(JJ)Ljava/nio/ByteBuffer;", (void*) loadDocument},
       {"nativeHandleGestureEvent", "(JII[F)Ljava/nio/ByteBuffer;", (void*) handleGestureEvent},
       {"nativeHandleGestureEventEx", "(JII[FIFFF)Ljava/nio/ByteBuffer;", (void*) handleGestureEventEx},
+      {"nativeUpdatePointerModifiers", "(JI)Ljava/nio/ByteBuffer;", (void*) updatePointerModifiers},
       {"nativeTickEdgeScroll", "(J)Ljava/nio/ByteBuffer;", (void*) tickEdgeScroll},
       {"nativeTickFling", "(J)Ljava/nio/ByteBuffer;", (void*) tickFling},
       {"nativeTickAnimations", "(J)Ljava/nio/ByteBuffer;", (void*) tickAnimations},

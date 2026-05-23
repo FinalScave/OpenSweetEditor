@@ -133,8 +133,6 @@ public class SweetEditor extends View {
     private int mAppliedViewportWidth = -1;
     private int mAppliedViewportHeight = -1;
     @Nullable
-    private PointF mLastHoverPoint;
-    @Nullable
     private SweetEditorInputConnection mInputConnection;
 
     // ==================== Construction/Init/Lifecycle ====================
@@ -356,14 +354,14 @@ public class SweetEditor extends View {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         boolean handled = handleKeyEventFromIME(event);
-        refreshHoverActivation(event);
+        refreshPointerModifiers(event);
         return handled || super.onKeyDown(keyCode, event);
     }
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
-        if (isLinkActivationModifierKey(keyCode)) {
-            refreshHoverActivation(event);
+        if (isPointerModifierKey(keyCode)) {
+            refreshPointerModifiers(event);
             return true;
         }
         return super.onKeyUp(keyCode, event);
@@ -2128,7 +2126,6 @@ public class SweetEditor extends View {
     }
 
     private void updateHoverGesture(@Nullable PointF point, int modifiers) {
-        mLastHoverPoint = point != null ? new PointF(point.x, point.y) : null;
         PointF probePoint = point != null ? point : new PointF(-1f, -1f);
         EditorCore.EditorActionResult result = mEditorCore.handleGestureEventEx(
                 EditorCore.EVENT_TYPE_MOUSE_MOVE,
@@ -2151,18 +2148,23 @@ public class SweetEditor extends View {
         }
     }
 
-    private void refreshHoverActivation(@NonNull KeyEvent event) {
-        if (!isLinkActivationModifierKey(event.getKeyCode()) || mLastHoverPoint == null) {
+    private void refreshPointerModifiers(@NonNull KeyEvent event) {
+        if (!isPointerModifierKey(event.getKeyCode())) {
             return;
         }
-        updateHoverGesture(mLastHoverPoint, getKeyEventModifiers(event));
+        EditorCore.EditorActionResult result = mEditorCore.updatePointerModifiers(getKeyEventModifiers(event));
+        dispatchEditorActionResult(result);
     }
 
-    private static boolean isLinkActivationModifierKey(int keyCode) {
+    private static boolean isPointerModifierKey(int keyCode) {
         return keyCode == KeyEvent.KEYCODE_CTRL_LEFT
                 || keyCode == KeyEvent.KEYCODE_CTRL_RIGHT
                 || keyCode == KeyEvent.KEYCODE_META_LEFT
-                || keyCode == KeyEvent.KEYCODE_META_RIGHT;
+                || keyCode == KeyEvent.KEYCODE_META_RIGHT
+                || keyCode == KeyEvent.KEYCODE_SHIFT_LEFT
+                || keyCode == KeyEvent.KEYCODE_SHIFT_RIGHT
+                || keyCode == KeyEvent.KEYCODE_ALT_LEFT
+                || keyCode == KeyEvent.KEYCODE_ALT_RIGHT;
     }
 
     private static int getMotionEventModifiers(@NonNull MotionEvent event) {

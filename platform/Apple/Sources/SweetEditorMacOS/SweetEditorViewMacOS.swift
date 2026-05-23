@@ -1161,6 +1161,11 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         super.keyDown(with: event)
     }
 
+    override func flagsChanged(with event: NSEvent) {
+        dispatchEditorActionResult(editorCore.updatePointerModifiers(modifiersFromEvent(event)))
+        super.flagsChanged(with: event)
+    }
+
     public func handleForwardedKeyDown(_ event: NSEvent) {
         keyDown(with: event)
     }

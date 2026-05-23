@@ -1382,6 +1382,7 @@ namespace SweetEditor {
 
 		protected override void OnKeyDown(KeyEventArgs e) {
 			using var perf = StartInputPerf($"OnKeyDown({e.KeyCode})");
+			RefreshPointerModifiers(e.KeyCode);
 			if (editorCore.IsComposing()) {
 				if (TryHandleComposingKeyDown(e)) {
 					return;
@@ -1399,10 +1400,7 @@ namespace SweetEditor {
 				}
 			}
 
-			byte modifiers = 0;
-			if (e.Shift) modifiers |= (byte)KeyModifier.SHIFT;
-			if (e.Control) modifiers |= (byte)KeyModifier.CTRL;
-			if (e.Alt) modifiers |= (byte)KeyModifier.ALT;
+			byte modifiers = (byte)GetCurrentModifiers();
 
 			ushort keyCode = MapKeysToKeyCode(e.KeyCode);
 
@@ -1435,6 +1433,12 @@ namespace SweetEditor {
 			}
 			base.OnKeyDown(e);
 		}
+
+		protected override void OnKeyUp(KeyEventArgs e) {
+			RefreshPointerModifiers(e.KeyCode);
+			base.OnKeyUp(e);
+		}
+
 		// KeyPress is handled by WM_IME_COMPOSITION while composing.
 		protected override void OnKeyPress(KeyPressEventArgs e) {
 			using var perf = StartInputPerf($"OnKeyPress({(int)e.KeyChar})");
@@ -1685,6 +1689,27 @@ namespace SweetEditor {
 				animationActive = false;
 				animationTimer!.Stop();
 			}
+		}
+
+		private void RefreshPointerModifiers(Keys keyCode) {
+			if (!IsPointerModifierKey(keyCode)) {
+				return;
+			}
+			DispatchEditorActionResult(editorCore.UpdatePointerModifiers((byte)GetCurrentModifiers()));
+		}
+
+		private static bool IsPointerModifierKey(Keys keyCode) {
+			return keyCode == Keys.ShiftKey
+				|| keyCode == Keys.LShiftKey
+				|| keyCode == Keys.RShiftKey
+				|| keyCode == Keys.ControlKey
+				|| keyCode == Keys.LControlKey
+				|| keyCode == Keys.RControlKey
+				|| keyCode == Keys.Menu
+				|| keyCode == Keys.LMenu
+				|| keyCode == Keys.RMenu
+				|| keyCode == Keys.LWin
+				|| keyCode == Keys.RWin;
 		}
 
 		private static KeyModifier GetCurrentModifiers() {

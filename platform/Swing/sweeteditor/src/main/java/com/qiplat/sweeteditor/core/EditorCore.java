@@ -206,6 +206,10 @@ public class EditorCore {
         }
     }
 
+    public EditorActionResult updatePointerModifiers(int modifiers) {
+        return decodeAction(EditorNative.updatePointerModifiers(nativeHandle, modifiers));
+    }
+
     /** Advances edge-scroll by one tick and returns an updated gesture result. */
     public EditorActionResult tickEdgeScroll() {
         return decodeAction(EditorNative.tickEdgeScroll(nativeHandle));

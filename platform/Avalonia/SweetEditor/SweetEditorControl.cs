@@ -687,6 +687,7 @@ namespace SweetEditor {
 			if (imeSuppressedByTouch) {
 				SetImeSuppressedByTouch(false);
 			}
+			RefreshPointerModifiers(e.KeyModifiers);
 
 			if (inlineSuggestion != null) {
 				if (e.Key == Key.Tab) {
@@ -759,6 +760,14 @@ namespace SweetEditor {
 				DispatchEditorActionResult(result);
 				e.Handled = true;
 			}
+		}
+
+		protected override void OnKeyUp(KeyEventArgs e) {
+			base.OnKeyUp(e);
+			if (disposed) {
+				return;
+			}
+			RefreshPointerModifiers(e.KeyModifiers);
 		}
 
 		protected override void OnTextInput(TextInputEventArgs e) {
@@ -3429,6 +3438,10 @@ namespace SweetEditor {
 
 			DispatchEditorActionResult(result);
 			return true;
+		}
+
+		private void RefreshPointerModifiers(KeyModifiers modifiers) {
+			DispatchEditorActionResult(editorCore.UpdatePointerModifiers(ToModifierMask(modifiers)));
 		}
 
 		private static PointF ToPointF(Point point) => new((float)point.X, (float)point.Y);

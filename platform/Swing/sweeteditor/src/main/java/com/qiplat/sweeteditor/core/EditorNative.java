@@ -287,6 +287,9 @@ public final class EditorNative {
                     ValueLayout.JAVA_LONG, ValueLayout.JAVA_BYTE, ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS,
                     ValueLayout.JAVA_BYTE, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.ADDRESS));
 
+    private static final MethodHandle UPDATE_POINTER_MODIFIERS = downcall("editor_update_pointer_modifiers",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS));
+
     private static final MethodHandle INSERT_TEXT = downcall("editor_insert_text",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
@@ -918,6 +921,10 @@ public final class EditorNative {
                     (byte) type, (byte) pointerCount, pointsSeg,
                     (byte) modifiers, wheelDeltaX, wheelDeltaY, directScale, outSize);
         });
+    }
+
+    public static NativeBinaryResult updatePointerModifiers(long handle, int modifiers) {
+        return invokeBinaryResult(outSize -> (MemorySegment) UPDATE_POINTER_MODIFIERS.invokeExact(handle, (byte) modifiers, outSize));
     }
 
     public static NativeBinaryResult handleKeyEvent(long handle, int keyCode, String text, int modifiers, Arena arena) {

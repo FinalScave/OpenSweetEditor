@@ -185,6 +185,7 @@ namespace NS_SWEETEDITOR {
     clearHoverHitTarget();
     clearPressHitTarget();
     m_mouse_button_down_ = false;
+    m_has_last_mouse_point_ = false;
     m_pointer_cursor_type_ = PointerCursorType::TEXT;
 
     m_document_ = document;
@@ -577,6 +578,8 @@ namespace NS_SWEETEDITOR {
     };
 
     if (isMousePointerEvent(event.type) && has_primary_point) {
+      m_last_mouse_point_ = event.points[0];
+      m_has_last_mouse_point_ = true;
       m_pointer_cursor_type_ = get_primary_probe().cursor_type;
     }
 
@@ -659,6 +662,23 @@ namespace NS_SWEETEDITOR {
                                EditorActionReason::GESTURE,
                                event.type,
                                gesture_decoration_changed);
+  }
+
+  EditorActionResult EditorCore::updatePointerModifiers(KeyModifier modifiers) {
+    const ActionSnapshot before = captureActionSnapshot();
+
+    if (m_has_last_mouse_point_) {
+      const PointerProbeResult probe = probePointer(m_last_mouse_point_, modifiers);
+      m_pointer_cursor_type_ = probe.cursor_type;
+      if (!m_mouse_button_down_) {
+        m_hover_hit_target_ = probe.hot_target;
+      }
+    }
+
+    EditorActionResult result = finishAction(before, EditorActionReason::GESTURE, false);
+    result.modifiers = modifiers;
+    result.handled = result.needs_redraw || result.pointer_cursor_changed;
+    return result;
   }
 
   EditorActionResult EditorCore::tickFling() {

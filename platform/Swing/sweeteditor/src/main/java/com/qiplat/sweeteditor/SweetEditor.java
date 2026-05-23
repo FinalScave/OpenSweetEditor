@@ -870,6 +870,8 @@ public class SweetEditor extends JPanel {
             public void keyPressed(KeyEvent e) {
                 long inputPerfStart = startInputPerf();
                 try {
+                    refreshPointerModifiers(e);
+
                     if (editorCore.isComposing()) {
                         handleComposingKeyPressed(e);
                         return;
@@ -891,11 +893,7 @@ public class SweetEditor extends JPanel {
                         }
                     }
 
-                    int mods = 0;
-                    if (e.isShiftDown()) mods |= MOD_SHIFT;
-                    if (e.isControlDown()) mods |= MOD_CTRL;
-                    if (e.isAltDown()) mods |= MOD_ALT;
-                    if (e.isMetaDown()) mods |= MOD_META;
+                    int mods = getModifiers(e);
 
                     int keyCode = mapKeyCode(e.getKeyCode());
                     if (keyCode == 0 && (e.isControlDown() || e.isMetaDown() || e.isAltDown())) {
@@ -931,6 +929,11 @@ public class SweetEditor extends JPanel {
                 } finally {
                     finishInputPerf("keyPressed", inputPerfStart);
                 }
+            }
+
+            @Override
+            public void keyReleased(KeyEvent e) {
+                refreshPointerModifiers(e);
             }
 
             @Override
@@ -1330,6 +1333,13 @@ public class SweetEditor extends JPanel {
         return true;
     }
 
+    private void refreshPointerModifiers(KeyEvent e) {
+        if (!isPointerModifierKey(e.getKeyCode())) {
+            return;
+        }
+        dispatchEditorActionResult(editorCore.updatePointerModifiers(getModifiers(e)));
+    }
+
     private int getModifiers(MouseEvent e) {
         int mods = 0;
         if (e.isShiftDown()) mods |= MOD_SHIFT;
@@ -1337,6 +1347,22 @@ public class SweetEditor extends JPanel {
         if (e.isAltDown()) mods |= MOD_ALT;
         if (e.isMetaDown()) mods |= MOD_META;
         return mods;
+    }
+
+    private int getModifiers(KeyEvent e) {
+        int mods = 0;
+        if (e.isShiftDown()) mods |= MOD_SHIFT;
+        if (e.isControlDown()) mods |= MOD_CTRL;
+        if (e.isAltDown()) mods |= MOD_ALT;
+        if (e.isMetaDown()) mods |= MOD_META;
+        return mods;
+    }
+
+    private static boolean isPointerModifierKey(int keyCode) {
+        return keyCode == KeyEvent.VK_SHIFT
+                || keyCode == KeyEvent.VK_CONTROL
+                || keyCode == KeyEvent.VK_ALT
+                || keyCode == KeyEvent.VK_META;
     }
 
     private static int mapKeyCode(int keyCode) {

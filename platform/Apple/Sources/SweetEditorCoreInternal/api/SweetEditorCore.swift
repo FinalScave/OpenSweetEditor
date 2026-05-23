@@ -997,6 +997,14 @@ class SweetEditorCore {
         }
     }
 
+    func updatePointerModifiers(_ modifiers: SEModifier) -> EditorActionResultData? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_update_pointer_modifiers(handle, modifiers.rawValue, &size)
+            return decodeEditorActionPayload(ptr, size: size)
+        }
+    }
+
     func handleKeyEvent(keyCode: SEKeyCode, text: String? = nil, modifiers: SEModifier = []) -> EditorActionResultData? {
         return performCoreCall {
             var size: Int = 0

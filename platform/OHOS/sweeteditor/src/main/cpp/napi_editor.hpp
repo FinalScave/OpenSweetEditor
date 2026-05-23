@@ -432,6 +432,23 @@ public:
     return wrap_binary_payload(env, payload, out_size);
   }
 
+  static napi_value updatePointerModifiers(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
+
+    int32_t modifiers = napi_get_int32(env, args[1]);
+    size_t out_size = 0;
+    const uint8_t* payload = editor_update_pointer_modifiers(
+      static_cast<intptr_t>(handle),
+      static_cast<uint8_t>(modifiers),
+      &out_size);
+    return wrap_binary_payload(env, payload, out_size);
+  }
+
   static napi_value insertText(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];

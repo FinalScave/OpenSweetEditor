@@ -283,7 +283,13 @@ class EditorInteractionController {
 
   KeyEventResult handleKeyEvent(FocusNode node, KeyEvent event) {
     final editorCore = _session.editorCore;
-    if (editorCore == null || event is! KeyDownEvent) {
+    if (editorCore == null) {
+      return KeyEventResult.ignored;
+    }
+    if (event is KeyDownEvent || event is KeyUpEvent) {
+      _refreshPointerModifiers(editorCore);
+    }
+    if (event is! KeyDownEvent) {
       return KeyEventResult.ignored;
     }
 
@@ -360,6 +366,12 @@ class EditorInteractionController {
     return result.handled || handledByPlatformCommand
         ? KeyEventResult.handled
         : KeyEventResult.ignored;
+  }
+
+  void _refreshPointerModifiers(core.EditorCore editorCore) {
+    _dispatchEditorActionResult(
+      editorCore.updatePointerModifiers(_currentGestureModifiers()),
+    );
   }
 
   bool performSelector(String selectorName) {
