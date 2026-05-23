@@ -22,7 +22,7 @@ export class EditorSettings {
   private backspaceUnindent: boolean = true;
   private readOnly: boolean = false;
   private maxGutterIcons: number = 0;
-  private decorationScrollRefreshMinIntervalMs: number = 200;
+  private decorationScrollRefreshMinIntervalMs: number = 16;
   private decorationOverscanViewportMultiplier: number = 1.5;
 
   constructor(editor: SweetEditor) {

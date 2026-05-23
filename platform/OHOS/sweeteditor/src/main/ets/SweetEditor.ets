@@ -725,8 +725,9 @@ export struct SweetEditor {
     if (!this.editorCore) {
       return { start: 0, end: -1 };
     }
-    if (!this.cachedModel) {
-      this.editorCore.buildRenderModel();
+    if (!this.cachedModel || this.modelDirty) {
+      this.cachedModel = this.editorCore.buildRenderModel();
+      this.modelDirty = false;
     }
     return this.editorCore.getVisibleLineRange();
   }
