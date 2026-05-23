@@ -1266,10 +1266,9 @@ namespace SweetEditor {
 		public void ClearMatchedBrackets() { DispatchEditorActionResult(editorCore.ClearMatchedBrackets()); }
 
 		/// <summary>Inserts snippet.</summary>
-		public EditorActionResult InsertSnippet(string snippetTemplate) {
+		public void InsertSnippet(string snippetTemplate) {
 			var result = editorCore.InsertSnippet(snippetTemplate);
 			DispatchEditorActionResult(result);
-			return result;
 		}
 
 		/// <summary>Starts linked editing.</summary>
@@ -1589,7 +1588,6 @@ namespace SweetEditor {
 					DirectScale = 1
 				});
 				DispatchEditorActionResult(gestureResult);
-				UpdateAnimationTimer(gestureResult.NeedsAnimation);
 			} else if (e.Button == MouseButtons.Right) {
 				EditorActionResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.MOUSE_RIGHT_DOWN,
@@ -1612,7 +1610,6 @@ namespace SweetEditor {
 				DirectScale = 1
 			});
 			DispatchEditorActionResult(gestureResult);
-			UpdateAnimationTimer(gestureResult.NeedsAnimation);
 			base.OnMouseMove(e);
 		}
 
@@ -1625,7 +1622,6 @@ namespace SweetEditor {
 				DirectScale = 1
 			});
 			DispatchEditorActionResult(gestureResult);
-			UpdateAnimationTimer(gestureResult.NeedsAnimation);
 			base.OnMouseEnter(e);
 		}
 
@@ -1637,7 +1633,6 @@ namespace SweetEditor {
 				DirectScale = 1
 			});
 			DispatchEditorActionResult(gestureResult);
-			UpdateAnimationTimer(gestureResult.NeedsAnimation);
 			base.OnMouseLeave(e);
 		}
 
@@ -1652,7 +1647,6 @@ namespace SweetEditor {
 					DirectScale = 1
 				});
 				DispatchEditorActionResult(gestureResult);
-				UpdateAnimationTimer(gestureResult.NeedsAnimation);
 			}
 			base.OnMouseUp(e);
 		}
@@ -1679,10 +1673,6 @@ namespace SweetEditor {
 				if (!animationActive) return;
 				EditorActionResult result = editorCore.TickAnimations();
 				DispatchEditorActionResult(result);
-				if (!result.NeedsAnimation) {
-					animationActive = false;
-					animationTimer.Stop();
-				}
 			};
 		}
 
@@ -1882,6 +1872,7 @@ namespace SweetEditor {
 				var tapPoint = result.TapPoint;
 				FireGestureEvents(result, new System.Drawing.PointF(tapPoint.X, tapPoint.Y));
 			}
+			UpdateAnimationTimer(result.NeedsAnimation);
 			DispatchStateEvents(result);
 
 			if (result.NeedsRedraw) {

@@ -244,10 +244,8 @@ public class SweetEditor extends View {
             if (!mScrollAnimationActive) return;
             EditorCore.EditorActionResult result = mEditorCore.tickAnimations();
             dispatchEditorActionResult(result);
-            if (result.needsAnimation) {
+            if (mScrollAnimationActive) {
                 Choreographer.getInstance().postFrameCallback(this);
-            } else {
-                mScrollAnimationActive = false;
             }
         }
     };
@@ -1995,8 +1993,8 @@ public class SweetEditor extends View {
                 resetCursorBlink();
             }
             fireGestureEvents(result, result.tapPoint, motionActionFromGestureEventType(result.gestureEventType));
-            updateGestureAnimationState(result);
         }
+        updateAnimationState(result);
         dispatchStateEvents(result);
         if (mInputConnection != null) {
             mInputConnection.onEditorActionResult(result);
@@ -2141,16 +2139,9 @@ public class SweetEditor extends View {
                 1
         );
         dispatchEditorActionResult(result);
-        if (result.needsAnimation && !mScrollAnimationActive) {
-            mScrollAnimationActive = true;
-            Choreographer.getInstance().postFrameCallback(mScrollAnimationCallback);
-        } else if (!result.needsAnimation && mScrollAnimationActive) {
-            mScrollAnimationActive = false;
-            Choreographer.getInstance().removeFrameCallback(mScrollAnimationCallback);
-        }
     }
 
-    private void updateGestureAnimationState(@NonNull EditorCore.EditorActionResult result) {
+    private void updateAnimationState(@NonNull EditorCore.EditorActionResult result) {
         if (result.needsAnimation && !mScrollAnimationActive) {
             mScrollAnimationActive = true;
             Choreographer.getInstance().postFrameCallback(mScrollAnimationCallback);

@@ -1,4 +1,4 @@
-import { Document, EditorActionResult } from './core/EditorCore';
+import { Document } from './core/EditorCore';
 import { IntRange, ScrollBehavior, TextPosition, TextRange } from './core/CoreFoundation';
 import { CursorRect, ScrollMetrics } from './core/CoreVisual';
 import {
@@ -209,44 +209,44 @@ export class SweetEditorController {
     this.run((api) => api.removeNewLineActionProvider(provider));
   }
 
-  insertText(text: string): EditorActionResult | null {
-    return this.api ? this.api.insertText(text) : null;
+  insertText(text: string): void {
+    this.run((api) => api.insertText(text));
   }
 
-  replaceText(range: TextRange, newText: string): EditorActionResult | null {
-    return this.api ? this.api.replaceText(range, newText) : null;
+  replaceText(range: TextRange, newText: string): void {
+    this.run((api) => api.replaceText(range, newText));
   }
 
-  deleteText(range: TextRange): EditorActionResult | null {
-    return this.api ? this.api.deleteText(range) : null;
+  deleteText(range: TextRange): void {
+    this.run((api) => api.deleteText(range));
   }
 
-  moveLineUp(): EditorActionResult | null {
-    return this.api ? this.api.moveLineUp() : null;
+  moveLineUp(): void {
+    this.run((api) => api.moveLineUp());
   }
 
-  moveLineDown(): EditorActionResult | null {
-    return this.api ? this.api.moveLineDown() : null;
+  moveLineDown(): void {
+    this.run((api) => api.moveLineDown());
   }
 
-  copyLineUp(): EditorActionResult | null {
-    return this.api ? this.api.copyLineUp() : null;
+  copyLineUp(): void {
+    this.run((api) => api.copyLineUp());
   }
 
-  copyLineDown(): EditorActionResult | null {
-    return this.api ? this.api.copyLineDown() : null;
+  copyLineDown(): void {
+    this.run((api) => api.copyLineDown());
   }
 
-  deleteLine(): EditorActionResult | null {
-    return this.api ? this.api.deleteLine() : null;
+  deleteLine(): void {
+    this.run((api) => api.deleteLine());
   }
 
-  insertLineAbove(): EditorActionResult | null {
-    return this.api ? this.api.insertLineAbove() : null;
+  insertLineAbove(): void {
+    this.run((api) => api.insertLineAbove());
   }
 
-  insertLineBelow(): EditorActionResult | null {
-    return this.api ? this.api.insertLineBelow() : null;
+  insertLineBelow(): void {
+    this.run((api) => api.insertLineBelow());
   }
 
   triggerCompletion(): void {
@@ -452,52 +452,52 @@ export class SweetEditorController {
     this.run((api) => api.setFoldRegions(regions));
   }
 
-  toggleFoldAt(line: number): EditorActionResult | null {
-    return this.api ? this.api.toggleFoldAt(line) : null;
+  toggleFoldAt(line: number): void {
+    this.run((api) => api.toggleFoldAt(line));
   }
 
-  foldAt(line: number): EditorActionResult | null {
-    return this.api ? this.api.foldAt(line) : null;
+  foldAt(line: number): void {
+    this.run((api) => api.foldAt(line));
   }
 
-  unfoldAt(line: number): EditorActionResult | null {
-    return this.api ? this.api.unfoldAt(line) : null;
+  unfoldAt(line: number): void {
+    this.run((api) => api.unfoldAt(line));
   }
 
-  foldAll(): EditorActionResult | null {
-    return this.api ? this.api.foldAll() : null;
+  foldAll(): void {
+    this.run((api) => api.foldAll());
   }
 
-  unfoldAll(): EditorActionResult | null {
-    return this.api ? this.api.unfoldAll() : null;
+  unfoldAll(): void {
+    this.run((api) => api.unfoldAll());
   }
 
   isLineVisible(line: number): boolean {
     return this.api ? this.api.isLineVisible(line) : true;
   }
 
-  insertSnippet(template: string): EditorActionResult | null {
-    return this.api ? this.api.insertSnippet(template) : null;
+  insertSnippet(template: string): void {
+    this.run((api) => api.insertSnippet(template));
   }
 
-  startLinkedEditing(model: LinkedEditingModel): EditorActionResult | null {
-    return this.api ? this.api.startLinkedEditing(model) : null;
+  startLinkedEditing(model: LinkedEditingModel): void {
+    this.run((api) => api.startLinkedEditing(model));
   }
 
   isInLinkedEditing(): boolean {
     return this.api ? this.api.isInLinkedEditing() : false;
   }
 
-  linkedEditingNext(): EditorActionResult | null {
-    return this.api ? this.api.linkedEditingNext() : null;
+  linkedEditingNext(): void {
+    this.run((api) => api.linkedEditingNext());
   }
 
-  linkedEditingPrev(): EditorActionResult | null {
-    return this.api ? this.api.linkedEditingPrev() : null;
+  linkedEditingPrev(): void {
+    this.run((api) => api.linkedEditingPrev());
   }
 
-  cancelLinkedEditing(): EditorActionResult | null {
-    return this.api ? this.api.cancelLinkedEditing() : null;
+  cancelLinkedEditing(): void {
+    this.run((api) => api.cancelLinkedEditing());
   }
 
   clearHighlights(layer?: SpanLayer): void {
@@ -672,12 +672,12 @@ export class SweetEditorController {
     this.removeEventListener('selectionMenuItemClick', listener as EditorEventListener<EditorEvent>);
   }
 
-  undo(): EditorActionResult | null {
-    return this.api ? this.api.undo() : null;
+  undo(): void {
+    this.run((api) => api.undo());
   }
 
-  redo(): EditorActionResult | null {
-    return this.api ? this.api.redo() : null;
+  redo(): void {
+    this.run((api) => api.redo());
   }
 
   canUndo(): boolean {

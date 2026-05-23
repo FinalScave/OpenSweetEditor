@@ -8,10 +8,8 @@ import {
   GestureEvent,
   GestureType,
   HitTargetType,
-  ImeContextPolicy,
   ImeInputContext,
   ImeInputContextKind,
-  ImePreeditStorage,
   ImeScriptClass,
   ImeSyncSnapshot,
   ImeTextUnit,
@@ -736,19 +734,18 @@ export struct SweetEditor {
     return this.document ? this.document.getLineCount() : -1;
   }
 
-  insertText(text: string): EditorActionResult {
+  insertText(text: string): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.insertText(text);
     this.resetCursorBlink();
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
-  replaceText(range: TextRange, newText: string): EditorActionResult {
+  replaceText(range: TextRange, newText: string): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.replaceText(
       range.start.line, range.start.column,
@@ -756,12 +753,11 @@ export struct SweetEditor {
     );
     this.resetCursorBlink();
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
-  deleteText(range: TextRange): EditorActionResult {
+  deleteText(range: TextRange): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.deleteText(
       range.start.line, range.start.column,
@@ -769,97 +765,87 @@ export struct SweetEditor {
     );
     this.resetCursorBlink();
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
-  moveLineUp(): EditorActionResult {
+  moveLineUp(): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.moveLineUp();
     this.resetCursorBlink();
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
-  moveLineDown(): EditorActionResult {
+  moveLineDown(): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.moveLineDown();
     this.resetCursorBlink();
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
-  copyLineUp(): EditorActionResult {
+  copyLineUp(): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.copyLineUp();
     this.resetCursorBlink();
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
-  copyLineDown(): EditorActionResult {
+  copyLineDown(): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.copyLineDown();
     this.resetCursorBlink();
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
-  deleteLine(): EditorActionResult {
+  deleteLine(): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.deleteLine();
     this.resetCursorBlink();
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
-  insertLineAbove(): EditorActionResult {
+  insertLineAbove(): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.insertLineAbove();
     this.resetCursorBlink();
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
-  insertLineBelow(): EditorActionResult {
+  insertLineBelow(): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.insertLineBelow();
     this.resetCursorBlink();
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
-  undo(): EditorActionResult {
+  undo(): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.undo();
     this.resetCursorBlink();
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
-  redo(): EditorActionResult {
+  redo(): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.redo();
     this.resetCursorBlink();
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
   canUndo(): boolean {
@@ -1186,106 +1172,96 @@ export struct SweetEditor {
     this.dispatchEditorActionResult(this.editorCore.setFoldRegions(regions));
   }
 
-  toggleFoldAt(line: number): EditorActionResult {
+  toggleFoldAt(line: number): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.toggleFoldAt(line);
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
-  foldAt(line: number): EditorActionResult {
+  foldAt(line: number): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.foldAt(line);
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
-  unfoldAt(line: number): EditorActionResult {
+  unfoldAt(line: number): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.unfoldAt(line);
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
-  foldAll(): EditorActionResult {
+  foldAll(): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.foldAll();
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
-  unfoldAll(): EditorActionResult {
+  unfoldAll(): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.unfoldAll();
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
   isLineVisible(line: number): boolean {
     return this.editorCore ? this.editorCore.isLineVisible(line) : true;
   }
 
-  insertSnippet(snippetTemplate: string): EditorActionResult {
+  insertSnippet(snippetTemplate: string): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.insertSnippet(snippetTemplate);
     this.resetCursorBlink();
     this.dispatchEditorActionResult(result);
-    return result;
   }
 
-  startLinkedEditing(model: LinkedEditingModel): EditorActionResult {
+  startLinkedEditing(model: LinkedEditingModel): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.startLinkedEditing(model);
     this.resetCursorBlink();
     this.finishEditorAction(result);
-    return result;
   }
 
   isInLinkedEditing(): boolean {
     return this.editorCore ? this.editorCore.isInLinkedEditing() : false;
   }
 
-  linkedEditingNext(): EditorActionResult {
+  linkedEditingNext(): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.linkedEditingNext();
     this.resetCursorBlink();
     this.finishEditorAction(result);
-    return result;
   }
 
-  linkedEditingPrev(): EditorActionResult {
+  linkedEditingPrev(): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.linkedEditingPrev();
     this.resetCursorBlink();
     this.finishEditorAction(result);
-    return result;
   }
 
-  cancelLinkedEditing(): EditorActionResult {
+  cancelLinkedEditing(): void {
     if (!this.editorCore) {
-      return this.emptyActionResult();
+      return;
     }
     const result = this.editorCore.cancelLinkedEditing();
     this.finishEditorAction(result);
-    return result;
   }
 
   clearHighlights(layer?: SpanLayer): void {
@@ -1362,11 +1338,11 @@ export struct SweetEditor {
         }
         this.resetCursorBlink();
       }
-      if (result.needsAnimation && !this.animationActive) {
-        this.startAnimation();
-      } else if (!result.needsAnimation && this.animationActive) {
-        this.stopAnimation();
-      }
+    }
+    if (result.needsAnimation && !this.animationActive) {
+      this.startAnimation();
+    } else if (!result.needsAnimation && this.animationActive) {
+      this.stopAnimation();
     }
     this.dispatchStateEvents(result);
     if (result.needsImeSync) {
@@ -1429,66 +1405,6 @@ export struct SweetEditor {
     return result.hitTarget.type === HitTargetType.NONE &&
       (result.gestureEventType === EventType.TOUCH_UP ||
         result.gestureEventType === EventType.TOUCH_DOWN);
-  }
-
-  private emptyActionResult(): EditorActionResult {
-    const position: TextPosition = { line: 0, column: 0 };
-    const range: TextRange = { start: position, end: position };
-    return {
-      handled: false,
-      needsRedraw: false,
-      reason: EditorActionReason.NONE,
-      contentChanged: false,
-      cursorChanged: false,
-      selectionChanged: false,
-      scrollChanged: false,
-      scaleChanged: false,
-      pointerCursorChanged: false,
-      compositionChanged: false,
-      decorationChanged: false,
-      needsImeSync: false,
-      needsEdgeScroll: false,
-      needsFling: false,
-      needsAnimation: false,
-      isHandleDrag: false,
-      changes: [],
-      cursorBefore: position,
-      cursorAfter: position,
-      hasSelectionBefore: false,
-      selectionBefore: range,
-      hasSelectionAfter: false,
-      selectionAfter: range,
-      scrollXBefore: 0,
-      scrollYBefore: 0,
-      scrollXAfter: 0,
-      scrollYAfter: 0,
-      scaleBefore: 1,
-      scaleAfter: 1,
-      pointerCursorBefore: 0,
-      pointerCursorAfter: 0,
-      imeSync: {
-        cursor: position,
-        selection: null,
-        hasComposingSession: false,
-        visibleCompositionRange: null,
-        platformMarkedRange: null,
-        preeditStorage: ImePreeditStorage.NONE,
-        contextPolicy: ImeContextPolicy.NONE,
-        clearPlatformPreedit: false
-      },
-      gestureType: GestureType.UNDEFINED,
-      gestureEventType: EventType.UNDEFINED,
-      tapPoint: { x: 0, y: 0 },
-      hitTarget: {
-        type: HitTargetType.NONE,
-        line: 0,
-        column: 0,
-        iconId: 0,
-        colorValue: 0
-      },
-      modifiers: Modifier.NONE,
-      command: EditorCommand.NONE
-    };
   }
 
   setLanguageConfiguration(config: LanguageConfiguration | null): void {
@@ -2255,9 +2171,6 @@ export struct SweetEditor {
     if (this.animationActive) {
       const result = this.editorCore.tickAnimations();
       this.dispatchEditorActionResult(result);
-      if (!result.needsAnimation) {
-        this.animationActive = false;
-      }
     }
 
     if (shouldRender || this.renderScheduled) {

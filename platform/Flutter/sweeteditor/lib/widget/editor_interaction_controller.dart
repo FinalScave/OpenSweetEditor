@@ -798,9 +798,9 @@ class EditorInteractionController {
         result,
         result.hasSelectionAfter,
       );
-      _updateAnimationState(result);
     }
 
+    _updateAnimationState(result);
     _dispatchStateEvents(result);
     onTextInputActionResult?.call(result);
     if (result.needsRedraw) {
@@ -908,10 +908,6 @@ class EditorInteractionController {
     if (editorCore == null || !_animating) return;
     final result = editorCore.tickAnimations();
     _dispatchEditorActionResult(result);
-    if (!result.needsAnimation) {
-      _animating = false;
-      _animationTicker?.stop();
-    }
   }
 
   static core.KeyCode _mapLogicalKey(LogicalKeyboardKey key) {
