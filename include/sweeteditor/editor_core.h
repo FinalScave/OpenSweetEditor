@@ -875,7 +875,8 @@ namespace NS_SWEETEDITOR {
     EditorActionResult finishGestureAction(const ActionSnapshot& before,
                                            GestureResult gesture_result,
                                            EditorActionReason reason,
-                                           EventType event_type = EventType::UNDEFINED) const;
+                                           EventType event_type = EventType::UNDEFINED,
+                                           bool decoration_changed = false) const;
     EditorActionResult finishImeAction(const ActionSnapshot& before,
                                        const ImeActionResult& ime_result) const;
     void normalizeScrollState();

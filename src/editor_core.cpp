@@ -648,12 +648,17 @@ namespace NS_SWEETEDITOR {
     if (intent.select_word) {
       selectWordAt(result.tap_point);
     }
+    bool gesture_decoration_changed = false;
     if (intent.toggle_fold) {
-      toggleFoldAtInternal(intent.fold_line);
+      gesture_decoration_changed = toggleFoldAtInternal(intent.fold_line);
     }
 
     finalizeGestureResult(result);
-    return finishGestureAction(before, result, EditorActionReason::GESTURE, event.type);
+    return finishGestureAction(before,
+                               result,
+                               EditorActionReason::GESTURE,
+                               event.type,
+                               gesture_decoration_changed);
   }
 
   EditorActionResult EditorCore::tickFling() {
@@ -3262,8 +3267,9 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::finishGestureAction(const ActionSnapshot& before,
                                                      GestureResult gesture_result,
                                                      EditorActionReason reason,
-                                                     EventType event_type) const {
-    EditorActionResult result = finishAction(before, reason, true);
+                                                     EventType event_type,
+                                                     bool decoration_changed) const {
+    EditorActionResult result = finishAction(before, reason, true, {}, false, decoration_changed);
     result.gesture_type = gesture_result.type;
     result.gesture_event_type = event_type;
     result.tap_point = gesture_result.tap_point;
