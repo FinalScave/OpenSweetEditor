@@ -58,6 +58,8 @@ import {
 import { LinkedEditingModel } from './CoreLinkedEditing';
 import util from '@ohos.util';
 
+const UTF8_DECODER = new util.TextDecoder('utf-8');
+
 class BinaryReader {
   private view: DataView;
   private offset: number = 0;
@@ -104,8 +106,7 @@ class BinaryReader {
     }
     const bytes = new Uint8Array(this.view.buffer, this.offset, len);
     this.offset += len;
-    const decoder = new util.TextDecoder('utf-8');
-    return decoder.decodeToString(bytes);
+    return UTF8_DECODER.decodeToString(bytes);
   }
 
   readTextStyle(): TextStyle {
