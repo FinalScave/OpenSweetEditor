@@ -517,6 +517,7 @@ TEST_CASE("EditorCore IME text model transient input defers composing text") {
 
   CHECK(composing_result.handled);
   CHECK_FALSE(composing_result.content_changed);
+  CHECK_FALSE(composing_result.needs_ime_sync);
   CHECK_FALSE(composing_result.ime_sync.clear_platform_preedit);
   CHECK_FALSE(editor.isComposing());
   CHECK(document->getU8Text().empty());
@@ -539,10 +540,56 @@ TEST_CASE("EditorCore IME text model transient input defers composing text") {
       ImeScriptClass::CJK);
 
   REQUIRE(commit_result.content_changed);
+  CHECK(commit_result.needs_ime_sync);
   CHECK(commit_result.ime_sync.clear_platform_preedit);
   CHECK_FALSE(editor.isComposing());
   CHECK(document->getU8Text() == "你好");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
+
+  context = editor.getImeTextModelInputContext(ImeTextModelMode::TRANSIENT_INPUT, 8, 8);
+  EditorActionResult second_composing_result = editor.updateImeTextModelState(
+      ImeTextModelMode::TRANSIENT_INPUT,
+      context.id,
+      context.document_start_offset,
+      "ni",
+      2,
+      2,
+      0,
+      2,
+      ImeScriptClass::CJK);
+  CHECK(second_composing_result.handled);
+  CHECK_FALSE(second_composing_result.content_changed);
+  CHECK_FALSE(second_composing_result.needs_ime_sync);
+  CHECK_FALSE(second_composing_result.ime_sync.clear_platform_preedit);
+
+  context = editor.getImeTextModelInputContext(ImeTextModelMode::TRANSIENT_INPUT, 8, 8);
+  EditorActionResult stale_result = editor.updateImeTextModelState(
+      ImeTextModelMode::TRANSIENT_INPUT,
+      context.id + 1,
+      context.document_start_offset,
+      "nin",
+      3,
+      3,
+      0,
+      3,
+      ImeScriptClass::CJK);
+  CHECK(stale_result.handled);
+  CHECK(stale_result.needs_ime_sync);
+  CHECK(stale_result.ime_sync.clear_platform_preedit);
+
+  EditorActionResult clear_result = editor.updateImeTextModelState(
+      ImeTextModelMode::TRANSIENT_INPUT,
+      context.id,
+      context.document_start_offset,
+      "",
+      0,
+      0,
+      -1,
+      -1,
+      ImeScriptClass::CJK);
+  CHECK(clear_result.handled);
+  CHECK(clear_result.needs_ime_sync);
+  CHECK(clear_result.ime_sync.clear_platform_preedit);
 }
 
 TEST_CASE("EditorCore IME text model delta commits replacement after composing clear") {

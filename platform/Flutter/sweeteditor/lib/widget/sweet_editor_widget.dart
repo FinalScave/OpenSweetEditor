@@ -787,7 +787,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   void _handleGestureInputResult(core.EditorActionResult? result) {
     if (_editorResourcesReleased) return;
     if (result == null) return;
-    if (result.needsImeSync) {
+    if (result.needsImeSync && !_handlingTextInputUpdate) {
       _syncTextInputState(force: true);
     }
     if (result.gestureType == core.GestureType.undefined) {

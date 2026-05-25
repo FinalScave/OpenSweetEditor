@@ -95,6 +95,14 @@ namespace NS_SWEETEDITOR {
            && lhs.composing_columns == rhs.composing_columns;
   }
 
+  static bool imeSyncSnapshotRequestsPlatformUpdate(const ImeSyncSnapshot& snapshot) {
+    return snapshot.clear_platform_preedit
+           || snapshot.has_visible_composition_range
+           || snapshot.has_platform_marked_range
+           || snapshot.preedit_storage != ImePreeditStorage::NONE
+           || snapshot.context_policy != ImeContextPolicy::NONE;
+  }
+
   static HitTarget toHotInteractiveTarget(const HitTarget& target, KeyModifier modifiers) {
     if (target.type == HitTargetType::CODELENS) {
       return target;
@@ -3320,7 +3328,8 @@ namespace NS_SWEETEDITOR {
                                              ime_result.handled,
                                              ime_result.edit_result);
     result.ime_sync = ime_result.sync;
-    result.needs_ime_sync = true;
+    result.needs_ime_sync = result.needs_ime_sync
+        || imeSyncSnapshotRequestsPlatformUpdate(result.ime_sync);
     result.needs_redraw = result.needs_redraw || result.composition_changed || result.content_changed;
     return result;
   }
