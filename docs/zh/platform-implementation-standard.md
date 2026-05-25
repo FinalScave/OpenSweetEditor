@@ -24,7 +24,7 @@ Core 层不涉及 UI 渲染，仅包含桥接、数据模型和协议编解码�
 |---|---|---|
 | **Core Bridge** | `EditorCore`, `Document`, `ProtocolEncoder`, `ProtocolDecoder`, `TextMeasurer`, `EditorOptions`, `EditorActionResult`, `EditorActionReason` | 原生桥接 + 公共核心 API 封装；`EditorActionResult` 是变更类 core API 的统一结果载体 |
 | **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollBehavior` | 基础值类型与枚举 |
-| **IME** | `ImeActionResult`, `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextModelMode`；暴露 unit-aware 删除 API 时包含 `ImeTextUnit` | IME 内部语义动作、同步快照和文本上下文协议类型；平台侧同步决策由 `EditorActionResult` 承载 |
+| **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextModelMode`；暴露 unit-aware 删除 API 时包含 `ImeTextUnit` | IME 同步快照和文本上下文协议类型；平台侧同步决策由 `EditorActionResult` 承载 |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | 装饰数据类型 |
 | **Visual** | `EditorRenderModel`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `ScrollbarRect`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `DiagnosticDecoration`, `CompositionDecoration`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem`, `LinkedEditingRect`, `BracketHighlightRect` | 渲染模型类型（几何语义见第 2.4 节） |
 | **Snippet** | `LinkedEditingModel`, `TabStopGroup` | 联动编辑 / Tab stop 分组 |
@@ -39,27 +39,19 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 | **Widget** | `SweetEditor`, `SweetEditorController`*(声明式框架 MUST；命令式框架 MAY)*, `EditorTheme`, `EditorSettings`, `EditorIconProvider`, `EditorMetadata`, `LanguageConfiguration` | 控件入口、控制器、主题、配置 |
 | **Decoration** | `DecorationProvider`, `DecorationProviderManager`, `DecorationContext`, `DecorationResult`, `DecorationType`；若采用 Receiver 回调模式，推荐使用 `DecorationReceiver` | 装饰提供者系统 |
 | **Completion** | `CompletionProvider`, `CompletionProviderManager`, `CompletionContext`, `CompletionItem`, `CompletionResult`；若采用 Receiver 回调模式，推荐使用 `CompletionReceiver` | 补全提供者系统 |
-| **Event** | 类型安全事件机制、`EditorEvent`、`TextChangedEvent`、`CursorChangedEvent`、`SelectionChangedEvent`、`ScrollChangedEvent`、`ScaleChangedEvent`、`DocumentLoadedEvent`、`FoldToggleEvent`、`GutterIconClickEvent`、`InlayHintClickEvent`、`CodeLensClickEvent`、`LinkClickEvent`、`LongPressEvent`*(仅移动端)*、`DoubleTapEvent`、`ContextMenuEvent`*(具有显式上下文菜单手势入口的平台)*；若采用显式事件总线 / 监听器模式，推荐 `EditorEventBus`、`EditorEventListener` | 事件系统 |
+| **Event** | 类型安全事件机制、`EditorEvent`、`TextChangedEvent`、`CursorChangedEvent`、`SelectionChangedEvent`、`ScrollChangedEvent`、`ScaleChangedEvent`、`DocumentLoadedEvent`、`FoldToggleEvent`、`GutterIconClickEvent`、`InlayHintClickEvent`、`CodeLensClickEvent`、`LinkClickEvent`、`LongPressEvent`*(移动端 / 触摸平台)*、`DoubleTapEvent`、`ContextMenuEvent`*(具有显式上下文菜单手势入口的平台)*；若采用显式事件总线 / 监听器模式，推荐 `EditorEventBus`、`EditorEventListener` | 事件系统 |
 | **NewLine** | `NewLineActionProvider`, `NewLineActionProviderManager`, `NewLineAction`, `NewLineContext` | 换行动作提供者系统 |
 | **Keymap** | `EditorKeyMap` | Widget 层 keymap 扩展，用于将 commandId 绑定到宿主侧处理器 |
-| **Copilot** *(SHOULD)* | `InlineSuggestion`、`InlineSuggestionListener` 或等价的 accept/dismiss 回调机制；MAY: `InlineSuggestionController` | 内联建议数据 + 回调；主路径为 listener 形态 |
+| **Copilot** *(SHOULD)* | `InlineSuggestion`、`InlineSuggestionListener` 或等价的 accept/dismiss 回调机制 | 内联建议数据 + 回调；主路径为 listener 形态 |
 | **Selection** *(移动端 SHOULD；桌面端 MAY 省略)* | `SelectionMenuItem`、`SelectionMenuItemProvider`、宿主可见的 custom item 点击回调机制；MAY: `SelectionMenuListener` | 选区菜单（移动端 SHOULD；桌面端 MAY 省略） |
-| **ContextMenu** *(MAY)* | `ContextMenuRequest`、`ContextMenuSection`、`ContextMenuItem`、`ContextMenuItemProvider`、`ContextMenuTriggerKind`、宿主可见的 custom item 点击回调机制；MAY: `ContextMenuPopup` | 平台侧的上下文菜单 / 动作菜单（桌面端 SHOULD，移动端 MAY） |
-| **Perf** *(SHOULD)* | `PerfOverlay`, `MeasurePerfStats`, `PerfStepRecorder` | 性能浮层 |
+| **ContextMenu** *(桌面 / mouse / right-click 平台 SHOULD；纯触摸平台 MAY)* | `ContextMenuRequest`、`ContextMenuSection`、`ContextMenuItem`、`ContextMenuItemProvider`、`ContextMenuTriggerKind`、宿主可见的 custom item 点击回调机制；MAY: `ContextMenuPopup` | 平台侧的上下文菜单 / 动作菜单 |
+| **Perf** *(MAY)* | `PerfOverlay`, `MeasurePerfStats`, `PerfStepRecorder` | 调试性能浮层 |
 
 > `TextChangeAction` 为 SHOULD 级辅助事件枚举。平台 MAY 暴露它用于粗粒度标识一次文本变更周期（如 `INSERT` / `DELETE` / `UNDO` / `REDO` / `KEY` / `COMPOSITION`），但 MUST NOT 用它替代 `changes: List<TextChange>` 这一主增量载荷。
 
-### 1.3 推荐内部实现模式（SHOULD）
+### 1.3 内部实现自由（SHOULD）
 
-以下类型属于**内部实现细节**，不属于公共 API 契约。各平台 SHOULD 采用这些模式来组织内部逻辑，但 MAY 根据平台特性选择其他等效方式（如直接在控件类中实现、使用平台原生 Popup 等）。
-
-| 模式 | 推荐类型 | 适用场景 | 好处 |
-|---|---|---|---|
-| **Renderer** | `EditorRenderer` | 将渲染逻辑从控件入口类中分离 | 职责单一，渲染逻辑可独立迭代和测试 |
-| **Controller** | `CompletionPopupController`, `InlineSuggestionController`, `SelectionMenuController`, `ContextMenuController` | 管理弹窗 / 浮层的生命周期和交互逻辑 | 解耦 UI 弹窗与数据逻辑，平台可选择直接用 Popup 实现 |
-
-> 如果采用上述模式，平台 SHOULD 使用上表给出的推荐名称。第 2.1 节只约束宿主可见的公共类型名称，不约束这些内部 controller 模式名称。
-> 不采用这些模式不视为违规，但需确保等效功能已在其他类中实现。
+内部 renderer、popup controller、overlay controller 等都属于实现细节，不属于公共 API 契约。平台 MAY 按自身 UI 框架组织这些对象；只要第 1.1、1.2 与后续公共契约满足，不采用特定内部 controller / renderer 名称不视为违规。
 
 ---
 
@@ -182,88 +174,17 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 
 ### 3.0 API 载体规则（MUST）
 
-编辑器组件天然包含大量命令式操作（如 `loadDocument()`、`undo()`、`gotoPosition()`），这些操作无法用纯声明式 state 表达。不同 UI 范式的框架需要不同的 API 暴露方式。
-
-#### 3.0.1 命令式 UI 框架
-
-命令式框架（Android View、UIKit、AppKit、Swing、WinForms 等）中，宿主代码可直接持有控件实例引用。
-
-- 第 3.2 节的 API，以及后续章节中针对已实现可选模块定义的模块级公共 API，MUST 直接在控件入口类（如 `SweetEditor`、`SweetEditorView`、`SweetEditorControl`）上暴露为公共方法
-- MAY 额外提供 `SweetEditorController` 以解耦控制逻辑，但不做强制要求
-
-```java
-// Android View
-SweetEditor editor = findViewById(R.id.editor);
-editor.loadDocument(doc);
-editor.applyTheme(EditorTheme.dark());
-```
-
-#### 3.0.2 声明式 UI 框架
-
-声明式框架（Flutter、Jetpack Compose、SwiftUI、ArkUI 等）中，Widget/Composable 是不可变的描述对象，宿主代码无法直接持有控件实例。
-
-在声明式框架中，`SweetEditor` 仍然是 runtime view/session owner。它持有 `EditorCore`、provider manager、overlay/runtime 对象、定时器、listener、receiver 以及其他 session 级状态。`SweetEditorController` 是宿主持有的对外转发入口，用于调用这一运行时；它不是已绑定 widget、渲染运行时或 `EditorCore` 实例的所有者。
-
-- MUST 提供 `SweetEditorController` 类，作为外部控制编辑器的唯一命令式入口
-- `SweetEditorController` MUST 暴露第 3.2 节定义的宿主可见 API，以及后续章节中针对已实现可选模块定义的宿主可见模块级公共 API
-- 第 3.1 节的 `EditorCore` 方法属于 bridge/runtime API，默认 MUST NOT 视为 `SweetEditorController` 的必需方法
-- 控件入口类（如 `SweetEditorWidget`、`SweetEditorView`）MUST 接受 `SweetEditorController` 作为构造参数
-- Controller 与 editor 的关联 MUST 在该 editor 实例构造时建立，并在该 editor 实例生命周期内保持固定不变
-- 控件/session MAY 使用内部 `bind(editorApi)` / `unbind()` hook，但这些 hook 表示该 editor 实例的首次 attach 和终结性 detach，而不是可复用的重新绑定周期
-
-```dart
-// Flutter
-final controller = SweetEditorController();
-SweetEditorWidget(controller: controller);
-controller.whenReady(() {
-    controller.loadDocument(doc);
-    controller.applyTheme(EditorTheme.dark());
-});
-```
-
-#### 3.0.3 `SweetEditorController` 规范
+编辑器包含大量命令式操作，不同 UI 范式的 API 载体不同，但运行时所有权必须一致。
 
 | 规则 | 约束级别 | 说明 |
 |---|---|---|
-| Controller 角色 | **MUST** | `SweetEditorController` MUST 是且仅是面向一个声明式 editor 实例的宿主可见转发句柄。MUST NOT 将其视为已绑定 `View` / `Control` / `Widget`、渲染运行时、overlay 运行时、`EditorCore` 生命周期、provider 注册或其他 session 级运行时状态的所有者 |
-| 生命周期回调 | **MUST** | 提供 `whenReady(callback)` 方法，在控件挂载完成后回调；若调用时已就绪则立即执行 |
-| 首次 attach 前的调用行为 | **MUST** | 在声明式平台上，关联的 editor 实例完成首次 attach 之前，controller 的命令式调用都尚未可用。变更类调用 MUST 被忽略或拒绝，而不是被排队。getter 调用（包括 `getSettings()`）SHOULD 返回 `null` 或默认值，且 MUST NOT 抛出异常。宿主 SHOULD 只在 `whenReady()` 或其他等价 ready 信号之后调用 controller 的命令式 API。若 document、theme、settings、key map 或其他首帧前必须存在的配置需要在首次 attach 前确定，MUST 通过声明式构造参数或等价的平台原生初始化路径提供。平台 MUST NOT 为了响应 pre-ready 调用而偷偷创建隐藏运行时或隐藏暂存层 |
-| 内部 attach / detach | **MUST** | 提供内部 attach/detach 机制（例如 `bind(editorApi)` / `unbind()`，命名 MAY 因平台而异）。这些 hook 表示关联 editor 实例的首次 attach 与终结性 detach，而不是可复用的重新绑定协议 |
-| 多次绑定 | **MUST** | 同一 Controller 实例 MUST NOT 同时绑定多个控件，且在首次建立关联后 MUST NOT 重新绑定到其他 widget/session/editor 实例 |
-| Public API 覆盖 | **MUST** | Controller MUST 暴露第 3.2 节定义的全部必需宿主可见公共操作，以及后续章节中已实现模块对应的宿主可见公共操作 |
-| API 一致性 | **SHOULD** | 方法名、语义与返回行为 SHOULD 遵循第 3.2 节的宿主可见 Public API 表以及后续章节中已实现模块的宿主可见公共 API 表。平台 MAY 额外提供符合自身语言习惯的重载、便捷别名或等价入口形态，只要其与标准 API 的映射保持清晰且无歧义 |
-| getter 方法 | **SHOULD** | 在关联 editor 实例尚未就绪，或在其终结性 teardown 之后，getter 方法（如 `getDocument()`、`getCursorPosition()`、`getSettings()`）SHOULD 返回 `null` 或默认值，MUST NOT 抛出异常 |
-| 显式 teardown（若提供） | **MAY** | 平台 MAY 提供 `dispose()` / `close()` / `release()` 等显式 terminal controller teardown 方法。若宿主生命周期或平台原生销毁语义已经能够保证 terminal teardown，则无论 GC 还是非 GC 平台，都不强制额外暴露显式 teardown API |
-| 显式 teardown 语义 | **MUST** | 若平台提供显式 controller teardown 方法，该方法 MUST 表示 controller 的终结性 teardown，而不是普通 widget 生命周期事件。它 MUST 先从关联 widget/session detach（如果仍已 attach），然后只释放 controller 自身持有的 ready 回调、内部 pending callback 与引用链。它 MUST NOT 假定 controller 拥有 session 级 provider 注册或运行时对象，也 MUST NOT 直接销毁 `View` / `Control` / `Widget` 本身。teardown 后 Controller MUST 进入终结失活状态：后续方法调用 MUST 为 no-op 或返回默认空值 |
-
-> 保留同一个已挂载 editor runtime 的普通声明式重建不属于重新绑定。重新绑定仅指将一个 `SweetEditorController` 关联到另一个 `SweetEditor` 实例，而这在本标准中是不允许的。
-
-#### 3.0.4 平台分类参考
-
-| UI 范式 | 框架 | API 载体 |
-|---|---|---|
-| 命令式 | Android View, UIKit, AppKit, Swing, WinForms | 控件入口类直接暴露 |
-| 声明式 | Flutter, Jetpack Compose, SwiftUI, ArkUI, React, Vue | `SweetEditorController` |
-| 混合 | React Native, Qt (QML + C++) | 按主要 UI 层范式决定 |
-
-> 如果一个平台同时提供命令式和声明式两种 API（如 Apple 同时有 UIKit 和 SwiftUI），则命令式 API 在控件类上暴露，声明式封装 MUST 额外提供 Controller。
-
-#### 3.0.5 声明式初始化输入
-
-在声明式平台上，控件入口类除了必须接收 `controller` 构造参数外，MAY 额外暴露声明式初始化输入。这些输入属于声明式 widget/view 描述的一部分，而不是命令式 controller API 的一部分。
-
-| 输入 | 约束级别 | 说明 |
-|---|---|---|
-| `controller` | **MUST** | 与该 editor 实例关联的 `SweetEditorController` |
-| `document` | **MAY** | 首个 attach 后 editor session 应可见的初始 `Document` 对象 |
-| `text` | **MAY** | 初始纯文本内容。若未提供 `document` 而提供了 `text`，平台 MUST 基于该文本为首个 attach 后 editor session 物化一个等价的 `Document` |
-| `theme` | **MAY** | 应应用到首个 attach 后 editor session 的初始主题 |
-| `settings` | **MAY** | 用于配置首个 attach 后 editor session 的初始 settings 对象或平台等价 settings 快照 |
-| `keyMap` | **MAY** | 首个 attach 后 editor session 使用的初始 key map 或平台等价键盘映射 |
-
-标准不要求所有声明式平台使用完全相同的构造参数名、属性名或 widget 语法，但其语义映射 SHOULD 保持清晰且无歧义。
-
-如果声明式平台暴露了这些初始化输入，它们 MUST 被视为声明式构造/配置输入，而不是 pre-ready controller 调用。它们 MUST NOT 依赖隐藏运行时或隐藏暂存层。若同时提供 `document` 和 `text`，则 `document` MUST 优先，`text` MUST 被忽略。若仅使用 `text` 而未提供 `document`，平台 MUST 为关联的 editor session 物化一个等价的当前 `Document`，并且在 editor ready 之后，`getDocument()` MUST 返回这个被物化出来的 `Document`。后续对这些输入的修改遵循平台自身的声明式更新模型。在同一个已挂载 editor runtime 上修改 `text`，其语义等价于用一个新物化出来的 `Document` 替换当前文档。平台 MAY 将其应用到当前已挂载的 editor runtime。若平台语义上必须创建新的 editor 实例，则宿主代码 MUST 同时为该新实例提供新的 `SweetEditorController`。将同一个 controller 复用于新的 editor 实例会构成 controller 重新绑定，而这在本标准中是不允许的。
+| 命令式框架 | **MUST** | 第 3.2 节的 API，以及已实现可选模块定义的宿主 API，MUST 直接在控件入口类（如 `SweetEditor`、`SweetEditorView`、`SweetEditorControl`）上暴露；平台 MAY 额外提供 `SweetEditorController` |
+| 声明式框架 | **MUST** | MUST 提供 `SweetEditorController` 作为宿主持有的唯一命令式入口；控件入口类 MUST 接受 `controller` 构造参数。`SweetEditor` 仍是 runtime/session owner，controller 仅转发调用，MUST NOT 拥有 view、runtime、`EditorCore`、provider 注册或 session 级状态 |
+| Controller 绑定 | **MUST** | Controller 与 editor 实例的关联 MUST 在该 editor 实例构造时建立并保持固定。同一 Controller MUST NOT 同时绑定多个控件，且首次关联后 MUST NOT 重新绑定到其他 widget/session/editor 实例。内部 `bind` / `unbind` 只表示首次 attach 与终结性 detach；保留同一已挂载 runtime 的普通声明式重建不属于重新绑定 |
+| Public API 覆盖 | **MUST** | 声明式平台的 Controller MUST 暴露第 3.2 节定义的全部必需宿主 API，以及已实现可选模块对应的宿主 API。第 3.1 节的 `EditorCore` 方法属于 bridge/runtime API，默认不属于 Controller 必需表面 |
+| Ready gate | **MUST** | Controller MUST 提供 `whenReady(callback)` 或等价 ready 机制。首次 attach 前，变更类调用 MUST 被忽略或拒绝而不是排队；getter SHOULD 返回 `null` 或默认值且 MUST NOT 抛出异常；平台 MUST NOT 为 pre-ready 调用创建隐藏 runtime 或隐藏暂存层 |
+| 声明式初始化输入 | **MAY / MUST** | 声明式平台 MAY 暴露 `document`、`text`、`theme`、`settings`、`keyMap` 等初始化输入；若暴露，MUST 将其视为构造/配置输入而不是 pre-ready controller 调用。`document` 与 `text` 同时存在时 `document` 优先；仅提供 `text` 时平台 MUST 物化等价 `Document`，ready 后 `getDocument()` MUST 返回该对象 |
+| 显式 teardown | **MAY / MUST** | 平台 MAY 提供 `dispose()` / `close()` / `release()` 等 terminal controller teardown。若提供，它 MUST 只释放 controller 自身持有的 ready 回调、pending callback 与引用链，MUST NOT 假定 controller 拥有 session 级 provider 或 runtime；teardown 后后续调用 MUST 为 no-op 或返回默认空值 |
 
 ---
 
@@ -273,156 +194,31 @@ controller.whenReady(() {
 
 所有变更类 `EditorCore` API（包括配置写入、手势、键盘、文本编辑、IME 写入、光标/选区写入、滚动/导航、decoration、folding、linked editing 和动画 tick）MUST 返回 `EditorActionResult` 或平台语言中的等价类型。查询类 API 继续返回自身语义值；`buildRenderModel()` 属于渲染快照查询，不返回 `EditorActionResult`。平台层 MUST 将每个非空 `EditorActionResult` 交给统一结果分发入口处理，不能再根据调用的方法名、setter 类型或局部经验自行推断是否需要触发文本事件、IME 同步、动画、flush 或 repaint。
 
-| 功能 | 标准名称 | 允许的变体 |
-|---|---|---|
-| **配置** | | |
-| 加载文档 | `loadDocument(doc)` | — |
-| 设置视口 | `setViewport(w, h)` | — |
-| 字体变更通知 | `onFontMetricsChanged()` | — |
-| 折叠箭头模式 | `setFoldArrowMode(mode)` | — |
-| 自动换行模式 | `setWrapMode(mode)` | — |
-| Tab 大小 | `setTabSize(size)` | — |
-| 空格缩进 | `setInsertSpaces(enabled)` | — |
-| 缩放比例 | `setScale(scale)` | — |
-| 行间距 | `setLineSpacing(add, mult)` | — |
-| 内容起始内边距 | `setContentStartPadding(padding)` | — |
-| 分割线显示 | `setShowSplitLine(show)` | — |
-| 当前行渲染模式 | `setCurrentLineRenderMode(mode)` | — |
-| Gutter 固定 | `setGutterSticky(sticky)` | — |
-| Gutter 可见性 | `setGutterVisible(visible)` | — |
-| 选区手柄配置 | `setHandleConfig(...)` | — |
-| 滚动条配置 | `setScrollbarConfig(...)` | — |
-| **渲染模型** | | |
-| 构建渲染模型 | `buildRenderModel()` | — |
-| 获取布局指标 | `getLayoutMetrics()` | property: `layoutMetrics` / `LayoutMetrics { get; }` |
-| **手势 / 键盘** | | |
-| 处理手势事件 | `handleGestureEvent(...)` | — |
-| 处理手势事件（扩展） | `handleGestureEventEx(...)` | — |
-| 边缘滚动 tick | `tickEdgeScroll()` | — |
-| 惯性滚动 tick | `tickFling()` | — |
-| 动画 tick | `tickAnimations()` | — |
-| 处理键盘事件 | `handleKeyEvent(...)` | — |
-| 设置 keymap | `setKeyMap(keyMap)` | — |
-| **文本编辑** | | |
-| 插入文本 | `insertText(text)` | — |
-| 替换文本 | `replaceText(range, text)` | — |
-| 删除文本 | `deleteText(range)` | — |
-| 退格 | `backspace()` | — |
-| 向前删除 | `deleteForward()` | — |
-| 上移行 | `moveLineUp()` | — |
-| 下移行 | `moveLineDown()` | — |
-| 向上复制行 | `copyLineUp()` | — |
-| 向下复制行 | `copyLineDown()` | — |
-| 删除行 | `deleteLine()` | — |
-| 上方插入空行 | `insertLineAbove()` | — |
-| 下方插入空行 | `insertLineBelow()` | — |
-| **撤销 / 重做** | | |
-| 撤销 | `undo()` | — |
-| 重做 | `redo()` | — |
-| 可撤销 | `canUndo()` | — |
-| 可重做 | `canRedo()` | — |
-| **光标 / 选区** | | |
-| 设置光标位置 | `setCursorPosition(line, col)` | — |
-| 获取光标位置 | `getCursorPosition()` | property: `cursorPosition` / `CursorPosition { get; }` |
-| 全选 | `selectAll()` | — |
-| 设置选区 | `setSelection(sL, sC, eL, eC)` | — |
-| 获取选区 | `getSelection()` | property: `selection` / `Selection { get; }` |
-| 获取选中文本 | `getSelectedText()` | property: `selectedText` / `SelectedText { get; }` |
-| 光标处单词范围 | `getWordRangeAtCursor()` | property: `wordRangeAtCursor` / `WordRangeAtCursor { get; }` |
-| 光标处单词文本 | `getWordAtCursor()` | property: `wordAtCursor` / `WordAtCursor { get; }` |
-| 光标左移 | `moveCursorLeft(extend)` | — |
-| 光标右移 | `moveCursorRight(extend)` | — |
-| 光标上移 | `moveCursorUp(extend)` | — |
-| 光标下移 | `moveCursorDown(extend)` | — |
-| 光标移至行首 | `moveCursorToLineStart(extend)` | — |
-| 光标移至行尾 | `moveCursorToLineEnd(extend)` | — |
-| **IME** | | |
-| IME 同步与上下文 | `getImeSyncSnapshot()` / `getImeInputContext(...)` / `getImeTextModelInputContext(...)` | 代表入口；平台按自身 IME 模型选择 |
-| 键盘脚本分类 | `setImeKeyboardScriptClass(script)` / `getImeKeyboardScriptClass()` | — |
-| preedit / composing 更新 | `updateImePreedit(...)` / `setImeComposingText(...)` | 代表入口 |
-| 提交与替换 | `commitImeText(...)` / `replaceImeText(...)` | 代表入口；offset / context 变体按平台能力选择 |
-| 结束或取消 preedit | `finishImePreedit()` / `cancelImePreedit()` | — |
-| 标记 composition 范围 | `markImeDocumentRange(...)` / `markImeInputContextRange(...)` | 代表入口 |
-| 文本模型状态同步 | `updateImeTextModelState(...)` / `updateImeTextModelDelta(...)` | 适用于暴露完整 text model 的平台 |
-| IME 删除 | `deleteImeBackward(length, unit)` / `deleteImeForward(length, unit)` / `deleteImeSurrounding(before, after, unit)` | — |
-| IME 驱动选区同步 | `notifyImeSelectionChanged(range)` / `notifyImeCursorChanged(cursor)` | — |
-| Composition 范围 | `getComposingRange()` / `getComposingSessionRange()` | — |
-| 是否组合中 | `isComposing()` | property: `isComposing` / `IsComposing { get; }` |
-| **只读 / 缩进** | | |
-| 设置只读 | `setReadOnly(readOnly)` | — |
-| 是否只读 | `isReadOnly()` | property: `isReadOnly` / `IsReadOnly { get; }` |
-| 设置自动缩进 | `setAutoIndentMode(mode)` | — |
-| 获取自动缩进 | `getAutoIndentMode()` | property: `autoIndentMode` / `AutoIndentMode { get; }` |
-| 设置退格反缩进 | `setBackspaceUnindent(enabled)` | — |
-| **导航 / 滚动** | | |
-| 滚动到行 | `scrollToLine(line, behavior)` | — |
-| 跳转到位置 | `gotoPosition(line, col)` | — |
-| 确保光标可见 | `ensureCursorVisible()` | — |
-| 设置滚动位置 | `setScroll(x, y)` | — |
-| 获取滚动指标 | `getScrollMetrics()` | property: `scrollMetrics` / `ScrollMetrics { get; }` |
-| 获取位置矩形 | `getPositionRect(line, col)` | — |
-| 获取光标矩形 | `getCursorRect()` | property: `cursorRect` / `CursorRect { get; }` |
-| **样式 / 高亮** | | |
-| 注册文本样式 | `registerTextStyle(id, color, bg, fontStyle)` | — |
-| 批量注册样式 | `registerBatchTextStyles(data)` | — |
-| 设置行样式 | `setLineSpans(line, layer, spans)` | — |
-| 批量设置行样式 | `setBatchLineSpans(layer, entries)` | — |
-| 清除行样式 | `clearLineSpans(line, layer)` | — |
-| 按 layer 清除高亮 | `clearHighlights(layer)` | — |
-| 清除所有高亮 | `clearHighlights()` | — |
-| **Inlay Hint** | | |
-| 设置行 Inlay Hint | `setLineInlayHints(line, hints)` | — |
-| 批量设置 Inlay Hint | `setBatchLineInlayHints(entries)` | — |
-| 清除 Inlay Hint | `clearInlayHints()` | — |
-| **Phantom Text** | | |
-| 设置行 Phantom Text | `setLinePhantomTexts(line, phantoms)` | — |
-| 批量设置 Phantom Text | `setBatchLinePhantomTexts(entries)` | — |
-| 清除 Phantom Text | `clearPhantomTexts()` | — |
-| **Gutter Icon** | | |
-| 设置行 Gutter Icon | `setLineGutterIcons(line, icons)` | — |
-| 批量设置 Gutter Icon | `setBatchLineGutterIcons(entries)` | — |
-| 设置最大 Gutter Icon 数 | `setMaxGutterIcons(count)` | — |
-| 清除 Gutter Icon | `clearGutterIcons()` | — |
-| **CodeLens** | | |
-| 设置行 CodeLens | `setLineCodeLens(line, items)` | — |
-| 批量设置 CodeLens | `setBatchLineCodeLens(entries)` | — |
-| 清除 CodeLens | `clearCodeLens()` | — |
-| **Link** | | |
-| 设置行 links | `setLineLinks(line, links)` | — |
-| 批量设置 links | `setBatchLineLinks(entries)` | — |
-| 清除 links | `clearLinks()` | — |
-| **Diagnostic** | | |
-| 设置行诊断 | `setLineDiagnostics(line, items)` | — |
-| 批量设置诊断 | `setBatchLineDiagnostics(entries)` | — |
-| 清除诊断 | `clearDiagnostics()` | — |
-| **Guide** | | |
-| 设置缩进引导线 | `setIndentGuides(guides)` | — |
-| 设置括号引导线 | `setBracketGuides(guides)` | — |
-| 设置流程引导线 | `setFlowGuides(guides)` | — |
-| 设置分隔线 | `setSeparatorGuides(guides)` | — |
-| 清除引导线 | `clearGuides()` | — |
-| **Bracket** | | |
-| 设置括号对 | `setBracketPairs(open, close)` | — |
-| 设置自动闭合对 | `setAutoClosingPairs(open, close)` | — |
-| 设置匹配括号 | `setMatchedBrackets(oL, oC, cL, cC)` | — |
-| 清除匹配括号 | `clearMatchedBrackets()` | — |
-| **折叠** | | |
-| 设置折叠区域 | `setFoldRegions(regions)` | — |
-| 切换折叠 | `toggleFoldAt(line)` | Swift: `toggleFold(at:)` |
-| 折叠 | `foldAt(line)` | Swift: `fold(at:)` |
-| 展开 | `unfoldAt(line)` | Swift: `unfold(at:)` |
-| 全部折叠 | `foldAll()` | — |
-| 全部展开 | `unfoldAll()` | — |
-| 行是否可见 | `isLineVisible(line)` | — |
-| **清除** | | |
-| 清除所有装饰 | `clearAllDecorations()` | — |
-| **Linked Editing** | | |
-| 插入 Snippet | `insertSnippet(template)` | — |
-| 开始联动编辑 | `startLinkedEditing(model)` | — |
-| 是否联动编辑中 | `isInLinkedEditing()` | property: `isInLinkedEditing` / `IsInLinkedEditing { get; }` |
-| 下一个 Tab Stop | `linkedEditingNext()` | — |
-| 上一个 Tab Stop | `linkedEditingPrev()` | — |
-| 取消联动编辑 | `cancelLinkedEditing()` | — |
+在 editor runtime / dispatcher 尚未建立的构造或首帧 bootstrap 阶段，平台 MAY 合并 setup 类 `EditorActionResult`，并在 dispatcher ready 后执行等价的状态分发、IME 同步和刷新。该例外只适用于 dispatcher 不存在的初始化窗口；runtime ready 后产生的每个非空 `EditorActionResult` 都 MUST 经统一分发入口处理。
+
+| 能力族 | `EditorCore` 必须包含的 API |
+|---|---|
+| 配置 | `loadDocument(doc)`, `setViewport(w, h)`, `onFontMetricsChanged()`, `setFoldArrowMode(mode)`, `setWrapMode(mode)`, `setTabSize(size)`, `setInsertSpaces(enabled)`, `setScale(scale)`, `setLineSpacing(add, mult)`, `setContentStartPadding(padding)`, `setShowSplitLine(show)`, `setCurrentLineRenderMode(mode)`, `setGutterSticky(sticky)`, `setGutterVisible(visible)`, `setHandleConfig(...)`, `setScrollbarConfig(...)` |
+| 渲染模型 | `buildRenderModel()`, `getLayoutMetrics()` |
+| 手势 / 键盘 | `handleGestureEvent(...)`, `handleGestureEventEx(...)`, `tickEdgeScroll()`, `tickFling()`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(keyMap)` |
+| 文本编辑 | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `backspace()`, `deleteForward()`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
+| 撤销 / 重做 | `undo()`, `redo()`, `canUndo()`, `canRedo()` |
+| 光标 / 选区 | `setCursorPosition(line, col)`, `getCursorPosition()`, `selectAll()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `getSelectedText()`, `getWordRangeAtCursor()`, `getWordAtCursor()`, `moveCursorLeft(extend)`, `moveCursorRight(extend)`, `moveCursorUp(extend)`, `moveCursorDown(extend)`, `moveCursorToLineStart(extend)`, `moveCursorToLineEnd(extend)` |
+| IME | `getImeSyncSnapshot()`, `getImeInputContext(...)`, `getImeTextModelInputContext(...)`, `setImeKeyboardScriptClass(script)`, `getImeKeyboardScriptClass()`, `updateImePreedit(...)`, `setImeComposingText(...)`, `commitImeText(...)`, `replaceImeText(...)`, `finishImePreedit()`, `cancelImePreedit()`, `markImeDocumentRange(...)`, `markImeInputContextRange(...)`, `updateImeTextModelState(...)`, `updateImeTextModelDelta(...)`, `deleteImeBackward(length, unit)`, `deleteImeForward(length, unit)`, `deleteImeSurrounding(before, after, unit)`, `notifyImeSelectionChanged(range)`, `notifyImeCursorChanged(cursor)`, `getComposingRange()`, `getComposingSessionRange()`, `isComposing()` |
+| 只读 / 缩进 | `setReadOnly(readOnly)`, `isReadOnly()`, `setAutoIndentMode(mode)`, `getAutoIndentMode()`, `setBackspaceUnindent(enabled)` |
+| 导航 / 滚动 | `scrollToLine(line, behavior)`, `gotoPosition(line, col)`, `ensureCursorVisible()`, `setScroll(x, y)`, `getScrollMetrics()`, `getPositionRect(line, col)`, `getCursorRect()` |
+| 样式 / 高亮 | `registerTextStyle(id, color, bg, fontStyle)`, `registerBatchTextStyles(data)`, `setLineSpans(line, layer, spans)`, `setBatchLineSpans(layer, entries)`, `clearLineSpans(line, layer)`, `clearHighlights(layer)`, `clearHighlights()` |
+| Inlay Hint | `setLineInlayHints(line, hints)`, `setBatchLineInlayHints(entries)`, `clearInlayHints()` |
+| Phantom Text | `setLinePhantomTexts(line, phantoms)`, `setBatchLinePhantomTexts(entries)`, `clearPhantomTexts()` |
+| Gutter Icon | `setLineGutterIcons(line, icons)`, `setBatchLineGutterIcons(entries)`, `setMaxGutterIcons(count)`, `clearGutterIcons()` |
+| CodeLens | `setLineCodeLens(line, items)`, `setBatchLineCodeLens(entries)`, `clearCodeLens()` |
+| Link | `setLineLinks(line, links)`, `setBatchLineLinks(entries)`, `clearLinks()` |
+| Diagnostic | `setLineDiagnostics(line, items)`, `setBatchLineDiagnostics(entries)`, `clearDiagnostics()` |
+| Guide | `setIndentGuides(guides)`, `setBracketGuides(guides)`, `setFlowGuides(guides)`, `setSeparatorGuides(guides)`, `clearGuides()` |
+| Bracket | `setBracketPairs(open, close)`, `setAutoClosingPairs(open, close)`, `setMatchedBrackets(oL, oC, cL, cC)`, `clearMatchedBrackets()` |
+| 折叠 | `setFoldRegions(regions)`, `toggleFoldAt(line)`, `foldAt(line)`, `unfoldAt(line)`, `foldAll()`, `unfoldAll()`, `isLineVisible(line)` |
+| 清除 | `clearAllDecorations()` |
+| Linked Editing | `insertSnippet(template)`, `startLinkedEditing(model)`, `isInLinkedEditing()`, `linkedEditingNext()`, `linkedEditingPrev()`, `cancelLinkedEditing()` |
 
 IME API 是平台输入事件进入 core 的请求入口。平台标准约束的是语义能力族，而不是要求每个平台调用全部 bridge 函数。平台层 MUST NOT 因为系统 IME 请求 surrounding text、候选上下文或光标矩形，就创建 editor composition。是否建立 composition 只取决于系统 IME 是否通过 composing / marked / preedit API 明确声明了组合文本或组合范围；提交、替换、删除和 selection 同步仍由 core 按 `docs/zh/ime-composition-standard.md` 裁决。
 
@@ -440,7 +236,7 @@ IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextR
 
 | API / 类型 | 要求 | 说明 |
 |---|---|---|
-| IME 协议类型 | MUST | 至少包含 `ImeActionResult`、`ImeSyncSnapshot`、`ImeInputContext`、`ImeTextRange`、`ImeScriptClass`、`ImePreeditStorage`、`ImeContextPolicy`、`ImeInputContextKind`；支持 text-model 同步的平台还 MUST 包含 `ImeTextModelMode` |
+| IME 协议类型 | MUST | 至少包含 `ImeSyncSnapshot`、`ImeInputContext`、`ImeTextRange`、`ImeScriptClass`、`ImePreeditStorage`、`ImeContextPolicy`、`ImeInputContextKind`；支持 text-model 同步的平台还 MUST 包含 `ImeTextModelMode` |
 | `ImeTextUnit` | SHOULD / 条件性 MUST | 暴露 unit-aware 删除 API 时 MUST 存在；稳定值为 `GRAPHEME = 0`、`CODE_POINT = 1` |
 | 同步快照能力 | MUST | 平台输入适配层 MUST 能处理 `EditorActionResult.needsImeSync` 与 `EditorActionResult.imeSync`；需要主动查询时使用 `getImeSyncSnapshot()` 或等价桥接入口 |
 | 键盘脚本 hint 能力 | SHOULD / 条件性 MUST | SHOULD 记录键盘脚本 hint；平台提供 script hint 时 MUST 映射 |
@@ -455,7 +251,7 @@ IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextR
 | `getComposingRange()` | SHOULD | 供平台同步和诊断使用；未活跃时返回无 range |
 | `getComposingSessionRange()` | SHOULD | 供平台同步和诊断使用；未活跃时返回无 range |
 
-`ImeSyncSnapshot` 的语义字段 MUST 覆盖：文档光标、文档选区、是否存在 composition session、可见 composition 范围、平台 marked range、platform text window 文本及其 start offset、selection/composing offsets、`ImePreeditStorage`、`ImeContextPolicy`、以及是否要求平台清除 preedit。`ImeInputContext` 的语义字段 MUST 覆盖：`id`、`revision`、`documentStartOffset`、`text`、`selection`、`hasComposition`、`composition`、`kind`。`ImeActionResult` 是 core 内部 IME 语义动作结果；跨 bridge 返回给平台侧时，其内容 MUST 汇入 `EditorActionResult`，并通过 `needsImeSync` / `imeSync` 暴露给平台输入适配层。
+`ImeSyncSnapshot` 的语义字段 MUST 覆盖：文档光标、文档选区、是否存在 composition session、可见 composition 范围、平台 marked range、`ImePreeditStorage`、`ImeContextPolicy`、以及是否要求平台清除 preedit。`ImeInputContext` 的语义字段 MUST 覆盖：`id`、`revision`、`documentStartOffset`、`text`、`selection`、`hasComposition`、`composition`、`kind`；其中 `text`、`documentStartOffset`、`selection` 和 `composition` 承载 platform text window 及其 selection / composing offsets 语义。`ImeActionResult` 不属于平台协议类型；若 core 内部实现保留该结构，它的内容跨 bridge 时 MUST 汇入 `EditorActionResult`，并通过 `needsImeSync` / `imeSync` 暴露给平台输入适配层。
 
 完整 core bridge 函数列表以 `include/sweeteditor/editor_core.h` 与 `include/sweeteditor/c_api.h` 为准。本标准只约束平台必须保持的 IME 语义和协议字段，不要求把每个 core bridge 函数都暴露为宿主可见 API。
 
@@ -479,119 +275,27 @@ IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextR
 
 ### 3.2 宿主可见的编辑器公共 API
 
-第 3.2 节定义宿主可见的编辑器 API。这里有意排除了低层 `EditorCore` 手势循环、动画 tick 和渲染模型生成方法，例如 `handleGestureEvent(...)`、`tickEdgeScroll()`、`buildRenderModel()`。变更类宿主 API 可以按平台习惯返回 `void`、返回 `EditorActionResult`，或返回平台等价结果；但只要底层调用产生 `EditorActionResult`，平台 runtime 就 MUST 经统一结果分发入口处理它。`flush()` 不再是宿主可见 API 的标准必备项；平台 MAY 保留它作为强制刷新、诊断或兼容 API，但正常刷新/重绘决策 MUST 来自 `EditorActionResult.needsRedraw`。命令式平台上，该 API 由控件入口类直接暴露；声明式平台上，该 API 由 `SweetEditorController` 暴露，并转发到关联的 `SweetEditor` runtime，而不意味着 controller 持有 editor/session 状态。除 `whenReady(...)` 本身及等价的 ready helper 外，声明式平台上的 controller 命令式调用只有在关联 editor 实例 ready 之后才有效。若 document、theme、settings、key map 或其他首帧前必须存在的配置需要在首次 attach 前确定，MUST 通过声明式构造参数或等价的平台原生初始化路径提供。
+第 3.2 节定义宿主可见的编辑器 API。这里有意排除了低层 `EditorCore` 手势循环、动画 tick 和渲染模型生成方法。变更类宿主 API 可以按平台习惯返回 `void`、`EditorActionResult` 或平台等价结果；但只要底层调用产生非空 `EditorActionResult`，平台 runtime 就 MUST 经统一结果分发入口处理它。`flush()` 不再是宿主可见 API 的标准必备项；平台 MAY 保留它作为强制刷新、诊断或兼容 API，但正常刷新/重绘决策 MUST 来自 `EditorActionResult.needsRedraw`。API 载体遵循第 3.0 节。
 
-| 功能 | 标准名称 | 允许的变体 |
-|---|---|---|
-| **文档 / 主题** | | |
-| 加载文档 | `loadDocument(doc)` | — |
-| 获取文档 | `getDocument()` | property: `document` / `Document { get; }` |
-| 应用主题 | `applyTheme(theme)` | — |
-| 获取主题 | `getTheme()` | property: `theme` / `Theme { get; }` |
-| **配置** | | |
-| 获取配置对象 | `getSettings()` | property: `settings` / `Settings { get; }` |
-| 获取 keymap *(SHOULD)* | `getKeyMap()` | property: `keyMap` / `KeyMap { get; }` |
-| 设置 keymap | `setKeyMap(keyMap)` | — |
-| 图标提供者 | `setEditorIconProvider(provider)` | — |
-| **文本编辑** | | |
-| 插入文本 | `insertText(text)` | — |
-| 替换文本 | `replaceText(range, text)` | — |
-| 删除文本 | `deleteText(range)` | — |
-| 上移行 | `moveLineUp()` | — |
-| 下移行 | `moveLineDown()` | — |
-| 向上复制行 | `copyLineUp()` | — |
-| 向下复制行 | `copyLineDown()` | — |
-| 删除行 | `deleteLine()` | — |
-| 上方插入空行 | `insertLineAbove()` | — |
-| 下方插入空行 | `insertLineBelow()` | — |
-| **撤销 / 重做** | | |
-| 撤销 | `undo()` | — |
-| 重做 | `redo()` | — |
-| 可撤销 | `canUndo()` | — |
-| 可重做 | `canRedo()` | — |
-| **剪贴板（MAY）** | | |
-| 复制 | `copyToClipboard()` | — |
-| 粘贴 | `pasteFromClipboard()` | — |
-| 剪切 | `cutToClipboard()` | — |
-| **光标 / 选区** | | |
-| 全选 | `selectAll()` | — |
-| 获取选中文本 | `getSelectedText()` | property: `selectedText` / `SelectedText { get; }` |
-| 设置选区 | `setSelection(sL, sC, eL, eC)` | — |
-| 获取选区 | `getSelection()` | property: `selection` / `Selection { get; }` |
-| 设置光标 | `setCursorPosition(pos)` | — |
-| 获取光标 | `getCursorPosition()` | property: `cursorPosition` / `CursorPosition { get; }` |
-| 光标处单词范围 | `getWordRangeAtCursor()` | property: `wordRangeAtCursor` / `WordRangeAtCursor { get; }` |
-| 光标处单词文本 | `getWordAtCursor()` | property: `wordAtCursor` / `WordAtCursor { get; }` |
-| **导航 / 滚动** | | |
-| 跳转到位置 | `gotoPosition(line, col)` | — |
-| 滚动到行 | `scrollToLine(line, behavior)` | — |
-| 设置滚动位置 | `setScroll(x, y)` | — |
-| 获取滚动指标 | `getScrollMetrics()` | property: `scrollMetrics` / `ScrollMetrics { get; }` |
-| 获取位置矩形 | `getPositionRect(line, col)` | — |
-| 获取光标矩形 | `getCursorRect()` | property: `cursorRect` / `CursorRect { get; }` |
-| **折叠** | | |
-| 切换折叠 | `toggleFoldAt(line)` | Swift: `toggleFold(at:)` |
-| 折叠单行 | `foldAt(line)` | — |
-| 展开单行 | `unfoldAt(line)` | — |
-| 行是否可见 | `isLineVisible(line)` | — |
-| 全部折叠 | `foldAll()` | — |
-| 全部展开 | `unfoldAll()` | — |
-| **语言 / 元数据** | | |
-| 设置语言配置 | `setLanguageConfiguration(config)` | — |
-| 获取语言配置 | `getLanguageConfiguration()` | property: `languageConfiguration` / `LanguageConfiguration { get; }` |
-| 设置元数据 | `setMetadata(metadata)` | — |
-| 获取元数据 | `getMetadata()` | property: `metadata` / `Metadata { get; }` |
-| **Provider 管理** | | |
-| 添加装饰 Provider | `addDecorationProvider(provider)` | `attachDecorationProvider(provider)` |
-| 移除装饰 Provider | `removeDecorationProvider(provider)` | `detachDecorationProvider(provider)` |
-| 请求装饰刷新 | `requestDecorationRefresh()` | — |
-| 添加补全 Provider | `addCompletionProvider(provider)` | `attachCompletionProvider(provider)` |
-| 移除补全 Provider | `removeCompletionProvider(provider)` | `detachCompletionProvider(provider)` |
-| 添加换行 Provider | `addNewLineActionProvider(provider)` | `attachNewLineActionProvider(provider)` |
-| 移除换行 Provider | `removeNewLineActionProvider(provider)` | `detachNewLineActionProvider(provider)` |
-| **补全** | | |
-| 触发补全 | `triggerCompletion()` | — |
-| 展示补全项 | `showCompletionItems(items)` | — |
-| 关闭补全 | `dismissCompletion()` | — |
-| 配置补全项渲染 | `setCompletionItemRenderer(renderer)` | `setCompletionItemViewFactory(factory)`, `setCompletionCellRenderer(renderer)`, 其他平台惯用的渲染定制 API |
-| **样式** | | |
-| 注册文本样式 | `registerTextStyle(id, ...)` | — |
-| 批量注册文本样式 | `registerBatchTextStyles(stylesById)` | — |
-| **Decoration / Adornment 写入** | | |
-| 设置单行 spans | `setLineSpans(line, layer, spans)` | — |
-| 批量设置 spans | `setBatchLineSpans(layer, spansByLine)` | — |
-| 设置单行 inlay hints | `setLineInlayHints(line, hints)` | — |
-| 批量设置 inlay hints | `setBatchLineInlayHints(hintsByLine)` | — |
-| 设置单行 phantom texts | `setLinePhantomTexts(line, phantoms)` | — |
-| 批量设置 phantom texts | `setBatchLinePhantomTexts(phantomsByLine)` | — |
-| 设置单行 gutter icons | `setLineGutterIcons(line, icons)` | — |
-| 批量设置 gutter icons | `setBatchLineGutterIcons(iconsByLine)` | — |
-| 设置单行 CodeLens | `setLineCodeLens(line, items)` | — |
-| 批量设置 CodeLens | `setBatchLineCodeLens(itemsByLine)` | — |
-| 设置单行 links | `setLineLinks(line, links)` | — |
-| 批量设置 links | `setBatchLineLinks(linksByLine)` | — |
-| 设置单行 diagnostics | `setLineDiagnostics(line, items)` | — |
-| 批量设置 diagnostics | `setBatchLineDiagnostics(diagsByLine)` | — |
-| 设置 indent guides | `setIndentGuides(guides)` | — |
-| 设置 bracket guides | `setBracketGuides(guides)` | — |
-| 设置 flow guides | `setFlowGuides(guides)` | — |
-| 设置 separator guides | `setSeparatorGuides(guides)` | — |
-| 设置 fold regions | `setFoldRegions(regions)` | — |
-| **Decoration / Adornment 清理** | | |
-| 清除高亮 | `clearHighlights()` | — |
-| 按 layer 清除高亮 | `clearHighlights(layer)` | — |
-| 清除 inlay hints | `clearInlayHints()` | — |
-| 清除 phantom texts | `clearPhantomTexts()` | — |
-| 清除 gutter icons | `clearGutterIcons()` | — |
-| 清除 CodeLens | `clearCodeLens()` | — |
-| 清除 links | `clearLinks()` | — |
-| 清除 guides | `clearGuides()` | — |
-| 清除 diagnostics | `clearDiagnostics()` | — |
-| 清除所有装饰 | `clearAllDecorations()` | — |
-| **查询** | | |
-| 可见行范围 | `getVisibleLineRange()` | property: `visibleLineRange` / `VisibleLineRange { get; }` |
-| 总行数 | `getTotalLineCount()` | property: `totalLineCount` / `TotalLineCount { get; }` |
-| 位置上的 link target | `getLinkTargetAt(line, column)` | 返回 `String` / non-null string；未命中时返回空字符串 |
+除标注为 SHOULD / MAY 的项外，下表列出的宿主 API 都是 MUST。各语言 MAY 使用 property、delegate setter、typed stream 或符合平台习惯的等价入口，只要映射清晰且无歧义。
+
+| 能力族 | 宿主可见 API |
+|---|---|
+| 文档 / 主题 | `loadDocument(doc)`, `getDocument()`, `applyTheme(theme)`, `getTheme()` |
+| 配置 | `getSettings()`, `getKeyMap()` *(SHOULD)*, `setKeyMap(keyMap)`, `setEditorIconProvider(provider)` |
+| 文本编辑 | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
+| 撤销 / 重做 | `undo()`, `redo()`, `canUndo()`, `canRedo()` |
+| 剪贴板 *(MAY)* | `copyToClipboard()`, `pasteFromClipboard()`, `cutToClipboard()` |
+| 光标 / 选区 | `selectAll()`, `getSelectedText()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `setCursorPosition(pos)`, `getCursorPosition()`, `getWordRangeAtCursor()`, `getWordAtCursor()` |
+| 导航 / 滚动 | `gotoPosition(line, col)`, `scrollToLine(line, behavior)`, `setScroll(x, y)`, `getScrollMetrics()`, `getPositionRect(line, col)`, `getCursorRect()` |
+| 折叠 | `toggleFoldAt(line)`, `foldAt(line)`, `unfoldAt(line)`, `isLineVisible(line)`, `foldAll()`, `unfoldAll()` |
+| 语言 / 元数据 | `setLanguageConfiguration(config)`, `getLanguageConfiguration()`, `setMetadata(metadata)`, `getMetadata()` |
+| Provider 管理 | `addDecorationProvider(provider)`, `removeDecorationProvider(provider)`, `requestDecorationRefresh()`, `addCompletionProvider(provider)`, `removeCompletionProvider(provider)`, `addNewLineActionProvider(provider)`, `removeNewLineActionProvider(provider)` |
+| 补全 | `triggerCompletion()`, `showCompletionItems(items)`, `dismissCompletion()`, `setCompletionItemRenderer(renderer)` 或平台等价补全项渲染定制 API |
+| 样式 | `registerTextStyle(id, ...)`, `registerBatchTextStyles(stylesById)` |
+| Decoration / Adornment 写入 | `setLineSpans(line, layer, spans)`, `setBatchLineSpans(layer, spansByLine)`, `setLineInlayHints(line, hints)`, `setBatchLineInlayHints(hintsByLine)`, `setLinePhantomTexts(line, phantoms)`, `setBatchLinePhantomTexts(phantomsByLine)`, `setLineGutterIcons(line, icons)`, `setBatchLineGutterIcons(iconsByLine)`, `setLineCodeLens(line, items)`, `setBatchLineCodeLens(itemsByLine)`, `setLineLinks(line, links)`, `setBatchLineLinks(linksByLine)`, `setLineDiagnostics(line, items)`, `setBatchLineDiagnostics(diagsByLine)`, `setIndentGuides(guides)`, `setBracketGuides(guides)`, `setFlowGuides(guides)`, `setSeparatorGuides(guides)`, `setFoldRegions(regions)` |
+| Decoration / Adornment 清理 | `clearHighlights()`, `clearHighlights(layer)`, `clearInlayHints()`, `clearPhantomTexts()`, `clearGutterIcons()`, `clearCodeLens()`, `clearLinks()`, `clearGuides()`, `clearDiagnostics()`, `clearAllDecorations()` |
+| 查询 | `getVisibleLineRange()`, `getTotalLineCount()`, `getLinkTargetAt(line, column)`；link 未命中时返回空字符串或等价 non-null empty value |
 
 > Provider 管理方法的标准命名为 `add` / `remove`。各平台 MAY 按自身惯例使用语义等价的变体（如 `attach` / `detach`、`register` / `unregister` 等）。
 
@@ -605,170 +309,38 @@ IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextR
 
 ## 4. Provider 接口（MUST）
 
-> **通用规则：**
-> - `provideDecorations` 和 `provideCompletions` MUST 同时支持**同步**和**异步**结果交付
-> - `DecorationProvider` MUST 支持多次结果更新，同一个请求可以产生 0 次、1 次或多次连续 snapshot
-> - `CompletionProvider` MUST 至少支持单次结果交付，MAY 支持多次 / 增量结果更新
-> - 进行中的 decoration / completion 请求 MUST 具有明确的取消 / 过期契约；一旦请求被取消或过期，该请求的任何延迟结果 MUST 被忽略
-> - 平台 MAY 使用 Receiver 回调、`Future` / `Promise` / `Task`、协程 / `suspend` API、stream / observable，或其他符合平台习惯的异步形式暴露 Provider 结果
-> - **Receiver 回调模式仍是推荐的公共接口形态**，因为它天然同时支持同步返回、异步返回、多次更新和取消检查
-> - 若平台不暴露 Receiver 形态，仍 MUST 文档化其所选 API 如何表达即时交付、延后交付、适用场景下的多次更新，以及取消 / 过期语义
-> - 同一类型 Provider 支持注册多个实例，Manager 负责遍历并合并结果
-> - Provider-Manager 模式（注册 -> 遍历 -> 分发）MUST 在所有平台保持一致
+Provider-Manager 模式（注册 -> 遍历 -> 分发）MUST 在所有平台保持一致。同一类型 Provider MAY 注册多个实例，Manager 负责遍历、合并和丢弃过期结果。`provideDecorations` 与 `provideCompletions` MUST 支持同步和异步结果交付；`DecorationProvider` MUST 支持同一请求的 0 次、1 次或多次 snapshot，`CompletionProvider` MUST 至少支持单次结果交付并 MAY 支持增量结果。进行中的 decoration / completion 请求 MUST 有取消或过期契约；取消或过期后的延迟结果 MUST 被忽略。
+
+平台 MAY 使用 Receiver 回调、`Future` / `Promise` / `Task`、协程、stream / observable 或其他平台惯用形式。若不暴露 Receiver 形态，仍 MUST 文档化即时交付、延后交付、多次更新适用性，以及取消 / 过期语义。
 
 ### 4.1 DecorationProvider
 
-#### 推荐的 Receiver 签名
+`DecorationProvider` MUST 提供 `getCapabilities() -> Set<DecorationType>` 与 `provideDecorations(context, receiver/equivalent)`。若暴露显式 Receiver，推荐命名为 `DecorationReceiver`，并提供 `accept(result) -> boolean` 与 `isCancelled() -> boolean`。
 
-```
-interface DecorationProvider {
-    getCapabilities() -> Set<DecorationType>
-    provideDecorations(context: DecorationContext, receiver: DecorationReceiver) -> void
-}
-
-interface DecorationReceiver {
-    accept(result: DecorationResult) -> boolean
-    isCancelled() -> boolean
-}
-```
-
-> 平台 MAY 暴露与 `DecorationReceiver` 语义等价的异步 API，而不是显式 Receiver 类型；但契约 MUST 仍支持即时结果、延后结果以及取消 / 过期检查。若平台暴露显式 Receiver 类型，推荐命名为 `DecorationReceiver`。
-
-#### DecorationContext MUST 字段
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `visibleLineRange` | IntRange | 当前 decoration 上下文的行范围。通常对应可见行范围，但平台 MAY 根据 overscan 或其他策略适当扩大 |
-| `totalLineCount` | int | 文档总行数 |
-| `textChanges` | List\<TextChange\> | 本次刷新周期累计的文本变更；空列表表示非文本变更触发 |
-| `languageConfiguration` | LanguageConfiguration? | 当前语言配置（nullable） |
-| `editorMetadata` | EditorMetadata? | 当前编辑器元数据（nullable） |
-
-#### ApplyMode 枚举（MUST）
-
-每种装饰数据 MUST 有对应的 `ApplyMode`，控制 Manager 合并时的行为：
-
-| 值 | 说明 |
+| 对象 | 必须字段 / 值 |
 |---|---|
-| `MERGE` | 与已有数据合并（默认） |
-| `REPLACE_ALL` | 替换全部已有数据 |
-| `REPLACE_RANGE` | 仅替换 `visibleLineRange`（即当前 decoration 上下文范围）内的数据 |
+| `DecorationContext` | `visibleLineRange`, `totalLineCount`, `textChanges`, `languageConfiguration`, `editorMetadata` |
+| `ApplyMode` | `MERGE`, `REPLACE_ALL`, `REPLACE_RANGE`；合并优先级为 `REPLACE_ALL` > `REPLACE_RANGE` > `MERGE` |
+| `DecorationResult` | `syntaxSpans`, `semanticSpans`, `inlayHints`, `diagnostics`, `indentGuides`, `bracketGuides`, `flowGuides`, `separatorGuides`, `foldRegions`, `gutterIcons`, `phantomTexts`, `codeLensItems`, `links`，且每种数据 MUST 有对应的 `ApplyMode` 字段 |
+| `DecorationType` | MUST 包含 `CODELENS` 和 `LINK` |
 
-当多个 Provider 返回不同的 ApplyMode 时，Manager MUST 按优先级取最高：`REPLACE_ALL` > `REPLACE_RANGE` > `MERGE`。
-
-#### DecorationResult MUST 字段
-
-`DecorationResult` 包含 13 种装饰数据，每种数据都有对应的 `ApplyMode`（默认 `MERGE`）。数据类型 MUST 使用 Core 层定义的标准类型（如 `StyleSpan`、`InlayHint`、`CodeLensItem`、`LinkSpan`、`Diagnostic` 等）。
-
-| 数据字段 | 类型 | ApplyMode 字段 |
-|---|---|---|
-| `syntaxSpans` | Map\<int, List\<StyleSpan\>\>? | `syntaxSpansMode` |
-| `semanticSpans` | Map\<int, List\<StyleSpan\>\>? | `semanticSpansMode` |
-| `inlayHints` | Map\<int, List\<InlayHint\>\>? | `inlayHintsMode` |
-| `diagnostics` | Map\<int, List\<Diagnostic\>\>? | `diagnosticsMode` |
-| `indentGuides` | List\<IndentGuide\>? | `indentGuidesMode` |
-| `bracketGuides` | List\<BracketGuide\>? | `bracketGuidesMode` |
-| `flowGuides` | List\<FlowGuide\>? | `flowGuidesMode` |
-| `separatorGuides` | List\<SeparatorGuide\>? | `separatorGuidesMode` |
-| `foldRegions` | List\<FoldRegion\>? | `foldRegionsMode` |
-| `gutterIcons` | Map\<int, List\<GutterIcon\>\>? | `gutterIconsMode` |
-| `phantomTexts` | Map\<int, List\<PhantomText\>\>? | `phantomTextsMode` |
-| `codeLensItems` | Map\<int, List\<CodeLensItem\>\>? | `codeLensItemsMode` |
-| `links` | Map\<int, List\<LinkSpan\>\>? | `linksMode` |
-
-> 按行索引的数据（syntaxSpans、semanticSpans 等）使用 `Map<int, List<T>>`，key 为行号（0-based）。
-
-#### DecorationType 枚举（MUST）
-
-平台在暴露装饰能力集合时，MUST 在 `DecorationType` 中包含 `CODELENS` 和 `LINK`。
-
-#### 多 Provider 合并策略
-
-Manager 遍历所有已注册的 Provider，按 ApplyMode 合并各 Provider 的 snapshot：
-- `MERGE`：将各 Provider 的同类型数据追加合并
-- `REPLACE_ALL`：先清除全部已有数据，再写入新数据
-- `REPLACE_RANGE`：仅清除 `visibleLineRange`（即当前 decoration 上下文范围）内的已有数据，再写入新数据
+按行索引的数据使用 `Map<int, List<T>>`，key 为 0-based 行号。Manager MUST 按 `ApplyMode` 合并 snapshot：`MERGE` 追加同类数据，`REPLACE_ALL` 清除全部已有数据后写入，`REPLACE_RANGE` 仅替换 `visibleLineRange` 内的数据。
 
 ### 4.2 CompletionProvider
 
-#### 推荐的 Receiver 签名
+`CompletionProvider` MUST 提供 `isTriggerCharacter(ch)` 与 `provideCompletions(context, receiver/equivalent)`。若暴露显式 Receiver，推荐命名为 `CompletionReceiver`，并提供 `accept(result) -> boolean` 与 `isCancelled() -> boolean`。
 
-```
-interface CompletionProvider {
-    isTriggerCharacter(ch: String) -> boolean
-    provideCompletions(context: CompletionContext, receiver: CompletionReceiver) -> void
-}
-
-interface CompletionReceiver {
-    accept(result: CompletionResult) -> boolean
-    isCancelled() -> boolean
-}
-```
-
-> 平台 MAY 暴露与 `CompletionReceiver` 语义等价的异步 API，而不是显式 Receiver 类型；但契约 MUST 仍支持即时结果、延后结果以及取消 / 过期检查。若平台暴露显式 Receiver 类型，推荐命名为 `CompletionReceiver`。
-
-#### CompletionTriggerKind 枚举（MUST）
-
-| 值 | 说明 |
+| 对象 | 必须字段 / 值 |
 |---|---|
-| `INVOKED` | 用户手动触发（如 Ctrl+Space） |
-| `CHARACTER` | 输入触发字符（如 `.`） |
-| `RETRIGGER` | 内容变更后重新触发 |
+| `CompletionTriggerKind` | `INVOKED`, `CHARACTER`, `RETRIGGER` |
+| `CompletionContext` | `triggerKind`, `triggerCharacter`, `cursorPosition`, `lineText`, `wordRange`, `languageConfiguration`, `editorMetadata` |
+| `CompletionResult` | `items`, `isIncomplete` |
 
-#### CompletionContext MUST 字段
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `triggerKind` | CompletionTriggerKind | 触发类型 |
-| `triggerCharacter` | String? | 触发字符（nullable，仅 CHARACTER 类型时有值） |
-| `cursorPosition` | TextPosition | 光标位置 |
-| `lineText` | String | 当前行文本 |
-| `wordRange` | TextRange | 光标处单词范围 |
-| `languageConfiguration` | LanguageConfiguration? | 当前语言配置（nullable） |
-| `editorMetadata` | EditorMetadata? | 当前编辑器元数据（nullable） |
-
-#### CompletionResult MUST 字段
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `items` | List\<CompletionItem\> | 补全项列表 |
-| `isIncomplete` | boolean | 结果是否不完整（true 表示后续输入应重新请求） |
-
-#### 多 Provider 合并排序策略
-
-Manager 遍历所有 Provider，将各 Provider 返回的 `CompletionItem` 合并后按 `sortKey`（fallback 到 `label`）排序。
+Manager MUST 遍历所有 Provider，将各 Provider 返回的 `CompletionItem` 合并后按 `sortKey` 排序，`sortKey` 为空时 fallback 到 `label`。
 
 ### 4.3 NewLineActionProvider
 
-#### 接口签名
-
-```
-interface NewLineActionProvider {
-    provideNewLineAction(context: NewLineContext) -> NewLineAction?
-}
-```
-
-> `NewLineActionProvider` 保持同步，因为换行处理属于即时输入路径。
-
-#### NewLineContext MUST 字段
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `lineNumber` | int | 光标行号（0-based） |
-| `column` | int | 光标列号（0-based） |
-| `lineText` | String | 当前行文本 |
-| `languageConfiguration` | LanguageConfiguration? | 当前语言配置（nullable） |
-| `editorMetadata` | EditorMetadata? | 当前编辑器元数据（nullable） |
-
-#### NewLineAction MUST 字段
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `text` | String | 要插入的完整文本（包含换行符和缩进） |
-
-#### 多 Provider 链式优先级策略
-
-Manager 按注册顺序遍历所有 Provider，返回第一个非 null 的 `NewLineAction`。若所有 Provider 均返回 null，则使用默认换行行为。
+`NewLineActionProvider` MUST 提供同步 `provideNewLineAction(context) -> NewLineAction?`，因为换行处理属于即时输入路径。`NewLineContext` MUST 包含 `lineNumber`, `column`, `lineText`, `languageConfiguration`, `editorMetadata`。`NewLineAction` MUST 包含 `text`。Manager MUST 按注册顺序遍历所有 Provider，返回第一个非 null 的 `NewLineAction`；若全部返回 null，则使用默认换行行为。
 
 ---
 ## 5. `CompletionItem` 字段定义（MUST）
@@ -813,60 +385,20 @@ Manager 按注册顺序遍历所有 Provider，返回第一个非 null 的 `NewL
 
 内联建议（Copilot）模块为 SHOULD 级别，但实现时 MUST 遵循以下接口规范。
 
-### 6.1 `InlineSuggestion` 数据类型
+### 6.1 数据、回调与 API
 
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `line` | int | **MUST** | 目标行号（0-based） |
-| `column` | int | **MUST** | 插入列（0-based，UTF-16 偏移） |
-| `text` | String | **MUST** | 建议文本内容 |
-
-> `InlineSuggestion` SHOULD 为不可变对象。
-
-### 6.2 内联建议回调契约
-
-平台 MUST 提供宿主可见的方式来观察内联建议的接受与关闭。
-
-平台 MAY 采用以下任一形式：
-- 显式 listener 接口
-- delegate / closure / callback setter
-- 平台原生事件 / typed stream / signal
-
-若平台暴露显式 listener 接口，推荐形态为：
-
-```
-interface InlineSuggestionListener {
-    onSuggestionAccepted(suggestion: InlineSuggestion) -> void
-    onSuggestionDismissed(suggestion: InlineSuggestion) -> void
-}
-```
-
-该回调契约 MUST 同时满足以下条件：
-- 一个可见的内联建议 MUST 具有两个离散的宿主可见事件：`accepted` 和 `dismissed`
-- `accepted` 的 payload MUST 包含被接受的 `InlineSuggestion`，或其他能无歧义标识同一建议的等价 payload
-- `dismissed` 的 payload MUST 包含被关闭的 `InlineSuggestion`，或其他等价 payload / identifier；若平台回调形态天然只能提供无 payload 的 dismissed 信号，必须显式文档化这一限制
-- 对于同一个已展示的建议实例，`accepted` 最多触发一次，`dismissed` 最多触发一次
-- 一旦某个建议实例触发了 `accepted` 或 `dismissed`，该建议实例后续不得再触发任何回调
-- 若 `showInlineSuggestion()` 替换了当前已显示的建议，平台 MAY 在切换前为旧建议实例发出 `dismissed`，也 MAY 静默替换而不发 `dismissed`；无论采用哪种方式，旧建议实例在被替换后都 MUST NOT 再发出任何后续回调
-- 在 editor 进入终结性 teardown、内部 detach 或 controller dispose 之后，不得再发出任何宿主可见的内联建议回调
-
-| 回调 | 约束级别 | 触发时机 |
+| 对象 / API | 约束级别 | 要求 |
 |---|---|---|
-| `onSuggestionAccepted` | **MUST** | 用户接受当前可见建议时 |
-| `onSuggestionDismissed` | **MUST** | 用户关闭当前可见建议时 |
-
-### 6.3 宿主可见的 Copilot API
-
-| 方法 | 约束级别 | 说明 |
-|---|---|---|
+| `InlineSuggestion` | **MUST** | 字段包含 `line`, `column`, `text`；`line` 为 0-based 行号，`column` 为 0-based UTF-16 偏移 |
+| `InlineSuggestionListener` 或等价事件机制 | **MUST** | 必须能观察 `accepted` 与 `dismissed`；显式 listener 推荐提供 `onSuggestionAccepted(suggestion)` 与 `onSuggestionDismissed(suggestion)` |
 | `showInlineSuggestion(suggestion)` | **MUST** | 显示内联建议，并使其可被 accept / dismiss |
 | `dismissInlineSuggestion()` | **MUST** | 关闭当前内联建议并移除其可见呈现 |
 | `isInlineSuggestionShowing()` | **MUST** | 查询当前是否有内联建议正在显示 |
-| `setInlineSuggestionListener(listener)` | **MUST** | 注册宿主可见的 accepted / dismissed listener；传入 `null` 时清除监听 |
+| `setInlineSuggestionListener(listener)` | **MUST** | 注册宿主可见的 accepted / dismissed listener；传入 `null` 时清除监听。平台 MAY 使用 callbacks、delegate、事件订阅或 typed stream 表达同一语义 |
 
-> 平台 MAY 暴露语义等价的 API，例如 `setInlineSuggestionCallbacks(callbacks)`、delegate setter、事件订阅或 typed stream。
+对于同一个已展示的建议实例，`accepted` 和 `dismissed` 最多各触发一次；触发其中任一事件后，该实例后续不得再触发任何回调。替换当前建议时，平台 MAY 为旧建议发出 `dismissed`，也 MAY 静默替换，但旧建议被替换后 MUST NOT 再发出回调。editor 进入终结性 teardown、内部 detach 或 controller dispose 后，不得再发出宿主可见的内联建议回调。
 
-### 6.4 自动关闭行为
+### 6.2 自动关闭行为
 
 | 规则 | 约束级别 | 说明 |
 |---|---|---|
@@ -874,81 +406,24 @@ interface InlineSuggestionListener {
 | 光标移动 | **MUST** | 光标位置变化时 MUST 自动关闭当前内联建议 |
 | 滚动 | **SHOULD** | 滚动时若平台存在可见建议控件，SHOULD 更新其位置；SHOULD NOT 自动关闭 |
 
-### 6.5 `InlineSuggestionController`（MAY）
-
-`InlineSuggestionController` 是推荐的内部实现模式（见 1.3 节），负责管理内联建议的完整生命周期：
-
-- 建议呈现与移除
-- 事件监听（TextChanged / CursorChanged / ScrollChanged）的订阅与退订
-- accept / dismiss 交互及相关可视控件的位置管理
-- 在适用场景下的 accept / dismiss 按键处理
-
-各平台 MAY 选择不使用 Controller 模式，但 MUST 实现等效功能。
-
 ---
 
 ## 7. Selection / SelectionMenu 接口定义（移动端 SHOULD，桌面端 MAY 省略）
 
 Selection menu 模块在移动端为 SHOULD 级别。桌面平台 MAY 完全省略；如果实现，则 MUST 遵循以下契约。
 
-### 7.1 `SelectionMenuItem` 数据类型
+### 7.1 数据、Provider 与回调
 
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `id` | String | **MUST** | 稳定的动作标识符，供宿主区分菜单项 |
-| `label` | String | **MUST** | 菜单中显示的文本 |
-| `enabled` | boolean | **MAY** | 菜单项当前是否可点击；省略时默认可用 |
-| `iconId` | int? | **MAY** | 若平台支持选区菜单图标，可提供可选图标资源 ID |
-
-> `SelectionMenuItem` 是统一的菜单项数据模型。平台若提供标准动作，推荐保留内建 `id`：`cut`、`copy`、`paste`、`select_all`；自定义动作 MAY 使用任意稳定 `id`。
-
-### 7.2 `SelectionMenuItemProvider`
-
-标准规定的 provider 形态如下：
-
-```
-interface SelectionMenuItemProvider {
-    provideMenuItems(editor) -> List<SelectionMenuItem>
-}
-```
-
-其中 `editor` 指平台对外暴露的 editor/widget 本对象。平台 MAY 额外暴露其他
-provider 参数，但 provider 应基于当前 editor 状态构建完整的选区菜单模型，而不是
-基于增量 patch 载荷。
-
-选区菜单语义：
-- Provider 返回当前这一次展示应显示的整套菜单项，而不是增量追加项
-- 当 provider 为 `null` 时，平台 SHOULD 恢复默认选区菜单
-- 当 provider 返回空列表时，平台 MAY 不显示选区菜单
-- Provider SHOULD 在菜单即将显示时重新调用，使菜单项可以随当前 editor 状态动态变化
-
-### 7.3 Selection Menu 回调契约
-
-实现 `SelectionMenu` 的平台 MUST 提供宿主可见的方式来观察 custom 选区菜单项被触发。平台 MAY 采用显式 listener 接口、delegate / closure / callback setter，或平台原生事件 / typed stream / signal。
-
-若平台暴露显式 listener 接口，推荐形态为：
-
-```
-interface SelectionMenuListener {
-    onSelectionMenuItemSelected(itemId: String) -> void
-}
-```
-
-该回调契约 MUST 同时满足以下条件：
-- 宿主可见回调可以只覆盖 custom menu item；内建 cut / copy / paste / select all 等平台动作不要求统一发出 `item-selected`
-- `item-selected` 的 payload SHOULD 包含被点击 custom item 的 `itemId`，或其他能无歧义标识该菜单项的等价 payload
-- 标准不要求平台暴露宿主可见的 `dismissed` 事件
-- 在 editor 进入终结性 teardown、内部 detach 或 controller dispose 之后，不得再发出任何宿主可见的 custom selection-menu 回调
-
-### 7.4 宿主可见的 Selection API
-
-| 方法 | 约束级别 | 说明 |
+| 对象 / API | 约束级别 | 要求 |
 |---|---|---|
-| `setSelectionMenuItemProvider(provider)` | **MUST** | 配置 custom 选区菜单项；传入 `null` 时恢复平台默认菜单 |
+| `SelectionMenuItem` | **MUST** | 字段包含 `id`, `label`；MAY 包含 `enabled`, `iconId`。内建动作推荐使用 `cut`, `copy`, `paste`, `select_all`，自定义动作 MAY 使用任意稳定 `id` |
+| `SelectionMenuItemProvider` | **MUST** | 提供 `provideMenuItems(editor/equivalent) -> List<SelectionMenuItem>` 或等价 API；返回当前这一次展示的完整菜单项集合，而不是增量 patch |
+| custom item 回调 | **MUST** | 平台 MUST 提供 listener、delegate、事件、typed stream 或等价机制观察 custom item 被触发；显式 listener 推荐提供 `onSelectionMenuItemSelected(itemId)` |
+| `setSelectionMenuItemProvider(provider)` | **MUST** | 配置 custom 选区菜单项；传入 `null` 时 SHOULD 恢复平台默认菜单 |
 
-> 平台 MAY 暴露语义等价的 API，例如 `setSelectionMenuListener(listener)`、custom item 点击事件订阅、delegate setter 或 typed stream。平台 MAY 额外暴露只读查询 API（如 `isSelectionMenuShowing()`），但标准不强制要求。
+Provider 返回空列表时平台 MAY 不显示选区菜单；Provider SHOULD 在菜单即将显示时重新调用，使菜单项随当前 editor 状态动态变化。内建 cut / copy / paste / select all 等平台动作不要求统一发出 custom item 回调。editor 进入终结性 teardown、内部 detach 或 controller dispose 后，不得再发出宿主可见的 custom selection-menu 回调。
 
-### 7.5 定位与生命周期
+### 7.2 定位与生命周期
 
 | 规则 | 约束级别 | 说明 |
 |---|---|---|
@@ -956,10 +431,6 @@ interface SelectionMenuListener {
 | 选区失效 | **MUST** | 若选区变为空、失效，或已与当前文档状态脱离，菜单 MUST 关闭 |
 | 滚动 / 视口变化 | **SHOULD** | 滚动或视口变化时 SHOULD 更新菜单位置；除非平台无法安全重定位，否则 SHOULD NOT 强制关闭 |
 | 命令完成后 | **SHOULD** | 用户触发选区菜单命令后，菜单 SHOULD 关闭；除非平台有意支持多步操作流保持开启 |
-
-### 7.6 `SelectionMenuController`（MAY）
-
-`SelectionMenuController` 是移动端选区菜单的推荐内部实现模式。它可以负责菜单项更新、显示状态、定位以及回调分发；平台也 MAY 直接在 widget 层实现等价行为。
 
 ---
 ## 8. EditorTheme（MUST）
@@ -986,114 +457,24 @@ interface SelectionMenuListener {
 
 ### 8.2 必需颜色字段
 
-所有颜色字段类型为平台颜色类型（ARGB），按功能分组如下：
+所有颜色字段类型为平台颜色类型（ARGB）。平台 MUST 提供下列字段：
 
-**基础颜色**
-
-| 字段 | 说明 |
+| 分组 | 字段 |
 |---|---|
-| `backgroundColor` | 编辑器背景色 |
-| `textColor` | 默认文本颜色，未被语法高亮覆盖时使用 |
-| `cursorColor` | 光标颜色 |
-| `selectionColor` | 选区高亮填充色（建议含透明度） |
-
-**行号与当前行**
-
-| 字段 | 说明 |
-|---|---|
-| `lineNumberColor` | 行号文本颜色 |
-| `currentLineNumberColor` | 当前行行号文本颜色 |
-| `currentLineColor` | 当前行高亮背景色（建议含透明度） |
-
-**辅助线**
-
-| 字段 | 说明 |
-|---|---|
-| `guideColor` | 代码结构线颜色（缩进/括号/流程引导线） |
-| `separatorLineColor` | 分隔线颜色（SeparatorGuide） |
-| `splitLineColor` | 行号区域分割线颜色 |
-
-**滚动条**
-
-| 字段 | 说明 |
-|---|---|
-| `scrollbarTrackColor` | 滚动条轨道颜色 |
-| `scrollbarThumbColor` | 滚动条滑块颜色 |
-| `scrollbarThumbActiveColor` | 滚动条滑块激活（拖拽中）颜色 |
-
-**输入法**
-
-| 字段 | 说明 |
-|---|---|
-| `compositionUnderlineColor` | IME 组合输入下划线颜色 |
-
-**InlayHint**
-
-| 字段 | 说明 |
-|---|---|
-| `inlayHintBgColor` | InlayHint 圆角背景色 |
-| `inlayHintTextColor` | InlayHint 文本颜色（通常含透明度） |
-| `inlayHintIconColor` | InlayHint 图标着色（通常含透明度） |
-
-**折叠占位符**
-
-| 字段 | 说明 |
-|---|---|
-| `foldPlaceholderBgColor` | 折叠占位符背景色（通常含透明度） |
-| `foldPlaceholderTextColor` | 折叠占位符文本颜色 |
-
-**PhantomText**
-
-| 字段 | 说明 |
-|---|---|
-| `phantomTextColor` | PhantomText 颜色（通常含透明度） |
-
-**CodeLens**
-
-| 字段 | 说明 |
-|---|---|
-| `codeLensColor` | CodeLens 文本颜色 |
-| `codeLensActiveColor` | CodeLens 激活文本颜色 |
-
-**Link**
-
-| 字段 | 说明 |
-|---|---|
-| `linkColor` | 链接文本颜色 |
-| `linkActiveColor` | 链接激活文本颜色 |
-
-**诊断装饰**
-
-| 字段 | 说明 |
-|---|---|
-| `diagnosticErrorColor` | 诊断 ERROR 级别默认颜色 |
-| `diagnosticWarningColor` | 诊断 WARNING 级别默认颜色 |
-| `diagnosticInfoColor` | 诊断 INFO 级别默认颜色 |
-| `diagnosticHintColor` | 诊断 HINT 级别默认颜色 |
-
-**联动编辑**
-
-| 字段 | 说明 |
-|---|---|
-| `linkedEditingActiveColor` | 联动编辑活跃 tab stop 边框色 |
-| `linkedEditingInactiveColor` | 联动编辑非活跃 tab stop 边框色 |
-
-**括号匹配**
-
-| 字段 | 说明 |
-|---|---|
-| `bracketHighlightBorderColor` | 括号匹配高亮边框色 |
-| `bracketHighlightBgColor` | 括号匹配高亮背景色（半透明） |
-
-**补全弹窗**
-
-| 字段 | 说明 |
-|---|---|
-| `completionBgColor` | 补全弹窗背景色 |
-| `completionBorderColor` | 补全弹窗边框色 |
-| `completionSelectedBgColor` | 补全弹窗选中行高亮色 |
-| `completionLabelColor` | 补全弹窗标签文本颜色 |
-| `completionDetailColor` | 补全弹窗详情文本颜色 |
+| 基础颜色 | `backgroundColor`, `textColor`, `cursorColor`, `selectionColor` |
+| 行号与当前行 | `lineNumberColor`, `currentLineNumberColor`, `currentLineColor` |
+| 辅助线 | `guideColor`, `separatorLineColor`, `splitLineColor` |
+| 滚动条 | `scrollbarTrackColor`, `scrollbarThumbColor`, `scrollbarThumbActiveColor` |
+| 输入法 | `compositionUnderlineColor` |
+| InlayHint | `inlayHintBgColor`, `inlayHintTextColor`, `inlayHintIconColor` |
+| 折叠占位符 | `foldPlaceholderBgColor`, `foldPlaceholderTextColor` |
+| PhantomText | `phantomTextColor` |
+| CodeLens | `codeLensColor`, `codeLensActiveColor` |
+| Link | `linkColor`, `linkActiveColor` |
+| 诊断装饰 | `diagnosticErrorColor`, `diagnosticWarningColor`, `diagnosticInfoColor`, `diagnosticHintColor` |
+| 联动编辑 | `linkedEditingActiveColor`, `linkedEditingInactiveColor` |
+| 括号匹配 | `bracketHighlightBorderColor`, `bracketHighlightBgColor` |
+| 补全弹窗 | `completionBgColor`, `completionBorderColor`, `completionSelectedBgColor`, `completionLabelColor`, `completionDetailColor` |
 
 ### 8.3 工厂方法
 
@@ -1195,11 +576,13 @@ interface SelectionMenuListener {
 所有平台 MUST 提供**类型安全**的编辑器事件暴露机制，使宿主代码能够订阅特定事件类型，并以取消订阅 / 释放订阅 / 取消监听等**等效方式**管理订阅生命周期。
 
 平台 MAY 采用以下任一实现形态：
-- `EditorEventBus` + `subscribe` / `unsubscribe` / `publish` / `clear`
+- `EditorEventBus` + `subscribe` / `unsubscribe` / `clear`
 - 平台原生事件 / 委托 / 监听器机制（如 C# `event`、Java listener callback）
 - 类型化 stream / signal / observable getter（如 Dart `Stream<T>`）
 
 若平台采用显式事件总线 / 监听器模式，相关公共类型 SHOULD 命名为 `EditorEventBus` / `EditorEventListener`。
+
+宿主可见的事件表面是 observer surface。平台 MAY 在内部保留 `publish` / `emit` 或等价方法，但状态类事件（如文本、光标、选区、滚动、缩放）MUST 由统一 `EditorActionResult` 分发入口发布，宿主 API 不应暴露可任意发布编辑器状态事件的入口。
 
 ### 11.2 必需事件类型
 
@@ -1209,16 +592,18 @@ interface SelectionMenuListener {
 TextChangedEvent, CursorChangedEvent, SelectionChangedEvent,
 ScrollChangedEvent, ScaleChangedEvent, DocumentLoadedEvent,
 FoldToggleEvent, GutterIconClickEvent, InlayHintClickEvent, CodeLensClickEvent, LinkClickEvent,
-LongPressEvent,       // 仅移动端（iOS/Android）
+LongPressEvent,       // 仅移动端 / 触摸平台（包括 iOS、Android、OHOS）
 DoubleTapEvent,
 ContextMenuEvent      // 具有显式上下文菜单手势入口的平台
 ```
 
-> `LongPressEvent` 用于移动端（iOS/Android），表示原始长按手势本身。`ContextMenuEvent` 用于暴露显式的上下文菜单手势入口（例如桌面右键或框架原生 context-menu gesture）。平台实现 SHOULD 仅注册与自身平台相关的事件。
+> `LongPressEvent` 用于移动端 / 触摸平台（包括 iOS、Android、OHOS），表示原始长按手势本身。`ContextMenuEvent` 用于暴露显式的上下文菜单手势入口（例如桌面右键或框架原生 context-menu gesture）。平台实现 SHOULD 仅注册与自身平台相关的事件。
 
 > 上述事件类型 MUST 能通过平台选择的事件机制被类型安全地区分和消费。
 
 平台特定事件（如移动端的 `SelectionMenuItemClickEvent`）MAY 额外添加。
+
+`DocumentLoadedEvent` 是文档生命周期事件，不要求从 `EditorActionResult` 字段直接推导；平台 MAY 在 `loadDocument(...)` 生命周期路径中发布它。但 `loadDocument(...)` 返回的非空 `EditorActionResult` 仍 MUST 交给统一分发入口，不能用 `DocumentLoadedEvent` 替代 result 分发。
 
 ### 11.3 事件 Payload 契约
 
@@ -1253,11 +638,11 @@ ContextMenuEvent      // 具有显式上下文菜单手势入口的平台
 | `gestureEventType` | `EventType` | **MUST** | 产生该手势语义动作的原始事件类型 |
 | `tapPoint` | `PointF` | **MUST** | 手势命中的 editor 本地坐标 |
 | `hitTarget` | `HitTargetType` + 与平台对齐的 payload | **MUST** | 当前手势位置的命中测试结果 |
-| `pointerCursorAfter` / `pointerCursorChanged` | `PointerCursorType` / boolean | 桌面端 **MUST**，纯触摸平台 **MAY** | 当前鼠标位置对应的指针样式提示，以及是否需要更新平台鼠标形状 |
+| `pointerCursorAfter` / `pointerCursorChanged` | `PointerCursorType` / boolean | 桌面端或具备 mouse / hover 输入的平台 **MUST**，纯触摸平台 **MAY** | 当前鼠标位置对应的指针样式提示，以及是否需要更新平台鼠标形状 |
 | `needsEdgeScroll` / `needsFling` / `needsAnimation` | boolean | **MUST** | 平台是否需要继续边缘滚动、惯性滚动或统一动画 tick |
 | `isHandleDrag` | boolean | 移动端 **SHOULD** | 当前手势是否为选择手柄拖拽 |
 
-> 桌面平台 SHOULD 在 `pointerCursorChanged` 为 true 时立即应用 `pointerCursorAfter`，以获得及时的鼠标形状反馈。纯触摸平台 MAY 完全忽略鼠标形状变化。
+> 这些字段 MUST 按自身语义独立消费，不能依赖 `needsRedraw` 顺带生效。桌面或具备 mouse / hover 输入的平台 SHOULD 在 `pointerCursorChanged` 为 true 时立即应用 `pointerCursorAfter`，即使本次 result 不需要重绘；平台也 MUST 根据 `needsAnimation` 启动或停止 animation tick，不能等待下一次 render model rebuild。纯触摸且没有鼠标指针概念的平台 MAY 完全忽略鼠标形状变化。
 
 ### 11.5 ContextMenu 标准契约
 
@@ -1391,7 +776,7 @@ interface ContextMenuItemProvider {
 | `copilot/`（内联建议） | SHOULD | SHOULD |
 | `contextmenu/`（上下文菜单） | MAY | SHOULD |
 | `selection/`（选区菜单） | SHOULD | MAY 省略 |
-| `perf/`（性能浮层） | SHOULD | SHOULD |
+| `perf/`（性能浮层） | MAY | MAY |
 
 ### 13.4 渲染细节（MAY 不同）
 
@@ -1528,160 +913,36 @@ Core 层定义了大量装饰数据类型，各平台 MUST 实现完全一致的
 
 ### 17.2 共享数据类型
 
-**`IntRange`** — 闭区间整数范围
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `start` | int | **MUST** | 闭区间起点 |
-| `end` | int | **MUST** | 闭区间终点；当 `end < start` 时表示空范围 |
-
-**`TextChange`** — 增量文本变更
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `range` | TextRange | **MUST** | 文档坐标中的变更范围 |
-| `newText` | String | **MUST** | 替换后的文本；空字符串表示纯删除 |
+| 类型 | MUST 字段 | 特殊语义 |
+|---|---|---|
+| `IntRange` | `start`, `end` | 闭区间；`end < start` 表示空范围 |
+| `TextChange` | `range`, `newText` | `range` 为文档坐标，`newText` 为空字符串表示纯删除 |
 
 ### 17.3 Adornment 数据类型
 
-**`StyleSpan`** — 行内高亮区间
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `column` | int | **MUST** | 起始列（0-based，UTF-16 偏移） |
-| `length` | int | **MUST** | 字符长度 |
-| `styleId` | int | **MUST** | 通过 `registerTextStyle()` 注册的样式 ID |
-
-**`TextStyle`** — 文本样式定义
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `color` | int | **MUST** | 前景色（ARGB） |
-| `backgroundColor` | int | **MUST** | 背景色（ARGB），0 表示透明 |
-| `fontStyle` | int | **MUST** | 字体样式位标志：`BOLD=1`, `ITALIC=2`, `STRIKETHROUGH=4` |
-
-**`InlayHint`** — 行内嵌入提示
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `type` | InlayType | **MUST** | 类型：TEXT=0, ICON=1, COLOR=2 |
-| `column` | int | **MUST** | 插入列（0-based，UTF-16 偏移） |
-| `text` | String? | **MUST** | 文本内容（TEXT 类型时 MUST 非空；其他类型 MAY 为 null） |
-| `intValue` | int | **MUST** | 整数值（ICON 类型时为 iconId；COLOR 类型时为 ARGB 颜色值；TEXT 类型时为 0） |
-
-> 各平台 SHOULD 提供便捷工厂方法：`TextHint(column, text)`、`IconHint(column, iconId)`、`ColorHint(column, color)`。
-
-**`PhantomText`** — 幽灵文本
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `column` | int | **MUST** | 插入列（0-based，UTF-16 偏移） |
-| `text` | String | **MUST** | 幽灵文本内容 |
-
-**`CodeLensItem`** — 显示在代码行上方的可点击标签
-
-同一代码行上的多个 CodeLens **MUST** 按 `column` 升序排列，同时仍然渲染在该代码行上方。
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `column` | int | **MUST** | 逻辑行内的列锚点，用于排序和点击命中回传 |
-| `text` | String | **MUST** | 显示文本 |
-| `commandId` | int | **MUST** | 回传到 `CodeLensClickEvent` 的唯一命令标识 |
-
-**`LinkSpan`** — 逻辑行内的可点击文本区间
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `column` | int | **MUST** | 逻辑行内的起始列（0-based，UTF-16 偏移） |
-| `length` | int | **MUST** | 可点击区间的字符长度 |
-| `target` | String | **MUST** | 由 `getLinkTargetAt()` 和 `LinkClickEvent` 返回的解析后链接目标 |
-
-**`GutterIcon`** — 行号区图标
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `iconId` | int | **MUST** | 图标资源 ID（由平台侧 `EditorIconProvider` 解析和绘制） |
-
-**`Diagnostic`** — 诊断信息
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `column` | int | **MUST** | 起始列（0-based，UTF-16 偏移） |
-| `length` | int | **MUST** | 字符长度 |
-| `severity` | int | **MUST** | 严重级别：ERROR=0, WARNING=1, INFO=2, HINT=3 |
-
-> 本标准中的 `Diagnostic` 是最小诊断装饰模型，用于诊断渲染与轻量交互，不等同于完整 IDE 诊断对象。
-
-**`FoldRegion`** — 可折叠区域
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `startLine` | int | **MUST** | 折叠区域起始行（0-based，该行保持可见） |
-| `endLine` | int | **MUST** | 折叠区域结束行（0-based，inclusive） |
-
-**`IndentGuide`** — 缩进引导线
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `start` | TextPosition | **MUST** | 起始位置 |
-| `end` | TextPosition | **MUST** | 结束位置 |
-
-**`BracketGuide`** — 括号配对引导线
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `parent` | TextPosition | **MUST** | 父括号位置 |
-| `end` | TextPosition | **MUST** | 结束括号位置 |
-| `children` | List\<TextPosition\> | **MUST** | 子节点位置列表 |
-
-**`FlowGuide`** — 控制流引导线
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `start` | TextPosition | **MUST** | 起始位置 |
-| `end` | TextPosition | **MUST** | 结束位置 |
-
-**`SeparatorGuide`** — 分隔线
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `line` | int | **MUST** | 所在行号（0-based） |
-| `style` | `SeparatorStyle` | **MUST** | 分隔线样式 |
-| `count` | int | **MUST** | 重复次数 |
-| `textEndColumn` | int | **MUST** | 文本结束列（用于确定分隔线起始绘制位置） |
-
----
+| 类型 | MUST 字段 | 特殊语义 |
+|---|---|---|
+| `StyleSpan` | `column`, `length`, `styleId` | `styleId` 来自 `registerTextStyle()` |
+| `TextStyle` | `color`, `backgroundColor`, `fontStyle` | 颜色为 ARGB；`fontStyle` 位标志为 `BOLD=1`, `ITALIC=2`, `STRIKETHROUGH=4` |
+| `InlayHint` | `type`, `column`, `text`, `intValue` | `type` 为 `TEXT=0`, `ICON=1`, `COLOR=2`；TEXT 类型时 `text` MUST 非空，其他类型 MAY 为 null |
+| `PhantomText` | `column`, `text` | 幽灵文本内容 |
+| `CodeLensItem` | `column`, `text`, `commandId` | 同一逻辑行上的多个 CodeLens MUST 按 `column` 升序排列；`commandId` 回传到 `CodeLensClickEvent` |
+| `LinkSpan` | `column`, `length`, `target` | `target` 由 `getLinkTargetAt()` 和 `LinkClickEvent` 返回 |
+| `GutterIcon` | `iconId` | 图标资源由平台侧 `EditorIconProvider` 解析和绘制 |
+| `Diagnostic` | `column`, `length`, `severity` | `severity` 为 `ERROR=0`, `WARNING=1`, `INFO=2`, `HINT=3`；这是最小诊断装饰模型，不等同于完整 IDE 诊断对象 |
+| `FoldRegion` | `startLine`, `endLine` | `startLine` 保持可见，`endLine` 为 inclusive |
+| `IndentGuide` | `start`, `end` | 缩进引导线端点 |
+| `BracketGuide` | `parent`, `end`, `children` | 括号配对引导线结构 |
+| `FlowGuide` | `start`, `end` | 控制流引导线端点 |
+| `SeparatorGuide` | `line`, `style`, `count`, `textEndColumn` | `textEndColumn` 用于确定分隔线起始绘制位置 |
 
 ### 17.4 Visual 渲染类型
 
-**`EditorRenderModel`** — `buildRenderModel()` 返回的不可变渲染快照
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `pointerCursorType` | PointerCursorType | 桌面端 **MUST**，纯触摸平台 **MAY** | 当前快照中鼠标位置对应的指针样式提示 |
-
-> 桌面平台 SHOULD 将 `pointerCursorType` 映射到原生鼠标形状，通常文本编辑区域使用 `TEXT`，可点击交互内容使用 `HAND`，滚动条或 gutter 等中性区域在合适时使用 `DEFAULT`。
-
-> 在同时暴露这两个字段的平台上，`EditorActionResult.pointerCursorAfter` 与 `EditorRenderModel.pointerCursorType` SHOULD 保持语义一致。平台 MAY 用前者做即时鼠标更新，用后者作为最新稳定快照状态。
-
-**`VisualRun`** — 一条已解析的渲染 run
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `type` | VisualRunType | **MUST** | run 的语义类型 |
-| `iconId` | int | **MUST** | 对 `INLAY_HINT(ICON)` 表示图标资源 id；对 `CODELENS` 表示唯一 `commandId` |
-| `active` | boolean | **MUST** | 可点击 run 的渲染期交互激活态，例如 `CODELENS` 和 `LINK` |
-
-**`VisualLine`** — 一条已解析的视觉行
-
-| 字段 | 类型 | MUST/MAY | 说明 |
-|---|---|---|---|
-| `kind` | VisualLineKind | **MUST** | 视觉行语义类型 |
-| `ownsGutterSemantics` | boolean | **MUST** | 是否承担行号、gutter icon、fold marker 的语义归属 |
-
-> `CODELENS` 表示虚拟 visual line。同一逻辑行对应的第一条真实内容行 MUST 通过 `ownsGutterSemantics` 标识，而不是根据 `wrapIndex` 推断。
-
-> 平台 MUST 使用 Core 提供的 `active` 状态渲染可点击 run，并对 `CODELENS` 与 `LINK` 一致应用对应的 hover 或 pressed 样式。
+| 类型 | MUST 字段 | 特殊语义 |
+|---|---|---|
+| `EditorRenderModel` | `pointerCursorType` | 桌面端或具备 mouse / hover 输入的平台 MUST，纯触摸平台 MAY；应与 `EditorActionResult.pointerCursorAfter` 保持语义一致 |
+| `VisualRun` | `type`, `iconId`, `active` | `iconId` 对 `INLAY_HINT(ICON)` 表示图标资源 id，对 `CODELENS` 表示唯一 `commandId`；`active` 用于可点击 run 的 hover / pressed 渲染 |
+| `VisualLine` | `kind`, `ownsGutterSemantics` | `CODELENS` 表示虚拟 visual line；同一逻辑行对应的第一条真实内容行 MUST 通过 `ownsGutterSemantics` 标识，而不是根据 `wrapIndex` 推断 |
 
 ## 18. Document 规范（MUST）
 
@@ -1768,9 +1029,7 @@ Core 层定义了大量装饰数据类型，各平台 MUST 实现完全一致的
 ---
 ## 20. 性能指导与参考目标（SHOULD）
 
-基于 `perf/` 模块（`PerfOverlay`、`PerfStepRecorder`、`MeasurePerfStats`）和 C++ Core 的 `PERF_TIMER` 宏，本节定义跨平台性能指导和参考目标，而不是硬性的合规门槛。
-
-### 20.1 运行时性能不变量
+本节定义平台实现必须守住的性能不变量。具体数值是优化目标，不作为合规判定。
 
 | 规则 | 约束级别 | 说明 |
 |---|---|---|
@@ -1778,105 +1037,40 @@ Core 层定义了大量装饰数据类型，各平台 MUST 实现完全一致的
 | Provider 非阻塞 | **MUST** | 慢速 decoration / completion provider MUST NOT 阻塞宿主可见交互路径上的输入、滚动或绘制 |
 | 过期异步结果 | **MUST** | 过期的异步 provider 结果 MUST 在修改可见编辑器状态前被取消或丢弃 |
 | Core / 布局重复计算 | **MUST** | 平台热路径 MUST NOT 冗余重算 Core 已经产出且可直接消费的几何或布局信息 |
-| 性能诊断 | **SHOULD** | 平台 SHOULD 保留足够的计时钩子，以支持 PerfOverlay 或等效 debug-only 性能诊断 |
-
-### 20.2 参考目标
-
-以下数值是面向 release build 和代表性硬件的参考目标，属于优化目标，不作为合规判定。
-
-| 指标 | 约束级别 | 目标值 | 说明 |
-|---|---|---|---|
-| 滚动帧率 | **SHOULD** | >= 60fps（参考硬件） | 10K 行以内文档滚动应尽量接近 60fps |
-| `buildRenderModel()` 耗时 | **SHOULD** | <= 8ms | 超过 8ms 记为 SLOW（与各平台 `WARN_BUILD_MS` 保持一致） |
-| 单帧绘制耗时 | **SHOULD** | <= 8ms | 超过 8ms 记为 SLOW（与各平台 `WARN_PAINT_MS` 保持一致） |
-| 单帧总耗时 | **SHOULD** | <= 16.6ms | 超过 16.6ms 记为 SLOW FRAME |
-| 单个渲染步骤 | **SHOULD** | <= 2ms | 超过 2ms 在 PerfOverlay 中以 `!` 标记（与 `WARN_PAINT_STEP_MS` 一致） |
-| 输入路径延迟 | **SHOULD** | <= 3ms | 从手势 / 键盘事件到 Core 处理完成的时间（与 `WARN_INPUT_MS` 一致） |
-
-### 20.3 大文档性能指导
-
-| 场景 | 约束级别 | 指导 |
-|---|---|---|
-| 100K 行文档加载 | **SHOULD** | 使用 memory mapping、streaming load 或其他等效大文件策略，避免一次性分配全部内存；参考目标是在代表性硬件上 <= 500ms |
-| 100K 行文档滚动 | **SHOULD** | 依赖视口渲染（仅布局和绘制可见行）；参考目标是在代表性硬件上 >= 30fps |
-| 内存占用 | **SHOULD** | 100K 行文档的平台层内存占用参考目标 <= 50MB（不含 C++ Core 文档存储） |
-
-### 20.4 Provider 超时指导
-
-| 规则 | 约束级别 | 说明 |
-|---|---|---|
-| `DecorationProvider` timeout | **SHOULD** | 若 5 秒内没有交付 decoration 结果，Manager SHOULD 取消或将该请求标记为过期 |
-| `CompletionProvider` timeout | **SHOULD** | 若 3 秒内没有交付 completion 结果，Manager SHOULD 取消或将该请求标记为过期 |
-| `NewLineActionProvider` 延迟 | **MUST/SHOULD** | `provideNewLineAction()` MUST 保持输入路径同步，并且在参考硬件上 SHOULD 落在亚毫秒到 1ms 预算内；MUST NOT 引入用户可感知的 Enter 延迟 |
-
-### 20.5 `PerfOverlay` 调试面板（SHOULD）
-
-| 规则 | 约束级别 | 说明 |
-|---|---|---|
-| API | **SHOULD** | 各平台 SHOULD 提供 `setPerfOverlayEnabled(bool)` / `isPerfOverlayEnabled()` API |
-| 默认状态 | **MUST** | PerfOverlay MUST 默认关闭，仅用于调试 |
-| 显示位置 | **SHOULD** | 开启时 SHOULD 在编辑器区域左上角显示半透明性能面板 |
-| 显示内容 | **SHOULD** | SHOULD 至少包含：FPS、每帧总/build/draw 耗时、文本测量统计 |
-| 稳定性 | **MUST** | PerfOverlay 的字段名、阈值和 step 名称仅用于调试显示，MUST NOT 视为稳定 API 契约 |
+| 性能诊断 | **SHOULD** | 平台 SHOULD 保留足够的计时钩子，以支持 debug-only 性能诊断 |
+| 大文档策略 | **SHOULD** | 大文档加载 SHOULD 使用 memory mapping、streaming load 或等效策略；滚动 MUST 依赖视口渲染 |
+| Provider 超时 | **SHOULD** | Decoration 请求超过 5 秒、completion 请求超过 3 秒未交付时，Manager SHOULD 取消或标记过期 |
+| NewLine 延迟 | **MUST / SHOULD** | `provideNewLineAction()` MUST 保持同步且不得引入用户可感知的 Enter 延迟 |
+| PerfOverlay | **MAY / MUST** | 若提供 `PerfOverlay`，MUST 默认关闭且仅用于调试；其字段名、阈值和 step 名称 MUST NOT 视为稳定 API 契约 |
 
 ---
 ## 21. 测试规范（SHOULD）
 
-### 21.1 C++ Core 测试
-
 | 规则 | 约束级别 | 说明 |
 |---|---|---|
-| 测试框架 | **MUST** | C++ Core 使用 Catch2 框架（`tests/` 目录） |
 | 回归测试 | **MUST** | 每个核心模块（Document、Layout、Decoration、EditorCore）MUST 有对应的回归测试 |
-| 性能基线 | **SHOULD** | SHOULD 使用 Catch2 `BENCHMARK` 宏建立性能基线测试（如 `performance_baseline.cpp`） |
-| 覆盖范围 | **SHOULD** | SHOULD 覆盖：文本编辑操作、光标/选区、撤销重做、IME 组合输入、装饰偏移调整、布局映射、滚动指标 |
-
-### 21.2 平台层测试
-
-| 规则 | 约束级别 | 说明 |
-|---|---|---|
-| 单元测试 | **SHOULD** | 各平台 SHOULD 提供 Core 层数据类型的单元测试（如 `EditorSettings` 默认值验证、`EditorTheme` 工厂方法验证） |
-| 集成测试 | **MAY** | MAY 提供控件级集成测试（如创建控件 → 加载文档 → 验证行数） |
-| 测试框架 | **SHOULD** | 使用平台惯用的测试框架（Android: JUnit/Espresso、Apple: XCTest、C#: xUnit/NUnit、OHOS: Hypium） |
-
-### 21.3 跨平台一致性验证
-
-| 规则 | 约束级别 | 说明 |
-|---|---|---|
-| API 契约测试 | **SHOULD** | 各平台 SHOULD 验证 Public API 的行为与标准文档一致（如 `setWrapMode()` 后 `getWrapMode()` 返回相同值） |
-| 渲染模型一致性 | **MAY** | MAY 对比不同平台在相同输入下 `buildRenderModel()` 的输出结构（行数、VisualRun 数量等） |
-| 事件一致性 | **SHOULD** | SHOULD 验证相同操作在各平台触发相同的事件序列 |
+| 平台 API 测试 | **SHOULD** | 各平台 SHOULD 验证宿主 API、settings/theme 默认值、provider 注册与释放、事件订阅与释放 |
+| 结果分发测试 | **SHOULD** | 各平台 SHOULD 覆盖 `EditorActionResult` 分发、IME 同步、文本 / 光标 / 选区 / 滚动事件、动画 tick、指针样式更新 |
+| 异步 stale 测试 | **SHOULD** | decoration / completion 的过期异步结果 SHOULD 被取消或丢弃 |
+| 生命周期测试 | **SHOULD** | teardown 后不应再触达无效 native 状态，也不应再发出宿主可见回调 |
 
 ---
 
 ## 22. 无障碍规范（MAY）
 
-无障碍（Accessibility）支持为 MAY 级别，但实现时 SHOULD 遵循以下指导。
-
-### 22.1 基础无障碍属性
+无障碍（Accessibility）支持为 MAY 级别；实现时 SHOULD 遵循以下最小指导。
 
 | 规则 | 约束级别 | 说明 |
 |---|---|---|
-| 角色标注 | **SHOULD** | 编辑器控件 SHOULD 标注为"文本编辑器"角色（Android: `AccessibilityNodeInfo.setClassName("android.widget.EditText")`、iOS: `accessibilityTraits = .updatesFrequently`、macOS: `NSAccessibilityRole.textArea`） |
+| 角色标注 | **SHOULD** | 编辑器控件 SHOULD 标注为文本编辑器或平台等价角色 |
 | 文本内容 | **SHOULD** | SHOULD 向无障碍服务暴露当前可见文本内容 |
 | 光标位置 | **SHOULD** | SHOULD 向无障碍服务暴露当前光标位置和选区范围 |
 | 行号信息 | **MAY** | MAY 向无障碍服务暴露当前行号和总行数 |
-
-### 22.2 键盘导航
-
-| 规则 | 约束级别 | 说明 |
-|---|---|---|
 | 焦点管理 | **SHOULD** | 编辑器控件 SHOULD 能通过 Tab 键获取和释放焦点 |
 | 键盘快捷键 | **SHOULD** | 桌面平台 SHOULD 支持标准键盘快捷键（Ctrl/Cmd+C/V/X/Z/A 等） |
-| 屏幕阅读器兼容 | **MAY** | MAY 支持屏幕阅读器的文本朗读（VoiceOver、TalkBack、Narrator） |
-
-### 22.3 视觉辅助
-
-| 规则 | 约束级别 | 说明 |
-|---|---|---|
 | 高对比度 | **MAY** | MAY 提供高对比度主题或响应系统高对比度设置 |
 | 字体缩放 | **SHOULD** | SHOULD 响应系统字体缩放设置（通过 `setScale()` 或 `setEditorTextSize()`） |
-| 光标可见性 | **SHOULD** | 光标 SHOULD 有足够的视觉对比度，且闪烁频率 SHOULD 在 0.5–2Hz 之间 |
+| 光标可见性 | **SHOULD** | 光标 SHOULD 有足够的视觉对比度 |
 
 ---
 
@@ -1888,11 +1082,11 @@ Core 层定义了大量装饰数据类型，各平台 MUST 实现完全一致的
 
 平台层发布包的版本号 MUST 与 C++ Core 版本号保持对齐关系。版本号格式为 `a.b.c`（主版本.次版本.修订号）。
 
-| 版本段 | 约束级别 | 规则 | 示例（Core 版本 `1.0.0`） |
-|---|---|---|---|
-| `a`（主版本） | **MUST** | 平台包主版本号 MUST 与 Core 主版本号一致，不得超过 | 平台包 `1.x.x` ✅；`2.0.0` ❌ |
-| `b`（次版本） | **SHOULD** | 平台包次版本号 SHOULD 不超过 Core 次版本号 `+9`；超出需书面说明理由 | Core `1.0.0` → 平台包 `1.9.x` 为上限建议 |
-| `c`（修订号） | **MAY** | 平台包修订号可自由递增，用于平台特定的 bugfix 或补丁 | `1.0.15` ✅ |
+| 版本段 | 约束级别 | 规则 |
+|---|---|---|
+| `a`（主版本） | **MUST** | 平台包主版本号 MUST 与 Core 主版本号一致，不得超过 |
+| `b`（次版本） | **SHOULD** | 平台包次版本号 SHOULD 不超过 Core 次版本号 `+9`；超出需书面说明理由 |
+| `c`（修订号） | **MAY** | 平台包修订号可自由递增，用于平台特定 bugfix 或补丁 |
 
 - 当 Core 发布新的主版本（如 `2.0.0`）时，所有平台包 MUST 在同一发布周期内升级主版本号。
 - 平台包 MAY 在 Core 版本不变的情况下独立发布修订版本（`c` 段递增），用于修复平台特定问题。
