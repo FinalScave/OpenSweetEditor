@@ -13,6 +13,27 @@
 
 #define NS_SWEETEDITOR sweeteditor
 
+#if defined(__clang__)
+#define SE_PROTOCOL_ANNOTATE(value) [[clang::annotate(value)]]
+#else
+#define SE_PROTOCOL_ANNOTATE(value)
+#endif
+
+#define SE_PROTOCOL_VALUE(domain) SE_PROTOCOL_ANNOTATE("se.protocol.value:" #domain)
+#define SE_PROTOCOL_OUT(domain) SE_PROTOCOL_ANNOTATE("se.protocol.out:" #domain)
+#define SE_PROTOCOL_IN(domain) SE_PROTOCOL_ANNOTATE("se.protocol.in:" #domain)
+#define SE_PROTOCOL_BOTH(domain) SE_PROTOCOL_ANNOTATE("se.protocol.both:" #domain)
+#define SE_PROTOCOL_ENUM(domain, fallback) SE_PROTOCOL_ANNOTATE("se.protocol.enum:" #domain ":" #fallback)
+#define SE_PROTOCOL_FLAGS(domain) SE_PROTOCOL_ANNOTATE("se.protocol.flags:" #domain)
+#define SE_PROTOCOL_SKIP SE_PROTOCOL_ANNOTATE("se.protocol.skip")
+#define SE_PROTOCOL_WIRE(kind) SE_PROTOCOL_ANNOTATE("se.protocol.wire:" #kind)
+#define SE_PROTOCOL_KEY_WIRE(kind) SE_PROTOCOL_ANNOTATE("se.protocol.key_wire:" #kind)
+#define SE_PROTOCOL_VALUE_WIRE(kind) SE_PROTOCOL_ANNOTATE("se.protocol.value_wire:" #kind)
+#define SE_PROTOCOL_MAP_ENTRY(key, value) SE_PROTOCOL_ANNOTATE("se.protocol.map_entry:" #key ":" #value)
+#define SE_PROTOCOL_NAME(name) SE_PROTOCOL_ANNOTATE("se.protocol.name:" #name)
+#define SE_PROTOCOL_AS(type_name) SE_PROTOCOL_ANNOTATE("se.protocol.as:" #type_name)
+#define SE_PROTOCOL_TAIL SE_PROTOCOL_ANNOTATE("se.protocol.tail")
+
 namespace NS_SWEETEDITOR {
   template<typename T>
   using SharedPtr = std::shared_ptr<T>;

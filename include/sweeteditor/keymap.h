@@ -9,7 +9,7 @@
 namespace NS_SWEETEDITOR {
 
   /// Keyboard key code definitions
-  enum struct KeyCode : uint16_t {
+  enum struct SE_PROTOCOL_FLAGS(keymap) KeyCode : uint16_t {
     NONE = 0,
     BACKSPACE = 8,
     TAB = 9,
@@ -36,7 +36,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Modifier key flags
-  enum struct KeyModifier : uint8_t {
+  enum struct SE_PROTOCOL_FLAGS(keymap) KeyModifier : uint8_t {
     NONE  = 0,
     SHIFT = 1 << 0,
     CTRL  = 1 << 1,

@@ -12,7 +12,7 @@
 
 namespace NS_SWEETEDITOR {
   /// Highlight layer enum (priority from low to high, higher layers cover lower layers)
-  enum struct SpanLayer : uint8_t {
+  enum struct SE_PROTOCOL_ENUM(adornment, SYNTAX) SpanLayer : uint8_t {
     SYNTAX   = 0,  // Syntax highlight (base layer, full coverage)
     SEMANTIC = 1,  // Semantic highlight (LSP semantic tokens, covers syntax layer)
   };
@@ -38,7 +38,7 @@ namespace NS_SWEETEDITOR {
   }
 
   /// Text style definition (color + background color + font style)
-  struct TextStyle {
+  struct SE_PROTOCOL_VALUE(adornment) TextStyle {
     /// Foreground color value
     int32_t color {0};
     /// Background color value (ARGB), 0 means transparent/no background
@@ -64,7 +64,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Highlight span definition
-  struct StyleSpan {
+  struct SE_PROTOCOL_VALUE(adornment) StyleSpan {
     /// Start column in the line
     uint32_t column {0};
     /// Character length of the span
@@ -74,7 +74,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Inlay content type enum
-  enum struct InlayType {
+  enum struct SE_PROTOCOL_ENUM(adornment, TEXT) InlayType {
     /// Inlay text
     TEXT = 0,
     /// Inlay icon
@@ -84,21 +84,20 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Inlay content
-  struct InlayHint {
+  struct SE_PROTOCOL_IN(adornment) InlayHint {
     /// Inlay type
+    SE_PROTOCOL_WIRE(enum_i32)
     InlayType type {InlayType::TEXT};
     /// Start column in the line
     uint32_t column {0};
+    /// Numeric payload for icon ID or color value
+    int32_t int_value {0};
     /// Inlay text content
     U8String text;
-    /// Inlay icon ID
-    int32_t icon_id {0};
-    /// Inlay color value (ARGB, only used for COLOR type)
-    int32_t color {0};
   };
 
   /// Ghost text
-  struct PhantomText {
+  struct SE_PROTOCOL_IN(adornment) PhantomText {
     /// Start column in the line
     uint32_t column {0};
     /// Text content
@@ -106,23 +105,23 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Gutter icon
-  struct GutterIcon {
+  struct SE_PROTOCOL_IN(adornment) GutterIcon {
     /// Icon resource ID (defined and drawn on platform side)
     int32_t icon_id {0};
   };
 
   /// CodeLens item (clickable label above a code line)
-  struct CodeLensItem {
+  struct SE_PROTOCOL_IN(adornment) CodeLensItem {
     /// Anchor column within the owning code line
     int32_t column {0};
-    /// Display text (UTF8), e.g. "3 references"
-    U8String text;
     /// Unique command ID (platform-defined, transparently passed back on click)
     int32_t command_id {0};
+    /// Display text (UTF8), e.g. "3 references"
+    U8String text;
   };
 
   /// Clickable document link range embedded in source text
-  struct LinkSpan {
+  struct SE_PROTOCOL_IN(adornment) LinkSpan {
     /// Start column in the line
     uint32_t column {0};
     /// Character length of the link range
@@ -134,7 +133,7 @@ namespace NS_SWEETEDITOR {
 #pragma region Diagnostic (Diagnostic Decorations)
 
   /// Diagnostic severity level
-  enum struct DiagnosticSeverity : int32_t {
+  enum struct SE_PROTOCOL_ENUM(adornment, DIAG_ERROR) DiagnosticSeverity : int32_t {
     DIAG_ERROR   = 0,  // Red wavy underline
     DIAG_WARNING = 1,  // Yellow wavy underline
     DIAG_INFO    = 2,  // Blue thin underline
@@ -142,12 +141,13 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Diagnostic span (wavy/underline decoration)
-  struct DiagnosticSpan {
+  struct SE_PROTOCOL_IN(adornment) DiagnosticSpan {
     /// Start column in the line
     uint32_t column {0};
     /// Character length of the span
     uint32_t length {0};
     /// Severity level
+    SE_PROTOCOL_WIRE(enum_i32)
     DiagnosticSeverity severity {DiagnosticSeverity::DIAG_ERROR};
   };
 
@@ -156,12 +156,15 @@ namespace NS_SWEETEDITOR {
 #pragma region Fold (Code Folding)
 
   /// Foldable region
-  struct FoldRegion {
+  struct SE_PROTOCOL_IN(adornment) FoldRegion {
     /// First line of fold region (stays visible, shows fold placeholder)
+    SE_PROTOCOL_WIRE(size_as_u32)
     size_t start_line {0};
     /// Last line of fold region (inclusive), start_line+1 to end_line is hidden when folded
+    SE_PROTOCOL_WIRE(size_as_u32)
     size_t end_line {0};
     /// Whether it is in folded (collapsed) state
+    SE_PROTOCOL_WIRE(bool_u8)
     bool collapsed {false};
   };
 
@@ -170,33 +173,34 @@ namespace NS_SWEETEDITOR {
 #pragma region Guide (Code Structure Lines)
 
   /// Separator line style
-  enum struct SeparatorStyle : int32_t {
+  enum struct SE_PROTOCOL_ENUM(adornment, SINGLE) SeparatorStyle : int32_t {
     SINGLE = 0,  // Single bar (---)
     DOUBLE = 1,  // Double bar (===)
   };
 
   /// Indent vertical line (from { to })
-  struct IndentGuide {
+  struct SE_PROTOCOL_IN(adornment) IndentGuide {
     TextPosition start;
     TextPosition end;
   };
 
   /// Bracket-pair branch line (switch-case / if-else tree links)
-  struct BracketGuide {
+  struct SE_PROTOCOL_IN(adornment) BracketGuide {
     TextPosition parent;
     TextPosition end;
     Vector<TextPosition> children;  // Each child {line, column}, draw horizontal line from parent.column to child.column
   };
 
   /// Control-flow back arrow (draw from loop tail back to loop head)
-  struct FlowGuide {
+  struct SE_PROTOCOL_IN(adornment) FlowGuide {
     TextPosition start;  // Loop head (arrow points here)
     TextPosition end;    // Loop tail (arrow starts here)
   };
 
   /// Horizontal separator line
-  struct SeparatorGuide {
+  struct SE_PROTOCOL_IN(adornment) SeparatorGuide {
     int32_t line;
+    SE_PROTOCOL_WIRE(enum_i32)
     SeparatorStyle style;
     int32_t count;                // Symbol count (number of = or -)
     uint32_t text_end_column;     // End column of comment text (separator starts drawing here)

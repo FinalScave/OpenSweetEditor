@@ -5,12 +5,13 @@
 #define SWEETEDITOR_LINKED_EDITING_H
 
 #include <cstdint>
+#include <sweeteditor/macro.h>
 #include <sweeteditor/foundation.h>
 
 namespace NS_SWEETEDITOR {
 
   /// Tab stop group (all positions with the same index are edited together)
-  struct TabStopGroup {
+  struct SE_PROTOCOL_IN(linked_editing) TabStopGroup {
     /// Group index that decides Tab navigation order (0 = final cursor position, 1+ = edit order)
     uint32_t index {0};
     /// All text ranges in this group (updated together during linked editing)
@@ -20,7 +21,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Linked editing model (pure data, built by SnippetParser or external code)
-  struct LinkedEditingModel {
+  struct SE_PROTOCOL_IN(linked_editing) LinkedEditingModel {
     /// All tab stop groups ordered by navigation sequence (index=1,2,3,..., index=0 at the end)
     Vector<TabStopGroup> groups;
   };

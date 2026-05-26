@@ -1,0 +1,1 @@
+"""SweetEditor protocol generator internals."""

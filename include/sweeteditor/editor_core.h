@@ -18,7 +18,7 @@
 
 namespace NS_SWEETEDITOR {
 
-  enum struct EditorActionReason : uint8_t {
+  enum struct SE_PROTOCOL_ENUM(core, NONE) EditorActionReason : uint8_t {
     NONE = 0,
     SETUP = 1,
     TEXT_EDIT = 2,
@@ -37,9 +37,10 @@ namespace NS_SWEETEDITOR {
     TEXT_REDO = 15,
   };
 
-  struct EditorActionResult {
+  struct SE_PROTOCOL_OUT(core) EditorActionResult {
     bool handled {false};
     bool needs_redraw {false};
+    SE_PROTOCOL_WIRE(enum_i32)
     EditorActionReason reason {EditorActionReason::NONE};
 
     bool content_changed {false};
@@ -73,15 +74,21 @@ namespace NS_SWEETEDITOR {
     float scale_before {1};
     float scale_after {1};
 
+    SE_PROTOCOL_WIRE(enum_i32)
     PointerCursorType pointer_cursor_before {PointerCursorType::TEXT};
+    SE_PROTOCOL_WIRE(enum_i32)
     PointerCursorType pointer_cursor_after {PointerCursorType::TEXT};
 
     ImeSyncSnapshot ime_sync;
+    SE_PROTOCOL_WIRE(enum_i32)
     GestureType gesture_type {GestureType::UNDEFINED};
+    SE_PROTOCOL_WIRE(enum_i32)
     EventType gesture_event_type {EventType::UNDEFINED};
     PointF tap_point {};
     HitTarget hit_target;
+    SE_PROTOCOL_WIRE(i32)
     KeyModifier modifiers {KeyModifier::NONE};
+    SE_PROTOCOL_WIRE(i32)
     EditorCommand command {EditorCommand::NONE};
   };
 

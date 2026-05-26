@@ -74,7 +74,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Gesture event type definitions
-  enum EventType : uint8_t {
+  enum SE_PROTOCOL_ENUM(interaction, UNDEFINED) EventType : uint8_t {
     /// Undefined gesture
     UNDEFINED = 0,
     // ---- Touch events (Android/iOS/HarmonyOS) ----
@@ -128,7 +128,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Gesture handling result types
-  enum struct GestureType : uint8_t {
+  enum struct SE_PROTOCOL_ENUM(interaction, UNDEFINED) GestureType : uint8_t {
     /// Undefined result
     UNDEFINED = 0,
     /// Tap
@@ -150,7 +150,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Tap hit target types
-  enum struct HitTargetType : uint8_t {
+  enum struct SE_PROTOCOL_ENUM(interaction, NONE) HitTargetType : uint8_t {
     /// No special target hit (regular text area)
     NONE = 0,
     /// Hit InlayHint (text)
@@ -172,11 +172,14 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Tap hit target info (filled by EditorCore for TAP)
-  struct HitTarget {
+  struct SE_PROTOCOL_OUT(interaction) HitTarget {
+    SE_PROTOCOL_WIRE(enum_i32)
     HitTargetType type {HitTargetType::NONE};
     /// Hit logical line index (0-based)
+    SE_PROTOCOL_WIRE(size_as_i32)
     size_t line {0};
     /// Hit column index (0-based, meaningful for INLAY_HINT, CODELENS, and LINK)
+    SE_PROTOCOL_WIRE(size_as_i32)
     size_t column {0};
     /// Icon ID (valid for INLAY_HINT_ICON / GUTTER_ICON, or unique command_id for CODELENS)
     int32_t icon_id {0};

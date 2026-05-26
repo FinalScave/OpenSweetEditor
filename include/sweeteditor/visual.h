@@ -13,7 +13,7 @@
 
 namespace NS_SWEETEDITOR {
   /// Enum for visual render run types
-  enum struct VisualRunType {
+  enum struct SE_PROTOCOL_ENUM(visual, TEXT) VisualRunType {
     /// Normal text
     TEXT,
     /// Whitespace
@@ -35,18 +35,22 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Data for each rendered text run
-  struct VisualRun {
+  struct SE_PROTOCOL_OUT(visual) VisualRun {
     /// Run type
+    SE_PROTOCOL_WIRE(enum_i32)
     VisualRunType type {VisualRunType::TEXT};
     /// Start column in line
+    SE_PROTOCOL_SKIP
     size_t column {0};
     /// Character length in line
+    SE_PROTOCOL_SKIP
     size_t length {0};
     /// Start x for drawing
     float x {0};
     /// Start y for drawing
     float y {0};
     /// Run text content (only TEXT, INLAY_HINT(TEXT), and PHANTOM_TEXT use this)
+    SE_PROTOCOL_WIRE(u16_as_utf8)
     U16String text;
     /// Text style (color + background color + font style)
     TextStyle style;
@@ -61,13 +65,14 @@ namespace NS_SWEETEDITOR {
     /// Horizontal margin with previous/next run (InlayHint only; both left and right; width already includes 2*margin)
     float margin {0};
     /// Whether this run is in active state (hovered/pressed), used by clickable runs (CODELENS, future hyperlinks)
+    SE_PROTOCOL_WIRE(bool_i32)
     bool active {false};
 
     U8String dump() const;
   };
 
   /// Fold arrow display mode
-  enum struct FoldArrowMode {
+  enum struct SE_PROTOCOL_ENUM(foundation, AUTO) FoldArrowMode {
     /// Auto: show when fold regions exist, hide otherwise
     AUTO = 0,
     /// Always show (reserve space to avoid width jumping)
@@ -77,7 +82,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Line fold state
-  enum struct FoldState {
+  enum struct SE_PROTOCOL_ENUM(visual, NONE) FoldState {
     /// Not the first line of a fold region
     NONE = 0,
     /// Expandable (expanded state, click to fold)
@@ -87,7 +92,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Visual line semantic kind
-  enum struct VisualLineKind : uint8_t {
+  enum struct SE_PROTOCOL_ENUM(visual, CONTENT) VisualLineKind : uint8_t {
     /// Real content line (primary line or wrapped continuation)
     CONTENT = 0,
     /// Phantom text continuation line
@@ -97,34 +102,38 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Pointer cursor hint for desktop platforms
-  enum struct PointerCursorType : uint8_t {
+  enum struct SE_PROTOCOL_ENUM(visual, DEFAULT) PointerCursorType : uint8_t {
     DEFAULT = 0,
     TEXT = 1,
     HAND = 2,
   };
 
   /// Visual rendered line data
-  struct VisualLine {
+  struct SE_PROTOCOL_OUT(visual) VisualLine {
     /// Logical line index
+    SE_PROTOCOL_WIRE(size_as_i32)
     size_t logical_line {0};
     /// Wrapped line index in auto-wrap mode (0 = first line, 1,2,... = continuation)
+    SE_PROTOCOL_WIRE(size_as_i32)
     size_t wrap_index {0};
     /// Line number position
     PointF line_number_position;
     /// Text runs in this visual line
     Vector<VisualRun> runs;
     /// Semantic kind of this visual line
+    SE_PROTOCOL_WIRE(enum_i32)
     VisualLineKind kind {VisualLineKind::CONTENT};
     /// Whether this visual line owns gutter semantics (line number, gutter icon, fold marker)
     bool owns_gutter_semantics {false};
     /// Fold state (NONE=not fold line, EXPANDED=expandable, COLLAPSED=folded)
+    SE_PROTOCOL_WIRE(enum_i32)
     FoldState fold_state {FoldState::NONE};
 
     U8String dump() const;
   };
 
   /// Cursor data
-  struct Cursor {
+  struct SE_PROTOCOL_OUT(visual) Cursor {
     /// Cursor logical position in text
     TextPosition text_position;
     /// Cursor screen position
@@ -140,7 +149,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Selection handle (drag handle), used by platform to draw the droplet-style control
-  struct SelectionHandle {
+  struct SE_PROTOCOL_OUT(visual) SelectionHandle {
     /// Handle position (bottom-center of cursor vertical line; platform draws handle using this anchor)
     PointF position;
     /// Handle height (same as line height, used for drawing vertical line part)
@@ -150,13 +159,13 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Guide direction
-  enum struct GuideDirection {
+  enum struct SE_PROTOCOL_ENUM(visual, VERTICAL) GuideDirection {
     HORIZONTAL,
     VERTICAL,
   };
 
   /// Guide semantic type
-  enum struct GuideType {
+  enum struct SE_PROTOCOL_ENUM(visual, INDENT) GuideType {
     INDENT,      // Indent vertical line
     BRACKET,     // Bracket pair branch line (joined by "|-" shape)
     FLOW,        // Control-flow return segment
@@ -164,61 +173,72 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Guide style
-  enum struct GuideStyle {
+  enum struct SE_PROTOCOL_ENUM(visual, SOLID) GuideStyle {
     SOLID,       // Solid line
     DASHED,      // Dashed line
     DOUBLE,      // Double line (SEPARATOR only)
   };
 
   /// Render primitive for code structure guides
-  struct GuideSegment {
+  struct SE_PROTOCOL_OUT(visual) GuideSegment {
+    SE_PROTOCOL_WIRE(enum_i32)
     GuideDirection direction {GuideDirection::VERTICAL};
+    SE_PROTOCOL_WIRE(enum_i32)
     GuideType type {GuideType::INDENT};
+    SE_PROTOCOL_WIRE(enum_i32)
     GuideStyle style {GuideStyle::SOLID};
     PointF start;
     PointF end;
+    SE_PROTOCOL_WIRE(bool_i32)
     bool arrow_end {false};
   };
 
   /// Render decoration for composition input area (underline)
-  struct CompositionDecoration {
+  struct SE_PROTOCOL_OUT(visual) CompositionDecoration {
+    SE_PROTOCOL_WIRE(bool_i32)
     bool active {false};
     Rect rect;
   };
 
   /// Render primitive for diagnostic decoration (wavy underline / underline)
-  struct DiagnosticDecoration {
+  struct SE_PROTOCOL_OUT(visual) DiagnosticDecoration {
     Rect rect;
     int32_t severity {0};
   };
 
   /// Gutter icon render item (fully resolved geometry for one icon)
-  struct GutterIconRenderItem {
+  struct SE_PROTOCOL_OUT(visual) GutterIconRenderItem {
+    SE_PROTOCOL_WIRE(size_as_i32)
     size_t logical_line {0};
     int32_t icon_id {0};
     Rect rect;
   };
 
   /// Fold marker render item (one gutter fold toggle marker)
-  struct FoldMarkerRenderItem {
+  struct SE_PROTOCOL_OUT(visual) FoldMarkerRenderItem {
+    SE_PROTOCOL_WIRE(size_as_i32)
     size_t logical_line {0};
+    SE_PROTOCOL_WIRE(enum_i32)
     FoldState fold_state {FoldState::NONE};
     Rect rect;
   };
 
   /// Linked-editing highlight rectangle (visual marker for Tab Stop placeholder)
-  struct LinkedEditingRect {
+  struct SE_PROTOCOL_OUT(visual) LinkedEditingRect {
     Rect rect;
+    SE_PROTOCOL_WIRE(bool_i32)
     bool is_active {false};
   };
 
   /// Scrollbar render model (one axis)
-  struct ScrollbarModel {
+  struct SE_PROTOCOL_OUT(visual) ScrollbarModel {
     /// Whether scrollbar is visible for this axis
+    SE_PROTOCOL_WIRE(bool_i32)
     bool visible {false};
     /// Scrollbar alpha in [0, 1]
     float alpha {0};
     /// Whether the thumb is currently being dragged
+    SE_PROTOCOL_WIRE(bool_i32)
     bool thumb_active {false};
     /// Scrollbar track rectangle
     Rect track;
@@ -227,7 +247,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Editor render model
-  struct EditorRenderModel {
+  struct SE_PROTOCOL_OUT(visual) EditorRenderModel {
     /// Line-number split x position
     float split_x {0};
     /// Whether split line should be rendered
@@ -243,6 +263,7 @@ namespace NS_SWEETEDITOR {
     /// Current line background coordinate
     PointF current_line;
     /// Current line render mode
+    SE_PROTOCOL_WIRE(enum_i32)
     CurrentLineRenderMode current_line_render_mode {CurrentLineRenderMode::BACKGROUND};
     /// Text lines to render visually (visible region only)
     Vector<VisualLine> lines;
@@ -279,6 +300,7 @@ namespace NS_SWEETEDITOR {
     /// Whether gutter area is visible
     bool gutter_visible {true};
     /// Pointer cursor hint for the current mouse location
+    SE_PROTOCOL_WIRE(enum_i32)
     PointerCursorType pointer_cursor_type {PointerCursorType::TEXT};
 
     U8String dump() const;
@@ -286,7 +308,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Editor layout metrics
-  struct LayoutMetrics {
+  struct SE_PROTOCOL_OUT(visual) LayoutMetrics {
     /// Font height
     float font_height {20};
     /// Absolute font ascent (distance from baseline to line top, positive)
@@ -308,6 +330,7 @@ namespace NS_SWEETEDITOR {
     /// Horizontal margin between InlayHint and neighboring runs (left and right)
     float inlay_hint_margin {0};
     /// Fold arrow display mode (AUTO=show when fold regions exist, ALWAYS=always reserve, HIDDEN=always hide)
+    SE_PROTOCOL_WIRE(enum_i32)
     FoldArrowMode fold_arrow_mode {FoldArrowMode::AUTO};
     /// Whether fold regions exist (auto-updated by EditorCore in setFoldRegions, used in AUTO mode)
     bool has_fold_regions {false};

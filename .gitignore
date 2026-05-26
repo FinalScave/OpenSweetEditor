@@ -14,6 +14,7 @@ obj
 /docs/doxygen
 tests/output
 tests/build
+tools/se_protocol_gen/generated/
 CMakeSettings.json
 *.csproj.user
 **/.tmp/

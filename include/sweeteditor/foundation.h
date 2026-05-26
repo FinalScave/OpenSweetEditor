@@ -9,10 +9,12 @@
 
 namespace NS_SWEETEDITOR {
   /// Text position
-  struct TextPosition {
+  struct SE_PROTOCOL_VALUE(foundation) TextPosition {
     /// Line index, starting from 0
+    SE_PROTOCOL_WIRE(size_as_i32)
     size_t line {0};
     /// Column index, starting from 0
+    SE_PROTOCOL_WIRE(size_as_i32)
     size_t column {0};
 
     bool operator<(const TextPosition& other) const;
@@ -22,7 +24,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Text range
-  struct TextRange {
+  struct SE_PROTOCOL_VALUE(foundation) TextRange {
     TextPosition start;
     TextPosition end;
 
@@ -43,7 +45,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// 2D coordinate wrapper
-  struct PointF {
+  struct SE_PROTOCOL_VALUE(foundation) PointF {
     float x {0};
     float y {0};
 
@@ -52,14 +54,14 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Axis-aligned rectangle (origin + size)
-  struct Rect {
+  struct SE_PROTOCOL_VALUE(foundation) Rect {
     PointF origin;
     float width {0};
     float height {0};
   };
 
   /// Offset rectangle relative to a reference point
-  struct OffsetRect {
+  struct SE_PROTOCOL_VALUE(foundation) OffsetRect {
     float left {0};
     float top {0};
     float right {0};

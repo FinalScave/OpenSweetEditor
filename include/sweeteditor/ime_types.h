@@ -6,29 +6,29 @@
 
 namespace NS_SWEETEDITOR {
 
-  enum struct ImeTextUnit {
+  enum struct SE_PROTOCOL_ENUM(ime, GRAPHEME) ImeTextUnit {
     GRAPHEME = 0,
     CODE_POINT = 1,
   };
 
-  enum struct ImeTextModelMode {
+  enum struct SE_PROTOCOL_ENUM(ime, DOCUMENT_WINDOW) ImeTextModelMode {
     DOCUMENT_WINDOW = 0,
     TRANSIENT_INPUT = 1,
   };
 
-  enum struct ImeInputContextKind {
+  enum struct SE_PROTOCOL_ENUM(ime, NONE) ImeInputContextKind {
     NONE = 0,
     SELECTION_ONLY = 1,
     DOCUMENT_WINDOW = 2,
     TRANSIENT_INPUT = 3,
   };
 
-  struct ImeTextRange {
+  struct SE_PROTOCOL_VALUE(ime) ImeTextRange {
     int32_t start {0};
     int32_t end {0};
   };
 
-  struct ImeInputContext {
+  struct SE_PROTOCOL_OUT(ime) ImeInputContext {
     uint64_t id {0};
     int32_t revision {0};
     int32_t document_start_offset {0};
@@ -36,10 +36,11 @@ namespace NS_SWEETEDITOR {
     ImeTextRange selection;
     bool has_composition {false};
     ImeTextRange composition {-1, -1};
+    SE_PROTOCOL_WIRE(enum_i32)
     ImeInputContextKind kind {ImeInputContextKind::NONE};
   };
 
-  enum struct ImeScriptClass {
+  enum struct SE_PROTOCOL_ENUM(ime, UNKNOWN) ImeScriptClass {
     UNKNOWN,
     LATIN,
     CJK,
@@ -47,19 +48,19 @@ namespace NS_SWEETEDITOR {
     HANGUL,
   };
 
-  enum struct ImePreeditStorage {
+  enum struct SE_PROTOCOL_ENUM(ime, NONE) ImePreeditStorage {
     NONE,
     VISIBLE_DOCUMENT_COMPOSITION,
     SHADOW_ONLY,
   };
 
-  enum struct ImeContextPolicy {
+  enum struct SE_PROTOCOL_ENUM(ime, NONE) ImeContextPolicy {
     NONE,
     LIMITED_FOR_CANDIDATES,
   };
 
   /// Snapshot that platform layers use to synchronize IME selection and marked ranges.
-  struct ImeSyncSnapshot {
+  struct SE_PROTOCOL_OUT(ime) ImeSyncSnapshot {
     TextPosition cursor;
     TextRange selection;
     bool has_selection {false};
@@ -68,7 +69,9 @@ namespace NS_SWEETEDITOR {
     TextRange visible_composition_range;
     bool has_platform_marked_range {false};
     TextRange platform_marked_range;
+    SE_PROTOCOL_WIRE(enum_i32)
     ImePreeditStorage preedit_storage {ImePreeditStorage::NONE};
+    SE_PROTOCOL_WIRE(enum_i32)
     ImeContextPolicy context_policy {ImeContextPolicy::NONE};
     bool clear_platform_preedit {false};
   };

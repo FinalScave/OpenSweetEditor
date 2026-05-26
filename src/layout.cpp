@@ -1301,12 +1301,12 @@ namespace NS_SWEETEDITOR {
         run.text = std::move(hint_u16);
         run.width = m_measurer_->measureInlayHintWidth(run.text) + run.padding * 2 + run.margin * 2;
       } else if (hint.type == InlayType::COLOR) {
-        run.color_value = hint.color;
+        run.color_value = hint.int_value;
         // Color block is a square: side = font_height, no padding needed
         run.width = m_layout_metrics_.font_height + run.margin * 2;
       } else {
-        run.icon_id = hint.icon_id;
-        run.width = m_measurer_->measureIconWidth(hint.icon_id) + run.padding * 2 + run.margin * 2;
+        run.icon_id = hint.int_value;
+        run.width = m_measurer_->measureIconWidth(hint.int_value) + run.padding * 2 + run.margin * 2;
       }
       return run;
     };

@@ -43,7 +43,7 @@ namespace NS_SWEETEDITOR {
     bool isTextInput() const;
   };
 
-  enum struct ScrollBehavior {
+  enum struct SE_PROTOCOL_ENUM(foundation, GOTO_TOP) ScrollBehavior {
     /// Make the target line visible at the top.
     GOTO_TOP,
     /// Scroll the target line to the center.
@@ -67,7 +67,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Auto-indent modes.
-  enum struct AutoIndentMode {
+  enum struct SE_PROTOCOL_ENUM(foundation, NONE) AutoIndentMode {
     /// No auto-indent; new line starts at column 0.
     NONE = 0,
     /// Keep previous line indent.
@@ -75,7 +75,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Auto-wrap modes.
-  enum struct WrapMode {
+  enum struct SE_PROTOCOL_ENUM(foundation, NONE) WrapMode {
     /// No wrapping.
     NONE,
     /// Character-level wrapping.
@@ -85,7 +85,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Current line render modes.
-  enum struct CurrentLineRenderMode {
+  enum struct SE_PROTOCOL_ENUM(foundation, BACKGROUND) CurrentLineRenderMode {
     /// Fill full line background.
     BACKGROUND = 0,
     /// Draw line border only.
@@ -101,7 +101,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Construction-time immutable options for EditorCore
-  struct EditorOptions {
+  struct SE_PROTOCOL_IN(core) EditorOptions {
     /// Threshold to treat a gesture as move; below this it is a tap
     float touch_slop {10};
     /// Double tap time threshold
@@ -115,10 +115,12 @@ namespace NS_SWEETEDITOR {
     /// Maximum fling velocity cap in pixels/second
     float fling_max_velocity {8000.0f};
     /// Max undo stack size (0 = unlimited)
+    SE_PROTOCOL_WIRE(size_as_u64)
     size_t max_undo_stack_size {512};
     /// Multi-chord key binding timeout in milliseconds
     int64_t key_chord_timeout_ms {2000};
     /// Whether selectAll() should reveal the selection end after updating the selection
+    SE_PROTOCOL_WIRE(bool_u8)
     bool reveal_selection_end_on_select_all {false};
 
     TouchConfig simpleAsTouchConfig() const;
@@ -127,26 +129,26 @@ namespace NS_SWEETEDITOR {
 
   /// Selection handle hit-test configuration.
   /// All geometry is owned by the platform drawing layer; C++ only needs hit areas.
-  struct HandleConfig {
+  struct SE_PROTOCOL_IN(core) HandleConfig {
     /// Hit area for the start handle, as an offset rect relative to the cursor bottom anchor (handle tip)
     OffsetRect start_hit_offset {-32.1f, -8.0f, 8.0f, 32.1f};
     /// Hit area for the end handle, as an offset rect relative to the cursor bottom anchor (handle tip)
     OffsetRect end_hit_offset {-8.0f, -8.0f, 32.1f, 32.1f};
   };
 
-  enum class ScrollbarMode : uint8_t {
+  enum class SE_PROTOCOL_ENUM(foundation, ALWAYS) ScrollbarMode : uint8_t {
     ALWAYS = 0,
     TRANSIENT = 1,
     NEVER = 2,
   };
 
-  enum class ScrollbarTrackTapMode : uint8_t {
+  enum class SE_PROTOCOL_ENUM(foundation, JUMP) ScrollbarTrackTapMode : uint8_t {
     JUMP = 0,
     DISABLED = 1,
   };
 
   /// Scrollbar configuration (geometry + interaction behavior)
-  struct ScrollbarConfig {
+  struct SE_PROTOCOL_IN(core) ScrollbarConfig {
     /// Scrollbar track/thumb thickness in pixels
     float thickness {10.0f};
     /// Minimum thumb length in pixels
@@ -154,10 +156,13 @@ namespace NS_SWEETEDITOR {
     /// Extra thumb hit-test padding in pixels (applied on all sides)
     float thumb_hit_padding {0.0f};
     /// Visibility mode across platforms
+    SE_PROTOCOL_WIRE(enum_i32)
     ScrollbarMode mode {ScrollbarMode::ALWAYS};
     /// Whether thumb drag interaction is enabled
+    SE_PROTOCOL_WIRE(bool_u8)
     bool thumb_draggable {true};
     /// Track tap behavior
+    SE_PROTOCOL_WIRE(enum_i32)
     ScrollbarTrackTapMode track_tap_mode {ScrollbarTrackTapMode::JUMP};
     /// Delay before hide (TRANSIENT mode)
     uint16_t fade_delay_ms {700};
@@ -199,7 +204,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Core metric data needed by scrollbars
-  struct ScrollMetrics {
+  struct SE_PROTOCOL_OUT(visual) ScrollMetrics {
     float scale {1};
     float scroll_x {0};
     float scroll_y {0};
@@ -216,10 +221,11 @@ namespace NS_SWEETEDITOR {
   };
 
   /// One text change (exact change info at one edit location)
-  struct TextChange {
+  struct SE_PROTOCOL_OUT(foundation) TextChange {
     /// Replaced/deleted text range (coordinates before the operation)
     TextRange range;
     /// Old text (used only in C++ core, not serialized to platform layer)
+    SE_PROTOCOL_SKIP
     U8String old_text;
     /// New text (content after insert/replace; empty for pure delete)
     U8String new_text;

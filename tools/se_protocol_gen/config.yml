@@ -1,0 +1,88 @@
+schema:
+  inputs:
+    - include/sweeteditor/foundation.h
+    - include/sweeteditor/keymap.h
+    - include/sweeteditor/editor_types.h
+    - include/sweeteditor/gesture.h
+    - include/sweeteditor/ime_types.h
+    - include/sweeteditor/linked_editing.h
+    - include/sweeteditor/editor_core.h
+    - include/sweeteditor/decoration.h
+    - include/sweeteditor/visual.h
+    - include/sweeteditor/protocol.h
+  generated: tools/se_protocol_gen/generated/schema.json
+  snapshot: tools/se_protocol_gen/schema.snapshot.json
+
+codegen:
+  preview_root: tools/se_protocol_gen/generated/preview
+
+targets:
+  cpp_core:
+    backend: cpp
+    output_root: .
+    header_file: include/sweeteditor/protocol_codec.h
+    always_write: true
+
+  android_java:
+    backend: java
+    output_root: platform/Android/sweeteditor/src/main/java/com/qiplat/sweeteditor/core
+    package: com.qiplat.sweeteditor.core
+    codec_file: EditorProtocol.java
+    layout: split_by_domain
+    java_api:
+      line_map: sparse_array
+    domains:
+      core: ""
+      foundation: foundation
+      adornment: adornment
+      ime: ime
+      interaction: interaction
+      keymap: keymap
+      linked_editing: snippet
+      visual: visual
+
+  swing_java:
+    backend: java
+    output_root: platform/Swing/sweeteditor/src/main/java/com/qiplat/sweeteditor/core
+    package: com.qiplat.sweeteditor.core
+    codec_file: EditorProtocol.java
+    layout: split_by_domain
+    domains:
+      core: ""
+      foundation: foundation
+      adornment: adornment
+      ime: ime
+      interaction: interaction
+      keymap: keymap
+      linked_editing: snippet
+      visual: visual
+
+  ohos_ets:
+    backend: ets
+    output_root: platform/OHOS/sweeteditor/src/main/ets/core
+    codec_file: CoreProtocol.ets
+    layout: domain_files
+    domains:
+      core: CoreAction.ets
+      foundation: CoreFoundation.ets
+      adornment: CoreAdornments.ets
+      ime: CoreIme.ets
+      interaction: CoreInteraction.ets
+      keymap: CoreKeymap.ets
+      linked_editing: CoreLinkedEditing.ets
+      visual: CoreVisual.ets
+
+  apple_swift:
+    backend: swift
+    output_root: platform/Apple/Sources/SweetEditorCoreInternal
+    codec_file: protocol/EditorProtocol.swift
+    layout: split_by_domain
+    domains:
+      core: protocol/CoreAction.swift
+      foundation: protocol/CoreFoundation.swift
+      adornment: protocol/CoreAdornments.swift
+      ime: protocol/CoreIme.swift
+      interaction: protocol/CoreInteraction.swift
+      keymap: protocol/CoreKeymap.swift
+      linked_editing: protocol/CoreLinkedEditing.swift
+      visual: protocol/CoreVisual.swift

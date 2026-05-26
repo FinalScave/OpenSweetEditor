@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <limits>
 #include <vector>
+#include <sweeteditor/protocol_codec.h>
 #include <sweeteditor/utility.h>
 #include <sweeteditor/editor_core.h>
 #include <sweeteditor/document.h>
@@ -39,6 +40,13 @@ public:
     uint32_t v = 0;
     if (!readU32(v)) return false;
     out = static_cast<int32_t>(v);
+    return true;
+  }
+
+  bool readU8(uint8_t& out) {
+    if (!has(1)) return false;
+    out = *cur_;
+    cur_ += 1;
     return true;
   }
 
@@ -102,357 +110,34 @@ static const uint8_t* nullBinaryPayload(size_t* out_size) {
   return nullptr;
 }
 
-static void appendI32(std::vector<uint8_t>& buffer, int32_t value) {
-  const auto* src = reinterpret_cast<const uint8_t*>(&value);
-  buffer.insert(buffer.end(), src, src + sizeof(value));
-}
-
-static void appendI64(std::vector<uint8_t>& buffer, int64_t value) {
-  const auto* src = reinterpret_cast<const uint8_t*>(&value);
-  buffer.insert(buffer.end(), src, src + sizeof(value));
-}
-
-static void appendF32(std::vector<uint8_t>& buffer, float value) {
-  const auto* src = reinterpret_cast<const uint8_t*>(&value);
-  buffer.insert(buffer.end(), src, src + sizeof(value));
-}
-
-static void appendBool(std::vector<uint8_t>& buffer, bool value) {
-  appendI32(buffer, value ? 1 : 0);
-}
-
-static void appendU8String(std::vector<uint8_t>& buffer, const U8String& value) {
-  appendI32(buffer, static_cast<int32_t>(value.size()));
-  const auto* src = reinterpret_cast<const uint8_t*>(value.data());
-  buffer.insert(buffer.end(), src, src + value.size());
-}
-
-static void appendU16AsU8String(std::vector<uint8_t>& buffer, const U16String& value) {
-  U8String u8_text;
-  if (!value.empty()) {
-    StrUtil::convertUTF16ToUTF8(value, u8_text);
-  }
-  appendU8String(buffer, u8_text);
-}
-
-static void appendPoint(std::vector<uint8_t>& buffer, const PointF& point) {
-  appendF32(buffer, point.x);
-  appendF32(buffer, point.y);
-}
-
-static void appendTextPosition(std::vector<uint8_t>& buffer, const TextPosition& position) {
-  appendI32(buffer, static_cast<int32_t>(position.line));
-  appendI32(buffer, static_cast<int32_t>(position.column));
-}
-
-static void appendTextRange(std::vector<uint8_t>& buffer, const TextRange& range) {
-  appendTextPosition(buffer, range.start);
-  appendTextPosition(buffer, range.end);
-}
-
-static void appendTextStyle(std::vector<uint8_t>& buffer, const TextStyle& style) {
-  appendI32(buffer, style.color);
-  appendI32(buffer, style.background_color);
-  appendI32(buffer, style.font_style);
-}
-
-static void appendVisualRun(std::vector<uint8_t>& buffer, const VisualRun& run) {
-  appendI32(buffer, static_cast<int32_t>(run.type));
-  appendF32(buffer, run.x);
-  appendF32(buffer, run.y);
-  appendU16AsU8String(buffer, run.text);
-  appendTextStyle(buffer, run.style);
-  appendI32(buffer, run.icon_id);
-  appendI32(buffer, run.color_value);
-  appendF32(buffer, run.width);
-  appendF32(buffer, run.padding);
-  appendF32(buffer, run.margin);
-  appendBool(buffer, run.active);
-}
-
-static void appendVisualLine(std::vector<uint8_t>& buffer, const VisualLine& line) {
-  appendI32(buffer, static_cast<int32_t>(line.logical_line));
-  appendI32(buffer, static_cast<int32_t>(line.wrap_index));
-  appendPoint(buffer, line.line_number_position);
-  appendI32(buffer, static_cast<int32_t>(line.kind));
-  appendBool(buffer, line.owns_gutter_semantics);
-  appendI32(buffer, static_cast<int32_t>(line.fold_state));
-  appendI32(buffer, static_cast<int32_t>(line.runs.size()));
-  for (const auto& run : line.runs) {
-    appendVisualRun(buffer, run);
-  }
-}
-
-static void appendRect(std::vector<uint8_t>& buffer, const Rect& rect) {
-  appendPoint(buffer, rect.origin);
-  appendF32(buffer, rect.width);
-  appendF32(buffer, rect.height);
-}
-
-static void appendGutterIconRenderItem(std::vector<uint8_t>& buffer, const GutterIconRenderItem& item) {
-  appendI32(buffer, static_cast<int32_t>(item.logical_line));
-  appendI32(buffer, item.icon_id);
-  appendRect(buffer, item.rect);
-}
-
-static void appendFoldMarkerRenderItem(std::vector<uint8_t>& buffer, const FoldMarkerRenderItem& item) {
-  appendI32(buffer, static_cast<int32_t>(item.logical_line));
-  appendI32(buffer, static_cast<int32_t>(item.fold_state));
-  appendRect(buffer, item.rect);
-}
-
-static void appendCursor(std::vector<uint8_t>& buffer, const Cursor& cursor) {
-  appendTextPosition(buffer, cursor.text_position);
-  appendPoint(buffer, cursor.position);
-  appendF32(buffer, cursor.height);
-  appendBool(buffer, cursor.visible);
-  appendBool(buffer, cursor.show_dragger);
-}
-
-static void appendSelectionHandle(std::vector<uint8_t>& buffer, const SelectionHandle& handle) {
-  appendPoint(buffer, handle.position);
-  appendF32(buffer, handle.height);
-  appendBool(buffer, handle.visible);
-}
-
-static void appendCompositionDecoration(std::vector<uint8_t>& buffer, const CompositionDecoration& decoration) {
-  appendBool(buffer, decoration.active);
-  appendRect(buffer, decoration.rect);
-}
-
-static void appendGuideSegment(std::vector<uint8_t>& buffer, const GuideSegment& segment) {
-  appendI32(buffer, static_cast<int32_t>(segment.direction));
-  appendI32(buffer, static_cast<int32_t>(segment.type));
-  appendI32(buffer, static_cast<int32_t>(segment.style));
-  appendPoint(buffer, segment.start);
-  appendPoint(buffer, segment.end);
-  appendBool(buffer, segment.arrow_end);
-}
-
-static void appendDiagnosticDecoration(std::vector<uint8_t>& buffer, const DiagnosticDecoration& decoration) {
-  appendRect(buffer, decoration.rect);
-  appendI32(buffer, decoration.severity);
-}
-
-static void appendLinkedEditingRect(std::vector<uint8_t>& buffer, const LinkedEditingRect& rect) {
-  appendRect(buffer, rect.rect);
-  appendBool(buffer, rect.is_active);
-}
-
-static void appendScrollbarModel(std::vector<uint8_t>& buffer, const ScrollbarModel& scrollbar) {
-  appendBool(buffer, scrollbar.visible);
-  appendF32(buffer, scrollbar.alpha);
-  appendBool(buffer, scrollbar.thumb_active);
-  appendRect(buffer, scrollbar.track);
-  appendRect(buffer, scrollbar.thumb);
+template <typename T>
+static const uint8_t* protocolToBinary(const T& value, size_t* out_size, size_t reserve_size = 0) {
+  Vector<uint8_t> buffer = protocol::ProtocolWriter::encode(value, reserve_size);
+  return allocBinaryPayload(buffer.data(), buffer.size(), out_size);
 }
 
 static const uint8_t* editorRenderModelToBinary(const EditorRenderModel& model, size_t* out_size) {
-  std::vector<uint8_t> buffer;
-  buffer.reserve(1024);
-  appendF32(buffer, model.split_x);
-  appendBool(buffer, model.split_line_visible);
-  appendF32(buffer, model.scroll_x);
-  appendF32(buffer, model.scroll_y);
-  appendF32(buffer, model.viewport_width);
-  appendF32(buffer, model.viewport_height);
-  appendPoint(buffer, model.current_line);
-  appendI32(buffer, static_cast<int32_t>(model.current_line_render_mode));
-
-  appendI32(buffer, static_cast<int32_t>(model.lines.size()));
-  for (const auto& line : model.lines) {
-    appendVisualLine(buffer, line);
-  }
-
-  appendI32(buffer, static_cast<int32_t>(model.gutter_icons.size()));
-  for (const auto& icon : model.gutter_icons) {
-    appendGutterIconRenderItem(buffer, icon);
-  }
-
-  appendI32(buffer, static_cast<int32_t>(model.fold_markers.size()));
-  for (const auto& marker : model.fold_markers) {
-    appendFoldMarkerRenderItem(buffer, marker);
-  }
-
-  appendCursor(buffer, model.cursor);
-
-  appendI32(buffer, static_cast<int32_t>(model.selection_rects.size()));
-  for (const auto& rect : model.selection_rects) {
-    appendRect(buffer, rect);
-  }
-
-  appendSelectionHandle(buffer, model.selection_start_handle);
-  appendSelectionHandle(buffer, model.selection_end_handle);
-  appendCompositionDecoration(buffer, model.composition_decoration);
-
-  appendI32(buffer, static_cast<int32_t>(model.guide_segments.size()));
-  for (const auto& segment : model.guide_segments) {
-    appendGuideSegment(buffer, segment);
-  }
-
-  appendI32(buffer, static_cast<int32_t>(model.diagnostic_decorations.size()));
-  for (const auto& decoration : model.diagnostic_decorations) {
-    appendDiagnosticDecoration(buffer, decoration);
-  }
-
-  appendI32(buffer, static_cast<int32_t>(model.max_gutter_icons));
-
-  appendI32(buffer, static_cast<int32_t>(model.linked_editing_rects.size()));
-  for (const auto& rect : model.linked_editing_rects) {
-    appendLinkedEditingRect(buffer, rect);
-  }
-
-  appendI32(buffer, static_cast<int32_t>(model.bracket_highlight_rects.size()));
-  for (const auto& rect : model.bracket_highlight_rects) {
-    appendRect(buffer, rect);
-  }
-
-  // Optional payload tail (append-only): scrollbar render models.
-  appendScrollbarModel(buffer, model.vertical_scrollbar);
-  appendScrollbarModel(buffer, model.horizontal_scrollbar);
-
-  appendBool(buffer, model.gutter_sticky);
-  appendBool(buffer, model.gutter_visible);
-  appendI32(buffer, static_cast<int32_t>(model.pointer_cursor_type));
-
-  return allocBinaryPayload(buffer.data(), buffer.size(), out_size);
-}
-
-static void appendTextEditChanges(std::vector<uint8_t>& buffer, const std::vector<TextChange>& changes) {
-  appendI32(buffer, static_cast<int32_t>(changes.size()));
-  for (const auto& change : changes) {
-    appendI32(buffer, static_cast<int32_t>(change.range.start.line));
-    appendI32(buffer, static_cast<int32_t>(change.range.start.column));
-    appendI32(buffer, static_cast<int32_t>(change.range.end.line));
-    appendI32(buffer, static_cast<int32_t>(change.range.end.column));
-    appendU8String(buffer, change.new_text);
-  }
-}
-
-static void appendImeSyncSnapshot(std::vector<uint8_t>& buffer, const ImeSyncSnapshot& snapshot) {
-  appendTextPosition(buffer, snapshot.cursor);
-  appendBool(buffer, snapshot.has_selection);
-  appendTextRange(buffer, snapshot.selection);
-  appendBool(buffer, snapshot.has_composing_session);
-  appendBool(buffer, snapshot.has_visible_composition_range);
-  appendTextRange(buffer, snapshot.visible_composition_range);
-  appendBool(buffer, snapshot.has_platform_marked_range);
-  appendTextRange(buffer, snapshot.platform_marked_range);
-  appendI32(buffer, static_cast<int32_t>(snapshot.preedit_storage));
-  appendI32(buffer, static_cast<int32_t>(snapshot.context_policy));
-  appendBool(buffer, snapshot.clear_platform_preedit);
+  return protocolToBinary(model, out_size, 1024);
 }
 
 static const uint8_t* imeSyncSnapshotToBinary(const ImeSyncSnapshot& snapshot, size_t* out_size) {
-  std::vector<uint8_t> buffer;
-  buffer.reserve(sizeof(int32_t) * 21);
-  appendImeSyncSnapshot(buffer, snapshot);
-  return allocBinaryPayload(buffer.data(), buffer.size(), out_size);
+  return protocolToBinary(snapshot, out_size, sizeof(int32_t) * 21);
 }
 
 static const uint8_t* imeInputContextToBinary(const ImeInputContext& context, size_t* out_size) {
-  std::vector<uint8_t> buffer;
-  buffer.reserve(sizeof(int32_t) * 9 + sizeof(int64_t) + context.text.size());
-  appendI64(buffer, static_cast<int64_t>(context.id));
-  appendI32(buffer, context.revision);
-  appendI32(buffer, context.document_start_offset);
-  appendU8String(buffer, context.text);
-  appendI32(buffer, context.selection.start);
-  appendI32(buffer, context.selection.end);
-  appendBool(buffer, context.has_composition);
-  appendI32(buffer, context.composition.start);
-  appendI32(buffer, context.composition.end);
-  appendI32(buffer, static_cast<int32_t>(context.kind));
-  return allocBinaryPayload(buffer.data(), buffer.size(), out_size);
-}
-
-static void appendHitTarget(std::vector<uint8_t>& buffer, const HitTarget& target) {
-  appendI32(buffer, static_cast<int32_t>(static_cast<uint8_t>(target.type)));
-  appendI32(buffer, static_cast<int32_t>(target.line));
-  appendI32(buffer, static_cast<int32_t>(target.column));
-  appendI32(buffer, static_cast<int32_t>(target.icon_id));
-  appendI32(buffer, static_cast<int32_t>(target.color_value));
+  return protocolToBinary(context, out_size, sizeof(int32_t) * 9 + sizeof(int64_t) + context.text.size());
 }
 
 static const uint8_t* editorActionResultToBinary(const EditorActionResult& result, size_t* out_size) {
-  std::vector<uint8_t> buffer;
-  buffer.reserve(256 + result.changes.size() * 32);
-  appendBool(buffer, result.handled);
-  appendBool(buffer, result.needs_redraw);
-  appendI32(buffer, static_cast<int32_t>(result.reason));
-  appendBool(buffer, result.content_changed);
-  appendBool(buffer, result.cursor_changed);
-  appendBool(buffer, result.selection_changed);
-  appendBool(buffer, result.scroll_changed);
-  appendBool(buffer, result.scale_changed);
-  appendBool(buffer, result.pointer_cursor_changed);
-  appendBool(buffer, result.composition_changed);
-  appendBool(buffer, result.decoration_changed);
-  appendBool(buffer, result.needs_ime_sync);
-  appendBool(buffer, result.needs_edge_scroll);
-  appendBool(buffer, result.needs_fling);
-  appendBool(buffer, result.needs_animation);
-  appendBool(buffer, result.is_handle_drag);
-  appendTextEditChanges(buffer, result.changes);
-  appendTextPosition(buffer, result.cursor_before);
-  appendTextPosition(buffer, result.cursor_after);
-  appendBool(buffer, result.has_selection_before);
-  appendTextRange(buffer, result.selection_before);
-  appendBool(buffer, result.has_selection_after);
-  appendTextRange(buffer, result.selection_after);
-  appendF32(buffer, result.scroll_x_before);
-  appendF32(buffer, result.scroll_y_before);
-  appendF32(buffer, result.scroll_x_after);
-  appendF32(buffer, result.scroll_y_after);
-  appendF32(buffer, result.scale_before);
-  appendF32(buffer, result.scale_after);
-  appendI32(buffer, static_cast<int32_t>(result.pointer_cursor_before));
-  appendI32(buffer, static_cast<int32_t>(result.pointer_cursor_after));
-  appendImeSyncSnapshot(buffer, result.ime_sync);
-  appendI32(buffer, static_cast<int32_t>(result.gesture_type));
-  appendI32(buffer, static_cast<int32_t>(result.gesture_event_type));
-  appendF32(buffer, result.tap_point.x);
-  appendF32(buffer, result.tap_point.y);
-  appendHitTarget(buffer, result.hit_target);
-  appendI32(buffer, static_cast<int32_t>(result.modifiers));
-  appendI32(buffer, static_cast<int32_t>(result.command));
-  return allocBinaryPayload(buffer.data(), buffer.size(), out_size);
+  return protocolToBinary(result, out_size, 256 + result.changes.size() * 32);
 }
 
 static const uint8_t* scrollMetricsToBinary(const ScrollMetrics& metrics, size_t* out_size) {
-  std::vector<uint8_t> buffer;
-  buffer.reserve(sizeof(float) * 11 + sizeof(int32_t) * 2);
-  appendF32(buffer, metrics.scale);
-  appendF32(buffer, metrics.scroll_x);
-  appendF32(buffer, metrics.scroll_y);
-  appendF32(buffer, metrics.max_scroll_x);
-  appendF32(buffer, metrics.max_scroll_y);
-  appendF32(buffer, metrics.content_width);
-  appendF32(buffer, metrics.content_height);
-  appendF32(buffer, metrics.viewport_width);
-  appendF32(buffer, metrics.viewport_height);
-  appendF32(buffer, metrics.text_area_x);
-  appendF32(buffer, metrics.text_area_width);
-  appendI32(buffer, metrics.can_scroll_x ? 1 : 0);
-  appendI32(buffer, metrics.can_scroll_y ? 1 : 0);
-  return allocBinaryPayload(buffer.data(), buffer.size(), out_size);
+  return protocolToBinary(metrics, out_size, sizeof(float) * 11 + sizeof(int32_t) * 2);
 }
 
 static const uint8_t* layoutMetricsToBinary(const LayoutMetrics& metrics, size_t* out_size) {
-  std::vector<uint8_t> buffer;
-  buffer.reserve(sizeof(float) * 8 + sizeof(int32_t) * 3);
-  appendF32(buffer, metrics.font_height);
-  appendF32(buffer, metrics.font_ascent);
-  appendF32(buffer, metrics.line_spacing_add);
-  appendF32(buffer, metrics.line_spacing_mult);
-  appendF32(buffer, metrics.line_number_margin);
-  appendF32(buffer, metrics.line_number_width);
-  appendI32(buffer, static_cast<int32_t>(metrics.max_gutter_icons));
-  appendF32(buffer, metrics.inlay_hint_padding);
-  appendF32(buffer, metrics.inlay_hint_margin);
-  appendI32(buffer, static_cast<int32_t>(metrics.fold_arrow_mode));
-  appendI32(buffer, metrics.has_fold_regions ? 1 : 0);
-  return allocBinaryPayload(buffer.data(), buffer.size(), out_size);
+  return protocolToBinary(metrics, out_size, sizeof(float) * 8 + sizeof(int32_t) * 3);
 }
 
 class CTextMeasurer : public TextMeasurer {
@@ -1368,93 +1053,27 @@ const uint8_t* editor_register_text_style(intptr_t editor_handle, uint32_t style
 
 const uint8_t* editor_set_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) {
-    return nullBinaryPayload(out_size);
-  }
-
-  ByteCursor cursor(data, size);
-  uint32_t line = 0;
-  uint32_t layer = 0;
-  uint32_t span_count = 0;
-  if (!cursor.readU32(line) || !cursor.readU32(layer) || !cursor.readU32(span_count)) {
-    return nullBinaryPayload(out_size);
-  }
-
-  size_t spans_bytes = 0;
-  if (mulOverflow(static_cast<size_t>(span_count), sizeof(uint32_t) * 3, spans_bytes) || cursor.remaining() != spans_bytes) {
-    return nullBinaryPayload(out_size);
-  }
-
-  Vector<StyleSpan> spans;
-  spans.reserve(span_count);
-  for (uint32_t i = 0; i < span_count; ++i) {
-    uint32_t column = 0;
-    uint32_t length = 0;
-    uint32_t style_id = 0;
-    if (!cursor.readU32(column) || !cursor.readU32(length) || !cursor.readU32(style_id)) {
-      return nullBinaryPayload(out_size);
-    }
-    spans.push_back(StyleSpan{column, length, style_id});
-  }
+  protocol::SetLineSpansPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
   return editorActionResultToBinary(
-      editor_core->setLineSpans(static_cast<size_t>(line), static_cast<SpanLayer>(layer), std::move(spans)),
+      editor_core->setLineSpans(payload.line, payload.layer, std::move(payload.spans)),
       out_size);
 }
 
 const uint8_t* editor_set_batch_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t layer = 0;
-  uint32_t entry_count = 0;
-  if (!cursor.readU32(layer) || !cursor.readU32(entry_count)) return nullBinaryPayload(out_size);
-
-  Vector<std::pair<size_t, Vector<StyleSpan>>> entries;
-  entries.reserve(entry_count);
-  for (uint32_t e = 0; e < entry_count; ++e) {
-    uint32_t line = 0;
-    uint32_t span_count = 0;
-    if (!cursor.readU32(line) || !cursor.readU32(span_count)) return nullBinaryPayload(out_size);
-
-    Vector<StyleSpan> spans;
-    spans.reserve(span_count);
-    for (uint32_t i = 0; i < span_count; ++i) {
-      uint32_t column = 0;
-      uint32_t length = 0;
-      uint32_t style_id = 0;
-      if (!cursor.readU32(column) || !cursor.readU32(length) || !cursor.readU32(style_id)) return nullBinaryPayload(out_size);
-      spans.push_back(StyleSpan{column, length, style_id});
-    }
-    entries.emplace_back(static_cast<size_t>(line), std::move(spans));
-  }
+  protocol::SetBatchLineSpansPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
   return editorActionResultToBinary(
-      editor_core->setBatchLineSpans(static_cast<SpanLayer>(layer), std::move(entries)),
+      editor_core->setBatchLineSpans(payload.layer, std::move(payload.entries)),
       out_size);
 }
 
 const uint8_t* editor_register_batch_text_styles(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t entry_count = 0;
-  if (!cursor.readU32(entry_count)) return nullBinaryPayload(out_size);
-
-  Vector<std::pair<uint32_t, TextStyle>> entries;
-  entries.reserve(entry_count);
-  for (uint32_t i = 0; i < entry_count; ++i) {
-    uint32_t style_id = 0;
-    int32_t color = 0;
-    int32_t background_color = 0;
-    int32_t font_style = 0;
-    if (!cursor.readU32(style_id) || !cursor.readI32(color) || !cursor.readI32(background_color) || !cursor.readI32(font_style)) {
-      return nullBinaryPayload(out_size);
-    }
-    entries.emplace_back(style_id, TextStyle{color, background_color, font_style});
-  }
-
-  return editorActionResultToBinary(editor_core->registerBatchTextStyles(std::move(entries)), out_size);
+  protocol::RegisterBatchTextStylesPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->registerBatchTextStyles(std::move(payload.entries)), out_size);
 }
 
 const uint8_t* editor_clear_line_spans(intptr_t editor_handle, size_t line, uint8_t layer, size_t* out_size) {
@@ -1473,218 +1092,50 @@ const uint8_t* editor_clear_highlights_layer(intptr_t editor_handle, uint8_t lay
 
 const uint8_t* editor_set_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) {
-    return nullBinaryPayload(out_size);
-  }
-
-  ByteCursor cursor(data, size);
-  uint32_t line = 0;
-  uint32_t hint_count = 0;
-  if (!cursor.readU32(line) || !cursor.readU32(hint_count)) {
-    return nullBinaryPayload(out_size);
-  }
-
-  Vector<InlayHint> hints;
-  hints.reserve(hint_count);
-  for (uint32_t i = 0; i < hint_count; ++i) {
-    uint32_t type_val = 0;
-    uint32_t column = 0;
-    int32_t int_value = 0;
-    uint32_t text_len = 0;
-    if (!cursor.readU32(type_val) || !cursor.readU32(column) ||
-        !cursor.readI32(int_value) || !cursor.readU32(text_len)) {
-      return nullBinaryPayload(out_size);
-    }
-    U8String text;
-    if (text_len > 0) {
-      const uint8_t* text_ptr = nullptr;
-      if (!cursor.readBytes(text_ptr, text_len)) {
-        return nullBinaryPayload(out_size);
-      }
-      text = U8String(reinterpret_cast<const char*>(text_ptr), text_len);
-    }
-    InlayHint hint;
-    hint.type = static_cast<InlayType>(type_val);
-    hint.column = column;
-    hint.text = std::move(text);
-    hint.icon_id = (hint.type == InlayType::ICON) ? int_value : 0;
-    hint.color = (hint.type == InlayType::COLOR) ? int_value : 0;
-    hints.push_back(std::move(hint));
-  }
-
+  protocol::SetLineInlayHintsPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
   return editorActionResultToBinary(
-      editor_core->setLineInlayHints(static_cast<size_t>(line), std::move(hints)),
+      editor_core->setLineInlayHints(payload.line, std::move(payload.hints)),
       out_size);
 }
 
 const uint8_t* editor_set_batch_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t entry_count = 0;
-  if (!cursor.readU32(entry_count)) return nullBinaryPayload(out_size);
-
-  Vector<std::pair<size_t, Vector<InlayHint>>> entries;
-  entries.reserve(entry_count);
-  for (uint32_t e = 0; e < entry_count; ++e) {
-    uint32_t line = 0;
-    uint32_t hint_count = 0;
-    if (!cursor.readU32(line) || !cursor.readU32(hint_count)) return nullBinaryPayload(out_size);
-
-    Vector<InlayHint> hints;
-    hints.reserve(hint_count);
-    for (uint32_t i = 0; i < hint_count; ++i) {
-      uint32_t type_val = 0;
-      uint32_t column = 0;
-      int32_t int_value = 0;
-      uint32_t text_len = 0;
-      if (!cursor.readU32(type_val) || !cursor.readU32(column) ||
-          !cursor.readI32(int_value) || !cursor.readU32(text_len)) return nullBinaryPayload(out_size);
-      U8String text;
-      if (text_len > 0) {
-        const uint8_t* text_ptr = nullptr;
-        if (!cursor.readBytes(text_ptr, text_len)) return nullBinaryPayload(out_size);
-        text = U8String(reinterpret_cast<const char*>(text_ptr), text_len);
-      }
-      InlayHint hint;
-      hint.type = static_cast<InlayType>(type_val);
-      hint.column = column;
-      hint.text = std::move(text);
-      hint.icon_id = (hint.type == InlayType::ICON) ? int_value : 0;
-      hint.color = (hint.type == InlayType::COLOR) ? int_value : 0;
-      hints.push_back(std::move(hint));
-    }
-    entries.emplace_back(static_cast<size_t>(line), std::move(hints));
-  }
-  return editorActionResultToBinary(editor_core->setBatchLineInlayHints(std::move(entries)), out_size);
+  protocol::SetBatchLineInlayHintsPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setBatchLineInlayHints(std::move(payload.entries)), out_size);
 }
 
 const uint8_t* editor_set_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t line = 0;
-  uint32_t phantom_count = 0;
-  if (!cursor.readU32(line) || !cursor.readU32(phantom_count)) {
-    return nullBinaryPayload(out_size);
-  }
-
-  Vector<PhantomText> phantoms;
-  phantoms.reserve(phantom_count);
-  for (uint32_t i = 0; i < phantom_count; ++i) {
-    uint32_t column = 0;
-    uint32_t text_len = 0;
-    if (!cursor.readU32(column) || !cursor.readU32(text_len)) {
-      return nullBinaryPayload(out_size);
-    }
-    U8String text;
-    if (text_len > 0) {
-      const uint8_t* text_ptr = nullptr;
-      if (!cursor.readBytes(text_ptr, text_len)) {
-        return nullBinaryPayload(out_size);
-      }
-      text = U8String(reinterpret_cast<const char*>(text_ptr), text_len);
-    }
-    phantoms.push_back(PhantomText{column, std::move(text)});
-  }
-
+  protocol::SetLinePhantomTextsPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
   return editorActionResultToBinary(
-      editor_core->setLinePhantomTexts(static_cast<size_t>(line), std::move(phantoms)),
+      editor_core->setLinePhantomTexts(payload.line, std::move(payload.phantoms)),
       out_size);
 }
 
 const uint8_t* editor_set_batch_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t entry_count = 0;
-  if (!cursor.readU32(entry_count)) return nullBinaryPayload(out_size);
-
-  Vector<std::pair<size_t, Vector<PhantomText>>> entries;
-  entries.reserve(entry_count);
-  for (uint32_t e = 0; e < entry_count; ++e) {
-    uint32_t line = 0;
-    uint32_t phantom_count = 0;
-    if (!cursor.readU32(line) || !cursor.readU32(phantom_count)) return nullBinaryPayload(out_size);
-
-    Vector<PhantomText> phantoms;
-    phantoms.reserve(phantom_count);
-    for (uint32_t i = 0; i < phantom_count; ++i) {
-      uint32_t column = 0;
-      uint32_t text_len = 0;
-      if (!cursor.readU32(column) || !cursor.readU32(text_len)) return nullBinaryPayload(out_size);
-      U8String text;
-      if (text_len > 0) {
-        const uint8_t* text_ptr = nullptr;
-        if (!cursor.readBytes(text_ptr, text_len)) return nullBinaryPayload(out_size);
-        text = U8String(reinterpret_cast<const char*>(text_ptr), text_len);
-      }
-      phantoms.push_back(PhantomText{column, std::move(text)});
-    }
-    entries.emplace_back(static_cast<size_t>(line), std::move(phantoms));
-  }
-  return editorActionResultToBinary(editor_core->setBatchLinePhantomTexts(std::move(entries)), out_size);
+  protocol::SetBatchLinePhantomTextsPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setBatchLinePhantomTexts(std::move(payload.entries)), out_size);
 }
 
 const uint8_t* editor_set_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t line = 0;
-  uint32_t icon_count = 0;
-  if (!cursor.readU32(line) || !cursor.readU32(icon_count)) {
-    return nullBinaryPayload(out_size);
-  }
-
-  size_t icons_bytes = 0;
-  if (mulOverflow(static_cast<size_t>(icon_count), sizeof(int32_t), icons_bytes) ||
-      cursor.remaining() != icons_bytes) {
-    return nullBinaryPayload(out_size);
-  }
-
-  Vector<GutterIcon> icons;
-  icons.reserve(icon_count);
-  for (uint32_t i = 0; i < icon_count; ++i) {
-    int32_t icon_id = 0;
-    if (!cursor.readI32(icon_id)) {
-      return nullBinaryPayload(out_size);
-    }
-    icons.push_back(GutterIcon{icon_id});
-  }
+  protocol::SetLineGutterIconsPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
   return editorActionResultToBinary(
-      editor_core->setLineGutterIcons(static_cast<size_t>(line), std::move(icons)),
+      editor_core->setLineGutterIcons(payload.line, std::move(payload.icons)),
       out_size);
 }
 
 const uint8_t* editor_set_batch_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t entry_count = 0;
-  if (!cursor.readU32(entry_count)) return nullBinaryPayload(out_size);
-
-  Vector<std::pair<size_t, Vector<GutterIcon>>> entries;
-  entries.reserve(entry_count);
-  for (uint32_t e = 0; e < entry_count; ++e) {
-    uint32_t line = 0;
-    uint32_t icon_count = 0;
-    if (!cursor.readU32(line) || !cursor.readU32(icon_count)) return nullBinaryPayload(out_size);
-
-    Vector<GutterIcon> icons;
-    icons.reserve(icon_count);
-    for (uint32_t i = 0; i < icon_count; ++i) {
-      int32_t icon_id = 0;
-      if (!cursor.readI32(icon_id)) return nullBinaryPayload(out_size);
-      icons.push_back(GutterIcon{icon_id});
-    }
-    entries.emplace_back(static_cast<size_t>(line), std::move(icons));
-  }
-  return editorActionResultToBinary(editor_core->setBatchLineGutterIcons(std::move(entries)), out_size);
+  protocol::SetBatchLineGutterIconsPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setBatchLineGutterIcons(std::move(payload.entries)), out_size);
 }
 
 const uint8_t* editor_set_max_gutter_icons(intptr_t editor_handle, uint32_t count, size_t* out_size) {
@@ -1697,73 +1148,18 @@ const uint8_t* editor_set_max_gutter_icons(intptr_t editor_handle, uint32_t coun
 
 const uint8_t* editor_set_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t line = 0;
-  uint32_t diag_count = 0;
-  if (!cursor.readU32(line) || !cursor.readU32(diag_count)) {
-    return nullBinaryPayload(out_size);
-  }
-
-  size_t diagnostics_bytes = 0;
-  if (mulOverflow(static_cast<size_t>(diag_count), sizeof(uint32_t) * 3, diagnostics_bytes) ||
-      cursor.remaining() != diagnostics_bytes) {
-    return nullBinaryPayload(out_size);
-  }
-
-  Vector<DiagnosticSpan> diagnostics;
-  diagnostics.reserve(diag_count);
-  for (uint32_t i = 0; i < diag_count; ++i) {
-    uint32_t column = 0;
-    uint32_t length = 0;
-    int32_t severity = 0;
-    if (!cursor.readU32(column) || !cursor.readU32(length) || !cursor.readI32(severity)) {
-      return nullBinaryPayload(out_size);
-    }
-    DiagnosticSpan ds;
-    ds.column = column;
-    ds.length = length;
-    ds.severity = static_cast<DiagnosticSeverity>(severity);
-    diagnostics.push_back(ds);
-  }
+  protocol::SetLineDiagnosticsPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
   return editorActionResultToBinary(
-      editor_core->setLineDiagnostics(static_cast<size_t>(line), std::move(diagnostics)),
+      editor_core->setLineDiagnostics(payload.line, std::move(payload.diagnostics)),
       out_size);
 }
 
 const uint8_t* editor_set_batch_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t entry_count = 0;
-  if (!cursor.readU32(entry_count)) return nullBinaryPayload(out_size);
-
-  Vector<std::pair<size_t, Vector<DiagnosticSpan>>> entries;
-  entries.reserve(entry_count);
-  for (uint32_t e = 0; e < entry_count; ++e) {
-    uint32_t line = 0;
-    uint32_t diag_count = 0;
-    if (!cursor.readU32(line) || !cursor.readU32(diag_count)) return nullBinaryPayload(out_size);
-
-    Vector<DiagnosticSpan> diagnostics;
-    diagnostics.reserve(diag_count);
-    for (uint32_t i = 0; i < diag_count; ++i) {
-      uint32_t column = 0;
-      uint32_t length = 0;
-      int32_t severity = 0;
-      if (!cursor.readU32(column) || !cursor.readU32(length) ||
-          !cursor.readI32(severity)) return nullBinaryPayload(out_size);
-      DiagnosticSpan ds;
-      ds.column = column;
-      ds.length = length;
-      ds.severity = static_cast<DiagnosticSeverity>(severity);
-      diagnostics.push_back(ds);
-    }
-    entries.emplace_back(static_cast<size_t>(line), std::move(diagnostics));
-  }
-  return editorActionResultToBinary(editor_core->setBatchLineDiagnostics(std::move(entries)), out_size);
+  protocol::SetBatchLineDiagnosticsPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setBatchLineDiagnostics(std::move(payload.entries)), out_size);
 }
 
 const uint8_t* editor_clear_diagnostics(intptr_t editor_handle, size_t* out_size) {
@@ -1774,117 +1170,30 @@ const uint8_t* editor_clear_diagnostics(intptr_t editor_handle, size_t* out_size
 
 const uint8_t* editor_set_indent_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t count = 0;
-  if (!cursor.readU32(count)) return nullBinaryPayload(out_size);
-
-  size_t guide_bytes = 0;
-  if (mulOverflow(static_cast<size_t>(count), sizeof(uint32_t) * 4, guide_bytes) ||
-      cursor.remaining() != guide_bytes) {
-    return nullBinaryPayload(out_size);
-  }
-
-  Vector<IndentGuide> guides;
-  guides.reserve(count);
-  for (uint32_t i = 0; i < count; ++i) {
-    uint32_t start_line = 0, start_column = 0, end_line = 0, end_column = 0;
-    if (!cursor.readU32(start_line) || !cursor.readU32(start_column) ||
-        !cursor.readU32(end_line) || !cursor.readU32(end_column)) {
-      return nullBinaryPayload(out_size);
-    }
-    guides.push_back(IndentGuide{{start_line, start_column}, {end_line, end_column}});
-  }
-  return editorActionResultToBinary(editor_core->setIndentGuides(std::move(guides)), out_size);
+  protocol::SetIndentGuidesPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setIndentGuides(std::move(payload.guides)), out_size);
 }
 
 const uint8_t* editor_set_bracket_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t count = 0;
-  if (!cursor.readU32(count)) return nullBinaryPayload(out_size);
-
-  Vector<BracketGuide> guides;
-  guides.reserve(count);
-  for (uint32_t i = 0; i < count; ++i) {
-    uint32_t parent_line = 0, parent_column = 0, end_line = 0, end_column = 0, child_count = 0;
-    if (!cursor.readU32(parent_line) || !cursor.readU32(parent_column) ||
-        !cursor.readU32(end_line) || !cursor.readU32(end_column) ||
-        !cursor.readU32(child_count)) {
-      return nullBinaryPayload(out_size);
-    }
-    BracketGuide bg;
-    bg.parent = {static_cast<size_t>(parent_line), static_cast<size_t>(parent_column)};
-    bg.end = {static_cast<size_t>(end_line), static_cast<size_t>(end_column)};
-    bg.children.reserve(child_count);
-    for (uint32_t j = 0; j < child_count; ++j) {
-      uint32_t child_line = 0, child_column = 0;
-      if (!cursor.readU32(child_line) || !cursor.readU32(child_column)) {
-        return nullBinaryPayload(out_size);
-      }
-      bg.children.push_back({static_cast<size_t>(child_line), static_cast<size_t>(child_column)});
-    }
-    guides.push_back(std::move(bg));
-  }
-  return editorActionResultToBinary(editor_core->setBracketGuides(std::move(guides)), out_size);
+  protocol::SetBracketGuidesPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setBracketGuides(std::move(payload.guides)), out_size);
 }
 
 const uint8_t* editor_set_flow_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t count = 0;
-  if (!cursor.readU32(count)) return nullBinaryPayload(out_size);
-
-  size_t guide_bytes = 0;
-  if (mulOverflow(static_cast<size_t>(count), sizeof(uint32_t) * 4, guide_bytes) ||
-      cursor.remaining() != guide_bytes) {
-    return nullBinaryPayload(out_size);
-  }
-
-  Vector<FlowGuide> guides;
-  guides.reserve(count);
-  for (uint32_t i = 0; i < count; ++i) {
-    uint32_t start_line = 0, start_column = 0, end_line = 0, end_column = 0;
-    if (!cursor.readU32(start_line) || !cursor.readU32(start_column) ||
-        !cursor.readU32(end_line) || !cursor.readU32(end_column)) {
-      return nullBinaryPayload(out_size);
-    }
-    guides.push_back(FlowGuide{{start_line, start_column}, {end_line, end_column}});
-  }
-  return editorActionResultToBinary(editor_core->setFlowGuides(std::move(guides)), out_size);
+  protocol::SetFlowGuidesPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setFlowGuides(std::move(payload.guides)), out_size);
 }
 
 const uint8_t* editor_set_separator_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t count = 0;
-  if (!cursor.readU32(count)) return nullBinaryPayload(out_size);
-
-  size_t guide_bytes = 0;
-  if (mulOverflow(static_cast<size_t>(count), sizeof(uint32_t) * 4, guide_bytes) ||
-      cursor.remaining() != guide_bytes) {
-    return nullBinaryPayload(out_size);
-  }
-
-  Vector<SeparatorGuide> guides;
-  guides.reserve(count);
-  for (uint32_t i = 0; i < count; ++i) {
-    int32_t line = 0, style = 0, sym_count = 0;
-    uint32_t text_end_column = 0;
-    if (!cursor.readI32(line) || !cursor.readI32(style) ||
-        !cursor.readI32(sym_count) || !cursor.readU32(text_end_column)) {
-      return nullBinaryPayload(out_size);
-    }
-    guides.push_back(SeparatorGuide{line, static_cast<SeparatorStyle>(style), sym_count, text_end_column});
-  }
-  return editorActionResultToBinary(editor_core->setSeparatorGuides(std::move(guides)), out_size);
+  protocol::SetSeparatorGuidesPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setSeparatorGuides(std::move(payload.guides)), out_size);
 }
 
 const uint8_t* editor_set_bracket_pairs(intptr_t editor_handle, const uint32_t* open_chars, const uint32_t* close_chars, size_t count, size_t* out_size) {
@@ -1929,26 +1238,37 @@ const uint8_t* editor_set_fold_regions(intptr_t editor_handle, const uint8_t* da
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
 
+  protocol::SetFoldRegionsPayload payload;
+  if (protocol::ProtocolReader::decode(data, size, payload)) {
+    return editorActionResultToBinary(editor_core->setFoldRegions(std::move(payload.regions)), out_size);
+  }
+
   ByteCursor cursor(data, size);
   uint32_t fold_count = 0;
   if (!cursor.readU32(fold_count)) {
     return nullBinaryPayload(out_size);
   }
 
-  size_t fold_bytes = 0;
-  if (mulOverflow(static_cast<size_t>(fold_count), sizeof(uint32_t) * 2, fold_bytes) || cursor.remaining() != fold_bytes) {
+  size_t old_fold_bytes = 0;
+  size_t new_fold_bytes = 0;
+  if (mulOverflow(static_cast<size_t>(fold_count), sizeof(uint32_t) * 2, old_fold_bytes) ||
+      mulOverflow(static_cast<size_t>(fold_count), sizeof(uint32_t) * 2 + sizeof(uint8_t), new_fold_bytes)) {
     return nullBinaryPayload(out_size);
   }
+  bool has_collapsed = cursor.remaining() == new_fold_bytes;
+  if (!has_collapsed && cursor.remaining() != old_fold_bytes) return nullBinaryPayload(out_size);
 
   Vector<FoldRegion> regions;
   regions.reserve(fold_count);
   for (uint32_t i = 0; i < fold_count; ++i) {
     uint32_t start_line = 0;
     uint32_t end_line = 0;
+    uint8_t collapsed = 0;
     if (!cursor.readU32(start_line) || !cursor.readU32(end_line)) {
       return nullBinaryPayload(out_size);
     }
-    regions.push_back(FoldRegion{static_cast<size_t>(start_line), static_cast<size_t>(end_line)});
+    if (has_collapsed && !cursor.readU8(collapsed)) return nullBinaryPayload(out_size);
+    regions.push_back(FoldRegion{static_cast<size_t>(start_line), static_cast<size_t>(end_line), collapsed != 0});
   }
   return editorActionResultToBinary(editor_core->setFoldRegions(std::move(regions)), out_size);
 }
@@ -2026,74 +1346,18 @@ const uint8_t* editor_clear_gutter_icons(intptr_t editor_handle, size_t* out_siz
 
 const uint8_t* editor_set_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t line = 0;
-  uint32_t item_count = 0;
-  if (!cursor.readU32(line) || !cursor.readU32(item_count)) return nullBinaryPayload(out_size);
-
-  Vector<CodeLensItem> items;
-  items.reserve(item_count);
-  for (uint32_t i = 0; i < item_count; ++i) {
-    int32_t column = 0;
-    int32_t command_id = 0;
-    uint32_t text_len = 0;
-    if (!cursor.readI32(column) || !cursor.readI32(command_id) || !cursor.readU32(text_len)) return nullBinaryPayload(out_size);
-    U8String text;
-    if (text_len > 0) {
-      const uint8_t* text_ptr = nullptr;
-      if (!cursor.readBytes(text_ptr, text_len)) return nullBinaryPayload(out_size);
-      text = U8String(reinterpret_cast<const char*>(text_ptr), text_len);
-    }
-    CodeLensItem item;
-    item.column = column;
-    item.command_id = command_id;
-    item.text = std::move(text);
-    items.push_back(std::move(item));
-  }
+  protocol::SetLineCodeLensPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
   return editorActionResultToBinary(
-      editor_core->setLineCodeLens(static_cast<size_t>(line), std::move(items)),
+      editor_core->setLineCodeLens(payload.line, std::move(payload.items)),
       out_size);
 }
 
 const uint8_t* editor_set_batch_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t entry_count = 0;
-  if (!cursor.readU32(entry_count)) return nullBinaryPayload(out_size);
-
-  Vector<std::pair<size_t, Vector<CodeLensItem>>> entries;
-  entries.reserve(entry_count);
-  for (uint32_t e = 0; e < entry_count; ++e) {
-    uint32_t line = 0;
-    uint32_t item_count = 0;
-    if (!cursor.readU32(line) || !cursor.readU32(item_count)) return nullBinaryPayload(out_size);
-
-    Vector<CodeLensItem> items;
-    items.reserve(item_count);
-    for (uint32_t i = 0; i < item_count; ++i) {
-      int32_t column = 0;
-      int32_t command_id = 0;
-      uint32_t text_len = 0;
-      if (!cursor.readI32(column) || !cursor.readI32(command_id) || !cursor.readU32(text_len)) return nullBinaryPayload(out_size);
-      U8String text;
-      if (text_len > 0) {
-        const uint8_t* text_ptr = nullptr;
-        if (!cursor.readBytes(text_ptr, text_len)) return nullBinaryPayload(out_size);
-        text = U8String(reinterpret_cast<const char*>(text_ptr), text_len);
-      }
-      CodeLensItem item;
-      item.column = column;
-      item.command_id = command_id;
-      item.text = std::move(text);
-      items.push_back(std::move(item));
-    }
-    entries.emplace_back(static_cast<size_t>(line), std::move(items));
-  }
-  return editorActionResultToBinary(editor_core->setBatchLineCodeLens(std::move(entries)), out_size);
+  protocol::SetBatchLineCodeLensPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setBatchLineCodeLens(std::move(payload.entries)), out_size);
 }
 
 const uint8_t* editor_clear_codelens(intptr_t editor_handle, size_t* out_size) {
@@ -2104,66 +1368,18 @@ const uint8_t* editor_clear_codelens(intptr_t editor_handle, size_t* out_size) {
 
 const uint8_t* editor_set_line_links(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t line = 0;
-  uint32_t link_count = 0;
-  if (!cursor.readU32(line) || !cursor.readU32(link_count)) return nullBinaryPayload(out_size);
-
-  Vector<LinkSpan> links;
-  links.reserve(link_count);
-  for (uint32_t i = 0; i < link_count; ++i) {
-    uint32_t column = 0;
-    uint32_t length = 0;
-    uint32_t target_len = 0;
-    if (!cursor.readU32(column) || !cursor.readU32(length) || !cursor.readU32(target_len)) return nullBinaryPayload(out_size);
-    U8String target;
-    if (target_len > 0) {
-      const uint8_t* target_ptr = nullptr;
-      if (!cursor.readBytes(target_ptr, target_len)) return nullBinaryPayload(out_size);
-      target = U8String(reinterpret_cast<const char*>(target_ptr), target_len);
-    }
-    links.push_back({column, length, std::move(target)});
-  }
+  protocol::SetLineLinksPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
   return editorActionResultToBinary(
-      editor_core->setLineLinks(static_cast<size_t>(line), std::move(links)),
+      editor_core->setLineLinks(payload.line, std::move(payload.links)),
       out_size);
 }
 
 const uint8_t* editor_set_batch_line_links(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t entry_count = 0;
-  if (!cursor.readU32(entry_count)) return nullBinaryPayload(out_size);
-
-  Vector<std::pair<size_t, Vector<LinkSpan>>> entries;
-  entries.reserve(entry_count);
-  for (uint32_t e = 0; e < entry_count; ++e) {
-    uint32_t line = 0;
-    uint32_t link_count = 0;
-    if (!cursor.readU32(line) || !cursor.readU32(link_count)) return nullBinaryPayload(out_size);
-
-    Vector<LinkSpan> links;
-    links.reserve(link_count);
-    for (uint32_t i = 0; i < link_count; ++i) {
-      uint32_t column = 0;
-      uint32_t length = 0;
-      uint32_t target_len = 0;
-      if (!cursor.readU32(column) || !cursor.readU32(length) || !cursor.readU32(target_len)) return nullBinaryPayload(out_size);
-      U8String target;
-      if (target_len > 0) {
-        const uint8_t* target_ptr = nullptr;
-        if (!cursor.readBytes(target_ptr, target_len)) return nullBinaryPayload(out_size);
-        target = U8String(reinterpret_cast<const char*>(target_ptr), target_len);
-      }
-      links.push_back({column, length, std::move(target)});
-    }
-    entries.emplace_back(static_cast<size_t>(line), std::move(links));
-  }
-  return editorActionResultToBinary(editor_core->setBatchLineLinks(std::move(entries)), out_size);
+  protocol::SetBatchLineLinksPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setBatchLineLinks(std::move(payload.entries)), out_size);
 }
 
 const uint8_t* editor_clear_links(intptr_t editor_handle, size_t* out_size) {

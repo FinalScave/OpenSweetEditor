@@ -1,0 +1,168 @@
+{
+  "format": "sweeteditor.protocol.golden",
+  "version": 1,
+  "fixtures": [
+    {
+      "name": "editor_options_full",
+      "type": "EditorOptions",
+      "value": {
+        "touch_slop": 11.5,
+        "double_tap_timeout": 321,
+        "long_press_ms": 654,
+        "fling_friction": 4.25,
+        "fling_min_velocity": 75.5,
+        "fling_max_velocity": 9000.25,
+        "max_undo_stack_size": 1024,
+        "key_chord_timeout_ms": 2500,
+        "reveal_selection_end_on_select_all": true
+      },
+      "hex": "00 00 38 41 41 01 00 00 00 00 00 00 8e 02 00 00 00 00 00 00 00 00 88 40 00 00 97 42 00 a1 0c 46 00 04 00 00 00 00 00 00 c4 09 00 00 00 00 00 00 01"
+    },
+    {
+      "name": "text_style_flags",
+      "type": "TextStyle",
+      "value": {
+        "color": -65536,
+        "background_color": 268435455,
+        "font_style": 3
+      },
+      "hex": "00 00 ff ff ff ff ff 0f 03 00 00 00"
+    },
+    {
+      "name": "text_change_utf8",
+      "type": "TextChange",
+      "value": {
+        "range": {
+          "start": {
+            "line": 2,
+            "column": 3
+          },
+          "end": {
+            "line": 4,
+            "column": 8
+          }
+        },
+        "new_text": "hello \u4e16\u754c"
+      },
+      "hex": "02 00 00 00 03 00 00 00 04 00 00 00 08 00 00 00 0c 00 00 00 68 65 6c 6c 6f 20 e4 b8 96 e7 95 8c"
+    },
+    {
+      "name": "set_line_spans",
+      "type": "SetLineSpansPayload",
+      "value": {
+        "line": 42,
+        "layer": "SEMANTIC",
+        "spans": [
+          {
+            "column": 0,
+            "length": 5,
+            "style_id": 7
+          },
+          {
+            "column": 8,
+            "length": 3,
+            "style_id": 9
+          }
+        ]
+      },
+      "hex": "2a 00 00 00 01 00 00 00 02 00 00 00 00 00 00 00 05 00 00 00 07 00 00 00 08 00 00 00 03 00 00 00 09 00 00 00"
+    },
+    {
+      "name": "register_batch_text_styles",
+      "type": "RegisterBatchTextStylesPayload",
+      "value": {
+        "entries": [
+          {
+            "style_id": 7,
+            "style": {
+              "color": -65536,
+              "background_color": 268435455,
+              "font_style": 3
+            }
+          },
+          {
+            "style_id": 9,
+            "style": {
+              "color": -16711936,
+              "background_color": 0,
+              "font_style": 4
+            }
+          }
+        ]
+      },
+      "hex": "02 00 00 00 07 00 00 00 00 00 ff ff ff ff ff 0f 03 00 00 00 09 00 00 00 00 ff 00 ff 00 00 00 00 04 00 00 00"
+    },
+    {
+      "name": "set_batch_line_spans",
+      "type": "SetBatchLineSpansPayload",
+      "value": {
+        "layer": "SYNTAX",
+        "entries": [
+          {
+            "line": 2,
+            "spans": [
+              {
+                "column": 1,
+                "length": 4,
+                "style_id": 7
+              }
+            ]
+          },
+          {
+            "line": 5,
+            "spans": []
+          }
+        ]
+      },
+      "hex": "00 00 00 00 02 00 00 00 02 00 00 00 01 00 00 00 01 00 00 00 04 00 00 00 07 00 00 00 05 00 00 00 00 00 00 00"
+    },
+    {
+      "name": "ime_sync_snapshot",
+      "type": "ImeSyncSnapshot",
+      "value": {
+        "cursor": {
+          "line": 10,
+          "column": 5
+        },
+        "has_selection": true,
+        "selection": {
+          "start": {
+            "line": 10,
+            "column": 3
+          },
+          "end": {
+            "line": 10,
+            "column": 5
+          }
+        },
+        "has_composing_session": true,
+        "has_visible_composition_range": true,
+        "visible_composition_range": {
+          "start": {
+            "line": 10,
+            "column": 2
+          },
+          "end": {
+            "line": 10,
+            "column": 6
+          }
+        },
+        "has_platform_marked_range": false,
+        "platform_marked_range": {
+          "start": {
+            "line": 0,
+            "column": 0
+          },
+          "end": {
+            "line": 0,
+            "column": 0
+          }
+        },
+        "preedit_storage": "VISIBLE_DOCUMENT_COMPOSITION",
+        "context_policy": "LIMITED_FOR_CANDIDATES",
+        "clear_platform_preedit": true
+      },
+      "hex": "0a 00 00 00 05 00 00 00 0a 00 00 00 03 00 00 00 0a 00 00 00 05 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 0a 00 00 00 02 00 00 00 0a 00 00 00 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00"
+    }
+  ]
+}
