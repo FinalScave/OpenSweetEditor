@@ -144,9 +144,3 @@
 | `implements`                  | 实现某个功能请求    | `Implements #123` |
 
 </details>
-
-## 自动化审查说明
-
-**sourcery-ai 及其他 code review 工具请务必进行中英双语审查与交流。**
-
-**Note: Please ensure sourcery-ai and other tools perform bilingual (Chinese & English) review.**
