@@ -11,6 +11,12 @@ def java_domain_package(target, domain):
 def java_domain_path(target, domain):
     return Path(domain_value(target, domain, domain))
 
+def java_transport_carrier(target):
+    return target.get("transport", {}).get("carrier", "direct_byte_buffer")
+
+def java_uses_memory_segment(target):
+    return java_transport_carrier(target) == "memory_segment"
+
 def java_type(field, schema_types, schema_enums):
     platform_type = field.get("platform_type")
     if platform_type:
@@ -301,7 +307,7 @@ def java_write_payload_field_lines(field, param_name, schema, target):
 def generate_java_pack_methods(item, schema, target):
     pack_name = payload_pack_function_name(item)
     if not is_hidden_input_type(item):
-        return [
+        lines = [
             "",
             f"    public static ByteBuffer {pack_name}({item['name']} value) {{",
             f"        ByteBuffer data = ByteBuffer.allocateDirect(sizeOf{item['name']}(value)).order(ByteOrder.LITTLE_ENDIAN);",
@@ -310,6 +316,18 @@ def generate_java_pack_methods(item, schema, target):
             "        return data;",
             "    }",
         ]
+        if java_uses_memory_segment(target):
+            lines.extend([
+                "",
+                f"    public static MemorySegment {pack_name}(Arena arena, {item['name']} value) {{",
+                f"        int size = sizeOf{item['name']}(value);",
+                "        MemorySegment segment = arena.allocate(size);",
+                "        ByteBuffer data = memorySegmentBuffer(segment, size);",
+                f"        write{item['name']}(data, value);",
+                "        return segment;",
+                "    }",
+            ])
+        return lines
     params = java_pack_params(item, schema, target)
     params_sig = ", ".join(f"{type_name} {name}" for type_name, name, _ in params)
     args = ", ".join(name for _, name, _ in params)
@@ -340,6 +358,17 @@ def generate_java_pack_methods(item, schema, target):
         "        return data;",
         "    }",
     ])
+    if java_uses_memory_segment(target):
+        lines.extend([
+            "",
+            f"    public static MemorySegment {pack_name}(Arena arena, {params_sig}) {{",
+            f"        int size = sizeOf{wire_name}Wire({args});",
+            "        MemorySegment segment = arena.allocate(size);",
+            "        ByteBuffer data = memorySegmentBuffer(segment, size);",
+            f"        write{wire_name}Wire(data, {args});",
+            "        return segment;",
+            "    }",
+        ])
     return lines
 
 def generate_java_class(item, schema, target):
@@ -394,6 +423,9 @@ def generate_java_codec(schema, target):
         "java.nio.charset.StandardCharsets",
         "java.util.ArrayList",
     }
+    if java_uses_memory_segment(target):
+        imports.add("java.lang.foreign.Arena")
+        imports.add("java.lang.foreign.MemorySegment")
     for item in visible_schema_types(schema):
         imports.add(f"{java_domain_package(target, item['domain'])}.{item['name']}")
     for item in schema["enums"]:
@@ -410,6 +442,17 @@ def generate_java_codec(schema, target):
         "    private static void prepare(ByteBuffer data) {",
         "        data.order(ByteOrder.LITTLE_ENDIAN);",
         "    }",
+    ])
+    if java_uses_memory_segment(target):
+        lines.extend([
+            "",
+            "    private static ByteBuffer memorySegmentBuffer(MemorySegment segment, long size) {",
+            "        ByteBuffer data = segment.asSlice(0, size).asByteBuffer();",
+            "        data.order(ByteOrder.LITTLE_ENDIAN);",
+            "        return data;",
+            "    }",
+        ])
+    lines.extend([
         "",
         "    private static String readUtf8String(ByteBuffer data) {",
         "        int length = data.getInt();",
@@ -476,6 +519,13 @@ def generate_java_codec(schema, target):
                     lines.append(f"        value.{name} = {java_read_expr(field)};")
                 lines.append("        return value;")
             lines.append("    }")
+            if java_uses_memory_segment(target):
+                lines.extend([
+                    "",
+                    f"    public static {item['name']} read{item['name']}(MemorySegment data, long size) {{",
+                    f"        return read{item['name']}(memorySegmentBuffer(data, size));",
+                    "    }",
+                ])
         if needs_writer(item):
             lines.extend(["", f"    public static void write{item['name']}(ByteBuffer data, {item['name']} value) {{", "        prepare(data);"])
             for field in item["fields"]:
@@ -502,6 +552,17 @@ def generate_java_codec(schema, target):
                     "        return data;",
                     "    }",
                 ])
+                if java_uses_memory_segment(target):
+                    lines.extend([
+                        "",
+                        f"    public static MemorySegment encode{item['name']}(Arena arena, {item['name']} value) {{",
+                        f"        int size = sizeOf{item['name']}(value);",
+                        "        MemorySegment segment = arena.allocate(size);",
+                        "        ByteBuffer data = memorySegmentBuffer(segment, size);",
+                        f"        write{item['name']}(data, value);",
+                        "        return segment;",
+                        "    }",
+                    ])
     for item in input_pack_items(schema):
         lines.extend(generate_java_pack_methods(item, schema, target))
     lines.append("}")

@@ -50,7 +50,7 @@ def read_config(config_path):
             if target is None:
                 continue
             current = config["targets"][target]
-            if indent == 4 and stripped in ("domains:", "java_api:"):
+            if indent == 4 and stripped.endswith(":"):
                 key = stripped[:-1]
                 current[key] = {}
                 map_key = f"target.{key}"

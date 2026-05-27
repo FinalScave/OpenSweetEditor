@@ -295,8 +295,12 @@ def generate_swift_codec(schema):
         "",
         "enum EditorProtocol {",
         "    struct BinaryReader {",
-        "        let data: Data",
+        "        let data: UnsafeRawBufferPointer",
         "        var offset: Int = 0",
+        "",
+        "        init(_ data: UnsafeRawBufferPointer) {",
+        "            self.data = data",
+        "        }",
         "",
         "        mutating func readUInt8() -> UInt8? {",
         "            guard offset + 1 <= data.count else { return nil }",
@@ -358,7 +362,8 @@ def generate_swift_codec(schema):
         "            guard offset + length <= data.count else { return nil }",
         "            defer { offset += length }",
         "            if length == 0 { return \"\" }",
-        "            return String(data: data.subdata(in: offset..<(offset + length)), encoding: .utf8) ?? \"\"",
+        "            let bytes = data.bindMemory(to: UInt8.self)",
+        "            return String(decoding: bytes[offset..<(offset + length)], as: UTF8.self)",
         "        }",
         "    }",
         "",
@@ -471,6 +476,19 @@ def generate_swift_codec(schema):
                 args = ", ".join(f"{field_name(field, 'swift')}: {field_name(field, 'swift')}" for field in item["fields"])
                 lines.append(f"        return {item['name']}({args})")
             lines.append("    }")
+            lines.extend([
+                "",
+                f"    static func decode{item['name']}(_ data: Data) -> {item['name']}? {{",
+                "        return data.withUnsafeBytes { raw in",
+                f"            decode{item['name']}(raw)",
+                "        }",
+                "    }",
+                "",
+                f"    static func decode{item['name']}(_ data: UnsafeRawBufferPointer) -> {item['name']}? {{",
+                "        var reader = BinaryReader(data)",
+                f"        return read{item['name']}(&reader)",
+                "    }",
+            ])
         if needs_writer(item):
             lines.extend(["", f"    static func write{item['name']}(_ writer: inout BinaryWriter, _ value: {item['name']}) {{"])
             for field in item["fields"]:
