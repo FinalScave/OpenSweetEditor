@@ -913,11 +913,19 @@ class EditorInteractionController {
   }
 
   void _updateAnimationState(core.EditorActionResult result) {
-    if (result.needsAnimation && !_animating) {
-      _animating = true;
-      _animationTicker ??= _tickerProvider.createTicker(_onAnimationTick);
-      _animationTicker!.start();
-    } else if (!result.needsAnimation && _animating) {
+    if (result.needsAnimation) {
+      if (!_animating) {
+        _animating = true;
+        _animationTicker ??= _tickerProvider.createTicker(_onAnimationTick);
+        _animationTicker!.start();
+      }
+      return;
+    }
+    if (result.reason != core.EditorActionReason.gesture &&
+        result.reason != core.EditorActionReason.animation) {
+      return;
+    }
+    if (_animating) {
       _animating = false;
       _animationTicker?.stop();
     }

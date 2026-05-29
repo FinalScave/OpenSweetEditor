@@ -1674,12 +1674,19 @@ namespace SweetEditor {
 			};
 		}
 
-		private void UpdateAnimationTimer(bool needsAnimation) {
+		private void UpdateAnimationTimer(EditorActionResult result) {
 			if (animationTimer == null) InitAnimationTimer();
-			if (needsAnimation && !animationActive) {
-				animationActive = true;
-				animationTimer!.Start();
-			} else if (!needsAnimation && animationActive) {
+			if (result.NeedsAnimation) {
+				if (!animationActive) {
+					animationActive = true;
+					animationTimer!.Start();
+				}
+				return;
+			}
+			if (result.Reason != EditorActionReason.GESTURE && result.Reason != EditorActionReason.ANIMATION) {
+				return;
+			}
+			if (animationActive) {
 				animationActive = false;
 				animationTimer!.Stop();
 			}
@@ -1891,7 +1898,7 @@ namespace SweetEditor {
 				var tapPoint = result.TapPoint;
 				FireGestureEvents(result, new System.Drawing.PointF(tapPoint.X, tapPoint.Y));
 			}
-			UpdateAnimationTimer(result.NeedsAnimation);
+			UpdateAnimationTimer(result);
 			DispatchStateEvents(result);
 
 			if (result.NeedsRedraw) {

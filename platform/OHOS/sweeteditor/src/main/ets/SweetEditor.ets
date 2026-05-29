@@ -1352,11 +1352,7 @@ export struct SweetEditor {
         this.resetCursorBlink();
       }
     }
-    if (result.needsAnimation && !this.animationActive) {
-      this.startAnimation();
-    } else if (!result.needsAnimation && this.animationActive) {
-      this.stopAnimation();
-    }
+    this.updateAnimationState(result);
     this.dispatchStateEvents(result);
     if (result.needsImeSync) {
       this.scheduleImeSync(result.imeSync);
@@ -2163,6 +2159,19 @@ export struct SweetEditor {
   private resetCursorBlink(): void {
     this.cursorVisible = true;
     this.startCursorBlink();
+  }
+
+  private updateAnimationState(result: EditorActionResult): void {
+    if (result.needsAnimation) {
+      this.startAnimation();
+      return;
+    }
+    if (result.reason !== EditorActionReason.GESTURE && result.reason !== EditorActionReason.ANIMATION) {
+      return;
+    }
+    if (this.animationActive) {
+      this.stopAnimation();
+    }
   }
 
   private startAnimation(): void {
