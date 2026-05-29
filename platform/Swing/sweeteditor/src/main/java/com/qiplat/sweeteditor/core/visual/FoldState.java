@@ -7,10 +7,16 @@ public enum FoldState {
 
     public final int value;
 
-    FoldState(int v) { value = v; }
+    FoldState(int value) {
+        this.value = value;
+    }
 
-    public static FoldState fromValue(int v) {
-        for (FoldState e : values()) if (e.value == v) return e;
-        return NONE;
+    public static FoldState fromValue(int value) {
+        switch (value) {
+            case 0: return NONE;
+            case 1: return EXPANDED;
+            case 2: return COLLAPSED;
+            default: return NONE;
+        }
     }
 }

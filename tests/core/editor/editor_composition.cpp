@@ -921,7 +921,7 @@ TEST_CASE("EditorCore document range composition finish does not move inlay hint
   editor.setViewport({800, 600});
   editor.setCursorPosition({0, 19});
 
-  editor.setLineInlayHints(0, {InlayHint{InlayType::COLOR, 20, "", 0, static_cast<int32_t>(0xFF112233u)}});
+  editor.setLineInlayHints(0, {InlayHint{InlayType::COLOR, 20, static_cast<int32_t>(0xFF112233u), ""}});
 
   markDocumentRange(editor, {{0, 13}, {0, 19}});
   EditorActionResult first_finish = finishPreedit(editor);
@@ -1106,7 +1106,7 @@ TEST_CASE("EditorCore visible preedit does not affect document undo and renders 
   editor.loadDocument(document);
   editor.setViewport({800, 600});
   editor.setCursorPosition({0, 5});
-  editor.setLineInlayHints(0, {InlayHint{InlayType::TEXT, 5, "hint", 0, 0}});
+  editor.setLineInlayHints(0, {InlayHint{InlayType::TEXT, 5, 0, "hint"}});
 
   EditorActionResult update_result = editor.updateImePreedit("ni", ImeScriptClass::CJK);
 
@@ -1528,7 +1528,7 @@ TEST_CASE("EditorCore full word preedit selection commit keeps provider decorati
   REQUIRE(update_result.content_changed);
   REQUIRE(document->getU8Text() == "valuex tail");
 
-  editor.setLineInlayHints(0, {InlayHint{InlayType::TEXT, 6, "hint", 0, 0}});
+  editor.setLineInlayHints(0, {InlayHint{InlayType::TEXT, 6, 0, "hint"}});
 
   EditorActionResult selection_result = ime.selectionChanged({{0, 11}, {0, 11}});
   CHECK_FALSE(selection_result.content_changed);

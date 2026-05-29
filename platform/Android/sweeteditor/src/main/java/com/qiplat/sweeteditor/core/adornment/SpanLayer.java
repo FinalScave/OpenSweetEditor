@@ -9,4 +9,12 @@ public enum SpanLayer {
     SpanLayer(int value) {
         this.value = value;
     }
+
+    public static SpanLayer fromValue(int value) {
+        switch (value) {
+            case 0: return SYNTAX;
+            case 1: return SEMANTIC;
+            default: return SYNTAX;
+        }
+    }
 }

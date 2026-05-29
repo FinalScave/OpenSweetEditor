@@ -11,7 +11,7 @@ import 'completion/completion_types.dart';
 import 'copilot/inline_suggestion_bar_widget.dart';
 import 'copilot/inline_suggestion_types.dart';
 import 'decoration/decoration_types.dart';
-import 'editor_core.dart' as core;
+import 'core/editor_core.dart' as core;
 import 'editor_types.dart';
 import 'event/editor_event.dart';
 import 'event/editor_event_bus.dart';

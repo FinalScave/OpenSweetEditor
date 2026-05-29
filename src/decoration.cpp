@@ -10,7 +10,7 @@ namespace NS_SWEETEDITOR {
   const Vector<InlayHint> DecorationManager::kEmptyInlayHints;
   const Vector<PhantomText> DecorationManager::kEmptyPhantomTexts;
   const Vector<GutterIcon> DecorationManager::kEmptyGutterIcons;
-  const Vector<DiagnosticSpan> DecorationManager::kEmptyDiagnostics;
+  const Vector<Diagnostic> DecorationManager::kEmptyDiagnostics;
   const Vector<CodeLensItem> DecorationManager::kEmptyCodeLensItems;
   const Vector<LinkSpan> DecorationManager::kEmptyLinks;
 
@@ -206,14 +206,14 @@ namespace NS_SWEETEDITOR {
     return nullptr;
   }
 
-  void DecorationManager::setLineDiagnostics(size_t line, Vector<DiagnosticSpan>&& diagnostics) {
+  void DecorationManager::setLineDiagnostics(size_t line, Vector<Diagnostic>&& diagnostics) {
     if (m_diagnostics_.size() <= line) {
       m_diagnostics_.resize(line + 1);
     }
     m_diagnostics_[line] = std::move(diagnostics);
   }
 
-  const Vector<DiagnosticSpan>& DecorationManager::getLineDiagnostics(size_t line) const {
+  const Vector<Diagnostic>& DecorationManager::getLineDiagnostics(size_t line) const {
     if (line >= m_diagnostics_.size()) return kEmptyDiagnostics;
     return m_diagnostics_[line];
   }
@@ -628,9 +628,9 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  // Adjust start line for DiagnosticSpan (same shape as StyleSpan: column + length)
-  static void adjustDiagnosticStartLine(Vector<DiagnosticSpan>& spans, size_t span_storage_size,
-                                         const Vector<Vector<DiagnosticSpan>>& storage, const EditParams& p) {
+  // Adjust start line for Diagnostic (same shape as StyleSpan: column + length)
+  static void adjustDiagnosticStartLine(Vector<Diagnostic>& spans, size_t span_storage_size,
+                                         const Vector<Vector<Diagnostic>>& storage, const EditParams& p) {
     if (p.old_line_count == 0 && p.new_line_count == 0) {
       int64_t col_delta = static_cast<int64_t>(p.new_end_col) - static_cast<int64_t>(p.old_end_col);
       for (auto it = spans.begin(); it != spans.end(); ) {
@@ -673,7 +673,7 @@ namespace NS_SWEETEDITOR {
         auto& end_spans = storage[p.old_end_line];
         for (auto& span : end_spans) {
           if (span.column >= p.old_end_col) {
-            DiagnosticSpan s = span;
+            Diagnostic s = span;
             s.column = static_cast<uint32_t>(p.new_end_col + (span.column - p.old_end_col));
             spans.push_back(s);
           } else if (span.column + span.length > p.old_end_col) {
@@ -685,7 +685,7 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  // Adjust start line for LinkSpan (same shape as DiagnosticSpan with extra target payload)
+  // Adjust start line for LinkSpan (same shape as Diagnostic with extra target payload)
   static void adjustLinkStartLine(Vector<LinkSpan>& spans, size_t span_storage_size,
                                   const HashMap<size_t, Vector<LinkSpan>>& storage, const EditParams& p) {
     if (p.old_line_count == 0 && p.new_line_count == 0) {
@@ -797,7 +797,7 @@ namespace NS_SWEETEDITOR {
       }
     }
 
-    // DiagnosticSpan (same shape as StyleSpan: column + length)
+    // Diagnostic (same shape as StyleSpan: column + length)
     if (!m_diagnostics_.empty() && p.old_start_line < m_diagnostics_.size()) {
       adjustDiagnosticStartLine(m_diagnostics_[p.old_start_line], m_diagnostics_.size(), m_diagnostics_, p);
     }

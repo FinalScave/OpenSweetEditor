@@ -1,28 +1,5 @@
 import Foundation
 
-public enum FoldArrowMode: Int32, Equatable {
-    case auto = 0
-    case always = 1
-    case hidden = 2
-}
-
-public enum WrapMode: Int32, Equatable {
-    case none = 0
-    case charBreak = 1
-    case wordBreak = 2
-}
-
-public enum CurrentLineRenderMode: Int32, Equatable {
-    case background = 0
-    case border = 1
-    case none = 2
-}
-
-public enum AutoIndentMode: Int32, Equatable {
-    case none = 0
-    case keepIndent = 1
-}
-
 protocol EditorSettingsHost: AnyObject {
     func applyEditorSettings(_ settings: EditorSettings)
 }
@@ -159,42 +136,5 @@ public final class EditorSettings {
 
     private func apply() {
         host?.applyEditorSettings(self)
-    }
-}
-
-extension SweetEditorCore.AutoIndentMode {
-    init(_ mode: AutoIndentMode) {
-        switch mode {
-        case .none:
-            self = .none
-        case .keepIndent:
-            self = .keepIndent
-        }
-    }
-}
-
-extension SweetEditorCore.FoldArrowMode {
-    init(_ mode: FoldArrowMode) {
-        switch mode {
-        case .auto:
-            self = .auto
-        case .always:
-            self = .always
-        case .hidden:
-            self = .hidden
-        }
-    }
-}
-
-extension SweetEditorCore.WrapMode {
-    init(_ mode: WrapMode) {
-        switch mode {
-        case .none:
-            self = .none
-        case .charBreak:
-            self = .charBreak
-        case .wordBreak:
-            self = .wordBreak
-        }
     }
 }

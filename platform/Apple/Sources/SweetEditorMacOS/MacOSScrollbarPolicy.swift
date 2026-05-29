@@ -12,10 +12,10 @@ struct MacOSScrollbarPolicy {
         self.hoverRevealEnabled = hoverRevealEnabled ?? (scrollerStyle == .overlay)
     }
 
-    func defaultConfig() -> SweetEditorCore.ScrollbarConfig {
+    func defaultConfig() -> ScrollbarConfig {
         switch scrollerStyle {
         case .legacy:
-            return SweetEditorCore.ScrollbarConfig(
+            return ScrollbarConfig(
                 thickness: 10.0,
                 minThumb: 24.0,
                 thumbHitPadding: 0.0,
@@ -26,7 +26,7 @@ struct MacOSScrollbarPolicy {
                 fadeDurationMs: 300
             )
         case .overlay:
-            return SweetEditorCore.ScrollbarConfig(
+            return ScrollbarConfig(
                 thickness: 8.0,
                 minThumb: 48.0,
                 thumbHitPadding: 16.0,
@@ -37,7 +37,7 @@ struct MacOSScrollbarPolicy {
                 fadeDurationMs: 300
             )
         @unknown default:
-            return SweetEditorCore.ScrollbarConfig(
+            return ScrollbarConfig(
                 thickness: 8.0,
                 minThumb: 48.0,
                 thumbHitPadding: 16.0,

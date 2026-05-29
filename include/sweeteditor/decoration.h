@@ -140,8 +140,8 @@ namespace NS_SWEETEDITOR {
     DIAG_HINT    = 3,  // Gray dashed line
   };
 
-  /// Diagnostic span (wavy/underline decoration)
-  struct SE_PROTOCOL_IN(adornment) DiagnosticSpan {
+  /// Diagnostic (wavy/underline decoration)
+  struct SE_PROTOCOL_IN(adornment) Diagnostic {
     /// Start column in the line
     uint32_t column {0};
     /// Character length of the span
@@ -264,10 +264,10 @@ namespace NS_SWEETEDITOR {
     const Vector<GutterIcon>& getLineGutterIcons(size_t line) const;
 
     /// Set diagnostic spans for a given line (externally provided, sorted by column ascending)
-    void setLineDiagnostics(size_t line, Vector<DiagnosticSpan>&& diagnostics);
+    void setLineDiagnostics(size_t line, Vector<Diagnostic>&& diagnostics);
 
     /// Get diagnostic spans for a given line (sorted by column ascending)
-    const Vector<DiagnosticSpan>& getLineDiagnostics(size_t line) const;
+    const Vector<Diagnostic>& getLineDiagnostics(size_t line) const;
 
     /// Clear all diagnostic spans
     void clearDiagnostics();
@@ -367,7 +367,7 @@ namespace NS_SWEETEDITOR {
     HashMap<size_t, Vector<GutterIcon>> m_gutter_icons_;
     HashMap<size_t, Vector<CodeLensItem>> m_codelens_items_;
     HashMap<size_t, Vector<LinkSpan>> m_links_;
-    Vector<Vector<DiagnosticSpan>> m_diagnostics_;
+    Vector<Vector<Diagnostic>> m_diagnostics_;
 
     Vector<IndentGuide> m_indent_guides_;
     Vector<BracketGuide> m_bracket_guides_;
@@ -379,7 +379,7 @@ namespace NS_SWEETEDITOR {
     static const Vector<InlayHint> kEmptyInlayHints;
     static const Vector<PhantomText> kEmptyPhantomTexts;
     static const Vector<GutterIcon> kEmptyGutterIcons;
-    static const Vector<DiagnosticSpan> kEmptyDiagnostics;
+    static const Vector<Diagnostic> kEmptyDiagnostics;
     static const Vector<CodeLensItem> kEmptyCodeLensItems;
     static const Vector<LinkSpan> kEmptyLinks;
   };

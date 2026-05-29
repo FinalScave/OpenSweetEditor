@@ -137,7 +137,7 @@ static const uint8_t* scrollMetricsToBinary(const ScrollMetrics& metrics, size_t
 }
 
 static const uint8_t* layoutMetricsToBinary(const LayoutMetrics& metrics, size_t* out_size) {
-  return protocolToBinary(metrics, out_size, sizeof(float) * 8 + sizeof(int32_t) * 3);
+  return protocolToBinary(metrics, out_size, sizeof(float) * 9 + sizeof(int32_t) * 5);
 }
 
 class CTextMeasurer : public TextMeasurer {
@@ -615,7 +615,7 @@ const uint8_t* editor_set_keymap(intptr_t editor_handle, const uint8_t* data, si
     b.first.key_code = static_cast<KeyCode>(readU16());
     b.second.modifiers = static_cast<KeyModifier>(readU8());
     b.second.key_code = static_cast<KeyCode>(readU16());
-    b.command = static_cast<EditorCommand>(readU32());
+    b.command = readU32();
     bindings.push_back(b);
   }
 

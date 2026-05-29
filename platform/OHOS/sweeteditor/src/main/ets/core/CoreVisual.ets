@@ -1,9 +1,95 @@
-import { TextPosition } from './CoreFoundation';
 import { TextStyle } from './CoreAdornments';
+import { CurrentLineRenderMode, FoldArrowMode } from './CoreConfig';
+import { PointF, Rect, TextPosition } from './CoreFoundation';
 
-export interface PointF {
-  x: number;
-  y: number;
+export enum FoldState {
+  NONE = 0,
+  EXPANDED = 1,
+  COLLAPSED = 2,
+}
+
+export function foldStateFromValue(value: number): FoldState {
+  switch (value) {
+    case 0: return FoldState.NONE;
+    case 1: return FoldState.EXPANDED;
+    case 2: return FoldState.COLLAPSED;
+    default: return FoldState.NONE;
+  }
+}
+
+export enum GuideDirection {
+  HORIZONTAL = 0,
+  VERTICAL = 1,
+}
+
+export function guideDirectionFromValue(value: number): GuideDirection {
+  switch (value) {
+    case 0: return GuideDirection.HORIZONTAL;
+    case 1: return GuideDirection.VERTICAL;
+    default: return GuideDirection.VERTICAL;
+  }
+}
+
+export enum GuideStyle {
+  SOLID = 0,
+  DASHED = 1,
+  DOUBLE = 2,
+}
+
+export function guideStyleFromValue(value: number): GuideStyle {
+  switch (value) {
+    case 0: return GuideStyle.SOLID;
+    case 1: return GuideStyle.DASHED;
+    case 2: return GuideStyle.DOUBLE;
+    default: return GuideStyle.SOLID;
+  }
+}
+
+export enum GuideType {
+  INDENT = 0,
+  BRACKET = 1,
+  FLOW = 2,
+  SEPARATOR = 3,
+}
+
+export function guideTypeFromValue(value: number): GuideType {
+  switch (value) {
+    case 0: return GuideType.INDENT;
+    case 1: return GuideType.BRACKET;
+    case 2: return GuideType.FLOW;
+    case 3: return GuideType.SEPARATOR;
+    default: return GuideType.INDENT;
+  }
+}
+
+export enum PointerCursorType {
+  DEFAULT = 0,
+  TEXT = 1,
+  HAND = 2,
+}
+
+export function pointerCursorTypeFromValue(value: number): PointerCursorType {
+  switch (value) {
+    case 0: return PointerCursorType.DEFAULT;
+    case 1: return PointerCursorType.TEXT;
+    case 2: return PointerCursorType.HAND;
+    default: return PointerCursorType.DEFAULT;
+  }
+}
+
+export enum VisualLineKind {
+  CONTENT = 0,
+  PHANTOM = 1,
+  CODELENS = 2,
+}
+
+export function visualLineKindFromValue(value: number): VisualLineKind {
+  switch (value) {
+    case 0: return VisualLineKind.CONTENT;
+    case 1: return VisualLineKind.PHANTOM;
+    case 2: return VisualLineKind.CODELENS;
+    default: return VisualLineKind.CONTENT;
+  }
 }
 
 export enum VisualRunType {
@@ -15,78 +101,27 @@ export enum VisualRunType {
   FOLD_PLACEHOLDER = 5,
   TAB = 6,
   CODELENS = 7,
-  LINK = 8
+  LINK = 8,
 }
 
-export enum FoldState {
-  NONE = 0,
-  EXPANDED = 1,
-  COLLAPSED = 2
+export function visualRunTypeFromValue(value: number): VisualRunType {
+  switch (value) {
+    case 0: return VisualRunType.TEXT;
+    case 1: return VisualRunType.WHITESPACE;
+    case 2: return VisualRunType.NEWLINE;
+    case 3: return VisualRunType.INLAY_HINT;
+    case 4: return VisualRunType.PHANTOM_TEXT;
+    case 5: return VisualRunType.FOLD_PLACEHOLDER;
+    case 6: return VisualRunType.TAB;
+    case 7: return VisualRunType.CODELENS;
+    case 8: return VisualRunType.LINK;
+    default: return VisualRunType.TEXT;
+  }
 }
 
-export enum VisualLineKind {
-  CONTENT = 0,
-  PHANTOM = 1,
-  CODELENS = 2
-}
-
-export enum GuideDirection {
-  HORIZONTAL = 0,
-  VERTICAL = 1
-}
-
-export enum GuideType {
-  INDENT = 0,
-  BRACKET = 1,
-  FLOW = 2,
-  SEPARATOR = 3
-}
-
-export enum GuideStyle {
-  SOLID = 0,
-  DASHED = 1,
-  DOTTED = 2,
-  DOUBLE = 3
-}
-
-export interface VisualRun {
-  type: VisualRunType;
-  x: number;
-  y: number;
-  text: string;
-  style: TextStyle;
-  iconId: number;
-  colorValue: number;
-  width: number;
-  padding: number;
-  margin: number;
+export interface CompositionDecoration {
   active: boolean;
-}
-
-export interface VisualLine {
-  logicalLine: number;
-  wrapIndex: number;
-  lineNumberPosition: PointF;
-  runs: VisualRun[];
-  kind: VisualLineKind;
-  ownsGutterSemantics: boolean;
-  foldState: FoldState;
-}
-
-export interface GutterIconRenderItem {
-  logicalLine: number;
-  iconId: number;
-  origin: PointF;
-  width: number;
-  height: number;
-}
-
-export interface FoldMarkerRenderItem {
-  logicalLine: number;
-  foldState: FoldState;
-  origin: PointF;
-  width: number;
-  height: number;
+  rect: Rect;
 }
 
 export interface Cursor {
@@ -97,23 +132,50 @@ export interface Cursor {
   showDragger: boolean;
 }
 
-export interface SelectionRect {
-  origin: PointF;
-  width: number;
+export interface CursorRect {
+  x: number;
+  y: number;
   height: number;
 }
 
-export interface SelectionHandle {
-  position: PointF;
-  height: number;
-  visible: boolean;
+export interface DiagnosticDecoration {
+  rect: Rect;
+  severity: number;
 }
 
-export interface CompositionDecoration {
-  active: boolean;
-  origin: PointF;
-  width: number;
-  height: number;
+export interface EditorRenderModel {
+  splitX: number;
+  splitLineVisible: boolean;
+  scrollX: number;
+  scrollY: number;
+  viewportWidth: number;
+  viewportHeight: number;
+  currentLine: PointF;
+  currentLineRenderMode: CurrentLineRenderMode;
+  lines: VisualLine[];
+  cursor: Cursor;
+  selectionRects: Rect[];
+  selectionStartHandle: SelectionHandle;
+  selectionEndHandle: SelectionHandle;
+  compositionDecoration: CompositionDecoration;
+  guideSegments: GuideSegment[];
+  diagnosticDecorations: DiagnosticDecoration[];
+  maxGutterIcons: number;
+  linkedEditingRects: LinkedEditingRect[];
+  bracketHighlightRects: Rect[];
+  gutterIcons: GutterIconRenderItem[];
+  foldMarkers: FoldMarkerRenderItem[];
+  verticalScrollbar: ScrollbarModel;
+  horizontalScrollbar: ScrollbarModel;
+  gutterSticky: boolean;
+  gutterVisible: boolean;
+  pointerCursorType: PointerCursorType;
+}
+
+export interface FoldMarkerRenderItem {
+  logicalLine: number;
+  foldState: FoldState;
+  rect: Rect;
 }
 
 export interface GuideSegment {
@@ -125,44 +187,32 @@ export interface GuideSegment {
   arrowEnd: boolean;
 }
 
-export interface DiagnosticDecoration {
-  origin: PointF;
-  width: number;
-  height: number;
-  severity: number;
+export interface GutterIconRenderItem {
+  logicalLine: number;
+  iconId: number;
+  rect: Rect;
+}
+
+export interface LayoutMetrics {
+  fontHeight: number;
+  fontAscent: number;
+  lineSpacingAdd: number;
+  lineSpacingMult: number;
+  lineNumberMargin: number;
+  lineNumberWidth: number;
+  contentStartPadding: number;
+  maxGutterIcons: number;
+  inlayHintPadding: number;
+  inlayHintMargin: number;
+  foldArrowMode: FoldArrowMode;
+  hasFoldRegions: boolean;
+  gutterSticky: boolean;
+  gutterVisible: boolean;
 }
 
 export interface LinkedEditingRect {
-  origin: PointF;
-  width: number;
-  height: number;
+  rect: Rect;
   isActive: boolean;
-}
-
-export interface BracketHighlightRect {
-  origin: PointF;
-  width: number;
-  height: number;
-}
-
-export interface ScrollbarRect {
-  origin: PointF;
-  width: number;
-  height: number;
-}
-
-export interface ScrollbarModel {
-  visible: boolean;
-  alpha: number;
-  thumbActive: boolean;
-  track: ScrollbarRect;
-  thumb: ScrollbarRect;
-}
-
-export interface CursorRect {
-  x: number;
-  y: number;
-  height: number;
 }
 
 export interface ScrollMetrics {
@@ -181,30 +231,40 @@ export interface ScrollMetrics {
   canScrollY: boolean;
 }
 
-export interface EditorRenderModel {
-  splitX: number;
-  splitLineVisible: boolean;
-  scrollX: number;
-  scrollY: number;
-  viewportWidth: number;
-  viewportHeight: number;
-  currentLine: PointF;
-  currentLineRenderMode: number;
-  visualLines: VisualLine[];
-  gutterIcons: GutterIconRenderItem[];
-  foldMarkers: FoldMarkerRenderItem[];
-  cursor: Cursor;
-  selectionRects: SelectionRect[];
-  selectionStartHandle: SelectionHandle;
-  selectionEndHandle: SelectionHandle;
-  compositionDecoration: CompositionDecoration;
-  guideSegments: GuideSegment[];
-  diagnosticDecorations: DiagnosticDecoration[];
-  maxGutterIcons: number;
-  linkedEditingRects: LinkedEditingRect[];
-  bracketHighlightRects: BracketHighlightRect[];
-  verticalScrollbar: ScrollbarModel;
-  horizontalScrollbar: ScrollbarModel;
-  gutterSticky: boolean;
-  gutterVisible: boolean;
+export interface ScrollbarModel {
+  visible: boolean;
+  alpha: number;
+  thumbActive: boolean;
+  track: Rect;
+  thumb: Rect;
+}
+
+export interface SelectionHandle {
+  position: PointF;
+  height: number;
+  visible: boolean;
+}
+
+export interface VisualLine {
+  logicalLine: number;
+  wrapIndex: number;
+  lineNumberPosition: PointF;
+  runs: VisualRun[];
+  kind: VisualLineKind;
+  ownsGutterSemantics: boolean;
+  foldState: FoldState;
+}
+
+export interface VisualRun {
+  type: VisualRunType;
+  x: number;
+  y: number;
+  text: string;
+  style: TextStyle;
+  iconId: number;
+  colorValue: number;
+  width: number;
+  padding: number;
+  margin: number;
+  active: boolean;
 }

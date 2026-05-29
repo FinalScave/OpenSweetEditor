@@ -1,12 +1,14 @@
 package com.qiplat.sweeteditor.core.foundation;
 
-import com.google.gson.annotations.SerializedName;
+public final class TextChange {
+    public TextRange range = new TextRange();
+    public String newText = "";
 
-/**
- * Single text change (exact change info at one edit location).
- * <p>Platform layer only contains range + new_text.</p>
- */
-public class TextChange {
-    @SerializedName("range") public TextRange range;
-    @SerializedName("new_text") public String newText;
+    public TextChange() {
+    }
+
+    public TextChange(TextRange range, String newText) {
+        this.range = range;
+        this.newText = newText;
+    }
 }

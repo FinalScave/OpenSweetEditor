@@ -12,8 +12,7 @@ import {
   SeparatorGuide,
   StyleSpan
 } from '../core/CoreAdornments';
-import { TextChange } from '../core/EditorCore';
-import { IntRange } from '../core/CoreFoundation';
+import { IntRange, TextChange } from '../core/CoreFoundation';
 import { EditorMetadata, LanguageConfiguration } from '../EditorTypes';
 
 export enum DecorationType {
@@ -32,7 +31,7 @@ export enum DecorationType {
   LINK = 'link'
 }
 
-export { TextChange } from '../core/EditorCore';
+export { TextChange } from '../core/CoreFoundation';
 
 export class DecorationContext {
   readonly visibleLineRange: IntRange;

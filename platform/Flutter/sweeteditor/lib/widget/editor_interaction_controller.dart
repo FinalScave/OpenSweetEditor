@@ -233,7 +233,7 @@ class EditorInteractionController {
   }
 
   core.EditorActionResult? _sendGestureEvent({
-    required int type,
+    required core.EventType type,
     required List<core.PointF> points,
     int? modifiers,
     double wheelDeltaX = 0,
@@ -255,18 +255,18 @@ class EditorInteractionController {
 
   int _currentGestureModifiers({bool allowCtrl = true}) {
     final keyboard = HardwareKeyboard.instance;
-    var modifiers = core.Modifier.none;
+    var modifiers = core.KeyModifier.none;
     if (keyboard.isShiftPressed) {
-      modifiers |= core.Modifier.shift;
+      modifiers |= core.KeyModifier.shift;
     }
     if (allowCtrl && keyboard.isControlPressed) {
-      modifiers |= core.Modifier.ctrl;
+      modifiers |= core.KeyModifier.ctrl;
     }
     if (keyboard.isAltPressed) {
-      modifiers |= core.Modifier.alt;
+      modifiers |= core.KeyModifier.alt;
     }
     if (keyboard.isMetaPressed) {
-      modifiers |= core.Modifier.meta;
+      modifiers |= core.KeyModifier.meta;
     }
     return modifiers;
   }
@@ -324,7 +324,7 @@ class EditorInteractionController {
     }
 
     if (_session.inlineSuggestionController.isShowing) {
-      final androidCode = keyCode.value;
+      final androidCode = keyCode;
       if (androidCode != 0 &&
           _session.inlineSuggestionController.handleKeyCode(androidCode)) {
         _flush();
@@ -333,7 +333,7 @@ class EditorInteractionController {
     }
 
     if (_session.completionPopupController.isShowing) {
-      final androidCode = keyCode.value;
+      final androidCode = keyCode;
       if (androidCode != 0 &&
           _session.completionPopupController.handleKeyCode(androidCode)) {
         return KeyEventResult.handled;
@@ -351,7 +351,7 @@ class EditorInteractionController {
     );
     final handledByPlatformCommand =
         result.handled &&
-        result.command != core.EditorCommand.none &&
+        result.command != core.EditorBuiltinCommand.none.value &&
         _handleResolvedCommand(result.command);
 
     if (handledByPlatformCommand) {
@@ -583,34 +583,42 @@ class EditorInteractionController {
   }
 
   bool _handleResolvedCommand(int command) {
-    if (command > core.EditorCommand.builtInMax) {
+    if (command > core.EditorBuiltinCommand.triggerCompletion.value) {
       return _session.keyMap.invokeHandler(command);
     }
-    if (!core.EditorCommand.isPlatformHandled(command)) {
+    if (!_isPlatformHandledCommand(command)) {
       return false;
     }
     if (_session.keyMap.invokeHandler(command)) {
       return true;
     }
-    switch (command) {
-      case core.EditorCommand.copy:
-        _copyToClipboard();
-        return true;
-      case core.EditorCommand.paste:
-        _pasteFromClipboard();
-        return true;
-      case core.EditorCommand.cut:
-        _cutToClipboard();
-        return true;
-      case core.EditorCommand.triggerCompletion:
-        _session.completionProviderManager.triggerCompletion(
-          CompletionTriggerKind.invoked,
-          null,
-        );
-        return true;
-      default:
-        return false;
+    if (command == core.EditorBuiltinCommand.copy.value) {
+      _copyToClipboard();
+      return true;
     }
+    if (command == core.EditorBuiltinCommand.paste.value) {
+      _pasteFromClipboard();
+      return true;
+    }
+    if (command == core.EditorBuiltinCommand.cut.value) {
+      _cutToClipboard();
+      return true;
+    }
+    if (command == core.EditorBuiltinCommand.triggerCompletion.value) {
+      _session.completionProviderManager.triggerCompletion(
+        CompletionTriggerKind.invoked,
+        null,
+      );
+      return true;
+    }
+    return false;
+  }
+
+  bool _isPlatformHandledCommand(int command) {
+    return command == core.EditorBuiltinCommand.copy.value ||
+        command == core.EditorBuiltinCommand.paste.value ||
+        command == core.EditorBuiltinCommand.cut.value ||
+        command == core.EditorBuiltinCommand.triggerCompletion.value;
   }
 
   void _copyToClipboard() {
@@ -667,7 +675,7 @@ class EditorInteractionController {
     return false;
   }
 
-  bool _tryHandleComposingKey(core.KeyCode keyCode) {
+  bool _tryHandleComposingKey(int keyCode) {
     if (keyCode == core.KeyCode.none) return false;
     final editorCore = _session.editorCore;
     if (editorCore == null) return false;
@@ -922,7 +930,7 @@ class EditorInteractionController {
     _dispatchEditorActionResult(result);
   }
 
-  static core.KeyCode _mapLogicalKey(LogicalKeyboardKey key) {
+  static int _mapLogicalKey(LogicalKeyboardKey key) {
     if (key == LogicalKeyboardKey.backspace) return core.KeyCode.backspace;
     if (key == LogicalKeyboardKey.delete) return core.KeyCode.deleteKey;
     if (key == LogicalKeyboardKey.enter) return core.KeyCode.enter;

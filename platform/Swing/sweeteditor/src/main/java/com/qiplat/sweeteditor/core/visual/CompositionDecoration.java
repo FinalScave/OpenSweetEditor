@@ -1,10 +1,16 @@
 package com.qiplat.sweeteditor.core.visual;
 
-import com.google.gson.annotations.SerializedName;
+import com.qiplat.sweeteditor.core.foundation.Rect;
 
-public class CompositionDecoration {
-    @SerializedName("active") public boolean active;
-    @SerializedName("origin") public PointF origin;
-    @SerializedName("width") public float width;
-    @SerializedName("height") public float height;
+public final class CompositionDecoration {
+    public boolean active = false;
+    public Rect rect = new Rect();
+
+    public CompositionDecoration() {
+    }
+
+    public CompositionDecoration(boolean active, Rect rect) {
+        this.active = active;
+        this.rect = rect;
+    }
 }

@@ -2,9 +2,8 @@ import { EditorIconProvider, EditorTheme } from './EditorTypes';
 import {
   HandleConfig,
   ScrollbarConfig,
-  ScrollbarMode,
-  ScrollbarTrackTapMode
-} from './core/EditorCore';
+  ScrollbarMode
+} from './core/CoreConfig';
 import {
   BracketHighlightRect,
   CompositionDecoration,
@@ -25,7 +24,7 @@ import {
   VisualRun,
   VisualRunType
 } from './core/CoreVisual';
-import { CurrentLineRenderMode } from './core/CoreFoundation';
+import { CurrentLineRenderMode } from './core/CoreConfig';
 import { DiagnosticSeverity, FontStyle } from './core/CoreAdornments';
 import { MeasurePerfStats, PerfOverlay, PerfStepRecorder } from './perf/PerfOverlay';
 import { argbToCssColor, multiplyArgbAlpha } from './ui/EditorColor';
@@ -1022,14 +1021,18 @@ export class EditorRenderer {
 
     const pad = 8.0;
     const config = new HandleConfig();
-    config.startLeft = minX - pad;
-    config.startTop = minY - pad;
-    config.startRight = maxX + pad;
-    config.startBottom = maxY + pad;
-    config.endLeft = -maxX - pad;
-    config.endTop = minY - pad;
-    config.endRight = -minX + pad;
-    config.endBottom = maxY + pad;
+    config.startHitOffset = {
+      left: minX - pad,
+      top: minY - pad,
+      right: maxX + pad,
+      bottom: maxY + pad
+    };
+    config.endHitOffset = {
+      left: -maxX - pad,
+      top: minY - pad,
+      right: -minX + pad,
+      bottom: maxY + pad
+    };
     return config;
   }
 

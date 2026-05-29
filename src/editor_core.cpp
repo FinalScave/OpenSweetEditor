@@ -719,7 +719,7 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::handleKeyEvent(const KeyEvent& event) {
     PERF_TIMER("handleKeyEvent");
     const ActionSnapshot before = captureActionSnapshot();
-    EditorCommand command = EditorCommand::NONE;
+    EditorCommandId command = 0;
     auto make_result = [&](bool handled, TextEditResult edit_result = {}) -> EditorActionResult {
       EditorActionResult action = finishAction(before, EditorActionReason::KEY_INPUT, handled, std::move(edit_result));
       action.command = command;
@@ -762,72 +762,75 @@ namespace NS_SWEETEDITOR {
     if (resolve.status == ResolveStatus::MATCHED) {
       command = resolve.command;
 
-      if (command == EditorCommand::COPY || command == EditorCommand::PASTE || command == EditorCommand::CUT
-        || command == EditorCommand::TRIGGER_COMPLETION || static_cast<uint32_t>(command) > static_cast<uint32_t>(EditorCommand::TRIGGER_COMPLETION)) {
+      if (command == static_cast<EditorCommandId>(EditorBuiltinCommand::COPY) ||
+        command == static_cast<EditorCommandId>(EditorBuiltinCommand::PASTE) ||
+        command == static_cast<EditorCommandId>(EditorBuiltinCommand::CUT) ||
+        command == static_cast<EditorCommandId>(EditorBuiltinCommand::TRIGGER_COMPLETION) ||
+        command > EDITOR_BUILTIN_COMMAND_MAX) {
         return make_result(true);
       }
 
       bool handled = true;
       TextEditResult edit_result;
-      switch (command) {
-      case EditorCommand::CURSOR_LEFT:
+      switch (static_cast<EditorBuiltinCommand>(command)) {
+      case EditorBuiltinCommand::CURSOR_LEFT:
         moveCursorLeft(false);
         break;
-      case EditorCommand::CURSOR_RIGHT:
+      case EditorBuiltinCommand::CURSOR_RIGHT:
         moveCursorRight(false);
         break;
-      case EditorCommand::CURSOR_UP:
+      case EditorBuiltinCommand::CURSOR_UP:
         moveCursorUp(false);
         break;
-      case EditorCommand::CURSOR_DOWN:
+      case EditorBuiltinCommand::CURSOR_DOWN:
         moveCursorDown(false);
         break;
-      case EditorCommand::CURSOR_LINE_START:
+      case EditorBuiltinCommand::CURSOR_LINE_START:
         moveCursorToLineStart(false);
         break;
-      case EditorCommand::CURSOR_LINE_END:
+      case EditorBuiltinCommand::CURSOR_LINE_END:
         moveCursorToLineEnd(false);
         break;
-      case EditorCommand::CURSOR_PAGE_UP:
+      case EditorBuiltinCommand::CURSOR_PAGE_UP:
         moveCursorPageUp(false);
         break;
-      case EditorCommand::CURSOR_PAGE_DOWN:
+      case EditorBuiltinCommand::CURSOR_PAGE_DOWN:
         moveCursorPageDown(false);
         break;
-      case EditorCommand::SELECT_LEFT:
+      case EditorBuiltinCommand::SELECT_LEFT:
         moveCursorLeft(true);
         break;
-      case EditorCommand::SELECT_RIGHT:
+      case EditorBuiltinCommand::SELECT_RIGHT:
         moveCursorRight(true);
         break;
-      case EditorCommand::SELECT_UP:
+      case EditorBuiltinCommand::SELECT_UP:
         moveCursorUp(true);
         break;
-      case EditorCommand::SELECT_DOWN:
+      case EditorBuiltinCommand::SELECT_DOWN:
         moveCursorDown(true);
         break;
-      case EditorCommand::SELECT_LINE_START:
+      case EditorBuiltinCommand::SELECT_LINE_START:
         moveCursorToLineStart(true);
         break;
-      case EditorCommand::SELECT_LINE_END:
+      case EditorBuiltinCommand::SELECT_LINE_END:
         moveCursorToLineEnd(true);
         break;
-      case EditorCommand::SELECT_PAGE_UP:
+      case EditorBuiltinCommand::SELECT_PAGE_UP:
         moveCursorPageUp(true);
         break;
-      case EditorCommand::SELECT_PAGE_DOWN:
+      case EditorBuiltinCommand::SELECT_PAGE_DOWN:
         moveCursorPageDown(true);
         break;
-      case EditorCommand::SELECT_ALL:
+      case EditorBuiltinCommand::SELECT_ALL:
         selectAll();
         break;
-      case EditorCommand::BACKSPACE:
+      case EditorBuiltinCommand::BACKSPACE:
         edit_result = backspaceInternal();
         break;
-      case EditorCommand::DELETE_FORWARD:
+      case EditorBuiltinCommand::DELETE_FORWARD:
         edit_result = deleteForwardInternal();
         break;
-      case EditorCommand::INSERT_TAB:
+      case EditorBuiltinCommand::INSERT_TAB:
         if (m_settings_.insert_spaces && m_document_ != nullptr) {
           uint32_t tab_size = std::max<uint32_t>(1, m_text_layout_->getTabSize());
           const U16String& line_text = m_document_->getLineU16TextRef(m_caret_.cursor.line);
@@ -841,36 +844,36 @@ namespace NS_SWEETEDITOR {
           edit_result = insertTextInternal("\t");
         }
         break;
-      case EditorCommand::INSERT_NEWLINE:
+      case EditorBuiltinCommand::INSERT_NEWLINE:
         edit_result = insertTextInternal("\n");
         break;
-      case EditorCommand::INSERT_LINE_ABOVE:
+      case EditorBuiltinCommand::INSERT_LINE_ABOVE:
         edit_result = insertLineAboveInternal();
         break;
-      case EditorCommand::INSERT_LINE_BELOW:
+      case EditorBuiltinCommand::INSERT_LINE_BELOW:
         edit_result = insertLineBelowInternal();
         break;
-      case EditorCommand::UNDO:
+      case EditorBuiltinCommand::UNDO:
         edit_result = undoInternal();
         handled = edit_result.changed;
         break;
-      case EditorCommand::REDO:
+      case EditorBuiltinCommand::REDO:
         edit_result = redoInternal();
         handled = edit_result.changed;
         break;
-      case EditorCommand::MOVE_LINE_UP:
+      case EditorBuiltinCommand::MOVE_LINE_UP:
         edit_result = moveLineUpInternal();
         break;
-      case EditorCommand::MOVE_LINE_DOWN:
+      case EditorBuiltinCommand::MOVE_LINE_DOWN:
         edit_result = moveLineDownInternal();
         break;
-      case EditorCommand::COPY_LINE_UP:
+      case EditorBuiltinCommand::COPY_LINE_UP:
         edit_result = copyLineUpInternal();
         break;
-      case EditorCommand::COPY_LINE_DOWN:
+      case EditorBuiltinCommand::COPY_LINE_DOWN:
         edit_result = copyLineDownInternal();
         break;
-      case EditorCommand::DELETE_LINE:
+      case EditorBuiltinCommand::DELETE_LINE:
         edit_result = deleteLineInternal();
         break;
       default:
@@ -2693,13 +2696,13 @@ namespace NS_SWEETEDITOR {
     return link != nullptr ? link->target : U8String {};
   }
 
-  EditorActionResult EditorCore::setLineDiagnostics(size_t line, Vector<DiagnosticSpan>&& diagnostics) {
+  EditorActionResult EditorCore::setLineDiagnostics(size_t line, Vector<Diagnostic>&& diagnostics) {
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineDiagnostics(line, std::move(diagnostics));
     return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
-  EditorActionResult EditorCore::setBatchLineDiagnostics(Vector<std::pair<size_t, Vector<DiagnosticSpan>>>&& entries) {
+  EditorActionResult EditorCore::setBatchLineDiagnostics(Vector<std::pair<size_t, Vector<Diagnostic>>>&& entries) {
     const ActionSnapshot before = captureActionSnapshot();
     if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
     for (auto& [line, diagnostics] : entries) {

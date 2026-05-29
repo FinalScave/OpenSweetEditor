@@ -60,26 +60,6 @@ namespace SweetEditor {
 	}
 
 	/// <summary>
-	/// Immutable text style definition referenced by StyleSpan.styleId.
-	/// </summary>
-	public readonly struct TextStyle {
-		/// <summary>Foreground color (ARGB).</summary>
-		public int Color { get; }
-		/// <summary>Background color (ARGB), 0 means transparent.</summary>
-		public int BackgroundColor { get; }
-		/// <summary>Font style bit flags (BOLD | ITALIC | STRIKETHROUGH).</summary>
-		public int FontStyle { get; }
-
-		public TextStyle(int color, int fontStyle) : this(color, 0, fontStyle) { }
-
-		public TextStyle(int color, int backgroundColor, int fontStyle) {
-			Color = color;
-			BackgroundColor = backgroundColor;
-			FontStyle = fontStyle;
-		}
-	}
-
-	/// <summary>
 	/// Editor theme configuration containing all configurable color properties.
 	/// All colors are in ARGB format.
 	/// Apply a theme via <see cref="SweetEditorControl.ApplyTheme(EditorTheme)"/>.
@@ -405,14 +385,28 @@ namespace SweetEditor {
 	/// <summary>
 	/// Widget-layer keymap extension that additionally holds host-side command handlers.
 	/// </summary>
-	public class EditorKeyMap : KeyMap {
+	public class EditorKeyMap {
+		private readonly List<KeyBinding> bindings = new();
 		private readonly Dictionary<int, Action<KeyBinding, SweetEditorControl>> commands = new();
-		private int nextCustomId = (int)EditorCommand.TRIGGER_COMPLETION + 1;
+		private int nextCustomId = (int)EditorBuiltinCommand.TRIGGER_COMPLETION + 1;
+
+		public void AddBinding(KeyBinding binding) {
+			bindings.RemoveAll(existing => existing.Equals(binding));
+			bindings.Add(binding);
+		}
+
+		public bool RemoveBinding(KeyBinding binding) {
+			return bindings.RemoveAll(existing => existing.Equals(binding)) > 0;
+		}
+
+		public IReadOnlyList<KeyBinding> GetBindings() {
+			return bindings;
+		}
 
 		public int RegisterCommand(KeyBinding binding, Action<KeyBinding, SweetEditorControl> handler) {
 			int commandId = binding.Command;
 			KeyBinding resolvedBinding = binding;
-			if (commandId == (int)EditorCommand.NONE) {
+			if (commandId == (int)EditorBuiltinCommand.NONE) {
 				commandId = nextCustomId++;
 				resolvedBinding = binding.WithCommand(commandId);
 			} else if (commandId >= nextCustomId) {
@@ -428,62 +422,62 @@ namespace SweetEditor {
 			return commands.TryGetValue(commandId, out var handler) ? handler : null;
 		}
 
-		private static void Bind(EditorKeyMap keyMap, KeyModifier modifiers, KeyCode keyCode, EditorCommand command) {
+		private static void Bind(EditorKeyMap keyMap, KeyModifier modifiers, KeyCode keyCode, EditorBuiltinCommand command) {
 			keyMap.AddBinding(new KeyBinding(modifiers, keyCode, (int)command));
 		}
 
 		private static void AddCommonBindings(EditorKeyMap keyMap) {
-			Bind(keyMap, KeyModifier.NONE, KeyCode.LEFT, EditorCommand.CURSOR_LEFT);
-			Bind(keyMap, KeyModifier.NONE, KeyCode.RIGHT, EditorCommand.CURSOR_RIGHT);
-			Bind(keyMap, KeyModifier.NONE, KeyCode.UP, EditorCommand.CURSOR_UP);
-			Bind(keyMap, KeyModifier.NONE, KeyCode.DOWN, EditorCommand.CURSOR_DOWN);
-			Bind(keyMap, KeyModifier.NONE, KeyCode.HOME, EditorCommand.CURSOR_LINE_START);
-			Bind(keyMap, KeyModifier.NONE, KeyCode.END, EditorCommand.CURSOR_LINE_END);
-			Bind(keyMap, KeyModifier.NONE, KeyCode.PAGE_UP, EditorCommand.CURSOR_PAGE_UP);
-			Bind(keyMap, KeyModifier.NONE, KeyCode.PAGE_DOWN, EditorCommand.CURSOR_PAGE_DOWN);
+			Bind(keyMap, KeyModifier.NONE, KeyCode.LEFT, EditorBuiltinCommand.CURSOR_LEFT);
+			Bind(keyMap, KeyModifier.NONE, KeyCode.RIGHT, EditorBuiltinCommand.CURSOR_RIGHT);
+			Bind(keyMap, KeyModifier.NONE, KeyCode.UP, EditorBuiltinCommand.CURSOR_UP);
+			Bind(keyMap, KeyModifier.NONE, KeyCode.DOWN, EditorBuiltinCommand.CURSOR_DOWN);
+			Bind(keyMap, KeyModifier.NONE, KeyCode.HOME, EditorBuiltinCommand.CURSOR_LINE_START);
+			Bind(keyMap, KeyModifier.NONE, KeyCode.END, EditorBuiltinCommand.CURSOR_LINE_END);
+			Bind(keyMap, KeyModifier.NONE, KeyCode.PAGE_UP, EditorBuiltinCommand.CURSOR_PAGE_UP);
+			Bind(keyMap, KeyModifier.NONE, KeyCode.PAGE_DOWN, EditorBuiltinCommand.CURSOR_PAGE_DOWN);
 
-			Bind(keyMap, KeyModifier.SHIFT, KeyCode.LEFT, EditorCommand.SELECT_LEFT);
-			Bind(keyMap, KeyModifier.SHIFT, KeyCode.RIGHT, EditorCommand.SELECT_RIGHT);
-			Bind(keyMap, KeyModifier.SHIFT, KeyCode.UP, EditorCommand.SELECT_UP);
-			Bind(keyMap, KeyModifier.SHIFT, KeyCode.DOWN, EditorCommand.SELECT_DOWN);
-			Bind(keyMap, KeyModifier.SHIFT, KeyCode.HOME, EditorCommand.SELECT_LINE_START);
-			Bind(keyMap, KeyModifier.SHIFT, KeyCode.END, EditorCommand.SELECT_LINE_END);
-			Bind(keyMap, KeyModifier.SHIFT, KeyCode.PAGE_UP, EditorCommand.SELECT_PAGE_UP);
-			Bind(keyMap, KeyModifier.SHIFT, KeyCode.PAGE_DOWN, EditorCommand.SELECT_PAGE_DOWN);
+			Bind(keyMap, KeyModifier.SHIFT, KeyCode.LEFT, EditorBuiltinCommand.SELECT_LEFT);
+			Bind(keyMap, KeyModifier.SHIFT, KeyCode.RIGHT, EditorBuiltinCommand.SELECT_RIGHT);
+			Bind(keyMap, KeyModifier.SHIFT, KeyCode.UP, EditorBuiltinCommand.SELECT_UP);
+			Bind(keyMap, KeyModifier.SHIFT, KeyCode.DOWN, EditorBuiltinCommand.SELECT_DOWN);
+			Bind(keyMap, KeyModifier.SHIFT, KeyCode.HOME, EditorBuiltinCommand.SELECT_LINE_START);
+			Bind(keyMap, KeyModifier.SHIFT, KeyCode.END, EditorBuiltinCommand.SELECT_LINE_END);
+			Bind(keyMap, KeyModifier.SHIFT, KeyCode.PAGE_UP, EditorBuiltinCommand.SELECT_PAGE_UP);
+			Bind(keyMap, KeyModifier.SHIFT, KeyCode.PAGE_DOWN, EditorBuiltinCommand.SELECT_PAGE_DOWN);
 
-			Bind(keyMap, KeyModifier.NONE, KeyCode.BACKSPACE, EditorCommand.BACKSPACE);
-			Bind(keyMap, KeyModifier.NONE, KeyCode.DELETE_KEY, EditorCommand.DELETE_FORWARD);
-			Bind(keyMap, KeyModifier.NONE, KeyCode.TAB, EditorCommand.INSERT_TAB);
-			Bind(keyMap, KeyModifier.NONE, KeyCode.ENTER, EditorCommand.INSERT_NEWLINE);
+			Bind(keyMap, KeyModifier.NONE, KeyCode.BACKSPACE, EditorBuiltinCommand.BACKSPACE);
+			Bind(keyMap, KeyModifier.NONE, KeyCode.DELETE_KEY, EditorBuiltinCommand.DELETE_FORWARD);
+			Bind(keyMap, KeyModifier.NONE, KeyCode.TAB, EditorBuiltinCommand.INSERT_TAB);
+			Bind(keyMap, KeyModifier.NONE, KeyCode.ENTER, EditorBuiltinCommand.INSERT_NEWLINE);
 
-			Bind(keyMap, KeyModifier.CTRL, KeyCode.A, EditorCommand.SELECT_ALL);
-			Bind(keyMap, KeyModifier.META, KeyCode.A, EditorCommand.SELECT_ALL);
-			Bind(keyMap, KeyModifier.CTRL, KeyCode.Z, EditorCommand.UNDO);
-			Bind(keyMap, KeyModifier.META, KeyCode.Z, EditorCommand.UNDO);
+			Bind(keyMap, KeyModifier.CTRL, KeyCode.A, EditorBuiltinCommand.SELECT_ALL);
+			Bind(keyMap, KeyModifier.META, KeyCode.A, EditorBuiltinCommand.SELECT_ALL);
+			Bind(keyMap, KeyModifier.CTRL, KeyCode.Z, EditorBuiltinCommand.UNDO);
+			Bind(keyMap, KeyModifier.META, KeyCode.Z, EditorBuiltinCommand.UNDO);
 
 			keyMap.RegisterCommand(
-				new KeyBinding(KeyModifier.CTRL, KeyCode.C, (int)EditorCommand.COPY),
+				new KeyBinding(KeyModifier.CTRL, KeyCode.C, (int)EditorBuiltinCommand.COPY),
 				(binding, editor) => editor.CopyToClipboard());
 			keyMap.RegisterCommand(
-				new KeyBinding(KeyModifier.META, KeyCode.C, (int)EditorCommand.COPY),
+				new KeyBinding(KeyModifier.META, KeyCode.C, (int)EditorBuiltinCommand.COPY),
 				(binding, editor) => editor.CopyToClipboard());
 			keyMap.RegisterCommand(
-				new KeyBinding(KeyModifier.CTRL, KeyCode.V, (int)EditorCommand.PASTE),
+				new KeyBinding(KeyModifier.CTRL, KeyCode.V, (int)EditorBuiltinCommand.PASTE),
 				(binding, editor) => editor.PasteFromClipboard());
 			keyMap.RegisterCommand(
-				new KeyBinding(KeyModifier.META, KeyCode.V, (int)EditorCommand.PASTE),
+				new KeyBinding(KeyModifier.META, KeyCode.V, (int)EditorBuiltinCommand.PASTE),
 				(binding, editor) => editor.PasteFromClipboard());
 			keyMap.RegisterCommand(
-				new KeyBinding(KeyModifier.CTRL, KeyCode.X, (int)EditorCommand.CUT),
+				new KeyBinding(KeyModifier.CTRL, KeyCode.X, (int)EditorBuiltinCommand.CUT),
 				(binding, editor) => editor.CutToClipboard());
 			keyMap.RegisterCommand(
-				new KeyBinding(KeyModifier.META, KeyCode.X, (int)EditorCommand.CUT),
+				new KeyBinding(KeyModifier.META, KeyCode.X, (int)EditorBuiltinCommand.CUT),
 				(binding, editor) => editor.CutToClipboard());
 			keyMap.RegisterCommand(
-				new KeyBinding(KeyModifier.CTRL, KeyCode.SPACE, (int)EditorCommand.TRIGGER_COMPLETION),
+				new KeyBinding(KeyModifier.CTRL, KeyCode.SPACE, (int)EditorBuiltinCommand.TRIGGER_COMPLETION),
 				(binding, editor) => editor.TriggerCompletion());
 			keyMap.RegisterCommand(
-				new KeyBinding(KeyModifier.META, KeyCode.SPACE, (int)EditorCommand.TRIGGER_COMPLETION),
+				new KeyBinding(KeyModifier.META, KeyCode.SPACE, (int)EditorBuiltinCommand.TRIGGER_COMPLETION),
 				(binding, editor) => editor.TriggerCompletion());
 		}
 
@@ -493,23 +487,23 @@ namespace SweetEditor {
 			var keyMap = new EditorKeyMap();
 			AddCommonBindings(keyMap);
 
-			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.Z, EditorCommand.REDO);
-			Bind(keyMap, KeyModifier.META | KeyModifier.SHIFT, KeyCode.Z, EditorCommand.REDO);
-			Bind(keyMap, KeyModifier.CTRL, KeyCode.Y, EditorCommand.REDO);
-			Bind(keyMap, KeyModifier.META, KeyCode.Y, EditorCommand.REDO);
+			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.Z, EditorBuiltinCommand.REDO);
+			Bind(keyMap, KeyModifier.META | KeyModifier.SHIFT, KeyCode.Z, EditorBuiltinCommand.REDO);
+			Bind(keyMap, KeyModifier.CTRL, KeyCode.Y, EditorBuiltinCommand.REDO);
+			Bind(keyMap, KeyModifier.META, KeyCode.Y, EditorBuiltinCommand.REDO);
 
-			Bind(keyMap, KeyModifier.CTRL, KeyCode.ENTER, EditorCommand.INSERT_LINE_BELOW);
-			Bind(keyMap, KeyModifier.META, KeyCode.ENTER, EditorCommand.INSERT_LINE_BELOW);
-			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.ENTER, EditorCommand.INSERT_LINE_ABOVE);
-			Bind(keyMap, KeyModifier.META | KeyModifier.SHIFT, KeyCode.ENTER, EditorCommand.INSERT_LINE_ABOVE);
+			Bind(keyMap, KeyModifier.CTRL, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_BELOW);
+			Bind(keyMap, KeyModifier.META, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_BELOW);
+			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_ABOVE);
+			Bind(keyMap, KeyModifier.META | KeyModifier.SHIFT, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_ABOVE);
 
-			Bind(keyMap, KeyModifier.ALT, KeyCode.UP, EditorCommand.MOVE_LINE_UP);
-			Bind(keyMap, KeyModifier.ALT, KeyCode.DOWN, EditorCommand.MOVE_LINE_DOWN);
-			Bind(keyMap, KeyModifier.ALT | KeyModifier.SHIFT, KeyCode.UP, EditorCommand.COPY_LINE_UP);
-			Bind(keyMap, KeyModifier.ALT | KeyModifier.SHIFT, KeyCode.DOWN, EditorCommand.COPY_LINE_DOWN);
+			Bind(keyMap, KeyModifier.ALT, KeyCode.UP, EditorBuiltinCommand.MOVE_LINE_UP);
+			Bind(keyMap, KeyModifier.ALT, KeyCode.DOWN, EditorBuiltinCommand.MOVE_LINE_DOWN);
+			Bind(keyMap, KeyModifier.ALT | KeyModifier.SHIFT, KeyCode.UP, EditorBuiltinCommand.COPY_LINE_UP);
+			Bind(keyMap, KeyModifier.ALT | KeyModifier.SHIFT, KeyCode.DOWN, EditorBuiltinCommand.COPY_LINE_DOWN);
 
-			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.K, EditorCommand.DELETE_LINE);
-			Bind(keyMap, KeyModifier.META | KeyModifier.SHIFT, KeyCode.K, EditorCommand.DELETE_LINE);
+			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.K, EditorBuiltinCommand.DELETE_LINE);
+			Bind(keyMap, KeyModifier.META | KeyModifier.SHIFT, KeyCode.K, EditorBuiltinCommand.DELETE_LINE);
 
 			return keyMap;
 		}
@@ -518,21 +512,21 @@ namespace SweetEditor {
 			var keyMap = new EditorKeyMap();
 			AddCommonBindings(keyMap);
 
-			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.Z, EditorCommand.REDO);
-			Bind(keyMap, KeyModifier.META | KeyModifier.SHIFT, KeyCode.Z, EditorCommand.REDO);
+			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.Z, EditorBuiltinCommand.REDO);
+			Bind(keyMap, KeyModifier.META | KeyModifier.SHIFT, KeyCode.Z, EditorBuiltinCommand.REDO);
 
-			Bind(keyMap, KeyModifier.SHIFT, KeyCode.ENTER, EditorCommand.INSERT_LINE_BELOW);
-			Bind(keyMap, KeyModifier.CTRL | KeyModifier.ALT, KeyCode.ENTER, EditorCommand.INSERT_LINE_ABOVE);
-			Bind(keyMap, KeyModifier.META | KeyModifier.ALT, KeyCode.ENTER, EditorCommand.INSERT_LINE_ABOVE);
+			Bind(keyMap, KeyModifier.SHIFT, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_BELOW);
+			Bind(keyMap, KeyModifier.CTRL | KeyModifier.ALT, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_ABOVE);
+			Bind(keyMap, KeyModifier.META | KeyModifier.ALT, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_ABOVE);
 
-			Bind(keyMap, KeyModifier.ALT | KeyModifier.SHIFT, KeyCode.UP, EditorCommand.MOVE_LINE_UP);
-			Bind(keyMap, KeyModifier.ALT | KeyModifier.SHIFT, KeyCode.DOWN, EditorCommand.MOVE_LINE_DOWN);
+			Bind(keyMap, KeyModifier.ALT | KeyModifier.SHIFT, KeyCode.UP, EditorBuiltinCommand.MOVE_LINE_UP);
+			Bind(keyMap, KeyModifier.ALT | KeyModifier.SHIFT, KeyCode.DOWN, EditorBuiltinCommand.MOVE_LINE_DOWN);
 
-			Bind(keyMap, KeyModifier.CTRL, KeyCode.D, EditorCommand.COPY_LINE_DOWN);
-			Bind(keyMap, KeyModifier.META, KeyCode.D, EditorCommand.COPY_LINE_DOWN);
+			Bind(keyMap, KeyModifier.CTRL, KeyCode.D, EditorBuiltinCommand.COPY_LINE_DOWN);
+			Bind(keyMap, KeyModifier.META, KeyCode.D, EditorBuiltinCommand.COPY_LINE_DOWN);
 
-			Bind(keyMap, KeyModifier.CTRL, KeyCode.Y, EditorCommand.DELETE_LINE);
-			Bind(keyMap, KeyModifier.META, KeyCode.BACKSPACE, EditorCommand.DELETE_LINE);
+			Bind(keyMap, KeyModifier.CTRL, KeyCode.Y, EditorBuiltinCommand.DELETE_LINE);
+			Bind(keyMap, KeyModifier.META, KeyCode.BACKSPACE, EditorBuiltinCommand.DELETE_LINE);
 
 			return keyMap;
 		}
@@ -541,20 +535,20 @@ namespace SweetEditor {
 			var keyMap = new EditorKeyMap();
 			AddCommonBindings(keyMap);
 
-			Bind(keyMap, KeyModifier.CTRL, KeyCode.Y, EditorCommand.REDO);
-			Bind(keyMap, KeyModifier.META | KeyModifier.SHIFT, KeyCode.Z, EditorCommand.REDO);
-			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.Z, EditorCommand.REDO);
+			Bind(keyMap, KeyModifier.CTRL, KeyCode.Y, EditorBuiltinCommand.REDO);
+			Bind(keyMap, KeyModifier.META | KeyModifier.SHIFT, KeyCode.Z, EditorBuiltinCommand.REDO);
+			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.Z, EditorBuiltinCommand.REDO);
 
-			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.D, EditorCommand.COPY_LINE_DOWN);
-			Bind(keyMap, KeyModifier.META | KeyModifier.SHIFT, KeyCode.D, EditorCommand.COPY_LINE_DOWN);
+			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.D, EditorBuiltinCommand.COPY_LINE_DOWN);
+			Bind(keyMap, KeyModifier.META | KeyModifier.SHIFT, KeyCode.D, EditorBuiltinCommand.COPY_LINE_DOWN);
 
-			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.UP, EditorCommand.MOVE_LINE_UP);
-			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.DOWN, EditorCommand.MOVE_LINE_DOWN);
-			Bind(keyMap, KeyModifier.META | KeyModifier.CTRL, KeyCode.UP, EditorCommand.MOVE_LINE_UP);
-			Bind(keyMap, KeyModifier.META | KeyModifier.CTRL, KeyCode.DOWN, EditorCommand.MOVE_LINE_DOWN);
+			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.UP, EditorBuiltinCommand.MOVE_LINE_UP);
+			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.DOWN, EditorBuiltinCommand.MOVE_LINE_DOWN);
+			Bind(keyMap, KeyModifier.META | KeyModifier.CTRL, KeyCode.UP, EditorBuiltinCommand.MOVE_LINE_UP);
+			Bind(keyMap, KeyModifier.META | KeyModifier.CTRL, KeyCode.DOWN, EditorBuiltinCommand.MOVE_LINE_DOWN);
 
-			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.K, EditorCommand.DELETE_LINE);
-			Bind(keyMap, KeyModifier.META | KeyModifier.SHIFT, KeyCode.K, EditorCommand.DELETE_LINE);
+			Bind(keyMap, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.K, EditorBuiltinCommand.DELETE_LINE);
+			Bind(keyMap, KeyModifier.META | KeyModifier.SHIFT, KeyCode.K, EditorBuiltinCommand.DELETE_LINE);
 
 			return keyMap;
 		}
@@ -737,7 +731,7 @@ namespace SweetEditor {
 				return;
 			}
 			keyMap = editorKeyMap;
-			DispatchEditorActionResult(editorCore.SetKeyMap(keyMap));
+			DispatchEditorActionResult(editorCore.SetKeyMap(keyMap.GetBindings()));
 		}
 
 		/// <summary>Internal accessor for EditorCore, used by <see cref="EditorSettings"/>.</summary>
@@ -1002,7 +996,7 @@ namespace SweetEditor {
 		/// <summary>Scroll to line.</summary>
 		/// <param name="line">Line index (0-based).</param>
 		/// <param name="behavior">Scroll behavior.</param>
-		public void ScrollToLine(int line, ScrollBehavior behavior = ScrollBehavior.CENTER) {
+		public void ScrollToLine(int line, ScrollBehavior behavior = ScrollBehavior.GOTO_CENTER) {
 			DispatchEditorActionResult(editorCore.ScrollToLine(line, (int)behavior));
 		}
 
@@ -1340,7 +1334,7 @@ namespace SweetEditor {
 			// Register default theme text styles.
 			editorCore.registerBatchTextStyles(currentTheme.TextStyles);
 			keyMap = EditorKeyMap.DefaultKeyMap();
-			editorCore.SetKeyMap(keyMap);
+			editorCore.SetKeyMap(keyMap.GetBindings());
 
 			settings = new EditorSettings(this);
 			settings.SetContentStartPadding(DpToPx(DefaultContentStartPaddingDp));
@@ -1748,7 +1742,7 @@ namespace SweetEditor {
 								InlayHintClick?.Invoke(this, new InlayHintClickEventArgs(
 									result.HitTarget.Line,
 									result.HitTarget.Column,
-									InlayType.Text,
+									InlayType.TEXT,
 									0,
 									point));
 								break;
@@ -1756,7 +1750,7 @@ namespace SweetEditor {
 								InlayHintClick?.Invoke(this, new InlayHintClickEventArgs(
 									result.HitTarget.Line,
 									result.HitTarget.Column,
-									InlayType.Icon,
+									InlayType.ICON,
 									result.HitTarget.IconId,
 									point));
 								break;
@@ -1764,7 +1758,7 @@ namespace SweetEditor {
 								InlayHintClick?.Invoke(this, new InlayHintClickEventArgs(
 									result.HitTarget.Line,
 									result.HitTarget.Column,
-									InlayType.Color,
+									InlayType.COLOR,
 									result.HitTarget.ColorValue,
 									point));
 								break;
@@ -1824,7 +1818,7 @@ namespace SweetEditor {
 			}
 			if (result.SelectionChanged) {
 				SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(
-					selection.HasValue,
+					selection != null,
 					selection,
 					cursor));
 			}
@@ -1878,7 +1872,7 @@ namespace SweetEditor {
 		}
 
 		private bool DispatchKeyMapCommand(int commandId, ushort keyCode, byte modifiers) {
-			if (commandId == (int)EditorCommand.NONE || keyMap == null) return false;
+			if (commandId == (int)EditorBuiltinCommand.NONE || keyMap == null) return false;
 			var handler = keyMap.GetCommand(commandId);
 			if (handler == null) return false;
 			var binding = new KeyBinding(new KeyChord((KeyModifier)modifiers, (KeyCode)keyCode), commandId);
@@ -1912,11 +1906,11 @@ namespace SweetEditor {
 
 		private static TextChangeAction TextChangeActionFromResult(EditorActionResult result) {
 			return (EditorActionReason)result.Reason switch {
-				EditorActionReason.KeyInput => TextChangeAction.Key,
-				EditorActionReason.Ime => TextChangeAction.Composition,
-				EditorActionReason.TextDelete => TextChangeAction.Delete,
-				EditorActionReason.TextUndo => TextChangeAction.Undo,
-				EditorActionReason.TextRedo => TextChangeAction.Redo,
+				EditorActionReason.KEY_INPUT => TextChangeAction.Key,
+				EditorActionReason.IME => TextChangeAction.Composition,
+				EditorActionReason.TEXT_DELETE => TextChangeAction.Delete,
+				EditorActionReason.TEXT_UNDO => TextChangeAction.Undo,
+				EditorActionReason.TEXT_REDO => TextChangeAction.Redo,
 				_ => TextChangeAction.Insert,
 			};
 		}
@@ -1976,8 +1970,8 @@ namespace SweetEditor {
 			renderer.PerfMeasureStats.Reset();
 			renderModel = editorCore.BuildRenderModel();
 			renderModelDirty = false;
-			if (renderModel.HasValue) {
-				UpdateMouseCursor(renderModel.Value.PointerCursorType);
+			if (renderModel != null) {
+				UpdateMouseCursor(renderModel.PointerCursorType);
 			}
 			perf.Mark(PerfStepRecorder.StepBuild);
 			perf.Mark(PerfStepRecorder.StepMetrics);

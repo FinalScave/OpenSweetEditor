@@ -124,27 +124,25 @@ class EditorPlatformBehavior {
 
     const pad = 8.0;
     return core.HandleConfig(
-      startLeft: minX - pad,
-      startTop: minY - pad,
-      startRight: maxX + pad,
-      startBottom: maxY + pad,
-      endLeft: -maxX - pad,
-      endTop: minY - pad,
-      endRight: -minX + pad,
-      endBottom: maxY + pad,
+      startHitOffset: core.OffsetRect(
+        left: minX - pad,
+        top: minY - pad,
+        right: maxX + pad,
+        bottom: maxY + pad,
+      ),
+      endHitOffset: core.OffsetRect(
+        left: -maxX - pad,
+        top: minY - pad,
+        right: -minX + pad,
+        bottom: maxY + pad,
+      ),
     );
   }
 
   static core.HandleConfig _buildDisabledHandleConfig() {
     return const core.HandleConfig(
-      startLeft: 1,
-      startTop: 1,
-      startRight: -1,
-      startBottom: -1,
-      endLeft: 1,
-      endTop: 1,
-      endRight: -1,
-      endBottom: -1,
+      startHitOffset: core.OffsetRect(left: 1, top: 1, right: -1, bottom: -1),
+      endHitOffset: core.OffsetRect(left: 1, top: 1, right: -1, bottom: -1),
     );
   }
 

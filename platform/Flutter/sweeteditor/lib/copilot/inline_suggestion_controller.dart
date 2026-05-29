@@ -79,7 +79,10 @@ class InlineSuggestionController {
       _session.dispatchEditorActionResult(
         _session.editorCore?.clearPhantomTexts(),
       );
-      final pos = core.TextPosition(suggestion.line, suggestion.column);
+      final pos = core.TextPosition(
+        line: suggestion.line,
+        column: suggestion.column,
+      );
       _session.dispatchEditorActionResult(
         _session.editorCore?.replaceText(
           pos.line,

@@ -43,7 +43,7 @@ namespace NS_SWEETEDITOR {
     bool isTextInput() const;
   };
 
-  enum struct SE_PROTOCOL_ENUM(foundation, GOTO_TOP) ScrollBehavior {
+  enum struct SE_PROTOCOL_ENUM(action, GOTO_TOP) ScrollBehavior {
     /// Make the target line visible at the top.
     GOTO_TOP,
     /// Scroll the target line to the center.
@@ -67,7 +67,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Auto-indent modes.
-  enum struct SE_PROTOCOL_ENUM(foundation, NONE) AutoIndentMode {
+  enum struct SE_PROTOCOL_ENUM(config, NONE) AutoIndentMode {
     /// No auto-indent; new line starts at column 0.
     NONE = 0,
     /// Keep previous line indent.
@@ -75,7 +75,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Auto-wrap modes.
-  enum struct SE_PROTOCOL_ENUM(foundation, NONE) WrapMode {
+  enum struct SE_PROTOCOL_ENUM(config, NONE) WrapMode {
     /// No wrapping.
     NONE,
     /// Character-level wrapping.
@@ -85,7 +85,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Current line render modes.
-  enum struct SE_PROTOCOL_ENUM(foundation, BACKGROUND) CurrentLineRenderMode {
+  enum struct SE_PROTOCOL_ENUM(config, BACKGROUND) CurrentLineRenderMode {
     /// Fill full line background.
     BACKGROUND = 0,
     /// Draw line border only.
@@ -101,7 +101,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Construction-time immutable options for EditorCore
-  struct SE_PROTOCOL_IN(core) EditorOptions {
+  struct SE_PROTOCOL_IN(config) EditorOptions {
     /// Threshold to treat a gesture as move; below this it is a tap
     float touch_slop {10};
     /// Double tap time threshold
@@ -129,26 +129,26 @@ namespace NS_SWEETEDITOR {
 
   /// Selection handle hit-test configuration.
   /// All geometry is owned by the platform drawing layer; C++ only needs hit areas.
-  struct SE_PROTOCOL_IN(core) HandleConfig {
+  struct SE_PROTOCOL_IN(config) HandleConfig {
     /// Hit area for the start handle, as an offset rect relative to the cursor bottom anchor (handle tip)
     OffsetRect start_hit_offset {-32.1f, -8.0f, 8.0f, 32.1f};
     /// Hit area for the end handle, as an offset rect relative to the cursor bottom anchor (handle tip)
     OffsetRect end_hit_offset {-8.0f, -8.0f, 32.1f, 32.1f};
   };
 
-  enum class SE_PROTOCOL_ENUM(foundation, ALWAYS) ScrollbarMode : uint8_t {
+  enum class SE_PROTOCOL_ENUM(config, ALWAYS) ScrollbarMode : uint8_t {
     ALWAYS = 0,
     TRANSIENT = 1,
     NEVER = 2,
   };
 
-  enum class SE_PROTOCOL_ENUM(foundation, JUMP) ScrollbarTrackTapMode : uint8_t {
+  enum class SE_PROTOCOL_ENUM(config, JUMP) ScrollbarTrackTapMode : uint8_t {
     JUMP = 0,
     DISABLED = 1,
   };
 
   /// Scrollbar configuration (geometry + interaction behavior)
-  struct SE_PROTOCOL_IN(core) ScrollbarConfig {
+  struct SE_PROTOCOL_IN(config) ScrollbarConfig {
     /// Scrollbar track/thumb thickness in pixels
     float thickness {10.0f};
     /// Minimum thumb length in pixels
@@ -256,11 +256,11 @@ namespace NS_SWEETEDITOR {
     /// Exact text edit info (valid when content_changed is true)
     TextEditResult edit_result;
     /// Resolved command (for platform-handled commands like COPY/PASTE/CUT)
-    EditorCommand command {EditorCommand::NONE};
+    EditorCommandId command {0};
   };
 
   /// Screen-space rectangle for cursor/text position (for panel placement)
-  struct CursorRect {
+  struct SE_PROTOCOL_VALUE(visual) CursorRect {
     float x {0};       ///< x coordinate relative to top-left of editor view
     float y {0};       ///< y coordinate relative to top-left of editor view (line top)
     float height {0};  ///< Line height (same as cursor height)

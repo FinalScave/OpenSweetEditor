@@ -1,4 +1,4 @@
-import '../editor_core.dart' as core;
+import '../core/editor_core.dart' as core;
 import '../selection/selection_types.dart';
 
 /// Base class for editor events.

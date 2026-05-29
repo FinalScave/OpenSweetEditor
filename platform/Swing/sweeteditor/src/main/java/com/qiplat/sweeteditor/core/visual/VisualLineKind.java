@@ -7,10 +7,16 @@ public enum VisualLineKind {
 
     public final int value;
 
-    VisualLineKind(int v) { value = v; }
+    VisualLineKind(int value) {
+        this.value = value;
+    }
 
-    public static VisualLineKind fromValue(int v) {
-        for (VisualLineKind e : values()) if (e.value == v) return e;
-        return CONTENT;
+    public static VisualLineKind fromValue(int value) {
+        switch (value) {
+            case 0: return CONTENT;
+            case 1: return PHANTOM;
+            case 2: return CODELENS;
+            default: return CONTENT;
+        }
     }
 }

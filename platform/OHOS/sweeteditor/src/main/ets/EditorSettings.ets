@@ -1,4 +1,4 @@
-import { AutoIndentMode, CurrentLineRenderMode, FoldArrowMode, WrapMode } from './core/CoreFoundation';
+import { AutoIndentMode, CurrentLineRenderMode, FoldArrowMode, WrapMode } from './core/CoreConfig';
 import { SweetEditor } from './SweetEditor';
 
 const DEFAULT_CONTENT_START_PADDING: number = 3.0;

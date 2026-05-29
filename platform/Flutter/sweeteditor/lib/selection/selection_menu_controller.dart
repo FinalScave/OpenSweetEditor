@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import '../editor_core.dart' as core;
+import '../core/editor_core.dart' as core;
 import '../widget/editor_overlay.dart';
 
 import 'selection_types.dart';

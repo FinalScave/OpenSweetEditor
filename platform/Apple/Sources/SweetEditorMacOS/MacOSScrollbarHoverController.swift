@@ -24,8 +24,8 @@ struct MacOSScrollbarHoverController {
 
     mutating func updateZones(enabled: Bool,
                               latestModel: EditorRenderModel?,
-                              fallbackMetrics: SweetEditorCore.ScrollMetrics?,
-                              scrollbarConfig: SweetEditorCore.ScrollbarConfig?) {
+                              fallbackMetrics: ScrollMetrics?,
+                              scrollbarConfig: ScrollbarConfig?) {
         guard enabled else {
             cachedRegions = nil
             return
@@ -78,8 +78,8 @@ struct MacOSScrollbarHoverController {
             && scrollbar.track.height > 0
     }
 
-    private func regions(from metrics: SweetEditorCore.ScrollMetrics,
-                         scrollbarConfig: SweetEditorCore.ScrollbarConfig) -> ScrollbarHoverRegions {
+    private func regions(from metrics: ScrollMetrics,
+                         scrollbarConfig: ScrollbarConfig) -> ScrollbarHoverRegions {
         let thickness = CGFloat(max(1.0, scrollbarConfig.thickness))
         let viewportWidth = metrics.viewportWidth
         let viewportHeight = metrics.viewportHeight

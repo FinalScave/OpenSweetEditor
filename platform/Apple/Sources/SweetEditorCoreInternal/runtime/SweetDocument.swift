@@ -33,6 +33,10 @@ class SweetDocument {
         return text
     }
 
+    func getLineText(_ line: Int32) -> String {
+        getLineText(Int(line))
+    }
+
     /// Current document line count.
     func getLineCount() -> Int {
         guard handle != 0 else { return 0 }

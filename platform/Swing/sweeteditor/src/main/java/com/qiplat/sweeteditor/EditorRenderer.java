@@ -4,7 +4,9 @@ import com.qiplat.sweeteditor.animation.AnimationHolder;
 import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.EditorNative;
 import com.qiplat.sweeteditor.core.adornment.TextStyle;
-import com.qiplat.sweeteditor.core.foundation.CurrentLineRenderMode;
+import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
+import com.qiplat.sweeteditor.core.foundation.PointF;
+import com.qiplat.sweeteditor.core.foundation.Rect;
 import com.qiplat.sweeteditor.core.visual.*;
 import com.qiplat.sweeteditor.perf.MeasurePerfStats;
 import com.qiplat.sweeteditor.perf.PerfOverlay;
@@ -267,9 +269,9 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
 
     private void drawCurrentLineDecoration(Graphics2D g, EditorRenderModel model, float left, float width) {
         if (width <= 0f || model.currentLine == null) return;
-        if (model.currentLineRenderMode == CurrentLineRenderMode.NONE.value) return;
+        if (model.currentLineRenderMode == CurrentLineRenderMode.NONE) return;
         float lineH = model.cursor != null && model.cursor.height > 0 ? model.cursor.height : getFontHeight(g, regularFont);
-        if (model.currentLineRenderMode == CurrentLineRenderMode.BORDER.value) {
+        if (model.currentLineRenderMode == CurrentLineRenderMode.BORDER) {
             Stroke oldStroke = g.getStroke();
             g.setColor(getCurrentLineBorderColor());
             g.setStroke(new BasicStroke(1f));
@@ -284,7 +286,7 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
     private void drawSelectionRects(Graphics2D g, EditorRenderModel model) {
         if (model.selectionRects == null || model.selectionRects.isEmpty()) return;
         g.setColor(theme.selectionColor);
-        for (SelectionRect r : model.selectionRects) {
+        for (Rect r : model.selectionRects) {
             g.fillRect((int) r.origin.x, (int) r.origin.y, (int) r.width, (int) r.height);
         }
     }
@@ -527,15 +529,16 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
     }
 
     private void drawFoldMarker(Graphics2D g, FoldMarkerRenderItem item, Color color) {
-        if (item == null || item.origin == null || item.width <= 0 || item.height <= 0) return;
+        Rect rect = item != null ? item.rect : null;
+        if (rect == null || rect.origin == null || rect.width <= 0 || rect.height <= 0) return;
         if (item.foldState == null || item.foldState == FoldState.NONE) return;
 
-        float centerX = item.origin.x + item.width * 0.5f;
-        float centerY = item.origin.y + item.height * 0.5f;
-        float halfSize = Math.min(item.width, item.height) * 0.28f;
+        float centerX = rect.origin.x + rect.width * 0.5f;
+        float centerY = rect.origin.y + rect.height * 0.5f;
+        float halfSize = Math.min(rect.width, rect.height) * 0.28f;
 
         g.setColor(color);
-        g.setStroke(new BasicStroke(Math.max(1f, item.height * 0.1f), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.setStroke(new BasicStroke(Math.max(1f, rect.height * 0.1f), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
 
         GeneralPath path = new GeneralPath();
         if (item.foldState == FoldState.COLLAPSED) {
@@ -572,17 +575,18 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
     }
 
     private boolean drawGutterIcon(Graphics2D g, GutterIconRenderItem item) {
-        if (editorIconProvider == null || item == null || item.origin == null || item.width <= 0 || item.height <= 0) {
+        Rect rect = item != null ? item.rect : null;
+        if (editorIconProvider == null || rect == null || rect.origin == null || rect.width <= 0 || rect.height <= 0) {
             return false;
         }
         Image image = editorIconProvider.getIconImage(item.iconId);
         if (image == null) return false;
         g.drawImage(
                 image,
-                (int) item.origin.x,
-                (int) item.origin.y,
-                (int) Math.ceil(item.width),
-                (int) Math.ceil(item.height),
+                (int) rect.origin.x,
+                (int) rect.origin.y,
+                (int) Math.ceil(rect.width),
+                (int) Math.ceil(rect.height),
                 null);
         return true;
     }
@@ -664,10 +668,11 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
     }
 
     private void drawCompositionDecoration(Graphics2D g, CompositionDecoration comp) {
-        float y = comp.origin.y + comp.height;
+        if (comp.rect == null || comp.rect.origin == null) return;
+        float y = comp.rect.origin.y + comp.rect.height;
         g.setColor(theme.compositionUnderlineColor);
         g.setStroke(new BasicStroke(2f));
-        g.drawLine((int) comp.origin.x, (int) y, (int) (comp.origin.x + comp.width), (int) y);
+        g.drawLine((int) comp.rect.origin.x, (int) y, (int) (comp.rect.origin.x + comp.rect.width), (int) y);
     }
 
     private void drawDiagnosticDecorations(Graphics2D g, EditorRenderModel model) {
@@ -680,9 +685,10 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
                 default -> theme.diagnosticHintColor;
             };
 
-            float startX = diag.origin.x;
-            float endX = startX + diag.width;
-            float baseY = diag.origin.y + diag.height - 1f;
+            if (diag.rect == null || diag.rect.origin == null) continue;
+            float startX = diag.rect.origin.x;
+            float endX = startX + diag.rect.width;
+            float baseY = diag.rect.origin.y + diag.rect.height - 1f;
 
             g.setColor(c);
             g.setStroke(new BasicStroke(2f));
@@ -713,9 +719,10 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
 
     private void drawLinkedEditingRects(Graphics2D g, EditorRenderModel model) {
         if (model.linkedEditingRects == null || model.linkedEditingRects.isEmpty()) return;
-        for (LinkedEditingRect rect : model.linkedEditingRects) {
-            if (rect.origin == null) continue;
-            if (rect.isActive) {
+        for (LinkedEditingRect item : model.linkedEditingRects) {
+            Rect rect = item.rect;
+            if (rect == null || rect.origin == null) continue;
+            if (item.isActive) {
                 g.setColor(withAlpha(theme.linkedEditingActiveColor, 32));
                 g.fillRect((int) rect.origin.x, (int) rect.origin.y, (int) rect.width, (int) rect.height);
                 g.setColor(theme.linkedEditingActiveColor);
@@ -730,7 +737,7 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
 
     private void drawBracketHighlightRects(Graphics2D g, EditorRenderModel model) {
         if (model.bracketHighlightRects == null || model.bracketHighlightRects.isEmpty()) return;
-        for (BracketHighlightRect rect : model.bracketHighlightRects) {
+        for (Rect rect : model.bracketHighlightRects) {
             if (rect.origin == null) continue;
             g.setColor(theme.bracketHighlightBgColor);
             g.fillRect((int) rect.origin.x, (int) rect.origin.y, (int) rect.width, (int) rect.height);

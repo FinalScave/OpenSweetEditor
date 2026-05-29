@@ -1,30 +1,29 @@
-export enum FoldArrowMode {
-  AUTO = 0,
-  ALWAYS = 1,
-  HIDDEN = 2
+export interface IntRange {
+  start: number;
+  end: number;
 }
 
-export enum WrapMode {
-  NONE = 0,
-  CHAR_BREAK = 1,
-  WORD_BREAK = 2
+export interface OffsetRect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
 }
 
-export enum AutoIndentMode {
-  NONE = 0,
-  KEEP_INDENT = 1
+export interface PointF {
+  x: number;
+  y: number;
 }
 
-export enum CurrentLineRenderMode {
-  BACKGROUND = 0,
-  BORDER = 1,
-  NONE = 2
+export interface Rect {
+  origin: PointF;
+  width: number;
+  height: number;
 }
 
-export enum ScrollBehavior {
-  TOP = 0,
-  CENTER = 1,
-  BOTTOM = 2
+export interface TextChange {
+  range: TextRange;
+  newText: string;
 }
 
 export interface TextPosition {
@@ -35,13 +34,4 @@ export interface TextPosition {
 export interface TextRange {
   start: TextPosition;
   end: TextPosition;
-}
-
-export function isTextRangeCollapsed(range: TextRange): boolean {
-  return range.start.line === range.end.line && range.start.column === range.end.column;
-}
-
-export interface IntRange {
-  start: number;
-  end: number;
 }

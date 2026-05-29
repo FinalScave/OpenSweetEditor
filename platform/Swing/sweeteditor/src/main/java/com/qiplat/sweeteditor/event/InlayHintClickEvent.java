@@ -1,7 +1,7 @@
 package com.qiplat.sweeteditor.event;
 
 import com.qiplat.sweeteditor.core.adornment.InlayType;
-import com.qiplat.sweeteditor.core.visual.PointF;
+import com.qiplat.sweeteditor.core.foundation.PointF;
 
 /**
  * InlayHint click event.

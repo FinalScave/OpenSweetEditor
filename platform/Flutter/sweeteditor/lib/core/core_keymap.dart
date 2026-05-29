@@ -1,8 +1,118 @@
-part of '../editor_core.dart';
+// ignore_for_file: unused_element
+
+part of 'editor_core.dart';
+
+enum EditorBuiltinCommand {
+  none(0),
+  cursorLeft(1),
+  cursorRight(2),
+  cursorUp(3),
+  cursorDown(4),
+  cursorLineStart(5),
+  cursorLineEnd(6),
+  cursorPageUp(7),
+  cursorPageDown(8),
+  selectLeft(9),
+  selectRight(10),
+  selectUp(11),
+  selectDown(12),
+  selectLineStart(13),
+  selectLineEnd(14),
+  selectPageUp(15),
+  selectPageDown(16),
+  selectAll(17),
+  backspace(18),
+  deleteForward(19),
+  insertTab(20),
+  insertNewline(21),
+  insertLineAbove(22),
+  insertLineBelow(23),
+  undo(24),
+  redo(25),
+  moveLineUp(26),
+  moveLineDown(27),
+  copyLineUp(28),
+  copyLineDown(29),
+  deleteLine(30),
+  copy(31),
+  paste(32),
+  cut(33),
+  triggerCompletion(34);
+
+  const EditorBuiltinCommand(this.value);
+  final int value;
+
+  static EditorBuiltinCommand fromValue(int value) {
+    switch (value) {
+      case 0: return none;
+      case 1: return cursorLeft;
+      case 2: return cursorRight;
+      case 3: return cursorUp;
+      case 4: return cursorDown;
+      case 5: return cursorLineStart;
+      case 6: return cursorLineEnd;
+      case 7: return cursorPageUp;
+      case 8: return cursorPageDown;
+      case 9: return selectLeft;
+      case 10: return selectRight;
+      case 11: return selectUp;
+      case 12: return selectDown;
+      case 13: return selectLineStart;
+      case 14: return selectLineEnd;
+      case 15: return selectPageUp;
+      case 16: return selectPageDown;
+      case 17: return selectAll;
+      case 18: return backspace;
+      case 19: return deleteForward;
+      case 20: return insertTab;
+      case 21: return insertNewline;
+      case 22: return insertLineAbove;
+      case 23: return insertLineBelow;
+      case 24: return undo;
+      case 25: return redo;
+      case 26: return moveLineUp;
+      case 27: return moveLineDown;
+      case 28: return copyLineUp;
+      case 29: return copyLineDown;
+      case 30: return deleteLine;
+      case 31: return copy;
+      case 32: return paste;
+      case 33: return cut;
+      case 34: return triggerCompletion;
+      default: return none;
+    }
+  }
+}
+
+class KeyCode {
+  KeyCode._();
+  static const int none = 0;
+  static const int backspace = 8;
+  static const int tab = 9;
+  static const int enter = 13;
+  static const int escape = 27;
+  static const int deleteKey = 46;
+  static const int left = 37;
+  static const int up = 38;
+  static const int right = 39;
+  static const int down = 40;
+  static const int home = 36;
+  static const int end = 35;
+  static const int pageUp = 33;
+  static const int pageDown = 34;
+  static const int a = 65;
+  static const int c = 67;
+  static const int d = 68;
+  static const int v = 86;
+  static const int x = 88;
+  static const int z = 90;
+  static const int y = 89;
+  static const int k = 75;
+  static const int space = 32;
+}
 
 class KeyModifier {
   KeyModifier._();
-
   static const int none = 0;
   static const int shift = 1;
   static const int ctrl = 2;
@@ -10,137 +120,24 @@ class KeyModifier {
   static const int meta = 8;
 }
 
-class EditorCommand {
-  EditorCommand._();
-
-  static const int none = 0;
-  static const int cursorLeft = 1;
-  static const int cursorRight = 2;
-  static const int cursorUp = 3;
-  static const int cursorDown = 4;
-  static const int cursorLineStart = 5;
-  static const int cursorLineEnd = 6;
-  static const int cursorPageUp = 7;
-  static const int cursorPageDown = 8;
-  static const int selectLeft = 9;
-  static const int selectRight = 10;
-  static const int selectUp = 11;
-  static const int selectDown = 12;
-  static const int selectLineStart = 13;
-  static const int selectLineEnd = 14;
-  static const int selectPageUp = 15;
-  static const int selectPageDown = 16;
-  static const int selectAll = 17;
-  static const int backspace = 18;
-  static const int deleteForward = 19;
-  static const int insertTab = 20;
-  static const int insertNewline = 21;
-  static const int insertLineAbove = 22;
-  static const int insertLineBelow = 23;
-  static const int undo = 24;
-  static const int redo = 25;
-  static const int moveLineUp = 26;
-  static const int moveLineDown = 27;
-  static const int copyLineUp = 28;
-  static const int copyLineDown = 29;
-  static const int deleteLine = 30;
-  static const int copy = 31;
-  static const int paste = 32;
-  static const int cut = 33;
-  static const int triggerCompletion = 34;
-
-  static const int builtInMax = triggerCompletion;
-
-  static bool isBuiltIn(int command) => command > none && command <= builtInMax;
-
-  static bool isPlatformHandled(int command) =>
-      command == copy ||
-      command == paste ||
-      command == cut ||
-      command == triggerCompletion;
-}
-
-class KeyChord {
-  const KeyChord({
-    this.modifiers = KeyModifier.none,
-    this.keyCode = KeyCode.none,
-  });
-
-  final int modifiers;
-  final KeyCode keyCode;
-
-  bool get isEmpty => keyCode == KeyCode.none;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is KeyChord &&
-          modifiers == other.modifiers &&
-          keyCode == other.keyCode;
-
-  @override
-  int get hashCode => Object.hash(modifiers, keyCode);
-}
-
 class KeyBinding {
   const KeyBinding({
-    required this.first,
+    this.first = const KeyChord(),
     this.second = const KeyChord(),
-    this.command = EditorCommand.none,
+    this.command = 0,
   });
 
   final KeyChord first;
   final KeyChord second;
   final int command;
-
-  KeyBinding copyWith({KeyChord? first, KeyChord? second, int? command}) {
-    return KeyBinding(
-      first: first ?? this.first,
-      second: second ?? this.second,
-      command: command ?? this.command,
-    );
-  }
 }
 
-class KeyMap {
-  KeyMap([Iterable<KeyBinding>? bindings]) {
-    if (bindings != null) {
-      for (final binding in bindings) {
-        addBinding(binding);
-      }
-    }
-  }
+class KeyChord {
+  const KeyChord({
+    this.modifiers = 0,
+    this.keyCode = 0,
+  });
 
-  final List<KeyBinding> _bindings = <KeyBinding>[];
-
-  List<KeyBinding> get bindings => List<KeyBinding>.unmodifiable(_bindings);
-
-  void addBinding(KeyBinding binding) {
-    if (binding.first.isEmpty) return;
-    _bindings.removeWhere(
-      (existing) =>
-          existing.first == binding.first && existing.second == binding.second,
-    );
-    _bindings.add(binding);
-  }
-
-  Uint8List toBytes() {
-    final data = ByteData(4 + _bindings.length * 10);
-    var offset = 0;
-    data.setUint32(offset, _bindings.length, Endian.little);
-    offset += 4;
-    for (final binding in _bindings) {
-      data.setUint8(offset, binding.first.modifiers);
-      offset += 1;
-      data.setUint16(offset, binding.first.keyCode.value, Endian.little);
-      offset += 2;
-      data.setUint8(offset, binding.second.modifiers);
-      offset += 1;
-      data.setUint16(offset, binding.second.keyCode.value, Endian.little);
-      offset += 2;
-      data.setUint32(offset, binding.command, Endian.little);
-      offset += 4;
-    }
-    return data.buffer.asUint8List();
-  }
+  final int modifiers;
+  final int keyCode;
 }

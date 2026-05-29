@@ -43,7 +43,7 @@ class EditorSession {
     _keyMap = initialKeyMap;
     _editorCore!.setHandleConfig(platformBehavior.handleConfig);
     _editorCore!.setScrollbarConfig(platformBehavior.scrollbarConfig);
-    _editorCore!.setKeyMap(_keyMap);
+    _editorCore!.setKeyMap(_keyMap.bindings);
     _languageConfiguration = initialLanguageConfiguration;
     _metadata = initialMetadata;
     completionPopupController = CompletionPopupController();
@@ -74,7 +74,7 @@ class EditorSession {
   core.EditorCore? _editorCore;
   core.Document? _document;
   bool _ownsDocument = false;
-  core.EditorRenderModel _renderModel = core.EditorRenderModel.empty;
+  core.EditorRenderModel _renderModel = const core.EditorRenderModel();
   EditorTheme _theme;
   late EditorKeyMap _keyMap;
   EditorIconProvider? _iconProvider;
@@ -226,7 +226,7 @@ class EditorSession {
 
   void applyKeyMap(EditorKeyMap keyMap) {
     _keyMap = keyMap;
-    dispatchEditorActionResult(_editorCore?.setKeyMap(keyMap));
+    dispatchEditorActionResult(_editorCore?.setKeyMap(keyMap.bindings));
   }
 
   void applyIconProvider(EditorIconProvider? provider) {
@@ -337,7 +337,8 @@ class EditorSession {
   SelectionMenuContext _buildSelectionMenuContext(bool hasSelection) {
     final editorCore = _editorCore;
     final cursorPosition =
-        editorCore?.getCursorPosition() ?? const core.TextPosition(0, 0);
+        editorCore?.getCursorPosition() ??
+        const core.TextPosition(line: 0, column: 0);
     return SelectionMenuContext(
       hasSelection: hasSelection,
       cursorPosition: cursorPosition,

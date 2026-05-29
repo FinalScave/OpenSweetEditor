@@ -170,7 +170,7 @@ TEST_CASE("TextLayout getPositionScreenCoord skips CodeLens virtual line for lin
   layout.getLayoutMetrics().fold_arrow_mode = FoldArrowMode::ALWAYS;
 
   Vector<CodeLensItem> items;
-  items.push_back({0, "3 references", 101});
+  items.push_back({0, 101, "3 references"});
   decorations->setLineCodeLens(0, std::move(items));
 
   const PointF line_start = layout.getPositionScreenCoord({0, 0});
@@ -189,7 +189,7 @@ TEST_CASE("TextLayout hitTestTextBoundary maps CodeLens virtual line to previous
   layout.setWrapMode(WrapMode::NONE);
 
   Vector<CodeLensItem> items;
-  items.push_back({0, "3 references", 101});
+  items.push_back({0, 101, "3 references"});
   decorations->setLineCodeLens(1, std::move(items));
 
   const PointF line_start = layout.getPositionScreenCoord({1, 0});
@@ -212,8 +212,8 @@ TEST_CASE("TextLayout hitTestDecoration returns unique command ids for CodeLens 
   layout.setWrapMode(WrapMode::NONE);
 
   Vector<CodeLensItem> items;
-  items.push_back({1, "3 references", 101});
-  items.push_back({4, "2 implementations", 202});
+  items.push_back({1, 101, "3 references"});
+  items.push_back({4, 202, "2 implementations"});
   decorations->setLineCodeLens(0, std::move(items));
 
   EditorRenderModel model;
@@ -248,8 +248,8 @@ TEST_CASE("TextLayout positions CodeLens runs by anchored columns") {
   layout.setWrapMode(WrapMode::NONE);
 
   Vector<CodeLensItem> items;
-  items.push_back({2, "refs", 101});
-  items.push_back({7, "impl", 202});
+  items.push_back({2, 101, "refs"});
+  items.push_back({7, 202, "impl"});
   decorations->setLineCodeLens(0, std::move(items));
 
   EditorRenderModel model;
@@ -307,7 +307,7 @@ TEST_CASE("TextLayout gutter fold hit uses content line geometry when CodeLens e
   layout.getLayoutMetrics().fold_arrow_mode = FoldArrowMode::ALWAYS;
 
   Vector<CodeLensItem> items;
-  items.push_back({0, "3 references", 101});
+  items.push_back({0, 101, "3 references"});
   decorations->setLineCodeLens(0, std::move(items));
   Vector<FoldRegion> folds;
   folds.push_back({0, 1, false});
@@ -340,7 +340,7 @@ TEST_CASE("TextLayout gutter icon hit uses content line geometry when CodeLens e
   layout.getLayoutMetrics().max_gutter_icons = 0;
 
   Vector<CodeLensItem> items;
-  items.push_back({0, "3 references", 101});
+  items.push_back({0, 101, "3 references"});
   decorations->setLineCodeLens(0, std::move(items));
   Vector<GutterIcon> icons;
   icons.push_back({77});

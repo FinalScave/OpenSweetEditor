@@ -6,8 +6,6 @@ import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -130,14 +128,12 @@ public final class EditorNative {
             return ptr != null && !ptr.equals(MemorySegment.NULL) && size > 0;
         }
 
-        /**
-         * Zero-copy ByteBuffer view, directly reading native memory.
-         * <p>
-         * Note: The returned ByteBuffer must not be used after calling {@link #free()}.
-         */
-        ByteBuffer asByteBuffer() {
-            if (!hasData()) return null;
-            return ptr.asByteBuffer().order(ByteOrder.nativeOrder());
+        MemorySegment segment() {
+            return ptr;
+        }
+
+        long size() {
+            return size;
         }
 
         /**
@@ -1469,6 +1465,11 @@ public final class EditorNative {
     public static NativeBinaryResult startLinkedEditing(long handle, byte[] payload, Arena arena) {
         return invokeBinaryResult(arena, outSize -> (MemorySegment) START_LINKED_EDITING.invokeExact(
                 handle, byteArraySegment(arena, payload), (long) payload.length, outSize));
+    }
+
+    public static NativeBinaryResult startLinkedEditing(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) START_LINKED_EDITING.invokeExact(handle, payload, size, outSize));
     }
 
     public static boolean isInLinkedEditing(long handle) {

@@ -119,7 +119,7 @@ public:
     return true;
   }
 
-  inline bool read(DiagnosticSpan& out) {
+  inline bool read(Diagnostic& out) {
     uint32_t out_column_value{};
     if (!readU32(out_column_value)) return false;
     out.column = static_cast<uint32_t>(out_column_value);
@@ -254,7 +254,7 @@ public:
     out.entries.reserve(count);
     for (uint32_t index = 0; index < count; ++index) {
       size_t key{};
-      Vector<DiagnosticSpan> value{};
+      Vector<Diagnostic> value{};
       uint32_t key_value{};
       if (!readU32(key_value)) return false;
       key = static_cast<size_t>(key_value);
@@ -527,6 +527,16 @@ public:
     return true;
   }
 
+  inline bool read(IntRange& out) {
+    int32_t out_start_value{};
+    if (!readI32(out_start_value)) return false;
+    out.start = static_cast<int32_t>(out_start_value);
+    int32_t out_end_value{};
+    if (!readI32(out_end_value)) return false;
+    out.end = static_cast<int32_t>(out_end_value);
+    return true;
+  }
+
   inline bool read(OffsetRect& out) {
     float out_left_value{};
     if (!readF32(out_left_value)) return false;
@@ -592,6 +602,30 @@ public:
     return true;
   }
 
+  inline bool read(KeyBinding& out) {
+    if (!read(out.first)) return false;
+    if (!read(out.second)) return false;
+    uint32_t out_command_value{};
+    if (!readU32(out_command_value)) return false;
+    out.command = static_cast<EditorCommandId>(out_command_value);
+    return true;
+  }
+
+  inline bool read(KeyChord& out) {
+    uint8_t out_modifiers_value{};
+    if (!readU8(out_modifiers_value)) return false;
+    out.modifiers = static_cast<KeyModifier>(out_modifiers_value);
+    uint16_t out_key_code_value{};
+    if (!readU16(out_key_code_value)) return false;
+    out.key_code = static_cast<KeyCode>(out_key_code_value);
+    return true;
+  }
+
+  inline bool read(SetKeyMapPayload& out) {
+    if (!readList(out.bindings)) return false;
+    return true;
+  }
+
   inline bool read(LinkedEditingModel& out) {
     if (!readList(out.groups)) return false;
     return true;
@@ -608,6 +642,19 @@ public:
     out.index = static_cast<uint32_t>(out_index_value);
     if (!readList(out.ranges)) return false;
     if (!readUtf8String(out.default_text)) return false;
+    return true;
+  }
+
+  inline bool read(CursorRect& out) {
+    float out_x_value{};
+    if (!readF32(out_x_value)) return false;
+    out.x = static_cast<float>(out_x_value);
+    float out_y_value{};
+    if (!readF32(out_y_value)) return false;
+    out.y = static_cast<float>(out_y_value);
+    float out_height_value{};
+    if (!readF32(out_height_value)) return false;
+    out.height = static_cast<float>(out_height_value);
     return true;
   }
 
@@ -722,20 +769,6 @@ public:
     return writeUtf8String(utf8);
   }
 
-  inline bool write(const StyleSpan& value) {
-    if (!writeU32(static_cast<uint32_t>(value.column))) return false;
-    if (!writeU32(static_cast<uint32_t>(value.length))) return false;
-    if (!writeU32(static_cast<uint32_t>(value.style_id))) return false;
-    return true;
-  }
-
-  inline bool write(const TextStyle& value) {
-    if (!writeI32(static_cast<int32_t>(value.color))) return false;
-    if (!writeI32(static_cast<int32_t>(value.background_color))) return false;
-    if (!writeI32(static_cast<int32_t>(value.font_style))) return false;
-    return true;
-  }
-
   inline bool write(const EditorActionResult& value) {
     if (!writeI32(value.handled ? 1 : 0)) return false;
     if (!writeI32(value.needs_redraw ? 1 : 0)) return false;
@@ -775,6 +808,26 @@ public:
     if (!write(value.hit_target)) return false;
     if (!writeI32(static_cast<int32_t>(value.modifiers))) return false;
     if (!writeI32(static_cast<int32_t>(value.command))) return false;
+    return true;
+  }
+
+  inline bool write(const StyleSpan& value) {
+    if (!writeU32(static_cast<uint32_t>(value.column))) return false;
+    if (!writeU32(static_cast<uint32_t>(value.length))) return false;
+    if (!writeU32(static_cast<uint32_t>(value.style_id))) return false;
+    return true;
+  }
+
+  inline bool write(const TextStyle& value) {
+    if (!writeI32(static_cast<int32_t>(value.color))) return false;
+    if (!writeI32(static_cast<int32_t>(value.background_color))) return false;
+    if (!writeI32(static_cast<int32_t>(value.font_style))) return false;
+    return true;
+  }
+
+  inline bool write(const IntRange& value) {
+    if (!writeI32(static_cast<int32_t>(value.start))) return false;
+    if (!writeI32(static_cast<int32_t>(value.end))) return false;
     return true;
   }
 
@@ -859,6 +912,19 @@ public:
     return true;
   }
 
+  inline bool write(const KeyBinding& value) {
+    if (!write(value.first)) return false;
+    if (!write(value.second)) return false;
+    if (!writeU32(static_cast<uint32_t>(value.command))) return false;
+    return true;
+  }
+
+  inline bool write(const KeyChord& value) {
+    if (!writeU8(static_cast<uint8_t>(value.modifiers))) return false;
+    if (!writeU16(static_cast<uint16_t>(value.key_code))) return false;
+    return true;
+  }
+
   inline bool write(const CompositionDecoration& value) {
     if (!writeI32(value.active ? 1 : 0)) return false;
     if (!write(value.rect)) return false;
@@ -871,6 +937,13 @@ public:
     if (!writeF32(static_cast<float>(value.height))) return false;
     if (!writeI32(value.visible ? 1 : 0)) return false;
     if (!writeI32(value.show_dragger ? 1 : 0)) return false;
+    return true;
+  }
+
+  inline bool write(const CursorRect& value) {
+    if (!writeF32(static_cast<float>(value.x))) return false;
+    if (!writeF32(static_cast<float>(value.y))) return false;
+    if (!writeF32(static_cast<float>(value.height))) return false;
     return true;
   }
 

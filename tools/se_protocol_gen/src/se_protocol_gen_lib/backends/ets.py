@@ -10,9 +10,6 @@ def ets_enum_helper(enum_name):
     return f"{lower_first(enum_name)}FromValue"
 
 def ets_type(field, schema_types, schema_enums):
-    platform_type = field.get("platform_type")
-    if platform_type:
-        return platform_type
     inner = vector_inner(field["cpp_type"])
     if inner is not None:
         return f"{inner}[]"
@@ -108,9 +105,20 @@ def ets_size_expr(field, value_expr):
         return f"this.sizeOf{field['cpp_type']}({value_expr})"
     raise SystemExit(f"Unsupported ETS size wire: {wire}")
 
-def ets_default_for_field(field, ets_type_name, schema_enums):
+def ets_default_for_field(field, ets_type_name, schema_types, schema_enums):
     default = field.get("default")
-    if not default or "," in default:
+    if not default:
+        return None
+    if "," in default:
+        if field["wire"] == "struct" and field["cpp_type"] in schema_types:
+            parts = [sanitize_cpp_number(part) for part in default.split(",")]
+            struct_fields = schema_types[field["cpp_type"]].get("fields", [])
+            if all(is_cpp_number(part) for part in parts) and len(parts) == len(struct_fields):
+                values = [
+                    f"{field_name(struct_field, 'ets')}: {part}"
+                    for part, struct_field in zip(parts, struct_fields)
+                ]
+                return "{ " + ", ".join(values) + " }"
         return None
     if "::" in default:
         enum_name, enum_value = default.split("::", 1)
@@ -196,7 +204,7 @@ def ets_write_payload_field_lines(field, param_name, schema):
     return [f"    {ets_write_stmt(field, param_name)}"]
 
 def generate_ets_pack_methods(item, schema):
-    pack_name = payload_pack_function_name(item)
+    pack_name = payload_encode_function_name(item)
     if not is_hidden_input_type(item):
         return [
             "",
@@ -209,7 +217,7 @@ def generate_ets_pack_methods(item, schema):
     params = ets_pack_params(item, schema)
     params_sig = ", ".join(f"{name}: {type_name}" for type_name, name, _ in params)
     args = ", ".join(name for _, name, _ in params)
-    wire_name = pack_name[len("pack"):]
+    wire_name = pack_name[len("encode"):]
     lines = [
         "",
         f"  private static write{wire_name}Wire(writer: BinaryWriter, {params_sig}): void {{",
@@ -279,7 +287,7 @@ def generate_ets_domain(domain, items, enums, schema, target):
             lines.append(f"export class {item['name']} {{")
             for field in item["fields"]:
                 type_name = ets_type(field, schema_types, schema_enums)
-                default_expr = ets_default_for_field(field, type_name, schema_enums)
+                default_expr = ets_default_for_field(field, type_name, schema_types, schema_enums)
                 suffix = f" = {default_expr}" if default_expr is not None else ""
                 lines.append(f"  {field_name(field, 'ets')}: {type_name}{suffix};")
             lines.append("}")
@@ -293,6 +301,7 @@ def generate_ets_domain(domain, items, enums, schema, target):
     return "\n".join(lines)
 
 def generate_ets_codec(schema, target):
+    codec_type = protocol_type_name(target, "CoreProtocol.ets")
     imports = {}
     for item in visible_schema_types(schema):
         imports.setdefault(item["domain"], set()).add(item["name"])
@@ -420,7 +429,7 @@ def generate_ets_codec(schema, target):
         "  }",
         "}",
         "",
-        "export class CoreProtocol {",
+        f"export class {codec_type} {{",
         "  private static sizeOfUtf8String(value: string): number {",
         "    return 4 + UTF8_ENCODER.encodeInto(value || '').length;",
         "  }",
@@ -462,11 +471,17 @@ def generate_ets_codec(schema, target):
             ])
     for item in visible_schema_types(schema):
         if needs_reader(item):
-            lines.extend(["", f"  static read{item['name']}(reader: BinaryReader): {item['name']} {{", "    return {"])
+            lines.extend(["", f"  private static read{item['name']}(reader: BinaryReader): {item['name']} {{", "    return {"])
             for index, field in enumerate(item["fields"]):
                 suffix = "," if index + 1 < len(item["fields"]) else ""
                 lines.append(f"      {field_name(field, 'ets')}: {ets_read_expr(field)}{suffix}")
             lines.extend(["    };", "  }"])
+            lines.extend([
+                "",
+                f"  static decode{item['name']}(buffer: ArrayBuffer): {item['name']} {{",
+                f"    return this.read{item['name']}(new BinaryReader(buffer));",
+                "  }",
+            ])
         if needs_writer(item):
             lines.extend(["", f"  static write{item['name']}(writer: BinaryWriter, value: {item['name']}): void {{"])
             for field in item["fields"]:

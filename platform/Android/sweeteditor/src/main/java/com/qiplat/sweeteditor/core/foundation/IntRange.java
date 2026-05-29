@@ -1,13 +1,11 @@
 package com.qiplat.sweeteditor.core.foundation;
 
-import androidx.annotation.NonNull;
-
-/**
- * Inclusive integer range.
- */
 public final class IntRange {
-    public final int start;
-    public final int end;
+    public int start = 0;
+    public int end = -1;
+
+    public IntRange() {
+    }
 
     public IntRange(int start, int end) {
         this.start = start;
@@ -26,12 +24,11 @@ public final class IntRange {
         return isEmpty() ? 0 : (end - start + 1);
     }
 
-    @NonNull
     @Override
     public String toString() {
-        return "IntRange{" +
-                "start=" + start +
-                ", end=" + end +
-                '}';
+        return "IntRange{"
+                + "start=" + start
+                + ", end=" + end
+                + "}";
     }
 }

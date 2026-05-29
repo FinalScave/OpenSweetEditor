@@ -18,7 +18,7 @@
 
 namespace NS_SWEETEDITOR {
 
-  enum struct SE_PROTOCOL_ENUM(core, NONE) EditorActionReason : uint8_t {
+  enum struct SE_PROTOCOL_ENUM(action, NONE) EditorActionReason : uint8_t {
     NONE = 0,
     SETUP = 1,
     TEXT_EDIT = 2,
@@ -37,7 +37,7 @@ namespace NS_SWEETEDITOR {
     TEXT_REDO = 15,
   };
 
-  struct SE_PROTOCOL_OUT(core) EditorActionResult {
+  struct SE_PROTOCOL_OUT(action) EditorActionResult {
     bool handled {false};
     bool needs_redraw {false};
     SE_PROTOCOL_WIRE(enum_i32)
@@ -89,7 +89,7 @@ namespace NS_SWEETEDITOR {
     SE_PROTOCOL_WIRE(i32)
     KeyModifier modifiers {KeyModifier::NONE};
     SE_PROTOCOL_WIRE(i32)
-    EditorCommand command {EditorCommand::NONE};
+    EditorCommandId command {0};
   };
 
   /// Editor core class
@@ -659,12 +659,12 @@ namespace NS_SWEETEDITOR {
 
     /// Set diagnostic decorations for given line (wavy underline/underline)
     /// @param line Line number
-    /// @param diagnostics Diagnostic span list
-    EditorActionResult setLineDiagnostics(size_t line, Vector<DiagnosticSpan>&& diagnostics);
+    /// @param diagnostics Diagnostic list
+    EditorActionResult setLineDiagnostics(size_t line, Vector<Diagnostic>&& diagnostics);
 
     /// Batch set diagnostic decorations for multiple lines (loop setLineDiagnostics, no dirty mark)
     /// @param entries Array of line->diagnostic list pairs
-    EditorActionResult setBatchLineDiagnostics(Vector<std::pair<size_t, Vector<DiagnosticSpan>>>&& entries);
+    EditorActionResult setBatchLineDiagnostics(Vector<std::pair<size_t, Vector<Diagnostic>>>&& entries);
 
     /// Clear all diagnostic decorations
     EditorActionResult clearDiagnostics();

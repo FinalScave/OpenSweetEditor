@@ -1,4 +1,4 @@
-import 'editor_core.dart' as core;
+import 'core/editor_core.dart' as core;
 
 /// Editor metadata marker interface.
 /// External implementations can use this to define custom metadata

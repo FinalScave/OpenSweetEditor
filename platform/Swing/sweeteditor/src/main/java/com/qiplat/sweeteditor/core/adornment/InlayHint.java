@@ -1,27 +1,30 @@
 package com.qiplat.sweeteditor.core.adornment;
 
-public class InlayHint {
-    public final InlayType type;
-    public final int column;
-    public final String text;
-    public final int intValue;
+public final class InlayHint {
+    public InlayType type = InlayType.TEXT;
+    public int column = 0;
+    public int intValue = 0;
+    public String text = "";
 
-    public InlayHint(InlayType type, int column, String text, int intValue) {
+    public InlayHint() {
+    }
+
+    public InlayHint(InlayType type, int column, int intValue, String text) {
         this.type = type;
         this.column = column;
-        this.text = text;
         this.intValue = intValue;
+        this.text = text;
     }
 
     public static InlayHint text(int column, String text) {
-        return new InlayHint(InlayType.TEXT, column, text, 0);
+        return new InlayHint(InlayType.TEXT, column, 0, text != null ? text : "");
     }
 
     public static InlayHint icon(int column, int iconId) {
-        return new InlayHint(InlayType.ICON, column, null, iconId);
+        return new InlayHint(InlayType.ICON, column, iconId, "");
     }
 
     public static InlayHint color(int column, int color) {
-        return new InlayHint(InlayType.COLOR, column, null, color);
+        return new InlayHint(InlayType.COLOR, column, color, "");
     }
 }

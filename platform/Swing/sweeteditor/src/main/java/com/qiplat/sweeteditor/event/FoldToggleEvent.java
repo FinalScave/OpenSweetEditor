@@ -1,6 +1,6 @@
 package com.qiplat.sweeteditor.event;
 
-import com.qiplat.sweeteditor.core.visual.PointF;
+import com.qiplat.sweeteditor.core.foundation.PointF;
 
 /**
  * Fold toggle event (triggered when clicking the fold placeholder or fold arrow).

@@ -79,51 +79,51 @@ public final class SweetEditorViewiOS: UIView {
         editorView.registerStyle(styleId: styleId, color: color, backgroundColor: backgroundColor, fontStyle: fontStyle)
     }
 
-    public func setLineSpans(line: Int, layer: SpanLayer, spans: [SweetEditorCore.StyleSpan]) {
+    public func setLineSpans(line: Int, layer: SpanLayer, spans: [StyleSpan]) {
         editorView.setLineSpans(line: line, layer: layer, spans: spans)
     }
 
-    public func setBatchLineSpans(layer: SpanLayer, spansByLine: [Int: [SweetEditorCore.StyleSpan]]) {
+    public func setBatchLineSpans(layer: SpanLayer, spansByLine: [Int: [StyleSpan]]) {
         editorView.setBatchLineSpans(layer: layer, spansByLine: spansByLine)
     }
 
-    public func setLineInlayHints(line: Int, hints: [SweetEditorCore.InlayHintPayload]) {
+    public func setLineInlayHints(line: Int, hints: [InlayHint]) {
         editorView.setLineInlayHints(line: line, hints: hints)
     }
 
-    public func setBatchLineInlayHints(_ hintsByLine: [Int: [SweetEditorCore.InlayHintPayload]]) {
+    public func setBatchLineInlayHints(_ hintsByLine: [Int: [InlayHint]]) {
         editorView.setBatchLineInlayHints(hintsByLine)
     }
 
-    public func setLinePhantomTexts(line: Int, phantoms: [SweetEditorCore.PhantomTextPayload]) {
+    public func setLinePhantomTexts(line: Int, phantoms: [PhantomText]) {
         editorView.setLinePhantomTexts(line: line, phantoms: phantoms)
     }
 
-    public func setBatchLinePhantomTexts(_ phantomsByLine: [Int: [SweetEditorCore.PhantomTextPayload]]) {
+    public func setBatchLinePhantomTexts(_ phantomsByLine: [Int: [PhantomText]]) {
         editorView.setBatchLinePhantomTexts(phantomsByLine)
     }
 
-    public func setLineGutterIcons(line: Int, icons: [SweetEditorCore.GutterIcon]) {
+    public func setLineGutterIcons(line: Int, icons: [GutterIcon]) {
         editorView.setLineGutterIcons(line: line, icons: icons)
     }
 
-    public func setBatchLineGutterIcons(_ iconsByLine: [Int: [SweetEditorCore.GutterIcon]]) {
+    public func setBatchLineGutterIcons(_ iconsByLine: [Int: [GutterIcon]]) {
         editorView.setBatchLineGutterIcons(iconsByLine)
     }
 
-    public func setLineCodeLens(line: Int, items: [SweetEditorCore.CodeLensPayload]) {
+    public func setLineCodeLens(line: Int, items: [CodeLensItem]) {
         editorView.setLineCodeLens(line: line, items: items)
     }
 
-    public func setBatchLineCodeLens(_ itemsByLine: [Int: [SweetEditorCore.CodeLensPayload]]) {
+    public func setBatchLineCodeLens(_ itemsByLine: [Int: [CodeLensItem]]) {
         editorView.setBatchLineCodeLens(itemsByLine)
     }
 
-    public func setLineLinks(line: Int, links: [SweetEditorCore.LinkSpan]) {
+    public func setLineLinks(line: Int, links: [LinkSpan]) {
         editorView.setLineLinks(line: line, links: links)
     }
 
-    public func setBatchLineLinks(_ linksByLine: [Int: [SweetEditorCore.LinkSpan]]) {
+    public func setBatchLineLinks(_ linksByLine: [Int: [LinkSpan]]) {
         editorView.setBatchLineLinks(linksByLine)
     }
 
@@ -176,31 +176,31 @@ public final class SweetEditorViewiOS: UIView {
         editorView.setScale(scale)
     }
 
-    public func setLineDiagnostics(line: Int, items: [SweetEditorCore.DiagnosticItem]) {
+    public func setLineDiagnostics(line: Int, items: [Diagnostic]) {
         editorView.setLineDiagnostics(line: line, items: items)
     }
 
-    public func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [SweetEditorCore.DiagnosticItem]]) {
+    public func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [Diagnostic]]) {
         editorView.setBatchLineDiagnostics(diagnosticsByLine)
     }
 
-    public func setIndentGuides(_ guides: [SweetEditorCore.IndentGuidePayload]) {
+    public func setIndentGuides(_ guides: [IndentGuide]) {
         editorView.setIndentGuides(guides)
     }
 
-    public func setBracketGuides(_ guides: [SweetEditorCore.BracketGuidePayload]) {
+    public func setBracketGuides(_ guides: [BracketGuide]) {
         editorView.setBracketGuides(guides)
     }
 
-    public func setFlowGuides(_ guides: [SweetEditorCore.FlowGuidePayload]) {
+    public func setFlowGuides(_ guides: [FlowGuide]) {
         editorView.setFlowGuides(guides)
     }
 
-    public func setSeparatorGuides(_ guides: [SweetEditorCore.SeparatorGuidePayload]) {
+    public func setSeparatorGuides(_ guides: [SeparatorGuide]) {
         editorView.setSeparatorGuides(guides)
     }
 
-    public func setFoldRegions(_ regions: [SweetEditorCore.FoldRegion]) {
+    public func setFoldRegions(_ regions: [FoldRegion]) {
         editorView.setFoldRegions(regions)
     }
 

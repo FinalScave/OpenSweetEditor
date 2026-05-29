@@ -18,7 +18,7 @@ class DecorationProviderManager {
   final List<core.TextChange> _pendingTextChanges = [];
   int _generation = 0;
   bool _applyScheduled = false;
-  core.IntRange _lastContextLineRange = const core.IntRange(0, -1);
+  core.IntRange _lastContextLineRange = const core.IntRange(start: 0, end: -1);
   List<core.IndentGuide> _appliedIndentGuides = const [];
   List<core.BracketGuide> _appliedBracketGuides = const [];
   List<core.FlowGuide> _appliedFlowGuides = const [];
@@ -127,7 +127,7 @@ class DecorationProviderManager {
       contextStart = (visible.start - overscanLines).clamp(0, total - 1);
       contextEnd = (visible.end + overscanLines).clamp(0, total - 1);
     }
-    _lastContextLineRange = core.IntRange(contextStart, contextEnd);
+    _lastContextLineRange = core.IntRange(start: contextStart, end: contextEnd);
 
     final context = DecorationContext(
       visibleLineRange: _lastContextLineRange,

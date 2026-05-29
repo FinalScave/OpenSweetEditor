@@ -14,6 +14,10 @@ import com.qiplat.sweeteditor.EditorTheme;
 import com.qiplat.sweeteditor.R;
 import com.qiplat.sweeteditor.SweetEditor;
 import com.qiplat.sweeteditor.core.EditorCore;
+import com.qiplat.sweeteditor.core.interaction.HitTarget;
+import com.qiplat.sweeteditor.core.interaction.HitTargetType;
+import com.qiplat.sweeteditor.core.interaction.GestureType;
+import com.qiplat.sweeteditor.core.action.EditorActionResult;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
 import com.qiplat.sweeteditor.event.ContextMenuItemClickEvent;
@@ -67,7 +71,7 @@ public final class ContextMenuController {
                 theme.contextMenuDividerColor);
     }
 
-    public void onEditorActionResult(@NonNull EditorCore.EditorActionResult result, @NonNull PointF locationInEditor) {
+    public void onEditorActionResult(@NonNull EditorActionResult result, @NonNull PointF locationInEditor) {
         switch (result.gestureType) {
             case LONG_PRESS:
                 showMenu(buildRequest(ContextMenuTriggerKind.LONG_PRESS, result, locationInEditor));
@@ -108,11 +112,11 @@ public final class ContextMenuController {
 
     @NonNull
     private ContextMenuRequest buildRequest(@NonNull ContextMenuTriggerKind triggerKind,
-                                            @NonNull EditorCore.EditorActionResult result,
+                                            @NonNull EditorActionResult result,
                                             @NonNull PointF locationInEditor) {
-        EditorCore.HitTarget hitTarget = result.hitTarget != null ? result.hitTarget : EditorCore.HitTarget.NONE;
+        HitTarget hitTarget = result.hitTarget != null ? result.hitTarget : new HitTarget();
         String linkTarget = "";
-        if (hitTarget.type == EditorCore.HitTargetType.LINK) {
+        if (hitTarget.type == HitTargetType.LINK) {
             linkTarget = editor.getLinkTargetAt(hitTarget.line, hitTarget.column);
         }
         return new ContextMenuRequest(
@@ -195,7 +199,7 @@ public final class ContextMenuController {
 
     private void appendLinkSection(@NonNull List<ContextMenuSection> out,
                                    @NonNull ContextMenuRequest request) {
-        if (request.hitTarget.type != EditorCore.HitTargetType.LINK || request.linkTarget.isEmpty()) {
+        if (request.hitTarget.type != HitTargetType.LINK || request.linkTarget.isEmpty()) {
             return;
         }
         List<ContextMenuItem> items = new ArrayList<>(2);

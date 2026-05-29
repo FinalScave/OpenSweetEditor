@@ -1,10 +1,8 @@
 package com.qiplat.sweeteditor.core.foundation;
 
-import com.google.gson.annotations.SerializedName;
-
-public class TextRange {
-    @SerializedName("start") public TextPosition start;
-    @SerializedName("end") public TextPosition end;
+public final class TextRange {
+    public TextPosition start = new TextPosition();
+    public TextPosition end = new TextPosition();
 
     public TextRange() {
     }
@@ -16,5 +14,13 @@ public class TextRange {
 
     public boolean isCollapsed() {
         return start.line == end.line && start.column == end.column;
+    }
+
+    @Override
+    public String toString() {
+        return "TextRange{"
+                + "start=" + start
+                + ", end=" + end
+                + "}";
     }
 }

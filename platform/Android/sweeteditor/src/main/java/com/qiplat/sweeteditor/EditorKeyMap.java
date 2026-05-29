@@ -5,33 +5,54 @@ import android.util.SparseArray;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.qiplat.sweeteditor.core.keymap.EditorCommand;
+import com.qiplat.sweeteditor.core.keymap.EditorBuiltinCommand;
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
 import com.qiplat.sweeteditor.core.keymap.KeyCode;
-import com.qiplat.sweeteditor.core.keymap.KeyMap;
 import com.qiplat.sweeteditor.core.keymap.KeyModifier;
 
-/**
- * Widget-layer extension of {@link KeyMap} that additionally holds
- * command handlers bound to {@link SweetEditor}.
- */
-public class EditorKeyMap extends KeyMap {
+import java.util.ArrayList;
+import java.util.List;
 
-    private final SparseArray<EditorCommand<SweetEditor>> mCommands = new SparseArray<>();
-    private int mNextCustomId = EditorCommand.BUILT_IN_MAX + 1;
+/**
+ * Widget-layer keyboard shortcut map that additionally holds command handlers.
+ */
+public class EditorKeyMap {
+
+    @FunctionalInterface
+    public interface ShortcutHandler {
+        void onShortcut(@NonNull KeyBinding binding, @NonNull SweetEditor editor);
+    }
+
+    private final ArrayList<KeyBinding> mBindings = new ArrayList<>();
+    private final SparseArray<ShortcutHandler> mCommands = new SparseArray<>();
+    private int mNextCustomId = EditorBuiltinCommand.TRIGGER_COMPLETION.value + 1;
+
+    public void addBinding(@NonNull KeyBinding binding) {
+        mBindings.remove(binding);
+        mBindings.add(binding);
+    }
+
+    public void removeBinding(@NonNull KeyBinding binding) {
+        mBindings.remove(binding);
+    }
+
+    @NonNull
+    public List<KeyBinding> getBindings() {
+        return mBindings;
+    }
 
     /**
      * Register a command handler for the given binding.
      * <p>
-     * If {@code binding.command == EditorCommand.NONE}, a custom command id is auto-assigned.
+     * If {@code binding.command == EditorBuiltinCommand.NONE.value}, a custom command id is auto-assigned.
      *
      * @return the resolved command id
      */
     public int registerCommand(@NonNull KeyBinding binding,
-                               @NonNull EditorCommand<SweetEditor> handler) {
+                               @NonNull ShortcutHandler handler) {
         int commandId = binding.command;
         KeyBinding resolvedBinding = binding;
-        if (commandId == EditorCommand.NONE) {
+        if (commandId == EditorBuiltinCommand.NONE.value) {
             commandId = mNextCustomId++;
             resolvedBinding = new KeyBinding(binding.first, binding.second, commandId);
         } else if (commandId >= mNextCustomId) {
@@ -43,7 +64,7 @@ public class EditorKeyMap extends KeyMap {
     }
 
     @Nullable
-    public EditorCommand<SweetEditor> getCommand(int commandId) {
+    public ShortcutHandler getCommand(int commandId) {
         return mCommands.get(commandId);
     }
 
@@ -52,59 +73,59 @@ public class EditorKeyMap extends KeyMap {
     }
 
     private static void addCommonBindings(EditorKeyMap km) {
-        bind(km, KeyModifier.NONE, KeyCode.LEFT,      EditorCommand.CURSOR_LEFT);
-        bind(km, KeyModifier.NONE, KeyCode.RIGHT,     EditorCommand.CURSOR_RIGHT);
-        bind(km, KeyModifier.NONE, KeyCode.UP,        EditorCommand.CURSOR_UP);
-        bind(km, KeyModifier.NONE, KeyCode.DOWN,      EditorCommand.CURSOR_DOWN);
-        bind(km, KeyModifier.NONE, KeyCode.HOME,      EditorCommand.CURSOR_LINE_START);
-        bind(km, KeyModifier.NONE, KeyCode.END,       EditorCommand.CURSOR_LINE_END);
-        bind(km, KeyModifier.NONE, KeyCode.PAGE_UP,   EditorCommand.CURSOR_PAGE_UP);
-        bind(km, KeyModifier.NONE, KeyCode.PAGE_DOWN, EditorCommand.CURSOR_PAGE_DOWN);
+        bind(km, KeyModifier.NONE, KeyCode.LEFT,      EditorBuiltinCommand.CURSOR_LEFT.value);
+        bind(km, KeyModifier.NONE, KeyCode.RIGHT,     EditorBuiltinCommand.CURSOR_RIGHT.value);
+        bind(km, KeyModifier.NONE, KeyCode.UP,        EditorBuiltinCommand.CURSOR_UP.value);
+        bind(km, KeyModifier.NONE, KeyCode.DOWN,      EditorBuiltinCommand.CURSOR_DOWN.value);
+        bind(km, KeyModifier.NONE, KeyCode.HOME,      EditorBuiltinCommand.CURSOR_LINE_START.value);
+        bind(km, KeyModifier.NONE, KeyCode.END,       EditorBuiltinCommand.CURSOR_LINE_END.value);
+        bind(km, KeyModifier.NONE, KeyCode.PAGE_UP,   EditorBuiltinCommand.CURSOR_PAGE_UP.value);
+        bind(km, KeyModifier.NONE, KeyCode.PAGE_DOWN, EditorBuiltinCommand.CURSOR_PAGE_DOWN.value);
 
-        bind(km, KeyModifier.SHIFT, KeyCode.LEFT,      EditorCommand.SELECT_LEFT);
-        bind(km, KeyModifier.SHIFT, KeyCode.RIGHT,     EditorCommand.SELECT_RIGHT);
-        bind(km, KeyModifier.SHIFT, KeyCode.UP,        EditorCommand.SELECT_UP);
-        bind(km, KeyModifier.SHIFT, KeyCode.DOWN,      EditorCommand.SELECT_DOWN);
-        bind(km, KeyModifier.SHIFT, KeyCode.HOME,      EditorCommand.SELECT_LINE_START);
-        bind(km, KeyModifier.SHIFT, KeyCode.END,       EditorCommand.SELECT_LINE_END);
-        bind(km, KeyModifier.SHIFT, KeyCode.PAGE_UP,   EditorCommand.SELECT_PAGE_UP);
-        bind(km, KeyModifier.SHIFT, KeyCode.PAGE_DOWN, EditorCommand.SELECT_PAGE_DOWN);
+        bind(km, KeyModifier.SHIFT, KeyCode.LEFT,      EditorBuiltinCommand.SELECT_LEFT.value);
+        bind(km, KeyModifier.SHIFT, KeyCode.RIGHT,     EditorBuiltinCommand.SELECT_RIGHT.value);
+        bind(km, KeyModifier.SHIFT, KeyCode.UP,        EditorBuiltinCommand.SELECT_UP.value);
+        bind(km, KeyModifier.SHIFT, KeyCode.DOWN,      EditorBuiltinCommand.SELECT_DOWN.value);
+        bind(km, KeyModifier.SHIFT, KeyCode.HOME,      EditorBuiltinCommand.SELECT_LINE_START.value);
+        bind(km, KeyModifier.SHIFT, KeyCode.END,       EditorBuiltinCommand.SELECT_LINE_END.value);
+        bind(km, KeyModifier.SHIFT, KeyCode.PAGE_UP,   EditorBuiltinCommand.SELECT_PAGE_UP.value);
+        bind(km, KeyModifier.SHIFT, KeyCode.PAGE_DOWN, EditorBuiltinCommand.SELECT_PAGE_DOWN.value);
 
-        bind(km, KeyModifier.NONE, KeyCode.BACKSPACE,  EditorCommand.BACKSPACE);
-        bind(km, KeyModifier.NONE, KeyCode.DELETE_KEY,  EditorCommand.DELETE_FORWARD);
-        bind(km, KeyModifier.NONE, KeyCode.TAB,        EditorCommand.INSERT_TAB);
-        bind(km, KeyModifier.NONE, KeyCode.ENTER,      EditorCommand.INSERT_NEWLINE);
+        bind(km, KeyModifier.NONE, KeyCode.BACKSPACE,  EditorBuiltinCommand.BACKSPACE.value);
+        bind(km, KeyModifier.NONE, KeyCode.DELETE_KEY,  EditorBuiltinCommand.DELETE_FORWARD.value);
+        bind(km, KeyModifier.NONE, KeyCode.TAB,        EditorBuiltinCommand.INSERT_TAB.value);
+        bind(km, KeyModifier.NONE, KeyCode.ENTER,      EditorBuiltinCommand.INSERT_NEWLINE.value);
 
-        bind(km, KeyModifier.CTRL, KeyCode.A, EditorCommand.SELECT_ALL);
-        bind(km, KeyModifier.META, KeyCode.A, EditorCommand.SELECT_ALL);
+        bind(km, KeyModifier.CTRL, KeyCode.A, EditorBuiltinCommand.SELECT_ALL.value);
+        bind(km, KeyModifier.META, KeyCode.A, EditorBuiltinCommand.SELECT_ALL.value);
 
-        bind(km, KeyModifier.CTRL, KeyCode.Z, EditorCommand.UNDO);
-        bind(km, KeyModifier.META, KeyCode.Z, EditorCommand.UNDO);
+        bind(km, KeyModifier.CTRL, KeyCode.Z, EditorBuiltinCommand.UNDO.value);
+        bind(km, KeyModifier.META, KeyCode.Z, EditorBuiltinCommand.UNDO.value);
 
         km.registerCommand(
-                new KeyBinding(KeyModifier.CTRL, KeyCode.C, EditorCommand.COPY),
+                new KeyBinding(KeyModifier.CTRL, KeyCode.C, EditorBuiltinCommand.COPY.value),
                 (binding, editor) -> editor.copyToClipboard());
         km.registerCommand(
-                new KeyBinding(KeyModifier.META, KeyCode.C, EditorCommand.COPY),
+                new KeyBinding(KeyModifier.META, KeyCode.C, EditorBuiltinCommand.COPY.value),
                 (binding, editor) -> editor.copyToClipboard());
         km.registerCommand(
-                new KeyBinding(KeyModifier.CTRL, KeyCode.V, EditorCommand.PASTE),
+                new KeyBinding(KeyModifier.CTRL, KeyCode.V, EditorBuiltinCommand.PASTE.value),
                 (binding, editor) -> editor.pasteFromClipboard());
         km.registerCommand(
-                new KeyBinding(KeyModifier.META, KeyCode.V, EditorCommand.PASTE),
+                new KeyBinding(KeyModifier.META, KeyCode.V, EditorBuiltinCommand.PASTE.value),
                 (binding, editor) -> editor.pasteFromClipboard());
         km.registerCommand(
-                new KeyBinding(KeyModifier.CTRL, KeyCode.X, EditorCommand.CUT),
+                new KeyBinding(KeyModifier.CTRL, KeyCode.X, EditorBuiltinCommand.CUT.value),
                 (binding, editor) -> editor.cutToClipboard());
         km.registerCommand(
-                new KeyBinding(KeyModifier.META, KeyCode.X, EditorCommand.CUT),
+                new KeyBinding(KeyModifier.META, KeyCode.X, EditorBuiltinCommand.CUT.value),
                 (binding, editor) -> editor.cutToClipboard());
 
         km.registerCommand(
-                new KeyBinding(KeyModifier.CTRL, KeyCode.SPACE, EditorCommand.TRIGGER_COMPLETION),
+                new KeyBinding(KeyModifier.CTRL, KeyCode.SPACE, EditorBuiltinCommand.TRIGGER_COMPLETION.value),
                 (binding, editor) -> editor.triggerCompletion());
         km.registerCommand(
-                new KeyBinding(KeyModifier.META, KeyCode.SPACE, EditorCommand.TRIGGER_COMPLETION),
+                new KeyBinding(KeyModifier.META, KeyCode.SPACE, EditorBuiltinCommand.TRIGGER_COMPLETION.value),
                 (binding, editor) -> editor.triggerCompletion());
     }
 
@@ -122,23 +143,23 @@ public class EditorKeyMap extends KeyMap {
         EditorKeyMap km = new EditorKeyMap();
         addCommonBindings(km);
 
-        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.Z, EditorCommand.REDO);
-        bind(km, KeyModifier.META | KeyModifier.SHIFT, KeyCode.Z, EditorCommand.REDO);
-        bind(km, KeyModifier.CTRL, KeyCode.Y, EditorCommand.REDO);
-        bind(km, KeyModifier.META, KeyCode.Y, EditorCommand.REDO);
+        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.Z, EditorBuiltinCommand.REDO.value);
+        bind(km, KeyModifier.META | KeyModifier.SHIFT, KeyCode.Z, EditorBuiltinCommand.REDO.value);
+        bind(km, KeyModifier.CTRL, KeyCode.Y, EditorBuiltinCommand.REDO.value);
+        bind(km, KeyModifier.META, KeyCode.Y, EditorBuiltinCommand.REDO.value);
 
-        bind(km, KeyModifier.CTRL, KeyCode.ENTER, EditorCommand.INSERT_LINE_BELOW);
-        bind(km, KeyModifier.META, KeyCode.ENTER, EditorCommand.INSERT_LINE_BELOW);
-        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.ENTER, EditorCommand.INSERT_LINE_ABOVE);
-        bind(km, KeyModifier.META | KeyModifier.SHIFT, KeyCode.ENTER, EditorCommand.INSERT_LINE_ABOVE);
+        bind(km, KeyModifier.CTRL, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_BELOW.value);
+        bind(km, KeyModifier.META, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_BELOW.value);
+        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_ABOVE.value);
+        bind(km, KeyModifier.META | KeyModifier.SHIFT, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_ABOVE.value);
 
-        bind(km, KeyModifier.ALT, KeyCode.UP,   EditorCommand.MOVE_LINE_UP);
-        bind(km, KeyModifier.ALT, KeyCode.DOWN, EditorCommand.MOVE_LINE_DOWN);
-        bind(km, KeyModifier.ALT | KeyModifier.SHIFT, KeyCode.UP,   EditorCommand.COPY_LINE_UP);
-        bind(km, KeyModifier.ALT | KeyModifier.SHIFT, KeyCode.DOWN, EditorCommand.COPY_LINE_DOWN);
+        bind(km, KeyModifier.ALT, KeyCode.UP,   EditorBuiltinCommand.MOVE_LINE_UP.value);
+        bind(km, KeyModifier.ALT, KeyCode.DOWN, EditorBuiltinCommand.MOVE_LINE_DOWN.value);
+        bind(km, KeyModifier.ALT | KeyModifier.SHIFT, KeyCode.UP,   EditorBuiltinCommand.COPY_LINE_UP.value);
+        bind(km, KeyModifier.ALT | KeyModifier.SHIFT, KeyCode.DOWN, EditorBuiltinCommand.COPY_LINE_DOWN.value);
 
-        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.K, EditorCommand.DELETE_LINE);
-        bind(km, KeyModifier.META | KeyModifier.SHIFT, KeyCode.K, EditorCommand.DELETE_LINE);
+        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.K, EditorBuiltinCommand.DELETE_LINE.value);
+        bind(km, KeyModifier.META | KeyModifier.SHIFT, KeyCode.K, EditorBuiltinCommand.DELETE_LINE.value);
 
         return km;
     }
@@ -150,21 +171,21 @@ public class EditorKeyMap extends KeyMap {
         EditorKeyMap km = new EditorKeyMap();
         addCommonBindings(km);
 
-        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.Z, EditorCommand.REDO);
-        bind(km, KeyModifier.META | KeyModifier.SHIFT, KeyCode.Z, EditorCommand.REDO);
+        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.Z, EditorBuiltinCommand.REDO.value);
+        bind(km, KeyModifier.META | KeyModifier.SHIFT, KeyCode.Z, EditorBuiltinCommand.REDO.value);
 
-        bind(km, KeyModifier.CTRL, KeyCode.Y, EditorCommand.DELETE_LINE);
-        bind(km, KeyModifier.META, KeyCode.Y, EditorCommand.DELETE_LINE);
+        bind(km, KeyModifier.CTRL, KeyCode.Y, EditorBuiltinCommand.DELETE_LINE.value);
+        bind(km, KeyModifier.META, KeyCode.Y, EditorBuiltinCommand.DELETE_LINE.value);
 
-        bind(km, KeyModifier.CTRL, KeyCode.D, EditorCommand.COPY_LINE_DOWN);
-        bind(km, KeyModifier.META, KeyCode.D, EditorCommand.COPY_LINE_DOWN);
+        bind(km, KeyModifier.CTRL, KeyCode.D, EditorBuiltinCommand.COPY_LINE_DOWN.value);
+        bind(km, KeyModifier.META, KeyCode.D, EditorBuiltinCommand.COPY_LINE_DOWN.value);
 
-        bind(km, KeyModifier.SHIFT, KeyCode.ENTER, EditorCommand.INSERT_LINE_BELOW);
-        bind(km, KeyModifier.CTRL | KeyModifier.ALT, KeyCode.ENTER, EditorCommand.INSERT_LINE_ABOVE);
-        bind(km, KeyModifier.META | KeyModifier.ALT, KeyCode.ENTER, EditorCommand.INSERT_LINE_ABOVE);
+        bind(km, KeyModifier.SHIFT, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_BELOW.value);
+        bind(km, KeyModifier.CTRL | KeyModifier.ALT, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_ABOVE.value);
+        bind(km, KeyModifier.META | KeyModifier.ALT, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_ABOVE.value);
 
-        bind(km, KeyModifier.ALT | KeyModifier.SHIFT, KeyCode.UP,   EditorCommand.MOVE_LINE_UP);
-        bind(km, KeyModifier.ALT | KeyModifier.SHIFT, KeyCode.DOWN, EditorCommand.MOVE_LINE_DOWN);
+        bind(km, KeyModifier.ALT | KeyModifier.SHIFT, KeyCode.UP,   EditorBuiltinCommand.MOVE_LINE_UP.value);
+        bind(km, KeyModifier.ALT | KeyModifier.SHIFT, KeyCode.DOWN, EditorBuiltinCommand.MOVE_LINE_DOWN.value);
 
         return km;
     }
@@ -176,21 +197,21 @@ public class EditorKeyMap extends KeyMap {
         EditorKeyMap km = new EditorKeyMap();
         addCommonBindings(km);
 
-        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.Z, EditorCommand.REDO);
-        bind(km, KeyModifier.META | KeyModifier.SHIFT, KeyCode.Z, EditorCommand.REDO);
-        bind(km, KeyModifier.CTRL, KeyCode.Y, EditorCommand.REDO);
-        bind(km, KeyModifier.META, KeyCode.Y, EditorCommand.REDO);
+        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.Z, EditorBuiltinCommand.REDO.value);
+        bind(km, KeyModifier.META | KeyModifier.SHIFT, KeyCode.Z, EditorBuiltinCommand.REDO.value);
+        bind(km, KeyModifier.CTRL, KeyCode.Y, EditorBuiltinCommand.REDO.value);
+        bind(km, KeyModifier.META, KeyCode.Y, EditorBuiltinCommand.REDO.value);
 
-        bind(km, KeyModifier.CTRL, KeyCode.ENTER, EditorCommand.INSERT_LINE_BELOW);
-        bind(km, KeyModifier.META, KeyCode.ENTER, EditorCommand.INSERT_LINE_BELOW);
-        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.ENTER, EditorCommand.INSERT_LINE_ABOVE);
-        bind(km, KeyModifier.META | KeyModifier.SHIFT, KeyCode.ENTER, EditorCommand.INSERT_LINE_ABOVE);
+        bind(km, KeyModifier.CTRL, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_BELOW.value);
+        bind(km, KeyModifier.META, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_BELOW.value);
+        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_ABOVE.value);
+        bind(km, KeyModifier.META | KeyModifier.SHIFT, KeyCode.ENTER, EditorBuiltinCommand.INSERT_LINE_ABOVE.value);
 
-        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.UP,   EditorCommand.MOVE_LINE_UP);
-        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.DOWN, EditorCommand.MOVE_LINE_DOWN);
+        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.UP,   EditorBuiltinCommand.MOVE_LINE_UP.value);
+        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.DOWN, EditorBuiltinCommand.MOVE_LINE_DOWN.value);
 
-        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.K, EditorCommand.DELETE_LINE);
-        bind(km, KeyModifier.META | KeyModifier.SHIFT, KeyCode.K, EditorCommand.DELETE_LINE);
+        bind(km, KeyModifier.CTRL | KeyModifier.SHIFT, KeyCode.K, EditorBuiltinCommand.DELETE_LINE.value);
+        bind(km, KeyModifier.META | KeyModifier.SHIFT, KeyCode.K, EditorBuiltinCommand.DELETE_LINE.value);
 
         return km;
     }

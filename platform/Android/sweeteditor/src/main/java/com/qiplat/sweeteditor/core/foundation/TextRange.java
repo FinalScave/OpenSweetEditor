@@ -1,13 +1,8 @@
 package com.qiplat.sweeteditor.core.foundation;
 
-import androidx.annotation.NonNull;
-
-/**
- * Text range, consisting of start and end {@link TextPosition} (both 0-based).
- */
-public class TextRange {
-    public TextPosition start = TextPosition.NONE;
-    public TextPosition end = TextPosition.NONE;
+public final class TextRange {
+    public TextPosition start = new TextPosition();
+    public TextPosition end = new TextPosition();
 
     public TextRange() {
     }
@@ -21,12 +16,11 @@ public class TextRange {
         return start.line == end.line && start.column == end.column;
     }
 
-    @NonNull
     @Override
     public String toString() {
-        return "TextRange{" +
-                "start=" + start +
-                ", end=" + end +
-                '}';
+        return "TextRange{"
+                + "start=" + start
+                + ", end=" + end
+                + "}";
     }
 }

@@ -336,17 +336,20 @@ EDITOR_API const uint8_t* build_editor_render_model(intptr_t editor_handle, size
 /// @param out_size Output: payload byte length (bytes, excluding extra '\0' terminator)
 /// @return LayoutMetrics binary data; payload uses native byte order, and all supported platforms are currently LE.
 ///         Top-level layout:
-///         1. f32 font_height
-///         2. f32 font_ascent
-///         3. f32 line_spacing_add
-///         4. f32 line_spacing_mult
-///         5. f32 line_number_margin
-///         6. f32 line_number_width
-///         7. i32 max_gutter_icons
-///         8. f32 inlay_hint_padding
-///         9. f32 inlay_hint_margin
-///         10. i32 fold_arrow_mode (0=AUTO, 1=ALWAYS, 2=HIDDEN)
-///         11. i32 has_fold_regions (0=false, 1=true)
+///         f32 font_height
+///         f32 font_ascent
+///         f32 line_spacing_add
+///         f32 line_spacing_mult
+///         f32 line_number_margin
+///         f32 line_number_width
+///         f32 content_start_padding
+///         u32 max_gutter_icons
+///         f32 inlay_hint_padding
+///         f32 inlay_hint_margin
+///         i32 fold_arrow_mode (0=AUTO, 1=ALWAYS, 2=HIDDEN)
+///         i32 has_fold_regions (0=false, 1=true)
+///         i32 gutter_sticky (0=false, 1=true)
+///         i32 gutter_visible (0=false, 1=true)
 ///         Call free_binary_data after use; returns NULL on failure
 EDITOR_API const uint8_t* get_layout_metrics(intptr_t editor_handle, size_t* out_size);
 
@@ -416,7 +419,7 @@ EDITOR_API const uint8_t* handle_editor_key_event(intptr_t editor_handle, uint16
 ///     u16 first_key_code
 ///     u8  second_modifiers
 ///     u16 second_key_code  (0 = single-chord)
-///     u32 command          (EditorCommand enum value)
+///     u32 command          (built-in or custom command id)
 /// Invalid or empty payload is ignored (current key map is preserved).
 EDITOR_API const uint8_t* editor_set_keymap(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 

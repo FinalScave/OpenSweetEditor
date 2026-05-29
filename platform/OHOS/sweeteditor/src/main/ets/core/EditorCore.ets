@@ -1,16 +1,29 @@
 import native from 'libsweeteditor.so';
-import { ProtocolDecoder, ProtocolEncoder } from './CoreProtocol';
+import { CoreProtocol } from './CoreProtocol';
+import {
+  IntRange,
+  PointF,
+  TextPosition,
+  TextRange
+} from './CoreFoundation';
+import { EditorActionResult, ScrollBehavior } from './CoreAction';
 import {
   AutoIndentMode,
   CurrentLineRenderMode,
+  EditorOptions,
   FoldArrowMode,
-  IntRange,
-  ScrollBehavior,
-  TextPosition,
-  TextRange,
+  HandleConfig,
+  ScrollbarConfig,
   WrapMode
-} from './CoreFoundation';
-import { KeyMap } from './CoreKeymap';
+} from './CoreConfig';
+import { EventType } from './CoreInteraction';
+import {
+  ImeInputContext,
+  ImeScriptClass,
+  ImeSyncSnapshot,
+  ImeTextUnit
+} from './CoreIme';
+import { KeyBinding } from './CoreKeymap';
 import {
   BracketGuide,
   CodeLensItem,
@@ -27,68 +40,8 @@ import {
   StyleSpan,
   TextStyle
 } from './CoreAdornments';
-import { CursorRect, EditorRenderModel, PointF, ScrollMetrics } from './CoreVisual';
+import { CursorRect, EditorRenderModel, ScrollMetrics } from './CoreVisual';
 import { LinkedEditingModel } from './CoreLinkedEditing';
-
-export enum EventType {
-  UNDEFINED = 0,
-  TOUCH_DOWN = 1,
-  TOUCH_POINTER_DOWN = 2,
-  TOUCH_MOVE = 3,
-  TOUCH_POINTER_UP = 4,
-  TOUCH_UP = 5,
-  TOUCH_CANCEL = 6,
-  MOUSE_DOWN = 7,
-  MOUSE_MOVE = 8,
-  MOUSE_UP = 9,
-  MOUSE_WHEEL = 10,
-  MOUSE_RIGHT_DOWN = 11,
-  DIRECT_SCALE = 12,
-  DIRECT_SCROLL = 13
-}
-
-export enum Modifier {
-  NONE = 0,
-  SHIFT = 1,
-  CTRL = 2,
-  ALT = 4,
-  META = 8
-}
-
-export enum GestureType {
-  UNDEFINED = 0,
-  TAP = 1,
-  DOUBLE_TAP = 2,
-  LONG_PRESS = 3,
-  SCALE = 4,
-  SCROLL = 5,
-  FAST_SCROLL = 6,
-  DRAG_SELECT = 7,
-  CONTEXT_MENU = 8
-}
-
-export enum HitTargetType {
-  NONE = 0,
-  INLAY_HINT_TEXT = 1,
-  INLAY_HINT_ICON = 2,
-  GUTTER_ICON = 3,
-  FOLD_PLACEHOLDER = 4,
-  FOLD_GUTTER = 5,
-  INLAY_HINT_COLOR = 6,
-  CODELENS = 7,
-  LINK = 8
-}
-
-export enum ScrollbarMode {
-  ALWAYS = 0,
-  TRANSIENT = 1,
-  NEVER = 2
-}
-
-export enum ScrollbarTrackTapMode {
-  JUMP = 0,
-  DISABLED = 1
-}
 
 export enum EditorEventType {
   TextChanged,
@@ -104,179 +57,13 @@ export enum EditorEventType {
   FoldToggle
 }
 
-export interface TextChange {
-  range: TextRange;
-  newText: string;
-}
-
-export enum EditorActionReason {
-  NONE = 0,
-  SETUP = 1,
-  TEXT_EDIT = 2,
-  KEY_INPUT = 3,
-  IME = 4,
-  GESTURE = 5,
-  ANIMATION = 6,
-  PROGRAMMATIC = 7,
-  DECORATION = 8,
-  FOLDING = 9,
-  LINKED_EDITING = 10,
-  TEXT_INSERT = 11,
-  TEXT_REPLACE = 12,
-  TEXT_DELETE = 13,
-  TEXT_UNDO = 14,
-  TEXT_REDO = 15
-}
-
-export enum ImeTextUnit {
-  GRAPHEME = 0,
-  CODE_POINT = 1
-}
-
-export enum ImeScriptClass {
-  UNKNOWN = 0,
-  LATIN = 1,
-  CJK = 2,
-  KANA = 3,
-  HANGUL = 4
-}
-
-export enum ImePreeditStorage {
-  NONE = 0,
-  VISIBLE_DOCUMENT_COMPOSITION = 1,
-  SHADOW_ONLY = 2
-}
-
-export enum ImeContextPolicy {
-  NONE = 0,
-  LIMITED_FOR_CANDIDATES = 1
-}
-
-export enum ImeInputContextKind {
-  NONE = 0,
-  SELECTION_ONLY = 1,
-  DOCUMENT_WINDOW = 2,
-  TRANSIENT_INPUT = 3
-}
-
-export interface ImeSyncSnapshot {
-  cursor: TextPosition;
-  selection: TextRange | null;
-  hasComposingSession: boolean;
-  visibleCompositionRange: TextRange | null;
-  platformMarkedRange: TextRange | null;
-  preeditStorage: ImePreeditStorage;
-  contextPolicy: ImeContextPolicy;
-  clearPlatformPreedit: boolean;
-}
-
-export interface ImeTextRange {
-  start: number;
-  end: number;
-}
-
-export interface ImeInputContext {
-  id: number;
-  revision: number;
-  documentStartOffset: number;
-  text: string;
-  selection: ImeTextRange;
-  hasComposition: boolean;
-  composition: ImeTextRange;
-  kind: ImeInputContextKind;
-}
-
-export interface HitTarget {
-  type: HitTargetType;
-  line: number;
-  column: number;
-  iconId: number;
-  colorValue: number;
-}
-
-export interface EditorActionResult {
-  handled: boolean;
-  needsRedraw: boolean;
-  reason: EditorActionReason;
-  contentChanged: boolean;
-  cursorChanged: boolean;
-  selectionChanged: boolean;
-  scrollChanged: boolean;
-  scaleChanged: boolean;
-  pointerCursorChanged: boolean;
-  compositionChanged: boolean;
-  decorationChanged: boolean;
-  needsImeSync: boolean;
-  needsEdgeScroll: boolean;
-  needsFling: boolean;
-  needsAnimation: boolean;
-  isHandleDrag: boolean;
-  changes: TextChange[];
-  cursorBefore: TextPosition;
-  cursorAfter: TextPosition;
-  hasSelectionBefore: boolean;
-  selectionBefore: TextRange;
-  hasSelectionAfter: boolean;
-  selectionAfter: TextRange;
-  scrollXBefore: number;
-  scrollYBefore: number;
-  scrollXAfter: number;
-  scrollYAfter: number;
-  scaleBefore: number;
-  scaleAfter: number;
-  pointerCursorBefore: number;
-  pointerCursorAfter: number;
-  imeSync: ImeSyncSnapshot;
-  gestureType: GestureType;
-  gestureEventType: EventType;
-  tapPoint: PointF;
-  hitTarget: HitTarget;
-  modifiers: number;
-  command: number;
-}
-
 export interface GestureEvent {
   type: EventType;
   points: PointF[];
-  modifiers: Modifier;
+  modifiers: number;
   wheelDeltaX: number;
   wheelDeltaY: number;
   directScale: number;
-}
-
-export class EditorOptions {
-  touchSlop: number = 10;
-  doubleTapTimeout: number = 300;
-  longPressMs: number = 500;
-  flingFriction: number = 2.0;
-  flingMinVelocity: number = 30;
-  flingMaxVelocity: number = 12000;
-  maxUndoStackSize: number = 512;
-  keyChordTimeoutMs: number = 2000;
-  revealSelectionEndOnSelectAll: boolean = false;
-}
-
-export class HandleConfig {
-  // Offset rects are relative to the cursor bottom anchor (the handle tip).
-  startLeft: number = -32.1;
-  startTop: number = -8.0;
-  startRight: number = 8.0;
-  startBottom: number = 32.1;
-  endLeft: number = -8.0;
-  endTop: number = -8.0;
-  endRight: number = 32.1;
-  endBottom: number = 32.1;
-}
-
-export class ScrollbarConfig {
-  thickness: number = 10.0;
-  minThumb: number = 24.0;
-  thumbHitPadding: number = 0.0;
-  mode: ScrollbarMode = ScrollbarMode.ALWAYS;
-  thumbDraggable: boolean = true;
-  trackTapMode: ScrollbarTrackTapMode = ScrollbarTrackTapMode.JUMP;
-  fadeDelayMs: number = 700;
-  fadeDurationMs: number = 300;
 }
 
 export class Document {
@@ -336,7 +123,7 @@ export class EditorCore {
   // ==================== Construction/Initialization/Lifecycle ====================
 
   constructor(measurer: native.TextMeasurer, options?: EditorOptions) {
-    const optionsData = options ? ProtocolEncoder.packEditorOptions(options) : undefined;
+    const optionsData = options ? CoreProtocol.encodeEditorOptions(options) : undefined;
     this.handle = native.createEditor(measurer, optionsData);
   }
 
@@ -354,7 +141,7 @@ export class EditorCore {
 
   loadDocument(doc: Document): EditorActionResult {
     this.document = doc;
-    return ProtocolDecoder.decodeEditorActionResult(native.setEditorDocument(this.handle, doc.getHandle()));
+    return CoreProtocol.decodeEditorActionResult(native.setEditorDocument(this.handle, doc.getHandle()));
   }
 
   getDocument(): Document | null {
@@ -364,67 +151,67 @@ export class EditorCore {
   // ==================== Viewport/Font/Appearance Configuration ====================
 
   setViewport(width: number, height: number): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.setEditorViewport(this.handle, width, height));
+    return CoreProtocol.decodeEditorActionResult(native.setEditorViewport(this.handle, width, height));
   }
 
   onFontMetricsChanged(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorOnFontMetricsChanged(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorOnFontMetricsChanged(this.handle));
   }
 
   setFoldArrowMode(mode: FoldArrowMode): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetFoldArrowMode(this.handle, mode as number));
+    return CoreProtocol.decodeEditorActionResult(native.editorSetFoldArrowMode(this.handle, mode as number));
   }
 
   setWrapMode(mode: WrapMode): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetWrapMode(this.handle, mode as number));
+    return CoreProtocol.decodeEditorActionResult(native.editorSetWrapMode(this.handle, mode as number));
   }
 
   setTabSize(tabSize: number): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetTabSize(this.handle, tabSize));
+    return CoreProtocol.decodeEditorActionResult(native.editorSetTabSize(this.handle, tabSize));
   }
 
   setInsertSpaces(enabled: boolean): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetInsertSpaces(this.handle, enabled ? 1 : 0));
+    return CoreProtocol.decodeEditorActionResult(native.editorSetInsertSpaces(this.handle, enabled ? 1 : 0));
   }
 
-  setKeyMap(keyMap: KeyMap): EditorActionResult {
-    const data = keyMap.toArrayBuffer();
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetKeyMap(this.handle, data, data.byteLength));
+  setKeyMap(bindings: KeyBinding[]): EditorActionResult {
+    const data = CoreProtocol.encodeSetKeyMapPayload(bindings);
+    return CoreProtocol.decodeEditorActionResult(native.editorSetKeyMap(this.handle, data, data.byteLength));
   }
 
   setScale(scale: number): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetScale(this.handle, scale));
+    return CoreProtocol.decodeEditorActionResult(native.editorSetScale(this.handle, scale));
   }
 
   setLineSpacing(add: number, mult: number): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetLineSpacing(this.handle, add, mult));
+    return CoreProtocol.decodeEditorActionResult(native.editorSetLineSpacing(this.handle, add, mult));
   }
 
   setContentStartPadding(padding: number): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetContentStartPadding(this.handle, padding));
+    return CoreProtocol.decodeEditorActionResult(native.editorSetContentStartPadding(this.handle, padding));
   }
 
   setShowSplitLine(show: boolean): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetShowSplitLine(this.handle, show));
+    return CoreProtocol.decodeEditorActionResult(native.editorSetShowSplitLine(this.handle, show));
   }
 
   setGutterSticky(sticky: boolean): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetGutterSticky(this.handle, sticky));
+    return CoreProtocol.decodeEditorActionResult(native.editorSetGutterSticky(this.handle, sticky));
   }
 
   setGutterVisible(visible: boolean): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetGutterVisible(this.handle, visible));
+    return CoreProtocol.decodeEditorActionResult(native.editorSetGutterVisible(this.handle, visible));
   }
 
   setCurrentLineRenderMode(mode: CurrentLineRenderMode): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetCurrentLineRenderMode(this.handle, mode as number));
+    return CoreProtocol.decodeEditorActionResult(native.editorSetCurrentLineRenderMode(this.handle, mode as number));
   }
 
   // ==================== Rendering ====================
 
   buildRenderModel(): EditorRenderModel {
     const payload = native.buildEditorRenderModel(this.handle);
-    return ProtocolDecoder.decodeRenderModel(payload);
+    return CoreProtocol.decodeEditorRenderModel(payload);
   }
 
   getLayoutMetrics(): ArrayBuffer | undefined {
@@ -448,7 +235,7 @@ export class EditorCore {
       event.wheelDeltaY,
       event.directScale
     );
-    return ProtocolDecoder.decodeEditorActionResult(payload);
+    return CoreProtocol.decodeEditorActionResult(payload);
   }
 
   handleGestureEventEx(event: GestureEvent): EditorActionResult {
@@ -457,96 +244,96 @@ export class EditorCore {
 
   handleSimpleGestureEvent(type: EventType, pointerCount: number, points: number[]): EditorActionResult {
     const payload = native.handleEditorGestureEvent(this.handle, type as number, pointerCount, points);
-    return ProtocolDecoder.decodeEditorActionResult(payload);
+    return CoreProtocol.decodeEditorActionResult(payload);
   }
 
   tickEdgeScroll(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorTickEdgeScroll(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorTickEdgeScroll(this.handle));
   }
 
   tickFling(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorTickFling(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorTickFling(this.handle));
   }
 
   tickAnimations(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorTickAnimations(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorTickAnimations(this.handle));
   }
 
   updatePointerModifiers(modifiers: number): EditorActionResult {
     const payload = native.editorUpdatePointerModifiers(this.handle, modifiers);
-    return ProtocolDecoder.decodeEditorActionResult(payload);
+    return CoreProtocol.decodeEditorActionResult(payload);
   }
 
   handleKeyEvent(keyCode: number, text: string | null, modifiers: number): EditorActionResult {
     const payload = native.handleEditorKeyEvent(this.handle, keyCode, text, modifiers);
-    return ProtocolDecoder.decodeEditorActionResult(payload);
+    return CoreProtocol.decodeEditorActionResult(payload);
   }
 
   // ==================== Text Editing ====================
 
   insertText(text: string): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorInsertText(this.handle, text));
+    return CoreProtocol.decodeEditorActionResult(native.editorInsertText(this.handle, text));
   }
 
   replaceText(startLine: number, startColumn: number, endLine: number, endColumn: number,
     text: string): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorReplaceText(this.handle, startLine, startColumn, endLine, endColumn, text)
     );
   }
 
   deleteText(startLine: number, startColumn: number, endLine: number, endColumn: number): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorDeleteText(this.handle, startLine, startColumn, endLine, endColumn)
     );
   }
 
   backspace(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorBackspace(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorBackspace(this.handle));
   }
 
   deleteForward(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorDeleteForward(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorDeleteForward(this.handle));
   }
 
   // ==================== Line Operations ====================
 
   moveLineUp(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorMoveLineUp(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorMoveLineUp(this.handle));
   }
 
   moveLineDown(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorMoveLineDown(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorMoveLineDown(this.handle));
   }
 
   copyLineUp(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorCopyLineUp(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorCopyLineUp(this.handle));
   }
 
   copyLineDown(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorCopyLineDown(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorCopyLineDown(this.handle));
   }
 
   deleteLine(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorDeleteLine(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorDeleteLine(this.handle));
   }
 
   insertLineAbove(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorInsertLineAbove(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorInsertLineAbove(this.handle));
   }
 
   insertLineBelow(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorInsertLineBelow(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorInsertLineBelow(this.handle));
   }
 
   // ==================== Undo/Redo ====================
 
   undo(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorUndo(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorUndo(this.handle));
   }
 
   redo(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorRedo(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorRedo(this.handle));
   }
 
   canUndo(): boolean {
@@ -577,24 +364,24 @@ export class EditorCore {
   }
 
   setCursorPosition(line: number, column: number): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetCursorPosition(this.handle, line, column));
+    return CoreProtocol.decodeEditorActionResult(native.editorSetCursorPosition(this.handle, line, column));
   }
 
   selectAll(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSelectAll(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorSelectAll(this.handle));
   }
 
   setSelection(startLineOrRange: number | TextRange, startColumn?: number,
                endLine?: number, endColumn?: number): EditorActionResult {
     if (typeof startLineOrRange === 'number') {
-      return ProtocolDecoder.decodeEditorActionResult(native.editorSetSelection(
+      return CoreProtocol.decodeEditorActionResult(native.editorSetSelection(
         this.handle,
         startLineOrRange,
         startColumn ?? 0,
         endLine ?? startLineOrRange,
         endColumn ?? (startColumn ?? 0)));
     }
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetSelection(
+    return CoreProtocol.decodeEditorActionResult(native.editorSetSelection(
       this.handle,
       startLineOrRange.start.line,
       startLineOrRange.start.column,
@@ -618,33 +405,33 @@ export class EditorCore {
   }
 
   moveCursorLeft(extendSelection: boolean = false): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorMoveCursorLeft(this.handle, extendSelection));
+    return CoreProtocol.decodeEditorActionResult(native.editorMoveCursorLeft(this.handle, extendSelection));
   }
 
   moveCursorRight(extendSelection: boolean = false): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorMoveCursorRight(this.handle, extendSelection));
+    return CoreProtocol.decodeEditorActionResult(native.editorMoveCursorRight(this.handle, extendSelection));
   }
 
   moveCursorUp(extendSelection: boolean = false): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorMoveCursorUp(this.handle, extendSelection));
+    return CoreProtocol.decodeEditorActionResult(native.editorMoveCursorUp(this.handle, extendSelection));
   }
 
   moveCursorDown(extendSelection: boolean = false): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorMoveCursorDown(this.handle, extendSelection));
+    return CoreProtocol.decodeEditorActionResult(native.editorMoveCursorDown(this.handle, extendSelection));
   }
 
   moveCursorToLineStart(extendSelection: boolean = false): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorMoveCursorToLineStart(this.handle, extendSelection));
+    return CoreProtocol.decodeEditorActionResult(native.editorMoveCursorToLineStart(this.handle, extendSelection));
   }
 
   moveCursorToLineEnd(extendSelection: boolean = false): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorMoveCursorToLineEnd(this.handle, extendSelection));
+    return CoreProtocol.decodeEditorActionResult(native.editorMoveCursorToLineEnd(this.handle, extendSelection));
   }
 
   // ==================== IME Composition Input ====================
 
   updateImePreedit(text: string | null, scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeUpdatePreedit(this.handle, text, scriptHint as number)
     );
   }
@@ -652,7 +439,7 @@ export class EditorCore {
   setImeComposingText(text: string | null,
                       cursorOffset: number = 1,
                       scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeSetComposingText(this.handle, text, cursorOffset, scriptHint as number)
     );
   }
@@ -661,7 +448,7 @@ export class EditorCore {
                                selectionStartOffset: number,
                                selectionEndOffset: number,
                                scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeSetComposingTextSelection(
         this.handle,
         text,
@@ -672,21 +459,21 @@ export class EditorCore {
   }
 
   commitImeText(text: string | null, scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeCommitText(this.handle, text, scriptHint as number)
     );
   }
 
   finishImePreedit(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorImeFinishPreedit(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorImeFinishPreedit(this.handle));
   }
 
   cancelImePreedit(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorImeCancelPreedit(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorImeCancelPreedit(this.handle));
   }
 
   markImeDocumentRange(range: TextRange, scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeMarkDocumentRange(
         this.handle,
         range.start.line,
@@ -701,14 +488,14 @@ export class EditorCore {
   markImeDocumentRangeByOffset(startOffset: number,
                                endOffset: number,
                                scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeMarkDocumentRangeByOffset(this.handle, startOffset, endOffset, scriptHint as number)
     );
   }
 
   replaceImeText(range: TextRange, text: string | null,
                  scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeReplaceText(
         this.handle,
         range.start.line,
@@ -726,7 +513,7 @@ export class EditorCore {
                          text: string | null,
                          cursorOffset: number = 1,
                          scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeReplaceDocumentText(
         this.handle,
         startOffset,
@@ -742,7 +529,7 @@ export class EditorCore {
                              text: string | null,
                              cursorOffset: number = 1,
                              scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeReplaceInputContextText(
         this.handle,
         startOffset,
@@ -756,19 +543,19 @@ export class EditorCore {
   markImeInputContextRange(startOffset: number,
                            endOffset: number,
                             scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeMarkInputContextRange(this.handle, startOffset, endOffset, scriptHint as number)
     );
   }
 
   notifyImeDocumentSelectionChanged(startOffset: number, endOffset: number): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeNotifyDocumentSelectionChanged(this.handle, startOffset, endOffset)
     );
   }
 
   notifyImeInputContextSelectionChanged(startOffset: number, endOffset: number): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeNotifyInputContextSelectionChanged(this.handle, startOffset, endOffset)
     );
   }
@@ -781,7 +568,7 @@ export class EditorCore {
                           composingStartOffset: number,
                           composingEndOffset: number,
                           scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeUpdateInputStateText(
         this.handle,
         contextId,
@@ -799,7 +586,7 @@ export class EditorCore {
                                documentStartOffset: number,
                                selectionStartOffset: number,
                                selectionEndOffset: number): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeUpdateInputStateSelection(
         this.handle,
         contextId,
@@ -816,7 +603,7 @@ export class EditorCore {
                            text: string | null,
                            cursorOffset: number = 1,
                            scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeReplaceInputStateText(
         this.handle,
         contextId,
@@ -831,14 +618,14 @@ export class EditorCore {
 
   deleteImeBackward(beforeLength: number = 1,
                     textUnit: ImeTextUnit = ImeTextUnit.GRAPHEME): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeDeleteBackward(this.handle, beforeLength, textUnit as number)
     );
   }
 
   deleteImeForward(afterLength: number = 1,
                    textUnit: ImeTextUnit = ImeTextUnit.GRAPHEME): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeDeleteForward(this.handle, afterLength, textUnit as number)
     );
   }
@@ -846,13 +633,13 @@ export class EditorCore {
   deleteImeSurrounding(beforeLength: number,
                        afterLength: number,
                        textUnit: ImeTextUnit = ImeTextUnit.GRAPHEME): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeDeleteSurrounding(this.handle, beforeLength, afterLength, textUnit as number)
     );
   }
 
   notifyImeSelectionChanged(range: TextRange): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeNotifySelectionChanged(
         this.handle,
         range.start.line,
@@ -864,7 +651,7 @@ export class EditorCore {
   }
 
   notifyImeCursorChanged(cursor: TextPosition): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeNotifyCursorChanged(this.handle, cursor.line, cursor.column)
     );
   }
@@ -896,7 +683,7 @@ export class EditorCore {
   }
 
   setImeKeyboardScriptClass(scriptClass: ImeScriptClass): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorImeSetKeyboardScriptClass(this.handle, scriptClass as number));
   }
 
@@ -905,11 +692,11 @@ export class EditorCore {
   }
 
   getImeSyncSnapshot(): ImeSyncSnapshot {
-    return ProtocolDecoder.decodeImeSyncSnapshot(native.editorGetImeSyncSnapshot(this.handle));
+    return CoreProtocol.decodeImeSyncSnapshot(native.editorGetImeSyncSnapshot(this.handle));
   }
 
   getImeInputContext(beforeLength: number, afterLength: number): ImeInputContext {
-    return ProtocolDecoder.decodeImeInputContext(
+    return CoreProtocol.decodeImeInputContext(
       native.editorGetImeInputContext(this.handle, beforeLength, afterLength)
     );
   }
@@ -917,7 +704,7 @@ export class EditorCore {
   // ==================== Read-Only Mode ====================
 
   setReadOnly(readOnly: boolean): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetReadOnly(this.handle, readOnly));
+    return CoreProtocol.decodeEditorActionResult(native.editorSetReadOnly(this.handle, readOnly));
   }
 
   isReadOnly(): boolean {
@@ -927,7 +714,7 @@ export class EditorCore {
   // ==================== Auto Indent ====================
 
   setAutoIndentMode(mode: AutoIndentMode): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetAutoIndentMode(this.handle, mode as number));
+    return CoreProtocol.decodeEditorActionResult(native.editorSetAutoIndentMode(this.handle, mode as number));
   }
 
   getAutoIndentMode(): number {
@@ -935,7 +722,7 @@ export class EditorCore {
   }
 
   setBackspaceUnindent(enabled: boolean): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorSetBackspaceUnindent(this.handle, enabled ? 1 : 0));
   }
 
@@ -943,9 +730,11 @@ export class EditorCore {
 
   setHandleConfig(config: HandleConfig): EditorActionResult {
     this.handleConfig = config;
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetHandleConfig(this.handle,
-      config.startLeft, config.startTop, config.startRight, config.startBottom,
-      config.endLeft, config.endTop, config.endRight, config.endBottom));
+    const start = config.startHitOffset;
+    const end = config.endHitOffset;
+    return CoreProtocol.decodeEditorActionResult(native.editorSetHandleConfig(this.handle,
+      start.left, start.top, start.right, start.bottom,
+      end.left, end.top, end.right, end.bottom));
   }
 
   getHandleConfig(): HandleConfig {
@@ -956,7 +745,7 @@ export class EditorCore {
 
   setScrollbarConfig(config: ScrollbarConfig): EditorActionResult {
     this.scrollbarConfig = config;
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetScrollbarConfig(this.handle,
+    return CoreProtocol.decodeEditorActionResult(native.editorSetScrollbarConfig(this.handle,
       config.thickness, config.minThumb, config.thumbHitPadding,
       config.mode as number, config.thumbDraggable,
       config.trackTapMode as number, config.fadeDelayMs, config.fadeDurationMs));
@@ -980,24 +769,24 @@ export class EditorCore {
 
   // ==================== Scroll/Navigation ====================
 
-  scrollToLine(line: number, behavior: ScrollBehavior = ScrollBehavior.CENTER): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorScrollToLine(this.handle, line, behavior as number));
+  scrollToLine(line: number, behavior: ScrollBehavior = ScrollBehavior.GOTO_CENTER): EditorActionResult {
+    return CoreProtocol.decodeEditorActionResult(native.editorScrollToLine(this.handle, line, behavior as number));
   }
 
   gotoPosition(line: number, column: number): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorGotoPosition(this.handle, line, column));
+    return CoreProtocol.decodeEditorActionResult(native.editorGotoPosition(this.handle, line, column));
   }
 
   ensureCursorVisible(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorEnsureCursorVisible(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorEnsureCursorVisible(this.handle));
   }
 
   setScroll(scrollX: number, scrollY: number): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetScroll(this.handle, scrollX, scrollY));
+    return CoreProtocol.decodeEditorActionResult(native.editorSetScroll(this.handle, scrollX, scrollY));
   }
 
   getScrollMetrics(): ScrollMetrics {
-    return ProtocolDecoder.decodeScrollMetrics(native.editorGetScrollMetrics(this.handle));
+    return CoreProtocol.decodeScrollMetrics(native.editorGetScrollMetrics(this.handle));
   }
 
   getVisibleLineRange(): IntRange {
@@ -1014,49 +803,49 @@ export class EditorCore {
                     backgroundColorOrFontStyle: number, fontStyle?: number): EditorActionResult {
     const backgroundColor = fontStyle === undefined ? 0 : backgroundColorOrFontStyle;
     const resolvedFontStyle = fontStyle === undefined ? backgroundColorOrFontStyle : fontStyle;
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorRegisterTextStyle(this.handle, styleId, color, backgroundColor, resolvedFontStyle));
   }
 
   registerBatchTextStyles(stylesByIdOrData: Map<number, TextStyle> | ArrayBuffer,
                           _size?: number): EditorActionResult {
     if (stylesByIdOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorRegisterBatchTextStyles(this.handle, stylesByIdOrData, stylesByIdOrData.byteLength));
     }
     if (stylesByIdOrData.size === 0) {
-      return ProtocolDecoder.decodeEditorActionResult(undefined);
+      return CoreProtocol.decodeEditorActionResult(undefined);
     }
-    const data = ProtocolEncoder.packBatchTextStyles(stylesByIdOrData);
-    return ProtocolDecoder.decodeEditorActionResult(
+    const data = CoreProtocol.encodeRegisterBatchTextStylesPayload(stylesByIdOrData);
+    return CoreProtocol.decodeEditorActionResult(
       native.editorRegisterBatchTextStyles(this.handle, data, data.byteLength));
   }
 
   setLineSpans(lineOrData: number | ArrayBuffer, layerOrSize: number, spans?: StyleSpan[]): EditorActionResult {
     if (lineOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetLineSpans(this.handle, lineOrData, lineOrData.byteLength));
     }
-    const data = ProtocolEncoder.packLineSpans(lineOrData, layerOrSize, spans ?? []);
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetLineSpans(this.handle, data, data.byteLength));
+    const data = CoreProtocol.encodeSetLineSpansPayload(lineOrData, layerOrSize, spans ?? []);
+    return CoreProtocol.decodeEditorActionResult(native.editorSetLineSpans(this.handle, data, data.byteLength));
   }
 
   setBatchLineSpans(layerOrData: number | ArrayBuffer,
                     spansByLineOrSize: Map<number, StyleSpan[]> | number): EditorActionResult {
     if (layerOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetBatchLineSpans(this.handle, layerOrData, layerOrData.byteLength));
     }
     if (!(spansByLineOrSize instanceof Map) || spansByLineOrSize.size === 0) {
-      return ProtocolDecoder.decodeEditorActionResult(undefined);
+      return CoreProtocol.decodeEditorActionResult(undefined);
     }
-    const data = ProtocolEncoder.packBatchLineSpans(layerOrData, spansByLineOrSize);
-    return ProtocolDecoder.decodeEditorActionResult(
+    const data = CoreProtocol.encodeSetBatchLineSpansPayload(layerOrData, spansByLineOrSize);
+    return CoreProtocol.decodeEditorActionResult(
       native.editorSetBatchLineSpans(this.handle, data, data.byteLength));
   }
 
   clearLineSpans(line: number, layer: SpanLayer): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorClearLineSpans(this.handle, line, layer as number));
+    return CoreProtocol.decodeEditorActionResult(native.editorClearLineSpans(this.handle, line, layer as number));
   }
 
   // ==================== InlayHint / PhantomText ====================
@@ -1064,56 +853,56 @@ export class EditorCore {
   setLineInlayHints(lineOrData: number | ArrayBuffer,
                     hintsOrSize: InlayHint[] | number): EditorActionResult {
     if (lineOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetLineInlayHints(this.handle, lineOrData, lineOrData.byteLength));
     }
     if (!Array.isArray(hintsOrSize)) {
-      return ProtocolDecoder.decodeEditorActionResult(undefined);
+      return CoreProtocol.decodeEditorActionResult(undefined);
     }
-    const data = ProtocolEncoder.packLineInlayHints(lineOrData, hintsOrSize);
-    return ProtocolDecoder.decodeEditorActionResult(
+    const data = CoreProtocol.encodeSetLineInlayHintsPayload(lineOrData, hintsOrSize);
+    return CoreProtocol.decodeEditorActionResult(
       native.editorSetLineInlayHints(this.handle, data, data.byteLength));
   }
 
   setBatchLineInlayHints(hintsByLineOrData: Map<number, InlayHint[]> | ArrayBuffer,
                          _size?: number): EditorActionResult {
     if (hintsByLineOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetBatchLineInlayHints(this.handle, hintsByLineOrData, hintsByLineOrData.byteLength));
     }
     if (hintsByLineOrData.size === 0) {
-      return ProtocolDecoder.decodeEditorActionResult(undefined);
+      return CoreProtocol.decodeEditorActionResult(undefined);
     }
-    const data = ProtocolEncoder.packBatchLineInlayHints(hintsByLineOrData);
-    return ProtocolDecoder.decodeEditorActionResult(
+    const data = CoreProtocol.encodeSetBatchLineInlayHintsPayload(hintsByLineOrData);
+    return CoreProtocol.decodeEditorActionResult(
       native.editorSetBatchLineInlayHints(this.handle, data, data.byteLength));
   }
 
   setLinePhantomTexts(lineOrData: number | ArrayBuffer,
                       phantomsOrSize: PhantomText[] | number): EditorActionResult {
     if (lineOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetLinePhantomTexts(this.handle, lineOrData, lineOrData.byteLength));
     }
     if (!Array.isArray(phantomsOrSize)) {
-      return ProtocolDecoder.decodeEditorActionResult(undefined);
+      return CoreProtocol.decodeEditorActionResult(undefined);
     }
-    const data = ProtocolEncoder.packLinePhantomTexts(lineOrData, phantomsOrSize);
-    return ProtocolDecoder.decodeEditorActionResult(
+    const data = CoreProtocol.encodeSetLinePhantomTextsPayload(lineOrData, phantomsOrSize);
+    return CoreProtocol.decodeEditorActionResult(
       native.editorSetLinePhantomTexts(this.handle, data, data.byteLength));
   }
 
   setBatchLinePhantomTexts(phantomsByLineOrData: Map<number, PhantomText[]> | ArrayBuffer,
                            _size?: number): EditorActionResult {
     if (phantomsByLineOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetBatchLinePhantomTexts(this.handle, phantomsByLineOrData, phantomsByLineOrData.byteLength));
     }
     if (phantomsByLineOrData.size === 0) {
-      return ProtocolDecoder.decodeEditorActionResult(undefined);
+      return CoreProtocol.decodeEditorActionResult(undefined);
     }
-    const data = ProtocolEncoder.packBatchLinePhantomTexts(phantomsByLineOrData);
-    return ProtocolDecoder.decodeEditorActionResult(
+    const data = CoreProtocol.encodeSetBatchLinePhantomTextsPayload(phantomsByLineOrData);
+    return CoreProtocol.decodeEditorActionResult(
       native.editorSetBatchLinePhantomTexts(this.handle, data, data.byteLength));
   }
 
@@ -1122,33 +911,33 @@ export class EditorCore {
   setLineGutterIcons(lineOrData: number | ArrayBuffer,
                      iconsOrSize: GutterIcon[] | number): EditorActionResult {
     if (lineOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetLineGutterIcons(this.handle, lineOrData, lineOrData.byteLength));
     }
     if (!Array.isArray(iconsOrSize)) {
-      return ProtocolDecoder.decodeEditorActionResult(undefined);
+      return CoreProtocol.decodeEditorActionResult(undefined);
     }
-    const data = ProtocolEncoder.packLineGutterIcons(lineOrData, iconsOrSize);
-    return ProtocolDecoder.decodeEditorActionResult(
+    const data = CoreProtocol.encodeSetLineGutterIconsPayload(lineOrData, iconsOrSize);
+    return CoreProtocol.decodeEditorActionResult(
       native.editorSetLineGutterIcons(this.handle, data, data.byteLength));
   }
 
   setBatchLineGutterIcons(iconsByLineOrData: Map<number, GutterIcon[]> | ArrayBuffer,
                           _size?: number): EditorActionResult {
     if (iconsByLineOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetBatchLineGutterIcons(this.handle, iconsByLineOrData, iconsByLineOrData.byteLength));
     }
     if (iconsByLineOrData.size === 0) {
-      return ProtocolDecoder.decodeEditorActionResult(undefined);
+      return CoreProtocol.decodeEditorActionResult(undefined);
     }
-    const data = ProtocolEncoder.packBatchLineGutterIcons(iconsByLineOrData);
-    return ProtocolDecoder.decodeEditorActionResult(
+    const data = CoreProtocol.encodeSetBatchLineGutterIconsPayload(iconsByLineOrData);
+    return CoreProtocol.decodeEditorActionResult(
       native.editorSetBatchLineGutterIcons(this.handle, data, data.byteLength));
   }
 
   setMaxGutterIcons(count: number): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetMaxGutterIcons(this.handle, count));
+    return CoreProtocol.decodeEditorActionResult(native.editorSetMaxGutterIcons(this.handle, count));
   }
 
   // ==================== CodeLens ====================
@@ -1156,64 +945,64 @@ export class EditorCore {
   setLineCodeLens(lineOrData: number | ArrayBuffer,
                   itemsOrSize?: CodeLensItem[] | number): EditorActionResult {
     if (lineOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetLineCodeLens(this.handle, lineOrData, lineOrData.byteLength));
     }
     if (!Array.isArray(itemsOrSize)) {
-      return ProtocolDecoder.decodeEditorActionResult(undefined);
+      return CoreProtocol.decodeEditorActionResult(undefined);
     }
-    const data = ProtocolEncoder.packLineCodeLens(lineOrData, itemsOrSize);
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetLineCodeLens(this.handle, data, data.byteLength));
+    const data = CoreProtocol.encodeSetLineCodeLensPayload(lineOrData, itemsOrSize);
+    return CoreProtocol.decodeEditorActionResult(native.editorSetLineCodeLens(this.handle, data, data.byteLength));
   }
 
   setBatchLineCodeLens(itemsByLineOrData: Map<number, CodeLensItem[]> | ArrayBuffer,
                        _size?: number): EditorActionResult {
     if (itemsByLineOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetBatchLineCodeLens(this.handle, itemsByLineOrData, itemsByLineOrData.byteLength));
     }
     if (itemsByLineOrData.size === 0) {
-      return ProtocolDecoder.decodeEditorActionResult(undefined);
+      return CoreProtocol.decodeEditorActionResult(undefined);
     }
-    const data = ProtocolEncoder.packBatchLineCodeLens(itemsByLineOrData);
-    return ProtocolDecoder.decodeEditorActionResult(
+    const data = CoreProtocol.encodeSetBatchLineCodeLensPayload(itemsByLineOrData);
+    return CoreProtocol.decodeEditorActionResult(
       native.editorSetBatchLineCodeLens(this.handle, data, data.byteLength));
   }
 
   clearCodeLens(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorClearCodeLens(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorClearCodeLens(this.handle));
   }
 
   // ==================== Links ====================
 
   setLineLinks(lineOrData: number | ArrayBuffer, linksOrSize?: LinkSpan[] | number): EditorActionResult {
     if (lineOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetLineLinks(this.handle, lineOrData, lineOrData.byteLength));
     }
     if (!Array.isArray(linksOrSize)) {
-      return ProtocolDecoder.decodeEditorActionResult(undefined);
+      return CoreProtocol.decodeEditorActionResult(undefined);
     }
-    const data = ProtocolEncoder.packLineLinks(lineOrData, linksOrSize);
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetLineLinks(this.handle, data, data.byteLength));
+    const data = CoreProtocol.encodeSetLineLinksPayload(lineOrData, linksOrSize);
+    return CoreProtocol.decodeEditorActionResult(native.editorSetLineLinks(this.handle, data, data.byteLength));
   }
 
   setBatchLineLinks(linksByLineOrData: Map<number, LinkSpan[]> | ArrayBuffer,
                     _size?: number): EditorActionResult {
     if (linksByLineOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetBatchLineLinks(this.handle, linksByLineOrData, linksByLineOrData.byteLength));
     }
     if (linksByLineOrData.size === 0) {
-      return ProtocolDecoder.decodeEditorActionResult(undefined);
+      return CoreProtocol.decodeEditorActionResult(undefined);
     }
-    const data = ProtocolEncoder.packBatchLineLinks(linksByLineOrData);
-    return ProtocolDecoder.decodeEditorActionResult(
+    const data = CoreProtocol.encodeSetBatchLineLinksPayload(linksByLineOrData);
+    return CoreProtocol.decodeEditorActionResult(
       native.editorSetBatchLineLinks(this.handle, data, data.byteLength));
   }
 
   clearLinks(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorClearLinks(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorClearLinks(this.handle));
   }
 
   getLinkTargetAt(line: number, column: number): string {
@@ -1225,28 +1014,28 @@ export class EditorCore {
   setLineDiagnostics(lineOrData: number | ArrayBuffer,
                      itemsOrSize: Diagnostic[] | number): EditorActionResult {
     if (lineOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetLineDiagnostics(this.handle, lineOrData, lineOrData.byteLength));
     }
     if (!Array.isArray(itemsOrSize)) {
-      return ProtocolDecoder.decodeEditorActionResult(undefined);
+      return CoreProtocol.decodeEditorActionResult(undefined);
     }
-    const data = ProtocolEncoder.packLineDiagnostics(lineOrData, itemsOrSize);
-    return ProtocolDecoder.decodeEditorActionResult(
+    const data = CoreProtocol.encodeSetLineDiagnosticsPayload(lineOrData, itemsOrSize);
+    return CoreProtocol.decodeEditorActionResult(
       native.editorSetLineDiagnostics(this.handle, data, data.byteLength));
   }
 
   setBatchLineDiagnostics(diagsByLineOrData: Map<number, Diagnostic[]> | ArrayBuffer,
                           _size?: number): EditorActionResult {
     if (diagsByLineOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetBatchLineDiagnostics(this.handle, diagsByLineOrData, diagsByLineOrData.byteLength));
     }
     if (diagsByLineOrData.size === 0) {
-      return ProtocolDecoder.decodeEditorActionResult(undefined);
+      return CoreProtocol.decodeEditorActionResult(undefined);
     }
-    const data = ProtocolEncoder.packBatchLineDiagnostics(diagsByLineOrData);
-    return ProtocolDecoder.decodeEditorActionResult(
+    const data = CoreProtocol.encodeSetBatchLineDiagnosticsPayload(diagsByLineOrData);
+    return CoreProtocol.decodeEditorActionResult(
       native.editorSetBatchLineDiagnostics(this.handle, data, data.byteLength));
   }
 
@@ -1254,71 +1043,71 @@ export class EditorCore {
 
   setIndentGuides(guidesOrData: IndentGuide[] | ArrayBuffer, _size?: number): EditorActionResult {
     if (guidesOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetIndentGuides(this.handle, guidesOrData, guidesOrData.byteLength));
     }
-    const data = ProtocolEncoder.packIndentGuides(guidesOrData);
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetIndentGuides(this.handle, data, data.byteLength));
+    const data = CoreProtocol.encodeSetIndentGuidesPayload(guidesOrData);
+    return CoreProtocol.decodeEditorActionResult(native.editorSetIndentGuides(this.handle, data, data.byteLength));
   }
 
   setBracketGuides(guidesOrData: BracketGuide[] | ArrayBuffer, _size?: number): EditorActionResult {
     if (guidesOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetBracketGuides(this.handle, guidesOrData, guidesOrData.byteLength));
     }
-    const data = ProtocolEncoder.packBracketGuides(guidesOrData);
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetBracketGuides(this.handle, data, data.byteLength));
+    const data = CoreProtocol.encodeSetBracketGuidesPayload(guidesOrData);
+    return CoreProtocol.decodeEditorActionResult(native.editorSetBracketGuides(this.handle, data, data.byteLength));
   }
 
   setFlowGuides(guidesOrData: FlowGuide[] | ArrayBuffer, _size?: number): EditorActionResult {
     if (guidesOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetFlowGuides(this.handle, guidesOrData, guidesOrData.byteLength));
     }
-    const data = ProtocolEncoder.packFlowGuides(guidesOrData);
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetFlowGuides(this.handle, data, data.byteLength));
+    const data = CoreProtocol.encodeSetFlowGuidesPayload(guidesOrData);
+    return CoreProtocol.decodeEditorActionResult(native.editorSetFlowGuides(this.handle, data, data.byteLength));
   }
 
   setSeparatorGuides(guidesOrData: SeparatorGuide[] | ArrayBuffer, _size?: number): EditorActionResult {
     if (guidesOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetSeparatorGuides(this.handle, guidesOrData, guidesOrData.byteLength));
     }
-    const data = ProtocolEncoder.packSeparatorGuides(guidesOrData);
-    return ProtocolDecoder.decodeEditorActionResult(
+    const data = CoreProtocol.encodeSetSeparatorGuidesPayload(guidesOrData);
+    return CoreProtocol.decodeEditorActionResult(
       native.editorSetSeparatorGuides(this.handle, data, data.byteLength));
   }
 
   // ==================== Bracket Pair Highlight ====================
 
   setBracketPairs(openChars: number[], closeChars: number[]): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetBracketPairs(this.handle, openChars, closeChars));
+    return CoreProtocol.decodeEditorActionResult(native.editorSetBracketPairs(this.handle, openChars, closeChars));
   }
 
   setAutoClosingPairs(openChars: number[], closeChars: number[]): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorSetAutoClosingPairs(this.handle, openChars, closeChars));
   }
 
   setMatchedBrackets(openLine: number, openCol: number,
                      closeLine: number, closeCol: number): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(
+    return CoreProtocol.decodeEditorActionResult(
       native.editorSetMatchedBrackets(this.handle, openLine, openCol, closeLine, closeCol));
   }
 
   clearMatchedBrackets(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorClearMatchedBrackets(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorClearMatchedBrackets(this.handle));
   }
 
   // ==================== Code Folding ====================
 
   setFoldRegions(regionsOrData: FoldRegion[] | ArrayBuffer, _size?: number): EditorActionResult {
     if (regionsOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorSetFoldRegions(this.handle, regionsOrData, regionsOrData.byteLength));
     }
-    const data = ProtocolEncoder.packFoldRegions(regionsOrData);
-    return ProtocolDecoder.decodeEditorActionResult(native.editorSetFoldRegions(this.handle, data, data.byteLength));
+    const data = CoreProtocol.encodeSetFoldRegionsPayload(regionsOrData);
+    return CoreProtocol.decodeEditorActionResult(native.editorSetFoldRegions(this.handle, data, data.byteLength));
   }
 
   toggleFoldAt(line: number): EditorActionResult {
@@ -1326,23 +1115,23 @@ export class EditorCore {
   }
 
   toggleFold(line: number): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorToggleFold(this.handle, line));
+    return CoreProtocol.decodeEditorActionResult(native.editorToggleFold(this.handle, line));
   }
 
   foldAt(line: number): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorFoldAt(this.handle, line));
+    return CoreProtocol.decodeEditorActionResult(native.editorFoldAt(this.handle, line));
   }
 
   unfoldAt(line: number): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorUnfoldAt(this.handle, line));
+    return CoreProtocol.decodeEditorActionResult(native.editorUnfoldAt(this.handle, line));
   }
 
   foldAll(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorFoldAll(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorFoldAll(this.handle));
   }
 
   unfoldAll(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorUnfoldAll(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorUnfoldAll(this.handle));
   }
 
   isLineVisible(line: number): boolean {
@@ -1352,16 +1141,16 @@ export class EditorCore {
   // ==================== Linked Editing ====================
 
   insertSnippet(snippetTemplate: string): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorInsertSnippet(this.handle, snippetTemplate));
+    return CoreProtocol.decodeEditorActionResult(native.editorInsertSnippet(this.handle, snippetTemplate));
   }
 
   startLinkedEditing(modelOrData: LinkedEditingModel | ArrayBuffer, _size?: number): EditorActionResult {
     if (modelOrData instanceof ArrayBuffer) {
-      return ProtocolDecoder.decodeEditorActionResult(
+      return CoreProtocol.decodeEditorActionResult(
         native.editorStartLinkedEditing(this.handle, modelOrData, modelOrData.byteLength));
     }
-    const data = ProtocolEncoder.packLinkedEditingModel(modelOrData);
-    return ProtocolDecoder.decodeEditorActionResult(
+    const data = CoreProtocol.encodeStartLinkedEditingPayload(modelOrData);
+    return CoreProtocol.decodeEditorActionResult(
       native.editorStartLinkedEditing(this.handle, data, data.byteLength));
   }
 
@@ -1370,47 +1159,47 @@ export class EditorCore {
   }
 
   linkedEditingNext(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorLinkedEditingNext(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorLinkedEditingNext(this.handle));
   }
 
   linkedEditingPrev(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorLinkedEditingPrev(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorLinkedEditingPrev(this.handle));
   }
 
   cancelLinkedEditing(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorCancelLinkedEditing(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorCancelLinkedEditing(this.handle));
   }
 
   // ==================== Clear Operations ====================
 
   clearHighlights(layer?: SpanLayer): EditorActionResult {
     if (layer === undefined) {
-      return ProtocolDecoder.decodeEditorActionResult(native.editorClearHighlights(this.handle));
+      return CoreProtocol.decodeEditorActionResult(native.editorClearHighlights(this.handle));
     }
-    return ProtocolDecoder.decodeEditorActionResult(native.editorClearHighlightsLayer(this.handle, layer as number));
+    return CoreProtocol.decodeEditorActionResult(native.editorClearHighlightsLayer(this.handle, layer as number));
   }
 
   clearInlayHints(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorClearInlayHints(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorClearInlayHints(this.handle));
   }
 
   clearPhantomTexts(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorClearPhantomTexts(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorClearPhantomTexts(this.handle));
   }
 
   clearGutterIcons(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorClearGutterIcons(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorClearGutterIcons(this.handle));
   }
 
   clearGuides(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorClearGuides(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorClearGuides(this.handle));
   }
 
   clearDiagnostics(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorClearDiagnostics(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorClearDiagnostics(this.handle));
   }
 
   clearAllDecorations(): EditorActionResult {
-    return ProtocolDecoder.decodeEditorActionResult(native.editorClearAllDecorations(this.handle));
+    return CoreProtocol.decodeEditorActionResult(native.editorClearAllDecorations(this.handle));
   }
 }

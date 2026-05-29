@@ -1,24 +1,16 @@
 package com.qiplat.sweeteditor.core.visual;
 
-import com.google.gson.annotations.SerializedName;
+import com.qiplat.sweeteditor.core.foundation.Rect;
 
-/**
- * Diagnostic decoration rendering primitive (squiggly underline)
- */
-public class DiagnosticDecoration {
-    /** Starting screen coordinate of the squiggly line region */
-    @SerializedName("origin")
-    public PointF origin;
+public final class DiagnosticDecoration {
+    public Rect rect = new Rect();
+    public int severity = 0;
 
-    /** Width of the squiggly line */
-    @SerializedName("width")
-    public float width;
+    public DiagnosticDecoration() {
+    }
 
-    /** Line height (used for baseline offset positioning) */
-    @SerializedName("height")
-    public float height;
-
-    /** Severity level (0=ERROR, 1=WARNING, 2=INFO, 3=HINT) */
-    @SerializedName("severity")
-    public int severity;
+    public DiagnosticDecoration(Rect rect, int severity) {
+        this.rect = rect;
+        this.severity = severity;
+    }
 }

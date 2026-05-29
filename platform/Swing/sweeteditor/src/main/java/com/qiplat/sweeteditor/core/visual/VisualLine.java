@@ -1,14 +1,27 @@
 package com.qiplat.sweeteditor.core.visual;
 
-import com.google.gson.annotations.SerializedName;
+import com.qiplat.sweeteditor.core.foundation.PointF;
 import java.util.List;
 
-public class VisualLine {
-    @SerializedName("logical_line") public int logicalLine;
-    @SerializedName("wrap_index") public int wrapIndex;
-    @SerializedName("line_number_position") public PointF lineNumberPosition;
-    @SerializedName("runs") public List<VisualRun> runs;
-    @SerializedName("kind") public VisualLineKind kind = VisualLineKind.CONTENT;
-    @SerializedName("owns_gutter_semantics") public boolean ownsGutterSemantics;
-    @SerializedName("fold_state") public FoldState foldState;
+public final class VisualLine {
+    public int logicalLine = 0;
+    public int wrapIndex = 0;
+    public PointF lineNumberPosition = new PointF();
+    public java.util.List<VisualRun> runs = new java.util.ArrayList<>();
+    public VisualLineKind kind = VisualLineKind.CONTENT;
+    public boolean ownsGutterSemantics = false;
+    public FoldState foldState = FoldState.NONE;
+
+    public VisualLine() {
+    }
+
+    public VisualLine(int logicalLine, int wrapIndex, PointF lineNumberPosition, java.util.List<VisualRun> runs, VisualLineKind kind, boolean ownsGutterSemantics, FoldState foldState) {
+        this.logicalLine = logicalLine;
+        this.wrapIndex = wrapIndex;
+        this.lineNumberPosition = lineNumberPosition;
+        this.runs = runs;
+        this.kind = kind;
+        this.ownsGutterSemantics = ownsGutterSemantics;
+        this.foldState = foldState;
+    }
 }

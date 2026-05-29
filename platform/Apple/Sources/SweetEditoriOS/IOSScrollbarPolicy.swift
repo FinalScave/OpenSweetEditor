@@ -5,8 +5,8 @@ struct IOSScrollbarPolicy {
     let defaultMinThumb: Float = 48.0
     let defaultThumbHitPadding: Float = 16.0
 
-    func defaultConfig() -> SweetEditorCore.ScrollbarConfig {
-        SweetEditorCore.ScrollbarConfig(
+    func defaultConfig() -> ScrollbarConfig {
+        ScrollbarConfig(
             thickness: defaultThickness,
             minThumb: defaultMinThumb,
             thumbHitPadding: defaultThumbHitPadding,

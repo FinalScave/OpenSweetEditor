@@ -105,7 +105,7 @@ class SweetEditorController {
 
   core.TextPosition getCursorPosition() =>
       _state?._session.editorCore?.getCursorPosition() ??
-      const core.TextPosition(0, 0);
+      const core.TextPosition(line: 0, column: 0);
 
   void setCursorPosition(Object positionOrLine, [int? column]) {
     final position = _resolveTextPositionArgument(
@@ -252,7 +252,10 @@ class SweetEditorController {
 
   core.TextRange getWordRangeAtCursor() =>
       _state?._session.editorCore?.getWordRangeAtCursor() ??
-      const core.TextRange(core.TextPosition(0, 0), core.TextPosition(0, 0));
+      const core.TextRange(
+        start: core.TextPosition(line: 0, column: 0),
+        end: core.TextPosition(line: 0, column: 0),
+      );
 
   String getWordAtCursor() =>
       _state?._session.editorCore?.getWordAtCursor() ?? '';
@@ -378,7 +381,7 @@ class SweetEditorController {
 
   core.ScrollMetrics getScrollMetrics() =>
       _state?._session.editorCore?.getScrollMetrics() ??
-      core.ScrollMetrics.empty;
+      const core.ScrollMetrics();
 
   void setScroll(double scrollX, double scrollY) {
     final result = _state?._session.editorCore?.setScroll(scrollX, scrollY);
@@ -395,9 +398,9 @@ class SweetEditorController {
   core.IntRange getVisibleLineRange() {
     final editorCore = _state?._session.editorCore;
     if (editorCore == null) {
-      return const core.IntRange(0, -1);
+      return const core.IntRange(start: 0, end: -1);
     }
-    if (_state?._session.renderModel.visualLines.isEmpty ?? true) {
+    if (_state?._session.renderModel.lines.isEmpty ?? true) {
       editorCore.buildRenderModel();
     }
     return editorCore.getVisibleLineRange();
@@ -407,7 +410,7 @@ class SweetEditorController {
 
   void scrollToLine(
     int line, {
-    core.ScrollBehavior behavior = core.ScrollBehavior.center,
+    core.ScrollBehavior behavior = core.ScrollBehavior.gotoCenter,
   }) {
     final result = _state?._session.editorCore?.scrollToLine(
       line,
@@ -646,7 +649,7 @@ class SweetEditorController {
       return positionOrLine;
     }
     if (positionOrLine is int && column != null) {
-      return core.TextPosition(positionOrLine, column);
+      return core.TextPosition(line: positionOrLine, column: column);
     }
     throw ArgumentError(
       '$methodName expects either a TextPosition or line and column integers.',
@@ -671,8 +674,8 @@ class SweetEditorController {
         endLine != null &&
         endColumn != null) {
       return core.TextRange(
-        core.TextPosition(rangeOrStartLine, startColumn),
-        core.TextPosition(endLine, endColumn),
+        start: core.TextPosition(line: rangeOrStartLine, column: startColumn),
+        end: core.TextPosition(line: endLine, column: endColumn),
       );
     }
     throw ArgumentError(
@@ -701,8 +704,11 @@ class SweetEditorController {
         text != null) {
       return (
         core.TextRange(
-          core.TextPosition(rangeOrStartLine, textOrStartColumn),
-          core.TextPosition(endLine, endColumn),
+          start: core.TextPosition(
+            line: rangeOrStartLine,
+            column: textOrStartColumn,
+          ),
+          end: core.TextPosition(line: endLine, column: endColumn),
         ),
         text,
       );

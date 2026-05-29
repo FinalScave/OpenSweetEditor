@@ -1,18 +1,34 @@
 package com.qiplat.sweeteditor.core.visual;
 
-import com.google.gson.annotations.SerializedName;
 import com.qiplat.sweeteditor.core.adornment.TextStyle;
 
-public class VisualRun {
-    @SerializedName("type") public VisualRunType type;
-    @SerializedName("x") public float x;
-    @SerializedName("y") public float y;
-    @SerializedName("text") public String text;
-    @SerializedName("style") public TextStyle style;
-    @SerializedName("width") public float width;
-    @SerializedName("padding") public float padding;
-    @SerializedName("margin") public float margin;
-    @SerializedName("icon_id") public int iconId;
-    @SerializedName("color_value") public int colorValue;
-    @SerializedName("active") public boolean active;
+public final class VisualRun {
+    public VisualRunType type = VisualRunType.TEXT;
+    public float x = 0f;
+    public float y = 0f;
+    public String text = "";
+    public TextStyle style = new TextStyle();
+    public int iconId = 0;
+    public int colorValue = 0;
+    public float width = 0f;
+    public float padding = 0f;
+    public float margin = 0f;
+    public boolean active = false;
+
+    public VisualRun() {
+    }
+
+    public VisualRun(VisualRunType type, float x, float y, String text, TextStyle style, int iconId, int colorValue, float width, float padding, float margin, boolean active) {
+        this.type = type;
+        this.x = x;
+        this.y = y;
+        this.text = text;
+        this.style = style;
+        this.iconId = iconId;
+        this.colorValue = colorValue;
+        this.width = width;
+        this.padding = padding;
+        this.margin = margin;
+        this.active = active;
+    }
 }

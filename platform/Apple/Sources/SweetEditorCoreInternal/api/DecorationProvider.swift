@@ -424,14 +424,14 @@ final class DecorationProviderManager {
         core.clearHighlights(layer: 0)
         if !syntaxSpans.isEmpty {
             let converted = syntaxSpans.mapValues {
-                $0.map { SweetEditorCore.StyleSpan(column: $0.column, length: $0.length, styleId: $0.styleId) }
+                $0.map { StyleSpan(column: $0.column, length: $0.length, styleId: $0.styleId) }
             }
             core.setBatchLineSpans(layer: 0, spansByLine: converted)
         }
         core.clearHighlights(layer: 1)
         if !semanticSpans.isEmpty {
             let converted = semanticSpans.mapValues {
-                $0.map { SweetEditorCore.StyleSpan(column: $0.column, length: $0.length, styleId: $0.styleId) }
+                $0.map { StyleSpan(column: $0.column, length: $0.length, styleId: $0.styleId) }
             }
             core.setBatchLineSpans(layer: 1, spansByLine: converted)
         }
@@ -442,11 +442,11 @@ final class DecorationProviderManager {
                 items.map { item in
                     switch item.kind {
                     case .text(let text):
-                        return SweetEditorCore.InlayHintPayload.text(column: item.column, text: text)
+                        return InlayHint.text(column: item.column, text: text)
                     case .icon(let iconId):
-                        return SweetEditorCore.InlayHintPayload.icon(column: item.column, iconId: iconId)
+                        return InlayHint.icon(column: item.column, iconId: iconId)
                     case .color(let color):
-                        return SweetEditorCore.InlayHintPayload.color(column: item.column, color: color)
+                        return InlayHint.color(column: item.column, color: color)
                     }
                 }
             }
@@ -457,7 +457,7 @@ final class DecorationProviderManager {
         if !diagnostics.isEmpty {
             let converted = diagnostics.mapValues { items in
                 items.map {
-                    SweetEditorCore.DiagnosticItem(
+                    Diagnostic(
                         column: $0.column,
                         length: $0.length,
                         severity: $0.severity
@@ -470,7 +470,7 @@ final class DecorationProviderManager {
         core.clearGuides()
         if let indentGuides {
             core.setIndentGuides(indentGuides.map {
-                SweetEditorCore.IndentGuidePayload(
+                IndentGuide(
                     startLine: $0.start.line,
                     startColumn: $0.start.column,
                     endLine: $0.end.line,
@@ -480,7 +480,7 @@ final class DecorationProviderManager {
         }
         if let bracketGuides {
             core.setBracketGuides(bracketGuides.map { item in
-                SweetEditorCore.BracketGuidePayload(
+                BracketGuide(
                     parentLine: item.parent.line,
                     parentColumn: item.parent.column,
                     endLine: item.end.line,
@@ -491,7 +491,7 @@ final class DecorationProviderManager {
         }
         if let flowGuides {
             core.setFlowGuides(flowGuides.map {
-                SweetEditorCore.FlowGuidePayload(
+                FlowGuide(
                     startLine: $0.start.line,
                     startColumn: $0.start.column,
                     endLine: $0.end.line,
@@ -501,7 +501,7 @@ final class DecorationProviderManager {
         }
         if let separatorGuides {
             core.setSeparatorGuides(separatorGuides.map {
-                SweetEditorCore.SeparatorGuidePayload(
+                SeparatorGuide(
                     line: Int32($0.line),
                     style: $0.style,
                     count: $0.count,
@@ -513,7 +513,7 @@ final class DecorationProviderManager {
         if !foldRegions.isEmpty {
             core.setFoldRegions(
                 foldRegions.map {
-                    SweetEditorCore.FoldRegion(startLine: $0.startLine, endLine: $0.endLine, collapsed: $0.collapsed)
+                    FoldRegion(startLine: $0.startLine, endLine: $0.endLine, collapsed: $0.collapsed)
                 }
             )
         }
@@ -521,7 +521,7 @@ final class DecorationProviderManager {
         core.clearGutterIcons()
         if !gutterIcons.isEmpty {
             let converted = gutterIcons.mapValues { iconIds in
-                iconIds.map { SweetEditorCore.GutterIcon(iconId: $0) }
+                iconIds.map { GutterIcon(iconId: $0) }
             }
             core.setBatchLineGutterIcons(converted)
         }
@@ -529,7 +529,7 @@ final class DecorationProviderManager {
         core.clearPhantomTexts()
         if !phantomTexts.isEmpty {
             let converted = phantomTexts.mapValues { items in
-                items.map { SweetEditorCore.PhantomTextPayload(column: $0.column, text: $0.text) }
+                items.map { PhantomText(column: $0.column, text: $0.text) }
             }
             core.setBatchLinePhantomTexts(converted)
         }
@@ -537,7 +537,7 @@ final class DecorationProviderManager {
         core.clearCodeLens()
         if !codeLensItems.isEmpty {
             let converted = codeLensItems.mapValues { items in
-                items.map { SweetEditorCore.CodeLensPayload(column: Int32($0.column), text: $0.text, commandId: $0.commandId) }
+                items.map { CodeLensItem(column: Int32($0.column), text: $0.text, commandId: $0.commandId) }
             }
             core.setBatchLineCodeLens(converted)
         }
@@ -545,7 +545,7 @@ final class DecorationProviderManager {
         core.clearLinks()
         if !links.isEmpty {
             let converted = links.mapValues { items in
-                items.map { SweetEditorCore.LinkSpan(column: $0.column, length: $0.length, target: $0.target) }
+                items.map { LinkSpan(column: $0.column, length: $0.length, target: $0.target) }
             }
             core.setBatchLineLinks(converted)
         }

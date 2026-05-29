@@ -108,16 +108,19 @@ namespace {
     float line_spacing_mult = 1.0f;
     float line_number_margin = 0.0f;
     float line_number_width = 0.0f;
+    float content_start_padding = 0.0f;
     int32_t max_gutter_icons = 0;
     float inlay_hint_padding = 0.0f;
     float inlay_hint_margin = 0.0f;
     int32_t fold_arrow_mode = 0;
     int32_t has_fold_regions = 0;
+    int32_t gutter_sticky = 0;
+    int32_t gutter_visible = 0;
   };
 
   LayoutMetricsData parseLayoutMetrics(const uint8_t* data, size_t size) {
     LayoutMetricsData metrics;
-    if (data == nullptr || size < sizeof(float) * 8 + sizeof(int32_t) * 3) {
+    if (data == nullptr || size < sizeof(float) * 9 + sizeof(int32_t) * 5) {
       return metrics;
     }
     size_t offset = 0;
@@ -135,11 +138,14 @@ namespace {
     readFloat(metrics.line_spacing_mult);
     readFloat(metrics.line_number_margin);
     readFloat(metrics.line_number_width);
+    readFloat(metrics.content_start_padding);
     readI32(metrics.max_gutter_icons);
     readFloat(metrics.inlay_hint_padding);
     readFloat(metrics.inlay_hint_margin);
     readI32(metrics.fold_arrow_mode);
     readI32(metrics.has_fold_regions);
+    readI32(metrics.gutter_sticky);
+    readI32(metrics.gutter_visible);
     return metrics;
   }
 
@@ -311,18 +317,21 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   size_t layout_metrics_size = 0;
   const uint8_t* layout_metrics_payload = get_layout_metrics(editor, &layout_metrics_size);
   REQUIRE(layout_metrics_payload != nullptr);
-  CHECK(layout_metrics_size == sizeof(float) * 8 + sizeof(int32_t) * 3);
+  CHECK(layout_metrics_size == sizeof(float) * 9 + sizeof(int32_t) * 5);
   LayoutMetricsData layout_metrics = parseLayoutMetrics(layout_metrics_payload, layout_metrics_size);
   free_binary_data(reinterpret_cast<intptr_t>(layout_metrics_payload));
   CHECK(layout_metrics.font_height == Catch::Approx(10.0f));
   CHECK(layout_metrics.font_ascent == Catch::Approx(8.0f));
   CHECK(layout_metrics.line_spacing_add == Catch::Approx(0.0f));
   CHECK(layout_metrics.line_spacing_mult == Catch::Approx(1.2f));
+  CHECK(layout_metrics.content_start_padding == Catch::Approx(0.0f));
   CHECK(layout_metrics.max_gutter_icons == 0);
   CHECK(layout_metrics.inlay_hint_padding == Catch::Approx(2.0f));
   CHECK(layout_metrics.inlay_hint_margin == Catch::Approx(1.0f));
   CHECK(layout_metrics.fold_arrow_mode == 0);
   CHECK(layout_metrics.has_fold_regions == 0);
+  CHECK(layout_metrics.gutter_sticky == 1);
+  CHECK(layout_metrics.gutter_visible == 1);
 
   // Two-finger zoom: TOUCH_DOWN -> TOUCH_POINTER_DOWN -> TOUCH_MOVE (fingers move apart)
   float p0[2] = {100.0f, 100.0f};

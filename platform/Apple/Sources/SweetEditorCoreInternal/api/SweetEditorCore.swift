@@ -64,141 +64,8 @@ enum SEEventType: UInt8, Codable {
 
 class SweetEditorCore {
     private(set) var handle: Int = 0
-    private lazy var protocolDecoder = ProtocolDecoder(owner: self)
-    private lazy var protocolEncoder = ProtocolEncoder(owner: self)
     private(set) var scrollbarConfig = ScrollbarConfig()
     private var compositionEnabled = true
-
-    struct InlayHintPayload {
-        enum Kind {
-            case text(String)
-            case icon(Int32)
-            case color(Int32)
-        }
-
-        let column: Int
-        let kind: Kind
-
-        static func text(column: Int, text: String) -> InlayHintPayload {
-            InlayHintPayload(column: column, kind: .text(text))
-        }
-
-        static func icon(column: Int, iconId: Int32) -> InlayHintPayload {
-            InlayHintPayload(column: column, kind: .icon(iconId))
-        }
-
-        static func color(column: Int, color: Int32) -> InlayHintPayload {
-            InlayHintPayload(column: column, kind: .color(color))
-        }
-    }
-
-    struct PhantomTextPayload {
-        let column: Int
-        let text: String
-    }
-
-    struct DiagnosticPayload {
-        let column: Int32
-        let length: Int32
-        let severity: Int32
-    }
-
-    struct IndentGuidePayload {
-        let startLine: Int
-        let startColumn: Int
-        let endLine: Int
-        let endColumn: Int
-    }
-
-    struct BracketGuidePayload {
-        let parentLine: Int
-        let parentColumn: Int
-        let endLine: Int
-        let endColumn: Int
-        let children: [(line: Int, column: Int)]
-    }
-
-    struct FlowGuidePayload {
-        let startLine: Int
-        let startColumn: Int
-        let endLine: Int
-        let endColumn: Int
-    }
-
-    struct SeparatorGuidePayload {
-        let line: Int32
-        let style: Int32
-        let count: Int32
-        let textEndColumn: UInt32
-    }
-
-    struct StyleSpan {
-        let column: UInt32
-        let length: UInt32
-        let styleId: UInt32
-
-        init(column: UInt32, length: UInt32, styleId: UInt32) {
-            self.column = column
-            self.length = length
-            self.styleId = styleId
-        }
-    }
-
-    struct DiagnosticItem {
-        let column: Int32
-        let length: Int32
-        let severity: Int32
-
-        init(column: Int32, length: Int32, severity: Int32) {
-            self.column = column
-            self.length = length
-            self.severity = severity
-        }
-    }
-
-    struct GutterIcon {
-        let iconId: Int32
-
-        init(iconId: Int32) {
-            self.iconId = iconId
-        }
-    }
-
-    struct CodeLensPayload {
-        let column: Int32
-        let text: String
-        let commandId: Int32
-
-        init(column: Int32, text: String, commandId: Int32) {
-            self.column = column
-            self.text = text
-            self.commandId = commandId
-        }
-    }
-
-    struct LinkSpan {
-        let column: Int
-        let length: Int
-        let target: String
-
-        init(column: Int, length: Int, target: String) {
-            self.column = column
-            self.length = length
-            self.target = target
-        }
-    }
-
-    struct FoldRegion {
-        let startLine: Int
-        let endLine: Int
-        let collapsed: Bool
-
-        init(startLine: Int, endLine: Int, collapsed: Bool) {
-            self.startLine = startLine
-            self.endLine = endLine
-            self.collapsed = collapsed
-        }
-    }
 
     private static let threadDictionaryKey = NSString(string: "SweetEditorCore.currentStack")
 
@@ -230,464 +97,6 @@ class SweetEditorCore {
 
         init(core: SweetEditorCore) {
             self.core = core
-        }
-    }
-
-    private final class ProtocolEncoder {
-        unowned let owner: SweetEditorCore
-
-        init(owner: SweetEditorCore) {
-            self.owner = owner
-        }
-
-        func packLineSpans(line: Int, layer: Int, spans: [(column: UInt32, length: UInt32, styleId: UInt32)]) -> Data {
-            var payload = Data()
-            payload.reserveCapacity(12 + spans.count * 12)
-            appendU32(UInt32(line), to: &payload)
-            appendU32(UInt32(layer), to: &payload)
-            appendU32(UInt32(spans.count), to: &payload)
-            for span in spans {
-                appendU32(span.column, to: &payload)
-                appendU32(span.length, to: &payload)
-                appendU32(span.styleId, to: &payload)
-            }
-            return payload
-        }
-
-        func packLineSpans(line: Int, layer: Int, spans: [StyleSpan]) -> Data {
-            let tuples = spans.map { (column: $0.column, length: $0.length, styleId: $0.styleId) }
-            return packLineSpans(line: line, layer: layer, spans: tuples)
-        }
-
-        func packBatchLineSpans(layer: Int,
-                                spansByLine: [Int: [(column: UInt32, length: UInt32, styleId: UInt32)]]) -> Data {
-            let lines = spansByLine.keys.sorted()
-            var payload = Data()
-            payload.reserveCapacity(8 + lines.reduce(0) {
-                $0 + 8 + (spansByLine[$1]?.count ?? 0) * 12
-            })
-            appendU32(UInt32(layer), to: &payload)
-            appendU32(UInt32(lines.count), to: &payload)
-            for line in lines {
-                let spans = spansByLine[line] ?? []
-                appendU32(UInt32(line), to: &payload)
-                appendU32(UInt32(spans.count), to: &payload)
-                for span in spans {
-                    appendU32(span.column, to: &payload)
-                    appendU32(span.length, to: &payload)
-                    appendU32(span.styleId, to: &payload)
-                }
-            }
-            return payload
-        }
-
-        func packBatchLineSpans(layer: Int, spansByLine: [Int: [StyleSpan]]) -> Data {
-            let tuples = spansByLine.mapValues { spans in
-                spans.map { (column: $0.column, length: $0.length, styleId: $0.styleId) }
-            }
-            return packBatchLineSpans(layer: layer, spansByLine: tuples)
-        }
-
-        func packBatchTextStyles(_ stylesById: [UInt32: (color: Int32, backgroundColor: Int32, fontStyle: Int32)]) -> Data {
-            let styleIds = stylesById.keys.sorted()
-            var payload = Data()
-            payload.reserveCapacity(4 + styleIds.count * 16)
-            appendU32(UInt32(styleIds.count), to: &payload)
-            for styleId in styleIds {
-                let style = stylesById[styleId] ?? (0, 0, 0)
-                appendU32(styleId, to: &payload)
-                appendI32(style.color, to: &payload)
-                appendI32(style.backgroundColor, to: &payload)
-                appendI32(style.fontStyle, to: &payload)
-            }
-            return payload
-        }
-
-        func packLineInlayHints(line: Int, hints: [InlayHintPayload]) -> Data {
-            var payload = Data()
-            payload.reserveCapacity(8 + hints.count * 24)
-            appendU32(UInt32(line), to: &payload)
-            appendU32(UInt32(hints.count), to: &payload)
-            for hint in hints {
-                appendInlayHint(hint, to: &payload)
-            }
-            return payload
-        }
-
-        func packBatchLineInlayHints(_ hintsByLine: [Int: [InlayHintPayload]]) -> Data {
-            let lines = hintsByLine.keys.sorted()
-            var payload = Data()
-            payload.reserveCapacity(4 + lines.reduce(0) {
-                $0 + 8 + (hintsByLine[$1]?.count ?? 0) * 24
-            })
-            appendU32(UInt32(lines.count), to: &payload)
-            for line in lines {
-                let hints = hintsByLine[line] ?? []
-                appendU32(UInt32(line), to: &payload)
-                appendU32(UInt32(hints.count), to: &payload)
-                for hint in hints {
-                    appendInlayHint(hint, to: &payload)
-                }
-            }
-            return payload
-        }
-
-        func packLinePhantomTexts(line: Int, phantoms: [PhantomTextPayload]) -> Data {
-            var payload = Data()
-            payload.reserveCapacity(8 + phantoms.count * 16)
-            appendU32(UInt32(line), to: &payload)
-            appendU32(UInt32(phantoms.count), to: &payload)
-            for phantom in phantoms {
-                appendU32(UInt32(phantom.column), to: &payload)
-                appendUTF8(phantom.text, to: &payload)
-            }
-            return payload
-        }
-
-        func packBatchLinePhantomTexts(_ phantomsByLine: [Int: [PhantomTextPayload]]) -> Data {
-            let lines = phantomsByLine.keys.sorted()
-            var payload = Data()
-            payload.reserveCapacity(4 + lines.reduce(0) {
-                $0 + 8 + (phantomsByLine[$1]?.count ?? 0) * 16
-            })
-            appendU32(UInt32(lines.count), to: &payload)
-            for line in lines {
-                let phantoms = phantomsByLine[line] ?? []
-                appendU32(UInt32(line), to: &payload)
-                appendU32(UInt32(phantoms.count), to: &payload)
-                for phantom in phantoms {
-                    appendU32(UInt32(phantom.column), to: &payload)
-                    appendUTF8(phantom.text, to: &payload)
-                }
-            }
-            return payload
-        }
-
-        func packLineGutterIcons(line: Int, iconIds: [Int32]) -> Data {
-            var payload = Data()
-            payload.reserveCapacity(8 + iconIds.count * 4)
-            appendU32(UInt32(line), to: &payload)
-            appendU32(UInt32(iconIds.count), to: &payload)
-            for iconId in iconIds {
-                appendI32(iconId, to: &payload)
-            }
-            return payload
-        }
-
-        func packLineGutterIcons(line: Int, icons: [GutterIcon]) -> Data {
-            let iconIds = icons.map(\.iconId)
-            return packLineGutterIcons(line: line, iconIds: iconIds)
-        }
-
-        func packBatchLineGutterIcons(_ iconIdsByLine: [Int: [Int32]]) -> Data {
-            let lines = iconIdsByLine.keys.sorted()
-            var payload = Data()
-            payload.reserveCapacity(4 + lines.reduce(0) {
-                $0 + 8 + (iconIdsByLine[$1]?.count ?? 0) * 4
-            })
-            appendU32(UInt32(lines.count), to: &payload)
-            for line in lines {
-                let iconIds = iconIdsByLine[line] ?? []
-                appendU32(UInt32(line), to: &payload)
-                appendU32(UInt32(iconIds.count), to: &payload)
-                for iconId in iconIds {
-                    appendI32(iconId, to: &payload)
-                }
-            }
-            return payload
-        }
-
-        func packBatchLineGutterIcons(_ iconsByLine: [Int: [GutterIcon]]) -> Data {
-            let iconIdsByLine = iconsByLine.mapValues { icons in
-                icons.map(\.iconId)
-            }
-            return packBatchLineGutterIcons(iconIdsByLine)
-        }
-
-        func packLineCodeLens(line: Int, items: [CodeLensPayload]) -> Data {
-            var payload = Data()
-            payload.reserveCapacity(8 + items.count * 20)
-            appendU32(UInt32(line), to: &payload)
-            appendU32(UInt32(items.count), to: &payload)
-            for item in items {
-                appendI32(item.column, to: &payload)
-                appendI32(item.commandId, to: &payload)
-                appendUTF8(item.text, to: &payload)
-            }
-            return payload
-        }
-
-        func packBatchLineCodeLens(_ itemsByLine: [Int: [CodeLensPayload]]) -> Data {
-            let lines = itemsByLine.keys.sorted()
-            var payload = Data()
-            payload.reserveCapacity(4 + lines.reduce(0) {
-                $0 + 8 + (itemsByLine[$1]?.count ?? 0) * 20
-            })
-            appendU32(UInt32(lines.count), to: &payload)
-            for line in lines {
-                let items = itemsByLine[line] ?? []
-                appendU32(UInt32(line), to: &payload)
-                appendU32(UInt32(items.count), to: &payload)
-                for item in items {
-                    appendI32(item.column, to: &payload)
-                    appendI32(item.commandId, to: &payload)
-                    appendUTF8(item.text, to: &payload)
-                }
-            }
-            return payload
-        }
-
-        func packLineLinks(line: Int, links: [LinkSpan]) -> Data {
-            var payload = Data()
-            payload.reserveCapacity(8 + links.reduce(0) { $0 + 12 + ($1.target.lengthOfBytes(using: .utf8)) })
-            appendU32(UInt32(line), to: &payload)
-            appendU32(UInt32(links.count), to: &payload)
-            for link in links {
-                appendU32(UInt32(link.column), to: &payload)
-                appendU32(UInt32(link.length), to: &payload)
-                appendUTF8(link.target, to: &payload)
-            }
-            return payload
-        }
-
-        func packBatchLineLinks(_ linksByLine: [Int: [LinkSpan]]) -> Data {
-            let lines = linksByLine.keys.sorted()
-            var payload = Data()
-            payload.reserveCapacity(4 + lines.reduce(0) { partial, line in
-                let links = linksByLine[line] ?? []
-                return partial + 8 + links.reduce(0) { $0 + 12 + ($1.target.lengthOfBytes(using: .utf8)) }
-            })
-            appendU32(UInt32(lines.count), to: &payload)
-            for line in lines {
-                let links = linksByLine[line] ?? []
-                appendU32(UInt32(line), to: &payload)
-                appendU32(UInt32(links.count), to: &payload)
-                for link in links {
-                    appendU32(UInt32(link.column), to: &payload)
-                    appendU32(UInt32(link.length), to: &payload)
-                    appendUTF8(link.target, to: &payload)
-                }
-            }
-            return payload
-        }
-
-        func packLineDiagnostics(line: Int, diagnostics: [(column: Int32, length: Int32, severity: Int32)]) -> Data {
-            var payload = Data()
-            payload.reserveCapacity(8 + diagnostics.count * 12)
-            appendU32(UInt32(line), to: &payload)
-            appendU32(UInt32(diagnostics.count), to: &payload)
-            for diagnostic in diagnostics {
-                appendI32(diagnostic.column, to: &payload)
-                appendI32(diagnostic.length, to: &payload)
-                appendI32(diagnostic.severity, to: &payload)
-            }
-            return payload
-        }
-
-        func packLineDiagnostics(line: Int, items: [DiagnosticItem]) -> Data {
-            let diagnostics = items.map { (column: $0.column, length: $0.length, severity: $0.severity) }
-            return packLineDiagnostics(line: line, diagnostics: diagnostics)
-        }
-
-        func packBatchLineDiagnostics(_ diagnosticsByLine: [Int: [DiagnosticPayload]]) -> Data {
-            let lines = diagnosticsByLine.keys.sorted()
-            var payload = Data()
-            payload.reserveCapacity(4 + lines.reduce(0) {
-                $0 + 8 + (diagnosticsByLine[$1]?.count ?? 0) * 12
-            })
-            appendU32(UInt32(lines.count), to: &payload)
-            for line in lines {
-                let diagnostics = diagnosticsByLine[line] ?? []
-                appendU32(UInt32(line), to: &payload)
-                appendU32(UInt32(diagnostics.count), to: &payload)
-                for diagnostic in diagnostics {
-                    appendI32(diagnostic.column, to: &payload)
-                    appendI32(diagnostic.length, to: &payload)
-                    appendI32(diagnostic.severity, to: &payload)
-                }
-            }
-            return payload
-        }
-
-        func packBatchLineDiagnostics(_ diagnosticsByLine: [Int: [DiagnosticItem]]) -> Data {
-            let payloads = diagnosticsByLine.mapValues { items in
-                items.map {
-                    DiagnosticPayload(column: $0.column, length: $0.length, severity: $0.severity)
-                }
-            }
-            return packBatchLineDiagnostics(payloads)
-        }
-
-        func packIndentGuides(_ guides: [IndentGuidePayload]) -> Data {
-            var payload = Data()
-            payload.reserveCapacity(4 + guides.count * 16)
-            appendU32(UInt32(guides.count), to: &payload)
-            for guide in guides {
-                appendU32(UInt32(guide.startLine), to: &payload)
-                appendU32(UInt32(guide.startColumn), to: &payload)
-                appendU32(UInt32(guide.endLine), to: &payload)
-                appendU32(UInt32(guide.endColumn), to: &payload)
-            }
-            return payload
-        }
-
-        func packBracketGuides(_ guides: [BracketGuidePayload]) -> Data {
-            let fixedCapacity = 20
-            let childCapacity = guides.reduce(0) { $0 + ($1.children.count * 8) }
-            var payload = Data()
-            payload.reserveCapacity(4 + guides.count * fixedCapacity + childCapacity)
-            appendU32(UInt32(guides.count), to: &payload)
-            for guide in guides {
-                appendU32(UInt32(guide.parentLine), to: &payload)
-                appendU32(UInt32(guide.parentColumn), to: &payload)
-                appendU32(UInt32(guide.endLine), to: &payload)
-                appendU32(UInt32(guide.endColumn), to: &payload)
-                appendU32(UInt32(guide.children.count), to: &payload)
-                for child in guide.children {
-                    appendU32(UInt32(child.line), to: &payload)
-                    appendU32(UInt32(child.column), to: &payload)
-                }
-            }
-            return payload
-        }
-
-        func packFlowGuides(_ guides: [FlowGuidePayload]) -> Data {
-            var payload = Data()
-            payload.reserveCapacity(4 + guides.count * 16)
-            appendU32(UInt32(guides.count), to: &payload)
-            for guide in guides {
-                appendU32(UInt32(guide.startLine), to: &payload)
-                appendU32(UInt32(guide.startColumn), to: &payload)
-                appendU32(UInt32(guide.endLine), to: &payload)
-                appendU32(UInt32(guide.endColumn), to: &payload)
-            }
-            return payload
-        }
-
-        func packSeparatorGuides(_ guides: [SeparatorGuidePayload]) -> Data {
-            var payload = Data()
-            payload.reserveCapacity(4 + guides.count * 16)
-            appendU32(UInt32(guides.count), to: &payload)
-            for guide in guides {
-                appendI32(guide.line, to: &payload)
-                appendI32(guide.style, to: &payload)
-                appendI32(guide.count, to: &payload)
-                appendU32(guide.textEndColumn, to: &payload)
-            }
-            return payload
-        }
-
-        func packFoldRegions(startLines: [Int], endLines: [Int], collapsed: [Bool]) -> Data {
-            let count = min(startLines.count, min(endLines.count, collapsed.count))
-            var payload = Data()
-            payload.reserveCapacity(4 + count * 12)
-            appendU32(UInt32(count), to: &payload)
-            for i in 0..<count {
-                appendU32(UInt32(startLines[i]), to: &payload)
-                appendU32(UInt32(endLines[i]), to: &payload)
-                appendU32(collapsed[i] ? 1 : 0, to: &payload)
-            }
-            return payload
-        }
-
-        func packFoldRegions(_ regions: [FoldRegion]) -> Data {
-            return packFoldRegions(
-                startLines: regions.map(\.startLine),
-                endLines: regions.map(\.endLine),
-                collapsed: regions.map(\.collapsed)
-            )
-        }
-
-        func packLinkedEditing(model: LinkedEditingModel) -> Data {
-            let groups = model.groups
-            let groupCount = groups.count
-            var rangeCount = 0
-            var textBlobSize = 0
-            var groupTextBytes: [Data?] = Array(repeating: nil, count: groupCount)
-            for i in 0..<groupCount {
-                let group = groups[i]
-                rangeCount += group.ranges.count
-                if let text = group.defaultText {
-                    let bytes = text.data(using: .utf8) ?? Data()
-                    groupTextBytes[i] = bytes
-                    textBlobSize += bytes.count
-                }
-            }
-
-            var payload = Data()
-            payload.reserveCapacity(12 + groupCount * 12 + rangeCount * 20 + textBlobSize)
-            appendU32(UInt32(groupCount), to: &payload)
-            appendU32(UInt32(rangeCount), to: &payload)
-            appendU32(UInt32(textBlobSize), to: &payload)
-
-            var textOffset = 0
-            for i in 0..<groupCount {
-                let group = groups[i]
-                appendU32(UInt32(group.index), to: &payload)
-                if let bytes = groupTextBytes[i] {
-                    appendU32(UInt32(textOffset), to: &payload)
-                    appendU32(UInt32(bytes.count), to: &payload)
-                    textOffset += bytes.count
-                } else {
-                    appendU32(0xFFFFFFFF, to: &payload)
-                    appendU32(0, to: &payload)
-                }
-            }
-
-            for groupOrdinal in 0..<groupCount {
-                let group = groups[groupOrdinal]
-                for range in group.ranges {
-                    appendU32(UInt32(groupOrdinal), to: &payload)
-                    appendU32(UInt32(range.startLine), to: &payload)
-                    appendU32(UInt32(range.startColumn), to: &payload)
-                    appendU32(UInt32(range.endLine), to: &payload)
-                    appendU32(UInt32(range.endColumn), to: &payload)
-                }
-            }
-
-            for bytes in groupTextBytes {
-                guard let bytes, !bytes.isEmpty else { continue }
-                payload.append(bytes)
-            }
-            return payload
-        }
-
-        private func appendU32(_ value: UInt32, to data: inout Data) {
-            owner.appendU32(value, to: &data)
-        }
-
-        private func appendI32(_ value: Int32, to data: inout Data) {
-            owner.appendI32(value, to: &data)
-        }
-
-        private func appendUTF8(_ text: String, to data: inout Data) {
-            let bytes = text.data(using: .utf8) ?? Data()
-            appendU32(UInt32(bytes.count), to: &data)
-            data.append(bytes)
-        }
-
-        private func appendInlayHint(_ hint: InlayHintPayload, to payload: inout Data) {
-            let type: UInt32
-            let intValue: Int32
-            let text: String
-            switch hint.kind {
-            case .text(let value):
-                type = 0
-                intValue = 0
-                text = value
-            case .icon(let value):
-                type = 1
-                intValue = value
-                text = ""
-            case .color(let value):
-                type = 2
-                intValue = value
-                text = ""
-            }
-            appendU32(type, to: &payload)
-            appendU32(UInt32(hint.column), to: &payload)
-            appendI32(intValue, to: &payload)
-            appendUTF8(text, to: &payload)
         }
     }
 
@@ -754,16 +163,18 @@ class SweetEditorCore {
         let revealSelectionEndOnSelectAll = false
         #endif
 
-        let optionsPayload = SweetEditorCore.makeEditorOptionsPayload(
-            touchSlop: 10.0,
-            doubleTapTimeout: 300,
-            longPressMs: 500,
-            flingFriction: 3.5,
-            flingMinVelocity: 50.0,
-            flingMaxVelocity: 8000.0,
-            maxUndoStackSize: 512,
-            keyChordTimeoutMs: 2000,
-            revealSelectionEndOnSelectAll: revealSelectionEndOnSelectAll
+        let optionsPayload = CoreProtocol.encodeEditorOptions(
+            EditorOptions(
+                touch_slop: 10.0,
+                double_tap_timeout: 300,
+                long_press_ms: 500,
+                fling_friction: 3.5,
+                fling_min_velocity: 50.0,
+                fling_max_velocity: 8000.0,
+                max_undo_stack_size: 512,
+                key_chord_timeout_ms: 2000,
+                reveal_selection_end_on_select_all: revealSelectionEndOnSelectAll
+            )
         )
 
         handle = performCoreCall {
@@ -807,59 +218,6 @@ class SweetEditorCore {
         }
     }
 
-    private func appendU32(_ value: UInt32, to data: inout Data) {
-        var le = value.littleEndian
-        withUnsafeBytes(of: &le) { data.append(contentsOf: $0) }
-    }
-
-    private static func appendF32(_ value: Float, to data: inout Data) {
-        var le = value.bitPattern.littleEndian
-        withUnsafeBytes(of: &le) { data.append(contentsOf: $0) }
-    }
-
-    private func appendI32(_ value: Int32, to data: inout Data) {
-        var le = value.littleEndian
-        withUnsafeBytes(of: &le) { data.append(contentsOf: $0) }
-    }
-
-    private static func appendI64(_ value: Int64, to data: inout Data) {
-        var le = value.littleEndian
-        withUnsafeBytes(of: &le) { data.append(contentsOf: $0) }
-    }
-
-    private static func appendU64(_ value: UInt64, to data: inout Data) {
-        var le = value.littleEndian
-        withUnsafeBytes(of: &le) { data.append(contentsOf: $0) }
-    }
-
-    private static func appendU8(_ value: UInt8, to data: inout Data) {
-        data.append(value)
-    }
-
-    private static func makeEditorOptionsPayload(
-        touchSlop: Float,
-        doubleTapTimeout: Int64,
-        longPressMs: Int64,
-        flingFriction: Float,
-        flingMinVelocity: Float,
-        flingMaxVelocity: Float,
-        maxUndoStackSize: UInt64,
-        keyChordTimeoutMs: Int64,
-        revealSelectionEndOnSelectAll: Bool
-    ) -> Data {
-        var data = Data()
-        appendF32(touchSlop, to: &data)
-        appendI64(doubleTapTimeout, to: &data)
-        appendI64(longPressMs, to: &data)
-        appendF32(flingFriction, to: &data)
-        appendF32(flingMinVelocity, to: &data)
-        appendF32(flingMaxVelocity, to: &data)
-        appendU64(maxUndoStackSize, to: &data)
-        appendI64(keyChordTimeoutMs, to: &data)
-        appendU8(revealSelectionEndOnSelectAll ? 1 : 0, to: &data)
-        return data
-    }
-
     private func withPayload<T>(_ payload: Data, _ block: (UnsafePointer<UInt8>?, Int) -> T) -> T {
         return payload.withUnsafeBytes { raw in
             let ptr = raw.bindMemory(to: UInt8.self).baseAddress
@@ -867,22 +225,34 @@ class SweetEditorCore {
         }
     }
 
-    private func copyBinaryPayloadAndFree(_ ptr: UnsafePointer<UInt8>?, size: Int) -> Data? {
+    private func int32Keyed<T>(_ values: [Int: T]) -> [Int32: T] {
+        Dictionary(uniqueKeysWithValues: values.map { (Int32($0.key), $0.value) })
+    }
+
+    private func spanLayer(from rawValue: Int32) -> SpanLayer {
+        SpanLayer.fromValue(rawValue)
+    }
+
+    private func decodeNativePayload<T>(
+        _ ptr: UnsafePointer<UInt8>?,
+        size: Int,
+        decode: (UnsafeRawBufferPointer) -> T?
+    ) -> T? {
         guard let ptr = ptr else { return nil }
         defer { free_binary_data(Int(bitPattern: ptr)) }
         guard size > 0 else { return nil }
-        return Data(bytes: ptr, count: size)
+        let buffer = UnsafeRawBufferPointer(start: ptr, count: size)
+        return decode(buffer)
     }
 
-    private func decodeEditorActionPayload(_ ptr: UnsafePointer<UInt8>?, size: Int) -> EditorActionResultData? {
-        let payload = copyBinaryPayloadAndFree(ptr, size: size)
-        return protocolDecoder.decodeEditorActionResult(payload)
+    private func decodeEditorActionPayload(_ ptr: UnsafePointer<UInt8>?, size: Int) -> EditorActionResult? {
+        decodeNativePayload(ptr, size: size) { CoreProtocol.decodeEditorActionResult($0) }
     }
 
     private func performPayloadEditorAction(
         _ payload: Data,
         _ block: (UnsafePointer<UInt8>?, Int, inout Int) -> UnsafePointer<UInt8>?
-    ) -> EditorActionResultData? {
+    ) -> EditorActionResult? {
         return performCoreCall {
             var outSize: Int = 0
             let ptr = withPayload(payload) { ptr, size in
@@ -934,7 +304,7 @@ class SweetEditorCore {
     // MARK: - Editor Operations
 
     @discardableResult
-    func setViewport(width: Int, height: Int) -> EditorActionResultData? {
+    func setViewport(width: Int, height: Int) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = set_editor_viewport(handle, Int16(width), Int16(height), &size)
@@ -945,7 +315,7 @@ class SweetEditorCore {
     private(set) var document: SweetDocument?
 
     @discardableResult
-    func setDocument(_ document: SweetDocument) -> EditorActionResultData? {
+    func setDocument(_ document: SweetDocument) -> EditorActionResult? {
         self.document = document
         return performCoreCall {
             var size: Int = 0
@@ -958,8 +328,7 @@ class SweetEditorCore {
         return performCoreCall {
             var size: Int = 0
             let ptr = build_editor_render_model(handle, &size)
-            guard let payload = copyBinaryPayloadAndFree(ptr, size: size) else { return nil }
-            return protocolDecoder.decodeRenderModel(payload)
+            return decodeNativePayload(ptr, size: size) { CoreProtocol.decodeEditorRenderModel($0) }
         }
     }
 
@@ -967,15 +336,14 @@ class SweetEditorCore {
         return performCoreCall {
             var size: Int = 0
             let ptr = get_layout_metrics(handle, &size)
-            guard let payload = copyBinaryPayloadAndFree(ptr, size: size) else { return nil }
-            return protocolDecoder.decodeLayoutMetrics(payload)
+            return decodeNativePayload(ptr, size: size) { CoreProtocol.decodeLayoutMetrics($0) }
         }
     }
 
     func handleGestureEvent(type: SEEventType, points: [(Float, Float)],
                             modifiers: SEModifier = [],
                             wheelDeltaX: Float = 0, wheelDeltaY: Float = 0,
-                            directScale: Float = 1) -> EditorActionResultData? {
+                            directScale: Float = 1) -> EditorActionResult? {
         return performCoreCall {
             var pointsArr: [Float] = []
             for p in points {
@@ -997,7 +365,7 @@ class SweetEditorCore {
         }
     }
 
-    func updatePointerModifiers(_ modifiers: SEModifier) -> EditorActionResultData? {
+    func updatePointerModifiers(_ modifiers: SEModifier) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_update_pointer_modifiers(handle, modifiers.rawValue, &size)
@@ -1005,7 +373,7 @@ class SweetEditorCore {
         }
     }
 
-    func handleKeyEvent(keyCode: SEKeyCode, text: String? = nil, modifiers: SEModifier = []) -> EditorActionResultData? {
+    func handleKeyEvent(keyCode: SEKeyCode, text: String? = nil, modifiers: SEModifier = []) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr: UnsafePointer<UInt8>?
@@ -1020,7 +388,7 @@ class SweetEditorCore {
         }
     }
 
-    func insertText(_ text: String) -> EditorActionResultData? {
+    func insertText(_ text: String) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = text.withCString { cStr in
@@ -1034,7 +402,7 @@ class SweetEditorCore {
     /// Replaces text in a target range atomically.
     func replaceText(startLine: Int, startColumn: Int,
                      endLine: Int, endColumn: Int,
-                     newText: String) -> EditorActionResultData? {
+                     newText: String) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = newText.withCString { cStr in
@@ -1048,7 +416,7 @@ class SweetEditorCore {
 
     /// Deletes text in a target range atomically.
     func deleteText(startLine: Int, startColumn: Int,
-                    endLine: Int, endColumn: Int) -> EditorActionResultData? {
+                    endLine: Int, endColumn: Int) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_delete_text(handle,
@@ -1060,7 +428,7 @@ class SweetEditorCore {
 
     // MARK: - Line operations
 
-    func moveLineUp() -> EditorActionResultData? {
+    func moveLineUp() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_move_line_up(handle, &size)
@@ -1068,7 +436,7 @@ class SweetEditorCore {
         }
     }
 
-    func moveLineDown() -> EditorActionResultData? {
+    func moveLineDown() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_move_line_down(handle, &size)
@@ -1076,7 +444,7 @@ class SweetEditorCore {
         }
     }
 
-    func copyLineUp() -> EditorActionResultData? {
+    func copyLineUp() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_copy_line_up(handle, &size)
@@ -1084,7 +452,7 @@ class SweetEditorCore {
         }
     }
 
-    func copyLineDown() -> EditorActionResultData? {
+    func copyLineDown() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_copy_line_down(handle, &size)
@@ -1092,7 +460,7 @@ class SweetEditorCore {
         }
     }
 
-    func deleteLine() -> EditorActionResultData? {
+    func deleteLine() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_delete_line(handle, &size)
@@ -1100,7 +468,7 @@ class SweetEditorCore {
         }
     }
 
-    func insertLineAbove() -> EditorActionResultData? {
+    func insertLineAbove() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_insert_line_above(handle, &size)
@@ -1108,7 +476,7 @@ class SweetEditorCore {
         }
     }
 
-    func insertLineBelow() -> EditorActionResultData? {
+    func insertLineBelow() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_insert_line_below(handle, &size)
@@ -1135,7 +503,7 @@ class SweetEditorCore {
 
     /// Moves caret to the given document position.
     @discardableResult
-    func gotoPosition(line: Int, column: Int) -> EditorActionResultData? {
+    func gotoPosition(line: Int, column: Int) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_goto_position(handle, line, column, &size)
@@ -1174,7 +542,7 @@ class SweetEditorCore {
 
     /// Sets selection range in document coordinates.
     @discardableResult
-    func setSelectionRange(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) -> EditorActionResultData? {
+    func setSelectionRange(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_set_selection(handle, startLine, startColumn, endLine, endColumn, &size)
@@ -1185,7 +553,7 @@ class SweetEditorCore {
     // MARK: - IME Composition
 
     @discardableResult
-    func updateImePreedit(_ text: String) -> EditorActionResultData? {
+    func updateImePreedit(_ text: String) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = text.withCString {
@@ -1198,7 +566,7 @@ class SweetEditorCore {
     @discardableResult
     func setImeComposingTextSelection(_ text: String,
                                       selectionStartOffset: Int,
-                                      selectionEndOffset: Int) -> EditorActionResultData? {
+                                      selectionEndOffset: Int) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let safeStart = max(0, selectionStartOffset)
@@ -1211,7 +579,7 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func commitImeText(_ text: String?) -> EditorActionResultData? {
+    func commitImeText(_ text: String?) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let call: (UnsafePointer<CChar>?) -> UnsafePointer<UInt8>? = { cStr in
@@ -1228,7 +596,7 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func finishImePreedit() -> EditorActionResultData? {
+    func finishImePreedit() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_ime_finish_preedit(handle, &size)
@@ -1237,7 +605,7 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func cancelImePreedit() -> EditorActionResultData? {
+    func cancelImePreedit() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_ime_cancel_preedit(handle, &size)
@@ -1246,7 +614,7 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func markImeDocumentRange(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) -> EditorActionResultData? {
+    func markImeDocumentRange(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_ime_mark_document_range(handle,
@@ -1261,7 +629,7 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func markImeDocumentRange(startOffset: Int, endOffset: Int) -> EditorActionResultData? {
+    func markImeDocumentRange(startOffset: Int, endOffset: Int) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_ime_mark_document_range_by_offset(handle,
@@ -1280,7 +648,7 @@ class SweetEditorCore {
                                  selectionStartOffset: Int,
                                  selectionEndOffset: Int,
                                  composingStartOffset: Int,
-                                 composingEndOffset: Int) -> EditorActionResultData? {
+                                 composingEndOffset: Int) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = text.withCString {
@@ -1303,7 +671,7 @@ class SweetEditorCore {
     func updateImeInputStateSelection(contextId: Int64,
                                       documentStartOffset: Int,
                                       selectionStartOffset: Int,
-                                      selectionEndOffset: Int) -> EditorActionResultData? {
+                                      selectionEndOffset: Int) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_ime_update_input_state_selection(handle,
@@ -1322,7 +690,7 @@ class SweetEditorCore {
                                   startOffset: Int,
                                   endOffset: Int,
                                   text: String,
-                                  cursorOffset: Int = 1) -> EditorActionResultData? {
+                                  cursorOffset: Int = 1) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = text.withCString {
@@ -1347,7 +715,7 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func setCompositionEnabled(_ enabled: Bool) -> EditorActionResultData? {
+    func setCompositionEnabled(_ enabled: Bool) -> EditorActionResult? {
         compositionEnabled = enabled
         if !enabled {
             return cancelImePreedit()
@@ -1362,7 +730,7 @@ class SweetEditorCore {
     // MARK: - ReadOnly
 
     @discardableResult
-    func setReadOnly(_ readOnly: Bool) -> EditorActionResultData? {
+    func setReadOnly(_ readOnly: Bool) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_set_read_only(handle, readOnly ? 1 : 0, &size)
@@ -1378,17 +746,9 @@ class SweetEditorCore {
 
     // MARK: - AutoIndent
 
-    /// Auto-indentation mode.
-    enum AutoIndentMode: Int32 {
-        /// No auto-indentation; a new line starts at column 0.
-        case none = 0
-        /// Keep previous line indentation (copy leading whitespace).
-        case keepIndent = 1
-    }
-
     /// Sets the auto-indentation mode.
     @discardableResult
-    func setAutoIndentMode(_ mode: AutoIndentMode) -> EditorActionResultData? {
+    func setAutoIndentMode(_ mode: AutoIndentMode) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_set_auto_indent_mode(handle, mode.rawValue, &size)
@@ -1399,13 +759,13 @@ class SweetEditorCore {
     /// Returns the current auto-indentation mode.
     func getAutoIndentMode() -> AutoIndentMode {
         return performCoreCall {
-            AutoIndentMode(rawValue: editor_get_auto_indent_mode(handle)) ?? .keepIndent
+            AutoIndentMode(rawValue: editor_get_auto_indent_mode(handle)) ?? .KEEP_INDENT
         }
     }
 
     /// Sets backspace unindent behavior.
     @discardableResult
-    func setBackspaceUnindent(_ enabled: Bool) -> EditorActionResultData? {
+    func setBackspaceUnindent(_ enabled: Bool) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_set_backspace_unindent(handle, enabled ? 1 : 0, &size)
@@ -1415,7 +775,7 @@ class SweetEditorCore {
 
     /// Sets whether Tab inserts spaces instead of a tab character.
     @discardableResult
-    func setInsertSpaces(_ enabled: Bool) -> EditorActionResultData? {
+    func setInsertSpaces(_ enabled: Bool) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_set_insert_spaces(handle, enabled ? 1 : 0, &size)
@@ -1423,64 +783,14 @@ class SweetEditorCore {
         }
     }
 
-    struct ScrollbarConfig {
-        enum ScrollbarMode: Int32 {
-            case ALWAYS = 0
-            case TRANSIENT = 1
-            case NEVER = 2
-        }
-
-        enum ScrollbarTrackTapMode: Int32 {
-            case JUMP = 0
-            case DISABLED = 1
-        }
-
-        let thickness: Float
-        let minThumb: Float
-        let thumbHitPadding: Float
-        let mode: ScrollbarMode
-        let thumbDraggable: Bool
-        let trackTapMode: ScrollbarTrackTapMode
-        let fadeDelayMs: Int32
-        let fadeDurationMs: Int32
-
-        init(thickness: Float = 10.0,
-             minThumb: Float = 24.0,
-             thumbHitPadding: Float = 0.0,
-             mode: ScrollbarMode = .ALWAYS,
-             thumbDraggable: Bool = true,
-             trackTapMode: ScrollbarTrackTapMode = .JUMP,
-             fadeDelayMs: Int32 = 700,
-             fadeDurationMs: Int32 = 300) {
-            self.thickness = thickness
-            self.minThumb = minThumb
-            self.thumbHitPadding = thumbHitPadding
-            self.mode = mode
-            self.thumbDraggable = thumbDraggable
-            self.trackTapMode = trackTapMode
-            self.fadeDelayMs = fadeDelayMs
-            self.fadeDurationMs = fadeDurationMs
-        }
-    }
-
     // MARK: - Position Rect
-
-    /// Screen-space rectangle for a caret/text position (used for floating panel placement).
-    struct CursorRect {
-        /// X coordinate relative to the editor view's top-left corner.
-        let x: CGFloat
-        /// Y coordinate relative to the editor view's top-left corner (line top).
-        let y: CGFloat
-        /// Line height (same as caret height).
-        let height: CGFloat
-    }
 
     /// Returns the screen-space rectangle for any text position (for floating panel placement).
     func getPositionRect(line: Int, column: Int) -> CursorRect {
         return performCoreCall {
             var x: Float = 0, y: Float = 0, h: Float = 0
             editor_get_position_rect(handle, line, column, &x, &y, &h)
-            return CursorRect(x: CGFloat(x), y: CGFloat(y), height: CGFloat(h))
+            return CursorRect(x: x, y: y, height: h)
         }
     }
 
@@ -1489,30 +799,14 @@ class SweetEditorCore {
         return performCoreCall {
             var x: Float = 0, y: Float = 0, h: Float = 0
             editor_get_cursor_rect(handle, &x, &y, &h)
-            return CursorRect(x: CGFloat(x), y: CGFloat(y), height: CGFloat(h))
+            return CursorRect(x: x, y: y, height: h)
         }
     }
 
     // MARK: - Scroll / Navigation
 
-    struct ScrollMetrics {
-        let scale: CGFloat
-        let scrollX: CGFloat
-        let scrollY: CGFloat
-        let maxScrollX: CGFloat
-        let maxScrollY: CGFloat
-        let contentWidth: CGFloat
-        let contentHeight: CGFloat
-        let viewportWidth: CGFloat
-        let viewportHeight: CGFloat
-        let textAreaX: CGFloat
-        let textAreaWidth: CGFloat
-        let canScrollX: Bool
-        let canScrollY: Bool
-    }
-
     @discardableResult
-    func setScrollbarConfig(_ config: ScrollbarConfig) -> EditorActionResultData? {
+    func setScrollbarConfig(_ config: ScrollbarConfig) -> EditorActionResult? {
         scrollbarConfig = config
         return performCoreCall {
             var size: Int = 0
@@ -1533,7 +827,7 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func scrollToLine(line: Int, behavior: UInt8) -> EditorActionResultData? {
+    func scrollToLine(line: Int, behavior: UInt8) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_scroll_to_line(handle, line, behavior, &size)
@@ -1542,7 +836,7 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func setScroll(scrollX: Float, scrollY: Float) -> EditorActionResultData? {
+    func setScroll(scrollX: Float, scrollY: Float) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_set_scroll(handle, scrollX, scrollY, &size)
@@ -1554,9 +848,12 @@ class SweetEditorCore {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_get_scroll_metrics(handle, &size)
-            let payload = copyBinaryPayloadAndFree(ptr, size: size)
-            return protocolDecoder.decodeScrollMetrics(payload)
+            return decodeNativePayload(ptr, size: size) { CoreProtocol.decodeScrollMetrics($0) } ?? defaultScrollMetrics()
         }
+    }
+
+    private func defaultScrollMetrics() -> ScrollMetrics {
+        ScrollMetrics()
     }
 
     func getVisibleLineRange() -> IntRange {
@@ -1569,7 +866,7 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func onFontMetricsChanged() -> EditorActionResultData? {
+    func onFontMetricsChanged() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_on_font_metrics_changed(handle, &size)
@@ -1580,12 +877,12 @@ class SweetEditorCore {
     // MARK: - Style / Highlight
 
     @discardableResult
-    func registerStyle(styleId: UInt32, color: Int32, fontStyle: Int32) -> EditorActionResultData? {
+    func registerStyle(styleId: UInt32, color: Int32, fontStyle: Int32) -> EditorActionResult? {
         registerStyle(styleId: styleId, color: color, backgroundColor: 0, fontStyle: fontStyle)
     }
 
     @discardableResult
-    func registerStyle(styleId: UInt32, color: Int32, backgroundColor: Int32, fontStyle: Int32) -> EditorActionResultData? {
+    func registerStyle(styleId: UInt32, color: Int32, backgroundColor: Int32, fontStyle: Int32) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_register_text_style(handle, styleId, color, backgroundColor, fontStyle, &size)
@@ -1594,9 +891,19 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func registerBatchStyles(_ stylesById: [UInt32: (color: Int32, backgroundColor: Int32, fontStyle: Int32)]) -> EditorActionResultData? {
+    func registerBatchStyles(_ stylesById: [UInt32: (color: Int32, backgroundColor: Int32, fontStyle: Int32)]) -> EditorActionResult? {
         if stylesById.isEmpty { return nil }
-        let payload = protocolEncoder.packBatchTextStyles(stylesById)
+        let styles = Dictionary(uniqueKeysWithValues: stylesById.map {
+            (
+                Int32(bitPattern: $0.key),
+                TextStyle(
+                    color: $0.value.color,
+                    background_color: $0.value.backgroundColor,
+                    font_style: $0.value.fontStyle
+                )
+            )
+        })
+        let payload = CoreProtocol.encodeRegisterBatchTextStylesPayload(styleByStyleId: styles)
         return performCoreCall {
             var outSize: Int = 0
             let ptr = withPayload(payload) { ptr, size in
@@ -1608,7 +915,7 @@ class SweetEditorCore {
 
     /// Clears all highlight layers.
     @discardableResult
-    func clearHighlights() -> EditorActionResultData? {
+    func clearHighlights() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_clear_highlights(handle, &size)
@@ -1618,36 +925,43 @@ class SweetEditorCore {
 
     /// Clears a specific highlight layer (0=SYNTAX, 1=SEMANTIC).
     @discardableResult
-    func clearHighlights(layer: UInt8) -> EditorActionResultData? {
+    func clearHighlights(layer: Int32) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
-            let ptr = editor_clear_highlights_layer(handle, layer, &size)
+            let ptr = editor_clear_highlights_layer(handle, UInt8(clamping: layer), &size)
             return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     @discardableResult
-    func setLineSpans(line: Int, layer: UInt8 = 0, spans: [StyleSpan]) -> EditorActionResultData? {
-        let payload = protocolEncoder.packLineSpans(line: line, layer: Int(layer), spans: spans)
+    func setLineSpans(line: Int, layer: Int32 = 0, spans: [StyleSpan]) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeSetLineSpansPayload(
+            line: Int32(line),
+            layer: spanLayer(from: layer),
+            spans: spans
+        )
         return setLineSpans(payload: payload)
     }
 
     @discardableResult
-    func setLineSpans(payload: Data) -> EditorActionResultData? {
+    func setLineSpans(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_line_spans(handle, ptr, size, &outSize)
         }
     }
 
     @discardableResult
-    func setBatchLineSpans(layer: UInt8, spansByLine: [Int: [StyleSpan]]) -> EditorActionResultData? {
+    func setBatchLineSpans(layer: Int32, spansByLine: [Int: [StyleSpan]]) -> EditorActionResult? {
         if spansByLine.isEmpty { return nil }
-        let payload = protocolEncoder.packBatchLineSpans(layer: Int(layer), spansByLine: spansByLine)
+        let payload = CoreProtocol.encodeSetBatchLineSpansPayload(
+            layer: spanLayer(from: layer),
+            spansByLine: int32Keyed(spansByLine)
+        )
         return setBatchLineSpans(payload: payload)
     }
 
     @discardableResult
-    func setBatchLineSpans(payload: Data) -> EditorActionResultData? {
+    func setBatchLineSpans(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_batch_line_spans(handle, ptr, size, &outSize)
         }
@@ -1659,13 +973,13 @@ class SweetEditorCore {
     /// - Parameters:
     ///   - line: Line number (0-based).
     @discardableResult
-    func setLineDiagnostics(line: Int, items: [DiagnosticItem]) -> EditorActionResultData? {
-        let payload = protocolEncoder.packLineDiagnostics(line: line, items: items)
+    func setLineDiagnostics(line: Int, items: [Diagnostic]) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeSetLineDiagnosticsPayload(line: Int32(line), diagnostics: items)
         return setLineDiagnostics(payload: payload)
     }
 
     @discardableResult
-    func setLineDiagnostics(payload: Data) -> EditorActionResultData? {
+    func setLineDiagnostics(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_line_diagnostics(handle, ptr, size, &outSize)
         }
@@ -1673,22 +987,14 @@ class SweetEditorCore {
 
     /// Sets diagnostic decorations for multiple lines.
     @discardableResult
-    func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [DiagnosticItem]]) -> EditorActionResultData? {
+    func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [Diagnostic]]) -> EditorActionResult? {
         if diagnosticsByLine.isEmpty { return nil }
-        let payload = protocolEncoder.packBatchLineDiagnostics(diagnosticsByLine)
-        return setBatchLineDiagnostics(payload: payload)
-    }
-
-    /// Sets diagnostic decorations for multiple lines.
-    @discardableResult
-    func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [DiagnosticPayload]]) -> EditorActionResultData? {
-        if diagnosticsByLine.isEmpty { return nil }
-        let payload = protocolEncoder.packBatchLineDiagnostics(diagnosticsByLine)
+        let payload = CoreProtocol.encodeSetBatchLineDiagnosticsPayload(diagnosticsByLine: int32Keyed(diagnosticsByLine))
         return setBatchLineDiagnostics(payload: payload)
     }
 
     @discardableResult
-    func setBatchLineDiagnostics(payload: Data) -> EditorActionResultData? {
+    func setBatchLineDiagnostics(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_batch_line_diagnostics(handle, ptr, size, &outSize)
         }
@@ -1696,7 +1002,7 @@ class SweetEditorCore {
 
     /// Clears all diagnostic decorations.
     @discardableResult
-    func clearDiagnostics() -> EditorActionResultData? {
+    func clearDiagnostics() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_clear_diagnostics(handle, &size)
@@ -1708,13 +1014,13 @@ class SweetEditorCore {
 
     /// Replaces all inlay hints on a specific line.
     @discardableResult
-    func setLineInlayHints(line: Int, hints: [InlayHintPayload]) -> EditorActionResultData? {
-        let payload = protocolEncoder.packLineInlayHints(line: line, hints: hints)
+    func setLineInlayHints(line: Int, hints: [InlayHint]) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeSetLineInlayHintsPayload(line: Int32(line), hints: hints)
         return setLineInlayHints(payload: payload)
     }
 
     @discardableResult
-    func setLineInlayHints(payload: Data) -> EditorActionResultData? {
+    func setLineInlayHints(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_line_inlay_hints(handle, ptr, size, &outSize)
         }
@@ -1722,14 +1028,14 @@ class SweetEditorCore {
 
     /// Replaces inlay hints for multiple lines in one call.
     @discardableResult
-    func setBatchLineInlayHints(_ hintsByLine: [Int: [InlayHintPayload]]) -> EditorActionResultData? {
+    func setBatchLineInlayHints(_ hintsByLine: [Int: [InlayHint]]) -> EditorActionResult? {
         if hintsByLine.isEmpty { return nil }
-        let payload = protocolEncoder.packBatchLineInlayHints(hintsByLine)
+        let payload = CoreProtocol.encodeSetBatchLineInlayHintsPayload(hintsByLine: int32Keyed(hintsByLine))
         return setBatchLineInlayHints(payload: payload)
     }
 
     @discardableResult
-    func setBatchLineInlayHints(payload: Data) -> EditorActionResultData? {
+    func setBatchLineInlayHints(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_batch_line_inlay_hints(handle, ptr, size, &outSize)
         }
@@ -1737,7 +1043,7 @@ class SweetEditorCore {
 
     /// Clears all inlay hints.
     @discardableResult
-    func clearInlayHints() -> EditorActionResultData? {
+    func clearInlayHints() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_clear_inlay_hints(handle, &size)
@@ -1747,13 +1053,13 @@ class SweetEditorCore {
 
     /// Replaces phantom texts on a specific line.
     @discardableResult
-    func setLinePhantomTexts(line: Int, phantoms: [PhantomTextPayload]) -> EditorActionResultData? {
-        let payload = protocolEncoder.packLinePhantomTexts(line: line, phantoms: phantoms)
+    func setLinePhantomTexts(line: Int, phantoms: [PhantomText]) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeSetLinePhantomTextsPayload(line: Int32(line), phantoms: phantoms)
         return setLinePhantomTexts(payload: payload)
     }
 
     @discardableResult
-    func setLinePhantomTexts(payload: Data) -> EditorActionResultData? {
+    func setLinePhantomTexts(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_line_phantom_texts(handle, ptr, size, &outSize)
         }
@@ -1761,14 +1067,14 @@ class SweetEditorCore {
 
     /// Replaces phantom texts for multiple lines in one call.
     @discardableResult
-    func setBatchLinePhantomTexts(_ phantomsByLine: [Int: [PhantomTextPayload]]) -> EditorActionResultData? {
+    func setBatchLinePhantomTexts(_ phantomsByLine: [Int: [PhantomText]]) -> EditorActionResult? {
         if phantomsByLine.isEmpty { return nil }
-        let payload = protocolEncoder.packBatchLinePhantomTexts(phantomsByLine)
+        let payload = CoreProtocol.encodeSetBatchLinePhantomTextsPayload(phantomsByLine: int32Keyed(phantomsByLine))
         return setBatchLinePhantomTexts(payload: payload)
     }
 
     @discardableResult
-    func setBatchLinePhantomTexts(payload: Data) -> EditorActionResultData? {
+    func setBatchLinePhantomTexts(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_batch_line_phantom_texts(handle, ptr, size, &outSize)
         }
@@ -1776,7 +1082,7 @@ class SweetEditorCore {
 
     /// Clears all phantom texts.
     @discardableResult
-    func clearPhantomTexts() -> EditorActionResultData? {
+    func clearPhantomTexts() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_clear_phantom_texts(handle, &size)
@@ -1786,7 +1092,7 @@ class SweetEditorCore {
 
     /// Clears all decorations (highlight/inlay/phantom/gutter/guides/diagnostics).
     @discardableResult
-    func clearAllDecorations() -> EditorActionResultData? {
+    func clearAllDecorations() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_clear_all_decorations(handle, &size)
@@ -1797,34 +1103,34 @@ class SweetEditorCore {
     // MARK: - Gutter Icons
 
     @discardableResult
-    func setLineGutterIcons(line: Int, icons: [GutterIcon]) -> EditorActionResultData? {
-        let payload = protocolEncoder.packLineGutterIcons(line: line, icons: icons)
+    func setLineGutterIcons(line: Int, icons: [GutterIcon]) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeSetLineGutterIconsPayload(line: Int32(line), icons: icons)
         return setLineGutterIcons(payload: payload)
     }
 
     @discardableResult
-    func setLineGutterIcons(payload: Data) -> EditorActionResultData? {
+    func setLineGutterIcons(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_line_gutter_icons(handle, ptr, size, &outSize)
         }
     }
 
     @discardableResult
-    func setBatchLineGutterIcons(_ iconsByLine: [Int: [GutterIcon]]) -> EditorActionResultData? {
+    func setBatchLineGutterIcons(_ iconsByLine: [Int: [GutterIcon]]) -> EditorActionResult? {
         if iconsByLine.isEmpty { return nil }
-        let payload = protocolEncoder.packBatchLineGutterIcons(iconsByLine)
+        let payload = CoreProtocol.encodeSetBatchLineGutterIconsPayload(iconsByLine: int32Keyed(iconsByLine))
         return setBatchLineGutterIcons(payload: payload)
     }
 
     @discardableResult
-    func setBatchLineGutterIcons(payload: Data) -> EditorActionResultData? {
+    func setBatchLineGutterIcons(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_batch_line_gutter_icons(handle, ptr, size, &outSize)
         }
     }
 
     @discardableResult
-    func clearGutterIcons() -> EditorActionResultData? {
+    func clearGutterIcons() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_clear_gutter_icons(handle, &size)
@@ -1833,7 +1139,7 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func setMaxGutterIcons(_ count: UInt32) -> EditorActionResultData? {
+    func setMaxGutterIcons(_ count: UInt32) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_set_max_gutter_icons(handle, count, &size)
@@ -1844,34 +1150,34 @@ class SweetEditorCore {
     // MARK: - CodeLens
 
     @discardableResult
-    func setLineCodeLens(line: Int, items: [CodeLensPayload]) -> EditorActionResultData? {
-        let payload = protocolEncoder.packLineCodeLens(line: line, items: items)
+    func setLineCodeLens(line: Int, items: [CodeLensItem]) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeSetLineCodeLensPayload(line: Int32(line), items: items)
         return setLineCodeLens(payload: payload)
     }
 
     @discardableResult
-    func setLineCodeLens(payload: Data) -> EditorActionResultData? {
+    func setLineCodeLens(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_line_codelens(handle, ptr, size, &outSize)
         }
     }
 
     @discardableResult
-    func setBatchLineCodeLens(_ itemsByLine: [Int: [CodeLensPayload]]) -> EditorActionResultData? {
+    func setBatchLineCodeLens(_ itemsByLine: [Int: [CodeLensItem]]) -> EditorActionResult? {
         if itemsByLine.isEmpty { return nil }
-        let payload = protocolEncoder.packBatchLineCodeLens(itemsByLine)
+        let payload = CoreProtocol.encodeSetBatchLineCodeLensPayload(itemsByLine: int32Keyed(itemsByLine))
         return setBatchLineCodeLens(payload: payload)
     }
 
     @discardableResult
-    func setBatchLineCodeLens(payload: Data) -> EditorActionResultData? {
+    func setBatchLineCodeLens(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_batch_line_codelens(handle, ptr, size, &outSize)
         }
     }
 
     @discardableResult
-    func clearCodeLens() -> EditorActionResultData? {
+    func clearCodeLens() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_clear_codelens(handle, &size)
@@ -1882,34 +1188,34 @@ class SweetEditorCore {
     // MARK: - Links
 
     @discardableResult
-    func setLineLinks(line: Int, links: [LinkSpan]) -> EditorActionResultData? {
-        let payload = protocolEncoder.packLineLinks(line: line, links: links)
+    func setLineLinks(line: Int, links: [LinkSpan]) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeSetLineLinksPayload(line: Int32(line), links: links)
         return setLineLinks(payload: payload)
     }
 
     @discardableResult
-    func setLineLinks(payload: Data) -> EditorActionResultData? {
+    func setLineLinks(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_line_links(handle, ptr, size, &outSize)
         }
     }
 
     @discardableResult
-    func setBatchLineLinks(_ linksByLine: [Int: [LinkSpan]]) -> EditorActionResultData? {
+    func setBatchLineLinks(_ linksByLine: [Int: [LinkSpan]]) -> EditorActionResult? {
         if linksByLine.isEmpty { return nil }
-        let payload = protocolEncoder.packBatchLineLinks(linksByLine)
+        let payload = CoreProtocol.encodeSetBatchLineLinksPayload(linksByLine: int32Keyed(linksByLine))
         return setBatchLineLinks(payload: payload)
     }
 
     @discardableResult
-    func setBatchLineLinks(payload: Data) -> EditorActionResultData? {
+    func setBatchLineLinks(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_batch_line_links(handle, ptr, size, &outSize)
         }
     }
 
     @discardableResult
-    func clearLinks() -> EditorActionResultData? {
+    func clearLinks() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_clear_links(handle, &size)
@@ -1928,59 +1234,59 @@ class SweetEditorCore {
     // MARK: - Guides
 
     @discardableResult
-    func setIndentGuides(_ guides: [IndentGuidePayload]) -> EditorActionResultData? {
-        let payload = protocolEncoder.packIndentGuides(guides)
+    func setIndentGuides(_ guides: [IndentGuide]) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeSetIndentGuidesPayload(guides: guides)
         return setIndentGuides(payload: payload)
     }
 
     @discardableResult
-    func setIndentGuides(payload: Data) -> EditorActionResultData? {
+    func setIndentGuides(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_indent_guides(handle, ptr, size, &outSize)
         }
     }
 
     @discardableResult
-    func setBracketGuides(_ guides: [BracketGuidePayload]) -> EditorActionResultData? {
-        let payload = protocolEncoder.packBracketGuides(guides)
+    func setBracketGuides(_ guides: [BracketGuide]) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeSetBracketGuidesPayload(guides: guides)
         return setBracketGuides(payload: payload)
     }
 
     @discardableResult
-    func setBracketGuides(payload: Data) -> EditorActionResultData? {
+    func setBracketGuides(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_bracket_guides(handle, ptr, size, &outSize)
         }
     }
 
     @discardableResult
-    func setFlowGuides(_ guides: [FlowGuidePayload]) -> EditorActionResultData? {
-        let payload = protocolEncoder.packFlowGuides(guides)
+    func setFlowGuides(_ guides: [FlowGuide]) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeSetFlowGuidesPayload(guides: guides)
         return setFlowGuides(payload: payload)
     }
 
     @discardableResult
-    func setFlowGuides(payload: Data) -> EditorActionResultData? {
+    func setFlowGuides(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_flow_guides(handle, ptr, size, &outSize)
         }
     }
 
     @discardableResult
-    func setSeparatorGuides(_ guides: [SeparatorGuidePayload]) -> EditorActionResultData? {
-        let payload = protocolEncoder.packSeparatorGuides(guides)
+    func setSeparatorGuides(_ guides: [SeparatorGuide]) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeSetSeparatorGuidesPayload(guides: guides)
         return setSeparatorGuides(payload: payload)
     }
 
     @discardableResult
-    func setSeparatorGuides(payload: Data) -> EditorActionResultData? {
+    func setSeparatorGuides(payload: Data) -> EditorActionResult? {
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_separator_guides(handle, ptr, size, &outSize)
         }
     }
 
     @discardableResult
-    func clearGuides() -> EditorActionResultData? {
+    func clearGuides() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_clear_guides(handle, &size)
@@ -1990,7 +1296,7 @@ class SweetEditorCore {
 
     // MARK: - Undo/Redo
 
-    func undo() -> EditorActionResultData? {
+    func undo() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_undo(handle, &size)
@@ -1998,7 +1304,7 @@ class SweetEditorCore {
         }
     }
 
-    func redo() -> EditorActionResultData? {
+    func redo() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_redo(handle, &size)
@@ -2011,14 +1317,14 @@ class SweetEditorCore {
     // MARK: - Fold (code folding)
 
     @discardableResult
-    func setFoldRegions(_ regions: [FoldRegion]) -> EditorActionResultData? {
-        let payload = protocolEncoder.packFoldRegions(regions)
+    func setFoldRegions(_ regions: [FoldRegion]) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeSetFoldRegionsPayload(regions: regions)
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_set_fold_regions(handle, ptr, size, &outSize)
         }
     }
 
-    func toggleFold(line: Int) -> EditorActionResultData? {
+    func toggleFold(line: Int) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_toggle_fold(handle, line, &size)
@@ -2026,7 +1332,7 @@ class SweetEditorCore {
         }
     }
 
-    func foldAt(line: Int) -> EditorActionResultData? {
+    func foldAt(line: Int) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_fold_at(handle, line, &size)
@@ -2034,7 +1340,7 @@ class SweetEditorCore {
         }
     }
 
-    func unfoldAt(line: Int) -> EditorActionResultData? {
+    func unfoldAt(line: Int) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_unfold_at(handle, line, &size)
@@ -2043,7 +1349,7 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func foldAll() -> EditorActionResultData? {
+    func foldAll() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_fold_all(handle, &size)
@@ -2052,7 +1358,7 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func unfoldAll() -> EditorActionResultData? {
+    func unfoldAll() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_unfold_all(handle, &size)
@@ -2066,19 +1372,9 @@ class SweetEditorCore {
         }
     }
 
-    /// Fold-arrow visibility mode.
-    enum FoldArrowMode: Int32 {
-        /// Auto: shown when fold regions exist, hidden otherwise.
-        case auto = 0
-        /// Always visible (reserves gutter width to avoid layout jumps).
-        case always = 1
-        /// Always hidden (no reserved space even if fold regions exist).
-        case hidden = 2
-    }
-
     /// Sets fold-arrow visibility mode (affects reserved gutter width).
     @discardableResult
-    func setFoldArrowMode(_ mode: FoldArrowMode) -> EditorActionResultData? {
+    func setFoldArrowMode(_ mode: FoldArrowMode) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_set_fold_arrow_mode(handle, mode.rawValue, &size)
@@ -2086,19 +1382,9 @@ class SweetEditorCore {
         }
     }
 
-    /// Wrap mode.
-    enum WrapMode: Int32 {
-        /// No wrapping.
-        case none = 0
-        /// Character-level wrapping.
-        case charBreak = 1
-        /// Word-level wrapping.
-        case wordBreak = 2
-    }
-
     /// Sets wrap mode.
     @discardableResult
-    func setWrapMode(_ mode: WrapMode) -> EditorActionResultData? {
+    func setWrapMode(_ mode: WrapMode) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_set_wrap_mode(handle, mode.rawValue, &size)
@@ -2109,7 +1395,7 @@ class SweetEditorCore {
     /// Sets editor scale in the C++ core.
     /// Use `syncPlatformScale(_:)` to update platform-side fonts and measurer.
     @discardableResult
-    func setScale(_ scale: Float) -> EditorActionResultData? {
+    func setScale(_ scale: Float) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_set_scale(handle, scale, &size)
@@ -2118,7 +1404,7 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func setContentStartPadding(_ padding: Float) -> EditorActionResultData? {
+    func setContentStartPadding(_ padding: Float) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_set_content_start_padding(handle, padding, &size)
@@ -2127,7 +1413,7 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func setShowSplitLine(_ show: Bool) -> EditorActionResultData? {
+    func setShowSplitLine(_ show: Bool) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_set_show_split_line(handle, show ? 1 : 0, &size)
@@ -2136,7 +1422,7 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func setCurrentLineRenderMode(_ mode: Int32) -> EditorActionResultData? {
+    func setCurrentLineRenderMode(_ mode: Int32) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_set_current_line_render_mode(handle, mode, &size)
@@ -2146,7 +1432,7 @@ class SweetEditorCore {
 
     /// Syncs platform-side font/measurer to the latest scale from the core.
     @discardableResult
-    func syncPlatformScale(_ scale: Float) -> EditorActionResultData? {
+    func syncPlatformScale(_ scale: Float) -> EditorActionResult? {
         guard scale > 0 else { return nil }
         rebuildFontsForScale(CGFloat(scale))
         return onFontMetricsChanged()
@@ -2157,7 +1443,7 @@ class SweetEditorCore {
     ///   - add: Extra line-spacing pixels (default 0).
     ///   - mult: Line-spacing multiplier (default 1.0).
     @discardableResult
-    func setLineSpacing(add: Float, mult: Float) -> EditorActionResultData? {
+    func setLineSpacing(add: Float, mult: Float) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_set_line_spacing(handle, add, mult, &size)
@@ -2167,18 +1453,8 @@ class SweetEditorCore {
 
     // MARK: - LinkedEditing
 
-    /// Linked-editing model (pure data structure).
-    struct LinkedEditingModel {
-        struct TabStopGroup {
-            let index: Int
-            let defaultText: String?
-            let ranges: [(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int)]
-        }
-        let groups: [TabStopGroup]
-    }
-
     /// Inserts a VSCode snippet template and enters linked-editing mode.
-    func insertSnippet(_ template: String) -> EditorActionResultData? {
+    func insertSnippet(_ template: String) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = template.withCString { cStr in
@@ -2190,8 +1466,8 @@ class SweetEditorCore {
 
     /// Starts linked-editing mode with a generic LinkedEditingModel.
     @discardableResult
-    func startLinkedEditing(model: LinkedEditingModel) -> EditorActionResultData? {
-        let payload = protocolEncoder.packLinkedEditing(model: model)
+    func startLinkedEditing(model: LinkedEditingModel) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeStartLinkedEditingPayload(model: model)
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_start_linked_editing(handle, ptr, size, &outSize)
         }
@@ -2205,7 +1481,7 @@ class SweetEditorCore {
     }
 
     /// Linked editing: jump to the next tab stop.
-    func linkedEditingNext() -> EditorActionResultData? {
+    func linkedEditingNext() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_linked_editing_next(handle, &size)
@@ -2214,7 +1490,7 @@ class SweetEditorCore {
     }
 
     /// Linked editing: jump to the previous tab stop.
-    func linkedEditingPrev() -> EditorActionResultData? {
+    func linkedEditingPrev() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_linked_editing_prev(handle, &size)
@@ -2224,7 +1500,7 @@ class SweetEditorCore {
 
     /// Cancels linked-editing mode.
     @discardableResult
-    func cancelLinkedEditing() -> EditorActionResultData? {
+    func cancelLinkedEditing() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_cancel_linked_editing(handle, &size)
@@ -2236,7 +1512,7 @@ class SweetEditorCore {
 
     /// Sets custom bracket pairs.
     @discardableResult
-    func setBracketPairs(openChars: [Int32], closeChars: [Int32]) -> EditorActionResultData? {
+    func setBracketPairs(openChars: [Int32], closeChars: [Int32]) -> EditorActionResult? {
         assert(openChars.count == closeChars.count, "open/close arrays must have same length")
         var opens = openChars.map(UInt32.init(bitPattern:))
         var closes = closeChars.map(UInt32.init(bitPattern:))
@@ -2249,7 +1525,7 @@ class SweetEditorCore {
 
     /// Sets auto-closing pairs for automatic bracket completion.
     @discardableResult
-    func setAutoClosingPairs(openChars: [Int32], closeChars: [Int32]) -> EditorActionResultData? {
+    func setAutoClosingPairs(openChars: [Int32], closeChars: [Int32]) -> EditorActionResult? {
         assert(openChars.count == closeChars.count, "open/close arrays must have same length")
         var opens = openChars.map(UInt32.init(bitPattern:))
         var closes = closeChars.map(UInt32.init(bitPattern:))
@@ -2262,7 +1538,7 @@ class SweetEditorCore {
 
     /// Sets tab size (number of spaces per tab stop).
     @discardableResult
-    func setTabSize(_ tabSize: Int) -> EditorActionResultData? {
+    func setTabSize(_ tabSize: Int) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_set_tab_size(handle, Int32(tabSize), &size)
@@ -2272,7 +1548,7 @@ class SweetEditorCore {
 
     /// Sets externally computed exact bracket-match positions (higher priority than built-in scan).
     @discardableResult
-    func setMatchedBrackets(openLine: Int, openColumn: Int, closeLine: Int, closeColumn: Int) -> EditorActionResultData? {
+    func setMatchedBrackets(openLine: Int, openColumn: Int, closeLine: Int, closeColumn: Int) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_set_matched_brackets(handle, openLine, openColumn, closeLine, closeColumn, &size)
@@ -2282,7 +1558,7 @@ class SweetEditorCore {
 
     /// Clears externally provided bracket-match results (falls back to built-in scan).
     @discardableResult
-    func clearMatchedBrackets() -> EditorActionResultData? {
+    func clearMatchedBrackets() -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
             let ptr = editor_clear_matched_brackets(handle, &size)

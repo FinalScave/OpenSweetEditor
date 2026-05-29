@@ -4,9 +4,6 @@ from ..ir import *
 
 
 def swift_type(field, schema_types, schema_enums):
-    platform_type = field.get("platform_type")
-    if platform_type:
-        return platform_type
     inner = vector_inner(field["cpp_type"])
     if inner is not None:
         return f"[{inner}]"
@@ -65,17 +62,17 @@ def generate_swift_domain(domain, items, enums, schema):
     lines = ["import Foundation", ""]
     for item in enums:
         if item["kind"] == "flags":
-            lines.append(f"enum {item['name']} {{")
+            lines.append(f"public enum {item['name']} {{")
             for value in item["values"]:
-                lines.append(f"    static let {value['name']}: Int32 = {value['value']}")
+                lines.append(f"    public static let {value['name']}: Int32 = {value['value']}")
             lines.append("}")
             lines.append("")
             continue
-        lines.append(f"enum {item['name']}: Int32 {{")
+        lines.append(f"public enum {item['name']}: Int32 {{")
         for value in item["values"]:
             lines.append(f"    case {value['name']} = {value['value']}")
         lines.append("")
-        lines.append(f"    static func fromValue(_ value: Int32) -> {item['name']} {{")
+        lines.append(f"    public static func fromValue(_ value: Int32) -> {item['name']} {{")
         lines.append("        switch value {")
         for value in item["values"]:
             lines.append(f"        case {value['value']}: return .{value['name']}")
@@ -85,14 +82,25 @@ def generate_swift_domain(domain, items, enums, schema):
         lines.append("}")
         lines.append("")
     for item in items:
-        lines.append(f"struct {item['name']} {{")
+        lines.append(f"public struct {item['name']} {{")
         if not item["fields"]:
+            lines.append("    public init() {}")
             lines.append("}")
             lines.append("")
             continue
+        init_params = []
         for field in item["fields"]:
             type_name = swift_type(field, schema_types, schema_enums)
-            lines.append(f"    var {field_name(field, 'swift')}: {type_name} = {swift_default_for_field(field, type_name, schema_enums)}")
+            name = field_name(field, 'swift')
+            default_value = swift_default_for_field(field, type_name, schema_enums)
+            lines.append(f"    public var {name}: {type_name} = {default_value}")
+            init_params.append((name, type_name, default_value))
+        lines.append("")
+        params = ", ".join(f"{name}: {type_name} = {default_value}" for name, type_name, default_value in init_params)
+        lines.append(f"    public init({params}) {{")
+        for name, _, _ in init_params:
+            lines.append(f"        self.{name} = {name}")
+        lines.append("    }")
         lines.append("}")
         lines.append("")
     return "\n".join(lines)
@@ -249,7 +257,7 @@ def swift_write_payload_field_lines(field, param_name, schema):
     return [f"        {swift_write_stmt(field, param_name)}"]
 
 def generate_swift_pack_methods(item, schema):
-    pack_name = payload_pack_function_name(item)
+    pack_name = payload_encode_function_name(item)
     if not is_hidden_input_type(item):
         return [
             "",
@@ -262,7 +270,7 @@ def generate_swift_pack_methods(item, schema):
     params = swift_pack_params(item, schema)
     params_sig = ", ".join(f"{name}: {type_name}" for type_name, name, _ in params)
     args = ", ".join(f"{name}: {name}" for _, name, _ in params)
-    wire_name = pack_name[len("pack"):]
+    wire_name = pack_name[len("encode"):]
     lines = [
         "",
         f"    static func write{wire_name}Wire(_ writer: inout BinaryWriter, {params_sig}) {{",
@@ -289,11 +297,12 @@ def generate_swift_pack_methods(item, schema):
     ])
     return lines
 
-def generate_swift_codec(schema):
+def generate_swift_codec(schema, target=None):
+    codec_type = protocol_type_name(target, "CoreProtocol.swift")
     lines = [
         "import Foundation",
         "",
-        "enum EditorProtocol {",
+        f"enum {codec_type} {{",
         "    struct BinaryReader {",
         "        let data: UnsafeRawBufferPointer",
         "        var offset: Int = 0",
@@ -534,6 +543,6 @@ def generate_swift(schema, target_name, target, out_root):
         path.write_text(generate_swift_domain(domain, items, enums_by_domain.get(domain, []), schema), encoding="utf-8")
     codec_path = out_root / target["codec_file"]
     codec_path.parent.mkdir(parents=True, exist_ok=True)
-    codec_path.write_text(generate_swift_codec(schema), encoding="utf-8")
+    codec_path.write_text(generate_swift_codec(schema, target), encoding="utf-8")
     return [str(out_root)]
 

@@ -19,24 +19,18 @@ def dart_name(name):
     return f"{result}_" if result in DART_RESERVED else result
 
 def dart_field_name(field):
-    explicit = field.get("platform_name")
-    return explicit if explicit else dart_name(field["name"])
+    return dart_name(field["name"])
 
 def dart_enum_value_name(name):
     return dart_name(name)
 
-def dart_transport_carrier(target):
-    if target is None:
-        return None
-    return target.get("transport", {}).get("carrier")
-
 def dart_uses_ffi_pointer(target):
-    return dart_transport_carrier(target) == "ffi_pointer"
+    return target is not None
+
+def dart_part_of(target):
+    return target.get("part_of") if target else None
 
 def dart_type(field, schema_types, schema_enums):
-    platform_type = field.get("platform_type")
-    if platform_type:
-        return platform_type
     inner = vector_inner(field["cpp_type"])
     if inner is not None:
         return f"List<{inner}>"
@@ -254,7 +248,7 @@ def dart_write_payload_field_lines(field, param_name, schema):
     return [dart_write_value_line(field, param_name)]
 
 def generate_dart_pack_methods(item, schema):
-    pack_name = payload_pack_function_name(item)
+    pack_name = payload_encode_function_name(item)
     if not is_hidden_input_type(item):
         return [
             "",
@@ -267,7 +261,7 @@ def generate_dart_pack_methods(item, schema):
     params = dart_pack_params(item, schema)
     params_sig = ", ".join(f"{type_name} {name}" for type_name, name, _ in params)
     args = ", ".join(name for _, name, _ in params)
-    wire_name = upper_first(pack_name[len("pack"):])
+    wire_name = upper_first(pack_name[len("encode"):])
     lines = [
         "",
         f"  static void _write{wire_name}Wire(_BinaryWriter writer, {params_sig}) {{",
@@ -344,20 +338,23 @@ def generate_dart_class(item, schema):
     return lines
 
 def generate_dart_codec(schema, target=None):
-    lines = [
-        "class _BinaryReader {",
-        "  _BinaryReader(Uint8List bytes) : _data = ByteData.sublistView(bytes);",
-        "",
-        "  final ByteData _data;",
-        "  int _offset = 0;",
-    ]
     if dart_uses_ffi_pointer(target):
-        lines.extend([
+        lines = [
+            "class _BinaryReader {",
+            "  _BinaryReader.fromPointer(ffi.Pointer<ffi.Uint8> ptr, int size)",
+            "    : _data = ByteData.sublistView(ptr.asTypedList(size));",
             "",
-            "  factory _BinaryReader.fromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {",
-            "    return _BinaryReader(ptr.asTypedList(size));",
-            "  }",
-        ])
+            "  final ByteData _data;",
+            "  int _offset = 0;",
+        ]
+    else:
+        lines = [
+            "class _BinaryReader {",
+            "  _BinaryReader(Uint8List bytes) : _data = ByteData.sublistView(bytes);",
+            "",
+            "  final ByteData _data;",
+            "  int _offset = 0;",
+        ]
     lines.extend([
         "",
         "  int readUint8() {",
@@ -550,22 +547,24 @@ def generate_dart_codec(schema, target=None):
                     lines.append(f"  size += {dart_size_expr(field, f'value.{dart_field_name(field)}')};")
                 lines.append("  return size;")
             lines.append("}")
-    lines.extend(["", "class EditorProtocol {", "  EditorProtocol._();"])
+    codec_type = protocol_type_name(target, "core_protocol.dart")
+    lines.extend(["", f"class {codec_type} {{", f"  {codec_type}._();"])
     for item in visible_schema_types(schema):
         if needs_reader(item):
             name = upper_first(item["name"])
-            lines.extend([
-                "",
-                f"  static {item['name']} decode{name}(Uint8List data) {{",
-                "    final reader = _BinaryReader(data);",
-                f"    return _read{item['name']}(reader);",
-                "  }",
-            ])
             if dart_uses_ffi_pointer(target):
                 lines.extend([
                     "",
                     f"  static {item['name']} decode{name}FromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {{",
                     "    final reader = _BinaryReader.fromPointer(ptr, size);",
+                    f"    return _read{item['name']}(reader);",
+                    "  }",
+                ])
+            else:
+                lines.extend([
+                    "",
+                    f"  static {item['name']} decode{name}(Uint8List data) {{",
+                    "    final reader = _BinaryReader(data);",
                     f"    return _read{item['name']}(reader);",
                     "  }",
                 ])
@@ -584,19 +583,54 @@ def generate_dart_codec(schema, target=None):
     lines.append("}")
     return lines
 
-def dart_part_of(target):
-    return f"part of '{target.get('part_of', target.get('library_file', 'sweet_editor_protocol.dart'))}';"
-
 def dart_domain_file(target, domain):
     return domain_value(target, domain, f"{domain}.dart")
+
+def dart_field_dependency_names(field, schema):
+    schema_types = type_map(schema)
+    schema_enums = enum_map(schema)
+    entry_item = map_entry_item(field, schema)
+    if entry_item is not None:
+        fields = entry_item["fields"]
+    else:
+        fields = [field]
+    names = set()
+    for dependency_field in fields:
+        type_name = dart_type(dependency_field, schema_types, schema_enums)
+        if type_name.startswith("List<") and type_name.endswith(">"):
+            names.add(type_name[len("List<"):-1])
+        else:
+            names.add(type_name)
+    return names
+
+def dart_domain_import_files(domain, items, schema, target):
+    schema_types = type_map(schema)
+    schema_enums = enum_map(schema)
+    imports = set()
+    for item in items:
+        for field in item["fields"]:
+            for custom in dart_field_dependency_names(field, schema):
+                if custom in schema_types and schema_types[custom]["domain"] != domain:
+                    imports.add(dart_domain_file(target, schema_types[custom]["domain"]))
+                if custom in schema_enums and schema_enums[custom]["domain"] != domain:
+                    imports.add(dart_domain_file(target, schema_enums[custom]["domain"]))
+    return sorted(imports)
 
 def generate_dart_domain_file(domain, items, enums, schema, target):
     lines = [
         "// ignore_for_file: unused_element",
         "",
-        dart_part_of(target),
-        "",
     ]
+    part_of = dart_part_of(target)
+    if part_of:
+        lines.append(f"part of '{part_of}';")
+        lines.append("")
+    else:
+        imports = dart_domain_import_files(domain, items, schema, target)
+        for import_file in imports:
+            lines.append(f"import '{import_file}';")
+        if imports:
+            lines.append("")
     for item in enums:
         lines.extend(generate_dart_enum(item))
         lines.append("")
@@ -605,13 +639,27 @@ def generate_dart_domain_file(domain, items, enums, schema, target):
         lines.append("")
     return "\n".join(lines)
 
-def generate_dart_codec_file(schema, target):
+def generate_dart_codec_file(schema, target, import_files):
     lines = [
         "// ignore_for_file: unused_element",
         "",
-        dart_part_of(target),
-        "",
     ]
+    part_of = dart_part_of(target)
+    if part_of:
+        lines.append(f"part of '{part_of}';")
+        lines.append("")
+    else:
+        lines.append("import 'dart:convert';")
+        if dart_uses_ffi_pointer(target):
+            lines.append("import 'dart:ffi' as ffi;")
+        lines.extend([
+            "import 'dart:typed_data';",
+            "",
+        ])
+        for import_file in import_files:
+            lines.append(f"import '{import_file}';")
+        if import_files:
+            lines.append("")
     lines.extend(generate_dart_codec(schema, target))
     lines.append("")
     return "\n".join(lines)
@@ -620,16 +668,9 @@ def generate_dart_library_file(target, part_files):
     lines = [
         "// ignore_for_file: unused_element",
         "",
-        "import 'dart:convert';",
     ]
-    if dart_uses_ffi_pointer(target):
-        lines.append("import 'dart:ffi' as ffi;")
-    lines.extend([
-        "import 'dart:typed_data';",
-        "",
-    ])
     for part_file in part_files:
-        lines.append(f"part '{part_file}';")
+        lines.append(f"export '{part_file}';")
     lines.append("")
     return "\n".join(lines)
 
@@ -681,18 +722,19 @@ def generate_dart(schema, target_name, target, out_root):
             )
             written.append(str(path))
             part_files.append(file_name)
-        codec_file = target.get("codec_file", "editor_protocol.dart")
+        codec_file = target.get("codec_file", "core_protocol.dart")
         codec_path = out_root / codec_file
         codec_path.parent.mkdir(parents=True, exist_ok=True)
-        codec_path.write_text(generate_dart_codec_file(schema, target), encoding="utf-8")
+        codec_path.write_text(generate_dart_codec_file(schema, target, part_files), encoding="utf-8")
         written.append(str(codec_path))
         part_files.append(codec_file)
-        if target.get("part_of"):
-            return written
-        library_path = out_root / target.get("library_file", "sweet_editor_protocol.dart")
-        library_path.parent.mkdir(parents=True, exist_ok=True)
-        library_path.write_text(generate_dart_library_file(target, part_files), encoding="utf-8")
-        written.append(str(library_path))
+        if not dart_part_of(target):
+            library_file = target.get("library_file", "sweet_editor_protocol.dart")
+            if library_file:
+                library_path = out_root / library_file
+                library_path.parent.mkdir(parents=True, exist_ok=True)
+                library_path.write_text(generate_dart_library_file(target, part_files), encoding="utf-8")
+                written.append(str(library_path))
         return written
     path = out_root / target.get("file", "sweet_editor_protocol.dart")
     path.parent.mkdir(parents=True, exist_ok=True)

@@ -4,7 +4,6 @@ import android.graphics.Canvas;
 import android.graphics.DashPathEffect;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 
@@ -13,11 +12,14 @@ import androidx.annotation.Nullable;
 
 import java.util.List;
 
-import com.qiplat.sweeteditor.core.HandleConfig;
-import com.qiplat.sweeteditor.core.ScrollbarConfig;
+import com.qiplat.sweeteditor.core.config.HandleConfig;
+import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
 import com.qiplat.sweeteditor.core.TextMeasurer;
 import com.qiplat.sweeteditor.core.adornment.TextStyle;
-import com.qiplat.sweeteditor.core.foundation.CurrentLineRenderMode;
+import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
+import com.qiplat.sweeteditor.core.foundation.OffsetRect;
+import com.qiplat.sweeteditor.core.foundation.Rect;
+import com.qiplat.sweeteditor.core.config.ScrollbarMode;
 import com.qiplat.sweeteditor.core.visual.*;
 import com.qiplat.sweeteditor.perf.MeasurePerfStats;
 import com.qiplat.sweeteditor.perf.PerfOverlay;
@@ -249,14 +251,14 @@ final class EditorRenderer {
 
         float pad = 8f;
 
-        RectF startHit = new RectF(
+        OffsetRect startHit = new OffsetRect(
                 (minX - pad) * density,
                 (minY - pad) * density,
                 (maxX + pad) * density,
                 (maxY + pad) * density);
 
         // End handle rotates -45°, which mirrors the x-axis of the start handle
-        RectF endHit = new RectF(
+        OffsetRect endHit = new OffsetRect(
                 (-maxX - pad) * density,
                 (minY - pad) * density,
                 (-minX + pad) * density,
@@ -614,27 +616,29 @@ final class EditorRenderer {
     }
 
     private void drawGutterIconItem(@NonNull Canvas canvas, @NonNull GutterIconRenderItem item) {
-        if (mEditorIconProvider == null || item.origin == null || item.width <= 0f || item.height <= 0f) return;
+        Rect rect = item.rect;
+        if (mEditorIconProvider == null || rect == null || rect.origin == null || rect.width <= 0f || rect.height <= 0f) return;
         Drawable drawable = mEditorIconProvider.getIconDrawable(item.iconId);
         if (drawable == null) return;
-        int left = Math.round(item.origin.x);
-        int top = Math.round(item.origin.y);
-        int right = Math.round(item.origin.x + item.width);
-        int bottom = Math.round(item.origin.y + item.height);
+        int left = Math.round(rect.origin.x);
+        int top = Math.round(rect.origin.y);
+        int right = Math.round(rect.origin.x + rect.width);
+        int bottom = Math.round(rect.origin.y + rect.height);
         drawable.setBounds(left, top, right, bottom);
         drawable.draw(canvas);
     }
 
     private void drawFoldMarkerItem(@NonNull Canvas canvas, @NonNull FoldMarkerRenderItem item,
                                     @NonNull Path arrowPath, int color) {
-        if (item.origin == null || item.width <= 0f || item.height <= 0f) return;
+        Rect rect = item.rect;
+        if (rect == null || rect.origin == null || rect.width <= 0f || rect.height <= 0f) return;
         if (item.foldState == null || item.foldState == FoldState.NONE) return;
 
-        float centerX = item.origin.x + item.width * 0.5f;
-        float centerY = item.origin.y + item.height * 0.5f;
-        float halfSize = Math.min(item.width, item.height) * 0.28f;
+        float centerX = rect.origin.x + rect.width * 0.5f;
+        float centerY = rect.origin.y + rect.height * 0.5f;
+        float halfSize = Math.min(rect.width, rect.height) * 0.28f;
         mFoldArrowPaint.setColor(color);
-        mFoldArrowPaint.setStrokeWidth(Math.max(1f, item.height * 0.1f));
+        mFoldArrowPaint.setStrokeWidth(Math.max(1f, rect.height * 0.1f));
 
         arrowPath.reset();
         if (item.foldState == FoldState.COLLAPSED) {
@@ -653,11 +657,11 @@ final class EditorRenderer {
                                            float left, float right) {
         if (model.currentLine == null) return;
         if (right <= left) return;
-        if (model.currentLineRenderMode == CurrentLineRenderMode.NONE.value) return;
+        if (model.currentLineRenderMode == CurrentLineRenderMode.NONE) return;
         float lineHeight = model.cursor != null ? model.cursor.height : 20f;
         float top = model.currentLine.y;
         float bottom = top + lineHeight;
-        if (model.currentLineRenderMode == CurrentLineRenderMode.BORDER.value) {
+        if (model.currentLineRenderMode == CurrentLineRenderMode.BORDER) {
             int prevColor = mCurrentLinePaint.getColor();
             Paint.Style prevStyle = mCurrentLinePaint.getStyle();
             float prevStroke = mCurrentLinePaint.getStrokeWidth();
@@ -780,7 +784,7 @@ final class EditorRenderer {
                     mScrollbarTrackPaint);
         }
 
-        return mScrollbarConfig != null && mScrollbarConfig.mode == ScrollbarConfig.ScrollbarMode.TRANSIENT;
+        return mScrollbarConfig != null && mScrollbarConfig.mode == ScrollbarMode.TRANSIENT;
     }
 
     private void drawCursor(Canvas canvas, @Nullable Cursor cursor, boolean cursorVisible, AnimationHolder animationHolder) {
@@ -808,9 +812,9 @@ final class EditorRenderer {
         }
     }
 
-    private void drawSelectionRects(Canvas canvas, @Nullable List<SelectionRect> rects) {
+    private void drawSelectionRects(Canvas canvas, @Nullable List<Rect> rects) {
         if (rects == null || rects.isEmpty()) return;
-        for (SelectionRect rect : rects) {
+        for (Rect rect : rects) {
             if (rect.origin == null) continue;
             canvas.drawRect(
                     rect.origin.x, rect.origin.y,
@@ -930,10 +934,11 @@ final class EditorRenderer {
 
     private void drawCompositionDecoration(Canvas canvas, @Nullable CompositionDecoration decoration) {
         if (decoration == null || !decoration.active) return;
-        if (decoration.origin == null) return;
-        float y = decoration.origin.y + decoration.height;
-        canvas.drawLine(decoration.origin.x, y,
-                decoration.origin.x + decoration.width, y,
+        Rect rect = decoration.rect;
+        if (rect == null || rect.origin == null) return;
+        float y = rect.origin.y + rect.height;
+        canvas.drawLine(rect.origin.x, y,
+                rect.origin.x + rect.width, y,
                 mCompositionPaint);
     }
 
@@ -941,7 +946,7 @@ final class EditorRenderer {
         if (decorations == null || decorations.isEmpty()) return;
 
         for (DiagnosticDecoration diag : decorations) {
-            if (diag.origin == null) continue;
+            if (diag.rect == null || diag.rect.origin == null) continue;
             int color;
             switch (diag.severity) {
                 case 0:
@@ -959,9 +964,9 @@ final class EditorRenderer {
             }
             mDiagnosticPaint.setColor(color);
 
-            float startX = diag.origin.x;
-            float endX = startX + diag.width;
-            float baseY = diag.origin.y + diag.height - 1.0f;
+            float startX = diag.rect.origin.x;
+            float endX = startX + diag.rect.width;
+            float baseY = diag.rect.origin.y + diag.rect.height - 1.0f;
 
             if (diag.severity == 3) {
                 mDiagnosticPaint.setPathEffect(mDiagnosticDashEffect);
@@ -990,7 +995,8 @@ final class EditorRenderer {
     private void drawLinkedEditingRects(Canvas canvas, @Nullable List<LinkedEditingRect> rects) {
         if (rects == null || rects.isEmpty()) return;
         for (LinkedEditingRect rect : rects) {
-            if (rect.origin == null) continue;
+            Rect bounds = rect.rect;
+            if (bounds == null || bounds.origin == null) continue;
             Paint paint = rect.isActive ? mLinkedEditingActivePaint : mLinkedEditingInactivePaint;
             if (rect.isActive) {
                 int color = mTheme.linkedEditingActiveColor;
@@ -998,19 +1004,19 @@ final class EditorRenderer {
                 Paint bgPaint = new Paint();
                 bgPaint.setColor(bgColor);
                 bgPaint.setStyle(Paint.Style.FILL);
-                canvas.drawRect(rect.origin.x, rect.origin.y,
-                        rect.origin.x + rect.width,
-                        rect.origin.y + rect.height, bgPaint);
+                canvas.drawRect(bounds.origin.x, bounds.origin.y,
+                        bounds.origin.x + bounds.width,
+                        bounds.origin.y + bounds.height, bgPaint);
             }
-            canvas.drawRect(rect.origin.x, rect.origin.y,
-                    rect.origin.x + rect.width,
-                    rect.origin.y + rect.height, paint);
+            canvas.drawRect(bounds.origin.x, bounds.origin.y,
+                    bounds.origin.x + bounds.width,
+                    bounds.origin.y + bounds.height, paint);
         }
     }
 
-    private void drawBracketHighlightRects(Canvas canvas, @Nullable List<BracketHighlightRect> rects) {
+    private void drawBracketHighlightRects(Canvas canvas, @Nullable List<Rect> rects) {
         if (rects == null || rects.isEmpty()) return;
-        for (BracketHighlightRect rect : rects) {
+        for (Rect rect : rects) {
             if (rect.origin == null) continue;
             canvas.drawRect(rect.origin.x, rect.origin.y,
                     rect.origin.x + rect.width,

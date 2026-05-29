@@ -10,6 +10,7 @@ import com.qiplat.sweeteditor.SweetEditor;
 import com.qiplat.sweeteditor.core.Document;
 import com.qiplat.sweeteditor.core.adornment.CodeLensItem;
 import com.qiplat.sweeteditor.core.adornment.Diagnostic;
+import com.qiplat.sweeteditor.core.adornment.DiagnosticSeverity;
 import com.qiplat.sweeteditor.core.adornment.FoldRegion;
 import com.qiplat.sweeteditor.core.adornment.GutterIcon;
 import com.qiplat.sweeteditor.core.adornment.IndentGuide;
@@ -328,7 +329,7 @@ public class DemoDecorationProvider implements DecorationProvider {
                 firstKeywordRange.line,
                 firstKeywordRange.startColumn,
                 firstKeywordRange.length(),
-                3);
+                DiagnosticSeverity.DIAG_HINT.value);
     }
 
     @NonNull
@@ -538,8 +539,8 @@ public class DemoDecorationProvider implements DecorationProvider {
                 lineItems = new ArrayList<>();
                 codeLensItems.put(range.line, lineItems);
             }
-            lineItems.add(new CodeLensItem(range.startColumn, "▶ Run", CODELENS_RUN));
-            lineItems.add(new CodeLensItem(range.startColumn, "◎ Debug", CODELENS_DEBUG));
+            lineItems.add(new CodeLensItem(range.startColumn, CODELENS_RUN, "▶ Run"));
+            lineItems.add(new CodeLensItem(range.startColumn, CODELENS_DEBUG, "◎ Debug"));
         }
     }
 

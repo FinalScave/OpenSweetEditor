@@ -39,17 +39,25 @@ struct EditorRenderer {
         context.setFillColor(t.backgroundColor)
         context.fill(rect)
 
-        // Current line highlight
         let lineHeight = CGFloat(model.cursor.height)
         if lineHeight > 0 {
-            context.setFillColor(t.currentLineColor)
             let currentLineRect = CGRect(
                 x: CGFloat(model.current_line.x),
                 y: CGFloat(model.current_line.y),
                 width: CGFloat(model.viewport_width),
                 height: lineHeight
             )
-            context.fill(currentLineRect)
+            switch model.current_line_render_mode {
+            case .BACKGROUND:
+                context.setFillColor(t.currentLineColor)
+                context.fill(currentLineRect)
+            case .BORDER:
+                context.setStrokeColor(t.currentLineColor)
+                context.setLineWidth(1.0)
+                context.stroke(currentLineRect)
+            case .NONE:
+                break
+            }
         }
 
         // Selection rects
@@ -117,8 +125,7 @@ struct EditorRenderer {
         if splitX > 0 {
             context.setFillColor(t.backgroundColor)
             context.fill(CGRect(x: 0, y: 0, width: splitX, height: CGFloat(model.viewport_height)))
-            // Re-draw current line highlight in gutter area
-            if lineHeight > 0 {
+            if lineHeight > 0 && model.current_line_render_mode == .BACKGROUND {
                 context.setFillColor(t.currentLineColor)
                 context.fill(CGRect(x: 0, y: CGFloat(model.current_line.y), width: splitX, height: lineHeight))
             }
@@ -127,14 +134,18 @@ struct EditorRenderer {
         // Line split
         drawLineSplit(context: context, x: splitX, height: CGFloat(model.viewport_height))
 
-        // Line numbers (drawn after gutter overlay)
-        for line in model.lines where line.owns_gutter_semantics {
-            drawLineNumber(context: context,
-                           lineNumber: line.logical_line + 1,
-                           visualLine: line,
-                           model: model,
-                           font: core.regularFont,
-                           iconProvider: iconProvider)
+        if model.gutter_visible {
+            for line in model.lines where line.owns_gutter_semantics {
+                drawLineNumber(context: context, line: line, font: core.regularFont)
+            }
+
+            for item in model.gutter_icons {
+                drawGutterIconItem(context: context, item: item, iconProvider: iconProvider)
+            }
+
+            for item in model.fold_markers {
+                drawFoldMarkerItem(context: context, item: item)
+            }
         }
 
         return drawScrollbars(context: context, model: model, style: resolvedScrollbarStyle)
@@ -143,93 +154,44 @@ struct EditorRenderer {
     // MARK: - Drawing Helpers
 
     static func drawLineNumber(context: CGContext,
-                               lineNumber: Int,
-                               visualLine: VisualLine,
-                               model: EditorRenderModel,
-                               font: CTFont,
-                               iconProvider: EditorIconProvider?) {
-        let position = visualLine.line_number_position
-        let hasIcons = iconProvider != nil && !visualLine.gutter_icon_ids.isEmpty
-        let overlayMode = model.max_gutter_icons == 0
-
-        if overlayMode, hasIcons, let provider = iconProvider,
-           let iconImage = provider.iconImage(for: visualLine.gutter_icon_ids[0]) {
-            let ascent = CTFontGetAscent(font)
-            let descent = CTFontGetDescent(font)
-            let iconSize = max(1, ascent + descent)
-            let rect = CGRect(
-                x: CGFloat(position.x),
-                y: CGFloat(position.y) - ascent,
-                width: iconSize,
-                height: iconSize
-            )
-            drawImage(context: context, image: iconImage, rect: rect)
-        } else {
-            let text = "\(lineNumber)"
-            let attrStr = CFAttributedStringCreateMutable(nil, 0)!
-            CFAttributedStringReplaceString(attrStr, CFRange(location: 0, length: 0), text as CFString)
-            let range = CFRange(location: 0, length: text.utf16.count)
-            CFAttributedStringSetAttribute(attrStr, range, kCTFontAttributeName, font)
-            CFAttributedStringSetAttribute(attrStr, range, kCTForegroundColorAttributeName, theme.lineNumberColor)
-            let line = CTLineCreateWithAttributedString(attrStr)
-            context.textPosition = CGPoint(x: CGFloat(position.x), y: CGFloat(position.y))
-            CTLineDraw(line, context)
-
-            if hasIcons, let provider = iconProvider {
-                let ascent = CTFontGetAscent(font)
-                let descent = CTFontGetDescent(font)
-                let lineHeight = max(1, ascent + descent)
-                let top = CGFloat(position.y) - ascent
-                var rightEdge = model.fold_arrow_x > 0
-                    ? CGFloat(model.fold_arrow_x) - lineHeight * 0.5
-                    : CGFloat(model.split_x) - 2.0
-                let maxIcons = min(Int(model.max_gutter_icons), visualLine.gutter_icon_ids.count)
-                if maxIcons > 0 {
-                    for index in stride(from: maxIcons - 1, through: 0, by: -1) {
-                        let iconId = visualLine.gutter_icon_ids[index]
-                        guard let iconImage = provider.iconImage(for: iconId) else { continue }
-                        let rect = CGRect(x: rightEdge - lineHeight, y: top, width: lineHeight, height: lineHeight)
-                        drawImage(context: context, image: iconImage, rect: rect)
-                        rightEdge -= lineHeight
-                    }
-                }
-            }
-        }
-
-        if visualLine.fold_state != .NONE {
-            drawFoldArrow(context: context,
-                          position: position,
-                          foldState: visualLine.fold_state,
-                          model: model,
-                          font: font)
-        }
+                               line: VisualLine,
+                               font: CTFont) {
+        let text = "\(line.logical_line + 1)"
+        let attrStr = CFAttributedStringCreateMutable(nil, 0)!
+        CFAttributedStringReplaceString(attrStr, CFRange(location: 0, length: 0), text as CFString)
+        let range = CFRange(location: 0, length: text.utf16.count)
+        CFAttributedStringSetAttribute(attrStr, range, kCTFontAttributeName, font)
+        CFAttributedStringSetAttribute(attrStr, range, kCTForegroundColorAttributeName, theme.lineNumberColor)
+        let textLine = CTLineCreateWithAttributedString(attrStr)
+        context.textPosition = CGPoint(x: CGFloat(line.line_number_position.x), y: CGFloat(line.line_number_position.y))
+        CTLineDraw(textLine, context)
     }
 
-    static func drawFoldArrow(context: CGContext,
-                              position: PointData,
-                              foldState: FoldState,
-                              model: EditorRenderModel,
-                              font: CTFont) {
-        let ascent = CTFontGetAscent(font)
-        let descent = CTFontGetDescent(font)
-        let leading = CTFontGetLeading(font)
-        let lineHeight = ascent + descent + leading
-        guard lineHeight > 0 else { return }
+    static func drawGutterIconItem(context: CGContext,
+                                   item: GutterIconRenderItem,
+                                   iconProvider: EditorIconProvider?) {
+        guard let provider = iconProvider,
+              let iconImage = provider.iconImage(for: item.icon_id) else { return }
+        drawImage(context: context, image: iconImage, rect: rect(from: item.rect))
+    }
 
-        let lineTop = CGFloat(position.y) - ascent
-        let halfSize = lineHeight * 0.2
-        let centerX = model.fold_arrow_x > 0
-            ? CGFloat(model.fold_arrow_x)
-            : CGFloat(model.split_x) - lineHeight * 0.5
-        let centerY = lineTop + lineHeight * 0.5
+    static func drawFoldMarkerItem(context: CGContext, item: FoldMarkerRenderItem) {
+        guard item.fold_state != .NONE else { return }
+
+        let markerRect = rect(from: item.rect)
+        guard markerRect.width > 0, markerRect.height > 0 else { return }
+
+        let halfSize = min(markerRect.width, markerRect.height) * 0.2
+        let centerX = markerRect.midX
+        let centerY = markerRect.midY
 
         context.saveGState()
         context.setStrokeColor(theme.lineNumberColor)
-        context.setLineWidth(max(1.0, lineHeight * 0.1))
+        context.setLineWidth(max(1.0, min(markerRect.width, markerRect.height) * 0.1))
         context.setLineCap(.round)
         context.setLineJoin(.round)
 
-        if foldState == .COLLAPSED {
+        if item.fold_state == .COLLAPSED {
             context.move(to: CGPoint(x: centerX - halfSize * 0.5, y: centerY - halfSize))
             context.addLine(to: CGPoint(x: centerX + halfSize * 0.5, y: centerY))
             context.addLine(to: CGPoint(x: centerX - halfSize * 0.5, y: centerY + halfSize))
@@ -410,9 +372,10 @@ struct EditorRenderer {
     static func drawCompositionDecoration(context: CGContext, decoration: CompositionDecoration) {
         context.setStrokeColor(theme.compositionUnderlineColor)
         context.setLineWidth(2.0)
-        let y = CGFloat(decoration.origin.y) + CGFloat(decoration.height)
-        context.move(to: CGPoint(x: CGFloat(decoration.origin.x), y: y))
-        context.addLine(to: CGPoint(x: CGFloat(decoration.origin.x) + CGFloat(decoration.width), y: y))
+        let decorationRect = rect(from: decoration.rect)
+        let y = decorationRect.maxY
+        context.move(to: CGPoint(x: decorationRect.minX, y: y))
+        context.addLine(to: CGPoint(x: decorationRect.maxX, y: y))
         context.strokePath()
     }
 
@@ -425,9 +388,10 @@ struct EditorRenderer {
         default: color = theme.diagnosticHintColor
         }
 
-        let startX = CGFloat(decoration.origin.x)
-        let endX = startX + CGFloat(decoration.width)
-        let baseY = CGFloat(decoration.origin.y) + CGFloat(decoration.height) - 1.0
+        let decorationRect = rect(from: decoration.rect)
+        let startX = decorationRect.minX
+        let endX = decorationRect.maxX
+        let baseY = decorationRect.maxY - 1.0
 
         context.setStrokeColor(color)
         context.setLineWidth(3.0)
@@ -463,8 +427,7 @@ struct EditorRenderer {
         if rects.isEmpty { return }
         let t = theme
         for rect in rects {
-            let r = CGRect(x: CGFloat(rect.origin.x), y: CGFloat(rect.origin.y),
-                           width: CGFloat(rect.width), height: CGFloat(rect.height))
+            let r = self.rect(from: rect.rect)
             if rect.is_active {
                 // Active tab stop: semi-transparent fill + thicker border
                 let components = t.linkedEditingActiveColor.components ?? [0, 0, 0, 0]
@@ -485,12 +448,11 @@ struct EditorRenderer {
         }
     }
 
-    static func drawBracketHighlightRects(context: CGContext, rects: [BracketHighlightRect]) {
+    static func drawBracketHighlightRects(context: CGContext, rects: [Rect]) {
         if rects.isEmpty { return }
         let t = theme
         for rect in rects {
-            let r = CGRect(x: CGFloat(rect.origin.x), y: CGFloat(rect.origin.y),
-                           width: CGFloat(rect.width), height: CGFloat(rect.height))
+            let r = self.rect(from: rect)
             // Background fill
             context.setFillColor(t.bracketHighlightBgColor)
             context.fill(r)
@@ -577,12 +539,12 @@ struct EditorRenderer {
         return CGColor(red: r, green: g, blue: b, alpha: a)
     }
 
-    private static func rect(from scrollbarRect: ScrollbarRect) -> CGRect {
+    private static func rect(from rect: Rect) -> CGRect {
         CGRect(
-            x: CGFloat(scrollbarRect.origin.x),
-            y: CGFloat(scrollbarRect.origin.y),
-            width: CGFloat(scrollbarRect.width),
-            height: CGFloat(scrollbarRect.height)
+            x: CGFloat(rect.origin.x),
+            y: CGFloat(rect.origin.y),
+            width: CGFloat(rect.width),
+            height: CGFloat(rect.height)
         )
     }
 

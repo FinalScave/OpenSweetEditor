@@ -1,7 +1,5 @@
 import { InlayType } from '../core/CoreAdornments';
-import { TextPosition, TextRange } from '../core/CoreFoundation';
-import { TextChange } from '../core/EditorCore';
-import { PointF } from '../core/CoreVisual';
+import { PointF, TextChange, TextPosition, TextRange } from '../core/CoreFoundation';
 import { SelectionMenuItem } from '../selection/SelectionMenuTypes';
 
 /**

@@ -56,19 +56,19 @@ namespace SweetEditor {
 	}
 
 	public class EditorTheme {
-		public const uint STYLE_KEYWORD = 1;
-		public const uint STYLE_STRING = 2;
-		public const uint STYLE_COMMENT = 3;
-		public const uint STYLE_NUMBER = 4;
-		public const uint STYLE_BUILTIN = 5;
-		public const uint STYLE_TYPE = 6;
-		public const uint STYLE_CLASS = 7;
-		public const uint STYLE_FUNCTION = 8;
-		public const uint STYLE_VARIABLE = 9;
-		public const uint STYLE_PUNCTUATION = 10;
-		public const uint STYLE_ANNOTATION = 11;
-		public const uint STYLE_PREPROCESSOR = 12;
-		public const uint STYLE_USER_BASE = 100;
+		public const int STYLE_KEYWORD = 1;
+		public const int STYLE_STRING = 2;
+		public const int STYLE_COMMENT = 3;
+		public const int STYLE_NUMBER = 4;
+		public const int STYLE_BUILTIN = 5;
+		public const int STYLE_TYPE = 6;
+		public const int STYLE_CLASS = 7;
+		public const int STYLE_FUNCTION = 8;
+		public const int STYLE_VARIABLE = 9;
+		public const int STYLE_PUNCTUATION = 10;
+		public const int STYLE_ANNOTATION = 11;
+		public const int STYLE_PREPROCESSOR = 12;
+		public const int STYLE_USER_BASE = 100;
 
 		public uint BackgroundColor { get; set; }
 		public uint TextColor { get; set; }
@@ -104,7 +104,7 @@ namespace SweetEditor {
 		public uint CompletionLabelColor { get; set; }
 		public uint CompletionDetailColor { get; set; }
 
-		public Dictionary<uint, TextStyle> TextStyles { get; set; } = new();
+		public Dictionary<int, TextStyle> TextStyles { get; set; } = new();
 
 		// Compatibility aliases for prior bindings.
 		public uint ForegroundColor { get => TextColor; set => TextColor = value; }
@@ -112,7 +112,7 @@ namespace SweetEditor {
 		public uint SeparatorColor { get => SeparatorLineColor; set => SeparatorLineColor = value; }
 		public uint CompositionColor { get => CompositionUnderlineColor; set => CompositionUnderlineColor = value; }
 
-		public EditorTheme DefineTextStyle(uint styleId, TextStyle style) {
+		public EditorTheme DefineTextStyle(int styleId, TextStyle style) {
 			TextStyles[styleId] = style;
 			return this;
 		}
@@ -152,7 +152,7 @@ namespace SweetEditor {
 				CompletionSelectedBgColor = 0x3D5580BB,
 				CompletionLabelColor = 0xFFD8DEE9,
 				CompletionDetailColor = 0xFF7A8494,
-				TextStyles = new Dictionary<uint, TextStyle> {
+				TextStyles = new Dictionary<int, TextStyle> {
 					[STYLE_KEYWORD] = new TextStyle(unchecked((int)0xFF7AA2F7), 1),
 					[STYLE_STRING] = new TextStyle(unchecked((int)0xFF9ECE6A), 0),
 					[STYLE_COMMENT] = new TextStyle(unchecked((int)0xFF7A8294), 2),
@@ -204,7 +204,7 @@ namespace SweetEditor {
 				CompletionSelectedBgColor = 0x3D3B82F6,
 				CompletionLabelColor = 0xFF1F2937,
 				CompletionDetailColor = 0xFF8A94A6,
-				TextStyles = new Dictionary<uint, TextStyle> {
+				TextStyles = new Dictionary<int, TextStyle> {
 					[STYLE_KEYWORD] = new TextStyle(unchecked((int)0xFF3559D6), 1),
 					[STYLE_STRING] = new TextStyle(unchecked((int)0xFF0F7B6C), 0),
 					[STYLE_COMMENT] = new TextStyle(unchecked((int)0xFF7B8798), 2),

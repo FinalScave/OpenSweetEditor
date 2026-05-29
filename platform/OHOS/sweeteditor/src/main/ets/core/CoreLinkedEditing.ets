@@ -1,17 +1,11 @@
-export interface TabStopRange {
-  startLine: number;
-  startColumn: number;
-  endLine: number;
-  endColumn: number;
-}
+import { TextRange } from './CoreFoundation';
 
-export interface TabStopGroup {
-  index: number;
-  defaultText: string | null;
-  ranges: TabStopRange[];
-}
-
-export interface LinkedEditingModel {
+export class LinkedEditingModel {
   groups: TabStopGroup[];
 }
 
+export class TabStopGroup {
+  index: number = 0;
+  ranges: TextRange[];
+  defaultText: string;
+}

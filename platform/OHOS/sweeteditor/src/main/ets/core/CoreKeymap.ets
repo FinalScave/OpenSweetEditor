@@ -1,3 +1,108 @@
+export enum EditorBuiltinCommand {
+  NONE = 0,
+  CURSOR_LEFT = 1,
+  CURSOR_RIGHT = 2,
+  CURSOR_UP = 3,
+  CURSOR_DOWN = 4,
+  CURSOR_LINE_START = 5,
+  CURSOR_LINE_END = 6,
+  CURSOR_PAGE_UP = 7,
+  CURSOR_PAGE_DOWN = 8,
+  SELECT_LEFT = 9,
+  SELECT_RIGHT = 10,
+  SELECT_UP = 11,
+  SELECT_DOWN = 12,
+  SELECT_LINE_START = 13,
+  SELECT_LINE_END = 14,
+  SELECT_PAGE_UP = 15,
+  SELECT_PAGE_DOWN = 16,
+  SELECT_ALL = 17,
+  BACKSPACE = 18,
+  DELETE_FORWARD = 19,
+  INSERT_TAB = 20,
+  INSERT_NEWLINE = 21,
+  INSERT_LINE_ABOVE = 22,
+  INSERT_LINE_BELOW = 23,
+  UNDO = 24,
+  REDO = 25,
+  MOVE_LINE_UP = 26,
+  MOVE_LINE_DOWN = 27,
+  COPY_LINE_UP = 28,
+  COPY_LINE_DOWN = 29,
+  DELETE_LINE = 30,
+  COPY = 31,
+  PASTE = 32,
+  CUT = 33,
+  TRIGGER_COMPLETION = 34,
+}
+
+export function editorBuiltinCommandFromValue(value: number): EditorBuiltinCommand {
+  switch (value) {
+    case 0: return EditorBuiltinCommand.NONE;
+    case 1: return EditorBuiltinCommand.CURSOR_LEFT;
+    case 2: return EditorBuiltinCommand.CURSOR_RIGHT;
+    case 3: return EditorBuiltinCommand.CURSOR_UP;
+    case 4: return EditorBuiltinCommand.CURSOR_DOWN;
+    case 5: return EditorBuiltinCommand.CURSOR_LINE_START;
+    case 6: return EditorBuiltinCommand.CURSOR_LINE_END;
+    case 7: return EditorBuiltinCommand.CURSOR_PAGE_UP;
+    case 8: return EditorBuiltinCommand.CURSOR_PAGE_DOWN;
+    case 9: return EditorBuiltinCommand.SELECT_LEFT;
+    case 10: return EditorBuiltinCommand.SELECT_RIGHT;
+    case 11: return EditorBuiltinCommand.SELECT_UP;
+    case 12: return EditorBuiltinCommand.SELECT_DOWN;
+    case 13: return EditorBuiltinCommand.SELECT_LINE_START;
+    case 14: return EditorBuiltinCommand.SELECT_LINE_END;
+    case 15: return EditorBuiltinCommand.SELECT_PAGE_UP;
+    case 16: return EditorBuiltinCommand.SELECT_PAGE_DOWN;
+    case 17: return EditorBuiltinCommand.SELECT_ALL;
+    case 18: return EditorBuiltinCommand.BACKSPACE;
+    case 19: return EditorBuiltinCommand.DELETE_FORWARD;
+    case 20: return EditorBuiltinCommand.INSERT_TAB;
+    case 21: return EditorBuiltinCommand.INSERT_NEWLINE;
+    case 22: return EditorBuiltinCommand.INSERT_LINE_ABOVE;
+    case 23: return EditorBuiltinCommand.INSERT_LINE_BELOW;
+    case 24: return EditorBuiltinCommand.UNDO;
+    case 25: return EditorBuiltinCommand.REDO;
+    case 26: return EditorBuiltinCommand.MOVE_LINE_UP;
+    case 27: return EditorBuiltinCommand.MOVE_LINE_DOWN;
+    case 28: return EditorBuiltinCommand.COPY_LINE_UP;
+    case 29: return EditorBuiltinCommand.COPY_LINE_DOWN;
+    case 30: return EditorBuiltinCommand.DELETE_LINE;
+    case 31: return EditorBuiltinCommand.COPY;
+    case 32: return EditorBuiltinCommand.PASTE;
+    case 33: return EditorBuiltinCommand.CUT;
+    case 34: return EditorBuiltinCommand.TRIGGER_COMPLETION;
+    default: return EditorBuiltinCommand.NONE;
+  }
+}
+
+export class KeyCode {
+  static readonly NONE: number = 0;
+  static readonly BACKSPACE: number = 8;
+  static readonly TAB: number = 9;
+  static readonly ENTER: number = 13;
+  static readonly ESCAPE: number = 27;
+  static readonly DELETE_KEY: number = 46;
+  static readonly LEFT: number = 37;
+  static readonly UP: number = 38;
+  static readonly RIGHT: number = 39;
+  static readonly DOWN: number = 40;
+  static readonly HOME: number = 36;
+  static readonly END: number = 35;
+  static readonly PAGE_UP: number = 33;
+  static readonly PAGE_DOWN: number = 34;
+  static readonly A: number = 65;
+  static readonly C: number = 67;
+  static readonly D: number = 68;
+  static readonly V: number = 86;
+  static readonly X: number = 88;
+  static readonly Z: number = 90;
+  static readonly Y: number = 89;
+  static readonly K: number = 75;
+  static readonly SPACE: number = 32;
+}
+
 export class KeyModifier {
   static readonly NONE: number = 0;
   static readonly SHIFT: number = 1;
@@ -6,163 +111,13 @@ export class KeyModifier {
   static readonly META: number = 8;
 }
 
-export class EditorCommand {
-  static readonly NONE: number = 0;
-  static readonly CURSOR_LEFT: number = 1;
-  static readonly CURSOR_RIGHT: number = 2;
-  static readonly CURSOR_UP: number = 3;
-  static readonly CURSOR_DOWN: number = 4;
-  static readonly CURSOR_LINE_START: number = 5;
-  static readonly CURSOR_LINE_END: number = 6;
-  static readonly CURSOR_PAGE_UP: number = 7;
-  static readonly CURSOR_PAGE_DOWN: number = 8;
-  static readonly SELECT_LEFT: number = 9;
-  static readonly SELECT_RIGHT: number = 10;
-  static readonly SELECT_UP: number = 11;
-  static readonly SELECT_DOWN: number = 12;
-  static readonly SELECT_LINE_START: number = 13;
-  static readonly SELECT_LINE_END: number = 14;
-  static readonly SELECT_PAGE_UP: number = 15;
-  static readonly SELECT_PAGE_DOWN: number = 16;
-  static readonly SELECT_ALL: number = 17;
-  static readonly BACKSPACE: number = 18;
-  static readonly DELETE_FORWARD: number = 19;
-  static readonly INSERT_TAB: number = 20;
-  static readonly INSERT_NEWLINE: number = 21;
-  static readonly INSERT_LINE_ABOVE: number = 22;
-  static readonly INSERT_LINE_BELOW: number = 23;
-  static readonly UNDO: number = 24;
-  static readonly REDO: number = 25;
-  static readonly MOVE_LINE_UP: number = 26;
-  static readonly MOVE_LINE_DOWN: number = 27;
-  static readonly COPY_LINE_UP: number = 28;
-  static readonly COPY_LINE_DOWN: number = 29;
-  static readonly DELETE_LINE: number = 30;
-  static readonly COPY: number = 31;
-  static readonly PASTE: number = 32;
-  static readonly CUT: number = 33;
-  static readonly TRIGGER_COMPLETION: number = 34;
-  static readonly BUILT_IN_MAX: number = EditorCommand.TRIGGER_COMPLETION;
-
-  static isBuiltIn(command: number): boolean {
-    return command > EditorCommand.NONE && command <= EditorCommand.BUILT_IN_MAX;
-  }
-
-  static isPlatformHandled(command: number): boolean {
-    return command === EditorCommand.COPY ||
-      command === EditorCommand.PASTE ||
-      command === EditorCommand.CUT ||
-      command === EditorCommand.TRIGGER_COMPLETION;
-  }
+export interface KeyBinding {
+  first: KeyChord;
+  second: KeyChord;
+  command: number;
 }
 
-export enum KeyCode {
-  NONE = 0,
-  BACKSPACE = 8,
-  TAB = 9,
-  ENTER = 13,
-  ESCAPE = 27,
-  SPACE = 32,
-  PAGE_UP = 33,
-  PAGE_DOWN = 34,
-  END = 35,
-  HOME = 36,
-  LEFT = 37,
-  UP = 38,
-  RIGHT = 39,
-  DOWN = 40,
-  DELETE_KEY = 46,
-  A = 65,
-  C = 67,
-  D = 68,
-  K = 75,
-  V = 86,
-  X = 88,
-  Y = 89,
-  Z = 90,
+export interface KeyChord {
+  modifiers: number;
+  keyCode: number;
 }
-
-export class KeyChord {
-  readonly modifiers: number;
-  readonly keyCode: KeyCode;
-
-  constructor(modifiers: number = KeyModifier.NONE, keyCode: KeyCode = KeyCode.NONE) {
-    this.modifiers = modifiers;
-    this.keyCode = keyCode;
-  }
-
-  isEmpty(): boolean {
-    return this.keyCode === KeyCode.NONE;
-  }
-}
-
-export class KeyBinding {
-  readonly first: KeyChord;
-  readonly second: KeyChord;
-  readonly command: number;
-
-  constructor(first: KeyChord, second: KeyChord = new KeyChord(), command: number = EditorCommand.NONE) {
-    this.first = first;
-    this.second = second;
-    this.command = command;
-  }
-
-  withCommand(command: number): KeyBinding {
-    return new KeyBinding(this.first, this.second, command);
-  }
-}
-
-export class KeyMap {
-  protected readonly bindingsInternal: KeyBinding[] = [];
-
-  constructor(bindings?: KeyBinding[]) {
-    if (bindings) {
-      for (const binding of bindings) {
-        this.addBinding(binding);
-      }
-    }
-  }
-
-  getBindings(): KeyBinding[] {
-    return [...this.bindingsInternal];
-  }
-
-  addBinding(binding: KeyBinding): void {
-    if (binding.first.isEmpty()) {
-      return;
-    }
-    for (let i = this.bindingsInternal.length - 1; i >= 0; i--) {
-      const existing = this.bindingsInternal[i];
-      if (sameChord(existing.first, binding.first) && sameChord(existing.second, binding.second)) {
-        this.bindingsInternal.splice(i, 1);
-      }
-    }
-    this.bindingsInternal.push(binding);
-  }
-
-  toArrayBuffer(): ArrayBuffer {
-    const buffer = new ArrayBuffer(4 + this.bindingsInternal.length * 10);
-    const view = new DataView(buffer);
-    let offset = 0;
-    view.setUint32(offset, this.bindingsInternal.length, true);
-    offset += 4;
-    for (const binding of this.bindingsInternal) {
-      view.setUint8(offset, binding.first.modifiers);
-      offset += 1;
-      view.setUint16(offset, binding.first.keyCode as number, true);
-      offset += 2;
-      view.setUint8(offset, binding.second.modifiers);
-      offset += 1;
-      view.setUint16(offset, binding.second.keyCode as number, true);
-      offset += 2;
-      view.setUint32(offset, binding.command, true);
-      offset += 4;
-    }
-    return buffer;
-  }
-}
-
-function sameChord(a: KeyChord, b: KeyChord): boolean {
-  return a.modifiers === b.modifiers && a.keyCode === b.keyCode;
-}
-

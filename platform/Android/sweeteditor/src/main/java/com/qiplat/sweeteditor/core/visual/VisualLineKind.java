@@ -1,10 +1,22 @@
 package com.qiplat.sweeteditor.core.visual;
 
-/**
- * Semantic kind of a visual line.
- */
 public enum VisualLineKind {
-    CONTENT,
-    PHANTOM,
-    CODELENS
+    CONTENT(0),
+    PHANTOM(1),
+    CODELENS(2);
+
+    public final int value;
+
+    VisualLineKind(int value) {
+        this.value = value;
+    }
+
+    public static VisualLineKind fromValue(int value) {
+        switch (value) {
+            case 0: return CONTENT;
+            case 1: return PHANTOM;
+            case 2: return CODELENS;
+            default: return CONTENT;
+        }
+    }
 }

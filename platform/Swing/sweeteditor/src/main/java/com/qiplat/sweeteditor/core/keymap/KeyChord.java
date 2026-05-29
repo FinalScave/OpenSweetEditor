@@ -5,8 +5,11 @@ import java.util.Objects;
 public final class KeyChord {
     public static final KeyChord EMPTY = new KeyChord(KeyModifier.NONE, KeyCode.NONE);
 
-    public final int modifiers;
-    public final int keyCode;
+    public int modifiers = KeyModifier.NONE;
+    public int keyCode = KeyCode.NONE;
+
+    public KeyChord() {
+    }
 
     public KeyChord(int modifiers, int keyCode) {
         this.modifiers = modifiers;
@@ -20,7 +23,8 @@ public final class KeyChord {
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
-        if (!(obj instanceof KeyChord other)) return false;
+        if (!(obj instanceof KeyChord)) return false;
+        KeyChord other = (KeyChord) obj;
         return modifiers == other.modifiers && keyCode == other.keyCode;
     }
 

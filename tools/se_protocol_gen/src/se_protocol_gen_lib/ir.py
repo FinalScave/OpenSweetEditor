@@ -1,4 +1,5 @@
 import re
+from pathlib import Path
 
 
 VECTOR_RE = re.compile(r"^(?:Vector|std::vector)<(.+)>")
@@ -73,6 +74,15 @@ def upper_first(name):
     return name[:1].upper() + name[1:]
 
 
+def protocol_type_name(target, default_file):
+    file_name = default_file
+    if target is not None:
+        file_name = target.get("codec_file", target.get("file", default_file))
+    stem = Path(file_name).stem
+    parts = [part for part in re.split(r"[_\-\s]+", stem) if part]
+    return "".join(upper_first(part) for part in parts)
+
+
 def sanitize_cpp_number(value):
     return re.sub(r"([0-9.]+)[fFuUlL]*", r"\1", value.strip())
 
@@ -82,9 +92,6 @@ def is_cpp_number(value):
 
 
 def field_name(field, style):
-    explicit = field.get("platform_name")
-    if explicit:
-        return explicit
     if style in ("java", "ets"):
         return snake_to_camel(field["name"])
     return field["name"]
@@ -186,23 +193,12 @@ def map_entry_item(field, schema):
         return None
     return item
 
-def payload_pack_function_name(item):
-    base = item["name"]
-    if base.endswith("Payload"):
-        base = base[:-len("Payload")]
-    for prefix in ("Set", "Register"):
-        if base.startswith(prefix) and len(base) > len(prefix):
-            base = base[len(prefix):]
-            break
-    return f"pack{base}"
+def payload_encode_function_name(item):
+    return f"encode{item['name']}"
 
 def map_payload_param_name(entry_item):
     key_name = entry_item["fields"][0]["name"]
     value_name = entry_item["fields"][1]["name"]
-    if key_name == "line" and value_name == "spans":
-        return "spansByLine"
-    if key_name == "style_id" and value_name == "style":
-        return "stylesById"
     return snake_to_camel(f"{value_name}_by_{key_name}")
 
 def payload_param_name(field, style, schema):

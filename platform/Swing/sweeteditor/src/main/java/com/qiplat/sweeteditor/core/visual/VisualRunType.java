@@ -13,10 +13,22 @@ public enum VisualRunType {
 
     public final int value;
 
-    VisualRunType(int v) { value = v; }
+    VisualRunType(int value) {
+        this.value = value;
+    }
 
-    public static VisualRunType fromValue(int v) {
-        for (VisualRunType e : values()) if (e.value == v) return e;
-        return TEXT;
+    public static VisualRunType fromValue(int value) {
+        switch (value) {
+            case 0: return TEXT;
+            case 1: return WHITESPACE;
+            case 2: return NEWLINE;
+            case 3: return INLAY_HINT;
+            case 4: return PHANTOM_TEXT;
+            case 5: return FOLD_PLACEHOLDER;
+            case 6: return TAB;
+            case 7: return CODELENS;
+            case 8: return LINK;
+            default: return TEXT;
+        }
     }
 }

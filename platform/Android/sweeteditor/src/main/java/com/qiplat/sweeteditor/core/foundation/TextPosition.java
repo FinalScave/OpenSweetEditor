@@ -1,17 +1,10 @@
 package com.qiplat.sweeteditor.core.foundation;
 
-import androidx.annotation.NonNull;
-
-/**
- * Text position (line number + column number, both 0-based).
- */
-public class TextPosition {
+public final class TextPosition {
     public static final TextPosition NONE = new TextPosition();
 
-    /** Line number */
-    public int line;
-    /** Column number */
-    public int column;
+    public int line = 0;
+    public int column = 0;
 
     public TextPosition() {
     }
@@ -21,12 +14,11 @@ public class TextPosition {
         this.column = column;
     }
 
-    @NonNull
     @Override
     public String toString() {
-        return "TextPosition{" +
-                "line=" + line +
-                ", column=" + column +
-                '}';
+        return "TextPosition{"
+                + "line=" + line
+                + ", column=" + column
+                + "}";
     }
 }

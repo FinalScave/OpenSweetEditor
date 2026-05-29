@@ -126,8 +126,8 @@ class CompletionProviderManager {
     final wordRange =
         editorCore?.getWordRangeAtCursor() ??
         core.TextRange(
-          core.TextPosition(cursor.line, cursor.column),
-          core.TextPosition(cursor.line, cursor.column),
+          start: core.TextPosition(line: cursor.line, column: cursor.column),
+          end: core.TextPosition(line: cursor.line, column: cursor.column),
         );
     return CompletionContext(
       triggerKind: triggerKind,

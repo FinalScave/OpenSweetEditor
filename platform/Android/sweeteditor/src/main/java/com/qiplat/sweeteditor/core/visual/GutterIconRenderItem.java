@@ -1,28 +1,18 @@
 package com.qiplat.sweeteditor.core.visual;
 
-import com.google.gson.annotations.SerializedName;
+import com.qiplat.sweeteditor.core.foundation.Rect;
 
-/**
- * One gutter icon render item with fully resolved geometry.
- */
-public class GutterIconRenderItem {
-    /** Logical line number. */
-    @SerializedName("logical_line")
-    public int logicalLine;
+public final class GutterIconRenderItem {
+    public int logicalLine = 0;
+    public int iconId = 0;
+    public Rect rect = new Rect();
 
-    /** Icon resource ID. */
-    @SerializedName("icon_id")
-    public int iconId;
+    public GutterIconRenderItem() {
+    }
 
-    /** Icon top-left origin. */
-    @SerializedName("origin")
-    public PointF origin;
-
-    /** Icon width. */
-    @SerializedName("width")
-    public float width;
-
-    /** Icon height. */
-    @SerializedName("height")
-    public float height;
+    public GutterIconRenderItem(int logicalLine, int iconId, Rect rect) {
+        this.logicalLine = logicalLine;
+        this.iconId = iconId;
+        this.rect = rect;
+    }
 }

@@ -39,8 +39,8 @@ namespace SweetEditor {
 			}
 		}
 
-		private static KeyMap CreateDefaultKeyMap() {
-			return KeyMap.DefaultKeyMap().Clone();
+		private static EditorKeyMap CreateDefaultKeyMap() {
+			return EditorKeyMap.DefaultKeyMap().Clone();
 		}
 
 		public void WhenReady(Action callback) {
@@ -160,9 +160,9 @@ namespace SweetEditor {
 
 		public EditorSettings? GetSettings() => Read(e => e.GetSettings(), null);
 
-		public KeyMap GetKeyMap() => Read(e => e.GetKeyMap(), CreateDefaultKeyMap());
+		public EditorKeyMap GetKeyMap() => Read(e => e.GetKeyMap(), CreateDefaultKeyMap());
 
-		public void SetKeyMap(KeyMap keyMap) => Invoke(e => e.SetKeyMap(keyMap));
+		public void SetKeyMap(EditorKeyMap keyMap) => Invoke(e => e.SetKeyMap(keyMap));
 
 		public void SetEditorIconProvider(EditorIconProvider? provider) => Invoke(e => e.SetEditorIconProvider(provider));
 
@@ -275,7 +275,7 @@ namespace SweetEditor {
 
 		public void GotoPosition(int line, int column = 0) => Invoke(e => e.GotoPosition(line, column));
 
-		public void ScrollToLine(int line, ScrollBehavior behavior = ScrollBehavior.CENTER) => Invoke(e => e.ScrollToLine(line, behavior));
+		public void ScrollToLine(int line, ScrollBehavior behavior = ScrollBehavior.GOTO_CENTER) => Invoke(e => e.ScrollToLine(line, behavior));
 
 		public void SetScroll(float scrollX, float scrollY) => Invoke(e => e.SetScroll(scrollX, scrollY));
 
@@ -300,7 +300,7 @@ namespace SweetEditor {
 		public void RegisterTextStyle(uint styleId, int color, int backgroundColor, int fontStyle) =>
 			Invoke(e => e.RegisterTextStyle(styleId, color, backgroundColor, fontStyle));
 
-		public void RegisterBatchTextStyles(IReadOnlyDictionary<uint, TextStyle> stylesById) =>
+		public void RegisterBatchTextStyles(IReadOnlyDictionary<int, TextStyle> stylesById) =>
 			Invoke(e => e.RegisterBatchTextStyles(stylesById));
 
 		public void SetLineSpans(int line, SpanLayer layer, IList<StyleSpan> spans) =>
@@ -335,9 +335,9 @@ namespace SweetEditor {
 		public void SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine) =>
 			Invoke(e => e.SetBatchLineCodeLens(itemsByLine));
 
-		public void SetLineDiagnostics<TDiagnostic>(int line, IList<TDiagnostic> items) where TDiagnostic : Diagnostic => Invoke(e => e.SetLineDiagnostics(line, items));
+		public void SetLineDiagnostics(int line, IList<Diagnostic> items) => Invoke(e => e.SetLineDiagnostics(line, items));
 
-		public void SetBatchLineDiagnostics<TDiagnostic>(Dictionary<int, IList<TDiagnostic>> diagsByLine) where TDiagnostic : Diagnostic =>
+		public void SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine) =>
 			Invoke(e => e.SetBatchLineDiagnostics(diagsByLine));
 
 		public void SetIndentGuides(IList<IndentGuide> guides) => Invoke(e => e.SetIndentGuides(guides));

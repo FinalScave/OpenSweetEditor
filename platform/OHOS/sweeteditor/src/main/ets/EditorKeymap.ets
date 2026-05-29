@@ -1,23 +1,71 @@
 import {
-  EditorCommand,
+  EditorBuiltinCommand as EditorCommand,
   KeyBinding,
   KeyChord,
   KeyCode,
-  KeyMap,
   KeyModifier
 } from './core/CoreKeymap';
 import { SweetEditor } from './SweetEditor';
 
-export { EditorCommand, KeyBinding, KeyChord, KeyCode, KeyMap, KeyModifier };
+export { EditorCommand, KeyBinding, KeyChord, KeyCode, KeyModifier };
 
 export type EditorCommandHandler = (binding: KeyBinding, editor: SweetEditor) => boolean;
 
-export class EditorKeyMap extends KeyMap {
-  private readonly handlers: Map<number, EditorCommandHandler> = new Map();
-  private nextCustomCommandId: number = EditorCommand.BUILT_IN_MAX + 1;
+const EDITOR_BUILTIN_COMMAND_MAX = EditorCommand.TRIGGER_COMPLETION;
 
-  private static bind(keyMap: EditorKeyMap, modifiers: number, keyCode: KeyCode, command: number): void {
-    keyMap.addBinding(new KeyBinding(new KeyChord(modifiers, keyCode), new KeyChord(), command));
+export class EditorKeyMap {
+  private readonly bindings: KeyBinding[] = [];
+  private readonly handlers: Map<number, EditorCommandHandler> = new Map();
+  private nextCustomCommandId: number = EDITOR_BUILTIN_COMMAND_MAX + 1;
+
+  private static chord(modifiers: number, keyCode: number): KeyChord {
+    return { modifiers, keyCode };
+  }
+
+  private static emptyChord(): KeyChord {
+    return EditorKeyMap.chord(KeyModifier.NONE, KeyCode.NONE);
+  }
+
+  private static keyBinding(modifiers: number, keyCode: number, command: number): KeyBinding {
+    return {
+      first: EditorKeyMap.chord(modifiers, keyCode),
+      second: EditorKeyMap.emptyChord(),
+      command
+    };
+  }
+
+  private static sameChord(lhs: KeyChord, rhs: KeyChord): boolean {
+    return lhs.modifiers === rhs.modifiers && lhs.keyCode === rhs.keyCode;
+  }
+
+  private static sameBindingPosition(lhs: KeyBinding, rhs: KeyBinding): boolean {
+    return EditorKeyMap.sameChord(lhs.first, rhs.first) && EditorKeyMap.sameChord(lhs.second, rhs.second);
+  }
+
+  private static bind(keyMap: EditorKeyMap, modifiers: number, keyCode: number, command: number): void {
+    keyMap.addBinding(EditorKeyMap.keyBinding(modifiers, keyCode, command));
+  }
+
+  addBinding(binding: KeyBinding): void {
+    if (binding.first.keyCode === KeyCode.NONE) {
+      return;
+    }
+    const index = this.bindings.findIndex((existing) => EditorKeyMap.sameBindingPosition(existing, binding));
+    if (index >= 0) {
+      this.bindings.splice(index, 1);
+    }
+    this.bindings.push(binding);
+  }
+
+  removeBinding(binding: KeyBinding): void {
+    const index = this.bindings.findIndex((existing) => EditorKeyMap.sameBindingPosition(existing, binding));
+    if (index >= 0) {
+      this.bindings.splice(index, 1);
+    }
+  }
+
+  getBindings(): KeyBinding[] {
+    return this.bindings;
   }
 
   private static addCommonBindings(keyMap: EditorKeyMap): void {
@@ -50,56 +98,56 @@ export class EditorKeyMap extends KeyMap {
     EditorKeyMap.bind(keyMap, KeyModifier.META, KeyCode.Z, EditorCommand.UNDO);
 
     keyMap.registerCommand(
-      new KeyBinding(new KeyChord(KeyModifier.CTRL, KeyCode.C), new KeyChord(), EditorCommand.COPY),
+      EditorKeyMap.keyBinding(KeyModifier.CTRL, KeyCode.C, EditorCommand.COPY),
       (_binding, editor) => {
         editor.copyToClipboard();
         return true;
       }
     );
     keyMap.registerCommand(
-      new KeyBinding(new KeyChord(KeyModifier.META, KeyCode.C), new KeyChord(), EditorCommand.COPY),
+      EditorKeyMap.keyBinding(KeyModifier.META, KeyCode.C, EditorCommand.COPY),
       (_binding, editor) => {
         editor.copyToClipboard();
         return true;
       }
     );
     keyMap.registerCommand(
-      new KeyBinding(new KeyChord(KeyModifier.CTRL, KeyCode.V), new KeyChord(), EditorCommand.PASTE),
+      EditorKeyMap.keyBinding(KeyModifier.CTRL, KeyCode.V, EditorCommand.PASTE),
       (_binding, editor) => {
         editor.pasteFromClipboard();
         return true;
       }
     );
     keyMap.registerCommand(
-      new KeyBinding(new KeyChord(KeyModifier.META, KeyCode.V), new KeyChord(), EditorCommand.PASTE),
+      EditorKeyMap.keyBinding(KeyModifier.META, KeyCode.V, EditorCommand.PASTE),
       (_binding, editor) => {
         editor.pasteFromClipboard();
         return true;
       }
     );
     keyMap.registerCommand(
-      new KeyBinding(new KeyChord(KeyModifier.CTRL, KeyCode.X), new KeyChord(), EditorCommand.CUT),
+      EditorKeyMap.keyBinding(KeyModifier.CTRL, KeyCode.X, EditorCommand.CUT),
       (_binding, editor) => {
         editor.cutToClipboard();
         return true;
       }
     );
     keyMap.registerCommand(
-      new KeyBinding(new KeyChord(KeyModifier.META, KeyCode.X), new KeyChord(), EditorCommand.CUT),
+      EditorKeyMap.keyBinding(KeyModifier.META, KeyCode.X, EditorCommand.CUT),
       (_binding, editor) => {
         editor.cutToClipboard();
         return true;
       }
     );
     keyMap.registerCommand(
-      new KeyBinding(new KeyChord(KeyModifier.CTRL, KeyCode.SPACE), new KeyChord(), EditorCommand.TRIGGER_COMPLETION),
+      EditorKeyMap.keyBinding(KeyModifier.CTRL, KeyCode.SPACE, EditorCommand.TRIGGER_COMPLETION),
       (_binding, editor) => {
         editor.triggerCompletion();
         return true;
       }
     );
     keyMap.registerCommand(
-      new KeyBinding(new KeyChord(KeyModifier.META, KeyCode.SPACE), new KeyChord(), EditorCommand.TRIGGER_COMPLETION),
+      EditorKeyMap.keyBinding(KeyModifier.META, KeyCode.SPACE, EditorCommand.TRIGGER_COMPLETION),
       (_binding, editor) => {
         editor.triggerCompletion();
         return true;
@@ -187,7 +235,11 @@ export class EditorKeyMap extends KeyMap {
     let command = binding.command;
     if (command === EditorCommand.NONE) {
       command = this.nextCustomCommandId++;
-      resolved = binding.withCommand(command);
+      resolved = {
+        first: binding.first,
+        second: binding.second,
+        command
+      };
     } else if (command >= this.nextCustomCommandId) {
       this.nextCustomCommandId = command + 1;
     }

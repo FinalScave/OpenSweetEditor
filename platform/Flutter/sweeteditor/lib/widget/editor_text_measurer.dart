@@ -3,7 +3,7 @@ import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
 
-import '../editor_core.dart' as core;
+import '../core/editor_core.dart' as core;
 import '../sweeteditor_bindings_generated.dart' as bindings;
 
 /// TextPainter-based text measurement for the native editor engine.

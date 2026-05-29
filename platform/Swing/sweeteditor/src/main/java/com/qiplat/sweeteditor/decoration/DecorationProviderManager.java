@@ -185,12 +185,12 @@ public final class DecorationProviderManager {
         int total = editor.getTotalLineCount();
         List<TextChange> changes = new ArrayList<>(pendingTextChanges);
         pendingTextChanges.clear();
-        int contextStart = visible.start();
-        int contextEnd = visible.end();
-        if (total > 0 && visible.end() >= visible.start()) {
-            int overscanLines = calculateOverscanLines(visible.start(), visible.end());
-            contextStart = Math.max(0, visible.start() - overscanLines);
-            contextEnd = Math.min(total - 1, visible.end() + overscanLines);
+        int contextStart = visible.start;
+        int contextEnd = visible.end;
+        if (total > 0 && visible.end >= visible.start) {
+            int overscanLines = calculateOverscanLines(visible.start, visible.end);
+            contextStart = Math.max(0, visible.start - overscanLines);
+            contextEnd = Math.min(total - 1, visible.end + overscanLines);
         }
         DecorationContext context = new DecorationContext(
                 new IntRange(contextStart, contextEnd),
@@ -377,7 +377,7 @@ public final class DecorationProviderManager {
         if (mode == DecorationResult.ApplyMode.REPLACE_ALL) {
             editor.clearHighlights(layer);
         } else if (mode == DecorationResult.ApplyMode.REPLACE_RANGE) {
-            clearSpanRange(layer, lastContextLineRange.start(), lastContextLineRange.end());
+            clearSpanRange(layer, lastContextLineRange.start, lastContextLineRange.end);
         }
     }
 
@@ -385,7 +385,7 @@ public final class DecorationProviderManager {
         if (mode == DecorationResult.ApplyMode.REPLACE_ALL) {
             editor.clearInlayHints();
         } else if (mode == DecorationResult.ApplyMode.REPLACE_RANGE) {
-            clearInlayRange(lastContextLineRange.start(), lastContextLineRange.end());
+            clearInlayRange(lastContextLineRange.start, lastContextLineRange.end);
         }
     }
 
@@ -393,7 +393,7 @@ public final class DecorationProviderManager {
         if (mode == DecorationResult.ApplyMode.REPLACE_ALL) {
             editor.clearDiagnostics();
         } else if (mode == DecorationResult.ApplyMode.REPLACE_RANGE) {
-            clearDiagnosticRange(lastContextLineRange.start(), lastContextLineRange.end());
+            clearDiagnosticRange(lastContextLineRange.start, lastContextLineRange.end);
         }
     }
 
@@ -401,7 +401,7 @@ public final class DecorationProviderManager {
         if (mode == DecorationResult.ApplyMode.REPLACE_ALL) {
             editor.clearGutterIcons();
         } else if (mode == DecorationResult.ApplyMode.REPLACE_RANGE) {
-            clearGutterRange(lastContextLineRange.start(), lastContextLineRange.end());
+            clearGutterRange(lastContextLineRange.start, lastContextLineRange.end);
         }
     }
 
@@ -409,7 +409,7 @@ public final class DecorationProviderManager {
         if (mode == DecorationResult.ApplyMode.REPLACE_ALL) {
             editor.clearPhantomTexts();
         } else if (mode == DecorationResult.ApplyMode.REPLACE_RANGE) {
-            clearPhantomRange(lastContextLineRange.start(), lastContextLineRange.end());
+            clearPhantomRange(lastContextLineRange.start, lastContextLineRange.end);
         }
     }
 
@@ -417,7 +417,7 @@ public final class DecorationProviderManager {
         if (mode == DecorationResult.ApplyMode.REPLACE_ALL) {
             editor.clearCodeLens();
         } else if (mode == DecorationResult.ApplyMode.REPLACE_RANGE) {
-            clearCodeLensRange(lastContextLineRange.start(), lastContextLineRange.end());
+            clearCodeLensRange(lastContextLineRange.start, lastContextLineRange.end);
         }
     }
 
@@ -425,7 +425,7 @@ public final class DecorationProviderManager {
         if (mode == DecorationResult.ApplyMode.REPLACE_ALL) {
             editor.clearLinks();
         } else if (mode == DecorationResult.ApplyMode.REPLACE_RANGE) {
-            clearLinksRange(lastContextLineRange.start(), lastContextLineRange.end());
+            clearLinksRange(lastContextLineRange.start, lastContextLineRange.end);
         }
     }
 
