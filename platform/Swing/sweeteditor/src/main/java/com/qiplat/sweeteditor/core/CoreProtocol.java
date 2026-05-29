@@ -148,10 +148,17 @@ public final class CoreProtocol {
 
         String readUtf8String() {
             int length = readInt32();
-            if (length <= 0) return "";
+            if (length < 0 || length > remaining()) {
+                throw new IllegalArgumentException("Invalid protocol length.");
+            }
+            if (length == 0) return "";
             byte[] bytes = data.asSlice(offset, length).toArray(ValueLayout.JAVA_BYTE);
             offset += length;
             return new String(bytes, StandardCharsets.UTF_8);
+        }
+
+        long remaining() {
+            return data.byteSize() - offset;
         }
     }
 
@@ -268,7 +275,10 @@ public final class CoreProtocol {
 
     private static ArrayList<DiagnosticDecoration> readDiagnosticDecorationList(BinaryReader reader) {
         int count = reader.readInt32();
-        ArrayList<DiagnosticDecoration> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > reader.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<DiagnosticDecoration> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readDiagnosticDecoration(reader));
         }
@@ -295,7 +305,10 @@ public final class CoreProtocol {
 
     private static ArrayList<FoldMarkerRenderItem> readFoldMarkerRenderItemList(BinaryReader reader) {
         int count = reader.readInt32();
-        ArrayList<FoldMarkerRenderItem> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > reader.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<FoldMarkerRenderItem> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readFoldMarkerRenderItem(reader));
         }
@@ -322,7 +335,10 @@ public final class CoreProtocol {
 
     private static ArrayList<GuideSegment> readGuideSegmentList(BinaryReader reader) {
         int count = reader.readInt32();
-        ArrayList<GuideSegment> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > reader.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<GuideSegment> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readGuideSegment(reader));
         }
@@ -349,7 +365,10 @@ public final class CoreProtocol {
 
     private static ArrayList<GutterIconRenderItem> readGutterIconRenderItemList(BinaryReader reader) {
         int count = reader.readInt32();
-        ArrayList<GutterIconRenderItem> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > reader.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<GutterIconRenderItem> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readGutterIconRenderItem(reader));
         }
@@ -394,7 +413,10 @@ public final class CoreProtocol {
 
     private static ArrayList<KeyBinding> readKeyBindingList(BinaryReader reader) {
         int count = reader.readInt32();
-        ArrayList<KeyBinding> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > reader.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<KeyBinding> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readKeyBinding(reader));
         }
@@ -439,7 +461,10 @@ public final class CoreProtocol {
 
     private static ArrayList<LinkedEditingRect> readLinkedEditingRectList(BinaryReader reader) {
         int count = reader.readInt32();
-        ArrayList<LinkedEditingRect> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > reader.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<LinkedEditingRect> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readLinkedEditingRect(reader));
         }
@@ -466,7 +491,10 @@ public final class CoreProtocol {
 
     private static ArrayList<Rect> readRectList(BinaryReader reader) {
         int count = reader.readInt32();
-        ArrayList<Rect> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > reader.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<Rect> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readRect(reader));
         }
@@ -511,7 +539,10 @@ public final class CoreProtocol {
 
     private static ArrayList<StyleSpan> readStyleSpanList(BinaryReader reader) {
         int count = reader.readInt32();
-        ArrayList<StyleSpan> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > reader.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<StyleSpan> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readStyleSpan(reader));
         }
@@ -556,7 +587,10 @@ public final class CoreProtocol {
 
     private static ArrayList<TextChange> readTextChangeList(BinaryReader reader) {
         int count = reader.readInt32();
-        ArrayList<TextChange> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > reader.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<TextChange> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readTextChange(reader));
         }
@@ -565,7 +599,10 @@ public final class CoreProtocol {
 
     private static ArrayList<TextPosition> readTextPositionList(BinaryReader reader) {
         int count = reader.readInt32();
-        ArrayList<TextPosition> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > reader.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<TextPosition> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readTextPosition(reader));
         }
@@ -592,7 +629,10 @@ public final class CoreProtocol {
 
     private static ArrayList<TextRange> readTextRangeList(BinaryReader reader) {
         int count = reader.readInt32();
-        ArrayList<TextRange> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > reader.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<TextRange> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readTextRange(reader));
         }
@@ -619,7 +659,10 @@ public final class CoreProtocol {
 
     private static ArrayList<VisualLine> readVisualLineList(BinaryReader reader) {
         int count = reader.readInt32();
-        ArrayList<VisualLine> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > reader.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<VisualLine> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readVisualLine(reader));
         }
@@ -628,7 +671,10 @@ public final class CoreProtocol {
 
     private static ArrayList<VisualRun> readVisualRunList(BinaryReader reader) {
         int count = reader.readInt32();
-        ArrayList<VisualRun> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > reader.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<VisualRun> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readVisualRun(reader));
         }

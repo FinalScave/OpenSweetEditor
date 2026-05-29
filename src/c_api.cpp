@@ -9,7 +9,6 @@
 
 #include <cstring>
 #include <algorithm>
-#include <limits>
 #include <vector>
 #include <sweeteditor/protocol_codec.h>
 #include <sweeteditor/utility.h>
@@ -19,77 +18,6 @@
 #include "logging.h"
 
 using namespace NS_SWEETEDITOR;
-
-namespace {
-class ByteCursor {
-public:
-  ByteCursor(const uint8_t* data, size_t size): cur_(data), end_(data + size) {
-  }
-
-  bool readU32(uint32_t& out) {
-    if (!has(4)) return false;
-    out = static_cast<uint32_t>(cur_[0]) |
-      (static_cast<uint32_t>(cur_[1]) << 8u) |
-      (static_cast<uint32_t>(cur_[2]) << 16u) |
-      (static_cast<uint32_t>(cur_[3]) << 24u);
-    cur_ += 4;
-    return true;
-  }
-
-  bool readI32(int32_t& out) {
-    uint32_t v = 0;
-    if (!readU32(v)) return false;
-    out = static_cast<int32_t>(v);
-    return true;
-  }
-
-  bool readU8(uint8_t& out) {
-    if (!has(1)) return false;
-    out = *cur_;
-    cur_ += 1;
-    return true;
-  }
-
-  bool readBytes(const uint8_t*& out, size_t count) {
-    if (!has(count)) return false;
-    out = cur_;
-    cur_ += count;
-    return true;
-  }
-
-  bool has(size_t count) const {
-    return count <= static_cast<size_t>(end_ - cur_);
-  }
-
-  size_t remaining() const {
-    return static_cast<size_t>(end_ - cur_);
-  }
-
-private:
-  const uint8_t* cur_;
-  const uint8_t* end_;
-};
-
-static bool mulOverflow(size_t a, size_t b, size_t& out) {
-  if (a == 0 || b == 0) {
-    out = 0;
-    return false;
-  }
-  if (a > std::numeric_limits<size_t>::max() / b) {
-    return true;
-  }
-  out = a * b;
-  return false;
-}
-
-static bool addOverflow(size_t a, size_t b, size_t& out) {
-  if (a > std::numeric_limits<size_t>::max() - b) {
-    return true;
-  }
-  out = a + b;
-  return false;
-}
-}
 
 static const uint8_t* allocBinaryPayload(const uint8_t* data, size_t size, size_t* out_size) {
   if (out_size != nullptr) {
@@ -116,28 +44,8 @@ static const uint8_t* protocolToBinary(const T& value, size_t* out_size, size_t 
   return allocBinaryPayload(buffer.data(), buffer.size(), out_size);
 }
 
-static const uint8_t* editorRenderModelToBinary(const EditorRenderModel& model, size_t* out_size) {
-  return protocolToBinary(model, out_size, 1024);
-}
-
-static const uint8_t* imeSyncSnapshotToBinary(const ImeSyncSnapshot& snapshot, size_t* out_size) {
-  return protocolToBinary(snapshot, out_size, sizeof(int32_t) * 21);
-}
-
-static const uint8_t* imeInputContextToBinary(const ImeInputContext& context, size_t* out_size) {
-  return protocolToBinary(context, out_size, sizeof(int32_t) * 9 + sizeof(int64_t) + context.text.size());
-}
-
 static const uint8_t* editorActionResultToBinary(const EditorActionResult& result, size_t* out_size) {
   return protocolToBinary(result, out_size, 256 + result.changes.size() * 32);
-}
-
-static const uint8_t* scrollMetricsToBinary(const ScrollMetrics& metrics, size_t* out_size) {
-  return protocolToBinary(metrics, out_size, sizeof(float) * 11 + sizeof(int32_t) * 2);
-}
-
-static const uint8_t* layoutMetricsToBinary(const LayoutMetrics& metrics, size_t* out_size) {
-  return protocolToBinary(metrics, out_size, sizeof(float) * 9 + sizeof(int32_t) * 5);
 }
 
 class CTextMeasurer : public TextMeasurer {
@@ -263,37 +171,11 @@ U16Char* get_document_line_utf16(intptr_t document_handle, size_t line) {
 intptr_t create_editor(text_measurer_t measurer, const uint8_t* options_data, size_t options_size) {
   SharedPtr<CTextMeasurer> c_measurer = makeShared<CTextMeasurer>(measurer);
   EditorOptions options;
-  // Decode binary payload (LE): f32 touch_slop, i64 double_tap_timeout, i64 long_press_ms,
-  // f32 fling_friction, f32 fling_min_velocity, f32 fling_max_velocity, u64 max_undo_stack_size,
-  // i64 key_chord_timeout_ms, u8 reveal_selection_end_on_select_all.
   if (options_data != nullptr) {
-    size_t offset = 0;
-    auto readF32 = [&](float& out) {
-      if (offset + sizeof(float) <= options_size) { std::memcpy(&out, options_data + offset, sizeof(float)); offset += sizeof(float); }
-    };
-    auto readI64 = [&](int64_t& out) {
-      if (offset + sizeof(int64_t) <= options_size) { std::memcpy(&out, options_data + offset, sizeof(int64_t)); offset += sizeof(int64_t); }
-    };
-    auto readU64 = [&](size_t& out) {
-      if (offset + sizeof(uint64_t) <= options_size) { uint64_t v; std::memcpy(&v, options_data + offset, sizeof(uint64_t)); out = static_cast<size_t>(v); offset += sizeof(uint64_t); }
-    };
-    auto readBool = [&](bool& out) {
-      if (offset + sizeof(uint8_t) <= options_size) {
-        uint8_t v = 0;
-        std::memcpy(&v, options_data + offset, sizeof(uint8_t));
-        out = v != 0;
-        offset += sizeof(uint8_t);
-      }
-    };
-    readF32(options.touch_slop);
-    readI64(options.double_tap_timeout);
-    readI64(options.long_press_ms);
-    readF32(options.fling_friction);
-    readF32(options.fling_min_velocity);
-    readF32(options.fling_max_velocity);
-    readU64(options.max_undo_stack_size);
-    readI64(options.key_chord_timeout_ms);
-    readBool(options.reveal_selection_end_on_select_all);
+    EditorOptions decoded_options;
+    if (protocol::ProtocolReader::decode(options_data, options_size, decoded_options)) {
+      options = decoded_options;
+    }
   }
   SharedPtr<EditorCore> editor_core = makeShared<EditorCore>(c_measurer, options);
   return toIntPtr(editor_core);
@@ -466,7 +348,7 @@ const uint8_t* build_editor_render_model(intptr_t editor_handle, size_t* out_siz
   EditorRenderModel model;
   editor_core->buildRenderModel(model);
   PERF_BEGIN(binary_serial);
-  const uint8_t* payload = editorRenderModelToBinary(model, out_size);
+  const uint8_t* payload = protocolToBinary(model, out_size, 1024);
   PERF_END(binary_serial, "renderModel::toBinary");
   return payload;
 }
@@ -479,7 +361,7 @@ const uint8_t* get_layout_metrics(intptr_t editor_handle, size_t* out_size) {
     }
     return nullptr;
   }
-  return layoutMetricsToBinary(editor_core->getLayoutMetrics(), out_size);
+  return protocolToBinary(editor_core->getLayoutMetrics(), out_size, sizeof(float) * 9 + sizeof(int32_t) * 5);
 }
 
 const uint8_t* handle_editor_gesture_event(intptr_t editor_handle, uint8_t type, uint8_t pointer_count,
@@ -577,51 +459,14 @@ const uint8_t* handle_editor_key_event(intptr_t editor_handle, uint16_t key_code
 
 const uint8_t* editor_set_keymap(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr || size < 4) return nullBinaryPayload(out_size);
-
-  size_t offset = 0;
-  auto readU32 = [&]() -> uint32_t {
-    if (offset + 4 > size) return 0;
-    uint32_t v;
-    std::memcpy(&v, data + offset, 4);
-    offset += 4;
-    return v;
-  };
-  auto readU16 = [&]() -> uint16_t {
-    if (offset + 2 > size) return 0;
-    uint16_t v;
-    std::memcpy(&v, data + offset, 2);
-    offset += 2;
-    return v;
-  };
-  auto readU8 = [&]() -> uint8_t {
-    if (offset + 1 > size) return 0;
-    uint8_t v = data[offset];
-    offset += 1;
-    return v;
-  };
-
-  uint32_t count = readU32();
-  if (count == 0) return nullBinaryPayload(out_size);
-
-  const size_t per_binding = 1 + 2 + 1 + 2 + 4; // u8+u16+u8+u16+u32 = 10 bytes
-  if (size < 4 + count * per_binding) return nullBinaryPayload(out_size);
-
-  Vector<KeyBinding> bindings;
-  bindings.reserve(count);
-  for (uint32_t i = 0; i < count; ++i) {
-    KeyBinding b;
-    b.first.modifiers = static_cast<KeyModifier>(readU8());
-    b.first.key_code = static_cast<KeyCode>(readU16());
-    b.second.modifiers = static_cast<KeyModifier>(readU8());
-    b.second.key_code = static_cast<KeyCode>(readU16());
-    b.command = readU32();
-    bindings.push_back(b);
+  protocol::SetKeyMapPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) {
+    return nullBinaryPayload(out_size);
   }
 
   KeyMap km;
-  for (const auto& b : bindings) {
-    km.addBinding(b);
+  for (const auto& binding : payload.bindings) {
+    km.addBinding(binding);
   }
   return editorActionResultToBinary(editor_core->setKeyMap(std::move(km)), out_size);
 }
@@ -1017,7 +862,7 @@ const uint8_t* editor_get_scroll_metrics(intptr_t editor_handle, size_t* out_siz
   if (editor_core != nullptr) {
     metrics = editor_core->getScrollMetrics();
   }
-  return scrollMetricsToBinary(metrics, out_size);
+  return protocolToBinary(metrics, out_size, sizeof(float) * 11 + sizeof(int32_t) * 2);
 }
 
 void editor_get_position_rect(intptr_t editor_handle,
@@ -1236,41 +1081,9 @@ const uint8_t* editor_clear_matched_brackets(intptr_t editor_handle, size_t* out
 
 const uint8_t* editor_set_fold_regions(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
   protocol::SetFoldRegionsPayload payload;
-  if (protocol::ProtocolReader::decode(data, size, payload)) {
-    return editorActionResultToBinary(editor_core->setFoldRegions(std::move(payload.regions)), out_size);
-  }
-
-  ByteCursor cursor(data, size);
-  uint32_t fold_count = 0;
-  if (!cursor.readU32(fold_count)) {
-    return nullBinaryPayload(out_size);
-  }
-
-  size_t old_fold_bytes = 0;
-  size_t new_fold_bytes = 0;
-  if (mulOverflow(static_cast<size_t>(fold_count), sizeof(uint32_t) * 2, old_fold_bytes) ||
-      mulOverflow(static_cast<size_t>(fold_count), sizeof(uint32_t) * 2 + sizeof(uint8_t), new_fold_bytes)) {
-    return nullBinaryPayload(out_size);
-  }
-  bool has_collapsed = cursor.remaining() == new_fold_bytes;
-  if (!has_collapsed && cursor.remaining() != old_fold_bytes) return nullBinaryPayload(out_size);
-
-  Vector<FoldRegion> regions;
-  regions.reserve(fold_count);
-  for (uint32_t i = 0; i < fold_count; ++i) {
-    uint32_t start_line = 0;
-    uint32_t end_line = 0;
-    uint8_t collapsed = 0;
-    if (!cursor.readU32(start_line) || !cursor.readU32(end_line)) {
-      return nullBinaryPayload(out_size);
-    }
-    if (has_collapsed && !cursor.readU8(collapsed)) return nullBinaryPayload(out_size);
-    regions.push_back(FoldRegion{static_cast<size_t>(start_line), static_cast<size_t>(end_line), collapsed != 0});
-  }
-  return editorActionResultToBinary(editor_core->setFoldRegions(std::move(regions)), out_size);
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setFoldRegions(std::move(payload.regions)), out_size);
 }
 
 const uint8_t* editor_toggle_fold(intptr_t editor_handle, size_t line, size_t* out_size) {
@@ -1429,100 +1242,12 @@ const uint8_t* editor_insert_snippet(intptr_t editor_handle, const char* snippet
 
 const uint8_t* editor_start_linked_editing(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || data == nullptr) return nullBinaryPayload(out_size);
-
-  ByteCursor cursor(data, size);
-  uint32_t group_count = 0;
-  uint32_t range_count = 0;
-  uint32_t string_blob_size = 0;
-  if (!cursor.readU32(group_count) || !cursor.readU32(range_count) || !cursor.readU32(string_blob_size)) {
+  protocol::StartLinkedEditingPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) {
     return nullBinaryPayload(out_size);
   }
 
-  size_t group_bytes = 0;
-  size_t range_bytes = 0;
-  size_t expected_payload = 0;
-  if (mulOverflow(static_cast<size_t>(group_count), sizeof(uint32_t) * 3, group_bytes) ||
-      mulOverflow(static_cast<size_t>(range_count), sizeof(uint32_t) * 5, range_bytes) ||
-      addOverflow(group_bytes, range_bytes, expected_payload) ||
-      addOverflow(expected_payload, static_cast<size_t>(string_blob_size), expected_payload) ||
-      cursor.remaining() != expected_payload) {
-    return nullBinaryPayload(out_size);
-  }
-
-  struct GroupRecord {
-    uint32_t index;
-    uint32_t text_offset;
-    uint32_t text_len;
-  };
-  struct RangeRecord {
-    uint32_t group_ordinal;
-    uint32_t start_line;
-    uint32_t start_column;
-    uint32_t end_line;
-    uint32_t end_column;
-  };
-
-  constexpr uint32_t kNullTextOffset = 0xFFFFFFFFu;
-  Vector<GroupRecord> group_records;
-  group_records.reserve(group_count);
-  for (uint32_t i = 0; i < group_count; ++i) {
-    GroupRecord record{};
-    if (!cursor.readU32(record.index) || !cursor.readU32(record.text_offset) || !cursor.readU32(record.text_len)) {
-      return nullBinaryPayload(out_size);
-    }
-    if (record.text_offset != kNullTextOffset) {
-      size_t end = 0;
-      if (addOverflow(static_cast<size_t>(record.text_offset), static_cast<size_t>(record.text_len), end) ||
-          end > static_cast<size_t>(string_blob_size)) {
-        return nullBinaryPayload(out_size);
-      }
-    }
-    group_records.push_back(record);
-  }
-
-  Vector<RangeRecord> range_records;
-  range_records.reserve(range_count);
-  for (uint32_t i = 0; i < range_count; ++i) {
-    RangeRecord record{};
-    if (!cursor.readU32(record.group_ordinal) ||
-        !cursor.readU32(record.start_line) ||
-        !cursor.readU32(record.start_column) ||
-        !cursor.readU32(record.end_line) ||
-        !cursor.readU32(record.end_column)) {
-      return nullBinaryPayload(out_size);
-    }
-    if (record.group_ordinal >= group_count) {
-      return nullBinaryPayload(out_size);
-    }
-    range_records.push_back(record);
-  }
-
-  const uint8_t* string_blob = nullptr;
-  if (!cursor.readBytes(string_blob, static_cast<size_t>(string_blob_size)) || cursor.remaining() != 0) {
-    return nullBinaryPayload(out_size);
-  }
-
-  LinkedEditingModel model;
-  model.groups.resize(group_count);
-  for (uint32_t i = 0; i < group_count; ++i) {
-    const GroupRecord& record = group_records[i];
-    TabStopGroup group;
-    group.index = record.index;
-    if (record.text_offset != kNullTextOffset && record.text_len > 0) {
-      const char* text_ptr = reinterpret_cast<const char*>(string_blob + record.text_offset);
-      group.default_text = U8String(text_ptr, text_ptr + record.text_len);
-    }
-    model.groups[i] = std::move(group);
-  }
-
-  for (const RangeRecord& record : range_records) {
-    model.groups[record.group_ordinal].ranges.push_back({
-      {static_cast<size_t>(record.start_line), static_cast<size_t>(record.start_column)},
-      {static_cast<size_t>(record.end_line), static_cast<size_t>(record.end_column)}
-    });
-  }
-  return editorActionResultToBinary(editor_core->startLinkedEditing(std::move(model)), out_size);
+  return editorActionResultToBinary(editor_core->startLinkedEditing(std::move(payload.model)), out_size);
 }
 
 int editor_is_in_linked_editing(intptr_t editor_handle) {
@@ -2196,7 +1921,7 @@ const uint8_t* editor_get_ime_sync_snapshot(intptr_t editor_handle, size_t* out_
     }
     return nullptr;
   }
-  return imeSyncSnapshotToBinary(editor_core->getImeSyncSnapshot(), out_size);
+  return protocolToBinary(editor_core->getImeSyncSnapshot(), out_size, sizeof(int32_t) * 21);
 }
 
 const uint8_t* editor_get_ime_input_context(intptr_t editor_handle,
@@ -2210,7 +1935,8 @@ const uint8_t* editor_get_ime_input_context(intptr_t editor_handle,
     }
     return nullptr;
   }
-  return imeInputContextToBinary(editor_core->getImeInputContext(before_length, after_length), out_size);
+  ImeInputContext context = editor_core->getImeInputContext(before_length, after_length);
+  return protocolToBinary(context, out_size, sizeof(int32_t) * 9 + sizeof(int64_t) + context.text.size());
 }
 
 const uint8_t* editor_get_ime_text_model_input_context(intptr_t editor_handle,
@@ -2225,10 +1951,11 @@ const uint8_t* editor_get_ime_text_model_input_context(intptr_t editor_handle,
     }
     return nullptr;
   }
-  return imeInputContextToBinary(editor_core->getImeTextModelInputContext(
+  ImeInputContext context = editor_core->getImeTextModelInputContext(
       static_cast<ImeTextModelMode>(mode),
       before_length,
-      after_length), out_size);
+      after_length);
+  return protocolToBinary(context, out_size, sizeof(int32_t) * 9 + sizeof(int64_t) + context.text.size());
 }
 
 #pragma endregion

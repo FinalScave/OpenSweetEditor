@@ -200,6 +200,7 @@ public:
   inline bool read(RegisterBatchTextStylesPayload& out) {
     uint32_t count{};
     if (!readU32(count)) return false;
+    if (count > remaining()) return false;
     out.entries.clear();
     out.entries.reserve(count);
     for (uint32_t index = 0; index < count; ++index) {
@@ -233,6 +234,7 @@ public:
   inline bool read(SetBatchLineCodeLensPayload& out) {
     uint32_t count{};
     if (!readU32(count)) return false;
+    if (count > remaining()) return false;
     out.entries.clear();
     out.entries.reserve(count);
     for (uint32_t index = 0; index < count; ++index) {
@@ -250,6 +252,7 @@ public:
   inline bool read(SetBatchLineDiagnosticsPayload& out) {
     uint32_t count{};
     if (!readU32(count)) return false;
+    if (count > remaining()) return false;
     out.entries.clear();
     out.entries.reserve(count);
     for (uint32_t index = 0; index < count; ++index) {
@@ -267,6 +270,7 @@ public:
   inline bool read(SetBatchLineGutterIconsPayload& out) {
     uint32_t count{};
     if (!readU32(count)) return false;
+    if (count > remaining()) return false;
     out.entries.clear();
     out.entries.reserve(count);
     for (uint32_t index = 0; index < count; ++index) {
@@ -284,6 +288,7 @@ public:
   inline bool read(SetBatchLineInlayHintsPayload& out) {
     uint32_t count{};
     if (!readU32(count)) return false;
+    if (count > remaining()) return false;
     out.entries.clear();
     out.entries.reserve(count);
     for (uint32_t index = 0; index < count; ++index) {
@@ -301,6 +306,7 @@ public:
   inline bool read(SetBatchLineLinksPayload& out) {
     uint32_t count{};
     if (!readU32(count)) return false;
+    if (count > remaining()) return false;
     out.entries.clear();
     out.entries.reserve(count);
     for (uint32_t index = 0; index < count; ++index) {
@@ -318,6 +324,7 @@ public:
   inline bool read(SetBatchLinePhantomTextsPayload& out) {
     uint32_t count{};
     if (!readU32(count)) return false;
+    if (count > remaining()) return false;
     out.entries.clear();
     out.entries.reserve(count);
     for (uint32_t index = 0; index < count; ++index) {
@@ -338,6 +345,7 @@ public:
     out.layer = static_cast<SpanLayer>(out_layer_value);
     uint32_t count{};
     if (!readU32(count)) return false;
+    if (count > remaining()) return false;
     out.entries.clear();
     out.entries.reserve(count);
     for (uint32_t index = 0; index < count; ++index) {
@@ -662,6 +670,7 @@ public:
   bool readList(Vector<T>& out) {
     uint32_t count = 0;
     if (!readU32(count)) return false;
+    if (count > remaining()) return false;
     out.clear();
     out.reserve(count);
     for (uint32_t index = 0; index < count; ++index) {

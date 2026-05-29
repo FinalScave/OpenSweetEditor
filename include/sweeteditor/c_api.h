@@ -58,7 +58,13 @@ extern "C" {
 ///   - document_handle: Document handle (intptr_t) returned by create_document_xxx
 ///   - out_size:        For all APIs that return binary payloads, this outputs the byte length
 ///   - Coordinate system: line / column are both 0-based
-///   - Payload uses native byte order (LE). Caller must free it with free_binary_data
+///   - Binary payloads use CoreProtocol little-endian encoding. Caller must free returned payloads with free_binary_data
+///   - U8String is u32 byte_length followed by UTF-8 bytes
+///   - List<T> is u32 count followed by T items
+///   - Map-like payload fields are u32 entry_count followed by key/value pairs in insertion order
+///   - bool_u8 uses u8 where nonzero means true; bool_i32 uses i32 where nonzero means true
+///   - PointF is f32 x followed by f32 y
+///   - TextPosition is i32 line followed by i32 column; TextRange is TextPosition start followed by TextPosition end
 ///   - These common rules are not repeated in each function comment
 
 /// Text measurement callback set, passed when creating EditorCore
@@ -113,16 +119,16 @@ EDITOR_API U16Char* get_document_line_utf16(intptr_t document_handle, size_t lin
 
 /// Create EditorCore and return its handle
 /// @param measurer Text measurement callback set
-/// @param options_data EditorOptions binary payload(LE byte order):
-///        f32 touch_slop         - Move threshold for a tap (default 10)
-///        i64 double_tap_timeout - Time window for double tap (default 300ms)
-///        i64 long_press_ms      - Long press threshold (default 500ms)
-///        f32 fling_friction     - Fling friction coefficient (default 3.5)
-///        f32 fling_min_velocity - Minimum fling velocity in px/s (default 50)
-///        f32 fling_max_velocity - Maximum fling velocity in px/s (default 8000)
-///        u64 max_undo_stack_size - Max undo stack depth, 0=unlimited (default 512)
-///        i64 key_chord_timeout_ms - Key chord pending timeout in ms (default 2000)
-///        u8 reveal_selection_end_on_select_all - When true, selectAll() reveals the selection end (default false)
+/// @param options_data EditorOptions binary payload encoded by CoreProtocol:
+///        f32 touch_slop
+///        i64 double_tap_timeout
+///        i64 long_press_ms
+///        f32 fling_friction
+///        f32 fling_min_velocity
+///        f32 fling_max_velocity
+///        u64 max_undo_stack_size
+///        i64 key_chord_timeout_ms
+///        bool_u8 reveal_selection_end_on_select_all
 /// @param options_size Byte length of options_data
 /// @return EditorCore handle
 EDITOR_API intptr_t create_editor(text_measurer_t measurer, const uint8_t* options_data, size_t options_size);
@@ -205,137 +211,53 @@ EDITOR_API const uint8_t* editor_set_scrollbar_config(intptr_t editor_handle,
 
 /// Build render model for one editor frame
 /// @param out_size Output: payload byte length (bytes, excluding extra '\0' terminator)
-/// @return EditorRenderModel binary data; payload uses native byte order, and all supported platforms are currently LE.
-///         Top-level layout:
-///         1. f32 split_x
-///         2. i32 split_line_visible (0=false, 1=true)
-///         3. f32 scroll_x
-///         4. f32 scroll_y
-///         5. f32 viewport_width
-///         6. f32 viewport_height
-///         7. PointF current_line
-///            - f32 x
-///            - f32 y
-///         8. i32 current_line_render_mode (0=BACKGROUND, 1=BORDER, 2=NONE)
-///         9. i32 lines_count
-///         10. VisualLine[lines_count] lines
-///            VisualLine layout:
-///            - i32 logical_line
-///            - i32 wrap_index
-///            - PointF line_number_position
-///            - i32 kind (0=CONTENT, 1=PHANTOM, 2=CODELENS)
-///            - i32 owns_gutter_semantics
-///            - i32 fold_state
-///            - i32 run_count
-///            - VisualRun[run_count] runs
-///            VisualRun layout:
-///            - i32 type
-///            - f32 x
-///            - f32 y
-///            - i32 text_utf8_length
-///            - u8[text_utf8_length] text_utf8_bytes
-///            - TextStyle style
-///              - i32 color
-///              - i32 background_color
-///              - i32 font_style
-///            - i32 icon_id
-///            - i32 color_value
-///            - f32 width
-///            - f32 padding
-///            - f32 margin
-///            - i32 active
-///         11. i32 gutter_icon_render_count
-///         12. GutterIconRenderItem[gutter_icon_render_count] gutter_icons
-///             GutterIconRenderItem layout:
-///             - i32 logical_line
-///             - i32 icon_id
-///             - PointF origin
-///             - f32 width
-///             - f32 height
-///         13. i32 fold_marker_render_count
-///         14. FoldMarkerRenderItem[fold_marker_render_count] fold_markers
-///             FoldMarkerRenderItem layout:
-///             - i32 logical_line
-///             - i32 fold_state
-///             - PointF origin
-///             - f32 width
-///             - f32 height
-///         15. Cursor cursor
-///            - TextPosition text_position
-///              - i32 line
-///              - i32 column
-///            - PointF position
-///            - f32 height
-///            - i32 visible
-///            - i32 show_dragger
-///         16. i32 selection_rect_count
-///         17. Rect[selection_rect_count] selection_rects
-///             Rect layout:
-///             - PointF origin
-///             - f32 width
-///             - f32 height
-///         18. SelectionHandle selection_start_handle
-///         19. SelectionHandle selection_end_handle
-///             SelectionHandle layout:
-///             - PointF position
-///             - f32 height
-///             - i32 visible
-///         20. CompositionDecoration composition_decoration
-///             - i32 active
-///             - PointF origin
-///             - f32 width
-///             - f32 height
-///         21. i32 guide_segment_count
-///         22. GuideSegment[guide_segment_count] guide_segments
-///             GuideSegment layout:
-///             - i32 direction
-///             - i32 type
-///             - i32 style
-///             - PointF start
-///             - PointF end
-///             - i32 arrow_end
-///         23. i32 diagnostic_count
-///         24. DiagnosticDecoration[diagnostic_count] diagnostic_decorations
-///             DiagnosticDecoration layout:
-///             - PointF origin
-///             - f32 width
-///             - f32 height
-///             - i32 severity
-///         25. i32 max_gutter_icons
-///         26. i32 linked_editing_rect_count
-///         27. LinkedEditingRect[linked_editing_rect_count] linked_editing_rects
-///             LinkedEditingRect layout:
-///             - PointF origin
-///             - f32 width
-///             - f32 height
-///             - i32 is_active
-///         28. i32 bracket_highlight_rect_count
-///         29. Rect[bracket_highlight_rect_count] bracket_highlight_rects
-///             Rect layout:
-///             - PointF origin
-///             - f32 width
-///             - f32 height
-///         30. (optional append-only tail) ScrollbarModel vertical_scrollbar
-///         31. (optional append-only tail) ScrollbarModel horizontal_scrollbar
-///             ScrollbarModel layout:
-///             - i32 visible
-///             - f32 alpha (0~1)
-///             - Rect track
-///             - Rect thumb
-///             Rect layout:
-///             - PointF origin
-///             - f32 width
-///             - f32 height
-///         32. i32 gutter_sticky (0=scrolls with content, 1=fixed)
-///         33. i32 gutter_visible (0=hidden, 1=visible)
-///         34. i32 pointer_cursor_type (0=DEFAULT, 1=TEXT, 2=HAND)
-///         Call free_binary_data after use; returns NULL on failure
+/// @return EditorRenderModel binary payload encoded by CoreProtocol. Caller owns returned buffer and must free it with free_binary_data.
+///         Wire layout:
+///         f32 split_x
+///         bool_i32 split_line_visible
+///         f32 scroll_x
+///         f32 scroll_y
+///         f32 viewport_width
+///         f32 viewport_height
+///         PointF current_line
+///         enum_i32 current_line_render_mode
+///         List<VisualLine> lines
+///         Cursor cursor
+///         List<Rect> selection_rects
+///         SelectionHandle selection_start_handle
+///         SelectionHandle selection_end_handle
+///         CompositionDecoration composition_decoration
+///         List<GuideSegment> guide_segments
+///         List<DiagnosticDecoration> diagnostic_decorations
+///         u32 max_gutter_icons
+///         List<LinkedEditingRect> linked_editing_rects
+///         List<Rect> bracket_highlight_rects
+///         List<GutterIconRenderItem> gutter_icons
+///         List<FoldMarkerRenderItem> fold_markers
+///         ScrollbarModel vertical_scrollbar
+///         ScrollbarModel horizontal_scrollbar
+///         bool_i32 gutter_sticky
+///         bool_i32 gutter_visible
+///         enum_i32 pointer_cursor_type
+///         VisualLine is i32 logical_line, i32 wrap_index, PointF line_number_position, List<VisualRun> runs, enum_i32 kind, bool_i32 owns_gutter_semantics, enum_i32 fold_state
+///         VisualRun is enum_i32 type, f32 x, f32 y, U8String text, TextStyle style, i32 icon_id, i32 color_value, f32 width, f32 padding, f32 margin, bool_i32 active
+///         TextStyle is i32 color, i32 background_color, i32 font_style
+///         Cursor is TextPosition text_position, PointF position, f32 height, bool_i32 visible, bool_i32 show_dragger
+///         Rect is PointF origin, f32 width, f32 height
+///         SelectionHandle is PointF position, f32 height, bool_i32 visible
+///         CompositionDecoration is bool_i32 active, Rect rect
+///         GuideSegment is enum_i32 direction, enum_i32 type, enum_i32 style, PointF start, PointF end, bool_i32 arrow_end
+///         DiagnosticDecoration is Rect rect, enum_i32 severity
+///         LinkedEditingRect is Rect rect, bool_i32 is_active
+///         GutterIconRenderItem is i32 logical_line, i32 icon_id, Rect rect
+///         FoldMarkerRenderItem is i32 logical_line, enum_i32 fold_state, Rect rect
+///         ScrollbarModel is bool_i32 visible, f32 alpha, bool_i32 thumb_active, Rect track, Rect thumb
 EDITOR_API const uint8_t* build_editor_render_model(intptr_t editor_handle, size_t* out_size);
 
 /// Get editor layout metrics
 /// @param out_size Output: payload byte length (bytes, excluding extra '\0' terminator)
-/// @return LayoutMetrics binary data; payload uses native byte order, and all supported platforms are currently LE.
-///         Top-level layout:
+/// @return LayoutMetrics binary payload encoded by CoreProtocol. Caller owns returned buffer and must free it with free_binary_data.
+///         Wire layout:
 ///         f32 font_height
 ///         f32 font_ascent
 ///         f32 line_spacing_add
@@ -346,14 +268,55 @@ EDITOR_API const uint8_t* build_editor_render_model(intptr_t editor_handle, size
 ///         u32 max_gutter_icons
 ///         f32 inlay_hint_padding
 ///         f32 inlay_hint_margin
-///         i32 fold_arrow_mode (0=AUTO, 1=ALWAYS, 2=HIDDEN)
-///         i32 has_fold_regions (0=false, 1=true)
-///         i32 gutter_sticky (0=false, 1=true)
-///         i32 gutter_visible (0=false, 1=true)
-///         Call free_binary_data after use; returns NULL on failure
+///         enum_i32 fold_arrow_mode
+///         bool_i32 has_fold_regions
+///         bool_i32 gutter_sticky
+///         bool_i32 gutter_visible
 EDITOR_API const uint8_t* get_layout_metrics(intptr_t editor_handle, size_t* out_size);
 
-/// EditorActionResult binary return layout (payload uses native byte order; all supported platforms are currently LE).
+/// EditorActionResult binary payloads are encoded by CoreProtocol.
+/// Wire layout:
+///   bool_i32 handled
+///   bool_i32 needs_redraw
+///   enum_i32 reason
+///   bool_i32 content_changed
+///   bool_i32 cursor_changed
+///   bool_i32 selection_changed
+///   bool_i32 scroll_changed
+///   bool_i32 scale_changed
+///   bool_i32 pointer_cursor_changed
+///   bool_i32 composition_changed
+///   bool_i32 decoration_changed
+///   bool_i32 needs_ime_sync
+///   bool_i32 needs_edge_scroll
+///   bool_i32 needs_fling
+///   bool_i32 needs_animation
+///   bool_i32 is_handle_drag
+///   List<TextChange> changes
+///   TextPosition cursor_before
+///   TextPosition cursor_after
+///   bool_i32 has_selection_before
+///   bool_i32 has_selection_after
+///   TextRange selection_before
+///   TextRange selection_after
+///   f32 scroll_x_before
+///   f32 scroll_y_before
+///   f32 scroll_x_after
+///   f32 scroll_y_after
+///   f32 scale_before
+///   f32 scale_after
+///   enum_i32 pointer_cursor_before
+///   enum_i32 pointer_cursor_after
+///   ImeSyncSnapshot ime_sync
+///   enum_i32 gesture_type
+///   enum_i32 gesture_event_type
+///   PointF tap_point
+///   HitTarget hit_target
+///   enum_i32 modifiers
+///   enum_i32 command
+///   TextChange is TextRange range followed by U8String new_text
+///   ImeSyncSnapshot is TextPosition cursor, TextRange selection, bool_i32 has_selection, bool_i32 has_composing_session, bool_i32 has_visible_composition_range, TextRange visible_composition_range, bool_i32 has_platform_marked_range, TextRange platform_marked_range, enum_i32 preedit_storage, enum_i32 context_policy, bool_i32 clear_platform_preedit
+///   HitTarget is enum_i32 type, i32 line, i32 column, i32 icon_id, i32 color_value
 /// This is the only result payload for core state-changing APIs. Platforms should use needs_redraw from this payload
 /// to decide whether to flush editor state and schedule repaint.
 ///
@@ -412,15 +375,12 @@ EDITOR_API const uint8_t* editor_tick_animations(intptr_t editor_handle, size_t*
 EDITOR_API const uint8_t* handle_editor_key_event(intptr_t editor_handle, uint16_t key_code, const char* text, uint8_t modifiers, size_t* out_size);
 
 /// Set custom key map from binary payload.
-/// Payload format (LE byte order):
-///   u32 binding_count
-///   Repeat binding_count times:
-///     u8  first_modifiers
-///     u16 first_key_code
-///     u8  second_modifiers
-///     u16 second_key_code  (0 = single-chord)
-///     u32 command          (built-in or custom command id)
-/// Invalid or empty payload is ignored (current key map is preserved).
+/// @param data SetKeyMapPayload binary payload encoded by CoreProtocol
+///        List<KeyBinding> bindings
+///        KeyBinding is KeyChord first, KeyChord second, u32 command
+///        KeyChord is u8 modifiers followed by u16 key_code
+///        second.key_code == 0 means a single-chord binding
+/// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_keymap(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 #pragma endregion
@@ -619,23 +579,22 @@ EDITOR_API const uint8_t* editor_ensure_cursor_visible(intptr_t editor_handle, s
 /// @param scroll_y Vertical scroll offset
 EDITOR_API const uint8_t* editor_set_scroll(intptr_t editor_handle, float scroll_x, float scroll_y, size_t* out_size);
 
-/// ScrollMetrics binary return layout (payload uses native byte order; all supported platforms are currently LE):
-/// 1. f32 scale
-/// 2. f32 scroll_x
-/// 3. f32 scroll_y
-/// 4. f32 max_scroll_x
-/// 5. f32 max_scroll_y
-/// 6. f32 content_width
-/// 7. f32 content_height
-/// 8. f32 viewport_width
-/// 9. f32 viewport_height
-/// 10. f32 text_area_x
-/// 11. f32 text_area_width
-/// 12. i32 can_scroll_x
-/// 13. i32 can_scroll_y
-///
 /// Get scrollbar metrics
-/// @return ScrollMetrics binary payload; Returns default payload for invalid handle
+/// @return ScrollMetrics binary payload encoded by CoreProtocol. Caller owns returned buffer and must free it with free_binary_data.
+///         Wire layout:
+///         f32 scale
+///         f32 scroll_x
+///         f32 scroll_y
+///         f32 max_scroll_x
+///         f32 max_scroll_y
+///         f32 content_width
+///         f32 content_height
+///         f32 viewport_width
+///         f32 viewport_height
+///         f32 text_area_x
+///         f32 text_area_width
+///         bool_i32 can_scroll_x
+///         bool_i32 can_scroll_y
 EDITOR_API const uint8_t* editor_get_scroll_metrics(intptr_t editor_handle, size_t* out_size);
 
 /// Get screen coordinate rect for any text position (for floating panel positioning)
@@ -662,24 +621,29 @@ EDITOR_API void editor_get_cursor_rect(intptr_t editor_handle,
 /// @param font_style Font style (FontStyle enum value)
 EDITOR_API const uint8_t* editor_register_text_style(intptr_t editor_handle, uint32_t style_id, int32_t color, int32_t background_color, int32_t font_style, size_t* out_size);
 
-/// Set style ranges for specified line and layer (compact binary)
-/// @param data payload(LE):
-///             u32 line, u32 layer, u32 span_count, then repeat for span_count groups
-///             [u32 column, u32 length, u32 style_id]
+/// Set style ranges for specified line and layer.
+/// @param data SetLineSpansPayload binary payload encoded by CoreProtocol
+///        u32 line
+///        enum_i32 layer
+///        List<StyleSpan> spans
+///        StyleSpan is u32 column, u32 length, u32 style_id
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-/// Batch set highlight spans for multiple lines (compact binary)
-/// @param data payload(LE):
-///             u32 layer, u32 entry_count,
-///             [u32 line, u32 span_count, [u32 column, u32 length, u32 style_id] x span_count] x entry_count
+/// Set style ranges for multiple lines.
+/// @param data SetBatchLineSpansPayload binary payload encoded by CoreProtocol
+///        enum_i32 layer
+///        u32 entry_count
+///        Repeated entry is u32 line followed by List<StyleSpan> spans
+///        StyleSpan is u32 column, u32 length, u32 style_id
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_batch_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-/// Batch register highlight text styles (compact binary)
-/// @param data payload(LE):
-///             u32 entry_count,
-///             [u32 style_id, i32 color, i32 background_color, i32 font_style] x entry_count
+/// Register text styles.
+/// @param data RegisterBatchTextStylesPayload binary payload encoded by CoreProtocol
+///        u32 entry_count
+///        Repeated entry is u32 style_id followed by TextStyle style
+///        TextStyle is i32 color, i32 background_color, i32 font_style
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_register_batch_text_styles(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
@@ -692,49 +656,51 @@ EDITOR_API const uint8_t* editor_clear_line_spans(intptr_t editor_handle, size_t
 /// @param layer Highlight layer (0=SYNTAX, 1=SEMANTIC)
 EDITOR_API const uint8_t* editor_clear_highlights_layer(intptr_t editor_handle, uint8_t layer, size_t* out_size);
 
-/// Set inlay hints for specified line (compact binary, replace whole line)
-/// @param data payload(LE):
-///             u32 line, u32 hint_count, then repeat for hint_count groups:
-///             [u32 type(0=TEXT,1=ICON,2=COLOR), u32 column, i32 int_value(icon_id/color/0),
-///              u32 text_len, u8[text_len] text_utf8]
+/// Set inlay hints for specified line.
+/// @param data SetLineInlayHintsPayload binary payload encoded by CoreProtocol
+///        u32 line
+///        List<InlayHint> hints
+///        InlayHint is enum_i32 type, u32 column, i32 int_value, U8String text
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-/// Batch set inlay hints for multiple lines (compact binary, variable length)
-/// @param data payload(LE):
-///             u32 entry_count,
-///             [u32 line, u32 hint_count,
-///              [u32 type, u32 column, i32 int_value, u32 text_len, u8[text_len] text_utf8] x hint_count] x entry_count
+/// Set inlay hints for multiple lines.
+/// @param data SetBatchLineInlayHintsPayload binary payload encoded by CoreProtocol
+///        u32 entry_count
+///        Repeated entry is u32 line followed by List<InlayHint> hints
+///        InlayHint is enum_i32 type, u32 column, i32 int_value, U8String text
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_batch_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-/// Add one inlay hint (append to specified line, do not replace existing hints)
-/// Set phantom texts for specified line (compact binary, replace whole line)
-/// @param data payload(LE):
-///             u32 line, u32 phantom_count, then repeat for phantom_count groups:
-///             [u32 column, u32 text_len, u8[text_len] text_utf8]
+/// Set phantom texts for specified line.
+/// @param data SetLinePhantomTextsPayload binary payload encoded by CoreProtocol
+///        u32 line
+///        List<PhantomText> phantoms
+///        PhantomText is u32 column followed by U8String text
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-/// Batch set phantom texts for multiple lines (compact binary, variable length)
-/// @param data payload(LE):
-///             u32 entry_count,
-///             [u32 line, u32 phantom_count,
-///              [u32 column, u32 text_len, u8[text_len] text_utf8] x phantom_count] x entry_count
+/// Set phantom texts for multiple lines.
+/// @param data SetBatchLinePhantomTextsPayload binary payload encoded by CoreProtocol
+///        u32 entry_count
+///        Repeated entry is u32 line followed by List<PhantomText> phantoms
+///        PhantomText is u32 column followed by U8String text
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_batch_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-/// Set gutter icons for specified line (compact binary, replace whole line)
-/// @param data payload(LE):
-///             u32 line, u32 icon_count, then repeat for icon_count groups
-///             [i32 icon_id]
+/// Set gutter icons for specified line.
+/// @param data SetLineGutterIconsPayload binary payload encoded by CoreProtocol
+///        u32 line
+///        List<GutterIcon> icons
+///        GutterIcon is i32 icon_id
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-/// Batch set gutter icons for multiple lines (compact binary, fixed length)
-/// @param data payload(LE):
-///             u32 entry_count,
-///             [u32 line, u32 icon_count, [i32 icon_id] x icon_count] x entry_count
+/// Set gutter icons for multiple lines.
+/// @param data SetBatchLineGutterIconsPayload binary payload encoded by CoreProtocol
+///        u32 entry_count
+///        Repeated entry is u32 line followed by List<GutterIcon> icons
+///        GutterIcon is i32 icon_id
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_batch_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
@@ -745,36 +711,38 @@ EDITOR_API const uint8_t* editor_set_max_gutter_icons(intptr_t editor_handle, ui
 /// Clear all gutter icons
 EDITOR_API const uint8_t* editor_clear_gutter_icons(intptr_t editor_handle, size_t* out_size);
 
-/// Set CodeLens items for specified line (compact binary)
-/// @param data payload(LE):
-///             u32 line, u32 item_count, then repeat for item_count groups:
-///             [i32 column, i32 command_id, u32 text_len, u8[text_len] text_utf8]
+/// Set CodeLens items for specified line.
+/// @param data SetLineCodeLensPayload binary payload encoded by CoreProtocol
+///        u32 line
+///        List<CodeLensItem> items
+///        CodeLensItem is i32 column, i32 command_id, U8String text
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-/// Batch set CodeLens items for multiple lines (compact binary)
-/// @param data payload(LE):
-///             u32 entry_count,
-///             [u32 line, u32 item_count,
-///              [i32 column, i32 command_id, u32 text_len, u8[text_len] text_utf8] x item_count] x entry_count
+/// Set CodeLens items for multiple lines.
+/// @param data SetBatchLineCodeLensPayload binary payload encoded by CoreProtocol
+///        u32 entry_count
+///        Repeated entry is u32 line followed by List<CodeLensItem> items
+///        CodeLensItem is i32 column, i32 command_id, U8String text
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_batch_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Clear all CodeLens items
 EDITOR_API const uint8_t* editor_clear_codelens(intptr_t editor_handle, size_t* out_size);
 
-/// Set link ranges for specified line (compact binary)
-/// @param data payload(LE):
-///             u32 line, u32 link_count, then repeat for link_count groups:
-///             [u32 column, u32 length, u32 target_len, u8[target_len] target_utf8]
+/// Set link ranges for specified line.
+/// @param data SetLineLinksPayload binary payload encoded by CoreProtocol
+///        u32 line
+///        List<LinkSpan> links
+///        LinkSpan is u32 column, u32 length, U8String target
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_line_links(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-/// Batch set link ranges for multiple lines (compact binary)
-/// @param data payload(LE):
-///             u32 entry_count,
-///             [u32 line, u32 link_count,
-///              [u32 column, u32 length, u32 target_len, u8[target_len] target_utf8] x link_count] x entry_count
+/// Set link ranges for multiple lines.
+/// @param data SetBatchLineLinksPayload binary payload encoded by CoreProtocol
+///        u32 entry_count
+///        Repeated entry is u32 line followed by List<LinkSpan> links
+///        LinkSpan is u32 column, u32 length, U8String target
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_batch_line_links(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
@@ -786,49 +754,50 @@ EDITOR_API const uint8_t* editor_clear_links(intptr_t editor_handle, size_t* out
 ///         Returns an empty string when no link matches the requested position.
 EDITOR_API const char* editor_get_link_target_at(intptr_t editor_handle, size_t line, size_t column);
 
-/// Set diagnostic decoration ranges for specified line (compact binary)
-/// @param data payload(LE):
-///             u32 line, u32 diag_count, then repeat for diag_count groups
-///             [u32 column, u32 length, i32 severity]
+/// Set diagnostic decoration ranges for specified line.
+/// @param data SetLineDiagnosticsPayload binary payload encoded by CoreProtocol
+///        u32 line
+///        List<Diagnostic> diagnostics
+///        Diagnostic is u32 column, u32 length, enum_i32 severity
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-/// Batch set diagnostic decorations for multiple lines (compact binary, fixed length)
-/// @param data payload(LE):
-///             u32 entry_count,
-///             [u32 line, u32 diag_count, [u32 column, u32 length, i32 severity] x diag_count] x entry_count
+/// Set diagnostic decoration ranges for multiple lines.
+/// @param data SetBatchLineDiagnosticsPayload binary payload encoded by CoreProtocol
+///        u32 entry_count
+///        Repeated entry is u32 line followed by List<Diagnostic> diagnostics
+///        Diagnostic is u32 column, u32 length, enum_i32 severity
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_batch_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Clear all diagnostic decorations
 EDITOR_API const uint8_t* editor_clear_diagnostics(intptr_t editor_handle, size_t* out_size);
 
-/// Set indent guide list (compact binary, global replace)
-/// @param data payload(LE):
-///             u32 count, then repeat count groups
-///             [u32 start_line, u32 start_column, u32 end_line, u32 end_column]
+/// Set indent guide list.
+/// @param data SetIndentGuidesPayload binary payload encoded by CoreProtocol
+///        List<IndentGuide> guides
+///        IndentGuide is TextPosition start followed by TextPosition end
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_indent_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-/// Set bracket branch guide list (compact binary, global replace)
-/// @param data payload(LE):
-///             u32 count, then repeat count groups:
-///             [u32 parent_line, u32 parent_column, u32 end_line, u32 end_column,
-///              u32 child_count, then repeat child_count groups: [u32 child_line, u32 child_column]]
+/// Set bracket branch guide list.
+/// @param data SetBracketGuidesPayload binary payload encoded by CoreProtocol
+///        List<BracketGuide> guides
+///        BracketGuide is TextPosition parent, TextPosition end, List<TextPosition> children
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_bracket_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-/// Set control-flow back-arrow guide list (compact binary, global replace)
-/// @param data payload(LE):
-///             u32 count, then repeat count groups
-///             [u32 start_line, u32 start_column, u32 end_line, u32 end_column]
+/// Set control-flow back-arrow guide list.
+/// @param data SetFlowGuidesPayload binary payload encoded by CoreProtocol
+///        List<FlowGuide> guides
+///        FlowGuide is TextPosition start followed by TextPosition end
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_flow_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-/// Set horizontal separator guide list (compact binary, global replace)
-/// @param data payload(LE):
-///             u32 count, then repeat count groups
-///             [i32 line, i32 style, i32 count, u32 text_end_column]
+/// Set horizontal separator guide list.
+/// @param data SetSeparatorGuidesPayload binary payload encoded by CoreProtocol
+///        List<SeparatorGuide> guides
+///        SeparatorGuide is i32 line, enum_i32 style, i32 count, u32 text_end_column
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_separator_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
@@ -857,10 +826,10 @@ EDITOR_API const uint8_t* editor_set_matched_brackets(intptr_t editor_handle, si
 /// Clear externally set bracket match result (fall back to built-in char scan)
 EDITOR_API const uint8_t* editor_clear_matched_brackets(intptr_t editor_handle, size_t* out_size);
 
-/// Set foldable region list (compact binary)
-/// @param data payload(LE):
-///             u32 region_count, then repeat for region_count groups
-///             [u32 start_line, u32 end_line]
+/// Set foldable region list.
+/// @param data SetFoldRegionsPayload binary payload encoded by CoreProtocol
+///        List<FoldRegion> regions
+///        FoldRegion is u32 start_line, u32 end_line, bool_u8 collapsed
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_fold_regions(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
@@ -916,12 +885,11 @@ EDITOR_API const uint8_t* editor_clear_all_decorations(intptr_t editor_handle, s
 /// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_insert_snippet(intptr_t editor_handle, const char* snippet_template, size_t* out_size);
 
-/// Start linked editing mode with generic LinkedEditingModel (compact binary)
-/// @param data payload(LE):
-///             u32 group_count, u32 range_count, u32 string_blob_size
-///             group_count groups: [u32 index, u32 default_text_offset, u32 default_text_len]
-///             range_count groups: [u32 group_ordinal, u32 start_line, u32 start_col, u32 end_line, u32 end_col]
-///             UTF-8 string blob(default_text_offset=0xFFFFFFFF means null)
+/// Start linked editing mode with generic LinkedEditingModel payload
+/// @param data StartLinkedEditingPayload binary payload encoded by CoreProtocol
+///        LinkedEditingModel model
+///        LinkedEditingModel is List<TabStopGroup> groups
+///        TabStopGroup is u32 index, List<TextRange> ranges, U8String default_text
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_start_linked_editing(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 

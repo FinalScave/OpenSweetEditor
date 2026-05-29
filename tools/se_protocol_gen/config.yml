@@ -100,7 +100,7 @@ targets:
 
   winforms_csharp:
     backend: csharp
-    output_root: platform/WinForms/SweetEditor/Core
+    output_root: platform/WinForms/SweetEditor
     namespace: SweetEditor
     codec_file: CoreProtocol.cs
     layout: split_by_domain

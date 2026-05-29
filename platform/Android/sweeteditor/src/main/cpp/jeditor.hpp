@@ -3,9 +3,9 @@
 
 #include <jni.h>
 #include <vector>
-#include <cstring>
 #include <sweeteditor/editor_core.h>
 #include <sweeteditor/document.h>
+#include <sweeteditor/protocol_codec.h>
 #include "jni_helper.h"
 
 using namespace NS_SWEETEDITOR;
@@ -204,27 +204,13 @@ jmethodID AndroidTextMeasurer::m_jmethod_getFontDescent_ = nullptr;
 class EditorCoreJni {
 public:
   static jlong makeEditorCore(JNIEnv* env, jclass clazz, jobject measurer, jobject options_buffer, jint options_size) {
-    // Zero-copy decode: get direct ByteBuffer address
     EditorOptions editor_options;
-    if (options_buffer != nullptr && options_size >= 40) {
+    if (options_buffer != nullptr && options_size > 0) {
       auto* data_ptr = reinterpret_cast<const uint8_t*>(env->GetDirectBufferAddress(options_buffer));
       if (data_ptr != nullptr) {
-        size_t offset = 0;
-        std::memcpy(&editor_options.touch_slop, data_ptr + offset, sizeof(float)); offset += sizeof(float);
-        std::memcpy(&editor_options.double_tap_timeout, data_ptr + offset, sizeof(int64_t)); offset += sizeof(int64_t);
-        std::memcpy(&editor_options.long_press_ms, data_ptr + offset, sizeof(int64_t)); offset += sizeof(int64_t);
-        std::memcpy(&editor_options.fling_friction, data_ptr + offset, sizeof(float)); offset += sizeof(float);
-        std::memcpy(&editor_options.fling_min_velocity, data_ptr + offset, sizeof(float)); offset += sizeof(float);
-        std::memcpy(&editor_options.fling_max_velocity, data_ptr + offset, sizeof(float)); offset += sizeof(float);
-        uint64_t max_undo = 0;
-        std::memcpy(&max_undo, data_ptr + offset, sizeof(uint64_t)); offset += sizeof(uint64_t);
-        editor_options.max_undo_stack_size = static_cast<size_t>(max_undo);
-        if (offset + sizeof(int64_t) <= static_cast<size_t>(options_size)) {
-          std::memcpy(&editor_options.key_chord_timeout_ms, data_ptr + offset, sizeof(int64_t));
-          offset += sizeof(int64_t);
-        }
-        if (offset + sizeof(uint8_t) <= static_cast<size_t>(options_size)) {
-          editor_options.reveal_selection_end_on_select_all = data_ptr[offset] != 0;
+        EditorOptions decoded_options;
+        if (protocol::ProtocolReader::decode(data_ptr, static_cast<size_t>(options_size), decoded_options)) {
+          editor_options = decoded_options;
         }
       }
     }

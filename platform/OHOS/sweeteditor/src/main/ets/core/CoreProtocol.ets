@@ -20,6 +20,10 @@ export class BinaryReader {
     this.view = new DataView(buffer);
   }
 
+  get remaining(): number {
+    return this.view.byteLength - this.offset;
+  }
+
   readUint8(): number {
     const value = this.view.getUint8(this.offset);
     this.offset += 1;
@@ -59,7 +63,10 @@ export class BinaryReader {
 
   readUtf8String(): string {
     const length = this.readInt32();
-    if (length <= 0) {
+    if (length < 0 || length > this.remaining) {
+      throw new Error('Invalid protocol length.');
+    }
+    if (length === 0) {
       return '';
     }
     const bytes = new Uint8Array(this.view.buffer, this.offset, length);
@@ -184,6 +191,9 @@ export class CoreProtocol {
 
   private static readDiagnosticDecorationList(reader: BinaryReader): DiagnosticDecoration[] {
     const count = reader.readInt32();
+    if (count < 0 || count > reader.remaining) {
+      throw new Error('Invalid protocol length.');
+    }
     const values: DiagnosticDecoration[] = [];
     for (let i = 0; i < count; i++) {
       values.push(this.readDiagnosticDecoration(reader));
@@ -211,6 +221,9 @@ export class CoreProtocol {
 
   private static readFoldMarkerRenderItemList(reader: BinaryReader): FoldMarkerRenderItem[] {
     const count = reader.readInt32();
+    if (count < 0 || count > reader.remaining) {
+      throw new Error('Invalid protocol length.');
+    }
     const values: FoldMarkerRenderItem[] = [];
     for (let i = 0; i < count; i++) {
       values.push(this.readFoldMarkerRenderItem(reader));
@@ -238,6 +251,9 @@ export class CoreProtocol {
 
   private static readGuideSegmentList(reader: BinaryReader): GuideSegment[] {
     const count = reader.readInt32();
+    if (count < 0 || count > reader.remaining) {
+      throw new Error('Invalid protocol length.');
+    }
     const values: GuideSegment[] = [];
     for (let i = 0; i < count; i++) {
       values.push(this.readGuideSegment(reader));
@@ -265,6 +281,9 @@ export class CoreProtocol {
 
   private static readGutterIconRenderItemList(reader: BinaryReader): GutterIconRenderItem[] {
     const count = reader.readInt32();
+    if (count < 0 || count > reader.remaining) {
+      throw new Error('Invalid protocol length.');
+    }
     const values: GutterIconRenderItem[] = [];
     for (let i = 0; i < count; i++) {
       values.push(this.readGutterIconRenderItem(reader));
@@ -310,6 +329,9 @@ export class CoreProtocol {
 
   private static readKeyBindingList(reader: BinaryReader): KeyBinding[] {
     const count = reader.readInt32();
+    if (count < 0 || count > reader.remaining) {
+      throw new Error('Invalid protocol length.');
+    }
     const values: KeyBinding[] = [];
     for (let i = 0; i < count; i++) {
       values.push(this.readKeyBinding(reader));
@@ -355,6 +377,9 @@ export class CoreProtocol {
 
   private static readLinkedEditingRectList(reader: BinaryReader): LinkedEditingRect[] {
     const count = reader.readInt32();
+    if (count < 0 || count > reader.remaining) {
+      throw new Error('Invalid protocol length.');
+    }
     const values: LinkedEditingRect[] = [];
     for (let i = 0; i < count; i++) {
       values.push(this.readLinkedEditingRect(reader));
@@ -382,6 +407,9 @@ export class CoreProtocol {
 
   private static readRectList(reader: BinaryReader): Rect[] {
     const count = reader.readInt32();
+    if (count < 0 || count > reader.remaining) {
+      throw new Error('Invalid protocol length.');
+    }
     const values: Rect[] = [];
     for (let i = 0; i < count; i++) {
       values.push(this.readRect(reader));
@@ -427,6 +455,9 @@ export class CoreProtocol {
 
   private static readStyleSpanList(reader: BinaryReader): StyleSpan[] {
     const count = reader.readInt32();
+    if (count < 0 || count > reader.remaining) {
+      throw new Error('Invalid protocol length.');
+    }
     const values: StyleSpan[] = [];
     for (let i = 0; i < count; i++) {
       values.push(this.readStyleSpan(reader));
@@ -472,6 +503,9 @@ export class CoreProtocol {
 
   private static readTextChangeList(reader: BinaryReader): TextChange[] {
     const count = reader.readInt32();
+    if (count < 0 || count > reader.remaining) {
+      throw new Error('Invalid protocol length.');
+    }
     const values: TextChange[] = [];
     for (let i = 0; i < count; i++) {
       values.push(this.readTextChange(reader));
@@ -481,6 +515,9 @@ export class CoreProtocol {
 
   private static readTextPositionList(reader: BinaryReader): TextPosition[] {
     const count = reader.readInt32();
+    if (count < 0 || count > reader.remaining) {
+      throw new Error('Invalid protocol length.');
+    }
     const values: TextPosition[] = [];
     for (let i = 0; i < count; i++) {
       values.push(this.readTextPosition(reader));
@@ -508,6 +545,9 @@ export class CoreProtocol {
 
   private static readTextRangeList(reader: BinaryReader): TextRange[] {
     const count = reader.readInt32();
+    if (count < 0 || count > reader.remaining) {
+      throw new Error('Invalid protocol length.');
+    }
     const values: TextRange[] = [];
     for (let i = 0; i < count; i++) {
       values.push(this.readTextRange(reader));
@@ -535,6 +575,9 @@ export class CoreProtocol {
 
   private static readVisualLineList(reader: BinaryReader): VisualLine[] {
     const count = reader.readInt32();
+    if (count < 0 || count > reader.remaining) {
+      throw new Error('Invalid protocol length.');
+    }
     const values: VisualLine[] = [];
     for (let i = 0; i < count; i++) {
       values.push(this.readVisualLine(reader));
@@ -544,6 +587,9 @@ export class CoreProtocol {
 
   private static readVisualRunList(reader: BinaryReader): VisualRun[] {
     const count = reader.readInt32();
+    if (count < 0 || count > reader.remaining) {
+      throw new Error('Invalid protocol length.');
+    }
     const values: VisualRun[] = [];
     for (let i = 0; i < count; i++) {
       values.push(this.readVisualRun(reader));

@@ -16,6 +16,8 @@ namespace SweetEditor {
                 offset = 0;
             }
 
+            public int Remaining => data.Length - offset;
+
             public int ReadUInt8() {
                 return data[offset++];
             }
@@ -117,7 +119,8 @@ namespace SweetEditor {
 
         private static string ReadUtf8String(ref BinaryReader reader) {
             var length = reader.ReadInt32();
-            if (length <= 0) return string.Empty;
+            if (length < 0 || length > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
+            if (length == 0) return string.Empty;
             return Encoding.UTF8.GetString(reader.ReadBytes(length));
         }
 
@@ -187,7 +190,8 @@ namespace SweetEditor {
 
         private static List<DiagnosticDecoration> ReadDiagnosticDecorationList(ref BinaryReader reader) {
             var count = reader.ReadInt32();
-            var values = new List<DiagnosticDecoration>(Math.Max(count, 0));
+            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
+            var values = new List<DiagnosticDecoration>(count);
             for (var i = 0; i < count; i++) {
                 values.Add(ReadDiagnosticDecoration(ref reader));
             }
@@ -214,7 +218,8 @@ namespace SweetEditor {
 
         private static List<FoldMarkerRenderItem> ReadFoldMarkerRenderItemList(ref BinaryReader reader) {
             var count = reader.ReadInt32();
-            var values = new List<FoldMarkerRenderItem>(Math.Max(count, 0));
+            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
+            var values = new List<FoldMarkerRenderItem>(count);
             for (var i = 0; i < count; i++) {
                 values.Add(ReadFoldMarkerRenderItem(ref reader));
             }
@@ -241,7 +246,8 @@ namespace SweetEditor {
 
         private static List<GuideSegment> ReadGuideSegmentList(ref BinaryReader reader) {
             var count = reader.ReadInt32();
-            var values = new List<GuideSegment>(Math.Max(count, 0));
+            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
+            var values = new List<GuideSegment>(count);
             for (var i = 0; i < count; i++) {
                 values.Add(ReadGuideSegment(ref reader));
             }
@@ -268,7 +274,8 @@ namespace SweetEditor {
 
         private static List<GutterIconRenderItem> ReadGutterIconRenderItemList(ref BinaryReader reader) {
             var count = reader.ReadInt32();
-            var values = new List<GutterIconRenderItem>(Math.Max(count, 0));
+            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
+            var values = new List<GutterIconRenderItem>(count);
             for (var i = 0; i < count; i++) {
                 values.Add(ReadGutterIconRenderItem(ref reader));
             }
@@ -313,7 +320,8 @@ namespace SweetEditor {
 
         private static List<KeyBinding> ReadKeyBindingList(ref BinaryReader reader) {
             var count = reader.ReadInt32();
-            var values = new List<KeyBinding>(Math.Max(count, 0));
+            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
+            var values = new List<KeyBinding>(count);
             for (var i = 0; i < count; i++) {
                 values.Add(ReadKeyBinding(ref reader));
             }
@@ -358,7 +366,8 @@ namespace SweetEditor {
 
         private static List<LinkedEditingRect> ReadLinkedEditingRectList(ref BinaryReader reader) {
             var count = reader.ReadInt32();
-            var values = new List<LinkedEditingRect>(Math.Max(count, 0));
+            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
+            var values = new List<LinkedEditingRect>(count);
             for (var i = 0; i < count; i++) {
                 values.Add(ReadLinkedEditingRect(ref reader));
             }
@@ -385,7 +394,8 @@ namespace SweetEditor {
 
         private static List<Rect> ReadRectList(ref BinaryReader reader) {
             var count = reader.ReadInt32();
-            var values = new List<Rect>(Math.Max(count, 0));
+            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
+            var values = new List<Rect>(count);
             for (var i = 0; i < count; i++) {
                 values.Add(ReadRect(ref reader));
             }
@@ -430,7 +440,8 @@ namespace SweetEditor {
 
         private static List<StyleSpan> ReadStyleSpanList(ref BinaryReader reader) {
             var count = reader.ReadInt32();
-            var values = new List<StyleSpan>(Math.Max(count, 0));
+            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
+            var values = new List<StyleSpan>(count);
             for (var i = 0; i < count; i++) {
                 values.Add(ReadStyleSpan(ref reader));
             }
@@ -475,7 +486,8 @@ namespace SweetEditor {
 
         private static List<TextChange> ReadTextChangeList(ref BinaryReader reader) {
             var count = reader.ReadInt32();
-            var values = new List<TextChange>(Math.Max(count, 0));
+            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
+            var values = new List<TextChange>(count);
             for (var i = 0; i < count; i++) {
                 values.Add(ReadTextChange(ref reader));
             }
@@ -484,7 +496,8 @@ namespace SweetEditor {
 
         private static List<TextPosition> ReadTextPositionList(ref BinaryReader reader) {
             var count = reader.ReadInt32();
-            var values = new List<TextPosition>(Math.Max(count, 0));
+            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
+            var values = new List<TextPosition>(count);
             for (var i = 0; i < count; i++) {
                 values.Add(ReadTextPosition(ref reader));
             }
@@ -511,7 +524,8 @@ namespace SweetEditor {
 
         private static List<TextRange> ReadTextRangeList(ref BinaryReader reader) {
             var count = reader.ReadInt32();
-            var values = new List<TextRange>(Math.Max(count, 0));
+            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
+            var values = new List<TextRange>(count);
             for (var i = 0; i < count; i++) {
                 values.Add(ReadTextRange(ref reader));
             }
@@ -538,7 +552,8 @@ namespace SweetEditor {
 
         private static List<VisualLine> ReadVisualLineList(ref BinaryReader reader) {
             var count = reader.ReadInt32();
-            var values = new List<VisualLine>(Math.Max(count, 0));
+            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
+            var values = new List<VisualLine>(count);
             for (var i = 0; i < count; i++) {
                 values.Add(ReadVisualLine(ref reader));
             }
@@ -547,7 +562,8 @@ namespace SweetEditor {
 
         private static List<VisualRun> ReadVisualRunList(ref BinaryReader reader) {
             var count = reader.ReadInt32();
-            var values = new List<VisualRun>(Math.Max(count, 0));
+            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
+            var values = new List<VisualRun>(count);
             for (var i = 0; i < count; i++) {
                 values.Add(ReadVisualRun(ref reader));
             }

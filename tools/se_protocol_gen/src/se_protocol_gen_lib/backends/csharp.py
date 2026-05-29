@@ -314,6 +314,8 @@ def generate_csharp_codec(schema, target=None):
         "                offset = 0;",
         "            }",
         "",
+        "            public int Remaining => data.Length - offset;",
+        "",
         "            public int ReadUInt8() {",
         "                return data[offset++];",
         "            }",
@@ -415,7 +417,8 @@ def generate_csharp_codec(schema, target=None):
         "",
         "        private static string ReadUtf8String(ref BinaryReader reader) {",
         "            var length = reader.ReadInt32();",
-        "            if (length <= 0) return string.Empty;",
+        "            if (length < 0 || length > reader.Remaining) throw new InvalidOperationException(\"Invalid protocol length.\");",
+        "            if (length == 0) return string.Empty;",
         "            return Encoding.UTF8.GetString(reader.ReadBytes(length));",
         "        }",
         "",
@@ -435,7 +438,8 @@ def generate_csharp_codec(schema, target=None):
                 "",
                 f"        private static List<{inner}> Read{inner}List(ref BinaryReader reader) {{",
                 "            var count = reader.ReadInt32();",
-                f"            var values = new List<{inner}>(Math.Max(count, 0));",
+                "            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException(\"Invalid protocol length.\");",
+                f"            var values = new List<{inner}>(count);",
                 "            for (var i = 0; i < count; i++) {",
                 f"                values.Add(Read{inner}(ref reader));",
                 "            }",
@@ -603,7 +607,7 @@ def generate_csharp(schema, target_name, target, out_root):
         codec_path.write_text(generate_csharp_codec_file(schema, target), encoding="utf-8")
         written.append(str(codec_path))
         return written
-    path = out_root / target.get("file", "SweetEditorProtocol.cs")
+    path = out_root / target.get("file", "CoreProtocol.cs")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(generate_csharp_file(schema, target), encoding="utf-8")
     return [str(path)]

@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
-import 'package:sweeteditor/editor_core.dart' as core;
+import 'package:sweeteditor/core/editor_core.dart' as core;
 import 'package:sweeteditor/sweeteditor.dart';
 import 'package:sweetline/sweetline.dart' as sweetline;
 
@@ -198,8 +198,8 @@ class DemoDecorationProvider implements DecorationProvider {
           final column = guide.column < 0 ? 0 : guide.column;
           indentGuides.add(
             core.IndentGuide(
-              start: core.TextPosition(guide.startLine, column),
-              end: core.TextPosition(guide.endLine, column),
+              start: core.TextPosition(line: guide.startLine, column: column),
+              end: core.TextPosition(line: guide.endLine, column: column),
             ),
           );
           if (guide.endLine <= guide.startLine) {
@@ -273,7 +273,7 @@ class DemoDecorationProvider implements DecorationProvider {
           line: range.line,
           column: range.startColumn + fixmeIndex,
           length: 5,
-          severity: 0,
+          severity: core.DiagnosticSeverity.diagError,
         );
       }
       final todoIndex = upper.indexOf('TODO');
@@ -285,7 +285,7 @@ class DemoDecorationProvider implements DecorationProvider {
           line: range.line,
           column: range.startColumn + todoIndex,
           length: 4,
-          severity: 1,
+          severity: core.DiagnosticSeverity.diagWarning,
         );
       }
       return firstKeywordRange;
@@ -303,7 +303,7 @@ class DemoDecorationProvider implements DecorationProvider {
         line: range.line,
         column: range.startColumn,
         length: range.length,
-        severity: 3,
+        severity: core.DiagnosticSeverity.diagHint,
       );
     }
     return firstKeywordRange;
@@ -316,7 +316,7 @@ class DemoDecorationProvider implements DecorationProvider {
     required int line,
     required int column,
     required int length,
-    required int severity,
+    required core.DiagnosticSeverity severity,
   }) {
     if (diagnosticCount[0] >= _maxDynamicDiagnostics ||
         line < 0 ||
@@ -352,7 +352,7 @@ class DemoDecorationProvider implements DecorationProvider {
       line: firstKeywordRange.line,
       column: firstKeywordRange.startColumn,
       length: firstKeywordRange.length,
-      severity: 3,
+      severity: core.DiagnosticSeverity.diagHint,
     );
   }
 
@@ -502,7 +502,7 @@ class DemoDecorationProvider implements DecorationProvider {
         core.SeparatorGuide(
           line: range.line,
           style: isDouble
-              ? core.SeparatorStyle.double_
+              ? core.SeparatorStyle.double
               : core.SeparatorStyle.single,
           count: count,
           textEndColumn: lineText.length,

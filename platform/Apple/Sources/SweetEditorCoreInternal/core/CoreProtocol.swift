@@ -9,6 +9,10 @@ enum CoreProtocol {
             self.data = data
         }
 
+        var remaining: Int {
+            data.count - offset
+        }
+
         mutating func readUInt8() -> UInt8? {
             guard offset + 1 <= data.count else { return nil }
             defer { offset += 1 }
@@ -318,7 +322,7 @@ enum CoreProtocol {
     }
 
     static func readDiagnosticDecorationList(_ reader: inout BinaryReader) -> [DiagnosticDecoration]? {
-        guard let countValue = reader.readInt32(), countValue >= 0 else { return nil }
+        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
         var values: [DiagnosticDecoration] = []
         values.reserveCapacity(Int(countValue))
         for _ in 0..<Int(countValue) {
@@ -344,7 +348,7 @@ enum CoreProtocol {
     }
 
     static func readFoldMarkerRenderItemList(_ reader: inout BinaryReader) -> [FoldMarkerRenderItem]? {
-        guard let countValue = reader.readInt32(), countValue >= 0 else { return nil }
+        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
         var values: [FoldMarkerRenderItem] = []
         values.reserveCapacity(Int(countValue))
         for _ in 0..<Int(countValue) {
@@ -370,7 +374,7 @@ enum CoreProtocol {
     }
 
     static func readGuideSegmentList(_ reader: inout BinaryReader) -> [GuideSegment]? {
-        guard let countValue = reader.readInt32(), countValue >= 0 else { return nil }
+        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
         var values: [GuideSegment] = []
         values.reserveCapacity(Int(countValue))
         for _ in 0..<Int(countValue) {
@@ -396,7 +400,7 @@ enum CoreProtocol {
     }
 
     static func readGutterIconRenderItemList(_ reader: inout BinaryReader) -> [GutterIconRenderItem]? {
-        guard let countValue = reader.readInt32(), countValue >= 0 else { return nil }
+        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
         var values: [GutterIconRenderItem] = []
         values.reserveCapacity(Int(countValue))
         for _ in 0..<Int(countValue) {
@@ -437,7 +441,7 @@ enum CoreProtocol {
     }
 
     static func readKeyBindingList(_ reader: inout BinaryReader) -> [KeyBinding]? {
-        guard let countValue = reader.readInt32(), countValue >= 0 else { return nil }
+        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
         var values: [KeyBinding] = []
         values.reserveCapacity(Int(countValue))
         for _ in 0..<Int(countValue) {
@@ -478,7 +482,7 @@ enum CoreProtocol {
     }
 
     static func readLinkedEditingRectList(_ reader: inout BinaryReader) -> [LinkedEditingRect]? {
-        guard let countValue = reader.readInt32(), countValue >= 0 else { return nil }
+        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
         var values: [LinkedEditingRect] = []
         values.reserveCapacity(Int(countValue))
         for _ in 0..<Int(countValue) {
@@ -504,7 +508,7 @@ enum CoreProtocol {
     }
 
     static func readRectList(_ reader: inout BinaryReader) -> [Rect]? {
-        guard let countValue = reader.readInt32(), countValue >= 0 else { return nil }
+        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
         var values: [Rect] = []
         values.reserveCapacity(Int(countValue))
         for _ in 0..<Int(countValue) {
@@ -545,7 +549,7 @@ enum CoreProtocol {
     }
 
     static func readStyleSpanList(_ reader: inout BinaryReader) -> [StyleSpan]? {
-        guard let countValue = reader.readInt32(), countValue >= 0 else { return nil }
+        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
         var values: [StyleSpan] = []
         values.reserveCapacity(Int(countValue))
         for _ in 0..<Int(countValue) {
@@ -586,7 +590,7 @@ enum CoreProtocol {
     }
 
     static func readTextChangeList(_ reader: inout BinaryReader) -> [TextChange]? {
-        guard let countValue = reader.readInt32(), countValue >= 0 else { return nil }
+        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
         var values: [TextChange] = []
         values.reserveCapacity(Int(countValue))
         for _ in 0..<Int(countValue) {
@@ -597,7 +601,7 @@ enum CoreProtocol {
     }
 
     static func readTextPositionList(_ reader: inout BinaryReader) -> [TextPosition]? {
-        guard let countValue = reader.readInt32(), countValue >= 0 else { return nil }
+        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
         var values: [TextPosition] = []
         values.reserveCapacity(Int(countValue))
         for _ in 0..<Int(countValue) {
@@ -623,7 +627,7 @@ enum CoreProtocol {
     }
 
     static func readTextRangeList(_ reader: inout BinaryReader) -> [TextRange]? {
-        guard let countValue = reader.readInt32(), countValue >= 0 else { return nil }
+        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
         var values: [TextRange] = []
         values.reserveCapacity(Int(countValue))
         for _ in 0..<Int(countValue) {
@@ -649,7 +653,7 @@ enum CoreProtocol {
     }
 
     static func readVisualLineList(_ reader: inout BinaryReader) -> [VisualLine]? {
-        guard let countValue = reader.readInt32(), countValue >= 0 else { return nil }
+        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
         var values: [VisualLine] = []
         values.reserveCapacity(Int(countValue))
         for _ in 0..<Int(countValue) {
@@ -660,7 +664,7 @@ enum CoreProtocol {
     }
 
     static func readVisualRunList(_ reader: inout BinaryReader) -> [VisualRun]? {
-        guard let countValue = reader.readInt32(), countValue >= 0 else { return nil }
+        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
         var values: [VisualRun] = []
         values.reserveCapacity(Int(countValue))
         for _ in 0..<Int(countValue) {

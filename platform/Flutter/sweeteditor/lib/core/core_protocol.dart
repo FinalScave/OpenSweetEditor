@@ -9,6 +9,8 @@ class _BinaryReader {
   final ByteData _data;
   int _offset = 0;
 
+  int get remaining => _data.lengthInBytes - _offset;
+
   int readUint8() {
     final value = _data.getUint8(_offset);
     _offset += 1;
@@ -126,7 +128,10 @@ class _BinaryWriter {
 
 String _readUtf8String(_BinaryReader reader) {
   final length = reader.readInt32();
-  if (length <= 0) return '';
+  if (length < 0 || length > reader.remaining) {
+    throw RangeError('Invalid protocol length.');
+  }
+  if (length == 0) return '';
   return utf8.decode(reader.readBytes(length));
 }
 
@@ -196,6 +201,9 @@ int _sizeOfDiagnosticList(List<Diagnostic>? values) {
 
 List<DiagnosticDecoration> _readDiagnosticDecorationList(_BinaryReader reader) {
   final count = reader.readInt32();
+  if (count < 0 || count > reader.remaining) {
+    throw RangeError('Invalid protocol length.');
+  }
   final values = <DiagnosticDecoration>[];
   for (var i = 0; i < count; i++) {
     values.add(_readDiagnosticDecoration(reader));
@@ -223,6 +231,9 @@ int _sizeOfFlowGuideList(List<FlowGuide>? values) {
 
 List<FoldMarkerRenderItem> _readFoldMarkerRenderItemList(_BinaryReader reader) {
   final count = reader.readInt32();
+  if (count < 0 || count > reader.remaining) {
+    throw RangeError('Invalid protocol length.');
+  }
   final values = <FoldMarkerRenderItem>[];
   for (var i = 0; i < count; i++) {
     values.add(_readFoldMarkerRenderItem(reader));
@@ -250,6 +261,9 @@ int _sizeOfFoldRegionList(List<FoldRegion>? values) {
 
 List<GuideSegment> _readGuideSegmentList(_BinaryReader reader) {
   final count = reader.readInt32();
+  if (count < 0 || count > reader.remaining) {
+    throw RangeError('Invalid protocol length.');
+  }
   final values = <GuideSegment>[];
   for (var i = 0; i < count; i++) {
     values.add(_readGuideSegment(reader));
@@ -277,6 +291,9 @@ int _sizeOfGutterIconList(List<GutterIcon>? values) {
 
 List<GutterIconRenderItem> _readGutterIconRenderItemList(_BinaryReader reader) {
   final count = reader.readInt32();
+  if (count < 0 || count > reader.remaining) {
+    throw RangeError('Invalid protocol length.');
+  }
   final values = <GutterIconRenderItem>[];
   for (var i = 0; i < count; i++) {
     values.add(_readGutterIconRenderItem(reader));
@@ -322,6 +339,9 @@ int _sizeOfInlayHintList(List<InlayHint>? values) {
 
 List<KeyBinding> _readKeyBindingList(_BinaryReader reader) {
   final count = reader.readInt32();
+  if (count < 0 || count > reader.remaining) {
+    throw RangeError('Invalid protocol length.');
+  }
   final values = <KeyBinding>[];
   for (var i = 0; i < count; i++) {
     values.add(_readKeyBinding(reader));
@@ -367,6 +387,9 @@ int _sizeOfLinkSpanList(List<LinkSpan>? values) {
 
 List<LinkedEditingRect> _readLinkedEditingRectList(_BinaryReader reader) {
   final count = reader.readInt32();
+  if (count < 0 || count > reader.remaining) {
+    throw RangeError('Invalid protocol length.');
+  }
   final values = <LinkedEditingRect>[];
   for (var i = 0; i < count; i++) {
     values.add(_readLinkedEditingRect(reader));
@@ -394,6 +417,9 @@ int _sizeOfPhantomTextList(List<PhantomText>? values) {
 
 List<Rect> _readRectList(_BinaryReader reader) {
   final count = reader.readInt32();
+  if (count < 0 || count > reader.remaining) {
+    throw RangeError('Invalid protocol length.');
+  }
   final values = <Rect>[];
   for (var i = 0; i < count; i++) {
     values.add(_readRect(reader));
@@ -439,6 +465,9 @@ int _sizeOfSeparatorGuideList(List<SeparatorGuide>? values) {
 
 List<StyleSpan> _readStyleSpanList(_BinaryReader reader) {
   final count = reader.readInt32();
+  if (count < 0 || count > reader.remaining) {
+    throw RangeError('Invalid protocol length.');
+  }
   final values = <StyleSpan>[];
   for (var i = 0; i < count; i++) {
     values.add(_readStyleSpan(reader));
@@ -484,6 +513,9 @@ int _sizeOfTabStopGroupList(List<TabStopGroup>? values) {
 
 List<TextChange> _readTextChangeList(_BinaryReader reader) {
   final count = reader.readInt32();
+  if (count < 0 || count > reader.remaining) {
+    throw RangeError('Invalid protocol length.');
+  }
   final values = <TextChange>[];
   for (var i = 0; i < count; i++) {
     values.add(_readTextChange(reader));
@@ -493,6 +525,9 @@ List<TextChange> _readTextChangeList(_BinaryReader reader) {
 
 List<TextPosition> _readTextPositionList(_BinaryReader reader) {
   final count = reader.readInt32();
+  if (count < 0 || count > reader.remaining) {
+    throw RangeError('Invalid protocol length.');
+  }
   final values = <TextPosition>[];
   for (var i = 0; i < count; i++) {
     values.add(_readTextPosition(reader));
@@ -520,6 +555,9 @@ int _sizeOfTextPositionList(List<TextPosition>? values) {
 
 List<TextRange> _readTextRangeList(_BinaryReader reader) {
   final count = reader.readInt32();
+  if (count < 0 || count > reader.remaining) {
+    throw RangeError('Invalid protocol length.');
+  }
   final values = <TextRange>[];
   for (var i = 0; i < count; i++) {
     values.add(_readTextRange(reader));
@@ -547,6 +585,9 @@ int _sizeOfTextRangeList(List<TextRange>? values) {
 
 List<VisualLine> _readVisualLineList(_BinaryReader reader) {
   final count = reader.readInt32();
+  if (count < 0 || count > reader.remaining) {
+    throw RangeError('Invalid protocol length.');
+  }
   final values = <VisualLine>[];
   for (var i = 0; i < count; i++) {
     values.add(_readVisualLine(reader));
@@ -556,6 +597,9 @@ List<VisualLine> _readVisualLineList(_BinaryReader reader) {
 
 List<VisualRun> _readVisualRunList(_BinaryReader reader) {
   final count = reader.readInt32();
+  if (count < 0 || count > reader.remaining) {
+    throw RangeError('Invalid protocol length.');
+  }
   final values = <VisualRun>[];
   for (var i = 0; i < count; i++) {
     values.add(_readVisualRun(reader));

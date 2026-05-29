@@ -99,7 +99,10 @@ public final class CoreProtocol {
 
     private static String readUtf8String(ByteBuffer data) {
         int length = data.getInt();
-        if (length <= 0) return "";
+        if (length < 0 || length > data.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        if (length == 0) return "";
         byte[] bytes = new byte[length];
         data.get(bytes);
         return new String(bytes, StandardCharsets.UTF_8);
@@ -174,7 +177,10 @@ public final class CoreProtocol {
 
     private static ArrayList<DiagnosticDecoration> readDiagnosticDecorationList(ByteBuffer data) {
         int count = data.getInt();
-        ArrayList<DiagnosticDecoration> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > data.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<DiagnosticDecoration> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readDiagnosticDecoration(data));
         }
@@ -201,7 +207,10 @@ public final class CoreProtocol {
 
     private static ArrayList<FoldMarkerRenderItem> readFoldMarkerRenderItemList(ByteBuffer data) {
         int count = data.getInt();
-        ArrayList<FoldMarkerRenderItem> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > data.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<FoldMarkerRenderItem> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readFoldMarkerRenderItem(data));
         }
@@ -228,7 +237,10 @@ public final class CoreProtocol {
 
     private static ArrayList<GuideSegment> readGuideSegmentList(ByteBuffer data) {
         int count = data.getInt();
-        ArrayList<GuideSegment> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > data.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<GuideSegment> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readGuideSegment(data));
         }
@@ -255,7 +267,10 @@ public final class CoreProtocol {
 
     private static ArrayList<GutterIconRenderItem> readGutterIconRenderItemList(ByteBuffer data) {
         int count = data.getInt();
-        ArrayList<GutterIconRenderItem> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > data.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<GutterIconRenderItem> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readGutterIconRenderItem(data));
         }
@@ -300,7 +315,10 @@ public final class CoreProtocol {
 
     private static ArrayList<KeyBinding> readKeyBindingList(ByteBuffer data) {
         int count = data.getInt();
-        ArrayList<KeyBinding> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > data.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<KeyBinding> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readKeyBinding(data));
         }
@@ -345,7 +363,10 @@ public final class CoreProtocol {
 
     private static ArrayList<LinkedEditingRect> readLinkedEditingRectList(ByteBuffer data) {
         int count = data.getInt();
-        ArrayList<LinkedEditingRect> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > data.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<LinkedEditingRect> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readLinkedEditingRect(data));
         }
@@ -372,7 +393,10 @@ public final class CoreProtocol {
 
     private static ArrayList<Rect> readRectList(ByteBuffer data) {
         int count = data.getInt();
-        ArrayList<Rect> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > data.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<Rect> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readRect(data));
         }
@@ -417,7 +441,10 @@ public final class CoreProtocol {
 
     private static ArrayList<StyleSpan> readStyleSpanList(ByteBuffer data) {
         int count = data.getInt();
-        ArrayList<StyleSpan> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > data.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<StyleSpan> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readStyleSpan(data));
         }
@@ -462,7 +489,10 @@ public final class CoreProtocol {
 
     private static ArrayList<TextChange> readTextChangeList(ByteBuffer data) {
         int count = data.getInt();
-        ArrayList<TextChange> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > data.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<TextChange> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readTextChange(data));
         }
@@ -471,7 +501,10 @@ public final class CoreProtocol {
 
     private static ArrayList<TextPosition> readTextPositionList(ByteBuffer data) {
         int count = data.getInt();
-        ArrayList<TextPosition> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > data.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<TextPosition> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readTextPosition(data));
         }
@@ -498,7 +531,10 @@ public final class CoreProtocol {
 
     private static ArrayList<TextRange> readTextRangeList(ByteBuffer data) {
         int count = data.getInt();
-        ArrayList<TextRange> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > data.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<TextRange> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readTextRange(data));
         }
@@ -525,7 +561,10 @@ public final class CoreProtocol {
 
     private static ArrayList<VisualLine> readVisualLineList(ByteBuffer data) {
         int count = data.getInt();
-        ArrayList<VisualLine> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > data.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<VisualLine> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readVisualLine(data));
         }
@@ -534,7 +573,10 @@ public final class CoreProtocol {
 
     private static ArrayList<VisualRun> readVisualRunList(ByteBuffer data) {
         int count = data.getInt();
-        ArrayList<VisualRun> values = new ArrayList<>(Math.max(count, 0));
+        if (count < 0 || count > data.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<VisualRun> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
             values.add(readVisualRun(data));
         }

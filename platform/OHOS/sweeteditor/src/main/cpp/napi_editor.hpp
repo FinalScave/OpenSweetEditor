@@ -5,6 +5,7 @@
 #include <cstring>
 #include <sweeteditor/editor_core.h>
 #include <sweeteditor/document.h>
+#include <sweeteditor/protocol_codec.h>
 #include "napi_helper.h"
 
 using namespace NS_SWEETEDITOR;
@@ -210,24 +211,10 @@ public:
       void* data = nullptr;
       size_t byte_length = 0;
       napi_get_arraybuffer_info(env, args[1], &data, &byte_length);
-      if (data != nullptr && byte_length >= 40) {
-        auto* ptr = reinterpret_cast<const uint8_t*>(data);
-        size_t offset = 0;
-        std::memcpy(&options.touch_slop, ptr + offset, sizeof(float)); offset += sizeof(float);
-        std::memcpy(&options.double_tap_timeout, ptr + offset, sizeof(int64_t)); offset += sizeof(int64_t);
-        std::memcpy(&options.long_press_ms, ptr + offset, sizeof(int64_t)); offset += sizeof(int64_t);
-        std::memcpy(&options.fling_friction, ptr + offset, sizeof(float)); offset += sizeof(float);
-        std::memcpy(&options.fling_min_velocity, ptr + offset, sizeof(float)); offset += sizeof(float);
-        std::memcpy(&options.fling_max_velocity, ptr + offset, sizeof(float)); offset += sizeof(float);
-        uint64_t max_undo = 0;
-        std::memcpy(&max_undo, ptr + offset, sizeof(uint64_t)); offset += sizeof(uint64_t);
-        options.max_undo_stack_size = static_cast<size_t>(max_undo);
-        if (offset + sizeof(int64_t) <= byte_length) {
-          std::memcpy(&options.key_chord_timeout_ms, ptr + offset, sizeof(int64_t));
-          offset += sizeof(int64_t);
-        }
-        if (offset + sizeof(uint8_t) <= byte_length) {
-          options.reveal_selection_end_on_select_all = ptr[offset] != 0;
+      if (data != nullptr) {
+        EditorOptions decoded_options;
+        if (protocol::ProtocolReader::decode(reinterpret_cast<const uint8_t*>(data), byte_length, decoded_options)) {
+          options = decoded_options;
         }
       }
     }
