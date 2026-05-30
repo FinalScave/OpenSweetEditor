@@ -13,7 +13,7 @@ import java.nio.file.StandardCopyOption;
  * After extraction, the target directory is automatically set to the {@code sweeteditor.lib.path} system property.
  * {@link EditorNative} static initialization will preferentially read this property to load the native library.
  * <p>
- * Internally determines whether extraction has already occurred (file exists with matching size), avoiding redundant extraction.
+ * Internally determines whether extraction has already occurred (file exists with matching content), avoiding redundant extraction.
  *
  * <h3>Usage</h3>
  * <pre>{@code
@@ -38,7 +38,7 @@ public final class NativeLibraryExtractor {
      * Extract the current platform's native library from JAR resources to the specified directory,
      * and automatically set {@code sweeteditor.lib.path}.
      * <p>
-     * If a native library file of the same size already exists in the target directory, extraction is skipped
+     * If a native library file with the same content already exists in the target directory, extraction is skipped
      * and only the system property is set.
      *
      * @param targetDir extraction target directory (created automatically if it does not exist)
@@ -53,9 +53,9 @@ public final class NativeLibraryExtractor {
         Files.createDirectories(targetDir);
         Path targetFile = targetDir.resolve(libName);
 
-        // Check whether extraction has already occurred (file exists with matching size)
+        // Check whether extraction has already occurred with matching content.
         if (!needsExtraction(targetFile, resourcePath)) {
-            // Already exists with matching size, skip extraction, just register path
+            // Already exists with matching content, skip extraction and register path.
             registerLibraryPath(targetDir);
             return targetFile;
         }
@@ -132,11 +132,11 @@ public final class NativeLibraryExtractor {
         return Files.exists(targetDir.resolve(libName));
     }
 
-    // ===================== Internal Methods =====================
+    // Internal helpers
 
     /**
      * Determine whether re-extraction is needed.
-     * If the target file does not exist, or its size does not match the JAR resource, extraction is needed.
+     * If the target file does not exist, or its content does not match the JAR resource, extraction is needed.
      */
     private static boolean needsExtraction(Path targetFile, String resourcePath) throws IOException {
         if (!Files.exists(targetFile)) {
@@ -150,9 +150,37 @@ public final class NativeLibraryExtractor {
             return true;
         }
 
-        // Compare sizes
         long existingSize = Files.size(targetFile);
-        return existingSize != resourceSize;
+        if (existingSize != resourceSize) {
+            return true;
+        }
+
+        return !hasSameContent(targetFile, resourcePath);
+    }
+
+    private static boolean hasSameContent(Path targetFile, String resourcePath) throws IOException {
+        try (InputStream existing = Files.newInputStream(targetFile);
+             InputStream resource = NativeLibraryExtractor.class.getResourceAsStream(resourcePath)) {
+            if (resource == null) return false;
+
+            byte[] existingBuffer = new byte[8192];
+            byte[] resourceBuffer = new byte[8192];
+            while (true) {
+                int existingRead = existing.read(existingBuffer);
+                int resourceRead = resource.read(resourceBuffer);
+                if (existingRead != resourceRead) {
+                    return false;
+                }
+                if (existingRead < 0) {
+                    return true;
+                }
+                for (int i = 0; i < existingRead; i++) {
+                    if (existingBuffer[i] != resourceBuffer[i]) {
+                        return false;
+                    }
+                }
+            }
+        }
     }
 
     /**

@@ -85,6 +85,7 @@ public class SweetEditor extends JPanel {
     private static final int ANIMATION_INTERVAL_MS = 16;
     private Timer animationTimer;
     private boolean animationActive = false;
+    private boolean primaryMouseDown = false;
 
     // Event bus
     private EditorSettings settings;
@@ -143,6 +144,7 @@ public class SweetEditor extends JPanel {
 
         setBackground(currentTheme.backgroundColor);
         setFont(renderer.getRegularFont());
+        setAutoscrolls(true);
         setupEventListeners();
         setupCursorBlink();
         setupCursorAnimation();
@@ -195,7 +197,7 @@ public class SweetEditor extends JPanel {
         this.currentTheme = theme;
         renderer.applyTheme(theme);
         setBackground(theme.backgroundColor);
-        EditorActionResult result = new EditorActionResult();
+        EditorActionResult result = null;
         if (theme != null && !theme.textStyles.isEmpty()) {
             result = editorCore.registerBatchTextStyles(theme.textStyles);
         }
@@ -831,6 +833,7 @@ public class SweetEditor extends JPanel {
                 requestFocusInWindow();
                 int mods = getModifiers(e);
                 if (SwingUtilities.isLeftMouseButton(e)) {
+                    primaryMouseDown = true;
                     handleGesture(MOUSE_DOWN, e.getX(), e.getY(), mods, 0, 0, 1);
                 } else if (SwingUtilities.isRightMouseButton(e)) {
                     handleGesture(MOUSE_RIGHT_DOWN, e.getX(), e.getY(), mods, 0, 0, 1);
@@ -839,13 +842,20 @@ public class SweetEditor extends JPanel {
 
             @Override
             public void mouseReleased(MouseEvent e) {
-                if (SwingUtilities.isLeftMouseButton(e)) {
+                if (primaryMouseDown || SwingUtilities.isLeftMouseButton(e)) {
+                    primaryMouseDown = false;
                     handleGesture(MOUSE_UP, e.getX(), e.getY(), getModifiers(e), 0, 0, 1);
                 }
             }
             @Override
             public void mouseExited(MouseEvent e) {
-                handleGesture(MOUSE_MOVE, -1, -1, getModifiers(e), 0, 0, 1);
+                boolean primaryDown = primaryMouseDown || isPrimaryButtonDown(e);
+                if (primaryDown) {
+                    ensurePrimaryMouseDown(e);
+                    handleGesture(MOUSE_MOVE, e.getX(), e.getY(), getModifiers(e), 0, 0, 1);
+                } else {
+                    handleGesture(MOUSE_MOVE, -1, -1, getModifiers(e), 0, 0, 1);
+                }
             }
 
         });
@@ -853,7 +863,9 @@ public class SweetEditor extends JPanel {
         addMouseMotionListener(new MouseMotionAdapter() {
             @Override
             public void mouseDragged(MouseEvent e) {
-                if (SwingUtilities.isLeftMouseButton(e)) {
+                boolean primaryDown = primaryMouseDown || isPrimaryButtonDown(e);
+                if (primaryDown) {
+                    ensurePrimaryMouseDown(e);
                     handleGesture(MOUSE_MOVE, e.getX(), e.getY(), getModifiers(e), 0, 0, 1);
                 }
             }
@@ -1508,7 +1520,9 @@ public class SweetEditor extends JPanel {
 
     private void setupAnimationTimer() {
         animationTimer = new Timer(ANIMATION_INTERVAL_MS, e -> {
-            if (!animationActive) return;
+            if (!animationActive) {
+                return;
+            }
             EditorActionResult result = editorCore.tickAnimations();
             dispatchEditorActionResult(result);
         });
@@ -1621,6 +1635,18 @@ public class SweetEditor extends JPanel {
             case MOUSE_RIGHT_DOWN -> "mouseRightDown";
             default -> "gesture";
         };
+    }
+
+    private static boolean isPrimaryButtonDown(MouseEvent e) {
+        return (e.getModifiersEx() & InputEvent.BUTTON1_DOWN_MASK) != 0;
+    }
+
+    private void ensurePrimaryMouseDown(MouseEvent e) {
+        if (primaryMouseDown) {
+            return;
+        }
+        primaryMouseDown = true;
+        handleGesture(MOUSE_DOWN, e.getX(), e.getY(), getModifiers(e), 0, 0, 1);
     }
 
 }

@@ -59,15 +59,15 @@ export function spanLayerFromValue(value: number): SpanLayer {
 }
 
 export class BracketGuide {
-  parent: TextPosition;
-  end: TextPosition;
-  children: TextPosition[];
+  parent: TextPosition = { line: 0, column: 0 };
+  end: TextPosition = { line: 0, column: 0 };
+  children: TextPosition[] = [];
 }
 
 export class CodeLensItem {
   column: number = 0;
   commandId: number = 0;
-  text: string;
+  text: string = '';
 }
 
 export class Diagnostic {
@@ -77,8 +77,8 @@ export class Diagnostic {
 }
 
 export class FlowGuide {
-  start: TextPosition;
-  end: TextPosition;
+  start: TextPosition = { line: 0, column: 0 };
+  end: TextPosition = { line: 0, column: 0 };
 }
 
 export class FoldRegion {
@@ -92,33 +92,33 @@ export class GutterIcon {
 }
 
 export class IndentGuide {
-  start: TextPosition;
-  end: TextPosition;
+  start: TextPosition = { line: 0, column: 0 };
+  end: TextPosition = { line: 0, column: 0 };
 }
 
 export class InlayHint {
   type: InlayType = InlayType.TEXT;
   column: number = 0;
   intValue: number = 0;
-  text: string;
+  text: string = '';
 }
 
 export class LinkSpan {
   column: number = 0;
   length: number = 0;
-  target: string;
+  target: string = '';
 }
 
 export class PhantomText {
   column: number = 0;
-  text: string;
+  text: string = '';
 }
 
 export class SeparatorGuide {
-  line: number;
-  style: SeparatorStyle;
-  count: number;
-  textEndColumn: number;
+  line: number = 0;
+  style: SeparatorStyle = SeparatorStyle.SINGLE;
+  count: number = 0;
+  textEndColumn: number = 0;
 }
 
 export interface StyleSpan {
@@ -127,8 +127,13 @@ export interface StyleSpan {
   styleId: number;
 }
 
-export interface TextStyle {
-  color: number;
-  backgroundColor: number;
-  fontStyle: number;
+export class TextStyle {
+  static readonly NORMAL: number = 0;
+  static readonly BOLD: number = 1;
+  static readonly ITALIC: number = 2;
+  static readonly STRIKETHROUGH: number = 4;
+
+  color: number = 0;
+  backgroundColor: number = 0;
+  fontStyle: number = 0;
 }

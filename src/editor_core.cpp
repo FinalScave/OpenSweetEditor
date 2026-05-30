@@ -3295,6 +3295,9 @@ namespace NS_SWEETEDITOR {
                           || result.composition_changed
                           || active_hit_target_changed
                           || result.decoration_changed;
+    result.needs_edge_scroll = m_interaction_->hasActiveEdgeScroll();
+    result.needs_fling = m_interaction_->hasActiveFling();
+    result.needs_animation = result.needs_edge_scroll || result.needs_fling;
     return result;
   }
 
@@ -3309,9 +3312,6 @@ namespace NS_SWEETEDITOR {
     result.tap_point = gesture_result.tap_point;
     result.hit_target = gesture_result.hit_target;
     result.modifiers = gesture_result.modifiers;
-    result.needs_edge_scroll = gesture_result.needs_edge_scroll;
-    result.needs_fling = gesture_result.needs_fling;
-    result.needs_animation = gesture_result.needs_animation;
     result.is_handle_drag = gesture_result.is_handle_drag;
     result.pointer_cursor_after = gesture_result.pointer_cursor_type;
     result.pointer_cursor_changed = result.pointer_cursor_before != result.pointer_cursor_after;

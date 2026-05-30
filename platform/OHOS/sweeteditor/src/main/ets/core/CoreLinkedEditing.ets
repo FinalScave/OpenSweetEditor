@@ -1,11 +1,11 @@
 import { TextRange } from './CoreFoundation';
 
 export class LinkedEditingModel {
-  groups: TabStopGroup[];
+  groups: TabStopGroup[] = [];
 }
 
 export class TabStopGroup {
   index: number = 0;
-  ranges: TextRange[];
-  defaultText: string;
+  ranges: TextRange[] = [];
+  defaultText: string = '';
 }

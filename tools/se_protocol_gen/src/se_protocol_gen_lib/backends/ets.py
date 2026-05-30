@@ -26,11 +26,44 @@ def ets_type(field, schema_types, schema_enums):
         return field["cpp_type"]
     raise SystemExit(f"Unsupported ETS field type: {field['cpp_type']} ({wire})")
 
-def ets_read_expr(field):
+def ets_default_expr(type_name, schema_types, schema_enums, visited=None):
+    if type_name == "number":
+        return "0"
+    if type_name == "boolean":
+        return "false"
+    if type_name == "string":
+        return "''"
+    if type_name.endswith("[]"):
+        return "[]"
+    if type_name in schema_enums:
+        enum_item = schema_enums[type_name]
+        fallback = enum_item.get("fallback") or enum_item["values"][0]["name"]
+        return f"{type_name}.{fallback}"
+    if type_name not in schema_types:
+        return "{}"
+    if visited is None:
+        visited = set()
+    if type_name in visited:
+        return f"new {type_name}()"
+    item = schema_types[type_name]
+    if item["direction"] == "in":
+        return f"new {type_name}()"
+    nested_visited = set(visited)
+    nested_visited.add(type_name)
+    values = []
+    for field in item["fields"]:
+        field_type = ets_type(field, schema_types, schema_enums)
+        default_expr = ets_default_for_field(field, field_type, schema_types, schema_enums)
+        if default_expr is None:
+            default_expr = ets_default_expr(field_type, schema_types, schema_enums, nested_visited)
+        values.append(f"{field_name(field, 'ets')}: {default_expr}")
+    return "{ " + ", ".join(values) + " }"
+
+def ets_read_expr(field, codec_type):
     wire = field["wire"]
     inner = vector_inner(field["cpp_type"])
     if inner is not None:
-        return f"this.read{inner}List(reader)"
+        return f"{codec_type}.read{inner}List(reader)"
     if wire == "enum_i32":
         return f"{ets_enum_helper(field['cpp_type'])}(reader.readInt32())"
     if wire == "u8":
@@ -52,14 +85,14 @@ def ets_read_expr(field):
     if wire in ("utf8_string", "u16_string", "u16_as_utf8"):
         return "reader.readUtf8String()"
     if wire == "struct":
-        return f"this.read{field['cpp_type']}(reader)"
+        return f"{codec_type}.read{field['cpp_type']}(reader)"
     raise SystemExit(f"Unsupported ETS read wire: {wire}")
 
-def ets_write_stmt(field, value_expr):
+def ets_write_stmt(field, value_expr, codec_type):
     wire = field["wire"]
     inner = vector_inner(field["cpp_type"])
     if inner is not None:
-        return f"this.write{inner}List(writer, {value_expr});"
+        return f"{codec_type}.write{inner}List(writer, {value_expr});"
     if wire == "enum_i32":
         return f"writer.writeInt32({value_expr} as number);"
     if wire == "u8":
@@ -81,14 +114,14 @@ def ets_write_stmt(field, value_expr):
     if wire in ("utf8_string", "u16_string", "u16_as_utf8"):
         return f"writer.writeUtf8String({value_expr});"
     if wire == "struct":
-        return f"this.write{field['cpp_type']}(writer, {value_expr});"
+        return f"{codec_type}.write{field['cpp_type']}(writer, {value_expr});"
     raise SystemExit(f"Unsupported ETS write wire: {wire}")
 
-def ets_size_expr(field, value_expr):
+def ets_size_expr(field, value_expr, codec_type):
     wire = field["wire"]
     inner = vector_inner(field["cpp_type"])
     if inner is not None:
-        return f"this.sizeOf{inner}List({value_expr})"
+        return f"{codec_type}.sizeOf{inner}List({value_expr})"
     if wire == "u8":
         return "1"
     if wire == "u16":
@@ -100,9 +133,9 @@ def ets_size_expr(field, value_expr):
     if wire in ("i64", "u64", "size_as_i64", "size_as_u64", "f64"):
         return "8"
     if wire in ("utf8_string", "u16_string", "u16_as_utf8"):
-        return f"this.sizeOfUtf8String({value_expr})"
+        return f"{codec_type}.sizeOfUtf8String({value_expr})"
     if wire == "struct":
-        return f"this.sizeOf{field['cpp_type']}({value_expr})"
+        return f"{codec_type}.sizeOf{field['cpp_type']}({value_expr})"
     raise SystemExit(f"Unsupported ETS size wire: {wire}")
 
 def ets_default_for_field(field, ets_type_name, schema_types, schema_enums):
@@ -155,7 +188,7 @@ def ets_pack_params(item, schema):
         for field in item["fields"]
     ]
 
-def ets_size_map_field_lines(field, param_name, schema):
+def ets_size_map_field_lines(field, param_name, schema, codec_type):
     entry_item = map_entry_item(field, schema)
     key_field = entry_item["fields"][0]
     value_field = entry_item["fields"][1]
@@ -164,17 +197,17 @@ def ets_size_map_field_lines(field, param_name, schema):
         "    size += 4;",
         f"    const {keys_name} = {param_name} ? Array.from({param_name}.keys()).sort((a, b) => a - b) : [];",
         f"    for (const key of {keys_name}) {{",
-        f"      size += {ets_size_expr(key_field, 'key')};",
+        f"      size += {ets_size_expr(key_field, 'key', codec_type)};",
         f"      const value = {param_name}.get(key)!;",
     ]
     if vector_inner(value_field["cpp_type"]) is not None:
-        lines.append(f"      size += {ets_size_expr(value_field, 'value')};")
+        lines.append(f"      size += {ets_size_expr(value_field, 'value', codec_type)};")
     else:
-        lines.append(f"      size += {ets_size_expr(value_field, 'value')};")
+        lines.append(f"      size += {ets_size_expr(value_field, 'value', codec_type)};")
     lines.append("    }")
     return lines
 
-def ets_write_map_field_lines(field, param_name, schema):
+def ets_write_map_field_lines(field, param_name, schema, codec_type):
     entry_item = map_entry_item(field, schema)
     key_field = entry_item["fields"][0]
     value_field = entry_item["fields"][1]
@@ -183,34 +216,34 @@ def ets_write_map_field_lines(field, param_name, schema):
         f"    const {keys_name} = {param_name} ? Array.from({param_name}.keys()).sort((a, b) => a - b) : [];",
         f"    writer.writeInt32({keys_name}.length);",
         f"    for (const key of {keys_name}) {{",
-        f"      {ets_write_stmt(key_field, 'key')}",
+        f"      {ets_write_stmt(key_field, 'key', codec_type)}",
         f"      const value = {param_name}.get(key)!;",
     ]
     if vector_inner(value_field["cpp_type"]) is not None:
-        lines.append(f"      {ets_write_stmt(value_field, 'value')}")
+        lines.append(f"      {ets_write_stmt(value_field, 'value', codec_type)}")
     else:
-        lines.append(f"      {ets_write_stmt(value_field, 'value')}")
+        lines.append(f"      {ets_write_stmt(value_field, 'value', codec_type)}")
     lines.append("    }")
     return lines
 
-def ets_size_payload_field_lines(field, param_name, schema):
+def ets_size_payload_field_lines(field, param_name, schema, codec_type):
     if map_entry_item(field, schema) is not None:
-        return ets_size_map_field_lines(field, param_name, schema)
-    return [f"    size += {ets_size_expr(field, param_name)};"]
+        return ets_size_map_field_lines(field, param_name, schema, codec_type)
+    return [f"    size += {ets_size_expr(field, param_name, codec_type)};"]
 
-def ets_write_payload_field_lines(field, param_name, schema):
+def ets_write_payload_field_lines(field, param_name, schema, codec_type):
     if map_entry_item(field, schema) is not None:
-        return ets_write_map_field_lines(field, param_name, schema)
-    return [f"    {ets_write_stmt(field, param_name)}"]
+        return ets_write_map_field_lines(field, param_name, schema, codec_type)
+    return [f"    {ets_write_stmt(field, param_name, codec_type)}"]
 
-def generate_ets_pack_methods(item, schema):
+def generate_ets_pack_methods(item, schema, codec_type):
     pack_name = payload_encode_function_name(item)
     if not is_hidden_input_type(item):
         return [
             "",
             f"  static {pack_name}(value: {item['name']}): ArrayBuffer {{",
-            f"    const writer = new BinaryWriter(this.sizeOf{item['name']}(value));",
-            f"    this.write{item['name']}(writer, value);",
+            f"    const writer = new BinaryWriter({codec_type}.sizeOf{item['name']}(value));",
+            f"    {codec_type}.write{item['name']}(writer, value);",
             "    return writer.getBuffer();",
             "  }",
         ]
@@ -223,7 +256,7 @@ def generate_ets_pack_methods(item, schema):
         f"  private static write{wire_name}Wire(writer: BinaryWriter, {params_sig}): void {{",
     ]
     for _, name, field in params:
-        lines.extend(ets_write_payload_field_lines(field, name, schema))
+        lines.extend(ets_write_payload_field_lines(field, name, schema, codec_type))
     lines.append("  }")
     lines.extend([
         "",
@@ -231,14 +264,14 @@ def generate_ets_pack_methods(item, schema):
         "    let size = 0;",
     ])
     for _, name, field in params:
-        lines.extend(ets_size_payload_field_lines(field, name, schema))
+        lines.extend(ets_size_payload_field_lines(field, name, schema, codec_type))
     lines.extend([
         "    return size;",
         "  }",
         "",
         f"  static {pack_name}({params_sig}): ArrayBuffer {{",
-        f"    const writer = new BinaryWriter(this.sizeOf{wire_name}Wire({args}));",
-        f"    this.write{wire_name}Wire(writer, {args});",
+        f"    const writer = new BinaryWriter({codec_type}.sizeOf{wire_name}Wire({args}));",
+        f"    {codec_type}.write{wire_name}Wire(writer, {args});",
         "    return writer.getBuffer();",
         "  }",
     ])
@@ -288,8 +321,9 @@ def generate_ets_domain(domain, items, enums, schema, target):
             for field in item["fields"]:
                 type_name = ets_type(field, schema_types, schema_enums)
                 default_expr = ets_default_for_field(field, type_name, schema_types, schema_enums)
-                suffix = f" = {default_expr}" if default_expr is not None else ""
-                lines.append(f"  {field_name(field, 'ets')}: {type_name}{suffix};")
+                if default_expr is None:
+                    default_expr = ets_default_expr(type_name, schema_types, schema_enums)
+                lines.append(f"  {field_name(field, 'ets')}: {type_name} = {default_expr};")
             lines.append("}")
             lines.append("")
             continue
@@ -317,6 +351,14 @@ def generate_ets_codec(schema, target):
         "",
         "const UTF8_DECODER = new util.TextDecoder('utf-8');",
         "const UTF8_ENCODER = new util.TextEncoder();",
+        "",
+        "function encodeUtf8(value: string): Uint8Array {",
+        "  const text = value ? value : '';",
+        "  if (text.length === 0) {",
+        "    return new Uint8Array(0);",
+        "  }",
+        "  return UTF8_ENCODER.encodeInto(text);",
+        "}",
         "",
         "export class BinaryReader {",
         "  private view: DataView;",
@@ -425,7 +467,7 @@ def generate_ets_codec(schema, target):
         "  }",
         "",
         "  writeUtf8String(value: string): void {",
-        "    const bytes = UTF8_ENCODER.encodeInto(value || '');",
+        "    const bytes = encodeUtf8(value);",
         "    this.writeInt32(bytes.length);",
         "    new Uint8Array(this.buffer, this.offset, bytes.length).set(bytes);",
         "    this.offset += bytes.length;",
@@ -437,8 +479,15 @@ def generate_ets_codec(schema, target):
         "}",
         "",
         f"export class {codec_type} {{",
+        "  private static readerFor(buffer: ArrayBuffer | undefined): BinaryReader {",
+        "    if (!buffer) {",
+        "      throw new Error('Missing protocol payload.');",
+        "    }",
+        "    return new BinaryReader(buffer);",
+        "  }",
+        "",
         "  private static sizeOfUtf8String(value: string): number {",
-        "    return 4 + UTF8_ENCODER.encodeInto(value || '').length;",
+        "    return 4 + encodeUtf8(value).length;",
         "  }",
     ])
     list_inners = list_inner_names(schema)
@@ -453,7 +502,7 @@ def generate_ets_codec(schema, target):
                 "    }",
                 f"    const values: {inner}[] = [];",
                 "    for (let i = 0; i < count; i++) {",
-                f"      values.push(this.read{inner}(reader));",
+                f"      values.push({codec_type}.read{inner}(reader));",
                 "    }",
                 "    return values;",
                 "  }",
@@ -465,7 +514,7 @@ def generate_ets_codec(schema, target):
                 "    const count = values ? values.length : 0;",
                 "    writer.writeInt32(count);",
                 "    for (let i = 0; i < count; i++) {",
-                f"      this.write{inner}(writer, values[i]);",
+                f"      {codec_type}.write{inner}(writer, values[i]);",
                 "    }",
                 "  }",
                 "",
@@ -473,7 +522,7 @@ def generate_ets_codec(schema, target):
                 "    let size = 4;",
                 "    if (values) {",
                 "      for (const value of values) {",
-                f"        size += this.sizeOf{inner}(value);",
+                f"        size += {codec_type}.sizeOf{inner}(value);",
                 "      }",
                 "    }",
                 "    return size;",
@@ -484,36 +533,36 @@ def generate_ets_codec(schema, target):
             lines.extend(["", f"  private static read{item['name']}(reader: BinaryReader): {item['name']} {{", "    return {"])
             for index, field in enumerate(item["fields"]):
                 suffix = "," if index + 1 < len(item["fields"]) else ""
-                lines.append(f"      {field_name(field, 'ets')}: {ets_read_expr(field)}{suffix}")
+                lines.append(f"      {field_name(field, 'ets')}: {ets_read_expr(field, codec_type)}{suffix}")
             lines.extend(["    };", "  }"])
             lines.extend([
                 "",
-                f"  static decode{item['name']}(buffer: ArrayBuffer): {item['name']} {{",
-                f"    return this.read{item['name']}(new BinaryReader(buffer));",
+                f"  static decode{item['name']}(buffer: ArrayBuffer | undefined): {item['name']} {{",
+                f"    return {codec_type}.read{item['name']}({codec_type}.readerFor(buffer));",
                 "  }",
             ])
         if needs_writer(item):
             lines.extend(["", f"  static write{item['name']}(writer: BinaryWriter, value: {item['name']}): void {{"])
             for field in item["fields"]:
                 name = field_name(field, "ets")
-                lines.append(f"    {ets_write_stmt(field, f'value.{name}')}")
+                lines.append(f"    {ets_write_stmt(field, f'value.{name}', codec_type)}")
             lines.append("  }")
             lines.extend(["", f"  static sizeOf{item['name']}(value: {item['name']}): number {{", "    let size = 0;"])
             for field in item["fields"]:
                 name = field_name(field, "ets")
-                lines.append(f"    size += {ets_size_expr(field, f'value.{name}')};")
+                lines.append(f"    size += {ets_size_expr(field, f'value.{name}', codec_type)};")
             lines.extend(["    return size;", "  }"])
             if item["kind"] == "payload":
                 lines.extend([
                     "",
                     f"  static encode{item['name']}(value: {item['name']}): ArrayBuffer {{",
-                    f"    const writer = new BinaryWriter(this.sizeOf{item['name']}(value));",
-                    f"    this.write{item['name']}(writer, value);",
+                    f"    const writer = new BinaryWriter({codec_type}.sizeOf{item['name']}(value));",
+                    f"    {codec_type}.write{item['name']}(writer, value);",
                     "    return writer.getBuffer();",
                     "  }",
                 ])
     for item in input_pack_items(schema):
-        lines.extend(generate_ets_pack_methods(item, schema))
+        lines.extend(generate_ets_pack_methods(item, schema, codec_type))
     lines.append("}")
     lines.append("")
     return "\n".join(lines)

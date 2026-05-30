@@ -35,7 +35,6 @@ import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.interaction.HitTargetType;
 import com.qiplat.sweeteditor.core.interaction.GestureType;
 import com.qiplat.sweeteditor.core.interaction.EventType;
-import com.qiplat.sweeteditor.core.action.EditorActionReason;
 import com.qiplat.sweeteditor.core.action.EditorActionResult;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
@@ -1995,7 +1994,10 @@ public class SweetEditor extends View {
         }
     }
 
-    void dispatchEditorActionResult(@NonNull EditorActionResult result) {
+    void dispatchEditorActionResult(@Nullable EditorActionResult result) {
+        if (result == null) {
+            return;
+        }
         if (result.gestureType != GestureType.UNDEFINED) {
             if (result.gestureType == GestureType.TAP) {
                 requestFocus();
@@ -2159,9 +2161,6 @@ public class SweetEditor extends View {
                 mScrollAnimationActive = true;
                 Choreographer.getInstance().postFrameCallback(mScrollAnimationCallback);
             }
-            return;
-        }
-        if (result.reason != EditorActionReason.GESTURE && result.reason != EditorActionReason.ANIMATION) {
             return;
         }
         if (mScrollAnimationActive) {

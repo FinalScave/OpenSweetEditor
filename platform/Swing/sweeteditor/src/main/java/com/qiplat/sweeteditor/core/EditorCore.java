@@ -100,7 +100,7 @@ public class EditorCore {
     private Document mDocument;
 
     public EditorActionResult loadDocument(Document document) {
-        if (document == null) return new EditorActionResult();
+        if (document == null) return null;
         mDocument = document;
         return decodeAction(EditorNative.setEditorDocument(nativeHandle, document.nativeHandle));
     }
@@ -237,7 +237,7 @@ public class EditorCore {
     }
 
     public EditorActionResult setKeyMap(List<? extends KeyBinding> bindings) {
-        if (bindings == null) return new EditorActionResult();
+        if (bindings == null) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetKeyMapPayload(tempArena, bindings);
             return decodeAction(EditorNative.setKeyMap(nativeHandle, payload, payload.byteSize()));
@@ -423,7 +423,7 @@ public class EditorCore {
 
     private EditorActionResult decodeAction(EditorNative.NativeBinaryResult result) {
         try {
-            if (result == null || !result.hasData()) return new EditorActionResult();
+            if (result == null || !result.hasData()) return null;
             return CoreProtocol.decodeEditorActionResult(result.segment(), result.size());
         } finally {
             if (result != null) result.free();
@@ -476,7 +476,7 @@ public class EditorCore {
 
     public EditorActionResult markImeDocumentRange(TextRange range, int scriptHint) {
         if (range == null || range.start == null || range.end == null) {
-            return new EditorActionResult();
+            return null;
         }
         return decodeAction(EditorNative.markImeDocumentRange(
                 nativeHandle,
@@ -492,7 +492,7 @@ public class EditorCore {
 
     public EditorActionResult replaceImeText(TextRange range, String text, int scriptHint) {
         if (range == null || range.start == null || range.end == null) {
-            return new EditorActionResult();
+            return null;
         }
         try (Arena tempArena = Arena.ofConfined()) {
             return decodeAction(EditorNative.replaceImeText(
@@ -633,7 +633,7 @@ public class EditorCore {
 
     public EditorActionResult notifyImeSelectionChanged(TextRange range) {
         if (range == null || range.start == null || range.end == null) {
-            return new EditorActionResult();
+            return null;
         }
         return decodeAction(EditorNative.notifyImeSelectionChanged(
                 nativeHandle,
@@ -643,7 +643,7 @@ public class EditorCore {
 
     public EditorActionResult notifyImeCursorChanged(TextPosition cursor) {
         if (cursor == null) {
-            return new EditorActionResult();
+            return null;
         }
         return decodeAction(EditorNative.notifyImeCursorChanged(
                 nativeHandle, cursor.line, cursor.column));
@@ -693,7 +693,7 @@ public class EditorCore {
     }
 
     public EditorActionResult setHandleConfig(HandleConfig config) {
-        if (config == null) return new EditorActionResult();
+        if (config == null) return null;
         this.handleConfig = config;
         return decodeAction(EditorNative.setHandleConfig(nativeHandle,
                 config.startHitOffset.left, config.startHitOffset.top, config.startHitOffset.right, config.startHitOffset.bottom,
@@ -705,7 +705,7 @@ public class EditorCore {
     }
 
     public EditorActionResult setScrollbarConfig(ScrollbarConfig config) {
-        if (config == null) return new EditorActionResult();
+        if (config == null) return null;
         this.scrollbarConfig = config;
         return decodeAction(EditorNative.setScrollbarConfig(
                 nativeHandle,
@@ -780,7 +780,7 @@ public class EditorCore {
     }
 
     public EditorActionResult registerBatchTextStyles(Map<Integer, ? extends TextStyle> textStyles) {
-        if (textStyles == null || textStyles.isEmpty()) return new EditorActionResult();
+        if (textStyles == null || textStyles.isEmpty()) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeRegisterBatchTextStylesPayload(tempArena, textStyles);
             return decodeAction(EditorNative.registerBatchTextStyles(nativeHandle, payload, payload.byteSize()));
@@ -789,7 +789,7 @@ public class EditorCore {
 
     /** Set highlight spans for a specific line (model overload) */
     public EditorActionResult setLineSpans(int line, int layer, List<? extends StyleSpan> spans) {
-        if (spans == null) return new EditorActionResult();
+        if (spans == null) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetLineSpansPayload(tempArena, line, SpanLayer.fromValue(layer), spans);
             return decodeAction(EditorNative.setLineSpans(nativeHandle, payload, payload.byteSize()));
@@ -803,7 +803,7 @@ public class EditorCore {
 
     /** Batch set highlight spans for multiple lines (model overload) */
     public EditorActionResult setBatchLineSpans(int layer, Map<Integer, ? extends List<? extends StyleSpan>> spansByLine) {
-        if (spansByLine == null || spansByLine.isEmpty()) return new EditorActionResult();
+        if (spansByLine == null || spansByLine.isEmpty()) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetBatchLineSpansPayload(tempArena, SpanLayer.fromValue(layer), spansByLine);
             return decodeAction(EditorNative.setBatchLineSpans(nativeHandle, payload, payload.byteSize()));
@@ -819,7 +819,7 @@ public class EditorCore {
 
     /** Set Inlay Hints for a specific line (model overload, replaces entire line) */
     public EditorActionResult setLineInlayHints(int line, List<? extends InlayHint> hints) {
-        if (hints == null) return new EditorActionResult();
+        if (hints == null) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetLineInlayHintsPayload(tempArena, line, hints);
             return decodeAction(EditorNative.setLineInlayHints(nativeHandle, payload, payload.byteSize()));
@@ -833,7 +833,7 @@ public class EditorCore {
 
     /** Batch set Inlay Hints for multiple lines */
     public EditorActionResult setBatchLineInlayHints(Map<Integer, ? extends List<? extends InlayHint>> hintsByLine) {
-        if (hintsByLine == null || hintsByLine.isEmpty()) return new EditorActionResult();
+        if (hintsByLine == null || hintsByLine.isEmpty()) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetBatchLineInlayHintsPayload(tempArena, hintsByLine);
             return decodeAction(EditorNative.setBatchLineInlayHints(nativeHandle, payload, payload.byteSize()));
@@ -849,7 +849,7 @@ public class EditorCore {
 
     /** Set phantom texts for a specific line (model overload, replaces entire line) */
     public EditorActionResult setLinePhantomTexts(int line, List<? extends PhantomText> phantoms) {
-        if (phantoms == null) return new EditorActionResult();
+        if (phantoms == null) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetLinePhantomTextsPayload(tempArena, line, phantoms);
             return decodeAction(EditorNative.setLinePhantomTexts(nativeHandle, payload, payload.byteSize()));
@@ -863,7 +863,7 @@ public class EditorCore {
 
     /** Batch set phantom texts for multiple lines */
     public EditorActionResult setBatchLinePhantomTexts(Map<Integer, ? extends List<? extends PhantomText>> phantomsByLine) {
-        if (phantomsByLine == null || phantomsByLine.isEmpty()) return new EditorActionResult();
+        if (phantomsByLine == null || phantomsByLine.isEmpty()) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetBatchLinePhantomTextsPayload(tempArena, phantomsByLine);
             return decodeAction(EditorNative.setBatchLinePhantomTexts(nativeHandle, payload, payload.byteSize()));
@@ -879,7 +879,7 @@ public class EditorCore {
 
     /** Set gutter icons for a specific line (model overload, replaces entire line) */
     public EditorActionResult setLineGutterIcons(int line, List<? extends GutterIcon> icons) {
-        if (icons == null) return new EditorActionResult();
+        if (icons == null) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetLineGutterIconsPayload(tempArena, line, icons);
             return decodeAction(EditorNative.setLineGutterIcons(nativeHandle, payload, payload.byteSize()));
@@ -893,7 +893,7 @@ public class EditorCore {
 
     /** Batch set gutter icons for multiple lines */
     public EditorActionResult setBatchLineGutterIcons(Map<Integer, ? extends List<? extends GutterIcon>> iconsByLine) {
-        if (iconsByLine == null || iconsByLine.isEmpty()) return new EditorActionResult();
+        if (iconsByLine == null || iconsByLine.isEmpty()) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetBatchLineGutterIconsPayload(tempArena, iconsByLine);
             return decodeAction(EditorNative.setBatchLineGutterIcons(nativeHandle, payload, payload.byteSize()));
@@ -913,7 +913,7 @@ public class EditorCore {
 
     /** Set CodeLens items for a specific line */
     public EditorActionResult setLineCodeLens(int line, List<? extends CodeLensItem> items) {
-        if (items == null) return new EditorActionResult();
+        if (items == null) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetLineCodeLensPayload(tempArena, line, items);
             return decodeAction(EditorNative.setLineCodeLens(nativeHandle, payload, payload.byteSize()));
@@ -927,7 +927,7 @@ public class EditorCore {
 
     /** Batch set CodeLens items for multiple lines */
     public EditorActionResult setBatchLineCodeLens(Map<Integer, ? extends List<? extends CodeLensItem>> itemsByLine) {
-        if (itemsByLine == null || itemsByLine.isEmpty()) return new EditorActionResult();
+        if (itemsByLine == null || itemsByLine.isEmpty()) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetBatchLineCodeLensPayload(tempArena, itemsByLine);
             return decodeAction(EditorNative.setBatchLineCodeLens(nativeHandle, payload, payload.byteSize()));
@@ -948,7 +948,7 @@ public class EditorCore {
 
     /** Set link spans for a specific line */
     public EditorActionResult setLineLinks(int line, List<? extends LinkSpan> links) {
-        if (links == null) return new EditorActionResult();
+        if (links == null) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetLineLinksPayload(tempArena, line, links);
             return decodeAction(EditorNative.setLineLinks(nativeHandle, payload, payload.byteSize()));
@@ -962,7 +962,7 @@ public class EditorCore {
 
     /** Batch set link spans for multiple lines */
     public EditorActionResult setBatchLineLinks(Map<Integer, ? extends List<? extends LinkSpan>> linksByLine) {
-        if (linksByLine == null || linksByLine.isEmpty()) return new EditorActionResult();
+        if (linksByLine == null || linksByLine.isEmpty()) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetBatchLineLinksPayload(tempArena, linksByLine);
             return decodeAction(EditorNative.setBatchLineLinks(nativeHandle, payload, payload.byteSize()));
@@ -988,7 +988,7 @@ public class EditorCore {
 
     /** Set diagnostic decorations for a specific line (model overload) */
     public EditorActionResult setLineDiagnostics(int line, List<? extends Diagnostic> items) {
-        if (items == null) return new EditorActionResult();
+        if (items == null) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetLineDiagnosticsPayload(tempArena, line, items);
             return decodeAction(EditorNative.setLineDiagnostics(nativeHandle, payload, payload.byteSize()));
@@ -1002,7 +1002,7 @@ public class EditorCore {
 
     /** Batch set diagnostic decorations for multiple lines */
     public EditorActionResult setBatchLineDiagnostics(Map<Integer, ? extends List<? extends Diagnostic>> diagsByLine) {
-        if (diagsByLine == null || diagsByLine.isEmpty()) return new EditorActionResult();
+        if (diagsByLine == null || diagsByLine.isEmpty()) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetBatchLineDiagnosticsPayload(tempArena, diagsByLine);
             return decodeAction(EditorNative.setBatchLineDiagnostics(nativeHandle, payload, payload.byteSize()));
@@ -1018,7 +1018,7 @@ public class EditorCore {
 
     /** Set indent guide list (global replacement) */
     public EditorActionResult setIndentGuides(List<? extends IndentGuide> guides) {
-        if (guides == null) return new EditorActionResult();
+        if (guides == null) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetIndentGuidesPayload(tempArena, guides);
             return decodeAction(EditorNative.setIndentGuides(nativeHandle, payload, payload.byteSize()));
@@ -1032,7 +1032,7 @@ public class EditorCore {
 
     /** Set bracket pair guide list (global replacement) */
     public EditorActionResult setBracketGuides(List<? extends BracketGuide> guides) {
-        if (guides == null) return new EditorActionResult();
+        if (guides == null) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetBracketGuidesPayload(tempArena, guides);
             return decodeAction(EditorNative.setBracketGuides(nativeHandle, payload, payload.byteSize()));
@@ -1046,7 +1046,7 @@ public class EditorCore {
 
     /** Set control flow return arrow list (global replacement) */
     public EditorActionResult setFlowGuides(List<? extends FlowGuide> guides) {
-        if (guides == null) return new EditorActionResult();
+        if (guides == null) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetFlowGuidesPayload(tempArena, guides);
             return decodeAction(EditorNative.setFlowGuides(nativeHandle, payload, payload.byteSize()));
@@ -1060,7 +1060,7 @@ public class EditorCore {
 
     /** Set separator guide list (global replacement) */
     public EditorActionResult setSeparatorGuides(List<? extends SeparatorGuide> guides) {
-        if (guides == null) return new EditorActionResult();
+        if (guides == null) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetSeparatorGuidesPayload(tempArena, guides);
             return decodeAction(EditorNative.setSeparatorGuides(nativeHandle, payload, payload.byteSize()));
@@ -1094,7 +1094,7 @@ public class EditorCore {
 
     /** Set foldable regions using a FoldRegion list (model overload) */
     public EditorActionResult setFoldRegions(List<? extends FoldRegion> regions) {
-        if (regions == null) return new EditorActionResult();
+        if (regions == null) return null;
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeSetFoldRegionsPayload(tempArena, regions);
             return decodeAction(EditorNative.setFoldRegions(nativeHandle, payload, payload.byteSize()));

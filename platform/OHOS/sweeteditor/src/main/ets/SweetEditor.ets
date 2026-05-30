@@ -1987,15 +1987,15 @@ export struct SweetEditor {
     switch (ht.type) {
       case HitTargetType.INLAY_HINT_ICON:
         this.eventBus.emit('inlayHintClick', new InlayHintClickEvent(
-          ht.line, ht.column, InlayType.Icon, ht.iconId, locationInEditor));
+          ht.line, ht.column, InlayType.ICON, ht.iconId, locationInEditor));
         break;
       case HitTargetType.INLAY_HINT_TEXT:
         this.eventBus.emit('inlayHintClick', new InlayHintClickEvent(
-          ht.line, ht.column, InlayType.Text, 0, locationInEditor));
+          ht.line, ht.column, InlayType.TEXT, 0, locationInEditor));
         break;
       case HitTargetType.INLAY_HINT_COLOR:
         this.eventBus.emit('inlayHintClick', new InlayHintClickEvent(
-          ht.line, ht.column, InlayType.Color, ht.colorValue, locationInEditor));
+          ht.line, ht.column, InlayType.COLOR, ht.colorValue, locationInEditor));
         break;
       case HitTargetType.GUTTER_ICON:
         this.eventBus.emit('gutterIconClick', new GutterIconClickEvent(ht.line, ht.iconId, locationInEditor));

@@ -808,13 +808,13 @@ export class EditorCore {
   }
 
   registerBatchTextStyles(stylesByIdOrData: Map<number, TextStyle> | ArrayBuffer,
-                          _size?: number): EditorActionResult {
+                          _size?: number): EditorActionResult | null {
     if (stylesByIdOrData instanceof ArrayBuffer) {
       return CoreProtocol.decodeEditorActionResult(
         native.editorRegisterBatchTextStyles(this.handle, stylesByIdOrData, stylesByIdOrData.byteLength));
     }
     if (stylesByIdOrData.size === 0) {
-      return CoreProtocol.decodeEditorActionResult(undefined);
+      return null;
     }
     const data = CoreProtocol.encodeRegisterBatchTextStylesPayload(stylesByIdOrData);
     return CoreProtocol.decodeEditorActionResult(
@@ -831,13 +831,13 @@ export class EditorCore {
   }
 
   setBatchLineSpans(layerOrData: number | ArrayBuffer,
-                    spansByLineOrSize: Map<number, StyleSpan[]> | number): EditorActionResult {
+                    spansByLineOrSize: Map<number, StyleSpan[]> | number): EditorActionResult | null {
     if (layerOrData instanceof ArrayBuffer) {
       return CoreProtocol.decodeEditorActionResult(
         native.editorSetBatchLineSpans(this.handle, layerOrData, layerOrData.byteLength));
     }
     if (!(spansByLineOrSize instanceof Map) || spansByLineOrSize.size === 0) {
-      return CoreProtocol.decodeEditorActionResult(undefined);
+      return null;
     }
     const data = CoreProtocol.encodeSetBatchLineSpansPayload(layerOrData, spansByLineOrSize);
     return CoreProtocol.decodeEditorActionResult(
@@ -851,13 +851,13 @@ export class EditorCore {
   // ==================== InlayHint / PhantomText ====================
 
   setLineInlayHints(lineOrData: number | ArrayBuffer,
-                    hintsOrSize: InlayHint[] | number): EditorActionResult {
+                    hintsOrSize: InlayHint[] | number): EditorActionResult | null {
     if (lineOrData instanceof ArrayBuffer) {
       return CoreProtocol.decodeEditorActionResult(
         native.editorSetLineInlayHints(this.handle, lineOrData, lineOrData.byteLength));
     }
     if (!Array.isArray(hintsOrSize)) {
-      return CoreProtocol.decodeEditorActionResult(undefined);
+      return null;
     }
     const data = CoreProtocol.encodeSetLineInlayHintsPayload(lineOrData, hintsOrSize);
     return CoreProtocol.decodeEditorActionResult(
@@ -865,13 +865,13 @@ export class EditorCore {
   }
 
   setBatchLineInlayHints(hintsByLineOrData: Map<number, InlayHint[]> | ArrayBuffer,
-                         _size?: number): EditorActionResult {
+                         _size?: number): EditorActionResult | null {
     if (hintsByLineOrData instanceof ArrayBuffer) {
       return CoreProtocol.decodeEditorActionResult(
         native.editorSetBatchLineInlayHints(this.handle, hintsByLineOrData, hintsByLineOrData.byteLength));
     }
     if (hintsByLineOrData.size === 0) {
-      return CoreProtocol.decodeEditorActionResult(undefined);
+      return null;
     }
     const data = CoreProtocol.encodeSetBatchLineInlayHintsPayload(hintsByLineOrData);
     return CoreProtocol.decodeEditorActionResult(
@@ -879,13 +879,13 @@ export class EditorCore {
   }
 
   setLinePhantomTexts(lineOrData: number | ArrayBuffer,
-                      phantomsOrSize: PhantomText[] | number): EditorActionResult {
+                      phantomsOrSize: PhantomText[] | number): EditorActionResult | null {
     if (lineOrData instanceof ArrayBuffer) {
       return CoreProtocol.decodeEditorActionResult(
         native.editorSetLinePhantomTexts(this.handle, lineOrData, lineOrData.byteLength));
     }
     if (!Array.isArray(phantomsOrSize)) {
-      return CoreProtocol.decodeEditorActionResult(undefined);
+      return null;
     }
     const data = CoreProtocol.encodeSetLinePhantomTextsPayload(lineOrData, phantomsOrSize);
     return CoreProtocol.decodeEditorActionResult(
@@ -893,13 +893,13 @@ export class EditorCore {
   }
 
   setBatchLinePhantomTexts(phantomsByLineOrData: Map<number, PhantomText[]> | ArrayBuffer,
-                           _size?: number): EditorActionResult {
+                           _size?: number): EditorActionResult | null {
     if (phantomsByLineOrData instanceof ArrayBuffer) {
       return CoreProtocol.decodeEditorActionResult(
         native.editorSetBatchLinePhantomTexts(this.handle, phantomsByLineOrData, phantomsByLineOrData.byteLength));
     }
     if (phantomsByLineOrData.size === 0) {
-      return CoreProtocol.decodeEditorActionResult(undefined);
+      return null;
     }
     const data = CoreProtocol.encodeSetBatchLinePhantomTextsPayload(phantomsByLineOrData);
     return CoreProtocol.decodeEditorActionResult(
@@ -909,13 +909,13 @@ export class EditorCore {
   // ==================== Gutter Icons ====================
 
   setLineGutterIcons(lineOrData: number | ArrayBuffer,
-                     iconsOrSize: GutterIcon[] | number): EditorActionResult {
+                     iconsOrSize: GutterIcon[] | number): EditorActionResult | null {
     if (lineOrData instanceof ArrayBuffer) {
       return CoreProtocol.decodeEditorActionResult(
         native.editorSetLineGutterIcons(this.handle, lineOrData, lineOrData.byteLength));
     }
     if (!Array.isArray(iconsOrSize)) {
-      return CoreProtocol.decodeEditorActionResult(undefined);
+      return null;
     }
     const data = CoreProtocol.encodeSetLineGutterIconsPayload(lineOrData, iconsOrSize);
     return CoreProtocol.decodeEditorActionResult(
@@ -923,13 +923,13 @@ export class EditorCore {
   }
 
   setBatchLineGutterIcons(iconsByLineOrData: Map<number, GutterIcon[]> | ArrayBuffer,
-                          _size?: number): EditorActionResult {
+                          _size?: number): EditorActionResult | null {
     if (iconsByLineOrData instanceof ArrayBuffer) {
       return CoreProtocol.decodeEditorActionResult(
         native.editorSetBatchLineGutterIcons(this.handle, iconsByLineOrData, iconsByLineOrData.byteLength));
     }
     if (iconsByLineOrData.size === 0) {
-      return CoreProtocol.decodeEditorActionResult(undefined);
+      return null;
     }
     const data = CoreProtocol.encodeSetBatchLineGutterIconsPayload(iconsByLineOrData);
     return CoreProtocol.decodeEditorActionResult(
@@ -943,26 +943,26 @@ export class EditorCore {
   // ==================== CodeLens ====================
 
   setLineCodeLens(lineOrData: number | ArrayBuffer,
-                  itemsOrSize?: CodeLensItem[] | number): EditorActionResult {
+                  itemsOrSize?: CodeLensItem[] | number): EditorActionResult | null {
     if (lineOrData instanceof ArrayBuffer) {
       return CoreProtocol.decodeEditorActionResult(
         native.editorSetLineCodeLens(this.handle, lineOrData, lineOrData.byteLength));
     }
     if (!Array.isArray(itemsOrSize)) {
-      return CoreProtocol.decodeEditorActionResult(undefined);
+      return null;
     }
     const data = CoreProtocol.encodeSetLineCodeLensPayload(lineOrData, itemsOrSize);
     return CoreProtocol.decodeEditorActionResult(native.editorSetLineCodeLens(this.handle, data, data.byteLength));
   }
 
   setBatchLineCodeLens(itemsByLineOrData: Map<number, CodeLensItem[]> | ArrayBuffer,
-                       _size?: number): EditorActionResult {
+                       _size?: number): EditorActionResult | null {
     if (itemsByLineOrData instanceof ArrayBuffer) {
       return CoreProtocol.decodeEditorActionResult(
         native.editorSetBatchLineCodeLens(this.handle, itemsByLineOrData, itemsByLineOrData.byteLength));
     }
     if (itemsByLineOrData.size === 0) {
-      return CoreProtocol.decodeEditorActionResult(undefined);
+      return null;
     }
     const data = CoreProtocol.encodeSetBatchLineCodeLensPayload(itemsByLineOrData);
     return CoreProtocol.decodeEditorActionResult(
@@ -975,26 +975,26 @@ export class EditorCore {
 
   // ==================== Links ====================
 
-  setLineLinks(lineOrData: number | ArrayBuffer, linksOrSize?: LinkSpan[] | number): EditorActionResult {
+  setLineLinks(lineOrData: number | ArrayBuffer, linksOrSize?: LinkSpan[] | number): EditorActionResult | null {
     if (lineOrData instanceof ArrayBuffer) {
       return CoreProtocol.decodeEditorActionResult(
         native.editorSetLineLinks(this.handle, lineOrData, lineOrData.byteLength));
     }
     if (!Array.isArray(linksOrSize)) {
-      return CoreProtocol.decodeEditorActionResult(undefined);
+      return null;
     }
     const data = CoreProtocol.encodeSetLineLinksPayload(lineOrData, linksOrSize);
     return CoreProtocol.decodeEditorActionResult(native.editorSetLineLinks(this.handle, data, data.byteLength));
   }
 
   setBatchLineLinks(linksByLineOrData: Map<number, LinkSpan[]> | ArrayBuffer,
-                    _size?: number): EditorActionResult {
+                    _size?: number): EditorActionResult | null {
     if (linksByLineOrData instanceof ArrayBuffer) {
       return CoreProtocol.decodeEditorActionResult(
         native.editorSetBatchLineLinks(this.handle, linksByLineOrData, linksByLineOrData.byteLength));
     }
     if (linksByLineOrData.size === 0) {
-      return CoreProtocol.decodeEditorActionResult(undefined);
+      return null;
     }
     const data = CoreProtocol.encodeSetBatchLineLinksPayload(linksByLineOrData);
     return CoreProtocol.decodeEditorActionResult(
@@ -1012,13 +1012,13 @@ export class EditorCore {
   // ==================== Diagnostic Decorations ====================
 
   setLineDiagnostics(lineOrData: number | ArrayBuffer,
-                     itemsOrSize: Diagnostic[] | number): EditorActionResult {
+                     itemsOrSize: Diagnostic[] | number): EditorActionResult | null {
     if (lineOrData instanceof ArrayBuffer) {
       return CoreProtocol.decodeEditorActionResult(
         native.editorSetLineDiagnostics(this.handle, lineOrData, lineOrData.byteLength));
     }
     if (!Array.isArray(itemsOrSize)) {
-      return CoreProtocol.decodeEditorActionResult(undefined);
+      return null;
     }
     const data = CoreProtocol.encodeSetLineDiagnosticsPayload(lineOrData, itemsOrSize);
     return CoreProtocol.decodeEditorActionResult(
@@ -1026,13 +1026,13 @@ export class EditorCore {
   }
 
   setBatchLineDiagnostics(diagsByLineOrData: Map<number, Diagnostic[]> | ArrayBuffer,
-                          _size?: number): EditorActionResult {
+                          _size?: number): EditorActionResult | null {
     if (diagsByLineOrData instanceof ArrayBuffer) {
       return CoreProtocol.decodeEditorActionResult(
         native.editorSetBatchLineDiagnostics(this.handle, diagsByLineOrData, diagsByLineOrData.byteLength));
     }
     if (diagsByLineOrData.size === 0) {
-      return CoreProtocol.decodeEditorActionResult(undefined);
+      return null;
     }
     const data = CoreProtocol.encodeSetBatchLineDiagnosticsPayload(diagsByLineOrData);
     return CoreProtocol.decodeEditorActionResult(

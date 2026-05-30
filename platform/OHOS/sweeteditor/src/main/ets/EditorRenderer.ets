@@ -4,8 +4,8 @@ import {
   ScrollbarConfig,
   ScrollbarMode
 } from './core/CoreConfig';
+import { Rect } from './core/CoreFoundation';
 import {
-  BracketHighlightRect,
   CompositionDecoration,
   Cursor,
   DiagnosticDecoration,
@@ -20,12 +20,11 @@ import {
   LinkedEditingRect,
   ScrollbarModel,
   SelectionHandle,
-  SelectionRect,
   VisualRun,
   VisualRunType
 } from './core/CoreVisual';
 import { CurrentLineRenderMode } from './core/CoreConfig';
-import { DiagnosticSeverity, FontStyle } from './core/CoreAdornments';
+import { DiagnosticSeverity, TextStyle } from './core/CoreAdornments';
 import { MeasurePerfStats, PerfOverlay, PerfStepRecorder } from './perf/PerfOverlay';
 import { argbToCssColor, multiplyArgbAlpha } from './ui/EditorColor';
 import { TextMeasurer } from 'libsweeteditor.so';
@@ -237,13 +236,13 @@ export class EditorRenderer {
   }
 
   private drawLines(ctx: CanvasRenderingContext2D, model: EditorRenderModel): void {
-    if (!model.visualLines) {
+    if (!model.lines) {
       return;
     }
     const scaledTextSize = this.textSize * this.scale;
     const inlayHintSize = scaledTextSize * 0.9;
 
-    for (const line of model.visualLines) {
+    for (const line of model.lines) {
       if (!line.runs) {
         continue;
       }
@@ -269,7 +268,7 @@ export class EditorRenderer {
   }
 
   private drawTextRun(ctx: CanvasRenderingContext2D, run: VisualRun, textSize: number): void {
-    const fontStyle = run.style ? run.style.fontStyle : FontStyle.NORMAL;
+    const fontStyle = run.style ? run.style.fontStyle : TextStyle.NORMAL;
     let color = (run.style && run.style.color !== 0) ? run.style.color : this.theme.textColor;
     let metrics: FontMetricsSnapshot | null = null;
     if (run.type === VisualRunType.CODELENS) {
@@ -292,7 +291,7 @@ export class EditorRenderer {
       ctx.fillStyle = argbToCssColor(color);
     }
     ctx.fillText(run.text, run.x, run.y);
-    if ((fontStyle & FontStyle.STRIKETHROUGH) !== FontStyle.NORMAL) {
+    if ((fontStyle & TextStyle.STRIKETHROUGH) !== TextStyle.NORMAL) {
       if (!metrics) {
         metrics = this.getFontMetrics(ctx, fontStyle, textSize, this.fontFamily);
       }
@@ -385,7 +384,7 @@ export class EditorRenderer {
     if (!model.gutterVisible) {
       return;
     }
-    if (!model.visualLines) {
+    if (!model.lines) {
       return;
     }
 
@@ -408,7 +407,7 @@ export class EditorRenderer {
     const normalColor = this.theme.lineNumberColor;
     const activeColor = this.getActiveLineNumberColor();
 
-    for (const line of model.visualLines) {
+    for (const line of model.lines) {
       if (line.ownsGutterSemantics && line.lineNumberPosition) {
         const logicalLine = line.logicalLine;
         const isCurrentLine = logicalLine === activeLogicalLine;
@@ -460,31 +459,31 @@ export class EditorRenderer {
   }
 
   private drawGutterIconItem(ctx: CanvasRenderingContext2D, item: GutterIconRenderItem): void {
-    if (!this.iconProvider || !item.origin || item.width <= 0 || item.height <= 0) {
+    if (!this.iconProvider || !item.rect || !item.rect.origin || item.rect.width <= 0 || item.rect.height <= 0) {
       return;
     }
     const pixelMap = this.iconProvider.getIconPixelMap(item.iconId);
     if (!pixelMap) {
       return;
     }
-    ctx.drawImage(pixelMap, item.origin.x, item.origin.y, item.width, item.height);
+    ctx.drawImage(pixelMap, item.rect.origin.x, item.rect.origin.y, item.rect.width, item.rect.height);
   }
 
   private drawFoldMarkerItem(ctx: CanvasRenderingContext2D, item: FoldMarkerRenderItem,
     color: number): void {
-    if (!item.origin || item.width <= 0 || item.height <= 0) {
+    if (!item.rect || !item.rect.origin || item.rect.width <= 0 || item.rect.height <= 0) {
       return;
     }
     if (item.foldState === FoldState.NONE) {
       return;
     }
 
-    const centerX = item.origin.x + item.width * 0.5;
-    const centerY = item.origin.y + item.height * 0.5;
-    const halfSize = Math.min(item.width, item.height) * 0.28;
+    const centerX = item.rect.origin.x + item.rect.width * 0.5;
+    const centerY = item.rect.origin.y + item.rect.height * 0.5;
+    const halfSize = Math.min(item.rect.width, item.rect.height) * 0.28;
 
     ctx.strokeStyle = argbToCssColor(color);
-    ctx.lineWidth = Math.max(1, item.height * 0.1);
+    ctx.lineWidth = Math.max(1, item.rect.height * 0.1);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
     ctx.beginPath();
@@ -539,7 +538,7 @@ export class EditorRenderer {
     ctx.fillRect(cursor.position.x, cursor.position.y, cursorWidth, cursor.height);
   }
 
-  private drawSelectionRects(ctx: CanvasRenderingContext2D, rects: SelectionRect[] | null): void {
+  private drawSelectionRects(ctx: CanvasRenderingContext2D, rects: Rect[] | null): void {
     if (!rects || rects.length === 0) {
       return;
     }
@@ -690,15 +689,15 @@ export class EditorRenderer {
 
   private drawCompositionDecoration(ctx: CanvasRenderingContext2D,
     decoration: CompositionDecoration | null): void {
-    if (!decoration || !decoration.active || !decoration.origin) {
+    if (!decoration || !decoration.active || !decoration.rect || !decoration.rect.origin) {
       return;
     }
-    const y = decoration.origin.y + decoration.height;
+    const y = decoration.rect.origin.y + decoration.rect.height;
     ctx.strokeStyle = argbToCssColor(this.theme.compositionUnderlineColor);
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(decoration.origin.x, y);
-    ctx.lineTo(decoration.origin.x + decoration.width, y);
+    ctx.moveTo(decoration.rect.origin.x, y);
+    ctx.lineTo(decoration.rect.origin.x + decoration.rect.width, y);
     ctx.stroke();
   }
 
@@ -709,18 +708,18 @@ export class EditorRenderer {
     }
 
     for (const diag of decorations) {
-      if (!diag.origin) {
+      if (!diag.rect || !diag.rect.origin) {
         continue;
       }
       let color: number;
       switch (diag.severity) {
-        case DiagnosticSeverity.ERROR:
+        case DiagnosticSeverity.DIAG_ERROR:
           color = this.theme.diagnosticErrorColor;
           break;
-        case DiagnosticSeverity.WARNING:
+        case DiagnosticSeverity.DIAG_WARNING:
           color = this.theme.diagnosticWarningColor;
           break;
-        case DiagnosticSeverity.INFO:
+        case DiagnosticSeverity.DIAG_INFO:
           color = this.theme.diagnosticInfoColor;
           break;
         default:
@@ -729,20 +728,20 @@ export class EditorRenderer {
 
       ctx.save();
       ctx.strokeStyle = argbToCssColor(color);
-      const strokeWidth = Math.max(1.25, Math.min(2.25, diag.height * 0.09));
-      const halfWave = Math.max(6.0, Math.min(10.0, diag.height * 0.42));
-      const amplitude = Math.max(1.5, Math.min(3.0, diag.height * 0.12));
-      const dashOn = Math.max(2.5, Math.min(5.0, diag.height * 0.22));
-      const dashOff = Math.max(1.5, Math.min(4.0, diag.height * 0.14));
+      const strokeWidth = Math.max(1.25, Math.min(2.25, diag.rect.height * 0.09));
+      const halfWave = Math.max(6.0, Math.min(10.0, diag.rect.height * 0.42));
+      const amplitude = Math.max(1.5, Math.min(3.0, diag.rect.height * 0.12));
+      const dashOn = Math.max(2.5, Math.min(5.0, diag.rect.height * 0.22));
+      const dashOff = Math.max(1.5, Math.min(4.0, diag.rect.height * 0.14));
       ctx.lineWidth = strokeWidth;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
 
-      const startX = diag.origin.x;
-      const endX = startX + diag.width;
-      const baseY = diag.origin.y + diag.height - 1.0;
+      const startX = diag.rect.origin.x;
+      const endX = startX + diag.rect.width;
+      const baseY = diag.rect.origin.y + diag.rect.height - 1.0;
 
-      if (diag.severity === DiagnosticSeverity.HINT) {
+      if (diag.severity === DiagnosticSeverity.DIAG_HINT) {
         ctx.setLineDash([dashOn, dashOff]);
         ctx.beginPath();
         ctx.moveTo(startX, baseY);
@@ -774,25 +773,25 @@ export class EditorRenderer {
       return;
     }
     for (const rect of rects) {
-      if (!rect.origin) {
+      if (!rect.rect || !rect.rect.origin) {
         continue;
       }
       if (rect.isActive) {
         const bgColor = (this.theme.linkedEditingActiveColor & 0x00FFFFFF) | 0x20000000;
         ctx.fillStyle = argbToCssColor(bgColor);
-        ctx.fillRect(rect.origin.x, rect.origin.y, rect.width, rect.height);
+        ctx.fillRect(rect.rect.origin.x, rect.rect.origin.y, rect.rect.width, rect.rect.height);
         ctx.strokeStyle = argbToCssColor(this.theme.linkedEditingActiveColor);
         ctx.lineWidth = 2;
       } else {
         ctx.strokeStyle = argbToCssColor(this.theme.linkedEditingInactiveColor);
         ctx.lineWidth = 1;
       }
-      ctx.strokeRect(rect.origin.x, rect.origin.y, rect.width, rect.height);
+      ctx.strokeRect(rect.rect.origin.x, rect.rect.origin.y, rect.rect.width, rect.rect.height);
     }
   }
 
   private drawBracketHighlightRects(ctx: CanvasRenderingContext2D,
-    rects: BracketHighlightRect[] | null): void {
+    rects: Rect[] | null): void {
     if (!rects || rects.length === 0) {
       return;
     }
@@ -1086,8 +1085,8 @@ export class EditorRenderer {
   }
 
 function buildFont(fontStyle: number, size: number, family: string): string {
-  const bold = (fontStyle & FontStyle.BOLD) !== FontStyle.NORMAL;
-  const italic = (fontStyle & FontStyle.ITALIC) !== FontStyle.NORMAL;
+  const bold = (fontStyle & TextStyle.BOLD) !== TextStyle.NORMAL;
+  const italic = (fontStyle & TextStyle.ITALIC) !== TextStyle.NORMAL;
   let prefix = '';
   if (italic) {
     prefix += 'italic ';

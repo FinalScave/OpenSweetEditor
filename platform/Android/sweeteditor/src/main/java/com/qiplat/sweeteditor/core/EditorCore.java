@@ -1438,9 +1438,9 @@ public class EditorCore {
      * @param layer       Highlight layer (0=SYNTAX, 1=SEMANTIC)
      * @param spansByLine Sparse array of line to span list
      */
-    @NonNull
+    @Nullable
     public EditorActionResult setBatchLineSpans(int layer, @Nullable SparseArray<? extends List<? extends StyleSpan>> spansByLine) {
-        if (mNativeHandle == 0 || spansByLine == null || spansByLine.size() == 0) return new EditorActionResult();
+        if (mNativeHandle == 0 || spansByLine == null || spansByLine.size() == 0) return null;
         ByteBuffer payload = CoreProtocol.encodeSetBatchLineSpansPayload(SpanLayer.fromValue(layer), spansByLine);
         return setBatchLineSpans(payload);
     }
@@ -1486,9 +1486,9 @@ public class EditorCore {
      *
      * @param hintsByLine Sparse array of line to hint list
      */
-    @NonNull
+    @Nullable
     public EditorActionResult setBatchLineInlayHints(@Nullable SparseArray<? extends List<? extends InlayHint>> hintsByLine) {
-        if (mNativeHandle == 0 || hintsByLine == null || hintsByLine.size() == 0) return new EditorActionResult();
+        if (mNativeHandle == 0 || hintsByLine == null || hintsByLine.size() == 0) return null;
         ByteBuffer payload = CoreProtocol.encodeSetBatchLineInlayHintsPayload(hintsByLine);
         return setBatchLineInlayHints(payload);
     }
@@ -1532,9 +1532,9 @@ public class EditorCore {
      *
      * @param phantomsByLine Sparse array of line to phantom list
      */
-    @NonNull
+    @Nullable
     public EditorActionResult setBatchLinePhantomTexts(@Nullable SparseArray<? extends List<? extends PhantomText>> phantomsByLine) {
-        if (mNativeHandle == 0 || phantomsByLine == null || phantomsByLine.size() == 0) return new EditorActionResult();
+        if (mNativeHandle == 0 || phantomsByLine == null || phantomsByLine.size() == 0) return null;
         ByteBuffer payload = CoreProtocol.encodeSetBatchLinePhantomTextsPayload(phantomsByLine);
         return setBatchLinePhantomTexts(payload);
     }
@@ -1580,9 +1580,9 @@ public class EditorCore {
      *
      * @param iconsByLine Sparse array of line to icon list
      */
-    @NonNull
+    @Nullable
     public EditorActionResult setBatchLineGutterIcons(@Nullable SparseArray<? extends List<? extends GutterIcon>> iconsByLine) {
-        if (mNativeHandle == 0 || iconsByLine == null || iconsByLine.size() == 0) return new EditorActionResult();
+        if (mNativeHandle == 0 || iconsByLine == null || iconsByLine.size() == 0) return null;
         ByteBuffer payload = CoreProtocol.encodeSetBatchLineGutterIconsPayload(iconsByLine);
         return setBatchLineGutterIcons(payload);
     }
@@ -1640,9 +1640,9 @@ public class EditorCore {
      *
      * @param diagsByLine Sparse array of line to diagnostic list
      */
-    @NonNull
+    @Nullable
     public EditorActionResult setBatchLineDiagnostics(@Nullable SparseArray<? extends List<? extends Diagnostic>> diagsByLine) {
-        if (mNativeHandle == 0 || diagsByLine == null || diagsByLine.size() == 0) return new EditorActionResult();
+        if (mNativeHandle == 0 || diagsByLine == null || diagsByLine.size() == 0) return null;
         ByteBuffer payload = CoreProtocol.encodeSetBatchLineDiagnosticsPayload(diagsByLine);
         return setBatchLineDiagnostics(payload);
     }
@@ -2018,9 +2018,9 @@ public class EditorCore {
     /**
      * Batch sets CodeLens items for multiple lines (reduces JNI calls).
      */
-    @NonNull
+    @Nullable
     public EditorActionResult setBatchLineCodeLens(@Nullable SparseArray<? extends List<? extends CodeLensItem>> itemsByLine) {
-        if (mNativeHandle == 0 || itemsByLine == null || itemsByLine.size() == 0) return new EditorActionResult();
+        if (mNativeHandle == 0 || itemsByLine == null || itemsByLine.size() == 0) return null;
         ByteBuffer payload = CoreProtocol.encodeSetBatchLineCodeLensPayload(itemsByLine);
         return setBatchLineCodeLens(payload);
     }
@@ -2067,9 +2067,9 @@ public class EditorCore {
     /**
      * Batch sets link ranges for multiple lines (reduces JNI calls).
      */
-    @NonNull
+    @Nullable
     public EditorActionResult setBatchLineLinks(@Nullable SparseArray<? extends List<? extends LinkSpan>> linksByLine) {
-        if (mNativeHandle == 0 || linksByLine == null || linksByLine.size() == 0) return new EditorActionResult();
+        if (mNativeHandle == 0 || linksByLine == null || linksByLine.size() == 0) return null;
         ByteBuffer payload = CoreProtocol.encodeSetBatchLineLinksPayload(linksByLine);
         return setBatchLineLinks(payload);
     }

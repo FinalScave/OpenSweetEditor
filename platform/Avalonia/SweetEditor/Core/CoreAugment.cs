@@ -124,6 +124,15 @@ namespace SweetEditor {
         }
     }
 
+    public sealed partial class IndentGuide {
+        public IndentGuide() { }
+
+        public IndentGuide(TextPosition start, TextPosition end) {
+            Start = start ?? new TextPosition();
+            End = end ?? new TextPosition();
+        }
+    }
+
     public sealed partial class InlayHint {
         public InlayHint() { }
 

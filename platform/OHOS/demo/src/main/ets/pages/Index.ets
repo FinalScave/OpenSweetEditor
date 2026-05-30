@@ -326,7 +326,7 @@ struct Index {
 
     if (!this.subscribedEvents) {
       this.editorController.onInlayHintClick((event: InlayHintClickEvent) => {
-        if (event.type === InlayType.Color) {
+        if (event.type === InlayType.COLOR) {
           this.statusMessage = `Color hint: 0x${event.intValue.toString(16).toUpperCase()}`;
           return;
         }

@@ -1556,10 +1556,11 @@ class EditorCore {
     );
   }
 
-  EditorActionResult setBatchLineSpans(
+  EditorActionResult? setBatchLineSpans(
     SpanLayer layer,
     Map<int, List<StyleSpan>> spansByLine,
   ) {
+    if (spansByLine.isEmpty) return null;
     return setBatchLineSpansRaw(
       CoreProtocol.encodeSetBatchLineSpansPayload(layer, spansByLine),
     );
@@ -1589,9 +1590,10 @@ class EditorCore {
     );
   }
 
-  EditorActionResult setBatchLineInlayHints(
+  EditorActionResult? setBatchLineInlayHints(
     Map<int, List<InlayHint>> hintsByLine,
   ) {
+    if (hintsByLine.isEmpty) return null;
     return setBatchLineInlayHintsRaw(
       CoreProtocol.encodeSetBatchLineInlayHintsPayload(hintsByLine),
     );
@@ -1625,9 +1627,10 @@ class EditorCore {
     );
   }
 
-  EditorActionResult setBatchLinePhantomTexts(
+  EditorActionResult? setBatchLinePhantomTexts(
     Map<int, List<PhantomText>> phantomsByLine,
   ) {
+    if (phantomsByLine.isEmpty) return null;
     return setBatchLinePhantomTextsRaw(
       CoreProtocol.encodeSetBatchLinePhantomTextsPayload(phantomsByLine),
     );
@@ -1661,9 +1664,10 @@ class EditorCore {
     );
   }
 
-  EditorActionResult setBatchLineGutterIcons(
+  EditorActionResult? setBatchLineGutterIcons(
     Map<int, List<GutterIcon>> iconsByLine,
   ) {
+    if (iconsByLine.isEmpty) return null;
     return setBatchLineGutterIconsRaw(
       CoreProtocol.encodeSetBatchLineGutterIconsPayload(iconsByLine),
     );
@@ -1697,9 +1701,10 @@ class EditorCore {
     );
   }
 
-  EditorActionResult setBatchLineCodeLens(
+  EditorActionResult? setBatchLineCodeLens(
     Map<int, List<CodeLensItem>> itemsByLine,
   ) {
+    if (itemsByLine.isEmpty) return null;
     return setBatchLineCodeLensRaw(
       CoreProtocol.encodeSetBatchLineCodeLensPayload(itemsByLine),
     );
@@ -1727,7 +1732,8 @@ class EditorCore {
     );
   }
 
-  EditorActionResult setBatchLineLinks(Map<int, List<LinkSpan>> linksByLine) {
+  EditorActionResult? setBatchLineLinks(Map<int, List<LinkSpan>> linksByLine) {
+    if (linksByLine.isEmpty) return null;
     return setBatchLineLinksRaw(
       CoreProtocol.encodeSetBatchLineLinksPayload(linksByLine),
     );
@@ -1757,9 +1763,10 @@ class EditorCore {
     );
   }
 
-  EditorActionResult setBatchLineDiagnostics(
+  EditorActionResult? setBatchLineDiagnostics(
     Map<int, List<Diagnostic>> itemsByLine,
   ) {
+    if (itemsByLine.isEmpty) return null;
     return setBatchLineDiagnosticsRaw(
       CoreProtocol.encodeSetBatchLineDiagnosticsPayload(itemsByLine),
     );

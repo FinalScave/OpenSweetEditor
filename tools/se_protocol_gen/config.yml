@@ -71,6 +71,8 @@ targets:
     output_root: platform/OHOS/sweeteditor/src/main/ets/core
     codec_file: CoreProtocol.ets
     layout: domain_files
+    augment:
+      ets_model_helpers: true
     domains:
       action: CoreAction.ets
       config: CoreConfig.ets

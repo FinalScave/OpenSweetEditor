@@ -12,6 +12,14 @@ import { CompositionDecoration, Cursor, CursorRect, DiagnosticDecoration, Editor
 const UTF8_DECODER = new util.TextDecoder('utf-8');
 const UTF8_ENCODER = new util.TextEncoder();
 
+function encodeUtf8(value: string): Uint8Array {
+  const text = value ? value : '';
+  if (text.length === 0) {
+    return new Uint8Array(0);
+  }
+  return UTF8_ENCODER.encodeInto(text);
+}
+
 export class BinaryReader {
   private view: DataView;
   private offset: number = 0;
@@ -119,7 +127,7 @@ export class BinaryWriter {
   }
 
   writeUtf8String(value: string): void {
-    const bytes = UTF8_ENCODER.encodeInto(value || '');
+    const bytes = encodeUtf8(value);
     this.writeInt32(bytes.length);
     new Uint8Array(this.buffer, this.offset, bytes.length).set(bytes);
     this.offset += bytes.length;
@@ -131,15 +139,22 @@ export class BinaryWriter {
 }
 
 export class CoreProtocol {
+  private static readerFor(buffer: ArrayBuffer | undefined): BinaryReader {
+    if (!buffer) {
+      throw new Error('Missing protocol payload.');
+    }
+    return new BinaryReader(buffer);
+  }
+
   private static sizeOfUtf8String(value: string): number {
-    return 4 + UTF8_ENCODER.encodeInto(value || '').length;
+    return 4 + encodeUtf8(value).length;
   }
 
   private static writeBracketGuideList(writer: BinaryWriter, values: BracketGuide[]): void {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
     for (let i = 0; i < count; i++) {
-      this.writeBracketGuide(writer, values[i]);
+      CoreProtocol.writeBracketGuide(writer, values[i]);
     }
   }
 
@@ -147,7 +162,7 @@ export class CoreProtocol {
     let size = 4;
     if (values) {
       for (const value of values) {
-        size += this.sizeOfBracketGuide(value);
+        size += CoreProtocol.sizeOfBracketGuide(value);
       }
     }
     return size;
@@ -157,7 +172,7 @@ export class CoreProtocol {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
     for (let i = 0; i < count; i++) {
-      this.writeCodeLensItem(writer, values[i]);
+      CoreProtocol.writeCodeLensItem(writer, values[i]);
     }
   }
 
@@ -165,7 +180,7 @@ export class CoreProtocol {
     let size = 4;
     if (values) {
       for (const value of values) {
-        size += this.sizeOfCodeLensItem(value);
+        size += CoreProtocol.sizeOfCodeLensItem(value);
       }
     }
     return size;
@@ -175,7 +190,7 @@ export class CoreProtocol {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
     for (let i = 0; i < count; i++) {
-      this.writeDiagnostic(writer, values[i]);
+      CoreProtocol.writeDiagnostic(writer, values[i]);
     }
   }
 
@@ -183,7 +198,7 @@ export class CoreProtocol {
     let size = 4;
     if (values) {
       for (const value of values) {
-        size += this.sizeOfDiagnostic(value);
+        size += CoreProtocol.sizeOfDiagnostic(value);
       }
     }
     return size;
@@ -196,7 +211,7 @@ export class CoreProtocol {
     }
     const values: DiagnosticDecoration[] = [];
     for (let i = 0; i < count; i++) {
-      values.push(this.readDiagnosticDecoration(reader));
+      values.push(CoreProtocol.readDiagnosticDecoration(reader));
     }
     return values;
   }
@@ -205,7 +220,7 @@ export class CoreProtocol {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
     for (let i = 0; i < count; i++) {
-      this.writeFlowGuide(writer, values[i]);
+      CoreProtocol.writeFlowGuide(writer, values[i]);
     }
   }
 
@@ -213,7 +228,7 @@ export class CoreProtocol {
     let size = 4;
     if (values) {
       for (const value of values) {
-        size += this.sizeOfFlowGuide(value);
+        size += CoreProtocol.sizeOfFlowGuide(value);
       }
     }
     return size;
@@ -226,7 +241,7 @@ export class CoreProtocol {
     }
     const values: FoldMarkerRenderItem[] = [];
     for (let i = 0; i < count; i++) {
-      values.push(this.readFoldMarkerRenderItem(reader));
+      values.push(CoreProtocol.readFoldMarkerRenderItem(reader));
     }
     return values;
   }
@@ -235,7 +250,7 @@ export class CoreProtocol {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
     for (let i = 0; i < count; i++) {
-      this.writeFoldRegion(writer, values[i]);
+      CoreProtocol.writeFoldRegion(writer, values[i]);
     }
   }
 
@@ -243,7 +258,7 @@ export class CoreProtocol {
     let size = 4;
     if (values) {
       for (const value of values) {
-        size += this.sizeOfFoldRegion(value);
+        size += CoreProtocol.sizeOfFoldRegion(value);
       }
     }
     return size;
@@ -256,7 +271,7 @@ export class CoreProtocol {
     }
     const values: GuideSegment[] = [];
     for (let i = 0; i < count; i++) {
-      values.push(this.readGuideSegment(reader));
+      values.push(CoreProtocol.readGuideSegment(reader));
     }
     return values;
   }
@@ -265,7 +280,7 @@ export class CoreProtocol {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
     for (let i = 0; i < count; i++) {
-      this.writeGutterIcon(writer, values[i]);
+      CoreProtocol.writeGutterIcon(writer, values[i]);
     }
   }
 
@@ -273,7 +288,7 @@ export class CoreProtocol {
     let size = 4;
     if (values) {
       for (const value of values) {
-        size += this.sizeOfGutterIcon(value);
+        size += CoreProtocol.sizeOfGutterIcon(value);
       }
     }
     return size;
@@ -286,7 +301,7 @@ export class CoreProtocol {
     }
     const values: GutterIconRenderItem[] = [];
     for (let i = 0; i < count; i++) {
-      values.push(this.readGutterIconRenderItem(reader));
+      values.push(CoreProtocol.readGutterIconRenderItem(reader));
     }
     return values;
   }
@@ -295,7 +310,7 @@ export class CoreProtocol {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
     for (let i = 0; i < count; i++) {
-      this.writeIndentGuide(writer, values[i]);
+      CoreProtocol.writeIndentGuide(writer, values[i]);
     }
   }
 
@@ -303,7 +318,7 @@ export class CoreProtocol {
     let size = 4;
     if (values) {
       for (const value of values) {
-        size += this.sizeOfIndentGuide(value);
+        size += CoreProtocol.sizeOfIndentGuide(value);
       }
     }
     return size;
@@ -313,7 +328,7 @@ export class CoreProtocol {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
     for (let i = 0; i < count; i++) {
-      this.writeInlayHint(writer, values[i]);
+      CoreProtocol.writeInlayHint(writer, values[i]);
     }
   }
 
@@ -321,7 +336,7 @@ export class CoreProtocol {
     let size = 4;
     if (values) {
       for (const value of values) {
-        size += this.sizeOfInlayHint(value);
+        size += CoreProtocol.sizeOfInlayHint(value);
       }
     }
     return size;
@@ -334,7 +349,7 @@ export class CoreProtocol {
     }
     const values: KeyBinding[] = [];
     for (let i = 0; i < count; i++) {
-      values.push(this.readKeyBinding(reader));
+      values.push(CoreProtocol.readKeyBinding(reader));
     }
     return values;
   }
@@ -343,7 +358,7 @@ export class CoreProtocol {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
     for (let i = 0; i < count; i++) {
-      this.writeKeyBinding(writer, values[i]);
+      CoreProtocol.writeKeyBinding(writer, values[i]);
     }
   }
 
@@ -351,7 +366,7 @@ export class CoreProtocol {
     let size = 4;
     if (values) {
       for (const value of values) {
-        size += this.sizeOfKeyBinding(value);
+        size += CoreProtocol.sizeOfKeyBinding(value);
       }
     }
     return size;
@@ -361,7 +376,7 @@ export class CoreProtocol {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
     for (let i = 0; i < count; i++) {
-      this.writeLinkSpan(writer, values[i]);
+      CoreProtocol.writeLinkSpan(writer, values[i]);
     }
   }
 
@@ -369,7 +384,7 @@ export class CoreProtocol {
     let size = 4;
     if (values) {
       for (const value of values) {
-        size += this.sizeOfLinkSpan(value);
+        size += CoreProtocol.sizeOfLinkSpan(value);
       }
     }
     return size;
@@ -382,7 +397,7 @@ export class CoreProtocol {
     }
     const values: LinkedEditingRect[] = [];
     for (let i = 0; i < count; i++) {
-      values.push(this.readLinkedEditingRect(reader));
+      values.push(CoreProtocol.readLinkedEditingRect(reader));
     }
     return values;
   }
@@ -391,7 +406,7 @@ export class CoreProtocol {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
     for (let i = 0; i < count; i++) {
-      this.writePhantomText(writer, values[i]);
+      CoreProtocol.writePhantomText(writer, values[i]);
     }
   }
 
@@ -399,7 +414,7 @@ export class CoreProtocol {
     let size = 4;
     if (values) {
       for (const value of values) {
-        size += this.sizeOfPhantomText(value);
+        size += CoreProtocol.sizeOfPhantomText(value);
       }
     }
     return size;
@@ -412,7 +427,7 @@ export class CoreProtocol {
     }
     const values: Rect[] = [];
     for (let i = 0; i < count; i++) {
-      values.push(this.readRect(reader));
+      values.push(CoreProtocol.readRect(reader));
     }
     return values;
   }
@@ -421,7 +436,7 @@ export class CoreProtocol {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
     for (let i = 0; i < count; i++) {
-      this.writeRect(writer, values[i]);
+      CoreProtocol.writeRect(writer, values[i]);
     }
   }
 
@@ -429,7 +444,7 @@ export class CoreProtocol {
     let size = 4;
     if (values) {
       for (const value of values) {
-        size += this.sizeOfRect(value);
+        size += CoreProtocol.sizeOfRect(value);
       }
     }
     return size;
@@ -439,7 +454,7 @@ export class CoreProtocol {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
     for (let i = 0; i < count; i++) {
-      this.writeSeparatorGuide(writer, values[i]);
+      CoreProtocol.writeSeparatorGuide(writer, values[i]);
     }
   }
 
@@ -447,7 +462,7 @@ export class CoreProtocol {
     let size = 4;
     if (values) {
       for (const value of values) {
-        size += this.sizeOfSeparatorGuide(value);
+        size += CoreProtocol.sizeOfSeparatorGuide(value);
       }
     }
     return size;
@@ -460,7 +475,7 @@ export class CoreProtocol {
     }
     const values: StyleSpan[] = [];
     for (let i = 0; i < count; i++) {
-      values.push(this.readStyleSpan(reader));
+      values.push(CoreProtocol.readStyleSpan(reader));
     }
     return values;
   }
@@ -469,7 +484,7 @@ export class CoreProtocol {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
     for (let i = 0; i < count; i++) {
-      this.writeStyleSpan(writer, values[i]);
+      CoreProtocol.writeStyleSpan(writer, values[i]);
     }
   }
 
@@ -477,7 +492,7 @@ export class CoreProtocol {
     let size = 4;
     if (values) {
       for (const value of values) {
-        size += this.sizeOfStyleSpan(value);
+        size += CoreProtocol.sizeOfStyleSpan(value);
       }
     }
     return size;
@@ -487,7 +502,7 @@ export class CoreProtocol {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
     for (let i = 0; i < count; i++) {
-      this.writeTabStopGroup(writer, values[i]);
+      CoreProtocol.writeTabStopGroup(writer, values[i]);
     }
   }
 
@@ -495,7 +510,7 @@ export class CoreProtocol {
     let size = 4;
     if (values) {
       for (const value of values) {
-        size += this.sizeOfTabStopGroup(value);
+        size += CoreProtocol.sizeOfTabStopGroup(value);
       }
     }
     return size;
@@ -508,7 +523,7 @@ export class CoreProtocol {
     }
     const values: TextChange[] = [];
     for (let i = 0; i < count; i++) {
-      values.push(this.readTextChange(reader));
+      values.push(CoreProtocol.readTextChange(reader));
     }
     return values;
   }
@@ -520,7 +535,7 @@ export class CoreProtocol {
     }
     const values: TextPosition[] = [];
     for (let i = 0; i < count; i++) {
-      values.push(this.readTextPosition(reader));
+      values.push(CoreProtocol.readTextPosition(reader));
     }
     return values;
   }
@@ -529,7 +544,7 @@ export class CoreProtocol {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
     for (let i = 0; i < count; i++) {
-      this.writeTextPosition(writer, values[i]);
+      CoreProtocol.writeTextPosition(writer, values[i]);
     }
   }
 
@@ -537,7 +552,7 @@ export class CoreProtocol {
     let size = 4;
     if (values) {
       for (const value of values) {
-        size += this.sizeOfTextPosition(value);
+        size += CoreProtocol.sizeOfTextPosition(value);
       }
     }
     return size;
@@ -550,7 +565,7 @@ export class CoreProtocol {
     }
     const values: TextRange[] = [];
     for (let i = 0; i < count; i++) {
-      values.push(this.readTextRange(reader));
+      values.push(CoreProtocol.readTextRange(reader));
     }
     return values;
   }
@@ -559,7 +574,7 @@ export class CoreProtocol {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
     for (let i = 0; i < count; i++) {
-      this.writeTextRange(writer, values[i]);
+      CoreProtocol.writeTextRange(writer, values[i]);
     }
   }
 
@@ -567,7 +582,7 @@ export class CoreProtocol {
     let size = 4;
     if (values) {
       for (const value of values) {
-        size += this.sizeOfTextRange(value);
+        size += CoreProtocol.sizeOfTextRange(value);
       }
     }
     return size;
@@ -580,7 +595,7 @@ export class CoreProtocol {
     }
     const values: VisualLine[] = [];
     for (let i = 0; i < count; i++) {
-      values.push(this.readVisualLine(reader));
+      values.push(CoreProtocol.readVisualLine(reader));
     }
     return values;
   }
@@ -592,7 +607,7 @@ export class CoreProtocol {
     }
     const values: VisualRun[] = [];
     for (let i = 0; i < count; i++) {
-      values.push(this.readVisualRun(reader));
+      values.push(CoreProtocol.readVisualRun(reader));
     }
     return values;
   }
@@ -615,13 +630,13 @@ export class CoreProtocol {
       needsFling: reader.readInt32() !== 0,
       needsAnimation: reader.readInt32() !== 0,
       isHandleDrag: reader.readInt32() !== 0,
-      changes: this.readTextChangeList(reader),
-      cursorBefore: this.readTextPosition(reader),
-      cursorAfter: this.readTextPosition(reader),
+      changes: CoreProtocol.readTextChangeList(reader),
+      cursorBefore: CoreProtocol.readTextPosition(reader),
+      cursorAfter: CoreProtocol.readTextPosition(reader),
       hasSelectionBefore: reader.readInt32() !== 0,
       hasSelectionAfter: reader.readInt32() !== 0,
-      selectionBefore: this.readTextRange(reader),
-      selectionAfter: this.readTextRange(reader),
+      selectionBefore: CoreProtocol.readTextRange(reader),
+      selectionAfter: CoreProtocol.readTextRange(reader),
       scrollXBefore: reader.readFloat32(),
       scrollYBefore: reader.readFloat32(),
       scrollXAfter: reader.readFloat32(),
@@ -630,31 +645,31 @@ export class CoreProtocol {
       scaleAfter: reader.readFloat32(),
       pointerCursorBefore: pointerCursorTypeFromValue(reader.readInt32()),
       pointerCursorAfter: pointerCursorTypeFromValue(reader.readInt32()),
-      imeSync: this.readImeSyncSnapshot(reader),
+      imeSync: CoreProtocol.readImeSyncSnapshot(reader),
       gestureType: gestureTypeFromValue(reader.readInt32()),
       gestureEventType: eventTypeFromValue(reader.readInt32()),
-      tapPoint: this.readPointF(reader),
-      hitTarget: this.readHitTarget(reader),
+      tapPoint: CoreProtocol.readPointF(reader),
+      hitTarget: CoreProtocol.readHitTarget(reader),
       modifiers: reader.readInt32(),
       command: reader.readInt32()
     };
   }
 
-  static decodeEditorActionResult(buffer: ArrayBuffer): EditorActionResult {
-    return this.readEditorActionResult(new BinaryReader(buffer));
+  static decodeEditorActionResult(buffer: ArrayBuffer | undefined): EditorActionResult {
+    return CoreProtocol.readEditorActionResult(CoreProtocol.readerFor(buffer));
   }
 
   static writeBracketGuide(writer: BinaryWriter, value: BracketGuide): void {
-    this.writeTextPosition(writer, value.parent);
-    this.writeTextPosition(writer, value.end);
-    this.writeTextPositionList(writer, value.children);
+    CoreProtocol.writeTextPosition(writer, value.parent);
+    CoreProtocol.writeTextPosition(writer, value.end);
+    CoreProtocol.writeTextPositionList(writer, value.children);
   }
 
   static sizeOfBracketGuide(value: BracketGuide): number {
     let size = 0;
-    size += this.sizeOfTextPosition(value.parent);
-    size += this.sizeOfTextPosition(value.end);
-    size += this.sizeOfTextPositionList(value.children);
+    size += CoreProtocol.sizeOfTextPosition(value.parent);
+    size += CoreProtocol.sizeOfTextPosition(value.end);
+    size += CoreProtocol.sizeOfTextPositionList(value.children);
     return size;
   }
 
@@ -668,7 +683,7 @@ export class CoreProtocol {
     let size = 0;
     size += 4;
     size += 4;
-    size += this.sizeOfUtf8String(value.text);
+    size += CoreProtocol.sizeOfUtf8String(value.text);
     return size;
   }
 
@@ -687,14 +702,14 @@ export class CoreProtocol {
   }
 
   static writeFlowGuide(writer: BinaryWriter, value: FlowGuide): void {
-    this.writeTextPosition(writer, value.start);
-    this.writeTextPosition(writer, value.end);
+    CoreProtocol.writeTextPosition(writer, value.start);
+    CoreProtocol.writeTextPosition(writer, value.end);
   }
 
   static sizeOfFlowGuide(value: FlowGuide): number {
     let size = 0;
-    size += this.sizeOfTextPosition(value.start);
-    size += this.sizeOfTextPosition(value.end);
+    size += CoreProtocol.sizeOfTextPosition(value.start);
+    size += CoreProtocol.sizeOfTextPosition(value.end);
     return size;
   }
 
@@ -723,14 +738,14 @@ export class CoreProtocol {
   }
 
   static writeIndentGuide(writer: BinaryWriter, value: IndentGuide): void {
-    this.writeTextPosition(writer, value.start);
-    this.writeTextPosition(writer, value.end);
+    CoreProtocol.writeTextPosition(writer, value.start);
+    CoreProtocol.writeTextPosition(writer, value.end);
   }
 
   static sizeOfIndentGuide(value: IndentGuide): number {
     let size = 0;
-    size += this.sizeOfTextPosition(value.start);
-    size += this.sizeOfTextPosition(value.end);
+    size += CoreProtocol.sizeOfTextPosition(value.start);
+    size += CoreProtocol.sizeOfTextPosition(value.end);
     return size;
   }
 
@@ -746,7 +761,7 @@ export class CoreProtocol {
     size += 4;
     size += 4;
     size += 4;
-    size += this.sizeOfUtf8String(value.text);
+    size += CoreProtocol.sizeOfUtf8String(value.text);
     return size;
   }
 
@@ -760,7 +775,7 @@ export class CoreProtocol {
     let size = 0;
     size += 4;
     size += 4;
-    size += this.sizeOfUtf8String(value.target);
+    size += CoreProtocol.sizeOfUtf8String(value.target);
     return size;
   }
 
@@ -772,7 +787,7 @@ export class CoreProtocol {
   static sizeOfPhantomText(value: PhantomText): number {
     let size = 0;
     size += 4;
-    size += this.sizeOfUtf8String(value.text);
+    size += CoreProtocol.sizeOfUtf8String(value.text);
     return size;
   }
 
@@ -800,8 +815,8 @@ export class CoreProtocol {
     };
   }
 
-  static decodeStyleSpan(buffer: ArrayBuffer): StyleSpan {
-    return this.readStyleSpan(new BinaryReader(buffer));
+  static decodeStyleSpan(buffer: ArrayBuffer | undefined): StyleSpan {
+    return CoreProtocol.readStyleSpan(CoreProtocol.readerFor(buffer));
   }
 
   static writeStyleSpan(writer: BinaryWriter, value: StyleSpan): void {
@@ -826,8 +841,8 @@ export class CoreProtocol {
     };
   }
 
-  static decodeTextStyle(buffer: ArrayBuffer): TextStyle {
-    return this.readTextStyle(new BinaryReader(buffer));
+  static decodeTextStyle(buffer: ArrayBuffer | undefined): TextStyle {
+    return CoreProtocol.readTextStyle(CoreProtocol.readerFor(buffer));
   }
 
   static writeTextStyle(writer: BinaryWriter, value: TextStyle): void {
@@ -871,14 +886,14 @@ export class CoreProtocol {
   }
 
   static writeHandleConfig(writer: BinaryWriter, value: HandleConfig): void {
-    this.writeOffsetRect(writer, value.startHitOffset);
-    this.writeOffsetRect(writer, value.endHitOffset);
+    CoreProtocol.writeOffsetRect(writer, value.startHitOffset);
+    CoreProtocol.writeOffsetRect(writer, value.endHitOffset);
   }
 
   static sizeOfHandleConfig(value: HandleConfig): number {
     let size = 0;
-    size += this.sizeOfOffsetRect(value.startHitOffset);
-    size += this.sizeOfOffsetRect(value.endHitOffset);
+    size += CoreProtocol.sizeOfOffsetRect(value.startHitOffset);
+    size += CoreProtocol.sizeOfOffsetRect(value.endHitOffset);
     return size;
   }
 
@@ -913,8 +928,8 @@ export class CoreProtocol {
     };
   }
 
-  static decodeIntRange(buffer: ArrayBuffer): IntRange {
-    return this.readIntRange(new BinaryReader(buffer));
+  static decodeIntRange(buffer: ArrayBuffer | undefined): IntRange {
+    return CoreProtocol.readIntRange(CoreProtocol.readerFor(buffer));
   }
 
   static writeIntRange(writer: BinaryWriter, value: IntRange): void {
@@ -938,8 +953,8 @@ export class CoreProtocol {
     };
   }
 
-  static decodeOffsetRect(buffer: ArrayBuffer): OffsetRect {
-    return this.readOffsetRect(new BinaryReader(buffer));
+  static decodeOffsetRect(buffer: ArrayBuffer | undefined): OffsetRect {
+    return CoreProtocol.readOffsetRect(CoreProtocol.readerFor(buffer));
   }
 
   static writeOffsetRect(writer: BinaryWriter, value: OffsetRect): void {
@@ -965,8 +980,8 @@ export class CoreProtocol {
     };
   }
 
-  static decodePointF(buffer: ArrayBuffer): PointF {
-    return this.readPointF(new BinaryReader(buffer));
+  static decodePointF(buffer: ArrayBuffer | undefined): PointF {
+    return CoreProtocol.readPointF(CoreProtocol.readerFor(buffer));
   }
 
   static writePointF(writer: BinaryWriter, value: PointF): void {
@@ -983,25 +998,25 @@ export class CoreProtocol {
 
   private static readRect(reader: BinaryReader): Rect {
     return {
-      origin: this.readPointF(reader),
+      origin: CoreProtocol.readPointF(reader),
       width: reader.readFloat32(),
       height: reader.readFloat32()
     };
   }
 
-  static decodeRect(buffer: ArrayBuffer): Rect {
-    return this.readRect(new BinaryReader(buffer));
+  static decodeRect(buffer: ArrayBuffer | undefined): Rect {
+    return CoreProtocol.readRect(CoreProtocol.readerFor(buffer));
   }
 
   static writeRect(writer: BinaryWriter, value: Rect): void {
-    this.writePointF(writer, value.origin);
+    CoreProtocol.writePointF(writer, value.origin);
     writer.writeFloat32(value.width);
     writer.writeFloat32(value.height);
   }
 
   static sizeOfRect(value: Rect): number {
     let size = 0;
-    size += this.sizeOfPointF(value.origin);
+    size += CoreProtocol.sizeOfPointF(value.origin);
     size += 4;
     size += 4;
     return size;
@@ -1009,13 +1024,13 @@ export class CoreProtocol {
 
   private static readTextChange(reader: BinaryReader): TextChange {
     return {
-      range: this.readTextRange(reader),
+      range: CoreProtocol.readTextRange(reader),
       newText: reader.readUtf8String()
     };
   }
 
-  static decodeTextChange(buffer: ArrayBuffer): TextChange {
-    return this.readTextChange(new BinaryReader(buffer));
+  static decodeTextChange(buffer: ArrayBuffer | undefined): TextChange {
+    return CoreProtocol.readTextChange(CoreProtocol.readerFor(buffer));
   }
 
   private static readTextPosition(reader: BinaryReader): TextPosition {
@@ -1025,8 +1040,8 @@ export class CoreProtocol {
     };
   }
 
-  static decodeTextPosition(buffer: ArrayBuffer): TextPosition {
-    return this.readTextPosition(new BinaryReader(buffer));
+  static decodeTextPosition(buffer: ArrayBuffer | undefined): TextPosition {
+    return CoreProtocol.readTextPosition(CoreProtocol.readerFor(buffer));
   }
 
   static writeTextPosition(writer: BinaryWriter, value: TextPosition): void {
@@ -1043,24 +1058,24 @@ export class CoreProtocol {
 
   private static readTextRange(reader: BinaryReader): TextRange {
     return {
-      start: this.readTextPosition(reader),
-      end: this.readTextPosition(reader)
+      start: CoreProtocol.readTextPosition(reader),
+      end: CoreProtocol.readTextPosition(reader)
     };
   }
 
-  static decodeTextRange(buffer: ArrayBuffer): TextRange {
-    return this.readTextRange(new BinaryReader(buffer));
+  static decodeTextRange(buffer: ArrayBuffer | undefined): TextRange {
+    return CoreProtocol.readTextRange(CoreProtocol.readerFor(buffer));
   }
 
   static writeTextRange(writer: BinaryWriter, value: TextRange): void {
-    this.writeTextPosition(writer, value.start);
-    this.writeTextPosition(writer, value.end);
+    CoreProtocol.writeTextPosition(writer, value.start);
+    CoreProtocol.writeTextPosition(writer, value.end);
   }
 
   static sizeOfTextRange(value: TextRange): number {
     let size = 0;
-    size += this.sizeOfTextPosition(value.start);
-    size += this.sizeOfTextPosition(value.end);
+    size += CoreProtocol.sizeOfTextPosition(value.start);
+    size += CoreProtocol.sizeOfTextPosition(value.end);
     return size;
   }
 
@@ -1070,35 +1085,35 @@ export class CoreProtocol {
       revision: reader.readInt32(),
       documentStartOffset: reader.readInt32(),
       text: reader.readUtf8String(),
-      selection: this.readImeTextRange(reader),
+      selection: CoreProtocol.readImeTextRange(reader),
       hasComposition: reader.readInt32() !== 0,
-      composition: this.readImeTextRange(reader),
+      composition: CoreProtocol.readImeTextRange(reader),
       kind: imeInputContextKindFromValue(reader.readInt32())
     };
   }
 
-  static decodeImeInputContext(buffer: ArrayBuffer): ImeInputContext {
-    return this.readImeInputContext(new BinaryReader(buffer));
+  static decodeImeInputContext(buffer: ArrayBuffer | undefined): ImeInputContext {
+    return CoreProtocol.readImeInputContext(CoreProtocol.readerFor(buffer));
   }
 
   private static readImeSyncSnapshot(reader: BinaryReader): ImeSyncSnapshot {
     return {
-      cursor: this.readTextPosition(reader),
-      selection: this.readTextRange(reader),
+      cursor: CoreProtocol.readTextPosition(reader),
+      selection: CoreProtocol.readTextRange(reader),
       hasSelection: reader.readInt32() !== 0,
       hasComposingSession: reader.readInt32() !== 0,
       hasVisibleCompositionRange: reader.readInt32() !== 0,
-      visibleCompositionRange: this.readTextRange(reader),
+      visibleCompositionRange: CoreProtocol.readTextRange(reader),
       hasPlatformMarkedRange: reader.readInt32() !== 0,
-      platformMarkedRange: this.readTextRange(reader),
+      platformMarkedRange: CoreProtocol.readTextRange(reader),
       preeditStorage: imePreeditStorageFromValue(reader.readInt32()),
       contextPolicy: imeContextPolicyFromValue(reader.readInt32()),
       clearPlatformPreedit: reader.readInt32() !== 0
     };
   }
 
-  static decodeImeSyncSnapshot(buffer: ArrayBuffer): ImeSyncSnapshot {
-    return this.readImeSyncSnapshot(new BinaryReader(buffer));
+  static decodeImeSyncSnapshot(buffer: ArrayBuffer | undefined): ImeSyncSnapshot {
+    return CoreProtocol.readImeSyncSnapshot(CoreProtocol.readerFor(buffer));
   }
 
   private static readImeTextRange(reader: BinaryReader): ImeTextRange {
@@ -1108,8 +1123,8 @@ export class CoreProtocol {
     };
   }
 
-  static decodeImeTextRange(buffer: ArrayBuffer): ImeTextRange {
-    return this.readImeTextRange(new BinaryReader(buffer));
+  static decodeImeTextRange(buffer: ArrayBuffer | undefined): ImeTextRange {
+    return CoreProtocol.readImeTextRange(CoreProtocol.readerFor(buffer));
   }
 
   static writeImeTextRange(writer: BinaryWriter, value: ImeTextRange): void {
@@ -1134,32 +1149,32 @@ export class CoreProtocol {
     };
   }
 
-  static decodeHitTarget(buffer: ArrayBuffer): HitTarget {
-    return this.readHitTarget(new BinaryReader(buffer));
+  static decodeHitTarget(buffer: ArrayBuffer | undefined): HitTarget {
+    return CoreProtocol.readHitTarget(CoreProtocol.readerFor(buffer));
   }
 
   private static readKeyBinding(reader: BinaryReader): KeyBinding {
     return {
-      first: this.readKeyChord(reader),
-      second: this.readKeyChord(reader),
+      first: CoreProtocol.readKeyChord(reader),
+      second: CoreProtocol.readKeyChord(reader),
       command: reader.readInt32()
     };
   }
 
-  static decodeKeyBinding(buffer: ArrayBuffer): KeyBinding {
-    return this.readKeyBinding(new BinaryReader(buffer));
+  static decodeKeyBinding(buffer: ArrayBuffer | undefined): KeyBinding {
+    return CoreProtocol.readKeyBinding(CoreProtocol.readerFor(buffer));
   }
 
   static writeKeyBinding(writer: BinaryWriter, value: KeyBinding): void {
-    this.writeKeyChord(writer, value.first);
-    this.writeKeyChord(writer, value.second);
+    CoreProtocol.writeKeyChord(writer, value.first);
+    CoreProtocol.writeKeyChord(writer, value.second);
     writer.writeInt32(value.command);
   }
 
   static sizeOfKeyBinding(value: KeyBinding): number {
     let size = 0;
-    size += this.sizeOfKeyChord(value.first);
-    size += this.sizeOfKeyChord(value.second);
+    size += CoreProtocol.sizeOfKeyChord(value.first);
+    size += CoreProtocol.sizeOfKeyChord(value.second);
     size += 4;
     return size;
   }
@@ -1171,8 +1186,8 @@ export class CoreProtocol {
     };
   }
 
-  static decodeKeyChord(buffer: ArrayBuffer): KeyChord {
-    return this.readKeyChord(new BinaryReader(buffer));
+  static decodeKeyChord(buffer: ArrayBuffer | undefined): KeyChord {
+    return CoreProtocol.readKeyChord(CoreProtocol.readerFor(buffer));
   }
 
   static writeKeyChord(writer: BinaryWriter, value: KeyChord): void {
@@ -1188,52 +1203,52 @@ export class CoreProtocol {
   }
 
   static writeLinkedEditingModel(writer: BinaryWriter, value: LinkedEditingModel): void {
-    this.writeTabStopGroupList(writer, value.groups);
+    CoreProtocol.writeTabStopGroupList(writer, value.groups);
   }
 
   static sizeOfLinkedEditingModel(value: LinkedEditingModel): number {
     let size = 0;
-    size += this.sizeOfTabStopGroupList(value.groups);
+    size += CoreProtocol.sizeOfTabStopGroupList(value.groups);
     return size;
   }
 
   static writeTabStopGroup(writer: BinaryWriter, value: TabStopGroup): void {
     writer.writeInt32(value.index);
-    this.writeTextRangeList(writer, value.ranges);
+    CoreProtocol.writeTextRangeList(writer, value.ranges);
     writer.writeUtf8String(value.defaultText);
   }
 
   static sizeOfTabStopGroup(value: TabStopGroup): number {
     let size = 0;
     size += 4;
-    size += this.sizeOfTextRangeList(value.ranges);
-    size += this.sizeOfUtf8String(value.defaultText);
+    size += CoreProtocol.sizeOfTextRangeList(value.ranges);
+    size += CoreProtocol.sizeOfUtf8String(value.defaultText);
     return size;
   }
 
   private static readCompositionDecoration(reader: BinaryReader): CompositionDecoration {
     return {
       active: reader.readInt32() !== 0,
-      rect: this.readRect(reader)
+      rect: CoreProtocol.readRect(reader)
     };
   }
 
-  static decodeCompositionDecoration(buffer: ArrayBuffer): CompositionDecoration {
-    return this.readCompositionDecoration(new BinaryReader(buffer));
+  static decodeCompositionDecoration(buffer: ArrayBuffer | undefined): CompositionDecoration {
+    return CoreProtocol.readCompositionDecoration(CoreProtocol.readerFor(buffer));
   }
 
   private static readCursor(reader: BinaryReader): Cursor {
     return {
-      textPosition: this.readTextPosition(reader),
-      position: this.readPointF(reader),
+      textPosition: CoreProtocol.readTextPosition(reader),
+      position: CoreProtocol.readPointF(reader),
       height: reader.readFloat32(),
       visible: reader.readInt32() !== 0,
       showDragger: reader.readInt32() !== 0
     };
   }
 
-  static decodeCursor(buffer: ArrayBuffer): Cursor {
-    return this.readCursor(new BinaryReader(buffer));
+  static decodeCursor(buffer: ArrayBuffer | undefined): Cursor {
+    return CoreProtocol.readCursor(CoreProtocol.readerFor(buffer));
   }
 
   private static readCursorRect(reader: BinaryReader): CursorRect {
@@ -1244,8 +1259,8 @@ export class CoreProtocol {
     };
   }
 
-  static decodeCursorRect(buffer: ArrayBuffer): CursorRect {
-    return this.readCursorRect(new BinaryReader(buffer));
+  static decodeCursorRect(buffer: ArrayBuffer | undefined): CursorRect {
+    return CoreProtocol.readCursorRect(CoreProtocol.readerFor(buffer));
   }
 
   static writeCursorRect(writer: BinaryWriter, value: CursorRect): void {
@@ -1264,13 +1279,13 @@ export class CoreProtocol {
 
   private static readDiagnosticDecoration(reader: BinaryReader): DiagnosticDecoration {
     return {
-      rect: this.readRect(reader),
+      rect: CoreProtocol.readRect(reader),
       severity: reader.readInt32()
     };
   }
 
-  static decodeDiagnosticDecoration(buffer: ArrayBuffer): DiagnosticDecoration {
-    return this.readDiagnosticDecoration(new BinaryReader(buffer));
+  static decodeDiagnosticDecoration(buffer: ArrayBuffer | undefined): DiagnosticDecoration {
+    return CoreProtocol.readDiagnosticDecoration(CoreProtocol.readerFor(buffer));
   }
 
   private static readEditorRenderModel(reader: BinaryReader): EditorRenderModel {
@@ -1281,43 +1296,43 @@ export class CoreProtocol {
       scrollY: reader.readFloat32(),
       viewportWidth: reader.readFloat32(),
       viewportHeight: reader.readFloat32(),
-      currentLine: this.readPointF(reader),
+      currentLine: CoreProtocol.readPointF(reader),
       currentLineRenderMode: currentLineRenderModeFromValue(reader.readInt32()),
-      lines: this.readVisualLineList(reader),
-      cursor: this.readCursor(reader),
-      selectionRects: this.readRectList(reader),
-      selectionStartHandle: this.readSelectionHandle(reader),
-      selectionEndHandle: this.readSelectionHandle(reader),
-      compositionDecoration: this.readCompositionDecoration(reader),
-      guideSegments: this.readGuideSegmentList(reader),
-      diagnosticDecorations: this.readDiagnosticDecorationList(reader),
+      lines: CoreProtocol.readVisualLineList(reader),
+      cursor: CoreProtocol.readCursor(reader),
+      selectionRects: CoreProtocol.readRectList(reader),
+      selectionStartHandle: CoreProtocol.readSelectionHandle(reader),
+      selectionEndHandle: CoreProtocol.readSelectionHandle(reader),
+      compositionDecoration: CoreProtocol.readCompositionDecoration(reader),
+      guideSegments: CoreProtocol.readGuideSegmentList(reader),
+      diagnosticDecorations: CoreProtocol.readDiagnosticDecorationList(reader),
       maxGutterIcons: reader.readInt32(),
-      linkedEditingRects: this.readLinkedEditingRectList(reader),
-      bracketHighlightRects: this.readRectList(reader),
-      gutterIcons: this.readGutterIconRenderItemList(reader),
-      foldMarkers: this.readFoldMarkerRenderItemList(reader),
-      verticalScrollbar: this.readScrollbarModel(reader),
-      horizontalScrollbar: this.readScrollbarModel(reader),
+      linkedEditingRects: CoreProtocol.readLinkedEditingRectList(reader),
+      bracketHighlightRects: CoreProtocol.readRectList(reader),
+      gutterIcons: CoreProtocol.readGutterIconRenderItemList(reader),
+      foldMarkers: CoreProtocol.readFoldMarkerRenderItemList(reader),
+      verticalScrollbar: CoreProtocol.readScrollbarModel(reader),
+      horizontalScrollbar: CoreProtocol.readScrollbarModel(reader),
       gutterSticky: reader.readInt32() !== 0,
       gutterVisible: reader.readInt32() !== 0,
       pointerCursorType: pointerCursorTypeFromValue(reader.readInt32())
     };
   }
 
-  static decodeEditorRenderModel(buffer: ArrayBuffer): EditorRenderModel {
-    return this.readEditorRenderModel(new BinaryReader(buffer));
+  static decodeEditorRenderModel(buffer: ArrayBuffer | undefined): EditorRenderModel {
+    return CoreProtocol.readEditorRenderModel(CoreProtocol.readerFor(buffer));
   }
 
   private static readFoldMarkerRenderItem(reader: BinaryReader): FoldMarkerRenderItem {
     return {
       logicalLine: reader.readInt32(),
       foldState: foldStateFromValue(reader.readInt32()),
-      rect: this.readRect(reader)
+      rect: CoreProtocol.readRect(reader)
     };
   }
 
-  static decodeFoldMarkerRenderItem(buffer: ArrayBuffer): FoldMarkerRenderItem {
-    return this.readFoldMarkerRenderItem(new BinaryReader(buffer));
+  static decodeFoldMarkerRenderItem(buffer: ArrayBuffer | undefined): FoldMarkerRenderItem {
+    return CoreProtocol.readFoldMarkerRenderItem(CoreProtocol.readerFor(buffer));
   }
 
   private static readGuideSegment(reader: BinaryReader): GuideSegment {
@@ -1325,26 +1340,26 @@ export class CoreProtocol {
       direction: guideDirectionFromValue(reader.readInt32()),
       type: guideTypeFromValue(reader.readInt32()),
       style: guideStyleFromValue(reader.readInt32()),
-      start: this.readPointF(reader),
-      end: this.readPointF(reader),
+      start: CoreProtocol.readPointF(reader),
+      end: CoreProtocol.readPointF(reader),
       arrowEnd: reader.readInt32() !== 0
     };
   }
 
-  static decodeGuideSegment(buffer: ArrayBuffer): GuideSegment {
-    return this.readGuideSegment(new BinaryReader(buffer));
+  static decodeGuideSegment(buffer: ArrayBuffer | undefined): GuideSegment {
+    return CoreProtocol.readGuideSegment(CoreProtocol.readerFor(buffer));
   }
 
   private static readGutterIconRenderItem(reader: BinaryReader): GutterIconRenderItem {
     return {
       logicalLine: reader.readInt32(),
       iconId: reader.readInt32(),
-      rect: this.readRect(reader)
+      rect: CoreProtocol.readRect(reader)
     };
   }
 
-  static decodeGutterIconRenderItem(buffer: ArrayBuffer): GutterIconRenderItem {
-    return this.readGutterIconRenderItem(new BinaryReader(buffer));
+  static decodeGutterIconRenderItem(buffer: ArrayBuffer | undefined): GutterIconRenderItem {
+    return CoreProtocol.readGutterIconRenderItem(CoreProtocol.readerFor(buffer));
   }
 
   private static readLayoutMetrics(reader: BinaryReader): LayoutMetrics {
@@ -1366,19 +1381,19 @@ export class CoreProtocol {
     };
   }
 
-  static decodeLayoutMetrics(buffer: ArrayBuffer): LayoutMetrics {
-    return this.readLayoutMetrics(new BinaryReader(buffer));
+  static decodeLayoutMetrics(buffer: ArrayBuffer | undefined): LayoutMetrics {
+    return CoreProtocol.readLayoutMetrics(CoreProtocol.readerFor(buffer));
   }
 
   private static readLinkedEditingRect(reader: BinaryReader): LinkedEditingRect {
     return {
-      rect: this.readRect(reader),
+      rect: CoreProtocol.readRect(reader),
       isActive: reader.readInt32() !== 0
     };
   }
 
-  static decodeLinkedEditingRect(buffer: ArrayBuffer): LinkedEditingRect {
-    return this.readLinkedEditingRect(new BinaryReader(buffer));
+  static decodeLinkedEditingRect(buffer: ArrayBuffer | undefined): LinkedEditingRect {
+    return CoreProtocol.readLinkedEditingRect(CoreProtocol.readerFor(buffer));
   }
 
   private static readScrollMetrics(reader: BinaryReader): ScrollMetrics {
@@ -1399,8 +1414,8 @@ export class CoreProtocol {
     };
   }
 
-  static decodeScrollMetrics(buffer: ArrayBuffer): ScrollMetrics {
-    return this.readScrollMetrics(new BinaryReader(buffer));
+  static decodeScrollMetrics(buffer: ArrayBuffer | undefined): ScrollMetrics {
+    return CoreProtocol.readScrollMetrics(CoreProtocol.readerFor(buffer));
   }
 
   private static readScrollbarModel(reader: BinaryReader): ScrollbarModel {
@@ -1408,41 +1423,41 @@ export class CoreProtocol {
       visible: reader.readInt32() !== 0,
       alpha: reader.readFloat32(),
       thumbActive: reader.readInt32() !== 0,
-      track: this.readRect(reader),
-      thumb: this.readRect(reader)
+      track: CoreProtocol.readRect(reader),
+      thumb: CoreProtocol.readRect(reader)
     };
   }
 
-  static decodeScrollbarModel(buffer: ArrayBuffer): ScrollbarModel {
-    return this.readScrollbarModel(new BinaryReader(buffer));
+  static decodeScrollbarModel(buffer: ArrayBuffer | undefined): ScrollbarModel {
+    return CoreProtocol.readScrollbarModel(CoreProtocol.readerFor(buffer));
   }
 
   private static readSelectionHandle(reader: BinaryReader): SelectionHandle {
     return {
-      position: this.readPointF(reader),
+      position: CoreProtocol.readPointF(reader),
       height: reader.readFloat32(),
       visible: reader.readInt32() !== 0
     };
   }
 
-  static decodeSelectionHandle(buffer: ArrayBuffer): SelectionHandle {
-    return this.readSelectionHandle(new BinaryReader(buffer));
+  static decodeSelectionHandle(buffer: ArrayBuffer | undefined): SelectionHandle {
+    return CoreProtocol.readSelectionHandle(CoreProtocol.readerFor(buffer));
   }
 
   private static readVisualLine(reader: BinaryReader): VisualLine {
     return {
       logicalLine: reader.readInt32(),
       wrapIndex: reader.readInt32(),
-      lineNumberPosition: this.readPointF(reader),
-      runs: this.readVisualRunList(reader),
+      lineNumberPosition: CoreProtocol.readPointF(reader),
+      runs: CoreProtocol.readVisualRunList(reader),
       kind: visualLineKindFromValue(reader.readInt32()),
       ownsGutterSemantics: reader.readInt32() !== 0,
       foldState: foldStateFromValue(reader.readInt32())
     };
   }
 
-  static decodeVisualLine(buffer: ArrayBuffer): VisualLine {
-    return this.readVisualLine(new BinaryReader(buffer));
+  static decodeVisualLine(buffer: ArrayBuffer | undefined): VisualLine {
+    return CoreProtocol.readVisualLine(CoreProtocol.readerFor(buffer));
   }
 
   private static readVisualRun(reader: BinaryReader): VisualRun {
@@ -1451,7 +1466,7 @@ export class CoreProtocol {
       x: reader.readFloat32(),
       y: reader.readFloat32(),
       text: reader.readUtf8String(),
-      style: this.readTextStyle(reader),
+      style: CoreProtocol.readTextStyle(reader),
       iconId: reader.readInt32(),
       colorValue: reader.readInt32(),
       width: reader.readFloat32(),
@@ -1461,67 +1476,67 @@ export class CoreProtocol {
     };
   }
 
-  static decodeVisualRun(buffer: ArrayBuffer): VisualRun {
-    return this.readVisualRun(new BinaryReader(buffer));
+  static decodeVisualRun(buffer: ArrayBuffer | undefined): VisualRun {
+    return CoreProtocol.readVisualRun(CoreProtocol.readerFor(buffer));
   }
 
   static encodeBracketGuide(value: BracketGuide): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfBracketGuide(value));
-    this.writeBracketGuide(writer, value);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfBracketGuide(value));
+    CoreProtocol.writeBracketGuide(writer, value);
     return writer.getBuffer();
   }
 
   static encodeCodeLensItem(value: CodeLensItem): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfCodeLensItem(value));
-    this.writeCodeLensItem(writer, value);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfCodeLensItem(value));
+    CoreProtocol.writeCodeLensItem(writer, value);
     return writer.getBuffer();
   }
 
   static encodeDiagnostic(value: Diagnostic): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfDiagnostic(value));
-    this.writeDiagnostic(writer, value);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfDiagnostic(value));
+    CoreProtocol.writeDiagnostic(writer, value);
     return writer.getBuffer();
   }
 
   static encodeFlowGuide(value: FlowGuide): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfFlowGuide(value));
-    this.writeFlowGuide(writer, value);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfFlowGuide(value));
+    CoreProtocol.writeFlowGuide(writer, value);
     return writer.getBuffer();
   }
 
   static encodeFoldRegion(value: FoldRegion): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfFoldRegion(value));
-    this.writeFoldRegion(writer, value);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfFoldRegion(value));
+    CoreProtocol.writeFoldRegion(writer, value);
     return writer.getBuffer();
   }
 
   static encodeGutterIcon(value: GutterIcon): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfGutterIcon(value));
-    this.writeGutterIcon(writer, value);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfGutterIcon(value));
+    CoreProtocol.writeGutterIcon(writer, value);
     return writer.getBuffer();
   }
 
   static encodeIndentGuide(value: IndentGuide): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfIndentGuide(value));
-    this.writeIndentGuide(writer, value);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfIndentGuide(value));
+    CoreProtocol.writeIndentGuide(writer, value);
     return writer.getBuffer();
   }
 
   static encodeInlayHint(value: InlayHint): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfInlayHint(value));
-    this.writeInlayHint(writer, value);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfInlayHint(value));
+    CoreProtocol.writeInlayHint(writer, value);
     return writer.getBuffer();
   }
 
   static encodeLinkSpan(value: LinkSpan): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfLinkSpan(value));
-    this.writeLinkSpan(writer, value);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfLinkSpan(value));
+    CoreProtocol.writeLinkSpan(writer, value);
     return writer.getBuffer();
   }
 
   static encodePhantomText(value: PhantomText): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfPhantomText(value));
-    this.writePhantomText(writer, value);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfPhantomText(value));
+    CoreProtocol.writePhantomText(writer, value);
     return writer.getBuffer();
   }
 
@@ -1531,7 +1546,7 @@ export class CoreProtocol {
     for (const key of styleByStyleIdKeys) {
       writer.writeInt32(key);
       const value = styleByStyleId.get(key)!;
-      this.writeTextStyle(writer, value);
+      CoreProtocol.writeTextStyle(writer, value);
     }
   }
 
@@ -1542,20 +1557,20 @@ export class CoreProtocol {
     for (const key of styleByStyleIdKeys) {
       size += 4;
       const value = styleByStyleId.get(key)!;
-      size += this.sizeOfTextStyle(value);
+      size += CoreProtocol.sizeOfTextStyle(value);
     }
     return size;
   }
 
   static encodeRegisterBatchTextStylesPayload(styleByStyleId: Map<number, TextStyle>): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfRegisterBatchTextStylesPayloadWire(styleByStyleId));
-    this.writeRegisterBatchTextStylesPayloadWire(writer, styleByStyleId);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfRegisterBatchTextStylesPayloadWire(styleByStyleId));
+    CoreProtocol.writeRegisterBatchTextStylesPayloadWire(writer, styleByStyleId);
     return writer.getBuffer();
   }
 
   static encodeSeparatorGuide(value: SeparatorGuide): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSeparatorGuide(value));
-    this.writeSeparatorGuide(writer, value);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSeparatorGuide(value));
+    CoreProtocol.writeSeparatorGuide(writer, value);
     return writer.getBuffer();
   }
 
@@ -1565,7 +1580,7 @@ export class CoreProtocol {
     for (const key of itemsByLineKeys) {
       writer.writeInt32(key);
       const value = itemsByLine.get(key)!;
-      this.writeCodeLensItemList(writer, value);
+      CoreProtocol.writeCodeLensItemList(writer, value);
     }
   }
 
@@ -1576,14 +1591,14 @@ export class CoreProtocol {
     for (const key of itemsByLineKeys) {
       size += 4;
       const value = itemsByLine.get(key)!;
-      size += this.sizeOfCodeLensItemList(value);
+      size += CoreProtocol.sizeOfCodeLensItemList(value);
     }
     return size;
   }
 
   static encodeSetBatchLineCodeLensPayload(itemsByLine: Map<number, CodeLensItem[]>): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetBatchLineCodeLensPayloadWire(itemsByLine));
-    this.writeSetBatchLineCodeLensPayloadWire(writer, itemsByLine);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetBatchLineCodeLensPayloadWire(itemsByLine));
+    CoreProtocol.writeSetBatchLineCodeLensPayloadWire(writer, itemsByLine);
     return writer.getBuffer();
   }
 
@@ -1593,7 +1608,7 @@ export class CoreProtocol {
     for (const key of diagnosticsByLineKeys) {
       writer.writeInt32(key);
       const value = diagnosticsByLine.get(key)!;
-      this.writeDiagnosticList(writer, value);
+      CoreProtocol.writeDiagnosticList(writer, value);
     }
   }
 
@@ -1604,14 +1619,14 @@ export class CoreProtocol {
     for (const key of diagnosticsByLineKeys) {
       size += 4;
       const value = diagnosticsByLine.get(key)!;
-      size += this.sizeOfDiagnosticList(value);
+      size += CoreProtocol.sizeOfDiagnosticList(value);
     }
     return size;
   }
 
   static encodeSetBatchLineDiagnosticsPayload(diagnosticsByLine: Map<number, Diagnostic[]>): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetBatchLineDiagnosticsPayloadWire(diagnosticsByLine));
-    this.writeSetBatchLineDiagnosticsPayloadWire(writer, diagnosticsByLine);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetBatchLineDiagnosticsPayloadWire(diagnosticsByLine));
+    CoreProtocol.writeSetBatchLineDiagnosticsPayloadWire(writer, diagnosticsByLine);
     return writer.getBuffer();
   }
 
@@ -1621,7 +1636,7 @@ export class CoreProtocol {
     for (const key of iconsByLineKeys) {
       writer.writeInt32(key);
       const value = iconsByLine.get(key)!;
-      this.writeGutterIconList(writer, value);
+      CoreProtocol.writeGutterIconList(writer, value);
     }
   }
 
@@ -1632,14 +1647,14 @@ export class CoreProtocol {
     for (const key of iconsByLineKeys) {
       size += 4;
       const value = iconsByLine.get(key)!;
-      size += this.sizeOfGutterIconList(value);
+      size += CoreProtocol.sizeOfGutterIconList(value);
     }
     return size;
   }
 
   static encodeSetBatchLineGutterIconsPayload(iconsByLine: Map<number, GutterIcon[]>): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetBatchLineGutterIconsPayloadWire(iconsByLine));
-    this.writeSetBatchLineGutterIconsPayloadWire(writer, iconsByLine);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetBatchLineGutterIconsPayloadWire(iconsByLine));
+    CoreProtocol.writeSetBatchLineGutterIconsPayloadWire(writer, iconsByLine);
     return writer.getBuffer();
   }
 
@@ -1649,7 +1664,7 @@ export class CoreProtocol {
     for (const key of hintsByLineKeys) {
       writer.writeInt32(key);
       const value = hintsByLine.get(key)!;
-      this.writeInlayHintList(writer, value);
+      CoreProtocol.writeInlayHintList(writer, value);
     }
   }
 
@@ -1660,14 +1675,14 @@ export class CoreProtocol {
     for (const key of hintsByLineKeys) {
       size += 4;
       const value = hintsByLine.get(key)!;
-      size += this.sizeOfInlayHintList(value);
+      size += CoreProtocol.sizeOfInlayHintList(value);
     }
     return size;
   }
 
   static encodeSetBatchLineInlayHintsPayload(hintsByLine: Map<number, InlayHint[]>): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetBatchLineInlayHintsPayloadWire(hintsByLine));
-    this.writeSetBatchLineInlayHintsPayloadWire(writer, hintsByLine);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetBatchLineInlayHintsPayloadWire(hintsByLine));
+    CoreProtocol.writeSetBatchLineInlayHintsPayloadWire(writer, hintsByLine);
     return writer.getBuffer();
   }
 
@@ -1677,7 +1692,7 @@ export class CoreProtocol {
     for (const key of linksByLineKeys) {
       writer.writeInt32(key);
       const value = linksByLine.get(key)!;
-      this.writeLinkSpanList(writer, value);
+      CoreProtocol.writeLinkSpanList(writer, value);
     }
   }
 
@@ -1688,14 +1703,14 @@ export class CoreProtocol {
     for (const key of linksByLineKeys) {
       size += 4;
       const value = linksByLine.get(key)!;
-      size += this.sizeOfLinkSpanList(value);
+      size += CoreProtocol.sizeOfLinkSpanList(value);
     }
     return size;
   }
 
   static encodeSetBatchLineLinksPayload(linksByLine: Map<number, LinkSpan[]>): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetBatchLineLinksPayloadWire(linksByLine));
-    this.writeSetBatchLineLinksPayloadWire(writer, linksByLine);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetBatchLineLinksPayloadWire(linksByLine));
+    CoreProtocol.writeSetBatchLineLinksPayloadWire(writer, linksByLine);
     return writer.getBuffer();
   }
 
@@ -1705,7 +1720,7 @@ export class CoreProtocol {
     for (const key of phantomsByLineKeys) {
       writer.writeInt32(key);
       const value = phantomsByLine.get(key)!;
-      this.writePhantomTextList(writer, value);
+      CoreProtocol.writePhantomTextList(writer, value);
     }
   }
 
@@ -1716,14 +1731,14 @@ export class CoreProtocol {
     for (const key of phantomsByLineKeys) {
       size += 4;
       const value = phantomsByLine.get(key)!;
-      size += this.sizeOfPhantomTextList(value);
+      size += CoreProtocol.sizeOfPhantomTextList(value);
     }
     return size;
   }
 
   static encodeSetBatchLinePhantomTextsPayload(phantomsByLine: Map<number, PhantomText[]>): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetBatchLinePhantomTextsPayloadWire(phantomsByLine));
-    this.writeSetBatchLinePhantomTextsPayloadWire(writer, phantomsByLine);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetBatchLinePhantomTextsPayloadWire(phantomsByLine));
+    CoreProtocol.writeSetBatchLinePhantomTextsPayloadWire(writer, phantomsByLine);
     return writer.getBuffer();
   }
 
@@ -1734,7 +1749,7 @@ export class CoreProtocol {
     for (const key of spansByLineKeys) {
       writer.writeInt32(key);
       const value = spansByLine.get(key)!;
-      this.writeStyleSpanList(writer, value);
+      CoreProtocol.writeStyleSpanList(writer, value);
     }
   }
 
@@ -1746,284 +1761,284 @@ export class CoreProtocol {
     for (const key of spansByLineKeys) {
       size += 4;
       const value = spansByLine.get(key)!;
-      size += this.sizeOfStyleSpanList(value);
+      size += CoreProtocol.sizeOfStyleSpanList(value);
     }
     return size;
   }
 
   static encodeSetBatchLineSpansPayload(layer: SpanLayer, spansByLine: Map<number, StyleSpan[]>): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetBatchLineSpansPayloadWire(layer, spansByLine));
-    this.writeSetBatchLineSpansPayloadWire(writer, layer, spansByLine);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetBatchLineSpansPayloadWire(layer, spansByLine));
+    CoreProtocol.writeSetBatchLineSpansPayloadWire(writer, layer, spansByLine);
     return writer.getBuffer();
   }
 
   private static writeSetBracketGuidesPayloadWire(writer: BinaryWriter, guides: BracketGuide[]): void {
-    this.writeBracketGuideList(writer, guides);
+    CoreProtocol.writeBracketGuideList(writer, guides);
   }
 
   private static sizeOfSetBracketGuidesPayloadWire(guides: BracketGuide[]): number {
     let size = 0;
-    size += this.sizeOfBracketGuideList(guides);
+    size += CoreProtocol.sizeOfBracketGuideList(guides);
     return size;
   }
 
   static encodeSetBracketGuidesPayload(guides: BracketGuide[]): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetBracketGuidesPayloadWire(guides));
-    this.writeSetBracketGuidesPayloadWire(writer, guides);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetBracketGuidesPayloadWire(guides));
+    CoreProtocol.writeSetBracketGuidesPayloadWire(writer, guides);
     return writer.getBuffer();
   }
 
   private static writeSetFlowGuidesPayloadWire(writer: BinaryWriter, guides: FlowGuide[]): void {
-    this.writeFlowGuideList(writer, guides);
+    CoreProtocol.writeFlowGuideList(writer, guides);
   }
 
   private static sizeOfSetFlowGuidesPayloadWire(guides: FlowGuide[]): number {
     let size = 0;
-    size += this.sizeOfFlowGuideList(guides);
+    size += CoreProtocol.sizeOfFlowGuideList(guides);
     return size;
   }
 
   static encodeSetFlowGuidesPayload(guides: FlowGuide[]): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetFlowGuidesPayloadWire(guides));
-    this.writeSetFlowGuidesPayloadWire(writer, guides);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetFlowGuidesPayloadWire(guides));
+    CoreProtocol.writeSetFlowGuidesPayloadWire(writer, guides);
     return writer.getBuffer();
   }
 
   private static writeSetFoldRegionsPayloadWire(writer: BinaryWriter, regions: FoldRegion[]): void {
-    this.writeFoldRegionList(writer, regions);
+    CoreProtocol.writeFoldRegionList(writer, regions);
   }
 
   private static sizeOfSetFoldRegionsPayloadWire(regions: FoldRegion[]): number {
     let size = 0;
-    size += this.sizeOfFoldRegionList(regions);
+    size += CoreProtocol.sizeOfFoldRegionList(regions);
     return size;
   }
 
   static encodeSetFoldRegionsPayload(regions: FoldRegion[]): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetFoldRegionsPayloadWire(regions));
-    this.writeSetFoldRegionsPayloadWire(writer, regions);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetFoldRegionsPayloadWire(regions));
+    CoreProtocol.writeSetFoldRegionsPayloadWire(writer, regions);
     return writer.getBuffer();
   }
 
   private static writeSetIndentGuidesPayloadWire(writer: BinaryWriter, guides: IndentGuide[]): void {
-    this.writeIndentGuideList(writer, guides);
+    CoreProtocol.writeIndentGuideList(writer, guides);
   }
 
   private static sizeOfSetIndentGuidesPayloadWire(guides: IndentGuide[]): number {
     let size = 0;
-    size += this.sizeOfIndentGuideList(guides);
+    size += CoreProtocol.sizeOfIndentGuideList(guides);
     return size;
   }
 
   static encodeSetIndentGuidesPayload(guides: IndentGuide[]): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetIndentGuidesPayloadWire(guides));
-    this.writeSetIndentGuidesPayloadWire(writer, guides);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetIndentGuidesPayloadWire(guides));
+    CoreProtocol.writeSetIndentGuidesPayloadWire(writer, guides);
     return writer.getBuffer();
   }
 
   private static writeSetLineCodeLensPayloadWire(writer: BinaryWriter, line: number, items: CodeLensItem[]): void {
     writer.writeInt32(line);
-    this.writeCodeLensItemList(writer, items);
+    CoreProtocol.writeCodeLensItemList(writer, items);
   }
 
   private static sizeOfSetLineCodeLensPayloadWire(line: number, items: CodeLensItem[]): number {
     let size = 0;
     size += 4;
-    size += this.sizeOfCodeLensItemList(items);
+    size += CoreProtocol.sizeOfCodeLensItemList(items);
     return size;
   }
 
   static encodeSetLineCodeLensPayload(line: number, items: CodeLensItem[]): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetLineCodeLensPayloadWire(line, items));
-    this.writeSetLineCodeLensPayloadWire(writer, line, items);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetLineCodeLensPayloadWire(line, items));
+    CoreProtocol.writeSetLineCodeLensPayloadWire(writer, line, items);
     return writer.getBuffer();
   }
 
   private static writeSetLineDiagnosticsPayloadWire(writer: BinaryWriter, line: number, diagnostics: Diagnostic[]): void {
     writer.writeInt32(line);
-    this.writeDiagnosticList(writer, diagnostics);
+    CoreProtocol.writeDiagnosticList(writer, diagnostics);
   }
 
   private static sizeOfSetLineDiagnosticsPayloadWire(line: number, diagnostics: Diagnostic[]): number {
     let size = 0;
     size += 4;
-    size += this.sizeOfDiagnosticList(diagnostics);
+    size += CoreProtocol.sizeOfDiagnosticList(diagnostics);
     return size;
   }
 
   static encodeSetLineDiagnosticsPayload(line: number, diagnostics: Diagnostic[]): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetLineDiagnosticsPayloadWire(line, diagnostics));
-    this.writeSetLineDiagnosticsPayloadWire(writer, line, diagnostics);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetLineDiagnosticsPayloadWire(line, diagnostics));
+    CoreProtocol.writeSetLineDiagnosticsPayloadWire(writer, line, diagnostics);
     return writer.getBuffer();
   }
 
   private static writeSetLineGutterIconsPayloadWire(writer: BinaryWriter, line: number, icons: GutterIcon[]): void {
     writer.writeInt32(line);
-    this.writeGutterIconList(writer, icons);
+    CoreProtocol.writeGutterIconList(writer, icons);
   }
 
   private static sizeOfSetLineGutterIconsPayloadWire(line: number, icons: GutterIcon[]): number {
     let size = 0;
     size += 4;
-    size += this.sizeOfGutterIconList(icons);
+    size += CoreProtocol.sizeOfGutterIconList(icons);
     return size;
   }
 
   static encodeSetLineGutterIconsPayload(line: number, icons: GutterIcon[]): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetLineGutterIconsPayloadWire(line, icons));
-    this.writeSetLineGutterIconsPayloadWire(writer, line, icons);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetLineGutterIconsPayloadWire(line, icons));
+    CoreProtocol.writeSetLineGutterIconsPayloadWire(writer, line, icons);
     return writer.getBuffer();
   }
 
   private static writeSetLineInlayHintsPayloadWire(writer: BinaryWriter, line: number, hints: InlayHint[]): void {
     writer.writeInt32(line);
-    this.writeInlayHintList(writer, hints);
+    CoreProtocol.writeInlayHintList(writer, hints);
   }
 
   private static sizeOfSetLineInlayHintsPayloadWire(line: number, hints: InlayHint[]): number {
     let size = 0;
     size += 4;
-    size += this.sizeOfInlayHintList(hints);
+    size += CoreProtocol.sizeOfInlayHintList(hints);
     return size;
   }
 
   static encodeSetLineInlayHintsPayload(line: number, hints: InlayHint[]): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetLineInlayHintsPayloadWire(line, hints));
-    this.writeSetLineInlayHintsPayloadWire(writer, line, hints);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetLineInlayHintsPayloadWire(line, hints));
+    CoreProtocol.writeSetLineInlayHintsPayloadWire(writer, line, hints);
     return writer.getBuffer();
   }
 
   private static writeSetLineLinksPayloadWire(writer: BinaryWriter, line: number, links: LinkSpan[]): void {
     writer.writeInt32(line);
-    this.writeLinkSpanList(writer, links);
+    CoreProtocol.writeLinkSpanList(writer, links);
   }
 
   private static sizeOfSetLineLinksPayloadWire(line: number, links: LinkSpan[]): number {
     let size = 0;
     size += 4;
-    size += this.sizeOfLinkSpanList(links);
+    size += CoreProtocol.sizeOfLinkSpanList(links);
     return size;
   }
 
   static encodeSetLineLinksPayload(line: number, links: LinkSpan[]): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetLineLinksPayloadWire(line, links));
-    this.writeSetLineLinksPayloadWire(writer, line, links);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetLineLinksPayloadWire(line, links));
+    CoreProtocol.writeSetLineLinksPayloadWire(writer, line, links);
     return writer.getBuffer();
   }
 
   private static writeSetLinePhantomTextsPayloadWire(writer: BinaryWriter, line: number, phantoms: PhantomText[]): void {
     writer.writeInt32(line);
-    this.writePhantomTextList(writer, phantoms);
+    CoreProtocol.writePhantomTextList(writer, phantoms);
   }
 
   private static sizeOfSetLinePhantomTextsPayloadWire(line: number, phantoms: PhantomText[]): number {
     let size = 0;
     size += 4;
-    size += this.sizeOfPhantomTextList(phantoms);
+    size += CoreProtocol.sizeOfPhantomTextList(phantoms);
     return size;
   }
 
   static encodeSetLinePhantomTextsPayload(line: number, phantoms: PhantomText[]): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetLinePhantomTextsPayloadWire(line, phantoms));
-    this.writeSetLinePhantomTextsPayloadWire(writer, line, phantoms);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetLinePhantomTextsPayloadWire(line, phantoms));
+    CoreProtocol.writeSetLinePhantomTextsPayloadWire(writer, line, phantoms);
     return writer.getBuffer();
   }
 
   private static writeSetLineSpansPayloadWire(writer: BinaryWriter, line: number, layer: SpanLayer, spans: StyleSpan[]): void {
     writer.writeInt32(line);
     writer.writeInt32(layer as number);
-    this.writeStyleSpanList(writer, spans);
+    CoreProtocol.writeStyleSpanList(writer, spans);
   }
 
   private static sizeOfSetLineSpansPayloadWire(line: number, layer: SpanLayer, spans: StyleSpan[]): number {
     let size = 0;
     size += 4;
     size += 4;
-    size += this.sizeOfStyleSpanList(spans);
+    size += CoreProtocol.sizeOfStyleSpanList(spans);
     return size;
   }
 
   static encodeSetLineSpansPayload(line: number, layer: SpanLayer, spans: StyleSpan[]): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetLineSpansPayloadWire(line, layer, spans));
-    this.writeSetLineSpansPayloadWire(writer, line, layer, spans);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetLineSpansPayloadWire(line, layer, spans));
+    CoreProtocol.writeSetLineSpansPayloadWire(writer, line, layer, spans);
     return writer.getBuffer();
   }
 
   private static writeSetSeparatorGuidesPayloadWire(writer: BinaryWriter, guides: SeparatorGuide[]): void {
-    this.writeSeparatorGuideList(writer, guides);
+    CoreProtocol.writeSeparatorGuideList(writer, guides);
   }
 
   private static sizeOfSetSeparatorGuidesPayloadWire(guides: SeparatorGuide[]): number {
     let size = 0;
-    size += this.sizeOfSeparatorGuideList(guides);
+    size += CoreProtocol.sizeOfSeparatorGuideList(guides);
     return size;
   }
 
   static encodeSetSeparatorGuidesPayload(guides: SeparatorGuide[]): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetSeparatorGuidesPayloadWire(guides));
-    this.writeSetSeparatorGuidesPayloadWire(writer, guides);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetSeparatorGuidesPayloadWire(guides));
+    CoreProtocol.writeSetSeparatorGuidesPayloadWire(writer, guides);
     return writer.getBuffer();
   }
 
   static encodeEditorOptions(value: EditorOptions): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfEditorOptions(value));
-    this.writeEditorOptions(writer, value);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfEditorOptions(value));
+    CoreProtocol.writeEditorOptions(writer, value);
     return writer.getBuffer();
   }
 
   static encodeHandleConfig(value: HandleConfig): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfHandleConfig(value));
-    this.writeHandleConfig(writer, value);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfHandleConfig(value));
+    CoreProtocol.writeHandleConfig(writer, value);
     return writer.getBuffer();
   }
 
   static encodeScrollbarConfig(value: ScrollbarConfig): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfScrollbarConfig(value));
-    this.writeScrollbarConfig(writer, value);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfScrollbarConfig(value));
+    CoreProtocol.writeScrollbarConfig(writer, value);
     return writer.getBuffer();
   }
 
   private static writeSetKeyMapPayloadWire(writer: BinaryWriter, bindings: KeyBinding[]): void {
-    this.writeKeyBindingList(writer, bindings);
+    CoreProtocol.writeKeyBindingList(writer, bindings);
   }
 
   private static sizeOfSetKeyMapPayloadWire(bindings: KeyBinding[]): number {
     let size = 0;
-    size += this.sizeOfKeyBindingList(bindings);
+    size += CoreProtocol.sizeOfKeyBindingList(bindings);
     return size;
   }
 
   static encodeSetKeyMapPayload(bindings: KeyBinding[]): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfSetKeyMapPayloadWire(bindings));
-    this.writeSetKeyMapPayloadWire(writer, bindings);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetKeyMapPayloadWire(bindings));
+    CoreProtocol.writeSetKeyMapPayloadWire(writer, bindings);
     return writer.getBuffer();
   }
 
   static encodeLinkedEditingModel(value: LinkedEditingModel): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfLinkedEditingModel(value));
-    this.writeLinkedEditingModel(writer, value);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfLinkedEditingModel(value));
+    CoreProtocol.writeLinkedEditingModel(writer, value);
     return writer.getBuffer();
   }
 
   private static writeStartLinkedEditingPayloadWire(writer: BinaryWriter, model: LinkedEditingModel): void {
-    this.writeLinkedEditingModel(writer, model);
+    CoreProtocol.writeLinkedEditingModel(writer, model);
   }
 
   private static sizeOfStartLinkedEditingPayloadWire(model: LinkedEditingModel): number {
     let size = 0;
-    size += this.sizeOfLinkedEditingModel(model);
+    size += CoreProtocol.sizeOfLinkedEditingModel(model);
     return size;
   }
 
   static encodeStartLinkedEditingPayload(model: LinkedEditingModel): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfStartLinkedEditingPayloadWire(model));
-    this.writeStartLinkedEditingPayloadWire(writer, model);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfStartLinkedEditingPayloadWire(model));
+    CoreProtocol.writeStartLinkedEditingPayloadWire(writer, model);
     return writer.getBuffer();
   }
 
   static encodeTabStopGroup(value: TabStopGroup): ArrayBuffer {
-    const writer = new BinaryWriter(this.sizeOfTabStopGroup(value));
-    this.writeTabStopGroup(writer, value);
+    const writer = new BinaryWriter(CoreProtocol.sizeOfTabStopGroup(value));
+    CoreProtocol.writeTabStopGroup(writer, value);
     return writer.getBuffer();
   }
 }

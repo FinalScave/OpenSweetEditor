@@ -1683,9 +1683,6 @@ namespace SweetEditor {
 				}
 				return;
 			}
-			if (result.Reason != EditorActionReason.GESTURE && result.Reason != EditorActionReason.ANIMATION) {
-				return;
-			}
 			if (animationActive) {
 				animationActive = false;
 				animationTimer!.Stop();
@@ -1887,8 +1884,8 @@ namespace SweetEditor {
 			return true;
 		}
 
-		internal void DispatchEditorActionResult(EditorActionResult result) {
-			if (IsReleased) return;
+		internal void DispatchEditorActionResult(EditorActionResult? result) {
+			if (IsReleased || result == null) return;
 
 			if (result.PointerCursorChanged) {
 				UpdateMouseCursor(result.PointerCursorAfter);

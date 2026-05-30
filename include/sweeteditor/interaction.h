@@ -42,6 +42,8 @@ namespace NS_SWEETEDITOR {
     GestureResult tickEdgeScroll();
     GestureResult tickFling();
     GestureResult tickAnimations();
+    bool hasActiveEdgeScroll() const;
+    bool hasActiveFling() const;
     void stopFling();
     void resetForDocumentLoad();
 

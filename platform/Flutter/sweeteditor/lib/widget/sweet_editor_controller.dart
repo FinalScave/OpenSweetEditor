@@ -41,7 +41,7 @@ class SweetEditorController {
   }
 
   void _runEditorCoreAction(
-    core.EditorActionResult Function(core.EditorCore editorCore) action,
+    core.EditorActionResult? Function(core.EditorCore editorCore) action,
   ) {
     _withEditorCore((editorCore) {
       _state?._dispatchEditorActionResult(action(editorCore));
