@@ -372,10 +372,10 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "free_editor", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void FreeEditor(IntPtr handle);
 
-		[DllImport(LibraryName, EntryPoint = "set_editor_document", CallingConvention = CallingConvention.Cdecl)]
+		[DllImport(LibraryName, EntryPoint = "editor_set_document", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetEditorDocument(IntPtr handle, IntPtr documentHandle, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "set_editor_viewport", CallingConvention = CallingConvention.Cdecl)]
+		[DllImport(LibraryName, EntryPoint = "editor_set_viewport", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetViewport(IntPtr handle, int width, int height, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_on_font_metrics_changed", CallingConvention = CallingConvention.Cdecl)]
@@ -417,7 +417,7 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_set_keymap", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetKeyMap(IntPtr handle, byte[] payload, UIntPtr payloadSize, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "build_editor_render_model", CallingConvention = CallingConvention.Cdecl)]
+		[DllImport(LibraryName, EntryPoint = "editor_build_render_model", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr BuildRenderModel(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_handle_gesture_event", CallingConvention = CallingConvention.Cdecl)]
@@ -435,7 +435,7 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_tick_animations", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr TickAnimations(IntPtr handle, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "handle_editor_key_event", CallingConvention = CallingConvention.Cdecl)]
+		[DllImport(LibraryName, EntryPoint = "editor_handle_key_event", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr HandleKeyEvent(IntPtr handle, ushort keyCode, [MarshalAs(UnmanagedType.LPUTF8Str)] string? text, byte modifiers, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_insert_text", CallingConvention = CallingConvention.Cdecl)]
@@ -586,7 +586,7 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_get_scroll_metrics", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr GetScrollMetrics(IntPtr handle, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "get_layout_metrics", CallingConvention = CallingConvention.Cdecl)]
+		[DllImport(LibraryName, EntryPoint = "editor_get_layout_metrics", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr GetLayoutMetrics(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_register_text_style", CallingConvention = CallingConvention.Cdecl)]

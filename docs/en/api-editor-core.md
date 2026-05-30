@@ -25,7 +25,7 @@ Current bridge status:
 
 - Objects are created/freed through `intptr_t` handles.
 - Complex return values like render model, `EditorActionResult`, and scroll metrics are usually returned as `const uint8_t* + out_size` binary payload, and caller frees with `free_binary_data`.
-- `get_layout_metrics` returns `LayoutMetrics` binary payload (`const uint8_t* + out_size`), also freed by `free_binary_data`.
+- `editor_get_layout_metrics` returns `LayoutMetrics` binary payload (`const uint8_t* + out_size`), also freed by `free_binary_data`.
 - `get_document_line_text` returns UTF-16 text, caller frees with `free_u16_string`.
 - A few text queries return UTF-8 `const char*` (for example `get_document_text`, `editor_get_selected_text`, `editor_get_word_at_cursor`, `editor_get_link_target_at`); caller frees them with `free_u8_string`, although platform wrappers usually copy immediately.
 
@@ -60,7 +60,7 @@ const U16Char*  get_document_line_text(intptr_t document_handle, size_t line);
 ```c
 intptr_t create_editor(text_measurer_t measurer, const uint8_t* options_data, size_t options_size);
 void     free_editor(intptr_t editor_handle);
-void     set_editor_document(intptr_t editor_handle, intptr_t document_handle);
+void     editor_set_document(intptr_t editor_handle, intptr_t document_handle);
 ```
 
 - `create_editor` uses LE `EditorOptions` payload: `f32 touch_slop`, `i64 double_tap_timeout`, `i64 long_press_ms`, `u64 max_undo_stack_size`.
@@ -68,7 +68,7 @@ void     set_editor_document(intptr_t editor_handle, intptr_t document_handle);
 ### 3) Viewport / appearance
 
 ```c
-void set_editor_viewport(intptr_t editor_handle, int16_t width, int16_t height);
+void editor_set_viewport(intptr_t editor_handle, int16_t width, int16_t height);
 void editor_on_font_metrics_changed(intptr_t editor_handle);
 void editor_set_fold_arrow_mode(intptr_t editor_handle, int mode);
 void editor_set_wrap_mode(intptr_t editor_handle, int mode);
@@ -83,14 +83,14 @@ Numeric conventions:
 ### 4) Rendering
 
 ```c
-const uint8_t* build_editor_render_model(intptr_t editor_handle, size_t* out_size);
-const uint8_t* get_layout_metrics(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_build_render_model(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size_t* out_size);
 ```
 
-- `build_editor_render_model`: returns native-endian binary payload; all currently supported platforms are little-endian.
-- `get_layout_metrics`: returns `LayoutMetrics` binary payload (native-endian; all currently supported platforms are little-endian).
+- `editor_build_render_model`: returns native-endian binary payload; all currently supported platforms are little-endian.
+- `editor_get_layout_metrics`: returns `LayoutMetrics` binary payload (native-endian; all currently supported platforms are little-endian).
 
-`get_layout_metrics` payload layout (in order):
+`editor_get_layout_metrics` payload layout (in order):
 
 1. `f32 font_height`
 2. `f32 font_ascent`
@@ -110,7 +110,7 @@ const uint8_t* get_layout_metrics(intptr_t editor_handle, size_t* out_size);
 const uint8_t* editor_handle_gesture_event(
     intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-const uint8_t* handle_editor_key_event(
+const uint8_t* editor_handle_key_event(
     intptr_t editor_handle, uint16_t key_code, const char* text, uint8_t modifiers, size_t* out_size);
 ```
 

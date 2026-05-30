@@ -259,7 +259,7 @@ public:
   static jobject setViewport(JNIEnv* env, jclass clazz, jlong handle, jint width, jint height) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
-    const uint8_t* payload = set_editor_viewport(static_cast<intptr_t>(handle),
+    const uint8_t* payload = editor_set_viewport(static_cast<intptr_t>(handle),
                                                  static_cast<int16_t>(width),
                                                  static_cast<int16_t>(height),
                                                  &out_size);
@@ -269,7 +269,7 @@ public:
   static jobject loadDocument(JNIEnv* env, jclass clazz, jlong handle, jlong doc_handle) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
-    const uint8_t* payload = set_editor_document(static_cast<intptr_t>(handle),
+    const uint8_t* payload = editor_set_document(static_cast<intptr_t>(handle),
                                                  static_cast<intptr_t>(doc_handle),
                                                  &out_size);
     return wrapBinaryPayload(env, payload, out_size);
@@ -320,13 +320,13 @@ public:
 
   static jobject buildRenderModel(JNIEnv* env, jclass clazz, jlong handle) {
     size_t out_size = 0;
-    return wrapBinaryPayload(env, build_editor_render_model(static_cast<intptr_t>(handle), &out_size), out_size);
+    return wrapBinaryPayload(env, editor_build_render_model(static_cast<intptr_t>(handle), &out_size), out_size);
   }
 
   static jobject getLayoutMetrics(JNIEnv* env, jclass clazz, jlong handle) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
-    return wrapBinaryPayload(env, get_layout_metrics(static_cast<intptr_t>(handle), &out_size), out_size);
+    return wrapBinaryPayload(env, editor_get_layout_metrics(static_cast<intptr_t>(handle), &out_size), out_size);
   }
 
   static jobject handleKeyEvent(JNIEnv* env, jclass clazz, jlong handle, jint key_code, jstring text, jint modifiers) {
@@ -335,7 +335,7 @@ public:
     }
     const char* text_str = text != nullptr ? env->GetStringUTFChars(text, JNI_FALSE) : nullptr;
     size_t out_size = 0;
-    const uint8_t* payload = handle_editor_key_event(static_cast<intptr_t>(handle),
+    const uint8_t* payload = editor_handle_key_event(static_cast<intptr_t>(handle),
                                                      static_cast<uint16_t>(key_code),
                                                      text_str,
                                                      static_cast<uint8_t>(modifiers),

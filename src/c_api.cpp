@@ -184,7 +184,7 @@ void free_editor(intptr_t editor_handle) {
   deleteCPtrHolder<EditorCore>(editor_handle);
 }
 
-const uint8_t* set_editor_document(intptr_t editor_handle, intptr_t document_handle, size_t* out_size) {
+const uint8_t* editor_set_document(intptr_t editor_handle, intptr_t document_handle, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     return nullBinaryPayload(out_size);
@@ -196,7 +196,7 @@ const uint8_t* set_editor_document(intptr_t editor_handle, intptr_t document_han
   return editorActionResultToBinary(editor_core->loadDocument(document), out_size);
 }
 
-const uint8_t* set_editor_viewport(intptr_t editor_handle, int16_t width, int16_t height, size_t* out_size) {
+const uint8_t* editor_set_viewport(intptr_t editor_handle, int16_t width, int16_t height, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     return nullBinaryPayload(out_size);
@@ -310,8 +310,8 @@ const uint8_t* editor_set_scrollbar_config(intptr_t editor_handle, const uint8_t
   return editorActionResultToBinary(editor_core->setScrollbarConfig(config), out_size);
 }
 
-const uint8_t* build_editor_render_model(intptr_t editor_handle, size_t* out_size) {
-  PERF_TIMER("c_api::build_editor_render_model");
+const uint8_t* editor_build_render_model(intptr_t editor_handle, size_t* out_size) {
+  PERF_TIMER("c_api::editor_build_render_model");
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     if (out_size != nullptr) {
@@ -327,7 +327,7 @@ const uint8_t* build_editor_render_model(intptr_t editor_handle, size_t* out_siz
   return payload;
 }
 
-const uint8_t* get_layout_metrics(intptr_t editor_handle, size_t* out_size) {
+const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     if (out_size != nullptr) {
@@ -396,7 +396,7 @@ const uint8_t* editor_tick_animations(intptr_t editor_handle, size_t* out_size) 
   return editorActionResultToBinary(result, out_size);
 }
 
-const uint8_t* handle_editor_key_event(intptr_t editor_handle, uint16_t key_code, const char* text, uint8_t modifiers, size_t* out_size) {
+const uint8_t* editor_handle_key_event(intptr_t editor_handle, uint16_t key_code, const char* text, uint8_t modifiers, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     if (out_size != nullptr) {

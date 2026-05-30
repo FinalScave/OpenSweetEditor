@@ -137,12 +137,12 @@ EDITOR_API intptr_t create_editor(text_measurer_t measurer, const uint8_t* optio
 EDITOR_API void free_editor(intptr_t editor_handle);
 
 /// Load Document
-EDITOR_API const uint8_t* set_editor_document(intptr_t editor_handle, intptr_t document_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_document(intptr_t editor_handle, intptr_t document_handle, size_t* out_size);
 
 /// Set editor viewport
 /// @param width Editor view width
 /// @param height Editor view height
-EDITOR_API const uint8_t* set_editor_viewport(intptr_t editor_handle, int16_t width, int16_t height, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_viewport(intptr_t editor_handle, int16_t width, int16_t height, size_t* out_size);
 
 /// Notify editor that font metrics have changed (call after font/scale changes)
 EDITOR_API const uint8_t* editor_on_font_metrics_changed(intptr_t editor_handle, size_t* out_size);
@@ -252,7 +252,7 @@ EDITOR_API const uint8_t* editor_set_scrollbar_config(intptr_t editor_handle, co
 ///         GutterIconRenderItem is i32 logical_line, i32 icon_id, Rect rect
 ///         FoldMarkerRenderItem is i32 logical_line, enum_i32 fold_state, Rect rect
 ///         ScrollbarModel is bool_i32 visible, f32 alpha, bool_i32 thumb_active, Rect track, Rect thumb
-EDITOR_API const uint8_t* build_editor_render_model(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_build_render_model(intptr_t editor_handle, size_t* out_size);
 
 /// Get editor layout metrics
 /// @param out_size Output: payload byte length (bytes, excluding extra '\0' terminator)
@@ -272,7 +272,7 @@ EDITOR_API const uint8_t* build_editor_render_model(intptr_t editor_handle, size
 ///         bool_i32 has_fold_regions
 ///         bool_i32 gutter_sticky
 ///         bool_i32 gutter_visible
-EDITOR_API const uint8_t* get_layout_metrics(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size_t* out_size);
 
 /// EditorActionResult binary payloads are encoded by CoreProtocol.
 /// Wire layout:
@@ -366,7 +366,7 @@ EDITOR_API const uint8_t* editor_tick_animations(intptr_t editor_handle, size_t*
 /// @param text Input text (UTF8; pass for normal character input, pass NULL for special keys)
 /// @param modifiers Modifier key flags(SHIFT=1, CTRL=2, ALT=4, META=8)
 /// @return EditorActionResult binary payload, returns NULL on failure
-EDITOR_API const uint8_t* handle_editor_key_event(intptr_t editor_handle, uint16_t key_code, const char* text, uint8_t modifiers, size_t* out_size);
+EDITOR_API const uint8_t* editor_handle_key_event(intptr_t editor_handle, uint16_t key_code, const char* text, uint8_t modifiers, size_t* out_size);
 
 /// Set custom key map from binary payload.
 /// @param data SetKeyMapPayload binary payload encoded by CoreProtocol

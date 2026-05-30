@@ -298,10 +298,10 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   intptr_t editor = create_editor(makeMeasurer(), nullptr, 0);
   REQUIRE(editor != 0);
   size_t action_size = 0;
-  const uint8_t* action_payload = set_editor_document(editor, document, &action_size);
+  const uint8_t* action_payload = editor_set_document(editor, document, &action_size);
   REQUIRE(action_payload != nullptr);
   free_binary_data(reinterpret_cast<intptr_t>(action_payload));
-  action_payload = set_editor_viewport(editor, 100, 80, &action_size);
+  action_payload = editor_set_viewport(editor, 100, 80, &action_size);
   REQUIRE(action_payload != nullptr);
   free_binary_data(reinterpret_cast<intptr_t>(action_payload));
 
@@ -316,7 +316,7 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   CHECK(scroll_metrics.scroll_y == 0.0f);
 
   size_t layout_metrics_size = 0;
-  const uint8_t* layout_metrics_payload = get_layout_metrics(editor, &layout_metrics_size);
+  const uint8_t* layout_metrics_payload = editor_get_layout_metrics(editor, &layout_metrics_size);
   REQUIRE(layout_metrics_payload != nullptr);
   CHECK(layout_metrics_size == sizeof(float) * 9 + sizeof(int32_t) * 5);
   LayoutMetricsData layout_metrics = parseLayoutMetrics(layout_metrics_payload, layout_metrics_size);
@@ -428,7 +428,7 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   CHECK(editor_is_in_linked_editing(editor) == 0);
 
   size_t model_size = 0;
-  const uint8_t* model_payload = build_editor_render_model(editor, &model_size);
+  const uint8_t* model_payload = editor_build_render_model(editor, &model_size);
   REQUIRE(model_payload != nullptr);
   CHECK(model_size >= sizeof(float) * 7 + sizeof(int32_t) * 3);
   RenderModelHeaderData model_header = parseRenderModelHeader(model_payload, model_size);

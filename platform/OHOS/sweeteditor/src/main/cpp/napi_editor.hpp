@@ -238,7 +238,7 @@ public:
     napi_value args[3];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
     size_t out_size = 0;
-    return wrap_binary_payload(env, set_editor_viewport(
+    return wrap_binary_payload(env, editor_set_viewport(
       static_cast<intptr_t>(napi_get_handle(env, args[0])),
       static_cast<int16_t>(napi_get_int32(env, args[1])),
       static_cast<int16_t>(napi_get_int32(env, args[2])),
@@ -250,7 +250,7 @@ public:
     napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
     size_t out_size = 0;
-    return wrap_binary_payload(env, set_editor_document(
+    return wrap_binary_payload(env, editor_set_document(
       static_cast<intptr_t>(napi_get_handle(env, args[0])),
       static_cast<intptr_t>(napi_get_handle(env, args[1])),
       &out_size), out_size);
@@ -308,7 +308,7 @@ public:
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
     size_t out_size = 0;
-    const uint8_t* payload = build_editor_render_model(
+    const uint8_t* payload = editor_build_render_model(
       static_cast<intptr_t>(napi_get_handle(env, args[0])), &out_size);
     return wrap_binary_payload(env, payload, out_size);
   }
@@ -318,7 +318,7 @@ public:
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
     size_t out_size = 0;
-    const uint8_t* payload = get_layout_metrics(
+    const uint8_t* payload = editor_get_layout_metrics(
       static_cast<intptr_t>(napi_get_handle(env, args[0])), &out_size);
     return wrap_binary_payload(env, payload, out_size);
   }
@@ -341,7 +341,7 @@ public:
     int32_t modifiers = napi_get_int32(env, args[3]);
 
     size_t out_size = 0;
-    const uint8_t* payload = handle_editor_key_event(
+    const uint8_t* payload = editor_handle_key_event(
       static_cast<intptr_t>(handle),
       static_cast<uint16_t>(key_code),
       text_str,

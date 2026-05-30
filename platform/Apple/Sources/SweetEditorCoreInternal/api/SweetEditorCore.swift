@@ -307,7 +307,7 @@ class SweetEditorCore {
     func setViewport(width: Int, height: Int) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
-            let ptr = set_editor_viewport(handle, Int16(width), Int16(height), &size)
+            let ptr = editor_set_viewport(handle, Int16(width), Int16(height), &size)
             return decodeEditorActionPayload(ptr, size: size)
         }
     }
@@ -319,7 +319,7 @@ class SweetEditorCore {
         self.document = document
         return performCoreCall {
             var size: Int = 0
-            let ptr = set_editor_document(handle, document.handle, &size)
+            let ptr = editor_set_document(handle, document.handle, &size)
             return decodeEditorActionPayload(ptr, size: size)
         }
     }
@@ -327,7 +327,7 @@ class SweetEditorCore {
     func buildRenderModel() -> EditorRenderModel? {
         return performCoreCall {
             var size: Int = 0
-            let ptr = build_editor_render_model(handle, &size)
+            let ptr = editor_build_render_model(handle, &size)
             return decodeNativePayload(ptr, size: size) { CoreProtocol.decodeEditorRenderModel($0) }
         }
     }
@@ -335,7 +335,7 @@ class SweetEditorCore {
     func getLayoutMetrics() -> LayoutMetrics? {
         return performCoreCall {
             var size: Int = 0
-            let ptr = get_layout_metrics(handle, &size)
+            let ptr = editor_get_layout_metrics(handle, &size)
             return decodeNativePayload(ptr, size: size) { CoreProtocol.decodeLayoutMetrics($0) }
         }
     }
@@ -372,10 +372,10 @@ class SweetEditorCore {
             let ptr: UnsafePointer<UInt8>?
             if let text = text {
                 ptr = text.withCString { cStr in
-                    handle_editor_key_event(handle, keyCode.rawValue, cStr, modifiers.rawValue, &size)
+                    editor_handle_key_event(handle, keyCode.rawValue, cStr, modifiers.rawValue, &size)
                 }
             } else {
-                ptr = handle_editor_key_event(handle, keyCode.rawValue, nil, modifiers.rawValue, &size)
+                ptr = editor_handle_key_event(handle, keyCode.rawValue, nil, modifiers.rawValue, &size)
             }
             return decodeEditorActionPayload(ptr, size: size)
         }

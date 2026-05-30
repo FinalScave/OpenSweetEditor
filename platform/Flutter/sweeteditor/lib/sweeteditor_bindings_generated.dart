@@ -92,7 +92,7 @@ external void free_editor(int editor_handle);
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.IntPtr, ffi.Pointer<ffi.Size>)
 >(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> set_editor_document(
+external ffi.Pointer<ffi.Uint8> editor_set_document(
   int editor_handle,
   int document_handle,
   ffi.Pointer<ffi.Size> out_size,
@@ -109,7 +109,7 @@ external ffi.Pointer<ffi.Uint8> set_editor_document(
     ffi.Pointer<ffi.Size>,
   )
 >(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> set_editor_viewport(
+external ffi.Pointer<ffi.Uint8> editor_set_viewport(
   int editor_handle,
   int width,
   int height,
@@ -320,7 +320,7 @@ external ffi.Pointer<ffi.Uint8> editor_set_scrollbar_config(
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
 >(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> build_editor_render_model(
+external ffi.Pointer<ffi.Uint8> editor_build_render_model(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
@@ -346,7 +346,7 @@ external ffi.Pointer<ffi.Uint8> build_editor_render_model(
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
 >(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> get_layout_metrics(
+external ffi.Pointer<ffi.Uint8> editor_get_layout_metrics(
   int editor_handle,
   ffi.Pointer<ffi.Size> out_size,
 );
@@ -481,7 +481,7 @@ external ffi.Pointer<ffi.Uint8> editor_tick_animations(
     ffi.Pointer<ffi.Size>,
   )
 >(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> handle_editor_key_event(
+external ffi.Pointer<ffi.Uint8> editor_handle_key_event(
   int editor_handle,
   int key_code,
   ffi.Pointer<ffi.Char> text,

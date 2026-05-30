@@ -25,7 +25,7 @@
 
 - 对象通过 `intptr_t` 句柄创建/释放。
 - 渲染模型、`EditorActionResult`、滚动度量等复杂返回值通常为 `const uint8_t* + out_size` 二进制 payload，调用方用 `free_binary_data` 释放。
-- `get_layout_metrics` 返回 `LayoutMetrics` 二进制 payload（`const uint8_t* + out_size`），同样用 `free_binary_data` 释放。
+- `editor_get_layout_metrics` 返回 `LayoutMetrics` 二进制 payload（`const uint8_t* + out_size`），同样用 `free_binary_data` 释放。
 - `get_document_line_text` 返回 UTF-16 文本，调用方用 `free_u16_string` 释放。
 - 少量文本查询返回 UTF-8 `const char*`（如 `get_document_text`、`editor_get_selected_text`、`editor_get_word_at_cursor`、`editor_get_link_target_at`）；调用方使用 `free_u8_string` 释放，平台封装层通常会立即复制。
 
@@ -60,7 +60,7 @@ const U16Char*  get_document_line_text(intptr_t document_handle, size_t line);
 ```c
 intptr_t create_editor(text_measurer_t measurer, const uint8_t* options_data, size_t options_size);
 void     free_editor(intptr_t editor_handle);
-void     set_editor_document(intptr_t editor_handle, intptr_t document_handle);
+void     editor_set_document(intptr_t editor_handle, intptr_t document_handle);
 ```
 
 - `create_editor` 使用 LE `EditorOptions` payload：`f32 touch_slop`、`i64 double_tap_timeout`、`i64 long_press_ms`、`u64 max_undo_stack_size`。
@@ -68,7 +68,7 @@ void     set_editor_document(intptr_t editor_handle, intptr_t document_handle);
 ### 3) 视口 / 外观
 
 ```c
-void set_editor_viewport(intptr_t editor_handle, int16_t width, int16_t height);
+void editor_set_viewport(intptr_t editor_handle, int16_t width, int16_t height);
 void editor_on_font_metrics_changed(intptr_t editor_handle);
 void editor_set_fold_arrow_mode(intptr_t editor_handle, int mode);
 void editor_set_wrap_mode(intptr_t editor_handle, int mode);
@@ -83,14 +83,14 @@ void editor_set_line_spacing(intptr_t editor_handle, float add, float mult);
 ### 4) 渲染
 
 ```c
-const uint8_t* build_editor_render_model(intptr_t editor_handle, size_t* out_size);
-const uint8_t* get_layout_metrics(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_build_render_model(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size_t* out_size);
 ```
 
-- `build_editor_render_model`：返回本机字节序二进制 payload；当前支持平台均为 little-endian。
-- `get_layout_metrics`：返回 `LayoutMetrics` 二进制 payload（本机字节序，当前支持平台均为 little-endian）。
+- `editor_build_render_model`：返回本机字节序二进制 payload；当前支持平台均为 little-endian。
+- `editor_get_layout_metrics`：返回 `LayoutMetrics` 二进制 payload（本机字节序，当前支持平台均为 little-endian）。
 
-`get_layout_metrics` payload 布局（按顺序）：
+`editor_get_layout_metrics` payload 布局（按顺序）：
 
 1. `f32 font_height`
 2. `f32 font_ascent`
@@ -110,7 +110,7 @@ const uint8_t* get_layout_metrics(intptr_t editor_handle, size_t* out_size);
 const uint8_t* editor_handle_gesture_event(
     intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-const uint8_t* handle_editor_key_event(
+const uint8_t* editor_handle_key_event(
     intptr_t editor_handle, uint16_t key_code, const char* text, uint8_t modifiers, size_t* out_size);
 ```
 

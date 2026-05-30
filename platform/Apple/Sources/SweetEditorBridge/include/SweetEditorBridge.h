@@ -43,8 +43,8 @@ intptr_t create_editor(se_text_measurer_t measurer,
                        size_t options_size);
 void free_editor(intptr_t editor_handle);
 
-const uint8_t* set_editor_viewport(intptr_t editor_handle, int16_t width, int16_t height, size_t* out_size);
-const uint8_t* set_editor_document(intptr_t editor_handle, intptr_t document_handle, size_t* out_size);
+const uint8_t* editor_set_viewport(intptr_t editor_handle, int16_t width, int16_t height, size_t* out_size);
+const uint8_t* editor_set_document(intptr_t editor_handle, intptr_t document_handle, size_t* out_size);
 
 const uint8_t* editor_handle_gesture_event(intptr_t editor_handle,
                                            const uint8_t* data,
@@ -57,12 +57,12 @@ const uint8_t* editor_update_pointer_modifiers(intptr_t editor_handle,
 
 const uint8_t* editor_on_font_metrics_changed(intptr_t editor_handle, size_t* out_size);
 
-const uint8_t* build_editor_render_model(intptr_t editor_handle, size_t* out_size);
-const uint8_t* get_layout_metrics(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_build_render_model(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size_t* out_size);
 
 // ===================== Keyboard Input API =====================
 
-const uint8_t* handle_editor_key_event(intptr_t editor_handle,
+const uint8_t* editor_handle_key_event(intptr_t editor_handle,
                                        uint16_t key_code,
                                        const char* text,
                                        uint8_t modifiers,

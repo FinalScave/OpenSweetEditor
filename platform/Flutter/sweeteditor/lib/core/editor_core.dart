@@ -151,7 +151,7 @@ class EditorCore {
     document._ensureOpen();
     return _callAndParseAction(
       (outSize) =>
-          bindings.set_editor_document(_handle, document._handle, outSize),
+          bindings.editor_set_document(_handle, document._handle, outSize),
     );
   }
 
@@ -159,7 +159,7 @@ class EditorCore {
     _ensureOpen();
     return _callAndParseAction(
       (outSize) =>
-          bindings.set_editor_viewport(_handle, width, height, outSize),
+          bindings.editor_set_viewport(_handle, width, height, outSize),
     );
   }
 
@@ -331,7 +331,7 @@ class EditorCore {
     _ensureOpen();
     return _callAndParse(
       const EditorRenderModel(),
-      (outSize) => bindings.build_editor_render_model(_handle, outSize),
+      (outSize) => bindings.editor_build_render_model(_handle, outSize),
       CoreProtocol.decodeEditorRenderModelFromPointer,
     );
   }
@@ -341,7 +341,7 @@ class EditorCore {
     _ensureOpen();
     return using((arena) {
       final outSize = arena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
-      final ptr = bindings.build_editor_render_model(_handle, outSize);
+      final ptr = bindings.editor_build_render_model(_handle, outSize);
       if (ptr == ffi.nullptr) return null;
       final size = outSize.value;
       final bytes = Uint8List.fromList(ptr.asTypedList(size));
@@ -354,7 +354,7 @@ class EditorCore {
     _ensureOpen();
     return _callAndParse(
       const LayoutMetrics(),
-      (outSize) => bindings.get_layout_metrics(_handle, outSize),
+      (outSize) => bindings.editor_get_layout_metrics(_handle, outSize),
       CoreProtocol.decodeLayoutMetricsFromPointer,
     );
   }
@@ -416,7 +416,7 @@ class EditorCore {
           ? _toNativeUtf8(text, arena)
           : ffi.nullptr.cast<ffi.Char>();
       final outSize = arena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
-      final ptr = bindings.handle_editor_key_event(
+      final ptr = bindings.editor_handle_key_event(
         _handle,
         keyCode,
         textPtr,

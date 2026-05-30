@@ -234,10 +234,10 @@ public final class EditorNative {
     private static final MethodHandle CREATE_EDITOR = downcall("create_editor",
             FunctionDescriptor.of(ValueLayout.JAVA_LONG, MEASURER_LAYOUT, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
 
-    private static final MethodHandle SET_EDITOR_DOCUMENT = downcall("set_editor_document",
+    private static final MethodHandle SET_EDITOR_DOCUMENT = downcall("editor_set_document",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
-    private static final MethodHandle SET_VIEWPORT = downcall("set_editor_viewport",
+    private static final MethodHandle SET_VIEWPORT = downcall("editor_set_viewport",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_SHORT, ValueLayout.JAVA_SHORT,
                     ValueLayout.ADDRESS));
 
@@ -263,10 +263,10 @@ public final class EditorNative {
     private static final MethodHandle SET_CURRENT_LINE_RENDER_MODE = downcall("editor_set_current_line_render_mode",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
-    private static final MethodHandle BUILD_RENDER_MODEL = downcall("build_editor_render_model",
+    private static final MethodHandle BUILD_RENDER_MODEL = downcall("editor_build_render_model",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
-    private static final MethodHandle GET_LAYOUT_METRICS = downcall("get_layout_metrics",
+    private static final MethodHandle GET_LAYOUT_METRICS = downcall("editor_get_layout_metrics",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle TICK_EDGE_SCROLL = downcall("editor_tick_edge_scroll",
@@ -587,7 +587,7 @@ public final class EditorNative {
     private static final MethodHandle ON_FONT_METRICS_CHANGED = downcall("editor_on_font_metrics_changed",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
-    private static final MethodHandle HANDLE_KEY_EVENT = downcall("handle_editor_key_event",
+    private static final MethodHandle HANDLE_KEY_EVENT = downcall("editor_handle_key_event",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
                     ValueLayout.JAVA_LONG, ValueLayout.JAVA_SHORT, ValueLayout.ADDRESS, ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS));
 
