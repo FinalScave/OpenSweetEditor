@@ -610,6 +610,26 @@ public:
     return true;
   }
 
+  inline bool read(GestureEvent& out) {
+    int32_t out_type_value{};
+    if (!readI32(out_type_value)) return false;
+    out.type = static_cast<EventType>(out_type_value);
+    if (!readList(out.points)) return false;
+    int32_t out_modifiers_value{};
+    if (!readI32(out_modifiers_value)) return false;
+    out.modifiers = static_cast<KeyModifier>(out_modifiers_value);
+    float out_wheel_delta_x_value{};
+    if (!readF32(out_wheel_delta_x_value)) return false;
+    out.wheel_delta_x = static_cast<float>(out_wheel_delta_x_value);
+    float out_wheel_delta_y_value{};
+    if (!readF32(out_wheel_delta_y_value)) return false;
+    out.wheel_delta_y = static_cast<float>(out_wheel_delta_y_value);
+    float out_direct_scale_value{};
+    if (!readF32(out_direct_scale_value)) return false;
+    out.direct_scale = static_cast<float>(out_direct_scale_value);
+    return true;
+  }
+
   inline bool read(KeyBinding& out) {
     if (!read(out.first)) return false;
     if (!read(out.second)) return false;

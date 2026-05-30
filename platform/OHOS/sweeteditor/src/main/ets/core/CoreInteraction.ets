@@ -1,3 +1,6 @@
+import { PointF } from './CoreFoundation';
+import { KeyModifier } from './CoreKeymap';
+
 export enum EventType {
   UNDEFINED = 0,
   TOUCH_DOWN = 1,
@@ -87,6 +90,15 @@ export function hitTargetTypeFromValue(value: number): HitTargetType {
     case 8: return HitTargetType.LINK;
     default: return HitTargetType.NONE;
   }
+}
+
+export class GestureEvent {
+  type: EventType = EventType.UNDEFINED;
+  points: PointF[] = [];
+  modifiers: number = KeyModifier.NONE;
+  wheelDeltaX: number = 0;
+  wheelDeltaY: number = 0;
+  directScale: number = 1;
 }
 
 export interface HitTarget {

@@ -200,7 +200,7 @@ During construction or first-frame bootstrap before the editor runtime / dispatc
 |---|---|
 | Configuration | `loadDocument(doc)`, `setViewport(w, h)`, `onFontMetricsChanged()`, `setFoldArrowMode(mode)`, `setWrapMode(mode)`, `setTabSize(size)`, `setInsertSpaces(enabled)`, `setScale(scale)`, `setLineSpacing(add, mult)`, `setContentStartPadding(padding)`, `setShowSplitLine(show)`, `setCurrentLineRenderMode(mode)`, `setGutterSticky(sticky)`, `setGutterVisible(visible)`, `setHandleConfig(...)`, `setScrollbarConfig(...)` |
 | Render model | `buildRenderModel()`, `getLayoutMetrics()` |
-| Gesture / keyboard | `handleGestureEvent(...)`, `handleGestureEventEx(...)`, `tickEdgeScroll()`, `tickFling()`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(keyMap)` |
+| Gesture / keyboard | `handleGestureEvent(...)`, `tickEdgeScroll()`, `tickFling()`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(keyMap)` |
 | Text editing | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `backspace()`, `deleteForward()`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
 | Undo / redo | `undo()`, `redo()`, `canUndo()`, `canRedo()` |
 | Cursor / selection | `setCursorPosition(line, col)`, `getCursorPosition()`, `selectAll()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `getSelectedText()`, `getWordRangeAtCursor()`, `getWordAtCursor()`, `moveCursorLeft(extend)`, `moveCursorRight(extend)`, `moveCursorUp(extend)`, `moveCursorDown(extend)`, `moveCursorToLineStart(extend)`, `moveCursorToLineEnd(extend)` |
@@ -634,7 +634,7 @@ Event payloads MUST be defined per-event. Platforms MUST NOT assume or require a
 
 ### 11.4 `EditorActionResult` Gesture Field Contract
 
-Platforms MAY expose the return value of `handleGestureEvent(...)` / `handleGestureEventEx(...)` directly, or consume it internally only; however, the gesture return value MUST be `EditorActionResult` or a platform-equivalent type. The following gesture-related fields MUST keep semantics consistent with Core and be consumed by the unified result dispatcher:
+Platforms MAY expose the return value of `handleGestureEvent(...)` directly, or consume it internally only; however, the gesture return value MUST be `EditorActionResult` or a platform-equivalent type. The following gesture-related fields MUST keep semantics consistent with Core and be consumed by the unified result dispatcher:
 
 | Field | Type | MUST/MAY | Description |
 |---|---|---|---|

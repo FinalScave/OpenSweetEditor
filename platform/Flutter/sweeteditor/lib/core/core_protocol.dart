@@ -415,6 +415,36 @@ int _sizeOfPhantomTextList(List<PhantomText>? values) {
   return size;
 }
 
+List<PointF> _readPointFList(_BinaryReader reader) {
+  final count = reader.readInt32();
+  if (count < 0 || count > reader.remaining) {
+    throw RangeError('Invalid protocol length.');
+  }
+  final values = <PointF>[];
+  for (var i = 0; i < count; i++) {
+    values.add(_readPointF(reader));
+  }
+  return values;
+}
+
+void _writePointFList(_BinaryWriter writer, List<PointF>? values) {
+  final count = values == null ? 0 : values.length;
+  writer.writeInt32(count);
+  for (var i = 0; i < count; i++) {
+    _writePointF(writer, values![i]);
+  }
+}
+
+int _sizeOfPointFList(List<PointF>? values) {
+  var size = 4;
+  if (values != null) {
+    for (final value in values) {
+      size += _sizeOfPointF(value);
+    }
+  }
+  return size;
+}
+
 List<Rect> _readRectList(_BinaryReader reader) {
   final count = reader.readInt32();
   if (count < 0 || count > reader.remaining) {
@@ -1077,6 +1107,26 @@ void _writeImeTextRange(_BinaryWriter writer, ImeTextRange value) {
 
 int _sizeOfImeTextRange(ImeTextRange value) {
   var size = 0;
+  size += 4;
+  size += 4;
+  return size;
+}
+
+void _writeGestureEvent(_BinaryWriter writer, GestureEvent value) {
+  writer.writeInt32(value.type.value);
+  _writePointFList(writer, value.points);
+  writer.writeInt32(value.modifiers);
+  writer.writeFloat32(value.wheelDeltaX);
+  writer.writeFloat32(value.wheelDeltaY);
+  writer.writeFloat32(value.directScale);
+}
+
+int _sizeOfGestureEvent(GestureEvent value) {
+  var size = 0;
+  size += 4;
+  size += _sizeOfPointFList(value.points);
+  size += 4;
+  size += 4;
   size += 4;
   size += 4;
   return size;
@@ -2040,6 +2090,12 @@ class CoreProtocol {
   static Uint8List encodeScrollbarConfig(ScrollbarConfig value) {
     final writer = _BinaryWriter(_sizeOfScrollbarConfig(value));
     _writeScrollbarConfig(writer, value);
+    return writer.toBytes();
+  }
+
+  static Uint8List encodeGestureEvent(GestureEvent value) {
+    final writer = _BinaryWriter(_sizeOfGestureEvent(value));
+    _writeGestureEvent(writer, value);
     return writer.toBytes();
   }
 

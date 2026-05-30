@@ -517,7 +517,7 @@ free_editor(editor);
 
 - `build_editor_render_model()` → `EditorRenderModel`
 - `get_layout_metrics()` → `LayoutMetrics`
-- `handle_editor_gesture_event*()` → `EditorActionResult`
+- `editor_handle_gesture_event()` → `EditorActionResult`
 - `handle_editor_key_event()` → `EditorActionResult`
 - `editor_insert_text()` / `undo()` / `redo()` / IME 写入 / decoration 写入等变更类接口 → `EditorActionResult`
 - `editor_get_scroll_metrics()` → `ScrollMetrics`
@@ -564,7 +564,7 @@ free_editor(editor);
   平台层捕获事件
         │
         ▼
-  C API: handle_editor_gesture_event()
+  C API: editor_handle_gesture_event()
         │
         ▼
   GestureHandler.handleGestureEvent()

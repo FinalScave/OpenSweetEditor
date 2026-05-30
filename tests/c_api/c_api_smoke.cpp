@@ -5,6 +5,7 @@
 #define __stdcall
 #endif
 #include <sweeteditor/c_api.h>
+#include <sweeteditor/protocol_codec.h>
 #include <sweeteditor/utility.h>
 
 using namespace NS_SWEETEDITOR;
@@ -333,20 +334,26 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   CHECK(layout_metrics.gutter_sticky == 1);
   CHECK(layout_metrics.gutter_visible == 1);
 
-  // Two-finger zoom: TOUCH_DOWN -> TOUCH_POINTER_DOWN -> TOUCH_MOVE (fingers move apart)
-  float p0[2] = {100.0f, 100.0f};
   size_t gesture_size = 0;
-  const uint8_t* gesture_payload = handle_editor_gesture_event(editor, 1, 1, p0, &gesture_size);
+  auto sendGesture = [&](EventType type, Vector<PointF> points) {
+    GestureEvent event;
+    event.type = type;
+    event.points = std::move(points);
+    event.direct_scale = 1.0f;
+    Vector<uint8_t> data = protocol::ProtocolWriter::encode(event);
+    return editor_handle_gesture_event(editor, data.data(), data.size(), &gesture_size);
+  };
+
+  // Two-finger zoom: TOUCH_DOWN -> TOUCH_POINTER_DOWN -> TOUCH_MOVE (fingers move apart)
+  const uint8_t* gesture_payload = sendGesture(EventType::TOUCH_DOWN, {{100.0f, 100.0f}});
   REQUIRE(gesture_payload != nullptr);
   free_binary_data(reinterpret_cast<intptr_t>(gesture_payload));
 
-  float p1[4] = {100.0f, 100.0f, 200.0f, 100.0f};
-  gesture_payload = handle_editor_gesture_event(editor, 2, 2, p1, &gesture_size);
+  gesture_payload = sendGesture(EventType::TOUCH_POINTER_DOWN, {{100.0f, 100.0f}, {200.0f, 100.0f}});
   REQUIRE(gesture_payload != nullptr);
   free_binary_data(reinterpret_cast<intptr_t>(gesture_payload));
 
-  float p2[4] = {95.0f, 100.0f, 205.0f, 100.0f};
-  gesture_payload = handle_editor_gesture_event(editor, 3, 2, p2, &gesture_size);
+  gesture_payload = sendGesture(EventType::TOUCH_MOVE, {{95.0f, 100.0f}, {205.0f, 100.0f}});
   REQUIRE(gesture_payload != nullptr);
   ActionPayloadData gesture = parseActionPayload(gesture_payload, gesture_size);
   free_binary_data(reinterpret_cast<intptr_t>(gesture_payload));

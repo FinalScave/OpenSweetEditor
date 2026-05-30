@@ -45,6 +45,15 @@ namespace SweetEditor {
         LINK = 8
     }
 
+    public sealed partial class GestureEvent {
+        public EventType Type { get; set; } = EventType.UNDEFINED;
+        public List<PointF> Points { get; set; } = new();
+        public int Modifiers { get; set; } = 0;
+        public float WheelDeltaX { get; set; } = 0f;
+        public float WheelDeltaY { get; set; } = 0f;
+        public float DirectScale { get; set; } = 1f;
+    }
+
     public sealed partial class HitTarget {
         public HitTargetType Type { get; set; } = HitTargetType.NONE;
         public int Line { get; set; } = 0;

@@ -4,7 +4,7 @@ import { BracketGuide, CodeLensItem, Diagnostic, DiagnosticSeverity, FlowGuide, 
 import { AutoIndentMode, CurrentLineRenderMode, EditorOptions, FoldArrowMode, HandleConfig, ScrollbarConfig, ScrollbarMode, ScrollbarTrackTapMode, WrapMode, autoIndentModeFromValue, currentLineRenderModeFromValue, foldArrowModeFromValue, scrollbarModeFromValue, scrollbarTrackTapModeFromValue, wrapModeFromValue } from './CoreConfig';
 import { IntRange, OffsetRect, PointF, Rect, TextChange, TextPosition, TextRange } from './CoreFoundation';
 import { ImeContextPolicy, ImeInputContext, ImeInputContextKind, ImePreeditStorage, ImeScriptClass, ImeSyncSnapshot, ImeTextModelMode, ImeTextRange, ImeTextUnit, imeContextPolicyFromValue, imeInputContextKindFromValue, imePreeditStorageFromValue, imeScriptClassFromValue, imeTextModelModeFromValue, imeTextUnitFromValue } from './CoreIme';
-import { EventType, GestureType, HitTarget, HitTargetType, eventTypeFromValue, gestureTypeFromValue, hitTargetTypeFromValue } from './CoreInteraction';
+import { EventType, GestureEvent, GestureType, HitTarget, HitTargetType, eventTypeFromValue, gestureTypeFromValue, hitTargetTypeFromValue } from './CoreInteraction';
 import { EditorBuiltinCommand, KeyBinding, KeyChord, KeyCode, KeyModifier, editorBuiltinCommandFromValue } from './CoreKeymap';
 import { LinkedEditingModel, TabStopGroup } from './CoreLinkedEditing';
 import { CompositionDecoration, Cursor, CursorRect, DiagnosticDecoration, EditorRenderModel, FoldMarkerRenderItem, FoldState, GuideDirection, GuideSegment, GuideStyle, GuideType, GutterIconRenderItem, LayoutMetrics, LinkedEditingRect, PointerCursorType, ScrollMetrics, ScrollbarModel, SelectionHandle, VisualLine, VisualLineKind, VisualRun, VisualRunType, foldStateFromValue, guideDirectionFromValue, guideStyleFromValue, guideTypeFromValue, pointerCursorTypeFromValue, visualLineKindFromValue, visualRunTypeFromValue } from './CoreVisual';
@@ -415,6 +415,36 @@ export class CoreProtocol {
     if (values) {
       for (const value of values) {
         size += CoreProtocol.sizeOfPhantomText(value);
+      }
+    }
+    return size;
+  }
+
+  private static readPointFList(reader: BinaryReader): PointF[] {
+    const count = reader.readInt32();
+    if (count < 0 || count > reader.remaining) {
+      throw new Error('Invalid protocol length.');
+    }
+    const values: PointF[] = [];
+    for (let i = 0; i < count; i++) {
+      values.push(CoreProtocol.readPointF(reader));
+    }
+    return values;
+  }
+
+  private static writePointFList(writer: BinaryWriter, values: PointF[]): void {
+    const count = values ? values.length : 0;
+    writer.writeInt32(count);
+    for (let i = 0; i < count; i++) {
+      CoreProtocol.writePointF(writer, values[i]);
+    }
+  }
+
+  private static sizeOfPointFList(values: PointF[]): number {
+    let size = 4;
+    if (values) {
+      for (const value of values) {
+        size += CoreProtocol.sizeOfPointF(value);
       }
     }
     return size;
@@ -1134,6 +1164,26 @@ export class CoreProtocol {
 
   static sizeOfImeTextRange(value: ImeTextRange): number {
     let size = 0;
+    size += 4;
+    size += 4;
+    return size;
+  }
+
+  static writeGestureEvent(writer: BinaryWriter, value: GestureEvent): void {
+    writer.writeInt32(value.type as number);
+    CoreProtocol.writePointFList(writer, value.points);
+    writer.writeInt32(value.modifiers);
+    writer.writeFloat32(value.wheelDeltaX);
+    writer.writeFloat32(value.wheelDeltaY);
+    writer.writeFloat32(value.directScale);
+  }
+
+  static sizeOfGestureEvent(value: GestureEvent): number {
+    let size = 0;
+    size += 4;
+    size += CoreProtocol.sizeOfPointFList(value.points);
+    size += 4;
+    size += 4;
     size += 4;
     size += 4;
     return size;
@@ -1995,6 +2045,12 @@ export class CoreProtocol {
   static encodeScrollbarConfig(value: ScrollbarConfig): ArrayBuffer {
     const writer = new BinaryWriter(CoreProtocol.sizeOfScrollbarConfig(value));
     CoreProtocol.writeScrollbarConfig(writer, value);
+    return writer.getBuffer();
+  }
+
+  static encodeGestureEvent(value: GestureEvent): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfGestureEvent(value));
+    CoreProtocol.writeGestureEvent(writer, value);
     return writer.getBuffer();
   }
 

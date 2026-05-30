@@ -275,45 +275,8 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static jobject handleGestureEvent(JNIEnv* env, jclass clazz, jlong handle, jint type, jint pointer_count, jfloatArray points) {
-    if (handle == 0 || (pointer_count > 0 && points == nullptr)) {
-      return nullptr;
-    }
-    size_t out_size = 0;
-    jfloat* points_arr = points != nullptr ? env->GetFloatArrayElements(points, nullptr) : nullptr;
-    const uint8_t* payload = handle_editor_gesture_event(static_cast<intptr_t>(handle),
-                                                         static_cast<uint8_t>(type),
-                                                         static_cast<uint8_t>(pointer_count),
-                                                         points_arr,
-                                                         &out_size);
-    if (points != nullptr && points_arr != nullptr) {
-      env->ReleaseFloatArrayElements(points, points_arr, JNI_ABORT);
-    }
-    return wrapBinaryPayload(env, payload, out_size);
-  }
-
-  static jobject handleGestureEventEx(JNIEnv* env, jclass clazz, jlong handle, jint type, jint pointer_count,
-                                      jfloatArray points, jint modifiers, jfloat wheel_delta_x,
-                                      jfloat wheel_delta_y, jfloat direct_scale) {
-    if (handle == 0 || (pointer_count > 0 && points == nullptr)) {
-      return nullptr;
-    }
-    size_t out_size = 0;
-    jfloat* points_arr = points != nullptr ? env->GetFloatArrayElements(points, nullptr) : nullptr;
-    const uint8_t* payload = handle_editor_gesture_event_ex(
-        static_cast<intptr_t>(handle),
-        static_cast<uint8_t>(type),
-        static_cast<uint8_t>(pointer_count),
-        points_arr,
-        static_cast<uint8_t>(modifiers),
-        static_cast<float>(wheel_delta_x),
-        static_cast<float>(wheel_delta_y),
-        static_cast<float>(direct_scale),
-        &out_size);
-    if (points != nullptr && points_arr != nullptr) {
-      env->ReleaseFloatArrayElements(points, points_arr, JNI_ABORT);
-    }
-    return wrapBinaryPayload(env, payload, out_size);
+  static jobject handleGestureEvent(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_handle_gesture_event);
   }
 
   static jobject onFontMetricsChanged(JNIEnv* env, jclass clazz, jlong handle) {
@@ -890,31 +853,12 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static jobject setHandleConfig(JNIEnv* env, jclass clazz, jlong handle,
-      jfloat startLeft, jfloat startTop, jfloat startRight, jfloat startBottom,
-      jfloat endLeft, jfloat endTop, jfloat endRight, jfloat endBottom) {
-    if (handle == 0) return nullptr;
-    size_t out_size = 0;
-    const uint8_t* payload = editor_set_handle_config(static_cast<intptr_t>(handle),
-        startLeft, startTop, startRight, startBottom,
-        endLeft, endTop, endRight, endBottom, &out_size);
-    return wrapBinaryPayload(env, payload, out_size);
+  static jobject setHandleConfig(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_handle_config);
   }
 
-  static jobject setScrollbarConfig(JNIEnv* env, jclass clazz, jlong handle, jfloat thickness, jfloat minThumb, jfloat thumbHitPadding,
-                                 jint mode, jboolean thumbDraggable, jint trackTapMode,
-                                 jint fadeDelayMs, jint fadeDurationMs) {
-    if (handle == 0) return nullptr;
-    size_t out_size = 0;
-    const uint8_t* payload = editor_set_scrollbar_config(static_cast<intptr_t>(handle),
-                                thickness, minThumb, thumbHitPadding,
-                                static_cast<int>(mode),
-                                thumbDraggable == JNI_TRUE ? 1 : 0,
-                                static_cast<int>(trackTapMode),
-                                static_cast<int>(fadeDelayMs),
-                                static_cast<int>(fadeDurationMs),
-                                &out_size);
-    return wrapBinaryPayload(env, payload, out_size);
+  static jobject setScrollbarConfig(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_scrollbar_config);
   }
 
   static jfloatArray getPositionRect(JNIEnv* env, jclass clazz, jlong handle, jint line, jint column) {
@@ -1509,8 +1453,7 @@ public:
       {"nativeFinalizeEditorCore", "(J)V", (void*) finalizeEditorCore},
       {"nativeSetViewport", "(JII)Ljava/nio/ByteBuffer;", (void*) setViewport},
       {"nativeLoadDocument", "(JJ)Ljava/nio/ByteBuffer;", (void*) loadDocument},
-      {"nativeHandleGestureEvent", "(JII[F)Ljava/nio/ByteBuffer;", (void*) handleGestureEvent},
-      {"nativeHandleGestureEventEx", "(JII[FIFFF)Ljava/nio/ByteBuffer;", (void*) handleGestureEventEx},
+      {"nativeHandleGestureEvent", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) handleGestureEvent},
       {"nativeUpdatePointerModifiers", "(JI)Ljava/nio/ByteBuffer;", (void*) updatePointerModifiers},
       {"nativeTickEdgeScroll", "(J)Ljava/nio/ByteBuffer;", (void*) tickEdgeScroll},
       {"nativeTickFling", "(J)Ljava/nio/ByteBuffer;", (void*) tickFling},
@@ -1566,8 +1509,8 @@ public:
       {"nativeGetAutoIndentMode", "(J)I", (void*) getAutoIndentMode},
       {"nativeSetBackspaceUnindent", "(JZ)Ljava/nio/ByteBuffer;", (void*) setBackspaceUnindent},
       {"nativeSetInsertSpaces", "(JZ)Ljava/nio/ByteBuffer;", (void*) setInsertSpaces},
-      {"nativeSetHandleConfig", "(JFFFFFFFF)Ljava/nio/ByteBuffer;", (void*) setHandleConfig},
-      {"nativeSetScrollbarConfig", "(JFFFIZIII)Ljava/nio/ByteBuffer;", (void*) setScrollbarConfig},
+      {"nativeSetHandleConfig", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setHandleConfig},
+      {"nativeSetScrollbarConfig", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setScrollbarConfig},
       {"nativeGetPositionRect", "(JII)[F", (void*) getPositionRect},
       {"nativeGetCursorRect", "(J)[F", (void*) getCursorRect},
       {"nativeRegisterTextStyle", "(JIIII)Ljava/nio/ByteBuffer;", (void*) registerTextStyle},

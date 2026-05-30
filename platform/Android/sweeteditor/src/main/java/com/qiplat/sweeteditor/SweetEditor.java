@@ -305,7 +305,7 @@ public class SweetEditor extends View {
                 && (event.getButtonState() & MotionEvent.BUTTON_SECONDARY) != 0) {
             long t0 = ENABLE_PERF_LOG ? System.nanoTime() : 0;
             PointF locationInView = new PointF(event.getX(), event.getY());
-            EditorActionResult result = mEditorCore.handleGestureEventEx(
+            EditorActionResult result = mEditorCore.handleGestureEvent(
                     EditorCore.EVENT_TYPE_MOUSE_RIGHT_DOWN,
                     new PointF[]{locationInView},
                     getMotionEventModifiers(event),
@@ -2144,7 +2144,7 @@ public class SweetEditor extends View {
 
     private void updateHoverGesture(@Nullable PointF point, int modifiers) {
         PointF probePoint = point != null ? point : new PointF(-1f, -1f);
-        EditorActionResult result = mEditorCore.handleGestureEventEx(
+        EditorActionResult result = mEditorCore.handleGestureEvent(
                 EditorCore.EVENT_TYPE_MOUSE_MOVE,
                 new PointF[]{probePoint},
                 modifiers,

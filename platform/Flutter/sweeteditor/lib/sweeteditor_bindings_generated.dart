@@ -242,69 +242,35 @@ external ffi.Pointer<ffi.Uint8> editor_set_gutter_visible(
   ffi.Pointer<ffi.Size> out_size,
 );
 
-/// Set selection handle hit-test configuration using offset rects
-/// @param start_left/start_top/start_right/start_bottom  Start handle hit area offset from cursor bottom anchor (handle tip)
-/// @param end_left/end_top/end_right/end_bottom  End handle hit area offset from cursor bottom anchor (handle tip)
+/// Set selection handle hit-test configuration.
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
-    ffi.Float,
-    ffi.Float,
-    ffi.Float,
-    ffi.Float,
-    ffi.Float,
-    ffi.Float,
-    ffi.Float,
-    ffi.Float,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
     ffi.Pointer<ffi.Size>,
   )
 >(assetId: _sweeteditorAssetId)
 external ffi.Pointer<ffi.Uint8> editor_set_handle_config(
   int editor_handle,
-  double start_left,
-  double start_top,
-  double start_right,
-  double start_bottom,
-  double end_left,
-  double end_top,
-  double end_right,
-  double end_bottom,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
   ffi.Pointer<ffi.Size> out_size,
 );
 
-/// Set scrollbar full configuration (geometry + behavior)
-/// @param thickness Scrollbar thickness in pixels
-/// @param min_thumb Minimum scrollbar thumb length in pixels
-/// @param thumb_hit_padding Extra thumb hit-test padding in pixels
-/// @param mode 0=ALWAYS, 1=TRANSIENT, 2=NEVER
-/// @param thumb_draggable 1=thumb drag enabled, 0=disabled
-/// @param track_tap_mode 0=JUMP, 1=DISABLED
-/// @param fade_delay_ms Delay before hide in TRANSIENT mode
-/// @param fade_duration_ms Fade duration in TRANSIENT mode (used for both fade-in and fade-out)
+/// Set scrollbar full configuration (geometry + behavior).
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
-    ffi.Float,
-    ffi.Float,
-    ffi.Float,
-    ffi.Int,
-    ffi.Int,
-    ffi.Int,
-    ffi.Int,
-    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
     ffi.Pointer<ffi.Size>,
   )
 >(assetId: _sweeteditorAssetId)
 external ffi.Pointer<ffi.Uint8> editor_set_scrollbar_config(
   int editor_handle,
-  double thickness,
-  double min_thumb,
-  double thumb_hit_padding,
-  int mode,
-  int thumb_draggable,
-  int track_tap_mode,
-  int fade_delay_ms,
-  int fade_duration_ms,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
   ffi.Pointer<ffi.Size> out_size,
 );
 
@@ -431,59 +397,20 @@ external ffi.Pointer<ffi.Uint8> get_layout_metrics(
 /// This is the only result payload for core state-changing APIs. Platforms should use needs_redraw from this payload
 /// to decide whether to flush editor state and schedule repaint.
 ///
-/// Handle gesture event
-/// @param type Event type
-/// @param pointer_count Finger point count
-/// @param points Data for each point
+/// Handle gesture event.
 /// @return EditorActionResult binary payload, returns NULL on failure
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
-    ffi.Uint8,
-    ffi.Uint8,
-    ffi.Pointer<ffi.Float>,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
     ffi.Pointer<ffi.Size>,
   )
 >(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> handle_editor_gesture_event(
+external ffi.Pointer<ffi.Uint8> editor_handle_gesture_event(
   int editor_handle,
-  int type,
-  int pointer_count,
-  ffi.Pointer<ffi.Float> points,
-  ffi.Pointer<ffi.Size> out_size,
-);
-
-/// Handle gesture event(extended version, supports modifier keys and wheel/scale parameters)
-/// @param type Event type
-/// @param pointer_count Finger point count
-/// @param points Data for each point
-/// @param modifiers Modifier key flags(SHIFT=1, CTRL=2, ALT=4, META=8)
-/// @param wheel_delta_x Horizontal wheel delta (used for MOUSE_WHEEL/DIRECT_SCROLL)
-/// @param wheel_delta_y Vertical wheel delta (used for MOUSE_WHEEL/DIRECT_SCROLL)
-/// @param direct_scale Direct scale value (used for DIRECT_SCALE)
-/// @return EditorActionResult binary payload, returns NULL on failure
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(
-    ffi.IntPtr,
-    ffi.Uint8,
-    ffi.Uint8,
-    ffi.Pointer<ffi.Float>,
-    ffi.Uint8,
-    ffi.Float,
-    ffi.Float,
-    ffi.Float,
-    ffi.Pointer<ffi.Size>,
-  )
->(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> handle_editor_gesture_event_ex(
-  int editor_handle,
-  int type,
-  int pointer_count,
-  ffi.Pointer<ffi.Float> points,
-  int modifiers,
-  double wheel_delta_x,
-  double wheel_delta_y,
-  double direct_scale,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
   ffi.Pointer<ffi.Size> out_size,
 );
 
@@ -501,7 +428,7 @@ external ffi.Pointer<ffi.Uint8> editor_update_pointer_modifiers(
 
 /// Tick edge-scroll during drag selection / handle drag.
 /// Call at ~16ms intervals while the previous EditorActionResult.needs_edge_scroll was true.
-/// Returns the same EditorActionResult binary layout as handle_editor_gesture_event.
+/// Returns the same EditorActionResult binary layout as editor_handle_gesture_event.
 /// When needs_edge_scroll becomes false in the returned payload, stop the timer.
 /// @return EditorActionResult binary payload
 @ffi.Native<
@@ -515,7 +442,7 @@ external ffi.Pointer<ffi.Uint8> editor_tick_edge_scroll(
 /// Tick fling (inertial scroll) animation.
 /// Call each frame while the previous EditorActionResult.needs_fling was true.
 /// The core tracks real elapsed time internally; any frame interval is fine.
-/// Returns the same EditorActionResult binary layout as handle_editor_gesture_event.
+/// Returns the same EditorActionResult binary layout as editor_handle_gesture_event.
 /// When needs_fling becomes false in the returned payload, stop the timer.
 /// @return EditorActionResult binary payload
 @ffi.Native<
@@ -529,7 +456,7 @@ external ffi.Pointer<ffi.Uint8> editor_tick_fling(
 /// Unified animation tick: advances all active animations (edge-scroll, fling).
 /// Platform can use a single frame callback driven by needs_animation and call this
 /// instead of editor_tick_edge_scroll() / editor_tick_fling() separately.
-/// Returns the same EditorActionResult binary layout as handle_editor_gesture_event.
+/// Returns the same EditorActionResult binary layout as editor_handle_gesture_event.
 /// When needs_animation becomes false in the returned payload, stop the callback.
 /// @return EditorActionResult binary payload
 @ffi.Native<

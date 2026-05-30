@@ -29,6 +29,8 @@ import com.qiplat.sweeteditor.core.ime.ImeInputContext;
 import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
 import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
 import com.qiplat.sweeteditor.core.keymap.KeyModifier;
+import com.qiplat.sweeteditor.core.interaction.EventType;
+import com.qiplat.sweeteditor.core.interaction.GestureEvent;
 import com.qiplat.sweeteditor.core.visual.CursorRect;
 import com.qiplat.sweeteditor.core.visual.EditorRenderModel;
 import com.qiplat.sweeteditor.core.visual.LayoutMetrics;
@@ -43,6 +45,7 @@ import com.qiplat.sweeteditor.core.adornment.StyleSpan;
 import com.qiplat.sweeteditor.core.adornment.TextStyle;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -293,60 +296,49 @@ public class EditorCore {
         }
         int eventType = getEventTypeInt(event);
         int pointerCount = event.getPointerCount();
-        float[] points = new float[pointerCount * 2];
+        List<com.qiplat.sweeteditor.core.foundation.PointF> points = new ArrayList<>(pointerCount);
         for (int i = 0; i < pointerCount; i++) {
-            points[i * 2] = event.getX(i);
-            points[i * 2 + 1] = event.getY(i);
+            points.add(new com.qiplat.sweeteditor.core.foundation.PointF(event.getX(i), event.getY(i)));
         }
-        ByteBuffer data = nativeHandleGestureEventEx(
-                mNativeHandle,
-                eventType,
-                pointerCount,
+        GestureEvent gestureEvent = new GestureEvent(
+                EventType.fromValue(eventType),
                 points,
                 getMotionEventModifiers(event),
                 0f,
                 0f,
                 1f);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
+        ByteBuffer payload = CoreProtocol.encodeGestureEvent(gestureEvent);
+        return decodeAction(nativeHandleGestureEvent(mNativeHandle, payload, payload.remaining()));
     }
 
-    public EditorActionResult handleGestureEventEx(int eventType,
-                                              @Nullable PointF[] points,
-                                              int modifiers,
-                                              float wheelDeltaX,
-                                              float wheelDeltaY,
-                                              float directScale) {
+    public EditorActionResult handleGestureEvent(int eventType,
+                                                 @Nullable PointF[] points,
+                                                 int modifiers,
+                                                 float wheelDeltaX,
+                                                 float wheelDeltaY,
+                                                 float directScale) {
         if (mNativeHandle == 0) {
             return new EditorActionResult();
         }
         int pointerCount = points != null ? points.length : 0;
-        float[] packedPoints = null;
+        List<com.qiplat.sweeteditor.core.foundation.PointF> corePoints = new ArrayList<>(pointerCount);
         if (pointerCount > 0) {
-            packedPoints = new float[pointerCount * 2];
             for (int i = 0; i < pointerCount; i++) {
                 PointF point = points[i];
-                packedPoints[i * 2] = point != null ? point.x : 0f;
-                packedPoints[i * 2 + 1] = point != null ? point.y : 0f;
+                corePoints.add(new com.qiplat.sweeteditor.core.foundation.PointF(
+                        point != null ? point.x : 0f,
+                        point != null ? point.y : 0f));
             }
         }
-        ByteBuffer data = nativeHandleGestureEventEx(
-                mNativeHandle,
-                eventType,
-                pointerCount,
-                packedPoints,
+        GestureEvent gestureEvent = new GestureEvent(
+                EventType.fromValue(eventType),
+                corePoints,
                 modifiers,
                 wheelDeltaX,
                 wheelDeltaY,
                 directScale);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
+        ByteBuffer payload = CoreProtocol.encodeGestureEvent(gestureEvent);
+        return decodeAction(nativeHandleGestureEvent(mNativeHandle, payload, payload.remaining()));
     }
 
     public EditorActionResult updatePointerModifiers(int modifiers) {
@@ -1207,11 +1199,8 @@ public class EditorCore {
     public EditorActionResult setHandleConfig(HandleConfig config) {
         if (mNativeHandle == 0) return new EditorActionResult();
         mHandleConfig = config;
-        return decodeAction(nativeSetHandleConfig(mNativeHandle,
-                config.startHitOffset.left, config.startHitOffset.top,
-                config.startHitOffset.right, config.startHitOffset.bottom,
-                config.endHitOffset.left, config.endHitOffset.top,
-                config.endHitOffset.right, config.endHitOffset.bottom));
+        ByteBuffer payload = CoreProtocol.encodeHandleConfig(config);
+        return decodeAction(nativeSetHandleConfig(mNativeHandle, payload, payload.remaining()));
     }
 
     /**
@@ -1234,16 +1223,8 @@ public class EditorCore {
     public EditorActionResult setScrollbarConfig(ScrollbarConfig config) {
         if (mNativeHandle == 0) return new EditorActionResult();
         mScrollbarConfig = config;
-        return decodeAction(nativeSetScrollbarConfig(
-                mNativeHandle,
-                config.thickness,
-                config.minThumb,
-                config.thumbHitPadding,
-                config.mode.value,
-                config.thumbDraggable,
-                config.trackTapMode.value,
-                config.fadeDelayMs,
-                config.fadeDurationMs));
+        ByteBuffer payload = CoreProtocol.encodeScrollbarConfig(config);
+        return decodeAction(nativeSetScrollbarConfig(mNativeHandle, payload, payload.remaining()));
     }
 
     /**
@@ -2203,12 +2184,7 @@ public class EditorCore {
     private static native ByteBuffer nativeBuildRenderModel(long handle);
 
     @FastNative
-    private static native ByteBuffer nativeHandleGestureEvent(long handle, int type, int pointerCount, float[] points);
-
-    @FastNative
-    private static native ByteBuffer nativeHandleGestureEventEx(long handle, int type, int pointerCount, float[] points,
-                                                                int modifiers, float wheelDeltaX, float wheelDeltaY,
-                                                                float directScale);
+    private static native ByteBuffer nativeHandleGestureEvent(long handle, ByteBuffer data, int size);
 
     @FastNative
     private static native ByteBuffer nativeUpdatePointerModifiers(long handle, int modifiers);
@@ -2482,14 +2458,10 @@ public class EditorCore {
     private static native ByteBuffer nativeSetInsertSpaces(long handle, boolean enabled);
 
     @FastNative
-    private static native ByteBuffer nativeSetHandleConfig(long handle,
-            float startLeft, float startTop, float startRight, float startBottom,
-            float endLeft, float endTop, float endRight, float endBottom);
+    private static native ByteBuffer nativeSetHandleConfig(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native ByteBuffer nativeSetScrollbarConfig(long handle, float thickness, float minThumb, float thumbHitPadding,
-                                                        int mode, boolean thumbDraggable, int trackTapMode,
-                                                        int fadeDelayMs, int fadeDurationMs);
+    private static native ByteBuffer nativeSetScrollbarConfig(long handle, ByteBuffer data, int size);
 
     @FastNative
     private static native float[] nativeGetPositionRect(long handle, int line, int column);

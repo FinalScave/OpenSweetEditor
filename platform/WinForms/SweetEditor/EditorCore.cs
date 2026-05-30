@@ -103,38 +103,6 @@ namespace SweetEditor {
 			}
 		}
 	}
-	/// <summary>
-	/// Gesture input event.
-	/// </summary>
-	public struct GestureEvent {
-		/// <summary>Event type.</summary>
-		public EventType Type { get; set; }
-		/// <summary>Touch point list.</summary>
-		public List<PointF> Points { get; set; }
-		/// <summary>Modifier key state.</summary>
-		public KeyModifier Modifiers { get; set; }
-		/// <summary>Mouse wheel horizontal delta.</summary>
-		public float WheelDeltaX { get; set; }
-		/// <summary>Mouse wheel vertical delta.</summary>
-		public float WheelDeltaY { get; set; }
-		/// <summary>Direct scale factor.</summary>
-		public float DirectScale { get; set; }
-
-		/// <summary>
-		/// Converts the touch point list to an interleaved float array [x0, y0, x1, y1, ...].
-		/// </summary>
-		/// <returns>Interleaved coordinate array; returns an empty array when there are no touch points.</returns>
-		public float[] GetPointsArray() {
-			if (Points == null || Points.Count == 0) return Array.Empty<float>();
-			float[] arr = new float[Points.Count * 2];
-			for (int i = 0; i < Points.Count; i++) {
-				arr[i * 2] = Points[i].X;
-				arr[i * 2 + 1] = Points[i].Y;
-			}
-			return arr;
-		}
-	}
-
 	#region Editor event system
 
 	/// <summary>
@@ -417,9 +385,8 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "get_layout_metrics", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr GetLayoutMetrics(IntPtr handle, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "handle_editor_gesture_event_ex", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr HandleGestureEventEx(IntPtr handle, uint type, uint pointerCount, float[] points,
-			byte modifiers, float wheelDeltaX, float wheelDeltaY, float directScale, out UIntPtr outSize);
+		[DllImport(LibraryName, EntryPoint = "editor_handle_gesture_event", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr HandleGestureEvent(IntPtr handle, byte[] data, UIntPtr size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_update_pointer_modifiers", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr UpdatePointerModifiers(IntPtr handle, byte modifiers, out UIntPtr outSize);
@@ -642,17 +609,10 @@ namespace SweetEditor {
 		internal static extern IntPtr SetBackspaceUnindent(IntPtr handle, int enabled, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_handle_config", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr SetHandleConfig(IntPtr handle,
-			float startLeft, float startTop, float startRight, float startBottom,
-			float endLeft, float endTop, float endRight, float endBottom,
-			out UIntPtr outSize);
+		internal static extern IntPtr SetHandleConfig(IntPtr handle, byte[] data, UIntPtr size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_scrollbar_config", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr SetScrollbarConfig(IntPtr handle,
-			float thickness, float minThumb, float thumbHitPadding,
-			int mode, int thumbDraggable, int trackTapMode,
-			int fadeDelayMs, int fadeDurationMs,
-			out UIntPtr outSize);
+		internal static extern IntPtr SetScrollbarConfig(IntPtr handle, byte[] data, UIntPtr size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_get_position_rect", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void GetPositionRect(IntPtr handle, nuint line, nuint column, ref float outX, ref float outY, ref float outHeight);
@@ -1142,19 +1102,9 @@ namespace SweetEditor {
 		/// <param name="gestureEvent">Gesture event data.</param>
 		/// <returns>Gesture recognition result.</returns>
 		public EditorActionResult HandleGestureEvent(GestureEvent gestureEvent) {
-			return HandleGestureEventEx(gestureEvent);
-		}
-
-		/// <summary>Handles gesture events using the extended gesture protocol entry point.</summary>
-		/// <param name="gestureEvent">Gesture event data.</param>
-		/// <returns>Gesture recognition result.</returns>
-		public EditorActionResult HandleGestureEventEx(GestureEvent gestureEvent) {
 			if (IsReleased) return EditorActionResult.Empty;
-			float[] pointsArr = gestureEvent.GetPointsArray();
-			IntPtr payloadPtr = NativeMethods.HandleGestureEventEx(nativeHandle, (uint)gestureEvent.Type,
-				(uint)(gestureEvent.Points?.Count ?? 0), pointsArr,
-				(byte)gestureEvent.Modifiers, gestureEvent.WheelDeltaX, gestureEvent.WheelDeltaY, gestureEvent.DirectScale,
-				out UIntPtr payloadSize);
+			byte[] payload = CoreProtocol.EncodeGestureEvent(gestureEvent);
+			IntPtr payloadPtr = NativeMethods.HandleGestureEvent(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
@@ -1810,10 +1760,8 @@ namespace SweetEditor {
 				return EditorActionResult.Empty;
 			}
 			_handleConfig = config;
-			IntPtr payloadPtr = NativeMethods.SetHandleConfig(nativeHandle,
-				config.StartLeft, config.StartTop, config.StartRight, config.StartBottom,
-				config.EndLeft, config.EndTop, config.EndRight, config.EndBottom,
-				out UIntPtr payloadSize);
+			byte[] payload = CoreProtocol.EncodeHandleConfig(config);
+			IntPtr payloadPtr = NativeMethods.SetHandleConfig(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
@@ -1831,17 +1779,8 @@ namespace SweetEditor {
 				return EditorActionResult.Empty;
 			}
 			_scrollbarConfig = config;
-			IntPtr payloadPtr = NativeMethods.SetScrollbarConfig(
-				nativeHandle,
-				config.Thickness,
-				config.MinThumb,
-				config.ThumbHitPadding,
-				(int)config.Mode,
-				config.ThumbDraggable ? 1 : 0,
-				(int)config.TrackTapMode,
-				config.FadeDelayMs,
-				config.FadeDurationMs,
-				out UIntPtr payloadSize);
+			byte[] payload = CoreProtocol.EncodeScrollbarConfig(config);
+			IntPtr payloadPtr = NativeMethods.SetScrollbarConfig(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 

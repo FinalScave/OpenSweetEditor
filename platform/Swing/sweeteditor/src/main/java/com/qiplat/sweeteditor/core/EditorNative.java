@@ -278,10 +278,9 @@ public final class EditorNative {
     private static final MethodHandle TICK_ANIMATIONS = downcall("editor_tick_animations",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
-    private static final MethodHandle HANDLE_GESTURE_EX = downcall("handle_editor_gesture_event_ex",
+    private static final MethodHandle HANDLE_GESTURE = downcall("editor_handle_gesture_event",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_BYTE, ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_BYTE, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.ADDRESS));
+                    ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle UPDATE_POINTER_MODIFIERS = downcall("editor_update_pointer_modifiers",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS));
@@ -623,15 +622,11 @@ public final class EditorNative {
 
     private static final MethodHandle SET_HANDLE_CONFIG = downcall("editor_set_handle_config",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT,
-                    ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT,
-                    ValueLayout.ADDRESS));
+                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_SCROLLBAR_CONFIG = downcall("editor_set_scrollbar_config",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT,
-                    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
-                    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle GET_CURSOR_RECT = downcall("editor_get_cursor_rect",
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
@@ -909,14 +904,8 @@ public final class EditorNative {
 
     // ===================== Gesture/Keyboard Events =====================
 
-    public static NativeBinaryResult handleGestureEventEx(long handle, int type, int pointerCount, Arena arena, float[] points,
-                                                          int modifiers, float wheelDeltaX, float wheelDeltaY, float directScale) {
-        return invokeBinaryResult(arena, outSize -> {
-            MemorySegment pointsSeg = arena.allocateFrom(ValueLayout.JAVA_FLOAT, points);
-            return (MemorySegment) HANDLE_GESTURE_EX.invokeExact(handle,
-                    (byte) type, (byte) pointerCount, pointsSeg,
-                    (byte) modifiers, wheelDeltaX, wheelDeltaY, directScale, outSize);
-        });
+    public static NativeBinaryResult handleGestureEvent(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) HANDLE_GESTURE.invokeExact(handle, payload, size, outSize));
     }
 
     public static NativeBinaryResult updatePointerModifiers(long handle, int modifiers) {
@@ -1403,19 +1392,14 @@ public final class EditorNative {
 
     // ===================== Handle Config =====================
 
-    public static NativeBinaryResult setHandleConfig(long handle,
-                                                     float startLeft, float startTop, float startRight, float startBottom,
-                                                     float endLeft, float endTop, float endRight, float endBottom) {
+    public static NativeBinaryResult setHandleConfig(long handle, MemorySegment payload, long size) {
         return invokeBinaryResult(outSize -> (MemorySegment) SET_HANDLE_CONFIG.invokeExact(
-                handle, startLeft, startTop, startRight, startBottom, endLeft, endTop, endRight, endBottom, outSize));
+                handle, payload, size, outSize));
     }
 
-    public static NativeBinaryResult setScrollbarConfig(long handle, float thickness, float minThumb, float thumbHitPadding,
-                                                        int mode, boolean thumbDraggable, int trackTapMode,
-                                                        int fadeDelayMs, int fadeDurationMs) {
+    public static NativeBinaryResult setScrollbarConfig(long handle, MemorySegment payload, long size) {
         return invokeBinaryResult(outSize -> (MemorySegment) SET_SCROLLBAR_CONFIG.invokeExact(
-                handle, thickness, minThumb, thumbHitPadding, mode, thumbDraggable ? 1 : 0, trackTapMode,
-                fadeDelayMs, fadeDurationMs, outSize));
+                handle, payload, size, outSize));
     }
 
     // ===================== Position/Coordinate Query =====================

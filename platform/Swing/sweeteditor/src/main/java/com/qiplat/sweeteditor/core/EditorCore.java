@@ -9,6 +9,8 @@ import com.qiplat.sweeteditor.core.foundation.*;
 import com.qiplat.sweeteditor.core.ime.ImeInputContext;
 import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
 import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
+import com.qiplat.sweeteditor.core.interaction.EventType;
+import com.qiplat.sweeteditor.core.interaction.GestureEvent;
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
 import com.qiplat.sweeteditor.core.visual.*;
 import com.qiplat.sweeteditor.core.snippet.*;
@@ -16,6 +18,7 @@ import com.qiplat.sweeteditor.core.snippet.*;
 import java.lang.ref.Cleaner;
 import java.lang.foreign.*;
 import java.lang.invoke.MethodType;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -197,16 +200,21 @@ public class EditorCore {
 
     public EditorActionResult handleGestureEvent(int type, float[] points, int modifiers,
                                                  float wheelDeltaX, float wheelDeltaY, float directScale) {
-        return handleGestureEventEx(type, points, modifiers, wheelDeltaX, wheelDeltaY, directScale);
-    }
-
-    public EditorActionResult handleGestureEventEx(int type, float[] points, int modifiers,
-                                                   float wheelDeltaX, float wheelDeltaY, float directScale) {
         try (Arena tempArena = Arena.ofConfined()) {
             int pointerCount = (points != null) ? points.length / 2 : 0;
-            if (points == null) points = new float[0];
-            EditorNative.NativeBinaryResult result = EditorNative.handleGestureEventEx(nativeHandle, type, pointerCount,
-                    tempArena, points, modifiers, wheelDeltaX, wheelDeltaY, directScale);
+            List<PointF> gesturePoints = new ArrayList<>(pointerCount);
+            for (int i = 0; i < pointerCount; i++) {
+                gesturePoints.add(new PointF(points[i * 2], points[i * 2 + 1]));
+            }
+            GestureEvent event = new GestureEvent(
+                    EventType.fromValue(type),
+                    gesturePoints,
+                    modifiers,
+                    wheelDeltaX,
+                    wheelDeltaY,
+                    directScale);
+            MemorySegment payload = CoreProtocol.encodeGestureEvent(tempArena, event);
+            EditorNative.NativeBinaryResult result = EditorNative.handleGestureEvent(nativeHandle, payload, payload.byteSize());
             return decodeAction(result);
         }
     }
@@ -695,9 +703,10 @@ public class EditorCore {
     public EditorActionResult setHandleConfig(HandleConfig config) {
         if (config == null) return null;
         this.handleConfig = config;
-        return decodeAction(EditorNative.setHandleConfig(nativeHandle,
-                config.startHitOffset.left, config.startHitOffset.top, config.startHitOffset.right, config.startHitOffset.bottom,
-                config.endHitOffset.left, config.endHitOffset.top, config.endHitOffset.right, config.endHitOffset.bottom));
+        try (Arena tempArena = Arena.ofConfined()) {
+            MemorySegment payload = CoreProtocol.encodeHandleConfig(tempArena, config);
+            return decodeAction(EditorNative.setHandleConfig(nativeHandle, payload, payload.byteSize()));
+        }
     }
 
     public HandleConfig getHandleConfig() {
@@ -707,16 +716,10 @@ public class EditorCore {
     public EditorActionResult setScrollbarConfig(ScrollbarConfig config) {
         if (config == null) return null;
         this.scrollbarConfig = config;
-        return decodeAction(EditorNative.setScrollbarConfig(
-                nativeHandle,
-                config.thickness,
-                config.minThumb,
-                config.thumbHitPadding,
-                config.mode.value,
-                config.thumbDraggable,
-                config.trackTapMode.value,
-                config.fadeDelayMs,
-                config.fadeDurationMs));
+        try (Arena tempArena = Arena.ofConfined()) {
+            MemorySegment payload = CoreProtocol.encodeScrollbarConfig(tempArena, config);
+            return decodeAction(EditorNative.setScrollbarConfig(nativeHandle, payload, payload.byteSize()));
+        }
     }
 
     public ScrollbarConfig getScrollbarConfig() {

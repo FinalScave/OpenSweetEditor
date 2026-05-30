@@ -107,12 +107,8 @@ const uint8_t* get_layout_metrics(intptr_t editor_handle, size_t* out_size);
 ### 5) Gesture / key
 
 ```c
-const uint8_t* handle_editor_gesture_event(
-    intptr_t editor_handle, uint8_t type, uint8_t pointer_count, float* points, size_t* out_size);
-
-const uint8_t* handle_editor_gesture_event_ex(
-    intptr_t editor_handle, uint8_t type, uint8_t pointer_count, float* points,
-    uint8_t modifiers, float wheel_delta_x, float wheel_delta_y, float direct_scale, size_t* out_size);
+const uint8_t* editor_handle_gesture_event(
+    intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 const uint8_t* handle_editor_key_event(
     intptr_t editor_handle, uint16_t key_code, const char* text, uint8_t modifiers, size_t* out_size);
@@ -255,10 +251,8 @@ void editor_set_read_only(intptr_t editor_handle, int read_only);
 int  editor_is_read_only(intptr_t editor_handle);
 void editor_set_auto_indent_mode(intptr_t editor_handle, int mode);
 int  editor_get_auto_indent_mode(intptr_t editor_handle);
-void editor_set_handle_config(
-    intptr_t editor_handle,
-    float radius, float center_dist, float line_width,
-    float touch_padding, float drag_y_offset);
+const uint8_t* editor_set_handle_config(
+    intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 ```
 
 `AutoIndentMode`: `0=NONE`, `1=KEEP_INDENT`.

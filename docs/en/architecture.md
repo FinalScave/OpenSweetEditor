@@ -517,7 +517,7 @@ Current C API path uses binary payload uniformly (native-endian; all supported p
 
 - `build_editor_render_model()` -> `EditorRenderModel`
 - `get_layout_metrics()` -> `LayoutMetrics`
-- `handle_editor_gesture_event*()` -> `EditorActionResult`
+- `editor_handle_gesture_event()` -> `EditorActionResult`
 - `handle_editor_key_event()` -> `EditorActionResult`
 - state-changing APIs such as `editor_insert_text()` / `undo()` / `redo()` / IME writes / decoration writes -> `EditorActionResult`
 - `editor_get_scroll_metrics()` -> `ScrollMetrics`
@@ -564,7 +564,7 @@ Extra:
   Platform captures event
         │
         ▼
-  C API: handle_editor_gesture_event()
+  C API: editor_handle_gesture_event()
         │
         ▼
   GestureHandler.handleGestureEvent()

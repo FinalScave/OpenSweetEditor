@@ -343,7 +343,7 @@ namespace SweetEditor {
 				var touchResult = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.TOUCH_DOWN,
 					Points = [ToPointF(point)],
-					Modifiers = modifiers,
+					Modifiers = (int)modifiers,
 					DirectScale = 1,
 				});
 				DispatchEditorActionResult(touchResult);
@@ -356,7 +356,7 @@ namespace SweetEditor {
 				var result = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.MOUSE_RIGHT_DOWN,
 					Points = [ToPointF(point)],
-					Modifiers = modifiers,
+					Modifiers = (int)modifiers,
 					DirectScale = 1,
 				});
 				DispatchEditorActionResult(result);
@@ -368,7 +368,7 @@ namespace SweetEditor {
 				var result = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.MOUSE_DOWN,
 					Points = [ToPointF(point)],
-					Modifiers = modifiers,
+					Modifiers = (int)modifiers,
 					DirectScale = 1,
 				});
 				DispatchEditorActionResult(result);
@@ -401,7 +401,7 @@ namespace SweetEditor {
 						var touchDownResult = editorCore.HandleGestureEvent(new GestureEvent {
 							Type = EventType.TOUCH_DOWN,
 							Points = [ToPointF(point)],
-						Modifiers = ToModifiers(e.KeyModifiers),
+						Modifiers = (int)ToModifiers(e.KeyModifiers),
 						DirectScale = 1,
 					});
 					DispatchEditorActionResult(touchDownResult);
@@ -416,7 +416,7 @@ namespace SweetEditor {
 				var touchResult = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.TOUCH_MOVE,
 					Points = [ToPointF(point)],
-					Modifiers = ToModifiers(e.KeyModifiers),
+					Modifiers = (int)ToModifiers(e.KeyModifiers),
 					DirectScale = 1,
 				});
 				if (touchResult.GestureType is GestureType.SCROLL or GestureType.FAST_SCROLL or GestureType.SCALE or GestureType.DRAG_SELECT) {
@@ -436,7 +436,7 @@ namespace SweetEditor {
 			var result = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.MOUSE_MOVE,
 				Points = [ToPointF(point)],
-				Modifiers = ToModifiers(e.KeyModifiers),
+				Modifiers = (int)ToModifiers(e.KeyModifiers),
 				DirectScale = 1,
 			});
 			DispatchEditorActionResult(result);
@@ -467,7 +467,7 @@ namespace SweetEditor {
 				var touchResult = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.TOUCH_UP,
 					Points = [ToPointF(point)],
-					Modifiers = ToModifiers(e.KeyModifiers),
+					Modifiers = (int)ToModifiers(e.KeyModifiers),
 					DirectScale = 1,
 				});
 					if (touchPendingFocus) {
@@ -518,7 +518,7 @@ namespace SweetEditor {
 			var result = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.MOUSE_UP,
 				Points = [ToPointF(point)],
-				Modifiers = ToModifiers(e.KeyModifiers),
+				Modifiers = (int)ToModifiers(e.KeyModifiers),
 				DirectScale = 1,
 			});
 			DispatchEditorActionResult(result);
@@ -542,7 +542,7 @@ namespace SweetEditor {
 			var result = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.MOUSE_WHEEL,
 				Points = [ToPointF(point)],
-				Modifiers = ToModifiers(e.KeyModifiers),
+				Modifiers = (int)ToModifiers(e.KeyModifiers),
 				WheelDeltaX = (float)e.Delta.X * 120f,
 				WheelDeltaY = (float)e.Delta.Y * 120f,
 				DirectScale = 1,
@@ -580,10 +580,10 @@ namespace SweetEditor {
 				return;
 			}
 
-			var result = editorCore.HandleGestureEventEx(new GestureEvent {
+			var result = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.DIRECT_SCALE,
 				Points = [ToPointF(origin)],
-				Modifiers = KeyModifier.NONE,
+				Modifiers = (int)KeyModifier.NONE,
 				DirectScale = directScale,
 			});
 			DispatchEditorActionResult(result);
@@ -619,10 +619,10 @@ namespace SweetEditor {
 				return;
 			}
 
-			var result = editorCore.HandleGestureEventEx(new GestureEvent {
+			var result = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.DIRECT_SCROLL,
 				Points = [ToPointF(point)],
-				Modifiers = KeyModifier.NONE,
+				Modifiers = (int)KeyModifier.NONE,
 				WheelDeltaX = deltaX,
 				WheelDeltaY = deltaY,
 				DirectScale = 1f,
@@ -669,10 +669,10 @@ namespace SweetEditor {
 				return;
 			}
 
-			var result = editorCore.HandleGestureEventEx(new GestureEvent {
+			var result = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.DIRECT_SCALE,
 				Points = [ToPointF(point)],
-				Modifiers = ToModifiers(e.KeyModifiers),
+				Modifiers = (int)ToModifiers(e.KeyModifiers),
 				DirectScale = directScale,
 			});
 			DispatchEditorActionResult(result);
@@ -3138,7 +3138,7 @@ namespace SweetEditor {
 			var result = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.TOUCH_CANCEL,
 				Points = [ToPointF(point)],
-				Modifiers = KeyModifier.NONE,
+				Modifiers = (int)KeyModifier.NONE,
 				DirectScale = 1,
 			});
 			DispatchEditorActionResult(result);

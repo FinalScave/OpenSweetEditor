@@ -8,7 +8,6 @@
 #endif
 
 #include <cstring>
-#include <algorithm>
 #include <vector>
 #include <sweeteditor/protocol_codec.h>
 #include <sweeteditor/utility.h>
@@ -293,46 +292,21 @@ const uint8_t* editor_set_gutter_visible(intptr_t editor_handle, int visible, si
   return editorActionResultToBinary(editor_core->setGutterVisible(visible != 0), out_size);
 }
 
-const uint8_t* editor_set_handle_config(intptr_t editor_handle,
-    float start_left, float start_top, float start_right, float start_bottom,
-    float end_left, float end_top, float end_right, float end_bottom, size_t* out_size) {
+const uint8_t* editor_set_handle_config(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
+  HandleConfig config;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, config)) {
     return nullBinaryPayload(out_size);
   }
-  HandleConfig config;
-  config.start_hit_offset = {start_left, start_top, start_right, start_bottom};
-  config.end_hit_offset = {end_left, end_top, end_right, end_bottom};
   return editorActionResultToBinary(editor_core->setHandleConfig(config), out_size);
 }
 
-const uint8_t* editor_set_scrollbar_config(intptr_t editor_handle,
-    float thickness, float min_thumb, float thumb_hit_padding,
-    int mode, int thumb_draggable, int track_tap_mode,
-    int fade_delay_ms, int fade_duration_ms, size_t* out_size) {
+const uint8_t* editor_set_scrollbar_config(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
+  ScrollbarConfig config;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, config)) {
     return nullBinaryPayload(out_size);
   }
-  ScrollbarConfig config;
-  config.thickness = thickness;
-  config.min_thumb = min_thumb;
-  config.thumb_hit_padding = std::max(0.0f, thumb_hit_padding);
-
-  if (mode <= static_cast<int>(ScrollbarMode::ALWAYS)) {
-    config.mode = ScrollbarMode::ALWAYS;
-  } else if (mode >= static_cast<int>(ScrollbarMode::NEVER)) {
-    config.mode = ScrollbarMode::NEVER;
-  } else {
-    config.mode = static_cast<ScrollbarMode>(mode);
-  }
-
-  config.thumb_draggable = (thumb_draggable != 0);
-  config.track_tap_mode = (track_tap_mode == static_cast<int>(ScrollbarTrackTapMode::DISABLED))
-      ? ScrollbarTrackTapMode::DISABLED
-      : ScrollbarTrackTapMode::JUMP;
-  config.fade_delay_ms = static_cast<uint16_t>(std::max(0, std::min(65535, fade_delay_ms)));
-  config.fade_duration_ms = static_cast<uint16_t>(std::max(0, std::min(65535, fade_duration_ms)));
   return editorActionResultToBinary(editor_core->setScrollbarConfig(config), out_size);
 }
 
@@ -364,28 +338,11 @@ const uint8_t* get_layout_metrics(intptr_t editor_handle, size_t* out_size) {
   return protocolToBinary(editor_core->getLayoutMetrics(), out_size, sizeof(float) * 9 + sizeof(int32_t) * 5);
 }
 
-const uint8_t* handle_editor_gesture_event(intptr_t editor_handle, uint8_t type, uint8_t pointer_count,
-    float* points, size_t* out_size) {
-  return handle_editor_gesture_event_ex(editor_handle, type, pointer_count, points, 0, 0, 0, 1, out_size);
-}
-
-const uint8_t* handle_editor_gesture_event_ex(intptr_t editor_handle, uint8_t type, uint8_t pointer_count,
-    float* points, uint8_t modifiers, float wheel_delta_x, float wheel_delta_y, float direct_scale, size_t* out_size) {
+const uint8_t* editor_handle_gesture_event(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || (pointer_count > 0 && points == nullptr)) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
   GestureEvent event;
-  event.type = static_cast<EventType>(type);
-  event.modifiers = static_cast<KeyModifier>(modifiers);
-  event.wheel_delta_x = wheel_delta_x;
-  event.wheel_delta_y = wheel_delta_y;
-  event.direct_scale = direct_scale;
-  for (int i = 0; i < pointer_count; i++) {
-    event.points.push_back({points[i * 2], points[i * 2 + 1]});
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, event)) {
+    return nullBinaryPayload(out_size);
   }
   EditorActionResult result = editor_core->handleGestureEvent(event);
   return editorActionResultToBinary(result, out_size);

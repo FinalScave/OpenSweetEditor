@@ -46,6 +46,7 @@ import com.qiplat.sweeteditor.core.ime.ImeTextModelMode;
 import com.qiplat.sweeteditor.core.ime.ImeTextRange;
 import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
 import com.qiplat.sweeteditor.core.interaction.EventType;
+import com.qiplat.sweeteditor.core.interaction.GestureEvent;
 import com.qiplat.sweeteditor.core.interaction.GestureType;
 import com.qiplat.sweeteditor.core.interaction.HitTarget;
 import com.qiplat.sweeteditor.core.interaction.HitTargetType;
@@ -484,6 +485,36 @@ public final class CoreProtocol {
         if (values != null) {
             for (int i = 0; i < values.size(); i++) {
                 size += sizeOfPhantomText(values.get(i));
+            }
+        }
+        return size;
+    }
+
+    private static ArrayList<PointF> readPointFList(BinaryReader reader) {
+        int count = reader.readInt32();
+        if (count < 0 || count > reader.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<PointF> values = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            values.add(readPointF(reader));
+        }
+        return values;
+    }
+
+    private static void writePointFList(BinaryWriter writer, java.util.List<? extends PointF> values) {
+        int count = values == null ? 0 : values.size();
+        writer.writeInt32(count);
+        for (int i = 0; i < count; i++) {
+            writePointF(writer, values.get(i));
+        }
+    }
+
+    private static int sizeOfPointFList(java.util.List<? extends PointF> values) {
+        int size = 4;
+        if (values != null) {
+            for (int i = 0; i < values.size(); i++) {
+                size += sizeOfPointF(values.get(i));
             }
         }
         return size;
@@ -1203,6 +1234,26 @@ public final class CoreProtocol {
 
     public static int sizeOfImeTextRange(ImeTextRange value) {
         int size = 0;
+        size += 4;
+        size += 4;
+        return size;
+    }
+
+    private static void writeGestureEvent(BinaryWriter writer, GestureEvent value) {
+        writer.writeInt32(value.type.value);
+        writePointFList(writer, value.points);
+        writer.writeInt32(value.modifiers);
+        writer.writeFloat32(value.wheelDeltaX);
+        writer.writeFloat32(value.wheelDeltaY);
+        writer.writeFloat32(value.directScale);
+    }
+
+    public static int sizeOfGestureEvent(GestureEvent value) {
+        int size = 0;
+        size += 4;
+        size += sizeOfPointFList(value.points);
+        size += 4;
+        size += 4;
         size += 4;
         size += 4;
         return size;
@@ -2236,6 +2287,12 @@ public final class CoreProtocol {
     public static MemorySegment encodeScrollbarConfig(Arena arena, ScrollbarConfig value) {
         BinaryWriter writer = new BinaryWriter(arena, sizeOfScrollbarConfig(value));
         writeScrollbarConfig(writer, value);
+        return writer.segment();
+    }
+
+    public static MemorySegment encodeGestureEvent(Arena arena, GestureEvent value) {
+        BinaryWriter writer = new BinaryWriter(arena, sizeOfGestureEvent(value));
+        writeGestureEvent(writer, value);
         return writer.segment();
     }
 

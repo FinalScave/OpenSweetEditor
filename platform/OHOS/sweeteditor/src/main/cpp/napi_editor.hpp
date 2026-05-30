@@ -257,76 +257,7 @@ public:
   }
 
   static napi_value handleGestureEvent(napi_env env, napi_callback_info info) {
-    size_t argc = 4;
-    napi_value args[4];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-
-    int64_t handle = napi_get_handle(env, args[0]);
-    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
-
-    int32_t type = napi_get_int32(env, args[1]);
-    int32_t pointer_count = napi_get_int32(env, args[2]);
-
-    std::vector<float> points_vec;
-    if (pointer_count > 0 && !napi_is_null_or_undefined(env, args[3])) {
-      uint32_t arr_len = 0;
-      napi_get_array_length(env, args[3], &arr_len);
-      points_vec.resize(arr_len);
-      for (uint32_t i = 0; i < arr_len; i++) {
-        napi_value elem;
-        napi_get_element(env, args[3], i, &elem);
-        points_vec[i] = napi_get_float(env, elem);
-      }
-    }
-
-    size_t out_size = 0;
-    const uint8_t* payload = handle_editor_gesture_event(
-      static_cast<intptr_t>(handle),
-      static_cast<uint8_t>(type),
-      static_cast<uint8_t>(pointer_count),
-      points_vec.empty() ? nullptr : points_vec.data(),
-      &out_size);
-    return wrap_binary_payload(env, payload, out_size);
-  }
-
-  static napi_value handleGestureEventEx(napi_env env, napi_callback_info info) {
-    size_t argc = 8;
-    napi_value args[8];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-
-    int64_t handle = napi_get_handle(env, args[0]);
-    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
-
-    int32_t type = napi_get_int32(env, args[1]);
-    int32_t pointer_count = napi_get_int32(env, args[2]);
-
-    std::vector<float> points_vec;
-    if (pointer_count > 0 && !napi_is_null_or_undefined(env, args[3])) {
-      uint32_t arr_len = 0;
-      napi_get_array_length(env, args[3], &arr_len);
-      points_vec.resize(arr_len);
-      for (uint32_t i = 0; i < arr_len; i++) {
-        napi_value elem;
-        napi_get_element(env, args[3], i, &elem);
-        points_vec[i] = napi_get_float(env, elem);
-      }
-    }
-
-    int32_t modifiers = napi_get_int32(env, args[4]);
-    float wheel_delta_x = napi_get_float(env, args[5]);
-    float wheel_delta_y = napi_get_float(env, args[6]);
-    float direct_scale = napi_get_float(env, args[7]);
-
-    size_t out_size = 0;
-    const uint8_t* payload = handle_editor_gesture_event_ex(
-      static_cast<intptr_t>(handle),
-      static_cast<uint8_t>(type),
-      static_cast<uint8_t>(pointer_count),
-      points_vec.empty() ? nullptr : points_vec.data(),
-      static_cast<uint8_t>(modifiers),
-      wheel_delta_x, wheel_delta_y, direct_scale,
-      &out_size);
-    return wrap_binary_payload(env, payload, out_size);
+    return setBinaryData(env, info, editor_handle_gesture_event);
   }
 
   static napi_value onFontMetricsChanged(napi_env env, napi_callback_info info) {
@@ -1198,33 +1129,11 @@ public:
   }
 
   static napi_value setHandleConfig(napi_env env, napi_callback_info info) {
-    size_t argc = 9;
-    napi_value args[9];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    size_t out_size = 0;
-    return wrap_binary_payload(env, editor_set_handle_config(
-      static_cast<intptr_t>(napi_get_handle(env, args[0])),
-      napi_get_float(env, args[1]), napi_get_float(env, args[2]),
-      napi_get_float(env, args[3]), napi_get_float(env, args[4]),
-      napi_get_float(env, args[5]), napi_get_float(env, args[6]),
-      napi_get_float(env, args[7]), napi_get_float(env, args[8]),
-      &out_size), out_size);
+    return setBinaryData(env, info, editor_set_handle_config);
   }
 
   static napi_value setScrollbarConfig(napi_env env, napi_callback_info info) {
-    size_t argc = 9;
-    napi_value args[9];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    size_t out_size = 0;
-    return wrap_binary_payload(env, editor_set_scrollbar_config(
-      static_cast<intptr_t>(napi_get_handle(env, args[0])),
-      napi_get_float(env, args[1]), napi_get_float(env, args[2]), napi_get_float(env, args[3]),
-      napi_get_int32(env, args[4]),
-      napi_get_bool(env, args[5]) ? 1 : 0,
-      napi_get_int32(env, args[6]),
-      napi_get_int32(env, args[7]),
-      napi_get_int32(env, args[8]),
-      &out_size), out_size);
+    return setBinaryData(env, info, editor_set_scrollbar_config);
   }
 
   static napi_value getPositionRect(napi_env env, napi_callback_info info) {

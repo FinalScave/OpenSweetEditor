@@ -188,26 +188,26 @@ EDITOR_API const uint8_t* editor_set_gutter_sticky(intptr_t editor_handle, int s
 /// @param visible 0=hide entire gutter, non-zero=show gutter
 EDITOR_API const uint8_t* editor_set_gutter_visible(intptr_t editor_handle, int visible, size_t* out_size);
 
-/// Set selection handle hit-test configuration using offset rects
-/// @param start_left/start_top/start_right/start_bottom  Start handle hit area offset from cursor bottom anchor (handle tip)
-/// @param end_left/end_top/end_right/end_bottom  End handle hit area offset from cursor bottom anchor (handle tip)
-EDITOR_API const uint8_t* editor_set_handle_config(intptr_t editor_handle,
-    float start_left, float start_top, float start_right, float start_bottom,
-    float end_left, float end_top, float end_right, float end_bottom, size_t* out_size);
+/// Set selection handle hit-test configuration.
+/// @param data HandleConfig binary payload encoded by CoreProtocol:
+///        OffsetRect start_hit_offset
+///        OffsetRect end_hit_offset
+///        OffsetRect is f32 left, f32 top, f32 right, f32 bottom
+/// @param size payload byte length
+EDITOR_API const uint8_t* editor_set_handle_config(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
-/// Set scrollbar full configuration (geometry + behavior)
-/// @param thickness Scrollbar thickness in pixels
-/// @param min_thumb Minimum scrollbar thumb length in pixels
-/// @param thumb_hit_padding Extra thumb hit-test padding in pixels
-/// @param mode 0=ALWAYS, 1=TRANSIENT, 2=NEVER
-/// @param thumb_draggable 1=thumb drag enabled, 0=disabled
-/// @param track_tap_mode 0=JUMP, 1=DISABLED
-/// @param fade_delay_ms Delay before hide in TRANSIENT mode
-/// @param fade_duration_ms Fade duration in TRANSIENT mode (used for both fade-in and fade-out)
-EDITOR_API const uint8_t* editor_set_scrollbar_config(intptr_t editor_handle,
-    float thickness, float min_thumb, float thumb_hit_padding,
-    int mode, int thumb_draggable, int track_tap_mode,
-    int fade_delay_ms, int fade_duration_ms, size_t* out_size);
+/// Set scrollbar full configuration (geometry + behavior).
+/// @param data ScrollbarConfig binary payload encoded by CoreProtocol:
+///        f32 thickness
+///        f32 min_thumb
+///        f32 thumb_hit_padding
+///        enum_i32 mode
+///        bool_u8 thumb_draggable
+///        enum_i32 track_tap_mode
+///        u16 fade_delay_ms
+///        u16 fade_duration_ms
+/// @param size payload byte length
+EDITOR_API const uint8_t* editor_set_scrollbar_config(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Build render model for one editor frame
 /// @param out_size Output: payload byte length (bytes, excluding extra '\0' terminator)
@@ -320,24 +320,18 @@ EDITOR_API const uint8_t* get_layout_metrics(intptr_t editor_handle, size_t* out
 /// This is the only result payload for core state-changing APIs. Platforms should use needs_redraw from this payload
 /// to decide whether to flush editor state and schedule repaint.
 ///
-/// Handle gesture event
-/// @param type Event type
-/// @param pointer_count Finger point count
-/// @param points Data for each point
+/// Handle gesture event.
+/// @param data GestureEvent binary payload encoded by CoreProtocol:
+///        enum_i32 type
+///        List<PointF> points
+///        i32 modifiers
+///        f32 wheel_delta_x
+///        f32 wheel_delta_y
+///        f32 direct_scale
+///        PointF is f32 x followed by f32 y
+/// @param size payload byte length
 /// @return EditorActionResult binary payload, returns NULL on failure
-EDITOR_API const uint8_t* handle_editor_gesture_event(intptr_t editor_handle, uint8_t type, uint8_t pointer_count, float* points, size_t* out_size);
-
-/// Handle gesture event(extended version, supports modifier keys and wheel/scale parameters)
-/// @param type Event type
-/// @param pointer_count Finger point count
-/// @param points Data for each point
-/// @param modifiers Modifier key flags(SHIFT=1, CTRL=2, ALT=4, META=8)
-/// @param wheel_delta_x Horizontal wheel delta (used for MOUSE_WHEEL/DIRECT_SCROLL)
-/// @param wheel_delta_y Vertical wheel delta (used for MOUSE_WHEEL/DIRECT_SCROLL)
-/// @param direct_scale Direct scale value (used for DIRECT_SCALE)
-/// @return EditorActionResult binary payload, returns NULL on failure
-EDITOR_API const uint8_t* handle_editor_gesture_event_ex(intptr_t editor_handle, uint8_t type, uint8_t pointer_count, float* points,
-    uint8_t modifiers, float wheel_delta_x, float wheel_delta_y, float direct_scale, size_t* out_size);
+EDITOR_API const uint8_t* editor_handle_gesture_event(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Recompute pointer presentation for the last observed mouse position after modifier keys change.
 /// @param modifiers Modifier key flags(SHIFT=1, CTRL=2, ALT=4, META=8)
@@ -346,7 +340,7 @@ EDITOR_API const uint8_t* editor_update_pointer_modifiers(intptr_t editor_handle
 
 /// Tick edge-scroll during drag selection / handle drag.
 /// Call at ~16ms intervals while the previous EditorActionResult.needs_edge_scroll was true.
-/// Returns the same EditorActionResult binary layout as handle_editor_gesture_event.
+/// Returns the same EditorActionResult binary layout as editor_handle_gesture_event.
 /// When needs_edge_scroll becomes false in the returned payload, stop the timer.
 /// @return EditorActionResult binary payload
 EDITOR_API const uint8_t* editor_tick_edge_scroll(intptr_t editor_handle, size_t* out_size);
@@ -354,7 +348,7 @@ EDITOR_API const uint8_t* editor_tick_edge_scroll(intptr_t editor_handle, size_t
 /// Tick fling (inertial scroll) animation.
 /// Call each frame while the previous EditorActionResult.needs_fling was true.
 /// The core tracks real elapsed time internally; any frame interval is fine.
-/// Returns the same EditorActionResult binary layout as handle_editor_gesture_event.
+/// Returns the same EditorActionResult binary layout as editor_handle_gesture_event.
 /// When needs_fling becomes false in the returned payload, stop the timer.
 /// @return EditorActionResult binary payload
 EDITOR_API const uint8_t* editor_tick_fling(intptr_t editor_handle, size_t* out_size);
@@ -362,7 +356,7 @@ EDITOR_API const uint8_t* editor_tick_fling(intptr_t editor_handle, size_t* out_
 /// Unified animation tick: advances all active animations (edge-scroll, fling).
 /// Platform can use a single frame callback driven by needs_animation and call this
 /// instead of editor_tick_edge_scroll() / editor_tick_fling() separately.
-/// Returns the same EditorActionResult binary layout as handle_editor_gesture_event.
+/// Returns the same EditorActionResult binary layout as editor_handle_gesture_event.
 /// When needs_animation becomes false in the returned payload, stop the callback.
 /// @return EditorActionResult binary payload
 EDITOR_API const uint8_t* editor_tick_animations(intptr_t editor_handle, size_t* out_size);

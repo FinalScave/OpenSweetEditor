@@ -26,24 +26,6 @@ class SweetEditorException implements Exception {
   String toString() => 'SweetEditorException: $message';
 }
 
-class GestureEvent {
-  const GestureEvent({
-    required this.type,
-    required this.points,
-    this.modifiers = KeyModifier.none,
-    this.wheelDeltaX = 0,
-    this.wheelDeltaY = 0,
-    this.directScale = 1,
-  });
-
-  final EventType type;
-  final List<PointF> points;
-  final int modifiers;
-  final double wheelDeltaX;
-  final double wheelDeltaY;
-  final double directScale;
-}
-
 ffi.Pointer<ffi.Char> _toNativeUtf8(String value, ffi.Allocator allocator) {
   return value.toNativeUtf8(allocator: allocator).cast<ffi.Char>();
 }
@@ -328,37 +310,19 @@ class EditorCore {
 
   EditorActionResult setHandleConfig(HandleConfig config) {
     _ensureOpen();
-    return _callAndParseAction(
-      (outSize) => bindings.editor_set_handle_config(
-        _handle,
-        config.startHitOffset.left,
-        config.startHitOffset.top,
-        config.startHitOffset.right,
-        config.startHitOffset.bottom,
-        config.endHitOffset.left,
-        config.endHitOffset.top,
-        config.endHitOffset.right,
-        config.endHitOffset.bottom,
-        outSize,
-      ),
+    return _callWithBinaryActionData(
+      CoreProtocol.encodeHandleConfig(config),
+      (data, size, outSize) =>
+          bindings.editor_set_handle_config(_handle, data, size, outSize),
     );
   }
 
   EditorActionResult setScrollbarConfig(ScrollbarConfig config) {
     _ensureOpen();
-    return _callAndParseAction(
-      (outSize) => bindings.editor_set_scrollbar_config(
-        _handle,
-        config.thickness,
-        config.minThumb,
-        config.thumbHitPadding,
-        config.mode.value,
-        config.thumbDraggable ? 1 : 0,
-        config.trackTapMode.value,
-        config.fadeDelayMs,
-        config.fadeDurationMs,
-        outSize,
-      ),
+    return _callWithBinaryActionData(
+      CoreProtocol.encodeScrollbarConfig(config),
+      (data, size, outSize) =>
+          bindings.editor_set_scrollbar_config(_handle, data, size, outSize),
     );
   }
 
@@ -396,57 +360,12 @@ class EditorCore {
   }
 
   EditorActionResult handleGestureEvent(GestureEvent event) {
-    return handleGestureEventEx(
-      type: event.type,
-      points: event.points,
-      modifiers: event.modifiers,
-      wheelDeltaX: event.wheelDeltaX,
-      wheelDeltaY: event.wheelDeltaY,
-      directScale: event.directScale,
-    );
-  }
-
-  EditorActionResult handleGestureEventEx({
-    required EventType type,
-    required List<PointF> points,
-    int modifiers = 0,
-    double wheelDeltaX = 0,
-    double wheelDeltaY = 0,
-    double directScale = 0,
-  }) {
     _ensureOpen();
-    return using((arena) {
-      final flatPoints = <double>[];
-      for (final p in points) {
-        flatPoints.add(p.x);
-        flatPoints.add(p.y);
-      }
-      final pointsPtr = arena.allocate<ffi.Float>(
-        flatPoints.length * ffi.sizeOf<ffi.Float>(),
-      );
-      for (var i = 0; i < flatPoints.length; i++) {
-        (pointsPtr + i).value = flatPoints[i];
-      }
-      final outSize = arena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
-      final ptr = bindings.handle_editor_gesture_event_ex(
-        _handle,
-        type.value,
-        points.length,
-        pointsPtr,
-        modifiers,
-        wheelDeltaX,
-        wheelDeltaY,
-        directScale,
-        outSize,
-      );
-      if (ptr == ffi.nullptr) return const EditorActionResult();
-      final size = outSize.value;
-      try {
-        return CoreProtocol.decodeEditorActionResultFromPointer(ptr, size);
-      } finally {
-        bindings.free_binary_data(ptr.address);
-      }
-    });
+    return _callWithBinaryActionData(
+      CoreProtocol.encodeGestureEvent(event),
+      (data, size, outSize) =>
+          bindings.editor_handle_gesture_event(_handle, data, size, outSize),
+    );
   }
 
   EditorActionResult updatePointerModifiers(int modifiers) {

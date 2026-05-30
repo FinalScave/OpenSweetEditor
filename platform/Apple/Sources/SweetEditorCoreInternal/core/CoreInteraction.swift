@@ -91,6 +91,24 @@ public enum HitTargetType: Int32 {
     }
 }
 
+public struct GestureEvent {
+    public var type: EventType = .UNDEFINED
+    public var points: [PointF] = []
+    public var modifiers: Int32 = KeyModifier.NONE
+    public var wheel_delta_x: Float = 0
+    public var wheel_delta_y: Float = 0
+    public var direct_scale: Float = 1
+
+    public init(type: EventType = .UNDEFINED, points: [PointF] = [], modifiers: Int32 = KeyModifier.NONE, wheel_delta_x: Float = 0, wheel_delta_y: Float = 0, direct_scale: Float = 1) {
+        self.type = type
+        self.points = points
+        self.modifiers = modifiers
+        self.wheel_delta_x = wheel_delta_x
+        self.wheel_delta_y = wheel_delta_y
+        self.direct_scale = direct_scale
+    }
+}
+
 public struct HitTarget {
     public var type: HitTargetType = .NONE
     public var line: Int32 = 0

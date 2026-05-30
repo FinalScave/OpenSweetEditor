@@ -27,7 +27,6 @@ static napi_value Init(napi_env env, napi_value exports)
 
         // Gesture/keyboard
         NAPI_METHOD("handleEditorGestureEvent", EditorCoreNapi::handleGestureEvent),
-        NAPI_METHOD("handleEditorGestureEventEx", EditorCoreNapi::handleGestureEventEx),
         NAPI_METHOD("editorTickEdgeScroll", EditorCoreNapi::tickEdgeScroll),
         NAPI_METHOD("editorTickFling", EditorCoreNapi::tickFling),
         NAPI_METHOD("editorTickAnimations", EditorCoreNapi::tickAnimations),

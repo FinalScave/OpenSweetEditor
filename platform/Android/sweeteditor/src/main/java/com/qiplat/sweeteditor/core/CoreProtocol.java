@@ -46,6 +46,7 @@ import com.qiplat.sweeteditor.core.ime.ImeTextModelMode;
 import com.qiplat.sweeteditor.core.ime.ImeTextRange;
 import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
 import com.qiplat.sweeteditor.core.interaction.EventType;
+import com.qiplat.sweeteditor.core.interaction.GestureEvent;
 import com.qiplat.sweeteditor.core.interaction.GestureType;
 import com.qiplat.sweeteditor.core.interaction.HitTarget;
 import com.qiplat.sweeteditor.core.interaction.HitTargetType;
@@ -386,6 +387,36 @@ public final class CoreProtocol {
         if (values != null) {
             for (int i = 0; i < values.size(); i++) {
                 size += sizeOfPhantomText(values.get(i));
+            }
+        }
+        return size;
+    }
+
+    private static ArrayList<PointF> readPointFList(ByteBuffer data) {
+        int count = data.getInt();
+        if (count < 0 || count > data.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<PointF> values = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            values.add(readPointF(data));
+        }
+        return values;
+    }
+
+    private static void writePointFList(ByteBuffer data, java.util.List<? extends PointF> values) {
+        int count = values == null ? 0 : values.size();
+        data.putInt(count);
+        for (int i = 0; i < count; i++) {
+            writePointFFields(data, values.get(i));
+        }
+    }
+
+    private static int sizeOfPointFList(java.util.List<? extends PointF> values) {
+        int size = 4;
+        if (values != null) {
+            for (int i = 0; i < values.size(); i++) {
+                size += sizeOfPointF(values.get(i));
             }
         }
         return size;
@@ -1233,6 +1264,31 @@ public final class CoreProtocol {
 
     public static int sizeOfImeTextRange(ImeTextRange value) {
         int size = 0;
+        size += 4;
+        size += 4;
+        return size;
+    }
+
+    private static void writeGestureEventFields(ByteBuffer data, GestureEvent value) {
+        data.putInt(value.type.value);
+        writePointFList(data, value.points);
+        data.putInt(value.modifiers);
+        data.putFloat(value.wheelDeltaX);
+        data.putFloat(value.wheelDeltaY);
+        data.putFloat(value.directScale);
+    }
+
+    public static void writeGestureEvent(ByteBuffer data, GestureEvent value) {
+        prepare(data);
+        writeGestureEventFields(data, value);
+    }
+
+    public static int sizeOfGestureEvent(GestureEvent value) {
+        int size = 0;
+        size += 4;
+        size += sizeOfPointFList(value.points);
+        size += 4;
+        size += 4;
         size += 4;
         size += 4;
         return size;
@@ -2303,6 +2359,13 @@ public final class CoreProtocol {
     public static ByteBuffer encodeScrollbarConfig(ScrollbarConfig value) {
         ByteBuffer data = ByteBuffer.allocateDirect(sizeOfScrollbarConfig(value)).order(ByteOrder.LITTLE_ENDIAN);
         writeScrollbarConfigFields(data, value);
+        data.flip();
+        return data;
+    }
+
+    public static ByteBuffer encodeGestureEvent(GestureEvent value) {
+        ByteBuffer data = ByteBuffer.allocateDirect(sizeOfGestureEvent(value)).order(ByteOrder.LITTLE_ENDIAN);
+        writeGestureEventFields(data, value);
         data.flip();
         return data;
     }

@@ -46,21 +46,10 @@ void free_editor(intptr_t editor_handle);
 const uint8_t* set_editor_viewport(intptr_t editor_handle, int16_t width, int16_t height, size_t* out_size);
 const uint8_t* set_editor_document(intptr_t editor_handle, intptr_t document_handle, size_t* out_size);
 
-const uint8_t* handle_editor_gesture_event(intptr_t editor_handle,
-                                           uint8_t type,
-                                           uint8_t pointer_count,
-                                           float* points,
+const uint8_t* editor_handle_gesture_event(intptr_t editor_handle,
+                                           const uint8_t* data,
+                                           size_t size,
                                            size_t* out_size);
-
-const uint8_t* handle_editor_gesture_event_ex(intptr_t editor_handle,
-                                              uint8_t type,
-                                              uint8_t pointer_count,
-                                              float* points,
-                                              uint8_t modifiers,
-                                              float wheel_delta_x,
-                                              float wheel_delta_y,
-                                              float direct_scale,
-                                              size_t* out_size);
 
 const uint8_t* editor_update_pointer_modifiers(intptr_t editor_handle,
                                                uint8_t modifiers,
@@ -186,9 +175,8 @@ void editor_get_cursor_rect(intptr_t editor_handle,
 // ===================== Navigation API =====================
 
 const uint8_t* editor_set_scrollbar_config(intptr_t editor_handle,
-                                           float thickness, float min_thumb, float thumb_hit_padding,
-                                           int mode, int thumb_draggable, int track_tap_mode,
-                                           int fade_delay_ms, int fade_duration_ms,
+                                           const uint8_t* data,
+                                           size_t size,
                                            size_t* out_size);
 const uint8_t* editor_scroll_to_line(intptr_t editor_handle, size_t line, uint8_t behavior, size_t* out_size);
 const uint8_t* editor_goto_position(intptr_t editor_handle, size_t line, size_t column, size_t* out_size);

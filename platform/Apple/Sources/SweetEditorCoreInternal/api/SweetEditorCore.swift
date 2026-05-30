@@ -344,24 +344,17 @@ class SweetEditorCore {
                             modifiers: SEModifier = [],
                             wheelDeltaX: Float = 0, wheelDeltaY: Float = 0,
                             directScale: Float = 1) -> EditorActionResult? {
-        return performCoreCall {
-            var pointsArr: [Float] = []
-            for p in points {
-                pointsArr.append(p.0)
-                pointsArr.append(p.1)
-            }
-            var size: Int = 0
-            let ptr = pointsArr.withUnsafeMutableBufferPointer { buf in
-                handle_editor_gesture_event_ex(
-                    handle, type.rawValue,
-                    UInt8(points.count),
-                    buf.baseAddress,
-                    modifiers.rawValue,
-                    wheelDeltaX, wheelDeltaY, directScale,
-                    &size
-                )
-            }
-            return decodeEditorActionPayload(ptr, size: size)
+        let event = GestureEvent(
+            type: EventType.fromValue(Int32(type.rawValue)),
+            points: points.map { PointF(x: $0.0, y: $0.1) },
+            modifiers: Int32(modifiers.rawValue),
+            wheel_delta_x: wheelDeltaX,
+            wheel_delta_y: wheelDeltaY,
+            direct_scale: directScale
+        )
+        let payload = CoreProtocol.encodeGestureEvent(event)
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_handle_gesture_event(handle, ptr, size, &outSize)
         }
     }
 
@@ -808,21 +801,9 @@ class SweetEditorCore {
     @discardableResult
     func setScrollbarConfig(_ config: ScrollbarConfig) -> EditorActionResult? {
         scrollbarConfig = config
-        return performCoreCall {
-            var size: Int = 0
-            let ptr = editor_set_scrollbar_config(
-                handle,
-                config.thickness,
-                config.minThumb,
-                config.thumbHitPadding,
-                config.mode.rawValue,
-                config.thumbDraggable ? 1 : 0,
-                config.trackTapMode.rawValue,
-                config.fadeDelayMs,
-                config.fadeDurationMs,
-                &size
-            )
-            return decodeEditorActionPayload(ptr, size: size)
+        let payload = CoreProtocol.encodeScrollbarConfig(config)
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_scrollbar_config(handle, ptr, size, &outSize)
         }
     }
 

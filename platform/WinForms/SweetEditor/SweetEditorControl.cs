@@ -1582,7 +1582,7 @@ namespace SweetEditor {
 				EditorActionResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.MOUSE_DOWN,
 					Points = [new PointF(e.X, e.Y)],
-					Modifiers = mods,
+					Modifiers = (int)mods,
 					DirectScale = 1
 				});
 				DispatchEditorActionResult(gestureResult);
@@ -1590,7 +1590,7 @@ namespace SweetEditor {
 				EditorActionResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.MOUSE_RIGHT_DOWN,
 					Points = [new PointF(e.X, e.Y)],
-					Modifiers = mods,
+					Modifiers = (int)mods,
 					DirectScale = 1
 				});
 				DispatchEditorActionResult(gestureResult);
@@ -1604,7 +1604,7 @@ namespace SweetEditor {
 			EditorActionResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.MOUSE_MOVE,
 				Points = [new PointF(e.X, e.Y)],
-				Modifiers = mods,
+				Modifiers = (int)mods,
 				DirectScale = 1
 			});
 			DispatchEditorActionResult(gestureResult);
@@ -1616,7 +1616,7 @@ namespace SweetEditor {
 			EditorActionResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.MOUSE_MOVE,
 				Points = [new PointF(clientPoint.X, clientPoint.Y)],
-				Modifiers = GetCurrentModifiers(),
+				Modifiers = (int)GetCurrentModifiers(),
 				DirectScale = 1
 			});
 			DispatchEditorActionResult(gestureResult);
@@ -1627,7 +1627,7 @@ namespace SweetEditor {
 			EditorActionResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.MOUSE_MOVE,
 				Points = [new PointF(-1, -1)],
-				Modifiers = GetCurrentModifiers(),
+				Modifiers = (int)GetCurrentModifiers(),
 				DirectScale = 1
 			});
 			DispatchEditorActionResult(gestureResult);
@@ -1641,7 +1641,7 @@ namespace SweetEditor {
 				EditorActionResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.MOUSE_UP,
 					Points = [new PointF(e.X, e.Y)],
-					Modifiers = mods,
+					Modifiers = (int)mods,
 					DirectScale = 1
 				});
 				DispatchEditorActionResult(gestureResult);
@@ -1656,7 +1656,7 @@ namespace SweetEditor {
 			EditorActionResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.MOUSE_WHEEL,
 				Points = [new PointF(e.X, e.Y)],
-				Modifiers = mods,
+				Modifiers = (int)mods,
 				WheelDeltaY = deltaY,
 				DirectScale = 1
 			});

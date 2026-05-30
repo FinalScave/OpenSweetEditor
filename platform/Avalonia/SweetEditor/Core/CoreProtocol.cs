@@ -392,6 +392,34 @@ namespace SweetEditor {
             return size;
         }
 
+        private static List<PointF> ReadPointFList(ref BinaryReader reader) {
+            var count = reader.ReadInt32();
+            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
+            var values = new List<PointF>(count);
+            for (var i = 0; i < count; i++) {
+                values.Add(ReadPointF(ref reader));
+            }
+            return values;
+        }
+
+        private static void WritePointFList(BinaryWriter writer, IReadOnlyList<PointF>? values) {
+            var count = values == null ? 0 : values.Count;
+            writer.WriteInt32(count);
+            for (var i = 0; i < count; i++) {
+                WritePointF(writer, values![i]);
+            }
+        }
+
+        private static int SizeOfPointFList(IReadOnlyList<PointF>? values) {
+            var size = 4;
+            if (values != null) {
+                for (var i = 0; i < values.Count; i++) {
+                    size += SizeOfPointF(values[i]);
+                }
+            }
+            return size;
+        }
+
         private static List<Rect> ReadRectList(ref BinaryReader reader) {
             var count = reader.ReadInt32();
             if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
@@ -1105,6 +1133,26 @@ namespace SweetEditor {
 
         private static int SizeOfImeTextRange(ImeTextRange value) {
             var size = 0;
+            size += 4;
+            size += 4;
+            return size;
+        }
+
+        private static void WriteGestureEvent(BinaryWriter writer, GestureEvent value) {
+            writer.WriteInt32((int)value.Type);
+            WritePointFList(writer, value.Points);
+            writer.WriteInt32(value.Modifiers);
+            writer.WriteFloat32(value.WheelDeltaX);
+            writer.WriteFloat32(value.WheelDeltaY);
+            writer.WriteFloat32(value.DirectScale);
+        }
+
+        private static int SizeOfGestureEvent(GestureEvent value) {
+            var size = 0;
+            size += 4;
+            size += SizeOfPointFList(value.Points);
+            size += 4;
+            size += 4;
             size += 4;
             size += 4;
             return size;
@@ -2016,6 +2064,12 @@ namespace SweetEditor {
         public static byte[] EncodeScrollbarConfig(ScrollbarConfig value) {
             var writer = new BinaryWriter(SizeOfScrollbarConfig(value));
             WriteScrollbarConfig(writer, value);
+            return writer.ToArray();
+        }
+
+        public static byte[] EncodeGestureEvent(GestureEvent value) {
+            var writer = new BinaryWriter(SizeOfGestureEvent(value));
+            WriteGestureEvent(writer, value);
             return writer.ToArray();
         }
 

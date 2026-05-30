@@ -17,8 +17,7 @@ export const buildEditorRenderModel: (handle: number) => ArrayBuffer | undefined
 export const getLayoutMetrics: (handle: number) => ArrayBuffer | undefined;
 
 // Gesture/keyboard
-export const handleEditorGestureEvent: (handle: number, type: number, pointerCount: number, points: number[]) => ArrayBuffer | undefined;
-export const handleEditorGestureEventEx: (handle: number, type: number, pointerCount: number, points: number[], modifiers: number, wheelDeltaX: number, wheelDeltaY: number, directScale: number) => ArrayBuffer | undefined;
+export const handleEditorGestureEvent: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
 export const editorTickEdgeScroll: (handle: number) => ArrayBuffer | undefined;
 export const editorTickFling: (handle: number) => ArrayBuffer | undefined;
 export const editorTickAnimations: (handle: number) => ArrayBuffer | undefined;
@@ -121,8 +120,8 @@ export const editorGetAutoIndentMode: (handle: number) => number;
 export const editorSetBackspaceUnindent: (handle: number, enabled: number) => ArrayBuffer | undefined;
 
 // Handle/scrollbar config
-export const editorSetHandleConfig: (handle: number, startLeft: number, startTop: number, startRight: number, startBottom: number, endLeft: number, endTop: number, endRight: number, endBottom: number) => ArrayBuffer | undefined;
-export const editorSetScrollbarConfig: (handle: number, thickness: number, minThumb: number, thumbHitPadding: number, mode: number, thumbDraggable: boolean, trackTapMode: number, fadeDelayMs: number, fadeDurationMs: number) => ArrayBuffer | undefined;
+export const editorSetHandleConfig: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
+export const editorSetScrollbarConfig: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
 
 // Position query
 export const editorGetPositionRect: (handle: number, line: number, column: number) => number[];

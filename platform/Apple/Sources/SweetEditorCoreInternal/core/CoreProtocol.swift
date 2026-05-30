@@ -507,6 +507,32 @@ enum CoreProtocol {
         return size
     }
 
+    static func readPointFList(_ reader: inout BinaryReader) -> [PointF]? {
+        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
+        var values: [PointF] = []
+        values.reserveCapacity(Int(countValue))
+        for _ in 0..<Int(countValue) {
+            guard let value = readPointF(&reader) else { return nil }
+            values.append(value)
+        }
+        return values
+    }
+
+    static func writePointFList(_ writer: inout BinaryWriter, _ values: [PointF]) {
+        writer.writeInt32(Int32(values.count))
+        for value in values {
+            writePointF(&writer, value)
+        }
+    }
+
+    static func sizeOfPointFList(_ values: [PointF]) -> Int {
+        var size = 4
+        for value in values {
+            size += sizeOfPointF(value)
+        }
+        return size
+    }
+
     static func readRectList(_ reader: inout BinaryReader) -> [Rect]? {
         guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
         var values: [Rect] = []
@@ -1182,6 +1208,19 @@ enum CoreProtocol {
 
     static func sizeOfImeTextRange(_ value: ImeTextRange) -> Int {
         4 + 4
+    }
+
+    static func writeGestureEvent(_ writer: inout BinaryWriter, _ value: GestureEvent) {
+        writer.writeInt32(value.type.rawValue)
+        writePointFList(&writer, value.points)
+        writer.writeInt32(value.modifiers)
+        writer.writeFloat32(value.wheel_delta_x)
+        writer.writeFloat32(value.wheel_delta_y)
+        writer.writeFloat32(value.direct_scale)
+    }
+
+    static func sizeOfGestureEvent(_ value: GestureEvent) -> Int {
+        4 + sizeOfPointFList(value.points) + 4 + 4 + 4 + 4
     }
 
     static func readHitTarget(_ reader: inout BinaryReader) -> HitTarget? {
@@ -2115,6 +2154,12 @@ enum CoreProtocol {
     static func encodeScrollbarConfig(_ value: ScrollbarConfig) -> Data {
         var writer = BinaryWriter()
         writeScrollbarConfig(&writer, value)
+        return writer.data()
+    }
+
+    static func encodeGestureEvent(_ value: GestureEvent) -> Data {
+        var writer = BinaryWriter()
+        writeGestureEvent(&writer, value)
         return writer.data()
     }
 

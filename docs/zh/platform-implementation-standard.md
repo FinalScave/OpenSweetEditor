@@ -200,7 +200,7 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 |---|---|
 | 配置 | `loadDocument(doc)`, `setViewport(w, h)`, `onFontMetricsChanged()`, `setFoldArrowMode(mode)`, `setWrapMode(mode)`, `setTabSize(size)`, `setInsertSpaces(enabled)`, `setScale(scale)`, `setLineSpacing(add, mult)`, `setContentStartPadding(padding)`, `setShowSplitLine(show)`, `setCurrentLineRenderMode(mode)`, `setGutterSticky(sticky)`, `setGutterVisible(visible)`, `setHandleConfig(...)`, `setScrollbarConfig(...)` |
 | 渲染模型 | `buildRenderModel()`, `getLayoutMetrics()` |
-| 手势 / 键盘 | `handleGestureEvent(...)`, `handleGestureEventEx(...)`, `tickEdgeScroll()`, `tickFling()`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(keyMap)` |
+| 手势 / 键盘 | `handleGestureEvent(...)`, `tickEdgeScroll()`, `tickFling()`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(keyMap)` |
 | 文本编辑 | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `backspace()`, `deleteForward()`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
 | 撤销 / 重做 | `undo()`, `redo()`, `canUndo()`, `canRedo()` |
 | 光标 / 选区 | `setCursorPosition(line, col)`, `getCursorPosition()`, `selectAll()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `getSelectedText()`, `getWordRangeAtCursor()`, `getWordAtCursor()`, `moveCursorLeft(extend)`, `moveCursorRight(extend)`, `moveCursorUp(extend)`, `moveCursorDown(extend)`, `moveCursorToLineStart(extend)`, `moveCursorToLineEnd(extend)` |
@@ -630,7 +630,7 @@ ContextMenuEvent      // 具有显式上下文菜单手势入口的平台
 
 ### 11.4 `EditorActionResult` 手势字段契约
 
-平台 MAY 直接暴露 `handleGestureEvent(...)` / `handleGestureEventEx(...)` 的返回值，也 MAY 仅在内部消费；但手势处理的返回值 MUST 是 `EditorActionResult` 或平台等价类型。下列手势相关字段 MUST 保持与 Core 一致的语义，并通过统一结果分发入口消费：
+平台 MAY 直接暴露 `handleGestureEvent(...)` 的返回值，也 MAY 仅在内部消费；但手势处理的返回值 MUST 是 `EditorActionResult` 或平台等价类型。下列手势相关字段 MUST 保持与 Core 一致的语义，并通过统一结果分发入口消费：
 
 | 字段 | 类型 | MUST/MAY | 说明 |
 |---|---|---|---|

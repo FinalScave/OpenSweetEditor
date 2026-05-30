@@ -16,7 +16,7 @@ import {
   ScrollbarConfig,
   WrapMode
 } from './CoreConfig';
-import { EventType } from './CoreInteraction';
+import { EventType, GestureEvent } from './CoreInteraction';
 import {
   ImeInputContext,
   ImeScriptClass,
@@ -55,15 +55,6 @@ export enum EditorEventType {
   GutterIconClick,
   InlayHintClick,
   FoldToggle
-}
-
-export interface GestureEvent {
-  type: EventType;
-  points: PointF[];
-  modifiers: number;
-  wheelDeltaX: number;
-  wheelDeltaY: number;
-  directScale: number;
 }
 
 export class Document {
@@ -221,30 +212,19 @@ export class EditorCore {
   // ==================== Gesture/Keyboard Event Handling ====================
 
   handleGestureEvent(event: GestureEvent): EditorActionResult {
-    const pointsArray: number[] = [];
-    for (const p of event.points) {
-      pointsArray.push(p.x, p.y);
-    }
-    const payload = native.handleEditorGestureEventEx(
-      this.handle,
-      event.type as number,
-      event.points.length,
-      pointsArray,
-      event.modifiers as number,
-      event.wheelDeltaX,
-      event.wheelDeltaY,
-      event.directScale
-    );
+    const data = CoreProtocol.encodeGestureEvent(event);
+    const payload = native.handleEditorGestureEvent(this.handle, data, data.byteLength);
     return CoreProtocol.decodeEditorActionResult(payload);
-  }
-
-  handleGestureEventEx(event: GestureEvent): EditorActionResult {
-    return this.handleGestureEvent(event);
   }
 
   handleSimpleGestureEvent(type: EventType, pointerCount: number, points: number[]): EditorActionResult {
-    const payload = native.handleEditorGestureEvent(this.handle, type as number, pointerCount, points);
-    return CoreProtocol.decodeEditorActionResult(payload);
+    const event = new GestureEvent();
+    event.type = type;
+    const count = Math.min(pointerCount, Math.floor(points.length / 2));
+    for (let i = 0; i < count; i++) {
+      event.points.push({ x: points[i * 2], y: points[i * 2 + 1] });
+    }
+    return this.handleGestureEvent(event);
   }
 
   tickEdgeScroll(): EditorActionResult {
@@ -730,11 +710,8 @@ export class EditorCore {
 
   setHandleConfig(config: HandleConfig): EditorActionResult {
     this.handleConfig = config;
-    const start = config.startHitOffset;
-    const end = config.endHitOffset;
-    return CoreProtocol.decodeEditorActionResult(native.editorSetHandleConfig(this.handle,
-      start.left, start.top, start.right, start.bottom,
-      end.left, end.top, end.right, end.bottom));
+    const data = CoreProtocol.encodeHandleConfig(config);
+    return CoreProtocol.decodeEditorActionResult(native.editorSetHandleConfig(this.handle, data, data.byteLength));
   }
 
   getHandleConfig(): HandleConfig {
@@ -745,10 +722,8 @@ export class EditorCore {
 
   setScrollbarConfig(config: ScrollbarConfig): EditorActionResult {
     this.scrollbarConfig = config;
-    return CoreProtocol.decodeEditorActionResult(native.editorSetScrollbarConfig(this.handle,
-      config.thickness, config.minThumb, config.thumbHitPadding,
-      config.mode as number, config.thumbDraggable,
-      config.trackTapMode as number, config.fadeDelayMs, config.fadeDurationMs));
+    const data = CoreProtocol.encodeScrollbarConfig(config);
+    return CoreProtocol.decodeEditorActionResult(native.editorSetScrollbarConfig(this.handle, data, data.byteLength));
   }
 
   getScrollbarConfig(): ScrollbarConfig {

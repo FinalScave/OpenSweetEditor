@@ -102,6 +102,24 @@ enum HitTargetType {
   }
 }
 
+class GestureEvent {
+  const GestureEvent({
+    this.type = EventType.undefined,
+    this.points = const [],
+    this.modifiers = 0,
+    this.wheelDeltaX = 0.0,
+    this.wheelDeltaY = 0.0,
+    this.directScale = 1.0,
+  });
+
+  final EventType type;
+  final List<PointF> points;
+  final int modifiers;
+  final double wheelDeltaX;
+  final double wheelDeltaY;
+  final double directScale;
+}
+
 class HitTarget {
   const HitTarget({
     this.type = HitTargetType.none,

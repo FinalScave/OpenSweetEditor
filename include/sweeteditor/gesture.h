@@ -109,12 +109,14 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Gesture event data passed from platform layer
-  struct GestureEvent {
+  struct SE_PROTOCOL_IN(interaction) GestureEvent {
     /// Gesture event type
+    SE_PROTOCOL_WIRE(enum_i32)
     EventType type {EventType::UNDEFINED};
     /// Pointer coordinates
     Vector<PointF> points;
     /// Modifier key state (Shift/Ctrl/Alt/Meta bitmask)
+    SE_PROTOCOL_WIRE(i32)
     KeyModifier modifiers {KeyModifier::NONE};
     /// Wheel delta for MOUSE_WHEEL (positive: up/right, negative: down/left)
     float wheel_delta_x {0};
