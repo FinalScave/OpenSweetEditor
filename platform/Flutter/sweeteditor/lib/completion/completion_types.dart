@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 
-import '../editor_core.dart' as core;
+import '../core/editor_core.dart' as core;
 import '../editor_types.dart';
 
 /// Completion item data model.

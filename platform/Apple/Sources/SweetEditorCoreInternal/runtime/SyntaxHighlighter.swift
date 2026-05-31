@@ -62,7 +62,7 @@ class SyntaxHighlighter {
         for line in 0..<lineCount {
             let spans = highlightLine(document: document, line: line)
             let mapped = spans.map {
-                SweetEditorCore.StyleSpan(column: $0.column, length: $0.length, styleId: $0.styleId)
+                StyleSpan(column: $0.column, length: $0.length, styleId: $0.styleId)
             }
             core.setLineSpans(line: Int(line), layer: 0, spans: mapped)
         }

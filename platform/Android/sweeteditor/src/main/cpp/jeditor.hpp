@@ -3,9 +3,9 @@
 
 #include <jni.h>
 #include <vector>
-#include <cstring>
 #include <sweeteditor/editor_core.h>
 #include <sweeteditor/document.h>
+#include <sweeteditor/protocol_codec.h>
 #include "jni_helper.h"
 
 using namespace NS_SWEETEDITOR;
@@ -204,27 +204,13 @@ jmethodID AndroidTextMeasurer::m_jmethod_getFontDescent_ = nullptr;
 class EditorCoreJni {
 public:
   static jlong makeEditorCore(JNIEnv* env, jclass clazz, jobject measurer, jobject options_buffer, jint options_size) {
-    // Zero-copy decode: get direct ByteBuffer address
     EditorOptions editor_options;
-    if (options_buffer != nullptr && options_size >= 40) {
+    if (options_buffer != nullptr && options_size > 0) {
       auto* data_ptr = reinterpret_cast<const uint8_t*>(env->GetDirectBufferAddress(options_buffer));
       if (data_ptr != nullptr) {
-        size_t offset = 0;
-        std::memcpy(&editor_options.touch_slop, data_ptr + offset, sizeof(float)); offset += sizeof(float);
-        std::memcpy(&editor_options.double_tap_timeout, data_ptr + offset, sizeof(int64_t)); offset += sizeof(int64_t);
-        std::memcpy(&editor_options.long_press_ms, data_ptr + offset, sizeof(int64_t)); offset += sizeof(int64_t);
-        std::memcpy(&editor_options.fling_friction, data_ptr + offset, sizeof(float)); offset += sizeof(float);
-        std::memcpy(&editor_options.fling_min_velocity, data_ptr + offset, sizeof(float)); offset += sizeof(float);
-        std::memcpy(&editor_options.fling_max_velocity, data_ptr + offset, sizeof(float)); offset += sizeof(float);
-        uint64_t max_undo = 0;
-        std::memcpy(&max_undo, data_ptr + offset, sizeof(uint64_t)); offset += sizeof(uint64_t);
-        editor_options.max_undo_stack_size = static_cast<size_t>(max_undo);
-        if (offset + sizeof(int64_t) <= static_cast<size_t>(options_size)) {
-          std::memcpy(&editor_options.key_chord_timeout_ms, data_ptr + offset, sizeof(int64_t));
-          offset += sizeof(int64_t);
-        }
-        if (offset + sizeof(uint8_t) <= static_cast<size_t>(options_size)) {
-          editor_options.reveal_selection_end_on_select_all = data_ptr[offset] != 0;
+        EditorOptions decoded_options;
+        if (protocol::ProtocolReader::decode(data_ptr, static_cast<size_t>(options_size), decoded_options)) {
+          editor_options = decoded_options;
         }
       }
     }
@@ -273,7 +259,7 @@ public:
   static jobject setViewport(JNIEnv* env, jclass clazz, jlong handle, jint width, jint height) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
-    const uint8_t* payload = set_editor_viewport(static_cast<intptr_t>(handle),
+    const uint8_t* payload = editor_set_viewport(static_cast<intptr_t>(handle),
                                                  static_cast<int16_t>(width),
                                                  static_cast<int16_t>(height),
                                                  &out_size);
@@ -283,51 +269,14 @@ public:
   static jobject loadDocument(JNIEnv* env, jclass clazz, jlong handle, jlong doc_handle) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
-    const uint8_t* payload = set_editor_document(static_cast<intptr_t>(handle),
+    const uint8_t* payload = editor_set_document(static_cast<intptr_t>(handle),
                                                  static_cast<intptr_t>(doc_handle),
                                                  &out_size);
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static jobject handleGestureEvent(JNIEnv* env, jclass clazz, jlong handle, jint type, jint pointer_count, jfloatArray points) {
-    if (handle == 0 || (pointer_count > 0 && points == nullptr)) {
-      return nullptr;
-    }
-    size_t out_size = 0;
-    jfloat* points_arr = points != nullptr ? env->GetFloatArrayElements(points, nullptr) : nullptr;
-    const uint8_t* payload = handle_editor_gesture_event(static_cast<intptr_t>(handle),
-                                                         static_cast<uint8_t>(type),
-                                                         static_cast<uint8_t>(pointer_count),
-                                                         points_arr,
-                                                         &out_size);
-    if (points != nullptr && points_arr != nullptr) {
-      env->ReleaseFloatArrayElements(points, points_arr, JNI_ABORT);
-    }
-    return wrapBinaryPayload(env, payload, out_size);
-  }
-
-  static jobject handleGestureEventEx(JNIEnv* env, jclass clazz, jlong handle, jint type, jint pointer_count,
-                                      jfloatArray points, jint modifiers, jfloat wheel_delta_x,
-                                      jfloat wheel_delta_y, jfloat direct_scale) {
-    if (handle == 0 || (pointer_count > 0 && points == nullptr)) {
-      return nullptr;
-    }
-    size_t out_size = 0;
-    jfloat* points_arr = points != nullptr ? env->GetFloatArrayElements(points, nullptr) : nullptr;
-    const uint8_t* payload = handle_editor_gesture_event_ex(
-        static_cast<intptr_t>(handle),
-        static_cast<uint8_t>(type),
-        static_cast<uint8_t>(pointer_count),
-        points_arr,
-        static_cast<uint8_t>(modifiers),
-        static_cast<float>(wheel_delta_x),
-        static_cast<float>(wheel_delta_y),
-        static_cast<float>(direct_scale),
-        &out_size);
-    if (points != nullptr && points_arr != nullptr) {
-      env->ReleaseFloatArrayElements(points, points_arr, JNI_ABORT);
-    }
-    return wrapBinaryPayload(env, payload, out_size);
+  static jobject handleGestureEvent(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_handle_gesture_event);
   }
 
   static jobject onFontMetricsChanged(JNIEnv* env, jclass clazz, jlong handle) {
@@ -348,20 +297,6 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static jobject tickEdgeScroll(JNIEnv* env, jclass clazz, jlong handle) {
-    if (handle == 0) return nullptr;
-    size_t out_size = 0;
-    const uint8_t* payload = editor_tick_edge_scroll(static_cast<intptr_t>(handle), &out_size);
-    return wrapBinaryPayload(env, payload, out_size);
-  }
-
-  static jobject tickFling(JNIEnv* env, jclass clazz, jlong handle) {
-    if (handle == 0) return nullptr;
-    size_t out_size = 0;
-    const uint8_t* payload = editor_tick_fling(static_cast<intptr_t>(handle), &out_size);
-    return wrapBinaryPayload(env, payload, out_size);
-  }
-
   static jobject tickAnimations(JNIEnv* env, jclass clazz, jlong handle) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
@@ -371,13 +306,13 @@ public:
 
   static jobject buildRenderModel(JNIEnv* env, jclass clazz, jlong handle) {
     size_t out_size = 0;
-    return wrapBinaryPayload(env, build_editor_render_model(static_cast<intptr_t>(handle), &out_size), out_size);
+    return wrapBinaryPayload(env, editor_build_render_model(static_cast<intptr_t>(handle), &out_size), out_size);
   }
 
   static jobject getLayoutMetrics(JNIEnv* env, jclass clazz, jlong handle) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
-    return wrapBinaryPayload(env, get_layout_metrics(static_cast<intptr_t>(handle), &out_size), out_size);
+    return wrapBinaryPayload(env, editor_get_layout_metrics(static_cast<intptr_t>(handle), &out_size), out_size);
   }
 
   static jobject handleKeyEvent(JNIEnv* env, jclass clazz, jlong handle, jint key_code, jstring text, jint modifiers) {
@@ -386,7 +321,7 @@ public:
     }
     const char* text_str = text != nullptr ? env->GetStringUTFChars(text, JNI_FALSE) : nullptr;
     size_t out_size = 0;
-    const uint8_t* payload = handle_editor_key_event(static_cast<intptr_t>(handle),
+    const uint8_t* payload = editor_handle_key_event(static_cast<intptr_t>(handle),
                                                      static_cast<uint16_t>(key_code),
                                                      text_str,
                                                      static_cast<uint8_t>(modifiers),
@@ -626,56 +561,16 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static jobject imeReplaceText(JNIEnv* env, jclass clazz, jlong handle,
-                                jlong startLine, jlong startColumn, jlong endLine, jlong endColumn,
-                                jstring text, jint scriptHint) {
-    if (handle == 0) return nullptr;
-    const char* text_str = text != nullptr ? env->GetStringUTFChars(text, JNI_FALSE) : "";
-    size_t out_size = 0;
-    const uint8_t* payload = editor_ime_replace_text(static_cast<intptr_t>(handle),
-                                                     static_cast<size_t>(startLine),
-                                                     static_cast<size_t>(startColumn),
-                                                     static_cast<size_t>(endLine),
-                                                     static_cast<size_t>(endColumn),
-                                                     text_str,
-                                                     static_cast<int>(scriptHint),
-                                                     &out_size);
-    if (text != nullptr) env->ReleaseStringUTFChars(text, text_str);
-    return wrapBinaryPayload(env, payload, out_size);
+  static jobject imeReplaceText(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_ime_replace_text);
   }
 
-  static jobject imeReplaceDocumentText(JNIEnv* env, jclass clazz, jlong handle,
-                                        jlong startOffset, jlong endOffset, jstring text,
-                                        jint cursorOffset, jint scriptHint) {
-    if (handle == 0) return nullptr;
-    const char* text_str = text != nullptr ? env->GetStringUTFChars(text, JNI_FALSE) : "";
-    size_t out_size = 0;
-    const uint8_t* payload = editor_ime_replace_document_text(static_cast<intptr_t>(handle),
-                                                             static_cast<size_t>(startOffset),
-                                                             static_cast<size_t>(endOffset),
-                                                             text_str,
-                                                             static_cast<int>(cursorOffset),
-                                                             static_cast<int>(scriptHint),
-                                                             &out_size);
-    if (text != nullptr) env->ReleaseStringUTFChars(text, text_str);
-    return wrapBinaryPayload(env, payload, out_size);
+  static jobject imeReplaceDocumentText(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_ime_replace_document_text);
   }
 
-  static jobject imeReplaceInputContextText(JNIEnv* env, jclass clazz, jlong handle,
-                                            jlong startOffset, jlong endOffset, jstring text,
-                                            jint cursorOffset, jint scriptHint) {
-    if (handle == 0) return nullptr;
-    const char* text_str = text != nullptr ? env->GetStringUTFChars(text, JNI_FALSE) : "";
-    size_t out_size = 0;
-    const uint8_t* payload = editor_ime_replace_input_context_text(static_cast<intptr_t>(handle),
-                                                                   static_cast<size_t>(startOffset),
-                                                                   static_cast<size_t>(endOffset),
-                                                                   text_str,
-                                                                   static_cast<int>(cursorOffset),
-                                                                   static_cast<int>(scriptHint),
-                                                                   &out_size);
-    if (text != nullptr) env->ReleaseStringUTFChars(text, text_str);
-    return wrapBinaryPayload(env, payload, out_size);
+  static jobject imeReplaceInputContextText(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_ime_replace_input_context_text);
   }
 
   static jobject imeMarkInputContextRange(JNIEnv* env, jclass clazz, jlong handle,
@@ -714,27 +609,8 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static jobject imeUpdateInputStateText(JNIEnv* env, jclass clazz, jlong handle,
-                                         jlong contextId, jint documentStartOffset, jstring text,
-                                         jint selectionStartOffset, jint selectionEndOffset,
-                                         jint composingStartOffset, jint composingEndOffset,
-                                         jint scriptHint) {
-    if (handle == 0) return nullptr;
-    const char* text_str = text != nullptr ? env->GetStringUTFChars(text, JNI_FALSE) : "";
-    size_t out_size = 0;
-    const uint8_t* payload = editor_ime_update_input_state_text(
-        static_cast<intptr_t>(handle),
-        static_cast<uint64_t>(contextId),
-        static_cast<int32_t>(documentStartOffset),
-        text_str,
-        static_cast<int32_t>(selectionStartOffset),
-        static_cast<int32_t>(selectionEndOffset),
-        static_cast<int32_t>(composingStartOffset),
-        static_cast<int32_t>(composingEndOffset),
-        static_cast<int>(scriptHint),
-        &out_size);
-    if (text != nullptr) env->ReleaseStringUTFChars(text, text_str);
-    return wrapBinaryPayload(env, payload, out_size);
+  static jobject imeUpdateTextModelState(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_ime_update_text_model_state);
   }
 
   static jobject imeUpdateInputStateSelection(JNIEnv* env, jclass clazz, jlong handle,
@@ -752,25 +628,8 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static jobject imeReplaceInputStateText(JNIEnv* env, jclass clazz, jlong handle,
-                                          jlong contextId, jint documentStartOffset,
-                                          jlong startOffset, jlong endOffset, jstring text,
-                                          jint cursorOffset, jint scriptHint) {
-    if (handle == 0) return nullptr;
-    const char* text_str = text != nullptr ? env->GetStringUTFChars(text, JNI_FALSE) : "";
-    size_t out_size = 0;
-    const uint8_t* payload = editor_ime_replace_input_state_text(
-        static_cast<intptr_t>(handle),
-        static_cast<uint64_t>(contextId),
-        static_cast<int32_t>(documentStartOffset),
-        static_cast<size_t>(startOffset),
-        static_cast<size_t>(endOffset),
-        text_str,
-        static_cast<int>(cursorOffset),
-        static_cast<int>(scriptHint),
-        &out_size);
-    if (text != nullptr) env->ReleaseStringUTFChars(text, text_str);
-    return wrapBinaryPayload(env, payload, out_size);
+  static jobject imeReplaceInputStateText(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_ime_replace_input_state_text);
   }
 
   static jobject imeDeleteBackward(JNIEnv* env, jclass clazz, jlong handle, jlong beforeLength, jint textUnit) {
@@ -904,31 +763,12 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static jobject setHandleConfig(JNIEnv* env, jclass clazz, jlong handle,
-      jfloat startLeft, jfloat startTop, jfloat startRight, jfloat startBottom,
-      jfloat endLeft, jfloat endTop, jfloat endRight, jfloat endBottom) {
-    if (handle == 0) return nullptr;
-    size_t out_size = 0;
-    const uint8_t* payload = editor_set_handle_config(static_cast<intptr_t>(handle),
-        startLeft, startTop, startRight, startBottom,
-        endLeft, endTop, endRight, endBottom, &out_size);
-    return wrapBinaryPayload(env, payload, out_size);
+  static jobject setHandleConfig(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_handle_config);
   }
 
-  static jobject setScrollbarConfig(JNIEnv* env, jclass clazz, jlong handle, jfloat thickness, jfloat minThumb, jfloat thumbHitPadding,
-                                 jint mode, jboolean thumbDraggable, jint trackTapMode,
-                                 jint fadeDelayMs, jint fadeDurationMs) {
-    if (handle == 0) return nullptr;
-    size_t out_size = 0;
-    const uint8_t* payload = editor_set_scrollbar_config(static_cast<intptr_t>(handle),
-                                thickness, minThumb, thumbHitPadding,
-                                static_cast<int>(mode),
-                                thumbDraggable == JNI_TRUE ? 1 : 0,
-                                static_cast<int>(trackTapMode),
-                                static_cast<int>(fadeDelayMs),
-                                static_cast<int>(fadeDurationMs),
-                                &out_size);
-    return wrapBinaryPayload(env, payload, out_size);
+  static jobject setScrollbarConfig(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_scrollbar_config);
   }
 
   static jfloatArray getPositionRect(JNIEnv* env, jclass clazz, jlong handle, jint line, jint column) {
@@ -1523,11 +1363,8 @@ public:
       {"nativeFinalizeEditorCore", "(J)V", (void*) finalizeEditorCore},
       {"nativeSetViewport", "(JII)Ljava/nio/ByteBuffer;", (void*) setViewport},
       {"nativeLoadDocument", "(JJ)Ljava/nio/ByteBuffer;", (void*) loadDocument},
-      {"nativeHandleGestureEvent", "(JII[F)Ljava/nio/ByteBuffer;", (void*) handleGestureEvent},
-      {"nativeHandleGestureEventEx", "(JII[FIFFF)Ljava/nio/ByteBuffer;", (void*) handleGestureEventEx},
+      {"nativeHandleGestureEvent", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) handleGestureEvent},
       {"nativeUpdatePointerModifiers", "(JI)Ljava/nio/ByteBuffer;", (void*) updatePointerModifiers},
-      {"nativeTickEdgeScroll", "(J)Ljava/nio/ByteBuffer;", (void*) tickEdgeScroll},
-      {"nativeTickFling", "(J)Ljava/nio/ByteBuffer;", (void*) tickFling},
       {"nativeTickAnimations", "(J)Ljava/nio/ByteBuffer;", (void*) tickAnimations},
       {"nativeOnFontMetricsChanged", "(J)Ljava/nio/ByteBuffer;", (void*) onFontMetricsChanged},
       {"nativeBuildRenderModel", "(J)Ljava/nio/ByteBuffer;", (void*) buildRenderModel},
@@ -1556,15 +1393,15 @@ public:
       {"nativeImeCancelPreedit", "(J)Ljava/nio/ByteBuffer;", (void*) imeCancelPreedit},
       {"nativeImeMarkDocumentRange", "(JJJJJI)Ljava/nio/ByteBuffer;", (void*) imeMarkDocumentRange},
       {"nativeImeMarkDocumentRangeByOffset", "(JJJI)Ljava/nio/ByteBuffer;", (void*) imeMarkDocumentRangeByOffset},
-      {"nativeImeReplaceText", "(JJJJJLjava/lang/String;I)Ljava/nio/ByteBuffer;", (void*) imeReplaceText},
-      {"nativeImeReplaceDocumentText", "(JJJLjava/lang/String;II)Ljava/nio/ByteBuffer;", (void*) imeReplaceDocumentText},
-      {"nativeImeReplaceInputContextText", "(JJJLjava/lang/String;II)Ljava/nio/ByteBuffer;", (void*) imeReplaceInputContextText},
+      {"nativeImeReplaceText", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) imeReplaceText},
+      {"nativeImeReplaceDocumentText", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) imeReplaceDocumentText},
+      {"nativeImeReplaceInputContextText", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) imeReplaceInputContextText},
       {"nativeImeMarkInputContextRange", "(JJJI)Ljava/nio/ByteBuffer;", (void*) imeMarkInputContextRange},
       {"nativeImeNotifyDocumentSelectionChanged", "(JJJ)Ljava/nio/ByteBuffer;", (void*) imeNotifyDocumentSelectionChanged},
       {"nativeImeNotifyInputContextSelectionChanged", "(JJJ)Ljava/nio/ByteBuffer;", (void*) imeNotifyInputContextSelectionChanged},
-      {"nativeImeUpdateInputStateText", "(JJILjava/lang/String;IIIII)Ljava/nio/ByteBuffer;", (void*) imeUpdateInputStateText},
+      {"nativeImeUpdateTextModelState", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) imeUpdateTextModelState},
       {"nativeImeUpdateInputStateSelection", "(JJIII)Ljava/nio/ByteBuffer;", (void*) imeUpdateInputStateSelection},
-      {"nativeImeReplaceInputStateText", "(JJIJJLjava/lang/String;II)Ljava/nio/ByteBuffer;", (void*) imeReplaceInputStateText},
+      {"nativeImeReplaceInputStateText", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) imeReplaceInputStateText},
       {"nativeImeDeleteBackward", "(JJI)Ljava/nio/ByteBuffer;", (void*) imeDeleteBackward},
       {"nativeImeDeleteForward", "(JJI)Ljava/nio/ByteBuffer;", (void*) imeDeleteForward},
       {"nativeImeDeleteSurrounding", "(JJJI)Ljava/nio/ByteBuffer;", (void*) imeDeleteSurrounding},
@@ -1580,8 +1417,8 @@ public:
       {"nativeGetAutoIndentMode", "(J)I", (void*) getAutoIndentMode},
       {"nativeSetBackspaceUnindent", "(JZ)Ljava/nio/ByteBuffer;", (void*) setBackspaceUnindent},
       {"nativeSetInsertSpaces", "(JZ)Ljava/nio/ByteBuffer;", (void*) setInsertSpaces},
-      {"nativeSetHandleConfig", "(JFFFFFFFF)Ljava/nio/ByteBuffer;", (void*) setHandleConfig},
-      {"nativeSetScrollbarConfig", "(JFFFIZIII)Ljava/nio/ByteBuffer;", (void*) setScrollbarConfig},
+      {"nativeSetHandleConfig", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setHandleConfig},
+      {"nativeSetScrollbarConfig", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setScrollbarConfig},
       {"nativeGetPositionRect", "(JII)[F", (void*) getPositionRect},
       {"nativeGetCursorRect", "(J)[F", (void*) getCursorRect},
       {"nativeRegisterTextStyle", "(JIIII)Ljava/nio/ByteBuffer;", (void*) registerTextStyle},

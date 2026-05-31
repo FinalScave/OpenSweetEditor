@@ -18,7 +18,7 @@
 
 namespace NS_SWEETEDITOR {
 
-  enum struct SE_PROTOCOL_ENUM(core, NONE) EditorActionReason : uint8_t {
+  enum struct SE_PROTOCOL_ENUM(action, NONE) EditorActionReason : uint8_t {
     NONE = 0,
     SETUP = 1,
     TEXT_EDIT = 2,
@@ -37,7 +37,7 @@ namespace NS_SWEETEDITOR {
     TEXT_REDO = 15,
   };
 
-  struct SE_PROTOCOL_OUT(core) EditorActionResult {
+  struct SE_PROTOCOL_OUT(action) EditorActionResult {
     bool handled {false};
     bool needs_redraw {false};
     SE_PROTOCOL_WIRE(enum_i32)
@@ -89,7 +89,7 @@ namespace NS_SWEETEDITOR {
     SE_PROTOCOL_WIRE(i32)
     KeyModifier modifiers {KeyModifier::NONE};
     SE_PROTOCOL_WIRE(i32)
-    EditorCommand command {EditorCommand::NONE};
+    EditorCommandId command {0};
   };
 
   /// Editor core class
@@ -193,21 +193,8 @@ namespace NS_SWEETEDITOR {
     /// @return Editor state changes caused by pointer presentation refresh
     EditorActionResult updatePointerModifiers(KeyModifier modifiers);
 
-    /// Called by platform timer (~16ms interval) while needs_edge_scroll is true.
-    /// Scrolls the viewport and updates the selection based on saved edge-scroll state.
-    /// @return Updated gesture result (platform should redraw; check needs_edge_scroll to decide
-    ///         whether to continue the timer)
-    EditorActionResult tickEdgeScroll();
-
-    /// Called by platform each frame while needs_fling is true.
-    /// Advances fling animation using real elapsed time and applies scroll delta.
-    /// @return Updated gesture result (platform should redraw; check needs_fling to decide
-    ///         whether to continue the timer)
-    EditorActionResult tickFling();
-
     /// Unified animation tick: advances all active animations (edge-scroll, fling).
-    /// Platform can use a single frame callback driven by needs_animation and call this
-    /// instead of tickEdgeScroll() / tickFling() separately.
+    /// Platform can use a single frame callback driven by needs_animation and call this.
     /// @return Updated gesture result with needs_animation reflecting whether any animation is still active
     EditorActionResult tickAnimations();
 
@@ -444,21 +431,11 @@ namespace NS_SWEETEDITOR {
                                           size_t end_offset,
                                           ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
-    EditorActionResult replaceImeText(const TextRange& range,
-                                   const U8String& text,
-                                   ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    EditorActionResult replaceImeText(const ImeTextReplacement& replacement);
 
-    EditorActionResult replaceImeDocumentText(size_t start_offset,
-                                            size_t end_offset,
-                                            const U8String& text,
-                                            int cursor_offset,
-                                            ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    EditorActionResult replaceImeDocumentText(const ImeDocumentTextReplacement& replacement);
 
-    EditorActionResult replaceImeInputContextText(size_t start_offset,
-                                                size_t end_offset,
-                                                const U8String& text,
-                                                int cursor_offset,
-                                                ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    EditorActionResult replaceImeInputContextText(const ImeInputContextTextReplacement& replacement);
 
     EditorActionResult markImeInputContextRange(size_t start_offset,
                                               size_t end_offset,
@@ -468,58 +445,16 @@ namespace NS_SWEETEDITOR {
 
     EditorActionResult notifyImeInputContextSelectionChanged(size_t start_offset, size_t end_offset);
 
-    EditorActionResult updateImeInputStateText(uint64_t context_id,
-                                            int32_t document_start_offset,
-                                            const U8String& text,
-                                            int32_t selection_start_offset,
-                                            int32_t selection_end_offset,
-                                            int32_t composing_start_offset,
-                                            int32_t composing_end_offset,
-                                            ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    EditorActionResult updateImeTextModelState(const ImeTextModelState& state);
 
-    EditorActionResult updateImeTextModelState(ImeTextModelMode mode,
-                                            uint64_t context_id,
-                                            int32_t document_start_offset,
-                                            const U8String& text,
-                                            int32_t selection_start_offset,
-                                            int32_t selection_end_offset,
-                                            int32_t composing_start_offset,
-                                            int32_t composing_end_offset,
-                                            ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
-
-    EditorActionResult updateImeTextModelDelta(ImeTextModelMode mode,
-                                            uint64_t context_id,
-                                            int32_t document_start_offset,
-                                            const U8String& old_text,
-                                            int32_t delta_start_offset,
-                                            int32_t delta_end_offset,
-                                            const U8String& delta_text,
-                                            int32_t selection_start_offset,
-                                            int32_t selection_end_offset,
-                                            int32_t composing_start_offset,
-                                            int32_t composing_end_offset,
-                                            ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    EditorActionResult updateImeTextModelDelta(const ImeTextModelDelta& delta);
 
     EditorActionResult updateImeInputStateSelection(uint64_t context_id,
                                                   int32_t document_start_offset,
                                                   int32_t selection_start_offset,
                                                   int32_t selection_end_offset);
 
-    EditorActionResult replaceImeInputStateText(uint64_t context_id,
-                                              int32_t document_start_offset,
-                                              size_t start_offset,
-                                             size_t end_offset,
-                                             const U8String& text,
-                                             int cursor_offset,
-                                             ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
-
-    EditorActionResult commitImeInputStateTextReplacement(uint64_t context_id,
-                                                       int32_t document_start_offset,
-                                                       size_t start_offset,
-                                                       size_t end_offset,
-                                                       const U8String& text,
-                                                       int cursor_offset,
-                                                       ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    EditorActionResult replaceImeInputStateText(const ImeInputStateTextReplacement& replacement);
 
     EditorActionResult deleteImeBackward(size_t before_length = 1,
                                        ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
@@ -659,12 +594,12 @@ namespace NS_SWEETEDITOR {
 
     /// Set diagnostic decorations for given line (wavy underline/underline)
     /// @param line Line number
-    /// @param diagnostics Diagnostic span list
-    EditorActionResult setLineDiagnostics(size_t line, Vector<DiagnosticSpan>&& diagnostics);
+    /// @param diagnostics Diagnostic list
+    EditorActionResult setLineDiagnostics(size_t line, Vector<Diagnostic>&& diagnostics);
 
     /// Batch set diagnostic decorations for multiple lines (loop setLineDiagnostics, no dirty mark)
     /// @param entries Array of line->diagnostic list pairs
-    EditorActionResult setBatchLineDiagnostics(Vector<std::pair<size_t, Vector<DiagnosticSpan>>>&& entries);
+    EditorActionResult setBatchLineDiagnostics(Vector<std::pair<size_t, Vector<Diagnostic>>>&& entries);
 
     /// Clear all diagnostic decorations
     EditorActionResult clearDiagnostics();

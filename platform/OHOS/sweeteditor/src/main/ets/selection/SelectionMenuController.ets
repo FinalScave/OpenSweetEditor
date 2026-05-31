@@ -5,7 +5,8 @@ import {
 } from './SelectionMenuTypes';
 import { EditorEventBus } from '../event/EditorEventBus';
 import { SelectionMenuItemClickEvent } from '../event/EditorEvent';
-import { EditorActionResult, GestureType } from '../core/EditorCore';
+import { EditorActionResult } from '../core/CoreAction';
+import { GestureType } from '../core/CoreInteraction';
 import { SweetEditorController } from '../SweetEditorController';
 import { SweetEditor } from '../SweetEditor';
 import { popupRect, PopupRect } from '../ui/PopupPositioner';

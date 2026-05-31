@@ -431,6 +431,14 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
+  bool EditorInteraction::hasActiveEdgeScroll() const {
+    return m_edge_scroll_.active;
+  }
+
+  bool EditorInteraction::hasActiveFling() const {
+    return m_fling_->isActive();
+  }
+
   void EditorInteraction::stopFling() {
     m_fling_->stop();
   }

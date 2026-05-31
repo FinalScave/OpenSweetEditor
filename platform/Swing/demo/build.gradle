@@ -27,12 +27,12 @@ application {
     def osArch = System.getProperty('os.arch').toLowerCase()
     def nativeLibSubDir
     if (osName.contains('windows')) {
-        nativeLibSubDir = '../../../prebuilt/windows/x64'
+        nativeLibSubDir = '../../prebuilt/windows/x64'
     } else if (osName.contains('mac')) {
         if (osArch.contains('aarch64') || osArch.contains('arm64')) {
-            nativeLibSubDir = '../../../prebuilt/osx/arm64'
+            nativeLibSubDir = '../../prebuilt/osx/arm64'
         } else {
-            nativeLibSubDir = '../../../prebuilt/osx/x86_64'
+            nativeLibSubDir = '../../prebuilt/osx/x86_64'
         }
     } else if (osName.contains('linux')) {
         nativeLibSubDir = '../../prebuilt/linux/x86_64'
@@ -56,7 +56,7 @@ application {
         doFirst {
             def expectedLib = new File(nativeLibDir, expectedLibName)
             if (!expectedLib.exists()) {
-                throw new GradleException("Native library not found: ${expectedLib}. Run scripts/build-shared.ps1 -Platform windows or the matching build-shared.sh target first.")
+                throw new GradleException("Native library not found: ${expectedLib}. Run scripts/build-release.ps1 -Platform windows or the matching build-release.sh target first.")
             }
         }
     }

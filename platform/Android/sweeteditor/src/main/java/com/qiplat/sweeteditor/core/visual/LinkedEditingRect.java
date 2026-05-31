@@ -1,24 +1,16 @@
 package com.qiplat.sweeteditor.core.visual;
 
-import com.google.gson.annotations.SerializedName;
+import com.qiplat.sweeteditor.core.foundation.Rect;
 
-/**
- * Linked editing highlight rectangle (visual marker for Tab Stop placeholder)
- */
-public class LinkedEditingRect {
-    /** Top-left corner of the rectangle */
-    @SerializedName("origin")
-    public PointF origin;
+public final class LinkedEditingRect {
+    public Rect rect = new Rect();
+    public boolean isActive = false;
 
-    /** Width of the rectangle */
-    @SerializedName("width")
-    public float width;
+    public LinkedEditingRect() {
+    }
 
-    /** Height of the rectangle */
-    @SerializedName("height")
-    public float height;
-
-    /** Whether this is the currently active tab stop */
-    @SerializedName("is_active")
-    public boolean isActive;
+    public LinkedEditingRect(Rect rect, boolean isActive) {
+        this.rect = rect;
+        this.isActive = isActive;
+    }
 }

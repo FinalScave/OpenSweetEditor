@@ -1,43 +1,49 @@
 import {
   Document,
   EditorCore,
+  GestureEvent
+} from './core/EditorCore';
+import {
   EditorActionReason,
   EditorActionResult,
+  ScrollBehavior
+} from './core/CoreAction';
+import {
   EditorOptions,
+  ScrollbarConfig,
+  ScrollbarMode,
+  ScrollbarTrackTapMode,
+  AutoIndentMode,
+  CurrentLineRenderMode,
+  FoldArrowMode,
+  WrapMode
+} from './core/CoreConfig';
+import {
   EventType,
-  GestureEvent,
   GestureType,
-  HitTargetType,
+  HitTargetType
+} from './core/CoreInteraction';
+import {
   ImeInputContext,
   ImeInputContextKind,
   ImeScriptClass,
   ImeSyncSnapshot,
-  ImeTextUnit,
-  ScrollbarConfig,
-  ScrollbarMode,
-  ScrollbarTrackTapMode,
-  Modifier,
-  TextChange
-} from './core/EditorCore';
+  ImeTextUnit
+} from './core/CoreIme';
 import {
-  AutoIndentMode,
-  CurrentLineRenderMode,
-  FoldArrowMode,
   IntRange,
-  ScrollBehavior,
-  isTextRangeCollapsed,
+  PointF,
+  TextChange,
   TextPosition,
-  TextRange,
-  WrapMode
+  TextRange
 } from './core/CoreFoundation';
 import {
-  EditorCommand,
+  EditorBuiltinCommand,
   KeyBinding,
-  KeyChord,
   KeyCode,
   KeyModifier
 } from './core/CoreKeymap';
-import { CursorRect, EditorRenderModel, PointF, ScrollMetrics } from './core/CoreVisual';
+import { CursorRect, EditorRenderModel, ScrollMetrics } from './core/CoreVisual';
 import {
   BracketGuide,
   Diagnostic,
@@ -169,6 +175,10 @@ const SELECTION_MENU_PLACEMENTS: PopupPlacement[] = [
   popupPlacement(PopupSide.ABOVE, PopupAlign.CENTER),
   popupPlacement(PopupSide.BELOW, PopupAlign.CENTER)
 ];
+
+function isTextRangeCollapsed(range: TextRange): boolean {
+  return range.start.line === range.end.line && range.start.column === range.end.column;
+}
 
 interface PreviewCapableInputController {
   on(type: 'setPreviewText', callback: (text: string, range: inputMethod.Range) => void): void;
@@ -583,7 +593,7 @@ export struct SweetEditor {
     this.editorCore = new EditorCore(this.renderer.getMeasurer(), options);
     this.editorCore.setHandleConfig(this.renderer.getHandleConfig());
     this.editorCore.setScrollbarConfig(scrollbarConfig);
-    this.editorCore.setKeyMap(this.keyMap);
+    this.editorCore.setKeyMap(this.keyMap.getBindings());
     this.registerImeCallbacks();
 
     this.editorCore.registerBatchTextStyles(this.theme.textStyles);
@@ -704,7 +714,7 @@ export struct SweetEditor {
     if (!this.editorCore) {
       return;
     }
-    this.dispatchEditorActionResult(this.editorCore.setKeyMap(keyMap));
+    this.dispatchEditorActionResult(this.editorCore.setKeyMap(keyMap.getBindings()));
   }
 
   getKeyMap(): EditorKeyMap {
@@ -988,7 +998,7 @@ export struct SweetEditor {
     this.finishEditorAction(this.editorCore.gotoPosition(line, column));
   }
 
-  scrollToLine(line: number, behavior: ScrollBehavior = ScrollBehavior.CENTER): void {
+  scrollToLine(line: number, behavior: ScrollBehavior = ScrollBehavior.GOTO_CENTER): void {
     if (!this.editorCore) {
       return;
     }
@@ -1342,11 +1352,7 @@ export struct SweetEditor {
         this.resetCursorBlink();
       }
     }
-    if (result.needsAnimation && !this.animationActive) {
-      this.startAnimation();
-    } else if (!result.needsAnimation && this.animationActive) {
-      this.stopAnimation();
-    }
+    this.updateAnimationState(result);
     this.dispatchStateEvents(result);
     if (result.needsImeSync) {
       this.scheduleImeSync(result.imeSync);
@@ -1367,7 +1373,7 @@ export struct SweetEditor {
     }
     if (result.selectionChanged) {
       const selection = useImeSync ? result.imeSync.selection : result.selectionAfter;
-      const hasSelection = useImeSync ? selection !== null : result.hasSelectionAfter;
+      const hasSelection = useImeSync ? result.imeSync.hasSelection : result.hasSelectionAfter;
       const cursor = useImeSync ? result.imeSync.cursor : result.cursorAfter;
       this.eventBus.emit('selectionChanged', new SelectionChangedEvent(
         hasSelection, hasSelection ? selection : null, cursor));
@@ -1740,7 +1746,7 @@ export struct SweetEditor {
       }
 
       const result = this.editorCore.handleKeyEvent(nativeKeyCode, null, modifiers);
-      if (result.handled && this.dispatchKeyMapCommand(result.command, nativeKeyCode as KeyCode, modifiers)) {
+      if (result.handled && this.dispatchKeyMapCommand(result.command, nativeKeyCode, modifiers)) {
         this.resetCursorBlink();
         this.finishEditorAction(result);
         return;
@@ -1764,17 +1770,17 @@ export struct SweetEditor {
     this.dispatchEditorActionResult(result);
   }
 
-  private dispatchKeyMapCommand(command: number, keyCode: KeyCode, modifiers: number): boolean {
-    if (command === EditorCommand.NONE) {
+  private dispatchKeyMapCommand(command: number, keyCode: number, modifiers: number): boolean {
+    if (command === EditorBuiltinCommand.NONE) {
       return false;
     }
     const handler = this.keyMap.getCommand(command);
     if (handler) {
-      const binding = new KeyBinding(
-        new KeyChord(modifiers, keyCode as KeyCode),
-        new KeyChord(),
+      const binding: KeyBinding = {
+        first: { modifiers, keyCode },
+        second: { modifiers: KeyModifier.NONE, keyCode: KeyCode.NONE },
         command
-      );
+      };
       return handler(binding, this);
     }
     return false;
@@ -1833,7 +1839,7 @@ export struct SweetEditor {
       this.dispatchPointerGestureEvent({
         type: EventType.MOUSE_MOVE,
         points: [{ x: -1, y: -1 }],
-        modifiers: Modifier.NONE,
+        modifiers: KeyModifier.NONE,
         wheelDeltaX: 0,
         wheelDeltaY: 0,
         directScale: 0
@@ -1845,7 +1851,7 @@ export struct SweetEditor {
       this.dispatchPointerGestureEvent({
         type: EventType.MOUSE_MOVE,
         points: [{ x: event.x, y: event.y }],
-        modifiers: Modifier.NONE,
+        modifiers: KeyModifier.NONE,
         wheelDeltaX: 0,
         wheelDeltaY: 0,
         directScale: 0
@@ -1890,7 +1896,7 @@ export struct SweetEditor {
     return {
       type: eventType,
       points: points,
-      modifiers: Modifier.NONE,
+      modifiers: KeyModifier.NONE,
       wheelDeltaX: 0,
       wheelDeltaY: 0,
       directScale: 0
@@ -1927,7 +1933,7 @@ export struct SweetEditor {
     return {
       type: eventType,
       points: [{ x: event.x, y: event.y }],
-      modifiers: Modifier.NONE,
+      modifiers: KeyModifier.NONE,
       wheelDeltaX: 0,
       wheelDeltaY: 0,
       directScale: 0
@@ -1981,15 +1987,15 @@ export struct SweetEditor {
     switch (ht.type) {
       case HitTargetType.INLAY_HINT_ICON:
         this.eventBus.emit('inlayHintClick', new InlayHintClickEvent(
-          ht.line, ht.column, InlayType.Icon, ht.iconId, locationInEditor));
+          ht.line, ht.column, InlayType.ICON, ht.iconId, locationInEditor));
         break;
       case HitTargetType.INLAY_HINT_TEXT:
         this.eventBus.emit('inlayHintClick', new InlayHintClickEvent(
-          ht.line, ht.column, InlayType.Text, 0, locationInEditor));
+          ht.line, ht.column, InlayType.TEXT, 0, locationInEditor));
         break;
       case HitTargetType.INLAY_HINT_COLOR:
         this.eventBus.emit('inlayHintClick', new InlayHintClickEvent(
-          ht.line, ht.column, InlayType.Color, ht.colorValue, locationInEditor));
+          ht.line, ht.column, InlayType.COLOR, ht.colorValue, locationInEditor));
         break;
       case HitTargetType.GUTTER_ICON:
         this.eventBus.emit('gutterIconClick', new GutterIconClickEvent(ht.line, ht.iconId, locationInEditor));
@@ -2153,6 +2159,19 @@ export struct SweetEditor {
   private resetCursorBlink(): void {
     this.cursorVisible = true;
     this.startCursorBlink();
+  }
+
+  private updateAnimationState(result: EditorActionResult): void {
+    if (result.needsAnimation) {
+      this.startAnimation();
+      return;
+    }
+    if (result.reason !== EditorActionReason.GESTURE && result.reason !== EditorActionReason.ANIMATION) {
+      return;
+    }
+    if (this.animationActive) {
+      this.stopAnimation();
+    }
   }
 
   private startAnimation(): void {

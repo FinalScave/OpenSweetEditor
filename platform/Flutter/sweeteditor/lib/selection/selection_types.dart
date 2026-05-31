@@ -1,4 +1,4 @@
-import '../editor_core.dart' as core;
+import '../core/editor_core.dart' as core;
 
 /// A single item in the selection context menu.
 class SelectionMenuItem {

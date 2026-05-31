@@ -18,6 +18,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using AvaloniaRect = Avalonia.Rect;
 
 namespace SweetEditor {
 	public sealed class DocumentLoadedEventArgs : EditorEventArgs {
@@ -72,7 +73,7 @@ namespace SweetEditor {
 		private TopLevel? attachedTopLevel;
 		private IInputPane? attachedInputPane;
 		private IInsetsManager? attachedInsetsManager;
-		private Rect lastKnownInputPaneOccludedRect;
+		private AvaloniaRect lastKnownInputPaneOccludedRect;
 		private Thickness lastKnownSafeAreaPadding;
 
 		private readonly InlineSuggestionDecorationProvider inlineSuggestionDecorationProvider;
@@ -157,7 +158,7 @@ namespace SweetEditor {
 			if (scrollGestureRecognizer != null) {
 				GestureRecognizers.Add(scrollGestureRecognizer);
 			}
-			editorCore.SetKeyMap(keyMap);
+			editorCore.SetKeyMap(keyMap.Bindings);
 
 			decorationProviderManager.AddProvider(inlineSuggestionDecorationProvider);
 			TextInputMethodClientRequested += OnTextInputMethodClientRequested;
@@ -226,8 +227,8 @@ namespace SweetEditor {
 			}
 
 			EnsureRenderModelUpToDate();
-			if (renderModel.HasValue) {
-				renderer.Render(context, renderModel.Value, Bounds.Size, lastFrameBuildMs);
+			if (renderModel != null) {
+				renderer.Render(context, renderModel, Bounds.Size, lastFrameBuildMs);
 			}
 		}
 
@@ -269,7 +270,7 @@ namespace SweetEditor {
 				return;
 			}
 
-			var rect = change.GetNewValue<Rect>();
+			var rect = change.GetNewValue<AvaloniaRect>();
 			ScheduleViewportUpdate(rect.Size);
 		}
 
@@ -342,7 +343,7 @@ namespace SweetEditor {
 				var touchResult = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.TOUCH_DOWN,
 					Points = [ToPointF(point)],
-					Modifiers = modifiers,
+					Modifiers = (int)modifiers,
 					DirectScale = 1,
 				});
 				DispatchEditorActionResult(touchResult);
@@ -355,7 +356,7 @@ namespace SweetEditor {
 				var result = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.MOUSE_RIGHT_DOWN,
 					Points = [ToPointF(point)],
-					Modifiers = modifiers,
+					Modifiers = (int)modifiers,
 					DirectScale = 1,
 				});
 				DispatchEditorActionResult(result);
@@ -367,7 +368,7 @@ namespace SweetEditor {
 				var result = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.MOUSE_DOWN,
 					Points = [ToPointF(point)],
-					Modifiers = modifiers,
+					Modifiers = (int)modifiers,
 					DirectScale = 1,
 				});
 				DispatchEditorActionResult(result);
@@ -400,7 +401,7 @@ namespace SweetEditor {
 						var touchDownResult = editorCore.HandleGestureEvent(new GestureEvent {
 							Type = EventType.TOUCH_DOWN,
 							Points = [ToPointF(point)],
-						Modifiers = ToModifiers(e.KeyModifiers),
+						Modifiers = (int)ToModifiers(e.KeyModifiers),
 						DirectScale = 1,
 					});
 					DispatchEditorActionResult(touchDownResult);
@@ -415,7 +416,7 @@ namespace SweetEditor {
 				var touchResult = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.TOUCH_MOVE,
 					Points = [ToPointF(point)],
-					Modifiers = ToModifiers(e.KeyModifiers),
+					Modifiers = (int)ToModifiers(e.KeyModifiers),
 					DirectScale = 1,
 				});
 				if (touchResult.GestureType is GestureType.SCROLL or GestureType.FAST_SCROLL or GestureType.SCALE or GestureType.DRAG_SELECT) {
@@ -435,7 +436,7 @@ namespace SweetEditor {
 			var result = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.MOUSE_MOVE,
 				Points = [ToPointF(point)],
-				Modifiers = ToModifiers(e.KeyModifiers),
+				Modifiers = (int)ToModifiers(e.KeyModifiers),
 				DirectScale = 1,
 			});
 			DispatchEditorActionResult(result);
@@ -466,7 +467,7 @@ namespace SweetEditor {
 				var touchResult = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.TOUCH_UP,
 					Points = [ToPointF(point)],
-					Modifiers = ToModifiers(e.KeyModifiers),
+					Modifiers = (int)ToModifiers(e.KeyModifiers),
 					DirectScale = 1,
 				});
 					if (touchPendingFocus) {
@@ -517,7 +518,7 @@ namespace SweetEditor {
 			var result = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.MOUSE_UP,
 				Points = [ToPointF(point)],
-				Modifiers = ToModifiers(e.KeyModifiers),
+				Modifiers = (int)ToModifiers(e.KeyModifiers),
 				DirectScale = 1,
 			});
 			DispatchEditorActionResult(result);
@@ -541,7 +542,7 @@ namespace SweetEditor {
 			var result = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.MOUSE_WHEEL,
 				Points = [ToPointF(point)],
-				Modifiers = ToModifiers(e.KeyModifiers),
+				Modifiers = (int)ToModifiers(e.KeyModifiers),
 				WheelDeltaX = (float)e.Delta.X * 120f,
 				WheelDeltaY = (float)e.Delta.Y * 120f,
 				DirectScale = 1,
@@ -579,10 +580,10 @@ namespace SweetEditor {
 				return;
 			}
 
-			var result = editorCore.HandleGestureEventEx(new GestureEvent {
+			var result = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.DIRECT_SCALE,
 				Points = [ToPointF(origin)],
-				Modifiers = Modifier.NONE,
+				Modifiers = (int)KeyModifier.NONE,
 				DirectScale = directScale,
 			});
 			DispatchEditorActionResult(result);
@@ -618,10 +619,10 @@ namespace SweetEditor {
 				return;
 			}
 
-			var result = editorCore.HandleGestureEventEx(new GestureEvent {
+			var result = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.DIRECT_SCROLL,
 				Points = [ToPointF(point)],
-				Modifiers = Modifier.NONE,
+				Modifiers = (int)KeyModifier.NONE,
 				WheelDeltaX = deltaX,
 				WheelDeltaY = deltaY,
 				DirectScale = 1f,
@@ -668,10 +669,10 @@ namespace SweetEditor {
 				return;
 			}
 
-			var result = editorCore.HandleGestureEventEx(new GestureEvent {
+			var result = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.DIRECT_SCALE,
 				Points = [ToPointF(point)],
-				Modifiers = ToModifiers(e.KeyModifiers),
+				Modifiers = (int)ToModifiers(e.KeyModifiers),
 				DirectScale = directScale,
 			});
 			DispatchEditorActionResult(result);
@@ -703,7 +704,7 @@ namespace SweetEditor {
 				}
 			}
 
-			if (KeyChord.TryFromAvalonia(e.Key, e.KeyModifiers, out KeyChord incomingChord)) {
+			if (EditorKeyMap.TryFromAvalonia(e.Key, e.KeyModifiers, out KeyChord incomingChord)) {
 				KeyMapMatch match = keyMap.Match(incomingChord, ref pendingKeyChord);
 				if (match.AwaitingSecondChord) {
 					e.Handled = true;
@@ -829,18 +830,16 @@ namespace SweetEditor {
 
 		public EditorSettings GetSettings() => settings;
 
-		public void SetKeyMap(KeyMap map) {
+		public void SetKeyMap(EditorKeyMap map) {
 			if (map == null) {
 				map = EditorKeyMap.DefaultKeyMap();
 			}
-			keyMap = map is EditorKeyMap editorKeyMap
-				? editorKeyMap.Clone()
-				: new EditorKeyMap(map.Bindings);
-			DispatchEditorActionResult(editorCore.SetKeyMap(keyMap));
+			keyMap = map.Clone();
+			DispatchEditorActionResult(editorCore.SetKeyMap(keyMap.Bindings));
 			pendingKeyChord = KeyChord.Empty;
 		}
 
-		public KeyMap GetKeyMap() {
+		public EditorKeyMap GetKeyMap() {
 			return keyMap.Clone();
 		}
 
@@ -1118,7 +1117,7 @@ namespace SweetEditor {
 			DispatchEditorActionResult(editorCore.GotoPosition(line, column));
 		}
 
-		public void ScrollToLine(int line, ScrollBehavior behavior = ScrollBehavior.CENTER) {
+		public void ScrollToLine(int line, ScrollBehavior behavior = ScrollBehavior.GOTO_CENTER) {
 			DispatchEditorActionResult(editorCore.ScrollToLine(line, (int)behavior));
 		}
 
@@ -1165,7 +1164,7 @@ namespace SweetEditor {
 			DispatchEditorActionResult(editorCore.RegisterTextStyle(styleId, color, backgroundColor, fontStyle));
 
 
-		public void RegisterBatchTextStyles(IReadOnlyDictionary<uint, TextStyle> stylesById) =>
+		public void RegisterBatchTextStyles(IReadOnlyDictionary<int, TextStyle> stylesById) =>
 			DispatchEditorActionResult(editorCore.RegisterBatchTextStyles(stylesById));
 
 
@@ -1223,13 +1222,13 @@ namespace SweetEditor {
 		internal void SetBatchLineCodeLens(Dictionary<int, List<CodeLensItem>> itemsByLine) =>
 			DispatchEditorActionResult(editorCore.SetBatchLineCodeLens(itemsByLine));
 
-		public void SetLineDiagnostics<TDiagnostic>(int line, IList<TDiagnostic> items) where TDiagnostic : Diagnostic =>
+		public void SetLineDiagnostics(int line, IList<Diagnostic> items) =>
 			DispatchEditorActionResult(editorCore.SetLineDiagnostics(line, items));
 
-		public void SetBatchLineDiagnostics<TDiagnostic>(Dictionary<int, IList<TDiagnostic>> diagsByLine) where TDiagnostic : Diagnostic =>
+		public void SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine) =>
 			DispatchEditorActionResult(editorCore.SetBatchLineDiagnostics(diagsByLine));
 
-		internal void SetBatchLineDiagnostics<TDiagnostic>(Dictionary<int, List<TDiagnostic>> diagsByLine) where TDiagnostic : Diagnostic =>
+		internal void SetBatchLineDiagnostics(Dictionary<int, List<Diagnostic>> diagsByLine) =>
 			DispatchEditorActionResult(editorCore.SetBatchLineDiagnostics(diagsByLine));
 
 		public void SetIndentGuides(IList<IndentGuide> guides) =>
@@ -1320,7 +1319,7 @@ namespace SweetEditor {
 			}
 
 			if (result.GestureType != GestureType.UNDEFINED) {
-				FireGestureEvents(result, result.TapPoint.HasValue ? ToPoint(result.TapPoint.Value) : default);
+				FireGestureEvents(result, ToPoint(result.TapPoint));
 			}
 			DispatchStateEvents(result);
 
@@ -1337,7 +1336,7 @@ namespace SweetEditor {
 		}
 
 		private void DispatchStateEvents(EditorActionResult result) {
-			bool keyInput = (EditorActionReason)result.Reason == EditorActionReason.KeyInput;
+			bool keyInput = (EditorActionReason)result.Reason == EditorActionReason.KEY_INPUT;
 			if (keyInput && (result.ContentChanged || result.CursorChanged)) {
 				DismissInlineSuggestionInternal(emitDismissedCallback: true);
 			}
@@ -1347,18 +1346,19 @@ namespace SweetEditor {
 
 			TextPosition cursor = result.NeedsImeSync ? result.ImeSync.Cursor : result.CursorAfter;
 			TextRange? selection = result.NeedsImeSync
-				? result.ImeSync.Selection
+				? (result.ImeSync.HasSelection ? result.ImeSync.Selection : (TextRange?)null)
 				: (result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null);
 			if (result.CursorChanged) {
 				CursorChanged?.Invoke(this, new CursorChangedEventArgs(cursor));
 			}
 			if (result.SelectionChanged) {
+				bool hasSelection = selection != null;
 				bool explicitSelectionSource = keyInput
 					? IsExplicitKeySelectionSource(result)
-					: selection.HasValue;
-				UpdateDestructiveSelectionAuthorization(selection.HasValue, explicitSelectionSource, selection ?? default);
-				SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(selection.HasValue, selection, cursor));
-				NotifySelectionMenuSelectionChanged(selection.HasValue);
+					: hasSelection;
+				UpdateDestructiveSelectionAuthorization(hasSelection, explicitSelectionSource, selection ?? default);
+				SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(hasSelection, selection, cursor));
+				NotifySelectionMenuSelectionChanged(hasSelection);
 			}
 			if (result.ScrollChanged) {
 				ScrollChanged?.Invoke(this, new ScrollChangedEventArgs(result.ScrollXAfter, result.ScrollYAfter));
@@ -1374,11 +1374,11 @@ namespace SweetEditor {
 
 		private static TextChangeAction TextChangeActionFromResult(EditorActionResult result) {
 			return (EditorActionReason)result.Reason switch {
-				EditorActionReason.KeyInput => TextChangeAction.Key,
-				EditorActionReason.Ime => TextChangeAction.Composition,
-				EditorActionReason.TextDelete => TextChangeAction.Delete,
-				EditorActionReason.TextUndo => TextChangeAction.Undo,
-				EditorActionReason.TextRedo => TextChangeAction.Redo,
+				EditorActionReason.KEY_INPUT => TextChangeAction.Key,
+				EditorActionReason.IME => TextChangeAction.Composition,
+				EditorActionReason.TEXT_DELETE => TextChangeAction.Delete,
+				EditorActionReason.TEXT_UNDO => TextChangeAction.Undo,
+				EditorActionReason.TEXT_REDO => TextChangeAction.Redo,
 				_ => TextChangeAction.Insert,
 			};
 		}
@@ -1390,7 +1390,7 @@ namespace SweetEditor {
 			if (result.GestureType is GestureType.SCROLL or GestureType.FAST_SCROLL or GestureType.SCALE) {
 				return false;
 			}
-			return (EditorActionReason)result.Reason is not (EditorActionReason.Decoration or EditorActionReason.Folding or EditorActionReason.Setup);
+			return (EditorActionReason)result.Reason is not (EditorActionReason.DECORATION or EditorActionReason.FOLDING or EditorActionReason.SETUP);
 		}
 
 		private bool ShouldThrottleTouchMoveFlush(EditorActionResult result) {
@@ -1400,16 +1400,16 @@ namespace SweetEditor {
 		}
 
 		private static bool IsExplicitKeySelectionSource(EditorActionResult result) {
-			return (EditorCommand)result.Command is
-				EditorCommand.SELECT_LEFT or
-				EditorCommand.SELECT_RIGHT or
-				EditorCommand.SELECT_UP or
-				EditorCommand.SELECT_DOWN or
-				EditorCommand.SELECT_LINE_START or
-				EditorCommand.SELECT_LINE_END or
-				EditorCommand.SELECT_PAGE_UP or
-				EditorCommand.SELECT_PAGE_DOWN or
-				EditorCommand.SELECT_ALL;
+			return (EditorBuiltinCommand)result.Command is
+				EditorBuiltinCommand.SELECT_LEFT or
+				EditorBuiltinCommand.SELECT_RIGHT or
+				EditorBuiltinCommand.SELECT_UP or
+				EditorBuiltinCommand.SELECT_DOWN or
+				EditorBuiltinCommand.SELECT_LINE_START or
+				EditorBuiltinCommand.SELECT_LINE_END or
+				EditorBuiltinCommand.SELECT_PAGE_UP or
+				EditorBuiltinCommand.SELECT_PAGE_DOWN or
+				EditorBuiltinCommand.SELECT_ALL;
 		}
 
 		internal void FlushDecorationUpdate() {
@@ -1479,7 +1479,6 @@ namespace SweetEditor {
 			decorationProviderManager.Dispose();
 			newLineActionProviderManager.Dispose();
 
-			ProtocolDecoder.RecycleRenderModel(renderModel);
 			renderModel = null;
 			renderer.Dispose();
 			editorCore.Dispose();
@@ -1798,7 +1797,7 @@ namespace SweetEditor {
 								InlayHintClick?.Invoke(this, new InlayHintClickEventArgs(
 									result.HitTarget.Line,
 									result.HitTarget.Column,
-									result.HitTarget.Type == HitTargetType.INLAY_HINT_ICON ? InlayType.Icon : InlayType.Text,
+									result.HitTarget.Type == HitTargetType.INLAY_HINT_ICON ? InlayType.ICON : InlayType.TEXT,
 									result.HitTarget.Type == HitTargetType.INLAY_HINT_ICON ? result.HitTarget.IconId : 0,
 									null,
 									sp));
@@ -1807,7 +1806,7 @@ namespace SweetEditor {
 								InlayHintClick?.Invoke(this, new InlayHintClickEventArgs(
 									result.HitTarget.Line,
 									result.HitTarget.Column,
-									InlayType.Color,
+									InlayType.COLOR,
 									result.HitTarget.ColorValue,
 									null,
 									sp));
@@ -1926,7 +1925,7 @@ namespace SweetEditor {
 					effectiveCursor = editorCore.GetCursorPosition();
 				}
 
-				bool hasSelection = appliedSelection.HasValue;
+				bool hasSelection = appliedSelection != null;
 				TextRange selectedRange = appliedSelection ?? default;
 				Console.Error.WriteLine(
 					hasSelection
@@ -2023,7 +2022,8 @@ namespace SweetEditor {
 			result.SelectionChanged = true;
 			result.NeedsImeSync = true;
 			result.ImeSync.Cursor = cursor;
-			result.ImeSync.Selection = selection.hasSelection ? selection.range : null;
+			result.ImeSync.HasSelection = selection.hasSelection;
+			result.ImeSync.Selection = selection.hasSelection ? selection.range : default;
 		}
 
 		private EditorActionResult CreateSelectionStateResult(TextPosition cursorBefore, bool hasSelectionBefore, TextRange selectionBefore) {
@@ -2035,7 +2035,7 @@ namespace SweetEditor {
 
 			return new EditorActionResult {
 				Handled = true,
-				Reason = (int)EditorActionReason.Programmatic,
+				Reason = EditorActionReason.PROGRAMMATIC,
 				CursorChanged = cursorChanged,
 				SelectionChanged = selectionChanged,
 				NeedsRedraw = cursorChanged || selectionChanged,
@@ -2048,7 +2048,8 @@ namespace SweetEditor {
 				SelectionAfter = selection.hasSelection ? selection.range : default,
 				ImeSync = new ImeSyncSnapshot {
 					Cursor = cursor,
-					Selection = selection.hasSelection ? selection.range : null
+					HasSelection = selection.hasSelection,
+					Selection = selection.hasSelection ? selection.range : default
 				}
 			};
 		}
@@ -2428,7 +2429,7 @@ namespace SweetEditor {
 			InlineSuggestion suggestion = inlineSuggestion!;
 			Popup popup = inlineSuggestionPopup!;
 			var anchor = editorCore.GetPositionRect(suggestion.Line, suggestion.Column);
-			Rect viewport = GetPopupViewportRect();
+			AvaloniaRect viewport = GetPopupViewportRect();
 			Size popupSize = MeasurePopupChild(popup);
 			double popupWidth = Math.Max(1, popupSize.Width);
 			double popupHeight = Math.Max(1, popupSize.Height);
@@ -2437,7 +2438,7 @@ namespace SweetEditor {
 			double anchorX = Math.Clamp(anchor.X, viewport.X, maxX);
 			double anchorY = Math.Clamp(anchor.Y, viewport.Y, maxY);
 			popup.PlacementTarget = this;
-			popup.PlacementRect = new Rect(anchorX, anchorY, 1, Math.Max(1f, anchor.Height));
+			popup.PlacementRect = new AvaloniaRect(anchorX, anchorY, 1, Math.Max(1f, anchor.Height));
 			if (attached && !popup.IsOpen) {
 				popup.IsOpen = true;
 			}
@@ -2462,11 +2463,10 @@ namespace SweetEditor {
 
 			renderer.BeginFrameMeasureStats();
 			long buildStart = Stopwatch.GetTimestamp();
-			ProtocolDecoder.RecycleRenderModel(renderModel);
 			renderModel = null;
 			renderModel = editorCore.BuildRenderModel();
-			if (renderModel.HasValue && ShouldOptimizeRenderModelForDrawing(renderModel.Value)) {
-				EditorRenderModel optimizedModel = renderModel.Value;
+			if (renderModel != null && ShouldOptimizeRenderModelForDrawing(renderModel)) {
+				EditorRenderModel optimizedModel = renderModel;
 				OptimizeRenderModelForDrawing(ref optimizedModel);
 				renderModel = optimizedModel;
 			}
@@ -2485,7 +2485,7 @@ namespace SweetEditor {
 		}
 
 		private void LogRenderModelDebugOnce(EditorRenderModel? model) {
-			if (renderModelDebugLogged || model == null || model.Value.VisualLines == null) {
+			if (renderModelDebugLogged || model == null || model.Lines == null) {
 				return;
 			}
 			if (!string.Equals(Environment.GetEnvironmentVariable("SWEETEDITOR_RENDER_DEBUG"), "1", StringComparison.Ordinal)) {
@@ -2493,14 +2493,14 @@ namespace SweetEditor {
 				return;
 			}
 
-			if (model.Value.VisualLines.Count == 0) {
+			if (model.Lines.Count == 0) {
 				return;
 			}
 
 			try {
 				int coloredRunCount = 0;
 				var samples = new List<string>();
-				foreach (VisualLine line in model.Value.VisualLines) {
+				foreach (VisualLine line in model.Lines) {
 					if (line.Runs == null) {
 						continue;
 					}
@@ -2524,7 +2524,7 @@ namespace SweetEditor {
 
 				string logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "sweeteditor-render.log");
 				File.WriteAllLines(logPath, new[] {
-					$"visibleLines={model.Value.VisualLines.Count} coloredRuns={coloredRunCount}",
+					$"visibleLines={model.Lines.Count} coloredRuns={coloredRunCount}",
 				}.Concat(samples));
 				renderModelDebugLogged = true;
 			} catch {
@@ -2533,7 +2533,7 @@ namespace SweetEditor {
 		}
 
 		private static void OptimizeRenderModelForDrawing(ref EditorRenderModel model) {
-			List<VisualLine>? visualLines = model.VisualLines;
+			List<VisualLine>? visualLines = model.Lines;
 			if (visualLines == null || visualLines.Count == 0) {
 				return;
 			}
@@ -2551,12 +2551,11 @@ namespace SweetEditor {
 
 				line.Runs = mergedRuns!;
 				visualLines[i] = line;
-				ProtocolDecoder.RecycleVisualRunList(runs);
 			}
 		}
 
 		private bool ShouldOptimizeRenderModelForDrawing(EditorRenderModel model) {
-			List<VisualLine>? visualLines = model.VisualLines;
+			List<VisualLine>? visualLines = model.Lines;
 			if (visualLines == null || visualLines.Count == 0) {
 				return false;
 			}
@@ -2598,7 +2597,7 @@ namespace SweetEditor {
 				return false;
 			}
 
-			List<VisualRun> optimized = ProtocolDecoder.RentVisualRunList(runs.Count);
+			List<VisualRun> optimized = new(runs.Count);
 			VisualRun current = runs[0];
 			System.Text.StringBuilder? mergedText = null;
 			bool changed = false;
@@ -2633,7 +2632,6 @@ namespace SweetEditor {
 			optimized.Add(current);
 
 			if (!changed) {
-				ProtocolDecoder.RecycleVisualRunList(optimized);
 				return false;
 			}
 
@@ -2721,7 +2719,7 @@ namespace SweetEditor {
 			DispatchEditorActionResult(editorCore.SetViewport((int)Math.Max(0, size.Width), (int)Math.Max(0, size.Height)));
 			if (pendingCursorViewportSync) {
 				TextPosition cursor = editorCore.GetCursorPosition();
-				DispatchEditorActionResult(editorCore.ScrollToLine(Math.Max(0, cursor.Line), (int)ScrollBehavior.TOP));
+				DispatchEditorActionResult(editorCore.ScrollToLine(Math.Max(0, cursor.Line), (int)ScrollBehavior.GOTO_TOP));
 				pendingCursorViewportSync = false;
 			}
 			pendingViewportDecorationRefresh = true;
@@ -2733,7 +2731,7 @@ namespace SweetEditor {
 			int previousEnd = cachedVisibleEndLine;
 			bool changed;
 
-			var visualLines = model?.VisualLines;
+			var visualLines = model?.Lines;
 			if (visualLines == null || visualLines.Count == 0) {
 				cachedVisibleStartLine = 0;
 				cachedVisibleEndLine = -1;
@@ -2923,7 +2921,7 @@ namespace SweetEditor {
 		}
 
 		private bool EnsureCursorVisibleInAvailableViewport() {
-			Rect viewport = GetPopupViewportRect();
+			AvaloniaRect viewport = GetPopupViewportRect();
 			if (viewport.Width <= 0 || viewport.Height <= 0) {
 				return false;
 			}
@@ -3028,12 +3026,12 @@ namespace SweetEditor {
 			});
 		}
 
-		private Rect GetTextInputCursorRectangle() {
+		private AvaloniaRect GetTextInputCursorRectangle() {
 			CursorRect cursor = editorCore.GetCursorRect();
-			return new Rect(cursor.X, cursor.Y, 1, Math.Max(1f, cursor.Height));
+			return new AvaloniaRect(cursor.X, cursor.Y, 1, Math.Max(1f, cursor.Height));
 		}
 
-		internal Rect GetPopupViewportRect() {
+		internal AvaloniaRect GetPopupViewportRect() {
 			double left = 0;
 			double top = 0;
 			double right = Math.Max(0, Bounds.Width);
@@ -3066,7 +3064,7 @@ namespace SweetEditor {
 			top = Math.Clamp(top, 0d, Math.Max(0d, Bounds.Height));
 			right = Math.Clamp(right, left, Math.Max(left, Bounds.Width));
 			bottom = Math.Clamp(bottom, top, Math.Max(top, Bounds.Height));
-			return new Rect(left, top, Math.Max(0d, right - left), Math.Max(0d, bottom - top));
+			return new AvaloniaRect(left, top, Math.Max(0d, right - left), Math.Max(0d, bottom - top));
 		}
 
 		private bool IsTouchMovementBeyondFocusThreshold(Point current, Point origin) {
@@ -3140,7 +3138,7 @@ namespace SweetEditor {
 			var result = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.TOUCH_CANCEL,
 				Points = [ToPointF(point)],
-				Modifiers = Modifier.NONE,
+				Modifiers = (int)KeyModifier.NONE,
 				DirectScale = 1,
 			});
 			DispatchEditorActionResult(result);
@@ -3187,15 +3185,15 @@ namespace SweetEditor {
 			}
 
 			return EditorKeyMap.GetCommandRoute(commandId) switch {
-				EditorCommandRoute.Core => ExecuteCoreKeyMapCommand((EditorCommand)commandId),
-				EditorCommandRoute.Host => ExecuteHostKeyMapCommand((EditorCommand)commandId),
+				EditorCommandRoute.Core => ExecuteCoreKeyMapCommand((EditorBuiltinCommand)commandId),
+				EditorCommandRoute.Host => ExecuteHostKeyMapCommand((EditorBuiltinCommand)commandId),
 				_ => false,
 			};
 		}
 
-		private bool ExecuteCoreKeyMapCommand(EditorCommand command) {
+		private bool ExecuteCoreKeyMapCommand(EditorBuiltinCommand command) {
 			switch (command) {
-				case EditorCommand.INSERT_TAB:
+				case EditorBuiltinCommand.INSERT_TAB:
 					if (inlineSuggestion != null) {
 						AcceptInlineSuggestionInternal();
 						return true;
@@ -3205,7 +3203,7 @@ namespace SweetEditor {
 					}
 					return ExecuteCoreKeyCommand(KeyCode.TAB, KeyModifier.NONE);
 
-				case EditorCommand.INSERT_NEWLINE: {
+				case EditorBuiltinCommand.INSERT_NEWLINE: {
 					var action = newLineActionProviderManager.ProvideNewLineAction();
 					if (action != null) {
 						var editResult = editorCore.HandleKeyEvent((ushort)KeyCode.NONE, action.Text, 0);
@@ -3215,12 +3213,12 @@ namespace SweetEditor {
 					return ExecuteCoreKeyCommand(KeyCode.ENTER, KeyModifier.NONE);
 				}
 
-				case EditorCommand.SELECT_ALL:
+				case EditorBuiltinCommand.SELECT_ALL:
 					DispatchEditorActionResult(editorCore.SelectAll());
 					ScheduleSelectionMenuShow();
 					return true;
 
-				case EditorCommand.UNDO: {
+				case EditorBuiltinCommand.UNDO: {
 					var editResult = editorCore.Undo();
 					if (editResult == null) {
 						return false;
@@ -3229,7 +3227,7 @@ namespace SweetEditor {
 					return true;
 				}
 
-				case EditorCommand.REDO: {
+				case EditorBuiltinCommand.REDO: {
 					var editResult = editorCore.Redo();
 					if (editResult == null) {
 						return false;
@@ -3238,29 +3236,29 @@ namespace SweetEditor {
 					return true;
 				}
 
-				case EditorCommand.MOVE_LINE_UP:
+				case EditorBuiltinCommand.MOVE_LINE_UP:
 					return ExecuteCoreEditCommand(editorCore.MoveLineUp());
 
-				case EditorCommand.MOVE_LINE_DOWN:
+				case EditorBuiltinCommand.MOVE_LINE_DOWN:
 					return ExecuteCoreEditCommand(editorCore.MoveLineDown());
 
-				case EditorCommand.COPY_LINE_UP:
+				case EditorBuiltinCommand.COPY_LINE_UP:
 					return ExecuteCoreEditCommand(editorCore.CopyLineUp());
 
-				case EditorCommand.COPY_LINE_DOWN:
+				case EditorBuiltinCommand.COPY_LINE_DOWN:
 					return ExecuteCoreEditCommand(editorCore.CopyLineDown());
 
-				case EditorCommand.DELETE_LINE:
+				case EditorBuiltinCommand.DELETE_LINE:
 					return ExecuteCoreEditCommand(editorCore.DeleteLine());
 
-				case EditorCommand.INSERT_LINE_ABOVE:
+				case EditorBuiltinCommand.INSERT_LINE_ABOVE:
 					return ExecuteCoreEditCommand(editorCore.InsertLineAbove());
 
-				case EditorCommand.INSERT_LINE_BELOW:
+				case EditorBuiltinCommand.INSERT_LINE_BELOW:
 					return ExecuteCoreEditCommand(editorCore.InsertLineBelow());
 			}
 
-			if (TryMapCoreEditorCommandToKeyGesture(command, out KeyCode keyCode, out KeyModifier modifiers)) {
+			if (TryMapCoreEditorBuiltinCommandToKeyGesture(command, out KeyCode keyCode, out KeyModifier modifiers)) {
 				return ExecuteCoreKeyCommand(keyCode, modifiers);
 			}
 
@@ -3273,77 +3271,77 @@ namespace SweetEditor {
 			return true;
 		}
 
-		private static bool TryMapCoreEditorCommandToKeyGesture(EditorCommand command, out KeyCode keyCode, out KeyModifier modifiers) {
+		private static bool TryMapCoreEditorBuiltinCommandToKeyGesture(EditorBuiltinCommand command, out KeyCode keyCode, out KeyModifier modifiers) {
 			switch (command) {
-				case EditorCommand.CURSOR_LEFT:
+				case EditorBuiltinCommand.CURSOR_LEFT:
 					keyCode = KeyCode.LEFT;
 					modifiers = KeyModifier.NONE;
 					return true;
-				case EditorCommand.CURSOR_RIGHT:
+				case EditorBuiltinCommand.CURSOR_RIGHT:
 					keyCode = KeyCode.RIGHT;
 					modifiers = KeyModifier.NONE;
 					return true;
-				case EditorCommand.CURSOR_UP:
+				case EditorBuiltinCommand.CURSOR_UP:
 					keyCode = KeyCode.UP;
 					modifiers = KeyModifier.NONE;
 					return true;
-				case EditorCommand.CURSOR_DOWN:
+				case EditorBuiltinCommand.CURSOR_DOWN:
 					keyCode = KeyCode.DOWN;
 					modifiers = KeyModifier.NONE;
 					return true;
-				case EditorCommand.CURSOR_LINE_START:
+				case EditorBuiltinCommand.CURSOR_LINE_START:
 					keyCode = KeyCode.HOME;
 					modifiers = KeyModifier.NONE;
 					return true;
-				case EditorCommand.CURSOR_LINE_END:
+				case EditorBuiltinCommand.CURSOR_LINE_END:
 					keyCode = KeyCode.END;
 					modifiers = KeyModifier.NONE;
 					return true;
-				case EditorCommand.CURSOR_PAGE_UP:
+				case EditorBuiltinCommand.CURSOR_PAGE_UP:
 					keyCode = KeyCode.PAGE_UP;
 					modifiers = KeyModifier.NONE;
 					return true;
-				case EditorCommand.CURSOR_PAGE_DOWN:
+				case EditorBuiltinCommand.CURSOR_PAGE_DOWN:
 					keyCode = KeyCode.PAGE_DOWN;
 					modifiers = KeyModifier.NONE;
 					return true;
-				case EditorCommand.SELECT_LEFT:
+				case EditorBuiltinCommand.SELECT_LEFT:
 					keyCode = KeyCode.LEFT;
 					modifiers = KeyModifier.SHIFT;
 					return true;
-				case EditorCommand.SELECT_RIGHT:
+				case EditorBuiltinCommand.SELECT_RIGHT:
 					keyCode = KeyCode.RIGHT;
 					modifiers = KeyModifier.SHIFT;
 					return true;
-				case EditorCommand.SELECT_UP:
+				case EditorBuiltinCommand.SELECT_UP:
 					keyCode = KeyCode.UP;
 					modifiers = KeyModifier.SHIFT;
 					return true;
-				case EditorCommand.SELECT_DOWN:
+				case EditorBuiltinCommand.SELECT_DOWN:
 					keyCode = KeyCode.DOWN;
 					modifiers = KeyModifier.SHIFT;
 					return true;
-				case EditorCommand.SELECT_LINE_START:
+				case EditorBuiltinCommand.SELECT_LINE_START:
 					keyCode = KeyCode.HOME;
 					modifiers = KeyModifier.SHIFT;
 					return true;
-				case EditorCommand.SELECT_LINE_END:
+				case EditorBuiltinCommand.SELECT_LINE_END:
 					keyCode = KeyCode.END;
 					modifiers = KeyModifier.SHIFT;
 					return true;
-				case EditorCommand.SELECT_PAGE_UP:
+				case EditorBuiltinCommand.SELECT_PAGE_UP:
 					keyCode = KeyCode.PAGE_UP;
 					modifiers = KeyModifier.SHIFT;
 					return true;
-				case EditorCommand.SELECT_PAGE_DOWN:
+				case EditorBuiltinCommand.SELECT_PAGE_DOWN:
 					keyCode = KeyCode.PAGE_DOWN;
 					modifiers = KeyModifier.SHIFT;
 					return true;
-				case EditorCommand.BACKSPACE:
+				case EditorBuiltinCommand.BACKSPACE:
 					keyCode = KeyCode.BACKSPACE;
 					modifiers = KeyModifier.NONE;
 					return true;
-				case EditorCommand.DELETE_FORWARD:
+				case EditorBuiltinCommand.DELETE_FORWARD:
 					keyCode = KeyCode.DELETE_KEY;
 					modifiers = KeyModifier.NONE;
 					return true;
@@ -3354,18 +3352,18 @@ namespace SweetEditor {
 			}
 		}
 
-		private bool ExecuteHostKeyMapCommand(EditorCommand command) {
+		private bool ExecuteHostKeyMapCommand(EditorBuiltinCommand command) {
 			switch (command) {
-				case EditorCommand.COPY:
+				case EditorBuiltinCommand.COPY:
 					CopyToClipboard();
 					return true;
-				case EditorCommand.PASTE:
+				case EditorBuiltinCommand.PASTE:
 					PasteFromClipboard();
 					return true;
-				case EditorCommand.CUT:
+				case EditorBuiltinCommand.CUT:
 					CutToClipboard();
 					return true;
-				case EditorCommand.TRIGGER_COMPLETION:
+				case EditorBuiltinCommand.TRIGGER_COMPLETION:
 					TriggerCompletion();
 					return true;
 				default:
@@ -3448,19 +3446,19 @@ namespace SweetEditor {
 
 		private static Point ToPoint(PointF point) => new(point.X, point.Y);
 
-		private static Modifier ToModifiers(KeyModifiers modifiers) {
-			Modifier result = Modifier.NONE;
+		private static KeyModifier ToModifiers(KeyModifiers modifiers) {
+			KeyModifier result = KeyModifier.NONE;
 			if ((modifiers & KeyModifiers.Shift) != 0) {
-				result |= Modifier.SHIFT;
+				result |= KeyModifier.SHIFT;
 			}
 			if ((modifiers & KeyModifiers.Control) != 0) {
-				result |= Modifier.CTRL;
+				result |= KeyModifier.CTRL;
 			}
 			if ((modifiers & KeyModifiers.Alt) != 0) {
-				result |= Modifier.ALT;
+				result |= KeyModifier.ALT;
 			}
 			if ((modifiers & KeyModifiers.Meta) != 0) {
-				result |= Modifier.META;
+				result |= KeyModifier.META;
 			}
 			return result;
 		}
@@ -3781,7 +3779,7 @@ namespace SweetEditor {
 
 			public override string SurroundingText => owner.SafeGetTextInputSurroundingText();
 
-			public override Rect CursorRectangle => owner.GetTextInputCursorRectangle();
+			public override AvaloniaRect CursorRectangle => owner.GetTextInputCursorRectangle();
 
 			public override TextSelection Selection {
 				get => owner.SafeGetTextInputSelection();

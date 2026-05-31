@@ -20,7 +20,7 @@ This document describes the current repository code state (2026-05). If the docu
 | Swing | Java FFM -> C API | Active | Consumes binary payload |
 | WinForms | P/Invoke -> C API | Active | Consumes binary payload |
 | Apple | Swift Package + manual C bridge | Active | Mainly consumes binary payload; bridge header and `c_api.h` need explicit cross-check |
-| OHOS | ArkTS NAPI direct to shared C++ (`libsweeteditor.so`) | Active | `EditorCore.ets` + `EditorProtocol.ets` decode binary payload on the ArkTS side |
+| OHOS | ArkTS NAPI direct to shared C++ (`libsweeteditor.so`) | Active | `EditorCore.ets` + `CoreProtocol.ets` decode binary payload on the ArkTS side |
 | Web (Emscripten) | Unofficial fork (`LangLang03/OpenSweetEditor-Web`) | Testing | Experimental Web platform work is maintained in fork repo: <https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten> |
 
 ## Current Platform Layer Conventions

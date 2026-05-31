@@ -1,28 +1,22 @@
 package com.qiplat.sweeteditor.core.visual;
 
-import com.google.gson.annotations.SerializedName;
+import com.qiplat.sweeteditor.core.foundation.Rect;
 
-/**
- * Scrollbar render model for one axis.
- */
-public class ScrollbarModel {
-    /** Whether scrollbar is visible. */
-    @SerializedName("visible")
-    public boolean visible;
+public final class ScrollbarModel {
+    public boolean visible = false;
+    public float alpha = 0f;
+    public boolean thumbActive = false;
+    public Rect track = new Rect();
+    public Rect thumb = new Rect();
 
-    /** Scrollbar alpha in [0, 1]. */
-    @SerializedName("alpha")
-    public float alpha;
+    public ScrollbarModel() {
+    }
 
-    /** Whether the thumb is currently being dragged. */
-    @SerializedName("thumb_active")
-    public boolean thumbActive;
-
-    /** Track rectangle. */
-    @SerializedName("track")
-    public ScrollbarRect track;
-
-    /** Thumb rectangle. */
-    @SerializedName("thumb")
-    public ScrollbarRect thumb;
+    public ScrollbarModel(boolean visible, float alpha, boolean thumbActive, Rect track, Rect thumb) {
+        this.visible = visible;
+        this.alpha = alpha;
+        this.thumbActive = thumbActive;
+        this.track = track;
+        this.thumb = thumb;
+    }
 }

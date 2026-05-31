@@ -4,7 +4,7 @@ This document maps to the current WinForms implementation:
 
 - Control layer: `platform/WinForms/SweetEditor/SweetEditorControl.cs`
 - Bridge layer: `platform/WinForms/SweetEditor/EditorCore.cs`
-- Protocol decode: `platform/WinForms/SweetEditor/EditorProtocol.cs`
+- Protocol encode/decode: `platform/WinForms/SweetEditor/CoreProtocol.cs`
 - Extension/Provider:
   - `platform/WinForms/SweetEditor/EditorCompletion.cs`
   - `platform/WinForms/SweetEditor/EditorDecoration.cs`
@@ -15,7 +15,7 @@ This document maps to the current WinForms implementation:
 ## Architecture Notes
 
 - WinForms calls C API by P/Invoke (`sweeteditor.dll`).
-- `EditorCore` wraps native calls, and `EditorProtocol` decodes binary payload.
+- `EditorCore` wraps native calls, and `CoreProtocol` encodes and decodes binary payloads.
 - The current bridge protocol is binary payload.
 - `SweetEditorControl` handles input, drawing, event publishing, and provider management.
 - `Document` creation and line-text query use UTF-16 boundary; text fields in the render model and `EditorActionResult` payload are currently decoded as UTF-8.
@@ -115,7 +115,7 @@ public void SetMaxGutterIcons(int count)
 public void Flush()
 ```
 
-`Flush()` is a force-refresh / compatibility entrypoint. Normal edit, decoration, scroll, and selection paths dispatch `EditorActionResult` through the unified result path, and `NeedsRedraw` decides whether to refresh the render model and redraw; hosts usually do not need to call it after batched decoration updates.
+`Flush()` is a force-refresh / diagnostic entrypoint. Normal edit, decoration, scroll, and selection paths dispatch `EditorActionResult` through the unified result path, and `NeedsRedraw` decides whether to refresh the render model and redraw; hosts usually do not need to call it after batched decoration updates.
 
 ### Edit / Line Actions / Undo Redo
 

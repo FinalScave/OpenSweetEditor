@@ -43,24 +43,13 @@ intptr_t create_editor(se_text_measurer_t measurer,
                        size_t options_size);
 void free_editor(intptr_t editor_handle);
 
-const uint8_t* set_editor_viewport(intptr_t editor_handle, int16_t width, int16_t height, size_t* out_size);
-const uint8_t* set_editor_document(intptr_t editor_handle, intptr_t document_handle, size_t* out_size);
+const uint8_t* editor_set_viewport(intptr_t editor_handle, int16_t width, int16_t height, size_t* out_size);
+const uint8_t* editor_set_document(intptr_t editor_handle, intptr_t document_handle, size_t* out_size);
 
-const uint8_t* handle_editor_gesture_event(intptr_t editor_handle,
-                                           uint8_t type,
-                                           uint8_t pointer_count,
-                                           float* points,
+const uint8_t* editor_handle_gesture_event(intptr_t editor_handle,
+                                           const uint8_t* data,
+                                           size_t size,
                                            size_t* out_size);
-
-const uint8_t* handle_editor_gesture_event_ex(intptr_t editor_handle,
-                                              uint8_t type,
-                                              uint8_t pointer_count,
-                                              float* points,
-                                              uint8_t modifiers,
-                                              float wheel_delta_x,
-                                              float wheel_delta_y,
-                                              float direct_scale,
-                                              size_t* out_size);
 
 const uint8_t* editor_update_pointer_modifiers(intptr_t editor_handle,
                                                uint8_t modifiers,
@@ -68,12 +57,12 @@ const uint8_t* editor_update_pointer_modifiers(intptr_t editor_handle,
 
 const uint8_t* editor_on_font_metrics_changed(intptr_t editor_handle, size_t* out_size);
 
-const uint8_t* build_editor_render_model(intptr_t editor_handle, size_t* out_size);
-const uint8_t* get_layout_metrics(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_build_render_model(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size_t* out_size);
 
 // ===================== Keyboard Input API =====================
 
-const uint8_t* handle_editor_key_event(intptr_t editor_handle,
+const uint8_t* editor_handle_key_event(intptr_t editor_handle,
                                        uint16_t key_code,
                                        const char* text,
                                        uint8_t modifiers,
@@ -136,15 +125,9 @@ const uint8_t* editor_ime_mark_document_range_by_offset(intptr_t editor_handle,
     size_t end_offset,
     int script_hint,
     size_t* out_size);
-const uint8_t* editor_ime_update_input_state_text(intptr_t editor_handle,
-    uint64_t context_id,
-    int32_t document_start_offset,
-    const char* text,
-    int32_t selection_start_offset,
-    int32_t selection_end_offset,
-    int32_t composing_start_offset,
-    int32_t composing_end_offset,
-    int script_hint,
+const uint8_t* editor_ime_update_text_model_state(intptr_t editor_handle,
+    const uint8_t* data,
+    size_t size,
     size_t* out_size);
 const uint8_t* editor_ime_update_input_state_selection(intptr_t editor_handle,
     uint64_t context_id,
@@ -153,13 +136,8 @@ const uint8_t* editor_ime_update_input_state_selection(intptr_t editor_handle,
     int32_t selection_end_offset,
     size_t* out_size);
 const uint8_t* editor_ime_replace_input_state_text(intptr_t editor_handle,
-    uint64_t context_id,
-    int32_t document_start_offset,
-    size_t start_offset,
-    size_t end_offset,
-    const char* text,
-    int cursor_offset,
-    int script_hint,
+    const uint8_t* data,
+    size_t size,
     size_t* out_size);
 int  editor_is_composing(intptr_t editor_handle);
 
@@ -186,9 +164,8 @@ void editor_get_cursor_rect(intptr_t editor_handle,
 // ===================== Navigation API =====================
 
 const uint8_t* editor_set_scrollbar_config(intptr_t editor_handle,
-                                           float thickness, float min_thumb, float thumb_hit_padding,
-                                           int mode, int thumb_draggable, int track_tap_mode,
-                                           int fade_delay_ms, int fade_duration_ms,
+                                           const uint8_t* data,
+                                           size_t size,
                                            size_t* out_size);
 const uint8_t* editor_scroll_to_line(intptr_t editor_handle, size_t line, uint8_t behavior, size_t* out_size);
 const uint8_t* editor_goto_position(intptr_t editor_handle, size_t line, size_t column, size_t* out_size);

@@ -3,6 +3,7 @@ import json
 import shutil
 from pathlib import Path
 
+from .augment import AUGMENTERS
 from .backends import BACKENDS
 from .config import read_config
 from .golden import fixture_bytes, format_hex, normalize_hex, read_golden_file
@@ -47,6 +48,10 @@ def command_generate(args):
         if generate is None:
             raise SystemExit(f"Unsupported backend for target {target_name}: {backend}")
         written.extend(generate(schema, target_name, target, out_root))
+        if not args.no_augment and not args.pure:
+            augment = AUGMENTERS.get(backend)
+            if augment is not None:
+                written.extend(augment(schema, target_name, target, out_root))
     for path in sorted(set(written)):
         print(f"Wrote {path}")
 
@@ -90,6 +95,8 @@ def main():
     parser.add_argument("--check-snapshot", action="store_true")
     parser.add_argument("--update-golden", action="store_true")
     parser.add_argument("--write-targets", action="store_true", help="Write generated code into configured platform targets")
+    parser.add_argument("--no-augment", action="store_true", help="Skip generated-code augmentation")
+    parser.add_argument("--pure", action="store_true", help="Alias for --no-augment")
     args = parser.parse_args()
     if args.command == "extract":
         command_extract(args)

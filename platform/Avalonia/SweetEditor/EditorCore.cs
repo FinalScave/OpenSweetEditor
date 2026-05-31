@@ -110,756 +110,6 @@ namespace SweetEditor {
 			}
 		}
 	}
-
-	/// <summary>
-	/// 2D floating-point coordinate.
-	/// </summary>
-	public struct PointF {
-		/// <summary>X coordinate.</summary>
-		[JsonPropertyName("x")]
-		public float X { get; set; }
-		/// <summary>Y coordinate.</summary>
-		[JsonPropertyName("y")]
-		public float Y { get; set; }
-
-		/// <summary>Creates point (0, 0).</summary>
-		public PointF() {
-			X = 0;
-			Y = 0;
-		}
-
-		/// <summary>Creates a point with the specified coordinates.</summary>
-		/// <param name="x">X coordinate</param>
-		/// <param name="y">Y coordinate</param>
-		public PointF(float x, float y) {
-			X = x;
-			Y = y;
-		}
-	}
-
-	/// <summary>
-	/// Input event type.
-	/// </summary>
-	public enum EventType {
-		UNDEFINED = 0,
-		TOUCH_DOWN = 1,
-		TOUCH_POINTER_DOWN = 2,
-		TOUCH_MOVE = 3,
-		TOUCH_POINTER_UP = 4,
-		TOUCH_UP = 5,
-		TOUCH_CANCEL = 6,
-		MOUSE_DOWN = 7,
-		MOUSE_MOVE = 8,
-		MOUSE_UP = 9,
-		MOUSE_WHEEL = 10,
-		MOUSE_RIGHT_DOWN = 11,
-		DIRECT_SCALE = 12,
-		DIRECT_SCROLL = 13
-	}
-
-	/// <summary>
-	/// Keyboard modifier flags.
-	/// </summary>
-	[Flags]
-	public enum Modifier : byte {
-		NONE = 0,
-		SHIFT = 1 << 0,
-		CTRL = 1 << 1,
-		ALT = 1 << 2,
-		META = 1 << 3
-	}
-
-	/// <summary>
-	/// Gesture input event.
-	/// </summary>
-	public struct GestureEvent {
-		/// <summary>Event type.</summary>
-		public EventType Type { get; set; }
-		/// <summary>Touch point list.</summary>
-		public List<PointF> Points { get; set; }
-		/// <summary>Modifier key state.</summary>
-		public Modifier Modifiers { get; set; }
-		/// <summary>Mouse wheel horizontal delta.</summary>
-		public float WheelDeltaX { get; set; }
-		/// <summary>Mouse wheel vertical delta.</summary>
-		public float WheelDeltaY { get; set; }
-		/// <summary>Direct scale factor.</summary>
-		public float DirectScale { get; set; }
-
-		/// <summary>
-		/// Converts the touch point list to an interleaved float array [x0, y0, x1, y1, ...].
-		/// </summary>
-		/// <returns>Interleaved coordinate array; returns an empty array when there are no touch points.</returns>
-		public float[] GetPointsArray() {
-			if (Points == null || Points.Count == 0) return Array.Empty<float>();
-			float[] arr = new float[Points.Count * 2];
-			for (int i = 0; i < Points.Count; i++) {
-				arr[i * 2] = Points[i].X;
-				arr[i * 2 + 1] = Points[i].Y;
-			}
-			return arr;
-		}
-	}
-
-	/// <summary>
-	/// Gesture recognition result type.
-	/// </summary>
-	public enum GestureType {
-		UNDEFINED = 0,
-		TAP = 1,
-		DOUBLE_TAP = 2,
-		LONG_PRESS = 3,
-		SCALE = 4,
-		SCROLL = 5,
-		FAST_SCROLL = 6,
-		DRAG_SELECT = 7,
-		CONTEXT_MENU = 8
-	}
-
-	/// <summary>
-	/// Fold arrow display mode.
-	/// </summary>
-	public enum FoldArrowMode {
-		/// <summary>Auto: show when foldable regions exist, hide when none exist</summary>
-		AUTO = 0,
-		/// <summary>Always show (reserve space to avoid width jitter)</summary>
-		ALWAYS = 1,
-		/// <summary>Always hide (no reserved space, even when foldable regions exist)</summary>
-		HIDDEN = 2,
-	}
-
-	/// <summary>
-	/// Auto-wrap mode.
-	/// </summary>
-	public enum WrapMode {
-		/// <summary>No auto-wrap</summary>
-		NONE = 0,
-		/// <summary>Wrap by character</summary>
-		CHAR_BREAK = 1,
-		/// <summary>Wrap by word</summary>
-		WORD_BREAK = 2,
-	}
-
-	/// <summary>
-	/// Auto-indent mode.
-	/// </summary>
-	public enum AutoIndentMode {
-		/// <summary>No auto-indent; new lines start at column 0</summary>
-		NONE = 0,
-		/// <summary>Keeps previous line indentation (copies leading whitespace)</summary>
-		KEEP_INDENT = 1,
-	}
-
-	/// <summary>
-	/// Current line render mode.
-	/// </summary>
-	public enum CurrentLineRenderMode {
-		/// <summary>Fill the entire current line background.</summary>
-		BACKGROUND = 0,
-		/// <summary>Draw a border around current line.</summary>
-		BORDER = 1,
-		/// <summary>Disable current line decoration.</summary>
-		NONE = 2,
-	}
-
-	/// <summary>
-	/// Selection handle hit-test configuration.
-	/// </summary>
-	public class HandleConfig {
-		/// <summary>Start handle hit area offset from the cursor bottom anchor (left)</summary>
-		public float StartLeft { get; set; } = -32.1f;
-		/// <summary>Start handle hit area offset from the cursor bottom anchor (top)</summary>
-		public float StartTop { get; set; } = -8.0f;
-		/// <summary>Start handle hit area offset from the cursor bottom anchor (right)</summary>
-		public float StartRight { get; set; } = 8.0f;
-		/// <summary>Start handle hit area offset from the cursor bottom anchor (bottom)</summary>
-		public float StartBottom { get; set; } = 32.1f;
-		/// <summary>End handle hit area offset from the cursor bottom anchor (left)</summary>
-		public float EndLeft { get; set; } = -8.0f;
-		/// <summary>End handle hit area offset from the cursor bottom anchor (top)</summary>
-		public float EndTop { get; set; } = -8.0f;
-		/// <summary>End handle hit area offset from the cursor bottom anchor (right)</summary>
-		public float EndRight { get; set; } = 32.1f;
-		/// <summary>End handle hit area offset from the cursor bottom anchor (bottom)</summary>
-		public float EndBottom { get; set; } = 32.1f;
-	}
-
-	/// <summary>
-	/// Scrollbar visibility mode.
-	/// </summary>
-	public enum ScrollbarMode {
-		ALWAYS = 0,
-		TRANSIENT = 1,
-		NEVER = 2,
-	}
-
-	/// <summary>
-	/// Scrollbar track tap behavior.
-	/// </summary>
-	public enum ScrollbarTrackTapMode {
-		JUMP = 0,
-		DISABLED = 1,
-	}
-
-	/// <summary>
-	/// Scrollbar configuration (geometry + behavior).
-	/// </summary>
-	public class ScrollbarConfig {
-		/// <summary>Scrollbar thickness in pixels (default 10.0)</summary>
-		public float Thickness { get; set; } = 10.0f;
-		/// <summary>Minimum scrollbar thumb length in pixels (default 24.0)</summary>
-		public float MinThumb { get; set; } = 24.0f;
-		/// <summary>Extra thumb hit-test padding in pixels.</summary>
-		public float ThumbHitPadding { get; set; } = 0.0f;
-		/// <summary>Visibility mode</summary>
-		public ScrollbarMode Mode { get; set; } = ScrollbarMode.ALWAYS;
-		/// <summary>Whether thumb dragging is enabled</summary>
-		public bool ThumbDraggable { get; set; } = true;
-		/// <summary>Track tap behavior</summary>
-		public ScrollbarTrackTapMode TrackTapMode { get; set; } = ScrollbarTrackTapMode.JUMP;
-		/// <summary>Delay before hide in TRANSIENT mode</summary>
-		public int FadeDelayMs { get; set; } = 700;
-		/// <summary>Fade duration in TRANSIENT mode (used for both fade-in and fade-out).</summary>
-		public int FadeDurationMs { get; set; } = 300;
-	}
-
-	/// <summary>
-	/// Construction-time immutable options for EditorCore.
-	/// Fields mirror the C++ EditorOptions struct.
-	/// Binary layout (LE): f32 touch_slop, i64 double_tap_timeout, i64 long_press_ms, f32 fling_friction, f32 fling_min_velocity, f32 fling_max_velocity, u64 max_undo_stack_size
-	/// </summary>
-	public class EditorOptions {
-		/// <summary>Threshold to determine if a gesture is a move (default 10)</summary>
-		public float TouchSlop { get; set; } = 10f;
-		/// <summary>Double-tap time threshold in ms (default 300)</summary>
-		public long DoubleTapTimeout { get; set; } = 300;
-		/// <summary>Long press time threshold in ms (default 500)</summary>
-		public long LongPressMs { get; set; } = 500;
-		/// <summary>Fling friction coefficient, higher = faster deceleration (default 2.0)</summary>
-		public float FlingFriction { get; set; } = 2.0f;
-		/// <summary>Minimum fling velocity threshold in px/s (default 30)</summary>
-		public float FlingMinVelocity { get; set; } = 30f;
-		/// <summary>Maximum fling velocity cap in px/s (default 12000)</summary>
-		public float FlingMaxVelocity { get; set; } = 12000f;
-		/// <summary>Max undo stack size, 0 = unlimited (default 512)</summary>
-		public ulong MaxUndoStackSize { get; set; } = 512;
-	}
-
-	/// <summary>
-	/// Screen-space rectangle for caret/text position (for floating panel positioning).
-	/// Coordinates are relative to the top-left corner of the editor control.
-	/// </summary>
-	public struct CursorRect {
-		/// <summary>X coordinate relative to the top-left corner of the editor control</summary>
-		public float X;
-		/// <summary>Y coordinate relative to the top-left corner of the editor control (line top).</summary>
-		public float Y;
-		/// <summary>Line height (matches caret height)</summary>
-		public float Height;
-
-		public override string ToString() => $"CursorRect(X={X}, Y={Y}, Height={Height})";
-	}
-
-	/// <summary>
-	/// Scrollbar metrics (used by platform code to compute thumb size and position).
-	/// </summary>
-	[StructLayout(LayoutKind.Sequential)]
-	public struct ScrollMetrics {
-		public float Scale;
-		public float ScrollX;
-		public float ScrollY;
-		public float MaxScrollX;
-		public float MaxScrollY;
-		public float ContentWidth;
-		public float ContentHeight;
-		public float ViewportWidth;
-		public float ViewportHeight;
-		public float TextAreaX;
-		public float TextAreaWidth;
-		public int CanScrollXInt;
-		public int CanScrollYInt;
-
-		public bool CanScrollX => CanScrollXInt != 0;
-		public bool CanScrollY => CanScrollYInt != 0;
-	}
-
-	/// <summary>
-	/// Layout metrics snapshot exposed to platform bindings.
-	/// Values are expressed in editor-local coordinates.
-	/// </summary>
-	public struct LayoutMetrics {
-		public float Scale;
-		public float ViewportWidth;
-		public float ViewportHeight;
-		public float ContentWidth;
-		public float ContentHeight;
-		public float ScrollX;
-		public float ScrollY;
-		public float MaxScrollX;
-		public float MaxScrollY;
-		public float TextAreaX;
-		public float TextAreaWidth;
-		public float CursorX;
-		public float CursorY;
-		public float CursorHeight;
-
-		public LayoutMetrics(ScrollMetrics scrollMetrics, CursorRect cursorRect) {
-			Scale = scrollMetrics.Scale;
-			ViewportWidth = scrollMetrics.ViewportWidth;
-			ViewportHeight = scrollMetrics.ViewportHeight;
-			ContentWidth = scrollMetrics.ContentWidth;
-			ContentHeight = scrollMetrics.ContentHeight;
-			ScrollX = scrollMetrics.ScrollX;
-			ScrollY = scrollMetrics.ScrollY;
-			MaxScrollX = scrollMetrics.MaxScrollX;
-			MaxScrollY = scrollMetrics.MaxScrollY;
-			TextAreaX = scrollMetrics.TextAreaX;
-			TextAreaWidth = scrollMetrics.TextAreaWidth;
-			CursorX = cursorRect.X;
-			CursorY = cursorRect.Y;
-			CursorHeight = cursorRect.Height;
-		}
-	}
-
-	/// <summary>
-	/// Linked editing model (pure data structure).
-	/// Build with Builder, then pass into <c>EditorCore.StartLinkedEditing()</c> to enter linked editing mode.
-	/// </summary>
-	public class LinkedEditingModel {
-		/// <summary>Tab stop group.</summary>
-		public class TabStopGroup {
-			/// <summary>Group index (0 = final caret position, 1+ = editing order).</summary>
-			public int Index { get; set; }
-			/// <summary>Default placeholder text</summary>
-			public string? DefaultText { get; set; }
-			/// <summary>All text ranges in this group</summary>
-			public List<TabStopRange> Ranges { get; set; } = new();
-		}
-
-		/// <summary>Text range (linked editing location).</summary>
-		public struct TabStopRange {
-			public int StartLine;
-			public int StartColumn;
-			public int EndLine;
-			public int EndColumn;
-
-			public TabStopRange(int startLine, int startColumn, int endLine, int endColumn) {
-				StartLine = startLine;
-				StartColumn = startColumn;
-				EndLine = endLine;
-				EndColumn = endColumn;
-			}
-		}
-
-		/// <summary>All tab stop groups.</summary>
-		public List<TabStopGroup> Groups { get; set; } = new();
-
-		/// <summary>Adds a tab stop group.</summary>
-		public LinkedEditingModel AddGroup(int index, string? defaultText, params TabStopRange[] ranges) {
-			var group = new TabStopGroup { Index = index, DefaultText = defaultText };
-			group.Ranges.AddRange(ranges);
-			Groups.Add(group);
-			return this;
-		}
-	}
-
-	/// <summary>
-	/// Scroll behavior.
-	/// </summary>
-	public enum ScrollBehavior {
-		/// <summary>Align target line to viewport top</summary>
-		TOP = 0,
-		/// <summary>Align target line to viewport center</summary>
-		CENTER = 1,
-		/// <summary>Align target line to viewport bottom</summary>
-		BOTTOM = 2,
-	}
-
-	/// <summary>
-	/// Separator style.
-	/// </summary>
-	public enum SeparatorStyle {
-		/// <summary>Single line (---)</summary>
-		SINGLE = 0,
-		/// <summary>Double line (===)</summary>
-		DOUBLE = 1,
-	}
-
-	/// <summary>
-	/// Highlight layer.
-	/// </summary>
-	public enum SpanLayer : byte {
-		/// <summary>Syntax highlight (base layer, full coverage).</summary>
-		SYNTAX = 0,
-		/// <summary>Semantic highlight (LSP semantic tokens, overrides syntax layer).</summary>
-		SEMANTIC = 1,
-	}
-
-	#region Adornment model types (Adornment Models)
-
-	/// <summary>Immutable value object describing a highlight span on a line.</summary>
-	public sealed class StyleSpan {
-		/// <summary>Start column (0-based, UTF-16 offset)</summary>
-		public int Column { get; }
-		/// <summary>Character length</summary>
-		public int Length { get; }
-		/// <summary>Style ID registered by RegisterTextStyle</summary>
-		public int StyleId { get; }
-		public StyleSpan(int column, int length, int styleId) { Column = column; Length = length; StyleId = styleId; }
-	}
-
-	/// <summary>InlayHint type enum.</summary>
-	public enum InlayType {
-		/// <summary>Text type</summary>
-		Text = 0,
-		/// <summary>Icon type</summary>
-		Icon = 1,
-		/// <summary>Color block type</summary>
-		Color = 2,
-	}
-
-	/// <summary>Immutable value object describing an InlayHint on a line.</summary>
-	public sealed class InlayHint {
-		public InlayType Type { get; }
-		public int Column { get; }
-		public string? Text { get; }
-		public int IntValue { get; }
-		public InlayHint(InlayType type, int column, string? text, int intValue) { Type = type; Column = column; Text = text; IntValue = intValue; }
-		public static InlayHint TextHint(int column, string text) => new(InlayType.Text, column, text, 0);
-		public static InlayHint IconHint(int column, int iconId) => new(InlayType.Icon, column, null, iconId);
-		public static InlayHint ColorHint(int column, int color) => new(InlayType.Color, column, null, color);
-	}
-
-	/// <summary>Immutable value object describing ghost text on a line.</summary>
-	public sealed class PhantomText {
-		/// <summary>Insert column (0-based, UTF-16 offset)</summary>
-		public int Column { get; }
-		/// <summary>Ghost text content</summary>
-		public string Text { get; }
-		public PhantomText(int column, string text) { Column = column; Text = text; }
-	}
-
-	/// <summary>Immutable value object representing a single CodeLens item.</summary>
-	public sealed class CodeLensItem {
-		/// <summary>Column anchor within the logical line (0-based, UTF-16 offset).</summary>
-		public int Column { get; }
-		/// <summary>Display text (for example "3 references").</summary>
-		public string Text { get; }
-		/// <summary>Command ID (platform-defined, passed back on click).</summary>
-		public int CommandId { get; }
-		public CodeLensItem(int column, string text, int commandId) { Column = column; Text = text; CommandId = commandId; }
-	}
-
-	/// <summary>Immutable value object describing a single gutter icon.</summary>
-	public sealed class GutterIcon {
-		/// <summary>Icon resource ID</summary>
-		public int IconId { get; }
-		public GutterIcon(int iconId) { IconId = iconId; }
-	}
-
-	/// <summary>Immutable value object describing a diagnostic entry on a line.</summary>
-	public class Diagnostic {
-		/// <summary>Start column (0-based, UTF-16 offset)</summary>
-		public int Column { get; }
-		/// <summary>Character length</summary>
-		public int Length { get; }
-		/// <summary>Severity (0=error, 1=warning, 2=info, 3=hint)</summary>
-		public int Severity { get; }
-		/// <summary>Underline/marker color (ARGB)</summary>
-		public int Color { get; }
-		public Diagnostic(int column, int length, int severity, int color) { Column = column; Length = length; Severity = severity; Color = color; }
-	}
-
-	/// <summary>Compatibility alias for the previous Avalonia diagnostic model name.</summary>
-	[Obsolete("Use Diagnostic.")]
-	public sealed class DiagnosticItem : Diagnostic {
-		public DiagnosticItem(int column, int length, int severity, int color) : base(column, length, severity, color) { }
-	}
-
-	/// <summary>Immutable value object describing a foldable region.</summary>
-	public sealed class FoldRegion {
-		/// <summary>Start line (0-based, this line stays visible).</summary>
-		public int StartLine { get; }
-		/// <summary>End line (0-based, inclusive).</summary>
-		public int EndLine { get; }
-		public FoldRegion(int startLine, int endLine) { StartLine = startLine; EndLine = endLine; }
-	}
-
-	/// <summary>Immutable value object describing an indent guide line.</summary>
-	public sealed class IndentGuide {
-		public TextPosition Start { get; }
-		public TextPosition End { get; }
-		public IndentGuide(TextPosition start, TextPosition end) { Start = start; End = end; }
-		public IndentGuide(int startLine, int startColumn, int endLine, int endColumn)
-			: this(new TextPosition { Line = startLine, Column = startColumn },
-				   new TextPosition { Line = endLine, Column = endColumn }) { }
-	}
-
-	/// <summary>Immutable value object describing a bracket branch line.</summary>
-	public sealed class BracketGuide {
-		public TextPosition Parent { get; }
-		public TextPosition End { get; }
-		public TextPosition[]? Children { get; }
-		public BracketGuide(TextPosition parent, TextPosition end, TextPosition[]? children) { Parent = parent; End = end; Children = children; }
-	}
-
-	/// <summary>Immutable value object describing a control-flow back-edge arrow.</summary>
-	public sealed class FlowGuide {
-		public TextPosition Start { get; }
-		public TextPosition End { get; }
-		public FlowGuide(TextPosition start, TextPosition end) { Start = start; End = end; }
-		public FlowGuide(int startLine, int startColumn, int endLine, int endColumn)
-			: this(new TextPosition { Line = startLine, Column = startColumn },
-				   new TextPosition { Line = endLine, Column = endColumn }) { }
-	}
-
-	/// <summary>Immutable value object describing a horizontal separator line.</summary>
-	public sealed class SeparatorGuide {
-		/// <summary>Line number (0-based)</summary>
-		public int Line { get; }
-		/// <summary>Separator style (0=Single line, 1=Double line)</summary>
-		public int Style { get; }
-		/// <summary>Symbol count</summary>
-		public int Count { get; }
-		/// <summary>Comment text end column</summary>
-		public int TextEndColumn { get; }
-		public SeparatorGuide(int line, int style, int count, int textEndColumn) { Line = line; Style = style; Count = count; TextEndColumn = textEndColumn; }
-	}
-
-	#endregion
-
-	/// <summary>
-	/// Tap hit target type.
-	/// </summary>
-	[JsonConverter(typeof(JsonStringEnumConverter))]
-	public enum HitTargetType {
-		/// <summary>No special target hit</summary>
-		NONE = 0,
-		/// <summary>Hit InlayHint (text type).</summary>
-		INLAY_HINT_TEXT = 1,
-		/// <summary>Hit InlayHint (icon type).</summary>
-		INLAY_HINT_ICON = 2,
-		/// <summary>Hit a gutter icon</summary>
-		GUTTER_ICON = 3,
-		/// <summary>Hit fold placeholder (click to expand folded region).</summary>
-		FOLD_PLACEHOLDER = 4,
-		/// <summary>Hit gutter fold arrow (click to toggle fold/unfold).</summary>
-		FOLD_GUTTER = 5,
-		/// <summary>Hit InlayHint (color block type).</summary>
-		INLAY_HINT_COLOR = 6,
-		/// <summary>Hit a CodeLens item.</summary>
-		CODELENS = 7,
-		/// <summary>Hit a clickable document link.</summary>
-		LINK = 8,
-	}
-
-	/// <summary>
-	/// Tap hit target info (filled by the C++ layer during TAP gesture handling).
-	/// </summary>
-	public struct HitTarget {
-		[JsonPropertyName("type")]
-		public HitTargetType Type { get; set; }
-		/// <summary>Hit logical line (0-based)</summary>
-		[JsonPropertyName("line")]
-		public int Line { get; set; }
-		/// <summary>Hit column (0-based, meaningful for InlayHint and CodeLens).</summary>
-		[JsonPropertyName("column")]
-		public int Column { get; set; }
-		/// <summary>Icon ID (valid for INLAY_HINT_ICON / GUTTER_ICON).</summary>
-		[JsonPropertyName("icon_id")]
-		public int IconId { get; set; }
-		/// <summary>Color value (ARGB, valid for INLAY_HINT_COLOR).</summary>
-		[JsonPropertyName("color_value")]
-		public int ColorValue { get; set; }
-	}
-
-	/// <summary>
-	/// Pointer cursor type hint returned by the core.
-	/// </summary>
-	[JsonConverter(typeof(JsonStringEnumConverter))]
-	public enum PointerCursorType {
-		DEFAULT = 0,
-		TEXT = 1,
-		HAND = 2,
-	}
-
-	/// <summary>
-	/// Enum for visual render segment kinds.
-	/// </summary>
-	public enum VisualRunType {
-		/// <summary>Plain text</summary>
-		TEXT,
-		/// <summary>Space</summary>
-		WHITESPACE,
-		/// <summary>Line break</summary>
-		NEWLINE,
-		/// <summary>Inline content (text or icon).</summary>
-		INLAY_HINT,
-		/// <summary>Ghost text (used for Copilot code suggestions).</summary>
-		PHANTOM_TEXT,
-		/// <summary>Fold placeholder (" ... " at the end of the first line of a folded region).</summary>
-		FOLD_PLACEHOLDER,
-		/// <summary>Tab character (width computed by core based on tab_size and column position).</summary>
-		TAB,
-		/// <summary>CodeLens clickable label (above code line).</summary>
-		CODELENS
-	}
-
-	/// <summary>
-	/// Structure for each visually rendered text segment.
-	/// </summary>
-	public struct VisualRun {
-		/// <summary>Segment type</summary>
-		[JsonPropertyName("type")]
-		public VisualRunType Type { get; set; }
-		/// <summary>Draw start X coordinate.</summary>
-		[JsonPropertyName("x")]
-		public float X { get; set; }
-		/// <summary>Draw start Y coordinate.</summary>
-		[JsonPropertyName("y")]
-		public float Y { get; set; }
-		/// <summary>Segment text content (only present for TEXT, INLAY_HINT(TEXT), and PHANTOM_TEXT).</summary>
-		[JsonPropertyName("text")]
-		public string Text { get; set; }
-		/// <summary>Style (color + background color + font style).</summary>
-		[JsonPropertyName("style")]
-		public TextStyle Style { get; set; }
-		/// <summary>Precomputed width (filled during C++ layout).</summary>
-		[JsonPropertyName("width")]
-		public float Width { get; set; }
-		/// <summary>Horizontal background padding (INLAY_HINT only, one per side).</summary>
-		[JsonPropertyName("padding")]
-		public float Padding { get; set; }
-		/// <summary>Horizontal outer margin to adjacent runs (INLAY_HINT only, one per side).</summary>
-		[JsonPropertyName("margin")]
-		public float Margin { get; set; }
-		/// <summary>Icon resource ID (used only for INLAY_HINT(ICON)).</summary>
-		[JsonPropertyName("icon_id")]
-		public int IconId { get; set; }
-		/// <summary>Color value (ARGB, used only for INLAY_HINT(COLOR)).</summary>
-		[JsonPropertyName("color_value")]
-		public int ColorValue { get; set; }
-		/// <summary>Whether this run is in active state (hovered/pressed).</summary>
-		[JsonPropertyName("active")]
-		public bool Active { get; set; }
-	}
-
-	/// <summary>
-	/// Fold state enum (maps to C++ FoldState).
-	/// </summary>
-	[JsonConverter(typeof(JsonStringEnumConverter))]
-	public enum FoldState {
-		/// <summary>First line of non-folded region</summary>
-		NONE,
-		/// <summary>Foldable (expanded; click to fold).</summary>
-		EXPANDED,
-		/// <summary>Folded (click to expand).</summary>
-		COLLAPSED,
-	}
-
-	public enum VisualLineKind {
-		CONTENT = 0,
-		PHANTOM = 1,
-		CODELENS = 2,
-	}
-
-	/// <summary>
-	/// Visual render row data.
-	/// </summary>
-	public struct VisualLine {
-		/// <summary>Logical line index</summary>
-		[JsonPropertyName("logical_line")]
-		public int LogicalLine { get; set; }
-		/// <summary>Wrap row index under auto-wrap (0 = first row, 1,2,... = continuation rows).</summary>
-		[JsonPropertyName("wrap_index")]
-		public int WrapIndex { get; set; }
-		/// <summary>Line number position</summary>
-		[JsonPropertyName("line_number_position")]
-		public PointF LineNumberPosition { get; set; }
-		/// <summary>Text segments in this visual row</summary>
-		[JsonPropertyName("runs")]
-		public List<VisualRun> Runs { get; set; }
-		/// <summary>Visual line kind.</summary>
-		[JsonPropertyName("kind")]
-		public VisualLineKind Kind { get; set; }
-		/// <summary>Whether this visual row owns line number, gutter icon, and fold marker semantics.</summary>
-		[JsonPropertyName("owns_gutter_semantics")]
-		public bool OwnsGutterSemantics { get; set; }
-		/// <summary>Compatibility alias for older renderers using phantom-line semantics.</summary>
-		[JsonPropertyName("is_phantom_line")]
-		public bool IsPhantomLine { get; set; }
-		/// <summary>Fold state</summary>
-		[JsonPropertyName("fold_state")]
-		public FoldState FoldState { get; set; }
-	}
-
-	/// <summary>
-	/// Gutter icon render item with fully resolved geometry.
-	/// </summary>
-	public struct GutterIconRenderItem {
-		/// <summary>Logical line index.</summary>
-		[JsonPropertyName("logical_line")]
-		public int LogicalLine { get; set; }
-		/// <summary>Icon resource ID.</summary>
-		[JsonPropertyName("icon_id")]
-		public int IconId { get; set; }
-		/// <summary>Icon top-left corner.</summary>
-		[JsonPropertyName("origin")]
-		public PointF Origin { get; set; }
-		/// <summary>Icon width.</summary>
-		[JsonPropertyName("width")]
-		public float Width { get; set; }
-		/// <summary>Icon height.</summary>
-		[JsonPropertyName("height")]
-		public float Height { get; set; }
-	}
-
-	/// <summary>
-	/// Fold marker render item with fully resolved geometry.
-	/// </summary>
-	public struct FoldMarkerRenderItem {
-		/// <summary>Logical line index.</summary>
-		[JsonPropertyName("logical_line")]
-		public int LogicalLine { get; set; }
-		/// <summary>Fold state on this line.</summary>
-		[JsonPropertyName("fold_state")]
-		public FoldState FoldState { get; set; }
-		/// <summary>Marker top-left corner.</summary>
-		[JsonPropertyName("origin")]
-		public PointF Origin { get; set; }
-		/// <summary>Marker width.</summary>
-		[JsonPropertyName("width")]
-		public float Width { get; set; }
-		/// <summary>Marker height.</summary>
-		[JsonPropertyName("height")]
-		public float Height { get; set; }
-	}
-
-	/// <summary>
-	/// Text position (line + column, both 0-based).
-	/// </summary>
-	public struct TextPosition {
-		/// <summary>Line</summary>
-		[JsonPropertyName("line")]
-		public int Line { get; set; }
-		/// <summary>Column</summary>
-		[JsonPropertyName("column")]
-		public int Column { get; set; }
-	}
-
-	/// <summary>
-	/// Text range composed of start and end <see cref="TextPosition"/> values.
-	/// </summary>
-	public struct TextRange {
-		[JsonPropertyName("start")]
-		public TextPosition Start { get; set; }
-		[JsonPropertyName("end")]
-		public TextPosition End { get; set; }
-
-		[JsonIgnore]
-		public bool IsCollapsed => Start.Line == End.Line && Start.Column == End.Column;
-	}
-
 	#region Editor event system
 
 	/// <summary>
@@ -904,25 +154,6 @@ namespace SweetEditor {
 		public EditorEventArgs(EditorEventType type) { EventType = type; }
 	}
 
-	public enum EditorActionReason {
-		None = 0,
-		Setup = 1,
-		TextEdit = 2,
-		KeyInput = 3,
-		Ime = 4,
-		Gesture = 5,
-		Animation = 6,
-		Programmatic = 7,
-		Decoration = 8,
-		Folding = 9,
-		LinkedEditing = 10,
-		TextInsert = 11,
-		TextReplace = 12,
-		TextDelete = 13,
-		TextUndo = 14,
-		TextRedo = 15
-	}
-
 	/// <summary>
 	/// Text change operation type enum.
 	/// </summary>
@@ -934,118 +165,6 @@ namespace SweetEditor {
 		Undo,
 		Redo
 	}
-
-	/// <summary>
-	/// Single text change (precise change info for one edit location).
-	/// </summary>
-	public class TextChange {
-		private string? text;
-		/// <summary>Replaced/deleted text range (pre-operation coordinates).</summary>
-		[JsonPropertyName("range")]
-		public TextRange? Range { get; set; }
-		/// <summary>New text after change (inserted/replaced content).</summary>
-		[JsonPropertyName("text")]
-		public string? Text { get => text; set => text = value; }
-		/// <summary>Compatibility bridge for legacy payloads using <c>new_text</c>.</summary>
-		[JsonPropertyName("new_text")]
-		public string? LegacyText { get => text; set => text = value; }
-		/// <summary>Compatibility alias for older bindings.</summary>
-		[JsonIgnore]
-		public string? NewText { get => text; set => text = value; }
-	}
-
-	public enum ImePreeditStorage {
-		NONE = 0,
-		VISIBLE_DOCUMENT_COMPOSITION = 1,
-		SHADOW_ONLY = 2
-	}
-
-	public enum ImeContextPolicy {
-		NONE = 0,
-		LIMITED_FOR_CANDIDATES = 1
-	}
-
-	public sealed class ImeSyncSnapshot {
-		[JsonPropertyName("cursor")]
-		public TextPosition Cursor { get; set; }
-		[JsonPropertyName("selection")]
-		public TextRange? Selection { get; set; }
-		[JsonPropertyName("has_composing_session")]
-		public bool HasComposingSession { get; set; }
-		[JsonPropertyName("visible_composition_range")]
-		public TextRange? VisibleCompositionRange { get; set; }
-		[JsonPropertyName("platform_marked_range")]
-		public TextRange? PlatformMarkedRange { get; set; }
-		[JsonPropertyName("preedit_storage")]
-		public ImePreeditStorage PreeditStorage { get; set; } = ImePreeditStorage.NONE;
-		[JsonPropertyName("context_policy")]
-		public ImeContextPolicy ContextPolicy { get; set; } = ImeContextPolicy.NONE;
-		[JsonPropertyName("clear_platform_preedit")]
-		public bool ClearPlatformPreedit { get; set; }
-	}
-
-	/// <summary>
-	/// Result of a state-changing editor action.
-	/// </summary>
-	public sealed class EditorActionResult {
-		[JsonPropertyName("handled")]
-		public bool Handled { get; set; }
-		[JsonPropertyName("needs_redraw")]
-		public bool NeedsRedraw { get; set; }
-		[JsonPropertyName("reason")]
-		public int Reason { get; set; }
-		[JsonPropertyName("content_changed")]
-		public bool ContentChanged { get; set; }
-		[JsonPropertyName("cursor_changed")]
-		public bool CursorChanged { get; set; }
-		[JsonPropertyName("selection_changed")]
-		public bool SelectionChanged { get; set; }
-		[JsonPropertyName("scroll_changed")]
-		public bool ScrollChanged { get; set; }
-		[JsonPropertyName("scale_changed")]
-		public bool ScaleChanged { get; set; }
-		[JsonPropertyName("pointer_cursor_changed")]
-		public bool PointerCursorChanged { get; set; }
-		[JsonPropertyName("composition_changed")]
-		public bool CompositionChanged { get; set; }
-		[JsonPropertyName("decoration_changed")]
-		public bool DecorationChanged { get; set; }
-		[JsonPropertyName("needs_ime_sync")]
-		public bool NeedsImeSync { get; set; }
-		[JsonPropertyName("needs_edge_scroll")]
-		public bool NeedsEdgeScroll { get; set; }
-		[JsonPropertyName("needs_fling")]
-		public bool NeedsFling { get; set; }
-		[JsonPropertyName("needs_animation")]
-		public bool NeedsAnimation { get; set; }
-		[JsonPropertyName("is_handle_drag")]
-		public bool IsHandleDrag { get; set; }
-		[JsonPropertyName("changes")]
-		public List<TextChange> Changes { get; set; } = new();
-		public TextPosition CursorBefore { get; set; }
-		public TextPosition CursorAfter { get; set; }
-		public bool HasSelectionBefore { get; set; }
-		public TextRange SelectionBefore { get; set; }
-		public bool HasSelectionAfter { get; set; }
-		public TextRange SelectionAfter { get; set; }
-		public float ScrollXBefore { get; set; }
-		public float ScrollYBefore { get; set; }
-		public float ScrollXAfter { get; set; }
-		public float ScrollYAfter { get; set; }
-		public float ScaleBefore { get; set; } = 1f;
-		public float ScaleAfter { get; set; } = 1f;
-		public PointerCursorType PointerCursorBefore { get; set; } = PointerCursorType.TEXT;
-		public PointerCursorType PointerCursorAfter { get; set; } = PointerCursorType.TEXT;
-		public ImeSyncSnapshot ImeSync { get; set; } = new();
-		public GestureType GestureType { get; set; } = GestureType.UNDEFINED;
-		public EventType GestureEventType { get; set; } = EventType.UNDEFINED;
-		public PointF? TapPoint { get; set; }
-		public HitTarget HitTarget { get; set; }
-		public byte Modifiers { get; set; }
-		public int Command { get; set; }
-		public static readonly EditorActionResult Empty = new();
-	}
-
 	/// <summary>
 	/// Text change event args.
 	/// </summary>
@@ -1158,11 +277,11 @@ namespace SweetEditor {
 		/// <summary>Optional text payload.</summary>
 		public string? Text { get; }
 		/// <summary>Compatibility alias for icon-type inlays.</summary>
-		public int IconId => Type == InlayType.Icon ? IntValue : 0;
+		public int IconId => Type == InlayType.ICON ? IntValue : 0;
 		/// <summary>Compatibility alias for color-type inlays.</summary>
-		public int ColorValue => Type == InlayType.Color ? IntValue : 0;
+		public int ColorValue => Type == InlayType.COLOR ? IntValue : 0;
 		/// <summary>Compatibility alias.</summary>
-		public bool IsIcon => Type == InlayType.Icon;
+		public bool IsIcon => Type == InlayType.ICON;
 		/// <summary>Tap screen position</summary>
 		public PointF ScreenPoint { get; }
 		public InlayHintClickEventArgs(int line, int column, InlayType type, int intValue, string? text, PointF point)
@@ -1224,306 +343,6 @@ namespace SweetEditor {
 	#endregion
 
 	/// <summary>
-	/// Caret data.
-	/// </summary>
-	public struct Cursor {
-		/// <summary>Logical caret position in text</summary>
-		[JsonPropertyName("text_position")]
-		public TextPosition TextPosition { get; set; }
-		/// <summary>Caret screen position</summary>
-		[JsonPropertyName("position")]
-		public PointF Position { get; set; }
-		/// <summary>Caret height</summary>
-		[JsonPropertyName("height")]
-		public float Height { get; set; }
-		/// <summary>Whether caret is visible</summary>
-		[JsonPropertyName("visible")]
-		public bool Visible { get; set; }
-		/// <summary>Whether drag caret is visible</summary>
-		[JsonPropertyName("show_dragger")]
-		public bool ShowDragger { get; set; }
-	}
-
-	/// <summary>
-	/// Single-line selection highlight rectangle.
-	/// </summary>
-	public struct SelectionRect {
-		/// <summary>Rectangle top-left corner</summary>
-		[JsonPropertyName("origin")]
-		public PointF Origin { get; set; }
-		/// <summary>Rectangle width</summary>
-		[JsonPropertyName("width")]
-		public float Width { get; set; }
-		/// <summary>Rectangle height</summary>
-		[JsonPropertyName("height")]
-		public float Height { get; set; }
-	}
-
-	/// <summary>
-	/// Code guide line direction.
-	/// </summary>
-	public enum GuideDirection {
-		/// <summary>Horizontal direction.</summary>
-		HORIZONTAL,
-		/// <summary>Vertical direction.</summary>
-		VERTICAL
-	}
-
-	/// <summary>
-	/// Code guide line type.
-	/// </summary>
-	public enum GuideType {
-		/// <summary>Indent line.</summary>
-		INDENT,
-		/// <summary>Bracket match line.</summary>
-		BRACKET,
-		/// <summary>Control flow line.</summary>
-		FLOW,
-		/// <summary>Separator line.</summary>
-		SEPARATOR
-	}
-
-	/// <summary>
-	/// Code guide line style.
-	/// </summary>
-	public enum GuideStyle {
-		/// <summary>Solid.</summary>
-		SOLID,
-		/// <summary>Dashed.</summary>
-		DASHED,
-		/// <summary>Double.</summary>
-		DOUBLE
-	}
-
-	/// <summary>
-	/// Render data for a code guide line segment.
-	/// </summary>
-	public struct GuideSegment {
-		/// <summary>Segment direction.</summary>
-		[JsonPropertyName("direction")]
-		public GuideDirection Direction { get; set; }
-		/// <summary>Segment type.</summary>
-		[JsonPropertyName("type")]
-		public GuideType Type { get; set; }
-		/// <summary>Segment style.</summary>
-		[JsonPropertyName("style")]
-		public GuideStyle Style { get; set; }
-		/// <summary>Segment start point.</summary>
-		[JsonPropertyName("start")]
-		public PointF Start { get; set; }
-		/// <summary>Segment end point.</summary>
-		[JsonPropertyName("end")]
-		public PointF End { get; set; }
-		/// <summary>Whether the end point has an arrowhead.</summary>
-		[JsonPropertyName("arrow_end")]
-		public bool ArrowEnd { get; set; }
-	}
-
-	/// <summary>
-	/// Editor render model.
-	/// </summary>
-	public struct EditorRenderModel {
-		/// <summary>Line-number divider position.</summary>
-		[JsonPropertyName("split_x")]
-		public float SplitX { get; set; }
-		/// <summary>Whether split line should be rendered.</summary>
-		[JsonPropertyName("split_line_visible")]
-		public bool SplitLineVisible { get; set; }
-		/// <summary>Current horizontal scroll offset</summary>
-		[JsonPropertyName("scroll_x")]
-		public float ScrollX { get; set; }
-		/// <summary>Current vertical scroll offset</summary>
-		[JsonPropertyName("scroll_y")]
-		public float ScrollY { get; set; }
-		/// <summary>Viewport width</summary>
-		[JsonPropertyName("viewport_width")]
-		public float ViewportWidth { get; set; }
-		/// <summary>Viewport height</summary>
-		[JsonPropertyName("viewport_height")]
-		public float ViewportHeight { get; set; }
-		/// <summary>Current-line background position</summary>
-		[JsonPropertyName("current_line")]
-		public PointF CurrentLine { get; set; }
-		/// <summary>Current line render mode.</summary>
-		[JsonPropertyName("current_line_render_mode")]
-		public CurrentLineRenderMode CurrentLineRenderMode { get; set; }
-		/// <summary>Visually rendered text rows (visible area only).</summary>
-		[JsonPropertyName("lines")]
-		public List<VisualLine> VisualLines { get; set; }
-		/// <summary>Gutter icon render list (fully resolved geometry, visible area only).</summary>
-		[JsonPropertyName("gutter_icons")]
-		public List<GutterIconRenderItem> GutterIcons { get; set; }
-		/// <summary>Fold marker render list (fully resolved geometry, visible area only).</summary>
-		[JsonPropertyName("fold_markers")]
-		public List<FoldMarkerRenderItem> FoldMarkers { get; set; }
-		/// <summary>Caret</summary>
-		[JsonPropertyName("cursor")]
-		public Cursor Cursor { get; set; }
-		/// <summary>Selection highlight rectangles</summary>
-		[JsonPropertyName("selection_rects")]
-		public List<SelectionRect> SelectionRects { get; set; }
-		/// <summary>Selection start drag handle</summary>
-		[JsonPropertyName("selection_start_handle")]
-		public SelectionHandle SelectionStartHandle { get; set; }
-		/// <summary>Selection end drag handle</summary>
-		[JsonPropertyName("selection_end_handle")]
-		public SelectionHandle SelectionEndHandle { get; set; }
-		/// <summary>Composition decoration (underlined region during IME composition).</summary>
-		[JsonPropertyName("composition_decoration")]
-		public CompositionDecoration CompositionDecoration { get; set; }
-		/// <summary>Code guide lines</summary>
-		[JsonPropertyName("guide_segments")]
-		public List<GuideSegment> GuideSegments { get; set; }
-		/// <summary>Diagnostic decorations (squiggle/underline).</summary>
-		[JsonPropertyName("diagnostic_decorations")]
-		public List<DiagnosticDecoration> DiagnosticDecorations { get; set; }
-		/// <summary>Maximum number of gutter icons shown in the line-number gutter (0 = overlay mode).</summary>
-		[JsonPropertyName("max_gutter_icons")]
-		public int MaxGutterIcons { get; set; }
-		/// <summary>Linked-edit highlight rectangles (tab stop placeholders).</summary>
-		[JsonPropertyName("linked_editing_rects")]
-		public List<LinkedEditingRect> LinkedEditingRects { get; set; }
-		/// <summary>Bracket-match highlight rectangles (bracket near caret + matching bracket).</summary>
-		[JsonPropertyName("bracket_highlight_rects")]
-		public List<BracketHighlightRect> BracketHighlightRects { get; set; }
-		/// <summary>Vertical scrollbar render model.</summary>
-		[JsonPropertyName("vertical_scrollbar")]
-		public ScrollbarModel VerticalScrollbar { get; set; }
-		/// <summary>Horizontal scrollbar render model.</summary>
-		[JsonPropertyName("horizontal_scrollbar")]
-		public ScrollbarModel HorizontalScrollbar { get; set; }
-		/// <summary>Whether gutter stays fixed during horizontal scroll.</summary>
-		[JsonPropertyName("gutter_sticky")]
-		public bool GutterSticky { get; set; }
-		/// <summary>Whether gutter area is visible.</summary>
-		[JsonPropertyName("gutter_visible")]
-		public bool GutterVisible { get; set; }
-	}
-
-	/// <summary>
-	/// Render decoration for composition area (underline).
-	/// </summary>
-	public struct CompositionDecoration {
-		/// <summary>Whether composition decoration needs to be rendered.</summary>
-		[JsonPropertyName("active")]
-		public bool Active { get; set; }
-		/// <summary>Start screen position of composition text area</summary>
-		[JsonPropertyName("origin")]
-		public PointF Origin { get; set; }
-		/// <summary>Width of composition text area</summary>
-		[JsonPropertyName("width")]
-		public float Width { get; set; }
-		/// <summary>Line height</summary>
-		[JsonPropertyName("height")]
-		public float Height { get; set; }
-	}
-
-	/// <summary>
-	/// Selection drag handle.
-	/// </summary>
-	public struct SelectionHandle {
-		/// <summary>Handle position.</summary>
-		[JsonPropertyName("position")]
-		public PointF Position { get; set; }
-		/// <summary>Handle height.</summary>
-		[JsonPropertyName("height")]
-		public float Height { get; set; }
-		/// <summary>Whether visible.</summary>
-		[JsonPropertyName("visible")]
-		public bool Visible { get; set; }
-	}
-
-	/// <summary>
-	/// Diagnostic decoration render primitive (squiggle/underline).
-	/// </summary>
-	public struct DiagnosticDecoration {
-		/// <summary>Start screen position of the squiggle area (below baseline).</summary>
-		[JsonPropertyName("origin")]
-		public PointF Origin { get; set; }
-		/// <summary>Squiggle width</summary>
-		[JsonPropertyName("width")]
-		public float Width { get; set; }
-		/// <summary>Line height (used to position baseline offset).</summary>
-		[JsonPropertyName("height")]
-		public float Height { get; set; }
-		/// <summary>Severity level (0=ERROR, 1=WARNING, 2=INFO, 3=HINT)</summary>
-		[JsonPropertyName("severity")]
-		public int Severity { get; set; }
-		/// <summary>Color value (ARGB), 0 means use the default color for this severity.</summary>
-		[JsonPropertyName("color")]
-		public int Color { get; set; }
-	}
-
-	/// <summary>
-	/// Linked-edit highlight rectangle (visual marker for a tab stop placeholder).
-	/// </summary>
-	public struct LinkedEditingRect {
-		/// <summary>Rectangle top-left corner</summary>
-		[JsonPropertyName("origin")]
-		public PointF Origin { get; set; }
-		/// <summary>Rectangle width</summary>
-		[JsonPropertyName("width")]
-		public float Width { get; set; }
-		/// <summary>Rectangle height</summary>
-		[JsonPropertyName("height")]
-		public float Height { get; set; }
-		/// <summary>Whether this is the active tab stop</summary>
-		[JsonPropertyName("is_active")]
-		public bool IsActive { get; set; }
-	}
-
-	/// <summary>
-	/// Bracket-match highlight rectangle (visual marker for bracket near caret + matching bracket).
-	/// </summary>
-	public struct BracketHighlightRect {
-		/// <summary>Rectangle top-left corner</summary>
-		[JsonPropertyName("origin")]
-		public PointF Origin { get; set; }
-		/// <summary>Rectangle width</summary>
-		[JsonPropertyName("width")]
-		public float Width { get; set; }
-		/// <summary>Rectangle height</summary>
-		[JsonPropertyName("height")]
-		public float Height { get; set; }
-	}
-
-	/// <summary>
-	/// Scrollbar rectangle geometry (track/thumb).
-	/// </summary>
-	public struct ScrollbarRect {
-		/// <summary>Rectangle top-left corner.</summary>
-		[JsonPropertyName("origin")]
-		public PointF Origin { get; set; }
-		/// <summary>Rectangle width.</summary>
-		[JsonPropertyName("width")]
-		public float Width { get; set; }
-		/// <summary>Rectangle height.</summary>
-		[JsonPropertyName("height")]
-		public float Height { get; set; }
-	}
-
-	/// <summary>
-	/// Scrollbar render model for one axis.
-	/// </summary>
-	public struct ScrollbarModel {
-		/// <summary>Whether scrollbar is visible.</summary>
-		[JsonPropertyName("visible")]
-		public bool Visible { get; set; }
-		/// <summary>Scrollbar alpha in [0, 1].</summary>
-		[JsonPropertyName("alpha")]
-		public float Alpha { get; set; }
-		/// <summary>Whether the thumb is currently being dragged.</summary>
-		[JsonPropertyName("thumb_active")]
-		public bool ThumbActive { get; set; }
-		/// <summary>Track rectangle.</summary>
-		[JsonPropertyName("track")]
-		public ScrollbarRect Track { get; set; }
-		/// <summary>Thumb rectangle.</summary>
-		[JsonPropertyName("thumb")]
-		public ScrollbarRect Thumb { get; set; }
-	}
-
-	/// <summary>
 	/// Native method entry points for the WinForms platform, centralized management of all P/Invoke declarations.
 	/// </summary>
 	internal static class NativeMethods {
@@ -1553,10 +372,10 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "free_editor", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void FreeEditor(IntPtr handle);
 
-		[DllImport(LibraryName, EntryPoint = "set_editor_document", CallingConvention = CallingConvention.Cdecl)]
+		[DllImport(LibraryName, EntryPoint = "editor_set_document", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetEditorDocument(IntPtr handle, IntPtr documentHandle, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "set_editor_viewport", CallingConvention = CallingConvention.Cdecl)]
+		[DllImport(LibraryName, EntryPoint = "editor_set_viewport", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetViewport(IntPtr handle, int width, int height, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_on_font_metrics_changed", CallingConvention = CallingConvention.Cdecl)]
@@ -1598,26 +417,19 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_set_keymap", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetKeyMap(IntPtr handle, byte[] payload, UIntPtr payloadSize, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "build_editor_render_model", CallingConvention = CallingConvention.Cdecl)]
+		[DllImport(LibraryName, EntryPoint = "editor_build_render_model", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr BuildRenderModel(IntPtr handle, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "handle_editor_gesture_event_ex", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr HandleGestureEventEx(IntPtr handle, uint type, uint pointerCount, float[] points,
-			byte modifiers, float wheelDeltaX, float wheelDeltaY, float directScale, out UIntPtr outSize);
+		[DllImport(LibraryName, EntryPoint = "editor_handle_gesture_event", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr HandleGestureEvent(IntPtr handle, byte[] data, UIntPtr size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_update_pointer_modifiers", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr UpdatePointerModifiers(IntPtr handle, byte modifiers, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "editor_tick_edge_scroll", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr TickEdgeScroll(IntPtr handle, out UIntPtr outSize);
-
-		[DllImport(LibraryName, EntryPoint = "editor_tick_fling", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr TickFling(IntPtr handle, out UIntPtr outSize);
-
 		[DllImport(LibraryName, EntryPoint = "editor_tick_animations", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr TickAnimations(IntPtr handle, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "handle_editor_key_event", CallingConvention = CallingConvention.Cdecl)]
+		[DllImport(LibraryName, EntryPoint = "editor_handle_key_event", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr HandleKeyEvent(IntPtr handle, ushort keyCode, [MarshalAs(UnmanagedType.LPUTF8Str)] string? text, byte modifiers, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_insert_text", CallingConvention = CallingConvention.Cdecl)]
@@ -1742,17 +554,10 @@ namespace SweetEditor {
 		internal static extern IntPtr SetBackspaceUnindent(IntPtr handle, int enabled, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_handle_config", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr SetHandleConfig(IntPtr handle,
-			float startLeft, float startTop, float startRight, float startBottom,
-			float endLeft, float endTop, float endRight, float endBottom,
-			out UIntPtr outSize);
+		internal static extern IntPtr SetHandleConfig(IntPtr handle, byte[] data, UIntPtr size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_scrollbar_config", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr SetScrollbarConfig(IntPtr handle,
-			float thickness, float minThumb, float thumbHitPadding,
-			int mode, int thumbDraggable, int trackTapMode,
-			int fadeDelayMs, int fadeDurationMs,
-			out UIntPtr outSize);
+		internal static extern IntPtr SetScrollbarConfig(IntPtr handle, byte[] data, UIntPtr size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_get_position_rect", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void GetPositionRect(IntPtr handle, nuint line, nuint column, ref float outX, ref float outY, ref float outHeight);
@@ -1774,6 +579,9 @@ namespace SweetEditor {
 
 		[DllImport(LibraryName, EntryPoint = "editor_get_scroll_metrics", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr GetScrollMetrics(IntPtr handle, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_get_layout_metrics", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr GetLayoutMetrics(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_register_text_style", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr registerTextStyle(IntPtr handle, uint styleId, int color, int backgroundColor, int fontStyle, out UIntPtr outSize);
@@ -1951,7 +759,6 @@ namespace SweetEditor {
 		private GCHandle iconMeasurerGCHandle;
 		private GCHandle fontMetricsGCHandle;
 		private Document? currentDocument;
-		private KeyMap keyMap = KeyMap.DefaultKeyMap();
 		private bool insertSpaces;
 		private bool backspaceUnindent;
 		private bool compositionEnabled = true;
@@ -2003,9 +810,9 @@ namespace SweetEditor {
 			inlayHintMeasurerGCHandle = GCHandle.Alloc(measurer.MeasureInlayHintWidth);
 			iconMeasurerGCHandle = GCHandle.Alloc(measurer.MeasureIconWidth);
 			fontMetricsGCHandle = GCHandle.Alloc(measurer.GetFontMetrics);
-			byte[] optionsData = ProtocolEncoder.PackEditorOptions(options);
+			byte[] optionsData = CoreProtocol.EncodeEditorOptions(options);
 			nativeHandle = NativeMethods.CreateEditor(measurer, optionsData, (UIntPtr)optionsData.Length);
-			SetKeyMap(keyMap);
+			SetKeyMap(EditorKeyMap.DefaultKeyMap().Bindings);
 		}
 
 
@@ -2031,9 +838,47 @@ namespace SweetEditor {
 			}
 		}
 
-		private static EditorActionResult DecodeAction(IntPtr payloadPtr, UIntPtr payloadSize) {
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+		private delegate T NativePayloadDecoder<T>(ReadOnlySpan<byte> data);
+
+		private static unsafe T DecodePayload<T>(IntPtr payloadPtr, UIntPtr payloadSize, NativePayloadDecoder<T> decoder, T emptyValue) {
+			if (payloadPtr == IntPtr.Zero) {
+				return emptyValue;
+			}
+			try {
+				ulong length = payloadSize.ToUInt64();
+				if (length > int.MaxValue) {
+					throw new InvalidOperationException("Native payload is too large.");
+				}
+				ReadOnlySpan<byte> data = new(payloadPtr.ToPointer(), (int)length);
+				return decoder(data);
+			} finally {
+				NativeMethods.FreeBinaryData(payloadPtr);
+			}
 		}
+
+		private static EditorActionResult DecodeAction(IntPtr payloadPtr, UIntPtr payloadSize) {
+			return DecodePayload(payloadPtr, payloadSize, CoreProtocol.DecodeEditorActionResult, EditorActionResult.Empty);
+		}
+		private static IReadOnlyList<T> ToReadOnlyList<T>(IEnumerable<T> values) {
+			return values as IReadOnlyList<T> ?? values.ToArray();
+		}
+
+		private static IReadOnlyDictionary<int, IReadOnlyList<T>> ToReadOnlyLineMap<T>(IEnumerable<KeyValuePair<int, IList<T>>> values) {
+			var map = new Dictionary<int, IReadOnlyList<T>>();
+			foreach (KeyValuePair<int, IList<T>> entry in values) {
+				map[entry.Key] = ToReadOnlyList(entry.Value);
+			}
+			return map;
+		}
+
+		private static IReadOnlyDictionary<int, IReadOnlyList<T>> ToReadOnlyLineMap<T>(IEnumerable<KeyValuePair<int, List<T>>> values) {
+			var map = new Dictionary<int, IReadOnlyList<T>>();
+			foreach (KeyValuePair<int, List<T>> entry in values) {
+				map[entry.Key] = entry.Value;
+			}
+			return map;
+		}
+
 
 		/// <summary>Loads a document into the editor.</summary>
 		/// <param name="document">Document object to load.</param>
@@ -2222,7 +1067,7 @@ namespace SweetEditor {
 		/// <returns>Editor render model.</returns>
 		public EditorRenderModel BuildRenderModel() {
 			IntPtr payloadPtr = NativeMethods.BuildRenderModel(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseRenderModel(payloadPtr, payloadSize);
+			return DecodePayload(payloadPtr, payloadSize, CoreProtocol.DecodeEditorRenderModel, new EditorRenderModel());
 		}
 
 		#endregion
@@ -2233,43 +1078,21 @@ namespace SweetEditor {
 		/// <param name="gestureEvent">Gesture event data.</param>
 		/// <returns>Gesture recognition result.</returns>
 		public EditorActionResult HandleGestureEvent(GestureEvent gestureEvent) {
-			float[] pointsArr = gestureEvent.GetPointsArray();
-			IntPtr payloadPtr = NativeMethods.HandleGestureEventEx(nativeHandle, (uint)gestureEvent.Type,
-				(uint)(gestureEvent.Points?.Count ?? 0), pointsArr,
-				(byte)gestureEvent.Modifiers, gestureEvent.WheelDeltaX, gestureEvent.WheelDeltaY, gestureEvent.DirectScale,
-				out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
-		}
-
-		/// <summary>Extended gesture handler alias (same payload contract as <see cref="HandleGestureEvent"/>).</summary>
-		/// <param name="gestureEvent">Gesture event data.</param>
-		/// <returns>Gesture recognition result.</returns>
-		public EditorActionResult HandleGestureEventEx(GestureEvent gestureEvent) {
-			return HandleGestureEvent(gestureEvent);
+			byte[] payload = CoreProtocol.EncodeGestureEvent(gestureEvent);
+			IntPtr payloadPtr = NativeMethods.HandleGestureEvent(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Refreshes pointer presentation after modifier keys change.</summary>
 		public EditorActionResult UpdatePointerModifiers(byte modifiers) {
 			IntPtr payloadPtr = NativeMethods.UpdatePointerModifiers(nativeHandle, modifiers, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
-		}
-
-		/// <summary>Advances edge-scroll by one tick and returns an updated gesture result.</summary>
-		public EditorActionResult TickEdgeScroll() {
-			IntPtr payloadPtr = NativeMethods.TickEdgeScroll(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
-		}
-
-		/// <summary>Advances fling by one tick and returns an updated gesture result.</summary>
-		public EditorActionResult TickFling() {
-			IntPtr payloadPtr = NativeMethods.TickFling(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Unified animation tick: advances all active animations (edge-scroll, fling).</summary>
 		public EditorActionResult TickAnimations() {
 			IntPtr payloadPtr = NativeMethods.TickAnimations(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>
@@ -2281,41 +1104,24 @@ namespace SweetEditor {
 		/// <returns>Keyboard event handling result.</returns>
 		public EditorActionResult HandleKeyEvent(ushort keyCode, string? text, byte modifiers) {
 			IntPtr payloadPtr = NativeMethods.HandleKeyEvent(nativeHandle, keyCode, text, modifiers, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>
 		/// Replaces the current keymap and synchronizes the complete binding table to the native core.
 		/// </summary>
-		/// <param name="map">Keymap data.</param>
-		public EditorActionResult SetKeyMap(KeyMap map) {
-			if (map == null) {
-				throw new ArgumentNullException(nameof(map));
+		/// <param name="bindings">Key binding data.</param>
+		public EditorActionResult SetKeyMap(IReadOnlyList<KeyBinding> bindings) {
+			if (bindings == null) {
+				throw new ArgumentNullException(nameof(bindings));
 			}
-			keyMap = map.Clone();
-			return SyncKeyMapToNative();
+			return SyncKeyMapToNative(bindings);
 		}
 
-		private EditorActionResult SyncKeyMapToNative() {
-			byte[] payload = PackKeyMap(keyMap);
+		private EditorActionResult SyncKeyMapToNative(IReadOnlyList<KeyBinding> bindings) {
+			byte[] payload = CoreProtocol.EncodeSetKeyMapPayload(bindings);
 			IntPtr payloadPtr = NativeMethods.SetKeyMap(nativeHandle, payload, (UIntPtr)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
-		}
-
-		private static byte[] PackKeyMap(KeyMap keyMap) {
-			using MemoryStream stream = new();
-			using BinaryWriter writer = new(stream);
-			writer.Write((uint)keyMap.Bindings.Count);
-			for (int i = 0; i < keyMap.Bindings.Count; i++) {
-				KeyBinding binding = keyMap.Bindings[i];
-				writer.Write((byte)binding.First.Modifiers);
-				writer.Write((ushort)binding.First.KeyCode);
-				writer.Write((byte)binding.Second.Modifiers);
-				writer.Write((ushort)binding.Second.KeyCode);
-				writer.Write((uint)binding.CommandId);
-			}
-			writer.Flush();
-			return stream.ToArray();
 		}
 
 		#endregion
@@ -2327,7 +1133,7 @@ namespace SweetEditor {
 		/// <returns>Edit result containing changed ranges and new text.</returns>
 		public EditorActionResult InsertText(string text) {
 			IntPtr payloadPtr = NativeMethods.InsertText(nativeHandle, text, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Replaces text in the specified range (atomic operation).</summary>
@@ -2338,7 +1144,7 @@ namespace SweetEditor {
 			IntPtr payloadPtr = NativeMethods.ReplaceText(nativeHandle,
 				range.Start.Line, range.Start.Column,
 				range.End.Line, range.End.Column, newText, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Deletes text in the specified range (atomic operation).</summary>
@@ -2348,63 +1154,63 @@ namespace SweetEditor {
 			IntPtr payloadPtr = NativeMethods.DeleteText(nativeHandle,
 				range.Start.Line, range.Start.Column,
 				range.End.Line, range.End.Column, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Deletes one character backward (Backspace).</summary>
 		/// <returns>Edit result.</returns>
 		public EditorActionResult Backspace() {
 			IntPtr payloadPtr = NativeMethods.Backspace(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Deletes one character forward (Delete key).</summary>
 		/// <returns>Edit result.</returns>
 		public EditorActionResult DeleteForward() {
 			IntPtr payloadPtr = NativeMethods.DeleteForward(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Moves the current line (or selected lines) up by one line.</summary>
 		public EditorActionResult MoveLineUp() {
 			IntPtr payloadPtr = NativeMethods.MoveLineUp(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Moves the current line (or selected lines) down by one line.</summary>
 		public EditorActionResult MoveLineDown() {
 			IntPtr payloadPtr = NativeMethods.MoveLineDown(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Duplicates the current line (or selected lines) upward.</summary>
 		public EditorActionResult CopyLineUp() {
 			IntPtr payloadPtr = NativeMethods.CopyLineUp(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Duplicates the current line (or selected lines) downward.</summary>
 		public EditorActionResult CopyLineDown() {
 			IntPtr payloadPtr = NativeMethods.CopyLineDown(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Deletes the current line (or all selected lines).</summary>
 		public EditorActionResult DeleteLine() {
 			IntPtr payloadPtr = NativeMethods.DeleteLine(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Inserts an empty line above the current line.</summary>
 		public EditorActionResult InsertLineAbove() {
 			IntPtr payloadPtr = NativeMethods.InsertLineAbove(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Inserts an empty line below the current line.</summary>
 		public EditorActionResult InsertLineBelow() {
 			IntPtr payloadPtr = NativeMethods.InsertLineBelow(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Gets the currently selected text.</summary>
@@ -2426,7 +1232,7 @@ namespace SweetEditor {
 		public EditorActionResult? Undo() {
 			IntPtr payloadPtr = NativeMethods.Undo(nativeHandle, out UIntPtr payloadSize);
 			if (payloadPtr == IntPtr.Zero) return null;
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Performs redo.</summary>
@@ -2434,7 +1240,7 @@ namespace SweetEditor {
 		public EditorActionResult? Redo() {
 			IntPtr payloadPtr = NativeMethods.Redo(nativeHandle, out UIntPtr payloadSize);
 			if (payloadPtr == IntPtr.Zero) return null;
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Whether undo is available.</summary>
@@ -2644,10 +1450,8 @@ namespace SweetEditor {
 		/// <param name="config">HandleConfig instance</param>
 		public EditorActionResult SetHandleConfig(HandleConfig config) {
 			_handleConfig = config;
-			IntPtr payloadPtr = NativeMethods.SetHandleConfig(nativeHandle,
-				config.StartLeft, config.StartTop, config.StartRight, config.StartBottom,
-				config.EndLeft, config.EndTop, config.EndRight, config.EndBottom,
-				out UIntPtr payloadSize);
+			byte[] payload = CoreProtocol.EncodeHandleConfig(config);
+			IntPtr payloadPtr = NativeMethods.SetHandleConfig(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
@@ -2664,17 +1468,8 @@ namespace SweetEditor {
 		/// <param name="config">ScrollbarConfig instance</param>
 		public EditorActionResult SetScrollbarConfig(ScrollbarConfig config) {
 			_scrollbarConfig = config;
-			IntPtr payloadPtr = NativeMethods.SetScrollbarConfig(
-				nativeHandle,
-				config.Thickness,
-				config.MinThumb,
-				config.ThumbHitPadding,
-				(int)config.Mode,
-				config.ThumbDraggable ? 1 : 0,
-				(int)config.TrackTapMode,
-				config.FadeDelayMs,
-				config.FadeDurationMs,
-				out UIntPtr payloadSize);
+			byte[] payload = CoreProtocol.EncodeScrollbarConfig(config);
+			IntPtr payloadPtr = NativeMethods.SetScrollbarConfig(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
@@ -2727,7 +1522,7 @@ namespace SweetEditor {
 		/// <summary>Scrolls to the specified line.</summary>
 		/// <param name="line">Target line (0-based).</param>
 		/// <param name="behavior">Scroll alignment behavior (see <see cref="ScrollBehavior"/>).</param>
-		public EditorActionResult ScrollToLine(int line, int behavior = (int)ScrollBehavior.CENTER) {
+		public EditorActionResult ScrollToLine(int line, int behavior = (int)ScrollBehavior.GOTO_CENTER) {
 			IntPtr payloadPtr = NativeMethods.ScrollToLine(nativeHandle, line, (byte)behavior, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -2743,12 +1538,13 @@ namespace SweetEditor {
 		/// <summary>Gets scrollbar metrics (used by platform-side scrollbar rendering).</summary>
 		public ScrollMetrics GetScrollMetrics() {
 			IntPtr payloadPtr = NativeMethods.GetScrollMetrics(nativeHandle, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseScrollMetrics(payloadPtr, payloadSize);
+			return DecodePayload(payloadPtr, payloadSize, CoreProtocol.DecodeScrollMetrics, new ScrollMetrics());
 		}
 
 		/// <summary>Gets a layout metrics snapshot for widget/layout code.</summary>
 		public LayoutMetrics GetLayoutMetrics() {
-			return new LayoutMetrics(GetScrollMetrics(), GetCursorRect());
+			IntPtr payloadPtr = NativeMethods.GetLayoutMetrics(nativeHandle, out UIntPtr payloadSize);
+			return DecodePayload(payloadPtr, payloadSize, CoreProtocol.DecodeLayoutMetrics, new LayoutMetrics());
 		}
 		#endregion
 
@@ -2775,12 +1571,12 @@ namespace SweetEditor {
 
 		/// <summary>Registers multiple highlight styles in one native call.</summary>
 		/// <param name="stylesById">Style definitions keyed by style ID.</param>
-		public EditorActionResult RegisterBatchTextStyles(IReadOnlyDictionary<uint, TextStyle> stylesById) {
+		public EditorActionResult RegisterBatchTextStyles(IReadOnlyDictionary<int, TextStyle> stylesById) {
 			if (stylesById == null || stylesById.Count == 0) {
 				return EditorActionResult.Empty;
 			}
 
-			byte[] payload = ProtocolEncoder.PackBatchTextStyles(stylesById);
+			byte[] payload = CoreProtocol.EncodeRegisterBatchTextStylesPayload(stylesById);
 			if (payload.Length == 0) {
 				return EditorActionResult.Empty;
 			}
@@ -2792,7 +1588,7 @@ namespace SweetEditor {
 		/// <summary>Sets highlight spans for the specified line (model overload).</summary>
 		public EditorActionResult SetLineSpans(int line, int layer, IList<StyleSpan> spans) {
 			if (spans == null) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackLineSpans(line, layer, spans);
+			byte[] payload = CoreProtocol.EncodeSetLineSpansPayload(line, (SpanLayer)layer, ToReadOnlyList(spans));
 			IntPtr payloadPtr = NativeMethods.SetLineSpans(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -2807,14 +1603,14 @@ namespace SweetEditor {
 		/// <summary>Batch sets highlight spans for multiple lines (model overload).</summary>
 		public EditorActionResult SetBatchLineSpans(int layer, Dictionary<int, IList<StyleSpan>> spansByLine) {
 			if (spansByLine == null || spansByLine.Count == 0) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackBatchLineSpans(layer, spansByLine);
+			byte[] payload = CoreProtocol.EncodeSetBatchLineSpansPayload((SpanLayer)layer, ToReadOnlyLineMap(spansByLine));
 			IntPtr payloadPtr = NativeMethods.SetBatchLineSpans(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		public EditorActionResult SetBatchLineSpans(int layer, Dictionary<int, List<StyleSpan>> spansByLine) {
 			if (spansByLine == null || spansByLine.Count == 0) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackBatchLineSpans(layer, spansByLine);
+			byte[] payload = CoreProtocol.EncodeSetBatchLineSpansPayload((SpanLayer)layer, ToReadOnlyLineMap(spansByLine));
 			IntPtr payloadPtr = NativeMethods.SetBatchLineSpans(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -2841,7 +1637,7 @@ namespace SweetEditor {
 		/// <summary>Sets Inlay Hints for the specified line (model overload, replaces whole line).</summary>
 		public EditorActionResult SetLineInlayHints(int line, IList<InlayHint> hints) {
 			if (hints == null) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackLineInlayHints(line, hints);
+			byte[] payload = CoreProtocol.EncodeSetLineInlayHintsPayload(line, ToReadOnlyList(hints));
 			IntPtr payloadPtr = NativeMethods.SetLineInlayHints(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -2856,14 +1652,14 @@ namespace SweetEditor {
 		/// <summary>Batch sets Inlay Hints for multiple lines (model overload).</summary>
 		public EditorActionResult SetBatchLineInlayHints(Dictionary<int, IList<InlayHint>> hintsByLine) {
 			if (hintsByLine == null || hintsByLine.Count == 0) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackBatchLineInlayHints(hintsByLine);
+			byte[] payload = CoreProtocol.EncodeSetBatchLineInlayHintsPayload(ToReadOnlyLineMap(hintsByLine));
 			IntPtr payloadPtr = NativeMethods.SetBatchLineInlayHints(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		public EditorActionResult SetBatchLineInlayHints(Dictionary<int, List<InlayHint>> hintsByLine) {
 			if (hintsByLine == null || hintsByLine.Count == 0) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackBatchLineInlayHints(hintsByLine);
+			byte[] payload = CoreProtocol.EncodeSetBatchLineInlayHintsPayload(ToReadOnlyLineMap(hintsByLine));
 			IntPtr payloadPtr = NativeMethods.SetBatchLineInlayHints(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -2878,7 +1674,7 @@ namespace SweetEditor {
 		/// <summary>Sets ghost text for the specified line (model overload, replaces whole line).</summary>
 		public EditorActionResult SetLinePhantomTexts(int line, IList<PhantomText> phantoms) {
 			if (phantoms == null) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackLinePhantomTexts(line, phantoms);
+			byte[] payload = CoreProtocol.EncodeSetLinePhantomTextsPayload(line, ToReadOnlyList(phantoms));
 			IntPtr payloadPtr = NativeMethods.SetLinePhantomTexts(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -2893,14 +1689,14 @@ namespace SweetEditor {
 		/// <summary>Batch sets ghost text for multiple lines (model overload).</summary>
 		public EditorActionResult SetBatchLinePhantomTexts(Dictionary<int, IList<PhantomText>> phantomsByLine) {
 			if (phantomsByLine == null || phantomsByLine.Count == 0) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackBatchLinePhantomTexts(phantomsByLine);
+			byte[] payload = CoreProtocol.EncodeSetBatchLinePhantomTextsPayload(ToReadOnlyLineMap(phantomsByLine));
 			IntPtr payloadPtr = NativeMethods.SetBatchLinePhantomTexts(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		public EditorActionResult SetBatchLinePhantomTexts(Dictionary<int, List<PhantomText>> phantomsByLine) {
 			if (phantomsByLine == null || phantomsByLine.Count == 0) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackBatchLinePhantomTexts(phantomsByLine);
+			byte[] payload = CoreProtocol.EncodeSetBatchLinePhantomTextsPayload(ToReadOnlyLineMap(phantomsByLine));
 			IntPtr payloadPtr = NativeMethods.SetBatchLinePhantomTexts(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -2919,7 +1715,7 @@ namespace SweetEditor {
 		/// <summary>Sets gutter icons for the specified line (model overload, replaces whole line).</summary>
 		public EditorActionResult SetLineGutterIcons(int line, IList<GutterIcon> icons) {
 			if (icons == null) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackLineGutterIcons(line, icons);
+			byte[] payload = CoreProtocol.EncodeSetLineGutterIconsPayload(line, ToReadOnlyList(icons));
 			IntPtr payloadPtr = NativeMethods.SetLineGutterIcons(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -2934,14 +1730,14 @@ namespace SweetEditor {
 		/// <summary>Batch sets gutter icons for multiple lines (model overload).</summary>
 		public EditorActionResult SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine) {
 			if (iconsByLine == null || iconsByLine.Count == 0) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackBatchLineGutterIcons(iconsByLine);
+			byte[] payload = CoreProtocol.EncodeSetBatchLineGutterIconsPayload(ToReadOnlyLineMap(iconsByLine));
 			IntPtr payloadPtr = NativeMethods.SetBatchLineGutterIcons(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		public EditorActionResult SetBatchLineGutterIcons(Dictionary<int, List<GutterIcon>> iconsByLine) {
 			if (iconsByLine == null || iconsByLine.Count == 0) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackBatchLineGutterIcons(iconsByLine);
+			byte[] payload = CoreProtocol.EncodeSetBatchLineGutterIconsPayload(ToReadOnlyLineMap(iconsByLine));
 			IntPtr payloadPtr = NativeMethods.SetBatchLineGutterIcons(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -2972,7 +1768,7 @@ namespace SweetEditor {
 		/// <summary>Sets CodeLens items for the specified line (model overload).</summary>
 		public EditorActionResult SetLineCodeLens(int line, IList<CodeLensItem> items) {
 			if (items == null) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackLineCodeLens(line, items);
+			byte[] payload = CoreProtocol.EncodeSetLineCodeLensPayload(line, ToReadOnlyList(items));
 			IntPtr payloadPtr = NativeMethods.SetLineCodeLens(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -2987,7 +1783,7 @@ namespace SweetEditor {
 		/// <summary>Batch sets CodeLens items for multiple lines (model overload).</summary>
 		public EditorActionResult SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine) {
 			if (itemsByLine == null || itemsByLine.Count == 0) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackBatchLineCodeLens(itemsByLine);
+			byte[] payload = CoreProtocol.EncodeSetBatchLineCodeLensPayload(ToReadOnlyLineMap(itemsByLine));
 			IntPtr payloadPtr = NativeMethods.SetBatchLineCodeLens(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -2999,7 +1795,7 @@ namespace SweetEditor {
 			foreach (var kv in itemsByLine) {
 				normalized[kv.Key] = kv.Value;
 			}
-			byte[] payload = ProtocolEncoder.PackBatchLineCodeLens(normalized);
+			byte[] payload = CoreProtocol.EncodeSetBatchLineCodeLensPayload(ToReadOnlyLineMap(normalized));
 			IntPtr payloadPtr = NativeMethods.SetBatchLineCodeLens(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -3022,9 +1818,9 @@ namespace SweetEditor {
 		#region Diagnostic decorations
 
 		/// <summary>Sets diagnostic decorations for the specified line (model overload).</summary>
-		public EditorActionResult SetLineDiagnostics<TDiagnostic>(int line, IList<TDiagnostic> items) where TDiagnostic : Diagnostic {
+		public EditorActionResult SetLineDiagnostics(int line, IList<Diagnostic> items) {
 			if (items == null) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackLineDiagnostics(line, items);
+			byte[] payload = CoreProtocol.EncodeSetLineDiagnosticsPayload(line, ToReadOnlyList(items));
 			IntPtr payloadPtr = NativeMethods.SetLineDiagnostics(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -3037,16 +1833,16 @@ namespace SweetEditor {
 		}
 
 		/// <summary>Batch sets diagnostic decorations for multiple lines (model overload).</summary>
-		public EditorActionResult SetBatchLineDiagnostics<TDiagnostic>(Dictionary<int, IList<TDiagnostic>> diagsByLine) where TDiagnostic : Diagnostic {
+		public EditorActionResult SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine) {
 			if (diagsByLine == null || diagsByLine.Count == 0) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackBatchLineDiagnostics(diagsByLine);
+			byte[] payload = CoreProtocol.EncodeSetBatchLineDiagnosticsPayload(ToReadOnlyLineMap(diagsByLine));
 			IntPtr payloadPtr = NativeMethods.SetBatchLineDiagnostics(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
-		public EditorActionResult SetBatchLineDiagnostics<TDiagnostic>(Dictionary<int, List<TDiagnostic>> diagsByLine) where TDiagnostic : Diagnostic {
+		public EditorActionResult SetBatchLineDiagnostics(Dictionary<int, List<Diagnostic>> diagsByLine) {
 			if (diagsByLine == null || diagsByLine.Count == 0) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackBatchLineDiagnostics(diagsByLine);
+			byte[] payload = CoreProtocol.EncodeSetBatchLineDiagnosticsPayload(ToReadOnlyLineMap(diagsByLine));
 			IntPtr payloadPtr = NativeMethods.SetBatchLineDiagnostics(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -3071,7 +1867,7 @@ namespace SweetEditor {
 		/// <summary>Sets indent guide list (global replace, model overload).</summary>
 		public EditorActionResult SetIndentGuides(IList<IndentGuide> guides) {
 			if (guides == null) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackIndentGuides(guides);
+			byte[] payload = CoreProtocol.EncodeSetIndentGuidesPayload(ToReadOnlyList(guides));
 			IntPtr payloadPtr = NativeMethods.SetIndentGuides(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -3086,7 +1882,7 @@ namespace SweetEditor {
 		/// <summary>Sets bracket branch guide list (global replace, model overload).</summary>
 		public EditorActionResult SetBracketGuides(IList<BracketGuide> guides) {
 			if (guides == null) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackBracketGuides(guides);
+			byte[] payload = CoreProtocol.EncodeSetBracketGuidesPayload(ToReadOnlyList(guides));
 			IntPtr payloadPtr = NativeMethods.SetBracketGuides(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -3101,7 +1897,7 @@ namespace SweetEditor {
 		/// <summary>Sets control-flow back-edge arrow list (global replace, model overload).</summary>
 		public EditorActionResult SetFlowGuides(IList<FlowGuide> guides) {
 			if (guides == null) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackFlowGuides(guides);
+			byte[] payload = CoreProtocol.EncodeSetFlowGuidesPayload(ToReadOnlyList(guides));
 			IntPtr payloadPtr = NativeMethods.SetFlowGuides(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -3116,7 +1912,7 @@ namespace SweetEditor {
 		/// <summary>Sets horizontal separator list (global replace, model overload).</summary>
 		public EditorActionResult SetSeparatorGuides(IList<SeparatorGuide> guides) {
 			if (guides == null) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackSeparatorGuides(guides);
+			byte[] payload = CoreProtocol.EncodeSetSeparatorGuidesPayload(ToReadOnlyList(guides));
 			IntPtr payloadPtr = NativeMethods.SetSeparatorGuides(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -3141,7 +1937,7 @@ namespace SweetEditor {
 		/// <summary>Sets foldable region list (model overload).</summary>
 		public EditorActionResult SetFoldRegions(IList<FoldRegion> regions) {
 			if (regions == null) return EditorActionResult.Empty;
-			byte[] payload = ProtocolEncoder.PackFoldRegions(regions);
+			byte[] payload = CoreProtocol.EncodeSetFoldRegionsPayload(ToReadOnlyList(regions));
 			IntPtr payloadPtr = NativeMethods.SetFoldRegions(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
@@ -3238,12 +2034,12 @@ namespace SweetEditor {
 		/// <summary>Inserts a VSCode snippet template and enters linked editing mode.</summary>
 		public EditorActionResult InsertSnippet(string snippetTemplate) {
 			IntPtr payloadPtr = NativeMethods.InsertSnippet(nativeHandle, snippetTemplate, out UIntPtr payloadSize);
-			return ProtocolDecoder.ParseEditorActionResult(payloadPtr, payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Starts linked editing mode with a generic LinkedEditingModel.</summary>
 		public EditorActionResult StartLinkedEditing(LinkedEditingModel model) {
-			byte[] payload = ProtocolEncoder.PackLinkedEditingPayload(model);
+			byte[] payload = CoreProtocol.EncodeStartLinkedEditingPayload(model);
 			IntPtr payloadPtr = NativeMethods.StartLinkedEditing(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}

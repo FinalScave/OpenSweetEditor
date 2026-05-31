@@ -10,7 +10,7 @@ ENUM_MACRO_RE = re.compile(
     r"\benum(?:\s+(?:class|struct))?\s+SE_PROTOCOL_(ENUM|FLAGS)\(([^)]*)\)\s+([A-Za-z_]\w*)\s*(?::\s*([^{]+))?\s*\{"
 )
 MACRO_RE = re.compile(
-    r"\b(SE_PROTOCOL_(?:SKIP|TAIL)|SE_PROTOCOL_(?:WIRE|KEY_WIRE|VALUE_WIRE|MAP_ENTRY|NAME|AS)\([^)]*\))"
+    r"\b(SE_PROTOCOL_SKIP|SE_PROTOCOL_(?:WIRE|KEY_WIRE|VALUE_WIRE|MAP_ENTRY)\([^)]*\))"
 )
 FIELD_RE = re.compile(r"^\s*(.+?)\s+([A-Za-z_]\w*)\s*(?:\{([^;]*)\}|=\s*([^;]*))?;\s*$")
 
@@ -25,8 +25,6 @@ def macro_names(line):
         arg = text[text.find("(") + 1:-1].strip() if "(" in text else None
         if text == "SE_PROTOCOL_SKIP":
             found.append(("skip", None))
-        elif text == "SE_PROTOCOL_TAIL":
-            found.append(("tail", None))
         elif text.startswith("SE_PROTOCOL_WIRE"):
             found.append(("wire", arg))
         elif text.startswith("SE_PROTOCOL_KEY_WIRE"):
@@ -38,10 +36,6 @@ def macro_names(line):
             if len(args) != 2:
                 raise ValueError(f"SE_PROTOCOL_MAP_ENTRY requires key and value names: {line}")
             found.append(("map_entry", {"key": args[0], "value": args[1]}))
-        elif text.startswith("SE_PROTOCOL_NAME"):
-            found.append(("name", arg))
-        elif text.startswith("SE_PROTOCOL_AS"):
-            found.append(("as", arg))
     return found
 
 def remove_protocol_macros(line):
@@ -64,8 +58,6 @@ def parse_field(line, pending_attrs, source, line_no):
     key_wire = next((value for kind, value in attrs if kind == "key_wire"), None)
     value_wire = next((value for kind, value in attrs if kind == "value_wire"), None)
     map_entry = next((value for kind, value in attrs if kind == "map_entry"), None)
-    platform_name = next((value for kind, value in attrs if kind == "name"), None)
-    platform_type = next((value for kind, value in attrs if kind == "as"), None)
     field = {
         "name": name,
         "cpp_type": cpp_type,
@@ -76,10 +68,6 @@ def parse_field(line, pending_attrs, source, line_no):
     default_expr = match.group(3) if match.group(3) is not None else match.group(4)
     if default_expr is not None:
         field["default"] = default_expr.strip()
-    if platform_name:
-        field["platform_name"] = platform_name
-    if platform_type:
-        field["platform_type"] = platform_type
     if key_wire:
         field["key_wire"] = key_wire
     if value_wire:

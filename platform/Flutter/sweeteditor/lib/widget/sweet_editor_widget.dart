@@ -344,33 +344,27 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     }
   }
 
-  core.EditorActionResult _updateImeInputStateText(
+  core.EditorActionResult _updateImeTextModelState(
     core.EditorCore editorCore,
     TextEditingValue value,
   ) {
     final composingActive = _isActiveTextRange(value.composing, value.text);
     final selectionValid = _isValidSelection(value.selection, value.text);
-    if (_platformBehavior.imeTextModelMode ==
-        core.ImeTextModelMode.documentWindow) {
-      return editorCore.updateImeInputStateText(
+    return editorCore.updateImeTextModelState(
+      core.ImeTextModelState(
+        mode: _platformBehavior.imeTextModelMode,
         contextId: _textInputContextId,
         documentStartOffset: _textInputWindowStartOffset,
         text: value.text,
-        selectionStartOffset: selectionValid ? value.selection.start : -1,
-        selectionEndOffset: selectionValid ? value.selection.end : -1,
-        composingStartOffset: composingActive ? value.composing.start : -1,
-        composingEndOffset: composingActive ? value.composing.end : -1,
-      );
-    }
-    return editorCore.updateImeTextModelState(
-      mode: _platformBehavior.imeTextModelMode,
-      contextId: _textInputContextId,
-      documentStartOffset: _textInputWindowStartOffset,
-      text: value.text,
-      selectionStartOffset: selectionValid ? value.selection.start : -1,
-      selectionEndOffset: selectionValid ? value.selection.end : -1,
-      composingStartOffset: composingActive ? value.composing.start : -1,
-      composingEndOffset: composingActive ? value.composing.end : -1,
+        selection: core.ImeTextRange(
+          start: selectionValid ? value.selection.start : -1,
+          end: selectionValid ? value.selection.end : -1,
+        ),
+        composition: core.ImeTextRange(
+          start: composingActive ? value.composing.start : -1,
+          end: composingActive ? value.composing.end : -1,
+        ),
+      ),
     );
   }
 
@@ -404,17 +398,22 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     }
 
     return editorCore.updateImeTextModelDelta(
-      mode: _platformBehavior.imeTextModelMode,
-      contextId: _textInputContextId,
-      documentStartOffset: _textInputWindowStartOffset,
-      oldText: delta.oldText,
-      deltaStartOffset: deltaStartOffset,
-      deltaEndOffset: deltaEndOffset,
-      deltaText: deltaText,
-      selectionStartOffset: selectionValid ? appliedValue.selection.start : -1,
-      selectionEndOffset: selectionValid ? appliedValue.selection.end : -1,
-      composingStartOffset: composingActive ? appliedValue.composing.start : -1,
-      composingEndOffset: composingActive ? appliedValue.composing.end : -1,
+      core.ImeTextModelDelta(
+        mode: _platformBehavior.imeTextModelMode,
+        contextId: _textInputContextId,
+        documentStartOffset: _textInputWindowStartOffset,
+        oldText: delta.oldText,
+        delta: core.ImeTextRange(start: deltaStartOffset, end: deltaEndOffset),
+        deltaText: deltaText,
+        selection: core.ImeTextRange(
+          start: selectionValid ? appliedValue.selection.start : -1,
+          end: selectionValid ? appliedValue.selection.end : -1,
+        ),
+        composition: core.ImeTextRange(
+          start: composingActive ? appliedValue.composing.start : -1,
+          end: composingActive ? appliedValue.composing.end : -1,
+        ),
+      ),
     );
   }
 
@@ -432,7 +431,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     var forceTextInputStateSync = false;
     _handlingTextInputUpdate = true;
     try {
-      final result = _updateImeInputStateText(editorCore, value);
+      final result = _updateImeTextModelState(editorCore, value);
       forceTextInputStateSync = _dispatchImeAction(result);
     } finally {
       _handlingTextInputUpdate = false;

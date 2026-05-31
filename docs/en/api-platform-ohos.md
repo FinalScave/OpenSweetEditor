@@ -8,7 +8,7 @@ This document maps to the current OHOS implementation:
   - `platform/OHOS/sweeteditor/src/main/ets/SweetEditor.ets` (`SweetEditorController`)
   - `platform/OHOS/sweeteditor/src/main/ets/EditorSettings.ets`
 - Bridge layer: `platform/OHOS/sweeteditor/src/main/ets/core/EditorCore.ets`
-- Protocol encode/decode: `platform/OHOS/sweeteditor/src/main/ets/core/EditorProtocol.ets`
+- Protocol encode/decode: `platform/OHOS/sweeteditor/src/main/ets/core/CoreProtocol.ets`
 - NAPI layer:
   - `platform/OHOS/sweeteditor/src/main/cpp/napi_editor.hpp`
   - `platform/OHOS/sweeteditor/src/main/cpp/napi_init.cpp`
@@ -17,7 +17,7 @@ This document maps to the current OHOS implementation:
 
 - The main OHOS path is ArkTS + NAPI direct to the shared C++ core through `libsweeteditor.so`.
 - `EditorCore` keeps the native numeric protocol at the bridge boundary.
-- Complex returns such as `buildRenderModel()`, `EditorActionResult`, and scroll metrics still return by binary payload and are decoded by `EditorProtocol.ets`.
+- Complex returns such as `buildRenderModel()`, `EditorActionResult`, and scroll metrics still return by binary payload and are decoded by `CoreProtocol.ets`.
 - `Index.ets` re-exports the public API surface, so consumers normally import from `@qiplat/sweeteditor` instead of deep module paths.
 - ArkUI overlays such as completion popup, inline suggestion bar, and selection menu are platform-side UI built from the C++ render model and `EditorActionResult`.
 
@@ -250,8 +250,6 @@ public getScrollMetrics(): ScrollMetrics
 ```ts
 public handleGestureEvent(event: GestureEvent): EditorActionResult
 public handleSimpleGestureEvent(type: EventType, pointerCount: number, points: number[]): EditorActionResult
-public tickEdgeScroll(): EditorActionResult
-public tickFling(): EditorActionResult
 public tickAnimations(): EditorActionResult
 public handleKeyEvent(keyCode: number, text: string | null, modifiers: number): EditorActionResult
 ```

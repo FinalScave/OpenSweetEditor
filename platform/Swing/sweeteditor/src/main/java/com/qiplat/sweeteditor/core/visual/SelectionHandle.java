@@ -1,9 +1,18 @@
 package com.qiplat.sweeteditor.core.visual;
 
-import com.google.gson.annotations.SerializedName;
+import com.qiplat.sweeteditor.core.foundation.PointF;
 
-public class SelectionHandle {
-    @SerializedName("position") public PointF position;
-    @SerializedName("height") public float height;
-    @SerializedName("visible") public boolean visible;
+public final class SelectionHandle {
+    public PointF position = new PointF();
+    public float height = 0f;
+    public boolean visible = false;
+
+    public SelectionHandle() {
+    }
+
+    public SelectionHandle(PointF position, float height, boolean visible) {
+        this.position = position;
+        this.height = height;
+        this.visible = visible;
+    }
 }

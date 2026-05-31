@@ -1,24 +1,16 @@
 package com.qiplat.sweeteditor.core.visual;
 
-import com.google.gson.annotations.SerializedName;
+import com.qiplat.sweeteditor.core.foundation.Rect;
 
-/**
- * Rendering decoration for composition input region (underline)
- */
-public class CompositionDecoration {
-    /** Whether there is composition input decoration to draw */
-    @SerializedName("active")
-    public boolean active;
+public final class CompositionDecoration {
+    public boolean active = false;
+    public Rect rect = new Rect();
 
-    /** Starting screen coordinate of the composition text region */
-    @SerializedName("origin")
-    public PointF origin;
+    public CompositionDecoration() {
+    }
 
-    /** Width of the composition text region */
-    @SerializedName("width")
-    public float width;
-
-    /** Line height */
-    @SerializedName("height")
-    public float height;
+    public CompositionDecoration(boolean active, Rect rect) {
+        this.active = active;
+        this.rect = rect;
+    }
 }

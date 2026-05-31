@@ -22,13 +22,13 @@ The Core layer does not involve UI rendering. It contains only bridging, data mo
 
 | Category | Required Types | Description |
 |---|---|---|
-| **Core Bridge** | `EditorCore`, `Document`, `ProtocolEncoder`, `ProtocolDecoder`, `TextMeasurer`, `EditorOptions`, `EditorActionResult`, `EditorActionReason` | Native bridge + public core API wrapper; `EditorActionResult` is the unified result carrier for core state-changing APIs |
+| **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer`, `EditorOptions`, `EditorActionResult`, `EditorActionReason` | Native bridge + public core API wrapper; `EditorActionResult` is the unified result carrier for core state-changing APIs |
 | **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollBehavior` | Fundamental value types and enums |
 | **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextModelMode`; `ImeTextUnit` when exposing unit-aware deletion APIs | IME synchronization snapshots and text-context protocol types; platform synchronization decisions are carried by `EditorActionResult` |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | Decoration data types |
 | **Visual** | `EditorRenderModel`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `ScrollbarRect`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `DiagnosticDecoration`, `CompositionDecoration`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem`, `LinkedEditingRect`, `BracketHighlightRect` | Render model types (geometry semantics follow Section 2.4) |
 | **Snippet** | `LinkedEditingModel`, `TabStopGroup` | Linked editing / tab stop groups |
-| **Keymap** | `KeyMap`, `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorCommand` | Shortcut mapping data types and command identifiers |
+| **Keymap** | `KeyMap`, `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorBuiltinCommand` | Shortcut mapping data types and built-in command identifiers |
 
 ### 1.2 Widget Layer (UI Controls / Rendering / Interaction)
 
@@ -90,7 +90,7 @@ Other public types:
 | `NewLineActionProvider` | C#/TS/Kotlin: `INewLineActionProvider`; OC: `SENewLineActionProvider` | Provider interface |
 | `KeyMap` | OC: `SEKeyMap` | Core keymap data container |
 | `EditorKeyMap` | OC: `SEEditorKeyMap` | Widget-layer keymap extension |
-| `EditorCommand` | OC: `SEEditorCommand` | Built-in command ids / command-handler concept type |
+| `EditorBuiltinCommand` | OC: `SEEditorBuiltinCommand` | Built-in command ids |
 | `KeyBinding` | OC: `SEKeyBinding` | One- or two-chord binding entry |
 | `KeyChord` | OC: `SEKeyChord` | Single key-chord value type |
 | `KeyCode` | OC: `SEKeyCode` | Keyboard key code constants / enum |
@@ -200,7 +200,7 @@ During construction or first-frame bootstrap before the editor runtime / dispatc
 |---|---|
 | Configuration | `loadDocument(doc)`, `setViewport(w, h)`, `onFontMetricsChanged()`, `setFoldArrowMode(mode)`, `setWrapMode(mode)`, `setTabSize(size)`, `setInsertSpaces(enabled)`, `setScale(scale)`, `setLineSpacing(add, mult)`, `setContentStartPadding(padding)`, `setShowSplitLine(show)`, `setCurrentLineRenderMode(mode)`, `setGutterSticky(sticky)`, `setGutterVisible(visible)`, `setHandleConfig(...)`, `setScrollbarConfig(...)` |
 | Render model | `buildRenderModel()`, `getLayoutMetrics()` |
-| Gesture / keyboard | `handleGestureEvent(...)`, `handleGestureEventEx(...)`, `tickEdgeScroll()`, `tickFling()`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(keyMap)` |
+| Gesture / keyboard | `handleGestureEvent(...)`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(keyMap)` |
 | Text editing | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `backspace()`, `deleteForward()`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
 | Undo / redo | `undo()`, `redo()`, `canUndo()`, `canRedo()` |
 | Cursor / selection | `setCursorPosition(line, col)`, `getCursorPosition()`, `selectAll()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `getSelectedText()`, `getWordRangeAtCursor()`, `getWordAtCursor()`, `moveCursorLeft(extend)`, `moveCursorRight(extend)`, `moveCursorUp(extend)`, `moveCursorDown(extend)`, `moveCursorToLineStart(extend)`, `moveCursorToLineEnd(extend)` |
@@ -539,7 +539,7 @@ All platforms MUST expose the following settings through getter/setter pairs (or
 
 ### 10.1 Core Data Model
 
-All platforms MUST provide the core-layer keymap types `KeyMap`, `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, and `EditorCommand`.
+All platforms MUST provide the core-layer keymap types `KeyMap`, `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, and `EditorBuiltinCommand`.
 
 - `KeyMap` MUST be a pure data mapping from `KeyBinding` to command id
 - `KeyBinding` MUST support both single-chord and two-chord bindings
@@ -549,10 +549,10 @@ All platforms MUST provide the core-layer keymap types `KeyMap`, `KeyBinding`, `
 
 ### 10.2 Numeric Alignment
 
-If the platform exposes `KeyCode`, `KeyModifier`, or built-in `EditorCommand` constants, their numeric values MUST align with the C++ core.
+If the platform exposes `KeyCode`, `KeyModifier`, or `EditorBuiltinCommand` constants, their numeric values MUST align with the C++ core.
 
 - `KeyModifier` MUST use bit flags so combined modifiers can be represented by bitwise OR
-- `KeyCode.NONE`, the empty second chord, and `EditorCommand.NONE` MUST preserve the same semantics as the C++ core
+- `KeyCode.NONE`, the empty second chord, and `EditorBuiltinCommand.NONE` MUST preserve the same semantics as the C++ core
 - `EditorCore`, bridge layers, or FFI layers MAY continue using raw integer enum values aligned with the C++ core as internal transport representations
 - For such bridge-layer integer enums, platforms are not required to repeat host-facing business-level enum validation, but MUST ensure invalid input cannot cause native / C++ crashes or undefined behavior
 
@@ -561,7 +561,7 @@ If the platform exposes `KeyCode`, `KeyModifier`, or built-in `EditorCommand` co
 - `SweetEditor` MUST support `setKeyMap(keyMap)` and SHOULD expose `getKeyMap()`
 - Platforms MUST expose `EditorKeyMap` as a widget-layer extension of `KeyMap` so host code can additionally bind command ids to host-side handlers
 - `EditorKeyMap` MUST support `registerCommand(binding, handler)`
-- If `binding.command == EditorCommand.NONE`, `registerCommand(binding, handler)` MUST auto-assign a custom command id and return it
+- If `binding.command == EditorBuiltinCommand.NONE`, `registerCommand(binding, handler)` MUST auto-assign a custom command id and return it
 - Platforms MAY additionally expose convenience APIs for custom-command registration, but `registerCommand(binding, handler)` remains the canonical contract
 - Auto-assigned custom command ids MUST be greater than `BUILT_IN_MAX`
 - Platforms MUST provide `defaultKeyMap()` as the default binding factory
@@ -634,7 +634,7 @@ Event payloads MUST be defined per-event. Platforms MUST NOT assume or require a
 
 ### 11.4 `EditorActionResult` Gesture Field Contract
 
-Platforms MAY expose the return value of `handleGestureEvent(...)` / `handleGestureEventEx(...)` directly, or consume it internally only; however, the gesture return value MUST be `EditorActionResult` or a platform-equivalent type. The following gesture-related fields MUST keep semantics consistent with Core and be consumed by the unified result dispatcher:
+Platforms MAY expose the return value of `handleGestureEvent(...)` directly, or consume it internally only; however, the gesture return value MUST be `EditorActionResult` or a platform-equivalent type. The following gesture-related fields MUST keep semantics consistent with Core and be consumed by the unified result dispatcher:
 
 | Field | Type | MUST/MAY | Description |
 |---|---|---|---|
@@ -643,7 +643,7 @@ Platforms MAY expose the return value of `handleGestureEvent(...)` / `handleGest
 | `tapPoint` | `PointF` | **MUST** | Gesture hit point in editor-local coordinates |
 | `hitTarget` | `HitTargetType` + platform-aligned payload | **MUST** | Hit-test result for the current gesture location |
 | `pointerCursorAfter` / `pointerCursorChanged` | `PointerCursorType` / boolean | **MUST** on desktop or platforms with mouse / hover input, **MAY** on touch-only platforms | Pointer cursor hint for the current mouse location, plus whether the platform cursor should update |
-| `needsEdgeScroll` / `needsFling` / `needsAnimation` | boolean | **MUST** | Whether the platform should continue edge-scroll, fling, or unified animation ticks |
+| `needsEdgeScroll` / `needsFling` / `needsAnimation` | boolean | **MUST** | Edge-scroll and fling state plus the unified animation scheduling flag; platforms schedule ticks from `needsAnimation` |
 | `isHandleDrag` | boolean | Mobile **SHOULD** | Whether the current gesture is a selection-handle drag |
 
 > These fields MUST be consumed according to their own semantics and must not depend on `needsRedraw` as a side effect. Desktop platforms, and platforms with mouse / hover input, SHOULD apply `pointerCursorAfter` immediately when `pointerCursorChanged` is true even if the result does not require redraw; platforms MUST also start or stop animation ticks from `needsAnimation` rather than waiting for the next render model rebuild. Touch-only platforms with no pointer cursor concept MAY ignore cursor-shape changes entirely.
@@ -736,7 +736,7 @@ Enum and enum-like constant values MUST match the C++ core definitions. The foll
 | `SeparatorStyle` | SINGLE=0, DOUBLE=1 |
 | `KeyCode` | NONE=0, BACKSPACE=8, TAB=9, ENTER=13, ESCAPE=27, DELETE_KEY=46, LEFT=37, UP=38, RIGHT=39, DOWN=40, HOME=36, END=35, PAGE_UP=33, PAGE_DOWN=34, A=65, C=67, D=68, V=86, X=88, Y=89, Z=90, K=75, SPACE=32 |
 | `KeyModifier` | NONE=0, SHIFT=1, CTRL=2, ALT=4, META=8 |
-| `EditorCommand` | NONE=0, CURSOR_LEFT=1, CURSOR_RIGHT=2, CURSOR_UP=3, CURSOR_DOWN=4, CURSOR_LINE_START=5, CURSOR_LINE_END=6, CURSOR_PAGE_UP=7, CURSOR_PAGE_DOWN=8, SELECT_LEFT=9, SELECT_RIGHT=10, SELECT_UP=11, SELECT_DOWN=12, SELECT_LINE_START=13, SELECT_LINE_END=14, SELECT_PAGE_UP=15, SELECT_PAGE_DOWN=16, SELECT_ALL=17, BACKSPACE=18, DELETE_FORWARD=19, INSERT_TAB=20, INSERT_NEWLINE=21, INSERT_LINE_ABOVE=22, INSERT_LINE_BELOW=23, UNDO=24, REDO=25, MOVE_LINE_UP=26, MOVE_LINE_DOWN=27, COPY_LINE_UP=28, COPY_LINE_DOWN=29, DELETE_LINE=30, COPY=31, PASTE=32, CUT=33, TRIGGER_COMPLETION=34 |
+| `EditorBuiltinCommand` | NONE=0, CURSOR_LEFT=1, CURSOR_RIGHT=2, CURSOR_UP=3, CURSOR_DOWN=4, CURSOR_LINE_START=5, CURSOR_LINE_END=6, CURSOR_PAGE_UP=7, CURSOR_PAGE_DOWN=8, SELECT_LEFT=9, SELECT_RIGHT=10, SELECT_UP=11, SELECT_DOWN=12, SELECT_LINE_START=13, SELECT_LINE_END=14, SELECT_PAGE_UP=15, SELECT_PAGE_DOWN=16, SELECT_ALL=17, BACKSPACE=18, DELETE_FORWARD=19, INSERT_TAB=20, INSERT_NEWLINE=21, INSERT_LINE_ABOVE=22, INSERT_LINE_BELOW=23, UNDO=24, REDO=25, MOVE_LINE_UP=26, MOVE_LINE_DOWN=27, COPY_LINE_UP=28, COPY_LINE_DOWN=29, DELETE_LINE=30, COPY=31, PASTE=32, CUT=33, TRIGGER_COMPLETION=34 |
 
 ---
 

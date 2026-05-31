@@ -34,7 +34,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Inclusive integer range
-  struct IntRange {
+  struct SE_PROTOCOL_VALUE(foundation) IntRange {
     int32_t start {0};
     int32_t end {-1};
 

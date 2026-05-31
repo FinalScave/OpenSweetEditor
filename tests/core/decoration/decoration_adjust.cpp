@@ -4,7 +4,7 @@
 using namespace NS_SWEETEDITOR;
 
 namespace {
-  const DiagnosticSpan* findDiag(const Vector<DiagnosticSpan>& diags, DiagnosticSeverity severity) {
+  const Diagnostic* findDiag(const Vector<Diagnostic>& diags, DiagnosticSeverity severity) {
     for (const auto& diag : diags) {
       if (diag.severity == severity) return &diag;
     }
@@ -15,11 +15,11 @@ namespace {
 TEST_CASE("DecorationManager adjustForEdit shifts same-line point and span decorations") {
   DecorationManager manager;
 
-  manager.setLineInlayHints(0, {InlayHint{InlayType::TEXT, 1, "lhs"}, InlayHint{InlayType::TEXT, 3, "rhs"}});
+  manager.setLineInlayHints(0, {InlayHint{InlayType::TEXT, 1, 0, "lhs"}, InlayHint{InlayType::TEXT, 3, 0, "rhs"}});
   manager.setLinePhantomTexts(0, {PhantomText{4, "ghost"}});
   manager.setLineLinks(0, {{1, 3, "doc://lhs"}, {5, 2, "doc://rhs"}});
 
-  Vector<DiagnosticSpan> diagnostics;
+  Vector<Diagnostic> diagnostics;
   diagnostics.push_back({0, 2, DiagnosticSeverity::DIAG_WARNING});
   diagnostics.push_back({1, 3, DiagnosticSeverity::DIAG_ERROR});
   diagnostics.push_back({3, 2, DiagnosticSeverity::DIAG_INFO});
@@ -40,17 +40,17 @@ TEST_CASE("DecorationManager adjustForEdit shifts same-line point and span decor
   const auto& diags = manager.getLineDiagnostics(0);
   REQUIRE(diags.size() == 3);
 
-  const DiagnosticSpan* warning = findDiag(diags, DiagnosticSeverity::DIAG_WARNING);
+  const Diagnostic* warning = findDiag(diags, DiagnosticSeverity::DIAG_WARNING);
   REQUIRE(warning != nullptr);
   CHECK(warning->column == 0);
   CHECK(warning->length == 2);
 
-  const DiagnosticSpan* error = findDiag(diags, DiagnosticSeverity::DIAG_ERROR);
+  const Diagnostic* error = findDiag(diags, DiagnosticSeverity::DIAG_ERROR);
   REQUIRE(error != nullptr);
   CHECK(error->column == 1);
   CHECK(error->length == 6);
 
-  const DiagnosticSpan* info = findDiag(diags, DiagnosticSeverity::DIAG_INFO);
+  const Diagnostic* info = findDiag(diags, DiagnosticSeverity::DIAG_INFO);
   REQUIRE(info != nullptr);
   CHECK(info->column == 6);
   CHECK(info->length == 2);
@@ -59,7 +59,7 @@ TEST_CASE("DecorationManager adjustForEdit shifts same-line point and span decor
 TEST_CASE("DecorationManager adjustForEdit updates fold regions and line-based decorations across line delta") {
   DecorationManager manager;
 
-  manager.setLineInlayHints(5, {InlayHint{InlayType::TEXT, 2, "tail"}});
+  manager.setLineInlayHints(5, {InlayHint{InlayType::TEXT, 2, 0, "tail"}});
   manager.setLinePhantomTexts(6, {PhantomText{1, "p"}});
   manager.setLineLinks(5, {{2, 4, "doc://tail"}});
   manager.setLineGutterIcons(2, {GutterIcon{11}});

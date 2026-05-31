@@ -72,7 +72,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Fold arrow display mode
-  enum struct SE_PROTOCOL_ENUM(foundation, AUTO) FoldArrowMode {
+  enum struct SE_PROTOCOL_ENUM(config, AUTO) FoldArrowMode {
     /// Auto: show when fold regions exist, hide otherwise
     AUTO = 0,
     /// Always show (reserve space to avoid width jumping)

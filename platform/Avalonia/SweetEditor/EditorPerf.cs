@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using Avalonia;
 using Avalonia.Media;
+using AvaloniaRect = Avalonia.Rect;
 
 namespace SweetEditor {
 	/// <summary>
@@ -221,7 +222,7 @@ namespace SweetEditor {
 
 			double left = Margin;
 			double top = Margin;
-			context.FillRectangle(panelBrush, new Rect(left, top, snapshotPanelWidth, snapshotPanelHeight));
+			context.FillRectangle(panelBrush, new AvaloniaRect(left, top, snapshotPanelWidth, snapshotPanelHeight));
 
 			double x = left + PaddingH;
 			double y = top + PaddingV;

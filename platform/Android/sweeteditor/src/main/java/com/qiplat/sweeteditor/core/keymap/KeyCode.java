@@ -1,11 +1,8 @@
 package com.qiplat.sweeteditor.core.keymap;
 
-/**
- * Key code constants matching the C++ KeyCode enum.
- */
 public final class KeyCode {
-    private KeyCode() {}
-
+    private KeyCode() {
+    }
     public static final int NONE = 0;
     public static final int BACKSPACE = 8;
     public static final int TAB = 9;

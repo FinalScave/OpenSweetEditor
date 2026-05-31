@@ -6,6 +6,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.qiplat.sweeteditor.core.EditorCore;
+import com.qiplat.sweeteditor.core.interaction.HitTarget;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
 
@@ -18,7 +19,7 @@ public final class ContextMenuRequest {
     @NonNull public final PointF locationInEditor;
     public final boolean hasSelection;
     @Nullable public final TextRange selection;
-    @NonNull public final EditorCore.HitTarget hitTarget;
+    @NonNull public final HitTarget hitTarget;
     @NonNull public final String linkTarget;
 
     public ContextMenuRequest(@NonNull ContextMenuTriggerKind triggerKind,
@@ -26,7 +27,7 @@ public final class ContextMenuRequest {
                               @NonNull PointF locationInEditor,
                               boolean hasSelection,
                               @Nullable TextRange selection,
-                              @NonNull EditorCore.HitTarget hitTarget,
+                              @NonNull HitTarget hitTarget,
                               @NonNull String linkTarget) {
         this.triggerKind = triggerKind;
         this.cursorPosition = new TextPosition(cursorPosition.line, cursorPosition.column);

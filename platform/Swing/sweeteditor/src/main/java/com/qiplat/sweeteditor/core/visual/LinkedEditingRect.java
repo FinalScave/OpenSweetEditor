@@ -1,10 +1,16 @@
 package com.qiplat.sweeteditor.core.visual;
 
-import com.google.gson.annotations.SerializedName;
+import com.qiplat.sweeteditor.core.foundation.Rect;
 
-public class LinkedEditingRect {
-    @SerializedName("origin") public PointF origin;
-    @SerializedName("width") public float width;
-    @SerializedName("height") public float height;
-    @SerializedName("is_active") public boolean isActive;
+public final class LinkedEditingRect {
+    public Rect rect = new Rect();
+    public boolean isActive = false;
+
+    public LinkedEditingRect() {
+    }
+
+    public LinkedEditingRect(Rect rect, boolean isActive) {
+        this.rect = rect;
+        this.isActive = isActive;
+    }
 }

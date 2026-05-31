@@ -22,13 +22,13 @@ Core 层不涉及 UI 渲染，仅包含桥接、数据模型和协议编解码�
 
 | 逻辑分类 | 必须包含的类型 | 说明 |
 |---|---|---|
-| **Core Bridge** | `EditorCore`, `Document`, `ProtocolEncoder`, `ProtocolDecoder`, `TextMeasurer`, `EditorOptions`, `EditorActionResult`, `EditorActionReason` | 原生桥接 + 公共核心 API 封装；`EditorActionResult` 是变更类 core API 的统一结果载体 |
+| **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer`, `EditorOptions`, `EditorActionResult`, `EditorActionReason` | 原生桥接 + 公共核心 API 封装；`EditorActionResult` 是变更类 core API 的统一结果载体 |
 | **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollBehavior` | 基础值类型与枚举 |
 | **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextModelMode`；暴露 unit-aware 删除 API 时包含 `ImeTextUnit` | IME 同步快照和文本上下文协议类型；平台侧同步决策由 `EditorActionResult` 承载 |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | 装饰数据类型 |
 | **Visual** | `EditorRenderModel`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `ScrollbarRect`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `DiagnosticDecoration`, `CompositionDecoration`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem`, `LinkedEditingRect`, `BracketHighlightRect` | 渲染模型类型（几何语义见第 2.4 节） |
 | **Snippet** | `LinkedEditingModel`, `TabStopGroup` | 联动编辑 / Tab stop 分组 |
-| **Keymap** | `KeyMap`, `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorCommand` | 快捷键映射数据类型与命令标识 |
+| **Keymap** | `KeyMap`, `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorBuiltinCommand` | 快捷键映射数据类型与内建命令标识 |
 
 ### 1.2 Widget 层（UI 控件 / 渲染 / 交互）
 
@@ -90,7 +90,7 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 | `NewLineActionProvider` | C#/TS/Kotlin: `INewLineActionProvider`; OC: `SENewLineActionProvider` | 提供者接口 |
 | `KeyMap` | OC: `SEKeyMap` | Core keymap 数据容器 |
 | `EditorKeyMap` | OC: `SEEditorKeyMap` | Widget 层 keymap 扩展 |
-| `EditorCommand` | OC: `SEEditorCommand` | 内建命令 id / 命令处理器概念类型 |
+| `EditorBuiltinCommand` | OC: `SEEditorBuiltinCommand` | 内建命令 id |
 | `KeyBinding` | OC: `SEKeyBinding` | 单 chord 或双 chord 绑定项 |
 | `KeyChord` | OC: `SEKeyChord` | 单次按键 chord 值类型 |
 | `KeyCode` | OC: `SEKeyCode` | 键盘按键码常量 / 枚举 |
@@ -200,7 +200,7 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 |---|---|
 | 配置 | `loadDocument(doc)`, `setViewport(w, h)`, `onFontMetricsChanged()`, `setFoldArrowMode(mode)`, `setWrapMode(mode)`, `setTabSize(size)`, `setInsertSpaces(enabled)`, `setScale(scale)`, `setLineSpacing(add, mult)`, `setContentStartPadding(padding)`, `setShowSplitLine(show)`, `setCurrentLineRenderMode(mode)`, `setGutterSticky(sticky)`, `setGutterVisible(visible)`, `setHandleConfig(...)`, `setScrollbarConfig(...)` |
 | 渲染模型 | `buildRenderModel()`, `getLayoutMetrics()` |
-| 手势 / 键盘 | `handleGestureEvent(...)`, `handleGestureEventEx(...)`, `tickEdgeScroll()`, `tickFling()`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(keyMap)` |
+| 手势 / 键盘 | `handleGestureEvent(...)`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(keyMap)` |
 | 文本编辑 | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `backspace()`, `deleteForward()`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
 | 撤销 / 重做 | `undo()`, `redo()`, `canUndo()`, `canRedo()` |
 | 光标 / 选区 | `setCursorPosition(line, col)`, `getCursorPosition()`, `selectAll()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `getSelectedText()`, `getWordRangeAtCursor()`, `getWordAtCursor()`, `moveCursorLeft(extend)`, `moveCursorRight(extend)`, `moveCursorUp(extend)`, `moveCursorDown(extend)`, `moveCursorToLineStart(extend)`, `moveCursorToLineEnd(extend)` |
@@ -535,7 +535,7 @@ Provider 返回空列表时平台 MAY 不显示选区菜单；Provider SHOULD �
 
 ### 10.1 Core 数据模型
 
-所有平台 MUST 提供 Core 层 `KeyMap`、`KeyBinding`、`KeyChord`、`KeyCode`、`KeyModifier` 和 `EditorCommand`。
+所有平台 MUST 提供 Core 层 `KeyMap`、`KeyBinding`、`KeyChord`、`KeyCode`、`KeyModifier` 和 `EditorBuiltinCommand`。
 
 - `KeyMap` MUST 是从 `KeyBinding` 到 commandId 的纯数据映射
 - `KeyBinding` MUST 同时支持单 chord 和双 chord 绑定
@@ -545,10 +545,10 @@ Provider 返回空列表时平台 MAY 不显示选区菜单；Provider SHOULD �
 
 ### 10.2 数值对齐
 
-如果平台暴露 `KeyCode`、`KeyModifier` 或内建 `EditorCommand` 常量，其数值 MUST 与 C++ Core 保持一致。
+如果平台暴露 `KeyCode`、`KeyModifier` 或内建 `EditorBuiltinCommand` 常量，其数值 MUST 与 C++ Core 保持一致。
 
 - `KeyModifier` MUST 使用位标志，以便通过按位或组合修饰键
-- `KeyCode.NONE`、空第二 chord 与 `EditorCommand.NONE` 的语义 MUST 与 C++ Core 一致
+- `KeyCode.NONE`、空第二 chord 与 `EditorBuiltinCommand.NONE` 的语义 MUST 与 C++ Core 一致
 - `EditorCore`、桥接层或 FFI 层 MAY 继续使用与 C++ Core 对齐的原始整数枚举值作为内部传输表示
 - 对于这类桥接层整数枚举值，平台不要求重复实现宿主公共 API 级别的业务枚举校验，但 MUST 保证无效输入不会导致 native / C++ 层崩溃或未定义行为
 
@@ -557,7 +557,7 @@ Provider 返回空列表时平台 MAY 不显示选区菜单；Provider SHOULD �
 - `SweetEditor` MUST 支持 `setKeyMap(keyMap)`，并 SHOULD 暴露 `getKeyMap()`
 - 平台 MUST 暴露 `EditorKeyMap` 作为 `KeyMap` 的 widget 层扩展，使宿主代码可以额外将 commandId 绑定到宿主侧 handler
 - `EditorKeyMap` MUST 支持 `registerCommand(binding, handler)`
-- 若 `binding.command == EditorCommand.NONE`，`registerCommand(binding, handler)` MUST 自动分配自定义 commandId 并返回
+- 若 `binding.command == EditorBuiltinCommand.NONE`，`registerCommand(binding, handler)` MUST 自动分配自定义 commandId 并返回
 - 平台 MAY 额外提供自定义命令注册的便捷 API，但 `registerCommand(binding, handler)` 仍是标准契约
 - 自动分配的自定义 commandId MUST 大于 `BUILT_IN_MAX`
 - 平台 MUST 提供 `defaultKeyMap()` 作为默认绑定工厂
@@ -630,7 +630,7 @@ ContextMenuEvent      // 具有显式上下文菜单手势入口的平台
 
 ### 11.4 `EditorActionResult` 手势字段契约
 
-平台 MAY 直接暴露 `handleGestureEvent(...)` / `handleGestureEventEx(...)` 的返回值，也 MAY 仅在内部消费；但手势处理的返回值 MUST 是 `EditorActionResult` 或平台等价类型。下列手势相关字段 MUST 保持与 Core 一致的语义，并通过统一结果分发入口消费：
+平台 MAY 直接暴露 `handleGestureEvent(...)` 的返回值，也 MAY 仅在内部消费；但手势处理的返回值 MUST 是 `EditorActionResult` 或平台等价类型。下列手势相关字段 MUST 保持与 Core 一致的语义，并通过统一结果分发入口消费：
 
 | 字段 | 类型 | MUST/MAY | 说明 |
 |---|---|---|---|
@@ -639,7 +639,7 @@ ContextMenuEvent      // 具有显式上下文菜单手势入口的平台
 | `tapPoint` | `PointF` | **MUST** | 手势命中的 editor 本地坐标 |
 | `hitTarget` | `HitTargetType` + 与平台对齐的 payload | **MUST** | 当前手势位置的命中测试结果 |
 | `pointerCursorAfter` / `pointerCursorChanged` | `PointerCursorType` / boolean | 桌面端或具备 mouse / hover 输入的平台 **MUST**，纯触摸平台 **MAY** | 当前鼠标位置对应的指针样式提示，以及是否需要更新平台鼠标形状 |
-| `needsEdgeScroll` / `needsFling` / `needsAnimation` | boolean | **MUST** | 平台是否需要继续边缘滚动、惯性滚动或统一动画 tick |
+| `needsEdgeScroll` / `needsFling` / `needsAnimation` | boolean | **MUST** | 边缘滚动与惯性滚动状态，以及统一动画调度标记；平台只根据 `needsAnimation` 调度 tick |
 | `isHandleDrag` | boolean | 移动端 **SHOULD** | 当前手势是否为选择手柄拖拽 |
 
 > 这些字段 MUST 按自身语义独立消费，不能依赖 `needsRedraw` 顺带生效。桌面或具备 mouse / hover 输入的平台 SHOULD 在 `pointerCursorChanged` 为 true 时立即应用 `pointerCursorAfter`，即使本次 result 不需要重绘；平台也 MUST 根据 `needsAnimation` 启动或停止 animation tick，不能等待下一次 render model rebuild。纯触摸且没有鼠标指针概念的平台 MAY 完全忽略鼠标形状变化。
@@ -732,7 +732,7 @@ interface ContextMenuItemProvider {
 | `SeparatorStyle` | SINGLE=0, DOUBLE=1 |
 | `KeyCode` | NONE=0, BACKSPACE=8, TAB=9, ENTER=13, ESCAPE=27, DELETE_KEY=46, LEFT=37, UP=38, RIGHT=39, DOWN=40, HOME=36, END=35, PAGE_UP=33, PAGE_DOWN=34, A=65, C=67, D=68, V=86, X=88, Y=89, Z=90, K=75, SPACE=32 |
 | `KeyModifier` | NONE=0, SHIFT=1, CTRL=2, ALT=4, META=8 |
-| `EditorCommand` | NONE=0, CURSOR_LEFT=1, CURSOR_RIGHT=2, CURSOR_UP=3, CURSOR_DOWN=4, CURSOR_LINE_START=5, CURSOR_LINE_END=6, CURSOR_PAGE_UP=7, CURSOR_PAGE_DOWN=8, SELECT_LEFT=9, SELECT_RIGHT=10, SELECT_UP=11, SELECT_DOWN=12, SELECT_LINE_START=13, SELECT_LINE_END=14, SELECT_PAGE_UP=15, SELECT_PAGE_DOWN=16, SELECT_ALL=17, BACKSPACE=18, DELETE_FORWARD=19, INSERT_TAB=20, INSERT_NEWLINE=21, INSERT_LINE_ABOVE=22, INSERT_LINE_BELOW=23, UNDO=24, REDO=25, MOVE_LINE_UP=26, MOVE_LINE_DOWN=27, COPY_LINE_UP=28, COPY_LINE_DOWN=29, DELETE_LINE=30, COPY=31, PASTE=32, CUT=33, TRIGGER_COMPLETION=34 |
+| `EditorBuiltinCommand` | NONE=0, CURSOR_LEFT=1, CURSOR_RIGHT=2, CURSOR_UP=3, CURSOR_DOWN=4, CURSOR_LINE_START=5, CURSOR_LINE_END=6, CURSOR_PAGE_UP=7, CURSOR_PAGE_DOWN=8, SELECT_LEFT=9, SELECT_RIGHT=10, SELECT_UP=11, SELECT_DOWN=12, SELECT_LINE_START=13, SELECT_LINE_END=14, SELECT_PAGE_UP=15, SELECT_PAGE_DOWN=16, SELECT_ALL=17, BACKSPACE=18, DELETE_FORWARD=19, INSERT_TAB=20, INSERT_NEWLINE=21, INSERT_LINE_ABOVE=22, INSERT_LINE_BELOW=23, UNDO=24, REDO=25, MOVE_LINE_UP=26, MOVE_LINE_DOWN=27, COPY_LINE_UP=28, COPY_LINE_DOWN=29, DELETE_LINE=30, COPY=31, PASTE=32, CUT=33, TRIGGER_COMPLETION=34 |
 
 ---
 

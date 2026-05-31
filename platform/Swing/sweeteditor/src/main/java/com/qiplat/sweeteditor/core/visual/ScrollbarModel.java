@@ -1,11 +1,22 @@
 package com.qiplat.sweeteditor.core.visual;
 
-import com.google.gson.annotations.SerializedName;
+import com.qiplat.sweeteditor.core.foundation.Rect;
 
-public class ScrollbarModel {
-    @SerializedName("visible") public boolean visible;
-    @SerializedName("alpha") public float alpha;
-    @SerializedName("thumb_active") public boolean thumbActive;
-    @SerializedName("track") public ScrollbarRect track;
-    @SerializedName("thumb") public ScrollbarRect thumb;
+public final class ScrollbarModel {
+    public boolean visible = false;
+    public float alpha = 0f;
+    public boolean thumbActive = false;
+    public Rect track = new Rect();
+    public Rect thumb = new Rect();
+
+    public ScrollbarModel() {
+    }
+
+    public ScrollbarModel(boolean visible, float alpha, boolean thumbActive, Rect track, Rect thumb) {
+        this.visible = visible;
+        this.alpha = alpha;
+        this.thumbActive = thumbActive;
+        this.track = track;
+        this.thumb = thumb;
+    }
 }

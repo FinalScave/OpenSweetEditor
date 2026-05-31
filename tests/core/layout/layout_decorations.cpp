@@ -17,7 +17,7 @@ TEST_CASE("TextLayout hitTest/getPositionScreenCoord stay consistent with inlay 
   layout.setViewState({1.0f, 0.0f, 0.0f});
   layout.setWrapMode(WrapMode::NONE);
 
-  decorations->setLineInlayHints(0, {InlayHint{InlayType::TEXT, 1, "hint"}});
+  decorations->setLineInlayHints(0, {InlayHint{InlayType::TEXT, 1, 0, "hint"}});
   decorations->setLinePhantomTexts(0, {PhantomText{2, "ghost"}});
 
   EditorRenderModel model;

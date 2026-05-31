@@ -2,15 +2,12 @@ from ..ir import *
 
 
 def csharp_namespace(target):
-    return target.get("namespace", "SweetEditor.ProtocolGenerated")
+    return target.get("namespace", "SweetEditor")
 
 def csharp_member_name(field):
     return upper_first(snake_to_camel(field["name"]))
 
 def csharp_type(field, schema_types, schema_enums):
-    platform_type = field.get("platform_type")
-    if platform_type:
-        return platform_type
     inner = vector_inner(field["cpp_type"])
     if inner is not None:
         return f"List<{inner}>"
@@ -238,7 +235,7 @@ def csharp_write_payload_field_lines(field, param_name, schema):
     return [csharp_write_value_line(field, param_name)]
 
 def generate_csharp_pack_methods(item, schema):
-    pack_name = upper_first(payload_pack_function_name(item))
+    pack_name = upper_first(payload_encode_function_name(item))
     if not is_hidden_input_type(item):
         return csharp_indent_codec_lines([
             "",
@@ -251,7 +248,7 @@ def generate_csharp_pack_methods(item, schema):
     params = csharp_pack_params(item, schema)
     params_sig = ", ".join(f"{type_name} {name}" for type_name, name, _ in params)
     args = ", ".join(name for _, name, _ in params)
-    wire_name = pack_name[len("Pack"):]
+    wire_name = pack_name[len("Encode"):]
     lines = [
         "",
         f"    private static void Write{wire_name}Wire(BinaryWriter writer, {params_sig}) {{",
@@ -292,7 +289,7 @@ def generate_csharp_enum(item):
 def generate_csharp_class(item, schema):
     schema_types = type_map(schema)
     schema_enums = enum_map(schema)
-    lines = [f"    public sealed class {item['name']} {{"]
+    lines = [f"    public sealed partial class {item['name']} {{"]
     if not item["fields"]:
         lines.append("    }")
         return lines
@@ -304,9 +301,10 @@ def generate_csharp_class(item, schema):
     lines.append("    }")
     return lines
 
-def generate_csharp_codec(schema):
+def generate_csharp_codec(schema, target=None):
+    codec_type = protocol_type_name(target, "CoreProtocol.cs")
     lines = [
-        "    public static class EditorProtocol {",
+        f"    public static class {codec_type} {{",
         "        private ref struct BinaryReader {",
         "            private readonly ReadOnlySpan<byte> data;",
         "            private int offset;",
@@ -315,6 +313,8 @@ def generate_csharp_codec(schema):
         "                this.data = data;",
         "                offset = 0;",
         "            }",
+        "",
+        "            public int Remaining => data.Length - offset;",
         "",
         "            public int ReadUInt8() {",
         "                return data[offset++];",
@@ -417,7 +417,8 @@ def generate_csharp_codec(schema):
         "",
         "        private static string ReadUtf8String(ref BinaryReader reader) {",
         "            var length = reader.ReadInt32();",
-        "            if (length <= 0) return string.Empty;",
+        "            if (length < 0 || length > reader.Remaining) throw new InvalidOperationException(\"Invalid protocol length.\");",
+        "            if (length == 0) return string.Empty;",
         "            return Encoding.UTF8.GetString(reader.ReadBytes(length));",
         "        }",
         "",
@@ -437,7 +438,8 @@ def generate_csharp_codec(schema):
                 "",
                 f"        private static List<{inner}> Read{inner}List(ref BinaryReader reader) {{",
                 "            var count = reader.ReadInt32();",
-                f"            var values = new List<{inner}>(Math.Max(count, 0));",
+                "            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException(\"Invalid protocol length.\");",
+                f"            var values = new List<{inner}>(count);",
                 "            for (var i = 0; i < count; i++) {",
                 f"                values.Add(Read{inner}(ref reader));",
                 "            }",
@@ -543,7 +545,7 @@ def generate_csharp_codec_file(schema, target):
         f"namespace {csharp_namespace(target)} {{",
         "",
     ]
-    lines.extend(generate_csharp_codec(schema))
+    lines.extend(generate_csharp_codec(schema, target))
     lines.append("}")
     lines.append("")
     return "\n".join(lines)
@@ -565,7 +567,7 @@ def generate_csharp_file(schema, target):
         lines.append("")
         lines.extend(generate_csharp_class(item, schema))
     lines.append("")
-    lines.extend(generate_csharp_codec(schema))
+    lines.extend(generate_csharp_codec(schema, target))
     lines.append("}")
     lines.append("")
     return "\n".join(lines)
@@ -600,12 +602,12 @@ def generate_csharp(schema, target_name, target, out_root):
                 encoding="utf-8",
             )
             written.append(str(path))
-        codec_path = out_root / target.get("codec_file", "EditorProtocol.cs")
+        codec_path = out_root / target.get("codec_file", "CoreProtocol.cs")
         codec_path.parent.mkdir(parents=True, exist_ok=True)
         codec_path.write_text(generate_csharp_codec_file(schema, target), encoding="utf-8")
         written.append(str(codec_path))
         return written
-    path = out_root / target.get("file", "SweetEditorProtocol.cs")
+    path = out_root / target.get("file", "CoreProtocol.cs")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(generate_csharp_file(schema, target), encoding="utf-8")
     return [str(path)]

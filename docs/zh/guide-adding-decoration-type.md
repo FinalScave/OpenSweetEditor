@@ -88,12 +88,12 @@
 
 以 Android 为例：
 
-**文件**：`<Type>.java`、`VisualRunType.java`、`EditorCore.java`、`ProtocolEncoder.java`
+**文件**：`<Type>.java`、`VisualRunType.java`、`EditorCore.java`、`CoreProtocol.java`
 
 - 定义平台数据类（如 `public final` 不可变 POJO，字段与 C++ 结构体一致）。
 - 在 `VisualRunType` 中添加枚举值。如果装饰可交互，同时在 `HitTargetType` 中添加。
-- 在 `EditorCore.java` 中实现 `setLine<Type>` / `setBatchLine<Type>` / `clear<Type>` / 查询方法，通过 `ProtocolEncoder` → `ByteBuffer.allocateDirect()` 编码后调用 `native*` 方法。
-- 在 `ProtocolEncoder.java` 中实现 `pack*` / `packBatch*` 二进制编码方法（两遍扫描模式：第一遍计算总大小并缓存 UTF-8 字节，第二遍一次分配 direct ByteBuffer 并写入）。
+- 在 `EditorCore.java` 中实现 `setLine<Type>` / `setBatchLine<Type>` / `clear<Type>` / 查询方法，通过 `CoreProtocol` → `ByteBuffer.allocateDirect()` 编码后调用 `native*` 方法。
+- 在 C++ 中补充协议模型，让 `CoreProtocol.java` 生成对应二进制编码方法。
 
 > 其他平台：OHOS 使用 ArkTS 接口，分布在 `CoreAdornments.ets` + `CoreProtocol.ets` + `EditorCore.ets`。
 
@@ -183,7 +183,7 @@ LINK run 在 `getPositionScreenCoord()` / `columnToX()` 中与 TEXT run 同等�
 | C++ 布局 | `visual.h`、`gesture.h`、`layout.h`、`layout.cpp`、`visual.cpp`、`json_serde.hpp` |
 | C API | `c_api.h`、`c_api.cpp` |
 | JNI 桥接 | `jeditor.hpp`（JNI 包装 + `kJMethods[]` 注册表） |
-| Java Core | `<Type>.java`、`VisualRunType.java`、`HitTargetType`（在 `EditorCore.java` 内）、`EditorCore.java`、`ProtocolEncoder.java` |
+| Java Core | `<Type>.java`、`VisualRunType.java`、`HitTargetType`、`EditorCore.java`、`CoreProtocol.java` |
 | Java 装饰 | `DecorationResult.java`、`DecorationType.java`、`DecorationProviderManager.java` |
 | Java UI | `SweetEditor.java`、`<Type>ClickEvent.java`（如果可交互）、`EditorRenderer.java` |
 | DecorationType 枚举 | `DecorationType.java`（Android、Swing）、`DecorationTypes.ets`（OHOS）、`decoration_types.dart`（Flutter）、`DecorationProvider.swift`（Apple）、`EditorDecoration.cs`（Avalonia、WinForms） |

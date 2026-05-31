@@ -3,8 +3,8 @@ package com.qiplat.sweeteditor.demo;
 import com.qiplat.sweeteditor.EditorTheme;
 import com.qiplat.sweeteditor.SweetEditor;
 import com.qiplat.sweeteditor.core.Document;
-import com.qiplat.sweeteditor.core.foundation.CurrentLineRenderMode;
-import com.qiplat.sweeteditor.core.foundation.WrapMode;
+import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
+import com.qiplat.sweeteditor.core.config.WrapMode;
 import com.qiplat.sweeteditor.event.CodeLensClickEvent;
 import com.qiplat.sweeteditor.event.LinkClickEvent;
 

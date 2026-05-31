@@ -1,11 +1,24 @@
 package com.qiplat.sweeteditor.core.foundation;
 
-import com.google.gson.annotations.SerializedName;
+public final class TextPosition {
+    public static final TextPosition NONE = new TextPosition();
 
-public class TextPosition {
-    @SerializedName("line") public int line;
-    @SerializedName("column") public int column;
+    public int line = 0;
+    public int column = 0;
 
-    public TextPosition() {}
-    public TextPosition(int line, int column) { this.line = line; this.column = column; }
+    public TextPosition() {
+    }
+
+    public TextPosition(int line, int column) {
+        this.line = line;
+        this.column = column;
+    }
+
+    @Override
+    public String toString() {
+        return "TextPosition{"
+                + "line=" + line
+                + ", column=" + column
+                + "}";
+    }
 }

@@ -1,37 +1,24 @@
 package com.qiplat.sweeteditor.core.visual;
 
-/**
- * Scrollbar metrics (used by platform to calculate scrollbar thumb size and position).
- */
-public class ScrollMetrics {
-    public final float scale;
-    public final float scrollX;
-    public final float scrollY;
-    public final float maxScrollX;
-    public final float maxScrollY;
-    public final float contentWidth;
-    public final float contentHeight;
-    public final float viewportWidth;
-    public final float viewportHeight;
-    public final float textAreaX;
-    public final float textAreaWidth;
-    public final boolean canScrollX;
-    public final boolean canScrollY;
+public final class ScrollMetrics {
+    public float scale = 1f;
+    public float scrollX = 0f;
+    public float scrollY = 0f;
+    public float maxScrollX = 0f;
+    public float maxScrollY = 0f;
+    public float contentWidth = 0f;
+    public float contentHeight = 0f;
+    public float viewportWidth = 0f;
+    public float viewportHeight = 0f;
+    public float textAreaX = 0f;
+    public float textAreaWidth = 0f;
+    public boolean canScrollX = false;
+    public boolean canScrollY = false;
 
-    public ScrollMetrics(
-            float scale,
-            float scrollX,
-            float scrollY,
-            float maxScrollX,
-            float maxScrollY,
-            float contentWidth,
-            float contentHeight,
-            float viewportWidth,
-            float viewportHeight,
-            float textAreaX,
-            float textAreaWidth,
-            boolean canScrollX,
-            boolean canScrollY) {
+    public ScrollMetrics() {
+    }
+
+    public ScrollMetrics(float scale, float scrollX, float scrollY, float maxScrollX, float maxScrollY, float contentWidth, float contentHeight, float viewportWidth, float viewportHeight, float textAreaX, float textAreaWidth, boolean canScrollX, boolean canScrollY) {
         this.scale = scale;
         this.scrollX = scrollX;
         this.scrollY = scrollY;

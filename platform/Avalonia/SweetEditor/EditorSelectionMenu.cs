@@ -9,6 +9,7 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using AvaloniaRect = Avalonia.Rect;
 
 namespace SweetEditor {
 	public sealed class SelectionMenuItem {
@@ -210,7 +211,7 @@ namespace SweetEditor {
 				return;
 			}
 
-			if (!TryComputeAnchorRect(out Rect anchorRect)) {
+			if (!TryComputeAnchorRect(out AvaloniaRect anchorRect)) {
 				Dismiss();
 				return;
 			}
@@ -419,13 +420,13 @@ namespace SweetEditor {
 			Dismiss();
 		}
 
-		private bool TryComputeAnchorRect(out Rect rect) {
+		private bool TryComputeAnchorRect(out AvaloniaRect rect) {
 			rect = default;
 
 			Size menuSize = MeasurePopupSize();
 			double menuWidth = Math.Max(1, menuSize.Width > 1 ? menuSize.Width : FallbackMenuWidth);
 			double menuHeight = Math.Max(1, menuSize.Height > 1 ? menuSize.Height : FallbackMenuHeight);
-			Rect viewport = editor.GetPopupViewportRect();
+			AvaloniaRect viewport = editor.GetPopupViewportRect();
 			if (viewport.Width <= 0 || viewport.Height <= 0) {
 				return false;
 			}
@@ -448,7 +449,7 @@ namespace SweetEditor {
 
 				anchorX = Math.Clamp(anchorX, minX, maxX);
 				anchorY = Math.Clamp(anchorY, minY, maxY);
-				rect = new Rect(anchorX, anchorY, 1, 1);
+				rect = new AvaloniaRect(anchorX, anchorY, 1, 1);
 				return true;
 			}
 
@@ -466,7 +467,7 @@ namespace SweetEditor {
 
 			anchorXSelection = Math.Clamp(anchorXSelection, minX, maxX);
 			anchorYSelection = Math.Clamp(anchorYSelection, minY, maxY);
-			rect = new Rect(anchorXSelection, anchorYSelection, 1, 1);
+			rect = new AvaloniaRect(anchorXSelection, anchorYSelection, 1, 1);
 			return true;
 		}
 

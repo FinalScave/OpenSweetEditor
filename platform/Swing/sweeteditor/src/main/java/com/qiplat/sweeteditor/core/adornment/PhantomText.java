@@ -1,13 +1,11 @@
 package com.qiplat.sweeteditor.core.adornment;
 
-/**
- * Immutable value object representing phantom text (virtual inserted text) on a single line.
- */
 public final class PhantomText {
-    /** Insertion column (0-based, UTF-16 offset) */
-    public final int column;
-    /** Phantom text content */
-    public final String text;
+    public int column = 0;
+    public String text = "";
+
+    public PhantomText() {
+    }
 
     public PhantomText(int column, String text) {
         this.column = column;

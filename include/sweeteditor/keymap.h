@@ -48,8 +48,10 @@ namespace NS_SWEETEDITOR {
   inline bool hasAnyModifier(KeyModifier value, KeyModifier mask) { return static_cast<uint8_t>(value & mask) != 0; }
 
   /// A single key chord: one key press with optional modifiers
-  struct KeyChord {
+  struct SE_PROTOCOL_VALUE(keymap) KeyChord {
+    SE_PROTOCOL_WIRE(u8)
     KeyModifier modifiers {KeyModifier::NONE};
+    SE_PROTOCOL_WIRE(u16)
     KeyCode key_code {KeyCode::NONE};
 
     bool operator==(const KeyChord& other) const;
@@ -63,8 +65,10 @@ namespace NS_SWEETEDITOR {
     }
   };
 
-   /// Editor command identifiers mapped from key bindings
-  enum struct EditorCommand : uint32_t {
+  using EditorCommandId = uint32_t;
+
+  /// Built-in editor command identifiers mapped from key bindings
+  enum struct SE_PROTOCOL_ENUM(keymap, NONE) EditorBuiltinCommand : EditorCommandId {
     NONE = 0,
     CURSOR_LEFT,
     CURSOR_RIGHT,
@@ -102,15 +106,18 @@ namespace NS_SWEETEDITOR {
     TRIGGER_COMPLETION,
   };
 
+  inline constexpr EditorCommandId EDITOR_BUILTIN_COMMAND_MAX = static_cast<EditorCommandId>(EditorBuiltinCommand::TRIGGER_COMPLETION);
+
   /// A key binding entry: one or two chords mapped to a command
-  struct KeyBinding {
+  struct SE_PROTOCOL_VALUE(keymap) KeyBinding {
     KeyChord first;
     KeyChord second;  // second.empty() means single-chord binding
-    EditorCommand command {EditorCommand::NONE};
+    SE_PROTOCOL_WIRE(u32)
+    EditorCommandId command {0};
   };
 
   /// Mapping entry: either a direct command or a sub-map for multi-chord bindings
-  using KeyMapEntry = std::variant<EditorCommand, HashMap<KeyChord, EditorCommand, KeyChordHash>>;
+  using KeyMapEntry = std::variant<EditorCommandId, HashMap<KeyChord, EditorCommandId, KeyChordHash>>;
 
   /// Keyboard shortcut mapping table
   class KeyMap {
@@ -137,7 +144,7 @@ namespace NS_SWEETEDITOR {
 
   struct ResolveResult {
     ResolveStatus status {ResolveStatus::NO_MATCH};
-    EditorCommand command {EditorCommand::NONE};
+    EditorCommandId command {0};
   };
 
   /// Stateful resolver that owns a KeyMap and handles multi-chord key sequences with timeout
@@ -160,7 +167,7 @@ namespace NS_SWEETEDITOR {
     KeyMap m_key_map_;
     bool m_pending_ {false};
     int64_t m_pending_time_ {0};
-    const HashMap<KeyChord, EditorCommand, KeyChordHash>* m_pending_sub_map_ {nullptr};
+    const HashMap<KeyChord, EditorCommandId, KeyChordHash>* m_pending_sub_map_ {nullptr};
   };
 } // namespace NS_SWEETEDITOR
 #endif //SWEETEDITOR_KEYMAP_H

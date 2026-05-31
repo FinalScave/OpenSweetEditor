@@ -30,10 +30,13 @@ import androidx.annotation.Nullable;
 import java.util.Map;
 
 import com.qiplat.sweeteditor.core.Document;
-import com.qiplat.sweeteditor.core.EditorOptions;
+import com.qiplat.sweeteditor.core.config.EditorOptions;
 import com.qiplat.sweeteditor.core.EditorCore;
-import com.qiplat.sweeteditor.core.ScrollbarConfig;
-import com.qiplat.sweeteditor.core.keymap.EditorCommand;
+import com.qiplat.sweeteditor.core.interaction.HitTargetType;
+import com.qiplat.sweeteditor.core.interaction.GestureType;
+import com.qiplat.sweeteditor.core.interaction.EventType;
+import com.qiplat.sweeteditor.core.action.EditorActionResult;
+import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
 import com.qiplat.sweeteditor.core.keymap.KeyCode;
 import com.qiplat.sweeteditor.core.keymap.KeyModifier;
@@ -54,8 +57,10 @@ import com.qiplat.sweeteditor.core.adornment.StyleSpan;
 import com.qiplat.sweeteditor.core.adornment.TextStyle;
 
 import com.qiplat.sweeteditor.core.TextMeasurer;
-import com.qiplat.sweeteditor.core.foundation.ScrollBehavior;
+import com.qiplat.sweeteditor.core.action.ScrollBehavior;
 import com.qiplat.sweeteditor.core.foundation.IntRange;
+import com.qiplat.sweeteditor.core.config.ScrollbarMode;
+import com.qiplat.sweeteditor.core.config.ScrollbarTrackTapMode;
 import com.qiplat.sweeteditor.core.adornment.SpanLayer;
 import com.qiplat.sweeteditor.core.foundation.TextChange;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
@@ -240,7 +245,7 @@ public class SweetEditor extends View {
         @Override
         public void doFrame(long frameTimeNanos) {
             if (!mScrollAnimationActive) return;
-            EditorCore.EditorActionResult result = mEditorCore.tickAnimations();
+            EditorActionResult result = mEditorCore.tickAnimations();
             dispatchEditorActionResult(result);
             if (mScrollAnimationActive) {
                 Choreographer.getInstance().postFrameCallback(this);
@@ -281,7 +286,7 @@ public class SweetEditor extends View {
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         long t0 = ENABLE_PERF_LOG ? System.nanoTime() : 0;
-        EditorCore.EditorActionResult result = mEditorCore.handleGestureEvent(event);
+        EditorActionResult result = mEditorCore.handleGestureEvent(event);
         Log.d(TAG, "result: " + result);
         dispatchEditorActionResult(result);
         if (ENABLE_PERF_LOG) {
@@ -300,7 +305,7 @@ public class SweetEditor extends View {
                 && (event.getButtonState() & MotionEvent.BUTTON_SECONDARY) != 0) {
             long t0 = ENABLE_PERF_LOG ? System.nanoTime() : 0;
             PointF locationInView = new PointF(event.getX(), event.getY());
-            EditorCore.EditorActionResult result = mEditorCore.handleGestureEventEx(
+            EditorActionResult result = mEditorCore.handleGestureEvent(
                     EditorCore.EVENT_TYPE_MOUSE_RIGHT_DOWN,
                     new PointF[]{locationInView},
                     getMotionEventModifiers(event),
@@ -480,7 +485,7 @@ public class SweetEditor extends View {
      */
     public void loadDocument(Document document) {
         mDocument = document;
-        EditorCore.EditorActionResult result = mEditorCore.loadDocument(document);
+        EditorActionResult result = mEditorCore.loadDocument(document);
         mCachedModel = null;
         animationHolder.cursorAnimatedX = -1f;
         animationHolder.cursorAnimatedY = -1f;
@@ -514,25 +519,25 @@ public class SweetEditor extends View {
      */
     public void setKeyMap(@NonNull EditorKeyMap keyMap) {
         mKeyMap = keyMap;
-        EditorCore.EditorActionResult result = mEditorCore.setKeyMap(keyMap);
+        EditorActionResult result = mEditorCore.setKeyMap(keyMap.getBindings());
         dispatchEditorActionResult(result);
     }
 
     void syncPlatformScale(float scale) {
         mRenderer.syncPlatformScale(scale);
-        EditorCore.EditorActionResult result = mEditorCore.onFontMetricsChanged();
+        EditorActionResult result = mEditorCore.onFontMetricsChanged();
         dispatchEditorActionResult(result);
     }
 
     void applyTypeface(Typeface typeface) {
         mRenderer.applyTypeface(typeface);
-        EditorCore.EditorActionResult result = mEditorCore.onFontMetricsChanged();
+        EditorActionResult result = mEditorCore.onFontMetricsChanged();
         dispatchEditorActionResult(result);
     }
 
     void applyTextSize(float textSize) {
         mRenderer.applyTextSize(textSize);
-        EditorCore.EditorActionResult result = mEditorCore.onFontMetricsChanged();
+        EditorActionResult result = mEditorCore.onFontMetricsChanged();
         dispatchEditorActionResult(result);
     }
 
@@ -554,7 +559,7 @@ public class SweetEditor extends View {
         mTheme = theme;
         mRenderer.applyTheme(theme);
 
-        EditorCore.EditorActionResult result = mEditorCore.registerBatchTextStyles(theme.textStyles);
+        EditorActionResult result = mEditorCore.registerBatchTextStyles(theme.textStyles);
 
         if (mInlineSuggestionController != null) {
             mInlineSuggestionController.applyTheme(theme);
@@ -601,7 +606,7 @@ public class SweetEditor extends View {
      * @param text text to insert (supports multiple lines, use {@code \n} for newlines)
      */
     public void insertText(@NonNull String text) {
-        EditorCore.EditorActionResult result = mEditorCore.insertText(text);
+        EditorActionResult result = mEditorCore.insertText(text);
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -613,7 +618,7 @@ public class SweetEditor extends View {
      * @param newText new text after replacement (empty string is equivalent to delete)
      */
     public void replaceText(@NonNull TextRange range, @NonNull String newText) {
-        EditorCore.EditorActionResult result = mEditorCore.replaceText(range, newText);
+        EditorActionResult result = mEditorCore.replaceText(range, newText);
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -624,7 +629,7 @@ public class SweetEditor extends View {
      * @param range text range to delete
      */
     public void deleteText(@NonNull TextRange range) {
-        EditorCore.EditorActionResult result = mEditorCore.deleteText(range);
+        EditorActionResult result = mEditorCore.deleteText(range);
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -635,7 +640,7 @@ public class SweetEditor extends View {
      * Move current line (or lines covered by selection) up by one.
      */
     public void moveLineUp() {
-        EditorCore.EditorActionResult result = mEditorCore.moveLineUp();
+        EditorActionResult result = mEditorCore.moveLineUp();
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -644,7 +649,7 @@ public class SweetEditor extends View {
      * Move current line (or lines covered by selection) down by one.
      */
     public void moveLineDown() {
-        EditorCore.EditorActionResult result = mEditorCore.moveLineDown();
+        EditorActionResult result = mEditorCore.moveLineDown();
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -653,7 +658,7 @@ public class SweetEditor extends View {
      * Duplicate current line (or lines covered by selection) above.
      */
     public void copyLineUp() {
-        EditorCore.EditorActionResult result = mEditorCore.copyLineUp();
+        EditorActionResult result = mEditorCore.copyLineUp();
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -662,7 +667,7 @@ public class SweetEditor extends View {
      * Duplicate current line (or lines covered by selection) below.
      */
     public void copyLineDown() {
-        EditorCore.EditorActionResult result = mEditorCore.copyLineDown();
+        EditorActionResult result = mEditorCore.copyLineDown();
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -671,7 +676,7 @@ public class SweetEditor extends View {
      * Delete current line (or all lines covered by selection).
      */
     public void deleteLine() {
-        EditorCore.EditorActionResult result = mEditorCore.deleteLine();
+        EditorActionResult result = mEditorCore.deleteLine();
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -680,7 +685,7 @@ public class SweetEditor extends View {
      * Insert empty line above current line.
      */
     public void insertLineAbove() {
-        EditorCore.EditorActionResult result = mEditorCore.insertLineAbove();
+        EditorActionResult result = mEditorCore.insertLineAbove();
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -689,7 +694,7 @@ public class SweetEditor extends View {
      * Insert empty line below current line.
      */
     public void insertLineBelow() {
-        EditorCore.EditorActionResult result = mEditorCore.insertLineBelow();
+        EditorActionResult result = mEditorCore.insertLineBelow();
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -701,7 +706,7 @@ public class SweetEditor extends View {
      *
      */
     public void undo() {
-        EditorCore.EditorActionResult result = mEditorCore.undo();
+        EditorActionResult result = mEditorCore.undo();
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -711,7 +716,7 @@ public class SweetEditor extends View {
      *
      */
     public void redo() {
-        EditorCore.EditorActionResult result = mEditorCore.redo();
+        EditorActionResult result = mEditorCore.redo();
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -740,7 +745,7 @@ public class SweetEditor extends View {
      * Select all document content.
      */
     public void selectAll() {
-        EditorCore.EditorActionResult result = mEditorCore.selectAll();
+        EditorActionResult result = mEditorCore.selectAll();
         if (mSelectionMenuController != null
                 && (mContextMenuController == null || !mContextMenuController.isShowing())) {
             mSelectionMenuController.onSelectAll();
@@ -767,7 +772,7 @@ public class SweetEditor extends View {
      * @param endColumn   end column (0-based)
      */
     public void setSelection(int startLine, int startColumn, int endLine, int endColumn) {
-        EditorCore.EditorActionResult result = mEditorCore.setSelection(startLine, startColumn, endLine, endColumn);
+        EditorActionResult result = mEditorCore.setSelection(startLine, startColumn, endLine, endColumn);
         dispatchEditorActionResult(result);
     }
 
@@ -775,7 +780,7 @@ public class SweetEditor extends View {
      * @see #setSelection(int, int, int, int)
      */
     public void setSelection(@NonNull TextRange range) {
-        EditorCore.EditorActionResult result = mEditorCore.setSelection(range);
+        EditorActionResult result = mEditorCore.setSelection(range);
         dispatchEditorActionResult(result);
     }
 
@@ -880,7 +885,7 @@ public class SweetEditor extends View {
      * @param position target position
      */
     public void setCursorPosition(@NonNull TextPosition position) {
-        EditorCore.EditorActionResult result = mEditorCore.setCursorPosition(position);
+        EditorActionResult result = mEditorCore.setCursorPosition(position);
         dispatchEditorActionResult(result);
     }
 
@@ -1004,7 +1009,7 @@ public class SweetEditor extends View {
      * @param column target column number (0-based, UTF-16 offset)
      */
     public void gotoPosition(int line, int column) {
-        EditorCore.EditorActionResult result = mEditorCore.gotoPosition(line, column);
+        EditorActionResult result = mEditorCore.gotoPosition(line, column);
         dispatchEditorActionResult(result);
     }
 
@@ -1015,7 +1020,7 @@ public class SweetEditor extends View {
      * @param behavior scroll behavior
      */
     public void scrollToLine(int line, @NonNull ScrollBehavior behavior) {
-        EditorCore.EditorActionResult result = mEditorCore.scrollToLine(line, behavior.value);
+        EditorActionResult result = mEditorCore.scrollToLine(line, behavior.value);
         dispatchEditorActionResult(result);
     }
 
@@ -1023,7 +1028,7 @@ public class SweetEditor extends View {
      * Manually set scroll position (automatically clamped to valid range).
      */
     public void setScroll(float scrollX, float scrollY) {
-        EditorCore.EditorActionResult result = mEditorCore.setScroll(scrollX, scrollY);
+        EditorActionResult result = mEditorCore.setScroll(scrollX, scrollY);
         dispatchEditorActionResult(result);
     }
 
@@ -1049,7 +1054,7 @@ public class SweetEditor extends View {
      *                        {@link TextStyle#ITALIC}, {@link TextStyle#STRIKETHROUGH}, combinable via bitwise OR)
      */
     public void registerTextStyle(int styleId, int color, int backgroundColor, int fontStyle) {
-        EditorCore.EditorActionResult result = mEditorCore.registerTextStyle(styleId, color, backgroundColor, fontStyle);
+        EditorActionResult result = mEditorCore.registerTextStyle(styleId, color, backgroundColor, fontStyle);
         dispatchEditorActionResult(result);
     }
 
@@ -1061,7 +1066,7 @@ public class SweetEditor extends View {
      * @param fontStyle Font style bit flags
      */
     public void registerTextStyle(int styleId, int color, int fontStyle) {
-        EditorCore.EditorActionResult result = mEditorCore.registerTextStyle(styleId, color, fontStyle);
+        EditorActionResult result = mEditorCore.registerTextStyle(styleId, color, fontStyle);
         dispatchEditorActionResult(result);
     }
 
@@ -1071,7 +1076,7 @@ public class SweetEditor extends View {
      * @param stylesById style ID -> style mapping; null or empty input is ignored
      */
     public void registerBatchTextStyles(@Nullable Map<Integer, TextStyle> stylesById) {
-        EditorCore.EditorActionResult result = mEditorCore.registerBatchTextStyles(stylesById);
+        EditorActionResult result = mEditorCore.registerBatchTextStyles(stylesById);
         dispatchEditorActionResult(result);
     }
 
@@ -1083,7 +1088,7 @@ public class SweetEditor extends View {
      * @param spans Span list (accepts {@link StyleSpan} and its subclasses)
      */
     public void setLineSpans(int line, @NonNull SpanLayer layer, @NonNull List<? extends StyleSpan> spans) {
-        EditorCore.EditorActionResult result = mEditorCore.setLineSpans(line, layer.value, spans);
+        EditorActionResult result = mEditorCore.setLineSpans(line, layer.value, spans);
         dispatchEditorActionResult(result);
     }
 
@@ -1095,7 +1100,7 @@ public class SweetEditor extends View {
      * @param spansByLine Sparse array of line number 鈫?span list
      */
     public void setBatchLineSpans(SpanLayer layer, @Nullable SparseArray<? extends List<? extends StyleSpan>> spansByLine) {
-        EditorCore.EditorActionResult result = mEditorCore.setBatchLineSpans(layer.value, spansByLine);
+        EditorActionResult result = mEditorCore.setBatchLineSpans(layer.value, spansByLine);
         dispatchEditorActionResult(result);
     }
 
@@ -1108,7 +1113,7 @@ public class SweetEditor extends View {
      * @param hints InlayHint list
      */
     public void setLineInlayHints(int line, @NonNull List<? extends InlayHint> hints) {
-        EditorCore.EditorActionResult result = mEditorCore.setLineInlayHints(line, hints);
+        EditorActionResult result = mEditorCore.setLineInlayHints(line, hints);
         dispatchEditorActionResult(result);
     }
 
@@ -1118,7 +1123,7 @@ public class SweetEditor extends View {
      * @param hintsByLine Sparse array of line number 鈫?hint list
      */
     public void setBatchLineInlayHints(@Nullable SparseArray<? extends List<? extends InlayHint>> hintsByLine) {
-        EditorCore.EditorActionResult result = mEditorCore.setBatchLineInlayHints(hintsByLine);
+        EditorActionResult result = mEditorCore.setBatchLineInlayHints(hintsByLine);
         dispatchEditorActionResult(result);
     }
 
@@ -1130,7 +1135,7 @@ public class SweetEditor extends View {
      * @param phantoms Phantom text list (sorted by column ascending)
      */
     public void setLinePhantomTexts(int line, @NonNull List<? extends PhantomText> phantoms) {
-        EditorCore.EditorActionResult result = mEditorCore.setLinePhantomTexts(line, phantoms);
+        EditorActionResult result = mEditorCore.setLinePhantomTexts(line, phantoms);
         dispatchEditorActionResult(result);
     }
 
@@ -1140,7 +1145,7 @@ public class SweetEditor extends View {
      * @param phantomsByLine Sparse array of line number 鈫?phantom list
      */
     public void setBatchLinePhantomTexts(@Nullable SparseArray<? extends List<? extends PhantomText>> phantomsByLine) {
-        EditorCore.EditorActionResult result = mEditorCore.setBatchLinePhantomTexts(phantomsByLine);
+        EditorActionResult result = mEditorCore.setBatchLinePhantomTexts(phantomsByLine);
         dispatchEditorActionResult(result);
     }
 
@@ -1155,7 +1160,7 @@ public class SweetEditor extends View {
      * @param icons Icon list
      */
     public void setLineGutterIcons(int line, @NonNull List<? extends GutterIcon> icons) {
-        EditorCore.EditorActionResult result = mEditorCore.setLineGutterIcons(line, icons);
+        EditorActionResult result = mEditorCore.setLineGutterIcons(line, icons);
         dispatchEditorActionResult(result);
     }
 
@@ -1165,7 +1170,7 @@ public class SweetEditor extends View {
      * @param iconsByLine Sparse array of line number 鈫?icon list
      */
     public void setBatchLineGutterIcons(@Nullable SparseArray<? extends List<? extends GutterIcon>> iconsByLine) {
-        EditorCore.EditorActionResult result = mEditorCore.setBatchLineGutterIcons(iconsByLine);
+        EditorActionResult result = mEditorCore.setBatchLineGutterIcons(iconsByLine);
         dispatchEditorActionResult(result);
     }
 
@@ -1178,7 +1183,7 @@ public class SweetEditor extends View {
      * @param items CodeLens item list
      */
     public void setLineCodeLens(int line, @NonNull List<? extends CodeLensItem> items) {
-        EditorCore.EditorActionResult result = mEditorCore.setLineCodeLens(line, items);
+        EditorActionResult result = mEditorCore.setLineCodeLens(line, items);
         dispatchEditorActionResult(result);
     }
 
@@ -1188,7 +1193,7 @@ public class SweetEditor extends View {
      * @param itemsByLine Sparse array of line number → CodeLens item list
      */
     public void setBatchLineCodeLens(@Nullable SparseArray<? extends List<? extends CodeLensItem>> itemsByLine) {
-        EditorCore.EditorActionResult result = mEditorCore.setBatchLineCodeLens(itemsByLine);
+        EditorActionResult result = mEditorCore.setBatchLineCodeLens(itemsByLine);
         dispatchEditorActionResult(result);
     }
 
@@ -1201,7 +1206,7 @@ public class SweetEditor extends View {
      * @param links Link range list
      */
     public void setLineLinks(int line, @NonNull List<? extends LinkSpan> links) {
-        EditorCore.EditorActionResult result = mEditorCore.setLineLinks(line, links);
+        EditorActionResult result = mEditorCore.setLineLinks(line, links);
         dispatchEditorActionResult(result);
     }
 
@@ -1211,7 +1216,7 @@ public class SweetEditor extends View {
      * @param linksByLine Sparse array of line number to link list
      */
     public void setBatchLineLinks(@Nullable SparseArray<? extends List<? extends LinkSpan>> linksByLine) {
-        EditorCore.EditorActionResult result = mEditorCore.setBatchLineLinks(linksByLine);
+        EditorActionResult result = mEditorCore.setBatchLineLinks(linksByLine);
         dispatchEditorActionResult(result);
     }
 
@@ -1232,7 +1237,7 @@ public class SweetEditor extends View {
      * @param items Diagnostic item list
      */
     public void setLineDiagnostics(int line, @NonNull List<? extends Diagnostic> items) {
-        EditorCore.EditorActionResult result = mEditorCore.setLineDiagnostics(line, items);
+        EditorActionResult result = mEditorCore.setLineDiagnostics(line, items);
         dispatchEditorActionResult(result);
     }
 
@@ -1242,7 +1247,7 @@ public class SweetEditor extends View {
      * @param diagsByLine Sparse array of line number 鈫?diagnostic list
      */
     public void setBatchLineDiagnostics(@Nullable SparseArray<? extends List<? extends Diagnostic>> diagsByLine) {
-        EditorCore.EditorActionResult result = mEditorCore.setBatchLineDiagnostics(diagsByLine);
+        EditorActionResult result = mEditorCore.setBatchLineDiagnostics(diagsByLine);
         dispatchEditorActionResult(result);
     }
 
@@ -1254,7 +1259,7 @@ public class SweetEditor extends View {
      * @param guides Indent guide list
      */
     public void setIndentGuides(@NonNull List<IndentGuide> guides) {
-        EditorCore.EditorActionResult result = mEditorCore.setIndentGuides(guides);
+        EditorActionResult result = mEditorCore.setIndentGuides(guides);
         dispatchEditorActionResult(result);
     }
 
@@ -1264,7 +1269,7 @@ public class SweetEditor extends View {
      * @param guides Bracket matching branch line list
      */
     public void setBracketGuides(@NonNull List<BracketGuide> guides) {
-        EditorCore.EditorActionResult result = mEditorCore.setBracketGuides(guides);
+        EditorActionResult result = mEditorCore.setBracketGuides(guides);
         dispatchEditorActionResult(result);
     }
 
@@ -1274,7 +1279,7 @@ public class SweetEditor extends View {
      * @param guides Control flow return arrow list
      */
     public void setFlowGuides(@NonNull List<FlowGuide> guides) {
-        EditorCore.EditorActionResult result = mEditorCore.setFlowGuides(guides);
+        EditorActionResult result = mEditorCore.setFlowGuides(guides);
         dispatchEditorActionResult(result);
     }
 
@@ -1284,7 +1289,7 @@ public class SweetEditor extends View {
      * @param guides Horizontal separator line list
      */
     public void setSeparatorGuides(@NonNull List<SeparatorGuide> guides) {
-        EditorCore.EditorActionResult result = mEditorCore.setSeparatorGuides(guides);
+        EditorActionResult result = mEditorCore.setSeparatorGuides(guides);
         dispatchEditorActionResult(result);
     }
 
@@ -1296,7 +1301,7 @@ public class SweetEditor extends View {
      * @param regions Fold region list
      */
     public void setFoldRegions(@Nullable List<? extends FoldRegion> regions) {
-        EditorCore.EditorActionResult result = mEditorCore.setFoldRegions(regions);
+        EditorActionResult result = mEditorCore.setFoldRegions(regions);
         dispatchEditorActionResult(result);
     }
 
@@ -1307,7 +1312,7 @@ public class SweetEditor extends View {
      * @param line Line number (0-based, usually the first line of fold)
      */
     public void toggleFoldAt(int line) {
-        EditorCore.EditorActionResult result = mEditorCore.toggleFoldAt(line);
+        EditorActionResult result = mEditorCore.toggleFoldAt(line);
         dispatchEditorActionResult(result);
     }
 
@@ -1317,7 +1322,7 @@ public class SweetEditor extends View {
      * @param line Line number (0-based)
      */
     public void foldAt(int line) {
-        EditorCore.EditorActionResult result = mEditorCore.foldAt(line);
+        EditorActionResult result = mEditorCore.foldAt(line);
         dispatchEditorActionResult(result);
     }
 
@@ -1327,7 +1332,7 @@ public class SweetEditor extends View {
      * @param line Line number (0-based)
      */
     public void unfoldAt(int line) {
-        EditorCore.EditorActionResult result = mEditorCore.unfoldAt(line);
+        EditorActionResult result = mEditorCore.unfoldAt(line);
         dispatchEditorActionResult(result);
     }
 
@@ -1335,7 +1340,7 @@ public class SweetEditor extends View {
      * Fold all regions.
      */
     public void foldAll() {
-        EditorCore.EditorActionResult result = mEditorCore.foldAll();
+        EditorActionResult result = mEditorCore.foldAll();
         dispatchEditorActionResult(result);
     }
 
@@ -1343,7 +1348,7 @@ public class SweetEditor extends View {
      * Unfold all regions.
      */
     public void unfoldAll() {
-        EditorCore.EditorActionResult result = mEditorCore.unfoldAll();
+        EditorActionResult result = mEditorCore.unfoldAll();
         dispatchEditorActionResult(result);
     }
 
@@ -1365,7 +1370,7 @@ public class SweetEditor extends View {
      * @param snippetTemplate VSCode snippet template
      */
     public void insertSnippet(@NonNull String snippetTemplate) {
-        EditorCore.EditorActionResult result = mEditorCore.insertSnippet(snippetTemplate);
+        EditorActionResult result = mEditorCore.insertSnippet(snippetTemplate);
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -1376,7 +1381,7 @@ public class SweetEditor extends View {
      * @param model Linked editing model
      */
     public void startLinkedEditing(@NonNull LinkedEditingModel model) {
-        EditorCore.EditorActionResult result = mEditorCore.startLinkedEditing(model);
+        EditorActionResult result = mEditorCore.startLinkedEditing(model);
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -1393,7 +1398,7 @@ public class SweetEditor extends View {
      *
      */
     public void linkedEditingNext() {
-        EditorCore.EditorActionResult result = mEditorCore.linkedEditingNext();
+        EditorActionResult result = mEditorCore.linkedEditingNext();
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -1403,7 +1408,7 @@ public class SweetEditor extends View {
      *
      */
     public void linkedEditingPrev() {
-        EditorCore.EditorActionResult result = mEditorCore.linkedEditingPrev();
+        EditorActionResult result = mEditorCore.linkedEditingPrev();
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -1412,7 +1417,7 @@ public class SweetEditor extends View {
      * Cancel linked editing mode.
      */
     public void cancelLinkedEditing() {
-        EditorCore.EditorActionResult result = mEditorCore.cancelLinkedEditing();
+        EditorActionResult result = mEditorCore.cancelLinkedEditing();
         dispatchEditorActionResult(result);
     }
 
@@ -1422,7 +1427,7 @@ public class SweetEditor extends View {
      * Clear all highlight spans.
      */
     public void clearHighlights() {
-        EditorCore.EditorActionResult result = mEditorCore.clearHighlights();
+        EditorActionResult result = mEditorCore.clearHighlights();
         dispatchEditorActionResult(result);
     }
 
@@ -1432,7 +1437,7 @@ public class SweetEditor extends View {
      * @param layer Layer index
      */
     public void clearHighlights(@NonNull SpanLayer layer) {
-        EditorCore.EditorActionResult result = mEditorCore.clearHighlights(layer.value);
+        EditorActionResult result = mEditorCore.clearHighlights(layer.value);
         dispatchEditorActionResult(result);
     }
 
@@ -1440,7 +1445,7 @@ public class SweetEditor extends View {
      * Clear all Inlay Hints.
      */
     public void clearInlayHints() {
-        EditorCore.EditorActionResult result = mEditorCore.clearInlayHints();
+        EditorActionResult result = mEditorCore.clearInlayHints();
         dispatchEditorActionResult(result);
     }
 
@@ -1448,7 +1453,7 @@ public class SweetEditor extends View {
      * Clear all Phantom Texts.
      */
     public void clearPhantomTexts() {
-        EditorCore.EditorActionResult result = mEditorCore.clearPhantomTexts();
+        EditorActionResult result = mEditorCore.clearPhantomTexts();
         dispatchEditorActionResult(result);
     }
 
@@ -1456,7 +1461,7 @@ public class SweetEditor extends View {
      * Clear all gutter icons.
      */
     public void clearGutterIcons() {
-        EditorCore.EditorActionResult result = mEditorCore.clearGutterIcons();
+        EditorActionResult result = mEditorCore.clearGutterIcons();
         dispatchEditorActionResult(result);
     }
 
@@ -1464,7 +1469,7 @@ public class SweetEditor extends View {
      * Clear all CodeLens items.
      */
     public void clearCodeLens() {
-        EditorCore.EditorActionResult result = mEditorCore.clearCodeLens();
+        EditorActionResult result = mEditorCore.clearCodeLens();
         dispatchEditorActionResult(result);
     }
 
@@ -1472,7 +1477,7 @@ public class SweetEditor extends View {
      * Clear all link ranges.
      */
     public void clearLinks() {
-        EditorCore.EditorActionResult result = mEditorCore.clearLinks();
+        EditorActionResult result = mEditorCore.clearLinks();
         dispatchEditorActionResult(result);
     }
 
@@ -1480,7 +1485,7 @@ public class SweetEditor extends View {
      * Clear all code structure guides (indent vertical lines, bracket matching lines, flow arrows, separator lines).
      */
     public void clearGuides() {
-        EditorCore.EditorActionResult result = mEditorCore.clearGuides();
+        EditorActionResult result = mEditorCore.clearGuides();
         dispatchEditorActionResult(result);
     }
 
@@ -1488,7 +1493,7 @@ public class SweetEditor extends View {
      * Clear all diagnostic decorations.
      */
     public void clearDiagnostics() {
-        EditorCore.EditorActionResult result = mEditorCore.clearDiagnostics();
+        EditorActionResult result = mEditorCore.clearDiagnostics();
         dispatchEditorActionResult(result);
     }
 
@@ -1496,7 +1501,7 @@ public class SweetEditor extends View {
      * Clear all decoration data (highlights, Inlay Hints, Phantom Texts, icons, Guide lines, diagnostics).
      */
     public void clearAllDecorations() {
-        EditorCore.EditorActionResult result = mEditorCore.clearAllDecorations();
+        EditorActionResult result = mEditorCore.clearAllDecorations();
         dispatchEditorActionResult(result);
     }
 
@@ -1776,7 +1781,7 @@ public class SweetEditor extends View {
 
     // ==================== Event Dispatch (Internal) ====================
 
-    private void dispatchTextChanged(@NonNull TextChangeAction action, @NonNull EditorCore.EditorActionResult editResult) {
+    private void dispatchTextChanged(@NonNull TextChangeAction action, @NonNull EditorActionResult editResult) {
         if (editResult.contentChanged && !editResult.changes.isEmpty()) {
             mEventBus.publish(new TextChangedEvent(action, editResult.changes));
             if (mDecorationProviderManager != null) {
@@ -1827,7 +1832,7 @@ public class SweetEditor extends View {
             text = textEdit.newText;
         } else {
             TextRange wordRange = getWordRangeAtCursor();
-            if (!wordRange.isCollapsed()) {
+            if (!isCollapsed(wordRange)) {
                 replaceRange = wordRange;
             }
         }
@@ -1844,13 +1849,21 @@ public class SweetEditor extends View {
         }
     }
 
+    private static boolean isCollapsed(@Nullable TextRange range) {
+        return range != null
+                && range.start != null
+                && range.end != null
+                && range.start.line == range.end.line
+                && range.start.column == range.end.column;
+    }
+
     /**
      * Dispatch corresponding editor events based on gesture result.
      *
      * @param result           Gesture processing result
      * @param locationInEditor Pointer location relative to the editor
      */
-    private void fireGestureEvents(EditorCore.EditorActionResult result, PointF locationInEditor, int actionMasked) {
+    private void fireGestureEvents(EditorActionResult result, PointF locationInEditor, int actionMasked) {
         switch (result.gestureType) {
             case LONG_PRESS:
                 mEventBus.publish(new LongPressEvent(result.cursorAfter, locationInEditor));
@@ -1864,7 +1877,7 @@ public class SweetEditor extends View {
                     mCompletionProviderManager.dismiss();
                 }
                 // Check if hit InlayHint or GutterIcon
-                if (result.hitTarget != null && result.hitTarget.type != EditorCore.HitTargetType.NONE) {
+                if (result.hitTarget != null && result.hitTarget.type != HitTargetType.NONE) {
                     switch (result.hitTarget.type) {
                         case INLAY_HINT_TEXT:
                             mEventBus.publish(new InlayHintClickEvent(
@@ -1900,7 +1913,7 @@ public class SweetEditor extends View {
                         case FOLD_GUTTER:
                             mEventBus.publish(new FoldToggleEvent(
                                     result.hitTarget.line,
-                                    result.hitTarget.type == EditorCore.HitTargetType.FOLD_GUTTER,
+                                    result.hitTarget.type == HitTargetType.FOLD_GUTTER,
                                     locationInEditor));
                             break;
                         case CODELENS:
@@ -1932,8 +1945,8 @@ public class SweetEditor extends View {
                 break;
         }
 
-        if ((result.gestureType == EditorCore.GestureType.LONG_PRESS
-                || result.gestureType == EditorCore.GestureType.CONTEXT_MENU)
+        if ((result.gestureType == GestureType.LONG_PRESS
+                || result.gestureType == GestureType.CONTEXT_MENU)
                 && mSelectionMenuController != null) {
             mSelectionMenuController.dismiss();
         }
@@ -1948,7 +1961,7 @@ public class SweetEditor extends View {
         }
     }
 
-    private void dispatchStateEvents(@NonNull EditorCore.EditorActionResult result) {
+    private void dispatchStateEvents(@NonNull EditorActionResult result) {
         if (result.contentChanged) {
             dispatchTextChanged(textChangeActionFromResult(result), result);
         }
@@ -1967,7 +1980,7 @@ public class SweetEditor extends View {
         }
     }
 
-    private void handleScrollChanged(@NonNull EditorCore.EditorActionResult result) {
+    private void handleScrollChanged(@NonNull EditorActionResult result) {
         mEventBus.publish(new ScrollChangedEvent(result.scrollXAfter, result.scrollYAfter));
         if (mDecorationProviderManager != null) {
             mDecorationProviderManager.onScrollChanged();
@@ -1981,16 +1994,20 @@ public class SweetEditor extends View {
         }
     }
 
-    void dispatchEditorActionResult(@NonNull EditorCore.EditorActionResult result) {
-        if (result.gestureType != EditorCore.GestureType.UNDEFINED) {
-            if (result.gestureType == EditorCore.GestureType.TAP) {
+    void dispatchEditorActionResult(@Nullable EditorActionResult result) {
+        if (result == null) {
+            return;
+        }
+        if (result.gestureType != GestureType.UNDEFINED) {
+            if (result.gestureType == GestureType.TAP) {
                 requestFocus();
-                if (result.hitTarget == null || result.hitTarget.type == EditorCore.HitTargetType.NONE) {
+                if (result.hitTarget == null || result.hitTarget.type == HitTargetType.NONE) {
                     showSoftKeyboard();
                 }
                 resetCursorBlink();
             }
-            fireGestureEvents(result, result.tapPoint, motionActionFromGestureEventType(result.gestureEventType));
+            PointF tapPoint = new PointF(result.tapPoint.x, result.tapPoint.y);
+            fireGestureEvents(result, tapPoint, motionActionFromGestureEventType(result.gestureEventType));
         }
         updateAnimationState(result);
         dispatchStateEvents(result);
@@ -2000,41 +2017,41 @@ public class SweetEditor extends View {
         if (result.needsRedraw) {
             flush();
         }
-        if (result.gestureType == EditorCore.GestureType.TAP) {
+        if (result.gestureType == GestureType.TAP) {
             notifyImeViewClicked();
         }
     }
 
-    private static TextChangeAction textChangeActionFromResult(@NonNull EditorCore.EditorActionResult result) {
+    private static TextChangeAction textChangeActionFromResult(@NonNull EditorActionResult result) {
         switch (result.reason) {
-            case 3:
+            case KEY_INPUT:
                 return TextChangeAction.KEY;
-            case 4:
+            case IME:
                 return TextChangeAction.COMPOSITION;
-            case 13:
+            case TEXT_DELETE:
                 return TextChangeAction.DELETE;
-            case 14:
+            case TEXT_UNDO:
                 return TextChangeAction.UNDO;
-            case 15:
+            case TEXT_REDO:
                 return TextChangeAction.REDO;
             default:
                 return TextChangeAction.INSERT;
         }
     }
 
-    private static int motionActionFromGestureEventType(int eventType) {
+    private static int motionActionFromGestureEventType(EventType eventType) {
         switch (eventType) {
-            case EditorCore.EVENT_TYPE_TOUCH_DOWN:
+            case TOUCH_DOWN:
                 return MotionEvent.ACTION_DOWN;
-            case EditorCore.EVENT_TYPE_TOUCH_POINTER_DOWN:
+            case TOUCH_POINTER_DOWN:
                 return MotionEvent.ACTION_POINTER_DOWN;
-            case EditorCore.EVENT_TYPE_TOUCH_MOVE:
+            case TOUCH_MOVE:
                 return MotionEvent.ACTION_MOVE;
-            case EditorCore.EVENT_TYPE_TOUCH_POINTER_UP:
+            case TOUCH_POINTER_UP:
                 return MotionEvent.ACTION_POINTER_UP;
-            case EditorCore.EVENT_TYPE_TOUCH_UP:
+            case TOUCH_UP:
                 return MotionEvent.ACTION_UP;
-            case EditorCore.EVENT_TYPE_TOUCH_CANCEL:
+            case TOUCH_CANCEL:
                 return MotionEvent.ACTION_CANCEL;
             default:
                 return -1;
@@ -2069,14 +2086,14 @@ public class SweetEditor extends View {
             if (nativeKeyCode == KeyCode.ENTER && mNewLineActionProviderManager != null) {
                 NewLineAction action = mNewLineActionProviderManager.provideNewLineAction();
                 if (action != null) {
-                    EditorCore.EditorActionResult editResult = mEditorCore.handleKeyEvent(KeyCode.NONE, action.text, modifiers);
+                    EditorActionResult editResult = mEditorCore.handleKeyEvent(KeyCode.NONE, action.text, modifiers);
                     resetCursorBlink();
                     dispatchEditorActionResult(editResult);
                     logInputPerf(t0, "key-enter");
                     return true;
                 }
             }
-            EditorCore.EditorActionResult result = mEditorCore.handleKeyEvent(nativeKeyCode, null, modifiers);
+            EditorActionResult result = mEditorCore.handleKeyEvent(nativeKeyCode, null, modifiers);
             if (result.handled && dispatchKeyMapCommand(result.command, nativeKeyCode, modifiers)) {
                 resetCursorBlink();
                 dispatchEditorActionResult(result);
@@ -2091,7 +2108,7 @@ public class SweetEditor extends View {
         if (!event.isCtrlPressed() && !event.isAltPressed() && !event.isMetaPressed()) {
             int unicode = event.getUnicodeChar();
             if (unicode > 0 && !Character.isISOControl(unicode)) {
-                EditorCore.EditorActionResult result = mEditorCore.handleKeyEvent(KeyCode.NONE,
+                EditorActionResult result = mEditorCore.handleKeyEvent(KeyCode.NONE,
                         new String(Character.toChars(unicode)),
                         KeyModifier.NONE);
                 resetCursorBlink();
@@ -2114,10 +2131,10 @@ public class SweetEditor extends View {
 
     private boolean dispatchKeyMapCommand(int command, int keyCode, int modifiers) {
         if (mKeyMap == null) return false;
-        EditorCommand<SweetEditor> handler = mKeyMap.getCommand(command);
+        EditorKeyMap.ShortcutHandler handler = mKeyMap.getCommand(command);
         if (handler == null) return false;
         KeyBinding binding = new KeyBinding(modifiers, keyCode, command);
-        handler.onShortCut(binding, this);
+        handler.onShortcut(binding, this);
         return true;
     }
 
@@ -2127,7 +2144,7 @@ public class SweetEditor extends View {
 
     private void updateHoverGesture(@Nullable PointF point, int modifiers) {
         PointF probePoint = point != null ? point : new PointF(-1f, -1f);
-        EditorCore.EditorActionResult result = mEditorCore.handleGestureEventEx(
+        EditorActionResult result = mEditorCore.handleGestureEvent(
                 EditorCore.EVENT_TYPE_MOUSE_MOVE,
                 new PointF[]{probePoint},
                 modifiers,
@@ -2138,11 +2155,15 @@ public class SweetEditor extends View {
         dispatchEditorActionResult(result);
     }
 
-    private void updateAnimationState(@NonNull EditorCore.EditorActionResult result) {
-        if (result.needsAnimation && !mScrollAnimationActive) {
-            mScrollAnimationActive = true;
-            Choreographer.getInstance().postFrameCallback(mScrollAnimationCallback);
-        } else if (!result.needsAnimation && mScrollAnimationActive) {
+    private void updateAnimationState(@NonNull EditorActionResult result) {
+        if (result.needsAnimation) {
+            if (!mScrollAnimationActive) {
+                mScrollAnimationActive = true;
+                Choreographer.getInstance().postFrameCallback(mScrollAnimationCallback);
+            }
+            return;
+        }
+        if (mScrollAnimationActive) {
             mScrollAnimationActive = false;
             Choreographer.getInstance().removeFrameCallback(mScrollAnimationCallback);
         }
@@ -2152,7 +2173,7 @@ public class SweetEditor extends View {
         if (!isPointerModifierKey(event.getKeyCode())) {
             return;
         }
-        EditorCore.EditorActionResult result = mEditorCore.updatePointerModifiers(getKeyEventModifiers(event));
+        EditorActionResult result = mEditorCore.updatePointerModifiers(getKeyEventModifiers(event));
         dispatchEditorActionResult(result);
     }
 
@@ -2202,16 +2223,16 @@ public class SweetEditor extends View {
                 scrollbarThicknessPx,
                 scrollbarMinThumbPx,
                 scrollbarThumbHitPaddingPx,
-                ScrollbarConfig.ScrollbarMode.TRANSIENT,
+                ScrollbarMode.TRANSIENT,
                 true,
-                ScrollbarConfig.ScrollbarTrackTapMode.DISABLED,
+                ScrollbarTrackTapMode.DISABLED,
                 700,
                 300));
 
         mTextMeasurer = mRenderer.getTextMeasurer();
 
         int scaledTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
-        EditorOptions editorOptions = new EditorOptions(scaledTouchSlop, 300, true);
+        EditorOptions editorOptions = new EditorOptions(scaledTouchSlop, 300L, 500L, 2.0f, 30.0f, 12000.0f, 512L, 2000L, true);
         mEditorCore = new EditorCore(mTextMeasurer, editorOptions);
         mEditorCore.setHandleConfig(mRenderer.getHandleConfig());
         mEditorCore.setScrollbarConfig(mRenderer.getScrollbarConfig());
@@ -2256,10 +2277,10 @@ public class SweetEditor extends View {
         boolean viewportShrunk = mAppliedViewportHeight >= 0 && effectiveHeight < mAppliedViewportHeight;
         mAppliedViewportWidth = width;
         mAppliedViewportHeight = effectiveHeight;
-        EditorCore.EditorActionResult viewportResult = mEditorCore.setViewport(width, effectiveHeight);
+        EditorActionResult viewportResult = mEditorCore.setViewport(width, effectiveHeight);
         dispatchEditorActionResult(viewportResult);
         if ((ensureCursorVisible || viewportNarrowed || viewportShrunk) && hasWindowFocus()) {
-            EditorCore.EditorActionResult cursorResult = mEditorCore.ensureCursorVisible();
+            EditorActionResult cursorResult = mEditorCore.ensureCursorVisible();
             dispatchEditorActionResult(cursorResult);
         }
     }
@@ -2284,7 +2305,7 @@ public class SweetEditor extends View {
 
     private void scheduleTransientScrollbarRefresh(int requestedDelayMs) {
         ScrollbarConfig config = mRenderer.getScrollbarConfig();
-        if (config == null || config.mode != ScrollbarConfig.ScrollbarMode.TRANSIENT) {
+        if (config == null || config.mode != ScrollbarMode.TRANSIENT) {
             mHandler.removeCallbacks(mTransientScrollbarRefresh);
             return;
         }

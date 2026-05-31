@@ -7,10 +7,16 @@ public enum GuideStyle {
 
     public final int value;
 
-    GuideStyle(int v) { value = v; }
+    GuideStyle(int value) {
+        this.value = value;
+    }
 
-    public static GuideStyle fromValue(int v) {
-        for (GuideStyle e : values()) if (e.value == v) return e;
-        return SOLID;
+    public static GuideStyle fromValue(int value) {
+        switch (value) {
+            case 0: return SOLID;
+            case 1: return DASHED;
+            case 2: return DOUBLE;
+            default: return SOLID;
+        }
     }
 }

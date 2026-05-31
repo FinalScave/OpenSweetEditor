@@ -1,17 +1,20 @@
 package com.qiplat.sweeteditor.core.adornment;
 
-/**
- * Separator style enumeration.
- */
 public enum SeparatorStyle {
-    /** Single dash style (e.g. ------) */
     SINGLE(0),
-    /** Double dash style (e.g. ======) */
     DOUBLE(1);
 
     public final int value;
 
     SeparatorStyle(int value) {
         this.value = value;
+    }
+
+    public static SeparatorStyle fromValue(int value) {
+        switch (value) {
+            case 0: return SINGLE;
+            case 1: return DOUBLE;
+            default: return SINGLE;
+        }
     }
 }

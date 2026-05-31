@@ -78,7 +78,7 @@ This document gives practical development entry points based on the current repo
   - WinForms control layer, input and drawing
 - `platform/WinForms/SweetEditor/EditorCore.cs`
   - P/Invoke wrapper and protocol bridge
-- `platform/WinForms/SweetEditor/EditorProtocol.cs`
+- `platform/WinForms/SweetEditor/CoreProtocol.cs`
   - binary payload decoding
 - `platform/WinForms/SweetEditor/EditorCompletion.cs`
   - completion providers and popup coordination
@@ -95,8 +95,8 @@ This document gives practical development entry points based on the current repo
   - manual C bridge header
 - `platform/Apple/Sources/SweetEditorCoreInternal/api/SweetEditorCore.swift`
   - core Swift wrapper and bridge-facing entry points
-- `platform/Apple/Sources/SweetEditorCoreInternal/protocol/ProtocolDecoder.swift`
-  - binary payload decoding aligned with Android `ProtocolDecoder`
+- `platform/Apple/Sources/SweetEditorCoreInternal/core/CoreProtocol.swift`
+  - binary payload encoding and decoding aligned with generated platform `CoreProtocol`
 - `platform/Apple/Sources/SweetEditorCoreInternal/visual`
   - render-model DTOs aligned with Android `core.visual`
 - `platform/Apple/Sources/SweetEditorCoreInternal/EditorRenderer.swift`
@@ -136,9 +136,9 @@ If any item below is touched, do not change only one layer:
 
 Usual sync targets:
 
-- Android: `jeditor.hpp`, `jni_entry.cpp`, Java `ProtocolDecoder`
-- Swing: `EditorNative.java`, `ProtocolDecoder.java`
-- WinForms: `EditorCore.cs`, `EditorProtocol.cs`
+- Android: `jeditor.hpp`, `jni_entry.cpp`, Java `CoreProtocol`
+- Swing: `EditorNative.java`, `CoreProtocol.java`
+- WinForms: `EditorCore.cs`, `CoreProtocol.cs`
 - Apple: `SweetEditorBridge.h`, `SweetEditorCore.swift`
 
 ## Build Entry

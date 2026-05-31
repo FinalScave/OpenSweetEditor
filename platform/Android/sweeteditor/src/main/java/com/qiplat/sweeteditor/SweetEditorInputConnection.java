@@ -13,6 +13,15 @@ import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.TextAttribute;
 
 import com.qiplat.sweeteditor.core.EditorCore;
+import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
+import com.qiplat.sweeteditor.core.ime.ImeTextRange;
+import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
+import com.qiplat.sweeteditor.core.ime.ImeTextModelMode;
+import com.qiplat.sweeteditor.core.ime.ImeTextModelState;
+import com.qiplat.sweeteditor.core.ime.ImeInputContextKind;
+import com.qiplat.sweeteditor.core.ime.ImeInputContext;
+import com.qiplat.sweeteditor.core.ime.ImeInputStateTextReplacement;
+import com.qiplat.sweeteditor.core.action.EditorActionResult;
 import com.qiplat.sweeteditor.core.foundation.IntRange;
 
 public class SweetEditorInputConnection extends BaseInputConnection {
@@ -44,7 +53,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
     }
 
     void configureEditorInfo(EditorInfo outAttrs) {
-        EditorCore.ImeInputContext context = syncEditableFromCore();
+        ImeInputContext context = syncEditableFromCore();
         outAttrs.inputType = EditorInfo.TYPE_CLASS_TEXT
                 | EditorInfo.TYPE_TEXT_FLAG_MULTI_LINE
                 | EditorInfo.TYPE_TEXT_FLAG_AUTO_CORRECT;
@@ -53,7 +62,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         outAttrs.initialSelStart = selectionOffsets.start;
         outAttrs.initialSelEnd = selectionOffsets.end;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-                && context.kind == EditorCore.ImeInputContextKind.DOCUMENT_WINDOW
+                && context.kind == ImeInputContextKind.DOCUMENT_WINDOW
                 && mEditable.length() > 0) {
             outAttrs.setInitialSurroundingSubText(mEditable, mInputDocumentStartOffset);
         }
@@ -67,7 +76,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         int safeStart = clampEditableOffset(start, mEditable.length());
         int safeEnd = clampEditableOffset(end, mEditable.length());
         Selection.setSelection(mEditable, safeStart, safeEnd);
-        EditorCore.EditorActionResult result = mEditor.getEditorCore().updateImeInputStateSelection(
+        EditorActionResult result = mEditor.getEditorCore().updateImeInputStateSelection(
                 mInputContextId,
                 mInputDocumentStartOffset,
                 safeStart,
@@ -130,14 +139,15 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         if (!isActive() || start < 0 || end < 0) {
             return false;
         }
-        EditorCore.EditorActionResult result = mEditor.getEditorCore().replaceImeInputStateText(
-                mInputContextId,
-                mInputDocumentStartOffset,
-                Math.min(start, end),
-                Math.max(start, end),
-                text != null ? text.toString() : "",
-                newCursorPosition,
-                EditorCore.ImeScriptClass.UNKNOWN);
+        EditorActionResult result = mEditor.getEditorCore().replaceImeInputStateText(
+                new ImeInputStateTextReplacement(
+                        mInputContextId,
+                        mInputDocumentStartOffset,
+                        Math.min(start, end),
+                        Math.max(start, end),
+                        text != null ? text.toString() : "",
+                        newCursorPosition,
+                        ImeScriptClass.UNKNOWN));
         finishImeAction(result, "ime-replace");
         return result.handled;
     }
@@ -147,19 +157,19 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         if (!isActive()) {
             return false;
         }
-        EditorCore.EditorActionResult result = mEditor.getEditorCore().finishImePreedit();
+        EditorActionResult result = mEditor.getEditorCore().finishImePreedit();
         finishImeAction(result, "ime-finish");
         return true;
     }
 
     @Override
     public boolean deleteSurroundingText(int beforeLength, int afterLength) {
-        return deleteSurroundingTextInternal(beforeLength, afterLength, EditorCore.ImeTextUnit.GRAPHEME);
+        return deleteSurroundingTextInternal(beforeLength, afterLength, ImeTextUnit.GRAPHEME.value);
     }
 
     @Override
     public boolean deleteSurroundingTextInCodePoints(int beforeLength, int afterLength) {
-        return deleteSurroundingTextInternal(beforeLength, afterLength, EditorCore.ImeTextUnit.CODE_POINT);
+        return deleteSurroundingTextInternal(beforeLength, afterLength, ImeTextUnit.CODE_POINT.value);
     }
 
     @Override
@@ -170,16 +180,16 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             int keyCode = event.getKeyCode();
             if (keyCode == KeyEvent.KEYCODE_DEL) {
-                EditorCore.EditorActionResult result = mEditor.getEditorCore().deleteImeBackward(
+                EditorActionResult result = mEditor.getEditorCore().deleteImeBackward(
                         1,
-                        EditorCore.ImeTextUnit.GRAPHEME);
+                        ImeTextUnit.GRAPHEME.value);
                 finishImeAction(result, "ime-delete");
                 return result.handled;
             }
             if (keyCode == KeyEvent.KEYCODE_FORWARD_DEL) {
-                EditorCore.EditorActionResult result = mEditor.getEditorCore().deleteImeForward(
+                EditorActionResult result = mEditor.getEditorCore().deleteImeForward(
                         1,
-                        EditorCore.ImeTextUnit.GRAPHEME);
+                        ImeTextUnit.GRAPHEME.value);
                 finishImeAction(result, "ime-delete");
                 return result.handled;
             }
@@ -226,15 +236,15 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         int selectionEnd = Selection.getSelectionEnd(mEditable);
         int composingStart = BaseInputConnection.getComposingSpanStart(mEditable);
         int composingEnd = BaseInputConnection.getComposingSpanEnd(mEditable);
-        EditorCore.EditorActionResult result = mEditor.getEditorCore().updateImeInputStateText(
-                mInputContextId,
-                mInputDocumentStartOffset,
-                mEditable.toString(),
-                selectionStart,
-                selectionEnd,
-                composingStart,
-                composingEnd,
-                EditorCore.ImeScriptClass.UNKNOWN);
+        EditorActionResult result = mEditor.getEditorCore().updateImeTextModelState(
+                new ImeTextModelState(
+                        ImeTextModelMode.DOCUMENT_WINDOW,
+                        mInputContextId,
+                        mInputDocumentStartOffset,
+                        mEditable.toString(),
+                        new ImeTextRange(selectionStart, selectionEnd),
+                        new ImeTextRange(composingStart, composingEnd),
+                        ImeScriptClass.UNKNOWN));
         finishImeAction(result, perfName, t0);
         return result.handled;
     }
@@ -244,7 +254,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
             return false;
         }
         long t0 = System.nanoTime();
-        EditorCore.EditorActionResult result = mEditor.getEditorCore().deleteImeSurrounding(
+        EditorActionResult result = mEditor.getEditorCore().deleteImeSurrounding(
                 Math.max(0, beforeLength),
                 Math.max(0, afterLength),
                 textUnit);
@@ -252,23 +262,23 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         return result.handled;
     }
 
-    private void finishImeAction(EditorCore.EditorActionResult result, String perfName) {
+    private void finishImeAction(EditorActionResult result, String perfName) {
         finishImeAction(result, perfName, System.nanoTime());
     }
 
-    private void finishImeAction(EditorCore.EditorActionResult result, String perfName, long startTimeNanos) {
+    private void finishImeAction(EditorActionResult result, String perfName, long startTimeNanos) {
         mEditor.dispatchEditorActionResult(result);
         mEditor.logInputPerf(startTimeNanos, perfName);
     }
 
-    void onEditorActionResult(EditorCore.EditorActionResult result) {
+    void onEditorActionResult(EditorActionResult result) {
         if (result.needsImeSync) {
             updateImeSelectionState();
         }
     }
 
-    private EditorCore.ImeInputContext syncEditableFromCore() {
-        EditorCore.ImeInputContext context = mEditor.getEditorCore().getImeInputContext(
+    private ImeInputContext syncEditableFromCore() {
+        ImeInputContext context = mEditor.getEditorCore().getImeInputContext(
                 MAX_IME_TEXT_LENGTH / 2,
                 MAX_IME_TEXT_LENGTH / 2);
         if (context.id == 0) {
@@ -279,7 +289,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         return context;
     }
 
-    private void syncEditableFromContext(EditorCore.ImeInputContext context) {
+    private void syncEditableFromContext(ImeInputContext context) {
         BaseInputConnection.removeComposingSpans(mEditable);
         mEditable.replace(0, mEditable.length(), context.text);
         mInputContextId = context.id;
@@ -313,7 +323,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         return Math.max(0, Math.min(offset, textLength));
     }
 
-    private boolean isValidEditableRange(EditorCore.ImeTextRange range, int textLength) {
+    private boolean isValidEditableRange(ImeTextRange range, int textLength) {
         return range != null
                 && range.start >= 0
                 && range.end >= 0

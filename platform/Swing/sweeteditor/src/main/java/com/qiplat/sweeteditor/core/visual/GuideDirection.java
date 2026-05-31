@@ -6,10 +6,15 @@ public enum GuideDirection {
 
     public final int value;
 
-    GuideDirection(int v) { value = v; }
+    GuideDirection(int value) {
+        this.value = value;
+    }
 
-    public static GuideDirection fromValue(int v) {
-        for (GuideDirection e : values()) if (e.value == v) return e;
-        return HORIZONTAL;
+    public static GuideDirection fromValue(int value) {
+        switch (value) {
+            case 0: return HORIZONTAL;
+            case 1: return VERTICAL;
+            default: return VERTICAL;
+        }
     }
 }

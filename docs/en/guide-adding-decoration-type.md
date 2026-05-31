@@ -90,12 +90,12 @@ For Android JNI as example:
 
 For Android as example:
 
-**Files**: `<Type>.java`, `VisualRunType.java`, `EditorCore.java`, `ProtocolEncoder.java`
+**Files**: `<Type>.java`, `VisualRunType.java`, `EditorCore.java`, `CoreProtocol.java`
 
 - Define the platform data class (e.g. `public final` immutable POJO with the same fields as the C++ struct).
 - Add the enum value to `VisualRunType`. If the decoration is interactive, also add to `HitTargetType`.
-- Implement `setLine<Type>` / `setBatchLine<Type>` / `clear<Type>` / query methods in `EditorCore.java`, encoding via `ProtocolEncoder` → `ByteBuffer.allocateDirect()` then calling `native*` methods.
-- Implement `pack*` / `packBatch*` binary encoding methods in `ProtocolEncoder.java` (two-pass pattern: first pass calculates total size and caches UTF-8 bytes, second pass allocates one direct ByteBuffer and writes).
+- Implement `setLine<Type>` / `setBatchLine<Type>` / `clear<Type>` / query methods in `EditorCore.java`, encoding via `CoreProtocol` → `ByteBuffer.allocateDirect()` then calling `native*` methods.
+- Add the protocol model in C++ and let `CoreProtocol.java` generate the corresponding binary encoder.
 
 > Other platforms: OHOS uses ArkTS interfaces in `CoreAdornments.ets` + `CoreProtocol.ets` + `EditorCore.ets`.
 
@@ -185,7 +185,7 @@ LINK runs participate in `getPositionScreenCoord()` / `columnToX()` the same way
 | C++ Layout | `visual.h`, `gesture.h`, `layout.h`, `layout.cpp`, `visual.cpp`, `json_serde.hpp` |
 | C API | `c_api.h`, `c_api.cpp` |
 | JNI Bridge | `jeditor.hpp` (JNI wrappers + `kJMethods[]` table) |
-| Java Core | `<Type>.java`, `VisualRunType.java`, `HitTargetType` (in `EditorCore.java`), `EditorCore.java`, `ProtocolEncoder.java` |
+| Java Core | `<Type>.java`, `VisualRunType.java`, `HitTargetType`, `EditorCore.java`, `CoreProtocol.java` |
 | Java Decoration | `DecorationResult.java`, `DecorationType.java`, `DecorationProviderManager.java` |
 | Java UI | `SweetEditor.java`, `<Type>ClickEvent.java` (if interactive), `EditorRenderer.java` |
 | DecorationType Enum | `DecorationType.java` (Android, Swing), `DecorationTypes.ets` (OHOS), `decoration_types.dart` (Flutter), `DecorationProvider.swift` (Apple), `EditorDecoration.cs` (Avalonia, WinForms) |

@@ -5,6 +5,7 @@
 #define __stdcall
 #endif
 #include <sweeteditor/c_api.h>
+#include <sweeteditor/protocol_codec.h>
 #include <sweeteditor/utility.h>
 
 using namespace NS_SWEETEDITOR;
@@ -108,16 +109,19 @@ namespace {
     float line_spacing_mult = 1.0f;
     float line_number_margin = 0.0f;
     float line_number_width = 0.0f;
+    float content_start_padding = 0.0f;
     int32_t max_gutter_icons = 0;
     float inlay_hint_padding = 0.0f;
     float inlay_hint_margin = 0.0f;
     int32_t fold_arrow_mode = 0;
     int32_t has_fold_regions = 0;
+    int32_t gutter_sticky = 0;
+    int32_t gutter_visible = 0;
   };
 
   LayoutMetricsData parseLayoutMetrics(const uint8_t* data, size_t size) {
     LayoutMetricsData metrics;
-    if (data == nullptr || size < sizeof(float) * 8 + sizeof(int32_t) * 3) {
+    if (data == nullptr || size < sizeof(float) * 9 + sizeof(int32_t) * 5) {
       return metrics;
     }
     size_t offset = 0;
@@ -135,11 +139,14 @@ namespace {
     readFloat(metrics.line_spacing_mult);
     readFloat(metrics.line_number_margin);
     readFloat(metrics.line_number_width);
+    readFloat(metrics.content_start_padding);
     readI32(metrics.max_gutter_icons);
     readFloat(metrics.inlay_hint_padding);
     readFloat(metrics.inlay_hint_margin);
     readI32(metrics.fold_arrow_mode);
     readI32(metrics.has_fold_regions);
+    readI32(metrics.gutter_sticky);
+    readI32(metrics.gutter_visible);
     return metrics;
   }
 
@@ -291,10 +298,10 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   intptr_t editor = create_editor(makeMeasurer(), nullptr, 0);
   REQUIRE(editor != 0);
   size_t action_size = 0;
-  const uint8_t* action_payload = set_editor_document(editor, document, &action_size);
+  const uint8_t* action_payload = editor_set_document(editor, document, &action_size);
   REQUIRE(action_payload != nullptr);
   free_binary_data(reinterpret_cast<intptr_t>(action_payload));
-  action_payload = set_editor_viewport(editor, 100, 80, &action_size);
+  action_payload = editor_set_viewport(editor, 100, 80, &action_size);
   REQUIRE(action_payload != nullptr);
   free_binary_data(reinterpret_cast<intptr_t>(action_payload));
 
@@ -309,35 +316,44 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   CHECK(scroll_metrics.scroll_y == 0.0f);
 
   size_t layout_metrics_size = 0;
-  const uint8_t* layout_metrics_payload = get_layout_metrics(editor, &layout_metrics_size);
+  const uint8_t* layout_metrics_payload = editor_get_layout_metrics(editor, &layout_metrics_size);
   REQUIRE(layout_metrics_payload != nullptr);
-  CHECK(layout_metrics_size == sizeof(float) * 8 + sizeof(int32_t) * 3);
+  CHECK(layout_metrics_size == sizeof(float) * 9 + sizeof(int32_t) * 5);
   LayoutMetricsData layout_metrics = parseLayoutMetrics(layout_metrics_payload, layout_metrics_size);
   free_binary_data(reinterpret_cast<intptr_t>(layout_metrics_payload));
   CHECK(layout_metrics.font_height == Catch::Approx(10.0f));
   CHECK(layout_metrics.font_ascent == Catch::Approx(8.0f));
   CHECK(layout_metrics.line_spacing_add == Catch::Approx(0.0f));
   CHECK(layout_metrics.line_spacing_mult == Catch::Approx(1.2f));
+  CHECK(layout_metrics.content_start_padding == Catch::Approx(0.0f));
   CHECK(layout_metrics.max_gutter_icons == 0);
   CHECK(layout_metrics.inlay_hint_padding == Catch::Approx(2.0f));
   CHECK(layout_metrics.inlay_hint_margin == Catch::Approx(1.0f));
   CHECK(layout_metrics.fold_arrow_mode == 0);
   CHECK(layout_metrics.has_fold_regions == 0);
+  CHECK(layout_metrics.gutter_sticky == 1);
+  CHECK(layout_metrics.gutter_visible == 1);
+
+  size_t gesture_size = 0;
+  auto sendGesture = [&](EventType type, Vector<PointF> points) {
+    GestureEvent event;
+    event.type = type;
+    event.points = std::move(points);
+    event.direct_scale = 1.0f;
+    Vector<uint8_t> data = protocol::ProtocolWriter::encode(event);
+    return editor_handle_gesture_event(editor, data.data(), data.size(), &gesture_size);
+  };
 
   // Two-finger zoom: TOUCH_DOWN -> TOUCH_POINTER_DOWN -> TOUCH_MOVE (fingers move apart)
-  float p0[2] = {100.0f, 100.0f};
-  size_t gesture_size = 0;
-  const uint8_t* gesture_payload = handle_editor_gesture_event(editor, 1, 1, p0, &gesture_size);
+  const uint8_t* gesture_payload = sendGesture(EventType::TOUCH_DOWN, {{100.0f, 100.0f}});
   REQUIRE(gesture_payload != nullptr);
   free_binary_data(reinterpret_cast<intptr_t>(gesture_payload));
 
-  float p1[4] = {100.0f, 100.0f, 200.0f, 100.0f};
-  gesture_payload = handle_editor_gesture_event(editor, 2, 2, p1, &gesture_size);
+  gesture_payload = sendGesture(EventType::TOUCH_POINTER_DOWN, {{100.0f, 100.0f}, {200.0f, 100.0f}});
   REQUIRE(gesture_payload != nullptr);
   free_binary_data(reinterpret_cast<intptr_t>(gesture_payload));
 
-  float p2[4] = {95.0f, 100.0f, 205.0f, 100.0f};
-  gesture_payload = handle_editor_gesture_event(editor, 3, 2, p2, &gesture_size);
+  gesture_payload = sendGesture(EventType::TOUCH_MOVE, {{95.0f, 100.0f}, {205.0f, 100.0f}});
   REQUIRE(gesture_payload != nullptr);
   ActionPayloadData gesture = parseActionPayload(gesture_payload, gesture_size);
   free_binary_data(reinterpret_cast<intptr_t>(gesture_payload));
@@ -412,7 +428,7 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   CHECK(editor_is_in_linked_editing(editor) == 0);
 
   size_t model_size = 0;
-  const uint8_t* model_payload = build_editor_render_model(editor, &model_size);
+  const uint8_t* model_payload = editor_build_render_model(editor, &model_size);
   REQUIRE(model_payload != nullptr);
   CHECK(model_size >= sizeof(float) * 7 + sizeof(int32_t) * 3);
   RenderModelHeaderData model_header = parseRenderModelHeader(model_payload, model_size);

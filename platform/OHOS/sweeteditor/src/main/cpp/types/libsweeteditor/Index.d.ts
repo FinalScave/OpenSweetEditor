@@ -17,10 +17,7 @@ export const buildEditorRenderModel: (handle: number) => ArrayBuffer | undefined
 export const getLayoutMetrics: (handle: number) => ArrayBuffer | undefined;
 
 // Gesture/keyboard
-export const handleEditorGestureEvent: (handle: number, type: number, pointerCount: number, points: number[]) => ArrayBuffer | undefined;
-export const handleEditorGestureEventEx: (handle: number, type: number, pointerCount: number, points: number[], modifiers: number, wheelDeltaX: number, wheelDeltaY: number, directScale: number) => ArrayBuffer | undefined;
-export const editorTickEdgeScroll: (handle: number) => ArrayBuffer | undefined;
-export const editorTickFling: (handle: number) => ArrayBuffer | undefined;
+export const handleEditorGestureEvent: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
 export const editorTickAnimations: (handle: number) => ArrayBuffer | undefined;
 export const editorUpdatePointerModifiers: (handle: number, modifiers: number) => ArrayBuffer | undefined;
 export const handleEditorKeyEvent: (handle: number, keyCode: number, text: string | null, modifiers: number) => ArrayBuffer | undefined;
@@ -92,15 +89,15 @@ export const editorImeFinishPreedit: (handle: number) => ArrayBuffer | undefined
 export const editorImeCancelPreedit: (handle: number) => ArrayBuffer | undefined;
 export const editorImeMarkDocumentRange: (handle: number, startLine: number, startColumn: number, endLine: number, endColumn: number, scriptHint: number) => ArrayBuffer | undefined;
 export const editorImeMarkDocumentRangeByOffset: (handle: number, startOffset: number, endOffset: number, scriptHint: number) => ArrayBuffer | undefined;
-export const editorImeReplaceText: (handle: number, startLine: number, startColumn: number, endLine: number, endColumn: number, text: string | null, scriptHint: number) => ArrayBuffer | undefined;
-export const editorImeReplaceDocumentText: (handle: number, startOffset: number, endOffset: number, text: string | null, cursorOffset: number, scriptHint: number) => ArrayBuffer | undefined;
-export const editorImeReplaceInputContextText: (handle: number, startOffset: number, endOffset: number, text: string | null, cursorOffset: number, scriptHint: number) => ArrayBuffer | undefined;
+export const editorImeReplaceText: (handle: number, data: ArrayBuffer) => ArrayBuffer | undefined;
+export const editorImeReplaceDocumentText: (handle: number, data: ArrayBuffer) => ArrayBuffer | undefined;
+export const editorImeReplaceInputContextText: (handle: number, data: ArrayBuffer) => ArrayBuffer | undefined;
 export const editorImeMarkInputContextRange: (handle: number, startOffset: number, endOffset: number, scriptHint: number) => ArrayBuffer | undefined;
 export const editorImeNotifyDocumentSelectionChanged: (handle: number, startOffset: number, endOffset: number) => ArrayBuffer | undefined;
 export const editorImeNotifyInputContextSelectionChanged: (handle: number, startOffset: number, endOffset: number) => ArrayBuffer | undefined;
-export const editorImeUpdateInputStateText: (handle: number, contextId: number, documentStartOffset: number, text: string | null, selectionStartOffset: number, selectionEndOffset: number, composingStartOffset: number, composingEndOffset: number, scriptHint: number) => ArrayBuffer | undefined;
+export const editorImeUpdateTextModelState: (handle: number, data: ArrayBuffer) => ArrayBuffer | undefined;
 export const editorImeUpdateInputStateSelection: (handle: number, contextId: number, documentStartOffset: number, selectionStartOffset: number, selectionEndOffset: number) => ArrayBuffer | undefined;
-export const editorImeReplaceInputStateText: (handle: number, contextId: number, documentStartOffset: number, startOffset: number, endOffset: number, text: string | null, cursorOffset: number, scriptHint: number) => ArrayBuffer | undefined;
+export const editorImeReplaceInputStateText: (handle: number, data: ArrayBuffer) => ArrayBuffer | undefined;
 export const editorImeDeleteBackward: (handle: number, beforeLength: number, textUnit: number) => ArrayBuffer | undefined;
 export const editorImeDeleteForward: (handle: number, afterLength: number, textUnit: number) => ArrayBuffer | undefined;
 export const editorImeDeleteSurrounding: (handle: number, beforeLength: number, afterLength: number, textUnit: number) => ArrayBuffer | undefined;
@@ -121,8 +118,8 @@ export const editorGetAutoIndentMode: (handle: number) => number;
 export const editorSetBackspaceUnindent: (handle: number, enabled: number) => ArrayBuffer | undefined;
 
 // Handle/scrollbar config
-export const editorSetHandleConfig: (handle: number, startLeft: number, startTop: number, startRight: number, startBottom: number, endLeft: number, endTop: number, endRight: number, endBottom: number) => ArrayBuffer | undefined;
-export const editorSetScrollbarConfig: (handle: number, thickness: number, minThumb: number, thumbHitPadding: number, mode: number, thumbDraggable: boolean, trackTapMode: number, fadeDelayMs: number, fadeDurationMs: number) => ArrayBuffer | undefined;
+export const editorSetHandleConfig: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
+export const editorSetScrollbarConfig: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
 
 // Position query
 export const editorGetPositionRect: (handle: number, line: number, column: number) => number[];

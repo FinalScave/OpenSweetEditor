@@ -1,110 +1,67 @@
 package com.qiplat.sweeteditor.core.visual;
 
-import com.google.gson.annotations.SerializedName;
-
+import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
+import com.qiplat.sweeteditor.core.foundation.PointF;
+import com.qiplat.sweeteditor.core.foundation.Rect;
 import java.util.List;
 
-/**
- * Editor render model.
- */
-public class EditorRenderModel {
-    /** Line number split X position. */
-    @SerializedName("split_x")
-    public float splitX;
-
-    /** Whether split line should be rendered. */
-    @SerializedName("split_line_visible")
+public final class EditorRenderModel {
+    public float splitX = 0f;
     public boolean splitLineVisible = true;
-
-    /** Current horizontal scroll offset. */
-    @SerializedName("scroll_x")
-    public float scrollX;
-
-    /** Current vertical scroll offset. */
-    @SerializedName("scroll_y")
-    public float scrollY;
-
-    /** Viewport width. */
-    @SerializedName("viewport_width")
-    public float viewportWidth;
-
-    /** Viewport height. */
-    @SerializedName("viewport_height")
-    public float viewportHeight;
-
-    /** Current line background position. */
-    @SerializedName("current_line")
-    public PointF currentLine;
-
-    /** Current line render mode (0=BACKGROUND, 1=BORDER, 2=NONE). */
-    @SerializedName("current_line_render_mode")
-    public int currentLineRenderMode;
-
-    /** Text lines to render visually (visible region only). */
-    @SerializedName("lines")
-    public List<VisualLine> lines;
-
-    /** Gutter icon render list (fully resolved geometry, visible region only). */
-    @SerializedName("gutter_icons")
-    public List<GutterIconRenderItem> gutterIcons;
-
-    /** Fold marker render list (fully resolved geometry, visible region only). */
-    @SerializedName("fold_markers")
-    public List<FoldMarkerRenderItem> foldMarkers;
-
-    /** Cursor. */
-    @SerializedName("cursor")
-    public Cursor cursor;
-
-    /** Selection highlight rectangle list. */
-    @SerializedName("selection_rects")
-    public List<SelectionRect> selectionRects;
-
-    /** Selection start handle (anchor side). */
-    @SerializedName("selection_start_handle")
-    public SelectionHandle selectionStartHandle;
-
-    /** Selection end handle (active side/cursor side). */
-    @SerializedName("selection_end_handle")
-    public SelectionHandle selectionEndHandle;
-
-    /** Composition decoration (underline area during IME input). */
-    @SerializedName("composition_decoration")
-    public CompositionDecoration compositionDecoration;
-
-    /** Code structure guide lines. */
-    @SerializedName("guide_segments")
-    public List<GuideSegment> guideSegments;
-
-    /** Maximum gutter icon count (0=overlay mode, icon overlays line number; >0=exclusive mode with reserved fixed space). */
-    @SerializedName("max_gutter_icons")
-    public int maxGutterIcons;
-
-    /** Diagnostic decorations (wavy underline / underline). */
-    @SerializedName("diagnostic_decorations")
-    public List<DiagnosticDecoration> diagnosticDecorations;
-
-    /** Linked editing highlight rectangle list (Tab Stop placeholders). */
-    @SerializedName("linked_editing_rects")
-    public List<LinkedEditingRect> linkedEditingRects;
-
-    /** Bracket pair highlight rectangle list (bracket near cursor + matching bracket). */
-    @SerializedName("bracket_highlight_rects")
-    public List<BracketHighlightRect> bracketHighlightRects;
-
-    /** Vertical scrollbar render model. */
-    @SerializedName("vertical_scrollbar")
-    public ScrollbarModel verticalScrollbar;
-
-    /** Horizontal scrollbar render model. */
-    @SerializedName("horizontal_scrollbar")
-    public ScrollbarModel horizontalScrollbar;
-
-    /** Whether gutter stays fixed during horizontal scroll. */
-    @SerializedName("gutter_sticky")
+    public float scrollX = 0f;
+    public float scrollY = 0f;
+    public float viewportWidth = 0f;
+    public float viewportHeight = 0f;
+    public PointF currentLine = new PointF();
+    public CurrentLineRenderMode currentLineRenderMode = CurrentLineRenderMode.BACKGROUND;
+    public java.util.List<VisualLine> lines = new java.util.ArrayList<>();
+    public Cursor cursor = new Cursor();
+    public java.util.List<Rect> selectionRects = new java.util.ArrayList<>();
+    public SelectionHandle selectionStartHandle = new SelectionHandle();
+    public SelectionHandle selectionEndHandle = new SelectionHandle();
+    public CompositionDecoration compositionDecoration = new CompositionDecoration();
+    public java.util.List<GuideSegment> guideSegments = new java.util.ArrayList<>();
+    public java.util.List<DiagnosticDecoration> diagnosticDecorations = new java.util.ArrayList<>();
+    public int maxGutterIcons = 0;
+    public java.util.List<LinkedEditingRect> linkedEditingRects = new java.util.ArrayList<>();
+    public java.util.List<Rect> bracketHighlightRects = new java.util.ArrayList<>();
+    public java.util.List<GutterIconRenderItem> gutterIcons = new java.util.ArrayList<>();
+    public java.util.List<FoldMarkerRenderItem> foldMarkers = new java.util.ArrayList<>();
+    public ScrollbarModel verticalScrollbar = new ScrollbarModel();
+    public ScrollbarModel horizontalScrollbar = new ScrollbarModel();
     public boolean gutterSticky = true;
-
-    /** Whether gutter area is visible. */
-    @SerializedName("gutter_visible")
     public boolean gutterVisible = true;
+    public PointerCursorType pointerCursorType = PointerCursorType.TEXT;
+
+    public EditorRenderModel() {
+    }
+
+    public EditorRenderModel(float splitX, boolean splitLineVisible, float scrollX, float scrollY, float viewportWidth, float viewportHeight, PointF currentLine, CurrentLineRenderMode currentLineRenderMode, java.util.List<VisualLine> lines, Cursor cursor, java.util.List<Rect> selectionRects, SelectionHandle selectionStartHandle, SelectionHandle selectionEndHandle, CompositionDecoration compositionDecoration, java.util.List<GuideSegment> guideSegments, java.util.List<DiagnosticDecoration> diagnosticDecorations, int maxGutterIcons, java.util.List<LinkedEditingRect> linkedEditingRects, java.util.List<Rect> bracketHighlightRects, java.util.List<GutterIconRenderItem> gutterIcons, java.util.List<FoldMarkerRenderItem> foldMarkers, ScrollbarModel verticalScrollbar, ScrollbarModel horizontalScrollbar, boolean gutterSticky, boolean gutterVisible, PointerCursorType pointerCursorType) {
+        this.splitX = splitX;
+        this.splitLineVisible = splitLineVisible;
+        this.scrollX = scrollX;
+        this.scrollY = scrollY;
+        this.viewportWidth = viewportWidth;
+        this.viewportHeight = viewportHeight;
+        this.currentLine = currentLine;
+        this.currentLineRenderMode = currentLineRenderMode;
+        this.lines = lines;
+        this.cursor = cursor;
+        this.selectionRects = selectionRects;
+        this.selectionStartHandle = selectionStartHandle;
+        this.selectionEndHandle = selectionEndHandle;
+        this.compositionDecoration = compositionDecoration;
+        this.guideSegments = guideSegments;
+        this.diagnosticDecorations = diagnosticDecorations;
+        this.maxGutterIcons = maxGutterIcons;
+        this.linkedEditingRects = linkedEditingRects;
+        this.bracketHighlightRects = bracketHighlightRects;
+        this.gutterIcons = gutterIcons;
+        this.foldMarkers = foldMarkers;
+        this.verticalScrollbar = verticalScrollbar;
+        this.horizontalScrollbar = horizontalScrollbar;
+        this.gutterSticky = gutterSticky;
+        this.gutterVisible = gutterVisible;
+        this.pointerCursorType = pointerCursorType;
+    }
 }

@@ -1,0 +1,418 @@
+from ..backends.csharp import csharp_namespace
+
+
+def config_bool(value):
+    return str(value).strip().lower() in ("1", "true", "yes", "on")
+
+
+def csharp_model_helpers_enabled(target):
+    return config_bool(target.get("augment", {}).get("csharp_model_helpers", "false"))
+
+
+def augment_source(namespace):
+    source = """#nullable enable
+using System;
+using System.Collections.Generic;
+
+namespace {namespace} {{
+
+    public sealed partial class PointF {{
+        public PointF() {{ }}
+
+        public PointF(float x, float y) {{
+            X = x;
+            Y = y;
+        }}
+    }}
+
+    public sealed partial class Rect {{
+        public Rect() {{ }}
+
+        public Rect(PointF origin, float width, float height) {{
+            Origin = origin ?? new PointF();
+            Width = width;
+            Height = height;
+        }}
+
+        public Rect(float x, float y, float width, float height)
+            : this(new PointF(x, y), width, height) {{
+        }}
+    }}
+
+    public sealed partial class OffsetRect {{
+        public OffsetRect() {{ }}
+
+        public OffsetRect(float left, float top, float right, float bottom) {{
+            Left = left;
+            Top = top;
+            Right = right;
+            Bottom = bottom;
+        }}
+    }}
+
+    public sealed partial class IntRange {{
+        public IntRange() {{ }}
+
+        public IntRange(int start, int end) {{
+            Start = start;
+            End = end;
+        }}
+
+        public bool IsEmpty => End < Start;
+
+        public bool Contains(int value) => !IsEmpty && value >= Start && value <= End;
+
+        public int Length => IsEmpty ? 0 : End - Start + 1;
+
+        public override string ToString() => "IntRange { Start = " + Start + ", End = " + End + " }";
+    }}
+
+    public sealed partial class TextPosition {{
+        public static TextPosition NONE => new(-1, -1);
+
+        public TextPosition() {{ }}
+
+        public TextPosition(int line, int column) {{
+            Line = line;
+            Column = column;
+        }}
+
+        public override string ToString() => "TextPosition { Line = " + Line + ", Column = " + Column + " }";
+    }}
+
+    public sealed partial class TextRange {{
+        public TextRange() {{ }}
+
+        public TextRange(TextPosition start, TextPosition end) {{
+            Start = start ?? new TextPosition();
+            End = end ?? new TextPosition();
+        }}
+
+        public bool IsCollapsed => Start.Line == End.Line && Start.Column == End.Column;
+
+        public override string ToString() => "TextRange { Start = " + Start + ", End = " + End + " }";
+    }}
+
+    public sealed partial class TextChange {{
+        public TextChange() {{ }}
+
+        public TextChange(TextRange range, string? newText) {{
+            Range = range ?? new TextRange();
+            NewText = newText ?? string.Empty;
+        }}
+
+        public string Text {{
+            get => NewText;
+            set => NewText = value ?? string.Empty;
+        }}
+    }}
+
+    public sealed partial class TextStyle {{
+        public const int NORMAL = 0;
+        public const int BOLD = 1;
+        public const int ITALIC = 2;
+        public const int STRIKETHROUGH = 4;
+
+        public TextStyle() {{ }}
+
+        public TextStyle(int color, int fontStyle)
+            : this(color, 0, fontStyle) {{
+        }}
+
+        public TextStyle(int color, int backgroundColor, int fontStyle) {{
+            Color = color;
+            BackgroundColor = backgroundColor;
+            FontStyle = fontStyle;
+        }}
+    }}
+
+    public sealed partial class StyleSpan {{
+        public StyleSpan() {{ }}
+
+        public StyleSpan(int column, int length, int styleId) {{
+            Column = column;
+            Length = length;
+            StyleId = styleId;
+        }}
+    }}
+
+    public sealed partial class IndentGuide {{
+        public IndentGuide() {{ }}
+
+        public IndentGuide(TextPosition start, TextPosition end) {{
+            Start = start ?? new TextPosition();
+            End = end ?? new TextPosition();
+        }}
+    }}
+
+    public sealed partial class InlayHint {{
+        public InlayHint() {{ }}
+
+        public InlayHint(InlayType type, int column, string? text, int intValue) {{
+            Type = type;
+            Column = column;
+            Text = text ?? string.Empty;
+            IntValue = intValue;
+        }}
+
+        public static InlayHint TextHint(int column, string? text) => new({q}.InlayType.TEXT, column, text, 0);
+
+        public static InlayHint IconHint(int column, int iconId) => new({q}.InlayType.ICON, column, string.Empty, iconId);
+
+        public static InlayHint ColorHint(int column, int color) => new({q}.InlayType.COLOR, column, string.Empty, color);
+
+        public int IconId => Type == {q}.InlayType.ICON ? IntValue : 0;
+
+        public int ColorValue => Type == {q}.InlayType.COLOR ? IntValue : 0;
+
+        public bool IsIcon => Type == {q}.InlayType.ICON;
+    }}
+
+    public sealed partial class PhantomText {{
+        public PhantomText() {{ }}
+
+        public PhantomText(int column, string? text) {{
+            Column = column;
+            Text = text ?? string.Empty;
+        }}
+    }}
+
+    public sealed partial class CodeLensItem {{
+        public CodeLensItem() {{ }}
+
+        public CodeLensItem(int column, string? text, int commandId = 0) {{
+            Column = column;
+            Text = text ?? string.Empty;
+            CommandId = commandId;
+        }}
+    }}
+
+    public sealed partial class LinkSpan {{
+        public LinkSpan() {{ }}
+
+        public LinkSpan(int column, int length, string? target) {{
+            Column = column;
+            Length = length;
+            Target = target ?? string.Empty;
+        }}
+    }}
+
+    public sealed partial class GutterIcon {{
+        public GutterIcon() {{ }}
+
+        public GutterIcon(int iconId) {{
+            IconId = iconId;
+        }}
+    }}
+
+    public sealed partial class Diagnostic {{
+        public Diagnostic() {{ }}
+
+        public Diagnostic(int column, int length, int severity)
+            : this(column, length, (DiagnosticSeverity)severity) {{
+        }}
+
+        public Diagnostic(int column, int length, DiagnosticSeverity severity) {{
+            Column = column;
+            Length = length;
+            Severity = severity;
+        }}
+    }}
+
+    public sealed partial class FoldRegion {{
+        public FoldRegion() {{ }}
+
+        public FoldRegion(int startLine, int endLine)
+            : this(startLine, endLine, false) {{
+        }}
+
+        public FoldRegion(int startLine, int endLine, bool collapsed) {{
+            StartLine = startLine;
+            EndLine = endLine;
+            Collapsed = collapsed;
+        }}
+    }}
+
+    public sealed partial class SeparatorGuide {{
+        public SeparatorGuide() {{ }}
+
+        public SeparatorGuide(int line, int style, int count, int textEndColumn)
+            : this(line, (SeparatorStyle)style, count, textEndColumn) {{
+        }}
+
+        public SeparatorGuide(int line, SeparatorStyle style, int count, int textEndColumn) {{
+            Line = line;
+            Style = style;
+            Count = count;
+            TextEndColumn = textEndColumn;
+        }}
+    }}
+
+    public sealed partial class KeyChord : IEquatable<KeyChord> {{
+        public static KeyChord Empty => new({q}.KeyModifier.NONE, {q}.KeyCode.NONE);
+
+        public static KeyChord EMPTY => Empty;
+
+        public KeyChord() {{ }}
+
+        public KeyChord(int modifiers, int keyCode) {{
+            Modifiers = modifiers;
+            KeyCode = keyCode;
+        }}
+
+        public KeyChord(KeyModifier modifiers, KeyCode keyCode)
+            : this((int)modifiers, (int)keyCode) {{
+        }}
+
+        public bool IsEmpty => KeyCode == (int){q}.KeyCode.NONE;
+
+        public bool Equals(KeyChord? other) {{
+            return other != null && Modifiers == other.Modifiers && KeyCode == other.KeyCode;
+        }}
+
+        public override bool Equals(object? obj) => obj is KeyChord other && Equals(other);
+
+        public override int GetHashCode() => HashCode.Combine(Modifiers, KeyCode);
+
+        public static bool operator ==(KeyChord? left, KeyChord? right) => EqualityComparer<KeyChord?>.Default.Equals(left, right);
+
+        public static bool operator !=(KeyChord? left, KeyChord? right) => !(left == right);
+    }}
+
+    public sealed partial class KeyBinding : IEquatable<KeyBinding> {{
+        public KeyBinding() {{ }}
+
+        public KeyBinding(KeyChord first, int command)
+            : this(first, KeyChord.Empty, command) {{
+        }}
+
+        public KeyBinding(KeyChord first, EditorBuiltinCommand command)
+            : this(first, KeyChord.Empty, (int)command) {{
+        }}
+
+        public KeyBinding(KeyChord first, KeyChord second, EditorBuiltinCommand command)
+            : this(first, second, (int)command) {{
+        }}
+
+        public KeyBinding(KeyChord first, KeyChord second, int command) {{
+            First = first ?? KeyChord.Empty;
+            Second = second ?? KeyChord.Empty;
+            Command = command;
+        }}
+
+        public KeyBinding(KeyModifier modifiers, KeyCode keyCode, int command)
+            : this(new KeyChord(modifiers, keyCode), KeyChord.Empty, command) {{
+        }}
+
+        public KeyBinding(KeyModifier modifiers, KeyCode keyCode, EditorBuiltinCommand command)
+            : this(modifiers, keyCode, (int)command) {{
+        }}
+
+        public KeyBinding(KeyModifier firstModifiers, KeyCode firstKeyCode, KeyModifier secondModifiers, KeyCode secondKeyCode, int command)
+            : this(new KeyChord(firstModifiers, firstKeyCode), new KeyChord(secondModifiers, secondKeyCode), command) {{
+        }}
+
+        public bool IsChorded => Second != null && !Second.IsEmpty;
+
+        public KeyBinding WithCommand(int command) => new(First, Second, command);
+
+        public KeyBinding WithCommand(EditorBuiltinCommand command) => WithCommand((int)command);
+
+        public KeyBinding WithCommandId(int command) => WithCommand(command);
+
+        public bool Equals(KeyBinding? other) {{
+            return other != null
+                && Command == other.Command
+                && EqualityComparer<KeyChord>.Default.Equals(First, other.First)
+                && EqualityComparer<KeyChord>.Default.Equals(Second, other.Second);
+        }}
+
+        public override bool Equals(object? obj) => obj is KeyBinding other && Equals(other);
+
+        public override int GetHashCode() => HashCode.Combine(First, Second, Command);
+
+        public static bool operator ==(KeyBinding? left, KeyBinding? right) => EqualityComparer<KeyBinding?>.Default.Equals(left, right);
+
+        public static bool operator !=(KeyBinding? left, KeyBinding? right) => !(left == right);
+    }}
+
+    public sealed partial class LinkedEditingModel {{
+        public LinkedEditingModel AddGroup(int index, string? defaultText, params TextRange[] ranges) {{
+            Groups.Add(new TabStopGroup(index, defaultText, ranges));
+            return this;
+        }}
+    }}
+
+    public sealed partial class TabStopGroup {{
+        public TabStopGroup() {{ }}
+
+        public TabStopGroup(int index, string? defaultText, IEnumerable<TextRange>? ranges = null) {{
+            Index = index;
+            DefaultText = defaultText ?? string.Empty;
+            Ranges = ranges == null ? new List<TextRange>() : new List<TextRange>(ranges);
+        }}
+    }}
+
+    public sealed partial class HandleConfig {{
+        public float StartLeft {{
+            get => StartHitOffset.Left;
+            set => StartHitOffset.Left = value;
+        }}
+
+        public float StartTop {{
+            get => StartHitOffset.Top;
+            set => StartHitOffset.Top = value;
+        }}
+
+        public float StartRight {{
+            get => StartHitOffset.Right;
+            set => StartHitOffset.Right = value;
+        }}
+
+        public float StartBottom {{
+            get => StartHitOffset.Bottom;
+            set => StartHitOffset.Bottom = value;
+        }}
+
+        public float EndLeft {{
+            get => EndHitOffset.Left;
+            set => EndHitOffset.Left = value;
+        }}
+
+        public float EndTop {{
+            get => EndHitOffset.Top;
+            set => EndHitOffset.Top = value;
+        }}
+
+        public float EndRight {{
+            get => EndHitOffset.Right;
+            set => EndHitOffset.Right = value;
+        }}
+
+        public float EndBottom {{
+            get => EndHitOffset.Bottom;
+            set => EndHitOffset.Bottom = value;
+        }}
+    }}
+
+    public sealed partial class EditorActionResult {{
+        public static EditorActionResult Empty => new();
+    }}
+}}
+"""
+    return (
+        source
+        .replace("{{", "{")
+        .replace("}}", "}")
+        .replace("{namespace}", namespace)
+        .replace("{q}", f"global::{namespace}")
+    )
+
+
+def augment_csharp(schema, target_name, target, out_root):
+    if not csharp_model_helpers_enabled(target):
+        return []
+    path = out_root / "CoreAugment.cs"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(augment_source(csharp_namespace(target)), encoding="utf-8")
+    return [str(path)]

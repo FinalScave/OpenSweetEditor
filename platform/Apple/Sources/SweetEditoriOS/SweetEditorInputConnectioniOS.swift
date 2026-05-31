@@ -154,7 +154,7 @@ final class SweetEditorInputConnectioniOS {
         inputDelegate?.textWillChange(owner)
         if isComposing {
             let committedText = markedTextValue ?? ""
-            let result: EditorActionResultData?
+            let result: EditorActionResult?
             if committedText.isEmpty {
                 result = owner.editorCore.finishImePreedit()
             } else {
@@ -168,7 +168,7 @@ final class SweetEditorInputConnectioniOS {
         inputDelegate?.selectionDidChange(owner)
     }
 
-    func syncEditorActionResult(_ result: EditorActionResultData) {
+    func syncEditorActionResult(_ result: EditorActionResult) {
         if result.ime_sync.clear_platform_preedit {
             clearLocalCompositionState()
         }
@@ -205,14 +205,14 @@ final class SweetEditorInputConnectioniOS {
         guard let position = position as? SweetEditorTextPosition,
               let location = owner.locationForOffset(position.offset) else { return .zero }
         let rect = owner.getPositionRect(line: location.line, column: location.column)
-        return CGRect(x: rect.x, y: rect.y, width: 1, height: rect.height)
+        return CGRect(x: CGFloat(rect.x), y: CGFloat(rect.y), width: 1, height: CGFloat(rect.height))
     }
 
     func firstRect(for range: UITextRange) -> CGRect {
         guard let nsRange = owner.nsRange(from: range),
               let location = owner.locationForOffset(nsRange.location) else { return .zero }
         let rect = owner.getPositionRect(line: location.line, column: location.column)
-        return CGRect(x: rect.x, y: rect.y, width: 1, height: rect.height)
+        return CGRect(x: CGFloat(rect.x), y: CGFloat(rect.y), width: 1, height: CGFloat(rect.height))
     }
 
     private func replace(_ range: NSRange, withText text: String, marked: Bool) {

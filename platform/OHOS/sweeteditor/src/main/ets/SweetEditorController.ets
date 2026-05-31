@@ -1,5 +1,6 @@
 import { Document } from './core/EditorCore';
-import { IntRange, ScrollBehavior, TextPosition, TextRange } from './core/CoreFoundation';
+import { ScrollBehavior } from './core/CoreAction';
+import { IntRange, TextPosition, TextRange } from './core/CoreFoundation';
 import { CursorRect, ScrollMetrics } from './core/CoreVisual';
 import {
   BracketGuide,
@@ -321,7 +322,7 @@ export class SweetEditorController {
     this.run((api) => api.gotoPosition(line, column));
   }
 
-  scrollToLine(line: number, behavior: ScrollBehavior = ScrollBehavior.CENTER): void {
+  scrollToLine(line: number, behavior: ScrollBehavior = ScrollBehavior.GOTO_CENTER): void {
     this.run((api) => api.scrollToLine(line, behavior));
   }
 

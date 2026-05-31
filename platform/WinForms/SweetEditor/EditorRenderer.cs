@@ -306,14 +306,14 @@ namespace SweetEditor {
 			perf.Mark(PerfStepRecorder.StepClear);
 			EnsureFontMetricsCache(g);
 
-			if (!model.HasValue) {
+			if (model == null) {
 				perf.Finish();
 				EditorPerf.LogSlow("Render(no-model)", perf.TotalTicks, EditorPerf.WarnPaintMs);
 				perfOverlay.RecordDraw(perf);
 				perfOverlay.Draw(g, clientSize.Width);
 				return;
 			}
-			EditorRenderModel modelValue = model.Value;
+			EditorRenderModel modelValue = model;
 			g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 			g.SmoothingMode = SmoothingMode.AntiAlias;
 
@@ -352,7 +352,7 @@ namespace SweetEditor {
 		}
 
 		private void DrawLines(Graphics g, EditorRenderModel model) {
-			List<VisualLine> lines = model.VisualLines;
+			List<VisualLine> lines = model.Lines;
 			if (lines == null) return;
 			foreach (var line in lines) {
 				if (line.Runs == null) continue;
@@ -374,7 +374,7 @@ namespace SweetEditor {
 
 		private void DrawLineNumbers(Graphics g, EditorRenderModel model) {
 			if (!model.GutterVisible) return;
-			List<VisualLine> lines = model.VisualLines;
+			List<VisualLine> lines = model.Lines;
 			if (lines == null) return;
 			List<GutterIconRenderItem>? gutterIcons = model.GutterIcons;
 			List<FoldMarkerRenderItem>? foldMarkers = model.FoldMarkers;
@@ -515,27 +515,27 @@ namespace SweetEditor {
 		}
 
 		private bool DrawGutterIcon(Graphics g, GutterIconRenderItem item) {
-			if (item.Width <= 0 || item.Height <= 0) return false;
+			if (item.Rect.Width <= 0 || item.Rect.Height <= 0) return false;
 			int iconId = item.IconId;
 			Image? image = editorIconProvider?.GetIconImage(iconId);
 			if (image == null) return false;
 			InterpolationMode oldInterpolation = g.InterpolationMode;
 			g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-			g.DrawImage(image, item.Origin.X, item.Origin.Y, item.Width, item.Height);
+			g.DrawImage(image, item.Rect.Origin.X, item.Rect.Origin.Y, item.Rect.Width, item.Rect.Height);
 			g.InterpolationMode = oldInterpolation;
 			return true;
 		}
 
 		private void DrawFoldMarker(Graphics g, FoldMarkerRenderItem marker, Color color) {
-			if (marker.Width <= 0 || marker.Height <= 0) return;
+			if (marker.Rect.Width <= 0 || marker.Rect.Height <= 0) return;
 			if (marker.FoldState == FoldState.NONE) return;
 
-			float centerX = marker.Origin.X + marker.Width * 0.5f;
-			float centerY = marker.Origin.Y + marker.Height * 0.5f;
-			float halfSize = Math.Min(marker.Width, marker.Height) * 0.28f;
+			float centerX = marker.Rect.Origin.X + marker.Rect.Width * 0.5f;
+			float centerY = marker.Rect.Origin.Y + marker.Rect.Height * 0.5f;
+			float halfSize = Math.Min(marker.Rect.Width, marker.Rect.Height) * 0.28f;
 
 			using var path = new GraphicsPath();
-			using var pen = new Pen(color, Math.Max(1f, marker.Height * 0.1f)) {
+			using var pen = new Pen(color, Math.Max(1f, marker.Rect.Height * 0.1f)) {
 				StartCap = LineCap.Round,
 				EndCap = LineCap.Round,
 				LineJoin = LineJoin.Round
@@ -620,9 +620,7 @@ namespace SweetEditor {
 						DrawGutterIcon(g, new GutterIconRenderItem {
 							LogicalLine = -1,
 							IconId = visualRun.IconId,
-							Origin = new PointF(iconLeft, iconTop2),
-							Width = iconSize,
-							Height = iconSize,
+							Rect = new Rect(iconLeft, iconTop2, iconSize, iconSize),
 						});
 					} else if (hasText) {
 						float textX = visualRun.X + mgn + visualRun.Padding;
@@ -716,9 +714,9 @@ namespace SweetEditor {
 		}
 
 		private void DrawCompositionDecoration(Graphics g, CompositionDecoration comp) {
-			float y = comp.Origin.Y + comp.Height;
+			float y = comp.Rect.Origin.Y + comp.Rect.Height;
 			using var pen = new Pen(currentTheme.CompositionUnderlineColor, 2f);
-			g.DrawLine(pen, comp.Origin.X, y, comp.Origin.X + comp.Width, y);
+			g.DrawLine(pen, comp.Rect.Origin.X, y, comp.Rect.Origin.X + comp.Rect.Width, y);
 		}
 
 		private void DrawDiagnosticDecorations(Graphics g, EditorRenderModel model) {
@@ -731,9 +729,9 @@ namespace SweetEditor {
 				_ => System.Drawing.Color.FromArgb(178, 153, 153, 153),
 			};
 
-				float startX = diag.Origin.X;
-				float endX = startX + diag.Width;
-				float baseY = diag.Origin.Y + diag.Height - 1f;
+				float startX = diag.Rect.Origin.X;
+				float endX = startX + diag.Rect.Width;
+				float baseY = diag.Rect.Origin.Y + diag.Rect.Height - 1f;
 
 				using var pen = new Pen(color, 3.0f);
 
@@ -774,12 +772,12 @@ namespace SweetEditor {
 			foreach (var rect in model.LinkedEditingRects) {
 				if (rect.IsActive) {
 					using var fillBrush = new SolidBrush(System.Drawing.Color.FromArgb(30, 86, 156, 214));
-					g.FillRectangle(fillBrush, rect.Origin.X, rect.Origin.Y, rect.Width, rect.Height);
+					g.FillRectangle(fillBrush, rect.Rect.Origin.X, rect.Rect.Origin.Y, rect.Rect.Width, rect.Rect.Height);
 					using var pen = new Pen(System.Drawing.Color.FromArgb(204, 86, 156, 214), 2f);
-					g.DrawRectangle(pen, rect.Origin.X, rect.Origin.Y, rect.Width, rect.Height);
+					g.DrawRectangle(pen, rect.Rect.Origin.X, rect.Rect.Origin.Y, rect.Rect.Width, rect.Rect.Height);
 				} else {
 					using var pen = new Pen(System.Drawing.Color.FromArgb(102, 86, 156, 214), 1f);
-					g.DrawRectangle(pen, rect.Origin.X, rect.Origin.Y, rect.Width, rect.Height);
+					g.DrawRectangle(pen, rect.Rect.Origin.X, rect.Rect.Origin.Y, rect.Rect.Width, rect.Rect.Height);
 				}
 			}
 		}

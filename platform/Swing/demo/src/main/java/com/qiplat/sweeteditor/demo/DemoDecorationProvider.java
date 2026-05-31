@@ -149,8 +149,8 @@ public class DemoDecorationProvider implements DecorationProvider {
 
             String currentFileName = resolveCurrentFileName(context);
             LineRange visibleRange = new LineRange(
-                    Math.max(0, context.visibleLineRange.start()),
-                    Math.max(0, context.visibleLineRange.end() - Math.max(0, context.visibleLineRange.start()) + 1)
+                    Math.max(0, context.visibleLineRange.start),
+                    Math.max(0, context.visibleLineRange.end - Math.max(0, context.visibleLineRange.start) + 1)
             );
             if (!currentFileName.equals(sourceFileName)) {
                 sourceFileName = currentFileName;
@@ -488,8 +488,8 @@ public class DemoDecorationProvider implements DecorationProvider {
         String literal = getTokenLiteral(textLines, range);
         if ("class".equals(literal) || "struct".equals(literal)) {
             List<CodeLensItem> lineItems = new ArrayList<>();
-            lineItems.add(new CodeLensItem(range.startColumn, "▶ Run", CODELENS_RUN));
-            lineItems.add(new CodeLensItem(range.startColumn, "◎ Debug", CODELENS_DEBUG));
+            lineItems.add(new CodeLensItem(range.startColumn, CODELENS_RUN, "▶ Run"));
+            lineItems.add(new CodeLensItem(range.startColumn, CODELENS_DEBUG, "◎ Debug"));
             codeLensItems.put(range.line, lineItems);
         }
     }

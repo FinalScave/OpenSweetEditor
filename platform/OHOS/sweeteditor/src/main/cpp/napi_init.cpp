@@ -27,9 +27,6 @@ static napi_value Init(napi_env env, napi_value exports)
 
         // Gesture/keyboard
         NAPI_METHOD("handleEditorGestureEvent", EditorCoreNapi::handleGestureEvent),
-        NAPI_METHOD("handleEditorGestureEventEx", EditorCoreNapi::handleGestureEventEx),
-        NAPI_METHOD("editorTickEdgeScroll", EditorCoreNapi::tickEdgeScroll),
-        NAPI_METHOD("editorTickFling", EditorCoreNapi::tickFling),
         NAPI_METHOD("editorTickAnimations", EditorCoreNapi::tickAnimations),
         NAPI_METHOD("editorUpdatePointerModifiers", EditorCoreNapi::updatePointerModifiers),
         NAPI_METHOD("handleEditorKeyEvent", EditorCoreNapi::handleKeyEvent),
@@ -105,7 +102,7 @@ static napi_value Init(napi_env env, napi_value exports)
         NAPI_METHOD("editorImeMarkInputContextRange", EditorCoreNapi::imeMarkInputContextRange),
         NAPI_METHOD("editorImeNotifyDocumentSelectionChanged", EditorCoreNapi::imeNotifyDocumentSelectionChanged),
         NAPI_METHOD("editorImeNotifyInputContextSelectionChanged", EditorCoreNapi::imeNotifyInputContextSelectionChanged),
-        NAPI_METHOD("editorImeUpdateInputStateText", EditorCoreNapi::imeUpdateInputStateText),
+        NAPI_METHOD("editorImeUpdateTextModelState", EditorCoreNapi::imeUpdateTextModelState),
         NAPI_METHOD("editorImeUpdateInputStateSelection", EditorCoreNapi::imeUpdateInputStateSelection),
         NAPI_METHOD("editorImeReplaceInputStateText", EditorCoreNapi::imeReplaceInputStateText),
         NAPI_METHOD("editorImeDeleteBackward", EditorCoreNapi::imeDeleteBackward),

@@ -168,7 +168,8 @@ class DemoDecorationWorker {
         seenFolds.add(key);
         foldRegions.push({
           startLine: guide.startLine,
-          endLine: guide.endLine
+          endLine: guide.endLine,
+          collapsed: false
         });
       }
     }
@@ -305,9 +306,9 @@ class DemoDecorationWorker {
       inlayHints.set(range.line, lineHints);
     }
     lineHints.push({
-      type: InlayType.Color,
+      type: InlayType.COLOR,
       column: range.startColumn,
-      text: null,
+      text: '',
       intValue: color
     });
   }
@@ -338,7 +339,7 @@ class DemoDecorationWorker {
       inlayHints.set(range.line, lineHints);
     }
     lineHints.push({
-      type: InlayType.Text,
+      type: InlayType.TEXT,
       column: range.endColumn + 1,
       text: hintText,
       intValue: 0

@@ -1,20 +1,18 @@
 package com.qiplat.sweeteditor.core.visual;
 
-import com.google.gson.annotations.SerializedName;
+import com.qiplat.sweeteditor.core.foundation.PointF;
 
-/**
- * Selection handle (drag handle for text selection)
- */
-public class SelectionHandle {
-    /** Cursor position (top coordinate of cursor vertical line) */
-    @SerializedName("position")
-    public PointF position;
+public final class SelectionHandle {
+    public PointF position = new PointF();
+    public float height = 0f;
+    public boolean visible = false;
 
-    /** Cursor height (line height) */
-    @SerializedName("height")
-    public float height;
+    public SelectionHandle() {
+    }
 
-    /** Whether the handle is visible */
-    @SerializedName("visible")
-    public boolean visible;
+    public SelectionHandle(PointF position, float height, boolean visible) {
+        this.position = position;
+        this.height = height;
+        this.visible = visible;
+    }
 }

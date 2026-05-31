@@ -59,6 +59,74 @@ namespace NS_SWEETEDITOR {
     LIMITED_FOR_CANDIDATES,
   };
 
+  struct SE_PROTOCOL_IN(ime) ImeTextReplacement {
+    TextRange range;
+    U8String text;
+    SE_PROTOCOL_WIRE(enum_i32)
+    ImeScriptClass script_class {ImeScriptClass::UNKNOWN};
+  };
+
+  struct SE_PROTOCOL_IN(ime) ImeDocumentTextReplacement {
+    SE_PROTOCOL_WIRE(size_as_u32)
+    size_t start_offset {0};
+    SE_PROTOCOL_WIRE(size_as_u32)
+    size_t end_offset {0};
+    U8String text;
+    int32_t cursor_offset {1};
+    SE_PROTOCOL_WIRE(enum_i32)
+    ImeScriptClass script_class {ImeScriptClass::UNKNOWN};
+  };
+
+  struct SE_PROTOCOL_IN(ime) ImeInputContextTextReplacement {
+    SE_PROTOCOL_WIRE(size_as_u32)
+    size_t start_offset {0};
+    SE_PROTOCOL_WIRE(size_as_u32)
+    size_t end_offset {0};
+    U8String text;
+    int32_t cursor_offset {1};
+    SE_PROTOCOL_WIRE(enum_i32)
+    ImeScriptClass script_class {ImeScriptClass::UNKNOWN};
+  };
+
+  struct SE_PROTOCOL_IN(ime) ImeTextModelState {
+    SE_PROTOCOL_WIRE(enum_i32)
+    ImeTextModelMode mode {ImeTextModelMode::DOCUMENT_WINDOW};
+    uint64_t context_id {0};
+    int32_t document_start_offset {0};
+    U8String text;
+    ImeTextRange selection;
+    ImeTextRange composition {-1, -1};
+    SE_PROTOCOL_WIRE(enum_i32)
+    ImeScriptClass script_class {ImeScriptClass::UNKNOWN};
+  };
+
+  struct SE_PROTOCOL_IN(ime) ImeTextModelDelta {
+    SE_PROTOCOL_WIRE(enum_i32)
+    ImeTextModelMode mode {ImeTextModelMode::DOCUMENT_WINDOW};
+    uint64_t context_id {0};
+    int32_t document_start_offset {0};
+    U8String old_text;
+    ImeTextRange delta {-1, -1};
+    U8String delta_text;
+    ImeTextRange selection;
+    ImeTextRange composition {-1, -1};
+    SE_PROTOCOL_WIRE(enum_i32)
+    ImeScriptClass script_class {ImeScriptClass::UNKNOWN};
+  };
+
+  struct SE_PROTOCOL_IN(ime) ImeInputStateTextReplacement {
+    uint64_t context_id {0};
+    int32_t document_start_offset {0};
+    SE_PROTOCOL_WIRE(size_as_u32)
+    size_t start_offset {0};
+    SE_PROTOCOL_WIRE(size_as_u32)
+    size_t end_offset {0};
+    U8String text;
+    int32_t cursor_offset {1};
+    SE_PROTOCOL_WIRE(enum_i32)
+    ImeScriptClass script_class {ImeScriptClass::UNKNOWN};
+  };
+
   /// Snapshot that platform layers use to synchronize IME selection and marked ranges.
   struct SE_PROTOCOL_OUT(ime) ImeSyncSnapshot {
     TextPosition cursor;

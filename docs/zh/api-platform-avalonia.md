@@ -5,7 +5,7 @@
 - 控件层：`platform/Avalonia/SweetEditor/SweetEditorControl.cs`
 - 控制器：`platform/Avalonia/SweetEditor/SweetEditorController.cs`
 - 桥接层：`platform/Avalonia/SweetEditor/EditorCore.cs`
-- 协议编解码：`platform/Avalonia/SweetEditor/EditorProtocol.cs`
+- 协议编解码：`platform/Avalonia/SweetEditor/Core/CoreProtocol.cs`
 - 渲染层：`platform/Avalonia/SweetEditor/EditorRenderer.cs`
 - Provider / 扩展：
   - `platform/Avalonia/SweetEditor/EditorCompletion.cs`
@@ -22,7 +22,7 @@
 
 - Avalonia 平台主路径是 `Avalonia UI + C# P/Invoke -> C API`。
 - `EditorCore` 负责封装 native 句柄、文档生命周期、文本编辑命令与 render-model 拉取。
-- `EditorProtocol` 负责二进制 payload 解码；`EditorRenderer` 消费 `EditorRenderModel` 进行 Avalonia `DrawingContext` 绘制。
+- `CoreProtocol` 负责二进制 payload 编解码；`EditorRenderer` 消费 `EditorRenderModel` 进行 Avalonia `DrawingContext` 绘制。
 - `SweetEditorControl` 是宿主真正持有的控件入口；`SweetEditorController` 提供声明式 / MVVM 风格下的外部控制入口。
 - Decorations / Completion / NewLine / InlineSuggestion / SelectionMenu 均在 Avalonia 层按标准拆成独立 manager/provider 模块。
 - Android Demo 直接接入 `libsweetline.so`；桌面 Demo 在未提供 SweetLine native 时自动回退到托管 fallback 高亮。
@@ -212,7 +212,7 @@ public (int start, int end) GetVisibleLineRange()
 public int GetTotalLineCount()
 ```
 
-`Flush()` 是强制刷新 / 兼容入口。正常编辑、装饰、滚动、选区和 IME 同步路径会通过统一分发 `EditorActionResult`，并由 `NeedsRedraw` 决定是否刷新 render model 与重绘。
+`Flush()` 是强制刷新 / 诊断入口。正常编辑、装饰、滚动、选区和 IME 同步路径会通过统一分发 `EditorActionResult`，并由 `NeedsRedraw` 决定是否刷新 render model 与重绘。
 
 ### Provider / Completion / Ghost / Selection Menu
 
@@ -314,8 +314,8 @@ public void SetLinePhantomTexts(int line, IList<PhantomText> phantoms)
 public void SetBatchLinePhantomTexts(Dictionary<int, IList<PhantomText>> phantomsByLine)
 public void SetLineGutterIcons(int line, IList<GutterIcon> icons)
 public void SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine)
-public void SetLineDiagnostics(int line, IList<DiagnosticItem> items)
-public void SetBatchLineDiagnostics(Dictionary<int, IList<DiagnosticItem>> diagsByLine)
+public void SetLineDiagnostics(int line, IList<Diagnostic> items)
+public void SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine)
 public void SetIndentGuides(IList<IndentGuide> guides)
 public void SetBracketGuides(IList<BracketGuide> guides)
 public void SetFlowGuides(IList<FlowGuide> guides)

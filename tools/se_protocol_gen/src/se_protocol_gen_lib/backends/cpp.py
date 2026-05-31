@@ -120,6 +120,7 @@ def cpp_read_map_lines(field, target_expr, entry_item, schema, indent):
     lines = [
         f"{prefix}uint32_t count{{}};",
         f"{prefix}if (!readU32(count)) return false;",
+        f"{prefix}if (count > remaining()) return false;",
         f"{prefix}{target_expr}.clear();",
         f"{prefix}{target_expr}.reserve(count);",
         f"{prefix}for (uint32_t index = 0; index < count; ++index) {{",
@@ -333,6 +334,7 @@ def generate_cpp_codec(schema):
         "  bool readList(Vector<T>& out) {",
         "    uint32_t count = 0;",
         "    if (!readU32(count)) return false;",
+        "    if (count > remaining()) return false;",
         "    out.clear();",
         "    out.reserve(count);",
         "    for (uint32_t index = 0; index < count; ++index) {",

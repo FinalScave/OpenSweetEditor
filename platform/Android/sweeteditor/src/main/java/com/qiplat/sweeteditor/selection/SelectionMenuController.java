@@ -11,6 +11,8 @@ import androidx.annotation.Nullable;
 import com.qiplat.sweeteditor.EditorTheme;
 import com.qiplat.sweeteditor.SweetEditor;
 import com.qiplat.sweeteditor.core.EditorCore;
+import com.qiplat.sweeteditor.core.interaction.GestureType;
+import com.qiplat.sweeteditor.core.action.EditorActionResult;
 import com.qiplat.sweeteditor.core.visual.SelectionHandle;
 import com.qiplat.sweeteditor.event.EditorEventBus;
 import com.qiplat.sweeteditor.event.SelectionMenuItemClickEvent;
@@ -92,7 +94,7 @@ public class SelectionMenuController {
      * Called from {@code SweetEditor.onTouchEvent} after gesture processing.
      * Drives the show/hide state machine.
      */
-    public void onEditorActionResult(@NonNull EditorCore.EditorActionResult result, int actionMasked) {
+    public void onEditorActionResult(@NonNull EditorActionResult result, int actionMasked) {
         if (result.isHandleDrag) {
             if (!handleDragActive) {
                 handleDragActive = true;

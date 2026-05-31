@@ -1,53 +1,34 @@
 package com.qiplat.sweeteditor.core.visual;
 
-import com.google.gson.annotations.SerializedName;
 import com.qiplat.sweeteditor.core.adornment.TextStyle;
 
-/**
- * Visual text run structure definition.
- */
-public class VisualRun {
-    /** Run type. */
-    @SerializedName("type")
-    public VisualRunType type;
+public final class VisualRun {
+    public VisualRunType type = VisualRunType.TEXT;
+    public float x = 0f;
+    public float y = 0f;
+    public String text = "";
+    public TextStyle style = new TextStyle();
+    public int iconId = 0;
+    public int colorValue = 0;
+    public float width = 0f;
+    public float padding = 0f;
+    public float margin = 0f;
+    public boolean active = false;
 
-    /** Starting X coordinate for drawing. */
-    @SerializedName("x")
-    public float x;
+    public VisualRun() {
+    }
 
-    /** Starting Y coordinate for drawing. */
-    @SerializedName("y")
-    public float y;
-
-    /** Run text content (only used by TEXT, INLAY_HINT(TEXT), PHANTOM_TEXT). */
-    @SerializedName("text")
-    public String text;
-
-    /** Style (color + font style). */
-    @SerializedName("style")
-    public TextStyle style;
-
-    /** Icon resource ID (used only by INLAY_HINT(ICON) type). */
-    @SerializedName("icon_id")
-    public int iconId;
-
-    /** Color value (ARGB, used only by INLAY_HINT(COLOR) type). */
-    @SerializedName("color_value")
-    public int colorValue;
-
-    /** Pre-computed width (filled during C++ layout phase). */
-    @SerializedName("width")
-    public float width;
-
-    /** Horizontal background padding (InlayHint only; left and right each). */
-    @SerializedName("padding")
-    public float padding;
-
-    /** Horizontal margin with previous/next run (InlayHint only; left and right each). */
-    @SerializedName("margin")
-    public float margin;
-
-    /** Whether this run is in active state (hovered/pressed). */
-    @SerializedName("active")
-    public boolean active;
+    public VisualRun(VisualRunType type, float x, float y, String text, TextStyle style, int iconId, int colorValue, float width, float padding, float margin, boolean active) {
+        this.type = type;
+        this.x = x;
+        this.y = y;
+        this.text = text;
+        this.style = style;
+        this.iconId = iconId;
+        this.colorValue = colorValue;
+        this.width = width;
+        this.padding = padding;
+        this.margin = margin;
+        this.active = active;
+    }
 }

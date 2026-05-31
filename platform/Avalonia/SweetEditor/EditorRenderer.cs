@@ -5,6 +5,7 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Media;
+using AvaloniaRect = Avalonia.Rect;
 
 namespace SweetEditor {
 	internal sealed class EditorRenderer : IDisposable {
@@ -190,13 +191,13 @@ namespace SweetEditor {
 			PerfStepRecorder? drawPerf = perfOverlay.IsEnabled() ? PerfStepRecorder.Start() : null;
 			long drawStart = drawPerf != null ? Stopwatch.GetTimestamp() : 0;
 
-			context.FillRectangle(GetBrush((int)theme.BackgroundColor), new Rect(0, 0, viewportSize.Width, viewportSize.Height));
+			context.FillRectangle(GetBrush((int)theme.BackgroundColor), new AvaloniaRect(0, 0, viewportSize.Width, viewportSize.Height));
 			drawPerf?.Mark(PerfStepRecorder.STEP_CLEAR);
 
 			DrawCurrentLine(context, model, viewportSize.Width);
 			drawPerf?.Mark(PerfStepRecorder.STEP_CURRENT);
 
-			Rect contentClip = GetContentClipRect(model, viewportSize);
+			AvaloniaRect contentClip = GetContentClipRect(model, viewportSize);
 			using (context.PushClip(contentClip)) {
 				DrawSelections(context, model);
 				drawPerf?.Mark(PerfStepRecorder.STEP_SELECTION);
@@ -579,7 +580,7 @@ namespace SweetEditor {
 				return;
 			}
 			double lineHeight = model.Cursor.Height > 0 ? model.Cursor.Height : Math.Max(1f, EffectiveTextSize);
-			var rect = new Rect(0, Snap(model.CurrentLine.Y), viewportWidth, Snap(lineHeight));
+			var rect = new AvaloniaRect(0, Snap(model.CurrentLine.Y), viewportWidth, Snap(lineHeight));
 			if (model.CurrentLineRenderMode == CurrentLineRenderMode.BORDER) {
 				context.DrawRectangle(null, GetPen(GetCurrentLineBorderColor(), 1), rect);
 				return;
@@ -593,7 +594,7 @@ namespace SweetEditor {
 			}
 			var brush = GetBrush((int)theme.SelectionColor);
 			foreach (var rect in model.SelectionRects) {
-				context.FillRectangle(brush, new Rect(Snap(rect.Origin.X), Snap(rect.Origin.Y), Math.Max(0, Snap(rect.Width)), Math.Max(0, Snap(rect.Height))));
+				context.FillRectangle(brush, new AvaloniaRect(Snap(rect.Origin.X), Snap(rect.Origin.Y), Math.Max(0, Snap(rect.Width)), Math.Max(0, Snap(rect.Height))));
 			}
 		}
 
@@ -623,7 +624,7 @@ namespace SweetEditor {
 			double tipY = y + height;
 
 			var brush = GetBrush((int)theme.CursorColor);
-			context.FillRectangle(brush, new Rect(tipX - lineWidth * 0.5, y, lineWidth, height));
+			context.FillRectangle(brush, new AvaloniaRect(tipX - lineWidth * 0.5, y, lineWidth, height));
 
 			double angleRad = isStart ? Math.PI / 4.0 : -Math.PI / 4.0;
 			double cos = Math.Cos(angleRad);
@@ -664,14 +665,14 @@ namespace SweetEditor {
 			context.DrawGeometry(brush, null, path);
 		}
 
-		private void DrawVisualLines(DrawingContext context, EditorRenderModel model, Rect contentClip) {
-			if (model.VisualLines == null) {
+		private void DrawVisualLines(DrawingContext context, EditorRenderModel model, AvaloniaRect contentClip) {
+			if (model.Lines == null) {
 				return;
 			}
 			float clipLeft = (float)contentClip.X;
 			float clipRight = (float)(contentClip.X + contentClip.Width);
 			bool monospaceFastPath = IsProbablyMonospace();
-			Span<VisualLine> lines = CollectionsMarshal.AsSpan(model.VisualLines);
+			Span<VisualLine> lines = CollectionsMarshal.AsSpan(model.Lines);
 			int cachedFontStyle = int.MinValue;
 			Typeface cachedTypeface = regularTypeface;
 
@@ -761,15 +762,15 @@ namespace SweetEditor {
 						float backgroundRight = Math.Min(drawX + drawWidth, clipRight);
 						context.FillRectangle(
 							GetBrush(run.Style.BackgroundColor),
-							new Rect(backgroundX, topY, Math.Max(0f, backgroundRight - backgroundX), Snap(lineHeight)));
+							new AvaloniaRect(backgroundX, topY, Math.Max(0f, backgroundRight - backgroundX), Snap(lineHeight)));
 					}
 
 					if (run.Type == VisualRunType.INLAY_HINT &&
 						run.IconId != 0 &&
 						TryGetIconImage(run.IconId, out IImage? iconBmp) &&
 						iconBmp != null) {
-						var iconRect = new Rect(drawX, topY, drawWidth, Snap(lineHeight));
-						context.DrawImage(iconBmp, new Rect(0, 0, iconBmp.Size.Width, iconBmp.Size.Height), iconRect);
+						var iconRect = new AvaloniaRect(drawX, topY, drawWidth, Snap(lineHeight));
+						context.DrawImage(iconBmp, new AvaloniaRect(0, 0, iconBmp.Size.Width, iconBmp.Size.Height), iconRect);
 						continue;
 					}
 
@@ -844,7 +845,7 @@ namespace SweetEditor {
 			if (!model.Cursor.Visible) {
 				return;
 			}
-			var rect = new Rect(Snap(model.Cursor.Position.X), Snap(model.Cursor.Position.Y), 1.5, Math.Max(1, Snap(model.Cursor.Height)));
+			var rect = new AvaloniaRect(Snap(model.Cursor.Position.X), Snap(model.Cursor.Position.Y), 1.5, Math.Max(1, Snap(model.Cursor.Height)));
 			context.FillRectangle(GetBrush((int)theme.CursorColor), rect);
 		}
 
@@ -853,7 +854,7 @@ namespace SweetEditor {
 				return;
 			}
 
-			context.FillRectangle(GetBrush((int)theme.BackgroundColor), new Rect(0, 0, model.SplitX, viewportHeight));
+			context.FillRectangle(GetBrush((int)theme.BackgroundColor), new AvaloniaRect(0, 0, model.SplitX, viewportHeight));
 			DrawCurrentLine(context, model, model.SplitX);
 			if (model.SplitLineVisible) {
 				DrawSplitLine(context, model, viewportHeight);
@@ -861,7 +862,7 @@ namespace SweetEditor {
 		}
 
 		private void DrawLineNumbers(DrawingContext context, EditorRenderModel model) {
-			if (!model.GutterVisible || model.VisualLines == null) {
+			if (!model.GutterVisible || model.Lines == null) {
 				return;
 			}
 			var gutterIcons = model.GutterIcons;
@@ -875,7 +876,7 @@ namespace SweetEditor {
 			int normalLineNumberColor = (int)theme.LineNumberColor;
 			int activeLineNumberColor = GetActiveLineNumberColor();
 			LayoutMetrics lineNumberMetrics = GetLayoutMetrics(regularTypeface, 0, EffectiveLineNumberSize, inlay: false);
-			Span<VisualLine> lines = CollectionsMarshal.AsSpan(model.VisualLines);
+			Span<VisualLine> lines = CollectionsMarshal.AsSpan(model.Lines);
 			for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++) {
 				ref readonly VisualLine line = ref lines[lineIndex];
 				if (!line.OwnsGutterSemantics) {
@@ -928,35 +929,35 @@ namespace SweetEditor {
 					markerCursor++;
 				}
 				if (foldMarker != null) {
-					DrawFoldMarkerItem(context, foldMarker.Value, isCurrentLine ? activeLineNumberColor : normalLineNumberColor);
+					DrawFoldMarkerItem(context, foldMarker, isCurrentLine ? activeLineNumberColor : normalLineNumberColor);
 				}
 			}
 		}
 
 		private void DrawGutterIconItem(DrawingContext context, GutterIconRenderItem item) {
-			if (item.Width <= 0f || item.Height <= 0f) {
+			if (item.Rect.Width <= 0f || item.Rect.Height <= 0f) {
 				return;
 			}
 			if (!TryGetIconImage(item.IconId, out IImage? iconBmp) || iconBmp == null) {
 				return;
 			}
 
-			var dst = new Rect(Snap(item.Origin.X), Snap(item.Origin.Y), Math.Max(0, Snap(item.Width)), Math.Max(0, Snap(item.Height)));
+			var dst = new AvaloniaRect(Snap(item.Rect.Origin.X), Snap(item.Rect.Origin.Y), Math.Max(0, Snap(item.Rect.Width)), Math.Max(0, Snap(item.Rect.Height)));
 			if (dst.Width <= 0 || dst.Height <= 0) {
 				return;
 			}
-			context.DrawImage(iconBmp, new Rect(0, 0, iconBmp.Size.Width, iconBmp.Size.Height), dst);
+			context.DrawImage(iconBmp, new AvaloniaRect(0, 0, iconBmp.Size.Width, iconBmp.Size.Height), dst);
 		}
 
 		private void DrawFoldMarkerItem(DrawingContext context, FoldMarkerRenderItem item, int color) {
-			if (item.Width <= 0f || item.Height <= 0f || item.FoldState == FoldState.NONE) {
+			if (item.Rect.Width <= 0f || item.Rect.Height <= 0f || item.FoldState == FoldState.NONE) {
 				return;
 			}
 
-			float centerX = item.Origin.X + item.Width * 0.5f;
-			float centerY = item.Origin.Y + item.Height * 0.5f;
-			float halfSize = Math.Min(item.Width, item.Height) * 0.28f;
-			float strokeWidth = Math.Max(1f, item.Height * 0.1f);
+			float centerX = item.Rect.Origin.X + item.Rect.Width * 0.5f;
+			float centerY = item.Rect.Origin.Y + item.Rect.Height * 0.5f;
+			float halfSize = Math.Min(item.Rect.Width, item.Rect.Height) * 0.28f;
+			float strokeWidth = Math.Max(1f, item.Rect.Height * 0.1f);
 			var pen = GetPen(color, strokeWidth, PenLineCap.Round, PenLineJoin.Round);
 
 			Point p1;
@@ -998,8 +999,8 @@ namespace SweetEditor {
 			int trackColor = ((int)theme.ScrollbarTrackColor & 0x00FFFFFF) | (alpha << 24);
 			int thumbColor = ((int)(model.ThumbActive ? theme.ScrollbarThumbActiveColor : theme.ScrollbarThumbColor) & 0x00FFFFFF) | (alpha << 24);
 
-			context.FillRectangle(GetBrush(trackColor), new Rect(Snap(model.Track.Origin.X), Snap(model.Track.Origin.Y), Snap(model.Track.Width), Snap(model.Track.Height)));
-			context.FillRectangle(GetBrush(thumbColor), new Rect(Snap(model.Thumb.Origin.X), Snap(model.Thumb.Origin.Y), Snap(model.Thumb.Width), Snap(model.Thumb.Height)));
+			context.FillRectangle(GetBrush(trackColor), new AvaloniaRect(Snap(model.Track.Origin.X), Snap(model.Track.Origin.Y), Snap(model.Track.Width), Snap(model.Track.Height)));
+			context.FillRectangle(GetBrush(thumbColor), new AvaloniaRect(Snap(model.Thumb.Origin.X), Snap(model.Thumb.Origin.Y), Snap(model.Thumb.Width), Snap(model.Thumb.Height)));
 		}
 
 		private int GetActiveLineNumberColor() {
@@ -1048,12 +1049,12 @@ namespace SweetEditor {
 			return argb;
 		}
 
-		private static Rect GetContentClipRect(EditorRenderModel model, Size viewportSize) {
+		private static AvaloniaRect GetContentClipRect(EditorRenderModel model, Size viewportSize) {
 			double left = model.GutterVisible && model.GutterSticky
 				? Math.Max(0, model.SplitX)
 				: 0;
 			double width = Math.Max(0, viewportSize.Width - left);
-			return new Rect(left, 0, width, Math.Max(0, viewportSize.Height));
+			return new AvaloniaRect(left, 0, width, Math.Max(0, viewportSize.Height));
 		}
 
 		private Pen GetPen(int argb, double thickness, PenLineCap lineCap = PenLineCap.Flat, PenLineJoin lineJoin = PenLineJoin.Miter) {

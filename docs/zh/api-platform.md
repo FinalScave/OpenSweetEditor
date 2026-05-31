@@ -20,7 +20,7 @@
 | Swing | Java FFM -> C API | ✅ 已接入 | 消费 binary payload |
 | WinForms | P/Invoke -> C API | ✅ 已接入 | 消费 binary payload |
 | Apple | Swift Package + 手工 C bridge | ✅ 已接入 | 主要消费 binary payload；bridge header 与 `c_api.h` 仍需显式对照 |
-| OHOS | ArkTS NAPI 直连共享 C++（`libsweeteditor.so`） | ✅ 已接入 | `EditorCore.ets` + `EditorProtocol.ets` 在 ArkTS 侧解码 binary payload |
+| OHOS | ArkTS NAPI 直连共享 C++（`libsweeteditor.so`） | ✅ 已接入 | `EditorCore.ets` + `CoreProtocol.ets` 在 ArkTS 侧解码 binary payload |
 | Web (Emscripten) | 非官方 fork（`LangLang03/OpenSweetEditor-Web`） | 🧪 测试中 | Web 平台为实验性开发，维护于 fork 仓库：<https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten> |
 
 ## 当前平台层约定

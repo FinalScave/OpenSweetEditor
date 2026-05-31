@@ -1,4 +1,21 @@
-part of '../editor_core.dart';
+import 'dart:convert';
+import 'dart:ffi' as ffi;
+import 'dart:typed_data';
+
+import 'package:ffi/ffi.dart';
+
+import '../sweeteditor_bindings_generated.dart' as bindings;
+
+part 'core_action.dart';
+part 'core_config.dart';
+part 'core_foundation.dart';
+part 'core_adornments.dart';
+part 'core_ime.dart';
+part 'core_interaction.dart';
+part 'core_keymap.dart';
+part 'core_linked_editing.dart';
+part 'core_visual.dart';
+part 'core_protocol.dart';
 
 class SweetEditorException implements Exception {
   SweetEditorException(this.message);
@@ -9,380 +26,96 @@ class SweetEditorException implements Exception {
   String toString() => 'SweetEditorException: $message';
 }
 
-/// Gesture event types.
-class EventType {
-  EventType._();
-
-  static const int undefined = 0;
-  static const int touchDown = 1;
-  static const int touchPointerDown = 2;
-  static const int touchMove = 3;
-  static const int touchPointerUp = 4;
-  static const int touchUp = 5;
-  static const int touchCancel = 6;
-  static const int mouseDown = 7;
-  static const int mouseMove = 8;
-  static const int mouseUp = 9;
-  static const int mouseWheel = 10;
-  static const int mouseRightDown = 11;
-  static const int directScale = 12;
-  static const int directScroll = 13;
+ffi.Pointer<ffi.Char> _toNativeUtf8(String value, ffi.Allocator allocator) {
+  return value.toNativeUtf8(allocator: allocator).cast<ffi.Char>();
 }
 
-/// Modifier key flags.
-class Modifier {
-  Modifier._();
-
-  static const int none = 0;
-  static const int shift = 1;
-  static const int ctrl = 2;
-  static const int alt = 4;
-  static const int meta = 8;
-}
-
-/// Gesture type (result type, not input event type).
-enum GestureType {
-  undefined(0),
-  tap(1),
-  doubleTap(2),
-  longPress(3),
-  scale(4),
-  scroll(5),
-  fastScroll(6),
-  dragSelect(7),
-  contextMenu(8);
-
-  const GestureType(this.value);
-  final int value;
-
-  static GestureType fromValue(int value) => GestureType.values.firstWhere(
-    (e) => e.value == value,
-    orElse: () => undefined,
+ffi.Pointer<ffi.Uint16> _toNativeUtf16(String value, ffi.Allocator allocator) {
+  final units = value.codeUnits;
+  final ptr = allocator.allocate<ffi.Uint16>(
+    (units.length + 1) * ffi.sizeOf<ffi.Uint16>(),
   );
+  final list = ptr.asTypedList(units.length + 1);
+  list.setAll(0, units);
+  list[units.length] = 0;
+  return ptr;
 }
 
-/// Hit target type.
-enum HitTargetType {
-  none(0),
-  inlayHintText(1),
-  inlayHintIcon(2),
-  gutterIcon(3),
-  foldPlaceholder(4),
-  foldGutter(5),
-  inlayHintColor(6),
-  codelens(7),
-  link(8);
-
-  const HitTargetType(this.value);
-  final int value;
-
-  static HitTargetType fromValue(int value) => HitTargetType.values.firstWhere(
-    (e) => e.value == value,
-    orElse: () => none,
-  );
-}
-
-/// Scrollbar mode.
-enum ScrollbarMode {
-  always(0),
-  transient(1),
-  never(2);
-
-  const ScrollbarMode(this.value);
-  final int value;
-}
-
-/// Scrollbar track tap mode.
-enum ScrollbarTrackTapMode {
-  jump(0),
-  disabled(1);
-
-  const ScrollbarTrackTapMode(this.value);
-  final int value;
-}
-
-/// Key code definitions matching the C++ enum.
-enum KeyCode {
-  none(0),
-  backspace(8),
-  tab(9),
-  enter(13),
-  escape(27),
-  deleteKey(46),
-  left(37),
-  up(38),
-  right(39),
-  down(40),
-  home(36),
-  end(35),
-  pageUp(33),
-  pageDown(34),
-  a(65),
-  c(67),
-  d(68),
-  v(86),
-  x(88),
-  z(90),
-  y(89),
-  k(75),
-  space(32);
-
-  const KeyCode(this.value);
-  final int value;
-}
-
-/// A single text change from an edit operation.
-class TextChange {
-  const TextChange(this.range, this.newText);
-
-  final TextRange range;
-  final String newText;
-}
-
-enum EditorActionReason {
-  none(0),
-  setup(1),
-  textEdit(2),
-  keyInput(3),
-  ime(4),
-  gesture(5),
-  animation(6),
-  programmatic(7),
-  decoration(8),
-  folding(9),
-  linkedEditing(10),
-  textInsert(11),
-  textReplace(12),
-  textDelete(13),
-  textUndo(14),
-  textRedo(15);
-
-  const EditorActionReason(this.value);
-  final int value;
-
-  static EditorActionReason fromValue(int value) => EditorActionReason.values
-      .firstWhere((e) => e.value == value, orElse: () => none);
-}
-
-/// Hit target from a gesture.
-class HitTarget {
-  const HitTarget({
-    this.type = HitTargetType.none,
-    this.line = 0,
-    this.column = 0,
-    this.iconId = 0,
-    this.colorValue = 0,
-  });
-
-  final HitTargetType type;
-  final int line;
-  final int column;
-  final int iconId;
-  final int colorValue;
-}
-
-class EditorActionResult {
-  const EditorActionResult({
-    this.handled = false,
-    this.needsRedraw = false,
-    this.reason = EditorActionReason.none,
-    this.contentChanged = false,
-    this.cursorChanged = false,
-    this.selectionChanged = false,
-    this.scrollChanged = false,
-    this.scaleChanged = false,
-    this.pointerCursorChanged = false,
-    this.compositionChanged = false,
-    this.decorationChanged = false,
-    this.needsImeSync = false,
-    this.needsEdgeScroll = false,
-    this.needsFling = false,
-    this.needsAnimation = false,
-    this.isHandleDrag = false,
-    this.changes = const <TextChange>[],
-    this.cursorBefore = const TextPosition(0, 0),
-    this.cursorAfter = const TextPosition(0, 0),
-    this.hasSelectionBefore = false,
-    this.selectionBefore = const TextRange(
-      TextPosition(0, 0),
-      TextPosition(0, 0),
-    ),
-    this.hasSelectionAfter = false,
-    this.selectionAfter = const TextRange(
-      TextPosition(0, 0),
-      TextPosition(0, 0),
-    ),
-    this.scrollXBefore = 0,
-    this.scrollYBefore = 0,
-    this.scrollXAfter = 0,
-    this.scrollYAfter = 0,
-    this.scaleBefore = 1,
-    this.scaleAfter = 1,
-    this.pointerCursorBefore = PointerCursorType.text,
-    this.pointerCursorAfter = PointerCursorType.text,
-    this.imeSync = ImeSyncSnapshot.empty,
-    this.gestureType = GestureType.undefined,
-    this.gestureEventType = EventType.undefined,
-    this.tapPoint = const PointF(),
-    this.hitTarget = const HitTarget(),
-    this.modifiers = Modifier.none,
-    this.command = EditorCommand.none,
-  });
-
-  static const EditorActionResult empty = EditorActionResult();
-
-  final bool handled;
-  final bool needsRedraw;
-  final EditorActionReason reason;
-  final bool contentChanged;
-  final bool cursorChanged;
-  final bool selectionChanged;
-  final bool scrollChanged;
-  final bool scaleChanged;
-  final bool pointerCursorChanged;
-  final bool compositionChanged;
-  final bool decorationChanged;
-  final bool needsImeSync;
-  final bool needsEdgeScroll;
-  final bool needsFling;
-  final bool needsAnimation;
-  final bool isHandleDrag;
-  final List<TextChange> changes;
-  final TextPosition cursorBefore;
-  final TextPosition cursorAfter;
-  final bool hasSelectionBefore;
-  final TextRange selectionBefore;
-  final bool hasSelectionAfter;
-  final TextRange selectionAfter;
-  final double scrollXBefore;
-  final double scrollYBefore;
-  final double scrollXAfter;
-  final double scrollYAfter;
-  final double scaleBefore;
-  final double scaleAfter;
-  final PointerCursorType pointerCursorBefore;
-  final PointerCursorType pointerCursorAfter;
-  final ImeSyncSnapshot imeSync;
-  final GestureType gestureType;
-  final int gestureEventType;
-  final PointF tapPoint;
-  final HitTarget hitTarget;
-  final int modifiers;
-  final int command;
-}
-
-/// Editor options passed to create_editor as binary payload.
-class EditorOptions {
-  const EditorOptions({
-    this.touchSlop = 10,
-    this.doubleTapTimeout = 300,
-    this.longPressMs = 500,
-    this.flingFriction = 3.5,
-    this.flingMinVelocity = 50,
-    this.flingMaxVelocity = 8000,
-    this.maxUndoStackSize = 512,
-    this.keyChordTimeoutMs = 2000,
-    this.revealSelectionEndOnSelectAll = false,
-  });
-
-  final double touchSlop;
-  final int doubleTapTimeout;
-  final int longPressMs;
-  final double flingFriction;
-  final double flingMinVelocity;
-  final double flingMaxVelocity;
-  final int maxUndoStackSize;
-  final int keyChordTimeoutMs;
-  final bool revealSelectionEndOnSelectAll;
-
-  /// Serialize to LE binary payload matching C API EditorOptions layout.
-  Uint8List toBytes() {
-    final data = ByteData(4 + 8 + 8 + 4 + 4 + 4 + 8 + 8 + 1);
-    var offset = 0;
-    data.setFloat32(offset, touchSlop, Endian.little);
-    offset += 4;
-    data.setInt64(offset, doubleTapTimeout, Endian.little);
-    offset += 8;
-    data.setInt64(offset, longPressMs, Endian.little);
-    offset += 8;
-    data.setFloat32(offset, flingFriction, Endian.little);
-    offset += 4;
-    data.setFloat32(offset, flingMinVelocity, Endian.little);
-    offset += 4;
-    data.setFloat32(offset, flingMaxVelocity, Endian.little);
-    offset += 4;
-    data.setUint64(offset, maxUndoStackSize, Endian.little);
-    offset += 8;
-    data.setInt64(offset, keyChordTimeoutMs, Endian.little);
-    offset += 8;
-    data.setUint8(offset, revealSelectionEndOnSelectAll ? 1 : 0);
-    return data.buffer.asUint8List();
+String _readNativeUtf8(ffi.Pointer<ffi.Char> ptr) {
+  if (ptr == ffi.nullptr) return '';
+  try {
+    return ptr.cast<Utf8>().toDartString();
+  } finally {
+    bindings.free_u8_string(ptr.address);
   }
 }
 
-/// Handle hit-test configuration.
-class HandleConfig {
-  const HandleConfig({
-    this.startLeft = -32.1,
-    this.startTop = -8.0,
-    this.startRight = 8.0,
-    this.startBottom = 32.1,
-    this.endLeft = -8.0,
-    this.endTop = -8.0,
-    this.endRight = 32.1,
-    this.endBottom = 32.1,
-  });
-
-  final double startLeft;
-  final double startTop;
-  final double startRight;
-  final double startBottom;
-  final double endLeft;
-  final double endTop;
-  final double endRight;
-  final double endBottom;
+String _readNativeUtf16(ffi.Pointer<ffi.Uint16> ptr) {
+  if (ptr == ffi.nullptr) return '';
+  try {
+    var len = 0;
+    while (ptr[len] != 0) {
+      len++;
+    }
+    if (len == 0) return '';
+    return String.fromCharCodes(ptr.asTypedList(len));
+  } finally {
+    bindings.free_u16_string(ptr.address);
+  }
 }
 
-/// Scrollbar configuration.
-class ScrollbarConfig {
-  const ScrollbarConfig({
-    this.thickness = 10.0,
-    this.minThumb = 24.0,
-    this.thumbHitPadding = 0.0,
-    this.mode = ScrollbarMode.always,
-    this.thumbDraggable = true,
-    this.trackTapMode = ScrollbarTrackTapMode.jump,
-    this.fadeDelayMs = 1500,
-    this.fadeDurationMs = 300,
+T _callAndParse<T>(
+  T emptyValue,
+  ffi.Pointer<ffi.Uint8> Function(ffi.Pointer<ffi.Size> outSize) nativeCall,
+  T Function(ffi.Pointer<ffi.Uint8> ptr, int size) parser,
+) {
+  return using((arena) {
+    final outSize = arena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
+    final ptr = nativeCall(outSize);
+    if (ptr == ffi.nullptr) return emptyValue;
+    final size = outSize.value;
+    try {
+      return parser(ptr, size);
+    } finally {
+      bindings.free_binary_data(ptr.address);
+    }
   });
-
-  final double thickness;
-  final double minThumb;
-  final double thumbHitPadding;
-  final ScrollbarMode mode;
-  final bool thumbDraggable;
-  final ScrollbarTrackTapMode trackTapMode;
-  final int fadeDelayMs;
-  final int fadeDurationMs;
 }
 
-/// Gesture event input.
-class GestureEvent {
-  const GestureEvent({
-    required this.type,
-    required this.points,
-    this.modifiers = Modifier.none,
-    this.wheelDeltaX = 0,
-    this.wheelDeltaY = 0,
-    this.directScale = 1,
-  });
+EditorActionResult _callAndParseAction(
+  ffi.Pointer<ffi.Uint8> Function(ffi.Pointer<ffi.Size> outSize) nativeCall,
+) {
+  return _callAndParse(
+    const EditorActionResult(),
+    nativeCall,
+    CoreProtocol.decodeEditorActionResultFromPointer,
+  );
+}
 
-  final int type;
-  final List<PointF> points;
-  final int modifiers;
-  final double wheelDeltaX;
-  final double wheelDeltaY;
-  final double directScale;
+EditorActionResult _callWithBinaryActionData(
+  Uint8List data,
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.Pointer<ffi.Uint8>,
+    int,
+    ffi.Pointer<ffi.Size>,
+  )
+  fn,
+) {
+  return using((arena) {
+    final ptr = arena.allocate<ffi.Uint8>(data.length);
+    ptr.asTypedList(data.length).setAll(0, data);
+    final outSize = arena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
+    final resultPtr = fn(ptr, data.length, outSize);
+    if (resultPtr == ffi.nullptr) return const EditorActionResult();
+    try {
+      return CoreProtocol.decodeEditorActionResultFromPointer(
+        resultPtr,
+        outSize.value,
+      );
+    } finally {
+      bindings.free_binary_data(resultPtr.address);
+    }
+  });
 }
 
 class EditorCore {
@@ -401,7 +134,7 @@ class EditorCore {
     EditorOptions options,
   ) {
     return using((arena) {
-      final bytes = options.toBytes();
+      final bytes = CoreProtocol.encodeEditorOptions(options);
       final optionsPtr = arena.allocate<ffi.Uint8>(bytes.length);
       optionsPtr.asTypedList(bytes.length).setAll(0, bytes);
       return bindings.create_editor(measurer, optionsPtr, bytes.length);
@@ -418,7 +151,7 @@ class EditorCore {
     document._ensureOpen();
     return _callAndParseAction(
       (outSize) =>
-          bindings.set_editor_document(_handle, document._handle, outSize),
+          bindings.editor_set_document(_handle, document._handle, outSize),
     );
   }
 
@@ -426,7 +159,7 @@ class EditorCore {
     _ensureOpen();
     return _callAndParseAction(
       (outSize) =>
-          bindings.set_editor_viewport(_handle, width, height, outSize),
+          bindings.editor_set_viewport(_handle, width, height, outSize),
     );
   }
 
@@ -467,9 +200,9 @@ class EditorCore {
     );
   }
 
-  EditorActionResult setKeyMap(KeyMap keyMap) {
+  EditorActionResult setKeyMap(List<KeyBinding> keyBindings) {
     _ensureOpen();
-    final bytes = keyMap.toBytes();
+    final bytes = CoreProtocol.encodeSetKeyMapPayload(keyBindings);
     return _callWithBinaryActionData(
       bytes,
       (ptr, len, outSize) =>
@@ -577,37 +310,19 @@ class EditorCore {
 
   EditorActionResult setHandleConfig(HandleConfig config) {
     _ensureOpen();
-    return _callAndParseAction(
-      (outSize) => bindings.editor_set_handle_config(
-        _handle,
-        config.startLeft,
-        config.startTop,
-        config.startRight,
-        config.startBottom,
-        config.endLeft,
-        config.endTop,
-        config.endRight,
-        config.endBottom,
-        outSize,
-      ),
+    return _callWithBinaryActionData(
+      CoreProtocol.encodeHandleConfig(config),
+      (data, size, outSize) =>
+          bindings.editor_set_handle_config(_handle, data, size, outSize),
     );
   }
 
   EditorActionResult setScrollbarConfig(ScrollbarConfig config) {
     _ensureOpen();
-    return _callAndParseAction(
-      (outSize) => bindings.editor_set_scrollbar_config(
-        _handle,
-        config.thickness,
-        config.minThumb,
-        config.thumbHitPadding,
-        config.mode.value,
-        config.thumbDraggable ? 1 : 0,
-        config.trackTapMode.value,
-        config.fadeDelayMs,
-        config.fadeDurationMs,
-        outSize,
-      ),
+    return _callWithBinaryActionData(
+      CoreProtocol.encodeScrollbarConfig(config),
+      (data, size, outSize) =>
+          bindings.editor_set_scrollbar_config(_handle, data, size, outSize),
     );
   }
 
@@ -615,9 +330,9 @@ class EditorCore {
   EditorRenderModel buildRenderModel() {
     _ensureOpen();
     return _callAndParse(
-      EditorRenderModel.empty,
-      (outSize) => bindings.build_editor_render_model(_handle, outSize),
-      ProtocolDecoder.decodeRenderModel,
+      const EditorRenderModel(),
+      (outSize) => bindings.editor_build_render_model(_handle, outSize),
+      CoreProtocol.decodeEditorRenderModelFromPointer,
     );
   }
 
@@ -626,7 +341,7 @@ class EditorCore {
     _ensureOpen();
     return using((arena) {
       final outSize = arena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
-      final ptr = bindings.build_editor_render_model(_handle, outSize);
+      final ptr = bindings.editor_build_render_model(_handle, outSize);
       if (ptr == ffi.nullptr) return null;
       final size = outSize.value;
       final bytes = Uint8List.fromList(ptr.asTypedList(size));
@@ -638,105 +353,42 @@ class EditorCore {
   LayoutMetrics getLayoutMetrics() {
     _ensureOpen();
     return _callAndParse(
-      LayoutMetrics.empty,
-      (outSize) => bindings.get_layout_metrics(_handle, outSize),
-      ProtocolDecoder.decodeLayoutMetrics,
+      const LayoutMetrics(),
+      (outSize) => bindings.editor_get_layout_metrics(_handle, outSize),
+      CoreProtocol.decodeLayoutMetricsFromPointer,
     );
   }
 
   EditorActionResult handleGestureEvent(GestureEvent event) {
-    return handleGestureEventEx(
-      type: event.type,
-      points: event.points,
-      modifiers: event.modifiers,
-      wheelDeltaX: event.wheelDeltaX,
-      wheelDeltaY: event.wheelDeltaY,
-      directScale: event.directScale,
-    );
-  }
-
-  EditorActionResult handleGestureEventEx({
-    required int type,
-    required List<PointF> points,
-    int modifiers = 0,
-    double wheelDeltaX = 0,
-    double wheelDeltaY = 0,
-    double directScale = 0,
-  }) {
     _ensureOpen();
-    return using((arena) {
-      final flatPoints = <double>[];
-      for (final p in points) {
-        flatPoints.add(p.x);
-        flatPoints.add(p.y);
-      }
-      final pointsPtr = arena.allocate<ffi.Float>(
-        flatPoints.length * ffi.sizeOf<ffi.Float>(),
-      );
-      for (var i = 0; i < flatPoints.length; i++) {
-        (pointsPtr + i).value = flatPoints[i];
-      }
-      final outSize = arena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
-      final ptr = bindings.handle_editor_gesture_event_ex(
-        _handle,
-        type,
-        points.length,
-        pointsPtr,
-        modifiers,
-        wheelDeltaX,
-        wheelDeltaY,
-        directScale,
-        outSize,
-      );
-      if (ptr == ffi.nullptr) return EditorActionResult.empty;
-      final size = outSize.value;
-      try {
-        return ProtocolDecoder.decodeEditorActionResult(ptr, size);
-      } finally {
-        bindings.free_binary_data(ptr.address);
-      }
-    });
+    return _callWithBinaryActionData(
+      CoreProtocol.encodeGestureEvent(event),
+      (data, size, outSize) =>
+          bindings.editor_handle_gesture_event(_handle, data, size, outSize),
+    );
   }
 
   EditorActionResult updatePointerModifiers(int modifiers) {
     _ensureOpen();
     return _callAndParse(
-      EditorActionResult.empty,
+      const EditorActionResult(),
       (outSize) =>
           bindings.editor_update_pointer_modifiers(_handle, modifiers, outSize),
-      ProtocolDecoder.decodeEditorActionResult,
-    );
-  }
-
-  EditorActionResult tickEdgeScroll() {
-    _ensureOpen();
-    return _callAndParse(
-      EditorActionResult.empty,
-      (outSize) => bindings.editor_tick_edge_scroll(_handle, outSize),
-      ProtocolDecoder.decodeEditorActionResult,
-    );
-  }
-
-  EditorActionResult tickFling() {
-    _ensureOpen();
-    return _callAndParse(
-      EditorActionResult.empty,
-      (outSize) => bindings.editor_tick_fling(_handle, outSize),
-      ProtocolDecoder.decodeEditorActionResult,
+      CoreProtocol.decodeEditorActionResultFromPointer,
     );
   }
 
   EditorActionResult tickAnimations() {
     _ensureOpen();
     return _callAndParse(
-      EditorActionResult.empty,
+      const EditorActionResult(),
       (outSize) => bindings.editor_tick_animations(_handle, outSize),
-      ProtocolDecoder.decodeEditorActionResult,
+      CoreProtocol.decodeEditorActionResultFromPointer,
     );
   }
 
   EditorActionResult handleKeyEvent(
-    KeyCode keyCode, {
+    int keyCode, {
     String? text,
     int modifiers = 0,
   }) {
@@ -746,17 +398,17 @@ class EditorCore {
           ? _toNativeUtf8(text, arena)
           : ffi.nullptr.cast<ffi.Char>();
       final outSize = arena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
-      final ptr = bindings.handle_editor_key_event(
+      final ptr = bindings.editor_handle_key_event(
         _handle,
-        keyCode.value,
+        keyCode,
         textPtr,
         modifiers,
         outSize,
       );
-      if (ptr == ffi.nullptr) return EditorActionResult.empty;
+      if (ptr == ffi.nullptr) return const EditorActionResult();
       final size = outSize.value;
       try {
-        return ProtocolDecoder.decodeEditorActionResult(ptr, size);
+        return CoreProtocol.decodeEditorActionResultFromPointer(ptr, size);
       } finally {
         bindings.free_binary_data(ptr.address);
       }
@@ -768,9 +420,9 @@ class EditorCore {
     return using((arena) {
       final textPtr = _toNativeUtf8(text, arena);
       return _callAndParse(
-        EditorActionResult.empty,
+        const EditorActionResult(),
         (outSize) => bindings.editor_insert_text(_handle, textPtr, outSize),
-        ProtocolDecoder.decodeEditorActionResult,
+        CoreProtocol.decodeEditorActionResultFromPointer,
       );
     });
   }
@@ -786,7 +438,7 @@ class EditorCore {
     return using((arena) {
       final textPtr = _toNativeUtf8(text, arena);
       return _callAndParse(
-        EditorActionResult.empty,
+        const EditorActionResult(),
         (outSize) => bindings.editor_replace_text(
           _handle,
           startLine,
@@ -796,7 +448,7 @@ class EditorCore {
           textPtr,
           outSize,
         ),
-        ProtocolDecoder.decodeEditorActionResult,
+        CoreProtocol.decodeEditorActionResultFromPointer,
       );
     });
   }
@@ -809,7 +461,7 @@ class EditorCore {
   ) {
     _ensureOpen();
     return _callAndParse(
-      EditorActionResult.empty,
+      const EditorActionResult(),
       (outSize) => bindings.editor_delete_text(
         _handle,
         startLine,
@@ -818,7 +470,7 @@ class EditorCore {
         endColumn,
         outSize,
       ),
-      ProtocolDecoder.decodeEditorActionResult,
+      CoreProtocol.decodeEditorActionResultFromPointer,
     );
   }
 
@@ -850,9 +502,9 @@ class EditorCore {
   ) {
     _ensureOpen();
     return _callAndParse(
-      EditorActionResult.empty,
+      const EditorActionResult(),
       fn,
-      ProtocolDecoder.decodeEditorActionResult,
+      CoreProtocol.decodeEditorActionResultFromPointer,
     );
   }
 
@@ -880,7 +532,7 @@ class EditorCore {
       final outLine = arena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
       final outColumn = arena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
       bindings.editor_get_cursor_position(_handle, outLine, outColumn);
-      return TextPosition(outLine.value, outColumn.value);
+      return TextPosition(line: outLine.value, column: outColumn.value);
     });
   }
 
@@ -921,8 +573,8 @@ class EditorCore {
         return null;
       }
       return TextRange(
-        TextPosition(sl.value, sc.value),
-        TextPosition(el.value, ec.value),
+        start: TextPosition(line: sl.value, column: sc.value),
+        end: TextPosition(line: el.value, column: ec.value),
       );
     });
   }
@@ -941,8 +593,8 @@ class EditorCore {
       final ec = arena.allocate<ffi.Size>(ffi.sizeOf<ffi.Size>());
       bindings.editor_get_word_range_at_cursor(_handle, sl, sc, el, ec);
       return TextRange(
-        TextPosition(sl.value, sc.value),
-        TextPosition(el.value, ec.value),
+        start: TextPosition(line: sl.value, column: sc.value),
+        end: TextPosition(line: el.value, column: ec.value),
       );
     });
   }
@@ -1061,14 +713,14 @@ class EditorCore {
     return using((arena) {
       final textPtr = _toNativeUtf8(text, arena);
       return _callAndParse(
-        EditorActionResult.empty,
+        const EditorActionResult(),
         (outSize) => bindings.editor_ime_update_preedit(
           _handle,
           textPtr,
           scriptClass.value,
           outSize,
         ),
-        ProtocolDecoder.decodeEditorActionResult,
+        CoreProtocol.decodeEditorActionResultFromPointer,
       );
     });
   }
@@ -1082,7 +734,7 @@ class EditorCore {
     return using((arena) {
       final textPtr = _toNativeUtf8(text, arena);
       return _callAndParse(
-        EditorActionResult.empty,
+        const EditorActionResult(),
         (outSize) => bindings.editor_ime_set_composing_text(
           _handle,
           textPtr,
@@ -1090,7 +742,7 @@ class EditorCore {
           scriptClass.value,
           outSize,
         ),
-        ProtocolDecoder.decodeEditorActionResult,
+        CoreProtocol.decodeEditorActionResultFromPointer,
       );
     });
   }
@@ -1105,7 +757,7 @@ class EditorCore {
     return using((arena) {
       final textPtr = _toNativeUtf8(text, arena);
       return _callAndParse(
-        EditorActionResult.empty,
+        const EditorActionResult(),
         (outSize) => bindings.editor_ime_set_composing_text_selection(
           _handle,
           textPtr,
@@ -1114,7 +766,7 @@ class EditorCore {
           scriptClass.value,
           outSize,
         ),
-        ProtocolDecoder.decodeEditorActionResult,
+        CoreProtocol.decodeEditorActionResultFromPointer,
       );
     });
   }
@@ -1128,7 +780,7 @@ class EditorCore {
     return using((arena) {
       final textPtr = _toNativeUtf8(text, arena);
       return _callAndParse(
-        EditorActionResult.empty,
+        const EditorActionResult(),
         (outSize) => cursorOffset == null
             ? bindings.editor_ime_commit_text(
                 _handle,
@@ -1143,7 +795,7 @@ class EditorCore {
                 scriptClass.value,
                 outSize,
               ),
-        ProtocolDecoder.decodeEditorActionResult,
+        CoreProtocol.decodeEditorActionResultFromPointer,
       );
     });
   }
@@ -1151,18 +803,18 @@ class EditorCore {
   EditorActionResult finishImePreedit() {
     _ensureOpen();
     return _callAndParse(
-      EditorActionResult.empty,
+      const EditorActionResult(),
       (outSize) => bindings.editor_ime_finish_preedit(_handle, outSize),
-      ProtocolDecoder.decodeEditorActionResult,
+      CoreProtocol.decodeEditorActionResultFromPointer,
     );
   }
 
   EditorActionResult cancelImePreedit() {
     _ensureOpen();
     return _callAndParse(
-      EditorActionResult.empty,
+      const EditorActionResult(),
       (outSize) => bindings.editor_ime_cancel_preedit(_handle, outSize),
-      ProtocolDecoder.decodeEditorActionResult,
+      CoreProtocol.decodeEditorActionResultFromPointer,
     );
   }
 
@@ -1172,7 +824,7 @@ class EditorCore {
   }) {
     _ensureOpen();
     return _callAndParse(
-      EditorActionResult.empty,
+      const EditorActionResult(),
       (outSize) => bindings.editor_ime_mark_document_range(
         _handle,
         range.start.line,
@@ -1182,7 +834,7 @@ class EditorCore {
         scriptClass.value,
         outSize,
       ),
-      ProtocolDecoder.decodeEditorActionResult,
+      CoreProtocol.decodeEditorActionResultFromPointer,
     );
   }
 
@@ -1193,7 +845,7 @@ class EditorCore {
   }) {
     _ensureOpen();
     return _callAndParse(
-      EditorActionResult.empty,
+      const EditorActionResult(),
       (outSize) => bindings.editor_ime_mark_document_range_by_offset(
         _handle,
         startOffset,
@@ -1201,85 +853,50 @@ class EditorCore {
         scriptClass.value,
         outSize,
       ),
-      ProtocolDecoder.decodeEditorActionResult,
+      CoreProtocol.decodeEditorActionResultFromPointer,
     );
   }
 
-  EditorActionResult replaceImeText(
-    TextRange range,
-    String text, {
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
+  EditorActionResult replaceImeText(ImeTextReplacement replacement) {
     _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        EditorActionResult.empty,
-        (outSize) => bindings.editor_ime_replace_text(
-          _handle,
-          range.start.line,
-          range.start.column,
-          range.end.line,
-          range.end.column,
-          textPtr,
-          scriptClass.value,
-          outSize,
-        ),
-        ProtocolDecoder.decodeEditorActionResult,
-      );
-    });
+    final bytes = CoreProtocol.encodeImeTextReplacement(replacement);
+    return _callWithBinaryActionData(
+      bytes,
+      (ptr, len, outSize) =>
+          bindings.editor_ime_replace_text(_handle, ptr, len, outSize),
+    );
   }
 
   EditorActionResult replaceImeDocumentText(
-    int startOffset,
-    int endOffset,
-    String text, {
-    int cursorOffset = 1,
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
+    ImeDocumentTextReplacement replacement,
+  ) {
     _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        EditorActionResult.empty,
-        (outSize) => bindings.editor_ime_replace_document_text(
-          _handle,
-          startOffset,
-          endOffset,
-          textPtr,
-          cursorOffset,
-          scriptClass.value,
-          outSize,
-        ),
-        ProtocolDecoder.decodeEditorActionResult,
-      );
-    });
+    final bytes = CoreProtocol.encodeImeDocumentTextReplacement(replacement);
+    return _callWithBinaryActionData(
+      bytes,
+      (ptr, len, outSize) => bindings.editor_ime_replace_document_text(
+        _handle,
+        ptr,
+        len,
+        outSize,
+      ),
+    );
   }
 
   EditorActionResult replaceImeInputContextText(
-    int startOffset,
-    int endOffset,
-    String text, {
-    int cursorOffset = 1,
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
+    ImeInputContextTextReplacement replacement,
+  ) {
     _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        EditorActionResult.empty,
-        (outSize) => bindings.editor_ime_replace_input_context_text(
-          _handle,
-          startOffset,
-          endOffset,
-          textPtr,
-          cursorOffset,
-          scriptClass.value,
-          outSize,
-        ),
-        ProtocolDecoder.decodeEditorActionResult,
-      );
-    });
+    final bytes = CoreProtocol.encodeImeInputContextTextReplacement(replacement);
+    return _callWithBinaryActionData(
+      bytes,
+      (ptr, len, outSize) => bindings.editor_ime_replace_input_context_text(
+        _handle,
+        ptr,
+        len,
+        outSize,
+      ),
+    );
   }
 
   EditorActionResult markImeInputContextRange(
@@ -1289,7 +906,7 @@ class EditorCore {
   }) {
     _ensureOpen();
     return _callAndParse(
-      EditorActionResult.empty,
+      const EditorActionResult(),
       (outSize) => bindings.editor_ime_mark_input_context_range(
         _handle,
         startOffset,
@@ -1297,7 +914,7 @@ class EditorCore {
         scriptClass.value,
         outSize,
       ),
-      ProtocolDecoder.decodeEditorActionResult,
+      CoreProtocol.decodeEditorActionResultFromPointer,
     );
   }
 
@@ -1307,14 +924,14 @@ class EditorCore {
   ) {
     _ensureOpen();
     return _callAndParse(
-      EditorActionResult.empty,
+      const EditorActionResult(),
       (outSize) => bindings.editor_ime_notify_document_selection_changed(
         _handle,
         startOffset,
         endOffset,
         outSize,
       ),
-      ProtocolDecoder.decodeEditorActionResult,
+      CoreProtocol.decodeEditorActionResultFromPointer,
     );
   }
 
@@ -1324,122 +941,35 @@ class EditorCore {
   ) {
     _ensureOpen();
     return _callAndParse(
-      EditorActionResult.empty,
+      const EditorActionResult(),
       (outSize) => bindings.editor_ime_notify_input_context_selection_changed(
         _handle,
         startOffset,
         endOffset,
         outSize,
       ),
-      ProtocolDecoder.decodeEditorActionResult,
+      CoreProtocol.decodeEditorActionResultFromPointer,
     );
   }
 
-  EditorActionResult updateImeInputStateText({
-    required int contextId,
-    required int documentStartOffset,
-    required String text,
-    required int selectionStartOffset,
-    required int selectionEndOffset,
-    required int composingStartOffset,
-    required int composingEndOffset,
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
+  EditorActionResult updateImeTextModelState(ImeTextModelState state) {
     _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        EditorActionResult.empty,
-        (outSize) => bindings.editor_ime_update_input_state_text(
-          _handle,
-          contextId,
-          documentStartOffset,
-          textPtr,
-          selectionStartOffset,
-          selectionEndOffset,
-          composingStartOffset,
-          composingEndOffset,
-          scriptClass.value,
-          outSize,
-        ),
-        ProtocolDecoder.decodeEditorActionResult,
-      );
-    });
+    final bytes = CoreProtocol.encodeImeTextModelState(state);
+    return _callWithBinaryActionData(
+      bytes,
+      (ptr, len, outSize) =>
+          bindings.editor_ime_update_text_model_state(_handle, ptr, len, outSize),
+    );
   }
 
-  EditorActionResult updateImeTextModelState({
-    required ImeTextModelMode mode,
-    required int contextId,
-    required int documentStartOffset,
-    required String text,
-    required int selectionStartOffset,
-    required int selectionEndOffset,
-    required int composingStartOffset,
-    required int composingEndOffset,
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
+  EditorActionResult updateImeTextModelDelta(ImeTextModelDelta delta) {
     _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        EditorActionResult.empty,
-        (outSize) => bindings.editor_ime_update_text_model_state(
-          _handle,
-          mode.value,
-          contextId,
-          documentStartOffset,
-          textPtr,
-          selectionStartOffset,
-          selectionEndOffset,
-          composingStartOffset,
-          composingEndOffset,
-          scriptClass.value,
-          outSize,
-        ),
-        ProtocolDecoder.decodeEditorActionResult,
-      );
-    });
-  }
-
-  EditorActionResult updateImeTextModelDelta({
-    required ImeTextModelMode mode,
-    required int contextId,
-    required int documentStartOffset,
-    required String oldText,
-    required int deltaStartOffset,
-    required int deltaEndOffset,
-    required String deltaText,
-    required int selectionStartOffset,
-    required int selectionEndOffset,
-    required int composingStartOffset,
-    required int composingEndOffset,
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
-    _ensureOpen();
-    return using((arena) {
-      final oldTextPtr = _toNativeUtf8(oldText, arena);
-      final deltaTextPtr = _toNativeUtf8(deltaText, arena);
-      return _callAndParse(
-        EditorActionResult.empty,
-        (outSize) => bindings.editor_ime_update_text_model_delta(
-          _handle,
-          mode.value,
-          contextId,
-          documentStartOffset,
-          oldTextPtr,
-          deltaStartOffset,
-          deltaEndOffset,
-          deltaTextPtr,
-          selectionStartOffset,
-          selectionEndOffset,
-          composingStartOffset,
-          composingEndOffset,
-          scriptClass.value,
-          outSize,
-        ),
-        ProtocolDecoder.decodeEditorActionResult,
-      );
-    });
+    final bytes = CoreProtocol.encodeImeTextModelDelta(delta);
+    return _callWithBinaryActionData(
+      bytes,
+      (ptr, len, outSize) =>
+          bindings.editor_ime_update_text_model_delta(_handle, ptr, len, outSize),
+    );
   }
 
   EditorActionResult updateImeInputStateSelection({
@@ -1450,7 +980,7 @@ class EditorCore {
   }) {
     _ensureOpen();
     return _callAndParse(
-      EditorActionResult.empty,
+      const EditorActionResult(),
       (outSize) => bindings.editor_ime_update_input_state_selection(
         _handle,
         contextId,
@@ -1459,68 +989,20 @@ class EditorCore {
         selectionEndOffset,
         outSize,
       ),
-      ProtocolDecoder.decodeEditorActionResult,
+      CoreProtocol.decodeEditorActionResultFromPointer,
     );
   }
 
   EditorActionResult replaceImeInputStateText(
-    int contextId,
-    int documentStartOffset,
-    int startOffset,
-    int endOffset,
-    String text, {
-    int cursorOffset = 1,
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
+    ImeInputStateTextReplacement replacement,
+  ) {
     _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        EditorActionResult.empty,
-        (outSize) => bindings.editor_ime_replace_input_state_text(
-          _handle,
-          contextId,
-          documentStartOffset,
-          startOffset,
-          endOffset,
-          textPtr,
-          cursorOffset,
-          scriptClass.value,
-          outSize,
-        ),
-        ProtocolDecoder.decodeEditorActionResult,
-      );
-    });
-  }
-
-  EditorActionResult commitImeInputStateTextReplacement(
-    int contextId,
-    int documentStartOffset,
-    int startOffset,
-    int endOffset,
-    String text, {
-    int cursorOffset = 1,
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
-    _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        EditorActionResult.empty,
-        (outSize) => bindings.editor_ime_commit_input_state_text_replacement(
-          _handle,
-          contextId,
-          documentStartOffset,
-          startOffset,
-          endOffset,
-          textPtr,
-          cursorOffset,
-          scriptClass.value,
-          outSize,
-        ),
-        ProtocolDecoder.decodeEditorActionResult,
-      );
-    });
+    final bytes = CoreProtocol.encodeImeInputStateTextReplacement(replacement);
+    return _callWithBinaryActionData(
+      bytes,
+      (ptr, len, outSize) =>
+          bindings.editor_ime_replace_input_state_text(_handle, ptr, len, outSize),
+    );
   }
 
   EditorActionResult deleteImeBackward({
@@ -1529,14 +1011,14 @@ class EditorCore {
   }) {
     _ensureOpen();
     return _callAndParse(
-      EditorActionResult.empty,
+      const EditorActionResult(),
       (outSize) => bindings.editor_ime_delete_backward(
         _handle,
         beforeLength,
         textUnit.value,
         outSize,
       ),
-      ProtocolDecoder.decodeEditorActionResult,
+      CoreProtocol.decodeEditorActionResultFromPointer,
     );
   }
 
@@ -1546,14 +1028,14 @@ class EditorCore {
   }) {
     _ensureOpen();
     return _callAndParse(
-      EditorActionResult.empty,
+      const EditorActionResult(),
       (outSize) => bindings.editor_ime_delete_forward(
         _handle,
         afterLength,
         textUnit.value,
         outSize,
       ),
-      ProtocolDecoder.decodeEditorActionResult,
+      CoreProtocol.decodeEditorActionResultFromPointer,
     );
   }
 
@@ -1564,7 +1046,7 @@ class EditorCore {
   }) {
     _ensureOpen();
     return _callAndParse(
-      EditorActionResult.empty,
+      const EditorActionResult(),
       (outSize) => bindings.editor_ime_delete_surrounding(
         _handle,
         beforeLength,
@@ -1572,14 +1054,14 @@ class EditorCore {
         textUnit.value,
         outSize,
       ),
-      ProtocolDecoder.decodeEditorActionResult,
+      CoreProtocol.decodeEditorActionResultFromPointer,
     );
   }
 
   EditorActionResult notifyImeSelectionChanged(TextRange range) {
     _ensureOpen();
     return _callAndParse(
-      EditorActionResult.empty,
+      const EditorActionResult(),
       (outSize) => bindings.editor_ime_notify_selection_changed(
         _handle,
         range.start.line,
@@ -1588,21 +1070,21 @@ class EditorCore {
         range.end.column,
         outSize,
       ),
-      ProtocolDecoder.decodeEditorActionResult,
+      CoreProtocol.decodeEditorActionResultFromPointer,
     );
   }
 
   EditorActionResult notifyImeCursorChanged(TextPosition cursor) {
     _ensureOpen();
     return _callAndParse(
-      EditorActionResult.empty,
+      const EditorActionResult(),
       (outSize) => bindings.editor_ime_notify_cursor_changed(
         _handle,
         cursor.line,
         cursor.column,
         outSize,
       ),
-      ProtocolDecoder.decodeEditorActionResult,
+      CoreProtocol.decodeEditorActionResultFromPointer,
     );
   }
 
@@ -1627,23 +1109,23 @@ class EditorCore {
   ImeSyncSnapshot getImeSyncSnapshot() {
     _ensureOpen();
     return _callAndParse(
-      ImeSyncSnapshot.empty,
+      const ImeSyncSnapshot(),
       (outSize) => bindings.editor_get_ime_sync_snapshot(_handle, outSize),
-      ProtocolDecoder.decodeImeSyncSnapshot,
+      CoreProtocol.decodeImeSyncSnapshotFromPointer,
     );
   }
 
   ImeInputContext getImeInputContext(int beforeLength, int afterLength) {
     _ensureOpen();
     return _callAndParse(
-      ImeInputContext.empty,
+      const ImeInputContext(),
       (outSize) => bindings.editor_get_ime_input_context(
         _handle,
         beforeLength,
         afterLength,
         outSize,
       ),
-      ProtocolDecoder.decodeImeInputContext,
+      CoreProtocol.decodeImeInputContextFromPointer,
     );
   }
 
@@ -1654,7 +1136,7 @@ class EditorCore {
   ) {
     _ensureOpen();
     return _callAndParse(
-      ImeInputContext.empty,
+      const ImeInputContext(),
       (outSize) => bindings.editor_get_ime_text_model_input_context(
         _handle,
         mode.value,
@@ -1662,7 +1144,7 @@ class EditorCore {
         afterLength,
         outSize,
       ),
-      ProtocolDecoder.decodeImeInputContext,
+      CoreProtocol.decodeImeInputContextFromPointer,
     );
   }
 
@@ -1676,14 +1158,14 @@ class EditorCore {
       return null;
     }
     return TextRange(
-      TextPosition(startLine, startColumn),
-      TextPosition(endLine, endColumn),
+      start: TextPosition(line: startLine, column: startColumn),
+      end: TextPosition(line: endLine, column: endColumn),
     );
   }
 
   EditorActionResult scrollToLine(
     int line, {
-    ScrollBehavior behavior = ScrollBehavior.center,
+    ScrollBehavior behavior = ScrollBehavior.gotoCenter,
   }) {
     _ensureOpen();
     return _callAndParseAction(
@@ -1722,9 +1204,9 @@ class EditorCore {
   ScrollMetrics getScrollMetrics() {
     _ensureOpen();
     return _callAndParse(
-      ScrollMetrics.empty,
+      const ScrollMetrics(),
       (outSize) => bindings.editor_get_scroll_metrics(_handle, outSize),
-      ProtocolDecoder.decodeScrollMetrics,
+      CoreProtocol.decodeScrollMetricsFromPointer,
     );
   }
 
@@ -1734,7 +1216,7 @@ class EditorCore {
       final outStartLine = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
       final outEndLine = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
       bindings.editor_get_visible_line_range(_handle, outStartLine, outEndLine);
-      return IntRange(outStartLine.value, outEndLine.value);
+      return IntRange(start: outStartLine.value, end: outEndLine.value);
     });
   }
 
@@ -1792,7 +1274,7 @@ class EditorCore {
     List<StyleSpan> spans,
   ) {
     return setLineSpansRaw(
-      ProtocolEncoder.packLineSpans(line, layer.value, spans),
+      CoreProtocol.encodeSetLineSpansPayload(line, layer, spans),
     );
   }
 
@@ -1805,12 +1287,13 @@ class EditorCore {
     );
   }
 
-  EditorActionResult setBatchLineSpans(
+  EditorActionResult? setBatchLineSpans(
     SpanLayer layer,
     Map<int, List<StyleSpan>> spansByLine,
   ) {
+    if (spansByLine.isEmpty) return null;
     return setBatchLineSpansRaw(
-      ProtocolEncoder.packBatchLineSpans(layer.value, spansByLine),
+      CoreProtocol.encodeSetBatchLineSpansPayload(layer, spansByLine),
     );
   }
 
@@ -1825,7 +1308,7 @@ class EditorCore {
 
   EditorActionResult setLineInlayHints(int line, List<InlayHint> hints) {
     return setLineInlayHintsRaw(
-      ProtocolEncoder.packLineInlayHints(line, hints),
+      CoreProtocol.encodeSetLineInlayHintsPayload(line, hints),
     );
   }
 
@@ -1838,11 +1321,12 @@ class EditorCore {
     );
   }
 
-  EditorActionResult setBatchLineInlayHints(
+  EditorActionResult? setBatchLineInlayHints(
     Map<int, List<InlayHint>> hintsByLine,
   ) {
+    if (hintsByLine.isEmpty) return null;
     return setBatchLineInlayHintsRaw(
-      ProtocolEncoder.packBatchLineInlayHints(hintsByLine),
+      CoreProtocol.encodeSetBatchLineInlayHintsPayload(hintsByLine),
     );
   }
 
@@ -1861,7 +1345,7 @@ class EditorCore {
 
   EditorActionResult setLinePhantomTexts(int line, List<PhantomText> phantoms) {
     return setLinePhantomTextsRaw(
-      ProtocolEncoder.packLinePhantomTexts(line, phantoms),
+      CoreProtocol.encodeSetLinePhantomTextsPayload(line, phantoms),
     );
   }
 
@@ -1874,11 +1358,12 @@ class EditorCore {
     );
   }
 
-  EditorActionResult setBatchLinePhantomTexts(
+  EditorActionResult? setBatchLinePhantomTexts(
     Map<int, List<PhantomText>> phantomsByLine,
   ) {
+    if (phantomsByLine.isEmpty) return null;
     return setBatchLinePhantomTextsRaw(
-      ProtocolEncoder.packBatchLinePhantomTexts(phantomsByLine),
+      CoreProtocol.encodeSetBatchLinePhantomTextsPayload(phantomsByLine),
     );
   }
 
@@ -1897,7 +1382,7 @@ class EditorCore {
 
   EditorActionResult setLineGutterIcons(int line, List<GutterIcon> icons) {
     return setLineGutterIconsRaw(
-      ProtocolEncoder.packLineGutterIcons(line, icons),
+      CoreProtocol.encodeSetLineGutterIconsPayload(line, icons),
     );
   }
 
@@ -1910,11 +1395,12 @@ class EditorCore {
     );
   }
 
-  EditorActionResult setBatchLineGutterIcons(
+  EditorActionResult? setBatchLineGutterIcons(
     Map<int, List<GutterIcon>> iconsByLine,
   ) {
+    if (iconsByLine.isEmpty) return null;
     return setBatchLineGutterIconsRaw(
-      ProtocolEncoder.packBatchLineGutterIcons(iconsByLine),
+      CoreProtocol.encodeSetBatchLineGutterIconsPayload(iconsByLine),
     );
   }
 
@@ -1932,7 +1418,9 @@ class EditorCore {
   }
 
   EditorActionResult setLineCodeLens(int line, List<CodeLensItem> items) {
-    return setLineCodeLensRaw(ProtocolEncoder.packLineCodeLens(line, items));
+    return setLineCodeLensRaw(
+      CoreProtocol.encodeSetLineCodeLensPayload(line, items),
+    );
   }
 
   EditorActionResult setLineCodeLensRaw(Uint8List data) {
@@ -1944,11 +1432,12 @@ class EditorCore {
     );
   }
 
-  EditorActionResult setBatchLineCodeLens(
+  EditorActionResult? setBatchLineCodeLens(
     Map<int, List<CodeLensItem>> itemsByLine,
   ) {
+    if (itemsByLine.isEmpty) return null;
     return setBatchLineCodeLensRaw(
-      ProtocolEncoder.packBatchLineCodeLens(itemsByLine),
+      CoreProtocol.encodeSetBatchLineCodeLensPayload(itemsByLine),
     );
   }
 
@@ -1962,7 +1451,7 @@ class EditorCore {
   }
 
   EditorActionResult setLineLinks(int line, List<LinkSpan> links) {
-    return setLineLinksRaw(ProtocolEncoder.packLineLinks(line, links));
+    return setLineLinksRaw(CoreProtocol.encodeSetLineLinksPayload(line, links));
   }
 
   EditorActionResult setLineLinksRaw(Uint8List data) {
@@ -1974,9 +1463,10 @@ class EditorCore {
     );
   }
 
-  EditorActionResult setBatchLineLinks(Map<int, List<LinkSpan>> linksByLine) {
+  EditorActionResult? setBatchLineLinks(Map<int, List<LinkSpan>> linksByLine) {
+    if (linksByLine.isEmpty) return null;
     return setBatchLineLinksRaw(
-      ProtocolEncoder.packBatchLineLinks(linksByLine),
+      CoreProtocol.encodeSetBatchLineLinksPayload(linksByLine),
     );
   }
 
@@ -1991,7 +1481,7 @@ class EditorCore {
 
   EditorActionResult setLineDiagnostics(int line, List<Diagnostic> items) {
     return setLineDiagnosticsRaw(
-      ProtocolEncoder.packLineDiagnostics(line, items),
+      CoreProtocol.encodeSetLineDiagnosticsPayload(line, items),
     );
   }
 
@@ -2004,11 +1494,12 @@ class EditorCore {
     );
   }
 
-  EditorActionResult setBatchLineDiagnostics(
+  EditorActionResult? setBatchLineDiagnostics(
     Map<int, List<Diagnostic>> itemsByLine,
   ) {
+    if (itemsByLine.isEmpty) return null;
     return setBatchLineDiagnosticsRaw(
-      ProtocolEncoder.packBatchLineDiagnostics(itemsByLine),
+      CoreProtocol.encodeSetBatchLineDiagnosticsPayload(itemsByLine),
     );
   }
 
@@ -2026,7 +1517,9 @@ class EditorCore {
   }
 
   EditorActionResult setIndentGuides(List<IndentGuide> guides) {
-    return setIndentGuidesRaw(ProtocolEncoder.packIndentGuides(guides));
+    return setIndentGuidesRaw(
+      CoreProtocol.encodeSetIndentGuidesPayload(guides),
+    );
   }
 
   EditorActionResult setIndentGuidesRaw(Uint8List data) {
@@ -2039,7 +1532,9 @@ class EditorCore {
   }
 
   EditorActionResult setBracketGuides(List<BracketGuide> guides) {
-    return setBracketGuidesRaw(ProtocolEncoder.packBracketGuides(guides));
+    return setBracketGuidesRaw(
+      CoreProtocol.encodeSetBracketGuidesPayload(guides),
+    );
   }
 
   EditorActionResult setBracketGuidesRaw(Uint8List data) {
@@ -2052,7 +1547,7 @@ class EditorCore {
   }
 
   EditorActionResult setFlowGuides(List<FlowGuide> guides) {
-    return setFlowGuidesRaw(ProtocolEncoder.packFlowGuides(guides));
+    return setFlowGuidesRaw(CoreProtocol.encodeSetFlowGuidesPayload(guides));
   }
 
   EditorActionResult setFlowGuidesRaw(Uint8List data) {
@@ -2065,7 +1560,9 @@ class EditorCore {
   }
 
   EditorActionResult setSeparatorGuides(List<SeparatorGuide> guides) {
-    return setSeparatorGuidesRaw(ProtocolEncoder.packSeparatorGuides(guides));
+    return setSeparatorGuidesRaw(
+      CoreProtocol.encodeSetSeparatorGuidesPayload(guides),
+    );
   }
 
   EditorActionResult setSeparatorGuidesRaw(Uint8List data) {
@@ -2087,7 +1584,7 @@ class EditorCore {
 
   EditorActionResult registerBatchTextStyles(Map<int, TextStyle> stylesById) {
     return registerBatchTextStylesRaw(
-      ProtocolEncoder.packBatchTextStyles(stylesById),
+      CoreProtocol.encodeRegisterBatchTextStylesPayload(stylesById),
     );
   }
 
@@ -2258,7 +1755,7 @@ class EditorCore {
   }
 
   EditorActionResult setFoldRegions(List<FoldRegion> regions) {
-    return setFoldRegionsRaw(ProtocolEncoder.packFoldRegions(regions));
+    return setFoldRegionsRaw(CoreProtocol.encodeSetFoldRegionsPayload(regions));
   }
 
   EditorActionResult setFoldRegionsRaw(Uint8List data) {
@@ -2315,17 +1812,19 @@ class EditorCore {
     return using((arena) {
       final templatePtr = _toNativeUtf8(snippetTemplate, arena);
       return _callAndParse(
-        EditorActionResult.empty,
+        const EditorActionResult(),
         (outSize) =>
             bindings.editor_insert_snippet(_handle, templatePtr, outSize),
-        ProtocolDecoder.decodeEditorActionResult,
+        CoreProtocol.decodeEditorActionResultFromPointer,
       );
     });
   }
 
   EditorActionResult startLinkedEditing(LinkedEditingModel model) {
     _ensureOpen();
-    return startLinkedEditingRaw(ProtocolEncoder.packLinkedEditingModel(model));
+    return startLinkedEditingRaw(
+      CoreProtocol.encodeStartLinkedEditingPayload(model),
+    );
   }
 
   EditorActionResult startLinkedEditingRaw(Uint8List data) {

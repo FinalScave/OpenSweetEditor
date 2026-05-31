@@ -24,8 +24,8 @@ set(WASM_C_ABI_EXPORTED_FUNCTIONS
         _get_document_line_utf16
         _create_editor
         _free_editor
-        _set_editor_document
-        _set_editor_viewport
+        _editor_set_document
+        _editor_set_viewport
         _editor_on_font_metrics_changed
         _editor_set_fold_arrow_mode
         _editor_set_wrap_mode
@@ -39,15 +39,12 @@ set(WASM_C_ABI_EXPORTED_FUNCTIONS
         _editor_set_gutter_visible
         _editor_set_handle_config
         _editor_set_scrollbar_config
-        _build_editor_render_model
-        _get_layout_metrics
-        _handle_editor_gesture_event
-        _handle_editor_gesture_event_ex
+        _editor_build_render_model
+        _editor_get_layout_metrics
+        _editor_handle_gesture_event
         _editor_update_pointer_modifiers
-        _editor_tick_edge_scroll
-        _editor_tick_fling
         _editor_tick_animations
-        _handle_editor_key_event
+        _editor_handle_key_event
         _editor_set_keymap
         _editor_insert_text
         _editor_replace_text
@@ -164,12 +161,10 @@ set(WASM_C_ABI_EXPORTED_FUNCTIONS
         _editor_ime_mark_input_context_range
         _editor_ime_notify_document_selection_changed
         _editor_ime_notify_input_context_selection_changed
-        _editor_ime_update_input_state_text
         _editor_ime_update_text_model_state
         _editor_ime_update_text_model_delta
         _editor_ime_update_input_state_selection
         _editor_ime_replace_input_state_text
-        _editor_ime_commit_input_state_text_replacement
         _editor_ime_delete_backward
         _editor_ime_delete_forward
         _editor_ime_delete_surrounding

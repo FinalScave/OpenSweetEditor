@@ -1,29 +1,23 @@
 package com.qiplat.sweeteditor.core.visual;
 
-import com.google.gson.annotations.SerializedName;
+import com.qiplat.sweeteditor.core.foundation.PointF;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 
-/**
- * Cursor data.
- */
-public class Cursor {
-    /** Cursor logical position in text. */
-    @SerializedName("text_position")
-    public TextPosition textPosition;
+public final class Cursor {
+    public TextPosition textPosition = new TextPosition();
+    public PointF position = new PointF();
+    public float height = 0f;
+    public boolean visible = true;
+    public boolean showDragger = false;
 
-    /** Cursor screen position. */
-    @SerializedName("position")
-    public PointF position;
+    public Cursor() {
+    }
 
-    /** Cursor height. */
-    @SerializedName("height")
-    public float height;
-
-    /** Whether cursor is visible. */
-    @SerializedName("visible")
-    public boolean visible;
-
-    /** Whether drag cursor is shown. */
-    @SerializedName("show_dragger")
-    public boolean showDragger;
+    public Cursor(TextPosition textPosition, PointF position, float height, boolean visible, boolean showDragger) {
+        this.textPosition = textPosition;
+        this.position = position;
+        this.height = height;
+        this.visible = visible;
+        this.showDragger = showDragger;
+    }
 }

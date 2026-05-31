@@ -8,10 +8,17 @@ public enum GuideType {
 
     public final int value;
 
-    GuideType(int v) { value = v; }
+    GuideType(int value) {
+        this.value = value;
+    }
 
-    public static GuideType fromValue(int v) {
-        for (GuideType e : values()) if (e.value == v) return e;
-        return INDENT;
+    public static GuideType fromValue(int value) {
+        switch (value) {
+            case 0: return INDENT;
+            case 1: return BRACKET;
+            case 2: return FLOW;
+            case 3: return SEPARATOR;
+            default: return INDENT;
+        }
     }
 }

@@ -1,8 +1,5 @@
 package com.qiplat.sweeteditor.core.adornment;
 
-/**
- * Inlay hint type enumeration.
- */
 public enum InlayType {
     TEXT(0),
     ICON(1),
@@ -15,11 +12,11 @@ public enum InlayType {
     }
 
     public static InlayType fromValue(int value) {
-        for (InlayType type : values()) {
-            if (type.value == value) {
-                return type;
-            }
+        switch (value) {
+            case 0: return TEXT;
+            case 1: return ICON;
+            case 2: return COLOR;
+            default: return TEXT;
         }
-        return TEXT;
     }
 }

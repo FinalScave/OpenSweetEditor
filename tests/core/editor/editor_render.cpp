@@ -97,7 +97,7 @@ TEST_CASE("EditorCore handleGestureEvent tap on CodeLens keeps cursor unchanged"
   editor.setViewport({400, 160});
   editor.setCursorPosition({0, 3});
   Vector<CodeLensItem> items;
-  items.push_back({2, "3 references", 101});
+  items.push_back({2, 101, "3 references"});
   editor.setLineCodeLens(0, std::move(items));
 
   EditorRenderModel model;
@@ -126,8 +126,8 @@ TEST_CASE("EditorCore buildRenderModel activates only hovered CodeLens run") {
   editor.loadDocument(makeShared<LineArrayDocument>("abcdef"));
   editor.setViewport({480, 160});
   Vector<CodeLensItem> items;
-  items.push_back({1, "3 references", 101});
-  items.push_back({4, "2 implementations", 202});
+  items.push_back({1, 101, "3 references"});
+  items.push_back({4, 202, "2 implementations"});
   editor.setLineCodeLens(0, std::move(items));
 
   EditorRenderModel model;
@@ -180,8 +180,8 @@ TEST_CASE("EditorCore buildRenderModel keeps CodeLens active while mouse is pres
   editor.loadDocument(makeShared<LineArrayDocument>("abcdef"));
   editor.setViewport({480, 160});
   Vector<CodeLensItem> items;
-  items.push_back({1, "3 references", 101});
-  items.push_back({4, "2 implementations", 202});
+  items.push_back({1, 101, "3 references"});
+  items.push_back({4, 202, "2 implementations"});
   editor.setLineCodeLens(0, std::move(items));
 
   EditorRenderModel model;
@@ -217,8 +217,8 @@ TEST_CASE("EditorCore buildRenderModel clears pressed CodeLens when touch moves 
   editor.loadDocument(makeShared<LineArrayDocument>("abcdef"));
   editor.setViewport({480, 160});
   Vector<CodeLensItem> items;
-  items.push_back({1, "3 references", 101});
-  items.push_back({4, "2 implementations", 202});
+  items.push_back({1, 101, "3 references"});
+  items.push_back({4, 202, "2 implementations"});
   editor.setLineCodeLens(0, std::move(items));
 
   EditorRenderModel model;
@@ -275,7 +275,7 @@ TEST_CASE("EditorCore exposes pointer cursor type for text, CodeLens, gutter and
   editor.loadDocument(makeShared<LineArrayDocument>(text));
   editor.setViewport({480, 160});
   Vector<CodeLensItem> items;
-  items.push_back({1, "3 references", 101});
+  items.push_back({1, 101, "3 references"});
   editor.setLineCodeLens(0, std::move(items));
 
   EditorRenderModel model;
@@ -524,7 +524,7 @@ TEST_CASE("EditorCore line-start word selection end handle can cross CodeLens vi
   editor.setViewport({420, 200});
   editor.setSelection({{1, 0}, {1, 4}});
   Vector<CodeLensItem> items;
-  items.push_back({0, "3 references", 101});
+  items.push_back({0, 101, "3 references"});
   editor.setLineCodeLens(1, std::move(items));
 
   EditorRenderModel model;

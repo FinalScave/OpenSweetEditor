@@ -6,8 +6,6 @@ import java.lang.foreign.*;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -130,14 +128,12 @@ public final class EditorNative {
             return ptr != null && !ptr.equals(MemorySegment.NULL) && size > 0;
         }
 
-        /**
-         * Zero-copy ByteBuffer view, directly reading native memory.
-         * <p>
-         * Note: The returned ByteBuffer must not be used after calling {@link #free()}.
-         */
-        ByteBuffer asByteBuffer() {
-            if (!hasData()) return null;
-            return ptr.asByteBuffer().order(ByteOrder.nativeOrder());
+        MemorySegment segment() {
+            return ptr;
+        }
+
+        long size() {
+            return size;
         }
 
         /**
@@ -238,10 +234,10 @@ public final class EditorNative {
     private static final MethodHandle CREATE_EDITOR = downcall("create_editor",
             FunctionDescriptor.of(ValueLayout.JAVA_LONG, MEASURER_LAYOUT, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
 
-    private static final MethodHandle SET_EDITOR_DOCUMENT = downcall("set_editor_document",
+    private static final MethodHandle SET_EDITOR_DOCUMENT = downcall("editor_set_document",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
-    private static final MethodHandle SET_VIEWPORT = downcall("set_editor_viewport",
+    private static final MethodHandle SET_VIEWPORT = downcall("editor_set_viewport",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_SHORT, ValueLayout.JAVA_SHORT,
                     ValueLayout.ADDRESS));
 
@@ -267,25 +263,18 @@ public final class EditorNative {
     private static final MethodHandle SET_CURRENT_LINE_RENDER_MODE = downcall("editor_set_current_line_render_mode",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
-    private static final MethodHandle BUILD_RENDER_MODEL = downcall("build_editor_render_model",
+    private static final MethodHandle BUILD_RENDER_MODEL = downcall("editor_build_render_model",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
-    private static final MethodHandle GET_LAYOUT_METRICS = downcall("get_layout_metrics",
-            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-
-    private static final MethodHandle TICK_EDGE_SCROLL = downcall("editor_tick_edge_scroll",
-            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-
-    private static final MethodHandle TICK_FLING = downcall("editor_tick_fling",
+    private static final MethodHandle GET_LAYOUT_METRICS = downcall("editor_get_layout_metrics",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle TICK_ANIMATIONS = downcall("editor_tick_animations",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
-    private static final MethodHandle HANDLE_GESTURE_EX = downcall("handle_editor_gesture_event_ex",
+    private static final MethodHandle HANDLE_GESTURE = downcall("editor_handle_gesture_event",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_BYTE, ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_BYTE, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.ADDRESS));
+                    ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle UPDATE_POINTER_MODIFIERS = downcall("editor_update_pointer_modifiers",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS));
@@ -399,22 +388,17 @@ public final class EditorNative {
     private static final MethodHandle IME_REPLACE_TEXT = downcall("editor_ime_replace_text",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
                     ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
-                    ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle IME_REPLACE_DOCUMENT_TEXT = downcall("editor_ime_replace_document_text",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
                     ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
-                    ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
-                    ValueLayout.ADDRESS));
+                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle IME_REPLACE_INPUT_CONTEXT_TEXT = downcall("editor_ime_replace_input_context_text",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
                     ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
-                    ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
-                    ValueLayout.ADDRESS));
+                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle IME_MARK_INPUT_CONTEXT_RANGE = downcall("editor_ime_mark_input_context_range",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
@@ -434,14 +418,11 @@ public final class EditorNative {
                             ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
                             ValueLayout.ADDRESS));
 
-    private static final MethodHandle IME_UPDATE_INPUT_STATE_TEXT =
-            downcall("editor_ime_update_input_state_text",
+    private static final MethodHandle IME_UPDATE_TEXT_MODEL_STATE =
+            downcall("editor_ime_update_text_model_state",
                     FunctionDescriptor.of(ValueLayout.ADDRESS,
-                            ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT,
-                            ValueLayout.ADDRESS,
-                            ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
-                            ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
-                            ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+                            ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
+                            ValueLayout.ADDRESS));
 
     private static final MethodHandle IME_UPDATE_INPUT_STATE_SELECTION =
             downcall("editor_ime_update_input_state_selection",
@@ -453,9 +434,7 @@ public final class EditorNative {
     private static final MethodHandle IME_REPLACE_INPUT_STATE_TEXT =
             downcall("editor_ime_replace_input_state_text",
                     FunctionDescriptor.of(ValueLayout.ADDRESS,
-                            ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT,
-                            ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
-                            ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
+                            ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
                             ValueLayout.ADDRESS));
 
     private static final MethodHandle IME_DELETE_BACKWARD = downcall("editor_ime_delete_backward",
@@ -592,7 +571,7 @@ public final class EditorNative {
     private static final MethodHandle ON_FONT_METRICS_CHANGED = downcall("editor_on_font_metrics_changed",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
-    private static final MethodHandle HANDLE_KEY_EVENT = downcall("handle_editor_key_event",
+    private static final MethodHandle HANDLE_KEY_EVENT = downcall("editor_handle_key_event",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
                     ValueLayout.JAVA_LONG, ValueLayout.JAVA_SHORT, ValueLayout.ADDRESS, ValueLayout.JAVA_BYTE, ValueLayout.ADDRESS));
 
@@ -627,15 +606,11 @@ public final class EditorNative {
 
     private static final MethodHandle SET_HANDLE_CONFIG = downcall("editor_set_handle_config",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT,
-                    ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT,
-                    ValueLayout.ADDRESS));
+                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_SCROLLBAR_CONFIG = downcall("editor_set_scrollbar_config",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT, ValueLayout.JAVA_FLOAT,
-                    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
-                    ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle GET_CURSOR_RECT = downcall("editor_get_cursor_rect",
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
@@ -899,28 +874,14 @@ public final class EditorNative {
         return invokeBinaryResult(outSize -> (MemorySegment) GET_LAYOUT_METRICS.invokeExact(handle, outSize));
     }
 
-    public static NativeBinaryResult tickEdgeScroll(long handle) {
-        return invokeBinaryResult(outSize -> (MemorySegment) TICK_EDGE_SCROLL.invokeExact(handle, outSize));
-    }
-
-    public static NativeBinaryResult tickFling(long handle) {
-        return invokeBinaryResult(outSize -> (MemorySegment) TICK_FLING.invokeExact(handle, outSize));
-    }
-
     public static NativeBinaryResult tickAnimations(long handle) {
         return invokeBinaryResult(outSize -> (MemorySegment) TICK_ANIMATIONS.invokeExact(handle, outSize));
     }
 
     // ===================== Gesture/Keyboard Events =====================
 
-    public static NativeBinaryResult handleGestureEventEx(long handle, int type, int pointerCount, Arena arena, float[] points,
-                                                          int modifiers, float wheelDeltaX, float wheelDeltaY, float directScale) {
-        return invokeBinaryResult(arena, outSize -> {
-            MemorySegment pointsSeg = arena.allocateFrom(ValueLayout.JAVA_FLOAT, points);
-            return (MemorySegment) HANDLE_GESTURE_EX.invokeExact(handle,
-                    (byte) type, (byte) pointerCount, pointsSeg,
-                    (byte) modifiers, wheelDeltaX, wheelDeltaY, directScale, outSize);
-        });
+    public static NativeBinaryResult handleGestureEvent(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) HANDLE_GESTURE.invokeExact(handle, payload, size, outSize));
     }
 
     public static NativeBinaryResult updatePointerModifiers(long handle, int modifiers) {
@@ -1215,38 +1176,19 @@ public final class EditorNative {
                 handle, startOffset, endOffset, scriptHint, outSize));
     }
 
-    public static NativeBinaryResult replaceImeText(long handle,
-                                                    int startLine, int startColumn,
-                                                    int endLine, int endColumn,
-                                                    String text,
-                                                    int scriptHint,
-                                                    Arena arena) {
-        return invokeBinaryResult(arena, outSize -> (MemorySegment) IME_REPLACE_TEXT.invokeExact(
-                handle,
-                (long) startLine, (long) startColumn, (long) endLine, (long) endColumn,
-                nullableString(arena, text), scriptHint, outSize));
+    public static NativeBinaryResult replaceImeText(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_REPLACE_TEXT.invokeExact(
+                handle, payload, size, outSize));
     }
 
-    public static NativeBinaryResult replaceImeDocumentText(long handle,
-                                                            long startOffset,
-                                                            long endOffset,
-                                                            String text,
-                                                            int cursorOffset,
-                                                            int scriptHint,
-                                                            Arena arena) {
-        return invokeBinaryResult(arena, outSize -> (MemorySegment) IME_REPLACE_DOCUMENT_TEXT.invokeExact(
-                handle, startOffset, endOffset, nullableString(arena, text), cursorOffset, scriptHint, outSize));
+    public static NativeBinaryResult replaceImeDocumentText(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_REPLACE_DOCUMENT_TEXT.invokeExact(
+                handle, payload, size, outSize));
     }
 
-    public static NativeBinaryResult replaceImeInputContextText(long handle,
-                                                                long startOffset,
-                                                                long endOffset,
-                                                                String text,
-                                                                int cursorOffset,
-                                                                int scriptHint,
-                                                                Arena arena) {
-        return invokeBinaryResult(arena, outSize -> (MemorySegment) IME_REPLACE_INPUT_CONTEXT_TEXT.invokeExact(
-                handle, startOffset, endOffset, nullableString(arena, text), cursorOffset, scriptHint, outSize));
+    public static NativeBinaryResult replaceImeInputContextText(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_REPLACE_INPUT_CONTEXT_TEXT.invokeExact(
+                handle, payload, size, outSize));
     }
 
     public static NativeBinaryResult markImeInputContextRange(long handle,
@@ -1271,27 +1213,9 @@ public final class EditorNative {
                 handle, startOffset, endOffset, outSize));
     }
 
-    public static NativeBinaryResult updateImeInputStateText(long handle,
-                                                             long contextId,
-                                                             int documentStartOffset,
-                                                             String text,
-                                                             int selectionStartOffset,
-                                                             int selectionEndOffset,
-                                                             int composingStartOffset,
-                                                             int composingEndOffset,
-                                                             int scriptHint,
-                                                             Arena arena) {
-        return invokeBinaryResult(arena, outSize -> (MemorySegment) IME_UPDATE_INPUT_STATE_TEXT.invokeExact(
-                handle,
-                contextId,
-                documentStartOffset,
-                nullableString(arena, text),
-                selectionStartOffset,
-                selectionEndOffset,
-                composingStartOffset,
-                composingEndOffset,
-                scriptHint,
-                outSize));
+    public static NativeBinaryResult updateImeTextModelState(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_UPDATE_TEXT_MODEL_STATE.invokeExact(
+                handle, payload, size, outSize));
     }
 
     public static NativeBinaryResult updateImeInputStateSelection(long handle,
@@ -1308,25 +1232,9 @@ public final class EditorNative {
                 outSize));
     }
 
-    public static NativeBinaryResult replaceImeInputStateText(long handle,
-                                                              long contextId,
-                                                              int documentStartOffset,
-                                                              long startOffset,
-                                                              long endOffset,
-                                                              String text,
-                                                              int cursorOffset,
-                                                              int scriptHint,
-                                                              Arena arena) {
-        return invokeBinaryResult(arena, outSize -> (MemorySegment) IME_REPLACE_INPUT_STATE_TEXT.invokeExact(
-                handle,
-                contextId,
-                documentStartOffset,
-                startOffset,
-                endOffset,
-                nullableString(arena, text),
-                cursorOffset,
-                scriptHint,
-                outSize));
+    public static NativeBinaryResult replaceImeInputStateText(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_REPLACE_INPUT_STATE_TEXT.invokeExact(
+                handle, payload, size, outSize));
     }
 
     public static NativeBinaryResult deleteImeBackward(long handle, long beforeLength, int textUnit) {
@@ -1407,19 +1315,14 @@ public final class EditorNative {
 
     // ===================== Handle Config =====================
 
-    public static NativeBinaryResult setHandleConfig(long handle,
-                                                     float startLeft, float startTop, float startRight, float startBottom,
-                                                     float endLeft, float endTop, float endRight, float endBottom) {
+    public static NativeBinaryResult setHandleConfig(long handle, MemorySegment payload, long size) {
         return invokeBinaryResult(outSize -> (MemorySegment) SET_HANDLE_CONFIG.invokeExact(
-                handle, startLeft, startTop, startRight, startBottom, endLeft, endTop, endRight, endBottom, outSize));
+                handle, payload, size, outSize));
     }
 
-    public static NativeBinaryResult setScrollbarConfig(long handle, float thickness, float minThumb, float thumbHitPadding,
-                                                        int mode, boolean thumbDraggable, int trackTapMode,
-                                                        int fadeDelayMs, int fadeDurationMs) {
+    public static NativeBinaryResult setScrollbarConfig(long handle, MemorySegment payload, long size) {
         return invokeBinaryResult(outSize -> (MemorySegment) SET_SCROLLBAR_CONFIG.invokeExact(
-                handle, thickness, minThumb, thumbHitPadding, mode, thumbDraggable ? 1 : 0, trackTapMode,
-                fadeDelayMs, fadeDurationMs, outSize));
+                handle, payload, size, outSize));
     }
 
     // ===================== Position/Coordinate Query =====================
@@ -1469,6 +1372,11 @@ public final class EditorNative {
     public static NativeBinaryResult startLinkedEditing(long handle, byte[] payload, Arena arena) {
         return invokeBinaryResult(arena, outSize -> (MemorySegment) START_LINKED_EDITING.invokeExact(
                 handle, byteArraySegment(arena, payload), (long) payload.length, outSize));
+    }
+
+    public static NativeBinaryResult startLinkedEditing(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) START_LINKED_EDITING.invokeExact(handle, payload, size, outSize));
     }
 
     public static boolean isInLinkedEditing(long handle) {

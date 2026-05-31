@@ -3,7 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-import '../editor_core.dart' as core;
+import '../core/editor_core.dart' as core;
 import '../editor_types.dart';
 
 import 'editor_text_measurer.dart';
@@ -19,7 +19,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
        _iconProvider = iconProvider,
        _showSelectionHandles = showSelectionHandles;
 
-  core.EditorRenderModel _model = core.EditorRenderModel.empty;
+  core.EditorRenderModel _model = const core.EditorRenderModel();
   EditorTheme _theme;
   final EditorTextMeasurer _measurer;
   bool _cursorVisible = true;
@@ -179,20 +179,20 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
     double right,
   ) {
     if (right <= left) return;
-    if (m.currentLineRenderMode == 2) return; // none
+    if (m.currentLineRenderMode == core.CurrentLineRenderMode.none) {
+      return;
+    }
     final y = m.currentLine.y;
     final lineH = m.cursor.visible
         ? m.cursor.height
         : _measurer.getFontMetrics().lineHeight;
 
-    if (m.currentLineRenderMode == 0) {
-      // background
+    if (m.currentLineRenderMode == core.CurrentLineRenderMode.background) {
       canvas.drawRect(
         Rect.fromLTWH(left, y, right - left, lineH),
         Paint()..color = Color(_theme.currentLineColor),
       );
     } else {
-      // border
       canvas.drawRect(
         Rect.fromLTWH(left, y, right - left, lineH),
         Paint()
@@ -215,7 +215,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
   }
 
   void _drawVisualLines(Canvas canvas, core.EditorRenderModel m) {
-    for (final line in m.visualLines) {
+    for (final line in m.lines) {
       for (final run in line.runs) {
         switch (run.type) {
           case core.VisualRunType.text:
@@ -436,7 +436,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
       final endX = seg.end.x;
       final endY = seg.end.y;
 
-      if (seg.style == core.GuideStyle.double_) {
+      if (seg.style == core.GuideStyle.double) {
         const offset = 1.5;
         if (seg.direction == core.GuideDirection.horizontal) {
           canvas.drawLine(
@@ -606,7 +606,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
     if (!m.gutterVisible) return;
     final activeLogicalLine = m.cursor.textPosition.line;
 
-    for (final line in m.visualLines) {
+    for (final line in m.lines) {
       if (!line.ownsGutterSemantics) continue;
       final isCurrentLine = line.logicalLine == activeLogicalLine;
       final color = isCurrentLine

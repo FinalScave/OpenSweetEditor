@@ -1,10 +1,11 @@
 package com.qiplat.sweeteditor;
 
+import com.qiplat.sweeteditor.core.action.EditorActionResult;
 import com.qiplat.sweeteditor.core.EditorCore;
-import com.qiplat.sweeteditor.core.foundation.AutoIndentMode;
-import com.qiplat.sweeteditor.core.foundation.CurrentLineRenderMode;
-import com.qiplat.sweeteditor.core.foundation.FoldArrowMode;
-import com.qiplat.sweeteditor.core.foundation.WrapMode;
+import com.qiplat.sweeteditor.core.config.AutoIndentMode;
+import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
+import com.qiplat.sweeteditor.core.config.FoldArrowMode;
+import com.qiplat.sweeteditor.core.config.WrapMode;
 
 /**
  * Centralized configuration for {@link SweetEditor}.
@@ -42,7 +43,7 @@ public class EditorSettings {
 
     public void setScale(float scale) {
         mScale = scale;
-        EditorCore.EditorActionResult result = mEditor.getEditorCore().setScale(scale);
+        EditorActionResult result = mEditor.getEditorCore().setScale(scale);
         mEditor.dispatchEditorActionResult(result);
     }
 

@@ -1,38 +1,27 @@
 package com.qiplat.sweeteditor.core.visual;
 
-import com.google.gson.annotations.SerializedName;
-
+import com.qiplat.sweeteditor.core.foundation.PointF;
 import java.util.List;
 
-/**
- * Visual rendered line data definition.
- */
-public class VisualLine {
-    /** Logical line number. */
-    @SerializedName("logical_line")
-    public int logicalLine;
-
-    /** Wrap index in auto-wrap mode (0 = first line, 1,2,... = continuation). */
-    @SerializedName("wrap_index")
-    public int wrapIndex;
-
-    /** Line number position. */
-    @SerializedName("line_number_position")
-    public PointF lineNumberPosition;
-
-    /** Text runs contained in this visual line. */
-    @SerializedName("runs")
-    public List<VisualRun> runs;
-
-    /** Semantic kind of this visual line. */
-    @SerializedName("kind")
+public final class VisualLine {
+    public int logicalLine = 0;
+    public int wrapIndex = 0;
+    public PointF lineNumberPosition = new PointF();
+    public java.util.List<VisualRun> runs = new java.util.ArrayList<>();
     public VisualLineKind kind = VisualLineKind.CONTENT;
+    public boolean ownsGutterSemantics = false;
+    public FoldState foldState = FoldState.NONE;
 
-    /** Whether this visual line owns gutter semantics (line number, gutter icon, fold marker). */
-    @SerializedName("owns_gutter_semantics")
-    public boolean ownsGutterSemantics;
+    public VisualLine() {
+    }
 
-    /** Fold state: NONE=not a fold line, EXPANDED=foldable (expanded), COLLAPSED=folded. */
-    @SerializedName("fold_state")
-    public FoldState foldState;
+    public VisualLine(int logicalLine, int wrapIndex, PointF lineNumberPosition, java.util.List<VisualRun> runs, VisualLineKind kind, boolean ownsGutterSemantics, FoldState foldState) {
+        this.logicalLine = logicalLine;
+        this.wrapIndex = wrapIndex;
+        this.lineNumberPosition = lineNumberPosition;
+        this.runs = runs;
+        this.kind = kind;
+        this.ownsGutterSemantics = ownsGutterSemantics;
+        this.foldState = foldState;
+    }
 }

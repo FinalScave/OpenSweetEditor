@@ -437,8 +437,8 @@ struct EditorRenderModel {
 
 当前 C API 约定：
 
-- `build_editor_render_model()`：返回本机字节序二进制 payload（当前支持平台均为 little-endian）
-- `get_layout_metrics()`：返回 `LayoutMetrics` 二进制 payload，供平台查询布局参数
+- `editor_build_render_model()`：返回本机字节序二进制 payload（当前支持平台均为 little-endian）
+- `editor_get_layout_metrics()`：返回 `LayoutMetrics` 二进制 payload，供平台查询布局参数
 
 ### VisualLine 与 VisualRun
 
@@ -459,7 +459,7 @@ VisualLine
 这里需要区分“核心内部表示”和“跨语言传输格式”：
 
 - 核心内部 `VisualRun.text` 是 `U16String`
-- `build_editor_render_model()` 在 C API 路径里会把 `VisualRun.text` 转成长度前缀 UTF-8 字节串
+- `editor_build_render_model()` 在 C API 路径里会把 `VisualRun.text` 转成长度前缀 UTF-8 字节串
 - Swing / WinForms / Apple / Android 的桥接层再把这段 UTF-8 解码成各自语言的 `String`
 
 ### 平台侧绘制顺序
@@ -501,10 +501,10 @@ uint8_t options_data[] = {/* LE 编码的 EditorOptions */};
 intptr_t editor = create_editor(measurer, options_data, sizeof(options_data));
 
 // 使用
-set_editor_viewport(editor, width, height);
-set_editor_document(editor, document);
+editor_set_viewport(editor, width, height);
+editor_set_document(editor, document);
 size_t payload_size = 0;
-const uint8_t* payload = build_editor_render_model(editor, &payload_size);
+const uint8_t* payload = editor_build_render_model(editor, &payload_size);
 
 // 释放
 free_binary_data((intptr_t)payload);
@@ -515,10 +515,10 @@ free_editor(editor);
 
 当前 C API 路径的数据交换统一为二进制 payload（本机字节序，当前支持平台均为 little-endian）：
 
-- `build_editor_render_model()` → `EditorRenderModel`
-- `get_layout_metrics()` → `LayoutMetrics`
-- `handle_editor_gesture_event*()` → `EditorActionResult`
-- `handle_editor_key_event()` → `EditorActionResult`
+- `editor_build_render_model()` → `EditorRenderModel`
+- `editor_get_layout_metrics()` → `LayoutMetrics`
+- `editor_handle_gesture_event()` → `EditorActionResult`
+- `editor_handle_key_event()` → `EditorActionResult`
 - `editor_insert_text()` / `undo()` / `redo()` / IME 写入 / decoration 写入等变更类接口 → `EditorActionResult`
 - `editor_get_scroll_metrics()` → `ScrollMetrics`
 
@@ -539,14 +539,14 @@ free_editor(editor);
 | Windows | P/Invoke | `DllImport(\"sweeteditor.dll\")` |
 | Swing | Java FFM | Downcall 到 C API |
 | Web | Emscripten | 非官方 fork 中测试中：<https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten> |
-| OHOS | ArkTS NAPI（`libsweeteditor.so`） | ArkTS 通过 `native` 直连共享 C++，并在 `EditorProtocol.ets` 中解码 binary payload |
+| OHOS | ArkTS NAPI（`libsweeteditor.so`） | ArkTS 通过 `native` 直连共享 C++，并在 `CoreProtocol.ets` 中解码 binary payload |
 
 注意：Android 目前不是经由 `c_api.h` 调用链路；新增公共能力时需要同步 JNI 路径与 C API 路径。
 
 补充：
 
 - Android 虽然是 JNI 直连，但 `buildRenderModel()`、`EditorActionResult`、滚动度量等复杂返回同样通过二进制协议解码。
-- Swing / WinForms 当前都走 `ProtocolDecoder` / `EditorProtocol` 读取 UTF-8 字符串字段。
+- Swing / WinForms 当前都走 `CoreProtocol` 读取 UTF-8 字符串字段。
 - Apple 通过手工 bridge + Swift `BinaryReader` 消费同一套二进制布局。
 
 ---
@@ -564,7 +564,7 @@ free_editor(editor);
   平台层捕获事件
         │
         ▼
-  C API: handle_editor_gesture_event()
+  C API: editor_handle_gesture_event()
         │
         ▼
   GestureHandler.handleGestureEvent()
@@ -588,7 +588,7 @@ free_editor(editor);
         │  · 根据 needsRedraw 决定是否刷新渲染模型
         │
         ▼
-  C API: build_editor_render_model()
+  C API: editor_build_render_model()
         │
         ▼
   EditorCore.buildRenderModel()
@@ -665,7 +665,7 @@ void free_editor(intptr_t handle) {
 平台层须确保：
 
 - 对象句柄在不再使用时调用 `free_document()` / `free_editor()`
-- `build_editor_render_model()` 等返回的二进制 payload 用 `free_binary_data()` 释放
+- `editor_build_render_model()` 等返回的二进制 payload 用 `free_binary_data()` 释放
 - `get_document_line_text()` 返回的 UTF-16 文本用 `free_u16_string()` 释放
 
 ---

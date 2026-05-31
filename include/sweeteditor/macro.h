@@ -30,9 +30,6 @@
 #define SE_PROTOCOL_KEY_WIRE(kind) SE_PROTOCOL_ANNOTATE("se.protocol.key_wire:" #kind)
 #define SE_PROTOCOL_VALUE_WIRE(kind) SE_PROTOCOL_ANNOTATE("se.protocol.value_wire:" #kind)
 #define SE_PROTOCOL_MAP_ENTRY(key, value) SE_PROTOCOL_ANNOTATE("se.protocol.map_entry:" #key ":" #value)
-#define SE_PROTOCOL_NAME(name) SE_PROTOCOL_ANNOTATE("se.protocol.name:" #name)
-#define SE_PROTOCOL_AS(type_name) SE_PROTOCOL_ANNOTATE("se.protocol.as:" #type_name)
-#define SE_PROTOCOL_TAIL SE_PROTOCOL_ANNOTATE("se.protocol.tail")
 
 namespace NS_SWEETEDITOR {
   template<typename T>

@@ -1,8 +1,12 @@
 // HAR entry point - re-export all public APIs
 
 export * from './core/EditorCore'
+export * from './core/CoreAction'
 export * from './core/CoreAdornments'
+export * from './core/CoreConfig'
 export * from './core/CoreFoundation'
+export * from './core/CoreIme'
+export * from './core/CoreInteraction'
 export * from './core/CoreLinkedEditing'
 export * from './core/CoreVisual'
 export * from './EditorTypes'

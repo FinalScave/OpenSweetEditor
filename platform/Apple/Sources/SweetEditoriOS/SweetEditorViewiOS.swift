@@ -184,51 +184,51 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         dispatchEditorActionResult(editorCore.registerStyle(styleId: styleId, color: color, backgroundColor: backgroundColor, fontStyle: fontStyle))
     }
 
-    func setLineSpans(line: Int, layer: SpanLayer, spans: [SweetEditorCore.StyleSpan]) {
+    func setLineSpans(line: Int, layer: SpanLayer, spans: [StyleSpan]) {
         dispatchEditorActionResult(editorCore.setLineSpans(line: line, layer: layer.rawValue, spans: spans))
     }
 
-    func setBatchLineSpans(layer: SpanLayer, spansByLine: [Int: [SweetEditorCore.StyleSpan]]) {
+    func setBatchLineSpans(layer: SpanLayer, spansByLine: [Int: [StyleSpan]]) {
         dispatchEditorActionResult(editorCore.setBatchLineSpans(layer: layer.rawValue, spansByLine: spansByLine))
     }
 
-    func setLineInlayHints(line: Int, hints: [SweetEditorCore.InlayHintPayload]) {
+    func setLineInlayHints(line: Int, hints: [InlayHint]) {
         dispatchEditorActionResult(editorCore.setLineInlayHints(line: line, hints: hints))
     }
 
-    func setBatchLineInlayHints(_ hintsByLine: [Int: [SweetEditorCore.InlayHintPayload]]) {
+    func setBatchLineInlayHints(_ hintsByLine: [Int: [InlayHint]]) {
         dispatchEditorActionResult(editorCore.setBatchLineInlayHints(hintsByLine))
     }
 
-    func setLinePhantomTexts(line: Int, phantoms: [SweetEditorCore.PhantomTextPayload]) {
+    func setLinePhantomTexts(line: Int, phantoms: [PhantomText]) {
         dispatchEditorActionResult(editorCore.setLinePhantomTexts(line: line, phantoms: phantoms))
     }
 
-    func setBatchLinePhantomTexts(_ phantomsByLine: [Int: [SweetEditorCore.PhantomTextPayload]]) {
+    func setBatchLinePhantomTexts(_ phantomsByLine: [Int: [PhantomText]]) {
         dispatchEditorActionResult(editorCore.setBatchLinePhantomTexts(phantomsByLine))
     }
 
-    func setLineGutterIcons(line: Int, icons: [SweetEditorCore.GutterIcon]) {
+    func setLineGutterIcons(line: Int, icons: [GutterIcon]) {
         dispatchEditorActionResult(editorCore.setLineGutterIcons(line: line, icons: icons))
     }
 
-    func setBatchLineGutterIcons(_ iconsByLine: [Int: [SweetEditorCore.GutterIcon]]) {
+    func setBatchLineGutterIcons(_ iconsByLine: [Int: [GutterIcon]]) {
         dispatchEditorActionResult(editorCore.setBatchLineGutterIcons(iconsByLine))
     }
 
-    func setLineCodeLens(line: Int, items: [SweetEditorCore.CodeLensPayload]) {
+    func setLineCodeLens(line: Int, items: [CodeLensItem]) {
         dispatchEditorActionResult(editorCore.setLineCodeLens(line: line, items: items))
     }
 
-    func setBatchLineCodeLens(_ itemsByLine: [Int: [SweetEditorCore.CodeLensPayload]]) {
+    func setBatchLineCodeLens(_ itemsByLine: [Int: [CodeLensItem]]) {
         dispatchEditorActionResult(editorCore.setBatchLineCodeLens(itemsByLine))
     }
 
-    func setLineLinks(line: Int, links: [SweetEditorCore.LinkSpan]) {
+    func setLineLinks(line: Int, links: [LinkSpan]) {
         dispatchEditorActionResult(editorCore.setLineLinks(line: line, links: links))
     }
 
-    func setBatchLineLinks(_ linksByLine: [Int: [SweetEditorCore.LinkSpan]]) {
+    func setBatchLineLinks(_ linksByLine: [Int: [LinkSpan]]) {
         dispatchEditorActionResult(editorCore.setBatchLineLinks(linksByLine))
     }
 
@@ -264,31 +264,31 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         settings.setReadOnly(readOnly)
     }
 
-    func setLineDiagnostics(line: Int, items: [SweetEditorCore.DiagnosticItem]) {
+    func setLineDiagnostics(line: Int, items: [Diagnostic]) {
         dispatchEditorActionResult(editorCore.setLineDiagnostics(line: line, items: items))
     }
 
-    func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [SweetEditorCore.DiagnosticItem]]) {
+    func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [Diagnostic]]) {
         dispatchEditorActionResult(editorCore.setBatchLineDiagnostics(diagnosticsByLine))
     }
 
-    func setIndentGuides(_ guides: [SweetEditorCore.IndentGuidePayload]) {
+    func setIndentGuides(_ guides: [IndentGuide]) {
         dispatchEditorActionResult(editorCore.setIndentGuides(guides))
     }
 
-    func setBracketGuides(_ guides: [SweetEditorCore.BracketGuidePayload]) {
+    func setBracketGuides(_ guides: [BracketGuide]) {
         dispatchEditorActionResult(editorCore.setBracketGuides(guides))
     }
 
-    func setFlowGuides(_ guides: [SweetEditorCore.FlowGuidePayload]) {
+    func setFlowGuides(_ guides: [FlowGuide]) {
         dispatchEditorActionResult(editorCore.setFlowGuides(guides))
     }
 
-    func setSeparatorGuides(_ guides: [SweetEditorCore.SeparatorGuidePayload]) {
+    func setSeparatorGuides(_ guides: [SeparatorGuide]) {
         dispatchEditorActionResult(editorCore.setSeparatorGuides(guides))
     }
 
-    func setFoldRegions(_ regions: [SweetEditorCore.FoldRegion]) {
+    func setFoldRegions(_ regions: [FoldRegion]) {
         dispatchEditorActionResult(editorCore.setFoldRegions(regions))
     }
 
@@ -351,16 +351,16 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         if !decorations.foldRegions.isEmpty {
             dispatchEditorActionResult(editorCore.setFoldRegions(
                 decorations.foldRegions.map {
-                    SweetEditorCore.FoldRegion(startLine: $0.startLine, endLine: $0.endLine, collapsed: $0.collapsed)
+                    FoldRegion(startLine: $0.startLine, endLine: $0.endLine, collapsed: $0.collapsed)
                 }
             ))
         }
 
         if !decorations.diagnostics.isEmpty {
-            var diagnosticsByLine: [Int: [SweetEditorCore.DiagnosticItem]] = [:]
+            var diagnosticsByLine: [Int: [Diagnostic]] = [:]
             for lineDiagnostics in decorations.diagnostics {
                 let mapped = lineDiagnostics.items.map {
-                    SweetEditorCore.DiagnosticItem(
+                    Diagnostic(
                         column: $0.column,
                         length: $0.length,
                         severity: $0.severity
@@ -371,7 +371,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
             dispatchEditorActionResult(editorCore.setBatchLineDiagnostics(diagnosticsByLine))
         }
 
-        var inlayHintsByLine: [Int: [SweetEditorCore.InlayHintPayload]] = [:]
+        var inlayHintsByLine: [Int: [InlayHint]] = [:]
         for item in decorations.textInlays {
             inlayHintsByLine[item.line, default: []].append(
                 .text(column: item.column, text: item.text)
@@ -386,20 +386,20 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
             dispatchEditorActionResult(editorCore.setBatchLineInlayHints(inlayHintsByLine))
         }
 
-        var phantomsByLine: [Int: [SweetEditorCore.PhantomTextPayload]] = [:]
+        var phantomsByLine: [Int: [PhantomText]] = [:]
         for item in decorations.phantomTexts {
             phantomsByLine[item.line, default: []].append(
-                SweetEditorCore.PhantomTextPayload(column: item.column, text: item.text)
+                PhantomText(column: item.column, text: item.text)
             )
         }
         if !phantomsByLine.isEmpty {
             dispatchEditorActionResult(editorCore.setBatchLinePhantomTexts(phantomsByLine))
         }
 
-        var linksByLine: [Int: [SweetEditorCore.LinkSpan]] = [:]
+        var linksByLine: [Int: [LinkSpan]] = [:]
         for item in decorations.links {
             linksByLine[item.line, default: []].append(
-                SweetEditorCore.LinkSpan(column: item.column, length: item.length, target: item.target)
+                LinkSpan(column: item.column, length: item.length, target: item.target)
             )
         }
         if !linksByLine.isEmpty {
@@ -506,24 +506,24 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         settings.setScale(scale)
     }
 
-    func setAutoIndentMode(_ mode: SweetEditorCore.AutoIndentMode) {
+    func setAutoIndentMode(_ mode: AutoIndentMode) {
         switch mode {
-        case .none:
+        case .NONE:
             settings.setAutoIndentMode(.none)
-        case .keepIndent:
+        case .KEEP_INDENT:
             settings.setAutoIndentMode(.keepIndent)
         }
     }
 
-    func getAutoIndentMode() -> SweetEditorCore.AutoIndentMode {
-        SweetEditorCore.AutoIndentMode(settings.autoIndentMode)
+    func getAutoIndentMode() -> AutoIndentMode {
+        AutoIndentMode(settings.autoIndentMode)
     }
 
-    func getPositionRect(line: Int, column: Int) -> SweetEditorCore.CursorRect {
+    func getPositionRect(line: Int, column: Int) -> CursorRect {
         return editorCore.getPositionRect(line: line, column: column)
     }
 
-    func getCursorRect() -> SweetEditorCore.CursorRect {
+    func getCursorRect() -> CursorRect {
         return editorCore.getCursorRect()
     }
 
@@ -541,7 +541,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         setNeedsDisplay()
     }
 
-    func dispatchEditorActionResult(_ result: EditorActionResultData?) {
+    func dispatchEditorActionResult(_ result: EditorActionResult?) {
         guard let result else { return }
         if result.scale_changed {
             dispatchEditorActionResult(editorCore.syncPlatformScale(result.scale_after))
@@ -560,7 +560,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         }
     }
 
-    private func dispatchStateEvents(_ result: EditorActionResultData) {
+    private func dispatchStateEvents(_ result: EditorActionResult) {
         if result.scroll_changed {
             decorationProviderManager?.onScrollChanged()
             if completionPopupController?.isShowing == true {
@@ -594,13 +594,13 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
     func applyEditorSettings(_ settings: EditorSettings) {
         dispatchEditorActionResult(editorCore.setScale(settings.scale))
         dispatchEditorActionResult(editorCore.setCompositionEnabled(settings.compositionEnabled))
-        dispatchEditorActionResult(editorCore.setFoldArrowMode(SweetEditorCore.FoldArrowMode(settings.foldArrowMode)))
-        dispatchEditorActionResult(editorCore.setWrapMode(SweetEditorCore.WrapMode(settings.wrapMode)))
+        dispatchEditorActionResult(editorCore.setFoldArrowMode(FoldArrowMode(settings.foldArrowMode)))
+        dispatchEditorActionResult(editorCore.setWrapMode(WrapMode(settings.wrapMode)))
         dispatchEditorActionResult(editorCore.setLineSpacing(add: settings.lineSpacingAdd, mult: settings.lineSpacingMult))
         dispatchEditorActionResult(editorCore.setContentStartPadding(settings.contentStartPadding))
         dispatchEditorActionResult(editorCore.setShowSplitLine(settings.showSplitLine))
         dispatchEditorActionResult(editorCore.setCurrentLineRenderMode(settings.currentLineRenderMode.rawValue))
-        dispatchEditorActionResult(editorCore.setAutoIndentMode(SweetEditorCore.AutoIndentMode(settings.autoIndentMode)))
+        dispatchEditorActionResult(editorCore.setAutoIndentMode(AutoIndentMode(settings.autoIndentMode)))
         dispatchEditorActionResult(editorCore.setBackspaceUnindent(settings.backspaceUnindent))
         dispatchEditorActionResult(editorCore.setReadOnly(settings.readOnly))
         dispatchEditorActionResult(editorCore.setMaxGutterIcons(settings.maxGutterIcons))
@@ -714,15 +714,17 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         dispatchEditorActionResult(result)
     }
 
-    private func fireGestureEvents(_ result: EditorActionResultData) {
+    private func fireGestureEvents(_ result: EditorActionResult) {
         guard result.gesture_type == .TAP else { return }
+        let hitLine = Int(result.hit_target.line)
+        let hitColumn = Int(result.hit_target.column)
 
         switch result.hit_target.type {
         case .INLAY_HINT_TEXT:
             onInlayHintClick?(
                 SweetEditorInlayHintClickEvent(
-                    line: result.hit_target.line,
-                    column: result.hit_target.column,
+                    line: hitLine,
+                    column: hitColumn,
                     kind: .text,
                     iconId: 0,
                     colorValue: 0,
@@ -732,8 +734,8 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         case .INLAY_HINT_ICON:
             onInlayHintClick?(
                 SweetEditorInlayHintClickEvent(
-                    line: result.hit_target.line,
-                    column: result.hit_target.column,
+                    line: hitLine,
+                    column: hitColumn,
                     kind: .icon,
                     iconId: result.hit_target.icon_id,
                     colorValue: 0,
@@ -743,8 +745,8 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         case .INLAY_HINT_COLOR:
             onInlayHintClick?(
                 SweetEditorInlayHintClickEvent(
-                    line: result.hit_target.line,
-                    column: result.hit_target.column,
+                    line: hitLine,
+                    column: hitColumn,
                     kind: .color,
                     iconId: 0,
                     colorValue: result.hit_target.color_value,
@@ -754,7 +756,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         case .GUTTER_ICON:
             onGutterIconClick?(
                 SweetEditorGutterIconClickEvent(
-                    line: result.hit_target.line,
+                    line: hitLine,
                     iconId: result.hit_target.icon_id,
                     locationInView: CGPoint(x: CGFloat(result.tap_point.x), y: CGFloat(result.tap_point.y))
                 )
@@ -762,8 +764,8 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         case .CODELENS:
             onCodeLensClick?(
                 SweetEditorCodeLensClickEvent(
-                    line: result.hit_target.line,
-                    column: result.hit_target.column,
+                    line: hitLine,
+                    column: hitColumn,
                     commandId: result.hit_target.icon_id,
                     locationInView: CGPoint(x: CGFloat(result.tap_point.x), y: CGFloat(result.tap_point.y))
                 )
@@ -771,16 +773,16 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         case .LINK:
             onLinkClick?(
                 SweetEditorLinkClickEvent(
-                    line: result.hit_target.line,
-                    column: result.hit_target.column,
-                    target: getLinkTargetAt(line: result.hit_target.line, column: result.hit_target.column),
+                    line: hitLine,
+                    column: hitColumn,
+                    target: getLinkTargetAt(line: hitLine, column: hitColumn),
                     locationInView: CGPoint(x: CGFloat(result.tap_point.x), y: CGFloat(result.tap_point.y))
                 )
             )
         case .FOLD_PLACEHOLDER, .FOLD_GUTTER:
             onFoldToggle?(
                 SweetEditorFoldToggleEvent(
-                    line: result.hit_target.line,
+                    line: hitLine,
                     isGutter: result.hit_target.type == .FOLD_GUTTER,
                     locationInView: CGPoint(x: CGFloat(result.tap_point.x), y: CGFloat(result.tap_point.y))
                 )
@@ -793,7 +795,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
     private func updateCompletionPopupPosition() {
         guard completionPopupController?.isShowing == true else { return }
         let rect = editorCore.getCursorRect()
-        completionPopupController?.updatePosition(cursorX: rect.x, cursorY: rect.y, cursorHeight: rect.height)
+        completionPopupController?.updatePosition(cursorX: CGFloat(rect.x), cursorY: CGFloat(rect.y), cursorHeight: CGFloat(rect.height))
     }
 
     private func allTouchPoints(_ event: UIEvent?) -> [(Float, Float)] {
@@ -1135,7 +1137,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
                         handled = true
                     }
                 case .keyboardZ:
-                    let editResult: EditorActionResultData?
+                    let editResult: EditorActionResult?
                     if key.modifierFlags.contains(.shift) {
                         editResult = editorCore.redo()
                     } else {
@@ -1202,12 +1204,12 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         return mods
     }
 
-    private func textChanges(from result: EditorActionResultData?) -> [TextChange] {
+    private func textChanges(from result: EditorActionResult?) -> [TextChange] {
         guard let result, result.content_changed || !result.changes.isEmpty else { return [] }
         return textChanges(from: result.changes)
     }
 
-    private func textChanges(from rawChanges: [TextChangeData]) -> [TextChange] {
+    private func textChanges(from rawChanges: [TextChange]) -> [TextChange] {
         rawChanges.map { change in
             TextChange(
                 range: TextRange(
@@ -1228,16 +1230,16 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         var replaceRange: (startLine: Int, startColumn: Int, endLine: Int, endColumn: Int)? = nil
         if let textEdit = item.textEdit {
             replaceRange = (
-                textEdit.range.start.line,
-                textEdit.range.start.column,
-                textEdit.range.end.line,
-                textEdit.range.end.column
+                Int(textEdit.range.start.line),
+                Int(textEdit.range.start.column),
+                Int(textEdit.range.end.line),
+                Int(textEdit.range.end.column)
             )
             text = textEdit.newText
         } else {
             let wr = getWordRangeAtCursor()
             if !wr.isCollapsed {
-                replaceRange = (wr.start.line, wr.start.column, wr.end.line, wr.end.column)
+                replaceRange = (Int(wr.start.line), Int(wr.start.column), Int(wr.end.line), Int(wr.end.column))
             }
         }
 
@@ -1311,6 +1313,10 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         return offset + clampedColumn
     }
 
+    func offsetForLocation(line: Int32, column: Int32) -> Int {
+        offsetForLocation(line: Int(line), column: Int(column))
+    }
+
     func currentSelectionNSRange() -> NSRange {
         if let selection = editorCore.getSelectionRange() {
             let startOffset = offsetForLocation(line: selection.startLine, column: selection.startColumn)
@@ -1339,8 +1345,8 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         for line in 0..<lineCount {
             let startRect = getPositionRect(line: line, column: 0)
             let endRect = getPositionRect(line: line, column: document.getLineText(line).utf16.count)
-            let minY = min(startRect.y, endRect.y)
-            let maxY = max(startRect.y + startRect.height, endRect.y + endRect.height)
+            let minY = min(CGFloat(startRect.y), CGFloat(endRect.y))
+            let maxY = max(CGFloat(startRect.y + startRect.height), CGFloat(endRect.y + endRect.height))
             let distance: CGFloat
             if point.y < minY {
                 distance = minY - point.y
@@ -1362,7 +1368,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
 
         for column in 0...lineLength {
             let rect = getPositionRect(line: bestLine, column: column)
-            let distance = abs(rect.x - point.x)
+            let distance = abs(CGFloat(rect.x) - point.x)
             if distance < bestColumnDistance {
                 bestColumnDistance = distance
                 bestColumn = column

@@ -437,8 +437,8 @@ struct EditorRenderModel {
 
 Current C API conventions:
 
-- `build_editor_render_model()`: returns native-endian binary payload (all supported platforms are currently little-endian)
-- `get_layout_metrics()`: returns `LayoutMetrics` binary payload for platform-side layout query
+- `editor_build_render_model()`: returns native-endian binary payload (all supported platforms are currently little-endian)
+- `editor_get_layout_metrics()`: returns `LayoutMetrics` binary payload for platform-side layout query
 
 ### VisualLine and VisualRun
 
@@ -459,7 +459,7 @@ Each VisualRun has exact draw coordinates `(x, y)`, width `width`, text `text`, 
 Important distinction between internal representation and cross-language transport format:
 
 - Core internal `VisualRun.text` is `U16String`
-- `build_editor_render_model()` converts `VisualRun.text` to length-prefixed UTF-8 bytes in C API path
+- `editor_build_render_model()` converts `VisualRun.text` to length-prefixed UTF-8 bytes in C API path
 - Swing / WinForms / Apple / Android bridge layers decode this UTF-8 into each language `String`
 
 ### Platform-side Drawing Order
@@ -501,10 +501,10 @@ uint8_t options_data[] = {/* LE-packed EditorOptions */};
 intptr_t editor = create_editor(measurer, options_data, sizeof(options_data));
 
 // use
-set_editor_viewport(editor, width, height);
-set_editor_document(editor, document);
+editor_set_viewport(editor, width, height);
+editor_set_document(editor, document);
 size_t payload_size = 0;
-const uint8_t* payload = build_editor_render_model(editor, &payload_size);
+const uint8_t* payload = editor_build_render_model(editor, &payload_size);
 
 // free
 free_binary_data((intptr_t)payload);
@@ -515,10 +515,10 @@ free_editor(editor);
 
 Current C API path uses binary payload uniformly (native-endian; all supported platforms are currently little-endian):
 
-- `build_editor_render_model()` -> `EditorRenderModel`
-- `get_layout_metrics()` -> `LayoutMetrics`
-- `handle_editor_gesture_event*()` -> `EditorActionResult`
-- `handle_editor_key_event()` -> `EditorActionResult`
+- `editor_build_render_model()` -> `EditorRenderModel`
+- `editor_get_layout_metrics()` -> `LayoutMetrics`
+- `editor_handle_gesture_event()` -> `EditorActionResult`
+- `editor_handle_key_event()` -> `EditorActionResult`
 - state-changing APIs such as `editor_insert_text()` / `undo()` / `redo()` / IME writes / decoration writes -> `EditorActionResult`
 - `editor_get_scroll_metrics()` -> `ScrollMetrics`
 
@@ -539,14 +539,14 @@ String notes:
 | Windows | P/Invoke | `DllImport("sweeteditor.dll")` |
 | Swing | Java FFM | downcall to C API |
 | Web | Emscripten | Testing in unofficial fork: <https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten> |
-| OHOS | ArkTS NAPI (`libsweeteditor.so`) | ArkTS `native` calls into shared C++ and decodes binary payload in `EditorProtocol.ets` |
+| OHOS | ArkTS NAPI (`libsweeteditor.so`) | ArkTS `native` calls into shared C++ and decodes binary payload in `CoreProtocol.ets` |
 
 Note: Android currently does not use `c_api.h` call chain. New public features must sync both JNI path and C API path.
 
 Extra:
 
 - Android is JNI direct, but complex returns such as `buildRenderModel()`, `EditorActionResult`, and scroll metrics still decode from binary protocol.
-- Swing / WinForms currently read UTF-8 string fields via `ProtocolDecoder` / `EditorProtocol`.
+- Swing / WinForms currently read UTF-8 string fields via `CoreProtocol`.
 - Apple consumes the same binary layout via manual bridge + Swift `BinaryReader`.
 
 ---
@@ -564,7 +564,7 @@ Extra:
   Platform captures event
         │
         ▼
-  C API: handle_editor_gesture_event()
+  C API: editor_handle_gesture_event()
         │
         ▼
   GestureHandler.handleGestureEvent()
@@ -588,7 +588,7 @@ Extra:
         │  · refresh render model from needsRedraw
         │
         ▼
-  C API: build_editor_render_model()
+  C API: editor_build_render_model()
         │
         ▼
   EditorCore.buildRenderModel()
@@ -665,7 +665,7 @@ void free_editor(intptr_t handle) {
 Platform side should ensure:
 
 - call `free_document()` / `free_editor()` when handles are no longer used
-- free binary payload returned by `build_editor_render_model()` etc. via `free_binary_data()`
+- free binary payload returned by `editor_build_render_model()` etc. via `free_binary_data()`
 - free UTF-16 text returned by `get_document_line_text()` via `free_u16_string()`
 
 ---

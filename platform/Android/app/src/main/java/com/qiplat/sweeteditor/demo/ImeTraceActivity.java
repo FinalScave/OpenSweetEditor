@@ -47,6 +47,7 @@ import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.foundation.IntRange;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
+import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
 import com.qiplat.sweeteditor.event.CursorChangedEvent;
 import com.qiplat.sweeteditor.event.SelectionChangedEvent;
 import com.qiplat.sweeteditor.event.TextChangedEvent;
@@ -784,7 +785,7 @@ public class ImeTraceActivity extends AppCompatActivity {
                 json.put("isComposing", core.isComposing());
                 json.put("composingRange", rangeToJson(core.getComposingRange()));
                 json.put("keyboardScriptClass", core.getImeKeyboardScriptClass());
-                EditorCore.ImeSyncSnapshot snapshot = core.getImeSyncSnapshot();
+                ImeSyncSnapshot snapshot = core.getImeSyncSnapshot();
                 JSONObject sync = new JSONObject();
                 sync.put("cursor", positionToJson(snapshot.cursor));
                 sync.put("selection", rangeToJson(snapshot.selection));

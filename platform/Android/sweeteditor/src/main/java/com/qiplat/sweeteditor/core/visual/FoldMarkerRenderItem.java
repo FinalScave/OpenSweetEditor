@@ -1,28 +1,18 @@
 package com.qiplat.sweeteditor.core.visual;
 
-import com.google.gson.annotations.SerializedName;
+import com.qiplat.sweeteditor.core.foundation.Rect;
 
-/**
- * One fold marker render item with fully resolved geometry.
- */
-public class FoldMarkerRenderItem {
-    /** Logical line number. */
-    @SerializedName("logical_line")
-    public int logicalLine;
+public final class FoldMarkerRenderItem {
+    public int logicalLine = 0;
+    public FoldState foldState = FoldState.NONE;
+    public Rect rect = new Rect();
 
-    /** Fold state on this line. */
-    @SerializedName("fold_state")
-    public FoldState foldState;
+    public FoldMarkerRenderItem() {
+    }
 
-    /** Marker top-left origin. */
-    @SerializedName("origin")
-    public PointF origin;
-
-    /** Marker width. */
-    @SerializedName("width")
-    public float width;
-
-    /** Marker height. */
-    @SerializedName("height")
-    public float height;
+    public FoldMarkerRenderItem(int logicalLine, FoldState foldState, Rect rect) {
+        this.logicalLine = logicalLine;
+        this.foldState = foldState;
+        this.rect = rect;
+    }
 }

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:sweeteditor/editor_core.dart' as core;
+import 'package:sweeteditor/core/editor_core.dart' as core;
 import 'package:sweeteditor/sweeteditor.dart';
 
 import 'demo_completion_provider.dart';
@@ -64,7 +64,7 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
     super.initState();
     _controller = SweetEditorController();
     _editorSettings = EditorSettings()
-      ..setFoldArrowMode(core.FoldArrowMode.auto_)
+      ..setFoldArrowMode(core.FoldArrowMode.auto)
       ..setCurrentLineRenderMode(core.CurrentLineRenderMode.border)
       ..setMaxGutterIcons(1);
     _controller.whenReady(() {
