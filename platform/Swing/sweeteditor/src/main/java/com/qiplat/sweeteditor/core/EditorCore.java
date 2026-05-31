@@ -228,15 +228,6 @@ public class EditorCore {
         return decodeAction(EditorNative.updatePointerModifiers(nativeHandle, modifiers));
     }
 
-    /** Advances edge-scroll by one tick and returns an updated gesture result. */
-    public EditorActionResult tickEdgeScroll() {
-        return decodeAction(EditorNative.tickEdgeScroll(nativeHandle));
-    }
-
-    public EditorActionResult tickFling() {
-        return decodeAction(EditorNative.tickFling(nativeHandle));
-    }
-
     /** Unified animation tick: advances all active animations (edge-scroll, fling). */
     public EditorActionResult tickAnimations() {
         return decodeAction(EditorNative.tickAnimations(nativeHandle));

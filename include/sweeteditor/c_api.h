@@ -338,24 +338,8 @@ EDITOR_API const uint8_t* editor_handle_gesture_event(intptr_t editor_handle, co
 /// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_update_pointer_modifiers(intptr_t editor_handle, uint8_t modifiers, size_t* out_size);
 
-/// Tick edge-scroll during drag selection / handle drag.
-/// Call at ~16ms intervals while the previous EditorActionResult.needs_edge_scroll was true.
-/// Returns the same EditorActionResult binary layout as editor_handle_gesture_event.
-/// When needs_edge_scroll becomes false in the returned payload, stop the timer.
-/// @return EditorActionResult binary payload
-EDITOR_API const uint8_t* editor_tick_edge_scroll(intptr_t editor_handle, size_t* out_size);
-
-/// Tick fling (inertial scroll) animation.
-/// Call each frame while the previous EditorActionResult.needs_fling was true.
-/// The core tracks real elapsed time internally; any frame interval is fine.
-/// Returns the same EditorActionResult binary layout as editor_handle_gesture_event.
-/// When needs_fling becomes false in the returned payload, stop the timer.
-/// @return EditorActionResult binary payload
-EDITOR_API const uint8_t* editor_tick_fling(intptr_t editor_handle, size_t* out_size);
-
 /// Unified animation tick: advances all active animations (edge-scroll, fling).
-/// Platform can use a single frame callback driven by needs_animation and call this
-/// instead of editor_tick_edge_scroll() / editor_tick_fling() separately.
+/// Platform should use a single frame callback driven by needs_animation and call this.
 /// Returns the same EditorActionResult binary layout as editor_handle_gesture_event.
 /// When needs_animation becomes false in the returned payload, stop the callback.
 /// @return EditorActionResult binary payload

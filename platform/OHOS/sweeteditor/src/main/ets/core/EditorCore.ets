@@ -232,14 +232,6 @@ export class EditorCore {
     return this.handleGestureEvent(event);
   }
 
-  tickEdgeScroll(): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(native.editorTickEdgeScroll(this.handle));
-  }
-
-  tickFling(): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(native.editorTickFling(this.handle));
-  }
-
   tickAnimations(): EditorActionResult {
     return CoreProtocol.decodeEditorActionResult(native.editorTickAnimations(this.handle));
   }

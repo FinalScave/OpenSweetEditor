@@ -200,7 +200,7 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 |---|---|
 | 配置 | `loadDocument(doc)`, `setViewport(w, h)`, `onFontMetricsChanged()`, `setFoldArrowMode(mode)`, `setWrapMode(mode)`, `setTabSize(size)`, `setInsertSpaces(enabled)`, `setScale(scale)`, `setLineSpacing(add, mult)`, `setContentStartPadding(padding)`, `setShowSplitLine(show)`, `setCurrentLineRenderMode(mode)`, `setGutterSticky(sticky)`, `setGutterVisible(visible)`, `setHandleConfig(...)`, `setScrollbarConfig(...)` |
 | 渲染模型 | `buildRenderModel()`, `getLayoutMetrics()` |
-| 手势 / 键盘 | `handleGestureEvent(...)`, `tickEdgeScroll()`, `tickFling()`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(keyMap)` |
+| 手势 / 键盘 | `handleGestureEvent(...)`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(keyMap)` |
 | 文本编辑 | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `backspace()`, `deleteForward()`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
 | 撤销 / 重做 | `undo()`, `redo()`, `canUndo()`, `canRedo()` |
 | 光标 / 选区 | `setCursorPosition(line, col)`, `getCursorPosition()`, `selectAll()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `getSelectedText()`, `getWordRangeAtCursor()`, `getWordAtCursor()`, `moveCursorLeft(extend)`, `moveCursorRight(extend)`, `moveCursorUp(extend)`, `moveCursorDown(extend)`, `moveCursorToLineStart(extend)`, `moveCursorToLineEnd(extend)` |
@@ -639,7 +639,7 @@ ContextMenuEvent      // 具有显式上下文菜单手势入口的平台
 | `tapPoint` | `PointF` | **MUST** | 手势命中的 editor 本地坐标 |
 | `hitTarget` | `HitTargetType` + 与平台对齐的 payload | **MUST** | 当前手势位置的命中测试结果 |
 | `pointerCursorAfter` / `pointerCursorChanged` | `PointerCursorType` / boolean | 桌面端或具备 mouse / hover 输入的平台 **MUST**，纯触摸平台 **MAY** | 当前鼠标位置对应的指针样式提示，以及是否需要更新平台鼠标形状 |
-| `needsEdgeScroll` / `needsFling` / `needsAnimation` | boolean | **MUST** | 平台是否需要继续边缘滚动、惯性滚动或统一动画 tick |
+| `needsEdgeScroll` / `needsFling` / `needsAnimation` | boolean | **MUST** | 边缘滚动与惯性滚动状态，以及统一动画调度标记；平台只根据 `needsAnimation` 调度 tick |
 | `isHandleDrag` | boolean | 移动端 **SHOULD** | 当前手势是否为选择手柄拖拽 |
 
 > 这些字段 MUST 按自身语义独立消费，不能依赖 `needsRedraw` 顺带生效。桌面或具备 mouse / hover 输入的平台 SHOULD 在 `pointerCursorChanged` 为 true 时立即应用 `pointerCursorAfter`，即使本次 result 不需要重绘；平台也 MUST 根据 `needsAnimation` 启动或停止 animation tick，不能等待下一次 render model rebuild。纯触摸且没有鼠标指针概念的平台 MAY 完全忽略鼠标形状变化。

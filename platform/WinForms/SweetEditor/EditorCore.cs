@@ -391,12 +391,6 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_update_pointer_modifiers", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr UpdatePointerModifiers(IntPtr handle, byte modifiers, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "editor_tick_edge_scroll", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr TickEdgeScroll(IntPtr handle, out UIntPtr outSize);
-
-		[DllImport(LibraryName, EntryPoint = "editor_tick_fling", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr TickFling(IntPtr handle, out UIntPtr outSize);
-
 		[DllImport(LibraryName, EntryPoint = "editor_tick_animations", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr TickAnimations(IntPtr handle, out UIntPtr outSize);
 
@@ -1112,20 +1106,6 @@ namespace SweetEditor {
 		public EditorActionResult UpdatePointerModifiers(byte modifiers) {
 			if (IsReleased) return EditorActionResult.Empty;
 			IntPtr payloadPtr = NativeMethods.UpdatePointerModifiers(nativeHandle, modifiers, out UIntPtr payloadSize);
-			return DecodeAction(payloadPtr, payloadSize);
-		}
-
-		/// <summary>Advances edge-scroll by one tick and returns an updated gesture result.</summary>
-		public EditorActionResult TickEdgeScroll() {
-			if (IsReleased) return EditorActionResult.Empty;
-			IntPtr payloadPtr = NativeMethods.TickEdgeScroll(nativeHandle, out UIntPtr payloadSize);
-			return DecodeAction(payloadPtr, payloadSize);
-		}
-
-		/// <summary>Advances fling animation by one tick and returns an updated gesture result.</summary>
-		public EditorActionResult TickFling() {
-			if (IsReleased) return EditorActionResult.Empty;
-			IntPtr payloadPtr = NativeMethods.TickFling(nativeHandle, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 

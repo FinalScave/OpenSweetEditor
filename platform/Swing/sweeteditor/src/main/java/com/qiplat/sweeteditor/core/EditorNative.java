@@ -269,12 +269,6 @@ public final class EditorNative {
     private static final MethodHandle GET_LAYOUT_METRICS = downcall("editor_get_layout_metrics",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
-    private static final MethodHandle TICK_EDGE_SCROLL = downcall("editor_tick_edge_scroll",
-            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-
-    private static final MethodHandle TICK_FLING = downcall("editor_tick_fling",
-            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-
     private static final MethodHandle TICK_ANIMATIONS = downcall("editor_tick_animations",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
@@ -878,14 +872,6 @@ public final class EditorNative {
 
     public static NativeBinaryResult getLayoutMetrics(long handle) {
         return invokeBinaryResult(outSize -> (MemorySegment) GET_LAYOUT_METRICS.invokeExact(handle, outSize));
-    }
-
-    public static NativeBinaryResult tickEdgeScroll(long handle) {
-        return invokeBinaryResult(outSize -> (MemorySegment) TICK_EDGE_SCROLL.invokeExact(handle, outSize));
-    }
-
-    public static NativeBinaryResult tickFling(long handle) {
-        return invokeBinaryResult(outSize -> (MemorySegment) TICK_FLING.invokeExact(handle, outSize));
     }
 
     public static NativeBinaryResult tickAnimations(long handle) {

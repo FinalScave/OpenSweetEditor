@@ -354,38 +354,6 @@ public class EditorCore {
     }
 
     /**
-     * Tick edge-scroll during drag selection / handle drag.
-     * Call at ~16ms intervals while the previous EditorActionResult.needsEdgeScroll was true.
-     */
-    public EditorActionResult tickEdgeScroll() {
-        if (mNativeHandle == 0) {
-            return new EditorActionResult();
-        }
-        ByteBuffer data = nativeTickEdgeScroll(mNativeHandle);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    /**
-     * Tick fling (inertial scroll) animation.
-     * Call at ~16ms intervals while the previous EditorActionResult.needsFling was true.
-     */
-    public EditorActionResult tickFling() {
-        if (mNativeHandle == 0) {
-            return new EditorActionResult();
-        }
-        ByteBuffer data = nativeTickFling(mNativeHandle);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    /**
      * Unified animation tick: advances all active animations (edge-scroll, fling).
      * Platform can use a single frame callback driven by EditorActionResult.needsAnimation.
      */
@@ -2139,12 +2107,6 @@ public class EditorCore {
 
     @FastNative
     private static native ByteBuffer nativeUpdatePointerModifiers(long handle, int modifiers);
-
-    @FastNative
-    private static native ByteBuffer nativeTickEdgeScroll(long handle);
-
-    @FastNative
-    private static native ByteBuffer nativeTickFling(long handle);
 
     @FastNative
     private static native ByteBuffer nativeTickAnimations(long handle);

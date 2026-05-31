@@ -270,28 +270,6 @@ public:
       &out_size), out_size);
   }
 
-  static napi_value tickEdgeScroll(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    int64_t handle = napi_get_handle(env, args[0]);
-    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
-    size_t out_size = 0;
-    const uint8_t* payload = editor_tick_edge_scroll(static_cast<intptr_t>(handle), &out_size);
-    return wrap_binary_payload(env, payload, out_size);
-  }
-
-  static napi_value tickFling(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    int64_t handle = napi_get_handle(env, args[0]);
-    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
-    size_t out_size = 0;
-    const uint8_t* payload = editor_tick_fling(static_cast<intptr_t>(handle), &out_size);
-    return wrap_binary_payload(env, payload, out_size);
-  }
-
   static napi_value tickAnimations(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];

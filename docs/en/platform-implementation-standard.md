@@ -200,7 +200,7 @@ During construction or first-frame bootstrap before the editor runtime / dispatc
 |---|---|
 | Configuration | `loadDocument(doc)`, `setViewport(w, h)`, `onFontMetricsChanged()`, `setFoldArrowMode(mode)`, `setWrapMode(mode)`, `setTabSize(size)`, `setInsertSpaces(enabled)`, `setScale(scale)`, `setLineSpacing(add, mult)`, `setContentStartPadding(padding)`, `setShowSplitLine(show)`, `setCurrentLineRenderMode(mode)`, `setGutterSticky(sticky)`, `setGutterVisible(visible)`, `setHandleConfig(...)`, `setScrollbarConfig(...)` |
 | Render model | `buildRenderModel()`, `getLayoutMetrics()` |
-| Gesture / keyboard | `handleGestureEvent(...)`, `tickEdgeScroll()`, `tickFling()`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(keyMap)` |
+| Gesture / keyboard | `handleGestureEvent(...)`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(keyMap)` |
 | Text editing | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `backspace()`, `deleteForward()`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
 | Undo / redo | `undo()`, `redo()`, `canUndo()`, `canRedo()` |
 | Cursor / selection | `setCursorPosition(line, col)`, `getCursorPosition()`, `selectAll()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `getSelectedText()`, `getWordRangeAtCursor()`, `getWordAtCursor()`, `moveCursorLeft(extend)`, `moveCursorRight(extend)`, `moveCursorUp(extend)`, `moveCursorDown(extend)`, `moveCursorToLineStart(extend)`, `moveCursorToLineEnd(extend)` |
@@ -643,7 +643,7 @@ Platforms MAY expose the return value of `handleGestureEvent(...)` directly, or 
 | `tapPoint` | `PointF` | **MUST** | Gesture hit point in editor-local coordinates |
 | `hitTarget` | `HitTargetType` + platform-aligned payload | **MUST** | Hit-test result for the current gesture location |
 | `pointerCursorAfter` / `pointerCursorChanged` | `PointerCursorType` / boolean | **MUST** on desktop or platforms with mouse / hover input, **MAY** on touch-only platforms | Pointer cursor hint for the current mouse location, plus whether the platform cursor should update |
-| `needsEdgeScroll` / `needsFling` / `needsAnimation` | boolean | **MUST** | Whether the platform should continue edge-scroll, fling, or unified animation ticks |
+| `needsEdgeScroll` / `needsFling` / `needsAnimation` | boolean | **MUST** | Edge-scroll and fling state plus the unified animation scheduling flag; platforms schedule ticks from `needsAnimation` |
 | `isHandleDrag` | boolean | Mobile **SHOULD** | Whether the current gesture is a selection-handle drag |
 
 > These fields MUST be consumed according to their own semantics and must not depend on `needsRedraw` as a side effect. Desktop platforms, and platforms with mouse / hover input, SHOULD apply `pointerCursorAfter` immediately when `pointerCursorChanged` is true even if the result does not require redraw; platforms MUST also start or stop animation ticks from `needsAnimation` rather than waiting for the next render model rebuild. Touch-only platforms with no pointer cursor concept MAY ignore cursor-shape changes entirely.

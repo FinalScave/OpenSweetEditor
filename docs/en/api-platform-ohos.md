@@ -250,8 +250,6 @@ public getScrollMetrics(): ScrollMetrics
 ```ts
 public handleGestureEvent(event: GestureEvent): EditorActionResult
 public handleSimpleGestureEvent(type: EventType, pointerCount: number, points: number[]): EditorActionResult
-public tickEdgeScroll(): EditorActionResult
-public tickFling(): EditorActionResult
 public tickAnimations(): EditorActionResult
 public handleKeyEvent(keyCode: number, text: string | null, modifiers: number): EditorActionResult
 ```

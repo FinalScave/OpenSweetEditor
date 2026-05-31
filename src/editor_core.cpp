@@ -689,20 +689,6 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
-  EditorActionResult EditorCore::tickFling() {
-    const ActionSnapshot before = captureActionSnapshot();
-    GestureResult result = m_interaction_->tickFling();
-    finalizeGestureResult(result);
-    return finishGestureAction(before, result, EditorActionReason::ANIMATION);
-  }
-
-  EditorActionResult EditorCore::tickEdgeScroll() {
-    const ActionSnapshot before = captureActionSnapshot();
-    GestureResult result = m_interaction_->tickEdgeScroll();
-    finalizeGestureResult(result);
-    return finishGestureAction(before, result, EditorActionReason::ANIMATION);
-  }
-
   EditorActionResult EditorCore::tickAnimations() {
     const ActionSnapshot before = captureActionSnapshot();
     GestureResult result = m_interaction_->tickAnimations();

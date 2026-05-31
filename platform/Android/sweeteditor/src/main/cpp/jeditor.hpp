@@ -297,20 +297,6 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static jobject tickEdgeScroll(JNIEnv* env, jclass clazz, jlong handle) {
-    if (handle == 0) return nullptr;
-    size_t out_size = 0;
-    const uint8_t* payload = editor_tick_edge_scroll(static_cast<intptr_t>(handle), &out_size);
-    return wrapBinaryPayload(env, payload, out_size);
-  }
-
-  static jobject tickFling(JNIEnv* env, jclass clazz, jlong handle) {
-    if (handle == 0) return nullptr;
-    size_t out_size = 0;
-    const uint8_t* payload = editor_tick_fling(static_cast<intptr_t>(handle), &out_size);
-    return wrapBinaryPayload(env, payload, out_size);
-  }
-
   static jobject tickAnimations(JNIEnv* env, jclass clazz, jlong handle) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
@@ -1379,8 +1365,6 @@ public:
       {"nativeLoadDocument", "(JJ)Ljava/nio/ByteBuffer;", (void*) loadDocument},
       {"nativeHandleGestureEvent", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) handleGestureEvent},
       {"nativeUpdatePointerModifiers", "(JI)Ljava/nio/ByteBuffer;", (void*) updatePointerModifiers},
-      {"nativeTickEdgeScroll", "(J)Ljava/nio/ByteBuffer;", (void*) tickEdgeScroll},
-      {"nativeTickFling", "(J)Ljava/nio/ByteBuffer;", (void*) tickFling},
       {"nativeTickAnimations", "(J)Ljava/nio/ByteBuffer;", (void*) tickAnimations},
       {"nativeOnFontMetricsChanged", "(J)Ljava/nio/ByteBuffer;", (void*) onFontMetricsChanged},
       {"nativeBuildRenderModel", "(J)Ljava/nio/ByteBuffer;", (void*) buildRenderModel},

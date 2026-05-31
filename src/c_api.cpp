@@ -360,30 +360,6 @@ const uint8_t* editor_update_pointer_modifiers(intptr_t editor_handle, uint8_t m
   return editorActionResultToBinary(result, out_size);
 }
 
-const uint8_t* editor_tick_edge_scroll(intptr_t editor_handle, size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-  EditorActionResult result = editor_core->tickEdgeScroll();
-  return editorActionResultToBinary(result, out_size);
-}
-
-const uint8_t* editor_tick_fling(intptr_t editor_handle, size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-  EditorActionResult result = editor_core->tickFling();
-  return editorActionResultToBinary(result, out_size);
-}
-
 const uint8_t* editor_tick_animations(intptr_t editor_handle, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {

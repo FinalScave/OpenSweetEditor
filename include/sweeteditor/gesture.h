@@ -28,7 +28,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Fling (inertial scroll) animator driven by exponential velocity decay.
-  /// Owned by EditorCore; platform calls tickFling() at ~16ms intervals.
+  /// Owned by EditorCore and advanced through unified animation ticks.
   class FlingAnimator {
   public:
     explicit FlingAnimator(const TouchConfig& config);
@@ -211,17 +211,15 @@ namespace NS_SWEETEDITOR {
     float view_scale {1};
     /// Decoration hit target at the gesture location (filled by EditorCore when applicable)
     HitTarget hit_target;
-    /// Whether the platform should start/continue an edge-scroll timer.
-    /// When true, the platform must call tickEdgeScroll() at ~16ms intervals.
-    /// When false, the platform should stop the edge-scroll timer.
+    /// Whether the core has active edge-scroll state.
+    /// Platforms use needs_animation for scheduling and may use this for diagnostics.
     bool needs_edge_scroll {false};
-    /// Whether the platform should start/continue a fling (inertial scroll) timer.
-    /// When true, the platform must call tickFling() each frame (e.g. via Choreographer).
-    /// When false, the platform should stop the fling timer.
+    /// Whether the core has active fling state.
+    /// Platforms use needs_animation for scheduling and may use this for diagnostics.
     bool needs_fling {false};
     /// Aggregated animation flag (needs_edge_scroll || needs_fling).
     /// Platform can use a single animation loop driven by this flag
-    /// and call tickAnimations() instead of separate tick functions.
+    /// and call tickAnimations().
     bool needs_animation {false};
     /// Whether this gesture event is part of a selection handle drag.
     /// True while the user is dragging a selection handle (start or end).

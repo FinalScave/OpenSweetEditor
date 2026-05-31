@@ -378,24 +378,6 @@ class EditorCore {
     );
   }
 
-  EditorActionResult tickEdgeScroll() {
-    _ensureOpen();
-    return _callAndParse(
-      const EditorActionResult(),
-      (outSize) => bindings.editor_tick_edge_scroll(_handle, outSize),
-      CoreProtocol.decodeEditorActionResultFromPointer,
-    );
-  }
-
-  EditorActionResult tickFling() {
-    _ensureOpen();
-    return _callAndParse(
-      const EditorActionResult(),
-      (outSize) => bindings.editor_tick_fling(_handle, outSize),
-      CoreProtocol.decodeEditorActionResultFromPointer,
-    );
-  }
-
   EditorActionResult tickAnimations() {
     _ensureOpen();
     return _callAndParse(

@@ -193,21 +193,8 @@ namespace NS_SWEETEDITOR {
     /// @return Editor state changes caused by pointer presentation refresh
     EditorActionResult updatePointerModifiers(KeyModifier modifiers);
 
-    /// Called by platform timer (~16ms interval) while needs_edge_scroll is true.
-    /// Scrolls the viewport and updates the selection based on saved edge-scroll state.
-    /// @return Updated gesture result (platform should redraw; check needs_edge_scroll to decide
-    ///         whether to continue the timer)
-    EditorActionResult tickEdgeScroll();
-
-    /// Called by platform each frame while needs_fling is true.
-    /// Advances fling animation using real elapsed time and applies scroll delta.
-    /// @return Updated gesture result (platform should redraw; check needs_fling to decide
-    ///         whether to continue the timer)
-    EditorActionResult tickFling();
-
     /// Unified animation tick: advances all active animations (edge-scroll, fling).
-    /// Platform can use a single frame callback driven by needs_animation and call this
-    /// instead of tickEdgeScroll() / tickFling() separately.
+    /// Platform can use a single frame callback driven by needs_animation and call this.
     /// @return Updated gesture result with needs_animation reflecting whether any animation is still active
     EditorActionResult tickAnimations();
 

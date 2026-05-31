@@ -428,34 +428,8 @@ external ffi.Pointer<ffi.Uint8> editor_update_pointer_modifiers(
 
 /// Tick edge-scroll during drag selection / handle drag.
 /// Call at ~16ms intervals while the previous EditorActionResult.needs_edge_scroll was true.
-/// Returns the same EditorActionResult binary layout as editor_handle_gesture_event.
-/// When needs_edge_scroll becomes false in the returned payload, stop the timer.
-/// @return EditorActionResult binary payload
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> editor_tick_edge_scroll(
-  int editor_handle,
-  ffi.Pointer<ffi.Size> out_size,
-);
-
-/// Tick fling (inertial scroll) animation.
-/// Call each frame while the previous EditorActionResult.needs_fling was true.
-/// The core tracks real elapsed time internally; any frame interval is fine.
-/// Returns the same EditorActionResult binary layout as editor_handle_gesture_event.
-/// When needs_fling becomes false in the returned payload, stop the timer.
-/// @return EditorActionResult binary payload
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
->(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> editor_tick_fling(
-  int editor_handle,
-  ffi.Pointer<ffi.Size> out_size,
-);
-
 /// Unified animation tick: advances all active animations (edge-scroll, fling).
 /// Platform can use a single frame callback driven by needs_animation and call this
-/// instead of editor_tick_edge_scroll() / editor_tick_fling() separately.
 /// Returns the same EditorActionResult binary layout as editor_handle_gesture_event.
 /// When needs_animation becomes false in the returned payload, stop the callback.
 /// @return EditorActionResult binary payload
