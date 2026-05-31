@@ -163,12 +163,10 @@ set(WASM_C_ABI_EXPORTED_FUNCTIONS
         _editor_ime_mark_input_context_range
         _editor_ime_notify_document_selection_changed
         _editor_ime_notify_input_context_selection_changed
-        _editor_ime_update_input_state_text
         _editor_ime_update_text_model_state
         _editor_ime_update_text_model_delta
         _editor_ime_update_input_state_selection
         _editor_ime_replace_input_state_text
-        _editor_ime_commit_input_state_text_replacement
         _editor_ime_delete_backward
         _editor_ime_delete_forward
         _editor_ime_delete_surrounding

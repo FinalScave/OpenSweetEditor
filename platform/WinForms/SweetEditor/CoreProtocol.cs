@@ -1075,6 +1075,24 @@ namespace SweetEditor {
             return size;
         }
 
+        private static void WriteImeDocumentTextReplacement(BinaryWriter writer, ImeDocumentTextReplacement value) {
+            writer.WriteInt32(value.StartOffset);
+            writer.WriteInt32(value.EndOffset);
+            WriteUtf8String(writer, value.Text);
+            writer.WriteInt32(value.CursorOffset);
+            writer.WriteInt32((int)value.ScriptClass);
+        }
+
+        private static int SizeOfImeDocumentTextReplacement(ImeDocumentTextReplacement value) {
+            var size = 0;
+            size += 4;
+            size += 4;
+            size += SizeOfUtf8String(value.Text);
+            size += 4;
+            size += 4;
+            return size;
+        }
+
         private static ImeInputContext ReadImeInputContext(ref BinaryReader reader) {
             return new ImeInputContext {
                 Id = reader.ReadInt64(),
@@ -1091,6 +1109,46 @@ namespace SweetEditor {
         public static ImeInputContext DecodeImeInputContext(ReadOnlySpan<byte> data) {
             var reader = new BinaryReader(data);
             return ReadImeInputContext(ref reader);
+        }
+
+        private static void WriteImeInputContextTextReplacement(BinaryWriter writer, ImeInputContextTextReplacement value) {
+            writer.WriteInt32(value.StartOffset);
+            writer.WriteInt32(value.EndOffset);
+            WriteUtf8String(writer, value.Text);
+            writer.WriteInt32(value.CursorOffset);
+            writer.WriteInt32((int)value.ScriptClass);
+        }
+
+        private static int SizeOfImeInputContextTextReplacement(ImeInputContextTextReplacement value) {
+            var size = 0;
+            size += 4;
+            size += 4;
+            size += SizeOfUtf8String(value.Text);
+            size += 4;
+            size += 4;
+            return size;
+        }
+
+        private static void WriteImeInputStateTextReplacement(BinaryWriter writer, ImeInputStateTextReplacement value) {
+            writer.WriteInt64(value.ContextId);
+            writer.WriteInt32(value.DocumentStartOffset);
+            writer.WriteInt32(value.StartOffset);
+            writer.WriteInt32(value.EndOffset);
+            WriteUtf8String(writer, value.Text);
+            writer.WriteInt32(value.CursorOffset);
+            writer.WriteInt32((int)value.ScriptClass);
+        }
+
+        private static int SizeOfImeInputStateTextReplacement(ImeInputStateTextReplacement value) {
+            var size = 0;
+            size += 8;
+            size += 4;
+            size += 4;
+            size += 4;
+            size += SizeOfUtf8String(value.Text);
+            size += 4;
+            size += 4;
+            return size;
         }
 
         private static ImeSyncSnapshot ReadImeSyncSnapshot(ref BinaryReader reader) {
@@ -1114,6 +1172,54 @@ namespace SweetEditor {
             return ReadImeSyncSnapshot(ref reader);
         }
 
+        private static void WriteImeTextModelDelta(BinaryWriter writer, ImeTextModelDelta value) {
+            writer.WriteInt32((int)value.Mode);
+            writer.WriteInt64(value.ContextId);
+            writer.WriteInt32(value.DocumentStartOffset);
+            WriteUtf8String(writer, value.OldText);
+            WriteImeTextRange(writer, value.Delta);
+            WriteUtf8String(writer, value.DeltaText);
+            WriteImeTextRange(writer, value.Selection);
+            WriteImeTextRange(writer, value.Composition);
+            writer.WriteInt32((int)value.ScriptClass);
+        }
+
+        private static int SizeOfImeTextModelDelta(ImeTextModelDelta value) {
+            var size = 0;
+            size += 4;
+            size += 8;
+            size += 4;
+            size += SizeOfUtf8String(value.OldText);
+            size += SizeOfImeTextRange(value.Delta);
+            size += SizeOfUtf8String(value.DeltaText);
+            size += SizeOfImeTextRange(value.Selection);
+            size += SizeOfImeTextRange(value.Composition);
+            size += 4;
+            return size;
+        }
+
+        private static void WriteImeTextModelState(BinaryWriter writer, ImeTextModelState value) {
+            writer.WriteInt32((int)value.Mode);
+            writer.WriteInt64(value.ContextId);
+            writer.WriteInt32(value.DocumentStartOffset);
+            WriteUtf8String(writer, value.Text);
+            WriteImeTextRange(writer, value.Selection);
+            WriteImeTextRange(writer, value.Composition);
+            writer.WriteInt32((int)value.ScriptClass);
+        }
+
+        private static int SizeOfImeTextModelState(ImeTextModelState value) {
+            var size = 0;
+            size += 4;
+            size += 8;
+            size += 4;
+            size += SizeOfUtf8String(value.Text);
+            size += SizeOfImeTextRange(value.Selection);
+            size += SizeOfImeTextRange(value.Composition);
+            size += 4;
+            return size;
+        }
+
         private static ImeTextRange ReadImeTextRange(ref BinaryReader reader) {
             return new ImeTextRange {
                 Start = reader.ReadInt32(),
@@ -1134,6 +1240,20 @@ namespace SweetEditor {
         private static int SizeOfImeTextRange(ImeTextRange value) {
             var size = 0;
             size += 4;
+            size += 4;
+            return size;
+        }
+
+        private static void WriteImeTextReplacement(BinaryWriter writer, ImeTextReplacement value) {
+            WriteTextRange(writer, value.Range);
+            WriteUtf8String(writer, value.Text);
+            writer.WriteInt32((int)value.ScriptClass);
+        }
+
+        private static int SizeOfImeTextReplacement(ImeTextReplacement value) {
+            var size = 0;
+            size += SizeOfTextRange(value.Range);
+            size += SizeOfUtf8String(value.Text);
             size += 4;
             return size;
         }
@@ -2064,6 +2184,42 @@ namespace SweetEditor {
         public static byte[] EncodeScrollbarConfig(ScrollbarConfig value) {
             var writer = new BinaryWriter(SizeOfScrollbarConfig(value));
             WriteScrollbarConfig(writer, value);
+            return writer.ToArray();
+        }
+
+        public static byte[] EncodeImeDocumentTextReplacement(ImeDocumentTextReplacement value) {
+            var writer = new BinaryWriter(SizeOfImeDocumentTextReplacement(value));
+            WriteImeDocumentTextReplacement(writer, value);
+            return writer.ToArray();
+        }
+
+        public static byte[] EncodeImeInputContextTextReplacement(ImeInputContextTextReplacement value) {
+            var writer = new BinaryWriter(SizeOfImeInputContextTextReplacement(value));
+            WriteImeInputContextTextReplacement(writer, value);
+            return writer.ToArray();
+        }
+
+        public static byte[] EncodeImeInputStateTextReplacement(ImeInputStateTextReplacement value) {
+            var writer = new BinaryWriter(SizeOfImeInputStateTextReplacement(value));
+            WriteImeInputStateTextReplacement(writer, value);
+            return writer.ToArray();
+        }
+
+        public static byte[] EncodeImeTextModelDelta(ImeTextModelDelta value) {
+            var writer = new BinaryWriter(SizeOfImeTextModelDelta(value));
+            WriteImeTextModelDelta(writer, value);
+            return writer.ToArray();
+        }
+
+        public static byte[] EncodeImeTextModelState(ImeTextModelState value) {
+            var writer = new BinaryWriter(SizeOfImeTextModelState(value));
+            WriteImeTextModelState(writer, value);
+            return writer.ToArray();
+        }
+
+        public static byte[] EncodeImeTextReplacement(ImeTextReplacement value) {
+            var writer = new BinaryWriter(SizeOfImeTextReplacement(value));
+            WriteImeTextReplacement(writer, value);
             return writer.ToArray();
         }
 

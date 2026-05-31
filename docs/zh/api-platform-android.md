@@ -11,7 +11,7 @@
 
 - Android 侧主路径是 JNI 直连 C++（不是通过 `c_api.h`）。
 - `EditorCore` 在 JNI 边界保留 `int` 原生协议。
-- `buildRenderModel()`、`EditorActionResult`、滚动度量等复杂返回当前仍通过二进制协议返回，再由 `ProtocolDecoder` 解码。
+- `buildRenderModel()`、`EditorActionResult`、滚动度量等复杂返回当前仍通过二进制协议返回，再由 `CoreProtocol` 解码。
 - `SweetEditor` 对外提供语义化枚举 API（`WrapMode`/`FoldArrowMode`/`AutoIndentMode` 等）。
 
 ## 快速开始
@@ -212,7 +212,7 @@ public <T extends EditorEvent> void unsubscribe(@NonNull Class<T> eventType, @No
 public void flush()
 ```
 
-`flush()` 是强制刷新 / 兼容入口。正常编辑、装饰、滚动、选区和 IME 同步路径会通过统一分发 `EditorActionResult`，并由 `needsRedraw` 决定是否刷新 render model 与重绘；宿主通常不需要在批量装饰更新后手动调用。
+`flush()` 是强制刷新 / 诊断入口。正常编辑、装饰、滚动、选区和 IME 同步路径会通过统一分发 `EditorActionResult`，并由 `needsRedraw` 决定是否刷新 render model 与重绘；宿主通常不需要在批量装饰更新后手动调用。
 
 `CodeLensClickEvent` 与 `LinkClickEvent` 也通过同一个泛型 `subscribe(...)` API 分发。`getLinkTargetAt(...)` 在请求位置未命中 link 时返回空字符串。
 
@@ -295,8 +295,8 @@ public void clearInlayHints()
 public void clearPhantomTexts()
 public void clearAllDecorations()
 
-public void setLineDiagnostics(int line, @NonNull List<? extends DiagnosticItem> items)
-public void setBatchLineDiagnostics(@Nullable SparseArray<? extends List<? extends DiagnosticItem>> diagsByLine)
+public void setLineDiagnostics(int line, @NonNull List<? extends Diagnostic> items)
+public void setBatchLineDiagnostics(@Nullable SparseArray<? extends List<? extends Diagnostic>> diagsByLine)
 public void clearDiagnostics()
 
 public void setMaxGutterIcons(int count)

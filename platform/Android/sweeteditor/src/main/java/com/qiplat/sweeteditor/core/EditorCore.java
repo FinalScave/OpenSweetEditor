@@ -25,9 +25,14 @@ import com.qiplat.sweeteditor.core.config.EditorOptions;
 import com.qiplat.sweeteditor.core.config.HandleConfig;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
+import com.qiplat.sweeteditor.core.ime.ImeDocumentTextReplacement;
+import com.qiplat.sweeteditor.core.ime.ImeInputContextTextReplacement;
+import com.qiplat.sweeteditor.core.ime.ImeInputStateTextReplacement;
 import com.qiplat.sweeteditor.core.ime.ImeInputContext;
 import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
 import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
+import com.qiplat.sweeteditor.core.ime.ImeTextModelState;
+import com.qiplat.sweeteditor.core.ime.ImeTextReplacement;
 import com.qiplat.sweeteditor.core.keymap.KeyModifier;
 import com.qiplat.sweeteditor.core.interaction.EventType;
 import com.qiplat.sweeteditor.core.interaction.GestureEvent;
@@ -845,18 +850,10 @@ public class EditorCore {
     }
 
     @NonNull
-    public EditorActionResult replaceImeText(@NonNull TextRange range,
-                                          @Nullable String text,
-                                          int scriptHint) {
+    public EditorActionResult replaceImeText(@NonNull ImeTextReplacement replacement) {
         if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeReplaceText(
-                mNativeHandle,
-                range.start.line,
-                range.start.column,
-                range.end.line,
-                range.end.column,
-                text != null ? text : "",
-                scriptHint);
+        ByteBuffer payload = CoreProtocol.encodeImeTextReplacement(replacement);
+        ByteBuffer data = nativeImeReplaceText(mNativeHandle, payload, payload.remaining());
         try {
             return CoreProtocol.decodeEditorActionResult(data);
         } finally {
@@ -865,19 +862,10 @@ public class EditorCore {
     }
 
     @NonNull
-    public EditorActionResult replaceImeDocumentText(long startOffset,
-                                                  long endOffset,
-                                                  @Nullable String text,
-                                                  int cursorOffset,
-                                                  int scriptHint) {
+    public EditorActionResult replaceImeDocumentText(@NonNull ImeDocumentTextReplacement replacement) {
         if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeReplaceDocumentText(
-                mNativeHandle,
-                startOffset,
-                endOffset,
-                text != null ? text : "",
-                cursorOffset,
-                scriptHint);
+        ByteBuffer payload = CoreProtocol.encodeImeDocumentTextReplacement(replacement);
+        ByteBuffer data = nativeImeReplaceDocumentText(mNativeHandle, payload, payload.remaining());
         try {
             return CoreProtocol.decodeEditorActionResult(data);
         } finally {
@@ -886,19 +874,10 @@ public class EditorCore {
     }
 
     @NonNull
-    public EditorActionResult replaceImeInputContextText(long startOffset,
-                                                      long endOffset,
-                                                      @Nullable String text,
-                                                      int cursorOffset,
-                                                      int scriptHint) {
+    public EditorActionResult replaceImeInputContextText(@NonNull ImeInputContextTextReplacement replacement) {
         if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeReplaceInputContextText(
-                mNativeHandle,
-                startOffset,
-                endOffset,
-                text != null ? text : "",
-                cursorOffset,
-                scriptHint);
+        ByteBuffer payload = CoreProtocol.encodeImeInputContextTextReplacement(replacement);
+        ByteBuffer data = nativeImeReplaceInputContextText(mNativeHandle, payload, payload.remaining());
         try {
             return CoreProtocol.decodeEditorActionResult(data);
         } finally {
@@ -940,25 +919,10 @@ public class EditorCore {
     }
 
     @NonNull
-    public EditorActionResult updateImeInputStateText(long contextId,
-                                                   int documentStartOffset,
-                                                   @Nullable String text,
-                                                   int selectionStartOffset,
-                                                   int selectionEndOffset,
-                                                   int composingStartOffset,
-                                                   int composingEndOffset,
-                                                   int scriptHint) {
+    public EditorActionResult updateImeTextModelState(@NonNull ImeTextModelState state) {
         if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeUpdateInputStateText(
-                mNativeHandle,
-                contextId,
-                documentStartOffset,
-                text != null ? text : "",
-                selectionStartOffset,
-                selectionEndOffset,
-                composingStartOffset,
-                composingEndOffset,
-                scriptHint);
+        ByteBuffer payload = CoreProtocol.encodeImeTextModelState(state);
+        ByteBuffer data = nativeImeUpdateTextModelState(mNativeHandle, payload, payload.remaining());
         try {
             return CoreProtocol.decodeEditorActionResult(data);
         } finally {
@@ -986,23 +950,10 @@ public class EditorCore {
     }
 
     @NonNull
-    public EditorActionResult replaceImeInputStateText(long contextId,
-                                                    int documentStartOffset,
-                                                    long startOffset,
-                                                    long endOffset,
-                                                    @Nullable String text,
-                                                    int cursorOffset,
-                                                    int scriptHint) {
+    public EditorActionResult replaceImeInputStateText(@NonNull ImeInputStateTextReplacement replacement) {
         if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeReplaceInputStateText(
-                mNativeHandle,
-                contextId,
-                documentStartOffset,
-                startOffset,
-                endOffset,
-                text != null ? text : "",
-                cursorOffset,
-                scriptHint);
+        ByteBuffer payload = CoreProtocol.encodeImeInputStateTextReplacement(replacement);
+        ByteBuffer data = nativeImeReplaceInputStateText(mNativeHandle, payload, payload.remaining());
         try {
             return CoreProtocol.decodeEditorActionResult(data);
         } finally {
@@ -2335,29 +2286,13 @@ public class EditorCore {
                                                                         int scriptHint);
 
     @FastNative
-    private static native ByteBuffer nativeImeReplaceText(long handle,
-                                                          long startLine,
-                                                          long startColumn,
-                                                          long endLine,
-                                                          long endColumn,
-                                                          String text,
-                                                          int scriptHint);
+    private static native ByteBuffer nativeImeReplaceText(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native ByteBuffer nativeImeReplaceDocumentText(long handle,
-                                                                  long startOffset,
-                                                                  long endOffset,
-                                                                  String text,
-                                                                  int cursorOffset,
-                                                                  int scriptHint);
+    private static native ByteBuffer nativeImeReplaceDocumentText(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native ByteBuffer nativeImeReplaceInputContextText(long handle,
-                                                                      long startOffset,
-                                                                      long endOffset,
-                                                                      String text,
-                                                                      int cursorOffset,
-                                                                      int scriptHint);
+    private static native ByteBuffer nativeImeReplaceInputContextText(long handle, ByteBuffer data, int size);
 
     @FastNative
     private static native ByteBuffer nativeImeMarkInputContextRange(long handle,
@@ -2376,15 +2311,7 @@ public class EditorCore {
                                                                                 long endOffset);
 
     @FastNative
-    private static native ByteBuffer nativeImeUpdateInputStateText(long handle,
-                                                                   long contextId,
-                                                                   int documentStartOffset,
-                                                                   String text,
-                                                                   int selectionStartOffset,
-                                                                   int selectionEndOffset,
-                                                                   int composingStartOffset,
-                                                                   int composingEndOffset,
-                                                                   int scriptHint);
+    private static native ByteBuffer nativeImeUpdateTextModelState(long handle, ByteBuffer data, int size);
 
     @FastNative
     private static native ByteBuffer nativeImeUpdateInputStateSelection(long handle,
@@ -2394,14 +2321,7 @@ public class EditorCore {
                                                                        int selectionEndOffset);
 
     @FastNative
-    private static native ByteBuffer nativeImeReplaceInputStateText(long handle,
-                                                                    long contextId,
-                                                                    int documentStartOffset,
-                                                                    long startOffset,
-                                                                    long endOffset,
-                                                                    String text,
-                                                                    int cursorOffset,
-                                                                    int scriptHint);
+    private static native ByteBuffer nativeImeReplaceInputStateText(long handle, ByteBuffer data, int size);
 
     @FastNative
     private static native ByteBuffer nativeImeDeleteBackward(long handle, long beforeLength, int textUnit);

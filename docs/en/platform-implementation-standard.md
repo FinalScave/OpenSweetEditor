@@ -22,13 +22,13 @@ The Core layer does not involve UI rendering. It contains only bridging, data mo
 
 | Category | Required Types | Description |
 |---|---|---|
-| **Core Bridge** | `EditorCore`, `Document`, `ProtocolEncoder`, `ProtocolDecoder`, `TextMeasurer`, `EditorOptions`, `EditorActionResult`, `EditorActionReason` | Native bridge + public core API wrapper; `EditorActionResult` is the unified result carrier for core state-changing APIs |
+| **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer`, `EditorOptions`, `EditorActionResult`, `EditorActionReason` | Native bridge + public core API wrapper; `EditorActionResult` is the unified result carrier for core state-changing APIs |
 | **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollBehavior` | Fundamental value types and enums |
 | **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextModelMode`; `ImeTextUnit` when exposing unit-aware deletion APIs | IME synchronization snapshots and text-context protocol types; platform synchronization decisions are carried by `EditorActionResult` |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | Decoration data types |
 | **Visual** | `EditorRenderModel`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `ScrollbarRect`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `DiagnosticDecoration`, `CompositionDecoration`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem`, `LinkedEditingRect`, `BracketHighlightRect` | Render model types (geometry semantics follow Section 2.4) |
 | **Snippet** | `LinkedEditingModel`, `TabStopGroup` | Linked editing / tab stop groups |
-| **Keymap** | `KeyMap`, `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorCommand` | Shortcut mapping data types and command identifiers |
+| **Keymap** | `KeyMap`, `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorBuiltinCommand` | Shortcut mapping data types and built-in command identifiers |
 
 ### 1.2 Widget Layer (UI Controls / Rendering / Interaction)
 
@@ -90,7 +90,7 @@ Other public types:
 | `NewLineActionProvider` | C#/TS/Kotlin: `INewLineActionProvider`; OC: `SENewLineActionProvider` | Provider interface |
 | `KeyMap` | OC: `SEKeyMap` | Core keymap data container |
 | `EditorKeyMap` | OC: `SEEditorKeyMap` | Widget-layer keymap extension |
-| `EditorCommand` | OC: `SEEditorCommand` | Built-in command ids / command-handler concept type |
+| `EditorBuiltinCommand` | OC: `SEEditorBuiltinCommand` | Built-in command ids |
 | `KeyBinding` | OC: `SEKeyBinding` | One- or two-chord binding entry |
 | `KeyChord` | OC: `SEKeyChord` | Single key-chord value type |
 | `KeyCode` | OC: `SEKeyCode` | Keyboard key code constants / enum |
@@ -539,7 +539,7 @@ All platforms MUST expose the following settings through getter/setter pairs (or
 
 ### 10.1 Core Data Model
 
-All platforms MUST provide the core-layer keymap types `KeyMap`, `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, and `EditorCommand`.
+All platforms MUST provide the core-layer keymap types `KeyMap`, `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, and `EditorBuiltinCommand`.
 
 - `KeyMap` MUST be a pure data mapping from `KeyBinding` to command id
 - `KeyBinding` MUST support both single-chord and two-chord bindings
@@ -549,10 +549,10 @@ All platforms MUST provide the core-layer keymap types `KeyMap`, `KeyBinding`, `
 
 ### 10.2 Numeric Alignment
 
-If the platform exposes `KeyCode`, `KeyModifier`, or built-in `EditorCommand` constants, their numeric values MUST align with the C++ core.
+If the platform exposes `KeyCode`, `KeyModifier`, or `EditorBuiltinCommand` constants, their numeric values MUST align with the C++ core.
 
 - `KeyModifier` MUST use bit flags so combined modifiers can be represented by bitwise OR
-- `KeyCode.NONE`, the empty second chord, and `EditorCommand.NONE` MUST preserve the same semantics as the C++ core
+- `KeyCode.NONE`, the empty second chord, and `EditorBuiltinCommand.NONE` MUST preserve the same semantics as the C++ core
 - `EditorCore`, bridge layers, or FFI layers MAY continue using raw integer enum values aligned with the C++ core as internal transport representations
 - For such bridge-layer integer enums, platforms are not required to repeat host-facing business-level enum validation, but MUST ensure invalid input cannot cause native / C++ crashes or undefined behavior
 
@@ -561,7 +561,7 @@ If the platform exposes `KeyCode`, `KeyModifier`, or built-in `EditorCommand` co
 - `SweetEditor` MUST support `setKeyMap(keyMap)` and SHOULD expose `getKeyMap()`
 - Platforms MUST expose `EditorKeyMap` as a widget-layer extension of `KeyMap` so host code can additionally bind command ids to host-side handlers
 - `EditorKeyMap` MUST support `registerCommand(binding, handler)`
-- If `binding.command == EditorCommand.NONE`, `registerCommand(binding, handler)` MUST auto-assign a custom command id and return it
+- If `binding.command == EditorBuiltinCommand.NONE`, `registerCommand(binding, handler)` MUST auto-assign a custom command id and return it
 - Platforms MAY additionally expose convenience APIs for custom-command registration, but `registerCommand(binding, handler)` remains the canonical contract
 - Auto-assigned custom command ids MUST be greater than `BUILT_IN_MAX`
 - Platforms MUST provide `defaultKeyMap()` as the default binding factory
@@ -736,7 +736,7 @@ Enum and enum-like constant values MUST match the C++ core definitions. The foll
 | `SeparatorStyle` | SINGLE=0, DOUBLE=1 |
 | `KeyCode` | NONE=0, BACKSPACE=8, TAB=9, ENTER=13, ESCAPE=27, DELETE_KEY=46, LEFT=37, UP=38, RIGHT=39, DOWN=40, HOME=36, END=35, PAGE_UP=33, PAGE_DOWN=34, A=65, C=67, D=68, V=86, X=88, Y=89, Z=90, K=75, SPACE=32 |
 | `KeyModifier` | NONE=0, SHIFT=1, CTRL=2, ALT=4, META=8 |
-| `EditorCommand` | NONE=0, CURSOR_LEFT=1, CURSOR_RIGHT=2, CURSOR_UP=3, CURSOR_DOWN=4, CURSOR_LINE_START=5, CURSOR_LINE_END=6, CURSOR_PAGE_UP=7, CURSOR_PAGE_DOWN=8, SELECT_LEFT=9, SELECT_RIGHT=10, SELECT_UP=11, SELECT_DOWN=12, SELECT_LINE_START=13, SELECT_LINE_END=14, SELECT_PAGE_UP=15, SELECT_PAGE_DOWN=16, SELECT_ALL=17, BACKSPACE=18, DELETE_FORWARD=19, INSERT_TAB=20, INSERT_NEWLINE=21, INSERT_LINE_ABOVE=22, INSERT_LINE_BELOW=23, UNDO=24, REDO=25, MOVE_LINE_UP=26, MOVE_LINE_DOWN=27, COPY_LINE_UP=28, COPY_LINE_DOWN=29, DELETE_LINE=30, COPY=31, PASTE=32, CUT=33, TRIGGER_COMPLETION=34 |
+| `EditorBuiltinCommand` | NONE=0, CURSOR_LEFT=1, CURSOR_RIGHT=2, CURSOR_UP=3, CURSOR_DOWN=4, CURSOR_LINE_START=5, CURSOR_LINE_END=6, CURSOR_PAGE_UP=7, CURSOR_PAGE_DOWN=8, SELECT_LEFT=9, SELECT_RIGHT=10, SELECT_UP=11, SELECT_DOWN=12, SELECT_LINE_START=13, SELECT_LINE_END=14, SELECT_PAGE_UP=15, SELECT_PAGE_DOWN=16, SELECT_ALL=17, BACKSPACE=18, DELETE_FORWARD=19, INSERT_TAB=20, INSERT_NEWLINE=21, INSERT_LINE_ABOVE=22, INSERT_LINE_BELOW=23, UNDO=24, REDO=25, MOVE_LINE_UP=26, MOVE_LINE_DOWN=27, COPY_LINE_UP=28, COPY_LINE_DOWN=29, DELETE_LINE=30, COPY=31, PASTE=32, CUT=33, TRIGGER_COMPLETION=34 |
 
 ---
 

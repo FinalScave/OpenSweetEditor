@@ -875,81 +875,46 @@ class EditorCore {
     );
   }
 
-  EditorActionResult replaceImeText(
-    TextRange range,
-    String text, {
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
+  EditorActionResult replaceImeText(ImeTextReplacement replacement) {
     _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        const EditorActionResult(),
-        (outSize) => bindings.editor_ime_replace_text(
-          _handle,
-          range.start.line,
-          range.start.column,
-          range.end.line,
-          range.end.column,
-          textPtr,
-          scriptClass.value,
-          outSize,
-        ),
-        CoreProtocol.decodeEditorActionResultFromPointer,
-      );
-    });
+    final bytes = CoreProtocol.encodeImeTextReplacement(replacement);
+    return _callWithBinaryActionData(
+      bytes,
+      (ptr, len, outSize) =>
+          bindings.editor_ime_replace_text(_handle, ptr, len, outSize),
+    );
   }
 
   EditorActionResult replaceImeDocumentText(
-    int startOffset,
-    int endOffset,
-    String text, {
-    int cursorOffset = 1,
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
+    ImeDocumentTextReplacement replacement,
+  ) {
     _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        const EditorActionResult(),
-        (outSize) => bindings.editor_ime_replace_document_text(
-          _handle,
-          startOffset,
-          endOffset,
-          textPtr,
-          cursorOffset,
-          scriptClass.value,
-          outSize,
-        ),
-        CoreProtocol.decodeEditorActionResultFromPointer,
-      );
-    });
+    final bytes = CoreProtocol.encodeImeDocumentTextReplacement(replacement);
+    return _callWithBinaryActionData(
+      bytes,
+      (ptr, len, outSize) => bindings.editor_ime_replace_document_text(
+        _handle,
+        ptr,
+        len,
+        outSize,
+      ),
+    );
   }
 
   EditorActionResult replaceImeInputContextText(
-    int startOffset,
-    int endOffset,
-    String text, {
-    int cursorOffset = 1,
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
+    ImeInputContextTextReplacement replacement,
+  ) {
     _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        const EditorActionResult(),
-        (outSize) => bindings.editor_ime_replace_input_context_text(
-          _handle,
-          startOffset,
-          endOffset,
-          textPtr,
-          cursorOffset,
-          scriptClass.value,
-          outSize,
-        ),
-        CoreProtocol.decodeEditorActionResultFromPointer,
-      );
-    });
+    final bytes = CoreProtocol.encodeImeInputContextTextReplacement(replacement);
+    return _callWithBinaryActionData(
+      bytes,
+      (ptr, len, outSize) => bindings.editor_ime_replace_input_context_text(
+        _handle,
+        ptr,
+        len,
+        outSize,
+      ),
+    );
   }
 
   EditorActionResult markImeInputContextRange(
@@ -1005,111 +970,24 @@ class EditorCore {
     );
   }
 
-  EditorActionResult updateImeInputStateText({
-    required int contextId,
-    required int documentStartOffset,
-    required String text,
-    required int selectionStartOffset,
-    required int selectionEndOffset,
-    required int composingStartOffset,
-    required int composingEndOffset,
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
+  EditorActionResult updateImeTextModelState(ImeTextModelState state) {
     _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        const EditorActionResult(),
-        (outSize) => bindings.editor_ime_update_input_state_text(
-          _handle,
-          contextId,
-          documentStartOffset,
-          textPtr,
-          selectionStartOffset,
-          selectionEndOffset,
-          composingStartOffset,
-          composingEndOffset,
-          scriptClass.value,
-          outSize,
-        ),
-        CoreProtocol.decodeEditorActionResultFromPointer,
-      );
-    });
+    final bytes = CoreProtocol.encodeImeTextModelState(state);
+    return _callWithBinaryActionData(
+      bytes,
+      (ptr, len, outSize) =>
+          bindings.editor_ime_update_text_model_state(_handle, ptr, len, outSize),
+    );
   }
 
-  EditorActionResult updateImeTextModelState({
-    required ImeTextModelMode mode,
-    required int contextId,
-    required int documentStartOffset,
-    required String text,
-    required int selectionStartOffset,
-    required int selectionEndOffset,
-    required int composingStartOffset,
-    required int composingEndOffset,
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
+  EditorActionResult updateImeTextModelDelta(ImeTextModelDelta delta) {
     _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        const EditorActionResult(),
-        (outSize) => bindings.editor_ime_update_text_model_state(
-          _handle,
-          mode.value,
-          contextId,
-          documentStartOffset,
-          textPtr,
-          selectionStartOffset,
-          selectionEndOffset,
-          composingStartOffset,
-          composingEndOffset,
-          scriptClass.value,
-          outSize,
-        ),
-        CoreProtocol.decodeEditorActionResultFromPointer,
-      );
-    });
-  }
-
-  EditorActionResult updateImeTextModelDelta({
-    required ImeTextModelMode mode,
-    required int contextId,
-    required int documentStartOffset,
-    required String oldText,
-    required int deltaStartOffset,
-    required int deltaEndOffset,
-    required String deltaText,
-    required int selectionStartOffset,
-    required int selectionEndOffset,
-    required int composingStartOffset,
-    required int composingEndOffset,
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
-    _ensureOpen();
-    return using((arena) {
-      final oldTextPtr = _toNativeUtf8(oldText, arena);
-      final deltaTextPtr = _toNativeUtf8(deltaText, arena);
-      return _callAndParse(
-        const EditorActionResult(),
-        (outSize) => bindings.editor_ime_update_text_model_delta(
-          _handle,
-          mode.value,
-          contextId,
-          documentStartOffset,
-          oldTextPtr,
-          deltaStartOffset,
-          deltaEndOffset,
-          deltaTextPtr,
-          selectionStartOffset,
-          selectionEndOffset,
-          composingStartOffset,
-          composingEndOffset,
-          scriptClass.value,
-          outSize,
-        ),
-        CoreProtocol.decodeEditorActionResultFromPointer,
-      );
-    });
+    final bytes = CoreProtocol.encodeImeTextModelDelta(delta);
+    return _callWithBinaryActionData(
+      bytes,
+      (ptr, len, outSize) =>
+          bindings.editor_ime_update_text_model_delta(_handle, ptr, len, outSize),
+    );
   }
 
   EditorActionResult updateImeInputStateSelection({
@@ -1134,63 +1012,15 @@ class EditorCore {
   }
 
   EditorActionResult replaceImeInputStateText(
-    int contextId,
-    int documentStartOffset,
-    int startOffset,
-    int endOffset,
-    String text, {
-    int cursorOffset = 1,
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
+    ImeInputStateTextReplacement replacement,
+  ) {
     _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        const EditorActionResult(),
-        (outSize) => bindings.editor_ime_replace_input_state_text(
-          _handle,
-          contextId,
-          documentStartOffset,
-          startOffset,
-          endOffset,
-          textPtr,
-          cursorOffset,
-          scriptClass.value,
-          outSize,
-        ),
-        CoreProtocol.decodeEditorActionResultFromPointer,
-      );
-    });
-  }
-
-  EditorActionResult commitImeInputStateTextReplacement(
-    int contextId,
-    int documentStartOffset,
-    int startOffset,
-    int endOffset,
-    String text, {
-    int cursorOffset = 1,
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
-    _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        const EditorActionResult(),
-        (outSize) => bindings.editor_ime_commit_input_state_text_replacement(
-          _handle,
-          contextId,
-          documentStartOffset,
-          startOffset,
-          endOffset,
-          textPtr,
-          cursorOffset,
-          scriptClass.value,
-          outSize,
-        ),
-        CoreProtocol.decodeEditorActionResultFromPointer,
-      );
-    });
+    final bytes = CoreProtocol.encodeImeInputStateTextReplacement(replacement);
+    return _callWithBinaryActionData(
+      bytes,
+      (ptr, len, outSize) =>
+          bindings.editor_ime_replace_input_state_text(_handle, ptr, len, outSize),
+    );
   }
 
   EditorActionResult deleteImeBackward({

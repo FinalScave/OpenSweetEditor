@@ -728,80 +728,64 @@ public:
   }
 
   static napi_value imeReplaceText(napi_env env, napi_callback_info info) {
-    size_t argc = 7;
-    napi_value args[7];
+    size_t argc = 2;
+    napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
     int64_t handle = napi_get_handle(env, args[0]);
     if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
 
-    const char* text_str = "";
-    std::string text_buf;
-    if (argc > 5 && !napi_is_null_or_undefined(env, args[5])) {
-      text_buf = napi_get_utf8_string(env, args[5]);
-      text_str = text_buf.c_str();
-    }
+    void* data = nullptr;
+    size_t byte_length = 0;
+    napi_get_arraybuffer_info(env, args[1], &data, &byte_length);
+
     size_t out_size = 0;
     const uint8_t* payload = editor_ime_replace_text(
       static_cast<intptr_t>(handle),
-      static_cast<size_t>(napi_get_int32(env, args[1])),
-      static_cast<size_t>(napi_get_int32(env, args[2])),
-      static_cast<size_t>(napi_get_int32(env, args[3])),
-      static_cast<size_t>(napi_get_int32(env, args[4])),
-      text_str,
-      argc > 6 ? napi_get_int32(env, args[6]) : 0,
+      reinterpret_cast<const uint8_t*>(data),
+      byte_length,
       &out_size);
     return wrap_binary_payload(env, payload, out_size);
   }
 
   static napi_value imeReplaceDocumentText(napi_env env, napi_callback_info info) {
-    size_t argc = 6;
-    napi_value args[6];
+    size_t argc = 2;
+    napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
     int64_t handle = napi_get_handle(env, args[0]);
     if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
 
-    const char* text_str = "";
-    std::string text_buf;
-    if (argc > 3 && !napi_is_null_or_undefined(env, args[3])) {
-      text_buf = napi_get_utf8_string(env, args[3]);
-      text_str = text_buf.c_str();
-    }
+    void* data = nullptr;
+    size_t byte_length = 0;
+    napi_get_arraybuffer_info(env, args[1], &data, &byte_length);
+
     size_t out_size = 0;
     const uint8_t* payload = editor_ime_replace_document_text(
       static_cast<intptr_t>(handle),
-      argc > 1 ? static_cast<size_t>(napi_get_int32(env, args[1])) : 0,
-      argc > 2 ? static_cast<size_t>(napi_get_int32(env, args[2])) : 0,
-      text_str,
-      argc > 4 ? napi_get_int32(env, args[4]) : 1,
-      argc > 5 ? napi_get_int32(env, args[5]) : 0,
+      reinterpret_cast<const uint8_t*>(data),
+      byte_length,
       &out_size);
     return wrap_binary_payload(env, payload, out_size);
   }
 
   static napi_value imeReplaceInputContextText(napi_env env, napi_callback_info info) {
-    size_t argc = 6;
-    napi_value args[6];
+    size_t argc = 2;
+    napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
     int64_t handle = napi_get_handle(env, args[0]);
     if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
 
-    const char* text_str = "";
-    std::string text_buf;
-    if (argc > 3 && !napi_is_null_or_undefined(env, args[3])) {
-      text_buf = napi_get_utf8_string(env, args[3]);
-      text_str = text_buf.c_str();
-    }
+    void* data = nullptr;
+    size_t byte_length = 0;
+    napi_get_arraybuffer_info(env, args[1], &data, &byte_length);
+
     size_t out_size = 0;
     const uint8_t* payload = editor_ime_replace_input_context_text(
       static_cast<intptr_t>(handle),
-      argc > 1 ? static_cast<size_t>(napi_get_int32(env, args[1])) : 0,
-      argc > 2 ? static_cast<size_t>(napi_get_int32(env, args[2])) : 0,
-      text_str,
-      argc > 4 ? napi_get_int32(env, args[4]) : 1,
-      argc > 5 ? napi_get_int32(env, args[5]) : 0,
+      reinterpret_cast<const uint8_t*>(data),
+      byte_length,
       &out_size);
     return wrap_binary_payload(env, payload, out_size);
   }
@@ -858,31 +842,23 @@ public:
     return wrap_binary_payload(env, payload, out_size);
   }
 
-  static napi_value imeUpdateInputStateText(napi_env env, napi_callback_info info) {
-    size_t argc = 9;
-    napi_value args[9];
+  static napi_value imeUpdateTextModelState(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
     int64_t handle = napi_get_handle(env, args[0]);
     if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
 
-    const char* text_str = "";
-    std::string text_buf;
-    if (argc > 3 && !napi_is_null_or_undefined(env, args[3])) {
-      text_buf = napi_get_utf8_string(env, args[3]);
-      text_str = text_buf.c_str();
-    }
+    void* data = nullptr;
+    size_t byte_length = 0;
+    napi_get_arraybuffer_info(env, args[1], &data, &byte_length);
+
     size_t out_size = 0;
-    const uint8_t* payload = editor_ime_update_input_state_text(
+    const uint8_t* payload = editor_ime_update_text_model_state(
       static_cast<intptr_t>(handle),
-      argc > 1 ? static_cast<uint64_t>(napi_get_handle(env, args[1])) : 0,
-      argc > 2 ? napi_get_int32(env, args[2]) : 0,
-      text_str,
-      argc > 4 ? napi_get_int32(env, args[4]) : -1,
-      argc > 5 ? napi_get_int32(env, args[5]) : -1,
-      argc > 6 ? napi_get_int32(env, args[6]) : -1,
-      argc > 7 ? napi_get_int32(env, args[7]) : -1,
-      argc > 8 ? napi_get_int32(env, args[8]) : 0,
+      reinterpret_cast<const uint8_t*>(data),
+      byte_length,
       &out_size);
     return wrap_binary_payload(env, payload, out_size);
   }
@@ -907,29 +883,22 @@ public:
   }
 
   static napi_value imeReplaceInputStateText(napi_env env, napi_callback_info info) {
-    size_t argc = 8;
-    napi_value args[8];
+    size_t argc = 2;
+    napi_value args[2];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
 
     int64_t handle = napi_get_handle(env, args[0]);
     if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
 
-    const char* text_str = "";
-    std::string text_buf;
-    if (argc > 5 && !napi_is_null_or_undefined(env, args[5])) {
-      text_buf = napi_get_utf8_string(env, args[5]);
-      text_str = text_buf.c_str();
-    }
+    void* data = nullptr;
+    size_t byte_length = 0;
+    napi_get_arraybuffer_info(env, args[1], &data, &byte_length);
+
     size_t out_size = 0;
     const uint8_t* payload = editor_ime_replace_input_state_text(
       static_cast<intptr_t>(handle),
-      argc > 1 ? static_cast<uint64_t>(napi_get_handle(env, args[1])) : 0,
-      argc > 2 ? napi_get_int32(env, args[2]) : 0,
-      argc > 3 ? static_cast<size_t>(napi_get_int32(env, args[3])) : 0,
-      argc > 4 ? static_cast<size_t>(napi_get_int32(env, args[4])) : 0,
-      text_str,
-      argc > 6 ? napi_get_int32(env, args[6]) : 1,
-      argc > 7 ? napi_get_int32(env, args[7]) : 0,
+      reinterpret_cast<const uint8_t*>(data),
+      byte_length,
       &out_size);
     return wrap_binary_payload(env, payload, out_size);
   }

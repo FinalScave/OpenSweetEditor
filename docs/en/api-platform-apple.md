@@ -16,7 +16,7 @@ Key files:
 
 Internal layout follows the same mental split used by Android:
 
-- Binary protocol decode: `platform/Apple/Sources/SweetEditorCoreInternal/protocol/ProtocolDecoder.swift`
+- Binary protocol encode/decode: `platform/Apple/Sources/SweetEditorCoreInternal/core/CoreProtocol.swift`
 - Render-model DTOs: `platform/Apple/Sources/SweetEditorCoreInternal/visual/`
 - Shared renderer: `platform/Apple/Sources/SweetEditorCoreInternal/EditorRenderer.swift`
 - Shared theme/support types: `platform/Apple/Sources/SweetEditorCoreInternal/EditorTheme.swift`, `platform/Apple/Sources/SweetEditorCoreInternal/ScrollbarVisualStyle.swift`, `platform/Apple/Sources/SweetEditorCoreInternal/EditorIconProvider.swift`
@@ -26,7 +26,7 @@ Internal layout follows the same mental split used by Android:
 `SweetEditorCore` is the shared feature layer for iOS and macOS. It handles:
 
 - UTF-16 pointer conversion
-- Delegation into binary payload decoding (including `LayoutMetrics`) via `ProtocolDecoder`
+- Delegation into binary payload encode/decode (including `LayoutMetrics`) via `CoreProtocol`
 - Text measure callbacks and render-model building
 
 ### Basic and Rendering
@@ -111,8 +111,8 @@ func clearHighlights(layer: UInt8)
 func setLineSpans(line: Int, layer: UInt8 = 0, spans: [StyleSpan])
 func setBatchLineSpans(layer: UInt8, spansByLine: [Int: [StyleSpan]])
 
-func setLineDiagnostics(line: Int, items: [DiagnosticItem])
-func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [DiagnosticItem]])
+func setLineDiagnostics(line: Int, items: [Diagnostic])
+func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [Diagnostic]])
 func clearDiagnostics()
 
 func setLineInlayHints(line: Int, hints: [InlayHintPayload])
@@ -163,7 +163,7 @@ func linkedEditingPrev() -> Bool
 func cancelLinkedEditing()
 ```
 
-> Compatibility note: `SweetEditorCore` still keeps some old tuple/array overloads and marks them `deprecated`. For new integrations, use the model version or `payload: Data` version.
+> `SweetEditorCore` exposes model-oriented helpers and payload-oriented helpers for paths that already carry generated protocol models.
 
 `getLinkTargetAt(line:column:)` returns an empty string when no link matches the requested position.
 

@@ -394,22 +394,17 @@ public final class EditorNative {
     private static final MethodHandle IME_REPLACE_TEXT = downcall("editor_ime_replace_text",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
                     ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
-                    ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle IME_REPLACE_DOCUMENT_TEXT = downcall("editor_ime_replace_document_text",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
                     ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
-                    ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
-                    ValueLayout.ADDRESS));
+                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle IME_REPLACE_INPUT_CONTEXT_TEXT = downcall("editor_ime_replace_input_context_text",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
                     ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
-                    ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
-                    ValueLayout.ADDRESS));
+                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle IME_MARK_INPUT_CONTEXT_RANGE = downcall("editor_ime_mark_input_context_range",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
@@ -429,14 +424,11 @@ public final class EditorNative {
                             ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
                             ValueLayout.ADDRESS));
 
-    private static final MethodHandle IME_UPDATE_INPUT_STATE_TEXT =
-            downcall("editor_ime_update_input_state_text",
+    private static final MethodHandle IME_UPDATE_TEXT_MODEL_STATE =
+            downcall("editor_ime_update_text_model_state",
                     FunctionDescriptor.of(ValueLayout.ADDRESS,
-                            ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT,
-                            ValueLayout.ADDRESS,
-                            ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
-                            ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
-                            ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+                            ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
+                            ValueLayout.ADDRESS));
 
     private static final MethodHandle IME_UPDATE_INPUT_STATE_SELECTION =
             downcall("editor_ime_update_input_state_selection",
@@ -448,9 +440,7 @@ public final class EditorNative {
     private static final MethodHandle IME_REPLACE_INPUT_STATE_TEXT =
             downcall("editor_ime_replace_input_state_text",
                     FunctionDescriptor.of(ValueLayout.ADDRESS,
-                            ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT,
-                            ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
-                            ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
+                            ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
                             ValueLayout.ADDRESS));
 
     private static final MethodHandle IME_DELETE_BACKWARD = downcall("editor_ime_delete_backward",
@@ -1200,38 +1190,19 @@ public final class EditorNative {
                 handle, startOffset, endOffset, scriptHint, outSize));
     }
 
-    public static NativeBinaryResult replaceImeText(long handle,
-                                                    int startLine, int startColumn,
-                                                    int endLine, int endColumn,
-                                                    String text,
-                                                    int scriptHint,
-                                                    Arena arena) {
-        return invokeBinaryResult(arena, outSize -> (MemorySegment) IME_REPLACE_TEXT.invokeExact(
-                handle,
-                (long) startLine, (long) startColumn, (long) endLine, (long) endColumn,
-                nullableString(arena, text), scriptHint, outSize));
+    public static NativeBinaryResult replaceImeText(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_REPLACE_TEXT.invokeExact(
+                handle, payload, size, outSize));
     }
 
-    public static NativeBinaryResult replaceImeDocumentText(long handle,
-                                                            long startOffset,
-                                                            long endOffset,
-                                                            String text,
-                                                            int cursorOffset,
-                                                            int scriptHint,
-                                                            Arena arena) {
-        return invokeBinaryResult(arena, outSize -> (MemorySegment) IME_REPLACE_DOCUMENT_TEXT.invokeExact(
-                handle, startOffset, endOffset, nullableString(arena, text), cursorOffset, scriptHint, outSize));
+    public static NativeBinaryResult replaceImeDocumentText(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_REPLACE_DOCUMENT_TEXT.invokeExact(
+                handle, payload, size, outSize));
     }
 
-    public static NativeBinaryResult replaceImeInputContextText(long handle,
-                                                                long startOffset,
-                                                                long endOffset,
-                                                                String text,
-                                                                int cursorOffset,
-                                                                int scriptHint,
-                                                                Arena arena) {
-        return invokeBinaryResult(arena, outSize -> (MemorySegment) IME_REPLACE_INPUT_CONTEXT_TEXT.invokeExact(
-                handle, startOffset, endOffset, nullableString(arena, text), cursorOffset, scriptHint, outSize));
+    public static NativeBinaryResult replaceImeInputContextText(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_REPLACE_INPUT_CONTEXT_TEXT.invokeExact(
+                handle, payload, size, outSize));
     }
 
     public static NativeBinaryResult markImeInputContextRange(long handle,
@@ -1256,27 +1227,9 @@ public final class EditorNative {
                 handle, startOffset, endOffset, outSize));
     }
 
-    public static NativeBinaryResult updateImeInputStateText(long handle,
-                                                             long contextId,
-                                                             int documentStartOffset,
-                                                             String text,
-                                                             int selectionStartOffset,
-                                                             int selectionEndOffset,
-                                                             int composingStartOffset,
-                                                             int composingEndOffset,
-                                                             int scriptHint,
-                                                             Arena arena) {
-        return invokeBinaryResult(arena, outSize -> (MemorySegment) IME_UPDATE_INPUT_STATE_TEXT.invokeExact(
-                handle,
-                contextId,
-                documentStartOffset,
-                nullableString(arena, text),
-                selectionStartOffset,
-                selectionEndOffset,
-                composingStartOffset,
-                composingEndOffset,
-                scriptHint,
-                outSize));
+    public static NativeBinaryResult updateImeTextModelState(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_UPDATE_TEXT_MODEL_STATE.invokeExact(
+                handle, payload, size, outSize));
     }
 
     public static NativeBinaryResult updateImeInputStateSelection(long handle,
@@ -1293,25 +1246,9 @@ public final class EditorNative {
                 outSize));
     }
 
-    public static NativeBinaryResult replaceImeInputStateText(long handle,
-                                                              long contextId,
-                                                              int documentStartOffset,
-                                                              long startOffset,
-                                                              long endOffset,
-                                                              String text,
-                                                              int cursorOffset,
-                                                              int scriptHint,
-                                                              Arena arena) {
-        return invokeBinaryResult(arena, outSize -> (MemorySegment) IME_REPLACE_INPUT_STATE_TEXT.invokeExact(
-                handle,
-                contextId,
-                documentStartOffset,
-                startOffset,
-                endOffset,
-                nullableString(arena, text),
-                cursorOffset,
-                scriptHint,
-                outSize));
+    public static NativeBinaryResult replaceImeInputStateText(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_REPLACE_INPUT_STATE_TEXT.invokeExact(
+                handle, payload, size, outSize));
     }
 
     public static NativeBinaryResult deleteImeBackward(long handle, long beforeLength, int textUnit) {

@@ -78,7 +78,7 @@
   - WinForms 控件层、输入与绘制
 - `platform/WinForms/SweetEditor/EditorCore.cs`
   - P/Invoke 封装与协议对接
-- `platform/WinForms/SweetEditor/EditorProtocol.cs`
+- `platform/WinForms/SweetEditor/CoreProtocol.cs`
   - binary payload 解码
 - `platform/WinForms/SweetEditor/EditorCompletion.cs`
   - Completion Provider 与补全弹层协作
@@ -130,9 +130,9 @@
 
 通常需要同步检查：
 
-- Android：`jeditor.hpp`、`jni_entry.cpp`、Java `ProtocolDecoder`
-- Swing：`EditorNative.java`、`ProtocolDecoder.java`
-- WinForms：`EditorCore.cs`、`EditorProtocol.cs`
+- Android：`jeditor.hpp`、`jni_entry.cpp`、Java `CoreProtocol`
+- Swing：`EditorNative.java`、`CoreProtocol.java`
+- WinForms：`EditorCore.cs`、`CoreProtocol.cs`
 - Apple：`SweetEditorBridge.h`、`SweetEditorCore.swift`
 
 ## 构建入口

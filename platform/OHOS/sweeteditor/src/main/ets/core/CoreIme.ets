@@ -90,6 +90,14 @@ export function imeTextUnitFromValue(value: number): ImeTextUnit {
   }
 }
 
+export class ImeDocumentTextReplacement {
+  startOffset: number = 0;
+  endOffset: number = 0;
+  text: string = '';
+  cursorOffset: number = 1;
+  scriptClass: ImeScriptClass = ImeScriptClass.UNKNOWN;
+}
+
 export interface ImeInputContext {
   id: number;
   revision: number;
@@ -99,6 +107,24 @@ export interface ImeInputContext {
   hasComposition: boolean;
   composition: ImeTextRange;
   kind: ImeInputContextKind;
+}
+
+export class ImeInputContextTextReplacement {
+  startOffset: number = 0;
+  endOffset: number = 0;
+  text: string = '';
+  cursorOffset: number = 1;
+  scriptClass: ImeScriptClass = ImeScriptClass.UNKNOWN;
+}
+
+export class ImeInputStateTextReplacement {
+  contextId: number = 0;
+  documentStartOffset: number = 0;
+  startOffset: number = 0;
+  endOffset: number = 0;
+  text: string = '';
+  cursorOffset: number = 1;
+  scriptClass: ImeScriptClass = ImeScriptClass.UNKNOWN;
 }
 
 export interface ImeSyncSnapshot {
@@ -115,7 +141,35 @@ export interface ImeSyncSnapshot {
   clearPlatformPreedit: boolean;
 }
 
+export class ImeTextModelDelta {
+  mode: ImeTextModelMode = ImeTextModelMode.DOCUMENT_WINDOW;
+  contextId: number = 0;
+  documentStartOffset: number = 0;
+  oldText: string = '';
+  delta: ImeTextRange = { start: -1, end: -1 };
+  deltaText: string = '';
+  selection: ImeTextRange = { start: 0, end: 0 };
+  composition: ImeTextRange = { start: -1, end: -1 };
+  scriptClass: ImeScriptClass = ImeScriptClass.UNKNOWN;
+}
+
+export class ImeTextModelState {
+  mode: ImeTextModelMode = ImeTextModelMode.DOCUMENT_WINDOW;
+  contextId: number = 0;
+  documentStartOffset: number = 0;
+  text: string = '';
+  selection: ImeTextRange = { start: 0, end: 0 };
+  composition: ImeTextRange = { start: -1, end: -1 };
+  scriptClass: ImeScriptClass = ImeScriptClass.UNKNOWN;
+}
+
 export interface ImeTextRange {
   start: number;
   end: number;
+}
+
+export class ImeTextReplacement {
+  range: TextRange = { start: { line: 0, column: 0 }, end: { line: 0, column: 0 } };
+  text: string = '';
+  scriptClass: ImeScriptClass = ImeScriptClass.UNKNOWN;
 }

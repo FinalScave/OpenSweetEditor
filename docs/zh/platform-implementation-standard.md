@@ -22,13 +22,13 @@ Core 层不涉及 UI 渲染，仅包含桥接、数据模型和协议编解码�
 
 | 逻辑分类 | 必须包含的类型 | 说明 |
 |---|---|---|
-| **Core Bridge** | `EditorCore`, `Document`, `ProtocolEncoder`, `ProtocolDecoder`, `TextMeasurer`, `EditorOptions`, `EditorActionResult`, `EditorActionReason` | 原生桥接 + 公共核心 API 封装；`EditorActionResult` 是变更类 core API 的统一结果载体 |
+| **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer`, `EditorOptions`, `EditorActionResult`, `EditorActionReason` | 原生桥接 + 公共核心 API 封装；`EditorActionResult` 是变更类 core API 的统一结果载体 |
 | **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollBehavior` | 基础值类型与枚举 |
 | **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextModelMode`；暴露 unit-aware 删除 API 时包含 `ImeTextUnit` | IME 同步快照和文本上下文协议类型；平台侧同步决策由 `EditorActionResult` 承载 |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | 装饰数据类型 |
 | **Visual** | `EditorRenderModel`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `ScrollbarRect`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `DiagnosticDecoration`, `CompositionDecoration`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem`, `LinkedEditingRect`, `BracketHighlightRect` | 渲染模型类型（几何语义见第 2.4 节） |
 | **Snippet** | `LinkedEditingModel`, `TabStopGroup` | 联动编辑 / Tab stop 分组 |
-| **Keymap** | `KeyMap`, `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorCommand` | 快捷键映射数据类型与命令标识 |
+| **Keymap** | `KeyMap`, `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorBuiltinCommand` | 快捷键映射数据类型与内建命令标识 |
 
 ### 1.2 Widget 层（UI 控件 / 渲染 / 交互）
 
@@ -90,7 +90,7 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 | `NewLineActionProvider` | C#/TS/Kotlin: `INewLineActionProvider`; OC: `SENewLineActionProvider` | 提供者接口 |
 | `KeyMap` | OC: `SEKeyMap` | Core keymap 数据容器 |
 | `EditorKeyMap` | OC: `SEEditorKeyMap` | Widget 层 keymap 扩展 |
-| `EditorCommand` | OC: `SEEditorCommand` | 内建命令 id / 命令处理器概念类型 |
+| `EditorBuiltinCommand` | OC: `SEEditorBuiltinCommand` | 内建命令 id |
 | `KeyBinding` | OC: `SEKeyBinding` | 单 chord 或双 chord 绑定项 |
 | `KeyChord` | OC: `SEKeyChord` | 单次按键 chord 值类型 |
 | `KeyCode` | OC: `SEKeyCode` | 键盘按键码常量 / 枚举 |
@@ -535,7 +535,7 @@ Provider 返回空列表时平台 MAY 不显示选区菜单；Provider SHOULD �
 
 ### 10.1 Core 数据模型
 
-所有平台 MUST 提供 Core 层 `KeyMap`、`KeyBinding`、`KeyChord`、`KeyCode`、`KeyModifier` 和 `EditorCommand`。
+所有平台 MUST 提供 Core 层 `KeyMap`、`KeyBinding`、`KeyChord`、`KeyCode`、`KeyModifier` 和 `EditorBuiltinCommand`。
 
 - `KeyMap` MUST 是从 `KeyBinding` 到 commandId 的纯数据映射
 - `KeyBinding` MUST 同时支持单 chord 和双 chord 绑定
@@ -545,10 +545,10 @@ Provider 返回空列表时平台 MAY 不显示选区菜单；Provider SHOULD �
 
 ### 10.2 数值对齐
 
-如果平台暴露 `KeyCode`、`KeyModifier` 或内建 `EditorCommand` 常量，其数值 MUST 与 C++ Core 保持一致。
+如果平台暴露 `KeyCode`、`KeyModifier` 或内建 `EditorBuiltinCommand` 常量，其数值 MUST 与 C++ Core 保持一致。
 
 - `KeyModifier` MUST 使用位标志，以便通过按位或组合修饰键
-- `KeyCode.NONE`、空第二 chord 与 `EditorCommand.NONE` 的语义 MUST 与 C++ Core 一致
+- `KeyCode.NONE`、空第二 chord 与 `EditorBuiltinCommand.NONE` 的语义 MUST 与 C++ Core 一致
 - `EditorCore`、桥接层或 FFI 层 MAY 继续使用与 C++ Core 对齐的原始整数枚举值作为内部传输表示
 - 对于这类桥接层整数枚举值，平台不要求重复实现宿主公共 API 级别的业务枚举校验，但 MUST 保证无效输入不会导致 native / C++ 层崩溃或未定义行为
 
@@ -557,7 +557,7 @@ Provider 返回空列表时平台 MAY 不显示选区菜单；Provider SHOULD �
 - `SweetEditor` MUST 支持 `setKeyMap(keyMap)`，并 SHOULD 暴露 `getKeyMap()`
 - 平台 MUST 暴露 `EditorKeyMap` 作为 `KeyMap` 的 widget 层扩展，使宿主代码可以额外将 commandId 绑定到宿主侧 handler
 - `EditorKeyMap` MUST 支持 `registerCommand(binding, handler)`
-- 若 `binding.command == EditorCommand.NONE`，`registerCommand(binding, handler)` MUST 自动分配自定义 commandId 并返回
+- 若 `binding.command == EditorBuiltinCommand.NONE`，`registerCommand(binding, handler)` MUST 自动分配自定义 commandId 并返回
 - 平台 MAY 额外提供自定义命令注册的便捷 API，但 `registerCommand(binding, handler)` 仍是标准契约
 - 自动分配的自定义 commandId MUST 大于 `BUILT_IN_MAX`
 - 平台 MUST 提供 `defaultKeyMap()` 作为默认绑定工厂
@@ -732,7 +732,7 @@ interface ContextMenuItemProvider {
 | `SeparatorStyle` | SINGLE=0, DOUBLE=1 |
 | `KeyCode` | NONE=0, BACKSPACE=8, TAB=9, ENTER=13, ESCAPE=27, DELETE_KEY=46, LEFT=37, UP=38, RIGHT=39, DOWN=40, HOME=36, END=35, PAGE_UP=33, PAGE_DOWN=34, A=65, C=67, D=68, V=86, X=88, Y=89, Z=90, K=75, SPACE=32 |
 | `KeyModifier` | NONE=0, SHIFT=1, CTRL=2, ALT=4, META=8 |
-| `EditorCommand` | NONE=0, CURSOR_LEFT=1, CURSOR_RIGHT=2, CURSOR_UP=3, CURSOR_DOWN=4, CURSOR_LINE_START=5, CURSOR_LINE_END=6, CURSOR_PAGE_UP=7, CURSOR_PAGE_DOWN=8, SELECT_LEFT=9, SELECT_RIGHT=10, SELECT_UP=11, SELECT_DOWN=12, SELECT_LINE_START=13, SELECT_LINE_END=14, SELECT_PAGE_UP=15, SELECT_PAGE_DOWN=16, SELECT_ALL=17, BACKSPACE=18, DELETE_FORWARD=19, INSERT_TAB=20, INSERT_NEWLINE=21, INSERT_LINE_ABOVE=22, INSERT_LINE_BELOW=23, UNDO=24, REDO=25, MOVE_LINE_UP=26, MOVE_LINE_DOWN=27, COPY_LINE_UP=28, COPY_LINE_DOWN=29, DELETE_LINE=30, COPY=31, PASTE=32, CUT=33, TRIGGER_COMPLETION=34 |
+| `EditorBuiltinCommand` | NONE=0, CURSOR_LEFT=1, CURSOR_RIGHT=2, CURSOR_UP=3, CURSOR_DOWN=4, CURSOR_LINE_START=5, CURSOR_LINE_END=6, CURSOR_PAGE_UP=7, CURSOR_PAGE_DOWN=8, SELECT_LEFT=9, SELECT_RIGHT=10, SELECT_UP=11, SELECT_DOWN=12, SELECT_LINE_START=13, SELECT_LINE_END=14, SELECT_PAGE_UP=15, SELECT_PAGE_DOWN=16, SELECT_ALL=17, BACKSPACE=18, DELETE_FORWARD=19, INSERT_TAB=20, INSERT_NEWLINE=21, INSERT_LINE_ABOVE=22, INSERT_LINE_BELOW=23, UNDO=24, REDO=25, MOVE_LINE_UP=26, MOVE_LINE_DOWN=27, COPY_LINE_UP=28, COPY_LINE_DOWN=29, DELETE_LINE=30, COPY=31, PASTE=32, CUT=33, TRIGGER_COMPLETION=34 |
 
 ---
 

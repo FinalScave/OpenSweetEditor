@@ -996,30 +996,35 @@ EDITOR_API const uint8_t* editor_ime_mark_document_range_by_offset(intptr_t edit
                                                                    size_t* out_size);
 
 /// Report platform candidate replacement text.
+/// @param data ImeTextReplacement binary payload encoded by CoreProtocol:
+///   TextRange range, U8String text, enum_i32 ImeScriptClass script_class
+/// @param size Binary payload size in bytes
 /// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_replace_text(intptr_t editor_handle,
-                                                  size_t start_line,
-                                                  size_t start_column,
-                                                  size_t end_line,
-                                                  size_t end_column,
-                                                  const char* text,
-                                                  int script_hint,
+                                                  const uint8_t* data,
+                                                  size_t size,
                                                   size_t* out_size);
 
+/// Replace text in the document IME context by UTF-16 offsets.
+/// @param data ImeDocumentTextReplacement binary payload encoded by CoreProtocol:
+///   size_as_u32 start_offset, size_as_u32 end_offset, U8String text,
+///   int32_t cursor_offset, enum_i32 ImeScriptClass script_class
+/// @param size Binary payload size in bytes
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_replace_document_text(intptr_t editor_handle,
-                                                           size_t start_offset,
-                                                           size_t end_offset,
-                                                           const char* text,
-                                                           int cursor_offset,
-                                                           int script_hint,
+                                                           const uint8_t* data,
+                                                           size_t size,
                                                            size_t* out_size);
 
+/// Replace text in the input-context IME window by UTF-16 offsets.
+/// @param data ImeInputContextTextReplacement binary payload encoded by CoreProtocol:
+///   size_as_u32 start_offset, size_as_u32 end_offset, U8String text,
+///   int32_t cursor_offset, enum_i32 ImeScriptClass script_class
+/// @param size Binary payload size in bytes
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_replace_input_context_text(intptr_t editor_handle,
-                                                                size_t start_offset,
-                                                                size_t end_offset,
-                                                                const char* text,
-                                                                int cursor_offset,
-                                                                int script_hint,
+                                                                const uint8_t* data,
+                                                                size_t size,
                                                                 size_t* out_size);
 
 EDITOR_API const uint8_t* editor_ime_mark_input_context_range(intptr_t editor_handle,
@@ -1038,42 +1043,28 @@ EDITOR_API const uint8_t* editor_ime_notify_input_context_selection_changed(intp
                                                                             size_t end_offset,
                                                                             size_t* out_size);
 
-EDITOR_API const uint8_t* editor_ime_update_input_state_text(intptr_t editor_handle,
-                                                             uint64_t context_id,
-                                                             int32_t document_start_offset,
-                                                             const char* text,
-                                                             int32_t selection_start_offset,
-                                                             int32_t selection_end_offset,
-                                                             int32_t composing_start_offset,
-                                                             int32_t composing_end_offset,
-                                                             int script_hint,
-                                                             size_t* out_size);
-
+/// Update the external text model state snapshot.
+/// @param data ImeTextModelState binary payload encoded by CoreProtocol:
+///   enum_i32 ImeTextModelMode mode, uint64_t context_id, int32_t document_start_offset,
+///   U8String text, ImeTextRange selection, ImeTextRange composition,
+///   enum_i32 ImeScriptClass script_class
+/// @param size Binary payload size in bytes
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_update_text_model_state(intptr_t editor_handle,
-                                                             int mode,
-                                                             uint64_t context_id,
-                                                             int32_t document_start_offset,
-                                                             const char* text,
-                                                             int32_t selection_start_offset,
-                                                             int32_t selection_end_offset,
-                                                             int32_t composing_start_offset,
-                                                             int32_t composing_end_offset,
-                                                             int script_hint,
+                                                             const uint8_t* data,
+                                                             size_t size,
                                                              size_t* out_size);
 
+/// Update the external text model by delta.
+/// @param data ImeTextModelDelta binary payload encoded by CoreProtocol:
+///   enum_i32 ImeTextModelMode mode, uint64_t context_id, int32_t document_start_offset,
+///   U8String old_text, ImeTextRange delta, U8String delta_text,
+///   ImeTextRange selection, ImeTextRange composition, enum_i32 ImeScriptClass script_class
+/// @param size Binary payload size in bytes
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_update_text_model_delta(intptr_t editor_handle,
-                                                             int mode,
-                                                             uint64_t context_id,
-                                                             int32_t document_start_offset,
-                                                             const char* old_text,
-                                                             int32_t delta_start_offset,
-                                                             int32_t delta_end_offset,
-                                                             const char* delta_text,
-                                                             int32_t selection_start_offset,
-                                                             int32_t selection_end_offset,
-                                                             int32_t composing_start_offset,
-                                                             int32_t composing_end_offset,
-                                                             int script_hint,
+                                                             const uint8_t* data,
+                                                             size_t size,
                                                              size_t* out_size);
 
 EDITOR_API const uint8_t* editor_ime_update_input_state_selection(intptr_t editor_handle,
@@ -1083,25 +1074,17 @@ EDITOR_API const uint8_t* editor_ime_update_input_state_selection(intptr_t edito
                                                                   int32_t selection_end_offset,
                                                                   size_t* out_size);
 
+/// Replace text in the platform input state.
+/// @param data ImeInputStateTextReplacement binary payload encoded by CoreProtocol:
+///   uint64_t context_id, int32_t document_start_offset, size_as_u32 start_offset,
+///   size_as_u32 end_offset, U8String text, int32_t cursor_offset,
+///   enum_i32 ImeScriptClass script_class
+/// @param size Binary payload size in bytes
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_replace_input_state_text(intptr_t editor_handle,
-                                                              uint64_t context_id,
-                                                              int32_t document_start_offset,
-                                                              size_t start_offset,
-                                                              size_t end_offset,
-                                                              const char* text,
-                                                              int cursor_offset,
-                                                              int script_hint,
+                                                              const uint8_t* data,
+                                                              size_t size,
                                                               size_t* out_size);
-
-EDITOR_API const uint8_t* editor_ime_commit_input_state_text_replacement(intptr_t editor_handle,
-                                                                         uint64_t context_id,
-                                                                         int32_t document_start_offset,
-                                                                         size_t start_offset,
-                                                                         size_t end_offset,
-                                                                         const char* text,
-                                                                         int cursor_offset,
-                                                                         int script_hint,
-                                                                         size_t* out_size);
 
 /// Delete text before the caret through IME.
 /// @return EditorActionResult binary payload, returns NULL when editor handle is invalid

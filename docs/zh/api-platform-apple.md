@@ -104,8 +104,8 @@ func clearHighlights(layer: UInt8)
 func setLineSpans(line: Int, layer: UInt8 = 0, spans: [StyleSpan])
 func setBatchLineSpans(layer: UInt8, spansByLine: [Int: [StyleSpan]])
 
-func setLineDiagnostics(line: Int, items: [DiagnosticItem])
-func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [DiagnosticItem]])
+func setLineDiagnostics(line: Int, items: [Diagnostic])
+func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [Diagnostic]])
 func clearDiagnostics()
 
 func setLineInlayHints(line: Int, hints: [InlayHintPayload])
@@ -156,7 +156,7 @@ func linkedEditingPrev() -> Bool
 func cancelLinkedEditing()
 ```
 
-> 兼容性说明：`SweetEditorCore` 仍保留部分 tuple/数组形态的旧重载并标注 `deprecated`，新接入建议统一使用 model 版本或 `payload: Data` 版本。
+> `SweetEditorCore` 对已经走生成协议模型的路径提供 model helper 和 payload helper。
 
 `getLinkTargetAt(line:column:)` 在请求位置未命中 link 时返回空字符串。
 

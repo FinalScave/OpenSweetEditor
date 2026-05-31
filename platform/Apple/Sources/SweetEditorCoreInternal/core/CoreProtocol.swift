@@ -1135,6 +1135,18 @@ enum CoreProtocol {
         sizeOfTextPosition(value.start) + sizeOfTextPosition(value.end)
     }
 
+    static func writeImeDocumentTextReplacement(_ writer: inout BinaryWriter, _ value: ImeDocumentTextReplacement) {
+        writer.writeInt32(value.start_offset)
+        writer.writeInt32(value.end_offset)
+        writer.writeUtf8String(value.text)
+        writer.writeInt32(value.cursor_offset)
+        writer.writeInt32(value.script_class.rawValue)
+    }
+
+    static func sizeOfImeDocumentTextReplacement(_ value: ImeDocumentTextReplacement) -> Int {
+        4 + 4 + sizeOfUtf8String(value.text) + 4 + 4
+    }
+
     static func readImeInputContext(_ reader: inout BinaryReader) -> ImeInputContext? {
         guard let id = reader.readInt64() else { return nil }
         guard let revision = reader.readInt32() else { return nil }
@@ -1156,6 +1168,32 @@ enum CoreProtocol {
     static func decodeImeInputContext(_ data: UnsafeRawBufferPointer) -> ImeInputContext? {
         var reader = BinaryReader(data)
         return readImeInputContext(&reader)
+    }
+
+    static func writeImeInputContextTextReplacement(_ writer: inout BinaryWriter, _ value: ImeInputContextTextReplacement) {
+        writer.writeInt32(value.start_offset)
+        writer.writeInt32(value.end_offset)
+        writer.writeUtf8String(value.text)
+        writer.writeInt32(value.cursor_offset)
+        writer.writeInt32(value.script_class.rawValue)
+    }
+
+    static func sizeOfImeInputContextTextReplacement(_ value: ImeInputContextTextReplacement) -> Int {
+        4 + 4 + sizeOfUtf8String(value.text) + 4 + 4
+    }
+
+    static func writeImeInputStateTextReplacement(_ writer: inout BinaryWriter, _ value: ImeInputStateTextReplacement) {
+        writer.writeInt64(value.context_id)
+        writer.writeInt32(value.document_start_offset)
+        writer.writeInt32(value.start_offset)
+        writer.writeInt32(value.end_offset)
+        writer.writeUtf8String(value.text)
+        writer.writeInt32(value.cursor_offset)
+        writer.writeInt32(value.script_class.rawValue)
+    }
+
+    static func sizeOfImeInputStateTextReplacement(_ value: ImeInputStateTextReplacement) -> Int {
+        8 + 4 + 4 + 4 + sizeOfUtf8String(value.text) + 4 + 4
     }
 
     static func readImeSyncSnapshot(_ reader: inout BinaryReader) -> ImeSyncSnapshot? {
@@ -1184,6 +1222,36 @@ enum CoreProtocol {
         return readImeSyncSnapshot(&reader)
     }
 
+    static func writeImeTextModelDelta(_ writer: inout BinaryWriter, _ value: ImeTextModelDelta) {
+        writer.writeInt32(value.mode.rawValue)
+        writer.writeInt64(value.context_id)
+        writer.writeInt32(value.document_start_offset)
+        writer.writeUtf8String(value.old_text)
+        writeImeTextRange(&writer, value.delta)
+        writer.writeUtf8String(value.delta_text)
+        writeImeTextRange(&writer, value.selection)
+        writeImeTextRange(&writer, value.composition)
+        writer.writeInt32(value.script_class.rawValue)
+    }
+
+    static func sizeOfImeTextModelDelta(_ value: ImeTextModelDelta) -> Int {
+        4 + 8 + 4 + sizeOfUtf8String(value.old_text) + sizeOfImeTextRange(value.delta) + sizeOfUtf8String(value.delta_text) + sizeOfImeTextRange(value.selection) + sizeOfImeTextRange(value.composition) + 4
+    }
+
+    static func writeImeTextModelState(_ writer: inout BinaryWriter, _ value: ImeTextModelState) {
+        writer.writeInt32(value.mode.rawValue)
+        writer.writeInt64(value.context_id)
+        writer.writeInt32(value.document_start_offset)
+        writer.writeUtf8String(value.text)
+        writeImeTextRange(&writer, value.selection)
+        writeImeTextRange(&writer, value.composition)
+        writer.writeInt32(value.script_class.rawValue)
+    }
+
+    static func sizeOfImeTextModelState(_ value: ImeTextModelState) -> Int {
+        4 + 8 + 4 + sizeOfUtf8String(value.text) + sizeOfImeTextRange(value.selection) + sizeOfImeTextRange(value.composition) + 4
+    }
+
     static func readImeTextRange(_ reader: inout BinaryReader) -> ImeTextRange? {
         guard let start = reader.readInt32() else { return nil }
         guard let end = reader.readInt32() else { return nil }
@@ -1208,6 +1276,16 @@ enum CoreProtocol {
 
     static func sizeOfImeTextRange(_ value: ImeTextRange) -> Int {
         4 + 4
+    }
+
+    static func writeImeTextReplacement(_ writer: inout BinaryWriter, _ value: ImeTextReplacement) {
+        writeTextRange(&writer, value.range)
+        writer.writeUtf8String(value.text)
+        writer.writeInt32(value.script_class.rawValue)
+    }
+
+    static func sizeOfImeTextReplacement(_ value: ImeTextReplacement) -> Int {
+        sizeOfTextRange(value.range) + sizeOfUtf8String(value.text) + 4
     }
 
     static func writeGestureEvent(_ writer: inout BinaryWriter, _ value: GestureEvent) {
@@ -2154,6 +2232,42 @@ enum CoreProtocol {
     static func encodeScrollbarConfig(_ value: ScrollbarConfig) -> Data {
         var writer = BinaryWriter()
         writeScrollbarConfig(&writer, value)
+        return writer.data()
+    }
+
+    static func encodeImeDocumentTextReplacement(_ value: ImeDocumentTextReplacement) -> Data {
+        var writer = BinaryWriter()
+        writeImeDocumentTextReplacement(&writer, value)
+        return writer.data()
+    }
+
+    static func encodeImeInputContextTextReplacement(_ value: ImeInputContextTextReplacement) -> Data {
+        var writer = BinaryWriter()
+        writeImeInputContextTextReplacement(&writer, value)
+        return writer.data()
+    }
+
+    static func encodeImeInputStateTextReplacement(_ value: ImeInputStateTextReplacement) -> Data {
+        var writer = BinaryWriter()
+        writeImeInputStateTextReplacement(&writer, value)
+        return writer.data()
+    }
+
+    static func encodeImeTextModelDelta(_ value: ImeTextModelDelta) -> Data {
+        var writer = BinaryWriter()
+        writeImeTextModelDelta(&writer, value)
+        return writer.data()
+    }
+
+    static func encodeImeTextModelState(_ value: ImeTextModelState) -> Data {
+        var writer = BinaryWriter()
+        writeImeTextModelState(&writer, value)
+        return writer.data()
+    }
+
+    static func encodeImeTextReplacement(_ value: ImeTextReplacement) -> Data {
+        var writer = BinaryWriter()
+        writeImeTextReplacement(&writer, value)
         return writer.data()
     }
 

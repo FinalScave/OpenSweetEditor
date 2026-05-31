@@ -38,7 +38,7 @@ import {
   TextRange
 } from './core/CoreFoundation';
 import {
-  EditorBuiltinCommand as EditorCommand,
+  EditorBuiltinCommand,
   KeyBinding,
   KeyCode,
   KeyModifier
@@ -1771,7 +1771,7 @@ export struct SweetEditor {
   }
 
   private dispatchKeyMapCommand(command: number, keyCode: number, modifiers: number): boolean {
-    if (command === EditorCommand.NONE) {
+    if (command === EditorBuiltinCommand.NONE) {
       return false;
     }
     const handler = this.keyMap.getCommand(command);

@@ -37,13 +37,19 @@ import com.qiplat.sweeteditor.core.foundation.TextChange;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
 import com.qiplat.sweeteditor.core.ime.ImeContextPolicy;
+import com.qiplat.sweeteditor.core.ime.ImeDocumentTextReplacement;
 import com.qiplat.sweeteditor.core.ime.ImeInputContext;
 import com.qiplat.sweeteditor.core.ime.ImeInputContextKind;
+import com.qiplat.sweeteditor.core.ime.ImeInputContextTextReplacement;
+import com.qiplat.sweeteditor.core.ime.ImeInputStateTextReplacement;
 import com.qiplat.sweeteditor.core.ime.ImePreeditStorage;
 import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
 import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
+import com.qiplat.sweeteditor.core.ime.ImeTextModelDelta;
 import com.qiplat.sweeteditor.core.ime.ImeTextModelMode;
+import com.qiplat.sweeteditor.core.ime.ImeTextModelState;
 import com.qiplat.sweeteditor.core.ime.ImeTextRange;
+import com.qiplat.sweeteditor.core.ime.ImeTextReplacement;
 import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
 import com.qiplat.sweeteditor.core.interaction.EventType;
 import com.qiplat.sweeteditor.core.interaction.GestureEvent;
@@ -1201,6 +1207,29 @@ public final class CoreProtocol {
         return size;
     }
 
+    private static void writeImeDocumentTextReplacementFields(ByteBuffer data, ImeDocumentTextReplacement value) {
+        data.putInt(value.startOffset);
+        data.putInt(value.endOffset);
+        writeUtf8String(data, value.text);
+        data.putInt(value.cursorOffset);
+        data.putInt(value.scriptClass.value);
+    }
+
+    public static void writeImeDocumentTextReplacement(ByteBuffer data, ImeDocumentTextReplacement value) {
+        prepare(data);
+        writeImeDocumentTextReplacementFields(data, value);
+    }
+
+    public static int sizeOfImeDocumentTextReplacement(ImeDocumentTextReplacement value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        size += sizeOfUtf8String(value.text);
+        size += 4;
+        size += 4;
+        return size;
+    }
+
     private static ImeInputContext readImeInputContext(ByteBuffer data) {
         ImeInputContext value = new ImeInputContext();
         value.id = data.getLong();
@@ -1217,6 +1246,56 @@ public final class CoreProtocol {
     public static ImeInputContext decodeImeInputContext(ByteBuffer data) {
         prepare(data);
         return readImeInputContext(data);
+    }
+
+    private static void writeImeInputContextTextReplacementFields(ByteBuffer data, ImeInputContextTextReplacement value) {
+        data.putInt(value.startOffset);
+        data.putInt(value.endOffset);
+        writeUtf8String(data, value.text);
+        data.putInt(value.cursorOffset);
+        data.putInt(value.scriptClass.value);
+    }
+
+    public static void writeImeInputContextTextReplacement(ByteBuffer data, ImeInputContextTextReplacement value) {
+        prepare(data);
+        writeImeInputContextTextReplacementFields(data, value);
+    }
+
+    public static int sizeOfImeInputContextTextReplacement(ImeInputContextTextReplacement value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        size += sizeOfUtf8String(value.text);
+        size += 4;
+        size += 4;
+        return size;
+    }
+
+    private static void writeImeInputStateTextReplacementFields(ByteBuffer data, ImeInputStateTextReplacement value) {
+        data.putLong(value.contextId);
+        data.putInt(value.documentStartOffset);
+        data.putInt(value.startOffset);
+        data.putInt(value.endOffset);
+        writeUtf8String(data, value.text);
+        data.putInt(value.cursorOffset);
+        data.putInt(value.scriptClass.value);
+    }
+
+    public static void writeImeInputStateTextReplacement(ByteBuffer data, ImeInputStateTextReplacement value) {
+        prepare(data);
+        writeImeInputStateTextReplacementFields(data, value);
+    }
+
+    public static int sizeOfImeInputStateTextReplacement(ImeInputStateTextReplacement value) {
+        int size = 0;
+        size += 8;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += sizeOfUtf8String(value.text);
+        size += 4;
+        size += 4;
+        return size;
     }
 
     private static ImeSyncSnapshot readImeSyncSnapshot(ByteBuffer data) {
@@ -1238,6 +1317,64 @@ public final class CoreProtocol {
     public static ImeSyncSnapshot decodeImeSyncSnapshot(ByteBuffer data) {
         prepare(data);
         return readImeSyncSnapshot(data);
+    }
+
+    private static void writeImeTextModelDeltaFields(ByteBuffer data, ImeTextModelDelta value) {
+        data.putInt(value.mode.value);
+        data.putLong(value.contextId);
+        data.putInt(value.documentStartOffset);
+        writeUtf8String(data, value.oldText);
+        writeImeTextRangeFields(data, value.delta);
+        writeUtf8String(data, value.deltaText);
+        writeImeTextRangeFields(data, value.selection);
+        writeImeTextRangeFields(data, value.composition);
+        data.putInt(value.scriptClass.value);
+    }
+
+    public static void writeImeTextModelDelta(ByteBuffer data, ImeTextModelDelta value) {
+        prepare(data);
+        writeImeTextModelDeltaFields(data, value);
+    }
+
+    public static int sizeOfImeTextModelDelta(ImeTextModelDelta value) {
+        int size = 0;
+        size += 4;
+        size += 8;
+        size += 4;
+        size += sizeOfUtf8String(value.oldText);
+        size += sizeOfImeTextRange(value.delta);
+        size += sizeOfUtf8String(value.deltaText);
+        size += sizeOfImeTextRange(value.selection);
+        size += sizeOfImeTextRange(value.composition);
+        size += 4;
+        return size;
+    }
+
+    private static void writeImeTextModelStateFields(ByteBuffer data, ImeTextModelState value) {
+        data.putInt(value.mode.value);
+        data.putLong(value.contextId);
+        data.putInt(value.documentStartOffset);
+        writeUtf8String(data, value.text);
+        writeImeTextRangeFields(data, value.selection);
+        writeImeTextRangeFields(data, value.composition);
+        data.putInt(value.scriptClass.value);
+    }
+
+    public static void writeImeTextModelState(ByteBuffer data, ImeTextModelState value) {
+        prepare(data);
+        writeImeTextModelStateFields(data, value);
+    }
+
+    public static int sizeOfImeTextModelState(ImeTextModelState value) {
+        int size = 0;
+        size += 4;
+        size += 8;
+        size += 4;
+        size += sizeOfUtf8String(value.text);
+        size += sizeOfImeTextRange(value.selection);
+        size += sizeOfImeTextRange(value.composition);
+        size += 4;
+        return size;
     }
 
     private static ImeTextRange readImeTextRange(ByteBuffer data) {
@@ -1265,6 +1402,25 @@ public final class CoreProtocol {
     public static int sizeOfImeTextRange(ImeTextRange value) {
         int size = 0;
         size += 4;
+        size += 4;
+        return size;
+    }
+
+    private static void writeImeTextReplacementFields(ByteBuffer data, ImeTextReplacement value) {
+        writeTextRangeFields(data, value.range);
+        writeUtf8String(data, value.text);
+        data.putInt(value.scriptClass.value);
+    }
+
+    public static void writeImeTextReplacement(ByteBuffer data, ImeTextReplacement value) {
+        prepare(data);
+        writeImeTextReplacementFields(data, value);
+    }
+
+    public static int sizeOfImeTextReplacement(ImeTextReplacement value) {
+        int size = 0;
+        size += sizeOfTextRange(value.range);
+        size += sizeOfUtf8String(value.text);
         size += 4;
         return size;
     }
@@ -2359,6 +2515,127 @@ public final class CoreProtocol {
     public static ByteBuffer encodeScrollbarConfig(ScrollbarConfig value) {
         ByteBuffer data = ByteBuffer.allocateDirect(sizeOfScrollbarConfig(value)).order(ByteOrder.LITTLE_ENDIAN);
         writeScrollbarConfigFields(data, value);
+        data.flip();
+        return data;
+    }
+
+    public static ByteBuffer encodeImeDocumentTextReplacement(ImeDocumentTextReplacement value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        byte[] textUtf8 = utf8Bytes(value.text);
+        size += 4 + textUtf8.length;
+        size += 4;
+        size += 4;
+        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
+        data.putInt(value.startOffset);
+        data.putInt(value.endOffset);
+        writeUtf8Bytes(data, textUtf8);
+        data.putInt(value.cursorOffset);
+        data.putInt(value.scriptClass.value);
+        data.flip();
+        return data;
+    }
+
+    public static ByteBuffer encodeImeInputContextTextReplacement(ImeInputContextTextReplacement value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        byte[] textUtf8 = utf8Bytes(value.text);
+        size += 4 + textUtf8.length;
+        size += 4;
+        size += 4;
+        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
+        data.putInt(value.startOffset);
+        data.putInt(value.endOffset);
+        writeUtf8Bytes(data, textUtf8);
+        data.putInt(value.cursorOffset);
+        data.putInt(value.scriptClass.value);
+        data.flip();
+        return data;
+    }
+
+    public static ByteBuffer encodeImeInputStateTextReplacement(ImeInputStateTextReplacement value) {
+        int size = 0;
+        size += 8;
+        size += 4;
+        size += 4;
+        size += 4;
+        byte[] textUtf8 = utf8Bytes(value.text);
+        size += 4 + textUtf8.length;
+        size += 4;
+        size += 4;
+        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
+        data.putLong(value.contextId);
+        data.putInt(value.documentStartOffset);
+        data.putInt(value.startOffset);
+        data.putInt(value.endOffset);
+        writeUtf8Bytes(data, textUtf8);
+        data.putInt(value.cursorOffset);
+        data.putInt(value.scriptClass.value);
+        data.flip();
+        return data;
+    }
+
+    public static ByteBuffer encodeImeTextModelDelta(ImeTextModelDelta value) {
+        int size = 0;
+        size += 4;
+        size += 8;
+        size += 4;
+        byte[] oldTextUtf8 = utf8Bytes(value.oldText);
+        size += 4 + oldTextUtf8.length;
+        size += sizeOfImeTextRange(value.delta);
+        byte[] deltaTextUtf8 = utf8Bytes(value.deltaText);
+        size += 4 + deltaTextUtf8.length;
+        size += sizeOfImeTextRange(value.selection);
+        size += sizeOfImeTextRange(value.composition);
+        size += 4;
+        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
+        data.putInt(value.mode.value);
+        data.putLong(value.contextId);
+        data.putInt(value.documentStartOffset);
+        writeUtf8Bytes(data, oldTextUtf8);
+        writeImeTextRangeFields(data, value.delta);
+        writeUtf8Bytes(data, deltaTextUtf8);
+        writeImeTextRangeFields(data, value.selection);
+        writeImeTextRangeFields(data, value.composition);
+        data.putInt(value.scriptClass.value);
+        data.flip();
+        return data;
+    }
+
+    public static ByteBuffer encodeImeTextModelState(ImeTextModelState value) {
+        int size = 0;
+        size += 4;
+        size += 8;
+        size += 4;
+        byte[] textUtf8 = utf8Bytes(value.text);
+        size += 4 + textUtf8.length;
+        size += sizeOfImeTextRange(value.selection);
+        size += sizeOfImeTextRange(value.composition);
+        size += 4;
+        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
+        data.putInt(value.mode.value);
+        data.putLong(value.contextId);
+        data.putInt(value.documentStartOffset);
+        writeUtf8Bytes(data, textUtf8);
+        writeImeTextRangeFields(data, value.selection);
+        writeImeTextRangeFields(data, value.composition);
+        data.putInt(value.scriptClass.value);
+        data.flip();
+        return data;
+    }
+
+    public static ByteBuffer encodeImeTextReplacement(ImeTextReplacement value) {
+        int size = 0;
+        size += sizeOfTextRange(value.range);
+        byte[] textUtf8 = utf8Bytes(value.text);
+        size += 4 + textUtf8.length;
+        size += 4;
+        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
+        writeTextRangeFields(data, value.range);
+        writeUtf8Bytes(data, textUtf8);
+        data.putInt(value.scriptClass.value);
         data.flip();
         return data;
     }

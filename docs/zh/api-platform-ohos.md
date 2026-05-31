@@ -8,7 +8,7 @@
   - `platform/OHOS/sweeteditor/src/main/ets/SweetEditor.ets`（`SweetEditorController`）
   - `platform/OHOS/sweeteditor/src/main/ets/EditorSettings.ets`
 - 桥接层：`platform/OHOS/sweeteditor/src/main/ets/core/EditorCore.ets`
-- 协议编解码：`platform/OHOS/sweeteditor/src/main/ets/core/EditorProtocol.ets`
+- 协议编解码：`platform/OHOS/sweeteditor/src/main/ets/core/CoreProtocol.ets`
 - NAPI 层：
   - `platform/OHOS/sweeteditor/src/main/cpp/napi_editor.hpp`
   - `platform/OHOS/sweeteditor/src/main/cpp/napi_init.cpp`
@@ -17,7 +17,7 @@
 
 - OHOS 主路径是 ArkTS + NAPI 直连共享 C++ 核心，通过 `libsweeteditor.so` 调用。
 - `EditorCore` 在桥接边界保留原生数值协议。
-- `buildRenderModel()`、`EditorActionResult`、滚动度量等复杂返回当前仍通过二进制 payload 返回，再由 `EditorProtocol.ets` 解码。
+- `buildRenderModel()`、`EditorActionResult`、滚动度量等复杂返回当前仍通过二进制 payload 返回，再由 `CoreProtocol.ets` 解码。
 - `Index.ets` 统一 re-export 公开 API，业务侧通常直接从 `@qiplat/sweeteditor` 导入，不需要使用深层路径。
 - 补全面板、Inline Suggestion 条、Selection Menu 等 ArkUI 浮层由平台层实现，但数据来源仍是 C++ render model 与 `EditorActionResult`。
 

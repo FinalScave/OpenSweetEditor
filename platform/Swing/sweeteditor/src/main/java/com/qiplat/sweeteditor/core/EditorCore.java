@@ -6,8 +6,13 @@ import com.qiplat.sweeteditor.core.config.EditorOptions;
 import com.qiplat.sweeteditor.core.config.HandleConfig;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
 import com.qiplat.sweeteditor.core.foundation.*;
+import com.qiplat.sweeteditor.core.ime.ImeDocumentTextReplacement;
+import com.qiplat.sweeteditor.core.ime.ImeInputContextTextReplacement;
+import com.qiplat.sweeteditor.core.ime.ImeInputStateTextReplacement;
 import com.qiplat.sweeteditor.core.ime.ImeInputContext;
 import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
+import com.qiplat.sweeteditor.core.ime.ImeTextModelState;
+import com.qiplat.sweeteditor.core.ime.ImeTextReplacement;
 import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
 import com.qiplat.sweeteditor.core.interaction.EventType;
 import com.qiplat.sweeteditor.core.interaction.GestureEvent;
@@ -498,52 +503,28 @@ public class EditorCore {
                 nativeHandle, Math.max(0, startOffset), Math.max(0, endOffset), scriptHint));
     }
 
-    public EditorActionResult replaceImeText(TextRange range, String text, int scriptHint) {
-        if (range == null || range.start == null || range.end == null) {
+    public EditorActionResult replaceImeText(ImeTextReplacement replacement) {
+        if (replacement == null || replacement.range == null ||
+                replacement.range.start == null || replacement.range.end == null) {
             return null;
         }
         try (Arena tempArena = Arena.ofConfined()) {
-            return decodeAction(EditorNative.replaceImeText(
-                    nativeHandle,
-                    range.start.line, range.start.column,
-                    range.end.line, range.end.column,
-                    text != null ? text : "",
-                    scriptHint,
-                    tempArena));
+            MemorySegment payload = CoreProtocol.encodeImeTextReplacement(tempArena, replacement);
+            return decodeAction(EditorNative.replaceImeText(nativeHandle, payload, payload.byteSize()));
         }
     }
 
-    public EditorActionResult replaceImeDocumentText(long startOffset,
-                                                     long endOffset,
-                                                     String text,
-                                                     int cursorOffset,
-                                                     int scriptHint) {
+    public EditorActionResult replaceImeDocumentText(ImeDocumentTextReplacement replacement) {
         try (Arena tempArena = Arena.ofConfined()) {
-            return decodeAction(EditorNative.replaceImeDocumentText(
-                    nativeHandle,
-                    Math.max(0, startOffset),
-                    Math.max(0, endOffset),
-                    text != null ? text : "",
-                    cursorOffset,
-                    scriptHint,
-                    tempArena));
+            MemorySegment payload = CoreProtocol.encodeImeDocumentTextReplacement(tempArena, replacement);
+            return decodeAction(EditorNative.replaceImeDocumentText(nativeHandle, payload, payload.byteSize()));
         }
     }
 
-    public EditorActionResult replaceImeInputContextText(long startOffset,
-                                                         long endOffset,
-                                                         String text,
-                                                         int cursorOffset,
-                                                         int scriptHint) {
+    public EditorActionResult replaceImeInputContextText(ImeInputContextTextReplacement replacement) {
         try (Arena tempArena = Arena.ofConfined()) {
-            return decodeAction(EditorNative.replaceImeInputContextText(
-                    nativeHandle,
-                    Math.max(0, startOffset),
-                    Math.max(0, endOffset),
-                    text != null ? text : "",
-                    cursorOffset,
-                    scriptHint,
-                    tempArena));
+            MemorySegment payload = CoreProtocol.encodeImeInputContextTextReplacement(tempArena, replacement);
+            return decodeAction(EditorNative.replaceImeInputContextText(nativeHandle, payload, payload.byteSize()));
         }
     }
 
@@ -562,26 +543,10 @@ public class EditorCore {
                 nativeHandle, Math.max(0, startOffset), Math.max(0, endOffset)));
     }
 
-    public EditorActionResult updateImeInputStateText(long contextId,
-                                                      int documentStartOffset,
-                                                      String text,
-                                                      int selectionStartOffset,
-                                                      int selectionEndOffset,
-                                                      int composingStartOffset,
-                                                      int composingEndOffset,
-                                                      int scriptHint) {
+    public EditorActionResult updateImeTextModelState(ImeTextModelState state) {
         try (Arena tempArena = Arena.ofConfined()) {
-            return decodeAction(EditorNative.updateImeInputStateText(
-                    nativeHandle,
-                    contextId,
-                    Math.max(0, documentStartOffset),
-                    text != null ? text : "",
-                    selectionStartOffset,
-                    selectionEndOffset,
-                    composingStartOffset,
-                    composingEndOffset,
-                    scriptHint,
-                    tempArena));
+            MemorySegment payload = CoreProtocol.encodeImeTextModelState(tempArena, state);
+            return decodeAction(EditorNative.updateImeTextModelState(nativeHandle, payload, payload.byteSize()));
         }
     }
 
@@ -597,24 +562,10 @@ public class EditorCore {
                 selectionEndOffset));
     }
 
-    public EditorActionResult replaceImeInputStateText(long contextId,
-                                                       int documentStartOffset,
-                                                       long startOffset,
-                                                       long endOffset,
-                                                       String text,
-                                                       int cursorOffset,
-                                                       int scriptHint) {
+    public EditorActionResult replaceImeInputStateText(ImeInputStateTextReplacement replacement) {
         try (Arena tempArena = Arena.ofConfined()) {
-            return decodeAction(EditorNative.replaceImeInputStateText(
-                    nativeHandle,
-                    contextId,
-                    Math.max(0, documentStartOffset),
-                    Math.max(0, startOffset),
-                    Math.max(0, endOffset),
-                    text != null ? text : "",
-                    cursorOffset,
-                    scriptHint,
-                    tempArena));
+            MemorySegment payload = CoreProtocol.encodeImeInputStateTextReplacement(tempArena, replacement);
+            return decodeAction(EditorNative.replaceImeInputStateText(nativeHandle, payload, payload.byteSize()));
         }
     }
 

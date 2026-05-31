@@ -104,7 +104,7 @@ static napi_value Init(napi_env env, napi_value exports)
         NAPI_METHOD("editorImeMarkInputContextRange", EditorCoreNapi::imeMarkInputContextRange),
         NAPI_METHOD("editorImeNotifyDocumentSelectionChanged", EditorCoreNapi::imeNotifyDocumentSelectionChanged),
         NAPI_METHOD("editorImeNotifyInputContextSelectionChanged", EditorCoreNapi::imeNotifyInputContextSelectionChanged),
-        NAPI_METHOD("editorImeUpdateInputStateText", EditorCoreNapi::imeUpdateInputStateText),
+        NAPI_METHOD("editorImeUpdateTextModelState", EditorCoreNapi::imeUpdateTextModelState),
         NAPI_METHOD("editorImeUpdateInputStateSelection", EditorCoreNapi::imeUpdateInputStateSelection),
         NAPI_METHOD("editorImeReplaceInputStateText", EditorCoreNapi::imeReplaceInputStateText),
         NAPI_METHOD("editorImeDeleteBackward", EditorCoreNapi::imeDeleteBackward),

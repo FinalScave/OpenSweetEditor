@@ -5,7 +5,7 @@ This document maps to the current Avalonia implementation:
 - Control layer: `platform/Avalonia/SweetEditor/SweetEditorControl.cs`
 - Controller: `platform/Avalonia/SweetEditor/SweetEditorController.cs`
 - Bridge layer: `platform/Avalonia/SweetEditor/EditorCore.cs`
-- Protocol encode/decode: `platform/Avalonia/SweetEditor/EditorProtocol.cs`
+- Protocol encode/decode: `platform/Avalonia/SweetEditor/Core/CoreProtocol.cs`
 - Rendering: `platform/Avalonia/SweetEditor/EditorRenderer.cs`
 - Providers / extensions:
   - `platform/Avalonia/SweetEditor/EditorCompletion.cs`
@@ -22,7 +22,7 @@ This document maps to the current Avalonia implementation:
 
 - The Avalonia path is `Avalonia UI + C# P/Invoke -> C API`.
 - `EditorCore` owns the native handle, document lifecycle, edit commands, and render-model retrieval.
-- `EditorProtocol` decodes binary payloads; `EditorRenderer` consumes `EditorRenderModel` and draws through Avalonia `DrawingContext`.
+- `CoreProtocol` encodes and decodes binary payloads; `EditorRenderer` consumes `EditorRenderModel` and draws through Avalonia `DrawingContext`.
 - `SweetEditorControl` is the concrete widget entry. `SweetEditorController` is the external command surface for declarative / MVVM-style host code.
 - Decorations, completion, newline action, inline suggestion, and selection menu are split into dedicated Avalonia-side manager/provider modules.
 - Android demo uses `libsweetline.so` directly. Desktop demo falls back to managed highlighting when SweetLine native is not available.
@@ -209,7 +209,7 @@ public (int start, int end) GetVisibleLineRange()
 public int GetTotalLineCount()
 ```
 
-`Flush()` is a force-refresh / compatibility entrypoint. Normal edit, decoration, scroll, selection, and IME synchronization paths dispatch `EditorActionResult` through the unified result path, and `NeedsRedraw` decides whether to refresh the render model and redraw.
+`Flush()` is a force-refresh / diagnostic entrypoint. Normal edit, decoration, scroll, selection, and IME synchronization paths dispatch `EditorActionResult` through the unified result path, and `NeedsRedraw` decides whether to refresh the render model and redraw.
 
 ### Providers / completion / ghost / selection menu
 
@@ -306,8 +306,8 @@ public void SetLinePhantomTexts(int line, IList<PhantomText> phantoms)
 public void SetBatchLinePhantomTexts(Dictionary<int, IList<PhantomText>> phantomsByLine)
 public void SetLineGutterIcons(int line, IList<GutterIcon> icons)
 public void SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine)
-public void SetLineDiagnostics(int line, IList<DiagnosticItem> items)
-public void SetBatchLineDiagnostics(Dictionary<int, IList<DiagnosticItem>> diagsByLine)
+public void SetLineDiagnostics(int line, IList<Diagnostic> items)
+public void SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine)
 public void SetIndentGuides(IList<IndentGuide> guides)
 public void SetBracketGuides(IList<BracketGuide> guides)
 public void SetFlowGuides(IList<FlowGuide> guides)

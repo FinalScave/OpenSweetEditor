@@ -120,7 +120,7 @@ public EditorCore getEditorCore()
 public void flush()
 ```
 
-`flush()` 是强制刷新 / 兼容入口。正常编辑、装饰、滚动和选区路径会通过统一分发 `EditorActionResult`，并由 `needsRedraw` 决定是否刷新 render model 与重绘；宿主通常不需要在批量装饰更新后手动调用。
+`flush()` 是强制刷新 / 诊断入口。正常编辑、装饰、滚动和选区路径会通过统一分发 `EditorActionResult`，并由 `needsRedraw` 决定是否刷新 render model 与重绘；宿主通常不需要在批量装饰更新后手动调用。
 
 ### 编辑 / 行操作 / 撤销重做
 
@@ -217,8 +217,8 @@ public void setBatchLineLinks(Map<Integer, ? extends List<? extends LinkSpan>> l
 public String getLinkTargetAt(int line, int column)
 public void clearLinks()
 
-public void setLineDiagnostics(int line, List<? extends DiagnosticItem> items)
-public void setBatchLineDiagnostics(Map<Integer, ? extends List<? extends DiagnosticItem>> diagsByLine)
+public void setLineDiagnostics(int line, List<? extends Diagnostic> items)
+public void setBatchLineDiagnostics(Map<Integer, ? extends List<? extends Diagnostic>> diagsByLine)
 public void clearDiagnostics()
 
 public void setLineGutterIcons(int line, List<? extends GutterIcon> icons)

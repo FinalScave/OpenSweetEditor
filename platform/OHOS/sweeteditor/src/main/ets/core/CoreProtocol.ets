@@ -3,7 +3,7 @@ import { EditorActionReason, EditorActionResult, ScrollBehavior, editorActionRea
 import { BracketGuide, CodeLensItem, Diagnostic, DiagnosticSeverity, FlowGuide, FoldRegion, GutterIcon, IndentGuide, InlayHint, InlayType, LinkSpan, PhantomText, SeparatorGuide, SeparatorStyle, SpanLayer, StyleSpan, TextStyle, diagnosticSeverityFromValue, inlayTypeFromValue, separatorStyleFromValue, spanLayerFromValue } from './CoreAdornments';
 import { AutoIndentMode, CurrentLineRenderMode, EditorOptions, FoldArrowMode, HandleConfig, ScrollbarConfig, ScrollbarMode, ScrollbarTrackTapMode, WrapMode, autoIndentModeFromValue, currentLineRenderModeFromValue, foldArrowModeFromValue, scrollbarModeFromValue, scrollbarTrackTapModeFromValue, wrapModeFromValue } from './CoreConfig';
 import { IntRange, OffsetRect, PointF, Rect, TextChange, TextPosition, TextRange } from './CoreFoundation';
-import { ImeContextPolicy, ImeInputContext, ImeInputContextKind, ImePreeditStorage, ImeScriptClass, ImeSyncSnapshot, ImeTextModelMode, ImeTextRange, ImeTextUnit, imeContextPolicyFromValue, imeInputContextKindFromValue, imePreeditStorageFromValue, imeScriptClassFromValue, imeTextModelModeFromValue, imeTextUnitFromValue } from './CoreIme';
+import { ImeContextPolicy, ImeDocumentTextReplacement, ImeInputContext, ImeInputContextKind, ImeInputContextTextReplacement, ImeInputStateTextReplacement, ImePreeditStorage, ImeScriptClass, ImeSyncSnapshot, ImeTextModelDelta, ImeTextModelMode, ImeTextModelState, ImeTextRange, ImeTextReplacement, ImeTextUnit, imeContextPolicyFromValue, imeInputContextKindFromValue, imePreeditStorageFromValue, imeScriptClassFromValue, imeTextModelModeFromValue, imeTextUnitFromValue } from './CoreIme';
 import { EventType, GestureEvent, GestureType, HitTarget, HitTargetType, eventTypeFromValue, gestureTypeFromValue, hitTargetTypeFromValue } from './CoreInteraction';
 import { EditorBuiltinCommand, KeyBinding, KeyChord, KeyCode, KeyModifier, editorBuiltinCommandFromValue } from './CoreKeymap';
 import { LinkedEditingModel, TabStopGroup } from './CoreLinkedEditing';
@@ -1109,6 +1109,24 @@ export class CoreProtocol {
     return size;
   }
 
+  static writeImeDocumentTextReplacement(writer: BinaryWriter, value: ImeDocumentTextReplacement): void {
+    writer.writeInt32(value.startOffset);
+    writer.writeInt32(value.endOffset);
+    writer.writeUtf8String(value.text);
+    writer.writeInt32(value.cursorOffset);
+    writer.writeInt32(value.scriptClass as number);
+  }
+
+  static sizeOfImeDocumentTextReplacement(value: ImeDocumentTextReplacement): number {
+    let size = 0;
+    size += 4;
+    size += 4;
+    size += CoreProtocol.sizeOfUtf8String(value.text);
+    size += 4;
+    size += 4;
+    return size;
+  }
+
   private static readImeInputContext(reader: BinaryReader): ImeInputContext {
     return {
       id: reader.readInt64(),
@@ -1124,6 +1142,46 @@ export class CoreProtocol {
 
   static decodeImeInputContext(buffer: ArrayBuffer | undefined): ImeInputContext {
     return CoreProtocol.readImeInputContext(CoreProtocol.readerFor(buffer));
+  }
+
+  static writeImeInputContextTextReplacement(writer: BinaryWriter, value: ImeInputContextTextReplacement): void {
+    writer.writeInt32(value.startOffset);
+    writer.writeInt32(value.endOffset);
+    writer.writeUtf8String(value.text);
+    writer.writeInt32(value.cursorOffset);
+    writer.writeInt32(value.scriptClass as number);
+  }
+
+  static sizeOfImeInputContextTextReplacement(value: ImeInputContextTextReplacement): number {
+    let size = 0;
+    size += 4;
+    size += 4;
+    size += CoreProtocol.sizeOfUtf8String(value.text);
+    size += 4;
+    size += 4;
+    return size;
+  }
+
+  static writeImeInputStateTextReplacement(writer: BinaryWriter, value: ImeInputStateTextReplacement): void {
+    writer.writeInt64(value.contextId);
+    writer.writeInt32(value.documentStartOffset);
+    writer.writeInt32(value.startOffset);
+    writer.writeInt32(value.endOffset);
+    writer.writeUtf8String(value.text);
+    writer.writeInt32(value.cursorOffset);
+    writer.writeInt32(value.scriptClass as number);
+  }
+
+  static sizeOfImeInputStateTextReplacement(value: ImeInputStateTextReplacement): number {
+    let size = 0;
+    size += 8;
+    size += 4;
+    size += 4;
+    size += 4;
+    size += CoreProtocol.sizeOfUtf8String(value.text);
+    size += 4;
+    size += 4;
+    return size;
   }
 
   private static readImeSyncSnapshot(reader: BinaryReader): ImeSyncSnapshot {
@@ -1146,6 +1204,54 @@ export class CoreProtocol {
     return CoreProtocol.readImeSyncSnapshot(CoreProtocol.readerFor(buffer));
   }
 
+  static writeImeTextModelDelta(writer: BinaryWriter, value: ImeTextModelDelta): void {
+    writer.writeInt32(value.mode as number);
+    writer.writeInt64(value.contextId);
+    writer.writeInt32(value.documentStartOffset);
+    writer.writeUtf8String(value.oldText);
+    CoreProtocol.writeImeTextRange(writer, value.delta);
+    writer.writeUtf8String(value.deltaText);
+    CoreProtocol.writeImeTextRange(writer, value.selection);
+    CoreProtocol.writeImeTextRange(writer, value.composition);
+    writer.writeInt32(value.scriptClass as number);
+  }
+
+  static sizeOfImeTextModelDelta(value: ImeTextModelDelta): number {
+    let size = 0;
+    size += 4;
+    size += 8;
+    size += 4;
+    size += CoreProtocol.sizeOfUtf8String(value.oldText);
+    size += CoreProtocol.sizeOfImeTextRange(value.delta);
+    size += CoreProtocol.sizeOfUtf8String(value.deltaText);
+    size += CoreProtocol.sizeOfImeTextRange(value.selection);
+    size += CoreProtocol.sizeOfImeTextRange(value.composition);
+    size += 4;
+    return size;
+  }
+
+  static writeImeTextModelState(writer: BinaryWriter, value: ImeTextModelState): void {
+    writer.writeInt32(value.mode as number);
+    writer.writeInt64(value.contextId);
+    writer.writeInt32(value.documentStartOffset);
+    writer.writeUtf8String(value.text);
+    CoreProtocol.writeImeTextRange(writer, value.selection);
+    CoreProtocol.writeImeTextRange(writer, value.composition);
+    writer.writeInt32(value.scriptClass as number);
+  }
+
+  static sizeOfImeTextModelState(value: ImeTextModelState): number {
+    let size = 0;
+    size += 4;
+    size += 8;
+    size += 4;
+    size += CoreProtocol.sizeOfUtf8String(value.text);
+    size += CoreProtocol.sizeOfImeTextRange(value.selection);
+    size += CoreProtocol.sizeOfImeTextRange(value.composition);
+    size += 4;
+    return size;
+  }
+
   private static readImeTextRange(reader: BinaryReader): ImeTextRange {
     return {
       start: reader.readInt32(),
@@ -1165,6 +1271,20 @@ export class CoreProtocol {
   static sizeOfImeTextRange(value: ImeTextRange): number {
     let size = 0;
     size += 4;
+    size += 4;
+    return size;
+  }
+
+  static writeImeTextReplacement(writer: BinaryWriter, value: ImeTextReplacement): void {
+    CoreProtocol.writeTextRange(writer, value.range);
+    writer.writeUtf8String(value.text);
+    writer.writeInt32(value.scriptClass as number);
+  }
+
+  static sizeOfImeTextReplacement(value: ImeTextReplacement): number {
+    let size = 0;
+    size += CoreProtocol.sizeOfTextRange(value.range);
+    size += CoreProtocol.sizeOfUtf8String(value.text);
     size += 4;
     return size;
   }
@@ -2045,6 +2165,42 @@ export class CoreProtocol {
   static encodeScrollbarConfig(value: ScrollbarConfig): ArrayBuffer {
     const writer = new BinaryWriter(CoreProtocol.sizeOfScrollbarConfig(value));
     CoreProtocol.writeScrollbarConfig(writer, value);
+    return writer.getBuffer();
+  }
+
+  static encodeImeDocumentTextReplacement(value: ImeDocumentTextReplacement): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfImeDocumentTextReplacement(value));
+    CoreProtocol.writeImeDocumentTextReplacement(writer, value);
+    return writer.getBuffer();
+  }
+
+  static encodeImeInputContextTextReplacement(value: ImeInputContextTextReplacement): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfImeInputContextTextReplacement(value));
+    CoreProtocol.writeImeInputContextTextReplacement(writer, value);
+    return writer.getBuffer();
+  }
+
+  static encodeImeInputStateTextReplacement(value: ImeInputStateTextReplacement): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfImeInputStateTextReplacement(value));
+    CoreProtocol.writeImeInputStateTextReplacement(writer, value);
+    return writer.getBuffer();
+  }
+
+  static encodeImeTextModelDelta(value: ImeTextModelDelta): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfImeTextModelDelta(value));
+    CoreProtocol.writeImeTextModelDelta(writer, value);
+    return writer.getBuffer();
+  }
+
+  static encodeImeTextModelState(value: ImeTextModelState): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfImeTextModelState(value));
+    CoreProtocol.writeImeTextModelState(writer, value);
+    return writer.getBuffer();
+  }
+
+  static encodeImeTextReplacement(value: ImeTextReplacement): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfImeTextReplacement(value));
+    CoreProtocol.writeImeTextReplacement(writer, value);
     return writer.getBuffer();
   }
 

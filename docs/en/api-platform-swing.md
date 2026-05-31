@@ -120,7 +120,7 @@ public EditorCore getEditorCore()
 public void flush()
 ```
 
-`flush()` is a force-refresh / compatibility entrypoint. Normal edit, decoration, scroll, and selection paths dispatch `EditorActionResult` through the unified result path, and `needsRedraw` decides whether to refresh the render model and redraw; hosts usually do not need to call it after batched decoration updates.
+`flush()` is a force-refresh / diagnostic entrypoint. Normal edit, decoration, scroll, and selection paths dispatch `EditorActionResult` through the unified result path, and `needsRedraw` decides whether to refresh the render model and redraw; hosts usually do not need to call it after batched decoration updates.
 
 ### Edit / Line Actions / Undo Redo
 
@@ -217,8 +217,8 @@ public void setBatchLineLinks(Map<Integer, ? extends List<? extends LinkSpan>> l
 public String getLinkTargetAt(int line, int column)
 public void clearLinks()
 
-public void setLineDiagnostics(int line, List<? extends DiagnosticItem> items)
-public void setBatchLineDiagnostics(Map<Integer, ? extends List<? extends DiagnosticItem>> diagsByLine)
+public void setLineDiagnostics(int line, List<? extends Diagnostic> items)
+public void setBatchLineDiagnostics(Map<Integer, ? extends List<? extends Diagnostic>> diagsByLine)
 public void clearDiagnostics()
 
 public void setLineGutterIcons(int line, List<? extends GutterIcon> icons)

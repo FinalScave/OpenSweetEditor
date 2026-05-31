@@ -2069,65 +2069,45 @@ external ffi.Pointer<ffi.Uint8> editor_ime_mark_document_range_by_offset(
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
     ffi.Size,
-    ffi.Size,
-    ffi.Size,
-    ffi.Size,
-    ffi.Pointer<ffi.Char>,
-    ffi.Int,
     ffi.Pointer<ffi.Size>,
   )
 >(assetId: _sweeteditorAssetId)
 external ffi.Pointer<ffi.Uint8> editor_ime_replace_text(
   int editor_handle,
-  int start_line,
-  int start_column,
-  int end_line,
-  int end_column,
-  ffi.Pointer<ffi.Char> text,
-  int script_hint,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
   ffi.Pointer<ffi.Size> out_size,
 );
 
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
     ffi.Size,
-    ffi.Size,
-    ffi.Pointer<ffi.Char>,
-    ffi.Int,
-    ffi.Int,
     ffi.Pointer<ffi.Size>,
   )
 >(assetId: _sweeteditorAssetId)
 external ffi.Pointer<ffi.Uint8> editor_ime_replace_document_text(
   int editor_handle,
-  int start_offset,
-  int end_offset,
-  ffi.Pointer<ffi.Char> text,
-  int cursor_offset,
-  int script_hint,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
   ffi.Pointer<ffi.Size> out_size,
 );
 
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
     ffi.Size,
-    ffi.Size,
-    ffi.Pointer<ffi.Char>,
-    ffi.Int,
-    ffi.Int,
     ffi.Pointer<ffi.Size>,
   )
 >(assetId: _sweeteditorAssetId)
 external ffi.Pointer<ffi.Uint8> editor_ime_replace_input_context_text(
   int editor_handle,
-  int start_offset,
-  int end_offset,
-  ffi.Pointer<ffi.Char> text,
-  int cursor_offset,
-  int script_hint,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
   ffi.Pointer<ffi.Size> out_size,
 );
 
@@ -2182,91 +2162,30 @@ editor_ime_notify_input_context_selection_changed(
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
-    ffi.Uint64,
-    ffi.Int32,
-    ffi.Pointer<ffi.Char>,
-    ffi.Int32,
-    ffi.Int32,
-    ffi.Int32,
-    ffi.Int32,
-    ffi.Int,
-    ffi.Pointer<ffi.Size>,
-  )
->(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> editor_ime_update_input_state_text(
-  int editor_handle,
-  int context_id,
-  int document_start_offset,
-  ffi.Pointer<ffi.Char> text,
-  int selection_start_offset,
-  int selection_end_offset,
-  int composing_start_offset,
-  int composing_end_offset,
-  int script_hint,
-  ffi.Pointer<ffi.Size> out_size,
-);
-
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(
-    ffi.IntPtr,
-    ffi.Int,
-    ffi.Uint64,
-    ffi.Int32,
-    ffi.Pointer<ffi.Char>,
-    ffi.Int32,
-    ffi.Int32,
-    ffi.Int32,
-    ffi.Int32,
-    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
     ffi.Pointer<ffi.Size>,
   )
 >(assetId: _sweeteditorAssetId)
 external ffi.Pointer<ffi.Uint8> editor_ime_update_text_model_state(
   int editor_handle,
-  int mode,
-  int context_id,
-  int document_start_offset,
-  ffi.Pointer<ffi.Char> text,
-  int selection_start_offset,
-  int selection_end_offset,
-  int composing_start_offset,
-  int composing_end_offset,
-  int script_hint,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
   ffi.Pointer<ffi.Size> out_size,
 );
 
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
-    ffi.Int,
-    ffi.Uint64,
-    ffi.Int32,
-    ffi.Pointer<ffi.Char>,
-    ffi.Int32,
-    ffi.Int32,
-    ffi.Pointer<ffi.Char>,
-    ffi.Int32,
-    ffi.Int32,
-    ffi.Int32,
-    ffi.Int32,
-    ffi.Int,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
     ffi.Pointer<ffi.Size>,
   )
 >(assetId: _sweeteditorAssetId)
 external ffi.Pointer<ffi.Uint8> editor_ime_update_text_model_delta(
   int editor_handle,
-  int mode,
-  int context_id,
-  int document_start_offset,
-  ffi.Pointer<ffi.Char> old_text,
-  int delta_start_offset,
-  int delta_end_offset,
-  ffi.Pointer<ffi.Char> delta_text,
-  int selection_start_offset,
-  int selection_end_offset,
-  int composing_start_offset,
-  int composing_end_offset,
-  int script_hint,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
   ffi.Pointer<ffi.Size> out_size,
 );
 
@@ -2292,50 +2211,15 @@ external ffi.Pointer<ffi.Uint8> editor_ime_update_input_state_selection(
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
-    ffi.Uint64,
-    ffi.Int32,
+    ffi.Pointer<ffi.Uint8>,
     ffi.Size,
-    ffi.Size,
-    ffi.Pointer<ffi.Char>,
-    ffi.Int,
-    ffi.Int,
     ffi.Pointer<ffi.Size>,
   )
 >(assetId: _sweeteditorAssetId)
 external ffi.Pointer<ffi.Uint8> editor_ime_replace_input_state_text(
   int editor_handle,
-  int context_id,
-  int document_start_offset,
-  int start_offset,
-  int end_offset,
-  ffi.Pointer<ffi.Char> text,
-  int cursor_offset,
-  int script_hint,
-  ffi.Pointer<ffi.Size> out_size,
-);
-
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(
-    ffi.IntPtr,
-    ffi.Uint64,
-    ffi.Int32,
-    ffi.Size,
-    ffi.Size,
-    ffi.Pointer<ffi.Char>,
-    ffi.Int,
-    ffi.Int,
-    ffi.Pointer<ffi.Size>,
-  )
->(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> editor_ime_commit_input_state_text_replacement(
-  int editor_handle,
-  int context_id,
-  int document_start_offset,
-  int start_offset,
-  int end_offset,
-  ffi.Pointer<ffi.Char> text,
-  int cursor_offset,
-  int script_hint,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
   ffi.Pointer<ffi.Size> out_size,
 );
 

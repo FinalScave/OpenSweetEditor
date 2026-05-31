@@ -539,14 +539,14 @@ free_editor(editor);
 | Windows | P/Invoke | `DllImport(\"sweeteditor.dll\")` |
 | Swing | Java FFM | Downcall 到 C API |
 | Web | Emscripten | 非官方 fork 中测试中：<https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten> |
-| OHOS | ArkTS NAPI（`libsweeteditor.so`） | ArkTS 通过 `native` 直连共享 C++，并在 `EditorProtocol.ets` 中解码 binary payload |
+| OHOS | ArkTS NAPI（`libsweeteditor.so`） | ArkTS 通过 `native` 直连共享 C++，并在 `CoreProtocol.ets` 中解码 binary payload |
 
 注意：Android 目前不是经由 `c_api.h` 调用链路；新增公共能力时需要同步 JNI 路径与 C API 路径。
 
 补充：
 
 - Android 虽然是 JNI 直连，但 `buildRenderModel()`、`EditorActionResult`、滚动度量等复杂返回同样通过二进制协议解码。
-- Swing / WinForms 当前都走 `ProtocolDecoder` / `EditorProtocol` 读取 UTF-8 字符串字段。
+- Swing / WinForms 当前都走 `CoreProtocol` 读取 UTF-8 字符串字段。
 - Apple 通过手工 bridge + Swift `BinaryReader` 消费同一套二进制布局。
 
 ---

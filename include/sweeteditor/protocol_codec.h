@@ -600,6 +600,103 @@ public:
     return true;
   }
 
+  inline bool read(ImeDocumentTextReplacement& out) {
+    uint32_t out_start_offset_value{};
+    if (!readU32(out_start_offset_value)) return false;
+    out.start_offset = static_cast<size_t>(out_start_offset_value);
+    uint32_t out_end_offset_value{};
+    if (!readU32(out_end_offset_value)) return false;
+    out.end_offset = static_cast<size_t>(out_end_offset_value);
+    if (!readUtf8String(out.text)) return false;
+    int32_t out_cursor_offset_value{};
+    if (!readI32(out_cursor_offset_value)) return false;
+    out.cursor_offset = static_cast<int32_t>(out_cursor_offset_value);
+    int32_t out_script_class_value{};
+    if (!readI32(out_script_class_value)) return false;
+    out.script_class = static_cast<ImeScriptClass>(out_script_class_value);
+    return true;
+  }
+
+  inline bool read(ImeInputContextTextReplacement& out) {
+    uint32_t out_start_offset_value{};
+    if (!readU32(out_start_offset_value)) return false;
+    out.start_offset = static_cast<size_t>(out_start_offset_value);
+    uint32_t out_end_offset_value{};
+    if (!readU32(out_end_offset_value)) return false;
+    out.end_offset = static_cast<size_t>(out_end_offset_value);
+    if (!readUtf8String(out.text)) return false;
+    int32_t out_cursor_offset_value{};
+    if (!readI32(out_cursor_offset_value)) return false;
+    out.cursor_offset = static_cast<int32_t>(out_cursor_offset_value);
+    int32_t out_script_class_value{};
+    if (!readI32(out_script_class_value)) return false;
+    out.script_class = static_cast<ImeScriptClass>(out_script_class_value);
+    return true;
+  }
+
+  inline bool read(ImeInputStateTextReplacement& out) {
+    uint64_t out_context_id_value{};
+    if (!readU64(out_context_id_value)) return false;
+    out.context_id = static_cast<uint64_t>(out_context_id_value);
+    int32_t out_document_start_offset_value{};
+    if (!readI32(out_document_start_offset_value)) return false;
+    out.document_start_offset = static_cast<int32_t>(out_document_start_offset_value);
+    uint32_t out_start_offset_value{};
+    if (!readU32(out_start_offset_value)) return false;
+    out.start_offset = static_cast<size_t>(out_start_offset_value);
+    uint32_t out_end_offset_value{};
+    if (!readU32(out_end_offset_value)) return false;
+    out.end_offset = static_cast<size_t>(out_end_offset_value);
+    if (!readUtf8String(out.text)) return false;
+    int32_t out_cursor_offset_value{};
+    if (!readI32(out_cursor_offset_value)) return false;
+    out.cursor_offset = static_cast<int32_t>(out_cursor_offset_value);
+    int32_t out_script_class_value{};
+    if (!readI32(out_script_class_value)) return false;
+    out.script_class = static_cast<ImeScriptClass>(out_script_class_value);
+    return true;
+  }
+
+  inline bool read(ImeTextModelDelta& out) {
+    int32_t out_mode_value{};
+    if (!readI32(out_mode_value)) return false;
+    out.mode = static_cast<ImeTextModelMode>(out_mode_value);
+    uint64_t out_context_id_value{};
+    if (!readU64(out_context_id_value)) return false;
+    out.context_id = static_cast<uint64_t>(out_context_id_value);
+    int32_t out_document_start_offset_value{};
+    if (!readI32(out_document_start_offset_value)) return false;
+    out.document_start_offset = static_cast<int32_t>(out_document_start_offset_value);
+    if (!readUtf8String(out.old_text)) return false;
+    if (!read(out.delta)) return false;
+    if (!readUtf8String(out.delta_text)) return false;
+    if (!read(out.selection)) return false;
+    if (!read(out.composition)) return false;
+    int32_t out_script_class_value{};
+    if (!readI32(out_script_class_value)) return false;
+    out.script_class = static_cast<ImeScriptClass>(out_script_class_value);
+    return true;
+  }
+
+  inline bool read(ImeTextModelState& out) {
+    int32_t out_mode_value{};
+    if (!readI32(out_mode_value)) return false;
+    out.mode = static_cast<ImeTextModelMode>(out_mode_value);
+    uint64_t out_context_id_value{};
+    if (!readU64(out_context_id_value)) return false;
+    out.context_id = static_cast<uint64_t>(out_context_id_value);
+    int32_t out_document_start_offset_value{};
+    if (!readI32(out_document_start_offset_value)) return false;
+    out.document_start_offset = static_cast<int32_t>(out_document_start_offset_value);
+    if (!readUtf8String(out.text)) return false;
+    if (!read(out.selection)) return false;
+    if (!read(out.composition)) return false;
+    int32_t out_script_class_value{};
+    if (!readI32(out_script_class_value)) return false;
+    out.script_class = static_cast<ImeScriptClass>(out_script_class_value);
+    return true;
+  }
+
   inline bool read(ImeTextRange& out) {
     int32_t out_start_value{};
     if (!readI32(out_start_value)) return false;
@@ -607,6 +704,15 @@ public:
     int32_t out_end_value{};
     if (!readI32(out_end_value)) return false;
     out.end = static_cast<int32_t>(out_end_value);
+    return true;
+  }
+
+  inline bool read(ImeTextReplacement& out) {
+    if (!read(out.range)) return false;
+    if (!readUtf8String(out.text)) return false;
+    int32_t out_script_class_value{};
+    if (!readI32(out_script_class_value)) return false;
+    out.script_class = static_cast<ImeScriptClass>(out_script_class_value);
     return true;
   }
 

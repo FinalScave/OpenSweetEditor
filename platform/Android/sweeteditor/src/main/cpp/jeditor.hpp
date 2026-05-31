@@ -575,56 +575,16 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static jobject imeReplaceText(JNIEnv* env, jclass clazz, jlong handle,
-                                jlong startLine, jlong startColumn, jlong endLine, jlong endColumn,
-                                jstring text, jint scriptHint) {
-    if (handle == 0) return nullptr;
-    const char* text_str = text != nullptr ? env->GetStringUTFChars(text, JNI_FALSE) : "";
-    size_t out_size = 0;
-    const uint8_t* payload = editor_ime_replace_text(static_cast<intptr_t>(handle),
-                                                     static_cast<size_t>(startLine),
-                                                     static_cast<size_t>(startColumn),
-                                                     static_cast<size_t>(endLine),
-                                                     static_cast<size_t>(endColumn),
-                                                     text_str,
-                                                     static_cast<int>(scriptHint),
-                                                     &out_size);
-    if (text != nullptr) env->ReleaseStringUTFChars(text, text_str);
-    return wrapBinaryPayload(env, payload, out_size);
+  static jobject imeReplaceText(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_ime_replace_text);
   }
 
-  static jobject imeReplaceDocumentText(JNIEnv* env, jclass clazz, jlong handle,
-                                        jlong startOffset, jlong endOffset, jstring text,
-                                        jint cursorOffset, jint scriptHint) {
-    if (handle == 0) return nullptr;
-    const char* text_str = text != nullptr ? env->GetStringUTFChars(text, JNI_FALSE) : "";
-    size_t out_size = 0;
-    const uint8_t* payload = editor_ime_replace_document_text(static_cast<intptr_t>(handle),
-                                                             static_cast<size_t>(startOffset),
-                                                             static_cast<size_t>(endOffset),
-                                                             text_str,
-                                                             static_cast<int>(cursorOffset),
-                                                             static_cast<int>(scriptHint),
-                                                             &out_size);
-    if (text != nullptr) env->ReleaseStringUTFChars(text, text_str);
-    return wrapBinaryPayload(env, payload, out_size);
+  static jobject imeReplaceDocumentText(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_ime_replace_document_text);
   }
 
-  static jobject imeReplaceInputContextText(JNIEnv* env, jclass clazz, jlong handle,
-                                            jlong startOffset, jlong endOffset, jstring text,
-                                            jint cursorOffset, jint scriptHint) {
-    if (handle == 0) return nullptr;
-    const char* text_str = text != nullptr ? env->GetStringUTFChars(text, JNI_FALSE) : "";
-    size_t out_size = 0;
-    const uint8_t* payload = editor_ime_replace_input_context_text(static_cast<intptr_t>(handle),
-                                                                   static_cast<size_t>(startOffset),
-                                                                   static_cast<size_t>(endOffset),
-                                                                   text_str,
-                                                                   static_cast<int>(cursorOffset),
-                                                                   static_cast<int>(scriptHint),
-                                                                   &out_size);
-    if (text != nullptr) env->ReleaseStringUTFChars(text, text_str);
-    return wrapBinaryPayload(env, payload, out_size);
+  static jobject imeReplaceInputContextText(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_ime_replace_input_context_text);
   }
 
   static jobject imeMarkInputContextRange(JNIEnv* env, jclass clazz, jlong handle,
@@ -663,27 +623,8 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static jobject imeUpdateInputStateText(JNIEnv* env, jclass clazz, jlong handle,
-                                         jlong contextId, jint documentStartOffset, jstring text,
-                                         jint selectionStartOffset, jint selectionEndOffset,
-                                         jint composingStartOffset, jint composingEndOffset,
-                                         jint scriptHint) {
-    if (handle == 0) return nullptr;
-    const char* text_str = text != nullptr ? env->GetStringUTFChars(text, JNI_FALSE) : "";
-    size_t out_size = 0;
-    const uint8_t* payload = editor_ime_update_input_state_text(
-        static_cast<intptr_t>(handle),
-        static_cast<uint64_t>(contextId),
-        static_cast<int32_t>(documentStartOffset),
-        text_str,
-        static_cast<int32_t>(selectionStartOffset),
-        static_cast<int32_t>(selectionEndOffset),
-        static_cast<int32_t>(composingStartOffset),
-        static_cast<int32_t>(composingEndOffset),
-        static_cast<int>(scriptHint),
-        &out_size);
-    if (text != nullptr) env->ReleaseStringUTFChars(text, text_str);
-    return wrapBinaryPayload(env, payload, out_size);
+  static jobject imeUpdateTextModelState(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_ime_update_text_model_state);
   }
 
   static jobject imeUpdateInputStateSelection(JNIEnv* env, jclass clazz, jlong handle,
@@ -701,25 +642,8 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
-  static jobject imeReplaceInputStateText(JNIEnv* env, jclass clazz, jlong handle,
-                                          jlong contextId, jint documentStartOffset,
-                                          jlong startOffset, jlong endOffset, jstring text,
-                                          jint cursorOffset, jint scriptHint) {
-    if (handle == 0) return nullptr;
-    const char* text_str = text != nullptr ? env->GetStringUTFChars(text, JNI_FALSE) : "";
-    size_t out_size = 0;
-    const uint8_t* payload = editor_ime_replace_input_state_text(
-        static_cast<intptr_t>(handle),
-        static_cast<uint64_t>(contextId),
-        static_cast<int32_t>(documentStartOffset),
-        static_cast<size_t>(startOffset),
-        static_cast<size_t>(endOffset),
-        text_str,
-        static_cast<int>(cursorOffset),
-        static_cast<int>(scriptHint),
-        &out_size);
-    if (text != nullptr) env->ReleaseStringUTFChars(text, text_str);
-    return wrapBinaryPayload(env, payload, out_size);
+  static jobject imeReplaceInputStateText(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_ime_replace_input_state_text);
   }
 
   static jobject imeDeleteBackward(JNIEnv* env, jclass clazz, jlong handle, jlong beforeLength, jint textUnit) {
@@ -1485,15 +1409,15 @@ public:
       {"nativeImeCancelPreedit", "(J)Ljava/nio/ByteBuffer;", (void*) imeCancelPreedit},
       {"nativeImeMarkDocumentRange", "(JJJJJI)Ljava/nio/ByteBuffer;", (void*) imeMarkDocumentRange},
       {"nativeImeMarkDocumentRangeByOffset", "(JJJI)Ljava/nio/ByteBuffer;", (void*) imeMarkDocumentRangeByOffset},
-      {"nativeImeReplaceText", "(JJJJJLjava/lang/String;I)Ljava/nio/ByteBuffer;", (void*) imeReplaceText},
-      {"nativeImeReplaceDocumentText", "(JJJLjava/lang/String;II)Ljava/nio/ByteBuffer;", (void*) imeReplaceDocumentText},
-      {"nativeImeReplaceInputContextText", "(JJJLjava/lang/String;II)Ljava/nio/ByteBuffer;", (void*) imeReplaceInputContextText},
+      {"nativeImeReplaceText", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) imeReplaceText},
+      {"nativeImeReplaceDocumentText", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) imeReplaceDocumentText},
+      {"nativeImeReplaceInputContextText", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) imeReplaceInputContextText},
       {"nativeImeMarkInputContextRange", "(JJJI)Ljava/nio/ByteBuffer;", (void*) imeMarkInputContextRange},
       {"nativeImeNotifyDocumentSelectionChanged", "(JJJ)Ljava/nio/ByteBuffer;", (void*) imeNotifyDocumentSelectionChanged},
       {"nativeImeNotifyInputContextSelectionChanged", "(JJJ)Ljava/nio/ByteBuffer;", (void*) imeNotifyInputContextSelectionChanged},
-      {"nativeImeUpdateInputStateText", "(JJILjava/lang/String;IIIII)Ljava/nio/ByteBuffer;", (void*) imeUpdateInputStateText},
+      {"nativeImeUpdateTextModelState", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) imeUpdateTextModelState},
       {"nativeImeUpdateInputStateSelection", "(JJIII)Ljava/nio/ByteBuffer;", (void*) imeUpdateInputStateSelection},
-      {"nativeImeReplaceInputStateText", "(JJIJJLjava/lang/String;II)Ljava/nio/ByteBuffer;", (void*) imeReplaceInputStateText},
+      {"nativeImeReplaceInputStateText", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) imeReplaceInputStateText},
       {"nativeImeDeleteBackward", "(JJI)Ljava/nio/ByteBuffer;", (void*) imeDeleteBackward},
       {"nativeImeDeleteForward", "(JJI)Ljava/nio/ByteBuffer;", (void*) imeDeleteForward},
       {"nativeImeDeleteSurrounding", "(JJJI)Ljava/nio/ByteBuffer;", (void*) imeDeleteSurrounding},

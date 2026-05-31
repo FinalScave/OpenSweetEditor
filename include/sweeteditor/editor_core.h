@@ -444,21 +444,11 @@ namespace NS_SWEETEDITOR {
                                           size_t end_offset,
                                           ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
 
-    EditorActionResult replaceImeText(const TextRange& range,
-                                   const U8String& text,
-                                   ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    EditorActionResult replaceImeText(const ImeTextReplacement& replacement);
 
-    EditorActionResult replaceImeDocumentText(size_t start_offset,
-                                            size_t end_offset,
-                                            const U8String& text,
-                                            int cursor_offset,
-                                            ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    EditorActionResult replaceImeDocumentText(const ImeDocumentTextReplacement& replacement);
 
-    EditorActionResult replaceImeInputContextText(size_t start_offset,
-                                                size_t end_offset,
-                                                const U8String& text,
-                                                int cursor_offset,
-                                                ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    EditorActionResult replaceImeInputContextText(const ImeInputContextTextReplacement& replacement);
 
     EditorActionResult markImeInputContextRange(size_t start_offset,
                                               size_t end_offset,
@@ -468,58 +458,16 @@ namespace NS_SWEETEDITOR {
 
     EditorActionResult notifyImeInputContextSelectionChanged(size_t start_offset, size_t end_offset);
 
-    EditorActionResult updateImeInputStateText(uint64_t context_id,
-                                            int32_t document_start_offset,
-                                            const U8String& text,
-                                            int32_t selection_start_offset,
-                                            int32_t selection_end_offset,
-                                            int32_t composing_start_offset,
-                                            int32_t composing_end_offset,
-                                            ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    EditorActionResult updateImeTextModelState(const ImeTextModelState& state);
 
-    EditorActionResult updateImeTextModelState(ImeTextModelMode mode,
-                                            uint64_t context_id,
-                                            int32_t document_start_offset,
-                                            const U8String& text,
-                                            int32_t selection_start_offset,
-                                            int32_t selection_end_offset,
-                                            int32_t composing_start_offset,
-                                            int32_t composing_end_offset,
-                                            ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
-
-    EditorActionResult updateImeTextModelDelta(ImeTextModelMode mode,
-                                            uint64_t context_id,
-                                            int32_t document_start_offset,
-                                            const U8String& old_text,
-                                            int32_t delta_start_offset,
-                                            int32_t delta_end_offset,
-                                            const U8String& delta_text,
-                                            int32_t selection_start_offset,
-                                            int32_t selection_end_offset,
-                                            int32_t composing_start_offset,
-                                            int32_t composing_end_offset,
-                                            ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    EditorActionResult updateImeTextModelDelta(const ImeTextModelDelta& delta);
 
     EditorActionResult updateImeInputStateSelection(uint64_t context_id,
                                                   int32_t document_start_offset,
                                                   int32_t selection_start_offset,
                                                   int32_t selection_end_offset);
 
-    EditorActionResult replaceImeInputStateText(uint64_t context_id,
-                                              int32_t document_start_offset,
-                                              size_t start_offset,
-                                             size_t end_offset,
-                                             const U8String& text,
-                                             int cursor_offset,
-                                             ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
-
-    EditorActionResult commitImeInputStateTextReplacement(uint64_t context_id,
-                                                       int32_t document_start_offset,
-                                                       size_t start_offset,
-                                                       size_t end_offset,
-                                                       const U8String& text,
-                                                       int cursor_offset,
-                                                       ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
+    EditorActionResult replaceImeInputStateText(const ImeInputStateTextReplacement& replacement);
 
     EditorActionResult deleteImeBackward(size_t before_length = 1,
                                        ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);

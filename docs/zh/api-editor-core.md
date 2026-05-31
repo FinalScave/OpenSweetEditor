@@ -210,13 +210,35 @@ const uint8_t* editor_ime_mark_document_range(intptr_t editor_handle,
                                               int script_hint,
                                               size_t* out_size);
 const uint8_t* editor_ime_replace_text(intptr_t editor_handle,
-                                       size_t start_line,
-                                       size_t start_column,
-                                       size_t end_line,
-                                       size_t end_column,
-                                       const char* text,
-                                       int script_hint,
+                                       const uint8_t* data,
+                                       size_t size,
                                        size_t* out_size);
+const uint8_t* editor_ime_replace_document_text(intptr_t editor_handle,
+                                                const uint8_t* data,
+                                                size_t size,
+                                                size_t* out_size);
+const uint8_t* editor_ime_replace_input_context_text(intptr_t editor_handle,
+                                                     const uint8_t* data,
+                                                     size_t size,
+                                                     size_t* out_size);
+const uint8_t* editor_ime_update_text_model_state(intptr_t editor_handle,
+                                                  const uint8_t* data,
+                                                  size_t size,
+                                                  size_t* out_size);
+const uint8_t* editor_ime_update_text_model_delta(intptr_t editor_handle,
+                                                  const uint8_t* data,
+                                                  size_t size,
+                                                  size_t* out_size);
+const uint8_t* editor_ime_replace_input_state_text(intptr_t editor_handle,
+                                                   const uint8_t* data,
+                                                   size_t size,
+                                                   size_t* out_size);
+const uint8_t* editor_ime_update_input_state_selection(intptr_t editor_handle,
+                                                       uint64_t context_id,
+                                                       int32_t document_start_offset,
+                                                       int32_t selection_start_offset,
+                                                       int32_t selection_end_offset,
+                                                       size_t* out_size);
 const uint8_t* editor_ime_delete_backward(intptr_t editor_handle,
                                           size_t before_length,
                                           int text_unit,

@@ -1473,71 +1473,36 @@ const uint8_t* editor_ime_mark_document_range_by_offset(intptr_t editor_handle,
 }
 
 const uint8_t* editor_ime_replace_text(intptr_t editor_handle,
-                                       size_t start_line,
-                                       size_t start_column,
-                                       size_t end_line,
-                                       size_t end_column,
-                                       const char* text,
-                                       int script_hint,
+                                       const uint8_t* data,
+                                       size_t size,
                                        size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
+  ImeTextReplacement payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
 
-  return editorActionResultToBinary(editor_core->replaceImeText(
-      {{start_line, start_column}, {end_line, end_column}},
-      text != nullptr ? text : "",
-      static_cast<ImeScriptClass>(script_hint)), out_size);
+  return editorActionResultToBinary(editor_core->replaceImeText(payload), out_size);
 }
 
 const uint8_t* editor_ime_replace_document_text(intptr_t editor_handle,
-                                                size_t start_offset,
-                                                size_t end_offset,
-                                                const char* text,
-                                                int cursor_offset,
-                                                int script_hint,
+                                                const uint8_t* data,
+                                                size_t size,
                                                 size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
+  ImeDocumentTextReplacement payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
 
-  return editorActionResultToBinary(editor_core->replaceImeDocumentText(
-      start_offset,
-      end_offset,
-      text != nullptr ? text : "",
-      cursor_offset,
-      static_cast<ImeScriptClass>(script_hint)), out_size);
+  return editorActionResultToBinary(editor_core->replaceImeDocumentText(payload), out_size);
 }
 
 const uint8_t* editor_ime_replace_input_context_text(intptr_t editor_handle,
-                                                     size_t start_offset,
-                                                     size_t end_offset,
-                                                     const char* text,
-                                                     int cursor_offset,
-                                                     int script_hint,
+                                                     const uint8_t* data,
+                                                     size_t size,
                                                      size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
+  ImeInputContextTextReplacement payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
 
-  return editorActionResultToBinary(editor_core->replaceImeInputContextText(
-      start_offset,
-      end_offset,
-      text != nullptr ? text : "",
-      cursor_offset,
-      static_cast<ImeScriptClass>(script_hint)), out_size);
+  return editorActionResultToBinary(editor_core->replaceImeInputContextText(payload), out_size);
 }
 
 const uint8_t* editor_ime_mark_input_context_range(intptr_t editor_handle,
@@ -1593,101 +1558,26 @@ const uint8_t* editor_ime_notify_input_context_selection_changed(intptr_t editor
       end_offset), out_size);
 }
 
-const uint8_t* editor_ime_update_input_state_text(intptr_t editor_handle,
-                                                  uint64_t context_id,
-                                                  int32_t document_start_offset,
-                                                  const char* text,
-                                                  int32_t selection_start_offset,
-                                                  int32_t selection_end_offset,
-                                                  int32_t composing_start_offset,
-                                                  int32_t composing_end_offset,
-                                                  int script_hint,
-                                                  size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->updateImeInputStateText(
-      context_id,
-      document_start_offset,
-      text != nullptr ? text : "",
-      selection_start_offset,
-      selection_end_offset,
-      composing_start_offset,
-      composing_end_offset,
-      static_cast<ImeScriptClass>(script_hint)), out_size);
-}
-
 const uint8_t* editor_ime_update_text_model_state(intptr_t editor_handle,
-                                                  int mode,
-                                                  uint64_t context_id,
-                                                  int32_t document_start_offset,
-                                                  const char* text,
-                                                  int32_t selection_start_offset,
-                                                  int32_t selection_end_offset,
-                                                  int32_t composing_start_offset,
-                                                  int32_t composing_end_offset,
-                                                  int script_hint,
+                                                  const uint8_t* data,
+                                                  size_t size,
                                                   size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
+  ImeTextModelState payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
 
-  return editorActionResultToBinary(editor_core->updateImeTextModelState(
-      static_cast<ImeTextModelMode>(mode),
-      context_id,
-      document_start_offset,
-      text != nullptr ? text : "",
-      selection_start_offset,
-      selection_end_offset,
-      composing_start_offset,
-      composing_end_offset,
-      static_cast<ImeScriptClass>(script_hint)), out_size);
+  return editorActionResultToBinary(editor_core->updateImeTextModelState(payload), out_size);
 }
 
 const uint8_t* editor_ime_update_text_model_delta(intptr_t editor_handle,
-                                                  int mode,
-                                                  uint64_t context_id,
-                                                  int32_t document_start_offset,
-                                                  const char* old_text,
-                                                  int32_t delta_start_offset,
-                                                  int32_t delta_end_offset,
-                                                  const char* delta_text,
-                                                  int32_t selection_start_offset,
-                                                  int32_t selection_end_offset,
-                                                  int32_t composing_start_offset,
-                                                  int32_t composing_end_offset,
-                                                  int script_hint,
+                                                  const uint8_t* data,
+                                                  size_t size,
                                                   size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
+  ImeTextModelDelta payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
 
-  return editorActionResultToBinary(editor_core->updateImeTextModelDelta(
-      static_cast<ImeTextModelMode>(mode),
-      context_id,
-      document_start_offset,
-      old_text != nullptr ? old_text : "",
-      delta_start_offset,
-      delta_end_offset,
-      delta_text != nullptr ? delta_text : "",
-      selection_start_offset,
-      selection_end_offset,
-      composing_start_offset,
-      composing_end_offset,
-      static_cast<ImeScriptClass>(script_hint)), out_size);
+  return editorActionResultToBinary(editor_core->updateImeTextModelDelta(payload), out_size);
 }
 
 const uint8_t* editor_ime_update_input_state_selection(intptr_t editor_handle,
@@ -1712,57 +1602,14 @@ const uint8_t* editor_ime_update_input_state_selection(intptr_t editor_handle,
 }
 
 const uint8_t* editor_ime_replace_input_state_text(intptr_t editor_handle,
-                                                   uint64_t context_id,
-                                                   int32_t document_start_offset,
-                                                   size_t start_offset,
-                                                   size_t end_offset,
-                                                   const char* text,
-                                                   int cursor_offset,
-                                                   int script_hint,
+                                                   const uint8_t* data,
+                                                   size_t size,
                                                    size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
+  ImeInputStateTextReplacement payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
 
-  return editorActionResultToBinary(editor_core->replaceImeInputStateText(
-      context_id,
-      document_start_offset,
-      start_offset,
-      end_offset,
-      text != nullptr ? text : "",
-      cursor_offset,
-      static_cast<ImeScriptClass>(script_hint)), out_size);
-}
-
-const uint8_t* editor_ime_commit_input_state_text_replacement(intptr_t editor_handle,
-                                                              uint64_t context_id,
-                                                              int32_t document_start_offset,
-                                                              size_t start_offset,
-                                                              size_t end_offset,
-                                                              const char* text,
-                                                              int cursor_offset,
-                                                              int script_hint,
-                                                              size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->commitImeInputStateTextReplacement(
-      context_id,
-      document_start_offset,
-      start_offset,
-      end_offset,
-      text != nullptr ? text : "",
-      cursor_offset,
-      static_cast<ImeScriptClass>(script_hint)), out_size);
+  return editorActionResultToBinary(editor_core->replaceImeInputStateText(payload), out_size);
 }
 
 const uint8_t* editor_ime_delete_backward(intptr_t editor_handle,

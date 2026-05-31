@@ -16,8 +16,11 @@ import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
 import com.qiplat.sweeteditor.core.ime.ImeTextRange;
 import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
+import com.qiplat.sweeteditor.core.ime.ImeTextModelMode;
+import com.qiplat.sweeteditor.core.ime.ImeTextModelState;
 import com.qiplat.sweeteditor.core.ime.ImeInputContextKind;
 import com.qiplat.sweeteditor.core.ime.ImeInputContext;
+import com.qiplat.sweeteditor.core.ime.ImeInputStateTextReplacement;
 import com.qiplat.sweeteditor.core.action.EditorActionResult;
 import com.qiplat.sweeteditor.core.foundation.IntRange;
 
@@ -137,13 +140,14 @@ public class SweetEditorInputConnection extends BaseInputConnection {
             return false;
         }
         EditorActionResult result = mEditor.getEditorCore().replaceImeInputStateText(
-                mInputContextId,
-                mInputDocumentStartOffset,
-                Math.min(start, end),
-                Math.max(start, end),
-                text != null ? text.toString() : "",
-                newCursorPosition,
-                ImeScriptClass.UNKNOWN.value);
+                new ImeInputStateTextReplacement(
+                        mInputContextId,
+                        mInputDocumentStartOffset,
+                        Math.min(start, end),
+                        Math.max(start, end),
+                        text != null ? text.toString() : "",
+                        newCursorPosition,
+                        ImeScriptClass.UNKNOWN));
         finishImeAction(result, "ime-replace");
         return result.handled;
     }
@@ -232,15 +236,15 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         int selectionEnd = Selection.getSelectionEnd(mEditable);
         int composingStart = BaseInputConnection.getComposingSpanStart(mEditable);
         int composingEnd = BaseInputConnection.getComposingSpanEnd(mEditable);
-        EditorActionResult result = mEditor.getEditorCore().updateImeInputStateText(
-                mInputContextId,
-                mInputDocumentStartOffset,
-                mEditable.toString(),
-                selectionStart,
-                selectionEnd,
-                composingStart,
-                composingEnd,
-                ImeScriptClass.UNKNOWN.value);
+        EditorActionResult result = mEditor.getEditorCore().updateImeTextModelState(
+                new ImeTextModelState(
+                        ImeTextModelMode.DOCUMENT_WINDOW,
+                        mInputContextId,
+                        mInputDocumentStartOffset,
+                        mEditable.toString(),
+                        new ImeTextRange(selectionStart, selectionEnd),
+                        new ImeTextRange(composingStart, composingEnd),
+                        ImeScriptClass.UNKNOWN));
         finishImeAction(result, perfName, t0);
         return result.handled;
     }

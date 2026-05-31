@@ -635,25 +635,15 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func updateImeInputStateText(contextId: Int64,
-                                 documentStartOffset: Int,
-                                 text: String,
-                                 selectionStartOffset: Int,
-                                 selectionEndOffset: Int,
-                                 composingStartOffset: Int,
-                                 composingEndOffset: Int) -> EditorActionResult? {
+    func updateImeTextModelState(_ state: ImeTextModelState) -> EditorActionResult? {
         return performCoreCall {
+            let payload = CoreProtocol.encodeImeTextModelState(state)
             var size: Int = 0
-            let ptr = text.withCString {
-                editor_ime_update_input_state_text(handle,
-                                                   UInt64(max(0, contextId)),
-                                                   Int32(max(0, documentStartOffset)),
-                                                   $0,
-                                                   Int32(selectionStartOffset),
-                                                   Int32(selectionEndOffset),
-                                                   Int32(composingStartOffset),
-                                                   Int32(composingEndOffset),
-                                                   0,
+            let ptr = payload.withUnsafeBytes { raw in
+                let data = raw.baseAddress?.assumingMemoryBound(to: UInt8.self)
+                editor_ime_update_text_model_state(handle,
+                                                   data,
+                                                   payload.count,
                                                    &size)
             }
             return decodeEditorActionPayload(ptr, size: size)
@@ -678,23 +668,15 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func replaceImeInputStateText(contextId: Int64,
-                                  documentStartOffset: Int,
-                                  startOffset: Int,
-                                  endOffset: Int,
-                                  text: String,
-                                  cursorOffset: Int = 1) -> EditorActionResult? {
+    func replaceImeInputStateText(_ replacement: ImeInputStateTextReplacement) -> EditorActionResult? {
         return performCoreCall {
+            let payload = CoreProtocol.encodeImeInputStateTextReplacement(replacement)
             var size: Int = 0
-            let ptr = text.withCString {
+            let ptr = payload.withUnsafeBytes { raw in
+                let data = raw.baseAddress?.assumingMemoryBound(to: UInt8.self)
                 editor_ime_replace_input_state_text(handle,
-                                                    UInt64(max(0, contextId)),
-                                                    Int32(max(0, documentStartOffset)),
-                                                    max(0, startOffset),
-                                                    max(0, endOffset),
-                                                    $0,
-                                                    Int32(cursorOffset),
-                                                    0,
+                                                    data,
+                                                    payload.count,
                                                     &size)
             }
             return decodeEditorActionPayload(ptr, size: size)

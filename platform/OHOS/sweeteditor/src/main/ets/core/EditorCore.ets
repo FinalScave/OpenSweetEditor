@@ -18,9 +18,14 @@ import {
 } from './CoreConfig';
 import { EventType, GestureEvent } from './CoreInteraction';
 import {
+  ImeDocumentTextReplacement,
+  ImeInputContextTextReplacement,
+  ImeInputStateTextReplacement,
   ImeInputContext,
   ImeScriptClass,
   ImeSyncSnapshot,
+  ImeTextModelState,
+  ImeTextReplacement,
   ImeTextUnit
 } from './CoreIme';
 import { KeyBinding } from './CoreKeymap';
@@ -473,50 +478,24 @@ export class EditorCore {
     );
   }
 
-  replaceImeText(range: TextRange, text: string | null,
-                 scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
+  replaceImeText(replacement: ImeTextReplacement): EditorActionResult {
+    const data = CoreProtocol.encodeImeTextReplacement(replacement);
     return CoreProtocol.decodeEditorActionResult(
-      native.editorImeReplaceText(
-        this.handle,
-        range.start.line,
-        range.start.column,
-        range.end.line,
-        range.end.column,
-        text,
-        scriptHint as number
-      )
+      native.editorImeReplaceText(this.handle, data)
     );
   }
 
-  replaceImeDocumentText(startOffset: number,
-                         endOffset: number,
-                         text: string | null,
-                         cursorOffset: number = 1,
-                         scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
+  replaceImeDocumentText(replacement: ImeDocumentTextReplacement): EditorActionResult {
+    const data = CoreProtocol.encodeImeDocumentTextReplacement(replacement);
     return CoreProtocol.decodeEditorActionResult(
-      native.editorImeReplaceDocumentText(
-        this.handle,
-        startOffset,
-        endOffset,
-        text,
-        cursorOffset,
-        scriptHint as number)
+      native.editorImeReplaceDocumentText(this.handle, data)
     );
   }
 
-  replaceImeInputContextText(startOffset: number,
-                             endOffset: number,
-                             text: string | null,
-                             cursorOffset: number = 1,
-                             scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
+  replaceImeInputContextText(replacement: ImeInputContextTextReplacement): EditorActionResult {
+    const data = CoreProtocol.encodeImeInputContextTextReplacement(replacement);
     return CoreProtocol.decodeEditorActionResult(
-      native.editorImeReplaceInputContextText(
-        this.handle,
-        startOffset,
-        endOffset,
-        text,
-        cursorOffset,
-        scriptHint as number)
+      native.editorImeReplaceInputContextText(this.handle, data)
     );
   }
 
@@ -540,25 +519,10 @@ export class EditorCore {
     );
   }
 
-  updateImeInputStateText(contextId: number,
-                          documentStartOffset: number,
-                          text: string | null,
-                          selectionStartOffset: number,
-                          selectionEndOffset: number,
-                          composingStartOffset: number,
-                          composingEndOffset: number,
-                          scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
+  updateImeTextModelState(state: ImeTextModelState): EditorActionResult {
+    const data = CoreProtocol.encodeImeTextModelState(state);
     return CoreProtocol.decodeEditorActionResult(
-      native.editorImeUpdateInputStateText(
-        this.handle,
-        contextId,
-        documentStartOffset,
-        text,
-        selectionStartOffset,
-        selectionEndOffset,
-        composingStartOffset,
-        composingEndOffset,
-        scriptHint as number)
+      native.editorImeUpdateTextModelState(this.handle, data)
     );
   }
 
@@ -576,23 +540,10 @@ export class EditorCore {
     );
   }
 
-  replaceImeInputStateText(contextId: number,
-                           documentStartOffset: number,
-                           startOffset: number,
-                           endOffset: number,
-                           text: string | null,
-                           cursorOffset: number = 1,
-                           scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
+  replaceImeInputStateText(replacement: ImeInputStateTextReplacement): EditorActionResult {
+    const data = CoreProtocol.encodeImeInputStateTextReplacement(replacement);
     return CoreProtocol.decodeEditorActionResult(
-      native.editorImeReplaceInputStateText(
-        this.handle,
-        contextId,
-        documentStartOffset,
-        startOffset,
-        endOffset,
-        text,
-        cursorOffset,
-        scriptHint as number)
+      native.editorImeReplaceInputStateText(this.handle, data)
     );
   }
 

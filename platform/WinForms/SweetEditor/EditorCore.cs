@@ -540,13 +540,13 @@ namespace SweetEditor {
 		internal static extern IntPtr ImeMarkDocumentRangeByOffset(IntPtr handle, nuint startOffset, nuint endOffset, int scriptHint, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_ime_replace_text", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr ImeReplaceText(IntPtr handle, nuint startLine, nuint startColumn, nuint endLine, nuint endColumn, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int scriptHint, out UIntPtr outSize);
+		internal static extern IntPtr ImeReplaceText(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_ime_replace_document_text", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr ImeReplaceDocumentText(IntPtr handle, nuint startOffset, nuint endOffset, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int cursorOffset, int scriptHint, out UIntPtr outSize);
+		internal static extern IntPtr ImeReplaceDocumentText(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_ime_replace_input_context_text", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr ImeReplaceInputContextText(IntPtr handle, nuint startOffset, nuint endOffset, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int cursorOffset, int scriptHint, out UIntPtr outSize);
+		internal static extern IntPtr ImeReplaceInputContextText(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_ime_mark_input_context_range", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr ImeMarkInputContextRange(IntPtr handle, nuint startOffset, nuint endOffset, int scriptHint, out UIntPtr outSize);
@@ -557,14 +557,14 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_ime_notify_input_context_selection_changed", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr ImeNotifyInputContextSelectionChanged(IntPtr handle, nuint startOffset, nuint endOffset, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "editor_ime_update_input_state_text", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr ImeUpdateInputStateText(IntPtr handle, ulong contextId, int documentStartOffset, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int selectionStartOffset, int selectionEndOffset, int composingStartOffset, int composingEndOffset, int scriptHint, out UIntPtr outSize);
+		[DllImport(LibraryName, EntryPoint = "editor_ime_update_text_model_state", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeUpdateTextModelState(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_ime_update_input_state_selection", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr ImeUpdateInputStateSelection(IntPtr handle, ulong contextId, int documentStartOffset, int selectionStartOffset, int selectionEndOffset, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_ime_replace_input_state_text", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr ImeReplaceInputStateText(IntPtr handle, ulong contextId, int documentStartOffset, nuint startOffset, nuint endOffset, [MarshalAs(UnmanagedType.LPUTF8Str)] string text, int cursorOffset, int scriptHint, out UIntPtr outSize);
+		internal static extern IntPtr ImeReplaceInputStateText(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_ime_delete_backward", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr ImeDeleteBackward(IntPtr handle, nuint beforeLength, int textUnit, out UIntPtr outSize);
@@ -1520,28 +1520,26 @@ namespace SweetEditor {
 		}
 
 		/// <summary>Replaces text through an explicit platform IME replacement request.</summary>
-		public EditorActionResult ReplaceImeText(TextRange range, string? text, ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+		public EditorActionResult ReplaceImeText(ImeTextReplacement replacement) {
 			if (IsReleased) return EditorActionResult.Empty;
-			IntPtr payloadPtr = NativeMethods.ImeReplaceText(nativeHandle,
-				ToNativeSize(range.Start.Line), ToNativeSize(range.Start.Column),
-				ToNativeSize(range.End.Line), ToNativeSize(range.End.Column),
-				text ?? string.Empty, (int)scriptHint, out UIntPtr payloadSize);
+			byte[] payload = CoreProtocol.EncodeImeTextReplacement(replacement);
+			IntPtr payloadPtr = NativeMethods.ImeReplaceText(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Replaces a document UTF-16 offset range through an explicit platform IME replacement request.</summary>
-		public EditorActionResult ReplaceImeDocumentText(int startOffset, int endOffset, string? text, int cursorOffset = 1, ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+		public EditorActionResult ReplaceImeDocumentText(ImeDocumentTextReplacement replacement) {
 			if (IsReleased) return EditorActionResult.Empty;
-			IntPtr payloadPtr = NativeMethods.ImeReplaceDocumentText(nativeHandle,
-				ToNativeSize(startOffset), ToNativeSize(endOffset), text ?? string.Empty, cursorOffset, (int)scriptHint, out UIntPtr payloadSize);
+			byte[] payload = CoreProtocol.EncodeImeDocumentTextReplacement(replacement);
+			IntPtr payloadPtr = NativeMethods.ImeReplaceDocumentText(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Replaces text using offsets in the last core input context.</summary>
-		public EditorActionResult ReplaceImeInputContextText(int startOffset, int endOffset, string? text, int cursorOffset = 1, ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+		public EditorActionResult ReplaceImeInputContextText(ImeInputContextTextReplacement replacement) {
 			if (IsReleased) return EditorActionResult.Empty;
-			IntPtr payloadPtr = NativeMethods.ImeReplaceInputContextText(nativeHandle,
-				ToNativeSize(startOffset), ToNativeSize(endOffset), text ?? string.Empty, cursorOffset, (int)scriptHint, out UIntPtr payloadSize);
+			byte[] payload = CoreProtocol.EncodeImeInputContextTextReplacement(replacement);
+			IntPtr payloadPtr = NativeMethods.ImeReplaceInputContextText(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
@@ -1569,26 +1567,11 @@ namespace SweetEditor {
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
-		/// <summary>Updates text, selection, and composing offsets from a platform text input state.</summary>
-		public EditorActionResult UpdateImeInputStateText(long contextId,
-			int documentStartOffset,
-			string? text,
-			int selectionStartOffset,
-			int selectionEndOffset,
-			int composingStartOffset,
-			int composingEndOffset,
-			ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+		/// <summary>Updates text, selection, and composing offsets from a platform text model.</summary>
+		public EditorActionResult UpdateImeTextModelState(ImeTextModelState state) {
 			if (IsReleased) return EditorActionResult.Empty;
-			IntPtr payloadPtr = NativeMethods.ImeUpdateInputStateText(nativeHandle,
-				(ulong)Math.Max(0, contextId),
-				Math.Max(0, documentStartOffset),
-				text ?? string.Empty,
-				selectionStartOffset,
-				selectionEndOffset,
-				composingStartOffset,
-				composingEndOffset,
-				(int)scriptHint,
-				out UIntPtr payloadSize);
+			byte[] payload = CoreProtocol.EncodeImeTextModelState(state);
+			IntPtr payloadPtr = NativeMethods.ImeUpdateTextModelState(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
@@ -1608,23 +1591,10 @@ namespace SweetEditor {
 		}
 
 		/// <summary>Replaces text using offsets in a platform text input state.</summary>
-		public EditorActionResult ReplaceImeInputStateText(long contextId,
-			int documentStartOffset,
-			int startOffset,
-			int endOffset,
-			string? text,
-			int cursorOffset = 1,
-			ImeScriptClass scriptHint = ImeScriptClass.UNKNOWN) {
+		public EditorActionResult ReplaceImeInputStateText(ImeInputStateTextReplacement replacement) {
 			if (IsReleased) return EditorActionResult.Empty;
-			IntPtr payloadPtr = NativeMethods.ImeReplaceInputStateText(nativeHandle,
-				(ulong)Math.Max(0, contextId),
-				Math.Max(0, documentStartOffset),
-				ToNativeSize(startOffset),
-				ToNativeSize(endOffset),
-				text ?? string.Empty,
-				cursorOffset,
-				(int)scriptHint,
-				out UIntPtr payloadSize);
+			byte[] payload = CoreProtocol.EncodeImeInputStateTextReplacement(replacement);
+			IntPtr payloadPtr = NativeMethods.ImeReplaceInputStateText(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 

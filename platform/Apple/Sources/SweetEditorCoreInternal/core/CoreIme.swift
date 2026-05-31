@@ -90,6 +90,22 @@ public enum ImeTextUnit: Int32 {
     }
 }
 
+public struct ImeDocumentTextReplacement {
+    public var start_offset: Int32 = 0
+    public var end_offset: Int32 = 0
+    public var text: String = ""
+    public var cursor_offset: Int32 = 1
+    public var script_class: ImeScriptClass = .UNKNOWN
+
+    public init(start_offset: Int32 = 0, end_offset: Int32 = 0, text: String = "", cursor_offset: Int32 = 1, script_class: ImeScriptClass = .UNKNOWN) {
+        self.start_offset = start_offset
+        self.end_offset = end_offset
+        self.text = text
+        self.cursor_offset = cursor_offset
+        self.script_class = script_class
+    }
+}
+
 public struct ImeInputContext {
     public var id: Int64 = 0
     public var revision: Int32 = 0
@@ -109,6 +125,42 @@ public struct ImeInputContext {
         self.has_composition = has_composition
         self.composition = composition
         self.kind = kind
+    }
+}
+
+public struct ImeInputContextTextReplacement {
+    public var start_offset: Int32 = 0
+    public var end_offset: Int32 = 0
+    public var text: String = ""
+    public var cursor_offset: Int32 = 1
+    public var script_class: ImeScriptClass = .UNKNOWN
+
+    public init(start_offset: Int32 = 0, end_offset: Int32 = 0, text: String = "", cursor_offset: Int32 = 1, script_class: ImeScriptClass = .UNKNOWN) {
+        self.start_offset = start_offset
+        self.end_offset = end_offset
+        self.text = text
+        self.cursor_offset = cursor_offset
+        self.script_class = script_class
+    }
+}
+
+public struct ImeInputStateTextReplacement {
+    public var context_id: Int64 = 0
+    public var document_start_offset: Int32 = 0
+    public var start_offset: Int32 = 0
+    public var end_offset: Int32 = 0
+    public var text: String = ""
+    public var cursor_offset: Int32 = 1
+    public var script_class: ImeScriptClass = .UNKNOWN
+
+    public init(context_id: Int64 = 0, document_start_offset: Int32 = 0, start_offset: Int32 = 0, end_offset: Int32 = 0, text: String = "", cursor_offset: Int32 = 1, script_class: ImeScriptClass = .UNKNOWN) {
+        self.context_id = context_id
+        self.document_start_offset = document_start_offset
+        self.start_offset = start_offset
+        self.end_offset = end_offset
+        self.text = text
+        self.cursor_offset = cursor_offset
+        self.script_class = script_class
     }
 }
 
@@ -140,6 +192,50 @@ public struct ImeSyncSnapshot {
     }
 }
 
+public struct ImeTextModelDelta {
+    public var mode: ImeTextModelMode = .DOCUMENT_WINDOW
+    public var context_id: Int64 = 0
+    public var document_start_offset: Int32 = 0
+    public var old_text: String = ""
+    public var delta: ImeTextRange = ImeTextRange()
+    public var delta_text: String = ""
+    public var selection: ImeTextRange = ImeTextRange()
+    public var composition: ImeTextRange = ImeTextRange()
+    public var script_class: ImeScriptClass = .UNKNOWN
+
+    public init(mode: ImeTextModelMode = .DOCUMENT_WINDOW, context_id: Int64 = 0, document_start_offset: Int32 = 0, old_text: String = "", delta: ImeTextRange = ImeTextRange(), delta_text: String = "", selection: ImeTextRange = ImeTextRange(), composition: ImeTextRange = ImeTextRange(), script_class: ImeScriptClass = .UNKNOWN) {
+        self.mode = mode
+        self.context_id = context_id
+        self.document_start_offset = document_start_offset
+        self.old_text = old_text
+        self.delta = delta
+        self.delta_text = delta_text
+        self.selection = selection
+        self.composition = composition
+        self.script_class = script_class
+    }
+}
+
+public struct ImeTextModelState {
+    public var mode: ImeTextModelMode = .DOCUMENT_WINDOW
+    public var context_id: Int64 = 0
+    public var document_start_offset: Int32 = 0
+    public var text: String = ""
+    public var selection: ImeTextRange = ImeTextRange()
+    public var composition: ImeTextRange = ImeTextRange()
+    public var script_class: ImeScriptClass = .UNKNOWN
+
+    public init(mode: ImeTextModelMode = .DOCUMENT_WINDOW, context_id: Int64 = 0, document_start_offset: Int32 = 0, text: String = "", selection: ImeTextRange = ImeTextRange(), composition: ImeTextRange = ImeTextRange(), script_class: ImeScriptClass = .UNKNOWN) {
+        self.mode = mode
+        self.context_id = context_id
+        self.document_start_offset = document_start_offset
+        self.text = text
+        self.selection = selection
+        self.composition = composition
+        self.script_class = script_class
+    }
+}
+
 public struct ImeTextRange {
     public var start: Int32 = 0
     public var end: Int32 = 0
@@ -147,5 +243,17 @@ public struct ImeTextRange {
     public init(start: Int32 = 0, end: Int32 = 0) {
         self.start = start
         self.end = end
+    }
+}
+
+public struct ImeTextReplacement {
+    public var range: TextRange = TextRange()
+    public var text: String = ""
+    public var script_class: ImeScriptClass = .UNKNOWN
+
+    public init(range: TextRange = TextRange(), text: String = "", script_class: ImeScriptClass = .UNKNOWN) {
+        self.range = range
+        self.text = text
+        self.script_class = script_class
     }
 }

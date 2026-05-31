@@ -1064,6 +1064,24 @@ int _sizeOfTextRange(TextRange value) {
   return size;
 }
 
+void _writeImeDocumentTextReplacement(_BinaryWriter writer, ImeDocumentTextReplacement value) {
+  writer.writeUint32(value.startOffset);
+  writer.writeUint32(value.endOffset);
+  _writeUtf8String(writer, value.text);
+  writer.writeInt32(value.cursorOffset);
+  writer.writeInt32(value.scriptClass.value);
+}
+
+int _sizeOfImeDocumentTextReplacement(ImeDocumentTextReplacement value) {
+  var size = 0;
+  size += 4;
+  size += 4;
+  size += _sizeOfUtf8String(value.text);
+  size += 4;
+  size += 4;
+  return size;
+}
+
 ImeInputContext _readImeInputContext(_BinaryReader reader) {
   return ImeInputContext(
     id: reader.readUint64(),
@@ -1075,6 +1093,46 @@ ImeInputContext _readImeInputContext(_BinaryReader reader) {
     composition: _readImeTextRange(reader),
     kind: ImeInputContextKind.fromValue(reader.readInt32()),
   );
+}
+
+void _writeImeInputContextTextReplacement(_BinaryWriter writer, ImeInputContextTextReplacement value) {
+  writer.writeUint32(value.startOffset);
+  writer.writeUint32(value.endOffset);
+  _writeUtf8String(writer, value.text);
+  writer.writeInt32(value.cursorOffset);
+  writer.writeInt32(value.scriptClass.value);
+}
+
+int _sizeOfImeInputContextTextReplacement(ImeInputContextTextReplacement value) {
+  var size = 0;
+  size += 4;
+  size += 4;
+  size += _sizeOfUtf8String(value.text);
+  size += 4;
+  size += 4;
+  return size;
+}
+
+void _writeImeInputStateTextReplacement(_BinaryWriter writer, ImeInputStateTextReplacement value) {
+  writer.writeUint64(value.contextId);
+  writer.writeInt32(value.documentStartOffset);
+  writer.writeUint32(value.startOffset);
+  writer.writeUint32(value.endOffset);
+  _writeUtf8String(writer, value.text);
+  writer.writeInt32(value.cursorOffset);
+  writer.writeInt32(value.scriptClass.value);
+}
+
+int _sizeOfImeInputStateTextReplacement(ImeInputStateTextReplacement value) {
+  var size = 0;
+  size += 8;
+  size += 4;
+  size += 4;
+  size += 4;
+  size += _sizeOfUtf8String(value.text);
+  size += 4;
+  size += 4;
+  return size;
 }
 
 ImeSyncSnapshot _readImeSyncSnapshot(_BinaryReader reader) {
@@ -1093,6 +1151,54 @@ ImeSyncSnapshot _readImeSyncSnapshot(_BinaryReader reader) {
   );
 }
 
+void _writeImeTextModelDelta(_BinaryWriter writer, ImeTextModelDelta value) {
+  writer.writeInt32(value.mode.value);
+  writer.writeUint64(value.contextId);
+  writer.writeInt32(value.documentStartOffset);
+  _writeUtf8String(writer, value.oldText);
+  _writeImeTextRange(writer, value.delta);
+  _writeUtf8String(writer, value.deltaText);
+  _writeImeTextRange(writer, value.selection);
+  _writeImeTextRange(writer, value.composition);
+  writer.writeInt32(value.scriptClass.value);
+}
+
+int _sizeOfImeTextModelDelta(ImeTextModelDelta value) {
+  var size = 0;
+  size += 4;
+  size += 8;
+  size += 4;
+  size += _sizeOfUtf8String(value.oldText);
+  size += _sizeOfImeTextRange(value.delta);
+  size += _sizeOfUtf8String(value.deltaText);
+  size += _sizeOfImeTextRange(value.selection);
+  size += _sizeOfImeTextRange(value.composition);
+  size += 4;
+  return size;
+}
+
+void _writeImeTextModelState(_BinaryWriter writer, ImeTextModelState value) {
+  writer.writeInt32(value.mode.value);
+  writer.writeUint64(value.contextId);
+  writer.writeInt32(value.documentStartOffset);
+  _writeUtf8String(writer, value.text);
+  _writeImeTextRange(writer, value.selection);
+  _writeImeTextRange(writer, value.composition);
+  writer.writeInt32(value.scriptClass.value);
+}
+
+int _sizeOfImeTextModelState(ImeTextModelState value) {
+  var size = 0;
+  size += 4;
+  size += 8;
+  size += 4;
+  size += _sizeOfUtf8String(value.text);
+  size += _sizeOfImeTextRange(value.selection);
+  size += _sizeOfImeTextRange(value.composition);
+  size += 4;
+  return size;
+}
+
 ImeTextRange _readImeTextRange(_BinaryReader reader) {
   return ImeTextRange(
     start: reader.readInt32(),
@@ -1108,6 +1214,20 @@ void _writeImeTextRange(_BinaryWriter writer, ImeTextRange value) {
 int _sizeOfImeTextRange(ImeTextRange value) {
   var size = 0;
   size += 4;
+  size += 4;
+  return size;
+}
+
+void _writeImeTextReplacement(_BinaryWriter writer, ImeTextReplacement value) {
+  _writeTextRange(writer, value.range);
+  _writeUtf8String(writer, value.text);
+  writer.writeInt32(value.scriptClass.value);
+}
+
+int _sizeOfImeTextReplacement(ImeTextReplacement value) {
+  var size = 0;
+  size += _sizeOfTextRange(value.range);
+  size += _sizeOfUtf8String(value.text);
   size += 4;
   return size;
 }
@@ -2090,6 +2210,42 @@ class CoreProtocol {
   static Uint8List encodeScrollbarConfig(ScrollbarConfig value) {
     final writer = _BinaryWriter(_sizeOfScrollbarConfig(value));
     _writeScrollbarConfig(writer, value);
+    return writer.toBytes();
+  }
+
+  static Uint8List encodeImeDocumentTextReplacement(ImeDocumentTextReplacement value) {
+    final writer = _BinaryWriter(_sizeOfImeDocumentTextReplacement(value));
+    _writeImeDocumentTextReplacement(writer, value);
+    return writer.toBytes();
+  }
+
+  static Uint8List encodeImeInputContextTextReplacement(ImeInputContextTextReplacement value) {
+    final writer = _BinaryWriter(_sizeOfImeInputContextTextReplacement(value));
+    _writeImeInputContextTextReplacement(writer, value);
+    return writer.toBytes();
+  }
+
+  static Uint8List encodeImeInputStateTextReplacement(ImeInputStateTextReplacement value) {
+    final writer = _BinaryWriter(_sizeOfImeInputStateTextReplacement(value));
+    _writeImeInputStateTextReplacement(writer, value);
+    return writer.toBytes();
+  }
+
+  static Uint8List encodeImeTextModelDelta(ImeTextModelDelta value) {
+    final writer = _BinaryWriter(_sizeOfImeTextModelDelta(value));
+    _writeImeTextModelDelta(writer, value);
+    return writer.toBytes();
+  }
+
+  static Uint8List encodeImeTextModelState(ImeTextModelState value) {
+    final writer = _BinaryWriter(_sizeOfImeTextModelState(value));
+    _writeImeTextModelState(writer, value);
+    return writer.toBytes();
+  }
+
+  static Uint8List encodeImeTextReplacement(ImeTextReplacement value) {
+    final writer = _BinaryWriter(_sizeOfImeTextReplacement(value));
+    _writeImeTextReplacement(writer, value);
     return writer.toBytes();
   }
 

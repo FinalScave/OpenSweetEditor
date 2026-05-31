@@ -539,14 +539,14 @@ String notes:
 | Windows | P/Invoke | `DllImport("sweeteditor.dll")` |
 | Swing | Java FFM | downcall to C API |
 | Web | Emscripten | Testing in unofficial fork: <https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten> |
-| OHOS | ArkTS NAPI (`libsweeteditor.so`) | ArkTS `native` calls into shared C++ and decodes binary payload in `EditorProtocol.ets` |
+| OHOS | ArkTS NAPI (`libsweeteditor.so`) | ArkTS `native` calls into shared C++ and decodes binary payload in `CoreProtocol.ets` |
 
 Note: Android currently does not use `c_api.h` call chain. New public features must sync both JNI path and C API path.
 
 Extra:
 
 - Android is JNI direct, but complex returns such as `buildRenderModel()`, `EditorActionResult`, and scroll metrics still decode from binary protocol.
-- Swing / WinForms currently read UTF-8 string fields via `ProtocolDecoder` / `EditorProtocol`.
+- Swing / WinForms currently read UTF-8 string fields via `CoreProtocol`.
 - Apple consumes the same binary layout via manual bridge + Swift `BinaryReader`.
 
 ---

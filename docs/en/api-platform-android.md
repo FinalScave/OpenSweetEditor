@@ -11,7 +11,7 @@ This document maps to the current Android implementation:
 
 - The main Android path is JNI direct to C++ (not through `c_api.h`).
 - `EditorCore` keeps the native `int` protocol at JNI boundary.
-- Complex returns such as `buildRenderModel()`, `EditorActionResult`, and scroll metrics still return by binary protocol, then `ProtocolDecoder` decodes them.
+- Complex returns such as `buildRenderModel()`, `EditorActionResult`, and scroll metrics still return by binary protocol, then `CoreProtocol` decodes them.
 - `SweetEditor` exposes semantic enum APIs (`WrapMode`/`FoldArrowMode`/`AutoIndentMode`, etc.).
 
 ## Quick Start
@@ -213,7 +213,7 @@ public <T extends EditorEvent> void unsubscribe(@NonNull Class<T> eventType, @No
 public void flush()
 ```
 
-`flush()` is a force-refresh / compatibility entrypoint. Normal edit, decoration, scroll, selection, and IME synchronization paths dispatch `EditorActionResult` through the unified result path, and `needsRedraw` decides whether to refresh the render model and redraw; hosts usually do not need to call it after batched decoration updates.
+`flush()` is a force-refresh / diagnostic entrypoint. Normal edit, decoration, scroll, selection, and IME synchronization paths dispatch `EditorActionResult` through the unified result path, and `needsRedraw` decides whether to refresh the render model and redraw; hosts usually do not need to call it after batched decoration updates.
 
 `CodeLensClickEvent` and `LinkClickEvent` are published through the same generic `subscribe(...)` API. `getLinkTargetAt(...)` returns an empty string when no link matches the requested position.
 
@@ -296,8 +296,8 @@ public void clearInlayHints()
 public void clearPhantomTexts()
 public void clearAllDecorations()
 
-public void setLineDiagnostics(int line, @NonNull List<? extends DiagnosticItem> items)
-public void setBatchLineDiagnostics(@Nullable SparseArray<? extends List<? extends DiagnosticItem>> diagsByLine)
+public void setLineDiagnostics(int line, @NonNull List<? extends Diagnostic> items)
+public void setBatchLineDiagnostics(@Nullable SparseArray<? extends List<? extends Diagnostic>> diagsByLine)
 public void clearDiagnostics()
 
 public void setMaxGutterIcons(int count)
