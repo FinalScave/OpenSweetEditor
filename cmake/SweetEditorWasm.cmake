@@ -43,8 +43,6 @@ set(WASM_C_ABI_EXPORTED_FUNCTIONS
         _editor_get_layout_metrics
         _editor_handle_gesture_event
         _editor_update_pointer_modifiers
-        _editor_tick_edge_scroll
-        _editor_tick_fling
         _editor_tick_animations
         _editor_handle_key_event
         _editor_set_keymap
