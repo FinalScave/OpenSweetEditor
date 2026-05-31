@@ -22,13 +22,18 @@ The Core layer does not involve UI rendering. It contains only bridging, data mo
 
 | Category | Required Types | Description |
 |---|---|---|
-| **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer`, `EditorOptions`, `EditorActionResult`, `EditorActionReason` | Native bridge + public core API wrapper; `EditorActionResult` is the unified result carrier for core state-changing APIs |
-| **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollBehavior` | Fundamental value types and enums |
-| **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextModelMode`; `ImeTextUnit` when exposing unit-aware deletion APIs | IME synchronization snapshots and text-context protocol types; platform synchronization decisions are carried by `EditorActionResult` |
-| **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | Decoration data types |
-| **Visual** | `EditorRenderModel`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `ScrollbarRect`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `DiagnosticDecoration`, `CompositionDecoration`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem`, `LinkedEditingRect`, `BracketHighlightRect` | Render model types (geometry semantics follow Section 2.4) |
+| **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer` | Native bridge + public core API wrapper |
+| **Action** | `EditorActionResult`, `EditorActionReason`, `ScrollBehavior` | Core action result and action-related enums; `EditorActionResult` is the unified result carrier for core state-changing APIs |
+| **Config** | `EditorOptions`, `HandleConfig`, `ScrollbarConfig`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollbarMode`, `ScrollbarTrackTapMode` | Runtime and construction configuration protocol types |
+| **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `PointF`, `Rect`, `OffsetRect` | Fundamental value types and geometry carriers |
+| **Interaction** | `GestureEvent`, `GestureType`, `EventType`, `HitTarget`, `HitTargetType` | Input and hit-test protocol types |
+| **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextUnit`, `ImeTextModelMode`, `ImeTextReplacement`, `ImeDocumentTextReplacement`, `ImeInputContextTextReplacement`, `ImeInputStateTextReplacement`, `ImeTextModelState`, `ImeTextModelDelta` | IME synchronization snapshots, text-context protocol types, and replacement payload models; platform synchronization decisions are carried by `EditorActionResult` |
+| **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `DiagnosticSeverity`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | Decoration data types |
+| **Visual** | `EditorRenderModel`, `LayoutMetrics`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `DiagnosticDecoration`, `CompositionDecoration`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem`, `LinkedEditingRect` | Render model types (geometry semantics follow Section 2.4) |
 | **Snippet** | `LinkedEditingModel`, `TabStopGroup` | Linked editing / tab stop groups |
-| **Keymap** | `KeyMap`, `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorBuiltinCommand` | Shortcut mapping data types and built-in command identifiers |
+| **Keymap** | `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorBuiltinCommand` | Shortcut binding data types and built-in command identifiers |
+
+Core protocol types and `CoreProtocol` codecs MUST be generated from the C++ `SE_PROTOCOL_*` annotations through `tools/se_protocol_gen`. Platform code MAY add generated-code augmentation or thin host-language helpers, but MUST NOT maintain independent `ProtocolEncoder` / `ProtocolDecoder` implementations or a platform-defined binary schema. Augmentation MUST NOT change encoded field order, scalar width, nullability, list/map layout, enum values, or payload names.
 
 ### 1.2 Widget Layer (UI Controls / Rendering / Interaction)
 
@@ -88,7 +93,6 @@ Other public types:
 | `DecorationReceiver` | C#/TS/Kotlin: `IDecorationReceiver`; OC: `SEDecorationReceiver` | Callback interface; only applicable when the platform exposes an explicit Receiver type |
 | `CompletionReceiver` | C#/TS/Kotlin: `ICompletionReceiver`; OC: `SECompletionReceiver` | Callback interface; only applicable when the platform exposes an explicit Receiver type |
 | `NewLineActionProvider` | C#/TS/Kotlin: `INewLineActionProvider`; OC: `SENewLineActionProvider` | Provider interface |
-| `KeyMap` | OC: `SEKeyMap` | Core keymap data container |
 | `EditorKeyMap` | OC: `SEEditorKeyMap` | Widget-layer keymap extension |
 | `EditorBuiltinCommand` | OC: `SEEditorBuiltinCommand` | Built-in command ids |
 | `KeyBinding` | OC: `SEKeyBinding` | One- or two-chord binding entry |
@@ -164,7 +168,7 @@ The following defines two distinct public API layers:
 
 Platforms MUST implement every listed method on the appropriate API carrier unless a later section assigns a weaker requirement level to that method. Section 3.1 methods belong to `EditorCore`; they are not implicitly part of the host-facing editor surface. In imperative frameworks the Section 3.2 carrier is the widget entry class itself (for example `SweetEditor`), while in declarative frameworks the Section 3.2 carrier is `SweetEditorController`. On declarative platforms, `SweetEditor` remains the runtime/session owner even though the host-facing API is exposed through the controller.
 
-> Lifecycle / memory management APIs (e.g. `create`, `destroy`, `freeBinaryData`) are not listed here; each platform implements them per its own conventions.
+> Lifecycle / memory management APIs (e.g. `create`, `destroy`, platform wrapper names for `free_binary_data`) are not listed here; each platform implements them per its own conventions. Native binary payloads currently use the C ABI shape `const uint8_t* + out_size`; every platform wrapper MUST release owned native result buffers after decoding.
 
 **General naming variant rules:**
 - Canonical names use Java/ArkTS camelCase as the baseline
@@ -200,11 +204,11 @@ During construction or first-frame bootstrap before the editor runtime / dispatc
 |---|---|
 | Configuration | `loadDocument(doc)`, `setViewport(w, h)`, `onFontMetricsChanged()`, `setFoldArrowMode(mode)`, `setWrapMode(mode)`, `setTabSize(size)`, `setInsertSpaces(enabled)`, `setScale(scale)`, `setLineSpacing(add, mult)`, `setContentStartPadding(padding)`, `setShowSplitLine(show)`, `setCurrentLineRenderMode(mode)`, `setGutterSticky(sticky)`, `setGutterVisible(visible)`, `setHandleConfig(...)`, `setScrollbarConfig(...)` |
 | Render model | `buildRenderModel()`, `getLayoutMetrics()` |
-| Gesture / keyboard | `handleGestureEvent(...)`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(keyMap)` |
+| Gesture / keyboard | `handleGestureEvent(...)`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(bindings)` |
 | Text editing | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `backspace()`, `deleteForward()`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
 | Undo / redo | `undo()`, `redo()`, `canUndo()`, `canRedo()` |
 | Cursor / selection | `setCursorPosition(line, col)`, `getCursorPosition()`, `selectAll()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `getSelectedText()`, `getWordRangeAtCursor()`, `getWordAtCursor()`, `moveCursorLeft(extend)`, `moveCursorRight(extend)`, `moveCursorUp(extend)`, `moveCursorDown(extend)`, `moveCursorToLineStart(extend)`, `moveCursorToLineEnd(extend)` |
-| IME | `getImeSyncSnapshot()`, `getImeInputContext(...)`, `getImeTextModelInputContext(...)`, `setImeKeyboardScriptClass(script)`, `getImeKeyboardScriptClass()`, `updateImePreedit(...)`, `setImeComposingText(...)`, `commitImeText(...)`, `replaceImeText(...)`, `finishImePreedit()`, `cancelImePreedit()`, `markImeDocumentRange(...)`, `markImeInputContextRange(...)`, `updateImeTextModelState(...)`, `updateImeTextModelDelta(...)`, `deleteImeBackward(length, unit)`, `deleteImeForward(length, unit)`, `deleteImeSurrounding(before, after, unit)`, `notifyImeSelectionChanged(range)`, `notifyImeCursorChanged(cursor)`, `getComposingRange()`, `getComposingSessionRange()`, `isComposing()` |
+| IME | `getImeSyncSnapshot()`, `getImeInputContext(...)`, `getImeTextModelInputContext(...)`, `setImeKeyboardScriptClass(script)`, `getImeKeyboardScriptClass()`, `updateImePreedit(...)`, `setImeComposingText(...)`, `setImeComposingTextSelection(...)`, `commitImeText(...)`, `commitImeTextWithCursor(...)`, `replaceImeText(replacement)`, `replaceImeDocumentText(replacement)`, `replaceImeInputContextText(replacement)`, `finishImePreedit()`, `cancelImePreedit()`, `markImeDocumentRange(...)`, `markImeDocumentRangeByOffset(...)`, `markImeInputContextRange(...)`, `notifyImeDocumentSelectionChanged(...)`, `notifyImeInputContextSelectionChanged(...)`, `updateImeTextModelState(state)`, `updateImeTextModelDelta(delta)`, `updateImeInputStateSelection(...)`, `replaceImeInputStateText(replacement)`, `deleteImeBackward(length, unit)`, `deleteImeForward(length, unit)`, `deleteImeSurrounding(before, after, unit)`, `notifyImeSelectionChanged(range)`, `notifyImeCursorChanged(cursor)`, `getComposingRange()`, `getComposingSessionRange()`, `isComposing()` |
 | Read-only / indent | `setReadOnly(readOnly)`, `isReadOnly()`, `setAutoIndentMode(mode)`, `getAutoIndentMode()`, `setBackspaceUnindent(enabled)` |
 | Navigation / scroll | `scrollToLine(line, behavior)`, `gotoPosition(line, col)`, `ensureCursorVisible()`, `setScroll(x, y)`, `getScrollMetrics()`, `getPositionRect(line, col)`, `getCursorRect()` |
 | Style / highlight | `registerTextStyle(id, color, bg, fontStyle)`, `registerBatchTextStyles(data)`, `setLineSpans(line, layer, spans)`, `setBatchLineSpans(layer, entries)`, `clearLineSpans(line, layer)`, `clearHighlights(layer)`, `clearHighlights()` |
@@ -228,7 +232,7 @@ Platform layers MUST synchronize cursor changes, selection changes, composition 
 
 IME offsets MUST state their coordinate space explicitly: document line/column APIs use `TextRange`; document-offset APIs use full document offsets; input-context / text-model APIs use context offsets relative to `documentStartOffset`. Platform implementations MUST NOT implicitly mix these coordinate spaces.
 
-> Payload-level APIs (e.g. `setLineSpans`, `setBatchLineSpans`) — all platforms MUST provide high-level typed wrappers (e.g. `setLineSpans(line, layer, spans: List<StyleSpan>)`). Platforms SHOULD additionally expose raw/binary payload APIs when the host language has a natural public binary carrier (e.g. `ByteBuffer`, `NSData`, `byte[]`, `Uint8List`). If both typed and payload APIs are exposed, their parameter semantics and final Core behavior MUST be identical. Payload encoding format remains platform-defined.
+> Payload-level APIs (e.g. `setLineSpans`, `setBatchLineSpans`) — all platforms MUST provide high-level typed wrappers (e.g. `setLineSpans(line, layer, spans: List<StyleSpan>)`). Platforms SHOULD additionally expose raw/binary payload APIs when the host language has a natural public binary carrier (e.g. `ByteBuffer`, `MemorySegment`, `NSData`, `byte[]`, `Uint8List`, `ArrayBuffer`). Typed wrappers and raw/binary payload APIs MUST use the generated `CoreProtocol` encoding and produce identical Core behavior.
 
 #### 3.1.1 IME API Requirement Levels
 
@@ -236,8 +240,8 @@ IME offsets MUST state their coordinate space explicitly: document line/column A
 
 | API / Type | Requirement | Notes |
 |---|---|---|
-| IME protocol types | MUST | At minimum include `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, and `ImeInputContextKind`; platforms that support text-model synchronization MUST also include `ImeTextModelMode` |
-| `ImeTextUnit` | SHOULD / conditional MUST | MUST be present when exposing unit-aware deletion APIs; stable values are `GRAPHEME = 0` and `CODE_POINT = 1` |
+| IME protocol types | MUST | Include the generated `CoreProtocol` IME model set: `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextUnit`, `ImeTextModelMode`, `ImeTextReplacement`, `ImeDocumentTextReplacement`, `ImeInputContextTextReplacement`, `ImeInputStateTextReplacement`, `ImeTextModelState`, and `ImeTextModelDelta` |
+| `ImeTextUnit` | MUST | Stable values are `GRAPHEME = 0` and `CODE_POINT = 1`; platform APIs MAY expose unit-aware deletion overloads according to native adapter needs |
 | Synchronization snapshot capability | MUST | Platform input adapters MUST process `EditorActionResult.needsImeSync` and `EditorActionResult.imeSync`; use `getImeSyncSnapshot()` or an equivalent bridge entrypoint when an explicit query is needed |
 | Keyboard script hint capability | SHOULD / conditional MUST | SHOULD track keyboard script hints; MUST map platform-provided script hints when they are available |
 | Preedit / composing capability | SHOULD / conditional MUST | Native preedit, composing text, or marked text MUST map to core's preedit / composing semantic family |
@@ -539,13 +543,13 @@ All platforms MUST expose the following settings through getter/setter pairs (or
 
 ### 10.1 Core Data Model
 
-All platforms MUST provide the core-layer keymap types `KeyMap`, `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, and `EditorBuiltinCommand`.
+All platforms MUST provide the core-layer keymap protocol types `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, and `EditorBuiltinCommand`. Platform core APIs SHOULD accept the binding list directly and are not required to expose a separate core-layer `KeyMap` class. The C++ core may keep an internal `KeyMap` resolver; that internal type is not a platform public API contract.
 
-- `KeyMap` MUST be a pure data mapping from `KeyBinding` to command id
 - `KeyBinding` MUST support both single-chord and two-chord bindings
 - `KeyChord` MUST represent one key press as `modifiers + keyCode`
 - Single-chord bindings MUST encode the second chord as an empty / none chord
-- `EditorCore.setKeyMap(keyMap)` MUST sync the full binding table to the C++ core
+- `CoreProtocol` MUST provide `encodeSetKeyMapPayload(bindings)` or the language-equivalent casing for the `SetKeyMapPayload` binary payload
+- `EditorCore.setKeyMap(bindings)` MUST sync the full binding table to the C++ core
 
 ### 10.2 Numeric Alignment
 
@@ -559,7 +563,7 @@ If the platform exposes `KeyCode`, `KeyModifier`, or `EditorBuiltinCommand` cons
 ### 10.3 Widget-Layer Extension
 
 - `SweetEditor` MUST support `setKeyMap(keyMap)` and SHOULD expose `getKeyMap()`
-- Platforms MUST expose `EditorKeyMap` as a widget-layer extension of `KeyMap` so host code can additionally bind command ids to host-side handlers
+- Platforms MUST expose `EditorKeyMap` as a widget-layer shortcut container so host code can bind command ids to host-side handlers
 - `EditorKeyMap` MUST support `registerCommand(binding, handler)`
 - If `binding.command == EditorBuiltinCommand.NONE`, `registerCommand(binding, handler)` MUST auto-assign a custom command id and return it
 - Platforms MAY additionally expose convenience APIs for custom-command registration, but `registerCommand(binding, handler)` remains the canonical contract

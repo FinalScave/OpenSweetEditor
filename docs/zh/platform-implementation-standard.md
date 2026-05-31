@@ -22,13 +22,18 @@ Core 层不涉及 UI 渲染，仅包含桥接、数据模型和协议编解码�
 
 | 逻辑分类 | 必须包含的类型 | 说明 |
 |---|---|---|
-| **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer`, `EditorOptions`, `EditorActionResult`, `EditorActionReason` | 原生桥接 + 公共核心 API 封装；`EditorActionResult` 是变更类 core API 的统一结果载体 |
-| **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollBehavior` | 基础值类型与枚举 |
-| **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextModelMode`；暴露 unit-aware 删除 API 时包含 `ImeTextUnit` | IME 同步快照和文本上下文协议类型；平台侧同步决策由 `EditorActionResult` 承载 |
-| **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | 装饰数据类型 |
-| **Visual** | `EditorRenderModel`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `ScrollbarRect`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `DiagnosticDecoration`, `CompositionDecoration`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem`, `LinkedEditingRect`, `BracketHighlightRect` | 渲染模型类型（几何语义见第 2.4 节） |
+| **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer` | 原生桥接 + 公共核心 API 封装 |
+| **Action** | `EditorActionResult`, `EditorActionReason`, `ScrollBehavior` | Core action 结果与相关枚举；`EditorActionResult` 是变更类 core API 的统一结果载体 |
+| **Config** | `EditorOptions`, `HandleConfig`, `ScrollbarConfig`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollbarMode`, `ScrollbarTrackTapMode` | 运行时与构造配置协议类型 |
+| **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `PointF`, `Rect`, `OffsetRect` | 基础值类型与几何载体 |
+| **Interaction** | `GestureEvent`, `GestureType`, `EventType`, `HitTarget`, `HitTargetType` | 输入与命中测试协议类型 |
+| **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextUnit`, `ImeTextModelMode`, `ImeTextReplacement`, `ImeDocumentTextReplacement`, `ImeInputContextTextReplacement`, `ImeInputStateTextReplacement`, `ImeTextModelState`, `ImeTextModelDelta` | IME 同步快照、文本上下文协议类型与替换 payload model；平台侧同步决策由 `EditorActionResult` 承载 |
+| **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `DiagnosticSeverity`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | 装饰数据类型 |
+| **Visual** | `EditorRenderModel`, `LayoutMetrics`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `DiagnosticDecoration`, `CompositionDecoration`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem`, `LinkedEditingRect` | 渲染模型类型（几何语义见第 2.4 节） |
 | **Snippet** | `LinkedEditingModel`, `TabStopGroup` | 联动编辑 / Tab stop 分组 |
-| **Keymap** | `KeyMap`, `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorBuiltinCommand` | 快捷键映射数据类型与内建命令标识 |
+| **Keymap** | `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorBuiltinCommand` | 快捷键绑定数据类型与内建命令标识 |
+
+Core 协议类型与 `CoreProtocol` 编解码器 MUST 通过 `tools/se_protocol_gen` 从 C++ `SE_PROTOCOL_*` 标注生成。平台代码 MAY 增加生成后 augment 或轻量宿主语言 helper，但 MUST NOT 维护独立的 `ProtocolEncoder` / `ProtocolDecoder` 实现，也不能定义平台私有二进制 schema。augment MUST NOT 改变编码字段顺序、标量宽度、可空性、list/map 布局、枚举值或 payload 名称。
 
 ### 1.2 Widget 层（UI 控件 / 渲染 / 交互）
 
@@ -88,7 +93,6 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 | `DecorationReceiver` | C#/TS/Kotlin: `IDecorationReceiver`; OC: `SEDecorationReceiver` | 回调接口；仅适用于平台选择暴露显式 Receiver 类型时 |
 | `CompletionReceiver` | C#/TS/Kotlin: `ICompletionReceiver`; OC: `SECompletionReceiver` | 回调接口；仅适用于平台选择暴露显式 Receiver 类型时 |
 | `NewLineActionProvider` | C#/TS/Kotlin: `INewLineActionProvider`; OC: `SENewLineActionProvider` | 提供者接口 |
-| `KeyMap` | OC: `SEKeyMap` | Core keymap 数据容器 |
 | `EditorKeyMap` | OC: `SEEditorKeyMap` | Widget 层 keymap 扩展 |
 | `EditorBuiltinCommand` | OC: `SEEditorBuiltinCommand` | 内建命令 id |
 | `KeyBinding` | OC: `SEKeyBinding` | 单 chord 或双 chord 绑定项 |
@@ -164,7 +168,7 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 
 除明确标注为条件性或可选的条目外，各平台 MUST 在正确的 API 载体上实现所有列出的方法。第 3.1 节的方法归属于 `EditorCore`，并不自动属于宿主可见的编辑器接口表面。命令式框架中，第 3.2 节的 API 载体是控件入口类本身（例如 `SweetEditor`）；声明式框架中，第 3.2 节的 API 载体是 `SweetEditorController`。在声明式平台上，`SweetEditor` 仍然是 runtime/session owner，只是宿主可见的 API 通过 controller 暴露。
 
-> 生命周期 / 内存管理 API（如 `create`、`destroy`、`freeBinaryData`）不在此列，各平台按自身惯例实现。
+> 生命周期 / 内存管理 API（如 `create`、`destroy`、平台封装的 `free_binary_data` 名称）不在此列，各平台按自身惯例实现。Native 二进制 payload 当前使用 C ABI 形态 `const uint8_t* + out_size`；每个平台 wrapper MUST 在 decode 后释放自己持有的 native 结果 buffer。
 
 **通用命名变体规则：**
 - 标准名称以 Java/ArkTS camelCase 为基准
@@ -200,11 +204,11 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 |---|---|
 | 配置 | `loadDocument(doc)`, `setViewport(w, h)`, `onFontMetricsChanged()`, `setFoldArrowMode(mode)`, `setWrapMode(mode)`, `setTabSize(size)`, `setInsertSpaces(enabled)`, `setScale(scale)`, `setLineSpacing(add, mult)`, `setContentStartPadding(padding)`, `setShowSplitLine(show)`, `setCurrentLineRenderMode(mode)`, `setGutterSticky(sticky)`, `setGutterVisible(visible)`, `setHandleConfig(...)`, `setScrollbarConfig(...)` |
 | 渲染模型 | `buildRenderModel()`, `getLayoutMetrics()` |
-| 手势 / 键盘 | `handleGestureEvent(...)`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(keyMap)` |
+| 手势 / 键盘 | `handleGestureEvent(...)`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(bindings)` |
 | 文本编辑 | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `backspace()`, `deleteForward()`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
 | 撤销 / 重做 | `undo()`, `redo()`, `canUndo()`, `canRedo()` |
 | 光标 / 选区 | `setCursorPosition(line, col)`, `getCursorPosition()`, `selectAll()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `getSelectedText()`, `getWordRangeAtCursor()`, `getWordAtCursor()`, `moveCursorLeft(extend)`, `moveCursorRight(extend)`, `moveCursorUp(extend)`, `moveCursorDown(extend)`, `moveCursorToLineStart(extend)`, `moveCursorToLineEnd(extend)` |
-| IME | `getImeSyncSnapshot()`, `getImeInputContext(...)`, `getImeTextModelInputContext(...)`, `setImeKeyboardScriptClass(script)`, `getImeKeyboardScriptClass()`, `updateImePreedit(...)`, `setImeComposingText(...)`, `commitImeText(...)`, `replaceImeText(...)`, `finishImePreedit()`, `cancelImePreedit()`, `markImeDocumentRange(...)`, `markImeInputContextRange(...)`, `updateImeTextModelState(...)`, `updateImeTextModelDelta(...)`, `deleteImeBackward(length, unit)`, `deleteImeForward(length, unit)`, `deleteImeSurrounding(before, after, unit)`, `notifyImeSelectionChanged(range)`, `notifyImeCursorChanged(cursor)`, `getComposingRange()`, `getComposingSessionRange()`, `isComposing()` |
+| IME | `getImeSyncSnapshot()`, `getImeInputContext(...)`, `getImeTextModelInputContext(...)`, `setImeKeyboardScriptClass(script)`, `getImeKeyboardScriptClass()`, `updateImePreedit(...)`, `setImeComposingText(...)`, `setImeComposingTextSelection(...)`, `commitImeText(...)`, `commitImeTextWithCursor(...)`, `replaceImeText(replacement)`, `replaceImeDocumentText(replacement)`, `replaceImeInputContextText(replacement)`, `finishImePreedit()`, `cancelImePreedit()`, `markImeDocumentRange(...)`, `markImeDocumentRangeByOffset(...)`, `markImeInputContextRange(...)`, `notifyImeDocumentSelectionChanged(...)`, `notifyImeInputContextSelectionChanged(...)`, `updateImeTextModelState(state)`, `updateImeTextModelDelta(delta)`, `updateImeInputStateSelection(...)`, `replaceImeInputStateText(replacement)`, `deleteImeBackward(length, unit)`, `deleteImeForward(length, unit)`, `deleteImeSurrounding(before, after, unit)`, `notifyImeSelectionChanged(range)`, `notifyImeCursorChanged(cursor)`, `getComposingRange()`, `getComposingSessionRange()`, `isComposing()` |
 | 只读 / 缩进 | `setReadOnly(readOnly)`, `isReadOnly()`, `setAutoIndentMode(mode)`, `getAutoIndentMode()`, `setBackspaceUnindent(enabled)` |
 | 导航 / 滚动 | `scrollToLine(line, behavior)`, `gotoPosition(line, col)`, `ensureCursorVisible()`, `setScroll(x, y)`, `getScrollMetrics()`, `getPositionRect(line, col)`, `getCursorRect()` |
 | 样式 / 高亮 | `registerTextStyle(id, color, bg, fontStyle)`, `registerBatchTextStyles(data)`, `setLineSpans(line, layer, spans)`, `setBatchLineSpans(layer, entries)`, `clearLineSpans(line, layer)`, `clearHighlights(layer)`, `clearHighlights()` |
@@ -228,7 +232,7 @@ IME API 是平台输入事件进入 core 的请求入口。平台标准约束的
 
 IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextRange`；文档 offset API 使用完整文档 offset；input-context / text-model API 使用以 `documentStartOffset` 为基准的上下文 offset。平台实现 MUST NOT 在这些坐标空间之间隐式混用。
 
-> payload 类 API（如 `setLineSpans`、`setBatchLineSpans`）各平台 MUST 提供高层 typed 封装（如 `setLineSpans(line, layer, spans: List<StyleSpan>)`）。当宿主语言存在自然的公开二进制载体（如 `ByteBuffer`、`NSData`、`byte[]`、`Uint8List`）时，平台 SHOULD 额外公开 raw/binary payload API。若 typed API 与 payload API 同时存在，两者的参数语义与最终 Core 行为 MUST 完全一致。payload 的编码格式由平台自行定义。
+> payload 类 API（如 `setLineSpans`、`setBatchLineSpans`）各平台 MUST 提供高层 typed 封装（如 `setLineSpans(line, layer, spans: List<StyleSpan>)`）。当宿主语言存在自然的公开二进制载体（如 `ByteBuffer`、`MemorySegment`、`NSData`、`byte[]`、`Uint8List`、`ArrayBuffer`）时，平台 SHOULD 额外公开 raw/binary payload API。typed wrapper 与 raw/binary payload API MUST 使用生成的 `CoreProtocol` 编码，并产生完全一致的 Core 行为。
 
 #### 3.1.1 IME API 要求级别
 
@@ -236,8 +240,8 @@ IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextR
 
 | API / 类型 | 要求 | 说明 |
 |---|---|---|
-| IME 协议类型 | MUST | 至少包含 `ImeSyncSnapshot`、`ImeInputContext`、`ImeTextRange`、`ImeScriptClass`、`ImePreeditStorage`、`ImeContextPolicy`、`ImeInputContextKind`；支持 text-model 同步的平台还 MUST 包含 `ImeTextModelMode` |
-| `ImeTextUnit` | SHOULD / 条件性 MUST | 暴露 unit-aware 删除 API 时 MUST 存在；稳定值为 `GRAPHEME = 0`、`CODE_POINT = 1` |
+| IME 协议类型 | MUST | 包含生成的 `CoreProtocol` IME model 集合：`ImeSyncSnapshot`、`ImeInputContext`、`ImeTextRange`、`ImeScriptClass`、`ImePreeditStorage`、`ImeContextPolicy`、`ImeInputContextKind`、`ImeTextUnit`、`ImeTextModelMode`、`ImeTextReplacement`、`ImeDocumentTextReplacement`、`ImeInputContextTextReplacement`、`ImeInputStateTextReplacement`、`ImeTextModelState`、`ImeTextModelDelta` |
+| `ImeTextUnit` | MUST | 稳定值为 `GRAPHEME = 0`、`CODE_POINT = 1`；平台 API MAY 按 native adapter 需要暴露 unit-aware 删除重载 |
 | 同步快照能力 | MUST | 平台输入适配层 MUST 能处理 `EditorActionResult.needsImeSync` 与 `EditorActionResult.imeSync`；需要主动查询时使用 `getImeSyncSnapshot()` 或等价桥接入口 |
 | 键盘脚本 hint 能力 | SHOULD / 条件性 MUST | SHOULD 记录键盘脚本 hint；平台提供 script hint 时 MUST 映射 |
 | preedit / composing 能力 | SHOULD / 条件性 MUST | 平台收到原生 preedit、composing text 或 marked text 时 MUST 映射到 core 的 preedit / composing 语义族 |
@@ -535,13 +539,13 @@ Provider 返回空列表时平台 MAY 不显示选区菜单；Provider SHOULD �
 
 ### 10.1 Core 数据模型
 
-所有平台 MUST 提供 Core 层 `KeyMap`、`KeyBinding`、`KeyChord`、`KeyCode`、`KeyModifier` 和 `EditorBuiltinCommand`。
+所有平台 MUST 提供 Core 层 keymap 协议类型 `KeyBinding`、`KeyChord`、`KeyCode`、`KeyModifier` 和 `EditorBuiltinCommand`。平台 core API SHOULD 直接接收 binding list，不要求暴露独立的 Core 层 `KeyMap` 类。C++ core 可以保留内部 `KeyMap` resolver；该内部类型不属于平台公共 API 契约。
 
-- `KeyMap` MUST 是从 `KeyBinding` 到 commandId 的纯数据映射
 - `KeyBinding` MUST 同时支持单 chord 和双 chord 绑定
 - `KeyChord` MUST 表示一次按键的 `modifiers + keyCode`
 - 单 chord 绑定 MUST 将第二段编码为空 chord / none chord
-- `EditorCore.setKeyMap(keyMap)` MUST 将完整绑定表同步到 C++ Core
+- `CoreProtocol` MUST 提供 `encodeSetKeyMapPayload(bindings)` 或对应语言大小写风格的 `SetKeyMapPayload` 二进制 payload 编码入口
+- `EditorCore.setKeyMap(bindings)` MUST 将完整绑定表同步到 C++ Core
 
 ### 10.2 数值对齐
 
@@ -555,7 +559,7 @@ Provider 返回空列表时平台 MAY 不显示选区菜单；Provider SHOULD �
 ### 10.3 Widget 层扩展
 
 - `SweetEditor` MUST 支持 `setKeyMap(keyMap)`，并 SHOULD 暴露 `getKeyMap()`
-- 平台 MUST 暴露 `EditorKeyMap` 作为 `KeyMap` 的 widget 层扩展，使宿主代码可以额外将 commandId 绑定到宿主侧 handler
+- 平台 MUST 暴露 `EditorKeyMap` 作为 widget 层快捷键容器，使宿主代码可以将 commandId 绑定到宿主侧 handler
 - `EditorKeyMap` MUST 支持 `registerCommand(binding, handler)`
 - 若 `binding.command == EditorBuiltinCommand.NONE`，`registerCommand(binding, handler)` MUST 自动分配自定义 commandId 并返回
 - 平台 MAY 额外提供自定义命令注册的便捷 API，但 `registerCommand(binding, handler)` 仍是标准契约
