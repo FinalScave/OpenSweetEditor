@@ -10,6 +10,18 @@
 #include "logging.h"
 
 namespace NS_SWEETEDITOR {
+  namespace {
+    bool isSourceTextRun(const VisualRun& run) {
+      return run.type == VisualRunType::TEXT
+          || run.type == VisualRunType::LINK
+          || run.type == VisualRunType::TAB;
+    }
+
+    size_t runSourceLine(const VisualLine& visual_line, const VisualRun& run) {
+      return run.source_line == kVisualRunOwnerLine ? visual_line.logical_line : run.source_line;
+    }
+  }
+
 #pragma region [Class: TextLayout]
   TextLayout::TextLayout(const SharedPtr<TextMeasurer>& measurer, const SharedPtr<DecorationManager>& decoration_manager)
     : m_measurer_(measurer), m_decoration_manager_(decoration_manager) {
@@ -265,8 +277,10 @@ namespace NS_SWEETEDITOR {
     if (click_x <= 0 || vl.runs.empty()) {
       if (!vl.runs.empty()) {
         for (const VisualRun& run : vl.runs) {
-          if (run.type == VisualRunType::TEXT || run.type == VisualRunType::TAB
-              || run.type == VisualRunType::PHANTOM_TEXT) {
+          if (isSourceTextRun(run)) {
+            return {runSourceLine(vl, run), run.column};
+          }
+          if (run.type == VisualRunType::PHANTOM_TEXT) {
             return {hit_line, run.column};
           }
         }
@@ -290,10 +304,11 @@ namespace NS_SWEETEDITOR {
       }
 
       if (run.type == VisualRunType::TAB) {
+        const size_t source_line = runSourceLine(vl, run);
         if (click_x < run_x + run.width * 0.5f) {
-          return {hit_line, run.column};
+          return {source_line, run.column};
         } else if (click_x < run_right) {
-          return {hit_line, run.column + 1};
+          return {source_line, run.column + 1};
         }
         run_x = run_right;
         continue;
@@ -307,6 +322,7 @@ namespace NS_SWEETEDITOR {
 
         float char_x = run_x;
         size_t cluster_start = 0;
+        const size_t source_line = runSourceLine(vl, run);
 
         while (cluster_start < run.text.length()) {
           size_t cluster_end = UnicodeUtil::nextGraphemeBoundaryColumn(run.text, cluster_start);
@@ -318,18 +334,23 @@ namespace NS_SWEETEDITOR {
 
           // If click is left of cluster center, place on this cluster; else next cluster boundary.
           if (click_x < char_x + char_width * 0.5f) {
-            return {hit_line, run.column + cluster_start};
+            return {source_line, run.column + cluster_start};
           }
           char_x += char_width;
           cluster_start = cluster_end;
         }
         // Click after run end
-        return {hit_line, run.column + cluster_start};
+        return {source_line, run.column + cluster_start};
       }
       run_x = run_right;
     }
 
     // Click after line end
+    for (auto it = vl.runs.rbegin(); it != vl.runs.rend(); ++it) {
+      if (isSourceTextRun(*it)) {
+        return {runSourceLine(vl, *it), it->column + it->length};
+      }
+    }
     return {hit_line, line_text.length()};
   }
 
@@ -448,9 +469,10 @@ namespace NS_SWEETEDITOR {
         }
       } else if (run.type == VisualRunType::LINK) {
         if (click_x >= run_x && click_x < run_right) {
-          const LinkSpan* link = m_decoration_manager_->findLinkAt(hit_line, run.column);
+          const size_t source_line = runSourceLine(vl, run);
+          const LinkSpan* link = m_decoration_manager_->findLinkAt(source_line, run.column);
           if (link != nullptr) {
-            return {HitTargetType::LINK, hit_line, link->column, 0};
+            return {HitTargetType::LINK, source_line, link->column, 0};
           }
         }
       }
@@ -474,61 +496,52 @@ namespace NS_SWEETEDITOR {
     const float scroll_y = m_view_state_.scroll_y;
     const float text_area_x = m_layout_metrics_.textAreaX();
 
-    LogicalLine& ll = logical_lines[position.line];
-    layoutLine(position.line, ll);
-    const U16String& line_text = ll.cached_u16_text;
-    size_t target_col = std::min(position.column, line_text.length());
+    const U16String& source_text = m_document_->getLineU16TextRef(position.line);
+    size_t target_col = std::min(position.column, source_text.length());
+    size_t owner_line = position.line;
+    if (!resolveSourceVisualOwnerLine(position.line, target_col, target_col, true, owner_line)) {
+      const FoldRegion* fold_region = m_decoration_manager_ != nullptr
+          ? m_decoration_manager_->getFoldRegionForLine(position.line)
+          : nullptr;
+      if (fold_region != nullptr && fold_region->start_line < logical_lines.size()) {
+        return getPositionScreenCoord({fold_region->start_line, m_document_->getLineColumns(fold_region->start_line)});
+      }
+      return {0, 0};
+    }
 
-    // Compute width from line start to target_col
-    float x_offset = 0;
-    if (target_col > 0) {
-      // Iterate visual_lines to find run containing target_col
-      for (const VisualLine& vl : ll.visual_lines) {
-        bool found = false;
-        float vl_x = 0;
-        for (const VisualRun& run : vl.runs) {
-          if (run.type != VisualRunType::TEXT && run.type != VisualRunType::LINK && run.type != VisualRunType::TAB) {
+    LogicalLine& owner_ll = logical_lines[owner_line];
+    layoutLine(owner_line, owner_ll);
+    const bool projected = owner_line != position.line;
+    const float scroll_offset = (m_wrap_mode_ == WrapMode::NONE) ? scroll_x : 0.0f;
 
-            vl_x += run.width;
-            continue;
-          }
-          size_t run_end_col = run.column + run.length;
-          if (target_col >= run.column && target_col <= run_end_col) {
-            if (run.type == VisualRunType::TAB) {
-              if (target_col == run.column) {
-                float screen_x = text_area_x + vl_x - (m_wrap_mode_ == WrapMode::NONE ? scroll_x : 0);
-                float screen_y = vl.line_number_position.y - scroll_y;
-                return {screen_x, screen_y};
-              }
-            } else {
-              size_t offset_in_run = target_col - run.column;
-              if (offset_in_run > 0) {
-                U16String prefix = run.text.substr(0, offset_in_run);
-                vl_x += measureWidth(prefix, run.style.font_style);
-              }
-              float screen_x = text_area_x + vl_x - (m_wrap_mode_ == WrapMode::NONE ? scroll_x : 0);
-              float screen_y = vl.line_number_position.y - scroll_y;
-              return {screen_x, screen_y};
-            }
-          }
-          vl_x += run.width;
+    if (target_col > 0 || projected) {
+      for (const VisualLine& vl : owner_ll.visual_lines) {
+        float x_offset = 0;
+        if (columnToVisualLineX(vl, position.line, target_col, true, x_offset)) {
+          return {text_area_x + x_offset - scroll_offset, vl.line_number_position.y - scroll_y};
         }
       }
-      // If no run found (maybe beyond end), use end of last VisualLine
-      if (!ll.visual_lines.empty()) {
-        const VisualLine& last_vl = ll.visual_lines.back();
-        float vl_x = 0;
-        for (const VisualRun& run : last_vl.runs) {
-          vl_x += run.width;
+
+      for (auto it = owner_ll.visual_lines.rbegin(); it != owner_ll.visual_lines.rend(); ++it) {
+        size_t vl_col_min = SIZE_MAX;
+        size_t vl_col_max = 0;
+        float vl_width = 0;
+        if (getVisualLineTextColumnExtent(*it, position.line, vl_col_min, vl_col_max, vl_width)) {
+          return {text_area_x + vl_width - scroll_offset, it->line_number_position.y - scroll_y};
         }
-        float screen_x = text_area_x + vl_x - (m_wrap_mode_ == WrapMode::NONE ? scroll_x : 0);
-        float screen_y = last_vl.line_number_position.y - scroll_y;
-        return {screen_x, screen_y};
+      }
+
+      if (!owner_ll.visual_lines.empty()) {
+        const VisualLine& last_vl = owner_ll.visual_lines.back();
+        float vl_width = 0;
+        for (const VisualRun& run : last_vl.runs) {
+          vl_width += run.width;
+        }
+        return {text_area_x + vl_width - scroll_offset, last_vl.line_number_position.y - scroll_y};
       }
     }
 
-    // column = 0, at start of the primary content visual line
-    float screen_y = getGutterOwnerTopScreen(ll, scroll_y);
+    float screen_y = getGutterOwnerTopScreen(owner_ll, scroll_y);
     return {text_area_x - (m_wrap_mode_ == WrapMode::NONE ? scroll_x : 0), screen_y};
   }
 
@@ -548,17 +561,23 @@ namespace NS_SWEETEDITOR {
     const float text_area_x = m_layout_metrics_.textAreaX();
     const float scroll_offset = (m_wrap_mode_ == WrapMode::NONE) ? scroll_x : 0.0f;
 
-    LogicalLine& ll = logical_lines[line];
-    layoutLine(line, ll);
-    const U16String& line_text = ll.cached_u16_text;
+    const U16String& line_text = m_document_->getLineU16TextRef(line);
     size_t safe_start = std::min(col_start, line_text.length());
     size_t safe_end = std::min(col_end, line_text.length());
 
-    // Ensure col_start <= col_end
     if (safe_start > safe_end) std::swap(safe_start, safe_end);
 
-    bool found_start = (safe_start == 0);
-    bool found_end = (safe_end == 0);
+    size_t owner_line = line;
+    if (!resolveSourceVisualOwnerLine(line, safe_start, safe_end, true, owner_line)) {
+      out_x_start = out_x_end = 0;
+      return;
+    }
+
+    LogicalLine& ll = logical_lines[owner_line];
+    layoutLine(owner_line, ll);
+    const bool projected = owner_line != line;
+    bool found_start = (!projected && safe_start == 0);
+    bool found_end = (!projected && safe_end == 0);
     float x_start = 0;
     float x_end = 0;
     float last_x = 0;
@@ -566,15 +585,15 @@ namespace NS_SWEETEDITOR {
       size_t vl_col_min = SIZE_MAX;
       size_t vl_col_max = 0;
       float vl_width = 0;
-      bool has_text = getVisualLineTextColumnExtent(vl, vl_col_min, vl_col_max, vl_width);
-      last_x = vl_width;
+      bool has_text = getVisualLineTextColumnExtent(vl, line, vl_col_min, vl_col_max, vl_width);
       if (!has_text) continue;
+      last_x = vl_width;
 
       if (!found_start && safe_start >= vl_col_min && safe_start < vl_col_max) {
-        found_start = columnToVisualLineX(vl, safe_start, false, x_start);
+        found_start = columnToVisualLineX(vl, line, safe_start, false, x_start);
       }
       if (!found_end && safe_end >= vl_col_min && safe_end <= vl_col_max) {
-        found_end = columnToVisualLineX(vl, safe_end, true, x_end);
+        found_end = columnToVisualLineX(vl, line, safe_end, true, x_end);
       }
       if (found_start && found_end) break;
     }
@@ -588,37 +607,8 @@ namespace NS_SWEETEDITOR {
 
   void TextLayout::getColumnScreenRange(size_t line, size_t col_start, size_t col_end,
                                          float& out_x_start, float& out_x_end, float& out_y) {
-    // Reuse the internal x-range helper and then resolve the matching visual-line y.
     resolveColumnXRange(line, col_start, col_end, out_x_start, out_x_end);
-
-    // Get y directly from laid-out line to avoid another traversal
-    if (m_document_ != nullptr) {
-      Vector<LogicalLine>& logical_lines = m_document_->getLogicalLines();
-      if (line < logical_lines.size()) {
-        LogicalLine& ll = logical_lines[line];
-        // layoutLine was called in getColumnScreenRange above; ll is already up to date
-        const float scroll_y = m_view_state_.scroll_y;
-        // Find y of the visual line containing col_start
-        size_t safe_col = std::min(col_start, ll.cached_u16_text.length());
-        for (const VisualLine& vl : ll.visual_lines) {
-          for (const VisualRun& run : vl.runs) {
-            if ((run.type == VisualRunType::TEXT || run.type == VisualRunType::TAB) &&
-                safe_col >= run.column && safe_col < run.column + run.length) {
-              out_y = vl.line_number_position.y - scroll_y;
-              return;
-            }
-          }
-        }
-        // If not found, use y of last visual line
-        if (!ll.visual_lines.empty()) {
-          out_y = ll.visual_lines.back().line_number_position.y - scroll_y;
-        } else {
-          out_y = ll.start_y - scroll_y;
-        }
-        return;
-      }
-    }
-    out_y = 0;
+    out_y = getPositionScreenCoord({line, col_start}).y;
   }
 
   void TextLayout::getColumnSelectionRects(size_t line, size_t col_start, size_t col_end,
@@ -627,14 +617,19 @@ namespace NS_SWEETEDITOR {
     Vector<LogicalLine>& logical_lines = m_document_->getLogicalLines();
     if (line >= logical_lines.size()) return;
 
-    LogicalLine& ll = logical_lines[line];
-    layoutLine(line, ll);
-
-    const U16String& line_text = ll.cached_u16_text;
+    const U16String& line_text = m_document_->getLineU16TextRef(line);
     size_t safe_start = std::min(col_start, line_text.length());
     size_t safe_end = std::min(col_end, line_text.length());
     if (safe_start > safe_end) std::swap(safe_start, safe_end);
     if (safe_start == safe_end) return;
+
+    size_t owner_line = line;
+    if (!resolveSourceVisualOwnerLine(line, safe_start, safe_end, true, owner_line)) {
+      return;
+    }
+
+    LogicalLine& ll = logical_lines[owner_line];
+    layoutLine(owner_line, ll);
 
     const float scroll_x = m_view_state_.scroll_x;
     const float scroll_y = m_view_state_.scroll_y;
@@ -645,7 +640,7 @@ namespace NS_SWEETEDITOR {
       size_t vl_col_min = SIZE_MAX;
       size_t vl_col_max = 0;
       float vl_width = 0;
-      bool has_text = getVisualLineTextColumnExtent(vl, vl_col_min, vl_col_max, vl_width);
+      bool has_text = getVisualLineTextColumnExtent(vl, line, vl_col_min, vl_col_max, vl_width);
       if (!has_text) continue;
 
       size_t intersect_start = std::max(safe_start, vl_col_min);
@@ -654,8 +649,8 @@ namespace NS_SWEETEDITOR {
 
       float x_start = 0;
       float x_end = 0;
-      bool found_start = columnToVisualLineX(vl, intersect_start, false, x_start);
-      bool found_end = columnToVisualLineX(vl, intersect_end, true, x_end);
+      bool found_start = columnToVisualLineX(vl, line, intersect_start, false, x_start);
+      bool found_end = columnToVisualLineX(vl, line, intersect_end, true, x_end);
       if (!found_start) x_start = vl_width;
       if (!found_end) x_end = vl_width;
 
@@ -845,6 +840,162 @@ namespace NS_SWEETEDITOR {
     invalidatePrefixFrom(from_line);
   }
 
+  bool TextLayout::buildFoldTailProjection(const FoldRegion& region, FoldTailProjection& out_projection) {
+    if (m_document_ == nullptr || m_decoration_manager_ == nullptr) {
+      return false;
+    }
+    const auto& lines = m_document_->getLogicalLines();
+    if (!region.collapsed || region.end_line <= region.start_line ||
+        region.start_line >= lines.size() || region.end_line >= lines.size()) {
+      return false;
+    }
+
+    const U16String& line_text = m_document_->getLineU16TextRef(region.end_line);
+    size_t trim_pos = 0;
+    while (trim_pos < line_text.size() &&
+           (line_text[trim_pos] == u' ' || line_text[trim_pos] == u'\t')) {
+      ++trim_pos;
+    }
+    if (trim_pos >= line_text.size()) {
+      return false;
+    }
+
+    out_projection.owner_line = region.start_line;
+    out_projection.source_line = region.end_line;
+    out_projection.visible_start = trim_pos;
+    out_projection.visible_end = line_text.size();
+    return true;
+  }
+
+  bool TextLayout::resolveFoldTailProjectionForOwnerLine(size_t owner_line,
+                                                         FoldTailProjection& out_projection) {
+    if (m_document_ == nullptr || m_decoration_manager_ == nullptr) {
+      return false;
+    }
+    const auto& lines = m_document_->getLogicalLines();
+    if (owner_line >= lines.size() || lines[owner_line].is_fold_hidden) {
+      return false;
+    }
+
+    for (const FoldRegion& region : m_decoration_manager_->getFoldRegions()) {
+      if (region.start_line != owner_line) {
+        continue;
+      }
+      if (buildFoldTailProjection(region, out_projection)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool TextLayout::resolveFoldTailProjectionForSourceLine(size_t source_line,
+                                                          FoldTailProjection& out_projection) {
+    if (m_document_ == nullptr || m_decoration_manager_ == nullptr) {
+      return false;
+    }
+    const auto& lines = m_document_->getLogicalLines();
+    if (source_line >= lines.size() || !lines[source_line].is_fold_hidden) {
+      return false;
+    }
+
+    bool found = false;
+    FoldTailProjection best_projection;
+    for (const FoldRegion& region : m_decoration_manager_->getFoldRegions()) {
+      if (region.end_line != source_line ||
+          region.start_line >= lines.size() || lines[region.start_line].is_fold_hidden) {
+        continue;
+      }
+
+      FoldTailProjection candidate;
+      if (!buildFoldTailProjection(region, candidate)) {
+        continue;
+      }
+      if (!found || candidate.owner_line > best_projection.owner_line) {
+        best_projection = candidate;
+        found = true;
+      }
+    }
+    if (!found) {
+      return false;
+    }
+
+    out_projection = best_projection;
+    return true;
+  }
+
+  bool TextLayout::resolveSourceVisualOwnerLine(size_t source_line,
+                                                size_t range_start,
+                                                size_t range_end,
+                                                bool include_empty_end,
+                                                size_t& out_owner_line) {
+    if (m_document_ == nullptr) {
+      return false;
+    }
+    const auto& lines = m_document_->getLogicalLines();
+    if (source_line >= lines.size()) {
+      return false;
+    }
+
+    const U16String& line_text = m_document_->getLineU16TextRef(source_line);
+    size_t safe_start = std::min(range_start, line_text.size());
+    size_t safe_end = std::min(range_end, line_text.size());
+    if (safe_start > safe_end) {
+      std::swap(safe_start, safe_end);
+    }
+
+    if (!lines[source_line].is_fold_hidden) {
+      out_owner_line = source_line;
+      return true;
+    }
+
+    FoldTailProjection projection;
+    if (!resolveFoldTailProjectionForSourceLine(source_line, projection)) {
+      return false;
+    }
+
+    const bool intersects = (safe_start == safe_end)
+        ? (include_empty_end
+              ? (safe_start >= projection.visible_start && safe_start <= projection.visible_end)
+              : (safe_start >= projection.visible_start && safe_start < projection.visible_end))
+        : (safe_start < projection.visible_end && safe_end > projection.visible_start);
+    if (!intersects) {
+      return false;
+    }
+
+    out_owner_line = projection.owner_line;
+    return true;
+  }
+
+  bool TextLayout::isFoldTailProjectedPosition(const TextPosition& position,
+                                               bool include_end,
+                                               size_t* out_owner_line) {
+    FoldTailProjection projection;
+    if (!resolveFoldTailProjectionForSourceLine(position.line, projection)) {
+      return false;
+    }
+
+    const bool inside = include_end
+        ? (position.column >= projection.visible_start && position.column <= projection.visible_end)
+        : (position.column >= projection.visible_start && position.column < projection.visible_end);
+    if (!inside) {
+      return false;
+    }
+    if (out_owner_line != nullptr) {
+      *out_owner_line = projection.owner_line;
+    }
+    return true;
+  }
+
+  bool TextLayout::getFoldTailProjectedRange(size_t owner_line, TextRange& out_range) {
+    FoldTailProjection projection;
+    if (!resolveFoldTailProjectionForOwnerLine(owner_line, projection)) {
+      return false;
+    }
+    out_range = {{projection.source_line, projection.visible_start},
+                 {projection.source_line, projection.visible_end}};
+    return true;
+  }
+
   void TextLayout::ensurePrefixIndexUpTo(size_t up_to_line) {
     if (m_document_ == nullptr) return;
     Vector<LogicalLine>& lines = m_document_->getLogicalLines();
@@ -874,7 +1025,7 @@ namespace NS_SWEETEDITOR {
     // invalidatePrefixFrom marks following prefixes dirty.
     const float default_height = getLineHeight();
 
-    // 鈹€鈹€ Multiplication-based run tracking 鈹€鈹€
+    // Track long runs of equal-height lines with multiplication.
     // When consecutive lines share the same height (typically default_height for
     // unlaid-out lines after markAllLinesDirty), we compute prefix_y as
     //   run_base_y + run_count * height
@@ -1041,19 +1192,19 @@ namespace NS_SWEETEDITOR {
           size_t vl_col_min = SIZE_MAX;
           size_t vl_col_max = 0;
           float vl_width = 0;
-          const bool has_text = getVisualLineTextColumnExtent(vl, vl_col_min, vl_col_max, vl_width);
+          const bool has_text = getVisualLineTextColumnExtent(vl, line_index, vl_col_min, vl_col_max, vl_width);
           if (!has_text) {
             continue;
           }
           if (safe_column >= vl_col_min && safe_column < vl_col_max) {
             float anchor_x = 0;
-            if (columnToVisualLineX(vl, safe_column, false, anchor_x)) {
+            if (columnToVisualLineX(vl, line_index, safe_column, false, anchor_x)) {
               return anchor_x;
             }
           }
           if (safe_column == line_text.length() && safe_column == vl_col_max) {
             float anchor_x = 0;
-            if (columnToVisualLineX(vl, safe_column, true, anchor_x)) {
+            if (columnToVisualLineX(vl, line_index, safe_column, true, anchor_x)) {
               line_end_x = anchor_x;
               has_line_end = true;
             }
@@ -1197,6 +1348,7 @@ namespace NS_SWEETEDITOR {
           text_part.column = src_run.column + static_cast<uint32_t>(pos);
           text_part.length = tab_pos - pos;
           text_part.style = src_run.style;
+          text_part.source_line = src_run.source_line;
           text_part.text = t.substr(pos, tab_pos - pos);
           text_part.width = measureWidth(text_part.text, text_part.style.font_style);
           runs.push_back(text_part);
@@ -1209,6 +1361,7 @@ namespace NS_SWEETEDITOR {
           tab_run.column = src_run.column + static_cast<uint32_t>(tab_pos);
           tab_run.length = 1;
           tab_run.style = src_run.style;
+          tab_run.source_line = src_run.source_line;
           tab_run.width = spaces * m_space_width_;
           runs.push_back(tab_run);
           current_column += 1;
@@ -1615,6 +1768,7 @@ namespace NS_SWEETEDITOR {
             seg_run.column = run.column + seg_start_u16;
             seg_run.length = break_u16 - seg_start_u16;
             seg_run.style = run.style;
+            seg_run.source_line = run.source_line;
             seg_run.x = current_x;
             seg_run.width = break_width;
             seg_run.text = std::move(seg_text);
@@ -1659,6 +1813,7 @@ namespace NS_SWEETEDITOR {
         rem_run.column = run.column + seg_start_u16;
         rem_run.length = run_text.length() - seg_start_u16;
         rem_run.style = run.style;
+        rem_run.source_line = run.source_line;
         rem_run.x = current_x;
         rem_run.width = seg_width;
         rem_run.text = std::move(remaining);
@@ -1681,7 +1836,7 @@ namespace NS_SWEETEDITOR {
       fold_x += run.width;
     }
 
-    // Append fold placeholder " 鈥?"
+    // Append fold placeholder.
     VisualRun fold_run;
     fold_run.type = VisualRunType::FOLD_PLACEHOLDER;
     fold_run.column = line_text.length();
@@ -1696,24 +1851,12 @@ namespace NS_SWEETEDITOR {
     fold_run.width += fold_run.padding * 2 + fold_run.margin * 2;
     last_vl.runs.push_back(std::move(fold_run));
 
-    // Append tail-line VisualRuns (JetBrains style: first line + 鈥?+ tail content, preserving highlights)
-    const FoldRegion* fold_region = m_decoration_manager_->getFoldRegionForLine(index);
-    if (!fold_region || fold_region->end_line <= fold_region->start_line) return;
+    // Append projected tail-line VisualRuns while preserving source styles.
+    FoldTailProjection projection;
+    if (!resolveFoldTailProjectionForOwnerLine(index, projection)) return;
 
-    size_t end_line_idx = fold_region->end_line;
-    Vector<LogicalLine>& all_lines = m_document_->getLogicalLines();
-    if (end_line_idx >= all_lines.size()) return;
-
-    LogicalLine& end_ll = all_lines[end_line_idx];
+    const size_t end_line_idx = projection.source_line;
     const U16String& end_text = m_document_->getLineU16TextRef(end_line_idx);
-
-    // Count leading whitespace characters (skip spaces and tabs)
-    size_t trim_pos = 0;
-    while (trim_pos < end_text.size() &&
-           (end_text[trim_pos] == u' ' || end_text[trim_pos] == u'\t')) {
-      ++trim_pos;
-    }
-    if (trim_pos >= end_text.size()) return;
 
     // Use buildLineRuns to get complete runs for the tail line (with highlight styles)
     Vector<VisualRun> end_runs;
@@ -1727,26 +1870,25 @@ namespace NS_SWEETEDITOR {
 
     // Iterate tail-line runs, skip leading whitespace region, append the rest
     for (VisualRun& end_run : end_runs) {
-      // Only process TEXT type runs (skip INLAY_HINT / PHANTOM_TEXT and other decorations)
-      if (end_run.type != VisualRunType::TEXT) continue;
+      if (!isSourceTextRun(end_run)) continue;
 
       size_t run_start = end_run.column;
       size_t run_end = end_run.column + end_run.length;
 
       // Entire run is within the trim region, skip it
-      if (run_end <= trim_pos) continue;
+      if (run_end <= projection.visible_start) continue;
 
       // Partially within trim region, clip leading portion
-      if (run_start < trim_pos) {
-        size_t skip_chars = trim_pos - run_start;
+      if (run_start < projection.visible_start) {
+        size_t skip_chars = projection.visible_start - run_start;
         end_run.text = end_run.text.substr(skip_chars);
         end_run.column += skip_chars;
         end_run.length -= skip_chars;
         end_run.width = measureWidth(end_run.text, end_run.style.font_style);
       }
 
-      // Set x/y coordinates and append
       end_run.x = append_x;
+      end_run.source_line = projection.source_line;
 
       append_x += end_run.width;
       last_vl.runs.push_back(std::move(end_run));
@@ -1931,34 +2073,39 @@ namespace NS_SWEETEDITOR {
   }
 
   bool TextLayout::getVisualLineTextColumnExtent(const VisualLine& visual_line,
+                                                  size_t source_line,
                                                   size_t& out_col_min,
                                                   size_t& out_col_max,
                                                   float& out_total_width) {
     out_col_min = SIZE_MAX;
     out_col_max = 0;
     out_total_width = 0;
+    float vl_x = 0;
     for (const VisualRun& run : visual_line.runs) {
-      out_total_width += run.width;
-      if (run.type != VisualRunType::TEXT && run.type != VisualRunType::TAB) {
+      const float run_right = vl_x + run.width;
+      if (!isSourceTextRun(run) || runSourceLine(visual_line, run) != source_line) {
+        vl_x = run_right;
         continue;
       }
       out_col_min = std::min(out_col_min, static_cast<size_t>(run.column));
       out_col_max = std::max(out_col_max, static_cast<size_t>(run.column + run.length));
+      out_total_width = run_right;
+      vl_x = run_right;
     }
     return out_col_min != SIZE_MAX;
   }
 
   bool TextLayout::columnToVisualLineX(const VisualLine& visual_line,
+                                       size_t source_line,
                                        size_t column,
                                        bool allow_line_end,
                                        float& out_x) {
     float vl_x = 0;
     for (const VisualRun& run : visual_line.runs) {
-      if (run.type != VisualRunType::TEXT && run.type != VisualRunType::LINK && run.type != VisualRunType::TAB) {
+      if (!isSourceTextRun(run) || runSourceLine(visual_line, run) != source_line) {
         vl_x += run.width;
         continue;
       }
-
 
       size_t run_start = run.column;
       size_t run_end = run.column + run.length;

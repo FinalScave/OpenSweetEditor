@@ -60,6 +60,48 @@ TEST_CASE("EditorCore insertText with empty string and no selection is no-op") {
   CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
 }
 
+TEST_CASE("EditorCore keeps collapsed fold when editing a projected tail") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("if {\n  body\n}");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  Vector<FoldRegion> folds;
+  folds.push_back({0, 2, true});
+  editor.setFoldRegions(std::move(folds));
+
+  editor.setCursorPosition({2, 1});
+  CHECK(editor.getCursorPosition() == (TextPosition{2, 1}));
+
+  EditorActionResult result = editor.insertText(";");
+  REQUIRE(result.content_changed);
+  CHECK(document->getU8Text() == "if {\n  body\n};");
+  CHECK_FALSE(editor.isLineVisible(2));
+  CHECK(editor.getCursorPosition() == (TextPosition{2, 2}));
+}
+
+TEST_CASE("EditorCore unfolds folded region for multiline projected tail edits") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("if {\n  body\n}");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  Vector<FoldRegion> folds;
+  folds.push_back({0, 2, true});
+  editor.setFoldRegions(std::move(folds));
+
+  editor.setCursorPosition({2, 1});
+  EditorActionResult result = editor.insertText("\n");
+
+  REQUIRE(result.content_changed);
+  CHECK(editor.isLineVisible(1));
+  CHECK(editor.isLineVisible(2));
+}
+
 TEST_CASE("EditorCore Enter keeps current line indent by default") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);

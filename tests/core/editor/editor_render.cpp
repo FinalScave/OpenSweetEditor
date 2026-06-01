@@ -24,6 +24,39 @@ TEST_CASE("EditorCore buildRenderModel exposes normalized selection handles") {
   CHECK(model.selection_start_handle.position.x <= model.selection_end_handle.position.x);
 }
 
+TEST_CASE("EditorCore buildRenderModel includes folded tail selection inside broader ranges") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("if {\n  body\n}");
+  editor.loadDocument(document);
+  editor.setViewport({320, 120});
+
+  Vector<FoldRegion> folds;
+  folds.push_back({0, 2, true});
+  editor.setFoldRegions(std::move(folds));
+  editor.setSelection({{0, 0}, {2, 1}});
+
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+
+  REQUIRE_FALSE(model.lines.empty());
+  const auto tail_it = std::find_if(model.lines.front().runs.begin(), model.lines.front().runs.end(), [](const VisualRun& run) {
+    return run.source_line == 2 && run.type == VisualRunType::TEXT;
+  });
+  REQUIRE(tail_it != model.lines.front().runs.end());
+
+  bool has_tail_selection_rect = false;
+  for (const Rect& rect : model.selection_rects) {
+    if (rect.origin.x == Catch::Approx(tail_it->x) &&
+        rect.width == Catch::Approx(tail_it->width)) {
+      has_tail_selection_rect = true;
+      break;
+    }
+  }
+  CHECK(has_tail_selection_rect);
+}
+
 TEST_CASE("EditorCore buildRenderModel exposes active composition decoration") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);

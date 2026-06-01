@@ -294,6 +294,46 @@ TEST_CASE("TextLayout hitTestDecoration resolves LINK target by canonical start 
   CHECK(decorations->findLinkAt(target.line, target.column)->target == "doc://link");
 }
 
+TEST_CASE("TextLayout maps collapsed fold tail runs to their source line") {
+  SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
+  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
+  TextLayout layout(measurer, decorations);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("if {\n  body\n}");
+  layout.loadDocument(document);
+  layout.setViewport({400, 200});
+  layout.setViewState({1.0f, 0.0f, 0.0f});
+  layout.setWrapMode(WrapMode::NONE);
+
+  Vector<FoldRegion> folds;
+  folds.push_back({0, 2, true});
+  decorations->setFoldRegions(std::move(folds));
+
+  auto& lines = document->getLogicalLines();
+  lines[1].is_fold_hidden = true;
+  lines[2].is_fold_hidden = true;
+  lines[0].is_layout_dirty = true;
+
+  EditorRenderModel model;
+  layout.layoutVisibleLines(model, PresentationContext {});
+  REQUIRE_FALSE(model.lines.empty());
+
+  const VisualLine& folded_line = model.lines.front();
+  const auto tail_it = std::find_if(folded_line.runs.begin(), folded_line.runs.end(), [](const VisualRun& run) {
+    return run.source_line == 2 && run.type == VisualRunType::TEXT;
+  });
+  REQUIRE(tail_it != folded_line.runs.end());
+
+  const PointF tail_start = layout.getPositionScreenCoord({2, 0});
+  const PointF tail_end = layout.getPositionScreenCoord({2, 1});
+  CHECK(tail_start.x == Catch::Approx(tail_it->x));
+  CHECK(tail_end.x == Catch::Approx(tail_it->x + tail_it->width));
+
+  const float probe_y = layout.getPositionScreenCoord({0, 0}).y + layout.getLineHeight() * 0.5f;
+  CHECK(layout.hitTestPointer({tail_it->x + 1.0f, probe_y}) == (TextPosition{2, 0}));
+  CHECK(layout.hitTestPointer({tail_it->x + tail_it->width * 0.75f, probe_y}) == (TextPosition{2, 1}));
+}
+
 TEST_CASE("TextLayout gutter fold hit uses content line geometry when CodeLens exists") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
   SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();

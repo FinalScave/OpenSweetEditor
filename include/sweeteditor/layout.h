@@ -219,6 +219,14 @@ namespace NS_SWEETEDITOR {
     /// Mark content-size cache as dirty (call after external edits/folding changes)
     /// @param from_line Prefix index becomes dirty starting from this line, default 0 = rebuild all
     void invalidateContentMetrics(size_t from_line = 0);
+
+    /// Check whether a hidden source position is visible as the tail of a collapsed fold.
+    bool isFoldTailProjectedPosition(const TextPosition& position,
+                                     bool include_end,
+                                     size_t* out_owner_line = nullptr);
+
+    /// Get the visible source range projected as the tail of a collapsed fold owner line.
+    bool getFoldTailProjectedRange(size_t owner_line, TextRange& out_range);
   private:
     SharedPtr<TextMeasurer> m_measurer_;
     SharedPtr<Document> m_document_;
@@ -256,6 +264,13 @@ namespace NS_SWEETEDITOR {
     // content metrics cache
     ContentMetrics m_content_metrics_cache_;
     bool m_content_metrics_dirty_ {true};
+
+    struct FoldTailProjection {
+      size_t owner_line {0};
+      size_t source_line {0};
+      size_t visible_start {0};
+      size_t visible_end {0};
+    };
 
     // line-height prefix index
     // m_line_prefix_y_[i] = start y of line i (sum of heights of first i lines)
@@ -301,13 +316,27 @@ namespace NS_SWEETEDITOR {
     TextPosition mapVisualLineToTextBoundary(size_t logical_line, const VisualLine& visual_line) const;
     /// Find the previous visible logical line and return its end position.
     TextPosition previousVisibleLineEnd(size_t logical_line) const;
+    /// Build fold-tail projection metadata from one collapsed region.
+    bool buildFoldTailProjection(const FoldRegion& region, FoldTailProjection& out_projection);
+    /// Resolve fold-tail projection metadata by visible owner line.
+    bool resolveFoldTailProjectionForOwnerLine(size_t owner_line, FoldTailProjection& out_projection);
+    /// Resolve fold-tail projection metadata by hidden source line.
+    bool resolveFoldTailProjectionForSourceLine(size_t source_line, FoldTailProjection& out_projection);
+    /// Resolve which visible logical line owns geometry for a source line range.
+    bool resolveSourceVisualOwnerLine(size_t source_line,
+                                      size_t range_start,
+                                      size_t range_end,
+                                      bool include_empty_end,
+                                      size_t& out_owner_line);
     /// Get TEXT/TAB logical column extent and total width for one visual line.
     bool getVisualLineTextColumnExtent(const VisualLine& visual_line,
+                                       size_t source_line,
                                        size_t& out_col_min,
                                        size_t& out_col_max,
                                        float& out_total_width);
     /// Map one logical column to x within a single visual line.
     bool columnToVisualLineX(const VisualLine& visual_line,
+                             size_t source_line,
                              size_t column,
                              bool allow_line_end,
                              float& out_x);

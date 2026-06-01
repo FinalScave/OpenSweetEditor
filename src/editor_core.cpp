@@ -1843,12 +1843,21 @@ namespace NS_SWEETEDITOR {
       if (m_caret_.cursor.line >= line_count) {
         m_caret_.cursor.line = line_count > 0 ? line_count - 1 : 0;
       }
+      const U16String& current_line_text = m_document_->getLineU16TextRef(m_caret_.cursor.line);
+      m_caret_.cursor.column = UnicodeUtil::clampColumnToGraphemeBoundaryLeft(
+          current_line_text,
+          std::min<size_t>(m_caret_.cursor.column, current_line_text.length()));
+
       const auto& lines = m_document_->getLogicalLines();
       if (m_caret_.cursor.line < lines.size() && lines[m_caret_.cursor.line].is_fold_hidden) {
-        const FoldRegion* fr = m_decorations_->getFoldRegionForLine(m_caret_.cursor.line);
-        if (fr != nullptr) {
-          m_caret_.cursor.line = fr->start_line;
-          m_caret_.cursor.column = m_document_->getLineColumns(fr->start_line);
+        const bool projected_tail = m_text_layout_ != nullptr
+            && m_text_layout_->isFoldTailProjectedPosition(m_caret_.cursor, true);
+        if (!projected_tail) {
+          const FoldRegion* fr = m_decorations_->getFoldRegionForLine(m_caret_.cursor.line);
+          if (fr != nullptr) {
+            m_caret_.cursor.line = fr->start_line;
+            m_caret_.cursor.column = m_document_->getLineColumns(fr->start_line);
+          }
         }
       }
       const U16String& line_text = m_document_->getLineU16TextRef(m_caret_.cursor.line);
@@ -3073,8 +3082,26 @@ namespace NS_SWEETEDITOR {
       clamp_position(safe_range.end, true);
     }
 
-    // Auto-unfold when edit range overlaps a folded region
-    autoUnfoldForEdit(safe_range);
+    const bool single_line_edit_text =
+        new_text.find('\n') == U8String::npos && new_text.find('\r') == U8String::npos;
+    size_t fold_tail_owner_line = line_count;
+    bool keep_fold_collapsed = false;
+    if (single_line_edit_text && safe_range.start.line == safe_range.end.line && m_text_layout_ != nullptr) {
+      size_t start_owner_line = line_count;
+      size_t end_owner_line = line_count;
+      const bool start_projected =
+          m_text_layout_->isFoldTailProjectedPosition(safe_range.start, true, &start_owner_line);
+      const bool end_projected =
+          m_text_layout_->isFoldTailProjectedPosition(safe_range.end, true, &end_owner_line);
+      keep_fold_collapsed = start_projected && end_projected && start_owner_line == end_owner_line;
+      if (keep_fold_collapsed) {
+        fold_tail_owner_line = start_owner_line;
+      }
+    }
+
+    if (!keep_fold_collapsed) {
+      autoUnfoldForEdit(safe_range);
+    }
 
     TextEditResult edit_result;
     edit_result.changed = true;
@@ -3121,8 +3148,20 @@ namespace NS_SWEETEDITOR {
     // Adjust decoration offsets
     m_decorations_->adjustForEdit(safe_range, new_cursor);
 
-    // Mark content metrics cache dirty after edit (starting from edit start line)
-    m_text_layout_->invalidateContentMetrics(safe_range.start.line);
+    if (keep_fold_collapsed && fold_tail_owner_line < line_count) {
+      auto& lines = m_document_->getLogicalLines();
+      lines[fold_tail_owner_line].is_layout_dirty = true;
+      if (safe_range.start.line < lines.size()) {
+        lines[safe_range.start.line].is_layout_dirty = true;
+        if (lines[safe_range.start.line].is_fold_hidden) {
+          lines[safe_range.start.line].height = 0;
+          lines[safe_range.start.line].visual_lines.clear();
+        }
+      }
+      m_text_layout_->invalidateContentMetrics(std::min(fold_tail_owner_line, safe_range.start.line));
+    } else {
+      m_text_layout_->invalidateContentMetrics(safe_range.start.line);
+    }
 
     setCursorPositionInternal(new_cursor, true);
     clearSelection();

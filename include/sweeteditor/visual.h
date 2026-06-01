@@ -6,12 +6,15 @@
 #define SWEETEDITOR_VISUAL_H
 
 #include <cstdint>
+#include <limits>
 #include <sweeteditor/foundation.h>
 #include <sweeteditor/editor_types.h>
 #include <sweeteditor/decoration.h>
 #include <sweeteditor/utility.h>
 
 namespace NS_SWEETEDITOR {
+  inline constexpr size_t kVisualRunOwnerLine = std::numeric_limits<size_t>::max();
+
   /// Enum for visual render run types
   enum struct SE_PROTOCOL_ENUM(visual, TEXT) VisualRunType {
     /// Normal text
@@ -45,6 +48,9 @@ namespace NS_SWEETEDITOR {
     /// Character length in line
     SE_PROTOCOL_SKIP
     size_t length {0};
+    /// Source line for projected runs; owner line means VisualLine.logical_line
+    SE_PROTOCOL_SKIP
+    size_t source_line {kVisualRunOwnerLine};
     /// Start x for drawing
     float x {0};
     /// Start y for drawing

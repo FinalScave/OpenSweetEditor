@@ -88,6 +88,39 @@ namespace NS_SWEETEDITOR {
       }
     }
 
+    auto appendProjectedSelectionForOwner = [&](size_t owner_line) {
+      TextRange projected_range;
+      if (!m_text_layout_->getFoldTailProjectedRange(owner_line, projected_range)) {
+        return;
+      }
+
+      const size_t source_line = projected_range.start.line;
+      if (source_line < sel_start.line || source_line > sel_end.line) {
+        return;
+      }
+
+      size_t col_begin = projected_range.start.column;
+      size_t col_end_val = projected_range.end.column;
+      if (source_line == sel_start.line) {
+        col_begin = std::max(col_begin, sel_start.column);
+      }
+      if (source_line == sel_end.line) {
+        col_end_val = std::min(col_end_val, sel_end.column);
+      }
+      if (col_begin >= col_end_val) {
+        return;
+      }
+      m_text_layout_->getColumnSelectionRects(source_line, col_begin, col_end_val, line_height, model.selection_rects);
+    };
+
+    HashSet<size_t> projected_owners;
+    for (const VisualLine& visual_line : model.lines) {
+      if (!projected_owners.insert(visual_line.logical_line).second) {
+        continue;
+      }
+      appendProjectedSelectionForOwner(visual_line.logical_line);
+    }
+
     PointF start_coord = m_text_layout_->getPositionScreenCoord(sel_start);
     model.selection_start_handle.position = start_coord;
     model.selection_start_handle.height = line_height;
