@@ -501,6 +501,28 @@ public:
     return true;
   }
 
+  inline bool read(EditorRenderColors& out) {
+    int32_t out_text_foreground_value{};
+    if (!readI32(out_text_foreground_value)) return false;
+    out.text_foreground = static_cast<int32_t>(out_text_foreground_value);
+    int32_t out_selection_foreground_value{};
+    if (!readI32(out_selection_foreground_value)) return false;
+    out.selection_foreground = static_cast<int32_t>(out_selection_foreground_value);
+    int32_t out_link_foreground_value{};
+    if (!readI32(out_link_foreground_value)) return false;
+    out.link_foreground = static_cast<int32_t>(out_link_foreground_value);
+    int32_t out_active_link_foreground_value{};
+    if (!readI32(out_active_link_foreground_value)) return false;
+    out.active_link_foreground = static_cast<int32_t>(out_active_link_foreground_value);
+    int32_t out_codelens_foreground_value{};
+    if (!readI32(out_codelens_foreground_value)) return false;
+    out.codelens_foreground = static_cast<int32_t>(out_codelens_foreground_value);
+    int32_t out_active_codelens_foreground_value{};
+    if (!readI32(out_active_codelens_foreground_value)) return false;
+    out.active_codelens_foreground = static_cast<int32_t>(out_active_codelens_foreground_value);
+    return true;
+  }
+
   inline bool read(HandleConfig& out) {
     if (!read(out.start_hit_offset)) return false;
     if (!read(out.end_hit_offset)) return false;
@@ -946,6 +968,245 @@ public:
     return true;
   }
 
+  inline bool write(const BracketGuide& value) {
+    if (!write(value.parent)) return false;
+    if (!write(value.end)) return false;
+    if (!writeList(value.children)) return false;
+    return true;
+  }
+
+  inline bool write(const CodeLensItem& value) {
+    if (!writeI32(static_cast<int32_t>(value.column))) return false;
+    if (!writeI32(static_cast<int32_t>(value.command_id))) return false;
+    if (!writeUtf8String(value.text)) return false;
+    return true;
+  }
+
+  inline bool write(const Diagnostic& value) {
+    if (!writeU32(static_cast<uint32_t>(value.column))) return false;
+    if (!writeU32(static_cast<uint32_t>(value.length))) return false;
+    if (!writeI32(static_cast<int32_t>(value.severity))) return false;
+    return true;
+  }
+
+  inline bool write(const FlowGuide& value) {
+    if (!write(value.start)) return false;
+    if (!write(value.end)) return false;
+    return true;
+  }
+
+  inline bool write(const FoldRegion& value) {
+    if (!writeU32(static_cast<uint32_t>(value.start_line))) return false;
+    if (!writeU32(static_cast<uint32_t>(value.end_line))) return false;
+    if (!writeU8(static_cast<uint8_t>(value.collapsed ? 1 : 0))) return false;
+    return true;
+  }
+
+  inline bool write(const GutterIcon& value) {
+    if (!writeI32(static_cast<int32_t>(value.icon_id))) return false;
+    return true;
+  }
+
+  inline bool write(const IndentGuide& value) {
+    if (!write(value.start)) return false;
+    if (!write(value.end)) return false;
+    return true;
+  }
+
+  inline bool write(const InlayHint& value) {
+    if (!writeI32(static_cast<int32_t>(value.type))) return false;
+    if (!writeU32(static_cast<uint32_t>(value.column))) return false;
+    if (!writeI32(static_cast<int32_t>(value.int_value))) return false;
+    if (!writeUtf8String(value.text)) return false;
+    return true;
+  }
+
+  inline bool write(const LinkSpan& value) {
+    if (!writeU32(static_cast<uint32_t>(value.column))) return false;
+    if (!writeU32(static_cast<uint32_t>(value.length))) return false;
+    if (!writeUtf8String(value.target)) return false;
+    return true;
+  }
+
+  inline bool write(const PhantomText& value) {
+    if (!writeU32(static_cast<uint32_t>(value.column))) return false;
+    if (!writeUtf8String(value.text)) return false;
+    return true;
+  }
+
+  inline bool write(const RegisterBatchTextStylesPayload& value) {
+    if (value.entries.size() > std::numeric_limits<uint32_t>::max()) return false;
+    if (!writeU32(static_cast<uint32_t>(value.entries.size()))) return false;
+    for (const auto& entry : value.entries) {
+      const auto& key = entry.first;
+      const auto& value = entry.second;
+      if (!writeU32(static_cast<uint32_t>(key))) return false;
+      if (!write(value)) return false;
+    }
+    return true;
+  }
+
+  inline bool write(const SeparatorGuide& value) {
+    if (!writeI32(static_cast<int32_t>(value.line))) return false;
+    if (!writeI32(static_cast<int32_t>(value.style))) return false;
+    if (!writeI32(static_cast<int32_t>(value.count))) return false;
+    if (!writeU32(static_cast<uint32_t>(value.text_end_column))) return false;
+    return true;
+  }
+
+  inline bool write(const SetBatchLineCodeLensPayload& value) {
+    if (value.entries.size() > std::numeric_limits<uint32_t>::max()) return false;
+    if (!writeU32(static_cast<uint32_t>(value.entries.size()))) return false;
+    for (const auto& entry : value.entries) {
+      const auto& key = entry.first;
+      const auto& value = entry.second;
+      if (!writeU32(static_cast<uint32_t>(key))) return false;
+      if (!writeList(value)) return false;
+    }
+    return true;
+  }
+
+  inline bool write(const SetBatchLineDiagnosticsPayload& value) {
+    if (value.entries.size() > std::numeric_limits<uint32_t>::max()) return false;
+    if (!writeU32(static_cast<uint32_t>(value.entries.size()))) return false;
+    for (const auto& entry : value.entries) {
+      const auto& key = entry.first;
+      const auto& value = entry.second;
+      if (!writeU32(static_cast<uint32_t>(key))) return false;
+      if (!writeList(value)) return false;
+    }
+    return true;
+  }
+
+  inline bool write(const SetBatchLineGutterIconsPayload& value) {
+    if (value.entries.size() > std::numeric_limits<uint32_t>::max()) return false;
+    if (!writeU32(static_cast<uint32_t>(value.entries.size()))) return false;
+    for (const auto& entry : value.entries) {
+      const auto& key = entry.first;
+      const auto& value = entry.second;
+      if (!writeU32(static_cast<uint32_t>(key))) return false;
+      if (!writeList(value)) return false;
+    }
+    return true;
+  }
+
+  inline bool write(const SetBatchLineInlayHintsPayload& value) {
+    if (value.entries.size() > std::numeric_limits<uint32_t>::max()) return false;
+    if (!writeU32(static_cast<uint32_t>(value.entries.size()))) return false;
+    for (const auto& entry : value.entries) {
+      const auto& key = entry.first;
+      const auto& value = entry.second;
+      if (!writeU32(static_cast<uint32_t>(key))) return false;
+      if (!writeList(value)) return false;
+    }
+    return true;
+  }
+
+  inline bool write(const SetBatchLineLinksPayload& value) {
+    if (value.entries.size() > std::numeric_limits<uint32_t>::max()) return false;
+    if (!writeU32(static_cast<uint32_t>(value.entries.size()))) return false;
+    for (const auto& entry : value.entries) {
+      const auto& key = entry.first;
+      const auto& value = entry.second;
+      if (!writeU32(static_cast<uint32_t>(key))) return false;
+      if (!writeList(value)) return false;
+    }
+    return true;
+  }
+
+  inline bool write(const SetBatchLinePhantomTextsPayload& value) {
+    if (value.entries.size() > std::numeric_limits<uint32_t>::max()) return false;
+    if (!writeU32(static_cast<uint32_t>(value.entries.size()))) return false;
+    for (const auto& entry : value.entries) {
+      const auto& key = entry.first;
+      const auto& value = entry.second;
+      if (!writeU32(static_cast<uint32_t>(key))) return false;
+      if (!writeList(value)) return false;
+    }
+    return true;
+  }
+
+  inline bool write(const SetBatchLineSpansPayload& value) {
+    if (!writeI32(static_cast<int32_t>(value.layer))) return false;
+    if (value.entries.size() > std::numeric_limits<uint32_t>::max()) return false;
+    if (!writeU32(static_cast<uint32_t>(value.entries.size()))) return false;
+    for (const auto& entry : value.entries) {
+      const auto& key = entry.first;
+      const auto& value = entry.second;
+      if (!writeU32(static_cast<uint32_t>(key))) return false;
+      if (!writeList(value)) return false;
+    }
+    return true;
+  }
+
+  inline bool write(const SetBracketGuidesPayload& value) {
+    if (!writeList(value.guides)) return false;
+    return true;
+  }
+
+  inline bool write(const SetFlowGuidesPayload& value) {
+    if (!writeList(value.guides)) return false;
+    return true;
+  }
+
+  inline bool write(const SetFoldRegionsPayload& value) {
+    if (!writeList(value.regions)) return false;
+    return true;
+  }
+
+  inline bool write(const SetIndentGuidesPayload& value) {
+    if (!writeList(value.guides)) return false;
+    return true;
+  }
+
+  inline bool write(const SetLineCodeLensPayload& value) {
+    if (!writeU32(static_cast<uint32_t>(value.line))) return false;
+    if (!writeList(value.items)) return false;
+    return true;
+  }
+
+  inline bool write(const SetLineDiagnosticsPayload& value) {
+    if (!writeU32(static_cast<uint32_t>(value.line))) return false;
+    if (!writeList(value.diagnostics)) return false;
+    return true;
+  }
+
+  inline bool write(const SetLineGutterIconsPayload& value) {
+    if (!writeU32(static_cast<uint32_t>(value.line))) return false;
+    if (!writeList(value.icons)) return false;
+    return true;
+  }
+
+  inline bool write(const SetLineInlayHintsPayload& value) {
+    if (!writeU32(static_cast<uint32_t>(value.line))) return false;
+    if (!writeList(value.hints)) return false;
+    return true;
+  }
+
+  inline bool write(const SetLineLinksPayload& value) {
+    if (!writeU32(static_cast<uint32_t>(value.line))) return false;
+    if (!writeList(value.links)) return false;
+    return true;
+  }
+
+  inline bool write(const SetLinePhantomTextsPayload& value) {
+    if (!writeU32(static_cast<uint32_t>(value.line))) return false;
+    if (!writeList(value.phantoms)) return false;
+    return true;
+  }
+
+  inline bool write(const SetLineSpansPayload& value) {
+    if (!writeU32(static_cast<uint32_t>(value.line))) return false;
+    if (!writeI32(static_cast<int32_t>(value.layer))) return false;
+    if (!writeList(value.spans)) return false;
+    return true;
+  }
+
+  inline bool write(const SetSeparatorGuidesPayload& value) {
+    if (!writeList(value.guides)) return false;
+    return true;
+  }
+
   inline bool write(const StyleSpan& value) {
     if (!writeU32(static_cast<uint32_t>(value.column))) return false;
     if (!writeU32(static_cast<uint32_t>(value.length))) return false;
@@ -957,6 +1218,47 @@ public:
     if (!writeI32(static_cast<int32_t>(value.color))) return false;
     if (!writeI32(static_cast<int32_t>(value.background_color))) return false;
     if (!writeI32(static_cast<int32_t>(value.font_style))) return false;
+    return true;
+  }
+
+  inline bool write(const EditorOptions& value) {
+    if (!writeF32(static_cast<float>(value.touch_slop))) return false;
+    if (!writeI64(static_cast<int64_t>(value.double_tap_timeout))) return false;
+    if (!writeI64(static_cast<int64_t>(value.long_press_ms))) return false;
+    if (!writeF32(static_cast<float>(value.fling_friction))) return false;
+    if (!writeF32(static_cast<float>(value.fling_min_velocity))) return false;
+    if (!writeF32(static_cast<float>(value.fling_max_velocity))) return false;
+    if (!writeU64(static_cast<uint64_t>(value.max_undo_stack_size))) return false;
+    if (!writeI64(static_cast<int64_t>(value.key_chord_timeout_ms))) return false;
+    if (!writeU8(static_cast<uint8_t>(value.reveal_selection_end_on_select_all ? 1 : 0))) return false;
+    return true;
+  }
+
+  inline bool write(const EditorRenderColors& value) {
+    if (!writeI32(static_cast<int32_t>(value.text_foreground))) return false;
+    if (!writeI32(static_cast<int32_t>(value.selection_foreground))) return false;
+    if (!writeI32(static_cast<int32_t>(value.link_foreground))) return false;
+    if (!writeI32(static_cast<int32_t>(value.active_link_foreground))) return false;
+    if (!writeI32(static_cast<int32_t>(value.codelens_foreground))) return false;
+    if (!writeI32(static_cast<int32_t>(value.active_codelens_foreground))) return false;
+    return true;
+  }
+
+  inline bool write(const HandleConfig& value) {
+    if (!write(value.start_hit_offset)) return false;
+    if (!write(value.end_hit_offset)) return false;
+    return true;
+  }
+
+  inline bool write(const ScrollbarConfig& value) {
+    if (!writeF32(static_cast<float>(value.thickness))) return false;
+    if (!writeF32(static_cast<float>(value.min_thumb))) return false;
+    if (!writeF32(static_cast<float>(value.thumb_hit_padding))) return false;
+    if (!writeI32(static_cast<int32_t>(value.mode))) return false;
+    if (!writeU8(static_cast<uint8_t>(value.thumb_draggable ? 1 : 0))) return false;
+    if (!writeI32(static_cast<int32_t>(value.track_tap_mode))) return false;
+    if (!writeU16(static_cast<uint16_t>(value.fade_delay_ms))) return false;
+    if (!writeU16(static_cast<uint16_t>(value.fade_duration_ms))) return false;
     return true;
   }
 
@@ -1005,6 +1307,15 @@ public:
     return true;
   }
 
+  inline bool write(const ImeDocumentTextReplacement& value) {
+    if (!writeU32(static_cast<uint32_t>(value.start_offset))) return false;
+    if (!writeU32(static_cast<uint32_t>(value.end_offset))) return false;
+    if (!writeUtf8String(value.text)) return false;
+    if (!writeI32(static_cast<int32_t>(value.cursor_offset))) return false;
+    if (!writeI32(static_cast<int32_t>(value.script_class))) return false;
+    return true;
+  }
+
   inline bool write(const ImeInputContext& value) {
     if (!writeU64(static_cast<uint64_t>(value.id))) return false;
     if (!writeI32(static_cast<int32_t>(value.revision))) return false;
@@ -1014,6 +1325,26 @@ public:
     if (!writeI32(value.has_composition ? 1 : 0)) return false;
     if (!write(value.composition)) return false;
     if (!writeI32(static_cast<int32_t>(value.kind))) return false;
+    return true;
+  }
+
+  inline bool write(const ImeInputContextTextReplacement& value) {
+    if (!writeU32(static_cast<uint32_t>(value.start_offset))) return false;
+    if (!writeU32(static_cast<uint32_t>(value.end_offset))) return false;
+    if (!writeUtf8String(value.text)) return false;
+    if (!writeI32(static_cast<int32_t>(value.cursor_offset))) return false;
+    if (!writeI32(static_cast<int32_t>(value.script_class))) return false;
+    return true;
+  }
+
+  inline bool write(const ImeInputStateTextReplacement& value) {
+    if (!writeU64(static_cast<uint64_t>(value.context_id))) return false;
+    if (!writeI32(static_cast<int32_t>(value.document_start_offset))) return false;
+    if (!writeU32(static_cast<uint32_t>(value.start_offset))) return false;
+    if (!writeU32(static_cast<uint32_t>(value.end_offset))) return false;
+    if (!writeUtf8String(value.text)) return false;
+    if (!writeI32(static_cast<int32_t>(value.cursor_offset))) return false;
+    if (!writeI32(static_cast<int32_t>(value.script_class))) return false;
     return true;
   }
 
@@ -1032,9 +1363,50 @@ public:
     return true;
   }
 
+  inline bool write(const ImeTextModelDelta& value) {
+    if (!writeI32(static_cast<int32_t>(value.mode))) return false;
+    if (!writeU64(static_cast<uint64_t>(value.context_id))) return false;
+    if (!writeI32(static_cast<int32_t>(value.document_start_offset))) return false;
+    if (!writeUtf8String(value.old_text)) return false;
+    if (!write(value.delta)) return false;
+    if (!writeUtf8String(value.delta_text)) return false;
+    if (!write(value.selection)) return false;
+    if (!write(value.composition)) return false;
+    if (!writeI32(static_cast<int32_t>(value.script_class))) return false;
+    return true;
+  }
+
+  inline bool write(const ImeTextModelState& value) {
+    if (!writeI32(static_cast<int32_t>(value.mode))) return false;
+    if (!writeU64(static_cast<uint64_t>(value.context_id))) return false;
+    if (!writeI32(static_cast<int32_t>(value.document_start_offset))) return false;
+    if (!writeUtf8String(value.text)) return false;
+    if (!write(value.selection)) return false;
+    if (!write(value.composition)) return false;
+    if (!writeI32(static_cast<int32_t>(value.script_class))) return false;
+    return true;
+  }
+
   inline bool write(const ImeTextRange& value) {
     if (!writeI32(static_cast<int32_t>(value.start))) return false;
     if (!writeI32(static_cast<int32_t>(value.end))) return false;
+    return true;
+  }
+
+  inline bool write(const ImeTextReplacement& value) {
+    if (!write(value.range)) return false;
+    if (!writeUtf8String(value.text)) return false;
+    if (!writeI32(static_cast<int32_t>(value.script_class))) return false;
+    return true;
+  }
+
+  inline bool write(const GestureEvent& value) {
+    if (!writeI32(static_cast<int32_t>(value.type))) return false;
+    if (!writeList(value.points)) return false;
+    if (!writeI32(static_cast<int32_t>(value.modifiers))) return false;
+    if (!writeF32(static_cast<float>(value.wheel_delta_x))) return false;
+    if (!writeF32(static_cast<float>(value.wheel_delta_y))) return false;
+    if (!writeF32(static_cast<float>(value.direct_scale))) return false;
     return true;
   }
 
@@ -1057,6 +1429,28 @@ public:
   inline bool write(const KeyChord& value) {
     if (!writeU8(static_cast<uint8_t>(value.modifiers))) return false;
     if (!writeU16(static_cast<uint16_t>(value.key_code))) return false;
+    return true;
+  }
+
+  inline bool write(const SetKeyMapPayload& value) {
+    if (!writeList(value.bindings)) return false;
+    return true;
+  }
+
+  inline bool write(const LinkedEditingModel& value) {
+    if (!writeList(value.groups)) return false;
+    return true;
+  }
+
+  inline bool write(const StartLinkedEditingPayload& value) {
+    if (!write(value.model)) return false;
+    return true;
+  }
+
+  inline bool write(const TabStopGroup& value) {
+    if (!writeU32(static_cast<uint32_t>(value.index))) return false;
+    if (!writeList(value.ranges)) return false;
+    if (!writeUtf8String(value.default_text)) return false;
     return true;
   }
 

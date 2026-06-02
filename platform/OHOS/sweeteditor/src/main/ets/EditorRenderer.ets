@@ -271,11 +271,6 @@ export class EditorRenderer {
     const fontStyle = run.style ? run.style.fontStyle : TextStyle.NORMAL;
     let color = (run.style && run.style.color !== 0) ? run.style.color : this.theme.textColor;
     let metrics: FontMetricsSnapshot | null = null;
-    if (run.type === VisualRunType.CODELENS) {
-      color = this.getCodeLensColor(run.active);
-    } else if (run.type === VisualRunType.LINK) {
-      color = this.getLinkColor(run.active);
-    }
 
     if (run.style && run.style.backgroundColor !== 0) {
       metrics = this.getFontMetrics(ctx, fontStyle, textSize, this.fontFamily);
@@ -871,52 +866,6 @@ export class EditorRenderer {
       return -1;
     }
     return model.cursor.textPosition.line;
-  }
-
-  private getCodeLensColor(active: boolean): number {
-    if (active) {
-      if (this.theme.codeLensActiveColor !== 0) {
-        return this.theme.codeLensActiveColor;
-      }
-      if (this.theme.currentLineNumberColor !== 0) {
-        return this.theme.currentLineNumberColor;
-      }
-      if (this.theme.lineNumberColor !== 0) {
-        return this.theme.lineNumberColor;
-      }
-      return this.theme.textColor;
-    }
-
-    if (this.theme.codeLensColor !== 0) {
-      return this.theme.codeLensColor;
-    }
-    if (this.theme.inlayHintTextColor !== 0) {
-      return this.theme.inlayHintTextColor;
-    }
-    return this.theme.textColor;
-  }
-
-  private getLinkColor(active: boolean): number {
-    if (active) {
-      if (this.theme.linkActiveColor !== 0) {
-        return this.theme.linkActiveColor;
-      }
-      if (this.theme.linkColor !== 0) {
-        return this.theme.linkColor;
-      }
-      return this.getCodeLensColor(true);
-    }
-
-    if (this.theme.linkColor !== 0) {
-      return this.theme.linkColor;
-    }
-    if (this.theme.codeLensColor !== 0) {
-      return this.theme.codeLensColor;
-    }
-    if (this.theme.inlayHintTextColor !== 0) {
-      return this.theme.inlayHintTextColor;
-    }
-    return this.theme.textColor;
   }
 
   private getActiveLineNumberColor(): number {

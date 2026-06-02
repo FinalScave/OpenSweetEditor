@@ -21,6 +21,7 @@ import com.qiplat.sweeteditor.core.adornment.SeparatorGuide;
 import com.qiplat.sweeteditor.core.adornment.SpanLayer;
 import com.qiplat.sweeteditor.core.adornment.InlayHint;
 import com.qiplat.sweeteditor.core.action.EditorActionResult;
+import com.qiplat.sweeteditor.core.config.EditorRenderColors;
 import com.qiplat.sweeteditor.core.config.EditorOptions;
 import com.qiplat.sweeteditor.core.config.HandleConfig;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
@@ -1254,6 +1255,17 @@ public class EditorCore {
         return new IntRange(visible[0], visible[1]);
     }
 
+    /**
+     * Sets editor colors resolved by native core when building visual runs.
+     */
+    @NonNull
+    public EditorActionResult setEditorRenderColors(@Nullable EditorRenderColors colors) {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        if (colors == null) colors = new EditorRenderColors();
+        ByteBuffer payload = CoreProtocol.encodeEditorRenderColors(colors);
+        return decodeAction(nativeSetEditorRenderColors(mNativeHandle, payload, payload.remaining()));
+    }
+
     // ==================== Style Registration + Highlight Spans ====================
 
     /**
@@ -2368,6 +2380,9 @@ public class EditorCore {
 
     @FastNative
     private static native int[] nativeGetVisibleLineRange(long handle);
+
+    @FastNative
+    private static native ByteBuffer nativeSetEditorRenderColors(long handle, ByteBuffer data, int size);
 
     @FastNative
     private static native ByteBuffer nativeRegisterTextStyle(long handle, int styleId, int color, int backgroundColor, int fontStyle);

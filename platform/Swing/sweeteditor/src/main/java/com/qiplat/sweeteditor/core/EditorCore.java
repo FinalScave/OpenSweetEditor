@@ -2,6 +2,7 @@ package com.qiplat.sweeteditor.core;
 
 import com.qiplat.sweeteditor.core.action.EditorActionResult;
 import com.qiplat.sweeteditor.core.adornment.*;
+import com.qiplat.sweeteditor.core.config.EditorRenderColors;
 import com.qiplat.sweeteditor.core.config.EditorOptions;
 import com.qiplat.sweeteditor.core.config.HandleConfig;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
@@ -666,6 +667,14 @@ public class EditorCore {
 
     public ScrollbarConfig getScrollbarConfig() {
         return scrollbarConfig;
+    }
+
+    public EditorActionResult setEditorRenderColors(EditorRenderColors colors) {
+        if (colors == null) colors = new EditorRenderColors();
+        try (Arena tempArena = Arena.ofConfined()) {
+            MemorySegment payload = CoreProtocol.encodeEditorRenderColors(tempArena, colors);
+            return decodeAction(EditorNative.setEditorRenderColors(nativeHandle, payload, payload.byteSize()));
+        }
     }
 
     // ===================== Position/Coordinate Query =====================

@@ -55,6 +55,7 @@ class EditorSession {
     decorationProviderManager = DecorationProviderManager(session: this);
     inlineSuggestionController = InlineSuggestionController(session: this);
     newLineActionProviderManager = NewLineActionProviderManager();
+    _setEditorRenderColors();
     _editorCore!.registerBatchTextStyles(_theme.textStyles);
     _applyInitialLanguageConfiguration(_languageConfiguration);
   }
@@ -308,7 +309,40 @@ class EditorSession {
   void applyTheme(EditorTheme theme) {
     _theme = theme;
     _painter.updateTheme(theme);
+    final renderColorResult = _setEditorRenderColors();
+    if (renderColorResult != null) {
+      dispatchEditorActionResult(renderColorResult);
+    }
     _registerTextStyles();
+  }
+
+  core.EditorActionResult? _setEditorRenderColors() {
+    final ec = _editorCore;
+    if (ec == null) return null;
+    final codeLensForeground = _theme.codeLensColor != 0
+        ? _theme.codeLensColor
+        : _theme.inlayHintTextColor;
+    final activeCodeLensForeground = _theme.codeLensActiveColor != 0
+        ? _theme.codeLensActiveColor
+        : (_theme.currentLineNumberColor != 0
+              ? _theme.currentLineNumberColor
+              : _theme.lineNumberColor);
+    final linkForeground = _theme.linkColor != 0
+        ? _theme.linkColor
+        : codeLensForeground;
+    final activeLinkForeground = _theme.linkActiveColor != 0
+        ? _theme.linkActiveColor
+        : (_theme.linkColor != 0 ? _theme.linkColor : activeCodeLensForeground);
+    return ec.setEditorRenderColors(
+      core.EditorRenderColors(
+        textForeground: _theme.textColor,
+        selectionForeground: _theme.selectionTextColor,
+        linkForeground: linkForeground,
+        activeLinkForeground: activeLinkForeground,
+        codelensForeground: codeLensForeground,
+        activeCodelensForeground: activeCodeLensForeground,
+      ),
+    );
   }
 
   void _registerTextStyles() {

@@ -10,6 +10,7 @@ import {
 } from './core/CoreAction';
 import {
   EditorOptions,
+  EditorRenderColors,
   ScrollbarConfig,
   ScrollbarMode,
   ScrollbarTrackTapMode,
@@ -596,6 +597,7 @@ export struct SweetEditor {
     this.editorCore.setKeyMap(this.keyMap.getBindings());
     this.registerImeCallbacks();
 
+    this.editorCore.setEditorRenderColors(this.buildEditorRenderColors(this.theme));
     this.editorCore.registerBatchTextStyles(this.theme.textStyles);
 
     this.initSubsystems();
@@ -727,9 +729,29 @@ export struct SweetEditor {
       this.renderer.applyTheme(theme);
     }
     if (this.editorCore) {
+      this.dispatchEditorActionResult(this.editorCore.setEditorRenderColors(this.buildEditorRenderColors(theme)));
       this.dispatchEditorActionResult(this.editorCore.registerBatchTextStyles(theme.textStyles));
     }
     this.flush();
+  }
+
+  private buildEditorRenderColors(theme: EditorTheme): EditorRenderColors {
+    const colors = new EditorRenderColors();
+    const codeLensForeground = theme.codeLensColor !== 0 ? theme.codeLensColor : theme.inlayHintTextColor;
+    const activeCodeLensForeground = theme.codeLensActiveColor !== 0
+      ? theme.codeLensActiveColor
+      : (theme.currentLineNumberColor !== 0 ? theme.currentLineNumberColor : theme.lineNumberColor);
+    const linkForeground = theme.linkColor !== 0 ? theme.linkColor : codeLensForeground;
+    const activeLinkForeground = theme.linkActiveColor !== 0
+      ? theme.linkActiveColor
+      : (theme.linkColor !== 0 ? theme.linkColor : activeCodeLensForeground);
+    colors.textForeground = theme.textColor;
+    colors.selectionForeground = theme.selectionTextColor;
+    colors.linkForeground = linkForeground;
+    colors.activeLinkForeground = activeLinkForeground;
+    colors.codelensForeground = codeLensForeground;
+    colors.activeCodelensForeground = activeCodeLensForeground;
+    return colors;
   }
 
   getVisibleLineRange(): IntRange {

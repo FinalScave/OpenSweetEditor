@@ -54,6 +54,8 @@ namespace NS_SWEETEDITOR {
     bool has_selection {false};
     /// Current logical text selection range
     TextRange selection_range;
+    /// Render-time editor colors resolved into visual runs
+    EditorRenderColors render_colors;
   };
 
   enum struct PointerHitPolicy : uint8_t {
@@ -295,6 +297,7 @@ namespace NS_SWEETEDITOR {
     /// Zip-align one line with highlight spans, inlay hints, and phantom texts to build VisualRuns
     void buildLineRuns(size_t line_index, const U16String& line_text, Vector<VisualRun>& runs);
     void cropVisualLineRuns(VisualLine& visual_line, float scroll_x);
+    void applyPresentationState(VisualLine& visual_line, const PresentationContext& presentation_context);
     /// Auto-wrap: split one line's runs into multiple VisualLines by available width
     void wrapLineRuns(size_t line_index, float start_y, float line_height,
                       Vector<VisualRun>& runs, Vector<VisualLine>& out_lines,

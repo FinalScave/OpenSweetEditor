@@ -108,6 +108,10 @@ namespace NS_SWEETEDITOR {
     /// @param config Scrollbar geometry/behavior parameters
     EditorActionResult setScrollbarConfig(const ScrollbarConfig& config);
 
+    /// Set editor colors resolved by the core when building visual runs
+    /// @param colors Editor render colors
+    EditorActionResult setEditorRenderColors(const EditorRenderColors& colors);
+
     /// Load text content
     /// @param document Document instance
     EditorActionResult loadDocument(const SharedPtr<Document>& document);

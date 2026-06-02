@@ -10,6 +10,7 @@ import com.qiplat.sweeteditor.core.action.EditorActionResult;
 import com.qiplat.sweeteditor.core.action.ScrollBehavior;
 import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.config.EditorOptions;
+import com.qiplat.sweeteditor.core.config.EditorRenderColors;
 import com.qiplat.sweeteditor.core.adornment.*;
 import com.qiplat.sweeteditor.core.foundation.*;
 import com.qiplat.sweeteditor.core.foundation.PointF;
@@ -138,6 +139,9 @@ public class SweetEditor extends JPanel {
 
         inlineSuggestionController = new InlineSuggestionController(this);
 
+        if (currentTheme != null) {
+            editorCore.setEditorRenderColors(buildEditorRenderColors(currentTheme));
+        }
         if (currentTheme != null && !currentTheme.textStyles.isEmpty()) {
             editorCore.registerBatchTextStyles(currentTheme.textStyles);
         }
@@ -197,6 +201,7 @@ public class SweetEditor extends JPanel {
         this.currentTheme = theme;
         renderer.applyTheme(theme);
         setBackground(theme.backgroundColor);
+        dispatchEditorActionResult(editorCore.setEditorRenderColors(buildEditorRenderColors(theme)));
         EditorActionResult result = null;
         if (theme != null && !theme.textStyles.isEmpty()) {
             result = editorCore.registerBatchTextStyles(theme.textStyles);
@@ -209,6 +214,30 @@ public class SweetEditor extends JPanel {
         }
         dispatchEditorActionResult(result);
         flush();
+    }
+
+    private EditorRenderColors buildEditorRenderColors(EditorTheme theme) {
+        int codeLensForeground = colorToArgb(theme.codeLensColor != null ? theme.codeLensColor : theme.inlayHintTextColor);
+        int activeCodeLensForeground = colorToArgb(theme.codeLensActiveColor != null
+                ? theme.codeLensActiveColor
+                : (theme.currentLineNumberColor != null ? theme.currentLineNumberColor : theme.lineNumberColor));
+        int linkForeground = colorToArgb(theme.linkColor);
+        if (linkForeground == 0) linkForeground = codeLensForeground;
+        int activeLinkForeground = colorToArgb(theme.linkActiveColor != null
+                ? theme.linkActiveColor
+                : theme.linkColor);
+        if (activeLinkForeground == 0) activeLinkForeground = activeCodeLensForeground;
+        return new EditorRenderColors(
+                colorToArgb(theme.textColor),
+                colorToArgb(theme.selectionTextColor),
+                linkForeground,
+                activeLinkForeground,
+                codeLensForeground,
+                activeCodeLensForeground);
+    }
+
+    private int colorToArgb(Color color) {
+        return color == null ? 0 : color.getRGB();
     }
 
     public IntRange getVisibleLineRange() {

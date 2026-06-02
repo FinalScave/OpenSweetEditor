@@ -898,6 +898,26 @@ int _sizeOfEditorOptions(EditorOptions value) {
   return size;
 }
 
+void _writeEditorRenderColors(_BinaryWriter writer, EditorRenderColors value) {
+  writer.writeInt32(value.textForeground);
+  writer.writeInt32(value.selectionForeground);
+  writer.writeInt32(value.linkForeground);
+  writer.writeInt32(value.activeLinkForeground);
+  writer.writeInt32(value.codelensForeground);
+  writer.writeInt32(value.activeCodelensForeground);
+}
+
+int _sizeOfEditorRenderColors(EditorRenderColors value) {
+  var size = 0;
+  size += 4;
+  size += 4;
+  size += 4;
+  size += 4;
+  size += 4;
+  size += 4;
+  return size;
+}
+
 void _writeHandleConfig(_BinaryWriter writer, HandleConfig value) {
   _writeOffsetRect(writer, value.startHitOffset);
   _writeOffsetRect(writer, value.endHitOffset);
@@ -2198,6 +2218,12 @@ class CoreProtocol {
   static Uint8List encodeEditorOptions(EditorOptions value) {
     final writer = _BinaryWriter(_sizeOfEditorOptions(value));
     _writeEditorOptions(writer, value);
+    return writer.toBytes();
+  }
+
+  static Uint8List encodeEditorRenderColors(EditorRenderColors value) {
+    final writer = _BinaryWriter(_sizeOfEditorRenderColors(value));
+    _writeEditorRenderColors(writer, value);
     return writer.toBytes();
   }
 

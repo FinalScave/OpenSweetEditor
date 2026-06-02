@@ -173,6 +173,7 @@ namespace SweetEditor {
 			completionProviderManager.Dismissed += OnCompletionDismissed;
 			selectionMenuController.CustomItemSelected += OnSelectionMenuCustomItemSelected;
 
+			editorCore.SetEditorRenderColors(BuildEditorRenderColors(currentTheme));
 			editorCore.RegisterBatchTextStyles(currentTheme.TextStyles);
 			settings.SetContentStartPadding(DefaultContentStartPadding);
 
@@ -825,7 +826,20 @@ namespace SweetEditor {
 			renderModelDebugLogged = false;
 			currentTheme = theme;
 			renderer.ApplyTheme(theme);
+			DispatchEditorActionResult(editorCore.SetEditorRenderColors(BuildEditorRenderColors(theme)));
 			DispatchEditorActionResult(editorCore.RegisterBatchTextStyles(theme.TextStyles));
+		}
+
+		private static EditorRenderColors BuildEditorRenderColors(EditorTheme theme) {
+			int activeCodeLensForeground = (int)(theme.CurrentLineNumberColor != 0
+				? theme.CurrentLineNumberColor
+				: theme.LineNumberColor);
+			return new EditorRenderColors {
+				TextForeground = (int)theme.TextColor,
+				SelectionForeground = (int)theme.SelectionTextColor,
+				CodelensForeground = (int)theme.InlayHintTextColor,
+				ActiveCodelensForeground = activeCodeLensForeground
+			};
 		}
 
 		public EditorSettings GetSettings() => settings;

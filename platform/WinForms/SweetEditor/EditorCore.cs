@@ -608,6 +608,9 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_set_scrollbar_config", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetScrollbarConfig(IntPtr handle, byte[] data, UIntPtr size, out UIntPtr outSize);
 
+		[DllImport(LibraryName, EntryPoint = "editor_set_editor_render_colors", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr SetEditorRenderColors(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
+
 		[DllImport(LibraryName, EntryPoint = "editor_get_position_rect", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void GetPositionRect(IntPtr handle, nuint line, nuint column, ref float outX, ref float outY, ref float outHeight);
 
@@ -1737,6 +1740,14 @@ namespace SweetEditor {
 		/// <summary>Gets the current scrollbar geometry configuration.</summary>
 		public ScrollbarConfig GetScrollbarConfig() {
 			return IsReleased ? new ScrollbarConfig() : _scrollbarConfig;
+		}
+
+		public EditorActionResult SetEditorRenderColors(EditorRenderColors colors) {
+			if (IsReleased) return EditorActionResult.Empty;
+			colors ??= new EditorRenderColors();
+			byte[] payload = CoreProtocol.EncodeEditorRenderColors(colors);
+			IntPtr payloadPtr = NativeMethods.SetEditorRenderColors(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Gets the screen-space rectangle for any text position (for floating panel positioning).</summary>

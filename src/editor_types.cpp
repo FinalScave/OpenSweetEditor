@@ -56,6 +56,19 @@ namespace NS_SWEETEDITOR {
         + "}";
   }
 
+  bool EditorRenderColors::operator==(const EditorRenderColors& other) const {
+    return text_foreground == other.text_foreground
+        && selection_foreground == other.selection_foreground
+        && link_foreground == other.link_foreground
+        && active_link_foreground == other.active_link_foreground
+        && codelens_foreground == other.codelens_foreground
+        && active_codelens_foreground == other.active_codelens_foreground;
+  }
+
+  bool EditorRenderColors::operator!=(const EditorRenderColors& other) const {
+    return !(*this == other);
+  }
+
   U8String EditorSettings::dump() const {
     return "EditorSettings {max_scale = " + std::to_string(max_scale)
         + ", read_only = " + (read_only ? "true" : "false")
@@ -74,6 +87,12 @@ namespace NS_SWEETEDITOR {
         + ", gutter_sticky = " + (gutter_sticky ? "true" : "false")
         + ", gutter_visible = " + (gutter_visible ? "true" : "false")
         + ", wrap_mode = " + std::to_string(static_cast<int>(wrap_mode))
+        + ", render_colors.text_foreground = " + std::to_string(render_colors.text_foreground)
+        + ", render_colors.selection_foreground = " + std::to_string(render_colors.selection_foreground)
+        + ", render_colors.link_foreground = " + std::to_string(render_colors.link_foreground)
+        + ", render_colors.active_link_foreground = " + std::to_string(render_colors.active_link_foreground)
+        + ", render_colors.codelens_foreground = " + std::to_string(render_colors.codelens_foreground)
+        + ", render_colors.active_codelens_foreground = " + std::to_string(render_colors.active_codelens_foreground)
         + "}";
   }
 }

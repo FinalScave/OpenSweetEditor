@@ -180,6 +180,15 @@ namespace NS_SWEETEDITOR {
     return finishAction(before, EditorActionReason::SETUP, true, {}, true);
   }
 
+  EditorActionResult EditorCore::setEditorRenderColors(const EditorRenderColors& colors) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_settings_.render_colors == colors) {
+      return finishAction(before, EditorActionReason::SETUP, true);
+    }
+    m_settings_.render_colors = colors;
+    return finishAction(before, EditorActionReason::SETUP, true, {}, true);
+  }
+
   EditorActionResult EditorCore::loadDocument(const SharedPtr<Document>& document) {
     const ActionSnapshot before = captureActionSnapshot();
     cancelLinkedEditingInternal();
@@ -491,8 +500,9 @@ namespace NS_SWEETEDITOR {
     presentation_context.active_hit_target = getActiveHitTarget();
     presentation_context.has_selection = m_caret_.has_selection;
     if (m_caret_.has_selection) {
-      presentation_context.selection_range = m_caret_.selection;
+      presentation_context.selection_range = m_caret_.normalizedSelection();
     }
+    presentation_context.render_colors = m_settings_.render_colors;
     m_visible_line_range_ = {};
     VisibleLineInfo visible_line_info = m_text_layout_->layoutVisibleLines(model, presentation_context);
     if (!model.lines.empty()) {

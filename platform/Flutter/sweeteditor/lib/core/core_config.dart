@@ -130,6 +130,24 @@ class EditorOptions {
   final bool revealSelectionEndOnSelectAll;
 }
 
+class EditorRenderColors {
+  const EditorRenderColors({
+    this.textForeground = 0,
+    this.selectionForeground = 0,
+    this.linkForeground = 0,
+    this.activeLinkForeground = 0,
+    this.codelensForeground = 0,
+    this.activeCodelensForeground = 0,
+  });
+
+  final int textForeground;
+  final int selectionForeground;
+  final int linkForeground;
+  final int activeLinkForeground;
+  final int codelensForeground;
+  final int activeCodelensForeground;
+}
+
 class HandleConfig {
   const HandleConfig({
     this.startHitOffset = const OffsetRect(),

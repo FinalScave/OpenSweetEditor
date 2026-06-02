@@ -170,6 +170,19 @@ namespace NS_SWEETEDITOR {
     uint16_t fade_duration_ms {300};
   };
 
+  /// Editor colors resolved by the core when materializing visual runs.
+  struct SE_PROTOCOL_IN(config) EditorRenderColors {
+    int32_t text_foreground {0};
+    int32_t selection_foreground {0};
+    int32_t link_foreground {0};
+    int32_t active_link_foreground {0};
+    int32_t codelens_foreground {0};
+    int32_t active_codelens_foreground {0};
+
+    bool operator==(const EditorRenderColors& other) const;
+    bool operator!=(const EditorRenderColors& other) const;
+  };
+
   /// Runtime-mutable editor settings (modified via individual setters)
   struct EditorSettings {
     /// Max scale factor
@@ -199,6 +212,8 @@ namespace NS_SWEETEDITOR {
     bool gutter_visible {true};
     /// Current auto-wrap mode
     WrapMode wrap_mode {WrapMode::NONE};
+    /// Core-resolved editor render colors
+    EditorRenderColors render_colors;
 
     U8String dump() const;
   };

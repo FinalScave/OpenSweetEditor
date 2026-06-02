@@ -58,6 +58,7 @@ class EditorTheme {
   int textColor = 0xFFD7DEE9;
   int cursorColor = 0xFF8FB8FF;
   int selectionColor = 0x553B4F72;
+  int selectionTextColor = 0xFFFFFFFF;
   int lineNumberColor = 0xFF5E6778;
   int currentLineNumberColor = 0xFF9CB3D6;
   int currentLineColor = 0x163A4A66;
@@ -133,6 +134,7 @@ class EditorTheme {
       ..textColor = 0xFF1F2937
       ..cursorColor = 0xFF2563EB
       ..selectionColor = 0x4D60A5FA
+      ..selectionTextColor = 0xFFFFFFFF
       ..lineNumberColor = 0xFF8A94A6
       ..currentLineNumberColor = 0xFF3A5FA0
       ..currentLineColor = 0x120D3B66

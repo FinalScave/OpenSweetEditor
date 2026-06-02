@@ -1249,6 +1249,20 @@ class EditorCore {
     });
   }
 
+  EditorActionResult setEditorRenderColors(EditorRenderColors colors) {
+    _ensureOpen();
+    final payload = CoreProtocol.encodeEditorRenderColors(colors);
+    return _callWithBinaryActionData(
+      payload,
+      (data, size, outSize) => bindings.editor_set_editor_render_colors(
+        _handle,
+        data,
+        size,
+        outSize,
+      ),
+    );
+  }
+
   EditorActionResult registerTextStyle(
     int styleId,
     int color, {

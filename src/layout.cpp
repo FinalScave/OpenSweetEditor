@@ -3,6 +3,7 @@
 //
 #include <cmath>
 #include <algorithm>
+#include <limits>
 #include <simdutf/simdutf.h>
 #include <utf8/utf8.h>
 #include <sweeteditor/layout.h>
@@ -174,23 +175,7 @@ namespace NS_SWEETEDITOR {
             run.x += text_area_x;
           }
         }
-        if (presentation_context.active_hit_target.type != HitTargetType::NONE
-            && visual_line.logical_line == presentation_context.active_hit_target.line) {
-          for (VisualRun& run : visual_line.runs) {
-            if (run.type == VisualRunType::CODELENS
-                && run.column == presentation_context.active_hit_target.column
-                && run.icon_id == presentation_context.active_hit_target.icon_id) {
-              run.active = true;
-            } else if (run.type == VisualRunType::LINK) {
-              const LinkSpan* link = m_decoration_manager_->findLinkAt(visual_line.logical_line, run.column);
-              if (link != nullptr && link->column == presentation_context.active_hit_target.column) {
-                run.active = true;
-              }
-            }
-          }
-        }
-        // TODO: Apply presentation_context.selection_range here when selection-aware
-        // run splitting and text coloring move into the render-model generation path.
+        applyPresentationState(visual_line, presentation_context);
         // Fill gutter state only for the line that explicitly owns logical-line gutter semantics.
         if (visual_line.owns_gutter_semantics && m_layout_metrics_.gutter_visible) {
           buildGutterIconRenderItems(i, screen_y, gutter_offset, model.gutter_icons);
@@ -1572,6 +1557,7 @@ namespace NS_SWEETEDITOR {
       // TEXT / PHANTOM_TEXT: crop only when run clearly crosses bounds, keep margin
       bool need_crop_left = (run_left < visible_left);
       bool need_crop_right = (run_right > visible_right);
+      const bool updates_source_range = isSourceTextRun(run) && run.length > 0;
 
       if (need_crop_left || need_crop_right) {
         if (m_is_monospace_ && run.length > 0 && !UnicodeUtil::hasComplexGrapheme(run.text)) {
@@ -1605,6 +1591,10 @@ namespace NS_SWEETEDITOR {
               float crop_offset = visible_start > 0
                   ? measureWidth(run.text.substr(0, visible_start), run.style.font_style) : 0;
               run.x = text_area_x + (run_left + crop_offset) - scroll_x;
+              if (updates_source_range) {
+                run.column += visible_start;
+                run.length = visible_len;
+              }
               run.text = run.text.substr(visible_start, visible_len);
               run.width = measureWidth(run.text, run.style.font_style);
             }
@@ -1649,6 +1639,10 @@ namespace NS_SWEETEDITOR {
 
           if (start_u16_index > 0 || end_u16_index < run.text.length()) {
             run.x = text_area_x + crop_start_x - scroll_x;
+            if (updates_source_range) {
+              run.column += start_u16_index;
+              run.length = end_u16_index - start_u16_index;
+            }
             run.text = run.text.substr(start_u16_index, end_u16_index - start_u16_index);
             run.width = measureWidth(run.text, run.style.font_style);
           }
@@ -1657,6 +1651,142 @@ namespace NS_SWEETEDITOR {
 
       current_x = run_right;
       ++run_it;
+    }
+  }
+
+  void TextLayout::applyPresentationState(VisualLine& visual_line,
+                                          const PresentationContext& presentation_context) {
+    const EditorRenderColors& colors = presentation_context.render_colors;
+    const TextRange& selection = presentation_context.selection_range;
+    const bool has_selection_foreground = presentation_context.has_selection
+        && colors.selection_foreground != 0
+        && selection.start != selection.end;
+
+    Vector<VisualRun> runs;
+    bool has_split = false;
+
+    auto ensure_runs = [&](size_t current_index) {
+      if (has_split) return;
+      runs.reserve(visual_line.runs.size() + 2);
+      runs.insert(runs.end(), visual_line.runs.begin(), visual_line.runs.begin() + current_index);
+      has_split = true;
+    };
+
+    auto is_active_run = [&](const VisualRun& run) {
+      const HitTarget& active_hit_target = presentation_context.active_hit_target;
+      if (active_hit_target.type == HitTargetType::NONE) return false;
+      const size_t source_line = runSourceLine(visual_line, run);
+      if (source_line != active_hit_target.line) return false;
+
+      if (run.type == VisualRunType::CODELENS) {
+        return run.column == active_hit_target.column
+            && run.icon_id == active_hit_target.icon_id;
+      }
+      if (run.type == VisualRunType::LINK) {
+        const LinkSpan* link = m_decoration_manager_->findLinkAt(source_line, run.column);
+        return link != nullptr && link->column == active_hit_target.column;
+      }
+      return false;
+    };
+
+    auto apply_foreground = [&](VisualRun& run) {
+      int32_t role_color = 0;
+      if (run.type == VisualRunType::LINK) {
+        role_color = run.active && colors.active_link_foreground != 0
+            ? colors.active_link_foreground : colors.link_foreground;
+      } else if (run.type == VisualRunType::CODELENS) {
+        role_color = run.active && colors.active_codelens_foreground != 0
+            ? colors.active_codelens_foreground : colors.codelens_foreground;
+      }
+
+      if (role_color != 0) {
+        run.style.color = role_color;
+      } else if (run.style.color == 0 && colors.text_foreground != 0) {
+        switch (run.type) {
+          case VisualRunType::TEXT:
+          case VisualRunType::LINK:
+          case VisualRunType::TAB:
+          case VisualRunType::CODELENS:
+            run.style.color = colors.text_foreground;
+            break;
+          default:
+            break;
+        }
+      }
+    };
+
+    auto resolve_selection_range = [&](const VisualRun& run,
+                                       size_t& selected_start,
+                                       size_t& selected_end) {
+      if (!has_selection_foreground) return false;
+      if ((run.type != VisualRunType::TEXT && run.type != VisualRunType::LINK)
+          || run.text.empty() || run.length == 0) {
+        return false;
+      }
+
+      const size_t source_line = runSourceLine(visual_line, run);
+      if (source_line < selection.start.line || source_line > selection.end.line) {
+        return false;
+      }
+
+      const size_t selection_start = source_line == selection.start.line
+          ? selection.start.column : 0;
+      const size_t selection_end = source_line == selection.end.line
+          ? selection.end.column : std::numeric_limits<size_t>::max();
+      const size_t run_start = run.column;
+      const size_t run_end = run.column + run.length;
+      const size_t intersect_start = std::max(run_start, selection_start);
+      const size_t intersect_end = std::min(run_end, selection_end);
+      if (intersect_start >= intersect_end) {
+        return false;
+      }
+
+      selected_start = intersect_start - run_start;
+      selected_end = intersect_end - run_start;
+      selected_start = std::min(selected_start, run.text.length());
+      selected_end = std::min(selected_end, run.text.length());
+      selected_start = UnicodeUtil::clampColumnToGraphemeBoundaryLeft(run.text, selected_start);
+      selected_end = UnicodeUtil::clampColumnToGraphemeBoundaryRight(run.text, selected_end);
+      return selected_start < selected_end;
+    };
+
+    auto append_part = [&](const VisualRun& run, size_t start, size_t end, bool selected) {
+      if (start >= end) return;
+      VisualRun part = run;
+      part.column = run.column + start;
+      part.length = end - start;
+      part.text = run.text.substr(start, end - start);
+      const float prefix_width = start == 0
+          ? 0.0f : measureWidth(run.text.substr(0, start), run.style.font_style);
+      part.x = run.x + prefix_width;
+      part.width = measureWidth(part.text, part.style.font_style);
+      if (selected) {
+        part.style.color = colors.selection_foreground;
+        part.style.background_color = 0;
+      }
+      runs.push_back(std::move(part));
+    };
+
+    for (size_t index = 0; index < visual_line.runs.size(); ++index) {
+      VisualRun& run = visual_line.runs[index];
+      run.active = is_active_run(run);
+      apply_foreground(run);
+
+      size_t selected_start = 0;
+      size_t selected_end = 0;
+      if (!resolve_selection_range(run, selected_start, selected_end)) {
+        if (has_split) runs.push_back(run);
+        continue;
+      }
+
+      ensure_runs(index);
+      append_part(run, 0, selected_start, false);
+      append_part(run, selected_start, selected_end, true);
+      append_part(run, selected_end, run.text.length(), false);
+    }
+
+    if (has_split) {
+      visual_line.runs = std::move(runs);
     }
   }
 

@@ -805,6 +805,10 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
+  static jobject setEditorRenderColors(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_editor_render_colors);
+  }
+
   static jobject registerBatchTextStyles(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
     return wrapBufferAction(env, handle, data, size, editor_register_batch_text_styles);
   }
@@ -1421,6 +1425,7 @@ public:
       {"nativeSetScrollbarConfig", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setScrollbarConfig},
       {"nativeGetPositionRect", "(JII)[F", (void*) getPositionRect},
       {"nativeGetCursorRect", "(J)[F", (void*) getCursorRect},
+      {"nativeSetEditorRenderColors", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setEditorRenderColors},
       {"nativeRegisterTextStyle", "(JIIII)Ljava/nio/ByteBuffer;", (void*) registerTextStyle},
       {"nativeRegisterBatchTextStyles", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) registerBatchTextStyles},
       {"nativeSetLineSpans", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setLineSpans},

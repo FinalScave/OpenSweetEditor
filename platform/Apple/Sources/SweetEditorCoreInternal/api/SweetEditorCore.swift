@@ -790,6 +790,14 @@ class SweetEditorCore {
     }
 
     @discardableResult
+    func setEditorRenderColors(_ colors: EditorRenderColors) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeEditorRenderColors(colors)
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_editor_render_colors(handle, ptr, size, &outSize)
+        }
+    }
+
+    @discardableResult
     func scrollToLine(line: Int, behavior: UInt8) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0

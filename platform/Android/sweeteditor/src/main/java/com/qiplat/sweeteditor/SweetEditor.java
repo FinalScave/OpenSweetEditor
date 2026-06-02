@@ -31,6 +31,7 @@ import java.util.Map;
 
 import com.qiplat.sweeteditor.core.Document;
 import com.qiplat.sweeteditor.core.config.EditorOptions;
+import com.qiplat.sweeteditor.core.config.EditorRenderColors;
 import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.interaction.HitTargetType;
 import com.qiplat.sweeteditor.core.interaction.GestureType;
@@ -559,6 +560,7 @@ public class SweetEditor extends View {
         mTheme = theme;
         mRenderer.applyTheme(theme);
 
+        dispatchEditorActionResult(mEditorCore.setEditorRenderColors(buildEditorRenderColors(theme)));
         EditorActionResult result = mEditorCore.registerBatchTextStyles(theme.textStyles);
 
         if (mInlineSuggestionController != null) {
@@ -578,6 +580,24 @@ public class SweetEditor extends View {
         }
 
         dispatchEditorActionResult(result);
+    }
+
+    private EditorRenderColors buildEditorRenderColors(@NonNull EditorTheme theme) {
+        int codeLensForeground = theme.codeLensColor != 0 ? theme.codeLensColor : theme.inlayHintTextColor;
+        int activeCodeLensForeground = theme.codeLensActiveColor != 0
+                ? theme.codeLensActiveColor
+                : (theme.currentLineNumberColor != 0 ? theme.currentLineNumberColor : theme.lineNumberColor);
+        int linkForeground = theme.linkColor != 0 ? theme.linkColor : codeLensForeground;
+        int activeLinkForeground = theme.linkActiveColor != 0
+                ? theme.linkActiveColor
+                : (theme.linkColor != 0 ? theme.linkColor : activeCodeLensForeground);
+        return new EditorRenderColors(
+                theme.textColor,
+                theme.selectionTextColor,
+                linkForeground,
+                activeLinkForeground,
+                codeLensForeground,
+                activeCodeLensForeground);
     }
 
     @NonNull
@@ -2249,6 +2269,7 @@ public class SweetEditor extends View {
         mSelectionMenuController = new SelectionMenuController(this, mEventBus, mTheme);
         mContextMenuController = new ContextMenuController(this, mEventBus, mTheme);
 
+        mEditorCore.setEditorRenderColors(buildEditorRenderColors(mTheme));
         mEditorCore.registerBatchTextStyles(mTheme.textStyles);
 
         mSettings = new EditorSettings(this);

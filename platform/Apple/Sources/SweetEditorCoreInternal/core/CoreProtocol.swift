@@ -932,6 +932,19 @@ enum CoreProtocol {
         4 + 8 + 8 + 4 + 4 + 4 + 8 + 8 + 1
     }
 
+    static func writeEditorRenderColors(_ writer: inout BinaryWriter, _ value: EditorRenderColors) {
+        writer.writeInt32(value.text_foreground)
+        writer.writeInt32(value.selection_foreground)
+        writer.writeInt32(value.link_foreground)
+        writer.writeInt32(value.active_link_foreground)
+        writer.writeInt32(value.codelens_foreground)
+        writer.writeInt32(value.active_codelens_foreground)
+    }
+
+    static func sizeOfEditorRenderColors(_ value: EditorRenderColors) -> Int {
+        4 + 4 + 4 + 4 + 4 + 4
+    }
+
     static func writeHandleConfig(_ writer: inout BinaryWriter, _ value: HandleConfig) {
         writeOffsetRect(&writer, value.start_hit_offset)
         writeOffsetRect(&writer, value.end_hit_offset)
@@ -2220,6 +2233,12 @@ enum CoreProtocol {
     static func encodeEditorOptions(_ value: EditorOptions) -> Data {
         var writer = BinaryWriter()
         writeEditorOptions(&writer, value)
+        return writer.data()
+    }
+
+    static func encodeEditorRenderColors(_ value: EditorRenderColors) -> Data {
+        var writer = BinaryWriter()
+        writeEditorRenderColors(&writer, value)
         return writer.data()
     }
 

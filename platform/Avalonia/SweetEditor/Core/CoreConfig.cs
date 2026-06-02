@@ -50,6 +50,15 @@ namespace SweetEditor {
         public bool RevealSelectionEndOnSelectAll { get; set; } = false;
     }
 
+    public sealed partial class EditorRenderColors {
+        public int TextForeground { get; set; } = 0;
+        public int SelectionForeground { get; set; } = 0;
+        public int LinkForeground { get; set; } = 0;
+        public int ActiveLinkForeground { get; set; } = 0;
+        public int CodelensForeground { get; set; } = 0;
+        public int ActiveCodelensForeground { get; set; } = 0;
+    }
+
     public sealed partial class HandleConfig {
         public OffsetRect StartHitOffset { get; set; } = new OffsetRect();
         public OffsetRect EndHitOffset { get; set; } = new OffsetRect();

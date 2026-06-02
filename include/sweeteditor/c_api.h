@@ -209,6 +209,19 @@ EDITOR_API const uint8_t* editor_set_handle_config(intptr_t editor_handle, const
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_scrollbar_config(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
+/// Set editor colors resolved by core when building visual runs.
+/// @param data EditorRenderColors binary payload encoded by CoreProtocol:
+///        i32 text_foreground
+///        i32 selection_foreground
+///        i32 link_foreground
+///        i32 active_link_foreground
+///        i32 codelens_foreground
+///        i32 active_codelens_foreground
+/// @param size payload byte length
+/// @param out_size Output: payload byte length (bytes, excluding extra '\0' terminator)
+/// @return EditorActionResult binary payload encoded by CoreProtocol
+EDITOR_API const uint8_t* editor_set_editor_render_colors(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+
 /// Build render model for one editor frame
 /// @param out_size Output: payload byte length (bytes, excluding extra '\0' terminator)
 /// @return EditorRenderModel binary payload encoded by CoreProtocol. Caller owns returned buffer and must free it with free_binary_data.

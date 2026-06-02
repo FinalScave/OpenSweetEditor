@@ -110,6 +110,24 @@ public struct EditorOptions {
     }
 }
 
+public struct EditorRenderColors {
+    public var text_foreground: Int32 = 0
+    public var selection_foreground: Int32 = 0
+    public var link_foreground: Int32 = 0
+    public var active_link_foreground: Int32 = 0
+    public var codelens_foreground: Int32 = 0
+    public var active_codelens_foreground: Int32 = 0
+
+    public init(text_foreground: Int32 = 0, selection_foreground: Int32 = 0, link_foreground: Int32 = 0, active_link_foreground: Int32 = 0, codelens_foreground: Int32 = 0, active_codelens_foreground: Int32 = 0) {
+        self.text_foreground = text_foreground
+        self.selection_foreground = selection_foreground
+        self.link_foreground = link_foreground
+        self.active_link_foreground = active_link_foreground
+        self.codelens_foreground = codelens_foreground
+        self.active_codelens_foreground = active_codelens_foreground
+    }
+}
+
 public struct HandleConfig {
     public var start_hit_offset: OffsetRect = OffsetRect()
     public var end_hit_offset: OffsetRect = OffsetRect()

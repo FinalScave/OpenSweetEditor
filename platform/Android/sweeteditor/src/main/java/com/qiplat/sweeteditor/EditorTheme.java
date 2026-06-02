@@ -40,6 +40,8 @@ public class EditorTheme {
     public int cursorColor;
     /** Selection highlight fill color (ARGB, recommended to include transparency). */
     public int selectionColor;
+    /** Selected text foreground color (ARGB), 0 means keep original text color. */
+    public int selectionTextColor;
     /** Line number text color (ARGB). */
     public int lineNumberColor;
     /** Current line number text color (ARGB). */
@@ -171,6 +173,7 @@ public class EditorTheme {
         t.textColor                 = 0xFFD7DEE9;
         t.cursorColor               = 0xFF8FB8FF;
         t.selectionColor            = 0x553B4F72;
+        t.selectionTextColor        = 0xFFFFFFFF;
         t.lineNumberColor           = 0xFF5E6778;
         t.currentLineNumberColor    = 0xFF9CB3D6;
         t.currentLineColor          = 0x163A4A66;
@@ -240,6 +243,7 @@ public class EditorTheme {
         t.textColor                 = 0xFF1F2937;
         t.cursorColor               = 0xFF2563EB;
         t.selectionColor            = 0x4D60A5FA;
+        t.selectionTextColor        = 0xFFFFFFFF;
         t.lineNumberColor           = 0xFF8A94A6;
         t.currentLineNumberColor    = 0xFF3A5FA0;
         t.currentLineColor          = 0x120D3B66;

@@ -68,6 +68,7 @@ export class EditorTheme {
   textColor: number = 0xFFD7DEE9;
   cursorColor: number = 0xFF8FB8FF;
   selectionColor: number = 0x553B4F72;
+  selectionTextColor: number = 0xFFFFFFFF;
   lineNumberColor: number = 0xFF5E6778;
   currentLineNumberColor: number = 0xFF9CB3D6;
   currentLineColor: number = 0x163A4A66;
@@ -121,6 +122,7 @@ export class EditorTheme {
     theme.textColor = 0xFFD7DEE9;
     theme.cursorColor = 0xFF8FB8FF;
     theme.selectionColor = 0x553B4F72;
+    theme.selectionTextColor = 0xFFFFFFFF;
     theme.lineNumberColor = 0xFF5E6778;
     theme.currentLineNumberColor = 0xFF9CB3D6;
     theme.currentLineColor = 0x163A4A66;
@@ -184,6 +186,7 @@ export class EditorTheme {
     theme.textColor = 0xFF1F2937;
     theme.cursorColor = 0xFF2563EB;
     theme.selectionColor = 0x4D60A5FA;
+    theme.selectionTextColor = 0xFFFFFFFF;
     theme.lineNumberColor = 0xFF8A94A6;
     theme.currentLineNumberColor = 0xFF3A5FA0;
     theme.currentLineColor = 0x120D3B66;

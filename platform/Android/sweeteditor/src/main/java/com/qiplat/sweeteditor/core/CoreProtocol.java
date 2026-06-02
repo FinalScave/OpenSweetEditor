@@ -23,6 +23,7 @@ import com.qiplat.sweeteditor.core.adornment.TextStyle;
 import com.qiplat.sweeteditor.core.config.AutoIndentMode;
 import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
 import com.qiplat.sweeteditor.core.config.EditorOptions;
+import com.qiplat.sweeteditor.core.config.EditorRenderColors;
 import com.qiplat.sweeteditor.core.config.FoldArrowMode;
 import com.qiplat.sweeteditor.core.config.HandleConfig;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
@@ -963,6 +964,31 @@ public final class CoreProtocol {
         size += 8;
         size += 8;
         size += 1;
+        return size;
+    }
+
+    private static void writeEditorRenderColorsFields(ByteBuffer data, EditorRenderColors value) {
+        data.putInt(value.textForeground);
+        data.putInt(value.selectionForeground);
+        data.putInt(value.linkForeground);
+        data.putInt(value.activeLinkForeground);
+        data.putInt(value.codelensForeground);
+        data.putInt(value.activeCodelensForeground);
+    }
+
+    public static void writeEditorRenderColors(ByteBuffer data, EditorRenderColors value) {
+        prepare(data);
+        writeEditorRenderColorsFields(data, value);
+    }
+
+    public static int sizeOfEditorRenderColors(EditorRenderColors value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
         return size;
     }
 
@@ -2501,6 +2527,13 @@ public final class CoreProtocol {
     public static ByteBuffer encodeEditorOptions(EditorOptions value) {
         ByteBuffer data = ByteBuffer.allocateDirect(sizeOfEditorOptions(value)).order(ByteOrder.LITTLE_ENDIAN);
         writeEditorOptionsFields(data, value);
+        data.flip();
+        return data;
+    }
+
+    public static ByteBuffer encodeEditorRenderColors(EditorRenderColors value) {
+        ByteBuffer data = ByteBuffer.allocateDirect(sizeOfEditorRenderColors(value)).order(ByteOrder.LITTLE_ENDIAN);
+        writeEditorRenderColorsFields(data, value);
         data.flip();
         return data;
     }

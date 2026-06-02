@@ -1,7 +1,7 @@
 import util from '@ohos.util';
 import { EditorActionReason, EditorActionResult, ScrollBehavior, editorActionReasonFromValue, scrollBehaviorFromValue } from './CoreAction';
 import { BracketGuide, CodeLensItem, Diagnostic, DiagnosticSeverity, FlowGuide, FoldRegion, GutterIcon, IndentGuide, InlayHint, InlayType, LinkSpan, PhantomText, SeparatorGuide, SeparatorStyle, SpanLayer, StyleSpan, TextStyle, diagnosticSeverityFromValue, inlayTypeFromValue, separatorStyleFromValue, spanLayerFromValue } from './CoreAdornments';
-import { AutoIndentMode, CurrentLineRenderMode, EditorOptions, FoldArrowMode, HandleConfig, ScrollbarConfig, ScrollbarMode, ScrollbarTrackTapMode, WrapMode, autoIndentModeFromValue, currentLineRenderModeFromValue, foldArrowModeFromValue, scrollbarModeFromValue, scrollbarTrackTapModeFromValue, wrapModeFromValue } from './CoreConfig';
+import { AutoIndentMode, CurrentLineRenderMode, EditorOptions, EditorRenderColors, FoldArrowMode, HandleConfig, ScrollbarConfig, ScrollbarMode, ScrollbarTrackTapMode, WrapMode, autoIndentModeFromValue, currentLineRenderModeFromValue, foldArrowModeFromValue, scrollbarModeFromValue, scrollbarTrackTapModeFromValue, wrapModeFromValue } from './CoreConfig';
 import { IntRange, OffsetRect, PointF, Rect, TextChange, TextPosition, TextRange } from './CoreFoundation';
 import { ImeContextPolicy, ImeDocumentTextReplacement, ImeInputContext, ImeInputContextKind, ImeInputContextTextReplacement, ImeInputStateTextReplacement, ImePreeditStorage, ImeScriptClass, ImeSyncSnapshot, ImeTextModelDelta, ImeTextModelMode, ImeTextModelState, ImeTextRange, ImeTextReplacement, ImeTextUnit, imeContextPolicyFromValue, imeInputContextKindFromValue, imePreeditStorageFromValue, imeScriptClassFromValue, imeTextModelModeFromValue, imeTextUnitFromValue } from './CoreIme';
 import { EventType, GestureEvent, GestureType, HitTarget, HitTargetType, eventTypeFromValue, gestureTypeFromValue, hitTargetTypeFromValue } from './CoreInteraction';
@@ -912,6 +912,26 @@ export class CoreProtocol {
     size += 8;
     size += 8;
     size += 1;
+    return size;
+  }
+
+  static writeEditorRenderColors(writer: BinaryWriter, value: EditorRenderColors): void {
+    writer.writeInt32(value.textForeground);
+    writer.writeInt32(value.selectionForeground);
+    writer.writeInt32(value.linkForeground);
+    writer.writeInt32(value.activeLinkForeground);
+    writer.writeInt32(value.codelensForeground);
+    writer.writeInt32(value.activeCodelensForeground);
+  }
+
+  static sizeOfEditorRenderColors(value: EditorRenderColors): number {
+    let size = 0;
+    size += 4;
+    size += 4;
+    size += 4;
+    size += 4;
+    size += 4;
+    size += 4;
     return size;
   }
 
@@ -2153,6 +2173,12 @@ export class CoreProtocol {
   static encodeEditorOptions(value: EditorOptions): ArrayBuffer {
     const writer = new BinaryWriter(CoreProtocol.sizeOfEditorOptions(value));
     CoreProtocol.writeEditorOptions(writer, value);
+    return writer.getBuffer();
+  }
+
+  static encodeEditorRenderColors(value: EditorRenderColors): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfEditorRenderColors(value));
+    CoreProtocol.writeEditorRenderColors(writer, value);
     return writer.getBuffer();
   }
 

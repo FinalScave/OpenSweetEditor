@@ -1083,6 +1083,10 @@ public:
     return setBinaryData(env, info, editor_set_scrollbar_config);
   }
 
+  static napi_value setEditorRenderColors(napi_env env, napi_callback_info info) {
+    return setBinaryData(env, info, editor_set_editor_render_colors);
+  }
+
   static napi_value getPositionRect(napi_env env, napi_callback_info info) {
     size_t argc = 3;
     napi_value args[3];

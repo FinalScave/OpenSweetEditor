@@ -612,6 +612,10 @@ public final class EditorNative {
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
+    private static final MethodHandle SET_EDITOR_RENDER_COLORS = downcall("editor_set_editor_render_colors",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+
     private static final MethodHandle GET_CURSOR_RECT = downcall("editor_get_cursor_rect",
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
@@ -1322,6 +1326,11 @@ public final class EditorNative {
 
     public static NativeBinaryResult setScrollbarConfig(long handle, MemorySegment payload, long size) {
         return invokeBinaryResult(outSize -> (MemorySegment) SET_SCROLLBAR_CONFIG.invokeExact(
+                handle, payload, size, outSize));
+    }
+
+    public static NativeBinaryResult setEditorRenderColors(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_EDITOR_RENDER_COLORS.invokeExact(
                 handle, payload, size, outSize));
     }
 

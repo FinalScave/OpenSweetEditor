@@ -1043,6 +1043,22 @@ external void editor_get_cursor_rect(
   ffi.Pointer<ffi.Float> out_height,
 );
 
+/// Set editor colors resolved by core when building visual runs.
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_editor_render_colors(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
 /// Register text style (color + background color + font style)
 /// @param style_id Style ID
 /// @param color Foreground color value (ARGB)

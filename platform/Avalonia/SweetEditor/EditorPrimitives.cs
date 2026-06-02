@@ -74,6 +74,7 @@ namespace SweetEditor {
 		public uint TextColor { get; set; }
 		public uint CursorColor { get; set; }
 		public uint SelectionColor { get; set; }
+		public uint SelectionTextColor { get; set; }
 		public uint LineNumberColor { get; set; }
 		public uint CurrentLineNumberColor { get; set; }
 		public uint CurrentLineColor { get; set; }
@@ -123,6 +124,7 @@ namespace SweetEditor {
 				TextColor = 0xFFD7DEE9,
 				CursorColor = 0xFF8FB8FF,
 				SelectionColor = 0x553B4F72,
+				SelectionTextColor = 0xFFFFFFFF,
 				LineNumberColor = 0xFF5E6778,
 				CurrentLineNumberColor = 0xFF9CB3D6,
 				CurrentLineColor = 0x163A4A66,
@@ -175,6 +177,7 @@ namespace SweetEditor {
 				TextColor = 0xFF1F2937,
 				CursorColor = 0xFF2563EB,
 				SelectionColor = 0x4D60A5FA,
+				SelectionTextColor = 0xFFFFFFFF,
 				LineNumberColor = 0xFF8A94A6,
 				CurrentLineNumberColor = 0xFF3A5FA0,
 				CurrentLineColor = 0x120D3B66,

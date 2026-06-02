@@ -98,6 +98,15 @@ export class EditorOptions {
   revealSelectionEndOnSelectAll: boolean = false;
 }
 
+export class EditorRenderColors {
+  textForeground: number = 0;
+  selectionForeground: number = 0;
+  linkForeground: number = 0;
+  activeLinkForeground: number = 0;
+  codelensForeground: number = 0;
+  activeCodelensForeground: number = 0;
+}
+
 export class HandleConfig {
   startHitOffset: OffsetRect = { left: -32.1, top: -8.0, right: 8.0, bottom: 32.1 };
   endHitOffset: OffsetRect = { left: -8.0, top: -8.0, right: 32.1, bottom: 32.1 };

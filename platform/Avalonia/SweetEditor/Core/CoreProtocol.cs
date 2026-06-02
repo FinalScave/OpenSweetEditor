@@ -874,6 +874,26 @@ namespace SweetEditor {
             return size;
         }
 
+        private static void WriteEditorRenderColors(BinaryWriter writer, EditorRenderColors value) {
+            writer.WriteInt32(value.TextForeground);
+            writer.WriteInt32(value.SelectionForeground);
+            writer.WriteInt32(value.LinkForeground);
+            writer.WriteInt32(value.ActiveLinkForeground);
+            writer.WriteInt32(value.CodelensForeground);
+            writer.WriteInt32(value.ActiveCodelensForeground);
+        }
+
+        private static int SizeOfEditorRenderColors(EditorRenderColors value) {
+            var size = 0;
+            size += 4;
+            size += 4;
+            size += 4;
+            size += 4;
+            size += 4;
+            size += 4;
+            return size;
+        }
+
         private static void WriteHandleConfig(BinaryWriter writer, HandleConfig value) {
             WriteOffsetRect(writer, value.StartHitOffset);
             WriteOffsetRect(writer, value.EndHitOffset);
@@ -2172,6 +2192,12 @@ namespace SweetEditor {
         public static byte[] EncodeEditorOptions(EditorOptions value) {
             var writer = new BinaryWriter(SizeOfEditorOptions(value));
             WriteEditorOptions(writer, value);
+            return writer.ToArray();
+        }
+
+        public static byte[] EncodeEditorRenderColors(EditorRenderColors value) {
+            var writer = new BinaryWriter(SizeOfEditorRenderColors(value));
+            WriteEditorRenderColors(writer, value);
             return writer.ToArray();
         }
 

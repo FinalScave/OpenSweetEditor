@@ -6,6 +6,14 @@
 
 using namespace NS_SWEETEDITOR;
 
+namespace {
+  U8String visualRunText(const VisualRun& run) {
+    U8String text;
+    StrUtil::convertUTF16ToUTF8(run.text, text);
+    return text;
+  }
+}
+
 TEST_CASE("EditorCore buildRenderModel exposes normalized selection handles") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
@@ -55,6 +63,144 @@ TEST_CASE("EditorCore buildRenderModel includes folded tail selection inside bro
     }
   }
   CHECK(has_tail_selection_rect);
+}
+
+TEST_CASE("EditorCore buildRenderModel resolves default text foreground in core") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(makeShared<LineArrayDocument>("plain"));
+  editor.setViewport({320, 120});
+
+  EditorRenderColors colors;
+  colors.text_foreground = static_cast<int32_t>(0xFF112233u);
+  editor.setEditorRenderColors(colors);
+
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+
+  REQUIRE(model.lines.size() == 1);
+  const VisualRun& text_run = findFirstRunOfType(model.lines.front(), VisualRunType::TEXT);
+  CHECK(text_run.style.color == colors.text_foreground);
+}
+
+TEST_CASE("EditorCore buildRenderModel resolves role foregrounds in core") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(makeShared<LineArrayDocument>("abc link"));
+  editor.setViewport({420, 160});
+
+  constexpr int32_t syntax_color = static_cast<int32_t>(0xFF010203u);
+  constexpr int32_t link_color = static_cast<int32_t>(0xFF445566u);
+  constexpr int32_t active_link_color = static_cast<int32_t>(0xFF778899u);
+  constexpr int32_t codelens_color = static_cast<int32_t>(0xFFABCDEFu);
+  constexpr int32_t active_codelens_color = static_cast<int32_t>(0xFF13579Bu);
+
+  EditorRenderColors colors;
+  colors.text_foreground = static_cast<int32_t>(0xFF202020u);
+  colors.link_foreground = link_color;
+  colors.active_link_foreground = active_link_color;
+  colors.codelens_foreground = codelens_color;
+  colors.active_codelens_foreground = active_codelens_color;
+  editor.setEditorRenderColors(colors);
+
+  editor.registerTextStyle(1, TextStyle{syntax_color, 0, FONT_STYLE_NORMAL});
+  editor.setLineSpans(0, SpanLayer::SYNTAX, Vector<StyleSpan>{{4, 4, 1}});
+  editor.setLineLinks(0, Vector<LinkSpan>{{4, 4, "doc://link"}});
+  editor.setLineCodeLens(0, Vector<CodeLensItem>{{4, 101, "1 reference"}});
+
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+
+  auto link_runs = findRunsOfType(model, 0, VisualRunType::LINK);
+  REQUIRE(link_runs.size() == 1);
+  CHECK(link_runs.front()->style.color == link_color);
+
+  const VisualLine& codelens_line = findCodeLensVisualLine(model, 0);
+  const VisualRun& codelens_run = findNthCodeLensRun(codelens_line, 0);
+  CHECK(codelens_run.style.color == codelens_color);
+
+  const float hover_point[2] = {
+      link_runs.front()->x + link_runs.front()->width * 0.5f,
+      link_runs.front()->y
+  };
+  editor.handleGestureEvent(GestureEvent::createWithModifiers(EventType::MOUSE_MOVE, 1, hover_point, KeyModifier::CTRL));
+
+  model = {};
+  editor.buildRenderModel(model);
+  link_runs = findRunsOfType(model, 0, VisualRunType::LINK);
+  REQUIRE(link_runs.size() == 1);
+  CHECK(link_runs.front()->style.color == active_link_color);
+}
+
+TEST_CASE("EditorCore buildRenderModel applies selection foreground by splitting source runs") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(makeShared<LineArrayDocument>("abcdef"));
+  editor.setViewport({320, 120});
+
+  constexpr int32_t style_color = static_cast<int32_t>(0xFF010203u);
+  constexpr int32_t style_background = static_cast<int32_t>(0x33445566u);
+  constexpr int32_t selection_foreground = static_cast<int32_t>(0xFFFFFFFFu);
+
+  EditorRenderColors colors;
+  colors.text_foreground = static_cast<int32_t>(0xFF202020u);
+  colors.selection_foreground = selection_foreground;
+  editor.setEditorRenderColors(colors);
+
+  editor.registerTextStyle(1, TextStyle{style_color, style_background, FONT_STYLE_NORMAL});
+  editor.setLineSpans(0, SpanLayer::SYNTAX, Vector<StyleSpan>{{0, 6, 1}});
+  editor.setSelection({{0, 2}, {0, 5}});
+
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+
+  REQUIRE(model.lines.size() == 1);
+  const VisualLine& line = model.lines.front();
+  REQUIRE(line.runs.size() == 3);
+  CHECK(visualRunText(line.runs[0]) == "ab");
+  CHECK(visualRunText(line.runs[1]) == "cde");
+  CHECK(visualRunText(line.runs[2]) == "f");
+  CHECK(line.runs[0].style.color == style_color);
+  CHECK(line.runs[0].style.background_color == style_background);
+  CHECK(line.runs[1].style.color == selection_foreground);
+  CHECK(line.runs[1].style.background_color == 0);
+  CHECK(line.runs[2].style.color == style_color);
+  CHECK(line.runs[2].style.background_color == style_background);
+}
+
+TEST_CASE("EditorCore buildRenderModel applies selection foreground after horizontal crop") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(makeShared<LineArrayDocument>("abcdefghijklmnopqrstuvwxyz"));
+  editor.setGutterVisible(false);
+  editor.setViewport({80, 120});
+  editor.setScroll(50, 0);
+
+  constexpr int32_t text_foreground = static_cast<int32_t>(0xFF202020u);
+  constexpr int32_t selection_foreground = static_cast<int32_t>(0xFFFFFFFFu);
+
+  EditorRenderColors colors;
+  colors.text_foreground = text_foreground;
+  colors.selection_foreground = selection_foreground;
+  editor.setEditorRenderColors(colors);
+  editor.setSelection({{0, 7}, {0, 9}});
+
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+
+  REQUIRE(model.lines.size() == 1);
+  const VisualLine& line = model.lines.front();
+  REQUIRE(line.runs.size() == 3);
+  CHECK(visualRunText(line.runs[0]) == "fg");
+  CHECK(visualRunText(line.runs[1]) == "hi");
+  CHECK(visualRunText(line.runs[2]) == "jklm");
+  CHECK(line.runs[0].style.color == text_foreground);
+  CHECK(line.runs[1].style.color == selection_foreground);
+  CHECK(line.runs[2].style.color == text_foreground);
 }
 
 TEST_CASE("EditorCore buildRenderModel exposes active composition decoration") {

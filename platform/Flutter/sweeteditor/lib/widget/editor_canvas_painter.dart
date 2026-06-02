@@ -241,16 +241,9 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
     if (run.text.isEmpty) return;
     final screenX = run.x;
     final baselineY = run.y;
-    int? overrideColor;
-    if (run.type == core.VisualRunType.codelens) {
-      overrideColor = _resolveCodeLensColor(run.active);
-    } else if (run.type == core.VisualRunType.link) {
-      overrideColor = _resolveLinkColor(run.active);
-    }
     final style = _measurer
-        .buildRunStyle(run.style, overrideColor ?? _theme.textColor)
+        .buildRunStyle(run.style, _theme.textColor)
         .copyWith(
-          color: overrideColor != null ? Color(overrideColor) : null,
           decoration:
               ((run.type == core.VisualRunType.codelens ||
                       run.type == core.VisualRunType.link) &&
@@ -283,24 +276,6 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
       baselineY,
       fontMetrics.ascent,
     );
-  }
-
-  int _resolveCodeLensColor(bool active) {
-    if (active) {
-      if (_theme.codeLensActiveColor != 0) return _theme.codeLensActiveColor;
-      if (_theme.currentLineNumberColor != 0) {
-        return _theme.currentLineNumberColor;
-      }
-      return _theme.lineNumberColor;
-    }
-    if (_theme.codeLensColor != 0) return _theme.codeLensColor;
-    return _theme.inlayHintTextColor;
-  }
-
-  int _resolveLinkColor(bool active) {
-    if (active && _theme.linkActiveColor != 0) return _theme.linkActiveColor;
-    if (_theme.linkColor != 0) return _theme.linkColor;
-    return _resolveCodeLensColor(active);
   }
 
   void _drawPhantomTextRun(Canvas canvas, core.VisualRun run) {

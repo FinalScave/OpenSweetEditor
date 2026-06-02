@@ -10,6 +10,7 @@ import { EditorActionResult, ScrollBehavior } from './CoreAction';
 import {
   AutoIndentMode,
   CurrentLineRenderMode,
+  EditorRenderColors,
   EditorOptions,
   FoldArrowMode,
   HandleConfig,
@@ -671,6 +672,12 @@ export class EditorCore {
 
   getScrollbarConfig(): ScrollbarConfig {
     return this.scrollbarConfig;
+  }
+
+  setEditorRenderColors(colors: EditorRenderColors): EditorActionResult {
+    const data = CoreProtocol.encodeEditorRenderColors(colors);
+    return CoreProtocol.decodeEditorActionResult(
+      native.editorSetEditorRenderColors(this.handle, data, data.byteLength));
   }
 
   // ==================== Position Coordinate Query ====================

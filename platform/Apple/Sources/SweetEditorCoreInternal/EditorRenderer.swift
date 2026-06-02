@@ -12,6 +12,7 @@ struct EditorRenderer {
     static func applyTheme(_ newTheme: EditorTheme, core: SweetEditorCore? = nil) -> CGColor {
         theme = newTheme
         if let core = core {
+            core.setEditorRenderColors(renderColors(for: newTheme))
             let stylesById = newTheme.syntaxStyles.mapValues { styleDef in
                 (color: styleDef.color, backgroundColor: Int32(0), fontStyle: styleDef.fontStyle)
             }
@@ -229,11 +230,7 @@ struct EditorRenderer {
         }
 
         let textColor: CGColor
-        if run.type == .CODELENS {
-            textColor = run.active ? resolvedCodeLensActiveColor(theme: t) : resolvedCodeLensColor(theme: t)
-        } else if run.type == .LINK {
-            textColor = run.active ? resolvedLinkActiveColor(theme: t) : resolvedLinkColor(theme: t)
-        } else if run.style.color != 0 {
+        if run.style.color != 0 {
             textColor = cgColorFromARGB(run.style.color)
         } else {
             textColor = t.textColor
@@ -515,20 +512,52 @@ struct EditorRenderer {
 
     // MARK: - Color Helpers
 
-    private static func resolvedCodeLensColor(theme: EditorTheme) -> CGColor {
-        theme.codeLensColor ?? theme.inlayHintTextColor
+    private static func renderColors(for theme: EditorTheme) -> EditorRenderColors {
+        let codeLensForeground = theme.codeLensColor ?? theme.inlayHintTextColor
+        let activeCodeLensForeground = theme.codeLensActiveColor ?? theme.currentLineNumberColor
+        let linkForeground = theme.linkColor ?? codeLensForeground
+        let activeLinkForeground = theme.linkActiveColor ?? theme.linkColor ?? activeCodeLensForeground
+        return EditorRenderColors(
+            text_foreground: argbFromCGColor(theme.textColor),
+            selection_foreground: argbFromCGColor(theme.selectionTextColor),
+            link_foreground: argbFromCGColor(linkForeground),
+            active_link_foreground: argbFromCGColor(activeLinkForeground),
+            codelens_foreground: argbFromCGColor(codeLensForeground),
+            active_codelens_foreground: argbFromCGColor(activeCodeLensForeground)
+        )
     }
 
-    private static func resolvedCodeLensActiveColor(theme: EditorTheme) -> CGColor {
-        theme.codeLensActiveColor ?? theme.currentLineNumberColor
-    }
-
-    private static func resolvedLinkColor(theme: EditorTheme) -> CGColor {
-        theme.linkColor ?? resolvedCodeLensColor(theme: theme)
-    }
-
-    private static func resolvedLinkActiveColor(theme: EditorTheme) -> CGColor {
-        theme.linkActiveColor ?? theme.linkColor ?? resolvedCodeLensActiveColor(theme: theme)
+    private static func argbFromCGColor(_ color: CGColor) -> Int32 {
+        let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)
+        let converted = colorSpace.flatMap {
+            color.converted(to: $0, intent: .defaultIntent, options: nil)
+        } ?? color
+        let components = converted.components ?? []
+        let red: CGFloat
+        let green: CGFloat
+        let blue: CGFloat
+        let alpha: CGFloat
+        if components.count >= 4 {
+            red = components[0]
+            green = components[1]
+            blue = components[2]
+            alpha = components[3]
+        } else if components.count >= 2 {
+            red = components[0]
+            green = components[0]
+            blue = components[0]
+            alpha = components[1]
+        } else {
+            red = 0
+            green = 0
+            blue = 0
+            alpha = 1
+        }
+        let a = UInt32(max(0, min(255, Int((alpha * 255.0).rounded()))))
+        let r = UInt32(max(0, min(255, Int((red * 255.0).rounded()))))
+        let g = UInt32(max(0, min(255, Int((green * 255.0).rounded()))))
+        let b = UInt32(max(0, min(255, Int((blue * 255.0).rounded()))))
+        return Int32(bitPattern: (a << 24) | (r << 16) | (g << 8) | b)
     }
 
     static func cgColorFromARGB(_ argb: Int32) -> CGColor {

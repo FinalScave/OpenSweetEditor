@@ -33,7 +33,7 @@ def cpp_encodable_types(schema):
     names = {
         item["name"]
         for item in schema["types"]
-        if item["direction"] in ("out", "both", "value")
+        if item["direction"] in ("in", "out", "both", "value")
     }
     changed = True
     while changed:
@@ -492,4 +492,3 @@ def generate_cpp(schema, target_name, target, out_root):
     header_path.parent.mkdir(parents=True, exist_ok=True)
     header_path.write_text(generate_cpp_codec(schema), encoding="utf-8")
     return [str(header_path)]
-

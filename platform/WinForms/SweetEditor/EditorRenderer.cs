@@ -230,34 +230,6 @@ namespace SweetEditor {
 			return GetOrCreateBrush(color.ToArgb());
 		}
 
-		private Color ResolveCodeLensColor(bool active) {
-			if (active) {
-				if (!currentTheme.CodeLensActiveColor.IsEmpty) return currentTheme.CodeLensActiveColor;
-				Color activeAccent = GetCurrentLineAccentColor();
-				if (!activeAccent.IsEmpty) return activeAccent;
-				if (!currentTheme.CodeLensColor.IsEmpty) return currentTheme.CodeLensColor;
-			} else if (!currentTheme.CodeLensColor.IsEmpty) {
-				return currentTheme.CodeLensColor;
-			}
-
-			if (!currentTheme.InlayHintTextColor.IsEmpty) return currentTheme.InlayHintTextColor;
-			return currentTheme.TextColor;
-		}
-
-		private Color ResolveLinkColor(bool active) {
-			if (active) {
-				if (!currentTheme.LinkActiveColor.IsEmpty) return currentTheme.LinkActiveColor;
-				if (!currentTheme.LinkColor.IsEmpty) return currentTheme.LinkColor;
-				if (!currentTheme.CodeLensActiveColor.IsEmpty) return currentTheme.CodeLensActiveColor;
-			} else if (!currentTheme.LinkColor.IsEmpty) {
-				return currentTheme.LinkColor;
-			}
-
-			if (!currentTheme.CodeLensColor.IsEmpty) return currentTheme.CodeLensColor;
-			if (!currentTheme.InlayHintTextColor.IsEmpty) return currentTheme.InlayHintTextColor;
-			return currentTheme.TextColor;
-		}
-
 		#region TextMeasurer Callbacks
 
 		private float OnMeasureText(string text, int fontStyle) {
@@ -568,16 +540,9 @@ namespace SweetEditor {
 			FontMetricsInfo metrics = visualRun.Type == VisualRunType.INLAY_HINT
 				? GetInlayFontMetrics(visualRun.Style.FontStyle, g)
 				: GetTextFontMetrics(visualRun.Style.FontStyle, g);
-			Color color;
-			if (visualRun.Type == VisualRunType.CODELENS) {
-				color = ResolveCodeLensColor(visualRun.Active);
-			} else if (visualRun.Type == VisualRunType.LINK) {
-				color = ResolveLinkColor(visualRun.Active);
-			} else {
-				color = (visualRun.Style.Color != 0)
-					? Color.FromArgb(visualRun.Style.Color)
-					: currentTheme.TextColor;
-			}
+			Color color = (visualRun.Style.Color != 0)
+				? Color.FromArgb(visualRun.Style.Color)
+				: currentTheme.TextColor;
 
 			float topY = visualRun.Y - metrics.Ascent;
 			int lineHeight = (int)Math.Ceiling(metrics.LineHeight);

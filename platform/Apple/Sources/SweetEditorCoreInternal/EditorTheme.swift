@@ -14,6 +14,7 @@ struct EditorTheme {
     var textColor: CGColor
     var cursorColor: CGColor
     var selectionColor: CGColor
+    var selectionTextColor: CGColor
     var lineNumberColor: CGColor
     var currentLineNumberColor: CGColor
     var currentLineColor: CGColor
@@ -72,6 +73,7 @@ struct EditorTheme {
             textColor:                CGColor(srgbRed: 0xD4/255.0, green: 0xD4/255.0, blue: 0xD4/255.0, alpha: 1.0),
             cursorColor:              CGColor(srgbRed: 0xAE/255.0, green: 0xAF/255.0, blue: 0xAD/255.0, alpha: 1.0),
             selectionColor:           CGColor(srgbRed: 0x26/255.0, green: 0x4F/255.0, blue: 0x78/255.0, alpha: 0x99/255.0),
+            selectionTextColor:       CGColor(srgbRed: 1.0, green: 1.0, blue: 1.0, alpha: 1.0),
             lineNumberColor:          CGColor(srgbRed: 0x85/255.0, green: 0x85/255.0, blue: 0x85/255.0, alpha: 1.0),
             currentLineNumberColor:   CGColor(srgbRed: 0xAE/255.0, green: 0xAF/255.0, blue: 0xAD/255.0, alpha: 1.0),
             currentLineColor:         CGColor(srgbRed: 1.0, green: 1.0, blue: 1.0, alpha: 0x15/255.0),
@@ -119,6 +121,7 @@ struct EditorTheme {
             textColor:                CGColor(srgbRed: 0.0, green: 0.0, blue: 0.0, alpha: 1.0),
             cursorColor:              CGColor(srgbRed: 0.0, green: 0.0, blue: 0.0, alpha: 1.0),
             selectionColor:           CGColor(srgbRed: 0xAD/255.0, green: 0xD6/255.0, blue: 1.0, alpha: 0x99/255.0),
+            selectionTextColor:       CGColor(srgbRed: 1.0, green: 1.0, blue: 1.0, alpha: 1.0),
             lineNumberColor:          CGColor(srgbRed: 0x23/255.0, green: 0x78/255.0, blue: 0x93/255.0, alpha: 1.0),
             currentLineNumberColor:   CGColor(srgbRed: 0x23/255.0, green: 0x78/255.0, blue: 0x93/255.0, alpha: 1.0),
             currentLineColor:         CGColor(srgbRed: 0.0, green: 0.0, blue: 0.0, alpha: 0x15/255.0),

@@ -784,9 +784,6 @@ namespace SweetEditor {
 			if (run.Type == VisualRunType.INLAY_HINT) {
 				return (int)_theme.InlayHintTextColor;
 			}
-			if (run.Type == VisualRunType.CODELENS) {
-				return run.Active ? GetActiveLineNumberColor() : (int)_theme.InlayHintTextColor;
-			}
 			return run.Style.Color != 0
 				? run.Style.Color
 				: (int)_theme.TextColor;

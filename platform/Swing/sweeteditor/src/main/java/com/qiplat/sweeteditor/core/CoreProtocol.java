@@ -23,6 +23,7 @@ import com.qiplat.sweeteditor.core.adornment.TextStyle;
 import com.qiplat.sweeteditor.core.config.AutoIndentMode;
 import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
 import com.qiplat.sweeteditor.core.config.EditorOptions;
+import com.qiplat.sweeteditor.core.config.EditorRenderColors;
 import com.qiplat.sweeteditor.core.config.FoldArrowMode;
 import com.qiplat.sweeteditor.core.config.HandleConfig;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
@@ -988,6 +989,26 @@ public final class CoreProtocol {
         size += 8;
         size += 8;
         size += 1;
+        return size;
+    }
+
+    private static void writeEditorRenderColors(BinaryWriter writer, EditorRenderColors value) {
+        writer.writeInt32(value.textForeground);
+        writer.writeInt32(value.selectionForeground);
+        writer.writeInt32(value.linkForeground);
+        writer.writeInt32(value.activeLinkForeground);
+        writer.writeInt32(value.codelensForeground);
+        writer.writeInt32(value.activeCodelensForeground);
+    }
+
+    public static int sizeOfEditorRenderColors(EditorRenderColors value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
         return size;
     }
 
@@ -2401,6 +2422,12 @@ public final class CoreProtocol {
     public static MemorySegment encodeEditorOptions(Arena arena, EditorOptions value) {
         BinaryWriter writer = new BinaryWriter(arena, sizeOfEditorOptions(value));
         writeEditorOptions(writer, value);
+        return writer.segment();
+    }
+
+    public static MemorySegment encodeEditorRenderColors(Arena arena, EditorRenderColors value) {
+        BinaryWriter writer = new BinaryWriter(arena, sizeOfEditorRenderColors(value));
+        writeEditorRenderColors(writer, value);
         return writer.segment();
     }
 

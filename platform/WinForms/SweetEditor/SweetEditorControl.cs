@@ -93,6 +93,8 @@ namespace SweetEditor {
 		public Color CursorColor { get; set; }
 		/// <summary>Selection highlight fill color (ARGB, typically semi-transparent).</summary>
 		public Color SelectionColor { get; set; }
+		/// <summary>Selected text foreground color (ARGB); Color.Empty keeps original text color.</summary>
+		public Color SelectionTextColor { get; set; } = Color.Empty;
 		/// <summary>Line number text color (ARGB).</summary>
 		public Color LineNumberColor { get; set; }
 		/// <summary>Current line number text color (ARGB).</summary>
@@ -198,6 +200,7 @@ namespace SweetEditor {
 			TextColor = Color.FromArgb(unchecked((int)0xFFD7DEE9)),
 			CursorColor = Color.FromArgb(unchecked((int)0xFF8FB8FF)),
 			SelectionColor = Color.FromArgb(unchecked((int)0x553B4F72)),
+			SelectionTextColor = Color.FromArgb(unchecked((int)0xFFFFFFFF)),
 			LineNumberColor = Color.FromArgb(unchecked((int)0xFF5E6778)),
 			CurrentLineNumberColor = Color.FromArgb(unchecked((int)0xFF9CB3D6)),
 			CurrentLineColor = Color.FromArgb(unchecked((int)0x163A4A66)),
@@ -255,6 +258,7 @@ namespace SweetEditor {
 			TextColor = Color.FromArgb(unchecked((int)0xFF1F2937)),
 			CursorColor = Color.FromArgb(unchecked((int)0xFF2563EB)),
 			SelectionColor = Color.FromArgb(unchecked((int)0x4D60A5FA)),
+			SelectionTextColor = Color.FromArgb(unchecked((int)0xFFFFFFFF)),
 			LineNumberColor = Color.FromArgb(unchecked((int)0xFF8A94A6)),
 			CurrentLineNumberColor = Color.FromArgb(unchecked((int)0xFF3A5FA0)),
 			CurrentLineColor = Color.FromArgb(unchecked((int)0x120D3B66)),
@@ -699,12 +703,43 @@ namespace SweetEditor {
 			this.ForeColor = currentTheme.TextColor;
 
 			if (editorCore != null) {
+				DispatchEditorActionResult(editorCore.SetEditorRenderColors(BuildEditorRenderColors(theme)));
 				DispatchEditorActionResult(editorCore.registerBatchTextStyles(theme.TextStyles));
 			}
 
 			completionPopupController?.ApplyTheme(theme);
 
 			Flush();
+		}
+
+		private static EditorRenderColors BuildEditorRenderColors(EditorTheme theme) {
+			int codeLensForeground = ToCoreColor(!theme.CodeLensColor.IsEmpty ? theme.CodeLensColor : theme.InlayHintTextColor);
+			Color activeCodeLensColor = !theme.CodeLensActiveColor.IsEmpty
+				? theme.CodeLensActiveColor
+				: (!theme.CurrentLineNumberColor.IsEmpty ? theme.CurrentLineNumberColor : theme.LineNumberColor);
+			int activeCodeLensForeground = ToCoreColor(activeCodeLensColor);
+			int linkForeground = ToCoreColor(theme.LinkColor);
+			if (linkForeground == 0) {
+				linkForeground = codeLensForeground;
+			}
+			int activeLinkForeground = ToCoreColor(!theme.LinkActiveColor.IsEmpty
+				? theme.LinkActiveColor
+				: theme.LinkColor);
+			if (activeLinkForeground == 0) {
+				activeLinkForeground = activeCodeLensForeground;
+			}
+			return new EditorRenderColors {
+				TextForeground = ToCoreColor(theme.TextColor),
+				SelectionForeground = ToCoreColor(theme.SelectionTextColor),
+				LinkForeground = linkForeground,
+				ActiveLinkForeground = activeLinkForeground,
+				CodelensForeground = codeLensForeground,
+				ActiveCodelensForeground = activeCodeLensForeground
+			};
+		}
+
+		private static int ToCoreColor(Color color) {
+			return color.IsEmpty ? 0 : color.ToArgb();
 		}
 
 		/// <summary>Enables or disables the performance overlay.</summary>
@@ -1332,6 +1367,7 @@ namespace SweetEditor {
 			completionPopupController.OnConfirmed += ApplyCompletionItem;
 
 			// Register default theme text styles.
+			editorCore.SetEditorRenderColors(BuildEditorRenderColors(currentTheme));
 			editorCore.registerBatchTextStyles(currentTheme.TextStyles);
 			keyMap = EditorKeyMap.DefaultKeyMap();
 			editorCore.SetKeyMap(keyMap.GetBindings());

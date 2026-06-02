@@ -507,11 +507,6 @@ final class EditorRenderer {
 
                     int fontStyle = run.style != null ? run.style.fontStyle : 0;
                     int color = (run.style != null && run.style.color != 0) ? run.style.color : mTheme.textColor;
-                    if (run.type == VisualRunType.CODELENS) {
-                        color = resolveCodeLensColor(run.active);
-                    } else if (run.type == VisualRunType.LINK) {
-                        color = resolveLinkColor(run.active);
-                    }
 
                     if (fontStyle != lastFontStyle) {
                         applyFontStyle(fontStyle);
@@ -688,33 +683,6 @@ final class EditorRenderer {
         int color = mTheme.currentLineNumberColor;
         if (color == 0) color = mTheme.lineNumberColor;
         return (color & 0x00FFFFFF) | 0xFF000000;
-    }
-
-    private int resolveCodeLensColor(boolean active) {
-        if (active) {
-            int color = mTheme.codeLensActiveColor;
-            if (color == 0) color = getActiveLineNumberColor();
-            if (color == 0) color = mTheme.codeLensColor;
-            if (color == 0) color = mTheme.inlayHintTextColor;
-            if (color == 0) color = mTheme.textColor;
-            return color;
-        }
-        int color = mTheme.codeLensColor;
-        if (color == 0) color = mTheme.inlayHintTextColor;
-        if (color == 0) color = mTheme.textColor;
-        return color;
-    }
-
-    private int resolveLinkColor(boolean active) {
-        if (active) {
-            int color = mTheme.linkActiveColor;
-            if (color == 0) color = mTheme.linkColor;
-            if (color == 0) color = resolveCodeLensColor(true);
-            return color;
-        }
-        int color = mTheme.linkColor;
-        if (color == 0) color = resolveCodeLensColor(false);
-        return color;
     }
 
     private int getCurrentLineBorderColor() {
