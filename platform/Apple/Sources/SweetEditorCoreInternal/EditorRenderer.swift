@@ -13,6 +13,7 @@ struct EditorRenderer {
         theme = newTheme
         if let core = core {
             core.setEditorRenderColors(renderColors(for: newTheme))
+            core.setEditorRangeEffectStyles(rangeEffectStyles(for: newTheme))
             let stylesById = newTheme.syntaxStyles.mapValues { styleDef in
                 (color: styleDef.color, backgroundColor: Int32(0), fontStyle: styleDef.fontStyle)
             }
@@ -61,13 +62,7 @@ struct EditorRenderer {
             }
         }
 
-        // Selection rects
-        context.setFillColor(t.selectionColor)
-        for sel in model.selection_rects {
-            let selRect = CGRect(x: CGFloat(sel.origin.x), y: CGFloat(sel.origin.y),
-                                 width: CGFloat(sel.width), height: CGFloat(sel.height))
-            context.fill(selRect)
-        }
+        drawRangeEffectBackgrounds(context: context, effects: model.range_effects)
 
         // Guide lines
         context.setLineWidth(1.0)
@@ -105,21 +100,7 @@ struct EditorRenderer {
             drawCursor(context: context, cursor: model.cursor)
         }
 
-        // Composition decoration (underline)
-        if model.composition_decoration.active {
-            drawCompositionDecoration(context: context, decoration: model.composition_decoration)
-        }
-
-        // Diagnostic decorations (wavy underlines)
-        for diag in model.diagnostic_decorations {
-            drawDiagnosticDecoration(context: context, decoration: diag)
-        }
-
-        // Linked editing highlights (tab stop borders)
-        drawLinkedEditingRects(context: context, rects: model.linked_editing_rects)
-
-        // Bracket pair highlights
-        drawBracketHighlightRects(context: context, rects: model.bracket_highlight_rects)
+        drawRangeEffectOverlays(context: context, effects: model.range_effects)
 
         // Gutter overlay: cover content that overflows into line number area
         let splitX = CGFloat(model.split_x)
@@ -366,98 +347,68 @@ struct EditorRenderer {
         context.fill(cursorRect)
     }
 
-    static func drawCompositionDecoration(context: CGContext, decoration: CompositionDecoration) {
-        context.setStrokeColor(theme.compositionUnderlineColor)
-        context.setLineWidth(2.0)
-        let decorationRect = rect(from: decoration.rect)
-        let y = decorationRect.maxY
-        context.move(to: CGPoint(x: decorationRect.minX, y: y))
-        context.addLine(to: CGPoint(x: decorationRect.maxX, y: y))
-        context.strokePath()
+    static func drawRangeEffectBackgrounds(context: CGContext, effects: [RangeEffectRenderItem]) {
+        for effect in effects where effect.style.background_color != 0 {
+            context.setFillColor(cgColorFromARGB(effect.style.background_color))
+            context.fill(rect(from: effect.rect))
+        }
     }
 
-    static func drawDiagnosticDecoration(context: CGContext, decoration: DiagnosticDecoration) {
-        let color: CGColor
-        switch decoration.severity {
-        case 0: color = theme.diagnosticErrorColor
-        case 1: color = theme.diagnosticWarningColor
-        case 2: color = theme.diagnosticInfoColor
-        default: color = theme.diagnosticHintColor
+    static func drawRangeEffectOverlays(context: CGContext, effects: [RangeEffectRenderItem]) {
+        for effect in effects {
+            let effectRect = rect(from: effect.rect)
+            if effect.style.border_color != 0 {
+                context.setLineDash(phase: 0, lengths: [])
+                context.setStrokeColor(cgColorFromARGB(effect.style.border_color))
+                context.setLineWidth(effect.kind == .LINKED_EDITING_ACTIVE ? 2.0 : 1.5)
+                context.stroke(effectRect)
+            }
+            if effect.style.underline_color != 0 && effect.style.underline_style != .NONE {
+                drawRangeEffectUnderline(context: context, rect: effectRect, style: effect.style)
+            }
         }
+        context.setLineDash(phase: 0, lengths: [])
+    }
 
-        let decorationRect = rect(from: decoration.rect)
-        let startX = decorationRect.minX
-        let endX = decorationRect.maxX
-        let baseY = decorationRect.maxY - 1.0
+    static func drawRangeEffectUnderline(context: CGContext, rect: CGRect, style: RangeEffectStyle) {
+        let startX = rect.minX
+        let endX = rect.maxX
+        let baseY = rect.maxY - 1.0
 
-        context.setStrokeColor(color)
-        context.setLineWidth(3.0)
+        context.setStrokeColor(cgColorFromARGB(style.underline_color))
+        context.setLineWidth(style.underline_style == .WAVY ? 3.0 : 2.0)
 
-        if decoration.severity == 3 {
-            // HINT: dashed straight underline
+        if style.underline_style == .DASHED {
             context.setLineDash(phase: 0, lengths: [3, 2])
             context.move(to: CGPoint(x: startX, y: baseY))
             context.addLine(to: CGPoint(x: endX, y: baseY))
             context.strokePath()
             context.setLineDash(phase: 0, lengths: [])
-        } else {
-            // ERROR/WARNING/INFO: smooth arc wavy line
-            let halfWave: CGFloat = 7.0
-            let amplitude: CGFloat = 3.5
-            var x = startX
-            context.move(to: CGPoint(x: x, y: baseY))
-            var step = 0
-            while x < endX {
-                let nextX = min(x + halfWave, endX)
-                let midX = (x + nextX) / 2
-                let peakY = (step % 2 == 0) ? baseY - amplitude : baseY + amplitude
-                context.addQuadCurve(to: CGPoint(x: nextX, y: baseY),
-                                     control: CGPoint(x: midX, y: peakY))
-                x = nextX
-                step += 1
-            }
+            return
+        }
+        if style.underline_style == .SOLID {
+            context.setLineDash(phase: 0, lengths: [])
+            context.move(to: CGPoint(x: startX, y: baseY))
+            context.addLine(to: CGPoint(x: endX, y: baseY))
             context.strokePath()
+            return
         }
-    }
 
-    static func drawLinkedEditingRects(context: CGContext, rects: [LinkedEditingRect]) {
-        if rects.isEmpty { return }
-        let t = theme
-        for rect in rects {
-            let r = self.rect(from: rect.rect)
-            if rect.is_active {
-                // Active tab stop: semi-transparent fill + thicker border
-                let components = t.linkedEditingActiveColor.components ?? [0, 0, 0, 0]
-                let fillColor = CGColor(srgbRed: components.count > 0 ? components[0] : 0,
-                                        green: components.count > 1 ? components[1] : 0,
-                                        blue: components.count > 2 ? components[2] : 0,
-                                        alpha: 0.12)
-                context.setFillColor(fillColor)
-                context.fill(r)
-                context.setStrokeColor(t.linkedEditingActiveColor)
-                context.setLineWidth(2.0)
-            } else {
-                // Inactive tab stop: border only
-                context.setStrokeColor(t.linkedEditingInactiveColor)
-                context.setLineWidth(1.0)
-            }
-            context.stroke(r)
+        let halfWave: CGFloat = 7.0
+        let amplitude: CGFloat = 3.5
+        var x = startX
+        context.move(to: CGPoint(x: x, y: baseY))
+        var step = 0
+        while x < endX {
+            let nextX = min(x + halfWave, endX)
+            let midX = (x + nextX) / 2
+            let peakY = (step % 2 == 0) ? baseY - amplitude : baseY + amplitude
+            context.addQuadCurve(to: CGPoint(x: nextX, y: baseY),
+                                 control: CGPoint(x: midX, y: peakY))
+            x = nextX
+            step += 1
         }
-    }
-
-    static func drawBracketHighlightRects(context: CGContext, rects: [Rect]) {
-        if rects.isEmpty { return }
-        let t = theme
-        for rect in rects {
-            let r = self.rect(from: rect)
-            // Background fill
-            context.setFillColor(t.bracketHighlightBgColor)
-            context.fill(r)
-            // Border
-            context.setStrokeColor(t.bracketHighlightBorderColor)
-            context.setLineWidth(1.5)
-            context.stroke(r)
-        }
+        context.strokePath()
     }
 
     static func drawScrollbars(context: CGContext, model: EditorRenderModel, style: ScrollbarVisualStyle) -> Bool {
@@ -519,12 +470,59 @@ struct EditorRenderer {
         let activeLinkForeground = theme.linkActiveColor ?? theme.linkColor ?? activeCodeLensForeground
         return EditorRenderColors(
             text_foreground: argbFromCGColor(theme.textColor),
-            selection_foreground: argbFromCGColor(theme.selectionTextColor),
             link_foreground: argbFromCGColor(linkForeground),
             active_link_foreground: argbFromCGColor(activeLinkForeground),
             codelens_foreground: argbFromCGColor(codeLensForeground),
             active_codelens_foreground: argbFromCGColor(activeCodeLensForeground)
         )
+    }
+
+    private static func rangeEffectStyles(for theme: EditorTheme) -> EditorRangeEffectStyles {
+        EditorRangeEffectStyles(
+            selection: RangeEffectStyle(
+                foreground_color: argbFromCGColor(theme.selectionTextColor),
+                background_color: argbFromCGColor(theme.selectionColor)
+            ),
+            linked_editing_active: RangeEffectStyle(
+                background_color: argbWithAlpha(argbFromCGColor(theme.linkedEditingActiveColor), alpha: 0x20),
+                border_color: argbFromCGColor(theme.linkedEditingActiveColor)
+            ),
+            linked_editing_inactive: RangeEffectStyle(
+                border_color: argbFromCGColor(theme.linkedEditingInactiveColor)
+            ),
+            ime_composition: RangeEffectStyle(
+                underline_color: argbFromCGColor(theme.compositionUnderlineColor),
+                underline_style: .SOLID
+            ),
+            bracket_match: RangeEffectStyle(
+                background_color: argbFromCGColor(theme.bracketHighlightBgColor),
+                border_color: argbFromCGColor(theme.bracketHighlightBorderColor)
+            ),
+            diagnostic_error: diagnosticStyle(theme.diagnosticErrorColor, underlineStyle: .WAVY),
+            diagnostic_warning: diagnosticStyle(theme.diagnosticWarningColor, underlineStyle: .WAVY),
+            diagnostic_info: diagnosticStyle(theme.diagnosticInfoColor, underlineStyle: .WAVY),
+            diagnostic_hint: diagnosticStyle(theme.diagnosticHintColor, underlineStyle: .DASHED)
+        )
+    }
+
+    private static func diagnosticStyle(_ color: CGColor,
+                                        underlineStyle: RangeEffectUnderlineStyle) -> RangeEffectStyle {
+        RangeEffectStyle(underline_color: argbFromCGColor(color),
+                         underline_style: underlineStyle)
+    }
+
+    private static func argbWithAlpha(_ color: Int32, alpha: UInt32) -> Int32 {
+        let value = UInt32(bitPattern: color)
+        return Int32(bitPattern: (value & 0x00FF_FFFF) | ((alpha & 0xFF) << 24))
+    }
+
+    private static func cgColorFromARGB(_ color: Int32) -> CGColor {
+        let value = UInt32(bitPattern: color)
+        let alpha = CGFloat((value >> 24) & 0xFF) / 255.0
+        let red = CGFloat((value >> 16) & 0xFF) / 255.0
+        let green = CGFloat((value >> 8) & 0xFF) / 255.0
+        let blue = CGFloat(value & 0xFF) / 255.0
+        return CGColor(srgbRed: red, green: green, blue: blue, alpha: alpha)
     }
 
     private static func argbFromCGColor(_ color: CGColor) -> Int32 {

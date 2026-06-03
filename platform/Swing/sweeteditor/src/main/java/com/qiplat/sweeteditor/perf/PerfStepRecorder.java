@@ -7,13 +7,10 @@ public final class PerfStepRecorder {
     public static final String STEP_BUILD = "build";
     public static final String STEP_CLEAR = "clear";
     public static final String STEP_CURRENT = "current";
-    public static final String STEP_SELECTION = "selection";
+    public static final String STEP_RANGE_EFFECT_BACKGROUNDS = "rangeBg";
     public static final String STEP_LINES = "lines";
     public static final String STEP_GUIDES = "guides";
-    public static final String STEP_COMPOSITION = "comp";
-    public static final String STEP_DIAGNOSTICS = "diag";
-    public static final String STEP_LINKED = "linked";
-    public static final String STEP_BRACKET = "bracket";
+    public static final String STEP_RANGE_EFFECT_OVERLAYS = "rangeFx";
     public static final String STEP_CURSOR = "cursor";
     public static final String STEP_GUTTER = "gutter";
     public static final String STEP_LINE_NO = "lineNo";

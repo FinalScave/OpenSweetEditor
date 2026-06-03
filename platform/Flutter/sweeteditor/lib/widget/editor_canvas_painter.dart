@@ -69,42 +69,13 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
 
     _drawCurrentLineHighlight(canvas, m, 0, size.width);
 
-    _drawSelectionRects(canvas, m);
-
-    for (final rect in m.bracketHighlightRects) {
-      canvas.drawRect(
-        Rect.fromLTWH(rect.origin.x, rect.origin.y, rect.width, rect.height),
-        Paint()..color = Color(_theme.bracketHighlightBgColor),
-      );
-    }
-
-    for (final rect in m.linkedEditingRects) {
-      final color = rect.isActive
-          ? _theme.linkedEditingActiveColor
-          : _theme.linkedEditingInactiveColor;
-      canvas.drawRect(
-        Rect.fromLTWH(rect.origin.x, rect.origin.y, rect.width, rect.height),
-        Paint()..color = Color(color & 0x33FFFFFF),
-      );
-    }
+    _drawRangeEffectBackgrounds(canvas, m);
 
     _drawVisualLines(canvas, m);
 
     _drawGuideSegments(canvas, m);
 
-    _drawDiagnostics(canvas, m);
-
-    if (m.compositionDecoration.active) {
-      final cd = m.compositionDecoration;
-      final y = cd.origin.y + cd.height;
-      canvas.drawLine(
-        Offset(cd.origin.x, y),
-        Offset(cd.origin.x + cd.width, y),
-        Paint()
-          ..color = Color(_theme.compositionUnderlineColor)
-          ..strokeWidth = 2,
-      );
-    }
+    _drawRangeEffectOverlays(canvas, m);
 
     if (_cursorVisible && m.cursor.visible) {
       final c = m.cursor;
@@ -144,31 +115,6 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
       _drawSelectionHandles(canvas, m);
     }
 
-    // Bracket highlight borders
-    for (final rect in m.bracketHighlightRects) {
-      canvas.drawRect(
-        Rect.fromLTWH(rect.origin.x, rect.origin.y, rect.width, rect.height),
-        Paint()
-          ..color = Color(_theme.bracketHighlightBorderColor)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1,
-      );
-    }
-
-    // Linked editing borders
-    for (final rect in m.linkedEditingRects) {
-      final color = rect.isActive
-          ? _theme.linkedEditingActiveColor
-          : _theme.linkedEditingInactiveColor;
-      canvas.drawRect(
-        Rect.fromLTWH(rect.origin.x, rect.origin.y, rect.width, rect.height),
-        Paint()
-          ..color = Color(color)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 1,
-      );
-    }
-
     _drawScrollbars(canvas, size, m);
   }
 
@@ -203,13 +149,15 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
     }
   }
 
-  void _drawSelectionRects(Canvas canvas, core.EditorRenderModel m) {
-    if (m.selectionRects.isEmpty) return;
-    final paint = Paint()..color = Color(_theme.selectionColor);
-    for (final r in m.selectionRects) {
+  void _drawRangeEffectBackgrounds(Canvas canvas, core.EditorRenderModel m) {
+    if (m.rangeEffects.isEmpty) return;
+    for (final effect in m.rangeEffects) {
+      final color = effect.style.backgroundColor;
+      if (color == 0) continue;
+      final r = effect.rect;
       canvas.drawRect(
         Rect.fromLTWH(r.origin.x, r.origin.y, r.width, r.height),
-        paint,
+        Paint()..color = Color(color),
       );
     }
   }
@@ -514,34 +462,51 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
     );
   }
 
-  void _drawDiagnostics(Canvas canvas, core.EditorRenderModel m) {
-    for (final diag in m.diagnosticDecorations) {
-      final x = diag.origin.x;
-      final y = diag.origin.y + diag.height;
-      final w = diag.width;
-      final color = switch (diag.severity) {
-        0 => Color(_theme.diagnosticErrorColor),
-        1 => Color(_theme.diagnosticWarningColor),
-        2 => Color(_theme.diagnosticInfoColor),
-        _ => Color(_theme.diagnosticHintColor),
-      };
-
-      // severity: 0=error, 1=warning, 2=info, 3=hint
-      if (diag.severity >= 3) {
-        // Dashed underline for hints
-        _drawDashedLine(
-          canvas,
-          Offset(x, y),
-          Offset(x + w, y),
+  void _drawRangeEffectOverlays(Canvas canvas, core.EditorRenderModel m) {
+    for (final effect in m.rangeEffects) {
+      final r = effect.rect;
+      final style = effect.style;
+      if (style.borderColor != 0) {
+        canvas.drawRect(
+          Rect.fromLTWH(r.origin.x, r.origin.y, r.width, r.height),
           Paint()
-            ..color = color
-            ..strokeWidth = 1,
-          3,
-          2,
+            ..color = Color(style.borderColor)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = effect.kind == core.RangeEffectKind.linkedEditingActive
+                ? 2
+                : 1.5,
         );
-      } else {
-        // Wavy underline
-        _drawWavyLine(canvas, x, y, w, color);
+      }
+      if (style.underlineColor != 0 &&
+          style.underlineStyle != core.RangeEffectUnderlineStyle.none) {
+        final x = r.origin.x;
+        final y = r.origin.y + r.height;
+        final color = Color(style.underlineColor);
+        switch (style.underlineStyle) {
+          case core.RangeEffectUnderlineStyle.dashed:
+            _drawDashedLine(
+              canvas,
+              Offset(x, y),
+              Offset(x + r.width, y),
+              Paint()
+                ..color = color
+                ..strokeWidth = 1,
+              3,
+              2,
+            );
+          case core.RangeEffectUnderlineStyle.solid:
+            canvas.drawLine(
+              Offset(x, y),
+              Offset(x + r.width, y),
+              Paint()
+                ..color = color
+                ..strokeWidth = 2,
+            );
+          case core.RangeEffectUnderlineStyle.wavy:
+            _drawWavyLine(canvas, x, y, r.width, color);
+          case core.RangeEffectUnderlineStyle.none:
+            break;
+        }
       }
     }
   }

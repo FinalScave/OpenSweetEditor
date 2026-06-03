@@ -188,16 +188,6 @@ namespace SweetEditor {
             return size;
         }
 
-        private static List<DiagnosticDecoration> ReadDiagnosticDecorationList(ref BinaryReader reader) {
-            var count = reader.ReadInt32();
-            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
-            var values = new List<DiagnosticDecoration>(count);
-            for (var i = 0; i < count; i++) {
-                values.Add(ReadDiagnosticDecoration(ref reader));
-            }
-            return values;
-        }
-
         private static void WriteFlowGuideList(BinaryWriter writer, IReadOnlyList<FlowGuide>? values) {
             var count = values == null ? 0 : values.Count;
             writer.WriteInt32(count);
@@ -364,16 +354,6 @@ namespace SweetEditor {
             return size;
         }
 
-        private static List<LinkedEditingRect> ReadLinkedEditingRectList(ref BinaryReader reader) {
-            var count = reader.ReadInt32();
-            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
-            var values = new List<LinkedEditingRect>(count);
-            for (var i = 0; i < count; i++) {
-                values.Add(ReadLinkedEditingRect(ref reader));
-            }
-            return values;
-        }
-
         private static void WritePhantomTextList(BinaryWriter writer, IReadOnlyList<PhantomText>? values) {
             var count = values == null ? 0 : values.Count;
             writer.WriteInt32(count);
@@ -420,32 +400,14 @@ namespace SweetEditor {
             return size;
         }
 
-        private static List<Rect> ReadRectList(ref BinaryReader reader) {
+        private static List<RangeEffectRenderItem> ReadRangeEffectRenderItemList(ref BinaryReader reader) {
             var count = reader.ReadInt32();
             if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
-            var values = new List<Rect>(count);
+            var values = new List<RangeEffectRenderItem>(count);
             for (var i = 0; i < count; i++) {
-                values.Add(ReadRect(ref reader));
+                values.Add(ReadRangeEffectRenderItem(ref reader));
             }
             return values;
-        }
-
-        private static void WriteRectList(BinaryWriter writer, IReadOnlyList<Rect>? values) {
-            var count = values == null ? 0 : values.Count;
-            writer.WriteInt32(count);
-            for (var i = 0; i < count; i++) {
-                WriteRect(writer, values![i]);
-            }
-        }
-
-        private static int SizeOfRectList(IReadOnlyList<Rect>? values) {
-            var size = 4;
-            if (values != null) {
-                for (var i = 0; i < values.Count; i++) {
-                    size += SizeOfRect(values[i]);
-                }
-            }
-            return size;
         }
 
         private static void WriteSeparatorGuideList(BinaryWriter writer, IReadOnlyList<SeparatorGuide>? values) {
@@ -874,9 +836,44 @@ namespace SweetEditor {
             return size;
         }
 
+        private static void WriteEditorRangeEffectStyles(BinaryWriter writer, EditorRangeEffectStyles value) {
+            WriteRangeEffectStyle(writer, value.Selection);
+            WriteRangeEffectStyle(writer, value.SearchMatch);
+            WriteRangeEffectStyle(writer, value.SearchCurrent);
+            WriteRangeEffectStyle(writer, value.DocumentHighlightText);
+            WriteRangeEffectStyle(writer, value.DocumentHighlightRead);
+            WriteRangeEffectStyle(writer, value.DocumentHighlightWrite);
+            WriteRangeEffectStyle(writer, value.LinkedEditingActive);
+            WriteRangeEffectStyle(writer, value.LinkedEditingInactive);
+            WriteRangeEffectStyle(writer, value.ImeComposition);
+            WriteRangeEffectStyle(writer, value.BracketMatch);
+            WriteRangeEffectStyle(writer, value.DiagnosticError);
+            WriteRangeEffectStyle(writer, value.DiagnosticWarning);
+            WriteRangeEffectStyle(writer, value.DiagnosticInfo);
+            WriteRangeEffectStyle(writer, value.DiagnosticHint);
+        }
+
+        private static int SizeOfEditorRangeEffectStyles(EditorRangeEffectStyles value) {
+            var size = 0;
+            size += SizeOfRangeEffectStyle(value.Selection);
+            size += SizeOfRangeEffectStyle(value.SearchMatch);
+            size += SizeOfRangeEffectStyle(value.SearchCurrent);
+            size += SizeOfRangeEffectStyle(value.DocumentHighlightText);
+            size += SizeOfRangeEffectStyle(value.DocumentHighlightRead);
+            size += SizeOfRangeEffectStyle(value.DocumentHighlightWrite);
+            size += SizeOfRangeEffectStyle(value.LinkedEditingActive);
+            size += SizeOfRangeEffectStyle(value.LinkedEditingInactive);
+            size += SizeOfRangeEffectStyle(value.ImeComposition);
+            size += SizeOfRangeEffectStyle(value.BracketMatch);
+            size += SizeOfRangeEffectStyle(value.DiagnosticError);
+            size += SizeOfRangeEffectStyle(value.DiagnosticWarning);
+            size += SizeOfRangeEffectStyle(value.DiagnosticInfo);
+            size += SizeOfRangeEffectStyle(value.DiagnosticHint);
+            return size;
+        }
+
         private static void WriteEditorRenderColors(BinaryWriter writer, EditorRenderColors value) {
             writer.WriteInt32(value.TextForeground);
-            writer.WriteInt32(value.SelectionForeground);
             writer.WriteInt32(value.LinkForeground);
             writer.WriteInt32(value.ActiveLinkForeground);
             writer.WriteInt32(value.CodelensForeground);
@@ -885,7 +882,6 @@ namespace SweetEditor {
 
         private static int SizeOfEditorRenderColors(EditorRenderColors value) {
             var size = 0;
-            size += 4;
             size += 4;
             size += 4;
             size += 4;
@@ -903,6 +899,39 @@ namespace SweetEditor {
             var size = 0;
             size += SizeOfOffsetRect(value.StartHitOffset);
             size += SizeOfOffsetRect(value.EndHitOffset);
+            return size;
+        }
+
+        private static RangeEffectStyle ReadRangeEffectStyle(ref BinaryReader reader) {
+            return new RangeEffectStyle {
+                ForegroundColor = reader.ReadInt32(),
+                BackgroundColor = reader.ReadInt32(),
+                BorderColor = reader.ReadInt32(),
+                UnderlineColor = reader.ReadInt32(),
+                UnderlineStyle = (RangeEffectUnderlineStyle)reader.ReadInt32(),
+            };
+        }
+
+        public static RangeEffectStyle DecodeRangeEffectStyle(ReadOnlySpan<byte> data) {
+            var reader = new BinaryReader(data);
+            return ReadRangeEffectStyle(ref reader);
+        }
+
+        private static void WriteRangeEffectStyle(BinaryWriter writer, RangeEffectStyle value) {
+            writer.WriteInt32(value.ForegroundColor);
+            writer.WriteInt32(value.BackgroundColor);
+            writer.WriteInt32(value.BorderColor);
+            writer.WriteInt32(value.UnderlineColor);
+            writer.WriteInt32((int)value.UnderlineStyle);
+        }
+
+        private static int SizeOfRangeEffectStyle(RangeEffectStyle value) {
+            var size = 0;
+            size += 4;
+            size += 4;
+            size += 4;
+            size += 4;
+            size += 4;
             return size;
         }
 
@@ -1388,18 +1417,6 @@ namespace SweetEditor {
             return size;
         }
 
-        private static CompositionDecoration ReadCompositionDecoration(ref BinaryReader reader) {
-            return new CompositionDecoration {
-                Active = reader.ReadBoolI32(),
-                Rect = ReadRect(ref reader),
-            };
-        }
-
-        public static CompositionDecoration DecodeCompositionDecoration(ReadOnlySpan<byte> data) {
-            var reader = new BinaryReader(data);
-            return ReadCompositionDecoration(ref reader);
-        }
-
         private static Cursor ReadCursor(ref BinaryReader reader) {
             return new Cursor {
                 TextPosition = ReadTextPosition(ref reader),
@@ -1442,18 +1459,6 @@ namespace SweetEditor {
             return size;
         }
 
-        private static DiagnosticDecoration ReadDiagnosticDecoration(ref BinaryReader reader) {
-            return new DiagnosticDecoration {
-                Rect = ReadRect(ref reader),
-                Severity = reader.ReadInt32(),
-            };
-        }
-
-        public static DiagnosticDecoration DecodeDiagnosticDecoration(ReadOnlySpan<byte> data) {
-            var reader = new BinaryReader(data);
-            return ReadDiagnosticDecoration(ref reader);
-        }
-
         private static EditorRenderModel ReadEditorRenderModel(ref BinaryReader reader) {
             return new EditorRenderModel {
                 SplitX = reader.ReadFloat32(),
@@ -1466,15 +1471,11 @@ namespace SweetEditor {
                 CurrentLineRenderMode = (CurrentLineRenderMode)reader.ReadInt32(),
                 Lines = ReadVisualLineList(ref reader),
                 Cursor = ReadCursor(ref reader),
-                SelectionRects = ReadRectList(ref reader),
+                RangeEffects = ReadRangeEffectRenderItemList(ref reader),
                 SelectionStartHandle = ReadSelectionHandle(ref reader),
                 SelectionEndHandle = ReadSelectionHandle(ref reader),
-                CompositionDecoration = ReadCompositionDecoration(ref reader),
                 GuideSegments = ReadGuideSegmentList(ref reader),
-                DiagnosticDecorations = ReadDiagnosticDecorationList(ref reader),
                 MaxGutterIcons = reader.ReadInt32(),
-                LinkedEditingRects = ReadLinkedEditingRectList(ref reader),
-                BracketHighlightRects = ReadRectList(ref reader),
                 GutterIcons = ReadGutterIconRenderItemList(ref reader),
                 FoldMarkers = ReadFoldMarkerRenderItemList(ref reader),
                 VerticalScrollbar = ReadScrollbarModel(ref reader),
@@ -1556,16 +1557,17 @@ namespace SweetEditor {
             return ReadLayoutMetrics(ref reader);
         }
 
-        private static LinkedEditingRect ReadLinkedEditingRect(ref BinaryReader reader) {
-            return new LinkedEditingRect {
+        private static RangeEffectRenderItem ReadRangeEffectRenderItem(ref BinaryReader reader) {
+            return new RangeEffectRenderItem {
                 Rect = ReadRect(ref reader),
-                IsActive = reader.ReadBoolI32(),
+                Kind = (RangeEffectKind)reader.ReadInt32(),
+                Style = ReadRangeEffectStyle(ref reader),
             };
         }
 
-        public static LinkedEditingRect DecodeLinkedEditingRect(ReadOnlySpan<byte> data) {
+        public static RangeEffectRenderItem DecodeRangeEffectRenderItem(ReadOnlySpan<byte> data) {
             var reader = new BinaryReader(data);
-            return ReadLinkedEditingRect(ref reader);
+            return ReadRangeEffectRenderItem(ref reader);
         }
 
         private static ScrollMetrics ReadScrollMetrics(ref BinaryReader reader) {
@@ -2192,6 +2194,12 @@ namespace SweetEditor {
         public static byte[] EncodeEditorOptions(EditorOptions value) {
             var writer = new BinaryWriter(SizeOfEditorOptions(value));
             WriteEditorOptions(writer, value);
+            return writer.ToArray();
+        }
+
+        public static byte[] EncodeEditorRangeEffectStyles(EditorRangeEffectStyles value) {
+            var writer = new BinaryWriter(SizeOfEditorRangeEffectStyles(value));
+            WriteEditorRangeEffectStyles(writer, value);
             return writer.ToArray();
         }
 

@@ -1657,9 +1657,11 @@ namespace NS_SWEETEDITOR {
   void TextLayout::applyPresentationState(VisualLine& visual_line,
                                           const PresentationContext& presentation_context) {
     const EditorRenderColors& colors = presentation_context.render_colors;
+    const EditorRangeEffectStyles& range_effect_styles = presentation_context.range_effect_styles;
     const TextRange& selection = presentation_context.selection_range;
+    const int32_t selection_foreground = range_effect_styles.selection.foreground_color;
     const bool has_selection_foreground = presentation_context.has_selection
-        && colors.selection_foreground != 0
+        && selection_foreground != 0
         && selection.start != selection.end;
 
     Vector<VisualRun> runs;
@@ -1761,7 +1763,7 @@ namespace NS_SWEETEDITOR {
       part.x = run.x + prefix_width;
       part.width = measureWidth(part.text, part.style.font_style);
       if (selected) {
-        part.style.color = colors.selection_foreground;
+        part.style.color = selection_foreground;
         part.style.background_color = 0;
       }
       runs.push_back(std::move(part));

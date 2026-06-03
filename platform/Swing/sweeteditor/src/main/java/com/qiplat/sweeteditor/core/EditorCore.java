@@ -2,6 +2,7 @@ package com.qiplat.sweeteditor.core;
 
 import com.qiplat.sweeteditor.core.action.EditorActionResult;
 import com.qiplat.sweeteditor.core.adornment.*;
+import com.qiplat.sweeteditor.core.config.EditorRangeEffectStyles;
 import com.qiplat.sweeteditor.core.config.EditorRenderColors;
 import com.qiplat.sweeteditor.core.config.EditorOptions;
 import com.qiplat.sweeteditor.core.config.HandleConfig;
@@ -674,6 +675,14 @@ public class EditorCore {
         try (Arena tempArena = Arena.ofConfined()) {
             MemorySegment payload = CoreProtocol.encodeEditorRenderColors(tempArena, colors);
             return decodeAction(EditorNative.setEditorRenderColors(nativeHandle, payload, payload.byteSize()));
+        }
+    }
+
+    public EditorActionResult setEditorRangeEffectStyles(EditorRangeEffectStyles styles) {
+        if (styles == null) styles = new EditorRangeEffectStyles();
+        try (Arena tempArena = Arena.ofConfined()) {
+            MemorySegment payload = CoreProtocol.encodeEditorRangeEffectStyles(tempArena, styles);
+            return decodeAction(EditorNative.setEditorRangeEffectStyles(nativeHandle, payload, payload.byteSize()));
         }
     }
 

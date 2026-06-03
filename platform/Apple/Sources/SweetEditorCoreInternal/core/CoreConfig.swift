@@ -43,6 +43,23 @@ public enum FoldArrowMode: Int32 {
     }
 }
 
+public enum RangeEffectUnderlineStyle: Int32 {
+    case NONE = 0
+    case SOLID = 1
+    case DASHED = 2
+    case WAVY = 3
+
+    public static func fromValue(_ value: Int32) -> RangeEffectUnderlineStyle {
+        switch value {
+        case 0: return .NONE
+        case 1: return .SOLID
+        case 2: return .DASHED
+        case 3: return .WAVY
+        default: return .NONE
+        }
+    }
+}
+
 public enum ScrollbarMode: Int32 {
     case ALWAYS = 0
     case TRANSIENT = 1
@@ -110,17 +127,49 @@ public struct EditorOptions {
     }
 }
 
+public struct EditorRangeEffectStyles {
+    public var selection: RangeEffectStyle = RangeEffectStyle()
+    public var search_match: RangeEffectStyle = RangeEffectStyle()
+    public var search_current: RangeEffectStyle = RangeEffectStyle()
+    public var document_highlight_text: RangeEffectStyle = RangeEffectStyle()
+    public var document_highlight_read: RangeEffectStyle = RangeEffectStyle()
+    public var document_highlight_write: RangeEffectStyle = RangeEffectStyle()
+    public var linked_editing_active: RangeEffectStyle = RangeEffectStyle()
+    public var linked_editing_inactive: RangeEffectStyle = RangeEffectStyle()
+    public var ime_composition: RangeEffectStyle = RangeEffectStyle()
+    public var bracket_match: RangeEffectStyle = RangeEffectStyle()
+    public var diagnostic_error: RangeEffectStyle = RangeEffectStyle()
+    public var diagnostic_warning: RangeEffectStyle = RangeEffectStyle()
+    public var diagnostic_info: RangeEffectStyle = RangeEffectStyle()
+    public var diagnostic_hint: RangeEffectStyle = RangeEffectStyle()
+
+    public init(selection: RangeEffectStyle = RangeEffectStyle(), search_match: RangeEffectStyle = RangeEffectStyle(), search_current: RangeEffectStyle = RangeEffectStyle(), document_highlight_text: RangeEffectStyle = RangeEffectStyle(), document_highlight_read: RangeEffectStyle = RangeEffectStyle(), document_highlight_write: RangeEffectStyle = RangeEffectStyle(), linked_editing_active: RangeEffectStyle = RangeEffectStyle(), linked_editing_inactive: RangeEffectStyle = RangeEffectStyle(), ime_composition: RangeEffectStyle = RangeEffectStyle(), bracket_match: RangeEffectStyle = RangeEffectStyle(), diagnostic_error: RangeEffectStyle = RangeEffectStyle(), diagnostic_warning: RangeEffectStyle = RangeEffectStyle(), diagnostic_info: RangeEffectStyle = RangeEffectStyle(), diagnostic_hint: RangeEffectStyle = RangeEffectStyle()) {
+        self.selection = selection
+        self.search_match = search_match
+        self.search_current = search_current
+        self.document_highlight_text = document_highlight_text
+        self.document_highlight_read = document_highlight_read
+        self.document_highlight_write = document_highlight_write
+        self.linked_editing_active = linked_editing_active
+        self.linked_editing_inactive = linked_editing_inactive
+        self.ime_composition = ime_composition
+        self.bracket_match = bracket_match
+        self.diagnostic_error = diagnostic_error
+        self.diagnostic_warning = diagnostic_warning
+        self.diagnostic_info = diagnostic_info
+        self.diagnostic_hint = diagnostic_hint
+    }
+}
+
 public struct EditorRenderColors {
     public var text_foreground: Int32 = 0
-    public var selection_foreground: Int32 = 0
     public var link_foreground: Int32 = 0
     public var active_link_foreground: Int32 = 0
     public var codelens_foreground: Int32 = 0
     public var active_codelens_foreground: Int32 = 0
 
-    public init(text_foreground: Int32 = 0, selection_foreground: Int32 = 0, link_foreground: Int32 = 0, active_link_foreground: Int32 = 0, codelens_foreground: Int32 = 0, active_codelens_foreground: Int32 = 0) {
+    public init(text_foreground: Int32 = 0, link_foreground: Int32 = 0, active_link_foreground: Int32 = 0, codelens_foreground: Int32 = 0, active_codelens_foreground: Int32 = 0) {
         self.text_foreground = text_foreground
-        self.selection_foreground = selection_foreground
         self.link_foreground = link_foreground
         self.active_link_foreground = active_link_foreground
         self.codelens_foreground = codelens_foreground
@@ -135,6 +184,22 @@ public struct HandleConfig {
     public init(start_hit_offset: OffsetRect = OffsetRect(), end_hit_offset: OffsetRect = OffsetRect()) {
         self.start_hit_offset = start_hit_offset
         self.end_hit_offset = end_hit_offset
+    }
+}
+
+public struct RangeEffectStyle {
+    public var foreground_color: Int32 = 0
+    public var background_color: Int32 = 0
+    public var border_color: Int32 = 0
+    public var underline_color: Int32 = 0
+    public var underline_style: RangeEffectUnderlineStyle = .NONE
+
+    public init(foreground_color: Int32 = 0, background_color: Int32 = 0, border_color: Int32 = 0, underline_color: Int32 = 0, underline_style: RangeEffectUnderlineStyle = .NONE) {
+        self.foreground_color = foreground_color
+        self.background_color = background_color
+        self.border_color = border_color
+        self.underline_color = underline_color
+        self.underline_style = underline_style
     }
 }
 

@@ -10,7 +10,10 @@ import com.qiplat.sweeteditor.core.action.EditorActionResult;
 import com.qiplat.sweeteditor.core.action.ScrollBehavior;
 import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.config.EditorOptions;
+import com.qiplat.sweeteditor.core.config.EditorRangeEffectStyles;
 import com.qiplat.sweeteditor.core.config.EditorRenderColors;
+import com.qiplat.sweeteditor.core.config.RangeEffectStyle;
+import com.qiplat.sweeteditor.core.config.RangeEffectUnderlineStyle;
 import com.qiplat.sweeteditor.core.adornment.*;
 import com.qiplat.sweeteditor.core.foundation.*;
 import com.qiplat.sweeteditor.core.foundation.PointF;
@@ -141,6 +144,7 @@ public class SweetEditor extends JPanel {
 
         if (currentTheme != null) {
             editorCore.setEditorRenderColors(buildEditorRenderColors(currentTheme));
+            editorCore.setEditorRangeEffectStyles(buildEditorRangeEffectStyles(currentTheme));
         }
         if (currentTheme != null && !currentTheme.textStyles.isEmpty()) {
             editorCore.registerBatchTextStyles(currentTheme.textStyles);
@@ -202,6 +206,7 @@ public class SweetEditor extends JPanel {
         renderer.applyTheme(theme);
         setBackground(theme.backgroundColor);
         dispatchEditorActionResult(editorCore.setEditorRenderColors(buildEditorRenderColors(theme)));
+        dispatchEditorActionResult(editorCore.setEditorRangeEffectStyles(buildEditorRangeEffectStyles(theme)));
         EditorActionResult result = null;
         if (theme != null && !theme.textStyles.isEmpty()) {
             result = editorCore.registerBatchTextStyles(theme.textStyles);
@@ -229,11 +234,58 @@ public class SweetEditor extends JPanel {
         if (activeLinkForeground == 0) activeLinkForeground = activeCodeLensForeground;
         return new EditorRenderColors(
                 colorToArgb(theme.textColor),
-                colorToArgb(theme.selectionTextColor),
                 linkForeground,
                 activeLinkForeground,
                 codeLensForeground,
                 activeCodeLensForeground);
+    }
+
+    private EditorRangeEffectStyles buildEditorRangeEffectStyles(EditorTheme theme) {
+        EditorRangeEffectStyles styles = new EditorRangeEffectStyles();
+        styles.selection = new RangeEffectStyle(
+                colorToArgb(theme.selectionTextColor),
+                colorToArgb(theme.selectionColor),
+                0,
+                0,
+                RangeEffectUnderlineStyle.NONE);
+        styles.imeComposition = new RangeEffectStyle(
+                0,
+                0,
+                0,
+                colorToArgb(theme.compositionUnderlineColor),
+                RangeEffectUnderlineStyle.SOLID);
+        styles.diagnosticError = diagnosticStyle(theme.diagnosticErrorColor, RangeEffectUnderlineStyle.WAVY);
+        styles.diagnosticWarning = diagnosticStyle(theme.diagnosticWarningColor, RangeEffectUnderlineStyle.WAVY);
+        styles.diagnosticInfo = diagnosticStyle(theme.diagnosticInfoColor, RangeEffectUnderlineStyle.WAVY);
+        styles.diagnosticHint = diagnosticStyle(theme.diagnosticHintColor, RangeEffectUnderlineStyle.DASHED);
+        int activeLinked = colorToArgb(theme.linkedEditingActiveColor);
+        styles.linkedEditingActive = new RangeEffectStyle(
+                0,
+                withAlpha(activeLinked, 0x20),
+                activeLinked,
+                0,
+                RangeEffectUnderlineStyle.NONE);
+        styles.linkedEditingInactive = new RangeEffectStyle(
+                0,
+                0,
+                colorToArgb(theme.linkedEditingInactiveColor),
+                0,
+                RangeEffectUnderlineStyle.NONE);
+        styles.bracketMatch = new RangeEffectStyle(
+                0,
+                colorToArgb(theme.bracketHighlightBgColor),
+                colorToArgb(theme.bracketHighlightBorderColor),
+                0,
+                RangeEffectUnderlineStyle.NONE);
+        return styles;
+    }
+
+    private RangeEffectStyle diagnosticStyle(Color color, RangeEffectUnderlineStyle underlineStyle) {
+        return new RangeEffectStyle(0, 0, 0, colorToArgb(color), underlineStyle);
+    }
+
+    private int withAlpha(int color, int alpha) {
+        return color == 0 ? 0 : (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
     }
 
     private int colorToArgb(Color color) {

@@ -58,7 +58,6 @@ namespace NS_SWEETEDITOR {
 
   bool EditorRenderColors::operator==(const EditorRenderColors& other) const {
     return text_foreground == other.text_foreground
-        && selection_foreground == other.selection_foreground
         && link_foreground == other.link_foreground
         && active_link_foreground == other.active_link_foreground
         && codelens_foreground == other.codelens_foreground
@@ -66,6 +65,39 @@ namespace NS_SWEETEDITOR {
   }
 
   bool EditorRenderColors::operator!=(const EditorRenderColors& other) const {
+    return !(*this == other);
+  }
+
+  bool RangeEffectStyle::operator==(const RangeEffectStyle& other) const {
+    return foreground_color == other.foreground_color
+        && background_color == other.background_color
+        && border_color == other.border_color
+        && underline_color == other.underline_color
+        && underline_style == other.underline_style;
+  }
+
+  bool RangeEffectStyle::operator!=(const RangeEffectStyle& other) const {
+    return !(*this == other);
+  }
+
+  bool EditorRangeEffectStyles::operator==(const EditorRangeEffectStyles& other) const {
+    return selection == other.selection
+        && search_match == other.search_match
+        && search_current == other.search_current
+        && document_highlight_text == other.document_highlight_text
+        && document_highlight_read == other.document_highlight_read
+        && document_highlight_write == other.document_highlight_write
+        && linked_editing_active == other.linked_editing_active
+        && linked_editing_inactive == other.linked_editing_inactive
+        && ime_composition == other.ime_composition
+        && bracket_match == other.bracket_match
+        && diagnostic_error == other.diagnostic_error
+        && diagnostic_warning == other.diagnostic_warning
+        && diagnostic_info == other.diagnostic_info
+        && diagnostic_hint == other.diagnostic_hint;
+  }
+
+  bool EditorRangeEffectStyles::operator!=(const EditorRangeEffectStyles& other) const {
     return !(*this == other);
   }
 
@@ -88,7 +120,6 @@ namespace NS_SWEETEDITOR {
         + ", gutter_visible = " + (gutter_visible ? "true" : "false")
         + ", wrap_mode = " + std::to_string(static_cast<int>(wrap_mode))
         + ", render_colors.text_foreground = " + std::to_string(render_colors.text_foreground)
-        + ", render_colors.selection_foreground = " + std::to_string(render_colors.selection_foreground)
         + ", render_colors.link_foreground = " + std::to_string(render_colors.link_foreground)
         + ", render_colors.active_link_foreground = " + std::to_string(render_colors.active_link_foreground)
         + ", render_colors.codelens_foreground = " + std::to_string(render_colors.codelens_foreground)

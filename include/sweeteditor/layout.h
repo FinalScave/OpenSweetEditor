@@ -56,6 +56,8 @@ namespace NS_SWEETEDITOR {
     TextRange selection_range;
     /// Render-time editor colors resolved into visual runs
     EditorRenderColors render_colors;
+    /// Render-time range effect styles
+    EditorRangeEffectStyles range_effect_styles;
   };
 
   enum struct PointerHitPolicy : uint8_t {

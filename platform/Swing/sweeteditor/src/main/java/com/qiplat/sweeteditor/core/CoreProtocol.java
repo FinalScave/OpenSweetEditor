@@ -23,9 +23,12 @@ import com.qiplat.sweeteditor.core.adornment.TextStyle;
 import com.qiplat.sweeteditor.core.config.AutoIndentMode;
 import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
 import com.qiplat.sweeteditor.core.config.EditorOptions;
+import com.qiplat.sweeteditor.core.config.EditorRangeEffectStyles;
 import com.qiplat.sweeteditor.core.config.EditorRenderColors;
 import com.qiplat.sweeteditor.core.config.FoldArrowMode;
 import com.qiplat.sweeteditor.core.config.HandleConfig;
+import com.qiplat.sweeteditor.core.config.RangeEffectStyle;
+import com.qiplat.sweeteditor.core.config.RangeEffectUnderlineStyle;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
 import com.qiplat.sweeteditor.core.config.ScrollbarMode;
 import com.qiplat.sweeteditor.core.config.ScrollbarTrackTapMode;
@@ -64,10 +67,8 @@ import com.qiplat.sweeteditor.core.keymap.KeyCode;
 import com.qiplat.sweeteditor.core.keymap.KeyModifier;
 import com.qiplat.sweeteditor.core.snippet.LinkedEditingModel;
 import com.qiplat.sweeteditor.core.snippet.TabStopGroup;
-import com.qiplat.sweeteditor.core.visual.CompositionDecoration;
 import com.qiplat.sweeteditor.core.visual.Cursor;
 import com.qiplat.sweeteditor.core.visual.CursorRect;
-import com.qiplat.sweeteditor.core.visual.DiagnosticDecoration;
 import com.qiplat.sweeteditor.core.visual.EditorRenderModel;
 import com.qiplat.sweeteditor.core.visual.FoldMarkerRenderItem;
 import com.qiplat.sweeteditor.core.visual.FoldState;
@@ -77,8 +78,9 @@ import com.qiplat.sweeteditor.core.visual.GuideStyle;
 import com.qiplat.sweeteditor.core.visual.GuideType;
 import com.qiplat.sweeteditor.core.visual.GutterIconRenderItem;
 import com.qiplat.sweeteditor.core.visual.LayoutMetrics;
-import com.qiplat.sweeteditor.core.visual.LinkedEditingRect;
 import com.qiplat.sweeteditor.core.visual.PointerCursorType;
+import com.qiplat.sweeteditor.core.visual.RangeEffectKind;
+import com.qiplat.sweeteditor.core.visual.RangeEffectRenderItem;
 import com.qiplat.sweeteditor.core.visual.ScrollMetrics;
 import com.qiplat.sweeteditor.core.visual.ScrollbarModel;
 import com.qiplat.sweeteditor.core.visual.SelectionHandle;
@@ -281,18 +283,6 @@ public final class CoreProtocol {
         return size;
     }
 
-    private static ArrayList<DiagnosticDecoration> readDiagnosticDecorationList(BinaryReader reader) {
-        int count = reader.readInt32();
-        if (count < 0 || count > reader.remaining()) {
-            throw new IllegalArgumentException("Invalid protocol length.");
-        }
-        ArrayList<DiagnosticDecoration> values = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            values.add(readDiagnosticDecoration(reader));
-        }
-        return values;
-    }
-
     private static void writeFlowGuideList(BinaryWriter writer, java.util.List<? extends FlowGuide> values) {
         int count = values == null ? 0 : values.size();
         writer.writeInt32(count);
@@ -467,18 +457,6 @@ public final class CoreProtocol {
         return size;
     }
 
-    private static ArrayList<LinkedEditingRect> readLinkedEditingRectList(BinaryReader reader) {
-        int count = reader.readInt32();
-        if (count < 0 || count > reader.remaining()) {
-            throw new IllegalArgumentException("Invalid protocol length.");
-        }
-        ArrayList<LinkedEditingRect> values = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            values.add(readLinkedEditingRect(reader));
-        }
-        return values;
-    }
-
     private static void writePhantomTextList(BinaryWriter writer, java.util.List<? extends PhantomText> values) {
         int count = values == null ? 0 : values.size();
         writer.writeInt32(count);
@@ -527,34 +505,16 @@ public final class CoreProtocol {
         return size;
     }
 
-    private static ArrayList<Rect> readRectList(BinaryReader reader) {
+    private static ArrayList<RangeEffectRenderItem> readRangeEffectRenderItemList(BinaryReader reader) {
         int count = reader.readInt32();
         if (count < 0 || count > reader.remaining()) {
             throw new IllegalArgumentException("Invalid protocol length.");
         }
-        ArrayList<Rect> values = new ArrayList<>(count);
+        ArrayList<RangeEffectRenderItem> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            values.add(readRect(reader));
+            values.add(readRangeEffectRenderItem(reader));
         }
         return values;
-    }
-
-    private static void writeRectList(BinaryWriter writer, java.util.List<? extends Rect> values) {
-        int count = values == null ? 0 : values.size();
-        writer.writeInt32(count);
-        for (int i = 0; i < count; i++) {
-            writeRect(writer, values.get(i));
-        }
-    }
-
-    private static int sizeOfRectList(java.util.List<? extends Rect> values) {
-        int size = 4;
-        if (values != null) {
-            for (int i = 0; i < values.size(); i++) {
-                size += sizeOfRect(values.get(i));
-            }
-        }
-        return size;
     }
 
     private static void writeSeparatorGuideList(BinaryWriter writer, java.util.List<? extends SeparatorGuide> values) {
@@ -992,9 +952,44 @@ public final class CoreProtocol {
         return size;
     }
 
+    private static void writeEditorRangeEffectStyles(BinaryWriter writer, EditorRangeEffectStyles value) {
+        writeRangeEffectStyle(writer, value.selection);
+        writeRangeEffectStyle(writer, value.searchMatch);
+        writeRangeEffectStyle(writer, value.searchCurrent);
+        writeRangeEffectStyle(writer, value.documentHighlightText);
+        writeRangeEffectStyle(writer, value.documentHighlightRead);
+        writeRangeEffectStyle(writer, value.documentHighlightWrite);
+        writeRangeEffectStyle(writer, value.linkedEditingActive);
+        writeRangeEffectStyle(writer, value.linkedEditingInactive);
+        writeRangeEffectStyle(writer, value.imeComposition);
+        writeRangeEffectStyle(writer, value.bracketMatch);
+        writeRangeEffectStyle(writer, value.diagnosticError);
+        writeRangeEffectStyle(writer, value.diagnosticWarning);
+        writeRangeEffectStyle(writer, value.diagnosticInfo);
+        writeRangeEffectStyle(writer, value.diagnosticHint);
+    }
+
+    public static int sizeOfEditorRangeEffectStyles(EditorRangeEffectStyles value) {
+        int size = 0;
+        size += sizeOfRangeEffectStyle(value.selection);
+        size += sizeOfRangeEffectStyle(value.searchMatch);
+        size += sizeOfRangeEffectStyle(value.searchCurrent);
+        size += sizeOfRangeEffectStyle(value.documentHighlightText);
+        size += sizeOfRangeEffectStyle(value.documentHighlightRead);
+        size += sizeOfRangeEffectStyle(value.documentHighlightWrite);
+        size += sizeOfRangeEffectStyle(value.linkedEditingActive);
+        size += sizeOfRangeEffectStyle(value.linkedEditingInactive);
+        size += sizeOfRangeEffectStyle(value.imeComposition);
+        size += sizeOfRangeEffectStyle(value.bracketMatch);
+        size += sizeOfRangeEffectStyle(value.diagnosticError);
+        size += sizeOfRangeEffectStyle(value.diagnosticWarning);
+        size += sizeOfRangeEffectStyle(value.diagnosticInfo);
+        size += sizeOfRangeEffectStyle(value.diagnosticHint);
+        return size;
+    }
+
     private static void writeEditorRenderColors(BinaryWriter writer, EditorRenderColors value) {
         writer.writeInt32(value.textForeground);
-        writer.writeInt32(value.selectionForeground);
         writer.writeInt32(value.linkForeground);
         writer.writeInt32(value.activeLinkForeground);
         writer.writeInt32(value.codelensForeground);
@@ -1003,7 +998,6 @@ public final class CoreProtocol {
 
     public static int sizeOfEditorRenderColors(EditorRenderColors value) {
         int size = 0;
-        size += 4;
         size += 4;
         size += 4;
         size += 4;
@@ -1021,6 +1015,38 @@ public final class CoreProtocol {
         int size = 0;
         size += sizeOfOffsetRect(value.startHitOffset);
         size += sizeOfOffsetRect(value.endHitOffset);
+        return size;
+    }
+
+    private static RangeEffectStyle readRangeEffectStyle(BinaryReader reader) {
+        RangeEffectStyle value = new RangeEffectStyle();
+        value.foregroundColor = reader.readInt32();
+        value.backgroundColor = reader.readInt32();
+        value.borderColor = reader.readInt32();
+        value.underlineColor = reader.readInt32();
+        value.underlineStyle = RangeEffectUnderlineStyle.fromValue(reader.readInt32());
+        return value;
+    }
+
+    public static RangeEffectStyle decodeRangeEffectStyle(MemorySegment data, long size) {
+        return readRangeEffectStyle(new BinaryReader(data, size));
+    }
+
+    private static void writeRangeEffectStyle(BinaryWriter writer, RangeEffectStyle value) {
+        writer.writeInt32(value.foregroundColor);
+        writer.writeInt32(value.backgroundColor);
+        writer.writeInt32(value.borderColor);
+        writer.writeInt32(value.underlineColor);
+        writer.writeInt32(value.underlineStyle.value);
+    }
+
+    public static int sizeOfRangeEffectStyle(RangeEffectStyle value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
         return size;
     }
 
@@ -1493,17 +1519,6 @@ public final class CoreProtocol {
         return size;
     }
 
-    private static CompositionDecoration readCompositionDecoration(BinaryReader reader) {
-        CompositionDecoration value = new CompositionDecoration();
-        value.active = reader.readInt32() != 0;
-        value.rect = readRect(reader);
-        return value;
-    }
-
-    public static CompositionDecoration decodeCompositionDecoration(MemorySegment data, long size) {
-        return readCompositionDecoration(new BinaryReader(data, size));
-    }
-
     private static Cursor readCursor(BinaryReader reader) {
         Cursor value = new Cursor();
         value.textPosition = readTextPosition(reader);
@@ -1544,17 +1559,6 @@ public final class CoreProtocol {
         return size;
     }
 
-    private static DiagnosticDecoration readDiagnosticDecoration(BinaryReader reader) {
-        DiagnosticDecoration value = new DiagnosticDecoration();
-        value.rect = readRect(reader);
-        value.severity = reader.readInt32();
-        return value;
-    }
-
-    public static DiagnosticDecoration decodeDiagnosticDecoration(MemorySegment data, long size) {
-        return readDiagnosticDecoration(new BinaryReader(data, size));
-    }
-
     private static EditorRenderModel readEditorRenderModel(BinaryReader reader) {
         EditorRenderModel value = new EditorRenderModel();
         value.splitX = reader.readFloat32();
@@ -1567,15 +1571,11 @@ public final class CoreProtocol {
         value.currentLineRenderMode = CurrentLineRenderMode.fromValue(reader.readInt32());
         value.lines = readVisualLineList(reader);
         value.cursor = readCursor(reader);
-        value.selectionRects = readRectList(reader);
+        value.rangeEffects = readRangeEffectRenderItemList(reader);
         value.selectionStartHandle = readSelectionHandle(reader);
         value.selectionEndHandle = readSelectionHandle(reader);
-        value.compositionDecoration = readCompositionDecoration(reader);
         value.guideSegments = readGuideSegmentList(reader);
-        value.diagnosticDecorations = readDiagnosticDecorationList(reader);
         value.maxGutterIcons = reader.readInt32();
-        value.linkedEditingRects = readLinkedEditingRectList(reader);
-        value.bracketHighlightRects = readRectList(reader);
         value.gutterIcons = readGutterIconRenderItemList(reader);
         value.foldMarkers = readFoldMarkerRenderItemList(reader);
         value.verticalScrollbar = readScrollbarModel(reader);
@@ -1652,15 +1652,16 @@ public final class CoreProtocol {
         return readLayoutMetrics(new BinaryReader(data, size));
     }
 
-    private static LinkedEditingRect readLinkedEditingRect(BinaryReader reader) {
-        LinkedEditingRect value = new LinkedEditingRect();
+    private static RangeEffectRenderItem readRangeEffectRenderItem(BinaryReader reader) {
+        RangeEffectRenderItem value = new RangeEffectRenderItem();
         value.rect = readRect(reader);
-        value.isActive = reader.readInt32() != 0;
+        value.kind = RangeEffectKind.fromValue(reader.readInt32());
+        value.style = readRangeEffectStyle(reader);
         return value;
     }
 
-    public static LinkedEditingRect decodeLinkedEditingRect(MemorySegment data, long size) {
-        return readLinkedEditingRect(new BinaryReader(data, size));
+    public static RangeEffectRenderItem decodeRangeEffectRenderItem(MemorySegment data, long size) {
+        return readRangeEffectRenderItem(new BinaryReader(data, size));
     }
 
     private static ScrollMetrics readScrollMetrics(BinaryReader reader) {
@@ -2422,6 +2423,12 @@ public final class CoreProtocol {
     public static MemorySegment encodeEditorOptions(Arena arena, EditorOptions value) {
         BinaryWriter writer = new BinaryWriter(arena, sizeOfEditorOptions(value));
         writeEditorOptions(writer, value);
+        return writer.segment();
+    }
+
+    public static MemorySegment encodeEditorRangeEffectStyles(Arena arena, EditorRangeEffectStyles value) {
+        BinaryWriter writer = new BinaryWriter(arena, sizeOfEditorRangeEffectStyles(value));
+        writeEditorRangeEffectStyles(writer, value);
         return writer.segment();
     }
 

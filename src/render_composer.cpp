@@ -7,6 +7,55 @@
 
 namespace NS_SWEETEDITOR {
 
+  namespace {
+    bool hasRangeEffectPaint(const RangeEffectStyle& style) {
+      return style.background_color != 0
+          || style.border_color != 0
+          || style.underline_color != 0;
+    }
+
+    void appendRangeEffect(EditorRenderModel& model, const Rect& rect,
+                           RangeEffectKind kind, const RangeEffectStyle& style) {
+      if (!hasRangeEffectPaint(style) || rect.width <= 0.0f || rect.height <= 0.0f) {
+        return;
+      }
+      RangeEffectRenderItem item;
+      item.rect = rect;
+      item.kind = kind;
+      item.style = style;
+      model.range_effects.push_back(item);
+    }
+
+    RangeEffectKind diagnosticRangeEffectKind(DiagnosticSeverity severity) {
+      switch (severity) {
+        case DiagnosticSeverity::DIAG_WARNING:
+          return RangeEffectKind::DIAGNOSTIC_WARNING;
+        case DiagnosticSeverity::DIAG_INFO:
+          return RangeEffectKind::DIAGNOSTIC_INFO;
+        case DiagnosticSeverity::DIAG_HINT:
+          return RangeEffectKind::DIAGNOSTIC_HINT;
+        case DiagnosticSeverity::DIAG_ERROR:
+        default:
+          return RangeEffectKind::DIAGNOSTIC_ERROR;
+      }
+    }
+
+    const RangeEffectStyle& diagnosticRangeEffectStyle(const EditorRangeEffectStyles& styles,
+                                                       DiagnosticSeverity severity) {
+      switch (severity) {
+        case DiagnosticSeverity::DIAG_WARNING:
+          return styles.diagnostic_warning;
+        case DiagnosticSeverity::DIAG_INFO:
+          return styles.diagnostic_info;
+        case DiagnosticSeverity::DIAG_HINT:
+          return styles.diagnostic_hint;
+        case DiagnosticSeverity::DIAG_ERROR:
+        default:
+          return styles.diagnostic_error;
+      }
+    }
+  }
+
   RenderComposer::RenderComposer(TextLayout* text_layout, DecorationManager* decorations, EditorSettings* settings)
       : m_text_layout_(text_layout), m_decorations_(decorations), m_settings_(settings) {
   }
@@ -22,9 +71,10 @@ namespace NS_SWEETEDITOR {
     model.current_line = {0, cursor_screen.y};
   }
 
-  void RenderComposer::buildCompositionDecoration(EditorRenderModel& model, const CompositionState& composition,
-                                                  float line_height) const {
+  void RenderComposer::buildCompositionRangeEffect(EditorRenderModel& model, const CompositionState& composition,
+                                                   float line_height) const {
     if (!composition.is_composing || composition.composing_columns == 0) return;
+    if (m_settings_ == nullptr) return;
 
     float font_height = m_text_layout_->getLayoutMetrics().font_height;
     float top_padding = (line_height - font_height) * 0.5f;
@@ -34,16 +84,16 @@ namespace NS_SWEETEDITOR {
         composition.start_position.column,
         composition.start_position.column + composition.composing_columns,
         x_start, x_end, comp_y);
-    model.composition_decoration.active = true;
-    model.composition_decoration.rect = {{x_start, comp_y + top_padding}, x_end - x_start, font_height};
-    LOGD("buildRenderModel: composition_decoration active=true, origin=(%.1f, %.1f), w=%.1f, h=%.1f, composing_cols=%zu, start_pos=(%zu,%zu)",
+    Rect rect = {{x_start, comp_y + top_padding}, x_end - x_start, font_height};
+    appendRangeEffect(model, rect, RangeEffectKind::IME_COMPOSITION, m_settings_->range_effect_styles.ime_composition);
+    LOGD("buildRenderModel: composition range effect origin=(%.1f, %.1f), w=%.1f, h=%.1f, composing_cols=%zu, start_pos=(%zu,%zu)",
          x_start, comp_y + top_padding, x_end - x_start, font_height,
          composition.composing_columns,
          composition.start_position.line, composition.start_position.column);
   }
 
-  void RenderComposer::buildSelectionRects(EditorRenderModel& model, Document* document,
-                                           const CaretState& caret, float line_height) const {
+  void RenderComposer::buildSelectionRangeEffects(EditorRenderModel& model, Document* document,
+                                                  const CaretState& caret, float line_height) const {
     if (!caret.has_selection || document == nullptr) {
       return;
     }
@@ -54,6 +104,21 @@ namespace NS_SWEETEDITOR {
     if (sel_end < sel_start) {
       std::swap(sel_start, sel_end);
     }
+
+    const RangeEffectStyle* selection_style = m_settings_ == nullptr
+        ? nullptr
+        : &m_settings_->range_effect_styles.selection;
+    auto appendSelectionRect = [&](const Rect& rect) {
+      if (selection_style == nullptr) return;
+      appendRangeEffect(model, rect, RangeEffectKind::SELECTION, *selection_style);
+    };
+    auto appendSelectionRectsForRange = [&](size_t line, size_t col_begin, size_t col_end) {
+      Vector<Rect> rects;
+      m_text_layout_->getColumnSelectionRects(line, col_begin, col_end, line_height, rects);
+      for (const Rect& rect : rects) {
+        appendSelectionRect(rect);
+      }
+    };
 
     size_t vis_first = sel_start.line;
     size_t vis_last = sel_end.line;
@@ -79,12 +144,12 @@ namespace NS_SWEETEDITOR {
         rect.origin = coord;
         rect.width = m_text_layout_->getLineHeight() * 0.3f;
         rect.height = line_height;
-        model.selection_rects.push_back(rect);
+        appendSelectionRect(rect);
         continue;
       }
 
       if (col_begin < col_end_val) {
-        m_text_layout_->getColumnSelectionRects(line, col_begin, col_end_val, line_height, model.selection_rects);
+        appendSelectionRectsForRange(line, col_begin, col_end_val);
       }
     }
 
@@ -110,7 +175,7 @@ namespace NS_SWEETEDITOR {
       if (col_begin >= col_end_val) {
         return;
       }
-      m_text_layout_->getColumnSelectionRects(source_line, col_begin, col_end_val, line_height, model.selection_rects);
+      appendSelectionRectsForRange(source_line, col_begin, col_end_val);
     };
 
     HashSet<size_t> projected_owners;
@@ -132,11 +197,11 @@ namespace NS_SWEETEDITOR {
     model.selection_end_handle.visible = true;
   }
 
-  void RenderComposer::buildLinkedEditingRects(EditorRenderModel& model, Document* document,
-                                               const LinkedEditingSession* linked_editing_session,
-                                               float line_height) const {
+  void RenderComposer::buildLinkedEditingRangeEffects(EditorRenderModel& model, Document* document,
+                                                      const LinkedEditingSession* linked_editing_session,
+                                                      float line_height) const {
     if (linked_editing_session == nullptr || !linked_editing_session->isActive()) return;
-    if (document == nullptr) return;
+    if (document == nullptr || m_settings_ == nullptr) return;
 
     auto highlights = linked_editing_session->getAllHighlights();
     for (const auto& hl : highlights) {
@@ -148,10 +213,14 @@ namespace NS_SWEETEDITOR {
         if (col_begin >= col_end) continue;
         float x_start, x_end, y;
         m_text_layout_->getColumnScreenRange(line, col_begin, col_end, x_start, x_end, y);
-        LinkedEditingRect rect;
-        rect.rect = {{x_start, y}, x_end - x_start, line_height};
-        rect.is_active = hl.is_active;
-        model.linked_editing_rects.push_back(rect);
+        Rect rect = {{x_start, y}, x_end - x_start, line_height};
+        const RangeEffectStyle& style = hl.is_active
+            ? m_settings_->range_effect_styles.linked_editing_active
+            : m_settings_->range_effect_styles.linked_editing_inactive;
+        RangeEffectKind kind = hl.is_active
+            ? RangeEffectKind::LINKED_EDITING_ACTIVE
+            : RangeEffectKind::LINKED_EDITING_INACTIVE;
+        appendRangeEffect(model, rect, kind, style);
       }
     }
   }
@@ -277,9 +346,9 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  void RenderComposer::buildDiagnosticDecorations(EditorRenderModel& model, Document* document,
-                                                  float line_height) const {
-    if (m_decorations_ == nullptr || document == nullptr) return;
+  void RenderComposer::buildDiagnosticRangeEffects(EditorRenderModel& model, Document* document,
+                                                   float line_height) const {
+    if (m_decorations_ == nullptr || document == nullptr || m_settings_ == nullptr) return;
 
     float font_height = m_text_layout_->getLayoutMetrics().font_height;
     float top_padding = (line_height - font_height) * 0.5f;
@@ -300,19 +369,20 @@ namespace NS_SWEETEDITOR {
             x_start,
             x_end,
             y);
-        DiagnosticDecoration dd;
-        dd.rect = {{x_start, y + top_padding}, x_end - x_start, font_height};
-        dd.severity = static_cast<int32_t>(ds.severity);
-        model.diagnostic_decorations.push_back(dd);
+        Rect rect = {{x_start, y + top_padding}, x_end - x_start, font_height};
+        appendRangeEffect(model,
+                          rect,
+                          diagnosticRangeEffectKind(ds.severity),
+                          diagnosticRangeEffectStyle(m_settings_->range_effect_styles, ds.severity));
       }
     }
   }
 
-  void RenderComposer::buildBracketHighlightRects(EditorRenderModel& model, Document* document,
-                                                  const TextPosition& cursor_position, const Vector<BracketPair>& bracket_pairs,
-                                                  const TextPosition& external_bracket_open, const TextPosition& external_bracket_close,
-                                                  bool has_external_brackets, float line_height) const {
-    if (document == nullptr || bracket_pairs.empty()) return;
+  void RenderComposer::buildBracketHighlightRangeEffects(EditorRenderModel& model, Document* document,
+                                                         const TextPosition& cursor_position, const Vector<BracketPair>& bracket_pairs,
+                                                         const TextPosition& external_bracket_open, const TextPosition& external_bracket_close,
+                                                         bool has_external_brackets, float line_height) const {
+    if (document == nullptr || bracket_pairs.empty() || m_settings_ == nullptr) return;
 
     TextPosition open_pos, close_pos;
     bool found = false;
@@ -410,7 +480,7 @@ namespace NS_SWEETEDITOR {
       rect.origin = {x_start, y};
       rect.width = x_end - x_start;
       rect.height = line_height;
-      model.bracket_highlight_rects.push_back(rect);
+      appendRangeEffect(model, rect, RangeEffectKind::BRACKET_MATCH, m_settings_->range_effect_styles.bracket_match);
     };
 
     addRect(open_pos);

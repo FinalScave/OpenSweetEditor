@@ -149,10 +149,31 @@ namespace NS_SWEETEDITOR {
     {GuideStyle::DASHED, "DASHED"},
     {GuideStyle::DOUBLE, "DOUBLE"},
   })
-  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(CompositionDecoration, active, rect)
-  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(DiagnosticDecoration, rect, severity)
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(GuideSegment, direction, type, style, start, end, arrow_end)
-  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(LinkedEditingRect, rect, is_active)
+  NLOHMANN_JSON_SERIALIZE_ENUM(RangeEffectKind, {
+    {RangeEffectKind::SELECTION, "SELECTION"},
+    {RangeEffectKind::SEARCH_MATCH, "SEARCH_MATCH"},
+    {RangeEffectKind::SEARCH_CURRENT, "SEARCH_CURRENT"},
+    {RangeEffectKind::DOCUMENT_HIGHLIGHT_TEXT, "DOCUMENT_HIGHLIGHT_TEXT"},
+    {RangeEffectKind::DOCUMENT_HIGHLIGHT_READ, "DOCUMENT_HIGHLIGHT_READ"},
+    {RangeEffectKind::DOCUMENT_HIGHLIGHT_WRITE, "DOCUMENT_HIGHLIGHT_WRITE"},
+    {RangeEffectKind::LINKED_EDITING_ACTIVE, "LINKED_EDITING_ACTIVE"},
+    {RangeEffectKind::LINKED_EDITING_INACTIVE, "LINKED_EDITING_INACTIVE"},
+    {RangeEffectKind::IME_COMPOSITION, "IME_COMPOSITION"},
+    {RangeEffectKind::BRACKET_MATCH, "BRACKET_MATCH"},
+    {RangeEffectKind::DIAGNOSTIC_ERROR, "DIAGNOSTIC_ERROR"},
+    {RangeEffectKind::DIAGNOSTIC_WARNING, "DIAGNOSTIC_WARNING"},
+    {RangeEffectKind::DIAGNOSTIC_INFO, "DIAGNOSTIC_INFO"},
+    {RangeEffectKind::DIAGNOSTIC_HINT, "DIAGNOSTIC_HINT"},
+  })
+  NLOHMANN_JSON_SERIALIZE_ENUM(RangeEffectUnderlineStyle, {
+    {RangeEffectUnderlineStyle::NONE, "NONE"},
+    {RangeEffectUnderlineStyle::SOLID, "SOLID"},
+    {RangeEffectUnderlineStyle::DASHED, "DASHED"},
+    {RangeEffectUnderlineStyle::WAVY, "WAVY"},
+  })
+  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(RangeEffectStyle, foreground_color, background_color, border_color, underline_color, underline_style)
+  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(RangeEffectRenderItem, rect, kind, style)
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(GutterIconRenderItem, logical_line, icon_id, rect)
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(FoldMarkerRenderItem, logical_line, fold_state, rect)
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ScrollbarModel, visible, alpha, thumb_active, track, thumb)
@@ -161,7 +182,7 @@ namespace NS_SWEETEDITOR {
     {CurrentLineRenderMode::BORDER, "BORDER"},
     {CurrentLineRenderMode::NONE, "NONE"},
   })
-  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(EditorRenderModel, split_x, split_line_visible, scroll_x, scroll_y, viewport_width, viewport_height, current_line, current_line_render_mode, lines, cursor, selection_rects, selection_start_handle, selection_end_handle, composition_decoration, guide_segments, diagnostic_decorations, max_gutter_icons, linked_editing_rects, bracket_highlight_rects, gutter_icons, fold_markers, vertical_scrollbar, horizontal_scrollbar, gutter_sticky, gutter_visible, pointer_cursor_type)
+  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(EditorRenderModel, split_x, split_line_visible, scroll_x, scroll_y, viewport_width, viewport_height, current_line, current_line_render_mode, lines, cursor, range_effects, selection_start_handle, selection_end_handle, guide_segments, max_gutter_icons, gutter_icons, fold_markers, vertical_scrollbar, horizontal_scrollbar, gutter_sticky, gutter_visible, pointer_cursor_type)
   NLOHMANN_JSON_SERIALIZE_ENUM(FoldArrowMode, {
     {FoldArrowMode::AUTO, "AUTO"},
     {FoldArrowMode::ALWAYS, "ALWAYS"},

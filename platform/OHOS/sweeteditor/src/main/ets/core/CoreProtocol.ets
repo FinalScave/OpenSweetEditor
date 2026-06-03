@@ -1,13 +1,13 @@
 import util from '@ohos.util';
 import { EditorActionReason, EditorActionResult, ScrollBehavior, editorActionReasonFromValue, scrollBehaviorFromValue } from './CoreAction';
 import { BracketGuide, CodeLensItem, Diagnostic, DiagnosticSeverity, FlowGuide, FoldRegion, GutterIcon, IndentGuide, InlayHint, InlayType, LinkSpan, PhantomText, SeparatorGuide, SeparatorStyle, SpanLayer, StyleSpan, TextStyle, diagnosticSeverityFromValue, inlayTypeFromValue, separatorStyleFromValue, spanLayerFromValue } from './CoreAdornments';
-import { AutoIndentMode, CurrentLineRenderMode, EditorOptions, EditorRenderColors, FoldArrowMode, HandleConfig, ScrollbarConfig, ScrollbarMode, ScrollbarTrackTapMode, WrapMode, autoIndentModeFromValue, currentLineRenderModeFromValue, foldArrowModeFromValue, scrollbarModeFromValue, scrollbarTrackTapModeFromValue, wrapModeFromValue } from './CoreConfig';
+import { AutoIndentMode, CurrentLineRenderMode, EditorOptions, EditorRangeEffectStyles, EditorRenderColors, FoldArrowMode, HandleConfig, RangeEffectStyle, RangeEffectUnderlineStyle, ScrollbarConfig, ScrollbarMode, ScrollbarTrackTapMode, WrapMode, autoIndentModeFromValue, currentLineRenderModeFromValue, foldArrowModeFromValue, rangeEffectUnderlineStyleFromValue, scrollbarModeFromValue, scrollbarTrackTapModeFromValue, wrapModeFromValue } from './CoreConfig';
 import { IntRange, OffsetRect, PointF, Rect, TextChange, TextPosition, TextRange } from './CoreFoundation';
 import { ImeContextPolicy, ImeDocumentTextReplacement, ImeInputContext, ImeInputContextKind, ImeInputContextTextReplacement, ImeInputStateTextReplacement, ImePreeditStorage, ImeScriptClass, ImeSyncSnapshot, ImeTextModelDelta, ImeTextModelMode, ImeTextModelState, ImeTextRange, ImeTextReplacement, ImeTextUnit, imeContextPolicyFromValue, imeInputContextKindFromValue, imePreeditStorageFromValue, imeScriptClassFromValue, imeTextModelModeFromValue, imeTextUnitFromValue } from './CoreIme';
 import { EventType, GestureEvent, GestureType, HitTarget, HitTargetType, eventTypeFromValue, gestureTypeFromValue, hitTargetTypeFromValue } from './CoreInteraction';
 import { EditorBuiltinCommand, KeyBinding, KeyChord, KeyCode, KeyModifier, editorBuiltinCommandFromValue } from './CoreKeymap';
 import { LinkedEditingModel, TabStopGroup } from './CoreLinkedEditing';
-import { CompositionDecoration, Cursor, CursorRect, DiagnosticDecoration, EditorRenderModel, FoldMarkerRenderItem, FoldState, GuideDirection, GuideSegment, GuideStyle, GuideType, GutterIconRenderItem, LayoutMetrics, LinkedEditingRect, PointerCursorType, ScrollMetrics, ScrollbarModel, SelectionHandle, VisualLine, VisualLineKind, VisualRun, VisualRunType, foldStateFromValue, guideDirectionFromValue, guideStyleFromValue, guideTypeFromValue, pointerCursorTypeFromValue, visualLineKindFromValue, visualRunTypeFromValue } from './CoreVisual';
+import { Cursor, CursorRect, EditorRenderModel, FoldMarkerRenderItem, FoldState, GuideDirection, GuideSegment, GuideStyle, GuideType, GutterIconRenderItem, LayoutMetrics, PointerCursorType, RangeEffectKind, RangeEffectRenderItem, ScrollMetrics, ScrollbarModel, SelectionHandle, VisualLine, VisualLineKind, VisualRun, VisualRunType, foldStateFromValue, guideDirectionFromValue, guideStyleFromValue, guideTypeFromValue, pointerCursorTypeFromValue, rangeEffectKindFromValue, visualLineKindFromValue, visualRunTypeFromValue } from './CoreVisual';
 
 const UTF8_DECODER = new util.TextDecoder('utf-8');
 const UTF8_ENCODER = new util.TextEncoder();
@@ -204,18 +204,6 @@ export class CoreProtocol {
     return size;
   }
 
-  private static readDiagnosticDecorationList(reader: BinaryReader): DiagnosticDecoration[] {
-    const count = reader.readInt32();
-    if (count < 0 || count > reader.remaining) {
-      throw new Error('Invalid protocol length.');
-    }
-    const values: DiagnosticDecoration[] = [];
-    for (let i = 0; i < count; i++) {
-      values.push(CoreProtocol.readDiagnosticDecoration(reader));
-    }
-    return values;
-  }
-
   private static writeFlowGuideList(writer: BinaryWriter, values: FlowGuide[]): void {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
@@ -390,18 +378,6 @@ export class CoreProtocol {
     return size;
   }
 
-  private static readLinkedEditingRectList(reader: BinaryReader): LinkedEditingRect[] {
-    const count = reader.readInt32();
-    if (count < 0 || count > reader.remaining) {
-      throw new Error('Invalid protocol length.');
-    }
-    const values: LinkedEditingRect[] = [];
-    for (let i = 0; i < count; i++) {
-      values.push(CoreProtocol.readLinkedEditingRect(reader));
-    }
-    return values;
-  }
-
   private static writePhantomTextList(writer: BinaryWriter, values: PhantomText[]): void {
     const count = values ? values.length : 0;
     writer.writeInt32(count);
@@ -450,34 +426,16 @@ export class CoreProtocol {
     return size;
   }
 
-  private static readRectList(reader: BinaryReader): Rect[] {
+  private static readRangeEffectRenderItemList(reader: BinaryReader): RangeEffectRenderItem[] {
     const count = reader.readInt32();
     if (count < 0 || count > reader.remaining) {
       throw new Error('Invalid protocol length.');
     }
-    const values: Rect[] = [];
+    const values: RangeEffectRenderItem[] = [];
     for (let i = 0; i < count; i++) {
-      values.push(CoreProtocol.readRect(reader));
+      values.push(CoreProtocol.readRangeEffectRenderItem(reader));
     }
     return values;
-  }
-
-  private static writeRectList(writer: BinaryWriter, values: Rect[]): void {
-    const count = values ? values.length : 0;
-    writer.writeInt32(count);
-    for (let i = 0; i < count; i++) {
-      CoreProtocol.writeRect(writer, values[i]);
-    }
-  }
-
-  private static sizeOfRectList(values: Rect[]): number {
-    let size = 4;
-    if (values) {
-      for (const value of values) {
-        size += CoreProtocol.sizeOfRect(value);
-      }
-    }
-    return size;
   }
 
   private static writeSeparatorGuideList(writer: BinaryWriter, values: SeparatorGuide[]): void {
@@ -915,9 +873,44 @@ export class CoreProtocol {
     return size;
   }
 
+  static writeEditorRangeEffectStyles(writer: BinaryWriter, value: EditorRangeEffectStyles): void {
+    CoreProtocol.writeRangeEffectStyle(writer, value.selection);
+    CoreProtocol.writeRangeEffectStyle(writer, value.searchMatch);
+    CoreProtocol.writeRangeEffectStyle(writer, value.searchCurrent);
+    CoreProtocol.writeRangeEffectStyle(writer, value.documentHighlightText);
+    CoreProtocol.writeRangeEffectStyle(writer, value.documentHighlightRead);
+    CoreProtocol.writeRangeEffectStyle(writer, value.documentHighlightWrite);
+    CoreProtocol.writeRangeEffectStyle(writer, value.linkedEditingActive);
+    CoreProtocol.writeRangeEffectStyle(writer, value.linkedEditingInactive);
+    CoreProtocol.writeRangeEffectStyle(writer, value.imeComposition);
+    CoreProtocol.writeRangeEffectStyle(writer, value.bracketMatch);
+    CoreProtocol.writeRangeEffectStyle(writer, value.diagnosticError);
+    CoreProtocol.writeRangeEffectStyle(writer, value.diagnosticWarning);
+    CoreProtocol.writeRangeEffectStyle(writer, value.diagnosticInfo);
+    CoreProtocol.writeRangeEffectStyle(writer, value.diagnosticHint);
+  }
+
+  static sizeOfEditorRangeEffectStyles(value: EditorRangeEffectStyles): number {
+    let size = 0;
+    size += CoreProtocol.sizeOfRangeEffectStyle(value.selection);
+    size += CoreProtocol.sizeOfRangeEffectStyle(value.searchMatch);
+    size += CoreProtocol.sizeOfRangeEffectStyle(value.searchCurrent);
+    size += CoreProtocol.sizeOfRangeEffectStyle(value.documentHighlightText);
+    size += CoreProtocol.sizeOfRangeEffectStyle(value.documentHighlightRead);
+    size += CoreProtocol.sizeOfRangeEffectStyle(value.documentHighlightWrite);
+    size += CoreProtocol.sizeOfRangeEffectStyle(value.linkedEditingActive);
+    size += CoreProtocol.sizeOfRangeEffectStyle(value.linkedEditingInactive);
+    size += CoreProtocol.sizeOfRangeEffectStyle(value.imeComposition);
+    size += CoreProtocol.sizeOfRangeEffectStyle(value.bracketMatch);
+    size += CoreProtocol.sizeOfRangeEffectStyle(value.diagnosticError);
+    size += CoreProtocol.sizeOfRangeEffectStyle(value.diagnosticWarning);
+    size += CoreProtocol.sizeOfRangeEffectStyle(value.diagnosticInfo);
+    size += CoreProtocol.sizeOfRangeEffectStyle(value.diagnosticHint);
+    return size;
+  }
+
   static writeEditorRenderColors(writer: BinaryWriter, value: EditorRenderColors): void {
     writer.writeInt32(value.textForeground);
-    writer.writeInt32(value.selectionForeground);
     writer.writeInt32(value.linkForeground);
     writer.writeInt32(value.activeLinkForeground);
     writer.writeInt32(value.codelensForeground);
@@ -926,7 +919,6 @@ export class CoreProtocol {
 
   static sizeOfEditorRenderColors(value: EditorRenderColors): number {
     let size = 0;
-    size += 4;
     size += 4;
     size += 4;
     size += 4;
@@ -944,6 +936,38 @@ export class CoreProtocol {
     let size = 0;
     size += CoreProtocol.sizeOfOffsetRect(value.startHitOffset);
     size += CoreProtocol.sizeOfOffsetRect(value.endHitOffset);
+    return size;
+  }
+
+  private static readRangeEffectStyle(reader: BinaryReader): RangeEffectStyle {
+    return {
+      foregroundColor: reader.readInt32(),
+      backgroundColor: reader.readInt32(),
+      borderColor: reader.readInt32(),
+      underlineColor: reader.readInt32(),
+      underlineStyle: rangeEffectUnderlineStyleFromValue(reader.readInt32())
+    };
+  }
+
+  static decodeRangeEffectStyle(buffer: ArrayBuffer | undefined): RangeEffectStyle {
+    return CoreProtocol.readRangeEffectStyle(CoreProtocol.readerFor(buffer));
+  }
+
+  static writeRangeEffectStyle(writer: BinaryWriter, value: RangeEffectStyle): void {
+    writer.writeInt32(value.foregroundColor);
+    writer.writeInt32(value.backgroundColor);
+    writer.writeInt32(value.borderColor);
+    writer.writeInt32(value.underlineColor);
+    writer.writeInt32(value.underlineStyle as number);
+  }
+
+  static sizeOfRangeEffectStyle(value: RangeEffectStyle): number {
+    let size = 0;
+    size += 4;
+    size += 4;
+    size += 4;
+    size += 4;
+    size += 4;
     return size;
   }
 
@@ -1416,17 +1440,6 @@ export class CoreProtocol {
     return size;
   }
 
-  private static readCompositionDecoration(reader: BinaryReader): CompositionDecoration {
-    return {
-      active: reader.readInt32() !== 0,
-      rect: CoreProtocol.readRect(reader)
-    };
-  }
-
-  static decodeCompositionDecoration(buffer: ArrayBuffer | undefined): CompositionDecoration {
-    return CoreProtocol.readCompositionDecoration(CoreProtocol.readerFor(buffer));
-  }
-
   private static readCursor(reader: BinaryReader): Cursor {
     return {
       textPosition: CoreProtocol.readTextPosition(reader),
@@ -1467,17 +1480,6 @@ export class CoreProtocol {
     return size;
   }
 
-  private static readDiagnosticDecoration(reader: BinaryReader): DiagnosticDecoration {
-    return {
-      rect: CoreProtocol.readRect(reader),
-      severity: reader.readInt32()
-    };
-  }
-
-  static decodeDiagnosticDecoration(buffer: ArrayBuffer | undefined): DiagnosticDecoration {
-    return CoreProtocol.readDiagnosticDecoration(CoreProtocol.readerFor(buffer));
-  }
-
   private static readEditorRenderModel(reader: BinaryReader): EditorRenderModel {
     return {
       splitX: reader.readFloat32(),
@@ -1490,15 +1492,11 @@ export class CoreProtocol {
       currentLineRenderMode: currentLineRenderModeFromValue(reader.readInt32()),
       lines: CoreProtocol.readVisualLineList(reader),
       cursor: CoreProtocol.readCursor(reader),
-      selectionRects: CoreProtocol.readRectList(reader),
+      rangeEffects: CoreProtocol.readRangeEffectRenderItemList(reader),
       selectionStartHandle: CoreProtocol.readSelectionHandle(reader),
       selectionEndHandle: CoreProtocol.readSelectionHandle(reader),
-      compositionDecoration: CoreProtocol.readCompositionDecoration(reader),
       guideSegments: CoreProtocol.readGuideSegmentList(reader),
-      diagnosticDecorations: CoreProtocol.readDiagnosticDecorationList(reader),
       maxGutterIcons: reader.readInt32(),
-      linkedEditingRects: CoreProtocol.readLinkedEditingRectList(reader),
-      bracketHighlightRects: CoreProtocol.readRectList(reader),
       gutterIcons: CoreProtocol.readGutterIconRenderItemList(reader),
       foldMarkers: CoreProtocol.readFoldMarkerRenderItemList(reader),
       verticalScrollbar: CoreProtocol.readScrollbarModel(reader),
@@ -1575,15 +1573,16 @@ export class CoreProtocol {
     return CoreProtocol.readLayoutMetrics(CoreProtocol.readerFor(buffer));
   }
 
-  private static readLinkedEditingRect(reader: BinaryReader): LinkedEditingRect {
+  private static readRangeEffectRenderItem(reader: BinaryReader): RangeEffectRenderItem {
     return {
       rect: CoreProtocol.readRect(reader),
-      isActive: reader.readInt32() !== 0
+      kind: rangeEffectKindFromValue(reader.readInt32()),
+      style: CoreProtocol.readRangeEffectStyle(reader)
     };
   }
 
-  static decodeLinkedEditingRect(buffer: ArrayBuffer | undefined): LinkedEditingRect {
-    return CoreProtocol.readLinkedEditingRect(CoreProtocol.readerFor(buffer));
+  static decodeRangeEffectRenderItem(buffer: ArrayBuffer | undefined): RangeEffectRenderItem {
+    return CoreProtocol.readRangeEffectRenderItem(CoreProtocol.readerFor(buffer));
   }
 
   private static readScrollMetrics(reader: BinaryReader): ScrollMetrics {
@@ -2173,6 +2172,12 @@ export class CoreProtocol {
   static encodeEditorOptions(value: EditorOptions): ArrayBuffer {
     const writer = new BinaryWriter(CoreProtocol.sizeOfEditorOptions(value));
     CoreProtocol.writeEditorOptions(writer, value);
+    return writer.getBuffer();
+  }
+
+  static encodeEditorRangeEffectStyles(value: EditorRangeEffectStyles): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfEditorRangeEffectStyles(value));
+    CoreProtocol.writeEditorRangeEffectStyles(writer, value);
     return writer.getBuffer();
   }
 

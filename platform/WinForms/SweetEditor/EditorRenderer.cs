@@ -291,22 +291,14 @@ namespace SweetEditor {
 
 			DrawCurrentLineDecoration(g, modelValue, 0f, clientSize.Width);
 			perf.Mark(PerfStepRecorder.StepCurrent);
-			DrawSelectionRects(g, modelValue);
-			perf.Mark(PerfStepRecorder.StepSelection);
+			DrawRangeEffectBackgrounds(g, modelValue);
+			perf.Mark(PerfStepRecorder.StepRangeEffectBackgrounds);
 			DrawLines(g, modelValue);
 			perf.Mark(PerfStepRecorder.StepLines);
 			DrawGuideSegments(g, modelValue);
 			perf.Mark(PerfStepRecorder.StepGuides);
-			if (modelValue.CompositionDecoration.Active) {
-				DrawCompositionDecoration(g, modelValue.CompositionDecoration);
-				perf.Mark(PerfStepRecorder.StepComposition);
-			}
-			DrawDiagnosticDecorations(g, modelValue);
-			perf.Mark(PerfStepRecorder.StepDiagnostics);
-			DrawLinkedEditingRects(g, modelValue);
-			perf.Mark(PerfStepRecorder.StepLinkedEditing);
-			DrawBracketHighlightRects(g, modelValue);
-			perf.Mark(PerfStepRecorder.StepBracket);
+			DrawRangeEffectOverlays(g, modelValue);
+			perf.Mark(PerfStepRecorder.StepRangeEffectOverlays);
 			DrawCursor(g, modelValue);
 			perf.Mark(PerfStepRecorder.StepCursor);
 			DrawGutterOverlay(g, modelValue, clientSize.Height);
@@ -664,11 +656,12 @@ namespace SweetEditor {
 			return Color.FromArgb(argb);
 		}
 
-		private void DrawSelectionRects(Graphics g, EditorRenderModel model) {
-			if (model.SelectionRects == null || model.SelectionRects.Count == 0) return;
-			SolidBrush brush = GetOrCreateBrush(currentTheme.SelectionColor);
-			foreach (var rect in model.SelectionRects) {
-				g.FillRectangle(brush, rect.Origin.X, rect.Origin.Y, rect.Width, rect.Height);
+		private void DrawRangeEffectBackgrounds(Graphics g, EditorRenderModel model) {
+			if (model.RangeEffects == null || model.RangeEffects.Count == 0) return;
+			foreach (var effect in model.RangeEffects) {
+				if (effect.Style.BackgroundColor == 0) continue;
+				SolidBrush brush = GetOrCreateBrush(effect.Style.BackgroundColor);
+				g.FillRectangle(brush, effect.Rect.Origin.X, effect.Rect.Origin.Y, effect.Rect.Width, effect.Rect.Height);
 			}
 		}
 
@@ -678,83 +671,65 @@ namespace SweetEditor {
 			g.FillRectangle(brush, model.Cursor.Position.X, model.Cursor.Position.Y, 2f, model.Cursor.Height);
 		}
 
-		private void DrawCompositionDecoration(Graphics g, CompositionDecoration comp) {
-			float y = comp.Rect.Origin.Y + comp.Rect.Height;
-			using var pen = new Pen(currentTheme.CompositionUnderlineColor, 2f);
-			g.DrawLine(pen, comp.Rect.Origin.X, y, comp.Rect.Origin.X + comp.Rect.Width, y);
-		}
-
-		private void DrawDiagnosticDecorations(Graphics g, EditorRenderModel model) {
-		if (model.DiagnosticDecorations == null || model.DiagnosticDecorations.Count == 0) return;
-		foreach (var diag in model.DiagnosticDecorations) {
-			var color = diag.Severity switch {
-				0 => System.Drawing.Color.FromArgb(255, 255, 0, 0),
-				1 => System.Drawing.Color.FromArgb(255, 255, 204, 0),
-				2 => System.Drawing.Color.FromArgb(255, 97, 181, 237),
-				_ => System.Drawing.Color.FromArgb(178, 153, 153, 153),
-			};
-
-				float startX = diag.Rect.Origin.X;
-				float endX = startX + diag.Rect.Width;
-				float baseY = diag.Rect.Origin.Y + diag.Rect.Height - 1f;
-
-				using var pen = new Pen(color, 3.0f);
-
-				if (diag.Severity == 3) {
-					pen.DashPattern = [3f, 2f];
-					g.DrawLine(pen, startX, baseY, endX, baseY);
-				} else {
-					float halfWave = 7f;
-					float amplitude = 3.5f;
-					using var path = new GraphicsPath();
-					float x = startX;
-					int step = 0;
-					while (x < endX) {
-						float nextX = Math.Min(x + halfWave, endX);
-						float midX = (x + nextX) / 2f;
-						float peakY = (step % 2 == 0) ? baseY - amplitude : baseY + amplitude;
-						float c1x = x + 2f / 3f * (midX - x);
-						float c1y = baseY + 2f / 3f * (peakY - baseY);
-						float c2x = nextX + 2f / 3f * (midX - nextX);
-						float c2y = baseY + 2f / 3f * (peakY - baseY);
-						var p0 = step == 0
-							? new System.Drawing.PointF(x, baseY)
-							: path.GetLastPoint();
-						path.AddBezier(p0,
-							new System.Drawing.PointF(c1x, c1y),
-							new System.Drawing.PointF(c2x, c2y),
-							new System.Drawing.PointF(nextX, baseY));
-						x = nextX;
-						step++;
-					}
-					g.DrawPath(pen, path);
+		private void DrawRangeEffectOverlays(Graphics g, EditorRenderModel model) {
+			if (model.RangeEffects == null || model.RangeEffects.Count == 0) return;
+			foreach (var effect in model.RangeEffects) {
+				if (effect.Style.BorderColor != 0) {
+					using var pen = new Pen(Color.FromArgb(effect.Style.BorderColor), BorderStrokeWidth(effect.Kind));
+					g.DrawRectangle(pen, effect.Rect.Origin.X, effect.Rect.Origin.Y, effect.Rect.Width, effect.Rect.Height);
+				}
+				if (effect.Style.UnderlineColor != 0 && effect.Style.UnderlineStyle != RangeEffectUnderlineStyle.NONE) {
+					DrawRangeEffectUnderline(g, effect.Rect, effect.Style);
 				}
 			}
 		}
 
-		private void DrawLinkedEditingRects(Graphics g, EditorRenderModel model) {
-			if (model.LinkedEditingRects == null || model.LinkedEditingRects.Count == 0) return;
-			foreach (var rect in model.LinkedEditingRects) {
-				if (rect.IsActive) {
-					using var fillBrush = new SolidBrush(System.Drawing.Color.FromArgb(30, 86, 156, 214));
-					g.FillRectangle(fillBrush, rect.Rect.Origin.X, rect.Rect.Origin.Y, rect.Rect.Width, rect.Rect.Height);
-					using var pen = new Pen(System.Drawing.Color.FromArgb(204, 86, 156, 214), 2f);
-					g.DrawRectangle(pen, rect.Rect.Origin.X, rect.Rect.Origin.Y, rect.Rect.Width, rect.Rect.Height);
-				} else {
-					using var pen = new Pen(System.Drawing.Color.FromArgb(102, 86, 156, 214), 1f);
-					g.DrawRectangle(pen, rect.Rect.Origin.X, rect.Rect.Origin.Y, rect.Rect.Width, rect.Rect.Height);
-				}
-			}
+		private static float BorderStrokeWidth(RangeEffectKind kind) {
+			return kind == RangeEffectKind.LINKED_EDITING_ACTIVE ? 2f : 1.5f;
 		}
 
-		private void DrawBracketHighlightRects(Graphics g, EditorRenderModel model) {
-			if (model.BracketHighlightRects == null || model.BracketHighlightRects.Count == 0) return;
-			foreach (var rect in model.BracketHighlightRects) {
-				using var fillBrush = new SolidBrush(System.Drawing.Color.FromArgb(48, 255, 215, 0));
-				g.FillRectangle(fillBrush, rect.Origin.X, rect.Origin.Y, rect.Width, rect.Height);
-				using var pen = new Pen(System.Drawing.Color.FromArgb(204, 255, 215, 0), 1.5f);
-				g.DrawRectangle(pen, rect.Origin.X, rect.Origin.Y, rect.Width, rect.Height);
+		private void DrawRangeEffectUnderline(Graphics g, Rect rect, RangeEffectStyle style) {
+			float startX = rect.Origin.X;
+			float endX = startX + rect.Width;
+			float baseY = rect.Origin.Y + rect.Height - 1f;
+			using var pen = new Pen(Color.FromArgb(style.UnderlineColor),
+				style.UnderlineStyle == RangeEffectUnderlineStyle.WAVY ? 3f : 2f);
+
+			if (style.UnderlineStyle == RangeEffectUnderlineStyle.DASHED) {
+				pen.DashPattern = [3f, 2f];
+				g.DrawLine(pen, startX, baseY, endX, baseY);
+				return;
 			}
+
+			if (style.UnderlineStyle == RangeEffectUnderlineStyle.SOLID) {
+				g.DrawLine(pen, startX, baseY, endX, baseY);
+				return;
+			}
+
+			float halfWave = 7f;
+			float amplitude = 3.5f;
+			using var path = new GraphicsPath();
+			float x = startX;
+			int step = 0;
+			while (x < endX) {
+				float nextX = Math.Min(x + halfWave, endX);
+				float midX = (x + nextX) / 2f;
+				float peakY = (step % 2 == 0) ? baseY - amplitude : baseY + amplitude;
+				float c1x = x + 2f / 3f * (midX - x);
+				float c1y = baseY + 2f / 3f * (peakY - baseY);
+				float c2x = nextX + 2f / 3f * (midX - nextX);
+				float c2y = baseY + 2f / 3f * (peakY - baseY);
+				var p0 = step == 0
+					? new System.Drawing.PointF(x, baseY)
+					: path.GetLastPoint();
+				path.AddBezier(p0,
+					new System.Drawing.PointF(c1x, c1y),
+					new System.Drawing.PointF(c2x, c2y),
+					new System.Drawing.PointF(nextX, baseY));
+				x = nextX;
+				step++;
+			}
+			g.DrawPath(pen, path);
 		}
 
 		private void DrawGuideSegments(Graphics g, EditorRenderModel model) {
@@ -841,13 +816,10 @@ namespace SweetEditor {
 				$"[PERF][Paint] total={totalMs:F2}ms " +
 				$"{PerfStepRecorder.StepClear}={perf.GetStepMs(PerfStepRecorder.StepClear):F2}ms " +
 				$"{PerfStepRecorder.StepCurrent}={perf.GetStepMs(PerfStepRecorder.StepCurrent):F2}ms " +
-				$"{PerfStepRecorder.StepSelection}={perf.GetStepMs(PerfStepRecorder.StepSelection):F2}ms " +
+				$"{PerfStepRecorder.StepRangeEffectBackgrounds}={perf.GetStepMs(PerfStepRecorder.StepRangeEffectBackgrounds):F2}ms " +
 				$"{PerfStepRecorder.StepLines}={perf.GetStepMs(PerfStepRecorder.StepLines):F2}ms " +
 				$"{PerfStepRecorder.StepGuides}={perf.GetStepMs(PerfStepRecorder.StepGuides):F2}ms " +
-				$"{PerfStepRecorder.StepComposition}={perf.GetStepMs(PerfStepRecorder.StepComposition):F2}ms " +
-				$"{PerfStepRecorder.StepDiagnostics}={perf.GetStepMs(PerfStepRecorder.StepDiagnostics):F2}ms " +
-				$"{PerfStepRecorder.StepLinkedEditing}={perf.GetStepMs(PerfStepRecorder.StepLinkedEditing):F2}ms " +
-				$"{PerfStepRecorder.StepBracket}={perf.GetStepMs(PerfStepRecorder.StepBracket):F2}ms " +
+				$"{PerfStepRecorder.StepRangeEffectOverlays}={perf.GetStepMs(PerfStepRecorder.StepRangeEffectOverlays):F2}ms " +
 				$"{PerfStepRecorder.StepCursor}={perf.GetStepMs(PerfStepRecorder.StepCursor):F2}ms " +
 				$"{PerfStepRecorder.StepGutter}={perf.GetStepMs(PerfStepRecorder.StepGutter):F2}ms " +
 				$"{PerfStepRecorder.StepLineNumber}={perf.GetStepMs(PerfStepRecorder.StepLineNumber):F2}ms " +

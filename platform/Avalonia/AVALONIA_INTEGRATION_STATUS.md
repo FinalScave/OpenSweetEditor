@@ -7,7 +7,7 @@ This document tracks the current Avalonia platform alignment with the project im
 - 核心桥接：`EditorCore` 已覆盖文档加载、编辑命令、撤销重做、光标/选区、滚动、折叠、IME、linked editing、snippet、装饰、guide、matched bracket、render model 拉取等标准 API。
 - 生命周期：`EditorCore.Dispose()` 会释放 C++ `free_editor` native handle，重复释放幂等；显式释放后直接访问 `EditorCore` 会抛出 `ObjectDisposedException`，不会继续触达已释放 native 资源。
 - 控件与控制器：`SweetEditorControl` 与 `SweetEditorController` 已对齐公开命令面和事件集合，Controller 支持未绑定调用排队、绑定后 replay、teardown 后 no-op。
-- 渲染协议：Avalonia 已消费新版 render model 字段，包括 `VisualLineKind`、`OwnsGutterSemantics`、composition decoration、guide segments、diagnostic decorations、linked editing rects、bracket highlight rects。
+- 渲染协议：Avalonia 已消费新版 render model 字段，包括 `VisualLineKind`、`OwnsGutterSemantics`、range effects、guide segments、gutter icons、fold markers 和 scrollbars。
 - CodeLens：已实现 `CodeLensItem`、`SetLineCodeLens`、`SetBatchLineCodeLens`、`ClearCodeLens`、`CodeLensClick` 事件、命中回传与 active underline 渲染；同一行 CodeLens 会按 `column` 升序打包。
 - Diagnostics：标准模型为 `Diagnostic`，旧 `DiagnosticItem` 保留为兼容别名；Decoration provider 和 Demo 均已切到 `Diagnostic` 通路。
 - Provider：Decoration / Completion / NewLine / InlineSuggestion / SelectionMenu 均以 Avalonia manager/provider 形式接入，异步结果通过 generation/stale receiver 丢弃过期结果。

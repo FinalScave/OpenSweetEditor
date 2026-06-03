@@ -5,6 +5,8 @@ import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.EditorNative;
 import com.qiplat.sweeteditor.core.adornment.TextStyle;
 import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
+import com.qiplat.sweeteditor.core.config.RangeEffectStyle;
+import com.qiplat.sweeteditor.core.config.RangeEffectUnderlineStyle;
 import com.qiplat.sweeteditor.core.foundation.PointF;
 import com.qiplat.sweeteditor.core.foundation.Rect;
 import com.qiplat.sweeteditor.core.visual.*;
@@ -208,22 +210,14 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
 
         drawCurrentLineDecoration(g2, model, 0f, viewWidth);
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_CURRENT);
-        drawSelectionRects(g2, model);
-        if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_SELECTION);
+        drawRangeEffectBackgrounds(g2, model);
+        if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_RANGE_EFFECT_BACKGROUNDS);
         drawLines(g2, model);
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_LINES);
         drawGuideSegments(g2, model);
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_GUIDES);
-        if (model.compositionDecoration != null && model.compositionDecoration.active) {
-            drawCompositionDecoration(g2, model.compositionDecoration);
-        }
-        if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_COMPOSITION);
-        drawDiagnosticDecorations(g2, model);
-        if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_DIAGNOSTICS);
-        drawLinkedEditingRects(g2, model);
-        if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_LINKED);
-        drawBracketHighlightRects(g2, model);
-        if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_BRACKET);
+        drawRangeEffectOverlays(g2, model);
+        if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_RANGE_EFFECT_OVERLAYS);
         drawCursor(g2, model, cursorVisible, animationHolder);
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_CURSOR);
         drawGutterOverlay(g2, model, viewWidth, viewHeight, animationHolder);
@@ -283,11 +277,14 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
         g.fill(new Rectangle2D.Float(left, model.currentLine.y, width, lineH));
     }
 
-    private void drawSelectionRects(Graphics2D g, EditorRenderModel model) {
-        if (model.selectionRects == null || model.selectionRects.isEmpty()) return;
-        g.setColor(theme.selectionColor);
-        for (Rect r : model.selectionRects) {
-            g.fillRect((int) r.origin.x, (int) r.origin.y, (int) r.width, (int) r.height);
+    private void drawRangeEffectBackgrounds(Graphics2D g, EditorRenderModel model) {
+        if (model.rangeEffects == null || model.rangeEffects.isEmpty()) return;
+        for (RangeEffectRenderItem effect : model.rangeEffects) {
+            Rect rect = effect != null ? effect.rect : null;
+            RangeEffectStyle style = effect != null ? effect.style : null;
+            if (rect == null || rect.origin == null || style == null || style.backgroundColor == 0) continue;
+            g.setColor(argbToColor(style.backgroundColor));
+            g.fillRect((int) rect.origin.x, (int) rect.origin.y, (int) rect.width, (int) rect.height);
         }
     }
 
@@ -618,84 +615,60 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
         }
     }
 
-    private void drawCompositionDecoration(Graphics2D g, CompositionDecoration comp) {
-        if (comp.rect == null || comp.rect.origin == null) return;
-        float y = comp.rect.origin.y + comp.rect.height;
-        g.setColor(theme.compositionUnderlineColor);
-        g.setStroke(new BasicStroke(2f));
-        g.drawLine((int) comp.rect.origin.x, (int) y, (int) (comp.rect.origin.x + comp.rect.width), (int) y);
+    private void drawRangeEffectOverlays(Graphics2D g, EditorRenderModel model) {
+        if (model.rangeEffects == null || model.rangeEffects.isEmpty()) return;
+        for (RangeEffectRenderItem effect : model.rangeEffects) {
+            Rect rect = effect != null ? effect.rect : null;
+            RangeEffectStyle style = effect != null ? effect.style : null;
+            if (rect == null || rect.origin == null || style == null) continue;
+            if (style.borderColor != 0) {
+                g.setColor(argbToColor(style.borderColor));
+                g.setStroke(new BasicStroke(borderStrokeWidth(effect.kind)));
+                g.drawRect((int) rect.origin.x, (int) rect.origin.y, (int) rect.width, (int) rect.height);
+            }
+            if (style.underlineColor != 0 && style.underlineStyle != RangeEffectUnderlineStyle.NONE) {
+                drawRangeEffectUnderline(g, rect, style);
+            }
+        }
     }
 
-    private void drawDiagnosticDecorations(Graphics2D g, EditorRenderModel model) {
-        if (model.diagnosticDecorations == null || model.diagnosticDecorations.isEmpty()) return;
-        for (DiagnosticDecoration diag : model.diagnosticDecorations) {
-            Color c = switch (diag.severity) {
-                case 0 -> theme.diagnosticErrorColor;
-                case 1 -> theme.diagnosticWarningColor;
-                case 2 -> theme.diagnosticInfoColor;
-                default -> theme.diagnosticHintColor;
-            };
+    private float borderStrokeWidth(RangeEffectKind kind) {
+        return kind == RangeEffectKind.LINKED_EDITING_ACTIVE ? 2f : 1.5f;
+    }
 
-            if (diag.rect == null || diag.rect.origin == null) continue;
-            float startX = diag.rect.origin.x;
-            float endX = startX + diag.rect.width;
-            float baseY = diag.rect.origin.y + diag.rect.height - 1f;
+    private void drawRangeEffectUnderline(Graphics2D g, Rect rect, RangeEffectStyle style) {
+        float startX = rect.origin.x;
+        float endX = startX + rect.width;
+        float baseY = rect.origin.y + rect.height - 1f;
 
-            g.setColor(c);
+        g.setColor(argbToColor(style.underlineColor));
+        if (style.underlineStyle == RangeEffectUnderlineStyle.DASHED) {
+            g.setStroke(new BasicStroke(2f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f, new float[]{3f, 2f}, 0f));
+            g.drawLine((int) startX, (int) baseY, (int) endX, (int) baseY);
+            return;
+        }
+        if (style.underlineStyle == RangeEffectUnderlineStyle.SOLID) {
             g.setStroke(new BasicStroke(2f));
-
-            if (diag.severity == 3) {
-                g.setStroke(new BasicStroke(2f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f, new float[]{3f, 2f}, 0f));
-                g.drawLine((int) startX, (int) baseY, (int) endX, (int) baseY);
-            } else {
-                float halfWave = 7f;
-                float amplitude = 3.5f;
-                GeneralPath path = new GeneralPath();
-                float x = startX;
-                int step = 0;
-                path.moveTo(x, baseY);
-                while (x < endX) {
-                    float nextX = Math.min(x + halfWave, endX);
-                    float midX = (x + nextX) / 2f;
-                    float peakY = (step % 2 == 0) ? baseY - amplitude : baseY + amplitude;
-                    path.quadTo(midX, peakY, nextX, baseY);
-                    x = nextX;
-                    step++;
-                }
-                g.setStroke(new BasicStroke(2f));
-                g.draw(path);
-            }
+            g.drawLine((int) startX, (int) baseY, (int) endX, (int) baseY);
+            return;
         }
-    }
 
-    private void drawLinkedEditingRects(Graphics2D g, EditorRenderModel model) {
-        if (model.linkedEditingRects == null || model.linkedEditingRects.isEmpty()) return;
-        for (LinkedEditingRect item : model.linkedEditingRects) {
-            Rect rect = item.rect;
-            if (rect == null || rect.origin == null) continue;
-            if (item.isActive) {
-                g.setColor(withAlpha(theme.linkedEditingActiveColor, 32));
-                g.fillRect((int) rect.origin.x, (int) rect.origin.y, (int) rect.width, (int) rect.height);
-                g.setColor(theme.linkedEditingActiveColor);
-                g.setStroke(new BasicStroke(2f));
-            } else {
-                g.setColor(theme.linkedEditingInactiveColor);
-                g.setStroke(new BasicStroke(1f));
-            }
-            g.drawRect((int) rect.origin.x, (int) rect.origin.y, (int) rect.width, (int) rect.height);
+        float halfWave = 7f;
+        float amplitude = 3.5f;
+        GeneralPath path = new GeneralPath();
+        float x = startX;
+        int step = 0;
+        path.moveTo(x, baseY);
+        while (x < endX) {
+            float nextX = Math.min(x + halfWave, endX);
+            float midX = (x + nextX) / 2f;
+            float peakY = (step % 2 == 0) ? baseY - amplitude : baseY + amplitude;
+            path.quadTo(midX, peakY, nextX, baseY);
+            x = nextX;
+            step++;
         }
-    }
-
-    private void drawBracketHighlightRects(Graphics2D g, EditorRenderModel model) {
-        if (model.bracketHighlightRects == null || model.bracketHighlightRects.isEmpty()) return;
-        for (Rect rect : model.bracketHighlightRects) {
-            if (rect.origin == null) continue;
-            g.setColor(theme.bracketHighlightBgColor);
-            g.fillRect((int) rect.origin.x, (int) rect.origin.y, (int) rect.width, (int) rect.height);
-            g.setColor(theme.bracketHighlightBorderColor);
-            g.setStroke(new BasicStroke(1.5f));
-            g.drawRect((int) rect.origin.x, (int) rect.origin.y, (int) rect.width, (int) rect.height);
-        }
+        g.setStroke(new BasicStroke(2f));
+        g.draw(path);
     }
 
     private void drawGuideSegments(Graphics2D g, EditorRenderModel model) {

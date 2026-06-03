@@ -56,6 +56,7 @@ class EditorSession {
     inlineSuggestionController = InlineSuggestionController(session: this);
     newLineActionProviderManager = NewLineActionProviderManager();
     _setEditorRenderColors();
+    _setEditorRangeEffectStyles();
     _editorCore!.registerBatchTextStyles(_theme.textStyles);
     _applyInitialLanguageConfiguration(_languageConfiguration);
   }
@@ -313,6 +314,10 @@ class EditorSession {
     if (renderColorResult != null) {
       dispatchEditorActionResult(renderColorResult);
     }
+    final rangeEffectResult = _setEditorRangeEffectStyles();
+    if (rangeEffectResult != null) {
+      dispatchEditorActionResult(rangeEffectResult);
+    }
     _registerTextStyles();
   }
 
@@ -336,13 +341,71 @@ class EditorSession {
     return ec.setEditorRenderColors(
       core.EditorRenderColors(
         textForeground: _theme.textColor,
-        selectionForeground: _theme.selectionTextColor,
         linkForeground: linkForeground,
         activeLinkForeground: activeLinkForeground,
         codelensForeground: codeLensForeground,
         activeCodelensForeground: activeCodeLensForeground,
       ),
     );
+  }
+
+  core.EditorActionResult? _setEditorRangeEffectStyles() {
+    final ec = _editorCore;
+    if (ec == null) return null;
+    return ec.setEditorRangeEffectStyles(
+      core.EditorRangeEffectStyles(
+        selection: core.RangeEffectStyle(
+          foregroundColor: _theme.selectionTextColor,
+          backgroundColor: _theme.selectionColor,
+        ),
+        imeComposition: core.RangeEffectStyle(
+          underlineColor: _theme.compositionUnderlineColor,
+          underlineStyle: core.RangeEffectUnderlineStyle.solid,
+        ),
+        diagnosticError: _diagnosticStyle(
+          _theme.diagnosticErrorColor,
+          core.RangeEffectUnderlineStyle.wavy,
+        ),
+        diagnosticWarning: _diagnosticStyle(
+          _theme.diagnosticWarningColor,
+          core.RangeEffectUnderlineStyle.wavy,
+        ),
+        diagnosticInfo: _diagnosticStyle(
+          _theme.diagnosticInfoColor,
+          core.RangeEffectUnderlineStyle.wavy,
+        ),
+        diagnosticHint: _diagnosticStyle(
+          _theme.diagnosticHintColor,
+          core.RangeEffectUnderlineStyle.dashed,
+        ),
+        linkedEditingActive: core.RangeEffectStyle(
+          backgroundColor: _withAlpha(_theme.linkedEditingActiveColor, 0x20),
+          borderColor: _theme.linkedEditingActiveColor,
+        ),
+        linkedEditingInactive: core.RangeEffectStyle(
+          borderColor: _theme.linkedEditingInactiveColor,
+        ),
+        bracketMatch: core.RangeEffectStyle(
+          backgroundColor: _theme.bracketHighlightBgColor,
+          borderColor: _theme.bracketHighlightBorderColor,
+        ),
+      ),
+    );
+  }
+
+  core.RangeEffectStyle _diagnosticStyle(
+    int color,
+    core.RangeEffectUnderlineStyle underlineStyle,
+  ) {
+    return core.RangeEffectStyle(
+      underlineColor: color,
+      underlineStyle: underlineStyle,
+    );
+  }
+
+  int _withAlpha(int color, int alpha) {
+    if (color == 0) return 0;
+    return (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
   }
 
   void _registerTextStyles() {

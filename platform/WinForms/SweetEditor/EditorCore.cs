@@ -611,6 +611,9 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_set_editor_render_colors", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetEditorRenderColors(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
+		[DllImport(LibraryName, EntryPoint = "editor_set_editor_range_effect_styles", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr SetEditorRangeEffectStyles(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
+
 		[DllImport(LibraryName, EntryPoint = "editor_get_position_rect", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern void GetPositionRect(IntPtr handle, nuint line, nuint column, ref float outX, ref float outY, ref float outHeight);
 
@@ -1747,6 +1750,14 @@ namespace SweetEditor {
 			colors ??= new EditorRenderColors();
 			byte[] payload = CoreProtocol.EncodeEditorRenderColors(colors);
 			IntPtr payloadPtr = NativeMethods.SetEditorRenderColors(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		public EditorActionResult SetEditorRangeEffectStyles(EditorRangeEffectStyles styles) {
+			if (IsReleased) return EditorActionResult.Empty;
+			styles ??= new EditorRangeEffectStyles();
+			byte[] payload = CoreProtocol.EncodeEditorRangeEffectStyles(styles);
+			IntPtr payloadPtr = NativeMethods.SetEditorRangeEffectStyles(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 

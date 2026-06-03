@@ -616,6 +616,10 @@ public final class EditorNative {
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
+    private static final MethodHandle SET_EDITOR_RANGE_EFFECT_STYLES = downcall("editor_set_editor_range_effect_styles",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+
     private static final MethodHandle GET_CURSOR_RECT = downcall("editor_get_cursor_rect",
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
@@ -1331,6 +1335,11 @@ public final class EditorNative {
 
     public static NativeBinaryResult setEditorRenderColors(long handle, MemorySegment payload, long size) {
         return invokeBinaryResult(outSize -> (MemorySegment) SET_EDITOR_RENDER_COLORS.invokeExact(
+                handle, payload, size, outSize));
+    }
+
+    public static NativeBinaryResult setEditorRangeEffectStyles(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SET_EDITOR_RANGE_EFFECT_STYLES.invokeExact(
                 handle, payload, size, outSize));
     }
 

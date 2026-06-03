@@ -70,13 +70,10 @@ namespace SweetEditor.Perf {
 		public const string StepInvalidate = "invalidate";
 		public const string StepClear = "clear";
 		public const string StepCurrent = "current";
-		public const string StepSelection = "selection";
+		public const string StepRangeEffectBackgrounds = "rangeBg";
 		public const string StepLines = "lines";
 		public const string StepGuides = "guides";
-		public const string StepComposition = "comp";
-		public const string StepDiagnostics = "diag";
-		public const string StepLinkedEditing = "linked";
-		public const string StepBracket = "bracket";
+		public const string StepRangeEffectOverlays = "rangeFx";
 		public const string StepCursor = "cursor";
 		public const string StepGutter = "gutter";
 		public const string StepLineNumber = "lineNo";

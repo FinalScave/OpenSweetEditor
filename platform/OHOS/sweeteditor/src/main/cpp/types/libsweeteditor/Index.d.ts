@@ -120,6 +120,8 @@ export const editorSetBackspaceUnindent: (handle: number, enabled: number) => Ar
 // Handle/scrollbar config
 export const editorSetHandleConfig: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
 export const editorSetScrollbarConfig: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
+export const editorSetEditorRenderColors: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
+export const editorSetEditorRangeEffectStyles: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
 
 // Position query
 export const editorGetPositionRect: (handle: number, line: number, column: number) => number[];

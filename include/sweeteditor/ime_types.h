@@ -174,7 +174,7 @@ namespace NS_SWEETEDITOR {
     bool has_session {false};
     /// Current session phase.
     CompositionPhase phase {CompositionPhase::INACTIVE};
-    /// Whether composition decoration and IME composing offsets should be exposed.
+    /// Whether the composition range effect and IME composing offsets should be exposed.
     bool visible {false};
     /// Source and ownership of the active composition.
     CompositionKind kind {CompositionKind::NONE};

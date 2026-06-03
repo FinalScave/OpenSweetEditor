@@ -189,6 +189,15 @@ namespace NS_SWEETEDITOR {
     return finishAction(before, EditorActionReason::SETUP, true, {}, true);
   }
 
+  EditorActionResult EditorCore::setEditorRangeEffectStyles(const EditorRangeEffectStyles& styles) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_settings_.range_effect_styles == styles) {
+      return finishAction(before, EditorActionReason::SETUP, true);
+    }
+    m_settings_.range_effect_styles = styles;
+    return finishAction(before, EditorActionReason::SETUP, true, {}, true);
+  }
+
   EditorActionResult EditorCore::loadDocument(const SharedPtr<Document>& document) {
     const ActionSnapshot before = captureActionSnapshot();
     cancelLinkedEditingInternal();
@@ -503,6 +512,7 @@ namespace NS_SWEETEDITOR {
       presentation_context.selection_range = m_caret_.normalizedSelection();
     }
     presentation_context.render_colors = m_settings_.render_colors;
+    presentation_context.range_effect_styles = m_settings_.range_effect_styles;
     m_visible_line_range_ = {};
     VisibleLineInfo visible_line_info = m_text_layout_->layoutVisibleLines(model, presentation_context);
     if (!model.lines.empty()) {
@@ -518,8 +528,8 @@ namespace NS_SWEETEDITOR {
     float line_height = m_text_layout_->getLineHeight();
     PERF_BEGIN(cursor_sel);
     m_render_composer_->buildCursorModel(model, m_caret_.cursor, m_caret_.has_selection, line_height);
-    m_render_composer_->buildCompositionDecoration(model, m_composition_controller_.composition(), line_height);
-    m_render_composer_->buildSelectionRects(model, m_document_.get(), m_caret_, line_height);
+    m_render_composer_->buildCompositionRangeEffect(model, m_composition_controller_.composition(), line_height);
+    m_render_composer_->buildSelectionRangeEffects(model, m_document_.get(), m_caret_, line_height);
     if (m_caret_.has_selection) {
       m_interaction_->updateHandleCache(model.selection_start_handle.position,
                                         model.selection_end_handle.position, line_height);
@@ -532,16 +542,16 @@ namespace NS_SWEETEDITOR {
     m_render_composer_->buildGuideSegments(model, m_document_.get(), *m_measurer_, line_height);
     PERF_END(guides, "buildRenderModel::guideSegments");
 
-    m_render_composer_->buildDiagnosticDecorations(model, m_document_.get(), line_height);
-    m_render_composer_->buildLinkedEditingRects(model, m_document_.get(), m_linked_editing_session_.get(), line_height);
-    m_render_composer_->buildBracketHighlightRects(model,
-                                                   m_document_.get(),
-                                                   m_caret_.cursor,
-                                                   m_bracket_pairs_,
-                                                   m_external_bracket_open_,
-                                                   m_external_bracket_close_,
-                                                   m_has_external_brackets_,
-                                                   line_height);
+    m_render_composer_->buildDiagnosticRangeEffects(model, m_document_.get(), line_height);
+    m_render_composer_->buildLinkedEditingRangeEffects(model, m_document_.get(), m_linked_editing_session_.get(), line_height);
+    m_render_composer_->buildBracketHighlightRangeEffects(model,
+                                                          m_document_.get(),
+                                                          m_caret_.cursor,
+                                                          m_bracket_pairs_,
+                                                          m_external_bracket_open_,
+                                                          m_external_bracket_close_,
+                                                          m_has_external_brackets_,
+                                                          line_height);
     m_render_composer_->buildScrollbarModel(model, *m_interaction_);
     model.pointer_cursor_type = m_pointer_cursor_type_;
   }

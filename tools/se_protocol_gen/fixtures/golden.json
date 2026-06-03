@@ -1,961 +1,467 @@
 {
-
   "format": "sweeteditor.protocol.golden",
-
   "version": 1,
-
   "fixtures": [
-
     {
-
       "name": "editor_options_full",
-
       "type": "EditorOptions",
-
       "value": {
-
         "touch_slop": 11.5,
-
         "double_tap_timeout": 321,
-
         "long_press_ms": 654,
-
         "fling_friction": 4.25,
-
         "fling_min_velocity": 75.5,
-
         "fling_max_velocity": 9000.25,
-
         "max_undo_stack_size": 1024,
-
         "key_chord_timeout_ms": 2500,
-
         "reveal_selection_end_on_select_all": true
-
       },
-
       "hex": "00 00 38 41 41 01 00 00 00 00 00 00 8e 02 00 00 00 00 00 00 00 00 88 40 00 00 97 42 00 a1 0c 46 00 04 00 00 00 00 00 00 c4 09 00 00 00 00 00 00 01"
-
     },
-
     {
-
       "name": "text_style_flags",
-
       "type": "TextStyle",
-
       "value": {
-
         "color": -65536,
-
         "background_color": 268435455,
-
         "font_style": 3
-
       },
-
       "hex": "00 00 ff ff ff ff ff 0f 03 00 00 00"
-
     },
-
     {
-
       "name": "text_change_utf8",
-
       "type": "TextChange",
-
       "value": {
-
         "range": {
-
           "start": {
-
             "line": 2,
-
             "column": 3
-
           },
-
           "end": {
-
             "line": 4,
-
             "column": 8
-
           }
-
         },
-
         "new_text": "hello \u4e16\u754c"
-
       },
-
       "hex": "02 00 00 00 03 00 00 00 04 00 00 00 08 00 00 00 0c 00 00 00 68 65 6c 6c 6f 20 e4 b8 96 e7 95 8c"
-
     },
-
     {
-
       "name": "set_line_spans",
-
       "type": "SetLineSpansPayload",
-
       "value": {
-
         "line": 42,
-
         "layer": "SEMANTIC",
-
         "spans": [
-
           {
-
             "column": 0,
-
             "length": 5,
-
             "style_id": 7
-
           },
-
           {
-
             "column": 8,
-
             "length": 3,
-
             "style_id": 9
-
           }
-
         ]
-
       },
-
       "hex": "2a 00 00 00 01 00 00 00 02 00 00 00 00 00 00 00 05 00 00 00 07 00 00 00 08 00 00 00 03 00 00 00 09 00 00 00"
-
     },
-
     {
-
       "name": "register_batch_text_styles",
-
       "type": "RegisterBatchTextStylesPayload",
-
       "value": {
-
         "entries": [
-
           {
-
             "style_id": 7,
-
             "style": {
-
               "color": -65536,
-
               "background_color": 268435455,
-
               "font_style": 3
-
             }
-
           },
-
           {
-
             "style_id": 9,
-
             "style": {
-
               "color": -16711936,
-
               "background_color": 0,
-
               "font_style": 4
-
             }
-
           }
-
         ]
-
       },
-
       "hex": "02 00 00 00 07 00 00 00 00 00 ff ff ff ff ff 0f 03 00 00 00 09 00 00 00 00 ff 00 ff 00 00 00 00 04 00 00 00"
-
     },
-
     {
-
       "name": "set_batch_line_spans",
-
       "type": "SetBatchLineSpansPayload",
-
       "value": {
-
         "layer": "SYNTAX",
-
         "entries": [
-
           {
-
             "line": 2,
-
             "spans": [
-
               {
-
                 "column": 1,
-
                 "length": 4,
-
                 "style_id": 7
-
               }
-
             ]
-
           },
-
           {
-
             "line": 5,
-
             "spans": []
-
           }
-
         ]
-
       },
-
       "hex": "00 00 00 00 02 00 00 00 02 00 00 00 01 00 00 00 01 00 00 00 04 00 00 00 07 00 00 00 05 00 00 00 00 00 00 00"
-
     },
-
     {
-
       "name": "ime_sync_snapshot",
-
       "type": "ImeSyncSnapshot",
-
       "value": {
-
         "cursor": {
-
           "line": 10,
-
           "column": 5
-
         },
-
         "has_selection": true,
-
         "selection": {
-
           "start": {
-
             "line": 10,
-
             "column": 3
-
           },
-
           "end": {
-
             "line": 10,
-
             "column": 5
-
           }
-
         },
-
         "has_composing_session": true,
-
         "has_visible_composition_range": true,
-
         "visible_composition_range": {
-
           "start": {
-
             "line": 10,
-
             "column": 2
-
           },
-
           "end": {
-
             "line": 10,
-
             "column": 6
-
           }
-
         },
-
         "has_platform_marked_range": false,
-
         "platform_marked_range": {
-
           "start": {
-
             "line": 0,
-
             "column": 0
-
           },
-
           "end": {
-
             "line": 0,
-
             "column": 0
-
           }
-
         },
-
         "preedit_storage": "VISIBLE_DOCUMENT_COMPOSITION",
-
         "context_policy": "LIMITED_FOR_CANDIDATES",
-
         "clear_platform_preedit": true
-
       },
-
       "hex": "0a 00 00 00 05 00 00 00 0a 00 00 00 03 00 00 00 0a 00 00 00 05 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 0a 00 00 00 02 00 00 00 0a 00 00 00 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00"
-
     },
-
     {
-
       "name": "scrollbar_config_full",
-
       "type": "ScrollbarConfig",
-
       "value": {
-
         "thickness": 12.5,
-
         "min_thumb": 30.25,
-
         "thumb_hit_padding": 4.5,
-
         "mode": "TRANSIENT",
-
         "thumb_draggable": true,
-
         "track_tap_mode": "DISABLED",
-
         "fade_delay_ms": 1200,
-
         "fade_duration_ms": 450
-
       },
-
       "hex": "00 00 48 41 00 00 f2 41 00 00 90 40 01 00 00 00 01 01 00 00 00 b0 04 c2 01"
-
     },
-
     {
-
       "name": "ime_input_context_utf8",
-
       "type": "ImeInputContext",
-
       "value": {
-
         "id": 1234567890123,
-
         "revision": 7,
-
         "document_start_offset": 64,
-
         "text": "abc \u4e16\u754c",
-
         "selection": {
-
           "start": 1,
-
           "end": 6
-
         },
-
         "has_composition": true,
-
         "composition": {
-
           "start": 2,
-
           "end": 5
-
         },
-
         "kind": "DOCUMENT_WINDOW"
-
       },
-
       "hex": "cb 04 fb 71 1f 01 00 00 07 00 00 00 40 00 00 00 0a 00 00 00 61 62 63 20 e4 b8 96 e7 95 8c 01 00 00 00 06 00 00 00 01 00 00 00 02 00 00 00 05 00 00 00 02 00 00 00"
-
     },
-
     {
-
       "name": "editor_action_result_nested",
-
       "type": "EditorActionResult",
-
       "value": {
-
         "handled": true,
-
         "needs_redraw": true,
-
         "reason": "TEXT_EDIT",
-
         "content_changed": true,
-
         "cursor_changed": true,
-
         "selection_changed": false,
-
         "scroll_changed": true,
-
         "scale_changed": false,
-
         "pointer_cursor_changed": true,
-
         "composition_changed": false,
-
         "decoration_changed": true,
-
         "needs_ime_sync": true,
-
         "needs_edge_scroll": false,
-
         "needs_fling": true,
-
         "needs_animation": false,
-
         "is_handle_drag": false,
-
         "changes": [
-
           {
-
             "range": {
-
               "start": {
-
                 "line": 1,
-
                 "column": 2
-
               },
-
               "end": {
-
                 "line": 1,
-
                 "column": 5
-
               }
-
             },
-
             "new_text": "abc"
-
           }
-
         ],
-
         "cursor_before": {
-
           "line": 1,
-
           "column": 2
-
         },
-
         "cursor_after": {
-
           "line": 1,
-
           "column": 5
-
         },
-
         "has_selection_before": false,
-
         "has_selection_after": true,
-
         "selection_before": {
-
           "start": {
-
             "line": 0,
-
             "column": 0
-
           },
-
           "end": {
-
             "line": 0,
-
             "column": 0
-
           }
-
         },
-
         "selection_after": {
-
           "start": {
-
             "line": 1,
-
             "column": 2
-
           },
-
           "end": {
-
             "line": 1,
-
             "column": 5
-
           }
-
         },
-
         "scroll_x_before": 0.5,
-
         "scroll_y_before": 1.5,
-
         "scroll_x_after": 2.5,
-
         "scroll_y_after": 3.5,
-
         "scale_before": 1.0,
-
         "scale_after": 1.25,
-
         "pointer_cursor_before": "TEXT",
-
         "pointer_cursor_after": "HAND",
-
         "ime_sync": {
-
           "cursor": {
-
             "line": 1,
-
             "column": 5
-
           },
-
           "has_selection": true,
-
           "selection": {
-
             "start": {
-
               "line": 1,
-
               "column": 2
-
             },
-
             "end": {
-
               "line": 1,
-
               "column": 5
-
             }
-
           },
-
           "has_composing_session": true,
-
           "has_visible_composition_range": true,
-
           "visible_composition_range": {
-
             "start": {
-
               "line": 1,
-
               "column": 2
-
             },
-
             "end": {
-
               "line": 1,
-
               "column": 5
-
             }
-
           },
-
           "has_platform_marked_range": false,
-
           "platform_marked_range": {
-
             "start": {
-
               "line": 0,
-
               "column": 0
-
             },
-
             "end": {
-
               "line": 0,
-
               "column": 0
-
             }
-
           },
-
           "preedit_storage": "VISIBLE_DOCUMENT_COMPOSITION",
-
           "context_policy": "LIMITED_FOR_CANDIDATES",
-
           "clear_platform_preedit": true
-
         },
-
         "gesture_type": "TAP",
-
         "gesture_event_type": "TOUCH_UP",
-
         "tap_point": {
-
           "x": 10.0,
-
           "y": 20.0
-
         },
-
         "hit_target": {
-
           "type": "GUTTER_ICON",
-
           "line": 3,
-
           "column": 4,
-
           "icon_id": 77,
-
           "color_value": -16711936
-
         },
-
         "modifiers": 3,
-
         "command": 2
-
       },
-
       "hex": "01 00 00 00 01 00 00 00 02 00 00 00 01 00 00 00 01 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 01 00 00 00 01 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 01 00 00 00 02 00 00 00 01 00 00 00 05 00 00 00 03 00 00 00 61 62 63 01 00 00 00 02 00 00 00 01 00 00 00 05 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 02 00 00 00 01 00 00 00 05 00 00 00 00 00 00 3f 00 00 c0 3f 00 00 20 40 00 00 60 40 00 00 80 3f 00 00 a0 3f 01 00 00 00 02 00 00 00 01 00 00 00 05 00 00 00 01 00 00 00 02 00 00 00 01 00 00 00 05 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 02 00 00 00 01 00 00 00 05 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 05 00 00 00 00 00 20 41 00 00 a0 41 03 00 00 00 03 00 00 00 04 00 00 00 4d 00 00 00 00 ff 00 ff 03 00 00 00 02 00 00 00"
-
     },
-
     {
-
       "name": "editor_render_model_nested",
-
       "type": "EditorRenderModel",
-
       "value": {
-
         "split_x": 16.0,
-
         "split_line_visible": true,
-
         "scroll_x": 1.0,
-
         "scroll_y": 2.0,
-
         "viewport_width": 800.0,
-
         "viewport_height": 600.0,
-
         "current_line": {
-
           "x": 4.0,
-
           "y": 24.0
-
         },
-
         "current_line_render_mode": "BORDER",
-
         "lines": [
-
           {
-
             "logical_line": 5,
-
             "wrap_index": 0,
-
             "line_number_position": {
-
               "x": 2.0,
-
               "y": 18.0
-
             },
-
             "runs": [
-
               {
-
                 "type": "TEXT",
-
                 "x": 40.0,
-
                 "y": 18.0,
-
                 "text": "hi",
-
                 "style": {
-
                   "color": -1,
-
                   "background_color": 0,
-
                   "font_style": 1
-
                 },
-
                 "icon_id": 0,
-
                 "color_value": 0,
-
                 "width": 16.0,
-
                 "padding": 1.0,
-
                 "margin": 2.0,
-
                 "active": true
-
               }
-
             ],
-
             "kind": "CONTENT",
-
             "owns_gutter_semantics": true,
-
             "fold_state": "EXPANDED"
-
           }
-
         ],
-
         "cursor": {
-
           "text_position": {
-
             "line": 5,
-
             "column": 2
-
           },
-
           "position": {
-
             "x": 56.0,
-
             "y": 18.0
-
           },
-
           "height": 20.0,
-
           "visible": true,
-
           "show_dragger": false
-
         },
-
-        "selection_rects": [],
-
+        "range_effects": [],
         "selection_start_handle": {
-
           "position": {
-
             "x": 0.0,
-
             "y": 0.0
-
           },
-
           "height": 0.0,
-
           "visible": false
-
         },
-
         "selection_end_handle": {
-
           "position": {
-
             "x": 0.0,
-
             "y": 0.0
-
           },
-
           "height": 0.0,
-
           "visible": false
-
         },
-
-        "composition_decoration": {
-
-          "active": false,
-
-          "rect": {
-
-            "origin": {
-
-              "x": 0.0,
-
-              "y": 0.0
-
-            },
-
-            "width": 0.0,
-
-            "height": 0.0
-
-          }
-
-        },
-
         "guide_segments": [],
-
-        "diagnostic_decorations": [],
-
         "max_gutter_icons": 3,
-
-        "linked_editing_rects": [],
-
-        "bracket_highlight_rects": [],
-
         "gutter_icons": [],
-
         "fold_markers": [],
-
         "vertical_scrollbar": {
-
           "visible": true,
-
           "alpha": 0.75,
-
           "thumb_active": true,
-
           "track": {
-
             "origin": {
-
               "x": 790.0,
-
               "y": 0.0
-
             },
-
             "width": 10.0,
-
             "height": 600.0
-
           },
-
           "thumb": {
-
             "origin": {
-
               "x": 790.0,
-
               "y": 40.0
-
             },
-
             "width": 10.0,
-
             "height": 120.0
-
           }
-
         },
-
         "horizontal_scrollbar": {
-
           "visible": false,
-
           "alpha": 0.0,
-
           "thumb_active": false,
-
           "track": {
-
             "origin": {
-
               "x": 0.0,
-
               "y": 590.0
-
             },
-
             "width": 800.0,
-
             "height": 10.0
-
           },
-
           "thumb": {
-
             "origin": {
-
               "x": 20.0,
-
               "y": 590.0
-
             },
-
             "width": 120.0,
-
             "height": 10.0
-
           }
-
         },
-
         "gutter_sticky": true,
-
         "gutter_visible": true,
-
         "pointer_cursor_type": "HAND"
-
       },
-
-      "hex": "00 00 80 41 01 00 00 00 00 00 80 3f 00 00 00 40 00 00 48 44 00 00 16 44 00 00 80 40 00 00 c0 41 01 00 00 00 01 00 00 00 05 00 00 00 00 00 00 00 00 00 00 40 00 00 90 41 01 00 00 00 00 00 00 00 00 00 20 42 00 00 90 41 02 00 00 00 68 69 ff ff ff ff 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 80 41 00 00 80 3f 00 00 00 40 01 00 00 00 00 00 00 00 01 00 00 00 01 00 00 00 05 00 00 00 02 00 00 00 00 00 60 42 00 00 90 41 00 00 a0 41 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 40 3f 01 00 00 00 00 80 45 44 00 00 00 00 00 00 20 41 00 00 16 44 00 80 45 44 00 00 20 42 00 00 20 41 00 00 f0 42 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 80 13 44 00 00 48 44 00 00 20 41 00 00 a0 41 00 80 13 44 00 00 f0 42 00 00 20 41 01 00 00 00 01 00 00 00 02 00 00 00"
-
+      "hex": "00 00 80 41 01 00 00 00 00 00 80 3f 00 00 00 40 00 00 48 44 00 00 16 44 00 00 80 40 00 00 c0 41 01 00 00 00 01 00 00 00 05 00 00 00 00 00 00 00 00 00 00 40 00 00 90 41 01 00 00 00 00 00 00 00 00 00 20 42 00 00 90 41 02 00 00 00 68 69 ff ff ff ff 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 80 41 00 00 80 3f 00 00 00 40 01 00 00 00 00 00 00 00 01 00 00 00 01 00 00 00 05 00 00 00 02 00 00 00 00 00 60 42 00 00 90 41 00 00 a0 41 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 40 3f 01 00 00 00 00 80 45 44 00 00 00 00 00 00 20 41 00 00 16 44 00 80 45 44 00 00 20 42 00 00 20 41 00 00 f0 42 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 80 13 44 00 00 48 44 00 00 20 41 00 00 a0 41 00 80 13 44 00 00 f0 42 00 00 20 41 01 00 00 00 01 00 00 00 02 00 00 00"
     }
-
   ]
-
 }

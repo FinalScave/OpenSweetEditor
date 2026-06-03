@@ -200,6 +200,7 @@ const uint8_t* editor_set_content_start_padding(intptr_t editor_handle, float pa
 const uint8_t* editor_set_show_split_line(intptr_t editor_handle, int show, size_t* out_size);
 const uint8_t* editor_set_current_line_render_mode(intptr_t editor_handle, int mode, size_t* out_size);
 const uint8_t* editor_set_editor_render_colors(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_set_editor_range_effect_styles(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 // ===================== Undo/Redo API =====================
 

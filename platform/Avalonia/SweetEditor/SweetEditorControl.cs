@@ -174,6 +174,7 @@ namespace SweetEditor {
 			selectionMenuController.CustomItemSelected += OnSelectionMenuCustomItemSelected;
 
 			editorCore.SetEditorRenderColors(BuildEditorRenderColors(currentTheme));
+			editorCore.SetEditorRangeEffectStyles(BuildEditorRangeEffectStyles(currentTheme));
 			editorCore.RegisterBatchTextStyles(currentTheme.TextStyles);
 			settings.SetContentStartPadding(DefaultContentStartPadding);
 
@@ -827,6 +828,7 @@ namespace SweetEditor {
 			currentTheme = theme;
 			renderer.ApplyTheme(theme);
 			DispatchEditorActionResult(editorCore.SetEditorRenderColors(BuildEditorRenderColors(theme)));
+			DispatchEditorActionResult(editorCore.SetEditorRangeEffectStyles(BuildEditorRangeEffectStyles(theme)));
 			DispatchEditorActionResult(editorCore.RegisterBatchTextStyles(theme.TextStyles));
 		}
 
@@ -834,12 +836,54 @@ namespace SweetEditor {
 			int activeCodeLensForeground = (int)(theme.CurrentLineNumberColor != 0
 				? theme.CurrentLineNumberColor
 				: theme.LineNumberColor);
+			int codeLensForeground = (int)theme.InlayHintTextColor;
 			return new EditorRenderColors {
 				TextForeground = (int)theme.TextColor,
-				SelectionForeground = (int)theme.SelectionTextColor,
-				CodelensForeground = (int)theme.InlayHintTextColor,
+				LinkForeground = codeLensForeground,
+				ActiveLinkForeground = activeCodeLensForeground,
+				CodelensForeground = codeLensForeground,
 				ActiveCodelensForeground = activeCodeLensForeground
 			};
+		}
+
+		private static EditorRangeEffectStyles BuildEditorRangeEffectStyles(EditorTheme theme) {
+			int linkedActive = (int)theme.LinkedEditingActiveColor;
+			return new EditorRangeEffectStyles {
+				Selection = new RangeEffectStyle {
+					ForegroundColor = (int)theme.SelectionTextColor,
+					BackgroundColor = (int)theme.SelectionColor
+				},
+				ImeComposition = new RangeEffectStyle {
+					UnderlineColor = (int)theme.CompositionUnderlineColor,
+					UnderlineStyle = RangeEffectUnderlineStyle.SOLID
+				},
+				DiagnosticError = DiagnosticStyle(theme.DiagnosticErrorColor, RangeEffectUnderlineStyle.WAVY),
+				DiagnosticWarning = DiagnosticStyle(theme.DiagnosticWarningColor, RangeEffectUnderlineStyle.WAVY),
+				DiagnosticInfo = DiagnosticStyle(theme.DiagnosticInfoColor, RangeEffectUnderlineStyle.WAVY),
+				DiagnosticHint = DiagnosticStyle(theme.DiagnosticHintColor, RangeEffectUnderlineStyle.DASHED),
+				LinkedEditingActive = new RangeEffectStyle {
+					BackgroundColor = WithAlpha(linkedActive, 0x20),
+					BorderColor = linkedActive
+				},
+				LinkedEditingInactive = new RangeEffectStyle {
+					BorderColor = (int)theme.LinkedEditingInactiveColor
+				},
+				BracketMatch = new RangeEffectStyle {
+					BackgroundColor = (int)theme.BracketHighlightBgColor,
+					BorderColor = (int)theme.BracketHighlightBorderColor
+				}
+			};
+		}
+
+		private static RangeEffectStyle DiagnosticStyle(uint color, RangeEffectUnderlineStyle underlineStyle) {
+			return new RangeEffectStyle {
+				UnderlineColor = (int)color,
+				UnderlineStyle = underlineStyle
+			};
+		}
+
+		private static int WithAlpha(int color, int alpha) {
+			return color == 0 ? 0 : (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
 		}
 
 		public EditorSettings GetSettings() => settings;

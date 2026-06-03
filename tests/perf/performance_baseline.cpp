@@ -104,6 +104,6 @@ TEST_CASE("Performance baseline: render model with guide and diagnostic decorati
     editor.setScroll(0.0f, 5000.0f);
     EditorRenderModel model;
     editor.buildRenderModel(model);
-    return model.guide_segments.size() + model.diagnostic_decorations.size();
+    return model.guide_segments.size() + model.range_effects.size();
   };
 }

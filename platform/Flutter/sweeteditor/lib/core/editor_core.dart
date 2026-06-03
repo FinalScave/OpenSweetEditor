@@ -1263,6 +1263,21 @@ class EditorCore {
     );
   }
 
+  EditorActionResult setEditorRangeEffectStyles(EditorRangeEffectStyles styles) {
+    _ensureOpen();
+    final payload = CoreProtocol.encodeEditorRangeEffectStyles(styles);
+    return _callWithBinaryActionData(
+      payload,
+      (data, size, outSize) =>
+          bindings.editor_set_editor_range_effect_styles(
+            _handle,
+            data,
+            size,
+            outSize,
+          ),
+    );
+  }
+
   EditorActionResult registerTextStyle(
     int styleId,
     int color, {

@@ -423,15 +423,15 @@ struct EditorRenderModel {
   PointF current_line;                  // 当前行背景位置
   Vector<VisualLine> lines;             // 可见视觉行
   Cursor cursor;                        // 光标
-  Vector<SelectionRect> selection_rects; // 选区高亮
+  Vector<RangeEffectRenderItem> range_effects; // selection, search, IME, diagnostics, and other visible range effects
   SelectionHandle selection_start_handle; // 选区起始拖拽手柄
   SelectionHandle selection_end_handle;  // 选区结束拖拽手柄
-  CompositionDecoration composition_decoration; // IME 下划线
   Vector<GuideSegment> guide_segments;   // 代码结构线
-  Vector<DiagnosticDecoration> diagnostic_decorations; // 诊断装饰
   uint32_t max_gutter_icons;            // Gutter 图标数
-  Vector<LinkedEditingRect> linked_editing_rects; // 联动编辑高亮
-  Vector<BracketHighlightRect> bracket_highlight_rects; // 括号高亮
+  Vector<GutterIconRenderItem> gutter_icons; // gutter icons
+  Vector<FoldMarkerRenderItem> fold_markers; // fold toggles
+  ScrollbarModel vertical_scrollbar;     // vertical scrollbar
+  ScrollbarModel horizontal_scrollbar;   // horizontal scrollbar
 };
 ```
 
@@ -467,24 +467,21 @@ VisualLine
 ```
 1. 填充背景色
 2. 绘制当前行高亮背景（current_line）
-3. 绘制选区高亮矩形（selection_rects）
-4. 绘制代码结构线（guide_segments）
-5. 绘制行号分割线（split_x）
-6. 遍历 lines：
+3. 绘制 range effect 背景（range_effects）
+4. 遍历 lines：
    a. 绘制行号（line_number_position）
-   b. 绘制 gutter 图标（gutter_icon_ids）
-   c. 绘制折叠箭头（fold_state）
+   b. 绘制 gutter 图标（gutter_icons）
+   c. 绘制折叠标记（fold_markers）
    d. 遍历 runs：
       - TEXT / WHITESPACE: drawText(run.text, run.x, run.y) with run.style
       - INLAY_HINT: 绘制背景圆角矩形 + 文本/图标
       - PHANTOM_TEXT: 以半透明绘制
       - FOLD_PLACEHOLDER: 绘制 "…" 占位
-7. 绘制 IME 组合输入下划线（composition_decoration）
-8. 绘制诊断装饰（diagnostic_decorations）
-9. 绘制联动编辑高亮（linked_editing_rects）
-10. 绘制括号高亮（bracket_highlight_rects）
-11. 绘制光标竖线（cursor）
-12. 绘制选区拖拽手柄（selection handles）
+5. 绘制代码结构线（guide_segments）
+6. 绘制 range effect overlay（range_effects 的边框与下划线）
+7. 绘制光标竖线（cursor）
+8. 绘制选区拖拽手柄（selection handles）
+9. 绘制滚动条
 ```
 
 ---

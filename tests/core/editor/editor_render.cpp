@@ -12,6 +12,22 @@ namespace {
     StrUtil::convertUTF16ToUTF8(run.text, text);
     return text;
   }
+
+  Vector<const RangeEffectRenderItem*> rangeEffectsOfKind(const EditorRenderModel& model, RangeEffectKind kind) {
+    Vector<const RangeEffectRenderItem*> effects;
+    for (const RangeEffectRenderItem& effect : model.range_effects) {
+      if (effect.kind == kind) {
+        effects.push_back(&effect);
+      }
+    }
+    return effects;
+  }
+
+  const RangeEffectRenderItem& requireSingleRangeEffectOfKind(const EditorRenderModel& model, RangeEffectKind kind) {
+    auto effects = rangeEffectsOfKind(model, kind);
+    REQUIRE(effects.size() == 1);
+    return *effects.front();
+  }
 }
 
 TEST_CASE("EditorCore buildRenderModel exposes normalized selection handles") {
@@ -20,16 +36,39 @@ TEST_CASE("EditorCore buildRenderModel exposes normalized selection handles") {
 
   editor.loadDocument(makeShared<LineArrayDocument>("abcdef"));
   editor.setViewport({320, 120});
+  EditorRangeEffectStyles styles;
+  styles.selection.background_color = static_cast<int32_t>(0x66336699u);
+  editor.setEditorRangeEffectStyles(styles);
   editor.setSelection({{0, 5}, {0, 2}});
 
   EditorRenderModel model;
   editor.buildRenderModel(model);
 
-  REQUIRE_FALSE(model.selection_rects.empty());
+  const RangeEffectRenderItem& effect = requireSingleRangeEffectOfKind(model, RangeEffectKind::SELECTION);
+  CHECK(effect.style == styles.selection);
   CHECK_FALSE(model.cursor.visible);
   CHECK(model.selection_start_handle.visible);
   CHECK(model.selection_end_handle.visible);
   CHECK(model.selection_start_handle.position.x <= model.selection_end_handle.position.x);
+}
+
+TEST_CASE("EditorCore buildRenderModel skips selection range effects without paint") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(makeShared<LineArrayDocument>("abcdef"));
+  editor.setViewport({320, 120});
+  EditorRangeEffectStyles styles;
+  styles.selection.foreground_color = static_cast<int32_t>(0xFFFFFFFFu);
+  editor.setEditorRangeEffectStyles(styles);
+  editor.setSelection({{0, 1}, {0, 4}});
+
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+
+  CHECK(rangeEffectsOfKind(model, RangeEffectKind::SELECTION).empty());
+  CHECK(model.selection_start_handle.visible);
+  CHECK(model.selection_end_handle.visible);
 }
 
 TEST_CASE("EditorCore buildRenderModel includes folded tail selection inside broader ranges") {
@@ -43,6 +82,9 @@ TEST_CASE("EditorCore buildRenderModel includes folded tail selection inside bro
   Vector<FoldRegion> folds;
   folds.push_back({0, 2, true});
   editor.setFoldRegions(std::move(folds));
+  EditorRangeEffectStyles styles;
+  styles.selection.background_color = static_cast<int32_t>(0x66336699u);
+  editor.setEditorRangeEffectStyles(styles);
   editor.setSelection({{0, 0}, {2, 1}});
 
   EditorRenderModel model;
@@ -55,7 +97,8 @@ TEST_CASE("EditorCore buildRenderModel includes folded tail selection inside bro
   REQUIRE(tail_it != model.lines.front().runs.end());
 
   bool has_tail_selection_rect = false;
-  for (const Rect& rect : model.selection_rects) {
+  for (const RangeEffectRenderItem* effect : rangeEffectsOfKind(model, RangeEffectKind::SELECTION)) {
+    const Rect& rect = effect->rect;
     if (rect.origin.x == Catch::Approx(tail_it->x) &&
         rect.width == Catch::Approx(tail_it->width)) {
       has_tail_selection_rect = true;
@@ -147,8 +190,10 @@ TEST_CASE("EditorCore buildRenderModel applies selection foreground by splitting
 
   EditorRenderColors colors;
   colors.text_foreground = static_cast<int32_t>(0xFF202020u);
-  colors.selection_foreground = selection_foreground;
   editor.setEditorRenderColors(colors);
+  EditorRangeEffectStyles styles;
+  styles.selection.foreground_color = selection_foreground;
+  editor.setEditorRangeEffectStyles(styles);
 
   editor.registerTextStyle(1, TextStyle{style_color, style_background, FONT_STYLE_NORMAL});
   editor.setLineSpans(0, SpanLayer::SYNTAX, Vector<StyleSpan>{{0, 6, 1}});
@@ -178,6 +223,9 @@ TEST_CASE("EditorCore buildRenderModel applies selection foreground after horizo
   editor.loadDocument(makeShared<LineArrayDocument>("abcdefghijklmnopqrstuvwxyz"));
   editor.setGutterVisible(false);
   editor.setViewport({80, 120});
+
+  EditorRenderModel warmup_model;
+  editor.buildRenderModel(warmup_model);
   editor.setScroll(50, 0);
 
   constexpr int32_t text_foreground = static_cast<int32_t>(0xFF202020u);
@@ -185,8 +233,10 @@ TEST_CASE("EditorCore buildRenderModel applies selection foreground after horizo
 
   EditorRenderColors colors;
   colors.text_foreground = text_foreground;
-  colors.selection_foreground = selection_foreground;
   editor.setEditorRenderColors(colors);
+  EditorRangeEffectStyles styles;
+  styles.selection.foreground_color = selection_foreground;
+  editor.setEditorRangeEffectStyles(styles);
   editor.setSelection({{0, 7}, {0, 9}});
 
   EditorRenderModel model;
@@ -203,22 +253,27 @@ TEST_CASE("EditorCore buildRenderModel applies selection foreground after horizo
   CHECK(line.runs[2].style.color == text_foreground);
 }
 
-TEST_CASE("EditorCore buildRenderModel exposes active composition decoration") {
+TEST_CASE("EditorCore buildRenderModel exposes active IME composition range effect") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
 
   editor.loadDocument(makeShared<LineArrayDocument>("ab"));
   editor.setViewport({320, 120});
+  EditorRangeEffectStyles styles;
+  styles.ime_composition.underline_color = static_cast<int32_t>(0xFFFFCC00u);
+  styles.ime_composition.underline_style = RangeEffectUnderlineStyle::SOLID;
+  editor.setEditorRangeEffectStyles(styles);
   editor.setCursorPosition({0, 1});
   editor.updateImePreedit("xy", ImeScriptClass::LATIN);
 
   EditorRenderModel model;
   editor.buildRenderModel(model);
 
-  REQUIRE(model.composition_decoration.active);
-  CHECK(model.composition_decoration.rect.width > 0.0f);
-  CHECK(model.composition_decoration.rect.height > 0.0f);
-  CHECK(model.composition_decoration.rect.origin.x == Catch::Approx(editor.getPositionScreenRect({0, 1}).x));
+  const RangeEffectRenderItem& effect = requireSingleRangeEffectOfKind(model, RangeEffectKind::IME_COMPOSITION);
+  CHECK(effect.style == styles.ime_composition);
+  CHECK(effect.rect.width > 0.0f);
+  CHECK(effect.rect.height > 0.0f);
+  CHECK(effect.rect.origin.x == Catch::Approx(editor.getPositionScreenRect({0, 1}).x));
 }
 
 TEST_CASE("EditorCore buildRenderModel emits linked editing rectangles for snippet tab stops") {
@@ -227,22 +282,29 @@ TEST_CASE("EditorCore buildRenderModel emits linked editing rectangles for snipp
 
   editor.loadDocument(makeShared<LineArrayDocument>(""));
   editor.setViewport({320, 120});
+  EditorRangeEffectStyles styles;
+  styles.linked_editing_active.border_color = static_cast<int32_t>(0xFF6699CCu);
+  styles.linked_editing_inactive.border_color = static_cast<int32_t>(0x806699CCu);
+  editor.setEditorRangeEffectStyles(styles);
   REQUIRE(editor.insertSnippet("${1:foo}-${2:bar}-$0").content_changed);
 
   EditorRenderModel model;
   editor.buildRenderModel(model);
 
-  REQUIRE(model.linked_editing_rects.size() == 2);
-  size_t active_count = 0;
-  size_t inactive_count = 0;
-  for (const auto& rect : model.linked_editing_rects) {
-    CHECK(rect.rect.width > 0.0f);
-    CHECK(rect.rect.height > 0.0f);
-    if (rect.is_active) active_count++;
-    else inactive_count++;
+  auto active_effects = rangeEffectsOfKind(model, RangeEffectKind::LINKED_EDITING_ACTIVE);
+  auto inactive_effects = rangeEffectsOfKind(model, RangeEffectKind::LINKED_EDITING_INACTIVE);
+  REQUIRE(active_effects.size() == 1);
+  REQUIRE(inactive_effects.size() == 1);
+  CHECK(active_effects.front()->style == styles.linked_editing_active);
+  CHECK(inactive_effects.front()->style == styles.linked_editing_inactive);
+  for (const RangeEffectRenderItem* effect : active_effects) {
+    CHECK(effect->rect.width > 0.0f);
+    CHECK(effect->rect.height > 0.0f);
   }
-  CHECK(active_count == 1);
-  CHECK(inactive_count == 1);
+  for (const RangeEffectRenderItem* effect : inactive_effects) {
+    CHECK(effect->rect.width > 0.0f);
+    CHECK(effect->rect.height > 0.0f);
+  }
 }
 
 TEST_CASE("EditorCore buildRenderModel uses external bracket match positions when provided") {
@@ -251,21 +313,60 @@ TEST_CASE("EditorCore buildRenderModel uses external bracket match positions whe
 
   editor.loadDocument(makeShared<LineArrayDocument>("a(b)c"));
   editor.setViewport({320, 120});
+  EditorRangeEffectStyles styles;
+  styles.bracket_match.background_color = static_cast<int32_t>(0x33999900u);
+  styles.bracket_match.border_color = static_cast<int32_t>(0xCC999900u);
+  editor.setEditorRangeEffectStyles(styles);
   editor.setMatchedBrackets({0, 1}, {0, 3});
 
   EditorRenderModel matched_model;
   editor.buildRenderModel(matched_model);
 
-  REQUIRE(matched_model.bracket_highlight_rects.size() == 2);
-  for (const auto& rect : matched_model.bracket_highlight_rects) {
-    CHECK(rect.width > 0.0f);
-    CHECK(rect.height > 0.0f);
+  auto matched_effects = rangeEffectsOfKind(matched_model, RangeEffectKind::BRACKET_MATCH);
+  REQUIRE(matched_effects.size() == 2);
+  for (const RangeEffectRenderItem* effect : matched_effects) {
+    CHECK(effect->style == styles.bracket_match);
+    CHECK(effect->rect.width > 0.0f);
+    CHECK(effect->rect.height > 0.0f);
   }
 
   editor.clearMatchedBrackets();
   EditorRenderModel cleared_model;
   editor.buildRenderModel(cleared_model);
-  CHECK(cleared_model.bracket_highlight_rects.empty());
+  CHECK(rangeEffectsOfKind(cleared_model, RangeEffectKind::BRACKET_MATCH).empty());
+}
+
+TEST_CASE("EditorCore buildRenderModel maps diagnostic range effects to severity styles") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(makeShared<LineArrayDocument>("abcd"));
+  editor.setViewport({320, 120});
+  EditorRangeEffectStyles styles;
+  styles.diagnostic_error.underline_color = static_cast<int32_t>(0xFFFF0000u);
+  styles.diagnostic_error.underline_style = RangeEffectUnderlineStyle::WAVY;
+  styles.diagnostic_warning.underline_color = static_cast<int32_t>(0xFFFFCC00u);
+  styles.diagnostic_warning.underline_style = RangeEffectUnderlineStyle::WAVY;
+  styles.diagnostic_info.underline_color = static_cast<int32_t>(0xFF3399FFu);
+  styles.diagnostic_info.underline_style = RangeEffectUnderlineStyle::SOLID;
+  styles.diagnostic_hint.underline_color = static_cast<int32_t>(0xFF888888u);
+  styles.diagnostic_hint.underline_style = RangeEffectUnderlineStyle::DASHED;
+  editor.setEditorRangeEffectStyles(styles);
+
+  Vector<Diagnostic> diagnostics;
+  diagnostics.push_back({0, 1, DiagnosticSeverity::DIAG_ERROR});
+  diagnostics.push_back({1, 1, DiagnosticSeverity::DIAG_WARNING});
+  diagnostics.push_back({2, 1, DiagnosticSeverity::DIAG_INFO});
+  diagnostics.push_back({3, 1, DiagnosticSeverity::DIAG_HINT});
+  editor.setLineDiagnostics(0, std::move(diagnostics));
+
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+
+  CHECK(requireSingleRangeEffectOfKind(model, RangeEffectKind::DIAGNOSTIC_ERROR).style == styles.diagnostic_error);
+  CHECK(requireSingleRangeEffectOfKind(model, RangeEffectKind::DIAGNOSTIC_WARNING).style == styles.diagnostic_warning);
+  CHECK(requireSingleRangeEffectOfKind(model, RangeEffectKind::DIAGNOSTIC_INFO).style == styles.diagnostic_info);
+  CHECK(requireSingleRangeEffectOfKind(model, RangeEffectKind::DIAGNOSTIC_HINT).style == styles.diagnostic_hint);
 }
 
 TEST_CASE("EditorCore handleGestureEvent tap on CodeLens keeps cursor unchanged") {

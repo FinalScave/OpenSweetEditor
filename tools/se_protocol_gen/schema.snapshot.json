@@ -8,7 +8,7 @@
       "domain": "action",
       "fallback": "NONE",
       "underlying_type": "uint8_t",
-      "source": "include\\sweeteditor\\editor_core.h",
+      "source": "include/sweeteditor/editor_core.h",
       "line": 21,
       "values": [
         {
@@ -83,7 +83,7 @@
       "domain": "action",
       "fallback": "GOTO_TOP",
       "underlying_type": null,
-      "source": "include\\sweeteditor\\editor_types.h",
+      "source": "include/sweeteditor/editor_types.h",
       "line": 46,
       "values": [
         {
@@ -106,7 +106,7 @@
       "domain": "adornment",
       "fallback": "DIAG_ERROR",
       "underlying_type": "int32_t",
-      "source": "include\\sweeteditor\\decoration.h",
+      "source": "include/sweeteditor/decoration.h",
       "line": 136,
       "values": [
         {
@@ -133,7 +133,7 @@
       "domain": "adornment",
       "fallback": "TEXT",
       "underlying_type": null,
-      "source": "include\\sweeteditor\\decoration.h",
+      "source": "include/sweeteditor/decoration.h",
       "line": 77,
       "values": [
         {
@@ -156,7 +156,7 @@
       "domain": "adornment",
       "fallback": "SINGLE",
       "underlying_type": "int32_t",
-      "source": "include\\sweeteditor\\decoration.h",
+      "source": "include/sweeteditor/decoration.h",
       "line": 176,
       "values": [
         {
@@ -175,7 +175,7 @@
       "domain": "adornment",
       "fallback": "SYNTAX",
       "underlying_type": "uint8_t",
-      "source": "include\\sweeteditor\\decoration.h",
+      "source": "include/sweeteditor/decoration.h",
       "line": 15,
       "values": [
         {
@@ -194,7 +194,7 @@
       "domain": "config",
       "fallback": "NONE",
       "underlying_type": null,
-      "source": "include\\sweeteditor\\editor_types.h",
+      "source": "include/sweeteditor/editor_types.h",
       "line": 70,
       "values": [
         {
@@ -213,7 +213,7 @@
       "domain": "config",
       "fallback": "BACKGROUND",
       "underlying_type": null,
-      "source": "include\\sweeteditor\\editor_types.h",
+      "source": "include/sweeteditor/editor_types.h",
       "line": 88,
       "values": [
         {
@@ -236,8 +236,8 @@
       "domain": "config",
       "fallback": "AUTO",
       "underlying_type": null,
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 75,
+      "source": "include/sweeteditor/visual.h",
+      "line": 81,
       "values": [
         {
           "name": "AUTO",
@@ -254,12 +254,39 @@
       ]
     },
     {
+      "name": "RangeEffectUnderlineStyle",
+      "kind": "enum",
+      "domain": "config",
+      "fallback": "NONE",
+      "underlying_type": null,
+      "source": "include/sweeteditor/editor_types.h",
+      "line": 186,
+      "values": [
+        {
+          "name": "NONE",
+          "value": 0
+        },
+        {
+          "name": "SOLID",
+          "value": 1
+        },
+        {
+          "name": "DASHED",
+          "value": 2
+        },
+        {
+          "name": "WAVY",
+          "value": 3
+        }
+      ]
+    },
+    {
       "name": "ScrollbarMode",
       "kind": "enum",
       "domain": "config",
       "fallback": "ALWAYS",
       "underlying_type": "uint8_t",
-      "source": "include\\sweeteditor\\editor_types.h",
+      "source": "include/sweeteditor/editor_types.h",
       "line": 139,
       "values": [
         {
@@ -282,7 +309,7 @@
       "domain": "config",
       "fallback": "JUMP",
       "underlying_type": "uint8_t",
-      "source": "include\\sweeteditor\\editor_types.h",
+      "source": "include/sweeteditor/editor_types.h",
       "line": 145,
       "values": [
         {
@@ -301,7 +328,7 @@
       "domain": "config",
       "fallback": "NONE",
       "underlying_type": null,
-      "source": "include\\sweeteditor\\editor_types.h",
+      "source": "include/sweeteditor/editor_types.h",
       "line": 78,
       "values": [
         {
@@ -324,7 +351,7 @@
       "domain": "ime",
       "fallback": "NONE",
       "underlying_type": null,
-      "source": "include\\sweeteditor\\ime_types.h",
+      "source": "include/sweeteditor/ime_types.h",
       "line": 57,
       "values": [
         {
@@ -343,7 +370,7 @@
       "domain": "ime",
       "fallback": "NONE",
       "underlying_type": null,
-      "source": "include\\sweeteditor\\ime_types.h",
+      "source": "include/sweeteditor/ime_types.h",
       "line": 19,
       "values": [
         {
@@ -370,7 +397,7 @@
       "domain": "ime",
       "fallback": "NONE",
       "underlying_type": null,
-      "source": "include\\sweeteditor\\ime_types.h",
+      "source": "include/sweeteditor/ime_types.h",
       "line": 51,
       "values": [
         {
@@ -393,7 +420,7 @@
       "domain": "ime",
       "fallback": "UNKNOWN",
       "underlying_type": null,
-      "source": "include\\sweeteditor\\ime_types.h",
+      "source": "include/sweeteditor/ime_types.h",
       "line": 43,
       "values": [
         {
@@ -424,7 +451,7 @@
       "domain": "ime",
       "fallback": "DOCUMENT_WINDOW",
       "underlying_type": null,
-      "source": "include\\sweeteditor\\ime_types.h",
+      "source": "include/sweeteditor/ime_types.h",
       "line": 14,
       "values": [
         {
@@ -443,7 +470,7 @@
       "domain": "ime",
       "fallback": "GRAPHEME",
       "underlying_type": null,
-      "source": "include\\sweeteditor\\ime_types.h",
+      "source": "include/sweeteditor/ime_types.h",
       "line": 9,
       "values": [
         {
@@ -462,7 +489,7 @@
       "domain": "interaction",
       "fallback": "UNDEFINED",
       "underlying_type": "uint8_t",
-      "source": "include\\sweeteditor\\gesture.h",
+      "source": "include/sweeteditor/gesture.h",
       "line": 77,
       "values": [
         {
@@ -529,7 +556,7 @@
       "domain": "interaction",
       "fallback": "UNDEFINED",
       "underlying_type": "uint8_t",
-      "source": "include\\sweeteditor\\gesture.h",
+      "source": "include/sweeteditor/gesture.h",
       "line": 133,
       "values": [
         {
@@ -576,7 +603,7 @@
       "domain": "interaction",
       "fallback": "NONE",
       "underlying_type": "uint8_t",
-      "source": "include\\sweeteditor\\gesture.h",
+      "source": "include/sweeteditor/gesture.h",
       "line": 155,
       "values": [
         {
@@ -623,7 +650,7 @@
       "domain": "keymap",
       "fallback": "NONE",
       "underlying_type": "EditorCommandId",
-      "source": "include\\sweeteditor\\keymap.h",
+      "source": "include/sweeteditor/keymap.h",
       "line": 71,
       "values": [
         {
@@ -774,7 +801,7 @@
       "domain": "keymap",
       "fallback": null,
       "underlying_type": "uint16_t",
-      "source": "include\\sweeteditor\\keymap.h",
+      "source": "include/sweeteditor/keymap.h",
       "line": 12,
       "values": [
         {
@@ -877,7 +904,7 @@
       "domain": "keymap",
       "fallback": null,
       "underlying_type": "uint8_t",
-      "source": "include\\sweeteditor\\keymap.h",
+      "source": "include/sweeteditor/keymap.h",
       "line": 39,
       "values": [
         {
@@ -908,8 +935,8 @@
       "domain": "visual",
       "fallback": "NONE",
       "underlying_type": null,
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 85,
+      "source": "include/sweeteditor/visual.h",
+      "line": 91,
       "values": [
         {
           "name": "NONE",
@@ -931,8 +958,8 @@
       "domain": "visual",
       "fallback": "VERTICAL",
       "underlying_type": null,
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 162,
+      "source": "include/sweeteditor/visual.h",
+      "line": 168,
       "values": [
         {
           "name": "HORIZONTAL",
@@ -950,8 +977,8 @@
       "domain": "visual",
       "fallback": "SOLID",
       "underlying_type": null,
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 176,
+      "source": "include/sweeteditor/visual.h",
+      "line": 182,
       "values": [
         {
           "name": "SOLID",
@@ -973,8 +1000,8 @@
       "domain": "visual",
       "fallback": "INDENT",
       "underlying_type": null,
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 168,
+      "source": "include/sweeteditor/visual.h",
+      "line": 174,
       "values": [
         {
           "name": "INDENT",
@@ -1000,8 +1027,8 @@
       "domain": "visual",
       "fallback": "DEFAULT",
       "underlying_type": "uint8_t",
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 105,
+      "source": "include/sweeteditor/visual.h",
+      "line": 111,
       "values": [
         {
           "name": "DEFAULT",
@@ -1018,13 +1045,80 @@
       ]
     },
     {
+      "name": "RangeEffectKind",
+      "kind": "enum",
+      "domain": "visual",
+      "fallback": "SELECTION",
+      "underlying_type": null,
+      "source": "include/sweeteditor/visual.h",
+      "line": 220,
+      "values": [
+        {
+          "name": "SELECTION",
+          "value": 0
+        },
+        {
+          "name": "SEARCH_MATCH",
+          "value": 1
+        },
+        {
+          "name": "SEARCH_CURRENT",
+          "value": 2
+        },
+        {
+          "name": "DOCUMENT_HIGHLIGHT_TEXT",
+          "value": 3
+        },
+        {
+          "name": "DOCUMENT_HIGHLIGHT_READ",
+          "value": 4
+        },
+        {
+          "name": "DOCUMENT_HIGHLIGHT_WRITE",
+          "value": 5
+        },
+        {
+          "name": "LINKED_EDITING_ACTIVE",
+          "value": 6
+        },
+        {
+          "name": "LINKED_EDITING_INACTIVE",
+          "value": 7
+        },
+        {
+          "name": "IME_COMPOSITION",
+          "value": 8
+        },
+        {
+          "name": "BRACKET_MATCH",
+          "value": 9
+        },
+        {
+          "name": "DIAGNOSTIC_ERROR",
+          "value": 10
+        },
+        {
+          "name": "DIAGNOSTIC_WARNING",
+          "value": 11
+        },
+        {
+          "name": "DIAGNOSTIC_INFO",
+          "value": 12
+        },
+        {
+          "name": "DIAGNOSTIC_HINT",
+          "value": 13
+        }
+      ]
+    },
+    {
       "name": "VisualLineKind",
       "kind": "enum",
       "domain": "visual",
       "fallback": "CONTENT",
       "underlying_type": "uint8_t",
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 95,
+      "source": "include/sweeteditor/visual.h",
+      "line": 101,
       "values": [
         {
           "name": "CONTENT",
@@ -1046,8 +1140,8 @@
       "domain": "visual",
       "fallback": "TEXT",
       "underlying_type": null,
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 16,
+      "source": "include/sweeteditor/visual.h",
+      "line": 19,
       "values": [
         {
           "name": "TEXT",
@@ -1094,14 +1188,14 @@
       "kind": "value",
       "direction": "out",
       "domain": "action",
-      "source": "include\\sweeteditor\\editor_core.h",
+      "source": "include/sweeteditor/editor_core.h",
       "line": 40,
       "fields": [
         {
           "name": "handled",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 41,
           "default": "false"
         },
@@ -1109,7 +1203,7 @@
           "name": "needs_redraw",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 42,
           "default": "false"
         },
@@ -1117,7 +1211,7 @@
           "name": "reason",
           "cpp_type": "EditorActionReason",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 44,
           "default": "EditorActionReason::NONE"
         },
@@ -1125,7 +1219,7 @@
           "name": "content_changed",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 46,
           "default": "false"
         },
@@ -1133,7 +1227,7 @@
           "name": "cursor_changed",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 47,
           "default": "false"
         },
@@ -1141,7 +1235,7 @@
           "name": "selection_changed",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 48,
           "default": "false"
         },
@@ -1149,7 +1243,7 @@
           "name": "scroll_changed",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 49,
           "default": "false"
         },
@@ -1157,7 +1251,7 @@
           "name": "scale_changed",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 50,
           "default": "false"
         },
@@ -1165,7 +1259,7 @@
           "name": "pointer_cursor_changed",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 51,
           "default": "false"
         },
@@ -1173,7 +1267,7 @@
           "name": "composition_changed",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 52,
           "default": "false"
         },
@@ -1181,7 +1275,7 @@
           "name": "decoration_changed",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 53,
           "default": "false"
         },
@@ -1189,7 +1283,7 @@
           "name": "needs_ime_sync",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 54,
           "default": "false"
         },
@@ -1197,7 +1291,7 @@
           "name": "needs_edge_scroll",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 56,
           "default": "false"
         },
@@ -1205,7 +1299,7 @@
           "name": "needs_fling",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 57,
           "default": "false"
         },
@@ -1213,7 +1307,7 @@
           "name": "needs_animation",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 58,
           "default": "false"
         },
@@ -1221,7 +1315,7 @@
           "name": "is_handle_drag",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 59,
           "default": "false"
         },
@@ -1229,28 +1323,28 @@
           "name": "changes",
           "cpp_type": "Vector<TextChange>",
           "wire": "list",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 61
         },
         {
           "name": "cursor_before",
           "cpp_type": "TextPosition",
           "wire": "struct",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 63
         },
         {
           "name": "cursor_after",
           "cpp_type": "TextPosition",
           "wire": "struct",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 64
         },
         {
           "name": "has_selection_before",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 65,
           "default": "false"
         },
@@ -1258,7 +1352,7 @@
           "name": "has_selection_after",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 66,
           "default": "false"
         },
@@ -1266,21 +1360,21 @@
           "name": "selection_before",
           "cpp_type": "TextRange",
           "wire": "struct",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 67
         },
         {
           "name": "selection_after",
           "cpp_type": "TextRange",
           "wire": "struct",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 68
         },
         {
           "name": "scroll_x_before",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 70,
           "default": "0"
         },
@@ -1288,7 +1382,7 @@
           "name": "scroll_y_before",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 71,
           "default": "0"
         },
@@ -1296,7 +1390,7 @@
           "name": "scroll_x_after",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 72,
           "default": "0"
         },
@@ -1304,7 +1398,7 @@
           "name": "scroll_y_after",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 73,
           "default": "0"
         },
@@ -1312,7 +1406,7 @@
           "name": "scale_before",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 74,
           "default": "1"
         },
@@ -1320,7 +1414,7 @@
           "name": "scale_after",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 75,
           "default": "1"
         },
@@ -1328,7 +1422,7 @@
           "name": "pointer_cursor_before",
           "cpp_type": "PointerCursorType",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 78,
           "default": "PointerCursorType::TEXT"
         },
@@ -1336,7 +1430,7 @@
           "name": "pointer_cursor_after",
           "cpp_type": "PointerCursorType",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 80,
           "default": "PointerCursorType::TEXT"
         },
@@ -1344,14 +1438,14 @@
           "name": "ime_sync",
           "cpp_type": "ImeSyncSnapshot",
           "wire": "struct",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 82
         },
         {
           "name": "gesture_type",
           "cpp_type": "GestureType",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 84,
           "default": "GestureType::UNDEFINED"
         },
@@ -1359,7 +1453,7 @@
           "name": "gesture_event_type",
           "cpp_type": "EventType",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 86,
           "default": "EventType::UNDEFINED"
         },
@@ -1367,7 +1461,7 @@
           "name": "tap_point",
           "cpp_type": "PointF",
           "wire": "struct",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 87,
           "default": ""
         },
@@ -1375,14 +1469,14 @@
           "name": "hit_target",
           "cpp_type": "HitTarget",
           "wire": "struct",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 88
         },
         {
           "name": "modifiers",
           "cpp_type": "KeyModifier",
           "wire": "i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 90,
           "default": "KeyModifier::NONE"
         },
@@ -1390,7 +1484,7 @@
           "name": "command",
           "cpp_type": "EditorCommandId",
           "wire": "i32",
-          "source": "include\\sweeteditor\\editor_core.h",
+          "source": "include/sweeteditor/editor_core.h",
           "line": 92,
           "default": "0"
         }
@@ -1401,28 +1495,28 @@
       "kind": "value",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\decoration.h",
+      "source": "include/sweeteditor/decoration.h",
       "line": 188,
       "fields": [
         {
           "name": "parent",
           "cpp_type": "TextPosition",
           "wire": "struct",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 189
         },
         {
           "name": "end",
           "cpp_type": "TextPosition",
           "wire": "struct",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 190
         },
         {
           "name": "children",
           "cpp_type": "Vector<TextPosition>",
           "wire": "list",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 191
         }
       ]
@@ -1432,14 +1526,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\decoration.h",
+      "source": "include/sweeteditor/decoration.h",
       "line": 114,
       "fields": [
         {
           "name": "column",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 116,
           "default": "0"
         },
@@ -1447,7 +1541,7 @@
           "name": "command_id",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 118,
           "default": "0"
         },
@@ -1455,7 +1549,7 @@
           "name": "text",
           "cpp_type": "U8String",
           "wire": "utf8_string",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 120
         }
       ]
@@ -1465,14 +1559,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\decoration.h",
+      "source": "include/sweeteditor/decoration.h",
       "line": 144,
       "fields": [
         {
           "name": "column",
           "cpp_type": "uint32_t",
           "wire": "u32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 146,
           "default": "0"
         },
@@ -1480,7 +1574,7 @@
           "name": "length",
           "cpp_type": "uint32_t",
           "wire": "u32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 148,
           "default": "0"
         },
@@ -1488,7 +1582,7 @@
           "name": "severity",
           "cpp_type": "DiagnosticSeverity",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 151,
           "default": "DiagnosticSeverity::DIAG_ERROR"
         }
@@ -1499,21 +1593,21 @@
       "kind": "value",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\decoration.h",
+      "source": "include/sweeteditor/decoration.h",
       "line": 195,
       "fields": [
         {
           "name": "start",
           "cpp_type": "TextPosition",
           "wire": "struct",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 196
         },
         {
           "name": "end",
           "cpp_type": "TextPosition",
           "wire": "struct",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 197
         }
       ]
@@ -1523,14 +1617,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\decoration.h",
+      "source": "include/sweeteditor/decoration.h",
       "line": 159,
       "fields": [
         {
           "name": "start_line",
           "cpp_type": "size_t",
           "wire": "size_as_u32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 162,
           "default": "0"
         },
@@ -1538,7 +1632,7 @@
           "name": "end_line",
           "cpp_type": "size_t",
           "wire": "size_as_u32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 165,
           "default": "0"
         },
@@ -1546,7 +1640,7 @@
           "name": "collapsed",
           "cpp_type": "bool",
           "wire": "bool_u8",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 168,
           "default": "false"
         }
@@ -1557,14 +1651,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\decoration.h",
+      "source": "include/sweeteditor/decoration.h",
       "line": 108,
       "fields": [
         {
           "name": "icon_id",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 110,
           "default": "0"
         }
@@ -1575,21 +1669,21 @@
       "kind": "value",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\decoration.h",
+      "source": "include/sweeteditor/decoration.h",
       "line": 182,
       "fields": [
         {
           "name": "start",
           "cpp_type": "TextPosition",
           "wire": "struct",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 183
         },
         {
           "name": "end",
           "cpp_type": "TextPosition",
           "wire": "struct",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 184
         }
       ]
@@ -1599,14 +1693,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\decoration.h",
+      "source": "include/sweeteditor/decoration.h",
       "line": 87,
       "fields": [
         {
           "name": "type",
           "cpp_type": "InlayType",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 90,
           "default": "InlayType::TEXT"
         },
@@ -1614,7 +1708,7 @@
           "name": "column",
           "cpp_type": "uint32_t",
           "wire": "u32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 92,
           "default": "0"
         },
@@ -1622,7 +1716,7 @@
           "name": "int_value",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 94,
           "default": "0"
         },
@@ -1630,7 +1724,7 @@
           "name": "text",
           "cpp_type": "U8String",
           "wire": "utf8_string",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 96
         }
       ]
@@ -1640,14 +1734,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\decoration.h",
+      "source": "include/sweeteditor/decoration.h",
       "line": 124,
       "fields": [
         {
           "name": "column",
           "cpp_type": "uint32_t",
           "wire": "u32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 126,
           "default": "0"
         },
@@ -1655,7 +1749,7 @@
           "name": "length",
           "cpp_type": "uint32_t",
           "wire": "u32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 128,
           "default": "0"
         },
@@ -1663,7 +1757,7 @@
           "name": "target",
           "cpp_type": "U8String",
           "wire": "utf8_string",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 130
         }
       ]
@@ -1673,14 +1767,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\decoration.h",
+      "source": "include/sweeteditor/decoration.h",
       "line": 100,
       "fields": [
         {
           "name": "column",
           "cpp_type": "uint32_t",
           "wire": "u32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 102,
           "default": "0"
         },
@@ -1688,7 +1782,7 @@
           "name": "text",
           "cpp_type": "U8String",
           "wire": "utf8_string",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 104
         }
       ]
@@ -1698,14 +1792,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 22,
       "fields": [
         {
           "name": "entries",
           "cpp_type": "Vector<std::pair<uint32_t, TextStyle>>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 24,
           "map_entry": {
             "key": "style_id",
@@ -1719,35 +1813,35 @@
       "kind": "value",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\decoration.h",
+      "source": "include/sweeteditor/decoration.h",
       "line": 201,
       "fields": [
         {
           "name": "line",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 202
         },
         {
           "name": "style",
           "cpp_type": "SeparatorStyle",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 204
         },
         {
           "name": "count",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 205
         },
         {
           "name": "text_end_column",
           "cpp_type": "uint32_t",
           "wire": "u32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 206
         }
       ]
@@ -1757,14 +1851,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 93,
       "fields": [
         {
           "name": "entries",
           "cpp_type": "Vector<std::pair<size_t, Vector<CodeLensItem>>>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 96,
           "key_wire": "size_as_u32",
           "map_entry": {
@@ -1779,14 +1873,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 41,
       "fields": [
         {
           "name": "entries",
           "cpp_type": "Vector<std::pair<size_t, Vector<Diagnostic>>>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 44,
           "key_wire": "size_as_u32",
           "map_entry": {
@@ -1801,14 +1895,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 81,
       "fields": [
         {
           "name": "entries",
           "cpp_type": "Vector<std::pair<size_t, Vector<GutterIcon>>>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 84,
           "key_wire": "size_as_u32",
           "map_entry": {
@@ -1823,14 +1917,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 57,
       "fields": [
         {
           "name": "entries",
           "cpp_type": "Vector<std::pair<size_t, Vector<InlayHint>>>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 60,
           "key_wire": "size_as_u32",
           "map_entry": {
@@ -1845,14 +1939,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 105,
       "fields": [
         {
           "name": "entries",
           "cpp_type": "Vector<std::pair<size_t, Vector<LinkSpan>>>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 108,
           "key_wire": "size_as_u32",
           "map_entry": {
@@ -1867,14 +1961,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 69,
       "fields": [
         {
           "name": "entries",
           "cpp_type": "Vector<std::pair<size_t, Vector<PhantomText>>>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 72,
           "key_wire": "size_as_u32",
           "map_entry": {
@@ -1889,14 +1983,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 27,
       "fields": [
         {
           "name": "layer",
           "cpp_type": "SpanLayer",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 29,
           "default": "SpanLayer::SYNTAX"
         },
@@ -1904,7 +1998,7 @@
           "name": "entries",
           "cpp_type": "Vector<std::pair<size_t, Vector<StyleSpan>>>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 32,
           "key_wire": "size_as_u32",
           "map_entry": {
@@ -1919,14 +2013,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 115,
       "fields": [
         {
           "name": "guides",
           "cpp_type": "Vector<BracketGuide>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 116
         }
       ]
@@ -1936,14 +2030,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 119,
       "fields": [
         {
           "name": "guides",
           "cpp_type": "Vector<FlowGuide>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 120
         }
       ]
@@ -1953,14 +2047,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 47,
       "fields": [
         {
           "name": "regions",
           "cpp_type": "Vector<FoldRegion>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 48
         }
       ]
@@ -1970,14 +2064,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 111,
       "fields": [
         {
           "name": "guides",
           "cpp_type": "Vector<IndentGuide>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 112
         }
       ]
@@ -1987,14 +2081,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 87,
       "fields": [
         {
           "name": "line",
           "cpp_type": "size_t",
           "wire": "size_as_u32",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 89,
           "default": "0"
         },
@@ -2002,7 +2096,7 @@
           "name": "items",
           "cpp_type": "Vector<CodeLensItem>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 90
         }
       ]
@@ -2012,14 +2106,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 35,
       "fields": [
         {
           "name": "line",
           "cpp_type": "size_t",
           "wire": "size_as_u32",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 37,
           "default": "0"
         },
@@ -2027,7 +2121,7 @@
           "name": "diagnostics",
           "cpp_type": "Vector<Diagnostic>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 38
         }
       ]
@@ -2037,14 +2131,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 75,
       "fields": [
         {
           "name": "line",
           "cpp_type": "size_t",
           "wire": "size_as_u32",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 77,
           "default": "0"
         },
@@ -2052,7 +2146,7 @@
           "name": "icons",
           "cpp_type": "Vector<GutterIcon>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 78
         }
       ]
@@ -2062,14 +2156,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 51,
       "fields": [
         {
           "name": "line",
           "cpp_type": "size_t",
           "wire": "size_as_u32",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 53,
           "default": "0"
         },
@@ -2077,7 +2171,7 @@
           "name": "hints",
           "cpp_type": "Vector<InlayHint>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 54
         }
       ]
@@ -2087,14 +2181,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 99,
       "fields": [
         {
           "name": "line",
           "cpp_type": "size_t",
           "wire": "size_as_u32",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 101,
           "default": "0"
         },
@@ -2102,7 +2196,7 @@
           "name": "links",
           "cpp_type": "Vector<LinkSpan>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 102
         }
       ]
@@ -2112,14 +2206,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 63,
       "fields": [
         {
           "name": "line",
           "cpp_type": "size_t",
           "wire": "size_as_u32",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 65,
           "default": "0"
         },
@@ -2127,7 +2221,7 @@
           "name": "phantoms",
           "cpp_type": "Vector<PhantomText>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 66
         }
       ]
@@ -2137,14 +2231,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 14,
       "fields": [
         {
           "name": "line",
           "cpp_type": "size_t",
           "wire": "size_as_u32",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 16,
           "default": "0"
         },
@@ -2152,7 +2246,7 @@
           "name": "layer",
           "cpp_type": "SpanLayer",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 18,
           "default": "SpanLayer::SYNTAX"
         },
@@ -2160,7 +2254,7 @@
           "name": "spans",
           "cpp_type": "Vector<StyleSpan>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 19
         }
       ]
@@ -2170,14 +2264,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 123,
       "fields": [
         {
           "name": "guides",
           "cpp_type": "Vector<SeparatorGuide>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 124
         }
       ]
@@ -2187,14 +2281,14 @@
       "kind": "value",
       "direction": "value",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\decoration.h",
+      "source": "include/sweeteditor/decoration.h",
       "line": 67,
       "fields": [
         {
           "name": "column",
           "cpp_type": "uint32_t",
           "wire": "u32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 69,
           "default": "0"
         },
@@ -2202,7 +2296,7 @@
           "name": "length",
           "cpp_type": "uint32_t",
           "wire": "u32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 71,
           "default": "0"
         },
@@ -2210,7 +2304,7 @@
           "name": "style_id",
           "cpp_type": "uint32_t",
           "wire": "u32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 73,
           "default": "0"
         }
@@ -2221,14 +2315,14 @@
       "kind": "value",
       "direction": "value",
       "domain": "adornment",
-      "source": "include\\sweeteditor\\decoration.h",
+      "source": "include/sweeteditor/decoration.h",
       "line": 41,
       "fields": [
         {
           "name": "color",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 43,
           "default": "0"
         },
@@ -2236,7 +2330,7 @@
           "name": "background_color",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 45,
           "default": "0"
         },
@@ -2244,7 +2338,7 @@
           "name": "font_style",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\decoration.h",
+          "source": "include/sweeteditor/decoration.h",
           "line": 47,
           "default": "FONT_STYLE_NORMAL"
         }
@@ -2255,14 +2349,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "config",
-      "source": "include\\sweeteditor\\editor_types.h",
+      "source": "include/sweeteditor/editor_types.h",
       "line": 104,
       "fields": [
         {
           "name": "touch_slop",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 106,
           "default": "10"
         },
@@ -2270,7 +2364,7 @@
           "name": "double_tap_timeout",
           "cpp_type": "int64_t",
           "wire": "i64",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 108,
           "default": "300"
         },
@@ -2278,7 +2372,7 @@
           "name": "long_press_ms",
           "cpp_type": "int64_t",
           "wire": "i64",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 110,
           "default": "500"
         },
@@ -2286,7 +2380,7 @@
           "name": "fling_friction",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 112,
           "default": "3.5f"
         },
@@ -2294,7 +2388,7 @@
           "name": "fling_min_velocity",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 114,
           "default": "50.0f"
         },
@@ -2302,7 +2396,7 @@
           "name": "fling_max_velocity",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 116,
           "default": "8000.0f"
         },
@@ -2310,7 +2404,7 @@
           "name": "max_undo_stack_size",
           "cpp_type": "size_t",
           "wire": "size_as_u64",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 119,
           "default": "512"
         },
@@ -2318,7 +2412,7 @@
           "name": "key_chord_timeout_ms",
           "cpp_type": "int64_t",
           "wire": "i64",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 121,
           "default": "2000"
         },
@@ -2326,9 +2420,167 @@
           "name": "reveal_selection_end_on_select_all",
           "cpp_type": "bool",
           "wire": "bool_u8",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 124,
           "default": "false"
+        }
+      ]
+    },
+    {
+      "name": "EditorRangeEffectStyles",
+      "kind": "value",
+      "direction": "in",
+      "domain": "config",
+      "source": "include/sweeteditor/editor_types.h",
+      "line": 207,
+      "fields": [
+        {
+          "name": "selection",
+          "cpp_type": "RangeEffectStyle",
+          "wire": "struct",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 208
+        },
+        {
+          "name": "search_match",
+          "cpp_type": "RangeEffectStyle",
+          "wire": "struct",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 209
+        },
+        {
+          "name": "search_current",
+          "cpp_type": "RangeEffectStyle",
+          "wire": "struct",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 210
+        },
+        {
+          "name": "document_highlight_text",
+          "cpp_type": "RangeEffectStyle",
+          "wire": "struct",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 211
+        },
+        {
+          "name": "document_highlight_read",
+          "cpp_type": "RangeEffectStyle",
+          "wire": "struct",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 212
+        },
+        {
+          "name": "document_highlight_write",
+          "cpp_type": "RangeEffectStyle",
+          "wire": "struct",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 213
+        },
+        {
+          "name": "linked_editing_active",
+          "cpp_type": "RangeEffectStyle",
+          "wire": "struct",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 214
+        },
+        {
+          "name": "linked_editing_inactive",
+          "cpp_type": "RangeEffectStyle",
+          "wire": "struct",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 215
+        },
+        {
+          "name": "ime_composition",
+          "cpp_type": "RangeEffectStyle",
+          "wire": "struct",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 216
+        },
+        {
+          "name": "bracket_match",
+          "cpp_type": "RangeEffectStyle",
+          "wire": "struct",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 217
+        },
+        {
+          "name": "diagnostic_error",
+          "cpp_type": "RangeEffectStyle",
+          "wire": "struct",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 218
+        },
+        {
+          "name": "diagnostic_warning",
+          "cpp_type": "RangeEffectStyle",
+          "wire": "struct",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 219
+        },
+        {
+          "name": "diagnostic_info",
+          "cpp_type": "RangeEffectStyle",
+          "wire": "struct",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 220
+        },
+        {
+          "name": "diagnostic_hint",
+          "cpp_type": "RangeEffectStyle",
+          "wire": "struct",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 221
+        }
+      ]
+    },
+    {
+      "name": "EditorRenderColors",
+      "kind": "value",
+      "direction": "in",
+      "domain": "config",
+      "source": "include/sweeteditor/editor_types.h",
+      "line": 174,
+      "fields": [
+        {
+          "name": "text_foreground",
+          "cpp_type": "int32_t",
+          "wire": "i32",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 175,
+          "default": "0"
+        },
+        {
+          "name": "link_foreground",
+          "cpp_type": "int32_t",
+          "wire": "i32",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 176,
+          "default": "0"
+        },
+        {
+          "name": "active_link_foreground",
+          "cpp_type": "int32_t",
+          "wire": "i32",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 177,
+          "default": "0"
+        },
+        {
+          "name": "codelens_foreground",
+          "cpp_type": "int32_t",
+          "wire": "i32",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 178,
+          "default": "0"
+        },
+        {
+          "name": "active_codelens_foreground",
+          "cpp_type": "int32_t",
+          "wire": "i32",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 179,
+          "default": "0"
         }
       ]
     },
@@ -2337,14 +2589,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "config",
-      "source": "include\\sweeteditor\\editor_types.h",
+      "source": "include/sweeteditor/editor_types.h",
       "line": 132,
       "fields": [
         {
           "name": "start_hit_offset",
           "cpp_type": "OffsetRect",
           "wire": "struct",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 134,
           "default": "-32.1f, -8.0f, 8.0f, 32.1f"
         },
@@ -2352,9 +2604,59 @@
           "name": "end_hit_offset",
           "cpp_type": "OffsetRect",
           "wire": "struct",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 136,
           "default": "-8.0f, -8.0f, 32.1f, 32.1f"
+        }
+      ]
+    },
+    {
+      "name": "RangeEffectStyle",
+      "kind": "value",
+      "direction": "value",
+      "domain": "config",
+      "source": "include/sweeteditor/editor_types.h",
+      "line": 194,
+      "fields": [
+        {
+          "name": "foreground_color",
+          "cpp_type": "int32_t",
+          "wire": "i32",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 195,
+          "default": "0"
+        },
+        {
+          "name": "background_color",
+          "cpp_type": "int32_t",
+          "wire": "i32",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 196,
+          "default": "0"
+        },
+        {
+          "name": "border_color",
+          "cpp_type": "int32_t",
+          "wire": "i32",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 197,
+          "default": "0"
+        },
+        {
+          "name": "underline_color",
+          "cpp_type": "int32_t",
+          "wire": "i32",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 198,
+          "default": "0"
+        },
+        {
+          "name": "underline_style",
+          "cpp_type": "RangeEffectUnderlineStyle",
+          "wire": "enum_i32",
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 200,
+          "default": "RangeEffectUnderlineStyle::NONE"
         }
       ]
     },
@@ -2363,14 +2665,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "config",
-      "source": "include\\sweeteditor\\editor_types.h",
+      "source": "include/sweeteditor/editor_types.h",
       "line": 151,
       "fields": [
         {
           "name": "thickness",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 153,
           "default": "10.0f"
         },
@@ -2378,7 +2680,7 @@
           "name": "min_thumb",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 155,
           "default": "24.0f"
         },
@@ -2386,7 +2688,7 @@
           "name": "thumb_hit_padding",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 157,
           "default": "0.0f"
         },
@@ -2394,7 +2696,7 @@
           "name": "mode",
           "cpp_type": "ScrollbarMode",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 160,
           "default": "ScrollbarMode::ALWAYS"
         },
@@ -2402,7 +2704,7 @@
           "name": "thumb_draggable",
           "cpp_type": "bool",
           "wire": "bool_u8",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 163,
           "default": "true"
         },
@@ -2410,7 +2712,7 @@
           "name": "track_tap_mode",
           "cpp_type": "ScrollbarTrackTapMode",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 166,
           "default": "ScrollbarTrackTapMode::JUMP"
         },
@@ -2418,7 +2720,7 @@
           "name": "fade_delay_ms",
           "cpp_type": "uint16_t",
           "wire": "u16",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 168,
           "default": "700"
         },
@@ -2426,7 +2728,7 @@
           "name": "fade_duration_ms",
           "cpp_type": "uint16_t",
           "wire": "u16",
-          "source": "include\\sweeteditor\\editor_types.h",
+          "source": "include/sweeteditor/editor_types.h",
           "line": 170,
           "default": "300"
         }
@@ -2437,14 +2739,14 @@
       "kind": "value",
       "direction": "value",
       "domain": "foundation",
-      "source": "include\\sweeteditor\\foundation.h",
+      "source": "include/sweeteditor/foundation.h",
       "line": 37,
       "fields": [
         {
           "name": "start",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\foundation.h",
+          "source": "include/sweeteditor/foundation.h",
           "line": 38,
           "default": "0"
         },
@@ -2452,7 +2754,7 @@
           "name": "end",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\foundation.h",
+          "source": "include/sweeteditor/foundation.h",
           "line": 39,
           "default": "-1"
         }
@@ -2463,14 +2765,14 @@
       "kind": "value",
       "direction": "value",
       "domain": "foundation",
-      "source": "include\\sweeteditor\\foundation.h",
+      "source": "include/sweeteditor/foundation.h",
       "line": 64,
       "fields": [
         {
           "name": "left",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\foundation.h",
+          "source": "include/sweeteditor/foundation.h",
           "line": 65,
           "default": "0"
         },
@@ -2478,7 +2780,7 @@
           "name": "top",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\foundation.h",
+          "source": "include/sweeteditor/foundation.h",
           "line": 66,
           "default": "0"
         },
@@ -2486,7 +2788,7 @@
           "name": "right",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\foundation.h",
+          "source": "include/sweeteditor/foundation.h",
           "line": 67,
           "default": "0"
         },
@@ -2494,7 +2796,7 @@
           "name": "bottom",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\foundation.h",
+          "source": "include/sweeteditor/foundation.h",
           "line": 68,
           "default": "0"
         }
@@ -2505,14 +2807,14 @@
       "kind": "value",
       "direction": "value",
       "domain": "foundation",
-      "source": "include\\sweeteditor\\foundation.h",
+      "source": "include/sweeteditor/foundation.h",
       "line": 48,
       "fields": [
         {
           "name": "x",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\foundation.h",
+          "source": "include/sweeteditor/foundation.h",
           "line": 49,
           "default": "0"
         },
@@ -2520,7 +2822,7 @@
           "name": "y",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\foundation.h",
+          "source": "include/sweeteditor/foundation.h",
           "line": 50,
           "default": "0"
         }
@@ -2531,21 +2833,21 @@
       "kind": "value",
       "direction": "value",
       "domain": "foundation",
-      "source": "include\\sweeteditor\\foundation.h",
+      "source": "include/sweeteditor/foundation.h",
       "line": 57,
       "fields": [
         {
           "name": "origin",
           "cpp_type": "PointF",
           "wire": "struct",
-          "source": "include\\sweeteditor\\foundation.h",
+          "source": "include/sweeteditor/foundation.h",
           "line": 58
         },
         {
           "name": "width",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\foundation.h",
+          "source": "include/sweeteditor/foundation.h",
           "line": 59,
           "default": "0"
         },
@@ -2553,7 +2855,7 @@
           "name": "height",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\foundation.h",
+          "source": "include/sweeteditor/foundation.h",
           "line": 60,
           "default": "0"
         }
@@ -2564,22 +2866,22 @@
       "kind": "value",
       "direction": "out",
       "domain": "foundation",
-      "source": "include\\sweeteditor\\editor_types.h",
-      "line": 224,
+      "source": "include/sweeteditor/editor_types.h",
+      "line": 282,
       "fields": [
         {
           "name": "range",
           "cpp_type": "TextRange",
           "wire": "struct",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 226
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 284
         },
         {
           "name": "new_text",
           "cpp_type": "U8String",
           "wire": "utf8_string",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 231
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 289
         }
       ]
     },
@@ -2588,14 +2890,14 @@
       "kind": "value",
       "direction": "value",
       "domain": "foundation",
-      "source": "include\\sweeteditor\\foundation.h",
+      "source": "include/sweeteditor/foundation.h",
       "line": 12,
       "fields": [
         {
           "name": "line",
           "cpp_type": "size_t",
           "wire": "size_as_i32",
-          "source": "include\\sweeteditor\\foundation.h",
+          "source": "include/sweeteditor/foundation.h",
           "line": 15,
           "default": "0"
         },
@@ -2603,7 +2905,7 @@
           "name": "column",
           "cpp_type": "size_t",
           "wire": "size_as_i32",
-          "source": "include\\sweeteditor\\foundation.h",
+          "source": "include/sweeteditor/foundation.h",
           "line": 18,
           "default": "0"
         }
@@ -2614,21 +2916,21 @@
       "kind": "value",
       "direction": "value",
       "domain": "foundation",
-      "source": "include\\sweeteditor\\foundation.h",
+      "source": "include/sweeteditor/foundation.h",
       "line": 27,
       "fields": [
         {
           "name": "start",
           "cpp_type": "TextPosition",
           "wire": "struct",
-          "source": "include\\sweeteditor\\foundation.h",
+          "source": "include/sweeteditor/foundation.h",
           "line": 28
         },
         {
           "name": "end",
           "cpp_type": "TextPosition",
           "wire": "struct",
-          "source": "include\\sweeteditor\\foundation.h",
+          "source": "include/sweeteditor/foundation.h",
           "line": 29
         }
       ]
@@ -2638,14 +2940,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "ime",
-      "source": "include\\sweeteditor\\ime_types.h",
+      "source": "include/sweeteditor/ime_types.h",
       "line": 69,
       "fields": [
         {
           "name": "start_offset",
           "cpp_type": "size_t",
           "wire": "size_as_u32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 71,
           "default": "0"
         },
@@ -2653,7 +2955,7 @@
           "name": "end_offset",
           "cpp_type": "size_t",
           "wire": "size_as_u32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 73,
           "default": "0"
         },
@@ -2661,14 +2963,14 @@
           "name": "text",
           "cpp_type": "U8String",
           "wire": "utf8_string",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 74
         },
         {
           "name": "cursor_offset",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 75,
           "default": "1"
         },
@@ -2676,7 +2978,7 @@
           "name": "script_class",
           "cpp_type": "ImeScriptClass",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 77,
           "default": "ImeScriptClass::UNKNOWN"
         }
@@ -2687,14 +2989,14 @@
       "kind": "value",
       "direction": "out",
       "domain": "ime",
-      "source": "include\\sweeteditor\\ime_types.h",
+      "source": "include/sweeteditor/ime_types.h",
       "line": 31,
       "fields": [
         {
           "name": "id",
           "cpp_type": "uint64_t",
           "wire": "u64",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 32,
           "default": "0"
         },
@@ -2702,7 +3004,7 @@
           "name": "revision",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 33,
           "default": "0"
         },
@@ -2710,7 +3012,7 @@
           "name": "document_start_offset",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 34,
           "default": "0"
         },
@@ -2718,21 +3020,21 @@
           "name": "text",
           "cpp_type": "U8String",
           "wire": "utf8_string",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 35
         },
         {
           "name": "selection",
           "cpp_type": "ImeTextRange",
           "wire": "struct",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 36
         },
         {
           "name": "has_composition",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 37,
           "default": "false"
         },
@@ -2740,7 +3042,7 @@
           "name": "composition",
           "cpp_type": "ImeTextRange",
           "wire": "struct",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 38,
           "default": "-1, -1"
         },
@@ -2748,7 +3050,7 @@
           "name": "kind",
           "cpp_type": "ImeInputContextKind",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 40,
           "default": "ImeInputContextKind::NONE"
         }
@@ -2759,14 +3061,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "ime",
-      "source": "include\\sweeteditor\\ime_types.h",
+      "source": "include/sweeteditor/ime_types.h",
       "line": 80,
       "fields": [
         {
           "name": "start_offset",
           "cpp_type": "size_t",
           "wire": "size_as_u32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 82,
           "default": "0"
         },
@@ -2774,7 +3076,7 @@
           "name": "end_offset",
           "cpp_type": "size_t",
           "wire": "size_as_u32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 84,
           "default": "0"
         },
@@ -2782,14 +3084,14 @@
           "name": "text",
           "cpp_type": "U8String",
           "wire": "utf8_string",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 85
         },
         {
           "name": "cursor_offset",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 86,
           "default": "1"
         },
@@ -2797,7 +3099,7 @@
           "name": "script_class",
           "cpp_type": "ImeScriptClass",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 88,
           "default": "ImeScriptClass::UNKNOWN"
         }
@@ -2808,14 +3110,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "ime",
-      "source": "include\\sweeteditor\\ime_types.h",
+      "source": "include/sweeteditor/ime_types.h",
       "line": 117,
       "fields": [
         {
           "name": "context_id",
           "cpp_type": "uint64_t",
           "wire": "u64",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 118,
           "default": "0"
         },
@@ -2823,7 +3125,7 @@
           "name": "document_start_offset",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 119,
           "default": "0"
         },
@@ -2831,7 +3133,7 @@
           "name": "start_offset",
           "cpp_type": "size_t",
           "wire": "size_as_u32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 121,
           "default": "0"
         },
@@ -2839,7 +3141,7 @@
           "name": "end_offset",
           "cpp_type": "size_t",
           "wire": "size_as_u32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 123,
           "default": "0"
         },
@@ -2847,14 +3149,14 @@
           "name": "text",
           "cpp_type": "U8String",
           "wire": "utf8_string",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 124
         },
         {
           "name": "cursor_offset",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 125,
           "default": "1"
         },
@@ -2862,7 +3164,7 @@
           "name": "script_class",
           "cpp_type": "ImeScriptClass",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 127,
           "default": "ImeScriptClass::UNKNOWN"
         }
@@ -2873,28 +3175,28 @@
       "kind": "value",
       "direction": "out",
       "domain": "ime",
-      "source": "include\\sweeteditor\\ime_types.h",
+      "source": "include/sweeteditor/ime_types.h",
       "line": 131,
       "fields": [
         {
           "name": "cursor",
           "cpp_type": "TextPosition",
           "wire": "struct",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 132
         },
         {
           "name": "selection",
           "cpp_type": "TextRange",
           "wire": "struct",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 133
         },
         {
           "name": "has_selection",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 134,
           "default": "false"
         },
@@ -2902,7 +3204,7 @@
           "name": "has_composing_session",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 135,
           "default": "false"
         },
@@ -2910,7 +3212,7 @@
           "name": "has_visible_composition_range",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 136,
           "default": "false"
         },
@@ -2918,14 +3220,14 @@
           "name": "visible_composition_range",
           "cpp_type": "TextRange",
           "wire": "struct",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 137
         },
         {
           "name": "has_platform_marked_range",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 138,
           "default": "false"
         },
@@ -2933,14 +3235,14 @@
           "name": "platform_marked_range",
           "cpp_type": "TextRange",
           "wire": "struct",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 139
         },
         {
           "name": "preedit_storage",
           "cpp_type": "ImePreeditStorage",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 141,
           "default": "ImePreeditStorage::NONE"
         },
@@ -2948,7 +3250,7 @@
           "name": "context_policy",
           "cpp_type": "ImeContextPolicy",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 143,
           "default": "ImeContextPolicy::NONE"
         },
@@ -2956,7 +3258,7 @@
           "name": "clear_platform_preedit",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 144,
           "default": "false"
         }
@@ -2967,14 +3269,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "ime",
-      "source": "include\\sweeteditor\\ime_types.h",
+      "source": "include/sweeteditor/ime_types.h",
       "line": 103,
       "fields": [
         {
           "name": "mode",
           "cpp_type": "ImeTextModelMode",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 105,
           "default": "ImeTextModelMode::DOCUMENT_WINDOW"
         },
@@ -2982,7 +3284,7 @@
           "name": "context_id",
           "cpp_type": "uint64_t",
           "wire": "u64",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 106,
           "default": "0"
         },
@@ -2990,7 +3292,7 @@
           "name": "document_start_offset",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 107,
           "default": "0"
         },
@@ -2998,14 +3300,14 @@
           "name": "old_text",
           "cpp_type": "U8String",
           "wire": "utf8_string",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 108
         },
         {
           "name": "delta",
           "cpp_type": "ImeTextRange",
           "wire": "struct",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 109,
           "default": "-1, -1"
         },
@@ -3013,21 +3315,21 @@
           "name": "delta_text",
           "cpp_type": "U8String",
           "wire": "utf8_string",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 110
         },
         {
           "name": "selection",
           "cpp_type": "ImeTextRange",
           "wire": "struct",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 111
         },
         {
           "name": "composition",
           "cpp_type": "ImeTextRange",
           "wire": "struct",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 112,
           "default": "-1, -1"
         },
@@ -3035,7 +3337,7 @@
           "name": "script_class",
           "cpp_type": "ImeScriptClass",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 114,
           "default": "ImeScriptClass::UNKNOWN"
         }
@@ -3046,14 +3348,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "ime",
-      "source": "include\\sweeteditor\\ime_types.h",
+      "source": "include/sweeteditor/ime_types.h",
       "line": 91,
       "fields": [
         {
           "name": "mode",
           "cpp_type": "ImeTextModelMode",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 93,
           "default": "ImeTextModelMode::DOCUMENT_WINDOW"
         },
@@ -3061,7 +3363,7 @@
           "name": "context_id",
           "cpp_type": "uint64_t",
           "wire": "u64",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 94,
           "default": "0"
         },
@@ -3069,7 +3371,7 @@
           "name": "document_start_offset",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 95,
           "default": "0"
         },
@@ -3077,21 +3379,21 @@
           "name": "text",
           "cpp_type": "U8String",
           "wire": "utf8_string",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 96
         },
         {
           "name": "selection",
           "cpp_type": "ImeTextRange",
           "wire": "struct",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 97
         },
         {
           "name": "composition",
           "cpp_type": "ImeTextRange",
           "wire": "struct",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 98,
           "default": "-1, -1"
         },
@@ -3099,7 +3401,7 @@
           "name": "script_class",
           "cpp_type": "ImeScriptClass",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 100,
           "default": "ImeScriptClass::UNKNOWN"
         }
@@ -3110,14 +3412,14 @@
       "kind": "value",
       "direction": "value",
       "domain": "ime",
-      "source": "include\\sweeteditor\\ime_types.h",
+      "source": "include/sweeteditor/ime_types.h",
       "line": 26,
       "fields": [
         {
           "name": "start",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 27,
           "default": "0"
         },
@@ -3125,7 +3427,7 @@
           "name": "end",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 28,
           "default": "0"
         }
@@ -3136,28 +3438,28 @@
       "kind": "value",
       "direction": "in",
       "domain": "ime",
-      "source": "include\\sweeteditor\\ime_types.h",
+      "source": "include/sweeteditor/ime_types.h",
       "line": 62,
       "fields": [
         {
           "name": "range",
           "cpp_type": "TextRange",
           "wire": "struct",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 63
         },
         {
           "name": "text",
           "cpp_type": "U8String",
           "wire": "utf8_string",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 64
         },
         {
           "name": "script_class",
           "cpp_type": "ImeScriptClass",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\ime_types.h",
+          "source": "include/sweeteditor/ime_types.h",
           "line": 66,
           "default": "ImeScriptClass::UNKNOWN"
         }
@@ -3168,14 +3470,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "interaction",
-      "source": "include\\sweeteditor\\gesture.h",
+      "source": "include/sweeteditor/gesture.h",
       "line": 112,
       "fields": [
         {
           "name": "type",
           "cpp_type": "EventType",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\gesture.h",
+          "source": "include/sweeteditor/gesture.h",
           "line": 115,
           "default": "EventType::UNDEFINED"
         },
@@ -3183,14 +3485,14 @@
           "name": "points",
           "cpp_type": "Vector<PointF>",
           "wire": "list",
-          "source": "include\\sweeteditor\\gesture.h",
+          "source": "include/sweeteditor/gesture.h",
           "line": 117
         },
         {
           "name": "modifiers",
           "cpp_type": "KeyModifier",
           "wire": "i32",
-          "source": "include\\sweeteditor\\gesture.h",
+          "source": "include/sweeteditor/gesture.h",
           "line": 120,
           "default": "KeyModifier::NONE"
         },
@@ -3198,7 +3500,7 @@
           "name": "wheel_delta_x",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\gesture.h",
+          "source": "include/sweeteditor/gesture.h",
           "line": 122,
           "default": "0"
         },
@@ -3206,7 +3508,7 @@
           "name": "wheel_delta_y",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\gesture.h",
+          "source": "include/sweeteditor/gesture.h",
           "line": 123,
           "default": "0"
         },
@@ -3214,7 +3516,7 @@
           "name": "direct_scale",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\gesture.h",
+          "source": "include/sweeteditor/gesture.h",
           "line": 125,
           "default": "1"
         }
@@ -3225,14 +3527,14 @@
       "kind": "value",
       "direction": "out",
       "domain": "interaction",
-      "source": "include\\sweeteditor\\gesture.h",
+      "source": "include/sweeteditor/gesture.h",
       "line": 177,
       "fields": [
         {
           "name": "type",
           "cpp_type": "HitTargetType",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\gesture.h",
+          "source": "include/sweeteditor/gesture.h",
           "line": 179,
           "default": "HitTargetType::NONE"
         },
@@ -3240,7 +3542,7 @@
           "name": "line",
           "cpp_type": "size_t",
           "wire": "size_as_i32",
-          "source": "include\\sweeteditor\\gesture.h",
+          "source": "include/sweeteditor/gesture.h",
           "line": 182,
           "default": "0"
         },
@@ -3248,7 +3550,7 @@
           "name": "column",
           "cpp_type": "size_t",
           "wire": "size_as_i32",
-          "source": "include\\sweeteditor\\gesture.h",
+          "source": "include/sweeteditor/gesture.h",
           "line": 185,
           "default": "0"
         },
@@ -3256,7 +3558,7 @@
           "name": "icon_id",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\gesture.h",
+          "source": "include/sweeteditor/gesture.h",
           "line": 187,
           "default": "0"
         },
@@ -3264,7 +3566,7 @@
           "name": "color_value",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\gesture.h",
+          "source": "include/sweeteditor/gesture.h",
           "line": 189,
           "default": "0"
         }
@@ -3275,28 +3577,28 @@
       "kind": "value",
       "direction": "value",
       "domain": "keymap",
-      "source": "include\\sweeteditor\\keymap.h",
+      "source": "include/sweeteditor/keymap.h",
       "line": 112,
       "fields": [
         {
           "name": "first",
           "cpp_type": "KeyChord",
           "wire": "struct",
-          "source": "include\\sweeteditor\\keymap.h",
+          "source": "include/sweeteditor/keymap.h",
           "line": 113
         },
         {
           "name": "second",
           "cpp_type": "KeyChord",
           "wire": "struct",
-          "source": "include\\sweeteditor\\keymap.h",
+          "source": "include/sweeteditor/keymap.h",
           "line": 114
         },
         {
           "name": "command",
           "cpp_type": "EditorCommandId",
           "wire": "u32",
-          "source": "include\\sweeteditor\\keymap.h",
+          "source": "include/sweeteditor/keymap.h",
           "line": 116,
           "default": "0"
         }
@@ -3307,14 +3609,14 @@
       "kind": "value",
       "direction": "value",
       "domain": "keymap",
-      "source": "include\\sweeteditor\\keymap.h",
+      "source": "include/sweeteditor/keymap.h",
       "line": 51,
       "fields": [
         {
           "name": "modifiers",
           "cpp_type": "KeyModifier",
           "wire": "u8",
-          "source": "include\\sweeteditor\\keymap.h",
+          "source": "include/sweeteditor/keymap.h",
           "line": 53,
           "default": "KeyModifier::NONE"
         },
@@ -3322,7 +3624,7 @@
           "name": "key_code",
           "cpp_type": "KeyCode",
           "wire": "u16",
-          "source": "include\\sweeteditor\\keymap.h",
+          "source": "include/sweeteditor/keymap.h",
           "line": 55,
           "default": "KeyCode::NONE"
         }
@@ -3333,14 +3635,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "keymap",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 10,
       "fields": [
         {
           "name": "bindings",
           "cpp_type": "Vector<KeyBinding>",
           "wire": "list",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 11
         }
       ]
@@ -3350,14 +3652,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "linked_editing",
-      "source": "include\\sweeteditor\\linked_editing.h",
+      "source": "include/sweeteditor/linked_editing.h",
       "line": 24,
       "fields": [
         {
           "name": "groups",
           "cpp_type": "Vector<TabStopGroup>",
           "wire": "list",
-          "source": "include\\sweeteditor\\linked_editing.h",
+          "source": "include/sweeteditor/linked_editing.h",
           "line": 26
         }
       ]
@@ -3367,14 +3669,14 @@
       "kind": "payload",
       "direction": "in",
       "domain": "linked_editing",
-      "source": "include\\sweeteditor\\protocol.h",
+      "source": "include/sweeteditor/protocol.h",
       "line": 127,
       "fields": [
         {
           "name": "model",
           "cpp_type": "LinkedEditingModel",
           "wire": "struct",
-          "source": "include\\sweeteditor\\protocol.h",
+          "source": "include/sweeteditor/protocol.h",
           "line": 128
         }
       ]
@@ -3384,14 +3686,14 @@
       "kind": "value",
       "direction": "in",
       "domain": "linked_editing",
-      "source": "include\\sweeteditor\\linked_editing.h",
+      "source": "include/sweeteditor/linked_editing.h",
       "line": 14,
       "fields": [
         {
           "name": "index",
           "cpp_type": "uint32_t",
           "wire": "u32",
-          "source": "include\\sweeteditor\\linked_editing.h",
+          "source": "include/sweeteditor/linked_editing.h",
           "line": 16,
           "default": "0"
         },
@@ -3399,40 +3701,15 @@
           "name": "ranges",
           "cpp_type": "Vector<TextRange>",
           "wire": "list",
-          "source": "include\\sweeteditor\\linked_editing.h",
+          "source": "include/sweeteditor/linked_editing.h",
           "line": 18
         },
         {
           "name": "default_text",
           "cpp_type": "U8String",
           "wire": "utf8_string",
-          "source": "include\\sweeteditor\\linked_editing.h",
+          "source": "include/sweeteditor/linked_editing.h",
           "line": 20
-        }
-      ]
-    },
-    {
-      "name": "CompositionDecoration",
-      "kind": "value",
-      "direction": "out",
-      "domain": "visual",
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 197,
-      "fields": [
-        {
-          "name": "active",
-          "cpp_type": "bool",
-          "wire": "bool_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 199,
-          "default": "false"
-        },
-        {
-          "name": "rect",
-          "cpp_type": "Rect",
-          "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 200
         }
       ]
     },
@@ -3441,45 +3718,45 @@
       "kind": "value",
       "direction": "out",
       "domain": "visual",
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 136,
+      "source": "include/sweeteditor/visual.h",
+      "line": 142,
       "fields": [
         {
           "name": "text_position",
           "cpp_type": "TextPosition",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 138
+          "source": "include/sweeteditor/visual.h",
+          "line": 144
         },
         {
           "name": "position",
           "cpp_type": "PointF",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 140
+          "source": "include/sweeteditor/visual.h",
+          "line": 146
         },
         {
           "name": "height",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 142,
+          "source": "include/sweeteditor/visual.h",
+          "line": 148,
           "default": "0"
         },
         {
           "name": "visible",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 144,
+          "source": "include/sweeteditor/visual.h",
+          "line": 150,
           "default": "true"
         },
         {
           "name": "show_dragger",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 146,
+          "source": "include/sweeteditor/visual.h",
+          "line": 152,
           "default": "false"
         }
       ]
@@ -3489,56 +3766,31 @@
       "kind": "value",
       "direction": "value",
       "domain": "visual",
-      "source": "include\\sweeteditor\\editor_types.h",
-      "line": 263,
+      "source": "include/sweeteditor/editor_types.h",
+      "line": 321,
       "fields": [
         {
           "name": "x",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 264,
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 322,
           "default": "0"
         },
         {
           "name": "y",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 265,
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 323,
           "default": "0"
         },
         {
           "name": "height",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 266,
-          "default": "0"
-        }
-      ]
-    },
-    {
-      "name": "DiagnosticDecoration",
-      "kind": "value",
-      "direction": "out",
-      "domain": "visual",
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 204,
-      "fields": [
-        {
-          "name": "rect",
-          "cpp_type": "Rect",
-          "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 205
-        },
-        {
-          "name": "severity",
-          "cpp_type": "int32_t",
-          "wire": "i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 206,
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 324,
           "default": "0"
         }
       ]
@@ -3548,200 +3800,172 @@
       "kind": "value",
       "direction": "out",
       "domain": "visual",
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 250,
+      "source": "include/sweeteditor/visual.h",
+      "line": 262,
       "fields": [
         {
           "name": "split_x",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 252,
+          "source": "include/sweeteditor/visual.h",
+          "line": 264,
           "default": "0"
         },
         {
           "name": "split_line_visible",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 254,
+          "source": "include/sweeteditor/visual.h",
+          "line": 266,
           "default": "true"
         },
         {
           "name": "scroll_x",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 256,
+          "source": "include/sweeteditor/visual.h",
+          "line": 268,
           "default": "0"
         },
         {
           "name": "scroll_y",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 258,
+          "source": "include/sweeteditor/visual.h",
+          "line": 270,
           "default": "0"
         },
         {
           "name": "viewport_width",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 260,
+          "source": "include/sweeteditor/visual.h",
+          "line": 272,
           "default": "0"
         },
         {
           "name": "viewport_height",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 262,
+          "source": "include/sweeteditor/visual.h",
+          "line": 274,
           "default": "0"
         },
         {
           "name": "current_line",
           "cpp_type": "PointF",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 264
+          "source": "include/sweeteditor/visual.h",
+          "line": 276
         },
         {
           "name": "current_line_render_mode",
           "cpp_type": "CurrentLineRenderMode",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 267,
+          "source": "include/sweeteditor/visual.h",
+          "line": 279,
           "default": "CurrentLineRenderMode::BACKGROUND"
         },
         {
           "name": "lines",
           "cpp_type": "Vector<VisualLine>",
           "wire": "list",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 269
+          "source": "include/sweeteditor/visual.h",
+          "line": 281
         },
         {
           "name": "cursor",
           "cpp_type": "Cursor",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 271
+          "source": "include/sweeteditor/visual.h",
+          "line": 283
         },
         {
-          "name": "selection_rects",
-          "cpp_type": "Vector<Rect>",
+          "name": "range_effects",
+          "cpp_type": "Vector<RangeEffectRenderItem>",
           "wire": "list",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 273
+          "source": "include/sweeteditor/visual.h",
+          "line": 285
         },
         {
           "name": "selection_start_handle",
           "cpp_type": "SelectionHandle",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 275
+          "source": "include/sweeteditor/visual.h",
+          "line": 287
         },
         {
           "name": "selection_end_handle",
           "cpp_type": "SelectionHandle",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 277
-        },
-        {
-          "name": "composition_decoration",
-          "cpp_type": "CompositionDecoration",
-          "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 279
+          "source": "include/sweeteditor/visual.h",
+          "line": 289
         },
         {
           "name": "guide_segments",
           "cpp_type": "Vector<GuideSegment>",
           "wire": "list",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 281
-        },
-        {
-          "name": "diagnostic_decorations",
-          "cpp_type": "Vector<DiagnosticDecoration>",
-          "wire": "list",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 283
+          "source": "include/sweeteditor/visual.h",
+          "line": 291
         },
         {
           "name": "max_gutter_icons",
           "cpp_type": "uint32_t",
           "wire": "u32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 285,
+          "source": "include/sweeteditor/visual.h",
+          "line": 293,
           "default": "0"
-        },
-        {
-          "name": "linked_editing_rects",
-          "cpp_type": "Vector<LinkedEditingRect>",
-          "wire": "list",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 287
-        },
-        {
-          "name": "bracket_highlight_rects",
-          "cpp_type": "Vector<Rect>",
-          "wire": "list",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 289
         },
         {
           "name": "gutter_icons",
           "cpp_type": "Vector<GutterIconRenderItem>",
           "wire": "list",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 291
+          "source": "include/sweeteditor/visual.h",
+          "line": 295
         },
         {
           "name": "fold_markers",
           "cpp_type": "Vector<FoldMarkerRenderItem>",
           "wire": "list",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 293
+          "source": "include/sweeteditor/visual.h",
+          "line": 297
         },
         {
           "name": "vertical_scrollbar",
           "cpp_type": "ScrollbarModel",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 295
+          "source": "include/sweeteditor/visual.h",
+          "line": 299
         },
         {
           "name": "horizontal_scrollbar",
           "cpp_type": "ScrollbarModel",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 297
+          "source": "include/sweeteditor/visual.h",
+          "line": 301
         },
         {
           "name": "gutter_sticky",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 299,
+          "source": "include/sweeteditor/visual.h",
+          "line": 303,
           "default": "true"
         },
         {
           "name": "gutter_visible",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 301,
+          "source": "include/sweeteditor/visual.h",
+          "line": 305,
           "default": "true"
         },
         {
           "name": "pointer_cursor_type",
           "cpp_type": "PointerCursorType",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 304,
+          "source": "include/sweeteditor/visual.h",
+          "line": 308,
           "default": "PointerCursorType::TEXT"
         }
       ]
@@ -3751,31 +3975,31 @@
       "kind": "value",
       "direction": "out",
       "domain": "visual",
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 218,
+      "source": "include/sweeteditor/visual.h",
+      "line": 211,
       "fields": [
         {
           "name": "logical_line",
           "cpp_type": "size_t",
           "wire": "size_as_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 220,
+          "source": "include/sweeteditor/visual.h",
+          "line": 213,
           "default": "0"
         },
         {
           "name": "fold_state",
           "cpp_type": "FoldState",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 222,
+          "source": "include/sweeteditor/visual.h",
+          "line": 215,
           "default": "FoldState::NONE"
         },
         {
           "name": "rect",
           "cpp_type": "Rect",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 223
+          "source": "include/sweeteditor/visual.h",
+          "line": 216
         }
       ]
     },
@@ -3784,53 +4008,53 @@
       "kind": "value",
       "direction": "out",
       "domain": "visual",
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 183,
+      "source": "include/sweeteditor/visual.h",
+      "line": 189,
       "fields": [
         {
           "name": "direction",
           "cpp_type": "GuideDirection",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 185,
+          "source": "include/sweeteditor/visual.h",
+          "line": 191,
           "default": "GuideDirection::VERTICAL"
         },
         {
           "name": "type",
           "cpp_type": "GuideType",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 187,
+          "source": "include/sweeteditor/visual.h",
+          "line": 193,
           "default": "GuideType::INDENT"
         },
         {
           "name": "style",
           "cpp_type": "GuideStyle",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 189,
+          "source": "include/sweeteditor/visual.h",
+          "line": 195,
           "default": "GuideStyle::SOLID"
         },
         {
           "name": "start",
           "cpp_type": "PointF",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 190
+          "source": "include/sweeteditor/visual.h",
+          "line": 196
         },
         {
           "name": "end",
           "cpp_type": "PointF",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 191
+          "source": "include/sweeteditor/visual.h",
+          "line": 197
         },
         {
           "name": "arrow_end",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 193,
+          "source": "include/sweeteditor/visual.h",
+          "line": 199,
           "default": "false"
         }
       ]
@@ -3840,31 +4064,31 @@
       "kind": "value",
       "direction": "out",
       "domain": "visual",
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 210,
+      "source": "include/sweeteditor/visual.h",
+      "line": 203,
       "fields": [
         {
           "name": "logical_line",
           "cpp_type": "size_t",
           "wire": "size_as_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 212,
+          "source": "include/sweeteditor/visual.h",
+          "line": 205,
           "default": "0"
         },
         {
           "name": "icon_id",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 213,
+          "source": "include/sweeteditor/visual.h",
+          "line": 206,
           "default": "0"
         },
         {
           "name": "rect",
           "cpp_type": "Rect",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 214
+          "source": "include/sweeteditor/visual.h",
+          "line": 207
         }
       ]
     },
@@ -3873,145 +4097,152 @@
       "kind": "value",
       "direction": "out",
       "domain": "visual",
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 311,
+      "source": "include/sweeteditor/visual.h",
+      "line": 315,
       "fields": [
         {
           "name": "font_height",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 313,
+          "source": "include/sweeteditor/visual.h",
+          "line": 317,
           "default": "20"
         },
         {
           "name": "font_ascent",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 315,
+          "source": "include/sweeteditor/visual.h",
+          "line": 319,
           "default": "0"
         },
         {
           "name": "line_spacing_add",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 317,
+          "source": "include/sweeteditor/visual.h",
+          "line": 321,
           "default": "0"
         },
         {
           "name": "line_spacing_mult",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 319,
+          "source": "include/sweeteditor/visual.h",
+          "line": 323,
           "default": "1.2f"
         },
         {
           "name": "line_number_margin",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 321,
+          "source": "include/sweeteditor/visual.h",
+          "line": 325,
           "default": "10"
         },
         {
           "name": "line_number_width",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 323,
+          "source": "include/sweeteditor/visual.h",
+          "line": 327,
           "default": "10"
         },
         {
           "name": "content_start_padding",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 325,
+          "source": "include/sweeteditor/visual.h",
+          "line": 329,
           "default": "0"
         },
         {
           "name": "max_gutter_icons",
           "cpp_type": "uint32_t",
           "wire": "u32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 327,
+          "source": "include/sweeteditor/visual.h",
+          "line": 331,
           "default": "0"
         },
         {
           "name": "inlay_hint_padding",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 329,
+          "source": "include/sweeteditor/visual.h",
+          "line": 333,
           "default": "0"
         },
         {
           "name": "inlay_hint_margin",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 331,
+          "source": "include/sweeteditor/visual.h",
+          "line": 335,
           "default": "0"
         },
         {
           "name": "fold_arrow_mode",
           "cpp_type": "FoldArrowMode",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 334,
+          "source": "include/sweeteditor/visual.h",
+          "line": 338,
           "default": "FoldArrowMode::AUTO"
         },
         {
           "name": "has_fold_regions",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 336,
+          "source": "include/sweeteditor/visual.h",
+          "line": 340,
           "default": "false"
         },
         {
           "name": "gutter_sticky",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 338,
+          "source": "include/sweeteditor/visual.h",
+          "line": 342,
           "default": "true"
         },
         {
           "name": "gutter_visible",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 340,
+          "source": "include/sweeteditor/visual.h",
+          "line": 344,
           "default": "true"
         }
       ]
     },
     {
-      "name": "LinkedEditingRect",
+      "name": "RangeEffectRenderItem",
       "kind": "value",
       "direction": "out",
       "domain": "visual",
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 227,
+      "source": "include/sweeteditor/visual.h",
+      "line": 238,
       "fields": [
         {
           "name": "rect",
           "cpp_type": "Rect",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 228
+          "source": "include/sweeteditor/visual.h",
+          "line": 239
         },
         {
-          "name": "is_active",
-          "cpp_type": "bool",
-          "wire": "bool_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 230,
-          "default": "false"
+          "name": "kind",
+          "cpp_type": "RangeEffectKind",
+          "wire": "enum_i32",
+          "source": "include/sweeteditor/visual.h",
+          "line": 241,
+          "default": "RangeEffectKind::SELECTION"
+        },
+        {
+          "name": "style",
+          "cpp_type": "RangeEffectStyle",
+          "wire": "struct",
+          "source": "include/sweeteditor/visual.h",
+          "line": 242
         }
       ]
     },
@@ -4020,111 +4251,111 @@
       "kind": "value",
       "direction": "out",
       "domain": "visual",
-      "source": "include\\sweeteditor\\editor_types.h",
-      "line": 207,
+      "source": "include/sweeteditor/editor_types.h",
+      "line": 265,
       "fields": [
         {
           "name": "scale",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 208,
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 266,
           "default": "1"
         },
         {
           "name": "scroll_x",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 209,
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 267,
           "default": "0"
         },
         {
           "name": "scroll_y",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 210,
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 268,
           "default": "0"
         },
         {
           "name": "max_scroll_x",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 211,
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 269,
           "default": "0"
         },
         {
           "name": "max_scroll_y",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 212,
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 270,
           "default": "0"
         },
         {
           "name": "content_width",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 213,
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 271,
           "default": "0"
         },
         {
           "name": "content_height",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 214,
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 272,
           "default": "0"
         },
         {
           "name": "viewport_width",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 215,
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 273,
           "default": "0"
         },
         {
           "name": "viewport_height",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 216,
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 274,
           "default": "0"
         },
         {
           "name": "text_area_x",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 217,
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 275,
           "default": "0"
         },
         {
           "name": "text_area_width",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 218,
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 276,
           "default": "0"
         },
         {
           "name": "can_scroll_x",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 219,
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 277,
           "default": "false"
         },
         {
           "name": "can_scroll_y",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\editor_types.h",
-          "line": 220,
+          "source": "include/sweeteditor/editor_types.h",
+          "line": 278,
           "default": "false"
         }
       ]
@@ -4134,46 +4365,46 @@
       "kind": "value",
       "direction": "out",
       "domain": "visual",
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 234,
+      "source": "include/sweeteditor/visual.h",
+      "line": 246,
       "fields": [
         {
           "name": "visible",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 237,
+          "source": "include/sweeteditor/visual.h",
+          "line": 249,
           "default": "false"
         },
         {
           "name": "alpha",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 239,
+          "source": "include/sweeteditor/visual.h",
+          "line": 251,
           "default": "0"
         },
         {
           "name": "thumb_active",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 242,
+          "source": "include/sweeteditor/visual.h",
+          "line": 254,
           "default": "false"
         },
         {
           "name": "track",
           "cpp_type": "Rect",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 244
+          "source": "include/sweeteditor/visual.h",
+          "line": 256
         },
         {
           "name": "thumb",
           "cpp_type": "Rect",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 246
+          "source": "include/sweeteditor/visual.h",
+          "line": 258
         }
       ]
     },
@@ -4182,30 +4413,30 @@
       "kind": "value",
       "direction": "out",
       "domain": "visual",
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 152,
+      "source": "include/sweeteditor/visual.h",
+      "line": 158,
       "fields": [
         {
           "name": "position",
           "cpp_type": "PointF",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 154
+          "source": "include/sweeteditor/visual.h",
+          "line": 160
         },
         {
           "name": "height",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 156,
+          "source": "include/sweeteditor/visual.h",
+          "line": 162,
           "default": "0"
         },
         {
           "name": "visible",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 158,
+          "source": "include/sweeteditor/visual.h",
+          "line": 164,
           "default": "false"
         }
       ]
@@ -4215,61 +4446,61 @@
       "kind": "value",
       "direction": "out",
       "domain": "visual",
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 112,
+      "source": "include/sweeteditor/visual.h",
+      "line": 118,
       "fields": [
         {
           "name": "logical_line",
           "cpp_type": "size_t",
           "wire": "size_as_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 115,
+          "source": "include/sweeteditor/visual.h",
+          "line": 121,
           "default": "0"
         },
         {
           "name": "wrap_index",
           "cpp_type": "size_t",
           "wire": "size_as_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 118,
+          "source": "include/sweeteditor/visual.h",
+          "line": 124,
           "default": "0"
         },
         {
           "name": "line_number_position",
           "cpp_type": "PointF",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 120
+          "source": "include/sweeteditor/visual.h",
+          "line": 126
         },
         {
           "name": "runs",
           "cpp_type": "Vector<VisualRun>",
           "wire": "list",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 122
+          "source": "include/sweeteditor/visual.h",
+          "line": 128
         },
         {
           "name": "kind",
           "cpp_type": "VisualLineKind",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 125,
+          "source": "include/sweeteditor/visual.h",
+          "line": 131,
           "default": "VisualLineKind::CONTENT"
         },
         {
           "name": "owns_gutter_semantics",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 127,
+          "source": "include/sweeteditor/visual.h",
+          "line": 133,
           "default": "false"
         },
         {
           "name": "fold_state",
           "cpp_type": "FoldState",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 130,
+          "source": "include/sweeteditor/visual.h",
+          "line": 136,
           "default": "FoldState::NONE"
         }
       ]
@@ -4279,93 +4510,93 @@
       "kind": "value",
       "direction": "out",
       "domain": "visual",
-      "source": "include\\sweeteditor\\visual.h",
-      "line": 38,
+      "source": "include/sweeteditor/visual.h",
+      "line": 41,
       "fields": [
         {
           "name": "type",
           "cpp_type": "VisualRunType",
           "wire": "enum_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 41,
+          "source": "include/sweeteditor/visual.h",
+          "line": 44,
           "default": "VisualRunType::TEXT"
         },
         {
           "name": "x",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 49,
+          "source": "include/sweeteditor/visual.h",
+          "line": 55,
           "default": "0"
         },
         {
           "name": "y",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 51,
+          "source": "include/sweeteditor/visual.h",
+          "line": 57,
           "default": "0"
         },
         {
           "name": "text",
           "cpp_type": "U16String",
           "wire": "u16_as_utf8",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 54
+          "source": "include/sweeteditor/visual.h",
+          "line": 60
         },
         {
           "name": "style",
           "cpp_type": "TextStyle",
           "wire": "struct",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 56
+          "source": "include/sweeteditor/visual.h",
+          "line": 62
         },
         {
           "name": "icon_id",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 58,
+          "source": "include/sweeteditor/visual.h",
+          "line": 64,
           "default": "0"
         },
         {
           "name": "color_value",
           "cpp_type": "int32_t",
           "wire": "i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 60,
+          "source": "include/sweeteditor/visual.h",
+          "line": 66,
           "default": "0"
         },
         {
           "name": "width",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 62,
+          "source": "include/sweeteditor/visual.h",
+          "line": 68,
           "default": "0"
         },
         {
           "name": "padding",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 64,
+          "source": "include/sweeteditor/visual.h",
+          "line": 70,
           "default": "0"
         },
         {
           "name": "margin",
           "cpp_type": "float",
           "wire": "f32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 66,
+          "source": "include/sweeteditor/visual.h",
+          "line": 72,
           "default": "0"
         },
         {
           "name": "active",
           "cpp_type": "bool",
           "wire": "bool_i32",
-          "source": "include\\sweeteditor\\visual.h",
-          "line": 69,
+          "source": "include/sweeteditor/visual.h",
+          "line": 75,
           "default": "false"
         }
       ]

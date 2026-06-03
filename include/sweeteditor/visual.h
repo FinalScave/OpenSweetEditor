@@ -199,19 +199,6 @@ namespace NS_SWEETEDITOR {
     bool arrow_end {false};
   };
 
-  /// Render decoration for composition input area (underline)
-  struct SE_PROTOCOL_OUT(visual) CompositionDecoration {
-    SE_PROTOCOL_WIRE(bool_i32)
-    bool active {false};
-    Rect rect;
-  };
-
-  /// Render primitive for diagnostic decoration (wavy underline / underline)
-  struct SE_PROTOCOL_OUT(visual) DiagnosticDecoration {
-    Rect rect;
-    int32_t severity {0};
-  };
-
   /// Gutter icon render item (fully resolved geometry for one icon)
   struct SE_PROTOCOL_OUT(visual) GutterIconRenderItem {
     SE_PROTOCOL_WIRE(size_as_i32)
@@ -229,11 +216,30 @@ namespace NS_SWEETEDITOR {
     Rect rect;
   };
 
-  /// Linked-editing highlight rectangle (visual marker for Tab Stop placeholder)
-  struct SE_PROTOCOL_OUT(visual) LinkedEditingRect {
+  /// Semantic range effect kind.
+  enum struct SE_PROTOCOL_ENUM(visual, SELECTION) RangeEffectKind {
+    SELECTION = 0,
+    SEARCH_MATCH = 1,
+    SEARCH_CURRENT = 2,
+    DOCUMENT_HIGHLIGHT_TEXT = 3,
+    DOCUMENT_HIGHLIGHT_READ = 4,
+    DOCUMENT_HIGHLIGHT_WRITE = 5,
+    LINKED_EDITING_ACTIVE = 6,
+    LINKED_EDITING_INACTIVE = 7,
+    IME_COMPOSITION = 8,
+    BRACKET_MATCH = 9,
+    DIAGNOSTIC_ERROR = 10,
+    DIAGNOSTIC_WARNING = 11,
+    DIAGNOSTIC_INFO = 12,
+    DIAGNOSTIC_HINT = 13,
+  };
+
+  /// Fully resolved range effect item for platform renderers.
+  struct SE_PROTOCOL_OUT(visual) RangeEffectRenderItem {
     Rect rect;
-    SE_PROTOCOL_WIRE(bool_i32)
-    bool is_active {false};
+    SE_PROTOCOL_WIRE(enum_i32)
+    RangeEffectKind kind {RangeEffectKind::SELECTION};
+    RangeEffectStyle style;
   };
 
   /// Scrollbar render model (one axis)
@@ -275,24 +281,16 @@ namespace NS_SWEETEDITOR {
     Vector<VisualLine> lines;
     /// Cursor
     Cursor cursor;
-    /// Selection highlight rectangle list
-    Vector<Rect> selection_rects;
+    /// Range effects to render over visible text
+    Vector<RangeEffectRenderItem> range_effects;
     /// Selection start handle (anchor side)
     SelectionHandle selection_start_handle;
     /// Selection end handle (active side / cursor side)
     SelectionHandle selection_end_handle;
-    /// Composition decoration (underline area during IME input)
-    CompositionDecoration composition_decoration;
     /// Code structure guide lines
     Vector<GuideSegment> guide_segments;
-    /// Diagnostic decorations (wavy underline / underline)
-    Vector<DiagnosticDecoration> diagnostic_decorations;
     /// Maximum gutter icon count (0=overlay mode, icon overlays line number; >0=exclusive mode with reserved fixed space)
     uint32_t max_gutter_icons {0};
-    /// Linked-editing highlight rectangle list (Tab Stop placeholders)
-    Vector<LinkedEditingRect> linked_editing_rects;
-    /// Bracket-pair highlight rectangle list (bracket near cursor + matching bracket, usually 0 or 2)
-    Vector<Rect> bracket_highlight_rects;
     /// Gutter icon render list (fully resolved, visible region only)
     Vector<GutterIconRenderItem> gutter_icons;
     /// Fold marker render list (fully resolved, visible region only)

@@ -18,24 +18,24 @@ namespace NS_SWEETEDITOR {
     void buildCursorModel(EditorRenderModel& model, const TextPosition& cursor_position,
                           bool has_selection, float line_height) const;
 
-    void buildCompositionDecoration(EditorRenderModel& model, const CompositionState& composition,
-                                    float line_height) const;
+    void buildCompositionRangeEffect(EditorRenderModel& model, const CompositionState& composition,
+                                     float line_height) const;
 
-    void buildSelectionRects(EditorRenderModel& model, Document* document,
-                             const CaretState& caret, float line_height) const;
+    void buildSelectionRangeEffects(EditorRenderModel& model, Document* document,
+                                    const CaretState& caret, float line_height) const;
 
-    void buildLinkedEditingRects(EditorRenderModel& model, Document* document,
-                                 const LinkedEditingSession* linked_editing_session, float line_height) const;
+    void buildLinkedEditingRangeEffects(EditorRenderModel& model, Document* document,
+                                        const LinkedEditingSession* linked_editing_session, float line_height) const;
 
     void buildGuideSegments(EditorRenderModel& model, Document* document,
                             TextMeasurer& measurer, float line_height) const;
 
-    void buildDiagnosticDecorations(EditorRenderModel& model, Document* document, float line_height) const;
+    void buildDiagnosticRangeEffects(EditorRenderModel& model, Document* document, float line_height) const;
 
-    void buildBracketHighlightRects(EditorRenderModel& model, Document* document,
-                                    const TextPosition& cursor_position, const Vector<BracketPair>& bracket_pairs,
-                                    const TextPosition& external_bracket_open, const TextPosition& external_bracket_close,
-                                    bool has_external_brackets, float line_height) const;
+    void buildBracketHighlightRangeEffects(EditorRenderModel& model, Document* document,
+                                           const TextPosition& cursor_position, const Vector<BracketPair>& bracket_pairs,
+                                           const TextPosition& external_bracket_open, const TextPosition& external_bracket_close,
+                                           bool has_external_brackets, float line_height) const;
 
     void buildScrollbarModel(EditorRenderModel& model, const EditorInteraction& interaction) const;
 

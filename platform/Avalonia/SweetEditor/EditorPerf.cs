@@ -94,8 +94,9 @@ namespace SweetEditor {
 		public const string STEP_BUILD = "build";
 		public const string STEP_CLEAR = "clear";
 		public const string STEP_CURRENT = "current";
-		public const string STEP_SELECTION = "selection";
+		public const string STEP_RANGE_EFFECT_BACKGROUNDS = "rangeBg";
 		public const string STEP_LINES = "lines";
+		public const string STEP_RANGE_EFFECT_OVERLAYS = "rangeFx";
 		public const string STEP_CURSOR = "cursor";
 		public const string STEP_GUTTER = "gutter";
 		public const string STEP_SCROLLBARS = "scrollbars";

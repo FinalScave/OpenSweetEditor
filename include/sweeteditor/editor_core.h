@@ -112,6 +112,10 @@ namespace NS_SWEETEDITOR {
     /// @param colors Editor render colors
     EditorActionResult setEditorRenderColors(const EditorRenderColors& colors);
 
+    /// Set range-effect styles resolved by the core when building the render model
+    /// @param styles Range-effect styles
+    EditorActionResult setEditorRangeEffectStyles(const EditorRangeEffectStyles& styles);
+
     /// Load text content
     /// @param document Document instance
     EditorActionResult loadDocument(const SharedPtr<Document>& document);

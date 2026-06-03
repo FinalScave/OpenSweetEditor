@@ -54,6 +54,26 @@ enum FoldArrowMode {
   }
 }
 
+enum RangeEffectUnderlineStyle {
+  none(0),
+  solid(1),
+  dashed(2),
+  wavy(3);
+
+  const RangeEffectUnderlineStyle(this.value);
+  final int value;
+
+  static RangeEffectUnderlineStyle fromValue(int value) {
+    switch (value) {
+      case 0: return none;
+      case 1: return solid;
+      case 2: return dashed;
+      case 3: return wavy;
+      default: return none;
+    }
+  }
+}
+
 enum ScrollbarMode {
   always(0),
   transient(1),
@@ -130,10 +150,43 @@ class EditorOptions {
   final bool revealSelectionEndOnSelectAll;
 }
 
+class EditorRangeEffectStyles {
+  const EditorRangeEffectStyles({
+    this.selection = const RangeEffectStyle(),
+    this.searchMatch = const RangeEffectStyle(),
+    this.searchCurrent = const RangeEffectStyle(),
+    this.documentHighlightText = const RangeEffectStyle(),
+    this.documentHighlightRead = const RangeEffectStyle(),
+    this.documentHighlightWrite = const RangeEffectStyle(),
+    this.linkedEditingActive = const RangeEffectStyle(),
+    this.linkedEditingInactive = const RangeEffectStyle(),
+    this.imeComposition = const RangeEffectStyle(),
+    this.bracketMatch = const RangeEffectStyle(),
+    this.diagnosticError = const RangeEffectStyle(),
+    this.diagnosticWarning = const RangeEffectStyle(),
+    this.diagnosticInfo = const RangeEffectStyle(),
+    this.diagnosticHint = const RangeEffectStyle(),
+  });
+
+  final RangeEffectStyle selection;
+  final RangeEffectStyle searchMatch;
+  final RangeEffectStyle searchCurrent;
+  final RangeEffectStyle documentHighlightText;
+  final RangeEffectStyle documentHighlightRead;
+  final RangeEffectStyle documentHighlightWrite;
+  final RangeEffectStyle linkedEditingActive;
+  final RangeEffectStyle linkedEditingInactive;
+  final RangeEffectStyle imeComposition;
+  final RangeEffectStyle bracketMatch;
+  final RangeEffectStyle diagnosticError;
+  final RangeEffectStyle diagnosticWarning;
+  final RangeEffectStyle diagnosticInfo;
+  final RangeEffectStyle diagnosticHint;
+}
+
 class EditorRenderColors {
   const EditorRenderColors({
     this.textForeground = 0,
-    this.selectionForeground = 0,
     this.linkForeground = 0,
     this.activeLinkForeground = 0,
     this.codelensForeground = 0,
@@ -141,7 +194,6 @@ class EditorRenderColors {
   });
 
   final int textForeground;
-  final int selectionForeground;
   final int linkForeground;
   final int activeLinkForeground;
   final int codelensForeground;
@@ -156,6 +208,22 @@ class HandleConfig {
 
   final OffsetRect startHitOffset;
   final OffsetRect endHitOffset;
+}
+
+class RangeEffectStyle {
+  const RangeEffectStyle({
+    this.foregroundColor = 0,
+    this.backgroundColor = 0,
+    this.borderColor = 0,
+    this.underlineColor = 0,
+    this.underlineStyle = RangeEffectUnderlineStyle.none,
+  });
+
+  final int foregroundColor;
+  final int backgroundColor;
+  final int borderColor;
+  final int underlineColor;
+  final RangeEffectUnderlineStyle underlineStyle;
 }
 
 class ScrollbarConfig {

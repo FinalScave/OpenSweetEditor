@@ -6,9 +6,7 @@ import {
 } from './core/CoreConfig';
 import { Rect } from './core/CoreFoundation';
 import {
-  CompositionDecoration,
   Cursor,
-  DiagnosticDecoration,
   EditorRenderModel,
   FoldMarkerRenderItem,
   FoldState,
@@ -17,14 +15,15 @@ import {
   GuideStyle,
   GuideType,
   GutterIconRenderItem,
-  LinkedEditingRect,
+  RangeEffectKind,
+  RangeEffectRenderItem,
   ScrollbarModel,
   SelectionHandle,
   VisualRun,
   VisualRunType
 } from './core/CoreVisual';
-import { CurrentLineRenderMode } from './core/CoreConfig';
-import { DiagnosticSeverity, TextStyle } from './core/CoreAdornments';
+import { CurrentLineRenderMode, RangeEffectStyle, RangeEffectUnderlineStyle } from './core/CoreConfig';
+import { TextStyle } from './core/CoreAdornments';
 import { MeasurePerfStats, PerfOverlay, PerfStepRecorder } from './perf/PerfOverlay';
 import { argbToCssColor, multiplyArgbAlpha } from './ui/EditorColor';
 import { TextMeasurer } from 'libsweeteditor.so';
@@ -189,20 +188,14 @@ export class EditorRenderer {
 
     this.drawCurrentLineDecoration(ctx, model, 0, viewWidth);
     perf.mark(PerfStepRecorder.STEP_CURRENT);
-    this.drawSelectionRects(ctx, model.selectionRects);
-    perf.mark(PerfStepRecorder.STEP_SELECTION);
+    this.drawRangeEffectBackgrounds(ctx, model.rangeEffects);
+    perf.mark(PerfStepRecorder.STEP_RANGE_EFFECT_BACKGROUNDS);
     this.drawLines(ctx, model);
     perf.mark(PerfStepRecorder.STEP_LINES);
     this.drawGuideSegments(ctx, model.guideSegments);
     perf.mark(PerfStepRecorder.STEP_GUIDES);
-    this.drawCompositionDecoration(ctx, model.compositionDecoration);
-    perf.mark(PerfStepRecorder.STEP_COMPOSITION);
-    this.drawDiagnosticDecorations(ctx, model.diagnosticDecorations);
-    perf.mark(PerfStepRecorder.STEP_DIAGNOSTICS);
-    this.drawLinkedEditingRects(ctx, model.linkedEditingRects);
-    perf.mark(PerfStepRecorder.STEP_LINKED);
-    this.drawBracketHighlightRects(ctx, model.bracketHighlightRects);
-    perf.mark(PerfStepRecorder.STEP_BRACKET);
+    this.drawRangeEffectOverlays(ctx, model.rangeEffects);
+    perf.mark(PerfStepRecorder.STEP_RANGE_EFFECT_OVERLAYS);
     this.drawCursor(ctx, model.cursor, cursorVisible);
     perf.mark(PerfStepRecorder.STEP_CURSOR);
 
@@ -533,17 +526,93 @@ export class EditorRenderer {
     ctx.fillRect(cursor.position.x, cursor.position.y, cursorWidth, cursor.height);
   }
 
-  private drawSelectionRects(ctx: CanvasRenderingContext2D, rects: Rect[] | null): void {
-    if (!rects || rects.length === 0) {
+  private drawRangeEffectBackgrounds(ctx: CanvasRenderingContext2D,
+    effects: RangeEffectRenderItem[] | null): void {
+    if (!effects || effects.length === 0) {
       return;
     }
-    ctx.fillStyle = argbToCssColor(this.theme.selectionColor);
-    for (const rect of rects) {
-      if (!rect.origin) {
+    for (const effect of effects) {
+      if (!effect.rect || !effect.rect.origin || !effect.style || effect.style.backgroundColor === 0) {
         continue;
       }
-      ctx.fillRect(rect.origin.x, rect.origin.y, rect.width, rect.height);
+      ctx.fillStyle = argbToCssColor(effect.style.backgroundColor);
+      ctx.fillRect(effect.rect.origin.x, effect.rect.origin.y, effect.rect.width, effect.rect.height);
     }
+  }
+
+  private drawRangeEffectOverlays(ctx: CanvasRenderingContext2D,
+    effects: RangeEffectRenderItem[] | null): void {
+    if (!effects || effects.length === 0) {
+      return;
+    }
+    for (const effect of effects) {
+      if (!effect.rect || !effect.rect.origin || !effect.style) {
+        continue;
+      }
+      if (effect.style.borderColor !== 0) {
+        ctx.save();
+        ctx.strokeStyle = argbToCssColor(effect.style.borderColor);
+        ctx.lineWidth = effect.kind === RangeEffectKind.LINKED_EDITING_ACTIVE ? 2 : 1.5;
+        ctx.strokeRect(effect.rect.origin.x, effect.rect.origin.y, effect.rect.width, effect.rect.height);
+        ctx.restore();
+      }
+      if (effect.style.underlineColor !== 0 &&
+        effect.style.underlineStyle !== RangeEffectUnderlineStyle.NONE) {
+        this.drawRangeEffectUnderline(ctx, effect.rect, effect.style);
+      }
+    }
+  }
+
+  private drawRangeEffectUnderline(ctx: CanvasRenderingContext2D,
+    rect: Rect, style: RangeEffectStyle): void {
+    if (!rect.origin) {
+      return;
+    }
+    const startX = rect.origin.x;
+    const endX = startX + rect.width;
+    const baseY = rect.origin.y + rect.height - 1.0;
+
+    ctx.save();
+    ctx.strokeStyle = argbToCssColor(style.underlineColor);
+    ctx.lineWidth = style.underlineStyle === RangeEffectUnderlineStyle.WAVY ? 3 : 2;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    if (style.underlineStyle === RangeEffectUnderlineStyle.DASHED) {
+      ctx.setLineDash([3, 2]);
+      ctx.beginPath();
+      ctx.moveTo(startX, baseY);
+      ctx.lineTo(endX, baseY);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    if (style.underlineStyle === RangeEffectUnderlineStyle.SOLID) {
+      ctx.beginPath();
+      ctx.moveTo(startX, baseY);
+      ctx.lineTo(endX, baseY);
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
+    const halfWave = 7.0;
+    const amplitude = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(startX, baseY);
+    let x = startX;
+    let step = 0;
+    while (x < endX) {
+      const nextX = Math.min(x + halfWave, endX);
+      const midX = (x + nextX) / 2;
+      const peakY = (step % 2 === 0) ? baseY - amplitude : baseY + amplitude;
+      ctx.quadraticCurveTo(midX, peakY, nextX, baseY);
+      x = nextX;
+      step++;
+    }
+    ctx.stroke();
+    ctx.restore();
   }
 
   private drawSelectionHandles(ctx: CanvasRenderingContext2D,
@@ -680,126 +749,6 @@ export class EditorRenderer {
     ctx.lineTo(ax2, ay2);
     ctx.closePath();
     ctx.fill();
-  }
-
-  private drawCompositionDecoration(ctx: CanvasRenderingContext2D,
-    decoration: CompositionDecoration | null): void {
-    if (!decoration || !decoration.active || !decoration.rect || !decoration.rect.origin) {
-      return;
-    }
-    const y = decoration.rect.origin.y + decoration.rect.height;
-    ctx.strokeStyle = argbToCssColor(this.theme.compositionUnderlineColor);
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(decoration.rect.origin.x, y);
-    ctx.lineTo(decoration.rect.origin.x + decoration.rect.width, y);
-    ctx.stroke();
-  }
-
-  private drawDiagnosticDecorations(ctx: CanvasRenderingContext2D,
-    decorations: DiagnosticDecoration[] | null): void {
-    if (!decorations || decorations.length === 0) {
-      return;
-    }
-
-    for (const diag of decorations) {
-      if (!diag.rect || !diag.rect.origin) {
-        continue;
-      }
-      let color: number;
-      switch (diag.severity) {
-        case DiagnosticSeverity.DIAG_ERROR:
-          color = this.theme.diagnosticErrorColor;
-          break;
-        case DiagnosticSeverity.DIAG_WARNING:
-          color = this.theme.diagnosticWarningColor;
-          break;
-        case DiagnosticSeverity.DIAG_INFO:
-          color = this.theme.diagnosticInfoColor;
-          break;
-        default:
-          color = this.theme.diagnosticHintColor; break;
-      }
-
-      ctx.save();
-      ctx.strokeStyle = argbToCssColor(color);
-      const strokeWidth = Math.max(1.25, Math.min(2.25, diag.rect.height * 0.09));
-      const halfWave = Math.max(6.0, Math.min(10.0, diag.rect.height * 0.42));
-      const amplitude = Math.max(1.5, Math.min(3.0, diag.rect.height * 0.12));
-      const dashOn = Math.max(2.5, Math.min(5.0, diag.rect.height * 0.22));
-      const dashOff = Math.max(1.5, Math.min(4.0, diag.rect.height * 0.14));
-      ctx.lineWidth = strokeWidth;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-
-      const startX = diag.rect.origin.x;
-      const endX = startX + diag.rect.width;
-      const baseY = diag.rect.origin.y + diag.rect.height - 1.0;
-
-      if (diag.severity === DiagnosticSeverity.DIAG_HINT) {
-        ctx.setLineDash([dashOn, dashOff]);
-        ctx.beginPath();
-        ctx.moveTo(startX, baseY);
-        ctx.lineTo(endX, baseY);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      } else {
-        ctx.beginPath();
-        ctx.moveTo(startX, baseY);
-        let x = startX;
-        let step = 0;
-        while (x < endX) {
-          const nextX = Math.min(x + halfWave, endX);
-          const midX = (x + nextX) / 2;
-          const peakY = (step % 2 === 0) ? baseY - amplitude : baseY + amplitude;
-          ctx.quadraticCurveTo(midX, peakY, nextX, baseY);
-          x = nextX;
-          step++;
-        }
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-  }
-
-  private drawLinkedEditingRects(ctx: CanvasRenderingContext2D,
-    rects: LinkedEditingRect[] | null): void {
-    if (!rects || rects.length === 0) {
-      return;
-    }
-    for (const rect of rects) {
-      if (!rect.rect || !rect.rect.origin) {
-        continue;
-      }
-      if (rect.isActive) {
-        const bgColor = (this.theme.linkedEditingActiveColor & 0x00FFFFFF) | 0x20000000;
-        ctx.fillStyle = argbToCssColor(bgColor);
-        ctx.fillRect(rect.rect.origin.x, rect.rect.origin.y, rect.rect.width, rect.rect.height);
-        ctx.strokeStyle = argbToCssColor(this.theme.linkedEditingActiveColor);
-        ctx.lineWidth = 2;
-      } else {
-        ctx.strokeStyle = argbToCssColor(this.theme.linkedEditingInactiveColor);
-        ctx.lineWidth = 1;
-      }
-      ctx.strokeRect(rect.rect.origin.x, rect.rect.origin.y, rect.rect.width, rect.rect.height);
-    }
-  }
-
-  private drawBracketHighlightRects(ctx: CanvasRenderingContext2D,
-    rects: Rect[] | null): void {
-    if (!rects || rects.length === 0) {
-      return;
-    }
-    for (const rect of rects) {
-      if (!rect.origin) {
-        continue;
-      }
-      ctx.fillStyle = argbToCssColor(this.theme.bracketHighlightBgColor);
-      ctx.fillRect(rect.origin.x, rect.origin.y, rect.width, rect.height);
-      ctx.strokeStyle = argbToCssColor(this.theme.bracketHighlightBorderColor);
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(rect.origin.x, rect.origin.y, rect.width, rect.height);
-    }
   }
 
   private drawScrollbars(ctx: CanvasRenderingContext2D, model: EditorRenderModel): boolean {

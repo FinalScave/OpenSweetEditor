@@ -92,6 +92,46 @@ enum PointerCursorType {
   }
 }
 
+enum RangeEffectKind {
+  selection(0),
+  searchMatch(1),
+  searchCurrent(2),
+  documentHighlightText(3),
+  documentHighlightRead(4),
+  documentHighlightWrite(5),
+  linkedEditingActive(6),
+  linkedEditingInactive(7),
+  imeComposition(8),
+  bracketMatch(9),
+  diagnosticError(10),
+  diagnosticWarning(11),
+  diagnosticInfo(12),
+  diagnosticHint(13);
+
+  const RangeEffectKind(this.value);
+  final int value;
+
+  static RangeEffectKind fromValue(int value) {
+    switch (value) {
+      case 0: return selection;
+      case 1: return searchMatch;
+      case 2: return searchCurrent;
+      case 3: return documentHighlightText;
+      case 4: return documentHighlightRead;
+      case 5: return documentHighlightWrite;
+      case 6: return linkedEditingActive;
+      case 7: return linkedEditingInactive;
+      case 8: return imeComposition;
+      case 9: return bracketMatch;
+      case 10: return diagnosticError;
+      case 11: return diagnosticWarning;
+      case 12: return diagnosticInfo;
+      case 13: return diagnosticHint;
+      default: return selection;
+    }
+  }
+}
+
 enum VisualLineKind {
   content(0),
   phantom(1),
@@ -140,16 +180,6 @@ enum VisualRunType {
   }
 }
 
-class CompositionDecoration {
-  const CompositionDecoration({
-    this.active = false,
-    this.rect = const Rect(),
-  });
-
-  final bool active;
-  final Rect rect;
-}
-
 class Cursor {
   const Cursor({
     this.textPosition = const TextPosition(),
@@ -178,16 +208,6 @@ class CursorRect {
   final double height;
 }
 
-class DiagnosticDecoration {
-  const DiagnosticDecoration({
-    this.rect = const Rect(),
-    this.severity = 0,
-  });
-
-  final Rect rect;
-  final int severity;
-}
-
 class EditorRenderModel {
   const EditorRenderModel({
     this.splitX = 0.0,
@@ -200,15 +220,11 @@ class EditorRenderModel {
     this.currentLineRenderMode = CurrentLineRenderMode.background,
     this.lines = const [],
     this.cursor = const Cursor(),
-    this.selectionRects = const [],
+    this.rangeEffects = const [],
     this.selectionStartHandle = const SelectionHandle(),
     this.selectionEndHandle = const SelectionHandle(),
-    this.compositionDecoration = const CompositionDecoration(),
     this.guideSegments = const [],
-    this.diagnosticDecorations = const [],
     this.maxGutterIcons = 0,
-    this.linkedEditingRects = const [],
-    this.bracketHighlightRects = const [],
     this.gutterIcons = const [],
     this.foldMarkers = const [],
     this.verticalScrollbar = const ScrollbarModel(),
@@ -228,15 +244,11 @@ class EditorRenderModel {
   final CurrentLineRenderMode currentLineRenderMode;
   final List<VisualLine> lines;
   final Cursor cursor;
-  final List<Rect> selectionRects;
+  final List<RangeEffectRenderItem> rangeEffects;
   final SelectionHandle selectionStartHandle;
   final SelectionHandle selectionEndHandle;
-  final CompositionDecoration compositionDecoration;
   final List<GuideSegment> guideSegments;
-  final List<DiagnosticDecoration> diagnosticDecorations;
   final int maxGutterIcons;
-  final List<LinkedEditingRect> linkedEditingRects;
-  final List<Rect> bracketHighlightRects;
   final List<GutterIconRenderItem> gutterIcons;
   final List<FoldMarkerRenderItem> foldMarkers;
   final ScrollbarModel verticalScrollbar;
@@ -322,14 +334,16 @@ class LayoutMetrics {
   final bool gutterVisible;
 }
 
-class LinkedEditingRect {
-  const LinkedEditingRect({
+class RangeEffectRenderItem {
+  const RangeEffectRenderItem({
     this.rect = const Rect(),
-    this.isActive = false,
+    this.kind = RangeEffectKind.selection,
+    this.style = const RangeEffectStyle(),
   });
 
   final Rect rect;
-  final bool isActive;
+  final RangeEffectKind kind;
+  final RangeEffectStyle style;
 }
 
 class ScrollMetrics {
@@ -440,22 +454,6 @@ class VisualRun {
   final bool active;
 }
 
-extension CompositionDecorationRectAccess on CompositionDecoration {
-  PointF get origin => rect.origin;
-
-  double get width => rect.width;
-
-  double get height => rect.height;
-}
-
-extension DiagnosticDecorationRectAccess on DiagnosticDecoration {
-  PointF get origin => rect.origin;
-
-  double get width => rect.width;
-
-  double get height => rect.height;
-}
-
 extension FoldMarkerRenderItemRectAccess on FoldMarkerRenderItem {
   PointF get origin => rect.origin;
 
@@ -465,14 +463,6 @@ extension FoldMarkerRenderItemRectAccess on FoldMarkerRenderItem {
 }
 
 extension GutterIconRenderItemRectAccess on GutterIconRenderItem {
-  PointF get origin => rect.origin;
-
-  double get width => rect.width;
-
-  double get height => rect.height;
-}
-
-extension LinkedEditingRectAccess on LinkedEditingRect {
   PointF get origin => rect.origin;
 
   double get width => rect.width;

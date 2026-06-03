@@ -1,4 +1,5 @@
 #include <catch2/catch_amalgamated.hpp>
+#include <algorithm>
 #include <functional>
 #include <sweeteditor/editor_core.h>
 #include "test_measurer.h"
@@ -6,6 +7,160 @@
 using namespace NS_SWEETEDITOR;
 
 namespace {
+
+  size_t utf16Length(const U8String& text) {
+    U16String utf16;
+    StrUtil::convertUTF8ToUTF16(text, utf16);
+    return utf16.size();
+  }
+
+  EditorActionResult replaceText(EditorCore& editor,
+                                 const TextRange& range,
+                                 const U8String& text,
+                                 ImeScriptClass script_class = ImeScriptClass::LATIN) {
+    ImeTextReplacement replacement;
+    replacement.range = range;
+    replacement.text = text;
+    replacement.script_class = script_class;
+    return editor.replaceImeText(replacement);
+  }
+
+  EditorActionResult replaceDocumentText(EditorCore& editor,
+                                         size_t start_offset,
+                                         size_t end_offset,
+                                         const U8String& text,
+                                         int32_t cursor_offset,
+                                         ImeScriptClass script_class = ImeScriptClass::LATIN) {
+    ImeDocumentTextReplacement replacement;
+    replacement.start_offset = start_offset;
+    replacement.end_offset = end_offset;
+    replacement.text = text;
+    replacement.cursor_offset = cursor_offset;
+    replacement.script_class = script_class;
+    return editor.replaceImeDocumentText(replacement);
+  }
+
+  EditorActionResult replaceInputContextText(EditorCore& editor,
+                                             size_t start_offset,
+                                             size_t end_offset,
+                                             const U8String& text,
+                                             int32_t cursor_offset,
+                                             ImeScriptClass script_class = ImeScriptClass::LATIN) {
+    ImeInputContextTextReplacement replacement;
+    replacement.start_offset = start_offset;
+    replacement.end_offset = end_offset;
+    replacement.text = text;
+    replacement.cursor_offset = cursor_offset;
+    replacement.script_class = script_class;
+    return editor.replaceImeInputContextText(replacement);
+  }
+
+  EditorActionResult updateTextModelState(EditorCore& editor,
+                                          ImeTextModelMode mode,
+                                          uint64_t context_id,
+                                          int32_t document_start_offset,
+                                          const U8String& text,
+                                          int32_t selection_start_offset,
+                                          int32_t selection_end_offset,
+                                          int32_t composing_start_offset,
+                                          int32_t composing_end_offset,
+                                          ImeScriptClass script_class = ImeScriptClass::LATIN) {
+    ImeTextModelState state;
+    state.mode = mode;
+    state.context_id = context_id;
+    state.document_start_offset = document_start_offset;
+    state.text = text;
+    state.selection = {selection_start_offset, selection_end_offset};
+    state.composition = {composing_start_offset, composing_end_offset};
+    state.script_class = script_class;
+    return editor.updateImeTextModelState(state);
+  }
+
+  EditorActionResult updateInputStateText(EditorCore& editor,
+                                          uint64_t context_id,
+                                          int32_t document_start_offset,
+                                          const U8String& text,
+                                          int32_t selection_start_offset,
+                                          int32_t selection_end_offset,
+                                          int32_t composing_start_offset,
+                                          int32_t composing_end_offset,
+                                          ImeScriptClass script_class = ImeScriptClass::LATIN) {
+    return updateTextModelState(editor,
+                                ImeTextModelMode::DOCUMENT_WINDOW,
+                                context_id,
+                                document_start_offset,
+                                text,
+                                selection_start_offset,
+                                selection_end_offset,
+                                composing_start_offset,
+                                composing_end_offset,
+                                script_class);
+  }
+
+  EditorActionResult updateTextModelDelta(EditorCore& editor,
+                                          ImeTextModelMode mode,
+                                          uint64_t context_id,
+                                          int32_t document_start_offset,
+                                          const U8String& old_text,
+                                          int32_t delta_start_offset,
+                                          int32_t delta_end_offset,
+                                          const U8String& delta_text,
+                                          int32_t selection_start_offset,
+                                          int32_t selection_end_offset,
+                                          int32_t composing_start_offset,
+                                          int32_t composing_end_offset,
+                                          ImeScriptClass script_class = ImeScriptClass::LATIN) {
+    ImeTextModelDelta delta;
+    delta.mode = mode;
+    delta.context_id = context_id;
+    delta.document_start_offset = document_start_offset;
+    delta.old_text = old_text;
+    delta.delta = {delta_start_offset, delta_end_offset};
+    delta.delta_text = delta_text;
+    delta.selection = {selection_start_offset, selection_end_offset};
+    delta.composition = {composing_start_offset, composing_end_offset};
+    delta.script_class = script_class;
+    return editor.updateImeTextModelDelta(delta);
+  }
+
+  EditorActionResult commitReplacementThroughTextModelDelta(EditorCore& editor,
+                                                            const ImeInputContext& context,
+                                                            int32_t start_offset,
+                                                            int32_t end_offset,
+                                                            const U8String& text,
+                                                            int32_t cursor_offset,
+                                                            ImeScriptClass script_class = ImeScriptClass::LATIN) {
+    updateTextModelDelta(editor,
+                         ImeTextModelMode::DOCUMENT_WINDOW,
+                         context.id,
+                         context.document_start_offset,
+                         context.text,
+                         -1,
+                         -1,
+                         "",
+                         context.selection.end,
+                         context.selection.end,
+                         -1,
+                         -1,
+                         script_class);
+    int32_t selection_offset = cursor_offset > 0
+                               ? start_offset + static_cast<int32_t>(utf16Length(text)) + cursor_offset - 1
+                               : start_offset + cursor_offset;
+    selection_offset = std::max<int32_t>(0, selection_offset);
+    return updateTextModelDelta(editor,
+                                ImeTextModelMode::DOCUMENT_WINDOW,
+                                context.id,
+                                context.document_start_offset,
+                                context.text,
+                                start_offset,
+                                end_offset,
+                                text,
+                                selection_offset,
+                                selection_offset,
+                                -1,
+                                -1,
+                                script_class);
+  }
 
   class ImeReplayRunner {
   public:
@@ -51,7 +206,7 @@ namespace {
     EditorActionResult replaceText(const TextRange& range,
                                 const U8String& text,
                                 ImeScriptClass script_class = ImeScriptClass::LATIN) {
-      return m_editor.replaceImeText(range, text, script_class);
+      return ::replaceText(m_editor, range, text, script_class);
     }
 
   private:
@@ -194,7 +349,7 @@ TEST_CASE("EditorCore IME input context offsets resolve inside core") {
   REQUIRE(editor.isComposing());
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 4}, {0, 6}}));
 
-  editor.replaceImeInputContextText(1, 3, "AB", 1, ImeScriptClass::LATIN);
+  replaceInputContextText(editor, 1, 3, "AB", 1, ImeScriptClass::LATIN);
   CHECK(document->getU8Text() == "0123AB6789");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 6}));
 }
@@ -212,7 +367,7 @@ TEST_CASE("EditorCore IME document offsets resolve inside core") {
   REQUIRE(editor.isComposing());
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 2}, {0, 5}}));
 
-  editor.replaceImeDocumentText(2, 5, "AB", 1, ImeScriptClass::LATIN);
+  replaceDocumentText(editor, 2, 5, "AB", 1, ImeScriptClass::LATIN);
   CHECK(document->getU8Text() == "01AB56789");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
 
@@ -231,7 +386,7 @@ TEST_CASE("EditorCore IME input state text update inserts and finishes compositi
   editor.setCursorPosition({0, 2});
 
   ImeInputContext context = editor.getImeInputContext(8, 8);
-  editor.updateImeInputStateText(
+  updateInputStateText(editor,
       context.id,
       context.document_start_offset,
       "abx",
@@ -244,7 +399,7 @@ TEST_CASE("EditorCore IME input state text update inserts and finishes compositi
   REQUIRE(editor.isComposing());
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 2}, {0, 3}}));
 
-  editor.updateImeInputStateText(
+  updateInputStateText(editor,
       context.id,
       context.document_start_offset,
       "abxy",
@@ -257,7 +412,7 @@ TEST_CASE("EditorCore IME input state text update inserts and finishes compositi
   REQUIRE(editor.isComposing());
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 2}, {0, 4}}));
 
-  editor.updateImeInputStateText(
+  updateInputStateText(editor,
       context.id,
       context.document_start_offset,
       "abxy",
@@ -281,7 +436,7 @@ TEST_CASE("EditorCore IME input state composing text replaces previous composing
   editor.setCursorPosition({0, 2});
 
   ImeInputContext context = editor.getImeInputContext(8, 8);
-  EditorActionResult insert_result = editor.updateImeInputStateText(
+  EditorActionResult insert_result = updateInputStateText(editor,
       context.id,
       context.document_start_offset,
       "abhow",
@@ -295,7 +450,7 @@ TEST_CASE("EditorCore IME input state composing text replaces previous composing
   CHECK(document->getU8Text() == "abhow");
 
   context = editor.getImeInputContext(8, 8);
-  EditorActionResult first_delete_result = editor.updateImeInputStateText(
+  EditorActionResult first_delete_result = updateInputStateText(editor,
       context.id,
       context.document_start_offset,
       "abho",
@@ -310,7 +465,7 @@ TEST_CASE("EditorCore IME input state composing text replaces previous composing
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 2}, {0, 4}}));
 
   context = editor.getImeInputContext(8, 8);
-  EditorActionResult second_delete_result = editor.updateImeInputStateText(
+  EditorActionResult second_delete_result = updateInputStateText(editor,
       context.id,
       context.document_start_offset,
       "abh",
@@ -325,7 +480,7 @@ TEST_CASE("EditorCore IME input state composing text replaces previous composing
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 2}, {0, 3}}));
 
   context = editor.getImeInputContext(8, 8);
-  EditorActionResult clear_result = editor.updateImeInputStateText(
+  EditorActionResult clear_result = updateInputStateText(editor,
       context.id,
       context.document_start_offset,
       "ab",
@@ -350,7 +505,7 @@ TEST_CASE("EditorCore IME input state commit replaces previous composing span") 
   editor.setCursorPosition({0, 2});
 
   ImeInputContext context = editor.getImeInputContext(8, 8);
-  editor.updateImeInputStateText(
+  updateInputStateText(editor,
       context.id,
       context.document_start_offset,
       "abhow",
@@ -362,7 +517,7 @@ TEST_CASE("EditorCore IME input state commit replaces previous composing span") 
   REQUIRE(editor.isComposing());
 
   context = editor.getImeInputContext(8, 8);
-  EditorActionResult commit_result = editor.updateImeInputStateText(
+  EditorActionResult commit_result = updateInputStateText(editor,
       context.id,
       context.document_start_offset,
       "abhello",
@@ -388,7 +543,7 @@ TEST_CASE("EditorCore IME input state text update replaces document text") {
   editor.setSelection({{0, 1}, {0, 4}});
 
   ImeInputContext context = editor.getImeInputContext(8, 8);
-  editor.updateImeInputStateText(
+  updateInputStateText(editor,
       context.id,
       context.document_start_offset,
       "hXo",
@@ -411,7 +566,7 @@ TEST_CASE("EditorCore IME input state mark-only composing stays document range")
   editor.setCursorPosition({0, 5});
 
   ImeInputContext context = editor.getImeInputContext(8, 8);
-  EditorActionResult mark_result = editor.updateImeInputStateText(
+  EditorActionResult mark_result = updateInputStateText(editor,
       context.id,
       context.document_start_offset,
       "hello",
@@ -429,7 +584,7 @@ TEST_CASE("EditorCore IME input state mark-only composing stays document range")
   CHECK(editor.getCursorPosition() == (TextPosition{0, 5}));
 
   context = editor.getImeInputContext(8, 8);
-  EditorActionResult finish_result = editor.updateImeInputStateText(
+  EditorActionResult finish_result = updateInputStateText(editor,
       context.id,
       context.document_start_offset,
       "hello",
@@ -455,7 +610,7 @@ TEST_CASE("EditorCore IME input state replacement commits matching document rang
   editor.setCursorPosition({0, 7});
 
   ImeInputContext context = editor.getImeInputContext(8, 8);
-  EditorActionResult mark_result = editor.updateImeInputStateText(
+  EditorActionResult mark_result = updateInputStateText(editor,
       context.id,
       context.document_start_offset,
       "enabled",
@@ -471,9 +626,9 @@ TEST_CASE("EditorCore IME input state replacement commits matching document rang
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 0}, {0, 7}}));
 
   context = editor.getImeInputContext(8, 8);
-  EditorActionResult commit_result = editor.commitImeInputStateTextReplacement(
-      context.id,
-      context.document_start_offset,
+  EditorActionResult commit_result = commitReplacementThroughTextModelDelta(
+      editor,
+      context,
       0,
       7,
       "enable",
@@ -504,7 +659,7 @@ TEST_CASE("EditorCore IME text model transient input defers composing text") {
       ImeTextModelMode::TRANSIENT_INPUT,
       8,
       8);
-  EditorActionResult composing_result = editor.updateImeTextModelState(
+  EditorActionResult composing_result = updateTextModelState(editor,
       ImeTextModelMode::TRANSIENT_INPUT,
       context.id,
       context.document_start_offset,
@@ -528,7 +683,7 @@ TEST_CASE("EditorCore IME text model transient input defers composing text") {
   CHECK(context.composition.start == 0);
   CHECK(context.composition.end == 3);
 
-  EditorActionResult commit_result = editor.updateImeTextModelState(
+  EditorActionResult commit_result = updateTextModelState(editor,
       ImeTextModelMode::TRANSIENT_INPUT,
       context.id,
       context.document_start_offset,
@@ -547,7 +702,7 @@ TEST_CASE("EditorCore IME text model transient input defers composing text") {
   CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
 
   context = editor.getImeTextModelInputContext(ImeTextModelMode::TRANSIENT_INPUT, 8, 8);
-  EditorActionResult second_composing_result = editor.updateImeTextModelState(
+  EditorActionResult second_composing_result = updateTextModelState(editor,
       ImeTextModelMode::TRANSIENT_INPUT,
       context.id,
       context.document_start_offset,
@@ -563,7 +718,7 @@ TEST_CASE("EditorCore IME text model transient input defers composing text") {
   CHECK_FALSE(second_composing_result.ime_sync.clear_platform_preedit);
 
   context = editor.getImeTextModelInputContext(ImeTextModelMode::TRANSIENT_INPUT, 8, 8);
-  EditorActionResult stale_result = editor.updateImeTextModelState(
+  EditorActionResult stale_result = updateTextModelState(editor,
       ImeTextModelMode::TRANSIENT_INPUT,
       context.id + 1,
       context.document_start_offset,
@@ -577,7 +732,7 @@ TEST_CASE("EditorCore IME text model transient input defers composing text") {
   CHECK(stale_result.needs_ime_sync);
   CHECK(stale_result.ime_sync.clear_platform_preedit);
 
-  EditorActionResult clear_result = editor.updateImeTextModelState(
+  EditorActionResult clear_result = updateTextModelState(editor,
       ImeTextModelMode::TRANSIENT_INPUT,
       context.id,
       context.document_start_offset,
@@ -605,7 +760,7 @@ TEST_CASE("EditorCore IME text model delta commits replacement after composing c
       ImeTextModelMode::DOCUMENT_WINDOW,
       8,
       8);
-  EditorActionResult mark_result = editor.updateImeTextModelState(
+  EditorActionResult mark_result = updateTextModelState(editor,
       ImeTextModelMode::DOCUMENT_WINDOW,
       context.id,
       context.document_start_offset,
@@ -619,7 +774,7 @@ TEST_CASE("EditorCore IME text model delta commits replacement after composing c
   REQUIRE(editor.isComposing());
 
   context = editor.getImeTextModelInputContext(ImeTextModelMode::DOCUMENT_WINDOW, 8, 8);
-  EditorActionResult clear_result = editor.updateImeTextModelDelta(
+  EditorActionResult clear_result = updateTextModelDelta(editor,
       ImeTextModelMode::DOCUMENT_WINDOW,
       context.id,
       context.document_start_offset,
@@ -636,7 +791,7 @@ TEST_CASE("EditorCore IME text model delta commits replacement after composing c
   CHECK_FALSE(clear_result.content_changed);
   REQUIRE(editor.isComposing());
 
-  EditorActionResult commit_result = editor.updateImeTextModelDelta(
+  EditorActionResult commit_result = updateTextModelDelta(editor,
       ImeTextModelMode::DOCUMENT_WINDOW,
       context.id,
       context.document_start_offset,
@@ -668,7 +823,7 @@ TEST_CASE("EditorCore IME input state replacement ignores mid-range plain edit h
   editor.setCursorPosition({0, 6});
 
   ImeInputContext context = editor.getImeInputContext(8, 8);
-  EditorActionResult mark_result = editor.updateImeInputStateText(
+  EditorActionResult mark_result = updateInputStateText(editor,
       context.id,
       context.document_start_offset,
       "enabled",
@@ -684,9 +839,9 @@ TEST_CASE("EditorCore IME input state replacement ignores mid-range plain edit h
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 0}, {0, 7}}));
 
   context = editor.getImeInputContext(8, 8);
-  EditorActionResult commit_result = editor.commitImeInputStateTextReplacement(
-      context.id,
-      context.document_start_offset,
+  EditorActionResult commit_result = commitReplacementThroughTextModelDelta(
+      editor,
+      context,
       0,
       7,
       "enables",
@@ -701,7 +856,7 @@ TEST_CASE("EditorCore IME input state replacement ignores mid-range plain edit h
   CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
 }
 
-TEST_CASE("EditorCore IME input state replacement ignores preedit text composition") {
+TEST_CASE("EditorCore IME text model replacement commits preedit fallback") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
 
@@ -711,7 +866,7 @@ TEST_CASE("EditorCore IME input state replacement ignores preedit text compositi
   editor.setCursorPosition({0, 0});
 
   ImeInputContext context = editor.getImeInputContext(8, 8);
-  EditorActionResult preedit_result = editor.updateImeInputStateText(
+  EditorActionResult preedit_result = updateInputStateText(editor,
       context.id,
       context.document_start_offset,
       "how",
@@ -727,20 +882,22 @@ TEST_CASE("EditorCore IME input state replacement ignores preedit text compositi
   CHECK(document->getU8Text() == "how");
 
   context = editor.getImeInputContext(8, 8);
-  EditorActionResult commit_result = editor.commitImeInputStateTextReplacement(
-      context.id,
-      context.document_start_offset,
+  EditorActionResult commit_result = commitReplacementThroughTextModelDelta(
+      editor,
+      context,
       0,
       3,
       "ho",
       1,
       ImeScriptClass::LATIN);
 
-  CHECK_FALSE(commit_result.handled);
-  REQUIRE(editor.isComposing());
-  CHECK(editor.getCompositionState().kind == CompositionKind::PREEDIT_TEXT);
-  CHECK(document->getU8Text() == "how");
-  CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
+  REQUIRE(commit_result.content_changed);
+  CHECK(commit_result.handled);
+  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasComposingSession());
+  CHECK(commit_result.ime_sync.clear_platform_preedit);
+  CHECK(document->getU8Text() == "ho");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
 }
 
 TEST_CASE("EditorCore IME input state composing replacement maps to previous range") {
@@ -753,7 +910,7 @@ TEST_CASE("EditorCore IME input state composing replacement maps to previous ran
   editor.setSelection({{0, 1}, {0, 2}});
 
   ImeInputContext context = editor.getImeInputContext(8, 8);
-  editor.updateImeInputStateText(
+  updateInputStateText(editor,
       context.id,
       context.document_start_offset,
       "a你c",
@@ -1117,8 +1274,19 @@ TEST_CASE("EditorCore visible preedit does not affect document undo and renders 
   CHECK(update_result.ime_sync.preedit_storage == ImePreeditStorage::VISIBLE_DOCUMENT_COMPOSITION);
 
   EditorRenderModel model;
+  EditorRangeEffectStyles styles;
+  styles.ime_composition.underline_color = static_cast<int32_t>(0xFFFFCC00u);
+  styles.ime_composition.underline_style = RangeEffectUnderlineStyle::SOLID;
+  editor.setEditorRangeEffectStyles(styles);
   editor.buildRenderModel(model);
-  CHECK(model.composition_decoration.active);
+  bool has_composition_effect = false;
+  for (const RangeEffectRenderItem& effect : model.range_effects) {
+    if (effect.kind == RangeEffectKind::IME_COMPOSITION) {
+      has_composition_effect = true;
+      break;
+    }
+  }
+  CHECK(has_composition_effect);
 
   const VisualRun* hint_run = nullptr;
   for (const auto& line : model.lines) {

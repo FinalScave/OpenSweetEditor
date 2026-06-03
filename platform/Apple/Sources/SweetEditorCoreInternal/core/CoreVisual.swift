@@ -75,6 +75,43 @@ public enum PointerCursorType: Int32 {
     }
 }
 
+public enum RangeEffectKind: Int32 {
+    case SELECTION = 0
+    case SEARCH_MATCH = 1
+    case SEARCH_CURRENT = 2
+    case DOCUMENT_HIGHLIGHT_TEXT = 3
+    case DOCUMENT_HIGHLIGHT_READ = 4
+    case DOCUMENT_HIGHLIGHT_WRITE = 5
+    case LINKED_EDITING_ACTIVE = 6
+    case LINKED_EDITING_INACTIVE = 7
+    case IME_COMPOSITION = 8
+    case BRACKET_MATCH = 9
+    case DIAGNOSTIC_ERROR = 10
+    case DIAGNOSTIC_WARNING = 11
+    case DIAGNOSTIC_INFO = 12
+    case DIAGNOSTIC_HINT = 13
+
+    public static func fromValue(_ value: Int32) -> RangeEffectKind {
+        switch value {
+        case 0: return .SELECTION
+        case 1: return .SEARCH_MATCH
+        case 2: return .SEARCH_CURRENT
+        case 3: return .DOCUMENT_HIGHLIGHT_TEXT
+        case 4: return .DOCUMENT_HIGHLIGHT_READ
+        case 5: return .DOCUMENT_HIGHLIGHT_WRITE
+        case 6: return .LINKED_EDITING_ACTIVE
+        case 7: return .LINKED_EDITING_INACTIVE
+        case 8: return .IME_COMPOSITION
+        case 9: return .BRACKET_MATCH
+        case 10: return .DIAGNOSTIC_ERROR
+        case 11: return .DIAGNOSTIC_WARNING
+        case 12: return .DIAGNOSTIC_INFO
+        case 13: return .DIAGNOSTIC_HINT
+        default: return .SELECTION
+        }
+    }
+}
+
 public enum VisualLineKind: Int32 {
     case CONTENT = 0
     case PHANTOM = 1
@@ -117,16 +154,6 @@ public enum VisualRunType: Int32 {
     }
 }
 
-public struct CompositionDecoration {
-    public var active: Bool = false
-    public var rect: Rect = Rect()
-
-    public init(active: Bool = false, rect: Rect = Rect()) {
-        self.active = active
-        self.rect = rect
-    }
-}
-
 public struct Cursor {
     public var text_position: TextPosition = TextPosition()
     public var position: PointF = PointF()
@@ -155,16 +182,6 @@ public struct CursorRect {
     }
 }
 
-public struct DiagnosticDecoration {
-    public var rect: Rect = Rect()
-    public var severity: Int32 = 0
-
-    public init(rect: Rect = Rect(), severity: Int32 = 0) {
-        self.rect = rect
-        self.severity = severity
-    }
-}
-
 public struct EditorRenderModel {
     public var split_x: Float = 0
     public var split_line_visible: Bool = true
@@ -176,15 +193,11 @@ public struct EditorRenderModel {
     public var current_line_render_mode: CurrentLineRenderMode = .BACKGROUND
     public var lines: [VisualLine] = []
     public var cursor: Cursor = Cursor()
-    public var selection_rects: [Rect] = []
+    public var range_effects: [RangeEffectRenderItem] = []
     public var selection_start_handle: SelectionHandle = SelectionHandle()
     public var selection_end_handle: SelectionHandle = SelectionHandle()
-    public var composition_decoration: CompositionDecoration = CompositionDecoration()
     public var guide_segments: [GuideSegment] = []
-    public var diagnostic_decorations: [DiagnosticDecoration] = []
     public var max_gutter_icons: Int32 = 0
-    public var linked_editing_rects: [LinkedEditingRect] = []
-    public var bracket_highlight_rects: [Rect] = []
     public var gutter_icons: [GutterIconRenderItem] = []
     public var fold_markers: [FoldMarkerRenderItem] = []
     public var vertical_scrollbar: ScrollbarModel = ScrollbarModel()
@@ -193,7 +206,7 @@ public struct EditorRenderModel {
     public var gutter_visible: Bool = true
     public var pointer_cursor_type: PointerCursorType = .TEXT
 
-    public init(split_x: Float = 0, split_line_visible: Bool = true, scroll_x: Float = 0, scroll_y: Float = 0, viewport_width: Float = 0, viewport_height: Float = 0, current_line: PointF = PointF(), current_line_render_mode: CurrentLineRenderMode = .BACKGROUND, lines: [VisualLine] = [], cursor: Cursor = Cursor(), selection_rects: [Rect] = [], selection_start_handle: SelectionHandle = SelectionHandle(), selection_end_handle: SelectionHandle = SelectionHandle(), composition_decoration: CompositionDecoration = CompositionDecoration(), guide_segments: [GuideSegment] = [], diagnostic_decorations: [DiagnosticDecoration] = [], max_gutter_icons: Int32 = 0, linked_editing_rects: [LinkedEditingRect] = [], bracket_highlight_rects: [Rect] = [], gutter_icons: [GutterIconRenderItem] = [], fold_markers: [FoldMarkerRenderItem] = [], vertical_scrollbar: ScrollbarModel = ScrollbarModel(), horizontal_scrollbar: ScrollbarModel = ScrollbarModel(), gutter_sticky: Bool = true, gutter_visible: Bool = true, pointer_cursor_type: PointerCursorType = .TEXT) {
+    public init(split_x: Float = 0, split_line_visible: Bool = true, scroll_x: Float = 0, scroll_y: Float = 0, viewport_width: Float = 0, viewport_height: Float = 0, current_line: PointF = PointF(), current_line_render_mode: CurrentLineRenderMode = .BACKGROUND, lines: [VisualLine] = [], cursor: Cursor = Cursor(), range_effects: [RangeEffectRenderItem] = [], selection_start_handle: SelectionHandle = SelectionHandle(), selection_end_handle: SelectionHandle = SelectionHandle(), guide_segments: [GuideSegment] = [], max_gutter_icons: Int32 = 0, gutter_icons: [GutterIconRenderItem] = [], fold_markers: [FoldMarkerRenderItem] = [], vertical_scrollbar: ScrollbarModel = ScrollbarModel(), horizontal_scrollbar: ScrollbarModel = ScrollbarModel(), gutter_sticky: Bool = true, gutter_visible: Bool = true, pointer_cursor_type: PointerCursorType = .TEXT) {
         self.split_x = split_x
         self.split_line_visible = split_line_visible
         self.scroll_x = scroll_x
@@ -204,15 +217,11 @@ public struct EditorRenderModel {
         self.current_line_render_mode = current_line_render_mode
         self.lines = lines
         self.cursor = cursor
-        self.selection_rects = selection_rects
+        self.range_effects = range_effects
         self.selection_start_handle = selection_start_handle
         self.selection_end_handle = selection_end_handle
-        self.composition_decoration = composition_decoration
         self.guide_segments = guide_segments
-        self.diagnostic_decorations = diagnostic_decorations
         self.max_gutter_icons = max_gutter_icons
-        self.linked_editing_rects = linked_editing_rects
-        self.bracket_highlight_rects = bracket_highlight_rects
         self.gutter_icons = gutter_icons
         self.fold_markers = fold_markers
         self.vertical_scrollbar = vertical_scrollbar
@@ -299,13 +308,15 @@ public struct LayoutMetrics {
     }
 }
 
-public struct LinkedEditingRect {
+public struct RangeEffectRenderItem {
     public var rect: Rect = Rect()
-    public var is_active: Bool = false
+    public var kind: RangeEffectKind = .SELECTION
+    public var style: RangeEffectStyle = RangeEffectStyle()
 
-    public init(rect: Rect = Rect(), is_active: Bool = false) {
+    public init(rect: Rect = Rect(), kind: RangeEffectKind = .SELECTION, style: RangeEffectStyle = RangeEffectStyle()) {
         self.rect = rect
-        self.is_active = is_active
+        self.kind = kind
+        self.style = style
     }
 }
 

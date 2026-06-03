@@ -30,8 +30,11 @@ import androidx.annotation.Nullable;
 import java.util.Map;
 
 import com.qiplat.sweeteditor.core.Document;
+import com.qiplat.sweeteditor.core.config.EditorRangeEffectStyles;
 import com.qiplat.sweeteditor.core.config.EditorOptions;
 import com.qiplat.sweeteditor.core.config.EditorRenderColors;
+import com.qiplat.sweeteditor.core.config.RangeEffectStyle;
+import com.qiplat.sweeteditor.core.config.RangeEffectUnderlineStyle;
 import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.interaction.HitTargetType;
 import com.qiplat.sweeteditor.core.interaction.GestureType;
@@ -561,6 +564,7 @@ public class SweetEditor extends View {
         mRenderer.applyTheme(theme);
 
         dispatchEditorActionResult(mEditorCore.setEditorRenderColors(buildEditorRenderColors(theme)));
+        dispatchEditorActionResult(mEditorCore.setEditorRangeEffectStyles(buildEditorRangeEffectStyles(theme)));
         EditorActionResult result = mEditorCore.registerBatchTextStyles(theme.textStyles);
 
         if (mInlineSuggestionController != null) {
@@ -593,11 +597,57 @@ public class SweetEditor extends View {
                 : (theme.linkColor != 0 ? theme.linkColor : activeCodeLensForeground);
         return new EditorRenderColors(
                 theme.textColor,
-                theme.selectionTextColor,
                 linkForeground,
                 activeLinkForeground,
                 codeLensForeground,
                 activeCodeLensForeground);
+    }
+
+    private EditorRangeEffectStyles buildEditorRangeEffectStyles(@NonNull EditorTheme theme) {
+        EditorRangeEffectStyles styles = new EditorRangeEffectStyles();
+        styles.selection = new RangeEffectStyle(
+                theme.selectionTextColor,
+                theme.selectionColor,
+                0,
+                0,
+                RangeEffectUnderlineStyle.NONE);
+        styles.imeComposition = new RangeEffectStyle(
+                0,
+                0,
+                0,
+                theme.compositionUnderlineColor,
+                RangeEffectUnderlineStyle.SOLID);
+        styles.diagnosticError = diagnosticStyle(theme.diagnosticErrorColor, RangeEffectUnderlineStyle.WAVY);
+        styles.diagnosticWarning = diagnosticStyle(theme.diagnosticWarningColor, RangeEffectUnderlineStyle.WAVY);
+        styles.diagnosticInfo = diagnosticStyle(theme.diagnosticInfoColor, RangeEffectUnderlineStyle.WAVY);
+        styles.diagnosticHint = diagnosticStyle(theme.diagnosticHintColor, RangeEffectUnderlineStyle.DASHED);
+        styles.linkedEditingActive = new RangeEffectStyle(
+                0,
+                withAlpha(theme.linkedEditingActiveColor, 0x20),
+                theme.linkedEditingActiveColor,
+                0,
+                RangeEffectUnderlineStyle.NONE);
+        styles.linkedEditingInactive = new RangeEffectStyle(
+                0,
+                0,
+                theme.linkedEditingInactiveColor,
+                0,
+                RangeEffectUnderlineStyle.NONE);
+        styles.bracketMatch = new RangeEffectStyle(
+                0,
+                theme.bracketHighlightBgColor,
+                theme.bracketHighlightBorderColor,
+                0,
+                RangeEffectUnderlineStyle.NONE);
+        return styles;
+    }
+
+    private RangeEffectStyle diagnosticStyle(int color, RangeEffectUnderlineStyle underlineStyle) {
+        return new RangeEffectStyle(0, 0, 0, color, underlineStyle);
+    }
+
+    private int withAlpha(int color, int alpha) {
+        return color == 0 ? 0 : (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
     }
 
     @NonNull
@@ -2270,6 +2320,7 @@ public class SweetEditor extends View {
         mContextMenuController = new ContextMenuController(this, mEventBus, mTheme);
 
         mEditorCore.setEditorRenderColors(buildEditorRenderColors(mTheme));
+        mEditorCore.setEditorRangeEffectStyles(buildEditorRangeEffectStyles(mTheme));
         mEditorCore.registerBatchTextStyles(mTheme.textStyles);
 
         mSettings = new EditorSettings(this);

@@ -130,6 +130,7 @@ static napi_value Init(napi_env env, napi_value exports)
         NAPI_METHOD("editorSetHandleConfig", EditorCoreNapi::setHandleConfig),
         NAPI_METHOD("editorSetScrollbarConfig", EditorCoreNapi::setScrollbarConfig),
         NAPI_METHOD("editorSetEditorRenderColors", EditorCoreNapi::setEditorRenderColors),
+        NAPI_METHOD("editorSetEditorRangeEffectStyles", EditorCoreNapi::setEditorRangeEffectStyles),
 
         // Position query
         NAPI_METHOD("editorGetPositionRect", EditorCoreNapi::getPositionRect),

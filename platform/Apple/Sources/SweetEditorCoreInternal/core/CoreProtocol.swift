@@ -176,6 +176,11 @@ enum CoreProtocol {
         return FoldArrowMode.fromValue(value)
     }
 
+    static func readRangeEffectUnderlineStyle(_ reader: inout BinaryReader) -> RangeEffectUnderlineStyle? {
+        guard let value = reader.readInt32() else { return nil }
+        return RangeEffectUnderlineStyle.fromValue(value)
+    }
+
     static func readScrollbarMode(_ reader: inout BinaryReader) -> ScrollbarMode? {
         guard let value = reader.readInt32() else { return nil }
         return ScrollbarMode.fromValue(value)
@@ -266,6 +271,11 @@ enum CoreProtocol {
         return PointerCursorType.fromValue(value)
     }
 
+    static func readRangeEffectKind(_ reader: inout BinaryReader) -> RangeEffectKind? {
+        guard let value = reader.readInt32() else { return nil }
+        return RangeEffectKind.fromValue(value)
+    }
+
     static func readVisualLineKind(_ reader: inout BinaryReader) -> VisualLineKind? {
         guard let value = reader.readInt32() else { return nil }
         return VisualLineKind.fromValue(value)
@@ -319,17 +329,6 @@ enum CoreProtocol {
             size += sizeOfDiagnostic(value)
         }
         return size
-    }
-
-    static func readDiagnosticDecorationList(_ reader: inout BinaryReader) -> [DiagnosticDecoration]? {
-        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
-        var values: [DiagnosticDecoration] = []
-        values.reserveCapacity(Int(countValue))
-        for _ in 0..<Int(countValue) {
-            guard let value = readDiagnosticDecoration(&reader) else { return nil }
-            values.append(value)
-        }
-        return values
     }
 
     static func writeFlowGuideList(_ writer: inout BinaryWriter, _ values: [FlowGuide]) {
@@ -481,17 +480,6 @@ enum CoreProtocol {
         return size
     }
 
-    static func readLinkedEditingRectList(_ reader: inout BinaryReader) -> [LinkedEditingRect]? {
-        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
-        var values: [LinkedEditingRect] = []
-        values.reserveCapacity(Int(countValue))
-        for _ in 0..<Int(countValue) {
-            guard let value = readLinkedEditingRect(&reader) else { return nil }
-            values.append(value)
-        }
-        return values
-    }
-
     static func writePhantomTextList(_ writer: inout BinaryWriter, _ values: [PhantomText]) {
         writer.writeInt32(Int32(values.count))
         for value in values {
@@ -533,30 +521,15 @@ enum CoreProtocol {
         return size
     }
 
-    static func readRectList(_ reader: inout BinaryReader) -> [Rect]? {
+    static func readRangeEffectRenderItemList(_ reader: inout BinaryReader) -> [RangeEffectRenderItem]? {
         guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
-        var values: [Rect] = []
+        var values: [RangeEffectRenderItem] = []
         values.reserveCapacity(Int(countValue))
         for _ in 0..<Int(countValue) {
-            guard let value = readRect(&reader) else { return nil }
+            guard let value = readRangeEffectRenderItem(&reader) else { return nil }
             values.append(value)
         }
         return values
-    }
-
-    static func writeRectList(_ writer: inout BinaryWriter, _ values: [Rect]) {
-        writer.writeInt32(Int32(values.count))
-        for value in values {
-            writeRect(&writer, value)
-        }
-    }
-
-    static func sizeOfRectList(_ values: [Rect]) -> Int {
-        var size = 4
-        for value in values {
-            size += sizeOfRect(value)
-        }
-        return size
     }
 
     static func writeSeparatorGuideList(_ writer: inout BinaryWriter, _ values: [SeparatorGuide]) {
@@ -932,9 +905,29 @@ enum CoreProtocol {
         4 + 8 + 8 + 4 + 4 + 4 + 8 + 8 + 1
     }
 
+    static func writeEditorRangeEffectStyles(_ writer: inout BinaryWriter, _ value: EditorRangeEffectStyles) {
+        writeRangeEffectStyle(&writer, value.selection)
+        writeRangeEffectStyle(&writer, value.search_match)
+        writeRangeEffectStyle(&writer, value.search_current)
+        writeRangeEffectStyle(&writer, value.document_highlight_text)
+        writeRangeEffectStyle(&writer, value.document_highlight_read)
+        writeRangeEffectStyle(&writer, value.document_highlight_write)
+        writeRangeEffectStyle(&writer, value.linked_editing_active)
+        writeRangeEffectStyle(&writer, value.linked_editing_inactive)
+        writeRangeEffectStyle(&writer, value.ime_composition)
+        writeRangeEffectStyle(&writer, value.bracket_match)
+        writeRangeEffectStyle(&writer, value.diagnostic_error)
+        writeRangeEffectStyle(&writer, value.diagnostic_warning)
+        writeRangeEffectStyle(&writer, value.diagnostic_info)
+        writeRangeEffectStyle(&writer, value.diagnostic_hint)
+    }
+
+    static func sizeOfEditorRangeEffectStyles(_ value: EditorRangeEffectStyles) -> Int {
+        sizeOfRangeEffectStyle(value.selection) + sizeOfRangeEffectStyle(value.search_match) + sizeOfRangeEffectStyle(value.search_current) + sizeOfRangeEffectStyle(value.document_highlight_text) + sizeOfRangeEffectStyle(value.document_highlight_read) + sizeOfRangeEffectStyle(value.document_highlight_write) + sizeOfRangeEffectStyle(value.linked_editing_active) + sizeOfRangeEffectStyle(value.linked_editing_inactive) + sizeOfRangeEffectStyle(value.ime_composition) + sizeOfRangeEffectStyle(value.bracket_match) + sizeOfRangeEffectStyle(value.diagnostic_error) + sizeOfRangeEffectStyle(value.diagnostic_warning) + sizeOfRangeEffectStyle(value.diagnostic_info) + sizeOfRangeEffectStyle(value.diagnostic_hint)
+    }
+
     static func writeEditorRenderColors(_ writer: inout BinaryWriter, _ value: EditorRenderColors) {
         writer.writeInt32(value.text_foreground)
-        writer.writeInt32(value.selection_foreground)
         writer.writeInt32(value.link_foreground)
         writer.writeInt32(value.active_link_foreground)
         writer.writeInt32(value.codelens_foreground)
@@ -942,7 +935,7 @@ enum CoreProtocol {
     }
 
     static func sizeOfEditorRenderColors(_ value: EditorRenderColors) -> Int {
-        4 + 4 + 4 + 4 + 4 + 4
+        4 + 4 + 4 + 4 + 4
     }
 
     static func writeHandleConfig(_ writer: inout BinaryWriter, _ value: HandleConfig) {
@@ -952,6 +945,38 @@ enum CoreProtocol {
 
     static func sizeOfHandleConfig(_ value: HandleConfig) -> Int {
         sizeOfOffsetRect(value.start_hit_offset) + sizeOfOffsetRect(value.end_hit_offset)
+    }
+
+    static func readRangeEffectStyle(_ reader: inout BinaryReader) -> RangeEffectStyle? {
+        guard let foreground_color = reader.readInt32() else { return nil }
+        guard let background_color = reader.readInt32() else { return nil }
+        guard let border_color = reader.readInt32() else { return nil }
+        guard let underline_color = reader.readInt32() else { return nil }
+        guard let underline_style = readRangeEffectUnderlineStyle(&reader) else { return nil }
+        return RangeEffectStyle(foreground_color: foreground_color, background_color: background_color, border_color: border_color, underline_color: underline_color, underline_style: underline_style)
+    }
+
+    static func decodeRangeEffectStyle(_ data: Data) -> RangeEffectStyle? {
+        return data.withUnsafeBytes { raw in
+            decodeRangeEffectStyle(raw)
+        }
+    }
+
+    static func decodeRangeEffectStyle(_ data: UnsafeRawBufferPointer) -> RangeEffectStyle? {
+        var reader = BinaryReader(data)
+        return readRangeEffectStyle(&reader)
+    }
+
+    static func writeRangeEffectStyle(_ writer: inout BinaryWriter, _ value: RangeEffectStyle) {
+        writer.writeInt32(value.foreground_color)
+        writer.writeInt32(value.background_color)
+        writer.writeInt32(value.border_color)
+        writer.writeInt32(value.underline_color)
+        writer.writeInt32(value.underline_style.rawValue)
+    }
+
+    static func sizeOfRangeEffectStyle(_ value: RangeEffectStyle) -> Int {
+        4 + 4 + 4 + 4 + 4
     }
 
     static func writeScrollbarConfig(_ writer: inout BinaryWriter, _ value: ScrollbarConfig) {
@@ -1406,23 +1431,6 @@ enum CoreProtocol {
         4 + sizeOfTextRangeList(value.ranges) + sizeOfUtf8String(value.default_text)
     }
 
-    static func readCompositionDecoration(_ reader: inout BinaryReader) -> CompositionDecoration? {
-        guard let active = reader.readBoolI32() else { return nil }
-        guard let rect = readRect(&reader) else { return nil }
-        return CompositionDecoration(active: active, rect: rect)
-    }
-
-    static func decodeCompositionDecoration(_ data: Data) -> CompositionDecoration? {
-        return data.withUnsafeBytes { raw in
-            decodeCompositionDecoration(raw)
-        }
-    }
-
-    static func decodeCompositionDecoration(_ data: UnsafeRawBufferPointer) -> CompositionDecoration? {
-        var reader = BinaryReader(data)
-        return readCompositionDecoration(&reader)
-    }
-
     static func readCursor(_ reader: inout BinaryReader) -> Cursor? {
         guard let text_position = readTextPosition(&reader) else { return nil }
         guard let position = readPointF(&reader) else { return nil }
@@ -1471,23 +1479,6 @@ enum CoreProtocol {
         4 + 4 + 4
     }
 
-    static func readDiagnosticDecoration(_ reader: inout BinaryReader) -> DiagnosticDecoration? {
-        guard let rect = readRect(&reader) else { return nil }
-        guard let severity = reader.readInt32() else { return nil }
-        return DiagnosticDecoration(rect: rect, severity: severity)
-    }
-
-    static func decodeDiagnosticDecoration(_ data: Data) -> DiagnosticDecoration? {
-        return data.withUnsafeBytes { raw in
-            decodeDiagnosticDecoration(raw)
-        }
-    }
-
-    static func decodeDiagnosticDecoration(_ data: UnsafeRawBufferPointer) -> DiagnosticDecoration? {
-        var reader = BinaryReader(data)
-        return readDiagnosticDecoration(&reader)
-    }
-
     static func readEditorRenderModel(_ reader: inout BinaryReader) -> EditorRenderModel? {
         guard let split_x = reader.readFloat32() else { return nil }
         guard let split_line_visible = reader.readBoolI32() else { return nil }
@@ -1499,15 +1490,11 @@ enum CoreProtocol {
         guard let current_line_render_mode = readCurrentLineRenderMode(&reader) else { return nil }
         guard let lines = readVisualLineList(&reader) else { return nil }
         guard let cursor = readCursor(&reader) else { return nil }
-        guard let selection_rects = readRectList(&reader) else { return nil }
+        guard let range_effects = readRangeEffectRenderItemList(&reader) else { return nil }
         guard let selection_start_handle = readSelectionHandle(&reader) else { return nil }
         guard let selection_end_handle = readSelectionHandle(&reader) else { return nil }
-        guard let composition_decoration = readCompositionDecoration(&reader) else { return nil }
         guard let guide_segments = readGuideSegmentList(&reader) else { return nil }
-        guard let diagnostic_decorations = readDiagnosticDecorationList(&reader) else { return nil }
         guard let max_gutter_icons = reader.readInt32() else { return nil }
-        guard let linked_editing_rects = readLinkedEditingRectList(&reader) else { return nil }
-        guard let bracket_highlight_rects = readRectList(&reader) else { return nil }
         guard let gutter_icons = readGutterIconRenderItemList(&reader) else { return nil }
         guard let fold_markers = readFoldMarkerRenderItemList(&reader) else { return nil }
         guard let vertical_scrollbar = readScrollbarModel(&reader) else { return nil }
@@ -1515,7 +1502,7 @@ enum CoreProtocol {
         guard let gutter_sticky = reader.readBoolI32() else { return nil }
         guard let gutter_visible = reader.readBoolI32() else { return nil }
         guard let pointer_cursor_type = readPointerCursorType(&reader) else { return nil }
-        return EditorRenderModel(split_x: split_x, split_line_visible: split_line_visible, scroll_x: scroll_x, scroll_y: scroll_y, viewport_width: viewport_width, viewport_height: viewport_height, current_line: current_line, current_line_render_mode: current_line_render_mode, lines: lines, cursor: cursor, selection_rects: selection_rects, selection_start_handle: selection_start_handle, selection_end_handle: selection_end_handle, composition_decoration: composition_decoration, guide_segments: guide_segments, diagnostic_decorations: diagnostic_decorations, max_gutter_icons: max_gutter_icons, linked_editing_rects: linked_editing_rects, bracket_highlight_rects: bracket_highlight_rects, gutter_icons: gutter_icons, fold_markers: fold_markers, vertical_scrollbar: vertical_scrollbar, horizontal_scrollbar: horizontal_scrollbar, gutter_sticky: gutter_sticky, gutter_visible: gutter_visible, pointer_cursor_type: pointer_cursor_type)
+        return EditorRenderModel(split_x: split_x, split_line_visible: split_line_visible, scroll_x: scroll_x, scroll_y: scroll_y, viewport_width: viewport_width, viewport_height: viewport_height, current_line: current_line, current_line_render_mode: current_line_render_mode, lines: lines, cursor: cursor, range_effects: range_effects, selection_start_handle: selection_start_handle, selection_end_handle: selection_end_handle, guide_segments: guide_segments, max_gutter_icons: max_gutter_icons, gutter_icons: gutter_icons, fold_markers: fold_markers, vertical_scrollbar: vertical_scrollbar, horizontal_scrollbar: horizontal_scrollbar, gutter_sticky: gutter_sticky, gutter_visible: gutter_visible, pointer_cursor_type: pointer_cursor_type)
     }
 
     static func decodeEditorRenderModel(_ data: Data) -> EditorRenderModel? {
@@ -1615,21 +1602,22 @@ enum CoreProtocol {
         return readLayoutMetrics(&reader)
     }
 
-    static func readLinkedEditingRect(_ reader: inout BinaryReader) -> LinkedEditingRect? {
+    static func readRangeEffectRenderItem(_ reader: inout BinaryReader) -> RangeEffectRenderItem? {
         guard let rect = readRect(&reader) else { return nil }
-        guard let is_active = reader.readBoolI32() else { return nil }
-        return LinkedEditingRect(rect: rect, is_active: is_active)
+        guard let kind = readRangeEffectKind(&reader) else { return nil }
+        guard let style = readRangeEffectStyle(&reader) else { return nil }
+        return RangeEffectRenderItem(rect: rect, kind: kind, style: style)
     }
 
-    static func decodeLinkedEditingRect(_ data: Data) -> LinkedEditingRect? {
+    static func decodeRangeEffectRenderItem(_ data: Data) -> RangeEffectRenderItem? {
         return data.withUnsafeBytes { raw in
-            decodeLinkedEditingRect(raw)
+            decodeRangeEffectRenderItem(raw)
         }
     }
 
-    static func decodeLinkedEditingRect(_ data: UnsafeRawBufferPointer) -> LinkedEditingRect? {
+    static func decodeRangeEffectRenderItem(_ data: UnsafeRawBufferPointer) -> RangeEffectRenderItem? {
         var reader = BinaryReader(data)
-        return readLinkedEditingRect(&reader)
+        return readRangeEffectRenderItem(&reader)
     }
 
     static func readScrollMetrics(_ reader: inout BinaryReader) -> ScrollMetrics? {
@@ -2233,6 +2221,12 @@ enum CoreProtocol {
     static func encodeEditorOptions(_ value: EditorOptions) -> Data {
         var writer = BinaryWriter()
         writeEditorOptions(&writer, value)
+        return writer.data()
+    }
+
+    static func encodeEditorRangeEffectStyles(_ value: EditorRangeEffectStyles) -> Data {
+        var writer = BinaryWriter()
+        writeEditorRangeEffectStyles(&writer, value)
         return writer.data()
     }
 

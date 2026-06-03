@@ -173,7 +173,6 @@ namespace NS_SWEETEDITOR {
   /// Editor colors resolved by the core when materializing visual runs.
   struct SE_PROTOCOL_IN(config) EditorRenderColors {
     int32_t text_foreground {0};
-    int32_t selection_foreground {0};
     int32_t link_foreground {0};
     int32_t active_link_foreground {0};
     int32_t codelens_foreground {0};
@@ -181,6 +180,48 @@ namespace NS_SWEETEDITOR {
 
     bool operator==(const EditorRenderColors& other) const;
     bool operator!=(const EditorRenderColors& other) const;
+  };
+
+  /// Underline shape used by range effects.
+  enum struct SE_PROTOCOL_ENUM(config, NONE) RangeEffectUnderlineStyle {
+    NONE = 0,
+    SOLID = 1,
+    DASHED = 2,
+    WAVY = 3,
+  };
+
+  /// Visual style for a document range effect.
+  struct SE_PROTOCOL_VALUE(config) RangeEffectStyle {
+    int32_t foreground_color {0};
+    int32_t background_color {0};
+    int32_t border_color {0};
+    int32_t underline_color {0};
+    SE_PROTOCOL_WIRE(enum_i32)
+    RangeEffectUnderlineStyle underline_style {RangeEffectUnderlineStyle::NONE};
+
+    bool operator==(const RangeEffectStyle& other) const;
+    bool operator!=(const RangeEffectStyle& other) const;
+  };
+
+  /// Range-effect styles resolved by core and emitted in the render model.
+  struct SE_PROTOCOL_IN(config) EditorRangeEffectStyles {
+    RangeEffectStyle selection;
+    RangeEffectStyle search_match;
+    RangeEffectStyle search_current;
+    RangeEffectStyle document_highlight_text;
+    RangeEffectStyle document_highlight_read;
+    RangeEffectStyle document_highlight_write;
+    RangeEffectStyle linked_editing_active;
+    RangeEffectStyle linked_editing_inactive;
+    RangeEffectStyle ime_composition;
+    RangeEffectStyle bracket_match;
+    RangeEffectStyle diagnostic_error;
+    RangeEffectStyle diagnostic_warning;
+    RangeEffectStyle diagnostic_info;
+    RangeEffectStyle diagnostic_hint;
+
+    bool operator==(const EditorRangeEffectStyles& other) const;
+    bool operator!=(const EditorRangeEffectStyles& other) const;
   };
 
   /// Runtime-mutable editor settings (modified via individual setters)
@@ -214,6 +255,8 @@ namespace NS_SWEETEDITOR {
     WrapMode wrap_mode {WrapMode::NONE};
     /// Core-resolved editor render colors
     EditorRenderColors render_colors;
+    /// Core-resolved range-effect styles
+    EditorRangeEffectStyles range_effect_styles;
 
     U8String dump() const;
   };

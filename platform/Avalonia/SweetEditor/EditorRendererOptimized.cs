@@ -190,10 +190,12 @@ namespace SweetEditor {
 
 			AvaloniaRect contentClip = GetContentClipRect(model, viewportSize);
 			using (context.PushClip(contentClip)) {
-				RenderSelections(context, model);
-				drawPerf?.Mark(PerfStepRecorder.STEP_SELECTION);
+				RenderRangeEffectBackgrounds(context, model);
+				drawPerf?.Mark(PerfStepRecorder.STEP_RANGE_EFFECT_BACKGROUNDS);
 				RenderVisualLines(context, model, contentClip);
 				drawPerf?.Mark(PerfStepRecorder.STEP_LINES);
+				RenderRangeEffectOverlays(context, model);
+				drawPerf?.Mark(PerfStepRecorder.STEP_RANGE_EFFECT_OVERLAYS);
 				RenderCursor(context, model);
 				drawPerf?.Mark(PerfStepRecorder.STEP_CURSOR);
 			}
@@ -240,18 +242,82 @@ namespace SweetEditor {
 		}
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private void RenderSelections(DrawingContext context, EditorRenderModel model) {
-			if (model.SelectionRects == null) {
+		private void RenderRangeEffectBackgrounds(DrawingContext context, EditorRenderModel model) {
+			if (model.RangeEffects == null || model.RangeEffects.Count == 0) {
 				return;
 			}
 
-			var brush = GetBrush((int)_theme.SelectionColor);
-			foreach (var rect in model.SelectionRects) {
-				context.FillRectangle(brush, new AvaloniaRect(
-					Snap(rect.Origin.X),
-					Snap(rect.Origin.Y),
-					Math.Max(0, Snap(rect.Width)),
-					Math.Max(0, Snap(rect.Height))));
+			foreach (var effect in model.RangeEffects) {
+				if (effect.Style.BackgroundColor == 0) {
+					continue;
+				}
+				context.FillRectangle(GetBrush(effect.Style.BackgroundColor), ToAvaloniaRect(effect.Rect));
+			}
+		}
+
+		private void RenderRangeEffectOverlays(DrawingContext context, EditorRenderModel model) {
+			if (model.RangeEffects == null || model.RangeEffects.Count == 0) {
+				return;
+			}
+
+			foreach (var effect in model.RangeEffects) {
+				if (effect.Style.BorderColor != 0) {
+					context.DrawRectangle(null, GetPen(effect.Style.BorderColor, BorderStrokeWidth(effect.Kind)), ToAvaloniaRect(effect.Rect));
+				}
+				if (effect.Style.UnderlineColor != 0 && effect.Style.UnderlineStyle != RangeEffectUnderlineStyle.NONE) {
+					RenderRangeEffectUnderline(context, effect.Rect, effect.Style);
+				}
+			}
+		}
+
+		private static double BorderStrokeWidth(RangeEffectKind kind) {
+			return kind == RangeEffectKind.LINKED_EDITING_ACTIVE ? 2.0 : 1.5;
+		}
+
+		private void RenderRangeEffectUnderline(DrawingContext context, Rect rect, RangeEffectStyle style) {
+			double startX = Snap(rect.Origin.X);
+			double endX = Snap(rect.Origin.X + rect.Width);
+			double baseY = Snap(rect.Origin.Y + rect.Height - 1f);
+			var pen = GetPen(style.UnderlineColor, style.UnderlineStyle == RangeEffectUnderlineStyle.WAVY ? 3.0 : 2.0, PenLineCap.Round, PenLineJoin.Round);
+
+			if (style.UnderlineStyle == RangeEffectUnderlineStyle.DASHED) {
+				RenderDashedUnderline(context, pen, startX, endX, baseY);
+				return;
+			}
+
+			if (style.UnderlineStyle == RangeEffectUnderlineStyle.SOLID) {
+				context.DrawLine(pen, new Point(startX, baseY), new Point(endX, baseY));
+				return;
+			}
+
+			var path = new StreamGeometry();
+			using (var geometry = path.Open()) {
+				double halfWave = 7.0;
+				double amplitude = 3.5;
+				double x = startX;
+				int step = 0;
+				geometry.BeginFigure(new Point(startX, baseY), false);
+				while (x < endX) {
+					double nextX = Math.Min(x + halfWave, endX);
+					double midX = (x + nextX) * 0.5;
+					double peakY = step % 2 == 0 ? baseY - amplitude : baseY + amplitude;
+					geometry.CubicBezierTo(
+						new Point(x + 2.0 / 3.0 * (midX - x), baseY + 2.0 / 3.0 * (peakY - baseY)),
+						new Point(nextX + 2.0 / 3.0 * (midX - nextX), baseY + 2.0 / 3.0 * (peakY - baseY)),
+						new Point(nextX, baseY));
+					x = nextX;
+					step++;
+				}
+			}
+			context.DrawGeometry(null, pen, path);
+		}
+
+		private static void RenderDashedUnderline(DrawingContext context, Pen pen, double startX, double endX, double y) {
+			const double dash = 3.0;
+			const double gap = 2.0;
+			for (double x = startX; x < endX; x += dash + gap) {
+				double nextX = Math.Min(x + dash, endX);
+				context.DrawLine(pen, new Point(x, y), new Point(nextX, y));
 			}
 		}
 
@@ -825,6 +891,14 @@ namespace SweetEditor {
 				: 0;
 			double width = Math.Max(0, viewportSize.Width - left);
 			return new AvaloniaRect(left, 0, width, Math.Max(0, viewportSize.Height));
+		}
+
+		private AvaloniaRect ToAvaloniaRect(Rect rect) {
+			return new AvaloniaRect(
+				Snap(rect.Origin.X),
+				Snap(rect.Origin.Y),
+				Math.Max(0, Snap(rect.Width)),
+				Math.Max(0, Snap(rect.Height)));
 		}
 
 		private float EffectiveTextSize => _textSizeDip * _scale;

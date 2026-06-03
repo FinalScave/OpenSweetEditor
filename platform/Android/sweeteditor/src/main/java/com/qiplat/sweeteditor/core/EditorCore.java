@@ -21,6 +21,7 @@ import com.qiplat.sweeteditor.core.adornment.SeparatorGuide;
 import com.qiplat.sweeteditor.core.adornment.SpanLayer;
 import com.qiplat.sweeteditor.core.adornment.InlayHint;
 import com.qiplat.sweeteditor.core.action.EditorActionResult;
+import com.qiplat.sweeteditor.core.config.EditorRangeEffectStyles;
 import com.qiplat.sweeteditor.core.config.EditorRenderColors;
 import com.qiplat.sweeteditor.core.config.EditorOptions;
 import com.qiplat.sweeteditor.core.config.HandleConfig;
@@ -1266,6 +1267,17 @@ public class EditorCore {
         return decodeAction(nativeSetEditorRenderColors(mNativeHandle, payload, payload.remaining()));
     }
 
+    /**
+     * Sets range-effect styles resolved by native core when building the render model.
+     */
+    @NonNull
+    public EditorActionResult setEditorRangeEffectStyles(@Nullable EditorRangeEffectStyles styles) {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        if (styles == null) styles = new EditorRangeEffectStyles();
+        ByteBuffer payload = CoreProtocol.encodeEditorRangeEffectStyles(styles);
+        return decodeAction(nativeSetEditorRangeEffectStyles(mNativeHandle, payload, payload.remaining()));
+    }
+
     // ==================== Style Registration + Highlight Spans ====================
 
     /**
@@ -2383,6 +2395,9 @@ public class EditorCore {
 
     @FastNative
     private static native ByteBuffer nativeSetEditorRenderColors(long handle, ByteBuffer data, int size);
+
+    @FastNative
+    private static native ByteBuffer nativeSetEditorRangeEffectStyles(long handle, ByteBuffer data, int size);
 
     @FastNative
     private static native ByteBuffer nativeRegisterTextStyle(long handle, int styleId, int color, int backgroundColor, int fontStyle);

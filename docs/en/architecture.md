@@ -423,15 +423,15 @@ struct EditorRenderModel {
   PointF current_line;                  // current line background position
   Vector<VisualLine> lines;             // visible visual lines
   Cursor cursor;                        // cursor
-  Vector<SelectionRect> selection_rects; // selection highlight rects
+  Vector<RangeEffectRenderItem> range_effects; // selection, search, IME, diagnostics, and other visible range effects
   SelectionHandle selection_start_handle; // selection start drag handle
   SelectionHandle selection_end_handle;  // selection end drag handle
-  CompositionDecoration composition_decoration; // IME underline
   Vector<GuideSegment> guide_segments;   // code structure guides
-  Vector<DiagnosticDecoration> diagnostic_decorations; // diagnostic decorations
   uint32_t max_gutter_icons;            // gutter icon count
-  Vector<LinkedEditingRect> linked_editing_rects; // linked-edit highlights
-  Vector<BracketHighlightRect> bracket_highlight_rects; // bracket highlights
+  Vector<GutterIconRenderItem> gutter_icons; // gutter icons
+  Vector<FoldMarkerRenderItem> fold_markers; // fold toggles
+  ScrollbarModel vertical_scrollbar;     // vertical scrollbar
+  ScrollbarModel horizontal_scrollbar;   // horizontal scrollbar
 };
 ```
 
@@ -467,24 +467,21 @@ Important distinction between internal representation and cross-language transpo
 ```
 1. Fill background
 2. Draw current line highlight background (current_line)
-3. Draw selection highlight rects (selection_rects)
-4. Draw code structure guides (guide_segments)
-5. Draw line-number separator (split_x)
-6. Iterate lines:
+3. Draw range effect backgrounds (range_effects)
+4. Iterate lines:
    a. Draw line number (line_number_position)
-   b. Draw gutter icons (gutter_icon_ids)
-   c. Draw fold arrow (fold_state)
+   b. Draw gutter icons (gutter_icons)
+   c. Draw fold markers (fold_markers)
    d. Iterate runs:
       - TEXT / WHITESPACE: drawText(run.text, run.x, run.y) with run.style
       - INLAY_HINT: draw rounded background + text/icon
       - PHANTOM_TEXT: draw with translucency
       - FOLD_PLACEHOLDER: draw "…" placeholder
-7. Draw IME composition underline (composition_decoration)
-8. Draw diagnostic decorations (diagnostic_decorations)
-9. Draw linked-edit highlights (linked_editing_rects)
-10. Draw bracket highlights (bracket_highlight_rects)
-11. Draw cursor line (cursor)
-12. Draw selection drag handles (selection handles)
+5. Draw code structure guides (guide_segments)
+6. Draw range effect overlays (range_effects borders and underlines)
+7. Draw cursor line (cursor)
+8. Draw selection drag handles (selection handles)
+9. Draw scrollbars
 ```
 
 ---

@@ -43,6 +43,23 @@ export function foldArrowModeFromValue(value: number): FoldArrowMode {
   }
 }
 
+export enum RangeEffectUnderlineStyle {
+  NONE = 0,
+  SOLID = 1,
+  DASHED = 2,
+  WAVY = 3,
+}
+
+export function rangeEffectUnderlineStyleFromValue(value: number): RangeEffectUnderlineStyle {
+  switch (value) {
+    case 0: return RangeEffectUnderlineStyle.NONE;
+    case 1: return RangeEffectUnderlineStyle.SOLID;
+    case 2: return RangeEffectUnderlineStyle.DASHED;
+    case 3: return RangeEffectUnderlineStyle.WAVY;
+    default: return RangeEffectUnderlineStyle.NONE;
+  }
+}
+
 export enum ScrollbarMode {
   ALWAYS = 0,
   TRANSIENT = 1,
@@ -98,9 +115,25 @@ export class EditorOptions {
   revealSelectionEndOnSelectAll: boolean = false;
 }
 
+export class EditorRangeEffectStyles {
+  selection: RangeEffectStyle = { foregroundColor: 0, backgroundColor: 0, borderColor: 0, underlineColor: 0, underlineStyle: RangeEffectUnderlineStyle.NONE };
+  searchMatch: RangeEffectStyle = { foregroundColor: 0, backgroundColor: 0, borderColor: 0, underlineColor: 0, underlineStyle: RangeEffectUnderlineStyle.NONE };
+  searchCurrent: RangeEffectStyle = { foregroundColor: 0, backgroundColor: 0, borderColor: 0, underlineColor: 0, underlineStyle: RangeEffectUnderlineStyle.NONE };
+  documentHighlightText: RangeEffectStyle = { foregroundColor: 0, backgroundColor: 0, borderColor: 0, underlineColor: 0, underlineStyle: RangeEffectUnderlineStyle.NONE };
+  documentHighlightRead: RangeEffectStyle = { foregroundColor: 0, backgroundColor: 0, borderColor: 0, underlineColor: 0, underlineStyle: RangeEffectUnderlineStyle.NONE };
+  documentHighlightWrite: RangeEffectStyle = { foregroundColor: 0, backgroundColor: 0, borderColor: 0, underlineColor: 0, underlineStyle: RangeEffectUnderlineStyle.NONE };
+  linkedEditingActive: RangeEffectStyle = { foregroundColor: 0, backgroundColor: 0, borderColor: 0, underlineColor: 0, underlineStyle: RangeEffectUnderlineStyle.NONE };
+  linkedEditingInactive: RangeEffectStyle = { foregroundColor: 0, backgroundColor: 0, borderColor: 0, underlineColor: 0, underlineStyle: RangeEffectUnderlineStyle.NONE };
+  imeComposition: RangeEffectStyle = { foregroundColor: 0, backgroundColor: 0, borderColor: 0, underlineColor: 0, underlineStyle: RangeEffectUnderlineStyle.NONE };
+  bracketMatch: RangeEffectStyle = { foregroundColor: 0, backgroundColor: 0, borderColor: 0, underlineColor: 0, underlineStyle: RangeEffectUnderlineStyle.NONE };
+  diagnosticError: RangeEffectStyle = { foregroundColor: 0, backgroundColor: 0, borderColor: 0, underlineColor: 0, underlineStyle: RangeEffectUnderlineStyle.NONE };
+  diagnosticWarning: RangeEffectStyle = { foregroundColor: 0, backgroundColor: 0, borderColor: 0, underlineColor: 0, underlineStyle: RangeEffectUnderlineStyle.NONE };
+  diagnosticInfo: RangeEffectStyle = { foregroundColor: 0, backgroundColor: 0, borderColor: 0, underlineColor: 0, underlineStyle: RangeEffectUnderlineStyle.NONE };
+  diagnosticHint: RangeEffectStyle = { foregroundColor: 0, backgroundColor: 0, borderColor: 0, underlineColor: 0, underlineStyle: RangeEffectUnderlineStyle.NONE };
+}
+
 export class EditorRenderColors {
   textForeground: number = 0;
-  selectionForeground: number = 0;
   linkForeground: number = 0;
   activeLinkForeground: number = 0;
   codelensForeground: number = 0;
@@ -110,6 +143,14 @@ export class EditorRenderColors {
 export class HandleConfig {
   startHitOffset: OffsetRect = { left: -32.1, top: -8.0, right: 8.0, bottom: 32.1 };
   endHitOffset: OffsetRect = { left: -8.0, top: -8.0, right: 32.1, bottom: 32.1 };
+}
+
+export interface RangeEffectStyle {
+  foregroundColor: number;
+  backgroundColor: number;
+  borderColor: number;
+  underlineColor: number;
+  underlineStyle: RangeEffectUnderlineStyle;
 }
 
 export class ScrollbarConfig {

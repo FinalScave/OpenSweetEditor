@@ -501,13 +501,28 @@ public:
     return true;
   }
 
+  inline bool read(EditorRangeEffectStyles& out) {
+    if (!read(out.selection)) return false;
+    if (!read(out.search_match)) return false;
+    if (!read(out.search_current)) return false;
+    if (!read(out.document_highlight_text)) return false;
+    if (!read(out.document_highlight_read)) return false;
+    if (!read(out.document_highlight_write)) return false;
+    if (!read(out.linked_editing_active)) return false;
+    if (!read(out.linked_editing_inactive)) return false;
+    if (!read(out.ime_composition)) return false;
+    if (!read(out.bracket_match)) return false;
+    if (!read(out.diagnostic_error)) return false;
+    if (!read(out.diagnostic_warning)) return false;
+    if (!read(out.diagnostic_info)) return false;
+    if (!read(out.diagnostic_hint)) return false;
+    return true;
+  }
+
   inline bool read(EditorRenderColors& out) {
     int32_t out_text_foreground_value{};
     if (!readI32(out_text_foreground_value)) return false;
     out.text_foreground = static_cast<int32_t>(out_text_foreground_value);
-    int32_t out_selection_foreground_value{};
-    if (!readI32(out_selection_foreground_value)) return false;
-    out.selection_foreground = static_cast<int32_t>(out_selection_foreground_value);
     int32_t out_link_foreground_value{};
     if (!readI32(out_link_foreground_value)) return false;
     out.link_foreground = static_cast<int32_t>(out_link_foreground_value);
@@ -526,6 +541,25 @@ public:
   inline bool read(HandleConfig& out) {
     if (!read(out.start_hit_offset)) return false;
     if (!read(out.end_hit_offset)) return false;
+    return true;
+  }
+
+  inline bool read(RangeEffectStyle& out) {
+    int32_t out_foreground_color_value{};
+    if (!readI32(out_foreground_color_value)) return false;
+    out.foreground_color = static_cast<int32_t>(out_foreground_color_value);
+    int32_t out_background_color_value{};
+    if (!readI32(out_background_color_value)) return false;
+    out.background_color = static_cast<int32_t>(out_background_color_value);
+    int32_t out_border_color_value{};
+    if (!readI32(out_border_color_value)) return false;
+    out.border_color = static_cast<int32_t>(out_border_color_value);
+    int32_t out_underline_color_value{};
+    if (!readI32(out_underline_color_value)) return false;
+    out.underline_color = static_cast<int32_t>(out_underline_color_value);
+    int32_t out_underline_style_value{};
+    if (!readI32(out_underline_style_value)) return false;
+    out.underline_style = static_cast<RangeEffectUnderlineStyle>(out_underline_style_value);
     return true;
   }
 
@@ -1234,9 +1268,26 @@ public:
     return true;
   }
 
+  inline bool write(const EditorRangeEffectStyles& value) {
+    if (!write(value.selection)) return false;
+    if (!write(value.search_match)) return false;
+    if (!write(value.search_current)) return false;
+    if (!write(value.document_highlight_text)) return false;
+    if (!write(value.document_highlight_read)) return false;
+    if (!write(value.document_highlight_write)) return false;
+    if (!write(value.linked_editing_active)) return false;
+    if (!write(value.linked_editing_inactive)) return false;
+    if (!write(value.ime_composition)) return false;
+    if (!write(value.bracket_match)) return false;
+    if (!write(value.diagnostic_error)) return false;
+    if (!write(value.diagnostic_warning)) return false;
+    if (!write(value.diagnostic_info)) return false;
+    if (!write(value.diagnostic_hint)) return false;
+    return true;
+  }
+
   inline bool write(const EditorRenderColors& value) {
     if (!writeI32(static_cast<int32_t>(value.text_foreground))) return false;
-    if (!writeI32(static_cast<int32_t>(value.selection_foreground))) return false;
     if (!writeI32(static_cast<int32_t>(value.link_foreground))) return false;
     if (!writeI32(static_cast<int32_t>(value.active_link_foreground))) return false;
     if (!writeI32(static_cast<int32_t>(value.codelens_foreground))) return false;
@@ -1247,6 +1298,15 @@ public:
   inline bool write(const HandleConfig& value) {
     if (!write(value.start_hit_offset)) return false;
     if (!write(value.end_hit_offset)) return false;
+    return true;
+  }
+
+  inline bool write(const RangeEffectStyle& value) {
+    if (!writeI32(static_cast<int32_t>(value.foreground_color))) return false;
+    if (!writeI32(static_cast<int32_t>(value.background_color))) return false;
+    if (!writeI32(static_cast<int32_t>(value.border_color))) return false;
+    if (!writeI32(static_cast<int32_t>(value.underline_color))) return false;
+    if (!writeI32(static_cast<int32_t>(value.underline_style))) return false;
     return true;
   }
 
@@ -1454,12 +1514,6 @@ public:
     return true;
   }
 
-  inline bool write(const CompositionDecoration& value) {
-    if (!writeI32(value.active ? 1 : 0)) return false;
-    if (!write(value.rect)) return false;
-    return true;
-  }
-
   inline bool write(const Cursor& value) {
     if (!write(value.text_position)) return false;
     if (!write(value.position)) return false;
@@ -1476,12 +1530,6 @@ public:
     return true;
   }
 
-  inline bool write(const DiagnosticDecoration& value) {
-    if (!write(value.rect)) return false;
-    if (!writeI32(static_cast<int32_t>(value.severity))) return false;
-    return true;
-  }
-
   inline bool write(const EditorRenderModel& value) {
     if (!writeF32(static_cast<float>(value.split_x))) return false;
     if (!writeI32(value.split_line_visible ? 1 : 0)) return false;
@@ -1493,15 +1541,11 @@ public:
     if (!writeI32(static_cast<int32_t>(value.current_line_render_mode))) return false;
     if (!writeList(value.lines)) return false;
     if (!write(value.cursor)) return false;
-    if (!writeList(value.selection_rects)) return false;
+    if (!writeList(value.range_effects)) return false;
     if (!write(value.selection_start_handle)) return false;
     if (!write(value.selection_end_handle)) return false;
-    if (!write(value.composition_decoration)) return false;
     if (!writeList(value.guide_segments)) return false;
-    if (!writeList(value.diagnostic_decorations)) return false;
     if (!writeU32(static_cast<uint32_t>(value.max_gutter_icons))) return false;
-    if (!writeList(value.linked_editing_rects)) return false;
-    if (!writeList(value.bracket_highlight_rects)) return false;
     if (!writeList(value.gutter_icons)) return false;
     if (!writeList(value.fold_markers)) return false;
     if (!write(value.vertical_scrollbar)) return false;
@@ -1554,9 +1598,10 @@ public:
     return true;
   }
 
-  inline bool write(const LinkedEditingRect& value) {
+  inline bool write(const RangeEffectRenderItem& value) {
     if (!write(value.rect)) return false;
-    if (!writeI32(value.is_active ? 1 : 0)) return false;
+    if (!writeI32(static_cast<int32_t>(value.kind))) return false;
+    if (!write(value.style)) return false;
     return true;
   }
 

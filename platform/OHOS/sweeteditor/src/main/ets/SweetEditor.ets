@@ -10,7 +10,10 @@ import {
 } from './core/CoreAction';
 import {
   EditorOptions,
+  EditorRangeEffectStyles,
   EditorRenderColors,
+  RangeEffectStyle,
+  RangeEffectUnderlineStyle,
   ScrollbarConfig,
   ScrollbarMode,
   ScrollbarTrackTapMode,
@@ -598,6 +601,7 @@ export struct SweetEditor {
     this.registerImeCallbacks();
 
     this.editorCore.setEditorRenderColors(this.buildEditorRenderColors(this.theme));
+    this.editorCore.setEditorRangeEffectStyles(this.buildEditorRangeEffectStyles(this.theme));
     this.editorCore.registerBatchTextStyles(this.theme.textStyles);
 
     this.initSubsystems();
@@ -730,6 +734,7 @@ export struct SweetEditor {
     }
     if (this.editorCore) {
       this.dispatchEditorActionResult(this.editorCore.setEditorRenderColors(this.buildEditorRenderColors(theme)));
+      this.dispatchEditorActionResult(this.editorCore.setEditorRangeEffectStyles(this.buildEditorRangeEffectStyles(theme)));
       this.dispatchEditorActionResult(this.editorCore.registerBatchTextStyles(theme.textStyles));
     }
     this.flush();
@@ -746,12 +751,72 @@ export struct SweetEditor {
       ? theme.linkActiveColor
       : (theme.linkColor !== 0 ? theme.linkColor : activeCodeLensForeground);
     colors.textForeground = theme.textColor;
-    colors.selectionForeground = theme.selectionTextColor;
     colors.linkForeground = linkForeground;
     colors.activeLinkForeground = activeLinkForeground;
     colors.codelensForeground = codeLensForeground;
     colors.activeCodelensForeground = activeCodeLensForeground;
     return colors;
+  }
+
+  private buildEditorRangeEffectStyles(theme: EditorTheme): EditorRangeEffectStyles {
+    const styles = new EditorRangeEffectStyles();
+    styles.selection = {
+      foregroundColor: theme.selectionTextColor,
+      backgroundColor: theme.selectionColor,
+      borderColor: 0,
+      underlineColor: 0,
+      underlineStyle: RangeEffectUnderlineStyle.NONE
+    };
+    styles.imeComposition = {
+      foregroundColor: 0,
+      backgroundColor: 0,
+      borderColor: 0,
+      underlineColor: theme.compositionUnderlineColor,
+      underlineStyle: RangeEffectUnderlineStyle.SOLID
+    };
+    styles.diagnosticError = this.diagnosticStyle(theme.diagnosticErrorColor, RangeEffectUnderlineStyle.WAVY);
+    styles.diagnosticWarning = this.diagnosticStyle(theme.diagnosticWarningColor, RangeEffectUnderlineStyle.WAVY);
+    styles.diagnosticInfo = this.diagnosticStyle(theme.diagnosticInfoColor, RangeEffectUnderlineStyle.WAVY);
+    styles.diagnosticHint = this.diagnosticStyle(theme.diagnosticHintColor, RangeEffectUnderlineStyle.DASHED);
+    styles.linkedEditingActive = {
+      foregroundColor: 0,
+      backgroundColor: this.withAlpha(theme.linkedEditingActiveColor, 0x20),
+      borderColor: theme.linkedEditingActiveColor,
+      underlineColor: 0,
+      underlineStyle: RangeEffectUnderlineStyle.NONE
+    };
+    styles.linkedEditingInactive = {
+      foregroundColor: 0,
+      backgroundColor: 0,
+      borderColor: theme.linkedEditingInactiveColor,
+      underlineColor: 0,
+      underlineStyle: RangeEffectUnderlineStyle.NONE
+    };
+    styles.bracketMatch = {
+      foregroundColor: 0,
+      backgroundColor: theme.bracketHighlightBgColor,
+      borderColor: theme.bracketHighlightBorderColor,
+      underlineColor: 0,
+      underlineStyle: RangeEffectUnderlineStyle.NONE
+    };
+    return styles;
+  }
+
+  private diagnosticStyle(color: number, underlineStyle: RangeEffectUnderlineStyle): RangeEffectStyle {
+    return {
+      foregroundColor: 0,
+      backgroundColor: 0,
+      borderColor: 0,
+      underlineColor: color,
+      underlineStyle
+    };
+  }
+
+  private withAlpha(color: number, alpha: number): number {
+    if (color === 0) {
+      return 0;
+    }
+    return (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
   }
 
   getVisibleLineRange(): IntRange {

@@ -12,6 +12,8 @@ import androidx.annotation.Nullable;
 
 import java.util.List;
 
+import com.qiplat.sweeteditor.core.config.RangeEffectStyle;
+import com.qiplat.sweeteditor.core.config.RangeEffectUnderlineStyle;
 import com.qiplat.sweeteditor.core.config.HandleConfig;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
 import com.qiplat.sweeteditor.core.TextMeasurer;
@@ -55,16 +57,11 @@ final class EditorRenderer {
     private final Paint mCurrentLinePaint;
     private final Paint mGuidePaint;
     private final Paint mSeparatorLinePaint;
-    private final Paint mCompositionPaint;
     private final Paint mSplitLinePaint;
     private final Paint mHandlePaint;
     private final Paint mFoldArrowPaint;
     private final Paint mDiagnosticPaint;
     private final DashPathEffect mDiagnosticDashEffect;
-    private final Paint mLinkedEditingActivePaint;
-    private final Paint mLinkedEditingInactivePaint;
-    private final Paint mBracketHighlightBorderPaint;
-    private final Paint mBracketHighlightBgPaint;
     private final Paint mScrollbarTrackPaint;
     private final Paint mScrollbarThumbPaint;
 
@@ -136,34 +133,10 @@ final class EditorRenderer {
         mSeparatorLinePaint.setColor(theme.separatorLineColor);
         mSeparatorLinePaint.setStrokeWidth(1f);
 
-        mCompositionPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        mCompositionPaint.setColor(theme.compositionUnderlineColor);
-        mCompositionPaint.setStrokeWidth(2f);
-        mCompositionPaint.setStyle(Paint.Style.STROKE);
-
         mDiagnosticPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mDiagnosticPaint.setStyle(Paint.Style.STROKE);
         mDiagnosticPaint.setStrokeWidth(3.0f);
         mDiagnosticDashEffect = new DashPathEffect(new float[]{3, 2}, 0);
-
-        mLinkedEditingActivePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        mLinkedEditingActivePaint.setColor(theme.linkedEditingActiveColor);
-        mLinkedEditingActivePaint.setStyle(Paint.Style.STROKE);
-        mLinkedEditingActivePaint.setStrokeWidth(2f);
-
-        mLinkedEditingInactivePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        mLinkedEditingInactivePaint.setColor(theme.linkedEditingInactiveColor);
-        mLinkedEditingInactivePaint.setStyle(Paint.Style.STROKE);
-        mLinkedEditingInactivePaint.setStrokeWidth(1f);
-
-        mBracketHighlightBorderPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        mBracketHighlightBorderPaint.setColor(theme.bracketHighlightBorderColor);
-        mBracketHighlightBorderPaint.setStyle(Paint.Style.STROKE);
-        mBracketHighlightBorderPaint.setStrokeWidth(1.5f);
-
-        mBracketHighlightBgPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        mBracketHighlightBgPaint.setColor(theme.bracketHighlightBgColor);
-        mBracketHighlightBgPaint.setStyle(Paint.Style.FILL);
 
         mScrollbarTrackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mScrollbarTrackPaint.setStyle(Paint.Style.FILL);
@@ -327,14 +300,9 @@ final class EditorRenderer {
         mCurrentLinePaint.setColor(theme.currentLineColor);
         mGuidePaint.setColor(theme.guideColor);
         mSeparatorLinePaint.setColor(theme.separatorLineColor);
-        mCompositionPaint.setColor(theme.compositionUnderlineColor);
         mSplitLinePaint.setColor(theme.splitLineColor);
         mHandlePaint.setColor(theme.cursorColor);
         mFoldArrowPaint.setColor(theme.lineNumberColor);
-        mLinkedEditingActivePaint.setColor(theme.linkedEditingActiveColor);
-        mLinkedEditingInactivePaint.setColor(theme.linkedEditingInactiveColor);
-        mBracketHighlightBorderPaint.setColor(theme.bracketHighlightBorderColor);
-        mBracketHighlightBgPaint.setColor(theme.bracketHighlightBgColor);
     }
 
     /**
@@ -355,8 +323,8 @@ final class EditorRenderer {
         drawCurrentLineDecoration(canvas, model, 0f, viewWidth);
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_CURRENT);
 
-        drawSelectionRects(canvas, model.selectionRects);
-        if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_SELECTION);
+        drawRangeEffectBackgrounds(canvas, model.rangeEffects);
+        if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_RANGE_EFFECT_BACKGROUNDS);
 
         drawLines(canvas, model);
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_LINES);
@@ -364,17 +332,8 @@ final class EditorRenderer {
         drawGuideSegments(canvas, model.guideSegments);
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_GUIDES);
 
-        drawCompositionDecoration(canvas, model.compositionDecoration);
-        if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_COMPOSITION);
-
-        drawDiagnosticDecorations(canvas, model.diagnosticDecorations);
-        if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_DIAGNOSTICS);
-
-        drawLinkedEditingRects(canvas, model.linkedEditingRects);
-        if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_LINKED);
-
-        drawBracketHighlightRects(canvas, model.bracketHighlightRects);
-        if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_BRACKET);
+        drawRangeEffectOverlays(canvas, model.rangeEffects);
+        if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_RANGE_EFFECT_OVERLAYS);
 
         drawCursor(canvas, model.cursor, cursorVisible, animationHolder);
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_CURSOR);
@@ -780,17 +739,88 @@ final class EditorRenderer {
         }
     }
 
-    private void drawSelectionRects(Canvas canvas, @Nullable List<Rect> rects) {
-        if (rects == null || rects.isEmpty()) return;
-        for (Rect rect : rects) {
-            if (rect.origin == null) continue;
+    private void drawRangeEffectBackgrounds(Canvas canvas, @Nullable List<RangeEffectRenderItem> effects) {
+        if (effects == null || effects.isEmpty()) return;
+        for (RangeEffectRenderItem effect : effects) {
+            if (effect == null || effect.rect == null || effect.rect.origin == null || effect.style == null) continue;
+            int color = effect.style.backgroundColor;
+            if (color == 0) continue;
+            mSelectionPaint.setColor(color);
             canvas.drawRect(
-                    rect.origin.x, rect.origin.y,
-                    rect.origin.x + rect.width,
-                    rect.origin.y + rect.height,
+                    effect.rect.origin.x,
+                    effect.rect.origin.y,
+                    effect.rect.origin.x + effect.rect.width,
+                    effect.rect.origin.y + effect.rect.height,
                     mSelectionPaint
             );
         }
+        mSelectionPaint.setColor(mTheme.selectionColor);
+    }
+
+    private void drawRangeEffectOverlays(Canvas canvas, @Nullable List<RangeEffectRenderItem> effects) {
+        if (effects == null || effects.isEmpty()) return;
+        for (RangeEffectRenderItem effect : effects) {
+            if (effect == null || effect.rect == null || effect.rect.origin == null || effect.style == null) continue;
+            RangeEffectStyle style = effect.style;
+            if (style.borderColor != 0) {
+                mDiagnosticPaint.setPathEffect(null);
+                mDiagnosticPaint.setStyle(Paint.Style.STROKE);
+                mDiagnosticPaint.setStrokeWidth(borderStrokeWidth(effect.kind));
+                mDiagnosticPaint.setColor(style.borderColor);
+                canvas.drawRect(
+                        effect.rect.origin.x,
+                        effect.rect.origin.y,
+                        effect.rect.origin.x + effect.rect.width,
+                        effect.rect.origin.y + effect.rect.height,
+                        mDiagnosticPaint
+                );
+            }
+            if (style.underlineColor != 0 && style.underlineStyle != RangeEffectUnderlineStyle.NONE) {
+                drawRangeEffectUnderline(canvas, effect.rect, style);
+            }
+        }
+        mDiagnosticPaint.setPathEffect(null);
+        mDiagnosticPaint.setStyle(Paint.Style.STROKE);
+    }
+
+    private float borderStrokeWidth(@Nullable RangeEffectKind kind) {
+        return kind == RangeEffectKind.LINKED_EDITING_ACTIVE ? 2.0f : 1.5f;
+    }
+
+    private void drawRangeEffectUnderline(Canvas canvas, Rect rect, RangeEffectStyle style) {
+        float startX = rect.origin.x;
+        float endX = startX + rect.width;
+        float baseY = rect.origin.y + rect.height - 1.0f;
+        mDiagnosticPaint.setColor(style.underlineColor);
+        mDiagnosticPaint.setStyle(Paint.Style.STROKE);
+        mDiagnosticPaint.setStrokeWidth(style.underlineStyle == RangeEffectUnderlineStyle.WAVY ? 3.0f : 2.0f);
+
+        if (style.underlineStyle == RangeEffectUnderlineStyle.DASHED) {
+            mDiagnosticPaint.setPathEffect(mDiagnosticDashEffect);
+            canvas.drawLine(startX, baseY, endX, baseY, mDiagnosticPaint);
+            mDiagnosticPaint.setPathEffect(null);
+            return;
+        }
+        if (style.underlineStyle == RangeEffectUnderlineStyle.SOLID) {
+            canvas.drawLine(startX, baseY, endX, baseY, mDiagnosticPaint);
+            return;
+        }
+
+        float halfWave = 7.0f;
+        float amplitude = 3.5f;
+        Path path = new Path();
+        path.moveTo(startX, baseY);
+        float x = startX;
+        int step = 0;
+        while (x < endX) {
+            float nextX = Math.min(x + halfWave, endX);
+            float midX = (x + nextX) / 2;
+            float peakY = (step % 2 == 0) ? baseY - amplitude : baseY + amplitude;
+            path.quadTo(midX, peakY, nextX, baseY);
+            x = nextX;
+            step++;
+        }
+        canvas.drawPath(path, mDiagnosticPaint);
     }
 
     private void drawSelectionHandles(Canvas canvas,
@@ -898,101 +928,6 @@ final class EditorRenderer {
         paint.setStyle(Paint.Style.FILL);
         canvas.drawPath(arrow, paint);
         paint.setStyle(saved);
-    }
-
-    private void drawCompositionDecoration(Canvas canvas, @Nullable CompositionDecoration decoration) {
-        if (decoration == null || !decoration.active) return;
-        Rect rect = decoration.rect;
-        if (rect == null || rect.origin == null) return;
-        float y = rect.origin.y + rect.height;
-        canvas.drawLine(rect.origin.x, y,
-                rect.origin.x + rect.width, y,
-                mCompositionPaint);
-    }
-
-    private void drawDiagnosticDecorations(Canvas canvas, @Nullable List<DiagnosticDecoration> decorations) {
-        if (decorations == null || decorations.isEmpty()) return;
-
-        for (DiagnosticDecoration diag : decorations) {
-            if (diag.rect == null || diag.rect.origin == null) continue;
-            int color;
-            switch (diag.severity) {
-                case 0:
-                    color = mTheme.diagnosticErrorColor;
-                    break;
-                case 1:
-                    color = mTheme.diagnosticWarningColor;
-                    break;
-                case 2:
-                    color = mTheme.diagnosticInfoColor;
-                    break;
-                default:
-                    color = mTheme.diagnosticHintColor;
-                    break;
-            }
-            mDiagnosticPaint.setColor(color);
-
-            float startX = diag.rect.origin.x;
-            float endX = startX + diag.rect.width;
-            float baseY = diag.rect.origin.y + diag.rect.height - 1.0f;
-
-            if (diag.severity == 3) {
-                mDiagnosticPaint.setPathEffect(mDiagnosticDashEffect);
-                canvas.drawLine(startX, baseY, endX, baseY, mDiagnosticPaint);
-                mDiagnosticPaint.setPathEffect(null);
-            } else {
-                float halfWave = 7.0f;
-                float amplitude = 3.5f;
-                Path path = new Path();
-                path.moveTo(startX, baseY);
-                float x = startX;
-                int step = 0;
-                while (x < endX) {
-                    float nextX = Math.min(x + halfWave, endX);
-                    float midX = (x + nextX) / 2;
-                    float peakY = (step % 2 == 0) ? baseY - amplitude : baseY + amplitude;
-                    path.quadTo(midX, peakY, nextX, baseY);
-                    x = nextX;
-                    step++;
-                }
-                canvas.drawPath(path, mDiagnosticPaint);
-            }
-        }
-    }
-
-    private void drawLinkedEditingRects(Canvas canvas, @Nullable List<LinkedEditingRect> rects) {
-        if (rects == null || rects.isEmpty()) return;
-        for (LinkedEditingRect rect : rects) {
-            Rect bounds = rect.rect;
-            if (bounds == null || bounds.origin == null) continue;
-            Paint paint = rect.isActive ? mLinkedEditingActivePaint : mLinkedEditingInactivePaint;
-            if (rect.isActive) {
-                int color = mTheme.linkedEditingActiveColor;
-                int bgColor = (color & 0x00FFFFFF) | 0x20000000;
-                Paint bgPaint = new Paint();
-                bgPaint.setColor(bgColor);
-                bgPaint.setStyle(Paint.Style.FILL);
-                canvas.drawRect(bounds.origin.x, bounds.origin.y,
-                        bounds.origin.x + bounds.width,
-                        bounds.origin.y + bounds.height, bgPaint);
-            }
-            canvas.drawRect(bounds.origin.x, bounds.origin.y,
-                    bounds.origin.x + bounds.width,
-                    bounds.origin.y + bounds.height, paint);
-        }
-    }
-
-    private void drawBracketHighlightRects(Canvas canvas, @Nullable List<Rect> rects) {
-        if (rects == null || rects.isEmpty()) return;
-        for (Rect rect : rects) {
-            if (rect.origin == null) continue;
-            canvas.drawRect(rect.origin.x, rect.origin.y,
-                    rect.origin.x + rect.width,
-                    rect.origin.y + rect.height, mBracketHighlightBgPaint);
-            canvas.drawRect(rect.origin.x, rect.origin.y,
-                    rect.origin.x + rect.width,
-                    rect.origin.y + rect.height, mBracketHighlightBorderPaint);
-        }
     }
 
     private void applyFontStyle(int fontStyle) {

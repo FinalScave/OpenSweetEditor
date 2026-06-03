@@ -199,18 +199,6 @@ int _sizeOfDiagnosticList(List<Diagnostic>? values) {
   return size;
 }
 
-List<DiagnosticDecoration> _readDiagnosticDecorationList(_BinaryReader reader) {
-  final count = reader.readInt32();
-  if (count < 0 || count > reader.remaining) {
-    throw RangeError('Invalid protocol length.');
-  }
-  final values = <DiagnosticDecoration>[];
-  for (var i = 0; i < count; i++) {
-    values.add(_readDiagnosticDecoration(reader));
-  }
-  return values;
-}
-
 void _writeFlowGuideList(_BinaryWriter writer, List<FlowGuide>? values) {
   final count = values == null ? 0 : values.length;
   writer.writeInt32(count);
@@ -385,18 +373,6 @@ int _sizeOfLinkSpanList(List<LinkSpan>? values) {
   return size;
 }
 
-List<LinkedEditingRect> _readLinkedEditingRectList(_BinaryReader reader) {
-  final count = reader.readInt32();
-  if (count < 0 || count > reader.remaining) {
-    throw RangeError('Invalid protocol length.');
-  }
-  final values = <LinkedEditingRect>[];
-  for (var i = 0; i < count; i++) {
-    values.add(_readLinkedEditingRect(reader));
-  }
-  return values;
-}
-
 void _writePhantomTextList(_BinaryWriter writer, List<PhantomText>? values) {
   final count = values == null ? 0 : values.length;
   writer.writeInt32(count);
@@ -445,34 +421,16 @@ int _sizeOfPointFList(List<PointF>? values) {
   return size;
 }
 
-List<Rect> _readRectList(_BinaryReader reader) {
+List<RangeEffectRenderItem> _readRangeEffectRenderItemList(_BinaryReader reader) {
   final count = reader.readInt32();
   if (count < 0 || count > reader.remaining) {
     throw RangeError('Invalid protocol length.');
   }
-  final values = <Rect>[];
+  final values = <RangeEffectRenderItem>[];
   for (var i = 0; i < count; i++) {
-    values.add(_readRect(reader));
+    values.add(_readRangeEffectRenderItem(reader));
   }
   return values;
-}
-
-void _writeRectList(_BinaryWriter writer, List<Rect>? values) {
-  final count = values == null ? 0 : values.length;
-  writer.writeInt32(count);
-  for (var i = 0; i < count; i++) {
-    _writeRect(writer, values![i]);
-  }
-}
-
-int _sizeOfRectList(List<Rect>? values) {
-  var size = 4;
-  if (values != null) {
-    for (final value in values) {
-      size += _sizeOfRect(value);
-    }
-  }
-  return size;
 }
 
 void _writeSeparatorGuideList(_BinaryWriter writer, List<SeparatorGuide>? values) {
@@ -898,9 +856,44 @@ int _sizeOfEditorOptions(EditorOptions value) {
   return size;
 }
 
+void _writeEditorRangeEffectStyles(_BinaryWriter writer, EditorRangeEffectStyles value) {
+  _writeRangeEffectStyle(writer, value.selection);
+  _writeRangeEffectStyle(writer, value.searchMatch);
+  _writeRangeEffectStyle(writer, value.searchCurrent);
+  _writeRangeEffectStyle(writer, value.documentHighlightText);
+  _writeRangeEffectStyle(writer, value.documentHighlightRead);
+  _writeRangeEffectStyle(writer, value.documentHighlightWrite);
+  _writeRangeEffectStyle(writer, value.linkedEditingActive);
+  _writeRangeEffectStyle(writer, value.linkedEditingInactive);
+  _writeRangeEffectStyle(writer, value.imeComposition);
+  _writeRangeEffectStyle(writer, value.bracketMatch);
+  _writeRangeEffectStyle(writer, value.diagnosticError);
+  _writeRangeEffectStyle(writer, value.diagnosticWarning);
+  _writeRangeEffectStyle(writer, value.diagnosticInfo);
+  _writeRangeEffectStyle(writer, value.diagnosticHint);
+}
+
+int _sizeOfEditorRangeEffectStyles(EditorRangeEffectStyles value) {
+  var size = 0;
+  size += _sizeOfRangeEffectStyle(value.selection);
+  size += _sizeOfRangeEffectStyle(value.searchMatch);
+  size += _sizeOfRangeEffectStyle(value.searchCurrent);
+  size += _sizeOfRangeEffectStyle(value.documentHighlightText);
+  size += _sizeOfRangeEffectStyle(value.documentHighlightRead);
+  size += _sizeOfRangeEffectStyle(value.documentHighlightWrite);
+  size += _sizeOfRangeEffectStyle(value.linkedEditingActive);
+  size += _sizeOfRangeEffectStyle(value.linkedEditingInactive);
+  size += _sizeOfRangeEffectStyle(value.imeComposition);
+  size += _sizeOfRangeEffectStyle(value.bracketMatch);
+  size += _sizeOfRangeEffectStyle(value.diagnosticError);
+  size += _sizeOfRangeEffectStyle(value.diagnosticWarning);
+  size += _sizeOfRangeEffectStyle(value.diagnosticInfo);
+  size += _sizeOfRangeEffectStyle(value.diagnosticHint);
+  return size;
+}
+
 void _writeEditorRenderColors(_BinaryWriter writer, EditorRenderColors value) {
   writer.writeInt32(value.textForeground);
-  writer.writeInt32(value.selectionForeground);
   writer.writeInt32(value.linkForeground);
   writer.writeInt32(value.activeLinkForeground);
   writer.writeInt32(value.codelensForeground);
@@ -909,7 +902,6 @@ void _writeEditorRenderColors(_BinaryWriter writer, EditorRenderColors value) {
 
 int _sizeOfEditorRenderColors(EditorRenderColors value) {
   var size = 0;
-  size += 4;
   size += 4;
   size += 4;
   size += 4;
@@ -927,6 +919,34 @@ int _sizeOfHandleConfig(HandleConfig value) {
   var size = 0;
   size += _sizeOfOffsetRect(value.startHitOffset);
   size += _sizeOfOffsetRect(value.endHitOffset);
+  return size;
+}
+
+RangeEffectStyle _readRangeEffectStyle(_BinaryReader reader) {
+  return RangeEffectStyle(
+    foregroundColor: reader.readInt32(),
+    backgroundColor: reader.readInt32(),
+    borderColor: reader.readInt32(),
+    underlineColor: reader.readInt32(),
+    underlineStyle: RangeEffectUnderlineStyle.fromValue(reader.readInt32()),
+  );
+}
+
+void _writeRangeEffectStyle(_BinaryWriter writer, RangeEffectStyle value) {
+  writer.writeInt32(value.foregroundColor);
+  writer.writeInt32(value.backgroundColor);
+  writer.writeInt32(value.borderColor);
+  writer.writeInt32(value.underlineColor);
+  writer.writeInt32(value.underlineStyle.value);
+}
+
+int _sizeOfRangeEffectStyle(RangeEffectStyle value) {
+  var size = 0;
+  size += 4;
+  size += 4;
+  size += 4;
+  size += 4;
+  size += 4;
   return size;
 }
 
@@ -1347,13 +1367,6 @@ int _sizeOfTabStopGroup(TabStopGroup value) {
   return size;
 }
 
-CompositionDecoration _readCompositionDecoration(_BinaryReader reader) {
-  return CompositionDecoration(
-    active: reader.readBoolI32(),
-    rect: _readRect(reader),
-  );
-}
-
 Cursor _readCursor(_BinaryReader reader) {
   return Cursor(
     textPosition: _readTextPosition(reader),
@@ -1386,13 +1399,6 @@ int _sizeOfCursorRect(CursorRect value) {
   return size;
 }
 
-DiagnosticDecoration _readDiagnosticDecoration(_BinaryReader reader) {
-  return DiagnosticDecoration(
-    rect: _readRect(reader),
-    severity: reader.readInt32(),
-  );
-}
-
 EditorRenderModel _readEditorRenderModel(_BinaryReader reader) {
   return EditorRenderModel(
     splitX: reader.readFloat32(),
@@ -1405,15 +1411,11 @@ EditorRenderModel _readEditorRenderModel(_BinaryReader reader) {
     currentLineRenderMode: CurrentLineRenderMode.fromValue(reader.readInt32()),
     lines: _readVisualLineList(reader),
     cursor: _readCursor(reader),
-    selectionRects: _readRectList(reader),
+    rangeEffects: _readRangeEffectRenderItemList(reader),
     selectionStartHandle: _readSelectionHandle(reader),
     selectionEndHandle: _readSelectionHandle(reader),
-    compositionDecoration: _readCompositionDecoration(reader),
     guideSegments: _readGuideSegmentList(reader),
-    diagnosticDecorations: _readDiagnosticDecorationList(reader),
     maxGutterIcons: reader.readUint32(),
-    linkedEditingRects: _readLinkedEditingRectList(reader),
-    bracketHighlightRects: _readRectList(reader),
     gutterIcons: _readGutterIconRenderItemList(reader),
     foldMarkers: _readFoldMarkerRenderItemList(reader),
     verticalScrollbar: _readScrollbarModel(reader),
@@ -1470,10 +1472,11 @@ LayoutMetrics _readLayoutMetrics(_BinaryReader reader) {
   );
 }
 
-LinkedEditingRect _readLinkedEditingRect(_BinaryReader reader) {
-  return LinkedEditingRect(
+RangeEffectRenderItem _readRangeEffectRenderItem(_BinaryReader reader) {
+  return RangeEffectRenderItem(
     rect: _readRect(reader),
-    isActive: reader.readBoolI32(),
+    kind: RangeEffectKind.fromValue(reader.readInt32()),
+    style: _readRangeEffectStyle(reader),
   );
 }
 
@@ -1559,6 +1562,11 @@ class CoreProtocol {
     return _readTextStyle(reader);
   }
 
+  static RangeEffectStyle decodeRangeEffectStyleFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
+    final reader = _BinaryReader.fromPointer(ptr, size);
+    return _readRangeEffectStyle(reader);
+  }
+
   static IntRange decodeIntRangeFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
     final reader = _BinaryReader.fromPointer(ptr, size);
     return _readIntRange(reader);
@@ -1624,11 +1632,6 @@ class CoreProtocol {
     return _readKeyChord(reader);
   }
 
-  static CompositionDecoration decodeCompositionDecorationFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
-    final reader = _BinaryReader.fromPointer(ptr, size);
-    return _readCompositionDecoration(reader);
-  }
-
   static Cursor decodeCursorFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
     final reader = _BinaryReader.fromPointer(ptr, size);
     return _readCursor(reader);
@@ -1637,11 +1640,6 @@ class CoreProtocol {
   static CursorRect decodeCursorRectFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
     final reader = _BinaryReader.fromPointer(ptr, size);
     return _readCursorRect(reader);
-  }
-
-  static DiagnosticDecoration decodeDiagnosticDecorationFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
-    final reader = _BinaryReader.fromPointer(ptr, size);
-    return _readDiagnosticDecoration(reader);
   }
 
   static EditorRenderModel decodeEditorRenderModelFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
@@ -1669,9 +1667,9 @@ class CoreProtocol {
     return _readLayoutMetrics(reader);
   }
 
-  static LinkedEditingRect decodeLinkedEditingRectFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
+  static RangeEffectRenderItem decodeRangeEffectRenderItemFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
     final reader = _BinaryReader.fromPointer(ptr, size);
-    return _readLinkedEditingRect(reader);
+    return _readRangeEffectRenderItem(reader);
   }
 
   static ScrollMetrics decodeScrollMetricsFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
@@ -2218,6 +2216,12 @@ class CoreProtocol {
   static Uint8List encodeEditorOptions(EditorOptions value) {
     final writer = _BinaryWriter(_sizeOfEditorOptions(value));
     _writeEditorOptions(writer, value);
+    return writer.toBytes();
+  }
+
+  static Uint8List encodeEditorRangeEffectStyles(EditorRangeEffectStyles value) {
+    final writer = _BinaryWriter(_sizeOfEditorRangeEffectStyles(value));
+    _writeEditorRangeEffectStyles(writer, value);
     return writer.toBytes();
   }
 

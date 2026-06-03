@@ -798,6 +798,14 @@ class SweetEditorCore {
     }
 
     @discardableResult
+    func setEditorRangeEffectStyles(_ styles: EditorRangeEffectStyles) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeEditorRangeEffectStyles(styles)
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_editor_range_effect_styles(handle, ptr, size, &outSize)
+        }
+    }
+
+    @discardableResult
     func scrollToLine(line: Int, behavior: UInt8) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0

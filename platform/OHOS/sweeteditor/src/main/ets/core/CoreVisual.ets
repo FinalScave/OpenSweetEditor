@@ -1,5 +1,5 @@
 import { TextStyle } from './CoreAdornments';
-import { CurrentLineRenderMode, FoldArrowMode } from './CoreConfig';
+import { CurrentLineRenderMode, FoldArrowMode, RangeEffectStyle } from './CoreConfig';
 import { PointF, Rect, TextPosition } from './CoreFoundation';
 
 export enum FoldState {
@@ -77,6 +77,43 @@ export function pointerCursorTypeFromValue(value: number): PointerCursorType {
   }
 }
 
+export enum RangeEffectKind {
+  SELECTION = 0,
+  SEARCH_MATCH = 1,
+  SEARCH_CURRENT = 2,
+  DOCUMENT_HIGHLIGHT_TEXT = 3,
+  DOCUMENT_HIGHLIGHT_READ = 4,
+  DOCUMENT_HIGHLIGHT_WRITE = 5,
+  LINKED_EDITING_ACTIVE = 6,
+  LINKED_EDITING_INACTIVE = 7,
+  IME_COMPOSITION = 8,
+  BRACKET_MATCH = 9,
+  DIAGNOSTIC_ERROR = 10,
+  DIAGNOSTIC_WARNING = 11,
+  DIAGNOSTIC_INFO = 12,
+  DIAGNOSTIC_HINT = 13,
+}
+
+export function rangeEffectKindFromValue(value: number): RangeEffectKind {
+  switch (value) {
+    case 0: return RangeEffectKind.SELECTION;
+    case 1: return RangeEffectKind.SEARCH_MATCH;
+    case 2: return RangeEffectKind.SEARCH_CURRENT;
+    case 3: return RangeEffectKind.DOCUMENT_HIGHLIGHT_TEXT;
+    case 4: return RangeEffectKind.DOCUMENT_HIGHLIGHT_READ;
+    case 5: return RangeEffectKind.DOCUMENT_HIGHLIGHT_WRITE;
+    case 6: return RangeEffectKind.LINKED_EDITING_ACTIVE;
+    case 7: return RangeEffectKind.LINKED_EDITING_INACTIVE;
+    case 8: return RangeEffectKind.IME_COMPOSITION;
+    case 9: return RangeEffectKind.BRACKET_MATCH;
+    case 10: return RangeEffectKind.DIAGNOSTIC_ERROR;
+    case 11: return RangeEffectKind.DIAGNOSTIC_WARNING;
+    case 12: return RangeEffectKind.DIAGNOSTIC_INFO;
+    case 13: return RangeEffectKind.DIAGNOSTIC_HINT;
+    default: return RangeEffectKind.SELECTION;
+  }
+}
+
 export enum VisualLineKind {
   CONTENT = 0,
   PHANTOM = 1,
@@ -119,11 +156,6 @@ export function visualRunTypeFromValue(value: number): VisualRunType {
   }
 }
 
-export interface CompositionDecoration {
-  active: boolean;
-  rect: Rect;
-}
-
 export interface Cursor {
   textPosition: TextPosition;
   position: PointF;
@@ -138,11 +170,6 @@ export interface CursorRect {
   height: number;
 }
 
-export interface DiagnosticDecoration {
-  rect: Rect;
-  severity: number;
-}
-
 export interface EditorRenderModel {
   splitX: number;
   splitLineVisible: boolean;
@@ -154,15 +181,11 @@ export interface EditorRenderModel {
   currentLineRenderMode: CurrentLineRenderMode;
   lines: VisualLine[];
   cursor: Cursor;
-  selectionRects: Rect[];
+  rangeEffects: RangeEffectRenderItem[];
   selectionStartHandle: SelectionHandle;
   selectionEndHandle: SelectionHandle;
-  compositionDecoration: CompositionDecoration;
   guideSegments: GuideSegment[];
-  diagnosticDecorations: DiagnosticDecoration[];
   maxGutterIcons: number;
-  linkedEditingRects: LinkedEditingRect[];
-  bracketHighlightRects: Rect[];
   gutterIcons: GutterIconRenderItem[];
   foldMarkers: FoldMarkerRenderItem[];
   verticalScrollbar: ScrollbarModel;
@@ -210,9 +233,10 @@ export interface LayoutMetrics {
   gutterVisible: boolean;
 }
 
-export interface LinkedEditingRect {
+export interface RangeEffectRenderItem {
   rect: Rect;
-  isActive: boolean;
+  kind: RangeEffectKind;
+  style: RangeEffectStyle;
 }
 
 export interface ScrollMetrics {

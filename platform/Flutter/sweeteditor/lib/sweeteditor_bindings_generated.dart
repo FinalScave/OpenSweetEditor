@@ -243,6 +243,11 @@ external ffi.Pointer<ffi.Uint8> editor_set_gutter_visible(
 );
 
 /// Set selection handle hit-test configuration.
+/// @param data HandleConfig binary payload encoded by CoreProtocol:
+/// OffsetRect start_hit_offset
+/// OffsetRect end_hit_offset
+/// OffsetRect is f32 left, f32 top, f32 right, f32 bottom
+/// @param size payload byte length
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -259,6 +264,16 @@ external ffi.Pointer<ffi.Uint8> editor_set_handle_config(
 );
 
 /// Set scrollbar full configuration (geometry + behavior).
+/// @param data ScrollbarConfig binary payload encoded by CoreProtocol:
+/// f32 thickness
+/// f32 min_thumb
+/// f32 thumb_hit_padding
+/// enum_i32 mode
+/// bool_u8 thumb_draggable
+/// enum_i32 track_tap_mode
+/// u16 fade_delay_ms
+/// u16 fade_duration_ms
+/// @param size payload byte length
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -268,6 +283,51 @@ external ffi.Pointer<ffi.Uint8> editor_set_handle_config(
   )
 >(assetId: _sweeteditorAssetId)
 external ffi.Pointer<ffi.Uint8> editor_set_scrollbar_config(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set editor colors resolved by core when building visual runs.
+/// @param data EditorRenderColors binary payload encoded by CoreProtocol:
+/// i32 text_foreground
+/// i32 link_foreground
+/// i32 active_link_foreground
+/// i32 codelens_foreground
+/// i32 active_codelens_foreground
+/// @param size payload byte length
+/// @param out_size Output: payload byte length (bytes, excluding extra '\0' terminator)
+/// @return EditorActionResult binary payload encoded by CoreProtocol
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_editor_render_colors(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set range-effect styles resolved by core when building the render model.
+/// @param data EditorRangeEffectStyles binary payload encoded by CoreProtocol
+/// @param size payload byte length
+/// @param out_size Output: payload byte length (bytes, excluding extra '\0' terminator)
+/// @return EditorActionResult binary payload encoded by CoreProtocol
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_editor_range_effect_styles(
   int editor_handle,
   ffi.Pointer<ffi.Uint8> data,
   int size,
@@ -288,15 +348,11 @@ external ffi.Pointer<ffi.Uint8> editor_set_scrollbar_config(
 /// enum_i32 current_line_render_mode
 /// List<VisualLine> lines
 /// Cursor cursor
-/// List<Rect> selection_rects
+/// List<RangeEffectRenderItem> range_effects
 /// SelectionHandle selection_start_handle
 /// SelectionHandle selection_end_handle
-/// CompositionDecoration composition_decoration
 /// List<GuideSegment> guide_segments
-/// List<DiagnosticDecoration> diagnostic_decorations
 /// u32 max_gutter_icons
-/// List<LinkedEditingRect> linked_editing_rects
-/// List<Rect> bracket_highlight_rects
 /// List<GutterIconRenderItem> gutter_icons
 /// List<FoldMarkerRenderItem> fold_markers
 /// ScrollbarModel vertical_scrollbar
@@ -310,10 +366,9 @@ external ffi.Pointer<ffi.Uint8> editor_set_scrollbar_config(
 /// Cursor is TextPosition text_position, PointF position, f32 height, bool_i32 visible, bool_i32 show_dragger
 /// Rect is PointF origin, f32 width, f32 height
 /// SelectionHandle is PointF position, f32 height, bool_i32 visible
-/// CompositionDecoration is bool_i32 active, Rect rect
+/// RangeEffectRenderItem is Rect rect, enum_i32 kind, RangeEffectStyle style
+/// RangeEffectStyle is i32 foreground_color, i32 background_color, i32 border_color, i32 underline_color, enum_i32 underline_style
 /// GuideSegment is enum_i32 direction, enum_i32 type, enum_i32 style, PointF start, PointF end, bool_i32 arrow_end
-/// DiagnosticDecoration is Rect rect, enum_i32 severity
-/// LinkedEditingRect is Rect rect, bool_i32 is_active
 /// GutterIconRenderItem is i32 logical_line, i32 icon_id, Rect rect
 /// FoldMarkerRenderItem is i32 logical_line, enum_i32 fold_state, Rect rect
 /// ScrollbarModel is bool_i32 visible, f32 alpha, bool_i32 thumb_active, Rect track, Rect thumb
@@ -398,6 +453,15 @@ external ffi.Pointer<ffi.Uint8> editor_get_layout_metrics(
 /// to decide whether to flush editor state and schedule repaint.
 ///
 /// Handle gesture event.
+/// @param data GestureEvent binary payload encoded by CoreProtocol:
+/// enum_i32 type
+/// List<PointF> points
+/// i32 modifiers
+/// f32 wheel_delta_x
+/// f32 wheel_delta_y
+/// f32 direct_scale
+/// PointF is f32 x followed by f32 y
+/// @param size payload byte length
 /// @return EditorActionResult binary payload, returns NULL on failure
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
@@ -426,10 +490,8 @@ external ffi.Pointer<ffi.Uint8> editor_update_pointer_modifiers(
   ffi.Pointer<ffi.Size> out_size,
 );
 
-/// Tick edge-scroll during drag selection / handle drag.
-/// Call at ~16ms intervals while the previous EditorActionResult.needs_edge_scroll was true.
 /// Unified animation tick: advances all active animations (edge-scroll, fling).
-/// Platform can use a single frame callback driven by needs_animation and call this
+/// Platform should use a single frame callback driven by needs_animation and call this.
 /// Returns the same EditorActionResult binary layout as editor_handle_gesture_event.
 /// When needs_animation becomes false in the returned payload, stop the callback.
 /// @return EditorActionResult binary payload
@@ -1041,22 +1103,6 @@ external void editor_get_cursor_rect(
   ffi.Pointer<ffi.Float> out_x,
   ffi.Pointer<ffi.Float> out_y,
   ffi.Pointer<ffi.Float> out_height,
-);
-
-/// Set editor colors resolved by core when building visual runs.
-@ffi.Native<
-  ffi.Pointer<ffi.Uint8> Function(
-    ffi.IntPtr,
-    ffi.Pointer<ffi.Uint8>,
-    ffi.Size,
-    ffi.Pointer<ffi.Size>,
-  )
->(assetId: _sweeteditorAssetId)
-external ffi.Pointer<ffi.Uint8> editor_set_editor_render_colors(
-  int editor_handle,
-  ffi.Pointer<ffi.Uint8> data,
-  int size,
-  ffi.Pointer<ffi.Size> out_size,
 );
 
 /// Register text style (color + background color + font style)
@@ -2055,6 +2101,9 @@ external ffi.Pointer<ffi.Uint8> editor_ime_mark_document_range_by_offset(
 );
 
 /// Report platform candidate replacement text.
+/// @param data ImeTextReplacement binary payload encoded by CoreProtocol:
+/// TextRange range, U8String text, enum_i32 ImeScriptClass script_class
+/// @param size Binary payload size in bytes
 /// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
@@ -2071,6 +2120,12 @@ external ffi.Pointer<ffi.Uint8> editor_ime_replace_text(
   ffi.Pointer<ffi.Size> out_size,
 );
 
+/// Replace text in the document IME context by UTF-16 offsets.
+/// @param data ImeDocumentTextReplacement binary payload encoded by CoreProtocol:
+/// size_as_u32 start_offset, size_as_u32 end_offset, U8String text,
+/// int32_t cursor_offset, enum_i32 ImeScriptClass script_class
+/// @param size Binary payload size in bytes
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -2086,6 +2141,12 @@ external ffi.Pointer<ffi.Uint8> editor_ime_replace_document_text(
   ffi.Pointer<ffi.Size> out_size,
 );
 
+/// Replace text in the input-context IME window by UTF-16 offsets.
+/// @param data ImeInputContextTextReplacement binary payload encoded by CoreProtocol:
+/// size_as_u32 start_offset, size_as_u32 end_offset, U8String text,
+/// int32_t cursor_offset, enum_i32 ImeScriptClass script_class
+/// @param size Binary payload size in bytes
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -2149,6 +2210,13 @@ editor_ime_notify_input_context_selection_changed(
   ffi.Pointer<ffi.Size> out_size,
 );
 
+/// Update the external text model state snapshot.
+/// @param data ImeTextModelState binary payload encoded by CoreProtocol:
+/// enum_i32 ImeTextModelMode mode, uint64_t context_id, int32_t document_start_offset,
+/// U8String text, ImeTextRange selection, ImeTextRange composition,
+/// enum_i32 ImeScriptClass script_class
+/// @param size Binary payload size in bytes
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -2164,6 +2232,13 @@ external ffi.Pointer<ffi.Uint8> editor_ime_update_text_model_state(
   ffi.Pointer<ffi.Size> out_size,
 );
 
+/// Update the external text model by delta.
+/// @param data ImeTextModelDelta binary payload encoded by CoreProtocol:
+/// enum_i32 ImeTextModelMode mode, uint64_t context_id, int32_t document_start_offset,
+/// U8String old_text, ImeTextRange delta, U8String delta_text,
+/// ImeTextRange selection, ImeTextRange composition, enum_i32 ImeScriptClass script_class
+/// @param size Binary payload size in bytes
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -2198,6 +2273,13 @@ external ffi.Pointer<ffi.Uint8> editor_ime_update_input_state_selection(
   ffi.Pointer<ffi.Size> out_size,
 );
 
+/// Replace text in the platform input state.
+/// @param data ImeInputStateTextReplacement binary payload encoded by CoreProtocol:
+/// uint64_t context_id, int32_t document_start_offset, size_as_u32 start_offset,
+/// size_as_u32 end_offset, U8String text, int32_t cursor_offset,
+/// enum_i32 ImeScriptClass script_class
+/// @param size Binary payload size in bytes
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,

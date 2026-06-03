@@ -75,13 +75,10 @@ export class PerfStepRecorder {
   static readonly MAX_STEPS = 32;
   static readonly STEP_CLEAR = 'clear';
   static readonly STEP_CURRENT = 'current';
-  static readonly STEP_SELECTION = 'selection';
+  static readonly STEP_RANGE_EFFECT_BACKGROUNDS = 'rangeBg';
   static readonly STEP_LINES = 'lines';
   static readonly STEP_GUIDES = 'guides';
-  static readonly STEP_COMPOSITION = 'comp';
-  static readonly STEP_DIAGNOSTICS = 'diag';
-  static readonly STEP_LINKED = 'linked';
-  static readonly STEP_BRACKET = 'bracket';
+  static readonly STEP_RANGE_EFFECT_OVERLAYS = 'rangeFx';
   static readonly STEP_CURSOR = 'cursor';
   static readonly STEP_LINE_NO = 'lineNo';
   static readonly STEP_HANDLES = 'handles';
@@ -317,4 +314,3 @@ export class PerfOverlay {
     }
   }
 }
-

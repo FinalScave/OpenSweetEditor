@@ -212,7 +212,6 @@ EDITOR_API const uint8_t* editor_set_scrollbar_config(intptr_t editor_handle, co
 /// Set editor colors resolved by core when building visual runs.
 /// @param data EditorRenderColors binary payload encoded by CoreProtocol:
 ///        i32 text_foreground
-///        i32 selection_foreground
 ///        i32 link_foreground
 ///        i32 active_link_foreground
 ///        i32 codelens_foreground
@@ -221,6 +220,13 @@ EDITOR_API const uint8_t* editor_set_scrollbar_config(intptr_t editor_handle, co
 /// @param out_size Output: payload byte length (bytes, excluding extra '\0' terminator)
 /// @return EditorActionResult binary payload encoded by CoreProtocol
 EDITOR_API const uint8_t* editor_set_editor_render_colors(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+
+/// Set range-effect styles resolved by core when building the render model.
+/// @param data EditorRangeEffectStyles binary payload encoded by CoreProtocol
+/// @param size payload byte length
+/// @param out_size Output: payload byte length (bytes, excluding extra '\0' terminator)
+/// @return EditorActionResult binary payload encoded by CoreProtocol
+EDITOR_API const uint8_t* editor_set_editor_range_effect_styles(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Build render model for one editor frame
 /// @param out_size Output: payload byte length (bytes, excluding extra '\0' terminator)
@@ -236,15 +242,11 @@ EDITOR_API const uint8_t* editor_set_editor_render_colors(intptr_t editor_handle
 ///         enum_i32 current_line_render_mode
 ///         List<VisualLine> lines
 ///         Cursor cursor
-///         List<Rect> selection_rects
+///         List<RangeEffectRenderItem> range_effects
 ///         SelectionHandle selection_start_handle
 ///         SelectionHandle selection_end_handle
-///         CompositionDecoration composition_decoration
 ///         List<GuideSegment> guide_segments
-///         List<DiagnosticDecoration> diagnostic_decorations
 ///         u32 max_gutter_icons
-///         List<LinkedEditingRect> linked_editing_rects
-///         List<Rect> bracket_highlight_rects
 ///         List<GutterIconRenderItem> gutter_icons
 ///         List<FoldMarkerRenderItem> fold_markers
 ///         ScrollbarModel vertical_scrollbar
@@ -258,10 +260,9 @@ EDITOR_API const uint8_t* editor_set_editor_render_colors(intptr_t editor_handle
 ///         Cursor is TextPosition text_position, PointF position, f32 height, bool_i32 visible, bool_i32 show_dragger
 ///         Rect is PointF origin, f32 width, f32 height
 ///         SelectionHandle is PointF position, f32 height, bool_i32 visible
-///         CompositionDecoration is bool_i32 active, Rect rect
+///         RangeEffectRenderItem is Rect rect, enum_i32 kind, RangeEffectStyle style
+///         RangeEffectStyle is i32 foreground_color, i32 background_color, i32 border_color, i32 underline_color, enum_i32 underline_style
 ///         GuideSegment is enum_i32 direction, enum_i32 type, enum_i32 style, PointF start, PointF end, bool_i32 arrow_end
-///         DiagnosticDecoration is Rect rect, enum_i32 severity
-///         LinkedEditingRect is Rect rect, bool_i32 is_active
 ///         GutterIconRenderItem is i32 logical_line, i32 icon_id, Rect rect
 ///         FoldMarkerRenderItem is i32 logical_line, enum_i32 fold_state, Rect rect
 ///         ScrollbarModel is bool_i32 visible, f32 alpha, bool_i32 thumb_active, Rect track, Rect thumb

@@ -21,6 +21,13 @@ namespace SweetEditor {
         HIDDEN = 2
     }
 
+    public enum RangeEffectUnderlineStyle {
+        NONE = 0,
+        SOLID = 1,
+        DASHED = 2,
+        WAVY = 3
+    }
+
     public enum ScrollbarMode {
         ALWAYS = 0,
         TRANSIENT = 1,
@@ -50,9 +57,25 @@ namespace SweetEditor {
         public bool RevealSelectionEndOnSelectAll { get; set; } = false;
     }
 
+    public sealed partial class EditorRangeEffectStyles {
+        public RangeEffectStyle Selection { get; set; } = new RangeEffectStyle();
+        public RangeEffectStyle SearchMatch { get; set; } = new RangeEffectStyle();
+        public RangeEffectStyle SearchCurrent { get; set; } = new RangeEffectStyle();
+        public RangeEffectStyle DocumentHighlightText { get; set; } = new RangeEffectStyle();
+        public RangeEffectStyle DocumentHighlightRead { get; set; } = new RangeEffectStyle();
+        public RangeEffectStyle DocumentHighlightWrite { get; set; } = new RangeEffectStyle();
+        public RangeEffectStyle LinkedEditingActive { get; set; } = new RangeEffectStyle();
+        public RangeEffectStyle LinkedEditingInactive { get; set; } = new RangeEffectStyle();
+        public RangeEffectStyle ImeComposition { get; set; } = new RangeEffectStyle();
+        public RangeEffectStyle BracketMatch { get; set; } = new RangeEffectStyle();
+        public RangeEffectStyle DiagnosticError { get; set; } = new RangeEffectStyle();
+        public RangeEffectStyle DiagnosticWarning { get; set; } = new RangeEffectStyle();
+        public RangeEffectStyle DiagnosticInfo { get; set; } = new RangeEffectStyle();
+        public RangeEffectStyle DiagnosticHint { get; set; } = new RangeEffectStyle();
+    }
+
     public sealed partial class EditorRenderColors {
         public int TextForeground { get; set; } = 0;
-        public int SelectionForeground { get; set; } = 0;
         public int LinkForeground { get; set; } = 0;
         public int ActiveLinkForeground { get; set; } = 0;
         public int CodelensForeground { get; set; } = 0;
@@ -62,6 +85,14 @@ namespace SweetEditor {
     public sealed partial class HandleConfig {
         public OffsetRect StartHitOffset { get; set; } = new OffsetRect();
         public OffsetRect EndHitOffset { get; set; } = new OffsetRect();
+    }
+
+    public sealed partial class RangeEffectStyle {
+        public int ForegroundColor { get; set; } = 0;
+        public int BackgroundColor { get; set; } = 0;
+        public int BorderColor { get; set; } = 0;
+        public int UnderlineColor { get; set; } = 0;
+        public RangeEffectUnderlineStyle UnderlineStyle { get; set; } = RangeEffectUnderlineStyle.NONE;
     }
 
     public sealed partial class ScrollbarConfig {

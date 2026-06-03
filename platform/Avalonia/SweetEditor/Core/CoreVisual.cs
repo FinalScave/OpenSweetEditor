@@ -34,6 +34,23 @@ namespace SweetEditor {
         HAND = 2
     }
 
+    public enum RangeEffectKind {
+        SELECTION = 0,
+        SEARCH_MATCH = 1,
+        SEARCH_CURRENT = 2,
+        DOCUMENT_HIGHLIGHT_TEXT = 3,
+        DOCUMENT_HIGHLIGHT_READ = 4,
+        DOCUMENT_HIGHLIGHT_WRITE = 5,
+        LINKED_EDITING_ACTIVE = 6,
+        LINKED_EDITING_INACTIVE = 7,
+        IME_COMPOSITION = 8,
+        BRACKET_MATCH = 9,
+        DIAGNOSTIC_ERROR = 10,
+        DIAGNOSTIC_WARNING = 11,
+        DIAGNOSTIC_INFO = 12,
+        DIAGNOSTIC_HINT = 13
+    }
+
     public enum VisualLineKind {
         CONTENT = 0,
         PHANTOM = 1,
@@ -52,11 +69,6 @@ namespace SweetEditor {
         LINK = 8
     }
 
-    public sealed partial class CompositionDecoration {
-        public bool Active { get; set; } = false;
-        public Rect Rect { get; set; } = new Rect();
-    }
-
     public sealed partial class Cursor {
         public TextPosition TextPosition { get; set; } = new TextPosition();
         public PointF Position { get; set; } = new PointF();
@@ -71,11 +83,6 @@ namespace SweetEditor {
         public float Height { get; set; } = 0f;
     }
 
-    public sealed partial class DiagnosticDecoration {
-        public Rect Rect { get; set; } = new Rect();
-        public int Severity { get; set; } = 0;
-    }
-
     public sealed partial class EditorRenderModel {
         public float SplitX { get; set; } = 0f;
         public bool SplitLineVisible { get; set; } = true;
@@ -87,15 +94,11 @@ namespace SweetEditor {
         public CurrentLineRenderMode CurrentLineRenderMode { get; set; } = CurrentLineRenderMode.BACKGROUND;
         public List<VisualLine> Lines { get; set; } = new();
         public Cursor Cursor { get; set; } = new Cursor();
-        public List<Rect> SelectionRects { get; set; } = new();
+        public List<RangeEffectRenderItem> RangeEffects { get; set; } = new();
         public SelectionHandle SelectionStartHandle { get; set; } = new SelectionHandle();
         public SelectionHandle SelectionEndHandle { get; set; } = new SelectionHandle();
-        public CompositionDecoration CompositionDecoration { get; set; } = new CompositionDecoration();
         public List<GuideSegment> GuideSegments { get; set; } = new();
-        public List<DiagnosticDecoration> DiagnosticDecorations { get; set; } = new();
         public int MaxGutterIcons { get; set; } = 0;
-        public List<LinkedEditingRect> LinkedEditingRects { get; set; } = new();
-        public List<Rect> BracketHighlightRects { get; set; } = new();
         public List<GutterIconRenderItem> GutterIcons { get; set; } = new();
         public List<FoldMarkerRenderItem> FoldMarkers { get; set; } = new();
         public ScrollbarModel VerticalScrollbar { get; set; } = new ScrollbarModel();
@@ -143,9 +146,10 @@ namespace SweetEditor {
         public bool GutterVisible { get; set; } = true;
     }
 
-    public sealed partial class LinkedEditingRect {
+    public sealed partial class RangeEffectRenderItem {
         public Rect Rect { get; set; } = new Rect();
-        public bool IsActive { get; set; } = false;
+        public RangeEffectKind Kind { get; set; } = RangeEffectKind.SELECTION;
+        public RangeEffectStyle Style { get; set; } = new RangeEffectStyle();
     }
 
     public sealed partial class ScrollMetrics {

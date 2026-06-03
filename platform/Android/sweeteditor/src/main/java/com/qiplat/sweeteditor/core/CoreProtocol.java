@@ -23,9 +23,12 @@ import com.qiplat.sweeteditor.core.adornment.TextStyle;
 import com.qiplat.sweeteditor.core.config.AutoIndentMode;
 import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
 import com.qiplat.sweeteditor.core.config.EditorOptions;
+import com.qiplat.sweeteditor.core.config.EditorRangeEffectStyles;
 import com.qiplat.sweeteditor.core.config.EditorRenderColors;
 import com.qiplat.sweeteditor.core.config.FoldArrowMode;
 import com.qiplat.sweeteditor.core.config.HandleConfig;
+import com.qiplat.sweeteditor.core.config.RangeEffectStyle;
+import com.qiplat.sweeteditor.core.config.RangeEffectUnderlineStyle;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
 import com.qiplat.sweeteditor.core.config.ScrollbarMode;
 import com.qiplat.sweeteditor.core.config.ScrollbarTrackTapMode;
@@ -64,10 +67,8 @@ import com.qiplat.sweeteditor.core.keymap.KeyCode;
 import com.qiplat.sweeteditor.core.keymap.KeyModifier;
 import com.qiplat.sweeteditor.core.snippet.LinkedEditingModel;
 import com.qiplat.sweeteditor.core.snippet.TabStopGroup;
-import com.qiplat.sweeteditor.core.visual.CompositionDecoration;
 import com.qiplat.sweeteditor.core.visual.Cursor;
 import com.qiplat.sweeteditor.core.visual.CursorRect;
-import com.qiplat.sweeteditor.core.visual.DiagnosticDecoration;
 import com.qiplat.sweeteditor.core.visual.EditorRenderModel;
 import com.qiplat.sweeteditor.core.visual.FoldMarkerRenderItem;
 import com.qiplat.sweeteditor.core.visual.FoldState;
@@ -77,8 +78,9 @@ import com.qiplat.sweeteditor.core.visual.GuideStyle;
 import com.qiplat.sweeteditor.core.visual.GuideType;
 import com.qiplat.sweeteditor.core.visual.GutterIconRenderItem;
 import com.qiplat.sweeteditor.core.visual.LayoutMetrics;
-import com.qiplat.sweeteditor.core.visual.LinkedEditingRect;
 import com.qiplat.sweeteditor.core.visual.PointerCursorType;
+import com.qiplat.sweeteditor.core.visual.RangeEffectKind;
+import com.qiplat.sweeteditor.core.visual.RangeEffectRenderItem;
 import com.qiplat.sweeteditor.core.visual.ScrollMetrics;
 import com.qiplat.sweeteditor.core.visual.ScrollbarModel;
 import com.qiplat.sweeteditor.core.visual.SelectionHandle;
@@ -181,18 +183,6 @@ public final class CoreProtocol {
             }
         }
         return size;
-    }
-
-    private static ArrayList<DiagnosticDecoration> readDiagnosticDecorationList(ByteBuffer data) {
-        int count = data.getInt();
-        if (count < 0 || count > data.remaining()) {
-            throw new IllegalArgumentException("Invalid protocol length.");
-        }
-        ArrayList<DiagnosticDecoration> values = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            values.add(readDiagnosticDecoration(data));
-        }
-        return values;
     }
 
     private static void writeFlowGuideList(ByteBuffer data, java.util.List<? extends FlowGuide> values) {
@@ -369,18 +359,6 @@ public final class CoreProtocol {
         return size;
     }
 
-    private static ArrayList<LinkedEditingRect> readLinkedEditingRectList(ByteBuffer data) {
-        int count = data.getInt();
-        if (count < 0 || count > data.remaining()) {
-            throw new IllegalArgumentException("Invalid protocol length.");
-        }
-        ArrayList<LinkedEditingRect> values = new ArrayList<>(count);
-        for (int i = 0; i < count; i++) {
-            values.add(readLinkedEditingRect(data));
-        }
-        return values;
-    }
-
     private static void writePhantomTextList(ByteBuffer data, java.util.List<? extends PhantomText> values) {
         int count = values == null ? 0 : values.size();
         data.putInt(count);
@@ -429,34 +407,16 @@ public final class CoreProtocol {
         return size;
     }
 
-    private static ArrayList<Rect> readRectList(ByteBuffer data) {
+    private static ArrayList<RangeEffectRenderItem> readRangeEffectRenderItemList(ByteBuffer data) {
         int count = data.getInt();
         if (count < 0 || count > data.remaining()) {
             throw new IllegalArgumentException("Invalid protocol length.");
         }
-        ArrayList<Rect> values = new ArrayList<>(count);
+        ArrayList<RangeEffectRenderItem> values = new ArrayList<>(count);
         for (int i = 0; i < count; i++) {
-            values.add(readRect(data));
+            values.add(readRangeEffectRenderItem(data));
         }
         return values;
-    }
-
-    private static void writeRectList(ByteBuffer data, java.util.List<? extends Rect> values) {
-        int count = values == null ? 0 : values.size();
-        data.putInt(count);
-        for (int i = 0; i < count; i++) {
-            writeRectFields(data, values.get(i));
-        }
-    }
-
-    private static int sizeOfRectList(java.util.List<? extends Rect> values) {
-        int size = 4;
-        if (values != null) {
-            for (int i = 0; i < values.size(); i++) {
-                size += sizeOfRect(values.get(i));
-            }
-        }
-        return size;
     }
 
     private static void writeSeparatorGuideList(ByteBuffer data, java.util.List<? extends SeparatorGuide> values) {
@@ -967,9 +927,49 @@ public final class CoreProtocol {
         return size;
     }
 
+    private static void writeEditorRangeEffectStylesFields(ByteBuffer data, EditorRangeEffectStyles value) {
+        writeRangeEffectStyleFields(data, value.selection);
+        writeRangeEffectStyleFields(data, value.searchMatch);
+        writeRangeEffectStyleFields(data, value.searchCurrent);
+        writeRangeEffectStyleFields(data, value.documentHighlightText);
+        writeRangeEffectStyleFields(data, value.documentHighlightRead);
+        writeRangeEffectStyleFields(data, value.documentHighlightWrite);
+        writeRangeEffectStyleFields(data, value.linkedEditingActive);
+        writeRangeEffectStyleFields(data, value.linkedEditingInactive);
+        writeRangeEffectStyleFields(data, value.imeComposition);
+        writeRangeEffectStyleFields(data, value.bracketMatch);
+        writeRangeEffectStyleFields(data, value.diagnosticError);
+        writeRangeEffectStyleFields(data, value.diagnosticWarning);
+        writeRangeEffectStyleFields(data, value.diagnosticInfo);
+        writeRangeEffectStyleFields(data, value.diagnosticHint);
+    }
+
+    public static void writeEditorRangeEffectStyles(ByteBuffer data, EditorRangeEffectStyles value) {
+        prepare(data);
+        writeEditorRangeEffectStylesFields(data, value);
+    }
+
+    public static int sizeOfEditorRangeEffectStyles(EditorRangeEffectStyles value) {
+        int size = 0;
+        size += sizeOfRangeEffectStyle(value.selection);
+        size += sizeOfRangeEffectStyle(value.searchMatch);
+        size += sizeOfRangeEffectStyle(value.searchCurrent);
+        size += sizeOfRangeEffectStyle(value.documentHighlightText);
+        size += sizeOfRangeEffectStyle(value.documentHighlightRead);
+        size += sizeOfRangeEffectStyle(value.documentHighlightWrite);
+        size += sizeOfRangeEffectStyle(value.linkedEditingActive);
+        size += sizeOfRangeEffectStyle(value.linkedEditingInactive);
+        size += sizeOfRangeEffectStyle(value.imeComposition);
+        size += sizeOfRangeEffectStyle(value.bracketMatch);
+        size += sizeOfRangeEffectStyle(value.diagnosticError);
+        size += sizeOfRangeEffectStyle(value.diagnosticWarning);
+        size += sizeOfRangeEffectStyle(value.diagnosticInfo);
+        size += sizeOfRangeEffectStyle(value.diagnosticHint);
+        return size;
+    }
+
     private static void writeEditorRenderColorsFields(ByteBuffer data, EditorRenderColors value) {
         data.putInt(value.textForeground);
-        data.putInt(value.selectionForeground);
         data.putInt(value.linkForeground);
         data.putInt(value.activeLinkForeground);
         data.putInt(value.codelensForeground);
@@ -983,7 +983,6 @@ public final class CoreProtocol {
 
     public static int sizeOfEditorRenderColors(EditorRenderColors value) {
         int size = 0;
-        size += 4;
         size += 4;
         size += 4;
         size += 4;
@@ -1006,6 +1005,44 @@ public final class CoreProtocol {
         int size = 0;
         size += sizeOfOffsetRect(value.startHitOffset);
         size += sizeOfOffsetRect(value.endHitOffset);
+        return size;
+    }
+
+    private static RangeEffectStyle readRangeEffectStyle(ByteBuffer data) {
+        RangeEffectStyle value = new RangeEffectStyle();
+        value.foregroundColor = data.getInt();
+        value.backgroundColor = data.getInt();
+        value.borderColor = data.getInt();
+        value.underlineColor = data.getInt();
+        value.underlineStyle = RangeEffectUnderlineStyle.fromValue(data.getInt());
+        return value;
+    }
+
+    public static RangeEffectStyle decodeRangeEffectStyle(ByteBuffer data) {
+        prepare(data);
+        return readRangeEffectStyle(data);
+    }
+
+    private static void writeRangeEffectStyleFields(ByteBuffer data, RangeEffectStyle value) {
+        data.putInt(value.foregroundColor);
+        data.putInt(value.backgroundColor);
+        data.putInt(value.borderColor);
+        data.putInt(value.underlineColor);
+        data.putInt(value.underlineStyle.value);
+    }
+
+    public static void writeRangeEffectStyle(ByteBuffer data, RangeEffectStyle value) {
+        prepare(data);
+        writeRangeEffectStyleFields(data, value);
+    }
+
+    public static int sizeOfRangeEffectStyle(RangeEffectStyle value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
         return size;
     }
 
@@ -1586,18 +1623,6 @@ public final class CoreProtocol {
         return size;
     }
 
-    private static CompositionDecoration readCompositionDecoration(ByteBuffer data) {
-        CompositionDecoration value = new CompositionDecoration();
-        value.active = data.getInt() != 0;
-        value.rect = readRect(data);
-        return value;
-    }
-
-    public static CompositionDecoration decodeCompositionDecoration(ByteBuffer data) {
-        prepare(data);
-        return readCompositionDecoration(data);
-    }
-
     private static Cursor readCursor(ByteBuffer data) {
         Cursor value = new Cursor();
         value.textPosition = readTextPosition(data);
@@ -1645,18 +1670,6 @@ public final class CoreProtocol {
         return size;
     }
 
-    private static DiagnosticDecoration readDiagnosticDecoration(ByteBuffer data) {
-        DiagnosticDecoration value = new DiagnosticDecoration();
-        value.rect = readRect(data);
-        value.severity = data.getInt();
-        return value;
-    }
-
-    public static DiagnosticDecoration decodeDiagnosticDecoration(ByteBuffer data) {
-        prepare(data);
-        return readDiagnosticDecoration(data);
-    }
-
     private static EditorRenderModel readEditorRenderModel(ByteBuffer data) {
         EditorRenderModel value = new EditorRenderModel();
         value.splitX = data.getFloat();
@@ -1669,15 +1682,11 @@ public final class CoreProtocol {
         value.currentLineRenderMode = CurrentLineRenderMode.fromValue(data.getInt());
         value.lines = readVisualLineList(data);
         value.cursor = readCursor(data);
-        value.selectionRects = readRectList(data);
+        value.rangeEffects = readRangeEffectRenderItemList(data);
         value.selectionStartHandle = readSelectionHandle(data);
         value.selectionEndHandle = readSelectionHandle(data);
-        value.compositionDecoration = readCompositionDecoration(data);
         value.guideSegments = readGuideSegmentList(data);
-        value.diagnosticDecorations = readDiagnosticDecorationList(data);
         value.maxGutterIcons = data.getInt();
-        value.linkedEditingRects = readLinkedEditingRectList(data);
-        value.bracketHighlightRects = readRectList(data);
         value.gutterIcons = readGutterIconRenderItemList(data);
         value.foldMarkers = readFoldMarkerRenderItemList(data);
         value.verticalScrollbar = readScrollbarModel(data);
@@ -1759,16 +1768,17 @@ public final class CoreProtocol {
         return readLayoutMetrics(data);
     }
 
-    private static LinkedEditingRect readLinkedEditingRect(ByteBuffer data) {
-        LinkedEditingRect value = new LinkedEditingRect();
+    private static RangeEffectRenderItem readRangeEffectRenderItem(ByteBuffer data) {
+        RangeEffectRenderItem value = new RangeEffectRenderItem();
         value.rect = readRect(data);
-        value.isActive = data.getInt() != 0;
+        value.kind = RangeEffectKind.fromValue(data.getInt());
+        value.style = readRangeEffectStyle(data);
         return value;
     }
 
-    public static LinkedEditingRect decodeLinkedEditingRect(ByteBuffer data) {
+    public static RangeEffectRenderItem decodeRangeEffectRenderItem(ByteBuffer data) {
         prepare(data);
-        return readLinkedEditingRect(data);
+        return readRangeEffectRenderItem(data);
     }
 
     private static ScrollMetrics readScrollMetrics(ByteBuffer data) {
@@ -2527,6 +2537,13 @@ public final class CoreProtocol {
     public static ByteBuffer encodeEditorOptions(EditorOptions value) {
         ByteBuffer data = ByteBuffer.allocateDirect(sizeOfEditorOptions(value)).order(ByteOrder.LITTLE_ENDIAN);
         writeEditorOptionsFields(data, value);
+        data.flip();
+        return data;
+    }
+
+    public static ByteBuffer encodeEditorRangeEffectStyles(EditorRangeEffectStyles value) {
+        ByteBuffer data = ByteBuffer.allocateDirect(sizeOfEditorRangeEffectStyles(value)).order(ByteOrder.LITTLE_ENDIAN);
+        writeEditorRangeEffectStylesFields(data, value);
         data.flip();
         return data;
     }

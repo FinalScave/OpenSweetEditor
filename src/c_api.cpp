@@ -319,6 +319,15 @@ const uint8_t* editor_set_editor_render_colors(intptr_t editor_handle, const uin
   return editorActionResultToBinary(editor_core->setEditorRenderColors(colors), out_size);
 }
 
+const uint8_t* editor_set_editor_range_effect_styles(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  EditorRangeEffectStyles styles;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, styles)) {
+    return nullBinaryPayload(out_size);
+  }
+  return editorActionResultToBinary(editor_core->setEditorRangeEffectStyles(styles), out_size);
+}
+
 const uint8_t* editor_build_render_model(intptr_t editor_handle, size_t* out_size) {
   PERF_TIMER("c_api::editor_build_render_model");
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);

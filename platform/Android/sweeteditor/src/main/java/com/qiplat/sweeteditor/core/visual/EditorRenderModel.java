@@ -2,7 +2,6 @@ package com.qiplat.sweeteditor.core.visual;
 
 import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
 import com.qiplat.sweeteditor.core.foundation.PointF;
-import com.qiplat.sweeteditor.core.foundation.Rect;
 import java.util.List;
 
 public final class EditorRenderModel {
@@ -16,15 +15,11 @@ public final class EditorRenderModel {
     public CurrentLineRenderMode currentLineRenderMode = CurrentLineRenderMode.BACKGROUND;
     public java.util.List<VisualLine> lines = new java.util.ArrayList<>();
     public Cursor cursor = new Cursor();
-    public java.util.List<Rect> selectionRects = new java.util.ArrayList<>();
+    public java.util.List<RangeEffectRenderItem> rangeEffects = new java.util.ArrayList<>();
     public SelectionHandle selectionStartHandle = new SelectionHandle();
     public SelectionHandle selectionEndHandle = new SelectionHandle();
-    public CompositionDecoration compositionDecoration = new CompositionDecoration();
     public java.util.List<GuideSegment> guideSegments = new java.util.ArrayList<>();
-    public java.util.List<DiagnosticDecoration> diagnosticDecorations = new java.util.ArrayList<>();
     public int maxGutterIcons = 0;
-    public java.util.List<LinkedEditingRect> linkedEditingRects = new java.util.ArrayList<>();
-    public java.util.List<Rect> bracketHighlightRects = new java.util.ArrayList<>();
     public java.util.List<GutterIconRenderItem> gutterIcons = new java.util.ArrayList<>();
     public java.util.List<FoldMarkerRenderItem> foldMarkers = new java.util.ArrayList<>();
     public ScrollbarModel verticalScrollbar = new ScrollbarModel();
@@ -36,7 +31,7 @@ public final class EditorRenderModel {
     public EditorRenderModel() {
     }
 
-    public EditorRenderModel(float splitX, boolean splitLineVisible, float scrollX, float scrollY, float viewportWidth, float viewportHeight, PointF currentLine, CurrentLineRenderMode currentLineRenderMode, java.util.List<VisualLine> lines, Cursor cursor, java.util.List<Rect> selectionRects, SelectionHandle selectionStartHandle, SelectionHandle selectionEndHandle, CompositionDecoration compositionDecoration, java.util.List<GuideSegment> guideSegments, java.util.List<DiagnosticDecoration> diagnosticDecorations, int maxGutterIcons, java.util.List<LinkedEditingRect> linkedEditingRects, java.util.List<Rect> bracketHighlightRects, java.util.List<GutterIconRenderItem> gutterIcons, java.util.List<FoldMarkerRenderItem> foldMarkers, ScrollbarModel verticalScrollbar, ScrollbarModel horizontalScrollbar, boolean gutterSticky, boolean gutterVisible, PointerCursorType pointerCursorType) {
+    public EditorRenderModel(float splitX, boolean splitLineVisible, float scrollX, float scrollY, float viewportWidth, float viewportHeight, PointF currentLine, CurrentLineRenderMode currentLineRenderMode, java.util.List<VisualLine> lines, Cursor cursor, java.util.List<RangeEffectRenderItem> rangeEffects, SelectionHandle selectionStartHandle, SelectionHandle selectionEndHandle, java.util.List<GuideSegment> guideSegments, int maxGutterIcons, java.util.List<GutterIconRenderItem> gutterIcons, java.util.List<FoldMarkerRenderItem> foldMarkers, ScrollbarModel verticalScrollbar, ScrollbarModel horizontalScrollbar, boolean gutterSticky, boolean gutterVisible, PointerCursorType pointerCursorType) {
         this.splitX = splitX;
         this.splitLineVisible = splitLineVisible;
         this.scrollX = scrollX;
@@ -47,15 +42,11 @@ public final class EditorRenderModel {
         this.currentLineRenderMode = currentLineRenderMode;
         this.lines = lines;
         this.cursor = cursor;
-        this.selectionRects = selectionRects;
+        this.rangeEffects = rangeEffects;
         this.selectionStartHandle = selectionStartHandle;
         this.selectionEndHandle = selectionEndHandle;
-        this.compositionDecoration = compositionDecoration;
         this.guideSegments = guideSegments;
-        this.diagnosticDecorations = diagnosticDecorations;
         this.maxGutterIcons = maxGutterIcons;
-        this.linkedEditingRects = linkedEditingRects;
-        this.bracketHighlightRects = bracketHighlightRects;
         this.gutterIcons = gutterIcons;
         this.foldMarkers = foldMarkers;
         this.verticalScrollbar = verticalScrollbar;

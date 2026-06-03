@@ -704,6 +704,7 @@ namespace SweetEditor {
 
 			if (editorCore != null) {
 				DispatchEditorActionResult(editorCore.SetEditorRenderColors(BuildEditorRenderColors(theme)));
+				DispatchEditorActionResult(editorCore.SetEditorRangeEffectStyles(BuildEditorRangeEffectStyles(theme)));
 				DispatchEditorActionResult(editorCore.registerBatchTextStyles(theme.TextStyles));
 			}
 
@@ -730,12 +731,51 @@ namespace SweetEditor {
 			}
 			return new EditorRenderColors {
 				TextForeground = ToCoreColor(theme.TextColor),
-				SelectionForeground = ToCoreColor(theme.SelectionTextColor),
 				LinkForeground = linkForeground,
 				ActiveLinkForeground = activeLinkForeground,
 				CodelensForeground = codeLensForeground,
 				ActiveCodelensForeground = activeCodeLensForeground
 			};
+		}
+
+		private static EditorRangeEffectStyles BuildEditorRangeEffectStyles(EditorTheme theme) {
+			int linkedActive = ToCoreColor(theme.LinkedEditingActiveColor);
+			return new EditorRangeEffectStyles {
+				Selection = new RangeEffectStyle {
+					ForegroundColor = ToCoreColor(theme.SelectionTextColor),
+					BackgroundColor = ToCoreColor(theme.SelectionColor)
+				},
+				ImeComposition = new RangeEffectStyle {
+					UnderlineColor = ToCoreColor(theme.CompositionUnderlineColor),
+					UnderlineStyle = RangeEffectUnderlineStyle.SOLID
+				},
+				DiagnosticError = DiagnosticStyle(theme.DiagnosticErrorColor, RangeEffectUnderlineStyle.WAVY),
+				DiagnosticWarning = DiagnosticStyle(theme.DiagnosticWarningColor, RangeEffectUnderlineStyle.WAVY),
+				DiagnosticInfo = DiagnosticStyle(theme.DiagnosticInfoColor, RangeEffectUnderlineStyle.WAVY),
+				DiagnosticHint = DiagnosticStyle(theme.DiagnosticHintColor, RangeEffectUnderlineStyle.DASHED),
+				LinkedEditingActive = new RangeEffectStyle {
+					BackgroundColor = WithAlpha(linkedActive, 0x20),
+					BorderColor = linkedActive
+				},
+				LinkedEditingInactive = new RangeEffectStyle {
+					BorderColor = ToCoreColor(theme.LinkedEditingInactiveColor)
+				},
+				BracketMatch = new RangeEffectStyle {
+					BackgroundColor = ToCoreColor(theme.BracketHighlightBgColor),
+					BorderColor = ToCoreColor(theme.BracketHighlightBorderColor)
+				}
+			};
+		}
+
+		private static RangeEffectStyle DiagnosticStyle(Color color, RangeEffectUnderlineStyle underlineStyle) {
+			return new RangeEffectStyle {
+				UnderlineColor = ToCoreColor(color),
+				UnderlineStyle = underlineStyle
+			};
+		}
+
+		private static int WithAlpha(int color, int alpha) {
+			return color == 0 ? 0 : (color & 0x00FFFFFF) | ((alpha & 0xFF) << 24);
 		}
 
 		private static int ToCoreColor(Color color) {
@@ -1368,6 +1408,7 @@ namespace SweetEditor {
 
 			// Register default theme text styles.
 			editorCore.SetEditorRenderColors(BuildEditorRenderColors(currentTheme));
+			editorCore.SetEditorRangeEffectStyles(BuildEditorRangeEffectStyles(currentTheme));
 			editorCore.registerBatchTextStyles(currentTheme.TextStyles);
 			keyMap = EditorKeyMap.DefaultKeyMap();
 			editorCore.SetKeyMap(keyMap.GetBindings());
