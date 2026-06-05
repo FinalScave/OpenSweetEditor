@@ -2,6 +2,7 @@ import { Document } from './core/EditorCore';
 import { ScrollBehavior } from './core/CoreAction';
 import { IntRange, TextPosition, TextRange } from './core/CoreFoundation';
 import { CursorRect, ScrollMetrics } from './core/CoreVisual';
+import { SearchRequest, SearchState, createEmptySearchState } from './core/CoreSearch';
 import {
   BracketGuide,
   Diagnostic,
@@ -687,6 +688,34 @@ export class SweetEditorController {
 
   canRedo(): boolean {
     return this.api ? this.api.canRedo() : false;
+  }
+
+  search(request: SearchRequest): void {
+    this.run((api) => api.search(request));
+  }
+
+  findNextSearchMatch(): void {
+    this.run((api) => api.findNextSearchMatch());
+  }
+
+  findPreviousSearchMatch(): void {
+    this.run((api) => api.findPreviousSearchMatch());
+  }
+
+  replaceCurrentSearchMatch(replacement: string): void {
+    this.run((api) => api.replaceCurrentSearchMatch(replacement));
+  }
+
+  replaceAllSearchMatches(replacement: string): void {
+    this.run((api) => api.replaceAllSearchMatches(replacement));
+  }
+
+  clearSearch(): void {
+    this.run((api) => api.clearSearch());
+  }
+
+  getSearchState(): SearchState {
+    return this.api ? this.api.getSearchState() : createEmptySearchState();
   }
 
   setPerfOverlayEnabled(enabled: boolean): void {

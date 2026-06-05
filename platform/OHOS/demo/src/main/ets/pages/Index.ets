@@ -8,10 +8,14 @@ import {
   InlayType,
   InlineSuggestion,
   InlineSuggestionListener,
+  SearchRequest,
+  SearchState,
+  SearchStatus,
   SelectionChangedEvent,
   SweetEditor,
   SweetEditorController,
-  WrapMode
+  WrapMode,
+  createEmptySearchState
 } from '@qiplat/sweeteditor';
 import { resourceManager } from '@kit.LocalizationKit';
 import { util } from '@kit.ArkTS';
@@ -86,6 +90,14 @@ struct Index {
   @State fileOptions: SelectOption[] = [];
   @State fileNames: string[] = [];
   @State activeFileName: string = '';
+  @State searchVisible: boolean = false;
+  @State replaceVisible: boolean = false;
+  @State searchText: string = '';
+  @State replaceText: string = '';
+  @State searchCaseSensitive: boolean = false;
+  @State searchWholeWord: boolean = false;
+  @State searchUseRegex: boolean = false;
+  @State searchState: SearchState = createEmptySearchState();
 
   private readonly editorController: SweetEditorController = new SweetEditorController();
   private readonly demoCompletionProvider: DemoCompletionProvider = new DemoCompletionProvider();
@@ -145,6 +157,10 @@ struct Index {
         this.buildHeader()
       }
       .width('100%')
+
+      if (this.searchVisible) {
+        this.buildSearchPanel()
+      }
 
       Column() {
         SweetEditor({ controller: this.editorController })
@@ -266,6 +282,32 @@ struct Index {
         .backgroundColor(this.wrapButtonColor())
         .borderRadius(12)
         .onClick(() => this.cycleWrapMode())
+
+        Button() {
+          Text('⌕')
+            .fontSize(17)
+            .fontColor(this.primaryTextColor())
+        }
+        .width(40)
+        .height(40)
+        .margin({ left: 8 })
+        .padding(0)
+        .backgroundColor(this.panelStrongColor())
+        .borderRadius(12)
+        .onClick(() => this.openSearchPanel(false))
+
+        Button() {
+          Text('⇄')
+            .fontSize(16)
+            .fontColor(this.primaryTextColor())
+        }
+        .width(40)
+        .height(40)
+        .margin({ left: 8 })
+        .padding(0)
+        .backgroundColor(this.panelStrongColor())
+        .borderRadius(12)
+        .onClick(() => this.openSearchPanel(true))
       }
       .width('100%')
       .margin({ top: 12 })
@@ -280,6 +322,175 @@ struct Index {
     .width('100%')
     .padding({ left: 14, right: 14, top: 14, bottom: 12 })
     .backgroundColor(this.panelColor())
+  }
+
+  @Builder
+  private buildSearchPanel(): void {
+    Column() {
+      Row() {
+        TextInput({ text: this.searchText, placeholder: 'Find' })
+          .layoutWeight(1)
+          .height(36)
+          .fontSize(13)
+          .fontColor(this.primaryTextColor())
+          .backgroundColor(this.panelStrongColor())
+          .borderRadius(10)
+          .onChange((value: string) => {
+            this.searchText = value;
+            this.performSearch();
+          })
+
+        Button() {
+          Text('\\n')
+            .fontSize(12)
+            .fontColor(this.primaryTextColor())
+        }
+        .width(40)
+        .height(36)
+        .margin({ left: 6 })
+        .padding(0)
+        .backgroundColor(this.panelStrongColor())
+        .borderRadius(10)
+        .onClick(() => {
+          this.searchText += '\\n';
+          this.performSearch();
+        })
+
+        Text(this.searchCounterText())
+          .width(56)
+          .fontSize(11)
+          .fontColor(this.secondaryTextColor())
+          .textAlign(TextAlign.Center)
+          .maxLines(1)
+
+        this.buildSearchToggle('Aa', this.searchCaseSensitive, () => {
+          this.searchCaseSensitive = !this.searchCaseSensitive;
+          this.performSearch();
+        })
+        this.buildSearchToggle('Word', this.searchWholeWord, () => {
+          this.searchWholeWord = !this.searchWholeWord;
+          this.performSearch();
+        })
+        this.buildSearchToggle('.*', this.searchUseRegex, () => {
+          this.searchUseRegex = !this.searchUseRegex;
+          this.performSearch();
+        })
+
+        Button() {
+          Text('↑')
+            .fontSize(13)
+            .fontColor(this.primaryTextColor())
+        }
+        .width(36)
+        .height(36)
+        .margin({ left: 6 })
+        .padding(0)
+        .backgroundColor(this.panelStrongColor())
+        .borderRadius(10)
+        .onClick(() => this.findPreviousSearchMatch())
+
+        Button() {
+          Text('↓')
+            .fontSize(13)
+            .fontColor(this.primaryTextColor())
+        }
+        .width(36)
+        .height(36)
+        .margin({ left: 6 })
+        .padding(0)
+        .backgroundColor(this.panelStrongColor())
+        .borderRadius(10)
+        .onClick(() => this.findNextSearchMatch())
+
+        Button() {
+          Text('×')
+            .fontSize(14)
+            .fontColor(this.primaryTextColor())
+        }
+        .width(36)
+        .height(36)
+        .margin({ left: 6 })
+        .padding(0)
+        .backgroundColor(this.panelStrongColor())
+        .borderRadius(10)
+        .onClick(() => this.closeSearchPanel())
+      }
+      .width('100%')
+
+      if (this.replaceVisible) {
+        Row() {
+          TextInput({ text: this.replaceText, placeholder: 'Replace' })
+            .layoutWeight(1)
+            .height(36)
+            .fontSize(13)
+            .fontColor(this.primaryTextColor())
+            .backgroundColor(this.panelStrongColor())
+            .borderRadius(10)
+            .onChange((value: string) => {
+              this.replaceText = value;
+            })
+
+          Button() {
+            Text('\\n')
+              .fontSize(12)
+              .fontColor(this.primaryTextColor())
+          }
+          .width(40)
+          .height(36)
+          .margin({ left: 6 })
+          .padding(0)
+          .backgroundColor(this.panelStrongColor())
+          .borderRadius(10)
+          .onClick(() => {
+            this.replaceText += '\\n';
+          })
+
+          Button() {
+            Text('Replace')
+              .fontSize(12)
+              .fontColor(this.primaryTextColor())
+          }
+          .height(36)
+          .margin({ left: 6 })
+          .padding({ left: 10, right: 10 })
+          .backgroundColor(this.panelStrongColor())
+          .borderRadius(10)
+          .onClick(() => this.replaceCurrentSearchMatch())
+
+          Button() {
+            Text('All')
+              .fontSize(12)
+              .fontColor(this.primaryTextColor())
+          }
+          .height(36)
+          .margin({ left: 6 })
+          .padding({ left: 10, right: 10 })
+          .backgroundColor(this.panelStrongColor())
+          .borderRadius(10)
+          .onClick(() => this.replaceAllSearchMatches())
+        }
+        .width('100%')
+        .margin({ top: 6 })
+      }
+    }
+    .width('100%')
+    .padding({ left: 14, right: 14, bottom: 10 })
+    .backgroundColor(this.panelColor())
+  }
+
+  @Builder
+  private buildSearchToggle(label: string, selected: boolean, action: () => void): void {
+    Button() {
+      Text(label)
+        .fontSize(11)
+        .fontColor(selected ? '#FFFFFF' : this.primaryTextColor())
+    }
+    .height(36)
+    .margin({ left: 6 })
+    .padding({ left: 8, right: 8 })
+    .backgroundColor(selected ? ACCENT : this.panelStrongColor())
+    .borderRadius(10)
+    .onClick(() => action())
   }
 
   @Builder
@@ -402,6 +613,7 @@ struct Index {
     this.cancelPendingSuggestion();
     this.selectionActive = false;
     this.editorController.dismissInlineSuggestion();
+    this.clearSearchState();
     const fileName = this.activeFileName.length > 0 ? this.activeFileName : FALLBACK_FILE_NAME;
     const manager = this.getResourceManager();
     let text = FALLBACK_TEXT;
@@ -420,6 +632,135 @@ struct Index {
     this.editorController.loadDocument(Document.fromString(text));
     this.editorController.requestDecorationRefresh();
     this.statusMessage = `Loaded: ${fileName}`;
+  }
+
+  private openSearchPanel(replaceMode: boolean): void {
+    this.searchVisible = true;
+    this.replaceVisible = replaceMode;
+    this.performSearch();
+  }
+
+  private closeSearchPanel(): void {
+    this.clearSearchState();
+    this.searchVisible = false;
+    this.replaceVisible = false;
+    this.statusMessage = 'Search closed';
+  }
+
+  private clearSearchState(): void {
+    this.editorController.clearSearch();
+    this.searchState = createEmptySearchState();
+  }
+
+  private performSearch(): void {
+    if (!this.searchVisible) {
+      return;
+    }
+    const pattern = this.decodeNewlineTokens(this.searchText);
+    if (pattern.length === 0) {
+      this.clearSearchState();
+      return;
+    }
+
+    const request = new SearchRequest();
+    request.pattern = pattern;
+    request.options = {
+      caseSensitive: this.searchCaseSensitive,
+      wholeWord: this.searchWholeWord,
+      useRegex: this.searchUseRegex,
+      wrapAround: true,
+      maxMatches: 10000
+    };
+    this.editorController.search(request);
+    this.refreshSearchState();
+    if (this.searchState.status === SearchStatus.FAILED) {
+      this.statusMessage = this.searchState.errorMessage.length > 0 ? this.searchState.errorMessage : 'Search failed';
+    }
+  }
+
+  private findNextSearchMatch(): void {
+    if (!this.searchVisible) {
+      this.openSearchPanel(false);
+      return;
+    }
+    this.editorController.findNextSearchMatch();
+    this.refreshSearchState();
+  }
+
+  private findPreviousSearchMatch(): void {
+    if (!this.searchVisible) {
+      this.openSearchPanel(false);
+      return;
+    }
+    this.editorController.findPreviousSearchMatch();
+    this.refreshSearchState();
+  }
+
+  private replaceCurrentSearchMatch(): void {
+    if (!this.searchVisible) {
+      return;
+    }
+    const state = this.editorController.getSearchState();
+    if (this.searchText.length === 0 || state.status === SearchStatus.FAILED || !state.hasCurrentMatch) {
+      return;
+    }
+    this.editorController.replaceCurrentSearchMatch(this.decodeNewlineTokens(this.replaceText));
+    this.performSearch();
+    this.statusMessage = 'Replace';
+  }
+
+  private replaceAllSearchMatches(): void {
+    if (!this.searchVisible) {
+      return;
+    }
+    const state = this.editorController.getSearchState();
+    if (this.searchText.length === 0 || state.status === SearchStatus.FAILED || state.matchCount <= 0) {
+      return;
+    }
+    const count = state.matchCount;
+    this.editorController.replaceAllSearchMatches(this.decodeNewlineTokens(this.replaceText));
+    this.performSearch();
+    this.statusMessage = `Replaced ${count} matches`;
+  }
+
+  private refreshSearchState(): void {
+    this.searchState = this.editorController.getSearchState();
+  }
+
+  private searchCounterText(): string {
+    if (!this.searchVisible || this.searchText.length === 0) {
+      return '';
+    }
+    if (this.searchState.status === SearchStatus.FAILED) {
+      return 'Error';
+    }
+    if (this.searchState.matchCount <= 0) {
+      return '0/0';
+    }
+    const index = this.searchState.hasCurrentMatch ? this.searchState.currentIndex + 1 : 0;
+    return `${index}/${this.searchState.matchCount}`;
+  }
+
+  private decodeNewlineTokens(text: string): string {
+    let decoded = '';
+    for (let i = 0; i < text.length; i++) {
+      const ch = text.charAt(i);
+      if (ch === '\\' && i + 1 < text.length) {
+        const next = text.charAt(i + 1);
+        if (next === 'n') {
+          decoded += '\n';
+          i++;
+          continue;
+        }
+        if (next === '\\') {
+          decoded += '\\';
+          i++;
+          continue;
+        }
+      }
+      decoded += ch;
+    }
+    return decoded;
   }
 
   private createInlineSuggestionListener(): InlineSuggestionListener {

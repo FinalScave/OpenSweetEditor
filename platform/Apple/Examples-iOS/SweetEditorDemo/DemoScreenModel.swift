@@ -71,6 +71,10 @@ final class DemoScreenModel: ObservableObject {
         documentText = text
     }
 
+    func updateStatus(_ text: String) {
+        statusText = text
+    }
+
     func cycleWrapMode() {
         wrapMode = DemoWrapModeCycle.next(after: wrapMode)
     }

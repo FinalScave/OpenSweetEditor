@@ -23,6 +23,15 @@ namespace Demo {
 
 		private Label statusLabel = null!;
 		private ComboBox fileComboBox = null!;
+		private FlowLayoutPanel toolbar = null!;
+		private Panel searchPanel = null!;
+		private FlowLayoutPanel replaceRow = null!;
+		private TextBox searchTextBox = null!;
+		private TextBox replaceTextBox = null!;
+		private Label searchCounterLabel = null!;
+		private CheckBox matchCaseCheckBox = null!;
+		private CheckBox wholeWordCheckBox = null!;
+		private CheckBox regexCheckBox = null!;
 		private bool isDarkTheme = true;
 		private WrapMode wrapModePreset = WrapMode.NONE;
 		private bool suppressFileSelection;
@@ -33,8 +42,10 @@ namespace Demo {
 
 		public Form1() {
 			InitializeComponent();
+			KeyPreview = true;
 			SetupToolbar();
 			RegisterColorStyleForCurrentTheme();
+			KeyDown += OnDemoKeyDown;
 
 			try {
 				DemoDecorationProvider.EnsureSweetLineReady(ResolveSyntaxFiles());
@@ -56,7 +67,7 @@ namespace Demo {
 		}
 
 		private void SetupToolbar() {
-			var toolbar = new FlowLayoutPanel {
+			toolbar = new FlowLayoutPanel {
 				Dock = DockStyle.Top,
 				Height = 40,
 				AutoSize = false,
@@ -104,6 +115,8 @@ namespace Demo {
 				UpdateStatus(isDarkTheme ? "Switched to dark theme" : "Switched to light theme");
 			}));
 			toolbar.Controls.Add(MakeButton("WrapMode", (_, _) => CycleWrapMode()));
+			toolbar.Controls.Add(MakeButton("Search", (_, _) => OpenSearchPanel(false)));
+			toolbar.Controls.Add(MakeButton("Replace", (_, _) => OpenSearchPanel(true)));
 
 			statusLabel = new Label {
 				AutoSize = true,
@@ -112,16 +125,74 @@ namespace Demo {
 			};
 			toolbar.Controls.Add(statusLabel);
 
+			searchPanel = new Panel {
+				Height = 70,
+				Visible = false,
+				BackColor = toolbar.BackColor
+			};
+			var searchRow = new FlowLayoutPanel {
+				Left = 4,
+				Top = 4,
+				Height = 30,
+				AutoSize = false,
+				WrapContents = false,
+				FlowDirection = FlowDirection.LeftToRight
+			};
+			searchRow.Controls.Add(MakeLabel("Search"));
+			searchTextBox = new TextBox { Width = 190, Margin = new Padding(2, 2, 2, 0) };
+			searchTextBox.TextChanged += (_, _) => PerformSearch();
+			searchTextBox.KeyDown += (_, e) => {
+				if (e.KeyCode == Keys.Enter) {
+					FindNextSearchMatch();
+					e.SuppressKeyPress = true;
+				}
+			};
+			searchRow.Controls.Add(searchTextBox);
+			searchRow.Controls.Add(MakeButton("\\n", (_, _) => InsertNewlineToken(searchTextBox)));
+			searchCounterLabel = MakeLabel("0/0");
+			searchCounterLabel.Width = 56;
+			searchRow.Controls.Add(searchCounterLabel);
+			matchCaseCheckBox = MakeCheckBox("Aa");
+			wholeWordCheckBox = MakeCheckBox("Word");
+			regexCheckBox = MakeCheckBox(".*");
+			searchRow.Controls.Add(matchCaseCheckBox);
+			searchRow.Controls.Add(wholeWordCheckBox);
+			searchRow.Controls.Add(regexCheckBox);
+			searchRow.Controls.Add(MakeButton("Prev", (_, _) => FindPreviousSearchMatch()));
+			searchRow.Controls.Add(MakeButton("Next", (_, _) => FindNextSearchMatch()));
+			searchRow.Controls.Add(MakeButton("Close", (_, _) => CloseSearchPanel()));
+
+			replaceRow = new FlowLayoutPanel {
+				Left = 4,
+				Top = 36,
+				Height = 30,
+				AutoSize = false,
+				WrapContents = false,
+				FlowDirection = FlowDirection.LeftToRight
+			};
+			replaceRow.Controls.Add(MakeLabel("Replace"));
+			replaceTextBox = new TextBox { Width = 190, Margin = new Padding(2, 2, 2, 0) };
+			replaceTextBox.KeyDown += (_, e) => {
+				if (e.KeyCode == Keys.Enter) {
+					ReplaceCurrentSearchMatch();
+					e.SuppressKeyPress = true;
+				}
+			};
+			replaceRow.Controls.Add(replaceTextBox);
+			replaceRow.Controls.Add(MakeButton("\\n", (_, _) => InsertNewlineToken(replaceTextBox)));
+			replaceRow.Controls.Add(MakeButton("Replace", (_, _) => ReplaceCurrentSearchMatch()));
+			replaceRow.Controls.Add(MakeButton("All", (_, _) => ReplaceAllSearchMatches()));
+			searchPanel.Controls.Add(searchRow);
+			searchPanel.Controls.Add(replaceRow);
+
 			Controls.Add(toolbar);
-			editorControl1.Top = toolbar.Height;
-			editorControl1.Left = 0;
+			Controls.Add(searchPanel);
+			LayoutEditorChrome();
 		}
 
 		protected override void OnResize(EventArgs e) {
 			base.OnResize(e);
-			if (editorControl1 != null) {
-				editorControl1.Size = new Size(ClientSize.Width, ClientSize.Height - editorControl1.Top);
-			}
+			LayoutEditorChrome();
 		}
 
 		private static Button MakeButton(string text, EventHandler click) {
@@ -133,6 +204,25 @@ namespace Demo {
 			};
 			btn.Click += click;
 			return btn;
+		}
+
+		private static Label MakeLabel(string text) {
+			return new Label {
+				AutoSize = true,
+				Text = text,
+				Padding = new Padding(4, 6, 2, 0),
+				Margin = new Padding(2, 0, 2, 0)
+			};
+		}
+
+		private CheckBox MakeCheckBox(string text) {
+			var checkBox = new CheckBox {
+				Text = text,
+				AutoSize = true,
+				Margin = new Padding(2, 5, 2, 0)
+			};
+			checkBox.CheckedChanged += (_, _) => PerformSearch();
+			return checkBox;
 		}
 
 		private void SetupFileSpinner() {
@@ -172,7 +262,157 @@ namespace Demo {
 			if (IsHandleCreated) {
 				BeginInvoke((Action)(() => editorControl1.RequestDecorationRefresh()));
 			}
+			ClearSearchState();
 			UpdateStatus($"Loaded: {fileName}");
+		}
+
+		private void OpenSearchPanel(bool replaceMode) {
+			searchPanel.Visible = true;
+			replaceRow.Visible = replaceMode;
+			LayoutEditorChrome();
+			searchTextBox.Focus();
+			searchTextBox.SelectAll();
+			if (!string.IsNullOrEmpty(searchTextBox.Text)) {
+				PerformSearch();
+			}
+		}
+
+		private void CloseSearchPanel() {
+			ClearSearchState();
+			searchPanel.Visible = false;
+			LayoutEditorChrome();
+			editorControl1.Focus();
+		}
+
+		private void ClearSearchState() {
+			editorControl1.ClearSearch();
+			if (searchCounterLabel != null) {
+				searchCounterLabel.Text = "0/0";
+			}
+		}
+
+		private void PerformSearch() {
+			if (searchPanel == null || !searchPanel.Visible) {
+				return;
+			}
+			string pattern = DecodeNewlineTokens(searchTextBox.Text);
+			if (string.IsNullOrEmpty(pattern)) {
+				ClearSearchState();
+				return;
+			}
+			var options = new SearchOptions {
+				CaseSensitive = matchCaseCheckBox.Checked,
+				WholeWord = wholeWordCheckBox.Checked,
+				UseRegex = regexCheckBox.Checked
+			};
+			editorControl1.Search(new SearchRequest { Pattern = pattern, Options = options });
+			RefreshSearchState();
+		}
+
+		private void FindNextSearchMatch() {
+			if (string.IsNullOrEmpty(searchTextBox.Text)) return;
+			editorControl1.FindNextSearchMatch();
+			RefreshSearchState();
+		}
+
+		private void FindPreviousSearchMatch() {
+			if (string.IsNullOrEmpty(searchTextBox.Text)) return;
+			editorControl1.FindPreviousSearchMatch();
+			RefreshSearchState();
+		}
+
+		private void ReplaceCurrentSearchMatch() {
+			if (string.IsNullOrEmpty(searchTextBox.Text)) return;
+			SearchState state = editorControl1.GetSearchState();
+			if (state.Status == SearchStatus.FAILED || !state.HasCurrentMatch) return;
+			editorControl1.ReplaceCurrentSearchMatch(DecodeNewlineTokens(replaceTextBox.Text));
+			PerformSearch();
+			UpdateStatus("Replace");
+		}
+
+		private void ReplaceAllSearchMatches() {
+			if (string.IsNullOrEmpty(searchTextBox.Text)) return;
+			SearchState state = editorControl1.GetSearchState();
+			if (state.Status == SearchStatus.FAILED || state.MatchCount <= 0) return;
+			int count = state.MatchCount;
+			editorControl1.ReplaceAllSearchMatches(DecodeNewlineTokens(replaceTextBox.Text));
+			PerformSearch();
+			UpdateStatus($"Replaced {count} matches");
+		}
+
+		private void RefreshSearchState() {
+			SearchState state = editorControl1.GetSearchState();
+			if (state.Status == SearchStatus.FAILED) {
+				searchCounterLabel.Text = "Error";
+				UpdateStatus(string.IsNullOrEmpty(state.ErrorMessage) ? "Search error" : state.ErrorMessage);
+			} else if (state.MatchCount <= 0) {
+				searchCounterLabel.Text = "0/0";
+				UpdateStatus("No matches");
+			} else {
+				int current = state.CurrentIndex >= 0 ? state.CurrentIndex + 1 : 0;
+				searchCounterLabel.Text = $"{current}/{state.MatchCount}";
+				UpdateStatus($"Search {current}/{state.MatchCount}");
+			}
+		}
+
+		private void OnDemoKeyDown(object? sender, KeyEventArgs e) {
+			if (e.Control && e.KeyCode == Keys.F) {
+				OpenSearchPanel(false);
+				e.SuppressKeyPress = true;
+			} else if (e.Control && e.KeyCode == Keys.H) {
+				OpenSearchPanel(true);
+				e.SuppressKeyPress = true;
+			} else if (e.KeyCode == Keys.Escape && searchPanel.Visible) {
+				CloseSearchPanel();
+				e.SuppressKeyPress = true;
+			} else if (e.Shift && e.KeyCode == Keys.Enter && searchPanel.Visible) {
+				FindPreviousSearchMatch();
+				e.SuppressKeyPress = true;
+			}
+		}
+
+		private void LayoutEditorChrome() {
+			if (toolbar == null || searchPanel == null || editorControl1 == null) return;
+			toolbar.Width = ClientSize.Width;
+			searchPanel.Top = toolbar.Height;
+			searchPanel.Left = 0;
+			searchPanel.Width = ClientSize.Width;
+			foreach (Control child in searchPanel.Controls) {
+				child.Width = Math.Max(0, ClientSize.Width - 8);
+			}
+			int top = toolbar.Height + (searchPanel.Visible ? searchPanel.Height : 0);
+			editorControl1.Top = top;
+			editorControl1.Left = 0;
+			editorControl1.Size = new Size(ClientSize.Width, Math.Max(0, ClientSize.Height - top));
+		}
+
+		private static void InsertNewlineToken(TextBox textBox) {
+			int start = textBox.SelectionStart;
+			int length = textBox.SelectionLength;
+			textBox.Text = textBox.Text.Remove(start, length).Insert(start, "\\n");
+			textBox.SelectionStart = start + 2;
+		}
+
+		private static string DecodeNewlineTokens(string text) {
+			var builder = new StringBuilder(text.Length);
+			for (int i = 0; i < text.Length; i++) {
+				char ch = text[i];
+				if (ch == '\\' && i + 1 < text.Length) {
+					char next = text[i + 1];
+					if (next == 'n') {
+						builder.Append('\n');
+						i++;
+						continue;
+					}
+					if (next == '\\') {
+						builder.Append('\\');
+						i++;
+						continue;
+					}
+				}
+				builder.Append(ch);
+			}
+			return builder.ToString();
 		}
 
 		private void RegisterColorStyleForCurrentTheme() {

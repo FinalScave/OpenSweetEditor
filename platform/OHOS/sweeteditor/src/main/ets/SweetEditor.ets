@@ -48,6 +48,7 @@ import {
   KeyModifier
 } from './core/CoreKeymap';
 import { CursorRect, EditorRenderModel, ScrollMetrics } from './core/CoreVisual';
+import { SearchRequest, SearchState, createEmptySearchState } from './core/CoreSearch';
 import {
   BracketGuide,
   Diagnostic,
@@ -968,6 +969,52 @@ export struct SweetEditor {
 
   canRedo(): boolean {
     return this.editorCore ? this.editorCore.canRedo() : false;
+  }
+
+  search(request: SearchRequest): void {
+    if (!this.editorCore) {
+      return;
+    }
+    this.dispatchEditorActionResult(this.editorCore.search(request));
+  }
+
+  findNextSearchMatch(): void {
+    if (!this.editorCore) {
+      return;
+    }
+    this.dispatchEditorActionResult(this.editorCore.findNextSearchMatch());
+  }
+
+  findPreviousSearchMatch(): void {
+    if (!this.editorCore) {
+      return;
+    }
+    this.dispatchEditorActionResult(this.editorCore.findPreviousSearchMatch());
+  }
+
+  replaceCurrentSearchMatch(replacement: string): void {
+    if (!this.editorCore) {
+      return;
+    }
+    this.dispatchEditorActionResult(this.editorCore.replaceCurrentSearchMatch(replacement));
+  }
+
+  replaceAllSearchMatches(replacement: string): void {
+    if (!this.editorCore) {
+      return;
+    }
+    this.dispatchEditorActionResult(this.editorCore.replaceAllSearchMatches(replacement));
+  }
+
+  clearSearch(): void {
+    if (!this.editorCore) {
+      return;
+    }
+    this.dispatchEditorActionResult(this.editorCore.clearSearch());
+  }
+
+  getSearchState(): SearchState {
+    return this.editorCore ? this.editorCore.getSearchState() : createEmptySearchState();
   }
 
   selectAll(): void {

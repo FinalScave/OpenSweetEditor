@@ -43,3 +43,26 @@ export interface SearchState {
   currentRange: TextRange;
   errorMessage: string;
 }
+
+export function createEmptySearchState(): SearchState {
+  return {
+    status: SearchStatus.INACTIVE,
+    pattern: '',
+    options: {
+      caseSensitive: false,
+      wholeWord: false,
+      useRegex: false,
+      wrapAround: true,
+      maxMatches: 10000
+    },
+    generation: 0,
+    matchCount: 0,
+    currentIndex: -1,
+    hasCurrentMatch: false,
+    currentRange: {
+      start: { line: 0, column: 0 },
+      end: { line: 0, column: 0 }
+    },
+    errorMessage: ''
+  };
+}

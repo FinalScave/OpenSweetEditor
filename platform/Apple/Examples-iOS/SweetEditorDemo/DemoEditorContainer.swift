@@ -1,12 +1,50 @@
 import SwiftUI
 import SweetEditoriOS
 
+@MainActor
+final class DemoEditorHandle: ObservableObject {
+    weak var view: SweetEditorViewiOS?
+
+    func bind(_ view: SweetEditorViewiOS) {
+        self.view = view
+    }
+
+    func search(_ request: SearchRequest) {
+        view?.search(request)
+    }
+
+    func findNextSearchMatch() {
+        view?.findNextSearchMatch()
+    }
+
+    func findPreviousSearchMatch() {
+        view?.findPreviousSearchMatch()
+    }
+
+    func replaceCurrentSearchMatch(_ replacement: String) {
+        view?.replaceCurrentSearchMatch(replacement)
+    }
+
+    func replaceAllSearchMatches(_ replacement: String) {
+        view?.replaceAllSearchMatches(replacement)
+    }
+
+    func clearSearch() {
+        view?.clearSearch()
+    }
+
+    func getSearchState() -> SearchState {
+        view?.getSearchState() ?? SearchState()
+    }
+}
+
 struct DemoEditorContainer: UIViewRepresentable {
     let text: String
     let reloadToken: Int
     let showsDemoDecorations: Bool
     let isDarkTheme: Bool
     let wrapMode: WrapMode
+    let editorHandle: DemoEditorHandle
     let onTextChanged: (String) -> Void
 
     func makeCoordinator() -> Coordinator {
@@ -23,6 +61,7 @@ struct DemoEditorContainer: UIViewRepresentable {
         settings.setMaxGutterIcons(1)
         settings.setContentStartPadding(8)
         view.onDocumentTextChanged = onTextChanged
+        editorHandle.bind(view)
 
         applyState(to: view, coordinator: context.coordinator)
 
@@ -30,6 +69,7 @@ struct DemoEditorContainer: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: SweetEditorViewiOS, context: Context) {
+        editorHandle.bind(uiView)
         applyState(to: uiView, coordinator: context.coordinator)
     }
 

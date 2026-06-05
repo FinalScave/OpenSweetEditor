@@ -5,20 +5,35 @@ import com.qiplat.sweeteditor.SweetEditor;
 import com.qiplat.sweeteditor.core.Document;
 import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
 import com.qiplat.sweeteditor.core.config.WrapMode;
+import com.qiplat.sweeteditor.core.search.SearchOptions;
+import com.qiplat.sweeteditor.core.search.SearchRequest;
+import com.qiplat.sweeteditor.core.search.SearchState;
+import com.qiplat.sweeteditor.core.search.SearchStatus;
 import com.qiplat.sweeteditor.event.CodeLensClickEvent;
 import com.qiplat.sweeteditor.event.LinkClickEvent;
 
+import javax.swing.AbstractAction;
 import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
 import javax.swing.DefaultComboBoxModel;
+import javax.swing.InputMap;
+import javax.swing.JComponent;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.JToggleButton;
+import javax.swing.KeyStroke;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
+import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -42,6 +57,14 @@ public class Main extends JFrame {
     private final SweetEditor editor;
     private final JLabel statusLabel;
     private final JComboBox<String> fileComboBox;
+    private final JPanel searchPanel;
+    private final JPanel replaceRow;
+    private final JTextField searchField;
+    private final JTextField replaceField;
+    private final JLabel searchCounterLabel;
+    private final JToggleButton matchCaseButton;
+    private final JToggleButton wholeWordButton;
+    private final JToggleButton regexButton;
     private final List<Path> demoFiles = new ArrayList<>();
 
     private boolean isDarkTheme = true;
@@ -126,17 +149,67 @@ public class Main extends JFrame {
             updateStatus(isDarkTheme ? "Switched to dark theme" : "Switched to light theme");
         }));
         toolbar.add(makeButton("WrapMode", e -> cycleWrapMode()));
+        toolbar.add(makeButton("Search", e -> openSearchPanel(false)));
+        toolbar.add(makeButton("Replace", e -> openSearchPanel(true)));
         toolbar.add(statusLabel);
 
+        searchPanel = new JPanel();
+        searchPanel.setLayout(new BoxLayout(searchPanel, BoxLayout.Y_AXIS));
+        searchPanel.setBorder(BorderFactory.createEmptyBorder(2, 6, 6, 6));
+        searchPanel.setVisible(false);
+
+        JPanel searchRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        searchField = new JTextField(22);
+        searchField.getDocument().addDocumentListener(new SimpleDocumentListener(this::performSearch));
+        searchField.addActionListener(e -> findNextSearchMatch());
+        searchRow.add(new JLabel("Search"));
+        searchRow.add(searchField);
+        searchRow.add(makeButton("\\n", e -> insertNewlineToken(searchField)));
+        searchCounterLabel = new JLabel("0/0");
+        searchCounterLabel.setPreferredSize(new Dimension(52, 24));
+        searchRow.add(searchCounterLabel);
+        matchCaseButton = makeToggle("Aa", e -> performSearch());
+        wholeWordButton = makeToggle("Word", e -> performSearch());
+        regexButton = makeToggle(".*", e -> performSearch());
+        searchRow.add(matchCaseButton);
+        searchRow.add(wholeWordButton);
+        searchRow.add(regexButton);
+        searchRow.add(makeButton("Prev", e -> findPreviousSearchMatch()));
+        searchRow.add(makeButton("Next", e -> findNextSearchMatch()));
+        searchRow.add(makeButton("Close", e -> closeSearchPanel()));
+        searchPanel.add(searchRow);
+
+        replaceRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 2));
+        replaceField = new JTextField(22);
+        replaceField.addActionListener(e -> replaceCurrentSearchMatch());
+        replaceRow.add(new JLabel("Replace"));
+        replaceRow.add(replaceField);
+        replaceRow.add(makeButton("\\n", e -> insertNewlineToken(replaceField)));
+        replaceRow.add(makeButton("Replace", e -> replaceCurrentSearchMatch()));
+        replaceRow.add(makeButton("All", e -> replaceAllSearchMatches()));
+        searchPanel.add(replaceRow);
+
+        JPanel topPanel = new JPanel(new BorderLayout());
+        topPanel.add(toolbar, BorderLayout.NORTH);
+        topPanel.add(searchPanel, BorderLayout.SOUTH);
+
         setLayout(new BorderLayout());
-        add(toolbar, BorderLayout.NORTH);
+        add(topPanel, BorderLayout.NORTH);
         add(editor, BorderLayout.CENTER);
 
+        installSearchShortcuts();
         setupFileSpinner();
     }
 
     private JButton makeButton(String text, ActionListener action) {
         JButton btn = new JButton(text);
+        btn.setMargin(new Insets(2, 6, 2, 6));
+        btn.addActionListener(action);
+        return btn;
+    }
+
+    private JToggleButton makeToggle(String text, ActionListener action) {
+        JToggleButton btn = new JToggleButton(text);
         btn.setMargin(new Insets(2, 6, 2, 6));
         btn.addActionListener(action);
         return btn;
@@ -179,7 +252,180 @@ public class Main extends JFrame {
         editor.setMetadata(new DemoDecorationProvider.DemoFileMetadata(fileName));
         editor.requestDecorationRefresh();
         SwingUtilities.invokeLater(editor::requestDecorationRefresh);
+        clearSearchState();
         updateStatus("Loaded: " + fileName);
+    }
+
+    private void openSearchPanel(boolean replaceMode) {
+        searchPanel.setVisible(true);
+        replaceRow.setVisible(replaceMode);
+        revalidate();
+        repaint();
+        searchField.requestFocusInWindow();
+        searchField.selectAll();
+        if (!searchField.getText().isEmpty()) {
+            performSearch();
+        }
+    }
+
+    private void closeSearchPanel() {
+        clearSearchState();
+        searchPanel.setVisible(false);
+        revalidate();
+        repaint();
+        editor.requestFocusInWindow();
+    }
+
+    private void clearSearchState() {
+        editor.clearSearch();
+        searchCounterLabel.setText("0/0");
+    }
+
+    private void performSearch() {
+        if (!searchPanel.isVisible()) {
+            return;
+        }
+        String pattern = decodeNewlineTokens(searchField.getText());
+        if (pattern.isEmpty()) {
+            clearSearchState();
+            return;
+        }
+        SearchOptions options = new SearchOptions();
+        options.caseSensitive = matchCaseButton.isSelected();
+        options.wholeWord = wholeWordButton.isSelected();
+        options.useRegex = regexButton.isSelected();
+        editor.search(new SearchRequest(pattern, options));
+        refreshSearchState();
+    }
+
+    private void findNextSearchMatch() {
+        if (searchField.getText().isEmpty()) {
+            return;
+        }
+        editor.findNextSearchMatch();
+        refreshSearchState();
+    }
+
+    private void findPreviousSearchMatch() {
+        if (searchField.getText().isEmpty()) {
+            return;
+        }
+        editor.findPreviousSearchMatch();
+        refreshSearchState();
+    }
+
+    private void replaceCurrentSearchMatch() {
+        if (searchField.getText().isEmpty()) {
+            return;
+        }
+        SearchState state = editor.getSearchState();
+        if (state.status == SearchStatus.FAILED || !state.hasCurrentMatch) {
+            return;
+        }
+        editor.replaceCurrentSearchMatch(decodeNewlineTokens(replaceField.getText()));
+        performSearch();
+        updateStatus("Replace");
+    }
+
+    private void replaceAllSearchMatches() {
+        if (searchField.getText().isEmpty()) {
+            return;
+        }
+        SearchState state = editor.getSearchState();
+        if (state.status == SearchStatus.FAILED || state.matchCount <= 0) {
+            return;
+        }
+        int count = state.matchCount;
+        editor.replaceAllSearchMatches(decodeNewlineTokens(replaceField.getText()));
+        performSearch();
+        updateStatus("Replaced " + count + " matches");
+    }
+
+    private void refreshSearchState() {
+        SearchState state = editor.getSearchState();
+        if (state.status == SearchStatus.FAILED) {
+            searchCounterLabel.setText("Error");
+            updateStatus(state.errorMessage.isEmpty() ? "Search error" : state.errorMessage);
+        } else if (state.matchCount <= 0) {
+            searchCounterLabel.setText("0/0");
+            updateStatus("No matches");
+        } else {
+            int current = state.currentIndex >= 0 ? state.currentIndex + 1 : 0;
+            searchCounterLabel.setText(current + "/" + state.matchCount);
+            updateStatus("Search " + current + "/" + state.matchCount);
+        }
+    }
+
+    private void installSearchShortcuts() {
+        int menuMask = Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
+        InputMap inputMap = getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_F, menuMask), "openSearch");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_H, menuMask), "openReplace");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), "closeSearch");
+        inputMap.put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, InputEvent.SHIFT_DOWN_MASK), "previousSearchMatch");
+        getRootPane().getActionMap().put("openSearch", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                openSearchPanel(false);
+            }
+        });
+        getRootPane().getActionMap().put("openReplace", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                openSearchPanel(true);
+            }
+        });
+        getRootPane().getActionMap().put("closeSearch", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (searchPanel.isVisible()) {
+                    closeSearchPanel();
+                }
+            }
+        });
+        getRootPane().getActionMap().put("previousSearchMatch", new AbstractAction() {
+            @Override
+            public void actionPerformed(java.awt.event.ActionEvent e) {
+                if (searchPanel.isVisible()) {
+                    findPreviousSearchMatch();
+                }
+            }
+        });
+    }
+
+    private void insertNewlineToken(JTextField field) {
+        int start = Math.max(field.getSelectionStart(), 0);
+        int end = Math.max(field.getSelectionEnd(), 0);
+        if (start > end) {
+            int temp = start;
+            start = end;
+            end = temp;
+        }
+        String text = field.getText();
+        field.setText(text.substring(0, start) + "\\n" + text.substring(end));
+        field.setCaretPosition(start + 2);
+    }
+
+    private String decodeNewlineTokens(String text) {
+        StringBuilder builder = new StringBuilder(text.length());
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (ch == '\\' && i + 1 < text.length()) {
+                char next = text.charAt(i + 1);
+                if (next == 'n') {
+                    builder.append('\n');
+                    i++;
+                    continue;
+                }
+                if (next == '\\') {
+                    builder.append('\\');
+                    i++;
+                    continue;
+                }
+            }
+            builder.append(ch);
+        }
+        return builder.toString();
     }
 
     private void cycleWrapMode() {
@@ -228,6 +474,29 @@ public class Main extends JFrame {
 
     private static String normalizeNewlines(String text) {
         return text.replace("\r\n", "\n").replace('\r', '\n');
+    }
+
+    private static final class SimpleDocumentListener implements DocumentListener {
+        private final Runnable callback;
+
+        private SimpleDocumentListener(Runnable callback) {
+            this.callback = callback;
+        }
+
+        @Override
+        public void insertUpdate(DocumentEvent e) {
+            callback.run();
+        }
+
+        @Override
+        public void removeUpdate(DocumentEvent e) {
+            callback.run();
+        }
+
+        @Override
+        public void changedUpdate(DocumentEvent e) {
+            callback.run();
+        }
     }
 
     private static List<Path> listDemoFiles() {

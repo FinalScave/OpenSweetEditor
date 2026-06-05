@@ -12,6 +12,7 @@ public sealed class EditorToolbarController
 {
     private const string UndoIcon = "M12.5,8c-2.65,0 -5.05,0.99 -6.9,2.6L2,7v9h9l-3.62,-3.62c1.39,-1.16 3.16,-1.88 5.12,-1.88 3.54,0 6.55,2.31 7.6,5.5l2.37,-0.78C21.08,11.03 17.15,8 12.5,8z";
     private const string RedoIcon = "M18.4,10.6C16.55,8.99 14.15,8 11.5,8c-4.65,0 -8.58,3.03 -9.96,7.22L3.9,16c1.05,-3.19 4.05,-5.5 7.6,-5.5 1.95,0 3.73,0.72 5.12,1.88L13,16h9V7l-3.6,3.6z";
+    private const string SearchIcon = "M9.5,3C5.91,3 3,5.91 3,9.5S5.91,16 9.5,16c1.61,0 3.09,-0.59 4.23,-1.57L18.29,19 19.71,17.59 15.15,13.03C16,11.94 16,10.76 16,9.5 16,5.91 13.09,3 9.5,3zM9.5,5C11.99,5 14,7.01 14,9.5S11.99,14 9.5,14 5,11.99 5,9.5 7.01,5 9.5,5z";
     private const string ThemeIcon = "M20,8.69V4h-4.69L12,0.69 8.69,4H4v4.69L0.69,12 4,15.31V20h4.69L12,23.31 15.31,20H20v-4.69L23.31,12 20,8.69zM12,18c-3.31,0 -6,-2.69 -6,-6s2.69,-6 6,-6 6,2.69 6,6 -2.69,6 -6,6zM12,8v8c2.21,0 4,-1.79 4,-4s-1.79,-4 -4,-4z";
     private const string WrapIcon = "M4,19h6v-2H4v2zM20,5H4v2h16V5zM17,11H4v2h13.25c1.1,0 2,0.9 2,2s-0.9,2 -2,2H15v-2l-3,3 3,3v-2h2.25c2.21,0 4,-1.79 4,-4s-1.79,-4 -4,-4z";
     private const string ChevronDownIcon = "M7,10l5,5 5,-5";
@@ -26,6 +27,8 @@ public sealed class EditorToolbarController
     {
         UndoButton = CreateIconButton(UndoIcon, "Undo");
         RedoButton = CreateIconButton(RedoIcon, "Redo");
+        SearchButton = CreateIconButton(SearchIcon, "Find");
+        ReplaceButton = CreateTextButton("R", "Find and replace");
         ThemeButton = CreateIconButton(ThemeIcon, "Switch theme");
         WrapButton = CreateWrapButton();
         ZoomOutButton = CreateTextButton("A-", "Smaller UI");
@@ -44,6 +47,8 @@ public sealed class EditorToolbarController
     public Button SamplePickerButton { get; }
     public Button UndoButton { get; }
     public Button RedoButton { get; }
+    public Button SearchButton { get; }
+    public Button ReplaceButton { get; }
     public Button ThemeButton { get; }
     public Button WrapButton { get; }
     public Button ZoomOutButton { get; }
@@ -60,6 +65,8 @@ public sealed class EditorToolbarController
         {
             yield return UndoButton;
             yield return RedoButton;
+            yield return SearchButton;
+            yield return ReplaceButton;
             yield return ThemeButton;
             yield return WrapButton;
             yield return ZoomOutButton;

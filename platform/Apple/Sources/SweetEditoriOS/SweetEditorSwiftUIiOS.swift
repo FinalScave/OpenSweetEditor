@@ -63,6 +63,34 @@ public final class SweetEditorViewiOS: UIView {
         editorView.loadDocument(text: text)
     }
 
+    public func search(_ request: SearchRequest) {
+        editorView.search(request)
+    }
+
+    public func findNextSearchMatch() {
+        editorView.findNextSearchMatch()
+    }
+
+    public func findPreviousSearchMatch() {
+        editorView.findPreviousSearchMatch()
+    }
+
+    public func replaceCurrentSearchMatch(_ replacement: String) {
+        editorView.replaceCurrentSearchMatch(replacement)
+    }
+
+    public func replaceAllSearchMatches(_ replacement: String) {
+        editorView.replaceAllSearchMatches(replacement)
+    }
+
+    public func clearSearch() {
+        editorView.clearSearch()
+    }
+
+    public func getSearchState() -> SearchState {
+        editorView.getSearchState()
+    }
+
     public func applyDecorations(_ decorations: EditorResolvedDecorations, clearExisting: Bool = true) {
         editorView.applyDecorations(decorations, clearExisting: clearExisting)
     }

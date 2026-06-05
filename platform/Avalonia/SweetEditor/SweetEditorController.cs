@@ -250,6 +250,20 @@ namespace SweetEditor {
 
 		public bool CanRedo() => Read(e => e.CanRedo(), false);
 
+		public void Search(SearchRequest request) => Invoke(e => e.Search(request));
+
+		public void FindNextSearchMatch() => Invoke(e => e.FindNextSearchMatch());
+
+		public void FindPreviousSearchMatch() => Invoke(e => e.FindPreviousSearchMatch());
+
+		public void ReplaceCurrentSearchMatch(string replacement) => Invoke(e => e.ReplaceCurrentSearchMatch(replacement));
+
+		public void ReplaceAllSearchMatches(string replacement) => Invoke(e => e.ReplaceAllSearchMatches(replacement));
+
+		public void ClearSearch() => Invoke(e => e.ClearSearch());
+
+		public SearchState GetSearchState() => Read(e => e.GetSearchState(), new SearchState());
+
 		public void CopyToClipboard() => Invoke(e => e.CopyToClipboard());
 
 		public void PasteFromClipboard() => Invoke(e => e.PasteFromClipboard());

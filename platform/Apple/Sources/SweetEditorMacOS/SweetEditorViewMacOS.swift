@@ -187,6 +187,34 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         dispatchEditorActionResult(result)
     }
 
+    public func search(_ request: SearchRequest) {
+        dispatchEditorActionResult(editorCore.search(request))
+    }
+
+    public func findNextSearchMatch() {
+        dispatchEditorActionResult(editorCore.findNextSearchMatch())
+    }
+
+    public func findPreviousSearchMatch() {
+        dispatchEditorActionResult(editorCore.findPreviousSearchMatch())
+    }
+
+    public func replaceCurrentSearchMatch(_ replacement: String) {
+        dispatchEditorActionResult(editorCore.replaceCurrentSearchMatch(replacement))
+    }
+
+    public func replaceAllSearchMatches(_ replacement: String) {
+        dispatchEditorActionResult(editorCore.replaceAllSearchMatches(replacement))
+    }
+
+    public func clearSearch() {
+        dispatchEditorActionResult(editorCore.clearSearch())
+    }
+
+    public func getSearchState() -> SearchState {
+        editorCore.getSearchState()
+    }
+
     public func applyDecorations(_ decorations: EditorResolvedDecorations, clearExisting: Bool = true) {
         if clearExisting {
             dispatchEditorActionResult(editorCore.clearAllDecorations())

@@ -53,6 +53,12 @@ final class SweetEditorMacDemoApp: NSObject, NSApplicationDelegate {
 private final class KeyForwardingWindow: NSWindow {
     override func sendEvent(_ event: NSEvent) {
         if event.type == .keyDown,
+           let rootView = contentView as? DemoRootView,
+           rootView.handleSearchKeyDown(event) {
+            return
+        }
+
+        if event.type == .keyDown,
            let editor = SweetEditorViewMacOS.activeEditor,
            editor.window === self,
            !event.modifierFlags.contains(.command) {
@@ -63,7 +69,7 @@ private final class KeyForwardingWindow: NSWindow {
     }
 }
 
-private final class DemoRootView: NSView {
+private final class DemoRootView: NSView, NSTextFieldDelegate {
     let editorView = SweetEditorViewMacOS(frame: .zero)
     private let demoCompletionProvider = DemoCompletionProvider()
     private lazy var demoDecorationProvider: DemoDecorationProvider = {
@@ -82,9 +88,20 @@ private final class DemoRootView: NSView {
     private let statusLabel = NSTextField(labelWithString: "Ready")
     private let fileLabel = NSTextField(labelWithString: "File")
     private let filePicker = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let searchPanel = NSStackView(frame: .zero)
+    private let searchRow = NSStackView(frame: .zero)
+    private let replaceRow = NSStackView(frame: .zero)
+    private let searchField = NSTextField(frame: .zero)
+    private let replaceField = NSTextField(frame: .zero)
+    private let searchCounterLabel = NSTextField(labelWithString: "")
+    private let matchCaseButton = NSButton(checkboxWithTitle: "Aa", target: nil, action: nil)
+    private let wholeWordButton = NSButton(checkboxWithTitle: "Word", target: nil, action: nil)
+    private let regexButton = NSButton(checkboxWithTitle: ".*", target: nil, action: nil)
 
     private var wrapModePreset = 0
     private var isDarkTheme = true
+    private var searchPanelHeightConstraint: NSLayoutConstraint?
+    private var searchState = SearchState()
     private var decorationFeatureByIdentifier: [NSUserInterfaceItemIdentifier: DemoDecorationFeature] = [:]
     private var fileSelectionController = DemoFileSelectionController(
         sampleFiles: DemoSampleSupport.availableSampleFiles()
@@ -134,6 +151,12 @@ private final class DemoRootView: NSView {
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
         fileLabel.translatesAutoresizingMaskIntoConstraints = false
         filePicker.translatesAutoresizingMaskIntoConstraints = false
+        searchPanel.translatesAutoresizingMaskIntoConstraints = false
+        searchRow.translatesAutoresizingMaskIntoConstraints = false
+        replaceRow.translatesAutoresizingMaskIntoConstraints = false
+        searchField.translatesAutoresizingMaskIntoConstraints = false
+        replaceField.translatesAutoresizingMaskIntoConstraints = false
+        searchCounterLabel.translatesAutoresizingMaskIntoConstraints = false
         editorView.translatesAutoresizingMaskIntoConstraints = false
 
         titleLabel.textColor = .secondaryLabelColor
@@ -183,10 +206,12 @@ private final class DemoRootView: NSView {
         filePicker.target = self
         filePicker.action = #selector(fileSelectionChanged(_:))
         filePicker.widthAnchor.constraint(greaterThanOrEqualToConstant: 180).isActive = true
+        configureSearchPanel()
 
         addSubview(headerView)
         addSubview(divider)
         addSubview(toolbarScrollView)
+        addSubview(searchPanel)
         addSubview(statusLabel)
         addSubview(editorView)
 
@@ -221,15 +246,21 @@ private final class DemoRootView: NSView {
             toolbarScrollView.topAnchor.constraint(equalTo: divider.bottomAnchor),
             toolbarScrollView.heightAnchor.constraint(equalToConstant: 44),
 
+            searchPanel.leadingAnchor.constraint(equalTo: leadingAnchor),
+            searchPanel.trailingAnchor.constraint(equalTo: trailingAnchor),
+            searchPanel.topAnchor.constraint(equalTo: toolbarScrollView.bottomAnchor),
+
             statusLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
             statusLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
-            statusLabel.topAnchor.constraint(equalTo: toolbarScrollView.bottomAnchor),
+            statusLabel.topAnchor.constraint(equalTo: searchPanel.bottomAnchor),
 
             editorView.leadingAnchor.constraint(equalTo: leadingAnchor),
             editorView.trailingAnchor.constraint(equalTo: trailingAnchor),
             editorView.topAnchor.constraint(equalTo: statusLabel.bottomAnchor, constant: 4),
             editorView.bottomAnchor.constraint(equalTo: bottomAnchor),
         ])
+        searchPanelHeightConstraint = searchPanel.heightAnchor.constraint(equalToConstant: 0)
+        searchPanelHeightConstraint?.isActive = true
 
         themeSwitch.state = .on
         updateThemeLabel(isDark: true)
@@ -265,6 +296,7 @@ private final class DemoRootView: NSView {
     private func applyChromeTheme(isDark: Bool) {
         window?.appearance = demoWindowAppearance(isDark: isDark)
         layer?.backgroundColor = resolvedCGColor(demoChromeBackgroundColor(isDark: isDark))
+        searchPanel.layer?.backgroundColor = resolvedCGColor(demoChromeBackgroundColor(isDark: isDark))
     }
 
     private func resolvedCGColor(_ color: NSColor) -> CGColor {
@@ -275,10 +307,79 @@ private final class DemoRootView: NSView {
         return resolved ?? color.cgColor
     }
 
+    private func configureSearchPanel() {
+        searchPanel.orientation = .vertical
+        searchPanel.alignment = .leading
+        searchPanel.spacing = 6
+        searchPanel.edgeInsets = NSEdgeInsets(top: 6, left: 12, bottom: 6, right: 12)
+        searchPanel.isHidden = true
+        searchPanel.wantsLayer = true
+
+        searchRow.orientation = .horizontal
+        searchRow.alignment = .centerY
+        searchRow.spacing = 6
+        replaceRow.orientation = .horizontal
+        replaceRow.alignment = .centerY
+        replaceRow.spacing = 6
+        replaceRow.isHidden = true
+
+        searchField.placeholderString = "Find"
+        searchField.delegate = self
+        searchField.target = self
+        searchField.action = #selector(searchFieldSubmitted(_:))
+        searchField.widthAnchor.constraint(greaterThanOrEqualToConstant: 180).isActive = true
+
+        replaceField.placeholderString = "Replace"
+        replaceField.target = self
+        replaceField.action = #selector(replaceFieldSubmitted(_:))
+        replaceField.widthAnchor.constraint(greaterThanOrEqualToConstant: 180).isActive = true
+
+        [matchCaseButton, wholeWordButton, regexButton].forEach { button in
+            button.target = self
+            button.action = #selector(searchOptionChanged(_:))
+            button.font = .systemFont(ofSize: 11)
+        }
+
+        searchCounterLabel.font = .systemFont(ofSize: 11)
+        searchCounterLabel.textColor = .secondaryLabelColor
+        searchCounterLabel.alignment = .center
+        searchCounterLabel.widthAnchor.constraint(equalToConstant: 58).isActive = true
+
+        searchRow.addArrangedSubview(searchField)
+        searchRow.addArrangedSubview(makeSearchButton(title: "\\n", action: #selector(insertSearchNewlineToken(_:))))
+        searchRow.addArrangedSubview(searchCounterLabel)
+        searchRow.addArrangedSubview(matchCaseButton)
+        searchRow.addArrangedSubview(wholeWordButton)
+        searchRow.addArrangedSubview(regexButton)
+        searchRow.addArrangedSubview(makeSearchButton(title: "↑", action: #selector(previousSearchMatch(_:))))
+        searchRow.addArrangedSubview(makeSearchButton(title: "↓", action: #selector(nextSearchMatch(_:))))
+        searchRow.addArrangedSubview(makeSearchButton(title: "×", action: #selector(closeSearchButtonPressed(_:))))
+
+        replaceRow.addArrangedSubview(replaceField)
+        replaceRow.addArrangedSubview(makeSearchButton(title: "\\n", action: #selector(insertReplaceNewlineToken(_:))))
+        replaceRow.addArrangedSubview(makeSearchButton(title: "Replace", action: #selector(replaceCurrentButtonPressed(_:)), width: 66))
+        replaceRow.addArrangedSubview(makeSearchButton(title: "All", action: #selector(replaceAllButtonPressed(_:)), width: 44))
+
+        searchPanel.addArrangedSubview(searchRow)
+        searchPanel.addArrangedSubview(replaceRow)
+    }
+
+    private func makeSearchButton(title: String, action: Selector, width: CGFloat = 30) -> NSButton {
+        let button = NSButton(title: title, target: self, action: action)
+        button.bezelStyle = .rounded
+        button.font = .systemFont(ofSize: title.count > 2 ? 11 : 12)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.widthAnchor.constraint(equalToConstant: width).isActive = true
+        button.heightAnchor.constraint(equalToConstant: 26).isActive = true
+        return button
+    }
+
     private func configureToolbarButtons() {
         let buttons: [(String, () -> Void)] = [
             ("Undo", { [weak self] in self?.triggerUndo() }),
             ("Redo", { [weak self] in self?.triggerRedo() }),
+            ("Find", { [weak self] in self?.openSearchPanel(replaceMode: false) }),
+            ("Replace", { [weak self] in self?.openSearchPanel(replaceMode: true) }),
             ("Select All", { [weak self] in self?.triggerSelectAll() }),
             ("Get Selection", { [weak self] in self?.showSelectionPreview() }),
             ("Load Decorations", { [weak self] in self?.applyAllDecorations() }),
@@ -348,6 +449,238 @@ private final class DemoRootView: NSView {
         focusEditor()
         editorView.requestDecorationRefresh()
         updateStatus(enabled ? "Enabled \(sender.title) decorations" : "Disabled \(sender.title) decorations")
+    }
+
+    func handleSearchKeyDown(_ event: NSEvent) -> Bool {
+        let primary = event.modifierFlags.contains(.command)
+        let key = event.charactersIgnoringModifiers?.lowercased()
+        if primary && key == "f" {
+            openSearchPanel(replaceMode: false)
+            return true
+        }
+
+        if primary && key == "h" {
+            openSearchPanel(replaceMode: true)
+            return true
+        }
+
+        if !searchPanel.isHidden && event.keyCode == 53 {
+            closeSearchPanel()
+            return true
+        }
+
+        if !searchPanel.isHidden && event.keyCode == 36 && event.modifierFlags.contains(.shift) {
+            findPreviousSearchMatch()
+            return true
+        }
+
+        return false
+    }
+
+    func controlTextDidChange(_ notification: Notification) {
+        guard let field = notification.object as? NSTextField, field === searchField else {
+            return
+        }
+        performSearch()
+    }
+
+    @objc
+    private func searchFieldSubmitted(_ sender: NSTextField) {
+        findNextSearchMatch()
+    }
+
+    @objc
+    private func replaceFieldSubmitted(_ sender: NSTextField) {
+        replaceCurrentSearchMatch()
+    }
+
+    @objc
+    private func searchOptionChanged(_ sender: NSButton) {
+        performSearch()
+    }
+
+    @objc
+    private func insertSearchNewlineToken(_ sender: NSButton) {
+        insertNewlineToken(into: searchField)
+    }
+
+    @objc
+    private func insertReplaceNewlineToken(_ sender: NSButton) {
+        insertNewlineToken(into: replaceField)
+    }
+
+    @objc
+    private func previousSearchMatch(_ sender: NSButton) {
+        findPreviousSearchMatch()
+    }
+
+    @objc
+    private func nextSearchMatch(_ sender: NSButton) {
+        findNextSearchMatch()
+    }
+
+    @objc
+    private func closeSearchButtonPressed(_ sender: NSButton) {
+        closeSearchPanel()
+    }
+
+    @objc
+    private func replaceCurrentButtonPressed(_ sender: NSButton) {
+        replaceCurrentSearchMatch()
+    }
+
+    @objc
+    private func replaceAllButtonPressed(_ sender: NSButton) {
+        replaceAllSearchMatches()
+    }
+
+    private func openSearchPanel(replaceMode: Bool) {
+        searchPanel.isHidden = false
+        replaceRow.isHidden = !replaceMode
+        searchPanelHeightConstraint?.constant = replaceMode ? 74 : 38
+        layoutSubtreeIfNeeded()
+        window?.makeFirstResponder(searchField)
+        searchField.selectText(nil)
+        performSearch()
+    }
+
+    private func closeSearchPanel() {
+        clearSearchState()
+        searchPanel.isHidden = true
+        replaceRow.isHidden = true
+        searchPanelHeightConstraint?.constant = 0
+        focusEditor()
+        updateStatus("Search closed")
+    }
+
+    private func clearSearchState() {
+        editorView.clearSearch()
+        searchState = SearchState()
+        refreshSearchCounter()
+    }
+
+    private func performSearch() {
+        guard !searchPanel.isHidden else { return }
+        let pattern = decodeNewlineTokens(searchField.stringValue)
+        if pattern.isEmpty {
+            clearSearchState()
+            return
+        }
+
+        editorView.search(
+            SearchRequest(
+                pattern: pattern,
+                options: SearchOptions(
+                    case_sensitive: matchCaseButton.state == .on,
+                    whole_word: wholeWordButton.state == .on,
+                    use_regex: regexButton.state == .on
+                )
+            )
+        )
+        refreshSearchState()
+        if searchState.status == .FAILED {
+            updateStatus(searchState.error_message.isEmpty ? "Search failed" : searchState.error_message)
+        }
+    }
+
+    private func findNextSearchMatch() {
+        guard !searchPanel.isHidden else {
+            openSearchPanel(replaceMode: false)
+            return
+        }
+        editorView.findNextSearchMatch()
+        refreshSearchState()
+    }
+
+    private func findPreviousSearchMatch() {
+        guard !searchPanel.isHidden else {
+            openSearchPanel(replaceMode: false)
+            return
+        }
+        editorView.findPreviousSearchMatch()
+        refreshSearchState()
+    }
+
+    private func replaceCurrentSearchMatch() {
+        guard !searchPanel.isHidden else { return }
+        let state = editorView.getSearchState()
+        guard !searchField.stringValue.isEmpty, state.status != .FAILED, state.has_current_match else { return }
+        editorView.replaceCurrentSearchMatch(decodeNewlineTokens(replaceField.stringValue))
+        performSearch()
+        updateStatus("Replace")
+    }
+
+    private func replaceAllSearchMatches() {
+        guard !searchPanel.isHidden else { return }
+        let state = editorView.getSearchState()
+        guard !searchField.stringValue.isEmpty, state.status != .FAILED, state.match_count > 0 else { return }
+        let count = state.match_count
+        editorView.replaceAllSearchMatches(decodeNewlineTokens(replaceField.stringValue))
+        performSearch()
+        updateStatus("Replaced \(count) matches")
+    }
+
+    private func refreshSearchState() {
+        searchState = editorView.getSearchState()
+        refreshSearchCounter()
+    }
+
+    private func refreshSearchCounter() {
+        guard !searchPanel.isHidden, !searchField.stringValue.isEmpty else {
+            searchCounterLabel.stringValue = ""
+            return
+        }
+
+        if searchState.status == .FAILED {
+            searchCounterLabel.stringValue = "Error"
+            return
+        }
+
+        if searchState.match_count <= 0 {
+            searchCounterLabel.stringValue = "0/0"
+            return
+        }
+
+        let index = searchState.has_current_match ? searchState.current_index + 1 : 0
+        searchCounterLabel.stringValue = "\(index)/\(searchState.match_count)"
+    }
+
+    private func insertNewlineToken(into field: NSTextField) {
+        if let editor = field.currentEditor() {
+            editor.replaceCharacters(in: editor.selectedRange, with: "\\n")
+        } else {
+            field.stringValue += "\\n"
+        }
+        if field === searchField {
+            performSearch()
+        }
+    }
+
+    private func decodeNewlineTokens(_ text: String) -> String {
+        var decoded = ""
+        var index = text.startIndex
+        while index < text.endIndex {
+            let ch = text[index]
+            if ch == "\\" {
+                let nextIndex = text.index(after: index)
+                if nextIndex < text.endIndex {
+                    let next = text[nextIndex]
+                    if next == "n" {
+                        decoded.append("\n")
+                        index = text.index(after: nextIndex)
+                        continue
+                    }
+                    if next == "\\" {
+                        decoded.append("\\")
+                        index = text.index(after: nextIndex)
+                        continue
+                    }
+                }
+            }
+            decoded.append(ch)
+            index = text.index(after: index)
+        }
+        return decoded
     }
 
     private func triggerUndo() {
@@ -424,6 +757,7 @@ private final class DemoRootView: NSView {
 
     private func loadSelectedFileIntoEditor(showStatus: Bool) {
         guard let selectedFile = fileSelectionController?.selectedFile else { return }
+        clearSearchState()
         editorView.setMetadata(fileSelectionController?.currentMetadata)
         editorView.loadDocument(text: selectedFile.text)
         if showStatus {

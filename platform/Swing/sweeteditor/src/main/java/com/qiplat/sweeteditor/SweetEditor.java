@@ -24,6 +24,8 @@ import com.qiplat.sweeteditor.core.interaction.GestureType;
 import com.qiplat.sweeteditor.core.interaction.HitTargetType;
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
 import com.qiplat.sweeteditor.core.keymap.KeyCode;
+import com.qiplat.sweeteditor.core.search.SearchRequest;
+import com.qiplat.sweeteditor.core.search.SearchState;
 import com.qiplat.sweeteditor.core.visual.*;
 import com.qiplat.sweeteditor.core.snippet.*;
 import com.qiplat.sweeteditor.core.visual.Cursor;
@@ -388,6 +390,42 @@ public class SweetEditor extends JPanel {
 
     public boolean canRedo() {
         return editorCore.canRedo();
+    }
+
+    // ==================== Search ====================
+
+    public void search(SearchRequest request) {
+        EditorActionResult result = editorCore.search(request);
+        dispatchEditorActionResult(result);
+    }
+
+    public void findNextSearchMatch() {
+        EditorActionResult result = editorCore.findNextSearchMatch();
+        dispatchEditorActionResult(result);
+    }
+
+    public void findPreviousSearchMatch() {
+        EditorActionResult result = editorCore.findPreviousSearchMatch();
+        dispatchEditorActionResult(result);
+    }
+
+    public void replaceCurrentSearchMatch(String replacement) {
+        EditorActionResult result = editorCore.replaceCurrentSearchMatch(replacement);
+        dispatchEditorActionResult(result);
+    }
+
+    public void replaceAllSearchMatches(String replacement) {
+        EditorActionResult result = editorCore.replaceAllSearchMatches(replacement);
+        dispatchEditorActionResult(result);
+    }
+
+    public void clearSearch() {
+        EditorActionResult result = editorCore.clearSearch();
+        dispatchEditorActionResult(result);
+    }
+
+    public SearchState getSearchState() {
+        return editorCore.getSearchState();
     }
 
     // ==================== Cursor/Selection Management ====================

@@ -1128,6 +1128,44 @@ namespace SweetEditor {
 
 		public bool CanRedo() => !disposed && editorCore.CanRedo();
 
+		public void Search(SearchRequest request) {
+			if (disposed)
+				return;
+			DispatchEditorActionResult(editorCore.Search(request));
+		}
+
+		public void FindNextSearchMatch() {
+			if (disposed)
+				return;
+			DispatchEditorActionResult(editorCore.FindNextSearchMatch());
+		}
+
+		public void FindPreviousSearchMatch() {
+			if (disposed)
+				return;
+			DispatchEditorActionResult(editorCore.FindPreviousSearchMatch());
+		}
+
+		public void ReplaceCurrentSearchMatch(string replacement) {
+			if (disposed)
+				return;
+			DispatchEditorActionResult(editorCore.ReplaceCurrentSearchMatch(replacement));
+		}
+
+		public void ReplaceAllSearchMatches(string replacement) {
+			if (disposed)
+				return;
+			DispatchEditorActionResult(editorCore.ReplaceAllSearchMatches(replacement));
+		}
+
+		public void ClearSearch() {
+			if (disposed)
+				return;
+			DispatchEditorActionResult(editorCore.ClearSearch());
+		}
+
+		public SearchState GetSearchState() => disposed ? new SearchState() : editorCore.GetSearchState();
+
 		public void CopyToClipboard() {
 			if (Dispatcher.UIThread.CheckAccess()) {
 				_ = CopyToClipboardAsync();

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -88,6 +89,14 @@ public sealed class MainView : UserControl
     private readonly DemoNewLineActionProvider newLineActionProvider = new();
     private readonly EditorToolbarController toolbarController = new();
     private readonly SampleDocumentLoader sampleLoader;
+    private readonly Border searchContainer = new();
+    private readonly StackPanel replaceRow = new();
+    private readonly TextBox searchTextBox = new();
+    private readonly TextBox replaceTextBox = new();
+    private readonly TextBlock searchCounterText = new();
+    private readonly ToggleButton searchCaseButton = new();
+    private readonly ToggleButton searchWholeWordButton = new();
+    private readonly ToggleButton searchRegexButton = new();
 
     private readonly List<CompletionItem> currentCompletionItems = new();
 
@@ -112,6 +121,7 @@ public sealed class MainView : UserControl
     private long recentSelectionActionAnchorTickMs;
     private string? lastSummaryValue;
     private string? selectionActionBarItemsSignature;
+    private SearchState searchState = new();
 
     public MainView()
     {
@@ -180,6 +190,7 @@ public sealed class MainView : UserControl
         toolbarContainer.BorderThickness = new Thickness(0, 0, 0, 1);
         toolbarContainer.Padding = new Thickness(6, 4, 3, 4);
         toolbarContainer.Child = toolbarController.BuildView();
+        BuildSearchPanel();
 
         samplePickerItemsPanel.Spacing = 2;
         samplePickerScrollViewer.Content = samplePickerItemsPanel;
@@ -262,18 +273,127 @@ public sealed class MainView : UserControl
         statusBar.BorderThickness = new Thickness(0, 1, 0, 0);
         statusBar.Child = statusPanel;
 
-        layoutRoot.RowDefinitions = new RowDefinitions("Auto,*,Auto");
+        layoutRoot.RowDefinitions = new RowDefinitions("Auto,Auto,*,Auto");
         Grid.SetRow(toolbarContainer, 0);
-        Grid.SetRow(editorHost, 1);
-        Grid.SetRow(statusBar, 2);
-        Grid.SetRowSpan(samplePickerPopup, 3);
-        Grid.SetRowSpan(welcomeOverlay, 3);
+        Grid.SetRow(searchContainer, 1);
+        Grid.SetRow(editorHost, 2);
+        Grid.SetRow(statusBar, 3);
+        Grid.SetRowSpan(samplePickerPopup, 4);
+        Grid.SetRowSpan(welcomeOverlay, 4);
         layoutRoot.Children.Add(toolbarContainer);
+        layoutRoot.Children.Add(searchContainer);
         layoutRoot.Children.Add(editorHost);
         layoutRoot.Children.Add(statusBar);
         layoutRoot.Children.Add(samplePickerPopup);
         layoutRoot.Children.Add(welcomeOverlay);
         Content = layoutRoot;
+    }
+
+    private void BuildSearchPanel()
+    {
+        searchContainer.IsVisible = false;
+        searchContainer.BorderThickness = new Thickness(0, 0, 0, 1);
+        searchContainer.Padding = new Thickness(8, 4, 8, 6);
+
+        searchTextBox.Watermark = "Find";
+        searchTextBox.MinWidth = 160;
+        searchTextBox.Height = 30;
+        searchTextBox.TextChanged += (_, _) => PerformSearch();
+        searchTextBox.KeyDown += OnSearchTextBoxKeyDown;
+
+        replaceTextBox.Watermark = "Replace";
+        replaceTextBox.MinWidth = 160;
+        replaceTextBox.Height = 30;
+        replaceTextBox.KeyDown += OnReplaceTextBoxKeyDown;
+
+        ConfigureSearchToggle(searchCaseButton, "Aa", "Match case");
+        ConfigureSearchToggle(searchWholeWordButton, "Word", "Whole word");
+        ConfigureSearchToggle(searchRegexButton, ".*", "Use regular expression");
+        searchCaseButton.IsCheckedChanged += (_, _) => PerformSearch();
+        searchWholeWordButton.IsCheckedChanged += (_, _) => PerformSearch();
+        searchRegexButton.IsCheckedChanged += (_, _) => PerformSearch();
+
+        searchCounterText.Width = 54;
+        searchCounterText.FontSize = 11.5;
+        searchCounterText.VerticalAlignment = VerticalAlignment.Center;
+        searchCounterText.TextAlignment = TextAlignment.Center;
+
+        Grid searchRow = new()
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"),
+            ColumnSpacing = 4,
+        };
+        searchRow.Children.Add(searchTextBox);
+        AddSearchRowControl(searchRow, CreateSearchTextButton("\\n", "Insert newline token", () => InsertNewlineToken(searchTextBox)), 1);
+        AddSearchRowControl(searchRow, searchCounterText, 2);
+        AddSearchRowControl(searchRow, searchCaseButton, 3);
+        AddSearchRowControl(searchRow, searchWholeWordButton, 4);
+        AddSearchRowControl(searchRow, searchRegexButton, 5);
+        AddSearchRowControl(searchRow, CreateSearchTextButton("↑", "Previous match", FindPreviousSearchMatch), 6);
+        AddSearchRowControl(searchRow, CreateSearchTextButton("↓", "Next match", FindNextSearchMatch), 7);
+        AddSearchRowControl(searchRow, CreateSearchTextButton("×", "Close search", CloseSearchPanel), 8);
+
+        replaceRow.Orientation = Orientation.Horizontal;
+        replaceRow.Spacing = 4;
+        replaceRow.IsVisible = false;
+        replaceRow.Children.Add(replaceTextBox);
+        replaceRow.Children.Add(CreateSearchTextButton("\\n", "Insert newline token", () => InsertNewlineToken(replaceTextBox)));
+        replaceRow.Children.Add(CreateSearchTextButton("Replace", "Replace current match", ReplaceCurrentSearchMatch, 64));
+        replaceRow.Children.Add(CreateSearchTextButton("All", "Replace all matches", ReplaceAllSearchMatches, 44));
+
+        StackPanel panel = new()
+        {
+            Spacing = 4,
+            Children =
+            {
+                searchRow,
+                replaceRow,
+            },
+        };
+        searchContainer.Child = panel;
+    }
+
+    private static void AddSearchRowControl(Grid row, Control control, int column)
+    {
+        Grid.SetColumn(control, column);
+        row.Children.Add(control);
+    }
+
+    private static Button CreateSearchTextButton(string text, string tooltip, Action action, double width = 30)
+    {
+        Button button = new()
+        {
+            Width = width,
+            Height = 30,
+            Padding = new Thickness(0),
+            Content = new TextBlock
+            {
+                Text = text,
+                FontSize = text.Length > 2 ? 11 : 13,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                TextAlignment = TextAlignment.Center,
+            },
+        };
+        button.Click += (_, _) => action();
+        ToolTip.SetTip(button, tooltip);
+        return button;
+    }
+
+    private static void ConfigureSearchToggle(ToggleButton button, string text, string tooltip)
+    {
+        button.Width = text.Length > 2 ? 46 : 34;
+        button.Height = 30;
+        button.Padding = new Thickness(0);
+        button.Content = new TextBlock
+        {
+            Text = text,
+            FontSize = 11,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            TextAlignment = TextAlignment.Center,
+        };
+        ToolTip.SetTip(button, tooltip);
     }
 
     private void WireEvents()
@@ -286,6 +406,8 @@ public sealed class MainView : UserControl
         };
         toolbarController.UndoButton.Click += (_, _) => ExecuteAction(controller.Undo(), "Undo", "Nothing to undo");
         toolbarController.RedoButton.Click += (_, _) => ExecuteAction(controller.Redo(), "Redo", "Nothing to redo");
+        toolbarController.SearchButton.Click += (_, _) => OpenSearchPanel(replaceMode: false);
+        toolbarController.ReplaceButton.Click += (_, _) => OpenSearchPanel(replaceMode: true);
         toolbarController.ThemeButton.Click += (_, _) => ToggleTheme();
         toolbarController.WrapButton.Click += (_, _) => CycleWrapMode();
         toolbarController.ZoomOutButton.Click += (_, _) => StepScale(-1);
@@ -298,6 +420,7 @@ public sealed class MainView : UserControl
             foldCollapsed = false;
             allowPassiveInlineSuggestion = false;
             recentSelectionActionAnchor = null;
+            ClearSearchState();
             RefreshActionState();
             UpdateStatus(activeSample != null ? $"Loaded: {activeSample.FileName}" : "Document loaded");
             UpdateFeatureStrip();
@@ -549,6 +672,15 @@ public sealed class MainView : UserControl
         statusBar.BorderBrush = CreateBrush(border);
         statusText.Foreground = CreateBrush(foreground);
         summaryText.Foreground = CreateBrush(secondary);
+        searchContainer.Background = CreateBrush(surface);
+        searchContainer.BorderBrush = CreateBrush(border);
+        searchCounterText.Foreground = CreateBrush(secondary);
+        searchTextBox.Foreground = CreateBrush(foreground);
+        searchTextBox.Background = CreateBrush(surfaceMuted);
+        searchTextBox.BorderBrush = CreateBrush(border);
+        replaceTextBox.Foreground = CreateBrush(foreground);
+        replaceTextBox.Background = CreateBrush(surfaceMuted);
+        replaceTextBox.BorderBrush = CreateBrush(border);
         samplePickerPopup.Background = CreateBrush(darkTheme ? 0xFF1B1E24u : 0xFFFFFFFFu);
         samplePickerPopup.BorderBrush = CreateBrush(darkTheme ? 0xFF313844u : 0xFFD7DEE8u);
         completionPopup.Background = CreateBrush(darkTheme ? 0xFF1B1E24u : 0xFFFFFFFFu);
@@ -1036,6 +1168,249 @@ public sealed class MainView : UserControl
     {
         RefreshActionState();
         UpdateStatus(succeeded ? success : failed);
+    }
+
+    private void OpenSearchPanel(bool replaceMode)
+    {
+        searchContainer.IsVisible = true;
+        replaceRow.IsVisible = replaceMode;
+        searchTextBox.Focus();
+        searchTextBox.SelectAll();
+        PerformSearch();
+    }
+
+    private void CloseSearchPanel()
+    {
+        ClearSearchState();
+        searchContainer.IsVisible = false;
+        replaceRow.IsVisible = false;
+        editor?.Focus();
+        UpdateStatus("Search closed");
+    }
+
+    private void ClearSearchState()
+    {
+        controller.ClearSearch();
+        searchState = new SearchState();
+        RefreshSearchCounter();
+    }
+
+    private void PerformSearch()
+    {
+        if (!searchContainer.IsVisible)
+            return;
+
+        string pattern = DecodeNewlineTokens(searchTextBox.Text ?? string.Empty);
+        if (pattern.Length == 0)
+        {
+            ClearSearchState();
+            return;
+        }
+
+        controller.Search(new SearchRequest
+        {
+            Pattern = pattern,
+            Options = new SearchOptions
+            {
+                CaseSensitive = searchCaseButton.IsChecked == true,
+                WholeWord = searchWholeWordButton.IsChecked == true,
+                UseRegex = searchRegexButton.IsChecked == true,
+            },
+        });
+        RefreshSearchState();
+        if (searchState.Status == SearchStatus.FAILED)
+            UpdateStatus(string.IsNullOrEmpty(searchState.ErrorMessage) ? "Search failed" : searchState.ErrorMessage);
+    }
+
+    private void FindNextSearchMatch()
+    {
+        if (!searchContainer.IsVisible)
+        {
+            OpenSearchPanel(replaceMode: false);
+            return;
+        }
+
+        controller.FindNextSearchMatch();
+        RefreshSearchState();
+    }
+
+    private void FindPreviousSearchMatch()
+    {
+        if (!searchContainer.IsVisible)
+        {
+            OpenSearchPanel(replaceMode: false);
+            return;
+        }
+
+        controller.FindPreviousSearchMatch();
+        RefreshSearchState();
+    }
+
+    private void ReplaceCurrentSearchMatch()
+    {
+        if (!searchContainer.IsVisible)
+            return;
+
+        SearchState state = controller.GetSearchState();
+        if (string.IsNullOrEmpty(searchTextBox.Text)
+            || state.Status == SearchStatus.FAILED
+            || !state.HasCurrentMatch)
+            return;
+
+        controller.ReplaceCurrentSearchMatch(DecodeNewlineTokens(replaceTextBox.Text ?? string.Empty));
+        PerformSearch();
+        UpdateStatus("Replace");
+    }
+
+    private void ReplaceAllSearchMatches()
+    {
+        if (!searchContainer.IsVisible)
+            return;
+
+        SearchState state = controller.GetSearchState();
+        if (string.IsNullOrEmpty(searchTextBox.Text)
+            || state.Status == SearchStatus.FAILED
+            || state.MatchCount <= 0)
+            return;
+
+        int count = state.MatchCount;
+        controller.ReplaceAllSearchMatches(DecodeNewlineTokens(replaceTextBox.Text ?? string.Empty));
+        PerformSearch();
+        UpdateStatus($"Replaced {count} matches");
+    }
+
+    private void RefreshSearchState()
+    {
+        searchState = controller.GetSearchState();
+        RefreshSearchCounter();
+    }
+
+    private void RefreshSearchCounter()
+    {
+        string pattern = searchTextBox.Text ?? string.Empty;
+        if (!searchContainer.IsVisible || pattern.Length == 0)
+        {
+            searchCounterText.Text = string.Empty;
+            return;
+        }
+
+        if (searchState.Status == SearchStatus.FAILED)
+        {
+            searchCounterText.Text = "Error";
+            return;
+        }
+
+        if (searchState.MatchCount <= 0)
+        {
+            searchCounterText.Text = "0/0";
+            return;
+        }
+
+        int index = searchState.HasCurrentMatch ? searchState.CurrentIndex + 1 : 0;
+        searchCounterText.Text = $"{index}/{searchState.MatchCount}";
+    }
+
+    private bool HandleSearchShortcut(KeyEventArgs e)
+    {
+        bool primary = e.KeyModifiers.HasFlag(KeyModifiers.Control) || e.KeyModifiers.HasFlag(KeyModifiers.Meta);
+        if (primary && e.Key == Key.F)
+        {
+            OpenSearchPanel(replaceMode: false);
+            e.Handled = true;
+            return true;
+        }
+
+        if (primary && e.Key == Key.H)
+        {
+            OpenSearchPanel(replaceMode: true);
+            e.Handled = true;
+            return true;
+        }
+
+        if (searchContainer.IsVisible && e.Key == Key.Escape)
+        {
+            CloseSearchPanel();
+            e.Handled = true;
+            return true;
+        }
+
+        if (searchContainer.IsVisible && e.Key == Key.Enter && e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+        {
+            FindPreviousSearchMatch();
+            e.Handled = true;
+            return true;
+        }
+
+        return false;
+    }
+
+    private void OnSearchTextBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (HandleSearchShortcut(e))
+            return;
+
+        if (e.Key == Key.Enter)
+        {
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+                FindPreviousSearchMatch();
+            else
+                FindNextSearchMatch();
+            e.Handled = true;
+        }
+    }
+
+    private void OnReplaceTextBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (HandleSearchShortcut(e))
+            return;
+
+        if (e.Key == Key.Enter)
+        {
+            ReplaceCurrentSearchMatch();
+            e.Handled = true;
+        }
+    }
+
+    private void InsertNewlineToken(TextBox textBox)
+    {
+        string text = textBox.Text ?? string.Empty;
+        int start = Math.Clamp(textBox.SelectionStart, 0, text.Length);
+        int end = Math.Clamp(textBox.SelectionEnd, 0, text.Length);
+        if (end < start)
+            (start, end) = (end, start);
+
+        textBox.Text = text.Remove(start, end - start).Insert(start, "\\n");
+        textBox.SelectionStart = start + 2;
+        textBox.SelectionEnd = start + 2;
+        if (ReferenceEquals(textBox, searchTextBox))
+            PerformSearch();
+    }
+
+    private static string DecodeNewlineTokens(string text)
+    {
+        StringBuilder builder = new(text.Length);
+        for (int i = 0; i < text.Length; i++)
+        {
+            char ch = text[i];
+            if (ch == '\\' && i + 1 < text.Length)
+            {
+                char next = text[i + 1];
+                if (next == 'n')
+                {
+                    builder.Append('\n');
+                    i++;
+                    continue;
+                }
+                if (next == '\\')
+                {
+                    builder.Append('\\');
+                    i++;
+                    continue;
+                }
+            }
+            builder.Append(ch);
+        }
+        return builder.ToString();
     }
 
     private void HandleSelectionMenuAction(string itemId)
@@ -1770,6 +2145,9 @@ public sealed class MainView : UserControl
 
     private void OnEditorKeyDown(object? sender, KeyEventArgs e)
     {
+        if (HandleSearchShortcut(e))
+            return;
+
         if (samplePickerPopup.IsVisible && e.Key == Key.Escape)
         {
             HideSamplePickerPopup();

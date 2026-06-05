@@ -162,6 +162,34 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         dispatchEditorActionResult(result)
     }
 
+    func search(_ request: SearchRequest) {
+        dispatchEditorActionResult(editorCore.search(request))
+    }
+
+    func findNextSearchMatch() {
+        dispatchEditorActionResult(editorCore.findNextSearchMatch())
+    }
+
+    func findPreviousSearchMatch() {
+        dispatchEditorActionResult(editorCore.findPreviousSearchMatch())
+    }
+
+    func replaceCurrentSearchMatch(_ replacement: String) {
+        dispatchEditorActionResult(editorCore.replaceCurrentSearchMatch(replacement))
+    }
+
+    func replaceAllSearchMatches(_ replacement: String) {
+        dispatchEditorActionResult(editorCore.replaceAllSearchMatches(replacement))
+    }
+
+    func clearSearch() {
+        dispatchEditorActionResult(editorCore.clearSearch())
+    }
+
+    func getSearchState() -> SearchState {
+        editorCore.getSearchState()
+    }
+
     func applyDecorations(_ decorations: EditorResolvedDecorations, clearExisting: Bool = true) {
         if clearExisting {
             dispatchEditorActionResult(editorCore.clearAllDecorations())

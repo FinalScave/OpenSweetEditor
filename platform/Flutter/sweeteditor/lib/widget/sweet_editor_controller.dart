@@ -250,6 +250,37 @@ class SweetEditorController {
   bool get canUndo => _state?._session.editorCore?.canUndo ?? false;
   bool get canRedo => _state?._session.editorCore?.canRedo ?? false;
 
+  void search(core.SearchRequest request) {
+    _runEditorCoreAction((editorCore) => editorCore.search(request));
+  }
+
+  void findNextSearchMatch() {
+    _runEditorCoreAction((editorCore) => editorCore.findNextSearchMatch());
+  }
+
+  void findPreviousSearchMatch() {
+    _runEditorCoreAction((editorCore) => editorCore.findPreviousSearchMatch());
+  }
+
+  void replaceCurrentSearchMatch(String replacement) {
+    _runEditorCoreAction(
+      (editorCore) => editorCore.replaceCurrentSearchMatch(replacement),
+    );
+  }
+
+  void replaceAllSearchMatches(String replacement) {
+    _runEditorCoreAction(
+      (editorCore) => editorCore.replaceAllSearchMatches(replacement),
+    );
+  }
+
+  void clearSearch() {
+    _runEditorCoreAction((editorCore) => editorCore.clearSearch());
+  }
+
+  core.SearchState getSearchState() =>
+      _state?._session.editorCore?.getSearchState() ?? const core.SearchState();
+
   core.TextRange getWordRangeAtCursor() =>
       _state?._session.editorCore?.getWordRangeAtCursor() ??
       const core.TextRange(

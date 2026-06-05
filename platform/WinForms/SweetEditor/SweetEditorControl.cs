@@ -1040,6 +1040,45 @@ namespace SweetEditor {
 		/// <summary>Returns whether redo.</summary>
 		public bool CanRedo() => editorCore.CanRedo();
 
+		/// <summary>Searches the loaded document and updates rendered search highlights.</summary>
+		public void Search(SearchRequest request) {
+			if (IsReleased) return;
+			DispatchEditorActionResult(editorCore.Search(request));
+		}
+
+		/// <summary>Selects the next search match.</summary>
+		public void FindNextSearchMatch() {
+			if (IsReleased) return;
+			DispatchEditorActionResult(editorCore.FindNextSearchMatch());
+		}
+
+		/// <summary>Selects the previous search match.</summary>
+		public void FindPreviousSearchMatch() {
+			if (IsReleased) return;
+			DispatchEditorActionResult(editorCore.FindPreviousSearchMatch());
+		}
+
+		/// <summary>Replaces the current search match.</summary>
+		public void ReplaceCurrentSearchMatch(string replacement) {
+			if (IsReleased) return;
+			DispatchEditorActionResult(editorCore.ReplaceCurrentSearchMatch(replacement));
+		}
+
+		/// <summary>Replaces all current search matches.</summary>
+		public void ReplaceAllSearchMatches(string replacement) {
+			if (IsReleased) return;
+			DispatchEditorActionResult(editorCore.ReplaceAllSearchMatches(replacement));
+		}
+
+		/// <summary>Clears active search state, rendered highlights, and the current search-owned selection.</summary>
+		public void ClearSearch() {
+			if (IsReleased) return;
+			DispatchEditorActionResult(editorCore.ClearSearch());
+		}
+
+		/// <summary>Gets the latest search state.</summary>
+		public SearchState GetSearchState() => IsReleased ? new SearchState() : editorCore.GetSearchState();
+
 		/// <summary>Gets cursor position.</summary>
 		public TextPosition GetCursorPosition() => IsReleased ? default : editorCore.GetCursorPosition();
 
