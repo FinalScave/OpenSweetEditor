@@ -20,10 +20,6 @@ namespace SweetEditor {
         public int MaxMatches { get; set; } = 10000;
     }
 
-    public sealed partial class SearchReplaceRequest {
-        public string Replacement { get; set; } = string.Empty;
-    }
-
     public sealed partial class SearchRequest {
         public string Pattern { get; set; } = string.Empty;
         public SearchOptions Options { get; set; } = new SearchOptions();
@@ -34,7 +30,6 @@ namespace SweetEditor {
         public string Pattern { get; set; } = string.Empty;
         public SearchOptions Options { get; set; } = new SearchOptions();
         public long Generation { get; set; } = 0L;
-        public long DocumentRevision { get; set; } = 0L;
         public int MatchCount { get; set; } = 0;
         public int CurrentIndex { get; set; } = -1;
         public bool HasCurrentMatch { get; set; } = false;

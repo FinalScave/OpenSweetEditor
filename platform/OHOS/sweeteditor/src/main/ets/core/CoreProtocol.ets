@@ -7,7 +7,7 @@ import { ImeContextPolicy, ImeDocumentTextReplacement, ImeInputContext, ImeInput
 import { EventType, GestureEvent, GestureType, HitTarget, HitTargetType, eventTypeFromValue, gestureTypeFromValue, hitTargetTypeFromValue } from './CoreInteraction';
 import { EditorBuiltinCommand, KeyBinding, KeyChord, KeyCode, KeyModifier, editorBuiltinCommandFromValue } from './CoreKeymap';
 import { LinkedEditingModel, TabStopGroup } from './CoreLinkedEditing';
-import { SearchOptions, SearchReplaceRequest, SearchRequest, SearchState, SearchStatus, searchStatusFromValue } from './CoreSearch';
+import { SearchOptions, SearchRequest, SearchState, SearchStatus, searchStatusFromValue } from './CoreSearch';
 import { Cursor, CursorRect, EditorRenderModel, FoldMarkerRenderItem, FoldState, GuideDirection, GuideSegment, GuideStyle, GuideType, GutterIconRenderItem, LayoutMetrics, PointerCursorType, RangeEffectKind, RangeEffectRenderItem, ScrollMetrics, ScrollbarModel, SelectionHandle, VisualLine, VisualLineKind, VisualRun, VisualRunType, foldStateFromValue, guideDirectionFromValue, guideStyleFromValue, guideTypeFromValue, pointerCursorTypeFromValue, rangeEffectKindFromValue, visualLineKindFromValue, visualRunTypeFromValue } from './CoreVisual';
 
 const UTF8_DECODER = new util.TextDecoder('utf-8');
@@ -149,6 +149,12 @@ export class CoreProtocol {
 
   private static sizeOfUtf8String(value: string): number {
     return 4 + encodeUtf8(value).length;
+  }
+
+  static encodeUtf8String(value: string): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfUtf8String(value));
+    writer.writeUtf8String(value);
+    return writer.getBuffer();
   }
 
   private static writeBracketGuideList(writer: BinaryWriter, values: BracketGuide[]): void {
@@ -1473,16 +1479,6 @@ export class CoreProtocol {
     return size;
   }
 
-  static writeSearchReplaceRequest(writer: BinaryWriter, value: SearchReplaceRequest): void {
-    writer.writeUtf8String(value.replacement);
-  }
-
-  static sizeOfSearchReplaceRequest(value: SearchReplaceRequest): number {
-    let size = 0;
-    size += CoreProtocol.sizeOfUtf8String(value.replacement);
-    return size;
-  }
-
   static writeSearchRequest(writer: BinaryWriter, value: SearchRequest): void {
     writer.writeUtf8String(value.pattern);
     CoreProtocol.writeSearchOptions(writer, value.options);
@@ -1501,7 +1497,6 @@ export class CoreProtocol {
       pattern: reader.readUtf8String(),
       options: CoreProtocol.readSearchOptions(reader),
       generation: reader.readInt64(),
-      documentRevision: reader.readInt64(),
       matchCount: reader.readInt32(),
       currentIndex: reader.readInt32(),
       hasCurrentMatch: reader.readInt32() !== 0,
@@ -2356,12 +2351,6 @@ export class CoreProtocol {
   static encodeTabStopGroup(value: TabStopGroup): ArrayBuffer {
     const writer = new BinaryWriter(CoreProtocol.sizeOfTabStopGroup(value));
     CoreProtocol.writeTabStopGroup(writer, value);
-    return writer.getBuffer();
-  }
-
-  static encodeSearchReplaceRequest(value: SearchReplaceRequest): ArrayBuffer {
-    const writer = new BinaryWriter(CoreProtocol.sizeOfSearchReplaceRequest(value));
-    CoreProtocol.writeSearchReplaceRequest(writer, value);
     return writer.getBuffer();
   }
 

@@ -547,10 +547,10 @@ class EditorCore {
     );
   }
 
-  EditorActionResult replaceCurrentSearchMatch(SearchReplaceRequest request) {
+  EditorActionResult replaceCurrentSearchMatch(String replacement) {
     _ensureOpen();
     return _callWithBinaryActionData(
-      CoreProtocol.encodeSearchReplaceRequest(request),
+      CoreProtocol.encodeUtf8String(replacement),
       (ptr, size, outSize) => bindings.editor_replace_current_search_match(
         _handle,
         ptr,
@@ -560,10 +560,10 @@ class EditorCore {
     );
   }
 
-  EditorActionResult replaceAllSearchMatches(SearchReplaceRequest request) {
+  EditorActionResult replaceAllSearchMatches(String replacement) {
     _ensureOpen();
     return _callWithBinaryActionData(
-      CoreProtocol.encodeSearchReplaceRequest(request),
+      CoreProtocol.encodeUtf8String(replacement),
       (ptr, size, outSize) => bindings.editor_replace_all_search_matches(
         _handle,
         ptr,

@@ -432,6 +432,12 @@ def generate_swift_codec(schema, target=None):
         "    static func sizeOfUtf8String(_ value: String) -> Int {",
         "        4 + (value.data(using: .utf8)?.count ?? 0)",
         "    }",
+        "",
+        "    static func encodeUtf8String(_ value: String) -> Data {",
+        "        var writer = BinaryWriter()",
+        "        writer.writeUtf8String(value)",
+        "        return writer.data()",
+        "    }",
     ]
     for item in schema["enums"]:
         if item["kind"] != "enum":
@@ -549,4 +555,3 @@ def generate_swift(schema, target_name, target, out_root):
     codec_path.parent.mkdir(parents=True, exist_ok=True)
     codec_path.write_text(generate_swift_codec(schema, target), encoding="utf-8")
     return [str(out_root)]
-

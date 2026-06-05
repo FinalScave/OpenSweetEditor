@@ -557,6 +557,14 @@ def generate_dart_codec(schema, target=None):
             lines.append("}")
     codec_type = protocol_type_name(target, "core_protocol.dart")
     lines.extend(["", f"class {codec_type} {{", f"  {codec_type}._();"])
+    lines.extend([
+        "",
+        "  static Uint8List encodeUtf8String(String? value) {",
+        "    final writer = _BinaryWriter(_sizeOfUtf8String(value));",
+        "    _writeUtf8String(writer, value);",
+        "    return writer.toBytes();",
+        "  }",
+    ])
     for item in visible_schema_types(schema):
         if needs_reader(item):
             name = upper_first(item["name"])

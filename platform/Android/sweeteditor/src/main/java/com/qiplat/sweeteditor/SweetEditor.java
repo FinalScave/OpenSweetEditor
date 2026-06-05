@@ -69,7 +69,6 @@ import com.qiplat.sweeteditor.core.adornment.SpanLayer;
 import com.qiplat.sweeteditor.core.foundation.TextChange;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
-import com.qiplat.sweeteditor.core.search.SearchReplaceRequest;
 import com.qiplat.sweeteditor.core.search.SearchRequest;
 import com.qiplat.sweeteditor.core.search.SearchState;
 import com.qiplat.sweeteditor.core.snippet.LinkedEditingModel;
@@ -855,10 +854,10 @@ public class SweetEditor extends View {
     /**
      * Replace the current search match.
      *
-     * @param request replacement text
+     * @param replacement replacement text
      */
-    public void replaceCurrentSearchMatch(@NonNull SearchReplaceRequest request) {
-        EditorActionResult result = mEditorCore.replaceCurrentSearchMatch(request);
+    public void replaceCurrentSearchMatch(@NonNull String replacement) {
+        EditorActionResult result = mEditorCore.replaceCurrentSearchMatch(replacement);
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -866,10 +865,10 @@ public class SweetEditor extends View {
     /**
      * Replace every current search match.
      *
-     * @param request replacement text
+     * @param replacement replacement text
      */
-    public void replaceAllSearchMatches(@NonNull SearchReplaceRequest request) {
-        EditorActionResult result = mEditorCore.replaceAllSearchMatches(request);
+    public void replaceAllSearchMatches(@NonNull String replacement) {
+        EditorActionResult result = mEditorCore.replaceAllSearchMatches(replacement);
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }

@@ -244,7 +244,6 @@ namespace NS_SWEETEDITOR {
 #pragma region [IME]
 
   EditorActionResult EditorCore::updateImePreedit(const U8String& text, ImeScriptClass script_class) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, updateImePreeditInternal(text, script_class));
   }
@@ -252,7 +251,6 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::setImeComposingText(const U8String& text,
                                                      int cursor_offset,
                                                      ImeScriptClass script_class) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, setImeComposingTextInternal(text, cursor_offset, script_class));
   }
@@ -261,13 +259,11 @@ namespace NS_SWEETEDITOR {
                                                      size_t selection_start_offset,
                                                      size_t selection_end_offset,
                                                      ImeScriptClass script_class) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, setImeComposingTextInternal(text, selection_start_offset, selection_end_offset, script_class));
   }
 
   EditorActionResult EditorCore::commitImeText(const U8String& text, ImeScriptClass script_class) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, commitImeTextInternal(text, script_class));
   }
@@ -275,25 +271,21 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::commitImeText(const U8String& text,
                                                int cursor_offset,
                                                ImeScriptClass script_class) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, commitImeTextInternal(text, cursor_offset, script_class));
   }
 
   EditorActionResult EditorCore::finishImePreedit() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, finishImePreeditInternal());
   }
 
   EditorActionResult EditorCore::cancelImePreedit() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, cancelImePreeditInternal());
   }
 
   EditorActionResult EditorCore::markImeDocumentRange(const TextRange& range, ImeScriptClass script_class) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, markImeDocumentRangeInternal(range, script_class));
   }
@@ -301,13 +293,11 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::markImeDocumentRange(size_t start_offset,
                                                       size_t end_offset,
                                                       ImeScriptClass script_class) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, markImeDocumentRangeInternal(start_offset, end_offset, script_class));
   }
 
   EditorActionResult EditorCore::replaceImeText(const ImeTextReplacement& replacement) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, replaceImeTextInternal(
         replacement.range,
@@ -316,7 +306,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::replaceImeDocumentText(const ImeDocumentTextReplacement& replacement) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, replaceImeDocumentTextInternal(
         replacement.start_offset,
@@ -327,7 +316,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::replaceImeInputContextText(const ImeInputContextTextReplacement& replacement) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, replaceImeInputContextTextInternal(
         replacement.start_offset,
@@ -340,25 +328,21 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::markImeInputContextRange(size_t start_offset,
                                                           size_t end_offset,
                                                           ImeScriptClass script_class) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, markImeInputContextRangeInternal(start_offset, end_offset, script_class));
   }
 
   EditorActionResult EditorCore::notifyImeDocumentSelectionChanged(size_t start_offset, size_t end_offset) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, notifyImeDocumentSelectionChangedInternal(start_offset, end_offset));
   }
 
   EditorActionResult EditorCore::notifyImeInputContextSelectionChanged(size_t start_offset, size_t end_offset) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, notifyImeInputContextSelectionChangedInternal(start_offset, end_offset));
   }
 
   EditorActionResult EditorCore::updateImeTextModelState(const ImeTextModelState& state) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, updateImeTextModelStateInternal(
         state.mode,
@@ -373,7 +357,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::updateImeTextModelDelta(const ImeTextModelDelta& delta) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, updateImeTextModelDeltaInternal(
         delta.mode,
@@ -394,7 +377,6 @@ namespace NS_SWEETEDITOR {
                                                               int32_t document_start_offset,
                                                               int32_t selection_start_offset,
                                                               int32_t selection_end_offset) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, updateImeInputStateSelectionInternal(context_id,
                                                                         document_start_offset,
@@ -403,7 +385,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::replaceImeInputStateText(const ImeInputStateTextReplacement& replacement) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, replaceImeInputStateTextInternal(
         replacement.context_id,
@@ -416,13 +397,11 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::deleteImeBackward(size_t before_length, ImeTextUnit text_unit) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, deleteImeBackwardInternal(before_length, text_unit));
   }
 
   EditorActionResult EditorCore::deleteImeForward(size_t after_length, ImeTextUnit text_unit) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, deleteImeForwardInternal(after_length, text_unit));
   }
@@ -430,19 +409,16 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::deleteImeSurrounding(size_t before_length,
                                                       size_t after_length,
                                                       ImeTextUnit text_unit) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, deleteImeSurroundingInternal(before_length, after_length, text_unit));
   }
 
   EditorActionResult EditorCore::notifyImeSelectionChanged(const TextRange& range) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, notifyImeSelectionChangedInternal(range));
   }
 
   EditorActionResult EditorCore::notifyImeCursorChanged(const TextPosition& cursor) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     return finishImeAction(before, notifyImeCursorChangedInternal(cursor));
   }
@@ -1074,7 +1050,6 @@ namespace NS_SWEETEDITOR {
   }
 
   ImeInputContext EditorCore::getImeInputContext(size_t before_length, size_t after_length) {
-    auto lock = lockEditorState();
     const ImeContextPolicy policy = m_composition_controller_.inputContextPolicy();
     if (policy == ImeContextPolicy::NONE) {
       return buildImeInputContext(0, 0, resolveImeDocumentInputContextKind(0, 0));
@@ -1091,7 +1066,6 @@ namespace NS_SWEETEDITOR {
   ImeInputContext EditorCore::getImeTextModelInputContext(ImeTextModelMode mode,
                                                           size_t before_length,
                                                           size_t after_length) {
-    auto lock = lockEditorState();
     if (mode == ImeTextModelMode::TRANSIENT_INPUT) {
       if (m_ime_input_context_.id != 0
           && (!m_ime_input_context_.text.empty() || m_ime_input_context_.has_composition)) {
@@ -1118,19 +1092,16 @@ namespace NS_SWEETEDITOR {
   }
 
   ImeSyncSnapshot EditorCore::getImeSyncSnapshot() const {
-    auto lock = lockEditorState();
     return m_composition_controller_.buildSyncSnapshot();
   }
 
   EditorActionResult EditorCore::setImeKeyboardScriptClass(ImeScriptClass script_class) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_composition_controller_.setKeyboardScriptClass(script_class);
     return finishAction(before, EditorActionReason::IME, true);
   }
 
   ImeScriptClass EditorCore::getImeKeyboardScriptClass() const {
-    auto lock = lockEditorState();
     return m_composition_controller_.keyboardScriptClass();
   }
 
@@ -1139,12 +1110,10 @@ namespace NS_SWEETEDITOR {
   }
 
   bool EditorCore::isComposing() const {
-    auto lock = lockEditorState();
     return m_composition_controller_.hasVisibleComposition();
   }
 
   bool EditorCore::hasComposingSession() const {
-    auto lock = lockEditorState();
     return m_composition_controller_.hasComposingSession();
   }
 

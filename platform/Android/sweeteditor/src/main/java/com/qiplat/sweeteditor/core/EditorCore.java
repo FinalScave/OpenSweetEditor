@@ -38,7 +38,6 @@ import com.qiplat.sweeteditor.core.ime.ImeTextReplacement;
 import com.qiplat.sweeteditor.core.keymap.KeyModifier;
 import com.qiplat.sweeteditor.core.interaction.EventType;
 import com.qiplat.sweeteditor.core.interaction.GestureEvent;
-import com.qiplat.sweeteditor.core.search.SearchReplaceRequest;
 import com.qiplat.sweeteditor.core.search.SearchRequest;
 import com.qiplat.sweeteditor.core.search.SearchState;
 import com.qiplat.sweeteditor.core.visual.CursorRect;
@@ -590,16 +589,16 @@ public class EditorCore {
     }
 
     @NonNull
-    public EditorActionResult replaceCurrentSearchMatch(@NonNull SearchReplaceRequest request) {
+    public EditorActionResult replaceCurrentSearchMatch(@NonNull String replacement) {
         if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer payload = CoreProtocol.encodeSearchReplaceRequest(request);
+        ByteBuffer payload = CoreProtocol.encodeUtf8String(replacement);
         return decodeAction(nativeReplaceCurrentSearchMatch(mNativeHandle, payload, payload.remaining()));
     }
 
     @NonNull
-    public EditorActionResult replaceAllSearchMatches(@NonNull SearchReplaceRequest request) {
+    public EditorActionResult replaceAllSearchMatches(@NonNull String replacement) {
         if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer payload = CoreProtocol.encodeSearchReplaceRequest(request);
+        ByteBuffer payload = CoreProtocol.encodeUtf8String(replacement);
         return decodeAction(nativeReplaceAllSearchMatches(mNativeHandle, payload, payload.remaining()));
     }
 

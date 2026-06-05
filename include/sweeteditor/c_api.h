@@ -473,14 +473,12 @@ EDITOR_API const uint8_t* editor_find_next_search_match(intptr_t editor_handle, 
 EDITOR_API const uint8_t* editor_find_previous_search_match(intptr_t editor_handle, size_t* out_size);
 
 /// Replace the current search match.
-/// @param data SearchReplaceRequest binary payload encoded by CoreProtocol
-///        SearchReplaceRequest is U8String replacement
+/// @param data U8String replacement payload: u32 byte length followed by UTF-8 bytes
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_replace_current_search_match(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
 /// Replace all current search matches.
-/// @param data SearchReplaceRequest binary payload encoded by CoreProtocol
-///        SearchReplaceRequest is U8String replacement
+/// @param data U8String replacement payload: u32 byte length followed by UTF-8 bytes
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_replace_all_search_matches(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 

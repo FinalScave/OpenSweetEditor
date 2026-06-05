@@ -1018,6 +1018,14 @@ def generate_java_codec(schema, target):
         "    private static int sizeOfUtf8String(String value) {",
         "        return 4 + utf8Bytes(value).length;",
         "    }",
+        "",
+        "    public static ByteBuffer encodeUtf8String(String value) {",
+        "        byte[] bytes = utf8Bytes(value);",
+        "        ByteBuffer data = ByteBuffer.allocateDirect(4 + bytes.length).order(ByteOrder.LITTLE_ENDIAN);",
+        "        writeUtf8Bytes(data, bytes);",
+        "        data.flip();",
+        "        return data;",
+        "    }",
     ])
     list_inners = list_inner_names(schema)
     for inner in list_inners:
@@ -1271,6 +1279,13 @@ def generate_java_segment_codec(schema, target):
         "",
         "    private static int sizeOfUtf8String(String value) {",
         "        return 4 + utf8Bytes(value).length;",
+        "    }",
+        "",
+        "    public static MemorySegment encodeUtf8String(Arena arena, String value) {",
+        "        byte[] bytes = utf8Bytes(value);",
+        "        BinaryWriter writer = new BinaryWriter(arena, 4 + bytes.length);",
+        "        writer.writeUtf8Bytes(bytes);",
+        "        return writer.segment();",
         "    }",
     ])
     list_inners = list_inner_names(schema)

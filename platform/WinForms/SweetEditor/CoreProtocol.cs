@@ -134,6 +134,12 @@ namespace SweetEditor {
             return 4 + (value == null ? 0 : Encoding.UTF8.GetByteCount(value));
         }
 
+        public static byte[] EncodeUtf8String(string? value) {
+            var writer = new BinaryWriter(SizeOfUtf8String(value));
+            WriteUtf8String(writer, value);
+            return writer.ToArray();
+        }
+
         private static void WriteBracketGuideList(BinaryWriter writer, IReadOnlyList<BracketGuide>? values) {
             var count = values == null ? 0 : values.Count;
             writer.WriteInt32(count);
@@ -1450,16 +1456,6 @@ namespace SweetEditor {
             return size;
         }
 
-        private static void WriteSearchReplaceRequest(BinaryWriter writer, SearchReplaceRequest value) {
-            WriteUtf8String(writer, value.Replacement);
-        }
-
-        private static int SizeOfSearchReplaceRequest(SearchReplaceRequest value) {
-            var size = 0;
-            size += SizeOfUtf8String(value.Replacement);
-            return size;
-        }
-
         private static void WriteSearchRequest(BinaryWriter writer, SearchRequest value) {
             WriteUtf8String(writer, value.Pattern);
             WriteSearchOptions(writer, value.Options);
@@ -1478,7 +1474,6 @@ namespace SweetEditor {
                 Pattern = ReadUtf8String(ref reader),
                 Options = ReadSearchOptions(ref reader),
                 Generation = reader.ReadInt64(),
-                DocumentRevision = reader.ReadInt64(),
                 MatchCount = reader.ReadInt32(),
                 CurrentIndex = reader.ReadInt32(),
                 HasCurrentMatch = reader.ReadBoolI32(),
@@ -2379,12 +2374,6 @@ namespace SweetEditor {
         public static byte[] EncodeTabStopGroup(TabStopGroup value) {
             var writer = new BinaryWriter(SizeOfTabStopGroup(value));
             WriteTabStopGroup(writer, value);
-            return writer.ToArray();
-        }
-
-        public static byte[] EncodeSearchReplaceRequest(SearchReplaceRequest value) {
-            var writer = new BinaryWriter(SizeOfSearchReplaceRequest(value));
-            WriteSearchReplaceRequest(writer, value);
             return writer.ToArray();
         }
 

@@ -1333,17 +1333,17 @@ namespace SweetEditor {
 		}
 
 		/// <summary>Replaces the current search match.</summary>
-		public EditorActionResult ReplaceCurrentSearchMatch(SearchReplaceRequest request) {
+		public EditorActionResult ReplaceCurrentSearchMatch(string replacement) {
 			if (IsReleased) return EditorActionResult.Empty;
-			byte[] payload = CoreProtocol.EncodeSearchReplaceRequest(request);
+			byte[] payload = CoreProtocol.EncodeUtf8String(replacement);
 			IntPtr payloadPtr = NativeMethods.ReplaceCurrentSearchMatch(nativeHandle, payload, (UIntPtr)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
 		/// <summary>Replaces all current search matches.</summary>
-		public EditorActionResult ReplaceAllSearchMatches(SearchReplaceRequest request) {
+		public EditorActionResult ReplaceAllSearchMatches(string replacement) {
 			if (IsReleased) return EditorActionResult.Empty;
-			byte[] payload = CoreProtocol.EncodeSearchReplaceRequest(request);
+			byte[] payload = CoreProtocol.EncodeUtf8String(replacement);
 			IntPtr payloadPtr = NativeMethods.ReplaceAllSearchMatches(nativeHandle, payload, (UIntPtr)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}

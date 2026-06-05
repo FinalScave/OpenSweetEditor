@@ -346,16 +346,16 @@ public class EditorCore {
         return decodeAction(EditorNative.findPreviousSearchMatch(nativeHandle));
     }
 
-    public EditorActionResult replaceCurrentSearchMatch(SearchReplaceRequest request) {
+    public EditorActionResult replaceCurrentSearchMatch(String replacement) {
         try (Arena tempArena = Arena.ofConfined()) {
-            MemorySegment payload = CoreProtocol.encodeSearchReplaceRequest(tempArena, request);
+            MemorySegment payload = CoreProtocol.encodeUtf8String(tempArena, replacement);
             return decodeAction(EditorNative.replaceCurrentSearchMatch(nativeHandle, payload, payload.byteSize()));
         }
     }
 
-    public EditorActionResult replaceAllSearchMatches(SearchReplaceRequest request) {
+    public EditorActionResult replaceAllSearchMatches(String replacement) {
         try (Arena tempArena = Arena.ofConfined()) {
-            MemorySegment payload = CoreProtocol.encodeSearchReplaceRequest(tempArena, request);
+            MemorySegment payload = CoreProtocol.encodeUtf8String(tempArena, replacement);
             return decodeAction(EditorNative.replaceAllSearchMatches(nativeHandle, payload, payload.byteSize()));
         }
     }

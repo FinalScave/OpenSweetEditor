@@ -25,7 +25,6 @@ import com.qiplat.sweeteditor.EditorTheme;
 import com.qiplat.sweeteditor.R;
 import com.qiplat.sweeteditor.SweetEditor;
 import com.qiplat.sweeteditor.core.search.SearchOptions;
-import com.qiplat.sweeteditor.core.search.SearchReplaceRequest;
 import com.qiplat.sweeteditor.core.search.SearchRequest;
 import com.qiplat.sweeteditor.core.search.SearchState;
 import com.qiplat.sweeteditor.core.search.SearchStatus;
@@ -33,6 +32,8 @@ import com.qiplat.sweeteditor.event.EditorEventListener;
 import com.qiplat.sweeteditor.event.TextChangedEvent;
 
 public class SearchPanel extends LinearLayout {
+    private static final String NEWLINE_TOKEN = "\\n";
+
     public interface OnSearchStateChangedListener {
         void onSearchStateChanged(@NonNull SearchState state);
     }
@@ -49,6 +50,8 @@ public class SearchPanel extends LinearLayout {
     private final ImageButton mPreviousButton;
     private final ImageButton mNextButton;
     private final ImageButton mCloseButton;
+    private final ImageButton mQueryNewlineButton;
+    private final ImageButton mReplaceNewlineButton;
     private final EditorEventListener<TextChangedEvent> mTextChangedListener;
 
     @Nullable
@@ -78,7 +81,7 @@ public class SearchPanel extends LinearLayout {
     public SearchPanel(@NonNull Context context, @Nullable AttributeSet attrs, int defStyleAttr) {
         super(context, attrs, defStyleAttr);
         setOrientation(VERTICAL);
-        setPadding(dp(8), dp(6), dp(6), dp(6));
+        setPadding(dp(8), dp(2), dp(4), dp(4));
 
         LinearLayout searchRow = createRow(context);
         addView(searchRow, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT));
@@ -119,6 +122,11 @@ public class SearchPanel extends LinearLayout {
             }
         });
         searchRow.addView(mQueryInput, new LayoutParams(0, dp(36), 1f));
+
+        mQueryNewlineButton = createImageButton(R.drawable.se_ic_keyboard_return_24, "Insert Newline");
+        mQueryNewlineButton.setOnClickListener(v -> insertNewlineToken(mQueryInput));
+        searchRow.addView(mQueryNewlineButton, new LayoutParams(dp(32), dp(36)));
+
         mTextChangedListener = event -> {
             if (!mReplacing && getVisibility() == VISIBLE && mQueryInput.length() > 0) {
                 performSearch();
@@ -188,6 +196,10 @@ public class SearchPanel extends LinearLayout {
             return false;
         });
         replaceRow.addView(mReplaceInput, new LayoutParams(0, dp(36), 1f));
+
+        mReplaceNewlineButton = createImageButton(R.drawable.se_ic_keyboard_return_24, "Insert Newline");
+        mReplaceNewlineButton.setOnClickListener(v -> insertNewlineToken(mReplaceInput));
+        replaceRow.addView(mReplaceNewlineButton, new LayoutParams(dp(32), dp(36)));
 
         mReplaceButton = createCommandButton("Replace", "Replace Current Match");
         mReplaceButton.setOnClickListener(v -> replaceCurrentSearchMatch());
@@ -272,14 +284,13 @@ public class SearchPanel extends LinearLayout {
     }
 
     public void applyTheme(@NonNull EditorTheme theme) {
-        mForegroundColor = theme.completionLabelColor != 0 ? theme.completionLabelColor : theme.textColor;
-        mMutedColor = theme.completionDetailColor != 0 ? theme.completionDetailColor : theme.lineNumberColor;
+        mForegroundColor = theme.textColor;
+        mMutedColor = theme.lineNumberColor != 0 ? theme.lineNumberColor : mForegroundColor;
         mAccentColor = theme.currentLineNumberColor != 0 ? theme.currentLineNumberColor : theme.cursorColor;
         mErrorColor = theme.diagnosticErrorColor != 0 ? theme.diagnosticErrorColor : mAccentColor;
 
         GradientDrawable background = new GradientDrawable();
-        background.setColor(theme.completionBgColor != 0 ? theme.completionBgColor : theme.backgroundColor);
-        background.setStroke(dp(1), theme.completionBorderColor);
+        background.setColor(theme.backgroundColor);
         setBackground(background);
 
         mQueryInput.setTextColor(mForegroundColor);
@@ -293,6 +304,8 @@ public class SearchPanel extends LinearLayout {
         tintImageButton(mPreviousButton, mForegroundColor);
         tintImageButton(mNextButton, mForegroundColor);
         tintImageButton(mCloseButton, mForegroundColor);
+        tintImageButton(mQueryNewlineButton, mMutedColor);
+        tintImageButton(mReplaceNewlineButton, mMutedColor);
         updateOptionToggles();
     }
 
@@ -313,7 +326,7 @@ public class SearchPanel extends LinearLayout {
             applySearchState(new SearchState());
             return;
         }
-        String pattern = mQueryInput.getText().toString();
+        String pattern = decodeNewlineTokens(mQueryInput.getText().toString());
         if (pattern.isEmpty()) {
             if (mHasActiveSearch) {
                 mEditor.clearSearch();
@@ -360,7 +373,7 @@ public class SearchPanel extends LinearLayout {
         }
         mReplacing = true;
         try {
-            mEditor.replaceCurrentSearchMatch(new SearchReplaceRequest(mReplaceInput.getText().toString()));
+            mEditor.replaceCurrentSearchMatch(decodeNewlineTokens(mReplaceInput.getText().toString()));
         } finally {
             mReplacing = false;
         }
@@ -379,7 +392,7 @@ public class SearchPanel extends LinearLayout {
         }
         mReplacing = true;
         try {
-            mEditor.replaceAllSearchMatches(new SearchReplaceRequest(mReplaceInput.getText().toString()));
+            mEditor.replaceAllSearchMatches(decodeNewlineTokens(mReplaceInput.getText().toString()));
         } finally {
             mReplacing = false;
         }
@@ -432,6 +445,8 @@ public class SearchPanel extends LinearLayout {
         setToggleEnabled(mWholeWordToggle, hasEditor);
         setToggleEnabled(mRegexToggle, hasEditor);
         mReplaceInput.setEnabled(hasEditor);
+        setImageButtonEnabled(mQueryNewlineButton, hasEditor);
+        setImageButtonEnabled(mReplaceNewlineButton, hasEditor);
         setImageButtonEnabled(mPreviousButton, canNavigate);
         setImageButtonEnabled(mNextButton, canNavigate);
         setImageButtonEnabled(mCloseButton, true);
@@ -528,6 +543,41 @@ public class SearchPanel extends LinearLayout {
         }
         mEditor.unsubscribe(TextChangedEvent.class, mTextChangedListener);
         mSubscribed = false;
+    }
+
+    private void insertNewlineToken(@NonNull EditText input) {
+        int start = Math.max(input.getSelectionStart(), 0);
+        int end = Math.max(input.getSelectionEnd(), 0);
+        if (start > end) {
+            int temp = start;
+            start = end;
+            end = temp;
+        }
+        input.getText().replace(start, end, NEWLINE_TOKEN);
+        input.setSelection(start + NEWLINE_TOKEN.length());
+    }
+
+    @NonNull
+    private String decodeNewlineTokens(@NonNull String text) {
+        StringBuilder builder = new StringBuilder(text.length());
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (ch == '\\' && i + 1 < text.length()) {
+                char next = text.charAt(i + 1);
+                if (next == 'n') {
+                    builder.append('\n');
+                    i++;
+                    continue;
+                }
+                if (next == '\\') {
+                    builder.append('\\');
+                    i++;
+                    continue;
+                }
+            }
+            builder.append(ch);
+        }
+        return builder.toString();
     }
 
     private void showKeyboard() {

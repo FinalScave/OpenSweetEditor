@@ -131,6 +131,12 @@ enum CoreProtocol {
         4 + (value.data(using: .utf8)?.count ?? 0)
     }
 
+    static func encodeUtf8String(_ value: String) -> Data {
+        var writer = BinaryWriter()
+        writer.writeUtf8String(value)
+        return writer.data()
+    }
+
     static func readEditorActionReason(_ reader: inout BinaryReader) -> EditorActionReason? {
         guard let value = reader.readInt32() else { return nil }
         return EditorActionReason.fromValue(value)
@@ -1468,14 +1474,6 @@ enum CoreProtocol {
         4 + 4 + 4 + 4 + 4
     }
 
-    static func writeSearchReplaceRequest(_ writer: inout BinaryWriter, _ value: SearchReplaceRequest) {
-        writer.writeUtf8String(value.replacement)
-    }
-
-    static func sizeOfSearchReplaceRequest(_ value: SearchReplaceRequest) -> Int {
-        sizeOfUtf8String(value.replacement)
-    }
-
     static func writeSearchRequest(_ writer: inout BinaryWriter, _ value: SearchRequest) {
         writer.writeUtf8String(value.pattern)
         writeSearchOptions(&writer, value.options)
@@ -1490,13 +1488,12 @@ enum CoreProtocol {
         guard let pattern = reader.readUtf8String() else { return nil }
         guard let options = readSearchOptions(&reader) else { return nil }
         guard let generation = reader.readInt64() else { return nil }
-        guard let document_revision = reader.readInt64() else { return nil }
         guard let match_count = reader.readInt32() else { return nil }
         guard let current_index = reader.readInt32() else { return nil }
         guard let has_current_match = reader.readBoolI32() else { return nil }
         guard let current_range = readTextRange(&reader) else { return nil }
         guard let error_message = reader.readUtf8String() else { return nil }
-        return SearchState(status: status, pattern: pattern, options: options, generation: generation, document_revision: document_revision, match_count: match_count, current_index: current_index, has_current_match: has_current_match, current_range: current_range, error_message: error_message)
+        return SearchState(status: status, pattern: pattern, options: options, generation: generation, match_count: match_count, current_index: current_index, has_current_match: has_current_match, current_range: current_range, error_message: error_message)
     }
 
     static func decodeSearchState(_ data: Data) -> SearchState? {
@@ -2410,12 +2407,6 @@ enum CoreProtocol {
     static func encodeTabStopGroup(_ value: TabStopGroup) -> Data {
         var writer = BinaryWriter()
         writeTabStopGroup(&writer, value)
-        return writer.data()
-    }
-
-    static func encodeSearchReplaceRequest(_ value: SearchReplaceRequest) -> Data {
-        var writer = BinaryWriter()
-        writeSearchReplaceRequest(&writer, value)
         return writer.data()
     }
 

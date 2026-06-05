@@ -31,7 +31,7 @@ import {
   ImeTextUnit
 } from './CoreIme';
 import { KeyBinding } from './CoreKeymap';
-import { SearchReplaceRequest, SearchRequest, SearchState } from './CoreSearch';
+import { SearchRequest, SearchState } from './CoreSearch';
 import {
   BracketGuide,
   CodeLensItem,
@@ -337,13 +337,13 @@ export class EditorCore {
     return CoreProtocol.decodeEditorActionResult(native.editorFindPreviousSearchMatch(this.handle));
   }
 
-  replaceCurrentSearchMatch(request: SearchReplaceRequest): EditorActionResult {
-    const payload = CoreProtocol.encodeSearchReplaceRequest(request);
+  replaceCurrentSearchMatch(replacement: string): EditorActionResult {
+    const payload = CoreProtocol.encodeUtf8String(replacement);
     return CoreProtocol.decodeEditorActionResult(native.editorReplaceCurrentSearchMatch(this.handle, payload, payload.byteLength));
   }
 
-  replaceAllSearchMatches(request: SearchReplaceRequest): EditorActionResult {
-    const payload = CoreProtocol.encodeSearchReplaceRequest(request);
+  replaceAllSearchMatches(replacement: string): EditorActionResult {
+    const payload = CoreProtocol.encodeUtf8String(replacement);
     return CoreProtocol.decodeEditorActionResult(native.editorReplaceAllSearchMatches(this.handle, payload, payload.byteLength));
   }
 

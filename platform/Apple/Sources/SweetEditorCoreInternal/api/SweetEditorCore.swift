@@ -1322,16 +1322,16 @@ class SweetEditorCore {
     }
 
     @discardableResult
-    func replaceCurrentSearchMatch(_ request: SearchReplaceRequest) -> EditorActionResult? {
-        let payload = CoreProtocol.encodeSearchReplaceRequest(request)
+    func replaceCurrentSearchMatch(_ replacement: String) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeUtf8String(replacement)
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_replace_current_search_match(handle, ptr, size, &outSize)
         }
     }
 
     @discardableResult
-    func replaceAllSearchMatches(_ request: SearchReplaceRequest) -> EditorActionResult? {
-        let payload = CoreProtocol.encodeSearchReplaceRequest(request)
+    func replaceAllSearchMatches(_ replacement: String) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeUtf8String(replacement)
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_replace_all_search_matches(handle, ptr, size, &outSize)
         }

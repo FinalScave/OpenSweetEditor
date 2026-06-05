@@ -66,15 +66,42 @@ TEST_CASE("EditorCore search supports regex captures in replace all") {
   REQUIRE(state.status == SearchStatus::READY);
   CHECK(state.match_count == 2);
 
-  SearchReplaceRequest replace_request;
-  replace_request.replacement = "bar$1";
-  EditorActionResult replace = editor.replaceAllSearchMatches(replace_request);
+  EditorActionResult replace = editor.replaceAllSearchMatches("bar$1");
   CHECK(replace.handled);
   CHECK(replace.content_changed);
   CHECK(document->getU8Text() == "bar1 bar2");
 
   editor.undo();
   CHECK(document->getU8Text() == "foo1 foo2");
+}
+
+TEST_CASE("EditorCore search supports newline patterns") {
+  EditorCore editor = makeSearchEditor("alpha\nbeta");
+
+  SearchRequest literal_request;
+  literal_request.pattern = "\n";
+  editor.search(literal_request);
+
+  SearchState state = editor.getSearchState();
+  REQUIRE(state.status == SearchStatus::READY);
+  CHECK(state.match_count == 1);
+  CHECK(state.current_range == (TextRange{{0, 5}, {1, 0}}));
+
+  SearchRequest escaped_literal_request;
+  escaped_literal_request.pattern = "\\n";
+  editor.search(escaped_literal_request);
+  state = editor.getSearchState();
+  CHECK(state.match_count == 0);
+
+  SearchRequest regex_request;
+  regex_request.pattern = "\\n";
+  regex_request.options.use_regex = true;
+  editor.search(regex_request);
+
+  state = editor.getSearchState();
+  REQUIRE(state.status == SearchStatus::READY);
+  CHECK(state.match_count == 1);
+  CHECK(state.current_range == (TextRange{{0, 5}, {1, 0}}));
 }
 
 TEST_CASE("EditorCore clear search clears only the current search selection") {

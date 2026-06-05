@@ -267,82 +267,106 @@ namespace NS_SWEETEDITOR {
       }
       return match.captures[index].text;
     }
-  }
 
-  SearchResult executeSearch(const SearchSnapshot& snapshot) {
 #if SWEETEDITOR_SEARCH_IMPL_STD
-    SearchResult result = snapshot.request.options.use_regex
-        ? executeRegexSearch(snapshot)
-        : executeLiteralSearch(snapshot);
-    if (result.state.status != SearchStatus::FAILED && result.state.status != SearchStatus::INACTIVE) {
-      result.state.status = SearchStatus::READY;
-    }
-    result.state.match_count = static_cast<uint32_t>(result.matches.size());
-    result.state.has_current_match = result.state.current_index >= 0
-        && static_cast<size_t>(result.state.current_index) < result.matches.size();
-    if (result.state.has_current_match) {
-      result.state.current_range = result.matches[static_cast<size_t>(result.state.current_index)].range;
-    } else {
-      result.state.current_index = result.matches.empty() ? -1 : 0;
-      result.state.has_current_match = !result.matches.empty();
-      if (result.state.has_current_match) {
-        result.state.current_range = result.matches.front().range;
+    class StdSearchEngine final : public SearchEngine {
+    public:
+      SearchResult search(const SearchSnapshot& snapshot) const override {
+        SearchResult result = snapshot.request.options.use_regex
+            ? executeRegexSearch(snapshot)
+            : executeLiteralSearch(snapshot);
+        if (result.state.status != SearchStatus::FAILED && result.state.status != SearchStatus::INACTIVE) {
+          result.state.status = SearchStatus::READY;
+        }
+        result.state.match_count = static_cast<uint32_t>(result.matches.size());
+        result.state.has_current_match = result.state.current_index >= 0
+            && static_cast<size_t>(result.state.current_index) < result.matches.size();
+        if (result.state.has_current_match) {
+          result.state.current_range = result.matches[static_cast<size_t>(result.state.current_index)].range;
+        } else {
+          result.state.current_index = result.matches.empty() ? -1 : 0;
+          result.state.has_current_match = !result.matches.empty();
+          if (result.state.has_current_match) {
+            result.state.current_range = result.matches.front().range;
+          }
+        }
+        return result;
       }
-    }
-    return result;
+
+      U8String buildReplacement(const SearchMatch& match,
+                                const U8String& replacement,
+                                const SearchOptions& options) const override {
+        if (!options.use_regex) {
+          return replacement;
+        }
+
+        U8String result;
+        result.reserve(replacement.size());
+        for (size_t i = 0; i < replacement.size(); ++i) {
+          char ch = replacement[i];
+          if (ch != '$' || i + 1 >= replacement.size()) {
+            result.push_back(ch);
+            continue;
+          }
+
+          char next = replacement[i + 1];
+          if (next == '$') {
+            result.push_back('$');
+            ++i;
+            continue;
+          }
+          if (next == '&') {
+            result += captureTextOrEmpty(match, 0);
+            ++i;
+            continue;
+          }
+          if (next >= '0' && next <= '9') {
+            size_t capture_index = static_cast<size_t>(next - '0');
+            size_t consumed = 1;
+            if (i + 2 < replacement.size()
+                && std::isdigit(static_cast<unsigned char>(replacement[i + 2]))) {
+              const size_t two_digit = capture_index * 10 + static_cast<size_t>(replacement[i + 2] - '0');
+              if (two_digit < match.captures.size()) {
+                capture_index = two_digit;
+                consumed = 2;
+              }
+            }
+            result += captureTextOrEmpty(match, capture_index);
+            i += consumed;
+            continue;
+          }
+
+          result.push_back('$');
+        }
+        return result;
+      }
+    };
 #else
-    SearchResult result;
-    result.state = snapshot.state;
-    result.state.status = SearchStatus::FAILED;
-    result.state.error_message = "Search implementation is not available";
-    return result;
+    class UnavailableSearchEngine final : public SearchEngine {
+    public:
+      SearchResult search(const SearchSnapshot& snapshot) const override {
+        SearchResult result;
+        result.state = snapshot.state;
+        result.state.status = SearchStatus::FAILED;
+        result.state.error_message = "Search implementation is not available";
+        return result;
+      }
+
+      U8String buildReplacement(const SearchMatch&,
+                                const U8String& replacement,
+                                const SearchOptions&) const override {
+        return replacement;
+      }
+    };
 #endif
   }
 
-  U8String buildSearchReplacement(const SearchMatch& match,
-                                  const SearchReplaceRequest& request,
-                                  bool use_regex) {
-    if (!use_regex) {
-      return request.replacement;
-    }
-
-    U8String result;
-    result.reserve(request.replacement.size());
-    for (size_t i = 0; i < request.replacement.size(); ++i) {
-      char ch = request.replacement[i];
-      if (ch != '$' || i + 1 >= request.replacement.size()) {
-        result.push_back(ch);
-        continue;
-      }
-
-      char next = request.replacement[i + 1];
-      if (next == '$') {
-        result.push_back('$');
-        ++i;
-        continue;
-      }
-      if (next == '&') {
-        result += captureTextOrEmpty(match, 0);
-        ++i;
-        continue;
-      }
-      if (next >= '0' && next <= '9') {
-        size_t capture_index = static_cast<size_t>(next - '0');
-        size_t consumed = 1;
-        if (i + 2 < request.replacement.size() && std::isdigit(static_cast<unsigned char>(request.replacement[i + 2]))) {
-          const size_t two_digit = capture_index * 10 + static_cast<size_t>(request.replacement[i + 2] - '0');
-          if (two_digit < match.captures.size()) {
-            capture_index = two_digit;
-            consumed = 2;
-          }
-        }
-        result += captureTextOrEmpty(match, capture_index);
-        i += consumed;
-        continue;
-      }
-
-      result.push_back('$');
-    }
-    return result;
+  const SearchEngine& getSearchEngine() {
+#if SWEETEDITOR_SEARCH_IMPL_STD
+    static const StdSearchEngine engine;
+#else
+    static const UnavailableSearchEngine engine;
+#endif
+    return engine;
   }
 }

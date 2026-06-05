@@ -66,7 +66,6 @@ import com.qiplat.sweeteditor.core.keymap.KeyChord;
 import com.qiplat.sweeteditor.core.keymap.KeyCode;
 import com.qiplat.sweeteditor.core.keymap.KeyModifier;
 import com.qiplat.sweeteditor.core.search.SearchOptions;
-import com.qiplat.sweeteditor.core.search.SearchReplaceRequest;
 import com.qiplat.sweeteditor.core.search.SearchRequest;
 import com.qiplat.sweeteditor.core.search.SearchState;
 import com.qiplat.sweeteditor.core.search.SearchStatus;
@@ -134,6 +133,14 @@ public final class CoreProtocol {
 
     private static int sizeOfUtf8String(String value) {
         return 4 + utf8Bytes(value).length;
+    }
+
+    public static ByteBuffer encodeUtf8String(String value) {
+        byte[] bytes = utf8Bytes(value);
+        ByteBuffer data = ByteBuffer.allocateDirect(4 + bytes.length).order(ByteOrder.LITTLE_ENDIAN);
+        writeUtf8Bytes(data, bytes);
+        data.flip();
+        return data;
     }
 
     private static void writeBracketGuideList(ByteBuffer data, java.util.List<? extends BracketGuide> values) {
@@ -1666,21 +1673,6 @@ public final class CoreProtocol {
         return size;
     }
 
-    private static void writeSearchReplaceRequestFields(ByteBuffer data, SearchReplaceRequest value) {
-        writeUtf8String(data, value.replacement);
-    }
-
-    public static void writeSearchReplaceRequest(ByteBuffer data, SearchReplaceRequest value) {
-        prepare(data);
-        writeSearchReplaceRequestFields(data, value);
-    }
-
-    public static int sizeOfSearchReplaceRequest(SearchReplaceRequest value) {
-        int size = 0;
-        size += sizeOfUtf8String(value.replacement);
-        return size;
-    }
-
     private static void writeSearchRequestFields(ByteBuffer data, SearchRequest value) {
         writeUtf8String(data, value.pattern);
         writeSearchOptionsFields(data, value.options);
@@ -1704,7 +1696,6 @@ public final class CoreProtocol {
         value.pattern = readUtf8String(data);
         value.options = readSearchOptions(data);
         value.generation = data.getLong();
-        value.documentRevision = data.getLong();
         value.matchCount = data.getInt();
         value.currentIndex = data.getInt();
         value.hasCurrentMatch = data.getInt() != 0;
@@ -2869,16 +2860,6 @@ public final class CoreProtocol {
         data.putInt(value.index);
         writeTextRangeList(data, value.ranges);
         writeUtf8Bytes(data, defaultTextUtf8);
-        data.flip();
-        return data;
-    }
-
-    public static ByteBuffer encodeSearchReplaceRequest(SearchReplaceRequest value) {
-        int size = 0;
-        byte[] replacementUtf8 = utf8Bytes(value.replacement);
-        size += 4 + replacementUtf8.length;
-        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
-        writeUtf8Bytes(data, replacementUtf8);
         data.flip();
         return data;
     }

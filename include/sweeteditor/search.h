@@ -30,10 +30,6 @@ namespace NS_SWEETEDITOR {
     SearchOptions options;
   };
 
-  struct SE_PROTOCOL_IN(search) SearchReplaceRequest {
-    U8String replacement;
-  };
-
   struct SE_PROTOCOL_OUT(search) SearchState {
     SE_PROTOCOL_WIRE(enum_i32)
     SearchStatus status {SearchStatus::INACTIVE};
@@ -41,8 +37,6 @@ namespace NS_SWEETEDITOR {
     SearchOptions options;
     SE_PROTOCOL_WIRE(u64)
     uint64_t generation {0};
-    SE_PROTOCOL_WIRE(u64)
-    uint64_t document_revision {0};
     uint32_t match_count {0};
     int32_t current_index {-1};
     bool has_current_match {false};
@@ -68,6 +62,7 @@ namespace NS_SWEETEDITOR {
     Vector<size_t> line_lengths;
     SearchRequest request;
     SearchState state;
+    TextPosition cursor_position;
   };
 
   struct SearchResult {
@@ -75,11 +70,18 @@ namespace NS_SWEETEDITOR {
     Vector<SearchMatch> matches;
   };
 
-  SearchResult executeSearch(const SearchSnapshot& snapshot);
+  class SearchEngine {
+  public:
+    virtual ~SearchEngine() = default;
 
-  U8String buildSearchReplacement(const SearchMatch& match,
-                                  const SearchReplaceRequest& request,
-                                  bool use_regex);
+    virtual SearchResult search(const SearchSnapshot& snapshot) const = 0;
+
+    virtual U8String buildReplacement(const SearchMatch& match,
+                                      const U8String& replacement,
+                                      const SearchOptions& options) const = 0;
+  };
+
+  const SearchEngine& getSearchEngine();
 }
 
 #endif //SWEETEDITOR_SEARCH_H

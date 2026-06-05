@@ -489,6 +489,12 @@ def generate_ets_codec(schema, target):
         "  private static sizeOfUtf8String(value: string): number {",
         "    return 4 + encodeUtf8(value).length;",
         "  }",
+        "",
+        "  static encodeUtf8String(value: string): ArrayBuffer {",
+        f"    const writer = new BinaryWriter({codec_type}.sizeOfUtf8String(value));",
+        "    writer.writeUtf8String(value);",
+        "    return writer.getBuffer();",
+        "  }",
     ])
     list_inners = list_inner_names(schema)
     for inner in list_inners:
@@ -583,4 +589,3 @@ def generate_ets(schema, target_name, target, out_root):
     codec_path.parent.mkdir(parents=True, exist_ok=True)
     codec_path.write_text(generate_ets_codec(schema, target), encoding="utf-8")
     return [str(out_root)]
-

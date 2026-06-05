@@ -17,7 +17,6 @@
 #include <sweeteditor/ime_composition.h>
 #include <sweeteditor/search.h>
 #include <atomic>
-#include <mutex>
 
 namespace NS_SWEETEDITOR {
 
@@ -299,10 +298,10 @@ namespace NS_SWEETEDITOR {
     EditorActionResult findPreviousSearchMatch();
 
     /// Replace the current search match
-    EditorActionResult replaceCurrentSearchMatch(const SearchReplaceRequest& request);
+    EditorActionResult replaceCurrentSearchMatch(const U8String& replacement);
 
     /// Replace every current search match
-    EditorActionResult replaceAllSearchMatches(const SearchReplaceRequest& request);
+    EditorActionResult replaceAllSearchMatches(const U8String& replacement);
 
     /// Clear active search state, rendered highlights, and the current search-owned selection
     EditorActionResult clearSearch();
@@ -773,12 +772,12 @@ namespace NS_SWEETEDITOR {
     TextPosition m_external_bracket_close_;
     bool m_has_external_brackets_ {false};
 
-    UniquePtr<std::recursive_mutex> m_editor_mutex_ {makeUnique<std::recursive_mutex>()};
-    UniquePtr<std::atomic<uint64_t>> m_document_revision_ {makeUnique<std::atomic<uint64_t>>(0)};
     UniquePtr<std::atomic<uint64_t>> m_search_generation_ {makeUnique<std::atomic<uint64_t>>(0)};
     SearchState m_search_state_;
     Vector<SearchMatch> m_search_matches_;
     Vector<Vector<uint32_t>> m_search_match_indices_by_line_;
+    SharedPtr<SearchResult> m_pending_search_result_;
+    SharedPtr<const SearchState> m_published_search_state_ {makeShared<const SearchState>(SearchState {})};
 
     /// Hovered clickable hit target for interactive runs such as CodeLens and Link.
     HitTarget m_hover_hit_target_;
@@ -834,15 +833,17 @@ namespace NS_SWEETEDITOR {
     static size_t calcUtf16Columns(const U8String& text);
     size_t documentUtf16Length() const;
     TextRange textRangeFromUtf16Offsets(size_t start_offset, size_t end_offset) const;
-    std::unique_lock<std::recursive_mutex> lockEditorState() const;
-    SearchSnapshot buildSearchSnapshot(const SearchRequest& request,
-                                       uint64_t generation,
-                                       uint64_t document_revision) const;
+    SearchSnapshot buildSearchSnapshot(const SearchRequest& request, uint64_t generation) const;
+    void publishSearchState(const SearchState& state);
+    void publishPendingSearchResult(SearchResult&& result);
+    void clearPendingSearchResult();
+    void drainPendingSearchResult();
     void installSearchResult(SearchResult&& result);
     void rebuildSearchLineIndex();
     void markSearchStaleForDocumentChange();
     void noteDocumentContentChanged();
     void chooseCurrentSearchMatch(SearchResult& result) const;
+    void chooseCurrentSearchMatch(SearchResult& result, const TextPosition& position) const;
     void collectTextPresentationEffectsForLine(size_t line, Vector<TextPresentationEffect>& effects) const;
     size_t firstSearchMatchAtOrAfter(const TextPosition& position) const;
     void selectSearchMatch(size_t index);

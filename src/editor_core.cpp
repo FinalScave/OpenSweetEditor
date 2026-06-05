@@ -127,6 +127,15 @@ namespace NS_SWEETEDITOR {
     }
   }
 
+  static EditorActionResult makeSearchActionResult(bool handled, bool needs_redraw = true) {
+    EditorActionResult result;
+    result.handled = handled;
+    result.reason = EditorActionReason::SEARCH;
+    result.needs_redraw = needs_redraw;
+    result.decoration_changed = needs_redraw;
+    return result;
+  }
+
 #pragma region [Setup & View State]
   EditorCore::EditorCore(const SharedPtr<TextMeasurer>& measurer, const EditorOptions& options): m_measurer_(measurer), m_options_(options), m_key_resolver_(options.key_chord_timeout_ms), m_composition_controller_(*this) {
     m_decorations_ = makeShared<DecorationManager>();
@@ -147,7 +156,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setHandleConfig(const HandleConfig& config) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_settings_.handle = config;
     LOGD("EditorCore::setHandleConfig(), start_hit=[%.1f,%.1f,%.1f,%.1f], end_hit=[%.1f,%.1f,%.1f,%.1f]",
@@ -159,7 +167,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setScrollbarConfig(const ScrollbarConfig& config) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_settings_.scrollbar.thickness = std::max(1.0f, config.thickness);
     m_settings_.scrollbar.min_thumb = std::max(m_settings_.scrollbar.thickness, config.min_thumb);
@@ -183,7 +190,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setEditorRenderColors(const EditorRenderColors& colors) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_settings_.render_colors == colors) {
       return finishAction(before, EditorActionReason::SETUP, true);
@@ -193,7 +199,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setEditorRangeEffectStyles(const EditorRangeEffectStyles& styles) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_settings_.range_effect_styles == styles) {
       return finishAction(before, EditorActionReason::SETUP, true);
@@ -203,7 +208,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::loadDocument(const SharedPtr<Document>& document) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     cancelLinkedEditingInternal();
     m_composition_controller_.removeComposingText();
@@ -218,13 +222,15 @@ namespace NS_SWEETEDITOR {
     m_mouse_button_down_ = false;
     m_has_last_mouse_point_ = false;
     m_pointer_cursor_type_ = PointerCursorType::TEXT;
-    m_search_generation_->fetch_add(1);
+    const uint64_t search_generation = m_search_generation_->fetch_add(1) + 1;
     m_search_state_ = {};
+    m_search_state_.generation = search_generation;
     m_search_matches_.clear();
     m_search_match_indices_by_line_.clear();
+    clearPendingSearchResult();
+    publishSearchState(m_search_state_);
 
     m_document_ = document;
-    m_document_revision_->fetch_add(1);
     m_text_layout_->loadDocument(document);
     syncFoldState();
     m_caret_ = {};
@@ -238,7 +244,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setViewport(const Viewport& viewport) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     PERF_TIMER("setViewport");
     bool width_changed = (m_viewport_.width != viewport.width);
@@ -254,7 +259,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::onFontMetricsChanged() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     float old_line_height = m_text_layout_->getLineHeight();
     EditorInteraction::PendingScaleAnchor scale_anchor = m_interaction_->takePendingScaleAnchor();
@@ -401,7 +405,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setWrapMode(WrapMode mode) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_settings_.wrap_mode = mode;
     m_text_layout_->setWrapMode(mode);
@@ -411,7 +414,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setTabSize(uint32_t tab_size) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_text_layout_->setTabSize(tab_size);
     normalizeScrollState();
@@ -419,7 +421,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setScale(float scale) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_interaction_->resetScaleState();
     m_view_state_.scale = scale;
@@ -429,7 +430,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setFoldArrowMode(FoldArrowMode mode) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_text_layout_->getLayoutMetrics().fold_arrow_mode == mode) {
       return finishAction(before, EditorActionReason::SETUP, true);
@@ -441,7 +441,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setLineSpacing(float add, float mult) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     auto& params = m_text_layout_->getLayoutMetrics();
     if (params.line_spacing_add == add && params.line_spacing_mult == mult) {
@@ -456,7 +455,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setContentStartPadding(float padding) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     padding = std::max(0.0f, padding);
     auto& params = m_text_layout_->getLayoutMetrics();
@@ -471,7 +469,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setShowSplitLine(bool show) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_settings_.show_split_line == show) {
       return finishAction(before, EditorActionReason::SETUP, true);
@@ -481,7 +478,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setGutterSticky(bool sticky) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_settings_.gutter_sticky == sticky) {
       return finishAction(before, EditorActionReason::SETUP, true);
@@ -494,7 +490,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setGutterVisible(bool visible) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_settings_.gutter_visible == visible) {
       return finishAction(before, EditorActionReason::SETUP, true);
@@ -507,7 +502,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setCurrentLineRenderMode(CurrentLineRenderMode mode) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_settings_.current_line_render_mode == mode) {
       return finishAction(before, EditorActionReason::SETUP, true);
@@ -521,12 +515,11 @@ namespace NS_SWEETEDITOR {
 #pragma region [Rendering & Input]
 
   SharedPtr<TextStyleRegistry> EditorCore::getTextStyleRegistry() const {
-    auto lock = lockEditorState();
     return m_decorations_->getTextStyleRegistry();
   }
 
   void EditorCore::buildRenderModel(EditorRenderModel& model) {
-    auto lock = lockEditorState();
+    drainPendingSearchResult();
     PERF_TIMER("buildRenderModel");
     PERF_BEGIN(compose);
     PresentationContext presentation_context;
@@ -590,12 +583,10 @@ namespace NS_SWEETEDITOR {
   }
 
   ViewState EditorCore::getViewState() const {
-    auto lock = lockEditorState();
     return m_view_state_;
   }
 
   ScrollMetrics EditorCore::getScrollMetrics() const {
-    auto lock = lockEditorState();
     ScrollMetrics metrics;
     metrics.scale = m_view_state_.scale;
     metrics.viewport_width = m_viewport_.width;
@@ -620,7 +611,6 @@ namespace NS_SWEETEDITOR {
   }
 
   IntRange EditorCore::getVisibleLineRange() const {
-    auto lock = lockEditorState();
     return m_visible_line_range_;
   }
 
@@ -629,7 +619,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::handleGestureEvent(const GestureEvent& event) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     const bool has_primary_point = !event.points.empty();
     PointerProbeResult primary_probe;
@@ -730,7 +719,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::updatePointerModifiers(KeyModifier modifiers) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
 
     if (m_has_last_mouse_point_) {
@@ -748,7 +736,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::tickAnimations() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     GestureResult result = m_interaction_->tickAnimations();
     finalizeGestureResult(result);
@@ -756,14 +743,12 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::stopFling() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_interaction_->stopFling();
     return finishAction(before, EditorActionReason::ANIMATION, true);
   }
 
   EditorActionResult EditorCore::handleKeyEvent(const KeyEvent& event) {
-    auto lock = lockEditorState();
     PERF_TIMER("handleKeyEvent");
     const ActionSnapshot before = captureActionSnapshot();
     EditorCommandId command = 0;
@@ -945,7 +930,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setKeyMap(KeyMap key_map) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_key_resolver_.setKeyMap(std::move(key_map));
     return finishAction(before, EditorActionReason::SETUP, true);
@@ -956,35 +940,30 @@ namespace NS_SWEETEDITOR {
 #pragma region [Editing & Cursor]
 
   EditorActionResult EditorCore::insertText(const U8String& text) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = insertTextInternal(text);
     return finishAction(before, EditorActionReason::TEXT_INSERT, edit_result.changed, std::move(edit_result));
   }
 
   EditorActionResult EditorCore::replaceText(const TextRange& range, const U8String& new_text) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = replaceTextInternal(range, new_text);
     return finishAction(before, EditorActionReason::TEXT_REPLACE, edit_result.changed, std::move(edit_result));
   }
 
   EditorActionResult EditorCore::deleteText(const TextRange& range) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = deleteTextInternal(range);
     return finishAction(before, EditorActionReason::TEXT_DELETE, edit_result.changed, std::move(edit_result));
   }
 
   EditorActionResult EditorCore::backspace() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = backspaceInternal();
     return finishAction(before, EditorActionReason::TEXT_DELETE, edit_result.changed, std::move(edit_result));
   }
 
   EditorActionResult EditorCore::deleteForward() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = deleteForwardInternal();
     return finishAction(before, EditorActionReason::TEXT_DELETE, edit_result.changed, std::move(edit_result));
@@ -1421,7 +1400,6 @@ namespace NS_SWEETEDITOR {
   }
 
   void EditorCore::deleteSelection() {
-    auto lock = lockEditorState();
     if (!hasSelection() || m_document_ == nullptr) return;
     TextRange range = m_caret_.normalizedSelection();
     // Internal call; do not record undo (used in composition flow)
@@ -1434,63 +1412,54 @@ namespace NS_SWEETEDITOR {
     clearSelection();
   }
   EditorActionResult EditorCore::moveLineUp() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = moveLineUpInternal();
     return finishAction(before, EditorActionReason::TEXT_INSERT, edit_result.changed, std::move(edit_result));
   }
 
   EditorActionResult EditorCore::moveLineDown() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = moveLineDownInternal();
     return finishAction(before, EditorActionReason::TEXT_INSERT, edit_result.changed, std::move(edit_result));
   }
 
   EditorActionResult EditorCore::copyLineUp() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = copyLineUpInternal();
     return finishAction(before, EditorActionReason::TEXT_INSERT, edit_result.changed, std::move(edit_result));
   }
 
   EditorActionResult EditorCore::copyLineDown() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = copyLineDownInternal();
     return finishAction(before, EditorActionReason::TEXT_INSERT, edit_result.changed, std::move(edit_result));
   }
 
   EditorActionResult EditorCore::deleteLine() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = deleteLineInternal();
     return finishAction(before, EditorActionReason::TEXT_DELETE, edit_result.changed, std::move(edit_result));
   }
 
   EditorActionResult EditorCore::insertLineAbove() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = insertLineAboveInternal();
     return finishAction(before, EditorActionReason::TEXT_INSERT, edit_result.changed, std::move(edit_result));
   }
 
   EditorActionResult EditorCore::insertLineBelow() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = insertLineBelowInternal();
     return finishAction(before, EditorActionReason::TEXT_INSERT, edit_result.changed, std::move(edit_result));
   }
 
   EditorActionResult EditorCore::undo() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = undoInternal();
     return finishAction(before, EditorActionReason::TEXT_UNDO, edit_result.changed, std::move(edit_result));
   }
 
   EditorActionResult EditorCore::redo() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = redoInternal();
     return finishAction(before, EditorActionReason::TEXT_REDO, edit_result.changed, std::move(edit_result));
@@ -1892,51 +1861,33 @@ namespace NS_SWEETEDITOR {
   }
 
   bool EditorCore::canUndo() const {
-    auto lock = lockEditorState();
     return m_undo_manager_->canUndo();
   }
 
   bool EditorCore::canRedo() const {
-    auto lock = lockEditorState();
     return m_undo_manager_->canRedo();
   }
 
   EditorActionResult EditorCore::search(const SearchRequest& request) {
-    SearchSnapshot snapshot;
+    const uint64_t generation = m_search_generation_->fetch_add(1) + 1;
+    SearchSnapshot snapshot = buildSearchSnapshot(request, generation);
+    publishSearchState(snapshot.state);
 
-    {
-      auto lock = lockEditorState();
-      if (m_document_ == nullptr) {
-        const ActionSnapshot before = captureActionSnapshot();
-        return finishAction(before, EditorActionReason::SEARCH, false);
-      }
-
-      const uint64_t generation = m_search_generation_->fetch_add(1) + 1;
-      const uint64_t document_revision = m_document_revision_->load();
-      snapshot = buildSearchSnapshot(request, generation, document_revision);
-      m_search_state_ = snapshot.state;
-      m_search_matches_.clear();
-      m_search_match_indices_by_line_.clear();
+    SearchResult searching_result;
+    searching_result.state = snapshot.state;
+    publishPendingSearchResult(std::move(searching_result));
+    SearchResult result = getSearchEngine().search(snapshot);
+    if (result.state.generation != m_search_generation_->load()) {
+      return makeSearchActionResult(false, false);
     }
-
-    SearchResult result = executeSearch(snapshot);
-
-    {
-      auto lock = lockEditorState();
-      if (result.state.generation != m_search_generation_->load()
-          || result.state.document_revision != m_document_revision_->load()) {
-        EditorActionResult action_result;
-        action_result.reason = EditorActionReason::SEARCH;
-        return action_result;
-      }
-      const ActionSnapshot before = captureActionSnapshot();
-      installSearchResult(std::move(result));
-      return finishAction(before, EditorActionReason::SEARCH, true, {}, true, true);
-    }
+    chooseCurrentSearchMatch(result, snapshot.cursor_position);
+    publishSearchState(result.state);
+    publishPendingSearchResult(std::move(result));
+    return makeSearchActionResult(true);
   }
 
   EditorActionResult EditorCore::findNextSearchMatch() {
-    auto lock = lockEditorState();
+    drainPendingSearchResult();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_search_state_.status != SearchStatus::READY || m_search_matches_.empty()) {
       return finishAction(before, EditorActionReason::SEARCH, false);
@@ -1957,7 +1908,7 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::findPreviousSearchMatch() {
-    auto lock = lockEditorState();
+    drainPendingSearchResult();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_search_state_.status != SearchStatus::READY || m_search_matches_.empty()) {
       return finishAction(before, EditorActionReason::SEARCH, false);
@@ -1989,76 +1940,59 @@ namespace NS_SWEETEDITOR {
     return finishAction(before, EditorActionReason::SEARCH, true, {}, true, true);
   }
 
-  EditorActionResult EditorCore::replaceCurrentSearchMatch(const SearchReplaceRequest& request) {
+  EditorActionResult EditorCore::replaceCurrentSearchMatch(const U8String& replacement) {
+    drainPendingSearchResult();
     SearchMatch match;
-    bool use_regex = false;
+    SearchOptions options;
     uint64_t generation = 0;
-    uint64_t document_revision = 0;
-    {
-      auto lock = lockEditorState();
-      if (m_document_ == nullptr || m_settings_.read_only
-          || m_search_state_.status != SearchStatus::READY
-          || m_search_state_.document_revision != m_document_revision_->load()
-          || m_search_state_.current_index < 0
-          || static_cast<size_t>(m_search_state_.current_index) >= m_search_matches_.size()) {
-        const ActionSnapshot before = captureActionSnapshot();
-        return finishAction(before, EditorActionReason::SEARCH, false);
-      }
 
-      match = m_search_matches_[static_cast<size_t>(m_search_state_.current_index)];
-      use_regex = m_search_state_.options.use_regex;
-      generation = m_search_generation_->load();
-      document_revision = m_document_revision_->load();
+    if (m_document_ == nullptr || m_settings_.read_only
+        || m_search_state_.status != SearchStatus::READY
+        || m_search_state_.current_index < 0
+        || static_cast<size_t>(m_search_state_.current_index) >= m_search_matches_.size()) {
+      const ActionSnapshot before = captureActionSnapshot();
+      return finishAction(before, EditorActionReason::SEARCH, false);
     }
 
-    const U8String replacement = buildSearchReplacement(match, request, use_regex);
-    auto lock = lockEditorState();
-    if (generation != m_search_generation_->load()
-        || document_revision != m_document_revision_->load()) {
+    match = m_search_matches_[static_cast<size_t>(m_search_state_.current_index)];
+    options = m_search_state_.options;
+    generation = m_search_generation_->load();
+
+    const U8String actual_replacement = getSearchEngine().buildReplacement(match, replacement, options);
+    if (generation != m_search_generation_->load()) {
       markSearchStaleForDocumentChange();
-      EditorActionResult action_result;
-      action_result.reason = EditorActionReason::SEARCH;
-      return action_result;
+      return makeSearchActionResult(false);
     }
     const ActionSnapshot before = captureActionSnapshot();
-    TextEditResult edit_result = replaceTextInternal(match.range, replacement);
+    TextEditResult edit_result = replaceTextInternal(match.range, actual_replacement);
     return finishAction(before, EditorActionReason::SEARCH, edit_result.changed, std::move(edit_result));
   }
 
-  EditorActionResult EditorCore::replaceAllSearchMatches(const SearchReplaceRequest& request) {
+  EditorActionResult EditorCore::replaceAllSearchMatches(const U8String& replacement) {
+    drainPendingSearchResult();
     Vector<SearchMatch> matches;
-    bool use_regex = false;
+    SearchOptions options;
     uint64_t generation = 0;
-    uint64_t document_revision = 0;
-    {
-      auto lock = lockEditorState();
-      if (m_document_ == nullptr || m_settings_.read_only
-          || m_search_state_.status != SearchStatus::READY
-          || m_search_state_.document_revision != m_document_revision_->load()
-          || m_search_matches_.empty()) {
-        const ActionSnapshot before = captureActionSnapshot();
-        return finishAction(before, EditorActionReason::SEARCH, false);
-      }
 
-      matches = m_search_matches_;
-      use_regex = m_search_state_.options.use_regex;
-      generation = m_search_generation_->load();
-      document_revision = m_document_revision_->load();
+    if (m_document_ == nullptr || m_settings_.read_only
+        || m_search_state_.status != SearchStatus::READY
+        || m_search_matches_.empty()) {
+      const ActionSnapshot before = captureActionSnapshot();
+      return finishAction(before, EditorActionReason::SEARCH, false);
     }
+
+    matches = m_search_matches_;
+    options = m_search_state_.options;
+    generation = m_search_generation_->load();
 
     Vector<U8String> replacements;
     replacements.reserve(matches.size());
     for (const SearchMatch& match : matches) {
-      replacements.push_back(buildSearchReplacement(match, request, use_regex));
+      replacements.push_back(getSearchEngine().buildReplacement(match, replacement, options));
     }
-
-    auto lock = lockEditorState();
-    if (generation != m_search_generation_->load()
-        || document_revision != m_document_revision_->load()) {
+    if (generation != m_search_generation_->load()) {
       markSearchStaleForDocumentChange();
-      EditorActionResult action_result;
-      action_result.reason = EditorActionReason::SEARCH;
-      return action_result;
+      return makeSearchActionResult(false);
     }
 
     const ActionSnapshot before = captureActionSnapshot();
@@ -2082,27 +2016,46 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::clearSearch() {
-    auto lock = lockEditorState();
+    drainPendingSearchResult();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_search_state_.has_current_match
         && hasSelection()
         && m_caret_.normalizedSelection() == m_search_state_.current_range) {
       m_caret_.clearSelection();
     }
-    m_search_generation_->fetch_add(1);
+    const uint64_t generation = m_search_generation_->fetch_add(1) + 1;
     m_search_state_ = {};
+    m_search_state_.generation = generation;
     m_search_matches_.clear();
     m_search_match_indices_by_line_.clear();
+    clearPendingSearchResult();
+    publishSearchState(m_search_state_);
     return finishAction(before, EditorActionReason::SEARCH, true, {}, true, true);
   }
 
   SearchState EditorCore::getSearchState() {
-    auto lock = lockEditorState();
-    return m_search_state_;
+    SharedPtr<const SearchState> state = std::atomic_load(&m_published_search_state_);
+    if (state == nullptr) {
+      return {};
+    }
+    const uint64_t generation = m_search_generation_->load();
+    if (state->generation == generation) {
+      return *state;
+    }
+
+    SearchState stale_state = *state;
+    stale_state.generation = generation;
+    stale_state.status = stale_state.status == SearchStatus::INACTIVE
+        ? SearchStatus::INACTIVE
+        : SearchStatus::STALE;
+    stale_state.match_count = 0;
+    stale_state.current_index = -1;
+    stale_state.has_current_match = false;
+    stale_state.current_range = {};
+    return stale_state;
   }
 
   EditorActionResult EditorCore::setCursorPosition(const TextPosition& position) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (position != m_caret_.cursor || hasSelection()) {
       m_composition_controller_.clearPlainLatinInputLock();
@@ -2151,12 +2104,10 @@ namespace NS_SWEETEDITOR {
   }
 
   TextPosition EditorCore::getCursorPosition() const {
-    auto lock = lockEditorState();
     return m_caret_.cursor;
   }
 
   EditorActionResult EditorCore::setSelection(const TextRange& range) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_composition_controller_.clearPlainLatinInputLock();
     setSelectionInternal(range, true);
@@ -2202,24 +2153,20 @@ namespace NS_SWEETEDITOR {
   }
 
   TextRange EditorCore::getSelection() const {
-    auto lock = lockEditorState();
     return m_caret_.selection;
   }
 
   bool EditorCore::hasSelection() const {
-    auto lock = lockEditorState();
     return m_caret_.has_selection;
   }
 
   EditorActionResult EditorCore::clearSelection() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_caret_.clearSelection();
     return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
   EditorActionResult EditorCore::selectAll() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
     size_t last_line = m_document_->getLineCount() > 0 ? m_document_->getLineCount() - 1 : 0;
@@ -2232,7 +2179,6 @@ namespace NS_SWEETEDITOR {
   }
 
   U8String EditorCore::getSelectedText() const {
-    auto lock = lockEditorState();
     if (!hasSelection() || m_document_ == nullptr) return "";
     TextRange range = m_caret_.normalizedSelection();
     U8String result;
@@ -2256,7 +2202,6 @@ namespace NS_SWEETEDITOR {
   }
 
   TextRange EditorCore::getWordRangeAtCursor() const {
-    auto lock = lockEditorState();
     if (m_document_ == nullptr) return {m_caret_.cursor, m_caret_.cursor};
     size_t line = m_caret_.cursor.line;
     const U16String& line_text = m_document_->getLineU16TextRef(line);
@@ -2280,7 +2225,6 @@ namespace NS_SWEETEDITOR {
   }
 
   U8String EditorCore::getWordAtCursor() const {
-    auto lock = lockEditorState();
     if (m_document_ == nullptr) return "";
     TextRange range = getWordRangeAtCursor();
     if (range.start.column >= range.end.column) return "";
@@ -2295,7 +2239,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::moveCursorLeft(bool extend_selection) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
 
@@ -2323,7 +2266,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::moveCursorRight(bool extend_selection) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
 
@@ -2352,7 +2294,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::moveCursorUp(bool extend_selection) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
 
@@ -2382,7 +2323,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::moveCursorDown(bool extend_selection) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
 
@@ -2415,7 +2355,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::moveCursorToLineStart(bool extend_selection) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
     moveCursorTo({m_caret_.cursor.line, 0}, extend_selection);
@@ -2423,7 +2362,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::moveCursorToLineEnd(bool extend_selection) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
     uint32_t cols = m_document_->getLineColumns(m_caret_.cursor.line);
@@ -2432,7 +2370,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::moveCursorPageUp(bool extend_selection) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr || m_text_layout_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
     float line_height = m_text_layout_->getLineHeight();
@@ -2446,7 +2383,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::moveCursorPageDown(bool extend_selection) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr || m_text_layout_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
     float line_height = m_text_layout_->getLineHeight();
@@ -2460,7 +2396,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setReadOnly(bool read_only) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (read_only && isComposing()) {
       m_composition_controller_.cancelComposing();
@@ -2471,11 +2406,9 @@ namespace NS_SWEETEDITOR {
   }
 
   bool EditorCore::isReadOnly() const {
-    auto lock = lockEditorState();
     return m_settings_.read_only;
   }
   EditorActionResult EditorCore::setAutoIndentMode(AutoIndentMode mode) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_settings_.auto_indent_mode = mode;
     LOGD("EditorCore::setAutoIndentMode, mode = %d", (int)mode);
@@ -2483,12 +2416,10 @@ namespace NS_SWEETEDITOR {
   }
 
   AutoIndentMode EditorCore::getAutoIndentMode() const {
-    auto lock = lockEditorState();
     return m_settings_.auto_indent_mode;
   }
 
   EditorActionResult EditorCore::setBackspaceUnindent(bool enabled) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_settings_.backspace_unindent = enabled;
     LOGD("EditorCore::setBackspaceUnindent, enabled = %s", enabled ? "true" : "false");
@@ -2496,14 +2427,12 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setInsertSpaces(bool enabled) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_settings_.insert_spaces = enabled;
     LOGD("EditorCore::setInsertSpaces, enabled = %s", enabled ? "true" : "false");
     return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
   EditorActionResult EditorCore::insertSnippet(const U8String& snippet_template) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = insertSnippetInternal(snippet_template);
     return finishAction(before, EditorActionReason::TEXT_INSERT, edit_result.changed, std::move(edit_result));
@@ -2548,7 +2477,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::startLinkedEditing(LinkedEditingModel&& model) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     startLinkedEditingInternal(std::move(model));
     return finishAction(before, EditorActionReason::LINKED_EDITING, true);
@@ -2576,12 +2504,10 @@ namespace NS_SWEETEDITOR {
   }
 
   bool EditorCore::isInLinkedEditing() const {
-    auto lock = lockEditorState();
     return m_linked_editing_session_ != nullptr && m_linked_editing_session_->isActive();
   }
 
   EditorActionResult EditorCore::linkedEditingNextTabStop() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     bool handled = linkedEditingNextTabStopInternal();
     return finishAction(before, EditorActionReason::LINKED_EDITING, handled);
@@ -2600,7 +2526,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::linkedEditingPrevTabStop() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     bool handled = linkedEditingPrevTabStopInternal();
     return finishAction(before, EditorActionReason::LINKED_EDITING, handled);
@@ -2616,7 +2541,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::finishLinkedEditing() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     finishLinkedEditingInternal();
     return finishAction(before, EditorActionReason::LINKED_EDITING, true);
@@ -2634,7 +2558,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::cancelLinkedEditing() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     cancelLinkedEditingInternal();
     return finishAction(before, EditorActionReason::LINKED_EDITING, true);
@@ -2734,7 +2657,6 @@ namespace NS_SWEETEDITOR {
 #pragma region [Navigation & Decorations]
 
   EditorActionResult EditorCore::scrollToLine(size_t line, ScrollBehavior behavior) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
 
@@ -2772,7 +2694,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::gotoPosition(size_t line, size_t column) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr) return finishAction(before, EditorActionReason::PROGRAMMATIC, false);
 
@@ -2786,7 +2707,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setScroll(float scroll_x, float scroll_y) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_view_state_.scroll_x = scroll_x;
     m_view_state_.scroll_y = scroll_y;
@@ -2796,7 +2716,6 @@ namespace NS_SWEETEDITOR {
   }
 
   CursorRect EditorCore::getPositionScreenRect(const TextPosition& position) {
-    auto lock = lockEditorState();
     CursorRect rect;
     if (m_text_layout_ == nullptr) return rect;
     PointF coord = m_text_layout_->getPositionScreenCoord(position);
@@ -2807,12 +2726,10 @@ namespace NS_SWEETEDITOR {
   }
 
   CursorRect EditorCore::getCursorScreenRect() {
-    auto lock = lockEditorState();
     return getPositionScreenRect(m_caret_.cursor);
   }
 
   EditorActionResult EditorCore::registerTextStyle(uint32_t style_id, TextStyle&& style) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->getTextStyleRegistry()->registerTextStyle(style_id, std::move(style));
     markAllLinesDirty();
@@ -2820,7 +2737,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::registerBatchTextStyles(Vector<std::pair<uint32_t, TextStyle>>&& entries) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
     auto registry = m_decorations_->getTextStyleRegistry();
@@ -2832,7 +2748,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setLineSpans(size_t line, SpanLayer layer, Vector<StyleSpan>&& spans) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineSpans(line, layer, std::move(spans));
     auto& lines = m_document_->getLogicalLines();
@@ -2844,7 +2759,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setBatchLineSpans(SpanLayer layer, Vector<std::pair<size_t, Vector<StyleSpan>>>&& entries) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
     auto& lines = m_document_->getLogicalLines();
@@ -2861,7 +2775,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setLineInlayHints(size_t line, Vector<InlayHint>&& hints) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineInlayHints(line, std::move(hints));
     auto& lines = m_document_->getLogicalLines();
@@ -2873,7 +2786,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setBatchLineInlayHints(Vector<std::pair<size_t, Vector<InlayHint>>>&& entries) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
     auto& lines = m_document_->getLogicalLines();
@@ -2890,7 +2802,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setLinePhantomTexts(size_t line, Vector<PhantomText>&& phantoms) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLinePhantomTexts(line, std::move(phantoms));
     auto& lines = m_document_->getLogicalLines();
@@ -2902,7 +2813,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setBatchLinePhantomTexts(Vector<std::pair<size_t, Vector<PhantomText>>>&& entries) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
     auto& lines = m_document_->getLogicalLines();
@@ -2919,14 +2829,12 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setLineGutterIcons(size_t line, Vector<GutterIcon>&& icons) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineGutterIcons(line, std::move(icons));
     return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::setBatchLineGutterIcons(Vector<std::pair<size_t, Vector<GutterIcon>>>&& entries) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
     for (auto& [line, icons] : entries) {
@@ -2936,7 +2844,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setMaxGutterIcons(uint32_t count) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (m_text_layout_->getLayoutMetrics().max_gutter_icons == count) return finishAction(before, EditorActionReason::DECORATION, true);
     m_text_layout_->getLayoutMetrics().max_gutter_icons = count;
@@ -2946,7 +2853,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setLineCodeLens(size_t line, Vector<CodeLensItem>&& items) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineCodeLens(line, std::move(items));
     auto& lines = m_document_->getLogicalLines();
@@ -2958,7 +2864,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setBatchLineCodeLens(Vector<std::pair<size_t, Vector<CodeLensItem>>>&& entries) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
     auto& lines = m_document_->getLogicalLines();
@@ -2975,7 +2880,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::clearCodeLens() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearCodeLens();
     markAllLinesDirty();
@@ -2984,7 +2888,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setLineLinks(size_t line, Vector<LinkSpan>&& links) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineLinks(line, std::move(links));
     auto& lines = m_document_->getLogicalLines();
@@ -2996,7 +2899,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setBatchLineLinks(Vector<std::pair<size_t, Vector<LinkSpan>>>&& entries) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
     auto& lines = m_document_->getLogicalLines();
@@ -3013,7 +2915,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::clearLinks() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearLinks();
     markAllLinesDirty();
@@ -3022,20 +2923,17 @@ namespace NS_SWEETEDITOR {
   }
 
   U8String EditorCore::getLinkTargetAt(size_t line, size_t column) const {
-    auto lock = lockEditorState();
     const LinkSpan* link = m_decorations_->findLinkAt(line, column);
     return link != nullptr ? link->target : U8String {};
   }
 
   EditorActionResult EditorCore::setLineDiagnostics(size_t line, Vector<Diagnostic>&& diagnostics) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineDiagnostics(line, std::move(diagnostics));
     return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::setBatchLineDiagnostics(Vector<std::pair<size_t, Vector<Diagnostic>>>&& entries) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
     for (auto& [line, diagnostics] : entries) {
@@ -3045,35 +2943,30 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::clearDiagnostics() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearDiagnostics();
     return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::setIndentGuides(Vector<IndentGuide>&& guides) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setIndentGuides(std::move(guides));
     return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::setBracketGuides(Vector<BracketGuide>&& guides) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setBracketGuides(std::move(guides));
     return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::setFlowGuides(Vector<FlowGuide>&& guides) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setFlowGuides(std::move(guides));
     return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::setSeparatorGuides(Vector<SeparatorGuide>&& guides) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setSeparatorGuides(std::move(guides));
     return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
@@ -3122,7 +3015,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setFoldRegions(Vector<FoldRegion>&& regions) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     bool had_fold_regions = m_text_layout_->getLayoutMetrics().has_fold_regions;
     m_text_layout_->getLayoutMetrics().has_fold_regions = !regions.empty();
@@ -3135,7 +3027,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::foldAt(size_t line) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     bool handled = foldAtInternal(line);
     return finishAction(before, EditorActionReason::FOLDING, handled, {}, handled, handled);
@@ -3148,7 +3039,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::unfoldAt(size_t line) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     bool handled = unfoldAtInternal(line);
     return finishAction(before, EditorActionReason::FOLDING, handled, {}, handled, handled);
@@ -3161,7 +3051,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::toggleFoldAt(size_t line) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     bool handled = toggleFoldAtInternal(line);
     return finishAction(before, EditorActionReason::FOLDING, handled, {}, handled, handled);
@@ -3174,7 +3063,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::foldAll() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     foldAllInternal();
     return finishAction(before, EditorActionReason::FOLDING, true, {}, true, true);
@@ -3186,7 +3074,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::unfoldAll() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     unfoldAllInternal();
     return finishAction(before, EditorActionReason::FOLDING, true, {}, true, true);
@@ -3198,12 +3085,10 @@ namespace NS_SWEETEDITOR {
   }
 
   bool EditorCore::isLineVisible(size_t line) const {
-    auto lock = lockEditorState();
     return !m_decorations_->isLineHidden(line);
   }
 
   EditorActionResult EditorCore::clearHighlights(SpanLayer layer) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearHighlights(layer);
     markAllLinesDirty();
@@ -3211,7 +3096,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::clearHighlights() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearHighlights();
     markAllLinesDirty();
@@ -3219,7 +3103,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::clearInlayHints() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearInlayHints();
     markAllLinesDirty();
@@ -3228,7 +3111,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::clearPhantomTexts() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearPhantomTexts();
     markAllLinesDirty();
@@ -3237,7 +3119,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::clearGutterIcons() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearGutterIcons();
     markAllLinesDirty();
@@ -3245,7 +3126,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::clearGuides() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearGuides();
     markAllLinesDirty();
@@ -3253,7 +3133,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::clearAllDecorations() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->clearAll();
     markAllLinesDirty();
@@ -3261,21 +3140,18 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::setBracketPairs(Vector<BracketPair>&& pairs) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_bracket_pairs_ = std::move(pairs);
     return finishAction(before, EditorActionReason::PROGRAMMATIC, true, {}, true);
   }
 
   EditorActionResult EditorCore::setAutoClosingPairs(Vector<BracketPair>&& pairs) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_auto_closing_pairs_ = std::move(pairs);
     return finishAction(before, EditorActionReason::PROGRAMMATIC, true);
   }
 
   EditorActionResult EditorCore::setMatchedBrackets(const TextPosition& open, const TextPosition& close) {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_external_bracket_open_ = open;
     m_external_bracket_close_ = close;
@@ -3284,7 +3160,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::clearMatchedBrackets() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     m_has_external_brackets_ = false;
     m_external_bracket_open_ = {};
@@ -3331,7 +3206,6 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::ensureCursorVisible() {
-    auto lock = lockEditorState();
     const ActionSnapshot before = captureActionSnapshot();
     PointF cursor_screen = m_text_layout_->getPositionScreenCoord(m_caret_.cursor);
     float line_height = m_text_layout_->getLineHeight();
@@ -3393,20 +3267,14 @@ namespace NS_SWEETEDITOR {
     };
   }
 
-  std::unique_lock<std::recursive_mutex> EditorCore::lockEditorState() const {
-    return std::unique_lock<std::recursive_mutex>(*m_editor_mutex_);
-  }
-
-  SearchSnapshot EditorCore::buildSearchSnapshot(const SearchRequest& request,
-                                                 uint64_t generation,
-                                                 uint64_t document_revision) const {
+  SearchSnapshot EditorCore::buildSearchSnapshot(const SearchRequest& request, uint64_t generation) const {
     SearchSnapshot snapshot;
     snapshot.request = request;
     snapshot.state.status = SearchStatus::SEARCHING;
     snapshot.state.pattern = request.pattern;
     snapshot.state.options = request.options;
     snapshot.state.generation = generation;
-    snapshot.state.document_revision = document_revision;
+    snapshot.cursor_position = m_caret_.cursor;
 
     if (m_document_ == nullptr || m_document_->getLineCount() == 0) {
       snapshot.state.status = SearchStatus::INACTIVE;
@@ -3428,8 +3296,53 @@ namespace NS_SWEETEDITOR {
     return snapshot;
   }
 
+  void EditorCore::publishSearchState(const SearchState& state) {
+    SharedPtr<const SearchState> next = makeShared<const SearchState>(state);
+    while (state.generation == m_search_generation_->load()) {
+      SharedPtr<const SearchState> current = std::atomic_load(&m_published_search_state_);
+      if (current != nullptr && current->generation > state.generation) {
+        return;
+      }
+      if (std::atomic_compare_exchange_weak(&m_published_search_state_, &current, next)) {
+        return;
+      }
+    }
+  }
+
+  void EditorCore::publishPendingSearchResult(SearchResult&& result) {
+    if (result.state.generation != m_search_generation_->load()) {
+      return;
+    }
+    SharedPtr<SearchResult> next = makeShared<SearchResult>(std::move(result));
+    while (next->state.generation == m_search_generation_->load()) {
+      SharedPtr<SearchResult> current = std::atomic_load(&m_pending_search_result_);
+      if (current != nullptr && current->state.generation > next->state.generation) {
+        return;
+      }
+      if (std::atomic_compare_exchange_weak(&m_pending_search_result_, &current, next)) {
+        return;
+      }
+    }
+  }
+
+  void EditorCore::clearPendingSearchResult() {
+    SharedPtr<SearchResult> empty;
+    std::atomic_store(&m_pending_search_result_, empty);
+  }
+
+  void EditorCore::drainPendingSearchResult() {
+    SharedPtr<SearchResult> empty;
+    SharedPtr<SearchResult> pending = std::atomic_exchange(&m_pending_search_result_, empty);
+    if (pending == nullptr) {
+      return;
+    }
+    if (pending->state.generation != m_search_generation_->load()) {
+      return;
+    }
+    installSearchResult(std::move(*pending));
+  }
+
   void EditorCore::installSearchResult(SearchResult&& result) {
-    auto lock = lockEditorState();
     chooseCurrentSearchMatch(result);
     m_search_state_ = std::move(result.state);
     m_search_matches_ = std::move(result.matches);
@@ -3444,6 +3357,7 @@ namespace NS_SWEETEDITOR {
     }
     m_search_state_.match_count = static_cast<uint32_t>(m_search_matches_.size());
     rebuildSearchLineIndex();
+    publishSearchState(m_search_state_);
   }
 
   void EditorCore::rebuildSearchLineIndex() {
@@ -3464,29 +3378,44 @@ namespace NS_SWEETEDITOR {
   }
 
   void EditorCore::markSearchStaleForDocumentChange() {
-    auto lock = lockEditorState();
     if (m_search_state_.status == SearchStatus::INACTIVE) {
       return;
     }
     if (m_search_state_.status != SearchStatus::FAILED) {
       m_search_state_.status = SearchStatus::STALE;
     }
+    m_search_state_.generation = m_search_generation_->load();
     m_search_state_.match_count = 0;
     m_search_state_.current_index = -1;
     m_search_state_.has_current_match = false;
     m_search_state_.current_range = {};
     m_search_matches_.clear();
     m_search_match_indices_by_line_.clear();
+    publishSearchState(m_search_state_);
   }
 
   void EditorCore::noteDocumentContentChanged() {
-    auto lock = lockEditorState();
-    m_document_revision_->fetch_add(1);
-    m_search_generation_->fetch_add(1);
+    const uint64_t generation = m_search_generation_->fetch_add(1) + 1;
+    clearPendingSearchResult();
+    if (m_search_state_.status == SearchStatus::INACTIVE) {
+      SharedPtr<const SearchState> published_state = std::atomic_load(&m_published_search_state_);
+      if (published_state != nullptr && published_state->status != SearchStatus::INACTIVE) {
+        m_search_state_ = *published_state;
+      }
+    }
+    if (m_search_state_.status == SearchStatus::INACTIVE) {
+      m_search_state_.generation = generation;
+      publishSearchState(m_search_state_);
+      return;
+    }
     markSearchStaleForDocumentChange();
   }
 
   void EditorCore::chooseCurrentSearchMatch(SearchResult& result) const {
+    chooseCurrentSearchMatch(result, m_caret_.cursor);
+  }
+
+  void EditorCore::chooseCurrentSearchMatch(SearchResult& result, const TextPosition& position) const {
     if (result.matches.empty()) {
       result.state.current_index = -1;
       result.state.has_current_match = false;
@@ -3496,7 +3425,7 @@ namespace NS_SWEETEDITOR {
 
     size_t current_index = result.matches.size();
     for (size_t i = 0; i < result.matches.size(); ++i) {
-      if (!(result.matches[i].range.start < m_caret_.cursor)) {
+      if (!(result.matches[i].range.start < position)) {
         current_index = i;
         break;
       }
@@ -3575,6 +3504,7 @@ namespace NS_SWEETEDITOR {
     m_search_state_.current_range = m_search_matches_[index].range;
     setSelectionInternal(m_search_matches_[index].range, true);
     ensureCursorVisible();
+    publishSearchState(m_search_state_);
   }
 
   TextPosition EditorCore::calcPositionAfterInsert(const TextPosition& start, const U8String& text) const {
@@ -3601,7 +3531,6 @@ namespace NS_SWEETEDITOR {
   }
 
   TextEditResult EditorCore::applyEdit(const TextRange& range, const U8String& new_text, bool record_undo) {
-    auto lock = lockEditorState();
     if (m_document_ == nullptr) return {};
 
     TextRange safe_range = range;

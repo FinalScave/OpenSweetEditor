@@ -66,7 +66,6 @@ import com.qiplat.sweeteditor.core.keymap.KeyChord;
 import com.qiplat.sweeteditor.core.keymap.KeyCode;
 import com.qiplat.sweeteditor.core.keymap.KeyModifier;
 import com.qiplat.sweeteditor.core.search.SearchOptions;
-import com.qiplat.sweeteditor.core.search.SearchReplaceRequest;
 import com.qiplat.sweeteditor.core.search.SearchRequest;
 import com.qiplat.sweeteditor.core.search.SearchState;
 import com.qiplat.sweeteditor.core.search.SearchStatus;
@@ -232,6 +231,13 @@ public final class CoreProtocol {
 
     private static int sizeOfUtf8String(String value) {
         return 4 + utf8Bytes(value).length;
+    }
+
+    public static MemorySegment encodeUtf8String(Arena arena, String value) {
+        byte[] bytes = utf8Bytes(value);
+        BinaryWriter writer = new BinaryWriter(arena, 4 + bytes.length);
+        writer.writeUtf8Bytes(bytes);
+        return writer.segment();
     }
 
     private static void writeBracketGuideList(BinaryWriter writer, java.util.List<? extends BracketGuide> values) {
@@ -1556,16 +1562,6 @@ public final class CoreProtocol {
         return size;
     }
 
-    private static void writeSearchReplaceRequest(BinaryWriter writer, SearchReplaceRequest value) {
-        writer.writeUtf8String(value.replacement);
-    }
-
-    public static int sizeOfSearchReplaceRequest(SearchReplaceRequest value) {
-        int size = 0;
-        size += sizeOfUtf8String(value.replacement);
-        return size;
-    }
-
     private static void writeSearchRequest(BinaryWriter writer, SearchRequest value) {
         writer.writeUtf8String(value.pattern);
         writeSearchOptions(writer, value.options);
@@ -1584,7 +1580,6 @@ public final class CoreProtocol {
         value.pattern = reader.readUtf8String();
         value.options = readSearchOptions(reader);
         value.generation = reader.readInt64();
-        value.documentRevision = reader.readInt64();
         value.matchCount = reader.readInt32();
         value.currentIndex = reader.readInt32();
         value.hasCurrentMatch = reader.readInt32() != 0;
@@ -2723,15 +2718,6 @@ public final class CoreProtocol {
         writer.writeInt32(value.index);
         writeTextRangeList(writer, value.ranges);
         writer.writeUtf8Bytes(defaultTextUtf8);
-        return writer.segment();
-    }
-
-    public static MemorySegment encodeSearchReplaceRequest(Arena arena, SearchReplaceRequest value) {
-        int size = 0;
-        byte[] replacementUtf8 = utf8Bytes(value.replacement);
-        size += 4 + replacementUtf8.length;
-        BinaryWriter writer = new BinaryWriter(arena, size);
-        writer.writeUtf8Bytes(replacementUtf8);
         return writer.segment();
     }
 

@@ -35,14 +35,6 @@ public struct SearchOptions {
     }
 }
 
-public struct SearchReplaceRequest {
-    public var replacement: String = ""
-
-    public init(replacement: String = "") {
-        self.replacement = replacement
-    }
-}
-
 public struct SearchRequest {
     public var pattern: String = ""
     public var options: SearchOptions = SearchOptions()
@@ -58,19 +50,17 @@ public struct SearchState {
     public var pattern: String = ""
     public var options: SearchOptions = SearchOptions()
     public var generation: Int64 = 0
-    public var document_revision: Int64 = 0
     public var match_count: Int32 = 0
     public var current_index: Int32 = -1
     public var has_current_match: Bool = false
     public var current_range: TextRange = TextRange()
     public var error_message: String = ""
 
-    public init(status: SearchStatus = .INACTIVE, pattern: String = "", options: SearchOptions = SearchOptions(), generation: Int64 = 0, document_revision: Int64 = 0, match_count: Int32 = 0, current_index: Int32 = -1, has_current_match: Bool = false, current_range: TextRange = TextRange(), error_message: String = "") {
+    public init(status: SearchStatus = .INACTIVE, pattern: String = "", options: SearchOptions = SearchOptions(), generation: Int64 = 0, match_count: Int32 = 0, current_index: Int32 = -1, has_current_match: Bool = false, current_range: TextRange = TextRange(), error_message: String = "") {
         self.status = status
         self.pattern = pattern
         self.options = options
         self.generation = generation
-        self.document_revision = document_revision
         self.match_count = match_count
         self.current_index = current_index
         self.has_current_match = has_current_match

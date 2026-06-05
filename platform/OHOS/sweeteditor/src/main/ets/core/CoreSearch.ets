@@ -27,10 +27,6 @@ export interface SearchOptions {
   maxMatches: number;
 }
 
-export class SearchReplaceRequest {
-  replacement: string = '';
-}
-
 export class SearchRequest {
   pattern: string = '';
   options: SearchOptions = { caseSensitive: false, wholeWord: false, useRegex: false, wrapAround: true, maxMatches: 10000 };
@@ -41,7 +37,6 @@ export interface SearchState {
   pattern: string;
   options: SearchOptions;
   generation: number;
-  documentRevision: number;
   matchCount: number;
   currentIndex: number;
   hasCurrentMatch: boolean;

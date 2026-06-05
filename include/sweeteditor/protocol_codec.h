@@ -854,11 +854,6 @@ public:
     return true;
   }
 
-  inline bool read(SearchReplaceRequest& out) {
-    if (!readUtf8String(out.replacement)) return false;
-    return true;
-  }
-
   inline bool read(SearchRequest& out) {
     if (!readUtf8String(out.pattern)) return false;
     if (!read(out.options)) return false;
@@ -1553,11 +1548,6 @@ public:
     return true;
   }
 
-  inline bool write(const SearchReplaceRequest& value) {
-    if (!writeUtf8String(value.replacement)) return false;
-    return true;
-  }
-
   inline bool write(const SearchRequest& value) {
     if (!writeUtf8String(value.pattern)) return false;
     if (!write(value.options)) return false;
@@ -1569,7 +1559,6 @@ public:
     if (!writeUtf8String(value.pattern)) return false;
     if (!write(value.options)) return false;
     if (!writeU64(static_cast<uint64_t>(value.generation))) return false;
-    if (!writeU64(static_cast<uint64_t>(value.document_revision))) return false;
     if (!writeU32(static_cast<uint32_t>(value.match_count))) return false;
     if (!writeI32(static_cast<int32_t>(value.current_index))) return false;
     if (!writeI32(value.has_current_match ? 1 : 0)) return false;

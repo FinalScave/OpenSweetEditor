@@ -431,6 +431,12 @@ def generate_csharp_codec(schema, target=None):
         "        private static int SizeOfUtf8String(string? value) {",
         "            return 4 + (value == null ? 0 : Encoding.UTF8.GetByteCount(value));",
         "        }",
+        "",
+        "        public static byte[] EncodeUtf8String(string? value) {",
+        "            var writer = new BinaryWriter(SizeOfUtf8String(value));",
+        "            WriteUtf8String(writer, value);",
+        "            return writer.ToArray();",
+        "        }",
     ]
     for inner in list_inner_names(schema):
         if inner_needs_reader(schema, inner):

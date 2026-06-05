@@ -1395,16 +1395,6 @@ int _sizeOfSearchOptions(SearchOptions value) {
   return size;
 }
 
-void _writeSearchReplaceRequest(_BinaryWriter writer, SearchReplaceRequest value) {
-  _writeUtf8String(writer, value.replacement);
-}
-
-int _sizeOfSearchReplaceRequest(SearchReplaceRequest value) {
-  var size = 0;
-  size += _sizeOfUtf8String(value.replacement);
-  return size;
-}
-
 void _writeSearchRequest(_BinaryWriter writer, SearchRequest value) {
   _writeUtf8String(writer, value.pattern);
   _writeSearchOptions(writer, value.options);
@@ -1423,7 +1413,6 @@ SearchState _readSearchState(_BinaryReader reader) {
     pattern: _readUtf8String(reader),
     options: _readSearchOptions(reader),
     generation: reader.readUint64(),
-    documentRevision: reader.readUint64(),
     matchCount: reader.readUint32(),
     currentIndex: reader.readInt32(),
     hasCurrentMatch: reader.readBoolI32(),
@@ -1611,6 +1600,12 @@ VisualRun _readVisualRun(_BinaryReader reader) {
 
 class CoreProtocol {
   CoreProtocol._();
+
+  static Uint8List encodeUtf8String(String? value) {
+    final writer = _BinaryWriter(_sizeOfUtf8String(value));
+    _writeUtf8String(writer, value);
+    return writer.toBytes();
+  }
 
   static EditorActionResult decodeEditorActionResultFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
     final reader = _BinaryReader.fromPointer(ptr, size);
@@ -2401,12 +2396,6 @@ class CoreProtocol {
   static Uint8List encodeTabStopGroup(TabStopGroup value) {
     final writer = _BinaryWriter(_sizeOfTabStopGroup(value));
     _writeTabStopGroup(writer, value);
-    return writer.toBytes();
-  }
-
-  static Uint8List encodeSearchReplaceRequest(SearchReplaceRequest value) {
-    final writer = _BinaryWriter(_sizeOfSearchReplaceRequest(value));
-    _writeSearchReplaceRequest(writer, value);
     return writer.toBytes();
   }
 

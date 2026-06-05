@@ -40,14 +40,6 @@ class SearchOptions {
   final int maxMatches;
 }
 
-class SearchReplaceRequest {
-  const SearchReplaceRequest({
-    this.replacement = '',
-  });
-
-  final String replacement;
-}
-
 class SearchRequest {
   const SearchRequest({
     this.pattern = '',
@@ -64,7 +56,6 @@ class SearchState {
     this.pattern = '',
     this.options = const SearchOptions(),
     this.generation = 0,
-    this.documentRevision = 0,
     this.matchCount = 0,
     this.currentIndex = -1,
     this.hasCurrentMatch = false,
@@ -76,7 +67,6 @@ class SearchState {
   final String pattern;
   final SearchOptions options;
   final int generation;
-  final int documentRevision;
   final int matchCount;
   final int currentIndex;
   final bool hasCurrentMatch;
