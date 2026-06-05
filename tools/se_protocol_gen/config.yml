@@ -6,6 +6,7 @@ schema:
     - include/sweeteditor/gesture.h
     - include/sweeteditor/ime_types.h
     - include/sweeteditor/linked_editing.h
+    - include/sweeteditor/search.h
     - include/sweeteditor/editor_core.h
     - include/sweeteditor/decoration.h
     - include/sweeteditor/visual.h
@@ -43,6 +44,7 @@ targets:
       interaction: interaction
       keymap: keymap
       linked_editing: snippet
+      search: search
       visual: visual
 
   swing_java:
@@ -64,6 +66,7 @@ targets:
       interaction: interaction
       keymap: keymap
       linked_editing: snippet
+      search: search
       visual: visual
 
   ohos_ets:
@@ -82,6 +85,7 @@ targets:
       interaction: CoreInteraction.ets
       keymap: CoreKeymap.ets
       linked_editing: CoreLinkedEditing.ets
+      search: CoreSearch.ets
       visual: CoreVisual.ets
 
   apple_swift:
@@ -98,6 +102,7 @@ targets:
       interaction: core/CoreInteraction.swift
       keymap: core/CoreKeymap.swift
       linked_editing: core/CoreLinkedEditing.swift
+      search: core/CoreSearch.swift
       visual: core/CoreVisual.swift
 
   winforms_csharp:
@@ -117,6 +122,7 @@ targets:
       interaction: CoreInteraction.cs
       keymap: CoreKeymap.cs
       linked_editing: CoreLinkedEditing.cs
+      search: CoreSearch.cs
       visual: CoreVisual.cs
 
   avalonia_csharp:
@@ -136,6 +142,7 @@ targets:
       interaction: CoreInteraction.cs
       keymap: CoreKeymap.cs
       linked_editing: CoreLinkedEditing.cs
+      search: CoreSearch.cs
       visual: CoreVisual.cs
 
   dart_protocol:
@@ -153,4 +160,5 @@ targets:
       interaction: core_interaction.dart
       keymap: core_keymap.dart
       linked_editing: core_linked_editing.dart
+      search: core_search.dart
       visual: core_visual.dart

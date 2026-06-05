@@ -197,6 +197,55 @@ namespace NS_SWEETEDITOR {
     model.selection_end_handle.visible = true;
   }
 
+  void RenderComposer::buildSearchRangeEffects(EditorRenderModel& model, Document* document,
+                                               const Vector<SearchMatch>& matches,
+                                               const Vector<Vector<uint32_t>>& match_indices_by_line,
+                                               int32_t current_index,
+                                               float line_height) const {
+    if (document == nullptr || m_settings_ == nullptr || matches.empty()) return;
+
+    HashSet<size_t> source_lines;
+    for (const VisualLine& visual_line : model.lines) {
+      source_lines.insert(visual_line.logical_line);
+
+      TextRange projected_range;
+      if (m_text_layout_->getFoldTailProjectedRange(visual_line.logical_line, projected_range)) {
+        source_lines.insert(projected_range.start.line);
+      }
+    }
+
+    HashSet<uint32_t> emitted_matches;
+    for (size_t source_line : source_lines) {
+      if (source_line >= match_indices_by_line.size()) continue;
+
+      for (uint32_t match_index : match_indices_by_line[source_line]) {
+        if (match_index >= matches.size() || !emitted_matches.insert(match_index).second) {
+          continue;
+        }
+
+        const SearchMatch& match = matches[match_index];
+        const bool is_current = current_index >= 0 && match_index == static_cast<uint32_t>(current_index);
+        const RangeEffectKind kind = is_current ? RangeEffectKind::SEARCH_CURRENT : RangeEffectKind::SEARCH_MATCH;
+        const RangeEffectStyle& style = is_current
+            ? m_settings_->range_effect_styles.search_current
+            : m_settings_->range_effect_styles.search_match;
+
+        for (size_t line = match.range.start.line; line <= match.range.end.line && line < document->getLineCount(); ++line) {
+          if (source_lines.find(line) == source_lines.end()) continue;
+          size_t col_begin = line == match.range.start.line ? match.range.start.column : 0;
+          size_t col_end = line == match.range.end.line ? match.range.end.column : document->getLineColumns(line);
+          if (col_begin >= col_end) continue;
+
+          Vector<Rect> rects;
+          m_text_layout_->getColumnSelectionRects(line, col_begin, col_end, line_height, rects);
+          for (const Rect& rect : rects) {
+            appendRangeEffect(model, rect, kind, style);
+          }
+        }
+      }
+    }
+  }
+
   void RenderComposer::buildLinkedEditingRangeEffects(EditorRenderModel& model, Document* document,
                                                       const LinkedEditingSession* linked_editing_session,
                                                       float line_height) const {

@@ -1293,6 +1293,67 @@ class SweetEditorCore {
     func canUndo() -> Bool { performCoreCall { editor_can_undo(handle) != 0 } }
     func canRedo() -> Bool { performCoreCall { editor_can_redo(handle) != 0 } }
 
+    // MARK: - Search
+
+    @discardableResult
+    func search(_ request: SearchRequest) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeSearchRequest(request)
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_search(handle, ptr, size, &outSize)
+        }
+    }
+
+    @discardableResult
+    func findNextSearchMatch() -> EditorActionResult? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_find_next_search_match(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
+        }
+    }
+
+    @discardableResult
+    func findPreviousSearchMatch() -> EditorActionResult? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_find_previous_search_match(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
+        }
+    }
+
+    @discardableResult
+    func replaceCurrentSearchMatch(_ request: SearchReplaceRequest) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeSearchReplaceRequest(request)
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_replace_current_search_match(handle, ptr, size, &outSize)
+        }
+    }
+
+    @discardableResult
+    func replaceAllSearchMatches(_ request: SearchReplaceRequest) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeSearchReplaceRequest(request)
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_replace_all_search_matches(handle, ptr, size, &outSize)
+        }
+    }
+
+    @discardableResult
+    func clearSearch() -> EditorActionResult? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_clear_search(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
+        }
+    }
+
+    func getSearchState() -> SearchState {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_get_search_state(handle, &size)
+            return decodeNativePayload(ptr, size: size) { CoreProtocol.decodeSearchState($0) } ?? SearchState()
+        }
+    }
+
     // MARK: - Fold (code folding)
 
     @discardableResult

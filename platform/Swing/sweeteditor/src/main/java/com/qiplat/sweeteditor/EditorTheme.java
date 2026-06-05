@@ -111,6 +111,12 @@ public class EditorTheme {
     public Color bracketHighlightBorderColor;
     /** Bracket match highlight background color, typically with alpha. */
     public Color bracketHighlightBgColor;
+    /** Search match highlight background color, typically with alpha. */
+    public Color searchMatchBgColor;
+    /** Current search match highlight background color, typically with alpha. */
+    public Color searchCurrentBgColor;
+    /** Current search match highlight border color. */
+    public Color searchCurrentBorderColor;
 
     /** Completion popup background color. */
     public Color completionBgColor;
@@ -182,6 +188,9 @@ public class EditorTheme {
         t.linkedEditingInactiveColor = argb(0x667AA2F7);
         t.bracketHighlightBorderColor = argb(0xCC9ECE6A);
         t.bracketHighlightBgColor     = argb(0x2A9ECE6A);
+        t.searchMatchBgColor          = argb(0x33E0AF68);
+        t.searchCurrentBgColor        = argb(0x55E0AF68);
+        t.searchCurrentBorderColor    = argb(0xFFE0AF68);
         t.completionBgColor              = argb(0xF0252830);
         t.completionBorderColor          = argb(0x40607090);
         t.completionSelectedBgColor      = argb(0x3D5580BB);
@@ -241,6 +250,9 @@ public class EditorTheme {
         t.linkedEditingInactiveColor = argb(0x662563EB);
         t.bracketHighlightBorderColor = argb(0xCC0F766E);
         t.bracketHighlightBgColor     = argb(0x260F766E);
+        t.searchMatchBgColor          = argb(0x33F59E0B);
+        t.searchCurrentBgColor        = argb(0x55F59E0B);
+        t.searchCurrentBorderColor    = argb(0xFFD97706);
         t.completionBgColor              = argb(0xF0FAFBFD);
         t.completionBorderColor          = argb(0x30A0A8B8);
         t.completionSelectedBgColor      = argb(0x3D3B82F6);

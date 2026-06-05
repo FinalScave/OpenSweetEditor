@@ -209,6 +209,15 @@ const uint8_t* editor_redo(intptr_t editor_handle, size_t* out_size);
 int editor_can_undo(intptr_t editor_handle);
 int editor_can_redo(intptr_t editor_handle);
 
+// Search API
+const uint8_t* editor_search(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_find_next_search_match(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_find_previous_search_match(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_replace_current_search_match(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_replace_all_search_matches(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_clear_search(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_get_search_state(intptr_t editor_handle, size_t* out_size);
+
 // ===================== Style / Highlight API =====================
 
 const uint8_t* editor_register_text_style(intptr_t editor_handle, uint32_t style_id, int32_t color, int32_t background_color, int32_t font_style, size_t* out_size);

@@ -20,7 +20,8 @@ namespace SweetEditor {
         TEXT_REPLACE = 12,
         TEXT_DELETE = 13,
         TEXT_UNDO = 14,
-        TEXT_REDO = 15
+        TEXT_REDO = 15,
+        SEARCH = 16
     }
 
     public enum ScrollBehavior {

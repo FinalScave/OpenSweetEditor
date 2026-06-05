@@ -17,6 +17,7 @@ public enum EditorActionReason: Int32 {
     case TEXT_DELETE = 13
     case TEXT_UNDO = 14
     case TEXT_REDO = 15
+    case SEARCH = 16
 
     public static func fromValue(_ value: Int32) -> EditorActionReason {
         switch value {
@@ -36,6 +37,7 @@ public enum EditorActionReason: Int32 {
         case 13: return .TEXT_DELETE
         case 14: return .TEXT_UNDO
         case 15: return .TEXT_REDO
+        case 16: return .SEARCH
         default: return .NONE
         }
     }

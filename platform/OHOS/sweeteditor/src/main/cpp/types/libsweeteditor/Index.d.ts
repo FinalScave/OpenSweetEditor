@@ -59,6 +59,15 @@ export const editorRedo: (handle: number) => ArrayBuffer | undefined;
 export const editorCanUndo: (handle: number) => boolean;
 export const editorCanRedo: (handle: number) => boolean;
 
+// Search
+export const editorSearch: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
+export const editorFindNextSearchMatch: (handle: number) => ArrayBuffer | undefined;
+export const editorFindPreviousSearchMatch: (handle: number) => ArrayBuffer | undefined;
+export const editorReplaceCurrentSearchMatch: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
+export const editorReplaceAllSearchMatches: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
+export const editorClearSearch: (handle: number) => ArrayBuffer | undefined;
+export const editorGetSearchState: (handle: number) => ArrayBuffer | undefined;
+
 // Cursor/selection
 export const editorSetCursorPosition: (handle: number, line: number, column: number) => ArrayBuffer | undefined;
 export const editorGetCursorPosition: (handle: number) => number[];

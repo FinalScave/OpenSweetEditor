@@ -853,6 +853,13 @@ namespace SweetEditor {
 					ForegroundColor = (int)theme.SelectionTextColor,
 					BackgroundColor = (int)theme.SelectionColor
 				},
+				SearchMatch = new RangeEffectStyle {
+					BackgroundColor = (int)theme.SearchMatchBgColor
+				},
+				SearchCurrent = new RangeEffectStyle {
+					BackgroundColor = (int)theme.SearchCurrentBgColor,
+					BorderColor = (int)theme.SearchCurrentBorderColor
+				},
 				ImeComposition = new RangeEffectStyle {
 					UnderlineColor = (int)theme.CompositionUnderlineColor,
 					UnderlineStyle = RangeEffectUnderlineStyle.SOLID

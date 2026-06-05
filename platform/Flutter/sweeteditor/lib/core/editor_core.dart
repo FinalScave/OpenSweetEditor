@@ -14,6 +14,7 @@ part 'core_ime.dart';
 part 'core_interaction.dart';
 part 'core_keymap.dart';
 part 'core_linked_editing.dart';
+part 'core_search.dart';
 part 'core_visual.dart';
 part 'core_protocol.dart';
 
@@ -516,6 +517,76 @@ class EditorCore {
   bool get canRedo {
     _ensureOpen();
     return bindings.editor_can_redo(_handle) != 0;
+  }
+
+  EditorActionResult search(SearchRequest request) {
+    _ensureOpen();
+    return _callWithBinaryActionData(
+      CoreProtocol.encodeSearchRequest(request),
+      (ptr, size, outSize) => bindings.editor_search(
+        _handle,
+        ptr,
+        size,
+        outSize,
+      ),
+    );
+  }
+
+  EditorActionResult findNextSearchMatch() {
+    _ensureOpen();
+    return _callAndParseAction(
+      (outSize) => bindings.editor_find_next_search_match(_handle, outSize),
+    );
+  }
+
+  EditorActionResult findPreviousSearchMatch() {
+    _ensureOpen();
+    return _callAndParseAction(
+      (outSize) =>
+          bindings.editor_find_previous_search_match(_handle, outSize),
+    );
+  }
+
+  EditorActionResult replaceCurrentSearchMatch(SearchReplaceRequest request) {
+    _ensureOpen();
+    return _callWithBinaryActionData(
+      CoreProtocol.encodeSearchReplaceRequest(request),
+      (ptr, size, outSize) => bindings.editor_replace_current_search_match(
+        _handle,
+        ptr,
+        size,
+        outSize,
+      ),
+    );
+  }
+
+  EditorActionResult replaceAllSearchMatches(SearchReplaceRequest request) {
+    _ensureOpen();
+    return _callWithBinaryActionData(
+      CoreProtocol.encodeSearchReplaceRequest(request),
+      (ptr, size, outSize) => bindings.editor_replace_all_search_matches(
+        _handle,
+        ptr,
+        size,
+        outSize,
+      ),
+    );
+  }
+
+  EditorActionResult clearSearch() {
+    _ensureOpen();
+    return _callAndParseAction(
+      (outSize) => bindings.editor_clear_search(_handle, outSize),
+    );
+  }
+
+  SearchState getSearchState() {
+    _ensureOpen();
+    return _callAndParse(
+      const SearchState(),
+      (outSize) => bindings.editor_get_search_state(_handle, outSize),
+      CoreProtocol.decodeSearchStateFromPointer,
+    );
   }
 
   EditorActionResult setCursorPosition(int line, int column) {

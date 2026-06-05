@@ -69,6 +69,9 @@ import com.qiplat.sweeteditor.core.adornment.SpanLayer;
 import com.qiplat.sweeteditor.core.foundation.TextChange;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
+import com.qiplat.sweeteditor.core.search.SearchReplaceRequest;
+import com.qiplat.sweeteditor.core.search.SearchRequest;
+import com.qiplat.sweeteditor.core.search.SearchState;
 import com.qiplat.sweeteditor.core.snippet.LinkedEditingModel;
 import com.qiplat.sweeteditor.perf.MeasurePerfStats;
 import com.qiplat.sweeteditor.perf.PerfOverlay;
@@ -639,6 +642,18 @@ public class SweetEditor extends View {
                 theme.bracketHighlightBorderColor,
                 0,
                 RangeEffectUnderlineStyle.NONE);
+        styles.searchMatch = new RangeEffectStyle(
+                0,
+                theme.searchMatchBgColor,
+                0,
+                0,
+                RangeEffectUnderlineStyle.NONE);
+        styles.searchCurrent = new RangeEffectStyle(
+                0,
+                theme.searchCurrentBgColor,
+                theme.searchCurrentBorderColor,
+                0,
+                RangeEffectUnderlineStyle.NONE);
         return styles;
     }
 
@@ -807,6 +822,74 @@ public class SweetEditor extends View {
      */
     public boolean canRedo() {
         return mEditorCore.canRedo();
+    }
+
+    /**
+     * Search the current document and highlight all visible matches.
+     *
+     * @param request search pattern and options
+     */
+    public void search(@NonNull SearchRequest request) {
+        EditorActionResult result = mEditorCore.search(request);
+        dispatchEditorActionResult(result);
+    }
+
+    /**
+     * Move the current search match to the next result.
+     */
+    public void findNextSearchMatch() {
+        EditorActionResult result = mEditorCore.findNextSearchMatch();
+        resetCursorBlink();
+        dispatchEditorActionResult(result);
+    }
+
+    /**
+     * Move the current search match to the previous result.
+     */
+    public void findPreviousSearchMatch() {
+        EditorActionResult result = mEditorCore.findPreviousSearchMatch();
+        resetCursorBlink();
+        dispatchEditorActionResult(result);
+    }
+
+    /**
+     * Replace the current search match.
+     *
+     * @param request replacement text
+     */
+    public void replaceCurrentSearchMatch(@NonNull SearchReplaceRequest request) {
+        EditorActionResult result = mEditorCore.replaceCurrentSearchMatch(request);
+        resetCursorBlink();
+        dispatchEditorActionResult(result);
+    }
+
+    /**
+     * Replace every current search match.
+     *
+     * @param request replacement text
+     */
+    public void replaceAllSearchMatches(@NonNull SearchReplaceRequest request) {
+        EditorActionResult result = mEditorCore.replaceAllSearchMatches(request);
+        resetCursorBlink();
+        dispatchEditorActionResult(result);
+    }
+
+    /**
+     * Clear the active document search and its current selection.
+     */
+    public void clearSearch() {
+        EditorActionResult result = mEditorCore.clearSearch();
+        dispatchEditorActionResult(result);
+    }
+
+    /**
+     * Get the current search state.
+     *
+     * @return search state snapshot
+     */
+    @NonNull
+    public SearchState getSearchState() {
+        return mEditorCore.getSearchState();
     }
 
     // ==================== Cursor/Selection Management ====================

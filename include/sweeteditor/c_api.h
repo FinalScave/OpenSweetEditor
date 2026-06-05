@@ -458,6 +458,39 @@ EDITOR_API int editor_can_undo(intptr_t editor_handle);
 /// @return 1=yes, 0=no
 EDITOR_API int editor_can_redo(intptr_t editor_handle);
 
+/// Search document text.
+/// @param data SearchRequest binary payload encoded by CoreProtocol
+///        SearchRequest is U8String pattern followed by SearchOptions options
+///        SearchOptions is bool case_sensitive, bool whole_word, bool use_regex, bool wrap_around, u32 max_matches
+/// @param size payload byte length
+/// @return EditorActionResult binary payload, returns NULL on failure
+EDITOR_API const uint8_t* editor_search(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+
+/// Move to the next search match.
+EDITOR_API const uint8_t* editor_find_next_search_match(intptr_t editor_handle, size_t* out_size);
+
+/// Move to the previous search match.
+EDITOR_API const uint8_t* editor_find_previous_search_match(intptr_t editor_handle, size_t* out_size);
+
+/// Replace the current search match.
+/// @param data SearchReplaceRequest binary payload encoded by CoreProtocol
+///        SearchReplaceRequest is U8String replacement
+/// @param size payload byte length
+EDITOR_API const uint8_t* editor_replace_current_search_match(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+
+/// Replace all current search matches.
+/// @param data SearchReplaceRequest binary payload encoded by CoreProtocol
+///        SearchReplaceRequest is U8String replacement
+/// @param size payload byte length
+EDITOR_API const uint8_t* editor_replace_all_search_matches(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+
+/// Clear active search state, rendered highlights, and the current search-owned selection.
+EDITOR_API const uint8_t* editor_clear_search(intptr_t editor_handle, size_t* out_size);
+
+/// Get the latest search state.
+/// @return SearchState binary payload encoded by CoreProtocol
+EDITOR_API const uint8_t* editor_get_search_state(intptr_t editor_handle, size_t* out_size);
+
 /// Set cursor position
 /// @param line Line number(0-based)
 /// @param column Column number (0-based)

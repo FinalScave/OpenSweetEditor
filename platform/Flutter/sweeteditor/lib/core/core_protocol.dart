@@ -1367,6 +1367,71 @@ int _sizeOfTabStopGroup(TabStopGroup value) {
   return size;
 }
 
+SearchOptions _readSearchOptions(_BinaryReader reader) {
+  return SearchOptions(
+    caseSensitive: reader.readBoolI32(),
+    wholeWord: reader.readBoolI32(),
+    useRegex: reader.readBoolI32(),
+    wrapAround: reader.readBoolI32(),
+    maxMatches: reader.readUint32(),
+  );
+}
+
+void _writeSearchOptions(_BinaryWriter writer, SearchOptions value) {
+  writer.writeBoolI32(value.caseSensitive);
+  writer.writeBoolI32(value.wholeWord);
+  writer.writeBoolI32(value.useRegex);
+  writer.writeBoolI32(value.wrapAround);
+  writer.writeUint32(value.maxMatches);
+}
+
+int _sizeOfSearchOptions(SearchOptions value) {
+  var size = 0;
+  size += 4;
+  size += 4;
+  size += 4;
+  size += 4;
+  size += 4;
+  return size;
+}
+
+void _writeSearchReplaceRequest(_BinaryWriter writer, SearchReplaceRequest value) {
+  _writeUtf8String(writer, value.replacement);
+}
+
+int _sizeOfSearchReplaceRequest(SearchReplaceRequest value) {
+  var size = 0;
+  size += _sizeOfUtf8String(value.replacement);
+  return size;
+}
+
+void _writeSearchRequest(_BinaryWriter writer, SearchRequest value) {
+  _writeUtf8String(writer, value.pattern);
+  _writeSearchOptions(writer, value.options);
+}
+
+int _sizeOfSearchRequest(SearchRequest value) {
+  var size = 0;
+  size += _sizeOfUtf8String(value.pattern);
+  size += _sizeOfSearchOptions(value.options);
+  return size;
+}
+
+SearchState _readSearchState(_BinaryReader reader) {
+  return SearchState(
+    status: SearchStatus.fromValue(reader.readInt32()),
+    pattern: _readUtf8String(reader),
+    options: _readSearchOptions(reader),
+    generation: reader.readUint64(),
+    documentRevision: reader.readUint64(),
+    matchCount: reader.readUint32(),
+    currentIndex: reader.readInt32(),
+    hasCurrentMatch: reader.readBoolI32(),
+    currentRange: _readTextRange(reader),
+    errorMessage: _readUtf8String(reader),
+  );
+}
+
 Cursor _readCursor(_BinaryReader reader) {
   return Cursor(
     textPosition: _readTextPosition(reader),
@@ -1630,6 +1695,16 @@ class CoreProtocol {
   static KeyChord decodeKeyChordFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
     final reader = _BinaryReader.fromPointer(ptr, size);
     return _readKeyChord(reader);
+  }
+
+  static SearchOptions decodeSearchOptionsFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
+    final reader = _BinaryReader.fromPointer(ptr, size);
+    return _readSearchOptions(reader);
+  }
+
+  static SearchState decodeSearchStateFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
+    final reader = _BinaryReader.fromPointer(ptr, size);
+    return _readSearchState(reader);
   }
 
   static Cursor decodeCursorFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
@@ -2326,6 +2401,18 @@ class CoreProtocol {
   static Uint8List encodeTabStopGroup(TabStopGroup value) {
     final writer = _BinaryWriter(_sizeOfTabStopGroup(value));
     _writeTabStopGroup(writer, value);
+    return writer.toBytes();
+  }
+
+  static Uint8List encodeSearchReplaceRequest(SearchReplaceRequest value) {
+    final writer = _BinaryWriter(_sizeOfSearchReplaceRequest(value));
+    _writeSearchReplaceRequest(writer, value);
+    return writer.toBytes();
+  }
+
+  static Uint8List encodeSearchRequest(SearchRequest value) {
+    final writer = _BinaryWriter(_sizeOfSearchRequest(value));
+    _writeSearchRequest(writer, value);
     return writer.toBytes();
   }
 }

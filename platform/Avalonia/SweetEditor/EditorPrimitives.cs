@@ -99,6 +99,9 @@ namespace SweetEditor {
 		public uint LinkedEditingInactiveColor { get; set; }
 		public uint BracketHighlightBorderColor { get; set; }
 		public uint BracketHighlightBgColor { get; set; }
+		public uint SearchMatchBgColor { get; set; }
+		public uint SearchCurrentBgColor { get; set; }
+		public uint SearchCurrentBorderColor { get; set; }
 		public uint CompletionBgColor { get; set; }
 		public uint CompletionBorderColor { get; set; }
 		public uint CompletionSelectedBgColor { get; set; }
@@ -149,6 +152,9 @@ namespace SweetEditor {
 				LinkedEditingInactiveColor = 0x667AA2F7,
 				BracketHighlightBorderColor = 0xCC9ECE6A,
 				BracketHighlightBgColor = 0x2A9ECE6A,
+				SearchMatchBgColor = 0x33E0AF68,
+				SearchCurrentBgColor = 0x55E0AF68,
+				SearchCurrentBorderColor = 0xFFE0AF68,
 				CompletionBgColor = 0xF0252830,
 				CompletionBorderColor = 0x40607090,
 				CompletionSelectedBgColor = 0x3D5580BB,
@@ -202,6 +208,9 @@ namespace SweetEditor {
 				LinkedEditingInactiveColor = 0x662563EB,
 				BracketHighlightBorderColor = 0xCC0F766E,
 				BracketHighlightBgColor = 0x260F766E,
+				SearchMatchBgColor = 0x33F59E0B,
+				SearchCurrentBgColor = 0x55F59E0B,
+				SearchCurrentBorderColor = 0xFFD97706,
 				CompletionBgColor = 0xF0FAFBFD,
 				CompletionBorderColor = 0x30A0A8B8,
 				CompletionSelectedBgColor = 0x3D3B82F6,

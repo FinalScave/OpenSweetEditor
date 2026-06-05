@@ -736,6 +736,91 @@ external int editor_can_undo(int editor_handle);
 @ffi.Native<ffi.Int Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
 external int editor_can_redo(int editor_handle);
 
+/// Search document text
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_search(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Move to the next search match
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_find_next_search_match(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Move to the previous search match
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_find_previous_search_match(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Replace the current search match
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_replace_current_search_match(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Replace all current search matches
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_replace_all_search_matches(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Clear active search state, rendered highlights, and the current search-owned selection
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_clear_search(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Get the latest search state
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_get_search_state(
+  int editor_handle,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
 /// Set cursor position
 /// @param line Line number(0-based)
 /// @param column Column number (0-based)

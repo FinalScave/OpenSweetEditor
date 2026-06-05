@@ -1151,6 +1151,34 @@ public:
     return toJBoolean(editor_can_redo(static_cast<intptr_t>(handle)));
   }
 
+  static jobject search(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_search);
+  }
+
+  static jobject findNextSearchMatch(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_find_next_search_match);
+  }
+
+  static jobject findPreviousSearchMatch(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_find_previous_search_match);
+  }
+
+  static jobject replaceCurrentSearchMatch(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_replace_current_search_match);
+  }
+
+  static jobject replaceAllSearchMatches(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_replace_all_search_matches);
+  }
+
+  static jobject clearSearch(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_clear_search);
+  }
+
+  static jobject getSearchState(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_get_search_state);
+  }
+
   static jobject scrollToLine(JNIEnv* env, jclass clazz, jlong handle, jint line, jint behavior) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
@@ -1489,6 +1517,13 @@ public:
       {"nativeRedo", "(J)Ljava/nio/ByteBuffer;", (void*) editorRedo},
       {"nativeCanUndo", "(J)Z", (void*) editorCanUndo},
       {"nativeCanRedo", "(J)Z", (void*) editorCanRedo},
+      {"nativeSearch", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) search},
+      {"nativeFindNextSearchMatch", "(J)Ljava/nio/ByteBuffer;", (void*) findNextSearchMatch},
+      {"nativeFindPreviousSearchMatch", "(J)Ljava/nio/ByteBuffer;", (void*) findPreviousSearchMatch},
+      {"nativeReplaceCurrentSearchMatch", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) replaceCurrentSearchMatch},
+      {"nativeReplaceAllSearchMatches", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) replaceAllSearchMatches},
+      {"nativeClearSearch", "(J)Ljava/nio/ByteBuffer;", (void*) clearSearch},
+      {"nativeGetSearchState", "(J)Ljava/nio/ByteBuffer;", (void*) getSearchState},
       {"nativeScrollToLine", "(JII)Ljava/nio/ByteBuffer;", (void*) scrollToLine},
       {"nativeGotoPosition", "(JII)Ljava/nio/ByteBuffer;", (void*) gotoPosition},
       {"nativeEnsureCursorVisible", "(J)Ljava/nio/ByteBuffer;", (void*) ensureCursorVisible},

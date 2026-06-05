@@ -304,6 +304,30 @@ public final class EditorNative {
     private static final MethodHandle CAN_UNDO = downcall("editor_can_undo",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
 
+    private static final MethodHandle SEARCH = downcall("editor_search",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+
+    private static final MethodHandle FIND_NEXT_SEARCH_MATCH = downcall("editor_find_next_search_match",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+
+    private static final MethodHandle FIND_PREVIOUS_SEARCH_MATCH = downcall("editor_find_previous_search_match",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+
+    private static final MethodHandle REPLACE_CURRENT_SEARCH_MATCH = downcall("editor_replace_current_search_match",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+
+    private static final MethodHandle REPLACE_ALL_SEARCH_MATCHES = downcall("editor_replace_all_search_matches",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+
+    private static final MethodHandle CLEAR_SEARCH = downcall("editor_clear_search",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+
+    private static final MethodHandle GET_SEARCH_STATE = downcall("editor_get_search_state",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+
     private static final MethodHandle SET_CURSOR = downcall("editor_set_cursor_position",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS));
@@ -974,6 +998,36 @@ public final class EditorNative {
 
     public static boolean canRedo(long handle) {
         return invokeBoolean(() -> (int) CAN_REDO.invokeExact(handle));
+    }
+
+    public static NativeBinaryResult search(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) SEARCH.invokeExact(handle, payload, size, outSize));
+    }
+
+    public static NativeBinaryResult findNextSearchMatch(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) FIND_NEXT_SEARCH_MATCH.invokeExact(handle, outSize));
+    }
+
+    public static NativeBinaryResult findPreviousSearchMatch(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) FIND_PREVIOUS_SEARCH_MATCH.invokeExact(handle, outSize));
+    }
+
+    public static NativeBinaryResult replaceCurrentSearchMatch(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) REPLACE_CURRENT_SEARCH_MATCH.invokeExact(handle, payload, size, outSize));
+    }
+
+    public static NativeBinaryResult replaceAllSearchMatches(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) REPLACE_ALL_SEARCH_MATCHES.invokeExact(handle, payload, size, outSize));
+    }
+
+    public static NativeBinaryResult clearSearch(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) CLEAR_SEARCH.invokeExact(handle, outSize));
+    }
+
+    public static NativeBinaryResult getSearchState(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) GET_SEARCH_STATE.invokeExact(handle, outSize));
     }
 
     // ===================== Cursor/Selection =====================

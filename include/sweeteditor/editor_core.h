@@ -15,6 +15,9 @@
 #include <sweeteditor/undo.h>
 #include <sweeteditor/linked_editing.h>
 #include <sweeteditor/ime_composition.h>
+#include <sweeteditor/search.h>
+#include <atomic>
+#include <mutex>
 
 namespace NS_SWEETEDITOR {
 
@@ -35,6 +38,7 @@ namespace NS_SWEETEDITOR {
     TEXT_DELETE = 13,
     TEXT_UNDO = 14,
     TEXT_REDO = 15,
+    SEARCH = 16,
   };
 
   struct SE_PROTOCOL_OUT(action) EditorActionResult {
@@ -284,6 +288,28 @@ namespace NS_SWEETEDITOR {
 
     /// Whether redo is available
     bool canRedo() const;
+
+    /// Search document text and make results available to the next render pass
+    EditorActionResult search(const SearchRequest& request);
+
+    /// Move to the next search match
+    EditorActionResult findNextSearchMatch();
+
+    /// Move to the previous search match
+    EditorActionResult findPreviousSearchMatch();
+
+    /// Replace the current search match
+    EditorActionResult replaceCurrentSearchMatch(const SearchReplaceRequest& request);
+
+    /// Replace every current search match
+    EditorActionResult replaceAllSearchMatches(const SearchReplaceRequest& request);
+
+    /// Clear active search state, rendered highlights, and the current search-owned selection
+    EditorActionResult clearSearch();
+
+    /// Get the latest search state
+    SearchState getSearchState();
+
     /// Set cursor position
     /// @param position Text position
     EditorActionResult setCursorPosition(const TextPosition& position);
@@ -747,6 +773,13 @@ namespace NS_SWEETEDITOR {
     TextPosition m_external_bracket_close_;
     bool m_has_external_brackets_ {false};
 
+    UniquePtr<std::recursive_mutex> m_editor_mutex_ {makeUnique<std::recursive_mutex>()};
+    UniquePtr<std::atomic<uint64_t>> m_document_revision_ {makeUnique<std::atomic<uint64_t>>(0)};
+    UniquePtr<std::atomic<uint64_t>> m_search_generation_ {makeUnique<std::atomic<uint64_t>>(0)};
+    SearchState m_search_state_;
+    Vector<SearchMatch> m_search_matches_;
+    Vector<Vector<uint32_t>> m_search_match_indices_by_line_;
+
     /// Hovered clickable hit target for interactive runs such as CodeLens and Link.
     HitTarget m_hover_hit_target_;
     /// Pressed clickable hit target.
@@ -801,6 +834,18 @@ namespace NS_SWEETEDITOR {
     static size_t calcUtf16Columns(const U8String& text);
     size_t documentUtf16Length() const;
     TextRange textRangeFromUtf16Offsets(size_t start_offset, size_t end_offset) const;
+    std::unique_lock<std::recursive_mutex> lockEditorState() const;
+    SearchSnapshot buildSearchSnapshot(const SearchRequest& request,
+                                       uint64_t generation,
+                                       uint64_t document_revision) const;
+    void installSearchResult(SearchResult&& result);
+    void rebuildSearchLineIndex();
+    void markSearchStaleForDocumentChange();
+    void noteDocumentContentChanged();
+    void chooseCurrentSearchMatch(SearchResult& result) const;
+    void collectTextPresentationEffectsForLine(size_t line, Vector<TextPresentationEffect>& effects) const;
+    size_t firstSearchMatchAtOrAfter(const TextPosition& position) const;
+    void selectSearchMatch(size_t index);
     /// Calculate new cursor position after inserting UTF8 text
     TextPosition calcPositionAfterInsert(const TextPosition& start, const U8String& text) const;
     /// Unified edit entry: apply document edit and record undo operation

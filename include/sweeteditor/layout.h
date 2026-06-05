@@ -9,6 +9,7 @@
 #include <sweeteditor/decoration.h>
 #include <sweeteditor/visual.h>
 #include <sweeteditor/gesture.h>
+#include <functional>
 
 namespace NS_SWEETEDITOR {
 
@@ -44,6 +45,13 @@ namespace NS_SWEETEDITOR {
     float max_scroll_y {0};
   };
 
+  struct TextPresentationEffect {
+    TextRange range;
+    int32_t foreground_color {0};
+    bool clear_text_background {false};
+    uint32_t priority {0};
+  };
+
   /// Presentation-time state used when materializing the render model.
   /// This context does not affect geometry/layout caches. It only affects
   /// the final visual model emitted to platform renderers.
@@ -58,6 +66,8 @@ namespace NS_SWEETEDITOR {
     EditorRenderColors render_colors;
     /// Render-time range effect styles
     EditorRangeEffectStyles range_effect_styles;
+    /// Collect foreground/background overrides for one logical source line.
+    std::function<void(size_t, Vector<TextPresentationEffect>&)> collect_text_effects;
   };
 
   enum struct PointerHitPolicy : uint8_t {

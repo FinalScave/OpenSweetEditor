@@ -248,6 +248,18 @@ public class SweetEditor extends JPanel {
                 0,
                 0,
                 RangeEffectUnderlineStyle.NONE);
+        styles.searchMatch = new RangeEffectStyle(
+                0,
+                colorToArgb(theme.searchMatchBgColor),
+                0,
+                0,
+                RangeEffectUnderlineStyle.NONE);
+        styles.searchCurrent = new RangeEffectStyle(
+                0,
+                colorToArgb(theme.searchCurrentBgColor),
+                colorToArgb(theme.searchCurrentBorderColor),
+                0,
+                RangeEffectUnderlineStyle.NONE);
         styles.imeComposition = new RangeEffectStyle(
                 0,
                 0,

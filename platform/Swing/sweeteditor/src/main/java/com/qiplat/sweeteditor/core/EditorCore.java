@@ -19,6 +19,7 @@ import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
 import com.qiplat.sweeteditor.core.interaction.EventType;
 import com.qiplat.sweeteditor.core.interaction.GestureEvent;
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
+import com.qiplat.sweeteditor.core.search.*;
 import com.qiplat.sweeteditor.core.visual.*;
 import com.qiplat.sweeteditor.core.snippet.*;
 
@@ -329,6 +330,49 @@ public class EditorCore {
 
     public boolean canUndo() { return EditorNative.canUndo(nativeHandle); }
     public boolean canRedo() { return EditorNative.canRedo(nativeHandle); }
+
+    public EditorActionResult search(SearchRequest request) {
+        try (Arena tempArena = Arena.ofConfined()) {
+            MemorySegment payload = CoreProtocol.encodeSearchRequest(tempArena, request);
+            return decodeAction(EditorNative.search(nativeHandle, payload, payload.byteSize()));
+        }
+    }
+
+    public EditorActionResult findNextSearchMatch() {
+        return decodeAction(EditorNative.findNextSearchMatch(nativeHandle));
+    }
+
+    public EditorActionResult findPreviousSearchMatch() {
+        return decodeAction(EditorNative.findPreviousSearchMatch(nativeHandle));
+    }
+
+    public EditorActionResult replaceCurrentSearchMatch(SearchReplaceRequest request) {
+        try (Arena tempArena = Arena.ofConfined()) {
+            MemorySegment payload = CoreProtocol.encodeSearchReplaceRequest(tempArena, request);
+            return decodeAction(EditorNative.replaceCurrentSearchMatch(nativeHandle, payload, payload.byteSize()));
+        }
+    }
+
+    public EditorActionResult replaceAllSearchMatches(SearchReplaceRequest request) {
+        try (Arena tempArena = Arena.ofConfined()) {
+            MemorySegment payload = CoreProtocol.encodeSearchReplaceRequest(tempArena, request);
+            return decodeAction(EditorNative.replaceAllSearchMatches(nativeHandle, payload, payload.byteSize()));
+        }
+    }
+
+    public EditorActionResult clearSearch() {
+        return decodeAction(EditorNative.clearSearch(nativeHandle));
+    }
+
+    public SearchState getSearchState() {
+        EditorNative.NativeBinaryResult result = EditorNative.getSearchState(nativeHandle);
+        try {
+            if (result == null || !result.hasData()) return new SearchState();
+            return CoreProtocol.decodeSearchState(result.segment(), result.size());
+        } finally {
+            if (result != null) result.free();
+        }
+    }
 
     // ===================== Cursor/Selection =====================
 

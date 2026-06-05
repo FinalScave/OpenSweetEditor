@@ -16,7 +16,8 @@ public enum EditorActionReason {
     TEXT_REPLACE(12),
     TEXT_DELETE(13),
     TEXT_UNDO(14),
-    TEXT_REDO(15);
+    TEXT_REDO(15),
+    SEARCH(16);
 
     public final int value;
 
@@ -42,6 +43,7 @@ public enum EditorActionReason {
             case 13: return TEXT_DELETE;
             case 14: return TEXT_UNDO;
             case 15: return TEXT_REDO;
+            case 16: return SEARCH;
             default: return NONE;
         }
     }

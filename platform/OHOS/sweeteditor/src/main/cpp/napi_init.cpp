@@ -65,6 +65,13 @@ static napi_value Init(napi_env env, napi_value exports)
         NAPI_METHOD("editorRedo", EditorCoreNapi::redo),
         NAPI_METHOD("editorCanUndo", EditorCoreNapi::canUndo),
         NAPI_METHOD("editorCanRedo", EditorCoreNapi::canRedo),
+        NAPI_METHOD("editorSearch", EditorCoreNapi::search),
+        NAPI_METHOD("editorFindNextSearchMatch", EditorCoreNapi::findNextSearchMatch),
+        NAPI_METHOD("editorFindPreviousSearchMatch", EditorCoreNapi::findPreviousSearchMatch),
+        NAPI_METHOD("editorReplaceCurrentSearchMatch", EditorCoreNapi::replaceCurrentSearchMatch),
+        NAPI_METHOD("editorReplaceAllSearchMatches", EditorCoreNapi::replaceAllSearchMatches),
+        NAPI_METHOD("editorClearSearch", EditorCoreNapi::clearSearch),
+        NAPI_METHOD("editorGetSearchState", EditorCoreNapi::getSearchState),
 
         // Cursor/selection
         NAPI_METHOD("editorSetCursorPosition", EditorCoreNapi::setCursorPosition),

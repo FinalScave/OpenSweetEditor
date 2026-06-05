@@ -65,6 +65,11 @@ import com.qiplat.sweeteditor.core.keymap.KeyBinding;
 import com.qiplat.sweeteditor.core.keymap.KeyChord;
 import com.qiplat.sweeteditor.core.keymap.KeyCode;
 import com.qiplat.sweeteditor.core.keymap.KeyModifier;
+import com.qiplat.sweeteditor.core.search.SearchOptions;
+import com.qiplat.sweeteditor.core.search.SearchReplaceRequest;
+import com.qiplat.sweeteditor.core.search.SearchRequest;
+import com.qiplat.sweeteditor.core.search.SearchState;
+import com.qiplat.sweeteditor.core.search.SearchStatus;
 import com.qiplat.sweeteditor.core.snippet.LinkedEditingModel;
 import com.qiplat.sweeteditor.core.snippet.TabStopGroup;
 import com.qiplat.sweeteditor.core.visual.Cursor;
@@ -1519,6 +1524,79 @@ public final class CoreProtocol {
         return size;
     }
 
+    private static SearchOptions readSearchOptions(BinaryReader reader) {
+        SearchOptions value = new SearchOptions();
+        value.caseSensitive = reader.readInt32() != 0;
+        value.wholeWord = reader.readInt32() != 0;
+        value.useRegex = reader.readInt32() != 0;
+        value.wrapAround = reader.readInt32() != 0;
+        value.maxMatches = reader.readInt32();
+        return value;
+    }
+
+    public static SearchOptions decodeSearchOptions(MemorySegment data, long size) {
+        return readSearchOptions(new BinaryReader(data, size));
+    }
+
+    private static void writeSearchOptions(BinaryWriter writer, SearchOptions value) {
+        writer.writeInt32(value.caseSensitive ? 1 : 0);
+        writer.writeInt32(value.wholeWord ? 1 : 0);
+        writer.writeInt32(value.useRegex ? 1 : 0);
+        writer.writeInt32(value.wrapAround ? 1 : 0);
+        writer.writeInt32(value.maxMatches);
+    }
+
+    public static int sizeOfSearchOptions(SearchOptions value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
+        return size;
+    }
+
+    private static void writeSearchReplaceRequest(BinaryWriter writer, SearchReplaceRequest value) {
+        writer.writeUtf8String(value.replacement);
+    }
+
+    public static int sizeOfSearchReplaceRequest(SearchReplaceRequest value) {
+        int size = 0;
+        size += sizeOfUtf8String(value.replacement);
+        return size;
+    }
+
+    private static void writeSearchRequest(BinaryWriter writer, SearchRequest value) {
+        writer.writeUtf8String(value.pattern);
+        writeSearchOptions(writer, value.options);
+    }
+
+    public static int sizeOfSearchRequest(SearchRequest value) {
+        int size = 0;
+        size += sizeOfUtf8String(value.pattern);
+        size += sizeOfSearchOptions(value.options);
+        return size;
+    }
+
+    private static SearchState readSearchState(BinaryReader reader) {
+        SearchState value = new SearchState();
+        value.status = SearchStatus.fromValue(reader.readInt32());
+        value.pattern = reader.readUtf8String();
+        value.options = readSearchOptions(reader);
+        value.generation = reader.readInt64();
+        value.documentRevision = reader.readInt64();
+        value.matchCount = reader.readInt32();
+        value.currentIndex = reader.readInt32();
+        value.hasCurrentMatch = reader.readInt32() != 0;
+        value.currentRange = readTextRange(reader);
+        value.errorMessage = reader.readUtf8String();
+        return value;
+    }
+
+    public static SearchState decodeSearchState(MemorySegment data, long size) {
+        return readSearchState(new BinaryReader(data, size));
+    }
+
     private static Cursor readCursor(BinaryReader reader) {
         Cursor value = new Cursor();
         value.textPosition = readTextPosition(reader);
@@ -2645,6 +2723,26 @@ public final class CoreProtocol {
         writer.writeInt32(value.index);
         writeTextRangeList(writer, value.ranges);
         writer.writeUtf8Bytes(defaultTextUtf8);
+        return writer.segment();
+    }
+
+    public static MemorySegment encodeSearchReplaceRequest(Arena arena, SearchReplaceRequest value) {
+        int size = 0;
+        byte[] replacementUtf8 = utf8Bytes(value.replacement);
+        size += 4 + replacementUtf8.length;
+        BinaryWriter writer = new BinaryWriter(arena, size);
+        writer.writeUtf8Bytes(replacementUtf8);
+        return writer.segment();
+    }
+
+    public static MemorySegment encodeSearchRequest(Arena arena, SearchRequest value) {
+        int size = 0;
+        byte[] patternUtf8 = utf8Bytes(value.pattern);
+        size += 4 + patternUtf8.length;
+        size += sizeOfSearchOptions(value.options);
+        BinaryWriter writer = new BinaryWriter(arena, size);
+        writer.writeUtf8Bytes(patternUtf8);
+        writeSearchOptions(writer, value.options);
         return writer.segment();
     }
 }

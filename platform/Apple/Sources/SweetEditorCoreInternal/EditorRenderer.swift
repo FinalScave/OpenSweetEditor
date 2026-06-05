@@ -483,6 +483,13 @@ struct EditorRenderer {
                 foreground_color: argbFromCGColor(theme.selectionTextColor),
                 background_color: argbFromCGColor(theme.selectionColor)
             ),
+            search_match: RangeEffectStyle(
+                background_color: argbFromCGColor(theme.searchMatchBgColor)
+            ),
+            search_current: RangeEffectStyle(
+                background_color: argbFromCGColor(theme.searchCurrentBgColor),
+                border_color: argbFromCGColor(theme.searchCurrentBorderColor)
+            ),
             linked_editing_active: RangeEffectStyle(
                 background_color: argbWithAlpha(argbFromCGColor(theme.linkedEditingActiveColor), alpha: 0x20),
                 border_color: argbFromCGColor(theme.linkedEditingActiveColor)

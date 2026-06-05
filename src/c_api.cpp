@@ -613,6 +613,60 @@ int editor_can_redo(intptr_t editor_handle) {
   return editor_core->canRedo() ? 1 : 0;
 }
 
+const uint8_t* editor_search(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  SearchRequest request;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, request)) {
+    return nullBinaryPayload(out_size);
+  }
+  return editorActionResultToBinary(editor_core->search(request), out_size);
+}
+
+const uint8_t* editor_find_next_search_match(intptr_t editor_handle, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->findNextSearchMatch(), out_size);
+}
+
+const uint8_t* editor_find_previous_search_match(intptr_t editor_handle, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->findPreviousSearchMatch(), out_size);
+}
+
+const uint8_t* editor_replace_current_search_match(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  SearchReplaceRequest request;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, request)) {
+    return nullBinaryPayload(out_size);
+  }
+  return editorActionResultToBinary(editor_core->replaceCurrentSearchMatch(request), out_size);
+}
+
+const uint8_t* editor_replace_all_search_matches(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  SearchReplaceRequest request;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, request)) {
+    return nullBinaryPayload(out_size);
+  }
+  return editorActionResultToBinary(editor_core->replaceAllSearchMatches(request), out_size);
+}
+
+const uint8_t* editor_clear_search(intptr_t editor_handle, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->clearSearch(), out_size);
+}
+
+const uint8_t* editor_get_search_state(intptr_t editor_handle, size_t* out_size) {
+  SearchState state;
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core != nullptr) {
+    state = editor_core->getSearchState();
+  }
+  return protocolToBinary(state, out_size, 128);
+}
+
 const uint8_t* editor_set_cursor_position(intptr_t editor_handle, size_t line, size_t column, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) return nullBinaryPayload(out_size);

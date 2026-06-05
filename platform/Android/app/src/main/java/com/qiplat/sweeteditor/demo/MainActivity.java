@@ -41,12 +41,15 @@ import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
 import com.qiplat.sweeteditor.core.config.FoldArrowMode;
 import com.qiplat.sweeteditor.core.config.WrapMode;
 import com.qiplat.sweeteditor.core.foundation.TextChange;
+import com.qiplat.sweeteditor.core.search.SearchState;
+import com.qiplat.sweeteditor.core.search.SearchStatus;
 import com.qiplat.sweeteditor.event.CursorChangedEvent;
 import com.qiplat.sweeteditor.event.CodeLensClickEvent;
 import com.qiplat.sweeteditor.event.GutterIconClickEvent;
 import com.qiplat.sweeteditor.event.InlayHintClickEvent;
 import com.qiplat.sweeteditor.event.LinkClickEvent;
 import com.qiplat.sweeteditor.event.TextChangedEvent;
+import com.qiplat.sweeteditor.search.SearchPanel;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -72,6 +75,8 @@ public class MainActivity extends AppCompatActivity {
     private SweetEditor mEditor;
     private TextView mStatusBar;
     private View mToolbarContainer;
+    private SearchPanel mSearchPanel;
+    private ImageButton mBtnSearch;
     private ImageButton mBtnUndo;
     private ImageButton mBtnRedo;
     private ImageButton mBtnTheme;
@@ -98,6 +103,8 @@ public class MainActivity extends AppCompatActivity {
         mEditor = findViewById(R.id.editor);
         mStatusBar = findViewById(R.id.tv_status);
         mToolbarContainer = findViewById(R.id.toolbar_container);
+        mSearchPanel = findViewById(R.id.search_panel);
+        mBtnSearch = findViewById(R.id.btn_search);
         mBtnUndo = findViewById(R.id.btn_undo);
         mBtnRedo = findViewById(R.id.btn_redo);
         mBtnTheme = findViewById(R.id.btn_switch_theme);
@@ -120,6 +127,8 @@ public class MainActivity extends AppCompatActivity {
                 .build();
         mEditor.setLanguageConfiguration(configuration);
         registerDemoStylesForCurrentTheme();
+        mSearchPanel.setEditor(mEditor);
+        mSearchPanel.setOnSearchStateChangedListener(state -> updateStatus(describeSearchState(state)));
 
         try {
             DemoDecorationProvider.ensureSweetLineReady(this);
@@ -169,10 +178,12 @@ public class MainActivity extends AppCompatActivity {
         int secondary = mIsDarkTheme ? DARK_SECONDARY : LIGHT_SECONDARY;
 
         mToolbarContainer.setBackgroundColor(bg);
+        tintImageButton(mBtnSearch, fg);
         tintImageButton(mBtnUndo, fg);
         tintImageButton(mBtnRedo, fg);
         tintImageButton(mBtnTheme, fg);
         tintImageButton(mBtnWrap, fg);
+        mSearchPanel.applyTheme(mEditor.getTheme());
 
         mStatusBar.setBackgroundColor(bg);
         mStatusBar.setTextColor(secondary);
@@ -396,6 +407,7 @@ public class MainActivity extends AppCompatActivity {
     private void loadDemoFile(String fileName) {
         String assetPath = DEMO_FILES_ASSET_DIR + "/" + fileName;
         String code = loadAsset(assetPath);
+        mSearchPanel.resetForDocument();
         mEditor.loadDocument(new Document(code));
         mEditor.setMetadata(new DemoFileMetadata(fileName));
         mEditor.post(mEditor::requestDecorationRefresh);
@@ -420,6 +432,11 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupToolbar() {
+        mBtnSearch.setOnClickListener(v -> {
+            mSearchPanel.open();
+            updateStatus("Search");
+        });
+
         mBtnUndo.setOnClickListener(v -> {
             if (mEditor.canUndo()) {
                 mEditor.undo();
@@ -465,5 +482,24 @@ public class MainActivity extends AppCompatActivity {
         int linkColor = mIsDarkTheme ? 0xFF7DCFFF : 0xFF005FB8;
         mEditor.registerTextStyle(STYLE_COLOR, color, 0);
         mEditor.registerTextStyle(STYLE_LINK, linkColor, 0);
+    }
+
+    @NonNull
+    private String describeSearchState(@NonNull SearchState state) {
+        String pattern = state.pattern == null ? "" : state.pattern;
+        if (pattern.isEmpty() || state.status == SearchStatus.INACTIVE) {
+            return "Search";
+        }
+        if (state.status == SearchStatus.FAILED) {
+            String message = state.errorMessage == null || state.errorMessage.isEmpty()
+                    ? "invalid pattern"
+                    : state.errorMessage;
+            return "Search failed: " + message;
+        }
+        if (state.matchCount <= 0) {
+            return "No matches: " + pattern;
+        }
+        int current = state.currentIndex >= 0 ? state.currentIndex + 1 : 0;
+        return "Search " + current + "/" + state.matchCount + ": " + pattern;
     }
 }

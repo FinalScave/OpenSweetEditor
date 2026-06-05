@@ -1417,6 +1417,81 @@ namespace SweetEditor {
             return size;
         }
 
+        private static SearchOptions ReadSearchOptions(ref BinaryReader reader) {
+            return new SearchOptions {
+                CaseSensitive = reader.ReadBoolI32(),
+                WholeWord = reader.ReadBoolI32(),
+                UseRegex = reader.ReadBoolI32(),
+                WrapAround = reader.ReadBoolI32(),
+                MaxMatches = reader.ReadInt32(),
+            };
+        }
+
+        public static SearchOptions DecodeSearchOptions(ReadOnlySpan<byte> data) {
+            var reader = new BinaryReader(data);
+            return ReadSearchOptions(ref reader);
+        }
+
+        private static void WriteSearchOptions(BinaryWriter writer, SearchOptions value) {
+            writer.WriteBoolI32(value.CaseSensitive);
+            writer.WriteBoolI32(value.WholeWord);
+            writer.WriteBoolI32(value.UseRegex);
+            writer.WriteBoolI32(value.WrapAround);
+            writer.WriteInt32(value.MaxMatches);
+        }
+
+        private static int SizeOfSearchOptions(SearchOptions value) {
+            var size = 0;
+            size += 4;
+            size += 4;
+            size += 4;
+            size += 4;
+            size += 4;
+            return size;
+        }
+
+        private static void WriteSearchReplaceRequest(BinaryWriter writer, SearchReplaceRequest value) {
+            WriteUtf8String(writer, value.Replacement);
+        }
+
+        private static int SizeOfSearchReplaceRequest(SearchReplaceRequest value) {
+            var size = 0;
+            size += SizeOfUtf8String(value.Replacement);
+            return size;
+        }
+
+        private static void WriteSearchRequest(BinaryWriter writer, SearchRequest value) {
+            WriteUtf8String(writer, value.Pattern);
+            WriteSearchOptions(writer, value.Options);
+        }
+
+        private static int SizeOfSearchRequest(SearchRequest value) {
+            var size = 0;
+            size += SizeOfUtf8String(value.Pattern);
+            size += SizeOfSearchOptions(value.Options);
+            return size;
+        }
+
+        private static SearchState ReadSearchState(ref BinaryReader reader) {
+            return new SearchState {
+                Status = (SearchStatus)reader.ReadInt32(),
+                Pattern = ReadUtf8String(ref reader),
+                Options = ReadSearchOptions(ref reader),
+                Generation = reader.ReadInt64(),
+                DocumentRevision = reader.ReadInt64(),
+                MatchCount = reader.ReadInt32(),
+                CurrentIndex = reader.ReadInt32(),
+                HasCurrentMatch = reader.ReadBoolI32(),
+                CurrentRange = ReadTextRange(ref reader),
+                ErrorMessage = ReadUtf8String(ref reader),
+            };
+        }
+
+        public static SearchState DecodeSearchState(ReadOnlySpan<byte> data) {
+            var reader = new BinaryReader(data);
+            return ReadSearchState(ref reader);
+        }
+
         private static Cursor ReadCursor(ref BinaryReader reader) {
             return new Cursor {
                 TextPosition = ReadTextPosition(ref reader),
@@ -2304,6 +2379,18 @@ namespace SweetEditor {
         public static byte[] EncodeTabStopGroup(TabStopGroup value) {
             var writer = new BinaryWriter(SizeOfTabStopGroup(value));
             WriteTabStopGroup(writer, value);
+            return writer.ToArray();
+        }
+
+        public static byte[] EncodeSearchReplaceRequest(SearchReplaceRequest value) {
+            var writer = new BinaryWriter(SizeOfSearchReplaceRequest(value));
+            WriteSearchReplaceRequest(writer, value);
+            return writer.ToArray();
+        }
+
+        public static byte[] EncodeSearchRequest(SearchRequest value) {
+            var writer = new BinaryWriter(SizeOfSearchRequest(value));
+            WriteSearchRequest(writer, value);
             return writer.ToArray();
         }
     }

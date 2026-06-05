@@ -31,6 +31,7 @@ import {
   ImeTextUnit
 } from './CoreIme';
 import { KeyBinding } from './CoreKeymap';
+import { SearchReplaceRequest, SearchRequest, SearchState } from './CoreSearch';
 import {
   BracketGuide,
   CodeLensItem,
@@ -321,6 +322,37 @@ export class EditorCore {
 
   canRedo(): boolean {
     return native.editorCanRedo(this.handle);
+  }
+
+  search(request: SearchRequest): EditorActionResult {
+    const payload = CoreProtocol.encodeSearchRequest(request);
+    return CoreProtocol.decodeEditorActionResult(native.editorSearch(this.handle, payload, payload.byteLength));
+  }
+
+  findNextSearchMatch(): EditorActionResult {
+    return CoreProtocol.decodeEditorActionResult(native.editorFindNextSearchMatch(this.handle));
+  }
+
+  findPreviousSearchMatch(): EditorActionResult {
+    return CoreProtocol.decodeEditorActionResult(native.editorFindPreviousSearchMatch(this.handle));
+  }
+
+  replaceCurrentSearchMatch(request: SearchReplaceRequest): EditorActionResult {
+    const payload = CoreProtocol.encodeSearchReplaceRequest(request);
+    return CoreProtocol.decodeEditorActionResult(native.editorReplaceCurrentSearchMatch(this.handle, payload, payload.byteLength));
+  }
+
+  replaceAllSearchMatches(request: SearchReplaceRequest): EditorActionResult {
+    const payload = CoreProtocol.encodeSearchReplaceRequest(request);
+    return CoreProtocol.decodeEditorActionResult(native.editorReplaceAllSearchMatches(this.handle, payload, payload.byteLength));
+  }
+
+  clearSearch(): EditorActionResult {
+    return CoreProtocol.decodeEditorActionResult(native.editorClearSearch(this.handle));
+  }
+
+  getSearchState(): SearchState {
+    return CoreProtocol.decodeSearchState(native.editorGetSearchState(this.handle));
   }
 
   // ==================== Cursor/Selection Management ====================

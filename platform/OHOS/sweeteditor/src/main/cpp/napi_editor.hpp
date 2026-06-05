@@ -1674,6 +1674,78 @@ public:
     return napi_create_bool_value(env, editor_can_redo(static_cast<intptr_t>(napi_get_handle(env, args[0]))) != 0);
   }
 
+  using EditorHandleAction = const uint8_t* (*)(intptr_t, size_t*);
+  using EditorBufferAction = const uint8_t* (*)(intptr_t, const uint8_t*, size_t, size_t*);
+
+  static napi_value invokeHandleEditorAction(napi_env env, napi_callback_info info, EditorHandleAction action) {
+    size_t argc = 1;
+    napi_value args[1];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) {
+      napi_value undefined;
+      napi_get_undefined(env, &undefined);
+      return undefined;
+    }
+    size_t out_size = 0;
+    return wrap_binary_payload(env, action(static_cast<intptr_t>(handle), &out_size), out_size);
+  }
+
+  static napi_value invokeBufferEditorAction(napi_env env, napi_callback_info info, EditorBufferAction action) {
+    size_t argc = 3;
+    napi_value args[3];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) {
+      napi_value undefined;
+      napi_get_undefined(env, &undefined);
+      return undefined;
+    }
+
+    void* data = nullptr;
+    size_t byte_length = 0;
+    napi_get_arraybuffer_info(env, args[1], &data, &byte_length);
+    int32_t size = napi_get_int32(env, args[2]);
+    if (data == nullptr || size <= 0 || static_cast<size_t>(size) > byte_length) {
+      napi_value undefined;
+      napi_get_undefined(env, &undefined);
+      return undefined;
+    }
+
+    size_t out_size = 0;
+    return wrap_binary_payload(env,
+      action(static_cast<intptr_t>(handle), reinterpret_cast<const uint8_t*>(data), static_cast<size_t>(size), &out_size),
+      out_size);
+  }
+
+  static napi_value search(napi_env env, napi_callback_info info) {
+    return invokeBufferEditorAction(env, info, editor_search);
+  }
+
+  static napi_value findNextSearchMatch(napi_env env, napi_callback_info info) {
+    return invokeHandleEditorAction(env, info, editor_find_next_search_match);
+  }
+
+  static napi_value findPreviousSearchMatch(napi_env env, napi_callback_info info) {
+    return invokeHandleEditorAction(env, info, editor_find_previous_search_match);
+  }
+
+  static napi_value replaceCurrentSearchMatch(napi_env env, napi_callback_info info) {
+    return invokeBufferEditorAction(env, info, editor_replace_current_search_match);
+  }
+
+  static napi_value replaceAllSearchMatches(napi_env env, napi_callback_info info) {
+    return invokeBufferEditorAction(env, info, editor_replace_all_search_matches);
+  }
+
+  static napi_value clearSearch(napi_env env, napi_callback_info info) {
+    return invokeHandleEditorAction(env, info, editor_clear_search);
+  }
+
+  static napi_value getSearchState(napi_env env, napi_callback_info info) {
+    return invokeHandleEditorAction(env, info, editor_get_search_state);
+  }
+
   static napi_value setCursorPosition(napi_env env, napi_callback_info info) {
     size_t argc = 3;
     napi_value args[3];

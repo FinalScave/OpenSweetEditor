@@ -246,6 +246,11 @@ enum CoreProtocol {
         return EditorBuiltinCommand.fromValue(value)
     }
 
+    static func readSearchStatus(_ reader: inout BinaryReader) -> SearchStatus? {
+        guard let value = reader.readInt32() else { return nil }
+        return SearchStatus.fromValue(value)
+    }
+
     static func readFoldState(_ reader: inout BinaryReader) -> FoldState? {
         guard let value = reader.readInt32() else { return nil }
         return FoldState.fromValue(value)
@@ -1431,6 +1436,80 @@ enum CoreProtocol {
         4 + sizeOfTextRangeList(value.ranges) + sizeOfUtf8String(value.default_text)
     }
 
+    static func readSearchOptions(_ reader: inout BinaryReader) -> SearchOptions? {
+        guard let case_sensitive = reader.readBoolI32() else { return nil }
+        guard let whole_word = reader.readBoolI32() else { return nil }
+        guard let use_regex = reader.readBoolI32() else { return nil }
+        guard let wrap_around = reader.readBoolI32() else { return nil }
+        guard let max_matches = reader.readInt32() else { return nil }
+        return SearchOptions(case_sensitive: case_sensitive, whole_word: whole_word, use_regex: use_regex, wrap_around: wrap_around, max_matches: max_matches)
+    }
+
+    static func decodeSearchOptions(_ data: Data) -> SearchOptions? {
+        return data.withUnsafeBytes { raw in
+            decodeSearchOptions(raw)
+        }
+    }
+
+    static func decodeSearchOptions(_ data: UnsafeRawBufferPointer) -> SearchOptions? {
+        var reader = BinaryReader(data)
+        return readSearchOptions(&reader)
+    }
+
+    static func writeSearchOptions(_ writer: inout BinaryWriter, _ value: SearchOptions) {
+        writer.writeBoolI32(value.case_sensitive)
+        writer.writeBoolI32(value.whole_word)
+        writer.writeBoolI32(value.use_regex)
+        writer.writeBoolI32(value.wrap_around)
+        writer.writeInt32(value.max_matches)
+    }
+
+    static func sizeOfSearchOptions(_ value: SearchOptions) -> Int {
+        4 + 4 + 4 + 4 + 4
+    }
+
+    static func writeSearchReplaceRequest(_ writer: inout BinaryWriter, _ value: SearchReplaceRequest) {
+        writer.writeUtf8String(value.replacement)
+    }
+
+    static func sizeOfSearchReplaceRequest(_ value: SearchReplaceRequest) -> Int {
+        sizeOfUtf8String(value.replacement)
+    }
+
+    static func writeSearchRequest(_ writer: inout BinaryWriter, _ value: SearchRequest) {
+        writer.writeUtf8String(value.pattern)
+        writeSearchOptions(&writer, value.options)
+    }
+
+    static func sizeOfSearchRequest(_ value: SearchRequest) -> Int {
+        sizeOfUtf8String(value.pattern) + sizeOfSearchOptions(value.options)
+    }
+
+    static func readSearchState(_ reader: inout BinaryReader) -> SearchState? {
+        guard let status = readSearchStatus(&reader) else { return nil }
+        guard let pattern = reader.readUtf8String() else { return nil }
+        guard let options = readSearchOptions(&reader) else { return nil }
+        guard let generation = reader.readInt64() else { return nil }
+        guard let document_revision = reader.readInt64() else { return nil }
+        guard let match_count = reader.readInt32() else { return nil }
+        guard let current_index = reader.readInt32() else { return nil }
+        guard let has_current_match = reader.readBoolI32() else { return nil }
+        guard let current_range = readTextRange(&reader) else { return nil }
+        guard let error_message = reader.readUtf8String() else { return nil }
+        return SearchState(status: status, pattern: pattern, options: options, generation: generation, document_revision: document_revision, match_count: match_count, current_index: current_index, has_current_match: has_current_match, current_range: current_range, error_message: error_message)
+    }
+
+    static func decodeSearchState(_ data: Data) -> SearchState? {
+        return data.withUnsafeBytes { raw in
+            decodeSearchState(raw)
+        }
+    }
+
+    static func decodeSearchState(_ data: UnsafeRawBufferPointer) -> SearchState? {
+        var reader = BinaryReader(data)
+        return readSearchState(&reader)
+    }
+
     static func readCursor(_ reader: inout BinaryReader) -> Cursor? {
         guard let text_position = readTextPosition(&reader) else { return nil }
         guard let position = readPointF(&reader) else { return nil }
@@ -2331,6 +2410,18 @@ enum CoreProtocol {
     static func encodeTabStopGroup(_ value: TabStopGroup) -> Data {
         var writer = BinaryWriter()
         writeTabStopGroup(&writer, value)
+        return writer.data()
+    }
+
+    static func encodeSearchReplaceRequest(_ value: SearchReplaceRequest) -> Data {
+        var writer = BinaryWriter()
+        writeSearchReplaceRequest(&writer, value)
+        return writer.data()
+    }
+
+    static func encodeSearchRequest(_ value: SearchRequest) -> Data {
+        var writer = BinaryWriter()
+        writeSearchRequest(&writer, value)
         return writer.data()
     }
 }

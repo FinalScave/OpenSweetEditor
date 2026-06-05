@@ -767,6 +767,20 @@ export struct SweetEditor {
       underlineColor: 0,
       underlineStyle: RangeEffectUnderlineStyle.NONE
     };
+    styles.searchMatch = {
+      foregroundColor: 0,
+      backgroundColor: theme.searchMatchBgColor,
+      borderColor: 0,
+      underlineColor: 0,
+      underlineStyle: RangeEffectUnderlineStyle.NONE
+    };
+    styles.searchCurrent = {
+      foregroundColor: 0,
+      backgroundColor: theme.searchCurrentBgColor,
+      borderColor: theme.searchCurrentBorderColor,
+      underlineColor: 0,
+      underlineStyle: RangeEffectUnderlineStyle.NONE
+    };
     styles.imeComposition = {
       foregroundColor: 0,
       backgroundColor: 0,

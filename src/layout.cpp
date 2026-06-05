@@ -1657,21 +1657,30 @@ namespace NS_SWEETEDITOR {
   void TextLayout::applyPresentationState(VisualLine& visual_line,
                                           const PresentationContext& presentation_context) {
     const EditorRenderColors& colors = presentation_context.render_colors;
-    const EditorRangeEffectStyles& range_effect_styles = presentation_context.range_effect_styles;
-    const TextRange& selection = presentation_context.selection_range;
-    const int32_t selection_foreground = range_effect_styles.selection.foreground_color;
-    const bool has_selection_foreground = presentation_context.has_selection
-        && selection_foreground != 0
-        && selection.start != selection.end;
 
     Vector<VisualRun> runs;
     bool has_split = false;
+    HashMap<size_t, Vector<TextPresentationEffect>> line_effect_cache;
 
     auto ensure_runs = [&](size_t current_index) {
       if (has_split) return;
       runs.reserve(visual_line.runs.size() + 2);
       runs.insert(runs.end(), visual_line.runs.begin(), visual_line.runs.begin() + current_index);
       has_split = true;
+    };
+
+    auto get_line_effects = [&](size_t source_line) -> const Vector<TextPresentationEffect>& {
+      auto it = line_effect_cache.find(source_line);
+      if (it != line_effect_cache.end()) {
+        return it->second;
+      }
+
+      Vector<TextPresentationEffect> effects;
+      if (presentation_context.collect_text_effects) {
+        presentation_context.collect_text_effects(source_line, effects);
+      }
+      auto inserted = line_effect_cache.emplace(source_line, std::move(effects));
+      return inserted.first->second;
     };
 
     auto is_active_run = [&](const VisualRun& run) {
@@ -1717,42 +1726,97 @@ namespace NS_SWEETEDITOR {
       }
     };
 
-    auto resolve_selection_range = [&](const VisualRun& run,
-                                       size_t& selected_start,
-                                       size_t& selected_end) {
-      if (!has_selection_foreground) return false;
-      if ((run.type != VisualRunType::TEXT && run.type != VisualRunType::LINK)
+    auto collect_effect_segments = [&](const VisualRun& run,
+                                       Vector<size_t>& cuts,
+                                       const Vector<TextPresentationEffect>*& line_effects) {
+      if (!presentation_context.collect_text_effects || !isSourceTextRun(run)
           || run.text.empty() || run.length == 0) {
         return false;
       }
 
       const size_t source_line = runSourceLine(visual_line, run);
-      if (source_line < selection.start.line || source_line > selection.end.line) {
-        return false;
-      }
+      line_effects = &get_line_effects(source_line);
+      if (line_effects->empty()) return false;
 
-      const size_t selection_start = source_line == selection.start.line
-          ? selection.start.column : 0;
-      const size_t selection_end = source_line == selection.end.line
-          ? selection.end.column : std::numeric_limits<size_t>::max();
       const size_t run_start = run.column;
       const size_t run_end = run.column + run.length;
-      const size_t intersect_start = std::max(run_start, selection_start);
-      const size_t intersect_end = std::min(run_end, selection_end);
-      if (intersect_start >= intersect_end) {
-        return false;
+      bool has_effect = false;
+      cuts.clear();
+      cuts.push_back(0);
+      cuts.push_back(run.text.length());
+
+      for (const TextPresentationEffect& effect : *line_effects) {
+        if (source_line < effect.range.start.line || source_line > effect.range.end.line) {
+          continue;
+        }
+
+        const size_t effect_start = source_line == effect.range.start.line
+            ? effect.range.start.column : 0;
+        const size_t effect_end = source_line == effect.range.end.line
+            ? effect.range.end.column : std::numeric_limits<size_t>::max();
+        const size_t intersect_start = std::max(run_start, effect_start);
+        const size_t intersect_end = std::min(run_end, effect_end);
+        if (intersect_start >= intersect_end) {
+          continue;
+        }
+
+        size_t local_start = std::min(intersect_start - run_start, run.text.length());
+        size_t local_end = std::min(intersect_end - run_start, run.text.length());
+        local_start = UnicodeUtil::clampColumnToGraphemeBoundaryLeft(run.text, local_start);
+        local_end = UnicodeUtil::clampColumnToGraphemeBoundaryRight(run.text, local_end);
+        if (local_start >= local_end) {
+          continue;
+        }
+        cuts.push_back(local_start);
+        cuts.push_back(local_end);
+        has_effect = true;
       }
 
-      selected_start = intersect_start - run_start;
-      selected_end = intersect_end - run_start;
-      selected_start = std::min(selected_start, run.text.length());
-      selected_end = std::min(selected_end, run.text.length());
-      selected_start = UnicodeUtil::clampColumnToGraphemeBoundaryLeft(run.text, selected_start);
-      selected_end = UnicodeUtil::clampColumnToGraphemeBoundaryRight(run.text, selected_end);
-      return selected_start < selected_end;
+      if (!has_effect) return false;
+      std::sort(cuts.begin(), cuts.end());
+      cuts.erase(std::unique(cuts.begin(), cuts.end()), cuts.end());
+      return cuts.size() > 1;
     };
 
-    auto append_part = [&](const VisualRun& run, size_t start, size_t end, bool selected) {
+    auto resolve_effect_for_part = [&](const VisualRun& run,
+                                       size_t part_start,
+                                       size_t part_end,
+                                       const Vector<TextPresentationEffect>& line_effects,
+                                       int32_t& foreground,
+                                       bool& clear_background) {
+      foreground = 0;
+      clear_background = false;
+      uint32_t foreground_priority = 0;
+      const size_t source_line = runSourceLine(visual_line, run);
+      const size_t source_start = run.column + part_start;
+      const size_t source_end = run.column + part_end;
+
+      for (const TextPresentationEffect& effect : line_effects) {
+        if (source_line < effect.range.start.line || source_line > effect.range.end.line) {
+          continue;
+        }
+        const size_t effect_start = source_line == effect.range.start.line
+            ? effect.range.start.column : 0;
+        const size_t effect_end = source_line == effect.range.end.line
+            ? effect.range.end.column : std::numeric_limits<size_t>::max();
+        if (std::max(source_start, effect_start) >= std::min(source_end, effect_end)) {
+          continue;
+        }
+        if (effect.clear_text_background) {
+          clear_background = true;
+        }
+        if (effect.foreground_color != 0 && effect.priority >= foreground_priority) {
+          foreground = effect.foreground_color;
+          foreground_priority = effect.priority;
+        }
+      }
+    };
+
+    auto append_part = [&](const VisualRun& run,
+                           size_t start,
+                           size_t end,
+                           int32_t foreground,
+                           bool clear_background) {
       if (start >= end) return;
       VisualRun part = run;
       part.column = run.column + start;
@@ -1762,8 +1826,10 @@ namespace NS_SWEETEDITOR {
           ? 0.0f : measureWidth(run.text.substr(0, start), run.style.font_style);
       part.x = run.x + prefix_width;
       part.width = measureWidth(part.text, part.style.font_style);
-      if (selected) {
-        part.style.color = selection_foreground;
+      if (foreground != 0) {
+        part.style.color = foreground;
+      }
+      if (clear_background) {
         part.style.background_color = 0;
       }
       runs.push_back(std::move(part));
@@ -1774,17 +1840,22 @@ namespace NS_SWEETEDITOR {
       run.active = is_active_run(run);
       apply_foreground(run);
 
-      size_t selected_start = 0;
-      size_t selected_end = 0;
-      if (!resolve_selection_range(run, selected_start, selected_end)) {
+      Vector<size_t> cuts;
+      const Vector<TextPresentationEffect>* line_effects = nullptr;
+      if (!collect_effect_segments(run, cuts, line_effects)) {
         if (has_split) runs.push_back(run);
         continue;
       }
 
       ensure_runs(index);
-      append_part(run, 0, selected_start, false);
-      append_part(run, selected_start, selected_end, true);
-      append_part(run, selected_end, run.text.length(), false);
+      for (size_t cut_index = 0; cut_index + 1 < cuts.size(); ++cut_index) {
+        const size_t start = cuts[cut_index];
+        const size_t end = cuts[cut_index + 1];
+        int32_t foreground = 0;
+        bool clear_background = false;
+        resolve_effect_for_part(run, start, end, *line_effects, foreground, clear_background);
+        append_part(run, start, end, foreground, clear_background);
+      }
     }
 
     if (has_split) {

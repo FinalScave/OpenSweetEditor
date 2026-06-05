@@ -255,14 +255,18 @@ namespace NS_SWEETEDITOR {
   }
 
   void CompositionController::coreDeleteDocumentRange(const TextRange& range) {
+    auto lock = m_editor_.lockEditorState();
     if (m_editor_.m_document_ != nullptr) {
       m_editor_.m_document_->deleteU8Text(range);
+      m_editor_.noteDocumentContentChanged();
     }
   }
 
   void CompositionController::coreInsertDocumentText(const TextPosition& position, const U8String& text) {
+    auto lock = m_editor_.lockEditorState();
     if (m_editor_.m_document_ != nullptr) {
       m_editor_.m_document_->insertU8Text(position, text);
+      m_editor_.noteDocumentContentChanged();
     }
   }
 

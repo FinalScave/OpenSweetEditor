@@ -27,6 +27,17 @@
             android:paddingEnd="4dp" />
 
         <ImageButton
+            android:id="@+id/btn_search"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="2dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/se_ic_search_24"
+            android:contentDescription="Search"
+            android:scaleType="centerInside"
+            android:padding="8dp" />
+
+        <ImageButton
             android:id="@+id/btn_undo"
             android:layout_width="36dp"
             android:layout_height="36dp"
@@ -71,6 +82,12 @@
             android:padding="8dp" />
 
     </LinearLayout>
+
+    <com.qiplat.sweeteditor.search.SearchPanel
+        android:id="@+id/search_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone" />
 
     <!-- Editor -->
     <com.qiplat.sweeteditor.SweetEditor

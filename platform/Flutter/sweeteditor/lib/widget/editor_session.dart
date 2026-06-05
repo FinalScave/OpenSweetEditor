@@ -358,6 +358,13 @@ class EditorSession {
           foregroundColor: _theme.selectionTextColor,
           backgroundColor: _theme.selectionColor,
         ),
+        searchMatch: core.RangeEffectStyle(
+          backgroundColor: _theme.searchMatchBgColor,
+        ),
+        searchCurrent: core.RangeEffectStyle(
+          backgroundColor: _theme.searchCurrentBgColor,
+          borderColor: _theme.searchCurrentBorderColor,
+        ),
         imeComposition: core.RangeEffectStyle(
           underlineColor: _theme.compositionUnderlineColor,
           underlineStyle: core.RangeEffectUnderlineStyle.solid,

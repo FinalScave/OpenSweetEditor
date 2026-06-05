@@ -21,6 +21,7 @@ export enum EditorActionReason {
   TEXT_DELETE = 13,
   TEXT_UNDO = 14,
   TEXT_REDO = 15,
+  SEARCH = 16,
 }
 
 export function editorActionReasonFromValue(value: number): EditorActionReason {
@@ -41,6 +42,7 @@ export function editorActionReasonFromValue(value: number): EditorActionReason {
     case 13: return EditorActionReason.TEXT_DELETE;
     case 14: return EditorActionReason.TEXT_UNDO;
     case 15: return EditorActionReason.TEXT_REDO;
+    case 16: return EditorActionReason.SEARCH;
     default: return EditorActionReason.NONE;
   }
 }

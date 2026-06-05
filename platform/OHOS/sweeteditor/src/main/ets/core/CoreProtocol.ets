@@ -7,6 +7,7 @@ import { ImeContextPolicy, ImeDocumentTextReplacement, ImeInputContext, ImeInput
 import { EventType, GestureEvent, GestureType, HitTarget, HitTargetType, eventTypeFromValue, gestureTypeFromValue, hitTargetTypeFromValue } from './CoreInteraction';
 import { EditorBuiltinCommand, KeyBinding, KeyChord, KeyCode, KeyModifier, editorBuiltinCommandFromValue } from './CoreKeymap';
 import { LinkedEditingModel, TabStopGroup } from './CoreLinkedEditing';
+import { SearchOptions, SearchReplaceRequest, SearchRequest, SearchState, SearchStatus, searchStatusFromValue } from './CoreSearch';
 import { Cursor, CursorRect, EditorRenderModel, FoldMarkerRenderItem, FoldState, GuideDirection, GuideSegment, GuideStyle, GuideType, GutterIconRenderItem, LayoutMetrics, PointerCursorType, RangeEffectKind, RangeEffectRenderItem, ScrollMetrics, ScrollbarModel, SelectionHandle, VisualLine, VisualLineKind, VisualRun, VisualRunType, foldStateFromValue, guideDirectionFromValue, guideStyleFromValue, guideTypeFromValue, pointerCursorTypeFromValue, rangeEffectKindFromValue, visualLineKindFromValue, visualRunTypeFromValue } from './CoreVisual';
 
 const UTF8_DECODER = new util.TextDecoder('utf-8');
@@ -1440,6 +1441,79 @@ export class CoreProtocol {
     return size;
   }
 
+  private static readSearchOptions(reader: BinaryReader): SearchOptions {
+    return {
+      caseSensitive: reader.readInt32() !== 0,
+      wholeWord: reader.readInt32() !== 0,
+      useRegex: reader.readInt32() !== 0,
+      wrapAround: reader.readInt32() !== 0,
+      maxMatches: reader.readInt32()
+    };
+  }
+
+  static decodeSearchOptions(buffer: ArrayBuffer | undefined): SearchOptions {
+    return CoreProtocol.readSearchOptions(CoreProtocol.readerFor(buffer));
+  }
+
+  static writeSearchOptions(writer: BinaryWriter, value: SearchOptions): void {
+    writer.writeInt32(value.caseSensitive ? 1 : 0);
+    writer.writeInt32(value.wholeWord ? 1 : 0);
+    writer.writeInt32(value.useRegex ? 1 : 0);
+    writer.writeInt32(value.wrapAround ? 1 : 0);
+    writer.writeInt32(value.maxMatches);
+  }
+
+  static sizeOfSearchOptions(value: SearchOptions): number {
+    let size = 0;
+    size += 4;
+    size += 4;
+    size += 4;
+    size += 4;
+    size += 4;
+    return size;
+  }
+
+  static writeSearchReplaceRequest(writer: BinaryWriter, value: SearchReplaceRequest): void {
+    writer.writeUtf8String(value.replacement);
+  }
+
+  static sizeOfSearchReplaceRequest(value: SearchReplaceRequest): number {
+    let size = 0;
+    size += CoreProtocol.sizeOfUtf8String(value.replacement);
+    return size;
+  }
+
+  static writeSearchRequest(writer: BinaryWriter, value: SearchRequest): void {
+    writer.writeUtf8String(value.pattern);
+    CoreProtocol.writeSearchOptions(writer, value.options);
+  }
+
+  static sizeOfSearchRequest(value: SearchRequest): number {
+    let size = 0;
+    size += CoreProtocol.sizeOfUtf8String(value.pattern);
+    size += CoreProtocol.sizeOfSearchOptions(value.options);
+    return size;
+  }
+
+  private static readSearchState(reader: BinaryReader): SearchState {
+    return {
+      status: searchStatusFromValue(reader.readInt32()),
+      pattern: reader.readUtf8String(),
+      options: CoreProtocol.readSearchOptions(reader),
+      generation: reader.readInt64(),
+      documentRevision: reader.readInt64(),
+      matchCount: reader.readInt32(),
+      currentIndex: reader.readInt32(),
+      hasCurrentMatch: reader.readInt32() !== 0,
+      currentRange: CoreProtocol.readTextRange(reader),
+      errorMessage: reader.readUtf8String()
+    };
+  }
+
+  static decodeSearchState(buffer: ArrayBuffer | undefined): SearchState {
+    return CoreProtocol.readSearchState(CoreProtocol.readerFor(buffer));
+  }
+
   private static readCursor(reader: BinaryReader): Cursor {
     return {
       textPosition: CoreProtocol.readTextPosition(reader),
@@ -2282,6 +2356,18 @@ export class CoreProtocol {
   static encodeTabStopGroup(value: TabStopGroup): ArrayBuffer {
     const writer = new BinaryWriter(CoreProtocol.sizeOfTabStopGroup(value));
     CoreProtocol.writeTabStopGroup(writer, value);
+    return writer.getBuffer();
+  }
+
+  static encodeSearchReplaceRequest(value: SearchReplaceRequest): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSearchReplaceRequest(value));
+    CoreProtocol.writeSearchReplaceRequest(writer, value);
+    return writer.getBuffer();
+  }
+
+  static encodeSearchRequest(value: SearchRequest): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSearchRequest(value));
+    CoreProtocol.writeSearchRequest(writer, value);
     return writer.getBuffer();
   }
 }

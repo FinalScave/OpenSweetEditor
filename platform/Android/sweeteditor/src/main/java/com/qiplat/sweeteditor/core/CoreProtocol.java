@@ -65,6 +65,11 @@ import com.qiplat.sweeteditor.core.keymap.KeyBinding;
 import com.qiplat.sweeteditor.core.keymap.KeyChord;
 import com.qiplat.sweeteditor.core.keymap.KeyCode;
 import com.qiplat.sweeteditor.core.keymap.KeyModifier;
+import com.qiplat.sweeteditor.core.search.SearchOptions;
+import com.qiplat.sweeteditor.core.search.SearchReplaceRequest;
+import com.qiplat.sweeteditor.core.search.SearchRequest;
+import com.qiplat.sweeteditor.core.search.SearchState;
+import com.qiplat.sweeteditor.core.search.SearchStatus;
 import com.qiplat.sweeteditor.core.snippet.LinkedEditingModel;
 import com.qiplat.sweeteditor.core.snippet.TabStopGroup;
 import com.qiplat.sweeteditor.core.visual.Cursor;
@@ -1623,6 +1628,96 @@ public final class CoreProtocol {
         return size;
     }
 
+    private static SearchOptions readSearchOptions(ByteBuffer data) {
+        SearchOptions value = new SearchOptions();
+        value.caseSensitive = data.getInt() != 0;
+        value.wholeWord = data.getInt() != 0;
+        value.useRegex = data.getInt() != 0;
+        value.wrapAround = data.getInt() != 0;
+        value.maxMatches = data.getInt();
+        return value;
+    }
+
+    public static SearchOptions decodeSearchOptions(ByteBuffer data) {
+        prepare(data);
+        return readSearchOptions(data);
+    }
+
+    private static void writeSearchOptionsFields(ByteBuffer data, SearchOptions value) {
+        data.putInt(value.caseSensitive ? 1 : 0);
+        data.putInt(value.wholeWord ? 1 : 0);
+        data.putInt(value.useRegex ? 1 : 0);
+        data.putInt(value.wrapAround ? 1 : 0);
+        data.putInt(value.maxMatches);
+    }
+
+    public static void writeSearchOptions(ByteBuffer data, SearchOptions value) {
+        prepare(data);
+        writeSearchOptionsFields(data, value);
+    }
+
+    public static int sizeOfSearchOptions(SearchOptions value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
+        return size;
+    }
+
+    private static void writeSearchReplaceRequestFields(ByteBuffer data, SearchReplaceRequest value) {
+        writeUtf8String(data, value.replacement);
+    }
+
+    public static void writeSearchReplaceRequest(ByteBuffer data, SearchReplaceRequest value) {
+        prepare(data);
+        writeSearchReplaceRequestFields(data, value);
+    }
+
+    public static int sizeOfSearchReplaceRequest(SearchReplaceRequest value) {
+        int size = 0;
+        size += sizeOfUtf8String(value.replacement);
+        return size;
+    }
+
+    private static void writeSearchRequestFields(ByteBuffer data, SearchRequest value) {
+        writeUtf8String(data, value.pattern);
+        writeSearchOptionsFields(data, value.options);
+    }
+
+    public static void writeSearchRequest(ByteBuffer data, SearchRequest value) {
+        prepare(data);
+        writeSearchRequestFields(data, value);
+    }
+
+    public static int sizeOfSearchRequest(SearchRequest value) {
+        int size = 0;
+        size += sizeOfUtf8String(value.pattern);
+        size += sizeOfSearchOptions(value.options);
+        return size;
+    }
+
+    private static SearchState readSearchState(ByteBuffer data) {
+        SearchState value = new SearchState();
+        value.status = SearchStatus.fromValue(data.getInt());
+        value.pattern = readUtf8String(data);
+        value.options = readSearchOptions(data);
+        value.generation = data.getLong();
+        value.documentRevision = data.getLong();
+        value.matchCount = data.getInt();
+        value.currentIndex = data.getInt();
+        value.hasCurrentMatch = data.getInt() != 0;
+        value.currentRange = readTextRange(data);
+        value.errorMessage = readUtf8String(data);
+        return value;
+    }
+
+    public static SearchState decodeSearchState(ByteBuffer data) {
+        prepare(data);
+        return readSearchState(data);
+    }
+
     private static Cursor readCursor(ByteBuffer data) {
         Cursor value = new Cursor();
         value.textPosition = readTextPosition(data);
@@ -2774,6 +2869,28 @@ public final class CoreProtocol {
         data.putInt(value.index);
         writeTextRangeList(data, value.ranges);
         writeUtf8Bytes(data, defaultTextUtf8);
+        data.flip();
+        return data;
+    }
+
+    public static ByteBuffer encodeSearchReplaceRequest(SearchReplaceRequest value) {
+        int size = 0;
+        byte[] replacementUtf8 = utf8Bytes(value.replacement);
+        size += 4 + replacementUtf8.length;
+        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
+        writeUtf8Bytes(data, replacementUtf8);
+        data.flip();
+        return data;
+    }
+
+    public static ByteBuffer encodeSearchRequest(SearchRequest value) {
+        int size = 0;
+        byte[] patternUtf8 = utf8Bytes(value.pattern);
+        size += 4 + patternUtf8.length;
+        size += sizeOfSearchOptions(value.options);
+        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
+        writeUtf8Bytes(data, patternUtf8);
+        writeSearchOptionsFields(data, value.options);
         data.flip();
         return data;
     }

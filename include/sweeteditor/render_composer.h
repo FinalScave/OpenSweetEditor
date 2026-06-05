@@ -4,6 +4,7 @@
 #include <sweeteditor/editor_types.h>
 #include <sweeteditor/ime_types.h>
 #include <sweeteditor/layout.h>
+#include <sweeteditor/search.h>
 #include <sweeteditor/visual.h>
 
 namespace NS_SWEETEDITOR {
@@ -23,6 +24,12 @@ namespace NS_SWEETEDITOR {
 
     void buildSelectionRangeEffects(EditorRenderModel& model, Document* document,
                                     const CaretState& caret, float line_height) const;
+
+    void buildSearchRangeEffects(EditorRenderModel& model, Document* document,
+                                 const Vector<SearchMatch>& matches,
+                                 const Vector<Vector<uint32_t>>& match_indices_by_line,
+                                 int32_t current_index,
+                                 float line_height) const;
 
     void buildLinkedEditingRangeEffects(EditorRenderModel& model, Document* document,
                                         const LinkedEditingSession* linked_editing_session, float line_height) const;

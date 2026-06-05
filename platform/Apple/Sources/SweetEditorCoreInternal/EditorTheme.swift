@@ -46,6 +46,11 @@ struct EditorTheme {
     var bracketHighlightBorderColor: CGColor
     var bracketHighlightBgColor: CGColor
 
+    // Search highlight colors.
+    var searchMatchBgColor: CGColor
+    var searchCurrentBgColor: CGColor
+    var searchCurrentBorderColor: CGColor
+
     var foldPlaceholderBgColor: CGColor
     var foldPlaceholderTextColor: CGColor
     var phantomTextColor: CGColor
@@ -98,6 +103,9 @@ struct EditorTheme {
             linkedEditingInactiveColor: CGColor(srgbRed: 0x56/255.0, green: 0x9C/255.0, blue: 0xD6/255.0, alpha: 0.4),
             bracketHighlightBorderColor: CGColor(srgbRed: 1.0, green: 0xD7/255.0, blue: 0.0, alpha: 0.8),
             bracketHighlightBgColor: CGColor(srgbRed: 1.0, green: 0xD7/255.0, blue: 0.0, alpha: 0.19),
+            searchMatchBgColor:      CGColor(srgbRed: 0xE0/255.0, green: 0xAF/255.0, blue: 0x68/255.0, alpha: 0x33/255.0),
+            searchCurrentBgColor:    CGColor(srgbRed: 0xE0/255.0, green: 0xAF/255.0, blue: 0x68/255.0, alpha: 0x55/255.0),
+            searchCurrentBorderColor: CGColor(srgbRed: 0xE0/255.0, green: 0xAF/255.0, blue: 0x68/255.0, alpha: 1.0),
             foldPlaceholderBgColor:   CGColor(srgbRed: 1.0, green: 1.0, blue: 1.0, alpha: 0.4),
             foldPlaceholderTextColor: CGColor(srgbRed: 0xD4/255.0, green: 0xD4/255.0, blue: 0xD4/255.0, alpha: 0.63),
             phantomTextColor:         CGColor(srgbRed: 0xD4/255.0, green: 0xD4/255.0, blue: 0xD4/255.0, alpha: 0.45),
@@ -146,6 +154,9 @@ struct EditorTheme {
             linkedEditingInactiveColor: CGColor(srgbRed: 0.0, green: 0x66/255.0, blue: 1.0, alpha: 0.4),
             bracketHighlightBorderColor: CGColor(srgbRed: 0xB8/255.0, green: 0x86/255.0, blue: 0x0B/255.0, alpha: 0.8),
             bracketHighlightBgColor: CGColor(srgbRed: 0xB8/255.0, green: 0x86/255.0, blue: 0x0B/255.0, alpha: 0.19),
+            searchMatchBgColor:      CGColor(srgbRed: 0xF5/255.0, green: 0x9E/255.0, blue: 0x0B/255.0, alpha: 0x33/255.0),
+            searchCurrentBgColor:    CGColor(srgbRed: 0xF5/255.0, green: 0x9E/255.0, blue: 0x0B/255.0, alpha: 0x55/255.0),
+            searchCurrentBorderColor: CGColor(srgbRed: 0xD9/255.0, green: 0x77/255.0, blue: 0x06/255.0, alpha: 1.0),
             foldPlaceholderBgColor:   CGColor(srgbRed: 0.0, green: 0.0, blue: 0.0, alpha: 0.4),
             foldPlaceholderTextColor: CGColor(srgbRed: 0.0, green: 0.0, blue: 0.0, alpha: 0.63),
             phantomTextColor:         CGColor(srgbRed: 0.0, green: 0.0, blue: 0.0, alpha: 0.45),

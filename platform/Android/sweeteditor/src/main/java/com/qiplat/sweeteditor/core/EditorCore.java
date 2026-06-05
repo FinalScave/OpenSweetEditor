@@ -38,6 +38,9 @@ import com.qiplat.sweeteditor.core.ime.ImeTextReplacement;
 import com.qiplat.sweeteditor.core.keymap.KeyModifier;
 import com.qiplat.sweeteditor.core.interaction.EventType;
 import com.qiplat.sweeteditor.core.interaction.GestureEvent;
+import com.qiplat.sweeteditor.core.search.SearchReplaceRequest;
+import com.qiplat.sweeteditor.core.search.SearchRequest;
+import com.qiplat.sweeteditor.core.search.SearchState;
 import com.qiplat.sweeteditor.core.visual.CursorRect;
 import com.qiplat.sweeteditor.core.visual.EditorRenderModel;
 import com.qiplat.sweeteditor.core.visual.LayoutMetrics;
@@ -565,6 +568,57 @@ public class EditorCore {
     public boolean canRedo() {
         if (mNativeHandle == 0) return false;
         return nativeCanRedo(mNativeHandle);
+    }
+
+    @NonNull
+    public EditorActionResult search(@NonNull SearchRequest request) {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        ByteBuffer payload = CoreProtocol.encodeSearchRequest(request);
+        return decodeAction(nativeSearch(mNativeHandle, payload, payload.remaining()));
+    }
+
+    @NonNull
+    public EditorActionResult findNextSearchMatch() {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        return decodeAction(nativeFindNextSearchMatch(mNativeHandle));
+    }
+
+    @NonNull
+    public EditorActionResult findPreviousSearchMatch() {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        return decodeAction(nativeFindPreviousSearchMatch(mNativeHandle));
+    }
+
+    @NonNull
+    public EditorActionResult replaceCurrentSearchMatch(@NonNull SearchReplaceRequest request) {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        ByteBuffer payload = CoreProtocol.encodeSearchReplaceRequest(request);
+        return decodeAction(nativeReplaceCurrentSearchMatch(mNativeHandle, payload, payload.remaining()));
+    }
+
+    @NonNull
+    public EditorActionResult replaceAllSearchMatches(@NonNull SearchReplaceRequest request) {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        ByteBuffer payload = CoreProtocol.encodeSearchReplaceRequest(request);
+        return decodeAction(nativeReplaceAllSearchMatches(mNativeHandle, payload, payload.remaining()));
+    }
+
+    @NonNull
+    public EditorActionResult clearSearch() {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        return decodeAction(nativeClearSearch(mNativeHandle));
+    }
+
+    @NonNull
+    public SearchState getSearchState() {
+        if (mNativeHandle == 0) return new SearchState();
+        ByteBuffer data = nativeGetSearchState(mNativeHandle);
+        if (data == null) return new SearchState();
+        try {
+            return CoreProtocol.decodeSearchState(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
     }
 
     // ==================== Cursor/Selection Management ====================
@@ -2187,6 +2241,27 @@ public class EditorCore {
 
     @CriticalNative
     private static native boolean nativeCanRedo(long handle);
+
+    @FastNative
+    private static native ByteBuffer nativeSearch(long handle, ByteBuffer data, int size);
+
+    @FastNative
+    private static native ByteBuffer nativeFindNextSearchMatch(long handle);
+
+    @FastNative
+    private static native ByteBuffer nativeFindPreviousSearchMatch(long handle);
+
+    @FastNative
+    private static native ByteBuffer nativeReplaceCurrentSearchMatch(long handle, ByteBuffer data, int size);
+
+    @FastNative
+    private static native ByteBuffer nativeReplaceAllSearchMatches(long handle, ByteBuffer data, int size);
+
+    @FastNative
+    private static native ByteBuffer nativeClearSearch(long handle);
+
+    @FastNative
+    private static native ByteBuffer nativeGetSearchState(long handle);
 
     @CriticalNative
     private static native long nativeGetCursorPosition(long handle);

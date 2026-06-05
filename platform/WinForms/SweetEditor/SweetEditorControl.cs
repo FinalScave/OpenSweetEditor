@@ -162,6 +162,12 @@ namespace SweetEditor {
 		public Color BracketHighlightBorderColor { get; set; }
 		/// <summary>Bracket match highlight background color (ARGB, typically semi-transparent).</summary>
 		public Color BracketHighlightBgColor { get; set; }
+		/// <summary>Search match highlight background color (ARGB, typically semi-transparent).</summary>
+		public Color SearchMatchBgColor { get; set; }
+		/// <summary>Current search match highlight background color (ARGB, typically semi-transparent).</summary>
+		public Color SearchCurrentBgColor { get; set; }
+		/// <summary>Current search match highlight border color (ARGB).</summary>
+		public Color SearchCurrentBorderColor { get; set; }
 
 		/// <summary>Completion popup background color.</summary>
 		public Color CompletionBgColor { get; set; }
@@ -229,6 +235,9 @@ namespace SweetEditor {
 			LinkedEditingInactiveColor = Color.FromArgb(unchecked((int)0x667AA2F7)),
 			BracketHighlightBorderColor = Color.FromArgb(unchecked((int)0xCC9ECE6A)),
 			BracketHighlightBgColor = Color.FromArgb(unchecked((int)0x2A9ECE6A)),
+			SearchMatchBgColor = Color.FromArgb(unchecked((int)0x33E0AF68)),
+			SearchCurrentBgColor = Color.FromArgb(unchecked((int)0x55E0AF68)),
+			SearchCurrentBorderColor = Color.FromArgb(unchecked((int)0xFFE0AF68)),
 			CompletionBgColor = Color.FromArgb(unchecked((int)0xF0252830)),
 			CompletionBorderColor = Color.FromArgb(unchecked((int)0x40607090)),
 			CompletionSelectedBgColor = Color.FromArgb(unchecked((int)0x3D5580BB)),
@@ -287,6 +296,9 @@ namespace SweetEditor {
 			LinkedEditingInactiveColor = Color.FromArgb(unchecked((int)0x662563EB)),
 			BracketHighlightBorderColor = Color.FromArgb(unchecked((int)0xCC0F766E)),
 			BracketHighlightBgColor = Color.FromArgb(unchecked((int)0x260F766E)),
+			SearchMatchBgColor = Color.FromArgb(unchecked((int)0x33F59E0B)),
+			SearchCurrentBgColor = Color.FromArgb(unchecked((int)0x55F59E0B)),
+			SearchCurrentBorderColor = Color.FromArgb(unchecked((int)0xFFD97706)),
 			CompletionBgColor = Color.FromArgb(unchecked((int)0xF0FAFBFD)),
 			CompletionBorderColor = Color.FromArgb(unchecked((int)0x30A0A8B8)),
 			CompletionSelectedBgColor = Color.FromArgb(unchecked((int)0x3D3B82F6)),
@@ -744,6 +756,13 @@ namespace SweetEditor {
 				Selection = new RangeEffectStyle {
 					ForegroundColor = ToCoreColor(theme.SelectionTextColor),
 					BackgroundColor = ToCoreColor(theme.SelectionColor)
+				},
+				SearchMatch = new RangeEffectStyle {
+					BackgroundColor = ToCoreColor(theme.SearchMatchBgColor)
+				},
+				SearchCurrent = new RangeEffectStyle {
+					BackgroundColor = ToCoreColor(theme.SearchCurrentBgColor),
+					BorderColor = ToCoreColor(theme.SearchCurrentBorderColor)
 				},
 				ImeComposition = new RangeEffectStyle {
 					UnderlineColor = ToCoreColor(theme.CompositionUnderlineColor),

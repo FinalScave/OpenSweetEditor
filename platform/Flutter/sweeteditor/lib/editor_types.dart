@@ -87,6 +87,9 @@ class EditorTheme {
   int linkedEditingInactiveColor = 0x667AA2F7;
   int bracketHighlightBorderColor = 0xCC9ECE6A;
   int bracketHighlightBgColor = 0x2A9ECE6A;
+  int searchMatchBgColor = 0x33E0AF68;
+  int searchCurrentBgColor = 0x55E0AF68;
+  int searchCurrentBorderColor = 0xFFE0AF68;
   int inlineSuggestionBarBgColor = 0xF2303030;
   int inlineSuggestionBarAcceptColor = 0xFF4FC1FF;
   int inlineSuggestionBarDismissColor = 0xFFCCCCCC;
@@ -162,6 +165,9 @@ class EditorTheme {
       ..linkedEditingInactiveColor = 0x662563EB
       ..bracketHighlightBorderColor = 0xCC0F766E
       ..bracketHighlightBgColor = 0x260F766E
+      ..searchMatchBgColor = 0x33F59E0B
+      ..searchCurrentBgColor = 0x55F59E0B
+      ..searchCurrentBorderColor = 0xFFD97706
       ..inlineSuggestionBarBgColor = 0xF2F0F0F0
       ..inlineSuggestionBarAcceptColor = 0xFF1A73E8
       ..inlineSuggestionBarDismissColor = 0xFF555555

@@ -97,6 +97,9 @@ export class EditorTheme {
   linkedEditingInactiveColor: number = 0x667AA2F7;
   bracketHighlightBorderColor: number = 0xCC9ECE6A;
   bracketHighlightBgColor: number = 0x2A9ECE6A;
+  searchMatchBgColor: number = 0x33E0AF68;
+  searchCurrentBgColor: number = 0x55E0AF68;
+  searchCurrentBorderColor: number = 0xFFE0AF68;
   inlineSuggestionBarBgColor: number = 0xF2303030;
   inlineSuggestionBarAcceptColor: number = 0xFF4FC1FF;
   inlineSuggestionBarDismissColor: number = 0xFFCCCCCC;
@@ -151,6 +154,9 @@ export class EditorTheme {
     theme.linkedEditingInactiveColor = 0x667AA2F7;
     theme.bracketHighlightBorderColor = 0xCC9ECE6A;
     theme.bracketHighlightBgColor = 0x2A9ECE6A;
+    theme.searchMatchBgColor = 0x33E0AF68;
+    theme.searchCurrentBgColor = 0x55E0AF68;
+    theme.searchCurrentBorderColor = 0xFFE0AF68;
     theme.inlineSuggestionBarBgColor = 0xF2303030;
     theme.inlineSuggestionBarAcceptColor = 0xFF4FC1FF;
     theme.inlineSuggestionBarDismissColor = 0xFFCCCCCC;
@@ -215,6 +221,9 @@ export class EditorTheme {
     theme.linkedEditingInactiveColor = 0x662563EB;
     theme.bracketHighlightBorderColor = 0xCC0F766E;
     theme.bracketHighlightBgColor = 0x260F766E;
+    theme.searchMatchBgColor = 0x33F59E0B;
+    theme.searchCurrentBgColor = 0x55F59E0B;
+    theme.searchCurrentBorderColor = 0xFFD97706;
     theme.inlineSuggestionBarBgColor = 0xF2F0F0F0;
     theme.inlineSuggestionBarAcceptColor = 0xFF1A73E8;
     theme.inlineSuggestionBarDismissColor = 0xFF555555;

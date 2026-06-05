@@ -458,6 +458,27 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_can_redo", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern int CanRedo(IntPtr handle);
 
+		[DllImport(LibraryName, EntryPoint = "editor_search", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr Search(IntPtr handle, byte[] data, UIntPtr size, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_find_next_search_match", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr FindNextSearchMatch(IntPtr handle, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_find_previous_search_match", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr FindPreviousSearchMatch(IntPtr handle, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_replace_current_search_match", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ReplaceCurrentSearchMatch(IntPtr handle, byte[] data, UIntPtr size, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_replace_all_search_matches", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ReplaceAllSearchMatches(IntPtr handle, byte[] data, UIntPtr size, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_clear_search", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ClearSearch(IntPtr handle, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_get_search_state", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr GetSearchState(IntPtr handle, out UIntPtr outSize);
+
 		[DllImport(LibraryName, EntryPoint = "editor_set_cursor_position", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetCursorPosition(IntPtr handle, nuint line, nuint column, out UIntPtr outSize);
 
@@ -1287,6 +1308,58 @@ namespace SweetEditor {
 		public bool CanRedo() {
 			if (IsReleased) return false;
 			return NativeMethods.CanRedo(nativeHandle) != 0;
+		}
+
+		/// <summary>Searches the loaded document and updates rendered search highlights.</summary>
+		public EditorActionResult Search(SearchRequest request) {
+			if (IsReleased) return EditorActionResult.Empty;
+			byte[] payload = CoreProtocol.EncodeSearchRequest(request);
+			IntPtr payloadPtr = NativeMethods.Search(nativeHandle, payload, (UIntPtr)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Selects the next search match.</summary>
+		public EditorActionResult FindNextSearchMatch() {
+			if (IsReleased) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.FindNextSearchMatch(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Selects the previous search match.</summary>
+		public EditorActionResult FindPreviousSearchMatch() {
+			if (IsReleased) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.FindPreviousSearchMatch(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Replaces the current search match.</summary>
+		public EditorActionResult ReplaceCurrentSearchMatch(SearchReplaceRequest request) {
+			if (IsReleased) return EditorActionResult.Empty;
+			byte[] payload = CoreProtocol.EncodeSearchReplaceRequest(request);
+			IntPtr payloadPtr = NativeMethods.ReplaceCurrentSearchMatch(nativeHandle, payload, (UIntPtr)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Replaces all current search matches.</summary>
+		public EditorActionResult ReplaceAllSearchMatches(SearchReplaceRequest request) {
+			if (IsReleased) return EditorActionResult.Empty;
+			byte[] payload = CoreProtocol.EncodeSearchReplaceRequest(request);
+			IntPtr payloadPtr = NativeMethods.ReplaceAllSearchMatches(nativeHandle, payload, (UIntPtr)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Clears active search state, rendered highlights, and the current search-owned selection.</summary>
+		public EditorActionResult ClearSearch() {
+			if (IsReleased) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.ClearSearch(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Gets the latest search state.</summary>
+		public SearchState GetSearchState() {
+			if (IsReleased) return new SearchState();
+			IntPtr payloadPtr = NativeMethods.GetSearchState(nativeHandle, out UIntPtr payloadSize);
+			return DecodePayload(payloadPtr, payloadSize, CoreProtocol.DecodeSearchState, new SearchState());
 		}
 
 		/// <summary>Sets caret position (without scrolling viewport).</summary>

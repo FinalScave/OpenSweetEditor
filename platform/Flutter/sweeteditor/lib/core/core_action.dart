@@ -18,7 +18,8 @@ enum EditorActionReason {
   textReplace(12),
   textDelete(13),
   textUndo(14),
-  textRedo(15);
+  textRedo(15),
+  search(16);
 
   const EditorActionReason(this.value);
   final int value;
@@ -41,6 +42,7 @@ enum EditorActionReason {
       case 13: return textDelete;
       case 14: return textUndo;
       case 15: return textRedo;
+      case 16: return search;
       default: return none;
     }
   }

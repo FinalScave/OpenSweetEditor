@@ -835,6 +835,36 @@ public:
     return true;
   }
 
+  inline bool read(SearchOptions& out) {
+    int32_t out_case_sensitive_value{};
+    if (!readI32(out_case_sensitive_value)) return false;
+    out.case_sensitive = out_case_sensitive_value != 0;
+    int32_t out_whole_word_value{};
+    if (!readI32(out_whole_word_value)) return false;
+    out.whole_word = out_whole_word_value != 0;
+    int32_t out_use_regex_value{};
+    if (!readI32(out_use_regex_value)) return false;
+    out.use_regex = out_use_regex_value != 0;
+    int32_t out_wrap_around_value{};
+    if (!readI32(out_wrap_around_value)) return false;
+    out.wrap_around = out_wrap_around_value != 0;
+    uint32_t out_max_matches_value{};
+    if (!readU32(out_max_matches_value)) return false;
+    out.max_matches = static_cast<uint32_t>(out_max_matches_value);
+    return true;
+  }
+
+  inline bool read(SearchReplaceRequest& out) {
+    if (!readUtf8String(out.replacement)) return false;
+    return true;
+  }
+
+  inline bool read(SearchRequest& out) {
+    if (!readUtf8String(out.pattern)) return false;
+    if (!read(out.options)) return false;
+    return true;
+  }
+
   inline bool read(CursorRect& out) {
     float out_x_value{};
     if (!readF32(out_x_value)) return false;
@@ -1511,6 +1541,40 @@ public:
     if (!writeU32(static_cast<uint32_t>(value.index))) return false;
     if (!writeList(value.ranges)) return false;
     if (!writeUtf8String(value.default_text)) return false;
+    return true;
+  }
+
+  inline bool write(const SearchOptions& value) {
+    if (!writeI32(value.case_sensitive ? 1 : 0)) return false;
+    if (!writeI32(value.whole_word ? 1 : 0)) return false;
+    if (!writeI32(value.use_regex ? 1 : 0)) return false;
+    if (!writeI32(value.wrap_around ? 1 : 0)) return false;
+    if (!writeU32(static_cast<uint32_t>(value.max_matches))) return false;
+    return true;
+  }
+
+  inline bool write(const SearchReplaceRequest& value) {
+    if (!writeUtf8String(value.replacement)) return false;
+    return true;
+  }
+
+  inline bool write(const SearchRequest& value) {
+    if (!writeUtf8String(value.pattern)) return false;
+    if (!write(value.options)) return false;
+    return true;
+  }
+
+  inline bool write(const SearchState& value) {
+    if (!writeI32(static_cast<int32_t>(value.status))) return false;
+    if (!writeUtf8String(value.pattern)) return false;
+    if (!write(value.options)) return false;
+    if (!writeU64(static_cast<uint64_t>(value.generation))) return false;
+    if (!writeU64(static_cast<uint64_t>(value.document_revision))) return false;
+    if (!writeU32(static_cast<uint32_t>(value.match_count))) return false;
+    if (!writeI32(static_cast<int32_t>(value.current_index))) return false;
+    if (!writeI32(value.has_current_match ? 1 : 0)) return false;
+    if (!write(value.current_range)) return false;
+    if (!writeUtf8String(value.error_message)) return false;
     return true;
   }
 
