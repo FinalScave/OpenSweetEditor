@@ -317,7 +317,6 @@ namespace NS_SWEETEDITOR {
     /// Append fold placeholder and tail-line runs to collapsed first line (first line + placeholder + tail content)
     void appendFoldTailRuns(size_t index, const U16String& line_text, LogicalLine& logical_line);
     float computeLineNumberWidth() const;
-    static bool isWordBreakChar(U16Char ch);
 
     /// Find logical line index hit by screen y (skip folded hidden lines)
     size_t findHitLine(float abs_y);

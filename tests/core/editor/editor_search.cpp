@@ -2,20 +2,11 @@
 #include <sweeteditor/editor_core.h>
 #include <sweeteditor/document.h>
 #include "test_measurer.h"
+#include "test_render_helpers.h"
 
 using namespace NS_SWEETEDITOR;
 
 namespace {
-  Vector<const RangeEffectRenderItem*> rangeEffectsOfKind(const EditorRenderModel& model, RangeEffectKind kind) {
-    Vector<const RangeEffectRenderItem*> effects;
-    for (const RangeEffectRenderItem& effect : model.range_effects) {
-      if (effect.kind == kind) {
-        effects.push_back(&effect);
-      }
-    }
-    return effects;
-  }
-
   EditorCore makeSearchEditor(const U8String& text) {
     EditorOptions options;
     EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
@@ -48,6 +39,27 @@ TEST_CASE("EditorCore search finds literal matches and navigates current match")
   CHECK(previous.handled);
   state = editor.getSearchState();
   CHECK(state.current_index == 0);
+}
+
+TEST_CASE("EditorCore search whole word uses shared word classification") {
+  EditorCore editor = makeSearchEditor("cat concatenate cat_1 猫 猫眼 dog猫 cat");
+
+  SearchRequest request;
+  request.pattern = "cat";
+  request.options.whole_word = true;
+  editor.search(request);
+
+  SearchState state = editor.getSearchState();
+  REQUIRE(state.status == SearchStatus::READY);
+  CHECK(state.match_count == 2);
+  CHECK(state.current_range == (TextRange{{0, 0}, {0, 3}}));
+
+  request.pattern = "猫";
+  editor.search(request);
+
+  state = editor.getSearchState();
+  REQUIRE(state.status == SearchStatus::READY);
+  CHECK(state.match_count == 1);
 }
 
 TEST_CASE("EditorCore search supports regex captures in replace all") {

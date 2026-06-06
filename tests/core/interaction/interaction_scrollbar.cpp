@@ -4,19 +4,11 @@
 #include <sweeteditor/decoration.h>
 #include <sweeteditor/document.h>
 #include "test_measurer.h"
+#include "test_text_helpers.h"
 
 using namespace NS_SWEETEDITOR;
 
 namespace {
-  U8String makeLines(size_t line_count, const U8String& line_text) {
-    U8String out;
-    for (size_t i = 0; i < line_count; ++i) {
-      if (i > 0) out += "\n";
-      out += line_text;
-    }
-    return out;
-  }
-
   void primeLayout(TextLayout& layout) {
     EditorRenderModel model;
     layout.layoutVisibleLines(model, PresentationContext {});
@@ -26,7 +18,7 @@ namespace {
 TEST_CASE("EditorInteraction track tap jumps vertical scrollbar position") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
   SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  SharedPtr<Document> document = makeShared<LineArrayDocument>(makeLines(80, "abcdefghij"));
+  SharedPtr<Document> document = makeShared<LineArrayDocument>(makeRepeatedLines(80, "abcdefghij"));
   TextLayout layout(measurer, decorations);
   layout.loadDocument(document);
 
@@ -70,7 +62,7 @@ TEST_CASE("EditorInteraction track tap jumps vertical scrollbar position") {
 TEST_CASE("EditorInteraction thumb drag updates vertical scroll offset") {
   SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
   SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
-  SharedPtr<Document> document = makeShared<LineArrayDocument>(makeLines(120, "abcdefghijklmnop"));
+  SharedPtr<Document> document = makeShared<LineArrayDocument>(makeRepeatedLines(120, "abcdefghijklmnop"));
   TextLayout layout(measurer, decorations);
   layout.loadDocument(document);
 

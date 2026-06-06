@@ -4,20 +4,11 @@
 #include <sweeteditor/decoration.h>
 #include <sweeteditor/document.h>
 #include "test_measurer.h"
+#include "test_text_helpers.h"
 
 using namespace NS_SWEETEDITOR;
 
 namespace {
-  U8String makeRepeatedLines(size_t line_count, const U8String& line_text) {
-    U8String out;
-    out.reserve((line_text.size() + 1) * line_count);
-    for (size_t i = 0; i < line_count; ++i) {
-      if (i > 0) out += "\n";
-      out += line_text;
-    }
-    return out;
-  }
-
   EditorCore makeEditor(const U8String& text,
                         const Viewport& viewport,
                         WrapMode wrap_mode = WrapMode::NONE) {

@@ -63,6 +63,16 @@ namespace NS_SWEETEDITOR {
     return runs;
   }
 
+  inline Vector<const RangeEffectRenderItem*> rangeEffectsOfKind(const EditorRenderModel& model, RangeEffectKind kind) {
+    Vector<const RangeEffectRenderItem*> effects;
+    for (const RangeEffectRenderItem& effect : model.range_effects) {
+      if (effect.kind == kind) {
+        effects.push_back(&effect);
+      }
+    }
+    return effects;
+  }
+
 }
 
 #endif // SWEETEDITOR_TEST_RENDER_HELPERS_H

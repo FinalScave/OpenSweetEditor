@@ -6,17 +6,10 @@
 #include <regex>
 #include <sweeteditor/search.h>
 #include <sweeteditor/utility.h>
+#include "text_boundary.hpp"
 
 namespace NS_SWEETEDITOR {
   namespace {
-    bool isWordChar(U16Char ch) {
-      return (ch >= CHAR16('a') && ch <= CHAR16('z')) ||
-             (ch >= CHAR16('A') && ch <= CHAR16('Z')) ||
-             (ch >= CHAR16('0') && ch <= CHAR16('9')) ||
-             ch == CHAR16('_') ||
-             ch > 0x7F;
-    }
-
     U16Char foldAscii(U16Char ch) {
       if (ch >= CHAR16('A') && ch <= CHAR16('Z')) {
         return static_cast<U16Char>(ch - CHAR16('A') + CHAR16('a'));
@@ -32,15 +25,7 @@ namespace NS_SWEETEDITOR {
       return result;
     }
 
-    bool isHighSurrogate(uint32_t value) {
-      return value >= 0xD800 && value <= 0xDBFF;
-    }
-
-    bool isLowSurrogate(uint32_t value) {
-      return value >= 0xDC00 && value <= 0xDFFF;
-    }
-
-    uint32_t combineSurrogates(uint32_t high, uint32_t low) {
+    uint32_t combineSurrogatePair(uint32_t high, uint32_t low) {
       return 0x10000 + ((high - 0xD800) << 10) + (low - 0xDC00);
     }
 
@@ -62,10 +47,10 @@ namespace NS_SWEETEDITOR {
           result.text.push_back(static_cast<wchar_t>(value));
           ++index;
         } else {
-          if (isHighSurrogate(value) && index + 1 < text.size()) {
+          if (UnicodeUtil::isLeadSurrogate(text[index]) && index + 1 < text.size()) {
             uint32_t low = static_cast<uint32_t>(text[index + 1]);
-            if (isLowSurrogate(low)) {
-              result.text.push_back(static_cast<wchar_t>(combineSurrogates(value, low)));
+            if (UnicodeUtil::isTrailSurrogate(text[index + 1])) {
+              result.text.push_back(static_cast<wchar_t>(combineSurrogatePair(value, low)));
               index += 2;
               continue;
             }
@@ -121,10 +106,10 @@ namespace NS_SWEETEDITOR {
         return false;
       }
 
-      const bool left_word = start > 0 && isWordChar(snapshot.text[start - 1]);
-      const bool first_word = start < snapshot.text.size() && isWordChar(snapshot.text[start]);
-      const bool last_word = end > 0 && end <= snapshot.text.size() && isWordChar(snapshot.text[end - 1]);
-      const bool right_word = end < snapshot.text.size() && isWordChar(snapshot.text[end]);
+      const bool left_word = start > 0 && TextBoundaryUtil::isWordChar(snapshot.text[start - 1]);
+      const bool first_word = start < snapshot.text.size() && TextBoundaryUtil::isWordChar(snapshot.text[start]);
+      const bool last_word = end > 0 && end <= snapshot.text.size() && TextBoundaryUtil::isWordChar(snapshot.text[end - 1]);
+      const bool right_word = end < snapshot.text.size() && TextBoundaryUtil::isWordChar(snapshot.text[end]);
       return (!left_word || !first_word) && (!last_word || !right_word);
     }
 

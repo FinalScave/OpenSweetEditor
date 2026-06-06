@@ -4,11 +4,11 @@
 #include <cmath>
 #include <algorithm>
 #include <limits>
-#include <simdutf/simdutf.h>
 #include <utf8/utf8.h>
 #include <sweeteditor/layout.h>
 #include <sweeteditor/utility.h>
 #include "logging.h"
+#include "text_boundary.hpp"
 
 namespace NS_SWEETEDITOR {
   namespace {
@@ -1944,7 +1944,7 @@ namespace NS_SWEETEDITOR {
         // WORD_BREAK mode: check whether there is a word boundary after this grapheme.
         if (m_wrap_mode_ == WrapMode::WORD_BREAK && grapheme_u16_len > 0) {
           U16Char ch = run_text[current_u16];
-          if (isWordBreakChar(ch)) {
+          if (TextBoundaryUtil::isWordWrapBreakChar(ch)) {
             last_word_break_u16 = grapheme_end;
             last_word_break_width = seg_width + char_width;
             has_word_break = true;
@@ -2111,17 +2111,6 @@ namespace NS_SWEETEDITOR {
       }
       return m_measurer_->measureWidth(test_text, FONT_STYLE_NORMAL);
     }
-  }
-
-  bool TextLayout::isWordBreakChar(U16Char ch) {
-    return ch == CHAR16(' ') || ch == CHAR16('\t') ||
-           ch == CHAR16('-') || ch == CHAR16('/') ||
-           ch == CHAR16('\\') || ch == CHAR16('.') ||
-           ch == CHAR16(',') || ch == CHAR16(';') ||
-           ch == CHAR16(':') || ch == CHAR16('!') ||
-           ch == CHAR16('?') || ch == CHAR16(')') ||
-           ch == CHAR16(']') || ch == CHAR16('}') ||
-           ch == CHAR16('>');
   }
 
   void TextLayout::buildGutterIconRenderItems(size_t logical_line, float line_top_screen,

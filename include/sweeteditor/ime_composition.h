@@ -89,7 +89,6 @@ namespace NS_SWEETEDITOR {
     static ImeScriptClass classifyScriptFromText(const U8String& text);
     static bool isNonLatinScript(ImeScriptClass script_class);
     static bool isInlineCandidateText(const U8String& text);
-    static size_t calcUtf16Columns(const U8String& text);
     EditorState captureEditorState() const;
     void finishAction(ImeActionResult& result, const EditorState& state) const;
     static void mergeEditResult(ImeActionResult& result, const TextEditResult& edit_result);
@@ -109,7 +108,6 @@ namespace NS_SWEETEDITOR {
     uint32_t coreLineColumns(size_t line) const;
     size_t coreCharIndexFromPosition(const TextPosition& position) const;
     TextPosition corePositionAfterInsert(const TextPosition& start, const U8String& text) const;
-    size_t coreUtf16Columns(const U8String& text) const;
     TextEditResult coreApplyEdit(const TextRange& range, const U8String& text);
     TextEditResult coreInsertText(const U8String& text);
     void coreRecordUndoAction(const TextRange& range,

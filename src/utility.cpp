@@ -50,8 +50,16 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
+  size_t StrUtil::utf16Length(const U8String& utf8_str) {
+    return utf16Length(utf8_str.c_str(), utf8_str.length());
+  }
+
+  size_t StrUtil::utf16Length(const char* utf8_data, size_t utf8_length) {
+    return simdutf::utf16_length_from_utf8(utf8_data, utf8_length);
+  }
+
   void StrUtil::convertUTF8ToUTF16(const U8String& utf8_str, U16String& result) {
-    size_t utf16_len = simdutf::utf16_length_from_utf8(utf8_str.c_str(), utf8_str.length());
+    size_t utf16_len = utf16Length(utf8_str);
     result.resize(utf16_len);
     const size_t written =
         simdutf::convert_utf8_to_utf16(utf8_str.c_str(), utf8_str.length(), CHAR16_PTR(result.data()));
@@ -59,7 +67,7 @@ namespace NS_SWEETEDITOR {
   }
 
   void StrUtil::convertUTF8ToUTF16(const U8String& utf8_str, U16Char** result) {
-    size_t utf16_len = simdutf::utf16_length_from_utf8(utf8_str.c_str(), utf8_str.length());
+    size_t utf16_len = utf16Length(utf8_str);
     *result = new U16Char[utf16_len + 1];
     const size_t written =
         simdutf::convert_utf8_to_utf16(utf8_str.c_str(), utf8_str.length(), CHAR16_PTR(*result));

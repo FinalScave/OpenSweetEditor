@@ -13,16 +13,6 @@ namespace {
     return text;
   }
 
-  Vector<const RangeEffectRenderItem*> rangeEffectsOfKind(const EditorRenderModel& model, RangeEffectKind kind) {
-    Vector<const RangeEffectRenderItem*> effects;
-    for (const RangeEffectRenderItem& effect : model.range_effects) {
-      if (effect.kind == kind) {
-        effects.push_back(&effect);
-      }
-    }
-    return effects;
-  }
-
   const RangeEffectRenderItem& requireSingleRangeEffectOfKind(const EditorRenderModel& model, RangeEffectKind kind) {
     auto effects = rangeEffectsOfKind(model, kind);
     REQUIRE(effects.size() == 1);
@@ -276,6 +266,29 @@ TEST_CASE("EditorCore buildRenderModel exposes active IME composition range effe
   CHECK(effect.rect.origin.x == Catch::Approx(editor.getPositionScreenRect({0, 1}).x));
 }
 
+TEST_CASE("EditorCore buildRenderModel splits wrapped IME composition range effects") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(makeShared<LineArrayDocument>(""));
+  editor.setViewport({80, 160});
+  editor.setWrapMode(WrapMode::CHAR_BREAK);
+  EditorRangeEffectStyles styles;
+  styles.ime_composition.underline_color = static_cast<int32_t>(0xFFFFCC00u);
+  styles.ime_composition.underline_style = RangeEffectUnderlineStyle::SOLID;
+  editor.setEditorRangeEffectStyles(styles);
+
+  editor.setCursorPosition({0, 0});
+  editor.updateImePreedit("abcdefghijkl", ImeScriptClass::LATIN);
+
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+
+  auto effects = rangeEffectsOfKind(model, RangeEffectKind::IME_COMPOSITION);
+  REQUIRE(effects.size() >= 2);
+  CHECK(effects.front()->rect.origin.y != effects.back()->rect.origin.y);
+}
+
 TEST_CASE("EditorCore buildRenderModel emits linked editing rectangles for snippet tab stops") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
@@ -367,6 +380,28 @@ TEST_CASE("EditorCore buildRenderModel maps diagnostic range effects to severity
   CHECK(requireSingleRangeEffectOfKind(model, RangeEffectKind::DIAGNOSTIC_WARNING).style == styles.diagnostic_warning);
   CHECK(requireSingleRangeEffectOfKind(model, RangeEffectKind::DIAGNOSTIC_INFO).style == styles.diagnostic_info);
   CHECK(requireSingleRangeEffectOfKind(model, RangeEffectKind::DIAGNOSTIC_HINT).style == styles.diagnostic_hint);
+}
+
+TEST_CASE("EditorCore buildRenderModel emits wrapped diagnostic range effects once per rect") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(makeShared<LineArrayDocument>("abcdefghijkl"));
+  editor.setGutterVisible(false);
+  editor.setViewport({60, 160});
+  editor.setWrapMode(WrapMode::CHAR_BREAK);
+  EditorRangeEffectStyles styles;
+  styles.diagnostic_warning.underline_color = static_cast<int32_t>(0xFFFFCC00u);
+  styles.diagnostic_warning.underline_style = RangeEffectUnderlineStyle::WAVY;
+  editor.setEditorRangeEffectStyles(styles);
+  editor.setLineDiagnostics(0, {{0, 12, DiagnosticSeverity::DIAG_WARNING}});
+
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+
+  REQUIRE(model.lines.size() >= 2);
+  auto effects = rangeEffectsOfKind(model, RangeEffectKind::DIAGNOSTIC_WARNING);
+  CHECK(effects.size() == model.lines.size());
 }
 
 TEST_CASE("EditorCore handleGestureEvent tap on CodeLens keeps cursor unchanged") {

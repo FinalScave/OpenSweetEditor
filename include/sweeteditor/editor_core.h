@@ -825,12 +825,16 @@ namespace NS_SWEETEDITOR {
     void placeCursorAt(const PointF& screen_point);
     /// Select word at screen coordinates
     void selectWordAt(const PointF& screen_point);
+    TextPosition clampDocumentPosition(const TextPosition& position,
+                                       bool prefer_right,
+                                       bool line_overflow_to_end) const;
+    TextRange clampDocumentRange(const TextRange& range,
+                                 bool collapse_point_range,
+                                 bool line_overflow_to_end) const;
     void setCursorPositionInternal(const TextPosition& position, bool commit_composition);
     void setSelectionInternal(const TextRange& range, bool commit_composition);
     /// Update cursor movement (handle selection extension logic)
     void moveCursorTo(const TextPosition& new_pos, bool extend_selection);
-    /// Calculate UTF16 column count for UTF8 text
-    static size_t calcUtf16Columns(const U8String& text);
     size_t documentUtf16Length() const;
     TextRange textRangeFromUtf16Offsets(size_t start_offset, size_t end_offset) const;
     SearchSnapshot buildSearchSnapshot(const SearchRequest& request, uint64_t generation) const;

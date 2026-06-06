@@ -2,17 +2,12 @@
 #include <algorithm>
 #include <functional>
 #include <sweeteditor/editor_core.h>
+#include <sweeteditor/utility.h>
 #include "test_measurer.h"
 
 using namespace NS_SWEETEDITOR;
 
 namespace {
-
-  size_t utf16Length(const U8String& text) {
-    U16String utf16;
-    StrUtil::convertUTF8ToUTF16(text, utf16);
-    return utf16.size();
-  }
 
   EditorActionResult replaceText(EditorCore& editor,
                                  const TextRange& range,
@@ -144,7 +139,7 @@ namespace {
                          -1,
                          script_class);
     int32_t selection_offset = cursor_offset > 0
-                               ? start_offset + static_cast<int32_t>(utf16Length(text)) + cursor_offset - 1
+                               ? start_offset + static_cast<int32_t>(StrUtil::utf16Length(text)) + cursor_offset - 1
                                : start_offset + cursor_offset;
     selection_offset = std::max<int32_t>(0, selection_offset);
     return updateTextModelDelta(editor,
@@ -1403,6 +1398,25 @@ TEST_CASE("EditorCore IME document range accepts cursor inside word for latin sc
   CHECK(end_context.has_composition);
   CHECK(end_context.composition.start == 0);
   CHECK(end_context.composition.end == 5);
+}
+
+TEST_CASE("EditorCore IME document range clamps overflowing line to document end") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("hello\nworld");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({1, 5});
+
+  EditorActionResult result = editor.markImeDocumentRange({{1, 1}, {99, 0}}, ImeScriptClass::LATIN);
+
+  CHECK(result.handled);
+  REQUIRE(editor.isComposing());
+  CHECK(result.ime_sync.has_visible_composition_range);
+  CHECK(result.ime_sync.visible_composition_range == (TextRange{{1, 1}, {1, 5}}));
+  CHECK(result.ime_sync.has_platform_marked_range);
+  CHECK(result.ime_sync.platform_marked_range == (TextRange{{1, 1}, {1, 5}}));
 }
 
 TEST_CASE("EditorCore IME unknown document range can start platform composition") {

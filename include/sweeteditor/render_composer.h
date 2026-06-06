@@ -49,6 +49,15 @@ namespace NS_SWEETEDITOR {
   private:
     static constexpr size_t kMaxBracketScanChars = 10000;
 
+    void appendRangeEffectsForRange(EditorRenderModel& model,
+                                    size_t line,
+                                    size_t col_start,
+                                    size_t col_end,
+                                    float rect_height,
+                                    float y_offset,
+                                    RangeEffectKind kind,
+                                    const RangeEffectStyle& style) const;
+
     TextLayout* m_text_layout_ {nullptr};
     DecorationManager* m_decorations_ {nullptr};
     EditorSettings* m_settings_ {nullptr};

@@ -2,24 +2,14 @@
 // Created by Scave on 2025/12/1.
 //
 #include <utf8/utf8.h>
-#include <simdutf/simdutf.h>
 #include <cmath>
 #include <algorithm>
 #include <sweeteditor/editor_core.h>
 #include <sweeteditor/utility.h>
 #include "logging.h"
+#include "text_boundary.hpp"
 
 namespace NS_SWEETEDITOR {
-
-  /// Checks whether a character is a word character (letter, digit, underscore)
-  static bool isWordChar(U16Char ch) {
-    return (ch >= CHAR16('a') && ch <= CHAR16('z')) ||
-           (ch >= CHAR16('A') && ch <= CHAR16('Z')) ||
-           (ch >= CHAR16('0') && ch <= CHAR16('9')) ||
-           ch == CHAR16('_') ||
-           ch > 0x7F; // Treat non-ASCII characters as word characters (supports CJK, etc.)
-  }
-
   static TextRange findWordRangeInLine(size_t line, const U16String& line_text, size_t anchor_column) {
     if (line_text.empty()) {
       return {{line, 0}, {line, 0}};
@@ -31,7 +21,7 @@ namespace NS_SWEETEDITOR {
     }
 
     const U16Char anchor_ch = line_text[anchor];
-    const bool is_word = isWordChar(anchor_ch);
+    const bool is_word = TextBoundaryUtil::isWordChar(anchor_ch);
 
     size_t word_start = anchor;
     while (word_start > 0) {
@@ -39,7 +29,7 @@ namespace NS_SWEETEDITOR {
       if (previous == word_start) break;
 
       U16Char prev_ch = line_text[previous];
-      if (is_word ? !isWordChar(prev_ch) : isWordChar(prev_ch)) break;
+      if (is_word ? !TextBoundaryUtil::isWordChar(prev_ch) : TextBoundaryUtil::isWordChar(prev_ch)) break;
       if (!is_word && prev_ch != anchor_ch) break;
       word_start = previous;
     }
@@ -47,7 +37,7 @@ namespace NS_SWEETEDITOR {
     size_t word_end = UnicodeUtil::nextGraphemeBoundaryColumn(line_text, anchor);
     while (word_end < line_text.length()) {
       U16Char next_ch = line_text[word_end];
-      if (is_word ? !isWordChar(next_ch) : isWordChar(next_ch)) break;
+      if (is_word ? !TextBoundaryUtil::isWordChar(next_ch) : TextBoundaryUtil::isWordChar(next_ch)) break;
       if (!is_word && next_ch != anchor_ch) break;
 
       size_t next_boundary = UnicodeUtil::nextGraphemeBoundaryColumn(line_text, word_end);
@@ -2103,6 +2093,52 @@ namespace NS_SWEETEDITOR {
     }
   }
 
+  TextPosition EditorCore::clampDocumentPosition(const TextPosition& position,
+                                                 bool prefer_right,
+                                                 bool line_overflow_to_end) const {
+    if (m_document_ == nullptr) {
+      return position;
+    }
+    const size_t line_count = m_document_->getLineCount();
+    if (line_count == 0) {
+      return {};
+    }
+
+    TextPosition safe_position = position;
+    if (safe_position.line >= line_count) {
+      safe_position.line = line_count - 1;
+      if (line_overflow_to_end) {
+        safe_position.column = m_document_->getLineColumns(safe_position.line);
+      }
+    }
+
+    const U16String& line_text = m_document_->getLineU16TextRef(safe_position.line);
+    const size_t clamped_column = std::min<size_t>(safe_position.column, line_text.length());
+    safe_position.column = prefer_right
+                           ? UnicodeUtil::clampColumnToGraphemeBoundaryRight(line_text, clamped_column)
+                           : UnicodeUtil::clampColumnToGraphemeBoundaryLeft(line_text, clamped_column);
+    return safe_position;
+  }
+
+  TextRange EditorCore::clampDocumentRange(const TextRange& range,
+                                           bool collapse_point_range,
+                                           bool line_overflow_to_end) const {
+    if (m_document_ == nullptr) {
+      return range;
+    }
+
+    TextRange safe_range = range;
+    if (collapse_point_range && range.start == range.end) {
+      safe_range.start = clampDocumentPosition(safe_range.start, false, line_overflow_to_end);
+      safe_range.end = safe_range.start;
+      return safe_range;
+    }
+
+    safe_range.start = clampDocumentPosition(safe_range.start, false, line_overflow_to_end);
+    safe_range.end = clampDocumentPosition(safe_range.end, true, line_overflow_to_end);
+    return safe_range;
+  }
+
   TextPosition EditorCore::getCursorPosition() const {
     return m_caret_.cursor;
   }
@@ -2123,32 +2159,7 @@ namespace NS_SWEETEDITOR {
         m_composition_controller_.commitComposingText("", true);
       }
     }
-    TextRange safe_range = range;
-    if (m_document_ != nullptr) {
-      size_t line_count = m_document_->getLineCount();
-      const bool is_point = (range.start == range.end);
-      auto clamp_position = [&](TextPosition& position, bool prefer_right) {
-        if (line_count == 0) {
-          position = {};
-          return;
-        }
-        if (position.line >= line_count) {
-          position.line = line_count - 1;
-        }
-        const U16String& line_text = m_document_->getLineU16TextRef(position.line);
-        size_t clamped_column = std::min<size_t>(position.column, line_text.length());
-        position.column = prefer_right
-                          ? UnicodeUtil::clampColumnToGraphemeBoundaryRight(line_text, clamped_column)
-                          : UnicodeUtil::clampColumnToGraphemeBoundaryLeft(line_text, clamped_column);
-      };
-      if (is_point) {
-        clamp_position(safe_range.start, false);
-        safe_range.end = safe_range.start;
-      } else {
-        clamp_position(safe_range.start, false);
-        clamp_position(safe_range.end, true);
-      }
-    }
+    TextRange safe_range = clampDocumentRange(range, true, false);
     m_caret_.setSelection(safe_range);
   }
 
@@ -2180,25 +2191,7 @@ namespace NS_SWEETEDITOR {
 
   U8String EditorCore::getSelectedText() const {
     if (!hasSelection() || m_document_ == nullptr) return "";
-    TextRange range = m_caret_.normalizedSelection();
-    U8String result;
-    for (size_t line = range.start.line; line <= range.end.line && line < m_document_->getLineCount(); ++line) {
-      const U16String& line_text = m_document_->getLineU16TextRef(line);
-      size_t col_start = (line == range.start.line) ? range.start.column : 0;
-      size_t col_end = (line == range.end.line) ? range.end.column : line_text.length();
-      col_start = std::min(col_start, line_text.length());
-      col_end = std::min(col_end, line_text.length());
-      if (col_start < col_end) {
-        U16String sub = line_text.substr(col_start, col_end - col_start);
-        U8String u8_sub;
-        StrUtil::convertUTF16ToUTF8(sub, u8_sub);
-        result += u8_sub;
-      }
-      if (line < range.end.line) {
-        result += "\n";
-      }
-    }
-    return result;
+    return m_document_->getU8Text(m_caret_.normalizedSelection());
   }
 
   TextRange EditorCore::getWordRangeAtCursor() const {
@@ -2216,7 +2209,7 @@ namespace NS_SWEETEDITOR {
       anchor = UnicodeUtil::prevGraphemeBoundaryColumn(line_text, line_text.length());
     } else if (anchor > 0) {
       const size_t previous = UnicodeUtil::prevGraphemeBoundaryColumn(line_text, anchor);
-      if (!isWordChar(line_text[anchor]) && isWordChar(line_text[previous])) {
+      if (!TextBoundaryUtil::isWordChar(line_text[anchor]) && TextBoundaryUtil::isWordChar(line_text[previous])) {
         anchor = previous;
       }
     }
@@ -3239,10 +3232,6 @@ namespace NS_SWEETEDITOR {
     ensureCursorVisible();
   }
 
-  size_t EditorCore::calcUtf16Columns(const U8String& text) {
-    return simdutf::utf16_length_from_utf8(text.data(), text.size());
-  }
-
   size_t EditorCore::documentUtf16Length() const {
     if (m_document_ == nullptr || m_document_->getLineCount() == 0) {
       return 0;
@@ -3533,30 +3522,9 @@ namespace NS_SWEETEDITOR {
   TextEditResult EditorCore::applyEdit(const TextRange& range, const U8String& new_text, bool record_undo) {
     if (m_document_ == nullptr) return {};
 
-    TextRange safe_range = range;
+    TextRange safe_range = clampDocumentRange(range, true, false);
     const bool is_insert = (range.start == range.end);
     const size_t line_count = m_document_->getLineCount();
-    auto clamp_position = [&](TextPosition& position, bool prefer_right) {
-      if (line_count == 0) {
-        position = {};
-        return;
-      }
-      if (position.line >= line_count) {
-        position.line = line_count - 1;
-        }
-        const U16String& line_text = m_document_->getLineU16TextRef(position.line);
-        size_t clamped_column = std::min<size_t>(position.column, line_text.length());
-        position.column = prefer_right
-                        ? UnicodeUtil::clampColumnToGraphemeBoundaryRight(line_text, clamped_column)
-                        : UnicodeUtil::clampColumnToGraphemeBoundaryLeft(line_text, clamped_column);
-      };
-    if (is_insert) {
-      clamp_position(safe_range.start, false);
-      safe_range.end = safe_range.start;
-    } else {
-      clamp_position(safe_range.start, false);
-      clamp_position(safe_range.end, true);
-    }
 
     const bool single_line_edit_text =
         new_text.find('\n') == U8String::npos && new_text.find('\r') == U8String::npos;

@@ -39,6 +39,10 @@ namespace NS_SWEETEDITOR {
     /// @return Formatted output string
     static U8String vFormatString(const char* format, va_list args);
 
+    /// Count UTF-16 code units needed by UTF-8 text
+    static size_t utf16Length(const U8String& utf8_str);
+    static size_t utf16Length(const char* utf8_data, size_t utf8_length);
+
     /// Convert UTF-8 text to UTF-16 and write result into output reference
     static void convertUTF8ToUTF16(const U8String& utf8_str, U16String& result);
 

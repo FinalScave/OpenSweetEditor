@@ -2,7 +2,6 @@
 // Created by Scave on 2025/12/1.
 //
 #include <utf8/utf8.h>
-#include <simdutf/simdutf.h>
 #include <algorithm>
 #include <utility>
 #include <sweeteditor/editor_core.h>
@@ -118,10 +117,6 @@ namespace NS_SWEETEDITOR {
     return has_latin ? ImeScriptClass::LATIN : ImeScriptClass::UNKNOWN;
   }
 
-  size_t CompositionController::calcUtf16Columns(const U8String& text) {
-    return simdutf::utf16_length_from_utf8(text.data(), text.size());
-  }
-
   CompositionController::EditorState CompositionController::captureEditorState() const {
     return {coreCursor(), coreHasSelection(), coreSelection()};
   }
@@ -161,29 +156,10 @@ namespace NS_SWEETEDITOR {
   }
 
   TextRange CompositionController::coreClampDocumentRange(const TextRange& range) const {
-    TextRange safe_range = range;
     if (m_editor_.m_document_ == nullptr) {
       return {};
     }
-    size_t line_count = m_editor_.m_document_->getLineCount();
-    auto clamp_position = [&](TextPosition& position, bool prefer_right) {
-      if (line_count == 0) {
-        position = {};
-        return;
-      }
-      if (position.line >= line_count) {
-        position.line = line_count - 1;
-        position.column = m_editor_.m_document_->getLineColumns(position.line);
-      }
-      const U16String& line_text = m_editor_.m_document_->getLineU16TextRef(position.line);
-      size_t clamped_column = std::min<size_t>(position.column, line_text.length());
-      position.column = prefer_right
-                        ? UnicodeUtil::clampColumnToGraphemeBoundaryRight(line_text, clamped_column)
-                        : UnicodeUtil::clampColumnToGraphemeBoundaryLeft(line_text, clamped_column);
-    };
-    clamp_position(safe_range.start, false);
-    clamp_position(safe_range.end, true);
-    return safe_range;
+    return m_editor_.clampDocumentRange(range, false, true);
   }
 
   bool CompositionController::coreIsDocumentRangeReadable(const TextRange& range) const {
@@ -217,10 +193,6 @@ namespace NS_SWEETEDITOR {
 
   TextPosition CompositionController::corePositionAfterInsert(const TextPosition& start, const U8String& text) const {
     return m_editor_.calcPositionAfterInsert(start, text);
-  }
-
-  size_t CompositionController::coreUtf16Columns(const U8String& text) const {
-    return EditorCore::calcUtf16Columns(text);
   }
 
   TextEditResult CompositionController::coreApplyEdit(const TextRange& range, const U8String& text) {
@@ -655,9 +627,9 @@ namespace NS_SWEETEDITOR {
       return previous.empty()
           || text == previous
           || text.rfind(previous, 0) == 0
-          || calcUtf16Columns(text) <= 1;
+          || StrUtil::utf16Length(text) <= 1;
     }
-    if (calcUtf16Columns(text) <= 1) {
+    if (StrUtil::utf16Length(text) <= 1) {
       return true;
     }
     return !previous.empty()
@@ -795,7 +767,7 @@ namespace NS_SWEETEDITOR {
       replacement = text.substr(original.size());
       return !replacement.empty();
     }
-    if (coreUtf16Columns(text) <= 2) {
+    if (StrUtil::utf16Length(text) <= 2) {
       replacement = text;
       return true;
     }
@@ -819,7 +791,7 @@ namespace NS_SWEETEDITOR {
     m_composition_.anchor_range = updated_anchor;
     m_composition_.original_text = coreDocumentText(updated_anchor);
     m_composition_.composing_text = m_composition_.original_text;
-    m_composition_.composing_columns = coreUtf16Columns(m_composition_.composing_text);
+    m_composition_.composing_columns = StrUtil::utf16Length(m_composition_.composing_text);
     m_composition_.kind = CompositionKind::DOCUMENT_RANGE;
     m_session_.preedit_text_in_document = false;
     m_session_.preedit_replaces_document_range = false;
@@ -869,7 +841,7 @@ namespace NS_SWEETEDITOR {
     m_composition_.anchor_range = safe_range;
     m_composition_.original_text = text;
     m_composition_.composing_text = text;
-    m_composition_.composing_columns = coreUtf16Columns(text);
+    m_composition_.composing_columns = StrUtil::utf16Length(text);
     m_composition_.kind = CompositionKind::DOCUMENT_RANGE;
     m_session_.preedit_text_in_document = false;
 
@@ -935,7 +907,7 @@ namespace NS_SWEETEDITOR {
 
     if (hasMidDocumentRangeComposition()) {
       TextEditResult plain_edit = applyDocumentRangePlainEdit(text);
-      if (plain_edit.changed || text.empty() || coreUtf16Columns(text) <= 2) {
+      if (plain_edit.changed || text.empty() || StrUtil::utf16Length(text) <= 2) {
         return plain_edit;
       }
     }
@@ -949,7 +921,7 @@ namespace NS_SWEETEDITOR {
 
     if (coreIsLinkedEditingActive()) {
       m_composition_.composing_text = text;
-      m_composition_.composing_columns = coreUtf16Columns(text);
+      m_composition_.composing_columns = StrUtil::utf16Length(text);
       m_composition_.kind = CompositionKind::PREEDIT_TEXT;
       m_composition_.anchor_range = {
         m_composition_.start_position,
@@ -979,7 +951,7 @@ namespace NS_SWEETEDITOR {
 
     if (!text.empty()) {
       coreInsertDocumentText(m_composition_.start_position, text);
-      size_t new_columns = coreUtf16Columns(text);
+      size_t new_columns = StrUtil::utf16Length(text);
       m_composition_.composing_text = text;
       m_composition_.composing_columns = new_columns;
       m_composition_.kind = CompositionKind::PREEDIT_TEXT;
@@ -1212,7 +1184,7 @@ namespace NS_SWEETEDITOR {
     TextRange edit_range {cursor, cursor};
     U8String replacement = text;
     bool has_local_edit = resolveDocumentRangePlainEdit(text, edit_range, replacement);
-    if (!has_local_edit && coreUtf16Columns(text) <= 2) {
+    if (!has_local_edit && StrUtil::utf16Length(text) <= 2) {
       edit_range = {cursor, cursor};
       replacement = text;
       has_local_edit = true;
@@ -1294,7 +1266,7 @@ namespace NS_SWEETEDITOR {
                                                 inserted_text,
                                                 is_commit);
       }
-      size_t previous_columns = coreUtf16Columns(previous_inserted);
+      size_t previous_columns = StrUtil::utf16Length(previous_inserted);
       if (anchor.end.column < previous_columns) {
         return {};
       }
@@ -1343,7 +1315,7 @@ namespace NS_SWEETEDITOR {
       if (text.rfind(previous, 0) == 0) {
         replacement = text.substr(previous.size());
       } else if (previous.rfind(text, 0) == 0) {
-        size_t delete_columns = coreUtf16Columns(previous.substr(text.size()));
+        size_t delete_columns = StrUtil::utf16Length(previous.substr(text.size()));
         TextPosition cursor = coreCursor();
         if (cursor.column >= delete_columns) {
           TextRange delete_range {
@@ -1529,7 +1501,7 @@ namespace NS_SWEETEDITOR {
     }
     if (hasEndDocumentRangeComposition()
         && !text.empty()
-        && (!m_session_.document_range_end_plain_inserted_text.empty() || coreUtf16Columns(text) <= 1)) {
+        && (!m_session_.document_range_end_plain_inserted_text.empty() || StrUtil::utf16Length(text) <= 1)) {
       TextEditResult plain_edit = applyDocumentRangeEndPlainEdit(text, true);
       if (plain_edit.changed) {
         mergeEditResult(result, plain_edit);
@@ -1543,7 +1515,7 @@ namespace NS_SWEETEDITOR {
           text,
           plain_range,
           plain_replacement);
-      if (looks_like_plain_edit || coreUtf16Columns(text) <= 1) {
+      if (looks_like_plain_edit || StrUtil::utf16Length(text) <= 1) {
         mergeEditResult(result, applyDocumentRangePlainEdit(text));
         return;
       }
@@ -1651,7 +1623,7 @@ namespace NS_SWEETEDITOR {
     m_composition_.start_position = updated_anchor.start;
     m_composition_.original_text = coreDocumentText(updated_anchor);
     m_composition_.composing_text = m_composition_.original_text;
-    m_composition_.composing_columns = coreUtf16Columns(m_composition_.composing_text);
+    m_composition_.composing_columns = StrUtil::utf16Length(m_composition_.composing_text);
     coreSetCursorPositionInternal(new_cursor);
     coreSetSelectionInternal({new_cursor, new_cursor});
     coreInvalidateContentMetrics(anchor.start.line);

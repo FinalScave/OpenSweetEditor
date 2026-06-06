@@ -555,13 +555,13 @@ namespace NS_SWEETEDITOR {
       previous_context.id = context_id;
       previous_context.document_start_offset = document_start_offset;
       previous_context.kind = ImeInputContextKind::DOCUMENT_WINDOW;
-      const size_t text_length = calcUtf16Columns(text);
+      const size_t text_length = StrUtil::utf16Length(text);
       const size_t base = static_cast<size_t>(std::max<int32_t>(0, document_start_offset));
       previous_context.text = m_document_->getU8Text(textRangeFromUtf16Offsets(base, base + text_length));
     }
 
-    const size_t old_text_length = calcUtf16Columns(previous_context.text);
-    const size_t new_text_length = calcUtf16Columns(text);
+    const size_t old_text_length = StrUtil::utf16Length(previous_context.text);
+    const size_t new_text_length = StrUtil::utf16Length(text);
     const ImeInputTextDiff diff = computeImeInputTextDiff(previous_context.text, text);
     const ImeInputStateRange selection = normalizeImeSelectionRange(
         selection_start_offset,
@@ -747,7 +747,7 @@ namespace NS_SWEETEDITOR {
       return result;
     }
 
-    const size_t text_length = calcUtf16Columns(text);
+    const size_t text_length = StrUtil::utf16Length(text);
     const ImeInputStateRange composition = normalizeImeComposingRange(
         composing_start_offset,
         composing_end_offset,
@@ -801,7 +801,7 @@ namespace NS_SWEETEDITOR {
                                                       int32_t composing_end_offset,
                                                       ImeScriptClass script_class) {
     const bool has_text_delta = delta_start_offset >= 0 && delta_end_offset >= 0;
-    const size_t old_text_length = calcUtf16Columns(old_text);
+    const size_t old_text_length = StrUtil::utf16Length(old_text);
     const size_t delta_start = has_text_delta
         ? clampImeOffset(delta_start_offset, old_text_length)
         : 0;
@@ -827,7 +827,7 @@ namespace NS_SWEETEDITOR {
     const ImeInputStateRange new_composition = normalizeImeComposingRange(
         composing_start_offset,
         composing_end_offset,
-        calcUtf16Columns(next_text));
+        StrUtil::utf16Length(next_text));
     const ImeInputStateRange previous_composition =
         context_id != 0 && context_id == m_ime_input_context_.id && m_ime_input_context_.has_composition
         ? normalizeImeComposingRange(m_ime_input_context_.composition.start,
@@ -1124,7 +1124,7 @@ namespace NS_SWEETEDITOR {
     if (start_offset > end_offset) {
       std::swap(start_offset, end_offset);
     }
-    const size_t context_length = calcUtf16Columns(m_ime_input_context_.text);
+    const size_t context_length = StrUtil::utf16Length(m_ime_input_context_.text);
     start_offset = std::min(start_offset, context_length);
     end_offset = std::min(end_offset, context_length);
     const size_t base = static_cast<size_t>(std::max(0, m_ime_input_context_.document_start_offset));
@@ -1196,7 +1196,7 @@ namespace NS_SWEETEDITOR {
     if (result.edit_result.changed && !result.edit_result.changes.empty()) {
       const TextRange& changed_range = result.edit_result.changes.front().range;
       edit_start = m_document_->getCharIndexFromPosition(changed_range.start);
-      edit_end = edit_start + calcUtf16Columns(text);
+      edit_end = edit_start + StrUtil::utf16Length(text);
     } else if (result.sync.has_platform_marked_range) {
       edit_start = m_document_->getCharIndexFromPosition(result.sync.platform_marked_range.start);
       edit_end = m_document_->getCharIndexFromPosition(result.sync.platform_marked_range.end);
@@ -1227,7 +1227,7 @@ namespace NS_SWEETEDITOR {
                                          int32_t composing_start_offset,
                                          int32_t composing_end_offset,
                                          ImeInputContextKind kind) {
-    const size_t text_length = calcUtf16Columns(text);
+    const size_t text_length = StrUtil::utf16Length(text);
     const ImeInputStateRange selection = normalizeImeSelectionRange(
         selection_start_offset,
         selection_end_offset,

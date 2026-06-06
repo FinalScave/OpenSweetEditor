@@ -1,25 +1,15 @@
 #include <catch2/catch_amalgamated.hpp>
 #include <sweeteditor/editor_core.h>
 #include "test_measurer.h"
+#include "test_text_helpers.h"
 
 using namespace NS_SWEETEDITOR;
-
-namespace {
-  U8String makeLines(size_t line_count, const U8String& line_text) {
-    U8String out;
-    for (size_t i = 0; i < line_count; ++i) {
-      if (i > 0) out += "\n";
-      out += line_text;
-    }
-    return out;
-  }
-}
 
 TEST_CASE("EditorCore setScroll is clamped by computed scroll bounds") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
 
-  SharedPtr<Document> document = makeShared<LineArrayDocument>(makeLines(30, "0123456789abcdefghij"));
+  SharedPtr<Document> document = makeShared<LineArrayDocument>(makeRepeatedLines(30, "0123456789abcdefghij"));
   editor.loadDocument(document);
   editor.setViewport({120, 80});
   EditorRenderModel model;
@@ -60,7 +50,7 @@ TEST_CASE("EditorCore viewport change re-clamps existing scroll offset") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
 
-  SharedPtr<Document> document = makeShared<LineArrayDocument>(makeLines(60, "abcdefghij"));
+  SharedPtr<Document> document = makeShared<LineArrayDocument>(makeRepeatedLines(60, "abcdefghij"));
   editor.loadDocument(document);
   editor.setViewport({140, 100});
 
@@ -81,7 +71,7 @@ TEST_CASE("EditorCore selectAll keeps scroll stable when reveal_selection_end_on
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
 
-  SharedPtr<Document> document = makeShared<LineArrayDocument>(makeLines(80, "abcdefghij"));
+  SharedPtr<Document> document = makeShared<LineArrayDocument>(makeRepeatedLines(80, "abcdefghij"));
   editor.loadDocument(document);
   editor.setViewport({120, 80});
 
@@ -101,7 +91,7 @@ TEST_CASE("EditorCore selectAll reveals selection end when reveal_selection_end_
   options.reveal_selection_end_on_select_all = true;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
 
-  SharedPtr<Document> document = makeShared<LineArrayDocument>(makeLines(80, "abcdefghij"));
+  SharedPtr<Document> document = makeShared<LineArrayDocument>(makeRepeatedLines(80, "abcdefghij"));
   editor.loadDocument(document);
   editor.setViewport({120, 80});
 

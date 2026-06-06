@@ -3,7 +3,6 @@
 //
 #include <stdexcept>
 #include <algorithm>
-#include <simdutf/simdutf.h>
 #include <utf8/utf8.h>
 #include <sweeteditor/document.h>
 #include <sweeteditor/utility.h>
@@ -82,7 +81,7 @@ namespace NS_SWEETEDITOR {
     size_t column = char_index - m_logical_lines_[target_line].start_utf16;
     size_t byte_len = getByteLengthOfLine(target_line);
     U8String line_u8 = getU8Text(m_logical_lines_[target_line].start_byte, byte_len);
-    size_t max_col = simdutf::utf16_length_from_utf8(line_u8.data(), line_u8.size());
+    size_t max_col = StrUtil::utf16Length(line_u8);
     if (column > max_col) {
       column = max_col;
     }
@@ -324,7 +323,7 @@ namespace NS_SWEETEDITOR {
 
   size_t PieceTableDocument::countChars(size_t start_byte, size_t byte_length) const {
     U8String text = getU8Text(start_byte, byte_length);
-    return simdutf::utf16_length_from_utf8(text.data(), text.length());
+    return StrUtil::utf16Length(text);
   }
 
   Vector<LogicalLine>& PieceTableDocument::getLogicalLines() {
@@ -348,13 +347,13 @@ namespace NS_SWEETEDITOR {
         LogicalLine& prev_line = m_logical_lines_[line - 1];
         if (prev_line.is_u16_dirty) {
           U8String prev_texts = getU8Text(0, prev_line.start_byte);
-          const size_t prev_chars_count = simdutf::utf16_length_from_utf8(prev_texts.data(), prev_texts.length());
+          const size_t prev_chars_count = StrUtil::utf16Length(prev_texts);
           prev_line.start_utf16 = prev_chars_count;
         }
         const size_t prev_byte_length = getByteLengthOfLine(line - 1);
         U8String prev_line_text = getU8Text(prev_line.start_byte, prev_byte_length);
         size_t eol_chars = (prev_line.line_ending != LineEnding::NONE) ? 1 : 0;
-        logical_line.start_utf16 = prev_line.start_utf16 + simdutf::utf16_length_from_utf8(prev_line_text.data(), prev_line_text.length()) + eol_chars;
+        logical_line.start_utf16 = prev_line.start_utf16 + StrUtil::utf16Length(prev_line_text) + eol_chars;
       } else {
         logical_line.start_utf16 = 0;
       }
@@ -825,7 +824,7 @@ namespace NS_SWEETEDITOR {
     }
     size_t accumulated_chars = 0;
     for (size_t i = 0; i < m_lines_.size(); ++i) {
-      size_t line_chars = simdutf::utf16_length_from_utf8(m_lines_[i].data(), m_lines_[i].size());
+      size_t line_chars = StrUtil::utf16Length(m_lines_[i]);
       if (accumulated_chars + line_chars >= char_index) {
         return TextPosition{i, char_index - accumulated_chars};
       }
@@ -833,7 +832,7 @@ namespace NS_SWEETEDITOR {
       accumulated_chars += line_chars + eol_chars;
     }
     size_t last = m_lines_.size() - 1;
-    size_t last_chars = simdutf::utf16_length_from_utf8(m_lines_[last].data(), m_lines_[last].size());
+    size_t last_chars = StrUtil::utf16Length(m_lines_[last]);
     return TextPosition{last, last_chars};
   }
 
@@ -847,7 +846,7 @@ namespace NS_SWEETEDITOR {
 
     size_t accumulated_chars = 0;
     for (size_t i = 0; i < line; ++i) {
-      accumulated_chars += simdutf::utf16_length_from_utf8(m_lines_[i].data(), m_lines_[i].size());
+      accumulated_chars += StrUtil::utf16Length(m_lines_[i]);
       if (m_logical_lines_[i].line_ending != LineEnding::NONE) {
         accumulated_chars += 1;
       }
@@ -1028,7 +1027,7 @@ namespace NS_SWEETEDITOR {
       // Text part inside the line
       if (local_start < line_byte_len) {
         size_t text_count_len = std::min(local_len, line_byte_len - local_start);
-        total_chars += simdutf::utf16_length_from_utf8(m_lines_[i].data() + local_start, text_count_len);
+        total_chars += StrUtil::utf16Length(m_lines_[i].data() + local_start, text_count_len);
         local_len -= text_count_len;
       }
       // Line ending part (CR/LF/CRLF each counts as one character)
@@ -1057,7 +1056,7 @@ namespace NS_SWEETEDITOR {
 
       size_t char_offset = 0;
       for (size_t i = 0; i < line; ++i) {
-        char_offset += simdutf::utf16_length_from_utf8(m_lines_[i].data(), m_lines_[i].size());
+        char_offset += StrUtil::utf16Length(m_lines_[i]);
         if (m_logical_lines_[i].line_ending != LineEnding::NONE) {
           char_offset += 1;
         }
