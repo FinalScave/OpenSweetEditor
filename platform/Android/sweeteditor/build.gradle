@@ -122,7 +122,7 @@ centralPortal {
     name = "sweeteditor"
 
     pom {
-        url = "https://github.com/FinalScave/OpenSweetEditor"
+        url = "https://github.com/FinalScave/SweetEditor"
         licenses {
             license {
                 name = "MIT"
@@ -138,9 +138,9 @@ centralPortal {
             }
         }
         scm {
-            connection = "scm:git:https://github.com/FinalScave/OpenSweetEditor.git"
-            developerConnection = "scm:git:https://github.com/FinalScave/OpenSweetEditor"
-            url = "https://github.com/FinalScave/OpenSweetEditor"
+            connection = "scm:git:https://github.com/FinalScave/SweetEditor.git"
+            developerConnection = "scm:git:https://github.com/FinalScave/SweetEditor"
+            url = "https://github.com/FinalScave/SweetEditor"
         }
     }
 }

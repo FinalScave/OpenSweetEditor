@@ -93,8 +93,8 @@ C++ 内核涵盖文档编辑（Piece Table、撤销重做、大文件加载）�
 ### 构建
 
 ```bash
-git clone https://github.com/FinalScave/OpenSweetEditor.git
-cd OpenSweetEditor
+git clone https://github.com/FinalScave/SweetEditor.git
+cd SweetEditor
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . -j

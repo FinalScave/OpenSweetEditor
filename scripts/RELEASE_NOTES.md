@@ -1,6 +1,6 @@
-# OpenSweetEditor v{{VERSION}}
+# SweetEditor v{{VERSION}}
 
-Cross-platform release assets for OpenSweetEditor.
+Cross-platform release assets for SweetEditor.
 
 ## Assets
 

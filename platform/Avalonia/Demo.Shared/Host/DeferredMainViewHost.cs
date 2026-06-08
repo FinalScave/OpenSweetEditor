@@ -93,7 +93,7 @@ public sealed class DeferredMainViewHost : UserControl
                             {
                                 new TextBlock
                                 {
-                                    Text = "OpenSweetEditor",
+                                    Text = "SweetEditor",
                                     Foreground = foreground,
                                     FontSize = 17,
                                     FontWeight = FontWeight.SemiBold,
@@ -126,7 +126,7 @@ public sealed class DeferredMainViewHost : UserControl
                 {
                     new TextBlock
                     {
-                        Text = "OpenSweetEditor failed to initialize",
+                        Text = "SweetEditor failed to initialize",
                         Foreground = new SolidColorBrush(Color.FromUInt32(0xFFF7768E)),
                         FontSize = 18,
                         FontWeight = FontWeight.SemiBold,

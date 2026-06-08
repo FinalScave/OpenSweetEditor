@@ -6,8 +6,8 @@
   "author": "Scave",
   "license": "MIT",
   "keywords": ["code editor", "editor", "rich text", "cross platform", "cpp"],
-  "homepage": "https://github.com/FinalScave/OpenSweetEditor",
-  "repository": "https://github.com/FinalScave/OpenSweetEditor",
+  "homepage": "https://github.com/FinalScave/SweetEditor",
+  "repository": "https://github.com/FinalScave/SweetEditor",
   "dependencies": {
     "libsweeteditor.so": "file:./src/main/cpp/types/libsweeteditor"
   }

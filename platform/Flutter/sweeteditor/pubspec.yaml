@@ -1,8 +1,8 @@
 name: sweeteditor
 description: "Flutter/Dart FFI wrapper for the SweetEditor native code editor engine."
-homepage: https://github.com/FinalScave/OpenSweetEditor
-repository: https://github.com/FinalScave/OpenSweetEditor
-issue_tracker: https://github.com/FinalScave/OpenSweetEditor/issues
+homepage: https://github.com/FinalScave/SweetEditor
+repository: https://github.com/FinalScave/SweetEditor
+issue_tracker: https://github.com/FinalScave/SweetEditor/issues
 resolution: workspace
 version: 1.0.0
 

@@ -16,8 +16,8 @@
 		<Product>SweetEditor</Product>
 		<Version>1.0.4</Version>
 		<Description>Cross-platform code editor core for WinForms, powered by SweetEditor C++.</Description>
-		<PackageProjectUrl>https://github.com/FinalScave/OpenSweetEditor</PackageProjectUrl>
-		<RepositoryUrl>https://github.com/FinalScave/OpenSweetEditor</RepositoryUrl>
+		<PackageProjectUrl>https://github.com/FinalScave/SweetEditor</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/FinalScave/SweetEditor</RepositoryUrl>
 		<RepositoryType>git</RepositoryType>
 		<PackageTags>editor;code-editor;winforms;syntax-highlighting;cpp;ide-editor</PackageTags>
 		<PackageReadmeFile>README.md</PackageReadmeFile>

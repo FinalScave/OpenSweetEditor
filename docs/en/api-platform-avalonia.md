@@ -40,7 +40,7 @@ This document maps to the current Avalonia implementation:
 
 - .NET SDK: `8.0+`
 - Avalonia: `11.3.12`
-- OpenSweetEditor core native prebuilts:
+- SweetEditor core native prebuilts:
   - Windows: `prebuilt/windows/x64/sweeteditor.dll`
   - Linux: `prebuilt/linux/x86_64/libsweeteditor.so`
   - macOS: `prebuilt/osx/*/libsweeteditor.dylib`

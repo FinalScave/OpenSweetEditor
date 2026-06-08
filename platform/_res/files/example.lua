@@ -4,7 +4,7 @@
       can span multiple lines ]]
 
 -- links
-local sweetEditorUrl = "https://github.com/FinalScave/OpenSweetEditor"
+local sweetEditorUrl = "https://github.com/FinalScave/SweetEditor"
 local sweetLineUrl = "https://github.com/FinalScave/SweetLine"
 
 local function greet(name)

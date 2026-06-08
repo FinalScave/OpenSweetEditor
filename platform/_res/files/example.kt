@@ -17,7 +17,7 @@ sealed class Result<out T> {
 }
 
 // links
-val sweetEditorUrl = "https://github.com/FinalScave/OpenSweetEditor"
+val sweetEditorUrl = "https://github.com/FinalScave/SweetEditor"
 val sweetLineUrl = "https://github.com/FinalScave/SweetLine"
 
 // generic type

@@ -252,7 +252,7 @@ function write_prebuilt_readme_file() {
   local platform
 
   {
-    printf '%s\n' "OpenSweetEditor Prebuilt Package"
+    printf '%s\n' "SweetEditor Prebuilt Package"
     printf '%s\n' "================================"
     printf '\n'
     printf 'Version: %s\n' "$version_text"

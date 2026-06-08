@@ -41,7 +41,7 @@
 
 - .NET SDK：`8.0+`
 - Avalonia：`11.3.12`
-- OpenSweetEditor core native 预构建库：
+- SweetEditor core native 预构建库：
   - Windows：`prebuilt/windows/x64/sweeteditor.dll`
   - Linux：`prebuilt/linux/x86_64/libsweeteditor.so`
   - macOS：`prebuilt/osx/*/libsweeteditor.dylib`

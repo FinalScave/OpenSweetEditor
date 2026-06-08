@@ -22,7 +22,7 @@ import java.io.*;
 static int[] colors = {0xFF5B9BD5, 0xFFED7D31, 0xFF70AD47};
 
 // links
-static String sweetEditorUrl = "https://github.com/FinalScave/OpenSweetEditor";
+static String sweetEditorUrl = "https://github.com/FinalScave/SweetEditor";
 static String sweetLineUrl = "https://github.com/FinalScave/SweetLine";
 
 // enum type

@@ -93,8 +93,8 @@ For the complete capability list, see [EditorCore API](docs/en/api-editor-core.m
 ### Build
 
 ```bash
-git clone https://github.com/FinalScave/OpenSweetEditor.git
-cd OpenSweetEditor
+git clone https://github.com/FinalScave/SweetEditor.git
+cd SweetEditor
 mkdir build && cd build
 cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . -j

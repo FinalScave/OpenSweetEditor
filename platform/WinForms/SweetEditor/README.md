@@ -2,9 +2,9 @@
 
 [![NuGet](https://img.shields.io/nuget/v/SweetEditor.svg)](https://www.nuget.org/packages/SweetEditor)
 [![.NET 8](https://img.shields.io/badge/.NET-8.0-blue.svg)](https://dotnet.microsoft.com/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/FinalScave/OpenSweetEditor/blob/main/LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/FinalScave/SweetEditor/blob/main/LICENSE)
 
-A high-performance WinForms code editor control powered by the [SweetEditor](https://github.com/FinalScave/OpenSweetEditor) C++ core.
+A high-performance WinForms code editor control powered by the [SweetEditor](https://github.com/FinalScave/SweetEditor) C++ core.
 
 The C++ core handles text layout, cursor/selection logic, folding, decoration data, and interaction math; the WinForms layer provides native GDI+ rendering and input dispatch.
 
@@ -190,4 +190,4 @@ dotnet nuget push .\platform\WinForms\SweetEditor\bin\Release\SweetEditor.<versi
 
 ## License
 
-[MIT](https://github.com/FinalScave/OpenSweetEditor/blob/main/LICENSE)
+[MIT](https://github.com/FinalScave/SweetEditor/blob/main/LICENSE)

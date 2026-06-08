@@ -132,7 +132,7 @@ function Write-PrebuiltReadmeFile {
     )
 
     $lines = New-Object System.Collections.Generic.List[string]
-    $lines.Add("OpenSweetEditor Prebuilt Package")
+    $lines.Add("SweetEditor Prebuilt Package")
     $lines.Add("================================")
     $lines.Add("")
     $lines.Add("Version: $VersionText")
