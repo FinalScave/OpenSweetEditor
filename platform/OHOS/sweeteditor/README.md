@@ -140,5 +140,4 @@ HAR 入口已经导出集成编辑器所需的主要公共类型：
 
 ## 许可证
 
-该模块基于 GNU Lesser General Public License v2.1 发布，完整条款见 `LICENSE`。
-上游 SweetEditor 仓库还额外提供了一个 `EXCEPTION` 文件，特意注明了 SweetEditor 允许静态链接。
+该模块基于 MIT License 发布，完整条款见 `LICENSE`。

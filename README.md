@@ -10,7 +10,7 @@
 
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg?logo=cplusplus)](https://isocpp.org/)
 [![Platforms](https://img.shields.io/badge/Platforms-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows%20%7C%20Swing%20%7C%20OHOS%20%7C%20Web*-brightgreen.svg)](#platform-support-status)
-[![License](https://img.shields.io/badge/License-LGPL--2.1%2B-yellow.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 **Android / iOS / macOS / Windows / Swing / OHOS / Web\***
 
@@ -177,4 +177,4 @@ See [Contributing Guide](docs/en/join.md) for details.
 
 ## License
 
-SweetEditor is licensed under the [GNU Lesser General Public License v2.1 or later](LICENSE) (LGPL-2.1+), with an additional [Static Linking Exception](EXCEPTION) provided as a supplementary clarification.
+SweetEditor is licensed under the [MIT License](LICENSE).

@@ -2,7 +2,7 @@
 
 [![NuGet](https://img.shields.io/nuget/v/SweetEditor.svg)](https://www.nuget.org/packages/SweetEditor)
 [![.NET 8](https://img.shields.io/badge/.NET-8.0-blue.svg)](https://dotnet.microsoft.com/)
-[![License](https://img.shields.io/badge/License-LGPL--2.1%2B-yellow.svg)](https://github.com/FinalScave/OpenSweetEditor/blob/main/LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/FinalScave/OpenSweetEditor/blob/main/LICENSE)
 
 A high-performance WinForms code editor control powered by the [SweetEditor](https://github.com/FinalScave/OpenSweetEditor) C++ core.
 
@@ -190,4 +190,4 @@ dotnet nuget push .\platform\WinForms\SweetEditor\bin\Release\SweetEditor.<versi
 
 ## License
 
-[LGPL-2.1+](https://github.com/FinalScave/OpenSweetEditor/blob/main/LICENSE)
+[MIT](https://github.com/FinalScave/OpenSweetEditor/blob/main/LICENSE)

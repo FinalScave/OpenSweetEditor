@@ -125,8 +125,8 @@ centralPortal {
         url = "https://github.com/FinalScave/OpenSweetEditor"
         licenses {
             license {
-                name = "LGPL-2.1-or-later"
-                url = "https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html"
+                name = "MIT"
+                url = "https://opensource.org/licenses/MIT"
             }
         }
         developers {

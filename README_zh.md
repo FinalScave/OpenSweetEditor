@@ -10,7 +10,7 @@
 
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg?logo=cplusplus)](https://isocpp.org/)
 [![Platforms](https://img.shields.io/badge/Platforms-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows%20%7C%20Swing%20%7C%20OHOS%20%7C%20Web*-brightgreen.svg)](#平台支持状态)
-[![License](https://img.shields.io/badge/License-LGPL--2.1%2B-yellow.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 **Android · iOS · macOS · Windows · Swing · OHOS · Web\***
 
@@ -177,4 +177,4 @@ SweetEditor 正在构建开放的跨平台编辑器基础设施生态，欢迎�
 
 ## License
 
-SweetEditor 采用 [GNU Lesser General Public License v2.1 or later](LICENSE)（LGPL-2.1+）授权，并附加 [Static Linking Exception](EXCEPTION) 作为补充说明。
+SweetEditor 采用 [MIT License](LICENSE) 授权。

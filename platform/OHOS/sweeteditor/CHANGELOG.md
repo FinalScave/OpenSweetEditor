@@ -28,4 +28,4 @@
 
 - 以 `@qiplat/sweeteditor` 名称发布
 - 随包分发原生依赖 `libsweeteditor.so`
-- 使用 LGPL v2.1 许可证
+- 使用 MIT 许可证
