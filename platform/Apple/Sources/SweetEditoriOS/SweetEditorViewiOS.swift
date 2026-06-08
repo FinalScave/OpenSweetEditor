@@ -300,6 +300,14 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         dispatchEditorActionResult(editorCore.setBatchLineDiagnostics(diagnosticsByLine))
     }
 
+    func setLineDocumentHighlights(line: Int, items: [DocumentHighlight]) {
+        dispatchEditorActionResult(editorCore.setLineDocumentHighlights(line: line, items: items))
+    }
+
+    func setBatchLineDocumentHighlights(_ highlightsByLine: [Int: [DocumentHighlight]]) {
+        dispatchEditorActionResult(editorCore.setBatchLineDocumentHighlights(highlightsByLine))
+    }
+
     func setIndentGuides(_ guides: [IndentGuide]) {
         dispatchEditorActionResult(editorCore.setIndentGuides(guides))
     }
@@ -354,6 +362,10 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
 
     func clearDiagnostics() {
         dispatchEditorActionResult(editorCore.clearDiagnostics())
+    }
+
+    func clearDocumentHighlights() {
+        dispatchEditorActionResult(editorCore.clearDocumentHighlights())
     }
 
     func documentLines() -> [String] {

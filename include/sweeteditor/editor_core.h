@@ -637,6 +637,18 @@ namespace NS_SWEETEDITOR {
     /// Clear all diagnostic decorations
     EditorActionResult clearDiagnostics();
 
+    /// Set document highlight decorations for given line
+    /// @param line Line number
+    /// @param highlights Document highlight list
+    EditorActionResult setLineDocumentHighlights(size_t line, Vector<DocumentHighlight>&& highlights);
+
+    /// Batch set document highlight decorations for multiple lines
+    /// @param entries Array of line->document highlight list pairs
+    EditorActionResult setBatchLineDocumentHighlights(Vector<std::pair<size_t, Vector<DocumentHighlight>>>&& entries);
+
+    /// Clear all document highlight decorations
+    EditorActionResult clearDocumentHighlights();
+
     EditorActionResult setIndentGuides(Vector<IndentGuide>&& guides);
     EditorActionResult setBracketGuides(Vector<BracketGuide>&& guides);
     EditorActionResult setFlowGuides(Vector<FlowGuide>&& guides);

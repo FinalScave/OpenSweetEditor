@@ -178,6 +178,7 @@ class DecorationProviderManager {
     final semanticSpans = <int, List<core.StyleSpan>>{};
     final inlayHints = <int, List<core.InlayHint>>{};
     final diagnostics = <int, List<core.Diagnostic>>{};
+    final documentHighlights = <int, List<core.DocumentHighlight>>{};
     List<core.IndentGuide>? indentGuides;
     List<core.BracketGuide>? bracketGuides;
     List<core.FlowGuide>? flowGuides;
@@ -192,6 +193,7 @@ class DecorationProviderManager {
     var semanticMode = ApplyMode.merge;
     var inlayMode = ApplyMode.merge;
     var diagnosticMode = ApplyMode.merge;
+    var documentHighlightMode = ApplyMode.merge;
     var indentMode = ApplyMode.merge;
     var bracketMode = ApplyMode.merge;
     var flowMode = ApplyMode.merge;
@@ -222,6 +224,13 @@ class DecorationProviderManager {
       diagnosticMode = _mergeMode(diagnosticMode, r.diagnosticsMode);
       if (r.diagnostics != null) {
         _appendMapOfArrays(diagnostics, r.diagnostics!);
+      }
+      documentHighlightMode = _mergeMode(
+        documentHighlightMode,
+        r.documentHighlightsMode,
+      );
+      if (r.documentHighlights != null) {
+        _appendMapOfArrays(documentHighlights, r.documentHighlights!);
       }
       gutterMode = _mergeMode(gutterMode, r.gutterIconsMode);
       if (r.gutterIcons != null) {
@@ -274,6 +283,9 @@ class DecorationProviderManager {
 
     _applyDiagnosticMode(diagnosticMode);
     _setBatchLineDiagnostics(diagnostics);
+
+    _applyDocumentHighlightMode(documentHighlightMode);
+    _setBatchLineDocumentHighlights(documentHighlights);
 
     _applyGuidesMode(indentMode, indentGuides, 0);
     _applyGuidesMode(bracketMode, bracketGuides, 1);
@@ -329,6 +341,17 @@ class DecorationProviderManager {
       _clearDiagnostics();
     } else if (mode == ApplyMode.replaceRange) {
       _clearDiagnosticRange(
+        _lastContextLineRange.start,
+        _lastContextLineRange.end,
+      );
+    }
+  }
+
+  void _applyDocumentHighlightMode(ApplyMode mode) {
+    if (mode == ApplyMode.replaceAll) {
+      _clearDocumentHighlights();
+    } else if (mode == ApplyMode.replaceRange) {
+      _clearDocumentHighlightRange(
         _lastContextLineRange.start,
         _lastContextLineRange.end,
       );
@@ -457,6 +480,15 @@ class DecorationProviderManager {
     _setBatchLineDiagnostics(empty);
   }
 
+  void _clearDocumentHighlightRange(int startLine, int endLine) {
+    final empty = _buildEmptyMapRange<core.DocumentHighlight>(
+      startLine,
+      endLine,
+    );
+    if (empty.isEmpty) return;
+    _setBatchLineDocumentHighlights(empty);
+  }
+
   void _clearGutterRange(int startLine, int endLine) {
     final empty = _buildEmptyMapRange<core.GutterIcon>(startLine, endLine);
     if (empty.isEmpty) return;
@@ -528,6 +560,13 @@ class DecorationProviderManager {
     } else if (patch.diagnosticsMode != ApplyMode.merge) {
       target.diagnostics = null;
       target.diagnosticsMode = patch.diagnosticsMode;
+    }
+    if (patch.documentHighlights != null) {
+      target.documentHighlights = patch.documentHighlights;
+      target.documentHighlightsMode = patch.documentHighlightsMode;
+    } else if (patch.documentHighlightsMode != ApplyMode.merge) {
+      target.documentHighlights = null;
+      target.documentHighlightsMode = patch.documentHighlightsMode;
     }
     if (patch.indentGuides != null) {
       target.indentGuides = patch.indentGuides;
@@ -711,6 +750,20 @@ class DecorationProviderManager {
     final ec = session.editorCore;
     if (ec == null) return;
     session.dispatchEditorActionResult(ec.setBatchLineDiagnostics(items));
+  }
+
+  void _clearDocumentHighlights() {
+    session.dispatchEditorActionResult(
+      session.editorCore?.clearDocumentHighlights(),
+    );
+  }
+
+  void _setBatchLineDocumentHighlights(
+    Map<int, List<core.DocumentHighlight>> items,
+  ) {
+    final ec = session.editorCore;
+    if (ec == null) return;
+    session.dispatchEditorActionResult(ec.setBatchLineDocumentHighlights(items));
   }
 
   void _clearGutterIcons() {

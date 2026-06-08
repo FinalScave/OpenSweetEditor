@@ -26,6 +26,20 @@ namespace NS_SWEETEDITOR {
       model.range_effects.push_back(item);
     }
 
+    void collectVisibleRangeEffectSourceLines(const EditorRenderModel& model,
+                                              TextLayout* text_layout,
+                                              HashSet<size_t>& out_source_lines) {
+      for (const VisualLine& visual_line : model.lines) {
+        out_source_lines.insert(visual_line.logical_line);
+
+        TextRange projected_range;
+        if (text_layout != nullptr
+            && text_layout->getFoldTailProjectedRange(visual_line.logical_line, projected_range)) {
+          out_source_lines.insert(projected_range.start.line);
+        }
+      }
+    }
+
     RangeEffectKind diagnosticRangeEffectKind(DiagnosticSeverity severity) {
       switch (severity) {
         case DiagnosticSeverity::DIAG_WARNING:
@@ -52,6 +66,31 @@ namespace NS_SWEETEDITOR {
         case DiagnosticSeverity::DIAG_ERROR:
         default:
           return styles.diagnostic_error;
+      }
+    }
+
+    RangeEffectKind documentHighlightRangeEffectKind(DocumentHighlightKind kind) {
+      switch (kind) {
+        case DocumentHighlightKind::READ:
+          return RangeEffectKind::DOCUMENT_HIGHLIGHT_READ;
+        case DocumentHighlightKind::WRITE:
+          return RangeEffectKind::DOCUMENT_HIGHLIGHT_WRITE;
+        case DocumentHighlightKind::TEXT:
+        default:
+          return RangeEffectKind::DOCUMENT_HIGHLIGHT_TEXT;
+      }
+    }
+
+    const RangeEffectStyle& documentHighlightRangeEffectStyle(const EditorRangeEffectStyles& styles,
+                                                              DocumentHighlightKind kind) {
+      switch (kind) {
+        case DocumentHighlightKind::READ:
+          return styles.document_highlight_read;
+        case DocumentHighlightKind::WRITE:
+          return styles.document_highlight_write;
+        case DocumentHighlightKind::TEXT:
+        default:
+          return styles.document_highlight_text;
       }
     }
   }
@@ -220,14 +259,7 @@ namespace NS_SWEETEDITOR {
     if (document == nullptr || m_settings_ == nullptr || matches.empty()) return;
 
     HashSet<size_t> source_lines;
-    for (const VisualLine& visual_line : model.lines) {
-      source_lines.insert(visual_line.logical_line);
-
-      TextRange projected_range;
-      if (m_text_layout_->getFoldTailProjectedRange(visual_line.logical_line, projected_range)) {
-        source_lines.insert(projected_range.start.line);
-      }
-    }
+    collectVisibleRangeEffectSourceLines(model, m_text_layout_, source_lines);
 
     HashSet<uint32_t> emitted_matches;
     for (size_t source_line : source_lines) {
@@ -253,6 +285,33 @@ namespace NS_SWEETEDITOR {
 
           appendRangeEffectsForRange(model, line, col_begin, col_end, line_height, 0.0f, kind, style);
         }
+      }
+    }
+  }
+
+  void RenderComposer::buildDocumentHighlightRangeEffects(EditorRenderModel& model, Document* document,
+                                                          float line_height) const {
+    if (m_decorations_ == nullptr || document == nullptr || m_settings_ == nullptr) return;
+
+    HashSet<size_t> source_lines;
+    collectVisibleRangeEffectSourceLines(model, m_text_layout_, source_lines);
+    for (size_t source_line : source_lines) {
+      if (source_line >= document->getLineCount()) continue;
+      const auto& highlights = m_decorations_->getLineDocumentHighlights(source_line);
+      if (highlights.empty()) continue;
+
+      for (const auto& highlight : highlights) {
+        if (highlight.length == 0) continue;
+        const size_t col_begin = highlight.column;
+        const size_t col_end = col_begin + static_cast<size_t>(highlight.length);
+        appendRangeEffectsForRange(model,
+                                   source_line,
+                                   col_begin,
+                                   col_end,
+                                   line_height,
+                                   0.0f,
+                                   documentHighlightRangeEffectKind(highlight.kind),
+                                   documentHighlightRangeEffectStyle(m_settings_->range_effect_styles, highlight.kind));
       }
     }
   }

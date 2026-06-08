@@ -31,6 +31,8 @@ namespace NS_SWEETEDITOR {
                                  int32_t current_index,
                                  float line_height) const;
 
+    void buildDocumentHighlightRangeEffects(EditorRenderModel& model, Document* document, float line_height) const;
+
     void buildLinkedEditingRangeEffects(EditorRenderModel& model, Document* document,
                                         const LinkedEditingSession* linked_editing_session, float line_height) const;
 

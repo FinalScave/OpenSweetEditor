@@ -262,6 +262,24 @@ public class SweetEditor extends JPanel {
                 colorToArgb(theme.searchCurrentBorderColor),
                 0,
                 RangeEffectUnderlineStyle.NONE);
+        styles.documentHighlightText = new RangeEffectStyle(
+                0,
+                colorToArgb(theme.documentHighlightTextBgColor),
+                0,
+                0,
+                RangeEffectUnderlineStyle.NONE);
+        styles.documentHighlightRead = new RangeEffectStyle(
+                0,
+                colorToArgb(theme.documentHighlightReadBgColor),
+                0,
+                0,
+                RangeEffectUnderlineStyle.NONE);
+        styles.documentHighlightWrite = new RangeEffectStyle(
+                0,
+                colorToArgb(theme.documentHighlightWriteBgColor),
+                0,
+                0,
+                RangeEffectUnderlineStyle.NONE);
         styles.imeComposition = new RangeEffectStyle(
                 0,
                 0,
@@ -612,6 +630,16 @@ public class SweetEditor extends JPanel {
         dispatchEditorActionResult(result);
     }
 
+    public void setLineDocumentHighlights(int line, List<? extends DocumentHighlight> items) {
+        EditorActionResult result = editorCore.setLineDocumentHighlights(line, items);
+        dispatchEditorActionResult(result);
+    }
+
+    public void setBatchLineDocumentHighlights(Map<Integer, ? extends List<? extends DocumentHighlight>> highlightsByLine) {
+        EditorActionResult result = editorCore.setBatchLineDocumentHighlights(highlightsByLine);
+        dispatchEditorActionResult(result);
+    }
+
     public void setIndentGuides(List<? extends IndentGuide> guides) {
         EditorActionResult result = editorCore.setIndentGuides(guides);
         dispatchEditorActionResult(result);
@@ -743,6 +771,11 @@ public class SweetEditor extends JPanel {
 
     public void clearDiagnostics() {
         EditorActionResult result = editorCore.clearDiagnostics();
+        dispatchEditorActionResult(result);
+    }
+
+    public void clearDocumentHighlights() {
+        EditorActionResult result = editorCore.clearDocumentHighlights();
         dispatchEditorActionResult(result);
     }
 

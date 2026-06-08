@@ -715,6 +715,9 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_set_batch_line_diagnostics", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetBatchLineDiagnostics(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
+		[DllImport(LibraryName, EntryPoint = "editor_set_batch_line_document_highlights", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr SetBatchLineDocumentHighlights(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
+
 		[DllImport(LibraryName, EntryPoint = "editor_clear_gutter_icons", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr ClearGutterIcons(IntPtr handle, out UIntPtr outSize);
 
@@ -724,8 +727,14 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_set_line_diagnostics", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetLineDiagnostics(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
+		[DllImport(LibraryName, EntryPoint = "editor_set_line_document_highlights", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr SetLineDocumentHighlights(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
+
 		[DllImport(LibraryName, EntryPoint = "editor_clear_diagnostics", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr ClearDiagnostics(IntPtr handle, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_clear_document_highlights", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ClearDocumentHighlights(IntPtr handle, out UIntPtr outSize);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_indent_guides", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetIndentGuides(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
@@ -2201,6 +2210,38 @@ namespace SweetEditor {
 		public EditorActionResult ClearDiagnostics() {
 			if (IsReleased) return EditorActionResult.Empty;
 			IntPtr payloadPtr = NativeMethods.ClearDiagnostics(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		public EditorActionResult SetLineDocumentHighlights(int line, IList<DocumentHighlight> items) {
+			if (IsReleased || items == null) return EditorActionResult.Empty;
+			byte[] payload = CoreProtocol.EncodeSetLineDocumentHighlightsPayload(line, ToReadOnlyList(items));
+			IntPtr payloadPtr = NativeMethods.SetLineDocumentHighlights(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		public EditorActionResult SetLineDocumentHighlights(byte[] payload) {
+			if (IsReleased || payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetLineDocumentHighlights(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		public EditorActionResult SetBatchLineDocumentHighlights(Dictionary<int, IList<DocumentHighlight>> highlightsByLine) {
+			if (IsReleased || highlightsByLine == null || highlightsByLine.Count == 0) return EditorActionResult.Empty;
+			byte[] payload = CoreProtocol.EncodeSetBatchLineDocumentHighlightsPayload(ToReadOnlyLineMap(highlightsByLine));
+			IntPtr payloadPtr = NativeMethods.SetBatchLineDocumentHighlights(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		public EditorActionResult SetBatchLineDocumentHighlights(byte[] payload) {
+			if (IsReleased || payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetBatchLineDocumentHighlights(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		public EditorActionResult ClearDocumentHighlights() {
+			if (IsReleased) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.ClearDocumentHighlights(nativeHandle, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 

@@ -542,6 +542,10 @@ public final class EditorNative {
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS));
 
+    private static final MethodHandle SET_LINE_DOCUMENT_HIGHLIGHTS = downcall("editor_set_line_document_highlights",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
+                    ValueLayout.ADDRESS));
+
 
     private static final MethodHandle CLEAR_GUIDES = downcall("editor_clear_guides",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
@@ -670,6 +674,9 @@ public final class EditorNative {
     private static final MethodHandle CLEAR_DIAGNOSTICS = downcall("editor_clear_diagnostics",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
+    private static final MethodHandle CLEAR_DOCUMENT_HIGHLIGHTS = downcall("editor_clear_document_highlights",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+
 
     private static final MethodHandle SET_MATCHED_BRACKETS = downcall("editor_set_matched_brackets",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
@@ -757,6 +764,7 @@ public final class EditorNative {
     private static final MethodHandle SET_BATCH_LINE_SPANS = downcall("editor_set_batch_line_spans", BINARY_PAYLOAD_DESC);
     private static final MethodHandle REGISTER_BATCH_TEXT_STYLES = downcall("editor_register_batch_text_styles", BINARY_PAYLOAD_DESC);
     private static final MethodHandle SET_BATCH_LINE_DIAGNOSTICS = downcall("editor_set_batch_line_diagnostics", BINARY_PAYLOAD_DESC);
+    private static final MethodHandle SET_BATCH_LINE_DOCUMENT_HIGHLIGHTS = downcall("editor_set_batch_line_document_highlights", BINARY_PAYLOAD_DESC);
     private static final MethodHandle SET_INDENT_GUIDES = downcall("editor_set_indent_guides", BINARY_PAYLOAD_DESC);
     private static final MethodHandle SET_BRACKET_GUIDES = downcall("editor_set_bracket_guides", BINARY_PAYLOAD_DESC);
     private static final MethodHandle SET_FLOW_GUIDES = downcall("editor_set_flow_guides", BINARY_PAYLOAD_DESC);
@@ -1554,6 +1562,20 @@ public final class EditorNative {
         return invokeBinaryResult(outSize -> (MemorySegment) CLEAR_DIAGNOSTICS.invokeExact(handle, outSize));
     }
 
+    public static NativeBinaryResult setLineDocumentHighlights(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_LINE_DOCUMENT_HIGHLIGHTS.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
+    }
+
+    public static NativeBinaryResult setLineDocumentHighlights(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_LINE_DOCUMENT_HIGHLIGHTS.invokeExact(handle, payload, size, outSize));
+    }
+
+    public static NativeBinaryResult clearDocumentHighlights(long handle) {
+        return invokeBinaryResult(outSize -> (MemorySegment) CLEAR_DOCUMENT_HIGHLIGHTS.invokeExact(handle, outSize));
+    }
+
     // ===================== Guide =====================
 
 
@@ -1814,6 +1836,16 @@ public final class EditorNative {
     public static NativeBinaryResult setBatchLineDiagnostics(long handle, MemorySegment payload, long size) {
         return invokeBinaryResult(outSize ->
                 (MemorySegment) SET_BATCH_LINE_DIAGNOSTICS.invokeExact(handle, payload, size, outSize));
+    }
+
+    public static NativeBinaryResult setBatchLineDocumentHighlights(long handle, byte[] payload, Arena arena) {
+        return invokeBinaryResult(arena, outSize -> (MemorySegment) SET_BATCH_LINE_DOCUMENT_HIGHLIGHTS.invokeExact(
+                handle, arena.allocateFrom(ValueLayout.JAVA_BYTE, payload), (long) payload.length, outSize));
+    }
+
+    public static NativeBinaryResult setBatchLineDocumentHighlights(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_BATCH_LINE_DOCUMENT_HIGHLIGHTS.invokeExact(handle, payload, size, outSize));
     }
 
     public static NativeBinaryResult setKeyMap(long handle, byte[] payload, Arena arena) {

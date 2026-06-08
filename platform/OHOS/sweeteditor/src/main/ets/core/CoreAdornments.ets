@@ -17,6 +17,21 @@ export function diagnosticSeverityFromValue(value: number): DiagnosticSeverity {
   }
 }
 
+export enum DocumentHighlightKind {
+  TEXT = 0,
+  READ = 1,
+  WRITE = 2,
+}
+
+export function documentHighlightKindFromValue(value: number): DocumentHighlightKind {
+  switch (value) {
+    case 0: return DocumentHighlightKind.TEXT;
+    case 1: return DocumentHighlightKind.READ;
+    case 2: return DocumentHighlightKind.WRITE;
+    default: return DocumentHighlightKind.TEXT;
+  }
+}
+
 export enum InlayType {
   TEXT = 0,
   ICON = 1,
@@ -74,6 +89,12 @@ export class Diagnostic {
   column: number = 0;
   length: number = 0;
   severity: DiagnosticSeverity = DiagnosticSeverity.DIAG_ERROR;
+}
+
+export class DocumentHighlight {
+  column: number = 0;
+  length: number = 0;
+  kind: DocumentHighlightKind = DocumentHighlightKind.TEXT;
 }
 
 export class FlowGuide {

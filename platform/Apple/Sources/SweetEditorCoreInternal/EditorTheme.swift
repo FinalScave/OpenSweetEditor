@@ -51,6 +51,11 @@ struct EditorTheme {
     var searchCurrentBgColor: CGColor
     var searchCurrentBorderColor: CGColor
 
+    // Document highlight colors.
+    var documentHighlightTextBgColor: CGColor
+    var documentHighlightReadBgColor: CGColor
+    var documentHighlightWriteBgColor: CGColor
+
     var foldPlaceholderBgColor: CGColor
     var foldPlaceholderTextColor: CGColor
     var phantomTextColor: CGColor
@@ -106,6 +111,9 @@ struct EditorTheme {
             searchMatchBgColor:      CGColor(srgbRed: 0xE0/255.0, green: 0xAF/255.0, blue: 0x68/255.0, alpha: 0x33/255.0),
             searchCurrentBgColor:    CGColor(srgbRed: 0xE0/255.0, green: 0xAF/255.0, blue: 0x68/255.0, alpha: 0x55/255.0),
             searchCurrentBorderColor: CGColor(srgbRed: 0xE0/255.0, green: 0xAF/255.0, blue: 0x68/255.0, alpha: 1.0),
+            documentHighlightTextBgColor: CGColor(srgbRed: 0x7A/255.0, green: 0xA2/255.0, blue: 0xF7/255.0, alpha: 0x1C/255.0),
+            documentHighlightReadBgColor: CGColor(srgbRed: 0x7A/255.0, green: 0xA2/255.0, blue: 0xF7/255.0, alpha: 0x26/255.0),
+            documentHighlightWriteBgColor: CGColor(srgbRed: 0x7A/255.0, green: 0xA2/255.0, blue: 0xF7/255.0, alpha: 0x33/255.0),
             foldPlaceholderBgColor:   CGColor(srgbRed: 1.0, green: 1.0, blue: 1.0, alpha: 0.4),
             foldPlaceholderTextColor: CGColor(srgbRed: 0xD4/255.0, green: 0xD4/255.0, blue: 0xD4/255.0, alpha: 0.63),
             phantomTextColor:         CGColor(srgbRed: 0xD4/255.0, green: 0xD4/255.0, blue: 0xD4/255.0, alpha: 0.45),
@@ -157,6 +165,9 @@ struct EditorTheme {
             searchMatchBgColor:      CGColor(srgbRed: 0xF5/255.0, green: 0x9E/255.0, blue: 0x0B/255.0, alpha: 0x33/255.0),
             searchCurrentBgColor:    CGColor(srgbRed: 0xF5/255.0, green: 0x9E/255.0, blue: 0x0B/255.0, alpha: 0x55/255.0),
             searchCurrentBorderColor: CGColor(srgbRed: 0xD9/255.0, green: 0x77/255.0, blue: 0x06/255.0, alpha: 1.0),
+            documentHighlightTextBgColor: CGColor(srgbRed: 0x25/255.0, green: 0x63/255.0, blue: 0xEB/255.0, alpha: 0x14/255.0),
+            documentHighlightReadBgColor: CGColor(srgbRed: 0x25/255.0, green: 0x63/255.0, blue: 0xEB/255.0, alpha: 0x1C/255.0),
+            documentHighlightWriteBgColor: CGColor(srgbRed: 0x25/255.0, green: 0x63/255.0, blue: 0xEB/255.0, alpha: 0x28/255.0),
             foldPlaceholderBgColor:   CGColor(srgbRed: 0.0, green: 0.0, blue: 0.0, alpha: 0.4),
             foldPlaceholderTextColor: CGColor(srgbRed: 0.0, green: 0.0, blue: 0.0, alpha: 0.63),
             phantomTextColor:         CGColor(srgbRed: 0.0, green: 0.0, blue: 0.0, alpha: 0.45),

@@ -90,6 +90,9 @@ class EditorTheme {
   int searchMatchBgColor = 0x33E0AF68;
   int searchCurrentBgColor = 0x55E0AF68;
   int searchCurrentBorderColor = 0xFFE0AF68;
+  int documentHighlightTextBgColor = 0x1C7AA2F7;
+  int documentHighlightReadBgColor = 0x267AA2F7;
+  int documentHighlightWriteBgColor = 0x337AA2F7;
   int inlineSuggestionBarBgColor = 0xF2303030;
   int inlineSuggestionBarAcceptColor = 0xFF4FC1FF;
   int inlineSuggestionBarDismissColor = 0xFFCCCCCC;
@@ -168,6 +171,9 @@ class EditorTheme {
       ..searchMatchBgColor = 0x33F59E0B
       ..searchCurrentBgColor = 0x55F59E0B
       ..searchCurrentBorderColor = 0xFFD97706
+      ..documentHighlightTextBgColor = 0x142563EB
+      ..documentHighlightReadBgColor = 0x1C2563EB
+      ..documentHighlightWriteBgColor = 0x282563EB
       ..inlineSuggestionBarBgColor = 0xF2F0F0F0
       ..inlineSuggestionBarAcceptColor = 0xFF1A73E8
       ..inlineSuggestionBarDismissColor = 0xFF555555

@@ -45,6 +45,7 @@ import com.qiplat.sweeteditor.core.keymap.KeyBinding;
 import com.qiplat.sweeteditor.core.keymap.KeyCode;
 import com.qiplat.sweeteditor.core.keymap.KeyModifier;
 import com.qiplat.sweeteditor.core.adornment.Diagnostic;
+import com.qiplat.sweeteditor.core.adornment.DocumentHighlight;
 import com.qiplat.sweeteditor.core.adornment.FoldRegion;
 
 import com.qiplat.sweeteditor.core.adornment.BracketGuide;
@@ -651,6 +652,24 @@ public class SweetEditor extends View {
                 0,
                 theme.searchCurrentBgColor,
                 theme.searchCurrentBorderColor,
+                0,
+                RangeEffectUnderlineStyle.NONE);
+        styles.documentHighlightText = new RangeEffectStyle(
+                0,
+                theme.documentHighlightTextBgColor,
+                0,
+                0,
+                RangeEffectUnderlineStyle.NONE);
+        styles.documentHighlightRead = new RangeEffectStyle(
+                0,
+                theme.documentHighlightReadBgColor,
+                0,
+                0,
+                RangeEffectUnderlineStyle.NONE);
+        styles.documentHighlightWrite = new RangeEffectStyle(
+                0,
+                theme.documentHighlightWriteBgColor,
+                0,
                 0,
                 RangeEffectUnderlineStyle.NONE);
         return styles;
@@ -1403,6 +1422,16 @@ public class SweetEditor extends View {
         dispatchEditorActionResult(result);
     }
 
+    public void setLineDocumentHighlights(int line, @NonNull List<? extends DocumentHighlight> items) {
+        EditorActionResult result = mEditorCore.setLineDocumentHighlights(line, items);
+        dispatchEditorActionResult(result);
+    }
+
+    public void setBatchLineDocumentHighlights(@Nullable SparseArray<? extends List<? extends DocumentHighlight>> highlightsByLine) {
+        EditorActionResult result = mEditorCore.setBatchLineDocumentHighlights(highlightsByLine);
+        dispatchEditorActionResult(result);
+    }
+
     // -------------------- Guides (Code Structure Lines) --------------------
 
     /**
@@ -1646,6 +1675,11 @@ public class SweetEditor extends View {
      */
     public void clearDiagnostics() {
         EditorActionResult result = mEditorCore.clearDiagnostics();
+        dispatchEditorActionResult(result);
+    }
+
+    public void clearDocumentHighlights() {
+        EditorActionResult result = mEditorCore.clearDocumentHighlights();
         dispatchEditorActionResult(result);
     }
 

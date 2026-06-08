@@ -52,6 +52,7 @@ import { SearchRequest, SearchState, createEmptySearchState } from './core/CoreS
 import {
   BracketGuide,
   Diagnostic,
+  DocumentHighlight,
   FlowGuide,
   FoldRegion,
   CodeLensItem,
@@ -782,6 +783,27 @@ export struct SweetEditor {
       underlineColor: 0,
       underlineStyle: RangeEffectUnderlineStyle.NONE
     };
+    styles.documentHighlightText = {
+      foregroundColor: 0,
+      backgroundColor: theme.documentHighlightTextBgColor,
+      borderColor: 0,
+      underlineColor: 0,
+      underlineStyle: RangeEffectUnderlineStyle.NONE
+    };
+    styles.documentHighlightRead = {
+      foregroundColor: 0,
+      backgroundColor: theme.documentHighlightReadBgColor,
+      borderColor: 0,
+      underlineColor: 0,
+      underlineStyle: RangeEffectUnderlineStyle.NONE
+    };
+    styles.documentHighlightWrite = {
+      foregroundColor: 0,
+      backgroundColor: theme.documentHighlightWriteBgColor,
+      borderColor: 0,
+      underlineColor: 0,
+      underlineStyle: RangeEffectUnderlineStyle.NONE
+    };
     styles.imeComposition = {
       foregroundColor: 0,
       backgroundColor: 0,
@@ -1298,6 +1320,20 @@ export struct SweetEditor {
     this.dispatchEditorActionResult(this.editorCore.setBatchLineDiagnostics(diagsByLine));
   }
 
+  setLineDocumentHighlights(line: number, items: DocumentHighlight[]): void {
+    if (!this.editorCore) {
+      return;
+    }
+    this.dispatchEditorActionResult(this.editorCore.setLineDocumentHighlights(line, items));
+  }
+
+  setBatchLineDocumentHighlights(highlightsByLine: Map<number, DocumentHighlight[]>): void {
+    if (!this.editorCore) {
+      return;
+    }
+    this.dispatchEditorActionResult(this.editorCore.setBatchLineDocumentHighlights(highlightsByLine));
+  }
+
   setIndentGuides(guides: IndentGuide[]): void {
     if (!this.editorCore) {
       return;
@@ -1470,6 +1506,12 @@ export struct SweetEditor {
   clearDiagnostics(): void {
     if (this.editorCore) {
       this.dispatchEditorActionResult(this.editorCore.clearDiagnostics());
+    }
+  }
+
+  clearDocumentHighlights(): void {
+    if (this.editorCore) {
+      this.dispatchEditorActionResult(this.editorCore.clearDocumentHighlights());
     }
   }
 

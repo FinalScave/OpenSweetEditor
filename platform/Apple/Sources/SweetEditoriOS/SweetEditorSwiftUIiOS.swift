@@ -212,6 +212,14 @@ public final class SweetEditorViewiOS: UIView {
         editorView.setBatchLineDiagnostics(diagnosticsByLine)
     }
 
+    public func setLineDocumentHighlights(line: Int, items: [DocumentHighlight]) {
+        editorView.setLineDocumentHighlights(line: line, items: items)
+    }
+
+    public func setBatchLineDocumentHighlights(_ highlightsByLine: [Int: [DocumentHighlight]]) {
+        editorView.setBatchLineDocumentHighlights(highlightsByLine)
+    }
+
     public func setIndentGuides(_ guides: [IndentGuide]) {
         editorView.setIndentGuides(guides)
     }
@@ -266,6 +274,10 @@ public final class SweetEditorViewiOS: UIView {
 
     public func clearDiagnostics() {
         editorView.clearDiagnostics()
+    }
+
+    public func clearDocumentHighlights() {
+        editorView.clearDocumentHighlights()
     }
 
     public func documentLines() -> [String] {

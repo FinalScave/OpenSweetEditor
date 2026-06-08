@@ -41,6 +41,7 @@ public struct DecorationType: OptionSet {
     public static let phantomText = DecorationType(rawValue: 1 << 10)
     public static let codeLens = DecorationType(rawValue: 1 << 11)
     public static let link = DecorationType(rawValue: 1 << 12)
+    public static let documentHighlight = DecorationType(rawValue: 1 << 13)
 }
 
 public protocol DecorationReceiver: AnyObject {
@@ -91,6 +92,18 @@ public struct DecorationResult {
             self.column = column
             self.length = length
             self.severity = severity
+        }
+    }
+
+    public struct DocumentHighlightItem {
+        public let column: Int32
+        public let length: Int32
+        public let kind: DocumentHighlightKind
+
+        public init(column: Int32, length: Int32, kind: DocumentHighlightKind = .TEXT) {
+            self.column = column
+            self.length = length
+            self.kind = kind
         }
     }
 
@@ -190,6 +203,7 @@ public struct DecorationResult {
     public var semanticSpans: [Int: [SpanItem]]?
     public var inlayHints: [Int: [InlayHintItem]]?
     public var diagnostics: [Int: [DiagnosticItem]]?
+    public var documentHighlights: [Int: [DocumentHighlightItem]]?
     public var indentGuides: [IndentGuideItem]?
     public var bracketGuides: [BracketGuideItem]?
     public var flowGuides: [FlowGuideItem]?
@@ -205,6 +219,7 @@ public struct DecorationResult {
         semanticSpans: [Int: [SpanItem]]? = nil,
         inlayHints: [Int: [InlayHintItem]]? = nil,
         diagnostics: [Int: [DiagnosticItem]]? = nil,
+        documentHighlights: [Int: [DocumentHighlightItem]]? = nil,
         indentGuides: [IndentGuideItem]? = nil,
         bracketGuides: [BracketGuideItem]? = nil,
         flowGuides: [FlowGuideItem]? = nil,
@@ -219,6 +234,7 @@ public struct DecorationResult {
         self.semanticSpans = semanticSpans
         self.inlayHints = inlayHints
         self.diagnostics = diagnostics
+        self.documentHighlights = documentHighlights
         self.indentGuides = indentGuides
         self.bracketGuides = bracketGuides
         self.flowGuides = flowGuides
@@ -393,6 +409,7 @@ final class DecorationProviderManager {
         var semanticSpans: [Int: [DecorationResult.SpanItem]] = [:]
         var inlayHints: [Int: [DecorationResult.InlayHintItem]] = [:]
         var diagnostics: [Int: [DecorationResult.DiagnosticItem]] = [:]
+        var documentHighlights: [Int: [DecorationResult.DocumentHighlightItem]] = [:]
         var indentGuides: [DecorationResult.IndentGuideItem]?
         var bracketGuides: [DecorationResult.BracketGuideItem]?
         var flowGuides: [DecorationResult.FlowGuideItem]?
@@ -409,6 +426,7 @@ final class DecorationProviderManager {
             appendMap(&semanticSpans, snapshot.semanticSpans)
             appendMap(&inlayHints, snapshot.inlayHints)
             appendMap(&diagnostics, snapshot.diagnostics)
+            appendMap(&documentHighlights, snapshot.documentHighlights)
             appendMap(&gutterIcons, snapshot.gutterIcons)
             appendMap(&phantomTexts, snapshot.phantomTexts)
             appendMap(&codeLensItems, snapshot.codeLensItems)
@@ -465,6 +483,16 @@ final class DecorationProviderManager {
                 }
             }
             core.setBatchLineDiagnostics(converted)
+        }
+
+        core.clearDocumentHighlights()
+        if !documentHighlights.isEmpty {
+            let converted = documentHighlights.mapValues { items in
+                items.map {
+                    DocumentHighlight(column: $0.column, length: $0.length, kind: $0.kind)
+                }
+            }
+            core.setBatchLineDocumentHighlights(converted)
         }
 
         core.clearGuides()
@@ -558,6 +586,7 @@ final class DecorationProviderManager {
         if let v = patch.semanticSpans { target.semanticSpans = v }
         if let v = patch.inlayHints { target.inlayHints = v }
         if let v = patch.diagnostics { target.diagnostics = v }
+        if let v = patch.documentHighlights { target.documentHighlights = v }
         if let v = patch.indentGuides { target.indentGuides = v }
         if let v = patch.bracketGuides { target.bracketGuides = v }
         if let v = patch.flowGuides { target.flowGuides = v }

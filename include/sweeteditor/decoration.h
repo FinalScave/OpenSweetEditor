@@ -153,6 +153,28 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
+#pragma region Document Highlight
+
+  /// Document highlight kind, aligned with language server document highlights
+  enum struct SE_PROTOCOL_ENUM(adornment, TEXT) DocumentHighlightKind : int32_t {
+    TEXT  = 0,
+    READ  = 1,
+    WRITE = 2,
+  };
+
+  /// Document highlight range for symbol references on a line
+  struct SE_PROTOCOL_IN(adornment) DocumentHighlight {
+    /// Start column in the line
+    uint32_t column {0};
+    /// Character length of the span
+    uint32_t length {0};
+    /// Highlight role
+    SE_PROTOCOL_WIRE(enum_i32)
+    DocumentHighlightKind kind {DocumentHighlightKind::TEXT};
+  };
+
+#pragma endregion
+
 #pragma region Fold (Code Folding)
 
   /// Foldable region
@@ -272,6 +294,15 @@ namespace NS_SWEETEDITOR {
     /// Clear all diagnostic spans
     void clearDiagnostics();
 
+    /// Set document highlights for a given line
+    void setLineDocumentHighlights(size_t line, Vector<DocumentHighlight>&& highlights);
+
+    /// Get document highlights for a given line
+    const Vector<DocumentHighlight>& getLineDocumentHighlights(size_t line) const;
+
+    /// Clear all document highlights
+    void clearDocumentHighlights();
+
     /// Clear all decoration data for a given line
     void clearLine(size_t line);
 
@@ -368,6 +399,7 @@ namespace NS_SWEETEDITOR {
     HashMap<size_t, Vector<CodeLensItem>> m_codelens_items_;
     HashMap<size_t, Vector<LinkSpan>> m_links_;
     Vector<Vector<Diagnostic>> m_diagnostics_;
+    Vector<Vector<DocumentHighlight>> m_document_highlights_;
 
     Vector<IndentGuide> m_indent_guides_;
     Vector<BracketGuide> m_bracket_guides_;
@@ -380,6 +412,7 @@ namespace NS_SWEETEDITOR {
     static const Vector<PhantomText> kEmptyPhantomTexts;
     static const Vector<GutterIcon> kEmptyGutterIcons;
     static const Vector<Diagnostic> kEmptyDiagnostics;
+    static const Vector<DocumentHighlight> kEmptyDocumentHighlights;
     static const Vector<CodeLensItem> kEmptyCodeLensItems;
     static const Vector<LinkSpan> kEmptyLinks;
   };

@@ -7,6 +7,8 @@ import com.qiplat.sweeteditor.core.adornment.BracketGuide;
 import com.qiplat.sweeteditor.core.adornment.CodeLensItem;
 import com.qiplat.sweeteditor.core.adornment.Diagnostic;
 import com.qiplat.sweeteditor.core.adornment.DiagnosticSeverity;
+import com.qiplat.sweeteditor.core.adornment.DocumentHighlight;
+import com.qiplat.sweeteditor.core.adornment.DocumentHighlightKind;
 import com.qiplat.sweeteditor.core.adornment.FlowGuide;
 import com.qiplat.sweeteditor.core.adornment.FoldRegion;
 import com.qiplat.sweeteditor.core.adornment.GutterIcon;
@@ -192,6 +194,24 @@ public final class CoreProtocol {
         if (values != null) {
             for (int i = 0; i < values.size(); i++) {
                 size += sizeOfDiagnostic(values.get(i));
+            }
+        }
+        return size;
+    }
+
+    private static void writeDocumentHighlightList(ByteBuffer data, java.util.List<? extends DocumentHighlight> values) {
+        int count = values == null ? 0 : values.size();
+        data.putInt(count);
+        for (int i = 0; i < count; i++) {
+            writeDocumentHighlightFields(data, values.get(i));
+        }
+    }
+
+    private static int sizeOfDocumentHighlightList(java.util.List<? extends DocumentHighlight> values) {
+        int size = 4;
+        if (values != null) {
+            for (int i = 0; i < values.size(); i++) {
+                size += sizeOfDocumentHighlight(values.get(i));
             }
         }
         return size;
@@ -691,6 +711,25 @@ public final class CoreProtocol {
     }
 
     public static int sizeOfDiagnostic(Diagnostic value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        size += 4;
+        return size;
+    }
+
+    private static void writeDocumentHighlightFields(ByteBuffer data, DocumentHighlight value) {
+        data.putInt(value.column);
+        data.putInt(value.length);
+        data.putInt(value.kind.value);
+    }
+
+    public static void writeDocumentHighlight(ByteBuffer data, DocumentHighlight value) {
+        prepare(data);
+        writeDocumentHighlightFields(data, value);
+    }
+
+    public static int sizeOfDocumentHighlight(DocumentHighlight value) {
         int size = 0;
         size += 4;
         size += 4;
@@ -1984,6 +2023,13 @@ public final class CoreProtocol {
         return data;
     }
 
+    public static ByteBuffer encodeDocumentHighlight(DocumentHighlight value) {
+        ByteBuffer data = ByteBuffer.allocateDirect(sizeOfDocumentHighlight(value)).order(ByteOrder.LITTLE_ENDIAN);
+        writeDocumentHighlightFields(data, value);
+        data.flip();
+        return data;
+    }
+
     public static ByteBuffer encodeFlowGuide(FlowGuide value) {
         ByteBuffer data = ByteBuffer.allocateDirect(sizeOfFlowGuide(value)).order(ByteOrder.LITTLE_ENDIAN);
         writeFlowGuideFields(data, value);
@@ -2165,6 +2211,34 @@ public final class CoreProtocol {
     public static ByteBuffer encodeSetBatchLineDiagnosticsPayload(android.util.SparseArray<? extends java.util.List<? extends Diagnostic>> diagnosticsByLine) {
         ByteBuffer data = ByteBuffer.allocateDirect(sizeOfSetBatchLineDiagnosticsPayloadWire(diagnosticsByLine)).order(ByteOrder.LITTLE_ENDIAN);
         writeSetBatchLineDiagnosticsPayloadWire(data, diagnosticsByLine);
+        data.flip();
+        return data;
+    }
+
+    private static void writeSetBatchLineDocumentHighlightsPayloadWire(ByteBuffer data, android.util.SparseArray<? extends java.util.List<? extends DocumentHighlight>> highlightsByLine) {
+        int count = highlightsByLine == null ? 0 : highlightsByLine.size();
+        data.putInt(count);
+        for (int i = 0; i < count; i++) {
+            data.putInt(highlightsByLine.keyAt(i));
+            writeDocumentHighlightList(data, highlightsByLine.valueAt(i));
+        }
+    }
+
+    private static int sizeOfSetBatchLineDocumentHighlightsPayloadWire(android.util.SparseArray<? extends java.util.List<? extends DocumentHighlight>> highlightsByLine) {
+        int size = 0;
+        size += 4;
+        if (highlightsByLine != null) {
+            for (int i = 0; i < highlightsByLine.size(); i++) {
+                size += 4;
+                size += sizeOfDocumentHighlightList(highlightsByLine.valueAt(i));
+            }
+        }
+        return size;
+    }
+
+    public static ByteBuffer encodeSetBatchLineDocumentHighlightsPayload(android.util.SparseArray<? extends java.util.List<? extends DocumentHighlight>> highlightsByLine) {
+        ByteBuffer data = ByteBuffer.allocateDirect(sizeOfSetBatchLineDocumentHighlightsPayloadWire(highlightsByLine)).order(ByteOrder.LITTLE_ENDIAN);
+        writeSetBatchLineDocumentHighlightsPayloadWire(data, highlightsByLine);
         data.flip();
         return data;
     }
@@ -2478,6 +2552,25 @@ public final class CoreProtocol {
     public static ByteBuffer encodeSetLineDiagnosticsPayload(int line, java.util.List<? extends Diagnostic> diagnostics) {
         ByteBuffer data = ByteBuffer.allocateDirect(sizeOfSetLineDiagnosticsPayloadWire(line, diagnostics)).order(ByteOrder.LITTLE_ENDIAN);
         writeSetLineDiagnosticsPayloadWire(data, line, diagnostics);
+        data.flip();
+        return data;
+    }
+
+    private static void writeSetLineDocumentHighlightsPayloadWire(ByteBuffer data, int line, java.util.List<? extends DocumentHighlight> highlights) {
+        data.putInt(line);
+        writeDocumentHighlightList(data, highlights);
+    }
+
+    private static int sizeOfSetLineDocumentHighlightsPayloadWire(int line, java.util.List<? extends DocumentHighlight> highlights) {
+        int size = 0;
+        size += 4;
+        size += sizeOfDocumentHighlightList(highlights);
+        return size;
+    }
+
+    public static ByteBuffer encodeSetLineDocumentHighlightsPayload(int line, java.util.List<? extends DocumentHighlight> highlights) {
+        ByteBuffer data = ByteBuffer.allocateDirect(sizeOfSetLineDocumentHighlightsPayloadWire(line, highlights)).order(ByteOrder.LITTLE_ENDIAN);
+        writeSetLineDocumentHighlightsPayloadWire(data, line, highlights);
         data.flip();
         return data;
     }

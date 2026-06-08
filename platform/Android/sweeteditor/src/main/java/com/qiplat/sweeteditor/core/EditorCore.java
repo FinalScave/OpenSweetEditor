@@ -11,6 +11,7 @@ import androidx.annotation.Nullable;
 
 import com.qiplat.sweeteditor.core.adornment.CodeLensItem;
 import com.qiplat.sweeteditor.core.adornment.Diagnostic;
+import com.qiplat.sweeteditor.core.adornment.DocumentHighlight;
 import com.qiplat.sweeteditor.core.adornment.FoldRegion;
 import com.qiplat.sweeteditor.core.adornment.GutterIcon;
 import com.qiplat.sweeteditor.core.adornment.LinkSpan;
@@ -1635,6 +1636,37 @@ public class EditorCore {
         return decodeAction(nativeSetBatchLineDiagnostics(mNativeHandle, payload, payload.remaining()));
     }
 
+    @NonNull
+    public EditorActionResult setLineDocumentHighlights(int line, @NonNull List<? extends DocumentHighlight> items) {
+        if (mNativeHandle == 0 || items == null) return new EditorActionResult();
+        return setLineDocumentHighlights(CoreProtocol.encodeSetLineDocumentHighlightsPayload(line, items));
+    }
+
+    @NonNull
+    public EditorActionResult setLineDocumentHighlights(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return new EditorActionResult();
+        return decodeAction(nativeSetLineDocumentHighlights(mNativeHandle, payload, payload.remaining()));
+    }
+
+    @Nullable
+    public EditorActionResult setBatchLineDocumentHighlights(@Nullable SparseArray<? extends List<? extends DocumentHighlight>> highlightsByLine) {
+        if (mNativeHandle == 0 || highlightsByLine == null || highlightsByLine.size() == 0) return null;
+        ByteBuffer payload = CoreProtocol.encodeSetBatchLineDocumentHighlightsPayload(highlightsByLine);
+        return setBatchLineDocumentHighlights(payload);
+    }
+
+    @NonNull
+    public EditorActionResult setBatchLineDocumentHighlights(ByteBuffer payload) {
+        if (mNativeHandle == 0 || payload == null) return new EditorActionResult();
+        return decodeAction(nativeSetBatchLineDocumentHighlights(mNativeHandle, payload, payload.remaining()));
+    }
+
+    @NonNull
+    public EditorActionResult clearDocumentHighlights() {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        return decodeAction(nativeClearDocumentHighlights(mNativeHandle));
+    }
+
     // ==================== Guide (Code Structure Lines) ====================
 
     /**
@@ -2514,6 +2546,15 @@ public class EditorCore {
 
     @FastNative
     private static native ByteBuffer nativeClearDiagnostics(long handle);
+
+    @FastNative
+    private static native ByteBuffer nativeSetLineDocumentHighlights(long handle, ByteBuffer data, int size);
+
+    @FastNative
+    private static native ByteBuffer nativeSetBatchLineDocumentHighlights(long handle, ByteBuffer data, int size);
+
+    @FastNative
+    private static native ByteBuffer nativeClearDocumentHighlights(long handle);
 
     @FastNative
     private static native ByteBuffer nativeSetIndentGuides(long handle, ByteBuffer data, int size);

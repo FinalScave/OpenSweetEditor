@@ -118,6 +118,13 @@ public class EditorTheme {
     /** Current search match highlight border color. */
     public Color searchCurrentBorderColor;
 
+    /** Document highlight TEXT background color, typically with alpha. */
+    public Color documentHighlightTextBgColor;
+    /** Document highlight READ background color, typically with alpha. */
+    public Color documentHighlightReadBgColor;
+    /** Document highlight WRITE background color, typically with alpha. */
+    public Color documentHighlightWriteBgColor;
+
     /** Completion popup background color. */
     public Color completionBgColor;
     /** Completion popup border color. */
@@ -191,6 +198,9 @@ public class EditorTheme {
         t.searchMatchBgColor          = argb(0x33E0AF68);
         t.searchCurrentBgColor        = argb(0x55E0AF68);
         t.searchCurrentBorderColor    = argb(0xFFE0AF68);
+        t.documentHighlightTextBgColor  = argb(0x1C7AA2F7);
+        t.documentHighlightReadBgColor  = argb(0x267AA2F7);
+        t.documentHighlightWriteBgColor = argb(0x337AA2F7);
         t.completionBgColor              = argb(0xF0252830);
         t.completionBorderColor          = argb(0x40607090);
         t.completionSelectedBgColor      = argb(0x3D5580BB);
@@ -253,6 +263,9 @@ public class EditorTheme {
         t.searchMatchBgColor          = argb(0x33F59E0B);
         t.searchCurrentBgColor        = argb(0x55F59E0B);
         t.searchCurrentBorderColor    = argb(0xFFD97706);
+        t.documentHighlightTextBgColor  = argb(0x142563EB);
+        t.documentHighlightReadBgColor  = argb(0x1C2563EB);
+        t.documentHighlightWriteBgColor = argb(0x282563EB);
         t.completionBgColor              = argb(0xF0FAFBFD);
         t.completionBorderColor          = argb(0x30A0A8B8);
         t.completionSelectedBgColor      = argb(0x3D3B82F6);

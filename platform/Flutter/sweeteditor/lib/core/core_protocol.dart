@@ -199,6 +199,24 @@ int _sizeOfDiagnosticList(List<Diagnostic>? values) {
   return size;
 }
 
+void _writeDocumentHighlightList(_BinaryWriter writer, List<DocumentHighlight>? values) {
+  final count = values == null ? 0 : values.length;
+  writer.writeInt32(count);
+  for (var i = 0; i < count; i++) {
+    _writeDocumentHighlight(writer, values![i]);
+  }
+}
+
+int _sizeOfDocumentHighlightList(List<DocumentHighlight>? values) {
+  var size = 4;
+  if (values != null) {
+    for (final value in values) {
+      size += _sizeOfDocumentHighlight(value);
+    }
+  }
+  return size;
+}
+
 void _writeFlowGuideList(_BinaryWriter writer, List<FlowGuide>? values) {
   final count = values == null ? 0 : values.length;
   writer.writeInt32(count);
@@ -673,6 +691,20 @@ void _writeDiagnostic(_BinaryWriter writer, Diagnostic value) {
 }
 
 int _sizeOfDiagnostic(Diagnostic value) {
+  var size = 0;
+  size += 4;
+  size += 4;
+  size += 4;
+  return size;
+}
+
+void _writeDocumentHighlight(_BinaryWriter writer, DocumentHighlight value) {
+  writer.writeUint32(value.column);
+  writer.writeUint32(value.length);
+  writer.writeInt32(value.kind.value);
+}
+
+int _sizeOfDocumentHighlight(DocumentHighlight value) {
   var size = 0;
   size += 4;
   size += 4;
@@ -1785,6 +1817,12 @@ class CoreProtocol {
     return writer.toBytes();
   }
 
+  static Uint8List encodeDocumentHighlight(DocumentHighlight value) {
+    final writer = _BinaryWriter(_sizeOfDocumentHighlight(value));
+    _writeDocumentHighlight(writer, value);
+    return writer.toBytes();
+  }
+
   static Uint8List encodeFlowGuide(FlowGuide value) {
     final writer = _BinaryWriter(_sizeOfFlowGuide(value));
     _writeFlowGuide(writer, value);
@@ -1920,6 +1958,36 @@ class CoreProtocol {
   static Uint8List encodeSetBatchLineDiagnosticsPayload(Map<int, List<Diagnostic>>? diagnosticsByLine) {
     final writer = _BinaryWriter(_sizeOfSetBatchLineDiagnosticsPayloadWire(diagnosticsByLine));
     _writeSetBatchLineDiagnosticsPayloadWire(writer, diagnosticsByLine);
+    return writer.toBytes();
+  }
+
+  static void _writeSetBatchLineDocumentHighlightsPayloadWire(_BinaryWriter writer, Map<int, List<DocumentHighlight>>? highlightsByLine) {
+    final keys = highlightsByLine == null ? <int>[] : (highlightsByLine.keys.toList()..sort());
+    writer.writeInt32(keys.length);
+    for (final key in keys) {
+      final value = highlightsByLine![key]!;
+      writer.writeUint32(key);
+      _writeDocumentHighlightList(writer, value);
+    }
+  }
+
+  static int _sizeOfSetBatchLineDocumentHighlightsPayloadWire(Map<int, List<DocumentHighlight>>? highlightsByLine) {
+    var size = 0;
+    size += 4;
+    if (highlightsByLine != null) {
+      final keys = highlightsByLine.keys.toList()..sort();
+      for (final key in keys) {
+        final value = highlightsByLine[key]!;
+        size += 4;
+        size += _sizeOfDocumentHighlightList(value);
+      }
+    }
+    return size;
+  }
+
+  static Uint8List encodeSetBatchLineDocumentHighlightsPayload(Map<int, List<DocumentHighlight>>? highlightsByLine) {
+    final writer = _BinaryWriter(_sizeOfSetBatchLineDocumentHighlightsPayloadWire(highlightsByLine));
+    _writeSetBatchLineDocumentHighlightsPayloadWire(writer, highlightsByLine);
     return writer.toBytes();
   }
 
@@ -2172,6 +2240,24 @@ class CoreProtocol {
   static Uint8List encodeSetLineDiagnosticsPayload(int line, List<Diagnostic>? diagnostics) {
     final writer = _BinaryWriter(_sizeOfSetLineDiagnosticsPayloadWire(line, diagnostics));
     _writeSetLineDiagnosticsPayloadWire(writer, line, diagnostics);
+    return writer.toBytes();
+  }
+
+  static void _writeSetLineDocumentHighlightsPayloadWire(_BinaryWriter writer, int line, List<DocumentHighlight>? highlights) {
+    writer.writeUint32(line);
+    _writeDocumentHighlightList(writer, highlights);
+  }
+
+  static int _sizeOfSetLineDocumentHighlightsPayloadWire(int line, List<DocumentHighlight>? highlights) {
+    var size = 0;
+    size += 4;
+    size += _sizeOfDocumentHighlightList(highlights);
+    return size;
+  }
+
+  static Uint8List encodeSetLineDocumentHighlightsPayload(int line, List<DocumentHighlight>? highlights) {
+    final writer = _BinaryWriter(_sizeOfSetLineDocumentHighlightsPayloadWire(line, highlights));
+    _writeSetLineDocumentHighlightsPayloadWire(writer, line, highlights);
     return writer.toBytes();
   }
 

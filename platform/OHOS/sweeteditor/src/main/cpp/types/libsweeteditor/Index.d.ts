@@ -181,6 +181,9 @@ export const editorGetLinkTargetAt: (handle: number, line: number, column: numbe
 export const editorSetLineDiagnostics: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
 export const editorSetBatchLineDiagnostics: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
 export const editorClearDiagnostics: (handle: number) => ArrayBuffer | undefined;
+export const editorSetLineDocumentHighlights: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
+export const editorSetBatchLineDocumentHighlights: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
+export const editorClearDocumentHighlights: (handle: number) => ArrayBuffer | undefined;
 
 // Guides
 export const editorSetIndentGuides: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;

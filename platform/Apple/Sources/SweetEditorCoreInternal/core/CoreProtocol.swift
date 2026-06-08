@@ -152,6 +152,11 @@ enum CoreProtocol {
         return DiagnosticSeverity.fromValue(value)
     }
 
+    static func readDocumentHighlightKind(_ reader: inout BinaryReader) -> DocumentHighlightKind? {
+        guard let value = reader.readInt32() else { return nil }
+        return DocumentHighlightKind.fromValue(value)
+    }
+
     static func readInlayType(_ reader: inout BinaryReader) -> InlayType? {
         guard let value = reader.readInt32() else { return nil }
         return InlayType.fromValue(value)
@@ -338,6 +343,21 @@ enum CoreProtocol {
         var size = 4
         for value in values {
             size += sizeOfDiagnostic(value)
+        }
+        return size
+    }
+
+    static func writeDocumentHighlightList(_ writer: inout BinaryWriter, _ values: [DocumentHighlight]) {
+        writer.writeInt32(Int32(values.count))
+        for value in values {
+            writeDocumentHighlight(&writer, value)
+        }
+    }
+
+    static func sizeOfDocumentHighlightList(_ values: [DocumentHighlight]) -> Int {
+        var size = 4
+        for value in values {
+            size += sizeOfDocumentHighlight(value)
         }
         return size
     }
@@ -764,6 +784,16 @@ enum CoreProtocol {
     }
 
     static func sizeOfDiagnostic(_ value: Diagnostic) -> Int {
+        4 + 4 + 4
+    }
+
+    static func writeDocumentHighlight(_ writer: inout BinaryWriter, _ value: DocumentHighlight) {
+        writer.writeInt32(value.column)
+        writer.writeInt32(value.length)
+        writer.writeInt32(value.kind.rawValue)
+    }
+
+    static func sizeOfDocumentHighlight(_ value: DocumentHighlight) -> Int {
         4 + 4 + 4
     }
 
@@ -1828,6 +1858,12 @@ enum CoreProtocol {
         return writer.data()
     }
 
+    static func encodeDocumentHighlight(_ value: DocumentHighlight) -> Data {
+        var writer = BinaryWriter()
+        writeDocumentHighlight(&writer, value)
+        return writer.data()
+    }
+
     static func encodeFlowGuide(_ value: FlowGuide) -> Data {
         var writer = BinaryWriter()
         writeFlowGuide(&writer, value)
@@ -1951,6 +1987,32 @@ enum CoreProtocol {
     static func encodeSetBatchLineDiagnosticsPayload(diagnosticsByLine: [Int32: [Diagnostic]]) -> Data {
         var writer = BinaryWriter()
         writeSetBatchLineDiagnosticsPayloadWire(&writer, diagnosticsByLine: diagnosticsByLine)
+        return writer.data()
+    }
+
+    static func writeSetBatchLineDocumentHighlightsPayloadWire(_ writer: inout BinaryWriter, highlightsByLine: [Int32: [DocumentHighlight]]) {
+        writer.writeInt32(Int32(highlightsByLine.count))
+        for key in highlightsByLine.keys.sorted() {
+            writer.writeInt32(key)
+            let value = highlightsByLine[key]!
+            writeDocumentHighlightList(&writer, value)
+        }
+    }
+
+    static func sizeOfSetBatchLineDocumentHighlightsPayloadWire(highlightsByLine: [Int32: [DocumentHighlight]]) -> Int {
+        var size = 0
+        size += 4
+        for key in highlightsByLine.keys.sorted() {
+            size += 4
+            let value = highlightsByLine[key]!
+            size += sizeOfDocumentHighlightList(value)
+        }
+        return size
+    }
+
+    static func encodeSetBatchLineDocumentHighlightsPayload(highlightsByLine: [Int32: [DocumentHighlight]]) -> Data {
+        var writer = BinaryWriter()
+        writeSetBatchLineDocumentHighlightsPayloadWire(&writer, highlightsByLine: highlightsByLine)
         return writer.data()
     }
 
@@ -2183,6 +2245,24 @@ enum CoreProtocol {
     static func encodeSetLineDiagnosticsPayload(line: Int32, diagnostics: [Diagnostic]) -> Data {
         var writer = BinaryWriter()
         writeSetLineDiagnosticsPayloadWire(&writer, line: line, diagnostics: diagnostics)
+        return writer.data()
+    }
+
+    static func writeSetLineDocumentHighlightsPayloadWire(_ writer: inout BinaryWriter, line: Int32, highlights: [DocumentHighlight]) {
+        writer.writeInt32(line)
+        writeDocumentHighlightList(&writer, highlights)
+    }
+
+    static func sizeOfSetLineDocumentHighlightsPayloadWire(line: Int32, highlights: [DocumentHighlight]) -> Int {
+        var size = 0
+        size += 4
+        size += sizeOfDocumentHighlightList(highlights)
+        return size
+    }
+
+    static func encodeSetLineDocumentHighlightsPayload(line: Int32, highlights: [DocumentHighlight]) -> Data {
+        var writer = BinaryWriter()
+        writeSetLineDocumentHighlightsPayloadWire(&writer, line: line, highlights: highlights)
         return writer.data()
     }
 

@@ -6,6 +6,7 @@ import { SearchRequest, SearchState, createEmptySearchState } from './core/CoreS
 import {
   BracketGuide,
   Diagnostic,
+  DocumentHighlight,
   FlowGuide,
   FoldRegion,
   CodeLensItem,
@@ -434,6 +435,14 @@ export class SweetEditorController {
     this.run((api) => api.setBatchLineDiagnostics(diagsByLine));
   }
 
+  setLineDocumentHighlights(line: number, items: DocumentHighlight[]): void {
+    this.run((api) => api.setLineDocumentHighlights(line, items));
+  }
+
+  setBatchLineDocumentHighlights(highlightsByLine: Map<number, DocumentHighlight[]>): void {
+    this.run((api) => api.setBatchLineDocumentHighlights(highlightsByLine));
+  }
+
   setIndentGuides(guides: IndentGuide[]): void {
     this.run((api) => api.setIndentGuides(guides));
   }
@@ -532,6 +541,10 @@ export class SweetEditorController {
 
   clearDiagnostics(): void {
     this.run((api) => api.clearDiagnostics());
+  }
+
+  clearDocumentHighlights(): void {
+    this.run((api) => api.clearDocumentHighlights());
   }
 
   clearAllDecorations(): void {

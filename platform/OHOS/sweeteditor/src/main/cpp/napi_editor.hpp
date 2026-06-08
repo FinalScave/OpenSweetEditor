@@ -1230,6 +1230,14 @@ public:
     return setBinaryData(env, info, editor_set_batch_line_diagnostics);
   }
 
+  static napi_value setLineDocumentHighlights(napi_env env, napi_callback_info info) {
+    return setBinaryData(env, info, editor_set_line_document_highlights);
+  }
+
+  static napi_value setBatchLineDocumentHighlights(napi_env env, napi_callback_info info) {
+    return setBinaryData(env, info, editor_set_batch_line_document_highlights);
+  }
+
   static napi_value setIndentGuides(napi_env env, napi_callback_info info) {
     return setBinaryData(env, info, editor_set_indent_guides);
   }
@@ -1357,6 +1365,16 @@ public:
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
     size_t out_size = 0;
     return wrap_binary_payload(env, editor_clear_diagnostics(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      &out_size), out_size);
+  }
+
+  static napi_value clearDocumentHighlights(napi_env env, napi_callback_info info) {
+    size_t argc = 1;
+    napi_value args[1];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_clear_document_highlights(
       static_cast<intptr_t>(napi_get_handle(env, args[0])),
       &out_size), out_size);
   }

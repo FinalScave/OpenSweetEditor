@@ -85,6 +85,19 @@ namespace NS_SWEETEDITOR {
            && lhs.composing_columns == rhs.composing_columns;
   }
 
+  static const RangeEffectStyle& documentHighlightPresentationStyle(const EditorRangeEffectStyles& styles,
+                                                                    DocumentHighlightKind kind) {
+    switch (kind) {
+      case DocumentHighlightKind::READ:
+        return styles.document_highlight_read;
+      case DocumentHighlightKind::WRITE:
+        return styles.document_highlight_write;
+      case DocumentHighlightKind::TEXT:
+      default:
+        return styles.document_highlight_text;
+    }
+  }
+
   static bool imeSyncSnapshotRequestsPlatformUpdate(const ImeSyncSnapshot& snapshot) {
     return snapshot.clear_platform_preedit
            || snapshot.has_visible_composition_range
@@ -538,6 +551,7 @@ namespace NS_SWEETEDITOR {
     float line_height = m_text_layout_->getLineHeight();
     PERF_BEGIN(cursor_sel);
     m_render_composer_->buildCursorModel(model, m_caret_.cursor, m_caret_.has_selection, line_height);
+    m_render_composer_->buildDocumentHighlightRangeEffects(model, m_document_.get(), line_height);
     m_render_composer_->buildSearchRangeEffects(model,
                                                 m_document_.get(),
                                                 m_search_matches_,
@@ -2941,6 +2955,27 @@ namespace NS_SWEETEDITOR {
     return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
   }
 
+  EditorActionResult EditorCore::setLineDocumentHighlights(size_t line, Vector<DocumentHighlight>&& highlights) {
+    const ActionSnapshot before = captureActionSnapshot();
+    m_decorations_->setLineDocumentHighlights(line, std::move(highlights));
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
+  }
+
+  EditorActionResult EditorCore::setBatchLineDocumentHighlights(Vector<std::pair<size_t, Vector<DocumentHighlight>>>&& entries) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (entries.empty()) return finishAction(before, EditorActionReason::DECORATION, true);
+    for (auto& [line, highlights] : entries) {
+      m_decorations_->setLineDocumentHighlights(line, std::move(highlights));
+    }
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
+  }
+
+  EditorActionResult EditorCore::clearDocumentHighlights() {
+    const ActionSnapshot before = captureActionSnapshot();
+    m_decorations_->clearDocumentHighlights();
+    return finishAction(before, EditorActionReason::DECORATION, true, {}, true, true);
+  }
+
   EditorActionResult EditorCore::setIndentGuides(Vector<IndentGuide>&& guides) {
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setIndentGuides(std::move(guides));
@@ -3385,6 +3420,7 @@ namespace NS_SWEETEDITOR {
 
   void EditorCore::noteDocumentContentChanged() {
     const uint64_t generation = m_search_generation_->fetch_add(1) + 1;
+    m_decorations_->clearDocumentHighlights();
     clearPendingSearchResult();
     if (m_search_state_.status == SearchStatus::INACTIVE) {
       SharedPtr<const SearchState> published_state = std::atomic_load(&m_published_search_state_);
@@ -3449,6 +3485,22 @@ namespace NS_SWEETEDITOR {
         effect.priority = 100;
         effects.push_back(effect);
       }
+    }
+
+    const auto& document_highlights = m_decorations_->getLineDocumentHighlights(line);
+    for (const auto& highlight : document_highlights) {
+      if (highlight.length == 0) continue;
+      const RangeEffectStyle& style = documentHighlightPresentationStyle(m_settings_.range_effect_styles, highlight.kind);
+      if (style.foreground_color == 0 && style.background_color == 0) {
+        continue;
+      }
+
+      TextPresentationEffect effect;
+      effect.range = {{line, highlight.column}, {line, highlight.column + highlight.length}};
+      effect.foreground_color = style.foreground_color;
+      effect.clear_text_background = style.background_color != 0;
+      effect.priority = 60;
+      effects.push_back(effect);
     }
 
     if (line >= m_search_match_indices_by_line_.size()) {

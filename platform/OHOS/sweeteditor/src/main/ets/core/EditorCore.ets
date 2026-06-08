@@ -37,6 +37,7 @@ import {
   CodeLensItem,
   LinkSpan,
   Diagnostic,
+  DocumentHighlight,
   FlowGuide,
   FoldRegion,
   GutterIcon,
@@ -1003,6 +1004,34 @@ export class EditorCore {
       native.editorSetBatchLineDiagnostics(this.handle, data, data.byteLength));
   }
 
+  setLineDocumentHighlights(lineOrData: number | ArrayBuffer,
+                            itemsOrSize: DocumentHighlight[] | number): EditorActionResult | null {
+    if (lineOrData instanceof ArrayBuffer) {
+      return CoreProtocol.decodeEditorActionResult(
+        native.editorSetLineDocumentHighlights(this.handle, lineOrData, lineOrData.byteLength));
+    }
+    if (!Array.isArray(itemsOrSize)) {
+      return null;
+    }
+    const data = CoreProtocol.encodeSetLineDocumentHighlightsPayload(lineOrData, itemsOrSize);
+    return CoreProtocol.decodeEditorActionResult(
+      native.editorSetLineDocumentHighlights(this.handle, data, data.byteLength));
+  }
+
+  setBatchLineDocumentHighlights(highlightsByLineOrData: Map<number, DocumentHighlight[]> | ArrayBuffer,
+                                 _size?: number): EditorActionResult | null {
+    if (highlightsByLineOrData instanceof ArrayBuffer) {
+      return CoreProtocol.decodeEditorActionResult(
+        native.editorSetBatchLineDocumentHighlights(this.handle, highlightsByLineOrData, highlightsByLineOrData.byteLength));
+    }
+    if (highlightsByLineOrData.size === 0) {
+      return null;
+    }
+    const data = CoreProtocol.encodeSetBatchLineDocumentHighlightsPayload(highlightsByLineOrData);
+    return CoreProtocol.decodeEditorActionResult(
+      native.editorSetBatchLineDocumentHighlights(this.handle, data, data.byteLength));
+  }
+
   // ==================== Guide (Code Structure Lines) ====================
 
   setIndentGuides(guidesOrData: IndentGuide[] | ArrayBuffer, _size?: number): EditorActionResult {
@@ -1161,6 +1190,10 @@ export class EditorCore {
 
   clearDiagnostics(): EditorActionResult {
     return CoreProtocol.decodeEditorActionResult(native.editorClearDiagnostics(this.handle));
+  }
+
+  clearDocumentHighlights(): EditorActionResult {
+    return CoreProtocol.decodeEditorActionResult(native.editorClearDocumentHighlights(this.handle));
   }
 
   clearAllDecorations(): EditorActionResult {

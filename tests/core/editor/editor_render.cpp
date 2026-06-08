@@ -243,6 +243,75 @@ TEST_CASE("EditorCore buildRenderModel applies selection foreground after horizo
   CHECK(line.runs[2].style.color == text_foreground);
 }
 
+TEST_CASE("EditorCore buildRenderModel maps document highlights to range and text effects") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(makeShared<LineArrayDocument>("alpha beta"));
+  editor.setViewport({320, 120});
+
+  constexpr int32_t foreground = static_cast<int32_t>(0xFF102030u);
+  EditorRangeEffectStyles styles;
+  styles.document_highlight_write.foreground_color = foreground;
+  styles.document_highlight_write.background_color = static_cast<int32_t>(0x22102030u);
+  editor.setEditorRangeEffectStyles(styles);
+  editor.setLineDocumentHighlights(0, {{6, 4, DocumentHighlightKind::WRITE}});
+
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+
+  const RangeEffectRenderItem& effect =
+      requireSingleRangeEffectOfKind(model, RangeEffectKind::DOCUMENT_HIGHLIGHT_WRITE);
+  CHECK(effect.style == styles.document_highlight_write);
+
+  REQUIRE(model.lines.size() == 1);
+  const VisualLine& line = model.lines.front();
+  REQUIRE(line.runs.size() == 2);
+  CHECK(visualRunText(line.runs[0]) == "alpha ");
+  CHECK(visualRunText(line.runs[1]) == "beta");
+  CHECK(line.runs[1].style.color == foreground);
+
+  editor.insertText("!");
+  model = {};
+  editor.buildRenderModel(model);
+
+  CHECK(rangeEffectsOfKind(model, RangeEffectKind::DOCUMENT_HIGHLIGHT_WRITE).empty());
+}
+
+TEST_CASE("EditorCore buildRenderModel renders document highlights projected into folded tail") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(makeShared<LineArrayDocument>("head {\ninside\n} tail"));
+  editor.setViewport({320, 120});
+  editor.setFoldRegions({{0, 2, true}});
+
+  EditorRangeEffectStyles styles;
+  styles.document_highlight_read.background_color = static_cast<int32_t>(0x22102030u);
+  editor.setEditorRangeEffectStyles(styles);
+  editor.setLineDocumentHighlights(2, {{2, 4, DocumentHighlightKind::READ}});
+
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+
+  REQUIRE_FALSE(model.lines.empty());
+  const auto tail_it = std::find_if(model.lines.front().runs.begin(), model.lines.front().runs.end(), [](const VisualRun& run) {
+    return run.source_line == 2 && run.type == VisualRunType::TEXT && run.column == 2;
+  });
+  REQUIRE(tail_it != model.lines.front().runs.end());
+
+  bool has_tail_highlight_rect = false;
+  for (const RangeEffectRenderItem* effect : rangeEffectsOfKind(model, RangeEffectKind::DOCUMENT_HIGHLIGHT_READ)) {
+    const Rect& rect = effect->rect;
+    if (rect.origin.x == Catch::Approx(tail_it->x) &&
+        rect.width == Catch::Approx(tail_it->width)) {
+      has_tail_highlight_rect = true;
+      break;
+    }
+  }
+  CHECK(has_tail_highlight_rect);
+}
+
 TEST_CASE("EditorCore buildRenderModel exposes active IME composition range effect") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);

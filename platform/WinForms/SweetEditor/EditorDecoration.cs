@@ -20,6 +20,7 @@ namespace SweetEditor {
 		PhantomText = 1 << 10,
 		CodeLens = 1 << 11,
 		Link = 1 << 12,
+		DocumentHighlight = 1 << 13,
 	}
 
 	public enum DecorationApplyMode {
@@ -69,6 +70,7 @@ namespace SweetEditor {
 		public Dictionary<int, List<StyleSpan>>? SemanticSpans { get; set; }
 		public Dictionary<int, List<InlayHint>>? InlayHints { get; set; }
 		public Dictionary<int, List<Diagnostic>>? Diagnostics { get; set; }
+		public Dictionary<int, List<DocumentHighlight>>? DocumentHighlights { get; set; }
 		public List<IndentGuide>? IndentGuides { get; set; }
 		public List<BracketGuide>? BracketGuides { get; set; }
 		public List<FlowGuide>? FlowGuides { get; set; }
@@ -83,6 +85,7 @@ namespace SweetEditor {
 		public DecorationApplyMode SemanticSpansMode { get; set; } = DecorationApplyMode.MERGE;
 		public DecorationApplyMode InlayHintsMode { get; set; } = DecorationApplyMode.MERGE;
 		public DecorationApplyMode DiagnosticsMode { get; set; } = DecorationApplyMode.MERGE;
+		public DecorationApplyMode DocumentHighlightsMode { get; set; } = DecorationApplyMode.MERGE;
 		public DecorationApplyMode IndentGuidesMode { get; set; } = DecorationApplyMode.MERGE;
 		public DecorationApplyMode BracketGuidesMode { get; set; } = DecorationApplyMode.MERGE;
 		public DecorationApplyMode FlowGuidesMode { get; set; } = DecorationApplyMode.MERGE;
@@ -99,6 +102,7 @@ namespace SweetEditor {
 				SemanticSpans = CopyMap(SemanticSpans),
 				InlayHints = CopyMap(InlayHints),
 				Diagnostics = CopyMap(Diagnostics),
+				DocumentHighlights = CopyMap(DocumentHighlights),
 				IndentGuides = IndentGuides == null ? null : new List<IndentGuide>(IndentGuides),
 				BracketGuides = BracketGuides == null ? null : new List<BracketGuide>(BracketGuides),
 				FlowGuides = FlowGuides == null ? null : new List<FlowGuide>(FlowGuides),
@@ -112,6 +116,7 @@ namespace SweetEditor {
 				SemanticSpansMode = SemanticSpansMode,
 				InlayHintsMode = InlayHintsMode,
 				DiagnosticsMode = DiagnosticsMode,
+				DocumentHighlightsMode = DocumentHighlightsMode,
 				IndentGuidesMode = IndentGuidesMode,
 				BracketGuidesMode = BracketGuidesMode,
 				FlowGuidesMode = FlowGuidesMode,
@@ -290,6 +295,7 @@ namespace SweetEditor {
 			var semanticSpans = new Dictionary<int, List<StyleSpan>>();
 			var inlayHints = new Dictionary<int, List<InlayHint>>();
 			var diagnostics = new Dictionary<int, List<Diagnostic>>();
+			var documentHighlights = new Dictionary<int, List<DocumentHighlight>>();
 			List<IndentGuide>? indentGuides = null;
 			List<BracketGuide>? bracketGuides = null;
 			List<FlowGuide>? flowGuides = null;
@@ -303,6 +309,7 @@ namespace SweetEditor {
 			DecorationApplyMode semanticMode = DecorationApplyMode.MERGE;
 			DecorationApplyMode inlayMode = DecorationApplyMode.MERGE;
 			DecorationApplyMode diagnosticMode = DecorationApplyMode.MERGE;
+			DecorationApplyMode documentHighlightMode = DecorationApplyMode.MERGE;
 			DecorationApplyMode indentMode = DecorationApplyMode.MERGE;
 			DecorationApplyMode bracketMode = DecorationApplyMode.MERGE;
 			DecorationApplyMode flowMode = DecorationApplyMode.MERGE;
@@ -331,6 +338,10 @@ namespace SweetEditor {
 				diagnosticMode = MergeMode(diagnosticMode, r.DiagnosticsMode);
 				if (r.Diagnostics != null) {
 					AppendMap(diagnostics, r.Diagnostics);
+				}
+				documentHighlightMode = MergeMode(documentHighlightMode, r.DocumentHighlightsMode);
+				if (r.DocumentHighlights != null) {
+					AppendMap(documentHighlights, r.DocumentHighlights);
 				}
 				gutterMode = MergeMode(gutterMode, r.GutterIconsMode);
 				if (r.GutterIcons != null) {
@@ -384,6 +395,11 @@ namespace SweetEditor {
 			ApplyDiagnosticMode(diagnosticMode);
 			foreach (var (line, items) in diagnostics) {
 				editor.SetLineDiagnostics(line, items);
+			}
+
+			ApplyDocumentHighlightMode(documentHighlightMode);
+			foreach (var (line, items) in documentHighlights) {
+				editor.SetLineDocumentHighlights(line, items);
 			}
 
 			if (indentMode == DecorationApplyMode.REPLACE_ALL || indentMode == DecorationApplyMode.REPLACE_RANGE) {
@@ -479,6 +495,14 @@ namespace SweetEditor {
 			}
 		}
 
+		private void ApplyDocumentHighlightMode(DecorationApplyMode mode) {
+			if (mode == DecorationApplyMode.REPLACE_ALL) {
+				editor.ClearDocumentHighlights();
+			} else if (mode == DecorationApplyMode.REPLACE_RANGE) {
+				ClearDocumentHighlightRange(lastVisibleLineRange.Start, lastVisibleLineRange.End);
+			}
+		}
+
 		private void ApplyGutterMode(DecorationApplyMode mode) {
 			if (mode == DecorationApplyMode.REPLACE_ALL) {
 				editor.ClearGutterIcons();
@@ -527,6 +551,12 @@ namespace SweetEditor {
 			var empty = BuildEmptyRangeMap<Diagnostic>(startLine, endLine);
 			if (empty.Count == 0) return;
 			editor.SetBatchLineDiagnostics(empty);
+		}
+
+		private void ClearDocumentHighlightRange(int startLine, int endLine) {
+			var empty = BuildEmptyRangeMap<DocumentHighlight>(startLine, endLine);
+			if (empty.Count == 0) return;
+			editor.SetBatchLineDocumentHighlights(empty);
 		}
 
 		private void ClearGutterRange(int startLine, int endLine) {
@@ -662,6 +692,13 @@ namespace SweetEditor {
 			} else if (patch.DiagnosticsMode != DecorationApplyMode.MERGE) {
 				target.Diagnostics = null;
 				target.DiagnosticsMode = patch.DiagnosticsMode;
+			}
+			if (patch.DocumentHighlights != null) {
+				target.DocumentHighlights = patch.DocumentHighlights;
+				target.DocumentHighlightsMode = patch.DocumentHighlightsMode;
+			} else if (patch.DocumentHighlightsMode != DecorationApplyMode.MERGE) {
+				target.DocumentHighlights = null;
+				target.DocumentHighlightsMode = patch.DocumentHighlightsMode;
 			}
 			if (patch.IndentGuides != null) {
 				target.IndentGuides = patch.IndentGuides;

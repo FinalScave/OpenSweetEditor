@@ -1020,6 +1020,28 @@ const uint8_t* editor_clear_diagnostics(intptr_t editor_handle, size_t* out_size
   return editorActionResultToBinary(editor_core->clearDiagnostics(), out_size);
 }
 
+const uint8_t* editor_set_line_document_highlights(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  protocol::SetLineDocumentHighlightsPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(
+      editor_core->setLineDocumentHighlights(payload.line, std::move(payload.highlights)),
+      out_size);
+}
+
+const uint8_t* editor_set_batch_line_document_highlights(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  protocol::SetBatchLineDocumentHighlightsPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setBatchLineDocumentHighlights(std::move(payload.entries)), out_size);
+}
+
+const uint8_t* editor_clear_document_highlights(intptr_t editor_handle, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->clearDocumentHighlights(), out_size);
+}
+
 const uint8_t* editor_set_indent_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   protocol::SetIndentGuidesPayload payload;

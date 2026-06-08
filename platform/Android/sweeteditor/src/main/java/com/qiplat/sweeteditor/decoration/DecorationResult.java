@@ -15,6 +15,7 @@ import com.qiplat.sweeteditor.core.adornment.SeparatorGuide;
 import com.qiplat.sweeteditor.core.adornment.InlayHint;
 import com.qiplat.sweeteditor.core.adornment.CodeLensItem;
 import com.qiplat.sweeteditor.core.adornment.LinkSpan;
+import com.qiplat.sweeteditor.core.adornment.DocumentHighlight;
 import com.qiplat.sweeteditor.core.adornment.PhantomText;
 import com.qiplat.sweeteditor.core.adornment.StyleSpan;
 
@@ -32,6 +33,7 @@ public class DecorationResult {
     @Nullable private SparseArray<List<StyleSpan>> semanticSpans;
     @Nullable private SparseArray<List<InlayHint>> inlayHints;
     @Nullable private SparseArray<List<Diagnostic>> diagnostics;
+    @Nullable private SparseArray<List<DocumentHighlight>> documentHighlights;
     @Nullable private List<IndentGuide> indentGuides;
     @Nullable private List<BracketGuide> bracketGuides;
     @Nullable private List<FlowGuide> flowGuides;
@@ -46,6 +48,7 @@ public class DecorationResult {
     @NonNull private ApplyMode semanticSpansMode = ApplyMode.MERGE;
     @NonNull private ApplyMode inlayHintsMode = ApplyMode.MERGE;
     @NonNull private ApplyMode diagnosticsMode = ApplyMode.MERGE;
+    @NonNull private ApplyMode documentHighlightsMode = ApplyMode.MERGE;
     @NonNull private ApplyMode indentGuidesMode = ApplyMode.MERGE;
     @NonNull private ApplyMode bracketGuidesMode = ApplyMode.MERGE;
     @NonNull private ApplyMode flowGuidesMode = ApplyMode.MERGE;
@@ -60,6 +63,7 @@ public class DecorationResult {
     @Nullable public SparseArray<List<StyleSpan>> getSemanticSpans() { return semanticSpans; }
     @Nullable public SparseArray<List<InlayHint>> getInlayHints() { return inlayHints; }
     @Nullable public SparseArray<List<Diagnostic>> getDiagnostics() { return diagnostics; }
+    @Nullable public SparseArray<List<DocumentHighlight>> getDocumentHighlights() { return documentHighlights; }
     @Nullable public List<IndentGuide> getIndentGuides() { return indentGuides; }
     @Nullable public List<BracketGuide> getBracketGuides() { return bracketGuides; }
     @Nullable public List<FlowGuide> getFlowGuides() { return flowGuides; }
@@ -73,6 +77,7 @@ public class DecorationResult {
     @NonNull public ApplyMode getSemanticSpansMode() { return semanticSpansMode; }
     @NonNull public ApplyMode getInlayHintsMode() { return inlayHintsMode; }
     @NonNull public ApplyMode getDiagnosticsMode() { return diagnosticsMode; }
+    @NonNull public ApplyMode getDocumentHighlightsMode() { return documentHighlightsMode; }
     @NonNull public ApplyMode getIndentGuidesMode() { return indentGuidesMode; }
     @NonNull public ApplyMode getBracketGuidesMode() { return bracketGuidesMode; }
     @NonNull public ApplyMode getFlowGuidesMode() { return flowGuidesMode; }
@@ -87,6 +92,7 @@ public class DecorationResult {
     void setSemanticSpans(@Nullable SparseArray<List<StyleSpan>> v) { this.semanticSpans = v; }
     void setInlayHints(@Nullable SparseArray<List<InlayHint>> v) { this.inlayHints = v; }
     void setDiagnostics(@Nullable SparseArray<List<Diagnostic>> v) { this.diagnostics = v; }
+    void setDocumentHighlights(@Nullable SparseArray<List<DocumentHighlight>> v) { this.documentHighlights = v; }
     void setIndentGuides(@Nullable List<IndentGuide> v) { this.indentGuides = v; }
     void setBracketGuides(@Nullable List<BracketGuide> v) { this.bracketGuides = v; }
     void setFlowGuides(@Nullable List<FlowGuide> v) { this.flowGuides = v; }
@@ -100,6 +106,7 @@ public class DecorationResult {
     void setSemanticSpansMode(@NonNull ApplyMode mode) { this.semanticSpansMode = mode; }
     void setInlayHintsMode(@NonNull ApplyMode mode) { this.inlayHintsMode = mode; }
     void setDiagnosticsMode(@NonNull ApplyMode mode) { this.diagnosticsMode = mode; }
+    void setDocumentHighlightsMode(@NonNull ApplyMode mode) { this.documentHighlightsMode = mode; }
     void setIndentGuidesMode(@NonNull ApplyMode mode) { this.indentGuidesMode = mode; }
     void setBracketGuidesMode(@NonNull ApplyMode mode) { this.bracketGuidesMode = mode; }
     void setFlowGuidesMode(@NonNull ApplyMode mode) { this.flowGuidesMode = mode; }
@@ -116,6 +123,7 @@ public class DecorationResult {
         out.semanticSpans = copySparseArrayOfLists(semanticSpans);
         out.inlayHints = copySparseArrayOfLists(inlayHints);
         out.diagnostics = copySparseArrayOfLists(diagnostics);
+        out.documentHighlights = copySparseArrayOfLists(documentHighlights);
         out.indentGuides = copyList(indentGuides);
         out.bracketGuides = copyList(bracketGuides);
         out.flowGuides = copyList(flowGuides);
@@ -129,6 +137,7 @@ public class DecorationResult {
         out.semanticSpansMode = semanticSpansMode;
         out.inlayHintsMode = inlayHintsMode;
         out.diagnosticsMode = diagnosticsMode;
+        out.documentHighlightsMode = documentHighlightsMode;
         out.indentGuidesMode = indentGuidesMode;
         out.bracketGuidesMode = bracketGuidesMode;
         out.flowGuidesMode = flowGuidesMode;
@@ -164,6 +173,7 @@ public class DecorationResult {
         public Builder semanticSpans(@Nullable SparseArray<List<StyleSpan>> value, @NonNull ApplyMode mode) { result.semanticSpans = value; result.semanticSpansMode = mode; return this; }
         public Builder inlayHints(@Nullable SparseArray<List<InlayHint>> value, @NonNull ApplyMode mode) { result.inlayHints = value; result.inlayHintsMode = mode; return this; }
         public Builder diagnostics(@Nullable SparseArray<List<Diagnostic>> value, @NonNull ApplyMode mode) { result.diagnostics = value; result.diagnosticsMode = mode; return this; }
+        public Builder documentHighlights(@Nullable SparseArray<List<DocumentHighlight>> value, @NonNull ApplyMode mode) { result.documentHighlights = value; result.documentHighlightsMode = mode; return this; }
         public Builder indentGuides(@Nullable List<IndentGuide> value, @NonNull ApplyMode mode) { result.indentGuides = value; result.indentGuidesMode = mode; return this; }
         public Builder bracketGuides(@Nullable List<BracketGuide> value, @NonNull ApplyMode mode) { result.bracketGuides = value; result.bracketGuidesMode = mode; return this; }
         public Builder flowGuides(@Nullable List<FlowGuide> value, @NonNull ApplyMode mode) { result.flowGuides = value; result.flowGuidesMode = mode; return this; }

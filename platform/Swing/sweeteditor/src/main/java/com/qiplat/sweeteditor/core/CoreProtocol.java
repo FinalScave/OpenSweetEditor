@@ -7,6 +7,8 @@ import com.qiplat.sweeteditor.core.adornment.BracketGuide;
 import com.qiplat.sweeteditor.core.adornment.CodeLensItem;
 import com.qiplat.sweeteditor.core.adornment.Diagnostic;
 import com.qiplat.sweeteditor.core.adornment.DiagnosticSeverity;
+import com.qiplat.sweeteditor.core.adornment.DocumentHighlight;
+import com.qiplat.sweeteditor.core.adornment.DocumentHighlightKind;
 import com.qiplat.sweeteditor.core.adornment.FlowGuide;
 import com.qiplat.sweeteditor.core.adornment.FoldRegion;
 import com.qiplat.sweeteditor.core.adornment.GutterIcon;
@@ -289,6 +291,24 @@ public final class CoreProtocol {
         if (values != null) {
             for (int i = 0; i < values.size(); i++) {
                 size += sizeOfDiagnostic(values.get(i));
+            }
+        }
+        return size;
+    }
+
+    private static void writeDocumentHighlightList(BinaryWriter writer, java.util.List<? extends DocumentHighlight> values) {
+        int count = values == null ? 0 : values.size();
+        writer.writeInt32(count);
+        for (int i = 0; i < count; i++) {
+            writeDocumentHighlight(writer, values.get(i));
+        }
+    }
+
+    private static int sizeOfDocumentHighlightList(java.util.List<? extends DocumentHighlight> values) {
+        int size = 4;
+        if (values != null) {
+            for (int i = 0; i < values.size(); i++) {
+                size += sizeOfDocumentHighlight(values.get(i));
             }
         }
         return size;
@@ -772,6 +792,20 @@ public final class CoreProtocol {
     }
 
     public static int sizeOfDiagnostic(Diagnostic value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        size += 4;
+        return size;
+    }
+
+    private static void writeDocumentHighlight(BinaryWriter writer, DocumentHighlight value) {
+        writer.writeInt32(value.column);
+        writer.writeInt32(value.length);
+        writer.writeInt32(value.kind.value);
+    }
+
+    public static int sizeOfDocumentHighlight(DocumentHighlight value) {
         int size = 0;
         size += 4;
         size += 4;
@@ -1846,6 +1880,12 @@ public final class CoreProtocol {
         return writer.segment();
     }
 
+    public static MemorySegment encodeDocumentHighlight(Arena arena, DocumentHighlight value) {
+        BinaryWriter writer = new BinaryWriter(arena, sizeOfDocumentHighlight(value));
+        writeDocumentHighlight(writer, value);
+        return writer.segment();
+    }
+
     public static MemorySegment encodeFlowGuide(Arena arena, FlowGuide value) {
         BinaryWriter writer = new BinaryWriter(arena, sizeOfFlowGuide(value));
         writeFlowGuide(writer, value);
@@ -2028,6 +2068,38 @@ public final class CoreProtocol {
     public static MemorySegment encodeSetBatchLineDiagnosticsPayload(Arena arena, java.util.Map<Integer, ? extends java.util.List<? extends Diagnostic>> diagnosticsByLine) {
         BinaryWriter writer = new BinaryWriter(arena, sizeOfSetBatchLineDiagnosticsPayloadWire(diagnosticsByLine));
         writeSetBatchLineDiagnosticsPayloadWire(writer, diagnosticsByLine);
+        return writer.segment();
+    }
+
+    private static void writeSetBatchLineDocumentHighlightsPayloadWire(BinaryWriter writer, java.util.Map<Integer, ? extends java.util.List<? extends DocumentHighlight>> highlightsByLine) {
+        java.util.TreeMap<Integer, java.util.List<? extends DocumentHighlight>> sortedHighlightsByLine = new java.util.TreeMap<>();
+        if (highlightsByLine != null) {
+            for (java.util.Map.Entry<Integer, ? extends java.util.List<? extends DocumentHighlight>> entry : highlightsByLine.entrySet()) {
+                sortedHighlightsByLine.put(entry.getKey(), entry.getValue());
+            }
+        }
+        writer.writeInt32(sortedHighlightsByLine.size());
+        for (java.util.Map.Entry<Integer, java.util.List<? extends DocumentHighlight>> entry : sortedHighlightsByLine.entrySet()) {
+            writer.writeInt32(entry.getKey());
+            writeDocumentHighlightList(writer, entry.getValue());
+        }
+    }
+
+    private static int sizeOfSetBatchLineDocumentHighlightsPayloadWire(java.util.Map<Integer, ? extends java.util.List<? extends DocumentHighlight>> highlightsByLine) {
+        int size = 0;
+        size += 4;
+        if (highlightsByLine != null) {
+            for (java.util.Map.Entry<Integer, ? extends java.util.List<? extends DocumentHighlight>> entry : highlightsByLine.entrySet()) {
+                size += 4;
+                size += sizeOfDocumentHighlightList(entry.getValue());
+            }
+        }
+        return size;
+    }
+
+    public static MemorySegment encodeSetBatchLineDocumentHighlightsPayload(Arena arena, java.util.Map<Integer, ? extends java.util.List<? extends DocumentHighlight>> highlightsByLine) {
+        BinaryWriter writer = new BinaryWriter(arena, sizeOfSetBatchLineDocumentHighlightsPayloadWire(highlightsByLine));
+        writeSetBatchLineDocumentHighlightsPayloadWire(writer, highlightsByLine);
         return writer.segment();
     }
 
@@ -2358,6 +2430,24 @@ public final class CoreProtocol {
     public static MemorySegment encodeSetLineDiagnosticsPayload(Arena arena, int line, java.util.List<? extends Diagnostic> diagnostics) {
         BinaryWriter writer = new BinaryWriter(arena, sizeOfSetLineDiagnosticsPayloadWire(line, diagnostics));
         writeSetLineDiagnosticsPayloadWire(writer, line, diagnostics);
+        return writer.segment();
+    }
+
+    private static void writeSetLineDocumentHighlightsPayloadWire(BinaryWriter writer, int line, java.util.List<? extends DocumentHighlight> highlights) {
+        writer.writeInt32(line);
+        writeDocumentHighlightList(writer, highlights);
+    }
+
+    private static int sizeOfSetLineDocumentHighlightsPayloadWire(int line, java.util.List<? extends DocumentHighlight> highlights) {
+        int size = 0;
+        size += 4;
+        size += sizeOfDocumentHighlightList(highlights);
+        return size;
+    }
+
+    public static MemorySegment encodeSetLineDocumentHighlightsPayload(Arena arena, int line, java.util.List<? extends DocumentHighlight> highlights) {
+        BinaryWriter writer = new BinaryWriter(arena, sizeOfSetLineDocumentHighlightsPayloadWire(line, highlights));
+        writeSetLineDocumentHighlightsPayloadWire(writer, line, highlights);
         return writer.segment();
     }
 

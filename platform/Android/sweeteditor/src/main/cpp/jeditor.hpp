@@ -952,6 +952,14 @@ public:
     return wrapHandleAction(env, handle, editor_clear_diagnostics);
   }
 
+  static jobject setLineDocumentHighlights(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_line_document_highlights);
+  }
+
+  static jobject clearDocumentHighlights(JNIEnv* env, jclass clazz, jlong handle) {
+    return wrapHandleAction(env, handle, editor_clear_document_highlights);
+  }
+
   // ==================== Set line decorations in batch ====================
 
   static jobject setBatchLineSpans(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
@@ -988,6 +996,10 @@ public:
 
   static jobject setBatchLineDiagnostics(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
     return wrapBufferAction(env, handle, data, size, editor_set_batch_line_diagnostics);
+  }
+
+  static jobject setBatchLineDocumentHighlights(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
+    return wrapBufferAction(env, handle, data, size, editor_set_batch_line_document_highlights);
   }
 
   static jobject setFoldRegions(JNIEnv* env, jclass clazz, jlong handle, jobject data, jint size) {
@@ -1484,6 +1496,8 @@ public:
       {"nativeClearMatchedBrackets", "(J)Ljava/nio/ByteBuffer;", (void*) clearMatchedBrackets},
       {"nativeSetLineDiagnostics", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setLineDiagnostics},
       {"nativeClearDiagnostics", "(J)Ljava/nio/ByteBuffer;", (void*) clearDiagnostics},
+      {"nativeSetLineDocumentHighlights", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setLineDocumentHighlights},
+      {"nativeClearDocumentHighlights", "(J)Ljava/nio/ByteBuffer;", (void*) clearDocumentHighlights},
       {"nativeSetBatchLineSpans", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setBatchLineSpans},
       {"nativeSetBatchLineInlayHints", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setBatchLineInlayHints},
       {"nativeSetBatchLinePhantomTexts", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setBatchLinePhantomTexts},
@@ -1493,6 +1507,7 @@ public:
       {"nativeSetLineLinks", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setLineLinks},
       {"nativeSetBatchLineLinks", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setBatchLineLinks},
       {"nativeSetBatchLineDiagnostics", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setBatchLineDiagnostics},
+      {"nativeSetBatchLineDocumentHighlights", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setBatchLineDocumentHighlights},
       {"nativeSetFoldRegions", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) setFoldRegions},
       {"nativeToggleFoldAt", "(JI)Ljava/nio/ByteBuffer;", (void*) toggleFoldAt},
       {"nativeFoldAt", "(JI)Ljava/nio/ByteBuffer;", (void*) foldAt},

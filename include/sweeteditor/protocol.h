@@ -44,6 +44,18 @@ namespace protocol {
     Vector<std::pair<size_t, Vector<Diagnostic>>> entries;
   };
 
+  struct SE_PROTOCOL_IN(adornment) SetLineDocumentHighlightsPayload {
+    SE_PROTOCOL_WIRE(size_as_u32)
+    size_t line {0};
+    Vector<DocumentHighlight> highlights;
+  };
+
+  struct SE_PROTOCOL_IN(adornment) SetBatchLineDocumentHighlightsPayload {
+    SE_PROTOCOL_MAP_ENTRY(line, highlights)
+    SE_PROTOCOL_KEY_WIRE(size_as_u32)
+    Vector<std::pair<size_t, Vector<DocumentHighlight>>> entries;
+  };
+
   struct SE_PROTOCOL_IN(adornment) SetFoldRegionsPayload {
     Vector<FoldRegion> regions;
   };

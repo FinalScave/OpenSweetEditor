@@ -365,6 +365,15 @@ class EditorSession {
           backgroundColor: _theme.searchCurrentBgColor,
           borderColor: _theme.searchCurrentBorderColor,
         ),
+        documentHighlightText: core.RangeEffectStyle(
+          backgroundColor: _theme.documentHighlightTextBgColor,
+        ),
+        documentHighlightRead: core.RangeEffectStyle(
+          backgroundColor: _theme.documentHighlightReadBgColor,
+        ),
+        documentHighlightWrite: core.RangeEffectStyle(
+          backgroundColor: _theme.documentHighlightWriteBgColor,
+        ),
         imeComposition: core.RangeEffectStyle(
           underlineColor: _theme.compositionUnderlineColor,
           underlineStyle: core.RangeEffectUnderlineStyle.solid,

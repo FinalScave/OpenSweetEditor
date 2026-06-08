@@ -11,6 +11,12 @@ namespace SweetEditor {
         DIAG_HINT = 3
     }
 
+    public enum DocumentHighlightKind {
+        TEXT = 0,
+        READ = 1,
+        WRITE = 2
+    }
+
     public enum InlayType {
         TEXT = 0,
         ICON = 1,
@@ -43,6 +49,12 @@ namespace SweetEditor {
         public int Column { get; set; } = 0;
         public int Length { get; set; } = 0;
         public DiagnosticSeverity Severity { get; set; } = DiagnosticSeverity.DIAG_ERROR;
+    }
+
+    public sealed partial class DocumentHighlight {
+        public int Column { get; set; } = 0;
+        public int Length { get; set; } = 0;
+        public DocumentHighlightKind Kind { get; set; } = DocumentHighlightKind.TEXT;
     }
 
     public sealed partial class FlowGuide {

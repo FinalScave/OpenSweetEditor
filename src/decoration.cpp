@@ -11,6 +11,7 @@ namespace NS_SWEETEDITOR {
   const Vector<PhantomText> DecorationManager::kEmptyPhantomTexts;
   const Vector<GutterIcon> DecorationManager::kEmptyGutterIcons;
   const Vector<Diagnostic> DecorationManager::kEmptyDiagnostics;
+  const Vector<DocumentHighlight> DecorationManager::kEmptyDocumentHighlights;
   const Vector<CodeLensItem> DecorationManager::kEmptyCodeLensItems;
   const Vector<LinkSpan> DecorationManager::kEmptyLinks;
 
@@ -222,6 +223,22 @@ namespace NS_SWEETEDITOR {
     m_diagnostics_.clear();
   }
 
+  void DecorationManager::setLineDocumentHighlights(size_t line, Vector<DocumentHighlight>&& highlights) {
+    if (m_document_highlights_.size() <= line) {
+      m_document_highlights_.resize(line + 1);
+    }
+    m_document_highlights_[line] = std::move(highlights);
+  }
+
+  const Vector<DocumentHighlight>& DecorationManager::getLineDocumentHighlights(size_t line) const {
+    if (line >= m_document_highlights_.size()) return kEmptyDocumentHighlights;
+    return m_document_highlights_[line];
+  }
+
+  void DecorationManager::clearDocumentHighlights() {
+    m_document_highlights_.clear();
+  }
+
   void DecorationManager::clearLine(size_t line) {
     for (size_t i = 0; i < kSpanLayerCount; ++i) {
       if (line < m_layer_spans_[i].size()) m_layer_spans_[i][line].clear();
@@ -229,6 +246,7 @@ namespace NS_SWEETEDITOR {
     if (line < m_inlay_hints_.size()) m_inlay_hints_[line].clear();
     if (line < m_phantom_texts_.size()) m_phantom_texts_[line].clear();
     if (line < m_diagnostics_.size()) m_diagnostics_[line].clear();
+    if (line < m_document_highlights_.size()) m_document_highlights_[line].clear();
     m_gutter_icons_.erase(line);
     m_codelens_items_.erase(line);
     m_links_.erase(line);
@@ -263,6 +281,7 @@ namespace NS_SWEETEDITOR {
     m_inlay_hints_.clear();
     m_phantom_texts_.clear();
     m_diagnostics_.clear();
+    m_document_highlights_.clear();
     m_gutter_icons_.clear();
     m_codelens_items_.clear();
     m_links_.clear();

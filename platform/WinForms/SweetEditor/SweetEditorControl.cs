@@ -168,6 +168,12 @@ namespace SweetEditor {
 		public Color SearchCurrentBgColor { get; set; }
 		/// <summary>Current search match highlight border color (ARGB).</summary>
 		public Color SearchCurrentBorderColor { get; set; }
+		/// <summary>Document highlight TEXT background color (ARGB, typically semi-transparent).</summary>
+		public Color DocumentHighlightTextBgColor { get; set; }
+		/// <summary>Document highlight READ background color (ARGB, typically semi-transparent).</summary>
+		public Color DocumentHighlightReadBgColor { get; set; }
+		/// <summary>Document highlight WRITE background color (ARGB, typically semi-transparent).</summary>
+		public Color DocumentHighlightWriteBgColor { get; set; }
 
 		/// <summary>Completion popup background color.</summary>
 		public Color CompletionBgColor { get; set; }
@@ -238,6 +244,9 @@ namespace SweetEditor {
 			SearchMatchBgColor = Color.FromArgb(unchecked((int)0x33E0AF68)),
 			SearchCurrentBgColor = Color.FromArgb(unchecked((int)0x55E0AF68)),
 			SearchCurrentBorderColor = Color.FromArgb(unchecked((int)0xFFE0AF68)),
+			DocumentHighlightTextBgColor = Color.FromArgb(unchecked((int)0x1C7AA2F7)),
+			DocumentHighlightReadBgColor = Color.FromArgb(unchecked((int)0x267AA2F7)),
+			DocumentHighlightWriteBgColor = Color.FromArgb(unchecked((int)0x337AA2F7)),
 			CompletionBgColor = Color.FromArgb(unchecked((int)0xF0252830)),
 			CompletionBorderColor = Color.FromArgb(unchecked((int)0x40607090)),
 			CompletionSelectedBgColor = Color.FromArgb(unchecked((int)0x3D5580BB)),
@@ -299,6 +308,9 @@ namespace SweetEditor {
 			SearchMatchBgColor = Color.FromArgb(unchecked((int)0x33F59E0B)),
 			SearchCurrentBgColor = Color.FromArgb(unchecked((int)0x55F59E0B)),
 			SearchCurrentBorderColor = Color.FromArgb(unchecked((int)0xFFD97706)),
+			DocumentHighlightTextBgColor = Color.FromArgb(unchecked((int)0x142563EB)),
+			DocumentHighlightReadBgColor = Color.FromArgb(unchecked((int)0x1C2563EB)),
+			DocumentHighlightWriteBgColor = Color.FromArgb(unchecked((int)0x282563EB)),
 			CompletionBgColor = Color.FromArgb(unchecked((int)0xF0FAFBFD)),
 			CompletionBorderColor = Color.FromArgb(unchecked((int)0x30A0A8B8)),
 			CompletionSelectedBgColor = Color.FromArgb(unchecked((int)0x3D3B82F6)),
@@ -763,6 +775,15 @@ namespace SweetEditor {
 				SearchCurrent = new RangeEffectStyle {
 					BackgroundColor = ToCoreColor(theme.SearchCurrentBgColor),
 					BorderColor = ToCoreColor(theme.SearchCurrentBorderColor)
+				},
+				DocumentHighlightText = new RangeEffectStyle {
+					BackgroundColor = ToCoreColor(theme.DocumentHighlightTextBgColor)
+				},
+				DocumentHighlightRead = new RangeEffectStyle {
+					BackgroundColor = ToCoreColor(theme.DocumentHighlightReadBgColor)
+				},
+				DocumentHighlightWrite = new RangeEffectStyle {
+					BackgroundColor = ToCoreColor(theme.DocumentHighlightWriteBgColor)
 				},
 				ImeComposition = new RangeEffectStyle {
 					UnderlineColor = ToCoreColor(theme.CompositionUnderlineColor),
@@ -1306,9 +1327,21 @@ namespace SweetEditor {
 			DispatchEditorActionResult(editorCore.SetBatchLineDiagnostics(diagsByLine));
 		}
 
+		public void SetLineDocumentHighlights(int line, IList<DocumentHighlight> items) {
+			DispatchEditorActionResult(editorCore.SetLineDocumentHighlights(line, items));
+		}
+
+		public void SetBatchLineDocumentHighlights(Dictionary<int, IList<DocumentHighlight>> highlightsByLine) {
+			DispatchEditorActionResult(editorCore.SetBatchLineDocumentHighlights(highlightsByLine));
+		}
+
 		/// <summary>Clears diagnostics.</summary>
 		public void ClearDiagnostics() {
 			DispatchEditorActionResult(editorCore.ClearDiagnostics());
+		}
+
+		public void ClearDocumentHighlights() {
+			DispatchEditorActionResult(editorCore.ClearDocumentHighlights());
 		}
 
 		/// <summary>Sets indent guides.</summary>

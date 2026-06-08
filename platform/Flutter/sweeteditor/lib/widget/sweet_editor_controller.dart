@@ -593,6 +593,23 @@ class SweetEditorController {
     );
   }
 
+  void setLineDocumentHighlights(
+    int line,
+    List<core.DocumentHighlight> items,
+  ) {
+    _runEditorCoreAction(
+      (editorCore) => editorCore.setLineDocumentHighlights(line, items),
+    );
+  }
+
+  void setBatchLineDocumentHighlights(
+    Map<int, List<core.DocumentHighlight>> itemsByLine,
+  ) {
+    _runEditorCoreAction(
+      (editorCore) => editorCore.setBatchLineDocumentHighlights(itemsByLine),
+    );
+  }
+
   void setIndentGuides(List<core.IndentGuide> guides) {
     _runEditorCoreAction((editorCore) => editorCore.setIndentGuides(guides));
   }
@@ -663,6 +680,10 @@ class SweetEditorController {
 
   void clearDiagnostics() {
     _runEditorCoreAction((editorCore) => editorCore.clearDiagnostics());
+  }
+
+  void clearDocumentHighlights() {
+    _runEditorCoreAction((editorCore) => editorCore.clearDocumentHighlights());
   }
 
   void clearAllDecorations() {

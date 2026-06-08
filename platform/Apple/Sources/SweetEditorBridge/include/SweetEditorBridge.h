@@ -233,6 +233,9 @@ const uint8_t* editor_clear_highlights_layer(intptr_t editor_handle, uint8_t lay
 const uint8_t* editor_set_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 const uint8_t* editor_set_batch_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 const uint8_t* editor_clear_diagnostics(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_set_line_document_highlights(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_set_batch_line_document_highlights(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+const uint8_t* editor_clear_document_highlights(intptr_t editor_handle, size_t* out_size);
 
 // ===================== Inlay / Phantom API =====================
 

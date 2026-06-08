@@ -10,6 +10,7 @@ import { IntRange } from '../core/CoreFoundation';
 import {
   BracketGuide,
   Diagnostic,
+  DocumentHighlight,
   FlowGuide,
   FoldRegion,
   GutterIcon,
@@ -228,6 +229,7 @@ export class DecorationProviderManager {
     const semanticSpans = new Map<number, StyleSpan[]>();
     const inlayHints = new Map<number, InlayHint[]>();
     const diagnostics = new Map<number, Diagnostic[]>();
+    const documentHighlights = new Map<number, DocumentHighlight[]>();
     let indentGuides: IndentGuide[] | null = null;
     let bracketGuides: BracketGuide[] | null = null;
     let flowGuides: FlowGuide[] | null = null;
@@ -242,6 +244,7 @@ export class DecorationProviderManager {
     let semanticMode = ApplyMode.MERGE;
     let inlayMode = ApplyMode.MERGE;
     let diagnosticMode = ApplyMode.MERGE;
+    let documentHighlightMode = ApplyMode.MERGE;
     let indentMode = ApplyMode.MERGE;
     let bracketMode = ApplyMode.MERGE;
     let flowMode = ApplyMode.MERGE;
@@ -274,6 +277,10 @@ export class DecorationProviderManager {
       diagnosticMode = mergeMode(diagnosticMode, r.diagnosticsMode);
       if (r.diagnostics) {
         appendMapOfArrays(diagnostics, r.diagnostics);
+      }
+      documentHighlightMode = mergeMode(documentHighlightMode, r.documentHighlightsMode);
+      if (r.documentHighlights) {
+        appendMapOfArrays(documentHighlights, r.documentHighlights);
       }
       gutterMode = mergeMode(gutterMode, r.gutterIconsMode);
       if (r.gutterIcons) {
@@ -324,6 +331,9 @@ export class DecorationProviderManager {
 
     this.applyDiagnosticMode(diagnosticMode);
     this.editor.setBatchLineDiagnostics(diagnostics);
+
+    this.applyDocumentHighlightMode(documentHighlightMode);
+    this.editor.setBatchLineDocumentHighlights(documentHighlights);
 
     this.applyIndentGuidesMode(indentMode, indentGuides);
     this.applyBracketGuidesMode(bracketMode, bracketGuides);
@@ -405,6 +415,14 @@ export class DecorationProviderManager {
       this.editor.clearDiagnostics();
     } else if (mode === ApplyMode.REPLACE_RANGE) {
       this.clearDiagnosticRange(this.lastVisibleLineRange.start, this.lastVisibleLineRange.end);
+    }
+  }
+
+  private applyDocumentHighlightMode(mode: ApplyMode): void {
+    if (mode === ApplyMode.REPLACE_ALL) {
+      this.editor.clearDocumentHighlights();
+    } else if (mode === ApplyMode.REPLACE_RANGE) {
+      this.clearDocumentHighlightRange(this.lastVisibleLineRange.start, this.lastVisibleLineRange.end);
     }
   }
 
@@ -506,6 +524,14 @@ export class DecorationProviderManager {
     this.editor.setBatchLineDiagnostics(empty);
   }
 
+  private clearDocumentHighlightRange(startLine: number, endLine: number): void {
+    const empty = buildEmptyMapRange<DocumentHighlight>(startLine, endLine);
+    if (empty.size === 0) {
+      return;
+    }
+    this.editor.setBatchLineDocumentHighlights(empty);
+  }
+
   private clearGutterRange(startLine: number, endLine: number): void {
     const empty = buildEmptyMapRange<GutterIcon>(startLine, endLine);
     if (empty.size === 0) {
@@ -589,6 +615,13 @@ export class DecorationProviderManager {
     } else if (patch.diagnosticsMode !== ApplyMode.MERGE) {
       target.diagnostics = null;
       target.diagnosticsMode = patch.diagnosticsMode;
+    }
+    if (patch.documentHighlights !== null) {
+      target.documentHighlights = patch.documentHighlights;
+      target.documentHighlightsMode = patch.documentHighlightsMode;
+    } else if (patch.documentHighlightsMode !== ApplyMode.MERGE) {
+      target.documentHighlights = null;
+      target.documentHighlightsMode = patch.documentHighlightsMode;
     }
     if (patch.indentGuides !== null) {
       target.indentGuides = patch.indentGuides;

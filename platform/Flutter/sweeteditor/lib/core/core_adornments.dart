@@ -22,6 +22,24 @@ enum DiagnosticSeverity {
   }
 }
 
+enum DocumentHighlightKind {
+  text(0),
+  read(1),
+  write(2);
+
+  const DocumentHighlightKind(this.value);
+  final int value;
+
+  static DocumentHighlightKind fromValue(int value) {
+    switch (value) {
+      case 0: return text;
+      case 1: return read;
+      case 2: return write;
+      default: return text;
+    }
+  }
+}
+
 enum InlayType {
   text(0),
   icon(1),
@@ -106,6 +124,18 @@ class Diagnostic {
   final int column;
   final int length;
   final DiagnosticSeverity severity;
+}
+
+class DocumentHighlight {
+  const DocumentHighlight({
+    this.column = 0,
+    this.length = 0,
+    this.kind = DocumentHighlightKind.text,
+  });
+
+  final int column;
+  final int length;
+  final DocumentHighlightKind kind;
 }
 
 class FlowGuide {

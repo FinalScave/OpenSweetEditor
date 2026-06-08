@@ -6,6 +6,7 @@ enum DecorationType {
   semanticHighlight,
   inlayHint,
   diagnostic,
+  documentHighlight,
   foldRegion,
   indentGuide,
   bracketGuide,
@@ -55,6 +56,7 @@ class DecorationResult {
   Map<int, List<core.StyleSpan>>? semanticSpans;
   Map<int, List<core.InlayHint>>? inlayHints;
   Map<int, List<core.Diagnostic>>? diagnostics;
+  Map<int, List<core.DocumentHighlight>>? documentHighlights;
   List<core.IndentGuide>? indentGuides;
   List<core.BracketGuide>? bracketGuides;
   List<core.FlowGuide>? flowGuides;
@@ -68,6 +70,7 @@ class DecorationResult {
   ApplyMode semanticSpansMode = ApplyMode.merge;
   ApplyMode inlayHintsMode = ApplyMode.merge;
   ApplyMode diagnosticsMode = ApplyMode.merge;
+  ApplyMode documentHighlightsMode = ApplyMode.merge;
   ApplyMode indentGuidesMode = ApplyMode.merge;
   ApplyMode bracketGuidesMode = ApplyMode.merge;
   ApplyMode flowGuidesMode = ApplyMode.merge;
@@ -84,6 +87,7 @@ class DecorationResult {
       ..semanticSpans = _copyMap(semanticSpans)
       ..inlayHints = _copyMap(inlayHints)
       ..diagnostics = _copyMap(diagnostics)
+      ..documentHighlights = _copyMap(documentHighlights)
       ..indentGuides = indentGuides != null ? List.of(indentGuides!) : null
       ..bracketGuides = bracketGuides != null ? List.of(bracketGuides!) : null
       ..flowGuides = flowGuides != null ? List.of(flowGuides!) : null
@@ -99,6 +103,7 @@ class DecorationResult {
       ..semanticSpansMode = semanticSpansMode
       ..inlayHintsMode = inlayHintsMode
       ..diagnosticsMode = diagnosticsMode
+      ..documentHighlightsMode = documentHighlightsMode
       ..indentGuidesMode = indentGuidesMode
       ..bracketGuidesMode = bracketGuidesMode
       ..flowGuidesMode = flowGuidesMode
@@ -154,6 +159,15 @@ class DecorationResultBuilder {
   ) {
     _result.diagnostics = value;
     _result.diagnosticsMode = mode;
+    return this;
+  }
+
+  DecorationResultBuilder documentHighlights(
+    Map<int, List<core.DocumentHighlight>>? value,
+    ApplyMode mode,
+  ) {
+    _result.documentHighlights = value;
+    _result.documentHighlightsMode = mode;
     return this;
   }
 

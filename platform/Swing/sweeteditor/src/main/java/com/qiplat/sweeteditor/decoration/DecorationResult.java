@@ -1,6 +1,7 @@
 package com.qiplat.sweeteditor.decoration;
 
 import com.qiplat.sweeteditor.core.adornment.Diagnostic;
+import com.qiplat.sweeteditor.core.adornment.DocumentHighlight;
 import com.qiplat.sweeteditor.core.adornment.FoldRegion;
 import com.qiplat.sweeteditor.core.adornment.GutterIcon;
 import com.qiplat.sweeteditor.core.adornment.BracketGuide;
@@ -29,6 +30,7 @@ public class DecorationResult {
     private Map<Integer, List<StyleSpan>> semanticSpans;
     private Map<Integer, List<InlayHint>> inlayHints;
     private Map<Integer, List<Diagnostic>> diagnostics;
+    private Map<Integer, List<DocumentHighlight>> documentHighlights;
     private List<IndentGuide> indentGuides;
     private List<BracketGuide> bracketGuides;
     private List<FlowGuide> flowGuides;
@@ -43,6 +45,7 @@ public class DecorationResult {
     private ApplyMode semanticSpansMode = ApplyMode.MERGE;
     private ApplyMode inlayHintsMode = ApplyMode.MERGE;
     private ApplyMode diagnosticsMode = ApplyMode.MERGE;
+    private ApplyMode documentHighlightsMode = ApplyMode.MERGE;
     private ApplyMode indentGuidesMode = ApplyMode.MERGE;
     private ApplyMode bracketGuidesMode = ApplyMode.MERGE;
     private ApplyMode flowGuidesMode = ApplyMode.MERGE;
@@ -57,6 +60,7 @@ public class DecorationResult {
     public Map<Integer, List<StyleSpan>> getSemanticSpans() { return semanticSpans; }
     public Map<Integer, List<InlayHint>> getInlayHints() { return inlayHints; }
     public Map<Integer, List<Diagnostic>> getDiagnostics() { return diagnostics; }
+    public Map<Integer, List<DocumentHighlight>> getDocumentHighlights() { return documentHighlights; }
     public List<IndentGuide> getIndentGuides() { return indentGuides; }
     public List<BracketGuide> getBracketGuides() { return bracketGuides; }
     public List<FlowGuide> getFlowGuides() { return flowGuides; }
@@ -70,6 +74,7 @@ public class DecorationResult {
     public ApplyMode getSemanticSpansMode() { return semanticSpansMode; }
     public ApplyMode getInlayHintsMode() { return inlayHintsMode; }
     public ApplyMode getDiagnosticsMode() { return diagnosticsMode; }
+    public ApplyMode getDocumentHighlightsMode() { return documentHighlightsMode; }
     public ApplyMode getIndentGuidesMode() { return indentGuidesMode; }
     public ApplyMode getBracketGuidesMode() { return bracketGuidesMode; }
     public ApplyMode getFlowGuidesMode() { return flowGuidesMode; }
@@ -84,6 +89,7 @@ public class DecorationResult {
     void setSemanticSpans(Map<Integer, List<StyleSpan>> v) { this.semanticSpans = v; }
     void setInlayHints(Map<Integer, List<InlayHint>> v) { this.inlayHints = v; }
     void setDiagnostics(Map<Integer, List<Diagnostic>> v) { this.diagnostics = v; }
+    void setDocumentHighlights(Map<Integer, List<DocumentHighlight>> v) { this.documentHighlights = v; }
     void setIndentGuides(List<IndentGuide> v) { this.indentGuides = v; }
     void setBracketGuides(List<BracketGuide> v) { this.bracketGuides = v; }
     void setFlowGuides(List<FlowGuide> v) { this.flowGuides = v; }
@@ -97,6 +103,7 @@ public class DecorationResult {
     void setSemanticSpansMode(ApplyMode mode) { this.semanticSpansMode = mode; }
     void setInlayHintsMode(ApplyMode mode) { this.inlayHintsMode = mode; }
     void setDiagnosticsMode(ApplyMode mode) { this.diagnosticsMode = mode; }
+    void setDocumentHighlightsMode(ApplyMode mode) { this.documentHighlightsMode = mode; }
     void setIndentGuidesMode(ApplyMode mode) { this.indentGuidesMode = mode; }
     void setBracketGuidesMode(ApplyMode mode) { this.bracketGuidesMode = mode; }
     void setFlowGuidesMode(ApplyMode mode) { this.flowGuidesMode = mode; }
@@ -113,6 +120,7 @@ public class DecorationResult {
         out.semanticSpans = copyMapOfLists(semanticSpans);
         out.inlayHints = copyMapOfLists(inlayHints);
         out.diagnostics = copyMapOfLists(diagnostics);
+        out.documentHighlights = copyMapOfLists(documentHighlights);
         out.indentGuides = copyList(indentGuides);
         out.bracketGuides = copyList(bracketGuides);
         out.flowGuides = copyList(flowGuides);
@@ -126,6 +134,7 @@ public class DecorationResult {
         out.semanticSpansMode = semanticSpansMode;
         out.inlayHintsMode = inlayHintsMode;
         out.diagnosticsMode = diagnosticsMode;
+        out.documentHighlightsMode = documentHighlightsMode;
         out.indentGuidesMode = indentGuidesMode;
         out.bracketGuidesMode = bracketGuidesMode;
         out.flowGuidesMode = flowGuidesMode;
@@ -159,6 +168,7 @@ public class DecorationResult {
         public Builder semanticSpans(Map<Integer, List<StyleSpan>> value, ApplyMode mode) { result.semanticSpans = value; result.semanticSpansMode = mode; return this; }
         public Builder inlayHints(Map<Integer, List<InlayHint>> value, ApplyMode mode) { result.inlayHints = value; result.inlayHintsMode = mode; return this; }
         public Builder diagnostics(Map<Integer, List<Diagnostic>> value, ApplyMode mode) { result.diagnostics = value; result.diagnosticsMode = mode; return this; }
+        public Builder documentHighlights(Map<Integer, List<DocumentHighlight>> value, ApplyMode mode) { result.documentHighlights = value; result.documentHighlightsMode = mode; return this; }
         public Builder indentGuides(List<IndentGuide> value, ApplyMode mode) { result.indentGuides = value; result.indentGuidesMode = mode; return this; }
         public Builder bracketGuides(List<BracketGuide> value, ApplyMode mode) { result.bracketGuides = value; result.bracketGuidesMode = mode; return this; }
         public Builder flowGuides(List<FlowGuide> value, ApplyMode mode) { result.flowGuides = value; result.flowGuidesMode = mode; return this; }

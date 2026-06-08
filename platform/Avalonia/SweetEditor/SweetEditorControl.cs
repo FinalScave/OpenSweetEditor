@@ -860,6 +860,15 @@ namespace SweetEditor {
 					BackgroundColor = (int)theme.SearchCurrentBgColor,
 					BorderColor = (int)theme.SearchCurrentBorderColor
 				},
+				DocumentHighlightText = new RangeEffectStyle {
+					BackgroundColor = (int)theme.DocumentHighlightTextBgColor
+				},
+				DocumentHighlightRead = new RangeEffectStyle {
+					BackgroundColor = (int)theme.DocumentHighlightReadBgColor
+				},
+				DocumentHighlightWrite = new RangeEffectStyle {
+					BackgroundColor = (int)theme.DocumentHighlightWriteBgColor
+				},
 				ImeComposition = new RangeEffectStyle {
 					UnderlineColor = (int)theme.CompositionUnderlineColor,
 					UnderlineStyle = RangeEffectUnderlineStyle.SOLID
@@ -1334,6 +1343,15 @@ namespace SweetEditor {
 		internal void SetBatchLineDiagnostics(Dictionary<int, List<Diagnostic>> diagsByLine) =>
 			DispatchEditorActionResult(editorCore.SetBatchLineDiagnostics(diagsByLine));
 
+		public void SetLineDocumentHighlights(int line, IList<DocumentHighlight> items) =>
+			DispatchEditorActionResult(editorCore.SetLineDocumentHighlights(line, items));
+
+		public void SetBatchLineDocumentHighlights(Dictionary<int, IList<DocumentHighlight>> highlightsByLine) =>
+			DispatchEditorActionResult(editorCore.SetBatchLineDocumentHighlights(highlightsByLine));
+
+		internal void SetBatchLineDocumentHighlights(Dictionary<int, List<DocumentHighlight>> highlightsByLine) =>
+			DispatchEditorActionResult(editorCore.SetBatchLineDocumentHighlights(highlightsByLine));
+
 		public void SetIndentGuides(IList<IndentGuide> guides) =>
 			DispatchEditorActionResult(editorCore.SetIndentGuides(guides));
 
@@ -1364,6 +1382,8 @@ namespace SweetEditor {
 		public void ClearGuides() => DispatchEditorActionResult(editorCore.ClearGuides());
 
 		public void ClearDiagnostics() => DispatchEditorActionResult(editorCore.ClearDiagnostics());
+
+		public void ClearDocumentHighlights() => DispatchEditorActionResult(editorCore.ClearDocumentHighlights());
 
 		public void ClearAllDecorations() {
 			DispatchEditorActionResult(editorCore.ClearAllDecorations());

@@ -1021,6 +1021,30 @@ public class EditorCore {
         return decodeAction(EditorNative.setBatchLineDiagnostics(nativeHandle, payload, size));
     }
 
+    public EditorActionResult setLineDocumentHighlights(int line, List<? extends DocumentHighlight> items) {
+        if (items == null) return null;
+        try (Arena tempArena = Arena.ofConfined()) {
+            MemorySegment payload = CoreProtocol.encodeSetLineDocumentHighlightsPayload(tempArena, line, items);
+            return decodeAction(EditorNative.setLineDocumentHighlights(nativeHandle, payload, payload.byteSize()));
+        }
+    }
+
+    public EditorActionResult setLineDocumentHighlights(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setLineDocumentHighlights(nativeHandle, payload, size));
+    }
+
+    public EditorActionResult setBatchLineDocumentHighlights(Map<Integer, ? extends List<? extends DocumentHighlight>> highlightsByLine) {
+        if (highlightsByLine == null || highlightsByLine.isEmpty()) return null;
+        try (Arena tempArena = Arena.ofConfined()) {
+            MemorySegment payload = CoreProtocol.encodeSetBatchLineDocumentHighlightsPayload(tempArena, highlightsByLine);
+            return decodeAction(EditorNative.setBatchLineDocumentHighlights(nativeHandle, payload, payload.byteSize()));
+        }
+    }
+
+    public EditorActionResult setBatchLineDocumentHighlights(MemorySegment payload, long size) {
+        return decodeAction(EditorNative.setBatchLineDocumentHighlights(nativeHandle, payload, size));
+    }
+
     // ===================== Guide (Code Structure Lines) =====================
 
     /** Set indent guide list (global replacement) */
@@ -1152,6 +1176,7 @@ public class EditorCore {
     public EditorActionResult clearGutterIcons() { return decodeAction(EditorNative.clearGutterIcons(nativeHandle)); }
     public EditorActionResult clearGuides() { return decodeAction(EditorNative.clearGuides(nativeHandle)); }
     public EditorActionResult clearDiagnostics() { return decodeAction(EditorNative.clearDiagnostics(nativeHandle)); }
+    public EditorActionResult clearDocumentHighlights() { return decodeAction(EditorNative.clearDocumentHighlights(nativeHandle)); }
     public EditorActionResult clearMatchedBrackets() { return decodeAction(EditorNative.clearMatchedBrackets(nativeHandle)); }
     public EditorActionResult clearAllDecorations() { return decodeAction(EditorNative.clearAllDecorations(nativeHandle)); }
 

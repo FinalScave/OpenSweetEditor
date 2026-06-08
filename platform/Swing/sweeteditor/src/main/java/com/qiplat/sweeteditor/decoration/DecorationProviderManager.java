@@ -2,6 +2,7 @@ package com.qiplat.sweeteditor.decoration;
 
 import com.qiplat.sweeteditor.SweetEditor;
 import com.qiplat.sweeteditor.core.adornment.Diagnostic;
+import com.qiplat.sweeteditor.core.adornment.DocumentHighlight;
 import com.qiplat.sweeteditor.core.adornment.FoldRegion;
 import com.qiplat.sweeteditor.core.adornment.GutterIcon;
 import com.qiplat.sweeteditor.core.adornment.BracketGuide;
@@ -237,6 +238,7 @@ public final class DecorationProviderManager {
         Map<Integer, List<StyleSpan>> semanticSpans = new HashMap<>();
         Map<Integer, List<InlayHint>> inlayHints = new HashMap<>();
         Map<Integer, List<Diagnostic>> diagnostics = new HashMap<>();
+        Map<Integer, List<DocumentHighlight>> documentHighlights = new HashMap<>();
         List<IndentGuide> indentGuides = null;
         List<BracketGuide> bracketGuides = null;
         List<FlowGuide> flowGuides = null;
@@ -250,6 +252,7 @@ public final class DecorationProviderManager {
         DecorationResult.ApplyMode semanticMode = DecorationResult.ApplyMode.MERGE;
         DecorationResult.ApplyMode inlayMode = DecorationResult.ApplyMode.MERGE;
         DecorationResult.ApplyMode diagnosticMode = DecorationResult.ApplyMode.MERGE;
+        DecorationResult.ApplyMode documentHighlightMode = DecorationResult.ApplyMode.MERGE;
         DecorationResult.ApplyMode indentMode = DecorationResult.ApplyMode.MERGE;
         DecorationResult.ApplyMode bracketMode = DecorationResult.ApplyMode.MERGE;
         DecorationResult.ApplyMode flowMode = DecorationResult.ApplyMode.MERGE;
@@ -280,6 +283,10 @@ public final class DecorationProviderManager {
             diagnosticMode = mergeMode(diagnosticMode, r.getDiagnosticsMode());
             if (r.getDiagnostics() != null) {
                 appendMapOfList(diagnostics, r.getDiagnostics());
+            }
+            documentHighlightMode = mergeMode(documentHighlightMode, r.getDocumentHighlightsMode());
+            if (r.getDocumentHighlights() != null) {
+                appendMapOfList(documentHighlights, r.getDocumentHighlights());
             }
             gutterMode = mergeMode(gutterMode, r.getGutterIconsMode());
             if (r.getGutterIcons() != null) {
@@ -330,6 +337,9 @@ public final class DecorationProviderManager {
 
         applyDiagnosticMode(diagnosticMode);
         editor.setBatchLineDiagnostics(diagnostics);
+
+        applyDocumentHighlightMode(documentHighlightMode);
+        editor.setBatchLineDocumentHighlights(documentHighlights);
 
         applyIndentGuidesMode(indentMode, indentGuides);
         applyBracketGuidesMode(bracketMode, bracketGuides);
@@ -394,6 +404,14 @@ public final class DecorationProviderManager {
             editor.clearDiagnostics();
         } else if (mode == DecorationResult.ApplyMode.REPLACE_RANGE) {
             clearDiagnosticRange(lastContextLineRange.start, lastContextLineRange.end);
+        }
+    }
+
+    private void applyDocumentHighlightMode(DecorationResult.ApplyMode mode) {
+        if (mode == DecorationResult.ApplyMode.REPLACE_ALL) {
+            editor.clearDocumentHighlights();
+        } else if (mode == DecorationResult.ApplyMode.REPLACE_RANGE) {
+            clearDocumentHighlightRange(lastContextLineRange.start, lastContextLineRange.end);
         }
     }
 
@@ -477,6 +495,12 @@ public final class DecorationProviderManager {
         Map<Integer, List<Diagnostic>> empty = buildEmptyRangeMap(startLine, endLine);
         if (empty.isEmpty()) return;
         editor.setBatchLineDiagnostics(empty);
+    }
+
+    private void clearDocumentHighlightRange(int startLine, int endLine) {
+        Map<Integer, List<DocumentHighlight>> empty = buildEmptyRangeMap(startLine, endLine);
+        if (empty.isEmpty()) return;
+        editor.setBatchLineDocumentHighlights(empty);
     }
 
     private void clearGutterRange(int startLine, int endLine) {
@@ -602,6 +626,13 @@ public final class DecorationProviderManager {
         } else if (patch.getDiagnosticsMode() != DecorationResult.ApplyMode.MERGE) {
             target.setDiagnostics(null);
             target.setDiagnosticsMode(patch.getDiagnosticsMode());
+        }
+        if (patch.getDocumentHighlights() != null) {
+            target.setDocumentHighlights(patch.getDocumentHighlights());
+            target.setDocumentHighlightsMode(patch.getDocumentHighlightsMode());
+        } else if (patch.getDocumentHighlightsMode() != DecorationResult.ApplyMode.MERGE) {
+            target.setDocumentHighlights(null);
+            target.setDocumentHighlightsMode(patch.getDocumentHighlightsMode());
         }
         if (patch.getIndentGuides() != null) {
             target.setIndentGuides(patch.getIndentGuides());

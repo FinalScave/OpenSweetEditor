@@ -1616,6 +1616,51 @@ class EditorCore {
     );
   }
 
+  EditorActionResult setLineDocumentHighlights(
+    int line,
+    List<DocumentHighlight> items,
+  ) {
+    return setLineDocumentHighlightsRaw(
+      CoreProtocol.encodeSetLineDocumentHighlightsPayload(line, items),
+    );
+  }
+
+  EditorActionResult setLineDocumentHighlightsRaw(Uint8List data) {
+    _ensureOpen();
+    return _callWithBinaryActionData(
+      data,
+      (ptr, len, outSize) => bindings.editor_set_line_document_highlights(
+        _handle,
+        ptr,
+        len,
+        outSize,
+      ),
+    );
+  }
+
+  EditorActionResult? setBatchLineDocumentHighlights(
+    Map<int, List<DocumentHighlight>> itemsByLine,
+  ) {
+    if (itemsByLine.isEmpty) return null;
+    return setBatchLineDocumentHighlightsRaw(
+      CoreProtocol.encodeSetBatchLineDocumentHighlightsPayload(itemsByLine),
+    );
+  }
+
+  EditorActionResult setBatchLineDocumentHighlightsRaw(Uint8List data) {
+    _ensureOpen();
+    return _callWithBinaryActionData(
+      data,
+      (ptr, len, outSize) =>
+          bindings.editor_set_batch_line_document_highlights(
+        _handle,
+        ptr,
+        len,
+        outSize,
+      ),
+    );
+  }
+
   EditorActionResult setIndentGuides(List<IndentGuide> guides) {
     return setIndentGuidesRaw(
       CoreProtocol.encodeSetIndentGuidesPayload(guides),
@@ -1751,6 +1796,13 @@ class EditorCore {
     _ensureOpen();
     return _callAndParseAction(
       (outSize) => bindings.editor_clear_diagnostics(_handle, outSize),
+    );
+  }
+
+  EditorActionResult clearDocumentHighlights() {
+    _ensureOpen();
+    return _callAndParseAction(
+      (outSize) => bindings.editor_clear_document_highlights(_handle, outSize),
     );
   }
 

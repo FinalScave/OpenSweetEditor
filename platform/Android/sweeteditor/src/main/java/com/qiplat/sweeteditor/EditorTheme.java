@@ -117,6 +117,13 @@ public class EditorTheme {
     /** Current search match highlight border color (ARGB). */
     public int searchCurrentBorderColor;
 
+    /** Document highlight TEXT background color (ARGB, recommended to include transparency). */
+    public int documentHighlightTextBgColor;
+    /** Document highlight READ background color (ARGB, recommended to include transparency). */
+    public int documentHighlightReadBgColor;
+    /** Document highlight WRITE background color (ARGB, recommended to include transparency). */
+    public int documentHighlightWriteBgColor;
+
     /** Inline suggestion action bar background color (ARGB). */
     public int inlineSuggestionBarBgColor;
     /** Inline suggestion action bar accept button text color (ARGB). */
@@ -212,6 +219,9 @@ public class EditorTheme {
         t.searchMatchBgColor          = 0x33E0AF68;
         t.searchCurrentBgColor        = 0x55E0AF68;
         t.searchCurrentBorderColor    = 0xFFE0AF68;
+        t.documentHighlightTextBgColor  = 0x1C7AA2F7;
+        t.documentHighlightReadBgColor  = 0x267AA2F7;
+        t.documentHighlightWriteBgColor = 0x337AA2F7;
         t.inlineSuggestionBarBgColor     = 0xF2303030;
         t.inlineSuggestionBarAcceptColor = 0xFF4FC1FF;
         t.inlineSuggestionBarDismissColor = 0xFFCCCCCC;
@@ -285,6 +295,9 @@ public class EditorTheme {
         t.searchMatchBgColor          = 0x33F59E0B;
         t.searchCurrentBgColor        = 0x55F59E0B;
         t.searchCurrentBorderColor    = 0xFFD97706;
+        t.documentHighlightTextBgColor  = 0x142563EB;
+        t.documentHighlightReadBgColor  = 0x1C2563EB;
+        t.documentHighlightWriteBgColor = 0x282563EB;
         t.inlineSuggestionBarBgColor     = 0xF2F0F0F0;
         t.inlineSuggestionBarAcceptColor = 0xFF1A73E8;
         t.inlineSuggestionBarDismissColor = 0xFF555555;

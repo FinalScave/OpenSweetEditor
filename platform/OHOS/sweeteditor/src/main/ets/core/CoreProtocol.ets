@@ -1,6 +1,6 @@
 import util from '@ohos.util';
 import { EditorActionReason, EditorActionResult, ScrollBehavior, editorActionReasonFromValue, scrollBehaviorFromValue } from './CoreAction';
-import { BracketGuide, CodeLensItem, Diagnostic, DiagnosticSeverity, FlowGuide, FoldRegion, GutterIcon, IndentGuide, InlayHint, InlayType, LinkSpan, PhantomText, SeparatorGuide, SeparatorStyle, SpanLayer, StyleSpan, TextStyle, diagnosticSeverityFromValue, inlayTypeFromValue, separatorStyleFromValue, spanLayerFromValue } from './CoreAdornments';
+import { BracketGuide, CodeLensItem, Diagnostic, DiagnosticSeverity, DocumentHighlight, DocumentHighlightKind, FlowGuide, FoldRegion, GutterIcon, IndentGuide, InlayHint, InlayType, LinkSpan, PhantomText, SeparatorGuide, SeparatorStyle, SpanLayer, StyleSpan, TextStyle, diagnosticSeverityFromValue, documentHighlightKindFromValue, inlayTypeFromValue, separatorStyleFromValue, spanLayerFromValue } from './CoreAdornments';
 import { AutoIndentMode, CurrentLineRenderMode, EditorOptions, EditorRangeEffectStyles, EditorRenderColors, FoldArrowMode, HandleConfig, RangeEffectStyle, RangeEffectUnderlineStyle, ScrollbarConfig, ScrollbarMode, ScrollbarTrackTapMode, WrapMode, autoIndentModeFromValue, currentLineRenderModeFromValue, foldArrowModeFromValue, rangeEffectUnderlineStyleFromValue, scrollbarModeFromValue, scrollbarTrackTapModeFromValue, wrapModeFromValue } from './CoreConfig';
 import { IntRange, OffsetRect, PointF, Rect, TextChange, TextPosition, TextRange } from './CoreFoundation';
 import { ImeContextPolicy, ImeDocumentTextReplacement, ImeInputContext, ImeInputContextKind, ImeInputContextTextReplacement, ImeInputStateTextReplacement, ImePreeditStorage, ImeScriptClass, ImeSyncSnapshot, ImeTextModelDelta, ImeTextModelMode, ImeTextModelState, ImeTextRange, ImeTextReplacement, ImeTextUnit, imeContextPolicyFromValue, imeInputContextKindFromValue, imePreeditStorageFromValue, imeScriptClassFromValue, imeTextModelModeFromValue, imeTextUnitFromValue } from './CoreIme';
@@ -206,6 +206,24 @@ export class CoreProtocol {
     if (values) {
       for (const value of values) {
         size += CoreProtocol.sizeOfDiagnostic(value);
+      }
+    }
+    return size;
+  }
+
+  private static writeDocumentHighlightList(writer: BinaryWriter, values: DocumentHighlight[]): void {
+    const count = values ? values.length : 0;
+    writer.writeInt32(count);
+    for (let i = 0; i < count; i++) {
+      CoreProtocol.writeDocumentHighlight(writer, values[i]);
+    }
+  }
+
+  private static sizeOfDocumentHighlightList(values: DocumentHighlight[]): number {
+    let size = 4;
+    if (values) {
+      for (const value of values) {
+        size += CoreProtocol.sizeOfDocumentHighlight(value);
       }
     }
     return size;
@@ -689,6 +707,20 @@ export class CoreProtocol {
   }
 
   static sizeOfDiagnostic(value: Diagnostic): number {
+    let size = 0;
+    size += 4;
+    size += 4;
+    size += 4;
+    return size;
+  }
+
+  static writeDocumentHighlight(writer: BinaryWriter, value: DocumentHighlight): void {
+    writer.writeInt32(value.column);
+    writer.writeInt32(value.length);
+    writer.writeInt32(value.kind as number);
+  }
+
+  static sizeOfDocumentHighlight(value: DocumentHighlight): number {
     let size = 0;
     size += 4;
     size += 4;
@@ -1756,6 +1788,12 @@ export class CoreProtocol {
     return writer.getBuffer();
   }
 
+  static encodeDocumentHighlight(value: DocumentHighlight): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfDocumentHighlight(value));
+    CoreProtocol.writeDocumentHighlight(writer, value);
+    return writer.getBuffer();
+  }
+
   static encodeFlowGuide(value: FlowGuide): ArrayBuffer {
     const writer = new BinaryWriter(CoreProtocol.sizeOfFlowGuide(value));
     CoreProtocol.writeFlowGuide(writer, value);
@@ -1885,6 +1923,34 @@ export class CoreProtocol {
   static encodeSetBatchLineDiagnosticsPayload(diagnosticsByLine: Map<number, Diagnostic[]>): ArrayBuffer {
     const writer = new BinaryWriter(CoreProtocol.sizeOfSetBatchLineDiagnosticsPayloadWire(diagnosticsByLine));
     CoreProtocol.writeSetBatchLineDiagnosticsPayloadWire(writer, diagnosticsByLine);
+    return writer.getBuffer();
+  }
+
+  private static writeSetBatchLineDocumentHighlightsPayloadWire(writer: BinaryWriter, highlightsByLine: Map<number, DocumentHighlight[]>): void {
+    const highlightsByLineKeys = highlightsByLine ? Array.from(highlightsByLine.keys()).sort((a, b) => a - b) : [];
+    writer.writeInt32(highlightsByLineKeys.length);
+    for (const key of highlightsByLineKeys) {
+      writer.writeInt32(key);
+      const value = highlightsByLine.get(key)!;
+      CoreProtocol.writeDocumentHighlightList(writer, value);
+    }
+  }
+
+  private static sizeOfSetBatchLineDocumentHighlightsPayloadWire(highlightsByLine: Map<number, DocumentHighlight[]>): number {
+    let size = 0;
+    size += 4;
+    const highlightsByLineKeys = highlightsByLine ? Array.from(highlightsByLine.keys()).sort((a, b) => a - b) : [];
+    for (const key of highlightsByLineKeys) {
+      size += 4;
+      const value = highlightsByLine.get(key)!;
+      size += CoreProtocol.sizeOfDocumentHighlightList(value);
+    }
+    return size;
+  }
+
+  static encodeSetBatchLineDocumentHighlightsPayload(highlightsByLine: Map<number, DocumentHighlight[]>): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetBatchLineDocumentHighlightsPayloadWire(highlightsByLine));
+    CoreProtocol.writeSetBatchLineDocumentHighlightsPayloadWire(writer, highlightsByLine);
     return writer.getBuffer();
   }
 
@@ -2127,6 +2193,24 @@ export class CoreProtocol {
   static encodeSetLineDiagnosticsPayload(line: number, diagnostics: Diagnostic[]): ArrayBuffer {
     const writer = new BinaryWriter(CoreProtocol.sizeOfSetLineDiagnosticsPayloadWire(line, diagnostics));
     CoreProtocol.writeSetLineDiagnosticsPayloadWire(writer, line, diagnostics);
+    return writer.getBuffer();
+  }
+
+  private static writeSetLineDocumentHighlightsPayloadWire(writer: BinaryWriter, line: number, highlights: DocumentHighlight[]): void {
+    writer.writeInt32(line);
+    CoreProtocol.writeDocumentHighlightList(writer, highlights);
+  }
+
+  private static sizeOfSetLineDocumentHighlightsPayloadWire(line: number, highlights: DocumentHighlight[]): number {
+    let size = 0;
+    size += 4;
+    size += CoreProtocol.sizeOfDocumentHighlightList(highlights);
+    return size;
+  }
+
+  static encodeSetLineDocumentHighlightsPayload(line: number, highlights: DocumentHighlight[]): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfSetLineDocumentHighlightsPayloadWire(line, highlights));
+    CoreProtocol.writeSetLineDocumentHighlightsPayloadWire(writer, line, highlights);
     return writer.getBuffer();
   }
 

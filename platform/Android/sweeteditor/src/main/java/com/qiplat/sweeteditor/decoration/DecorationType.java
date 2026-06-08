@@ -5,6 +5,7 @@ public enum DecorationType {
     SEMANTIC_HIGHLIGHT,
     INLAY_HINT,
     DIAGNOSTIC,
+    DOCUMENT_HIGHLIGHT,
     FOLD_REGION,
     INDENT_GUIDE,
     BRACKET_GUIDE,

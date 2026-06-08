@@ -194,6 +194,24 @@ namespace SweetEditor {
             return size;
         }
 
+        private static void WriteDocumentHighlightList(BinaryWriter writer, IReadOnlyList<DocumentHighlight>? values) {
+            var count = values == null ? 0 : values.Count;
+            writer.WriteInt32(count);
+            for (var i = 0; i < count; i++) {
+                WriteDocumentHighlight(writer, values![i]);
+            }
+        }
+
+        private static int SizeOfDocumentHighlightList(IReadOnlyList<DocumentHighlight>? values) {
+            var size = 4;
+            if (values != null) {
+                for (var i = 0; i < values.Count; i++) {
+                    size += SizeOfDocumentHighlight(values[i]);
+                }
+            }
+            return size;
+        }
+
         private static void WriteFlowGuideList(BinaryWriter writer, IReadOnlyList<FlowGuide>? values) {
             var count = values == null ? 0 : values.Count;
             writer.WriteInt32(count);
@@ -649,6 +667,20 @@ namespace SweetEditor {
         }
 
         private static int SizeOfDiagnostic(Diagnostic value) {
+            var size = 0;
+            size += 4;
+            size += 4;
+            size += 4;
+            return size;
+        }
+
+        private static void WriteDocumentHighlight(BinaryWriter writer, DocumentHighlight value) {
+            writer.WriteInt32(value.Column);
+            writer.WriteInt32(value.Length);
+            writer.WriteInt32((int)value.Kind);
+        }
+
+        private static int SizeOfDocumentHighlight(DocumentHighlight value) {
             var size = 0;
             size += 4;
             size += 4;
@@ -1747,6 +1779,12 @@ namespace SweetEditor {
             return writer.ToArray();
         }
 
+        public static byte[] EncodeDocumentHighlight(DocumentHighlight value) {
+            var writer = new BinaryWriter(SizeOfDocumentHighlight(value));
+            WriteDocumentHighlight(writer, value);
+            return writer.ToArray();
+        }
+
         public static byte[] EncodeFlowGuide(FlowGuide value) {
             var writer = new BinaryWriter(SizeOfFlowGuide(value));
             WriteFlowGuide(writer, value);
@@ -1888,6 +1926,38 @@ namespace SweetEditor {
         public static byte[] EncodeSetBatchLineDiagnosticsPayload(IReadOnlyDictionary<int, IReadOnlyList<Diagnostic>>? diagnosticsByLine) {
             var writer = new BinaryWriter(SizeOfSetBatchLineDiagnosticsPayloadWire(diagnosticsByLine));
             WriteSetBatchLineDiagnosticsPayloadWire(writer, diagnosticsByLine);
+            return writer.ToArray();
+        }
+
+        private static void WriteSetBatchLineDocumentHighlightsPayloadWire(BinaryWriter writer, IReadOnlyDictionary<int, IReadOnlyList<DocumentHighlight>>? highlightsByLine) {
+            var sortedHighlightsByLine = new SortedDictionary<int, IReadOnlyList<DocumentHighlight>>();
+            if (highlightsByLine != null) {
+                foreach (var entry in highlightsByLine) {
+                    sortedHighlightsByLine[entry.Key] = entry.Value;
+                }
+            }
+            writer.WriteInt32(sortedHighlightsByLine.Count);
+            foreach (var entry in sortedHighlightsByLine) {
+                writer.WriteInt32(entry.Key);
+                WriteDocumentHighlightList(writer, entry.Value);
+            }
+        }
+
+        private static int SizeOfSetBatchLineDocumentHighlightsPayloadWire(IReadOnlyDictionary<int, IReadOnlyList<DocumentHighlight>>? highlightsByLine) {
+            var size = 0;
+            size += 4;
+            if (highlightsByLine != null) {
+                foreach (var entry in highlightsByLine) {
+                    size += 4;
+                    size += SizeOfDocumentHighlightList(entry.Value);
+                }
+            }
+            return size;
+        }
+
+        public static byte[] EncodeSetBatchLineDocumentHighlightsPayload(IReadOnlyDictionary<int, IReadOnlyList<DocumentHighlight>>? highlightsByLine) {
+            var writer = new BinaryWriter(SizeOfSetBatchLineDocumentHighlightsPayloadWire(highlightsByLine));
+            WriteSetBatchLineDocumentHighlightsPayloadWire(writer, highlightsByLine);
             return writer.ToArray();
         }
 
@@ -2150,6 +2220,24 @@ namespace SweetEditor {
         public static byte[] EncodeSetLineDiagnosticsPayload(int line, IReadOnlyList<Diagnostic>? diagnostics) {
             var writer = new BinaryWriter(SizeOfSetLineDiagnosticsPayloadWire(line, diagnostics));
             WriteSetLineDiagnosticsPayloadWire(writer, line, diagnostics);
+            return writer.ToArray();
+        }
+
+        private static void WriteSetLineDocumentHighlightsPayloadWire(BinaryWriter writer, int line, IReadOnlyList<DocumentHighlight>? highlights) {
+            writer.WriteInt32(line);
+            WriteDocumentHighlightList(writer, highlights);
+        }
+
+        private static int SizeOfSetLineDocumentHighlightsPayloadWire(int line, IReadOnlyList<DocumentHighlight>? highlights) {
+            var size = 0;
+            size += 4;
+            size += SizeOfDocumentHighlightList(highlights);
+            return size;
+        }
+
+        public static byte[] EncodeSetLineDocumentHighlightsPayload(int line, IReadOnlyList<DocumentHighlight>? highlights) {
+            var writer = new BinaryWriter(SizeOfSetLineDocumentHighlightsPayloadWire(line, highlights));
+            WriteSetLineDocumentHighlightsPayloadWire(writer, line, highlights);
             return writer.ToArray();
         }
 

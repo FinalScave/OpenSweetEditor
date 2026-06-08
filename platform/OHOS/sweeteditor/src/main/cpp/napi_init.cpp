@@ -188,6 +188,9 @@ static napi_value Init(napi_env env, napi_value exports)
         NAPI_METHOD("editorSetLineDiagnostics", EditorCoreNapi::setLineDiagnostics),
         NAPI_METHOD("editorSetBatchLineDiagnostics", EditorCoreNapi::setBatchLineDiagnostics),
         NAPI_METHOD("editorClearDiagnostics", EditorCoreNapi::clearDiagnostics),
+        NAPI_METHOD("editorSetLineDocumentHighlights", EditorCoreNapi::setLineDocumentHighlights),
+        NAPI_METHOD("editorSetBatchLineDocumentHighlights", EditorCoreNapi::setBatchLineDocumentHighlights),
+        NAPI_METHOD("editorClearDocumentHighlights", EditorCoreNapi::clearDocumentHighlights),
 
         // Guides
         NAPI_METHOD("editorSetIndentGuides", EditorCoreNapi::setIndentGuides),

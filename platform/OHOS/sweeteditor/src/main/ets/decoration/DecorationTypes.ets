@@ -1,6 +1,7 @@
 import {
   BracketGuide,
   Diagnostic,
+  DocumentHighlight,
   FlowGuide,
   FoldRegion,
   GutterIcon,
@@ -20,6 +21,7 @@ export enum DecorationType {
   SEMANTIC_HIGHLIGHT = 'semantic_highlight',
   INLAY_HINT = 'inlay_hint',
   DIAGNOSTIC = 'diagnostic',
+  DOCUMENT_HIGHLIGHT = 'document_highlight',
   FOLD_REGION = 'fold_region',
   INDENT_GUIDE = 'indent_guide',
   BRACKET_GUIDE = 'bracket_guide',
@@ -89,6 +91,7 @@ export class DecorationResult {
   semanticSpans: Map<number, StyleSpan[]> | null = null;
   inlayHints: Map<number, InlayHint[]> | null = null;
   diagnostics: Map<number, Diagnostic[]> | null = null;
+  documentHighlights: Map<number, DocumentHighlight[]> | null = null;
   indentGuides: IndentGuide[] | null = null;
   bracketGuides: BracketGuide[] | null = null;
   flowGuides: FlowGuide[] | null = null;
@@ -102,6 +105,7 @@ export class DecorationResult {
   semanticSpansMode: ApplyMode = ApplyMode.MERGE;
   inlayHintsMode: ApplyMode = ApplyMode.MERGE;
   diagnosticsMode: ApplyMode = ApplyMode.MERGE;
+  documentHighlightsMode: ApplyMode = ApplyMode.MERGE;
   indentGuidesMode: ApplyMode = ApplyMode.MERGE;
   bracketGuidesMode: ApplyMode = ApplyMode.MERGE;
   flowGuidesMode: ApplyMode = ApplyMode.MERGE;
@@ -118,6 +122,7 @@ export class DecorationResult {
     out.semanticSpans = copyMapOfArrays(this.semanticSpans);
     out.inlayHints = copyMapOfArrays(this.inlayHints);
     out.diagnostics = copyMapOfArrays(this.diagnostics);
+    out.documentHighlights = copyMapOfArrays(this.documentHighlights);
     out.indentGuides = this.indentGuides ? [...this.indentGuides] : null;
     out.bracketGuides = this.bracketGuides ? [...this.bracketGuides] : null;
     out.flowGuides = this.flowGuides ? [...this.flowGuides] : null;
@@ -131,6 +136,7 @@ export class DecorationResult {
     out.semanticSpansMode = this.semanticSpansMode;
     out.inlayHintsMode = this.inlayHintsMode;
     out.diagnosticsMode = this.diagnosticsMode;
+    out.documentHighlightsMode = this.documentHighlightsMode;
     out.indentGuidesMode = this.indentGuidesMode;
     out.bracketGuidesMode = this.bracketGuidesMode;
     out.flowGuidesMode = this.flowGuidesMode;
@@ -168,6 +174,12 @@ export class DecorationResultBuilder {
   diagnostics(value: Map<number, Diagnostic[]> | null, mode: ApplyMode): DecorationResultBuilder {
     this.result.diagnostics = value;
     this.result.diagnosticsMode = mode;
+    return this;
+  }
+
+  documentHighlights(value: Map<number, DocumentHighlight[]> | null, mode: ApplyMode): DecorationResultBuilder {
+    this.result.documentHighlights = value;
+    this.result.documentHighlightsMode = mode;
     return this;
   }
 

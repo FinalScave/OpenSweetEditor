@@ -796,6 +796,25 @@ EDITOR_API const uint8_t* editor_set_batch_line_diagnostics(intptr_t editor_hand
 /// Clear all diagnostic decorations
 EDITOR_API const uint8_t* editor_clear_diagnostics(intptr_t editor_handle, size_t* out_size);
 
+/// Set document highlight ranges for specified line.
+/// @param data SetLineDocumentHighlightsPayload binary payload encoded by CoreProtocol
+///        u32 line
+///        List<DocumentHighlight> highlights
+///        DocumentHighlight is u32 column, u32 length, enum_i32 kind
+/// @param size payload byte length
+EDITOR_API const uint8_t* editor_set_line_document_highlights(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+
+/// Set document highlight ranges for multiple lines.
+/// @param data SetBatchLineDocumentHighlightsPayload binary payload encoded by CoreProtocol
+///        u32 entry_count
+///        Repeated entry is u32 line followed by List<DocumentHighlight> highlights
+///        DocumentHighlight is u32 column, u32 length, enum_i32 kind
+/// @param size payload byte length
+EDITOR_API const uint8_t* editor_set_batch_line_document_highlights(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+
+/// Clear all document highlight ranges
+EDITOR_API const uint8_t* editor_clear_document_highlights(intptr_t editor_handle, size_t* out_size);
+
 /// Set indent guide list.
 /// @param data SetIndentGuidesPayload binary payload encoded by CoreProtocol
 ///        List<IndentGuide> guides

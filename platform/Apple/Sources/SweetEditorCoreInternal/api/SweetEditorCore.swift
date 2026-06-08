@@ -989,6 +989,44 @@ class SweetEditorCore {
         }
     }
 
+    // MARK: - Document Highlight
+
+    @discardableResult
+    func setLineDocumentHighlights(line: Int, items: [DocumentHighlight]) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeSetLineDocumentHighlightsPayload(line: Int32(line), highlights: items)
+        return setLineDocumentHighlights(payload: payload)
+    }
+
+    @discardableResult
+    func setLineDocumentHighlights(payload: Data) -> EditorActionResult? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_line_document_highlights(handle, ptr, size, &outSize)
+        }
+    }
+
+    @discardableResult
+    func setBatchLineDocumentHighlights(_ highlightsByLine: [Int: [DocumentHighlight]]) -> EditorActionResult? {
+        if highlightsByLine.isEmpty { return nil }
+        let payload = CoreProtocol.encodeSetBatchLineDocumentHighlightsPayload(highlightsByLine: int32Keyed(highlightsByLine))
+        return setBatchLineDocumentHighlights(payload: payload)
+    }
+
+    @discardableResult
+    func setBatchLineDocumentHighlights(payload: Data) -> EditorActionResult? {
+        return performPayloadEditorAction(payload) { ptr, size, outSize in
+            editor_set_batch_line_document_highlights(handle, ptr, size, &outSize)
+        }
+    }
+
+    @discardableResult
+    func clearDocumentHighlights() -> EditorActionResult? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_clear_document_highlights(handle, &size)
+            return decodeEditorActionPayload(ptr, size: size)
+        }
+    }
+
     // MARK: - Inlay Hints & Phantom Text
 
     /// Replaces all inlay hints on a specific line.

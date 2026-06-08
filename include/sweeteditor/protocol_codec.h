@@ -132,6 +132,19 @@ public:
     return true;
   }
 
+  inline bool read(DocumentHighlight& out) {
+    uint32_t out_column_value{};
+    if (!readU32(out_column_value)) return false;
+    out.column = static_cast<uint32_t>(out_column_value);
+    uint32_t out_length_value{};
+    if (!readU32(out_length_value)) return false;
+    out.length = static_cast<uint32_t>(out_length_value);
+    int32_t out_kind_value{};
+    if (!readI32(out_kind_value)) return false;
+    out.kind = static_cast<DocumentHighlightKind>(out_kind_value);
+    return true;
+  }
+
   inline bool read(FlowGuide& out) {
     if (!read(out.start)) return false;
     if (!read(out.end)) return false;
@@ -267,6 +280,24 @@ public:
     return true;
   }
 
+  inline bool read(SetBatchLineDocumentHighlightsPayload& out) {
+    uint32_t count{};
+    if (!readU32(count)) return false;
+    if (count > remaining()) return false;
+    out.entries.clear();
+    out.entries.reserve(count);
+    for (uint32_t index = 0; index < count; ++index) {
+      size_t key{};
+      Vector<DocumentHighlight> value{};
+      uint32_t key_value{};
+      if (!readU32(key_value)) return false;
+      key = static_cast<size_t>(key_value);
+      if (!readList(value)) return false;
+      out.entries.emplace_back(std::move(key), std::move(value));
+    }
+    return true;
+  }
+
   inline bool read(SetBatchLineGutterIconsPayload& out) {
     uint32_t count{};
     if (!readU32(count)) return false;
@@ -393,6 +424,14 @@ public:
     if (!readU32(out_line_value)) return false;
     out.line = static_cast<size_t>(out_line_value);
     if (!readList(out.diagnostics)) return false;
+    return true;
+  }
+
+  inline bool read(SetLineDocumentHighlightsPayload& out) {
+    uint32_t out_line_value{};
+    if (!readU32(out_line_value)) return false;
+    out.line = static_cast<size_t>(out_line_value);
+    if (!readList(out.highlights)) return false;
     return true;
   }
 
@@ -1048,6 +1087,13 @@ public:
     return true;
   }
 
+  inline bool write(const DocumentHighlight& value) {
+    if (!writeU32(static_cast<uint32_t>(value.column))) return false;
+    if (!writeU32(static_cast<uint32_t>(value.length))) return false;
+    if (!writeI32(static_cast<int32_t>(value.kind))) return false;
+    return true;
+  }
+
   inline bool write(const FlowGuide& value) {
     if (!write(value.start)) return false;
     if (!write(value.end)) return false;
@@ -1126,6 +1172,18 @@ public:
   }
 
   inline bool write(const SetBatchLineDiagnosticsPayload& value) {
+    if (value.entries.size() > std::numeric_limits<uint32_t>::max()) return false;
+    if (!writeU32(static_cast<uint32_t>(value.entries.size()))) return false;
+    for (const auto& entry : value.entries) {
+      const auto& key = entry.first;
+      const auto& value = entry.second;
+      if (!writeU32(static_cast<uint32_t>(key))) return false;
+      if (!writeList(value)) return false;
+    }
+    return true;
+  }
+
+  inline bool write(const SetBatchLineDocumentHighlightsPayload& value) {
     if (value.entries.size() > std::numeric_limits<uint32_t>::max()) return false;
     if (!writeU32(static_cast<uint32_t>(value.entries.size()))) return false;
     for (const auto& entry : value.entries) {
@@ -1227,6 +1285,12 @@ public:
   inline bool write(const SetLineDiagnosticsPayload& value) {
     if (!writeU32(static_cast<uint32_t>(value.line))) return false;
     if (!writeList(value.diagnostics)) return false;
+    return true;
+  }
+
+  inline bool write(const SetLineDocumentHighlightsPayload& value) {
+    if (!writeU32(static_cast<uint32_t>(value.line))) return false;
+    if (!writeList(value.highlights)) return false;
     return true;
   }
 

@@ -17,6 +17,21 @@ public enum DiagnosticSeverity: Int32 {
     }
 }
 
+public enum DocumentHighlightKind: Int32 {
+    case TEXT = 0
+    case READ = 1
+    case WRITE = 2
+
+    public static func fromValue(_ value: Int32) -> DocumentHighlightKind {
+        switch value {
+        case 0: return .TEXT
+        case 1: return .READ
+        case 2: return .WRITE
+        default: return .TEXT
+        }
+    }
+}
+
 public enum InlayType: Int32 {
     case TEXT = 0
     case ICON = 1
@@ -91,6 +106,18 @@ public struct Diagnostic {
         self.column = column
         self.length = length
         self.severity = severity
+    }
+}
+
+public struct DocumentHighlight {
+    public var column: Int32 = 0
+    public var length: Int32 = 0
+    public var kind: DocumentHighlightKind = .TEXT
+
+    public init(column: Int32 = 0, length: Int32 = 0, kind: DocumentHighlightKind = .TEXT) {
+        self.column = column
+        self.length = length
+        self.kind = kind
     }
 }
 

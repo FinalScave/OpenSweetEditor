@@ -4,6 +4,8 @@ import com.qiplat.sweeteditor.EditorTheme;
 import com.qiplat.sweeteditor.EditorMetadata;
 import com.qiplat.sweeteditor.core.adornment.CodeLensItem;
 import com.qiplat.sweeteditor.core.adornment.Diagnostic;
+import com.qiplat.sweeteditor.core.adornment.DocumentHighlight;
+import com.qiplat.sweeteditor.core.adornment.DocumentHighlightKind;
 import com.qiplat.sweeteditor.core.adornment.FoldRegion;
 import com.qiplat.sweeteditor.core.adornment.GutterIcon;
 import com.qiplat.sweeteditor.core.adornment.IndentGuide;
@@ -81,6 +83,7 @@ public class DemoDecorationProvider implements DecorationProvider {
                 DecorationType.INLAY_HINT,
                 DecorationType.PHANTOM_TEXT,
                 DecorationType.DIAGNOSTIC,
+                DecorationType.DOCUMENT_HIGHLIGHT,
                 DecorationType.CODELENS,
                 DecorationType.LINK
         );
@@ -127,6 +130,7 @@ public class DemoDecorationProvider implements DecorationProvider {
         Map<Integer, List<GutterIcon>> gutterIcons = new HashMap<>();
         Map<Integer, List<CodeLensItem>> codeLensItems = new HashMap<>();
         Map<Integer, List<LinkSpan>> links = new HashMap<>();
+        Map<Integer, List<DocumentHighlight>> documentHighlights = new HashMap<>();
         List<IndentGuide> indentGuides = new ArrayList<>();
         List<FoldRegion> foldRegions = new ArrayList<>();
         List<SeparatorGuide> separatorGuides = new ArrayList<>();
@@ -144,6 +148,7 @@ public class DemoDecorationProvider implements DecorationProvider {
                 return new DecorationResult.Builder()
                         .phantomTexts(dynamicPhantoms, DecorationResult.ApplyMode.REPLACE_ALL)
                         .links(links, DecorationResult.ApplyMode.REPLACE_RANGE)
+                        .documentHighlights(documentHighlights, DecorationResult.ApplyMode.REPLACE_RANGE)
                         .build();
             }
 
@@ -198,6 +203,7 @@ public class DemoDecorationProvider implements DecorationProvider {
                     .separatorGuides(separatorGuides, DecorationResult.ApplyMode.REPLACE_ALL)
                     .gutterIcons(gutterIcons, DecorationResult.ApplyMode.REPLACE_ALL)
                     .links(links, DecorationResult.ApplyMode.REPLACE_RANGE)
+                    .documentHighlights(documentHighlights, DecorationResult.ApplyMode.REPLACE_RANGE)
                     .build();
         }
 
@@ -214,6 +220,7 @@ public class DemoDecorationProvider implements DecorationProvider {
                 appendGutterIcons(gutterIcons, textLines, token);
                 appendCodeLens(codeLensItems, textLines, token);
                 appendLink(links, textLines, token);
+                appendDocumentHighlight(documentHighlights, textLines, token);
                 firstKeywordRange = appendDynamicDemoDecorations(
                         dynamicPhantoms,
                         phantomLines,
@@ -267,6 +274,7 @@ public class DemoDecorationProvider implements DecorationProvider {
                 .gutterIcons(gutterIcons, DecorationResult.ApplyMode.REPLACE_ALL)
                 .codeLensItems(codeLensItems, DecorationResult.ApplyMode.REPLACE_ALL)
                 .links(links, DecorationResult.ApplyMode.REPLACE_RANGE)
+                .documentHighlights(documentHighlights, DecorationResult.ApplyMode.REPLACE_RANGE)
                 .build();
     }
 
@@ -508,6 +516,81 @@ public class DemoDecorationProvider implements DecorationProvider {
         }
         linksByLine.computeIfAbsent(range.line, ignored -> new ArrayList<>())
                 .add(new LinkSpan(range.startColumn, range.length(), target));
+    }
+
+    private void appendDocumentHighlight(Map<Integer, List<DocumentHighlight>> highlights,
+                                         List<String> textLines,
+                                         TokenSpan token) {
+        TokenRangeInfo range = extractSingleLineTokenRange(token);
+        if (range == null) {
+            return;
+        }
+        String literal = getTokenLiteral(textLines, range);
+        if (!isIdentifierToken(literal)) {
+            return;
+        }
+
+        String lineText = getLineText(textLines, range.line);
+        DocumentHighlightKind kind = inferDocumentHighlightKind(token.styleId(), lineText, range);
+        if (kind == null) {
+            return;
+        }
+        highlights.computeIfAbsent(range.line, ignored -> new ArrayList<>())
+                .add(new DocumentHighlight(range.startColumn, range.length(), kind));
+    }
+
+    private static DocumentHighlightKind inferDocumentHighlightKind(int styleId,
+                                                                    String lineText,
+                                                                    TokenRangeInfo range) {
+        if (styleId == EditorTheme.STYLE_CLASS || styleId == EditorTheme.STYLE_TYPE
+                || styleId == EditorTheme.STYLE_BUILTIN) {
+            return DocumentHighlightKind.TEXT;
+        }
+        if (styleId == EditorTheme.STYLE_FUNCTION) {
+            return DocumentHighlightKind.READ;
+        }
+        if (styleId == EditorTheme.STYLE_VARIABLE) {
+            return isWriteReference(lineText, range.endColumn) ? DocumentHighlightKind.WRITE : DocumentHighlightKind.READ;
+        }
+        return null;
+    }
+
+    private static boolean isWriteReference(String lineText, int endColumn) {
+        if (lineText == null) {
+            return false;
+        }
+        int index = Math.max(0, endColumn);
+        while (index < lineText.length() && Character.isWhitespace(lineText.charAt(index))) {
+            index++;
+        }
+        if (index >= lineText.length()) {
+            return false;
+        }
+        char next = lineText.charAt(index);
+        if (next == '+' || next == '-') {
+            return index + 1 < lineText.length() && lineText.charAt(index + 1) == next;
+        }
+        if (next != '=') {
+            return false;
+        }
+        return index + 1 >= lineText.length() || lineText.charAt(index + 1) != '=';
+    }
+
+    private static boolean isIdentifierToken(String literal) {
+        if (literal == null || literal.isEmpty()) {
+            return false;
+        }
+        char first = literal.charAt(0);
+        if (!Character.isLetter(first) && first != '_') {
+            return false;
+        }
+        for (int i = 1; i < literal.length(); i++) {
+            char ch = literal.charAt(i);
+            if (!Character.isLetterOrDigit(ch) && ch != '_') {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static Integer parseColorLiteral(String literal) {

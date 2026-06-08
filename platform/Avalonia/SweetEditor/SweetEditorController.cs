@@ -354,6 +354,12 @@ namespace SweetEditor {
 		public void SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine) =>
 			Invoke(e => e.SetBatchLineDiagnostics(diagsByLine));
 
+		public void SetLineDocumentHighlights(int line, IList<DocumentHighlight> items) =>
+			Invoke(e => e.SetLineDocumentHighlights(line, items));
+
+		public void SetBatchLineDocumentHighlights(Dictionary<int, IList<DocumentHighlight>> highlightsByLine) =>
+			Invoke(e => e.SetBatchLineDocumentHighlights(highlightsByLine));
+
 		public void SetIndentGuides(IList<IndentGuide> guides) => Invoke(e => e.SetIndentGuides(guides));
 
 		public void SetBracketGuides(IList<BracketGuide> guides) => Invoke(e => e.SetBracketGuides(guides));
@@ -379,6 +385,8 @@ namespace SweetEditor {
 		public void ClearGuides() => Invoke(e => e.ClearGuides());
 
 		public void ClearDiagnostics() => Invoke(e => e.ClearDiagnostics());
+
+		public void ClearDocumentHighlights() => Invoke(e => e.ClearDocumentHighlights());
 
 		public void ClearAllDecorations() => Invoke(e => e.ClearAllDecorations());
 

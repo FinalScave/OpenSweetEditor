@@ -336,6 +336,14 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         dispatchEditorActionResult(editorCore.setBatchLineDiagnostics(diagnosticsByLine))
     }
 
+    public func setLineDocumentHighlights(line: Int, items: [DocumentHighlight]) {
+        dispatchEditorActionResult(editorCore.setLineDocumentHighlights(line: line, items: items))
+    }
+
+    public func setBatchLineDocumentHighlights(_ highlightsByLine: [Int: [DocumentHighlight]]) {
+        dispatchEditorActionResult(editorCore.setBatchLineDocumentHighlights(highlightsByLine))
+    }
+
     public func setIndentGuides(_ guides: [IndentGuide]) {
         dispatchEditorActionResult(editorCore.setIndentGuides(guides))
     }
@@ -390,6 +398,10 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
 
     public func clearDiagnostics() {
         dispatchEditorActionResult(editorCore.clearDiagnostics())
+    }
+
+    public func clearDocumentHighlights() {
+        dispatchEditorActionResult(editorCore.clearDocumentHighlights())
     }
 
     public func documentLines() -> [String] {

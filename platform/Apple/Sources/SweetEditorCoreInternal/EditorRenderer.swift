@@ -490,6 +490,15 @@ struct EditorRenderer {
                 background_color: argbFromCGColor(theme.searchCurrentBgColor),
                 border_color: argbFromCGColor(theme.searchCurrentBorderColor)
             ),
+            document_highlight_text: RangeEffectStyle(
+                background_color: argbFromCGColor(theme.documentHighlightTextBgColor)
+            ),
+            document_highlight_read: RangeEffectStyle(
+                background_color: argbFromCGColor(theme.documentHighlightReadBgColor)
+            ),
+            document_highlight_write: RangeEffectStyle(
+                background_color: argbFromCGColor(theme.documentHighlightWriteBgColor)
+            ),
             linked_editing_active: RangeEffectStyle(
                 background_color: argbWithAlpha(argbFromCGColor(theme.linkedEditingActiveColor), alpha: 0x20),
                 border_color: argbFromCGColor(theme.linkedEditingActiveColor)
