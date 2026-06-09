@@ -28,8 +28,8 @@ The Core layer does not involve UI rendering. It contains only bridging, data mo
 | **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `PointF`, `Rect`, `OffsetRect` | Fundamental value types and geometry carriers |
 | **Interaction** | `GestureEvent`, `GestureType`, `EventType`, `HitTarget`, `HitTargetType` | Input and hit-test protocol types |
 | **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextUnit`, `ImeTextModelMode`, `ImeTextReplacement`, `ImeDocumentTextReplacement`, `ImeInputContextTextReplacement`, `ImeInputStateTextReplacement`, `ImeTextModelState`, `ImeTextModelDelta` | IME synchronization snapshots, text-context protocol types, and replacement payload models; platform synchronization decisions are carried by `EditorActionResult` |
-| **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `DiagnosticSeverity`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | Decoration data types |
-| **Visual** | `EditorRenderModel`, `LayoutMetrics`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `RangeEffectKind`, `RangeEffectRenderItem`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem` | Render model types (geometry semantics follow Section 2.4) |
+| **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `DiagnosticSeverity`, `DocumentHighlight`, `DocumentHighlightKind`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | Decoration data types |
+| **Visual** | `EditorRenderModel`, `LayoutMetrics`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `RangeEffectKind`, `RangeEffectRenderItem`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem` | Render model types (geometry semantics follow Sections 2.5 and 2.6) |
 | **Snippet** | `LinkedEditingModel`, `TabStopGroup` | Linked editing / tab stop groups |
 | **Keymap** | `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorBuiltinCommand` | Shortcut binding data types and built-in command identifiers |
 
@@ -154,9 +154,21 @@ For host-facing public APIs (such as `SweetEditor`, `SweetEditorController`, `Ed
 For simple geometry carriers used in public APIs and event payloads, platforms MAY use either the canonical SweetEditor geometry names or platform-native equivalents when the semantics are identical.
 
 - Point types: `PointF` or a platform-native point type (e.g. Android `android.graphics.PointF`, Apple `CGPoint`)
-- Rect types: `RectF` or a platform-native rect type (e.g. Android `android.graphics.RectF`, Apple `CGRect`)
+- Rect types: `Rect` or a platform-native rect type (e.g. Android `android.graphics.RectF`, Apple `CGRect`)
 
 If a platform-native geometry type is used, coordinate basis, axis direction, and field semantics MUST remain identical to the canonical SweetEditor model.
+
+### 2.6 Range Effect Rendering Semantics (MUST)
+
+`RangeEffectRenderItem` is the platform-rendered channel for visible range presentations such as selection, search, document highlights, IME composition, diagnostics, linked editing, and bracket matches.
+
+- Platforms MUST treat `RangeEffectRenderItem.rect` as final screen-space geometry. Core has already split effects for wrapping, viewport visibility, folded-tail projection, and layout-specific cases.
+- Platforms MUST NOT recompute range effect geometry from document text ranges.
+- Platforms MUST draw `RangeEffectStyle.backgroundColor` before text runs.
+- Platforms MUST draw `RangeEffectStyle.borderColor` and `RangeEffectStyle.underlineColor` after text runs and guide segments, and before the cursor.
+- Platforms MUST NOT draw `RangeEffectStyle.foregroundColor` from `RangeEffectRenderItem`. Foreground effects are applied by core through `VisualRun.style` after run splitting.
+- Platforms MAY use `RangeEffectKind` for small visual differences, such as a thicker active linked-editing border. Platforms MUST NOT infer editor state, event behavior, or provider behavior from `RangeEffectKind`.
+- Platforms SHOULD keep underline presentation close to core renderer conventions: underline baseline near `rect.bottom - 1`, solid and dashed strokes around 2 px, wavy strokes around 3 px, dashed pattern around 3 px on / 2 px off, and wavy half-period / amplitude around 7 px / 3.5 px.
 
 ---
 
@@ -211,16 +223,18 @@ During construction or first-frame bootstrap before the editor runtime / dispatc
 | IME | `getImeSyncSnapshot()`, `getImeInputContext(...)`, `getImeTextModelInputContext(...)`, `setImeKeyboardScriptClass(script)`, `getImeKeyboardScriptClass()`, `updateImePreedit(...)`, `setImeComposingText(...)`, `setImeComposingTextSelection(...)`, `commitImeText(...)`, `commitImeTextWithCursor(...)`, `replaceImeText(replacement)`, `replaceImeDocumentText(replacement)`, `replaceImeInputContextText(replacement)`, `finishImePreedit()`, `cancelImePreedit()`, `markImeDocumentRange(...)`, `markImeDocumentRangeByOffset(...)`, `markImeInputContextRange(...)`, `notifyImeDocumentSelectionChanged(...)`, `notifyImeInputContextSelectionChanged(...)`, `updateImeTextModelState(state)`, `updateImeTextModelDelta(delta)`, `updateImeInputStateSelection(...)`, `replaceImeInputStateText(replacement)`, `deleteImeBackward(length, unit)`, `deleteImeForward(length, unit)`, `deleteImeSurrounding(before, after, unit)`, `notifyImeSelectionChanged(range)`, `notifyImeCursorChanged(cursor)`, `getComposingRange()`, `getComposingSessionRange()`, `isComposing()` |
 | Read-only / indent | `setReadOnly(readOnly)`, `isReadOnly()`, `setAutoIndentMode(mode)`, `getAutoIndentMode()`, `setBackspaceUnindent(enabled)` |
 | Navigation / scroll | `scrollToLine(line, behavior)`, `gotoPosition(line, col)`, `ensureCursorVisible()`, `setScroll(x, y)`, `getScrollMetrics()`, `getPositionRect(line, col)`, `getCursorRect()` |
-| Style / highlight | `registerTextStyle(id, color, bg, fontStyle)`, `registerBatchTextStyles(data)`, `setLineSpans(line, layer, spans)`, `setBatchLineSpans(layer, entries)`, `clearLineSpans(line, layer)`, `clearHighlights(layer)`, `clearHighlights()` |
+| Style / highlight | `registerTextStyle(id, color, bg, fontStyle)`, `registerBatchTextStyles(data)`, `setLineSpans(line, layer, spans)`, `setBatchLineSpans(layer, entries)`, `clearLineSpans(line, layer)`, `clearHighlights(layer)`, `clearHighlights()`, `setEditorRenderColors(colors)`, `setEditorRangeEffectStyles(styles)` |
 | Inlay Hint | `setLineInlayHints(line, hints)`, `setBatchLineInlayHints(entries)`, `clearInlayHints()` |
 | Phantom Text | `setLinePhantomTexts(line, phantoms)`, `setBatchLinePhantomTexts(entries)`, `clearPhantomTexts()` |
 | Gutter Icon | `setLineGutterIcons(line, icons)`, `setBatchLineGutterIcons(entries)`, `setMaxGutterIcons(count)`, `clearGutterIcons()` |
 | CodeLens | `setLineCodeLens(line, items)`, `setBatchLineCodeLens(entries)`, `clearCodeLens()` |
 | Link | `setLineLinks(line, links)`, `setBatchLineLinks(entries)`, `clearLinks()` |
 | Diagnostic | `setLineDiagnostics(line, items)`, `setBatchLineDiagnostics(entries)`, `clearDiagnostics()` |
+| Document Highlight | `setLineDocumentHighlights(line, items)`, `setBatchLineDocumentHighlights(entries)`, `clearDocumentHighlights()` |
 | Guide | `setIndentGuides(guides)`, `setBracketGuides(guides)`, `setFlowGuides(guides)`, `setSeparatorGuides(guides)`, `clearGuides()` |
 | Bracket | `setBracketPairs(open, close)`, `setAutoClosingPairs(open, close)`, `setMatchedBrackets(oL, oC, cL, cC)`, `clearMatchedBrackets()` |
 | Folding | `setFoldRegions(regions)`, `toggleFoldAt(line)`, `foldAt(line)`, `unfoldAt(line)`, `foldAll()`, `unfoldAll()`, `isLineVisible(line)` |
+| Search | `search(request)`, `findNextSearchMatch()`, `findPreviousSearchMatch()`, `replaceCurrentSearchMatch(replacement)`, `replaceAllSearchMatches(replacement)`, `clearSearch()`, `getSearchState()` |
 | Clear | `clearAllDecorations()` |
 | Linked Editing | `insertSnippet(template)`, `startLinkedEditing(model)`, `isInLinkedEditing()`, `linkedEditingNext()`, `linkedEditingPrev()`, `cancelLinkedEditing()` |
 
@@ -293,12 +307,13 @@ Except for items marked SHOULD / MAY, every host API listed below is MUST. Langu
 | Cursor / selection | `selectAll()`, `getSelectedText()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `setCursorPosition(pos)`, `getCursorPosition()`, `getWordRangeAtCursor()`, `getWordAtCursor()` |
 | Navigation / scroll | `gotoPosition(line, col)`, `scrollToLine(line, behavior)`, `setScroll(x, y)`, `getScrollMetrics()`, `getPositionRect(line, col)`, `getCursorRect()` |
 | Folding | `toggleFoldAt(line)`, `foldAt(line)`, `unfoldAt(line)`, `isLineVisible(line)`, `foldAll()`, `unfoldAll()` |
+| Search | `search(request)`, `findNextSearchMatch()`, `findPreviousSearchMatch()`, `replaceCurrentSearchMatch(replacement)`, `replaceAllSearchMatches(replacement)`, `clearSearch()`, `getSearchState()` |
 | Language / metadata | `setLanguageConfiguration(config)`, `getLanguageConfiguration()`, `setMetadata(metadata)`, `getMetadata()` |
 | Provider management | `addDecorationProvider(provider)`, `removeDecorationProvider(provider)`, `requestDecorationRefresh()`, `addCompletionProvider(provider)`, `removeCompletionProvider(provider)`, `addNewLineActionProvider(provider)`, `removeNewLineActionProvider(provider)` |
 | Completion | `triggerCompletion()`, `showCompletionItems(items)`, `dismissCompletion()`, `setCompletionItemRenderer(renderer)` or a platform-equivalent completion item rendering customization API |
 | Style | `registerTextStyle(id, ...)`, `registerBatchTextStyles(stylesById)` |
-| Decoration / adornment write | `setLineSpans(line, layer, spans)`, `setBatchLineSpans(layer, spansByLine)`, `setLineInlayHints(line, hints)`, `setBatchLineInlayHints(hintsByLine)`, `setLinePhantomTexts(line, phantoms)`, `setBatchLinePhantomTexts(phantomsByLine)`, `setLineGutterIcons(line, icons)`, `setBatchLineGutterIcons(iconsByLine)`, `setLineCodeLens(line, items)`, `setBatchLineCodeLens(itemsByLine)`, `setLineLinks(line, links)`, `setBatchLineLinks(linksByLine)`, `setLineDiagnostics(line, items)`, `setBatchLineDiagnostics(diagsByLine)`, `setIndentGuides(guides)`, `setBracketGuides(guides)`, `setFlowGuides(guides)`, `setSeparatorGuides(guides)`, `setFoldRegions(regions)` |
-| Decoration / adornment clear | `clearHighlights()`, `clearHighlights(layer)`, `clearInlayHints()`, `clearPhantomTexts()`, `clearGutterIcons()`, `clearCodeLens()`, `clearLinks()`, `clearGuides()`, `clearDiagnostics()`, `clearAllDecorations()` |
+| Decoration / adornment write | `setLineSpans(line, layer, spans)`, `setBatchLineSpans(layer, spansByLine)`, `setLineInlayHints(line, hints)`, `setBatchLineInlayHints(hintsByLine)`, `setLinePhantomTexts(line, phantoms)`, `setBatchLinePhantomTexts(phantomsByLine)`, `setLineGutterIcons(line, icons)`, `setBatchLineGutterIcons(iconsByLine)`, `setLineCodeLens(line, items)`, `setBatchLineCodeLens(itemsByLine)`, `setLineLinks(line, links)`, `setBatchLineLinks(linksByLine)`, `setLineDiagnostics(line, items)`, `setBatchLineDiagnostics(diagsByLine)`, `setLineDocumentHighlights(line, items)`, `setBatchLineDocumentHighlights(itemsByLine)`, `setIndentGuides(guides)`, `setBracketGuides(guides)`, `setFlowGuides(guides)`, `setSeparatorGuides(guides)`, `setFoldRegions(regions)` |
+| Decoration / adornment clear | `clearHighlights()`, `clearHighlights(layer)`, `clearInlayHints()`, `clearPhantomTexts()`, `clearGutterIcons()`, `clearCodeLens()`, `clearLinks()`, `clearGuides()`, `clearDiagnostics()`, `clearDocumentHighlights()`, `clearAllDecorations()` |
 | Query | `getVisibleLineRange()`, `getTotalLineCount()`, `getLinkTargetAt(line, column)`; link misses return an empty string or equivalent non-null empty value |
 
 > The canonical naming for provider management methods is `add` / `remove`. Each platform MAY use semantically equivalent variants per its own conventions (e.g. `attach` / `detach`, `register` / `unregister`).
@@ -325,8 +340,8 @@ Platforms MAY use Receiver callbacks, `Future` / `Promise` / `Task`, coroutines,
 |---|---|
 | `DecorationContext` | `visibleLineRange`, `totalLineCount`, `textChanges`, `languageConfiguration`, `editorMetadata` |
 | `ApplyMode` | `MERGE`, `REPLACE_ALL`, `REPLACE_RANGE`; merge priority is `REPLACE_ALL` > `REPLACE_RANGE` > `MERGE` |
-| `DecorationResult` | `syntaxSpans`, `semanticSpans`, `inlayHints`, `diagnostics`, `indentGuides`, `bracketGuides`, `flowGuides`, `separatorGuides`, `foldRegions`, `gutterIcons`, `phantomTexts`, `codeLensItems`, `links`; every data family MUST have a corresponding `ApplyMode` field |
-| `DecorationType` | MUST include `CODELENS` and `LINK` |
+| `DecorationResult` | `syntaxSpans`, `semanticSpans`, `inlayHints`, `diagnostics`, `documentHighlights`, `indentGuides`, `bracketGuides`, `flowGuides`, `separatorGuides`, `foldRegions`, `gutterIcons`, `phantomTexts`, `codeLensItems`, `links`; every data family MUST have a corresponding `ApplyMode` field |
+| `DecorationType` | MUST include every decoration family above, including `DOCUMENT_HIGHLIGHT`, `CODELENS`, and `LINK` |
 
 Line-indexed data uses `Map<int, List<T>>` with 0-based line numbers. The Manager MUST merge snapshots according to `ApplyMode`: `MERGE` appends same-type data, `REPLACE_ALL` clears all existing data before writing, and `REPLACE_RANGE` replaces only data within `visibleLineRange`.
 
@@ -467,10 +482,12 @@ All color fields use the platform color type (ARGB). Platforms MUST provide the 
 
 | Group | Fields |
 |---|---|
-| Basic colors | `backgroundColor`, `textColor`, `cursorColor`, `selectionColor` |
+| Basic colors | `backgroundColor`, `textColor`, `cursorColor`, `selectionColor`, `selectionTextColor` |
 | Line number and current line | `lineNumberColor`, `currentLineNumberColor`, `currentLineColor` |
 | Guides | `guideColor`, `separatorLineColor`, `splitLineColor` |
 | Scrollbar | `scrollbarTrackColor`, `scrollbarThumbColor`, `scrollbarThumbActiveColor` |
+| Search | `searchMatchBgColor`, `searchCurrentBgColor`, `searchCurrentBorderColor` |
+| Document highlight | `documentHighlightTextBgColor`, `documentHighlightReadBgColor`, `documentHighlightWriteBgColor` |
 | IME | `compositionUnderlineColor` |
 | InlayHint | `inlayHintBgColor`, `inlayHintTextColor`, `inlayHintIconColor` |
 | Fold placeholder | `foldPlaceholderBgColor`, `foldPlaceholderTextColor` |
@@ -484,7 +501,7 @@ All color fields use the platform color type (ARGB). Platforms MUST provide the 
 
 ### 8.3 Factory Methods
 
-Every platform MUST provide at least `dark()` and `light()` factory methods that return pre-configured themes. Built-in themes MUST assign explicit values for all required color fields, including `codeLensColor`, `codeLensActiveColor`, `linkColor`, and `linkActiveColor`.
+Every platform MUST provide at least `dark()` and `light()` factory methods that return pre-configured themes. Built-in themes MUST assign explicit values for all required color fields, including selection text, search, document highlight, CodeLens, and link colors.
 
 ### 8.4 TextStyle Map
 
@@ -725,19 +742,26 @@ Enum and enum-like constant values MUST match the C++ core definitions. The foll
 | `FoldArrowMode` | AUTO=0, ALWAYS=1, HIDDEN=2 |
 | `AutoIndentMode` | NONE=0, KEEP_INDENT=1 |
 | `CurrentLineRenderMode` | BACKGROUND=0, BORDER=1, NONE=2 |
+| `ScrollbarMode` | ALWAYS=0, TRANSIENT=1, NEVER=2 |
+| `ScrollbarTrackTapMode` | JUMP=0, DISABLED=1 |
 | `ScrollBehavior` | TOP=0, CENTER=1, BOTTOM=2 |
 | `SpanLayer` | SYNTAX=0, SEMANTIC=1 |
 | `InlayType` | TEXT=0, ICON=1, COLOR=2 |
+| `DiagnosticSeverity` | ERROR=0, WARNING=1, INFO=2, HINT=3 |
+| `DocumentHighlightKind` | TEXT=0, READ=1, WRITE=2 |
+| `RangeEffectUnderlineStyle` | NONE=0, SOLID=1, DASHED=2, WAVY=3 |
 | `VisualRunType` | TEXT=0, WHITESPACE=1, NEWLINE=2, INLAY_HINT=3, PHANTOM_TEXT=4, FOLD_PLACEHOLDER=5, TAB=6, CODELENS=7, LINK=8 |
 | `VisualLineKind` | CONTENT=0, PHANTOM=1, CODELENS=2 |
 | `PointerCursorType` | DEFAULT=0, TEXT=1, HAND=2 |
 | `FoldState` | NONE=0, EXPANDED=1, COLLAPSED=2 |
-| `DecorationType` | SYNTAX_HIGHLIGHT, SEMANTIC_HIGHLIGHT, INLAY_HINT, DIAGNOSTIC, FOLD_REGION, INDENT_GUIDE, BRACKET_GUIDE, FLOW_GUIDE, SEPARATOR_GUIDE, GUTTER_ICON, PHANTOM_TEXT, CODELENS, LINK |
+| `DecorationType` | SYNTAX_HIGHLIGHT, SEMANTIC_HIGHLIGHT, INLAY_HINT, DIAGNOSTIC, DOCUMENT_HIGHLIGHT, FOLD_REGION, INDENT_GUIDE, BRACKET_GUIDE, FLOW_GUIDE, SEPARATOR_GUIDE, GUTTER_ICON, PHANTOM_TEXT, CODELENS, LINK |
 | `HitTargetType` | NONE=0, INLAY_HINT_TEXT=1, INLAY_HINT_ICON=2, GUTTER_ICON=3, FOLD_PLACEHOLDER=4, FOLD_GUTTER=5, INLAY_HINT_COLOR=6, CODELENS=7, LINK=8 |
 | `GuideType` | INDENT=0, BRACKET=1, FLOW=2, SEPARATOR=3 |
 | `GuideDirection` | (platform-aligned with C++ core) |
 | `GuideStyle` | SOLID=0, DASHED=1, DOUBLE=2 |
 | `SeparatorStyle` | SINGLE=0, DOUBLE=1 |
+| `SearchStatus` | INACTIVE=0, SEARCHING=1, READY=2, STALE=3, FAILED=4 |
+| `RangeEffectKind` | SELECTION=0, SEARCH_MATCH=1, SEARCH_CURRENT=2, DOCUMENT_HIGHLIGHT_TEXT=3, DOCUMENT_HIGHLIGHT_READ=4, DOCUMENT_HIGHLIGHT_WRITE=5, LINKED_EDITING_ACTIVE=6, LINKED_EDITING_INACTIVE=7, IME_COMPOSITION=8, BRACKET_MATCH=9, DIAGNOSTIC_ERROR=10, DIAGNOSTIC_WARNING=11, DIAGNOSTIC_INFO=12, DIAGNOSTIC_HINT=13 |
 | `KeyCode` | NONE=0, BACKSPACE=8, TAB=9, ENTER=13, ESCAPE=27, DELETE_KEY=46, LEFT=37, UP=38, RIGHT=39, DOWN=40, HOME=36, END=35, PAGE_UP=33, PAGE_DOWN=34, A=65, C=67, D=68, V=86, X=88, Y=89, Z=90, K=75, SPACE=32 |
 | `KeyModifier` | NONE=0, SHIFT=1, CTRL=2, ALT=4, META=8 |
 | `EditorBuiltinCommand` | NONE=0, CURSOR_LEFT=1, CURSOR_RIGHT=2, CURSOR_UP=3, CURSOR_DOWN=4, CURSOR_LINE_START=5, CURSOR_LINE_END=6, CURSOR_PAGE_UP=7, CURSOR_PAGE_DOWN=8, SELECT_LEFT=9, SELECT_RIGHT=10, SELECT_UP=11, SELECT_DOWN=12, SELECT_LINE_START=13, SELECT_LINE_END=14, SELECT_PAGE_UP=15, SELECT_PAGE_DOWN=16, SELECT_ALL=17, BACKSPACE=18, DELETE_FORWARD=19, INSERT_TAB=20, INSERT_NEWLINE=21, INSERT_LINE_ABOVE=22, INSERT_LINE_BELOW=23, UNDO=24, REDO=25, MOVE_LINE_UP=26, MOVE_LINE_DOWN=27, COPY_LINE_UP=28, COPY_LINE_DOWN=29, DELETE_LINE=30, COPY=31, PASTE=32, CUT=33, TRIGGER_COMPLETION=34 |
@@ -936,13 +960,22 @@ The Core layer defines numerous decoration data types. All platforms MUST implem
 | `LinkSpan` | `column`, `length`, `target` | `target` is returned by `getLinkTargetAt()` and `LinkClickEvent` |
 | `GutterIcon` | `iconId` | Icon resources are resolved and rendered by the platform's `EditorIconProvider` |
 | `Diagnostic` | `column`, `length`, `severity` | `severity` is `ERROR=0`, `WARNING=1`, `INFO=2`, `HINT=3`; this is a minimal diagnostic decoration model, not a full IDE diagnostic object |
+| `DocumentHighlight` | `column`, `length`, `kind` | `kind` is `TEXT=0`, `READ=1`, `WRITE=2` |
 | `FoldRegion` | `startLine`, `endLine` | `startLine` remains visible and `endLine` is inclusive |
 | `IndentGuide` | `start`, `end` | Indentation guide endpoints |
 | `BracketGuide` | `parent`, `end`, `children` | Bracket pair guide structure |
 | `FlowGuide` | `start`, `end` | Control-flow guide endpoints |
 | `SeparatorGuide` | `line`, `style`, `count`, `textEndColumn` | `textEndColumn` determines the separator drawing start position |
 
-### 17.4 Visual Render Types
+### 17.4 Search Data Types
+
+| Type | MUST fields | Special semantics |
+|---|---|---|
+| `SearchOptions` | `caseSensitive`, `wholeWord`, `useRegex`, `wrapAround`, `maxMatches` | Defaults are case-insensitive, not whole-word, literal search, wrap-around enabled, and bounded match collection |
+| `SearchRequest` | `pattern`, `options` | Empty patterns clear search state or return an inactive state according to the core result |
+| `SearchState` | `status`, `pattern`, `options`, `generation`, `matchCount`, `currentIndex`, `hasCurrentMatch`, `currentRange`, `errorMessage` | `currentIndex` is `-1` when there is no current match; ranges use document coordinates |
+
+### 17.5 Visual Render Types
 
 | Type | MUST fields | Special semantics |
 |---|---|---|

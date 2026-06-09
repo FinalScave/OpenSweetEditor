@@ -28,8 +28,8 @@ Core 层不涉及 UI 渲染，仅包含桥接、数据模型和协议编解码�
 | **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `PointF`, `Rect`, `OffsetRect` | 基础值类型与几何载体 |
 | **Interaction** | `GestureEvent`, `GestureType`, `EventType`, `HitTarget`, `HitTargetType` | 输入与命中测试协议类型 |
 | **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextUnit`, `ImeTextModelMode`, `ImeTextReplacement`, `ImeDocumentTextReplacement`, `ImeInputContextTextReplacement`, `ImeInputStateTextReplacement`, `ImeTextModelState`, `ImeTextModelDelta` | IME 同步快照、文本上下文协议类型与替换 payload model；平台侧同步决策由 `EditorActionResult` 承载 |
-| **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `DiagnosticSeverity`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | 装饰数据类型 |
-| **Visual** | `EditorRenderModel`, `LayoutMetrics`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `RangeEffectKind`, `RangeEffectRenderItem`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem` | 渲染模型类型（几何语义见第 2.4 节） |
+| **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `DiagnosticSeverity`, `DocumentHighlight`, `DocumentHighlightKind`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | 装饰数据类型 |
+| **Visual** | `EditorRenderModel`, `LayoutMetrics`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `RangeEffectKind`, `RangeEffectRenderItem`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem` | 渲染模型类型（几何语义见第 2.5 与 2.6 节） |
 | **Snippet** | `LinkedEditingModel`, `TabStopGroup` | 联动编辑 / Tab stop 分组 |
 | **Keymap** | `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorBuiltinCommand` | 快捷键绑定数据类型与内建命令标识 |
 
@@ -154,9 +154,21 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 对于公共 API 和事件 payload 中使用的简单几何载体，平台 MAY 使用 SweetEditor 规范几何类型，或使用语义完全一致的平台原生等价类型。
 
 - 点类型：`PointF` 或平台原生点类型（如 Android `android.graphics.PointF`、Apple `CGPoint`）
-- 矩形类型：`RectF` 或平台原生矩形类型（如 Android `android.graphics.RectF`、Apple `CGRect`）
+- 矩形类型：`Rect` 或平台原生矩形类型（如 Android `android.graphics.RectF`、Apple `CGRect`）
 
 若使用平台原生几何类型，坐标基准、轴方向和字段语义 MUST 与 SweetEditor 规范模型保持一致。
+
+### 2.6 Range Effect 渲染语义（MUST）
+
+`RangeEffectRenderItem` 是 selection、search、document highlight、IME composition、diagnostic、linked editing、bracket match 等可见 range 呈现的平台渲染通道。
+
+- 平台 MUST 将 `RangeEffectRenderItem.rect` 视为最终屏幕坐标几何。Core 已经按自动换行、viewport 可见性、折叠 tail projection 和 layout 特定场景完成拆分。
+- 平台 MUST NOT 从文档文本 range 重新计算 range effect 几何。
+- 平台 MUST 在文本 run 之前绘制 `RangeEffectStyle.backgroundColor`。
+- 平台 MUST 在文本 run 与 guide segment 之后、光标之前绘制 `RangeEffectStyle.borderColor` 和 `RangeEffectStyle.underlineColor`。
+- 平台 MUST NOT 从 `RangeEffectRenderItem` 绘制 `RangeEffectStyle.foregroundColor`。前景色 effect 由 core 在拆分 run 后通过 `VisualRun.style` 生效。
+- 平台 MAY 使用 `RangeEffectKind` 做小范围视觉差异，例如 active linked-editing 使用更粗边框。平台 MUST NOT 从 `RangeEffectKind` 反推出编辑器状态、事件行为或 provider 行为。
+- 平台 SHOULD 尽量贴近 core renderer 的下划线呈现约定：下划线基线接近 `rect.bottom - 1`，solid 和 dashed 线宽约 2 px，wavy 线宽约 3 px，dash pattern 约 3 px on / 2 px off，wavy 半周期 / 振幅约 7 px / 3.5 px。
 
 ---
 
@@ -211,16 +223,18 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 | IME | `getImeSyncSnapshot()`, `getImeInputContext(...)`, `getImeTextModelInputContext(...)`, `setImeKeyboardScriptClass(script)`, `getImeKeyboardScriptClass()`, `updateImePreedit(...)`, `setImeComposingText(...)`, `setImeComposingTextSelection(...)`, `commitImeText(...)`, `commitImeTextWithCursor(...)`, `replaceImeText(replacement)`, `replaceImeDocumentText(replacement)`, `replaceImeInputContextText(replacement)`, `finishImePreedit()`, `cancelImePreedit()`, `markImeDocumentRange(...)`, `markImeDocumentRangeByOffset(...)`, `markImeInputContextRange(...)`, `notifyImeDocumentSelectionChanged(...)`, `notifyImeInputContextSelectionChanged(...)`, `updateImeTextModelState(state)`, `updateImeTextModelDelta(delta)`, `updateImeInputStateSelection(...)`, `replaceImeInputStateText(replacement)`, `deleteImeBackward(length, unit)`, `deleteImeForward(length, unit)`, `deleteImeSurrounding(before, after, unit)`, `notifyImeSelectionChanged(range)`, `notifyImeCursorChanged(cursor)`, `getComposingRange()`, `getComposingSessionRange()`, `isComposing()` |
 | 只读 / 缩进 | `setReadOnly(readOnly)`, `isReadOnly()`, `setAutoIndentMode(mode)`, `getAutoIndentMode()`, `setBackspaceUnindent(enabled)` |
 | 导航 / 滚动 | `scrollToLine(line, behavior)`, `gotoPosition(line, col)`, `ensureCursorVisible()`, `setScroll(x, y)`, `getScrollMetrics()`, `getPositionRect(line, col)`, `getCursorRect()` |
-| 样式 / 高亮 | `registerTextStyle(id, color, bg, fontStyle)`, `registerBatchTextStyles(data)`, `setLineSpans(line, layer, spans)`, `setBatchLineSpans(layer, entries)`, `clearLineSpans(line, layer)`, `clearHighlights(layer)`, `clearHighlights()` |
+| 样式 / 高亮 | `registerTextStyle(id, color, bg, fontStyle)`, `registerBatchTextStyles(data)`, `setLineSpans(line, layer, spans)`, `setBatchLineSpans(layer, entries)`, `clearLineSpans(line, layer)`, `clearHighlights(layer)`, `clearHighlights()`, `setEditorRenderColors(colors)`, `setEditorRangeEffectStyles(styles)` |
 | Inlay Hint | `setLineInlayHints(line, hints)`, `setBatchLineInlayHints(entries)`, `clearInlayHints()` |
 | Phantom Text | `setLinePhantomTexts(line, phantoms)`, `setBatchLinePhantomTexts(entries)`, `clearPhantomTexts()` |
 | Gutter Icon | `setLineGutterIcons(line, icons)`, `setBatchLineGutterIcons(entries)`, `setMaxGutterIcons(count)`, `clearGutterIcons()` |
 | CodeLens | `setLineCodeLens(line, items)`, `setBatchLineCodeLens(entries)`, `clearCodeLens()` |
 | Link | `setLineLinks(line, links)`, `setBatchLineLinks(entries)`, `clearLinks()` |
 | Diagnostic | `setLineDiagnostics(line, items)`, `setBatchLineDiagnostics(entries)`, `clearDiagnostics()` |
+| Document Highlight | `setLineDocumentHighlights(line, items)`, `setBatchLineDocumentHighlights(entries)`, `clearDocumentHighlights()` |
 | Guide | `setIndentGuides(guides)`, `setBracketGuides(guides)`, `setFlowGuides(guides)`, `setSeparatorGuides(guides)`, `clearGuides()` |
 | Bracket | `setBracketPairs(open, close)`, `setAutoClosingPairs(open, close)`, `setMatchedBrackets(oL, oC, cL, cC)`, `clearMatchedBrackets()` |
 | 折叠 | `setFoldRegions(regions)`, `toggleFoldAt(line)`, `foldAt(line)`, `unfoldAt(line)`, `foldAll()`, `unfoldAll()`, `isLineVisible(line)` |
+| Search | `search(request)`, `findNextSearchMatch()`, `findPreviousSearchMatch()`, `replaceCurrentSearchMatch(replacement)`, `replaceAllSearchMatches(replacement)`, `clearSearch()`, `getSearchState()` |
 | 清除 | `clearAllDecorations()` |
 | Linked Editing | `insertSnippet(template)`, `startLinkedEditing(model)`, `isInLinkedEditing()`, `linkedEditingNext()`, `linkedEditingPrev()`, `cancelLinkedEditing()` |
 
@@ -293,12 +307,13 @@ IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextR
 | 光标 / 选区 | `selectAll()`, `getSelectedText()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `setCursorPosition(pos)`, `getCursorPosition()`, `getWordRangeAtCursor()`, `getWordAtCursor()` |
 | 导航 / 滚动 | `gotoPosition(line, col)`, `scrollToLine(line, behavior)`, `setScroll(x, y)`, `getScrollMetrics()`, `getPositionRect(line, col)`, `getCursorRect()` |
 | 折叠 | `toggleFoldAt(line)`, `foldAt(line)`, `unfoldAt(line)`, `isLineVisible(line)`, `foldAll()`, `unfoldAll()` |
+| Search | `search(request)`, `findNextSearchMatch()`, `findPreviousSearchMatch()`, `replaceCurrentSearchMatch(replacement)`, `replaceAllSearchMatches(replacement)`, `clearSearch()`, `getSearchState()` |
 | 语言 / 元数据 | `setLanguageConfiguration(config)`, `getLanguageConfiguration()`, `setMetadata(metadata)`, `getMetadata()` |
 | Provider 管理 | `addDecorationProvider(provider)`, `removeDecorationProvider(provider)`, `requestDecorationRefresh()`, `addCompletionProvider(provider)`, `removeCompletionProvider(provider)`, `addNewLineActionProvider(provider)`, `removeNewLineActionProvider(provider)` |
 | 补全 | `triggerCompletion()`, `showCompletionItems(items)`, `dismissCompletion()`, `setCompletionItemRenderer(renderer)` 或平台等价补全项渲染定制 API |
 | 样式 | `registerTextStyle(id, ...)`, `registerBatchTextStyles(stylesById)` |
-| Decoration / Adornment 写入 | `setLineSpans(line, layer, spans)`, `setBatchLineSpans(layer, spansByLine)`, `setLineInlayHints(line, hints)`, `setBatchLineInlayHints(hintsByLine)`, `setLinePhantomTexts(line, phantoms)`, `setBatchLinePhantomTexts(phantomsByLine)`, `setLineGutterIcons(line, icons)`, `setBatchLineGutterIcons(iconsByLine)`, `setLineCodeLens(line, items)`, `setBatchLineCodeLens(itemsByLine)`, `setLineLinks(line, links)`, `setBatchLineLinks(linksByLine)`, `setLineDiagnostics(line, items)`, `setBatchLineDiagnostics(diagsByLine)`, `setIndentGuides(guides)`, `setBracketGuides(guides)`, `setFlowGuides(guides)`, `setSeparatorGuides(guides)`, `setFoldRegions(regions)` |
-| Decoration / Adornment 清理 | `clearHighlights()`, `clearHighlights(layer)`, `clearInlayHints()`, `clearPhantomTexts()`, `clearGutterIcons()`, `clearCodeLens()`, `clearLinks()`, `clearGuides()`, `clearDiagnostics()`, `clearAllDecorations()` |
+| Decoration / Adornment 写入 | `setLineSpans(line, layer, spans)`, `setBatchLineSpans(layer, spansByLine)`, `setLineInlayHints(line, hints)`, `setBatchLineInlayHints(hintsByLine)`, `setLinePhantomTexts(line, phantoms)`, `setBatchLinePhantomTexts(phantomsByLine)`, `setLineGutterIcons(line, icons)`, `setBatchLineGutterIcons(iconsByLine)`, `setLineCodeLens(line, items)`, `setBatchLineCodeLens(itemsByLine)`, `setLineLinks(line, links)`, `setBatchLineLinks(linksByLine)`, `setLineDiagnostics(line, items)`, `setBatchLineDiagnostics(diagsByLine)`, `setLineDocumentHighlights(line, items)`, `setBatchLineDocumentHighlights(itemsByLine)`, `setIndentGuides(guides)`, `setBracketGuides(guides)`, `setFlowGuides(guides)`, `setSeparatorGuides(guides)`, `setFoldRegions(regions)` |
+| Decoration / Adornment 清理 | `clearHighlights()`, `clearHighlights(layer)`, `clearInlayHints()`, `clearPhantomTexts()`, `clearGutterIcons()`, `clearCodeLens()`, `clearLinks()`, `clearGuides()`, `clearDiagnostics()`, `clearDocumentHighlights()`, `clearAllDecorations()` |
 | 查询 | `getVisibleLineRange()`, `getTotalLineCount()`, `getLinkTargetAt(line, column)`；link 未命中时返回空字符串或等价 non-null empty value |
 
 > Provider 管理方法的标准命名为 `add` / `remove`。各平台 MAY 按自身惯例使用语义等价的变体（如 `attach` / `detach`、`register` / `unregister` 等）。
@@ -325,8 +340,8 @@ Provider-Manager 模式（注册 -> 遍历 -> 分发）MUST 在所有平台保�
 |---|---|
 | `DecorationContext` | `visibleLineRange`, `totalLineCount`, `textChanges`, `languageConfiguration`, `editorMetadata` |
 | `ApplyMode` | `MERGE`, `REPLACE_ALL`, `REPLACE_RANGE`；合并优先级为 `REPLACE_ALL` > `REPLACE_RANGE` > `MERGE` |
-| `DecorationResult` | `syntaxSpans`, `semanticSpans`, `inlayHints`, `diagnostics`, `indentGuides`, `bracketGuides`, `flowGuides`, `separatorGuides`, `foldRegions`, `gutterIcons`, `phantomTexts`, `codeLensItems`, `links`，且每种数据 MUST 有对应的 `ApplyMode` 字段 |
-| `DecorationType` | MUST 包含 `CODELENS` 和 `LINK` |
+| `DecorationResult` | `syntaxSpans`, `semanticSpans`, `inlayHints`, `diagnostics`, `documentHighlights`, `indentGuides`, `bracketGuides`, `flowGuides`, `separatorGuides`, `foldRegions`, `gutterIcons`, `phantomTexts`, `codeLensItems`, `links`，且每种数据 MUST 有对应的 `ApplyMode` 字段 |
+| `DecorationType` | MUST 包含上方所有 decoration family，包括 `DOCUMENT_HIGHLIGHT`、`CODELENS` 和 `LINK` |
 
 按行索引的数据使用 `Map<int, List<T>>`，key 为 0-based 行号。Manager MUST 按 `ApplyMode` 合并 snapshot：`MERGE` 追加同类数据，`REPLACE_ALL` 清除全部已有数据后写入，`REPLACE_RANGE` 仅替换 `visibleLineRange` 内的数据。
 
@@ -465,10 +480,12 @@ Provider 返回空列表时平台 MAY 不显示选区菜单；Provider SHOULD �
 
 | 分组 | 字段 |
 |---|---|
-| 基础颜色 | `backgroundColor`, `textColor`, `cursorColor`, `selectionColor` |
+| 基础颜色 | `backgroundColor`, `textColor`, `cursorColor`, `selectionColor`, `selectionTextColor` |
 | 行号与当前行 | `lineNumberColor`, `currentLineNumberColor`, `currentLineColor` |
 | 辅助线 | `guideColor`, `separatorLineColor`, `splitLineColor` |
 | 滚动条 | `scrollbarTrackColor`, `scrollbarThumbColor`, `scrollbarThumbActiveColor` |
+| Search | `searchMatchBgColor`, `searchCurrentBgColor`, `searchCurrentBorderColor` |
+| Document highlight | `documentHighlightTextBgColor`, `documentHighlightReadBgColor`, `documentHighlightWriteBgColor` |
 | 输入法 | `compositionUnderlineColor` |
 | InlayHint | `inlayHintBgColor`, `inlayHintTextColor`, `inlayHintIconColor` |
 | 折叠占位符 | `foldPlaceholderBgColor`, `foldPlaceholderTextColor` |
@@ -482,7 +499,7 @@ Provider 返回空列表时平台 MAY 不显示选区菜单；Provider SHOULD �
 
 ### 8.3 工厂方法
 
-每个平台 MUST 至少提供 `dark()` 和 `light()` 工厂方法，返回预配置的主题；内建主题 MUST 为 8.2 中全部必需颜色字段显式赋值，包括 `codeLensColor`、`codeLensActiveColor`、`linkColor`、`linkActiveColor`。
+每个平台 MUST 至少提供 `dark()` 和 `light()` 工厂方法，返回预配置的主题；内建主题 MUST 为 8.2 中全部必需颜色字段显式赋值，包括选区文字、search、document highlight、CodeLens 和 link 颜色。
 
 ### 8.4 TextStyle 映射
 
@@ -721,19 +738,26 @@ interface ContextMenuItemProvider {
 | `FoldArrowMode` | AUTO=0, ALWAYS=1, HIDDEN=2 |
 | `AutoIndentMode` | NONE=0, KEEP_INDENT=1 |
 | `CurrentLineRenderMode` | BACKGROUND=0, BORDER=1, NONE=2 |
+| `ScrollbarMode` | ALWAYS=0, TRANSIENT=1, NEVER=2 |
+| `ScrollbarTrackTapMode` | JUMP=0, DISABLED=1 |
 | `ScrollBehavior` | TOP=0, CENTER=1, BOTTOM=2 |
 | `SpanLayer` | SYNTAX=0, SEMANTIC=1 |
 | `InlayType` | TEXT=0, ICON=1, COLOR=2 |
+| `DiagnosticSeverity` | ERROR=0, WARNING=1, INFO=2, HINT=3 |
+| `DocumentHighlightKind` | TEXT=0, READ=1, WRITE=2 |
+| `RangeEffectUnderlineStyle` | NONE=0, SOLID=1, DASHED=2, WAVY=3 |
 | `VisualRunType` | TEXT=0, WHITESPACE=1, NEWLINE=2, INLAY_HINT=3, PHANTOM_TEXT=4, FOLD_PLACEHOLDER=5, TAB=6, CODELENS=7, LINK=8 |
 | `VisualLineKind` | CONTENT=0, PHANTOM=1, CODELENS=2 |
 | `PointerCursorType` | DEFAULT=0, TEXT=1, HAND=2 |
 | `FoldState` | NONE=0, EXPANDED=1, COLLAPSED=2 |
-| `DecorationType` | SYNTAX_HIGHLIGHT, SEMANTIC_HIGHLIGHT, INLAY_HINT, DIAGNOSTIC, FOLD_REGION, INDENT_GUIDE, BRACKET_GUIDE, FLOW_GUIDE, SEPARATOR_GUIDE, GUTTER_ICON, PHANTOM_TEXT, CODELENS, LINK |
+| `DecorationType` | SYNTAX_HIGHLIGHT, SEMANTIC_HIGHLIGHT, INLAY_HINT, DIAGNOSTIC, DOCUMENT_HIGHLIGHT, FOLD_REGION, INDENT_GUIDE, BRACKET_GUIDE, FLOW_GUIDE, SEPARATOR_GUIDE, GUTTER_ICON, PHANTOM_TEXT, CODELENS, LINK |
 | `HitTargetType` | NONE=0, INLAY_HINT_TEXT=1, INLAY_HINT_ICON=2, GUTTER_ICON=3, FOLD_PLACEHOLDER=4, FOLD_GUTTER=5, INLAY_HINT_COLOR=6, CODELENS=7, LINK=8 |
 | `GuideType` | INDENT=0, BRACKET=1, FLOW=2, SEPARATOR=3 |
 | `GuideDirection` | （与 C++ 核心对齐） |
 | `GuideStyle` | SOLID=0, DASHED=1, DOUBLE=2 |
 | `SeparatorStyle` | SINGLE=0, DOUBLE=1 |
+| `SearchStatus` | INACTIVE=0, SEARCHING=1, READY=2, STALE=3, FAILED=4 |
+| `RangeEffectKind` | SELECTION=0, SEARCH_MATCH=1, SEARCH_CURRENT=2, DOCUMENT_HIGHLIGHT_TEXT=3, DOCUMENT_HIGHLIGHT_READ=4, DOCUMENT_HIGHLIGHT_WRITE=5, LINKED_EDITING_ACTIVE=6, LINKED_EDITING_INACTIVE=7, IME_COMPOSITION=8, BRACKET_MATCH=9, DIAGNOSTIC_ERROR=10, DIAGNOSTIC_WARNING=11, DIAGNOSTIC_INFO=12, DIAGNOSTIC_HINT=13 |
 | `KeyCode` | NONE=0, BACKSPACE=8, TAB=9, ENTER=13, ESCAPE=27, DELETE_KEY=46, LEFT=37, UP=38, RIGHT=39, DOWN=40, HOME=36, END=35, PAGE_UP=33, PAGE_DOWN=34, A=65, C=67, D=68, V=86, X=88, Y=89, Z=90, K=75, SPACE=32 |
 | `KeyModifier` | NONE=0, SHIFT=1, CTRL=2, ALT=4, META=8 |
 | `EditorBuiltinCommand` | NONE=0, CURSOR_LEFT=1, CURSOR_RIGHT=2, CURSOR_UP=3, CURSOR_DOWN=4, CURSOR_LINE_START=5, CURSOR_LINE_END=6, CURSOR_PAGE_UP=7, CURSOR_PAGE_DOWN=8, SELECT_LEFT=9, SELECT_RIGHT=10, SELECT_UP=11, SELECT_DOWN=12, SELECT_LINE_START=13, SELECT_LINE_END=14, SELECT_PAGE_UP=15, SELECT_PAGE_DOWN=16, SELECT_ALL=17, BACKSPACE=18, DELETE_FORWARD=19, INSERT_TAB=20, INSERT_NEWLINE=21, INSERT_LINE_ABOVE=22, INSERT_LINE_BELOW=23, UNDO=24, REDO=25, MOVE_LINE_UP=26, MOVE_LINE_DOWN=27, COPY_LINE_UP=28, COPY_LINE_DOWN=29, DELETE_LINE=30, COPY=31, PASTE=32, CUT=33, TRIGGER_COMPLETION=34 |
@@ -934,13 +958,22 @@ Core 层定义了大量装饰数据类型，各平台 MUST 实现完全一致的
 | `LinkSpan` | `column`, `length`, `target` | `target` 由 `getLinkTargetAt()` 和 `LinkClickEvent` 返回 |
 | `GutterIcon` | `iconId` | 图标资源由平台侧 `EditorIconProvider` 解析和绘制 |
 | `Diagnostic` | `column`, `length`, `severity` | `severity` 为 `ERROR=0`, `WARNING=1`, `INFO=2`, `HINT=3`；这是最小诊断装饰模型，不等同于完整 IDE 诊断对象 |
+| `DocumentHighlight` | `column`, `length`, `kind` | `kind` 为 `TEXT=0`, `READ=1`, `WRITE=2` |
 | `FoldRegion` | `startLine`, `endLine` | `startLine` 保持可见，`endLine` 为 inclusive |
 | `IndentGuide` | `start`, `end` | 缩进引导线端点 |
 | `BracketGuide` | `parent`, `end`, `children` | 括号配对引导线结构 |
 | `FlowGuide` | `start`, `end` | 控制流引导线端点 |
 | `SeparatorGuide` | `line`, `style`, `count`, `textEndColumn` | `textEndColumn` 用于确定分隔线起始绘制位置 |
 
-### 17.4 Visual 渲染类型
+### 17.4 Search 数据类型
+
+| 类型 | MUST 字段 | 特殊语义 |
+|---|---|---|
+| `SearchOptions` | `caseSensitive`, `wholeWord`, `useRegex`, `wrapAround`, `maxMatches` | 默认语义为大小写不敏感、非 whole-word、字面量搜索、允许 wrap-around，并限制匹配收集数量 |
+| `SearchRequest` | `pattern`, `options` | 空 pattern 按 core 结果清理 search state 或返回 inactive state |
+| `SearchState` | `status`, `pattern`, `options`, `generation`, `matchCount`, `currentIndex`, `hasCurrentMatch`, `currentRange`, `errorMessage` | 无当前匹配时 `currentIndex` 为 `-1`；range 使用文档坐标 |
+
+### 17.5 Visual 渲染类型
 
 | 类型 | MUST 字段 | 特殊语义 |
 |---|---|---|

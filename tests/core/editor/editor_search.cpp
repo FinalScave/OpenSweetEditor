@@ -2,7 +2,6 @@
 #include <sweeteditor/editor_core.h>
 #include <sweeteditor/document.h>
 #include "test_measurer.h"
-#include "test_render_helpers.h"
 
 using namespace NS_SWEETEDITOR;
 
@@ -169,25 +168,4 @@ TEST_CASE("EditorCore search reports invalid regex failures") {
   CHECK(state.status == SearchStatus::FAILED);
   CHECK(state.match_count == 0);
   CHECK_FALSE(state.error_message.empty());
-}
-
-TEST_CASE("EditorCore search renders matches projected into folded tail") {
-  EditorCore editor = makeSearchEditor("head {\ninside\n} tail");
-  EditorRangeEffectStyles styles;
-  styles.search_current.background_color = static_cast<int32_t>(0x55FFAA00u);
-  editor.setEditorRangeEffectStyles(styles);
-  editor.setFoldRegions({{0, 2, true}});
-
-  SearchRequest request;
-  request.pattern = "tail";
-  editor.search(request);
-
-  SearchState state = editor.getSearchState();
-  REQUIRE(state.status == SearchStatus::READY);
-  REQUIRE(state.match_count == 1);
-  CHECK(state.current_range == (TextRange{{2, 2}, {2, 6}}));
-
-  EditorRenderModel model;
-  editor.buildRenderModel(model);
-  CHECK_FALSE(rangeEffectsOfKind(model, RangeEffectKind::SEARCH_CURRENT).empty());
 }

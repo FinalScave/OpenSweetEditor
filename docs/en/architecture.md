@@ -423,7 +423,7 @@ struct EditorRenderModel {
   PointF current_line;                  // current line background position
   Vector<VisualLine> lines;             // visible visual lines
   Cursor cursor;                        // cursor
-  Vector<RangeEffectRenderItem> range_effects; // selection, search, IME, diagnostics, and other visible range effects
+  Vector<RangeEffectRenderItem> range_effects; // visible range geometry for selection, search, IME, diagnostics, and other effects
   SelectionHandle selection_start_handle; // selection start drag handle
   SelectionHandle selection_end_handle;  // selection end drag handle
   Vector<GuideSegment> guide_segments;   // code structure guides
@@ -462,6 +462,17 @@ Important distinction between internal representation and cross-language transpo
 - `editor_build_render_model()` converts `VisualRun.text` to length-prefixed UTF-8 bytes in C API path
 - Swing / WinForms / Apple / Android bridge layers decode this UTF-8 into each language `String`
 
+### RangeEffectRenderItem and RangeEffectStyle
+
+`RangeEffectRenderItem` is the shared geometry channel for visible range presentations such as selection, search matches, document highlights, IME composition, diagnostics, linked editing, and bracket matches. Core resolves each item into screen-space rectangles before it reaches a platform renderer.
+
+`RangeEffectStyle` has two different responsibilities:
+
+- `foreground_color` is consumed by core during layout. Core splits affected `VisualRun` values and writes the resolved foreground into `VisualRun.style`. Platform renderers must not draw foreground from `range_effects`.
+- `background_color`, `border_color`, `underline_color`, and `underline_style` are consumed by platform renderers through `range_effects`.
+
+The platform renderer should treat `RangeEffectRenderItem.rect` as final visible geometry. The rects are already split by wrapping, viewport visibility, folded-tail projection, and other layout rules. Platforms should not recompute them from document ranges.
+
 ### Platform-side Drawing Order
 
 ```
@@ -483,6 +494,8 @@ Important distinction between internal representation and cross-language transpo
 8. Draw selection drag handles (selection handles)
 9. Draw scrollbars
 ```
+
+`RangeEffectKind` is a semantic label for the resolved effect. Platforms may use it for small presentation tweaks, such as a thicker active linked-editing border, but should not infer editor state or business behavior from it.
 
 ---
 

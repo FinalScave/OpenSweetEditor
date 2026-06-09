@@ -423,7 +423,7 @@ struct EditorRenderModel {
   PointF current_line;                  // 当前行背景位置
   Vector<VisualLine> lines;             // 可见视觉行
   Cursor cursor;                        // 光标
-  Vector<RangeEffectRenderItem> range_effects; // selection, search, IME, diagnostics, and other visible range effects
+  Vector<RangeEffectRenderItem> range_effects; // selection、search、IME、diagnostics 等可见 range 几何
   SelectionHandle selection_start_handle; // 选区起始拖拽手柄
   SelectionHandle selection_end_handle;  // 选区结束拖拽手柄
   Vector<GuideSegment> guide_segments;   // 代码结构线
@@ -462,6 +462,17 @@ VisualLine
 - `editor_build_render_model()` 在 C API 路径里会把 `VisualRun.text` 转成长度前缀 UTF-8 字节串
 - Swing / WinForms / Apple / Android 的桥接层再把这段 UTF-8 解码成各自语言的 `String`
 
+### RangeEffectRenderItem 与 RangeEffectStyle
+
+`RangeEffectRenderItem` 是 selection、search match、document highlight、IME composition、diagnostic、linked editing、bracket match 等可见 range 呈现的统一几何通道。Core 会在交给平台 renderer 之前，把每个 item 解析成屏幕坐标下的矩形。
+
+`RangeEffectStyle` 有两类不同职责：
+
+- `foreground_color` 由 core 在 layout 阶段消费。Core 会拆分受影响的 `VisualRun`，并把解析后的前景色写入 `VisualRun.style`。平台 renderer 不应从 `range_effects` 中绘制前景色。
+- `background_color`、`border_color`、`underline_color` 和 `underline_style` 由平台 renderer 通过 `range_effects` 消费。
+
+平台 renderer 应将 `RangeEffectRenderItem.rect` 视为最终可见几何。rect 已经按自动换行、viewport 可见性、折叠 tail projection 和其它 layout 规则拆分好；平台不应再从文档 range 重新计算。
+
 ### 平台侧绘制顺序
 
 ```
@@ -483,6 +494,8 @@ VisualLine
 8. 绘制选区拖拽手柄（selection handles）
 9. 绘制滚动条
 ```
+
+`RangeEffectKind` 是解析后的 effect 语义标签。平台可以用它做小范围呈现调整，例如 active linked-editing 使用更粗边框，但不应从它反推出编辑器状态或业务行为。
 
 ---
 

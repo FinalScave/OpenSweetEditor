@@ -17,6 +17,7 @@ namespace SweetEditor {
 		public event EventHandler<InlayHintClickEventArgs>? InlayHintClick;
 		public event EventHandler<GutterIconClickEventArgs>? GutterIconClick;
 		public event EventHandler<CodeLensClickEventArgs>? CodeLensClick;
+		public event EventHandler<LinkClickEventArgs>? LinkClick;
 		public event EventHandler<FoldToggleEventArgs>? FoldToggle;
 		public event EventHandler<SelectionMenuItemClickEventArgs>? SelectionMenuItemClick;
 		public event Action<IReadOnlyList<CompletionItem>>? CompletionItemsUpdated;
@@ -349,6 +350,14 @@ namespace SweetEditor {
 		public void SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine) =>
 			Invoke(e => e.SetBatchLineCodeLens(itemsByLine));
 
+		public void SetLineLinks(int line, IList<LinkSpan> links) => Invoke(e => e.SetLineLinks(line, links));
+
+		public void SetBatchLineLinks(Dictionary<int, IList<LinkSpan>> linksByLine) =>
+			Invoke(e => e.SetBatchLineLinks(linksByLine));
+
+		public string GetLinkTargetAt(int line, int column) =>
+			Read(e => e.GetLinkTargetAt(line, column), string.Empty);
+
 		public void SetLineDiagnostics(int line, IList<Diagnostic> items) => Invoke(e => e.SetLineDiagnostics(line, items));
 
 		public void SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine) =>
@@ -381,6 +390,8 @@ namespace SweetEditor {
 		public void ClearGutterIcons() => Invoke(e => e.ClearGutterIcons());
 
 		public void ClearCodeLens() => Invoke(e => e.ClearCodeLens());
+
+		public void ClearLinks() => Invoke(e => e.ClearLinks());
 
 		public void ClearGuides() => Invoke(e => e.ClearGuides());
 
@@ -515,6 +526,7 @@ namespace SweetEditor {
 			editor.InlayHintClick += HandleInlayHintClick;
 			editor.GutterIconClick += HandleGutterIconClick;
 			editor.CodeLensClick += HandleCodeLensClick;
+			editor.LinkClick += HandleLinkClick;
 			editor.FoldToggle += HandleFoldToggle;
 			editor.SelectionMenuItemClick += HandleSelectionMenuItemClick;
 			editor.CompletionItemsUpdated += HandleCompletionItemsUpdated;
@@ -536,6 +548,7 @@ namespace SweetEditor {
 			editor.InlayHintClick -= HandleInlayHintClick;
 			editor.GutterIconClick -= HandleGutterIconClick;
 			editor.CodeLensClick -= HandleCodeLensClick;
+			editor.LinkClick -= HandleLinkClick;
 			editor.FoldToggle -= HandleFoldToggle;
 			editor.SelectionMenuItemClick -= HandleSelectionMenuItemClick;
 			editor.CompletionItemsUpdated -= HandleCompletionItemsUpdated;
@@ -556,6 +569,7 @@ namespace SweetEditor {
 		private void HandleInlayHintClick(object? sender, InlayHintClickEventArgs e) => InlayHintClick?.Invoke(this, e);
 		private void HandleGutterIconClick(object? sender, GutterIconClickEventArgs e) => GutterIconClick?.Invoke(this, e);
 		private void HandleCodeLensClick(object? sender, CodeLensClickEventArgs e) => CodeLensClick?.Invoke(this, e);
+		private void HandleLinkClick(object? sender, LinkClickEventArgs e) => LinkClick?.Invoke(this, e);
 		private void HandleFoldToggle(object? sender, FoldToggleEventArgs e) => FoldToggle?.Invoke(this, e);
 		private void HandleSelectionMenuItemClick(object? sender, SelectionMenuItemClickEventArgs e) => SelectionMenuItemClick?.Invoke(this, e);
 		private void HandleCompletionItemsUpdated(IReadOnlyList<CompletionItem> items) => CompletionItemsUpdated?.Invoke(items);

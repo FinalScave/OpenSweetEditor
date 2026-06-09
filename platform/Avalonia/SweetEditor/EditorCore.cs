@@ -144,6 +144,8 @@ namespace SweetEditor {
 		FoldToggle,
 		/// <summary>Custom selection menu item clicked.</summary>
 		SelectionMenuItemClick,
+		/// <summary>Link click</summary>
+		LinkClick,
 	}
 
 	/// <summary>
@@ -303,6 +305,24 @@ namespace SweetEditor {
 		public GutterIconClickEventArgs(int line, int iconId, PointF point)
 			: base(EditorEventType.GutterIconClick) {
 			Line = line; IconId = iconId; ScreenPoint = point;
+		}
+	}
+
+	/// <summary>
+	/// Link click event args.
+	/// </summary>
+	public class LinkClickEventArgs : EditorEventArgs {
+		/// <summary>Link logical line (0-based)</summary>
+		public int Line { get; }
+		/// <summary>Link anchor column (0-based)</summary>
+		public int Column { get; }
+		/// <summary>Resolved link target.</summary>
+		public string Target { get; }
+		/// <summary>Tap screen position</summary>
+		public PointF ScreenPoint { get; }
+		public LinkClickEventArgs(int line, int column, string? target, PointF point)
+			: base(EditorEventType.LinkClick) {
+			Line = line; Column = column; Target = target ?? string.Empty; ScreenPoint = point;
 		}
 	}
 
@@ -653,6 +673,18 @@ namespace SweetEditor {
 
 		[DllImport(LibraryName, EntryPoint = "editor_clear_codelens", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr ClearCodeLens(IntPtr handle, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_set_line_links", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr SetLineLinks(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_set_batch_line_links", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr SetBatchLineLinks(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_clear_links", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ClearLinks(IntPtr handle, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_get_link_target_at", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr GetLinkTargetAt(IntPtr handle, nuint line, nuint column);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_batch_line_diagnostics", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetBatchLineDiagnostics(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
@@ -1906,6 +1938,64 @@ namespace SweetEditor {
 		public EditorActionResult ClearCodeLens() {
 			IntPtr payloadPtr = NativeMethods.ClearCodeLens(nativeHandle, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		#endregion
+
+		#region Links
+
+		/// <summary>Sets link ranges for the specified line.</summary>
+		public EditorActionResult SetLineLinks(int line, IList<LinkSpan> links) {
+			if (links == null) return EditorActionResult.Empty;
+			byte[] payload = CoreProtocol.EncodeSetLineLinksPayload(line, ToReadOnlyList(links));
+			IntPtr payloadPtr = NativeMethods.SetLineLinks(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Sets link ranges for the specified line from an encoded payload.</summary>
+		public EditorActionResult SetLineLinks(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetLineLinks(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Batch sets link ranges for multiple lines.</summary>
+		public EditorActionResult SetBatchLineLinks(Dictionary<int, IList<LinkSpan>> linksByLine) {
+			if (linksByLine == null || linksByLine.Count == 0) return EditorActionResult.Empty;
+			byte[] payload = CoreProtocol.EncodeSetBatchLineLinksPayload(ToReadOnlyLineMap(linksByLine));
+			IntPtr payloadPtr = NativeMethods.SetBatchLineLinks(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Batch sets link ranges for multiple lines.</summary>
+		public EditorActionResult SetBatchLineLinks(Dictionary<int, List<LinkSpan>> linksByLine) {
+			if (linksByLine == null || linksByLine.Count == 0) return EditorActionResult.Empty;
+			byte[] payload = CoreProtocol.EncodeSetBatchLineLinksPayload(ToReadOnlyLineMap(linksByLine));
+			IntPtr payloadPtr = NativeMethods.SetBatchLineLinks(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Batch sets link ranges for multiple lines from an encoded payload.</summary>
+		public EditorActionResult SetBatchLineLinks(byte[] payload) {
+			if (payload == null) return EditorActionResult.Empty;
+			IntPtr payloadPtr = NativeMethods.SetBatchLineLinks(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Clears all link ranges.</summary>
+		public EditorActionResult ClearLinks() {
+			IntPtr payloadPtr = NativeMethods.ClearLinks(nativeHandle, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Gets the link target at the specified logical position.</summary>
+		public string GetLinkTargetAt(int line, int column) {
+			if (line < 0 || column < 0) return "";
+			IntPtr ptr = NativeMethods.GetLinkTargetAt(nativeHandle, (nuint)line, (nuint)column);
+			if (ptr == IntPtr.Zero) return "";
+			string target = Marshal.PtrToStringUTF8(ptr) ?? "";
+			NativeMethods.FreeUtf8String(ptr);
+			return target;
 		}
 
 		#endregion

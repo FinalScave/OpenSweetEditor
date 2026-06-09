@@ -8,13 +8,17 @@
 
 namespace NS_SWEETEDITOR {
 
+  inline U8String visualRunText(const VisualRun& run) {
+    U8String text;
+    StrUtil::convertUTF16ToUTF8(run.text, text);
+    return text;
+  }
+
   inline U8String collectVisualLineText(const VisualLine& line) {
     U8String out;
     for (const VisualRun& run : line.runs) {
       if (run.text.empty()) continue;
-      U8String text;
-      StrUtil::convertUTF16ToUTF8(run.text, text);
-      out += text;
+      out += visualRunText(run);
     }
     return out;
   }
@@ -71,6 +75,12 @@ namespace NS_SWEETEDITOR {
       }
     }
     return effects;
+  }
+
+  inline const RangeEffectRenderItem& requireSingleRangeEffectOfKind(const EditorRenderModel& model, RangeEffectKind kind) {
+    auto effects = rangeEffectsOfKind(model, kind);
+    REQUIRE(effects.size() == 1);
+    return *effects.front();
   }
 
 }

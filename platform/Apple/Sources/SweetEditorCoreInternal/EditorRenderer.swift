@@ -64,30 +64,6 @@ struct EditorRenderer {
 
         drawRangeEffectBackgrounds(context: context, effects: model.range_effects)
 
-        // Guide lines
-        context.setLineWidth(1.0)
-        for guide in model.guide_segments {
-            let guideColor = (guide.type == .SEPARATOR) ? t.separatorLineColor : t.guideColor
-            context.setStrokeColor(guideColor)
-            if guide.type == .INDENT || guide.style == .DASHED {
-                context.setLineDash(phase: 0, lengths: [3, 3])
-            } else {
-                context.setLineDash(phase: 0, lengths: [])
-            }
-
-            var startX = CGFloat(guide.start.x)
-            var endX = CGFloat(guide.end.x)
-            if guide.type == .INDENT {
-                startX -= 1.0
-                endX -= 1.0
-            }
-
-            context.move(to: CGPoint(x: startX, y: CGFloat(guide.start.y)))
-            context.addLine(to: CGPoint(x: endX, y: CGFloat(guide.end.y)))
-            context.strokePath()
-        }
-        context.setLineDash(phase: 0, lengths: [])
-
         // Lines and runs (text content)
         for line in model.lines {
             for run in line.runs {
@@ -95,12 +71,14 @@ struct EditorRenderer {
             }
         }
 
+        drawGuideSegments(context: context, guides: model.guide_segments)
+
+        drawRangeEffectOverlays(context: context, effects: model.range_effects)
+
         // Cursor
         if model.cursor.visible && isCursorBlinkVisible {
             drawCursor(context: context, cursor: model.cursor)
         }
-
-        drawRangeEffectOverlays(context: context, effects: model.range_effects)
 
         // Gutter overlay: cover content that overflows into line number area
         let splitX = CGFloat(model.split_x)
@@ -409,6 +387,121 @@ struct EditorRenderer {
             step += 1
         }
         context.strokePath()
+    }
+
+    static func drawGuideSegments(context: CGContext, guides: [GuideSegment]) {
+        guard !guides.isEmpty else { return }
+
+        let t = theme
+        context.saveGState()
+        context.setLineWidth(1.0)
+
+        for guide in guides {
+            let guideColor = (guide.type == .SEPARATOR) ? t.separatorLineColor : t.guideColor
+            let (start, end) = guideEndpoints(guide)
+
+            context.setStrokeColor(guideColor)
+            if guide.type == .INDENT || guide.style == .DASHED {
+                context.setLineDash(phase: 0, lengths: [3, 3])
+            } else {
+                context.setLineDash(phase: 0, lengths: [])
+            }
+
+            if guide.style == .DOUBLE {
+                drawDoubleGuideLine(context: context, start: start, end: end, direction: guide.direction)
+            } else if guide.arrow_end {
+                drawArrowGuideLine(context: context, start: start, end: end, color: guideColor)
+            } else {
+                drawGuideLine(context: context, start: start, end: end)
+            }
+        }
+
+        context.restoreGState()
+    }
+
+    private static func guideEndpoints(_ guide: GuideSegment) -> (start: CGPoint, end: CGPoint) {
+        var startX = CGFloat(guide.start.x)
+        var endX = CGFloat(guide.end.x)
+        if guide.type == .INDENT {
+            startX -= 1.0
+            endX -= 1.0
+        }
+
+        return (
+            CGPoint(x: startX, y: CGFloat(guide.start.y)),
+            CGPoint(x: endX, y: CGFloat(guide.end.y))
+        )
+    }
+
+    private static func drawGuideLine(context: CGContext, start: CGPoint, end: CGPoint) {
+        context.move(to: start)
+        context.addLine(to: end)
+        context.strokePath()
+    }
+
+    private static func drawDoubleGuideLine(context: CGContext, start: CGPoint, end: CGPoint, direction: GuideDirection) {
+        let offset: CGFloat = 1.5
+        if direction == .HORIZONTAL {
+            drawGuideLine(
+                context: context,
+                start: CGPoint(x: start.x, y: start.y - offset),
+                end: CGPoint(x: end.x, y: end.y - offset)
+            )
+            drawGuideLine(
+                context: context,
+                start: CGPoint(x: start.x, y: start.y + offset),
+                end: CGPoint(x: end.x, y: end.y + offset)
+            )
+        } else {
+            drawGuideLine(
+                context: context,
+                start: CGPoint(x: start.x - offset, y: start.y),
+                end: CGPoint(x: end.x - offset, y: end.y)
+            )
+            drawGuideLine(
+                context: context,
+                start: CGPoint(x: start.x + offset, y: start.y),
+                end: CGPoint(x: end.x + offset, y: end.y)
+            )
+        }
+    }
+
+    private static func drawArrowGuideLine(context: CGContext, start: CGPoint, end: CGPoint, color: CGColor) {
+        let arrowLength: CGFloat = 8.0
+        let arrowAngle = CGFloat(Double.pi * 28.0 / 180.0)
+        let dx = end.x - start.x
+        let dy = end.y - start.y
+        let length = sqrt(dx * dx + dy * dy)
+        guard length >= 1.0 else { return }
+
+        let arrowDepth = arrowLength * CGFloat(cos(Double(arrowAngle)))
+        if length > arrowDepth {
+            let ratio = (length - arrowDepth) / length
+            let lineEnd = CGPoint(x: start.x + dx * ratio, y: start.y + dy * ratio)
+            drawGuideLine(context: context, start: start, end: lineEnd)
+        }
+
+        let unitX = dx / length
+        let unitY = dy / length
+        let cosAngle = CGFloat(cos(Double(arrowAngle)))
+        let sinAngle = CGFloat(sin(Double(arrowAngle)))
+        let left = CGPoint(
+            x: end.x - arrowLength * (unitX * cosAngle - unitY * sinAngle),
+            y: end.y - arrowLength * (unitY * cosAngle + unitX * sinAngle)
+        )
+        let right = CGPoint(
+            x: end.x - arrowLength * (unitX * cosAngle + unitY * sinAngle),
+            y: end.y - arrowLength * (unitY * cosAngle - unitX * sinAngle)
+        )
+
+        context.saveGState()
+        context.setFillColor(color)
+        context.move(to: end)
+        context.addLine(to: left)
+        context.addLine(to: right)
+        context.closePath()
+        context.fillPath()
+        context.restoreGState()
     }
 
     static func drawScrollbars(context: CGContext, model: EditorRenderModel, style: ScrollbarVisualStyle) -> Bool {

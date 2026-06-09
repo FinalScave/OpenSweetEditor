@@ -43,6 +43,7 @@ namespace SweetEditor {
 		public event EventHandler<InlayHintClickEventArgs>? InlayHintClick;
 		public event EventHandler<GutterIconClickEventArgs>? GutterIconClick;
 		public event EventHandler<CodeLensClickEventArgs>? CodeLensClick;
+		public event EventHandler<LinkClickEventArgs>? LinkClick;
 		public event EventHandler<FoldToggleEventArgs>? FoldToggle;
 		public event EventHandler<SelectionMenuItemClickEventArgs>? SelectionMenuItemClick;
 		public event Action<IReadOnlyList<CompletionItem>>? CompletionItemsUpdated;
@@ -1334,6 +1335,18 @@ namespace SweetEditor {
 		internal void SetBatchLineCodeLens(Dictionary<int, List<CodeLensItem>> itemsByLine) =>
 			DispatchEditorActionResult(editorCore.SetBatchLineCodeLens(itemsByLine));
 
+		public void SetLineLinks(int line, IList<LinkSpan> links) =>
+			DispatchEditorActionResult(editorCore.SetLineLinks(line, links));
+
+		public void SetBatchLineLinks(Dictionary<int, IList<LinkSpan>> linksByLine) =>
+			DispatchEditorActionResult(editorCore.SetBatchLineLinks(linksByLine));
+
+		internal void SetBatchLineLinks(Dictionary<int, List<LinkSpan>> linksByLine) =>
+			DispatchEditorActionResult(editorCore.SetBatchLineLinks(linksByLine));
+
+		public string GetLinkTargetAt(int line, int column) =>
+			disposed ? string.Empty : editorCore.GetLinkTargetAt(line, column);
+
 		public void SetLineDiagnostics(int line, IList<Diagnostic> items) =>
 			DispatchEditorActionResult(editorCore.SetLineDiagnostics(line, items));
 
@@ -1378,6 +1391,8 @@ namespace SweetEditor {
 		public void ClearGutterIcons() => DispatchEditorActionResult(editorCore.ClearGutterIcons());
 
 		public void ClearCodeLens() => DispatchEditorActionResult(editorCore.ClearCodeLens());
+
+		public void ClearLinks() => DispatchEditorActionResult(editorCore.ClearLinks());
 
 		public void ClearGuides() => DispatchEditorActionResult(editorCore.ClearGuides());
 
@@ -1942,6 +1957,13 @@ namespace SweetEditor {
 									result.HitTarget.Line,
 									result.HitTarget.Column,
 									result.HitTarget.IconId,
+									sp));
+								break;
+							case HitTargetType.LINK:
+								LinkClick?.Invoke(this, new LinkClickEventArgs(
+									result.HitTarget.Line,
+									result.HitTarget.Column,
+									GetLinkTargetAt(result.HitTarget.Line, result.HitTarget.Column),
 									sp));
 								break;
 							case HitTargetType.FOLD_PLACEHOLDER:
