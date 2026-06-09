@@ -5,19 +5,13 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Media;
+using Avalonia.Media.TextFormatting;
 using AvaloniaRect = Avalonia.Rect;
 
 namespace SweetEditor {
 	internal sealed class EditorRenderer : IDisposable {
 		private const float DefaultTextSizeDip = 15.0f;
 		private const float InlayTextSizeRatio = 0.86f;
-		private const float LineNumberTextSizeRatio = 0.85f;
-		private const int MaxFormattedTextCacheEntries = 4096;
-		private const int MaxTextMetricsCacheEntries = 4096;
-		private const int MaxAdvanceCacheEntries = 32;
-		private const int MaxGlyphRunCacheEntries = 8192;
-		private const int MaxCacheableTextLength = 192;
-		private const int MaxGlyphFastPathCacheEntries = 8192;
 		private const int MaxLineNumberTextCacheEntries = 8192;
 		private const int MeasureColorArgb = unchecked((int)0xFF000000);
 		private const int FontStyleBold = 1;
@@ -30,17 +24,16 @@ namespace SweetEditor {
 
 		private readonly Dictionary<int, ISolidColorBrush> brushCache = new();
 		private readonly Dictionary<PenKey, Pen> penCache = new();
-		private readonly Dictionary<FormattedTextKey, FormattedText> formattedTextCache = new();
-		private readonly Dictionary<GlyphRunKey, GlyphRun> glyphRunCache = new();
-		private readonly Dictionary<TextMetricsKey, TextMetrics> textMetricsCache = new();
-		private readonly Dictionary<LayoutMetricsKey, LayoutMetrics> layoutMetricsCache = new();
-		private readonly Dictionary<AdvanceKey, float> monospaceAdvanceCache = new();
 		private readonly Dictionary<int, string> lineNumberTextCache = new();
-		private readonly Dictionary<string, bool> glyphFastPathCache = new(StringComparer.Ordinal);
 		private readonly Dictionary<int, IImage?> iconCache = new();
 		private readonly Dictionary<int, float> iconWidthCache = new();
 		private readonly MeasurePerfStats measurePerfStats = new();
 		private readonly PerfOverlay perfOverlay = new();
+		private static readonly IntPtr measureTextWidthCallback = CreateMeasureTextWidthCallback();
+		private static readonly IntPtr measureInlayHintWidthCallback = CreateMeasureInlayHintWidthCallback();
+		private static readonly IntPtr measureIconWidthCallback = CreateMeasureIconWidthCallback();
+		private static readonly IntPtr getFontMetricsCallback = CreateGetFontMetricsCallback();
+		private static EditorRenderer? activeMeasureTarget;
 
 		private EditorTheme theme;
 		private EditorIconProvider? iconProvider;
@@ -54,21 +47,14 @@ namespace SweetEditor {
 		private Typeface italicTypeface = new("monospace", FontStyle.Italic, FontWeight.Normal);
 		private Typeface boldItalicTypeface = new("monospace", FontStyle.Italic, FontWeight.Bold);
 
-		private readonly record struct FormattedTextKey(string Text, int FontStyle, int SizeKey, int Argb, bool Inlay);
+		private readonly record struct PenKey
+		(int Argb, int ThicknessKey, PenLineCap LineCap, PenLineJoin LineJoin);
 
-		private readonly record struct GlyphRunKey(string Text, int Start, int Length, int FontStyle, int SizeKey);
+		private readonly record struct TextMetrics
+		(float Width, float Baseline, float Height);
 
-		private readonly record struct TextMetricsKey(string Text, int FontStyle, int SizeKey, bool Inlay);
-
-		private readonly record struct LayoutMetricsKey(int FontStyle, int SizeKey, bool Inlay);
-
-		private readonly record struct AdvanceKey(int FontStyle, int SizeKey, bool Inlay);
-
-		private readonly record struct PenKey(int Argb, int ThicknessKey, PenLineCap LineCap, PenLineJoin LineJoin);
-
-		private readonly record struct TextMetrics(float Width, float Baseline, float Height);
-
-		private readonly record struct LayoutMetrics(float Baseline, float Height);
+		private readonly record struct LayoutMetrics
+		(float Baseline, float Height);
 
 		public EditorRenderer(EditorTheme theme) {
 			this.theme = theme;
@@ -82,11 +68,12 @@ namespace SweetEditor {
 		public string FontFamily => fontFamily;
 
 		public EditorCore.TextMeasurer CreateTextMeasurer() {
+			activeMeasureTarget = this;
 			return new EditorCore.TextMeasurer {
-				MeasureTextWidth = OnMeasureText,
-				MeasureInlayHintWidth = OnMeasureInlayText,
-				MeasureIconWidth = OnMeasureIconWidth,
-				GetFontMetrics = OnGetFontMetrics,
+				MeasureTextWidth = measureTextWidthCallback,
+				MeasureInlayHintWidth = measureInlayHintWidthCallback,
+				MeasureIconWidth = measureIconWidthCallback,
+				GetFontMetrics = getFontMetricsCallback,
 			};
 		}
 
@@ -114,7 +101,6 @@ namespace SweetEditor {
 
 		public void ApplyTheme(EditorTheme theme) {
 			this.theme = theme;
-			formattedTextCache.Clear();
 		}
 
 		public void SetEditorIconProvider(EditorIconProvider? provider) {
@@ -125,7 +111,7 @@ namespace SweetEditor {
 
 		public void SetScale(float scale) {
 			this.scale = Math.Max(0.1f, scale);
-			ClearTextCaches();
+			ClearFontDependentCaches();
 		}
 
 		public void SetPlatformDensity(float density) {
@@ -140,12 +126,8 @@ namespace SweetEditor {
 			double r = HandleDropRadius;
 			double c = HandleCenterDistance;
 
-			var points = new (double x, double y)[] {
-				(0, 0),
-				(-r, c),
-				(r, c),
-				(0, c + r),
-				(0, c - r * 0.8),
+			var points = new(double x, double y)[] {
+				(0, 0), (-r, c), (r, c), (0, c + r), (0, c - r * 0.8),
 			};
 
 			double minX = double.MaxValue;
@@ -163,20 +145,16 @@ namespace SweetEditor {
 
 			double pad = 1.0;
 			return new HandleConfig {
-				StartLeft = (float)((minX - pad) * d),
-				StartTop = (float)((minY - pad) * d),
-				StartRight = (float)((maxX + pad) * d),
-				StartBottom = (float)((maxY + pad) * d),
-				EndLeft = (float)((-maxX - pad) * d),
-				EndTop = (float)((minY - pad) * d),
-				EndRight = (float)((-minX + pad) * d),
-				EndBottom = (float)((maxY + pad) * d),
+				StartLeft = (float)((minX - pad) * d),	StartTop = (float)((minY - pad) * d),
+				StartRight = (float)((maxX + pad) * d), StartBottom = (float)((maxY + pad) * d),
+				EndLeft = (float)((-maxX - pad) * d),	EndTop = (float)((minY - pad) * d),
+				EndRight = (float)((-minX + pad) * d),	EndBottom = (float)((maxY + pad) * d),
 			};
 		}
 
 		public void SetEditorTextSize(float sizeDip) {
 			textSizeDip = Math.Max(1f, sizeDip);
-			ClearTextCaches();
+			ClearFontDependentCaches();
 		}
 
 		public void SetFontFamily(string? family) {
@@ -191,7 +169,8 @@ namespace SweetEditor {
 			PerfStepRecorder? drawPerf = perfOverlay.IsEnabled() ? PerfStepRecorder.Start() : null;
 			long drawStart = drawPerf != null ? Stopwatch.GetTimestamp() : 0;
 
-			context.FillRectangle(GetBrush((int)theme.BackgroundColor), new AvaloniaRect(0, 0, viewportSize.Width, viewportSize.Height));
+			context.FillRectangle(GetBrush((int)theme.BackgroundColor),
+								  new AvaloniaRect(0, 0, viewportSize.Width, viewportSize.Height));
 			drawPerf?.Mark(PerfStepRecorder.STEP_CLEAR);
 
 			DrawCurrentLine(context, model, viewportSize.Width);
@@ -203,6 +182,7 @@ namespace SweetEditor {
 				drawPerf?.Mark(PerfStepRecorder.STEP_RANGE_EFFECT_BACKGROUNDS);
 				DrawVisualLines(context, model, contentClip);
 				drawPerf?.Mark(PerfStepRecorder.STEP_LINES);
+				DrawGuideSegments(context, model);
 				DrawRangeEffectOverlays(context, model);
 				drawPerf?.Mark(PerfStepRecorder.STEP_RANGE_EFFECT_OVERLAYS);
 				DrawCursor(context, model);
@@ -227,7 +207,7 @@ namespace SweetEditor {
 		}
 
 		public void Dispose() {
-			ClearTextCaches();
+			lineNumberTextCache.Clear();
 			brushCache.Clear();
 			penCache.Clear();
 			iconCache.Clear();
@@ -239,54 +219,20 @@ namespace SweetEditor {
 			boldTypeface = new Typeface(fontFamily, FontStyle.Normal, FontWeight.Bold);
 			italicTypeface = new Typeface(fontFamily, FontStyle.Italic, FontWeight.Normal);
 			boldItalicTypeface = new Typeface(fontFamily, FontStyle.Italic, FontWeight.Bold);
-			ClearTextCaches();
+			ClearFontDependentCaches();
 		}
 
 		private float EffectiveTextSize => textSizeDip * scale;
 
 		private float EffectiveInlaySize => EffectiveTextSize * InlayTextSizeRatio;
 
-		private float EffectiveLineNumberSize => EffectiveTextSize * LineNumberTextSizeRatio;
-
-		private void ClearTextCaches() {
-			formattedTextCache.Clear();
-			glyphRunCache.Clear();
-			textMetricsCache.Clear();
-			layoutMetricsCache.Clear();
-			monospaceAdvanceCache.Clear();
-			lineNumberTextCache.Clear();
-			glyphFastPathCache.Clear();
+		private void ClearFontDependentCaches() {
+			iconWidthCache.Clear();
 		}
 
 		private static int QuantizeSize(float size) => (int)MathF.Round(size * 100f);
 
 		private bool IsProbablyMonospace() => fontFamily.Contains("mono", StringComparison.OrdinalIgnoreCase);
-
-		private static bool CanUseGlyphFastPath(string text) {
-			return !string.IsNullOrEmpty(text) && CanUseGlyphFastPath(text.AsSpan());
-		}
-
-		private bool CanUseGlyphFastPathCached(string text) {
-			if (string.IsNullOrEmpty(text)) {
-				return false;
-			}
-
-			if (text.Length > MaxCacheableTextLength) {
-				return CanUseGlyphFastPath(text.AsSpan());
-			}
-
-			if (glyphFastPathCache.TryGetValue(text, out bool cached)) {
-				return cached;
-			}
-
-			if (glyphFastPathCache.Count >= MaxGlyphFastPathCacheEntries) {
-				glyphFastPathCache.Clear();
-			}
-
-			bool canUse = CanUseGlyphFastPath(text.AsSpan());
-			glyphFastPathCache[text] = canUse;
-			return canUse;
-		}
 
 		private static bool CanUseGlyphFastPath(ReadOnlySpan<char> text) {
 			if (text.IsEmpty) {
@@ -301,50 +247,68 @@ namespace SweetEditor {
 			return true;
 		}
 
-		private bool CanUseMonospaceFastPath(string text) => CanUseGlyphFastPathCached(text);
-
-		private float GetMonospaceAdvance(int fontStyle, float size, bool inlay) {
-			var key = new AdvanceKey(fontStyle, QuantizeSize(size), inlay);
-			if (monospaceAdvanceCache.TryGetValue(key, out float advance)) {
-				return advance;
-			}
-
-			if (monospaceAdvanceCache.Count >= MaxAdvanceCacheEntries) {
-				monospaceAdvanceCache.Clear();
-			}
-
-			Typeface typeface = ResolveTypeface(fontStyle);
-			TextMetrics metrics = GetTextMetrics("M", typeface, fontStyle, size, inlay);
-			advance = metrics.Width;
-			monospaceAdvanceCache[key] = advance;
-			return advance;
+		private static double GlyphScale(IGlyphTypeface glyphTypeface, float size) {
+			double designEmHeight = Math.Max(1.0, glyphTypeface.Metrics.DesignEmHeight);
+			return size / designEmHeight;
 		}
 
-		private bool TryGetGlyphRun(string text, Typeface typeface, int fontStyle, float size, out GlyphRun glyphRun) {
-			if (!CanUseGlyphFastPathCached(text)) {
-				glyphRun = default!;
+		private static bool TryGetGlyphAdvance(IGlyphTypeface glyphTypeface, uint codepoint, float size,
+											   out ushort glyphIndex, out float advance) {
+			glyphIndex = glyphTypeface.GetGlyph(codepoint);
+			if (glyphIndex == 0) {
+				advance = 0f;
 				return false;
 			}
-			return TryGetGlyphRun(text, 0, text.Length, typeface, fontStyle, size, allowCache: true, skipFastPathValidation: true, out glyphRun);
+
+			advance = (float)(glyphTypeface.GetGlyphAdvance(glyphIndex) * GlyphScale(glyphTypeface, size));
+			return advance > 0f;
 		}
 
-		private bool TryGetGlyphRun(
-			string text,
-			int start,
-			int length,
-			Typeface typeface,
-			int fontStyle,
-			float size,
-			bool allowCache,
-			bool skipFastPathValidation,
-			out GlyphRun glyphRun) {
+		private bool TryGetFixedGlyphAdvance(Typeface typeface, float size, out float advance) {
+			advance = 0f;
+			if (typeface.GlyphTypeface is not IGlyphTypeface glyphTypeface) {
+				return false;
+			}
+			if (!glyphTypeface.Metrics.IsFixedPitch && !IsProbablyMonospace()) {
+				return false;
+			}
+			return TryGetGlyphAdvance(glyphTypeface, 'M', size, out _, out advance);
+		}
+
+		private bool TryMeasureGlyphText(string text, Typeface typeface, float size, out float width) {
+			width = 0f;
+			if (string.IsNullOrEmpty(text) || !CanUseGlyphFastPath(text.AsSpan())) {
+				return false;
+			}
+			if (typeface.GlyphTypeface is not IGlyphTypeface glyphTypeface) {
+				return false;
+			}
+
+			double scaleValue = GlyphScale(glyphTypeface, size);
+			double measured = 0;
+			ReadOnlySpan<char> chars = text.AsSpan();
+			for (int i = 0; i < chars.Length; i++) {
+				ushort glyphIndex = glyphTypeface.GetGlyph(chars[i]);
+				if (glyphIndex == 0) {
+					return false;
+				}
+				measured += glyphTypeface.GetGlyphAdvance(glyphIndex) * scaleValue;
+			}
+
+			width = (float)measured;
+			return true;
+		}
+
+		private bool TryCreateGlyphRun(string text, int start, int length, Typeface typeface, float size,
+									   Point baselineOrigin, out GlyphRun glyphRun, out float width) {
 			glyphRun = default!;
+			width = 0f;
 			if (string.IsNullOrEmpty(text) || length <= 0 || start < 0 || start + length > text.Length) {
 				return false;
 			}
 
 			ReadOnlySpan<char> slice = text.AsSpan(start, length);
-			if (!skipFastPathValidation && !CanUseGlyphFastPath(slice)) {
+			if (!CanUseGlyphFastPath(slice)) {
 				return false;
 			}
 
@@ -352,101 +316,138 @@ namespace SweetEditor {
 				return false;
 			}
 
-			bool shouldCache = allowCache && length <= MaxCacheableTextLength;
-			var key = shouldCache ? new GlyphRunKey(text, start, length, fontStyle, QuantizeSize(size)) : default;
-			if (shouldCache && glyphRunCache.TryGetValue(key, out GlyphRun? cached)) {
-				glyphRun = cached;
-				return true;
-			}
-
-			if (shouldCache && glyphRunCache.Count >= MaxGlyphRunCacheEntries) {
-				glyphRunCache.Clear();
-			}
-
-			ushort[] glyphIndices = new ushort[length];
+			double scaleValue = GlyphScale(glyphTypeface, size);
+			var glyphInfos = new GlyphInfo[length];
+			double measured = 0;
 			for (int i = 0; i < length; i++) {
-				glyphIndices[i] = glyphTypeface.GetGlyph(slice[i]);
+				ushort glyphIndex = glyphTypeface.GetGlyph(slice[i]);
+				if (glyphIndex == 0) {
+					return false;
+				}
+				double advance = glyphTypeface.GetGlyphAdvance(glyphIndex) * scaleValue;
+				if (advance <= 0) {
+					return false;
+				}
+				glyphInfos[i] = new GlyphInfo(glyphIndex, i, advance, default);
+				measured += advance;
 			}
 
-			glyphRun = new GlyphRun(glyphTypeface, size, text.AsMemory(start, length), glyphIndices, new Point(0, 0), 0);
-			if (shouldCache) {
-				glyphRunCache[key] = glyphRun;
-			}
+			width = (float)measured;
+			glyphRun = new GlyphRun(glyphTypeface, size, text.AsMemory(start, length), glyphInfos, baselineOrigin, 0);
 			return true;
 		}
 
 		private TextMetrics GetTextMetrics(string text, Typeface typeface, int fontStyle, float size, bool inlay) {
 			string safeText = string.IsNullOrEmpty(text) ? "M" : text;
-			bool shouldCache = safeText.Length <= MaxCacheableTextLength;
-			var key = shouldCache ? new TextMetricsKey(safeText, fontStyle, QuantizeSize(size), inlay) : default;
-			if (shouldCache && textMetricsCache.TryGetValue(key, out TextMetrics metrics)) {
-				return string.IsNullOrEmpty(text) ? metrics with { Width = 0f } : metrics;
-			}
-
-			if (shouldCache && textMetricsCache.Count >= MaxTextMetricsCacheEntries) {
-				textMetricsCache.Clear();
-			}
-
-			var formatted = new FormattedText(
-				safeText,
-				CultureInfo.CurrentCulture,
-				FlowDirection.LeftToRight,
-				typeface,
-				size,
-				GetBrush(MeasureColorArgb));
-			metrics = new TextMetrics(
-				(float)Math.Max(formatted.Width, formatted.WidthIncludingTrailingWhitespace),
-				(float)formatted.Baseline,
-				Math.Max(1f, (float)formatted.Height));
-			if (shouldCache) {
-				textMetricsCache[key] = metrics;
-			}
+			var formatted = new FormattedText(safeText, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, typeface,
+											  size, GetBrush(MeasureColorArgb));
+			var metrics = new TextMetrics((float)Math.Max(formatted.Width, formatted.WidthIncludingTrailingWhitespace),
+										  (float)formatted.Baseline, Math.Max(1f, (float)formatted.Height));
 			return string.IsNullOrEmpty(text) ? metrics with { Width = 0f } : metrics;
 		}
 
-		private FormattedText GetFormattedText(string text, Typeface typeface, int fontStyle, float size, int argb, bool inlay) {
-			bool shouldCache = text.Length <= MaxCacheableTextLength;
-			var key = shouldCache ? new FormattedTextKey(text, fontStyle, QuantizeSize(size), argb, inlay) : default;
-			if (shouldCache && formattedTextCache.TryGetValue(key, out FormattedText? cachedFormatted)) {
-				return cachedFormatted;
-			}
-
-			if (shouldCache && formattedTextCache.Count >= MaxFormattedTextCacheEntries) {
-				formattedTextCache.Clear();
-			}
-
-			FormattedText formatted = new FormattedText(
-				text,
-				CultureInfo.CurrentCulture,
-				FlowDirection.LeftToRight,
-				typeface,
-				size,
-				GetBrush(argb));
-			if (shouldCache) {
-				formattedTextCache[key] = formatted;
-			}
-			return formatted;
+		private FormattedText GetFormattedText(string text, Typeface typeface, int fontStyle, float size, int argb,
+											   bool inlay) {
+			return new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, typeface, size,
+									 GetBrush(argb));
 		}
 
 		private LayoutMetrics GetLayoutMetrics(Typeface typeface, int fontStyle, float size, bool inlay) {
-			var key = new LayoutMetricsKey(fontStyle, QuantizeSize(size), inlay);
-			if (layoutMetricsCache.TryGetValue(key, out LayoutMetrics metrics)) {
-				return metrics;
-			}
-
-			if (layoutMetricsCache.Count >= MaxAdvanceCacheEntries * 4) {
-				layoutMetricsCache.Clear();
+			if (typeface.GlyphTypeface is IGlyphTypeface glyphTypeface) {
+				double scaleValue = GlyphScale(glyphTypeface, size);
+				FontMetrics fontMetrics = glyphTypeface.Metrics;
+				float ascent = Math.Max(0.1f, (float)Math.Abs(fontMetrics.Ascent * scaleValue));
+				float descent = Math.Max(0.1f, (float)Math.Abs(fontMetrics.Descent * scaleValue));
+				return new LayoutMetrics(ascent, Math.Max(1f, ascent + descent));
 			}
 
 			TextMetrics textMetrics = GetTextMetrics("M", typeface, fontStyle, size, inlay);
-			metrics = new LayoutMetrics(textMetrics.Baseline, textMetrics.Height);
-			layoutMetricsCache[key] = metrics;
-			return metrics;
+			return new LayoutMetrics(textMetrics.Baseline, textMetrics.Height);
 		}
 
 		private float Snap(float value) => MathF.Round(value * scale) / scale;
 
 		private double Snap(double value) => Math.Round(value * scale) / scale;
+
+		private static unsafe IntPtr CreateMeasureTextWidthCallback() {
+			return (IntPtr)(delegate * unmanaged<ushort *, int, float>)&StaticMeasureText;
+		}
+
+		private static unsafe IntPtr CreateMeasureInlayHintWidthCallback() {
+			return (IntPtr)(delegate * unmanaged<ushort *, float>)&StaticMeasureInlayText;
+		}
+
+		private static unsafe IntPtr CreateMeasureIconWidthCallback() {
+			return (IntPtr)(delegate * unmanaged<int, float>)&StaticMeasureIconWidth;
+		}
+
+		private static unsafe IntPtr CreateGetFontMetricsCallback() {
+			return (IntPtr)(delegate * unmanaged<IntPtr, UIntPtr, void>)&StaticGetFontMetrics;
+		}
+
+		[UnmanagedCallersOnly]
+		private static unsafe float StaticMeasureText(ushort *textPtr, int fontStyle) {
+			try {
+				EditorRenderer? target = activeMeasureTarget;
+				if (target == null) {
+					return 0f;
+				}
+				string text = StringFromUtf16(textPtr);
+				if (string.IsNullOrEmpty(text)) {
+					return 0f;
+				}
+				return target.OnMeasureText(text, fontStyle);
+			} catch {
+				return 0f;
+			}
+		}
+
+		[UnmanagedCallersOnly]
+		private static unsafe float StaticMeasureInlayText(ushort *textPtr) {
+			try {
+				EditorRenderer? target = activeMeasureTarget;
+				if (target == null) {
+					return 0f;
+				}
+				string text = StringFromUtf16(textPtr);
+				if (string.IsNullOrEmpty(text)) {
+					return 0f;
+				}
+				return target.OnMeasureInlayText(text);
+			} catch {
+				return 0f;
+			}
+		}
+
+		[UnmanagedCallersOnly]
+		private static float StaticMeasureIconWidth(int iconId) {
+			try {
+				EditorRenderer? target = activeMeasureTarget;
+				return target?.OnMeasureIconWidth(iconId) ?? DefaultTextSizeDip;
+			} catch {
+				return DefaultTextSizeDip;
+			}
+		}
+
+		[UnmanagedCallersOnly]
+		private static void StaticGetFontMetrics(IntPtr arrPtr, UIntPtr length) {
+			try {
+				activeMeasureTarget?.OnGetFontMetrics(arrPtr, length);
+			} catch {
+			}
+		}
+
+		private static unsafe string StringFromUtf16(ushort *textPtr) {
+			if (textPtr == null) {
+				return string.Empty;
+			}
+
+			int length = 0;
+			while (textPtr[length] != 0) {
+				length++;
+			}
+			return length == 0 ? string.Empty : new string((char *)textPtr, 0, length);
+		}
 
 		private float OnMeasureText(string text, int fontStyle) {
 			if (string.IsNullOrEmpty(text)) {
@@ -457,10 +458,11 @@ namespace SweetEditor {
 			long start = collect ? Stopwatch.GetTimestamp() : 0;
 			try {
 				float textSize = EffectiveTextSize;
-				if (IsProbablyMonospace() && CanUseMonospaceFastPath(text)) {
-					return text.Length * GetMonospaceAdvance(fontStyle, textSize, inlay: false);
+				Typeface typeface = ResolveTypeface(fontStyle);
+				if (TryMeasureGlyphText(text, typeface, textSize, out float glyphWidth)) {
+					return glyphWidth;
 				}
-				return GetTextMetrics(text, ResolveTypeface(fontStyle), fontStyle, textSize, inlay: false).Width;
+				return GetTextMetrics(text, typeface, fontStyle, textSize, inlay: false).Width;
 			} catch {
 				return text.Length * EffectiveTextSize * 0.6f;
 			} finally {
@@ -471,20 +473,19 @@ namespace SweetEditor {
 		}
 
 		private float OnMeasureInlayText(string text) {
-			string safe = string.IsNullOrEmpty(text) ? "M" : text;
+			if (string.IsNullOrEmpty(text)) {
+				return 0f;
+			}
 			bool collect = perfOverlay.IsEnabled();
 			long start = collect ? Stopwatch.GetTimestamp() : 0;
 			try {
 				float textSize = EffectiveInlaySize;
-				if (IsProbablyMonospace() && CanUseMonospaceFastPath(safe)) {
-					return safe.Length * GetMonospaceAdvance(0, textSize, inlay: true);
-				}
-				return GetTextMetrics(safe, regularTypeface, 0, textSize, inlay: true).Width;
+				return GetTextMetrics(text, regularTypeface, 0, textSize, inlay: true).Width;
 			} catch {
-				return safe.Length * EffectiveInlaySize * 0.6f;
+				return text.Length * EffectiveInlaySize * 0.6f;
 			} finally {
 				if (collect) {
-					measurePerfStats.RecordInlay(Stopwatch.GetTimestamp() - start, safe.Length);
+					measurePerfStats.RecordInlay(Stopwatch.GetTimestamp() - start, text.Length);
 				}
 			}
 		}
@@ -493,18 +494,15 @@ namespace SweetEditor {
 			bool collect = perfOverlay.IsEnabled();
 			long start = collect ? Stopwatch.GetTimestamp() : 0;
 			try {
-				if (iconId == 0) {
-					return EffectiveTextSize;
-				}
-				if (iconWidthCache.TryGetValue(iconId, out float cachedWidth)) {
+				if (iconId != 0 && iconWidthCache.TryGetValue(iconId, out float cachedWidth)) {
 					return cachedWidth;
 				}
-				if (TryGetIconImage(iconId, out IImage? bmp) && bmp != null) {
-					float width = (float)bmp.Size.Width;
+
+				float width = GetLayoutMetrics(regularTypeface, 0, EffectiveTextSize, inlay: false).Height;
+				if (iconId != 0) {
 					iconWidthCache[iconId] = width;
-					return width;
 				}
-				return EffectiveTextSize;
+				return width;
 			} finally {
 				if (collect) {
 					measurePerfStats.RecordIcon(Stopwatch.GetTimestamp() - start);
@@ -519,7 +517,7 @@ namespace SweetEditor {
 			float ascent;
 			float descent;
 			try {
-				TextMetrics metrics = GetTextMetrics("M", regularTypeface, 0, EffectiveTextSize, inlay: false);
+				LayoutMetrics metrics = GetLayoutMetrics(regularTypeface, 0, EffectiveTextSize, inlay: false);
 				ascent = metrics.Baseline;
 				descent = Math.Max(0.1f, metrics.Height - metrics.Baseline);
 			} catch {
@@ -559,7 +557,8 @@ namespace SweetEditor {
 				return false;
 			}
 
-			if (iconCache.TryGetValue(iconId, out IImage? cached)) {
+			if (iconCache.TryGetValue(iconId, out IImage? cached))
+            {
 				image = cached;
 				return cached != null;
 			}
@@ -608,12 +607,92 @@ namespace SweetEditor {
 			}
 			foreach (var effect in model.RangeEffects) {
 				if (effect.Style.BorderColor != 0) {
-					context.DrawRectangle(null, GetPen(effect.Style.BorderColor, BorderStrokeWidth(effect.Kind)), ToAvaloniaRect(effect.Rect));
+					context.DrawRectangle(null, GetPen(effect.Style.BorderColor, BorderStrokeWidth(effect.Kind)),
+										  ToAvaloniaRect(effect.Rect));
 				}
 				if (effect.Style.UnderlineColor != 0 && effect.Style.UnderlineStyle != RangeEffectUnderlineStyle.NONE) {
 					DrawRangeEffectUnderline(context, effect.Rect, effect.Style);
 				}
 			}
+		}
+
+		private void DrawGuideSegments(DrawingContext context, EditorRenderModel model) {
+			if (model.GuideSegments == null || model.GuideSegments.Count == 0) {
+				return;
+			}
+
+			foreach (var guide in model.GuideSegments) {
+				double startX = Snap(guide.Start.X);
+				double startY = Snap(guide.Start.Y);
+				double endX = Snap(guide.End.X);
+				double endY = Snap(guide.End.Y);
+				double dx = endX - startX;
+				double dy = endY - startY;
+				double length = Math.Sqrt(dx * dx + dy * dy);
+				if (length <= 0.5) {
+					continue;
+				}
+
+				var start = new Point(startX, startY);
+				var end = new Point(endX, endY);
+				var pen = GetPen(ResolveGuideColor(guide), 1, PenLineCap.Round, PenLineJoin.Round);
+				if (guide.Style == GuideStyle.DOUBLE) {
+					DrawDoubleGuideSegment(context, pen, start, end, dx, dy, length);
+				} else if (guide.Style == GuideStyle.DASHED) {
+					DrawDashedGuideSegment(context, pen, startX, startY, dx, dy, length);
+				} else {
+					context.DrawLine(pen, start, end);
+				}
+
+				if (guide.ArrowEnd) {
+					DrawGuideArrow(context, pen, endX, endY, dx / length, dy / length);
+				}
+			}
+		}
+
+		private void DrawDoubleGuideSegment(DrawingContext context, Pen pen, Point start, Point end, double dx,
+											double dy, double length) {
+			double offsetX = -dy / length * 2.0;
+			double offsetY = dx / length * 2.0;
+			context.DrawLine(pen, new Point(Snap(start.X + offsetX), Snap(start.Y + offsetY)),
+							 new Point(Snap(end.X + offsetX), Snap(end.Y + offsetY)));
+			context.DrawLine(pen, new Point(Snap(start.X - offsetX), Snap(start.Y - offsetY)),
+							 new Point(Snap(end.X - offsetX), Snap(end.Y - offsetY)));
+		}
+
+		private void DrawDashedGuideSegment(DrawingContext context, Pen pen, double startX, double startY, double dx,
+											double dy, double length) {
+			const double dash = 6.0;
+			const double gap = 4.0;
+			double ux = dx / length;
+			double uy = dy / length;
+			for (double distance = 0; distance < length; distance += dash + gap) {
+				double next = Math.Min(distance + dash, length);
+				context.DrawLine(pen, new Point(Snap(startX + ux * distance), Snap(startY + uy * distance)),
+								 new Point(Snap(startX + ux * next), Snap(startY + uy * next)));
+			}
+		}
+
+		private void DrawGuideArrow(DrawingContext context, Pen pen, double endX, double endY, double ux, double uy) {
+			const double arrowSize = 7.0;
+			const double wing = 0.55;
+			double px = -uy;
+			double py = ux;
+			var end = new Point(Snap(endX), Snap(endY));
+			var left = new Point(Snap(endX - ux * arrowSize + px * arrowSize * wing),
+								 Snap(endY - uy * arrowSize + py * arrowSize * wing));
+			var right = new Point(Snap(endX - ux * arrowSize - px * arrowSize * wing),
+								  Snap(endY - uy * arrowSize - py * arrowSize * wing));
+			context.DrawLine(pen, end, left);
+			context.DrawLine(pen, end, right);
+		}
+
+		private int ResolveGuideColor(GuideSegment guide) {
+			uint color = guide.Type == GuideType.SEPARATOR ? theme.SeparatorLineColor : theme.GuideColor;
+			if (color == 0) {
+				color = theme.LineNumberColor;
+			}
+			return (int)color;
 		}
 
 		private static double BorderStrokeWidth(RangeEffectKind kind) {
@@ -624,7 +703,8 @@ namespace SweetEditor {
 			double startX = Snap(rect.Origin.X);
 			double endX = Snap(rect.Origin.X + rect.Width);
 			double baseY = Snap(rect.Origin.Y + rect.Height - 1f);
-			var pen = GetPen(style.UnderlineColor, style.UnderlineStyle == RangeEffectUnderlineStyle.WAVY ? 3.0 : 2.0, PenLineCap.Round, PenLineJoin.Round);
+			var pen = GetPen(style.UnderlineColor, style.UnderlineStyle == RangeEffectUnderlineStyle.WAVY ? 3.0 : 2.0,
+							 PenLineCap.Round, PenLineJoin.Round);
 
 			if (style.UnderlineStyle == RangeEffectUnderlineStyle.DASHED) {
 				DrawDashedUnderline(context, pen, startX, endX, baseY);
@@ -672,7 +752,8 @@ namespace SweetEditor {
 			DrawSelectionHandle(context, model, model.SelectionEndHandle, isStart: false);
 		}
 
-		private void DrawSelectionHandle(DrawingContext context, EditorRenderModel model, SelectionHandle handle, bool isStart) {
+		private void DrawSelectionHandle(DrawingContext context, EditorRenderModel model, SelectionHandle handle,
+										 bool isStart) {
 			if (!handle.Visible || handle.Height <= 0f) {
 				return;
 			}
@@ -713,22 +794,14 @@ namespace SweetEditor {
 			using (var geo = path.Open()) {
 				Point tip = new Point(tipX, tipY);
 				geo.BeginFigure(tip, true);
-				geo.CubicBezierTo(
-					Rotate(tipX, tipY + centerDistance * 0.4),
-					Rotate(cx - dropRadius, cy - dropRadius * 0.8),
-					Rotate(cx - dropRadius, cy));
-				geo.CubicBezierTo(
-					Rotate(cx - dropRadius, cy + k),
-					Rotate(cx - k, cy + dropRadius),
-					Rotate(cx, cy + dropRadius));
-				geo.CubicBezierTo(
-					Rotate(cx + k, cy + dropRadius),
-					Rotate(cx + dropRadius, cy + k),
-					Rotate(cx + dropRadius, cy));
-				geo.CubicBezierTo(
-					Rotate(cx + dropRadius, cy - dropRadius * 0.8),
-					Rotate(tipX, tipY + centerDistance * 0.4),
-					tip);
+				geo.CubicBezierTo(Rotate(tipX, tipY + centerDistance * 0.4),
+								  Rotate(cx - dropRadius, cy - dropRadius * 0.8), Rotate(cx - dropRadius, cy));
+				geo.CubicBezierTo(Rotate(cx - dropRadius, cy + k), Rotate(cx - k, cy + dropRadius),
+								  Rotate(cx, cy + dropRadius));
+				geo.CubicBezierTo(Rotate(cx + k, cy + dropRadius), Rotate(cx + dropRadius, cy + k),
+								  Rotate(cx + dropRadius, cy));
+				geo.CubicBezierTo(Rotate(cx + dropRadius, cy - dropRadius * 0.8),
+								  Rotate(tipX, tipY + centerDistance * 0.4), tip);
 				geo.EndFigure(true);
 			}
 			context.DrawGeometry(brush, null, path);
@@ -740,7 +813,6 @@ namespace SweetEditor {
 			}
 			float clipLeft = (float)contentClip.X;
 			float clipRight = (float)(contentClip.X + contentClip.Width);
-			bool monospaceFastPath = IsProbablyMonospace();
 			Span<VisualLine> lines = CollectionsMarshal.AsSpan(model.Lines);
 			int cachedFontStyle = int.MinValue;
 			Typeface cachedTypeface = regularTypeface;
@@ -766,11 +838,12 @@ namespace SweetEditor {
 					}
 
 					bool isInlay = run.Type == VisualRunType.INLAY_HINT;
-					bool drawWhitespaceText = run.Type is not (VisualRunType.WHITESPACE or VisualRunType.TAB);
+					bool isFoldPlaceholder = run.Type == VisualRunType.FOLD_PLACEHOLDER;
+					bool drawWhitespaceText = run.Type is not(VisualRunType.WHITESPACE or VisualRunType.TAB);
 					bool hasBackground = run.Style.BackgroundColor != 0;
 					bool hasStrike = (run.Style.FontStyle & FontStyleStrike) != 0;
 					bool isActiveCodeLens = run.Type == VisualRunType.CODELENS && run.Active;
-					bool needsLayout = hasBackground || hasStrike || isInlay || isActiveCodeLens;
+					bool needsLayout = hasBackground || hasStrike || isInlay || isFoldPlaceholder || isActiveCodeLens;
 					float textSize = run.Type == VisualRunType.INLAY_HINT ? EffectiveInlaySize : EffectiveTextSize;
 					Typeface typeface = default!;
 					bool hasTypeface = false;
@@ -785,11 +858,9 @@ namespace SweetEditor {
 							cachedTypeface = typeface;
 						}
 						hasTypeface = true;
-						canUseGlyphFastPath =
-							drawWhitespaceText &&
-							!isInlay &&
-							CanUseGlyphFastPathCached(text);
-						canUseHorizontalClip = canUseGlyphFastPath && monospaceFastPath;
+						canUseGlyphFastPath = drawWhitespaceText && !isInlay && CanUseGlyphFastPath(text.AsSpan());
+						canUseHorizontalClip =
+							canUseGlyphFastPath && TryGetFixedGlyphAdvance(typeface, textSize, out _);
 					}
 
 					int clippedStartIndex = 0;
@@ -799,91 +870,79 @@ namespace SweetEditor {
 					float topY = Snap(run.Y);
 					float lineHeight = Math.Max(1f, textSize);
 					if (needsLayout) {
-						layout = GetLayoutMetrics(typeface, run.Style.FontStyle, textSize, run.Type == VisualRunType.INLAY_HINT);
+						layout = GetLayoutMetrics(typeface, run.Style.FontStyle, textSize, isInlay);
 						topY = Snap(run.Y - layout.Baseline);
 						lineHeight = layout.Height;
 					}
 
-						if (drawWhitespaceText &&
-							canUseHorizontalClip &&
-							!string.IsNullOrEmpty(text) &&
-							drawWidth > clipRight - clipLeft) {
-							float advance = GetMonospaceAdvance(run.Style.FontStyle, textSize, inlay: false);
-							if (advance > 0f) {
-								int startIndex = Math.Max(0, (int)MathF.Floor((clipLeft - drawX) / advance));
-								int endIndex = Math.Min(text.Length, (int)MathF.Ceiling((clipRight - drawX) / advance));
-								if (endIndex <= startIndex) {
-									continue;
-								}
-
-								if (startIndex > 0 || endIndex < text.Length) {
-									clippedStartIndex = startIndex;
-									clippedLength = endIndex - startIndex;
-									clippedGlyphText = true;
-									drawX = Snap(drawX + startIndex * advance);
-									drawWidth = Math.Max(1f, Snap(clippedLength * advance));
-								}
-							}
+					if (drawWhitespaceText && canUseHorizontalClip && !string.IsNullOrEmpty(text) &&
+						drawWidth > clipRight - clipLeft &&
+						TryGetFixedGlyphAdvance(typeface, textSize, out float advance)) {
+						int startIndex = Math.Max(0, (int)MathF.Floor((clipLeft - drawX) / advance));
+						int endIndex = Math.Min(text.Length, (int)MathF.Ceiling((clipRight - drawX) / advance));
+						if (endIndex <= startIndex) {
+							continue;
 						}
+
+						if (startIndex > 0 || endIndex < text.Length) {
+							clippedStartIndex = startIndex;
+							clippedLength = endIndex - startIndex;
+							clippedGlyphText = true;
+							drawX = Snap(drawX + startIndex * advance);
+							drawWidth = Math.Max(1f, Snap(clippedLength * advance));
+						}
+					}
 
 					if (hasBackground) {
 						float backgroundX = Math.Max(drawX, clipLeft);
 						float backgroundRight = Math.Min(drawX + drawWidth, clipRight);
-						context.FillRectangle(
-							GetBrush(run.Style.BackgroundColor),
-							new AvaloniaRect(backgroundX, topY, Math.Max(0f, backgroundRight - backgroundX), Snap(lineHeight)));
+						context.FillRectangle(GetBrush(run.Style.BackgroundColor),
+											  new AvaloniaRect(backgroundX, topY,
+															   Math.Max(0f, backgroundRight - backgroundX),
+															   Snap(lineHeight)));
 					}
 
-					if (run.Type == VisualRunType.INLAY_HINT &&
-						run.IconId != 0 &&
-						TryGetIconImage(run.IconId, out IImage? iconBmp) &&
-						iconBmp != null) {
-						var iconRect = new AvaloniaRect(drawX, topY, drawWidth, Snap(lineHeight));
-						context.DrawImage(iconBmp, new AvaloniaRect(0, 0, iconBmp.Size.Width, iconBmp.Size.Height), iconRect);
+					if (isFoldPlaceholder) {
+						DrawFoldPlaceholderRun(context, run, text, textColor, drawX, topY, drawWidth, lineHeight,
+											   typeface, textSize);
 						continue;
 					}
 
-						if (!drawWhitespaceText || text.Length == 0) {
+					if (isInlay) {
+						DrawInlayHintRun(context, run, text, textColor, drawX, topY, drawWidth, lineHeight, typeface,
+										 textSize);
+						continue;
+					}
+
+					if (!drawWhitespaceText || text.Length == 0) {
+						continue;
+					}
+
+					GlyphRun glyphRun = default!;
+					bool usedGlyphRun = canUseGlyphFastPath &&
+										TryCreateGlyphRun(text, clippedStartIndex, clippedLength, typeface, textSize,
+														  new Point(drawX, Snap(run.Y)), out glyphRun, out _);
+					if (!usedGlyphRun) {
+						if (!hasTypeface) {
+							typeface = ResolveTypeface(run.Style.FontStyle);
+							hasTypeface = true;
+						}
+						string drawText = clippedGlyphText ? text.Substring(clippedStartIndex, clippedLength) : text;
+						FormattedText? formatted = drawText.Length > 0
+													   ? GetFormattedText(drawText, typeface, run.Style.FontStyle,
+																		  textSize, textColor, isInlay)
+													   : null;
+						if (formatted == null) {
 							continue;
 						}
-
-						GlyphRun glyphRun = default!;
-						bool usedGlyphRun = canUseGlyphFastPath &&
-							TryGetGlyphRun(
-								text,
-								clippedStartIndex,
-								clippedLength,
-								typeface,
-								run.Style.FontStyle,
-								textSize,
-								allowCache: !clippedGlyphText,
-								skipFastPathValidation: canUseGlyphFastPath,
-								out glyphRun);
-						if (!usedGlyphRun) {
-							if (!hasTypeface) {
-								typeface = ResolveTypeface(run.Style.FontStyle);
-								hasTypeface = true;
-						}
-						if (!needsLayout) {
-							layout = GetLayoutMetrics(typeface, run.Style.FontStyle, textSize, inlay: false);
-							topY = Snap(run.Y - layout.Baseline);
-								lineHeight = layout.Height;
-								needsLayout = true;
-							}
-							string drawText = clippedGlyphText
-								? text.Substring(clippedStartIndex, clippedLength)
-								: text;
-							FormattedText? formatted = drawText.Length > 0
-								? GetFormattedText(drawText, typeface, run.Style.FontStyle, textSize, textColor, isInlay)
-								: null;
-							if (formatted == null) {
-								continue;
-							}
-							context.DrawText(formatted, new Point(drawX, topY));
-						} else {
-							glyphRun.BaselineOrigin = new Point(drawX, Snap(run.Y));
-							context.DrawGlyphRun(GetBrush(textColor), glyphRun);
-						}
+						layout = LayoutMetricsFromFormattedText(formatted);
+						topY = Snap(run.Y - layout.Baseline);
+						lineHeight = layout.Height;
+						needsLayout = true;
+						context.DrawText(formatted, new Point(drawX, topY));
+					} else {
+						context.DrawGlyphRun(GetBrush(textColor), glyphRun);
+					}
 
 					if (text.Length == 0) {
 						continue;
@@ -898,23 +957,120 @@ namespace SweetEditor {
 					}
 
 					if (isActiveCodeLens) {
-						float underlineY = ComputeCodeLensUnderlineY(topY, layout);
-						context.DrawLine(GetPen(textColor, 1), new Point(drawX, underlineY), new Point(drawX + drawWidth, underlineY));
+						float underlineY = ComputeCodeLensUnderlineY(run.Y, layout);
+						context.DrawLine(GetPen(textColor, 1), new Point(drawX, underlineY),
+										 new Point(drawX + drawWidth, underlineY));
 					}
 				}
 			}
 		}
 
-		private float ComputeCodeLensUnderlineY(float topY, LayoutMetrics layout) {
-			float gap = Math.Clamp(layout.Height * 0.14f, 2.0f, 3.0f);
-			return Snap(topY + layout.Height + gap);
+		private void DrawFoldPlaceholderRun(DrawingContext context, VisualRun run, string text, int textColor,
+											float drawX, float topY, float drawWidth, float lineHeight,
+											Typeface typeface, float textSize) {
+			float margin = Math.Max(0f, run.Margin);
+			float padding = Math.Max(0f, run.Padding);
+			var background =
+				new AvaloniaRect(Snap(drawX + margin), Snap(topY), Math.Max(0f, Snap(drawWidth - margin * 2f)),
+								 Math.Max(1f, Snap(lineHeight)));
+			if (background.Width > 0 && background.Height > 0) {
+				FillRoundedRectangle(context, (int)theme.FoldPlaceholderBgColor, background, background.Height * 0.2);
+			}
+			if (text.Length == 0) {
+				return;
+			}
+
+			int foreground = theme.FoldPlaceholderTextColor != 0 ? (int)theme.FoldPlaceholderTextColor : textColor;
+			DrawTextAtBaseline(context, text, typeface, run.Style.FontStyle, textSize, foreground,
+							   drawX + margin + padding, run.Y);
+		}
+
+		private void DrawInlayHintRun(DrawingContext context, VisualRun run, string text, int textColor, float drawX,
+									  float topY, float drawWidth, float lineHeight, Typeface typeface,
+									  float textSize) {
+			float margin = Math.Max(0f, run.Margin);
+			float padding = Math.Max(0f, run.Padding);
+			var background =
+				new AvaloniaRect(Snap(drawX + margin), Snap(topY), Math.Max(0f, Snap(drawWidth - margin * 2f)),
+								 Math.Max(1f, Snap(lineHeight)));
+			if (background.Width <= 0 || background.Height <= 0) {
+				return;
+			}
+
+			if (run.ColorValue != 0) {
+				double blockSize = Math.Max(1, Math.Min(background.Width, background.Height));
+				var colorRect = new AvaloniaRect(background.X, background.Y, blockSize, blockSize);
+				context.FillRectangle(GetBrush(run.ColorValue), colorRect);
+				return;
+			}
+
+			FillRoundedRectangle(context, (int)theme.InlayHintBgColor, background, background.Height * 0.2);
+			if (run.IconId != 0 && TryGetIconImage(run.IconId, out IImage? iconBmp) && iconBmp != null)
+            {
+				double iconSize = Math.Max(1, Math.Min(background.Width, background.Height));
+				var iconRect = new AvaloniaRect(Snap(background.X + (background.Width - iconSize) * 0.5),
+												Snap(background.Y + (background.Height - iconSize) * 0.5),
+												Snap(iconSize), Snap(iconSize));
+				context.DrawImage(iconBmp, new AvaloniaRect(0, 0, iconBmp.Size.Width, iconBmp.Size.Height), iconRect);
+				return;
+			}
+
+			if (text.Length == 0) {
+				return;
+			}
+
+			DrawFormattedText(context, text, typeface, run.Style.FontStyle, textSize, textColor, inlay: true,
+							  drawX + margin + padding, topY);
+		}
+
+		private void DrawTextAtBaseline(DrawingContext context, string text, Typeface typeface, int fontStyle,
+										float textSize, int color, float x, float baselineY) {
+			if (text.Length == 0) {
+				return;
+			}
+			if (TryCreateGlyphRun(text, 0, text.Length, typeface, textSize, new Point(Snap(x), Snap(baselineY)),
+								  out GlyphRun glyphRun, out _)) {
+				context.DrawGlyphRun(GetBrush(color), glyphRun);
+				return;
+			}
+			FormattedText formatted = GetFormattedText(text, typeface, fontStyle, textSize, color, inlay: false);
+			LayoutMetrics layout = LayoutMetricsFromFormattedText(formatted);
+			context.DrawText(formatted, new Point(Snap(x), Snap(baselineY - layout.Baseline)));
+		}
+
+		private void DrawFormattedText(DrawingContext context, string text, Typeface typeface, int fontStyle,
+									   float textSize, int color, bool inlay, float x, float topY) {
+			if (text.Length == 0) {
+				return;
+			}
+			FormattedText formatted = GetFormattedText(text, typeface, fontStyle, textSize, color, inlay);
+			context.DrawText(formatted, new Point(Snap(x), Snap(topY)));
+		}
+
+		private static LayoutMetrics LayoutMetricsFromFormattedText(FormattedText formatted) {
+			return new LayoutMetrics(Math.Max(0.1f, (float)formatted.Baseline), Math.Max(1f, (float)formatted.Height));
+		}
+
+		private void FillRoundedRectangle(DrawingContext context, int color, AvaloniaRect rect, double radius) {
+			if (color == 0 || rect.Width <= 0 || rect.Height <= 0) {
+				return;
+			}
+			double safeRadius = Math.Max(0, Snap(radius));
+			context.DrawRectangle(GetBrush(color), null, rect, safeRadius, safeRadius);
+		}
+
+		private float ComputeCodeLensUnderlineY(float baselineY, LayoutMetrics layout) {
+			float descent = Math.Max(1f, layout.Height - layout.Baseline);
+			float gap = Math.Clamp(descent * 0.25f, 1.0f, 2.0f);
+			return Snap(baselineY + gap);
 		}
 
 		private void DrawCursor(DrawingContext context, EditorRenderModel model) {
 			if (!model.Cursor.Visible) {
 				return;
 			}
-			var rect = new AvaloniaRect(Snap(model.Cursor.Position.X), Snap(model.Cursor.Position.Y), 1.5, Math.Max(1, Snap(model.Cursor.Height)));
+			var rect = new AvaloniaRect(Snap(model.Cursor.Position.X), Snap(model.Cursor.Position.Y), 1.5,
+										Math.Max(1, Snap(model.Cursor.Height)));
 			context.FillRectangle(GetBrush((int)theme.CursorColor), rect);
 		}
 
@@ -923,7 +1079,8 @@ namespace SweetEditor {
 				return;
 			}
 
-			context.FillRectangle(GetBrush((int)theme.BackgroundColor), new AvaloniaRect(0, 0, model.SplitX, viewportHeight));
+			context.FillRectangle(GetBrush((int)theme.BackgroundColor),
+								  new AvaloniaRect(0, 0, model.SplitX, viewportHeight));
 			DrawCurrentLine(context, model, model.SplitX);
 			if (model.SplitLineVisible) {
 				DrawSplitLine(context, model, viewportHeight);
@@ -944,7 +1101,8 @@ namespace SweetEditor {
 			int activeLogicalLine = model.Cursor.TextPosition.Line;
 			int normalLineNumberColor = (int)theme.LineNumberColor;
 			int activeLineNumberColor = GetActiveLineNumberColor();
-			LayoutMetrics lineNumberMetrics = GetLayoutMetrics(regularTypeface, 0, EffectiveLineNumberSize, inlay: false);
+			float lineNumberTextSize = EffectiveTextSize;
+			LayoutMetrics lineNumberMetrics = GetLayoutMetrics(regularTypeface, 0, lineNumberTextSize, inlay: false);
 			Span<VisualLine> lines = CollectionsMarshal.AsSpan(model.Lines);
 			for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++) {
 				ref readonly VisualLine line = ref lines[lineIndex];
@@ -971,11 +1129,12 @@ namespace SweetEditor {
 					int lineNumberColor = isCurrentLine ? activeLineNumberColor : normalLineNumberColor;
 					float drawX = Snap(line.LineNumberPosition.X);
 					float baselineY = Snap(line.LineNumberPosition.Y);
-					if (TryGetGlyphRun(text, regularTypeface, 0, EffectiveLineNumberSize, out GlyphRun glyphRun)) {
-						glyphRun.BaselineOrigin = new Point(drawX, baselineY);
+					if (TryCreateGlyphRun(text, 0, text.Length, regularTypeface, lineNumberTextSize,
+										  new Point(drawX, baselineY), out GlyphRun glyphRun, out _)) {
 						context.DrawGlyphRun(GetBrush(lineNumberColor), glyphRun);
 					} else {
-						FormattedText formatted = GetFormattedText(text, regularTypeface, 0, EffectiveLineNumberSize, lineNumberColor, inlay: false);
+						FormattedText formatted = GetFormattedText(text, regularTypeface, 0, lineNumberTextSize,
+																   lineNumberColor, inlay: false);
 						float topY = Snap(line.LineNumberPosition.Y - lineNumberMetrics.Baseline);
 						context.DrawText(formatted, new Point(drawX, topY));
 					}
@@ -998,7 +1157,8 @@ namespace SweetEditor {
 					markerCursor++;
 				}
 				if (foldMarker != null) {
-					DrawFoldMarkerItem(context, foldMarker, isCurrentLine ? activeLineNumberColor : normalLineNumberColor);
+					DrawFoldMarkerItem(context, foldMarker,
+									   isCurrentLine ? activeLineNumberColor : normalLineNumberColor);
 				}
 			}
 		}
@@ -1007,11 +1167,13 @@ namespace SweetEditor {
 			if (item.Rect.Width <= 0f || item.Rect.Height <= 0f) {
 				return;
 			}
-			if (!TryGetIconImage(item.IconId, out IImage? iconBmp) || iconBmp == null) {
+			if (!TryGetIconImage(item.IconId, out IImage? iconBmp) || iconBmp == null)
+            {
 				return;
 			}
 
-			var dst = new AvaloniaRect(Snap(item.Rect.Origin.X), Snap(item.Rect.Origin.Y), Math.Max(0, Snap(item.Rect.Width)), Math.Max(0, Snap(item.Rect.Height)));
+			var dst = new AvaloniaRect(Snap(item.Rect.Origin.X), Snap(item.Rect.Origin.Y),
+									   Math.Max(0, Snap(item.Rect.Width)), Math.Max(0, Snap(item.Rect.Height)));
 			if (dst.Width <= 0 || dst.Height <= 0) {
 				return;
 			}
@@ -1066,10 +1228,16 @@ namespace SweetEditor {
 
 			byte alpha = (byte)Math.Clamp(model.Alpha * 255, 0, 255);
 			int trackColor = ((int)theme.ScrollbarTrackColor & 0x00FFFFFF) | (alpha << 24);
-			int thumbColor = ((int)(model.ThumbActive ? theme.ScrollbarThumbActiveColor : theme.ScrollbarThumbColor) & 0x00FFFFFF) | (alpha << 24);
+			int thumbColor =
+				((int)(model.ThumbActive ? theme.ScrollbarThumbActiveColor : theme.ScrollbarThumbColor) & 0x00FFFFFF) |
+				(alpha << 24);
 
-			context.FillRectangle(GetBrush(trackColor), new AvaloniaRect(Snap(model.Track.Origin.X), Snap(model.Track.Origin.Y), Snap(model.Track.Width), Snap(model.Track.Height)));
-			context.FillRectangle(GetBrush(thumbColor), new AvaloniaRect(Snap(model.Thumb.Origin.X), Snap(model.Thumb.Origin.Y), Snap(model.Thumb.Width), Snap(model.Thumb.Height)));
+			context.FillRectangle(GetBrush(trackColor),
+								  new AvaloniaRect(Snap(model.Track.Origin.X), Snap(model.Track.Origin.Y),
+												   Snap(model.Track.Width), Snap(model.Track.Height)));
+			context.FillRectangle(GetBrush(thumbColor),
+								  new AvaloniaRect(Snap(model.Thumb.Origin.X), Snap(model.Thumb.Origin.Y),
+												   Snap(model.Thumb.Width), Snap(model.Thumb.Height)));
 		}
 
 		private int GetActiveLineNumberColor() {
@@ -1084,13 +1252,12 @@ namespace SweetEditor {
 			if (run.Type == VisualRunType.INLAY_HINT) {
 				return (int)theme.InlayHintTextColor;
 			}
-			return run.Style.Color != 0
-				? run.Style.Color
-				: (int)theme.TextColor;
+			return run.Style.Color != 0 ? run.Style.Color : (int)theme.TextColor;
 		}
 
 		private string GetLineNumberText(int logicalLineNumber) {
-			if (lineNumberTextCache.TryGetValue(logicalLineNumber, out string? cached)) {
+			if (lineNumberTextCache.TryGetValue(logicalLineNumber, out string? cached))
+            {
 				return cached;
 			}
 
@@ -1116,25 +1283,22 @@ namespace SweetEditor {
 		}
 
 		private static AvaloniaRect GetContentClipRect(EditorRenderModel model, Size viewportSize) {
-			double left = model.GutterVisible && model.GutterSticky
-				? Math.Max(0, model.SplitX)
-				: 0;
+			double left = model.GutterVisible && model.GutterSticky ? Math.Max(0, model.SplitX) : 0;
 			double width = Math.Max(0, viewportSize.Width - left);
 			return new AvaloniaRect(left, 0, width, Math.Max(0, viewportSize.Height));
 		}
 
 		private AvaloniaRect ToAvaloniaRect(Rect rect) {
-			return new AvaloniaRect(
-				Snap(rect.Origin.X),
-				Snap(rect.Origin.Y),
-				Math.Max(0, Snap(rect.Width)),
-				Math.Max(0, Snap(rect.Height)));
+			return new AvaloniaRect(Snap(rect.Origin.X), Snap(rect.Origin.Y), Math.Max(0, Snap(rect.Width)),
+									Math.Max(0, Snap(rect.Height)));
 		}
 
-		private Pen GetPen(int argb, double thickness, PenLineCap lineCap = PenLineCap.Flat, PenLineJoin lineJoin = PenLineJoin.Miter) {
+		private Pen GetPen(int argb, double thickness, PenLineCap lineCap = PenLineCap.Flat,
+						   PenLineJoin lineJoin = PenLineJoin.Miter) {
 			int thicknessKey = QuantizeSize((float)thickness);
 			var key = new PenKey(argb, thicknessKey, lineCap, lineJoin);
-			if (penCache.TryGetValue(key, out Pen? pen)) {
+			if (penCache.TryGetValue(key, out Pen? pen))
+            {
 				return pen;
 			}
 

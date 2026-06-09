@@ -88,6 +88,10 @@ namespace SweetEditor {
 		public uint InlayHintBgColor { get; set; }
 		public uint InlayHintTextColor { get; set; }
 		public uint InlayHintIconColor { get; set; }
+		public uint CodeLensColor { get; set; }
+		public uint CodeLensActiveColor { get; set; }
+		public uint LinkColor { get; set; }
+		public uint LinkActiveColor { get; set; }
 		public uint FoldPlaceholderBgColor { get; set; }
 		public uint FoldPlaceholderTextColor { get; set; }
 		public uint PhantomTextColor { get; set; }
@@ -112,12 +116,6 @@ namespace SweetEditor {
 		public uint CompletionDetailColor { get; set; }
 
 		public Dictionary<int, TextStyle> TextStyles { get; set; } = new();
-
-		// Compatibility aliases for prior bindings.
-		public uint ForegroundColor { get => TextColor; set => TextColor = value; }
-		public uint SelectionBackgroundColor { get => SelectionColor; set => SelectionColor = value; }
-		public uint SeparatorColor { get => SeparatorLineColor; set => SeparatorLineColor = value; }
-		public uint CompositionColor { get => CompositionUnderlineColor; set => CompositionUnderlineColor = value; }
 
 		public EditorTheme DefineTextStyle(int styleId, TextStyle style) {
 			TextStyles[styleId] = style;
@@ -144,6 +142,10 @@ namespace SweetEditor {
 				InlayHintBgColor = 0x223A4A66,
 				InlayHintTextColor = 0xC0AFC2E0,
 				InlayHintIconColor = 0xCC9CB0CD,
+				CodeLensColor = 0x8CD4D4D4,
+				CodeLensActiveColor = 0xFFAEAFAD,
+				LinkColor = 0xFF4C9DFF,
+				LinkActiveColor = 0xFF7DCFFF,
 				FoldPlaceholderBgColor = 0x36506C90,
 				FoldPlaceholderTextColor = 0xFFE2ECFF,
 				PhantomTextColor = 0x8AA3B5D1,
@@ -203,6 +205,10 @@ namespace SweetEditor {
 				InlayHintBgColor = 0x143B82F6,
 				InlayHintTextColor = 0xB0344A73,
 				InlayHintIconColor = 0xB04B607E,
+				CodeLensColor = 0x8C000000,
+				CodeLensActiveColor = 0xFF237893,
+				LinkColor = 0xFF005FB8,
+				LinkActiveColor = 0xFF4C9DFF,
 				FoldPlaceholderBgColor = 0x2E748DB0,
 				FoldPlaceholderTextColor = 0xFF284A70,
 				PhantomTextColor = 0x8A4B607E,

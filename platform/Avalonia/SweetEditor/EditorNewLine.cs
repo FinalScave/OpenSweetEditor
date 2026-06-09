@@ -14,8 +14,7 @@ namespace SweetEditor {
 		public int LineNumber { get; }
 		public int Column { get; }
 		public string LineText { get; }
-		public LanguageConfiguration? LanguageConfig { get; }
-		public LanguageConfiguration? LanguageConfiguration => LanguageConfig;
+		public LanguageConfiguration? LanguageConfiguration { get; }
 		public IEditorMetadata? EditorMetadata { get; }
 
 		public NewLineContext(
@@ -27,7 +26,7 @@ namespace SweetEditor {
 			LineNumber = lineNumber;
 			Column = column;
 			LineText = lineText;
-			LanguageConfig = languageConfig;
+			LanguageConfiguration = languageConfig;
 			EditorMetadata = editorMetadata;
 		}
 	}
@@ -70,7 +69,7 @@ namespace SweetEditor {
 				cursor.Column,
 				lineText,
 				editor.GetLanguageConfiguration(),
-				editor.Metadata);
+				editor.MetadataInternal);
 			foreach (var provider in providers) {
 				var action = provider.ProvideNewLineAction(context);
 				if (action != null) {

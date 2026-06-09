@@ -10,6 +10,8 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using AvaloniaRect = Avalonia.Rect;
+using Button = Avalonia.Controls.Button;
+using Orientation = Avalonia.Layout.Orientation;
 
 namespace SweetEditor {
 	public sealed class SelectionMenuItem {
@@ -21,13 +23,11 @@ namespace SweetEditor {
 		public string Id { get; }
 		public string Label { get; }
 		public bool Enabled { get; }
-		public int? IconId { get; }
 
-		public SelectionMenuItem(string id, string label, bool enabled = true, int? iconId = null) {
+		public SelectionMenuItem(string id, string label, bool enabled = true) {
 			Id = string.IsNullOrWhiteSpace(id) ? string.Empty : id;
 			Label = label ?? string.Empty;
 			Enabled = enabled;
-			IconId = iconId;
 		}
 	}
 

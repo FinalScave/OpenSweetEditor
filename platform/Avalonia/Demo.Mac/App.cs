@@ -2,8 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Themes.Fluent;
-using SweetEditor.Avalonia.Demo.Host;
-using SweetEditor.Avalonia.Demo.Mac.Platform;
+using SweetEditor.Avalonia.Demo;
 
 namespace SweetEditor.Avalonia.Demo.Mac;
 

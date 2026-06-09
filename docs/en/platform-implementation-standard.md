@@ -43,14 +43,14 @@ The Widget layer handles platform-native rendering, user interaction, and extens
 |---|---|---|
 | **Widget** | `SweetEditor`, `SweetEditorController` *(declarative frameworks MUST; imperative frameworks MAY)*, `EditorTheme`, `EditorSettings`, `EditorIconProvider`, `EditorMetadata`, `LanguageConfiguration` | Widget entry, controller, theme, configuration |
 | **Decoration** | `DecorationProvider`, `DecorationProviderManager`, `DecorationContext`, `DecorationResult`, `DecorationType`; if the Receiver callback pattern is used, `DecorationReceiver` is the recommended name | Decoration provider system |
-| **Completion** | `CompletionProvider`, `CompletionProviderManager`, `CompletionContext`, `CompletionItem`, `CompletionResult`; if the Receiver callback pattern is used, `CompletionReceiver` is the recommended name | Completion provider system |
+| **Completion** | `CompletionProvider`, `CompletionProviderManager`, `CompletionContext`, `CompletionItem`, `CompletionTextEdit`, `CompletionResult`; if the Receiver callback pattern is used, `CompletionReceiver` is the recommended name | Completion provider system |
 | **Event** | A type-safe event mechanism, `EditorEvent`, `TextChangedEvent`, `CursorChangedEvent`, `SelectionChangedEvent`, `ScrollChangedEvent`, `ScaleChangedEvent`, `DocumentLoadedEvent`, `FoldToggleEvent`, `GutterIconClickEvent`, `InlayHintClickEvent`, `CodeLensClickEvent`, `LinkClickEvent`, `LongPressEvent`*(mobile / touch platforms)*, `DoubleTapEvent`, `ContextMenuEvent`*(platforms with an explicit context-menu gesture entry point)*; if an explicit event-bus/listener pattern is used, `EditorEventBus` and `EditorEventListener` are the recommended names | Event system |
 | **NewLine** | `NewLineActionProvider`, `NewLineActionProviderManager`, `NewLineAction`, `NewLineContext` | Newline action provider system |
 | **Keymap** | `EditorKeyMap` | Widget-layer keymap extension that binds command ids to host-side handlers |
 | **Copilot** *(SHOULD)* | `InlineSuggestion`, `InlineSuggestionListener` or an equivalent host-visible accept/dismiss callback mechanism | Inline suggestion data + callback; listener shape is the primary path when exposed |
 | **Selection** *(SHOULD on mobile; desktop MAY omit)* | `SelectionMenuItem`, `SelectionMenuItemProvider`, a host-visible custom-item click callback mechanism; MAY: `SelectionMenuListener` | Selection menu (mobile SHOULD; desktop MAY omit) |
 | **ContextMenu** *(SHOULD on desktop / mouse / right-click platforms; MAY on touch-only platforms)* | `ContextMenuRequest`, `ContextMenuSection`, `ContextMenuItem`, `ContextMenuItemProvider`, `ContextMenuTriggerKind`, a host-visible custom-item click callback mechanism; MAY: `ContextMenuPopup` | Platform-side context menu / action menu |
-| **Perf** *(MAY)* | `PerfOverlay`, `MeasurePerfStats`, `PerfStepRecorder` | Debug performance overlay |
+| **Perf** *(MAY)* | Debug performance overlay controls, such as `setPerfOverlayEnabled` / `isPerfOverlayEnabled` or platform-equivalent APIs | Debug performance overlay |
 
 > `TextChangeAction` is a SHOULD-level auxiliary event enum. Platforms MAY expose it to classify a text-change cycle at a coarse level (for example: `INSERT`, `DELETE`, `UNDO`, `REDO`, `KEY`, `COMPOSITION`), but it MUST NOT replace `changes: List<TextChange>` as the primary incremental payload.
 
@@ -306,7 +306,7 @@ Except for items marked SHOULD / MAY, every host API listed below is MUST. Langu
 | Clipboard *(MAY)* | `copyToClipboard()`, `pasteFromClipboard()`, `cutToClipboard()` |
 | Cursor / selection | `selectAll()`, `getSelectedText()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `setCursorPosition(pos)`, `getCursorPosition()`, `getWordRangeAtCursor()`, `getWordAtCursor()` |
 | Navigation / scroll | `gotoPosition(line, col)`, `scrollToLine(line, behavior)`, `setScroll(x, y)`, `getScrollMetrics()`, `getPositionRect(line, col)`, `getCursorRect()` |
-| Folding | `toggleFoldAt(line)`, `foldAt(line)`, `unfoldAt(line)`, `isLineVisible(line)`, `foldAll()`, `unfoldAll()` |
+| Folding | `toggleFold(line)`, `foldAt(line)`, `unfoldAt(line)`, `isLineVisible(line)`, `foldAll()`, `unfoldAll()` |
 | Search | `search(request)`, `findNextSearchMatch()`, `findPreviousSearchMatch()`, `replaceCurrentSearchMatch(replacement)`, `replaceAllSearchMatches(replacement)`, `clearSearch()`, `getSearchState()` |
 | Language / metadata | `setLanguageConfiguration(config)`, `getLanguageConfiguration()`, `setMetadata(metadata)`, `getMetadata()` |
 | Provider management | `addDecorationProvider(provider)`, `removeDecorationProvider(provider)`, `requestDecorationRefresh()`, `addCompletionProvider(provider)`, `removeCompletionProvider(provider)`, `addNewLineActionProvider(provider)`, `removeNewLineActionProvider(provider)` |
@@ -1032,8 +1032,8 @@ All platforms MUST support at least the following two construction methods:
 |---|---|---|
 | Representation form | **MUST** | Platforms MUST provide some representation capable of carrying arbitrary host-defined metadata; they MAY use a marker interface / protocol / abstract class / base class / `Object` / `any` / `unknown` / generic payload, etc. |
 | Explicit type naming | **SHOULD** | If the platform chooses to expose an explicit public type, it SHOULD be named `EditorMetadata`; language-conventional variants such as `IEditorMetadata` or `SEEditorMetadata` are also allowed |
-| Purpose | **MUST** | Host code stores and retrieves custom metadata (e.g. file path, language ID) via `setMetadata()` / `getMetadata()`; the platform layer MUST treat it as an opaque value and MUST NOT impose its own schema |
-| Retrieval semantics | **MUST** | `getMetadata()` MUST return the same metadata value previously set, or `null` if none exists; if the platform exposes a wider carrier type (such as `Object?`), host code is responsible for its own casts / type assertions |
+| Purpose | **MUST** | Host code stores and retrieves custom metadata (e.g. file path, language ID) via `setMetadata()` / `getMetadata()` or language-idiomatic typed variants such as `setMetadata<T>()` / `getMetadata<T>()`; the platform layer MUST treat it as an opaque value and MUST NOT impose its own schema |
+| Retrieval semantics | **MUST** | `getMetadata()` or its typed variant MUST return the same metadata value previously set when the requested type matches, or `null` if none exists; if the platform exposes a wider carrier type (such as `Object?`), host code is responsible for its own casts / type assertions |
 
 ### 19.2 `LanguageConfiguration`
 
@@ -1079,7 +1079,7 @@ This section defines the performance invariants that platform implementations mu
 | Large-document strategy | **SHOULD** | Large-document loading SHOULD use memory mapping, streaming load, or equivalent strategies; scrolling MUST rely on viewport rendering |
 | Provider timeout | **SHOULD** | If decoration requests exceed 5 seconds or completion requests exceed 3 seconds without delivery, the Manager SHOULD cancel or mark them stale |
 | NewLine latency | **MUST / SHOULD** | `provideNewLineAction()` MUST remain synchronous and MUST NOT introduce user-perceptible Enter-key latency |
-| PerfOverlay | **MAY / MUST** | If `PerfOverlay` is provided, it MUST be disabled by default and used only for debugging; its field names, thresholds, and step names MUST NOT be treated as stable API contract |
+| Debug performance overlay | **MAY / MUST** | If a debug performance overlay is provided, it MUST be disabled by default and used only for debugging; its field names, thresholds, and step names MUST NOT be treated as stable API contract |
 
 ---
 

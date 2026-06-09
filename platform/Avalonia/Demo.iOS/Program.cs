@@ -1,7 +1,5 @@
 using Foundation;
 
-[assembly: ExportAssembly]
-
 namespace SweetEditor.Avalonia.Demo.iOS;
 
 public static class Program

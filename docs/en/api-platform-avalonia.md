@@ -5,7 +5,7 @@ This document maps to the current Avalonia implementation:
 - Control layer: `platform/Avalonia/SweetEditor/SweetEditorControl.cs`
 - Controller: `platform/Avalonia/SweetEditor/SweetEditorController.cs`
 - Bridge layer: `platform/Avalonia/SweetEditor/EditorCore.cs`
-- Protocol encode/decode: `platform/Avalonia/SweetEditor/Core/CoreProtocol.cs`
+- Protocol encode/decode: `platform/Avalonia/SweetEditor/CoreProtocol.cs`
 - Rendering: `platform/Avalonia/SweetEditor/EditorRenderer.cs`
 - Providers / extensions:
   - `platform/Avalonia/SweetEditor/EditorCompletion.cs`
@@ -16,7 +16,7 @@ This document maps to the current Avalonia implementation:
   - `platform/Avalonia/SweetEditor/EditorPerf.cs`
 - Shared demo: `platform/Avalonia/Demo.Shared/*`
 - Android host: `platform/Avalonia/Demo.Android/*`
-- Desktop host: `platform/Avalonia/Demo/*`
+- Desktop host: `platform/Avalonia/Demo.Desktop/*`
 
 ## Architecture Notes
 
@@ -25,14 +25,15 @@ This document maps to the current Avalonia implementation:
 - `CoreProtocol` encodes and decodes binary payloads; `EditorRenderer` consumes `EditorRenderModel` and draws through Avalonia `DrawingContext`.
 - `SweetEditorControl` is the concrete widget entry. `SweetEditorController` is the external command surface for declarative / MVVM-style host code.
 - Decorations, completion, newline action, inline suggestion, and selection menu are split into dedicated Avalonia-side manager/provider modules.
-- Android demo uses `libsweetline.so` directly. Desktop demo falls back to managed highlighting when SweetLine native is not available.
+- Android demo stages SweetLine native assets for the SweetLine NuGet package. Desktop demo falls back to managed highlighting when SweetLine native is not available.
 
 ## Layout
 
 - `SweetEditor/`: Avalonia widget, bridge, rendering, events, provider management
 - `Demo.Shared/`: shared UI, sample loading, SweetLine runtime, icon/menu logic
 - `Demo.Android/`: Avalonia Android host, IME / InputPane / safe-area integration
-- `Demo/`: Avalonia desktop host
+- `Demo.Desktop/`: Avalonia desktop host
+- `Demo.Mac/` / `Demo.iOS/`: platform-specific demo hosts
 
 ## Requirements
 
@@ -51,10 +52,8 @@ This document maps to the current Avalonia implementation:
 - Android SDK (API 34)
 - `adb`
 - For SweetLine native highlighting in Android demo:
-  - `platform/Avalonia/Demo.Android/native/sweetline/arm64-v8a/libsweetline.so`
-  - `platform/Avalonia/Demo.Android/native/sweetline/x86_64/libsweetline.so`
-
-See `platform/Avalonia/Demo.Android/termux-dotnet-android-build.md` for a fuller Termux / Android toolchain walkthrough.
+  - `platform/Avalonia/Demo.Android/native/sweetline/arm64-v8a/libsweetline.asset`
+  - `platform/Avalonia/Demo.Android/native/sweetline/x86_64/libsweetline.asset`
 
 ## Quick Start
 
@@ -63,7 +62,7 @@ See `platform/Avalonia/Demo.Android/termux-dotnet-android-build.md` for a fuller
 ```bash
 cd platform/Avalonia
 dotnet build Avalonia.sln -c Debug
-dotnet run --project Demo/Demo.csproj -c Debug
+dotnet run --project Demo.Desktop/Demo.Desktop.csproj -c Debug
 ```
 
 ### Build the Android demo inside this repository
@@ -115,15 +114,17 @@ editor.GetSettings().SetWrapMode(WrapMode.WORD_BREAK);
 
 Shared demo sample loader:
 
-- `platform/Avalonia/Demo.Shared/UI/Samples/EmbeddedSampleRepository.cs`
+- `platform/Avalonia/Demo.Shared/EmbeddedSampleRepository.cs`
 
 ### SweetLine native path
 
-Android uses `libsweetline.so` directly through:
+`Demo.Shared` uses the SweetLine NuGet package through:
 
-- `platform/Avalonia/Demo.Shared/Decoration/DemoSweetLineRuntime.cs`
-- `platform/Avalonia/Demo.Shared/SweetLine/SweetLineNative.cs`
-- `platform/Avalonia/Demo.Shared/SweetLine/SweetLine.cs`
+- `platform/Avalonia/Demo.Shared/DemoSweetLineRuntime.cs`
+
+Android stages platform assets through:
+
+- `platform/Avalonia/Demo.Android/native/sweetline/*/libsweetline.asset`
 
 Current strategy:
 
@@ -140,13 +141,11 @@ Current strategy:
 - `EditorTheme`
 - `Document`
 - `LanguageConfiguration`
-- `KeyMap`
 - `EditorKeyMap`
 - `DecorationContext` / `DecorationResult`
-- `CompletionContext` / `CompletionItem` / `CompletionResult`
+- `CompletionContext` / `CompletionItem` / `CompletionTextEdit` / `CompletionResult`
 - `InlineSuggestion`
 - `SelectionMenuItem`
-- `PerfOverlay` / `MeasurePerfStats` / `PerfStepRecorder`
 
 ## Public Control Layer: `SweetEditorControl`
 
@@ -194,13 +193,13 @@ public Document? GetDocument()
 public EditorTheme GetTheme()
 public void ApplyTheme(EditorTheme theme)
 public EditorSettings GetSettings()
-public void SetKeyMap(KeyMap map)
-public KeyMap GetKeyMap()
+public void SetKeyMap(EditorKeyMap map)
+public EditorKeyMap GetKeyMap()
 public void SetEditorIconProvider(EditorIconProvider? provider)
 public void SetLanguageConfiguration(LanguageConfiguration? config)
 public LanguageConfiguration? GetLanguageConfiguration()
-public void SetMetadata(IEditorMetadata? metadata)
-public IEditorMetadata? GetMetadata()
+public void SetMetadata<T>(T? metadata) where T : class, IEditorMetadata
+public T? GetMetadata<T>() where T : class, IEditorMetadata
 public void SetPerfOverlayEnabled(bool enabled)
 public bool IsPerfOverlayEnabled()
 public LayoutMetrics GetLayoutMetrics()
@@ -287,7 +286,7 @@ public CursorRect GetCursorRect()
 ### Fold / decoration / styles / linked editing
 
 ```csharp
-public bool ToggleFoldAt(int line)
+public bool ToggleFold(int line)
 public bool FoldAt(int line)
 public bool UnfoldAt(int line)
 public bool IsLineVisible(int line)
@@ -295,7 +294,7 @@ public void FoldAll()
 public void UnfoldAll()
 
 public void RegisterTextStyle(uint styleId, int color, int backgroundColor, int fontStyle)
-public void RegisterBatchTextStyles(IReadOnlyDictionary<uint, TextStyle> stylesById)
+public void RegisterBatchTextStyles(IReadOnlyDictionary<int, TextStyle> stylesById)
 public void SetLineSpans(int line, SpanLayer layer, IList<StyleSpan> spans)
 public void SetBatchLineSpans(SpanLayer layer, Dictionary<int, IList<StyleSpan>> spansByLine)
 public void ClearLineSpans(int line, SpanLayer layer)
@@ -306,8 +305,15 @@ public void SetLinePhantomTexts(int line, IList<PhantomText> phantoms)
 public void SetBatchLinePhantomTexts(Dictionary<int, IList<PhantomText>> phantomsByLine)
 public void SetLineGutterIcons(int line, IList<GutterIcon> icons)
 public void SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine)
+public void SetLineCodeLens(int line, IList<CodeLensItem> items)
+public void SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine)
+public void SetLineLinks(int line, IList<LinkSpan> links)
+public void SetBatchLineLinks(Dictionary<int, IList<LinkSpan>> linksByLine)
+public string GetLinkTargetAt(int line, int column)
 public void SetLineDiagnostics(int line, IList<Diagnostic> items)
 public void SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine)
+public void SetLineDocumentHighlights(int line, IList<DocumentHighlight> items)
+public void SetBatchLineDocumentHighlights(Dictionary<int, IList<DocumentHighlight>> highlightsByLine)
 public void SetIndentGuides(IList<IndentGuide> guides)
 public void SetBracketGuides(IList<BracketGuide> guides)
 public void SetFlowGuides(IList<FlowGuide> guides)
@@ -319,8 +325,11 @@ public void ClearHighlights(SpanLayer layer)
 public void ClearInlayHints()
 public void ClearPhantomTexts()
 public void ClearGutterIcons()
+public void ClearCodeLens()
+public void ClearLinks()
 public void ClearGuides()
 public void ClearDiagnostics()
+public void ClearDocumentHighlights()
 public void ClearAllDecorations()
 public void ClearMatchedBrackets()
 
@@ -356,7 +365,7 @@ The controller exposes the same event set as `SweetEditorControl`.
 
 Except for constructors, `SweetEditorController` mirrors `SweetEditorControl` 1:1, including:
 
-- document / theme / keymap / language configuration / metadata / perf overlay / layout metrics
+- document / theme / keymap / language configuration / metadata / perf overlay toggles / layout metrics
 - providers / completion / inline suggestion / selection menu
 - text editing / line operations / clipboard / undo-redo
 - cursor / selection / navigation / scroll
@@ -453,10 +462,10 @@ public float GetDecorationOverscanViewportMultiplier()
 - Touch, long-press, double-tap, drag-select, IME avoidance, and selection-menu behavior get extra Avalonia-host adaptation on Android.
 - Android demo packages:
   - `libsweeteditor.so` from `prebuilt/android/*`
-  - `libsweetline.so` from `Demo.Android/native/sweetline/*`
+  - `libsweetline.asset` from `Demo.Android/native/sweetline/*`
 
 ### Desktop
 
-- `Demo` and `Demo.Android` share `Demo.Shared/MainView.cs`.
+- `Demo.Desktop` and `Demo.Android` share `Demo.Shared/MainView.cs`.
 - If SweetLine native is not available on desktop, syntax highlighting falls back to managed implementation.
 - Desktop and Android share the same `SweetEditorControl` / `SweetEditorController` / provider API contract.

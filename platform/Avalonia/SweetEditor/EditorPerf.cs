@@ -10,7 +10,7 @@ namespace SweetEditor {
 	/// <summary>
 	/// Per-frame text measurement performance statistics.
 	/// </summary>
-	public sealed class MeasurePerfStats {
+	internal sealed class MeasurePerfStats {
 		private static readonly double TickToMs = 1000.0 / Stopwatch.Frequency;
 
 		private int textCount;
@@ -87,7 +87,7 @@ namespace SweetEditor {
 	/// <summary>
 	/// Step-by-step performance timer for recording phase durations.
 	/// </summary>
-	public sealed class PerfStepRecorder {
+	internal sealed class PerfStepRecorder {
 		private static readonly double TickToMs = 1000.0 / Stopwatch.Frequency;
 		private const int MaxSteps = 32;
 
@@ -152,7 +152,7 @@ namespace SweetEditor {
 	/// <summary>
 	/// Debug performance panel rendered at the top-left of the editor area.
 	/// </summary>
-	public sealed class PerfOverlay {
+	internal sealed class PerfOverlay {
 		public const float WARN_BUILD_MS = 8.0f;
 		public const float WARN_PAINT_MS = 8.0f;
 		public const float WARN_INPUT_MS = 3.0f;

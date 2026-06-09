@@ -127,7 +127,7 @@ targets:
 
   avalonia_csharp:
     backend: csharp
-    output_root: platform/Avalonia/SweetEditor/Core
+    output_root: platform/Avalonia/SweetEditor
     namespace: SweetEditor
     codec_file: CoreProtocol.cs
     layout: split_by_domain

@@ -5,7 +5,7 @@
 - 控件层：`platform/Avalonia/SweetEditor/SweetEditorControl.cs`
 - 控制器：`platform/Avalonia/SweetEditor/SweetEditorController.cs`
 - 桥接层：`platform/Avalonia/SweetEditor/EditorCore.cs`
-- 协议编解码：`platform/Avalonia/SweetEditor/Core/CoreProtocol.cs`
+- 协议编解码：`platform/Avalonia/SweetEditor/CoreProtocol.cs`
 - 渲染层：`platform/Avalonia/SweetEditor/EditorRenderer.cs`
 - Provider / 扩展：
   - `platform/Avalonia/SweetEditor/EditorCompletion.cs`
@@ -16,7 +16,7 @@
   - `platform/Avalonia/SweetEditor/EditorPerf.cs`
 - 共享 Demo：`platform/Avalonia/Demo.Shared/*`
 - Android 宿主：`platform/Avalonia/Demo.Android/*`
-- 桌面宿主：`platform/Avalonia/Demo/*`
+- 桌面宿主：`platform/Avalonia/Demo.Desktop/*`
 
 ## 架构说明
 
@@ -25,14 +25,15 @@
 - `CoreProtocol` 负责二进制 payload 编解码；`EditorRenderer` 消费 `EditorRenderModel` 进行 Avalonia `DrawingContext` 绘制。
 - `SweetEditorControl` 是宿主真正持有的控件入口；`SweetEditorController` 提供声明式 / MVVM 风格下的外部控制入口。
 - Decorations / Completion / NewLine / InlineSuggestion / SelectionMenu 均在 Avalonia 层按标准拆成独立 manager/provider 模块。
-- Android Demo 直接接入 `libsweetline.so`；桌面 Demo 在未提供 SweetLine native 时自动回退到托管 fallback 高亮。
+- Android Demo 为 SweetLine NuGet 包暂存 native asset；桌面 Demo 在未提供 SweetLine native 时自动回退到托管 fallback 高亮。
 
 ## 目录结构
 
 - `SweetEditor/`：Avalonia 控件、协议桥接、渲染、事件、provider 管理
 - `Demo.Shared/`：共享 UI、样例加载、SweetLine 运行时、图标与菜单逻辑
 - `Demo.Android/`：Avalonia Android 宿主、IME / InputPane / safe area 平台服务
-- `Demo/`：Avalonia Desktop 宿主
+- `Demo.Desktop/`：Avalonia Desktop 宿主
+- `Demo.Mac/` / `Demo.iOS/`：平台特定 Demo 宿主
 - `api-platform-avalonia.md`：平台目录入口文档（当前文档在 `docs/zh` 的规范版本）
 
 ## 环境要求
@@ -52,12 +53,8 @@
 - Android SDK（API 34）
 - `adb`
 - Android Demo 若要启用 SweetLine native 高亮，需要：
-  - `platform/Avalonia/Demo.Android/native/sweetline/arm64-v8a/libsweetline.so`
-  - `platform/Avalonia/Demo.Android/native/sweetline/x86_64/libsweetline.so`
-
-更完整的 Termux / Android 构建说明见：
-
-- `platform/Avalonia/Demo.Android/termux-dotnet-android-build.md`
+  - `platform/Avalonia/Demo.Android/native/sweetline/arm64-v8a/libsweetline.asset`
+  - `platform/Avalonia/Demo.Android/native/sweetline/x86_64/libsweetline.asset`
 
 ## 快速开始
 
@@ -66,7 +63,7 @@
 ```bash
 cd platform/Avalonia
 dotnet build Avalonia.sln -c Debug
-dotnet run --project Demo/Demo.csproj -c Debug
+dotnet run --project Demo.Desktop/Demo.Desktop.csproj -c Debug
 ```
 
 ### 在仓库内构建 Android Demo
@@ -118,15 +115,17 @@ editor.GetSettings().SetWrapMode(WrapMode.WORD_BREAK);
 
 共享 Demo 样例加载入口：
 
-- `platform/Avalonia/Demo.Shared/UI/Samples/EmbeddedSampleRepository.cs`
+- `platform/Avalonia/Demo.Shared/EmbeddedSampleRepository.cs`
 
 ### SweetLine native 对接
 
-Android 主路径直接使用 `libsweetline.so`，对接入口：
+`Demo.Shared` 通过 SweetLine NuGet 包接入：
 
-- `platform/Avalonia/Demo.Shared/Decoration/DemoSweetLineRuntime.cs`
-- `platform/Avalonia/Demo.Shared/SweetLine/SweetLineNative.cs`
-- `platform/Avalonia/Demo.Shared/SweetLine/SweetLine.cs`
+- `platform/Avalonia/Demo.Shared/DemoSweetLineRuntime.cs`
+
+Android 平台暂存 native asset：
+
+- `platform/Avalonia/Demo.Android/native/sweetline/*/libsweetline.asset`
 
 当前对接策略：
 
@@ -143,13 +142,11 @@ Android 主路径直接使用 `libsweetline.so`，对接入口：
 - `EditorTheme`
 - `Document`
 - `LanguageConfiguration`
-- `KeyMap`
 - `EditorKeyMap`
 - `DecorationContext` / `DecorationResult`
-- `CompletionContext` / `CompletionItem` / `CompletionResult`
+- `CompletionContext` / `CompletionItem` / `CompletionTextEdit` / `CompletionResult`
 - `InlineSuggestion`
 - `SelectionMenuItem`
-- `PerfOverlay` / `MeasurePerfStats` / `PerfStepRecorder`
 
 ## 公开控件层：`SweetEditorControl`
 
@@ -197,13 +194,13 @@ public Document? GetDocument()
 public EditorTheme GetTheme()
 public void ApplyTheme(EditorTheme theme)
 public EditorSettings GetSettings()
-public void SetKeyMap(KeyMap map)
-public KeyMap GetKeyMap()
+public void SetKeyMap(EditorKeyMap map)
+public EditorKeyMap GetKeyMap()
 public void SetEditorIconProvider(EditorIconProvider? provider)
 public void SetLanguageConfiguration(LanguageConfiguration? config)
 public LanguageConfiguration? GetLanguageConfiguration()
-public void SetMetadata(IEditorMetadata? metadata)
-public IEditorMetadata? GetMetadata()
+public void SetMetadata<T>(T? metadata) where T : class, IEditorMetadata
+public T? GetMetadata<T>() where T : class, IEditorMetadata
 public void SetPerfOverlayEnabled(bool enabled)
 public bool IsPerfOverlayEnabled()
 public LayoutMetrics GetLayoutMetrics()
@@ -295,7 +292,7 @@ public CursorRect GetCursorRect()
 ### 折叠 / 装饰 / 样式 / 联动编辑
 
 ```csharp
-public bool ToggleFoldAt(int line)
+public bool ToggleFold(int line)
 public bool FoldAt(int line)
 public bool UnfoldAt(int line)
 public bool IsLineVisible(int line)
@@ -303,7 +300,7 @@ public void FoldAll()
 public void UnfoldAll()
 
 public void RegisterTextStyle(uint styleId, int color, int backgroundColor, int fontStyle)
-public void RegisterBatchTextStyles(IReadOnlyDictionary<uint, TextStyle> stylesById)
+public void RegisterBatchTextStyles(IReadOnlyDictionary<int, TextStyle> stylesById)
 public void SetLineSpans(int line, SpanLayer layer, IList<StyleSpan> spans)
 public void SetBatchLineSpans(SpanLayer layer, Dictionary<int, IList<StyleSpan>> spansByLine)
 public void ClearLineSpans(int line, SpanLayer layer)
@@ -314,8 +311,15 @@ public void SetLinePhantomTexts(int line, IList<PhantomText> phantoms)
 public void SetBatchLinePhantomTexts(Dictionary<int, IList<PhantomText>> phantomsByLine)
 public void SetLineGutterIcons(int line, IList<GutterIcon> icons)
 public void SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine)
+public void SetLineCodeLens(int line, IList<CodeLensItem> items)
+public void SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine)
+public void SetLineLinks(int line, IList<LinkSpan> links)
+public void SetBatchLineLinks(Dictionary<int, IList<LinkSpan>> linksByLine)
+public string GetLinkTargetAt(int line, int column)
 public void SetLineDiagnostics(int line, IList<Diagnostic> items)
 public void SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine)
+public void SetLineDocumentHighlights(int line, IList<DocumentHighlight> items)
+public void SetBatchLineDocumentHighlights(Dictionary<int, IList<DocumentHighlight>> highlightsByLine)
 public void SetIndentGuides(IList<IndentGuide> guides)
 public void SetBracketGuides(IList<BracketGuide> guides)
 public void SetFlowGuides(IList<FlowGuide> guides)
@@ -327,8 +331,11 @@ public void ClearHighlights(SpanLayer layer)
 public void ClearInlayHints()
 public void ClearPhantomTexts()
 public void ClearGutterIcons()
+public void ClearCodeLens()
+public void ClearLinks()
 public void ClearGuides()
 public void ClearDiagnostics()
+public void ClearDocumentHighlights()
 public void ClearAllDecorations()
 public void ClearMatchedBrackets()
 
@@ -371,7 +378,7 @@ InlineSuggestionAccepted / InlineSuggestionDismissed
 
 除构造函数外，`SweetEditorController` 暴露的命令面与 `SweetEditorControl` 1:1 对齐，包括：
 
-- 文档 / 主题 / KeyMap / 语言配置 / 元数据 / PerfOverlay / LayoutMetrics
+- 文档 / 主题 / keymap / 语言配置 / 元数据 / perf overlay 开关 / LayoutMetrics
 - Provider / Completion / InlineSuggestion / SelectionMenu
 - 文本编辑 / 行操作 / 剪贴板 / 撤销重做
 - 光标 / 选区 / 导航 / 滚动
@@ -474,20 +481,13 @@ public float GetDecorationOverscanViewportMultiplier()
 - 触摸、长按、双击、拖选、IME 遮挡与 selection menu 行为由 Avalonia 宿主层做额外适配。
 - Android Demo 默认打包：
   - `libsweeteditor.so`（来自仓库 `prebuilt/android/*`）
-  - `libsweetline.so`（来自 `Demo.Android/native/sweetline/*`）
+  - `libsweetline.asset`（来自 `Demo.Android/native/sweetline/*`）
 
 ### 桌面
 
-- `Demo` 与 `Demo.Android` 共用 `Demo.Shared/MainView.cs`。
+- `Demo.Desktop` 与 `Demo.Android` 共用 `Demo.Shared/MainView.cs`。
 - 若桌面环境未提供 SweetLine native，语法高亮会回退到托管实现。
 - 桌面与 Android 共用 `SweetEditorControl` / `SweetEditorController` / Provider API 契约。
-
-## Demo 与文档入口
-
-- `platform/Avalonia/README.demo.md`
-- `platform/Avalonia/Demo/README.md`
-- `platform/Avalonia/Demo.Android/README.md`
-- `platform/Avalonia/Demo.Android/termux-dotnet-android-build.md`
 
 ## 当前实现说明
 

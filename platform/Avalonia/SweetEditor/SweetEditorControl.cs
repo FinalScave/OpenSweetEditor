@@ -19,6 +19,9 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using AvaloniaRect = Avalonia.Rect;
+using Button = Avalonia.Controls.Button;
+using InputMethod = Avalonia.Input.InputMethod;
+using Orientation = Avalonia.Layout.Orientation;
 
 namespace SweetEditor {
 	public sealed class DocumentLoadedEventArgs : EditorEventArgs {
@@ -70,7 +73,7 @@ namespace SweetEditor {
 		private readonly PinchGestureRecognizer pinchGestureRecognizer;
 		private readonly ScrollGestureRecognizer? scrollGestureRecognizer;
 		private EditorKeyMap keyMap = CreateDefaultEditorKeyMap();
-		private KeyChord pendingKeyChord;
+		private KeyChord pendingKeyChord = KeyChord.Empty;
 		private TopLevel? attachedTopLevel;
 		private IInputPane? attachedInputPane;
 		private IInsetsManager? attachedInsetsManager;
@@ -85,6 +88,7 @@ namespace SweetEditor {
 		private EditorRenderModel? renderModel;
 		private EditorTheme currentTheme = EditorTheme.Dark();
 		private LanguageConfiguration? languageConfiguration;
+		private IEditorMetadata? metadata;
 		private ICompletionItemRenderer? completionItemRenderer;
 		private bool animationActive;
 		private bool renderModelDirty = true;
@@ -116,11 +120,11 @@ namespace SweetEditor {
 		private long lastTextInputNotificationTickMs;
 		private bool tapFallbackArmed;
 		private long lastTapFallbackTickMs;
-		private PointF lastTapFallbackPoint;
+		private PointF lastTapFallbackPoint = new();
 		private bool touchMoveFlushScheduled;
 		private long lastTouchMoveFlushTickMs;
 		private bool hasAuthorizedDestructiveSelection;
-		private TextRange authorizedDestructiveSelection;
+		private TextRange authorizedDestructiveSelection = new();
 		private bool selectionMenuHostManaged;
 
 		private static EditorKeyMap CreateDefaultEditorKeyMap() {
@@ -212,7 +216,7 @@ namespace SweetEditor {
 			this.controller.Bind(this);
 		}
 
-		public IEditorMetadata? Metadata { get; private set; }
+		internal IEditorMetadata? MetadataInternal => metadata;
 
 		public EditorSettings Settings => settings;
 
@@ -834,16 +838,18 @@ namespace SweetEditor {
 		}
 
 		private static EditorRenderColors BuildEditorRenderColors(EditorTheme theme) {
-			int activeCodeLensForeground = (int)(theme.CurrentLineNumberColor != 0
-				? theme.CurrentLineNumberColor
-				: theme.LineNumberColor);
-			int codeLensForeground = (int)theme.InlayHintTextColor;
+			uint codeLensColor = theme.CodeLensColor != 0 ? theme.CodeLensColor : theme.InlayHintTextColor;
+			uint activeCodeLensColor = theme.CodeLensActiveColor != 0
+				? theme.CodeLensActiveColor
+				: theme.CurrentLineNumberColor != 0 ? theme.CurrentLineNumberColor : theme.LineNumberColor;
+			uint linkColor = theme.LinkColor != 0 ? theme.LinkColor : codeLensColor;
+			uint activeLinkColor = theme.LinkActiveColor != 0 ? theme.LinkActiveColor : linkColor;
 			return new EditorRenderColors {
 				TextForeground = (int)theme.TextColor,
-				LinkForeground = codeLensForeground,
-				ActiveLinkForeground = activeCodeLensForeground,
-				CodelensForeground = codeLensForeground,
-				ActiveCodelensForeground = activeCodeLensForeground
+				LinkForeground = (int)linkColor,
+				ActiveLinkForeground = (int)activeLinkColor,
+				CodelensForeground = (int)codeLensColor,
+				ActiveCodelensForeground = (int)activeCodeLensColor
 			};
 		}
 
@@ -951,14 +957,14 @@ namespace SweetEditor {
 
 		public LanguageConfiguration? GetLanguageConfiguration() => languageConfiguration;
 
-		public void SetMetadata(IEditorMetadata? metadata) {
-			Metadata = metadata;
+		public void SetMetadata<T>(T? metadata) where T : class, IEditorMetadata {
+			this.metadata = metadata;
 			renderModelDebugLogged = false;
 			decorationProviderManager.RequestRefresh();
 		}
 
 
-		public IEditorMetadata? GetMetadata() => Metadata;
+		public T? GetMetadata<T>() where T : class, IEditorMetadata => metadata as T;
 
 
 		public void AddNewLineActionProvider(INewLineActionProvider provider) => newLineActionProviderManager.AddProvider(provider);
@@ -1212,14 +1218,14 @@ namespace SweetEditor {
 		}
 
 
-		public (bool hasSelection, TextRange range) GetSelection() => disposed ? (false, default) : editorCore.GetSelection();
+		public (bool hasSelection, TextRange range) GetSelection() => disposed ? (false, new TextRange()) : editorCore.GetSelection();
 
 		public void SetCursorPosition(TextPosition position) {
 			ClearAuthorizedDestructiveSelection();
 			DispatchEditorActionResult(editorCore.SetCursorPosition(position));
 		}
 
-		public TextPosition GetCursorPosition() => disposed ? default : editorCore.GetCursorPosition();
+		public TextPosition GetCursorPosition() => disposed ? new TextPosition() : editorCore.GetCursorPosition();
 
 		public TextRange? GetWordRangeAtCursor() => disposed ? null : editorCore.GetWordRangeAtCursor();
 
@@ -1238,13 +1244,13 @@ namespace SweetEditor {
 			DispatchEditorActionResult(editorCore.SetScroll(scrollX, scrollY));
 		}
 
-		public ScrollMetrics GetScrollMetrics() => disposed ? default : editorCore.GetScrollMetrics();
+		public ScrollMetrics GetScrollMetrics() => disposed ? new ScrollMetrics() : editorCore.GetScrollMetrics();
 
-		public CursorRect GetPositionRect(int line, int column) => disposed ? default : editorCore.GetPositionRect(line, column);
+		public CursorRect GetPositionRect(int line, int column) => disposed ? new CursorRect() : editorCore.GetPositionRect(line, column);
 
-		public CursorRect GetCursorRect() => disposed ? default : editorCore.GetCursorRect();
+		public CursorRect GetCursorRect() => disposed ? new CursorRect() : editorCore.GetCursorRect();
 
-		public bool ToggleFoldAt(int line) {
+		public bool ToggleFold(int line) {
 			EditorActionResult result = editorCore.ToggleFold(line);
 			DispatchEditorActionResult(result);
 			return result.Handled;
@@ -1288,9 +1294,6 @@ namespace SweetEditor {
 		public void SetBatchLineSpans(SpanLayer layer, Dictionary<int, IList<StyleSpan>> spansByLine) =>
 			DispatchEditorActionResult(editorCore.SetBatchLineSpans((int)layer, spansByLine));
 
-		internal void SetBatchLineSpans(SpanLayer layer, Dictionary<int, List<StyleSpan>> spansByLine) =>
-			DispatchEditorActionResult(editorCore.SetBatchLineSpans((int)layer, spansByLine));
-
 		public void ClearLineSpans(int line, SpanLayer layer) {
 			DispatchEditorActionResult(editorCore.ClearLineSpans(line, (int)layer));
 		}
@@ -1301,25 +1304,16 @@ namespace SweetEditor {
 		public void SetBatchLineInlayHints(Dictionary<int, IList<InlayHint>> hintsByLine) =>
 			DispatchEditorActionResult(editorCore.SetBatchLineInlayHints(hintsByLine));
 
-		internal void SetBatchLineInlayHints(Dictionary<int, List<InlayHint>> hintsByLine) =>
-			DispatchEditorActionResult(editorCore.SetBatchLineInlayHints(hintsByLine));
-
 		public void SetLinePhantomTexts(int line, IList<PhantomText> phantoms) =>
 			DispatchEditorActionResult(editorCore.SetLinePhantomTexts(line, phantoms));
 
 		public void SetBatchLinePhantomTexts(Dictionary<int, IList<PhantomText>> phantomsByLine) =>
 			DispatchEditorActionResult(editorCore.SetBatchLinePhantomTexts(phantomsByLine));
 
-		internal void SetBatchLinePhantomTexts(Dictionary<int, List<PhantomText>> phantomsByLine) =>
-			DispatchEditorActionResult(editorCore.SetBatchLinePhantomTexts(phantomsByLine));
-
 		public void SetLineGutterIcons(int line, IList<GutterIcon> icons) =>
 			DispatchEditorActionResult(editorCore.SetLineGutterIcons(line, icons));
 
 		public void SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine) =>
-			DispatchEditorActionResult(editorCore.SetBatchLineGutterIcons(iconsByLine));
-
-		internal void SetBatchLineGutterIcons(Dictionary<int, List<GutterIcon>> iconsByLine) =>
 			DispatchEditorActionResult(editorCore.SetBatchLineGutterIcons(iconsByLine));
 
 		public void SetMaxGutterIcons(int count) => settings.SetMaxGutterIcons(count);
@@ -1332,16 +1326,10 @@ namespace SweetEditor {
 		public void SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine) =>
 			DispatchEditorActionResult(editorCore.SetBatchLineCodeLens(itemsByLine));
 
-		internal void SetBatchLineCodeLens(Dictionary<int, List<CodeLensItem>> itemsByLine) =>
-			DispatchEditorActionResult(editorCore.SetBatchLineCodeLens(itemsByLine));
-
 		public void SetLineLinks(int line, IList<LinkSpan> links) =>
 			DispatchEditorActionResult(editorCore.SetLineLinks(line, links));
 
 		public void SetBatchLineLinks(Dictionary<int, IList<LinkSpan>> linksByLine) =>
-			DispatchEditorActionResult(editorCore.SetBatchLineLinks(linksByLine));
-
-		internal void SetBatchLineLinks(Dictionary<int, List<LinkSpan>> linksByLine) =>
 			DispatchEditorActionResult(editorCore.SetBatchLineLinks(linksByLine));
 
 		public string GetLinkTargetAt(int line, int column) =>
@@ -1353,16 +1341,10 @@ namespace SweetEditor {
 		public void SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine) =>
 			DispatchEditorActionResult(editorCore.SetBatchLineDiagnostics(diagsByLine));
 
-		internal void SetBatchLineDiagnostics(Dictionary<int, List<Diagnostic>> diagsByLine) =>
-			DispatchEditorActionResult(editorCore.SetBatchLineDiagnostics(diagsByLine));
-
 		public void SetLineDocumentHighlights(int line, IList<DocumentHighlight> items) =>
 			DispatchEditorActionResult(editorCore.SetLineDocumentHighlights(line, items));
 
 		public void SetBatchLineDocumentHighlights(Dictionary<int, IList<DocumentHighlight>> highlightsByLine) =>
-			DispatchEditorActionResult(editorCore.SetBatchLineDocumentHighlights(highlightsByLine));
-
-		internal void SetBatchLineDocumentHighlights(Dictionary<int, List<DocumentHighlight>> highlightsByLine) =>
 			DispatchEditorActionResult(editorCore.SetBatchLineDocumentHighlights(highlightsByLine));
 
 		public void SetIndentGuides(IList<IndentGuide> guides) =>
@@ -1402,8 +1384,6 @@ namespace SweetEditor {
 
 		public void ClearAllDecorations() {
 			DispatchEditorActionResult(editorCore.ClearAllDecorations());
-			DispatchEditorActionResult(editorCore.ClearDiagnostics());
-			DispatchEditorActionResult(editorCore.ClearCodeLens());
 		}
 
 		public void SetMatchedBrackets(int openLine, int openColumn, int closeLine, int closeColumn) {
@@ -1494,7 +1474,7 @@ namespace SweetEditor {
 				bool explicitSelectionSource = keyInput
 					? IsExplicitKeySelectionSource(result)
 					: hasSelection;
-				UpdateDestructiveSelectionAuthorization(hasSelection, explicitSelectionSource, selection ?? default);
+			UpdateDestructiveSelectionAuthorization(hasSelection, explicitSelectionSource, selection ?? new TextRange());
 				SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(hasSelection, selection, cursor));
 				NotifySelectionMenuSelectionChanged(hasSelection);
 			}
@@ -1707,7 +1687,7 @@ namespace SweetEditor {
 
 		private void ClearAuthorizedDestructiveSelection() {
 			hasAuthorizedDestructiveSelection = false;
-			authorizedDestructiveSelection = default;
+			authorizedDestructiveSelection = new TextRange();
 		}
 
 		private void UpdateDestructiveSelectionAuthorization(bool hasSelection, bool explicitSelectionSource, TextRange range) {
@@ -1742,8 +1722,6 @@ namespace SweetEditor {
 
 			TextPosition cursor = editorCore.GetCursorPosition();
 			ClearAuthorizedDestructiveSelection();
-			Console.Error.WriteLine(
-				$"Collapsed suspicious implicit selection before destructive edit: {normalized.Start.Line}:{normalized.Start.Column}-{normalized.End.Line}:{normalized.End.Column}");
 			DispatchEditorActionResult(editorCore.SetCursorPosition(cursor));
 			return true;
 		}
@@ -1778,19 +1756,19 @@ namespace SweetEditor {
 			return AreSamePosition(cursor, normalized.Start) || AreSamePosition(cursor, normalized.End);
 		}
 
-			private void TickAnimations() {
+		private void TickAnimations() {
 			if (!animationActive || disposed) {
 				return;
 			}
 
-				var result = editorCore.TickAnimations();
-				DispatchEditorActionResult(result);
-				if (!result.NeedsAnimation) {
-					NotifyViewportGestureSettled();
-					animationActive = false;
-					animationTimer.Stop();
-				}
+			var result = editorCore.TickAnimations();
+			DispatchEditorActionResult(result);
+			if (!result.NeedsAnimation) {
+				NotifyViewportGestureSettled();
+				animationActive = false;
+				animationTimer.Stop();
 			}
+		}
 
 		private void UpdateAnimationTimer(bool needsAnimation) {
 			if (needsAnimation) {
@@ -1906,22 +1884,22 @@ namespace SweetEditor {
 				NotifySelectionMenuEditorActionResult(result);
 			}
 
-				switch (result.GestureType) {
-					case GestureType.LONG_PRESS:
-						tapFallbackArmed = false;
-						UpdateDestructiveSelectionAuthorization(result.HasSelectionAfter, explicitSelectionSource: result.HasSelectionAfter, result.SelectionAfter);
-						if (ShouldRaiseLongPressEvent()) {
-							LongPress?.Invoke(this, new LongPressEventArgs(result.CursorAfter, sp));
-						}
+			switch (result.GestureType) {
+				case GestureType.LONG_PRESS:
+					tapFallbackArmed = false;
+					UpdateDestructiveSelectionAuthorization(result.HasSelectionAfter, explicitSelectionSource: result.HasSelectionAfter, result.SelectionAfter);
+					if (ShouldRaiseLongPressEvent()) {
+						LongPress?.Invoke(this, new LongPressEventArgs(result.CursorAfter, sp));
+					}
+					break;
+				case GestureType.DOUBLE_TAP:
+					tapFallbackArmed = false;
+					if (deferLargeDocumentDoubleTap) {
+						ScheduleDeferredLargeDocumentDoubleTap(result.CursorAfter, sp);
 						break;
-					case GestureType.DOUBLE_TAP:
-						tapFallbackArmed = false;
-						if (deferLargeDocumentDoubleTap) {
-							ScheduleDeferredLargeDocumentDoubleTap(result.CursorAfter, sp);
-							break;
-						}
-						UpdateDestructiveSelectionAuthorization(result.HasSelectionAfter, explicitSelectionSource: result.HasSelectionAfter, result.SelectionAfter);
-						DoubleTap?.Invoke(this, new DoubleTapEventArgs(result.CursorAfter, result.HasSelectionAfter, result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null, sp));
+					}
+					UpdateDestructiveSelectionAuthorization(result.HasSelectionAfter, explicitSelectionSource: result.HasSelectionAfter, result.SelectionAfter);
+					DoubleTap?.Invoke(this, new DoubleTapEventArgs(result.CursorAfter, result.HasSelectionAfter, result.HasSelectionAfter ? result.SelectionAfter : (TextRange?)null, sp));
 					break;
 				case GestureType.TAP:
 					ClearAuthorizedDestructiveSelection();
@@ -1959,14 +1937,14 @@ namespace SweetEditor {
 									result.HitTarget.IconId,
 									sp));
 								break;
-							case HitTargetType.LINK:
-								LinkClick?.Invoke(this, new LinkClickEventArgs(
-									result.HitTarget.Line,
-									result.HitTarget.Column,
-									GetLinkTargetAt(result.HitTarget.Line, result.HitTarget.Column),
-									sp));
-								break;
-							case HitTargetType.FOLD_PLACEHOLDER:
+								case HitTargetType.LINK:
+									LinkClick?.Invoke(this, new LinkClickEventArgs(
+										result.HitTarget.Line,
+										result.HitTarget.Column,
+										GetLinkTargetAt(result.HitTarget.Line, result.HitTarget.Column),
+										sp));
+									break;
+								case HitTargetType.FOLD_PLACEHOLDER:
 								case HitTargetType.FOLD_GUTTER:
 									FoldToggle?.Invoke(this, new FoldToggleEventArgs(
 										result.HitTarget.Line,
@@ -1975,34 +1953,34 @@ namespace SweetEditor {
 									break;
 							}
 						}
-						if (TryApplyTapFallbackDoubleTap(result, sp)) {
-							break;
-						}
+					if (TryApplyTapFallbackDoubleTap(result, sp)) {
 						break;
-					case GestureType.SCROLL:
-					case GestureType.FAST_SCROLL:
-						tapFallbackArmed = false;
-						ClearAuthorizedDestructiveSelection();
-						if (completionItems.Count > 0) {
-							completionProviderManager.Dismiss();
-						}
-						break;
-					case GestureType.SCALE:
-						tapFallbackArmed = false;
-						ClearAuthorizedDestructiveSelection();
-						break;
-					case GestureType.DRAG_SELECT:
-						tapFallbackArmed = false;
-						UpdateDestructiveSelectionAuthorization(result.HasSelectionAfter, explicitSelectionSource: result.HasSelectionAfter, result.SelectionAfter);
-						break;
-					case GestureType.CONTEXT_MENU:
-						tapFallbackArmed = false;
-						if (ShouldRaiseContextMenuEvent()) {
-							ContextMenu?.Invoke(this, new ContextMenuEventArgs(result.CursorAfter, sp));
-						}
-						break;
-				}
+					}
+					break;
+				case GestureType.SCROLL:
+				case GestureType.FAST_SCROLL:
+					tapFallbackArmed = false;
+					ClearAuthorizedDestructiveSelection();
+					if (completionItems.Count > 0) {
+						completionProviderManager.Dismiss();
+					}
+					break;
+				case GestureType.SCALE:
+					tapFallbackArmed = false;
+					ClearAuthorizedDestructiveSelection();
+					break;
+				case GestureType.DRAG_SELECT:
+					tapFallbackArmed = false;
+					UpdateDestructiveSelectionAuthorization(result.HasSelectionAfter, explicitSelectionSource: result.HasSelectionAfter, result.SelectionAfter);
+					break;
+				case GestureType.CONTEXT_MENU:
+					tapFallbackArmed = false;
+					if (ShouldRaiseContextMenuEvent()) {
+						ContextMenu?.Invoke(this, new ContextMenuEventArgs(result.CursorAfter, sp));
+					}
+					break;
 			}
+		}
 
 		private bool TryApplyTapFallbackDoubleTap(EditorActionResult result, PointF point) {
 			if (platformBehavior.Kind != EditorPlatformKind.Android) {
@@ -2051,7 +2029,6 @@ namespace SweetEditor {
 		}
 
 		private void ScheduleDeferredLargeDocumentDoubleTap(TextPosition cursorPosition, PointF screenPoint) {
-			Console.Error.WriteLine($"Deferred large-document double tap at {cursorPosition.Line}:{cursorPosition.Column}");
 			Dispatcher.UIThread.Post(() => {
 				if (disposed) {
 					return;
@@ -2071,11 +2048,7 @@ namespace SweetEditor {
 				}
 
 				bool hasSelection = appliedSelection != null;
-				TextRange selectedRange = appliedSelection ?? default;
-				Console.Error.WriteLine(
-					hasSelection
-						? $"Applied deferred large-document selection {selectedRange.Start.Line}:{selectedRange.Start.Column}-{selectedRange.End.Line}:{selectedRange.End.Column}"
-						: $"Deferred large-document double tap collapsed to cursor {effectiveCursor.Line}:{effectiveCursor.Column}");
+				TextRange selectedRange = appliedSelection ?? new TextRange();
 				UpdateDestructiveSelectionAuthorization(hasSelection, explicitSelectionSource: hasSelection, selectedRange);
 				DoubleTap?.Invoke(this, new DoubleTapEventArgs(effectiveCursor, hasSelection, appliedSelection, screenPoint));
 				DispatchEditorActionResult(CreateSelectionStateResult(cursorBefore, selectionBefore.hasSelection, selectionBefore.range));
@@ -2097,16 +2070,12 @@ namespace SweetEditor {
 			}
 
 			if (TryGetPreferredDoubleTapSelection(result.CursorAfter, out TextRange correctedRange)) {
-				Console.Error.WriteLine(
-					$"Corrected invalid double-tap selection: {result.SelectionAfter.Start.Line}:{result.SelectionAfter.Start.Column}-{result.SelectionAfter.End.Line}:{result.SelectionAfter.End.Column}");
 				if (TryApplyValidatedSelection(correctedRange, out _)) {
 					RefreshGestureResultFromCoreSelection(result);
 					return;
 				}
 			}
 
-			Console.Error.WriteLine(
-				$"Collapsed invalid double-tap selection: {result.SelectionAfter.Start.Line}:{result.SelectionAfter.Start.Column}-{result.SelectionAfter.End.Line}:{result.SelectionAfter.End.Column}");
 			editorCore.SetCursorPosition(result.CursorAfter);
 			RefreshGestureResultFromCoreSelection(result);
 		}
@@ -2121,13 +2090,11 @@ namespace SweetEditor {
 				return;
 			}
 
-			if (result.GestureType == GestureType.LONG_PRESS && !result.HasSelectionAfter) {
-				if (TryGetPreferredDoubleTapSelection(result.CursorAfter, out TextRange fallbackRange)) {
-					Console.Error.WriteLine(
-						$"Applied fallback long-press selection at {result.CursorAfter.Line}:{result.CursorAfter.Column}");
-					if (TryApplyValidatedSelection(fallbackRange, out _)) {
-						RefreshGestureResultFromCoreSelection(result);
-					}
+		if (result.GestureType == GestureType.LONG_PRESS && !result.HasSelectionAfter) {
+			if (TryGetPreferredDoubleTapSelection(result.CursorAfter, out TextRange fallbackRange)) {
+				if (TryApplyValidatedSelection(fallbackRange, out _)) {
+					RefreshGestureResultFromCoreSelection(result);
+				}
 				}
 				return;
 			}
@@ -2136,25 +2103,21 @@ namespace SweetEditor {
 				return;
 			}
 
-			if (result.GestureType == GestureType.LONG_PRESS &&
-				!IsReasonableDoubleTapSelection(result.SelectionAfter, result.CursorAfter) &&
-				TryGetPreferredDoubleTapSelection(result.CursorAfter, out TextRange correctedRange)) {
-				Console.Error.WriteLine(
-					$"Corrected invalid long-press selection: {result.SelectionAfter.Start.Line}:{result.SelectionAfter.Start.Column}-{result.SelectionAfter.End.Line}:{result.SelectionAfter.End.Column}");
-				if (TryApplyValidatedSelection(correctedRange, out _)) {
-					RefreshGestureResultFromCoreSelection(result);
-					return;
+		if (result.GestureType == GestureType.LONG_PRESS &&
+			!IsReasonableDoubleTapSelection(result.SelectionAfter, result.CursorAfter) &&
+			TryGetPreferredDoubleTapSelection(result.CursorAfter, out TextRange correctedRange)) {
+			if (TryApplyValidatedSelection(correctedRange, out _)) {
+				RefreshGestureResultFromCoreSelection(result);
+				return;
 				}
 			}
 
-			if (!IsSuspiciousImplicitTailSelection(result.SelectionAfter, result.CursorAfter)) {
-				return;
-			}
+		if (!IsSuspiciousImplicitTailSelection(result.SelectionAfter, result.CursorAfter)) {
+			return;
+		}
 
-			Console.Error.WriteLine(
-				$"Collapsed suspicious implicit gesture selection: {result.SelectionAfter.Start.Line}:{result.SelectionAfter.Start.Column}-{result.SelectionAfter.End.Line}:{result.SelectionAfter.End.Column}");
-			editorCore.SetCursorPosition(result.CursorAfter);
-			RefreshGestureResultFromCoreSelection(result);
+		editorCore.SetCursorPosition(result.CursorAfter);
+		RefreshGestureResultFromCoreSelection(result);
 		}
 
 		private void RefreshGestureResultFromCoreSelection(EditorActionResult result) {
@@ -2162,13 +2125,13 @@ namespace SweetEditor {
 			TextPosition cursor = editorCore.GetCursorPosition();
 			result.CursorAfter = cursor;
 			result.HasSelectionAfter = selection.hasSelection;
-			result.SelectionAfter = selection.hasSelection ? selection.range : default;
+			result.SelectionAfter = selection.hasSelection ? selection.range : new TextRange();
 			result.CursorChanged = true;
 			result.SelectionChanged = true;
 			result.NeedsImeSync = true;
 			result.ImeSync.Cursor = cursor;
 			result.ImeSync.HasSelection = selection.hasSelection;
-			result.ImeSync.Selection = selection.hasSelection ? selection.range : default;
+			result.ImeSync.Selection = selection.hasSelection ? selection.range : new TextRange();
 		}
 
 		private EditorActionResult CreateSelectionStateResult(TextPosition cursorBefore, bool hasSelectionBefore, TextRange selectionBefore) {
@@ -2188,13 +2151,13 @@ namespace SweetEditor {
 				CursorBefore = cursorBefore,
 				CursorAfter = cursor,
 				HasSelectionBefore = hasSelectionBefore,
-				SelectionBefore = hasSelectionBefore ? selectionBefore : default,
+				SelectionBefore = hasSelectionBefore ? selectionBefore : new TextRange(),
 				HasSelectionAfter = selection.hasSelection,
-				SelectionAfter = selection.hasSelection ? selection.range : default,
+				SelectionAfter = selection.hasSelection ? selection.range : new TextRange(),
 				ImeSync = new ImeSyncSnapshot {
 					Cursor = cursor,
 					HasSelection = selection.hasSelection,
-					Selection = selection.hasSelection ? selection.range : default
+					Selection = selection.hasSelection ? selection.range : new TextRange()
 				}
 			};
 		}
@@ -2211,16 +2174,11 @@ namespace SweetEditor {
 				return true;
 			}
 
-			if (platformBehavior.Kind == EditorPlatformKind.Android) {
-				Console.Error.WriteLine(
-					$"Invalid core word range at {cursor.Line}:{cursor.Column}: {coreRange.Start.Line}:{coreRange.Start.Column}-{coreRange.End.Line}:{coreRange.End.Column}");
-			}
-
 			return TryBuildLocalWordSelection(cursor, out range);
 		}
 
 		private bool TryApplyValidatedSelection(TextRange requestedRange, out TextRange appliedRange) {
-			appliedRange = default;
+			appliedRange = new TextRange();
 			TextRange normalized = NormalizeRange(requestedRange);
 			if (normalized.Start.Line == normalized.End.Line && normalized.Start.Column < normalized.End.Column) {
 				return TryApplySelectionByCursorMovement(normalized, out appliedRange);
@@ -2232,9 +2190,6 @@ namespace SweetEditor {
 				return true;
 			}
 
-			Console.Error.WriteLine(
-				$"editorCore.SetSelection mismatch: requested {normalized.Start.Line}:{normalized.Start.Column}-{normalized.End.Line}:{normalized.End.Column}, actual {selection.range.Start.Line}:{selection.range.Start.Column}-{selection.range.End.Line}:{selection.range.End.Column}");
-
 			if (TryApplySelectionByCursorMovement(normalized, out appliedRange)) {
 				return true;
 			}
@@ -2243,7 +2198,7 @@ namespace SweetEditor {
 		}
 
 		private bool TryApplySelectionByCursorMovement(TextRange requestedRange, out TextRange appliedRange) {
-			appliedRange = default;
+			appliedRange = new TextRange();
 			TextRange normalized = NormalizeRange(requestedRange);
 			if (normalized.Start.Line != normalized.End.Line || normalized.Start.Column >= normalized.End.Column) {
 				return false;
@@ -2263,8 +2218,6 @@ namespace SweetEditor {
 				return false;
 			}
 
-			Console.Error.WriteLine(
-				$"Recovered same-line selection with cursor movement: {appliedRange.Start.Line}:{appliedRange.Start.Column}-{appliedRange.End.Line}:{appliedRange.End.Column}");
 			return true;
 		}
 
@@ -2289,7 +2242,7 @@ namespace SweetEditor {
 		}
 
 		private bool TryGetMatchingSelectionRange((bool hasSelection, TextRange range) selection, TextRange requestedRange, out TextRange matchingRange) {
-			matchingRange = default;
+			matchingRange = new TextRange();
 			if (!selection.hasSelection) {
 				return false;
 			}
@@ -2328,7 +2281,7 @@ namespace SweetEditor {
 		}
 
 		private bool TryBuildLocalWordSelection(TextPosition cursor, out TextRange range) {
-			range = default;
+			range = new TextRange();
 			Document? document = editorCore.GetDocument();
 			if (document == null) {
 				return false;

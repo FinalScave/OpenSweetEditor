@@ -34,9 +34,17 @@
   </ItemGroup>
 
   <ItemGroup>
-    <NativeReference Include="..\..\..\prebuilt\ios\arm64\libsweeteditor.dylib" Condition="Exists('..\..\..\prebuilt\ios\arm64\libsweeteditor.dylib')" />
-    <NativeReference Include="..\..\..\prebuilt\ios\arm64\libsweetline.dylib" Condition="Exists('..\..\..\prebuilt\ios\arm64\libsweetline.dylib')" />
-    <NativeReference Include="..\..\..\prebuilt\ios\simulator-arm64\libsweeteditor.dylib" Condition="Exists('..\..\..\prebuilt\ios\simulator-arm64\libsweeteditor.dylib') AND '$(RuntimeIdentifier)' == 'iossimulator-arm64'" />
-    <NativeReference Include="..\..\..\prebuilt\ios\simulator-arm64\libsweetline.dylib" Condition="Exists('..\..\..\prebuilt\ios\simulator-arm64\libsweetline.dylib') AND '$(RuntimeIdentifier)' == 'iossimulator-arm64'" />
+    <NativeReference Include="..\..\..\prebuilt\ios\arm64\libsweeteditor.dylib" Condition="Exists('..\..\..\prebuilt\ios\arm64\libsweeteditor.dylib') AND '$(RuntimeIdentifier)' != 'iossimulator-arm64'">
+      <Kind>Dynamic</Kind>
+      <IsCxx>true</IsCxx>
+      <CopyToAppBundle>true</CopyToAppBundle>
+      <RelativePath>libsweeteditor.dylib</RelativePath>
+    </NativeReference>
+    <NativeReference Include="..\..\..\prebuilt\ios\simulator-arm64\libsweeteditor.dylib" Condition="Exists('..\..\..\prebuilt\ios\simulator-arm64\libsweeteditor.dylib') AND '$(RuntimeIdentifier)' == 'iossimulator-arm64'">
+      <Kind>Dynamic</Kind>
+      <IsCxx>true</IsCxx>
+      <CopyToAppBundle>true</CopyToAppBundle>
+      <RelativePath>libsweeteditor.dylib</RelativePath>
+    </NativeReference>
   </ItemGroup>
 </Project>

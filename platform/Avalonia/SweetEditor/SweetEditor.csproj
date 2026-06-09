@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;net8.0-android</TargetFrameworks>
+    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net8.0-android'">21</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>SweetEditor.Avalonia</AssemblyName>
@@ -18,10 +19,20 @@
     <PackageReference Include="Avalonia" Version="11.3.12" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Include="..\..\..\prebuilt\windows\x64\sweeteditor.dll" Condition="Exists('..\..\..\prebuilt\windows\x64\sweeteditor.dll')" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\..\prebuilt\linux\x86_64\libsweeteditor.so" Condition="Exists('..\..\..\prebuilt\linux\x86_64\libsweeteditor.so')" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\..\prebuilt\osx\x86_64\libsweeteditor.dylib" Condition="Exists('..\..\..\prebuilt\osx\x86_64\libsweeteditor.dylib')" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\..\prebuilt\osx\arm64\libsweeteditor.dylib" Condition="Exists('..\..\..\prebuilt\osx\arm64\libsweeteditor.dylib')" CopyToOutputDirectory="PreserveNewest" />
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-android'">
+    <Using Remove="Android.App" />
+    <Using Remove="Android.Widget" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-android'">
+    <AndroidNativeLibrary Include="..\..\..\prebuilt\android\arm64-v8a\libsweeteditor.so"
+                          Condition="Exists('..\..\..\prebuilt\android\arm64-v8a\libsweeteditor.so')">
+      <Link>lib\arm64-v8a\libsweeteditor.so</Link>
+    </AndroidNativeLibrary>
+
+    <AndroidNativeLibrary Include="..\..\..\prebuilt\android\x86_64\libsweeteditor.so"
+                          Condition="Exists('..\..\..\prebuilt\android\x86_64\libsweeteditor.so')">
+      <Link>lib\x86_64\libsweeteditor.so</Link>
+    </AndroidNativeLibrary>
   </ItemGroup>
 </Project>

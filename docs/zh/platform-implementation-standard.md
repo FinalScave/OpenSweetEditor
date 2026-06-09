@@ -43,14 +43,14 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 |---|---|---|
 | **Widget** | `SweetEditor`, `SweetEditorController`*(声明式框架 MUST；命令式框架 MAY)*, `EditorTheme`, `EditorSettings`, `EditorIconProvider`, `EditorMetadata`, `LanguageConfiguration` | 控件入口、控制器、主题、配置 |
 | **Decoration** | `DecorationProvider`, `DecorationProviderManager`, `DecorationContext`, `DecorationResult`, `DecorationType`；若采用 Receiver 回调模式，推荐使用 `DecorationReceiver` | 装饰提供者系统 |
-| **Completion** | `CompletionProvider`, `CompletionProviderManager`, `CompletionContext`, `CompletionItem`, `CompletionResult`；若采用 Receiver 回调模式，推荐使用 `CompletionReceiver` | 补全提供者系统 |
+| **Completion** | `CompletionProvider`, `CompletionProviderManager`, `CompletionContext`, `CompletionItem`, `CompletionTextEdit`, `CompletionResult`；若采用 Receiver 回调模式，推荐使用 `CompletionReceiver` | 补全提供者系统 |
 | **Event** | 类型安全事件机制、`EditorEvent`、`TextChangedEvent`、`CursorChangedEvent`、`SelectionChangedEvent`、`ScrollChangedEvent`、`ScaleChangedEvent`、`DocumentLoadedEvent`、`FoldToggleEvent`、`GutterIconClickEvent`、`InlayHintClickEvent`、`CodeLensClickEvent`、`LinkClickEvent`、`LongPressEvent`*(移动端 / 触摸平台)*、`DoubleTapEvent`、`ContextMenuEvent`*(具有显式上下文菜单手势入口的平台)*；若采用显式事件总线 / 监听器模式，推荐 `EditorEventBus`、`EditorEventListener` | 事件系统 |
 | **NewLine** | `NewLineActionProvider`, `NewLineActionProviderManager`, `NewLineAction`, `NewLineContext` | 换行动作提供者系统 |
 | **Keymap** | `EditorKeyMap` | Widget 层 keymap 扩展，用于将 commandId 绑定到宿主侧处理器 |
 | **Copilot** *(SHOULD)* | `InlineSuggestion`、`InlineSuggestionListener` 或等价的 accept/dismiss 回调机制 | 内联建议数据 + 回调；主路径为 listener 形态 |
 | **Selection** *(移动端 SHOULD；桌面端 MAY 省略)* | `SelectionMenuItem`、`SelectionMenuItemProvider`、宿主可见的 custom item 点击回调机制；MAY: `SelectionMenuListener` | 选区菜单（移动端 SHOULD；桌面端 MAY 省略） |
 | **ContextMenu** *(桌面 / mouse / right-click 平台 SHOULD；纯触摸平台 MAY)* | `ContextMenuRequest`、`ContextMenuSection`、`ContextMenuItem`、`ContextMenuItemProvider`、`ContextMenuTriggerKind`、宿主可见的 custom item 点击回调机制；MAY: `ContextMenuPopup` | 平台侧的上下文菜单 / 动作菜单 |
-| **Perf** *(MAY)* | `PerfOverlay`, `MeasurePerfStats`, `PerfStepRecorder` | 调试性能浮层 |
+| **Perf** *(MAY)* | 调试性能浮层控制入口，如 `setPerfOverlayEnabled` / `isPerfOverlayEnabled` 或平台等价 API | 调试性能浮层 |
 
 > `TextChangeAction` 为 SHOULD 级辅助事件枚举。平台 MAY 暴露它用于粗粒度标识一次文本变更周期（如 `INSERT` / `DELETE` / `UNDO` / `REDO` / `KEY` / `COMPOSITION`），但 MUST NOT 用它替代 `changes: List<TextChange>` 这一主增量载荷。
 
@@ -306,7 +306,7 @@ IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextR
 | 剪贴板 *(MAY)* | `copyToClipboard()`, `pasteFromClipboard()`, `cutToClipboard()` |
 | 光标 / 选区 | `selectAll()`, `getSelectedText()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `setCursorPosition(pos)`, `getCursorPosition()`, `getWordRangeAtCursor()`, `getWordAtCursor()` |
 | 导航 / 滚动 | `gotoPosition(line, col)`, `scrollToLine(line, behavior)`, `setScroll(x, y)`, `getScrollMetrics()`, `getPositionRect(line, col)`, `getCursorRect()` |
-| 折叠 | `toggleFoldAt(line)`, `foldAt(line)`, `unfoldAt(line)`, `isLineVisible(line)`, `foldAll()`, `unfoldAll()` |
+| 折叠 | `toggleFold(line)`, `foldAt(line)`, `unfoldAt(line)`, `isLineVisible(line)`, `foldAll()`, `unfoldAll()` |
 | Search | `search(request)`, `findNextSearchMatch()`, `findPreviousSearchMatch()`, `replaceCurrentSearchMatch(replacement)`, `replaceAllSearchMatches(replacement)`, `clearSearch()`, `getSearchState()` |
 | 语言 / 元数据 | `setLanguageConfiguration(config)`, `getLanguageConfiguration()`, `setMetadata(metadata)`, `getMetadata()` |
 | Provider 管理 | `addDecorationProvider(provider)`, `removeDecorationProvider(provider)`, `requestDecorationRefresh()`, `addCompletionProvider(provider)`, `removeCompletionProvider(provider)`, `addNewLineActionProvider(provider)`, `removeNewLineActionProvider(provider)` |
@@ -1032,8 +1032,8 @@ Core 层定义了大量装饰数据类型，各平台 MUST 实现完全一致的
 |---|---|---|
 | 表示形式 | **MUST** | 平台 MUST 提供一种可承载任意宿主自定义元数据的表示形式；MAY 使用 marker interface / protocol / abstract class / base class / `Object` / `any` / `unknown` / 泛型 payload 等 |
 | 显式类型命名 | **SHOULD** | 若平台选择暴露显式公共类型，SHOULD 命名为 `EditorMetadata`；按语言惯例 MAY 使用 `IEditorMetadata`、`SEEditorMetadata` 等允许变体 |
-| 用途 | **MUST** | 宿主代码通过 `setMetadata()` / `getMetadata()` 存取自定义元数据（如文件路径、语言 ID 等）；平台层 MUST 将其视为 opaque value，不做语义解析 |
-| 取回语义 | **MUST** | `getMetadata()` MUST 返回之前设置的同一 metadata 值或 `null`；如果平台暴露的是宽泛类型（如 `Object?`），宿主代码负责自行断言 / 转型到具体类型 |
+| 用途 | **MUST** | 宿主代码通过 `setMetadata()` / `getMetadata()` 或语言惯用的 typed 变体（如 `setMetadata<T>()` / `getMetadata<T>()`）存取自定义元数据（如文件路径、语言 ID 等）；平台层 MUST 将其视为 opaque value，不做语义解析 |
+| 取回语义 | **MUST** | `getMetadata()` 或其 typed 变体 MUST 在请求类型匹配时返回之前设置的同一 metadata 值，无值时返回 `null`；如果平台暴露的是宽泛类型（如 `Object?`），宿主代码负责自行断言 / 转型到具体类型 |
 
 ### 19.2 `LanguageConfiguration`
 
@@ -1078,7 +1078,7 @@ Core 层定义了大量装饰数据类型，各平台 MUST 实现完全一致的
 | 大文档策略 | **SHOULD** | 大文档加载 SHOULD 使用 memory mapping、streaming load 或等效策略；滚动 MUST 依赖视口渲染 |
 | Provider 超时 | **SHOULD** | Decoration 请求超过 5 秒、completion 请求超过 3 秒未交付时，Manager SHOULD 取消或标记过期 |
 | NewLine 延迟 | **MUST / SHOULD** | `provideNewLineAction()` MUST 保持同步且不得引入用户可感知的 Enter 延迟 |
-| PerfOverlay | **MAY / MUST** | 若提供 `PerfOverlay`，MUST 默认关闭且仅用于调试；其字段名、阈值和 step 名称 MUST NOT 视为稳定 API 契约 |
+| 调试性能浮层 | **MAY / MUST** | 若提供调试性能浮层，MUST 默认关闭且仅用于调试；其字段名、阈值和 step 名称 MUST NOT 视为稳定 API 契约 |
 
 ---
 ## 21. 测试规范（SHOULD）

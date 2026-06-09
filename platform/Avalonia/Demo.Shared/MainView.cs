@@ -15,16 +15,12 @@ using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.Threading;
 using SweetEditor;
-using SweetEditor.Avalonia.Demo.Decoration;
-using SweetEditor.Avalonia.Demo.Editor;
-using SweetEditor.Avalonia.Demo.Host;
-using SweetEditor.Avalonia.Demo.UI;
-using SweetEditor.Avalonia.Demo.UI.Samples;
-using SweetEditor.Avalonia.Demo.UI.Toolbar;
-using SweetEditor.Avalonia.Demo.ViewModels;
 using AvaControls = global::Avalonia.Controls;
 using AvaInteractivity = global::Avalonia.Interactivity;
 using AvaPath = global::Avalonia.Controls.Shapes.Path;
+using AvaloniaRect = global::Avalonia.Rect;
+using Button = global::Avalonia.Controls.Button;
+using ToggleButton = global::Avalonia.Controls.Primitives.ToggleButton;
 
 namespace SweetEditor.Avalonia.Demo;
 
@@ -497,10 +493,10 @@ public sealed class MainView : UserControl
         {
             (bool hasSelection, TextRange range) = controller.GetSelection();
             if (hasSelection)
-                CaptureSelectionActionAnchor(range, e.CursorPosition, e.ScreenPoint);
+                CaptureSelectionActionAnchor(range, e.CursorPosition, e.LocationInEditor);
             else
-                CaptureSelectionActionAnchor(null, e.CursorPosition, e.ScreenPoint);
-            UpdateStatus($"Long press: {e.ScreenPoint.X:F0},{e.ScreenPoint.Y:F0}");
+                CaptureSelectionActionAnchor(null, e.CursorPosition, e.LocationInEditor);
+            UpdateStatus($"Long press: {e.LocationInEditor.X:F0},{e.LocationInEditor.Y:F0}");
             Dispatcher.UIThread.Post(
                 () => RefreshSelectionActionBarWithStabilization(forceRetry: IsImeVisibleInEditorHost()),
                 DispatcherPriority.Background);
@@ -508,10 +504,10 @@ public sealed class MainView : UserControl
         controller.DoubleTap += (_, e) =>
         {
             if (e.HasSelection && e.Selection is TextRange selection)
-                CaptureSelectionActionAnchor(selection, e.CursorPosition, e.ScreenPoint);
+                CaptureSelectionActionAnchor(selection, e.CursorPosition, e.LocationInEditor);
             else
-                CaptureSelectionActionAnchor(null, e.CursorPosition, e.ScreenPoint);
-            UpdateStatus($"Double tap: {e.ScreenPoint.X:F0},{e.ScreenPoint.Y:F0}");
+                CaptureSelectionActionAnchor(null, e.CursorPosition, e.LocationInEditor);
+            UpdateStatus($"Double tap: {e.LocationInEditor.X:F0},{e.LocationInEditor.Y:F0}");
             Dispatcher.UIThread.Post(
                 () => RefreshSelectionActionBarWithStabilization(forceRetry: IsImeVisibleInEditorHost()),
                 DispatcherPriority.Background);
@@ -528,9 +524,9 @@ public sealed class MainView : UserControl
         };
         controller.InlayHintClick += (_, e) =>
         {
-            if (e.Type == InlayType.Color)
+            if (e.Type == InlayType.COLOR)
                 UpdateStatus($"Color inlay clicked: 0x{e.IntValue:X8}");
-            else if (e.Type == InlayType.Icon)
+            else if (e.Type == InlayType.ICON)
                 UpdateStatus($"Icon inlay clicked: {e.IntValue}");
             else
                 UpdateStatus($"Inlay clicked at {e.Line}:{e.Column}");
@@ -640,7 +636,7 @@ public sealed class MainView : UserControl
 
     private EditorKeyMap CreateEditorKeyMap()
     {
-        EditorKeyMap keyMap = new(useVsCodeKeyMap ? KeyMap.Vscode().Bindings : KeyMap.DefaultKeyMap().Bindings);
+        EditorKeyMap keyMap = new(useVsCodeKeyMap ? EditorKeyMap.Vscode().Bindings : EditorKeyMap.DefaultKeyMap().Bindings);
         keyMap.RegisterCommand(
             new KeyBinding(new KeyChord(KeyModifier.CTRL, KeyCode.K), new KeyChord(KeyModifier.CTRL, KeyCode.D), 0),
             _ =>
@@ -719,7 +715,7 @@ public sealed class MainView : UserControl
     {
         uint colorToken = dark ? 0xFF9CDCFEu : 0xFF0F766Eu;
         return (dark ? EditorTheme.Dark() : EditorTheme.Light())
-            .DefineTextStyle((uint)DemoDecorationProvider.StyleColor, new TextStyle(unchecked((int)colorToken), 0));
+            .DefineTextStyle(DemoDecorationProvider.StyleColor, new TextStyle(unchecked((int)colorToken), 0));
     }
 
     private void PrepareForSampleLoad(DemoSampleFile sample)
@@ -1020,7 +1016,7 @@ public sealed class MainView : UserControl
         if (!samplePickerPopup.IsVisible)
             return;
 
-        if (!TryGetControlBoundsInLayoutRoot(toolbarController.SamplePickerButton, out Rect buttonBounds))
+        if (!TryGetControlBoundsInLayoutRoot(toolbarController.SamplePickerButton, out AvaloniaRect buttonBounds))
             return;
 
         double margin = 8;
@@ -1040,14 +1036,14 @@ public sealed class MainView : UserControl
         samplePickerPopup.Margin = new Thickness(x, y, 0, 0);
     }
 
-    private bool TryGetControlBoundsInLayoutRoot(Control control, out Rect bounds)
+    private bool TryGetControlBoundsInLayoutRoot(Control control, out AvaloniaRect bounds)
     {
         bounds = default;
         Point? origin = control.TranslatePoint(default, layoutRoot);
         if (!origin.HasValue)
             return false;
 
-        bounds = new Rect(origin.Value, control.Bounds.Size);
+        bounds = new AvaloniaRect(origin.Value, control.Bounds.Size);
         return bounds.Width > 0 && bounds.Height > 0;
     }
 
@@ -1057,9 +1053,9 @@ public sealed class MainView : UserControl
             return;
 
         Point point = e.GetPosition(layoutRoot);
-        bool insideButton = TryGetControlBoundsInLayoutRoot(toolbarController.SamplePickerButton, out Rect buttonBounds) &&
+        bool insideButton = TryGetControlBoundsInLayoutRoot(toolbarController.SamplePickerButton, out AvaloniaRect buttonBounds) &&
                             buttonBounds.Contains(point);
-        bool insidePopup = TryGetControlBoundsInLayoutRoot(samplePickerPopup, out Rect popupBounds) &&
+        bool insidePopup = TryGetControlBoundsInLayoutRoot(samplePickerPopup, out AvaloniaRect popupBounds) &&
                            popupBounds.Contains(point);
         if (!insideButton && !insidePopup)
             HideSamplePickerPopup();
@@ -1904,18 +1900,18 @@ public sealed class MainView : UserControl
         if (document == null || !TrySanitizeSelectionRange(range, document, out TextRange sanitizedRange))
             return false;
 
-        CursorRect startRect = default;
-        CursorRect endRect = default;
+		CursorRect startRect = new();
+		CursorRect endRect = new();
         if (!(anchorPoint.HasValue && ShouldPreferGestureOnlySelectionAnchor()))
         {
             startRect = controller.GetPositionRect(sanitizedRange.Start.Line, sanitizedRange.Start.Column);
             endRect = controller.GetPositionRect(sanitizedRange.End.Line, sanitizedRange.End.Column);
         }
 
-        snapshot = new SelectionActionAnchorSnapshot(
-            sanitizedRange,
-            startRect,
-            endRect,
+		snapshot = new SelectionActionAnchorSnapshot(
+			sanitizedRange,
+			startRect,
+			endRect,
             controller.GetCursorRect(),
             anchorPoint ?? default,
             anchorPoint.HasValue,
@@ -1927,7 +1923,7 @@ public sealed class MainView : UserControl
     {
         snapshot = default;
         CursorRect cursorRect = controller.GetCursorRect();
-        if (cursorOverride.HasValue && controller.GetDocument() is Document document && TryClampPosition(cursorOverride.Value, document, Math.Max(0, document.GetLineCount()), out TextPosition clampedCursor))
+        if (cursorOverride != null && controller.GetDocument() is Document document && TryClampPosition(cursorOverride, document, Math.Max(0, document.GetLineCount()), out TextPosition clampedCursor))
         {
             cursorRect = controller.GetPositionRect(clampedCursor.Line, clampedCursor.Column);
         }
@@ -1935,12 +1931,12 @@ public sealed class MainView : UserControl
         if (cursorRect.Height <= 0)
             return false;
 
-        snapshot = new SelectionActionAnchorSnapshot(
-            default,
-            default,
-            default,
-            cursorRect,
-            anchorPoint ?? default,
+		snapshot = new SelectionActionAnchorSnapshot(
+			new TextRange(),
+			new CursorRect(),
+			new CursorRect(),
+			cursorRect,
+			anchorPoint ?? default,
             anchorPoint.HasValue,
             false);
         return true;
@@ -2013,7 +2009,7 @@ public sealed class MainView : UserControl
 
     private static bool TrySanitizeSelectionRange(TextRange range, Document document, out TextRange sanitized)
     {
-        sanitized = default;
+		sanitized = new TextRange();
         int lineCount = Math.Max(0, document.GetLineCount());
         if (lineCount <= 0)
             return false;
@@ -2042,7 +2038,7 @@ public sealed class MainView : UserControl
 
     private static bool TryClampPosition(TextPosition position, Document document, int lineCount, out TextPosition clamped)
     {
-        clamped = default;
+		clamped = new TextPosition();
         if (lineCount <= 0)
             return false;
 
@@ -2121,16 +2117,16 @@ public sealed class MainView : UserControl
         completionPopup.Margin = new Thickness(x, y, 0, 0);
     }
 
-    private void ApplyCompletionItem(CompletionItem item)
-    {
-        string text = item.InsertText ?? item.Label;
-        if (item.TextEditValue != null)
-        {
-            controller.DeleteText(item.TextEditValue.Range);
-            text = item.TextEditValue.NewText;
-        }
-        else if (TryGetSafeCompletionReplacementRange(out TextRange range))
-        {
+	private void ApplyCompletionItem(CompletionItem item)
+	{
+		string text = item.InsertText ?? item.Label;
+		if (item.TextEdit != null)
+		{
+			controller.DeleteText(item.TextEdit.Range);
+			text = item.TextEdit.NewText;
+		}
+		else if (TryGetSafeCompletionReplacementRange(out TextRange range))
+		{
             controller.DeleteText(range);
         }
 
@@ -2437,7 +2433,7 @@ public sealed class MainView : UserControl
 
     private bool TryGetSafeCompletionReplacementRange(out TextRange range)
     {
-        range = default;
+		range = new TextRange();
         if (controller.GetWordRangeAtCursor() is not TextRange candidate)
             return false;
 

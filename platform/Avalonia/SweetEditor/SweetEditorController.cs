@@ -171,11 +171,11 @@ namespace SweetEditor {
 
 		public LanguageConfiguration? GetLanguageConfiguration() => Read(e => e.GetLanguageConfiguration(), null);
 
-		public LayoutMetrics GetLayoutMetrics() => Read(e => e.GetLayoutMetrics(), default);
+		public LayoutMetrics GetLayoutMetrics() => Read(e => e.GetLayoutMetrics(), new LayoutMetrics());
 
-		public void SetMetadata(IEditorMetadata? metadata) => Invoke(e => e.SetMetadata(metadata));
+		public void SetMetadata<T>(T? metadata) where T : class, IEditorMetadata => Invoke(e => e.SetMetadata(metadata));
 
-		public IEditorMetadata? GetMetadata() => Read(e => e.GetMetadata(), null);
+		public T? GetMetadata<T>() where T : class, IEditorMetadata => Read<T?>(e => e.GetMetadata<T>(), null);
 
 		public void AddNewLineActionProvider(INewLineActionProvider provider) => Invoke(e => e.AddNewLineActionProvider(provider));
 
@@ -278,11 +278,11 @@ namespace SweetEditor {
 		public void SetSelection(int startLine, int startColumn, int endLine, int endColumn) =>
 			Invoke(e => e.SetSelection(startLine, startColumn, endLine, endColumn));
 
-		public (bool hasSelection, TextRange range) GetSelection() => Read(e => e.GetSelection(), (false, default));
+		public (bool hasSelection, TextRange range) GetSelection() => Read(e => e.GetSelection(), (false, new TextRange()));
 
 		public void SetCursorPosition(TextPosition position) => Invoke(e => e.SetCursorPosition(position));
 
-		public TextPosition GetCursorPosition() => Read(e => e.GetCursorPosition(), default);
+		public TextPosition GetCursorPosition() => Read(e => e.GetCursorPosition(), new TextPosition());
 
 		public TextRange? GetWordRangeAtCursor() => Read(e => e.GetWordRangeAtCursor(), null);
 
@@ -294,13 +294,13 @@ namespace SweetEditor {
 
 		public void SetScroll(float scrollX, float scrollY) => Invoke(e => e.SetScroll(scrollX, scrollY));
 
-		public ScrollMetrics GetScrollMetrics() => Read(e => e.GetScrollMetrics(), default);
+		public ScrollMetrics GetScrollMetrics() => Read(e => e.GetScrollMetrics(), new ScrollMetrics());
 
-		public CursorRect GetPositionRect(int line, int column) => Read(e => e.GetPositionRect(line, column), default);
+		public CursorRect GetPositionRect(int line, int column) => Read(e => e.GetPositionRect(line, column), new CursorRect());
 
-		public CursorRect GetCursorRect() => Read(e => e.GetCursorRect(), default);
+		public CursorRect GetCursorRect() => Read(e => e.GetCursorRect(), new CursorRect());
 
-		public bool ToggleFoldAt(int line) => Read(e => e.ToggleFoldAt(line), false);
+		public bool ToggleFold(int line) => Read(e => e.ToggleFold(line), false);
 
 		public bool FoldAt(int line) => Read(e => e.FoldAt(line), false);
 

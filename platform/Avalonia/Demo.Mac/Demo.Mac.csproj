@@ -31,9 +31,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\..\prebuilt\osx\arm64\libsweeteditor.dylib" Condition="Exists('..\..\..\prebuilt\osx\arm64\libsweeteditor.dylib')" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\..\prebuilt\osx\arm64\libsweetline.dylib" Condition="Exists('..\..\..\prebuilt\osx\arm64\libsweetline.dylib')" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\..\prebuilt\osx\x86_64\libsweeteditor.dylib" Condition="Exists('..\..\..\prebuilt\osx\x86_64\libsweeteditor.dylib')" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\..\prebuilt\osx\x86_64\libsweetline.dylib" Condition="Exists('..\..\..\prebuilt\osx\x86_64\libsweetline.dylib')" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\prebuilt\osx\arm64\libsweeteditor.dylib"
+          Condition="Exists('..\..\..\prebuilt\osx\arm64\libsweeteditor.dylib')"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

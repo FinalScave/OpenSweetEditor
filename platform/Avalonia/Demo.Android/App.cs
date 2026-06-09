@@ -2,8 +2,7 @@ using global::Avalonia;
 using global::Avalonia.Controls;
 using global::Avalonia.Controls.ApplicationLifetimes;
 using global::Avalonia.Themes.Fluent;
-using SweetEditor.Avalonia.Demo.Host;
-using SweetEditor.Avalonia.Demo.Android.Platform;
+using SweetEditor.Avalonia.Demo;
 
 namespace SweetEditor.Avalonia.Demo.Android;
 

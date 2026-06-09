@@ -20,8 +20,8 @@ namespace SweetEditor {
 		GutterIcon = 1 << 9,
 		PhantomText = 1 << 10,
 		CodeLens = 1 << 11,
-		DocumentHighlight = 1 << 12,
-		Link = 1 << 13,
+		Link = 1 << 12,
+		DocumentHighlight = 1 << 13,
 	}
 
 	public enum DecorationApplyMode {
@@ -31,22 +31,19 @@ namespace SweetEditor {
 	}
 
 	public sealed class DecorationContext {
-		public int VisibleStartLine { get; }
-		public int VisibleEndLine { get; }
+		public IntRange VisibleLineRange { get; }
 		public int TotalLineCount { get; }
 		public IReadOnlyList<TextChange> TextChanges { get; }
 		public LanguageConfiguration? LanguageConfiguration { get; }
 		public IEditorMetadata? EditorMetadata { get; }
 
 		public DecorationContext(
-			int visibleStartLine,
-			int visibleEndLine,
+			IntRange visibleLineRange,
 			int totalLineCount,
 			IReadOnlyList<TextChange> textChanges,
 			LanguageConfiguration? languageConfiguration,
 			IEditorMetadata? editorMetadata) {
-			VisibleStartLine = visibleStartLine;
-			VisibleEndLine = visibleEndLine;
+			VisibleLineRange = visibleLineRange;
 			TotalLineCount = totalLineCount;
 			TextChanges = textChanges;
 			LanguageConfiguration = languageConfiguration;
@@ -240,8 +237,6 @@ namespace SweetEditor {
 			}
 
 			editor.ClearAllDecorations();
-			editor.ClearCodeLens();
-			editor.SetFoldRegions(Array.Empty<FoldRegion>());
 			editor.Flush();
 			ScheduleRefresh(0, null);
 		}
@@ -327,12 +322,11 @@ namespace SweetEditor {
 			lastContextEndLine = contextEnd;
 
 			var context = new DecorationContext(
-				contextStart,
-				contextEnd,
+				new IntRange(contextStart, contextEnd),
 				total,
 				changes,
 				editor.GetLanguageConfiguration(),
-				editor.Metadata);
+				editor.MetadataInternal);
 
 			foreach (var provider in providers) {
 				if (!states.TryGetValue(provider, out var state)) {
@@ -557,7 +551,7 @@ namespace SweetEditor {
 			if (source.Count == 0) {
 				return false;
 			}
-			editor.SetBatchLineSpans(layer, source);
+			editor.SetBatchLineSpans(layer, ToIListMap(source));
 			return true;
 		}
 
@@ -576,7 +570,7 @@ namespace SweetEditor {
 			if (source.Count == 0) {
 				return false;
 			}
-			editor.SetBatchLineInlayHints(source);
+			editor.SetBatchLineInlayHints(ToIListMap(source));
 			return true;
 		}
 
@@ -606,7 +600,7 @@ namespace SweetEditor {
 			if (source.Count == 0) {
 				return false;
 			}
-			editor.SetBatchLineDiagnostics(source);
+			editor.SetBatchLineDiagnostics(ToIListMap(source));
 			return true;
 		}
 
@@ -614,7 +608,7 @@ namespace SweetEditor {
 			if (source.Count == 0) {
 				return false;
 			}
-			editor.SetBatchLineDocumentHighlights(source);
+			editor.SetBatchLineDocumentHighlights(ToIListMap(source));
 			return true;
 		}
 
@@ -633,7 +627,7 @@ namespace SweetEditor {
 			if (source.Count == 0) {
 				return false;
 			}
-			editor.SetBatchLineGutterIcons(source);
+			editor.SetBatchLineGutterIcons(ToIListMap(source));
 			return true;
 		}
 
@@ -652,7 +646,7 @@ namespace SweetEditor {
 			if (source.Count == 0) {
 				return false;
 			}
-			editor.SetBatchLinePhantomTexts(source);
+			editor.SetBatchLinePhantomTexts(ToIListMap(source));
 			return true;
 		}
 
@@ -671,7 +665,7 @@ namespace SweetEditor {
 			if (source.Count == 0) {
 				return false;
 			}
-			editor.SetBatchLineCodeLens(source);
+			editor.SetBatchLineCodeLens(ToIListMap(source));
 			return true;
 		}
 
@@ -690,7 +684,7 @@ namespace SweetEditor {
 			if (source.Count == 0) {
 				return false;
 			}
-			editor.SetBatchLineLinks(source);
+			editor.SetBatchLineLinks(ToIListMap(source));
 			return true;
 		}
 
@@ -699,7 +693,7 @@ namespace SweetEditor {
 			if (empty.Count == 0) {
 				return false;
 			}
-			editor.SetBatchLineSpans(layer, empty);
+			editor.SetBatchLineSpans(layer, ToIListMap(empty));
 			return true;
 		}
 
@@ -708,7 +702,7 @@ namespace SweetEditor {
 			if (empty.Count == 0) {
 				return false;
 			}
-			editor.SetBatchLineInlayHints(empty);
+			editor.SetBatchLineInlayHints(ToIListMap(empty));
 			return true;
 		}
 
@@ -717,7 +711,7 @@ namespace SweetEditor {
 			if (empty.Count == 0) {
 				return false;
 			}
-			editor.SetBatchLineDiagnostics(empty);
+			editor.SetBatchLineDiagnostics(ToIListMap(empty));
 			return true;
 		}
 
@@ -726,7 +720,7 @@ namespace SweetEditor {
 			if (empty.Count == 0) {
 				return false;
 			}
-			editor.SetBatchLineDocumentHighlights(empty);
+			editor.SetBatchLineDocumentHighlights(ToIListMap(empty));
 			return true;
 		}
 
@@ -735,7 +729,7 @@ namespace SweetEditor {
 			if (empty.Count == 0) {
 				return false;
 			}
-			editor.SetBatchLineGutterIcons(empty);
+			editor.SetBatchLineGutterIcons(ToIListMap(empty));
 			return true;
 		}
 
@@ -744,7 +738,7 @@ namespace SweetEditor {
 			if (empty.Count == 0) {
 				return false;
 			}
-			editor.SetBatchLinePhantomTexts(empty);
+			editor.SetBatchLinePhantomTexts(ToIListMap(empty));
 			return true;
 		}
 
@@ -753,7 +747,7 @@ namespace SweetEditor {
 			if (empty.Count == 0) {
 				return false;
 			}
-			editor.SetBatchLineCodeLens(empty);
+			editor.SetBatchLineCodeLens(ToIListMap(empty));
 			return true;
 		}
 
@@ -762,7 +756,7 @@ namespace SweetEditor {
 			if (empty.Count == 0) {
 				return false;
 			}
-			editor.SetBatchLineLinks(empty);
+			editor.SetBatchLineLinks(ToIListMap(empty));
 			return true;
 		}
 
@@ -801,12 +795,18 @@ namespace SweetEditor {
 			return output;
 		}
 
+		private static Dictionary<int, IList<T>> ToIListMap<T>(Dictionary<int, List<T>> source) {
+			var output = new Dictionary<int, IList<T>>(source.Count);
+			foreach (var kv in source) {
+				output[kv.Key] = kv.Value;
+			}
+			return output;
+		}
+
 		private bool ApplyIndentGuides(DecorationApplyMode mode, List<IndentGuide>? guides) {
 			if (mode != DecorationApplyMode.MERGE) {
-				editor.ClearGuides();
-				if (guides == null) {
-					return true;
-				}
+				editor.SetIndentGuides(guides ?? new List<IndentGuide>());
+				return true;
 			}
 			if (guides == null) {
 				return false;
@@ -816,8 +816,8 @@ namespace SweetEditor {
 		}
 
 		private bool ApplyBracketGuides(DecorationApplyMode mode, List<BracketGuide>? guides) {
-			if (mode != DecorationApplyMode.MERGE && guides == null) {
-				editor.ClearGuides();
+			if (mode != DecorationApplyMode.MERGE) {
+				editor.SetBracketGuides(guides ?? new List<BracketGuide>());
 				return true;
 			}
 			if (guides == null) {
@@ -828,8 +828,8 @@ namespace SweetEditor {
 		}
 
 		private bool ApplyFlowGuides(DecorationApplyMode mode, List<FlowGuide>? guides) {
-			if (mode != DecorationApplyMode.MERGE && guides == null) {
-				editor.ClearGuides();
+			if (mode != DecorationApplyMode.MERGE) {
+				editor.SetFlowGuides(guides ?? new List<FlowGuide>());
 				return true;
 			}
 			if (guides == null) {
@@ -840,8 +840,8 @@ namespace SweetEditor {
 		}
 
 		private bool ApplySeparatorGuides(DecorationApplyMode mode, List<SeparatorGuide>? guides) {
-			if (mode != DecorationApplyMode.MERGE && guides == null) {
-				editor.ClearGuides();
+			if (mode != DecorationApplyMode.MERGE) {
+				editor.SetSeparatorGuides(guides ?? new List<SeparatorGuide>());
 				return true;
 			}
 			if (guides == null) {
@@ -1086,18 +1086,19 @@ namespace SweetEditor {
 				this.receiverGeneration = receiverGeneration;
 			}
 
-			public bool Accept(DecorationResult result) {
-				if (cancelled || receiverGeneration != manager.generation) {
-					return false;
-				}
-				Dispatcher.UIThread.Post(() => {
+				public bool Accept(DecorationResult result) {
 					if (cancelled || receiverGeneration != manager.generation) {
-						return;
+						return false;
 					}
-					manager.OnReceiverAccept(provider, result, receiverGeneration);
-				});
-				return true;
-			}
+					var snapshot = result.Clone();
+					Dispatcher.UIThread.Post(() => {
+						if (cancelled || receiverGeneration != manager.generation) {
+							return;
+						}
+						manager.OnReceiverAccept(provider, snapshot, receiverGeneration);
+					});
+					return true;
+				}
 
 			public bool IsCancelled => cancelled || receiverGeneration != manager.generation;
 

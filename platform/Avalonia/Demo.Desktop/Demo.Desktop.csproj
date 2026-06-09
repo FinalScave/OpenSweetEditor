@@ -26,9 +26,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="..\..\..\prebuilt\windows\x64\sweeteditor.dll" Condition="Exists('..\..\..\prebuilt\windows\x64\sweeteditor.dll')" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\..\prebuilt\linux\x86_64\libsweeteditor.so" Condition="Exists('..\..\..\prebuilt\linux\x86_64\libsweeteditor.so')" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\..\prebuilt\osx\x86_64\libsweeteditor.dylib" Condition="Exists('..\..\..\prebuilt\osx\x86_64\libsweeteditor.dylib')" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\..\prebuilt\osx\arm64\libsweeteditor.dylib" Condition="Exists('..\..\..\prebuilt\osx\arm64\libsweeteditor.dylib')" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\prebuilt\windows\x64\sweeteditor.dll"
+          Condition="Exists('..\..\..\prebuilt\windows\x64\sweeteditor.dll')"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\prebuilt\linux\x86_64\libsweeteditor.so"
+          Condition="Exists('..\..\..\prebuilt\linux\x86_64\libsweeteditor.so')"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\..\prebuilt\osx\arm64\libsweeteditor.dylib"
+          Condition="Exists('..\..\..\prebuilt\osx\arm64\libsweeteditor.dylib')"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
 </Project>

@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;net8.0-android</TargetFrameworks>
+    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net8.0-android'">21</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>SweetEditor.Avalonia.Demo.Shared</AssemblyName>
@@ -15,22 +16,23 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.3.12" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />
-    <PackageReference Include="SweetLine" Version="1.2.1" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\SweetEditor\SweetEditor.csproj" />
+    <PackageReference Include="SweetLine" Version="1.2.7" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Compile Remove="SweetLine/**/*.cs" />
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-android'">
+    <Using Remove="Android.App" />
+    <Using Remove="Android.Widget" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="../../_res/files/*.*">
       <LogicalName>SweetEditor.PlatformRes.files.%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
-    <EmbeddedResource Include="../../_res/syntaxes/*.json">
+    <EmbeddedResource Include="../../_res/syntaxes/*.*">
       <LogicalName>SweetEditor.PlatformRes.syntaxes.%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
     <EmbeddedResource Include="Assets/Icons/**/*.png">

@@ -5,17 +5,17 @@ using System.Threading.Tasks;
 using Avalonia.Threading;
 
 namespace SweetEditor {
-	public class CompletionItem {
-		public sealed class TextEdit {
-			public TextRange Range { get; }
-			public string NewText { get; }
+	public sealed class CompletionTextEdit {
+		public TextRange Range { get; }
+		public string NewText { get; }
 
-			public TextEdit(TextRange range, string newText) {
-				Range = range;
-				NewText = newText;
-			}
+		public CompletionTextEdit(TextRange range, string newText) {
+			Range = range;
+			NewText = newText ?? string.Empty;
 		}
+	}
 
+	public class CompletionItem {
 		public const int KIND_KEYWORD = 0;
 		public const int KIND_FUNCTION = 1;
 		public const int KIND_VARIABLE = 2;
@@ -33,7 +33,7 @@ namespace SweetEditor {
 		public string? Detail { get; set; }
 		public string? InsertText { get; set; }
 		public int InsertTextFormat { get; set; } = INSERT_TEXT_FORMAT_PLAIN_TEXT;
-		public TextEdit? TextEditValue { get; set; }
+		public CompletionTextEdit? TextEdit { get; set; }
 		public string? FilterText { get; set; }
 		public string? SortKey { get; set; }
 		public int Kind { get; set; }
@@ -243,7 +243,7 @@ namespace SweetEditor {
 				lineText,
 				wordRange,
 				editor.GetLanguageConfiguration(),
-				editor.Metadata);
+				editor.MetadataInternal);
 		}
 
 		private void CancelAllReceivers() {

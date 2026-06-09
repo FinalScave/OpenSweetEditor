@@ -3,8 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Themes.Fluent;
-using SweetEditor.Avalonia.Demo.Host;
-using SweetEditor.Avalonia.Demo.Desktop.Platform;
+using SweetEditor.Avalonia.Demo;
 
 namespace SweetEditor.Avalonia.Demo.Desktop;
 

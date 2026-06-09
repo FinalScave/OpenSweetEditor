@@ -55,26 +55,4 @@
   <ItemGroup>
     <ProjectReference Include="..\Demo.Shared\Demo.Shared.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <AndroidNativeLibrary Include="..\..\..\prebuilt\android\arm64-v8a\libsweeteditor.so"
-                          Condition="Exists('..\..\..\prebuilt\android\arm64-v8a\libsweeteditor.so')">
-      <Link>lib\arm64-v8a\libsweeteditor.so</Link>
-    </AndroidNativeLibrary>
-
-    <AndroidNativeLibrary Include="..\..\..\prebuilt\android\x86_64\libsweeteditor.so"
-                          Condition="Exists('..\..\..\prebuilt\android\x86_64\libsweeteditor.so')">
-      <Link>lib\x86_64\libsweeteditor.so</Link>
-    </AndroidNativeLibrary>
-
-    <AndroidAsset Include="native\sweetline\arm64-v8a\libsweetline.asset"
-                  Condition="Exists('native\sweetline\arm64-v8a\libsweetline.asset')">
-      <Link>sweetline\arm64-v8a\libsweetline.asset</Link>
-    </AndroidAsset>
-
-    <AndroidAsset Include="native\sweetline\x86_64\libsweetline.asset"
-                  Condition="Exists('native\sweetline\x86_64\libsweetline.asset')">
-      <Link>sweetline\x86_64\libsweetline.asset</Link>
-    </AndroidAsset>
-  </ItemGroup>
 </Project>
