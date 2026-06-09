@@ -680,7 +680,7 @@ public class DemoDecorationProvider implements DecorationProvider {
         engine.registerStyleName("builtin", EditorTheme.STYLE_BUILTIN);
         engine.registerStyleName("annotation", EditorTheme.STYLE_ANNOTATION);
         engine.registerStyleName("color", STYLE_COLOR);
-        engine.registerStyleName("link", STYLE_LINK);
+        engine.registerStyleName("url", STYLE_LINK);
     }
 
     @NonNull

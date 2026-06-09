@@ -714,8 +714,10 @@ public sealed class MainView : UserControl
     private static EditorTheme CreateEditorTheme(bool dark)
     {
         uint colorToken = dark ? 0xFF9CDCFEu : 0xFF0F766Eu;
+        uint urlToken = dark ? 0xFF7DCFFFu : 0xFF005FB8u;
         return (dark ? EditorTheme.Dark() : EditorTheme.Light())
-            .DefineTextStyle(DemoDecorationProvider.StyleColor, new TextStyle(unchecked((int)colorToken), 0));
+            .DefineTextStyle(DemoDecorationProvider.StyleColor, new TextStyle(unchecked((int)colorToken), 0))
+            .DefineTextStyle(DemoDecorationProvider.StyleUrl, new TextStyle(unchecked((int)urlToken), 0));
     }
 
     private void PrepareForSampleLoad(DemoSampleFile sample)

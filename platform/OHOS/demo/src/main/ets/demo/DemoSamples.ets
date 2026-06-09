@@ -2,6 +2,7 @@ import { EditorTheme, LanguageConfiguration } from '@qiplat/sweeteditor';
 import { DemoFileMetadata } from './DemoTypes';
 
 export const DEMO_STYLE_COLOR: number = EditorTheme.STYLE_USER_BASE + 1;
+export const DEMO_STYLE_URL: number = EditorTheme.STYLE_USER_BASE + 2;
 
 export const DEMO_RAWFILE_ROOT: string = 'demo_shared/files';
 
@@ -21,8 +22,14 @@ export const FALLBACK_TEXT: string =
 export function createDemoTheme(isDarkTheme: boolean): EditorTheme {
   const theme = isDarkTheme ? EditorTheme.dark() : EditorTheme.light();
   const color = isDarkTheme ? 0xFFB5CEA8 : 0xFF098658;
+  const urlColor = isDarkTheme ? 0xFF7DCFFF : 0xFF005FB8;
   theme.defineTextStyle(DEMO_STYLE_COLOR, {
     color,
+    backgroundColor: 0,
+    fontStyle: 0
+  });
+  theme.defineTextStyle(DEMO_STYLE_URL, {
+    color: urlColor,
     backgroundColor: 0,
     fontStyle: 0
   });

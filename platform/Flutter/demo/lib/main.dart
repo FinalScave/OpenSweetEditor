@@ -37,6 +37,7 @@ class EditorDemoPage extends StatefulWidget {
 
 class _EditorDemoPageState extends State<EditorDemoPage> {
   static const int _styleColor = EditorTheme.styleUserBase + 1;
+  static const int _styleUrl = EditorTheme.styleUserBase + 2;
   static const List<MapEntry<String, String>> _sampleAssets = [
     MapEntry('example.java', 'assets/demo_shared/files/example.java'),
     MapEntry('example.kt', 'assets/demo_shared/files/example.kt'),
@@ -245,6 +246,10 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
     theme.defineTextStyle(
       _styleColor,
       core.TextStyle(color: isDark ? 0xFFB5CEA8 : 0xFF098658),
+    );
+    theme.defineTextStyle(
+      _styleUrl,
+      core.TextStyle(color: isDark ? 0xFF7DCFFF : 0xFF005FB8),
     );
 
     return Scaffold(

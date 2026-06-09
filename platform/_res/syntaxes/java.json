@@ -154,10 +154,6 @@
         "style": "color"
       },
       {
-        "pattern": "\\b0[xX][0-9a-fA-F_]+[lL]?\\b",
-        "style": "number"
-      },
-      {
         "pattern": "\\b0[bB][01_]+[lL]?\\b",
         "style": "number"
       },
@@ -444,11 +440,16 @@
       }
     ]
   },
-  "scopeRules": [
-    {
-      "start": "{",
-      "end": "}",
-      "branches": ["case"]
-    }
-  ]
+  "scopeRules": {
+    "skips": [
+      { "kind": "lineComment", "start": "//" },
+      { "kind": "blockComment", "start": "/*", "end": "*/" },
+      { "kind": "string", "start": "\"", "end": "\"", "escape": "\\" },
+      { "kind": "string", "start": "'", "end": "'", "escape": "\\" },
+      { "kind": "string", "start": "`", "end": "`", "multiLine": true }
+    ],
+    "rules": [
+      { "kind": "delimiter", "start": "{", "end": "}", "branches": ["case"] }
+    ]
+  }
 }

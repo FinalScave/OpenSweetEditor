@@ -199,19 +199,18 @@
       }
     ]
   },
-  "scopeRules": [
-    {
-      "start": "do",
-      "end": "end"
-    },
-    {
-      "start": "then",
-      "end": "end",
-      "branches": ["elseif", "else"]
-    },
-    {
-      "start": "function",
-      "end": "end"
-    }
-  ]
+  "scopeRules": {
+    "skips": [
+      { "kind": "blockComment", "start": "--[[", "end": "]]" },
+      { "kind": "lineComment", "start": "--" },
+      { "kind": "string", "start": "\"", "end": "\"", "escape": "\\" },
+      { "kind": "string", "start": "'", "end": "'", "escape": "\\" },
+      { "kind": "string", "start": "[[", "end": "]]", "multiLine": true }
+    ],
+    "rules": [
+      { "kind": "word", "start": "do", "end": "end" },
+      { "kind": "word", "start": "then", "end": "end", "branches": ["elseif","else"] },
+      { "kind": "word", "start": "function", "end": "end" }
+    ]
+  }
 }

@@ -87,6 +87,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
     public const int IconType = 1;
     public const int IconNote = 2;
     public const int StyleColor = unchecked((int)EditorTheme.STYLE_USER_BASE) + 1;
+    public const int StyleUrl = unchecked((int)EditorTheme.STYLE_USER_BASE) + 2;
     public const int CodeLensRun = 1;
     public const int CodeLensDebug = 2;
 

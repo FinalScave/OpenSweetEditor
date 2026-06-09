@@ -13,7 +13,7 @@ import {
   StyleSpan
 } from '@qiplat/sweeteditor';
 import { sweetline } from '@qiplat/sweetline';
-import { DEMO_STYLE_COLOR } from '../demo/DemoSamples';
+import { DEMO_STYLE_COLOR, DEMO_STYLE_URL } from '../demo/DemoSamples';
 import {
   DecorationWorkerAnalyzeMessage,
   DecorationWorkerRequestMessage,
@@ -545,6 +545,7 @@ class DemoDecorationWorker {
     engine.registerStyleName('builtin', EditorTheme.STYLE_BUILTIN);
     engine.registerStyleName('annotation', EditorTheme.STYLE_ANNOTATION);
     engine.registerStyleName('color', DEMO_STYLE_COLOR);
+    engine.registerStyleName('url', DEMO_STYLE_URL);
   }
 
   private serializeMap<T>(source: Map<number, T[]>): LineDecorationItems<T>[] {

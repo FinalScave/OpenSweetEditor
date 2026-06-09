@@ -12,6 +12,7 @@ using SweetLineTextRange = SweetLine.TextRange;
 namespace Demo {
 	public partial class Form1 : Form {
 		private const int STYLE_COLOR = EditorTheme.STYLE_USER_BASE + 1;
+		private const int STYLE_URL = EditorTheme.STYLE_USER_BASE + 2;
 		private const string DEFAULT_FILE_NAME = "example.cpp";
 		private const int CODELENS_RUN = 1;
 		private const int CODELENS_DEBUG = 2;
@@ -417,7 +418,9 @@ namespace Demo {
 
 		private void RegisterColorStyleForCurrentTheme() {
 			int color = isDarkTheme ? unchecked((int)0xFFB5CEA8) : unchecked((int)0xFF098658);
+			int urlColor = isDarkTheme ? unchecked((int)0xFF7DCFFF) : unchecked((int)0xFF005FB8);
 			editorControl1.registerTextStyle(STYLE_COLOR, color, 0);
+			editorControl1.registerTextStyle(STYLE_URL, urlColor, 0);
 		}
 
 		private void UpdateStatus(string message) {
@@ -551,6 +554,7 @@ namespace Demo {
 		private sealed class DemoDecorationProvider : IDecorationProvider {
 			private const string DefaultAnalysisFileName = "example.cpp";
 			private const int StyleColor = STYLE_COLOR;
+			private const int StyleUrl = STYLE_URL;
 			private const int IconClass = 1;
 			private const int CodeLensRun = CODELENS_RUN;
 			private const int CodeLensDebug = CODELENS_DEBUG;
@@ -821,6 +825,7 @@ namespace Demo {
 				engine.RegisterStyleName("number", EditorTheme.STYLE_NUMBER);
 				engine.RegisterStyleName("class", EditorTheme.STYLE_CLASS);
 				engine.RegisterStyleName("color", StyleColor);
+				engine.RegisterStyleName("url", StyleUrl);
 				engine.RegisterStyleName("builtin", EditorTheme.STYLE_BUILTIN);
 				engine.RegisterStyleName("annotation", EditorTheme.STYLE_ANNOTATION);
 			}

@@ -171,6 +171,7 @@ internal sealed class DemoSweetLineRuntime : IDisposable
             new("regex", (int)EditorTheme.STYLE_STRING),
             new("escape", (int)EditorTheme.STYLE_STRING),
             new("label", (int)EditorTheme.STYLE_VARIABLE),
+            new("url", DemoDecorationProvider.StyleUrl),
         };
 
         foreach (KeyValuePair<string, int> item in styles)

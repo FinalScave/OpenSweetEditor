@@ -17,6 +17,7 @@ class DemoDecorationProvider implements DecorationProvider {
 
   static const String _defaultAnalysisFileName = 'sample.cpp';
   static const int _styleColor = EditorTheme.styleUserBase + 1;
+  static const int _styleUrl = EditorTheme.styleUserBase + 2;
   static const int _maxDynamicDiagnostics = 8;
   static const List<String> _syntaxAssets = [
     'assets/demo_shared/syntaxes/cpp.json',
@@ -73,6 +74,7 @@ class DemoDecorationProvider implements DecorationProvider {
     engine.registerStyleName('builtin', EditorTheme.styleBuiltin);
     engine.registerStyleName('annotation', EditorTheme.styleAnnotation);
     engine.registerStyleName('color', _styleColor);
+    engine.registerStyleName('url', _styleUrl);
   }
 
   @override
