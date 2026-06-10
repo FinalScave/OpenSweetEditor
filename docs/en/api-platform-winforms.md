@@ -121,8 +121,10 @@ public void Flush()
 
 ```csharp
 public void InsertText(string text)
+public void InsertTextAt(TextPosition position, string text)
 public void ReplaceText(TextRange range, string newText)
 public void DeleteText(TextRange range)
+public void ApplyTextEdits(IReadOnlyList<TextEdit> edits)
 
 public void MoveLineUp()
 public void MoveLineDown()
@@ -240,7 +242,7 @@ public int GetTotalLineCount()
 
 `GetTotalLineCount()` returns the current document line count, or `-1` when no document is loaded.
 
-`CompletionItem.TextEdit` uses the public `CompletionTextEdit` type for precise replacement edits.
+`CompletionItem.TextEdit` uses the generated `TextEdit` type for precise replacement edits. Without `TextEdit`, completion inserts `InsertText` / `Label` at the cursor; `AdditionalTextEdits` is appended after the primary edit.
 
 ### Interaction Events
 

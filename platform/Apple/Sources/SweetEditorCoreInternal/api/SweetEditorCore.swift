@@ -419,6 +419,19 @@ class SweetEditorCore {
         }
     }
 
+    /// Applies multiple text edits as one undoable operation.
+    func applyTextEdits(_ edits: [TextEdit]) -> EditorActionResult? {
+        return performCoreCall {
+            let payload = CoreProtocol.encodeApplyTextEditsPayload(edits: edits)
+            var size: Int = 0
+            let ptr = payload.withUnsafeBytes { bytes -> UnsafePointer<UInt8>? in
+                guard let base = bytes.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return nil }
+                return editor_apply_text_edits(handle, base, payload.count, &size)
+            }
+            return decodeEditorActionPayload(ptr, size: size)
+        }
+    }
+
     // MARK: - Line operations
 
     func moveLineUp() -> EditorActionResult? {

@@ -48,6 +48,7 @@ static napi_value Init(napi_env env, napi_value exports)
         NAPI_METHOD("editorInsertText", EditorCoreNapi::insertText),
         NAPI_METHOD("editorReplaceText", EditorCoreNapi::replaceText),
         NAPI_METHOD("editorDeleteText", EditorCoreNapi::deleteText),
+        NAPI_METHOD("editorApplyTextEdits", EditorCoreNapi::applyTextEdits),
         NAPI_METHOD("editorBackspace", EditorCoreNapi::backspace),
         NAPI_METHOD("editorDeleteForward", EditorCoreNapi::deleteForward),
 

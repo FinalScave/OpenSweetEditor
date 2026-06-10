@@ -1,4 +1,3 @@
-using System;
 using Android.App;
 using Android.Content.PM;
 using Android.OS;
@@ -28,19 +27,7 @@ public sealed class MainActivity : AvaloniaMainActivity<App>
 {
     private const string LogTag = "SweetEditorDemo";
     private static readonly object ActivityLock = new();
-    private static MainActivity? current;
     private static bool diagnosticsHooked;
-
-    public static MainActivity? Current
-    {
-        get
-        {
-            lock (ActivityLock)
-            {
-                return current;
-            }
-        }
-    }
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
@@ -48,13 +35,8 @@ public sealed class MainActivity : AvaloniaMainActivity<App>
         DemoHostDiagnostics.WriteLine("MainActivity.OnCreate enter");
         Window?.AddFlags(WindowManagerFlags.HardwareAccelerated);
         Window?.SetSoftInputMode(SoftInput.AdjustResize);
-        
+
         base.OnCreate(savedInstanceState);
-        
-        lock (ActivityLock)
-        {
-            current = this;
-        }
 
         DemoHostDiagnostics.WriteLine("MainActivity.OnCreate exit");
     }
@@ -76,66 +58,7 @@ public sealed class MainActivity : AvaloniaMainActivity<App>
     protected override void OnDestroy()
     {
         DemoHostDiagnostics.WriteLine("MainActivity.OnDestroy");
-        lock (ActivityLock)
-        {
-            if (ReferenceEquals(current, this))
-                current = null;
-        }
         base.OnDestroy();
-    }
-
-    public static bool TryGetVisibleFrameAndImeTop(out global::Android.Graphics.Rect visibleFrame, out int imeTopOnScreen)
-    {
-        visibleFrame = new global::Android.Graphics.Rect();
-        imeTopOnScreen = 0;
-
-        MainActivity? activity = Current;
-        if (activity?.Window?.DecorView == null)
-            return false;
-
-        View decorView = activity.Window.DecorView;
-        decorView.GetWindowVisibleDisplayFrame(visibleFrame);
-        if (visibleFrame.Width() <= 0 || visibleFrame.Height() <= 0)
-            return false;
-
-        int imeBottom = 0;
-        WindowInsets? insets = OperatingSystem.IsAndroidVersionAtLeast(23) ? decorView.RootWindowInsets : null;
-        if (insets != null)
-        {
-            if (OperatingSystem.IsAndroidVersionAtLeast(30))
-                imeBottom = insets.GetInsets(WindowInsets.Type.Ime()).Bottom;
-            else
-                imeBottom = Math.Max(0, insets.SystemWindowInsetBottom - insets.StableInsetBottom);
-        }
-
-        View? rootView = decorView.RootView;
-        if (rootView == null || rootView.Height <= 0)
-            return true;
-
-        int[] rootLocation = new int[2];
-        rootView.GetLocationOnScreen(rootLocation);
-
-        if (imeBottom <= 0)
-        {
-            global::Android.Graphics.Rect rootVisible = new();
-            rootView.GetWindowVisibleDisplayFrame(rootVisible);
-            float density = decorView.Resources?.DisplayMetrics?.Density ?? 1f;
-            int keyboardThreshold = (int)(80f * Math.Max(1f, density));
-            int keyboardHeight = rootView.Height - rootVisible.Height();
-            if (keyboardHeight > keyboardThreshold)
-            {
-                imeTopOnScreen = rootLocation[1] + rootVisible.Bottom;
-                if (imeTopOnScreen > visibleFrame.Top && imeTopOnScreen < visibleFrame.Bottom)
-                    visibleFrame.Bottom = imeTopOnScreen;
-            }
-            return true;
-        }
-
-        imeTopOnScreen = rootLocation[1] + rootView.Height - imeBottom;
-        if (imeTopOnScreen > visibleFrame.Top && imeTopOnScreen < visibleFrame.Bottom)
-            visibleFrame.Bottom = imeTopOnScreen;
-
-        return true;
     }
 
     private static void EnsureDiagnostics()

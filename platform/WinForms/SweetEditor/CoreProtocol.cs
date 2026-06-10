@@ -508,6 +508,34 @@ namespace SweetEditor {
             return values;
         }
 
+        private static List<TextEdit> ReadTextEditList(ref BinaryReader reader) {
+            var count = reader.ReadInt32();
+            if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
+            var values = new List<TextEdit>(count);
+            for (var i = 0; i < count; i++) {
+                values.Add(ReadTextEdit(ref reader));
+            }
+            return values;
+        }
+
+        private static void WriteTextEditList(BinaryWriter writer, IReadOnlyList<TextEdit>? values) {
+            var count = values == null ? 0 : values.Count;
+            writer.WriteInt32(count);
+            for (var i = 0; i < count; i++) {
+                WriteTextEdit(writer, values![i]);
+            }
+        }
+
+        private static int SizeOfTextEditList(IReadOnlyList<TextEdit>? values) {
+            var size = 4;
+            if (values != null) {
+                for (var i = 0; i < values.Count; i++) {
+                    size += SizeOfTextEdit(values[i]);
+                }
+            }
+            return size;
+        }
+
         private static List<TextPosition> ReadTextPositionList(ref BinaryReader reader) {
             var count = reader.ReadInt32();
             if (count < 0 || count > reader.Remaining) throw new InvalidOperationException("Invalid protocol length.");
@@ -1112,6 +1140,30 @@ namespace SweetEditor {
         public static TextChange DecodeTextChange(ReadOnlySpan<byte> data) {
             var reader = new BinaryReader(data);
             return ReadTextChange(ref reader);
+        }
+
+        private static TextEdit ReadTextEdit(ref BinaryReader reader) {
+            return new TextEdit {
+                Range = ReadTextRange(ref reader),
+                NewText = ReadUtf8String(ref reader),
+            };
+        }
+
+        public static TextEdit DecodeTextEdit(ReadOnlySpan<byte> data) {
+            var reader = new BinaryReader(data);
+            return ReadTextEdit(ref reader);
+        }
+
+        private static void WriteTextEdit(BinaryWriter writer, TextEdit value) {
+            WriteTextRange(writer, value.Range);
+            WriteUtf8String(writer, value.NewText);
+        }
+
+        private static int SizeOfTextEdit(TextEdit value) {
+            var size = 0;
+            size += SizeOfTextRange(value.Range);
+            size += SizeOfUtf8String(value.NewText);
+            return size;
         }
 
         private static TextPosition ReadTextPosition(ref BinaryReader reader) {
@@ -2376,6 +2428,22 @@ namespace SweetEditor {
         public static byte[] EncodeScrollbarConfig(ScrollbarConfig value) {
             var writer = new BinaryWriter(SizeOfScrollbarConfig(value));
             WriteScrollbarConfig(writer, value);
+            return writer.ToArray();
+        }
+
+        private static void WriteApplyTextEditsPayloadWire(BinaryWriter writer, IReadOnlyList<TextEdit>? edits) {
+            WriteTextEditList(writer, edits);
+        }
+
+        private static int SizeOfApplyTextEditsPayloadWire(IReadOnlyList<TextEdit>? edits) {
+            var size = 0;
+            size += SizeOfTextEditList(edits);
+            return size;
+        }
+
+        public static byte[] EncodeApplyTextEditsPayload(IReadOnlyList<TextEdit>? edits) {
+            var writer = new BinaryWriter(SizeOfApplyTextEditsPayloadWire(edits));
+            WriteApplyTextEditsPayloadWire(writer, edits);
             return writer.ToArray();
         }
 

@@ -961,6 +961,104 @@ namespace NS_SWEETEDITOR {
     return finishAction(before, EditorActionReason::TEXT_DELETE, edit_result.changed, std::move(edit_result));
   }
 
+  EditorActionResult EditorCore::applyTextEdits(Vector<TextEdit>&& edits) {
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult edit_result;
+    edit_result.cursor_before = m_caret_.cursor;
+
+    if (m_document_ == nullptr || m_settings_.read_only || edits.empty()) {
+      return finishAction(before, EditorActionReason::TEXT_EDIT, false, std::move(edit_result));
+    }
+
+    struct PendingTextEdit {
+      TextRange range;
+      U8String new_text;
+      size_t original_index {0};
+      TextPosition new_end;
+      bool is_no_op {false};
+    };
+
+    Vector<PendingTextEdit> pending;
+    pending.reserve(edits.size());
+    bool has_real_edits = false;
+    for (size_t i = 0; i < edits.size(); ++i) {
+      TextRange safe_range = clampDocumentRange(edits[i].range.normalized(), true, false);
+      safe_range = safe_range.normalized();
+      TextPosition new_end = calcPositionAfterInsert(safe_range.start, edits[i].new_text);
+      const bool is_no_op = safe_range.isCollapsed() && edits[i].new_text.empty();
+      has_real_edits = has_real_edits || !is_no_op;
+      pending.push_back({safe_range, std::move(edits[i].new_text), i, new_end, is_no_op});
+    }
+
+    Vector<TextRange> sorted_ranges;
+    sorted_ranges.reserve(has_real_edits ? pending.size() : 0);
+    for (const auto& edit : pending) {
+      if (edit.is_no_op) continue;
+      sorted_ranges.push_back(edit.range);
+    }
+    std::sort(sorted_ranges.begin(), sorted_ranges.end(),
+              [](const TextRange& lhs, const TextRange& rhs) {
+                if (lhs.start != rhs.start) return lhs.start < rhs.start;
+                return lhs.end < rhs.end;
+              });
+    for (size_t i = 1; i < sorted_ranges.size(); ++i) {
+      if (sorted_ranges[i - 1].overlaps(sorted_ranges[i])) {
+        return finishAction(before, EditorActionReason::TEXT_EDIT, false, std::move(edit_result));
+      }
+    }
+
+    TextPosition primary_cursor = pending[0].new_end;
+    if (!has_real_edits) {
+      if (primary_cursor != m_caret_.cursor || hasSelection()) {
+        setCursorPositionInternal(primary_cursor, true);
+        clearSelection();
+        ensureCursorVisible();
+        edit_result.cursor_after = m_caret_.cursor;
+        return finishAction(before, EditorActionReason::TEXT_EDIT, true, std::move(edit_result));
+      }
+      edit_result.cursor_after = m_caret_.cursor;
+      return finishAction(before, EditorActionReason::TEXT_EDIT, false, std::move(edit_result));
+    }
+
+    if (isComposing()) {
+      m_composition_controller_.cancelComposing();
+    }
+    if (m_linked_editing_session_) {
+      m_linked_editing_session_->cancel();
+      m_linked_editing_session_.reset();
+    }
+
+    std::sort(pending.begin(), pending.end(),
+              [](const PendingTextEdit& lhs, const PendingTextEdit& rhs) {
+                if (lhs.range.start != rhs.range.start) return rhs.range.start < lhs.range.start;
+                return rhs.range.end < lhs.range.end;
+              });
+
+    m_undo_manager_->beginGroup(m_caret_.cursor, hasSelection(), getSelection());
+    for (const auto& edit : pending) {
+      if (edit.is_no_op) continue;
+      TextEditResult item_result = applyEdit(edit.range, edit.new_text);
+      if (!item_result.changed) continue;
+      edit_result.changed = true;
+      edit_result.changes.insert(edit_result.changes.end(),
+                                 item_result.changes.begin(),
+                                 item_result.changes.end());
+      if (edit.original_index != 0) {
+        primary_cursor = edit.range.transformPositionAfterEdit(primary_cursor, edit.new_end);
+      }
+    }
+
+    if (edit_result.changed) {
+      setCursorPositionInternal(primary_cursor, true);
+      clearSelection();
+      ensureCursorVisible();
+    }
+    edit_result.cursor_after = m_caret_.cursor;
+    m_undo_manager_->endGroup(m_caret_.cursor);
+
+    return finishAction(before, EditorActionReason::TEXT_EDIT, edit_result.changed, std::move(edit_result));
+  }
+
   EditorActionResult EditorCore::backspace() {
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = backspaceInternal();

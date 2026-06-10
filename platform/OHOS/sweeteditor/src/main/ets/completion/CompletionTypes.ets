@@ -1,4 +1,4 @@
-import { TextPosition, TextRange } from '../core/CoreFoundation';
+import { TextEdit, TextPosition, TextRange } from '../core/CoreFoundation';
 import { EditorMetadata, EditorTheme, LanguageConfiguration } from '../EditorTypes';
 
 /**
@@ -21,23 +21,14 @@ export class CompletionItem {
   detail: string | null = null;
   insertText: string | null = null;
   insertTextFormat: number = CompletionItem.INSERT_TEXT_FORMAT_PLAIN_TEXT;
-  textEdit: CompletionTextEdit | null = null;
+  textEdit: TextEdit | null = null;
+  additionalTextEdits: TextEdit[] = [];
   filterText: string | null = null;
   sortKey: string | null = null;
   kind: number = CompletionItem.KIND_TEXT;
 
   getMatchText(): string {
     return this.filterText !== null ? this.filterText : this.label;
-  }
-}
-
-export class CompletionTextEdit {
-  readonly range: TextRange;
-  readonly newText: string;
-
-  constructor(range: TextRange, newText: string) {
-    this.range = range;
-    this.newText = newText;
   }
 }
 
@@ -110,4 +101,3 @@ export interface CompletionProvider {
  * Host applications pass an ArkUI @Builder function to customize completion item appearance.
  */
 export type CompletionItemViewBuilder = (item: CompletionItem, isSelected: boolean, theme: EditorTheme) => void;
-

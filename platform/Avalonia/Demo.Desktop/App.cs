@@ -1,4 +1,3 @@
-using System;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -20,8 +19,6 @@ public sealed class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        DemoPlatformServices.Current = new DesktopDemoPlatformServices();
-
         Control mainView = new DeferredMainViewHost();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -36,15 +33,8 @@ public sealed class App : Application
                 Content = mainView,
                 WindowStartupLocation = WindowStartupLocation.CenterScreen,
             };
-
-            desktop.Exit += OnApplicationExit;
         }
 
         base.OnFrameworkInitializationCompleted();
-    }
-
-    private void OnApplicationExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
-    {
-        DemoPlatformServices.Current?.Dispose();
     }
 }

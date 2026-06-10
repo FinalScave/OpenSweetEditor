@@ -77,6 +77,30 @@ namespace {namespace} {{
             Column = column;
         }}
 
+        public int CompareTo(TextPosition? other) {{
+            if (other == null) {{
+                return 1;
+            }}
+            int lineCompare = Line.CompareTo(other.Line);
+            return lineCompare != 0 ? lineCompare : Column.CompareTo(other.Column);
+        }}
+
+        public bool IsBeforeOrEqual(TextPosition? other) => CompareTo(other) <= 0;
+
+        public bool TryClampTo(Document? document, out TextPosition clamped) {{
+            clamped = new TextPosition();
+            int lineCount = Math.Max(0, document?.GetLineCount() ?? 0);
+            if (lineCount <= 0) {{
+                return false;
+            }}
+
+            int line = Math.Clamp(Line, 0, lineCount - 1);
+            string lineText = document?.GetLineText(line) ?? string.Empty;
+            int column = Math.Clamp(Column, 0, lineText.Length);
+            clamped = new TextPosition(line, column);
+            return true;
+        }}
+
         public override string ToString() => "TextPosition { Line = " + Line + ", Column = " + Column + " }";
     }}
 
@@ -89,6 +113,37 @@ namespace {namespace} {{
         }}
 
         public bool IsCollapsed => Start.Line == End.Line && Start.Column == End.Column;
+
+        public TextRange Normalized() => Start.CompareTo(End) <= 0
+            ? new TextRange(Start, End)
+            : new TextRange(End, Start);
+
+        public bool TryNormalize(Document? document, out TextRange normalized) {{
+            normalized = new TextRange();
+            TextRange range = Normalized();
+            if (!range.Start.TryClampTo(document, out TextPosition start) ||
+                !range.End.TryClampTo(document, out TextPosition end)) {{
+                return false;
+            }}
+
+            if (start.CompareTo(end) >= 0) {{
+                return false;
+            }}
+
+            normalized = new TextRange(start, end);
+            return true;
+        }}
+
+        public bool OverlapsOrTouches(TextRange? other) {{
+            if (other == null) {{
+                return false;
+            }}
+
+            TextRange left = Normalized();
+            TextRange right = other.Normalized();
+            return left.End.CompareTo(right.Start) >= 0 &&
+                   right.End.CompareTo(left.Start) >= 0;
+        }}
 
         public override string ToString() => "TextRange { Start = " + Start + ", End = " + End + " }";
     }}
@@ -104,6 +159,15 @@ namespace {namespace} {{
         public string Text {{
             get => NewText;
             set => NewText = value ?? string.Empty;
+        }}
+    }}
+
+    public sealed partial class TextEdit {{
+        public TextEdit() {{ }}
+
+        public TextEdit(TextRange range, string? newText) {{
+            Range = range ?? new TextRange();
+            NewText = newText ?? string.Empty;
         }}
     }}
 

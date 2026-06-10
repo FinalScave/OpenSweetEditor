@@ -121,8 +121,10 @@ public void Flush()
 
 ```csharp
 public void InsertText(string text)
+public void InsertTextAt(TextPosition position, string text)
 public void ReplaceText(TextRange range, string newText)
 public void DeleteText(TextRange range)
+public void ApplyTextEdits(IReadOnlyList<TextEdit> edits)
 
 public void MoveLineUp()
 public void MoveLineDown()
@@ -238,6 +240,8 @@ public int GetTotalLineCount()
 ```
 
 `GetTotalLineCount()` 返回当前文档总行数；若尚未加载文档，则返回 `-1`。
+
+`CompletionItem.TextEdit` 使用生成的 `TextEdit` 类型表达精确替换编辑。没有 `TextEdit` 时，补全会在光标处直接插入 `InsertText` / `Label`；`AdditionalTextEdits` 会追加到主编辑之后。
 
 ### 交互事件
 

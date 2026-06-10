@@ -91,6 +91,20 @@ public final class SweetEditorViewiOS: UIView {
         editorView.getSearchState()
     }
 
+    public func insertText(_ text: String) {
+        editorView.insertText(text)
+    }
+
+    /// Inserts text at the specified document position.
+    public func insertText(at position: TextPosition, text: String) {
+        editorView.insertText(at: position, text: text)
+    }
+
+    /// Applies multiple text edits as one undoable operation.
+    public func applyTextEdits(_ edits: [TextEdit]) {
+        editorView.applyTextEdits(edits)
+    }
+
     public func applyDecorations(_ decorations: EditorResolvedDecorations, clearExisting: Bool = true) {
         editorView.applyDecorations(decorations, clearExisting: clearExisting)
     }

@@ -76,7 +76,8 @@ enum SeparatorStyle {
 
 enum SpanLayer {
   syntax(0),
-  semantic(1);
+  semantic(1),
+  overlay(2);
 
   const SpanLayer(this.value);
   final int value;
@@ -85,6 +86,7 @@ enum SpanLayer {
     switch (value) {
       case 0: return syntax;
       case 1: return semantic;
+      case 2: return overlay;
       default: return syntax;
     }
   }

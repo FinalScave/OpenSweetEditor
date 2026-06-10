@@ -616,6 +616,24 @@ external ffi.Pointer<ffi.Uint8> editor_delete_text(
   ffi.Pointer<ffi.Size> out_size,
 );
 
+/// Apply ordered text edits. The first edit is treated as the primary edit.
+/// @param data ApplyTextEditsPayload binary payload encoded by CoreProtocol
+/// @return EditorActionResult binary payload, returns NULL on failure
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(
+    ffi.IntPtr,
+    ffi.Pointer<ffi.Uint8>,
+    ffi.Size,
+    ffi.Pointer<ffi.Size>,
+  )
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_apply_text_edits(
+  int editor_handle,
+  ffi.Pointer<ffi.Uint8> data,
+  int size,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
 /// Delete one character before cursor (Backspace behavior); delete selection if present
 /// @return EditorActionResult binary payload, returns NULL on failure
 @ffi.Native<

@@ -3,6 +3,7 @@ package com.qiplat.sweeteditor.decoration;
 public enum DecorationType {
     SYNTAX_HIGHLIGHT,
     SEMANTIC_HIGHLIGHT,
+    OVERLAY_HIGHLIGHT,
     INLAY_HINT,
     DIAGNOSTIC,
     DOCUMENT_HIGHLIGHT,

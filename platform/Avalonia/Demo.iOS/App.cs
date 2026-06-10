@@ -27,8 +27,6 @@ public sealed class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        DemoPlatformServices.Current = new iOSDemoPlatformServices();
-
         if (ApplicationLifetime is ISingleViewApplicationLifetime singleView)
         {
             singleView.MainView = new DeferredMainViewHost();

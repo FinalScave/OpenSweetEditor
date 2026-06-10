@@ -398,6 +398,29 @@ public:
     return wrap_binary_payload(env, payload, out_size);
   }
 
+  static napi_value applyTextEdits(napi_env env, napi_callback_info info) {
+    size_t argc = 3;
+    napi_value args[3];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+
+    int64_t handle = napi_get_handle(env, args[0]);
+    if (handle == 0) { napi_value u; napi_get_undefined(env, &u); return u; }
+
+    void* raw_data = nullptr;
+    size_t size = 0;
+    napi_get_arraybuffer_info(env, args[1], &raw_data, &size);
+    if (argc >= 3) {
+      size = static_cast<size_t>(napi_get_int32(env, args[2]));
+    }
+    size_t out_size = 0;
+    const uint8_t* payload = editor_apply_text_edits(
+      static_cast<intptr_t>(handle),
+      static_cast<const uint8_t*>(raw_data),
+      size,
+      &out_size);
+    return wrap_binary_payload(env, payload, out_size);
+  }
+
   static napi_value backspace(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];

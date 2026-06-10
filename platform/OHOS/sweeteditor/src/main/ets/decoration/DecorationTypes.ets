@@ -19,6 +19,7 @@ import { EditorMetadata, LanguageConfiguration } from '../EditorTypes';
 export enum DecorationType {
   SYNTAX_HIGHLIGHT = 'syntax_highlight',
   SEMANTIC_HIGHLIGHT = 'semantic_highlight',
+  OVERLAY_HIGHLIGHT = 'overlay_highlight',
   INLAY_HINT = 'inlay_hint',
   DIAGNOSTIC = 'diagnostic',
   DOCUMENT_HIGHLIGHT = 'document_highlight',
@@ -89,6 +90,7 @@ export enum ApplyMode {
 export class DecorationResult {
   syntaxSpans: Map<number, StyleSpan[]> | null = null;
   semanticSpans: Map<number, StyleSpan[]> | null = null;
+  overlaySpans: Map<number, StyleSpan[]> | null = null;
   inlayHints: Map<number, InlayHint[]> | null = null;
   diagnostics: Map<number, Diagnostic[]> | null = null;
   documentHighlights: Map<number, DocumentHighlight[]> | null = null;
@@ -103,6 +105,7 @@ export class DecorationResult {
   links: Map<number, LinkSpan[]> | null = null;
   syntaxSpansMode: ApplyMode = ApplyMode.MERGE;
   semanticSpansMode: ApplyMode = ApplyMode.MERGE;
+  overlaySpansMode: ApplyMode = ApplyMode.MERGE;
   inlayHintsMode: ApplyMode = ApplyMode.MERGE;
   diagnosticsMode: ApplyMode = ApplyMode.MERGE;
   documentHighlightsMode: ApplyMode = ApplyMode.MERGE;
@@ -120,6 +123,7 @@ export class DecorationResult {
     const out = new DecorationResult();
     out.syntaxSpans = copyMapOfArrays(this.syntaxSpans);
     out.semanticSpans = copyMapOfArrays(this.semanticSpans);
+    out.overlaySpans = copyMapOfArrays(this.overlaySpans);
     out.inlayHints = copyMapOfArrays(this.inlayHints);
     out.diagnostics = copyMapOfArrays(this.diagnostics);
     out.documentHighlights = copyMapOfArrays(this.documentHighlights);
@@ -134,6 +138,7 @@ export class DecorationResult {
     out.links = copyMapOfArrays<LinkSpan>(this.links);
     out.syntaxSpansMode = this.syntaxSpansMode;
     out.semanticSpansMode = this.semanticSpansMode;
+    out.overlaySpansMode = this.overlaySpansMode;
     out.inlayHintsMode = this.inlayHintsMode;
     out.diagnosticsMode = this.diagnosticsMode;
     out.documentHighlightsMode = this.documentHighlightsMode;
@@ -162,6 +167,12 @@ export class DecorationResultBuilder {
   semanticSpans(value: Map<number, StyleSpan[]> | null, mode: ApplyMode): DecorationResultBuilder {
     this.result.semanticSpans = value;
     this.result.semanticSpansMode = mode;
+    return this;
+  }
+
+  overlaySpans(value: Map<number, StyleSpan[]> | null, mode: ApplyMode): DecorationResultBuilder {
+    this.result.overlaySpans = value;
+    this.result.overlaySpansMode = mode;
     return this;
   }
 

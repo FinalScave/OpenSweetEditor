@@ -419,29 +419,39 @@ class EditorInteractionController {
   void onCompletionItemConfirmed(CompletionItem item) {
     final editorCore = _session.editorCore;
     if (editorCore == null) return;
-    core.TextRange? replaceRange;
     var text = item.insertText ?? item.label;
     final isSnippet =
         item.insertTextFormat == CompletionItem.insertTextFormatSnippet;
     if (item.textEdit != null) {
-      final edit = item.textEdit!;
-      replaceRange = edit.range;
-      text = edit.newText;
-    } else {
-      final wordRange = editorCore.getWordRangeAtCursor();
-      if (!wordRange.isCollapsed) {
-        replaceRange = wordRange;
+      text = item.textEdit!.newText;
+      final edits = <core.TextEdit>[];
+      edits.add(
+        isSnippet ? core.TextEdit(range: item.textEdit!.range) : item.textEdit!,
+      );
+      edits.addAll(item.additionalTextEdits);
+      applyTextEdits(edits);
+      if (isSnippet) {
+        insertSnippet(text);
       }
-    }
-    if (isSnippet) {
-      if (replaceRange != null) {
-        deleteText(replaceRange);
+    } else if (item.additionalTextEdits.isEmpty) {
+      if (isSnippet) {
+        insertSnippet(text);
+      } else {
+        insertText(text);
       }
-      insertSnippet(text);
-    } else if (replaceRange != null) {
-      replaceText(replaceRange, text);
     } else {
-      insertText(text);
+      final cursor = editorCore.getCursorPosition();
+      final primaryEdit = core.TextEdit(
+        range: core.TextRange(start: cursor, end: cursor),
+        newText: isSnippet ? '' : text,
+      );
+      final edits = <core.TextEdit>[];
+      edits.add(primaryEdit);
+      edits.addAll(item.additionalTextEdits);
+      applyTextEdits(edits);
+      if (isSnippet) {
+        insertSnippet(text);
+      }
     }
   }
 
@@ -706,6 +716,11 @@ class EditorInteractionController {
     _dispatchEditorActionResult(result);
   }
 
+  /// Inserts text at the specified document position.
+  void insertTextAt(core.TextPosition position, String text) {
+    replaceText(core.TextRange(start: position, end: position), text);
+  }
+
   void replaceText(core.TextRange range, String text) {
     final editorCore = _session.editorCore;
     if (editorCore == null) return;
@@ -729,6 +744,17 @@ class EditorInteractionController {
       range.end.line,
       range.end.column,
     );
+    _resetCursorBlink();
+    _dispatchEditorActionResult(result);
+  }
+
+  /// Applies multiple text edits as one undoable operation.
+  ///
+  /// Edits use the original document coordinates. The first edit is the primary edit.
+  void applyTextEdits(List<core.TextEdit> edits) {
+    final editorCore = _session.editorCore;
+    if (editorCore == null) return;
+    final result = editorCore.applyTextEdits(edits);
     _resetCursorBlink();
     _dispatchEditorActionResult(result);
   }

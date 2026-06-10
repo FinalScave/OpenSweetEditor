@@ -38,6 +38,7 @@ import {
   IntRange,
   PointF,
   TextChange,
+  TextEdit,
   TextPosition,
   TextRange
 } from './core/CoreFoundation';
@@ -181,10 +182,6 @@ const SELECTION_MENU_PLACEMENTS: PopupPlacement[] = [
   popupPlacement(PopupSide.ABOVE, PopupAlign.CENTER),
   popupPlacement(PopupSide.BELOW, PopupAlign.CENTER)
 ];
-
-function isTextRangeCollapsed(range: TextRange): boolean {
-  return range.start.line === range.end.line && range.start.column === range.end.column;
-}
 
 interface PreviewCapableInputController {
   on(type: 'setPreviewText', callback: (text: string, range: inputMethod.Range) => void): void;
@@ -880,6 +877,13 @@ export struct SweetEditor {
     this.dispatchEditorActionResult(result);
   }
 
+  /**
+   * Inserts text at the specified document position.
+   */
+  insertTextAt(position: TextPosition, text: string): void {
+    this.replaceText({ start: position, end: position }, text);
+  }
+
   replaceText(range: TextRange, newText: string): void {
     if (!this.editorCore) {
       return;
@@ -900,6 +904,20 @@ export struct SweetEditor {
       range.start.line, range.start.column,
       range.end.line, range.end.column
     );
+    this.resetCursorBlink();
+    this.dispatchEditorActionResult(result);
+  }
+
+  /**
+   * Applies multiple text edits as one undoable operation.
+   *
+   * Edits use the original document coordinates. The first edit is the primary edit.
+   */
+  applyTextEdits(edits: TextEdit[]): void {
+    if (!this.editorCore) {
+      return;
+    }
+    const result = this.editorCore.applyTextEdits(edits);
     this.resetCursorBlink();
     this.dispatchEditorActionResult(result);
   }
@@ -1983,26 +2001,34 @@ export struct SweetEditor {
     let text = item.insertText !== null ? item.insertText : item.label;
     const isSnippet = item.insertTextFormat === CompletionItem.INSERT_TEXT_FORMAT_SNIPPET;
 
-    let replaceRange: TextRange | null = null;
     if (item.textEdit !== null) {
-      replaceRange = item.textEdit.range;
       text = item.textEdit.newText;
-    } else {
-      const wr = this.getWordRangeAtCursor();
-      if (!isTextRangeCollapsed(wr)) {
-        replaceRange = wr;
+      const edits: TextEdit[] = [];
+      edits.push(isSnippet ? { range: item.textEdit.range, newText: '' } : item.textEdit);
+      edits.push(...item.additionalTextEdits);
+      this.applyTextEdits(edits);
+      if (isSnippet) {
+        this.insertSnippet(text);
       }
-    }
-
-    if (isSnippet) {
-      if (replaceRange !== null) {
-        this.deleteText(replaceRange);
+    } else if (item.additionalTextEdits.length === 0) {
+      if (isSnippet) {
+        this.insertSnippet(text);
+      } else {
+        this.insertText(text);
       }
-      this.insertSnippet(text);
-    } else if (replaceRange !== null) {
-      this.replaceText(replaceRange, text);
     } else {
-      this.insertText(text);
+      const cursor = this.getCursorPosition();
+      const primaryEdit: TextEdit = {
+        range: { start: cursor, end: cursor },
+        newText: isSnippet ? '' : text
+      };
+      const edits: TextEdit[] = [];
+      edits.push(primaryEdit);
+      edits.push(...item.additionalTextEdits);
+      this.applyTextEdits(edits);
+      if (isSnippet) {
+        this.insertSnippet(text);
+      }
     }
   }
 

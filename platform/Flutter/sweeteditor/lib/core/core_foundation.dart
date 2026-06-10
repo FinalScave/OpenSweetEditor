@@ -58,6 +58,16 @@ class TextChange {
   final String newText;
 }
 
+class TextEdit {
+  const TextEdit({
+    this.range = const TextRange(),
+    this.newText = '',
+  });
+
+  final TextRange range;
+  final String newText;
+}
+
 class TextPosition {
   const TextPosition({
     this.line = 0,

@@ -26,6 +26,11 @@ export interface TextChange {
   newText: string;
 }
 
+export interface TextEdit {
+  range: TextRange;
+  newText: string;
+}
+
 export interface TextPosition {
   line: number;
   column: number;

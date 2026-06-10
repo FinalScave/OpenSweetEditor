@@ -153,6 +153,11 @@ class SweetEditorController {
     _state?._interactionController.insertText(text);
   }
 
+  /// Inserts text at the specified document position.
+  void insertTextAt(core.TextPosition position, String text) {
+    _state?._interactionController.insertTextAt(position, text);
+  }
+
   void replaceText(
     Object rangeOrStartLine,
     Object textOrStartColumn, [
@@ -184,6 +189,13 @@ class SweetEditorController {
       methodName: 'deleteText',
     );
     _state?._interactionController.deleteText(range);
+  }
+
+  /// Applies multiple text edits as one undoable operation.
+  ///
+  /// Edits use the original document coordinates. The first edit is the primary edit.
+  void applyTextEdits(List<core.TextEdit> edits) {
+    _state?._interactionController.applyTextEdits(edits);
   }
 
   void insertSnippet(String snippetTemplate) {

@@ -3,6 +3,7 @@ import { CoreProtocol } from './CoreProtocol';
 import {
   IntRange,
   PointF,
+  TextEdit,
   TextPosition,
   TextRange
 } from './CoreFoundation';
@@ -266,6 +267,13 @@ export class EditorCore {
   deleteText(startLine: number, startColumn: number, endLine: number, endColumn: number): EditorActionResult {
     return CoreProtocol.decodeEditorActionResult(
       native.editorDeleteText(this.handle, startLine, startColumn, endLine, endColumn)
+    );
+  }
+
+  applyTextEdits(edits: TextEdit[]): EditorActionResult {
+    const data = CoreProtocol.encodeApplyTextEditsPayload(edits);
+    return CoreProtocol.decodeEditorActionResult(
+      native.editorApplyTextEdits(this.handle, data, data.byteLength)
     );
   }
 

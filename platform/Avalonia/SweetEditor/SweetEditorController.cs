@@ -173,9 +173,11 @@ namespace SweetEditor {
 
 		public LayoutMetrics GetLayoutMetrics() => Read(e => e.GetLayoutMetrics(), new LayoutMetrics());
 
-		public void SetMetadata<T>(T? metadata) where T : class, IEditorMetadata => Invoke(e => e.SetMetadata(metadata));
+		public void SetMetadata<T>(T? metadata)
+			where T : class, IEditorMetadata => Invoke(e => e.SetMetadata(metadata));
 
-		public T? GetMetadata<T>() where T : class, IEditorMetadata => Read<T?>(e => e.GetMetadata<T>(), null);
+		public T? GetMetadata<T>()
+			where T : class, IEditorMetadata => Read<T?>(e => e.GetMetadata<T>(), null);
 
 		public void AddNewLineActionProvider(INewLineActionProvider provider) => Invoke(e => e.AddNewLineActionProvider(provider));
 
@@ -213,8 +215,6 @@ namespace SweetEditor {
 
 		public void SetSelectionMenuListener(ISelectionMenuListener? listener) => Invoke(e => e.SetSelectionMenuListener(listener));
 
-		public void SetSelectionMenuHostManaged(bool hostManaged) => Invoke(e => e.SetSelectionMenuHostManaged(hostManaged));
-
 		public bool IsSelectionMenuShowing() => Read(e => e.IsSelectionMenuShowing(), false);
 
 		internal void DismissSelectionMenu() => Invoke(e => e.DismissSelectionMenu());
@@ -225,9 +225,18 @@ namespace SweetEditor {
 
 		public void InsertText(string text) => Invoke(e => e.InsertText(text));
 
+		/// <summary>Inserts text at the specified document position.</summary>
+		/// <param name="position">Insertion position.</param>
+		/// <param name="text">Text content.</param>
+		public void InsertTextAt(TextPosition position, string text) => Invoke(e => e.InsertTextAt(position, text));
+
 		public void ReplaceText(TextRange range, string newText) => Invoke(e => e.ReplaceText(range, newText));
 
 		public void DeleteText(TextRange range) => Invoke(e => e.DeleteText(range));
+
+		/// <summary>Applies multiple text edits as one undoable operation.</summary>
+		/// <param name="edits">Text edits using the original document coordinates. The first edit is the primary edit.</param>
+		public void ApplyTextEdits(IReadOnlyList<TextEdit> edits) => Invoke(e => e.ApplyTextEdits(edits));
 
 		public void MoveLineUp() => Invoke(e => e.MoveLineUp());
 
@@ -275,8 +284,7 @@ namespace SweetEditor {
 
 		public string GetSelectedText() => Read(e => e.GetSelectedText(), string.Empty);
 
-		public void SetSelection(int startLine, int startColumn, int endLine, int endColumn) =>
-			Invoke(e => e.SetSelection(startLine, startColumn, endLine, endColumn));
+		public void SetSelection(int startLine, int startColumn, int endLine, int endColumn) => Invoke(e => e.SetSelection(startLine, startColumn, endLine, endColumn));
 
 		public (bool hasSelection, TextRange range) GetSelection() => Read(e => e.GetSelection(), (false, new TextRange()));
 
@@ -312,34 +320,27 @@ namespace SweetEditor {
 
 		public void UnfoldAll() => Invoke(e => e.UnfoldAll());
 
-		public void RegisterTextStyle(uint styleId, int color, int backgroundColor, int fontStyle) =>
-			Invoke(e => e.RegisterTextStyle(styleId, color, backgroundColor, fontStyle));
+		public void RegisterTextStyle(uint styleId, int color, int backgroundColor, int fontStyle) => Invoke(e => e.RegisterTextStyle(styleId, color, backgroundColor, fontStyle));
 
-		public void RegisterBatchTextStyles(IReadOnlyDictionary<int, TextStyle> stylesById) =>
-			Invoke(e => e.RegisterBatchTextStyles(stylesById));
+		public void RegisterBatchTextStyles(IReadOnlyDictionary<int, TextStyle> stylesById) => Invoke(e => e.RegisterBatchTextStyles(stylesById));
 
-		public void SetLineSpans(int line, SpanLayer layer, IList<StyleSpan> spans) =>
-			Invoke(e => e.SetLineSpans(line, layer, spans));
+		public void SetLineSpans(int line, SpanLayer layer, IList<StyleSpan> spans) => Invoke(e => e.SetLineSpans(line, layer, spans));
 
-		public void SetBatchLineSpans(SpanLayer layer, Dictionary<int, IList<StyleSpan>> spansByLine) =>
-			Invoke(e => e.SetBatchLineSpans(layer, spansByLine));
+		public void SetBatchLineSpans(SpanLayer layer, Dictionary<int, IList<StyleSpan>> spansByLine) => Invoke(e => e.SetBatchLineSpans(layer, spansByLine));
 
 		public void ClearLineSpans(int line, SpanLayer layer) => Invoke(e => e.ClearLineSpans(line, layer));
 
 		public void SetLineInlayHints(int line, IList<InlayHint> hints) => Invoke(e => e.SetLineInlayHints(line, hints));
 
-		public void SetBatchLineInlayHints(Dictionary<int, IList<InlayHint>> hintsByLine) =>
-			Invoke(e => e.SetBatchLineInlayHints(hintsByLine));
+		public void SetBatchLineInlayHints(Dictionary<int, IList<InlayHint>> hintsByLine) => Invoke(e => e.SetBatchLineInlayHints(hintsByLine));
 
 		public void SetLinePhantomTexts(int line, IList<PhantomText> phantoms) => Invoke(e => e.SetLinePhantomTexts(line, phantoms));
 
-		public void SetBatchLinePhantomTexts(Dictionary<int, IList<PhantomText>> phantomsByLine) =>
-			Invoke(e => e.SetBatchLinePhantomTexts(phantomsByLine));
+		public void SetBatchLinePhantomTexts(Dictionary<int, IList<PhantomText>> phantomsByLine) => Invoke(e => e.SetBatchLinePhantomTexts(phantomsByLine));
 
 		public void SetLineGutterIcons(int line, IList<GutterIcon> icons) => Invoke(e => e.SetLineGutterIcons(line, icons));
 
-		public void SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine) =>
-			Invoke(e => e.SetBatchLineGutterIcons(iconsByLine));
+		public void SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine) => Invoke(e => e.SetBatchLineGutterIcons(iconsByLine));
 
 		public void SetMaxGutterIcons(int count) => Invoke(e => e.SetMaxGutterIcons(count));
 
@@ -347,27 +348,21 @@ namespace SweetEditor {
 
 		public void SetLineCodeLens(int line, IList<CodeLensItem> items) => Invoke(e => e.SetLineCodeLens(line, items));
 
-		public void SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine) =>
-			Invoke(e => e.SetBatchLineCodeLens(itemsByLine));
+		public void SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine) => Invoke(e => e.SetBatchLineCodeLens(itemsByLine));
 
 		public void SetLineLinks(int line, IList<LinkSpan> links) => Invoke(e => e.SetLineLinks(line, links));
 
-		public void SetBatchLineLinks(Dictionary<int, IList<LinkSpan>> linksByLine) =>
-			Invoke(e => e.SetBatchLineLinks(linksByLine));
+		public void SetBatchLineLinks(Dictionary<int, IList<LinkSpan>> linksByLine) => Invoke(e => e.SetBatchLineLinks(linksByLine));
 
-		public string GetLinkTargetAt(int line, int column) =>
-			Read(e => e.GetLinkTargetAt(line, column), string.Empty);
+		public string GetLinkTargetAt(int line, int column) => Read(e => e.GetLinkTargetAt(line, column), string.Empty);
 
 		public void SetLineDiagnostics(int line, IList<Diagnostic> items) => Invoke(e => e.SetLineDiagnostics(line, items));
 
-		public void SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine) =>
-			Invoke(e => e.SetBatchLineDiagnostics(diagsByLine));
+		public void SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine) => Invoke(e => e.SetBatchLineDiagnostics(diagsByLine));
 
-		public void SetLineDocumentHighlights(int line, IList<DocumentHighlight> items) =>
-			Invoke(e => e.SetLineDocumentHighlights(line, items));
+		public void SetLineDocumentHighlights(int line, IList<DocumentHighlight> items) => Invoke(e => e.SetLineDocumentHighlights(line, items));
 
-		public void SetBatchLineDocumentHighlights(Dictionary<int, IList<DocumentHighlight>> highlightsByLine) =>
-			Invoke(e => e.SetBatchLineDocumentHighlights(highlightsByLine));
+		public void SetBatchLineDocumentHighlights(Dictionary<int, IList<DocumentHighlight>> highlightsByLine) => Invoke(e => e.SetBatchLineDocumentHighlights(highlightsByLine));
 
 		public void SetIndentGuides(IList<IndentGuide> guides) => Invoke(e => e.SetIndentGuides(guides));
 
@@ -401,13 +396,11 @@ namespace SweetEditor {
 
 		public void ClearAllDecorations() => Invoke(e => e.ClearAllDecorations());
 
-		public void SetMatchedBrackets(int openLine, int openColumn, int closeLine, int closeColumn) =>
-			Invoke(e => e.SetMatchedBrackets(openLine, openColumn, closeLine, closeColumn));
+		public void SetMatchedBrackets(int openLine, int openColumn, int closeLine, int closeColumn) => Invoke(e => e.SetMatchedBrackets(openLine, openColumn, closeLine, closeColumn));
 
 		public void ClearMatchedBrackets() => Invoke(e => e.ClearMatchedBrackets());
 
-		public EditorActionResult InsertSnippet(string snippetTemplate) =>
-			Read(e => e.InsertSnippet(snippetTemplate), EditorActionResult.Empty);
+		public EditorActionResult InsertSnippet(string snippetTemplate) => Read(e => e.InsertSnippet(snippetTemplate), EditorActionResult.Empty);
 
 		public void StartLinkedEditing(LinkedEditingModel model) => Invoke(e => e.StartLinkedEditing(model));
 

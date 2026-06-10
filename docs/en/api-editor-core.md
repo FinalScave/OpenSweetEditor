@@ -318,7 +318,7 @@ void editor_clear_line_spans(intptr_t editor_handle, size_t line, uint8_t layer)
 void editor_clear_highlights_layer(intptr_t editor_handle, uint8_t layer);
 ```
 
-- `SpanLayer`: `0=SYNTAX`, `1=SEMANTIC`
+- `SpanLayer`: `0=SYNTAX`, `1=SEMANTIC`, `2=OVERLAY`
 - `font_style` bit flags: `BOLD=1`, `ITALIC=2`, `STRIKETHROUGH=4`
 - `editor_set_line_spans` payload (LE):
   - `u32 line, u32 layer, u32 span_count`

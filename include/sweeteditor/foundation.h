@@ -18,8 +18,10 @@ namespace NS_SWEETEDITOR {
     size_t column {0};
 
     bool operator<(const TextPosition& other) const;
+    bool operator<=(const TextPosition& other) const;
     bool operator==(const TextPosition& other) const;
     bool operator!=(const TextPosition& other) const;
+    TextPosition withLineDelta(int64_t delta) const;
     U8String dump() const;
   };
 
@@ -30,7 +32,17 @@ namespace NS_SWEETEDITOR {
 
     bool operator==(const TextRange& other) const;
     bool contains(const TextPosition& pos) const;
+    bool isCollapsed() const;
+    bool overlaps(const TextRange& other) const;
+    TextRange normalized() const;
+    TextPosition transformPositionAfterEdit(TextPosition position, const TextPosition& new_end) const;
     U8String dump() const;
+  };
+
+  /// Atomic text edit item
+  struct SE_PROTOCOL_VALUE(foundation) TextEdit {
+    TextRange range;
+    U8String new_text;
   };
 
   /// Inclusive integer range

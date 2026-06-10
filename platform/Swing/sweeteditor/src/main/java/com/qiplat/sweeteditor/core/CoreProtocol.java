@@ -40,6 +40,7 @@ import com.qiplat.sweeteditor.core.foundation.OffsetRect;
 import com.qiplat.sweeteditor.core.foundation.PointF;
 import com.qiplat.sweeteditor.core.foundation.Rect;
 import com.qiplat.sweeteditor.core.foundation.TextChange;
+import com.qiplat.sweeteditor.core.foundation.TextEdit;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
 import com.qiplat.sweeteditor.core.ime.ImeContextPolicy;
@@ -624,6 +625,36 @@ public final class CoreProtocol {
             values.add(readTextChange(reader));
         }
         return values;
+    }
+
+    private static ArrayList<TextEdit> readTextEditList(BinaryReader reader) {
+        int count = reader.readInt32();
+        if (count < 0 || count > reader.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<TextEdit> values = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            values.add(readTextEdit(reader));
+        }
+        return values;
+    }
+
+    private static void writeTextEditList(BinaryWriter writer, java.util.List<? extends TextEdit> values) {
+        int count = values == null ? 0 : values.size();
+        writer.writeInt32(count);
+        for (int i = 0; i < count; i++) {
+            writeTextEdit(writer, values.get(i));
+        }
+    }
+
+    private static int sizeOfTextEditList(java.util.List<? extends TextEdit> values) {
+        int size = 4;
+        if (values != null) {
+            for (int i = 0; i < values.size(); i++) {
+                size += sizeOfTextEdit(values.get(i));
+            }
+        }
+        return size;
     }
 
     private static ArrayList<TextPosition> readTextPositionList(BinaryReader reader) {
@@ -1229,6 +1260,29 @@ public final class CoreProtocol {
 
     public static TextChange decodeTextChange(MemorySegment data, long size) {
         return readTextChange(new BinaryReader(data, size));
+    }
+
+    private static TextEdit readTextEdit(BinaryReader reader) {
+        TextEdit value = new TextEdit();
+        value.range = readTextRange(reader);
+        value.newText = reader.readUtf8String();
+        return value;
+    }
+
+    public static TextEdit decodeTextEdit(MemorySegment data, long size) {
+        return readTextEdit(new BinaryReader(data, size));
+    }
+
+    private static void writeTextEdit(BinaryWriter writer, TextEdit value) {
+        writeTextRange(writer, value.range);
+        writer.writeUtf8String(value.newText);
+    }
+
+    public static int sizeOfTextEdit(TextEdit value) {
+        int size = 0;
+        size += sizeOfTextRange(value.range);
+        size += sizeOfUtf8String(value.newText);
+        return size;
     }
 
     private static TextPosition readTextPosition(BinaryReader reader) {
@@ -2610,6 +2664,28 @@ public final class CoreProtocol {
     public static MemorySegment encodeScrollbarConfig(Arena arena, ScrollbarConfig value) {
         BinaryWriter writer = new BinaryWriter(arena, sizeOfScrollbarConfig(value));
         writeScrollbarConfig(writer, value);
+        return writer.segment();
+    }
+
+    public static MemorySegment encodeApplyTextEditsPayload(Arena arena, java.util.List<? extends TextEdit> edits) {
+        int size = 0;
+        int editsCount = edits == null ? 0 : edits.size();
+        byte[][] editsNewTextUtf8 = new byte[editsCount][];
+        size += 4;
+        for (int editsIndex = 0; editsIndex < editsCount; editsIndex++) {
+            TextEdit editsItem = edits.get(editsIndex);
+            size += sizeOfTextRange(editsItem.range);
+            byte[] editsNewTextBytes = utf8Bytes(editsItem.newText);
+            editsNewTextUtf8[editsIndex] = editsNewTextBytes;
+            size += 4 + editsNewTextBytes.length;
+        }
+        BinaryWriter writer = new BinaryWriter(arena, size);
+        writer.writeInt32(editsCount);
+        for (int editsIndex = 0; editsIndex < editsCount; editsIndex++) {
+            TextEdit editsItem = edits.get(editsIndex);
+            writeTextRange(writer, editsItem.range);
+            writer.writeUtf8Bytes(editsNewTextUtf8[editsIndex]);
+        }
         return writer.segment();
     }
 

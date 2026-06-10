@@ -608,6 +608,10 @@ public final class EditorNative {
                     ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
+    private static final MethodHandle APPLY_TEXT_EDITS = downcall("editor_apply_text_edits",
+            FunctionDescriptor.of(ValueLayout.ADDRESS,
+                    ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
+
     private static final MethodHandle MOVE_LINE_UP = downcall("editor_move_line_up",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
@@ -952,6 +956,10 @@ public final class EditorNative {
                                                 int startLine, int startColumn, int endLine, int endColumn) {
         return invokeBinaryResult(outSize -> (MemorySegment) DELETE_TEXT.invokeExact(handle,
                 (long) startLine, (long) startColumn, (long) endLine, (long) endColumn, outSize));
+    }
+
+    public static NativeBinaryResult applyTextEdits(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) APPLY_TEXT_EDITS.invokeExact(handle, payload, size, outSize));
     }
 
     public static NativeBinaryResult backspace(long handle) {

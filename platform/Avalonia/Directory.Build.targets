@@ -1,0 +1,29 @@
+<Project>
+  <PropertyGroup>
+    <_SweetEditorAvaloniaRepoRoot>$(MSBuildThisFileDirectory)..\..\</_SweetEditorAvaloniaRepoRoot>
+    <_SweetEditorAvaloniaTargetPlatform Condition="'$(TargetFramework)' != ''">$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)'))</_SweetEditorAvaloniaTargetPlatform>
+    <_SweetEditorAvaloniaIsExecutable Condition="'$(OutputType)' == 'Exe' or '$(OutputType)' == 'WinExe'">true</_SweetEditorAvaloniaIsExecutable>
+    <_SweetEditorAvaloniaMacDylib Condition="'$(RuntimeIdentifier)' == 'osx-x64'">$(_SweetEditorAvaloniaRepoRoot)prebuilt\osx\x86_64\libsweeteditor.dylib</_SweetEditorAvaloniaMacDylib>
+    <_SweetEditorAvaloniaMacDylib Condition="'$(_SweetEditorAvaloniaMacDylib)' == ''">$(_SweetEditorAvaloniaRepoRoot)prebuilt\osx\arm64\libsweeteditor.dylib</_SweetEditorAvaloniaMacDylib>
+    <_SweetEditorAvaloniaIosDylib Condition="'$(RuntimeIdentifier)' == 'iossimulator-arm64'">$(_SweetEditorAvaloniaRepoRoot)prebuilt\ios\simulator-arm64\libsweeteditor.dylib</_SweetEditorAvaloniaIosDylib>
+    <_SweetEditorAvaloniaIosDylib Condition="'$(_SweetEditorAvaloniaIosDylib)' == ''">$(_SweetEditorAvaloniaRepoRoot)prebuilt\ios\arm64\libsweeteditor.dylib</_SweetEditorAvaloniaIosDylib>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(_SweetEditorAvaloniaIsExecutable)' == 'true' and '$(_SweetEditorAvaloniaTargetPlatform)' == 'macos'">
+    <NativeReference Include="$(_SweetEditorAvaloniaMacDylib)"
+                     Condition="Exists('$(_SweetEditorAvaloniaMacDylib)')">
+      <Kind>Dynamic</Kind>
+      <IsCxx>true</IsCxx>
+    </NativeReference>
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(_SweetEditorAvaloniaIsExecutable)' == 'true' and '$(_SweetEditorAvaloniaTargetPlatform)' == 'ios'">
+    <NativeReference Include="$(_SweetEditorAvaloniaIosDylib)"
+                     Condition="Exists('$(_SweetEditorAvaloniaIosDylib)')">
+      <Kind>Dynamic</Kind>
+      <IsCxx>true</IsCxx>
+      <CopyToAppBundle>true</CopyToAppBundle>
+      <RelativePath>libsweeteditor.dylib</RelativePath>
+    </NativeReference>
+  </ItemGroup>
+</Project>

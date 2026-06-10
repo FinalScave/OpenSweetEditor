@@ -15,20 +15,6 @@ public enum CompletionTriggerKind {
     case retrigger
 }
 
-/// Precise replacement edit.
-public struct CompletionTextEdit {
-    public let range: TextRange
-    public let newText: String
-
-    public init(
-        range: TextRange,
-        newText: String
-    ) {
-        self.range = range
-        self.newText = newText
-    }
-}
-
 /// Completion candidate item. Confirmation priority: textEdit -> insertText -> label.
 public struct CompletionItem {
     public let label: String
@@ -36,7 +22,8 @@ public struct CompletionItem {
     public var iconId: Int = 0
     public var insertText: String?
     public var insertTextFormat: Int = CompletionItem.insertTextFormatPlainText
-    public var textEdit: CompletionTextEdit?
+    public var textEdit: TextEdit?
+    public var additionalTextEdits: [TextEdit] = []
     public var filterText: String?
     public var sortKey: String?
     public var kind: Int = 0
@@ -64,7 +51,8 @@ public struct CompletionItem {
         kind: Int = 0,
         insertText: String? = nil,
         insertTextFormat: Int = CompletionItem.insertTextFormatPlainText,
-        textEdit: CompletionTextEdit? = nil,
+        textEdit: TextEdit? = nil,
+        additionalTextEdits: [TextEdit] = [],
         filterText: String? = nil,
         sortKey: String? = nil,
         iconId: Int = 0
@@ -75,6 +63,7 @@ public struct CompletionItem {
         self.insertText = insertText
         self.insertTextFormat = insertTextFormat
         self.textEdit = textEdit
+        self.additionalTextEdits = additionalTextEdits
         self.filterText = filterText
         self.sortKey = sortKey
         self.kind = kind

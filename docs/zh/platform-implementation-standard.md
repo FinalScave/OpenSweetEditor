@@ -25,7 +25,7 @@ Core 层不涉及 UI 渲染，仅包含桥接、数据模型和协议编解码�
 | **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer` | 原生桥接 + 公共核心 API 封装 |
 | **Action** | `EditorActionResult`, `EditorActionReason`, `ScrollBehavior` | Core action 结果与相关枚举；`EditorActionResult` 是变更类 core API 的统一结果载体 |
 | **Config** | `EditorOptions`, `HandleConfig`, `ScrollbarConfig`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollbarMode`, `ScrollbarTrackTapMode`, `EditorRenderColors`, `EditorRangeEffectStyles`, `RangeEffectStyle`, `RangeEffectUnderlineStyle` | 运行时、构造与编辑器渲染样式协议类型 |
-| **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `PointF`, `Rect`, `OffsetRect` | 基础值类型与几何载体 |
+| **Foundation** | `TextPosition`, `TextRange`, `TextEdit`, `IntRange`, `TextChange`, `PointF`, `Rect`, `OffsetRect` | 基础值类型与几何载体 |
 | **Interaction** | `GestureEvent`, `GestureType`, `EventType`, `HitTarget`, `HitTargetType` | 输入与命中测试协议类型 |
 | **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextUnit`, `ImeTextModelMode`, `ImeTextReplacement`, `ImeDocumentTextReplacement`, `ImeInputContextTextReplacement`, `ImeInputStateTextReplacement`, `ImeTextModelState`, `ImeTextModelDelta` | IME 同步快照、文本上下文协议类型与替换 payload model；平台侧同步决策由 `EditorActionResult` 承载 |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `DiagnosticSeverity`, `DocumentHighlight`, `DocumentHighlightKind`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | 装饰数据类型 |
@@ -43,7 +43,7 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 |---|---|---|
 | **Widget** | `SweetEditor`, `SweetEditorController`*(声明式框架 MUST；命令式框架 MAY)*, `EditorTheme`, `EditorSettings`, `EditorIconProvider`, `EditorMetadata`, `LanguageConfiguration` | 控件入口、控制器、主题、配置 |
 | **Decoration** | `DecorationProvider`, `DecorationProviderManager`, `DecorationContext`, `DecorationResult`, `DecorationType`；若采用 Receiver 回调模式，推荐使用 `DecorationReceiver` | 装饰提供者系统 |
-| **Completion** | `CompletionProvider`, `CompletionProviderManager`, `CompletionContext`, `CompletionItem`, `CompletionTextEdit`, `CompletionResult`；若采用 Receiver 回调模式，推荐使用 `CompletionReceiver` | 补全提供者系统 |
+| **Completion** | `CompletionProvider`, `CompletionProviderManager`, `CompletionContext`, `CompletionItem`, `CompletionResult`；若采用 Receiver 回调模式，推荐使用 `CompletionReceiver` | 补全提供者系统 |
 | **Event** | 类型安全事件机制、`EditorEvent`、`TextChangedEvent`、`CursorChangedEvent`、`SelectionChangedEvent`、`ScrollChangedEvent`、`ScaleChangedEvent`、`DocumentLoadedEvent`、`FoldToggleEvent`、`GutterIconClickEvent`、`InlayHintClickEvent`、`CodeLensClickEvent`、`LinkClickEvent`、`LongPressEvent`*(移动端 / 触摸平台)*、`DoubleTapEvent`、`ContextMenuEvent`*(具有显式上下文菜单手势入口的平台)*；若采用显式事件总线 / 监听器模式，推荐 `EditorEventBus`、`EditorEventListener` | 事件系统 |
 | **NewLine** | `NewLineActionProvider`, `NewLineActionProviderManager`, `NewLineAction`, `NewLineContext` | 换行动作提供者系统 |
 | **Keymap** | `EditorKeyMap` | Widget 层 keymap 扩展，用于将 commandId 绑定到宿主侧处理器 |
@@ -217,7 +217,7 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 | 配置 | `loadDocument(doc)`, `setViewport(w, h)`, `onFontMetricsChanged()`, `setFoldArrowMode(mode)`, `setWrapMode(mode)`, `setTabSize(size)`, `setInsertSpaces(enabled)`, `setScale(scale)`, `setLineSpacing(add, mult)`, `setContentStartPadding(padding)`, `setShowSplitLine(show)`, `setCurrentLineRenderMode(mode)`, `setGutterSticky(sticky)`, `setGutterVisible(visible)`, `setHandleConfig(...)`, `setScrollbarConfig(...)` |
 | 渲染模型 | `buildRenderModel()`, `getLayoutMetrics()` |
 | 手势 / 键盘 | `handleGestureEvent(...)`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(bindings)` |
-| 文本编辑 | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `backspace()`, `deleteForward()`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
+| 文本编辑 | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `applyTextEdits(edits)`, `backspace()`, `deleteForward()`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
 | 撤销 / 重做 | `undo()`, `redo()`, `canUndo()`, `canRedo()` |
 | 光标 / 选区 | `setCursorPosition(line, col)`, `getCursorPosition()`, `selectAll()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `getSelectedText()`, `getWordRangeAtCursor()`, `getWordAtCursor()`, `moveCursorLeft(extend)`, `moveCursorRight(extend)`, `moveCursorUp(extend)`, `moveCursorDown(extend)`, `moveCursorToLineStart(extend)`, `moveCursorToLineEnd(extend)` |
 | IME | `getImeSyncSnapshot()`, `getImeInputContext(...)`, `getImeTextModelInputContext(...)`, `setImeKeyboardScriptClass(script)`, `getImeKeyboardScriptClass()`, `updateImePreedit(...)`, `setImeComposingText(...)`, `setImeComposingTextSelection(...)`, `commitImeText(...)`, `commitImeTextWithCursor(...)`, `replaceImeText(replacement)`, `replaceImeDocumentText(replacement)`, `replaceImeInputContextText(replacement)`, `finishImePreedit()`, `cancelImePreedit()`, `markImeDocumentRange(...)`, `markImeDocumentRangeByOffset(...)`, `markImeInputContextRange(...)`, `notifyImeDocumentSelectionChanged(...)`, `notifyImeInputContextSelectionChanged(...)`, `updateImeTextModelState(state)`, `updateImeTextModelDelta(delta)`, `updateImeInputStateSelection(...)`, `replaceImeInputStateText(replacement)`, `deleteImeBackward(length, unit)`, `deleteImeForward(length, unit)`, `deleteImeSurrounding(before, after, unit)`, `notifyImeSelectionChanged(range)`, `notifyImeCursorChanged(cursor)`, `getComposingRange()`, `getComposingSessionRange()`, `isComposing()` |
@@ -301,7 +301,7 @@ IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextR
 |---|---|
 | 文档 / 主题 | `loadDocument(doc)`, `getDocument()`, `applyTheme(theme)`, `getTheme()` |
 | 配置 | `getSettings()`, `getKeyMap()` *(SHOULD)*, `setKeyMap(keyMap)`, `setEditorIconProvider(provider)` |
-| 文本编辑 | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
+| 文本编辑 | `insertText(text)`, `insertTextAt(position, text)`, `replaceText(range, text)`, `deleteText(range)`, `applyTextEdits(edits)`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
 | 撤销 / 重做 | `undo()`, `redo()`, `canUndo()`, `canRedo()` |
 | 剪贴板 *(MAY)* | `copyToClipboard()`, `pasteFromClipboard()`, `cutToClipboard()` |
 | 光标 / 选区 | `selectAll()`, `getSelectedText()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `setCursorPosition(pos)`, `getCursorPosition()`, `getWordRangeAtCursor()`, `getWordAtCursor()` |
@@ -340,7 +340,7 @@ Provider-Manager 模式（注册 -> 遍历 -> 分发）MUST 在所有平台保�
 |---|---|
 | `DecorationContext` | `visibleLineRange`, `totalLineCount`, `textChanges`, `languageConfiguration`, `editorMetadata` |
 | `ApplyMode` | `MERGE`, `REPLACE_ALL`, `REPLACE_RANGE`；合并优先级为 `REPLACE_ALL` > `REPLACE_RANGE` > `MERGE` |
-| `DecorationResult` | `syntaxSpans`, `semanticSpans`, `inlayHints`, `diagnostics`, `documentHighlights`, `indentGuides`, `bracketGuides`, `flowGuides`, `separatorGuides`, `foldRegions`, `gutterIcons`, `phantomTexts`, `codeLensItems`, `links`，且每种数据 MUST 有对应的 `ApplyMode` 字段 |
+| `DecorationResult` | `syntaxSpans`, `semanticSpans`, `overlaySpans`, `inlayHints`, `diagnostics`, `documentHighlights`, `indentGuides`, `bracketGuides`, `flowGuides`, `separatorGuides`, `foldRegions`, `gutterIcons`, `phantomTexts`, `codeLensItems`, `links`，且每种数据 MUST 有对应的 `ApplyMode` 字段 |
 | `DecorationType` | MUST 包含上方所有 decoration family，包括 `DOCUMENT_HIGHLIGHT`、`CODELENS` 和 `LINK` |
 
 按行索引的数据使用 `Map<int, List<T>>`，key 为 0-based 行号。Manager MUST 按 `ApplyMode` 合并 snapshot：`MERGE` 追加同类数据，`REPLACE_ALL` 清除全部已有数据后写入，`REPLACE_RANGE` 仅替换 `visibleLineRange` 内的数据。
@@ -364,7 +364,7 @@ Manager MUST 遍历所有 Provider，将各 Provider 返回的 `CompletionItem` 
 ---
 ## 5. `CompletionItem` 字段定义（MUST）
 
-`CompletionItem` 是补全系统的核心数据类型。确认时的应用优先级为：`textEdit` → `insertText` → `label`。
+`CompletionItem` 是补全系统的核心数据类型。确认时的应用优先级为：`textEdit` → `insertText` → `label`。`textEdit` 是唯一隐式替换范围来源；缺省时平台 MUST 在当前光标直接插入 `insertText` / `label`，不能从 `wordRange` 推导替换范围。没有 `textEdit` 但存在 `additionalTextEdits` 时，平台 MUST 使用光标处 collapsed edit 作为 `edits[0]`，再追加 `additionalTextEdits`。
 
 | 字段 | 类型 | MUST/MAY | 说明 |
 |---|---|---|---|
@@ -372,7 +372,8 @@ Manager MUST 遍历所有 Provider，将各 Provider 返回的 `CompletionItem` 
 | `detail` | String? | **MAY** | 详细描述（显示在标签右侧或下方） |
 | `insertText` | String? | **MAY** | 插入文本（优先于 `label` 插入） |
 | `insertTextFormat` | int | **MUST** | 插入文本格式：`PLAIN_TEXT=1`（默认）, `SNIPPET=2`（VSCode Snippet 格式，支持 `$1`、`${1:default}`、`$0` 占位符） |
-| `textEdit` | CompletionTextEdit? | **MAY** | 精确替换编辑（指定替换范围 + 新文本），优先级最高 |
+| `textEdit` | TextEdit? | **MAY** | 精确替换编辑（指定替换范围 + 新文本），优先级最高 |
+| `additionalTextEdits` | List<TextEdit> | **MAY** | 与主编辑一起应用的额外编辑；range 使用原始文档坐标，且 MUST NOT 重叠 |
 | `filterText` | String? | **MAY** | 过滤/匹配文本（null 时 fallback 到 `label`） |
 | `sortKey` | String? | **MAY** | 排序键（null 时 fallback 到 `label`） |
 | `kind` | int | **MUST** | 补全项类型（影响图标显示） |
@@ -391,12 +392,12 @@ Manager MUST 遍历所有 Provider，将各 Provider 返回的 `CompletionItem` 
 | `KIND_SNIPPET` | 7 |
 | `KIND_TEXT` | 8 |
 
-**`CompletionTextEdit`** 子类型：
+**`TextEdit`** 共享基础类型：
 
 | 字段 | 类型 | MUST/MAY | 说明 |
 |---|---|---|---|
 | `range` | TextRange | **MUST** | 替换范围 |
-| `newText` | String | **MUST** | 替换文本 |
+| `newText` / `new_text` | String | **MUST** | 替换文本；平台 MAY 暴露符合语言习惯的字段命名，但生成协议字段顺序不能改变 |
 
 ---
 
@@ -435,7 +436,7 @@ Selection menu 模块在移动端为 SHOULD 级别。桌面平台 MAY 完全省�
 
 | 对象 / API | 约束级别 | 要求 |
 |---|---|---|
-| `SelectionMenuItem` | **MUST** | 字段包含 `id`, `label`；MAY 包含 `enabled`, `iconId`。内建动作推荐使用 `cut`, `copy`, `paste`, `select_all`，自定义动作 MAY 使用任意稳定 `id` |
+| `SelectionMenuItem` | **MUST** | 字段包含 `id`, `label`；MAY 包含 `enabled`, `iconId`。内建动作推荐使用 `cut`, `copy`, `delete`, `paste`, `select_all`，自定义动作 MAY 使用任意稳定 `id` |
 | `SelectionMenuItemProvider` | **MUST** | 提供 `provideMenuItems(editor/equivalent) -> List<SelectionMenuItem>` 或等价 API；返回当前这一次展示的完整菜单项集合，而不是增量 patch |
 | custom item 回调 | **MUST** | 平台 MUST 提供 listener、delegate、事件、typed stream 或等价机制观察 custom item 被触发；显式 listener 推荐提供 `onSelectionMenuItemSelected(itemId)` |
 | `setSelectionMenuItemProvider(provider)` | **MUST** | 配置 custom 选区菜单项；传入 `null` 时 SHOULD 恢复平台默认菜单 |
@@ -741,7 +742,7 @@ interface ContextMenuItemProvider {
 | `ScrollbarMode` | ALWAYS=0, TRANSIENT=1, NEVER=2 |
 | `ScrollbarTrackTapMode` | JUMP=0, DISABLED=1 |
 | `ScrollBehavior` | TOP=0, CENTER=1, BOTTOM=2 |
-| `SpanLayer` | SYNTAX=0, SEMANTIC=1 |
+| `SpanLayer` | SYNTAX=0, SEMANTIC=1, OVERLAY=2 |
 | `InlayType` | TEXT=0, ICON=1, COLOR=2 |
 | `DiagnosticSeverity` | ERROR=0, WARNING=1, INFO=2, HINT=3 |
 | `DocumentHighlightKind` | TEXT=0, READ=1, WRITE=2 |
@@ -750,7 +751,7 @@ interface ContextMenuItemProvider {
 | `VisualLineKind` | CONTENT=0, PHANTOM=1, CODELENS=2 |
 | `PointerCursorType` | DEFAULT=0, TEXT=1, HAND=2 |
 | `FoldState` | NONE=0, EXPANDED=1, COLLAPSED=2 |
-| `DecorationType` | SYNTAX_HIGHLIGHT, SEMANTIC_HIGHLIGHT, INLAY_HINT, DIAGNOSTIC, DOCUMENT_HIGHLIGHT, FOLD_REGION, INDENT_GUIDE, BRACKET_GUIDE, FLOW_GUIDE, SEPARATOR_GUIDE, GUTTER_ICON, PHANTOM_TEXT, CODELENS, LINK |
+| `DecorationType` | SYNTAX_HIGHLIGHT, SEMANTIC_HIGHLIGHT, OVERLAY_HIGHLIGHT, INLAY_HINT, DIAGNOSTIC, DOCUMENT_HIGHLIGHT, FOLD_REGION, INDENT_GUIDE, BRACKET_GUIDE, FLOW_GUIDE, SEPARATOR_GUIDE, GUTTER_ICON, PHANTOM_TEXT, CODELENS, LINK |
 | `HitTargetType` | NONE=0, INLAY_HINT_TEXT=1, INLAY_HINT_ICON=2, GUTTER_ICON=3, FOLD_PLACEHOLDER=4, FOLD_GUTTER=5, INLAY_HINT_COLOR=6, CODELENS=7, LINK=8 |
 | `GuideType` | INDENT=0, BRACKET=1, FLOW=2, SEPARATOR=3 |
 | `GuideDirection` | （与 C++ 核心对齐） |

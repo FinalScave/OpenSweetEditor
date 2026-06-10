@@ -6,17 +6,6 @@ using System.Linq;
 using System.Windows.Forms;
 
 namespace SweetEditor {
-	/// <summary>Precise replacement edit for completion insertion.</summary>
-	public sealed class CompletionTextEdit {
-		public TextRange Range { get; }
-		public string NewText { get; }
-
-		public CompletionTextEdit(TextRange range, string newText) {
-			Range = range;
-			NewText = newText ?? string.Empty;
-		}
-	}
-
 	/// <summary>Completion item data model. Apply priority on confirm: TextEdit -> InsertText -> Label.</summary>
 	public class CompletionItem {
 		public const int KIND_KEYWORD = 0;
@@ -47,7 +36,8 @@ namespace SweetEditor {
 		public string? InsertText { get; set; }
 		/// <summary>Insert text format: INSERT_TEXT_FORMAT_PLAIN_TEXT or INSERT_TEXT_FORMAT_SNIPPET.</summary>
 		public int InsertTextFormat { get; set; } = INSERT_TEXT_FORMAT_PLAIN_TEXT;
-		public CompletionTextEdit? TextEdit { get; set; }
+		public TextEdit? TextEdit { get; set; }
+		public List<TextEdit> AdditionalTextEdits { get; } = new();
 		public string? FilterText { get; set; }
 		public string? SortKey { get; set; }
 		public int Kind { get; set; }

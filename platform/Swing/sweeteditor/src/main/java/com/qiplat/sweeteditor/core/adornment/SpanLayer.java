@@ -2,7 +2,8 @@ package com.qiplat.sweeteditor.core.adornment;
 
 public enum SpanLayer {
     SYNTAX(0),
-    SEMANTIC(1);
+    SEMANTIC(1),
+    OVERLAY(2);
 
     public final int value;
 
@@ -14,6 +15,7 @@ public enum SpanLayer {
         switch (value) {
             case 0: return SYNTAX;
             case 1: return SEMANTIC;
+            case 2: return OVERLAY;
             default: return SYNTAX;
         }
     }

@@ -48,6 +48,7 @@ import com.qiplat.sweeteditor.core.snippet.LinkedEditingModel;
 import com.qiplat.sweeteditor.core.visual.ScrollMetrics;
 import com.qiplat.sweeteditor.core.foundation.IntRange;
 import com.qiplat.sweeteditor.core.foundation.TextChange;
+import com.qiplat.sweeteditor.core.foundation.TextEdit;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
 import com.qiplat.sweeteditor.core.adornment.PhantomText;
@@ -440,6 +441,22 @@ public class EditorCore {
         ByteBuffer data = nativeDeleteText(mNativeHandle,
                 range.start.line, range.start.column,
                 range.end.line, range.end.column);
+        try {
+            return CoreProtocol.decodeEditorActionResult(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    /**
+     * Applies multiple text edits as one undoable operation.
+     * The first edit is the primary edit and determines the final cursor position.
+     */
+    @NonNull
+    public EditorActionResult applyTextEdits(@NonNull List<? extends TextEdit> edits) {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        ByteBuffer payload = CoreProtocol.encodeApplyTextEditsPayload(edits);
+        ByteBuffer data = nativeApplyTextEdits(mNativeHandle, payload);
         try {
             return CoreProtocol.decodeEditorActionResult(data);
         } finally {
@@ -2239,6 +2256,9 @@ public class EditorCore {
     @FastNative
     private static native ByteBuffer nativeDeleteText(long handle,
             int startLine, int startColumn, int endLine, int endColumn);
+
+    @FastNative
+    private static native ByteBuffer nativeApplyTextEdits(long handle, ByteBuffer data);
 
     @FastNative
     private static native ByteBuffer nativeMoveLineUp(long handle);

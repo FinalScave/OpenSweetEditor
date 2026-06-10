@@ -1,27 +1,14 @@
 package com.qiplat.sweeteditor.completion;
 
-import com.qiplat.sweeteditor.core.foundation.TextRange;
+import com.qiplat.sweeteditor.core.foundation.TextEdit;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Completion item data model.
  * <p>Confirmation priority: textEdit → insertText → label.</p>
  */
 public class CompletionItem {
-
-    public static class TextEdit {
-        public final TextRange range;
-        public final String newText;
-
-        public TextEdit(TextRange range, String newText) {
-            this.range = range;
-            this.newText = newText;
-        }
-
-        @Override
-        public String toString() {
-            return "TextEdit{range=" + range + ", newText='" + newText + "'}";
-        }
-    }
 
     public static final int KIND_KEYWORD = 0;
     public static final int KIND_FUNCTION = 1;
@@ -43,6 +30,7 @@ public class CompletionItem {
     public String insertText;
     public int insertTextFormat = INSERT_TEXT_FORMAT_PLAIN_TEXT;
     public TextEdit textEdit;
+    public final List<TextEdit> additionalTextEdits = new ArrayList<>();
     public String filterText;
     public String sortKey;
     public int kind;

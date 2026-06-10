@@ -18,7 +18,6 @@ public sealed class App : global::Avalonia.Application
     public override void OnFrameworkInitializationCompleted()
     {
         DemoHostDiagnostics.WriteLine("App.OnFrameworkInitializationCompleted enter");
-        DemoPlatformServices.Current = new AndroidDemoPlatformServices();
         Control mainView = new DeferredMainViewHost();
 
         switch (ApplicationLifetime)

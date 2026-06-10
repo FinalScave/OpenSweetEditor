@@ -276,6 +276,13 @@ public class EditorCore {
         return decodeAction(result);
     }
 
+    public EditorActionResult applyTextEdits(List<? extends TextEdit> edits) {
+        try (Arena tempArena = Arena.ofConfined()) {
+            MemorySegment payload = CoreProtocol.encodeApplyTextEditsPayload(tempArena, edits);
+            return decodeAction(EditorNative.applyTextEdits(nativeHandle, payload, payload.byteSize()));
+        }
+    }
+
     public EditorActionResult backspace() {
         return decodeAction(EditorNative.backspace(nativeHandle));
     }

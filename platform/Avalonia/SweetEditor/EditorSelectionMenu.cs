@@ -17,6 +17,7 @@ namespace SweetEditor {
 	public sealed class SelectionMenuItem {
 		public const string ACTION_CUT = "cut";
 		public const string ACTION_COPY = "copy";
+		public const string ACTION_DELETE = "delete";
 		public const string ACTION_PASTE = "paste";
 		public const string ACTION_SELECT_ALL = "select_all";
 
@@ -103,6 +104,24 @@ namespace SweetEditor {
 
 		public void SetListener(ISelectionMenuListener? listener) {
 			this.listener = listener;
+		}
+
+		public IReadOnlyList<SelectionMenuItem> GetItems() => BuildItems();
+
+		public void ExecuteItem(string itemId) {
+			if (disposed || string.IsNullOrWhiteSpace(itemId)) {
+				return;
+			}
+
+			foreach (SelectionMenuItem item in BuildItems()) {
+				if (!string.Equals(item.Id, itemId, StringComparison.Ordinal)) {
+					continue;
+				}
+				if (item.Enabled) {
+					OnMenuItemClicked(item);
+				}
+				return;
+			}
 		}
 
 		public void ScheduleShow() {
@@ -399,6 +418,12 @@ namespace SweetEditor {
 					break;
 				case SelectionMenuItem.ACTION_COPY:
 					editor.CopyToClipboard();
+					break;
+				case SelectionMenuItem.ACTION_DELETE:
+					var selection = editor.GetSelection();
+					if (selection.hasSelection) {
+						editor.DeleteText(selection.range);
+					}
 					break;
 				case SelectionMenuItem.ACTION_PASTE:
 					editor.PasteFromClipboard();

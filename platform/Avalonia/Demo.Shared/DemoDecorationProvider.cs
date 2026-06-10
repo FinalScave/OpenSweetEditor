@@ -138,7 +138,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
             activeDocumentStreamingLoad = false;
             activeLines = activeDocumentLargeMode ? null : SplitLines(content);
             smallDocumentRichLineCache.Clear();
-            highlightBackendLabel = DemoPlatformServices.Current?.IsAndroid == true
+            highlightBackendLabel = DemoPlatformServices.IsAndroid
                 ? "SweetLine pending"
                 : "Managed fallback";
 
@@ -174,7 +174,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
             smallDocumentRichLineCache.Clear();
             sweetLineSessionVersion++;
             ResetSweetLineState();
-            highlightBackendLabel = DemoPlatformServices.Current?.IsAndroid == true
+            highlightBackendLabel = DemoPlatformServices.IsAndroid
                 ? "SweetLine async"
                 : "Managed fallback";
         }
@@ -653,7 +653,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
 
         try
         {
-            if (DemoPlatformServices.Current?.IsAndroid == true &&
+            if (DemoPlatformServices.IsAndroid &&
                 changes != null &&
                 changes.Count > 0)
             {
@@ -860,7 +860,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
         if (changes == null || changes.Count == 0)
             return;
 
-        bool requiresNativeSliceReset = DemoPlatformServices.Current?.IsAndroid == true;
+        bool requiresNativeSliceReset = DemoPlatformServices.IsAndroid;
         largeDocumentSyntaxCache.Clear();
         largeDocumentLineEndStates.Clear();
         largeDocumentCacheStartLine = -1;

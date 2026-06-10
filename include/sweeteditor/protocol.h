@@ -11,6 +11,10 @@ namespace protocol {
     Vector<KeyBinding> bindings;
   };
 
+  struct SE_PROTOCOL_IN(foundation) ApplyTextEditsPayload {
+    Vector<TextEdit> edits;
+  };
+
   struct SE_PROTOCOL_IN(adornment) SetLineSpansPayload {
     SE_PROTOCOL_WIRE(size_as_u32)
     size_t line {0};

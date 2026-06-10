@@ -176,6 +176,7 @@ class DecorationProviderManager {
 
     final syntaxSpans = <int, List<core.StyleSpan>>{};
     final semanticSpans = <int, List<core.StyleSpan>>{};
+    final overlaySpans = <int, List<core.StyleSpan>>{};
     final inlayHints = <int, List<core.InlayHint>>{};
     final diagnostics = <int, List<core.Diagnostic>>{};
     final documentHighlights = <int, List<core.DocumentHighlight>>{};
@@ -191,6 +192,7 @@ class DecorationProviderManager {
 
     var syntaxMode = ApplyMode.merge;
     var semanticMode = ApplyMode.merge;
+    var overlayMode = ApplyMode.merge;
     var inlayMode = ApplyMode.merge;
     var diagnosticMode = ApplyMode.merge;
     var documentHighlightMode = ApplyMode.merge;
@@ -216,6 +218,10 @@ class DecorationProviderManager {
       semanticMode = _mergeMode(semanticMode, r.semanticSpansMode);
       if (r.semanticSpans != null) {
         _appendMapOfArrays(semanticSpans, r.semanticSpans!);
+      }
+      overlayMode = _mergeMode(overlayMode, r.overlaySpansMode);
+      if (r.overlaySpans != null) {
+        _appendMapOfArrays(overlaySpans, r.overlaySpans!);
       }
       inlayMode = _mergeMode(inlayMode, r.inlayHintsMode);
       if (r.inlayHints != null) {
@@ -275,8 +281,10 @@ class DecorationProviderManager {
 
     _applySpanMode(0, syntaxMode);
     _applySpanMode(1, semanticMode);
+    _applySpanMode(2, overlayMode);
     _setBatchLineSpans(0, syntaxSpans);
     _setBatchLineSpans(1, semanticSpans);
+    _setBatchLineSpans(2, overlaySpans);
 
     _applyInlayMode(inlayMode);
     _setBatchLineInlayHints(inlayHints);
@@ -546,6 +554,13 @@ class DecorationProviderManager {
     } else if (patch.semanticSpansMode != ApplyMode.merge) {
       target.semanticSpans = null;
       target.semanticSpansMode = patch.semanticSpansMode;
+    }
+    if (patch.overlaySpans != null) {
+      target.overlaySpans = patch.overlaySpans;
+      target.overlaySpansMode = patch.overlaySpansMode;
+    } else if (patch.overlaySpansMode != ApplyMode.merge) {
+      target.overlaySpans = null;
+      target.overlaySpansMode = patch.overlaySpansMode;
     }
     if (patch.inlayHints != null) {
       target.inlayHints = patch.inlayHints;

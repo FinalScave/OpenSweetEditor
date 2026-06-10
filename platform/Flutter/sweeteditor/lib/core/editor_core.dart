@@ -475,6 +475,15 @@ class EditorCore {
     );
   }
 
+  EditorActionResult applyTextEdits(List<TextEdit> edits) {
+    _ensureOpen();
+    return _callWithBinaryActionData(
+      CoreProtocol.encodeApplyTextEditsPayload(edits),
+      (data, size, outSize) =>
+          bindings.editor_apply_text_edits(_handle, data, size, outSize),
+    );
+  }
+
   EditorActionResult backspace() =>
       _simpleEdit((s) => bindings.editor_backspace(_handle, s));
   EditorActionResult deleteForward() =>

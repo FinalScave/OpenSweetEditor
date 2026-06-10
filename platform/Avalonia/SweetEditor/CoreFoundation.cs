@@ -32,6 +32,11 @@ namespace SweetEditor {
         public string NewText { get; set; } = string.Empty;
     }
 
+    public sealed partial class TextEdit {
+        public TextRange Range { get; set; } = new TextRange();
+        public string NewText { get; set; } = string.Empty;
+    }
+
     public sealed partial class TextPosition {
         public int Line { get; set; } = 0;
         public int Column { get; set; } = 0;

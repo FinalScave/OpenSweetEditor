@@ -383,6 +383,19 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
+  static jobject applyTextEdits(JNIEnv* env, jclass clazz, jlong handle, jobject buffer) {
+    if (handle == 0 || buffer == nullptr) return nullptr;
+    auto* data = static_cast<const uint8_t*>(env->GetDirectBufferAddress(buffer));
+    jlong capacity = env->GetDirectBufferCapacity(buffer);
+    if (data == nullptr || capacity <= 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_apply_text_edits(static_cast<intptr_t>(handle),
+                                                     data,
+                                                     static_cast<size_t>(capacity),
+                                                     &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
+  }
+
   static jobject moveLineUp(JNIEnv* env, jclass clazz, jlong handle) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
@@ -1422,6 +1435,7 @@ public:
       {"nativeInsertText", "(JLjava/lang/String;)Ljava/nio/ByteBuffer;", (void*) insertText},
       {"nativeReplaceText", "(JIIIILjava/lang/String;)Ljava/nio/ByteBuffer;", (void*) replaceText},
       {"nativeDeleteText", "(JIIII)Ljava/nio/ByteBuffer;", (void*) deleteText},
+      {"nativeApplyTextEdits", "(JLjava/nio/ByteBuffer;)Ljava/nio/ByteBuffer;", (void*) applyTextEdits},
       {"nativeMoveLineUp", "(J)Ljava/nio/ByteBuffer;", (void*) moveLineUp},
       {"nativeMoveLineDown", "(J)Ljava/nio/ByteBuffer;", (void*) moveLineDown},
       {"nativeCopyLineUp", "(J)Ljava/nio/ByteBuffer;", (void*) copyLineUp},

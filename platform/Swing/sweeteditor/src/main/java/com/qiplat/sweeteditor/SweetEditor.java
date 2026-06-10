@@ -46,6 +46,7 @@ import java.awt.font.TextHitInfo;
 import java.awt.im.InputMethodRequests;
 import java.text.AttributedCharacterIterator;
 import java.text.AttributedString;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -343,6 +344,16 @@ public class SweetEditor extends JPanel {
         dispatchEditorActionResult(result);
     }
 
+    /**
+     * Insert text at the specified document position.
+     *
+     * @param position insertion position
+     * @param text     text to insert
+     */
+    public void insertTextAt(TextPosition position, String text) {
+        replaceText(new TextRange(position, position), text);
+    }
+
     public void replaceText(TextRange range, String newText) {
         EditorActionResult result = editorCore.replaceText(range, newText);
         dispatchEditorActionResult(result);
@@ -350,6 +361,16 @@ public class SweetEditor extends JPanel {
 
     public void deleteText(TextRange range) {
         EditorActionResult result = editorCore.deleteText(range);
+        dispatchEditorActionResult(result);
+    }
+
+    /**
+     * Apply multiple text edits as one undoable operation.
+     *
+     * @param edits text edits using the original document coordinates. The first edit is the primary edit.
+     */
+    public void applyTextEdits(List<? extends TextEdit> edits) {
+        EditorActionResult result = editorCore.applyTextEdits(edits);
         dispatchEditorActionResult(result);
     }
 
@@ -1423,41 +1444,36 @@ public class SweetEditor extends JPanel {
     }
 
     private void applyCompletionItem(CompletionItem item) {
-        CompletionItem.TextEdit textEdit = item.textEdit;
         boolean isSnippet = item.insertTextFormat == CompletionItem.INSERT_TEXT_FORMAT_SNIPPET;
         String text = item.insertText != null ? item.insertText : item.label;
 
-        // Determine the range to replace: textEdit takes priority, otherwise fallback to wordRange
-        TextRange replaceRange = null;
-        if (textEdit != null) {
-            replaceRange = textEdit.range;
-            text = textEdit.newText;
-        } else {
-            TextRange wr = getWordRangeAtCursor();
-            if (!isCollapsed(wr)) {
-                replaceRange = wr;
+        if (item.textEdit != null) {
+            text = item.textEdit.newText;
+            List<TextEdit> edits = new ArrayList<>(item.additionalTextEdits.size() + 1);
+            edits.add(isSnippet ? new TextEdit(item.textEdit.range, "") : item.textEdit);
+            edits.addAll(item.additionalTextEdits);
+            applyTextEdits(edits);
+            if (isSnippet) {
+                insertSnippet(text);
             }
-        }
-
-        if (isSnippet) {
-            if (replaceRange != null) {
-                deleteText(replaceRange);
+        } else if (item.additionalTextEdits.isEmpty()) {
+            if (isSnippet) {
+                insertSnippet(text);
+            } else {
+                insertText(text);
             }
-            insertSnippet(text);
-        } else if (replaceRange != null) {
-            replaceText(replaceRange, text);
         } else {
-            insertText(text);
+            TextPosition cursor = getCursorPosition();
+            TextEdit primaryEdit = new TextEdit(new TextRange(cursor, cursor), isSnippet ? "" : text);
+            List<TextEdit> edits = new ArrayList<>(item.additionalTextEdits.size() + 1);
+            edits.add(primaryEdit);
+            edits.addAll(item.additionalTextEdits);
+            applyTextEdits(edits);
+            if (isSnippet) {
+                insertSnippet(text);
+            }
         }
         resetCursorBlink();
-    }
-
-    private static boolean isCollapsed(TextRange range) {
-        return range != null
-                && range.start != null
-                && range.end != null
-                && range.start.line == range.end.line
-                && range.start.column == range.end.column;
     }
 
     private void dispatchTextChanged(TextChangeAction action, EditorActionResult result) {

@@ -1,6 +1,6 @@
 import { Document } from './core/EditorCore';
 import { ScrollBehavior } from './core/CoreAction';
-import { IntRange, TextPosition, TextRange } from './core/CoreFoundation';
+import { IntRange, TextEdit, TextPosition, TextRange } from './core/CoreFoundation';
 import { CursorRect, ScrollMetrics } from './core/CoreVisual';
 import { SearchRequest, SearchState, createEmptySearchState } from './core/CoreSearch';
 import {
@@ -216,12 +216,28 @@ export class SweetEditorController {
     this.run((api) => api.insertText(text));
   }
 
+  /**
+   * Inserts text at the specified document position.
+   */
+  insertTextAt(position: TextPosition, text: string): void {
+    this.run((api) => api.insertTextAt(position, text));
+  }
+
   replaceText(range: TextRange, newText: string): void {
     this.run((api) => api.replaceText(range, newText));
   }
 
   deleteText(range: TextRange): void {
     this.run((api) => api.deleteText(range));
+  }
+
+  /**
+   * Applies multiple text edits as one undoable operation.
+   *
+   * Edits use the original document coordinates. The first edit is the primary edit.
+   */
+  applyTextEdits(edits: TextEdit[]): void {
+    this.run((api) => api.applyTextEdits(edits));
   }
 
   moveLineUp(): void {

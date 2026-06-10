@@ -4,6 +4,7 @@ import '../editor_types.dart';
 enum DecorationType {
   syntaxHighlight,
   semanticHighlight,
+  overlayHighlight,
   inlayHint,
   diagnostic,
   documentHighlight,
@@ -54,6 +55,7 @@ enum ApplyMode { merge, replaceAll, replaceRange }
 class DecorationResult {
   Map<int, List<core.StyleSpan>>? syntaxSpans;
   Map<int, List<core.StyleSpan>>? semanticSpans;
+  Map<int, List<core.StyleSpan>>? overlaySpans;
   Map<int, List<core.InlayHint>>? inlayHints;
   Map<int, List<core.Diagnostic>>? diagnostics;
   Map<int, List<core.DocumentHighlight>>? documentHighlights;
@@ -68,6 +70,7 @@ class DecorationResult {
   Map<int, List<core.LinkSpan>>? links;
   ApplyMode syntaxSpansMode = ApplyMode.merge;
   ApplyMode semanticSpansMode = ApplyMode.merge;
+  ApplyMode overlaySpansMode = ApplyMode.merge;
   ApplyMode inlayHintsMode = ApplyMode.merge;
   ApplyMode diagnosticsMode = ApplyMode.merge;
   ApplyMode documentHighlightsMode = ApplyMode.merge;
@@ -85,6 +88,7 @@ class DecorationResult {
     final out = DecorationResult()
       ..syntaxSpans = _copyMap(syntaxSpans)
       ..semanticSpans = _copyMap(semanticSpans)
+      ..overlaySpans = _copyMap(overlaySpans)
       ..inlayHints = _copyMap(inlayHints)
       ..diagnostics = _copyMap(diagnostics)
       ..documentHighlights = _copyMap(documentHighlights)
@@ -101,6 +105,7 @@ class DecorationResult {
       ..links = _copyMap(links)
       ..syntaxSpansMode = syntaxSpansMode
       ..semanticSpansMode = semanticSpansMode
+      ..overlaySpansMode = overlaySpansMode
       ..inlayHintsMode = inlayHintsMode
       ..diagnosticsMode = diagnosticsMode
       ..documentHighlightsMode = documentHighlightsMode
@@ -141,6 +146,15 @@ class DecorationResultBuilder {
   ) {
     _result.semanticSpans = value;
     _result.semanticSpansMode = mode;
+    return this;
+  }
+
+  DecorationResultBuilder overlaySpans(
+    Map<int, List<core.StyleSpan>>? value,
+    ApplyMode mode,
+  ) {
+    _result.overlaySpans = value;
+    _result.overlaySpansMode = mode;
     return this;
   }
 

@@ -63,12 +63,14 @@ export function separatorStyleFromValue(value: number): SeparatorStyle {
 export enum SpanLayer {
   SYNTAX = 0,
   SEMANTIC = 1,
+  OVERLAY = 2,
 }
 
 export function spanLayerFromValue(value: number): SpanLayer {
   switch (value) {
     case 0: return SpanLayer.SYNTAX;
     case 1: return SpanLayer.SEMANTIC;
+    case 2: return SpanLayer.OVERLAY;
     default: return SpanLayer.SYNTAX;
   }
 }

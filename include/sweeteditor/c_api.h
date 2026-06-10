@@ -406,6 +406,15 @@ EDITOR_API const uint8_t* editor_delete_text(intptr_t editor_handle,
     size_t start_line, size_t start_column,
     size_t end_line, size_t end_column, size_t* out_size);
 
+/// Apply multiple text edits as one undoable operation.
+/// @param data ApplyTextEditsPayload binary payload encoded by CoreProtocol
+///        List<TextEdit> edits
+///        TextEdit is TextRange range followed by U8String new_text
+///        edits[0] is the primary edit and determines the final cursor position
+/// @param size payload byte length
+/// @return EditorActionResult binary payload, returns NULL on failure
+EDITOR_API const uint8_t* editor_apply_text_edits(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+
 /// Delete one character before cursor (Backspace behavior); delete selection if present
 /// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_backspace(intptr_t editor_handle, size_t* out_size);

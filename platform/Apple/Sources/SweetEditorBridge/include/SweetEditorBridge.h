@@ -81,6 +81,11 @@ const uint8_t* editor_delete_text(intptr_t editor_handle,
     size_t end_line, size_t end_column,
     size_t* out_size);
 
+const uint8_t* editor_apply_text_edits(intptr_t editor_handle,
+                                       const uint8_t* data,
+                                       size_t size,
+                                       size_t* out_size);
+
 const char* editor_get_selected_text(intptr_t editor_handle);
 
 // ===================== Line Operations API =====================

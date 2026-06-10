@@ -25,13 +25,13 @@
 - `CoreProtocol` 负责二进制 payload 编解码；`EditorRenderer` 消费 `EditorRenderModel` 进行 Avalonia `DrawingContext` 绘制。
 - `SweetEditorControl` 是宿主真正持有的控件入口；`SweetEditorController` 提供声明式 / MVVM 风格下的外部控制入口。
 - Decorations / Completion / NewLine / InlineSuggestion / SelectionMenu 均在 Avalonia 层按标准拆成独立 manager/provider 模块。
-- Android Demo 为 SweetLine NuGet 包暂存 native asset；桌面 Demo 在未提供 SweetLine native 时自动回退到托管 fallback 高亮。
+- SweetEditor native asset 统一收敛在 Avalonia 项目构建配置中，Demo 项目只负责宿主入口；SweetLine native asset 由 SweetLine NuGet 包提供。
 
 ## 目录结构
 
 - `SweetEditor/`：Avalonia 控件、协议桥接、渲染、事件、provider 管理
 - `Demo.Shared/`：共享 UI、样例加载、SweetLine 运行时、图标与菜单逻辑
-- `Demo.Android/`：Avalonia Android 宿主、IME / InputPane / safe area 平台服务
+- `Demo.Android/`：Avalonia Android 宿主入口
 - `Demo.Desktop/`：Avalonia Desktop 宿主
 - `Demo.Mac/` / `Demo.iOS/`：平台特定 Demo 宿主
 - `api-platform-avalonia.md`：平台目录入口文档（当前文档在 `docs/zh` 的规范版本）
@@ -46,15 +46,15 @@
   - Windows：`prebuilt/windows/x64/sweeteditor.dll`
   - Linux：`prebuilt/linux/x86_64/libsweeteditor.so`
   - macOS：`prebuilt/osx/*/libsweeteditor.dylib`
+  - Android：`prebuilt/android/*/libsweeteditor.so`
+  - iOS：`prebuilt/ios/*/libsweeteditor.dylib`
 
 ### Android 额外要求
 
 - .NET Android workload
 - Android SDK（API 34）
 - `adb`
-- Android Demo 若要启用 SweetLine native 高亮，需要：
-  - `platform/Avalonia/Demo.Android/native/sweetline/arm64-v8a/libsweetline.asset`
-  - `platform/Avalonia/Demo.Android/native/sweetline/x86_64/libsweetline.asset`
+- SweetLine native asset 由 SweetLine NuGet 包提供。
 
 ## 快速开始
 
@@ -115,17 +115,13 @@ editor.GetSettings().SetWrapMode(WrapMode.WORD_BREAK);
 
 共享 Demo 样例加载入口：
 
-- `platform/Avalonia/Demo.Shared/EmbeddedSampleRepository.cs`
+- `platform/Avalonia/Demo.Shared/DemoSamples.cs`
 
 ### SweetLine native 对接
 
 `Demo.Shared` 通过 SweetLine NuGet 包接入：
 
 - `platform/Avalonia/Demo.Shared/DemoSweetLineRuntime.cs`
-
-Android 平台暂存 native asset：
-
-- `platform/Avalonia/Demo.Android/native/sweetline/*/libsweetline.asset`
 
 当前对接策略：
 
@@ -144,7 +140,7 @@ Android 平台暂存 native asset：
 - `LanguageConfiguration`
 - `EditorKeyMap`
 - `DecorationContext` / `DecorationResult`
-- `CompletionContext` / `CompletionItem` / `CompletionTextEdit` / `CompletionResult`
+- `CompletionContext` / `CompletionItem` / `CompletionResult`
 - `InlineSuggestion`
 - `SelectionMenuItem`
 
@@ -236,21 +232,22 @@ public void SetInlineSuggestionListener(IInlineSuggestionListener? listener)
 
 public void SetSelectionMenuItemProvider(ISelectionMenuItemProvider? provider)
 public void SetSelectionMenuListener(ISelectionMenuListener? listener)
-public void SetSelectionMenuHostManaged(bool hostManaged)
 public bool IsSelectionMenuShowing()
 ```
 
 说明：
 
-- `SetSelectionMenuHostManaged(true)` 允许宿主自己实现选区菜单 UI；Demo.Shared 当前采用这条路径。
-- `SetCompletionItemRenderer(...)` 允许宿主切换补全项渲染策略；Demo 也可以直接使用宿主自绘弹层。
+- Avalonia 的 completion 与 selection menu UI 由编辑器控件内部持有；宿主通过 provider/listener API 提供菜单项并监听 custom 命令。
+- `SetCompletionItemRenderer(...)` 通过 `ICompletionItemRenderer` 自定义补全项视图。
 
 ### 文本编辑 / 行操作 / 剪贴板 / 撤销重做
 
 ```csharp
 public void InsertText(string text)
+public void InsertTextAt(TextPosition position, string text)
 public void ReplaceText(TextRange range, string newText)
 public void DeleteText(TextRange range)
+public void ApplyTextEdits(IReadOnlyList<TextEdit> edits)
 
 public void MoveLineUp()
 public void MoveLineDown()
@@ -449,6 +446,10 @@ public float GetDecorationOverscanViewportMultiplier()
 - `ICompletionItemRenderer`
 - `CompletionTriggerKind`
 
+`CompletionItem.TextEdit` 是唯一替换范围语义来源。没有它时，补全会在光标处直接插入 `InsertText` / `Label`；`AdditionalTextEdits` 会追加到主编辑之后。
+
+`ICompletionItemRenderer` 同时提供补全项高度和每个补全项对应的 Avalonia `Control`。
+
 ### Decoration
 
 - `DecorationType`
@@ -476,12 +477,13 @@ public float GetDecorationOverscanViewportMultiplier()
 
 ### Android
 
-- `Demo.Android/MainActivity.cs` 会注入 `DemoPlatformServices`，用于 safe area / `InputPane` 可见区域处理。
+- `SweetEditorControl` 内部负责 `InputPane` 遮挡处理与 popup 位置更新。
 - `SweetEditorControl` 在 Android 上关闭 `SupportsSurroundingText`，避免大文本 IME 查询开销。
-- 触摸、长按、双击、拖选、IME 遮挡与 selection menu 行为由 Avalonia 宿主层做额外适配。
-- Android Demo 默认打包：
-  - `libsweeteditor.so`（来自仓库 `prebuilt/android/*`）
-  - `libsweetline.asset`（来自 `Demo.Android/native/sweetline/*`）
+- 触摸、长按、双击、拖选、IME 遮挡与 selection menu 行为由 Avalonia 控件层做额外适配。
+- Native asset：
+  - SweetEditor Android、Windows、Linux 资产由 `SweetEditor.csproj` 声明。
+  - SweetEditor macOS、iOS app bundle 引用由 `platform/Avalonia/Directory.Build.targets` 注入。
+  - SweetLine native asset 由 SweetLine NuGet 包提供。
 
 ### 桌面
 
@@ -493,4 +495,4 @@ public float GetDecorationOverscanViewportMultiplier()
 
 - 当前 Avalonia 平台已经按项目标准实现 `SweetEditorControl`、`SweetEditorController`、`EditorSettings`、provider 管理、事件系统、selection menu、ghost、perf overlay 等宿主 API。
 - Android Demo 主路径明确要求使用 SweetLine native，不自行实现另一套高亮引擎。
-- 宿主对输入法、触摸、选区菜单、completion popup 和大文档高亮都做了平台兼容性适配；若文档与代码冲突，以代码为准。
+- 输入法、触摸、选区菜单、completion popup 和大文档高亮都由 Avalonia 控件层或 Demo provider 明确分工处理。

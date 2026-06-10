@@ -56,6 +56,16 @@ public struct TextChange {
     }
 }
 
+public struct TextEdit {
+    public var range: TextRange = TextRange()
+    public var new_text: String = ""
+
+    public init(range: TextRange = TextRange(), new_text: String = "") {
+        self.range = range
+        self.new_text = new_text
+    }
+}
+
 public struct TextPosition {
     public var line: Int32 = 0
     public var column: Int32 = 0

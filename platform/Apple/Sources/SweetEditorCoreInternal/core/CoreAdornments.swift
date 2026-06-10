@@ -63,11 +63,13 @@ public enum SeparatorStyle: Int32 {
 public enum SpanLayer: Int32 {
     case SYNTAX = 0
     case SEMANTIC = 1
+    case OVERLAY = 2
 
     public static func fromValue(_ value: Int32) -> SpanLayer {
         switch value {
         case 0: return .SYNTAX
         case 1: return .SEMANTIC
+        case 2: return .OVERLAY
         default: return .SYNTAX
         }
     }

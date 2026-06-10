@@ -937,6 +937,14 @@ namespace SweetEditor {
 			DispatchEditorActionResult(result);
 		}
 
+		/// <summary>Inserts text at the specified document position.</summary>
+		/// <param name="position">Insertion position.</param>
+		/// <param name="text">Text content.</param>
+		public void InsertTextAt(TextPosition position, string text) {
+			if (IsReleased || position == null || text == null) return;
+			ReplaceText(new TextRange(position, position), text);
+		}
+
 		/// <summary>Replaces text.</summary>
 		/// <param name="range">Target text range.</param>
 		/// <param name="newText">Replacement text.</param>
@@ -951,6 +959,14 @@ namespace SweetEditor {
 		public void DeleteText(TextRange range) {
 			if (IsReleased) return;
 			var result = editorCore.DeleteText(range);
+			DispatchEditorActionResult(result);
+		}
+
+		/// <summary>Applies multiple text edits as one undoable operation.</summary>
+		/// <param name="edits">Text edits using the original document coordinates. The first edit is the primary edit.</param>
+		public void ApplyTextEdits(IReadOnlyList<TextEdit> edits) {
+			if (IsReleased || edits == null) return;
+			var result = editorCore.ApplyTextEdits(edits);
 			DispatchEditorActionResult(result);
 		}
 
@@ -2013,33 +2029,34 @@ namespace SweetEditor {
 
 		/// <summary>Applies completion item.</summary>
 		private void ApplyCompletionItem(CompletionItem item) {
-			var textEdit = item.TextEdit;
 			bool isSnippet = item.InsertTextFormat == CompletionItem.INSERT_TEXT_FORMAT_SNIPPET;
 			string text = item.InsertText ?? item.Label;
 
-			TextRange replaceRange = default;
-			bool hasReplaceRange = false;
-			if (textEdit != null) {
-				replaceRange = textEdit.Range;
-				text = textEdit.NewText;
-				hasReplaceRange = true;
-			} else {
-				TextRange wordRange = GetWordRangeAtCursor();
-				if (!wordRange.IsCollapsed) {
-					replaceRange = wordRange;
-					hasReplaceRange = true;
+			if (item.TextEdit != null) {
+				text = item.TextEdit.NewText;
+				var edits = new List<TextEdit>(item.AdditionalTextEdits.Count + 1);
+				edits.Add(isSnippet ? new TextEdit(item.TextEdit.Range, string.Empty) : item.TextEdit);
+				edits.AddRange(item.AdditionalTextEdits);
+				ApplyTextEdits(edits);
+				if (isSnippet) {
+					InsertSnippet(text);
 				}
-			}
-
-			if (isSnippet) {
-				if (hasReplaceRange) {
-					DeleteText(replaceRange);
+			} else if (item.AdditionalTextEdits.Count == 0) {
+				if (isSnippet) {
+					InsertSnippet(text);
+				} else {
+					InsertText(text);
 				}
-				InsertSnippet(text);
-			} else if (hasReplaceRange) {
-				ReplaceText(replaceRange, text);
 			} else {
-				InsertText(text);
+				TextPosition cursor = GetCursorPosition();
+				TextEdit primaryEdit = new(new TextRange(cursor, cursor), isSnippet ? string.Empty : text);
+				var edits = new List<TextEdit>(item.AdditionalTextEdits.Count + 1);
+				edits.Add(primaryEdit);
+				edits.AddRange(item.AdditionalTextEdits);
+				ApplyTextEdits(edits);
+				if (isSnippet) {
+					InsertSnippet(text);
+				}
 			}
 		}
 

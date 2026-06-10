@@ -30,7 +30,8 @@ namespace SweetEditor {
 
     public enum SpanLayer {
         SYNTAX = 0,
-        SEMANTIC = 1
+        SEMANTIC = 1,
+        OVERLAY = 2
     }
 
     public sealed partial class BracketGuide {

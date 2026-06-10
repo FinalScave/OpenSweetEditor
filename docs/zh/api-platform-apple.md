@@ -36,6 +36,8 @@ func onFontMetricsChanged()
 
 ### 输入与文本编辑
 
+`SweetEditorCore` 方法返回 `EditorActionResult`；`SweetEditorViewMacOS` 与 `SweetEditorViewiOS` 会在内部消费这些结果，对宿主暴露的编辑方法返回 `Void`。
+
 ```swift
 func handleGestureEvent(
     type: SEEventType,
@@ -51,8 +53,10 @@ func handleKeyEvent(
     modifiers: SEModifier = []) -> EditorActionResultData?
 
 func insertText(_ text: String) -> EditorActionResultData?
+func insertText(at position: TextPosition, text: String)
 func replaceText(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int, newText: String) -> EditorActionResultData?
 func deleteText(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) -> EditorActionResultData?
+func applyTextEdits(_ edits: [TextEdit]) -> EditorActionResultData?
 ```
 
 ### 行操作
@@ -178,6 +182,7 @@ iOS 视图层文件：
 iOS 侧在共享 Core 之上额外封装：
 
 - DecorationProvider：`add/remove/requestDecorationRefresh`
+- DecorationProvider 返回 `DecorationResult`；每种 decoration family 都有对应的 `DecorationApplyMode`（`merge`、`replaceAll`、`replaceRange`）。
 - CompletionProvider：`add/remove/trigger/show/dismiss`
 - 语言配置：`setLanguageConfiguration(_:)`（同步 bracket pairs 到 Core）
 - 元数据泛型接口：`setMetadata<T: EditorMetadata>(_:)` / `getMetadata<T: EditorMetadata>() -> T?`

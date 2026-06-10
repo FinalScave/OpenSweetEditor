@@ -469,6 +469,15 @@ const uint8_t* editor_delete_text(intptr_t editor_handle,
   return editorActionResultToBinary(result, out_size);
 }
 
+const uint8_t* editor_apply_text_edits(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  protocol::ApplyTextEditsPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) {
+    return nullBinaryPayload(out_size);
+  }
+  return editorActionResultToBinary(editor_core->applyTextEdits(std::move(payload.edits)), out_size);
+}
+
 const uint8_t* editor_backspace(intptr_t editor_handle, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {

@@ -85,7 +85,15 @@ public final class DemoDecorationProvider: DecorationProvider {
                 flowGuides: guidePack.flowGuides,
                 separatorGuides: guidePack.separatorGuides,
                 foldRegions: foldRegions,
-                phantomTexts: phantomTexts
+                phantomTexts: phantomTexts,
+                inlayHintsMode: .replaceRange,
+                diagnosticsMode: .replaceRange,
+                indentGuidesMode: .replaceRange,
+                bracketGuidesMode: .replaceRange,
+                flowGuidesMode: .replaceRange,
+                separatorGuidesMode: .replaceRange,
+                foldRegionsMode: .replaceAll,
+                phantomTextsMode: .replaceRange
             )
         )
     }

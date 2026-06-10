@@ -13,11 +13,12 @@
 namespace NS_SWEETEDITOR {
   /// Highlight layer enum (priority from low to high, higher layers cover lower layers)
   enum struct SE_PROTOCOL_ENUM(adornment, SYNTAX) SpanLayer : uint8_t {
-    SYNTAX   = 0,  // Syntax highlight (base layer, full coverage)
-    SEMANTIC = 1,  // Semantic highlight (LSP semantic tokens, covers syntax layer)
+    SYNTAX   = 0,  // Syntax highlight
+    SEMANTIC = 1,  // Semantic highlight
+    OVERLAY  = 2,  // Host or plugin overlay highlight
   };
   /// Total number of highlight layers
-  constexpr size_t kSpanLayerCount = 2;
+  constexpr size_t kSpanLayerCount = 3;
 
   /// Font style bit flags, combine multiple styles with bit operations
   /// Platform side unpacks with (font_style & FONT_STYLE_BOLD) != 0

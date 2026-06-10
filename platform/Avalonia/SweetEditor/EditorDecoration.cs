@@ -10,18 +10,19 @@ namespace SweetEditor {
 	public enum DecorationType {
 		SyntaxHighlight = 1 << 0,
 		SemanticHighlight = 1 << 1,
-		InlayHint = 1 << 2,
-		Diagnostic = 1 << 3,
-		FoldRegion = 1 << 4,
-		IndentGuide = 1 << 5,
-		BracketGuide = 1 << 6,
-		FlowGuide = 1 << 7,
-		SeparatorGuide = 1 << 8,
-		GutterIcon = 1 << 9,
-		PhantomText = 1 << 10,
-		CodeLens = 1 << 11,
-		Link = 1 << 12,
-		DocumentHighlight = 1 << 13,
+		OverlayHighlight = 1 << 2,
+		InlayHint = 1 << 3,
+		Diagnostic = 1 << 4,
+		FoldRegion = 1 << 5,
+		IndentGuide = 1 << 6,
+		BracketGuide = 1 << 7,
+		FlowGuide = 1 << 8,
+		SeparatorGuide = 1 << 9,
+		GutterIcon = 1 << 10,
+		PhantomText = 1 << 11,
+		CodeLens = 1 << 12,
+		Link = 1 << 13,
+		DocumentHighlight = 1 << 14,
 	}
 
 	public enum DecorationApplyMode {
@@ -64,6 +65,7 @@ namespace SweetEditor {
 	public sealed class DecorationResult {
 		public Dictionary<int, List<StyleSpan>>? SyntaxSpans { get; set; }
 		public Dictionary<int, List<StyleSpan>>? SemanticSpans { get; set; }
+		public Dictionary<int, List<StyleSpan>>? OverlaySpans { get; set; }
 		public Dictionary<int, List<InlayHint>>? InlayHints { get; set; }
 		public Dictionary<int, List<Diagnostic>>? Diagnostics { get; set; }
 		public Dictionary<int, List<DocumentHighlight>>? DocumentHighlights { get; set; }
@@ -79,6 +81,7 @@ namespace SweetEditor {
 
 		public DecorationApplyMode SyntaxSpansMode { get; set; } = DecorationApplyMode.MERGE;
 		public DecorationApplyMode SemanticSpansMode { get; set; } = DecorationApplyMode.MERGE;
+		public DecorationApplyMode OverlaySpansMode { get; set; } = DecorationApplyMode.MERGE;
 		public DecorationApplyMode InlayHintsMode { get; set; } = DecorationApplyMode.MERGE;
 		public DecorationApplyMode DiagnosticsMode { get; set; } = DecorationApplyMode.MERGE;
 		public DecorationApplyMode DocumentHighlightsMode { get; set; } = DecorationApplyMode.MERGE;
@@ -96,6 +99,7 @@ namespace SweetEditor {
 			return new DecorationResult {
 				SyntaxSpans = CopyMap(SyntaxSpans),
 				SemanticSpans = CopyMap(SemanticSpans),
+				OverlaySpans = CopyMap(OverlaySpans),
 				InlayHints = CopyMap(InlayHints),
 				Diagnostics = CopyMap(Diagnostics),
 				DocumentHighlights = CopyMap(DocumentHighlights),
@@ -110,6 +114,7 @@ namespace SweetEditor {
 				Links = CopyMap(Links),
 				SyntaxSpansMode = SyntaxSpansMode,
 				SemanticSpansMode = SemanticSpansMode,
+				OverlaySpansMode = OverlaySpansMode,
 				InlayHintsMode = InlayHintsMode,
 				DiagnosticsMode = DiagnosticsMode,
 				DocumentHighlightsMode = DocumentHighlightsMode,
@@ -380,6 +385,7 @@ namespace SweetEditor {
 
 			var syntaxSpans = new Dictionary<int, List<StyleSpan>>();
 			var semanticSpans = new Dictionary<int, List<StyleSpan>>();
+			var overlaySpans = new Dictionary<int, List<StyleSpan>>();
 			var inlayHints = new Dictionary<int, List<InlayHint>>();
 			var diagnostics = new Dictionary<int, List<Diagnostic>>();
 			var documentHighlights = new Dictionary<int, List<DocumentHighlight>>();
@@ -395,6 +401,7 @@ namespace SweetEditor {
 
 			DecorationApplyMode syntaxMode = DecorationApplyMode.MERGE;
 			DecorationApplyMode semanticMode = DecorationApplyMode.MERGE;
+			DecorationApplyMode overlayMode = DecorationApplyMode.MERGE;
 			DecorationApplyMode inlayMode = DecorationApplyMode.MERGE;
 			DecorationApplyMode diagnosticMode = DecorationApplyMode.MERGE;
 			DecorationApplyMode documentHighlightMode = DecorationApplyMode.MERGE;
@@ -420,6 +427,10 @@ namespace SweetEditor {
 				semanticMode = MergeMode(semanticMode, result.SemanticSpansMode);
 				if (result.SemanticSpans != null) {
 					AppendMap(semanticSpans, result.SemanticSpans);
+				}
+				overlayMode = MergeMode(overlayMode, result.OverlaySpansMode);
+				if (result.OverlaySpans != null) {
+					AppendMap(overlaySpans, result.OverlaySpans);
 				}
 				inlayMode = MergeMode(inlayMode, result.InlayHintsMode);
 				if (result.InlayHints != null) {
@@ -474,8 +485,10 @@ namespace SweetEditor {
 			bool changed = false;
 			changed |= ApplySpanMode(SpanLayer.SYNTAX, syntaxMode, currentContextStartLine, currentContextEndLine);
 			changed |= ApplySpanMode(SpanLayer.SEMANTIC, semanticMode, currentContextStartLine, currentContextEndLine);
+			changed |= ApplySpanMode(SpanLayer.OVERLAY, overlayMode, currentContextStartLine, currentContextEndLine);
 			changed |= ApplySpans(SpanLayer.SYNTAX, syntaxSpans);
 			changed |= ApplySpans(SpanLayer.SEMANTIC, semanticSpans);
+			changed |= ApplySpans(SpanLayer.OVERLAY, overlaySpans);
 			changed |= ApplyInlayMode(inlayMode, currentContextStartLine, currentContextEndLine);
 			changed |= ApplyInlayHints(inlayHints);
 			changed |= ApplyDiagnosticMode(diagnosticMode, currentContextStartLine, currentContextEndLine);
@@ -969,6 +982,14 @@ namespace SweetEditor {
 			} else if (patchResult.SemanticSpansMode != DecorationApplyMode.MERGE) {
 				snapshot.SemanticSpans = null;
 				snapshot.SemanticSpansMode = patchResult.SemanticSpansMode;
+			}
+
+			if (patchResult.OverlaySpans != null) {
+				snapshot.OverlaySpans = patchResult.OverlaySpans;
+				snapshot.OverlaySpansMode = patchResult.OverlaySpansMode;
+			} else if (patchResult.OverlaySpansMode != DecorationApplyMode.MERGE) {
+				snapshot.OverlaySpans = null;
+				snapshot.OverlaySpansMode = patchResult.OverlaySpansMode;
 			}
 
 			if (patchResult.InlayHints != null) {

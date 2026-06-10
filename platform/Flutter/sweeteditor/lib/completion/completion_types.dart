@@ -22,19 +22,13 @@ class CompletionItem {
   String? detail;
   String? insertText;
   int insertTextFormat = insertTextFormatPlainText;
-  CompletionTextEdit? textEdit;
+  core.TextEdit? textEdit;
+  final List<core.TextEdit> additionalTextEdits = [];
   String? filterText;
   String? sortKey;
   int kind = kindText;
 
   String get matchText => filterText ?? label;
-}
-
-class CompletionTextEdit {
-  const CompletionTextEdit({required this.range, required this.newText});
-
-  final core.TextRange range;
-  final String newText;
 }
 
 enum CompletionTriggerKind { invoked, character, retrigger }

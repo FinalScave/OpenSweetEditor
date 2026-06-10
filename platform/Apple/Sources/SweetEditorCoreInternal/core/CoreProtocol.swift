@@ -630,6 +630,32 @@ enum CoreProtocol {
         return values
     }
 
+    static func readTextEditList(_ reader: inout BinaryReader) -> [TextEdit]? {
+        guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
+        var values: [TextEdit] = []
+        values.reserveCapacity(Int(countValue))
+        for _ in 0..<Int(countValue) {
+            guard let value = readTextEdit(&reader) else { return nil }
+            values.append(value)
+        }
+        return values
+    }
+
+    static func writeTextEditList(_ writer: inout BinaryWriter, _ values: [TextEdit]) {
+        writer.writeInt32(Int32(values.count))
+        for value in values {
+            writeTextEdit(&writer, value)
+        }
+    }
+
+    static func sizeOfTextEditList(_ values: [TextEdit]) -> Int {
+        var size = 4
+        for value in values {
+            size += sizeOfTextEdit(value)
+        }
+        return size
+    }
+
     static func readTextPositionList(_ reader: inout BinaryReader) -> [TextPosition]? {
         guard let countValue = reader.readInt32(), countValue >= 0, Int(countValue) <= reader.remaining else { return nil }
         var values: [TextPosition] = []
@@ -1160,6 +1186,32 @@ enum CoreProtocol {
     static func decodeTextChange(_ data: UnsafeRawBufferPointer) -> TextChange? {
         var reader = BinaryReader(data)
         return readTextChange(&reader)
+    }
+
+    static func readTextEdit(_ reader: inout BinaryReader) -> TextEdit? {
+        guard let range = readTextRange(&reader) else { return nil }
+        guard let new_text = reader.readUtf8String() else { return nil }
+        return TextEdit(range: range, new_text: new_text)
+    }
+
+    static func decodeTextEdit(_ data: Data) -> TextEdit? {
+        return data.withUnsafeBytes { raw in
+            decodeTextEdit(raw)
+        }
+    }
+
+    static func decodeTextEdit(_ data: UnsafeRawBufferPointer) -> TextEdit? {
+        var reader = BinaryReader(data)
+        return readTextEdit(&reader)
+    }
+
+    static func writeTextEdit(_ writer: inout BinaryWriter, _ value: TextEdit) {
+        writeTextRange(&writer, value.range)
+        writer.writeUtf8String(value.new_text)
+    }
+
+    static func sizeOfTextEdit(_ value: TextEdit) -> Int {
+        sizeOfTextRange(value.range) + sizeOfUtf8String(value.new_text)
     }
 
     static func readTextPosition(_ reader: inout BinaryReader) -> TextPosition? {
@@ -2401,6 +2453,22 @@ enum CoreProtocol {
     static func encodeScrollbarConfig(_ value: ScrollbarConfig) -> Data {
         var writer = BinaryWriter()
         writeScrollbarConfig(&writer, value)
+        return writer.data()
+    }
+
+    static func writeApplyTextEditsPayloadWire(_ writer: inout BinaryWriter, edits: [TextEdit]) {
+        writeTextEditList(&writer, edits)
+    }
+
+    static func sizeOfApplyTextEditsPayloadWire(edits: [TextEdit]) -> Int {
+        var size = 0
+        size += sizeOfTextEditList(edits)
+        return size
+    }
+
+    static func encodeApplyTextEditsPayload(edits: [TextEdit]) -> Data {
+        var writer = BinaryWriter()
+        writeApplyTextEditsPayloadWire(&writer, edits: edits)
         return writer.data()
     }
 

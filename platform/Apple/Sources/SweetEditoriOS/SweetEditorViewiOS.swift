@@ -940,6 +940,17 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         }
     }
 
+    /// Inserts text at the specified document position.
+    func insertText(at position: TextPosition, text: String) {
+        replaceText(
+            startLine: position.line,
+            startColumn: position.column,
+            endLine: position.line,
+            endColumn: position.column,
+            newText: text
+        )
+    }
+
     /// Replaces text in a target range atomically, then refreshes decorations and redraws.
     func replaceText(startLine: Int, startColumn: Int,
                      endLine: Int, endColumn: Int,
@@ -957,6 +968,12 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         let editResult = editorCore.deleteText(
             startLine: startLine, startColumn: startColumn,
             endLine: endLine, endColumn: endColumn)
+        dispatchEditorActionResult(editResult)
+    }
+
+    /// Applies multiple text edits as one undoable operation.
+    func applyTextEdits(_ edits: [TextEdit]) {
+        let editResult = editorCore.applyTextEdits(edits)
         dispatchEditorActionResult(editResult)
     }
 
@@ -1261,41 +1278,42 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         }
     }
 
-    /// Completion confirm callback: prefer `textEdit` replacement, otherwise fall back to `wordRange`.
+    /// Completion confirm callback: `textEdit` is the only source of replacement range semantics.
     private func applyCompletionItem(_ item: CompletionItem) {
         let isSnippet = item.insertTextFormat == CompletionItem.insertTextFormatSnippet
         var text = item.insertText ?? item.label
 
-        // Resolve replacement range: prefer textEdit, otherwise fall back to wordRange.
-        var replaceRange: (startLine: Int, startColumn: Int, endLine: Int, endColumn: Int)? = nil
         if let textEdit = item.textEdit {
-            replaceRange = (
-                Int(textEdit.range.start.line),
-                Int(textEdit.range.start.column),
-                Int(textEdit.range.end.line),
-                Int(textEdit.range.end.column)
+            text = textEdit.new_text
+            var edits: [TextEdit] = []
+            edits.append(isSnippet ? TextEdit(range: textEdit.range, new_text: "") : textEdit)
+            edits.append(contentsOf: item.additionalTextEdits)
+            applyTextEdits(edits)
+            if isSnippet {
+                let editResult = editorCore.insertSnippet(text)
+                dispatchEditorActionResult(editResult)
+            }
+        } else if item.additionalTextEdits.isEmpty {
+            if isSnippet {
+                let editResult = editorCore.insertSnippet(text)
+                dispatchEditorActionResult(editResult)
+            } else {
+                insertText(text)
+            }
+        } else {
+            let cursor = getCursorPosition() ?? TextPosition(line: 0, column: 0)
+            let primaryEdit = TextEdit(
+                range: TextRange(start: cursor, end: cursor),
+                new_text: isSnippet ? "" : text
             )
-            text = textEdit.newText
-        } else {
-            let wr = getWordRangeAtCursor()
-            if !wr.isCollapsed {
-                replaceRange = (Int(wr.start.line), Int(wr.start.column), Int(wr.end.line), Int(wr.end.column))
+            var edits: [TextEdit] = []
+            edits.append(primaryEdit)
+            edits.append(contentsOf: item.additionalTextEdits)
+            applyTextEdits(edits)
+            if isSnippet {
+                let editResult = editorCore.insertSnippet(text)
+                dispatchEditorActionResult(editResult)
             }
-        }
-
-        if isSnippet {
-            if let range = replaceRange {
-                deleteText(startLine: range.startLine, startColumn: range.startColumn,
-                           endLine: range.endLine, endColumn: range.endColumn)
-            }
-            let editResult = editorCore.insertSnippet(text)
-            dispatchEditorActionResult(editResult)
-        } else if let range = replaceRange {
-            replaceText(startLine: range.startLine, startColumn: range.startColumn,
-                        endLine: range.endLine, endColumn: range.endColumn,
-                        newText: text)
-        } else {
-            insertText(text)
         }
     }
 

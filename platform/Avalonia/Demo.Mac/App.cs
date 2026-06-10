@@ -18,8 +18,6 @@ public sealed class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        DemoPlatformServices.Current = new MacDemoPlatformServices();
-
         Control mainView = new DeferredMainViewHost();
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -34,15 +32,8 @@ public sealed class App : Application
                 Content = mainView,
                 WindowStartupLocation = WindowStartupLocation.CenterScreen,
             };
-
-            desktop.Exit += OnApplicationExit;
         }
 
         base.OnFrameworkInitializationCompleted();
-    }
-
-    private void OnApplicationExit(object? sender, ControlledApplicationLifetimeExitEventArgs e)
-    {
-        DemoPlatformServices.Current?.Dispose();
     }
 }

@@ -256,12 +256,16 @@ public handleKeyEvent(keyCode: number, text: string | null, modifiers: number): 
 
 ### Text Edit / Cursor / Selection / Composition
 
+These are `SweetEditor` view methods. The underlying `EditorCore` calls return `EditorActionResult`, and the view dispatches those results internally.
+
 ```ts
-public insertText(text: string): EditorActionResult
-public replaceText(...): EditorActionResult
-public deleteText(...): EditorActionResult
-public backspace(): EditorActionResult
-public deleteForward(): EditorActionResult
+public insertText(text: string): void
+public insertTextAt(position: TextPosition, text: string): void
+public replaceText(...): void
+public deleteText(...): void
+public applyTextEdits(edits: TextEdit[]): void
+public backspace(): void
+public deleteForward(): void
 public getCursorPosition(): TextPosition
 public getWordRangeAtCursor(): TextRange
 public getWordAtCursor(): string
@@ -269,10 +273,10 @@ public setCursorPosition(line: number, column: number): void
 public setSelection(...): void
 public getSelection(): TextRange | null
 public getSelectedText(): string
-public updateImePreedit(text: string, scriptHint?: number): EditorActionResult
-public commitImeText(text: string, scriptHint?: number): EditorActionResult
-public cancelImePreedit(): EditorActionResult
-public markImeDocumentRange(range: TextRange, scriptHint?: number): EditorActionResult
+public updateImePreedit(text: string, scriptHint?: number): void
+public commitImeText(text: string, scriptHint?: number): void
+public cancelImePreedit(): void
+public markImeDocumentRange(range: TextRange, scriptHint?: number): void
 public isComposing(): boolean
 ```
 

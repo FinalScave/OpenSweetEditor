@@ -41,6 +41,7 @@ export const editorSetGutterVisible: (handle: number, visible: boolean) => Array
 export const editorInsertText: (handle: number, text: string) => ArrayBuffer | undefined;
 export const editorReplaceText: (handle: number, startLine: number, startColumn: number, endLine: number, endColumn: number, text: string) => ArrayBuffer | undefined;
 export const editorDeleteText: (handle: number, startLine: number, startColumn: number, endLine: number, endColumn: number) => ArrayBuffer | undefined;
+export const editorApplyTextEdits: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;
 export const editorBackspace: (handle: number) => ArrayBuffer | undefined;
 export const editorDeleteForward: (handle: number) => ArrayBuffer | undefined;
 

@@ -40,6 +40,7 @@ import com.qiplat.sweeteditor.core.foundation.OffsetRect;
 import com.qiplat.sweeteditor.core.foundation.PointF;
 import com.qiplat.sweeteditor.core.foundation.Rect;
 import com.qiplat.sweeteditor.core.foundation.TextChange;
+import com.qiplat.sweeteditor.core.foundation.TextEdit;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
 import com.qiplat.sweeteditor.core.ime.ImeContextPolicy;
@@ -527,6 +528,36 @@ public final class CoreProtocol {
             values.add(readTextChange(data));
         }
         return values;
+    }
+
+    private static ArrayList<TextEdit> readTextEditList(ByteBuffer data) {
+        int count = data.getInt();
+        if (count < 0 || count > data.remaining()) {
+            throw new IllegalArgumentException("Invalid protocol length.");
+        }
+        ArrayList<TextEdit> values = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            values.add(readTextEdit(data));
+        }
+        return values;
+    }
+
+    private static void writeTextEditList(ByteBuffer data, java.util.List<? extends TextEdit> values) {
+        int count = values == null ? 0 : values.size();
+        data.putInt(count);
+        for (int i = 0; i < count; i++) {
+            writeTextEditFields(data, values.get(i));
+        }
+    }
+
+    private static int sizeOfTextEditList(java.util.List<? extends TextEdit> values) {
+        int size = 4;
+        if (values != null) {
+            for (int i = 0; i < values.size(); i++) {
+                size += sizeOfTextEdit(values.get(i));
+            }
+        }
+        return size;
     }
 
     private static ArrayList<TextPosition> readTextPositionList(ByteBuffer data) {
@@ -1261,6 +1292,35 @@ public final class CoreProtocol {
     public static TextChange decodeTextChange(ByteBuffer data) {
         prepare(data);
         return readTextChange(data);
+    }
+
+    private static TextEdit readTextEdit(ByteBuffer data) {
+        TextEdit value = new TextEdit();
+        value.range = readTextRange(data);
+        value.newText = readUtf8String(data);
+        return value;
+    }
+
+    public static TextEdit decodeTextEdit(ByteBuffer data) {
+        prepare(data);
+        return readTextEdit(data);
+    }
+
+    private static void writeTextEditFields(ByteBuffer data, TextEdit value) {
+        writeTextRangeFields(data, value.range);
+        writeUtf8String(data, value.newText);
+    }
+
+    public static void writeTextEdit(ByteBuffer data, TextEdit value) {
+        prepare(data);
+        writeTextEditFields(data, value);
+    }
+
+    public static int sizeOfTextEdit(TextEdit value) {
+        int size = 0;
+        size += sizeOfTextRange(value.range);
+        size += sizeOfUtf8String(value.newText);
+        return size;
     }
 
     private static TextPosition readTextPosition(ByteBuffer data) {
@@ -2744,6 +2804,29 @@ public final class CoreProtocol {
     public static ByteBuffer encodeScrollbarConfig(ScrollbarConfig value) {
         ByteBuffer data = ByteBuffer.allocateDirect(sizeOfScrollbarConfig(value)).order(ByteOrder.LITTLE_ENDIAN);
         writeScrollbarConfigFields(data, value);
+        data.flip();
+        return data;
+    }
+
+    public static ByteBuffer encodeApplyTextEditsPayload(java.util.List<? extends TextEdit> edits) {
+        int size = 0;
+        int editsCount = edits == null ? 0 : edits.size();
+        byte[][] editsNewTextUtf8 = new byte[editsCount][];
+        size += 4;
+        for (int editsIndex = 0; editsIndex < editsCount; editsIndex++) {
+            TextEdit editsItem = edits.get(editsIndex);
+            size += sizeOfTextRange(editsItem.range);
+            byte[] editsNewTextBytes = utf8Bytes(editsItem.newText);
+            editsNewTextUtf8[editsIndex] = editsNewTextBytes;
+            size += 4 + editsNewTextBytes.length;
+        }
+        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
+        data.putInt(editsCount);
+        for (int editsIndex = 0; editsIndex < editsCount; editsIndex++) {
+            TextEdit editsItem = edits.get(editsIndex);
+            writeTextRangeFields(data, editsItem.range);
+            writeUtf8Bytes(data, editsNewTextUtf8[editsIndex]);
+        }
         data.flip();
         return data;
     }

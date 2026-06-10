@@ -2,6 +2,7 @@
 // Created by Scave on 2025/12/2.
 //
 #include <cmath>
+#include <algorithm>
 #include <sweeteditor/foundation.h>
 
 namespace NS_SWEETEDITOR {
@@ -11,12 +12,28 @@ namespace NS_SWEETEDITOR {
     return column < other.column;
   }
 
+  bool TextPosition::operator<=(const TextPosition& other) const {
+    return !(other < *this);
+  }
+
   bool TextPosition::operator==(const TextPosition& other) const {
     return line == other.line && column == other.column;
   }
 
   bool TextPosition::operator!=(const TextPosition& other) const {
     return !(*this == other);
+  }
+
+  TextPosition TextPosition::withLineDelta(int64_t delta) const {
+    TextPosition result = *this;
+    if (delta >= 0) {
+      result.line += static_cast<size_t>(delta);
+      return result;
+    }
+
+    const size_t amount = static_cast<size_t>(-delta);
+    result.line = result.line > amount ? result.line - amount : 0;
+    return result;
   }
 
   U8String TextPosition::dump() const {
@@ -32,6 +49,61 @@ namespace NS_SWEETEDITOR {
 
   bool TextRange::contains(const TextPosition& pos) const {
     return !(pos < start) && (pos < end || pos == end);
+  }
+
+  bool TextRange::isCollapsed() const {
+    return start == end;
+  }
+
+  bool TextRange::overlaps(const TextRange& other) const {
+    const TextRange lhs = normalized();
+    const TextRange rhs = other.normalized();
+
+    if (lhs.isCollapsed() && rhs.isCollapsed()) {
+      return lhs.start == rhs.start;
+    }
+    if (lhs.isCollapsed()) {
+      return rhs.start <= lhs.start && lhs.start < rhs.end;
+    }
+    if (rhs.isCollapsed()) {
+      return lhs.start <= rhs.start && rhs.start < lhs.end;
+    }
+    return lhs.start < rhs.end && rhs.start < lhs.end;
+  }
+
+  TextRange TextRange::normalized() const {
+    TextRange range = *this;
+    if (range.end < range.start) {
+      std::swap(range.start, range.end);
+    }
+    return range;
+  }
+
+  TextPosition TextRange::transformPositionAfterEdit(TextPosition position, const TextPosition& new_end) const {
+    const TextRange old_range = normalized();
+    if (position < old_range.start) {
+      return position;
+    }
+    if (position <= old_range.end) {
+      return new_end;
+    }
+
+    const int64_t line_delta = static_cast<int64_t>(new_end.line) - static_cast<int64_t>(old_range.end.line);
+    TextPosition result = position.withLineDelta(line_delta);
+    if (position.line == old_range.end.line) {
+      if (new_end.line == old_range.end.line) {
+        const int64_t column_delta = static_cast<int64_t>(new_end.column) - static_cast<int64_t>(old_range.end.column);
+        if (column_delta >= 0) {
+          result.column = position.column + static_cast<size_t>(column_delta);
+        } else {
+          const size_t amount = static_cast<size_t>(-column_delta);
+          result.column = position.column > amount ? position.column - amount : 0;
+        }
+      } else {
+        result.column = new_end.column + (position.column - old_range.end.column);
+      }
+    }
+    return result;
   }
 
   U8String TextRange::dump() const {

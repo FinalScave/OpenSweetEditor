@@ -30,9 +30,4 @@
     <ProjectReference Include="..\Demo.Shared\Demo.Shared.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Include="..\..\..\prebuilt\osx\arm64\libsweeteditor.dylib"
-          Condition="Exists('..\..\..\prebuilt\osx\arm64\libsweeteditor.dylib')"
-          CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
 </Project>

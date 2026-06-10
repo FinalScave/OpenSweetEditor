@@ -630,6 +630,11 @@ public:
     return true;
   }
 
+  inline bool read(ApplyTextEditsPayload& out) {
+    if (!readList(out.edits)) return false;
+    return true;
+  }
+
   inline bool read(IntRange& out) {
     int32_t out_start_value{};
     if (!readI32(out_start_value)) return false;
@@ -674,6 +679,12 @@ public:
     float out_height_value{};
     if (!readF32(out_height_value)) return false;
     out.height = static_cast<float>(out_height_value);
+    return true;
+  }
+
+  inline bool read(TextEdit& out) {
+    if (!read(out.range)) return false;
+    if (!readUtf8String(out.new_text)) return false;
     return true;
   }
 
@@ -1411,6 +1422,11 @@ public:
     return true;
   }
 
+  inline bool write(const ApplyTextEditsPayload& value) {
+    if (!writeList(value.edits)) return false;
+    return true;
+  }
+
   inline bool write(const IntRange& value) {
     if (!writeI32(static_cast<int32_t>(value.start))) return false;
     if (!writeI32(static_cast<int32_t>(value.end))) return false;
@@ -1439,6 +1455,12 @@ public:
   }
 
   inline bool write(const TextChange& value) {
+    if (!write(value.range)) return false;
+    if (!writeUtf8String(value.new_text)) return false;
+    return true;
+  }
+
+  inline bool write(const TextEdit& value) {
     if (!write(value.range)) return false;
     if (!writeUtf8String(value.new_text)) return false;
     return true;

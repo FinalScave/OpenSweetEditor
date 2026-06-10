@@ -240,6 +240,11 @@ namespace NS_SWEETEDITOR {
     /// @return Exact change info
     EditorActionResult deleteText(const TextRange& range);
 
+    /// Apply multiple text edits as one undoable operation
+    /// @param edits Text edits using the original document coordinates. The first edit is the primary edit.
+    /// @return Exact change info
+    EditorActionResult applyTextEdits(Vector<TextEdit>&& edits);
+
     /// Delete selection; if no selection, delete one char before cursor (Backspace behavior)
     /// @return Exact change info
     EditorActionResult backspace();

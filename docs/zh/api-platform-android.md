@@ -134,21 +134,25 @@ public void setEditorIconProvider(@Nullable EditorIconProvider provider)
 
 ### 文本编辑 / 行操作 / 撤销重做
 
+这里列出的是 `SweetEditor` view 方法。底层 `EditorCore` 调用仍返回 `EditorActionResult`，view 会在内部统一分发这些结果。
+
 ```java
-public EditorCore.EditorActionResult insertText(String text)
-public EditorCore.EditorActionResult replaceText(TextRange range, String newText)
-public EditorCore.EditorActionResult deleteText(TextRange range)
+public void insertText(String text)
+public void insertTextAt(TextPosition position, String text)
+public void replaceText(TextRange range, String newText)
+public void deleteText(TextRange range)
+public void applyTextEdits(List<? extends TextEdit> edits)
 
-public EditorCore.EditorActionResult moveLineUp()
-public EditorCore.EditorActionResult moveLineDown()
-public EditorCore.EditorActionResult copyLineUp()
-public EditorCore.EditorActionResult copyLineDown()
-public EditorCore.EditorActionResult deleteLine()
-public EditorCore.EditorActionResult insertLineAbove()
-public EditorCore.EditorActionResult insertLineBelow()
+public void moveLineUp()
+public void moveLineDown()
+public void copyLineUp()
+public void copyLineDown()
+public void deleteLine()
+public void insertLineAbove()
+public void insertLineBelow()
 
-public EditorCore.EditorActionResult undo()
-public EditorCore.EditorActionResult redo()
+public void undo()
+public void redo()
 public boolean canUndo()
 public boolean canRedo()
 ```

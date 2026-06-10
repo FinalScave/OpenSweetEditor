@@ -15,6 +15,32 @@ ETS_MODEL_HELPERS = {
 }
 
 
+EMPTY_SEARCH_STATE_HELPER = """
+export function createEmptySearchState(): SearchState {
+  return {
+    status: SearchStatus.INACTIVE,
+    pattern: '',
+    options: {
+      caseSensitive: false,
+      wholeWord: false,
+      useRegex: false,
+      wrapAround: true,
+      maxMatches: 10000
+    },
+    generation: 0,
+    matchCount: 0,
+    currentIndex: -1,
+    hasCurrentMatch: false,
+    currentRange: {
+      start: { line: 0, column: 0 },
+      end: { line: 0, column: 0 }
+    },
+    errorMessage: ''
+  };
+}
+""".strip()
+
+
 def config_bool(value):
     return str(value).strip().lower() in ("1", "true", "yes", "on")
 
@@ -79,6 +105,18 @@ def augment_ets_model_file(path, item, schema, spec):
     path.write_text(text, encoding="utf-8")
 
 
+def augment_ets_search_file(out_root, target):
+    path = out_root / "CoreSearch.ets"
+    if not path.exists():
+        return None
+    text = path.read_text(encoding="utf-8")
+    if "export function createEmptySearchState" in text:
+        return None
+    text = text.rstrip() + "\n\n" + EMPTY_SEARCH_STATE_HELPER + "\n"
+    path.write_text(text, encoding="utf-8")
+    return str(path)
+
+
 def augment_ets(schema, target_name, target, out_root):
     if not ets_model_helpers_enabled(target):
         return []
@@ -93,4 +131,7 @@ def augment_ets(schema, target_name, target, out_root):
             raise SystemExit(f"ETS model helper target was not generated: {path}")
         augment_ets_model_file(path, item, schema, spec)
         written.append(str(path))
+    search_path = augment_ets_search_file(out_root, target)
+    if search_path is not None:
+        written.append(search_path)
     return written

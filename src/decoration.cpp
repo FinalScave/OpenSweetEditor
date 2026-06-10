@@ -42,6 +42,7 @@ namespace NS_SWEETEDITOR {
 
   void DecorationManager::setLineSpans(size_t line, SpanLayer layer, Vector<StyleSpan>&& spans) {
     size_t idx = static_cast<size_t>(layer);
+    if (idx >= kSpanLayerCount) return;
     auto& storage = m_layer_spans_[idx];
     if (storage.size() <= line) {
       storage.resize(line + 1);
@@ -69,6 +70,7 @@ namespace NS_SWEETEDITOR {
 
   const Vector<StyleSpan>& DecorationManager::getLineSpans(size_t line, SpanLayer layer) const {
     size_t idx = static_cast<size_t>(layer);
+    if (idx >= kSpanLayerCount) return kEmptySpans;
     const auto& storage = m_layer_spans_[idx];
     if (line >= storage.size()) return kEmptySpans;
     return storage[line];
@@ -253,7 +255,9 @@ namespace NS_SWEETEDITOR {
   }
 
   void DecorationManager::clearHighlights(SpanLayer layer) {
-    m_layer_spans_[static_cast<size_t>(layer)].clear();
+    size_t idx = static_cast<size_t>(layer);
+    if (idx >= kSpanLayerCount) return;
+    m_layer_spans_[idx].clear();
   }
 
   void DecorationManager::clearHighlights() {

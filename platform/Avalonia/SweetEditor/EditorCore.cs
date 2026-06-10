@@ -499,6 +499,9 @@ namespace SweetEditor {
 		internal static extern IntPtr DeleteText(IntPtr handle, int startLine, int startColumn, int endLine,
 												 int endColumn, out UIntPtr outSize);
 
+		[DllImport(LibraryName, EntryPoint = "editor_apply_text_edits", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ApplyTextEdits(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
+
 		[DllImport(LibraryName, EntryPoint = "editor_backspace", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr Backspace(IntPtr handle, out UIntPtr outSize);
 
@@ -1280,6 +1283,15 @@ namespace SweetEditor {
 		public EditorActionResult DeleteText(TextRange range) {
 			IntPtr payloadPtr = NativeMethods.DeleteText(nativeHandle, range.Start.Line, range.Start.Column,
 														 range.End.Line, range.End.Column, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Applies multiple text edits as one undoable operation.</summary>
+		/// <param name="edits">Text edits using the original document coordinates. The first edit is the primary edit.</param>
+		/// <returns>Edit result.</returns>
+		public EditorActionResult ApplyTextEdits(IReadOnlyList<TextEdit>? edits) {
+			byte[] payload = CoreProtocol.EncodeApplyTextEditsPayload(edits);
+			IntPtr payloadPtr = NativeMethods.ApplyTextEdits(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 

@@ -28,6 +28,7 @@ public class DecorationResult {
 
     private Map<Integer, List<StyleSpan>> syntaxSpans;
     private Map<Integer, List<StyleSpan>> semanticSpans;
+    private Map<Integer, List<StyleSpan>> overlaySpans;
     private Map<Integer, List<InlayHint>> inlayHints;
     private Map<Integer, List<Diagnostic>> diagnostics;
     private Map<Integer, List<DocumentHighlight>> documentHighlights;
@@ -43,6 +44,7 @@ public class DecorationResult {
 
     private ApplyMode syntaxSpansMode = ApplyMode.MERGE;
     private ApplyMode semanticSpansMode = ApplyMode.MERGE;
+    private ApplyMode overlaySpansMode = ApplyMode.MERGE;
     private ApplyMode inlayHintsMode = ApplyMode.MERGE;
     private ApplyMode diagnosticsMode = ApplyMode.MERGE;
     private ApplyMode documentHighlightsMode = ApplyMode.MERGE;
@@ -58,6 +60,7 @@ public class DecorationResult {
 
     public Map<Integer, List<StyleSpan>> getSyntaxSpans() { return syntaxSpans; }
     public Map<Integer, List<StyleSpan>> getSemanticSpans() { return semanticSpans; }
+    public Map<Integer, List<StyleSpan>> getOverlaySpans() { return overlaySpans; }
     public Map<Integer, List<InlayHint>> getInlayHints() { return inlayHints; }
     public Map<Integer, List<Diagnostic>> getDiagnostics() { return diagnostics; }
     public Map<Integer, List<DocumentHighlight>> getDocumentHighlights() { return documentHighlights; }
@@ -72,6 +75,7 @@ public class DecorationResult {
     public Map<Integer, List<LinkSpan>> getLinks() { return links; }
     public ApplyMode getSyntaxSpansMode() { return syntaxSpansMode; }
     public ApplyMode getSemanticSpansMode() { return semanticSpansMode; }
+    public ApplyMode getOverlaySpansMode() { return overlaySpansMode; }
     public ApplyMode getInlayHintsMode() { return inlayHintsMode; }
     public ApplyMode getDiagnosticsMode() { return diagnosticsMode; }
     public ApplyMode getDocumentHighlightsMode() { return documentHighlightsMode; }
@@ -87,6 +91,7 @@ public class DecorationResult {
 
     void setSyntaxSpans(Map<Integer, List<StyleSpan>> v) { this.syntaxSpans = v; }
     void setSemanticSpans(Map<Integer, List<StyleSpan>> v) { this.semanticSpans = v; }
+    void setOverlaySpans(Map<Integer, List<StyleSpan>> v) { this.overlaySpans = v; }
     void setInlayHints(Map<Integer, List<InlayHint>> v) { this.inlayHints = v; }
     void setDiagnostics(Map<Integer, List<Diagnostic>> v) { this.diagnostics = v; }
     void setDocumentHighlights(Map<Integer, List<DocumentHighlight>> v) { this.documentHighlights = v; }
@@ -101,6 +106,7 @@ public class DecorationResult {
     void setLinks(Map<Integer, List<LinkSpan>> v) { this.links = v; }
     void setSyntaxSpansMode(ApplyMode mode) { this.syntaxSpansMode = mode; }
     void setSemanticSpansMode(ApplyMode mode) { this.semanticSpansMode = mode; }
+    void setOverlaySpansMode(ApplyMode mode) { this.overlaySpansMode = mode; }
     void setInlayHintsMode(ApplyMode mode) { this.inlayHintsMode = mode; }
     void setDiagnosticsMode(ApplyMode mode) { this.diagnosticsMode = mode; }
     void setDocumentHighlightsMode(ApplyMode mode) { this.documentHighlightsMode = mode; }
@@ -118,6 +124,7 @@ public class DecorationResult {
         DecorationResult out = new DecorationResult();
         out.syntaxSpans = copyMapOfLists(syntaxSpans);
         out.semanticSpans = copyMapOfLists(semanticSpans);
+        out.overlaySpans = copyMapOfLists(overlaySpans);
         out.inlayHints = copyMapOfLists(inlayHints);
         out.diagnostics = copyMapOfLists(diagnostics);
         out.documentHighlights = copyMapOfLists(documentHighlights);
@@ -132,6 +139,7 @@ public class DecorationResult {
         out.links = copyMapOfLists(links);
         out.syntaxSpansMode = syntaxSpansMode;
         out.semanticSpansMode = semanticSpansMode;
+        out.overlaySpansMode = overlaySpansMode;
         out.inlayHintsMode = inlayHintsMode;
         out.diagnosticsMode = diagnosticsMode;
         out.documentHighlightsMode = documentHighlightsMode;
@@ -166,6 +174,7 @@ public class DecorationResult {
 
         public Builder syntaxSpans(Map<Integer, List<StyleSpan>> value, ApplyMode mode) { result.syntaxSpans = value; result.syntaxSpansMode = mode; return this; }
         public Builder semanticSpans(Map<Integer, List<StyleSpan>> value, ApplyMode mode) { result.semanticSpans = value; result.semanticSpansMode = mode; return this; }
+        public Builder overlaySpans(Map<Integer, List<StyleSpan>> value, ApplyMode mode) { result.overlaySpans = value; result.overlaySpansMode = mode; return this; }
         public Builder inlayHints(Map<Integer, List<InlayHint>> value, ApplyMode mode) { result.inlayHints = value; result.inlayHintsMode = mode; return this; }
         public Builder diagnostics(Map<Integer, List<Diagnostic>> value, ApplyMode mode) { result.diagnostics = value; result.diagnosticsMode = mode; return this; }
         public Builder documentHighlights(Map<Integer, List<DocumentHighlight>> value, ApplyMode mode) { result.documentHighlights = value; result.documentHighlightsMode = mode; return this; }

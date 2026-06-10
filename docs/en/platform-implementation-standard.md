@@ -25,7 +25,7 @@ The Core layer does not involve UI rendering. It contains only bridging, data mo
 | **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer` | Native bridge + public core API wrapper |
 | **Action** | `EditorActionResult`, `EditorActionReason`, `ScrollBehavior` | Core action result and action-related enums; `EditorActionResult` is the unified result carrier for core state-changing APIs |
 | **Config** | `EditorOptions`, `HandleConfig`, `ScrollbarConfig`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollbarMode`, `ScrollbarTrackTapMode`, `EditorRenderColors`, `EditorRangeEffectStyles`, `RangeEffectStyle`, `RangeEffectUnderlineStyle` | Runtime, construction, and editor render styling protocol types |
-| **Foundation** | `TextPosition`, `TextRange`, `IntRange`, `TextChange`, `PointF`, `Rect`, `OffsetRect` | Fundamental value types and geometry carriers |
+| **Foundation** | `TextPosition`, `TextRange`, `TextEdit`, `IntRange`, `TextChange`, `PointF`, `Rect`, `OffsetRect` | Fundamental value types and geometry carriers |
 | **Interaction** | `GestureEvent`, `GestureType`, `EventType`, `HitTarget`, `HitTargetType` | Input and hit-test protocol types |
 | **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextUnit`, `ImeTextModelMode`, `ImeTextReplacement`, `ImeDocumentTextReplacement`, `ImeInputContextTextReplacement`, `ImeInputStateTextReplacement`, `ImeTextModelState`, `ImeTextModelDelta` | IME synchronization snapshots, text-context protocol types, and replacement payload models; platform synchronization decisions are carried by `EditorActionResult` |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `DiagnosticSeverity`, `DocumentHighlight`, `DocumentHighlightKind`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | Decoration data types |
@@ -43,7 +43,7 @@ The Widget layer handles platform-native rendering, user interaction, and extens
 |---|---|---|
 | **Widget** | `SweetEditor`, `SweetEditorController` *(declarative frameworks MUST; imperative frameworks MAY)*, `EditorTheme`, `EditorSettings`, `EditorIconProvider`, `EditorMetadata`, `LanguageConfiguration` | Widget entry, controller, theme, configuration |
 | **Decoration** | `DecorationProvider`, `DecorationProviderManager`, `DecorationContext`, `DecorationResult`, `DecorationType`; if the Receiver callback pattern is used, `DecorationReceiver` is the recommended name | Decoration provider system |
-| **Completion** | `CompletionProvider`, `CompletionProviderManager`, `CompletionContext`, `CompletionItem`, `CompletionTextEdit`, `CompletionResult`; if the Receiver callback pattern is used, `CompletionReceiver` is the recommended name | Completion provider system |
+| **Completion** | `CompletionProvider`, `CompletionProviderManager`, `CompletionContext`, `CompletionItem`, `CompletionResult`; if the Receiver callback pattern is used, `CompletionReceiver` is the recommended name | Completion provider system |
 | **Event** | A type-safe event mechanism, `EditorEvent`, `TextChangedEvent`, `CursorChangedEvent`, `SelectionChangedEvent`, `ScrollChangedEvent`, `ScaleChangedEvent`, `DocumentLoadedEvent`, `FoldToggleEvent`, `GutterIconClickEvent`, `InlayHintClickEvent`, `CodeLensClickEvent`, `LinkClickEvent`, `LongPressEvent`*(mobile / touch platforms)*, `DoubleTapEvent`, `ContextMenuEvent`*(platforms with an explicit context-menu gesture entry point)*; if an explicit event-bus/listener pattern is used, `EditorEventBus` and `EditorEventListener` are the recommended names | Event system |
 | **NewLine** | `NewLineActionProvider`, `NewLineActionProviderManager`, `NewLineAction`, `NewLineContext` | Newline action provider system |
 | **Keymap** | `EditorKeyMap` | Widget-layer keymap extension that binds command ids to host-side handlers |
@@ -217,7 +217,7 @@ During construction or first-frame bootstrap before the editor runtime / dispatc
 | Configuration | `loadDocument(doc)`, `setViewport(w, h)`, `onFontMetricsChanged()`, `setFoldArrowMode(mode)`, `setWrapMode(mode)`, `setTabSize(size)`, `setInsertSpaces(enabled)`, `setScale(scale)`, `setLineSpacing(add, mult)`, `setContentStartPadding(padding)`, `setShowSplitLine(show)`, `setCurrentLineRenderMode(mode)`, `setGutterSticky(sticky)`, `setGutterVisible(visible)`, `setHandleConfig(...)`, `setScrollbarConfig(...)` |
 | Render model | `buildRenderModel()`, `getLayoutMetrics()` |
 | Gesture / keyboard | `handleGestureEvent(...)`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(bindings)` |
-| Text editing | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `backspace()`, `deleteForward()`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
+| Text editing | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `applyTextEdits(edits)`, `backspace()`, `deleteForward()`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
 | Undo / redo | `undo()`, `redo()`, `canUndo()`, `canRedo()` |
 | Cursor / selection | `setCursorPosition(line, col)`, `getCursorPosition()`, `selectAll()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `getSelectedText()`, `getWordRangeAtCursor()`, `getWordAtCursor()`, `moveCursorLeft(extend)`, `moveCursorRight(extend)`, `moveCursorUp(extend)`, `moveCursorDown(extend)`, `moveCursorToLineStart(extend)`, `moveCursorToLineEnd(extend)` |
 | IME | `getImeSyncSnapshot()`, `getImeInputContext(...)`, `getImeTextModelInputContext(...)`, `setImeKeyboardScriptClass(script)`, `getImeKeyboardScriptClass()`, `updateImePreedit(...)`, `setImeComposingText(...)`, `setImeComposingTextSelection(...)`, `commitImeText(...)`, `commitImeTextWithCursor(...)`, `replaceImeText(replacement)`, `replaceImeDocumentText(replacement)`, `replaceImeInputContextText(replacement)`, `finishImePreedit()`, `cancelImePreedit()`, `markImeDocumentRange(...)`, `markImeDocumentRangeByOffset(...)`, `markImeInputContextRange(...)`, `notifyImeDocumentSelectionChanged(...)`, `notifyImeInputContextSelectionChanged(...)`, `updateImeTextModelState(state)`, `updateImeTextModelDelta(delta)`, `updateImeInputStateSelection(...)`, `replaceImeInputStateText(replacement)`, `deleteImeBackward(length, unit)`, `deleteImeForward(length, unit)`, `deleteImeSurrounding(before, after, unit)`, `notifyImeSelectionChanged(range)`, `notifyImeCursorChanged(cursor)`, `getComposingRange()`, `getComposingSessionRange()`, `isComposing()` |
@@ -301,7 +301,7 @@ Except for items marked SHOULD / MAY, every host API listed below is MUST. Langu
 |---|---|
 | Document / theme | `loadDocument(doc)`, `getDocument()`, `applyTheme(theme)`, `getTheme()` |
 | Configuration | `getSettings()`, `getKeyMap()` *(SHOULD)*, `setKeyMap(keyMap)`, `setEditorIconProvider(provider)` |
-| Text editing | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
+| Text editing | `insertText(text)`, `insertTextAt(position, text)`, `replaceText(range, text)`, `deleteText(range)`, `applyTextEdits(edits)`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
 | Undo / redo | `undo()`, `redo()`, `canUndo()`, `canRedo()` |
 | Clipboard *(MAY)* | `copyToClipboard()`, `pasteFromClipboard()`, `cutToClipboard()` |
 | Cursor / selection | `selectAll()`, `getSelectedText()`, `setSelection(sL, sC, eL, eC)`, `getSelection()`, `setCursorPosition(pos)`, `getCursorPosition()`, `getWordRangeAtCursor()`, `getWordAtCursor()` |
@@ -340,7 +340,7 @@ Platforms MAY use Receiver callbacks, `Future` / `Promise` / `Task`, coroutines,
 |---|---|
 | `DecorationContext` | `visibleLineRange`, `totalLineCount`, `textChanges`, `languageConfiguration`, `editorMetadata` |
 | `ApplyMode` | `MERGE`, `REPLACE_ALL`, `REPLACE_RANGE`; merge priority is `REPLACE_ALL` > `REPLACE_RANGE` > `MERGE` |
-| `DecorationResult` | `syntaxSpans`, `semanticSpans`, `inlayHints`, `diagnostics`, `documentHighlights`, `indentGuides`, `bracketGuides`, `flowGuides`, `separatorGuides`, `foldRegions`, `gutterIcons`, `phantomTexts`, `codeLensItems`, `links`; every data family MUST have a corresponding `ApplyMode` field |
+| `DecorationResult` | `syntaxSpans`, `semanticSpans`, `overlaySpans`, `inlayHints`, `diagnostics`, `documentHighlights`, `indentGuides`, `bracketGuides`, `flowGuides`, `separatorGuides`, `foldRegions`, `gutterIcons`, `phantomTexts`, `codeLensItems`, `links`; every data family MUST have a corresponding `ApplyMode` field |
 | `DecorationType` | MUST include every decoration family above, including `DOCUMENT_HIGHLIGHT`, `CODELENS`, and `LINK` |
 
 Line-indexed data uses `Map<int, List<T>>` with 0-based line numbers. The Manager MUST merge snapshots according to `ApplyMode`: `MERGE` appends same-type data, `REPLACE_ALL` clears all existing data before writing, and `REPLACE_RANGE` replaces only data within `visibleLineRange`.
@@ -365,7 +365,7 @@ The Manager MUST iterate all Providers, merge returned `CompletionItem` values, 
 
 ## 5. `CompletionItem` Field Definitions (MUST)
 
-`CompletionItem` is the core data type of the completion system. Application priority on commit: `textEdit` → `insertText` → `label`.
+`CompletionItem` is the core data type of the completion system. Application priority on commit: `textEdit` → `insertText` → `label`. `textEdit` is the only implicit replacement range source; when it is absent, platforms MUST insert `insertText` / `label` at the current cursor rather than deriving a replacement range from `wordRange`. When `additionalTextEdits` is present without `textEdit`, platforms MUST use a collapsed cursor edit as `edits[0]`, then append `additionalTextEdits`.
 
 | Field | Type | MUST/MAY | Description |
 |---|---|---|---|
@@ -373,7 +373,8 @@ The Manager MUST iterate all Providers, merge returned `CompletionItem` values, 
 | `detail` | String? | **MAY** | Detailed description (displayed to the right of or below the label) |
 | `insertText` | String? | **MAY** | Insert text (takes priority over `label` for insertion) |
 | `insertTextFormat` | int | **MUST** | Insert text format: `PLAIN_TEXT=1` (default), `SNIPPET=2` (VSCode Snippet format, supports `$1`, `${1:default}`, `$0` placeholders) |
-| `textEdit` | CompletionTextEdit? | **MAY** | Precise replacement edit (specifies replacement range + new text), highest priority |
+| `textEdit` | TextEdit? | **MAY** | Precise replacement edit (specifies replacement range + new text), highest priority |
+| `additionalTextEdits` | List<TextEdit> | **MAY** | Extra edits applied together with the primary edit; ranges use the original document coordinates and MUST NOT overlap |
 | `filterText` | String? | **MAY** | Filter/match text (falls back to `label` when null) |
 | `sortKey` | String? | **MAY** | Sort key (falls back to `label` when null) |
 | `kind` | int | **MUST** | Completion item kind (affects icon display) |
@@ -392,12 +393,12 @@ The Manager MUST iterate all Providers, merge returned `CompletionItem` values, 
 | `KIND_SNIPPET` | 7 |
 | `KIND_TEXT` | 8 |
 
-**`CompletionTextEdit`** sub-type:
+**`TextEdit`** shared foundation type:
 
 | Field | Type | MUST/MAY | Description |
 |---|---|---|---|
 | `range` | TextRange | **MUST** | Replacement range |
-| `newText` | String | **MUST** | Replacement text |
+| `newText` / `new_text` | String | **MUST** | Replacement text; platforms MAY expose idiomatic field casing while keeping the generated protocol field order unchanged |
 
 ---
 
@@ -436,7 +437,7 @@ On mobile platforms, the selection menu module is SHOULD level. Desktop platform
 
 | Object / API | Constraint | Requirement |
 |---|---|---|
-| `SelectionMenuItem` | **MUST** | Fields include `id`, `label`; MAY include `enabled`, `iconId`. Built-in actions should use `cut`, `copy`, `paste`, `select_all`; custom actions MAY use any stable `id` |
+| `SelectionMenuItem` | **MUST** | Fields include `id`, `label`; MAY include `enabled`, `iconId`. Built-in actions should use `cut`, `copy`, `delete`, `paste`, `select_all`; custom actions MAY use any stable `id` |
 | `SelectionMenuItemProvider` | **MUST** | Provides `provideMenuItems(editor/equivalent) -> List<SelectionMenuItem>` or an equivalent API; returns the complete menu model for the current show cycle, not an incremental patch |
 | custom item callback | **MUST** | Platform MUST provide a listener, delegate, event, typed stream, or equivalent mechanism to observe custom item activation; explicit listeners should provide `onSelectionMenuItemSelected(itemId)` |
 | `setSelectionMenuItemProvider(provider)` | **MUST** | Configure custom selection-menu items; passing `null` SHOULD restore the platform default menu |
@@ -745,7 +746,7 @@ Enum and enum-like constant values MUST match the C++ core definitions. The foll
 | `ScrollbarMode` | ALWAYS=0, TRANSIENT=1, NEVER=2 |
 | `ScrollbarTrackTapMode` | JUMP=0, DISABLED=1 |
 | `ScrollBehavior` | TOP=0, CENTER=1, BOTTOM=2 |
-| `SpanLayer` | SYNTAX=0, SEMANTIC=1 |
+| `SpanLayer` | SYNTAX=0, SEMANTIC=1, OVERLAY=2 |
 | `InlayType` | TEXT=0, ICON=1, COLOR=2 |
 | `DiagnosticSeverity` | ERROR=0, WARNING=1, INFO=2, HINT=3 |
 | `DocumentHighlightKind` | TEXT=0, READ=1, WRITE=2 |
@@ -754,7 +755,7 @@ Enum and enum-like constant values MUST match the C++ core definitions. The foll
 | `VisualLineKind` | CONTENT=0, PHANTOM=1, CODELENS=2 |
 | `PointerCursorType` | DEFAULT=0, TEXT=1, HAND=2 |
 | `FoldState` | NONE=0, EXPANDED=1, COLLAPSED=2 |
-| `DecorationType` | SYNTAX_HIGHLIGHT, SEMANTIC_HIGHLIGHT, INLAY_HINT, DIAGNOSTIC, DOCUMENT_HIGHLIGHT, FOLD_REGION, INDENT_GUIDE, BRACKET_GUIDE, FLOW_GUIDE, SEPARATOR_GUIDE, GUTTER_ICON, PHANTOM_TEXT, CODELENS, LINK |
+| `DecorationType` | SYNTAX_HIGHLIGHT, SEMANTIC_HIGHLIGHT, OVERLAY_HIGHLIGHT, INLAY_HINT, DIAGNOSTIC, DOCUMENT_HIGHLIGHT, FOLD_REGION, INDENT_GUIDE, BRACKET_GUIDE, FLOW_GUIDE, SEPARATOR_GUIDE, GUTTER_ICON, PHANTOM_TEXT, CODELENS, LINK |
 | `HitTargetType` | NONE=0, INLAY_HINT_TEXT=1, INLAY_HINT_ICON=2, GUTTER_ICON=3, FOLD_PLACEHOLDER=4, FOLD_GUTTER=5, INLAY_HINT_COLOR=6, CODELENS=7, LINK=8 |
 | `GuideType` | INDENT=0, BRACKET=1, FLOW=2, SEPARATOR=3 |
 | `GuideDirection` | (platform-aligned with C++ core) |

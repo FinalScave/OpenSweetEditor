@@ -227,6 +227,7 @@ export class DecorationProviderManager {
 
     const syntaxSpans = new Map<number, StyleSpan[]>();
     const semanticSpans = new Map<number, StyleSpan[]>();
+    const overlaySpans = new Map<number, StyleSpan[]>();
     const inlayHints = new Map<number, InlayHint[]>();
     const diagnostics = new Map<number, Diagnostic[]>();
     const documentHighlights = new Map<number, DocumentHighlight[]>();
@@ -242,6 +243,7 @@ export class DecorationProviderManager {
 
     let syntaxMode = ApplyMode.MERGE;
     let semanticMode = ApplyMode.MERGE;
+    let overlayMode = ApplyMode.MERGE;
     let inlayMode = ApplyMode.MERGE;
     let diagnosticMode = ApplyMode.MERGE;
     let documentHighlightMode = ApplyMode.MERGE;
@@ -269,6 +271,10 @@ export class DecorationProviderManager {
       semanticMode = mergeMode(semanticMode, r.semanticSpansMode);
       if (r.semanticSpans) {
         appendMapOfArrays(semanticSpans, r.semanticSpans);
+      }
+      overlayMode = mergeMode(overlayMode, r.overlaySpansMode);
+      if (r.overlaySpans) {
+        appendMapOfArrays(overlaySpans, r.overlaySpans);
       }
       inlayMode = mergeMode(inlayMode, r.inlayHintsMode);
       if (r.inlayHints) {
@@ -323,8 +329,10 @@ export class DecorationProviderManager {
 
     this.applySpanMode(0, syntaxMode);
     this.applySpanMode(1, semanticMode);
+    this.applySpanMode(2, overlayMode);
     this.editor.setBatchLineSpans(0, syntaxSpans);
     this.editor.setBatchLineSpans(1, semanticSpans);
+    this.editor.setBatchLineSpans(2, overlaySpans);
 
     this.applyInlayMode(inlayMode);
     this.editor.setBatchLineInlayHints(inlayHints);
@@ -601,6 +609,13 @@ export class DecorationProviderManager {
     } else if (patch.semanticSpansMode !== ApplyMode.MERGE) {
       target.semanticSpans = null;
       target.semanticSpansMode = patch.semanticSpansMode;
+    }
+    if (patch.overlaySpans !== null) {
+      target.overlaySpans = patch.overlaySpans;
+      target.overlaySpansMode = patch.overlaySpansMode;
+    } else if (patch.overlaySpansMode !== ApplyMode.MERGE) {
+      target.overlaySpans = null;
+      target.overlaySpansMode = patch.overlaySpansMode;
     }
     if (patch.inlayHints !== null) {
       target.inlayHints = patch.inlayHints;

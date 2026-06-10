@@ -43,6 +43,8 @@ func onFontMetricsChanged()
 
 ### Input and Text Edit
 
+`SweetEditorCore` methods return `EditorActionResult`; `SweetEditorViewMacOS` and `SweetEditorViewiOS` consume those results internally and expose host editing methods as `Void`.
+
 ```swift
 func handleGestureEvent(
     type: SEEventType,
@@ -58,8 +60,10 @@ func handleKeyEvent(
     modifiers: SEModifier = []) -> EditorActionResultData?
 
 func insertText(_ text: String) -> EditorActionResultData?
+func insertText(at position: TextPosition, text: String)
 func replaceText(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int, newText: String) -> EditorActionResultData?
 func deleteText(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) -> EditorActionResultData?
+func applyTextEdits(_ edits: [TextEdit]) -> EditorActionResultData?
 ```
 
 ### Line Actions
@@ -185,6 +189,7 @@ iOS view-layer files:
 On top of shared core, iOS adds wrappers for:
 
 - DecorationProvider: `add/remove/requestDecorationRefresh`
+- Decoration providers return `DecorationResult`; each decoration family has a `DecorationApplyMode` (`merge`, `replaceAll`, `replaceRange`).
 - CompletionProvider: `add/remove/trigger/show/dismiss`
 - Language config: `setLanguageConfiguration(_:)` (syncs bracket pairs to Core)
 - Generic metadata API: `setMetadata<T: EditorMetadata>(_:)` / `getMetadata<T: EditorMetadata>() -> T?`

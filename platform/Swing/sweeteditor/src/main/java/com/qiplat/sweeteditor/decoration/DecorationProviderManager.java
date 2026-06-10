@@ -236,6 +236,7 @@ public final class DecorationProviderManager {
 
         Map<Integer, List<StyleSpan>> syntaxSpans = new HashMap<>();
         Map<Integer, List<StyleSpan>> semanticSpans = new HashMap<>();
+        Map<Integer, List<StyleSpan>> overlaySpans = new HashMap<>();
         Map<Integer, List<InlayHint>> inlayHints = new HashMap<>();
         Map<Integer, List<Diagnostic>> diagnostics = new HashMap<>();
         Map<Integer, List<DocumentHighlight>> documentHighlights = new HashMap<>();
@@ -250,6 +251,7 @@ public final class DecorationProviderManager {
         Map<Integer, List<LinkSpan>> links = new HashMap<>();
         DecorationResult.ApplyMode syntaxMode = DecorationResult.ApplyMode.MERGE;
         DecorationResult.ApplyMode semanticMode = DecorationResult.ApplyMode.MERGE;
+        DecorationResult.ApplyMode overlayMode = DecorationResult.ApplyMode.MERGE;
         DecorationResult.ApplyMode inlayMode = DecorationResult.ApplyMode.MERGE;
         DecorationResult.ApplyMode diagnosticMode = DecorationResult.ApplyMode.MERGE;
         DecorationResult.ApplyMode documentHighlightMode = DecorationResult.ApplyMode.MERGE;
@@ -275,6 +277,10 @@ public final class DecorationProviderManager {
             semanticMode = mergeMode(semanticMode, r.getSemanticSpansMode());
             if (r.getSemanticSpans() != null) {
                 appendMapOfList(semanticSpans, r.getSemanticSpans());
+            }
+            overlayMode = mergeMode(overlayMode, r.getOverlaySpansMode());
+            if (r.getOverlaySpans() != null) {
+                appendMapOfList(overlaySpans, r.getOverlaySpans());
             }
             inlayMode = mergeMode(inlayMode, r.getInlayHintsMode());
             if (r.getInlayHints() != null) {
@@ -329,8 +335,10 @@ public final class DecorationProviderManager {
 
         applySpanMode(SpanLayer.SYNTAX, syntaxMode);
         applySpanMode(SpanLayer.SEMANTIC, semanticMode);
+        applySpanMode(SpanLayer.OVERLAY, overlayMode);
         editor.setBatchLineSpans(SpanLayer.SYNTAX, syntaxSpans);
         editor.setBatchLineSpans(SpanLayer.SEMANTIC, semanticSpans);
+        editor.setBatchLineSpans(SpanLayer.OVERLAY, overlaySpans);
 
         applyInlayMode(inlayMode);
         editor.setBatchLineInlayHints(inlayHints);
@@ -612,6 +620,13 @@ public final class DecorationProviderManager {
         } else if (patch.getSemanticSpansMode() != DecorationResult.ApplyMode.MERGE) {
             target.setSemanticSpans(null);
             target.setSemanticSpansMode(patch.getSemanticSpansMode());
+        }
+        if (patch.getOverlaySpans() != null) {
+            target.setOverlaySpans(patch.getOverlaySpans());
+            target.setOverlaySpansMode(patch.getOverlaySpansMode());
+        } else if (patch.getOverlaySpansMode() != DecorationResult.ApplyMode.MERGE) {
+            target.setOverlaySpans(null);
+            target.setOverlaySpansMode(patch.getOverlaySpansMode());
         }
         if (patch.getInlayHints() != null) {
             target.setInlayHints(patch.getInlayHints());

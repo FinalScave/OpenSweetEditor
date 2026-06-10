@@ -25,13 +25,13 @@ This document maps to the current Avalonia implementation:
 - `CoreProtocol` encodes and decodes binary payloads; `EditorRenderer` consumes `EditorRenderModel` and draws through Avalonia `DrawingContext`.
 - `SweetEditorControl` is the concrete widget entry. `SweetEditorController` is the external command surface for declarative / MVVM-style host code.
 - Decorations, completion, newline action, inline suggestion, and selection menu are split into dedicated Avalonia-side manager/provider modules.
-- Android demo stages SweetLine native assets for the SweetLine NuGet package. Desktop demo falls back to managed highlighting when SweetLine native is not available.
+- SweetEditor native assets are centralized in the Avalonia project configuration; demo projects only host the control. SweetLine native assets are supplied by the SweetLine NuGet package.
 
 ## Layout
 
 - `SweetEditor/`: Avalonia widget, bridge, rendering, events, provider management
 - `Demo.Shared/`: shared UI, sample loading, SweetLine runtime, icon/menu logic
-- `Demo.Android/`: Avalonia Android host, IME / InputPane / safe-area integration
+- `Demo.Android/`: Avalonia Android host entry point
 - `Demo.Desktop/`: Avalonia desktop host
 - `Demo.Mac/` / `Demo.iOS/`: platform-specific demo hosts
 
@@ -45,15 +45,15 @@ This document maps to the current Avalonia implementation:
   - Windows: `prebuilt/windows/x64/sweeteditor.dll`
   - Linux: `prebuilt/linux/x86_64/libsweeteditor.so`
   - macOS: `prebuilt/osx/*/libsweeteditor.dylib`
+  - Android: `prebuilt/android/*/libsweeteditor.so`
+  - iOS: `prebuilt/ios/*/libsweeteditor.dylib`
 
 ### Android extras
 
 - .NET Android workload
 - Android SDK (API 34)
 - `adb`
-- For SweetLine native highlighting in Android demo:
-  - `platform/Avalonia/Demo.Android/native/sweetline/arm64-v8a/libsweetline.asset`
-  - `platform/Avalonia/Demo.Android/native/sweetline/x86_64/libsweetline.asset`
+- SweetLine native assets are provided by the SweetLine NuGet package.
 
 ## Quick Start
 
@@ -114,17 +114,13 @@ editor.GetSettings().SetWrapMode(WrapMode.WORD_BREAK);
 
 Shared demo sample loader:
 
-- `platform/Avalonia/Demo.Shared/EmbeddedSampleRepository.cs`
+- `platform/Avalonia/Demo.Shared/DemoSamples.cs`
 
 ### SweetLine native path
 
 `Demo.Shared` uses the SweetLine NuGet package through:
 
 - `platform/Avalonia/Demo.Shared/DemoSweetLineRuntime.cs`
-
-Android stages platform assets through:
-
-- `platform/Avalonia/Demo.Android/native/sweetline/*/libsweetline.asset`
 
 Current strategy:
 
@@ -143,7 +139,7 @@ Current strategy:
 - `LanguageConfiguration`
 - `EditorKeyMap`
 - `DecorationContext` / `DecorationResult`
-- `CompletionContext` / `CompletionItem` / `CompletionTextEdit` / `CompletionResult`
+- `CompletionContext` / `CompletionItem` / `CompletionResult`
 - `InlineSuggestion`
 - `SelectionMenuItem`
 
@@ -235,16 +231,22 @@ public void SetInlineSuggestionListener(IInlineSuggestionListener? listener)
 
 public void SetSelectionMenuItemProvider(ISelectionMenuItemProvider? provider)
 public void SetSelectionMenuListener(ISelectionMenuListener? listener)
-public void SetSelectionMenuHostManaged(bool hostManaged)
 public bool IsSelectionMenuShowing()
 ```
+
+Notes:
+
+- Completion and selection menu UI are editor-owned in Avalonia. Hosts provide items and listen for custom selection-menu commands through the provider/listener APIs.
+- `SetCompletionItemRenderer(...)` customizes completion item views through `ICompletionItemRenderer`.
 
 ### Text edit / line operations / clipboard / undo-redo
 
 ```csharp
 public void InsertText(string text)
+public void InsertTextAt(TextPosition position, string text)
 public void ReplaceText(TextRange range, string newText)
 public void DeleteText(TextRange range)
+public void ApplyTextEdits(IReadOnlyList<TextEdit> edits)
 
 public void MoveLineUp()
 public void MoveLineDown()
@@ -430,6 +432,10 @@ public float GetDecorationOverscanViewportMultiplier()
 - `ICompletionItemRenderer`
 - `CompletionTriggerKind`
 
+`CompletionItem.TextEdit` is the only source of replacement range semantics. Without it, completion inserts `InsertText` / `Label` at the cursor; `AdditionalTextEdits` is appended after the primary edit.
+
+`ICompletionItemRenderer` supplies both item height and an Avalonia `Control` for each completion item.
+
 ### Decoration
 
 - `DecorationType`
@@ -457,12 +463,13 @@ public float GetDecorationOverscanViewportMultiplier()
 
 ### Android
 
-- `Demo.Android/MainActivity.cs` injects `DemoPlatformServices` for safe-area / `InputPane` occlusion handling.
+- `SweetEditorControl` owns `InputPane` occlusion handling and popup repositioning.
 - `SweetEditorControl` disables `SupportsSurroundingText` on Android to avoid large-text IME overhead.
-- Touch, long-press, double-tap, drag-select, IME avoidance, and selection-menu behavior get extra Avalonia-host adaptation on Android.
-- Android demo packages:
-  - `libsweeteditor.so` from `prebuilt/android/*`
-  - `libsweetline.asset` from `Demo.Android/native/sweetline/*`
+- Touch, long-press, double-tap, drag-select, IME avoidance, and selection-menu behavior get extra Avalonia control adaptation on Android.
+- Native assets:
+  - SweetEditor Android, Windows, and Linux assets are declared by `SweetEditor.csproj`.
+  - SweetEditor macOS and iOS app bundle references are injected by `platform/Avalonia/Directory.Build.targets`.
+  - SweetLine native assets are provided by the SweetLine NuGet package.
 
 ### Desktop
 

@@ -529,6 +529,36 @@ List<TextChange> _readTextChangeList(_BinaryReader reader) {
   return values;
 }
 
+List<TextEdit> _readTextEditList(_BinaryReader reader) {
+  final count = reader.readInt32();
+  if (count < 0 || count > reader.remaining) {
+    throw RangeError('Invalid protocol length.');
+  }
+  final values = <TextEdit>[];
+  for (var i = 0; i < count; i++) {
+    values.add(_readTextEdit(reader));
+  }
+  return values;
+}
+
+void _writeTextEditList(_BinaryWriter writer, List<TextEdit>? values) {
+  final count = values == null ? 0 : values.length;
+  writer.writeInt32(count);
+  for (var i = 0; i < count; i++) {
+    _writeTextEdit(writer, values![i]);
+  }
+}
+
+int _sizeOfTextEditList(List<TextEdit>? values) {
+  var size = 4;
+  if (values != null) {
+    for (final value in values) {
+      size += _sizeOfTextEdit(value);
+    }
+  }
+  return size;
+}
+
 List<TextPosition> _readTextPositionList(_BinaryReader reader) {
   final count = reader.readInt32();
   if (count < 0 || count > reader.remaining) {
@@ -1096,6 +1126,25 @@ TextChange _readTextChange(_BinaryReader reader) {
     range: _readTextRange(reader),
     newText: _readUtf8String(reader),
   );
+}
+
+TextEdit _readTextEdit(_BinaryReader reader) {
+  return TextEdit(
+    range: _readTextRange(reader),
+    newText: _readUtf8String(reader),
+  );
+}
+
+void _writeTextEdit(_BinaryWriter writer, TextEdit value) {
+  _writeTextRange(writer, value.range);
+  _writeUtf8String(writer, value.newText);
+}
+
+int _sizeOfTextEdit(TextEdit value) {
+  var size = 0;
+  size += _sizeOfTextRange(value.range);
+  size += _sizeOfUtf8String(value.newText);
+  return size;
 }
 
 TextPosition _readTextPosition(_BinaryReader reader) {
@@ -1682,6 +1731,11 @@ class CoreProtocol {
   static TextChange decodeTextChangeFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
     final reader = _BinaryReader.fromPointer(ptr, size);
     return _readTextChange(reader);
+  }
+
+  static TextEdit decodeTextEditFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
+    final reader = _BinaryReader.fromPointer(ptr, size);
+    return _readTextEdit(reader);
   }
 
   static TextPosition decodeTextPositionFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
@@ -2396,6 +2450,22 @@ class CoreProtocol {
   static Uint8List encodeScrollbarConfig(ScrollbarConfig value) {
     final writer = _BinaryWriter(_sizeOfScrollbarConfig(value));
     _writeScrollbarConfig(writer, value);
+    return writer.toBytes();
+  }
+
+  static void _writeApplyTextEditsPayloadWire(_BinaryWriter writer, List<TextEdit>? edits) {
+    _writeTextEditList(writer, edits);
+  }
+
+  static int _sizeOfApplyTextEditsPayloadWire(List<TextEdit>? edits) {
+    var size = 0;
+    size += _sizeOfTextEditList(edits);
+    return size;
+  }
+
+  static Uint8List encodeApplyTextEditsPayload(List<TextEdit>? edits) {
+    final writer = _BinaryWriter(_sizeOfApplyTextEditsPayloadWire(edits));
+    _writeApplyTextEditsPayloadWire(writer, edits);
     return writer.toBytes();
   }
 

@@ -2,7 +2,7 @@ import util from '@ohos.util';
 import { EditorActionReason, EditorActionResult, ScrollBehavior, editorActionReasonFromValue, scrollBehaviorFromValue } from './CoreAction';
 import { BracketGuide, CodeLensItem, Diagnostic, DiagnosticSeverity, DocumentHighlight, DocumentHighlightKind, FlowGuide, FoldRegion, GutterIcon, IndentGuide, InlayHint, InlayType, LinkSpan, PhantomText, SeparatorGuide, SeparatorStyle, SpanLayer, StyleSpan, TextStyle, diagnosticSeverityFromValue, documentHighlightKindFromValue, inlayTypeFromValue, separatorStyleFromValue, spanLayerFromValue } from './CoreAdornments';
 import { AutoIndentMode, CurrentLineRenderMode, EditorOptions, EditorRangeEffectStyles, EditorRenderColors, FoldArrowMode, HandleConfig, RangeEffectStyle, RangeEffectUnderlineStyle, ScrollbarConfig, ScrollbarMode, ScrollbarTrackTapMode, WrapMode, autoIndentModeFromValue, currentLineRenderModeFromValue, foldArrowModeFromValue, rangeEffectUnderlineStyleFromValue, scrollbarModeFromValue, scrollbarTrackTapModeFromValue, wrapModeFromValue } from './CoreConfig';
-import { IntRange, OffsetRect, PointF, Rect, TextChange, TextPosition, TextRange } from './CoreFoundation';
+import { IntRange, OffsetRect, PointF, Rect, TextChange, TextEdit, TextPosition, TextRange } from './CoreFoundation';
 import { ImeContextPolicy, ImeDocumentTextReplacement, ImeInputContext, ImeInputContextKind, ImeInputContextTextReplacement, ImeInputStateTextReplacement, ImePreeditStorage, ImeScriptClass, ImeSyncSnapshot, ImeTextModelDelta, ImeTextModelMode, ImeTextModelState, ImeTextRange, ImeTextReplacement, ImeTextUnit, imeContextPolicyFromValue, imeInputContextKindFromValue, imePreeditStorageFromValue, imeScriptClassFromValue, imeTextModelModeFromValue, imeTextUnitFromValue } from './CoreIme';
 import { EventType, GestureEvent, GestureType, HitTarget, HitTargetType, eventTypeFromValue, gestureTypeFromValue, hitTargetTypeFromValue } from './CoreInteraction';
 import { EditorBuiltinCommand, KeyBinding, KeyChord, KeyCode, KeyModifier, editorBuiltinCommandFromValue } from './CoreKeymap';
@@ -539,6 +539,36 @@ export class CoreProtocol {
       values.push(CoreProtocol.readTextChange(reader));
     }
     return values;
+  }
+
+  private static readTextEditList(reader: BinaryReader): TextEdit[] {
+    const count = reader.readInt32();
+    if (count < 0 || count > reader.remaining) {
+      throw new Error('Invalid protocol length.');
+    }
+    const values: TextEdit[] = [];
+    for (let i = 0; i < count; i++) {
+      values.push(CoreProtocol.readTextEdit(reader));
+    }
+    return values;
+  }
+
+  private static writeTextEditList(writer: BinaryWriter, values: TextEdit[]): void {
+    const count = values ? values.length : 0;
+    writer.writeInt32(count);
+    for (let i = 0; i < count; i++) {
+      CoreProtocol.writeTextEdit(writer, values[i]);
+    }
+  }
+
+  private static sizeOfTextEditList(values: TextEdit[]): number {
+    let size = 4;
+    if (values) {
+      for (const value of values) {
+        size += CoreProtocol.sizeOfTextEdit(value);
+      }
+    }
+    return size;
   }
 
   private static readTextPositionList(reader: BinaryReader): TextPosition[] {
@@ -1144,6 +1174,29 @@ export class CoreProtocol {
 
   static decodeTextChange(buffer: ArrayBuffer | undefined): TextChange {
     return CoreProtocol.readTextChange(CoreProtocol.readerFor(buffer));
+  }
+
+  private static readTextEdit(reader: BinaryReader): TextEdit {
+    return {
+      range: CoreProtocol.readTextRange(reader),
+      newText: reader.readUtf8String()
+    };
+  }
+
+  static decodeTextEdit(buffer: ArrayBuffer | undefined): TextEdit {
+    return CoreProtocol.readTextEdit(CoreProtocol.readerFor(buffer));
+  }
+
+  static writeTextEdit(writer: BinaryWriter, value: TextEdit): void {
+    CoreProtocol.writeTextRange(writer, value.range);
+    writer.writeUtf8String(value.newText);
+  }
+
+  static sizeOfTextEdit(value: TextEdit): number {
+    let size = 0;
+    size += CoreProtocol.sizeOfTextRange(value.range);
+    size += CoreProtocol.sizeOfUtf8String(value.newText);
+    return size;
   }
 
   private static readTextPosition(reader: BinaryReader): TextPosition {
@@ -2349,6 +2402,22 @@ export class CoreProtocol {
   static encodeScrollbarConfig(value: ScrollbarConfig): ArrayBuffer {
     const writer = new BinaryWriter(CoreProtocol.sizeOfScrollbarConfig(value));
     CoreProtocol.writeScrollbarConfig(writer, value);
+    return writer.getBuffer();
+  }
+
+  private static writeApplyTextEditsPayloadWire(writer: BinaryWriter, edits: TextEdit[]): void {
+    CoreProtocol.writeTextEditList(writer, edits);
+  }
+
+  private static sizeOfApplyTextEditsPayloadWire(edits: TextEdit[]): number {
+    let size = 0;
+    size += CoreProtocol.sizeOfTextEditList(edits);
+    return size;
+  }
+
+  static encodeApplyTextEditsPayload(edits: TextEdit[]): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfApplyTextEditsPayloadWire(edits));
+    CoreProtocol.writeApplyTextEditsPayloadWire(writer, edits);
     return writer.getBuffer();
   }
 

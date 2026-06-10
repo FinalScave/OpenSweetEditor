@@ -60,6 +60,155 @@ TEST_CASE("EditorCore insertText with empty string and no selection is no-op") {
   CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
 }
 
+TEST_CASE("EditorCore applyTextEdits groups edits and keeps primary cursor") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("fun call()");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  Vector<TextEdit> edits;
+  edits.push_back({{{0, 4}, {0, 8}}, "run"});
+  edits.push_back({{{0, 0}, {0, 0}}, "import demo\n"});
+
+  EditorActionResult result = editor.applyTextEdits(std::move(edits));
+
+  REQUIRE(result.content_changed);
+  CHECK(document->getU8Text() == "import demo\nfun run()");
+  CHECK(editor.getCursorPosition() == (TextPosition{1, 7}));
+  REQUIRE(result.changes.size() == 2);
+
+  EditorActionResult undo_result = editor.undo();
+  REQUIRE(undo_result.content_changed);
+  CHECK(document->getU8Text() == "fun call()");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
+}
+
+TEST_CASE("EditorCore applyTextEdits allows insertion at replacement end") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("call()");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  Vector<TextEdit> edits;
+  edits.push_back({{{0, 0}, {0, 4}}, "run"});
+  edits.push_back({{{0, 4}, {0, 4}}, "Async"});
+
+  EditorActionResult result = editor.applyTextEdits(std::move(edits));
+
+  REQUIRE(result.content_changed);
+  CHECK(document->getU8Text() == "runAsync()");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
+}
+
+TEST_CASE("EditorCore applyTextEdits ignores collapsed empty edits for content and undo") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("hello");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 2});
+
+  Vector<TextEdit> edits;
+  edits.push_back({{{0, 2}, {0, 2}}, ""});
+
+  EditorActionResult result = editor.applyTextEdits(std::move(edits));
+
+  CHECK_FALSE(result.handled);
+  CHECK_FALSE(result.content_changed);
+  CHECK_FALSE(result.cursor_changed);
+  CHECK(document->getU8Text() == "hello");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
+  CHECK_FALSE(editor.canUndo());
+}
+
+TEST_CASE("EditorCore applyTextEdits moves cursor for collapsed empty primary edit") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("hello");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 1});
+
+  Vector<TextEdit> edits;
+  edits.push_back({{{0, 4}, {0, 4}}, ""});
+
+  EditorActionResult result = editor.applyTextEdits(std::move(edits));
+
+  REQUIRE(result.handled);
+  CHECK_FALSE(result.content_changed);
+  CHECK(result.cursor_changed);
+  CHECK(document->getU8Text() == "hello");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
+  CHECK_FALSE(editor.canUndo());
+}
+
+TEST_CASE("EditorCore applyTextEdits transforms collapsed empty primary cursor through additional edits") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("fun call()");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  Vector<TextEdit> edits;
+  edits.push_back({{{0, 4}, {0, 4}}, ""});
+  edits.push_back({{{0, 0}, {0, 0}}, "import demo\n"});
+
+  EditorActionResult result = editor.applyTextEdits(std::move(edits));
+
+  REQUIRE(result.content_changed);
+  CHECK(document->getU8Text() == "import demo\nfun call()");
+  CHECK(editor.getCursorPosition() == (TextPosition{1, 4}));
+  REQUIRE(result.changes.size() == 1);
+  CHECK(editor.canUndo());
+}
+
+TEST_CASE("EditorCore applyTextEdits ignores no-op edits during overlap validation") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("abcdef");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  Vector<TextEdit> edits;
+  edits.push_back({{{0, 2}, {0, 2}}, ""});
+  edits.push_back({{{0, 1}, {0, 3}}, "XX"});
+
+  EditorActionResult result = editor.applyTextEdits(std::move(edits));
+
+  REQUIRE(result.content_changed);
+  CHECK(document->getU8Text() == "aXXdef");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
+}
+
+TEST_CASE("EditorCore applyTextEdits rejects overlapping real edits") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("abcdef");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  Vector<TextEdit> edits;
+  edits.push_back({{{0, 1}, {0, 1}}, ""});
+  edits.push_back({{{0, 1}, {0, 3}}, "XX"});
+  edits.push_back({{{0, 2}, {0, 4}}, "YY"});
+
+  EditorActionResult result = editor.applyTextEdits(std::move(edits));
+
+  CHECK_FALSE(result.handled);
+  CHECK_FALSE(result.content_changed);
+  CHECK(document->getU8Text() == "abcdef");
+  CHECK_FALSE(editor.canUndo());
+}
+
 TEST_CASE("EditorCore keeps collapsed fold when editing a projected tail") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);

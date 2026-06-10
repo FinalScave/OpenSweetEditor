@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net8.0;net8.0-android</TargetFrameworks>
+    <TargetFrameworks>net8.0;net8.0-android;net8.0-ios;net8.0-macos</TargetFrameworks>
     <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net8.0-android'">21</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net8.0-ios'">13.0</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="'$(TargetFramework)' == 'net8.0-macos'">10.15</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>SweetEditor.Avalonia</AssemblyName>
@@ -35,4 +37,16 @@
       <Link>lib\x86_64\libsweeteditor.so</Link>
     </AndroidNativeLibrary>
   </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <None Include="..\..\..\prebuilt\windows\x64\sweeteditor.dll"
+          Condition="Exists('..\..\..\prebuilt\windows\x64\sweeteditor.dll') AND ('$(RuntimeIdentifier)' == '' OR $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win')))"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\..\prebuilt\linux\x86_64\libsweeteditor.so"
+          Condition="Exists('..\..\..\prebuilt\linux\x86_64\libsweeteditor.so') AND ('$(RuntimeIdentifier)' == '' OR $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('linux')))"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

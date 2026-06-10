@@ -31,6 +31,7 @@ public class DecorationResult {
 
     @Nullable private SparseArray<List<StyleSpan>> syntaxSpans;
     @Nullable private SparseArray<List<StyleSpan>> semanticSpans;
+    @Nullable private SparseArray<List<StyleSpan>> overlaySpans;
     @Nullable private SparseArray<List<InlayHint>> inlayHints;
     @Nullable private SparseArray<List<Diagnostic>> diagnostics;
     @Nullable private SparseArray<List<DocumentHighlight>> documentHighlights;
@@ -46,6 +47,7 @@ public class DecorationResult {
 
     @NonNull private ApplyMode syntaxSpansMode = ApplyMode.MERGE;
     @NonNull private ApplyMode semanticSpansMode = ApplyMode.MERGE;
+    @NonNull private ApplyMode overlaySpansMode = ApplyMode.MERGE;
     @NonNull private ApplyMode inlayHintsMode = ApplyMode.MERGE;
     @NonNull private ApplyMode diagnosticsMode = ApplyMode.MERGE;
     @NonNull private ApplyMode documentHighlightsMode = ApplyMode.MERGE;
@@ -61,6 +63,7 @@ public class DecorationResult {
 
     @Nullable public SparseArray<List<StyleSpan>> getSyntaxSpans() { return syntaxSpans; }
     @Nullable public SparseArray<List<StyleSpan>> getSemanticSpans() { return semanticSpans; }
+    @Nullable public SparseArray<List<StyleSpan>> getOverlaySpans() { return overlaySpans; }
     @Nullable public SparseArray<List<InlayHint>> getInlayHints() { return inlayHints; }
     @Nullable public SparseArray<List<Diagnostic>> getDiagnostics() { return diagnostics; }
     @Nullable public SparseArray<List<DocumentHighlight>> getDocumentHighlights() { return documentHighlights; }
@@ -75,6 +78,7 @@ public class DecorationResult {
     @Nullable public SparseArray<List<LinkSpan>> getLinks() { return links; }
     @NonNull public ApplyMode getSyntaxSpansMode() { return syntaxSpansMode; }
     @NonNull public ApplyMode getSemanticSpansMode() { return semanticSpansMode; }
+    @NonNull public ApplyMode getOverlaySpansMode() { return overlaySpansMode; }
     @NonNull public ApplyMode getInlayHintsMode() { return inlayHintsMode; }
     @NonNull public ApplyMode getDiagnosticsMode() { return diagnosticsMode; }
     @NonNull public ApplyMode getDocumentHighlightsMode() { return documentHighlightsMode; }
@@ -90,6 +94,7 @@ public class DecorationResult {
 
     void setSyntaxSpans(@Nullable SparseArray<List<StyleSpan>> v) { this.syntaxSpans = v; }
     void setSemanticSpans(@Nullable SparseArray<List<StyleSpan>> v) { this.semanticSpans = v; }
+    void setOverlaySpans(@Nullable SparseArray<List<StyleSpan>> v) { this.overlaySpans = v; }
     void setInlayHints(@Nullable SparseArray<List<InlayHint>> v) { this.inlayHints = v; }
     void setDiagnostics(@Nullable SparseArray<List<Diagnostic>> v) { this.diagnostics = v; }
     void setDocumentHighlights(@Nullable SparseArray<List<DocumentHighlight>> v) { this.documentHighlights = v; }
@@ -104,6 +109,7 @@ public class DecorationResult {
     void setLinks(@Nullable SparseArray<List<LinkSpan>> v) { this.links = v; }
     void setSyntaxSpansMode(@NonNull ApplyMode mode) { this.syntaxSpansMode = mode; }
     void setSemanticSpansMode(@NonNull ApplyMode mode) { this.semanticSpansMode = mode; }
+    void setOverlaySpansMode(@NonNull ApplyMode mode) { this.overlaySpansMode = mode; }
     void setInlayHintsMode(@NonNull ApplyMode mode) { this.inlayHintsMode = mode; }
     void setDiagnosticsMode(@NonNull ApplyMode mode) { this.diagnosticsMode = mode; }
     void setDocumentHighlightsMode(@NonNull ApplyMode mode) { this.documentHighlightsMode = mode; }
@@ -121,6 +127,7 @@ public class DecorationResult {
         DecorationResult out = new DecorationResult();
         out.syntaxSpans = copySparseArrayOfLists(syntaxSpans);
         out.semanticSpans = copySparseArrayOfLists(semanticSpans);
+        out.overlaySpans = copySparseArrayOfLists(overlaySpans);
         out.inlayHints = copySparseArrayOfLists(inlayHints);
         out.diagnostics = copySparseArrayOfLists(diagnostics);
         out.documentHighlights = copySparseArrayOfLists(documentHighlights);
@@ -135,6 +142,7 @@ public class DecorationResult {
         out.links = copySparseArrayOfLists(links);
         out.syntaxSpansMode = syntaxSpansMode;
         out.semanticSpansMode = semanticSpansMode;
+        out.overlaySpansMode = overlaySpansMode;
         out.inlayHintsMode = inlayHintsMode;
         out.diagnosticsMode = diagnosticsMode;
         out.documentHighlightsMode = documentHighlightsMode;
@@ -171,6 +179,7 @@ public class DecorationResult {
 
         public Builder syntaxSpans(@Nullable SparseArray<List<StyleSpan>> value, @NonNull ApplyMode mode) { result.syntaxSpans = value; result.syntaxSpansMode = mode; return this; }
         public Builder semanticSpans(@Nullable SparseArray<List<StyleSpan>> value, @NonNull ApplyMode mode) { result.semanticSpans = value; result.semanticSpansMode = mode; return this; }
+        public Builder overlaySpans(@Nullable SparseArray<List<StyleSpan>> value, @NonNull ApplyMode mode) { result.overlaySpans = value; result.overlaySpansMode = mode; return this; }
         public Builder inlayHints(@Nullable SparseArray<List<InlayHint>> value, @NonNull ApplyMode mode) { result.inlayHints = value; result.inlayHintsMode = mode; return this; }
         public Builder diagnostics(@Nullable SparseArray<List<Diagnostic>> value, @NonNull ApplyMode mode) { result.diagnostics = value; result.diagnosticsMode = mode; return this; }
         public Builder documentHighlights(@Nullable SparseArray<List<DocumentHighlight>> value, @NonNull ApplyMode mode) { result.documentHighlights = value; result.documentHighlightsMode = mode; return this; }

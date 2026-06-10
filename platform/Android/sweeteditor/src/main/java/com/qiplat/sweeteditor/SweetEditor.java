@@ -27,6 +27,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.MainThread;
 import androidx.annotation.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import com.qiplat.sweeteditor.core.Document;
@@ -68,6 +70,7 @@ import com.qiplat.sweeteditor.core.config.ScrollbarMode;
 import com.qiplat.sweeteditor.core.config.ScrollbarTrackTapMode;
 import com.qiplat.sweeteditor.core.adornment.SpanLayer;
 import com.qiplat.sweeteditor.core.foundation.TextChange;
+import com.qiplat.sweeteditor.core.foundation.TextEdit;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
 import com.qiplat.sweeteditor.core.search.SearchRequest;
@@ -715,6 +718,16 @@ public class SweetEditor extends View {
     }
 
     /**
+     * Insert text at the specified document position.
+     *
+     * @param position insertion position
+     * @param text     text to insert
+     */
+    public void insertTextAt(@NonNull TextPosition position, @NonNull String text) {
+        replaceText(new TextRange(position, position), text);
+    }
+
+    /**
      * Replace specified text range (atomic operation). Triggers {@link TextChangedEvent} automatically.
      *
      * @param range   text range to replace (when start == end, equivalent to insert)
@@ -733,6 +746,17 @@ public class SweetEditor extends View {
      */
     public void deleteText(@NonNull TextRange range) {
         EditorActionResult result = mEditorCore.deleteText(range);
+        resetCursorBlink();
+        dispatchEditorActionResult(result);
+    }
+
+    /**
+     * Apply multiple text edits as one undoable operation.
+     *
+     * @param edits text edits using the original document coordinates. The first edit is the primary edit.
+     */
+    public void applyTextEdits(@NonNull List<? extends TextEdit> edits) {
+        EditorActionResult result = mEditorCore.applyTextEdits(edits);
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }
@@ -2004,43 +2028,38 @@ public class SweetEditor extends View {
     }
 
     /**
-     * Completion commit callback: inserts based on CompletionItem's textEdit/insertText/label.
-     * Prefers textEdit's specified replacement range, otherwise falls back to wordRange to delete typed prefix.
+     * Completion commit callback: textEdit is the only source of replacement range semantics.
      */
     private void applyCompletionItem(@NonNull CompletionItem item) {
-        CompletionItem.TextEdit textEdit = item.textEdit;
         boolean isSnippet = item.insertTextFormat == CompletionItem.INSERT_TEXT_FORMAT_SNIPPET;
         String text = item.insertText != null ? item.insertText : item.label;
-        TextRange replaceRange = null;
 
-        if (textEdit != null) {
-            replaceRange = textEdit.range;
-            text = textEdit.newText;
+        if (item.textEdit != null) {
+            text = item.textEdit.newText;
+            List<TextEdit> edits = new ArrayList<>(item.additionalTextEdits.size() + 1);
+            edits.add(isSnippet ? new TextEdit(item.textEdit.range, "") : item.textEdit);
+            edits.addAll(item.additionalTextEdits);
+            applyTextEdits(edits);
+            if (isSnippet) {
+                insertSnippet(text);
+            }
+        } else if (item.additionalTextEdits.isEmpty()) {
+            if (isSnippet) {
+                insertSnippet(text);
+            } else {
+                insertText(text);
+            }
         } else {
-            TextRange wordRange = getWordRangeAtCursor();
-            if (!isCollapsed(wordRange)) {
-                replaceRange = wordRange;
+            TextPosition cursor = getCursorPosition();
+            TextEdit primaryEdit = new TextEdit(new TextRange(cursor, cursor), isSnippet ? "" : text);
+            List<TextEdit> edits = new ArrayList<>(item.additionalTextEdits.size() + 1);
+            edits.add(primaryEdit);
+            edits.addAll(item.additionalTextEdits);
+            applyTextEdits(edits);
+            if (isSnippet) {
+                insertSnippet(text);
             }
         }
-
-        if (isSnippet) {
-            if (replaceRange != null) {
-                deleteText(replaceRange);
-            }
-            insertSnippet(text);
-        } else if (replaceRange != null) {
-            replaceText(replaceRange, text);
-        } else {
-            insertText(text);
-        }
-    }
-
-    private static boolean isCollapsed(@Nullable TextRange range) {
-        return range != null
-                && range.start != null
-                && range.end != null
-                && range.start.line == range.end.line
-                && range.start.column == range.end.column;
     }
 
     /**
