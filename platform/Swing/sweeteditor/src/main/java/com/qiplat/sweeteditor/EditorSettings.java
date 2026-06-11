@@ -5,6 +5,7 @@ import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.config.AutoIndentMode;
 import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
 import com.qiplat.sweeteditor.core.config.FoldArrowMode;
+import com.qiplat.sweeteditor.core.config.WhitespaceRenderMode;
 import com.qiplat.sweeteditor.core.config.WrapMode;
 
 /**
@@ -22,6 +23,8 @@ public class EditorSettings {
     private boolean mGutterVisible = true;
     private FoldArrowMode mFoldArrowMode = FoldArrowMode.ALWAYS;
     private WrapMode mWrapMode = WrapMode.NONE;
+    private WhitespaceRenderMode mRenderWhitespace = WhitespaceRenderMode.NONE;
+    private boolean mRenderLineBreaks = false;
     private float mLineSpacingAdd = 0f;
     private float mLineSpacingMult = 1.0f;
     private float mContentStartPadding = 0f;
@@ -94,6 +97,24 @@ public class EditorSettings {
 
     public WrapMode getWrapMode() {
         return mWrapMode;
+    }
+
+    public void setRenderWhitespace(WhitespaceRenderMode mode) {
+        mRenderWhitespace = mode;
+        mEditor.dispatchEditorActionResult(mEditor.getEditorCore().setRenderWhitespace(mode.value));
+    }
+
+    public WhitespaceRenderMode getRenderWhitespace() {
+        return mRenderWhitespace;
+    }
+
+    public void setRenderLineBreaks(boolean enabled) {
+        mRenderLineBreaks = enabled;
+        mEditor.dispatchEditorActionResult(mEditor.getEditorCore().setRenderLineBreaks(enabled));
+    }
+
+    public boolean isRenderLineBreaks() {
+        return mRenderLineBreaks;
     }
 
     public void setLineSpacing(float add, float mult) {

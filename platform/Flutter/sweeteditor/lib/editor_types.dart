@@ -73,6 +73,7 @@ class EditorTheme {
   int inlayHintTextColor = 0xC0AFC2E0;
   int inlayHintIconColor = 0xCC9CB0CD;
   int phantomTextColor = 0x8AA3B5D1;
+  int invisibleCharacterColor = 0x706B7890;
   int foldPlaceholderBgColor = 0x36506C90;
   int foldPlaceholderTextColor = 0xFFE2ECFF;
   int diagnosticErrorColor = 0xFFF7768E;
@@ -155,6 +156,7 @@ class EditorTheme {
       ..inlayHintTextColor = 0xB0344A73
       ..inlayHintIconColor = 0xB04B607E
       ..phantomTextColor = 0x8A4B607E
+      ..invisibleCharacterColor = 0x705D6B82
       ..foldPlaceholderBgColor = 0x2E748DB0
       ..foldPlaceholderTextColor = 0xFF284A70
       ..diagnosticErrorColor = 0xFFDC2626

@@ -180,6 +180,14 @@ EDITOR_API const uint8_t* editor_set_show_split_line(intptr_t editor_handle, int
 /// @param mode 0=BACKGROUND(fill), 1=BORDER(stroke), 2=NONE(disabled)
 EDITOR_API const uint8_t* editor_set_current_line_render_mode(intptr_t editor_handle, int mode, size_t* out_size);
 
+/// Set whitespace marker rendering mode
+/// @param mode 0=NONE, 1=BOUNDARY, 2=SELECTION, 3=TRAILING, 4=ALL
+EDITOR_API const uint8_t* editor_set_render_whitespace(intptr_t editor_handle, int mode, size_t* out_size);
+
+/// Set whether line-ending markers should be rendered
+/// @param enabled 0=hide, non-zero=show
+EDITOR_API const uint8_t* editor_set_render_line_breaks(intptr_t editor_handle, int enabled, size_t* out_size);
+
 /// Set whether gutter stays fixed during horizontal scroll
 /// @param sticky 0=gutter scrolls with content (mobile style), non-zero=gutter fixed (desktop style)
 EDITOR_API const uint8_t* editor_set_gutter_sticky(intptr_t editor_handle, int sticky, size_t* out_size);

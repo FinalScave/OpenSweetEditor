@@ -54,6 +54,8 @@ public sealed class MainForm : Form {
         editor.Settings.SetEditorTextSize(14f);
         editor.Settings.SetFontFamily("Cascadia Code");
         editor.Settings.SetWrapMode(WrapMode.WORD_BREAK);
+        editor.Settings.SetRenderWhitespace(WhitespaceRenderMode.BOUNDARY);
+        editor.Settings.SetRenderLineBreaks(true);
         editor.Settings.SetCurrentLineRenderMode(CurrentLineRenderMode.BORDER);
 
         // Load content
@@ -72,6 +74,8 @@ All settings are available via `editor.Settings` and take effect immediately.
 | `SetFontFamily(string)` | Font family name |
 | `SetScale(float)` | Editor scale factor |
 | `SetWrapMode(WrapMode)` | `NONE` / `WORD_BREAK` |
+| `SetRenderWhitespace(WhitespaceRenderMode)` | Invisible whitespace marker mode |
+| `SetRenderLineBreaks(bool)` | Show/hide line-break markers |
 | `SetLineSpacing(float add, float mult)` | Line spacing |
 | `SetFoldArrowMode(FoldArrowMode)` | Fold arrow visibility |
 | `SetGutterVisible(bool)` | Show/hide gutter |

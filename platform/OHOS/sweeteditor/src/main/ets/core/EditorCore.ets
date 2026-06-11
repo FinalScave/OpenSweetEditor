@@ -17,6 +17,7 @@ import {
   FoldArrowMode,
   HandleConfig,
   ScrollbarConfig,
+  WhitespaceRenderMode,
   WrapMode
 } from './CoreConfig';
 import { EventType, GestureEvent } from './CoreInteraction';
@@ -165,6 +166,14 @@ export class EditorCore {
 
   setWrapMode(mode: WrapMode): EditorActionResult {
     return CoreProtocol.decodeEditorActionResult(native.editorSetWrapMode(this.handle, mode as number));
+  }
+
+  setRenderWhitespace(mode: WhitespaceRenderMode): EditorActionResult {
+    return CoreProtocol.decodeEditorActionResult(native.editorSetRenderWhitespace(this.handle, mode as number));
+  }
+
+  setRenderLineBreaks(enabled: boolean): EditorActionResult {
+    return CoreProtocol.decodeEditorActionResult(native.editorSetRenderLineBreaks(this.handle, enabled));
   }
 
   setTabSize(tabSize: number): EditorActionResult {

@@ -125,6 +125,8 @@ class EditorSession {
     onPlatformScaleChanged?.call();
     ec.setFoldArrowMode(_settings.getFoldArrowMode());
     ec.setWrapMode(_settings.getWrapMode());
+    ec.setRenderWhitespace(_settings.getRenderWhitespace());
+    ec.setRenderLineBreaks(_settings.isRenderLineBreaks());
     ec.setLineSpacing(
       add: _settings.getLineSpacingAdd(),
       mult: _settings.getLineSpacingMult(),
@@ -501,6 +503,14 @@ class EditorSession {
 
   void applyWrapMode(core.WrapMode mode) {
     dispatchEditorActionResult(_editorCore?.setWrapMode(mode));
+  }
+
+  void applyRenderWhitespace(core.WhitespaceRenderMode mode) {
+    dispatchEditorActionResult(_editorCore?.setRenderWhitespace(mode));
+  }
+
+  void applyRenderLineBreaks(bool enabled) {
+    dispatchEditorActionResult(_editorCore?.setRenderLineBreaks(enabled));
   }
 
   void applyLineSpacing(double add, double mult) {

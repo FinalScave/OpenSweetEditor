@@ -108,6 +108,28 @@ enum ScrollbarTrackTapMode {
   }
 }
 
+enum WhitespaceRenderMode {
+  none(0),
+  boundary(1),
+  selection(2),
+  trailing(3),
+  all(4);
+
+  const WhitespaceRenderMode(this.value);
+  final int value;
+
+  static WhitespaceRenderMode fromValue(int value) {
+    switch (value) {
+      case 0: return none;
+      case 1: return boundary;
+      case 2: return selection;
+      case 3: return trailing;
+      case 4: return all;
+      default: return none;
+    }
+  }
+}
+
 enum WrapMode {
   none(0),
   charBreak(1),

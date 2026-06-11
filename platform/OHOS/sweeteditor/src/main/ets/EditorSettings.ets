@@ -1,4 +1,4 @@
-import { AutoIndentMode, CurrentLineRenderMode, FoldArrowMode, WrapMode } from './core/CoreConfig';
+import { AutoIndentMode, CurrentLineRenderMode, FoldArrowMode, WhitespaceRenderMode, WrapMode } from './core/CoreConfig';
 import { SweetEditor } from './SweetEditor';
 
 const DEFAULT_CONTENT_START_PADDING: number = 3.0;
@@ -11,6 +11,8 @@ export class EditorSettings {
   private scale: number = 1.0;
   private foldArrowMode: FoldArrowMode = FoldArrowMode.ALWAYS;
   private wrapMode: WrapMode = WrapMode.NONE;
+  private renderWhitespace: WhitespaceRenderMode = WhitespaceRenderMode.NONE;
+  private renderLineBreaks: boolean = false;
   private lineSpacingAdd: number = 0;
   private lineSpacingMult: number = 1.0;
   private contentStartPadding: number = DEFAULT_CONTENT_START_PADDING;
@@ -78,6 +80,30 @@ export class EditorSettings {
 
   getWrapMode(): WrapMode {
     return this.wrapMode;
+  }
+
+  setRenderWhitespace(mode: WhitespaceRenderMode): void {
+    this.renderWhitespace = mode;
+    const editorCore = this.editor.getEditorCore();
+    if (editorCore) {
+      this.editor.dispatchEditorActionResult(editorCore.setRenderWhitespace(mode));
+    }
+  }
+
+  getRenderWhitespace(): WhitespaceRenderMode {
+    return this.renderWhitespace;
+  }
+
+  setRenderLineBreaks(enabled: boolean): void {
+    this.renderLineBreaks = enabled;
+    const editorCore = this.editor.getEditorCore();
+    if (editorCore) {
+      this.editor.dispatchEditorActionResult(editorCore.setRenderLineBreaks(enabled));
+    }
+  }
+
+  isRenderLineBreaks(): boolean {
+    return this.renderLineBreaks;
   }
 
   setLineSpacing(add: number, mult: number): void {

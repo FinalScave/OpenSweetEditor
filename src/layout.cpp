@@ -58,6 +58,19 @@ namespace NS_SWEETEDITOR {
     m_wrap_mode_ = mode;
   }
 
+  void TextLayout::setRenderLineBreaks(bool enabled) {
+    if (m_render_line_breaks_ != enabled) {
+      m_content_metrics_dirty_ = true;
+      m_prefix_dirty_from_ = 0;
+      if (m_document_ != nullptr) {
+        for (auto& ll : m_document_->getLogicalLines()) {
+          ll.is_layout_dirty = true;
+        }
+      }
+    }
+    m_render_line_breaks_ = enabled;
+  }
+
   void TextLayout::setTabSize(uint32_t tab_size) {
     if (tab_size < 1) tab_size = 1;
     if (m_tab_size_ != tab_size) {
@@ -116,6 +129,10 @@ namespace NS_SWEETEDITOR {
     // Collapsed first line: append fold placeholder + tail-line content
     if (m_decoration_manager_->getFoldStateForLine(index) == 2 && !logical_line.visual_lines.empty()) {
       appendFoldTailRuns(index, line_text, logical_line);
+    }
+
+    if (m_render_line_breaks_) {
+      appendLineBreakRun(index, logical_line);
     }
 
     float new_height = single_line_height * logical_line.visual_lines.size();
@@ -294,6 +311,15 @@ namespace NS_SWEETEDITOR {
           return {source_line, run.column};
         } else if (click_x < run_right) {
           return {source_line, run.column + 1};
+        }
+        run_x = run_right;
+        continue;
+      }
+
+      if (run.type == VisualRunType::NEWLINE) {
+        const size_t source_line = runSourceLine(vl, run);
+        if (click_x < run_right) {
+          return {source_line, run.column};
         }
         run_x = run_right;
         continue;
@@ -1546,9 +1572,9 @@ namespace NS_SWEETEDITOR {
       // Set screen x (can be negative; overflow is covered by platform line-number background)
       run.x = text_area_x + run_left - scroll_x;
 
-      // INLAY_HINT / TAB / CODELENS: do not split
+      // Decorator and marker runs are atomic for viewport cropping.
       if (run.type == VisualRunType::INLAY_HINT || run.type == VisualRunType::TAB
-          || run.type == VisualRunType::CODELENS) {
+          || run.type == VisualRunType::CODELENS || run.type == VisualRunType::NEWLINE) {
         current_x = run_right;
         ++run_it;
         continue;
@@ -1861,6 +1887,165 @@ namespace NS_SWEETEDITOR {
     if (has_split) {
       visual_line.runs = std::move(runs);
     }
+
+    materializeWhitespaceRuns(visual_line, presentation_context);
+  }
+
+  void TextLayout::materializeWhitespaceRuns(VisualLine& visual_line,
+                                             const PresentationContext& presentation_context) {
+    if (presentation_context.render_whitespace == WhitespaceRenderMode::NONE || visual_line.runs.empty()) {
+      return;
+    }
+
+    struct LineWhitespaceInfo {
+      const U16String* text {nullptr};
+      size_t leading_end {0};
+      size_t trailing_start {0};
+    };
+
+    HashMap<size_t, LineWhitespaceInfo> line_info_cache;
+    auto get_line_info = [&](size_t source_line) -> const LineWhitespaceInfo* {
+      auto it = line_info_cache.find(source_line);
+      if (it != line_info_cache.end()) {
+        return &it->second;
+      }
+      if (m_document_ == nullptr || source_line >= m_document_->getLineCount()) {
+        return nullptr;
+      }
+      const U16String& line_text = m_document_->getLineU16TextRef(source_line);
+      LineWhitespaceInfo info;
+      info.text = &line_text;
+      info.leading_end = TextBoundaryUtil::leadingWhitespaceEndColumn(line_text);
+      info.trailing_start = TextBoundaryUtil::trailingWhitespaceStartColumn(line_text);
+      auto inserted = line_info_cache.emplace(source_line, info);
+      return &inserted.first->second;
+    };
+
+    auto is_column_selected = [&](size_t source_line, size_t column) {
+      if (!presentation_context.has_selection) return false;
+      const TextRange& selection = presentation_context.selection_range;
+      if (selection.start == selection.end) return false;
+      if (source_line < selection.start.line || source_line > selection.end.line) return false;
+      if (selection.start.line == selection.end.line) {
+        return column >= selection.start.column && column < selection.end.column;
+      }
+      if (source_line == selection.start.line) return column >= selection.start.column;
+      if (source_line == selection.end.line) return column < selection.end.column;
+      return true;
+    };
+
+    auto should_render_space = [&](size_t source_line, size_t column) {
+      const LineWhitespaceInfo* info = get_line_info(source_line);
+      if (info == nullptr || info->text == nullptr) return false;
+      const U16String& line_text = *info->text;
+      if (column >= line_text.length() || line_text[column] != CHAR16(' ')) return false;
+      switch (presentation_context.render_whitespace) {
+      case WhitespaceRenderMode::ALL:
+        return true;
+      case WhitespaceRenderMode::TRAILING:
+        return column >= info->trailing_start;
+      case WhitespaceRenderMode::SELECTION:
+        return is_column_selected(source_line, column);
+      case WhitespaceRenderMode::BOUNDARY: {
+        if (column < info->leading_end || column >= info->trailing_start) return true;
+        const bool prev_space = column > 0 && line_text[column - 1] == CHAR16(' ');
+        const bool next_space = column + 1 < line_text.length() && line_text[column + 1] == CHAR16(' ');
+        return prev_space || next_space;
+      }
+      case WhitespaceRenderMode::NONE:
+      default:
+        return false;
+      }
+    };
+
+    auto should_render_tab = [&](size_t source_line, size_t column) {
+      const LineWhitespaceInfo* info = get_line_info(source_line);
+      if (info == nullptr || info->text == nullptr) return false;
+      const U16String& line_text = *info->text;
+      if (column >= line_text.length() || line_text[column] != CHAR16('\t')) return false;
+      switch (presentation_context.render_whitespace) {
+      case WhitespaceRenderMode::ALL:
+      case WhitespaceRenderMode::BOUNDARY:
+        return true;
+      case WhitespaceRenderMode::TRAILING:
+        return column >= info->trailing_start;
+      case WhitespaceRenderMode::SELECTION:
+        return is_column_selected(source_line, column);
+      case WhitespaceRenderMode::NONE:
+      default:
+        return false;
+      }
+    };
+
+    Vector<VisualRun> runs;
+    runs.reserve(visual_line.runs.size() + 4);
+    bool changed = false;
+
+    auto append_text_part = [&](const VisualRun& run, size_t start, size_t end, VisualRunType type) {
+      if (start >= end) return;
+      VisualRun part = run;
+      part.type = type;
+      part.column = run.column + start;
+      part.length = end - start;
+      part.text = run.text.substr(start, end - start);
+      const float prefix_width = start == 0
+          ? 0.0f : measureWidth(run.text.substr(0, start), run.style.font_style);
+      part.x = run.x + prefix_width;
+      part.width = measureWidth(part.text, part.style.font_style);
+      runs.push_back(std::move(part));
+    };
+
+    for (VisualRun run : visual_line.runs) {
+      const size_t source_line = runSourceLine(visual_line, run);
+      if (run.type == VisualRunType::TAB) {
+        if (should_render_tab(source_line, run.column)) {
+          run.text = CHAR16("\t");
+          changed = true;
+        } else {
+          run.text.clear();
+        }
+        runs.push_back(std::move(run));
+        continue;
+      }
+
+      if ((run.type != VisualRunType::TEXT && run.type != VisualRunType::LINK) || run.text.empty()) {
+        runs.push_back(std::move(run));
+        continue;
+      }
+
+      size_t segment_start = 0;
+      bool segment_marker = false;
+      bool has_segment = false;
+      for (size_t index = 0; index < run.text.length(); ++index) {
+        const bool is_visible_space = run.text[index] == CHAR16(' ')
+            && should_render_space(source_line, run.column + index);
+        if (!has_segment) {
+          segment_start = index;
+          segment_marker = is_visible_space;
+          has_segment = true;
+          continue;
+        }
+        if (is_visible_space != segment_marker) {
+          append_text_part(run, segment_start, index,
+                           segment_marker ? VisualRunType::WHITESPACE : run.type);
+          changed = changed || segment_marker;
+          segment_start = index;
+          segment_marker = is_visible_space;
+        }
+      }
+
+      if (has_segment) {
+        append_text_part(run, segment_start, run.text.length(),
+                         segment_marker ? VisualRunType::WHITESPACE : run.type);
+        changed = changed || segment_marker;
+      } else {
+        runs.push_back(std::move(run));
+      }
+    }
+
+    if (changed) {
+      visual_line.runs = std::move(runs);
+    }
   }
 
   void TextLayout::wrapLineRuns(size_t line_index, float start_y, float line_height,
@@ -2096,6 +2281,46 @@ namespace NS_SWEETEDITOR {
       append_x += end_run.width;
       last_vl.runs.push_back(std::move(end_run));
     }
+  }
+
+  void TextLayout::appendLineBreakRun(size_t owner_line, LogicalLine& logical_line) {
+    if (m_document_ == nullptr || logical_line.visual_lines.empty()) return;
+    auto& lines = m_document_->getLogicalLines();
+    if (owner_line >= lines.size()) return;
+
+    size_t source_line = owner_line;
+    FoldTailProjection projection;
+    if (resolveFoldTailProjectionForOwnerLine(owner_line, projection)) {
+      source_line = projection.source_line;
+    }
+    if (source_line >= lines.size() || lines[source_line].line_ending == LineEnding::NONE) {
+      return;
+    }
+
+    VisualLine* target_line = nullptr;
+    for (auto it = logical_line.visual_lines.rbegin(); it != logical_line.visual_lines.rend(); ++it) {
+      if (it->kind == VisualLineKind::CONTENT) {
+        target_line = &(*it);
+        break;
+      }
+    }
+    if (target_line == nullptr) return;
+
+    float marker_x = 0.0f;
+    for (const VisualRun& run : target_line->runs) {
+      marker_x += run.width;
+    }
+
+    static const U16String kLineBreakText = CHAR16("\u21B5");
+    VisualRun run;
+    run.type = VisualRunType::NEWLINE;
+    run.column = m_document_->getLineU16TextRef(source_line).length();
+    run.length = 0;
+    run.source_line = source_line == target_line->logical_line ? kVisualRunOwnerLine : source_line;
+    run.x = marker_x;
+    run.text = kLineBreakText;
+    run.width = measureWidth(kLineBreakText, FONT_STYLE_NORMAL);
+    target_line->runs.push_back(std::move(run));
   }
 
   float TextLayout::computeLineNumberWidth() const {

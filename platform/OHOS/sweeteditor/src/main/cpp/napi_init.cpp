@@ -35,6 +35,8 @@ static napi_value Init(napi_env env, napi_value exports)
         NAPI_METHOD("editorOnFontMetricsChanged", EditorCoreNapi::onFontMetricsChanged),
         NAPI_METHOD("editorSetFoldArrowMode", EditorCoreNapi::setFoldArrowMode),
         NAPI_METHOD("editorSetWrapMode", EditorCoreNapi::setWrapMode),
+        NAPI_METHOD("editorSetRenderWhitespace", EditorCoreNapi::setRenderWhitespace),
+        NAPI_METHOD("editorSetRenderLineBreaks", EditorCoreNapi::setRenderLineBreaks),
         NAPI_METHOD("editorSetTabSize", EditorCoreNapi::setTabSize),
         NAPI_METHOD("editorSetScale", EditorCoreNapi::setScale),
         NAPI_METHOD("editorSetLineSpacing", EditorCoreNapi::setLineSpacing),

@@ -1592,6 +1592,28 @@ public:
       &out_size), out_size);
   }
 
+  static napi_value setRenderWhitespace(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_render_whitespace(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_int32(env, args[1]),
+      &out_size), out_size);
+  }
+
+  static napi_value setRenderLineBreaks(napi_env env, napi_callback_info info) {
+    size_t argc = 2;
+    napi_value args[2];
+    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
+    size_t out_size = 0;
+    return wrap_binary_payload(env, editor_set_render_line_breaks(
+      static_cast<intptr_t>(napi_get_handle(env, args[0])),
+      napi_get_bool(env, args[1]) ? 1 : 0,
+      &out_size), out_size);
+  }
+
   static napi_value setTabSize(napi_env env, napi_callback_info info) {
     size_t argc = 2;
     napi_value args[2];

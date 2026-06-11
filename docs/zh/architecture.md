@@ -447,11 +447,12 @@ struct EditorRenderModel {
 ```
 VisualLine
 ├── VisualRun (TEXT)           — 普通代码文本，带样式
-├── VisualRun (WHITESPACE)     — 空格（可选可视化）
+├── VisualRun (WHITESPACE)     — 由文本布局物化的可见空格标记
+├── VisualRun (TAB)            — 制表符宽度与可选可见制表符标记
 ├── VisualRun (INLAY_HINT)     — Inlay Hint（文本或图标）
 ├── VisualRun (PHANTOM_TEXT)   — 幽灵文本
 ├── VisualRun (FOLD_PLACEHOLDER) — 折叠占位符 "…"
-└── VisualRun (NEWLINE)        — 换行符
+└── VisualRun (NEWLINE)        — 可选换行符标记
 ```
 
 每个 VisualRun 包含精确的绘制坐标 `(x, y)`、宽度 `width`、文本内容 `text`、样式 `style`（颜色 + 字体样式）。
@@ -484,7 +485,8 @@ VisualLine
    b. 绘制 gutter 图标（gutter_icons）
    c. 绘制折叠标记（fold_markers）
    d. 遍历 runs：
-      - TEXT / WHITESPACE: drawText(run.text, run.x, run.y) with run.style
+      - TEXT: 按 `run.style` 在 `(run.x, run.y)` 绘制 `run.text`
+      - WHITESPACE / TAB / NEWLINE: 绘制可选不可见字符标记以及 run 背景
       - INLAY_HINT: 绘制背景圆角矩形 + 文本/图标
       - PHANTOM_TEXT: 以半透明绘制
       - FOLD_PLACEHOLDER: 绘制 "…" 占位

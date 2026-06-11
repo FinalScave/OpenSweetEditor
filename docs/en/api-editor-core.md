@@ -1,6 +1,6 @@
 # EditorCore / C API Reference
 
-This document follows `include/sweeteditor/c_api.h` and describes the current external core contract of SweetEditor (2026-05).
+This document follows `include/sweeteditor/c_api.h` and describes the current external core contract of SweetEditor (2026-06).
 
 Platform API docs:
 
@@ -68,17 +68,20 @@ void     editor_set_document(intptr_t editor_handle, intptr_t document_handle);
 ### 3) Viewport / appearance
 
 ```c
-void editor_set_viewport(intptr_t editor_handle, int16_t width, int16_t height);
-void editor_on_font_metrics_changed(intptr_t editor_handle);
-void editor_set_fold_arrow_mode(intptr_t editor_handle, int mode);
-void editor_set_wrap_mode(intptr_t editor_handle, int mode);
-void editor_set_line_spacing(intptr_t editor_handle, float add, float mult);
+void           editor_set_viewport(intptr_t editor_handle, int16_t width, int16_t height);
+void           editor_on_font_metrics_changed(intptr_t editor_handle);
+const uint8_t* editor_set_fold_arrow_mode(intptr_t editor_handle, int mode, size_t* out_size);
+const uint8_t* editor_set_wrap_mode(intptr_t editor_handle, int mode, size_t* out_size);
+const uint8_t* editor_set_line_spacing(intptr_t editor_handle, float add, float mult, size_t* out_size);
+const uint8_t* editor_set_render_whitespace(intptr_t editor_handle, int mode, size_t* out_size);
+const uint8_t* editor_set_render_line_breaks(intptr_t editor_handle, int enabled, size_t* out_size);
 ```
 
 Numeric conventions:
 
 - `FoldArrowMode`: `0=AUTO`, `1=ALWAYS`, `2=HIDDEN`
 - `WrapMode`: `0=NONE`, `1=CHAR_BREAK`, `2=WORD_BREAK`
+- `WhitespaceRenderMode`: `0=NONE`, `1=BOUNDARY`, `2=SELECTION`, `3=TRAILING`, `4=ALL`
 
 ### 4) Rendering
 

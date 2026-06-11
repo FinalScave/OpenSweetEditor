@@ -825,15 +825,16 @@ namespace SweetEditor {
 				Span<VisualRun> runs = CollectionsMarshal.AsSpan(runsList);
 				for (int i = 0; i < runs.Length; i++) {
 					ref readonly VisualRun run = ref runs[i];
-					if (run.Type == VisualRunType.NEWLINE) {
-						continue;
-					}
 					string text = run.Text ?? string.Empty;
 					int textColor = ResolveRunTextColor(run);
 					float drawX = Snap(run.X);
 					float drawWidth = Math.Max(1f, Snap(run.Width));
 
 					if (drawX >= clipRight || drawX + drawWidth <= clipLeft) {
+						continue;
+					}
+
+					if (DrawInvisibleCharacterRun(context, run, drawX, drawWidth, contentClip)) {
 						continue;
 					}
 
@@ -963,6 +964,97 @@ namespace SweetEditor {
 					}
 				}
 			}
+		}
+
+		private bool DrawInvisibleCharacterRun(DrawingContext context, VisualRun run, float drawX, float drawWidth,
+											   AvaloniaRect contentClip) {
+			if (run.Type == VisualRunType.WHITESPACE) {
+				DrawRunBackground(context, run, drawX, drawWidth, contentClip);
+				DrawWhitespaceMarkerRun(context, run, drawX, drawWidth);
+				return true;
+			}
+			if (run.Type == VisualRunType.TAB) {
+				DrawRunBackground(context, run, drawX, drawWidth, contentClip);
+				DrawTabMarkerRun(context, run, drawX, drawWidth);
+				return true;
+			}
+			if (run.Type == VisualRunType.NEWLINE) {
+				DrawRunBackground(context, run, drawX, drawWidth, contentClip);
+				DrawLineBreakMarkerRun(context, run, drawX);
+				return true;
+			}
+			return false;
+		}
+
+		private void DrawRunBackground(DrawingContext context, VisualRun run, float drawX, float drawWidth,
+									   AvaloniaRect contentClip) {
+			if (run.Style.BackgroundColor == 0 || drawWidth <= 0f) {
+				return;
+			}
+
+			Typeface typeface = ResolveTypeface(run.Style.FontStyle);
+			LayoutMetrics layout = GetLayoutMetrics(typeface, run.Style.FontStyle, EffectiveTextSize, inlay: false);
+			float topY = Snap(run.Y - layout.Baseline);
+			float clipLeft = (float)contentClip.X;
+			float clipRight = (float)(contentClip.X + contentClip.Width);
+			float backgroundX = Math.Max(drawX, clipLeft);
+			float backgroundRight = Math.Min(drawX + drawWidth, clipRight);
+			context.FillRectangle(GetBrush(run.Style.BackgroundColor),
+								  new AvaloniaRect(backgroundX, topY,
+												   Math.Max(0f, backgroundRight - backgroundX),
+												   Snap(layout.Height)));
+		}
+
+		private void DrawWhitespaceMarkerRun(DrawingContext context, VisualRun run, float drawX, float drawWidth) {
+			string text = run.Text ?? string.Empty;
+			int markerCount = text.Length;
+			if (markerCount <= 0 || drawWidth <= 0f) {
+				return;
+			}
+
+			LayoutMetrics layout = GetLayoutMetrics(regularTypeface, 0, EffectiveTextSize, inlay: false);
+			float cellWidth = drawWidth / Math.Max(1, markerCount);
+			float centerY = Snap(run.Y + (layout.Height - layout.Baseline * 2f) * 0.5f);
+			float radius = Math.Max(1.0f, Math.Min(cellWidth, EffectiveTextSize) * 0.08f);
+			IBrush brush = GetBrush(GetInvisibleCharacterColor());
+			for (int i = 0; i < markerCount; i++) {
+				float centerX = Snap(drawX + cellWidth * (i + 0.5f));
+				context.DrawEllipse(brush, null, new Point(centerX, centerY), radius, radius);
+			}
+		}
+
+		private void DrawTabMarkerRun(DrawingContext context, VisualRun run, float drawX, float drawWidth) {
+			if (string.IsNullOrEmpty(run.Text) || drawWidth <= 0f) {
+				return;
+			}
+
+			LayoutMetrics layout = GetLayoutMetrics(regularTypeface, 0, EffectiveTextSize, inlay: false);
+			float centerY = Snap(run.Y + (layout.Height - layout.Baseline * 2f) * 0.5f);
+			float padding = Math.Min(drawWidth * 0.25f, 8.0f);
+			float left = Snap(drawX + padding);
+			float right = Snap(Math.Max(left, drawX + drawWidth - padding));
+			float arrow = Math.Min(5.0f, Math.Max(2.0f, (right - left) * 0.35f));
+			Pen pen = GetPen(GetInvisibleCharacterColor(), Math.Max(1.0, EffectiveTextSize * 0.06),
+							 PenLineCap.Round, PenLineJoin.Round);
+			context.DrawLine(pen, new Point(left, centerY), new Point(right, centerY));
+			context.DrawLine(pen, new Point(right, centerY), new Point(right - arrow, centerY - arrow));
+			context.DrawLine(pen, new Point(right, centerY), new Point(right - arrow, centerY + arrow));
+		}
+
+		private void DrawLineBreakMarkerRun(DrawingContext context, VisualRun run, float drawX) {
+			string text = run.Text ?? string.Empty;
+			if (text.Length == 0) {
+				return;
+			}
+
+			DrawTextAtBaseline(context, text, regularTypeface, 0, EffectiveTextSize,
+							   GetInvisibleCharacterColor(), drawX, run.Y);
+		}
+
+		private int GetInvisibleCharacterColor() {
+			return theme.InvisibleCharacterColor != 0
+				? unchecked((int)theme.InvisibleCharacterColor)
+				: (unchecked((int)theme.TextColor) & 0x00FFFFFF) | unchecked((int)0x70000000);
 		}
 
 		private void DrawFoldPlaceholderRun(DrawingContext context, VisualRun run, string text, int textColor,

@@ -288,6 +288,14 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         settings.setCurrentLineRenderMode(mode)
     }
 
+    func setRenderWhitespace(_ mode: WhitespaceRenderMode) {
+        settings.setRenderWhitespace(mode)
+    }
+
+    func setRenderLineBreaks(_ enabled: Bool) {
+        settings.setRenderLineBreaks(enabled)
+    }
+
     func setReadOnly(_ readOnly: Bool) {
         settings.setReadOnly(readOnly)
     }
@@ -636,6 +644,8 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         dispatchEditorActionResult(editorCore.setCompositionEnabled(settings.compositionEnabled))
         dispatchEditorActionResult(editorCore.setFoldArrowMode(FoldArrowMode(settings.foldArrowMode)))
         dispatchEditorActionResult(editorCore.setWrapMode(WrapMode(settings.wrapMode)))
+        dispatchEditorActionResult(editorCore.setRenderWhitespace(WhitespaceRenderMode(settings.renderWhitespace)))
+        dispatchEditorActionResult(editorCore.setRenderLineBreaks(settings.renderLineBreaks))
         dispatchEditorActionResult(editorCore.setLineSpacing(add: settings.lineSpacingAdd, mult: settings.lineSpacingMult))
         dispatchEditorActionResult(editorCore.setContentStartPadding(settings.contentStartPadding))
         dispatchEditorActionResult(editorCore.setShowSplitLine(settings.showSplitLine))

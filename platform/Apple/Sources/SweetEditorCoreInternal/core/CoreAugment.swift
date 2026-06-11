@@ -36,6 +36,18 @@ public extension WrapMode {
     }
 }
 
+public extension WhitespaceRenderMode {
+    static let none = WhitespaceRenderMode.NONE
+    static let boundary = WhitespaceRenderMode.BOUNDARY
+    static let selection = WhitespaceRenderMode.SELECTION
+    static let trailing = WhitespaceRenderMode.TRAILING
+    static let all = WhitespaceRenderMode.ALL
+
+    init(_ mode: WhitespaceRenderMode) {
+        self = mode
+    }
+}
+
 public extension SpanLayer {
     static let syntax = SpanLayer.SYNTAX
     static let semantic = SpanLayer.SEMANTIC

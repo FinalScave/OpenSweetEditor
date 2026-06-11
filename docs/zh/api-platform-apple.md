@@ -148,8 +148,11 @@ func isLineVisible(line: Int) -> Bool
 
 enum FoldArrowMode: Int32
 enum WrapMode: Int32
+enum WhitespaceRenderMode: Int32
 func setFoldArrowMode(_ mode: FoldArrowMode)
 func setWrapMode(_ mode: WrapMode)
+func setRenderWhitespace(_ mode: WhitespaceRenderMode)
+func setRenderLineBreaks(_ enabled: Bool)
 func setLineSpacing(add: Float, mult: Float)
 
 func insertSnippet(_ template: String) -> EditorActionResultData?

@@ -171,6 +171,28 @@ public class EditorCore {
     }
 
     /**
+     * Sets whitespace marker rendering mode.
+     *
+     * @param mode 0=NONE, 1=BOUNDARY, 2=SELECTION, 3=TRAILING, 4=ALL
+     */
+    @NonNull
+    public EditorActionResult setRenderWhitespace(int mode) {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        return decodeAction(nativeSetRenderWhitespace(mNativeHandle, mode));
+    }
+
+    /**
+     * Sets whether source line endings should be rendered.
+     *
+     * @param enabled true to render line-ending markers, false to hide them
+     */
+    @NonNull
+    public EditorActionResult setRenderLineBreaks(boolean enabled) {
+        if (mNativeHandle == 0) return new EditorActionResult();
+        return decodeAction(nativeSetRenderLineBreaks(mNativeHandle, enabled));
+    }
+
+    /**
      * Sets the tab size (number of spaces per tab stop).
      *
      * @param tabSize tab size (default 4, minimum 1)
@@ -2200,6 +2222,12 @@ public class EditorCore {
 
     @FastNative
     private static native ByteBuffer nativeSetWrapMode(long handle, int mode);
+
+    @FastNative
+    private static native ByteBuffer nativeSetRenderWhitespace(long handle, int mode);
+
+    @FastNative
+    private static native ByteBuffer nativeSetRenderLineBreaks(long handle, boolean enabled);
 
     @FastNative
     private static native ByteBuffer nativeSetTabSize(long handle, int tabSize);

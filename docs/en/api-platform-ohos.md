@@ -200,6 +200,10 @@ public setGutterVisible(visible: boolean): void
 public isGutterVisible(): boolean
 public setCurrentLineRenderMode(mode: CurrentLineRenderMode): void
 public getCurrentLineRenderMode(): CurrentLineRenderMode
+public setRenderWhitespace(mode: WhitespaceRenderMode): void
+public getRenderWhitespace(): WhitespaceRenderMode
+public setRenderLineBreaks(enabled: boolean): void
+public isRenderLineBreaks(): boolean
 ```
 
 ### Editor Behavior
@@ -225,6 +229,8 @@ public getDecorationScrollRefreshMinIntervalMs(): number
 public setDecorationOverscanViewportMultiplier(multiplier: number): void
 public getDecorationOverscanViewportMultiplier(): number
 ```
+
+For the complete cross-platform settings and theme contract, see [Platform Implementation Standard](./platform-implementation-standard.md).
 
 ## Advanced Bridge Layer: `EditorCore`
 

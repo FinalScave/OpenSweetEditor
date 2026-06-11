@@ -240,6 +240,9 @@ export class EditorRenderer {
         continue;
       }
       for (const run of line.runs) {
+        if (this.drawInvisibleCharacterRun(ctx, run, scaledTextSize)) {
+          continue;
+        }
         if (run.type === VisualRunType.FOLD_PLACEHOLDER) {
           this.drawFoldPlaceholder(ctx, run, scaledTextSize);
           continue;
@@ -248,8 +251,7 @@ export class EditorRenderer {
           this.drawInlayHintRun(ctx, run, inlayHintSize);
           continue;
         }
-        if (run.type === VisualRunType.TEXT || run.type === VisualRunType.WHITESPACE
-          || run.type === VisualRunType.CODELENS || run.type === VisualRunType.LINK
+        if (run.type === VisualRunType.TEXT || run.type === VisualRunType.CODELENS || run.type === VisualRunType.LINK
           || run.type === VisualRunType.PHANTOM_TEXT) {
           if (!run.text || run.text.length === 0) {
             continue;
@@ -258,6 +260,91 @@ export class EditorRenderer {
         }
       }
     }
+  }
+
+  private drawInvisibleCharacterRun(ctx: CanvasRenderingContext2D, run: VisualRun, textSize: number): boolean {
+    if (run.type === VisualRunType.WHITESPACE) {
+      this.drawRunBackground(ctx, run, textSize);
+      this.drawWhitespaceMarkerRun(ctx, run, textSize);
+      return true;
+    }
+    if (run.type === VisualRunType.TAB) {
+      this.drawRunBackground(ctx, run, textSize);
+      this.drawTabMarkerRun(ctx, run, textSize);
+      return true;
+    }
+    if (run.type === VisualRunType.NEWLINE) {
+      this.drawRunBackground(ctx, run, textSize);
+      this.drawLineBreakMarkerRun(ctx, run, textSize);
+      return true;
+    }
+    return false;
+  }
+
+  private drawRunBackground(ctx: CanvasRenderingContext2D, run: VisualRun, textSize: number): void {
+    const backgroundColor = run.style ? run.style.backgroundColor : 0;
+    if (backgroundColor === 0 || run.width <= 0) {
+      return;
+    }
+    const fontStyle = run.style ? run.style.fontStyle : TextStyle.NORMAL;
+    const metrics = this.getFontMetrics(ctx, fontStyle, textSize, this.fontFamily);
+    ctx.fillStyle = argbToCssColor(backgroundColor);
+    ctx.fillRect(run.x, run.y - metrics.ascent, run.width, metrics.ascent + metrics.descent);
+  }
+
+  private drawWhitespaceMarkerRun(ctx: CanvasRenderingContext2D, run: VisualRun, textSize: number): void {
+    const markerCount = run.text ? run.text.length : 0;
+    if (markerCount <= 0 || run.width <= 0) {
+      return;
+    }
+
+    const metrics = this.getFontMetrics(ctx, 0, textSize, this.fontFamily);
+    const cellWidth = run.width / Math.max(1, markerCount);
+    const centerY = run.y + (metrics.descent - metrics.ascent) * 0.5;
+    const radius = Math.max(1.0, Math.min(cellWidth, textSize) * 0.08);
+
+    ctx.fillStyle = argbToCssColor(this.theme.invisibleCharacterColor);
+    for (let i = 0; i < markerCount; i++) {
+      const centerX = run.x + cellWidth * (i + 0.5);
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  private drawTabMarkerRun(ctx: CanvasRenderingContext2D, run: VisualRun, textSize: number): void {
+    if (!run.text || run.text.length === 0 || run.width <= 0) {
+      return;
+    }
+
+    const metrics = this.getFontMetrics(ctx, 0, textSize, this.fontFamily);
+    const centerY = run.y + (metrics.descent - metrics.ascent) * 0.5;
+    const padding = Math.min(run.width * 0.25, 8.0);
+    const left = run.x + padding;
+    const right = Math.max(left, run.x + run.width - padding);
+    const arrow = Math.min(5.0, Math.max(2.0, (right - left) * 0.35));
+
+    ctx.beginPath();
+    ctx.strokeStyle = argbToCssColor(this.theme.invisibleCharacterColor);
+    ctx.lineWidth = Math.max(1.0, textSize * 0.06);
+    ctx.lineCap = 'round';
+    ctx.moveTo(left, centerY);
+    ctx.lineTo(right, centerY);
+    ctx.moveTo(right, centerY);
+    ctx.lineTo(right - arrow, centerY - arrow);
+    ctx.moveTo(right, centerY);
+    ctx.lineTo(right - arrow, centerY + arrow);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
+
+  private drawLineBreakMarkerRun(ctx: CanvasRenderingContext2D, run: VisualRun, textSize: number): void {
+    if (!run.text || run.text.length === 0) {
+      return;
+    }
+    this.setCanvasFont(ctx, 0, textSize, this.fontFamily);
+    ctx.fillStyle = argbToCssColor(this.theme.invisibleCharacterColor);
+    ctx.fillText(run.text, run.x, run.y);
   }
 
   private drawTextRun(ctx: CanvasRenderingContext2D, run: VisualRun, textSize: number): void {

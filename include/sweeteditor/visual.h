@@ -55,7 +55,7 @@ namespace NS_SWEETEDITOR {
     float x {0};
     /// Start y for drawing
     float y {0};
-    /// Run text content (only TEXT, INLAY_HINT(TEXT), and PHANTOM_TEXT use this)
+    /// Run text content for text-like runs, placeholders, and invisible-character markers
     SE_PROTOCOL_WIRE(u16_as_utf8)
     U16String text;
     /// Text style (color + background color + font style)

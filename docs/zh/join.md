@@ -74,7 +74,7 @@
 
 ### WinForms
 
-- `platform/WinForms/SweetEditor/EditorControl.cs`
+- `platform/WinForms/SweetEditor/SweetEditorControl.cs`
   - WinForms 控件层、输入与绘制
 - `platform/WinForms/SweetEditor/EditorCore.cs`
   - P/Invoke 封装与协议对接

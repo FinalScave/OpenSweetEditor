@@ -276,6 +276,22 @@ const uint8_t* editor_set_current_line_render_mode(intptr_t editor_handle, int m
   return editorActionResultToBinary(editor_core->setCurrentLineRenderMode(static_cast<CurrentLineRenderMode>(mode)), out_size);
 }
 
+const uint8_t* editor_set_render_whitespace(intptr_t editor_handle, int mode, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    return nullBinaryPayload(out_size);
+  }
+  return editorActionResultToBinary(editor_core->setRenderWhitespace(static_cast<WhitespaceRenderMode>(mode)), out_size);
+}
+
+const uint8_t* editor_set_render_line_breaks(intptr_t editor_handle, int enabled, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    return nullBinaryPayload(out_size);
+  }
+  return editorActionResultToBinary(editor_core->setRenderLineBreaks(enabled != 0), out_size);
+}
+
 const uint8_t* editor_set_gutter_sticky(intptr_t editor_handle, int sticky, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {

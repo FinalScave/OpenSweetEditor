@@ -34,6 +34,7 @@ import com.qiplat.sweeteditor.core.config.RangeEffectUnderlineStyle;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
 import com.qiplat.sweeteditor.core.config.ScrollbarMode;
 import com.qiplat.sweeteditor.core.config.ScrollbarTrackTapMode;
+import com.qiplat.sweeteditor.core.config.WhitespaceRenderMode;
 import com.qiplat.sweeteditor.core.config.WrapMode;
 import com.qiplat.sweeteditor.core.foundation.IntRange;
 import com.qiplat.sweeteditor.core.foundation.OffsetRect;

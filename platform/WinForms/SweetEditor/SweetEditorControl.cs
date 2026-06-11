@@ -139,6 +139,9 @@ namespace SweetEditor {
 		/// <summary>Phantom text color (ARGB, usually semi-transparent).</summary>
 		public Color PhantomTextColor { get; set; }
 
+		/// <summary>Invisible character marker color (ARGB, usually semi-transparent).</summary>
+		public Color InvisibleCharacterColor { get; set; }
+
 		/// <summary>Fold placeholder background color (ARGB, typically semi-transparent).</summary>
 		public Color FoldPlaceholderBgColor { get; set; }
 		/// <summary>Fold placeholder text color (ARGB, typically semi-transparent).</summary>
@@ -231,6 +234,7 @@ namespace SweetEditor {
 			InlayHintTextColor = Color.FromArgb(unchecked((int)0xC0AFC2E0)),
 			InlayHintIconColor = Color.FromArgb(unchecked((int)0xCC9CB0CD)),
 			PhantomTextColor = Color.FromArgb(unchecked((int)0x8AA3B5D1)),
+			InvisibleCharacterColor = Color.FromArgb(unchecked((int)0x706B7890)),
 			FoldPlaceholderBgColor = Color.FromArgb(unchecked((int)0x36506C90)),
 			FoldPlaceholderTextColor = Color.FromArgb(unchecked((int)0xFFE2ECFF)),
 			DiagnosticErrorColor = Color.FromArgb(unchecked((int)0xFFF7768E)),
@@ -295,6 +299,7 @@ namespace SweetEditor {
 			InlayHintTextColor = Color.FromArgb(unchecked((int)0xB0344A73)),
 			InlayHintIconColor = Color.FromArgb(unchecked((int)0xB04B607E)),
 			PhantomTextColor = Color.FromArgb(unchecked((int)0x8A4B607E)),
+			InvisibleCharacterColor = Color.FromArgb(unchecked((int)0x705D6B82)),
 			FoldPlaceholderBgColor = Color.FromArgb(unchecked((int)0x2E748DB0)),
 			FoldPlaceholderTextColor = Color.FromArgb(unchecked((int)0xFF284A70)),
 			DiagnosticErrorColor = Color.FromArgb(unchecked((int)0xFFDC2626)),

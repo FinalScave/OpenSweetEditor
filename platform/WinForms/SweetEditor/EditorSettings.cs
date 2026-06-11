@@ -14,6 +14,8 @@ namespace SweetEditor {
 		private float scale = 1.0f;
 		private FoldArrowMode foldArrowMode = FoldArrowMode.ALWAYS;
 		private WrapMode wrapMode = WrapMode.NONE;
+		private WhitespaceRenderMode renderWhitespace = WhitespaceRenderMode.NONE;
+		private bool renderLineBreaks = false;
 		private float lineSpacingAdd = 0f;
 		private float lineSpacingMult = 1.0f;
 		private float contentStartPadding = 0f;
@@ -80,6 +82,24 @@ namespace SweetEditor {
 
 		/// <summary>Gets wrap mode.</summary>
 		public WrapMode GetWrapMode() => wrapMode;
+
+		/// <summary>Sets whitespace marker rendering mode.</summary>
+		public void SetRenderWhitespace(WhitespaceRenderMode mode) {
+			renderWhitespace = mode;
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetRenderWhitespace((int)mode));
+		}
+
+		/// <summary>Gets whitespace marker rendering mode.</summary>
+		public WhitespaceRenderMode GetRenderWhitespace() => renderWhitespace;
+
+		/// <summary>Sets whether line-break markers should be rendered.</summary>
+		public void SetRenderLineBreaks(bool enabled) {
+			renderLineBreaks = enabled;
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetRenderLineBreaks(enabled));
+		}
+
+		/// <summary>Gets whether line-break markers should be rendered.</summary>
+		public bool IsRenderLineBreaks() => renderLineBreaks;
 
 		/// <summary>Sets line spacing.</summary>
 		public void SetLineSpacing(float add, float mult) {

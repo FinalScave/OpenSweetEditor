@@ -186,6 +186,25 @@ class EditorCore {
     );
   }
 
+  EditorActionResult setRenderWhitespace(WhitespaceRenderMode mode) {
+    _ensureOpen();
+    return _callAndParseAction(
+      (outSize) =>
+          bindings.editor_set_render_whitespace(_handle, mode.value, outSize),
+    );
+  }
+
+  EditorActionResult setRenderLineBreaks(bool enabled) {
+    _ensureOpen();
+    return _callAndParseAction(
+      (outSize) => bindings.editor_set_render_line_breaks(
+        _handle,
+        enabled ? 1 : 0,
+        outSize,
+      ),
+    );
+  }
+
   EditorActionResult setTabSize(int tabSize) {
     _ensureOpen();
     return _callAndParseAction(

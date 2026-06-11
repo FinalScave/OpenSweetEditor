@@ -138,6 +138,14 @@ public class EditorCore {
         return decodeAction(EditorNative.setWrapMode(nativeHandle, mode));
     }
 
+    public EditorActionResult setRenderWhitespace(int mode) {
+        return decodeAction(EditorNative.setRenderWhitespace(nativeHandle, mode));
+    }
+
+    public EditorActionResult setRenderLineBreaks(boolean enabled) {
+        return decodeAction(EditorNative.setRenderLineBreaks(nativeHandle, enabled));
+    }
+
     public EditorActionResult setTabSize(int tabSize) {
         return decodeAction(EditorNative.setTabSize(nativeHandle, tabSize));
     }

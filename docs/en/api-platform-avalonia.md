@@ -406,6 +406,10 @@ public void SetGutterVisible(bool visible)
 public bool IsGutterVisible()
 public void SetCurrentLineRenderMode(CurrentLineRenderMode mode)
 public CurrentLineRenderMode GetCurrentLineRenderMode()
+public void SetRenderWhitespace(WhitespaceRenderMode mode)
+public WhitespaceRenderMode GetRenderWhitespace()
+public void SetRenderLineBreaks(bool enabled)
+public bool IsRenderLineBreaks()
 public void SetAutoIndentMode(AutoIndentMode mode)
 public AutoIndentMode GetAutoIndentMode()
 public void SetBackspaceUnindent(bool enabled)
@@ -419,6 +423,8 @@ public long GetDecorationScrollRefreshMinIntervalMs()
 public void SetDecorationOverscanViewportMultiplier(float multiplier)
 public float GetDecorationOverscanViewportMultiplier()
 ```
+
+For the complete cross-platform settings and theme contract, see [Platform Implementation Standard](./platform-implementation-standard.md).
 
 ## Provider and data model notes
 

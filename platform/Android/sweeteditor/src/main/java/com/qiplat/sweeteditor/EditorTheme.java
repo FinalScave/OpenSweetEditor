@@ -88,6 +88,9 @@ public class EditorTheme {
     /** PhantomText color (ARGB, typically with transparency to distinguish from main text). */
     public int phantomTextColor;
 
+    /** Invisible character marker color (ARGB). */
+    public int invisibleCharacterColor;
+
     /** InlayHint icon tint color (ARGB, typically with transparency). */
     public int inlayHintIconColor;
 
@@ -207,6 +210,7 @@ public class EditorTheme {
         t.foldPlaceholderBgColor    = 0x36506C90;
         t.foldPlaceholderTextColor  = 0xFFE2ECFF;
         t.phantomTextColor          = 0x8AA3B5D1;
+        t.invisibleCharacterColor   = 0x706B7890;
         t.inlayHintIconColor        = 0xCC9CB0CD;
         t.diagnosticErrorColor      = 0xFFF7768E;
         t.diagnosticWarningColor    = 0xFFE0AF68;
@@ -283,6 +287,7 @@ public class EditorTheme {
         t.foldPlaceholderBgColor    = 0x2E748DB0;
         t.foldPlaceholderTextColor  = 0xFF284A70;
         t.phantomTextColor          = 0x8A4B607E;
+        t.invisibleCharacterColor   = 0x705D6B82;
         t.inlayHintIconColor        = 0xB04B607E;
         t.diagnosticErrorColor      = 0xFFDC2626;
         t.diagnosticWarningColor    = 0xFFD97706;

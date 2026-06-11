@@ -1483,6 +1483,26 @@ class SweetEditorCore {
         }
     }
 
+    /// Sets whitespace marker rendering mode.
+    @discardableResult
+    func setRenderWhitespace(_ mode: WhitespaceRenderMode) -> EditorActionResult? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_render_whitespace(handle, mode.rawValue, &size)
+            return decodeEditorActionPayload(ptr, size: size)
+        }
+    }
+
+    /// Sets line-break marker visibility.
+    @discardableResult
+    func setRenderLineBreaks(_ enabled: Bool) -> EditorActionResult? {
+        return performCoreCall {
+            var size: Int = 0
+            let ptr = editor_set_render_line_breaks(handle, enabled ? 1 : 0, &size)
+            return decodeEditorActionPayload(ptr, size: size)
+        }
+    }
+
     /// Sets editor scale in the C++ core.
     /// Use `syncPlatformScale(_:)` to update platform-side fonts and measurer.
     @discardableResult

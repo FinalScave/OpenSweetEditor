@@ -94,6 +94,20 @@ namespace NS_SWEETEDITOR {
     NONE = 2,
   };
 
+  /// Whitespace marker rendering modes.
+  enum struct SE_PROTOCOL_ENUM(config, NONE) WhitespaceRenderMode {
+    /// Do not render whitespace markers.
+    NONE = 0,
+    /// Render structural whitespace such as indentation, trailing whitespace, tabs, and repeated spaces.
+    BOUNDARY = 1,
+    /// Render whitespace markers only inside the current selection.
+    SELECTION = 2,
+    /// Render only trailing whitespace.
+    TRAILING = 3,
+    /// Render every source space and tab.
+    ALL = 4,
+  };
+
   /// Bracket pair definition (open/close character pair)
   struct BracketPair {
     char32_t open;            ///< Opening bracket char, like '('
@@ -253,6 +267,10 @@ namespace NS_SWEETEDITOR {
     bool gutter_visible {true};
     /// Current auto-wrap mode
     WrapMode wrap_mode {WrapMode::NONE};
+    /// Whitespace marker rendering mode
+    WhitespaceRenderMode render_whitespace {WhitespaceRenderMode::NONE};
+    /// Whether to render source line-ending markers
+    bool render_line_breaks {false};
     /// Core-resolved editor render colors
     EditorRenderColors render_colors;
     /// Core-resolved range-effect styles

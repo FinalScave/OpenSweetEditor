@@ -95,6 +95,7 @@ namespace SweetEditor {
 		public uint FoldPlaceholderBgColor { get; set; }
 		public uint FoldPlaceholderTextColor { get; set; }
 		public uint PhantomTextColor { get; set; }
+		public uint InvisibleCharacterColor { get; set; }
 		public uint DiagnosticErrorColor { get; set; }
 		public uint DiagnosticWarningColor { get; set; }
 		public uint DiagnosticInfoColor { get; set; }
@@ -149,6 +150,7 @@ namespace SweetEditor {
 				FoldPlaceholderBgColor = 0x36506C90,
 				FoldPlaceholderTextColor = 0xFFE2ECFF,
 				PhantomTextColor = 0x8AA3B5D1,
+				InvisibleCharacterColor = 0x706B7890,
 				DiagnosticErrorColor = 0xFFF7768E,
 				DiagnosticWarningColor = 0xFFE0AF68,
 				DiagnosticInfoColor = 0xFF7DCFFF,
@@ -212,6 +214,7 @@ namespace SweetEditor {
 				FoldPlaceholderBgColor = 0x2E748DB0,
 				FoldPlaceholderTextColor = 0xFF284A70,
 				PhantomTextColor = 0x8A4B607E,
+				InvisibleCharacterColor = 0x705D6B82,
 				DiagnosticErrorColor = 0xFFDC2626,
 				DiagnosticWarningColor = 0xFFD97706,
 				DiagnosticInfoColor = 0xFF0EA5E9,

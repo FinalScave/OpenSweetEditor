@@ -59,6 +59,7 @@ struct EditorTheme {
     var foldPlaceholderBgColor: CGColor
     var foldPlaceholderTextColor: CGColor
     var phantomTextColor: CGColor
+    var invisibleCharacterColor: CGColor
 
     /// Syntax style map (extensible).
     /// Key: styleId (UInt32), Value: SyntaxStyleDef。
@@ -117,6 +118,7 @@ struct EditorTheme {
             foldPlaceholderBgColor:   CGColor(srgbRed: 1.0, green: 1.0, blue: 1.0, alpha: 0.4),
             foldPlaceholderTextColor: CGColor(srgbRed: 0xD4/255.0, green: 0xD4/255.0, blue: 0xD4/255.0, alpha: 0.63),
             phantomTextColor:         CGColor(srgbRed: 0xD4/255.0, green: 0xD4/255.0, blue: 0xD4/255.0, alpha: 0.45),
+            invisibleCharacterColor:  CGColor(srgbRed: 0x6B/255.0, green: 0x78/255.0, blue: 0x90/255.0, alpha: 0x70/255.0),
             syntaxStyles: [
                 1: SyntaxStyleDef(color: uncheckedARGB(0xFF, 0xC6, 0x78, 0xDD), fontStyle: 1),  // keyword      - magenta purple, bold
                 2: SyntaxStyleDef(color: uncheckedARGB(0xFF, 0x56, 0xB6, 0xC2), fontStyle: 0),  // type         - cyan
@@ -171,6 +173,7 @@ struct EditorTheme {
             foldPlaceholderBgColor:   CGColor(srgbRed: 0.0, green: 0.0, blue: 0.0, alpha: 0.4),
             foldPlaceholderTextColor: CGColor(srgbRed: 0.0, green: 0.0, blue: 0.0, alpha: 0.63),
             phantomTextColor:         CGColor(srgbRed: 0.0, green: 0.0, blue: 0.0, alpha: 0.45),
+            invisibleCharacterColor:  CGColor(srgbRed: 0x5D/255.0, green: 0x6B/255.0, blue: 0x82/255.0, alpha: 0x70/255.0),
             syntaxStyles: [
                 1: SyntaxStyleDef(color: uncheckedARGB(0xFF, 0x00, 0x00, 0xFF), fontStyle: 0),  // keyword      - blue
                 2: SyntaxStyleDef(color: uncheckedARGB(0xFF, 0x26, 0x7F, 0x99), fontStyle: 0),  // type         - deep teal

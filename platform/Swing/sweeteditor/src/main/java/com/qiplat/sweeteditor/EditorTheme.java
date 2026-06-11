@@ -81,6 +81,9 @@ public class EditorTheme {
     /** PhantomText color, typically with alpha to distinguish from main text. */
     public Color phantomTextColor;
 
+    /** Invisible character marker color. */
+    public Color invisibleCharacterColor;
+
     /** InlayHint icon tint color, typically with alpha. */
     public Color inlayHintIconColor;
 
@@ -182,6 +185,7 @@ public class EditorTheme {
         t.foldPlaceholderBgColor    = argb(0x36506C90);
         t.foldPlaceholderTextColor  = argb(0xFFE2ECFF);
         t.phantomTextColor          = argb(0x8AA3B5D1);
+        t.invisibleCharacterColor   = argb(0x706B7890);
         t.inlayHintIconColor        = argb(0xCC9CB0CD);
         t.diagnosticErrorColor      = argb(0xFFF7768E);
         t.diagnosticWarningColor    = argb(0xFFE0AF68);
@@ -247,6 +251,7 @@ public class EditorTheme {
         t.foldPlaceholderBgColor    = argb(0x2E748DB0);
         t.foldPlaceholderTextColor  = argb(0xFF284A70);
         t.phantomTextColor          = argb(0x8A4B607E);
+        t.invisibleCharacterColor   = argb(0x705D6B82);
         t.inlayHintIconColor        = argb(0xB04B607E);
         t.diagnosticErrorColor      = argb(0xFFDC2626);
         t.diagnosticWarningColor    = argb(0xFFD97706);

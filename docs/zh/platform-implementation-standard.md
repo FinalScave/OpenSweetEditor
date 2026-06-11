@@ -3,7 +3,7 @@
 > 本文档定义了每个 SweetEditor 平台实现必须遵循的约定和约束。
 > 目标是在允许平台特定渲染和输入处理的同时，保持跨平台行为一致。
 >
-> 本文档描述的是当前仓库代码状态（2026-05）。若文档与源码不一致，以源码为准。
+> 本文档描述的是当前仓库代码状态（2026-06）。若文档与源码不一致，以源码为准。
 >
 > 约束级别：
 > - **MUST（必须）** — 所有平台必须遵守；违反即为 bug。
@@ -214,7 +214,7 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 
 | 能力族 | `EditorCore` 必须包含的 API |
 |---|---|
-| 配置 | `loadDocument(doc)`, `setViewport(w, h)`, `onFontMetricsChanged()`, `setFoldArrowMode(mode)`, `setWrapMode(mode)`, `setTabSize(size)`, `setInsertSpaces(enabled)`, `setScale(scale)`, `setLineSpacing(add, mult)`, `setContentStartPadding(padding)`, `setShowSplitLine(show)`, `setCurrentLineRenderMode(mode)`, `setGutterSticky(sticky)`, `setGutterVisible(visible)`, `setHandleConfig(...)`, `setScrollbarConfig(...)` |
+| 配置 | `loadDocument(doc)`, `setViewport(w, h)`, `onFontMetricsChanged()`, `setFoldArrowMode(mode)`, `setWrapMode(mode)`, `setRenderWhitespace(mode)`, `setRenderLineBreaks(enabled)`, `setTabSize(size)`, `setInsertSpaces(enabled)`, `setScale(scale)`, `setLineSpacing(add, mult)`, `setContentStartPadding(padding)`, `setShowSplitLine(show)`, `setCurrentLineRenderMode(mode)`, `setGutterSticky(sticky)`, `setGutterVisible(visible)`, `setHandleConfig(...)`, `setScrollbarConfig(...)` |
 | 渲染模型 | `buildRenderModel()`, `getLayoutMetrics()` |
 | 手势 / 键盘 | `handleGestureEvent(...)`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(bindings)` |
 | 文本编辑 | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `applyTextEdits(edits)`, `backspace()`, `deleteForward()`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
@@ -493,6 +493,7 @@ Provider 返回空列表时平台 MAY 不显示选区菜单；Provider SHOULD �
 | PhantomText | `phantomTextColor` |
 | CodeLens | `codeLensColor`, `codeLensActiveColor` |
 | Link | `linkColor`, `linkActiveColor` |
+| 不可见字符 | `invisibleCharacterColor` |
 | 诊断装饰 | `diagnosticErrorColor`, `diagnosticWarningColor`, `diagnosticInfoColor`, `diagnosticHintColor` |
 | 联动编辑 | `linkedEditingActiveColor`, `linkedEditingInactiveColor` |
 | 括号匹配 | `bracketHighlightBorderColor`, `bracketHighlightBgColor` |
@@ -528,6 +529,8 @@ Provider 返回空列表时平台 MAY 不显示选区菜单；Provider SHOULD �
 | `gutterSticky` | boolean | 平台相关 | `setGutterSticky(sticky)` | `isGutterSticky()` | `repaint` | gutter 是否在水平滚动时固定（true=固定，false=随内容滚动） |
 | `gutterVisible` | boolean | true | `setGutterVisible(visible)` | `isGutterVisible()` | `relayout` | gutter 区域是否可见（false=隐藏行号、图标、折叠箭头） |
 | `currentLineRenderMode` | CurrentLineRenderMode | BACKGROUND | `setCurrentLineRenderMode(mode)` | `getCurrentLineRenderMode()` | `repaint` | 当前行渲染模式 |
+| `renderWhitespace` | WhitespaceRenderMode | NONE | `setRenderWhitespace(mode)` | `getRenderWhitespace()` | `repaint` | 空白字符标记渲染模式 |
+| `renderLineBreaks` | boolean | false | `setRenderLineBreaks(enabled)` | `isRenderLineBreaks()` | `repaint` | 是否渲染换行符标记 |
 | `autoIndentMode` | AutoIndentMode | KEEP_INDENT | `setAutoIndentMode(mode)` | `getAutoIndentMode()` | `runtime-transition` | 自动缩进模式 |
 | `backspaceUnindent` | boolean | true | `setBackspaceUnindent(enabled)` | `isBackspaceUnindent()` | `runtime-transition` | 退格键在行首是否按缩进级别删除空白 |
 | `readOnly` | boolean | false | `setReadOnly(readOnly)` | `isReadOnly()` | `runtime-transition` | 只读模式，阻止所有编辑操作 |
@@ -739,6 +742,7 @@ interface ContextMenuItemProvider {
 | `FoldArrowMode` | AUTO=0, ALWAYS=1, HIDDEN=2 |
 | `AutoIndentMode` | NONE=0, KEEP_INDENT=1 |
 | `CurrentLineRenderMode` | BACKGROUND=0, BORDER=1, NONE=2 |
+| `WhitespaceRenderMode` | NONE=0, BOUNDARY=1, SELECTION=2, TRAILING=3, ALL=4 |
 | `ScrollbarMode` | ALWAYS=0, TRANSIENT=1, NEVER=2 |
 | `ScrollbarTrackTapMode` | JUMP=0, DISABLED=1 |
 | `ScrollBehavior` | TOP=0, CENTER=1, BOTTOM=2 |
@@ -1114,7 +1118,7 @@ Core 层定义了大量装饰数据类型，各平台 MUST 实现完全一致的
 
 ## 23. 版本管理
 
-本标准适用于 2026-05 起的 SweetEditor 平台实现。当 C++ 核心新增枚举、事件或 API 方法时，所有平台 MUST 在同一发布周期内同步更新。
+本标准适用于 2026-06 起的 SweetEditor 平台实现。当 C++ 核心新增枚举、事件或 API 方法时，所有平台 MUST 在同一发布周期内同步更新。
 
 ### 23.1 平台包版本号规范
 

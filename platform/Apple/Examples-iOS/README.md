@@ -44,6 +44,8 @@ Prefer the centralized `settings` API for runtime behavior changes:
 let editor = SweetEditorViewiOS(frame: .zero)
 editor.settings.setEditorTextSize(16)
 editor.settings.setWrapMode(.wordBreak)
+editor.settings.setRenderWhitespace(.boundary)
+editor.settings.setRenderLineBreaks(true)
 editor.settings.setFoldArrowMode(.auto)
 editor.settings.setCurrentLineRenderMode(.border)
 editor.settings.setMaxGutterIcons(1)

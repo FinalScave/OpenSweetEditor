@@ -39,6 +39,7 @@ import com.qiplat.sweeteditor.core.Document;
 import com.qiplat.sweeteditor.core.adornment.InlayType;
 import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
 import com.qiplat.sweeteditor.core.config.FoldArrowMode;
+import com.qiplat.sweeteditor.core.config.WhitespaceRenderMode;
 import com.qiplat.sweeteditor.core.config.WrapMode;
 import com.qiplat.sweeteditor.core.foundation.TextChange;
 import com.qiplat.sweeteditor.core.search.SearchState;
@@ -119,6 +120,8 @@ public class MainActivity extends AppCompatActivity {
         settings.setFoldArrowMode(FoldArrowMode.AUTO);
         settings.setMaxGutterIcons(1);
         settings.setCurrentLineRenderMode(CurrentLineRenderMode.BORDER);
+        settings.setRenderWhitespace(WhitespaceRenderMode.ALL);
+        settings.setRenderLineBreaks(true);
 
         LanguageConfiguration configuration = new LanguageConfiguration.Builder("test")
                 .addAutoClosingPair("\"", "\"")

@@ -704,6 +704,12 @@ public final class EditorNative {
     private static final MethodHandle SET_WRAP_MODE = downcall("editor_set_wrap_mode",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
+    private static final MethodHandle SET_RENDER_WHITESPACE = downcall("editor_set_render_whitespace",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+
+    private static final MethodHandle SET_RENDER_LINE_BREAKS = downcall("editor_set_render_line_breaks",
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+
     private static final MethodHandle SET_TAB_SIZE = downcall("editor_set_tab_size",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
@@ -865,6 +871,16 @@ public final class EditorNative {
 
     public static NativeBinaryResult setWrapMode(long handle, int mode) {
         return invokeBinaryResult(outSize -> (MemorySegment) SET_WRAP_MODE.invokeExact(handle, mode, outSize));
+    }
+
+    public static NativeBinaryResult setRenderWhitespace(long handle, int mode) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_RENDER_WHITESPACE.invokeExact(handle, mode, outSize));
+    }
+
+    public static NativeBinaryResult setRenderLineBreaks(long handle, boolean enabled) {
+        return invokeBinaryResult(outSize ->
+                (MemorySegment) SET_RENDER_LINE_BREAKS.invokeExact(handle, enabled ? 1 : 0, outSize));
     }
 
     public static NativeBinaryResult setTabSize(long handle, int tabSize) {

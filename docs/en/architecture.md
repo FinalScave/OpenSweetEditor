@@ -447,11 +447,12 @@ Each visible visual line contains multiple render segments:
 ```
 VisualLine
 ├── VisualRun (TEXT)             - plain code text with style
-├── VisualRun (WHITESPACE)       - whitespace (optional visible rendering)
+├── VisualRun (WHITESPACE)       - visible space markers materialized from text layout
+├── VisualRun (TAB)              - tab extent plus optional visible tab marker
 ├── VisualRun (INLAY_HINT)       - Inlay Hint (text or icon)
 ├── VisualRun (PHANTOM_TEXT)     - phantom text
 ├── VisualRun (FOLD_PLACEHOLDER) - fold placeholder "…"
-└── VisualRun (NEWLINE)          - newline
+└── VisualRun (NEWLINE)          - optional line-break marker
 ```
 
 Each VisualRun has exact draw coordinates `(x, y)`, width `width`, text `text`, and style `style` (color + font style).
@@ -484,7 +485,8 @@ The platform renderer should treat `RangeEffectRenderItem.rect` as final visible
    b. Draw gutter icons (gutter_icons)
    c. Draw fold markers (fold_markers)
    d. Iterate runs:
-      - TEXT / WHITESPACE: drawText(run.text, run.x, run.y) with run.style
+      - TEXT: drawText(run.text, run.x, run.y) with run.style
+      - WHITESPACE / TAB / NEWLINE: draw optional invisible-character marker and any run background
       - INLAY_HINT: draw rounded background + text/icon
       - PHANTOM_TEXT: draw with translucency
       - FOLD_PLACEHOLDER: draw "…" placeholder

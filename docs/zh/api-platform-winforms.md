@@ -2,7 +2,7 @@
 
 本文档对应当前 WinForms 实现：
 
-- 控件层：`platform/WinForms/SweetEditor/EditorControl.cs`
+- 控件层：`platform/WinForms/SweetEditor/SweetEditorControl.cs`
 - 桥接层：`platform/WinForms/SweetEditor/EditorCore.cs`
 - 协议编解码：`platform/WinForms/SweetEditor/CoreProtocol.cs`
 - 扩展/Provider：
@@ -17,7 +17,7 @@
 - WinForms 通过 P/Invoke 调用 C API（`sweeteditor.dll`）。
 - `EditorCore` 封装 native 调用，`CoreProtocol` 负责二进制 payload 编解码。
 - 当前桥接协议为二进制 payload。
-- `EditorControl` 负责输入、绘制、事件发布、Provider 管理。
+- `SweetEditorControl` 负责输入、绘制、事件发布、Provider 管理。
 - `Document` 创建 / 行文本查询走 UTF-16 边界；渲染模型与 `EditorActionResult` payload 里的文本字段当前按 UTF-8 解码。
 
 ## 快速开始
@@ -63,7 +63,7 @@ public sealed class MainForm : Form
 {
     public MainForm()
     {
-        var editor = new EditorControl
+        var editor = new SweetEditorControl
         {
             Dock = DockStyle.Fill
         };
@@ -82,13 +82,13 @@ public sealed class MainForm : Form
   `runtimes/win-x64/native/sweeteditor.dll`
 - 不需要手动 `DllImport` 或额外拷贝 native 文件到应用目录（按标准 NuGet 还原即可）。
 
-## 公开控件层：`EditorControl`
+## 公开控件层：`SweetEditorControl`
 
 ### 构造
 
 ```csharp
-public EditorControl()
-public EditorControl(IContainer container)
+public SweetEditorControl()
+public SweetEditorControl(IContainer container)
 ```
 
 ### 文档 / 外观 / 语言配置 / 调试

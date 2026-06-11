@@ -119,6 +119,8 @@ namespace NS_SWEETEDITOR {
         + ", gutter_sticky = " + (gutter_sticky ? "true" : "false")
         + ", gutter_visible = " + (gutter_visible ? "true" : "false")
         + ", wrap_mode = " + std::to_string(static_cast<int>(wrap_mode))
+        + ", render_whitespace = " + std::to_string(static_cast<int>(render_whitespace))
+        + ", render_line_breaks = " + (render_line_breaks ? "true" : "false")
         + ", render_colors.text_foreground = " + std::to_string(render_colors.text_foreground)
         + ", render_colors.link_foreground = " + std::to_string(render_colors.link_foreground)
         + ", render_colors.active_link_foreground = " + std::to_string(render_colors.active_link_foreground)

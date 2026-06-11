@@ -7,6 +7,8 @@ namespace SweetEditor {
 		private float scale = 1.0f;
 		private FoldArrowMode foldArrowMode = FoldArrowMode.ALWAYS;
 		private WrapMode wrapMode = WrapMode.NONE;
+		private WhitespaceRenderMode renderWhitespace = WhitespaceRenderMode.NONE;
+		private bool renderLineBreaks;
 		private bool compositionEnabled;
 		private float lineSpacingAdd;
 		private float lineSpacingMult = 1.0f;
@@ -74,6 +76,20 @@ namespace SweetEditor {
 		}
 
 		public WrapMode GetWrapMode() => wrapMode;
+
+		public void SetRenderWhitespace(WhitespaceRenderMode mode) {
+			renderWhitespace = NormalizeWhitespaceRenderMode(mode);
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetRenderWhitespace((int)renderWhitespace));
+		}
+
+		public WhitespaceRenderMode GetRenderWhitespace() => renderWhitespace;
+
+		public void SetRenderLineBreaks(bool enabled) {
+			renderLineBreaks = enabled;
+			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetRenderLineBreaks(enabled));
+		}
+
+		public bool IsRenderLineBreaks() => renderLineBreaks;
 
 		public void SetCompositionEnabled(bool enabled) {
 			if (compositionEnabled == enabled) {
@@ -192,6 +208,13 @@ namespace SweetEditor {
 			return mode is WrapMode.NONE or WrapMode.CHAR_BREAK or WrapMode.WORD_BREAK
 				? mode
 				: WrapMode.NONE;
+		}
+
+		private static WhitespaceRenderMode NormalizeWhitespaceRenderMode(WhitespaceRenderMode mode) {
+			return mode is WhitespaceRenderMode.NONE or WhitespaceRenderMode.BOUNDARY or WhitespaceRenderMode.SELECTION
+				or WhitespaceRenderMode.TRAILING or WhitespaceRenderMode.ALL
+				? mode
+				: WhitespaceRenderMode.NONE;
 		}
 
 		private static CurrentLineRenderMode NormalizeCurrentLineRenderMode(CurrentLineRenderMode mode) {

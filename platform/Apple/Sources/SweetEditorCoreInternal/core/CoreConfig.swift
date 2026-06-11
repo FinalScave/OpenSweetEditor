@@ -88,6 +88,25 @@ public enum ScrollbarTrackTapMode: Int32 {
     }
 }
 
+public enum WhitespaceRenderMode: Int32 {
+    case NONE = 0
+    case BOUNDARY = 1
+    case SELECTION = 2
+    case TRAILING = 3
+    case ALL = 4
+
+    public static func fromValue(_ value: Int32) -> WhitespaceRenderMode {
+        switch value {
+        case 0: return .NONE
+        case 1: return .BOUNDARY
+        case 2: return .SELECTION
+        case 3: return .TRAILING
+        case 4: return .ALL
+        default: return .NONE
+        }
+    }
+}
+
 public enum WrapMode: Int32 {
     case NONE = 0
     case CHAR_BREAK = 1

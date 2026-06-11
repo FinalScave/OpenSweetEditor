@@ -179,6 +179,7 @@ struct EditorRenderer {
                               iconProvider: EditorIconProvider?) {
         let t = theme
         let text = run.text
+        if drawInvisibleCharacterRun(context: context, run: run, core: core) { return }
         if text.isEmpty && run.type != .INLAY_HINT && run.type != .FOLD_PLACEHOLDER { return }
 
         let font: CTFont
@@ -305,6 +306,103 @@ struct EditorRenderer {
             context.addLine(to: CGPoint(x: CGFloat(run.x) + CGFloat(run.width), y: underlineY))
             context.strokePath()
         }
+    }
+
+    static func drawInvisibleCharacterRun(context: CGContext,
+                                          run: VisualRun,
+                                          core: SweetEditorCore) -> Bool {
+        guard run.type == .WHITESPACE || run.type == .TAB || run.type == .NEWLINE else {
+            return false
+        }
+        let font = core.regularFont
+        let ascent = CTFontGetAscent(font)
+        let descent = CTFontGetDescent(font)
+        let leading = CTFontGetLeading(font)
+        let fontHeight = ascent + descent + leading
+        let topY = CGFloat(run.y) - ascent
+        if run.type == .WHITESPACE {
+            drawRunBackground(context: context, run: run, topY: topY, fontHeight: fontHeight)
+            drawWhitespaceMarkerRun(context: context, run: run, font: font, ascent: ascent, descent: descent)
+            return true
+        }
+        if run.type == .TAB {
+            drawRunBackground(context: context, run: run, topY: topY, fontHeight: fontHeight)
+            drawTabMarkerRun(context: context, run: run, font: font, ascent: ascent, descent: descent)
+            return true
+        }
+        if run.type == .NEWLINE {
+            drawRunBackground(context: context, run: run, topY: topY, fontHeight: fontHeight)
+            drawLineBreakMarkerRun(context: context, run: run, font: font)
+            return true
+        }
+        return false
+    }
+
+    static func drawRunBackground(context: CGContext,
+                                  run: VisualRun,
+                                  topY: CGFloat,
+                                  fontHeight: CGFloat) {
+        guard run.style.background_color != 0 else { return }
+        context.setFillColor(cgColorFromARGB(run.style.background_color))
+        context.fill(CGRect(x: CGFloat(run.x), y: topY,
+                            width: CGFloat(run.width), height: fontHeight))
+    }
+
+    static func drawWhitespaceMarkerRun(context: CGContext,
+                                        run: VisualRun,
+                                        font: CTFont,
+                                        ascent: CGFloat,
+                                        descent: CGFloat) {
+        let markerCount = run.text.utf16.count
+        guard markerCount > 0 && run.width > 0 else { return }
+
+        let cellWidth = CGFloat(run.width) / CGFloat(max(1, markerCount))
+        let centerY = CGFloat(run.y) + (descent - ascent) * 0.5
+        let radius = max(1.0, min(cellWidth, CTFontGetSize(font)) * 0.08)
+
+        context.saveGState()
+        context.setFillColor(theme.invisibleCharacterColor)
+        for index in 0..<markerCount {
+            let centerX = CGFloat(run.x) + cellWidth * (CGFloat(index) + 0.5)
+            context.fillEllipse(in: CGRect(x: centerX - radius, y: centerY - radius,
+                                           width: radius * 2, height: radius * 2))
+        }
+        context.restoreGState()
+    }
+
+    static func drawTabMarkerRun(context: CGContext,
+                                 run: VisualRun,
+                                 font: CTFont,
+                                 ascent: CGFloat,
+                                 descent: CGFloat) {
+        guard !run.text.isEmpty && run.width > 0 else { return }
+
+        let centerY = CGFloat(run.y) + (descent - ascent) * 0.5
+        let padding = min(CGFloat(run.width) * 0.25, 8.0)
+        let left = CGFloat(run.x) + padding
+        let right = max(left, CGFloat(run.x) + CGFloat(run.width) - padding)
+        let arrow = min(5.0, max(2.0, (right - left) * 0.35))
+
+        context.saveGState()
+        context.setStrokeColor(theme.invisibleCharacterColor)
+        context.setLineWidth(max(1.0, CTFontGetSize(font) * 0.06))
+        context.setLineCap(.round)
+        context.move(to: CGPoint(x: left, y: centerY))
+        context.addLine(to: CGPoint(x: right, y: centerY))
+        context.move(to: CGPoint(x: right, y: centerY))
+        context.addLine(to: CGPoint(x: right - arrow, y: centerY - arrow))
+        context.move(to: CGPoint(x: right, y: centerY))
+        context.addLine(to: CGPoint(x: right - arrow, y: centerY + arrow))
+        context.strokePath()
+        context.restoreGState()
+    }
+
+    static func drawLineBreakMarkerRun(context: CGContext,
+                                       run: VisualRun,
+                                       font: CTFont) {
+        guard !run.text.isEmpty else { return }
+        drawText(context: context, text: run.text, x: CGFloat(run.x), y: CGFloat(run.y),
+                 font: font, color: theme.invisibleCharacterColor)
     }
 
     static func drawText(context: CGContext, text: String, x: CGFloat, y: CGFloat,

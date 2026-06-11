@@ -165,13 +165,18 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
   void _drawVisualLines(Canvas canvas, core.EditorRenderModel m) {
     for (final line in m.lines) {
       for (final run in line.runs) {
+        if (_drawInvisibleCharacterRun(canvas, run)) {
+          continue;
+        }
         switch (run.type) {
           case core.VisualRunType.text:
-          case core.VisualRunType.whitespace:
-          case core.VisualRunType.tab:
           case core.VisualRunType.codelens:
           case core.VisualRunType.link:
             _drawTextRun(canvas, run);
+          case core.VisualRunType.whitespace:
+            break;
+          case core.VisualRunType.tab:
+            break;
           case core.VisualRunType.phantomText:
             _drawPhantomTextRun(canvas, run);
           case core.VisualRunType.inlayHint:
@@ -183,6 +188,100 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
         }
       }
     }
+  }
+
+  bool _drawInvisibleCharacterRun(Canvas canvas, core.VisualRun run) {
+    switch (run.type) {
+      case core.VisualRunType.whitespace:
+        _drawRunBackground(canvas, run);
+        _drawWhitespaceMarkerRun(canvas, run);
+        return true;
+      case core.VisualRunType.tab:
+        _drawRunBackground(canvas, run);
+        _drawTabMarkerRun(canvas, run);
+        return true;
+      case core.VisualRunType.newline:
+        _drawRunBackground(canvas, run);
+        _drawLineBreakMarkerRun(canvas, run);
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  void _drawRunBackground(Canvas canvas, core.VisualRun run) {
+    if (run.style.backgroundColor == 0 || run.width <= 0) return;
+    final fontMetrics = _measurer.getFontMetrics(run.style.fontStyle);
+    canvas.drawRect(
+      Rect.fromLTWH(
+        run.x,
+        run.y - fontMetrics.ascent,
+        run.width,
+        fontMetrics.lineHeight,
+      ),
+      Paint()..color = Color(run.style.backgroundColor),
+    );
+  }
+
+  void _drawWhitespaceMarkerRun(Canvas canvas, core.VisualRun run) {
+    final markerCount = run.text.length;
+    if (markerCount <= 0 || run.width <= 0) return;
+    final metrics = _measurer.getFontMetrics();
+    final cellWidth = run.width / math.max(1, markerCount);
+    final centerY = run.y + (metrics.descent - metrics.ascent) * 0.5;
+    final radius = math.max(
+      1.0,
+      math.min(cellWidth, _measurer.fontSize) * 0.08,
+    );
+    final paint = Paint()..color = Color(_theme.invisibleCharacterColor);
+    for (var i = 0; i < markerCount; i++) {
+      final centerX = run.x + cellWidth * (i + 0.5);
+      canvas.drawCircle(Offset(centerX, centerY), radius, paint);
+    }
+  }
+
+  void _drawTabMarkerRun(Canvas canvas, core.VisualRun run) {
+    if (run.text.isEmpty || run.width <= 0) return;
+    final metrics = _measurer.getFontMetrics();
+    final centerY = run.y + (metrics.descent - metrics.ascent) * 0.5;
+    final padding = math.min(run.width * 0.25, 8.0);
+    final left = run.x + padding;
+    final right = math.max(left, run.x + run.width - padding);
+    final arrow = math.min(5.0, math.max(2.0, (right - left) * 0.35));
+    final paint = Paint()
+      ..color = Color(_theme.invisibleCharacterColor)
+      ..strokeWidth = math.max(1.0, _measurer.fontSize * 0.06)
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(left, centerY), Offset(right, centerY), paint);
+    canvas.drawLine(
+      Offset(right, centerY),
+      Offset(right - arrow, centerY - arrow),
+      paint,
+    );
+    canvas.drawLine(
+      Offset(right, centerY),
+      Offset(right - arrow, centerY + arrow),
+      paint,
+    );
+  }
+
+  void _drawLineBreakMarkerRun(Canvas canvas, core.VisualRun run) {
+    if (run.text.isEmpty) return;
+    final fontMetrics = _measurer.getFontMetrics();
+    final painter = TextPainter(
+      text: TextSpan(
+        text: run.text,
+        style: TextStyle(
+          fontFamily: _measurer.fontFamily,
+          fontSize: _measurer.fontSize,
+          color: Color(_theme.invisibleCharacterColor),
+          height: 1.0,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    _paintTextAtBaseline(canvas, painter, run.x, run.y, fontMetrics.ascent);
   }
 
   void _drawTextRun(Canvas canvas, core.VisualRun run) {

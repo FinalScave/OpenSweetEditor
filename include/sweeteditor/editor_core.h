@@ -162,6 +162,14 @@ namespace NS_SWEETEDITOR {
     /// @param mode BACKGROUND=fill line background, BORDER=draw line border, NONE=disable
     EditorActionResult setCurrentLineRenderMode(CurrentLineRenderMode mode);
 
+    /// Set whitespace marker rendering mode
+    /// @param mode Whitespace marker visibility mode
+    EditorActionResult setRenderWhitespace(WhitespaceRenderMode mode);
+
+    /// Set whether source line endings should be rendered as markers
+    /// @param enabled true=render line-ending markers, false=hide them
+    EditorActionResult setRenderLineBreaks(bool enabled);
+
     /// Set whether gutter stays fixed during horizontal scroll
     /// @param sticky true=gutter fixed (desktop style), false=gutter scrolls with content (mobile style)
     EditorActionResult setGutterSticky(bool sticky);

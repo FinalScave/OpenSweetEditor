@@ -414,6 +414,10 @@ public void SetGutterVisible(bool visible)
 public bool IsGutterVisible()
 public void SetCurrentLineRenderMode(CurrentLineRenderMode mode)
 public CurrentLineRenderMode GetCurrentLineRenderMode()
+public void SetRenderWhitespace(WhitespaceRenderMode mode)
+public WhitespaceRenderMode GetRenderWhitespace()
+public void SetRenderLineBreaks(bool enabled)
+public bool IsRenderLineBreaks()
 public void SetAutoIndentMode(AutoIndentMode mode)
 public AutoIndentMode GetAutoIndentMode()
 public void SetBackspaceUnindent(bool enabled)
@@ -427,6 +431,8 @@ public long GetDecorationScrollRefreshMinIntervalMs()
 public void SetDecorationOverscanViewportMultiplier(float multiplier)
 public float GetDecorationOverscanViewportMultiplier()
 ```
+
+完整跨平台 settings 与 theme 契约见[平台实现标准](./platform-implementation-standard.md)。
 
 说明：
 

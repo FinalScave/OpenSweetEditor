@@ -66,6 +66,8 @@ namespace NS_SWEETEDITOR {
     EditorRenderColors render_colors;
     /// Render-time range effect styles
     EditorRangeEffectStyles range_effect_styles;
+    /// Whitespace marker rendering mode for the emitted render model
+    WhitespaceRenderMode render_whitespace {WhitespaceRenderMode::NONE};
     /// Collect foreground/background overrides for one logical source line.
     std::function<void(size_t, Vector<TextPresentationEffect>&)> collect_text_effects;
   };
@@ -152,6 +154,8 @@ namespace NS_SWEETEDITOR {
     void setViewState(const ViewState& view_state);
 
     void setWrapMode(WrapMode mode);
+
+    void setRenderLineBreaks(bool enabled);
 
     void setTabSize(uint32_t tab_size);
 
@@ -248,6 +252,7 @@ namespace NS_SWEETEDITOR {
     Viewport m_viewport_;
     ViewState m_view_state_;
     WrapMode m_wrap_mode_ {WrapMode::NONE};
+    bool m_render_line_breaks_ {false};
     LayoutMetrics m_layout_metrics_;
     bool m_is_monospace_ {true};
     float m_number_width_;
@@ -310,12 +315,14 @@ namespace NS_SWEETEDITOR {
     void buildLineRuns(size_t line_index, const U16String& line_text, Vector<VisualRun>& runs);
     void cropVisualLineRuns(VisualLine& visual_line, float scroll_x);
     void applyPresentationState(VisualLine& visual_line, const PresentationContext& presentation_context);
+    void materializeWhitespaceRuns(VisualLine& visual_line, const PresentationContext& presentation_context);
     /// Auto-wrap: split one line's runs into multiple VisualLines by available width
     void wrapLineRuns(size_t line_index, float start_y, float line_height,
                       Vector<VisualRun>& runs, Vector<VisualLine>& out_lines,
                       size_t wrap_index_offset = 0);
     /// Append fold placeholder and tail-line runs to collapsed first line (first line + placeholder + tail content)
     void appendFoldTailRuns(size_t index, const U16String& line_text, LogicalLine& logical_line);
+    void appendLineBreakRun(size_t owner_line, LogicalLine& logical_line);
     float computeLineNumberWidth() const;
 
     /// Find logical line index hit by screen y (skip folded hidden lines)

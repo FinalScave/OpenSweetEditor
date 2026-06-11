@@ -301,6 +301,7 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
     private void drawVisualRun(Graphics2D g, VisualRun run) {
         String text = run.text;
         boolean hasText = text != null && !text.isEmpty();
+        if (drawInvisibleCharacterRun(g, run)) return;
         if (!hasText && run.type != VisualRunType.INLAY_HINT) return;
 
         Font font = (run.type == VisualRunType.INLAY_HINT)
@@ -373,6 +374,101 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
             g.setStroke(new BasicStroke(1f));
             g.drawLine((int) run.x, (int) strikeY, (int) (run.x + run.width), (int) strikeY);
         }
+    }
+
+    private boolean drawInvisibleCharacterRun(Graphics2D g, VisualRun run) {
+        if (run.type != VisualRunType.WHITESPACE
+                && run.type != VisualRunType.TAB
+                && run.type != VisualRunType.NEWLINE) {
+            return false;
+        }
+        Font font = getFontByStyle(run.style != null ? run.style.fontStyle : 0);
+        float ascent = getFontAscent(g, font);
+        float topY = run.y - ascent;
+        float fontHeight = getFontHeight(g, font);
+        if (run.type == VisualRunType.WHITESPACE) {
+            drawRunBackground(g, run, topY, fontHeight);
+            drawWhitespaceMarkerRun(g, run);
+            return true;
+        }
+        if (run.type == VisualRunType.TAB) {
+            drawRunBackground(g, run, topY, fontHeight);
+            drawTabMarkerRun(g, run);
+            return true;
+        }
+        if (run.type == VisualRunType.NEWLINE) {
+            drawRunBackground(g, run, topY, fontHeight);
+            drawLineBreakMarkerRun(g, run);
+            return true;
+        }
+        return false;
+    }
+
+    private void drawRunBackground(Graphics2D g, VisualRun run, float topY, float fontHeight) {
+        if (run.style == null || run.style.backgroundColor == 0) return;
+        Color oldColor = g.getColor();
+        g.setColor(argbToColor(run.style.backgroundColor));
+        g.fillRect((int) run.x, (int) topY, (int) Math.ceil(run.width), (int) Math.ceil(fontHeight));
+        g.setColor(oldColor);
+    }
+
+    private void drawWhitespaceMarkerRun(Graphics2D g, VisualRun run) {
+        String text = run.text;
+        int markerCount = text != null ? text.length() : 0;
+        if (markerCount <= 0 || run.width <= 0f) return;
+
+        FontMetrics fm = g.getFontMetrics(regularFont);
+        float cellWidth = run.width / Math.max(1, markerCount);
+        float centerY = run.y + (fm.getDescent() - fm.getAscent()) * 0.5f;
+        float radius = Math.max(1.0f, Math.min(cellWidth, regularFont.getSize2D()) * 0.08f);
+
+        Color oldColor = g.getColor();
+        g.setColor(getInvisibleCharacterColor());
+        for (int i = 0; i < markerCount; i++) {
+            float centerX = run.x + cellWidth * (i + 0.5f);
+            g.fill(new Ellipse2D.Float(centerX - radius, centerY - radius, radius * 2, radius * 2));
+        }
+        g.setColor(oldColor);
+    }
+
+    private void drawTabMarkerRun(Graphics2D g, VisualRun run) {
+        if (run.text == null || run.text.isEmpty() || run.width <= 0f) return;
+
+        FontMetrics fm = g.getFontMetrics(regularFont);
+        float centerY = run.y + (fm.getDescent() - fm.getAscent()) * 0.5f;
+        float padding = Math.min(run.width * 0.25f, 8.0f);
+        float left = run.x + padding;
+        float right = Math.max(left, run.x + run.width - padding);
+        float arrow = Math.min(5.0f, Math.max(2.0f, (right - left) * 0.35f));
+
+        Color oldColor = g.getColor();
+        Stroke oldStroke = g.getStroke();
+        g.setColor(getInvisibleCharacterColor());
+        g.setStroke(new BasicStroke(Math.max(1.0f, regularFont.getSize2D() * 0.06f),
+                BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g.draw(new Line2D.Float(left, centerY, right, centerY));
+        g.draw(new Line2D.Float(right, centerY, right - arrow, centerY - arrow));
+        g.draw(new Line2D.Float(right, centerY, right - arrow, centerY + arrow));
+        g.setStroke(oldStroke);
+        g.setColor(oldColor);
+    }
+
+    private void drawLineBreakMarkerRun(Graphics2D g, VisualRun run) {
+        if (run.text == null || run.text.isEmpty()) return;
+
+        Color oldColor = g.getColor();
+        Font oldFont = g.getFont();
+        g.setColor(getInvisibleCharacterColor());
+        g.setFont(regularFont);
+        g.drawString(run.text, run.x, run.y);
+        g.setFont(oldFont);
+        g.setColor(oldColor);
+    }
+
+    private Color getInvisibleCharacterColor() {
+        return theme.invisibleCharacterColor != null
+                ? theme.invisibleCharacterColor
+                : withAlpha(theme.textColor, 0x70);
     }
 
     private void drawGutterOverlay(Graphics2D g, EditorRenderModel model, int viewWidth, int viewHeight, AnimationHolder animationHolder) {

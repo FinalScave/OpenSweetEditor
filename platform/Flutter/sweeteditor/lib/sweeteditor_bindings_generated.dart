@@ -147,6 +147,28 @@ external ffi.Pointer<ffi.Uint8> editor_set_wrap_mode(
   ffi.Pointer<ffi.Size> out_size,
 );
 
+/// Set whitespace marker rendering mode
+/// @param mode 0=NONE, 1=BOUNDARY, 2=SELECTION, 3=TRAILING, 4=ALL
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_render_whitespace(
+  int editor_handle,
+  int mode,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
+/// Set whether line-break markers are rendered
+/// @param enabled 0=hide, non-zero=show
+@ffi.Native<
+  ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Int, ffi.Pointer<ffi.Size>)
+>(assetId: _sweeteditorAssetId)
+external ffi.Pointer<ffi.Uint8> editor_set_render_line_breaks(
+  int editor_handle,
+  int enabled,
+  ffi.Pointer<ffi.Size> out_size,
+);
+
 /// Set tab size (number of spaces per tab stop)
 /// @param tab_size Tab size (default 4, minimum 1)
 @ffi.Native<

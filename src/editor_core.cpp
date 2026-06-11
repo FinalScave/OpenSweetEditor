@@ -7,47 +7,10 @@
 #include <sweeteditor/editor_core.h>
 #include <sweeteditor/utility.h>
 #include "logging.h"
+#include "render_style_util.hpp"
 #include "text_boundary.hpp"
 
 namespace NS_SWEETEDITOR {
-  static TextRange findWordRangeInLine(size_t line, const U16String& line_text, size_t anchor_column) {
-    if (line_text.empty()) {
-      return {{line, 0}, {line, 0}};
-    }
-
-    size_t anchor = std::min(anchor_column, line_text.length());
-    if (anchor >= line_text.length()) {
-      anchor = UnicodeUtil::prevGraphemeBoundaryColumn(line_text, line_text.length());
-    }
-
-    const U16Char anchor_ch = line_text[anchor];
-    const bool is_word = TextBoundaryUtil::isWordChar(anchor_ch);
-
-    size_t word_start = anchor;
-    while (word_start > 0) {
-      size_t previous = UnicodeUtil::prevGraphemeBoundaryColumn(line_text, word_start);
-      if (previous == word_start) break;
-
-      U16Char prev_ch = line_text[previous];
-      if (is_word ? !TextBoundaryUtil::isWordChar(prev_ch) : TextBoundaryUtil::isWordChar(prev_ch)) break;
-      if (!is_word && prev_ch != anchor_ch) break;
-      word_start = previous;
-    }
-
-    size_t word_end = UnicodeUtil::nextGraphemeBoundaryColumn(line_text, anchor);
-    while (word_end < line_text.length()) {
-      U16Char next_ch = line_text[word_end];
-      if (is_word ? !TextBoundaryUtil::isWordChar(next_ch) : TextBoundaryUtil::isWordChar(next_ch)) break;
-      if (!is_word && next_ch != anchor_ch) break;
-
-      size_t next_boundary = UnicodeUtil::nextGraphemeBoundaryColumn(line_text, word_end);
-      if (next_boundary <= word_end) break;
-      word_end = next_boundary;
-    }
-
-    return {{line, word_start}, {line, word_end}};
-  }
-
   static uint32_t advanceVisualColumn(U16Char ch, uint32_t visual_col, uint32_t tab_size) {
     if (ch == u'\t') {
       return (visual_col / tab_size + 1) * tab_size;
@@ -83,19 +46,6 @@ namespace NS_SWEETEDITOR {
            && lhs.original_text == rhs.original_text
            && lhs.composing_text == rhs.composing_text
            && lhs.composing_columns == rhs.composing_columns;
-  }
-
-  static const RangeEffectStyle& documentHighlightPresentationStyle(const EditorRangeEffectStyles& styles,
-                                                                    DocumentHighlightKind kind) {
-    switch (kind) {
-      case DocumentHighlightKind::READ:
-        return styles.document_highlight_read;
-      case DocumentHighlightKind::WRITE:
-        return styles.document_highlight_write;
-      case DocumentHighlightKind::TEXT:
-      default:
-        return styles.document_highlight_text;
-    }
   }
 
   static bool imeSyncSnapshotRequestsPlatformUpdate(const ImeSyncSnapshot& snapshot) {
@@ -513,6 +463,37 @@ namespace NS_SWEETEDITOR {
     return finishAction(before, EditorActionReason::SETUP, true, {}, true);
   }
 
+  EditorActionResult EditorCore::setRenderWhitespace(WhitespaceRenderMode mode) {
+    const ActionSnapshot before = captureActionSnapshot();
+    switch (mode) {
+    case WhitespaceRenderMode::NONE:
+    case WhitespaceRenderMode::BOUNDARY:
+    case WhitespaceRenderMode::SELECTION:
+    case WhitespaceRenderMode::TRAILING:
+    case WhitespaceRenderMode::ALL:
+      break;
+    default:
+      mode = WhitespaceRenderMode::NONE;
+      break;
+    }
+    if (m_settings_.render_whitespace == mode) {
+      return finishAction(before, EditorActionReason::SETUP, true);
+    }
+    m_settings_.render_whitespace = mode;
+    return finishAction(before, EditorActionReason::SETUP, true, {}, true);
+  }
+
+  EditorActionResult EditorCore::setRenderLineBreaks(bool enabled) {
+    const ActionSnapshot before = captureActionSnapshot();
+    if (m_settings_.render_line_breaks == enabled) {
+      return finishAction(before, EditorActionReason::SETUP, true);
+    }
+    m_settings_.render_line_breaks = enabled;
+    m_text_layout_->setRenderLineBreaks(enabled);
+    normalizeScrollState();
+    return finishAction(before, EditorActionReason::SETUP, true, {}, true);
+  }
+
 #pragma endregion
 
 #pragma region [Rendering & Input]
@@ -533,6 +514,7 @@ namespace NS_SWEETEDITOR {
     }
     presentation_context.render_colors = m_settings_.render_colors;
     presentation_context.range_effect_styles = m_settings_.range_effect_styles;
+    presentation_context.render_whitespace = m_settings_.render_whitespace;
     presentation_context.collect_text_effects = [this](size_t line, Vector<TextPresentationEffect>& effects) {
       collectTextPresentationEffectsForLine(line, effects);
     };
@@ -2326,7 +2308,7 @@ namespace NS_SWEETEDITOR {
       }
     }
 
-    return findWordRangeInLine(line, line_text, anchor);
+    return TextBoundaryUtil::findWordRangeInLine(line, line_text, anchor);
   }
 
   U8String EditorCore::getWordAtCursor() const {
@@ -3326,7 +3308,7 @@ namespace NS_SWEETEDITOR {
       }
     }
 
-    TextRange range = findWordRangeInLine(line, line_text, anchor);
+    TextRange range = TextBoundaryUtil::findWordRangeInLine(line, line_text, anchor);
     setSelection(range);
     LOGD("EditorCore::selectWordAt, selection = %s", range.dump().c_str());
   }
@@ -3588,7 +3570,8 @@ namespace NS_SWEETEDITOR {
     const auto& document_highlights = m_decorations_->getLineDocumentHighlights(line);
     for (const auto& highlight : document_highlights) {
       if (highlight.length == 0) continue;
-      const RangeEffectStyle& style = documentHighlightPresentationStyle(m_settings_.range_effect_styles, highlight.kind);
+      const RangeEffectStyle& style =
+          RenderStyleUtil::documentHighlightRangeEffectStyle(m_settings_.range_effect_styles, highlight.kind);
       if (style.foreground_color == 0 && style.background_color == 0) {
         continue;
       }

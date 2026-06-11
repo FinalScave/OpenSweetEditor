@@ -9,6 +9,8 @@ class EditorSettings {
   double _scale = 1.0;
   core.FoldArrowMode _foldArrowMode = core.FoldArrowMode.always;
   core.WrapMode _wrapMode = core.WrapMode.none;
+  core.WhitespaceRenderMode _renderWhitespace = core.WhitespaceRenderMode.none;
+  bool _renderLineBreaks = false;
   double _lineSpacingAdd = 0;
   double _lineSpacingMult = 1.0;
   double _contentStartPadding = 0;
@@ -35,6 +37,8 @@ class EditorSettings {
     copy._scale = _scale;
     copy._foldArrowMode = _foldArrowMode;
     copy._wrapMode = _wrapMode;
+    copy._renderWhitespace = _renderWhitespace;
+    copy._renderLineBreaks = _renderLineBreaks;
     copy._lineSpacingAdd = _lineSpacingAdd;
     copy._lineSpacingMult = _lineSpacingMult;
     copy._contentStartPadding = _contentStartPadding;
@@ -62,6 +66,8 @@ class EditorSettings {
     _scale = other._scale;
     _foldArrowMode = other._foldArrowMode;
     _wrapMode = other._wrapMode;
+    _renderWhitespace = other._renderWhitespace;
+    _renderLineBreaks = other._renderLineBreaks;
     _lineSpacingAdd = other._lineSpacingAdd;
     _lineSpacingMult = other._lineSpacingMult;
     _contentStartPadding = other._contentStartPadding;
@@ -160,6 +166,20 @@ class EditorSettings {
   }
 
   core.WrapMode getWrapMode() => _wrapMode;
+
+  void setRenderWhitespace(core.WhitespaceRenderMode mode) {
+    _renderWhitespace = mode;
+    _session?.applyRenderWhitespace(mode);
+  }
+
+  core.WhitespaceRenderMode getRenderWhitespace() => _renderWhitespace;
+
+  void setRenderLineBreaks(bool enabled) {
+    _renderLineBreaks = enabled;
+    _session?.applyRenderLineBreaks(enabled);
+  }
+
+  bool isRenderLineBreaks() => _renderLineBreaks;
 
   void setLineSpacing(double add, double mult) {
     _lineSpacingAdd = add;
@@ -262,6 +282,8 @@ class EditorSettings {
     );
     session.applyFoldArrowMode(_foldArrowMode);
     session.applyWrapMode(_wrapMode);
+    session.applyRenderWhitespace(_renderWhitespace);
+    session.applyRenderLineBreaks(_renderLineBreaks);
     session.applyLineSpacing(_lineSpacingAdd, _lineSpacingMult);
     session.applyContentStartPadding(_contentStartPadding);
     session.applyShowSplitLine(_showSplitLine);

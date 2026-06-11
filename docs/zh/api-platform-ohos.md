@@ -200,6 +200,10 @@ public setGutterVisible(visible: boolean): void
 public isGutterVisible(): boolean
 public setCurrentLineRenderMode(mode: CurrentLineRenderMode): void
 public getCurrentLineRenderMode(): CurrentLineRenderMode
+public setRenderWhitespace(mode: WhitespaceRenderMode): void
+public getRenderWhitespace(): WhitespaceRenderMode
+public setRenderLineBreaks(enabled: boolean): void
+public isRenderLineBreaks(): boolean
 ```
 
 ### 编辑器行为
@@ -225,6 +229,8 @@ public getDecorationScrollRefreshMinIntervalMs(): number
 public setDecorationOverscanViewportMultiplier(multiplier: number): void
 public getDecorationOverscanViewportMultiplier(): number
 ```
+
+完整跨平台 settings 与 theme 契约见[平台实现标准](./platform-implementation-standard.md)。
 
 ## 高级桥接层：`EditorCore`
 

@@ -39,6 +39,14 @@ namespace SweetEditor {
         DISABLED = 1
     }
 
+    public enum WhitespaceRenderMode {
+        NONE = 0,
+        BOUNDARY = 1,
+        SELECTION = 2,
+        TRAILING = 3,
+        ALL = 4
+    }
+
     public enum WrapMode {
         NONE = 0,
         CHAR_BREAK = 1,

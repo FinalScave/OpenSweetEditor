@@ -434,6 +434,12 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_set_wrap_mode", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetWrapMode(IntPtr handle, int mode, out UIntPtr outSize);
 
+		[DllImport(LibraryName, EntryPoint = "editor_set_render_whitespace", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr SetRenderWhitespace(IntPtr handle, int mode, out UIntPtr outSize);
+
+		[DllImport(LibraryName, EntryPoint = "editor_set_render_line_breaks", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr SetRenderLineBreaks(IntPtr handle, int enabled, out UIntPtr outSize);
+
 		[DllImport(LibraryName, EntryPoint = "editor_set_tab_size", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetTabSize(IntPtr handle, int tabSize, out UIntPtr outSize);
 
@@ -1092,6 +1098,19 @@ namespace SweetEditor {
 		/// <param name="mode">Mode value (0=NONE, 1=CHAR_BREAK, 2=WORD_BREAK)</param>
 		public EditorActionResult SetWrapMode(int mode) {
 			IntPtr payloadPtr = NativeMethods.SetWrapMode(nativeHandle, mode, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Sets whitespace marker rendering mode.</summary>
+		/// <param name="mode">Mode value (0=NONE, 1=BOUNDARY, 2=SELECTION, 3=TRAILING, 4=ALL)</param>
+		public EditorActionResult SetRenderWhitespace(int mode) {
+			IntPtr payloadPtr = NativeMethods.SetRenderWhitespace(nativeHandle, mode, out UIntPtr payloadSize);
+			return DecodeAction(payloadPtr, payloadSize);
+		}
+
+		/// <summary>Sets whether line-break markers should be rendered.</summary>
+		public EditorActionResult SetRenderLineBreaks(bool enabled) {
+			IntPtr payloadPtr = NativeMethods.SetRenderLineBreaks(nativeHandle, enabled ? 1 : 0, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 

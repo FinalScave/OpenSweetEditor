@@ -82,6 +82,7 @@ struct ExamplePage {
 import {
   CurrentLineRenderMode,
   FoldArrowMode,
+  WhitespaceRenderMode,
   WrapMode
 } from '@qiplat/sweeteditor';
 
@@ -94,6 +95,8 @@ this.controller.whenReady(() => {
   settings.setFontFamily('monospace');
   settings.setEditorTextSize(28);
   settings.setWrapMode(WrapMode.NONE);
+  settings.setRenderWhitespace(WhitespaceRenderMode.BOUNDARY);
+  settings.setRenderLineBreaks(true);
   settings.setFoldArrowMode(FoldArrowMode.AUTO);
   settings.setCurrentLineRenderMode(CurrentLineRenderMode.BORDER);
   settings.setReadOnly(false);

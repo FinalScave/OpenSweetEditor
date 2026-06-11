@@ -21,6 +21,8 @@ public final class EditorSettings {
     public private(set) var scale: Float = 1.0
     public private(set) var foldArrowMode: FoldArrowMode = .always
     public private(set) var wrapMode: WrapMode = .none
+    public private(set) var renderWhitespace: WhitespaceRenderMode = .none
+    public private(set) var renderLineBreaks = false
     public private(set) var lineSpacingAdd: Float = 0.0
     public private(set) var lineSpacingMult: Float = 1.0
     public private(set) var contentStartPadding: Float = 0.0
@@ -69,6 +71,18 @@ public final class EditorSettings {
     /// Updates wrapping mode and applies the change immediately.
     public func setWrapMode(_ mode: WrapMode) {
         wrapMode = mode
+        apply()
+    }
+
+    /// Updates whitespace marker rendering mode and applies the change immediately.
+    public func setRenderWhitespace(_ mode: WhitespaceRenderMode) {
+        renderWhitespace = mode
+        apply()
+    }
+
+    /// Shows or hides line-break markers and applies the change immediately.
+    public func setRenderLineBreaks(_ enabled: Bool) {
+        renderLineBreaks = enabled
         apply()
     }
 

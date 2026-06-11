@@ -324,6 +324,16 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
     }
 
     /// Compatibility wrapper for callers not yet migrated to `settings`.
+    public func setRenderWhitespace(_ mode: WhitespaceRenderMode) {
+        settings.setRenderWhitespace(mode)
+    }
+
+    /// Compatibility wrapper for callers not yet migrated to `settings`.
+    public func setRenderLineBreaks(_ enabled: Bool) {
+        settings.setRenderLineBreaks(enabled)
+    }
+
+    /// Compatibility wrapper for callers not yet migrated to `settings`.
     public func setReadOnly(_ readOnly: Bool) {
         settings.setReadOnly(readOnly)
     }
@@ -767,6 +777,8 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         dispatchEditorActionResult(editorCore.setCompositionEnabled(settings.compositionEnabled))
         dispatchEditorActionResult(editorCore.setFoldArrowMode(FoldArrowMode(settings.foldArrowMode)))
         dispatchEditorActionResult(editorCore.setWrapMode(WrapMode(settings.wrapMode)))
+        dispatchEditorActionResult(editorCore.setRenderWhitespace(WhitespaceRenderMode(settings.renderWhitespace)))
+        dispatchEditorActionResult(editorCore.setRenderLineBreaks(settings.renderLineBreaks))
         dispatchEditorActionResult(editorCore.setLineSpacing(add: settings.lineSpacingAdd, mult: settings.lineSpacingMult))
         dispatchEditorActionResult(editorCore.setContentStartPadding(settings.contentStartPadding))
         dispatchEditorActionResult(editorCore.setShowSplitLine(settings.showSplitLine))

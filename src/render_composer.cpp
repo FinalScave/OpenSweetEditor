@@ -4,19 +4,14 @@
 #include <sweeteditor/interaction.h>
 #include <sweeteditor/linked_editing.h>
 #include "logging.h"
+#include "render_style_util.hpp"
 
 namespace NS_SWEETEDITOR {
 
   namespace {
-    bool hasRangeEffectPaint(const RangeEffectStyle& style) {
-      return style.background_color != 0
-          || style.border_color != 0
-          || style.underline_color != 0;
-    }
-
     void appendRangeEffect(EditorRenderModel& model, const Rect& rect,
                            RangeEffectKind kind, const RangeEffectStyle& style) {
-      if (!hasRangeEffectPaint(style) || rect.width <= 0.0f || rect.height <= 0.0f) {
+      if (!RenderStyleUtil::hasRangeEffectPaint(style) || rect.width <= 0.0f || rect.height <= 0.0f) {
         return;
       }
       RangeEffectRenderItem item;
@@ -37,60 +32,6 @@ namespace NS_SWEETEDITOR {
             && text_layout->getFoldTailProjectedRange(visual_line.logical_line, projected_range)) {
           out_source_lines.insert(projected_range.start.line);
         }
-      }
-    }
-
-    RangeEffectKind diagnosticRangeEffectKind(DiagnosticSeverity severity) {
-      switch (severity) {
-        case DiagnosticSeverity::DIAG_WARNING:
-          return RangeEffectKind::DIAGNOSTIC_WARNING;
-        case DiagnosticSeverity::DIAG_INFO:
-          return RangeEffectKind::DIAGNOSTIC_INFO;
-        case DiagnosticSeverity::DIAG_HINT:
-          return RangeEffectKind::DIAGNOSTIC_HINT;
-        case DiagnosticSeverity::DIAG_ERROR:
-        default:
-          return RangeEffectKind::DIAGNOSTIC_ERROR;
-      }
-    }
-
-    const RangeEffectStyle& diagnosticRangeEffectStyle(const EditorRangeEffectStyles& styles,
-                                                       DiagnosticSeverity severity) {
-      switch (severity) {
-        case DiagnosticSeverity::DIAG_WARNING:
-          return styles.diagnostic_warning;
-        case DiagnosticSeverity::DIAG_INFO:
-          return styles.diagnostic_info;
-        case DiagnosticSeverity::DIAG_HINT:
-          return styles.diagnostic_hint;
-        case DiagnosticSeverity::DIAG_ERROR:
-        default:
-          return styles.diagnostic_error;
-      }
-    }
-
-    RangeEffectKind documentHighlightRangeEffectKind(DocumentHighlightKind kind) {
-      switch (kind) {
-        case DocumentHighlightKind::READ:
-          return RangeEffectKind::DOCUMENT_HIGHLIGHT_READ;
-        case DocumentHighlightKind::WRITE:
-          return RangeEffectKind::DOCUMENT_HIGHLIGHT_WRITE;
-        case DocumentHighlightKind::TEXT:
-        default:
-          return RangeEffectKind::DOCUMENT_HIGHLIGHT_TEXT;
-      }
-    }
-
-    const RangeEffectStyle& documentHighlightRangeEffectStyle(const EditorRangeEffectStyles& styles,
-                                                              DocumentHighlightKind kind) {
-      switch (kind) {
-        case DocumentHighlightKind::READ:
-          return styles.document_highlight_read;
-        case DocumentHighlightKind::WRITE:
-          return styles.document_highlight_write;
-        case DocumentHighlightKind::TEXT:
-        default:
-          return styles.document_highlight_text;
       }
     }
   }
@@ -310,8 +251,9 @@ namespace NS_SWEETEDITOR {
                                    col_end,
                                    line_height,
                                    0.0f,
-                                   documentHighlightRangeEffectKind(highlight.kind),
-                                   documentHighlightRangeEffectStyle(m_settings_->range_effect_styles, highlight.kind));
+                                   RenderStyleUtil::documentHighlightRangeEffectKind(highlight.kind),
+                                   RenderStyleUtil::documentHighlightRangeEffectStyle(m_settings_->range_effect_styles,
+                                                                                      highlight.kind));
       }
     }
   }
@@ -485,8 +427,9 @@ namespace NS_SWEETEDITOR {
                                    ds.column + ds.length,
                                    font_height,
                                    top_padding,
-                                   diagnosticRangeEffectKind(ds.severity),
-                                   diagnosticRangeEffectStyle(m_settings_->range_effect_styles, ds.severity));
+                                   RenderStyleUtil::diagnosticRangeEffectKind(ds.severity),
+                                   RenderStyleUtil::diagnosticRangeEffectStyle(m_settings_->range_effect_styles,
+                                                                               ds.severity));
       }
     }
   }

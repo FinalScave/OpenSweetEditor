@@ -26,6 +26,8 @@ export const handleEditorKeyEvent: (handle: number, keyCode: number, text: strin
 export const editorOnFontMetricsChanged: (handle: number) => ArrayBuffer | undefined;
 export const editorSetFoldArrowMode: (handle: number, mode: number) => ArrayBuffer | undefined;
 export const editorSetWrapMode: (handle: number, mode: number) => ArrayBuffer | undefined;
+export const editorSetRenderWhitespace: (handle: number, mode: number) => ArrayBuffer | undefined;
+export const editorSetRenderLineBreaks: (handle: number, enabled: boolean) => ArrayBuffer | undefined;
 export const editorSetTabSize: (handle: number, tabSize: number) => ArrayBuffer | undefined;
 export const editorSetInsertSpaces: (handle: number, enabled: number) => ArrayBuffer | undefined;
 export const editorSetKeyMap: (handle: number, data: ArrayBuffer, size: number) => ArrayBuffer | undefined;

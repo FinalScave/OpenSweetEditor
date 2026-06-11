@@ -83,6 +83,7 @@ export class EditorTheme {
   inlayHintTextColor: number = 0xC0AFC2E0;
   inlayHintIconColor: number = 0xCC9CB0CD;
   phantomTextColor: number = 0x8AA3B5D1;
+  invisibleCharacterColor: number = 0x706B7890;
   foldPlaceholderBgColor: number = 0x36506C90;
   foldPlaceholderTextColor: number = 0xFFE2ECFF;
   diagnosticErrorColor: number = 0xFFF7768E;
@@ -143,6 +144,7 @@ export class EditorTheme {
     theme.inlayHintTextColor = 0xC0AFC2E0;
     theme.inlayHintIconColor = 0xCC9CB0CD;
     theme.phantomTextColor = 0x8AA3B5D1;
+    theme.invisibleCharacterColor = 0x706B7890;
     theme.foldPlaceholderBgColor = 0x36506C90;
     theme.foldPlaceholderTextColor = 0xFFE2ECFF;
     theme.diagnosticErrorColor = 0xFFF7768E;
@@ -213,6 +215,7 @@ export class EditorTheme {
     theme.inlayHintTextColor = 0xB0344A73;
     theme.inlayHintIconColor = 0xB04B607E;
     theme.phantomTextColor = 0x8A4B607E;
+    theme.invisibleCharacterColor = 0x705D6B82;
     theme.foldPlaceholderBgColor = 0x2E748DB0;
     theme.foldPlaceholderTextColor = 0xFF284A70;
     theme.diagnosticErrorColor = 0xFFDC2626;

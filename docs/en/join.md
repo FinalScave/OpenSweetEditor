@@ -74,7 +74,7 @@ This document gives practical development entry points based on the current repo
 
 ### WinForms
 
-- `platform/WinForms/SweetEditor/EditorControl.cs`
+- `platform/WinForms/SweetEditor/SweetEditorControl.cs`
   - WinForms control layer, input and drawing
 - `platform/WinForms/SweetEditor/EditorCore.cs`
   - P/Invoke wrapper and protocol bridge

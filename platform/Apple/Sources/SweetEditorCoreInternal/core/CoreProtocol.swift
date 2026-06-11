@@ -202,6 +202,11 @@ enum CoreProtocol {
         return ScrollbarTrackTapMode.fromValue(value)
     }
 
+    static func readWhitespaceRenderMode(_ reader: inout BinaryReader) -> WhitespaceRenderMode? {
+        guard let value = reader.readInt32() else { return nil }
+        return WhitespaceRenderMode.fromValue(value)
+    }
+
     static func readWrapMode(_ reader: inout BinaryReader) -> WrapMode? {
         guard let value = reader.readInt32() else { return nil }
         return WrapMode.fromValue(value)

@@ -376,7 +376,12 @@ final class EditorRenderer {
             int lastFontStyle = -1;
             int lastColor = 0;
             for (VisualRun run : line.runs) {
-                if (run.type == VisualRunType.TEXT || run.type == VisualRunType.WHITESPACE
+                if (drawInvisibleCharacterRun(canvas, run)) {
+                    lastFontStyle = -1;
+                    continue;
+                }
+
+                if (run.type == VisualRunType.TEXT
                         || run.type == VisualRunType.CODELENS || run.type == VisualRunType.LINK
                         || run.type == VisualRunType.INLAY_HINT || run.type == VisualRunType.PHANTOM_TEXT
                         || run.type == VisualRunType.FOLD_PLACEHOLDER) {
@@ -503,6 +508,94 @@ final class EditorRenderer {
                 }
             }
         }
+    }
+
+    private boolean drawInvisibleCharacterRun(Canvas canvas, VisualRun run) {
+        if (run.type == VisualRunType.WHITESPACE) {
+            drawRunBackground(canvas, run);
+            drawWhitespaceMarkerRun(canvas, run);
+            return true;
+        }
+        if (run.type == VisualRunType.TAB) {
+            drawRunBackground(canvas, run);
+            drawTabMarkerRun(canvas, run);
+            return true;
+        }
+        if (run.type == VisualRunType.NEWLINE) {
+            drawRunBackground(canvas, run);
+            drawLineBreakMarkerRun(canvas, run);
+            return true;
+        }
+        return false;
+    }
+
+    private void drawRunBackground(Canvas canvas, VisualRun run) {
+        if (run.style == null || run.style.backgroundColor == 0 || run.width <= 0f) return;
+        applyFontStyle(run.style.fontStyle);
+        Paint.FontMetrics fm = mTextPaint.getFontMetrics();
+        int oldColor = mTextPaint.getColor();
+        mTextPaint.setColor(run.style.backgroundColor);
+        canvas.drawRect(run.x, run.y + fm.ascent, run.x + run.width, run.y + fm.descent, mTextPaint);
+        mTextPaint.setColor(oldColor);
+    }
+
+    private void drawWhitespaceMarkerRun(Canvas canvas, VisualRun run) {
+        int markerCount = run.text != null ? run.text.length() : 0;
+        if (markerCount <= 0 || run.width <= 0f) return;
+        applyInvisibleCharacterTextStyle();
+        float cellWidth = run.width / Math.max(1, markerCount);
+        Paint.FontMetrics fm = mTextPaint.getFontMetrics();
+        float centerY = run.y + (fm.ascent + fm.descent) * 0.5f;
+        float radius = Math.max(1.0f * mDensity, Math.min(cellWidth, mTextPaint.getTextSize()) * 0.08f);
+        int oldColor = mTextPaint.getColor();
+        Paint.Style oldStyle = mTextPaint.getStyle();
+        mTextPaint.setColor(mTheme.invisibleCharacterColor);
+        mTextPaint.setStyle(Paint.Style.FILL);
+        for (int i = 0; i < markerCount; ++i) {
+            float centerX = run.x + cellWidth * (i + 0.5f);
+            canvas.drawCircle(centerX, centerY, radius, mTextPaint);
+        }
+        mTextPaint.setStyle(oldStyle);
+        mTextPaint.setColor(oldColor);
+    }
+
+    private void drawTabMarkerRun(Canvas canvas, VisualRun run) {
+        if (run.text == null || run.text.isEmpty() || run.width <= 0f) return;
+        applyInvisibleCharacterTextStyle();
+        Paint.FontMetrics fm = mTextPaint.getFontMetrics();
+        float centerY = run.y + (fm.ascent + fm.descent) * 0.5f;
+        float padding = Math.min(run.width * 0.25f, 8.0f * mDensity);
+        float left = run.x + padding;
+        float right = Math.max(left, run.x + run.width - padding);
+        float arrow = Math.min(5.0f * mDensity, Math.max(2.0f * mDensity, (right - left) * 0.35f));
+
+        int oldColor = mTextPaint.getColor();
+        Paint.Style oldStyle = mTextPaint.getStyle();
+        float oldStrokeWidth = mTextPaint.getStrokeWidth();
+        mTextPaint.setColor(mTheme.invisibleCharacterColor);
+        mTextPaint.setStyle(Paint.Style.STROKE);
+        mTextPaint.setStrokeWidth(Math.max(1.0f, 1.0f * mDensity));
+        canvas.drawLine(left, centerY, right, centerY, mTextPaint);
+        canvas.drawLine(right, centerY, right - arrow, centerY - arrow, mTextPaint);
+        canvas.drawLine(right, centerY, right - arrow, centerY + arrow, mTextPaint);
+        mTextPaint.setStrokeWidth(oldStrokeWidth);
+        mTextPaint.setStyle(oldStyle);
+        mTextPaint.setColor(oldColor);
+    }
+
+    private void drawLineBreakMarkerRun(Canvas canvas, VisualRun run) {
+        if (run.text == null || run.text.isEmpty()) return;
+        applyInvisibleCharacterTextStyle();
+        int oldColor = mTextPaint.getColor();
+        mTextPaint.setColor(mTheme.invisibleCharacterColor);
+        canvas.drawText(run.text, run.x, run.y, mTextPaint);
+        mTextPaint.setColor(oldColor);
+    }
+
+    private void applyInvisibleCharacterTextStyle() {
+        mTextPaint.setTypeface(mTextTypefaces[Typeface.NORMAL]);
+        mTextPaint.setStrikeThruText(false);
+        mTextPaint.setUnderlineText(false);
     }
 
     private void drawLineNumbers(Canvas canvas, EditorRenderModel model) {

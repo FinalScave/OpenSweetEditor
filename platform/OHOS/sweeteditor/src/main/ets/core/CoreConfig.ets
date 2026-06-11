@@ -88,6 +88,25 @@ export function scrollbarTrackTapModeFromValue(value: number): ScrollbarTrackTap
   }
 }
 
+export enum WhitespaceRenderMode {
+  NONE = 0,
+  BOUNDARY = 1,
+  SELECTION = 2,
+  TRAILING = 3,
+  ALL = 4,
+}
+
+export function whitespaceRenderModeFromValue(value: number): WhitespaceRenderMode {
+  switch (value) {
+    case 0: return WhitespaceRenderMode.NONE;
+    case 1: return WhitespaceRenderMode.BOUNDARY;
+    case 2: return WhitespaceRenderMode.SELECTION;
+    case 3: return WhitespaceRenderMode.TRAILING;
+    case 4: return WhitespaceRenderMode.ALL;
+    default: return WhitespaceRenderMode.NONE;
+  }
+}
+
 export enum WrapMode {
   NONE = 0,
   CHAR_BREAK = 1,

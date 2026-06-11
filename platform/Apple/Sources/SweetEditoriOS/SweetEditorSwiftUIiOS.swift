@@ -204,6 +204,16 @@ public final class SweetEditorViewiOS: UIView {
     }
 
     /// Compatibility wrapper for callers not yet migrated to `settings`.
+    public func setRenderWhitespace(_ mode: WhitespaceRenderMode) {
+        editorView.setRenderWhitespace(mode)
+    }
+
+    /// Compatibility wrapper for callers not yet migrated to `settings`.
+    public func setRenderLineBreaks(_ enabled: Bool) {
+        editorView.setRenderLineBreaks(enabled)
+    }
+
+    /// Compatibility wrapper for callers not yet migrated to `settings`.
     public func setReadOnly(_ readOnly: Bool) {
         editorView.setReadOnly(readOnly)
     }

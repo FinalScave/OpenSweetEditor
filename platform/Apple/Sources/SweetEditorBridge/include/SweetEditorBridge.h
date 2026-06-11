@@ -198,6 +198,8 @@ const uint8_t* editor_clear_gutter_icons(intptr_t editor_handle, size_t* out_siz
 const uint8_t* editor_set_max_gutter_icons(intptr_t editor_handle, uint32_t count, size_t* out_size);
 const uint8_t* editor_set_fold_arrow_mode(intptr_t editor_handle, int mode, size_t* out_size);
 const uint8_t* editor_set_wrap_mode(intptr_t editor_handle, int mode, size_t* out_size);
+const uint8_t* editor_set_render_whitespace(intptr_t editor_handle, int mode, size_t* out_size);
+const uint8_t* editor_set_render_line_breaks(intptr_t editor_handle, int enabled, size_t* out_size);
 const uint8_t* editor_set_tab_size(intptr_t editor_handle, int tab_size, size_t* out_size);
 const uint8_t* editor_set_scale(intptr_t editor_handle, float scale, size_t* out_size);
 const uint8_t* editor_set_line_spacing(intptr_t editor_handle, float add, float mult, size_t* out_size);

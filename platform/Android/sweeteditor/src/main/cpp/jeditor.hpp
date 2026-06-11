@@ -1085,6 +1085,24 @@ public:
     return wrapBinaryPayload(env, payload, out_size);
   }
 
+  static jobject setRenderWhitespace(JNIEnv* env, jclass clazz, jlong handle, jint mode) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_render_whitespace(static_cast<intptr_t>(handle),
+                                                          static_cast<int>(mode),
+                                                          &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
+  }
+
+  static jobject setRenderLineBreaks(JNIEnv* env, jclass clazz, jlong handle, jboolean enabled) {
+    if (handle == 0) return nullptr;
+    size_t out_size = 0;
+    const uint8_t* payload = editor_set_render_line_breaks(static_cast<intptr_t>(handle),
+                                                           enabled ? 1 : 0,
+                                                           &out_size);
+    return wrapBinaryPayload(env, payload, out_size);
+  }
+
   static jobject setTabSize(JNIEnv* env, jclass clazz, jlong handle, jint tab_size) {
     if (handle == 0) return nullptr;
     size_t out_size = 0;
@@ -1534,6 +1552,8 @@ public:
       {"nativeSetMaxGutterIcons", "(JI)Ljava/nio/ByteBuffer;", (void*) setMaxGutterIcons},
       {"nativeSetFoldArrowMode", "(JI)Ljava/nio/ByteBuffer;", (void*) setFoldArrowMode},
       {"nativeSetWrapMode", "(JI)Ljava/nio/ByteBuffer;", (void*) setWrapMode},
+      {"nativeSetRenderWhitespace", "(JI)Ljava/nio/ByteBuffer;", (void*) setRenderWhitespace},
+      {"nativeSetRenderLineBreaks", "(JZ)Ljava/nio/ByteBuffer;", (void*) setRenderLineBreaks},
       {"nativeSetTabSize", "(JI)Ljava/nio/ByteBuffer;", (void*) setTabSize},
       {"nativeSetScale", "(JF)Ljava/nio/ByteBuffer;", (void*) setScale},
       {"nativeSetLineSpacing", "(JFF)Ljava/nio/ByteBuffer;", (void*) setLineSpacing},

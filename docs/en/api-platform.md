@@ -1,6 +1,6 @@
 # Platform API Entry
 
-This document describes the current repository code state (2026-05). If the document and source code are different, use the source code.
+This document describes the current repository code state (2026-06). If the document and source code are different, use the source code.
 
 ## Document List
 
@@ -25,7 +25,7 @@ This document describes the current repository code state (2026-05). If the docu
 
 ## Current Platform Layer Conventions
 
-- Public control APIs should use semantic enums first (`WrapMode`, `FoldArrowMode`, `SpanLayer`, etc.).
+- Public control APIs should use semantic enums first (`WrapMode`, `FoldArrowMode`, `WhitespaceRenderMode`, `SpanLayer`, etc.).
 - Bridge layers keep native numeric protocol (`int`/`byte`) for JNI/FFM/PInvoke/C bridge.
 - State-changing core calls use `EditorActionResult` to express text events, IME synchronization, animation, refresh, and redraw needs; platform layers no longer infer side effects from method names or local assumptions.
 - Keep bit flags like `FontStyle` as constants, not mutually exclusive enums.

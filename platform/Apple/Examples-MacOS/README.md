@@ -40,6 +40,8 @@ Prefer the centralized `settings` API for runtime behavior changes:
 let editor = SweetEditorViewMacOS(frame: .zero)
 editor.settings.setScale(1.1)
 editor.settings.setWrapMode(.wordBreak)
+editor.settings.setRenderWhitespace(.boundary)
+editor.settings.setRenderLineBreaks(true)
 editor.settings.setLineSpacing(add: 1.0, mult: 1.2)
 editor.settings.setReadOnly(false)
 editor.settings.setMaxGutterIcons(2)

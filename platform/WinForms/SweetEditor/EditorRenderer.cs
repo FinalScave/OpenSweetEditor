@@ -525,6 +525,7 @@ namespace SweetEditor {
 			string text = visualRun.Text;
 			string drawTextContent = text ?? string.Empty;
 			bool hasText = !string.IsNullOrEmpty(text);
+			if (DrawInvisibleCharacterRun(g, visualRun)) return;
 			if (!hasText && visualRun.Type != VisualRunType.INLAY_HINT) return;
 			Font font = (visualRun.Type == VisualRunType.INLAY_HINT)
 				? GetInlayHintFontByStyle(visualRun.Style.FontStyle)
@@ -607,6 +608,85 @@ namespace SweetEditor {
 				using var pen = new Pen(color, 1f);
 				g.DrawLine(pen, visualRun.X, strikeY, visualRun.X + visualRun.Width, strikeY);
 			}
+		}
+
+		private bool DrawInvisibleCharacterRun(Graphics g, VisualRun visualRun) {
+			if (visualRun.Type != VisualRunType.WHITESPACE
+				&& visualRun.Type != VisualRunType.TAB
+				&& visualRun.Type != VisualRunType.NEWLINE) {
+				return false;
+			}
+			FontMetricsInfo metrics = GetTextFontMetrics(visualRun.Style.FontStyle, g);
+			float topY = visualRun.Y - metrics.Ascent;
+			int lineHeight = (int)Math.Ceiling(metrics.LineHeight);
+			int drawWidth = Math.Max(1, (int)Math.Ceiling(visualRun.Width));
+			if (visualRun.Type == VisualRunType.WHITESPACE) {
+				DrawRunBackground(g, visualRun, topY, drawWidth, lineHeight);
+				DrawWhitespaceMarkerRun(g, visualRun, metrics);
+				return true;
+			}
+			if (visualRun.Type == VisualRunType.TAB) {
+				DrawRunBackground(g, visualRun, topY, drawWidth, lineHeight);
+				DrawTabMarkerRun(g, visualRun, metrics);
+				return true;
+			}
+			if (visualRun.Type == VisualRunType.NEWLINE) {
+				DrawRunBackground(g, visualRun, topY, drawWidth, lineHeight);
+				DrawLineBreakMarkerRun(g, visualRun, metrics);
+				return true;
+			}
+			return false;
+		}
+
+		private void DrawRunBackground(Graphics g, VisualRun visualRun, float topY, int drawWidth, int lineHeight) {
+			if (visualRun.Style.BackgroundColor == 0) return;
+			g.FillRectangle(GetOrCreateBrush(visualRun.Style.BackgroundColor), visualRun.X, topY, drawWidth, lineHeight);
+		}
+
+		private void DrawWhitespaceMarkerRun(Graphics g, VisualRun visualRun, FontMetricsInfo metrics) {
+			string text = visualRun.Text ?? string.Empty;
+			int markerCount = text.Length;
+			if (markerCount <= 0 || visualRun.Width <= 0f) return;
+
+			float cellWidth = visualRun.Width / Math.Max(1, markerCount);
+			float centerY = visualRun.Y + (metrics.Descent - metrics.Ascent) * 0.5f;
+			float radius = Math.Max(1.0f, Math.Min(cellWidth, regularFont.Size) * 0.08f);
+			using var brush = new SolidBrush(GetInvisibleCharacterColor());
+			for (int i = 0; i < markerCount; i++) {
+				float centerX = visualRun.X + cellWidth * (i + 0.5f);
+				g.FillEllipse(brush, centerX - radius, centerY - radius, radius * 2, radius * 2);
+			}
+		}
+
+		private void DrawTabMarkerRun(Graphics g, VisualRun visualRun, FontMetricsInfo metrics) {
+			if (string.IsNullOrEmpty(visualRun.Text) || visualRun.Width <= 0f) return;
+
+			float centerY = visualRun.Y + (metrics.Descent - metrics.Ascent) * 0.5f;
+			float padding = Math.Min(visualRun.Width * 0.25f, 8.0f);
+			float left = visualRun.X + padding;
+			float right = Math.Max(left, visualRun.X + visualRun.Width - padding);
+			float arrow = Math.Min(5.0f, Math.Max(2.0f, (right - left) * 0.35f));
+			using var pen = new Pen(GetInvisibleCharacterColor(), Math.Max(1.0f, regularFont.Size * 0.06f)) {
+				StartCap = LineCap.Round,
+				EndCap = LineCap.Round,
+				LineJoin = LineJoin.Round
+			};
+			g.DrawLine(pen, left, centerY, right, centerY);
+			g.DrawLine(pen, right, centerY, right - arrow, centerY - arrow);
+			g.DrawLine(pen, right, centerY, right - arrow, centerY + arrow);
+		}
+
+		private void DrawLineBreakMarkerRun(Graphics g, VisualRun visualRun, FontMetricsInfo metrics) {
+			if (string.IsNullOrEmpty(visualRun.Text)) return;
+			int width = Math.Max(1, (int)Math.Ceiling(visualRun.Width));
+			var rect = new Rectangle((int)visualRun.X, (int)(visualRun.Y - metrics.Ascent), width, (int)Math.Ceiling(metrics.LineHeight));
+			TextRenderer.DrawText(g, visualRun.Text, regularFont, rect, GetInvisibleCharacterColor(), TextMeasureDrawFlags);
+		}
+
+		private Color GetInvisibleCharacterColor() {
+			return currentTheme.InvisibleCharacterColor.IsEmpty
+				? Color.FromArgb(0x70, currentTheme.TextColor)
+				: currentTheme.InvisibleCharacterColor;
 		}
 
 		private static void DrawRoundedRect(Graphics g, Brush brush, float x, float y, float width, float height, float radius) {

@@ -3,7 +3,7 @@
 > This document defines the conventions and constraints that every SweetEditor platform implementation must follow.
 > The goal is to keep cross-platform behavior consistent while allowing platform-specific rendering and input handling.
 >
-> This document describes the current repository code state (2026-05). If the document and source code are different, use the source code.
+> This document describes the current repository code state (2026-06). If the document and source code are different, use the source code.
 >
 > Constraint levels:
 > - **MUST** — all platforms must comply; violation is a bug.
@@ -214,7 +214,7 @@ During construction or first-frame bootstrap before the editor runtime / dispatc
 
 | Capability | Required `EditorCore` APIs |
 |---|---|
-| Configuration | `loadDocument(doc)`, `setViewport(w, h)`, `onFontMetricsChanged()`, `setFoldArrowMode(mode)`, `setWrapMode(mode)`, `setTabSize(size)`, `setInsertSpaces(enabled)`, `setScale(scale)`, `setLineSpacing(add, mult)`, `setContentStartPadding(padding)`, `setShowSplitLine(show)`, `setCurrentLineRenderMode(mode)`, `setGutterSticky(sticky)`, `setGutterVisible(visible)`, `setHandleConfig(...)`, `setScrollbarConfig(...)` |
+| Configuration | `loadDocument(doc)`, `setViewport(w, h)`, `onFontMetricsChanged()`, `setFoldArrowMode(mode)`, `setWrapMode(mode)`, `setRenderWhitespace(mode)`, `setRenderLineBreaks(enabled)`, `setTabSize(size)`, `setInsertSpaces(enabled)`, `setScale(scale)`, `setLineSpacing(add, mult)`, `setContentStartPadding(padding)`, `setShowSplitLine(show)`, `setCurrentLineRenderMode(mode)`, `setGutterSticky(sticky)`, `setGutterVisible(visible)`, `setHandleConfig(...)`, `setScrollbarConfig(...)` |
 | Render model | `buildRenderModel()`, `getLayoutMetrics()` |
 | Gesture / keyboard | `handleGestureEvent(...)`, `tickAnimations()`, `handleKeyEvent(...)`, `setKeyMap(bindings)` |
 | Text editing | `insertText(text)`, `replaceText(range, text)`, `deleteText(range)`, `applyTextEdits(edits)`, `backspace()`, `deleteForward()`, `moveLineUp()`, `moveLineDown()`, `copyLineUp()`, `copyLineDown()`, `deleteLine()`, `insertLineAbove()`, `insertLineBelow()` |
@@ -495,6 +495,7 @@ All color fields use the platform color type (ARGB). Platforms MUST provide the 
 | PhantomText | `phantomTextColor` |
 | CodeLens | `codeLensColor`, `codeLensActiveColor` |
 | Link | `linkColor`, `linkActiveColor` |
+| Invisible characters | `invisibleCharacterColor` |
 | Diagnostics | `diagnosticErrorColor`, `diagnosticWarningColor`, `diagnosticInfoColor`, `diagnosticHintColor` |
 | Linked editing | `linkedEditingActiveColor`, `linkedEditingInactiveColor` |
 | Bracket matching | `bracketHighlightBorderColor`, `bracketHighlightBgColor` |
@@ -530,6 +531,8 @@ All platforms MUST expose the following settings through getter/setter pairs (or
 | `gutterSticky` | boolean | Platform-dependent | `setGutterSticky(sticky)` | `isGutterSticky()` | `repaint` | Whether gutter stays fixed during horizontal scroll (true=fixed, false=scrolls with content) |
 | `gutterVisible` | boolean | true | `setGutterVisible(visible)` | `isGutterVisible()` | `relayout` | Whether gutter area is visible (false=hide line numbers, icons, fold arrows) |
 | `currentLineRenderMode` | CurrentLineRenderMode | BACKGROUND | `setCurrentLineRenderMode(mode)` | `getCurrentLineRenderMode()` | `repaint` | Current line render mode |
+| `renderWhitespace` | WhitespaceRenderMode | NONE | `setRenderWhitespace(mode)` | `getRenderWhitespace()` | `repaint` | Whitespace marker rendering mode |
+| `renderLineBreaks` | boolean | false | `setRenderLineBreaks(enabled)` | `isRenderLineBreaks()` | `repaint` | Whether to render line-break markers |
 | `autoIndentMode` | AutoIndentMode | KEEP_INDENT | `setAutoIndentMode(mode)` | `getAutoIndentMode()` | `runtime-transition` | Auto indent mode |
 | `backspaceUnindent` | boolean | true | `setBackspaceUnindent(enabled)` | `isBackspaceUnindent()` | `runtime-transition` | Whether backspace key unindents at line start |
 | `readOnly` | boolean | false | `setReadOnly(readOnly)` | `isReadOnly()` | `runtime-transition` | Read-only mode, blocks all edit operations |
@@ -743,6 +746,7 @@ Enum and enum-like constant values MUST match the C++ core definitions. The foll
 | `FoldArrowMode` | AUTO=0, ALWAYS=1, HIDDEN=2 |
 | `AutoIndentMode` | NONE=0, KEEP_INDENT=1 |
 | `CurrentLineRenderMode` | BACKGROUND=0, BORDER=1, NONE=2 |
+| `WhitespaceRenderMode` | NONE=0, BOUNDARY=1, SELECTION=2, TRAILING=3, ALL=4 |
 | `ScrollbarMode` | ALWAYS=0, TRANSIENT=1, NEVER=2 |
 | `ScrollbarTrackTapMode` | JUMP=0, DISABLED=1 |
 | `ScrollBehavior` | TOP=0, CENTER=1, BOTTOM=2 |
@@ -1116,7 +1120,7 @@ Accessibility support is MAY level; implementations SHOULD follow this minimum g
 
 ## 23. Versioning
 
-This standard applies to SweetEditor platform implementations as of 2026-05. When the C++ core adds new enums, events, or API methods, all platforms MUST be updated to match within the same release cycle.
+This standard applies to SweetEditor platform implementations as of 2026-06. When the C++ core adds new enums, events, or API methods, all platforms MUST be updated to match within the same release cycle.
 
 ### 23.1 Platform Package Version Numbering
 
