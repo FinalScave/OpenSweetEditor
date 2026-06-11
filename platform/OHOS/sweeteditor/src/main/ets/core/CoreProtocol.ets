@@ -1,9 +1,9 @@
 import util from '@ohos.util';
 import { EditorActionResult, EditorActionSource, ScrollBehavior, TextChangeKind, editorActionSourceFromValue, scrollBehaviorFromValue, textChangeKindFromValue } from './CoreAction';
 import { BracketGuide, CodeLensItem, Diagnostic, DiagnosticSeverity, DocumentHighlight, DocumentHighlightKind, FlowGuide, FoldRegion, GutterIcon, IndentGuide, InlayHint, InlayType, LinkSpan, PhantomText, SeparatorGuide, SeparatorStyle, SpanLayer, StyleSpan, TextStyle, diagnosticSeverityFromValue, documentHighlightKindFromValue, inlayTypeFromValue, separatorStyleFromValue, spanLayerFromValue } from './CoreAdornments';
-import { AutoIndentMode, CurrentLineRenderMode, EditorOptions, EditorRangeEffectStyles, EditorRenderColors, FoldArrowMode, HandleConfig, RangeEffectStyle, RangeEffectUnderlineStyle, ScrollbarConfig, ScrollbarMode, ScrollbarTrackTapMode, WhitespaceRenderMode, WrapMode, autoIndentModeFromValue, currentLineRenderModeFromValue, foldArrowModeFromValue, rangeEffectUnderlineStyleFromValue, scrollbarModeFromValue, scrollbarTrackTapModeFromValue, whitespaceRenderModeFromValue, wrapModeFromValue } from './CoreConfig';
-import { IntRange, OffsetRect, PointF, Rect, TextChange, TextEdit, TextPosition, TextRange } from './CoreFoundation';
-import { ImeContextPolicy, ImeDocumentTextReplacement, ImeInputContext, ImeInputContextKind, ImeInputContextTextReplacement, ImeInputStateTextReplacement, ImePreeditStorage, ImeScriptClass, ImeSyncSnapshot, ImeTextModelDelta, ImeTextModelMode, ImeTextModelState, ImeTextRange, ImeTextReplacement, ImeTextUnit, imeContextPolicyFromValue, imeInputContextKindFromValue, imePreeditStorageFromValue, imeScriptClassFromValue, imeTextModelModeFromValue, imeTextUnitFromValue } from './CoreIme';
+import { AutoIndentMode, CurrentLineRenderMode, EditorOptions, EditorRangeEffectStyles, EditorRenderColors, FoldArrowMode, HandleConfig, HandleHitArea, RangeEffectStyle, RangeEffectUnderlineStyle, ScrollbarConfig, ScrollbarMode, ScrollbarTrackTapMode, WhitespaceRenderMode, WrapMode, autoIndentModeFromValue, currentLineRenderModeFromValue, foldArrowModeFromValue, rangeEffectUnderlineStyleFromValue, scrollbarModeFromValue, scrollbarTrackTapModeFromValue, whitespaceRenderModeFromValue, wrapModeFromValue } from './CoreConfig';
+import { IntRange, PointF, Rect, Size, TextChange, TextEdit, TextPosition, TextRange } from './CoreFoundation';
+import { ImeContextPolicy, ImeDocumentTextReplacement, ImeInputContext, ImeInputContextKind, ImeInputContextTextReplacement, ImeInputStateTextReplacement, ImeOffsetRange, ImePreeditStorage, ImeScriptClass, ImeSyncSnapshot, ImeTextModelDelta, ImeTextModelMode, ImeTextModelState, ImeTextReplacement, ImeTextUnit, imeContextPolicyFromValue, imeInputContextKindFromValue, imePreeditStorageFromValue, imeScriptClassFromValue, imeTextModelModeFromValue, imeTextUnitFromValue } from './CoreIme';
 import { EventType, GestureEvent, GestureType, HitTarget, HitTargetType, eventTypeFromValue, gestureTypeFromValue, hitTargetTypeFromValue } from './CoreInteraction';
 import { EditorBuiltinCommand, KeyBinding, KeyChord, KeyCode, KeyModifier, editorBuiltinCommandFromValue } from './CoreKeymap';
 import { LinkedEditingModel, TabStopGroup } from './CoreLinkedEditing';
@@ -998,14 +998,43 @@ export class CoreProtocol {
   }
 
   static writeHandleConfig(writer: BinaryWriter, value: HandleConfig): void {
-    CoreProtocol.writeOffsetRect(writer, value.startHitOffset);
-    CoreProtocol.writeOffsetRect(writer, value.endHitOffset);
+    CoreProtocol.writeHandleHitArea(writer, value.startHitArea);
+    CoreProtocol.writeHandleHitArea(writer, value.endHitArea);
   }
 
   static sizeOfHandleConfig(value: HandleConfig): number {
     let size = 0;
-    size += CoreProtocol.sizeOfOffsetRect(value.startHitOffset);
-    size += CoreProtocol.sizeOfOffsetRect(value.endHitOffset);
+    size += CoreProtocol.sizeOfHandleHitArea(value.startHitArea);
+    size += CoreProtocol.sizeOfHandleHitArea(value.endHitArea);
+    return size;
+  }
+
+  private static readHandleHitArea(reader: BinaryReader): HandleHitArea {
+    return {
+      left: reader.readFloat32(),
+      top: reader.readFloat32(),
+      right: reader.readFloat32(),
+      bottom: reader.readFloat32()
+    };
+  }
+
+  static decodeHandleHitArea(buffer: ArrayBuffer | undefined): HandleHitArea {
+    return CoreProtocol.readHandleHitArea(CoreProtocol.readerFor(buffer));
+  }
+
+  static writeHandleHitArea(writer: BinaryWriter, value: HandleHitArea): void {
+    writer.writeFloat32(value.left);
+    writer.writeFloat32(value.top);
+    writer.writeFloat32(value.right);
+    writer.writeFloat32(value.bottom);
+  }
+
+  static sizeOfHandleHitArea(value: HandleHitArea): number {
+    let size = 0;
+    size += 4;
+    size += 4;
+    size += 4;
+    size += 4;
     return size;
   }
 
@@ -1088,35 +1117,6 @@ export class CoreProtocol {
     return size;
   }
 
-  private static readOffsetRect(reader: BinaryReader): OffsetRect {
-    return {
-      left: reader.readFloat32(),
-      top: reader.readFloat32(),
-      right: reader.readFloat32(),
-      bottom: reader.readFloat32()
-    };
-  }
-
-  static decodeOffsetRect(buffer: ArrayBuffer | undefined): OffsetRect {
-    return CoreProtocol.readOffsetRect(CoreProtocol.readerFor(buffer));
-  }
-
-  static writeOffsetRect(writer: BinaryWriter, value: OffsetRect): void {
-    writer.writeFloat32(value.left);
-    writer.writeFloat32(value.top);
-    writer.writeFloat32(value.right);
-    writer.writeFloat32(value.bottom);
-  }
-
-  static sizeOfOffsetRect(value: OffsetRect): number {
-    let size = 0;
-    size += 4;
-    size += 4;
-    size += 4;
-    size += 4;
-    return size;
-  }
-
   private static readPointF(reader: BinaryReader): PointF {
     return {
       x: reader.readFloat32(),
@@ -1161,6 +1161,29 @@ export class CoreProtocol {
   static sizeOfRect(value: Rect): number {
     let size = 0;
     size += CoreProtocol.sizeOfPointF(value.origin);
+    size += 4;
+    size += 4;
+    return size;
+  }
+
+  private static readSize(reader: BinaryReader): Size {
+    return {
+      width: reader.readFloat32(),
+      height: reader.readFloat32()
+    };
+  }
+
+  static decodeSize(buffer: ArrayBuffer | undefined): Size {
+    return CoreProtocol.readSize(CoreProtocol.readerFor(buffer));
+  }
+
+  static writeSize(writer: BinaryWriter, value: Size): void {
+    writer.writeFloat32(value.width);
+    writer.writeFloat32(value.height);
+  }
+
+  static sizeOfSize(value: Size): number {
+    let size = 0;
     size += 4;
     size += 4;
     return size;
@@ -1270,9 +1293,9 @@ export class CoreProtocol {
       revision: reader.readInt32(),
       documentStartOffset: reader.readInt32(),
       text: reader.readUtf8String(),
-      selection: CoreProtocol.readImeTextRange(reader),
+      selection: CoreProtocol.readImeOffsetRange(reader),
       hasComposition: reader.readInt32() !== 0,
-      composition: CoreProtocol.readImeTextRange(reader),
+      composition: CoreProtocol.readImeOffsetRange(reader),
       kind: imeInputContextKindFromValue(reader.readInt32())
     };
   }
@@ -1321,6 +1344,29 @@ export class CoreProtocol {
     return size;
   }
 
+  private static readImeOffsetRange(reader: BinaryReader): ImeOffsetRange {
+    return {
+      start: reader.readInt32(),
+      end: reader.readInt32()
+    };
+  }
+
+  static decodeImeOffsetRange(buffer: ArrayBuffer | undefined): ImeOffsetRange {
+    return CoreProtocol.readImeOffsetRange(CoreProtocol.readerFor(buffer));
+  }
+
+  static writeImeOffsetRange(writer: BinaryWriter, value: ImeOffsetRange): void {
+    writer.writeInt32(value.start);
+    writer.writeInt32(value.end);
+  }
+
+  static sizeOfImeOffsetRange(value: ImeOffsetRange): number {
+    let size = 0;
+    size += 4;
+    size += 4;
+    return size;
+  }
+
   private static readImeSyncSnapshot(reader: BinaryReader): ImeSyncSnapshot {
     return {
       cursor: CoreProtocol.readTextPosition(reader),
@@ -1346,10 +1392,10 @@ export class CoreProtocol {
     writer.writeInt64(value.contextId);
     writer.writeInt32(value.documentStartOffset);
     writer.writeUtf8String(value.oldText);
-    CoreProtocol.writeImeTextRange(writer, value.delta);
+    CoreProtocol.writeImeOffsetRange(writer, value.delta);
     writer.writeUtf8String(value.deltaText);
-    CoreProtocol.writeImeTextRange(writer, value.selection);
-    CoreProtocol.writeImeTextRange(writer, value.composition);
+    CoreProtocol.writeImeOffsetRange(writer, value.selection);
+    CoreProtocol.writeImeOffsetRange(writer, value.composition);
     writer.writeInt32(value.scriptClass as number);
   }
 
@@ -1359,10 +1405,10 @@ export class CoreProtocol {
     size += 8;
     size += 4;
     size += CoreProtocol.sizeOfUtf8String(value.oldText);
-    size += CoreProtocol.sizeOfImeTextRange(value.delta);
+    size += CoreProtocol.sizeOfImeOffsetRange(value.delta);
     size += CoreProtocol.sizeOfUtf8String(value.deltaText);
-    size += CoreProtocol.sizeOfImeTextRange(value.selection);
-    size += CoreProtocol.sizeOfImeTextRange(value.composition);
+    size += CoreProtocol.sizeOfImeOffsetRange(value.selection);
+    size += CoreProtocol.sizeOfImeOffsetRange(value.composition);
     size += 4;
     return size;
   }
@@ -1372,8 +1418,8 @@ export class CoreProtocol {
     writer.writeInt64(value.contextId);
     writer.writeInt32(value.documentStartOffset);
     writer.writeUtf8String(value.text);
-    CoreProtocol.writeImeTextRange(writer, value.selection);
-    CoreProtocol.writeImeTextRange(writer, value.composition);
+    CoreProtocol.writeImeOffsetRange(writer, value.selection);
+    CoreProtocol.writeImeOffsetRange(writer, value.composition);
     writer.writeInt32(value.scriptClass as number);
   }
 
@@ -1383,31 +1429,8 @@ export class CoreProtocol {
     size += 8;
     size += 4;
     size += CoreProtocol.sizeOfUtf8String(value.text);
-    size += CoreProtocol.sizeOfImeTextRange(value.selection);
-    size += CoreProtocol.sizeOfImeTextRange(value.composition);
-    size += 4;
-    return size;
-  }
-
-  private static readImeTextRange(reader: BinaryReader): ImeTextRange {
-    return {
-      start: reader.readInt32(),
-      end: reader.readInt32()
-    };
-  }
-
-  static decodeImeTextRange(buffer: ArrayBuffer | undefined): ImeTextRange {
-    return CoreProtocol.readImeTextRange(CoreProtocol.readerFor(buffer));
-  }
-
-  static writeImeTextRange(writer: BinaryWriter, value: ImeTextRange): void {
-    writer.writeInt32(value.start);
-    writer.writeInt32(value.end);
-  }
-
-  static sizeOfImeTextRange(value: ImeTextRange): number {
-    let size = 0;
-    size += 4;
+    size += CoreProtocol.sizeOfImeOffsetRange(value.selection);
+    size += CoreProtocol.sizeOfImeOffsetRange(value.composition);
     size += 4;
     return size;
   }
@@ -1641,8 +1664,7 @@ export class CoreProtocol {
       splitLineVisible: reader.readInt32() !== 0,
       scrollX: reader.readFloat32(),
       scrollY: reader.readFloat32(),
-      viewportWidth: reader.readFloat32(),
-      viewportHeight: reader.readFloat32(),
+      viewportSize: CoreProtocol.readSize(reader),
       currentLine: CoreProtocol.readPointF(reader),
       currentLineRenderMode: currentLineRenderModeFromValue(reader.readInt32()),
       lines: CoreProtocol.readVisualLineList(reader),
@@ -1747,10 +1769,8 @@ export class CoreProtocol {
       scrollY: reader.readFloat32(),
       maxScrollX: reader.readFloat32(),
       maxScrollY: reader.readFloat32(),
-      contentWidth: reader.readFloat32(),
-      contentHeight: reader.readFloat32(),
-      viewportWidth: reader.readFloat32(),
-      viewportHeight: reader.readFloat32(),
+      contentSize: CoreProtocol.readSize(reader),
+      viewportSize: CoreProtocol.readSize(reader),
       textAreaX: reader.readFloat32(),
       textAreaWidth: reader.readFloat32(),
       canScrollX: reader.readInt32() !== 0,

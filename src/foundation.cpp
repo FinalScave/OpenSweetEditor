@@ -112,6 +112,17 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
+#pragma region [Class: Size]
+  bool Size::isEmpty() const {
+    return width <= 0 || height <= 0;
+  }
+
+  U8String Size::dump() const {
+    return "Size {width = " + std::to_string(width) + ", height = " + std::to_string(height) + "}";
+  }
+
+#pragma endregion
+
 #pragma region [Class: IntRange]
   bool IntRange::isEmpty() const {
     return end < start;
@@ -137,12 +148,6 @@ namespace NS_SWEETEDITOR {
 
   U8String PointF::dump() const {
     return "PointF {x = " + std::to_string(x) + ", y = " + std::to_string(y) + "}";
-  }
-#pragma endregion
-
-#pragma region [Class: OffsetRect]
-  bool OffsetRect::contains(float dx, float dy) const {
-    return dx >= left && dx <= right && dy >= top && dy <= bottom;
   }
 #pragma endregion
 

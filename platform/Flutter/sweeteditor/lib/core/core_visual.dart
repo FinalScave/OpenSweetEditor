@@ -21,16 +21,16 @@ enum FoldState {
 }
 
 enum GuideDirection {
-  horizontal(0),
-  vertical(1);
+  vertical(0),
+  horizontal(1);
 
   const GuideDirection(this.value);
   final int value;
 
   static GuideDirection fromValue(int value) {
     switch (value) {
-      case 0: return horizontal;
-      case 1: return vertical;
+      case 0: return vertical;
+      case 1: return horizontal;
       default: return vertical;
     }
   }
@@ -153,11 +153,11 @@ enum VisualLineKind {
 enum VisualRunType {
   text(0),
   whitespace(1),
-  newline(2),
-  inlayHint(3),
-  phantomText(4),
-  foldPlaceholder(5),
-  tab(6),
+  tab(2),
+  newline(3),
+  inlayHint(4),
+  phantomText(5),
+  foldPlaceholder(6),
   codelens(7),
   link(8);
 
@@ -168,11 +168,11 @@ enum VisualRunType {
     switch (value) {
       case 0: return text;
       case 1: return whitespace;
-      case 2: return newline;
-      case 3: return inlayHint;
-      case 4: return phantomText;
-      case 5: return foldPlaceholder;
-      case 6: return tab;
+      case 2: return tab;
+      case 3: return newline;
+      case 4: return inlayHint;
+      case 5: return phantomText;
+      case 6: return foldPlaceholder;
       case 7: return codelens;
       case 8: return link;
       default: return text;
@@ -214,8 +214,7 @@ class EditorRenderModel {
     this.splitLineVisible = true,
     this.scrollX = 0.0,
     this.scrollY = 0.0,
-    this.viewportWidth = 0.0,
-    this.viewportHeight = 0.0,
+    this.viewportSize = const Size(),
     this.currentLine = const PointF(),
     this.currentLineRenderMode = CurrentLineRenderMode.background,
     this.lines = const [],
@@ -238,8 +237,7 @@ class EditorRenderModel {
   final bool splitLineVisible;
   final double scrollX;
   final double scrollY;
-  final double viewportWidth;
-  final double viewportHeight;
+  final Size viewportSize;
   final PointF currentLine;
   final CurrentLineRenderMode currentLineRenderMode;
   final List<VisualLine> lines;
@@ -353,10 +351,8 @@ class ScrollMetrics {
     this.scrollY = 0.0,
     this.maxScrollX = 0.0,
     this.maxScrollY = 0.0,
-    this.contentWidth = 0.0,
-    this.contentHeight = 0.0,
-    this.viewportWidth = 0.0,
-    this.viewportHeight = 0.0,
+    this.contentSize = const Size(),
+    this.viewportSize = const Size(),
     this.textAreaX = 0.0,
     this.textAreaWidth = 0.0,
     this.canScrollX = false,
@@ -368,10 +364,8 @@ class ScrollMetrics {
   final double scrollY;
   final double maxScrollX;
   final double maxScrollY;
-  final double contentWidth;
-  final double contentHeight;
-  final double viewportWidth;
-  final double viewportHeight;
+  final Size contentSize;
+  final Size viewportSize;
   final double textAreaX;
   final double textAreaWidth;
   final bool canScrollX;

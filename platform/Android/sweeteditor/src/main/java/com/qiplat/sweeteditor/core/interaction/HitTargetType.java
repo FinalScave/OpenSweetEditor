@@ -4,12 +4,12 @@ public enum HitTargetType {
     NONE(0),
     INLAY_HINT_TEXT(1),
     INLAY_HINT_ICON(2),
-    GUTTER_ICON(3),
-    FOLD_PLACEHOLDER(4),
-    FOLD_GUTTER(5),
-    INLAY_HINT_COLOR(6),
-    CODELENS(7),
-    LINK(8);
+    INLAY_HINT_COLOR(3),
+    CODELENS(4),
+    LINK(5),
+    GUTTER_ICON(6),
+    FOLD_GUTTER(7),
+    FOLD_PLACEHOLDER(8);
 
     public final int value;
 
@@ -22,12 +22,12 @@ public enum HitTargetType {
             case 0: return NONE;
             case 1: return INLAY_HINT_TEXT;
             case 2: return INLAY_HINT_ICON;
-            case 3: return GUTTER_ICON;
-            case 4: return FOLD_PLACEHOLDER;
-            case 5: return FOLD_GUTTER;
-            case 6: return INLAY_HINT_COLOR;
-            case 7: return CODELENS;
-            case 8: return LINK;
+            case 3: return INLAY_HINT_COLOR;
+            case 4: return CODELENS;
+            case 5: return LINK;
+            case 6: return GUTTER_ICON;
+            case 7: return FOLD_GUTTER;
+            case 8: return FOLD_PLACEHOLDER;
             default: return NONE;
         }
     }

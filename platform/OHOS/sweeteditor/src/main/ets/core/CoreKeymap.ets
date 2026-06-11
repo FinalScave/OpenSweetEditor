@@ -83,24 +83,24 @@ export class KeyCode {
   static readonly TAB: number = 9;
   static readonly ENTER: number = 13;
   static readonly ESCAPE: number = 27;
-  static readonly DELETE_KEY: number = 46;
+  static readonly SPACE: number = 32;
+  static readonly PAGE_UP: number = 33;
+  static readonly PAGE_DOWN: number = 34;
+  static readonly END: number = 35;
+  static readonly HOME: number = 36;
   static readonly LEFT: number = 37;
   static readonly UP: number = 38;
   static readonly RIGHT: number = 39;
   static readonly DOWN: number = 40;
-  static readonly HOME: number = 36;
-  static readonly END: number = 35;
-  static readonly PAGE_UP: number = 33;
-  static readonly PAGE_DOWN: number = 34;
+  static readonly DELETE_KEY: number = 46;
   static readonly A: number = 65;
   static readonly C: number = 67;
   static readonly D: number = 68;
+  static readonly K: number = 75;
   static readonly V: number = 86;
   static readonly X: number = 88;
-  static readonly Z: number = 90;
   static readonly Y: number = 89;
-  static readonly K: number = 75;
-  static readonly SPACE: number = 32;
+  static readonly Z: number = 90;
 }
 
 export class KeyModifier {

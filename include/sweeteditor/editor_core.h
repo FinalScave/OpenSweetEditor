@@ -82,6 +82,10 @@ namespace NS_SWEETEDITOR {
     friend class CompositionController;
   public:
     explicit EditorCore(const SharedPtr<TextMeasurer>& measurer, const EditorOptions& options);
+    EditorCore(const EditorCore&) = delete;
+    EditorCore& operator=(const EditorCore&) = delete;
+    EditorCore(EditorCore&&) = delete;
+    EditorCore& operator=(EditorCore&&) = delete;
 
 #pragma region [Setup & View State]
 
@@ -106,7 +110,7 @@ namespace NS_SWEETEDITOR {
     EditorActionResult loadDocument(const SharedPtr<Document>& document);
     /// Set editor viewport size
     /// @param viewport Viewport area
-    EditorActionResult setViewport(const Viewport& viewport);
+    EditorActionResult setViewport(const Size& viewport);
 
     /// Reset text measurement, usually called when editor font is reset
     EditorActionResult onFontMetricsChanged();
@@ -745,7 +749,7 @@ namespace NS_SWEETEDITOR {
     UniquePtr<UndoManager> m_undo_manager_;
     KeyResolver m_key_resolver_;
 
-    Viewport m_viewport_;
+    Size m_viewport_;
     ViewState m_view_state_;
     IntRange m_visible_line_range_;
 
@@ -759,7 +763,7 @@ namespace NS_SWEETEDITOR {
     uint64_t m_next_ime_input_context_id_ {1};
     int32_t m_ime_input_context_revision_ {0};
     bool m_ime_text_model_has_pending_composition_clear_ {false};
-    ImeTextRange m_ime_text_model_pending_composition_clear_ {-1, -1};
+    ImeOffsetRange m_ime_text_model_pending_composition_clear_ {-1, -1};
 
     /// Linked editing session (nullptr means not in linked editing mode)
     UniquePtr<LinkedEditingSession> m_linked_editing_session_;

@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Linq;
 using System.Windows.Forms;
+using DrawingSize = System.Drawing.Size;
 
 namespace SweetEditor {
 	/// <summary>Completion item data model. Apply priority on confirm: TextEdit -> InsertText -> Label.</summary>
@@ -497,7 +498,7 @@ namespace SweetEditor {
 				StartPosition = FormStartPosition.Manual,
 				TopMost = true,
 				BackColor = Color.FromArgb(panelBg.R, panelBg.G, panelBg.B),
-				Size = new Size(PopupWidth, ItemHeight * MaxVisibleItems)
+				Size = new DrawingSize(PopupWidth, ItemHeight * MaxVisibleItems)
 			};
 
 			listBox = new ListBox {
@@ -578,7 +579,7 @@ namespace SweetEditor {
 
 		private void Show() {
 			int visibleCount = Math.Min(items.Count, MaxVisibleItems);
-			popupForm!.Size = new Size(PopupWidth, visibleCount * ItemHeight + 2);
+			popupForm!.Size = new DrawingSize(PopupWidth, visibleCount * ItemHeight + 2);
 			if (!popupForm.Visible) {
 				popupForm.Show(anchorControl.FindForm());
 				anchorControl.BeginInvoke(new Action(() => {

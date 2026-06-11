@@ -132,9 +132,9 @@ class ImeInputContext {
     this.revision = 0,
     this.documentStartOffset = 0,
     this.text = '',
-    this.selection = const ImeTextRange(),
+    this.selection = const ImeOffsetRange(),
     this.hasComposition = false,
-    this.composition = const ImeTextRange(),
+    this.composition = const ImeOffsetRange(),
     this.kind = ImeInputContextKind.none,
   });
 
@@ -142,9 +142,9 @@ class ImeInputContext {
   final int revision;
   final int documentStartOffset;
   final String text;
-  final ImeTextRange selection;
+  final ImeOffsetRange selection;
   final bool hasComposition;
-  final ImeTextRange composition;
+  final ImeOffsetRange composition;
   final ImeInputContextKind kind;
 }
 
@@ -184,6 +184,16 @@ class ImeInputStateTextReplacement {
   final ImeScriptClass scriptClass;
 }
 
+class ImeOffsetRange {
+  const ImeOffsetRange({
+    this.start = 0,
+    this.end = 0,
+  });
+
+  final int start;
+  final int end;
+}
+
 class ImeSyncSnapshot {
   const ImeSyncSnapshot({
     this.cursor = const TextPosition(),
@@ -218,10 +228,10 @@ class ImeTextModelDelta {
     this.contextId = 0,
     this.documentStartOffset = 0,
     this.oldText = '',
-    this.delta = const ImeTextRange(),
+    this.delta = const ImeOffsetRange(),
     this.deltaText = '',
-    this.selection = const ImeTextRange(),
-    this.composition = const ImeTextRange(),
+    this.selection = const ImeOffsetRange(),
+    this.composition = const ImeOffsetRange(),
     this.scriptClass = ImeScriptClass.unknown,
   });
 
@@ -229,10 +239,10 @@ class ImeTextModelDelta {
   final int contextId;
   final int documentStartOffset;
   final String oldText;
-  final ImeTextRange delta;
+  final ImeOffsetRange delta;
   final String deltaText;
-  final ImeTextRange selection;
-  final ImeTextRange composition;
+  final ImeOffsetRange selection;
+  final ImeOffsetRange composition;
   final ImeScriptClass scriptClass;
 }
 
@@ -242,8 +252,8 @@ class ImeTextModelState {
     this.contextId = 0,
     this.documentStartOffset = 0,
     this.text = '',
-    this.selection = const ImeTextRange(),
-    this.composition = const ImeTextRange(),
+    this.selection = const ImeOffsetRange(),
+    this.composition = const ImeOffsetRange(),
     this.scriptClass = ImeScriptClass.unknown,
   });
 
@@ -251,19 +261,9 @@ class ImeTextModelState {
   final int contextId;
   final int documentStartOffset;
   final String text;
-  final ImeTextRange selection;
-  final ImeTextRange composition;
+  final ImeOffsetRange selection;
+  final ImeOffsetRange composition;
   final ImeScriptClass scriptClass;
-}
-
-class ImeTextRange {
-  const ImeTextRange({
-    this.start = 0,
-    this.end = 0,
-  });
-
-  final int start;
-  final int end;
 }
 
 class ImeTextReplacement {

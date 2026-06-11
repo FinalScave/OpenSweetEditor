@@ -103,9 +103,9 @@ export interface ImeInputContext {
   revision: number;
   documentStartOffset: number;
   text: string;
-  selection: ImeTextRange;
+  selection: ImeOffsetRange;
   hasComposition: boolean;
-  composition: ImeTextRange;
+  composition: ImeOffsetRange;
   kind: ImeInputContextKind;
 }
 
@@ -127,6 +127,11 @@ export class ImeInputStateTextReplacement {
   scriptClass: ImeScriptClass = ImeScriptClass.UNKNOWN;
 }
 
+export interface ImeOffsetRange {
+  start: number;
+  end: number;
+}
+
 export interface ImeSyncSnapshot {
   cursor: TextPosition;
   selection: TextRange;
@@ -146,10 +151,10 @@ export class ImeTextModelDelta {
   contextId: number = 0;
   documentStartOffset: number = 0;
   oldText: string = '';
-  delta: ImeTextRange = { start: -1, end: -1 };
+  delta: ImeOffsetRange = { start: -1, end: -1 };
   deltaText: string = '';
-  selection: ImeTextRange = { start: 0, end: 0 };
-  composition: ImeTextRange = { start: -1, end: -1 };
+  selection: ImeOffsetRange = { start: 0, end: 0 };
+  composition: ImeOffsetRange = { start: -1, end: -1 };
   scriptClass: ImeScriptClass = ImeScriptClass.UNKNOWN;
 }
 
@@ -158,14 +163,9 @@ export class ImeTextModelState {
   contextId: number = 0;
   documentStartOffset: number = 0;
   text: string = '';
-  selection: ImeTextRange = { start: 0, end: 0 };
-  composition: ImeTextRange = { start: -1, end: -1 };
+  selection: ImeOffsetRange = { start: 0, end: 0 };
+  composition: ImeOffsetRange = { start: -1, end: -1 };
   scriptClass: ImeScriptClass = ImeScriptClass.UNKNOWN;
-}
-
-export interface ImeTextRange {
-  start: number;
-  end: number;
 }
 
 export class ImeTextReplacement {

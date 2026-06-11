@@ -142,7 +142,7 @@ EDITOR_API const uint8_t* editor_set_document(intptr_t editor_handle, intptr_t d
 /// Set editor viewport
 /// @param width Editor view width
 /// @param height Editor view height
-EDITOR_API const uint8_t* editor_set_viewport(intptr_t editor_handle, int16_t width, int16_t height, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_viewport(intptr_t editor_handle, int32_t width, int32_t height, size_t* out_size);
 
 /// Notify editor that font metrics have changed (call after font/scale changes)
 EDITOR_API const uint8_t* editor_on_font_metrics_changed(intptr_t editor_handle, size_t* out_size);
@@ -198,9 +198,9 @@ EDITOR_API const uint8_t* editor_set_gutter_visible(intptr_t editor_handle, int 
 
 /// Set selection handle hit-test configuration.
 /// @param data HandleConfig binary payload encoded by CoreProtocol:
-///        OffsetRect start_hit_offset
-///        OffsetRect end_hit_offset
-///        OffsetRect is f32 left, f32 top, f32 right, f32 bottom
+///        HandleHitArea start_hit_area
+///        HandleHitArea end_hit_area
+///        HandleHitArea is f32 left, f32 top, f32 right, f32 bottom
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_set_handle_config(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 
@@ -244,8 +244,7 @@ EDITOR_API const uint8_t* editor_set_editor_range_effect_styles(intptr_t editor_
 ///         bool_i32 split_line_visible
 ///         f32 scroll_x
 ///         f32 scroll_y
-///         f32 viewport_width
-///         f32 viewport_height
+///         Size viewport_size
 ///         PointF current_line
 ///         enum_i32 current_line_render_mode
 ///         List<VisualLine> lines
@@ -628,10 +627,8 @@ EDITOR_API const uint8_t* editor_set_scroll(intptr_t editor_handle, float scroll
 ///         f32 scroll_y
 ///         f32 max_scroll_x
 ///         f32 max_scroll_y
-///         f32 content_width
-///         f32 content_height
-///         f32 viewport_width
-///         f32 viewport_height
+///         Size content_size
+///         Size viewport_size
 ///         f32 text_area_x
 ///         f32 text_area_width
 ///         bool_i32 can_scroll_x
@@ -1112,7 +1109,7 @@ EDITOR_API const uint8_t* editor_ime_notify_input_context_selection_changed(intp
 /// Update the external text model state snapshot.
 /// @param data ImeTextModelState binary payload encoded by CoreProtocol:
 ///   enum_i32 ImeTextModelMode mode, uint64_t context_id, int32_t document_start_offset,
-///   U8String text, ImeTextRange selection, ImeTextRange composition,
+///   U8String text, ImeOffsetRange selection, ImeOffsetRange composition,
 ///   enum_i32 ImeScriptClass script_class
 /// @param size Binary payload size in bytes
 /// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
@@ -1124,8 +1121,8 @@ EDITOR_API const uint8_t* editor_ime_update_text_model_state(intptr_t editor_han
 /// Update the external text model by delta.
 /// @param data ImeTextModelDelta binary payload encoded by CoreProtocol:
 ///   enum_i32 ImeTextModelMode mode, uint64_t context_id, int32_t document_start_offset,
-///   U8String old_text, ImeTextRange delta, U8String delta_text,
-///   ImeTextRange selection, ImeTextRange composition, enum_i32 ImeScriptClass script_class
+///   U8String old_text, ImeOffsetRange delta, U8String delta_text,
+///   ImeOffsetRange selection, ImeOffsetRange composition, enum_i32 ImeScriptClass script_class
 /// @param size Binary payload size in bytes
 /// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 EDITOR_API const uint8_t* editor_ime_update_text_model_delta(intptr_t editor_handle,

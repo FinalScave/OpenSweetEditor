@@ -12,20 +12,6 @@ class IntRange {
   final int end;
 }
 
-class OffsetRect {
-  const OffsetRect({
-    this.left = 0.0,
-    this.top = 0.0,
-    this.right = 0.0,
-    this.bottom = 0.0,
-  });
-
-  final double left;
-  final double top;
-  final double right;
-  final double bottom;
-}
-
 class PointF {
   const PointF({
     this.x = 0.0,
@@ -44,6 +30,16 @@ class Rect {
   });
 
   final PointF origin;
+  final double width;
+  final double height;
+}
+
+class Size {
+  const Size({
+    this.width = 0.0,
+    this.height = 0.0,
+  });
+
   final double width;
   final double height;
 }

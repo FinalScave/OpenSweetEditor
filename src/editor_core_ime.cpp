@@ -1249,11 +1249,11 @@ namespace NS_SWEETEDITOR {
     };
     m_ime_input_context_.has_composition = composition.active;
     m_ime_input_context_.composition = composition.active
-                                       ? ImeTextRange {
+                                       ? ImeOffsetRange {
                                            static_cast<int32_t>(composition.start),
                                            static_cast<int32_t>(composition.end)
                                          }
-                                       : ImeTextRange {-1, -1};
+                                       : ImeOffsetRange {-1, -1};
   }
 
   void EditorCore::resetImeTextModelPendingState() {

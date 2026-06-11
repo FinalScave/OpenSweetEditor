@@ -6,12 +6,8 @@
 #include <sweeteditor/gesture.h>
 
 namespace NS_SWEETEDITOR {
-  bool Viewport::valid() const {
-    return width > 1 && height > 1;
-  }
-
-  U8String Viewport::dump() const {
-    return "Viewport {width = " + std::to_string(width) + ", height = " + std::to_string(height) + "}";
+  bool isValidViewportSize(const Size& viewport) {
+    return viewport.width > 1 && viewport.height > 1;
   }
 
   U8String ViewState::dump() const {
@@ -20,6 +16,10 @@ namespace NS_SWEETEDITOR {
 
   bool KeyEvent::isTextInput() const {
     return key_code == KeyCode::NONE && !text.empty();
+  }
+
+  bool HandleHitArea::contains(float dx, float dy) const {
+    return dx >= left && dx <= right && dy >= top && dy <= bottom;
   }
 
   bool TextEditResult::contentChanged() const {

@@ -6,24 +6,24 @@
 
 namespace NS_SWEETEDITOR {
 
-  enum struct SE_PROTOCOL_ENUM(ime, GRAPHEME) ImeTextUnit {
+  enum class SE_PROTOCOL_ENUM(ime, GRAPHEME) ImeTextUnit {
     GRAPHEME = 0,
     CODE_POINT = 1,
   };
 
-  enum struct SE_PROTOCOL_ENUM(ime, DOCUMENT_WINDOW) ImeTextModelMode {
+  enum class SE_PROTOCOL_ENUM(ime, DOCUMENT_WINDOW) ImeTextModelMode {
     DOCUMENT_WINDOW = 0,
     TRANSIENT_INPUT = 1,
   };
 
-  enum struct SE_PROTOCOL_ENUM(ime, NONE) ImeInputContextKind {
+  enum class SE_PROTOCOL_ENUM(ime, NONE) ImeInputContextKind {
     NONE = 0,
     SELECTION_ONLY = 1,
     DOCUMENT_WINDOW = 2,
     TRANSIENT_INPUT = 3,
   };
 
-  struct SE_PROTOCOL_VALUE(ime) ImeTextRange {
+  struct SE_PROTOCOL_VALUE(ime) ImeOffsetRange {
     int32_t start {0};
     int32_t end {0};
   };
@@ -33,14 +33,14 @@ namespace NS_SWEETEDITOR {
     int32_t revision {0};
     int32_t document_start_offset {0};
     U8String text;
-    ImeTextRange selection;
+    ImeOffsetRange selection;
     bool has_composition {false};
-    ImeTextRange composition {-1, -1};
+    ImeOffsetRange composition {-1, -1};
     SE_PROTOCOL_WIRE(enum_i32)
     ImeInputContextKind kind {ImeInputContextKind::NONE};
   };
 
-  enum struct SE_PROTOCOL_ENUM(ime, UNKNOWN) ImeScriptClass {
+  enum class SE_PROTOCOL_ENUM(ime, UNKNOWN) ImeScriptClass {
     UNKNOWN,
     LATIN,
     CJK,
@@ -48,13 +48,13 @@ namespace NS_SWEETEDITOR {
     HANGUL,
   };
 
-  enum struct SE_PROTOCOL_ENUM(ime, NONE) ImePreeditStorage {
+  enum class SE_PROTOCOL_ENUM(ime, NONE) ImePreeditStorage {
     NONE,
     VISIBLE_DOCUMENT_COMPOSITION,
     SHADOW_ONLY,
   };
 
-  enum struct SE_PROTOCOL_ENUM(ime, NONE) ImeContextPolicy {
+  enum class SE_PROTOCOL_ENUM(ime, NONE) ImeContextPolicy {
     NONE,
     LIMITED_FOR_CANDIDATES,
   };
@@ -94,8 +94,8 @@ namespace NS_SWEETEDITOR {
     uint64_t context_id {0};
     int32_t document_start_offset {0};
     U8String text;
-    ImeTextRange selection;
-    ImeTextRange composition {-1, -1};
+    ImeOffsetRange selection;
+    ImeOffsetRange composition {-1, -1};
     SE_PROTOCOL_WIRE(enum_i32)
     ImeScriptClass script_class {ImeScriptClass::UNKNOWN};
   };
@@ -106,10 +106,10 @@ namespace NS_SWEETEDITOR {
     uint64_t context_id {0};
     int32_t document_start_offset {0};
     U8String old_text;
-    ImeTextRange delta {-1, -1};
+    ImeOffsetRange delta {-1, -1};
     U8String delta_text;
-    ImeTextRange selection;
-    ImeTextRange composition {-1, -1};
+    ImeOffsetRange selection;
+    ImeOffsetRange composition {-1, -1};
     SE_PROTOCOL_WIRE(enum_i32)
     ImeScriptClass script_class {ImeScriptClass::UNKNOWN};
   };
@@ -155,13 +155,13 @@ namespace NS_SWEETEDITOR {
   };
 
   /// IME composition ownership.
-  enum struct CompositionKind {
+  enum class CompositionKind {
     NONE,
     PREEDIT_TEXT,
     DOCUMENT_RANGE,
   };
 
-  enum struct CompositionPhase {
+  enum class CompositionPhase {
     INACTIVE,
     ACTIVE,
   };

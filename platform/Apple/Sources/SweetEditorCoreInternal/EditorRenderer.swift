@@ -34,8 +34,8 @@ struct EditorRenderer {
         let t = theme
         let resolvedScrollbarStyle = scrollbarStyle ?? ScrollbarVisualStyle.themedDefault(for: t)
         let rect = CGRect(x: 0, y: 0,
-                          width: CGFloat(model.viewport_width),
-                          height: CGFloat(model.viewport_height))
+                          width: CGFloat(model.viewport_size.width),
+                          height: CGFloat(model.viewport_size.height))
 
         // Background
         context.setFillColor(t.backgroundColor)
@@ -46,7 +46,7 @@ struct EditorRenderer {
             let currentLineRect = CGRect(
                 x: CGFloat(model.current_line.x),
                 y: CGFloat(model.current_line.y),
-                width: CGFloat(model.viewport_width),
+                width: CGFloat(model.viewport_size.width),
                 height: lineHeight
             )
             switch model.current_line_render_mode {
@@ -84,7 +84,7 @@ struct EditorRenderer {
         let splitX = CGFloat(model.split_x)
         if splitX > 0 {
             context.setFillColor(t.backgroundColor)
-            context.fill(CGRect(x: 0, y: 0, width: splitX, height: CGFloat(model.viewport_height)))
+            context.fill(CGRect(x: 0, y: 0, width: splitX, height: CGFloat(model.viewport_size.height)))
             if lineHeight > 0 && model.current_line_render_mode == .BACKGROUND {
                 context.setFillColor(t.currentLineColor)
                 context.fill(CGRect(x: 0, y: CGFloat(model.current_line.y), width: splitX, height: lineHeight))
@@ -92,7 +92,7 @@ struct EditorRenderer {
         }
 
         // Line split
-        drawLineSplit(context: context, x: splitX, height: CGFloat(model.viewport_height))
+        drawLineSplit(context: context, x: splitX, height: CGFloat(model.viewport_size.height))
 
         if model.gutter_visible {
             for line in model.lines where line.owns_gutter_semantics {

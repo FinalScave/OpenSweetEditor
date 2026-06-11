@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Text;
 using System.Windows.Forms;
+using DrawingSize = System.Drawing.Size;
 
 namespace SweetEditor.Perf {
 	internal static class EditorPerf {
@@ -395,7 +396,7 @@ namespace SweetEditor.Perf {
 		}
 
 		private int MeasureTextWidth(Graphics g, string text) {
-			return TextRenderer.MeasureText(g, text, textFont, new Size(int.MaxValue, int.MaxValue), TextFlags).Width;
+			return TextRenderer.MeasureText(g, text, textFont, new DrawingSize(int.MaxValue, int.MaxValue), TextFlags).Width;
 		}
 
 		private static bool IsWarnLine(string line) {

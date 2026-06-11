@@ -65,21 +65,20 @@ namespace NS_SWEETEDITOR {
     U8String dump() const;
   };
 
+  /// 2D size wrapper
+  struct SE_PROTOCOL_VALUE(foundation) Size {
+    float width {0};
+    float height {0};
+
+    bool isEmpty() const;
+    U8String dump() const;
+  };
+
   /// Axis-aligned rectangle (origin + size)
   struct SE_PROTOCOL_VALUE(foundation) Rect {
     PointF origin;
     float width {0};
     float height {0};
-  };
-
-  /// Offset rectangle relative to a reference point
-  struct SE_PROTOCOL_VALUE(foundation) OffsetRect {
-    float left {0};
-    float top {0};
-    float right {0};
-    float bottom {0};
-
-    bool contains(float dx, float dy) const;
   };
 
 }

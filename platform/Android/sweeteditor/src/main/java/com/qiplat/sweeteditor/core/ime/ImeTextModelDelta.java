@@ -5,16 +5,16 @@ public final class ImeTextModelDelta {
     public long contextId = 0L;
     public int documentStartOffset = 0;
     public String oldText = "";
-    public ImeTextRange delta = new ImeTextRange(-1, -1);
+    public ImeOffsetRange delta = new ImeOffsetRange(-1, -1);
     public String deltaText = "";
-    public ImeTextRange selection = new ImeTextRange();
-    public ImeTextRange composition = new ImeTextRange(-1, -1);
+    public ImeOffsetRange selection = new ImeOffsetRange();
+    public ImeOffsetRange composition = new ImeOffsetRange(-1, -1);
     public ImeScriptClass scriptClass = ImeScriptClass.UNKNOWN;
 
     public ImeTextModelDelta() {
     }
 
-    public ImeTextModelDelta(ImeTextModelMode mode, long contextId, int documentStartOffset, String oldText, ImeTextRange delta, String deltaText, ImeTextRange selection, ImeTextRange composition, ImeScriptClass scriptClass) {
+    public ImeTextModelDelta(ImeTextModelMode mode, long contextId, int documentStartOffset, String oldText, ImeOffsetRange delta, String deltaText, ImeOffsetRange selection, ImeOffsetRange composition, ImeScriptClass scriptClass) {
         this.mode = mode;
         this.contextId = contextId;
         this.documentStartOffset = documentStartOffset;

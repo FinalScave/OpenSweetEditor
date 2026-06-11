@@ -19,6 +19,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using AvaloniaRect = Avalonia.Rect;
+using AvaloniaSize = Avalonia.Size;
 using Button = Avalonia.Controls.Button;
 using InputMethod = Avalonia.Input.InputMethod;
 using Orientation = Avalonia.Layout.Orientation;
@@ -102,8 +103,8 @@ namespace SweetEditor {
 		private bool pendingCursorViewportSync;
 		private bool viewportUpdateScheduled;
 		private bool forceViewportUpdate;
-		private Size pendingViewportSize;
-		private Size appliedViewportSize;
+		private AvaloniaSize pendingViewportSize;
+		private AvaloniaSize appliedViewportSize;
 		private bool renderModelDebugLogged;
 		private SweetEditorController? controller;
 		private bool touchSequenceActive;
@@ -283,8 +284,8 @@ namespace SweetEditor {
 			ScheduleViewportUpdate(rect.Size);
 		}
 
-		protected override Size ArrangeOverride(Size finalSize) {
-			Size arranged = base.ArrangeOverride(finalSize);
+		protected override AvaloniaSize ArrangeOverride(AvaloniaSize finalSize) {
+			AvaloniaSize arranged = base.ArrangeOverride(finalSize);
 			ScheduleViewportUpdate(arranged);
 			return arranged;
 		}
@@ -2519,7 +2520,7 @@ namespace SweetEditor {
 			Popup popup = inlineSuggestionPopup!;
 			var anchor = editorCore.GetPositionRect(suggestion.Line, suggestion.Column);
 			AvaloniaRect viewport = GetPopupViewportRect();
-			Size popupSize = MeasurePopupChild(popup);
+			AvaloniaSize popupSize = MeasurePopupChild(popup);
 			double popupWidth = Math.Max(1, popupSize.Width);
 			double popupHeight = Math.Max(1, popupSize.Height);
 			double maxX = Math.Max(viewport.X, viewport.Right - popupWidth - popup.HorizontalOffset);
@@ -2775,7 +2776,7 @@ namespace SweetEditor {
 			return !string.IsNullOrEmpty(run.Text);
 		}
 
-		private void ScheduleViewportUpdate(Size size, bool force = false) {
+		private void ScheduleViewportUpdate(AvaloniaSize size, bool force = false) {
 			if (disposed) {
 				return;
 			}
@@ -2798,7 +2799,7 @@ namespace SweetEditor {
 				return;
 			}
 
-			Size size = pendingViewportSize;
+			AvaloniaSize size = pendingViewportSize;
 			if (size.Width <= 0 || size.Height <= 0) {
 				return;
 			}
@@ -3249,12 +3250,12 @@ namespace SweetEditor {
 			UpdateAnimationTimer(result.NeedsAnimation);
 		}
 
-		private static Size MeasurePopupChild(Popup popup) {
+		private static AvaloniaSize MeasurePopupChild(Popup popup) {
 			if (popup.Child == null) {
 				return default;
 			}
 
-			popup.Child.Measure(Size.Infinity);
+			popup.Child.Measure(AvaloniaSize.Infinity);
 			return popup.Child.DesiredSize;
 		}
 
@@ -3361,7 +3362,7 @@ namespace SweetEditor {
 				return ExecuteCoreEditCommand(editorCore.InsertLineBelow());
 			}
 
-			if (TryMapCoreEditorBuiltinCommandToKeyGesture(command, out KeyCode keyCode, out KeyModifier modifiers)) {
+			if (TryMapCoreEditorBuiltinCommandToKeyGesture(command, out int keyCode, out KeyModifier modifiers)) {
 				return ExecuteCoreKeyCommand(keyCode, modifiers);
 			}
 
@@ -3374,7 +3375,7 @@ namespace SweetEditor {
 			return true;
 		}
 
-		private static bool TryMapCoreEditorBuiltinCommandToKeyGesture(EditorBuiltinCommand command, out KeyCode keyCode, out KeyModifier modifiers) {
+		private static bool TryMapCoreEditorBuiltinCommandToKeyGesture(EditorBuiltinCommand command, out int keyCode, out KeyModifier modifiers) {
 			switch (command) {
 			case EditorBuiltinCommand.CURSOR_LEFT:
 				keyCode = KeyCode.LEFT;
@@ -3474,7 +3475,7 @@ namespace SweetEditor {
 			}
 		}
 
-		private bool ExecuteCoreKeyCommand(KeyCode keyCode, KeyModifier modifiers) {
+		private bool ExecuteCoreKeyCommand(int keyCode, KeyModifier modifiers) {
 			bool explicitSelectionSource = IsSelectionGestureKey(keyCode, modifiers);
 			if (IsDestructiveKey(keyCode)) {
 				NormalizeSuspiciousImplicitSelectionBeforeDestructiveEdit();
@@ -3506,7 +3507,7 @@ namespace SweetEditor {
 			};
 		}
 
-		private bool TryHandleAndroidPlainDeletionKey(KeyCode keyCode, KeyModifier modifiers) {
+		private bool TryHandleAndroidPlainDeletionKey(int keyCode, KeyModifier modifiers) {
 			if (platformBehavior.Kind != EditorPlatformKind.Android || modifiers != KeyModifier.NONE) {
 				return false;
 			}
@@ -3632,7 +3633,7 @@ namespace SweetEditor {
 			return keyCode is 8 or 46;
 		}
 
-		private static bool IsDestructiveKey(KeyCode keyCode) {
+		private static bool IsDestructiveKey(int keyCode) {
 			return keyCode is KeyCode.BACKSPACE or KeyCode.DELETE_KEY;
 		}
 
@@ -3644,7 +3645,7 @@ namespace SweetEditor {
 			return keyCode is 33 or 34 or 35 or 36 or 37 or 38 or 39 or 40;
 		}
 
-		private static bool IsSelectionGestureKey(KeyCode keyCode, KeyModifier modifiers) {
+		private static bool IsSelectionGestureKey(int keyCode, KeyModifier modifiers) {
 			if ((modifiers & KeyModifier.SHIFT) == 0) {
 				return false;
 			}

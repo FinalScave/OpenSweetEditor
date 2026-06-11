@@ -12,7 +12,7 @@
 
 namespace NS_SWEETEDITOR {
   /// Line ending type
-  enum struct LineEnding : uint8_t {
+  enum class LineEnding : uint8_t {
     /// No line ending (usually the last line)
     NONE = 0,
     /// Unix/macOS/Linux: \n (1 byte)
@@ -116,7 +116,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Text segment type
-  enum struct SegmentType {
+  enum class SegmentType {
     ORIGINAL,
     EDITED
   };

@@ -22,7 +22,7 @@ TEST_CASE("EditorInteraction track tap jumps vertical scrollbar position") {
   TextLayout layout(measurer, decorations);
   layout.loadDocument(document);
 
-  Viewport viewport {120.0f, 80.0f};
+  Size viewport {120.0f, 80.0f};
   ViewState view_state {};
   EditorSettings settings;
   settings.scrollbar.mode = ScrollbarMode::ALWAYS;
@@ -66,7 +66,7 @@ TEST_CASE("EditorInteraction thumb drag updates vertical scroll offset") {
   TextLayout layout(measurer, decorations);
   layout.loadDocument(document);
 
-  Viewport viewport {120.0f, 80.0f};
+  Size viewport {120.0f, 80.0f};
   ViewState view_state {};
   EditorSettings settings;
   settings.scrollbar.mode = ScrollbarMode::ALWAYS;

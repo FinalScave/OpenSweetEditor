@@ -3,11 +3,11 @@ package com.qiplat.sweeteditor.core.visual;
 public enum VisualRunType {
     TEXT(0),
     WHITESPACE(1),
-    NEWLINE(2),
-    INLAY_HINT(3),
-    PHANTOM_TEXT(4),
-    FOLD_PLACEHOLDER(5),
-    TAB(6),
+    TAB(2),
+    NEWLINE(3),
+    INLAY_HINT(4),
+    PHANTOM_TEXT(5),
+    FOLD_PLACEHOLDER(6),
     CODELENS(7),
     LINK(8);
 
@@ -21,11 +21,11 @@ public enum VisualRunType {
         switch (value) {
             case 0: return TEXT;
             case 1: return WHITESPACE;
-            case 2: return NEWLINE;
-            case 3: return INLAY_HINT;
-            case 4: return PHANTOM_TEXT;
-            case 5: return FOLD_PLACEHOLDER;
-            case 6: return TAB;
+            case 2: return TAB;
+            case 3: return NEWLINE;
+            case 4: return INLAY_HINT;
+            case 5: return PHANTOM_TEXT;
+            case 6: return FOLD_PLACEHOLDER;
             case 7: return CODELENS;
             case 8: return LINK;
             default: return TEXT;

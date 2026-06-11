@@ -1,6 +1,6 @@
 import { TextStyle } from './CoreAdornments';
 import { CurrentLineRenderMode, FoldArrowMode, RangeEffectStyle } from './CoreConfig';
-import { PointF, Rect, TextPosition } from './CoreFoundation';
+import { PointF, Rect, Size, TextPosition } from './CoreFoundation';
 
 export enum FoldState {
   NONE = 0,
@@ -18,14 +18,14 @@ export function foldStateFromValue(value: number): FoldState {
 }
 
 export enum GuideDirection {
-  HORIZONTAL = 0,
-  VERTICAL = 1,
+  VERTICAL = 0,
+  HORIZONTAL = 1,
 }
 
 export function guideDirectionFromValue(value: number): GuideDirection {
   switch (value) {
-    case 0: return GuideDirection.HORIZONTAL;
-    case 1: return GuideDirection.VERTICAL;
+    case 0: return GuideDirection.VERTICAL;
+    case 1: return GuideDirection.HORIZONTAL;
     default: return GuideDirection.VERTICAL;
   }
 }
@@ -132,11 +132,11 @@ export function visualLineKindFromValue(value: number): VisualLineKind {
 export enum VisualRunType {
   TEXT = 0,
   WHITESPACE = 1,
-  NEWLINE = 2,
-  INLAY_HINT = 3,
-  PHANTOM_TEXT = 4,
-  FOLD_PLACEHOLDER = 5,
-  TAB = 6,
+  TAB = 2,
+  NEWLINE = 3,
+  INLAY_HINT = 4,
+  PHANTOM_TEXT = 5,
+  FOLD_PLACEHOLDER = 6,
   CODELENS = 7,
   LINK = 8,
 }
@@ -145,11 +145,11 @@ export function visualRunTypeFromValue(value: number): VisualRunType {
   switch (value) {
     case 0: return VisualRunType.TEXT;
     case 1: return VisualRunType.WHITESPACE;
-    case 2: return VisualRunType.NEWLINE;
-    case 3: return VisualRunType.INLAY_HINT;
-    case 4: return VisualRunType.PHANTOM_TEXT;
-    case 5: return VisualRunType.FOLD_PLACEHOLDER;
-    case 6: return VisualRunType.TAB;
+    case 2: return VisualRunType.TAB;
+    case 3: return VisualRunType.NEWLINE;
+    case 4: return VisualRunType.INLAY_HINT;
+    case 5: return VisualRunType.PHANTOM_TEXT;
+    case 6: return VisualRunType.FOLD_PLACEHOLDER;
     case 7: return VisualRunType.CODELENS;
     case 8: return VisualRunType.LINK;
     default: return VisualRunType.TEXT;
@@ -175,8 +175,7 @@ export interface EditorRenderModel {
   splitLineVisible: boolean;
   scrollX: number;
   scrollY: number;
-  viewportWidth: number;
-  viewportHeight: number;
+  viewportSize: Size;
   currentLine: PointF;
   currentLineRenderMode: CurrentLineRenderMode;
   lines: VisualLine[];
@@ -245,10 +244,8 @@ export interface ScrollMetrics {
   scrollY: number;
   maxScrollX: number;
   maxScrollY: number;
-  contentWidth: number;
-  contentHeight: number;
-  viewportWidth: number;
-  viewportHeight: number;
+  contentSize: Size;
+  viewportSize: Size;
   textAreaX: number;
   textAreaWidth: number;
   canScrollX: boolean;

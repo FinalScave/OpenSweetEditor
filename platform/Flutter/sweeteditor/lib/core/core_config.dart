@@ -224,12 +224,26 @@ class EditorRenderColors {
 
 class HandleConfig {
   const HandleConfig({
-    this.startHitOffset = const OffsetRect(),
-    this.endHitOffset = const OffsetRect(),
+    this.startHitArea = const HandleHitArea(),
+    this.endHitArea = const HandleHitArea(),
   });
 
-  final OffsetRect startHitOffset;
-  final OffsetRect endHitOffset;
+  final HandleHitArea startHitArea;
+  final HandleHitArea endHitArea;
+}
+
+class HandleHitArea {
+  const HandleHitArea({
+    this.left = 0.0,
+    this.top = 0.0,
+    this.right = 0.0,
+    this.bottom = 0.0,
+  });
+
+  final double left;
+  final double top;
+  final double right;
+  final double bottom;
 }
 
 class RangeEffectStyle {

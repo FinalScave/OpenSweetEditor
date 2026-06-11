@@ -1017,12 +1017,42 @@ enum CoreProtocol {
     }
 
     static func writeHandleConfig(_ writer: inout BinaryWriter, _ value: HandleConfig) {
-        writeOffsetRect(&writer, value.start_hit_offset)
-        writeOffsetRect(&writer, value.end_hit_offset)
+        writeHandleHitArea(&writer, value.start_hit_area)
+        writeHandleHitArea(&writer, value.end_hit_area)
     }
 
     static func sizeOfHandleConfig(_ value: HandleConfig) -> Int {
-        sizeOfOffsetRect(value.start_hit_offset) + sizeOfOffsetRect(value.end_hit_offset)
+        sizeOfHandleHitArea(value.start_hit_area) + sizeOfHandleHitArea(value.end_hit_area)
+    }
+
+    static func readHandleHitArea(_ reader: inout BinaryReader) -> HandleHitArea? {
+        guard let left = reader.readFloat32() else { return nil }
+        guard let top = reader.readFloat32() else { return nil }
+        guard let right = reader.readFloat32() else { return nil }
+        guard let bottom = reader.readFloat32() else { return nil }
+        return HandleHitArea(left: left, top: top, right: right, bottom: bottom)
+    }
+
+    static func decodeHandleHitArea(_ data: Data) -> HandleHitArea? {
+        return data.withUnsafeBytes { raw in
+            decodeHandleHitArea(raw)
+        }
+    }
+
+    static func decodeHandleHitArea(_ data: UnsafeRawBufferPointer) -> HandleHitArea? {
+        var reader = BinaryReader(data)
+        return readHandleHitArea(&reader)
+    }
+
+    static func writeHandleHitArea(_ writer: inout BinaryWriter, _ value: HandleHitArea) {
+        writer.writeFloat32(value.left)
+        writer.writeFloat32(value.top)
+        writer.writeFloat32(value.right)
+        writer.writeFloat32(value.bottom)
+    }
+
+    static func sizeOfHandleHitArea(_ value: HandleHitArea) -> Int {
+        4 + 4 + 4 + 4
     }
 
     static func readRangeEffectStyle(_ reader: inout BinaryReader) -> RangeEffectStyle? {
@@ -1098,36 +1128,6 @@ enum CoreProtocol {
         4 + 4
     }
 
-    static func readOffsetRect(_ reader: inout BinaryReader) -> OffsetRect? {
-        guard let left = reader.readFloat32() else { return nil }
-        guard let top = reader.readFloat32() else { return nil }
-        guard let right = reader.readFloat32() else { return nil }
-        guard let bottom = reader.readFloat32() else { return nil }
-        return OffsetRect(left: left, top: top, right: right, bottom: bottom)
-    }
-
-    static func decodeOffsetRect(_ data: Data) -> OffsetRect? {
-        return data.withUnsafeBytes { raw in
-            decodeOffsetRect(raw)
-        }
-    }
-
-    static func decodeOffsetRect(_ data: UnsafeRawBufferPointer) -> OffsetRect? {
-        var reader = BinaryReader(data)
-        return readOffsetRect(&reader)
-    }
-
-    static func writeOffsetRect(_ writer: inout BinaryWriter, _ value: OffsetRect) {
-        writer.writeFloat32(value.left)
-        writer.writeFloat32(value.top)
-        writer.writeFloat32(value.right)
-        writer.writeFloat32(value.bottom)
-    }
-
-    static func sizeOfOffsetRect(_ value: OffsetRect) -> Int {
-        4 + 4 + 4 + 4
-    }
-
     static func readPointF(_ reader: inout BinaryReader) -> PointF? {
         guard let x = reader.readFloat32() else { return nil }
         guard let y = reader.readFloat32() else { return nil }
@@ -1180,6 +1180,32 @@ enum CoreProtocol {
 
     static func sizeOfRect(_ value: Rect) -> Int {
         sizeOfPointF(value.origin) + 4 + 4
+    }
+
+    static func readSize(_ reader: inout BinaryReader) -> Size? {
+        guard let width = reader.readFloat32() else { return nil }
+        guard let height = reader.readFloat32() else { return nil }
+        return Size(width: width, height: height)
+    }
+
+    static func decodeSize(_ data: Data) -> Size? {
+        return data.withUnsafeBytes { raw in
+            decodeSize(raw)
+        }
+    }
+
+    static func decodeSize(_ data: UnsafeRawBufferPointer) -> Size? {
+        var reader = BinaryReader(data)
+        return readSize(&reader)
+    }
+
+    static func writeSize(_ writer: inout BinaryWriter, _ value: Size) {
+        writer.writeFloat32(value.width)
+        writer.writeFloat32(value.height)
+    }
+
+    static func sizeOfSize(_ value: Size) -> Int {
+        4 + 4
     }
 
     static func readTextChange(_ reader: inout BinaryReader) -> TextChange? {
@@ -1294,9 +1320,9 @@ enum CoreProtocol {
         guard let revision = reader.readInt32() else { return nil }
         guard let document_start_offset = reader.readInt32() else { return nil }
         guard let text = reader.readUtf8String() else { return nil }
-        guard let selection = readImeTextRange(&reader) else { return nil }
+        guard let selection = readImeOffsetRange(&reader) else { return nil }
         guard let has_composition = reader.readBoolI32() else { return nil }
-        guard let composition = readImeTextRange(&reader) else { return nil }
+        guard let composition = readImeOffsetRange(&reader) else { return nil }
         guard let kind = readImeInputContextKind(&reader) else { return nil }
         return ImeInputContext(id: id, revision: revision, document_start_offset: document_start_offset, text: text, selection: selection, has_composition: has_composition, composition: composition, kind: kind)
     }
@@ -1338,6 +1364,32 @@ enum CoreProtocol {
         8 + 4 + 4 + 4 + sizeOfUtf8String(value.text) + 4 + 4
     }
 
+    static func readImeOffsetRange(_ reader: inout BinaryReader) -> ImeOffsetRange? {
+        guard let start = reader.readInt32() else { return nil }
+        guard let end = reader.readInt32() else { return nil }
+        return ImeOffsetRange(start: start, end: end)
+    }
+
+    static func decodeImeOffsetRange(_ data: Data) -> ImeOffsetRange? {
+        return data.withUnsafeBytes { raw in
+            decodeImeOffsetRange(raw)
+        }
+    }
+
+    static func decodeImeOffsetRange(_ data: UnsafeRawBufferPointer) -> ImeOffsetRange? {
+        var reader = BinaryReader(data)
+        return readImeOffsetRange(&reader)
+    }
+
+    static func writeImeOffsetRange(_ writer: inout BinaryWriter, _ value: ImeOffsetRange) {
+        writer.writeInt32(value.start)
+        writer.writeInt32(value.end)
+    }
+
+    static func sizeOfImeOffsetRange(_ value: ImeOffsetRange) -> Int {
+        4 + 4
+    }
+
     static func readImeSyncSnapshot(_ reader: inout BinaryReader) -> ImeSyncSnapshot? {
         guard let cursor = readTextPosition(&reader) else { return nil }
         guard let selection = readTextRange(&reader) else { return nil }
@@ -1369,15 +1421,15 @@ enum CoreProtocol {
         writer.writeInt64(value.context_id)
         writer.writeInt32(value.document_start_offset)
         writer.writeUtf8String(value.old_text)
-        writeImeTextRange(&writer, value.delta)
+        writeImeOffsetRange(&writer, value.delta)
         writer.writeUtf8String(value.delta_text)
-        writeImeTextRange(&writer, value.selection)
-        writeImeTextRange(&writer, value.composition)
+        writeImeOffsetRange(&writer, value.selection)
+        writeImeOffsetRange(&writer, value.composition)
         writer.writeInt32(value.script_class.rawValue)
     }
 
     static func sizeOfImeTextModelDelta(_ value: ImeTextModelDelta) -> Int {
-        4 + 8 + 4 + sizeOfUtf8String(value.old_text) + sizeOfImeTextRange(value.delta) + sizeOfUtf8String(value.delta_text) + sizeOfImeTextRange(value.selection) + sizeOfImeTextRange(value.composition) + 4
+        4 + 8 + 4 + sizeOfUtf8String(value.old_text) + sizeOfImeOffsetRange(value.delta) + sizeOfUtf8String(value.delta_text) + sizeOfImeOffsetRange(value.selection) + sizeOfImeOffsetRange(value.composition) + 4
     }
 
     static func writeImeTextModelState(_ writer: inout BinaryWriter, _ value: ImeTextModelState) {
@@ -1385,39 +1437,13 @@ enum CoreProtocol {
         writer.writeInt64(value.context_id)
         writer.writeInt32(value.document_start_offset)
         writer.writeUtf8String(value.text)
-        writeImeTextRange(&writer, value.selection)
-        writeImeTextRange(&writer, value.composition)
+        writeImeOffsetRange(&writer, value.selection)
+        writeImeOffsetRange(&writer, value.composition)
         writer.writeInt32(value.script_class.rawValue)
     }
 
     static func sizeOfImeTextModelState(_ value: ImeTextModelState) -> Int {
-        4 + 8 + 4 + sizeOfUtf8String(value.text) + sizeOfImeTextRange(value.selection) + sizeOfImeTextRange(value.composition) + 4
-    }
-
-    static func readImeTextRange(_ reader: inout BinaryReader) -> ImeTextRange? {
-        guard let start = reader.readInt32() else { return nil }
-        guard let end = reader.readInt32() else { return nil }
-        return ImeTextRange(start: start, end: end)
-    }
-
-    static func decodeImeTextRange(_ data: Data) -> ImeTextRange? {
-        return data.withUnsafeBytes { raw in
-            decodeImeTextRange(raw)
-        }
-    }
-
-    static func decodeImeTextRange(_ data: UnsafeRawBufferPointer) -> ImeTextRange? {
-        var reader = BinaryReader(data)
-        return readImeTextRange(&reader)
-    }
-
-    static func writeImeTextRange(_ writer: inout BinaryWriter, _ value: ImeTextRange) {
-        writer.writeInt32(value.start)
-        writer.writeInt32(value.end)
-    }
-
-    static func sizeOfImeTextRange(_ value: ImeTextRange) -> Int {
-        4 + 4
+        4 + 8 + 4 + sizeOfUtf8String(value.text) + sizeOfImeOffsetRange(value.selection) + sizeOfImeOffsetRange(value.composition) + 4
     }
 
     static func writeImeTextReplacement(_ writer: inout BinaryWriter, _ value: ImeTextReplacement) {
@@ -1653,8 +1679,7 @@ enum CoreProtocol {
         guard let split_line_visible = reader.readBoolI32() else { return nil }
         guard let scroll_x = reader.readFloat32() else { return nil }
         guard let scroll_y = reader.readFloat32() else { return nil }
-        guard let viewport_width = reader.readFloat32() else { return nil }
-        guard let viewport_height = reader.readFloat32() else { return nil }
+        guard let viewport_size = readSize(&reader) else { return nil }
         guard let current_line = readPointF(&reader) else { return nil }
         guard let current_line_render_mode = readCurrentLineRenderMode(&reader) else { return nil }
         guard let lines = readVisualLineList(&reader) else { return nil }
@@ -1671,7 +1696,7 @@ enum CoreProtocol {
         guard let gutter_sticky = reader.readBoolI32() else { return nil }
         guard let gutter_visible = reader.readBoolI32() else { return nil }
         guard let pointer_cursor_type = readPointerCursorType(&reader) else { return nil }
-        return EditorRenderModel(split_x: split_x, split_line_visible: split_line_visible, scroll_x: scroll_x, scroll_y: scroll_y, viewport_width: viewport_width, viewport_height: viewport_height, current_line: current_line, current_line_render_mode: current_line_render_mode, lines: lines, cursor: cursor, range_effects: range_effects, selection_start_handle: selection_start_handle, selection_end_handle: selection_end_handle, guide_segments: guide_segments, max_gutter_icons: max_gutter_icons, gutter_icons: gutter_icons, fold_markers: fold_markers, vertical_scrollbar: vertical_scrollbar, horizontal_scrollbar: horizontal_scrollbar, gutter_sticky: gutter_sticky, gutter_visible: gutter_visible, pointer_cursor_type: pointer_cursor_type)
+        return EditorRenderModel(split_x: split_x, split_line_visible: split_line_visible, scroll_x: scroll_x, scroll_y: scroll_y, viewport_size: viewport_size, current_line: current_line, current_line_render_mode: current_line_render_mode, lines: lines, cursor: cursor, range_effects: range_effects, selection_start_handle: selection_start_handle, selection_end_handle: selection_end_handle, guide_segments: guide_segments, max_gutter_icons: max_gutter_icons, gutter_icons: gutter_icons, fold_markers: fold_markers, vertical_scrollbar: vertical_scrollbar, horizontal_scrollbar: horizontal_scrollbar, gutter_sticky: gutter_sticky, gutter_visible: gutter_visible, pointer_cursor_type: pointer_cursor_type)
     }
 
     static func decodeEditorRenderModel(_ data: Data) -> EditorRenderModel? {
@@ -1795,15 +1820,13 @@ enum CoreProtocol {
         guard let scroll_y = reader.readFloat32() else { return nil }
         guard let max_scroll_x = reader.readFloat32() else { return nil }
         guard let max_scroll_y = reader.readFloat32() else { return nil }
-        guard let content_width = reader.readFloat32() else { return nil }
-        guard let content_height = reader.readFloat32() else { return nil }
-        guard let viewport_width = reader.readFloat32() else { return nil }
-        guard let viewport_height = reader.readFloat32() else { return nil }
+        guard let content_size = readSize(&reader) else { return nil }
+        guard let viewport_size = readSize(&reader) else { return nil }
         guard let text_area_x = reader.readFloat32() else { return nil }
         guard let text_area_width = reader.readFloat32() else { return nil }
         guard let can_scroll_x = reader.readBoolI32() else { return nil }
         guard let can_scroll_y = reader.readBoolI32() else { return nil }
-        return ScrollMetrics(scale: scale, scroll_x: scroll_x, scroll_y: scroll_y, max_scroll_x: max_scroll_x, max_scroll_y: max_scroll_y, content_width: content_width, content_height: content_height, viewport_width: viewport_width, viewport_height: viewport_height, text_area_x: text_area_x, text_area_width: text_area_width, can_scroll_x: can_scroll_x, can_scroll_y: can_scroll_y)
+        return ScrollMetrics(scale: scale, scroll_x: scroll_x, scroll_y: scroll_y, max_scroll_x: max_scroll_x, max_scroll_y: max_scroll_y, content_size: content_size, viewport_size: viewport_size, text_area_x: text_area_x, text_area_width: text_area_width, can_scroll_x: can_scroll_x, can_scroll_y: can_scroll_y)
     }
 
     static func decodeScrollMetrics(_ data: Data) -> ScrollMetrics? {

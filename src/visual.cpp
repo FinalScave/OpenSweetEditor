@@ -66,6 +66,8 @@ namespace NS_SWEETEDITOR {
       return "TEXT";
     case VisualRunType::WHITESPACE:
       return "WHITESPACE";
+    case VisualRunType::TAB:
+      return "TAB";
     case VisualRunType::NEWLINE:
       return "NEWLINE";
     case VisualRunType::INLAY_HINT:
@@ -74,8 +76,6 @@ namespace NS_SWEETEDITOR {
       return "PHANTOM_TEXT";
     case VisualRunType::FOLD_PLACEHOLDER:
       return "FOLD_PLACEHOLDER";
-    case VisualRunType::TAB:
-      return "TAB";
     case VisualRunType::CODELENS:
       return "CODELENS";
     case VisualRunType::LINK:

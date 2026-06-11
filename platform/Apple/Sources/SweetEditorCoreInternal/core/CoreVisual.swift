@@ -16,13 +16,13 @@ public enum FoldState: Int32 {
 }
 
 public enum GuideDirection: Int32 {
-    case HORIZONTAL = 0
-    case VERTICAL = 1
+    case VERTICAL = 0
+    case HORIZONTAL = 1
 
     public static func fromValue(_ value: Int32) -> GuideDirection {
         switch value {
-        case 0: return .HORIZONTAL
-        case 1: return .VERTICAL
+        case 0: return .VERTICAL
+        case 1: return .HORIZONTAL
         default: return .VERTICAL
         }
     }
@@ -130,11 +130,11 @@ public enum VisualLineKind: Int32 {
 public enum VisualRunType: Int32 {
     case TEXT = 0
     case WHITESPACE = 1
-    case NEWLINE = 2
-    case INLAY_HINT = 3
-    case PHANTOM_TEXT = 4
-    case FOLD_PLACEHOLDER = 5
-    case TAB = 6
+    case TAB = 2
+    case NEWLINE = 3
+    case INLAY_HINT = 4
+    case PHANTOM_TEXT = 5
+    case FOLD_PLACEHOLDER = 6
     case CODELENS = 7
     case LINK = 8
 
@@ -142,11 +142,11 @@ public enum VisualRunType: Int32 {
         switch value {
         case 0: return .TEXT
         case 1: return .WHITESPACE
-        case 2: return .NEWLINE
-        case 3: return .INLAY_HINT
-        case 4: return .PHANTOM_TEXT
-        case 5: return .FOLD_PLACEHOLDER
-        case 6: return .TAB
+        case 2: return .TAB
+        case 3: return .NEWLINE
+        case 4: return .INLAY_HINT
+        case 5: return .PHANTOM_TEXT
+        case 6: return .FOLD_PLACEHOLDER
         case 7: return .CODELENS
         case 8: return .LINK
         default: return .TEXT
@@ -187,8 +187,7 @@ public struct EditorRenderModel {
     public var split_line_visible: Bool = true
     public var scroll_x: Float = 0
     public var scroll_y: Float = 0
-    public var viewport_width: Float = 0
-    public var viewport_height: Float = 0
+    public var viewport_size: Size = Size()
     public var current_line: PointF = PointF()
     public var current_line_render_mode: CurrentLineRenderMode = .BACKGROUND
     public var lines: [VisualLine] = []
@@ -206,13 +205,12 @@ public struct EditorRenderModel {
     public var gutter_visible: Bool = true
     public var pointer_cursor_type: PointerCursorType = .TEXT
 
-    public init(split_x: Float = 0, split_line_visible: Bool = true, scroll_x: Float = 0, scroll_y: Float = 0, viewport_width: Float = 0, viewport_height: Float = 0, current_line: PointF = PointF(), current_line_render_mode: CurrentLineRenderMode = .BACKGROUND, lines: [VisualLine] = [], cursor: Cursor = Cursor(), range_effects: [RangeEffectRenderItem] = [], selection_start_handle: SelectionHandle = SelectionHandle(), selection_end_handle: SelectionHandle = SelectionHandle(), guide_segments: [GuideSegment] = [], max_gutter_icons: Int32 = 0, gutter_icons: [GutterIconRenderItem] = [], fold_markers: [FoldMarkerRenderItem] = [], vertical_scrollbar: ScrollbarModel = ScrollbarModel(), horizontal_scrollbar: ScrollbarModel = ScrollbarModel(), gutter_sticky: Bool = true, gutter_visible: Bool = true, pointer_cursor_type: PointerCursorType = .TEXT) {
+    public init(split_x: Float = 0, split_line_visible: Bool = true, scroll_x: Float = 0, scroll_y: Float = 0, viewport_size: Size = Size(), current_line: PointF = PointF(), current_line_render_mode: CurrentLineRenderMode = .BACKGROUND, lines: [VisualLine] = [], cursor: Cursor = Cursor(), range_effects: [RangeEffectRenderItem] = [], selection_start_handle: SelectionHandle = SelectionHandle(), selection_end_handle: SelectionHandle = SelectionHandle(), guide_segments: [GuideSegment] = [], max_gutter_icons: Int32 = 0, gutter_icons: [GutterIconRenderItem] = [], fold_markers: [FoldMarkerRenderItem] = [], vertical_scrollbar: ScrollbarModel = ScrollbarModel(), horizontal_scrollbar: ScrollbarModel = ScrollbarModel(), gutter_sticky: Bool = true, gutter_visible: Bool = true, pointer_cursor_type: PointerCursorType = .TEXT) {
         self.split_x = split_x
         self.split_line_visible = split_line_visible
         self.scroll_x = scroll_x
         self.scroll_y = scroll_y
-        self.viewport_width = viewport_width
-        self.viewport_height = viewport_height
+        self.viewport_size = viewport_size
         self.current_line = current_line
         self.current_line_render_mode = current_line_render_mode
         self.lines = lines
@@ -326,25 +324,21 @@ public struct ScrollMetrics {
     public var scroll_y: Float = 0
     public var max_scroll_x: Float = 0
     public var max_scroll_y: Float = 0
-    public var content_width: Float = 0
-    public var content_height: Float = 0
-    public var viewport_width: Float = 0
-    public var viewport_height: Float = 0
+    public var content_size: Size = Size()
+    public var viewport_size: Size = Size()
     public var text_area_x: Float = 0
     public var text_area_width: Float = 0
     public var can_scroll_x: Bool = false
     public var can_scroll_y: Bool = false
 
-    public init(scale: Float = 1, scroll_x: Float = 0, scroll_y: Float = 0, max_scroll_x: Float = 0, max_scroll_y: Float = 0, content_width: Float = 0, content_height: Float = 0, viewport_width: Float = 0, viewport_height: Float = 0, text_area_x: Float = 0, text_area_width: Float = 0, can_scroll_x: Bool = false, can_scroll_y: Bool = false) {
+    public init(scale: Float = 1, scroll_x: Float = 0, scroll_y: Float = 0, max_scroll_x: Float = 0, max_scroll_y: Float = 0, content_size: Size = Size(), viewport_size: Size = Size(), text_area_x: Float = 0, text_area_width: Float = 0, can_scroll_x: Bool = false, can_scroll_y: Bool = false) {
         self.scale = scale
         self.scroll_x = scroll_x
         self.scroll_y = scroll_y
         self.max_scroll_x = max_scroll_x
         self.max_scroll_y = max_scroll_y
-        self.content_width = content_width
-        self.content_height = content_height
-        self.viewport_width = viewport_width
-        self.viewport_height = viewport_height
+        self.content_size = content_size
+        self.viewport_size = viewport_size
         self.text_area_x = text_area_x
         self.text_area_width = text_area_width
         self.can_scroll_x = can_scroll_x

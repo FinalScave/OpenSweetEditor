@@ -1382,7 +1382,7 @@ def generate_java_segment_codec(schema, target):
 
 def generate_java_enum(item, target):
     package = java_domain_package(target, item["domain"])
-    if item["kind"] == "flags":
+    if item["kind"] in ("flags", "consts"):
         lines = [f"package {package};", "", f"public final class {item['name']} {{"]
         lines.append(f"    private {item['name']}() {{")
         lines.append("    }")

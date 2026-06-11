@@ -85,24 +85,24 @@ public enum KeyCode {
     public static let TAB: Int32 = 9
     public static let ENTER: Int32 = 13
     public static let ESCAPE: Int32 = 27
-    public static let DELETE_KEY: Int32 = 46
+    public static let SPACE: Int32 = 32
+    public static let PAGE_UP: Int32 = 33
+    public static let PAGE_DOWN: Int32 = 34
+    public static let END: Int32 = 35
+    public static let HOME: Int32 = 36
     public static let LEFT: Int32 = 37
     public static let UP: Int32 = 38
     public static let RIGHT: Int32 = 39
     public static let DOWN: Int32 = 40
-    public static let HOME: Int32 = 36
-    public static let END: Int32 = 35
-    public static let PAGE_UP: Int32 = 33
-    public static let PAGE_DOWN: Int32 = 34
+    public static let DELETE_KEY: Int32 = 46
     public static let A: Int32 = 65
     public static let C: Int32 = 67
     public static let D: Int32 = 68
+    public static let K: Int32 = 75
     public static let V: Int32 = 86
     public static let X: Int32 = 88
-    public static let Z: Int32 = 90
     public static let Y: Int32 = 89
-    public static let K: Int32 = 75
-    public static let SPACE: Int32 = 32
+    public static let Z: Int32 = 90
 }
 
 public enum KeyModifier {

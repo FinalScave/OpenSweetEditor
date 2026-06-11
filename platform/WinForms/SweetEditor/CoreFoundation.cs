@@ -9,13 +9,6 @@ namespace SweetEditor {
         public int End { get; set; } = -1;
     }
 
-    public sealed partial class OffsetRect {
-        public float Left { get; set; } = 0f;
-        public float Top { get; set; } = 0f;
-        public float Right { get; set; } = 0f;
-        public float Bottom { get; set; } = 0f;
-    }
-
     public sealed partial class PointF {
         public float X { get; set; } = 0f;
         public float Y { get; set; } = 0f;
@@ -23,6 +16,11 @@ namespace SweetEditor {
 
     public sealed partial class Rect {
         public PointF Origin { get; set; } = new PointF();
+        public float Width { get; set; } = 0f;
+        public float Height { get; set; } = 0f;
+    }
+
+    public sealed partial class Size {
         public float Width { get; set; } = 0f;
         public float Height { get; set; } = 0f;
     }

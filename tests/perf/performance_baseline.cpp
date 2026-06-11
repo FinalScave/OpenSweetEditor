@@ -9,19 +9,18 @@
 using namespace NS_SWEETEDITOR;
 
 namespace {
-  EditorCore makeEditor(const U8String& text,
-                        const Viewport& viewport,
-                        WrapMode wrap_mode = WrapMode::NONE) {
-    EditorOptions options;
-    EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
-    editor.loadDocument(makeShared<LineArrayDocument>(text));
-    editor.setViewport(viewport);
-    editor.setWrapMode(wrap_mode);
+  UniquePtr<EditorCore> makeEditor(const U8String& text,
+                                   const Size& viewport,
+                                   WrapMode wrap_mode = WrapMode::NONE) {
+    auto editor = makeUnique<EditorCore>(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions {});
+    editor->loadDocument(makeShared<LineArrayDocument>(text));
+    editor->setViewport(viewport);
+    editor->setWrapMode(wrap_mode);
     return editor;
   }
 
   TextLayout makeLayout(const U8String& text,
-                        const Viewport& viewport,
+                        const Size& viewport,
                         WrapMode wrap_mode = WrapMode::NONE) {
     SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
     SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
@@ -35,7 +34,8 @@ namespace {
 }
 
 TEST_CASE("Performance baseline: scroll metrics on many short lines") {
-  EditorCore editor = makeEditor(makeRepeatedLines(5000, "abcdefghijklmnopqrst"), {180, 120});
+  auto editor_holder = makeEditor(makeRepeatedLines(5000, "abcdefghijklmnopqrst"), {180, 120});
+  EditorCore& editor = *editor_holder;
 
   BENCHMARK("ScrollMetrics_LargeShortLines") {
     editor.setScroll(0.0f, 40000.0f);
@@ -45,9 +45,10 @@ TEST_CASE("Performance baseline: scroll metrics on many short lines") {
 }
 
 TEST_CASE("Performance baseline: build render model on wrapped long lines") {
-  EditorCore editor = makeEditor(makeRepeatedLines(600, "abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789"),
-                                 {120, 220},
-                                 WrapMode::CHAR_BREAK);
+  auto editor_holder = makeEditor(makeRepeatedLines(600, "abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789"),
+                                  {120, 220},
+                                  WrapMode::CHAR_BREAK);
+  EditorCore& editor = *editor_holder;
 
   BENCHMARK("BuildRenderModel_WrappedLongLines") {
     editor.setScroll(0.0f, 6000.0f);

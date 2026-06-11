@@ -7,7 +7,7 @@ TYPE_MACRO_RE = re.compile(
     r"\b(?:struct|class)\s+SE_PROTOCOL_(VALUE|OUT|IN|BOTH)\(([^)]+)\)\s+([A-Za-z_]\w*)\s*\{"
 )
 ENUM_MACRO_RE = re.compile(
-    r"\benum(?:\s+(?:class|struct))?\s+SE_PROTOCOL_(ENUM|FLAGS)\(([^)]*)\)\s+([A-Za-z_]\w*)\s*(?::\s*([^{]+))?\s*\{"
+    r"\benum(?:\s+(?:class|struct))?\s+SE_PROTOCOL_(ENUM|FLAGS|CONSTS)\(([^)]*)\)\s+([A-Za-z_]\w*)\s*(?::\s*([^{]+))?\s*\{"
 )
 MACRO_RE = re.compile(
     r"\b(SE_PROTOCOL_SKIP|SE_PROTOCOL_(?:WIRE|KEY_WIRE|VALUE_WIRE|MAP_ENTRY)\([^)]*\))"
@@ -122,7 +122,7 @@ def parse_enum_values(body, source):
     return entries
 
 def parse_protocol_file(path, root):
-    source = str(path.relative_to(root))
+    source = path.relative_to(root).as_posix()
     lines = path.read_text(encoding="utf-8").splitlines()
     types = []
     enums = []
@@ -135,8 +135,9 @@ def parse_protocol_file(path, root):
             args = split_macro_args(enum_match.group(2))
             if macro_kind == "enum" and len(args) != 2:
                 raise ValueError(f"{source}:{index + 1}: SE_PROTOCOL_ENUM requires domain and fallback")
-            if macro_kind == "flags" and len(args) != 1:
-                raise ValueError(f"{source}:{index + 1}: SE_PROTOCOL_FLAGS requires domain")
+            if macro_kind in ("flags", "consts") and len(args) != 1:
+                macro_name = "SE_PROTOCOL_FLAGS" if macro_kind == "flags" else "SE_PROTOCOL_CONSTS"
+                raise ValueError(f"{source}:{index + 1}: {macro_name} requires domain")
             domain = args[0]
             fallback = args[1] if macro_kind == "enum" else None
             name = enum_match.group(3)

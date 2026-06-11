@@ -104,8 +104,8 @@ external ffi.Pointer<ffi.Uint8> editor_set_document(
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
-    ffi.Int16,
-    ffi.Int16,
+    ffi.Int32,
+    ffi.Int32,
     ffi.Pointer<ffi.Size>,
   )
 >(assetId: _sweeteditorAssetId)
@@ -266,9 +266,9 @@ external ffi.Pointer<ffi.Uint8> editor_set_gutter_visible(
 
 /// Set selection handle hit-test configuration.
 /// @param data HandleConfig binary payload encoded by CoreProtocol:
-/// OffsetRect start_hit_offset
-/// OffsetRect end_hit_offset
-/// OffsetRect is f32 left, f32 top, f32 right, f32 bottom
+/// HandleHitArea start_hit_area
+/// HandleHitArea end_hit_area
+/// HandleHitArea is f32 left, f32 top, f32 right, f32 bottom
 /// @param size payload byte length
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
@@ -364,8 +364,7 @@ external ffi.Pointer<ffi.Uint8> editor_set_editor_range_effect_styles(
 /// bool_i32 split_line_visible
 /// f32 scroll_x
 /// f32 scroll_y
-/// f32 viewport_width
-/// f32 viewport_height
+/// Size viewport_size
 /// PointF current_line
 /// enum_i32 current_line_render_mode
 /// List<VisualLine> lines
@@ -1171,10 +1170,8 @@ external ffi.Pointer<ffi.Uint8> editor_set_scroll(
 /// f32 scroll_y
 /// f32 max_scroll_x
 /// f32 max_scroll_y
-/// f32 content_width
-/// f32 content_height
-/// f32 viewport_width
-/// f32 viewport_height
+/// Size content_size
+/// Size viewport_size
 /// f32 text_area_x
 /// f32 text_area_width
 /// bool_i32 can_scroll_x
@@ -2377,7 +2374,7 @@ editor_ime_notify_input_context_selection_changed(
 /// Update the external text model state snapshot.
 /// @param data ImeTextModelState binary payload encoded by CoreProtocol:
 /// enum_i32 ImeTextModelMode mode, uint64_t context_id, int32_t document_start_offset,
-/// U8String text, ImeTextRange selection, ImeTextRange composition,
+/// U8String text, ImeOffsetRange selection, ImeOffsetRange composition,
 /// enum_i32 ImeScriptClass script_class
 /// @param size Binary payload size in bytes
 /// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
@@ -2399,8 +2396,8 @@ external ffi.Pointer<ffi.Uint8> editor_ime_update_text_model_state(
 /// Update the external text model by delta.
 /// @param data ImeTextModelDelta binary payload encoded by CoreProtocol:
 /// enum_i32 ImeTextModelMode mode, uint64_t context_id, int32_t document_start_offset,
-/// U8String old_text, ImeTextRange delta, U8String delta_text,
-/// ImeTextRange selection, ImeTextRange composition, enum_i32 ImeScriptClass script_class
+/// U8String old_text, ImeOffsetRange delta, U8String delta_text,
+/// ImeOffsetRange selection, ImeOffsetRange composition, enum_i32 ImeScriptClass script_class
 /// @param size Binary payload size in bytes
 /// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
 @ffi.Native<

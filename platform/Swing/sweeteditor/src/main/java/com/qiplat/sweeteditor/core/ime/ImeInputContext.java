@@ -5,15 +5,15 @@ public final class ImeInputContext {
     public int revision = 0;
     public int documentStartOffset = 0;
     public String text = "";
-    public ImeTextRange selection = new ImeTextRange();
+    public ImeOffsetRange selection = new ImeOffsetRange();
     public boolean hasComposition = false;
-    public ImeTextRange composition = new ImeTextRange(-1, -1);
+    public ImeOffsetRange composition = new ImeOffsetRange(-1, -1);
     public ImeInputContextKind kind = ImeInputContextKind.NONE;
 
     public ImeInputContext() {
     }
 
-    public ImeInputContext(long id, int revision, int documentStartOffset, String text, ImeTextRange selection, boolean hasComposition, ImeTextRange composition, ImeInputContextKind kind) {
+    public ImeInputContext(long id, int revision, int documentStartOffset, String text, ImeOffsetRange selection, boolean hasComposition, ImeOffsetRange composition, ImeInputContextKind kind) {
         this.id = id;
         this.revision = revision;
         this.documentStartOffset = documentStartOffset;

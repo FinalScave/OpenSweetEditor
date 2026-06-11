@@ -6,17 +6,17 @@
 using namespace NS_SWEETEDITOR;
 
 namespace {
-  EditorCore makeSearchEditor(const U8String& text) {
-    EditorOptions options;
-    EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
-    editor.loadDocument(makeShared<LineArrayDocument>(text));
-    editor.setViewport({500, 240});
+  UniquePtr<EditorCore> makeSearchEditor(const U8String& text) {
+    auto editor = makeUnique<EditorCore>(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions {});
+    editor->loadDocument(makeShared<LineArrayDocument>(text));
+    editor->setViewport({500, 240});
     return editor;
   }
 }
 
 TEST_CASE("EditorCore search finds literal matches and navigates current match") {
-  EditorCore editor = makeSearchEditor("one two one\nthree one");
+  auto editor_holder = makeSearchEditor("one two one\nthree one");
+  EditorCore& editor = *editor_holder;
 
   SearchRequest request;
   request.pattern = "one";
@@ -41,7 +41,8 @@ TEST_CASE("EditorCore search finds literal matches and navigates current match")
 }
 
 TEST_CASE("EditorCore search whole word uses shared word classification") {
-  EditorCore editor = makeSearchEditor("cat concatenate cat_1 猫 猫眼 dog猫 cat");
+  auto editor_holder = makeSearchEditor("cat concatenate cat_1 猫 猫眼 dog猫 cat");
+  EditorCore& editor = *editor_holder;
 
   SearchRequest request;
   request.pattern = "cat";
@@ -89,7 +90,8 @@ TEST_CASE("EditorCore search supports regex captures in replace all") {
 }
 
 TEST_CASE("EditorCore search supports newline patterns") {
-  EditorCore editor = makeSearchEditor("alpha\nbeta");
+  auto editor_holder = makeSearchEditor("alpha\nbeta");
+  EditorCore& editor = *editor_holder;
 
   SearchRequest literal_request;
   literal_request.pattern = "\n";
@@ -118,7 +120,8 @@ TEST_CASE("EditorCore search supports newline patterns") {
 }
 
 TEST_CASE("EditorCore clear search clears only the current search selection") {
-  EditorCore editor = makeSearchEditor("one two one");
+  auto editor_holder = makeSearchEditor("one two one");
+  EditorCore& editor = *editor_holder;
 
   SearchRequest request;
   request.pattern = "one";
@@ -144,7 +147,8 @@ TEST_CASE("EditorCore clear search clears only the current search selection") {
 }
 
 TEST_CASE("EditorCore search marks highlights stale after document edit") {
-  EditorCore editor = makeSearchEditor("alpha beta alpha");
+  auto editor_holder = makeSearchEditor("alpha beta alpha");
+  EditorCore& editor = *editor_holder;
 
   SearchRequest request;
   request.pattern = "alpha";
@@ -159,7 +163,8 @@ TEST_CASE("EditorCore search marks highlights stale after document edit") {
 }
 
 TEST_CASE("EditorCore search reports invalid regex failures") {
-  EditorCore editor = makeSearchEditor("abc");
+  auto editor_holder = makeSearchEditor("abc");
+  EditorCore& editor = *editor_holder;
 
   SearchRequest request;
   request.pattern = "(";

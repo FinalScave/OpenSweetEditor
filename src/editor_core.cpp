@@ -112,10 +112,10 @@ namespace NS_SWEETEDITOR {
     const ActionSnapshot before = captureActionSnapshot();
     m_settings_.handle = config;
     LOGD("EditorCore::setHandleConfig(), start_hit=[%.1f,%.1f,%.1f,%.1f], end_hit=[%.1f,%.1f,%.1f,%.1f]",
-         config.start_hit_offset.left, config.start_hit_offset.top,
-         config.start_hit_offset.right, config.start_hit_offset.bottom,
-         config.end_hit_offset.left, config.end_hit_offset.top,
-         config.end_hit_offset.right, config.end_hit_offset.bottom);
+         config.start_hit_area.left, config.start_hit_area.top,
+         config.start_hit_area.right, config.start_hit_area.bottom,
+         config.end_hit_area.left, config.end_hit_area.top,
+         config.end_hit_area.right, config.end_hit_area.bottom);
     return finishAction(before, EditorActionSource::SETUP, true);
   }
 
@@ -196,7 +196,7 @@ namespace NS_SWEETEDITOR {
     return finishAction(before, EditorActionSource::SETUP, true, {}, true);
   }
 
-  EditorActionResult EditorCore::setViewport(const Viewport& viewport) {
+  EditorActionResult EditorCore::setViewport(const Size& viewport) {
     const ActionSnapshot before = captureActionSnapshot();
     PERF_TIMER("setViewport");
     bool width_changed = (m_viewport_.width != viewport.width);
@@ -575,8 +575,7 @@ namespace NS_SWEETEDITOR {
   ScrollMetrics EditorCore::getScrollMetrics() const {
     ScrollMetrics metrics;
     metrics.scale = m_view_state_.scale;
-    metrics.viewport_width = m_viewport_.width;
-    metrics.viewport_height = m_viewport_.height;
+    metrics.viewport_size = m_viewport_;
 
     if (m_text_layout_ == nullptr) {
       return metrics;
@@ -587,8 +586,7 @@ namespace NS_SWEETEDITOR {
     metrics.scroll_y = m_view_state_.scroll_y;
     metrics.max_scroll_x = bounds.max_scroll_x;
     metrics.max_scroll_y = bounds.max_scroll_y;
-    metrics.content_width = bounds.content_width;
-    metrics.content_height = bounds.content_height;
+    metrics.content_size = {bounds.content_width, bounds.content_height};
     metrics.text_area_x = bounds.text_area_x;
     metrics.text_area_width = bounds.text_area_width;
     metrics.can_scroll_x = bounds.max_scroll_x > 0.0f;

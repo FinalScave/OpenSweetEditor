@@ -295,7 +295,7 @@ def generate_ets_domain(domain, items, enums, schema, target):
     if imports:
         lines.append("")
     for item in enums:
-        if item["kind"] == "flags":
+        if item["kind"] in ("flags", "consts"):
             lines.append(f"export class {item['name']} {{")
             for value in item["values"]:
                 lines.append(f"  static readonly {value['name']}: number = {value['value']};")

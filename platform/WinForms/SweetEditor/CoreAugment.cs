@@ -13,6 +13,19 @@ namespace SweetEditor {
         }
     }
 
+    public sealed partial class Size {
+        public Size() { }
+
+        public Size(float width, float height) {
+            Width = width;
+            Height = height;
+        }
+
+        public bool IsEmpty => Width <= 0 || Height <= 0;
+
+        public override string ToString() => "Size { Width = " + Width + ", Height = " + Height + " }";
+    }
+
     public sealed partial class Rect {
         public Rect() { }
 
@@ -27,10 +40,10 @@ namespace SweetEditor {
         }
     }
 
-    public sealed partial class OffsetRect {
-        public OffsetRect() { }
+    public sealed partial class HandleHitArea {
+        public HandleHitArea() { }
 
-        public OffsetRect(float left, float top, float right, float bottom) {
+        public HandleHitArea(float left, float top, float right, float bottom) {
             Left = left;
             Top = top;
             Right = right;
@@ -312,11 +325,11 @@ namespace SweetEditor {
             KeyCode = keyCode;
         }
 
-        public KeyChord(KeyModifier modifiers, KeyCode keyCode)
-            : this((int)modifiers, (int)keyCode) {
+        public KeyChord(KeyModifier modifiers, int keyCode)
+            : this((int)modifiers, keyCode) {
         }
 
-        public bool IsEmpty => KeyCode == (int)global::SweetEditor.KeyCode.NONE;
+        public bool IsEmpty => KeyCode == global::SweetEditor.KeyCode.NONE;
 
         public bool Equals(KeyChord? other) {
             return other != null && Modifiers == other.Modifiers && KeyCode == other.KeyCode;
@@ -352,15 +365,15 @@ namespace SweetEditor {
             Command = command;
         }
 
-        public KeyBinding(KeyModifier modifiers, KeyCode keyCode, int command)
+        public KeyBinding(KeyModifier modifiers, int keyCode, int command)
             : this(new KeyChord(modifiers, keyCode), KeyChord.Empty, command) {
         }
 
-        public KeyBinding(KeyModifier modifiers, KeyCode keyCode, EditorBuiltinCommand command)
+        public KeyBinding(KeyModifier modifiers, int keyCode, EditorBuiltinCommand command)
             : this(modifiers, keyCode, (int)command) {
         }
 
-        public KeyBinding(KeyModifier firstModifiers, KeyCode firstKeyCode, KeyModifier secondModifiers, KeyCode secondKeyCode, int command)
+        public KeyBinding(KeyModifier firstModifiers, int firstKeyCode, KeyModifier secondModifiers, int secondKeyCode, int command)
             : this(new KeyChord(firstModifiers, firstKeyCode), new KeyChord(secondModifiers, secondKeyCode), command) {
         }
 
@@ -407,43 +420,43 @@ namespace SweetEditor {
 
     public sealed partial class HandleConfig {
         public float StartLeft {
-            get => StartHitOffset.Left;
-            set => StartHitOffset.Left = value;
+            get => StartHitArea.Left;
+            set => StartHitArea.Left = value;
         }
 
         public float StartTop {
-            get => StartHitOffset.Top;
-            set => StartHitOffset.Top = value;
+            get => StartHitArea.Top;
+            set => StartHitArea.Top = value;
         }
 
         public float StartRight {
-            get => StartHitOffset.Right;
-            set => StartHitOffset.Right = value;
+            get => StartHitArea.Right;
+            set => StartHitArea.Right = value;
         }
 
         public float StartBottom {
-            get => StartHitOffset.Bottom;
-            set => StartHitOffset.Bottom = value;
+            get => StartHitArea.Bottom;
+            set => StartHitArea.Bottom = value;
         }
 
         public float EndLeft {
-            get => EndHitOffset.Left;
-            set => EndHitOffset.Left = value;
+            get => EndHitArea.Left;
+            set => EndHitArea.Left = value;
         }
 
         public float EndTop {
-            get => EndHitOffset.Top;
-            set => EndHitOffset.Top = value;
+            get => EndHitArea.Top;
+            set => EndHitArea.Top = value;
         }
 
         public float EndRight {
-            get => EndHitOffset.Right;
-            set => EndHitOffset.Right = value;
+            get => EndHitArea.Right;
+            set => EndHitArea.Right = value;
         }
 
         public float EndBottom {
-            get => EndHitOffset.Bottom;
-            set => EndHitOffset.Bottom = value;
+            get => EndHitArea.Bottom;
+            set => EndHitArea.Bottom = value;
         }
     }
 

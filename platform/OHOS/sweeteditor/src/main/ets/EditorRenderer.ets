@@ -1005,13 +1005,13 @@ export class EditorRenderer {
 
     const pad = 8.0;
     const config = new HandleConfig();
-    config.startHitOffset = {
+    config.startHitArea = {
       left: minX - pad,
       top: minY - pad,
       right: maxX + pad,
       bottom: maxY + pad
     };
-    config.endHitOffset = {
+    config.endHitArea = {
       left: -maxX - pad,
       top: minY - pad,
       right: -minX + pad,

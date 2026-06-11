@@ -111,12 +111,12 @@ public struct ImeInputContext {
     public var revision: Int32 = 0
     public var document_start_offset: Int32 = 0
     public var text: String = ""
-    public var selection: ImeTextRange = ImeTextRange()
+    public var selection: ImeOffsetRange = ImeOffsetRange()
     public var has_composition: Bool = false
-    public var composition: ImeTextRange = ImeTextRange()
+    public var composition: ImeOffsetRange = ImeOffsetRange()
     public var kind: ImeInputContextKind = .NONE
 
-    public init(id: Int64 = 0, revision: Int32 = 0, document_start_offset: Int32 = 0, text: String = "", selection: ImeTextRange = ImeTextRange(), has_composition: Bool = false, composition: ImeTextRange = ImeTextRange(), kind: ImeInputContextKind = .NONE) {
+    public init(id: Int64 = 0, revision: Int32 = 0, document_start_offset: Int32 = 0, text: String = "", selection: ImeOffsetRange = ImeOffsetRange(), has_composition: Bool = false, composition: ImeOffsetRange = ImeOffsetRange(), kind: ImeInputContextKind = .NONE) {
         self.id = id
         self.revision = revision
         self.document_start_offset = document_start_offset
@@ -164,6 +164,16 @@ public struct ImeInputStateTextReplacement {
     }
 }
 
+public struct ImeOffsetRange {
+    public var start: Int32 = 0
+    public var end: Int32 = 0
+
+    public init(start: Int32 = 0, end: Int32 = 0) {
+        self.start = start
+        self.end = end
+    }
+}
+
 public struct ImeSyncSnapshot {
     public var cursor: TextPosition = TextPosition()
     public var selection: TextRange = TextRange()
@@ -197,13 +207,13 @@ public struct ImeTextModelDelta {
     public var context_id: Int64 = 0
     public var document_start_offset: Int32 = 0
     public var old_text: String = ""
-    public var delta: ImeTextRange = ImeTextRange()
+    public var delta: ImeOffsetRange = ImeOffsetRange()
     public var delta_text: String = ""
-    public var selection: ImeTextRange = ImeTextRange()
-    public var composition: ImeTextRange = ImeTextRange()
+    public var selection: ImeOffsetRange = ImeOffsetRange()
+    public var composition: ImeOffsetRange = ImeOffsetRange()
     public var script_class: ImeScriptClass = .UNKNOWN
 
-    public init(mode: ImeTextModelMode = .DOCUMENT_WINDOW, context_id: Int64 = 0, document_start_offset: Int32 = 0, old_text: String = "", delta: ImeTextRange = ImeTextRange(), delta_text: String = "", selection: ImeTextRange = ImeTextRange(), composition: ImeTextRange = ImeTextRange(), script_class: ImeScriptClass = .UNKNOWN) {
+    public init(mode: ImeTextModelMode = .DOCUMENT_WINDOW, context_id: Int64 = 0, document_start_offset: Int32 = 0, old_text: String = "", delta: ImeOffsetRange = ImeOffsetRange(), delta_text: String = "", selection: ImeOffsetRange = ImeOffsetRange(), composition: ImeOffsetRange = ImeOffsetRange(), script_class: ImeScriptClass = .UNKNOWN) {
         self.mode = mode
         self.context_id = context_id
         self.document_start_offset = document_start_offset
@@ -221,11 +231,11 @@ public struct ImeTextModelState {
     public var context_id: Int64 = 0
     public var document_start_offset: Int32 = 0
     public var text: String = ""
-    public var selection: ImeTextRange = ImeTextRange()
-    public var composition: ImeTextRange = ImeTextRange()
+    public var selection: ImeOffsetRange = ImeOffsetRange()
+    public var composition: ImeOffsetRange = ImeOffsetRange()
     public var script_class: ImeScriptClass = .UNKNOWN
 
-    public init(mode: ImeTextModelMode = .DOCUMENT_WINDOW, context_id: Int64 = 0, document_start_offset: Int32 = 0, text: String = "", selection: ImeTextRange = ImeTextRange(), composition: ImeTextRange = ImeTextRange(), script_class: ImeScriptClass = .UNKNOWN) {
+    public init(mode: ImeTextModelMode = .DOCUMENT_WINDOW, context_id: Int64 = 0, document_start_offset: Int32 = 0, text: String = "", selection: ImeOffsetRange = ImeOffsetRange(), composition: ImeOffsetRange = ImeOffsetRange(), script_class: ImeScriptClass = .UNKNOWN) {
         self.mode = mode
         self.context_id = context_id
         self.document_start_offset = document_start_offset
@@ -233,16 +243,6 @@ public struct ImeTextModelState {
         self.selection = selection
         self.composition = composition
         self.script_class = script_class
-    }
-}
-
-public struct ImeTextRange {
-    public var start: Int32 = 0
-    public var end: Int32 = 0
-
-    public init(start: Int32 = 0, end: Int32 = 0) {
-        self.start = start
-        self.end = end
     }
 }
 

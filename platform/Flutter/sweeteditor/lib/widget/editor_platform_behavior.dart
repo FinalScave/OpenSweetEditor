@@ -124,13 +124,13 @@ class EditorPlatformBehavior {
 
     const pad = 8.0;
     return core.HandleConfig(
-      startHitOffset: core.OffsetRect(
+      startHitArea: core.HandleHitArea(
         left: minX - pad,
         top: minY - pad,
         right: maxX + pad,
         bottom: maxY + pad,
       ),
-      endHitOffset: core.OffsetRect(
+      endHitArea: core.HandleHitArea(
         left: -maxX - pad,
         top: minY - pad,
         right: -minX + pad,
@@ -141,8 +141,8 @@ class EditorPlatformBehavior {
 
   static core.HandleConfig _buildDisabledHandleConfig() {
     return const core.HandleConfig(
-      startHitOffset: core.OffsetRect(left: 1, top: 1, right: -1, bottom: -1),
-      endHitOffset: core.OffsetRect(left: 1, top: 1, right: -1, bottom: -1),
+      startHitArea: core.HandleHitArea(left: 1, top: 1, right: -1, bottom: -1),
+      endHitArea: core.HandleHitArea(left: 1, top: 1, right: -1, bottom: -1),
     );
   }
 

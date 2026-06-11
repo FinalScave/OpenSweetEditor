@@ -974,14 +974,39 @@ int _sizeOfEditorRenderColors(EditorRenderColors value) {
 }
 
 void _writeHandleConfig(_BinaryWriter writer, HandleConfig value) {
-  _writeOffsetRect(writer, value.startHitOffset);
-  _writeOffsetRect(writer, value.endHitOffset);
+  _writeHandleHitArea(writer, value.startHitArea);
+  _writeHandleHitArea(writer, value.endHitArea);
 }
 
 int _sizeOfHandleConfig(HandleConfig value) {
   var size = 0;
-  size += _sizeOfOffsetRect(value.startHitOffset);
-  size += _sizeOfOffsetRect(value.endHitOffset);
+  size += _sizeOfHandleHitArea(value.startHitArea);
+  size += _sizeOfHandleHitArea(value.endHitArea);
+  return size;
+}
+
+HandleHitArea _readHandleHitArea(_BinaryReader reader) {
+  return HandleHitArea(
+    left: reader.readFloat32(),
+    top: reader.readFloat32(),
+    right: reader.readFloat32(),
+    bottom: reader.readFloat32(),
+  );
+}
+
+void _writeHandleHitArea(_BinaryWriter writer, HandleHitArea value) {
+  writer.writeFloat32(value.left);
+  writer.writeFloat32(value.top);
+  writer.writeFloat32(value.right);
+  writer.writeFloat32(value.bottom);
+}
+
+int _sizeOfHandleHitArea(HandleHitArea value) {
+  var size = 0;
+  size += 4;
+  size += 4;
+  size += 4;
+  size += 4;
   return size;
 }
 
@@ -1056,31 +1081,6 @@ int _sizeOfIntRange(IntRange value) {
   return size;
 }
 
-OffsetRect _readOffsetRect(_BinaryReader reader) {
-  return OffsetRect(
-    left: reader.readFloat32(),
-    top: reader.readFloat32(),
-    right: reader.readFloat32(),
-    bottom: reader.readFloat32(),
-  );
-}
-
-void _writeOffsetRect(_BinaryWriter writer, OffsetRect value) {
-  writer.writeFloat32(value.left);
-  writer.writeFloat32(value.top);
-  writer.writeFloat32(value.right);
-  writer.writeFloat32(value.bottom);
-}
-
-int _sizeOfOffsetRect(OffsetRect value) {
-  var size = 0;
-  size += 4;
-  size += 4;
-  size += 4;
-  size += 4;
-  return size;
-}
-
 PointF _readPointF(_BinaryReader reader) {
   return PointF(
     x: reader.readFloat32(),
@@ -1117,6 +1117,25 @@ void _writeRect(_BinaryWriter writer, Rect value) {
 int _sizeOfRect(Rect value) {
   var size = 0;
   size += _sizeOfPointF(value.origin);
+  size += 4;
+  size += 4;
+  return size;
+}
+
+Size _readSize(_BinaryReader reader) {
+  return Size(
+    width: reader.readFloat32(),
+    height: reader.readFloat32(),
+  );
+}
+
+void _writeSize(_BinaryWriter writer, Size value) {
+  writer.writeFloat32(value.width);
+  writer.writeFloat32(value.height);
+}
+
+int _sizeOfSize(Size value) {
+  var size = 0;
   size += 4;
   size += 4;
   return size;
@@ -1210,9 +1229,9 @@ ImeInputContext _readImeInputContext(_BinaryReader reader) {
     revision: reader.readInt32(),
     documentStartOffset: reader.readInt32(),
     text: _readUtf8String(reader),
-    selection: _readImeTextRange(reader),
+    selection: _readImeOffsetRange(reader),
     hasComposition: reader.readBoolI32(),
-    composition: _readImeTextRange(reader),
+    composition: _readImeOffsetRange(reader),
     kind: ImeInputContextKind.fromValue(reader.readInt32()),
   );
 }
@@ -1257,6 +1276,25 @@ int _sizeOfImeInputStateTextReplacement(ImeInputStateTextReplacement value) {
   return size;
 }
 
+ImeOffsetRange _readImeOffsetRange(_BinaryReader reader) {
+  return ImeOffsetRange(
+    start: reader.readInt32(),
+    end: reader.readInt32(),
+  );
+}
+
+void _writeImeOffsetRange(_BinaryWriter writer, ImeOffsetRange value) {
+  writer.writeInt32(value.start);
+  writer.writeInt32(value.end);
+}
+
+int _sizeOfImeOffsetRange(ImeOffsetRange value) {
+  var size = 0;
+  size += 4;
+  size += 4;
+  return size;
+}
+
 ImeSyncSnapshot _readImeSyncSnapshot(_BinaryReader reader) {
   return ImeSyncSnapshot(
     cursor: _readTextPosition(reader),
@@ -1278,10 +1316,10 @@ void _writeImeTextModelDelta(_BinaryWriter writer, ImeTextModelDelta value) {
   writer.writeUint64(value.contextId);
   writer.writeInt32(value.documentStartOffset);
   _writeUtf8String(writer, value.oldText);
-  _writeImeTextRange(writer, value.delta);
+  _writeImeOffsetRange(writer, value.delta);
   _writeUtf8String(writer, value.deltaText);
-  _writeImeTextRange(writer, value.selection);
-  _writeImeTextRange(writer, value.composition);
+  _writeImeOffsetRange(writer, value.selection);
+  _writeImeOffsetRange(writer, value.composition);
   writer.writeInt32(value.scriptClass.value);
 }
 
@@ -1291,10 +1329,10 @@ int _sizeOfImeTextModelDelta(ImeTextModelDelta value) {
   size += 8;
   size += 4;
   size += _sizeOfUtf8String(value.oldText);
-  size += _sizeOfImeTextRange(value.delta);
+  size += _sizeOfImeOffsetRange(value.delta);
   size += _sizeOfUtf8String(value.deltaText);
-  size += _sizeOfImeTextRange(value.selection);
-  size += _sizeOfImeTextRange(value.composition);
+  size += _sizeOfImeOffsetRange(value.selection);
+  size += _sizeOfImeOffsetRange(value.composition);
   size += 4;
   return size;
 }
@@ -1304,8 +1342,8 @@ void _writeImeTextModelState(_BinaryWriter writer, ImeTextModelState value) {
   writer.writeUint64(value.contextId);
   writer.writeInt32(value.documentStartOffset);
   _writeUtf8String(writer, value.text);
-  _writeImeTextRange(writer, value.selection);
-  _writeImeTextRange(writer, value.composition);
+  _writeImeOffsetRange(writer, value.selection);
+  _writeImeOffsetRange(writer, value.composition);
   writer.writeInt32(value.scriptClass.value);
 }
 
@@ -1315,27 +1353,8 @@ int _sizeOfImeTextModelState(ImeTextModelState value) {
   size += 8;
   size += 4;
   size += _sizeOfUtf8String(value.text);
-  size += _sizeOfImeTextRange(value.selection);
-  size += _sizeOfImeTextRange(value.composition);
-  size += 4;
-  return size;
-}
-
-ImeTextRange _readImeTextRange(_BinaryReader reader) {
-  return ImeTextRange(
-    start: reader.readInt32(),
-    end: reader.readInt32(),
-  );
-}
-
-void _writeImeTextRange(_BinaryWriter writer, ImeTextRange value) {
-  writer.writeInt32(value.start);
-  writer.writeInt32(value.end);
-}
-
-int _sizeOfImeTextRange(ImeTextRange value) {
-  var size = 0;
-  size += 4;
+  size += _sizeOfImeOffsetRange(value.selection);
+  size += _sizeOfImeOffsetRange(value.composition);
   size += 4;
   return size;
 }
@@ -1541,8 +1560,7 @@ EditorRenderModel _readEditorRenderModel(_BinaryReader reader) {
     splitLineVisible: reader.readBoolI32(),
     scrollX: reader.readFloat32(),
     scrollY: reader.readFloat32(),
-    viewportWidth: reader.readFloat32(),
-    viewportHeight: reader.readFloat32(),
+    viewportSize: _readSize(reader),
     currentLine: _readPointF(reader),
     currentLineRenderMode: CurrentLineRenderMode.fromValue(reader.readInt32()),
     lines: _readVisualLineList(reader),
@@ -1623,10 +1641,8 @@ ScrollMetrics _readScrollMetrics(_BinaryReader reader) {
     scrollY: reader.readFloat32(),
     maxScrollX: reader.readFloat32(),
     maxScrollY: reader.readFloat32(),
-    contentWidth: reader.readFloat32(),
-    contentHeight: reader.readFloat32(),
-    viewportWidth: reader.readFloat32(),
-    viewportHeight: reader.readFloat32(),
+    contentSize: _readSize(reader),
+    viewportSize: _readSize(reader),
     textAreaX: reader.readFloat32(),
     textAreaWidth: reader.readFloat32(),
     canScrollX: reader.readBoolI32(),
@@ -1704,6 +1720,11 @@ class CoreProtocol {
     return _readTextStyle(reader);
   }
 
+  static HandleHitArea decodeHandleHitAreaFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
+    final reader = _BinaryReader.fromPointer(ptr, size);
+    return _readHandleHitArea(reader);
+  }
+
   static RangeEffectStyle decodeRangeEffectStyleFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
     final reader = _BinaryReader.fromPointer(ptr, size);
     return _readRangeEffectStyle(reader);
@@ -1714,11 +1735,6 @@ class CoreProtocol {
     return _readIntRange(reader);
   }
 
-  static OffsetRect decodeOffsetRectFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
-    final reader = _BinaryReader.fromPointer(ptr, size);
-    return _readOffsetRect(reader);
-  }
-
   static PointF decodePointFFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
     final reader = _BinaryReader.fromPointer(ptr, size);
     return _readPointF(reader);
@@ -1727,6 +1743,11 @@ class CoreProtocol {
   static Rect decodeRectFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
     final reader = _BinaryReader.fromPointer(ptr, size);
     return _readRect(reader);
+  }
+
+  static Size decodeSizeFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
+    final reader = _BinaryReader.fromPointer(ptr, size);
+    return _readSize(reader);
   }
 
   static TextChange decodeTextChangeFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
@@ -1754,14 +1775,14 @@ class CoreProtocol {
     return _readImeInputContext(reader);
   }
 
+  static ImeOffsetRange decodeImeOffsetRangeFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
+    final reader = _BinaryReader.fromPointer(ptr, size);
+    return _readImeOffsetRange(reader);
+  }
+
   static ImeSyncSnapshot decodeImeSyncSnapshotFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
     final reader = _BinaryReader.fromPointer(ptr, size);
     return _readImeSyncSnapshot(reader);
-  }
-
-  static ImeTextRange decodeImeTextRangeFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {
-    final reader = _BinaryReader.fromPointer(ptr, size);
-    return _readImeTextRange(reader);
   }
 
   static HitTarget decodeHitTargetFromPointer(ffi.Pointer<ffi.Uint8> ptr, int size) {

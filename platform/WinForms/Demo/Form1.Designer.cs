@@ -1,4 +1,5 @@
 using SweetEditor;
+using DrawingSize = System.Drawing.Size;
 
 namespace Demo {
 	partial class Form1 {
@@ -23,14 +24,14 @@ namespace Demo {
 			editorControl1.Font = new Font("Consolas", 11F);
 			editorControl1.Location = new Point(0, 40);
 			editorControl1.Name = "editorControl1";
-			editorControl1.Size = new Size(1831, 1135);
+			editorControl1.Size = new DrawingSize(1831, 1135);
 			editorControl1.TabIndex = 0;
 			// 
 			// Form1
 			// 
 			AutoScaleDimensions = new SizeF(11F, 24F);
 			AutoScaleMode = AutoScaleMode.Font;
-			ClientSize = new Size(1831, 1175);
+			ClientSize = new DrawingSize(1831, 1175);
 			Controls.Add(editorControl1);
 			Name = "Form1";
 			Text = "SweetEditor Demo";

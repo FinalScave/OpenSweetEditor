@@ -187,7 +187,7 @@ Vector<VisualLine>  → 输出到 EditorRenderModel
 #### 换行模式
 
 ```cpp
-enum struct WrapMode {
+enum class WrapMode {
   NONE,        // 不换行（水平滚动）
   CHAR_BREAK,  // 字符级换行
   WORD_BREAK,  // 单词级换行（按空格/标点断行）
@@ -360,7 +360,7 @@ TextEditResult applyEdit(const TextRange& range, const U8String& new_text, bool 
 #### 修饰键
 
 ```cpp
-enum struct Modifier : uint8_t {
+enum class Modifier : uint8_t {
   NONE  = 0,
   SHIFT = 1 << 0,  // Shift+Click = 扩展选区
   CTRL  = 1 << 1,  // Ctrl+Click = 多光标（未来）
@@ -419,7 +419,7 @@ enum struct Modifier : uint8_t {
 struct EditorRenderModel {
   float split_x;                        // 行号分割线 X 位置
   float scroll_x, scroll_y;             // 当前滚动偏移
-  float viewport_width, viewport_height; // 视口尺寸
+  Size viewport_size;                    // 视口尺寸
   PointF current_line;                  // 当前行背景位置
   Vector<VisualLine> lines;             // 可见视觉行
   Cursor cursor;                        // 光标

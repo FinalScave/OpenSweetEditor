@@ -1,8 +1,8 @@
 package com.qiplat.sweeteditor.core.visual;
 
 public enum GuideDirection {
-    HORIZONTAL(0),
-    VERTICAL(1);
+    VERTICAL(0),
+    HORIZONTAL(1);
 
     public final int value;
 
@@ -12,8 +12,8 @@ public enum GuideDirection {
 
     public static GuideDirection fromValue(int value) {
         switch (value) {
-            case 0: return HORIZONTAL;
-            case 1: return VERTICAL;
+            case 0: return VERTICAL;
+            case 1: return HORIZONTAL;
             default: return VERTICAL;
         }
     }

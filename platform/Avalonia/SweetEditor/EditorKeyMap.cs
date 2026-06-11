@@ -151,7 +151,7 @@ namespace SweetEditor {
 		public static EditorKeyMap Vscode() {
 			EditorKeyMap map = new();
 
-			static KeyChord Chord(KeyModifier modifiers, KeyCode keyCode) => new(modifiers, keyCode);
+			static KeyChord Chord(KeyModifier modifiers, int keyCode) => new(modifiers, keyCode);
 
 			map.AddOrReplace(new KeyBinding(Chord(KeyModifier.NONE, KeyCode.LEFT), EditorBuiltinCommand.CURSOR_LEFT));
 			map.AddOrReplace(new KeyBinding(Chord(KeyModifier.NONE, KeyCode.RIGHT), EditorBuiltinCommand.CURSOR_RIGHT));
@@ -269,7 +269,7 @@ namespace SweetEditor {
 		}
 
 		internal static bool TryFromAvalonia(Key key, KeyModifiers modifiers, out KeyChord chord) {
-			KeyCode keyCode = ToKeyCode(key);
+			int keyCode = ToKeyCode(key);
 			if (keyCode == KeyCode.NONE) {
 				chord = KeyChord.Empty;
 				return false;
@@ -303,7 +303,7 @@ namespace SweetEditor {
 			return result;
 		}
 
-		private static KeyCode ToKeyCode(Key key) {
+		private static int ToKeyCode(Key key) {
 			return key switch {
 				Key.Back => KeyCode.BACKSPACE,
 				Key.Tab => KeyCode.TAB,

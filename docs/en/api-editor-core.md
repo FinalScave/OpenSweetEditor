@@ -68,7 +68,7 @@ void     editor_set_document(intptr_t editor_handle, intptr_t document_handle);
 ### 3) Viewport / appearance
 
 ```c
-void           editor_set_viewport(intptr_t editor_handle, int16_t width, int16_t height);
+void           editor_set_viewport(intptr_t editor_handle, int32_t width, int32_t height);
 void           editor_on_font_metrics_changed(intptr_t editor_handle);
 const uint8_t* editor_set_fold_arrow_mode(intptr_t editor_handle, int mode, size_t* out_size);
 const uint8_t* editor_set_wrap_mode(intptr_t editor_handle, int mode, size_t* out_size);

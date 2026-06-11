@@ -9,34 +9,34 @@
 namespace NS_SWEETEDITOR {
 
   /// Keyboard key code definitions
-  enum struct SE_PROTOCOL_FLAGS(keymap) KeyCode : uint16_t {
+  enum class SE_PROTOCOL_CONSTS(keymap) KeyCode : uint16_t {
     NONE = 0,
     BACKSPACE = 8,
     TAB = 9,
     ENTER = 13,
     ESCAPE = 27,
-    DELETE_KEY = 46,
+    SPACE = 32,
+    PAGE_UP = 33,
+    PAGE_DOWN = 34,
+    END = 35,
+    HOME = 36,
     LEFT = 37,
     UP = 38,
     RIGHT = 39,
     DOWN = 40,
-    HOME = 36,
-    END = 35,
-    PAGE_UP = 33,
-    PAGE_DOWN = 34,
+    DELETE_KEY = 46,
     A = 65,
     C = 67,
     D = 68,
+    K = 75,
     V = 86,
     X = 88,
-    Z = 90,
     Y = 89,
-    K = 75,
-    SPACE = 32,
+    Z = 90,
   };
 
   /// Modifier key flags
-  enum struct SE_PROTOCOL_FLAGS(keymap) KeyModifier : uint8_t {
+  enum class SE_PROTOCOL_FLAGS(keymap) KeyModifier : uint8_t {
     NONE  = 0,
     SHIFT = 1 << 0,
     CTRL  = 1 << 1,
@@ -68,7 +68,7 @@ namespace NS_SWEETEDITOR {
   using EditorCommandId = uint32_t;
 
   /// Built-in editor command identifiers mapped from key bindings
-  enum struct SE_PROTOCOL_ENUM(keymap, NONE) EditorBuiltinCommand : EditorCommandId {
+  enum class SE_PROTOCOL_ENUM(keymap, NONE) EditorBuiltinCommand : EditorCommandId {
     NONE = 0,
     CURSOR_LEFT,
     CURSOR_RIGHT,
@@ -136,7 +136,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Result of a key resolve operation
-  enum struct ResolveStatus : uint8_t {
+  enum class ResolveStatus : uint8_t {
     MATCHED,    // A command was resolved
     PENDING,    // Waiting for the second chord
     NO_MATCH,   // No binding found

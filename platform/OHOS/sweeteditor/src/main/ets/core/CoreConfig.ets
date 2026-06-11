@@ -1,5 +1,3 @@
-import { OffsetRect } from './CoreFoundation';
-
 export enum AutoIndentMode {
   NONE = 0,
   KEEP_INDENT = 1,
@@ -160,8 +158,15 @@ export class EditorRenderColors {
 }
 
 export class HandleConfig {
-  startHitOffset: OffsetRect = { left: -32.1, top: -8.0, right: 8.0, bottom: 32.1 };
-  endHitOffset: OffsetRect = { left: -8.0, top: -8.0, right: 32.1, bottom: 32.1 };
+  startHitArea: HandleHitArea = { left: -32.1, top: -8.0, right: 8.0, bottom: 32.1 };
+  endHitArea: HandleHitArea = { left: -8.0, top: -8.0, right: 32.1, bottom: 32.1 };
+}
+
+export interface HandleHitArea {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
 }
 
 export interface RangeEffectStyle {

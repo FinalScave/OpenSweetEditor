@@ -7,6 +7,7 @@ using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
 using AvaloniaRect = Avalonia.Rect;
+using AvaloniaSize = Avalonia.Size;
 
 namespace SweetEditor {
 	internal sealed class EditorRenderer : IDisposable {
@@ -165,7 +166,7 @@ namespace SweetEditor {
 			UpdateTypefaces();
 		}
 
-		public void Render(DrawingContext context, EditorRenderModel model, Size viewportSize, float buildMs) {
+		public void Render(DrawingContext context, EditorRenderModel model, AvaloniaSize viewportSize, float buildMs) {
 			PerfStepRecorder? drawPerf = perfOverlay.IsEnabled() ? PerfStepRecorder.Start() : null;
 			long drawStart = drawPerf != null ? Stopwatch.GetTimestamp() : 0;
 
@@ -1374,7 +1375,7 @@ namespace SweetEditor {
 			return argb;
 		}
 
-		private static AvaloniaRect GetContentClipRect(EditorRenderModel model, Size viewportSize) {
+		private static AvaloniaRect GetContentClipRect(EditorRenderModel model, AvaloniaSize viewportSize) {
 			double left = model.GutterVisible && model.GutterSticky ? Math.Max(0, model.SplitX) : 0;
 			double width = Math.Max(0, viewportSize.Width - left);
 			return new AvaloniaRect(left, 0, width, Math.Max(0, viewportSize.Height));

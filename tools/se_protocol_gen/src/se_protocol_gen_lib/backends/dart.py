@@ -289,7 +289,7 @@ def generate_dart_pack_methods(item, schema):
     return lines
 
 def generate_dart_enum(item):
-    if item["kind"] == "flags":
+    if item["kind"] in ("flags", "consts"):
         lines = [f"class {item['name']} {{", f"  {item['name']}._();"]
         for value in item["values"]:
             lines.append(f"  static const int {dart_enum_value_name(value['name'])} = {value['value']};")

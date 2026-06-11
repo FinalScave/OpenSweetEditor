@@ -91,24 +91,24 @@ class KeyCode {
   static const int tab = 9;
   static const int enter = 13;
   static const int escape = 27;
-  static const int deleteKey = 46;
+  static const int space = 32;
+  static const int pageUp = 33;
+  static const int pageDown = 34;
+  static const int end = 35;
+  static const int home = 36;
   static const int left = 37;
   static const int up = 38;
   static const int right = 39;
   static const int down = 40;
-  static const int home = 36;
-  static const int end = 35;
-  static const int pageUp = 33;
-  static const int pageDown = 34;
+  static const int deleteKey = 46;
   static const int a = 65;
   static const int c = 67;
   static const int d = 68;
+  static const int k = 75;
   static const int v = 86;
   static const int x = 88;
-  static const int z = 90;
   static const int y = 89;
-  static const int k = 75;
-  static const int space = 32;
+  static const int z = 90;
 }
 
 class KeyModifier {

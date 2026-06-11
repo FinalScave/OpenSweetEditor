@@ -958,14 +958,44 @@ namespace SweetEditor {
         }
 
         private static void WriteHandleConfig(BinaryWriter writer, HandleConfig value) {
-            WriteOffsetRect(writer, value.StartHitOffset);
-            WriteOffsetRect(writer, value.EndHitOffset);
+            WriteHandleHitArea(writer, value.StartHitArea);
+            WriteHandleHitArea(writer, value.EndHitArea);
         }
 
         private static int SizeOfHandleConfig(HandleConfig value) {
             var size = 0;
-            size += SizeOfOffsetRect(value.StartHitOffset);
-            size += SizeOfOffsetRect(value.EndHitOffset);
+            size += SizeOfHandleHitArea(value.StartHitArea);
+            size += SizeOfHandleHitArea(value.EndHitArea);
+            return size;
+        }
+
+        private static HandleHitArea ReadHandleHitArea(ref BinaryReader reader) {
+            return new HandleHitArea {
+                Left = reader.ReadFloat32(),
+                Top = reader.ReadFloat32(),
+                Right = reader.ReadFloat32(),
+                Bottom = reader.ReadFloat32(),
+            };
+        }
+
+        public static HandleHitArea DecodeHandleHitArea(ReadOnlySpan<byte> data) {
+            var reader = new BinaryReader(data);
+            return ReadHandleHitArea(ref reader);
+        }
+
+        private static void WriteHandleHitArea(BinaryWriter writer, HandleHitArea value) {
+            writer.WriteFloat32(value.Left);
+            writer.WriteFloat32(value.Top);
+            writer.WriteFloat32(value.Right);
+            writer.WriteFloat32(value.Bottom);
+        }
+
+        private static int SizeOfHandleHitArea(HandleHitArea value) {
+            var size = 0;
+            size += 4;
+            size += 4;
+            size += 4;
+            size += 4;
             return size;
         }
 
@@ -1050,36 +1080,6 @@ namespace SweetEditor {
             return size;
         }
 
-        private static OffsetRect ReadOffsetRect(ref BinaryReader reader) {
-            return new OffsetRect {
-                Left = reader.ReadFloat32(),
-                Top = reader.ReadFloat32(),
-                Right = reader.ReadFloat32(),
-                Bottom = reader.ReadFloat32(),
-            };
-        }
-
-        public static OffsetRect DecodeOffsetRect(ReadOnlySpan<byte> data) {
-            var reader = new BinaryReader(data);
-            return ReadOffsetRect(ref reader);
-        }
-
-        private static void WriteOffsetRect(BinaryWriter writer, OffsetRect value) {
-            writer.WriteFloat32(value.Left);
-            writer.WriteFloat32(value.Top);
-            writer.WriteFloat32(value.Right);
-            writer.WriteFloat32(value.Bottom);
-        }
-
-        private static int SizeOfOffsetRect(OffsetRect value) {
-            var size = 0;
-            size += 4;
-            size += 4;
-            size += 4;
-            size += 4;
-            return size;
-        }
-
         private static PointF ReadPointF(ref BinaryReader reader) {
             return new PointF {
                 X = reader.ReadFloat32(),
@@ -1126,6 +1126,30 @@ namespace SweetEditor {
         private static int SizeOfRect(Rect value) {
             var size = 0;
             size += SizeOfPointF(value.Origin);
+            size += 4;
+            size += 4;
+            return size;
+        }
+
+        private static Size ReadSize(ref BinaryReader reader) {
+            return new Size {
+                Width = reader.ReadFloat32(),
+                Height = reader.ReadFloat32(),
+            };
+        }
+
+        public static Size DecodeSize(ReadOnlySpan<byte> data) {
+            var reader = new BinaryReader(data);
+            return ReadSize(ref reader);
+        }
+
+        private static void WriteSize(BinaryWriter writer, Size value) {
+            writer.WriteFloat32(value.Width);
+            writer.WriteFloat32(value.Height);
+        }
+
+        private static int SizeOfSize(Size value) {
+            var size = 0;
             size += 4;
             size += 4;
             return size;
@@ -1239,9 +1263,9 @@ namespace SweetEditor {
                 Revision = reader.ReadInt32(),
                 DocumentStartOffset = reader.ReadInt32(),
                 Text = ReadUtf8String(ref reader),
-                Selection = ReadImeTextRange(ref reader),
+                Selection = ReadImeOffsetRange(ref reader),
                 HasComposition = reader.ReadBoolI32(),
-                Composition = ReadImeTextRange(ref reader),
+                Composition = ReadImeOffsetRange(ref reader),
                 Kind = (ImeInputContextKind)reader.ReadInt32(),
             };
         }
@@ -1291,6 +1315,30 @@ namespace SweetEditor {
             return size;
         }
 
+        private static ImeOffsetRange ReadImeOffsetRange(ref BinaryReader reader) {
+            return new ImeOffsetRange {
+                Start = reader.ReadInt32(),
+                End = reader.ReadInt32(),
+            };
+        }
+
+        public static ImeOffsetRange DecodeImeOffsetRange(ReadOnlySpan<byte> data) {
+            var reader = new BinaryReader(data);
+            return ReadImeOffsetRange(ref reader);
+        }
+
+        private static void WriteImeOffsetRange(BinaryWriter writer, ImeOffsetRange value) {
+            writer.WriteInt32(value.Start);
+            writer.WriteInt32(value.End);
+        }
+
+        private static int SizeOfImeOffsetRange(ImeOffsetRange value) {
+            var size = 0;
+            size += 4;
+            size += 4;
+            return size;
+        }
+
         private static ImeSyncSnapshot ReadImeSyncSnapshot(ref BinaryReader reader) {
             return new ImeSyncSnapshot {
                 Cursor = ReadTextPosition(ref reader),
@@ -1317,10 +1365,10 @@ namespace SweetEditor {
             writer.WriteInt64(value.ContextId);
             writer.WriteInt32(value.DocumentStartOffset);
             WriteUtf8String(writer, value.OldText);
-            WriteImeTextRange(writer, value.Delta);
+            WriteImeOffsetRange(writer, value.Delta);
             WriteUtf8String(writer, value.DeltaText);
-            WriteImeTextRange(writer, value.Selection);
-            WriteImeTextRange(writer, value.Composition);
+            WriteImeOffsetRange(writer, value.Selection);
+            WriteImeOffsetRange(writer, value.Composition);
             writer.WriteInt32((int)value.ScriptClass);
         }
 
@@ -1330,10 +1378,10 @@ namespace SweetEditor {
             size += 8;
             size += 4;
             size += SizeOfUtf8String(value.OldText);
-            size += SizeOfImeTextRange(value.Delta);
+            size += SizeOfImeOffsetRange(value.Delta);
             size += SizeOfUtf8String(value.DeltaText);
-            size += SizeOfImeTextRange(value.Selection);
-            size += SizeOfImeTextRange(value.Composition);
+            size += SizeOfImeOffsetRange(value.Selection);
+            size += SizeOfImeOffsetRange(value.Composition);
             size += 4;
             return size;
         }
@@ -1343,8 +1391,8 @@ namespace SweetEditor {
             writer.WriteInt64(value.ContextId);
             writer.WriteInt32(value.DocumentStartOffset);
             WriteUtf8String(writer, value.Text);
-            WriteImeTextRange(writer, value.Selection);
-            WriteImeTextRange(writer, value.Composition);
+            WriteImeOffsetRange(writer, value.Selection);
+            WriteImeOffsetRange(writer, value.Composition);
             writer.WriteInt32((int)value.ScriptClass);
         }
 
@@ -1354,32 +1402,8 @@ namespace SweetEditor {
             size += 8;
             size += 4;
             size += SizeOfUtf8String(value.Text);
-            size += SizeOfImeTextRange(value.Selection);
-            size += SizeOfImeTextRange(value.Composition);
-            size += 4;
-            return size;
-        }
-
-        private static ImeTextRange ReadImeTextRange(ref BinaryReader reader) {
-            return new ImeTextRange {
-                Start = reader.ReadInt32(),
-                End = reader.ReadInt32(),
-            };
-        }
-
-        public static ImeTextRange DecodeImeTextRange(ReadOnlySpan<byte> data) {
-            var reader = new BinaryReader(data);
-            return ReadImeTextRange(ref reader);
-        }
-
-        private static void WriteImeTextRange(BinaryWriter writer, ImeTextRange value) {
-            writer.WriteInt32(value.Start);
-            writer.WriteInt32(value.End);
-        }
-
-        private static int SizeOfImeTextRange(ImeTextRange value) {
-            var size = 0;
-            size += 4;
+            size += SizeOfImeOffsetRange(value.Selection);
+            size += SizeOfImeOffsetRange(value.Composition);
             size += 4;
             return size;
         }
@@ -1620,8 +1644,7 @@ namespace SweetEditor {
                 SplitLineVisible = reader.ReadBoolI32(),
                 ScrollX = reader.ReadFloat32(),
                 ScrollY = reader.ReadFloat32(),
-                ViewportWidth = reader.ReadFloat32(),
-                ViewportHeight = reader.ReadFloat32(),
+                ViewportSize = ReadSize(ref reader),
                 CurrentLine = ReadPointF(ref reader),
                 CurrentLineRenderMode = (CurrentLineRenderMode)reader.ReadInt32(),
                 Lines = ReadVisualLineList(ref reader),
@@ -1732,10 +1755,8 @@ namespace SweetEditor {
                 ScrollY = reader.ReadFloat32(),
                 MaxScrollX = reader.ReadFloat32(),
                 MaxScrollY = reader.ReadFloat32(),
-                ContentWidth = reader.ReadFloat32(),
-                ContentHeight = reader.ReadFloat32(),
-                ViewportWidth = reader.ReadFloat32(),
-                ViewportHeight = reader.ReadFloat32(),
+                ContentSize = ReadSize(ref reader),
+                ViewportSize = ReadSize(ref reader),
                 TextAreaX = reader.ReadFloat32(),
                 TextAreaWidth = reader.ReadFloat32(),
                 CanScrollX = reader.ReadBoolI32(),

@@ -578,8 +578,24 @@ public:
   }
 
   inline bool read(HandleConfig& out) {
-    if (!read(out.start_hit_offset)) return false;
-    if (!read(out.end_hit_offset)) return false;
+    if (!read(out.start_hit_area)) return false;
+    if (!read(out.end_hit_area)) return false;
+    return true;
+  }
+
+  inline bool read(HandleHitArea& out) {
+    float out_left_value{};
+    if (!readF32(out_left_value)) return false;
+    out.left = static_cast<float>(out_left_value);
+    float out_top_value{};
+    if (!readF32(out_top_value)) return false;
+    out.top = static_cast<float>(out_top_value);
+    float out_right_value{};
+    if (!readF32(out_right_value)) return false;
+    out.right = static_cast<float>(out_right_value);
+    float out_bottom_value{};
+    if (!readF32(out_bottom_value)) return false;
+    out.bottom = static_cast<float>(out_bottom_value);
     return true;
   }
 
@@ -645,22 +661,6 @@ public:
     return true;
   }
 
-  inline bool read(OffsetRect& out) {
-    float out_left_value{};
-    if (!readF32(out_left_value)) return false;
-    out.left = static_cast<float>(out_left_value);
-    float out_top_value{};
-    if (!readF32(out_top_value)) return false;
-    out.top = static_cast<float>(out_top_value);
-    float out_right_value{};
-    if (!readF32(out_right_value)) return false;
-    out.right = static_cast<float>(out_right_value);
-    float out_bottom_value{};
-    if (!readF32(out_bottom_value)) return false;
-    out.bottom = static_cast<float>(out_bottom_value);
-    return true;
-  }
-
   inline bool read(PointF& out) {
     float out_x_value{};
     if (!readF32(out_x_value)) return false;
@@ -673,6 +673,16 @@ public:
 
   inline bool read(Rect& out) {
     if (!read(out.origin)) return false;
+    float out_width_value{};
+    if (!readF32(out_width_value)) return false;
+    out.width = static_cast<float>(out_width_value);
+    float out_height_value{};
+    if (!readF32(out_height_value)) return false;
+    out.height = static_cast<float>(out_height_value);
+    return true;
+  }
+
+  inline bool read(Size& out) {
     float out_width_value{};
     if (!readF32(out_width_value)) return false;
     out.width = static_cast<float>(out_width_value);
@@ -763,6 +773,16 @@ public:
     return true;
   }
 
+  inline bool read(ImeOffsetRange& out) {
+    int32_t out_start_value{};
+    if (!readI32(out_start_value)) return false;
+    out.start = static_cast<int32_t>(out_start_value);
+    int32_t out_end_value{};
+    if (!readI32(out_end_value)) return false;
+    out.end = static_cast<int32_t>(out_end_value);
+    return true;
+  }
+
   inline bool read(ImeTextModelDelta& out) {
     int32_t out_mode_value{};
     if (!readI32(out_mode_value)) return false;
@@ -800,16 +820,6 @@ public:
     int32_t out_script_class_value{};
     if (!readI32(out_script_class_value)) return false;
     out.script_class = static_cast<ImeScriptClass>(out_script_class_value);
-    return true;
-  }
-
-  inline bool read(ImeTextRange& out) {
-    int32_t out_start_value{};
-    if (!readI32(out_start_value)) return false;
-    out.start = static_cast<int32_t>(out_start_value);
-    int32_t out_end_value{};
-    if (!readI32(out_end_value)) return false;
-    out.end = static_cast<int32_t>(out_end_value);
     return true;
   }
 
@@ -1397,8 +1407,16 @@ public:
   }
 
   inline bool write(const HandleConfig& value) {
-    if (!write(value.start_hit_offset)) return false;
-    if (!write(value.end_hit_offset)) return false;
+    if (!write(value.start_hit_area)) return false;
+    if (!write(value.end_hit_area)) return false;
+    return true;
+  }
+
+  inline bool write(const HandleHitArea& value) {
+    if (!writeF32(static_cast<float>(value.left))) return false;
+    if (!writeF32(static_cast<float>(value.top))) return false;
+    if (!writeF32(static_cast<float>(value.right))) return false;
+    if (!writeF32(static_cast<float>(value.bottom))) return false;
     return true;
   }
 
@@ -1434,14 +1452,6 @@ public:
     return true;
   }
 
-  inline bool write(const OffsetRect& value) {
-    if (!writeF32(static_cast<float>(value.left))) return false;
-    if (!writeF32(static_cast<float>(value.top))) return false;
-    if (!writeF32(static_cast<float>(value.right))) return false;
-    if (!writeF32(static_cast<float>(value.bottom))) return false;
-    return true;
-  }
-
   inline bool write(const PointF& value) {
     if (!writeF32(static_cast<float>(value.x))) return false;
     if (!writeF32(static_cast<float>(value.y))) return false;
@@ -1450,6 +1460,12 @@ public:
 
   inline bool write(const Rect& value) {
     if (!write(value.origin)) return false;
+    if (!writeF32(static_cast<float>(value.width))) return false;
+    if (!writeF32(static_cast<float>(value.height))) return false;
+    return true;
+  }
+
+  inline bool write(const Size& value) {
     if (!writeF32(static_cast<float>(value.width))) return false;
     if (!writeF32(static_cast<float>(value.height))) return false;
     return true;
@@ -1520,6 +1536,12 @@ public:
     return true;
   }
 
+  inline bool write(const ImeOffsetRange& value) {
+    if (!writeI32(static_cast<int32_t>(value.start))) return false;
+    if (!writeI32(static_cast<int32_t>(value.end))) return false;
+    return true;
+  }
+
   inline bool write(const ImeSyncSnapshot& value) {
     if (!write(value.cursor)) return false;
     if (!write(value.selection)) return false;
@@ -1556,12 +1578,6 @@ public:
     if (!write(value.selection)) return false;
     if (!write(value.composition)) return false;
     if (!writeI32(static_cast<int32_t>(value.script_class))) return false;
-    return true;
-  }
-
-  inline bool write(const ImeTextRange& value) {
-    if (!writeI32(static_cast<int32_t>(value.start))) return false;
-    if (!writeI32(static_cast<int32_t>(value.end))) return false;
     return true;
   }
 
@@ -1675,8 +1691,7 @@ public:
     if (!writeI32(value.split_line_visible ? 1 : 0)) return false;
     if (!writeF32(static_cast<float>(value.scroll_x))) return false;
     if (!writeF32(static_cast<float>(value.scroll_y))) return false;
-    if (!writeF32(static_cast<float>(value.viewport_width))) return false;
-    if (!writeF32(static_cast<float>(value.viewport_height))) return false;
+    if (!write(value.viewport_size)) return false;
     if (!write(value.current_line)) return false;
     if (!writeI32(static_cast<int32_t>(value.current_line_render_mode))) return false;
     if (!writeList(value.lines)) return false;
@@ -1751,10 +1766,8 @@ public:
     if (!writeF32(static_cast<float>(value.scroll_y))) return false;
     if (!writeF32(static_cast<float>(value.max_scroll_x))) return false;
     if (!writeF32(static_cast<float>(value.max_scroll_y))) return false;
-    if (!writeF32(static_cast<float>(value.content_width))) return false;
-    if (!writeF32(static_cast<float>(value.content_height))) return false;
-    if (!writeF32(static_cast<float>(value.viewport_width))) return false;
-    if (!writeF32(static_cast<float>(value.viewport_height))) return false;
+    if (!write(value.content_size)) return false;
+    if (!write(value.viewport_size)) return false;
     if (!writeF32(static_cast<float>(value.text_area_x))) return false;
     if (!writeF32(static_cast<float>(value.text_area_width))) return false;
     if (!writeI32(value.can_scroll_x ? 1 : 0)) return false;

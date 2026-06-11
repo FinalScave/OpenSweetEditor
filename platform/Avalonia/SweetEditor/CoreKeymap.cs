@@ -42,31 +42,30 @@ namespace SweetEditor {
         TRIGGER_COMPLETION = 34
     }
 
-    [Flags]
-    public enum KeyCode {
-        NONE = 0,
-        BACKSPACE = 8,
-        TAB = 9,
-        ENTER = 13,
-        ESCAPE = 27,
-        DELETE_KEY = 46,
-        LEFT = 37,
-        UP = 38,
-        RIGHT = 39,
-        DOWN = 40,
-        HOME = 36,
-        END = 35,
-        PAGE_UP = 33,
-        PAGE_DOWN = 34,
-        A = 65,
-        C = 67,
-        D = 68,
-        V = 86,
-        X = 88,
-        Z = 90,
-        Y = 89,
-        K = 75,
-        SPACE = 32
+    public static class KeyCode {
+        public const int NONE = 0;
+        public const int BACKSPACE = 8;
+        public const int TAB = 9;
+        public const int ENTER = 13;
+        public const int ESCAPE = 27;
+        public const int SPACE = 32;
+        public const int PAGE_UP = 33;
+        public const int PAGE_DOWN = 34;
+        public const int END = 35;
+        public const int HOME = 36;
+        public const int LEFT = 37;
+        public const int UP = 38;
+        public const int RIGHT = 39;
+        public const int DOWN = 40;
+        public const int DELETE_KEY = 46;
+        public const int A = 65;
+        public const int C = 67;
+        public const int D = 68;
+        public const int K = 75;
+        public const int V = 86;
+        public const int X = 88;
+        public const int Y = 89;
+        public const int Z = 90;
     }
 
     [Flags]

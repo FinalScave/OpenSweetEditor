@@ -10,6 +10,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using AvaloniaRect = Avalonia.Rect;
+using AvaloniaSize = Avalonia.Size;
 using Button = Avalonia.Controls.Button;
 using Orientation = Avalonia.Layout.Orientation;
 
@@ -448,7 +449,7 @@ namespace SweetEditor {
 		private bool TryComputeAnchorRect(out AvaloniaRect rect) {
 			rect = default;
 
-			Size menuSize = MeasurePopupSize();
+			AvaloniaSize menuSize = MeasurePopupSize();
 			double menuWidth = Math.Max(1, menuSize.Width > 1 ? menuSize.Width : FallbackMenuWidth);
 			double menuHeight = Math.Max(1, menuSize.Height > 1 ? menuSize.Height : FallbackMenuHeight);
 			AvaloniaRect viewport = editor.GetPopupViewportRect();
@@ -496,11 +497,11 @@ namespace SweetEditor {
 			return true;
 		}
 
-		private Size MeasurePopupSize() {
+		private AvaloniaSize MeasurePopupSize() {
 			if (popup?.Child == null) {
 				return default;
 			}
-			popup.Child.Measure(Size.Infinity);
+			popup.Child.Measure(AvaloniaSize.Infinity);
 			return popup.Child.DesiredSize;
 		}
 	}

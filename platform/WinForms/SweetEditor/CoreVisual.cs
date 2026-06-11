@@ -11,8 +11,8 @@ namespace SweetEditor {
     }
 
     public enum GuideDirection {
-        HORIZONTAL = 0,
-        VERTICAL = 1
+        VERTICAL = 0,
+        HORIZONTAL = 1
     }
 
     public enum GuideStyle {
@@ -60,11 +60,11 @@ namespace SweetEditor {
     public enum VisualRunType {
         TEXT = 0,
         WHITESPACE = 1,
-        NEWLINE = 2,
-        INLAY_HINT = 3,
-        PHANTOM_TEXT = 4,
-        FOLD_PLACEHOLDER = 5,
-        TAB = 6,
+        TAB = 2,
+        NEWLINE = 3,
+        INLAY_HINT = 4,
+        PHANTOM_TEXT = 5,
+        FOLD_PLACEHOLDER = 6,
         CODELENS = 7,
         LINK = 8
     }
@@ -88,8 +88,7 @@ namespace SweetEditor {
         public bool SplitLineVisible { get; set; } = true;
         public float ScrollX { get; set; } = 0f;
         public float ScrollY { get; set; } = 0f;
-        public float ViewportWidth { get; set; } = 0f;
-        public float ViewportHeight { get; set; } = 0f;
+        public Size ViewportSize { get; set; } = new Size();
         public PointF CurrentLine { get; set; } = new PointF();
         public CurrentLineRenderMode CurrentLineRenderMode { get; set; } = CurrentLineRenderMode.BACKGROUND;
         public List<VisualLine> Lines { get; set; } = new();
@@ -158,10 +157,8 @@ namespace SweetEditor {
         public float ScrollY { get; set; } = 0f;
         public float MaxScrollX { get; set; } = 0f;
         public float MaxScrollY { get; set; } = 0f;
-        public float ContentWidth { get; set; } = 0f;
-        public float ContentHeight { get; set; } = 0f;
-        public float ViewportWidth { get; set; } = 0f;
-        public float ViewportHeight { get; set; } = 0f;
+        public Size ContentSize { get; set; } = new Size();
+        public Size ViewportSize { get; set; } = new Size();
         public float TextAreaX { get; set; } = 0f;
         public float TextAreaWidth { get; set; } = 0f;
         public bool CanScrollX { get; set; } = false;

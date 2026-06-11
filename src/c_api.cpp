@@ -196,7 +196,7 @@ const uint8_t* editor_set_document(intptr_t editor_handle, intptr_t document_han
   return editorActionResultToBinary(editor_core->loadDocument(document), out_size);
 }
 
-const uint8_t* editor_set_viewport(intptr_t editor_handle, int16_t width, int16_t height, size_t* out_size) {
+const uint8_t* editor_set_viewport(intptr_t editor_handle, int32_t width, int32_t height, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     return nullBinaryPayload(out_size);

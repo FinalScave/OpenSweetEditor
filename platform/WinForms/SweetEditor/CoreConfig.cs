@@ -91,8 +91,15 @@ namespace SweetEditor {
     }
 
     public sealed partial class HandleConfig {
-        public OffsetRect StartHitOffset { get; set; } = new OffsetRect();
-        public OffsetRect EndHitOffset { get; set; } = new OffsetRect();
+        public HandleHitArea StartHitArea { get; set; } = new HandleHitArea();
+        public HandleHitArea EndHitArea { get; set; } = new HandleHitArea();
+    }
+
+    public sealed partial class HandleHitArea {
+        public float Left { get; set; } = 0f;
+        public float Top { get; set; } = 0f;
+        public float Right { get; set; } = 0f;
+        public float Bottom { get; set; } = 0f;
     }
 
     public sealed partial class RangeEffectStyle {

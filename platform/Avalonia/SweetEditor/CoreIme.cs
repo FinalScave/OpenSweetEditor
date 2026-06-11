@@ -53,9 +53,9 @@ namespace SweetEditor {
         public int Revision { get; set; } = 0;
         public int DocumentStartOffset { get; set; } = 0;
         public string Text { get; set; } = string.Empty;
-        public ImeTextRange Selection { get; set; } = new ImeTextRange();
+        public ImeOffsetRange Selection { get; set; } = new ImeOffsetRange();
         public bool HasComposition { get; set; } = false;
-        public ImeTextRange Composition { get; set; } = new ImeTextRange();
+        public ImeOffsetRange Composition { get; set; } = new ImeOffsetRange();
         public ImeInputContextKind Kind { get; set; } = ImeInputContextKind.NONE;
     }
 
@@ -77,6 +77,11 @@ namespace SweetEditor {
         public ImeScriptClass ScriptClass { get; set; } = ImeScriptClass.UNKNOWN;
     }
 
+    public sealed partial class ImeOffsetRange {
+        public int Start { get; set; } = 0;
+        public int End { get; set; } = 0;
+    }
+
     public sealed partial class ImeSyncSnapshot {
         public TextPosition Cursor { get; set; } = new TextPosition();
         public TextRange Selection { get; set; } = new TextRange();
@@ -96,10 +101,10 @@ namespace SweetEditor {
         public long ContextId { get; set; } = 0L;
         public int DocumentStartOffset { get; set; } = 0;
         public string OldText { get; set; } = string.Empty;
-        public ImeTextRange Delta { get; set; } = new ImeTextRange();
+        public ImeOffsetRange Delta { get; set; } = new ImeOffsetRange();
         public string DeltaText { get; set; } = string.Empty;
-        public ImeTextRange Selection { get; set; } = new ImeTextRange();
-        public ImeTextRange Composition { get; set; } = new ImeTextRange();
+        public ImeOffsetRange Selection { get; set; } = new ImeOffsetRange();
+        public ImeOffsetRange Composition { get; set; } = new ImeOffsetRange();
         public ImeScriptClass ScriptClass { get; set; } = ImeScriptClass.UNKNOWN;
     }
 
@@ -108,14 +113,9 @@ namespace SweetEditor {
         public long ContextId { get; set; } = 0L;
         public int DocumentStartOffset { get; set; } = 0;
         public string Text { get; set; } = string.Empty;
-        public ImeTextRange Selection { get; set; } = new ImeTextRange();
-        public ImeTextRange Composition { get; set; } = new ImeTextRange();
+        public ImeOffsetRange Selection { get; set; } = new ImeOffsetRange();
+        public ImeOffsetRange Composition { get; set; } = new ImeOffsetRange();
         public ImeScriptClass ScriptClass { get; set; } = ImeScriptClass.UNKNOWN;
-    }
-
-    public sealed partial class ImeTextRange {
-        public int Start { get; set; } = 0;
-        public int End { get; set; } = 0;
     }
 
     public sealed partial class ImeTextReplacement {

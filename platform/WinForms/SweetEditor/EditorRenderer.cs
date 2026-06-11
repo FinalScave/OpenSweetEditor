@@ -6,6 +6,7 @@ using System.Drawing.Text;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 using SweetEditor.Perf;
+using DrawingSize = System.Drawing.Size;
 
 namespace SweetEditor {
 	/// <summary>
@@ -237,10 +238,10 @@ namespace SweetEditor {
 			long startTicks = PerfScope.StartTicks();
 			Font font = GetFontByStyle(fontStyle);
 			if (textGraphics == null) return 0f;
-			Size sz = TextRenderer.MeasureText(textGraphics, text, font, new Size(int.MaxValue, int.MaxValue), TextMeasureDrawFlags);
+			DrawingSize sz = TextRenderer.MeasureText(textGraphics, text, font, new DrawingSize(int.MaxValue, int.MaxValue), TextMeasureDrawFlags);
 			float w = sz.Width;
 			if (w <= 0)
-				w = (float)TextRenderer.MeasureText(textGraphics, text, regularFont, new Size(int.MaxValue, int.MaxValue), TextMeasureDrawFlags).Width;
+				w = (float)TextRenderer.MeasureText(textGraphics, text, regularFont, new DrawingSize(int.MaxValue, int.MaxValue), TextMeasureDrawFlags).Width;
 			perfMeasureStats.RecordText(PerfScope.ElapsedTicks(startTicks), text.Length, fontStyle);
 			return w;
 		}
@@ -248,7 +249,7 @@ namespace SweetEditor {
 		private float OnMeasureInlayHintText(string text) {
 			long startTicks = PerfScope.StartTicks();
 			if (textGraphics == null) return 0f;
-			float width = (float)TextRenderer.MeasureText(textGraphics, text, inlayHintFont, new Size(int.MaxValue, int.MaxValue), TextMeasureDrawFlags).Width;
+			float width = (float)TextRenderer.MeasureText(textGraphics, text, inlayHintFont, new DrawingSize(int.MaxValue, int.MaxValue), TextMeasureDrawFlags).Width;
 			perfMeasureStats.RecordInlay(PerfScope.ElapsedTicks(startTicks), text?.Length ?? 0);
 			return width;
 		}
@@ -272,7 +273,7 @@ namespace SweetEditor {
 
 		#region Rendering
 
-		public void Render(Graphics g, EditorRenderModel? model, EditorTheme theme, Size clientSize) {
+		public void Render(Graphics g, EditorRenderModel? model, EditorTheme theme, DrawingSize clientSize) {
 			var perf = PerfStepRecorder.Start();
 			g.Clear(theme.BackgroundColor);
 			perf.Mark(PerfStepRecorder.StepClear);

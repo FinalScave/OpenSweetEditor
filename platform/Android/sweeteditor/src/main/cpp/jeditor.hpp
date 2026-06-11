@@ -260,8 +260,8 @@ public:
     if (handle == 0) return nullptr;
     size_t out_size = 0;
     const uint8_t* payload = editor_set_viewport(static_cast<intptr_t>(handle),
-                                                 static_cast<int16_t>(width),
-                                                 static_cast<int16_t>(height),
+                                                 static_cast<int32_t>(width),
+                                                 static_cast<int32_t>(height),
                                                  &out_size);
     return wrapBinaryPayload(env, payload, out_size);
   }

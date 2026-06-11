@@ -3,13 +3,6 @@ export interface IntRange {
   end: number;
 }
 
-export interface OffsetRect {
-  left: number;
-  top: number;
-  right: number;
-  bottom: number;
-}
-
 export interface PointF {
   x: number;
   y: number;
@@ -17,6 +10,11 @@ export interface PointF {
 
 export interface Rect {
   origin: PointF;
+  width: number;
+  height: number;
+}
+
+export interface Size {
   width: number;
   height: number;
 }

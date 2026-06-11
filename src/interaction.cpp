@@ -52,11 +52,11 @@ namespace NS_SWEETEDITOR {
   EditorInteraction::HandleDragTarget EditorInteraction::hitTestHandle(const PointF& screen_point) const {
     if (!m_cached_handles_valid_ || !m_context_.caret->has_selection) return HandleDragTarget::NONE;
 
-    const auto& start_rect = m_context_.settings->handle.start_hit_offset;
-    const auto& end_rect = m_context_.settings->handle.end_hit_offset;
+    const auto& start_rect = m_context_.settings->handle.start_hit_area;
+    const auto& end_rect = m_context_.settings->handle.end_hit_area;
     const float h = m_cached_handle_height_;
 
-    auto hitTest = [&](const PointF& pos, const OffsetRect& rect) -> bool {
+    auto hitTest = [&](const PointF& pos, const HandleHitArea& rect) -> bool {
       float dx = screen_point.x - pos.x;
       float dy = screen_point.y - (pos.y + h);
       return rect.contains(dx, dy);
@@ -79,8 +79,8 @@ namespace NS_SWEETEDITOR {
     if (!m_context_.caret->has_selection || target == HandleDragTarget::NONE) return;
 
     const auto& hit_rect = (target == HandleDragTarget::START)
-        ? m_context_.settings->handle.start_hit_offset
-        : m_context_.settings->handle.end_hit_offset;
+        ? m_context_.settings->handle.start_hit_area
+        : m_context_.settings->handle.end_hit_area;
 
     PointF adjusted_point = screen_point;
     adjusted_point.y -= hit_rect.bottom;
@@ -123,8 +123,8 @@ namespace NS_SWEETEDITOR {
   void EditorInteraction::dragSelectTo(const PointF& screen_point, bool is_mouse) {
     PointF adjusted_point = screen_point;
     if (!is_mouse) {
-      const float hit_bottom = std::max(m_context_.settings->handle.start_hit_offset.bottom,
-                                        m_context_.settings->handle.end_hit_offset.bottom);
+      const float hit_bottom = std::max(m_context_.settings->handle.start_hit_area.bottom,
+                                        m_context_.settings->handle.end_hit_area.bottom);
       adjusted_point.y -= hit_bottom;
     }
 
@@ -143,7 +143,7 @@ namespace NS_SWEETEDITOR {
   void EditorInteraction::updateEdgeScrollState(const PointF& screen_point,
                                                 bool is_handle_drag,
                                                 bool is_mouse) {
-    if (!m_context_.viewport->valid() || m_context_.text_layout == nullptr) {
+    if (!isValidViewportSize(*m_context_.viewport) || m_context_.text_layout == nullptr) {
       m_edge_scroll_.active = false;
       return;
     }
@@ -488,7 +488,7 @@ namespace NS_SWEETEDITOR {
                                                  ScrollbarModel& horizontal) const {
     vertical = ScrollbarModel {};
     horizontal = ScrollbarModel {};
-    if (!m_context_.viewport->valid() || m_context_.text_layout == nullptr) {
+    if (!isValidViewportSize(*m_context_.viewport) || m_context_.text_layout == nullptr) {
       return;
     }
 
@@ -536,11 +536,11 @@ namespace NS_SWEETEDITOR {
     const float horizontal_alpha = axisAlpha(logical_horizontal, ScrollbarDragTarget::HORIZONTAL);
     const bool show_vertical = vertical_alpha > 0.0f;
     const bool show_horizontal = horizontal_alpha > 0.0f;
-    const float viewport_width = m_context_.viewport->width;
-    const float viewport_height = m_context_.viewport->height;
+    const float viewport_w = m_context_.viewport->width;
+    const float viewport_h = m_context_.viewport->height;
 
-    const float vertical_track_x = viewport_width - scrollbar_thickness;
-    const float vertical_track_height = viewport_height - (show_horizontal ? scrollbar_thickness : 0.0f);
+    const float vertical_track_x = viewport_w - scrollbar_thickness;
+    const float vertical_track_height = viewport_h - (show_horizontal ? scrollbar_thickness : 0.0f);
     if (show_vertical && vertical_track_height > 0.0f) {
       vertical.visible = true;
       vertical.alpha = vertical_alpha;
@@ -549,7 +549,7 @@ namespace NS_SWEETEDITOR {
       vertical.track.width = scrollbar_thickness;
       vertical.track.height = vertical_track_height;
 
-      const float viewport = std::max(1.0f, viewport_height);
+      const float viewport = std::max(1.0f, viewport_h);
       const float content_span = std::max(viewport, bounds.content_height);
       float thumb_height = std::max(scrollbar_min_thumb, vertical_track_height * viewport / content_span);
       thumb_height = std::min(thumb_height, vertical_track_height);
@@ -564,8 +564,8 @@ namespace NS_SWEETEDITOR {
     }
 
     const float horizontal_track_x = m_context_.settings->gutter_sticky ? std::max(0.0f, bounds.text_area_x) : 0.0f;
-    const float horizontal_track_width = viewport_width - horizontal_track_x - (show_vertical ? scrollbar_thickness : 0.0f);
-    const float horizontal_track_y = viewport_height - scrollbar_thickness;
+    const float horizontal_track_width = viewport_w - horizontal_track_x - (show_vertical ? scrollbar_thickness : 0.0f);
+    const float horizontal_track_y = viewport_h - scrollbar_thickness;
     if (show_horizontal && horizontal_track_width > 0.0f && horizontal_track_y >= 0.0f) {
       horizontal.visible = true;
       horizontal.alpha = horizontal_alpha;
@@ -614,7 +614,7 @@ namespace NS_SWEETEDITOR {
 
   bool EditorInteraction::handleScrollbarGesture(const GestureEvent& event,
                                                  GestureResult& result) {
-    if (m_context_.text_layout == nullptr || !m_context_.viewport->valid()) {
+    if (m_context_.text_layout == nullptr || !isValidViewportSize(*m_context_.viewport)) {
       return false;
     }
     if (m_dragging_handle_ != HandleDragTarget::NONE

@@ -68,24 +68,24 @@ public enum HitTargetType: Int32 {
     case NONE = 0
     case INLAY_HINT_TEXT = 1
     case INLAY_HINT_ICON = 2
-    case GUTTER_ICON = 3
-    case FOLD_PLACEHOLDER = 4
-    case FOLD_GUTTER = 5
-    case INLAY_HINT_COLOR = 6
-    case CODELENS = 7
-    case LINK = 8
+    case INLAY_HINT_COLOR = 3
+    case CODELENS = 4
+    case LINK = 5
+    case GUTTER_ICON = 6
+    case FOLD_GUTTER = 7
+    case FOLD_PLACEHOLDER = 8
 
     public static func fromValue(_ value: Int32) -> HitTargetType {
         switch value {
         case 0: return .NONE
         case 1: return .INLAY_HINT_TEXT
         case 2: return .INLAY_HINT_ICON
-        case 3: return .GUTTER_ICON
-        case 4: return .FOLD_PLACEHOLDER
-        case 5: return .FOLD_GUTTER
-        case 6: return .INLAY_HINT_COLOR
-        case 7: return .CODELENS
-        case 8: return .LINK
+        case 3: return .INLAY_HINT_COLOR
+        case 4: return .CODELENS
+        case 5: return .LINK
+        case 6: return .GUTTER_ICON
+        case 7: return .FOLD_GUTTER
+        case 8: return .FOLD_PLACEHOLDER
         default: return .NONE
         }
     }

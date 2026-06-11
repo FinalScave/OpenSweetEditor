@@ -16,11 +16,13 @@ namespace NS_SWEETEDITOR {
   inline constexpr size_t kVisualRunOwnerLine = std::numeric_limits<size_t>::max();
 
   /// Enum for visual render run types
-  enum struct SE_PROTOCOL_ENUM(visual, TEXT) VisualRunType {
+  enum class SE_PROTOCOL_ENUM(visual, TEXT) VisualRunType {
     /// Normal text
     TEXT,
     /// Whitespace
     WHITESPACE,
+    /// Tab character (width computed by core based on tab_size and column position)
+    TAB,
     /// Newline
     NEWLINE,
     /// Inlay content (text or icon)
@@ -29,8 +31,6 @@ namespace NS_SWEETEDITOR {
     PHANTOM_TEXT,
     /// Fold placeholder ("..." shown at end of folded region first line)
     FOLD_PLACEHOLDER,
-    /// Tab character (width computed by core based on tab_size and column position)
-    TAB,
     /// CodeLens clickable label (above code line)
     CODELENS,
     /// Clickable document link embedded in content text
@@ -78,7 +78,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Fold arrow display mode
-  enum struct SE_PROTOCOL_ENUM(config, AUTO) FoldArrowMode {
+  enum class SE_PROTOCOL_ENUM(config, AUTO) FoldArrowMode {
     /// Auto: show when fold regions exist, hide otherwise
     AUTO = 0,
     /// Always show (reserve space to avoid width jumping)
@@ -88,7 +88,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Line fold state
-  enum struct SE_PROTOCOL_ENUM(visual, NONE) FoldState {
+  enum class SE_PROTOCOL_ENUM(visual, NONE) FoldState {
     /// Not the first line of a fold region
     NONE = 0,
     /// Expandable (expanded state, click to fold)
@@ -98,7 +98,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Visual line semantic kind
-  enum struct SE_PROTOCOL_ENUM(visual, CONTENT) VisualLineKind : uint8_t {
+  enum class SE_PROTOCOL_ENUM(visual, CONTENT) VisualLineKind : uint8_t {
     /// Real content line (primary line or wrapped continuation)
     CONTENT = 0,
     /// Phantom text continuation line
@@ -108,7 +108,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Pointer cursor hint for desktop platforms
-  enum struct SE_PROTOCOL_ENUM(visual, DEFAULT) PointerCursorType : uint8_t {
+  enum class SE_PROTOCOL_ENUM(visual, DEFAULT) PointerCursorType : uint8_t {
     DEFAULT = 0,
     TEXT = 1,
     HAND = 2,
@@ -165,13 +165,13 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Guide direction
-  enum struct SE_PROTOCOL_ENUM(visual, VERTICAL) GuideDirection {
-    HORIZONTAL,
+  enum class SE_PROTOCOL_ENUM(visual, VERTICAL) GuideDirection {
     VERTICAL,
+    HORIZONTAL,
   };
 
   /// Guide semantic type
-  enum struct SE_PROTOCOL_ENUM(visual, INDENT) GuideType {
+  enum class SE_PROTOCOL_ENUM(visual, INDENT) GuideType {
     INDENT,      // Indent vertical line
     BRACKET,     // Bracket pair branch line (joined by "|-" shape)
     FLOW,        // Control-flow return segment
@@ -179,7 +179,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Guide style
-  enum struct SE_PROTOCOL_ENUM(visual, SOLID) GuideStyle {
+  enum class SE_PROTOCOL_ENUM(visual, SOLID) GuideStyle {
     SOLID,       // Solid line
     DASHED,      // Dashed line
     DOUBLE,      // Double line (SEPARATOR only)
@@ -217,7 +217,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Semantic range effect kind.
-  enum struct SE_PROTOCOL_ENUM(visual, SELECTION) RangeEffectKind {
+  enum class SE_PROTOCOL_ENUM(visual, SELECTION) RangeEffectKind {
     SELECTION = 0,
     SEARCH_MATCH = 1,
     SEARCH_CURRENT = 2,
@@ -268,10 +268,8 @@ namespace NS_SWEETEDITOR {
     float scroll_x {0};
     /// Current vertical scroll offset
     float scroll_y {0};
-    /// Viewport width
-    float viewport_width {0};
-    /// Viewport height
-    float viewport_height {0};
+    /// Editor viewport size
+    Size viewport_size;
     /// Current line background coordinate
     PointF current_line;
     /// Current line render mode

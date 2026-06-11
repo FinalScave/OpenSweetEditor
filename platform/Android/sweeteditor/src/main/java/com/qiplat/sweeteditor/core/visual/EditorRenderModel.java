@@ -2,6 +2,7 @@ package com.qiplat.sweeteditor.core.visual;
 
 import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
 import com.qiplat.sweeteditor.core.foundation.PointF;
+import com.qiplat.sweeteditor.core.foundation.Size;
 import java.util.List;
 
 public final class EditorRenderModel {
@@ -9,8 +10,7 @@ public final class EditorRenderModel {
     public boolean splitLineVisible = true;
     public float scrollX = 0f;
     public float scrollY = 0f;
-    public float viewportWidth = 0f;
-    public float viewportHeight = 0f;
+    public Size viewportSize = new Size();
     public PointF currentLine = new PointF();
     public CurrentLineRenderMode currentLineRenderMode = CurrentLineRenderMode.BACKGROUND;
     public java.util.List<VisualLine> lines = new java.util.ArrayList<>();
@@ -31,13 +31,12 @@ public final class EditorRenderModel {
     public EditorRenderModel() {
     }
 
-    public EditorRenderModel(float splitX, boolean splitLineVisible, float scrollX, float scrollY, float viewportWidth, float viewportHeight, PointF currentLine, CurrentLineRenderMode currentLineRenderMode, java.util.List<VisualLine> lines, Cursor cursor, java.util.List<RangeEffectRenderItem> rangeEffects, SelectionHandle selectionStartHandle, SelectionHandle selectionEndHandle, java.util.List<GuideSegment> guideSegments, int maxGutterIcons, java.util.List<GutterIconRenderItem> gutterIcons, java.util.List<FoldMarkerRenderItem> foldMarkers, ScrollbarModel verticalScrollbar, ScrollbarModel horizontalScrollbar, boolean gutterSticky, boolean gutterVisible, PointerCursorType pointerCursorType) {
+    public EditorRenderModel(float splitX, boolean splitLineVisible, float scrollX, float scrollY, Size viewportSize, PointF currentLine, CurrentLineRenderMode currentLineRenderMode, java.util.List<VisualLine> lines, Cursor cursor, java.util.List<RangeEffectRenderItem> rangeEffects, SelectionHandle selectionStartHandle, SelectionHandle selectionEndHandle, java.util.List<GuideSegment> guideSegments, int maxGutterIcons, java.util.List<GutterIconRenderItem> gutterIcons, java.util.List<FoldMarkerRenderItem> foldMarkers, ScrollbarModel verticalScrollbar, ScrollbarModel horizontalScrollbar, boolean gutterSticky, boolean gutterVisible, PointerCursorType pointerCursorType) {
         this.splitX = splitX;
         this.splitLineVisible = splitLineVisible;
         this.scrollX = scrollX;
         this.scrollY = scrollY;
-        this.viewportWidth = viewportWidth;
-        this.viewportHeight = viewportHeight;
+        this.viewportSize = viewportSize;
         this.currentLine = currentLine;
         this.currentLineRenderMode = currentLineRenderMode;
         this.lines = lines;

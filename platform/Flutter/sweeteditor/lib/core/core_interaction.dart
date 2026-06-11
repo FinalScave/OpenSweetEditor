@@ -76,12 +76,12 @@ enum HitTargetType {
   none(0),
   inlayHintText(1),
   inlayHintIcon(2),
-  gutterIcon(3),
-  foldPlaceholder(4),
-  foldGutter(5),
-  inlayHintColor(6),
-  codelens(7),
-  link(8);
+  inlayHintColor(3),
+  codelens(4),
+  link(5),
+  gutterIcon(6),
+  foldGutter(7),
+  foldPlaceholder(8);
 
   const HitTargetType(this.value);
   final int value;
@@ -91,12 +91,12 @@ enum HitTargetType {
       case 0: return none;
       case 1: return inlayHintText;
       case 2: return inlayHintIcon;
-      case 3: return gutterIcon;
-      case 4: return foldPlaceholder;
-      case 5: return foldGutter;
-      case 6: return inlayHintColor;
-      case 7: return codelens;
-      case 8: return link;
+      case 3: return inlayHintColor;
+      case 4: return codelens;
+      case 5: return link;
+      case 6: return gutterIcon;
+      case 7: return foldGutter;
+      case 8: return foldPlaceholder;
       default: return none;
     }
   }

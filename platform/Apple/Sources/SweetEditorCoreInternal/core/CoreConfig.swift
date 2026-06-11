@@ -197,12 +197,26 @@ public struct EditorRenderColors {
 }
 
 public struct HandleConfig {
-    public var start_hit_offset: OffsetRect = OffsetRect()
-    public var end_hit_offset: OffsetRect = OffsetRect()
+    public var start_hit_area: HandleHitArea = HandleHitArea()
+    public var end_hit_area: HandleHitArea = HandleHitArea()
 
-    public init(start_hit_offset: OffsetRect = OffsetRect(), end_hit_offset: OffsetRect = OffsetRect()) {
-        self.start_hit_offset = start_hit_offset
-        self.end_hit_offset = end_hit_offset
+    public init(start_hit_area: HandleHitArea = HandleHitArea(), end_hit_area: HandleHitArea = HandleHitArea()) {
+        self.start_hit_area = start_hit_area
+        self.end_hit_area = end_hit_area
+    }
+}
+
+public struct HandleHitArea {
+    public var left: Float = 0
+    public var top: Float = 0
+    public var right: Float = 0
+    public var bottom: Float = 0
+
+    public init(left: Float = 0, top: Float = 0, right: Float = 0, bottom: Float = 0) {
+        self.left = left
+        self.top = top
+        self.right = right
+        self.bottom = bottom
     }
 }
 

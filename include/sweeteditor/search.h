@@ -9,7 +9,7 @@
 
 namespace NS_SWEETEDITOR {
 
-  enum struct SE_PROTOCOL_ENUM(search, INACTIVE) SearchStatus : uint8_t {
+  enum class SE_PROTOCOL_ENUM(search, INACTIVE) SearchStatus : uint8_t {
     INACTIVE = 0,
     SEARCHING = 1,
     READY = 2,

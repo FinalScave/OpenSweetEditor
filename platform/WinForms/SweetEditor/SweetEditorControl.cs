@@ -455,7 +455,7 @@ namespace SweetEditor {
 			return commands.TryGetValue(commandId, out var handler) ? handler : null;
 		}
 
-		private static void Bind(EditorKeyMap keyMap, KeyModifier modifiers, KeyCode keyCode, EditorBuiltinCommand command) {
+		private static void Bind(EditorKeyMap keyMap, KeyModifier modifiers, int keyCode, EditorBuiltinCommand command) {
 			keyMap.AddBinding(new KeyBinding(modifiers, keyCode, (int)command));
 		}
 
@@ -2069,7 +2069,7 @@ namespace SweetEditor {
 			if (commandId == (int)EditorBuiltinCommand.NONE || keyMap == null) return false;
 			var handler = keyMap.GetCommand(commandId);
 			if (handler == null) return false;
-			var binding = new KeyBinding(new KeyChord((KeyModifier)modifiers, (KeyCode)keyCode), commandId);
+			var binding = new KeyBinding(new KeyChord((KeyModifier)modifiers, keyCode), commandId);
 			handler(binding, this);
 			return true;
 		}

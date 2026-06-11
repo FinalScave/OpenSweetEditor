@@ -14,7 +14,7 @@ import android.view.inputmethod.TextAttribute;
 
 import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
-import com.qiplat.sweeteditor.core.ime.ImeTextRange;
+import com.qiplat.sweeteditor.core.ime.ImeOffsetRange;
 import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
 import com.qiplat.sweeteditor.core.ime.ImeTextModelMode;
 import com.qiplat.sweeteditor.core.ime.ImeTextModelState;
@@ -242,8 +242,8 @@ public class SweetEditorInputConnection extends BaseInputConnection {
                         mInputContextId,
                         mInputDocumentStartOffset,
                         mEditable.toString(),
-                        new ImeTextRange(selectionStart, selectionEnd),
-                        new ImeTextRange(composingStart, composingEnd),
+                        new ImeOffsetRange(selectionStart, selectionEnd),
+                        new ImeOffsetRange(composingStart, composingEnd),
                         ImeScriptClass.UNKNOWN));
         finishImeAction(result, perfName, t0);
         return result.handled;
@@ -323,7 +323,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         return Math.max(0, Math.min(offset, textLength));
     }
 
-    private boolean isValidEditableRange(ImeTextRange range, int textLength) {
+    private boolean isValidEditableRange(ImeOffsetRange range, int textLength) {
         return range != null
                 && range.start >= 0
                 && range.end >= 0

@@ -13,7 +13,7 @@ namespace NS_SWEETEDITOR {
     TouchConfig touch_config;
     EditorSettings* settings {nullptr};
     ViewState* view_state {nullptr};
-    Viewport* viewport {nullptr};
+    Size* viewport {nullptr};
     TextLayout* text_layout {nullptr};
     CaretState* caret {nullptr};
   };

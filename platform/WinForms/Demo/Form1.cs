@@ -5,6 +5,7 @@ using SweetEditor;
 using SweetLine;
 using EditorTextPosition = SweetEditor.TextPosition;
 using EditorTextRange = SweetEditor.TextRange;
+using DrawingSize = System.Drawing.Size;
 using SweetLineLineRange = SweetLine.LineRange;
 using SweetLineTextPosition = SweetLine.TextPosition;
 using SweetLineTextRange = SweetLine.TextRange;
@@ -384,7 +385,7 @@ namespace Demo {
 			int top = toolbar.Height + (searchPanel.Visible ? searchPanel.Height : 0);
 			editorControl1.Top = top;
 			editorControl1.Left = 0;
-			editorControl1.Size = new Size(ClientSize.Width, Math.Max(0, ClientSize.Height - top));
+			editorControl1.Size = new DrawingSize(ClientSize.Width, Math.Max(0, ClientSize.Height - top));
 		}
 
 		private static void InsertNewlineToken(TextBox textBox) {

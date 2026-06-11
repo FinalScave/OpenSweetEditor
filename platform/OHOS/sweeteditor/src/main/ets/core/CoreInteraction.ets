@@ -69,12 +69,12 @@ export enum HitTargetType {
   NONE = 0,
   INLAY_HINT_TEXT = 1,
   INLAY_HINT_ICON = 2,
-  GUTTER_ICON = 3,
-  FOLD_PLACEHOLDER = 4,
-  FOLD_GUTTER = 5,
-  INLAY_HINT_COLOR = 6,
-  CODELENS = 7,
-  LINK = 8,
+  INLAY_HINT_COLOR = 3,
+  CODELENS = 4,
+  LINK = 5,
+  GUTTER_ICON = 6,
+  FOLD_GUTTER = 7,
+  FOLD_PLACEHOLDER = 8,
 }
 
 export function hitTargetTypeFromValue(value: number): HitTargetType {
@@ -82,12 +82,12 @@ export function hitTargetTypeFromValue(value: number): HitTargetType {
     case 0: return HitTargetType.NONE;
     case 1: return HitTargetType.INLAY_HINT_TEXT;
     case 2: return HitTargetType.INLAY_HINT_ICON;
-    case 3: return HitTargetType.GUTTER_ICON;
-    case 4: return HitTargetType.FOLD_PLACEHOLDER;
-    case 5: return HitTargetType.FOLD_GUTTER;
-    case 6: return HitTargetType.INLAY_HINT_COLOR;
-    case 7: return HitTargetType.CODELENS;
-    case 8: return HitTargetType.LINK;
+    case 3: return HitTargetType.INLAY_HINT_COLOR;
+    case 4: return HitTargetType.CODELENS;
+    case 5: return HitTargetType.LINK;
+    case 6: return HitTargetType.GUTTER_ICON;
+    case 7: return HitTargetType.FOLD_GUTTER;
+    case 8: return HitTargetType.FOLD_PLACEHOLDER;
     default: return HitTargetType.NONE;
   }
 }

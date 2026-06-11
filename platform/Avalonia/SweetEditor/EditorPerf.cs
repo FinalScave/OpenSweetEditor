@@ -5,6 +5,7 @@ using System.Globalization;
 using Avalonia;
 using Avalonia.Media;
 using AvaloniaRect = Avalonia.Rect;
+using AvaloniaSize = Avalonia.Size;
 
 namespace SweetEditor {
 	/// <summary>
@@ -210,7 +211,7 @@ namespace SweetEditor {
 			lastInputMs = inputMs;
 		}
 
-		public void Render(DrawingContext context, Size viewportSize) {
+		public void Render(DrawingContext context, AvaloniaSize viewportSize) {
 			if (!enabled || viewportSize.Width <= 0 || viewportSize.Height <= 0) {
 				return;
 			}

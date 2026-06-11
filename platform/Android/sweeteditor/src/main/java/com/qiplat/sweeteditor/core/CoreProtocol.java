@@ -30,6 +30,7 @@ import com.qiplat.sweeteditor.core.config.EditorRangeEffectStyles;
 import com.qiplat.sweeteditor.core.config.EditorRenderColors;
 import com.qiplat.sweeteditor.core.config.FoldArrowMode;
 import com.qiplat.sweeteditor.core.config.HandleConfig;
+import com.qiplat.sweeteditor.core.config.HandleHitArea;
 import com.qiplat.sweeteditor.core.config.RangeEffectStyle;
 import com.qiplat.sweeteditor.core.config.RangeEffectUnderlineStyle;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
@@ -38,9 +39,9 @@ import com.qiplat.sweeteditor.core.config.ScrollbarTrackTapMode;
 import com.qiplat.sweeteditor.core.config.WhitespaceRenderMode;
 import com.qiplat.sweeteditor.core.config.WrapMode;
 import com.qiplat.sweeteditor.core.foundation.IntRange;
-import com.qiplat.sweeteditor.core.foundation.OffsetRect;
 import com.qiplat.sweeteditor.core.foundation.PointF;
 import com.qiplat.sweeteditor.core.foundation.Rect;
+import com.qiplat.sweeteditor.core.foundation.Size;
 import com.qiplat.sweeteditor.core.foundation.TextChange;
 import com.qiplat.sweeteditor.core.foundation.TextEdit;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
@@ -51,13 +52,13 @@ import com.qiplat.sweeteditor.core.ime.ImeInputContext;
 import com.qiplat.sweeteditor.core.ime.ImeInputContextKind;
 import com.qiplat.sweeteditor.core.ime.ImeInputContextTextReplacement;
 import com.qiplat.sweeteditor.core.ime.ImeInputStateTextReplacement;
+import com.qiplat.sweeteditor.core.ime.ImeOffsetRange;
 import com.qiplat.sweeteditor.core.ime.ImePreeditStorage;
 import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
 import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
 import com.qiplat.sweeteditor.core.ime.ImeTextModelDelta;
 import com.qiplat.sweeteditor.core.ime.ImeTextModelMode;
 import com.qiplat.sweeteditor.core.ime.ImeTextModelState;
-import com.qiplat.sweeteditor.core.ime.ImeTextRange;
 import com.qiplat.sweeteditor.core.ime.ImeTextReplacement;
 import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
 import com.qiplat.sweeteditor.core.interaction.EventType;
@@ -1077,8 +1078,8 @@ public final class CoreProtocol {
     }
 
     private static void writeHandleConfigFields(ByteBuffer data, HandleConfig value) {
-        writeOffsetRectFields(data, value.startHitOffset);
-        writeOffsetRectFields(data, value.endHitOffset);
+        writeHandleHitAreaFields(data, value.startHitArea);
+        writeHandleHitAreaFields(data, value.endHitArea);
     }
 
     public static void writeHandleConfig(ByteBuffer data, HandleConfig value) {
@@ -1088,8 +1089,43 @@ public final class CoreProtocol {
 
     public static int sizeOfHandleConfig(HandleConfig value) {
         int size = 0;
-        size += sizeOfOffsetRect(value.startHitOffset);
-        size += sizeOfOffsetRect(value.endHitOffset);
+        size += sizeOfHandleHitArea(value.startHitArea);
+        size += sizeOfHandleHitArea(value.endHitArea);
+        return size;
+    }
+
+    private static HandleHitArea readHandleHitArea(ByteBuffer data) {
+        HandleHitArea value = new HandleHitArea();
+        value.left = data.getFloat();
+        value.top = data.getFloat();
+        value.right = data.getFloat();
+        value.bottom = data.getFloat();
+        return value;
+    }
+
+    public static HandleHitArea decodeHandleHitArea(ByteBuffer data) {
+        prepare(data);
+        return readHandleHitArea(data);
+    }
+
+    private static void writeHandleHitAreaFields(ByteBuffer data, HandleHitArea value) {
+        data.putFloat(value.left);
+        data.putFloat(value.top);
+        data.putFloat(value.right);
+        data.putFloat(value.bottom);
+    }
+
+    public static void writeHandleHitArea(ByteBuffer data, HandleHitArea value) {
+        prepare(data);
+        writeHandleHitAreaFields(data, value);
+    }
+
+    public static int sizeOfHandleHitArea(HandleHitArea value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
         return size;
     }
 
@@ -1189,41 +1225,6 @@ public final class CoreProtocol {
         return size;
     }
 
-    private static OffsetRect readOffsetRect(ByteBuffer data) {
-        OffsetRect value = new OffsetRect();
-        value.left = data.getFloat();
-        value.top = data.getFloat();
-        value.right = data.getFloat();
-        value.bottom = data.getFloat();
-        return value;
-    }
-
-    public static OffsetRect decodeOffsetRect(ByteBuffer data) {
-        prepare(data);
-        return readOffsetRect(data);
-    }
-
-    private static void writeOffsetRectFields(ByteBuffer data, OffsetRect value) {
-        data.putFloat(value.left);
-        data.putFloat(value.top);
-        data.putFloat(value.right);
-        data.putFloat(value.bottom);
-    }
-
-    public static void writeOffsetRect(ByteBuffer data, OffsetRect value) {
-        prepare(data);
-        writeOffsetRectFields(data, value);
-    }
-
-    public static int sizeOfOffsetRect(OffsetRect value) {
-        int size = 0;
-        size += 4;
-        size += 4;
-        size += 4;
-        size += 4;
-        return size;
-    }
-
     private static PointF readPointF(ByteBuffer data) {
         PointF value = new PointF();
         value.x = data.getFloat();
@@ -1280,6 +1281,35 @@ public final class CoreProtocol {
     public static int sizeOfRect(Rect value) {
         int size = 0;
         size += sizeOfPointF(value.origin);
+        size += 4;
+        size += 4;
+        return size;
+    }
+
+    private static Size readSize(ByteBuffer data) {
+        Size value = new Size();
+        value.width = data.getFloat();
+        value.height = data.getFloat();
+        return value;
+    }
+
+    public static Size decodeSize(ByteBuffer data) {
+        prepare(data);
+        return readSize(data);
+    }
+
+    private static void writeSizeFields(ByteBuffer data, Size value) {
+        data.putFloat(value.width);
+        data.putFloat(value.height);
+    }
+
+    public static void writeSize(ByteBuffer data, Size value) {
+        prepare(data);
+        writeSizeFields(data, value);
+    }
+
+    public static int sizeOfSize(Size value) {
+        int size = 0;
         size += 4;
         size += 4;
         return size;
@@ -1413,9 +1443,9 @@ public final class CoreProtocol {
         value.revision = data.getInt();
         value.documentStartOffset = data.getInt();
         value.text = readUtf8String(data);
-        value.selection = readImeTextRange(data);
+        value.selection = readImeOffsetRange(data);
         value.hasComposition = data.getInt() != 0;
-        value.composition = readImeTextRange(data);
+        value.composition = readImeOffsetRange(data);
         value.kind = ImeInputContextKind.fromValue(data.getInt());
         return value;
     }
@@ -1475,6 +1505,35 @@ public final class CoreProtocol {
         return size;
     }
 
+    private static ImeOffsetRange readImeOffsetRange(ByteBuffer data) {
+        ImeOffsetRange value = new ImeOffsetRange();
+        value.start = data.getInt();
+        value.end = data.getInt();
+        return value;
+    }
+
+    public static ImeOffsetRange decodeImeOffsetRange(ByteBuffer data) {
+        prepare(data);
+        return readImeOffsetRange(data);
+    }
+
+    private static void writeImeOffsetRangeFields(ByteBuffer data, ImeOffsetRange value) {
+        data.putInt(value.start);
+        data.putInt(value.end);
+    }
+
+    public static void writeImeOffsetRange(ByteBuffer data, ImeOffsetRange value) {
+        prepare(data);
+        writeImeOffsetRangeFields(data, value);
+    }
+
+    public static int sizeOfImeOffsetRange(ImeOffsetRange value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        return size;
+    }
+
     private static ImeSyncSnapshot readImeSyncSnapshot(ByteBuffer data) {
         ImeSyncSnapshot value = new ImeSyncSnapshot();
         value.cursor = readTextPosition(data);
@@ -1501,10 +1560,10 @@ public final class CoreProtocol {
         data.putLong(value.contextId);
         data.putInt(value.documentStartOffset);
         writeUtf8String(data, value.oldText);
-        writeImeTextRangeFields(data, value.delta);
+        writeImeOffsetRangeFields(data, value.delta);
         writeUtf8String(data, value.deltaText);
-        writeImeTextRangeFields(data, value.selection);
-        writeImeTextRangeFields(data, value.composition);
+        writeImeOffsetRangeFields(data, value.selection);
+        writeImeOffsetRangeFields(data, value.composition);
         data.putInt(value.scriptClass.value);
     }
 
@@ -1519,10 +1578,10 @@ public final class CoreProtocol {
         size += 8;
         size += 4;
         size += sizeOfUtf8String(value.oldText);
-        size += sizeOfImeTextRange(value.delta);
+        size += sizeOfImeOffsetRange(value.delta);
         size += sizeOfUtf8String(value.deltaText);
-        size += sizeOfImeTextRange(value.selection);
-        size += sizeOfImeTextRange(value.composition);
+        size += sizeOfImeOffsetRange(value.selection);
+        size += sizeOfImeOffsetRange(value.composition);
         size += 4;
         return size;
     }
@@ -1532,8 +1591,8 @@ public final class CoreProtocol {
         data.putLong(value.contextId);
         data.putInt(value.documentStartOffset);
         writeUtf8String(data, value.text);
-        writeImeTextRangeFields(data, value.selection);
-        writeImeTextRangeFields(data, value.composition);
+        writeImeOffsetRangeFields(data, value.selection);
+        writeImeOffsetRangeFields(data, value.composition);
         data.putInt(value.scriptClass.value);
     }
 
@@ -1548,37 +1607,8 @@ public final class CoreProtocol {
         size += 8;
         size += 4;
         size += sizeOfUtf8String(value.text);
-        size += sizeOfImeTextRange(value.selection);
-        size += sizeOfImeTextRange(value.composition);
-        size += 4;
-        return size;
-    }
-
-    private static ImeTextRange readImeTextRange(ByteBuffer data) {
-        ImeTextRange value = new ImeTextRange();
-        value.start = data.getInt();
-        value.end = data.getInt();
-        return value;
-    }
-
-    public static ImeTextRange decodeImeTextRange(ByteBuffer data) {
-        prepare(data);
-        return readImeTextRange(data);
-    }
-
-    private static void writeImeTextRangeFields(ByteBuffer data, ImeTextRange value) {
-        data.putInt(value.start);
-        data.putInt(value.end);
-    }
-
-    public static void writeImeTextRange(ByteBuffer data, ImeTextRange value) {
-        prepare(data);
-        writeImeTextRangeFields(data, value);
-    }
-
-    public static int sizeOfImeTextRange(ImeTextRange value) {
-        int size = 0;
-        size += 4;
+        size += sizeOfImeOffsetRange(value.selection);
+        size += sizeOfImeOffsetRange(value.composition);
         size += 4;
         return size;
     }
@@ -1864,8 +1894,7 @@ public final class CoreProtocol {
         value.splitLineVisible = data.getInt() != 0;
         value.scrollX = data.getFloat();
         value.scrollY = data.getFloat();
-        value.viewportWidth = data.getFloat();
-        value.viewportHeight = data.getFloat();
+        value.viewportSize = readSize(data);
         value.currentLine = readPointF(data);
         value.currentLineRenderMode = CurrentLineRenderMode.fromValue(data.getInt());
         value.lines = readVisualLineList(data);
@@ -1976,10 +2005,8 @@ public final class CoreProtocol {
         value.scrollY = data.getFloat();
         value.maxScrollX = data.getFloat();
         value.maxScrollY = data.getFloat();
-        value.contentWidth = data.getFloat();
-        value.contentHeight = data.getFloat();
-        value.viewportWidth = data.getFloat();
-        value.viewportHeight = data.getFloat();
+        value.contentSize = readSize(data);
+        value.viewportSize = readSize(data);
         value.textAreaX = data.getFloat();
         value.textAreaWidth = data.getFloat();
         value.canScrollX = data.getInt() != 0;
@@ -2899,21 +2926,21 @@ public final class CoreProtocol {
         size += 4;
         byte[] oldTextUtf8 = utf8Bytes(value.oldText);
         size += 4 + oldTextUtf8.length;
-        size += sizeOfImeTextRange(value.delta);
+        size += sizeOfImeOffsetRange(value.delta);
         byte[] deltaTextUtf8 = utf8Bytes(value.deltaText);
         size += 4 + deltaTextUtf8.length;
-        size += sizeOfImeTextRange(value.selection);
-        size += sizeOfImeTextRange(value.composition);
+        size += sizeOfImeOffsetRange(value.selection);
+        size += sizeOfImeOffsetRange(value.composition);
         size += 4;
         ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
         data.putInt(value.mode.value);
         data.putLong(value.contextId);
         data.putInt(value.documentStartOffset);
         writeUtf8Bytes(data, oldTextUtf8);
-        writeImeTextRangeFields(data, value.delta);
+        writeImeOffsetRangeFields(data, value.delta);
         writeUtf8Bytes(data, deltaTextUtf8);
-        writeImeTextRangeFields(data, value.selection);
-        writeImeTextRangeFields(data, value.composition);
+        writeImeOffsetRangeFields(data, value.selection);
+        writeImeOffsetRangeFields(data, value.composition);
         data.putInt(value.scriptClass.value);
         data.flip();
         return data;
@@ -2926,16 +2953,16 @@ public final class CoreProtocol {
         size += 4;
         byte[] textUtf8 = utf8Bytes(value.text);
         size += 4 + textUtf8.length;
-        size += sizeOfImeTextRange(value.selection);
-        size += sizeOfImeTextRange(value.composition);
+        size += sizeOfImeOffsetRange(value.selection);
+        size += sizeOfImeOffsetRange(value.composition);
         size += 4;
         ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
         data.putInt(value.mode.value);
         data.putLong(value.contextId);
         data.putInt(value.documentStartOffset);
         writeUtf8Bytes(data, textUtf8);
-        writeImeTextRangeFields(data, value.selection);
-        writeImeTextRangeFields(data, value.composition);
+        writeImeOffsetRangeFields(data, value.selection);
+        writeImeOffsetRangeFields(data, value.composition);
         data.putInt(value.scriptClass.value);
         data.flip();
         return data;

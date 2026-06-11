@@ -277,6 +277,12 @@ def generate_csharp_pack_methods(item, schema):
 
 def generate_csharp_enum(item):
     lines = []
+    if item["kind"] == "consts":
+        lines.append(f"    public static class {item['name']} {{")
+        for value in item["values"]:
+            lines.append(f"        public const int {value['name']} = {value['value']};")
+        lines.append("    }")
+        return lines
     if item["kind"] == "flags":
         lines.append("    [Flags]")
     lines.append(f"    public enum {item['name']} {{")

@@ -8,11 +8,10 @@
 using namespace NS_SWEETEDITOR;
 
 namespace {
-  EditorCore makeEditor(const U8String& text, float width = 320.0f, float height = 120.0f) {
-    EditorOptions options;
-    EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
-    editor.loadDocument(makeShared<LineArrayDocument>(text));
-    editor.setViewport({width, height});
+  UniquePtr<EditorCore> makeEditor(const U8String& text, float width = 320.0f, float height = 120.0f) {
+    auto editor = makeUnique<EditorCore>(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions {});
+    editor->loadDocument(makeShared<LineArrayDocument>(text));
+    editor->setViewport({width, height});
     return editor;
   }
 
@@ -60,7 +59,8 @@ namespace {
 }
 
 TEST_CASE("EditorCore buildRenderModel exposes normalized selection handles") {
-  EditorCore editor = makeEditor("abcdef");
+  auto editor_holder = makeEditor("abcdef");
+  EditorCore& editor = *editor_holder;
 
   EditorRangeEffectStyles styles;
   styles.selection.background_color = static_cast<int32_t>(0x66336699u);
@@ -79,7 +79,8 @@ TEST_CASE("EditorCore buildRenderModel exposes normalized selection handles") {
 }
 
 TEST_CASE("EditorCore buildRenderModel skips selection range effects without paint") {
-  EditorCore editor = makeEditor("abcdef");
+  auto editor_holder = makeEditor("abcdef");
+  EditorCore& editor = *editor_holder;
 
   EditorRangeEffectStyles styles;
   styles.selection.foreground_color = static_cast<int32_t>(0xFFFFFFFFu);
@@ -95,7 +96,8 @@ TEST_CASE("EditorCore buildRenderModel skips selection range effects without pai
 }
 
 TEST_CASE("EditorCore buildRenderModel includes folded tail selection inside broader ranges") {
-  EditorCore editor = makeEditor("if {\n  body\n}");
+  auto editor_holder = makeEditor("if {\n  body\n}");
+  EditorCore& editor = *editor_holder;
 
   editor.setFoldRegions({{0, 2, true}});
   EditorRangeEffectStyles styles;
@@ -111,7 +113,8 @@ TEST_CASE("EditorCore buildRenderModel includes folded tail selection inside bro
 }
 
 TEST_CASE("EditorCore buildRenderModel applies selection foreground by splitting source runs") {
-  EditorCore editor = makeEditor("abcdef");
+  auto editor_holder = makeEditor("abcdef");
+  EditorCore& editor = *editor_holder;
 
   constexpr int32_t style_color = static_cast<int32_t>(0xFF010203u);
   constexpr int32_t style_background = static_cast<int32_t>(0x33445566u);
@@ -146,7 +149,8 @@ TEST_CASE("EditorCore buildRenderModel applies selection foreground by splitting
 }
 
 TEST_CASE("EditorCore buildRenderModel applies selection foreground after horizontal crop") {
-  EditorCore editor = makeEditor("abcdefghijklmnopqrstuvwxyz", 80, 120);
+  auto editor_holder = makeEditor("abcdefghijklmnopqrstuvwxyz", 80, 120);
+  EditorCore& editor = *editor_holder;
   editor.setGutterVisible(false);
 
   EditorRenderModel warmup_model;
@@ -179,7 +183,8 @@ TEST_CASE("EditorCore buildRenderModel applies selection foreground after horizo
 }
 
 TEST_CASE("EditorCore buildRenderModel maps document highlights to range and text effects") {
-  EditorCore editor = makeEditor("alpha beta");
+  auto editor_holder = makeEditor("alpha beta");
+  EditorCore& editor = *editor_holder;
 
   constexpr int32_t foreground = static_cast<int32_t>(0xFF102030u);
   EditorRangeEffectStyles styles;
@@ -210,7 +215,8 @@ TEST_CASE("EditorCore buildRenderModel maps document highlights to range and tex
 }
 
 TEST_CASE("EditorCore buildRenderModel applies foreground-only document highlights without range effects") {
-  EditorCore editor = makeEditor("alpha beta");
+  auto editor_holder = makeEditor("alpha beta");
+  EditorCore& editor = *editor_holder;
 
   constexpr int32_t foreground = static_cast<int32_t>(0xFF445566u);
   EditorRangeEffectStyles styles;
@@ -231,7 +237,8 @@ TEST_CASE("EditorCore buildRenderModel applies foreground-only document highligh
 }
 
 TEST_CASE("EditorCore buildRenderModel renders document highlights projected into folded tail") {
-  EditorCore editor = makeEditor("head {\ninside\n} tail");
+  auto editor_holder = makeEditor("head {\ninside\n} tail");
+  EditorCore& editor = *editor_holder;
   editor.setFoldRegions({{0, 2, true}});
 
   EditorRangeEffectStyles styles;
@@ -247,7 +254,8 @@ TEST_CASE("EditorCore buildRenderModel renders document highlights projected int
 }
 
 TEST_CASE("EditorCore buildRenderModel splits wrapped document highlight range effects") {
-  EditorCore editor = makeEditor("abcdefghijkl");
+  auto editor_holder = makeEditor("abcdefghijkl");
+  EditorCore& editor = *editor_holder;
   enableCharWrap(editor);
 
   EditorRangeEffectStyles styles;
@@ -262,7 +270,8 @@ TEST_CASE("EditorCore buildRenderModel splits wrapped document highlight range e
 }
 
 TEST_CASE("EditorCore buildRenderModel exposes active IME composition range effect") {
-  EditorCore editor = makeEditor("ab");
+  auto editor_holder = makeEditor("ab");
+  EditorCore& editor = *editor_holder;
 
   EditorRangeEffectStyles styles;
   styles.ime_composition.underline_color = static_cast<int32_t>(0xFFFFCC00u);
@@ -282,7 +291,8 @@ TEST_CASE("EditorCore buildRenderModel exposes active IME composition range effe
 }
 
 TEST_CASE("EditorCore buildRenderModel splits wrapped IME composition range effects") {
-  EditorCore editor = makeEditor("", 80, 160);
+  auto editor_holder = makeEditor("", 80, 160);
+  EditorCore& editor = *editor_holder;
   editor.setWrapMode(WrapMode::CHAR_BREAK);
 
   EditorRangeEffectStyles styles;
@@ -302,7 +312,8 @@ TEST_CASE("EditorCore buildRenderModel splits wrapped IME composition range effe
 }
 
 TEST_CASE("EditorCore buildRenderModel emits linked editing rectangles for snippet tab stops") {
-  EditorCore editor = makeEditor("");
+  auto editor_holder = makeEditor("");
+  EditorCore& editor = *editor_holder;
 
   EditorRangeEffectStyles styles;
   styles.linked_editing_active.border_color = static_cast<int32_t>(0xFF6699CCu);
@@ -330,7 +341,8 @@ TEST_CASE("EditorCore buildRenderModel emits linked editing rectangles for snipp
 }
 
 TEST_CASE("EditorCore buildRenderModel uses external bracket match positions when provided") {
-  EditorCore editor = makeEditor("a(b)c");
+  auto editor_holder = makeEditor("a(b)c");
+  EditorCore& editor = *editor_holder;
 
   EditorRangeEffectStyles styles;
   styles.bracket_match.background_color = static_cast<int32_t>(0x33999900u);
@@ -356,7 +368,8 @@ TEST_CASE("EditorCore buildRenderModel uses external bracket match positions whe
 }
 
 TEST_CASE("EditorCore buildRenderModel maps diagnostic range effects to severity styles") {
-  EditorCore editor = makeEditor("abcd");
+  auto editor_holder = makeEditor("abcd");
+  EditorCore& editor = *editor_holder;
 
   EditorRangeEffectStyles styles;
   styles.diagnostic_error.underline_color = static_cast<int32_t>(0xFFFF0000u);
@@ -386,7 +399,8 @@ TEST_CASE("EditorCore buildRenderModel maps diagnostic range effects to severity
 }
 
 TEST_CASE("EditorCore buildRenderModel emits wrapped diagnostic range effects once per rect") {
-  EditorCore editor = makeEditor("abcdefghijkl");
+  auto editor_holder = makeEditor("abcdefghijkl");
+  EditorCore& editor = *editor_holder;
   enableCharWrap(editor);
 
   EditorRangeEffectStyles styles;
@@ -402,7 +416,8 @@ TEST_CASE("EditorCore buildRenderModel emits wrapped diagnostic range effects on
 }
 
 TEST_CASE("EditorCore search renders matches projected into folded tail") {
-  EditorCore editor = makeEditor("head {\ninside\n} tail", 500, 240);
+  auto editor_holder = makeEditor("head {\ninside\n} tail", 500, 240);
+  EditorCore& editor = *editor_holder;
   EditorRangeEffectStyles styles;
   styles.search_current.background_color = static_cast<int32_t>(0x55FFAA00u);
   editor.setEditorRangeEffectStyles(styles);
@@ -423,7 +438,8 @@ TEST_CASE("EditorCore search renders matches projected into folded tail") {
 }
 
 TEST_CASE("EditorCore search renders current and non-current range effects separately") {
-  EditorCore editor = makeEditor("foo foo foo", 500, 240);
+  auto editor_holder = makeEditor("foo foo foo", 500, 240);
+  EditorCore& editor = *editor_holder;
   EditorRangeEffectStyles styles;
   styles.search_match.background_color = static_cast<int32_t>(0x2200AAFFu);
   styles.search_current.background_color = static_cast<int32_t>(0x55FFAA00u);
@@ -453,7 +469,8 @@ TEST_CASE("EditorCore search renders current and non-current range effects separ
 }
 
 TEST_CASE("EditorCore search splits wrapped current match range effects") {
-  EditorCore editor = makeEditor("abcdefghijkl");
+  auto editor_holder = makeEditor("abcdefghijkl");
+  EditorCore& editor = *editor_holder;
   enableCharWrap(editor);
 
   EditorRangeEffectStyles styles;
@@ -475,7 +492,8 @@ TEST_CASE("EditorCore search splits wrapped current match range effects") {
 }
 
 TEST_CASE("EditorCore search applies foreground-only styles without range effects") {
-  EditorCore editor = makeEditor("alpha beta", 500, 240);
+  auto editor_holder = makeEditor("alpha beta", 500, 240);
+  EditorCore& editor = *editor_holder;
   constexpr int32_t foreground = static_cast<int32_t>(0xFF446688u);
   EditorRangeEffectStyles styles;
   styles.search_current.foreground_color = foreground;

@@ -12,7 +12,7 @@
 
 namespace NS_SWEETEDITOR {
   /// Highlight layer enum (priority from low to high, higher layers cover lower layers)
-  enum struct SE_PROTOCOL_ENUM(adornment, SYNTAX) SpanLayer : uint8_t {
+  enum class SE_PROTOCOL_ENUM(adornment, SYNTAX) SpanLayer : uint8_t {
     SYNTAX   = 0,  // Syntax highlight
     SEMANTIC = 1,  // Semantic highlight
     OVERLAY  = 2,  // Host or plugin overlay highlight
@@ -75,7 +75,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Inlay content type enum
-  enum struct SE_PROTOCOL_ENUM(adornment, TEXT) InlayType {
+  enum class SE_PROTOCOL_ENUM(adornment, TEXT) InlayType {
     /// Inlay text
     TEXT = 0,
     /// Inlay icon
@@ -134,7 +134,7 @@ namespace NS_SWEETEDITOR {
 #pragma region Diagnostic (Diagnostic Decorations)
 
   /// Diagnostic severity level
-  enum struct SE_PROTOCOL_ENUM(adornment, DIAG_ERROR) DiagnosticSeverity : int32_t {
+  enum class SE_PROTOCOL_ENUM(adornment, DIAG_ERROR) DiagnosticSeverity : int32_t {
     DIAG_ERROR   = 0,  // Red wavy underline
     DIAG_WARNING = 1,  // Yellow wavy underline
     DIAG_INFO    = 2,  // Blue thin underline
@@ -157,7 +157,7 @@ namespace NS_SWEETEDITOR {
 #pragma region Document Highlight
 
   /// Document highlight kind, aligned with language server document highlights
-  enum struct SE_PROTOCOL_ENUM(adornment, TEXT) DocumentHighlightKind : int32_t {
+  enum class SE_PROTOCOL_ENUM(adornment, TEXT) DocumentHighlightKind : int32_t {
     TEXT  = 0,
     READ  = 1,
     WRITE = 2,
@@ -196,7 +196,7 @@ namespace NS_SWEETEDITOR {
 #pragma region Guide (Code Structure Lines)
 
   /// Separator line style
-  enum struct SE_PROTOCOL_ENUM(adornment, SINGLE) SeparatorStyle : int32_t {
+  enum class SE_PROTOCOL_ENUM(adornment, SINGLE) SeparatorStyle : int32_t {
     SINGLE = 0,  // Single bar (---)
     DOUBLE = 1,  // Double bar (===)
   };

@@ -161,10 +161,6 @@ public extension ScrollMetrics {
     var scrollY: CGFloat { CGFloat(scroll_y) }
     var maxScrollX: CGFloat { CGFloat(max_scroll_x) }
     var maxScrollY: CGFloat { CGFloat(max_scroll_y) }
-    var contentWidth: CGFloat { CGFloat(content_width) }
-    var contentHeight: CGFloat { CGFloat(content_height) }
-    var viewportWidth: CGFloat { CGFloat(viewport_width) }
-    var viewportHeight: CGFloat { CGFloat(viewport_height) }
     var textAreaX: CGFloat { CGFloat(text_area_x) }
     var textAreaWidth: CGFloat { CGFloat(text_area_width) }
     var canScrollX: Bool { can_scroll_x }

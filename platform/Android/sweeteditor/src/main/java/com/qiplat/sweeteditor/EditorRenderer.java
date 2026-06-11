@@ -19,7 +19,7 @@ import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
 import com.qiplat.sweeteditor.core.TextMeasurer;
 import com.qiplat.sweeteditor.core.adornment.TextStyle;
 import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
-import com.qiplat.sweeteditor.core.foundation.OffsetRect;
+import com.qiplat.sweeteditor.core.config.HandleHitArea;
 import com.qiplat.sweeteditor.core.foundation.Rect;
 import com.qiplat.sweeteditor.core.config.ScrollbarMode;
 import com.qiplat.sweeteditor.core.visual.*;
@@ -224,14 +224,14 @@ final class EditorRenderer {
 
         float pad = 8f;
 
-        OffsetRect startHit = new OffsetRect(
+        HandleHitArea startHit = new HandleHitArea(
                 (minX - pad) * density,
                 (minY - pad) * density,
                 (maxX + pad) * density,
                 (maxY + pad) * density);
 
         // End handle rotates -45°, which mirrors the x-axis of the start handle
-        OffsetRect endHit = new OffsetRect(
+        HandleHitArea endHit = new HandleHitArea(
                 (-maxX - pad) * density,
                 (minY - pad) * density,
                 (-minX + pad) * density,

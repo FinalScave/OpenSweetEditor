@@ -25,6 +25,7 @@
 #define SE_PROTOCOL_BOTH(domain) SE_PROTOCOL_ANNOTATE("se.protocol.both:" #domain)
 #define SE_PROTOCOL_ENUM(domain, fallback) SE_PROTOCOL_ANNOTATE("se.protocol.enum:" #domain ":" #fallback)
 #define SE_PROTOCOL_FLAGS(domain) SE_PROTOCOL_ANNOTATE("se.protocol.flags:" #domain)
+#define SE_PROTOCOL_CONSTS(domain) SE_PROTOCOL_ANNOTATE("se.protocol.consts:" #domain)
 #define SE_PROTOCOL_SKIP SE_PROTOCOL_ANNOTATE("se.protocol.skip")
 #define SE_PROTOCOL_WIRE(kind) SE_PROTOCOL_ANNOTATE("se.protocol.wire:" #kind)
 #define SE_PROTOCOL_KEY_WIRE(kind) SE_PROTOCOL_ANNOTATE("se.protocol.key_wire:" #kind)

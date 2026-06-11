@@ -240,8 +240,8 @@ public:
     size_t out_size = 0;
     return wrap_binary_payload(env, editor_set_viewport(
       static_cast<intptr_t>(napi_get_handle(env, args[0])),
-      static_cast<int16_t>(napi_get_int32(env, args[1])),
-      static_cast<int16_t>(napi_get_int32(env, args[2])),
+      static_cast<int32_t>(napi_get_int32(env, args[1])),
+      static_cast<int32_t>(napi_get_int32(env, args[2])),
       &out_size), out_size);
   }
 

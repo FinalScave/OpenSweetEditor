@@ -81,8 +81,8 @@ struct MacOSScrollbarHoverController {
     private func regions(from metrics: ScrollMetrics,
                          scrollbarConfig: ScrollbarConfig) -> ScrollbarHoverRegions {
         let thickness = CGFloat(max(1.0, scrollbarConfig.thickness))
-        let viewportWidth = metrics.viewportWidth
-        let viewportHeight = metrics.viewportHeight
+        let viewportWidth = CGFloat(metrics.viewport_size.width)
+        let viewportHeight = CGFloat(metrics.viewport_size.height)
         let showsVertical = metrics.canScrollY
         let showsHorizontal = metrics.canScrollX
 

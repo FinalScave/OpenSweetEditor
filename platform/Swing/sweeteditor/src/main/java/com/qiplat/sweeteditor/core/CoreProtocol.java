@@ -30,6 +30,7 @@ import com.qiplat.sweeteditor.core.config.EditorRangeEffectStyles;
 import com.qiplat.sweeteditor.core.config.EditorRenderColors;
 import com.qiplat.sweeteditor.core.config.FoldArrowMode;
 import com.qiplat.sweeteditor.core.config.HandleConfig;
+import com.qiplat.sweeteditor.core.config.HandleHitArea;
 import com.qiplat.sweeteditor.core.config.RangeEffectStyle;
 import com.qiplat.sweeteditor.core.config.RangeEffectUnderlineStyle;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
@@ -38,9 +39,9 @@ import com.qiplat.sweeteditor.core.config.ScrollbarTrackTapMode;
 import com.qiplat.sweeteditor.core.config.WhitespaceRenderMode;
 import com.qiplat.sweeteditor.core.config.WrapMode;
 import com.qiplat.sweeteditor.core.foundation.IntRange;
-import com.qiplat.sweeteditor.core.foundation.OffsetRect;
 import com.qiplat.sweeteditor.core.foundation.PointF;
 import com.qiplat.sweeteditor.core.foundation.Rect;
+import com.qiplat.sweeteditor.core.foundation.Size;
 import com.qiplat.sweeteditor.core.foundation.TextChange;
 import com.qiplat.sweeteditor.core.foundation.TextEdit;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
@@ -51,13 +52,13 @@ import com.qiplat.sweeteditor.core.ime.ImeInputContext;
 import com.qiplat.sweeteditor.core.ime.ImeInputContextKind;
 import com.qiplat.sweeteditor.core.ime.ImeInputContextTextReplacement;
 import com.qiplat.sweeteditor.core.ime.ImeInputStateTextReplacement;
+import com.qiplat.sweeteditor.core.ime.ImeOffsetRange;
 import com.qiplat.sweeteditor.core.ime.ImePreeditStorage;
 import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
 import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
 import com.qiplat.sweeteditor.core.ime.ImeTextModelDelta;
 import com.qiplat.sweeteditor.core.ime.ImeTextModelMode;
 import com.qiplat.sweeteditor.core.ime.ImeTextModelState;
-import com.qiplat.sweeteditor.core.ime.ImeTextRange;
 import com.qiplat.sweeteditor.core.ime.ImeTextReplacement;
 import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
 import com.qiplat.sweeteditor.core.interaction.EventType;
@@ -1086,14 +1087,43 @@ public final class CoreProtocol {
     }
 
     private static void writeHandleConfig(BinaryWriter writer, HandleConfig value) {
-        writeOffsetRect(writer, value.startHitOffset);
-        writeOffsetRect(writer, value.endHitOffset);
+        writeHandleHitArea(writer, value.startHitArea);
+        writeHandleHitArea(writer, value.endHitArea);
     }
 
     public static int sizeOfHandleConfig(HandleConfig value) {
         int size = 0;
-        size += sizeOfOffsetRect(value.startHitOffset);
-        size += sizeOfOffsetRect(value.endHitOffset);
+        size += sizeOfHandleHitArea(value.startHitArea);
+        size += sizeOfHandleHitArea(value.endHitArea);
+        return size;
+    }
+
+    private static HandleHitArea readHandleHitArea(BinaryReader reader) {
+        HandleHitArea value = new HandleHitArea();
+        value.left = reader.readFloat32();
+        value.top = reader.readFloat32();
+        value.right = reader.readFloat32();
+        value.bottom = reader.readFloat32();
+        return value;
+    }
+
+    public static HandleHitArea decodeHandleHitArea(MemorySegment data, long size) {
+        return readHandleHitArea(new BinaryReader(data, size));
+    }
+
+    private static void writeHandleHitArea(BinaryWriter writer, HandleHitArea value) {
+        writer.writeFloat32(value.left);
+        writer.writeFloat32(value.top);
+        writer.writeFloat32(value.right);
+        writer.writeFloat32(value.bottom);
+    }
+
+    public static int sizeOfHandleHitArea(HandleHitArea value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
         return size;
     }
 
@@ -1176,35 +1206,6 @@ public final class CoreProtocol {
         return size;
     }
 
-    private static OffsetRect readOffsetRect(BinaryReader reader) {
-        OffsetRect value = new OffsetRect();
-        value.left = reader.readFloat32();
-        value.top = reader.readFloat32();
-        value.right = reader.readFloat32();
-        value.bottom = reader.readFloat32();
-        return value;
-    }
-
-    public static OffsetRect decodeOffsetRect(MemorySegment data, long size) {
-        return readOffsetRect(new BinaryReader(data, size));
-    }
-
-    private static void writeOffsetRect(BinaryWriter writer, OffsetRect value) {
-        writer.writeFloat32(value.left);
-        writer.writeFloat32(value.top);
-        writer.writeFloat32(value.right);
-        writer.writeFloat32(value.bottom);
-    }
-
-    public static int sizeOfOffsetRect(OffsetRect value) {
-        int size = 0;
-        size += 4;
-        size += 4;
-        size += 4;
-        size += 4;
-        return size;
-    }
-
     private static PointF readPointF(BinaryReader reader) {
         PointF value = new PointF();
         value.x = reader.readFloat32();
@@ -1249,6 +1250,29 @@ public final class CoreProtocol {
     public static int sizeOfRect(Rect value) {
         int size = 0;
         size += sizeOfPointF(value.origin);
+        size += 4;
+        size += 4;
+        return size;
+    }
+
+    private static Size readSize(BinaryReader reader) {
+        Size value = new Size();
+        value.width = reader.readFloat32();
+        value.height = reader.readFloat32();
+        return value;
+    }
+
+    public static Size decodeSize(MemorySegment data, long size) {
+        return readSize(new BinaryReader(data, size));
+    }
+
+    private static void writeSize(BinaryWriter writer, Size value) {
+        writer.writeFloat32(value.width);
+        writer.writeFloat32(value.height);
+    }
+
+    public static int sizeOfSize(Size value) {
+        int size = 0;
         size += 4;
         size += 4;
         return size;
@@ -1358,9 +1382,9 @@ public final class CoreProtocol {
         value.revision = reader.readInt32();
         value.documentStartOffset = reader.readInt32();
         value.text = reader.readUtf8String();
-        value.selection = readImeTextRange(reader);
+        value.selection = readImeOffsetRange(reader);
         value.hasComposition = reader.readInt32() != 0;
-        value.composition = readImeTextRange(reader);
+        value.composition = readImeOffsetRange(reader);
         value.kind = ImeInputContextKind.fromValue(reader.readInt32());
         return value;
     }
@@ -1409,6 +1433,29 @@ public final class CoreProtocol {
         return size;
     }
 
+    private static ImeOffsetRange readImeOffsetRange(BinaryReader reader) {
+        ImeOffsetRange value = new ImeOffsetRange();
+        value.start = reader.readInt32();
+        value.end = reader.readInt32();
+        return value;
+    }
+
+    public static ImeOffsetRange decodeImeOffsetRange(MemorySegment data, long size) {
+        return readImeOffsetRange(new BinaryReader(data, size));
+    }
+
+    private static void writeImeOffsetRange(BinaryWriter writer, ImeOffsetRange value) {
+        writer.writeInt32(value.start);
+        writer.writeInt32(value.end);
+    }
+
+    public static int sizeOfImeOffsetRange(ImeOffsetRange value) {
+        int size = 0;
+        size += 4;
+        size += 4;
+        return size;
+    }
+
     private static ImeSyncSnapshot readImeSyncSnapshot(BinaryReader reader) {
         ImeSyncSnapshot value = new ImeSyncSnapshot();
         value.cursor = readTextPosition(reader);
@@ -1434,10 +1481,10 @@ public final class CoreProtocol {
         writer.writeInt64(value.contextId);
         writer.writeInt32(value.documentStartOffset);
         writer.writeUtf8String(value.oldText);
-        writeImeTextRange(writer, value.delta);
+        writeImeOffsetRange(writer, value.delta);
         writer.writeUtf8String(value.deltaText);
-        writeImeTextRange(writer, value.selection);
-        writeImeTextRange(writer, value.composition);
+        writeImeOffsetRange(writer, value.selection);
+        writeImeOffsetRange(writer, value.composition);
         writer.writeInt32(value.scriptClass.value);
     }
 
@@ -1447,10 +1494,10 @@ public final class CoreProtocol {
         size += 8;
         size += 4;
         size += sizeOfUtf8String(value.oldText);
-        size += sizeOfImeTextRange(value.delta);
+        size += sizeOfImeOffsetRange(value.delta);
         size += sizeOfUtf8String(value.deltaText);
-        size += sizeOfImeTextRange(value.selection);
-        size += sizeOfImeTextRange(value.composition);
+        size += sizeOfImeOffsetRange(value.selection);
+        size += sizeOfImeOffsetRange(value.composition);
         size += 4;
         return size;
     }
@@ -1460,8 +1507,8 @@ public final class CoreProtocol {
         writer.writeInt64(value.contextId);
         writer.writeInt32(value.documentStartOffset);
         writer.writeUtf8String(value.text);
-        writeImeTextRange(writer, value.selection);
-        writeImeTextRange(writer, value.composition);
+        writeImeOffsetRange(writer, value.selection);
+        writeImeOffsetRange(writer, value.composition);
         writer.writeInt32(value.scriptClass.value);
     }
 
@@ -1471,31 +1518,8 @@ public final class CoreProtocol {
         size += 8;
         size += 4;
         size += sizeOfUtf8String(value.text);
-        size += sizeOfImeTextRange(value.selection);
-        size += sizeOfImeTextRange(value.composition);
-        size += 4;
-        return size;
-    }
-
-    private static ImeTextRange readImeTextRange(BinaryReader reader) {
-        ImeTextRange value = new ImeTextRange();
-        value.start = reader.readInt32();
-        value.end = reader.readInt32();
-        return value;
-    }
-
-    public static ImeTextRange decodeImeTextRange(MemorySegment data, long size) {
-        return readImeTextRange(new BinaryReader(data, size));
-    }
-
-    private static void writeImeTextRange(BinaryWriter writer, ImeTextRange value) {
-        writer.writeInt32(value.start);
-        writer.writeInt32(value.end);
-    }
-
-    public static int sizeOfImeTextRange(ImeTextRange value) {
-        int size = 0;
-        size += 4;
+        size += sizeOfImeOffsetRange(value.selection);
+        size += sizeOfImeOffsetRange(value.composition);
         size += 4;
         return size;
     }
@@ -1729,8 +1753,7 @@ public final class CoreProtocol {
         value.splitLineVisible = reader.readInt32() != 0;
         value.scrollX = reader.readFloat32();
         value.scrollY = reader.readFloat32();
-        value.viewportWidth = reader.readFloat32();
-        value.viewportHeight = reader.readFloat32();
+        value.viewportSize = readSize(reader);
         value.currentLine = readPointF(reader);
         value.currentLineRenderMode = CurrentLineRenderMode.fromValue(reader.readInt32());
         value.lines = readVisualLineList(reader);
@@ -1835,10 +1858,8 @@ public final class CoreProtocol {
         value.scrollY = reader.readFloat32();
         value.maxScrollX = reader.readFloat32();
         value.maxScrollY = reader.readFloat32();
-        value.contentWidth = reader.readFloat32();
-        value.contentHeight = reader.readFloat32();
-        value.viewportWidth = reader.readFloat32();
-        value.viewportHeight = reader.readFloat32();
+        value.contentSize = readSize(reader);
+        value.viewportSize = readSize(reader);
         value.textAreaX = reader.readFloat32();
         value.textAreaWidth = reader.readFloat32();
         value.canScrollX = reader.readInt32() != 0;
@@ -2754,21 +2775,21 @@ public final class CoreProtocol {
         size += 4;
         byte[] oldTextUtf8 = utf8Bytes(value.oldText);
         size += 4 + oldTextUtf8.length;
-        size += sizeOfImeTextRange(value.delta);
+        size += sizeOfImeOffsetRange(value.delta);
         byte[] deltaTextUtf8 = utf8Bytes(value.deltaText);
         size += 4 + deltaTextUtf8.length;
-        size += sizeOfImeTextRange(value.selection);
-        size += sizeOfImeTextRange(value.composition);
+        size += sizeOfImeOffsetRange(value.selection);
+        size += sizeOfImeOffsetRange(value.composition);
         size += 4;
         BinaryWriter writer = new BinaryWriter(arena, size);
         writer.writeInt32(value.mode.value);
         writer.writeInt64(value.contextId);
         writer.writeInt32(value.documentStartOffset);
         writer.writeUtf8Bytes(oldTextUtf8);
-        writeImeTextRange(writer, value.delta);
+        writeImeOffsetRange(writer, value.delta);
         writer.writeUtf8Bytes(deltaTextUtf8);
-        writeImeTextRange(writer, value.selection);
-        writeImeTextRange(writer, value.composition);
+        writeImeOffsetRange(writer, value.selection);
+        writeImeOffsetRange(writer, value.composition);
         writer.writeInt32(value.scriptClass.value);
         return writer.segment();
     }
@@ -2780,16 +2801,16 @@ public final class CoreProtocol {
         size += 4;
         byte[] textUtf8 = utf8Bytes(value.text);
         size += 4 + textUtf8.length;
-        size += sizeOfImeTextRange(value.selection);
-        size += sizeOfImeTextRange(value.composition);
+        size += sizeOfImeOffsetRange(value.selection);
+        size += sizeOfImeOffsetRange(value.composition);
         size += 4;
         BinaryWriter writer = new BinaryWriter(arena, size);
         writer.writeInt32(value.mode.value);
         writer.writeInt64(value.contextId);
         writer.writeInt32(value.documentStartOffset);
         writer.writeUtf8Bytes(textUtf8);
-        writeImeTextRange(writer, value.selection);
-        writeImeTextRange(writer, value.composition);
+        writeImeOffsetRange(writer, value.selection);
+        writeImeOffsetRange(writer, value.composition);
         writer.writeInt32(value.scriptClass.value);
         return writer.segment();
     }

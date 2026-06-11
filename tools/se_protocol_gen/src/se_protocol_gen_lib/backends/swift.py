@@ -61,7 +61,7 @@ def generate_swift_domain(domain, items, enums, schema):
     schema_enums = enum_map(schema)
     lines = ["import Foundation", ""]
     for item in enums:
-        if item["kind"] == "flags":
+        if item["kind"] in ("flags", "consts"):
             lines.append(f"public enum {item['name']} {{")
             for value in item["values"]:
                 lines.append(f"    public static let {value['name']}: Int32 = {value['value']}")

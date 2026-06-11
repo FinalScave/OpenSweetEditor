@@ -187,7 +187,7 @@ Vector<VisualLine>  → output to EditorRenderModel
 #### Wrap Modes
 
 ```cpp
-enum struct WrapMode {
+enum class WrapMode {
   NONE,        // no wrapping (horizontal scrolling)
   CHAR_BREAK,  // character-level wrap
   WORD_BREAK,  // word-level wrap (split by space/punctuation)
@@ -360,7 +360,7 @@ Direct series: DIRECT_SCALE (trackpad pinch), DIRECT_SCROLL (trackpad scroll)
 #### Modifier Keys
 
 ```cpp
-enum struct Modifier : uint8_t {
+enum class Modifier : uint8_t {
   NONE  = 0,
   SHIFT = 1 << 0,  // Shift+Click = extend selection
   CTRL  = 1 << 1,  // Ctrl+Click = multi-cursor (future)
@@ -419,7 +419,7 @@ Default max is 512 steps. Oldest actions are dropped when exceeded.
 struct EditorRenderModel {
   float split_x;                        // X of line-number separator
   float scroll_x, scroll_y;             // current scroll offset
-  float viewport_width, viewport_height; // viewport size
+  Size viewport_size;                    // viewport size
   PointF current_line;                  // current line background position
   Vector<VisualLine> lines;             // visible visual lines
   Cursor cursor;                        // cursor

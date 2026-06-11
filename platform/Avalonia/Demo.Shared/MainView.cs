@@ -19,6 +19,7 @@ using AvaControls = global::Avalonia.Controls;
 using AvaInteractivity = global::Avalonia.Interactivity;
 using AvaPath = global::Avalonia.Controls.Shapes.Path;
 using AvaloniaRect = global::Avalonia.Rect;
+using AvaloniaSize = global::Avalonia.Size;
 using Button = global::Avalonia.Controls.Button;
 using ToggleButton = global::Avalonia.Controls.Primitives.ToggleButton;
 
@@ -928,7 +929,7 @@ public sealed class MainView : UserControl
         double width = Math.Clamp(Math.Max(buttonBounds.Width, 220), 160, maxWidth);
         samplePickerPopup.Width = width;
         samplePickerPopup.MaxHeight = Math.Max(120, Math.Min(SamplePickerPopupMaxHeight, rootHeight - buttonBounds.Bottom - margin * 2));
-        samplePickerPopup.Measure(new Size(width, double.PositiveInfinity));
+        samplePickerPopup.Measure(new AvaloniaSize(width, double.PositiveInfinity));
 
         double x = Math.Clamp(buttonBounds.X, margin, Math.Max(margin, rootWidth - width - margin));
         double y = Math.Max(margin, buttonBounds.Bottom + 4);

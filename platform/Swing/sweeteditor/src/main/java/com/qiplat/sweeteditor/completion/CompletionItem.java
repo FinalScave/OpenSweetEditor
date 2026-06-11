@@ -6,7 +6,7 @@ import java.util.List;
 
 /**
  * Completion item data model.
- * <p>Confirmation priority: textEdit → insertText → label.</p>
+ * <p>Confirmation priority: textEdit -> insertText -> label.</p>
  */
 public class CompletionItem {
 

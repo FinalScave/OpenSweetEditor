@@ -37,12 +37,12 @@ namespace SweetEditor {
         NONE = 0,
         INLAY_HINT_TEXT = 1,
         INLAY_HINT_ICON = 2,
-        GUTTER_ICON = 3,
-        FOLD_PLACEHOLDER = 4,
-        FOLD_GUTTER = 5,
-        INLAY_HINT_COLOR = 6,
-        CODELENS = 7,
-        LINK = 8
+        INLAY_HINT_COLOR = 3,
+        CODELENS = 4,
+        LINK = 5,
+        GUTTER_ICON = 6,
+        FOLD_GUTTER = 7,
+        FOLD_PLACEHOLDER = 8
     }
 
     public sealed partial class GestureEvent {

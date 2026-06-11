@@ -10,20 +10,6 @@ public struct IntRange {
     }
 }
 
-public struct OffsetRect {
-    public var left: Float = 0
-    public var top: Float = 0
-    public var right: Float = 0
-    public var bottom: Float = 0
-
-    public init(left: Float = 0, top: Float = 0, right: Float = 0, bottom: Float = 0) {
-        self.left = left
-        self.top = top
-        self.right = right
-        self.bottom = bottom
-    }
-}
-
 public struct PointF {
     public var x: Float = 0
     public var y: Float = 0
@@ -41,6 +27,16 @@ public struct Rect {
 
     public init(origin: PointF = PointF(), width: Float = 0, height: Float = 0) {
         self.origin = origin
+        self.width = width
+        self.height = height
+    }
+}
+
+public struct Size {
+    public var width: Float = 0
+    public var height: Float = 0
+
+    public init(width: Float = 0, height: Float = 0) {
         self.width = width
         self.height = height
     }

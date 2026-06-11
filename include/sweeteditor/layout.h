@@ -72,18 +72,18 @@ namespace NS_SWEETEDITOR {
     std::function<void(size_t, Vector<TextPresentationEffect>&)> collect_text_effects;
   };
 
-  enum struct PointerHitPolicy : uint8_t {
+  enum class PointerHitPolicy : uint8_t {
     CONTENT = 0,
     OWNER_LINE_START = 1,
   };
 
-  enum struct TextBoundaryPolicy : uint8_t {
+  enum class TextBoundaryPolicy : uint8_t {
     CONTENT = 0,
     PREVIOUS_VISIBLE_LINE_END = 1,
     OWNER_LINE_END = 2,
   };
 
-  enum struct TextSemanticsPolicy : uint8_t {
+  enum class TextSemanticsPolicy : uint8_t {
     PARTICIPATES = 0,
     SKIP = 1,
   };
@@ -149,7 +149,7 @@ namespace NS_SWEETEDITOR {
 
     void loadDocument(const SharedPtr<Document>& document);
 
-    void setViewport(const Viewport& viewport);
+    void setViewport(const Size& viewport);
 
     void setViewState(const ViewState& view_state);
 
@@ -249,7 +249,7 @@ namespace NS_SWEETEDITOR {
     SharedPtr<TextMeasurer> m_measurer_;
     SharedPtr<Document> m_document_;
     SharedPtr<DecorationManager> m_decoration_manager_;
-    Viewport m_viewport_;
+    Size m_viewport_;
     ViewState m_view_state_;
     WrapMode m_wrap_mode_ {WrapMode::NONE};
     bool m_render_line_breaks_ {false};

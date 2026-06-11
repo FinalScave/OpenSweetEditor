@@ -74,7 +74,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Gesture event type definitions
-  enum SE_PROTOCOL_ENUM(interaction, UNDEFINED) EventType : uint8_t {
+  enum class SE_PROTOCOL_ENUM(interaction, UNDEFINED) EventType : uint8_t {
     /// Undefined gesture
     UNDEFINED = 0,
     // ---- Touch events (Android/iOS/HarmonyOS) ----
@@ -130,7 +130,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Gesture handling result types
-  enum struct SE_PROTOCOL_ENUM(interaction, UNDEFINED) GestureType : uint8_t {
+  enum class SE_PROTOCOL_ENUM(interaction, UNDEFINED) GestureType : uint8_t {
     /// Undefined result
     UNDEFINED = 0,
     /// Tap
@@ -152,25 +152,25 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Tap hit target types
-  enum struct SE_PROTOCOL_ENUM(interaction, NONE) HitTargetType : uint8_t {
+  enum class SE_PROTOCOL_ENUM(interaction, NONE) HitTargetType : uint8_t {
     /// No special target hit (regular text area)
     NONE = 0,
     /// Hit InlayHint (text)
     INLAY_HINT_TEXT = 1,
     /// Hit InlayHint (icon)
     INLAY_HINT_ICON = 2,
-    /// Hit gutter icon in line-number area
-    GUTTER_ICON = 3,
-    /// Hit fold placeholder (tap to expand folded region)
-    FOLD_PLACEHOLDER = 4,
-    /// Hit fold arrow in gutter (tap to toggle fold/unfold)
-    FOLD_GUTTER = 5,
     /// Hit InlayHint (color block)
-    INLAY_HINT_COLOR = 6,
+    INLAY_HINT_COLOR = 3,
     /// Hit CodeLens item (icon_id carries the unique command_id)
-    CODELENS = 7,
+    CODELENS = 4,
     /// Hit document link embedded in content text
-    LINK = 8,
+    LINK = 5,
+    /// Hit gutter icon in line-number area
+    GUTTER_ICON = 6,
+    /// Hit fold arrow in gutter (tap to toggle fold/unfold)
+    FOLD_GUTTER = 7,
+    /// Hit fold placeholder (tap to expand folded region)
+    FOLD_PLACEHOLDER = 8,
   };
 
   /// Tap hit target info (filled by EditorCore for TAP)

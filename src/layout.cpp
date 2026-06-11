@@ -36,7 +36,7 @@ namespace NS_SWEETEDITOR {
     m_line_prefix_y_.clear();
   }
 
-  void TextLayout::setViewport(const Viewport& viewport) {
+  void TextLayout::setViewport(const Size& viewport) {
     if (m_viewport_.width != viewport.width) {
       m_content_metrics_dirty_ = true;
       m_prefix_dirty_from_ = 0;
@@ -147,7 +147,7 @@ namespace NS_SWEETEDITOR {
 
   VisibleLineInfo TextLayout::layoutVisibleLines(EditorRenderModel& model, const PresentationContext& presentation_context) {
     PERF_TIMER("layoutVisibleLines");
-    if (!m_viewport_.valid() || m_document_ == nullptr) {
+    if (!isValidViewportSize(m_viewport_) || m_document_ == nullptr) {
       return {};
     }
     Vector<LogicalLine>& logical_lines = m_document_->getLogicalLines();
@@ -211,8 +211,7 @@ namespace NS_SWEETEDITOR {
     model.max_gutter_icons = m_layout_metrics_.max_gutter_icons;
     model.scroll_x = scroll_x;
     model.scroll_y = scroll_y;
-    model.viewport_width = m_viewport_.width;
-    model.viewport_height = m_viewport_.height;
+    model.viewport_size = m_viewport_;
     return visible_line_info;
   }
 
@@ -766,7 +765,7 @@ namespace NS_SWEETEDITOR {
     bounds.text_area_x = m_layout_metrics_.textAreaX();
     bounds.text_area_width = std::max(0.0f, m_viewport_.width - bounds.text_area_x);
 
-    if (m_document_ == nullptr || !m_viewport_.valid()) {
+    if (m_document_ == nullptr || !isValidViewportSize(m_viewport_)) {
       return bounds;
     }
 
@@ -787,7 +786,7 @@ namespace NS_SWEETEDITOR {
   }
 
   void TextLayout::clampScroll(float& scroll_x, float& scroll_y) {
-    if (m_document_ == nullptr || !m_viewport_.valid()) return;
+    if (m_document_ == nullptr || !isValidViewportSize(m_viewport_)) return;
 
     ScrollBounds bounds = getScrollBounds();
     scroll_y = std::clamp(scroll_y, 0.0f, bounds.max_scroll_y);

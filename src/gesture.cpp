@@ -25,7 +25,7 @@ namespace NS_SWEETEDITOR {
   }
 
   U8String GestureEvent::dump() const {
-    return "GestureEvent {type = " + std::to_string(type) + ", point size = " + std::to_string(points.size())
+    return "GestureEvent {type = " + std::to_string(static_cast<int32_t>(type)) + ", point size = " + std::to_string(points.size())
          + ", modifiers = " + std::to_string(static_cast<uint8_t>(modifiers)) + "}";
   }
 #pragma endregion

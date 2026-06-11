@@ -238,7 +238,7 @@ public final class EditorNative {
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_VIEWPORT = downcall("editor_set_viewport",
-            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_SHORT, ValueLayout.JAVA_SHORT,
+            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
                     ValueLayout.ADDRESS));
 
     private static final MethodHandle SET_FOLD_ARROW_MODE = downcall("editor_set_fold_arrow_mode",
@@ -858,7 +858,7 @@ public final class EditorNative {
 
     public static NativeBinaryResult setViewport(long handle, int width, int height) {
         return invokeBinaryResult(outSize ->
-                (MemorySegment) SET_VIEWPORT.invokeExact(handle, (short) width, (short) height, outSize));
+                (MemorySegment) SET_VIEWPORT.invokeExact(handle, width, height, outSize));
     }
 
     public static NativeBinaryResult onFontMetricsChanged(long handle) {

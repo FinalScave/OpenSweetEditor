@@ -12,6 +12,7 @@
 
 namespace NS_SWEETEDITOR {
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(PointF, x, y)
+  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Size, width, height)
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TextPosition, line, column)
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TextRange, start, end)
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Rect, origin, width, height)
@@ -47,10 +48,12 @@ namespace NS_SWEETEDITOR {
     {HitTargetType::NONE, "NONE"},
     {HitTargetType::INLAY_HINT_TEXT, "INLAY_HINT_TEXT"},
     {HitTargetType::INLAY_HINT_ICON, "INLAY_HINT_ICON"},
-    {HitTargetType::GUTTER_ICON, "GUTTER_ICON"},
-    {HitTargetType::FOLD_PLACEHOLDER, "FOLD_PLACEHOLDER"},
-    {HitTargetType::FOLD_GUTTER, "FOLD_GUTTER"},
     {HitTargetType::INLAY_HINT_COLOR, "INLAY_HINT_COLOR"},
+    {HitTargetType::CODELENS, "CODELENS"},
+    {HitTargetType::LINK, "LINK"},
+    {HitTargetType::GUTTER_ICON, "GUTTER_ICON"},
+    {HitTargetType::FOLD_GUTTER, "FOLD_GUTTER"},
+    {HitTargetType::FOLD_PLACEHOLDER, "FOLD_PLACEHOLDER"},
   })
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(HitTarget, type, line, column, icon_id, color_value)
   NLOHMANN_JSON_SERIALIZE_ENUM(PointerCursorType, {
@@ -72,16 +75,15 @@ namespace NS_SWEETEDITOR {
     {TextChangeKind::MIXED, "MIXED"},
   })
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TextEditResult, handled, change_kind, changes, cursor_before, cursor_after)
-  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(KeyEventResult, handled, content_changed, cursor_changed, selection_changed, edit_result, command)
 
   NLOHMANN_JSON_SERIALIZE_ENUM(VisualRunType, {
     {VisualRunType::TEXT, "TEXT"},
     {VisualRunType::WHITESPACE, "WHITESPACE"},
+    {VisualRunType::TAB, "TAB"},
     {VisualRunType::NEWLINE, "NEWLINE"},
     {VisualRunType::INLAY_HINT, "INLAY_HINT"},
     {VisualRunType::PHANTOM_TEXT, "PHANTOM_TEXT"},
     {VisualRunType::FOLD_PLACEHOLDER, "FOLD_PLACEHOLDER"},
-    {VisualRunType::TAB, "TAB"},
     {VisualRunType::CODELENS, "CODELENS"},
     {VisualRunType::LINK, "LINK"},
   })
@@ -192,7 +194,7 @@ namespace NS_SWEETEDITOR {
     {CurrentLineRenderMode::BORDER, "BORDER"},
     {CurrentLineRenderMode::NONE, "NONE"},
   })
-  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(EditorRenderModel, split_x, split_line_visible, scroll_x, scroll_y, viewport_width, viewport_height, current_line, current_line_render_mode, lines, cursor, range_effects, selection_start_handle, selection_end_handle, guide_segments, max_gutter_icons, gutter_icons, fold_markers, vertical_scrollbar, horizontal_scrollbar, gutter_sticky, gutter_visible, pointer_cursor_type)
+  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(EditorRenderModel, split_x, split_line_visible, scroll_x, scroll_y, viewport_size, current_line, current_line_render_mode, lines, cursor, range_effects, selection_start_handle, selection_end_handle, guide_segments, max_gutter_icons, gutter_icons, fold_markers, vertical_scrollbar, horizontal_scrollbar, gutter_sticky, gutter_visible, pointer_cursor_type)
   NLOHMANN_JSON_SERIALIZE_ENUM(FoldArrowMode, {
     {FoldArrowMode::AUTO, "AUTO"},
     {FoldArrowMode::ALWAYS, "ALWAYS"},

@@ -24,10 +24,10 @@ Core 层不涉及 UI 渲染，仅包含桥接、数据模型和协议编解码�
 |---|---|---|
 | **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer` | 原生桥接 + 公共核心 API 封装 |
 | **Action** | `EditorActionResult`, `EditorActionSource`, `TextChangeKind`, `ScrollBehavior` | Core action 结果与相关枚举；`EditorActionResult` 是变更类 core API 的统一结果载体 |
-| **Config** | `EditorOptions`, `HandleConfig`, `ScrollbarConfig`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollbarMode`, `ScrollbarTrackTapMode`, `EditorRenderColors`, `EditorRangeEffectStyles`, `RangeEffectStyle`, `RangeEffectUnderlineStyle` | 运行时、构造与编辑器渲染样式协议类型 |
-| **Foundation** | `TextPosition`, `TextRange`, `TextEdit`, `IntRange`, `TextChange`, `PointF`, `Rect`, `OffsetRect` | 基础值类型与几何载体 |
+| **Config** | `EditorOptions`, `HandleConfig`, `HandleHitArea`, `ScrollbarConfig`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollbarMode`, `ScrollbarTrackTapMode`, `EditorRenderColors`, `EditorRangeEffectStyles`, `RangeEffectStyle`, `RangeEffectUnderlineStyle` | 运行时、构造与编辑器渲染样式协议类型 |
+| **Foundation** | `TextPosition`, `TextRange`, `TextEdit`, `IntRange`, `TextChange`, `PointF`, `Size`, `Rect` | 基础值类型与几何载体 |
 | **Interaction** | `GestureEvent`, `GestureType`, `EventType`, `HitTarget`, `HitTargetType` | 输入与命中测试协议类型 |
-| **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeTextRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextUnit`, `ImeTextModelMode`, `ImeTextReplacement`, `ImeDocumentTextReplacement`, `ImeInputContextTextReplacement`, `ImeInputStateTextReplacement`, `ImeTextModelState`, `ImeTextModelDelta` | IME 同步快照、文本上下文协议类型与替换 payload model；平台侧同步决策由 `EditorActionResult` 承载 |
+| **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeOffsetRange`, `ImeScriptClass`, `ImePreeditStorage`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextUnit`, `ImeTextModelMode`, `ImeTextReplacement`, `ImeDocumentTextReplacement`, `ImeInputContextTextReplacement`, `ImeInputStateTextReplacement`, `ImeTextModelState`, `ImeTextModelDelta` | IME 同步快照、文本上下文协议类型与替换 payload model；平台侧同步决策由 `EditorActionResult` 承载 |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `DiagnosticSeverity`, `DocumentHighlight`, `DocumentHighlightKind`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | 装饰数据类型 |
 | **Visual** | `EditorRenderModel`, `LayoutMetrics`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `RangeEffectKind`, `RangeEffectRenderItem`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem` | 渲染模型类型（几何语义见第 2.5 与 2.6 节） |
 | **Snippet** | `LinkedEditingModel`, `TabStopGroup` | 联动编辑 / Tab stop 分组 |
@@ -254,7 +254,7 @@ IME 相关 offset MUST 明确坐标空间：文档 line/column API 使用 `TextR
 
 | API / 类型 | 要求 | 说明 |
 |---|---|---|
-| IME 协议类型 | MUST | 包含生成的 `CoreProtocol` IME model 集合：`ImeSyncSnapshot`、`ImeInputContext`、`ImeTextRange`、`ImeScriptClass`、`ImePreeditStorage`、`ImeContextPolicy`、`ImeInputContextKind`、`ImeTextUnit`、`ImeTextModelMode`、`ImeTextReplacement`、`ImeDocumentTextReplacement`、`ImeInputContextTextReplacement`、`ImeInputStateTextReplacement`、`ImeTextModelState`、`ImeTextModelDelta` |
+| IME 协议类型 | MUST | 包含生成的 `CoreProtocol` IME model 集合：`ImeSyncSnapshot`、`ImeInputContext`、`ImeOffsetRange`、`ImeScriptClass`、`ImePreeditStorage`、`ImeContextPolicy`、`ImeInputContextKind`、`ImeTextUnit`、`ImeTextModelMode`、`ImeTextReplacement`、`ImeDocumentTextReplacement`、`ImeInputContextTextReplacement`、`ImeInputStateTextReplacement`、`ImeTextModelState`、`ImeTextModelDelta` |
 | `ImeTextUnit` | MUST | 稳定值为 `GRAPHEME = 0`、`CODE_POINT = 1`；平台 API MAY 按 native adapter 需要暴露 unit-aware 删除重载 |
 | 同步快照能力 | MUST | 平台输入适配层 MUST 能处理 `EditorActionResult.needsImeSync` 与 `EditorActionResult.imeSync`；需要主动查询时使用 `getImeSyncSnapshot()` 或等价桥接入口 |
 | 键盘脚本 hint 能力 | SHOULD / 条件性 MUST | SHOULD 记录键盘脚本 hint；平台提供 script hint 时 MUST 映射 |

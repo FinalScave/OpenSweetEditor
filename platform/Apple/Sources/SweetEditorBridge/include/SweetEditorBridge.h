@@ -43,7 +43,7 @@ intptr_t create_editor(se_text_measurer_t measurer,
                        size_t options_size);
 void free_editor(intptr_t editor_handle);
 
-const uint8_t* editor_set_viewport(intptr_t editor_handle, int16_t width, int16_t height, size_t* out_size);
+const uint8_t* editor_set_viewport(intptr_t editor_handle, int32_t width, int32_t height, size_t* out_size);
 const uint8_t* editor_set_document(intptr_t editor_handle, intptr_t document_handle, size_t* out_size);
 
 const uint8_t* editor_handle_gesture_event(intptr_t editor_handle,

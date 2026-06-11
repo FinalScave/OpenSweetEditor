@@ -7,16 +7,7 @@
 namespace NS_SWEETEDITOR {
   struct TouchConfig;
 
-  /// Editor viewport.
-  struct Viewport {
-    /// Editor width.
-    float width {0};
-    /// Editor height.
-    float height {0};
-
-    bool valid() const;
-    U8String dump() const;
-  };
+  bool isValidViewportSize(const Size& viewport);
 
   /// Editor view state.
   struct ViewState {
@@ -44,7 +35,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Origin of a completed editor action.
-  enum struct SE_PROTOCOL_ENUM(action, NONE) EditorActionSource : uint8_t {
+  enum class SE_PROTOCOL_ENUM(action, NONE) EditorActionSource : uint8_t {
     NONE = 0,
     SETUP = 1,
     PROGRAMMATIC = 2,
@@ -59,7 +50,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Semantic kind of document text changes produced by an action.
-  enum struct SE_PROTOCOL_ENUM(action, NONE) TextChangeKind : uint8_t {
+  enum class SE_PROTOCOL_ENUM(action, NONE) TextChangeKind : uint8_t {
     NONE = 0,
     INSERTION = 1,
     REPLACEMENT = 2,
@@ -70,7 +61,7 @@ namespace NS_SWEETEDITOR {
     MIXED = 7,
   };
 
-  enum struct SE_PROTOCOL_ENUM(action, GOTO_TOP) ScrollBehavior {
+  enum class SE_PROTOCOL_ENUM(action, GOTO_TOP) ScrollBehavior {
     /// Make the target line visible at the top.
     GOTO_TOP,
     /// Scroll the target line to the center.
@@ -94,7 +85,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Auto-indent modes.
-  enum struct SE_PROTOCOL_ENUM(config, NONE) AutoIndentMode {
+  enum class SE_PROTOCOL_ENUM(config, NONE) AutoIndentMode {
     /// No auto-indent; new line starts at column 0.
     NONE = 0,
     /// Keep previous line indent.
@@ -102,7 +93,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Auto-wrap modes.
-  enum struct SE_PROTOCOL_ENUM(config, NONE) WrapMode {
+  enum class SE_PROTOCOL_ENUM(config, NONE) WrapMode {
     /// No wrapping.
     NONE,
     /// Character-level wrapping.
@@ -112,7 +103,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Current line render modes.
-  enum struct SE_PROTOCOL_ENUM(config, BACKGROUND) CurrentLineRenderMode {
+  enum class SE_PROTOCOL_ENUM(config, BACKGROUND) CurrentLineRenderMode {
     /// Fill full line background.
     BACKGROUND = 0,
     /// Draw line border only.
@@ -122,7 +113,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Whitespace marker rendering modes.
-  enum struct SE_PROTOCOL_ENUM(config, NONE) WhitespaceRenderMode {
+  enum class SE_PROTOCOL_ENUM(config, NONE) WhitespaceRenderMode {
     /// Do not render whitespace markers.
     NONE = 0,
     /// Render structural whitespace such as indentation, trailing whitespace, tabs, and repeated spaces.
@@ -170,11 +161,20 @@ namespace NS_SWEETEDITOR {
 
   /// Selection handle hit-test configuration.
   /// All geometry is owned by the platform drawing layer; C++ only needs hit areas.
+  struct SE_PROTOCOL_VALUE(config) HandleHitArea {
+    float left {0};
+    float top {0};
+    float right {0};
+    float bottom {0};
+
+    bool contains(float dx, float dy) const;
+  };
+
   struct SE_PROTOCOL_IN(config) HandleConfig {
-    /// Hit area for the start handle, as an offset rect relative to the cursor bottom anchor (handle tip)
-    OffsetRect start_hit_offset {-32.1f, -8.0f, 8.0f, 32.1f};
-    /// Hit area for the end handle, as an offset rect relative to the cursor bottom anchor (handle tip)
-    OffsetRect end_hit_offset {-8.0f, -8.0f, 32.1f, 32.1f};
+    /// Hit area for the start handle, relative to the cursor bottom anchor.
+    HandleHitArea start_hit_area {-32.1f, -8.0f, 8.0f, 32.1f};
+    /// Hit area for the end handle, relative to the cursor bottom anchor.
+    HandleHitArea end_hit_area {-8.0f, -8.0f, 32.1f, 32.1f};
   };
 
   enum class SE_PROTOCOL_ENUM(config, ALWAYS) ScrollbarMode : uint8_t {
@@ -224,7 +224,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Underline shape used by range effects.
-  enum struct SE_PROTOCOL_ENUM(config, NONE) RangeEffectUnderlineStyle {
+  enum class SE_PROTOCOL_ENUM(config, NONE) RangeEffectUnderlineStyle {
     NONE = 0,
     SOLID = 1,
     DASHED = 2,
@@ -313,10 +313,8 @@ namespace NS_SWEETEDITOR {
     float scroll_y {0};
     float max_scroll_x {0};
     float max_scroll_y {0};
-    float content_width {0};
-    float content_height {0};
-    float viewport_width {0};
-    float viewport_height {0};
+    Size content_size;
+    Size viewport_size;
     float text_area_x {0};
     float text_area_width {0};
     bool can_scroll_x {false};
@@ -350,22 +348,6 @@ namespace NS_SWEETEDITOR {
     bool contentChanged() const;
     void markHandled(TextChangeKind kind = TextChangeKind::NONE);
     void mergeChangeKind(TextChangeKind kind);
-  };
-
-  /// Keyboard event handling result
-  struct KeyEventResult {
-    /// Whether it was handled (event consumed)
-    bool handled {false};
-    /// Whether document content changed (needs incremental sync)
-    bool content_changed {false};
-    /// Whether cursor position changed
-    bool cursor_changed {false};
-    /// Whether selection changed
-    bool selection_changed {false};
-    /// Exact text edit info (valid when content_changed is true)
-    TextEditResult edit_result;
-    /// Resolved command (for platform-handled commands like COPY/PASTE/CUT)
-    EditorCommandId command {0};
   };
 
   /// Screen-space rectangle for cursor/text position (for panel placement)

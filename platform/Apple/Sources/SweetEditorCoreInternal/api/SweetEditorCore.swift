@@ -307,7 +307,7 @@ class SweetEditorCore {
     func setViewport(width: Int, height: Int) -> EditorActionResult? {
         return performCoreCall {
             var size: Int = 0
-            let ptr = editor_set_viewport(handle, Int16(width), Int16(height), &size)
+            let ptr = editor_set_viewport(handle, Int32(width), Int32(height), &size)
             return decodeEditorActionPayload(ptr, size: size)
         }
     }

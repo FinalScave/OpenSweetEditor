@@ -56,16 +56,19 @@ namespace {
     return out;
   }
 
+  struct SizeData {
+    float width = 0.0f;
+    float height = 0.0f;
+  };
+
   struct ScrollMetricsData {
     float scale = 1.0f;
     float scroll_x = 0.0f;
     float scroll_y = 0.0f;
     float max_scroll_x = 0.0f;
     float max_scroll_y = 0.0f;
-    float content_width = 0.0f;
-    float content_height = 0.0f;
-    float viewport_width = 0.0f;
-    float viewport_height = 0.0f;
+    SizeData content_size;
+    SizeData viewport_size;
     float text_area_x = 0.0f;
     float text_area_width = 0.0f;
     int32_t can_scroll_x = 0;
@@ -91,10 +94,10 @@ namespace {
     readFloat(metrics.scroll_y);
     readFloat(metrics.max_scroll_x);
     readFloat(metrics.max_scroll_y);
-    readFloat(metrics.content_width);
-    readFloat(metrics.content_height);
-    readFloat(metrics.viewport_width);
-    readFloat(metrics.viewport_height);
+    readFloat(metrics.content_size.width);
+    readFloat(metrics.content_size.height);
+    readFloat(metrics.viewport_size.width);
+    readFloat(metrics.viewport_size.height);
     readFloat(metrics.text_area_x);
     readFloat(metrics.text_area_width);
     readI32(metrics.can_scroll_x);
@@ -216,8 +219,7 @@ namespace {
     int32_t split_line_visible = 1;
     float scroll_x = 0.0f;
     float scroll_y = 0.0f;
-    float viewport_width = 0.0f;
-    float viewport_height = 0.0f;
+    SizeData viewport_size;
     float current_line_x = 0.0f;
     float current_line_y = 0.0f;
     int32_t current_line_render_mode = 0;
@@ -242,8 +244,8 @@ namespace {
     readI32(header.split_line_visible);
     readFloat(header.scroll_x);
     readFloat(header.scroll_y);
-    readFloat(header.viewport_width);
-    readFloat(header.viewport_height);
+    readFloat(header.viewport_size.width);
+    readFloat(header.viewport_size.height);
     readFloat(header.current_line_x);
     readFloat(header.current_line_y);
     readI32(header.current_line_render_mode);
@@ -315,8 +317,8 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   REQUIRE(scroll_metrics_payload != nullptr);
   ScrollMetricsData scroll_metrics = parseScrollMetrics(scroll_metrics_payload, scroll_metrics_size);
   free_binary_data(reinterpret_cast<intptr_t>(scroll_metrics_payload));
-  CHECK(scroll_metrics.viewport_width == 100.0f);
-  CHECK(scroll_metrics.viewport_height == 80.0f);
+  CHECK(scroll_metrics.viewport_size.width == 100.0f);
+  CHECK(scroll_metrics.viewport_size.height == 80.0f);
   CHECK(scroll_metrics.scroll_x == 0.0f);
   CHECK(scroll_metrics.scroll_y == 0.0f);
 
@@ -443,8 +445,8 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   CHECK(model_size >= sizeof(float) * 7 + sizeof(int32_t) * 3);
   RenderModelHeaderData model_header = parseRenderModelHeader(model_payload, model_size);
   free_binary_data(reinterpret_cast<intptr_t>(model_payload));
-  CHECK(model_header.viewport_width == 100.0f);
-  CHECK(model_header.viewport_height == 80.0f);
+  CHECK(model_header.viewport_size.width == 100.0f);
+  CHECK(model_header.viewport_size.height == 80.0f);
   CHECK(model_header.split_line_visible == 1);
   CHECK(model_header.current_line_render_mode == 0);
   CHECK(model_header.line_count >= 1);

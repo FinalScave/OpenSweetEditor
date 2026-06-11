@@ -356,11 +356,11 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
         contextId: _textInputContextId,
         documentStartOffset: _textInputWindowStartOffset,
         text: value.text,
-        selection: core.ImeTextRange(
+        selection: core.ImeOffsetRange(
           start: selectionValid ? value.selection.start : -1,
           end: selectionValid ? value.selection.end : -1,
         ),
-        composition: core.ImeTextRange(
+        composition: core.ImeOffsetRange(
           start: composingActive ? value.composing.start : -1,
           end: composingActive ? value.composing.end : -1,
         ),
@@ -403,13 +403,13 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
         contextId: _textInputContextId,
         documentStartOffset: _textInputWindowStartOffset,
         oldText: delta.oldText,
-        delta: core.ImeTextRange(start: deltaStartOffset, end: deltaEndOffset),
+        delta: core.ImeOffsetRange(start: deltaStartOffset, end: deltaEndOffset),
         deltaText: deltaText,
-        selection: core.ImeTextRange(
+        selection: core.ImeOffsetRange(
           start: selectionValid ? appliedValue.selection.start : -1,
           end: selectionValid ? appliedValue.selection.end : -1,
         ),
-        composition: core.ImeTextRange(
+        composition: core.ImeOffsetRange(
           start: composingActive ? appliedValue.composing.start : -1,
           end: composingActive ? appliedValue.composing.end : -1,
         ),
