@@ -106,26 +106,18 @@ namespace SweetEditor {
 	#region Editor event system
 
 	/// <summary>
-	/// Text change operation type enum.
-	/// </summary>
-	public enum TextChangeAction {
-		Insert,
-		Delete,
-		Key,
-		Composition,
-		Undo,
-		Redo
-	}
-	/// <summary>
 	/// Text change event args.
 	/// </summary>
 	public class TextChangedEventArgs : EventArgs {
-		/// <summary>Operation type</summary>
-		public TextChangeAction Action { get; }
+		/// <summary>Semantic kind of document text changes.</summary>
+		public TextChangeKind Kind { get; }
+		/// <summary>Origin of the editor action that produced this change.</summary>
+		public EditorActionSource Source { get; }
 		/// <summary>Incremental text changes for the current edit cycle.</summary>
 		public IReadOnlyList<TextChange> Changes { get; }
-		public TextChangedEventArgs(TextChangeAction action, IReadOnlyList<TextChange>? changes = null) {
-			Action = action;
+		public TextChangedEventArgs(TextChangeKind kind, EditorActionSource source, IReadOnlyList<TextChange>? changes = null) {
+			Kind = kind;
+			Source = source;
 			Changes = changes ?? Array.Empty<TextChange>();
 		}
 	}

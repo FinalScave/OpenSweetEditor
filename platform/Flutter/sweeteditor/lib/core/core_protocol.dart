@@ -647,7 +647,8 @@ EditorActionResult _readEditorActionResult(_BinaryReader reader) {
   return EditorActionResult(
     handled: reader.readBoolI32(),
     needsRedraw: reader.readBoolI32(),
-    reason: EditorActionReason.fromValue(reader.readInt32()),
+    source: EditorActionSource.fromValue(reader.readInt32()),
+    textChangeKind: TextChangeKind.fromValue(reader.readInt32()),
     contentChanged: reader.readBoolI32(),
     cursorChanged: reader.readBoolI32(),
     selectionChanged: reader.readBoolI32(),

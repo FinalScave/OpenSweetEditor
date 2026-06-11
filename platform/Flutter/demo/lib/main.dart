@@ -125,7 +125,7 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
               ' ${change.newText}',
         )
         .join(', ');
-    _updateStatus('${e.action?.name ?? 'unknown'} [$changeSummary]');
+    _updateStatus('${e.kind.name} from ${e.source.name} [$changeSummary]');
   }
 
   void _onCursorChanged(CursorChangedEvent e) {

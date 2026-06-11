@@ -23,7 +23,7 @@ Core 层不涉及 UI 渲染，仅包含桥接、数据模型和协议编解码�
 | 逻辑分类 | 必须包含的类型 | 说明 |
 |---|---|---|
 | **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer` | 原生桥接 + 公共核心 API 封装 |
-| **Action** | `EditorActionResult`, `EditorActionReason`, `ScrollBehavior` | Core action 结果与相关枚举；`EditorActionResult` 是变更类 core API 的统一结果载体 |
+| **Action** | `EditorActionResult`, `EditorActionSource`, `TextChangeKind`, `ScrollBehavior` | Core action 结果与相关枚举；`EditorActionResult` 是变更类 core API 的统一结果载体 |
 | **Config** | `EditorOptions`, `HandleConfig`, `ScrollbarConfig`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollbarMode`, `ScrollbarTrackTapMode`, `EditorRenderColors`, `EditorRangeEffectStyles`, `RangeEffectStyle`, `RangeEffectUnderlineStyle` | 运行时、构造与编辑器渲染样式协议类型 |
 | **Foundation** | `TextPosition`, `TextRange`, `TextEdit`, `IntRange`, `TextChange`, `PointF`, `Rect`, `OffsetRect` | 基础值类型与几何载体 |
 | **Interaction** | `GestureEvent`, `GestureType`, `EventType`, `HitTarget`, `HitTargetType` | 输入与命中测试协议类型 |
@@ -52,7 +52,7 @@ Widget 层负责平台原生渲染、用户交互和扩展系统。
 | **ContextMenu** *(桌面 / mouse / right-click 平台 SHOULD；纯触摸平台 MAY)* | `ContextMenuRequest`、`ContextMenuSection`、`ContextMenuItem`、`ContextMenuItemProvider`、`ContextMenuTriggerKind`、宿主可见的 custom item 点击回调机制；MAY: `ContextMenuPopup` | 平台侧的上下文菜单 / 动作菜单 |
 | **Perf** *(MAY)* | 调试性能浮层控制入口，如 `setPerfOverlayEnabled` / `isPerfOverlayEnabled` 或平台等价 API | 调试性能浮层 |
 
-> `TextChangeAction` 为 SHOULD 级辅助事件枚举。平台 MAY 暴露它用于粗粒度标识一次文本变更周期（如 `INSERT` / `DELETE` / `UNDO` / `REDO` / `KEY` / `COMPOSITION`），但 MUST NOT 用它替代 `changes: List<TextChange>` 这一主增量载荷。
+> `TextChangedEvent` MUST 暴露 `changes: List<TextChange>`、`kind: TextChangeKind`、`source: EditorActionSource`。平台 MUST NOT 定义一套镜像 `TextChangeKind` 的独立文本变更 action 枚举。
 
 ### 1.3 内部实现自由（SHOULD）
 
@@ -636,7 +636,7 @@ ContextMenuEvent      // 具有显式上下文菜单手势入口的平台
 
 | 事件 | 字段 | 说明 |
 |---|---|---|
-| `TextChangedEvent` | `changes: List<TextChange>`、`action: TextChangeAction?` *(SHOULD)* | 当前编辑周期内的增量文本变更列表；`action` 为可选的粗粒度语义提示 |
+| `TextChangedEvent` | `changes: List<TextChange>`、`kind: TextChangeKind`、`source: EditorActionSource` | 当前编辑周期内的增量文本变更列表、文本变更语义类型，以及产生变更的 action 来源 |
 | `CursorChangedEvent` | `cursorPosition: TextPosition` | 当前光标位置 |
 | `SelectionChangedEvent` | `hasSelection: boolean`, `selection: TextRange?`, `cursorPosition: TextPosition` | 当前选区状态与光标位置 |
 | `ScrollChangedEvent` | `scrollX: float`, `scrollY: float` | 当前视图滚动偏移 |

@@ -23,7 +23,7 @@ The Core layer does not involve UI rendering. It contains only bridging, data mo
 | Category | Required Types | Description |
 |---|---|---|
 | **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer` | Native bridge + public core API wrapper |
-| **Action** | `EditorActionResult`, `EditorActionReason`, `ScrollBehavior` | Core action result and action-related enums; `EditorActionResult` is the unified result carrier for core state-changing APIs |
+| **Action** | `EditorActionResult`, `EditorActionSource`, `TextChangeKind`, `ScrollBehavior` | Core action result and action-related enums; `EditorActionResult` is the unified result carrier for core state-changing APIs |
 | **Config** | `EditorOptions`, `HandleConfig`, `ScrollbarConfig`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollbarMode`, `ScrollbarTrackTapMode`, `EditorRenderColors`, `EditorRangeEffectStyles`, `RangeEffectStyle`, `RangeEffectUnderlineStyle` | Runtime, construction, and editor render styling protocol types |
 | **Foundation** | `TextPosition`, `TextRange`, `TextEdit`, `IntRange`, `TextChange`, `PointF`, `Rect`, `OffsetRect` | Fundamental value types and geometry carriers |
 | **Interaction** | `GestureEvent`, `GestureType`, `EventType`, `HitTarget`, `HitTargetType` | Input and hit-test protocol types |
@@ -52,7 +52,7 @@ The Widget layer handles platform-native rendering, user interaction, and extens
 | **ContextMenu** *(SHOULD on desktop / mouse / right-click platforms; MAY on touch-only platforms)* | `ContextMenuRequest`, `ContextMenuSection`, `ContextMenuItem`, `ContextMenuItemProvider`, `ContextMenuTriggerKind`, a host-visible custom-item click callback mechanism; MAY: `ContextMenuPopup` | Platform-side context menu / action menu |
 | **Perf** *(MAY)* | Debug performance overlay controls, such as `setPerfOverlayEnabled` / `isPerfOverlayEnabled` or platform-equivalent APIs | Debug performance overlay |
 
-> `TextChangeAction` is a SHOULD-level auxiliary event enum. Platforms MAY expose it to classify a text-change cycle at a coarse level (for example: `INSERT`, `DELETE`, `UNDO`, `REDO`, `KEY`, `COMPOSITION`), but it MUST NOT replace `changes: List<TextChange>` as the primary incremental payload.
+> `TextChangedEvent` MUST expose `changes: List<TextChange>`, `kind: TextChangeKind`, and `source: EditorActionSource`. Platforms MUST NOT define a separate text-change action enum that mirrors `TextChangeKind`.
 
 ### 1.3 Internal Implementation Freedom (SHOULD)
 
@@ -640,7 +640,7 @@ Event payloads MUST be defined per-event. Platforms MUST NOT assume or require a
 
 | Event | Fields | Description |
 |---|---|---|
-| `TextChangedEvent` | `changes: List<TextChange>`, `action: TextChangeAction?` *(SHOULD)* | Incremental text changes for the current edit cycle; `action` is an optional coarse-grained semantic hint |
+| `TextChangedEvent` | `changes: List<TextChange>`, `kind: TextChangeKind`, `source: EditorActionSource` | Incremental text changes for the current edit cycle, the semantic kind of the change, and the source action that produced it |
 | `CursorChangedEvent` | `cursorPosition: TextPosition` | Current cursor position |
 | `SelectionChangedEvent` | `hasSelection: boolean`, `selection: TextRange?`, `cursorPosition: TextPosition` | Current selection state and cursor position |
 | `ScrollChangedEvent` | `scrollX: float`, `scrollY: float` | Current view scroll offset |

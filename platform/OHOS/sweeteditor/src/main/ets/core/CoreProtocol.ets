@@ -1,5 +1,5 @@
 import util from '@ohos.util';
-import { EditorActionReason, EditorActionResult, ScrollBehavior, editorActionReasonFromValue, scrollBehaviorFromValue } from './CoreAction';
+import { EditorActionResult, EditorActionSource, ScrollBehavior, TextChangeKind, editorActionSourceFromValue, scrollBehaviorFromValue, textChangeKindFromValue } from './CoreAction';
 import { BracketGuide, CodeLensItem, Diagnostic, DiagnosticSeverity, DocumentHighlight, DocumentHighlightKind, FlowGuide, FoldRegion, GutterIcon, IndentGuide, InlayHint, InlayType, LinkSpan, PhantomText, SeparatorGuide, SeparatorStyle, SpanLayer, StyleSpan, TextStyle, diagnosticSeverityFromValue, documentHighlightKindFromValue, inlayTypeFromValue, separatorStyleFromValue, spanLayerFromValue } from './CoreAdornments';
 import { AutoIndentMode, CurrentLineRenderMode, EditorOptions, EditorRangeEffectStyles, EditorRenderColors, FoldArrowMode, HandleConfig, RangeEffectStyle, RangeEffectUnderlineStyle, ScrollbarConfig, ScrollbarMode, ScrollbarTrackTapMode, WhitespaceRenderMode, WrapMode, autoIndentModeFromValue, currentLineRenderModeFromValue, foldArrowModeFromValue, rangeEffectUnderlineStyleFromValue, scrollbarModeFromValue, scrollbarTrackTapModeFromValue, whitespaceRenderModeFromValue, wrapModeFromValue } from './CoreConfig';
 import { IntRange, OffsetRect, PointF, Rect, TextChange, TextEdit, TextPosition, TextRange } from './CoreFoundation';
@@ -659,7 +659,8 @@ export class CoreProtocol {
     return {
       handled: reader.readInt32() !== 0,
       needsRedraw: reader.readInt32() !== 0,
-      reason: editorActionReasonFromValue(reader.readInt32()),
+      source: editorActionSourceFromValue(reader.readInt32()),
+      textChangeKind: textChangeKindFromValue(reader.readInt32()),
       contentChanged: reader.readInt32() !== 0,
       cursorChanged: reader.readInt32() !== 0,
       selectionChanged: reader.readInt32() !== 0,

@@ -4,24 +4,18 @@ using System.Collections.Generic;
 
 namespace SweetEditor {
 
-    public enum EditorActionReason {
+    public enum EditorActionSource {
         NONE = 0,
         SETUP = 1,
-        TEXT_EDIT = 2,
-        KEY_INPUT = 3,
+        PROGRAMMATIC = 2,
+        KEYBOARD = 3,
         IME = 4,
         GESTURE = 5,
         ANIMATION = 6,
-        PROGRAMMATIC = 7,
-        DECORATION = 8,
-        FOLDING = 9,
-        LINKED_EDITING = 10,
-        TEXT_INSERT = 11,
-        TEXT_REPLACE = 12,
-        TEXT_DELETE = 13,
-        TEXT_UNDO = 14,
-        TEXT_REDO = 15,
-        SEARCH = 16
+        DECORATION = 7,
+        FOLDING = 8,
+        SEARCH = 9,
+        LINKED_EDITING = 10
     }
 
     public enum ScrollBehavior {
@@ -30,10 +24,22 @@ namespace SweetEditor {
         GOTO_BOTTOM = 2
     }
 
+    public enum TextChangeKind {
+        NONE = 0,
+        INSERTION = 1,
+        REPLACEMENT = 2,
+        DELETION = 3,
+        MOVE = 4,
+        UNDO = 5,
+        REDO = 6,
+        MIXED = 7
+    }
+
     public sealed partial class EditorActionResult {
         public bool Handled { get; set; } = false;
         public bool NeedsRedraw { get; set; } = false;
-        public EditorActionReason Reason { get; set; } = EditorActionReason.NONE;
+        public EditorActionSource Source { get; set; } = EditorActionSource.NONE;
+        public TextChangeKind TextChangeKind { get; set; } = TextChangeKind.NONE;
         public bool ContentChanged { get; set; } = false;
         public bool CursorChanged { get; set; } = false;
         public bool SelectionChanged { get; set; } = false;

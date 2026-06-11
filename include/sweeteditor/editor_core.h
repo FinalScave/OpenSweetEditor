@@ -20,31 +20,13 @@
 
 namespace NS_SWEETEDITOR {
 
-  enum struct SE_PROTOCOL_ENUM(action, NONE) EditorActionReason : uint8_t {
-    NONE = 0,
-    SETUP = 1,
-    TEXT_EDIT = 2,
-    KEY_INPUT = 3,
-    IME = 4,
-    GESTURE = 5,
-    ANIMATION = 6,
-    PROGRAMMATIC = 7,
-    DECORATION = 8,
-    FOLDING = 9,
-    LINKED_EDITING = 10,
-    TEXT_INSERT = 11,
-    TEXT_REPLACE = 12,
-    TEXT_DELETE = 13,
-    TEXT_UNDO = 14,
-    TEXT_REDO = 15,
-    SEARCH = 16,
-  };
-
   struct SE_PROTOCOL_OUT(action) EditorActionResult {
     bool handled {false};
     bool needs_redraw {false};
     SE_PROTOCOL_WIRE(enum_i32)
-    EditorActionReason reason {EditorActionReason::NONE};
+    EditorActionSource source {EditorActionSource::NONE};
+    SE_PROTOCOL_WIRE(enum_i32)
+    TextChangeKind text_change_kind {TextChangeKind::NONE};
 
     bool content_changed {false};
     bool cursor_changed {false};
@@ -288,11 +270,11 @@ namespace NS_SWEETEDITOR {
     /// @return Exact change info
     EditorActionResult insertLineBelow();
     /// Undo last edit operation
-    /// @return Exact change info (changed=false means nothing to undo)
+    /// @return Exact change info (content_changed=false means nothing to undo)
     EditorActionResult undo();
 
     /// Redo last undone operation
-    /// @return Exact change info (changed=false means nothing to redo)
+    /// @return Exact change info (content_changed=false means nothing to redo)
     EditorActionResult redo();
 
     /// Whether undo is available
@@ -901,14 +883,14 @@ namespace NS_SWEETEDITOR {
     void finalizeGestureResult(GestureResult& result) const;
     ActionSnapshot captureActionSnapshot() const;
     EditorActionResult finishAction(const ActionSnapshot& before,
-                                    EditorActionReason reason,
+                                    EditorActionSource source,
                                     bool handled,
                                     TextEditResult edit_result = {},
                                     bool force_redraw = false,
                                     bool decoration_changed = false) const;
     EditorActionResult finishGestureAction(const ActionSnapshot& before,
                                            GestureResult gesture_result,
-                                           EditorActionReason reason,
+                                           EditorActionSource source,
                                            EventType event_type = EventType::UNDEFINED,
                                            bool decoration_changed = false) const;
     EditorActionResult finishImeAction(const ActionSnapshot& before,

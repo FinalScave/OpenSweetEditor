@@ -4,46 +4,34 @@ import { EventType, GestureType, HitTarget } from './CoreInteraction';
 import { KeyModifier } from './CoreKeymap';
 import { PointerCursorType } from './CoreVisual';
 
-export enum EditorActionReason {
+export enum EditorActionSource {
   NONE = 0,
   SETUP = 1,
-  TEXT_EDIT = 2,
-  KEY_INPUT = 3,
+  PROGRAMMATIC = 2,
+  KEYBOARD = 3,
   IME = 4,
   GESTURE = 5,
   ANIMATION = 6,
-  PROGRAMMATIC = 7,
-  DECORATION = 8,
-  FOLDING = 9,
+  DECORATION = 7,
+  FOLDING = 8,
+  SEARCH = 9,
   LINKED_EDITING = 10,
-  TEXT_INSERT = 11,
-  TEXT_REPLACE = 12,
-  TEXT_DELETE = 13,
-  TEXT_UNDO = 14,
-  TEXT_REDO = 15,
-  SEARCH = 16,
 }
 
-export function editorActionReasonFromValue(value: number): EditorActionReason {
+export function editorActionSourceFromValue(value: number): EditorActionSource {
   switch (value) {
-    case 0: return EditorActionReason.NONE;
-    case 1: return EditorActionReason.SETUP;
-    case 2: return EditorActionReason.TEXT_EDIT;
-    case 3: return EditorActionReason.KEY_INPUT;
-    case 4: return EditorActionReason.IME;
-    case 5: return EditorActionReason.GESTURE;
-    case 6: return EditorActionReason.ANIMATION;
-    case 7: return EditorActionReason.PROGRAMMATIC;
-    case 8: return EditorActionReason.DECORATION;
-    case 9: return EditorActionReason.FOLDING;
-    case 10: return EditorActionReason.LINKED_EDITING;
-    case 11: return EditorActionReason.TEXT_INSERT;
-    case 12: return EditorActionReason.TEXT_REPLACE;
-    case 13: return EditorActionReason.TEXT_DELETE;
-    case 14: return EditorActionReason.TEXT_UNDO;
-    case 15: return EditorActionReason.TEXT_REDO;
-    case 16: return EditorActionReason.SEARCH;
-    default: return EditorActionReason.NONE;
+    case 0: return EditorActionSource.NONE;
+    case 1: return EditorActionSource.SETUP;
+    case 2: return EditorActionSource.PROGRAMMATIC;
+    case 3: return EditorActionSource.KEYBOARD;
+    case 4: return EditorActionSource.IME;
+    case 5: return EditorActionSource.GESTURE;
+    case 6: return EditorActionSource.ANIMATION;
+    case 7: return EditorActionSource.DECORATION;
+    case 8: return EditorActionSource.FOLDING;
+    case 9: return EditorActionSource.SEARCH;
+    case 10: return EditorActionSource.LINKED_EDITING;
+    default: return EditorActionSource.NONE;
   }
 }
 
@@ -62,10 +50,36 @@ export function scrollBehaviorFromValue(value: number): ScrollBehavior {
   }
 }
 
+export enum TextChangeKind {
+  NONE = 0,
+  INSERTION = 1,
+  REPLACEMENT = 2,
+  DELETION = 3,
+  MOVE = 4,
+  UNDO = 5,
+  REDO = 6,
+  MIXED = 7,
+}
+
+export function textChangeKindFromValue(value: number): TextChangeKind {
+  switch (value) {
+    case 0: return TextChangeKind.NONE;
+    case 1: return TextChangeKind.INSERTION;
+    case 2: return TextChangeKind.REPLACEMENT;
+    case 3: return TextChangeKind.DELETION;
+    case 4: return TextChangeKind.MOVE;
+    case 5: return TextChangeKind.UNDO;
+    case 6: return TextChangeKind.REDO;
+    case 7: return TextChangeKind.MIXED;
+    default: return TextChangeKind.NONE;
+  }
+}
+
 export interface EditorActionResult {
   handled: boolean;
   needsRedraw: boolean;
-  reason: EditorActionReason;
+  source: EditorActionSource;
+  textChangeKind: TextChangeKind;
   contentChanged: boolean;
   cursorChanged: boolean;
   selectionChanged: boolean;

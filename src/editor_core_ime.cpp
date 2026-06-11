@@ -228,10 +228,11 @@ namespace NS_SWEETEDITOR {
     target.content_changed = target.content_changed || source.content_changed;
     target.cursor_changed = target.cursor_changed || source.cursor_changed;
     target.selection_changed = target.selection_changed || source.selection_changed;
-    if (source.edit_result.changed) {
-      if (!target.edit_result.changed) {
+    if (source.edit_result.contentChanged()) {
+      if (!target.edit_result.contentChanged()) {
         target.edit_result = source.edit_result;
       } else {
+        target.edit_result.markHandled(source.edit_result.change_kind);
         target.edit_result.changes.insert(target.edit_result.changes.end(),
                                           source.edit_result.changes.begin(),
                                           source.edit_result.changes.end());
@@ -1098,7 +1099,7 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::setImeKeyboardScriptClass(ImeScriptClass script_class) {
     const ActionSnapshot before = captureActionSnapshot();
     m_composition_controller_.setKeyboardScriptClass(script_class);
-    return finishAction(before, EditorActionReason::IME, true);
+    return finishAction(before, EditorActionSource::IME, true);
   }
 
   ImeScriptClass EditorCore::getImeKeyboardScriptClass() const {
@@ -1156,7 +1157,7 @@ namespace NS_SWEETEDITOR {
     } else if (result.sync.has_visible_composition_range) {
       composition_range = result.sync.visible_composition_range;
       has_range = true;
-    } else if (result.edit_result.changed && !result.edit_result.changes.empty()) {
+    } else if (result.edit_result.contentChanged()) {
       const TextChange& change = result.edit_result.changes.front();
       composition_range = {
         change.range.start,
@@ -1193,7 +1194,7 @@ namespace NS_SWEETEDITOR {
 
     size_t edit_start = m_document_->getCharIndexFromPosition(result.sync.cursor);
     size_t edit_end = edit_start;
-    if (result.edit_result.changed && !result.edit_result.changes.empty()) {
+    if (result.edit_result.contentChanged()) {
       const TextRange& changed_range = result.edit_result.changes.front().range;
       edit_start = m_document_->getCharIndexFromPosition(changed_range.start);
       edit_end = edit_start + StrUtil::utf16Length(text);

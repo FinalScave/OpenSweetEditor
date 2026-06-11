@@ -16,6 +16,8 @@ TEST_CASE("EditorCore normalizes selection before insert replacement") {
   EditorActionResult result = editor.insertText("X");
 
   REQUIRE(result.content_changed);
+  CHECK(result.source == EditorActionSource::PROGRAMMATIC);
+  CHECK(result.text_change_kind == TextChangeKind::REPLACEMENT);
   CHECK(document->getU8Text() == "hello X");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
   CHECK_FALSE(editor.hasSelection());
@@ -36,6 +38,8 @@ TEST_CASE("EditorCore insertText with empty string deletes selection") {
   EditorActionResult result = editor.insertText("");
 
   REQUIRE(result.content_changed);
+  CHECK(result.source == EditorActionSource::PROGRAMMATIC);
+  CHECK(result.text_change_kind == TextChangeKind::DELETION);
   CHECK(document->getU8Text() == "hello ");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 6}));
   CHECK_FALSE(editor.hasSelection());
@@ -75,12 +79,15 @@ TEST_CASE("EditorCore applyTextEdits groups edits and keeps primary cursor") {
   EditorActionResult result = editor.applyTextEdits(std::move(edits));
 
   REQUIRE(result.content_changed);
+  CHECK(result.source == EditorActionSource::PROGRAMMATIC);
+  CHECK(result.text_change_kind == TextChangeKind::MIXED);
   CHECK(document->getU8Text() == "import demo\nfun run()");
   CHECK(editor.getCursorPosition() == (TextPosition{1, 7}));
   REQUIRE(result.changes.size() == 2);
 
   EditorActionResult undo_result = editor.undo();
   REQUIRE(undo_result.content_changed);
+  CHECK(undo_result.text_change_kind == TextChangeKind::UNDO);
   CHECK(document->getU8Text() == "fun call()");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
 }
@@ -266,6 +273,8 @@ TEST_CASE("EditorCore Enter keeps current line indent by default") {
 
   REQUIRE(key_result.handled);
   REQUIRE(key_result.content_changed);
+  CHECK(key_result.source == EditorActionSource::KEYBOARD);
+  CHECK(key_result.text_change_kind == TextChangeKind::INSERTION);
   CHECK(document->getU8Text() == "  foo\n  ");
   CHECK(editor.getCursorPosition() == (TextPosition{1, 2}));
 }
@@ -303,6 +312,8 @@ TEST_CASE("EditorCore backspace removes one surrogate pair as a single glyph") {
   EditorActionResult result = editor.backspace();
 
   REQUIRE(result.content_changed);
+  CHECK(result.source == EditorActionSource::PROGRAMMATIC);
+  CHECK(result.text_change_kind == TextChangeKind::DELETION);
   CHECK(document->getU8Text() == "AB");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
 }
@@ -404,6 +415,7 @@ TEST_CASE("EditorCore clamps direct cursor and range APIs to grapheme boundaries
 
   EditorActionResult replace_result = editor.replaceText({{0, 2}, {0, 2}}, "X");
   REQUIRE(replace_result.content_changed);
+  CHECK(replace_result.text_change_kind == TextChangeKind::INSERTION);
   CHECK(document->getU8Text() == "X\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
 
@@ -412,6 +424,7 @@ TEST_CASE("EditorCore clamps direct cursor and range APIs to grapheme boundaries
   editor.setViewport({800, 600});
   EditorActionResult delete_result = editor.deleteText({{0, 2}, {0, 4}});
   REQUIRE(delete_result.content_changed);
+  CHECK(delete_result.text_change_kind == TextChangeKind::DELETION);
   CHECK(document->getU8Text() == "");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
 }

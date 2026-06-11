@@ -114,7 +114,6 @@ import com.qiplat.sweeteditor.selection.SelectionMenuItemProvider;
 import com.qiplat.sweeteditor.event.ScaleChangedEvent;
 import com.qiplat.sweeteditor.event.ScrollChangedEvent;
 import com.qiplat.sweeteditor.event.SelectionChangedEvent;
-import com.qiplat.sweeteditor.event.TextChangeAction;
 import com.qiplat.sweeteditor.event.TextChangedEvent;
 import com.qiplat.sweeteditor.ui.UiDimensions;
 
@@ -1991,9 +1990,9 @@ public class SweetEditor extends View {
 
     // ==================== Event Dispatch (Internal) ====================
 
-    private void dispatchTextChanged(@NonNull TextChangeAction action, @NonNull EditorActionResult editResult) {
+    private void dispatchTextChanged(@NonNull EditorActionResult editResult) {
         if (editResult.contentChanged && !editResult.changes.isEmpty()) {
-            mEventBus.publish(new TextChangedEvent(action, editResult.changes));
+            mEventBus.publish(new TextChangedEvent(editResult.changes, editResult.textChangeKind, editResult.source));
             if (mDecorationProviderManager != null) {
                 mDecorationProviderManager.onTextChanged(editResult.changes);
             }
@@ -2168,7 +2167,7 @@ public class SweetEditor extends View {
 
     private void dispatchStateEvents(@NonNull EditorActionResult result) {
         if (result.contentChanged) {
-            dispatchTextChanged(textChangeActionFromResult(result), result);
+            dispatchTextChanged(result);
         }
         if (result.cursorChanged) {
             mEventBus.publish(new CursorChangedEvent(result.cursorAfter));
@@ -2224,23 +2223,6 @@ public class SweetEditor extends View {
         }
         if (result.gestureType == GestureType.TAP) {
             notifyImeViewClicked();
-        }
-    }
-
-    private static TextChangeAction textChangeActionFromResult(@NonNull EditorActionResult result) {
-        switch (result.reason) {
-            case KEY_INPUT:
-                return TextChangeAction.KEY;
-            case IME:
-                return TextChangeAction.COMPOSITION;
-            case TEXT_DELETE:
-                return TextChangeAction.DELETE;
-            case TEXT_UNDO:
-                return TextChangeAction.UNDO;
-            case TEXT_REDO:
-                return TextChangeAction.REDO;
-            default:
-                return TextChangeAction.INSERT;
         }
     }
 

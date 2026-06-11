@@ -22,6 +22,28 @@ namespace NS_SWEETEDITOR {
     return key_code == KeyCode::NONE && !text.empty();
   }
 
+  bool TextEditResult::contentChanged() const {
+    return !changes.empty();
+  }
+
+  void TextEditResult::markHandled(TextChangeKind kind) {
+    handled = true;
+    mergeChangeKind(kind);
+  }
+
+  void TextEditResult::mergeChangeKind(TextChangeKind kind) {
+    if (kind == TextChangeKind::NONE || change_kind == TextChangeKind::MIXED) {
+      return;
+    }
+    if (change_kind == TextChangeKind::NONE) {
+      change_kind = kind;
+      return;
+    }
+    if (change_kind != kind) {
+      change_kind = TextChangeKind::MIXED;
+    }
+  }
+
   void CaretState::setSelection(const TextRange& range) {
     selection = range;
     has_selection = !(range.start == range.end);

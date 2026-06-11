@@ -1,8 +1,9 @@
 package com.qiplat.sweeteditor.core;
 
-import com.qiplat.sweeteditor.core.action.EditorActionReason;
 import com.qiplat.sweeteditor.core.action.EditorActionResult;
+import com.qiplat.sweeteditor.core.action.EditorActionSource;
 import com.qiplat.sweeteditor.core.action.ScrollBehavior;
+import com.qiplat.sweeteditor.core.action.TextChangeKind;
 import com.qiplat.sweeteditor.core.adornment.BracketGuide;
 import com.qiplat.sweeteditor.core.adornment.CodeLensItem;
 import com.qiplat.sweeteditor.core.adornment.Diagnostic;
@@ -746,7 +747,8 @@ public final class CoreProtocol {
         EditorActionResult value = new EditorActionResult();
         value.handled = reader.readInt32() != 0;
         value.needsRedraw = reader.readInt32() != 0;
-        value.reason = EditorActionReason.fromValue(reader.readInt32());
+        value.source = EditorActionSource.fromValue(reader.readInt32());
+        value.textChangeKind = TextChangeKind.fromValue(reader.readInt32());
         value.contentChanged = reader.readInt32() != 0;
         value.cursorChanged = reader.readInt32() != 0;
         value.selectionChanged = reader.readInt32() != 0;

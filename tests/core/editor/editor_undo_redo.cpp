@@ -20,12 +20,16 @@ TEST_CASE("Sequential single-char insertions are merged into one undo step") {
 
   EditorActionResult undo_result = editor.undo();
   REQUIRE(undo_result.content_changed);
+  CHECK(undo_result.source == EditorActionSource::PROGRAMMATIC);
+  CHECK(undo_result.text_change_kind == TextChangeKind::UNDO);
   CHECK(document->getU8Text().empty());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
   CHECK(editor.canRedo());
 
   EditorActionResult redo_result = editor.redo();
   REQUIRE(redo_result.content_changed);
+  CHECK(redo_result.source == EditorActionSource::PROGRAMMATIC);
+  CHECK(redo_result.text_change_kind == TextChangeKind::REDO);
   CHECK(document->getU8Text() == "abc");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
 }
@@ -41,6 +45,8 @@ TEST_CASE("Move line down is undoable as one grouped operation") {
 
   EditorActionResult move_result = editor.moveLineDown();
   REQUIRE(move_result.content_changed);
+  CHECK(move_result.source == EditorActionSource::PROGRAMMATIC);
+  CHECK(move_result.text_change_kind == TextChangeKind::MOVE);
   CHECK(document->getU8Text() == "b\na\nc");
   CHECK(editor.getCursorPosition() == (TextPosition{1, 0}));
 

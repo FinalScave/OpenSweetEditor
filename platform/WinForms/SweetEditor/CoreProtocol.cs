@@ -616,7 +616,8 @@ namespace SweetEditor {
             return new EditorActionResult {
                 Handled = reader.ReadBoolI32(),
                 NeedsRedraw = reader.ReadBoolI32(),
-                Reason = (EditorActionReason)reader.ReadInt32(),
+                Source = (EditorActionSource)reader.ReadInt32(),
+                TextChangeKind = (TextChangeKind)reader.ReadInt32(),
                 ContentChanged = reader.ReadBoolI32(),
                 CursorChanged = reader.ReadBoolI32(),
                 SelectionChanged = reader.ReadBoolI32(),

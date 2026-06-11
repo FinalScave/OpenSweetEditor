@@ -80,6 +80,8 @@ TEST_CASE("EditorCore search supports regex captures in replace all") {
   EditorActionResult replace = editor.replaceAllSearchMatches("bar$1");
   CHECK(replace.handled);
   CHECK(replace.content_changed);
+  CHECK(replace.source == EditorActionSource::SEARCH);
+  CHECK(replace.text_change_kind == TextChangeKind::REPLACEMENT);
   CHECK(document->getU8Text() == "bar1 bar2");
 
   editor.undo();

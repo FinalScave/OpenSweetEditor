@@ -1462,12 +1462,12 @@ namespace SweetEditor {
 		}
 
 		private void DispatchStateEvents(EditorActionResult result) {
-			bool keyInput = (EditorActionReason)result.Reason == EditorActionReason.KEY_INPUT;
+			bool keyInput = result.Source == EditorActionSource.KEYBOARD;
 			if (keyInput && (result.ContentChanged || result.CursorChanged)) {
 				DismissInlineSuggestionInternal(emitDismissedCallback: true);
 			}
 			if (result.ContentChanged) {
-				FireTextChanged(TextChangeActionFromResult(result), result);
+				FireTextChanged(result);
 			}
 
 			TextPosition cursor = result.NeedsImeSync ? result.ImeSync.Cursor : result.CursorAfter;
@@ -1501,17 +1501,6 @@ namespace SweetEditor {
 			}
 		}
 
-		private static TextChangeAction TextChangeActionFromResult(EditorActionResult result) {
-			return (EditorActionReason)result.Reason switch {
-				EditorActionReason.KEY_INPUT => TextChangeAction.Key,
-				EditorActionReason.IME => TextChangeAction.Composition,
-				EditorActionReason.TEXT_DELETE => TextChangeAction.Delete,
-				EditorActionReason.TEXT_UNDO => TextChangeAction.Undo,
-				EditorActionReason.TEXT_REDO => TextChangeAction.Redo,
-				_ => TextChangeAction.Insert,
-			};
-		}
-
 		private static bool ShouldScheduleTextInputStateAfterResult(EditorActionResult result) {
 			if (result.NeedsImeSync) {
 				return true;
@@ -1519,7 +1508,7 @@ namespace SweetEditor {
 			if (result.GestureType is GestureType.SCROLL or GestureType.FAST_SCROLL or GestureType.SCALE) {
 				return false;
 			}
-			return (EditorActionReason)result.Reason is not(EditorActionReason.DECORATION or EditorActionReason.FOLDING or EditorActionReason.SETUP);
+			return result.Source is not(EditorActionSource.DECORATION or EditorActionSource.FOLDING or EditorActionSource.SETUP);
 		}
 
 		private bool ShouldThrottleTouchMoveFlush(EditorActionResult result) {
@@ -2149,7 +2138,7 @@ namespace SweetEditor {
 
 			return new EditorActionResult {
 				Handled = true,
-				Reason = EditorActionReason.PROGRAMMATIC,
+				Source = EditorActionSource.PROGRAMMATIC,
 				CursorChanged = cursorChanged,
 				SelectionChanged = selectionChanged,
 				NeedsRedraw = cursorChanged || selectionChanged,
@@ -2341,16 +2330,13 @@ namespace SweetEditor {
 
 		private static bool IsDoubleTapWordChar(char ch) => char.IsLetterOrDigit(ch) || ch == '_';
 
-		private void FireTextChanged(TextChangeAction action, EditorActionResult? editResult = null) {
+		private void FireTextChanged(EditorActionResult? editResult = null) {
 			DismissInlineSuggestionInternal(emitDismissedCallback: true);
 			ClearAuthorizedDestructiveSelection();
 			selectionMenuController.OnTextChanged();
 			if (editResult?.Changes != null && editResult.Changes.Count > 0) {
-				TextChanged?.Invoke(this, new TextChangedEventArgs(action, editResult.Changes));
+				TextChanged?.Invoke(this, new TextChangedEventArgs(editResult.TextChangeKind, editResult.Source, editResult.Changes));
 				decorationProviderManager.OnTextChanged(editResult.Changes);
-			} else {
-				TextChanged?.Invoke(this, new TextChangedEventArgs(action));
-				decorationProviderManager.OnTextChanged(null);
 			}
 
 			HandleCompletionAfterEdit(editResult);

@@ -1,4 +1,5 @@
 import { InlayType } from '../core/CoreAdornments';
+import { EditorActionSource, TextChangeKind } from '../core/CoreAction';
 import { PointF, TextChange, TextPosition, TextRange } from '../core/CoreFoundation';
 import { SelectionMenuItem } from '../selection/SelectionMenuTypes';
 
@@ -13,22 +14,15 @@ export interface EditorEvent {}
  */
 export type EditorEventListener<T extends EditorEvent> = (event: T) => void;
 
-export enum TextChangeAction {
-  INSERT = 'insert',
-  DELETE = 'delete',
-  KEY = 'key',
-  COMPOSITION = 'composition',
-  UNDO = 'undo',
-  REDO = 'redo'
-}
-
 export class TextChangedEvent implements EditorEvent {
   readonly changes: TextChange[];
-  readonly action: TextChangeAction | null;
+  readonly kind: TextChangeKind;
+  readonly source: EditorActionSource;
 
-  constructor(changes: TextChange[], action: TextChangeAction | null = null) {
+  constructor(changes: TextChange[], kind: TextChangeKind, source: EditorActionSource) {
     this.changes = [...changes];
-    this.action = action;
+    this.kind = kind;
+    this.source = source;
   }
 }
 

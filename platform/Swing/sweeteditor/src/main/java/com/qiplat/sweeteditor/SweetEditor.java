@@ -6,6 +6,7 @@ import com.qiplat.sweeteditor.copilot.InlineSuggestion;
 import com.qiplat.sweeteditor.copilot.InlineSuggestionController;
 import com.qiplat.sweeteditor.copilot.InlineSuggestionListener;
 import com.qiplat.sweeteditor.core.Document;
+import com.qiplat.sweeteditor.core.action.EditorActionSource;
 import com.qiplat.sweeteditor.core.action.EditorActionResult;
 import com.qiplat.sweeteditor.core.action.ScrollBehavior;
 import com.qiplat.sweeteditor.core.EditorCore;
@@ -1411,7 +1412,7 @@ public class SweetEditor extends JPanel {
 
     private void dispatchStateEvents(EditorActionResult result) {
         if (result.contentChanged) {
-            dispatchTextChanged(textChangeActionFromResult(result), result);
+            dispatchTextChanged(result);
         }
         if (result.cursorChanged) {
             eventBus.publish(new CursorChangedEvent(result.cursorAfter));
@@ -1476,11 +1477,11 @@ public class SweetEditor extends JPanel {
         resetCursorBlink();
     }
 
-    private void dispatchTextChanged(TextChangeAction action, EditorActionResult result) {
+    private void dispatchTextChanged(EditorActionResult result) {
         if (result != null && result.changes != null && !result.changes.isEmpty()) {
-            eventBus.publish(new TextChangedEvent(result.changes, action));
+            eventBus.publish(new TextChangedEvent(result.changes, result.textChangeKind, result.source));
             decorationProviderManager.onTextChanged(result.changes);
-            if (action == TextChangeAction.KEY && !editorCore.isInLinkedEditing()) {
+            if (result.source == EditorActionSource.KEYBOARD && !editorCore.isInLinkedEditing()) {
                 TextChange primaryChange = result.changes.get(0);
                 if (completionProviderManager != null && primaryChange.newText.length() == 1) {
                     String text = primaryChange.newText;
@@ -1495,9 +1496,6 @@ public class SweetEditor extends JPanel {
                     completionProviderManager.triggerCompletion(CompletionContext.TriggerKind.RETRIGGER, null);
                 }
             }
-        } else {
-            eventBus.publish(new TextChangedEvent(List.of(), action));
-            decorationProviderManager.onTextChanged(null);
         }
     }
 
@@ -1516,17 +1514,6 @@ public class SweetEditor extends JPanel {
         if (result.needsRedraw) {
             flush();
         }
-    }
-
-    private static TextChangeAction textChangeActionFromResult(EditorActionResult result) {
-        return switch (result.reason) {
-            case KEY_INPUT -> TextChangeAction.KEY;
-            case IME -> TextChangeAction.COMPOSITION;
-            case TEXT_DELETE -> TextChangeAction.DELETE;
-            case TEXT_UNDO -> TextChangeAction.UNDO;
-            case TEXT_REDO -> TextChangeAction.REDO;
-            default -> TextChangeAction.INSERT;
-        };
     }
 
     private boolean dispatchKeyMapCommand(int command, int keyCode, int modifiers) {

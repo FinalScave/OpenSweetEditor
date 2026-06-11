@@ -14,7 +14,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *
  * <pre>
  * bus.subscribe(TextChangedEvent.class, e -> { ... });
- * bus.publish(new TextChangedEvent(TextChangeAction.INSERT, changes));
+ * bus.publish(new TextChangedEvent(changes, TextChangeKind.INSERTION, EditorActionSource.KEYBOARD));
  * </pre>
  */
 public final class EditorEventBus {

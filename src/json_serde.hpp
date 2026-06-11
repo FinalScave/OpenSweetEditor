@@ -61,7 +61,17 @@ namespace NS_SWEETEDITOR {
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(GestureResult, type, tap_point, modifiers, scale, scroll_x, scroll_y, cursor_position, has_selection, selection, view_scroll_x, view_scroll_y, view_scale, hit_target, needs_edge_scroll, needs_fling, needs_animation, is_handle_drag, pointer_cursor_type)
 
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TextChange, range, old_text, new_text)
-  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TextEditResult, changed, changes, cursor_before, cursor_after)
+  NLOHMANN_JSON_SERIALIZE_ENUM(TextChangeKind, {
+    {TextChangeKind::NONE, "NONE"},
+    {TextChangeKind::INSERTION, "INSERTION"},
+    {TextChangeKind::REPLACEMENT, "REPLACEMENT"},
+    {TextChangeKind::DELETION, "DELETION"},
+    {TextChangeKind::MOVE, "MOVE"},
+    {TextChangeKind::UNDO, "UNDO"},
+    {TextChangeKind::REDO, "REDO"},
+    {TextChangeKind::MIXED, "MIXED"},
+  })
+  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TextEditResult, handled, change_kind, changes, cursor_before, cursor_after)
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(KeyEventResult, handled, content_changed, cursor_changed, selection_changed, edit_result, command)
 
   NLOHMANN_JSON_SERIALIZE_ENUM(VisualRunType, {

@@ -4,7 +4,7 @@ import {
   GestureEvent
 } from './core/EditorCore';
 import {
-  EditorActionReason,
+  EditorActionSource,
   EditorActionResult,
   ScrollBehavior
 } from './core/CoreAction';
@@ -99,7 +99,6 @@ import {
   ScrollChangedEvent,
   SelectionMenuItemClickEvent,
   SelectionChangedEvent,
-  TextChangeAction,
   TextChangedEvent
 } from './event/EditorEvent';
 import { CompletionProviderManager } from './completion/CompletionProviderManager';
@@ -1572,7 +1571,7 @@ export struct SweetEditor {
 
   private dispatchStateEvents(result: EditorActionResult): void {
     if (result.contentChanged) {
-      this.dispatchTextChanged(this.textChangeActionFromResult(result), result);
+      this.dispatchTextChanged(result);
     }
     const useImeSync = result.needsImeSync;
     if (result.cursorChanged) {
@@ -1592,23 +1591,6 @@ export struct SweetEditor {
     if (result.scaleChanged) {
       this.syncPlatformScale(result.scaleAfter);
       this.eventBus.emit('scaleChanged', new ScaleChangedEvent(result.scaleAfter));
-    }
-  }
-
-  private textChangeActionFromResult(result: EditorActionResult): TextChangeAction {
-    switch (result.reason) {
-      case EditorActionReason.KEY_INPUT:
-        return TextChangeAction.KEY;
-      case EditorActionReason.IME:
-        return TextChangeAction.COMPOSITION;
-      case EditorActionReason.TEXT_DELETE:
-        return TextChangeAction.DELETE;
-      case EditorActionReason.TEXT_UNDO:
-        return TextChangeAction.UNDO;
-      case EditorActionReason.TEXT_REDO:
-        return TextChangeAction.REDO;
-      default:
-        return TextChangeAction.INSERT;
     }
   }
 
@@ -2232,13 +2214,13 @@ export struct SweetEditor {
     }
   }
 
-  private dispatchTextChanged(action: TextChangeAction, result: EditorActionResult): void {
+  private dispatchTextChanged(result: EditorActionResult): void {
     const textChanges: TextChange[] = [];
     if (result.changes && result.changes.length > 0) {
       for (const change of result.changes) {
         textChanges.push({ range: change.range, newText: change.newText });
       }
-      this.eventBus.emit('textChanged', new TextChangedEvent(textChanges, action));
+      this.eventBus.emit('textChanged', new TextChangedEvent(textChanges, result.textChangeKind, result.source));
     }
 
     // Notify subsystems
@@ -2382,7 +2364,7 @@ export struct SweetEditor {
       this.startAnimation();
       return;
     }
-    if (result.reason !== EditorActionReason.GESTURE && result.reason !== EditorActionReason.ANIMATION) {
+    if (result.source !== EditorActionSource.GESTURE && result.source !== EditorActionSource.ANIMATION) {
       return;
     }
     if (this.animationActive) {

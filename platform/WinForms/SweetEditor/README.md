@@ -101,7 +101,7 @@ editor.ApplyTheme(theme);
 ## Events
 
 ```csharp
-editor.TextChanged      += (s, e) => { /* e.Action, e.Changes */ };
+editor.TextChanged      += (s, e) => { /* e.Kind, e.Source, e.Changes */ };
 editor.CursorChanged    += (s, e) => { /* e.CursorPosition */ };
 editor.SelectionChanged += (s, e) => { /* selection info */ };
 editor.ScrollChanged    += (s, e) => { /* scroll info */ };

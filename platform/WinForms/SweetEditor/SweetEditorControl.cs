@@ -2000,7 +2000,7 @@ namespace SweetEditor {
 
 		private void DispatchStateEvents(EditorActionResult result) {
 			if (result.ContentChanged) {
-				FireTextChanged(TextChangeActionFromResult(result), result);
+				FireTextChanged(result);
 			}
 			TextPosition cursor = result.NeedsImeSync ? result.ImeSync.Cursor : result.CursorAfter;
 			TextRange? selection = result.NeedsImeSync
@@ -2098,26 +2098,12 @@ namespace SweetEditor {
 			DispatchEditorActionResult(editorCore.OnFontMetricsChanged());
 		}
 
-		private static TextChangeAction TextChangeActionFromResult(EditorActionResult result) {
-			return (EditorActionReason)result.Reason switch {
-				EditorActionReason.KEY_INPUT => TextChangeAction.Key,
-				EditorActionReason.IME => TextChangeAction.Composition,
-				EditorActionReason.TEXT_DELETE => TextChangeAction.Delete,
-				EditorActionReason.TEXT_UNDO => TextChangeAction.Undo,
-				EditorActionReason.TEXT_REDO => TextChangeAction.Redo,
-				_ => TextChangeAction.Insert,
-			};
-		}
-
 		/// <summary>Fire text changed.</summary>
-		private void FireTextChanged(TextChangeAction action, EditorActionResult? editResult = null) {
+		private void FireTextChanged(EditorActionResult? editResult = null) {
 			if (IsReleased) return;
 			if (editResult?.Changes != null && editResult.Changes.Count > 0) {
-				TextChanged?.Invoke(this, new TextChangedEventArgs(action, editResult.Changes));
+				TextChanged?.Invoke(this, new TextChangedEventArgs(editResult.TextChangeKind, editResult.Source, editResult.Changes));
 				decorationProviderManager?.OnTextChanged(editResult.Changes);
-			} else {
-				TextChanged?.Invoke(this, new TextChangedEventArgs(action));
-				decorationProviderManager?.OnTextChanged(null);
 			}
 		}
 

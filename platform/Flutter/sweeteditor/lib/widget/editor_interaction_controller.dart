@@ -798,13 +798,14 @@ class EditorInteractionController {
     _dispatchEditorActionResult(result);
   }
 
-  void _dispatchTextChanged(
-    TextChangeAction action,
-    core.EditorActionResult result,
-  ) {
+  void _dispatchTextChanged(core.EditorActionResult result) {
     if (!result.contentChanged || result.changes.isEmpty) return;
     _session.eventBus.publish(
-      TextChangedEvent(changes: result.changes, action: action),
+      TextChangedEvent(
+        changes: result.changes,
+        kind: result.textChangeKind,
+        source: result.source,
+      ),
     );
     _session.decorationProviderManager.onTextChanged(result.changes);
     _session.selectionMenuController.onTextChanged();
@@ -858,7 +859,7 @@ class EditorInteractionController {
     if (result.contentChanged) {
       final changes = result.changes;
       if (changes.isNotEmpty) {
-        _dispatchTextChanged(_textChangeActionFromResult(result), result);
+        _dispatchTextChanged(result);
       } else if (_session.completionPopupController.isShowing) {
         _session.completionProviderManager.triggerCompletion(
           CompletionTriggerKind.retrigger,
@@ -898,25 +899,8 @@ class EditorInteractionController {
       _session.syncPlatformScale(result.scaleAfter);
       _session.eventBus.publish(ScaleChangedEvent(scale: result.scaleAfter));
     }
-    if (result.reason == core.EditorActionReason.ime) {
+    if (result.source == core.EditorActionSource.ime) {
       _session.selectionMenuController.hide();
-    }
-  }
-
-  TextChangeAction _textChangeActionFromResult(core.EditorActionResult result) {
-    switch (result.reason) {
-      case core.EditorActionReason.keyInput:
-        return TextChangeAction.key;
-      case core.EditorActionReason.ime:
-        return TextChangeAction.composition;
-      case core.EditorActionReason.textDelete:
-        return TextChangeAction.delete_;
-      case core.EditorActionReason.textUndo:
-        return TextChangeAction.undo;
-      case core.EditorActionReason.textRedo:
-        return TextChangeAction.redo;
-      default:
-        return TextChangeAction.insert;
     }
   }
 
@@ -947,8 +931,8 @@ class EditorInteractionController {
       }
       return;
     }
-    if (result.reason != core.EditorActionReason.gesture &&
-        result.reason != core.EditorActionReason.animation) {
+    if (result.source != core.EditorActionSource.gesture &&
+        result.source != core.EditorActionSource.animation) {
       return;
     }
     if (_animating) {

@@ -1,5 +1,7 @@
 package com.qiplat.sweeteditor.event;
 
+import com.qiplat.sweeteditor.core.action.EditorActionSource;
+import com.qiplat.sweeteditor.core.action.TextChangeKind;
 import com.qiplat.sweeteditor.core.foundation.TextChange;
 
 import java.util.Collections;
@@ -11,11 +13,14 @@ import java.util.List;
 public final class TextChangedEvent extends EditorEvent {
     /** Full incremental text changes for the current edit cycle. */
     public final List<TextChange> changes;
-    /** Optional coarse action hint. */
-    public final TextChangeAction action;
+    /** Semantic kind of document text changes. */
+    public final TextChangeKind kind;
+    /** Origin of the editor action that produced this change. */
+    public final EditorActionSource source;
 
-    public TextChangedEvent(List<TextChange> changes, TextChangeAction action) {
+    public TextChangedEvent(List<TextChange> changes, TextChangeKind kind, EditorActionSource source) {
         this.changes = changes != null ? Collections.unmodifiableList(changes) : Collections.emptyList();
-        this.action = action;
+        this.kind = kind;
+        this.source = source;
     }
 }

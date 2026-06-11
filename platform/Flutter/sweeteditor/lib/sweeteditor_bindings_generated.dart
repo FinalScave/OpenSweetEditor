@@ -432,7 +432,8 @@ external ffi.Pointer<ffi.Uint8> editor_get_layout_metrics(
 /// Wire layout:
 /// bool_i32 handled
 /// bool_i32 needs_redraw
-/// enum_i32 reason
+/// enum_i32 source
+/// enum_i32 text_change_kind
 /// bool_i32 content_changed
 /// bool_i32 cursor_changed
 /// bool_i32 selection_changed

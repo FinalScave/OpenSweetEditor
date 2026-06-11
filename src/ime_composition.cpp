@@ -287,16 +287,16 @@ namespace NS_SWEETEDITOR {
   }
 
   void CompositionController::mergeEditResult(ImeActionResult& result, const TextEditResult& edit_result) {
-    if (!edit_result.changed) return;
-    if (!result.edit_result.changed) {
+    if (!edit_result.contentChanged()) return;
+    if (!result.edit_result.contentChanged()) {
       result.edit_result = edit_result;
     } else {
+      result.edit_result.markHandled(edit_result.change_kind);
       result.edit_result.changes.insert(result.edit_result.changes.end(),
                                         edit_result.changes.begin(),
                                         edit_result.changes.end());
       result.edit_result.cursor_after = edit_result.cursor_after;
     }
-    result.edit_result.changed = true;
     result.content_changed = true;
   }
 
@@ -907,14 +907,14 @@ namespace NS_SWEETEDITOR {
 
     if (hasMidDocumentRangeComposition()) {
       TextEditResult plain_edit = applyDocumentRangePlainEdit(text);
-      if (plain_edit.changed || text.empty() || StrUtil::utf16Length(text) <= 2) {
+      if (plain_edit.contentChanged() || text.empty() || StrUtil::utf16Length(text) <= 2) {
         return plain_edit;
       }
     }
 
     if (hasEndDocumentRangeComposition()) {
       TextEditResult plain_edit = applyDocumentRangeEndPlainEdit(text, false);
-      if (plain_edit.changed || text.empty()) {
+      if (plain_edit.contentChanged() || text.empty()) {
         return plain_edit;
       }
     }
@@ -976,7 +976,9 @@ namespace NS_SWEETEDITOR {
          text.c_str(), m_composition_.composing_columns);
     TextEditResult result;
     if (replaced_text != text) {
-      result.changed = true;
+      result.markHandled(replacement_range.isCollapsed()
+                         ? TextChangeKind::INSERTION
+                         : (text.empty() ? TextChangeKind::DELETION : TextChangeKind::REPLACEMENT));
       result.cursor_before = cursor_before;
       result.cursor_after = coreCursor();
       result.changes.push_back({replacement_range, replaced_text, text});
@@ -1503,7 +1505,7 @@ namespace NS_SWEETEDITOR {
         && !text.empty()
         && (!m_session_.document_range_end_plain_inserted_text.empty() || StrUtil::utf16Length(text) <= 1)) {
       TextEditResult plain_edit = applyDocumentRangeEndPlainEdit(text, true);
-      if (plain_edit.changed) {
+      if (plain_edit.contentChanged()) {
         mergeEditResult(result, plain_edit);
         return;
       }
@@ -1603,7 +1605,7 @@ namespace NS_SWEETEDITOR {
     };
 
     TextEditResult edit_result;
-    edit_result.changed = true;
+    edit_result.markHandled(TextChangeKind::DELETION);
     edit_result.cursor_before = cursor;
     edit_result.cursor_after = new_cursor;
     edit_result.changes.push_back({delete_range, deleted_text, ""});

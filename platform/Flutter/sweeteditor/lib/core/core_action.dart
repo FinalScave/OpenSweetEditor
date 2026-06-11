@@ -2,47 +2,35 @@
 
 part of 'editor_core.dart';
 
-enum EditorActionReason {
+enum EditorActionSource {
   none(0),
   setup(1),
-  textEdit(2),
-  keyInput(3),
+  programmatic(2),
+  keyboard(3),
   ime(4),
   gesture(5),
   animation(6),
-  programmatic(7),
-  decoration(8),
-  folding(9),
-  linkedEditing(10),
-  textInsert(11),
-  textReplace(12),
-  textDelete(13),
-  textUndo(14),
-  textRedo(15),
-  search(16);
+  decoration(7),
+  folding(8),
+  search(9),
+  linkedEditing(10);
 
-  const EditorActionReason(this.value);
+  const EditorActionSource(this.value);
   final int value;
 
-  static EditorActionReason fromValue(int value) {
+  static EditorActionSource fromValue(int value) {
     switch (value) {
       case 0: return none;
       case 1: return setup;
-      case 2: return textEdit;
-      case 3: return keyInput;
+      case 2: return programmatic;
+      case 3: return keyboard;
       case 4: return ime;
       case 5: return gesture;
       case 6: return animation;
-      case 7: return programmatic;
-      case 8: return decoration;
-      case 9: return folding;
+      case 7: return decoration;
+      case 8: return folding;
+      case 9: return search;
       case 10: return linkedEditing;
-      case 11: return textInsert;
-      case 12: return textReplace;
-      case 13: return textDelete;
-      case 14: return textUndo;
-      case 15: return textRedo;
-      case 16: return search;
       default: return none;
     }
   }
@@ -66,11 +54,40 @@ enum ScrollBehavior {
   }
 }
 
+enum TextChangeKind {
+  none(0),
+  insertion(1),
+  replacement(2),
+  deletion(3),
+  move(4),
+  undo(5),
+  redo(6),
+  mixed(7);
+
+  const TextChangeKind(this.value);
+  final int value;
+
+  static TextChangeKind fromValue(int value) {
+    switch (value) {
+      case 0: return none;
+      case 1: return insertion;
+      case 2: return replacement;
+      case 3: return deletion;
+      case 4: return move;
+      case 5: return undo;
+      case 6: return redo;
+      case 7: return mixed;
+      default: return none;
+    }
+  }
+}
+
 class EditorActionResult {
   const EditorActionResult({
     this.handled = false,
     this.needsRedraw = false,
-    this.reason = EditorActionReason.none,
+    this.source = EditorActionSource.none,
+    this.textChangeKind = TextChangeKind.none,
     this.contentChanged = false,
     this.cursorChanged = false,
     this.selectionChanged = false,
@@ -110,7 +127,8 @@ class EditorActionResult {
 
   final bool handled;
   final bool needsRedraw;
-  final EditorActionReason reason;
+  final EditorActionSource source;
+  final TextChangeKind textChangeKind;
   final bool contentChanged;
   final bool cursorChanged;
   final bool selectionChanged;

@@ -15,7 +15,8 @@ import java.util.List;
 public final class EditorActionResult {
     public boolean handled = false;
     public boolean needsRedraw = false;
-    public EditorActionReason reason = EditorActionReason.NONE;
+    public EditorActionSource source = EditorActionSource.NONE;
+    public TextChangeKind textChangeKind = TextChangeKind.NONE;
     public boolean contentChanged = false;
     public boolean cursorChanged = false;
     public boolean selectionChanged = false;
@@ -55,10 +56,11 @@ public final class EditorActionResult {
     public EditorActionResult() {
     }
 
-    public EditorActionResult(boolean handled, boolean needsRedraw, EditorActionReason reason, boolean contentChanged, boolean cursorChanged, boolean selectionChanged, boolean scrollChanged, boolean scaleChanged, boolean pointerCursorChanged, boolean compositionChanged, boolean decorationChanged, boolean needsImeSync, boolean needsEdgeScroll, boolean needsFling, boolean needsAnimation, boolean isHandleDrag, java.util.List<TextChange> changes, TextPosition cursorBefore, TextPosition cursorAfter, boolean hasSelectionBefore, boolean hasSelectionAfter, TextRange selectionBefore, TextRange selectionAfter, float scrollXBefore, float scrollYBefore, float scrollXAfter, float scrollYAfter, float scaleBefore, float scaleAfter, PointerCursorType pointerCursorBefore, PointerCursorType pointerCursorAfter, ImeSyncSnapshot imeSync, GestureType gestureType, EventType gestureEventType, PointF tapPoint, HitTarget hitTarget, int modifiers, int command) {
+    public EditorActionResult(boolean handled, boolean needsRedraw, EditorActionSource source, TextChangeKind textChangeKind, boolean contentChanged, boolean cursorChanged, boolean selectionChanged, boolean scrollChanged, boolean scaleChanged, boolean pointerCursorChanged, boolean compositionChanged, boolean decorationChanged, boolean needsImeSync, boolean needsEdgeScroll, boolean needsFling, boolean needsAnimation, boolean isHandleDrag, java.util.List<TextChange> changes, TextPosition cursorBefore, TextPosition cursorAfter, boolean hasSelectionBefore, boolean hasSelectionAfter, TextRange selectionBefore, TextRange selectionAfter, float scrollXBefore, float scrollYBefore, float scrollXAfter, float scrollYAfter, float scaleBefore, float scaleAfter, PointerCursorType pointerCursorBefore, PointerCursorType pointerCursorAfter, ImeSyncSnapshot imeSync, GestureType gestureType, EventType gestureEventType, PointF tapPoint, HitTarget hitTarget, int modifiers, int command) {
         this.handled = handled;
         this.needsRedraw = needsRedraw;
-        this.reason = reason;
+        this.source = source;
+        this.textChangeKind = textChangeKind;
         this.contentChanged = contentChanged;
         this.cursorChanged = cursorChanged;
         this.selectionChanged = selectionChanged;

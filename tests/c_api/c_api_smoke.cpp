@@ -152,6 +152,8 @@ namespace {
 
   struct ActionPayloadData {
     int32_t handled = 0;
+    int32_t source = 0;
+    int32_t text_change_kind = 0;
     int32_t gesture_type = 0;
     float view_scale = 1.0f;
   };
@@ -177,7 +179,10 @@ namespace {
 
     int32_t ignore_i32 = 0;
     if (!readI32(payload.handled)) return payload;
-    for (int i = 0; i < 15; ++i) {
+    if (!readI32(ignore_i32)) return payload;
+    if (!readI32(payload.source)) return payload;
+    if (!readI32(payload.text_change_kind)) return payload;
+    for (int i = 0; i < 13; ++i) {
       if (!readI32(ignore_i32)) return payload;
     }
     int32_t change_count = 0;
@@ -357,6 +362,8 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   REQUIRE(gesture_payload != nullptr);
   ActionPayloadData gesture = parseActionPayload(gesture_payload, gesture_size);
   free_binary_data(reinterpret_cast<intptr_t>(gesture_payload));
+  CHECK(gesture.source == static_cast<int32_t>(EditorActionSource::GESTURE));
+  CHECK(gesture.text_change_kind == static_cast<int32_t>(TextChangeKind::NONE));
   CHECK(gesture.gesture_type == 4);
   CHECK(gesture.view_scale > 1.0f);
 
@@ -364,6 +371,9 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   const uint8_t* insert_result = editor_insert_text(editor, "X", &insert_size);
   REQUIRE(insert_result != nullptr);
   CHECK(insert_size > 0);
+  ActionPayloadData insert_action = parseActionPayload(insert_result, insert_size);
+  CHECK(insert_action.source == static_cast<int32_t>(EditorActionSource::PROGRAMMATIC));
+  CHECK(insert_action.text_change_kind == static_cast<int32_t>(TextChangeKind::INSERTION));
   free_binary_data(reinterpret_cast<intptr_t>(insert_result));
   CHECK(getLineTextUtf8(document, 0) == "Xabc");
 

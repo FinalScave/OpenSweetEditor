@@ -7,14 +7,16 @@ abstract class EditorEvent {}
 /// Editor event listener callback.
 typedef EditorEventListener<T extends EditorEvent> = void Function(T event);
 
-/// Text change action type.
-enum TextChangeAction { insert, delete_, key, composition, undo, redo }
-
 class TextChangedEvent implements EditorEvent {
   final List<core.TextChange> changes;
-  final TextChangeAction? action;
+  final core.TextChangeKind kind;
+  final core.EditorActionSource source;
 
-  const TextChangedEvent({required this.changes, this.action});
+  const TextChangedEvent({
+    required this.changes,
+    required this.kind,
+    required this.source,
+  });
 }
 
 class CursorChangedEvent implements EditorEvent {

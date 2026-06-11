@@ -43,6 +43,33 @@ namespace NS_SWEETEDITOR {
     bool isTextInput() const;
   };
 
+  /// Origin of a completed editor action.
+  enum struct SE_PROTOCOL_ENUM(action, NONE) EditorActionSource : uint8_t {
+    NONE = 0,
+    SETUP = 1,
+    PROGRAMMATIC = 2,
+    KEYBOARD = 3,
+    IME = 4,
+    GESTURE = 5,
+    ANIMATION = 6,
+    DECORATION = 7,
+    FOLDING = 8,
+    SEARCH = 9,
+    LINKED_EDITING = 10,
+  };
+
+  /// Semantic kind of document text changes produced by an action.
+  enum struct SE_PROTOCOL_ENUM(action, NONE) TextChangeKind : uint8_t {
+    NONE = 0,
+    INSERTION = 1,
+    REPLACEMENT = 2,
+    DELETION = 3,
+    MOVE = 4,
+    UNDO = 5,
+    REDO = 6,
+    MIXED = 7,
+  };
+
   enum struct SE_PROTOCOL_ENUM(action, GOTO_TOP) ScrollBehavior {
     /// Make the target line visible at the top.
     GOTO_TOP,
@@ -309,14 +336,20 @@ namespace NS_SWEETEDITOR {
 
   /// Full result of a text edit operation (may include many changes)
   struct TextEditResult {
-    /// Whether there is an actual change
-    bool changed {false};
+    /// Whether the edit request was handled.
+    bool handled {false};
+    /// Semantic kind of document text changes.
+    TextChangeKind change_kind {TextChangeKind::NONE};
     /// List of all changes (normal edit: 1; linked edit/compound undo/redo: maybe many)
     std::vector<TextChange> changes;
     /// Cursor position before operation
     TextPosition cursor_before;
     /// Cursor position after operation
     TextPosition cursor_after;
+
+    bool contentChanged() const;
+    void markHandled(TextChangeKind kind = TextChangeKind::NONE);
+    void mergeChangeKind(TextChangeKind kind);
   };
 
   /// Keyboard event handling result

@@ -1038,7 +1038,8 @@ public:
   inline bool write(const EditorActionResult& value) {
     if (!writeI32(value.handled ? 1 : 0)) return false;
     if (!writeI32(value.needs_redraw ? 1 : 0)) return false;
-    if (!writeI32(static_cast<int32_t>(value.reason))) return false;
+    if (!writeI32(static_cast<int32_t>(value.source))) return false;
+    if (!writeI32(static_cast<int32_t>(value.text_change_kind))) return false;
     if (!writeI32(value.content_changed ? 1 : 0)) return false;
     if (!writeI32(value.cursor_changed ? 1 : 0)) return false;
     if (!writeI32(value.selection_changed ? 1 : 0)) return false;
