@@ -1,7 +1,6 @@
 import {
   Document,
-  EditorCore,
-  GestureEvent
+  EditorCore
 } from './core/EditorCore';
 import {
   EditorActionSource,
@@ -24,6 +23,7 @@ import {
 } from './core/CoreConfig';
 import {
   EventType,
+  GestureEvent,
   GestureType,
   HitTargetType
 } from './core/CoreInteraction';
@@ -2022,7 +2022,7 @@ export struct SweetEditor {
   }
 
   private handleMouseEvent(event: MouseEvent): void {
-    const gestureEvent = this.convertMouseToGestureEvent(event);
+    const gestureEvent: GestureEvent | null = this.convertMouseToGestureEvent(event);
     if (!gestureEvent) {
       return;
     }
@@ -2032,26 +2032,30 @@ export struct SweetEditor {
 
   private handleHoverEvent(isHover: boolean, event: HoverEvent): void {
     if (!isHover) {
-      this.dispatchPointerGestureEvent({
+      const point: PointF = { x: -1, y: -1 };
+      const gestureEvent: GestureEvent = {
         type: EventType.MOUSE_MOVE,
-        points: [{ x: -1, y: -1 }],
+        points: [point],
         modifiers: KeyModifier.NONE,
         wheelDeltaX: 0,
         wheelDeltaY: 0,
         directScale: 0
-      });
+      };
+      this.dispatchPointerGestureEvent(gestureEvent);
       return;
     }
 
     if (typeof event.x === 'number' && typeof event.y === 'number') {
-      this.dispatchPointerGestureEvent({
+      const point: PointF = { x: event.x, y: event.y };
+      const gestureEvent: GestureEvent = {
         type: EventType.MOUSE_MOVE,
-        points: [{ x: event.x, y: event.y }],
+        points: [point],
         modifiers: KeyModifier.NONE,
         wheelDeltaX: 0,
         wheelDeltaY: 0,
         directScale: 0
-      });
+      };
+      this.dispatchPointerGestureEvent(gestureEvent);
     }
   }
 
@@ -2126,14 +2130,16 @@ export struct SweetEditor {
       return null;
     }
 
-    return {
+    const point: PointF = { x: event.x, y: event.y };
+    const gestureEvent: GestureEvent = {
       type: eventType,
-      points: [{ x: event.x, y: event.y }],
+      points: [point],
       modifiers: KeyModifier.NONE,
       wheelDeltaX: 0,
       wheelDeltaY: 0,
       directScale: 0
     };
+    return gestureEvent;
   }
 
   private fireGestureEvents(result: EditorActionResult, locationInEditor: PointF): void {
