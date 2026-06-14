@@ -49,9 +49,9 @@ namespace NS_SWEETEDITOR {
   }
 
   static bool imeSyncSnapshotRequestsPlatformUpdate(const ImeSyncSnapshot& snapshot) {
-    return snapshot.clear_platform_preedit
+    return snapshot.clear_system_mark
            || snapshot.has_visible_composition_range
-           || snapshot.has_platform_marked_range
+           || snapshot.has_system_mark_range
            || snapshot.preedit_storage != ImePreeditStorage::NONE
            || snapshot.context_policy != ImeContextPolicy::NONE;
   }
@@ -166,6 +166,7 @@ namespace NS_SWEETEDITOR {
     m_composition_controller_.removeComposingText();
     m_composition_controller_.resetCompositionState();
     m_composition_controller_.clearCandidateCommitWindow();
+    invalidateImeInputContext();
     m_undo_manager_->clear();
     m_interaction_->resetForDocumentLoad();
     clearMatchedBrackets();
@@ -193,7 +194,10 @@ namespace NS_SWEETEDITOR {
     m_visible_line_range_ = {};
     normalizeScrollState();
     LOGD("EditorCore::loadDocument()");
-    return finishAction(before, EditorActionSource::SETUP, true, {}, true);
+    EditorActionResult result = finishAction(before, EditorActionSource::SETUP, true, {}, true);
+    result.needs_ime_sync = true;
+    result.ime_sync = getImeSyncSnapshot();
+    return result;
   }
 
   EditorActionResult EditorCore::setViewport(const Size& viewport) {

@@ -615,14 +615,13 @@ namespace SweetEditor {
 				   CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr MoveCursorToLineEnd(IntPtr handle, int extendSelection, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "editor_ime_update_preedit", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr ImeUpdatePreedit(IntPtr handle, [MarshalAs(UnmanagedType.LPUTF8Str)] string text,
-													   int scriptHint, out UIntPtr outSize);
+		[DllImport(LibraryName, EntryPoint = "editor_ime_handle_command_message", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeHandleCommandMessage(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "editor_ime_cancel_preedit", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern IntPtr ImeCancelPreedit(IntPtr handle, out UIntPtr outSize);
+		[DllImport(LibraryName, EntryPoint = "editor_ime_handle_text_update_message", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern IntPtr ImeHandleTextUpdateMessage(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "editor_is_composing", CallingConvention = CallingConvention.Cdecl)]
+		[DllImport(LibraryName, EntryPoint = "editor_ime_is_composing", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern int IsComposing(IntPtr handle);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_read_only", CallingConvention = CallingConvention.Cdecl)]
@@ -1578,17 +1577,17 @@ namespace SweetEditor {
 
 #region IME composition
 
-		/// <summary>Updates IME composition text.</summary>
-		/// <param name="text">Current composition text</param>
-		public EditorActionResult UpdateImePreedit(string? text) {
-			IntPtr payloadPtr =
-				NativeMethods.ImeUpdatePreedit(nativeHandle, text ?? string.Empty, 0, out UIntPtr payloadSize);
+		/// <summary>Handles a platform IME command message.</summary>
+		public EditorActionResult HandleImeCommandMessage(ImeCommandMessage message) {
+			byte[] payload = CoreProtocol.EncodeImeCommandMessage(message);
+			IntPtr payloadPtr = NativeMethods.ImeHandleCommandMessage(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
-		/// <summary>Cancels IME composition.</summary>
-		public EditorActionResult CancelImePreedit() {
-			IntPtr payloadPtr = NativeMethods.ImeCancelPreedit(nativeHandle, out UIntPtr payloadSize);
+		/// <summary>Handles a platform text update message.</summary>
+		public EditorActionResult HandleImeTextUpdateMessage(ImeTextUpdateMessage message) {
+			byte[] payload = CoreProtocol.EncodeImeTextUpdateMessage(message);
+			IntPtr payloadPtr = NativeMethods.ImeHandleTextUpdateMessage(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
@@ -1603,7 +1602,9 @@ namespace SweetEditor {
 		public EditorActionResult SetCompositionEnabled(bool enabled) {
 			compositionEnabled = enabled;
 			if (!enabled && IsComposing()) {
-				return CancelImePreedit();
+				return HandleImeCommandMessage(new ImeCommandMessage {
+					Kind = ImeCommandKind.CANCEL_PREEDIT
+				});
 			}
 			return EditorActionResult.Empty;
 		}

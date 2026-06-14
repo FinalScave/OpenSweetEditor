@@ -147,8 +147,8 @@
             "column": 6
           }
         },
-        "has_platform_marked_range": false,
-        "platform_marked_range": {
+        "has_system_mark_range": false,
+        "system_mark_range": {
           "start": {
             "line": 0,
             "column": 0
@@ -158,9 +158,9 @@
             "column": 0
           }
         },
-        "preedit_storage": "VISIBLE_DOCUMENT_COMPOSITION",
+        "preedit_storage": "VISIBLE_DOCUMENT_PREEDIT",
         "context_policy": "LIMITED_FOR_CANDIDATES",
-        "clear_platform_preedit": true
+        "clear_system_mark": true
       },
       "hex": "0a 00 00 00 05 00 00 00 0a 00 00 00 03 00 00 00 0a 00 00 00 05 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00 0a 00 00 00 02 00 00 00 0a 00 00 00 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00"
     },
@@ -196,9 +196,14 @@
           "start": 2,
           "end": 5
         },
+        "has_system_mark_range": false,
+        "system_mark_range": {
+          "start": -1,
+          "end": -1
+        },
         "kind": "DOCUMENT_WINDOW"
       },
-      "hex": "cb 04 fb 71 1f 01 00 00 07 00 00 00 40 00 00 00 0a 00 00 00 61 62 63 20 e4 b8 96 e7 95 8c 01 00 00 00 06 00 00 00 01 00 00 00 02 00 00 00 05 00 00 00 02 00 00 00"
+      "hex": "cb 04 fb 71 1f 01 00 00 07 00 00 00 40 00 00 00 0a 00 00 00 61 62 63 20 e4 b8 96 e7 95 8c 01 00 00 00 06 00 00 00 01 00 00 00 02 00 00 00 05 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff 02 00 00 00"
     },
     {
       "name": "editor_action_result_nested",
@@ -302,8 +307,8 @@
               "column": 5
             }
           },
-          "has_platform_marked_range": false,
-          "platform_marked_range": {
+          "has_system_mark_range": false,
+          "system_mark_range": {
             "start": {
               "line": 0,
               "column": 0
@@ -313,9 +318,9 @@
               "column": 0
             }
           },
-          "preedit_storage": "VISIBLE_DOCUMENT_COMPOSITION",
+          "preedit_storage": "VISIBLE_DOCUMENT_PREEDIT",
           "context_policy": "LIMITED_FOR_CANDIDATES",
-          "clear_platform_preedit": true
+          "clear_system_mark": true
         },
         "gesture_type": "TAP",
         "gesture_event_type": "TOUCH_UP",

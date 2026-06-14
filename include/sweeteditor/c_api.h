@@ -337,7 +337,7 @@ EDITOR_API const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size
 ///   enum_i32 modifiers
 ///   enum_i32 command
 ///   TextChange is TextRange range followed by U8String new_text
-///   ImeSyncSnapshot is TextPosition cursor, TextRange selection, bool_i32 has_selection, bool_i32 has_composing_session, bool_i32 has_visible_composition_range, TextRange visible_composition_range, bool_i32 has_platform_marked_range, TextRange platform_marked_range, enum_i32 preedit_storage, enum_i32 context_policy, bool_i32 clear_platform_preedit
+///   ImeSyncSnapshot is TextPosition cursor, TextRange selection, bool_i32 has_selection, bool_i32 has_composing_session, bool_i32 has_visible_composition_range, TextRange visible_composition_range, bool_i32 has_system_mark_range, TextRange system_mark_range, enum_i32 preedit_storage, enum_i32 context_policy, bool_i32 clear_system_mark
 ///   HitTarget is enum_i32 type, i32 line, i32 column, i32 icon_id, i32 color_value
 /// This is the only result payload for core state-changing APIs. Platforms should use needs_redraw from this payload
 /// to decide whether to flush editor state and schedule repaint.
@@ -985,228 +985,57 @@ EDITOR_API void free_binary_data(intptr_t data_ptr);
 
 /// Get whether composition is currently active
 /// @return 1=composing, 0=not composing
-EDITOR_API int editor_is_composing(intptr_t editor_handle);
+EDITOR_API int editor_ime_is_composing(intptr_t editor_handle);
 
 /// Get current composition range, or -1 values when composition is inactive
-EDITOR_API void editor_get_composing_range(intptr_t editor_handle,
-                                           int32_t* out_start_line,
-                                           int32_t* out_start_column,
-                                           int32_t* out_end_line,
-                                           int32_t* out_end_column);
+EDITOR_API void editor_ime_get_composing_range(intptr_t editor_handle,
+                                               int32_t* out_start_line,
+                                               int32_t* out_start_column,
+                                               int32_t* out_end_line,
+                                               int32_t* out_end_column);
 
 /// Get current active composition session range
-EDITOR_API void editor_get_composing_session_range(intptr_t editor_handle,
-                                                   int32_t* out_start_line,
-                                                   int32_t* out_start_column,
-                                                   int32_t* out_end_line,
-                                                   int32_t* out_end_column);
+EDITOR_API void editor_ime_get_composing_session_range(intptr_t editor_handle,
+                                                       int32_t* out_start_line,
+                                                       int32_t* out_start_column,
+                                                       int32_t* out_end_line,
+                                                       int32_t* out_end_column);
 
-/// Update platform IME preedit text.
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_update_preedit(intptr_t editor_handle,
-                                                    const char* text,
-                                                    int script_hint,
-                                                    size_t* out_size);
+/// Handle a platform IME command message.
+/// @param data Binary payload encoded by CoreProtocol.
+/// @param size Binary payload size in bytes.
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid or payload is invalid.
+EDITOR_API const uint8_t* editor_ime_handle_command_message(intptr_t editor_handle,
+                                                            const uint8_t* data,
+                                                            size_t size,
+                                                            size_t* out_size);
 
-EDITOR_API const uint8_t* editor_ime_set_composing_text(intptr_t editor_handle,
-                                                        const char* text,
-                                                        int cursor_offset,
-                                                        int script_hint,
-                                                        size_t* out_size);
-
-EDITOR_API const uint8_t* editor_ime_set_composing_text_selection(intptr_t editor_handle,
-                                                                  const char* text,
-                                                                  size_t selection_start_offset,
-                                                                  size_t selection_end_offset,
-                                                                  int script_hint,
-                                                                  size_t* out_size);
-
-/// Commit platform IME text.
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_commit_text(intptr_t editor_handle,
-                                                 const char* text,
-                                                 int script_hint,
-                                                 size_t* out_size);
-
-EDITOR_API const uint8_t* editor_ime_commit_text_with_cursor(intptr_t editor_handle,
-                                                             const char* text,
-                                                             int cursor_offset,
-                                                             int script_hint,
-                                                             size_t* out_size);
-
-/// Finish the current platform IME preedit.
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_finish_preedit(intptr_t editor_handle, size_t* out_size);
-
-/// Cancel the current platform IME preedit.
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_cancel_preedit(intptr_t editor_handle, size_t* out_size);
-
-/// Mark a document range that the platform IME explicitly reports as composing.
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_mark_document_range(intptr_t editor_handle,
-                                                          size_t start_line,
-                                                          size_t start_column,
-                                                          size_t end_line,
-                                                          size_t end_column,
-                                                          int script_hint,
-                                                          size_t* out_size);
-
-EDITOR_API const uint8_t* editor_ime_mark_document_range_by_offset(intptr_t editor_handle,
-                                                                   size_t start_offset,
-                                                                   size_t end_offset,
-                                                                   int script_hint,
-                                                                   size_t* out_size);
-
-/// Report platform candidate replacement text.
-/// @param data ImeTextReplacement binary payload encoded by CoreProtocol:
-///   TextRange range, U8String text, enum_i32 ImeScriptClass script_class
-/// @param size Binary payload size in bytes
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_replace_text(intptr_t editor_handle,
-                                                  const uint8_t* data,
-                                                  size_t size,
-                                                  size_t* out_size);
-
-/// Replace text in the document IME context by UTF-16 offsets.
-/// @param data ImeDocumentTextReplacement binary payload encoded by CoreProtocol:
-///   size_as_u32 start_offset, size_as_u32 end_offset, U8String text,
-///   int32_t cursor_offset, enum_i32 ImeScriptClass script_class
-/// @param size Binary payload size in bytes
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_replace_document_text(intptr_t editor_handle,
-                                                           const uint8_t* data,
-                                                           size_t size,
-                                                           size_t* out_size);
-
-/// Replace text in the input-context IME window by UTF-16 offsets.
-/// @param data ImeInputContextTextReplacement binary payload encoded by CoreProtocol:
-///   size_as_u32 start_offset, size_as_u32 end_offset, U8String text,
-///   int32_t cursor_offset, enum_i32 ImeScriptClass script_class
-/// @param size Binary payload size in bytes
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_replace_input_context_text(intptr_t editor_handle,
+/// Handle a platform IME text update message.
+/// @param data Binary payload encoded by CoreProtocol.
+/// @param size Binary payload size in bytes.
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid or payload is invalid.
+EDITOR_API const uint8_t* editor_ime_handle_text_update_message(intptr_t editor_handle,
                                                                 const uint8_t* data,
                                                                 size_t size,
                                                                 size_t* out_size);
-
-EDITOR_API const uint8_t* editor_ime_mark_input_context_range(intptr_t editor_handle,
-                                                              size_t start_offset,
-                                                              size_t end_offset,
-                                                              int script_hint,
-                                                              size_t* out_size);
-
-EDITOR_API const uint8_t* editor_ime_notify_document_selection_changed(intptr_t editor_handle,
-                                                                       size_t start_offset,
-                                                                       size_t end_offset,
-                                                                       size_t* out_size);
-
-EDITOR_API const uint8_t* editor_ime_notify_input_context_selection_changed(intptr_t editor_handle,
-                                                                            size_t start_offset,
-                                                                            size_t end_offset,
-                                                                            size_t* out_size);
-
-/// Update the external text model state snapshot.
-/// @param data ImeTextModelState binary payload encoded by CoreProtocol:
-///   enum_i32 ImeTextModelMode mode, uint64_t context_id, int32_t document_start_offset,
-///   U8String text, ImeOffsetRange selection, ImeOffsetRange composition,
-///   enum_i32 ImeScriptClass script_class
-/// @param size Binary payload size in bytes
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_update_text_model_state(intptr_t editor_handle,
-                                                             const uint8_t* data,
-                                                             size_t size,
-                                                             size_t* out_size);
-
-/// Update the external text model by delta.
-/// @param data ImeTextModelDelta binary payload encoded by CoreProtocol:
-///   enum_i32 ImeTextModelMode mode, uint64_t context_id, int32_t document_start_offset,
-///   U8String old_text, ImeOffsetRange delta, U8String delta_text,
-///   ImeOffsetRange selection, ImeOffsetRange composition, enum_i32 ImeScriptClass script_class
-/// @param size Binary payload size in bytes
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_update_text_model_delta(intptr_t editor_handle,
-                                                             const uint8_t* data,
-                                                             size_t size,
-                                                             size_t* out_size);
-
-EDITOR_API const uint8_t* editor_ime_update_input_state_selection(intptr_t editor_handle,
-                                                                  uint64_t context_id,
-                                                                  int32_t document_start_offset,
-                                                                  int32_t selection_start_offset,
-                                                                  int32_t selection_end_offset,
-                                                                  size_t* out_size);
-
-/// Replace text in the platform input state.
-/// @param data ImeInputStateTextReplacement binary payload encoded by CoreProtocol:
-///   uint64_t context_id, int32_t document_start_offset, size_as_u32 start_offset,
-///   size_as_u32 end_offset, U8String text, int32_t cursor_offset,
-///   enum_i32 ImeScriptClass script_class
-/// @param size Binary payload size in bytes
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_replace_input_state_text(intptr_t editor_handle,
-                                                              const uint8_t* data,
-                                                              size_t size,
-                                                              size_t* out_size);
-
-/// Delete text before the caret through IME.
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_delete_backward(intptr_t editor_handle,
-                                                     size_t before_length,
-                                                     int text_unit,
-                                                     size_t* out_size);
-
-/// Delete text after the caret through IME.
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_delete_forward(intptr_t editor_handle,
-                                                    size_t after_length,
-                                                    int text_unit,
-                                                    size_t* out_size);
-
-/// Delete surrounding text through IME.
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_delete_surrounding(intptr_t editor_handle,
-                                                        size_t before_length,
-                                                        size_t after_length,
-                                                        int text_unit,
-                                                        size_t* out_size);
-
-/// Notify IME-driven selection movement.
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_notify_selection_changed(intptr_t editor_handle,
-                                                              size_t start_line,
-                                                              size_t start_column,
-                                                              size_t end_line,
-                                                              size_t end_column,
-                                                              size_t* out_size);
-
-/// Notify IME-driven cursor movement.
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_notify_cursor_changed(intptr_t editor_handle,
-                                                           size_t cursor_line,
-                                                           size_t cursor_column,
-                                                           size_t* out_size);
-
-/// Set the current IME keyboard script class.
-EDITOR_API const uint8_t* editor_ime_set_keyboard_script_class(intptr_t editor_handle, int script_class, size_t* out_size);
 
 /// Get the current IME keyboard script class.
 EDITOR_API int editor_ime_get_keyboard_script_class(intptr_t editor_handle);
 
 /// Get the current IME synchronization snapshot.
 /// @return ImeSyncSnapshot binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_get_ime_sync_snapshot(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_ime_get_sync_snapshot(intptr_t editor_handle, size_t* out_size);
 
-EDITOR_API const uint8_t* editor_get_ime_input_context(intptr_t editor_handle,
-                                                       size_t before_length,
-                                                       size_t after_length,
-                                                       size_t* out_size);
+EDITOR_API const uint8_t* editor_ime_get_command_input_context(intptr_t editor_handle,
+                                                               size_t before_length,
+                                                               size_t after_length,
+                                                               size_t* out_size);
 
-EDITOR_API const uint8_t* editor_get_ime_text_model_input_context(intptr_t editor_handle,
-                                                                  int mode,
-                                                                  size_t before_length,
-                                                                  size_t after_length,
-                                                                  size_t* out_size);
+EDITOR_API const uint8_t* editor_ime_get_text_update_input_context(intptr_t editor_handle,
+                                                                   int scope,
+                                                                   size_t before_length,
+                                                                   size_t after_length,
+                                                                   size_t* out_size);
 
 #pragma endregion
 

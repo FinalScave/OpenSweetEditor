@@ -48,7 +48,8 @@ final class SweetEditorInputConnectioniOS {
                 let staysWithinMarkedRange = selectionStart >= markedStart && selectionEnd <= markedEnd
 
                 if !staysWithinMarkedRange {
-                    owner.dispatchEditorActionResult(owner.editorCore.cancelImePreedit())
+                    owner.dispatchEditorActionResult(owner.editorCore.handleImeCommandMessage(
+                        ImeCommandMessage(kind: .CANCEL_PREEDIT)))
                     clearLocalCompositionState()
                 }
             }
@@ -89,7 +90,8 @@ final class SweetEditorInputConnectioniOS {
         inputDelegate?.selectionWillChange(owner)
         inputDelegate?.textWillChange(owner)
 
-        let result = owner.editorCore.commitImeText(text)
+        let result = owner.editorCore.handleImeCommandMessage(
+            ImeCommandMessage(kind: .COMMIT_TEXT, text: text))
 
         clearLocalCompositionState()
         selectedRangeValue = owner.currentSelectionNSRange()
@@ -115,7 +117,8 @@ final class SweetEditorInputConnectioniOS {
             let staysWithinMarkedRange = selectionStart >= markedStart && selectionEnd <= markedEnd
 
             if !staysWithinMarkedRange {
-                owner.dispatchEditorActionResult(owner.editorCore.finishImePreedit())
+                owner.dispatchEditorActionResult(owner.editorCore.handleImeCommandMessage(
+                    ImeCommandMessage(kind: .FINISH_PREEDIT)))
                 clearLocalCompositionState()
             }
         }
@@ -137,10 +140,11 @@ final class SweetEditorInputConnectioniOS {
         let absoluteRange = NSRange(location: markedRangeValue!.location + clampedLocation, length: clampedLength)
         markedSelectionRangeValue = absoluteRange
 
-        let result = owner.editorCore.setImeComposingTextSelection(
-            text,
-            selectionStartOffset: clampedLocation,
-            selectionEndOffset: clampedLocation + clampedLength)
+        let result = owner.editorCore.handleImeCommandMessage(
+            ImeCommandMessage(kind: .SET_PREEDIT_TEXT,
+                              selection: ImeOffsetRange(start: Int32(clampedLocation),
+                                                        end: Int32(clampedLocation + clampedLength)),
+                              text: text))
 
         selectedRangeValue = absoluteRange
         owner.dispatchEditorActionResult(result)
@@ -156,9 +160,11 @@ final class SweetEditorInputConnectioniOS {
             let committedText = markedTextValue ?? ""
             let result: EditorActionResult?
             if committedText.isEmpty {
-                result = owner.editorCore.finishImePreedit()
+                result = owner.editorCore.handleImeCommandMessage(
+                    ImeCommandMessage(kind: .FINISH_PREEDIT))
             } else {
-                result = owner.editorCore.commitImeText(committedText)
+                result = owner.editorCore.handleImeCommandMessage(
+                    ImeCommandMessage(kind: .COMMIT_TEXT, text: committedText))
             }
             owner.dispatchEditorActionResult(result)
         }
@@ -169,7 +175,7 @@ final class SweetEditorInputConnectioniOS {
     }
 
     func syncEditorActionResult(_ result: EditorActionResult) {
-        if result.ime_sync.clear_platform_preedit {
+        if result.ime_sync.clear_system_mark {
             clearLocalCompositionState()
         }
         selectedRangeValue = owner.currentSelectionNSRange()

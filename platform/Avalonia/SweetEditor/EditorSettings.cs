@@ -96,10 +96,6 @@ namespace SweetEditor {
 				return;
 			}
 
-			if (!enabled && editor.EditorCoreInternal.IsComposing()) {
-				editor.DispatchEditorActionResult(editor.EditorCoreInternal.CancelImePreedit());
-			}
-
 			compositionEnabled = enabled;
 			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetCompositionEnabled(enabled));
 		}

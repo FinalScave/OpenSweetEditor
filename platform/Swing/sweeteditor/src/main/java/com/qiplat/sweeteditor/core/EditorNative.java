@@ -361,139 +361,34 @@ public final class EditorNative {
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
-    private static final MethodHandle IS_COMPOSING = downcall("editor_is_composing",
+    private static final MethodHandle IS_COMPOSING = downcall("editor_ime_is_composing",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
 
-    private static final MethodHandle GET_COMPOSING_RANGE = downcall("editor_get_composing_range",
+    private static final MethodHandle GET_COMPOSING_RANGE = downcall("editor_ime_get_composing_range",
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
-    private static final MethodHandle GET_COMPOSING_SESSION_RANGE = downcall("editor_get_composing_session_range",
+    private static final MethodHandle GET_COMPOSING_SESSION_RANGE = downcall("editor_ime_get_composing_session_range",
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
-    private static final MethodHandle IME_UPDATE_PREEDIT = downcall("editor_ime_update_preedit",
+    private static final MethodHandle IME_HANDLE_COMMAND_MESSAGE = downcall("editor_ime_handle_command_message",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_SET_COMPOSING_TEXT = downcall("editor_ime_set_composing_text",
-            FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
+                    ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS));
 
-    private static final MethodHandle IME_SET_COMPOSING_TEXT_SELECTION = downcall("editor_ime_set_composing_text_selection",
+    private static final MethodHandle IME_HANDLE_TEXT_UPDATE_MESSAGE = downcall("editor_ime_handle_text_update_message",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG, ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT,
+                    ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_COMMIT_TEXT = downcall("editor_ime_commit_text",
-            FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_FINISH_PREEDIT = downcall("editor_ime_finish_preedit",
-            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_CANCEL_PREEDIT = downcall("editor_ime_cancel_preedit",
-            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_MARK_DOCUMENT_RANGE = downcall("editor_ime_mark_document_range",
-            FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_MARK_DOCUMENT_RANGE_BY_OFFSET = downcall("editor_ime_mark_document_range_by_offset",
-            FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT,
-                    ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_REPLACE_TEXT = downcall("editor_ime_replace_text",
-            FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG,
-                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_REPLACE_DOCUMENT_TEXT = downcall("editor_ime_replace_document_text",
-            FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG,
-                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_REPLACE_INPUT_CONTEXT_TEXT = downcall("editor_ime_replace_input_context_text",
-            FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG,
-                    ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_MARK_INPUT_CONTEXT_RANGE = downcall("editor_ime_mark_input_context_range",
-            FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT,
-                    ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_NOTIFY_DOCUMENT_SELECTION_CHANGED =
-            downcall("editor_ime_notify_document_selection_changed",
-                    FunctionDescriptor.of(ValueLayout.ADDRESS,
-                            ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
-                            ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_NOTIFY_INPUT_CONTEXT_SELECTION_CHANGED =
-            downcall("editor_ime_notify_input_context_selection_changed",
-                    FunctionDescriptor.of(ValueLayout.ADDRESS,
-                            ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
-                            ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_UPDATE_TEXT_MODEL_STATE =
-            downcall("editor_ime_update_text_model_state",
-                    FunctionDescriptor.of(ValueLayout.ADDRESS,
-                            ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
-                            ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_UPDATE_INPUT_STATE_SELECTION =
-            downcall("editor_ime_update_input_state_selection",
-                    FunctionDescriptor.of(ValueLayout.ADDRESS,
-                            ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT,
-                            ValueLayout.JAVA_INT, ValueLayout.JAVA_INT,
-                            ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_REPLACE_INPUT_STATE_TEXT =
-            downcall("editor_ime_replace_input_state_text",
-                    FunctionDescriptor.of(ValueLayout.ADDRESS,
-                            ValueLayout.JAVA_LONG, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG,
-                            ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_DELETE_BACKWARD = downcall("editor_ime_delete_backward",
-            FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_DELETE_FORWARD = downcall("editor_ime_delete_forward",
-            FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_DELETE_SURROUNDING = downcall("editor_ime_delete_surrounding",
-            FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_NOTIFY_SELECTION_CHANGED = downcall("editor_ime_notify_selection_changed",
-            FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG,
-                    ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_NOTIFY_CURSOR_CHANGED = downcall("editor_ime_notify_cursor_changed",
-            FunctionDescriptor.of(ValueLayout.ADDRESS,
-                    ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
-
-    private static final MethodHandle IME_SET_KEYBOARD_SCRIPT_CLASS = downcall("editor_ime_set_keyboard_script_class",
-            FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
 
     private static final MethodHandle IME_GET_KEYBOARD_SCRIPT_CLASS = downcall("editor_ime_get_keyboard_script_class",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
 
-    private static final MethodHandle GET_IME_SYNC_SNAPSHOT = downcall("editor_get_ime_sync_snapshot",
+    private static final MethodHandle GET_IME_SYNC_SNAPSHOT = downcall("editor_ime_get_sync_snapshot",
             FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
-    private static final MethodHandle GET_IME_INPUT_CONTEXT = downcall("editor_get_ime_input_context",
+    private static final MethodHandle GET_IME_INPUT_CONTEXT = downcall("editor_ime_get_command_input_context",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
                     ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS));
 
@@ -1215,157 +1110,14 @@ public final class EditorNative {
         }
     }
 
-    public static NativeBinaryResult updateImePreedit(long handle, String text, int scriptHint, Arena arena) {
-        return invokeBinaryResult(arena, outSize ->
-                (MemorySegment) IME_UPDATE_PREEDIT.invokeExact(handle, nullableString(arena, text), scriptHint, outSize));
-    }
-
-    public static NativeBinaryResult setImeComposingText(long handle,
-                                                         String text,
-                                                         int cursorOffset,
-                                                         int scriptHint,
-                                                         Arena arena) {
-        return invokeBinaryResult(arena, outSize -> (MemorySegment) IME_SET_COMPOSING_TEXT.invokeExact(
-                handle, nullableString(arena, text), cursorOffset, scriptHint, outSize));
-    }
-
-    public static NativeBinaryResult setImeComposingTextSelection(long handle,
-                                                                  String text,
-                                                                  long selectionStartOffset,
-                                                                  long selectionEndOffset,
-                                                                  int scriptHint,
-                                                                  Arena arena) {
-        return invokeBinaryResult(arena, outSize -> (MemorySegment) IME_SET_COMPOSING_TEXT_SELECTION.invokeExact(
-                handle, nullableString(arena, text), selectionStartOffset, selectionEndOffset, scriptHint, outSize));
-    }
-
-    public static NativeBinaryResult commitImeText(long handle, String text, int scriptHint, Arena arena) {
-        return invokeBinaryResult(arena, outSize ->
-                (MemorySegment) IME_COMMIT_TEXT.invokeExact(handle, nullableString(arena, text), scriptHint, outSize));
-    }
-
-    public static NativeBinaryResult finishImePreedit(long handle) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_FINISH_PREEDIT.invokeExact(handle, outSize));
-    }
-
-    public static NativeBinaryResult cancelImePreedit(long handle) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_CANCEL_PREEDIT.invokeExact(handle, outSize));
-    }
-
-    public static NativeBinaryResult markImeDocumentRange(long handle,
-                                                          int startLine, int startColumn,
-                                                          int endLine, int endColumn,
-                                                          int scriptHint) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_MARK_DOCUMENT_RANGE.invokeExact(
-                handle,
-                (long) startLine, (long) startColumn, (long) endLine, (long) endColumn,
-                scriptHint, outSize));
-    }
-
-    public static NativeBinaryResult markImeDocumentRangeByOffset(long handle,
-                                                                  long startOffset,
-                                                                  long endOffset,
-                                                                  int scriptHint) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_MARK_DOCUMENT_RANGE_BY_OFFSET.invokeExact(
-                handle, startOffset, endOffset, scriptHint, outSize));
-    }
-
-    public static NativeBinaryResult replaceImeText(long handle, MemorySegment payload, long size) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_REPLACE_TEXT.invokeExact(
+    public static NativeBinaryResult handleImeCommandMessage(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_HANDLE_COMMAND_MESSAGE.invokeExact(
                 handle, payload, size, outSize));
     }
 
-    public static NativeBinaryResult replaceImeDocumentText(long handle, MemorySegment payload, long size) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_REPLACE_DOCUMENT_TEXT.invokeExact(
+    public static NativeBinaryResult handleImeTextUpdateMessage(long handle, MemorySegment payload, long size) {
+        return invokeBinaryResult(outSize -> (MemorySegment) IME_HANDLE_TEXT_UPDATE_MESSAGE.invokeExact(
                 handle, payload, size, outSize));
-    }
-
-    public static NativeBinaryResult replaceImeInputContextText(long handle, MemorySegment payload, long size) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_REPLACE_INPUT_CONTEXT_TEXT.invokeExact(
-                handle, payload, size, outSize));
-    }
-
-    public static NativeBinaryResult markImeInputContextRange(long handle,
-                                                              long startOffset,
-                                                              long endOffset,
-                                                              int scriptHint) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_MARK_INPUT_CONTEXT_RANGE.invokeExact(
-                handle, startOffset, endOffset, scriptHint, outSize));
-    }
-
-    public static NativeBinaryResult notifyImeDocumentSelectionChanged(long handle,
-                                                                       long startOffset,
-                                                                       long endOffset) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_NOTIFY_DOCUMENT_SELECTION_CHANGED.invokeExact(
-                handle, startOffset, endOffset, outSize));
-    }
-
-    public static NativeBinaryResult notifyImeInputContextSelectionChanged(long handle,
-                                                                           long startOffset,
-                                                                           long endOffset) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_NOTIFY_INPUT_CONTEXT_SELECTION_CHANGED.invokeExact(
-                handle, startOffset, endOffset, outSize));
-    }
-
-    public static NativeBinaryResult updateImeTextModelState(long handle, MemorySegment payload, long size) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_UPDATE_TEXT_MODEL_STATE.invokeExact(
-                handle, payload, size, outSize));
-    }
-
-    public static NativeBinaryResult updateImeInputStateSelection(long handle,
-                                                                  long contextId,
-                                                                  int documentStartOffset,
-                                                                  int selectionStartOffset,
-                                                                  int selectionEndOffset) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_UPDATE_INPUT_STATE_SELECTION.invokeExact(
-                handle,
-                contextId,
-                documentStartOffset,
-                selectionStartOffset,
-                selectionEndOffset,
-                outSize));
-    }
-
-    public static NativeBinaryResult replaceImeInputStateText(long handle, MemorySegment payload, long size) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_REPLACE_INPUT_STATE_TEXT.invokeExact(
-                handle, payload, size, outSize));
-    }
-
-    public static NativeBinaryResult deleteImeBackward(long handle, long beforeLength, int textUnit) {
-        return invokeBinaryResult(outSize ->
-                (MemorySegment) IME_DELETE_BACKWARD.invokeExact(handle, beforeLength, textUnit, outSize));
-    }
-
-    public static NativeBinaryResult deleteImeForward(long handle, long afterLength, int textUnit) {
-        return invokeBinaryResult(outSize ->
-                (MemorySegment) IME_DELETE_FORWARD.invokeExact(handle, afterLength, textUnit, outSize));
-    }
-
-    public static NativeBinaryResult deleteImeSurrounding(long handle,
-                                                          long beforeLength,
-                                                          long afterLength,
-                                                          int textUnit) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_DELETE_SURROUNDING.invokeExact(
-                handle, beforeLength, afterLength, textUnit, outSize));
-    }
-
-    public static NativeBinaryResult notifyImeSelectionChanged(long handle,
-                                                               int startLine, int startColumn,
-                                                               int endLine, int endColumn) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_NOTIFY_SELECTION_CHANGED.invokeExact(
-                handle,
-                (long) startLine, (long) startColumn, (long) endLine, (long) endColumn,
-                outSize));
-    }
-
-    public static NativeBinaryResult notifyImeCursorChanged(long handle, int cursorLine, int cursorColumn) {
-        return invokeBinaryResult(outSize -> (MemorySegment) IME_NOTIFY_CURSOR_CHANGED.invokeExact(
-                handle, (long) cursorLine, (long) cursorColumn, outSize));
-    }
-
-    public static NativeBinaryResult setImeKeyboardScriptClass(long handle, int scriptClass) {
-        return invokeBinaryResult(outSize ->
-                (MemorySegment) IME_SET_KEYBOARD_SCRIPT_CLASS.invokeExact(handle, scriptClass, outSize));
     }
 
     public static int getImeKeyboardScriptClass(long handle) {
@@ -1376,7 +1128,7 @@ public final class EditorNative {
         return invokeBinaryResult(outSize -> (MemorySegment) GET_IME_SYNC_SNAPSHOT.invokeExact(handle, outSize));
     }
 
-    public static NativeBinaryResult getImeInputContext(long handle, long beforeLength, long afterLength) {
+    public static NativeBinaryResult getImeCommandInputContext(long handle, long beforeLength, long afterLength) {
         return invokeBinaryResult(outSize -> (MemorySegment) GET_IME_INPUT_CONTEXT.invokeExact(
                 handle, beforeLength, afterLength, outSize));
     }

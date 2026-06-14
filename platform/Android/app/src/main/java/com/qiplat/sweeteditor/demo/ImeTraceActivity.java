@@ -791,10 +791,10 @@ public class ImeTraceActivity extends AppCompatActivity {
                 sync.put("selection", rangeToJson(snapshot.selection));
                 sync.put("hasComposingSession", snapshot.hasComposingSession);
                 sync.put("visibleCompositionRange", rangeToJson(snapshot.visibleCompositionRange));
-                sync.put("platformMarkedRange", rangeToJson(snapshot.platformMarkedRange));
+                sync.put("systemMarkRange", rangeToJson(snapshot.systemMarkRange));
                 sync.put("preeditStorage", snapshot.preeditStorage);
                 sync.put("contextPolicy", snapshot.contextPolicy);
-                sync.put("clearPlatformPreedit", snapshot.clearPlatformPreedit);
+                sync.put("clearSystemMark", snapshot.clearSystemMark);
                 json.put("imeSync", sync);
             } catch (ReflectiveOperationException e) {
                 json.put("coreSnapshotError", e.getClass().getSimpleName() + ": " + e.getMessage());

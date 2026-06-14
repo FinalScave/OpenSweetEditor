@@ -690,18 +690,36 @@ class EditorInteractionController {
     final editorCore = _session.editorCore;
     if (editorCore == null) return false;
     final snapshot = editorCore.getImeSyncSnapshot();
-    if (!snapshot.hasComposingSession && !snapshot.hasPlatformMarkedRange) {
+    if (!snapshot.hasComposingSession && !snapshot.hasSystemMarkRange) {
       return false;
     }
     switch (keyCode) {
       case core.KeyCode.backspace:
-        dispatchEditorActionResult(editorCore.deleteImeBackward());
+        dispatchEditorActionResult(
+          editorCore.handleImeCommandMessage(
+            const core.ImeCommandMessage(
+              kind: core.ImeCommandKind.deleteSurroundingText,
+              deleteBefore: 1,
+            ),
+          ),
+        );
         return true;
       case core.KeyCode.deleteKey:
-        dispatchEditorActionResult(editorCore.deleteImeForward());
+        dispatchEditorActionResult(
+          editorCore.handleImeCommandMessage(
+            const core.ImeCommandMessage(
+              kind: core.ImeCommandKind.deleteSurroundingText,
+              deleteAfter: 1,
+            ),
+          ),
+        );
         return true;
       case core.KeyCode.escape:
-        dispatchEditorActionResult(editorCore.cancelImePreedit());
+        dispatchEditorActionResult(
+          editorCore.handleImeCommandMessage(
+            const core.ImeCommandMessage(kind: core.ImeCommandKind.cancelPreedit),
+          ),
+        );
         return true;
       default:
         return false;

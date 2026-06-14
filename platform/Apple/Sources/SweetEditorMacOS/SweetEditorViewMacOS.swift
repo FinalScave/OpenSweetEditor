@@ -754,7 +754,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
                 highlighter?.highlightAll(document: doc)
             }
         }
-        if result.needs_ime_sync && result.ime_sync.clear_platform_preedit {
+        if result.needs_ime_sync && result.ime_sync.clear_system_mark {
             isComposing = false
             currentMarkedRange = nil
             currentMarkedSelectionRange = nil
@@ -1460,7 +1460,8 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         }
 
         if isComposing {
-            let editResult = editorCore.commitImeText(text)
+            let editResult = editorCore.handleImeCommandMessage(
+                ImeCommandMessage(kind: .COMMIT_TEXT, text: text))
             isComposing = false
             currentMarkedRange = nil
             currentMarkedSelectionRange = nil
@@ -1604,8 +1605,6 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         let baseRange: NSRange
         if let replacementRange = normalizedReplacementRange(replacementRange) {
             baseRange = replacementRange
-            dispatchEditorActionResult(editorCore.markImeDocumentRange(startOffset: replacementRange.location,
-                                                          endOffset: replacementRange.location + replacementRange.length))
         } else if let currentMarkedRange {
             baseRange = currentMarkedRange
         } else {
@@ -1620,16 +1619,19 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         currentMarkedSelectionRange = NSRange(location: baseRange.location + selectedLocation,
                                               length: selectedLength)
 
-        let result = editorCore.setImeComposingTextSelection(text,
-                                                             selectionStartOffset: selectedLocation,
-                                                             selectionEndOffset: selectedLocation + selectedLength)
+        let result = editorCore.handleImeCommandMessage(
+            ImeCommandMessage(kind: .SET_PREEDIT_TEXT,
+                              selection: ImeOffsetRange(start: Int32(selectedLocation),
+                                                        end: Int32(selectedLocation + selectedLength)),
+                              text: text))
         dispatchEditorActionResult(result)
     }
 
     func unmarkText() {
         resetCursorBlink()
         if isComposing {
-            let result = editorCore.finishImePreedit()
+            let result = editorCore.handleImeCommandMessage(
+                ImeCommandMessage(kind: .FINISH_PREEDIT))
             isComposing = false
             currentMarkedRange = nil
             currentMarkedSelectionRange = nil

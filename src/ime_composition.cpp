@@ -123,12 +123,12 @@ namespace NS_SWEETEDITOR {
 
   void CompositionController::finishAction(ImeActionResult& result,
                                            const EditorState& state) const {
-    bool clear_platform_preedit = result.sync.clear_platform_preedit;
+    bool clear_system_mark = result.sync.clear_system_mark;
     result.cursor_changed = state.cursor != coreCursor();
     result.selection_changed = state.has_selection != coreHasSelection()
                                || !(state.selection == coreSelection());
     result.sync = buildSyncSnapshot();
-    result.sync.clear_platform_preedit = result.sync.clear_platform_preedit || clear_platform_preedit;
+    result.sync.clear_system_mark = result.sync.clear_system_mark || clear_system_mark;
   }
 
   bool CompositionController::coreHasDocument() const {
@@ -697,22 +697,18 @@ namespace NS_SWEETEDITOR {
       TextRange composing_range = currentComposingRange();
       snapshot.has_visible_composition_range = composing_range.start != composing_range.end;
       snapshot.visible_composition_range = composing_range;
-      snapshot.has_platform_marked_range = snapshot.has_visible_composition_range;
-      if (snapshot.has_platform_marked_range) {
-        snapshot.platform_marked_range = composing_range;
-      }
-      snapshot.preedit_storage = ImePreeditStorage::VISIBLE_DOCUMENT_COMPOSITION;
-      snapshot.clear_platform_preedit = false;
+      snapshot.preedit_storage = ImePreeditStorage::VISIBLE_DOCUMENT_PREEDIT;
+      snapshot.clear_system_mark = false;
       return snapshot;
     }
 
     if (m_session_.has_shadow_preedit) {
       snapshot.preedit_storage = ImePreeditStorage::SHADOW_ONLY;
-      snapshot.clear_platform_preedit = false;
+      snapshot.clear_system_mark = false;
       return snapshot;
     }
 
-    snapshot.clear_platform_preedit = true;
+    snapshot.clear_system_mark = true;
     return snapshot;
   }
 
@@ -720,14 +716,6 @@ namespace NS_SWEETEDITOR {
     return m_session_.plain_latin_input_lock
            ? ImeContextPolicy::NONE
            : ImeContextPolicy::LIMITED_FOR_CANDIDATES;
-  }
-
-  bool CompositionController::currentPlatformMarkedRange(TextRange& range) const {
-    if (!hasVisibleComposition()) {
-      return false;
-    }
-    range = currentComposingRange();
-    return range.start != range.end;
   }
 
   bool CompositionController::hasMidDocumentRangeComposition() const {

@@ -1975,8 +1975,11 @@ public class SweetEditor extends View {
     void restartInputConnection() {
         if (mInputConnection != null) {
             mInputConnection.closeConnection();
-            mInputConnection.restartImeInput();
             mInputConnection = null;
+        }
+        InputMethodManager imm = getInputMethodManager();
+        if (imm != null && isFocused()) {
+            imm.restartInput(this);
         }
     }
 

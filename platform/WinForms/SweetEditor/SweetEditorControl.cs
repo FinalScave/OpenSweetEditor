@@ -1666,16 +1666,26 @@ namespace SweetEditor {
 							if ((imeFlags & GCS_RESULTSTR) != 0) {
 								string resultStr = GetImmCompositionString(hIMC, GCS_RESULTSTR);
 								if (!string.IsNullOrEmpty(resultStr)) {
-									DispatchEditorActionResult(editorCore.CommitImeText(resultStr, ImeScriptClass.UNKNOWN));
+									DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
+										Kind = ImeCommandKind.COMMIT_TEXT,
+										Text = resultStr,
+										ScriptClass = ImeScriptClass.UNKNOWN
+									}));
 								} else if ((imeFlags & GCS_COMPSTR) == 0 && HasImeComposingSession()) {
-									DispatchEditorActionResult(editorCore.FinishImePreedit());
+									DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
+										Kind = ImeCommandKind.FINISH_PREEDIT
+									}));
 								}
 							}
 							if ((imeFlags & GCS_COMPSTR) != 0) {
 								string compStr = GetImmCompositionString(hIMC, GCS_COMPSTR);
 								int cursorPos = GetImmCompositionCursorPosition(hIMC, compStr.Length);
-								DispatchEditorActionResult(editorCore.SetImeComposingTextSelection(
-									compStr, cursorPos, cursorPos, ImeScriptClass.UNKNOWN));
+								DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
+									Kind = ImeCommandKind.SET_PREEDIT_TEXT,
+									Text = compStr,
+									Selection = new ImeOffsetRange { Start = cursorPos, End = cursorPos },
+									ScriptClass = ImeScriptClass.UNKNOWN
+								}));
 							}
 						} finally {
 							ImmReleaseContext(this.Handle, hIMC);
@@ -1687,7 +1697,9 @@ namespace SweetEditor {
 				case WM_IME_ENDCOMPOSITION: {
 					using var perf = StartInputPerf("WndProc(IME_END)");
 					if (HasImeComposingSession()) {
-						DispatchEditorActionResult(editorCore.FinishImePreedit());
+						DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
+							Kind = ImeCommandKind.FINISH_PREEDIT
+						}));
 					}
 					base.WndProc(ref m);
 					return;
@@ -1718,13 +1730,23 @@ namespace SweetEditor {
 			EditorActionResult result;
 			switch (e.KeyCode) {
 				case Keys.Back:
-					result = editorCore.DeleteImeBackward(1, ImeTextUnit.GRAPHEME);
+					result = editorCore.HandleImeCommandMessage(new ImeCommandMessage {
+						Kind = ImeCommandKind.DELETE_SURROUNDING_TEXT,
+						DeleteBefore = 1,
+						TextUnit = ImeTextUnit.GRAPHEME
+					});
 					break;
 				case Keys.Delete:
-					result = editorCore.DeleteImeForward(1, ImeTextUnit.GRAPHEME);
+					result = editorCore.HandleImeCommandMessage(new ImeCommandMessage {
+						Kind = ImeCommandKind.DELETE_SURROUNDING_TEXT,
+						DeleteAfter = 1,
+						TextUnit = ImeTextUnit.GRAPHEME
+					});
 					break;
 				case Keys.Escape:
-					result = editorCore.CancelImePreedit();
+					result = editorCore.HandleImeCommandMessage(new ImeCommandMessage {
+						Kind = ImeCommandKind.CANCEL_PREEDIT
+					});
 					break;
 				default:
 					return false;

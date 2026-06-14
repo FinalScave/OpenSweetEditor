@@ -10,7 +10,8 @@ class EditorPlatformBehavior {
     required this.revealSelectionEndOnSelectAll,
     required this.usesDeltaTextInputModel,
     required this.usesTextInputNewlineAction,
-    required this.imeTextModelMode,
+    required this.imeTextUpdateScope,
+    required this.textInputComposingRole,
     required this.supportsTouchScale,
     required this.supportsCtrlWheelScale,
     required this.supportsTrackpadPanZoom,
@@ -39,9 +40,12 @@ class EditorPlatformBehavior {
       revealSelectionEndOnSelectAll: isMobileStyle,
       usesDeltaTextInputModel: isAndroid,
       usesTextInputNewlineAction: !isWindows,
-      imeTextModelMode: isWindows
-          ? core.ImeTextModelMode.transientInput
-          : core.ImeTextModelMode.documentWindow,
+      imeTextUpdateScope: isWindows
+          ? core.ImeTextUpdateScope.transientInput
+          : core.ImeTextUpdateScope.documentWindow,
+      textInputComposingRole: isAndroid
+          ? core.ImeMarkedRangeRole.systemMark
+          : core.ImeMarkedRangeRole.preedit,
       supportsTouchScale: isMobileStyle,
       supportsCtrlWheelScale: !isMobileStyle,
       supportsTrackpadPanZoom: !isMobileStyle,
@@ -63,7 +67,8 @@ class EditorPlatformBehavior {
   final bool revealSelectionEndOnSelectAll;
   final bool usesDeltaTextInputModel;
   final bool usesTextInputNewlineAction;
-  final core.ImeTextModelMode imeTextModelMode;
+  final core.ImeTextUpdateScope imeTextUpdateScope;
+  final core.ImeMarkedRangeRole textInputComposingRole;
   final bool supportsTouchScale;
   final bool supportsCtrlWheelScale;
   final bool supportsTrackpadPanZoom;

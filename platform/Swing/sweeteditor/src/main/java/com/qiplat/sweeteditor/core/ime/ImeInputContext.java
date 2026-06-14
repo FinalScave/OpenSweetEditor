@@ -8,12 +8,14 @@ public final class ImeInputContext {
     public ImeOffsetRange selection = new ImeOffsetRange();
     public boolean hasComposition = false;
     public ImeOffsetRange composition = new ImeOffsetRange(-1, -1);
+    public boolean hasSystemMarkRange = false;
+    public ImeOffsetRange systemMarkRange = new ImeOffsetRange(-1, -1);
     public ImeInputContextKind kind = ImeInputContextKind.NONE;
 
     public ImeInputContext() {
     }
 
-    public ImeInputContext(long id, int revision, int documentStartOffset, String text, ImeOffsetRange selection, boolean hasComposition, ImeOffsetRange composition, ImeInputContextKind kind) {
+    public ImeInputContext(long id, int revision, int documentStartOffset, String text, ImeOffsetRange selection, boolean hasComposition, ImeOffsetRange composition, boolean hasSystemMarkRange, ImeOffsetRange systemMarkRange, ImeInputContextKind kind) {
         this.id = id;
         this.revision = revision;
         this.documentStartOffset = documentStartOffset;
@@ -21,6 +23,8 @@ public final class ImeInputContext {
         this.selection = selection;
         this.hasComposition = hasComposition;
         this.composition = composition;
+        this.hasSystemMarkRange = hasSystemMarkRange;
+        this.systemMarkRange = systemMarkRange;
         this.kind = kind;
     }
 }
