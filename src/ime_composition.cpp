@@ -924,18 +924,7 @@ namespace NS_SWEETEDITOR {
       return {};
     }
 
-    if (m_composition_.kind == CompositionKind::DOCUMENT_RANGE) {
-      TextRange composing_range = currentComposingRange();
-      m_session_.preedit_replaces_document_range = true;
-      m_session_.preedit_replaced_range = composing_range;
-      m_session_.preedit_replaced_text = m_composition_.composing_text;
-      coreDeleteDocumentRange(composing_range);
-      coreSetRawCursorPosition(m_composition_.start_position);
-      m_composition_.kind = CompositionKind::PREEDIT_TEXT;
-      m_session_.preedit_text_in_document = false;
-    } else {
-      removeComposingText();
-    }
+    removeComposingText();
 
     if (!text.empty()) {
       coreInsertDocumentText(m_composition_.start_position, text);

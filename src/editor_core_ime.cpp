@@ -65,6 +65,17 @@ namespace NS_SWEETEDITOR {
     return static_cast<size_t>(std::max<int64_t>(0, std::min<int64_t>(offset, static_cast<int64_t>(length))));
   }
 
+  static size_t clampImeRelativeOffset(size_t offset, const ImeContextRange& range) {
+    if (!range.active || offset <= range.start) {
+      return 0;
+    }
+    const size_t range_length = range.end > range.start ? range.end - range.start : 0;
+    if (offset >= range.end) {
+      return range_length;
+    }
+    return offset - range.start;
+  }
+
   static ImeContextRange normalizeImeSelectionRange(int32_t start, int32_t end, size_t text_length) {
     if (start < 0 || end < 0) {
       return {true, text_length, text_length};
@@ -691,20 +702,10 @@ namespace NS_SWEETEDITOR {
             script_class));
         if (new_composition.active) {
           const U8String preedit_text = sliceUtf16Text(text, new_composition.start, new_composition.end);
-          const size_t composing_length = new_composition.end - new_composition.start;
-          const auto relative_offset = [&](size_t offset) {
-            if (offset <= new_composition.start) {
-              return static_cast<size_t>(0);
-            }
-            if (offset >= new_composition.end) {
-              return composing_length;
-            }
-            return offset - new_composition.start;
-          };
           mergeImeActionResult(result, setImePreeditTextInternal(
               preedit_text,
-              relative_offset(selection.start),
-              relative_offset(selection.end),
+              clampImeRelativeOffset(selection.start, new_composition),
+              clampImeRelativeOffset(selection.end, new_composition),
               script_class));
         } else {
           const U8String replacement = sliceReplacementForPreviousRange(
@@ -732,20 +733,10 @@ namespace NS_SWEETEDITOR {
         }
 
         const U8String preedit_text = sliceUtf16Text(text, new_composition.start, new_composition.end);
-        const size_t composing_length = new_composition.end - new_composition.start;
-        const auto relative_offset = [&](size_t offset) {
-          if (offset <= new_composition.start) {
-            return static_cast<size_t>(0);
-          }
-          if (offset >= new_composition.end) {
-            return composing_length;
-          }
-          return offset - new_composition.start;
-        };
         mergeImeActionResult(result, setImePreeditTextInternal(
             preedit_text,
-            relative_offset(selection.start),
-            relative_offset(selection.end),
+            clampImeRelativeOffset(selection.start, new_composition),
+            clampImeRelativeOffset(selection.end, new_composition),
             script_class));
       } else if (old_composition.active || isComposing()) {
         mergeImeActionResult(result, applyImeCommitTextCommandInternal(diff.replacement, script_class));
@@ -773,20 +764,10 @@ namespace NS_SWEETEDITOR {
             document_start + selection.end));
       } else {
         const U8String preedit_text = sliceUtf16Text(text, new_composition.start, new_composition.end);
-        const size_t composing_length = new_composition.end - new_composition.start;
-        const auto relative_offset = [&](size_t offset) {
-          if (offset <= new_composition.start) {
-            return static_cast<size_t>(0);
-          }
-          if (offset >= new_composition.end) {
-            return composing_length;
-          }
-          return offset - new_composition.start;
-        };
         mergeImeActionResult(result, setImePreeditTextInternal(
             preedit_text,
-            relative_offset(selection.start),
-            relative_offset(selection.end),
+            clampImeRelativeOffset(selection.start, new_composition),
+            clampImeRelativeOffset(selection.end, new_composition),
             script_class));
       }
     } else if (new_system_mark_only) {

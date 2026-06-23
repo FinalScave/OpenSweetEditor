@@ -12,12 +12,15 @@ import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.TextAttribute;
 
+import com.qiplat.sweeteditor.core.ime.ImeCommandKind;
+import com.qiplat.sweeteditor.core.ime.ImeCommandMessage;
 import com.qiplat.sweeteditor.core.ime.ImeInputContextKind;
 import com.qiplat.sweeteditor.core.ime.ImeInputContext;
 import com.qiplat.sweeteditor.core.ime.ImeOffsetRange;
 import com.qiplat.sweeteditor.core.ime.ImeMarkedRange;
 import com.qiplat.sweeteditor.core.ime.ImeMarkedRangeRole;
 import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
+import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
 import com.qiplat.sweeteditor.core.ime.ImeTextUpdateKind;
 import com.qiplat.sweeteditor.core.ime.ImeTextUpdateMessage;
 import com.qiplat.sweeteditor.core.ime.ImeTextUpdateScope;
@@ -129,8 +132,7 @@ public class SweetEditorInputConnection extends BaseInputConnection {
             return false;
         }
         ensureEditableTextWindow();
-        ImeMarkedRangeRole markedRole = mEditableMarkedRole;
-        if (markedRole == ImeMarkedRangeRole.SYSTEM_MARK && !shouldCommitSystemMarkedRange(text)) {
+        if (mEditableMarkedRole == ImeMarkedRangeRole.SYSTEM_MARK && !shouldCommitSystemMarkedRange(text)) {
             BaseInputConnection.removeComposingSpans(mEditable);
         }
         super.commitText(text != null ? text : "", newCursorPosition);
@@ -168,12 +170,12 @@ public class SweetEditorInputConnection extends BaseInputConnection {
 
     @Override
     public boolean deleteSurroundingText(int beforeLength, int afterLength) {
-        return deleteSurroundingTextInternal(beforeLength, afterLength);
+        return deleteSurroundingTextInternal(beforeLength, afterLength, ImeTextUnit.GRAPHEME);
     }
 
     @Override
     public boolean deleteSurroundingTextInCodePoints(int beforeLength, int afterLength) {
-        return deleteSurroundingTextInternal(beforeLength, afterLength);
+        return deleteSurroundingTextInternal(beforeLength, afterLength, ImeTextUnit.CODE_POINT);
     }
 
     @Override
@@ -239,45 +241,24 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         return result.handled;
     }
 
-    private boolean deleteSurroundingTextInternal(int beforeLength, int afterLength) {
-        if (!isActive()) {
+    private boolean deleteSurroundingTextInternal(int beforeLength, int afterLength, ImeTextUnit textUnit) {
+        if (!isActive() || !ensureEditableTextWindow()) {
             return false;
         }
-        if (!ensureEditableTextWindow()) {
-            return false;
-        }
-        int safeBefore = Math.max(0, beforeLength);
-        int safeAfter = Math.max(0, afterLength);
-        boolean handled = isValidEditableRange(getEditableComposingRange(), mEditable.length())
-                ? deleteEditableSurroundingText(safeBefore, safeAfter)
-                : super.deleteSurroundingText(safeBefore, safeAfter);
-        refreshEditableMarkedStateAfterLocalEdit();
-        return sendEditableTextSnapshot("ime-delete") || handled;
-    }
-
-    private boolean deleteEditableSurroundingText(int beforeLength, int afterLength) {
-        int start = Selection.getSelectionStart(mEditable);
-        int end = Selection.getSelectionEnd(mEditable);
-        if (start < 0 || end < 0) {
-            return false;
-        }
-        int a = Math.min(start, end);
-        int b = Math.max(start, end);
-        int deleteStart = Math.max(0, a - beforeLength);
-        int deletedBefore = a - deleteStart;
-        if (deletedBefore > 0) {
-            mEditable.delete(deleteStart, a);
-        }
-        b -= deletedBefore;
-        int deleteEnd = Math.min(mEditable.length(), b + afterLength);
-        if (deleteEnd > b) {
-            mEditable.delete(b, deleteEnd);
-        }
-        return true;
-    }
-
-    private void finishImeAction(EditorActionResult result, String perfName) {
-        finishImeAction(result, perfName, System.nanoTime());
+        long t0 = System.nanoTime();
+        ImeCommandMessage message = new ImeCommandMessage();
+        message.kind = ImeCommandKind.DELETE_SURROUNDING_TEXT;
+        message.contextId = mInputContextId;
+        message.contextRevision = mInputContextRevision;
+        message.documentStartOffset = mInputDocumentStartOffset;
+        message.selection = getEditableSelectionRange();
+        message.deleteBefore = Math.max(0, beforeLength);
+        message.deleteAfter = Math.max(0, afterLength);
+        message.textUnit = textUnit;
+        message.markedRole = mEditableMarkedRole;
+        EditorActionResult result = mEditor.getEditorCore().handleImeCommandMessage(message);
+        finishImeAction(result, "ime-delete", t0);
+        return result.handled;
     }
 
     private void finishImeAction(EditorActionResult result, String perfName, long startTimeNanos) {
