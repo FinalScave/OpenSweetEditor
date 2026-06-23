@@ -11,6 +11,7 @@ import android.os.SystemClock;
 import android.provider.Settings;
 import android.text.Editable;
 import android.text.InputType;
+import android.text.Selection;
 import android.text.Spanned;
 import android.util.AttributeSet;
 import android.view.KeyEvent;
@@ -60,6 +61,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -97,6 +99,12 @@ public class ImeTraceActivity extends AppCompatActivity {
     private static final String TARGET_EDITTEXT = "edittext";
     private static final String UNKNOWN_IME_PACKAGE = "unknown_ime";
     private static final TraceCase[] TRACE_CASES = new TraceCase[]{
+            new TraceCase("EN_HELLO_CANDIDATE_DELETE_TO_EMPTY", "en", 0,
+                    "Before Start, switch the IME to English mode with suggestions enabled.",
+                    "Tap the empty target and type exactly hello on the soft keyboard.",
+                    "Tap the visible hello candidate or confirmation in the IME UI.",
+                    "Press the soft keyboard delete key repeatedly until the editor should be empty.",
+                    "Tap Delete marker before each delete if possible; tap Next after the final state is stable."),
             new TraceCase("CN_WORD_MID_USER_TAP", "cn", VALUE_MID_COLUMN,
                     "Before Start, switch the IME to Chinese mode.",
                     "After this case starts, manually tap the visible word value in the EditText.",
@@ -177,6 +185,7 @@ public class ImeTraceActivity extends AppCompatActivity {
     private TextView mStepsText;
     private TextView mStatusText;
     private Button mStartButton;
+    private Button mTargetButton;
     private Button mNextButton;
     private Button mRetryButton;
     private Button mSkipButton;
@@ -213,10 +222,12 @@ public class ImeTraceActivity extends AppCompatActivity {
                 ViewGroup.LayoutParams.WRAP_CONTENT));
 
         LinearLayout targetRow = horizontalRow();
-        TextView baselineTitle = label("EditText baseline runner");
+        TextView baselineTitle = label("IME trace runner");
         targetRow.addView(baselineTitle, new LinearLayout.LayoutParams(0, dp(44), 1f));
+        mTargetButton = button("Target");
         mStartButton = button("Start");
         mStopButton = button("Stop");
+        targetRow.addView(mTargetButton, weightedButtonParams());
         targetRow.addView(mStartButton, weightedButtonParams());
         targetRow.addView(mStopButton, weightedButtonParams());
         root.addView(targetRow);
@@ -270,7 +281,7 @@ public class ImeTraceActivity extends AppCompatActivity {
         mSweetEditor.setVisibility(View.GONE);
         root.addView(mSweetEditor, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
-                1));
+                dp(420)));
 
         mTargetLabel = label("EditText baseline");
         root.addView(mTargetLabel);
@@ -280,6 +291,7 @@ public class ImeTraceActivity extends AppCompatActivity {
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 dp(420)));
 
+        mTargetButton.setOnClickListener(v -> toggleTarget());
         mStartButton.setOnClickListener(v -> showStartCaseDialog());
         mStopButton.setOnClickListener(v -> stopRun());
         mNextButton.setOnClickListener(v -> finishAndOpenNextCase("finished"));
@@ -326,9 +338,10 @@ public class ImeTraceActivity extends AppCompatActivity {
     }
 
     private void resetTargets(@NonNull TraceCase traceCase) {
-        mSweetEditor.loadDocument(new Document(SAMPLE_TEXT));
+        String initialText = traceCase.initialText;
+        mSweetEditor.loadDocument(new Document(initialText));
         mSweetEditor.setCursorPosition(new TextPosition(0, 0));
-        mEditText.setText(SAMPLE_TEXT);
+        mEditText.setText(initialText);
         mEditText.setSelection(0);
     }
 
@@ -454,7 +467,7 @@ public class ImeTraceActivity extends AppCompatActivity {
         manifest.put("repo", buildRepoInfo());
         manifest.put("device", buildDeviceInfo());
         manifest.put("inputMethod", buildInputMethodInfo());
-        manifest.put("initialDocument", SAMPLE_TEXT);
+        manifest.put("initialDocument", traceCase.initialText);
         return manifest;
     }
 
@@ -565,18 +578,25 @@ public class ImeTraceActivity extends AppCompatActivity {
     }
 
     private void updateTargetVisibility() {
+        boolean sweetEditorActive = TARGET_SWEETEDITOR.equals(mActiveTarget);
         if (mSweetEditor != null) {
-            mSweetEditor.setVisibility(View.GONE);
+            mSweetEditor.setVisibility(sweetEditorActive ? View.VISIBLE : View.GONE);
         }
         if (mEditText != null) {
-            mEditText.setVisibility(View.VISIBLE);
+            mEditText.setVisibility(sweetEditorActive ? View.GONE : View.VISIBLE);
         }
         if (mTargetLabel != null) {
-            mTargetLabel.setText("EditText baseline");
+            mTargetLabel.setText(sweetEditorActive ? "SweetEditor" : "EditText baseline");
+        }
+        if (mTargetButton != null) {
+            mTargetButton.setText(sweetEditorActive ? "Target: Sweet" : "Target: EditText");
         }
     }
 
     private void updateFlowButtons(boolean recording) {
+        if (mTargetButton != null) {
+            mTargetButton.setEnabled(!recording);
+        }
         if (mNextButton != null) {
             mNextButton.setEnabled(recording);
         }
@@ -592,6 +612,19 @@ public class ImeTraceActivity extends AppCompatActivity {
         if (mStartButton != null) {
             mStartButton.setEnabled(!recording);
         }
+    }
+
+    private void toggleTarget() {
+        if (mSession != null) {
+            return;
+        }
+        mActiveTarget = TARGET_SWEETEDITOR.equals(mActiveTarget)
+                ? TARGET_EDITTEXT
+                : TARGET_SWEETEDITOR;
+        updateTargetVisibility();
+        updateCaseText();
+        resetTargetsForIdle();
+        updateStatus("Target: " + mActiveTarget);
     }
 
     private void updateCaseText() {
@@ -701,6 +734,7 @@ public class ImeTraceActivity extends AppCompatActivity {
         final String caseId;
         final String keyboardMode;
         final int focusColumn;
+        final String initialText;
         final String[] steps;
 
         TraceCase(String caseId,
@@ -710,7 +744,15 @@ public class ImeTraceActivity extends AppCompatActivity {
             this.caseId = caseId;
             this.keyboardMode = keyboardMode;
             this.focusColumn = focusColumn;
+            this.initialText = resolveInitialText(caseId);
             this.steps = steps;
+        }
+
+        private static String resolveInitialText(String caseId) {
+            if ("EN_HELLO_CANDIDATE_DELETE_TO_EMPTY".equals(caseId)) {
+                return "";
+            }
+            return SAMPLE_TEXT;
         }
     }
 
@@ -888,6 +930,7 @@ public class ImeTraceActivity extends AppCompatActivity {
     private static class TraceInputConnection extends InputConnectionWrapper {
         private final ImeTraceSession mSession;
         private final String mTarget;
+        private final InputConnection mWrappedConnection;
         private final TraceSnapshotProvider mSnapshotProvider;
 
         TraceInputConnection(InputConnection target,
@@ -898,6 +941,7 @@ public class ImeTraceActivity extends AppCompatActivity {
             super(target, mutable);
             mSession = session;
             mTarget = traceTarget;
+            mWrappedConnection = target;
             mSnapshotProvider = snapshotProvider;
         }
 
@@ -1073,8 +1117,55 @@ public class ImeTraceActivity extends AppCompatActivity {
 
         private void log(String method, String phase, JSONObject args, @Nullable Object result) {
             try {
-                mSession.log(mTarget, method, phase, args, result, mSnapshotProvider.snapshot());
+                JSONObject snapshot = mSnapshotProvider.snapshot();
+                appendInputConnectionSnapshot(snapshot);
+                mSession.log(mTarget, method, phase, args, result, snapshot);
             } catch (JSONException ignored) {
+            }
+        }
+
+        private void appendInputConnectionSnapshot(JSONObject snapshot) throws JSONException {
+            JSONObject json = new JSONObject();
+            json.put("className", mWrappedConnection.getClass().getName());
+            appendEditableSnapshot(json);
+            appendPrivateField(json, "editableMarkedRole", "mEditableMarkedRole");
+            appendPrivateField(json, "inputContextId", "mInputContextId");
+            appendPrivateField(json, "inputContextRevision", "mInputContextRevision");
+            appendPrivateField(json, "inputDocumentStartOffset", "mInputDocumentStartOffset");
+            snapshot.put("inputConnection", json);
+        }
+
+        private void appendEditableSnapshot(JSONObject json) throws JSONException {
+            try {
+                Method method = mWrappedConnection.getClass().getMethod("getEditable");
+                method.setAccessible(true);
+                Object value = method.invoke(mWrappedConnection);
+                if (value instanceof Editable) {
+                    Editable editable = (Editable) value;
+                    json.put("editableText", editable.toString());
+                    json.put("editableSelectionStart", Selection.getSelectionStart(editable));
+                    json.put("editableSelectionEnd", Selection.getSelectionEnd(editable));
+                    appendComposingSpan(json, editable);
+                }
+            } catch (ReflectiveOperationException e) {
+                json.put("editableSnapshotError", e.getClass().getSimpleName() + ": " + e.getMessage());
+            }
+        }
+
+        private void appendPrivateField(JSONObject json, String jsonName, String fieldName) throws JSONException {
+            Class<?> type = mWrappedConnection.getClass();
+            while (type != null) {
+                try {
+                    Field field = type.getDeclaredField(fieldName);
+                    field.setAccessible(true);
+                    json.put(jsonName, safeValueToJson(field.get(mWrappedConnection)));
+                    return;
+                } catch (NoSuchFieldException e) {
+                    type = type.getSuperclass();
+                } catch (IllegalAccessException e) {
+                    json.put(jsonName + "Error", e.getClass().getSimpleName() + ": " + e.getMessage());
+                    return;
+                }
             }
         }
     }
@@ -1243,6 +1334,27 @@ public class ImeTraceActivity extends AppCompatActivity {
         } catch (JSONException ignored) {
         }
         return json;
+    }
+
+    private static void appendComposingSpan(JSONObject json, @Nullable Editable editable) throws JSONException {
+        int composingStart = -1;
+        int composingEnd = -1;
+        if (editable != null) {
+            Object[] spans = editable.getSpans(0, editable.length(), Object.class);
+            for (Object span : spans) {
+                if ((editable.getSpanFlags(span) & Spanned.SPAN_COMPOSING) != 0) {
+                    int start = editable.getSpanStart(span);
+                    int end = editable.getSpanEnd(span);
+                    if (start >= 0 && end >= 0) {
+                        composingStart = composingStart < 0 ? start : Math.min(composingStart, start);
+                        composingEnd = Math.max(composingEnd, end);
+                    }
+                }
+            }
+        }
+        json.put("composingStart", composingStart);
+        json.put("composingEnd", composingEnd);
+        json.put("hasComposingSpan", composingStart >= 0 && composingEnd >= composingStart);
     }
 
     private static JSONObject args(Object... pairs) {

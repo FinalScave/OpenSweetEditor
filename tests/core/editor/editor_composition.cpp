@@ -1,6 +1,7 @@
 #include <catch2/catch_amalgamated.hpp>
 #include <algorithm>
 #include <functional>
+#include <vector>
 #include <sweeteditor/editor_core.h>
 #include <sweeteditor/utility.h>
 #include "test_measurer.h"
@@ -1213,6 +1214,7 @@ TEST_CASE("EditorCore IME text model latin composition stays platform marked onl
   CHECK_FALSE(result.content_changed);
   CHECK_FALSE(editor.isComposing());
   CHECK_FALSE(editor.hasComposingSession());
+  CHECK(result.needs_ime_sync);
   CHECK(result.ime_sync.has_system_mark_range);
   CHECK(result.ime_sync.system_mark_range == (TextRange{{0, 0}, {0, 5}}));
   CHECK_FALSE(result.ime_sync.has_visible_composition_range);
@@ -1366,6 +1368,7 @@ TEST_CASE("EditorCore IME operation system marked range does not start compositi
   CHECK_FALSE(result.content_changed);
   CHECK_FALSE(editor.isComposing());
   CHECK_FALSE(editor.hasComposingSession());
+  CHECK(result.needs_ime_sync);
   REQUIRE(result.ime_sync.has_system_mark_range);
   CHECK(result.ime_sync.system_mark_range == (TextRange{{0, 0}, {0, 5}}));
   CHECK_FALSE(result.ime_sync.has_visible_composition_range);
@@ -1781,6 +1784,78 @@ TEST_CASE("EditorCore IME text update delete over system mark deletes at reporte
   CHECK(delete_result.ime_sync.clear_system_mark);
 }
 
+TEST_CASE("EditorCore IME text update system mark shrink keeps deleting") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("hello");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 5});
+
+  ImeInputContext context = editor.getImeTextUpdateInputContext(
+      ImeTextUpdateScope::DOCUMENT_WINDOW,
+      8,
+      8);
+  EditorActionResult mark_result = updateTextSnapshot(editor,
+      ImeTextUpdateScope::DOCUMENT_WINDOW,
+      context.id,
+      context.revision,
+      "hello",
+      5,
+      5,
+      0,
+      5,
+      ImeScriptClass::LATIN,
+      ImeMarkedRangeRole::SYSTEM_MARK);
+  REQUIRE(mark_result.handled);
+  REQUIRE(mark_result.ime_sync.has_system_mark_range);
+
+  const std::vector<U8String> states {"hell", "hel", "he", "h"};
+  for (const U8String& text : states) {
+    context = editor.getImeTextUpdateInputContext(ImeTextUpdateScope::DOCUMENT_WINDOW, 8, 8);
+    REQUIRE(context.has_system_mark_range);
+    const int32_t length = static_cast<int32_t>(StrUtil::utf16Length(text));
+    EditorActionResult delete_result = updateTextSnapshot(editor,
+        ImeTextUpdateScope::DOCUMENT_WINDOW,
+        context.id,
+        context.revision,
+        text,
+        length,
+        length,
+        0,
+        length,
+        ImeScriptClass::LATIN,
+        ImeMarkedRangeRole::SYSTEM_MARK);
+
+    REQUIRE(delete_result.content_changed);
+    CHECK(document->getU8Text() == text);
+    CHECK(editor.getCursorPosition() == (TextPosition{0, static_cast<size_t>(length)}));
+    CHECK(delete_result.ime_sync.has_system_mark_range);
+    CHECK_FALSE(delete_result.ime_sync.clear_system_mark);
+  }
+
+  context = editor.getImeTextUpdateInputContext(ImeTextUpdateScope::DOCUMENT_WINDOW, 8, 8);
+  REQUIRE(context.has_system_mark_range);
+  EditorActionResult final_delete_result = updateTextSnapshot(editor,
+      ImeTextUpdateScope::DOCUMENT_WINDOW,
+      context.id,
+      context.revision,
+      "",
+      0,
+      0,
+      -1,
+      -1,
+      ImeScriptClass::LATIN,
+      ImeMarkedRangeRole::NONE);
+
+  REQUIRE(final_delete_result.content_changed);
+  CHECK(document->getU8Text() == "");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
+  CHECK_FALSE(final_delete_result.ime_sync.has_system_mark_range);
+  CHECK(final_delete_result.ime_sync.clear_system_mark);
+}
+
 TEST_CASE("EditorCore IME operation selection over system marked range stays reported") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
@@ -1867,6 +1942,82 @@ TEST_CASE("EditorCore IME operation delete clears system marked range and delete
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
   CHECK_FALSE(delete_result.ime_sync.has_system_mark_range);
   CHECK(delete_result.ime_sync.clear_system_mark);
+}
+
+TEST_CASE("EditorCore IME operation delete uses reported context selection") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("h");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 1});
+
+  ImeInputContext context = editor.getImeCommandInputContext(8, 8);
+  EditorActionResult mark_result = handleCommand(editor,
+      context,
+      ImeCommandKind::SET_MARKED_RANGE,
+      0,
+      1,
+      "",
+      1,
+      0,
+      0,
+      ImeTextUnit::GRAPHEME,
+      ImeScriptClass::LATIN,
+      ImeMarkedRangeRole::SYSTEM_MARK);
+  REQUIRE(mark_result.handled);
+  REQUIRE(mark_result.ime_sync.has_system_mark_range);
+
+  context = editor.getImeCommandInputContext(8, 8);
+  editor.setCursorPosition({0, 0});
+
+  ImeCommandMessage message;
+  message.kind = ImeCommandKind::DELETE_SURROUNDING_TEXT;
+  message.context_id = context.id;
+  message.context_revision = context.revision;
+  message.document_start_offset = context.document_start_offset;
+  message.selection = {1, 1};
+  message.delete_before = 1;
+  message.text_unit = ImeTextUnit::GRAPHEME;
+  message.marked_role = ImeMarkedRangeRole::SYSTEM_MARK;
+
+  EditorActionResult delete_result = editor.handleImeCommandMessage(message);
+
+  REQUIRE(delete_result.content_changed);
+  CHECK(document->getU8Text() == "");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
+  CHECK_FALSE(delete_result.ime_sync.has_system_mark_range);
+  CHECK(delete_result.ime_sync.clear_system_mark);
+}
+
+TEST_CASE("EditorCore IME operation delete with stale context requests resync") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("ab");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 2});
+
+  ImeInputContext stale_context = editor.getImeCommandInputContext(8, 8);
+  editor.getImeCommandInputContext(8, 8);
+
+  ImeCommandMessage message;
+  message.kind = ImeCommandKind::DELETE_SURROUNDING_TEXT;
+  message.context_id = stale_context.id;
+  message.context_revision = stale_context.revision;
+  message.document_start_offset = stale_context.document_start_offset;
+  message.selection = stale_context.selection;
+  message.delete_before = 1;
+  message.text_unit = ImeTextUnit::GRAPHEME;
+
+  EditorActionResult delete_result = editor.handleImeCommandMessage(message);
+
+  REQUIRE(delete_result.handled);
+  CHECK_FALSE(delete_result.content_changed);
+  CHECK(document->getU8Text() == "ab");
+  CHECK(delete_result.needs_ime_sync);
 }
 
 TEST_CASE("EditorCore IME operation replace local range consumes explicit candidate range") {

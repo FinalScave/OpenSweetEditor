@@ -389,6 +389,9 @@ namespace NS_SWEETEDITOR {
     const auto has_message_selection = [&]() {
       return message.selection.start >= 0 || message.selection.end >= 0;
     };
+    const auto has_valid_message_selection = [&]() {
+      return message.selection.start >= 0 && message.selection.end >= 0;
+    };
     const auto message_selection = [&]() {
       return has_message_selection()
           ? message.selection
@@ -538,6 +541,21 @@ namespace NS_SWEETEDITOR {
         return result;
       }
       case ImeCommandKind::DELETE_SURROUNDING_TEXT: {
+        if (has_context && !matches_input_context) {
+          return makeImeInputContextResyncResult(getImeSyncSnapshot());
+        }
+        if (has_valid_message_selection() && matches_input_context) {
+          const size_t context_text_length = StrUtil::utf16Length(m_ime_input_context_.text);
+          const size_t selection_start = clampImeOffset(message.selection.start, context_text_length);
+          const size_t selection_end = clampImeOffset(message.selection.end, context_text_length);
+          setSelectionInternal(
+              textRangeFromImeContextOffsets(message.context_id,
+                                             message.context_revision,
+                                             message.document_start_offset,
+                                             selection_start,
+                                             selection_end),
+              false);
+        }
         const size_t delete_before = non_negative_length(message.delete_before);
         const size_t delete_after = non_negative_length(message.delete_after);
         clear_system_mark_range();

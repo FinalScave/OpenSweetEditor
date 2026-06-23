@@ -78,9 +78,6 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         }
         int safeStart = clampEditableOffset(start, mEditable.length());
         int safeEnd = clampEditableOffset(end, mEditable.length());
-        if (shouldIgnoreSystemMarkedSelection(safeStart, safeEnd)) {
-            return true;
-        }
         Selection.setSelection(mEditable, safeStart, safeEnd);
         return sendEditableTextSnapshot("ime-selection");
     }
@@ -93,8 +90,12 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         if (!ensureEditableTextWindow()) {
             return false;
         }
+        ImeMarkedRangeRole nextRole = mEditableMarkedRole == ImeMarkedRangeRole.SYSTEM_MARK
+                ? ImeMarkedRangeRole.SYSTEM_MARK
+                : ImeMarkedRangeRole.PREEDIT;
         super.setComposingText(text != null ? text : "", newCursorPosition);
-        mEditableMarkedRole = ImeMarkedRangeRole.PREEDIT;
+        mEditableMarkedRole = nextRole;
+        refreshEditableMarkedStateAfterLocalEdit();
         return sendEditableTextSnapshot("ime-update");
     }
 
@@ -245,15 +246,34 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         if (!ensureEditableTextWindow()) {
             return false;
         }
-        if (mEditableMarkedRole == ImeMarkedRangeRole.SYSTEM_MARK) {
-            BaseInputConnection.removeComposingSpans(mEditable);
-            mEditableMarkedRole = ImeMarkedRangeRole.NONE;
-        }
-        boolean handled = super.deleteSurroundingText(
-                Math.max(0, beforeLength),
-                Math.max(0, afterLength));
+        int safeBefore = Math.max(0, beforeLength);
+        int safeAfter = Math.max(0, afterLength);
+        boolean handled = isValidEditableRange(getEditableComposingRange(), mEditable.length())
+                ? deleteEditableSurroundingText(safeBefore, safeAfter)
+                : super.deleteSurroundingText(safeBefore, safeAfter);
         refreshEditableMarkedStateAfterLocalEdit();
         return sendEditableTextSnapshot("ime-delete") || handled;
+    }
+
+    private boolean deleteEditableSurroundingText(int beforeLength, int afterLength) {
+        int start = Selection.getSelectionStart(mEditable);
+        int end = Selection.getSelectionEnd(mEditable);
+        if (start < 0 || end < 0) {
+            return false;
+        }
+        int a = Math.min(start, end);
+        int b = Math.max(start, end);
+        int deleteStart = Math.max(0, a - beforeLength);
+        int deletedBefore = a - deleteStart;
+        if (deletedBefore > 0) {
+            mEditable.delete(deleteStart, a);
+        }
+        b -= deletedBefore;
+        int deleteEnd = Math.min(mEditable.length(), b + afterLength);
+        if (deleteEnd > b) {
+            mEditable.delete(b, deleteEnd);
+        }
+        return true;
     }
 
     private void finishImeAction(EditorActionResult result, String perfName) {
@@ -365,19 +385,11 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         if (mEditableMarkedRole != ImeMarkedRangeRole.SYSTEM_MARK) {
             return false;
         }
-        return text != null
-                && text.length() > 1
-                && isValidEditableRange(getEditableComposingRange(), mEditable.length());
-    }
-
-    private boolean shouldIgnoreSystemMarkedSelection(int start, int end) {
-        if (mEditableMarkedRole != ImeMarkedRangeRole.SYSTEM_MARK || start != end) {
+        if (!isValidEditableRange(getEditableComposingRange(), mEditable.length())) {
             return false;
         }
-        ImeOffsetRange range = getEditableComposingRange();
-        return isValidEditableRange(range, mEditable.length())
-                && start >= range.start
-                && start <= range.end;
+        int textLength = text != null ? text.length() : 0;
+        return textLength == 0 || textLength > 1;
     }
 
     private ImeOffsetRange getEditableSelectionRange() {
