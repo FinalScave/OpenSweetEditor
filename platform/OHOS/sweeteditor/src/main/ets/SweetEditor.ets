@@ -170,6 +170,8 @@ const DISPLAY_SYNC_MAX_FPS = 120;
 const DISPLAY_SYNC_EXPECTED_FPS = 60;
 const TRANSIENT_SCROLLBAR_REFRESH_MIN_MS = 16;
 const MAX_IME_TEXT_LENGTH = 32768;
+const IME_TRACE_ENABLED = true;
+const IME_TRACE_SNIPPET_LENGTH = 48;
 const EDITOR_FOCUS_ID = 'sweeteditor-canvas';
 const SELECTION_MENU_GAP = 8;
 const SELECTION_MENU_HANDLE_CLEARANCE = 32;
@@ -1889,25 +1891,31 @@ export struct SweetEditor {
     if (!this.editorCore) {
       return;
     }
+    this.traceIme('update-start', `text="${this.traceTextSnippet(text)}" ` +
+      `${this.describeCurrentImeContext()} ${this.describeCoreImeState()}`);
     const message = new ImeCommandMessage();
     message.kind = ImeCommandKind.SET_PREEDIT_TEXT;
     message.text = text;
     message.cursorOffset = 1;
     message.scriptClass = ImeScriptClass.UNKNOWN;
     const result = this.editorCore.handleImeCommandMessage(message);
-    this.finishImeAction(result);
+    this.traceIme('update-result', `${this.describeEditorActionResult(result)} ${this.describeCoreImeState()}`);
+    this.finishImeAction(result, 'update');
   }
 
   commitImeComposition(text: string): void {
     if (!this.editorCore) {
       return;
     }
+    this.traceIme('commit-start', `text="${this.traceTextSnippet(text)}" ` +
+      `${this.describeCurrentImeContext()} ${this.describeCoreImeState()}`);
     const message = new ImeCommandMessage();
     message.kind = ImeCommandKind.COMMIT_TEXT;
     message.text = text;
     message.scriptClass = ImeScriptClass.UNKNOWN;
     const result = this.editorCore.handleImeCommandMessage(message);
-    this.finishImeAction(result);
+    this.traceIme('commit-result', `${this.describeEditorActionResult(result)} ${this.describeCoreImeState()}`);
+    this.finishImeAction(result, 'commit');
   }
 
   private refreshPointerModifiers(event: KeyEvent): void {
@@ -2256,9 +2264,16 @@ export struct SweetEditor {
     this.dispatchEditorActionResult(result);
   }
 
-  private finishImeAction(result: EditorActionResult): void {
+  private finishImeAction(result: EditorActionResult, traceEvent?: string): void {
+    if (traceEvent !== undefined) {
+      this.traceIme(`${traceEvent}-finish-before`, `${this.describeEditorActionResult(result)} ` +
+        this.describeCoreImeState());
+    }
     this.resetCursorBlink();
     this.dispatchEditorActionResult(result);
+    if (traceEvent !== undefined) {
+      this.traceIme(`${traceEvent}-finish-after`, this.describeCoreImeState());
+    }
   }
 
   private maybeTriggerCompletionFromChanges(textChanges: TextChange[]): void {
@@ -2691,6 +2706,8 @@ export struct SweetEditor {
     }
     const selection = this.getImeSelectionRange(context);
     const cursorInfo = this.buildImeCursorInfo(syncSnapshot);
+    this.traceIme('sync', `${this.describeImeContext(context)} sentSel=${this.describeNumberRange(selection.start,
+      selection.end)} ${this.describeImeSyncSnapshot(syncSnapshot)}`);
     this.inputController.changeSelection(context.text, selection.start, selection.end).catch(() => {});
     this.inputController.updateCursor(cursorInfo).catch(() => {});
   }
@@ -2740,6 +2757,125 @@ export struct SweetEditor {
     return start <= end ? { start: start, end: end } : { start: end, end: start };
   }
 
+  private traceIme(event: string, detail: string): void {
+    if (!IME_TRACE_ENABLED) {
+      return;
+    }
+    hilog.info(HILOG_DOMAIN, TAG, 'ime %{public}s %{public}s', event, detail);
+  }
+
+  private describeNumberRange(start: number, end: number): string {
+    return `${start}..${end}`;
+  }
+
+  private describeTextPosition(position: TextPosition): string {
+    return `${position.line}:${position.column}`;
+  }
+
+  private describeTextRange(range: TextRange | null): string {
+    if (range === null) {
+      return 'null';
+    }
+    return `${this.describeTextPosition(range.start)}..${this.describeTextPosition(range.end)}`;
+  }
+
+  private traceTextSnippet(text: string): string {
+    const escaped = text.replace(/\r/g, '\\r').replace(/\n/g, '\\n');
+    if (escaped.length <= IME_TRACE_SNIPPET_LENGTH) {
+      return escaped;
+    }
+    return `${escaped.substring(0, IME_TRACE_SNIPPET_LENGTH)}...`;
+  }
+
+  private sliceContextText(context: ImeInputContext, start: number, end: number): string {
+    const textLength = context.text.length;
+    const safeStart = Math.max(0, Math.min(start, textLength));
+    const safeEnd = Math.max(safeStart, Math.min(end, textLength));
+    return this.traceTextSnippet(context.text.substring(safeStart, safeEnd));
+  }
+
+  private describeImeContext(context: ImeInputContext): string {
+    const composition = context.hasComposition
+      ? this.describeNumberRange(context.composition.start, context.composition.end)
+      : 'none';
+    const systemMark = context.hasSystemMarkRange
+      ? this.describeNumberRange(context.systemMarkRange.start, context.systemMarkRange.end)
+      : 'none';
+    return `ctx=${context.id}/${context.revision} base=${context.documentStartOffset} len=${context.text.length}` +
+      ` sel=${this.describeNumberRange(context.selection.start, context.selection.end)}` +
+      ` comp=${composition} sys=${systemMark}`;
+  }
+
+  private describeCurrentImeContext(): string {
+    const context = this.getImeInputContextForCallback();
+    if (context === null) {
+      return 'ctx=null';
+    }
+    return `${this.describeImeContext(context)} ${this.describeImeCursorWindow(context)}`;
+  }
+
+  private describeImeCursorWindow(context: ImeInputContext): string {
+    const textLength = context.text.length;
+    const cursorStart = Math.max(0, Math.min(context.selection.start, textLength));
+    const cursorEnd = Math.max(cursorStart, Math.min(context.selection.end, textLength));
+    const start = Math.max(0, cursorStart - 24);
+    const end = Math.min(textLength, cursorEnd + 24);
+    const before = this.traceTextSnippet(context.text.substring(start, cursorStart));
+    const selected = this.traceTextSnippet(context.text.substring(cursorStart, cursorEnd));
+    const after = this.traceTextSnippet(context.text.substring(cursorEnd, end));
+    return `nearRange=${this.describeNumberRange(start, end)} near="${before}|${selected}|${after}"`;
+  }
+
+  private describeImeSyncSnapshot(snapshot: ImeSyncSnapshot): string {
+    const visibleComposition = snapshot.hasVisibleCompositionRange
+      ? this.describeTextRange(snapshot.visibleCompositionRange)
+      : 'none';
+    const systemMark = snapshot.hasSystemMarkRange
+      ? this.describeTextRange(snapshot.systemMarkRange)
+      : 'none';
+    return `cursor=${this.describeTextPosition(snapshot.cursor)} sel=${this.describeTextRange(snapshot.selection)}` +
+      ` visibleComp=${visibleComposition} sys=${systemMark} clearSys=${snapshot.clearSystemMark}`;
+  }
+
+  private describeCoreImeState(): string {
+    if (this.editorCore === null) {
+      return 'core=null';
+    }
+    const selection = this.editorCore.getSelection();
+    const composing = this.editorCore.getComposingRange();
+    const cursor = this.editorCore.getCursorPosition();
+    return `coreCursor=${this.describeTextPosition(cursor)} coreSel=${this.describeTextRange(selection)}` +
+      ` coreComp=${this.describeTextRange(composing)} composing=${this.editorCore.isComposing()}`;
+  }
+
+  private describeEditorActionResult(result: EditorActionResult): string {
+    return `handled=${result.handled} changed=${result.contentChanged} cursorChanged=${result.cursorChanged}` +
+      ` selectionChanged=${result.selectionChanged} compositionChanged=${result.compositionChanged}` +
+      ` needsSync=${result.needsImeSync} changes=${result.changes.length}` +
+      ` cursor=${this.describeTextPosition(result.cursorBefore)}->${this.describeTextPosition(result.cursorAfter)}` +
+      ` sel=${this.describeTextRange(result.selectionBefore)}->${this.describeTextRange(result.selectionAfter)}`;
+  }
+
+  private describePreviewRangeInterpretations(range: inputMethod.Range, context: ImeInputContext,
+    localRange: ImeOffsetRange): string {
+    const rawStart = Math.max(0, Math.min(range.start, range.end));
+    const rawEnd = Math.max(rawStart, Math.max(range.start, range.end));
+    const base = Math.max(0, context.documentStartOffset);
+    const localStart = Math.max(0, Math.min(rawStart, context.text.length));
+    const localEnd = Math.max(localStart, Math.min(rawEnd, context.text.length));
+    const localInclusiveEnd = Math.max(localStart, Math.min(rawEnd + 1, context.text.length));
+    const absoluteStart = Math.max(0, Math.min(rawStart - base, context.text.length));
+    const absoluteEnd = Math.max(absoluteStart, Math.min(rawEnd - base, context.text.length));
+    const absoluteInclusiveEnd = Math.max(absoluteStart, Math.min(rawEnd - base + 1, context.text.length));
+    return `raw=${this.describeNumberRange(range.start, range.end)}` +
+      ` normalized=${this.describeNumberRange(rawStart, rawEnd)}` +
+      ` local=${this.describeNumberRange(localRange.start, localRange.end)}` +
+      ` rawLocal="${this.sliceContextText(context, localStart, localEnd)}"` +
+      ` rawLocalInc="${this.sliceContextText(context, localStart, localInclusiveEnd)}"` +
+      ` rawAbs="${this.sliceContextText(context, absoluteStart, absoluteEnd)}"` +
+      ` rawAbsInc="${this.sliceContextText(context, absoluteStart, absoluteInclusiveEnd)}"`;
+  }
+
   private getImeTextBeforeCursor(length: number): string {
     const context = this.getImeInputContextForCallback();
     if (context === null) {
@@ -2747,7 +2883,12 @@ export struct SweetEditor {
     }
     const end = Math.max(0, Math.min(context.selection.start, context.text.length));
     const start = Math.max(0, end - Math.max(0, Math.min(length, MAX_IME_TEXT_LENGTH)));
-    return context.text.substring(start, end);
+    const result = context.text.substring(start, end);
+    const tailStart = Math.max(0, result.length - IME_TRACE_SNIPPET_LENGTH);
+    this.traceIme('get-left', `request=${length} actual=${result.length} range=${this.describeNumberRange(start,
+      end)} text="${this.traceTextSnippet(result)}" tail="${this.traceTextSnippet(result.substring(tailStart))}" ` +
+      `${this.describeImeContext(context)} ${this.describeImeCursorWindow(context)}`);
+    return result;
   }
 
   private getImeTextAfterCursor(length: number): string {
@@ -2757,7 +2898,11 @@ export struct SweetEditor {
     }
     const start = Math.max(0, Math.min(context.selection.end, context.text.length));
     const end = Math.min(context.text.length, start + Math.max(0, Math.min(length, MAX_IME_TEXT_LENGTH)));
-    return context.text.substring(start, end);
+    const result = context.text.substring(start, end);
+    this.traceIme('get-right', `request=${length} actual=${result.length} range=${this.describeNumberRange(start,
+      end)} text="${this.traceTextSnippet(result)}" ${this.describeImeContext(context)} ` +
+      this.describeImeCursorWindow(context));
+    return result;
   }
 
   private getImeTextIndexAtCursor(): number {
@@ -2765,8 +2910,11 @@ export struct SweetEditor {
     if (context === null) {
       return 0;
     }
-    return Math.max(0, context.documentStartOffset) +
-      Math.max(0, Math.min(context.selection.start, context.text.length));
+    const localIndex = Math.max(0, Math.min(context.selection.start, context.text.length));
+    const result = Math.max(0, context.documentStartOffset) + localIndex;
+    this.traceIme('get-index', `local=${localIndex} result=${result} ${this.describeImeContext(context)} ` +
+      this.describeImeCursorWindow(context));
+    return result;
   }
 
   private imeRangeFromCallbackRange(range: inputMethod.Range, context: ImeInputContext): ImeOffsetRange {
@@ -2786,30 +2934,38 @@ export struct SweetEditor {
     if (!this.editorCore || length <= 0) {
       return;
     }
+    this.traceIme('delete-left-start', `length=${length} ${this.describeCurrentImeContext()} ` +
+      this.describeCoreImeState());
     const message = new ImeCommandMessage();
     message.kind = ImeCommandKind.DELETE_SURROUNDING_TEXT;
     message.deleteBefore = length;
     message.textUnit = ImeTextUnit.GRAPHEME;
     const result = this.editorCore.handleImeCommandMessage(message);
-    this.finishImeAction(result);
+    this.traceIme('delete-left-result', `${this.describeEditorActionResult(result)} ${this.describeCoreImeState()}`);
+    this.finishImeAction(result, 'delete-left');
   }
 
   private deleteRightByLength(length: number): void {
     if (!this.editorCore || length <= 0) {
       return;
     }
+    this.traceIme('delete-right-start', `length=${length} ${this.describeCurrentImeContext()} ` +
+      this.describeCoreImeState());
     const message = new ImeCommandMessage();
     message.kind = ImeCommandKind.DELETE_SURROUNDING_TEXT;
     message.deleteAfter = length;
     message.textUnit = ImeTextUnit.GRAPHEME;
     const result = this.editorCore.handleImeCommandMessage(message);
-    this.finishImeAction(result);
+    this.traceIme('delete-right-result', `${this.describeEditorActionResult(result)} ${this.describeCoreImeState()}`);
+    this.finishImeAction(result, 'delete-right');
   }
 
   private moveCursorByIme(direction: inputMethod.Direction, extendSelection: boolean): void {
     if (!this.editorCore) {
       return;
     }
+    this.traceIme('move-start', `direction=${direction} extend=${extendSelection} ` +
+      `${this.describeCurrentImeContext()} ${this.describeCoreImeState()}`);
     let moveResult: EditorActionResult | null = null;
     switch (direction) {
       case inputMethod.Direction.CURSOR_LEFT:
@@ -2827,7 +2983,11 @@ export struct SweetEditor {
       default:
         return;
     }
-    this.finishImeAction(moveResult);
+    if (moveResult === null) {
+      return;
+    }
+    this.traceIme('move-result', `${this.describeEditorActionResult(moveResult)} ${this.describeCoreImeState()}`);
+    this.finishImeAction(moveResult, 'move');
   }
 
   private selectRangeByIme(range: inputMethod.Range): void {
@@ -2839,6 +2999,8 @@ export struct SweetEditor {
       return;
     }
     const localRange = this.imeRangeFromCallbackRange(range, context);
+    this.traceIme('select-range', `${this.describePreviewRangeInterpretations(range, context, localRange)} ` +
+      this.describeImeContext(context));
     const message = new ImeCommandMessage();
     message.kind = ImeCommandKind.SET_SELECTION;
     message.contextId = context.id;
@@ -2846,7 +3008,8 @@ export struct SweetEditor {
     message.documentStartOffset = context.documentStartOffset;
     message.selection = localRange;
     const result = this.editorCore.handleImeCommandMessage(message);
-    this.finishImeAction(result);
+    this.traceIme('select-range-result', `${this.describeEditorActionResult(result)} ${this.describeCoreImeState()}`);
+    this.finishImeAction(result, 'select-range');
   }
 
   private handleImePreviewText(text: string, range: inputMethod.Range): void {
@@ -2855,15 +3018,21 @@ export struct SweetEditor {
     }
     const context = this.getImeInputContextForCallback();
     if (context !== null) {
+      const localRange = this.imeRangeFromCallbackRange(range, context);
+      this.traceIme('preview-start', `text="${this.traceTextSnippet(text)}" ` +
+        `${this.describePreviewRangeInterpretations(range, context, localRange)} ` +
+        `${this.describeImeContext(context)} ${this.describeCoreImeState()}`);
       const markMessage = new ImeCommandMessage();
       markMessage.kind = ImeCommandKind.SET_MARKED_RANGE;
       markMessage.contextId = context.id;
       markMessage.contextRevision = context.revision;
       markMessage.documentStartOffset = context.documentStartOffset;
-      markMessage.range = this.imeRangeFromCallbackRange(range, context);
+      markMessage.range = localRange;
       markMessage.markedRole = ImeMarkedRangeRole.PREEDIT;
       markMessage.scriptClass = ImeScriptClass.UNKNOWN;
       const markResult = this.editorCore.handleImeCommandMessage(markMessage);
+      this.traceIme('preview-mark', `handled=${markResult.handled} changed=${markResult.contentChanged}` +
+        ` needsSync=${markResult.needsImeSync} ${this.describeCoreImeState()}`);
       this.dispatchEditorActionResult(markResult);
     }
     const composeMessage = new ImeCommandMessage();
@@ -2872,18 +3041,28 @@ export struct SweetEditor {
     composeMessage.cursorOffset = 1;
     composeMessage.scriptClass = ImeScriptClass.UNKNOWN;
     const composeResult = this.editorCore.handleImeCommandMessage(composeMessage);
+    this.traceIme('preview-compose', `text="${this.traceTextSnippet(text)}" handled=${composeResult.handled}` +
+      ` changed=${composeResult.contentChanged} needsSync=${composeResult.needsImeSync} ` +
+      this.describeCoreImeState());
     this.dispatchEditorActionResult(composeResult);
     this.resetCursorBlink();
   }
 
   private finishImePreviewText(): void {
-    if (!this.editorCore || !this.editorCore.isComposing()) {
+    if (!this.editorCore) {
       return;
     }
+    if (!this.editorCore.isComposing()) {
+      this.traceIme('preview-finish-ignored', this.describeCoreImeState());
+      return;
+    }
+    this.traceIme('preview-finish', this.describeCoreImeState());
     const message = new ImeCommandMessage();
     message.kind = ImeCommandKind.FINISH_PREEDIT;
     const result = this.editorCore.handleImeCommandMessage(message);
-    this.finishImeAction(result);
+    this.traceIme('preview-finished', `handled=${result.handled} changed=${result.contentChanged}` +
+      ` needsSync=${result.needsImeSync} ${this.describeCoreImeState()}`);
+    this.finishImeAction(result, 'preview');
   }
 
   private handleImeFunctionKey(functionKey: inputMethod.FunctionKey): void {
