@@ -9,6 +9,7 @@ This document describes the current repository code state (2026-06). If the docu
 - [Apple Platform API](./api-platform-apple.md)
 - [WinForms Platform API](./api-platform-winforms.md)
 - [OHOS Platform API](./api-platform-ohos.md)
+- [Avalonia Platform API](./api-platform-avalonia.md)
 - [C++ Core / C API](./api-editor-core.md)
 - [Platform Implementation Standard](./platform-implementation-standard.md)
 
@@ -21,6 +22,8 @@ This document describes the current repository code state (2026-06). If the docu
 | WinForms | P/Invoke -> C API | Active | Consumes binary payload |
 | Apple | Swift Package + manual C bridge | Active | Mainly consumes binary payload; bridge header and `c_api.h` need explicit cross-check |
 | OHOS | ArkTS NAPI direct to shared C++ (`libsweeteditor.so`) | Active | `EditorCore.ets` + `CoreProtocol.ets` decode binary payload on the ArkTS side |
+| Flutter | FFI -> C API | Active | `core_protocol.dart` decodes binary payload; widget layer integrates platform text input |
+| Avalonia | C# P/Invoke -> C API | Active | `CoreProtocol.cs` decodes binary payload; `SweetEditorControl` owns Avalonia rendering and input adaptation |
 | Web (Emscripten) | Unofficial fork (`LangLang03/OpenSweetEditor-Web`) | Testing | Experimental Web platform work is maintained in fork repo: <https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten> |
 
 ## Current Platform Layer Conventions

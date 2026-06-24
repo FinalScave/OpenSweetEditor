@@ -34,6 +34,8 @@
 │   ├── WinForms                     C# P/Invoke + C API
 │   ├── Apple                        Swift Package + 手工 C bridge
 │   ├── OHOS                         OHOS SDK + NAPI 直连
+│   ├── Flutter                      Dart FFI + Flutter Widget
+│   ├── Avalonia                     C# P/Invoke + Avalonia Control
 │   └── Emscripten                   Web 实验性测试（非官方 fork：https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten）
 └── prebuilt                         预构建动态库
 ```
@@ -99,6 +101,26 @@
 - `platform/Apple/Sources/SweetEditorMacOS`
   - iOS / macOS 平台视图
 
+### Flutter
+
+- `platform/Flutter/sweeteditor/lib/core/editor_core.dart`
+  - Dart FFI 核心 API
+- `platform/Flutter/sweeteditor/lib/core/core_protocol.dart`
+  - Dart 侧二进制协议编解码
+- `platform/Flutter/sweeteditor/lib/widget/sweet_editor_widget.dart`
+  - Flutter Widget 层与平台文本输入接入
+
+### Avalonia
+
+- `platform/Avalonia/SweetEditor/SweetEditorControl.cs`
+  - Avalonia 控件层、输入与绘制
+- `platform/Avalonia/SweetEditor/EditorCore.cs`
+  - C# P/Invoke bridge
+- `platform/Avalonia/SweetEditor/CoreProtocol.cs`
+  - C# 侧二进制协议编解码
+- `platform/Avalonia/SweetEditor/EditorRenderer.cs`
+  - Avalonia DrawingContext 渲染
+
 ## 平台实现标准
 
 如果你正在实现新平台或维护现有平台，请参阅 [平台实现标准](platform-implementation-standard.md)，其中定义了所有平台实现必须遵循的类型清单、模块结构、API 契约与合规规则。
@@ -113,7 +135,7 @@
   - 先看 `decoration.*`
 - 改公共 ABI、二进制协议、枚举值：
   - 先改 `c_api.h` / `c_api.cpp`
-  - 再同步 Swing / WinForms / Apple
+  - 再同步 Swing / WinForms / Apple / Flutter / Avalonia
   - Android 若有同构能力，也要同步 JNI 路径
 - 改平台输入行为：
   - 先确认核心是否已有语义支持，再改平台转发，不要把编辑规则写死在平台层
@@ -134,6 +156,8 @@
 - Swing：`EditorNative.java`、`CoreProtocol.java`
 - WinForms：`EditorCore.cs`、`CoreProtocol.cs`
 - Apple：`SweetEditorBridge.h`、`SweetEditorCore.swift`
+- Flutter：`editor_core.dart`、`core_protocol.dart`、`sweeteditor_bindings_generated.dart`
+- Avalonia：`EditorCore.cs`、`CoreProtocol.cs`
 
 ## 构建入口
 
@@ -142,6 +166,8 @@
 - Swing：`platform/Swing`
 - WinForms：`platform/WinForms/WinForms.sln`
 - Apple：`platform/Apple/Package.swift`
+- Flutter：`platform/Flutter/sweeteditor`
+- Avalonia：`platform/Avalonia/Avalonia.sln`
 
 ## 文档与编码约定
 

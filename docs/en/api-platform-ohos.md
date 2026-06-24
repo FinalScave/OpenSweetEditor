@@ -260,7 +260,7 @@ public tickAnimations(): EditorActionResult
 public handleKeyEvent(keyCode: number, text: string | null, modifiers: number): EditorActionResult
 ```
 
-### Text Edit / Cursor / Selection / Composition
+### Text Edit / Cursor / Selection / IME
 
 These are `SweetEditor` view methods. The underlying `EditorCore` calls return `EditorActionResult`, and the view dispatches those results internally.
 
@@ -281,7 +281,7 @@ public getSelection(): TextRange | null
 public getSelectedText(): string
 public handleImeCommandMessage(message: ImeCommandMessage): EditorActionResult | undefined
 public handleImeTextUpdateMessage(message: ImeTextUpdateMessage): EditorActionResult | undefined
-public isComposing(): boolean
+public hasPreedit(): boolean
 ```
 
 ### Styles / Decorations / Folding / Linked Editing

@@ -88,7 +88,7 @@ func getWordAtCursor() -> String
 
 func handleImeCommandMessage(_ message: ImeCommandMessage) -> EditorActionResult?
 func handleImeTextUpdateMessage(_ message: ImeTextUpdateMessage) -> EditorActionResult?
-func isComposing() -> Bool
+func hasPreedit() -> Bool
 
 func setReadOnly(_ readOnly: Bool)
 func isReadOnly() -> Bool

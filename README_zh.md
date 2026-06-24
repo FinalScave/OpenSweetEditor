@@ -9,10 +9,10 @@
 **C++17 内核 + 平台原生渲染，面向 IDE、AI 编程工具、云开发工作台等长期演进的编辑基础设施场景。**
 
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg?logo=cplusplus)](https://isocpp.org/)
-[![Platforms](https://img.shields.io/badge/Platforms-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows%20%7C%20Swing%20%7C%20OHOS%20%7C%20Web*-brightgreen.svg)](#平台支持状态)
+[![Platforms](https://img.shields.io/badge/Platforms-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows%20%7C%20Swing%20%7C%20OHOS%20%7C%20Flutter%20%7C%20Avalonia%20%7C%20Web*-brightgreen.svg)](#平台支持状态)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**Android · iOS · macOS · Windows · Swing · OHOS · Web\***
+**Android · iOS · macOS · Windows · Swing · OHOS · Flutter · Avalonia · Web\***
 
 </div>
 
@@ -20,7 +20,7 @@
 
 ## 项目定位
 
-SweetEditor 是一套跨平台代码编辑器内核，面向需要在 Android、iOS、macOS、Windows、Swing 和 OHOS 上保持一致编辑行为的产品。
+SweetEditor 是一套跨平台代码编辑器内核，面向需要在 Android、iOS、macOS、Windows、Swing、OHOS、Flutter 和 Avalonia 上保持一致编辑行为的产品。
 
 它采用“**C++17 内核 + 平台原生渲染**”架构：C++ 内核负责文档编辑语义、文本布局与装饰模型，各平台层负责输入转发与绘制。
 
@@ -32,7 +32,7 @@ SweetEditor 是一套跨平台代码编辑器内核，面向需要在 Android、
 - **核心与渲染分离**：平台层聚焦输入桥接与原生绘制，降低多平台回归和维护成本
 - **高级编辑能力完整**：支持代码折叠、Snippet、Linked Editing、诊断装饰、补全扩展等能力
 - **性能路径明确**：基于 Piece Table、增量布局、视口渲染、SIMD Unicode 加速与 mmap 大文件加载
-- **原生接入友好**：已适配 Android、Apple 平台、Windows、Swing 和 OHOS，Web 当前为测试状态，由非官方 fork 仓库维护
+- **原生接入友好**：已适配 Android、Apple 平台、Windows、Swing、OHOS、Flutter 和 Avalonia，Web 当前为测试状态，由非官方 fork 仓库维护
 
 ## 平台支持状态
 
@@ -42,10 +42,10 @@ SweetEditor 是一套跨平台代码编辑器内核，面向需要在 Android、
 | iOS                   | 已实现      | CoreText + CoreGraphics | UIKit / SwiftUI（正在完善）  | [./platform/Apple](./platform/Apple)                                                                              |
 | macOS                 | 已实现      | CoreText + CoreGraphics | AppKit / SwiftUI（正在完善） | [./platform/Apple](./platform/Apple)                                                                              |
 | Windows               | 已实现      | GDI+                    | WinForms               | [./platform/WinForms](./platform/WinForms)                                                                        |
-| Swing                 | 已实现      | Java2D                  | Swing                  | ./[platform/Swing](./platform/Swing)                                                                              |
+| Swing                 | 已实现      | Java2D                  | Swing                  | [./platform/Swing](./platform/Swing)                                                                              |
 | OHOS                  | 已实现      | ArkUI Canvas            | ArkUI                  | [./platform/OHOS](./platform/OHOS)                                                                                |
 | Flutter               | 已实现      | TextPainter             | Flutter                | [./platform/Flutter](./platform/Flutter)                                                                          |
-| C# Avalonia               | 已实现          | -             | Avalonia                          | [./platform/Avalonia](./platform/Avalonia)                                                                          |
+| Avalonia              | 已实现      | DrawingContext          | Avalonia               | [./platform/Avalonia](./platform/Avalonia)                                                                        |
 | Qt                    | 已实现      | QPainter                | Qt                     | [FinalScave/SweetEditor-Qt](https://github.com/FinalScave/SweetEditor-Qt)                                         |
 | Compose Multiplatform | 进行中      | Compose Canvas          | Compose                | [lumkit/SweetEditor-Compose](https://github.com/lumkit/SweetEditor-Compose)                                       |
 | Web                   | 测试中（非官方） | -                       | -                      | [LangLang03/OpenSweetEditor-Web](https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten) |
@@ -145,7 +145,7 @@ SweetEditor 坚持最小依赖原则，核心运行时仅依赖少量轻量库�
 | --- | --- |
 | [架构设计](docs/zh/architecture.md) | 核心架构、模块设计、数据流、渲染流水线 |
 | [EditorCore API（中文）](docs/zh/api-editor-core.md) | C++ 核心层和 C API 参考 |
-| [平台 API 索引（中文）](docs/zh/api-platform.md) | Android、Swing、Apple、WinForms、OHOS 平台 API 文档入口 |
+| [平台 API 索引（中文）](docs/zh/api-platform.md) | Android、Swing、Apple、WinForms、OHOS、Avalonia 平台 API 文档入口 |
 | [平台实现标准](docs/zh/platform-implementation-standard.md) | 所有平台实现必须遵循的类型清单、模块结构、API 契约与合规规则 |
 | [参与共建](docs/zh/join.md) | 仓库结构、阅读入口、平台同步检查点 |
 

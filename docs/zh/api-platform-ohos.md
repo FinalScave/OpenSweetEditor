@@ -260,7 +260,7 @@ public tickAnimations(): EditorActionResult
 public handleKeyEvent(keyCode: number, text: string | null, modifiers: number): EditorActionResult
 ```
 
-### 文本编辑 / 光标选区 / IME Composition
+### 文本编辑 / 光标选区 / IME
 
 这里列出的是 `SweetEditor` view 方法。底层 `EditorCore` 调用仍返回 `EditorActionResult`，view 会在内部统一分发这些结果。
 
@@ -281,7 +281,7 @@ public getSelection(): TextRange | null
 public getSelectedText(): string
 public handleImeCommandMessage(message: ImeCommandMessage): EditorActionResult | undefined
 public handleImeTextUpdateMessage(message: ImeTextUpdateMessage): EditorActionResult | undefined
-public isComposing(): boolean
+public hasPreedit(): boolean
 ```
 
 ### 样式 / Decoration / Folding / Linked Editing

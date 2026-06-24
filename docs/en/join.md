@@ -34,6 +34,8 @@ This document gives practical development entry points based on the current repo
 │   ├── WinForms                     C# P/Invoke + C API
 │   ├── Apple                        Swift Package + manual C bridge
 │   ├── OHOS                         OHOS SDK + direct NAPI
+│   ├── Flutter                      Dart FFI + Flutter Widget
+│   ├── Avalonia                     C# P/Invoke + Avalonia Control
 │   └── Emscripten                   experimental Web testing (unofficial fork: https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten)
 └── prebuilt                         prebuilt shared libs
 ```
@@ -105,6 +107,26 @@ This document gives practical development entry points based on the current repo
 - `platform/Apple/Sources/SweetEditorMacOS`
   - iOS / macOS platform views
 
+### Flutter
+
+- `platform/Flutter/sweeteditor/lib/core/editor_core.dart`
+  - Dart FFI core API
+- `platform/Flutter/sweeteditor/lib/core/core_protocol.dart`
+  - Dart-side binary protocol encoding/decoding
+- `platform/Flutter/sweeteditor/lib/widget/sweet_editor_widget.dart`
+  - Flutter widget layer and platform text-input integration
+
+### Avalonia
+
+- `platform/Avalonia/SweetEditor/SweetEditorControl.cs`
+  - Avalonia control layer, input, and drawing
+- `platform/Avalonia/SweetEditor/EditorCore.cs`
+  - C# P/Invoke bridge
+- `platform/Avalonia/SweetEditor/CoreProtocol.cs`
+  - C#-side binary protocol encoding/decoding
+- `platform/Avalonia/SweetEditor/EditorRenderer.cs`
+  - Avalonia DrawingContext rendering
+
 ## Platform Implementation Standard
 
 If you are implementing a new platform or maintaining an existing one, see the [Platform Implementation Standard](platform-implementation-standard.md) for the full list of required types, module structure, API contracts, and compliance rules that every platform must follow.
@@ -119,7 +141,7 @@ If you are implementing a new platform or maintaining an existing one, see the [
   - check `decoration.*` first
 - Change public ABI, binary protocol, enum values:
   - change `c_api.h` / `c_api.cpp` first
-  - then sync Swing / WinForms / Apple
+  - then sync Swing / WinForms / Apple / Flutter / Avalonia
   - if Android has equivalent capability, sync JNI path too
 - Change platform input behavior:
   - first confirm core semantic support exists, then change platform forwarding; do not hard-code edit rules in platform layer
@@ -140,6 +162,8 @@ Usual sync targets:
 - Swing: `EditorNative.java`, `CoreProtocol.java`
 - WinForms: `EditorCore.cs`, `CoreProtocol.cs`
 - Apple: `SweetEditorBridge.h`, `SweetEditorCore.swift`
+- Flutter: `editor_core.dart`, `core_protocol.dart`, `sweeteditor_bindings_generated.dart`
+- Avalonia: `EditorCore.cs`, `CoreProtocol.cs`
 
 ## Build Entry
 
@@ -148,6 +172,8 @@ Usual sync targets:
 - Swing: `platform/Swing`
 - WinForms: `platform/WinForms/WinForms.sln`
 - Apple: `platform/Apple/Package.swift`
+- Flutter: `platform/Flutter/sweeteditor`
+- Avalonia: `platform/Avalonia/Avalonia.sln`
 
 ## Doc and Encoding Conventions
 

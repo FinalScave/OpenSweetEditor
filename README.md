@@ -9,10 +9,10 @@
 **A C++17 core with platform-native rendering, built for long-term editor infrastructure in IDEs, AI programming tools, cloud development workspaces, and similar products.**
 
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg?logo=cplusplus)](https://isocpp.org/)
-[![Platforms](https://img.shields.io/badge/Platforms-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows%20%7C%20Swing%20%7C%20OHOS%20%7C%20Web*-brightgreen.svg)](#platform-support-status)
+[![Platforms](https://img.shields.io/badge/Platforms-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows%20%7C%20Swing%20%7C%20OHOS%20%7C%20Flutter%20%7C%20Avalonia%20%7C%20Web*-brightgreen.svg)](#platform-support-status)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**Android / iOS / macOS / Windows / Swing / OHOS / Web\***
+**Android / iOS / macOS / Windows / Swing / OHOS / Flutter / Avalonia / Web\***
 
 </div>
 
@@ -20,7 +20,7 @@
 
 ## Project Positioning
 
-SweetEditor is a cross-platform code editor core designed for products that need consistent editing behavior across Android, iOS, macOS, Windows, Swing, and OHOS.
+SweetEditor is a cross-platform code editor core designed for products that need consistent editing behavior across Android, iOS, macOS, Windows, Swing, OHOS, Flutter, and Avalonia.
 
 It adopts a **"C++17 core + platform-native rendering"** architecture: the C++ core is responsible for document editing semantics, text layout, and the decoration model, while each platform layer handles input forwarding and rendering.
 
@@ -32,7 +32,7 @@ It is suited for long-term editor infrastructure in IDEs, AI programming tools, 
 - **Separation of core and rendering**: platform layers focus on input bridging and native drawing, reducing regression risk and maintenance cost across platforms
 - **Comprehensive advanced editing capabilities**: supports code folding, snippets, linked editing, diagnostic decorations, completion extensions, and more
 - **A clear performance path**: built on Piece Table, incremental layout, viewport rendering, SIMD Unicode acceleration, and mmap-based large-file loading
-- **Friendly native integration**: already adapted for Android, Apple platforms, Windows, Swing, and OHOS, with Web support currently in testing through an unofficial fork
+- **Friendly native integration**: already adapted for Android, Apple platforms, Windows, Swing, OHOS, Flutter, and Avalonia, with Web support currently in testing through an unofficial fork
 
 ## Platform Support Status
 
@@ -45,7 +45,7 @@ It is suited for long-term editor infrastructure in IDEs, AI programming tools, 
 | Swing                 | Implemented          | Java2D                  | Swing                            | [./platform/Swing](./platform/Swing)                                                                              |
 | OHOS                  | Implemented          | ArkUI Canvas            | ArkUI                            | [./platform/OHOS](./platform/OHOS)                                                                                |
 | Flutter               | Implemented          | TextPainter             | Flutter                          | [./platform/Flutter](./platform/Flutter)                                                                          |
-| C# Avalonia               | Implemented          | -             | Avalonia                          | [./platform/Avalonia](./platform/Avalonia)                                                                          |
+| Avalonia              | Implemented          | DrawingContext          | Avalonia                         | [./platform/Avalonia](./platform/Avalonia)                                                                        |
 | Qt                    | Implemented          | QPainter                | Qt                               | [FinalScave/SweetEditor-Qt](https://github.com/FinalScave/SweetEditor-Qt)                                         |
 | Compose Multiplatform | In Progress          | Compose Canvas          | Compose                          | [lumkit/SweetEditor-Compose](https://github.com/lumkit/SweetEditor-Compose)                                       |
 | Web                   | Testing (Unofficial) | -                       | -                                | [LangLang03/OpenSweetEditor-Web](https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten) |
@@ -145,7 +145,7 @@ Testing uses [Catch2](https://github.com/catchorg/Catch2).
 | --- | --- |
 | [Architecture](docs/en/architecture.md) | Core architecture, module design, data flow, and rendering pipeline |
 | [EditorCore API](docs/en/api-editor-core.md) | Reference for the C++ core layer and C API |
-| [Platform API Index](docs/en/api-platform.md) | Entry point for Android, Swing, Apple, WinForms, and OHOS platform API docs |
+| [Platform API Index](docs/en/api-platform.md) | Entry point for Android, Swing, Apple, WinForms, OHOS, and Avalonia platform API docs |
 | [Platform Implementation Standard](docs/en/platform-implementation-standard.md) | Required types, module structure, API contracts, and compliance rules for all platform implementations |
 | [Contributing](docs/en/join.md) | Repository structure, reading entry points, and platform synchronization checkpoints |
 
