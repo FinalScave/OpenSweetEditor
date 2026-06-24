@@ -67,6 +67,8 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   bool _viewportUpdateScheduled = false;
   bool _editorResourcesReleased = false;
   bool _pendingDocumentLoadedNotification = false;
+  Ticker? _animationTicker;
+  bool _animating = false;
   core.PointerCursorType _pointerCursorType = core.PointerCursorType.text;
 
   EditorEventBus get _eventBus => widget.controller._eventBus;
@@ -124,18 +126,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   void _initEditor() {
     _initSubsystems();
-    _session.onRenderModelUpdated = (model) {
-      final pointerCursorChanged =
-          model.pointerCursorType != _pointerCursorType;
-      _pointerCursorType = model.pointerCursorType;
-      _overlayCoordinator.onRenderModelUpdated(model);
-      _updateTextInputGeometry();
-      if (pointerCursorChanged && mounted) {
-        setState(() {});
-      }
-      _dispatchPendingDocumentLoaded();
-    };
-    _session.onPlatformScaleChanged = _updateTextInputStyle;
     _session.bindSettings();
     _applyDeclarativeInputs();
     widget.controller._attach(this);
@@ -144,7 +134,13 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   void _initSubsystems() {
     _session = EditorSession(
-      controller: widget.controller,
+      eventBus: _eventBus,
+      hostCallbacks: EditorSessionHostCallbacks(
+        onRenderModelUpdated: _handleRenderModelUpdated,
+        onTextInputStyleInvalidated: _updateTextInputStyle,
+        onHostActionResult: _handleEditorActionResult,
+        onAnimationStateChanged: _setAnimationRunning,
+      ),
       theme: widget.theme ?? EditorTheme.dark(),
       initialSettings: widget.settings,
       fontFamily: widget.fontFamily,
@@ -160,14 +156,22 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     _overlayCoordinator = EditorOverlayCoordinator(session: _session);
     _interactionController = EditorInteractionController(
       session: _session,
-      tickerProvider: this,
-      onTextInputActionResult: _handleGestureInputResult,
     );
-    _session.onEditorActionResult = _dispatchEditorActionResult;
 
     _session.completionPopupController.setConfirmHandler(
       _interactionController.onCompletionItemConfirmed,
     );
+  }
+
+  void _handleRenderModelUpdated(core.EditorRenderModel model) {
+    final pointerCursorChanged = model.pointerCursorType != _pointerCursorType;
+    _pointerCursorType = model.pointerCursorType;
+    _overlayCoordinator.onRenderModelUpdated(model);
+    _updateTextInputGeometry();
+    if (pointerCursorChanged && mounted) {
+      setState(() {});
+    }
+    _dispatchPendingDocumentLoaded();
   }
 
   void _applyDeclarativeInputs() {
@@ -215,6 +219,25 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     _session.requestFlush();
   }
 
+  void _setAnimationRunning(bool running) {
+    if (_editorResourcesReleased) return;
+    if (running) {
+      if (_animating) return;
+      _animating = true;
+      _animationTicker ??= createTicker(_onAnimationTick);
+      _animationTicker!.start();
+      return;
+    }
+    if (!_animating) return;
+    _animating = false;
+    _animationTicker?.stop();
+  }
+
+  void _onAnimationTick(Duration elapsed) {
+    if (_editorResourcesReleased || !_animating) return;
+    _session.tickAnimations();
+  }
+
   void _scheduleViewportUpdate(Size size) {
     _pendingViewportSize = size;
     if (_viewportUpdateScheduled) return;
@@ -259,11 +282,12 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   void _releaseEditorResources() {
     if (_editorResourcesReleased) return;
+    _setAnimationRunning(false);
     _editorResourcesReleased = true;
+    _animationTicker?.dispose();
+    _animationTicker = null;
     _interactionController.dispose();
     _overlayCoordinator.dispose();
-    _session.completionProviderManager.dispose();
-    _session.decorationProviderManager.dispose();
     widget.controller._detach();
     _session.dispose();
   }
@@ -287,8 +311,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     final editorCore = _session.editorCore;
     var nextValue = _textEditingValue;
     if (editorCore == null) {
-      final traceOldValue = nextValue;
-      _traceImeDeltas('delta-in', textEditingDeltas, traceOldValue, null);
       for (final delta in textEditingDeltas) {
         if (delta.oldText != nextValue.text) {
           _clearTextInputStateContext();
@@ -304,8 +326,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       return;
     }
     nextValue = _textEditingValue;
-    final traceOldValue = nextValue;
-    _traceImeDeltas('delta-in', textEditingDeltas, traceOldValue, null);
 
     var hasStaleDelta = false;
     var probedValue = nextValue;
@@ -332,7 +352,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
           delta,
           appliedValue,
         );
-        _traceImeEditorActionResult('updateImeTextUpdatePatch', result);
         forceTextInputStateSync =
             _dispatchImeAction(result, clearTextInputContext: false) ||
             forceTextInputStateSync;
@@ -342,12 +361,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       _handlingTextInputUpdate = false;
     }
 
-    _traceImeDeltas(
-      'delta-applied',
-      textEditingDeltas,
-      traceOldValue,
-      nextValue,
-    );
     _textEditingValue = nextValue;
     if (forceTextInputStateSync) {
       _clearTextInputStateContext();
@@ -584,10 +597,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     if (!force && nextValue == _textEditingValue) {
       return;
     }
-    _traceImeEditingValue(
-      force ? 'syncTextInputState.force' : 'syncTextInputState',
-      nextValue,
-    );
     _textEditingValue = nextValue;
     if (_textInputConnection?.attached ?? false) {
       _updateTextInputStyle();
@@ -715,107 +724,6 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     return result.imeSync.clearSystemMark;
   }
 
-  bool _shouldTraceIme() {
-    return kDebugMode && _platformBehavior.usesDeltaTextInputModel;
-  }
-
-  void _traceImeDeltas(
-    String event,
-    List<TextEditingDelta> deltas,
-    TextEditingValue before,
-    TextEditingValue? after,
-  ) {
-    if (!_shouldTraceIme()) {
-      return;
-    }
-    debugPrint(
-      '[SweetEditor][IME] $event context=$_textInputContextId '
-      'revision=$_textInputContextRevision '
-      'before=${_formatImeEditingValue(before)}'
-      '${after == null ? '' : ' after=${_formatImeEditingValue(after)}'}',
-    );
-    for (var i = 0; i < deltas.length; i++) {
-      debugPrint('[SweetEditor][IME] delta[$i] ${_formatImeDelta(deltas[i])}');
-    }
-  }
-
-  void _traceImeEditorActionResult(
-    String event,
-    core.EditorActionResult result,
-  ) {
-    if (!_shouldTraceIme()) {
-      return;
-    }
-    final sync = result.imeSync;
-    debugPrint(
-      '[SweetEditor][IME] $event result handled=${result.handled} '
-      'content=${result.contentChanged} cursor=${result.cursorChanged} '
-      'selection=${result.selectionChanged} '
-      'clear=${sync.clearSystemMark} preedit=${sync.hasPreeditRange} '
-      'marked=${sync.hasSystemMarkRange}',
-    );
-  }
-
-  void _traceImeEditingValue(String event, TextEditingValue value) {
-    if (!_shouldTraceIme()) {
-      return;
-    }
-    debugPrint('[SweetEditor][IME] $event ${_formatImeEditingValue(value)}');
-  }
-
-  String _formatImeDelta(TextEditingDelta delta) {
-    final buffer = StringBuffer(
-      '${delta.runtimeType} old=${_formatImeTraceText(delta.oldText)} '
-      'selection=${_formatImeSelection(delta.selection)} '
-      'composing=${_formatImeRange(delta.composing)}',
-    );
-    if (delta is TextEditingDeltaInsertion) {
-      buffer.write(
-        ' insert=${_formatImeTraceText(delta.textInserted)} '
-        'at=${delta.insertionOffset}',
-      );
-    } else if (delta is TextEditingDeltaDeletion) {
-      buffer.write(' delete=${_formatImeRange(delta.deletedRange)}');
-    } else if (delta is TextEditingDeltaReplacement) {
-      buffer.write(
-        ' replace=${_formatImeRange(delta.replacedRange)} '
-        'with=${_formatImeTraceText(delta.replacementText)}',
-      );
-    }
-    return buffer.toString();
-  }
-
-  String _formatImeEditingValue(TextEditingValue value) {
-    return 'text=${_formatImeTraceText(value.text)} '
-        'selection=${_formatImeSelection(value.selection)} '
-        'composing=${_formatImeRange(value.composing)}';
-  }
-
-  String _formatImeSelection(TextSelection selection) {
-    if (!selection.isValid) {
-      return 'invalid';
-    }
-    return '${selection.baseOffset}..${selection.extentOffset}';
-  }
-
-  String _formatImeRange(TextRange range) {
-    if (!range.isValid) {
-      return 'invalid';
-    }
-    return '${range.start}..${range.end}';
-  }
-
-  String _formatImeTraceText(String text) {
-    final escaped = text
-        .replaceAll('\\', r'\\')
-        .replaceAll('\r', r'\r')
-        .replaceAll('\n', r'\n');
-    if (escaped.length <= 80) {
-      return "'$escaped'";
-    }
-    return "'${escaped.substring(0, 80)}...'(${text.length})";
-  }
-
   bool _isActiveTextRange(TextRange range, String text) {
     return range.isValid &&
         !range.isCollapsed &&
@@ -835,9 +743,8 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     return math.max(0, math.min(offset, text.length));
   }
 
-  void _handleGestureInputResult(core.EditorActionResult? result) {
+  void _handleEditorActionResult(core.EditorActionResult result) {
     if (_editorResourcesReleased) return;
-    if (result == null) return;
     if (result.needsImeSync && !_handlingTextInputUpdate) {
       _syncTextInputState(force: true);
     }
@@ -865,7 +772,9 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   }
 
   void _dispatchEditorActionResult(core.EditorActionResult? result) {
-    _interactionController.dispatchEditorActionResult(result);
+    if (result == null) return;
+    _interactionController.resetCursorBlink();
+    _session.handleEditorActionResult(result);
   }
 
   MouseCursor _resolveMouseCursor() {

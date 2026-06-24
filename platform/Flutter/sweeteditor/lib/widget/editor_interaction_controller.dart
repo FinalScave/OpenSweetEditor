@@ -6,19 +6,12 @@ const double _kDirectScrollEpsilon = 0.0001;
 class EditorInteractionController {
   EditorInteractionController({
     required EditorSession session,
-    required TickerProvider tickerProvider,
-    this.onTextInputActionResult,
-  }) : _session = session,
-       _tickerProvider = tickerProvider;
+  }) : _session = session;
 
   final EditorSession _session;
-  final TickerProvider _tickerProvider;
-  final void Function(core.EditorActionResult? result)? onTextInputActionResult;
 
   Timer? _cursorBlinkTimer;
   bool _cursorVisible = true;
-  Ticker? _animationTicker;
-  bool _animating = false;
   final Map<int, core.PointF> _activeTouchPoints = <int, core.PointF>{};
   final Map<int, double> _activePanZoomScales = <int, double>{};
 
@@ -38,10 +31,12 @@ class EditorInteractionController {
     _session.setCursorVisible(keepCursorVisible);
   }
 
+  void resetCursorBlink() {
+    _resetCursorBlink();
+  }
+
   void dispose() {
     _stopCursorBlink();
-    _animationTicker?.stop();
-    _animationTicker?.dispose();
     _activeTouchPoints.clear();
     _activePanZoomScales.clear();
   }
@@ -464,134 +459,6 @@ class EditorInteractionController {
     return result;
   }
 
-  void _fireGestureEvents(core.EditorActionResult result) {
-    final pos = result.cursorAfter;
-    switch (result.gestureType) {
-      case core.GestureType.tap:
-        _publishHitTargetEvent(result.hitTarget, result.tapPoint);
-        _session.completionProviderManager.dismiss();
-      case core.GestureType.doubleTap:
-        _session.eventBus.publish(
-          DoubleTapEvent(
-            cursorPosition: pos,
-            hasSelection: result.hasSelectionAfter,
-            selection: result.hasSelectionAfter ? result.selectionAfter : null,
-            locationInEditor: result.tapPoint,
-          ),
-        );
-      case core.GestureType.longPress:
-        _session.eventBus.publish(
-          LongPressEvent(
-            cursorPosition: pos,
-            locationInEditor: result.tapPoint,
-          ),
-        );
-      case core.GestureType.contextMenu:
-        _session.eventBus.publish(
-          ContextMenuEvent(
-            cursorPosition: pos,
-            locationInEditor: result.tapPoint,
-          ),
-        );
-      case core.GestureType.scroll:
-      case core.GestureType.fastScroll:
-      case core.GestureType.scale:
-      case core.GestureType.dragSelect:
-      default:
-        break;
-    }
-  }
-
-  void _handleScrollChanged(core.EditorActionResult result) {
-    _session.eventBus.publish(
-      ScrollChangedEvent(
-        scrollX: result.scrollXAfter,
-        scrollY: result.scrollYAfter,
-      ),
-    );
-    _session.decorationProviderManager.onScrollChanged();
-    _session.completionProviderManager.dismiss();
-  }
-
-  void _publishHitTargetEvent(
-    core.HitTarget hitTarget,
-    core.PointF locationInEditor,
-  ) {
-    switch (hitTarget.type) {
-      case core.HitTargetType.gutterIcon:
-        _session.eventBus.publish(
-          GutterIconClickEvent(
-            line: hitTarget.line,
-            iconId: hitTarget.iconId,
-            locationInEditor: locationInEditor,
-          ),
-        );
-      case core.HitTargetType.inlayHintText:
-        _session.eventBus.publish(
-          InlayHintClickEvent(
-            line: hitTarget.line,
-            column: hitTarget.column,
-            type: core.InlayType.text,
-            locationInEditor: locationInEditor,
-          ),
-        );
-      case core.HitTargetType.inlayHintIcon:
-        _session.eventBus.publish(
-          InlayHintClickEvent(
-            line: hitTarget.line,
-            column: hitTarget.column,
-            type: core.InlayType.icon,
-            intValue: hitTarget.iconId,
-            locationInEditor: locationInEditor,
-          ),
-        );
-      case core.HitTargetType.inlayHintColor:
-        _session.eventBus.publish(
-          InlayHintClickEvent(
-            line: hitTarget.line,
-            column: hitTarget.column,
-            type: core.InlayType.color,
-            intValue: hitTarget.colorValue,
-            locationInEditor: locationInEditor,
-          ),
-        );
-      case core.HitTargetType.none:
-        break;
-      case core.HitTargetType.foldPlaceholder:
-      case core.HitTargetType.foldGutter:
-        _session.eventBus.publish(
-          FoldToggleEvent(
-            line: hitTarget.line,
-            isGutter: hitTarget.type == core.HitTargetType.foldGutter,
-            locationInEditor: locationInEditor,
-          ),
-        );
-      case core.HitTargetType.codelens:
-        _session.eventBus.publish(
-          CodeLensClickEvent(
-            line: hitTarget.line,
-            column: hitTarget.column,
-            commandId: hitTarget.iconId,
-            locationInEditor: locationInEditor,
-          ),
-        );
-      case core.HitTargetType.link:
-        _session.eventBus.publish(
-          LinkClickEvent(
-            line: hitTarget.line,
-            column: hitTarget.column,
-            target:
-                _session.editorCore?.getLinkTargetAt(
-                  hitTarget.line,
-                  hitTarget.column,
-                ) ??
-                '',
-            locationInEditor: locationInEditor,
-          ),
-        );
-    }
-  }
-
   bool _handleResolvedCommand(int command) {
     if (command > core.EditorBuiltinCommand.triggerCompletion.value) {
       return _session.keyMap.invokeHandler(command);
@@ -655,7 +522,7 @@ class EditorInteractionController {
     Clipboard.getData(Clipboard.kTextPlain).then((data) {
       if (data?.text != null &&
           data!.text!.isNotEmpty &&
-          _session.controller.isAttached) {
+          _session.isActive) {
         insertText(data.text!);
       }
     });
@@ -695,7 +562,8 @@ class EditorInteractionController {
     }
     switch (keyCode) {
       case core.KeyCode.backspace:
-        dispatchEditorActionResult(
+        _resetCursorBlink();
+        _dispatchEditorActionResult(
           editorCore.handleImeCommandMessage(
             const core.ImeCommandMessage(
               kind: core.ImeCommandKind.deleteSurroundingText,
@@ -705,7 +573,8 @@ class EditorInteractionController {
         );
         return true;
       case core.KeyCode.deleteKey:
-        dispatchEditorActionResult(
+        _resetCursorBlink();
+        _dispatchEditorActionResult(
           editorCore.handleImeCommandMessage(
             const core.ImeCommandMessage(
               kind: core.ImeCommandKind.deleteSurroundingText,
@@ -715,7 +584,8 @@ class EditorInteractionController {
         );
         return true;
       case core.KeyCode.escape:
-        dispatchEditorActionResult(
+        _resetCursorBlink();
+        _dispatchEditorActionResult(
           editorCore.handleImeCommandMessage(
             const core.ImeCommandMessage(kind: core.ImeCommandKind.cancelPreedit),
           ),
@@ -801,12 +671,6 @@ class EditorInteractionController {
     _dispatchEditorActionResult(result);
   }
 
-  void dispatchEditorActionResult(core.EditorActionResult? result) {
-    if (result == null) return;
-    _resetCursorBlink();
-    _dispatchEditorActionResult(result);
-  }
-
   void selectAll() {
     final editorCore = _session.editorCore;
     if (editorCore == null) return;
@@ -816,114 +680,12 @@ class EditorInteractionController {
     _dispatchEditorActionResult(result);
   }
 
-  void _dispatchTextChanged(core.EditorActionResult result) {
-    if (!result.contentChanged || result.changes.isEmpty) return;
-    _session.eventBus.publish(
-      TextChangedEvent(
-        changes: result.changes,
-        kind: result.textChangeKind,
-        source: result.source,
-      ),
-    );
-    _session.decorationProviderManager.onTextChanged(result.changes);
-    _session.selectionMenuController.onTextChanged();
-
-    final editorCore = _session.editorCore;
-    if (editorCore == null || editorCore.isInLinkedEditing) {
-      return;
-    }
-
-    final primaryChange = result.changes.first;
-    if (primaryChange.newText.length == 1) {
-      final ch = primaryChange.newText;
-      if (_session.completionProviderManager.isTriggerCharacter(ch)) {
-        _session.completionProviderManager.triggerCompletion(
-          CompletionTriggerKind.character,
-          ch,
-        );
-      } else if (_session.completionPopupController.isShowing) {
-        _session.completionProviderManager.triggerCompletion(
-          CompletionTriggerKind.retrigger,
-          null,
-        );
-      }
-    } else if (_session.completionPopupController.isShowing) {
-      _session.completionProviderManager.triggerCompletion(
-        CompletionTriggerKind.retrigger,
-        null,
-      );
-    }
-  }
-
   void _dispatchEditorActionResult(core.EditorActionResult? result) {
-    if (result == null) return;
-    if (result.gestureType != core.GestureType.undefined) {
-      _fireGestureEvents(result);
-      _session.selectionMenuController.onGestureActionResult(
-        result,
-        result.hasSelectionAfter,
-      );
-    }
-
-    _updateAnimationState(result);
-    _dispatchStateEvents(result);
-    onTextInputActionResult?.call(result);
-    if (result.needsRedraw) {
-      _flush();
-    }
-  }
-
-  void _dispatchStateEvents(core.EditorActionResult result) {
-    if (result.contentChanged) {
-      final changes = result.changes;
-      if (changes.isNotEmpty) {
-        _dispatchTextChanged(result);
-      } else if (_session.completionPopupController.isShowing) {
-        _session.completionProviderManager.triggerCompletion(
-          CompletionTriggerKind.retrigger,
-          null,
-        );
-      }
-    }
-    final useImeSync = result.needsImeSync;
-    if (result.cursorChanged) {
-      _session.eventBus.publish(
-        CursorChangedEvent(
-          cursorPosition: useImeSync
-              ? result.imeSync.cursor
-              : result.cursorAfter,
-        ),
-      );
-    }
-    if (result.selectionChanged) {
-      _session.eventBus.publish(
-        SelectionChangedEvent(
-          hasSelection: useImeSync
-              ? result.imeSync.hasSelection
-              : result.hasSelectionAfter,
-          selection: useImeSync
-              ? (result.imeSync.hasSelection ? result.imeSync.selection : null)
-              : (result.hasSelectionAfter ? result.selectionAfter : null),
-          cursorPosition: useImeSync
-              ? result.imeSync.cursor
-              : result.cursorAfter,
-        ),
-      );
-    }
-    if (result.scrollChanged) {
-      _handleScrollChanged(result);
-    }
-    if (result.scaleChanged) {
-      _session.syncPlatformScale(result.scaleAfter);
-      _session.eventBus.publish(ScaleChangedEvent(scale: result.scaleAfter));
-    }
-    if (result.source == core.EditorActionSource.ime) {
-      _session.selectionMenuController.hide();
-    }
+    _session.handleEditorActionResult(result);
   }
 
   void _flush() {
-    if (_session.controller.isAttached) {
+    if (_session.isActive) {
       _session.requestFlush();
     }
   }
@@ -938,32 +700,6 @@ class EditorInteractionController {
   void _stopCursorBlink() {
     _cursorBlinkTimer?.cancel();
     _cursorBlinkTimer = null;
-  }
-
-  void _updateAnimationState(core.EditorActionResult result) {
-    if (result.needsAnimation) {
-      if (!_animating) {
-        _animating = true;
-        _animationTicker ??= _tickerProvider.createTicker(_onAnimationTick);
-        _animationTicker!.start();
-      }
-      return;
-    }
-    if (result.source != core.EditorActionSource.gesture &&
-        result.source != core.EditorActionSource.animation) {
-      return;
-    }
-    if (_animating) {
-      _animating = false;
-      _animationTicker?.stop();
-    }
-  }
-
-  void _onAnimationTick(Duration elapsed) {
-    final editorCore = _session.editorCore;
-    if (editorCore == null || !_animating) return;
-    final result = editorCore.tickAnimations();
-    _dispatchEditorActionResult(result);
   }
 
   static int _mapLogicalKey(LogicalKeyboardKey key) {

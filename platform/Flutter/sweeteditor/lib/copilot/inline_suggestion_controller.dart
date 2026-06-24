@@ -76,14 +76,14 @@ class InlineSuggestionController {
     final suggestion = _currentSuggestion!;
     _withSuppressedAutoDismiss(() {
       _unsubscribeEvents();
-      _session.dispatchEditorActionResult(
+      _session.handleEditorActionResult(
         _session.editorCore?.clearPhantomTexts(),
       );
       final pos = core.TextPosition(
         line: suggestion.line,
         column: suggestion.column,
       );
-      _session.dispatchEditorActionResult(
+      _session.handleEditorActionResult(
         _session.editorCore?.replaceText(
           pos.line,
           pos.column,
@@ -104,7 +104,7 @@ class InlineSuggestionController {
     final suggestion = _currentSuggestion!;
     _withSuppressedAutoDismiss(() {
       _unsubscribeEvents();
-      _session.dispatchEditorActionResult(
+      _session.handleEditorActionResult(
         _session.editorCore?.clearPhantomTexts(),
       );
       _showing = false;
@@ -153,7 +153,7 @@ class InlineSuggestionController {
   void _clearQuietly() {
     _withSuppressedAutoDismiss(() {
       _unsubscribeEvents();
-      _session.dispatchEditorActionResult(
+      _session.handleEditorActionResult(
         _session.editorCore?.clearPhantomTexts(),
       );
       _showing = false;
@@ -172,10 +172,10 @@ class InlineSuggestionController {
   }
 
   void _injectPhantomText(InlineSuggestion suggestion) {
-    _session.dispatchEditorActionResult(
+    _session.handleEditorActionResult(
       _session.editorCore?.clearPhantomTexts(),
     );
-    _session.dispatchEditorActionResult(
+    _session.handleEditorActionResult(
       _session.editorCore?.setBatchLinePhantomTexts({
         suggestion.line: [
           core.PhantomText(column: suggestion.column, text: suggestion.text),

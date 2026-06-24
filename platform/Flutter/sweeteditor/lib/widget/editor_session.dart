@@ -1,8 +1,23 @@
 part of '../sweeteditor.dart';
 
+class EditorSessionHostCallbacks {
+  const EditorSessionHostCallbacks({
+    required this.onRenderModelUpdated,
+    required this.onTextInputStyleInvalidated,
+    required this.onHostActionResult,
+    required this.onAnimationStateChanged,
+  });
+
+  final void Function(core.EditorRenderModel model) onRenderModelUpdated;
+  final VoidCallback onTextInputStyleInvalidated;
+  final void Function(core.EditorActionResult result) onHostActionResult;
+  final void Function(bool animating) onAnimationStateChanged;
+}
+
 class EditorSession {
   EditorSession({
-    required this.controller,
+    required this.eventBus,
+    required this.hostCallbacks,
     required EditorTheme theme,
     EditorSettings? initialSettings,
     required String fontFamily,
@@ -61,7 +76,8 @@ class EditorSession {
     _applyInitialLanguageConfiguration(_languageConfiguration);
   }
 
-  final SweetEditorController controller;
+  final EditorEventBus eventBus;
+  final EditorSessionHostCallbacks hostCallbacks;
   final EditorPlatformBehavior platformBehavior;
   late final CompletionProviderManager completionProviderManager;
   late final CompletionPopupController completionPopupController;
@@ -88,13 +104,9 @@ class EditorSession {
   bool _renderModelDirty = false;
   bool _flushScheduled = false;
   bool _disposed = false;
+  bool _animationsRunning = false;
   double _platformScale = 1.0;
 
-  void Function(core.EditorRenderModel model)? onRenderModelUpdated;
-  VoidCallback? onPlatformScaleChanged;
-  void Function(core.EditorActionResult? result)? onEditorActionResult;
-
-  EditorEventBus get eventBus => controller._eventBus;
   EditorSettings get settings => _settings;
   core.EditorCore? get editorCore => _editorCore;
   core.Document? get document => _document;
@@ -106,6 +118,7 @@ class EditorSession {
   EditorCanvasPainter get painter => _painter;
   Size get viewportSize => _viewportSize;
   bool get viewportReady => _viewportReady;
+  bool get isActive => !_disposed;
   String get effectiveFontFamily => _measurer.fontFamily;
   double get effectiveScale => _platformScale;
   LanguageConfiguration? get languageConfiguration => _languageConfiguration;
@@ -122,7 +135,7 @@ class EditorSession {
     );
     ec.setScale(_platformScale);
     ec.onFontMetricsChanged();
-    onPlatformScaleChanged?.call();
+    hostCallbacks.onTextInputStyleInvalidated();
     ec.setFoldArrowMode(_settings.getFoldArrowMode());
     ec.setWrapMode(_settings.getWrapMode());
     ec.setRenderWhitespace(_settings.getRenderWhitespace());
@@ -146,6 +159,8 @@ class EditorSession {
   void dispose() {
     _disposed = true;
     _settings.unbind(this);
+    completionProviderManager.dispose();
+    decorationProviderManager.dispose();
     inlineSuggestionController.dispose();
     selectionMenuController.dispose();
     _editorCore?.close();
@@ -167,7 +182,7 @@ class EditorSession {
       final closes = brackets
           .map((pair) => pair.close.runes.isEmpty ? 0 : pair.close.runes.first)
           .toList(growable: false);
-      dispatchEditorActionResult(ec.setBracketPairs(opens, closes));
+      handleEditorActionResult(ec.setBracketPairs(opens, closes));
     }
 
     final autoClosingPairs = config?.autoClosingPairs;
@@ -178,14 +193,14 @@ class EditorSession {
       final closes = autoClosingPairs
           .map((pair) => pair.close.runes.isEmpty ? 0 : pair.close.runes.first)
           .toList(growable: false);
-      dispatchEditorActionResult(ec.setAutoClosingPairs(opens, closes));
+      handleEditorActionResult(ec.setAutoClosingPairs(opens, closes));
     }
 
     if (config != null) {
       if (config.tabSize > 0) {
-        dispatchEditorActionResult(ec.setTabSize(config.tabSize));
+        handleEditorActionResult(ec.setTabSize(config.tabSize));
       }
-      dispatchEditorActionResult(ec.setInsertSpaces(config.insertSpaces));
+      handleEditorActionResult(ec.setInsertSpaces(config.insertSpaces));
     }
   }
 
@@ -230,7 +245,7 @@ class EditorSession {
 
   void applyKeyMap(EditorKeyMap keyMap) {
     _keyMap = keyMap;
-    dispatchEditorActionResult(_editorCore?.setKeyMap(keyMap.bindings));
+    handleEditorActionResult(_editorCore?.setKeyMap(keyMap.bindings));
   }
 
   void applyIconProvider(EditorIconProvider? provider) {
@@ -256,7 +271,7 @@ class EditorSession {
   void setViewport(Size size) {
     if (size.width <= 0 || size.height <= 0) return;
     _viewportSize = size;
-    dispatchEditorActionResult(
+    handleEditorActionResult(
       _editorCore?.setViewport(size.width.toInt(), size.height.toInt()),
     );
     _viewportReady = true;
@@ -265,6 +280,17 @@ class EditorSession {
   void setCursorVisible(bool visible) {
     _cursorVisible = visible;
     _painter.updateCursorVisible(visible);
+  }
+
+  core.IntRange getVisibleLineRange() {
+    final ec = _editorCore;
+    if (ec == null) {
+      return const core.IntRange(start: 0, end: -1);
+    }
+    if (_renderModel.lines.isEmpty) {
+      ec.buildRenderModel();
+    }
+    return ec.getVisibleLineRange();
   }
 
   void loadText(String text) {
@@ -277,7 +303,7 @@ class EditorSession {
     }
     _document = document;
     _ownsDocument = takeOwnership;
-    dispatchEditorActionResult(_editorCore?.loadDocument(document));
+    handleEditorActionResult(_editorCore?.loadDocument(document));
   }
 
   String getContent() => _document?.text ?? '';
@@ -291,8 +317,262 @@ class EditorSession {
     SchedulerBinding.instance.ensureVisualUpdate();
   }
 
-  void dispatchEditorActionResult(core.EditorActionResult? result) {
-    onEditorActionResult?.call(result);
+  void handleEditorActionResult(core.EditorActionResult? result) {
+    if (_disposed || result == null) return;
+    if (result.gestureType != core.GestureType.undefined) {
+      _fireGestureEvents(result);
+      selectionMenuController.onGestureActionResult(
+        result,
+        result.hasSelectionAfter,
+      );
+    }
+
+    _updateAnimationState(result);
+    _dispatchStateEvents(result);
+    hostCallbacks.onHostActionResult(result);
+    if (result.needsRedraw) {
+      requestFlush();
+    }
+  }
+
+  void tickAnimations() {
+    final ec = _editorCore;
+    if (_disposed || ec == null || !_animationsRunning) return;
+    handleEditorActionResult(ec.tickAnimations());
+  }
+
+  void _dispatchTextChanged(core.EditorActionResult result) {
+    if (!result.contentChanged || result.changes.isEmpty) return;
+    eventBus.publish(
+      TextChangedEvent(
+        changes: result.changes,
+        kind: result.textChangeKind,
+        source: result.source,
+      ),
+    );
+    decorationProviderManager.onTextChanged(result.changes);
+    selectionMenuController.onTextChanged();
+
+    final ec = _editorCore;
+    if (ec == null || ec.isInLinkedEditing) {
+      return;
+    }
+
+    final primaryChange = result.changes.first;
+    if (primaryChange.newText.length == 1) {
+      final ch = primaryChange.newText;
+      if (completionProviderManager.isTriggerCharacter(ch)) {
+        completionProviderManager.triggerCompletion(
+          CompletionTriggerKind.character,
+          ch,
+        );
+      } else if (completionPopupController.isShowing) {
+        completionProviderManager.triggerCompletion(
+          CompletionTriggerKind.retrigger,
+          null,
+        );
+      }
+    } else if (completionPopupController.isShowing) {
+      completionProviderManager.triggerCompletion(
+        CompletionTriggerKind.retrigger,
+        null,
+      );
+    }
+  }
+
+  void _dispatchStateEvents(core.EditorActionResult result) {
+    if (result.contentChanged) {
+      final changes = result.changes;
+      if (changes.isNotEmpty) {
+        _dispatchTextChanged(result);
+      } else if (completionPopupController.isShowing) {
+        completionProviderManager.triggerCompletion(
+          CompletionTriggerKind.retrigger,
+          null,
+        );
+      }
+    }
+    final useImeSync = result.needsImeSync;
+    if (result.cursorChanged) {
+      eventBus.publish(
+        CursorChangedEvent(
+          cursorPosition: useImeSync
+              ? result.imeSync.cursor
+              : result.cursorAfter,
+        ),
+      );
+    }
+    if (result.selectionChanged) {
+      eventBus.publish(
+        SelectionChangedEvent(
+          hasSelection: useImeSync
+              ? result.imeSync.hasSelection
+              : result.hasSelectionAfter,
+          selection: useImeSync
+              ? (result.imeSync.hasSelection ? result.imeSync.selection : null)
+              : (result.hasSelectionAfter ? result.selectionAfter : null),
+          cursorPosition: useImeSync
+              ? result.imeSync.cursor
+              : result.cursorAfter,
+        ),
+      );
+    }
+    if (result.scrollChanged) {
+      _handleScrollChanged(result);
+    }
+    if (result.scaleChanged) {
+      syncPlatformScale(result.scaleAfter);
+      eventBus.publish(ScaleChangedEvent(scale: result.scaleAfter));
+    }
+    if (result.source == core.EditorActionSource.ime) {
+      selectionMenuController.hide();
+    }
+  }
+
+  void _fireGestureEvents(core.EditorActionResult result) {
+    final pos = result.cursorAfter;
+    switch (result.gestureType) {
+      case core.GestureType.tap:
+        _publishHitTargetEvent(result.hitTarget, result.tapPoint);
+        completionProviderManager.dismiss();
+      case core.GestureType.doubleTap:
+        eventBus.publish(
+          DoubleTapEvent(
+            cursorPosition: pos,
+            hasSelection: result.hasSelectionAfter,
+            selection: result.hasSelectionAfter ? result.selectionAfter : null,
+            locationInEditor: result.tapPoint,
+          ),
+        );
+      case core.GestureType.longPress:
+        eventBus.publish(
+          LongPressEvent(
+            cursorPosition: pos,
+            locationInEditor: result.tapPoint,
+          ),
+        );
+      case core.GestureType.contextMenu:
+        eventBus.publish(
+          ContextMenuEvent(
+            cursorPosition: pos,
+            locationInEditor: result.tapPoint,
+          ),
+        );
+      case core.GestureType.scroll:
+      case core.GestureType.fastScroll:
+      case core.GestureType.scale:
+      case core.GestureType.dragSelect:
+      default:
+        break;
+    }
+  }
+
+  void _handleScrollChanged(core.EditorActionResult result) {
+    eventBus.publish(
+      ScrollChangedEvent(
+        scrollX: result.scrollXAfter,
+        scrollY: result.scrollYAfter,
+      ),
+    );
+    decorationProviderManager.onScrollChanged();
+    completionProviderManager.dismiss();
+  }
+
+  void _publishHitTargetEvent(
+    core.HitTarget hitTarget,
+    core.PointF locationInEditor,
+  ) {
+    switch (hitTarget.type) {
+      case core.HitTargetType.gutterIcon:
+        eventBus.publish(
+          GutterIconClickEvent(
+            line: hitTarget.line,
+            iconId: hitTarget.iconId,
+            locationInEditor: locationInEditor,
+          ),
+        );
+      case core.HitTargetType.inlayHintText:
+        eventBus.publish(
+          InlayHintClickEvent(
+            line: hitTarget.line,
+            column: hitTarget.column,
+            type: core.InlayType.text,
+            locationInEditor: locationInEditor,
+          ),
+        );
+      case core.HitTargetType.inlayHintIcon:
+        eventBus.publish(
+          InlayHintClickEvent(
+            line: hitTarget.line,
+            column: hitTarget.column,
+            type: core.InlayType.icon,
+            intValue: hitTarget.iconId,
+            locationInEditor: locationInEditor,
+          ),
+        );
+      case core.HitTargetType.inlayHintColor:
+        eventBus.publish(
+          InlayHintClickEvent(
+            line: hitTarget.line,
+            column: hitTarget.column,
+            type: core.InlayType.color,
+            intValue: hitTarget.colorValue,
+            locationInEditor: locationInEditor,
+          ),
+        );
+      case core.HitTargetType.none:
+        break;
+      case core.HitTargetType.foldPlaceholder:
+      case core.HitTargetType.foldGutter:
+        eventBus.publish(
+          FoldToggleEvent(
+            line: hitTarget.line,
+            isGutter: hitTarget.type == core.HitTargetType.foldGutter,
+            locationInEditor: locationInEditor,
+          ),
+        );
+      case core.HitTargetType.codelens:
+        eventBus.publish(
+          CodeLensClickEvent(
+            line: hitTarget.line,
+            column: hitTarget.column,
+            commandId: hitTarget.iconId,
+            locationInEditor: locationInEditor,
+          ),
+        );
+      case core.HitTargetType.link:
+        eventBus.publish(
+          LinkClickEvent(
+            line: hitTarget.line,
+            column: hitTarget.column,
+            target:
+                _editorCore?.getLinkTargetAt(
+                  hitTarget.line,
+                  hitTarget.column,
+                ) ??
+                '',
+            locationInEditor: locationInEditor,
+          ),
+        );
+    }
+  }
+
+  void _updateAnimationState(core.EditorActionResult result) {
+    if (result.needsAnimation) {
+      if (!_animationsRunning) {
+        _animationsRunning = true;
+        hostCallbacks.onAnimationStateChanged(true);
+      }
+      return;
+    }
+    if (result.source != core.EditorActionSource.gesture &&
+        result.source != core.EditorActionSource.animation) {
+      return;
+    }
+    if (_animationsRunning) {
+      _animationsRunning = false;
+      hostCallbacks.onAnimationStateChanged(false);
+    }
   }
 
   void _handleFlushFrame(Duration _) {
@@ -306,7 +586,7 @@ class EditorSession {
     _renderModelDirty = false;
     _renderModel = _editorCore!.buildRenderModel();
     _painter.updateModel(_renderModel, _cursorVisible);
-    onRenderModelUpdated?.call(_renderModel);
+    hostCallbacks.onRenderModelUpdated(_renderModel);
   }
 
   void applyTheme(EditorTheme theme) {
@@ -314,11 +594,11 @@ class EditorSession {
     _painter.updateTheme(theme);
     final renderColorResult = _setEditorRenderColors();
     if (renderColorResult != null) {
-      dispatchEditorActionResult(renderColorResult);
+      handleEditorActionResult(renderColorResult);
     }
     final rangeEffectResult = _setEditorRangeEffectStyles();
     if (rangeEffectResult != null) {
-      dispatchEditorActionResult(rangeEffectResult);
+      handleEditorActionResult(rangeEffectResult);
     }
     _registerTextStyles();
   }
@@ -430,7 +710,7 @@ class EditorSession {
     final ec = _editorCore;
     if (ec == null) return;
     for (final entry in _theme.textStyles.entries) {
-      dispatchEditorActionResult(
+      handleEditorActionResult(
         ec.registerTextStyle(
           entry.key,
           entry.value.color,
@@ -471,7 +751,7 @@ class EditorSession {
     if (ec == null) return;
     final scaleResult = ec.setScale(scale);
     if (scaleResult.scaleChanged) {
-      dispatchEditorActionResult(scaleResult);
+      handleEditorActionResult(scaleResult);
       return;
     }
     _platformScale = scale;
@@ -480,9 +760,9 @@ class EditorSession {
       textSize * scale,
     );
     final metricsResult = ec.onFontMetricsChanged();
-    onPlatformScaleChanged?.call();
-    dispatchEditorActionResult(scaleResult);
-    dispatchEditorActionResult(metricsResult);
+    hostCallbacks.onTextInputStyleInvalidated();
+    handleEditorActionResult(scaleResult);
+    handleEditorActionResult(metricsResult);
   }
 
   void syncPlatformScale(double scale) {
@@ -493,65 +773,65 @@ class EditorSession {
       platformBehavior.resolveFontFamily(_settings.getFontFamily()),
       _settings.getEditorTextSize() * scale,
     );
-    dispatchEditorActionResult(ec.onFontMetricsChanged());
-    onPlatformScaleChanged?.call();
+    handleEditorActionResult(ec.onFontMetricsChanged());
+    hostCallbacks.onTextInputStyleInvalidated();
   }
 
   void applyFoldArrowMode(core.FoldArrowMode mode) {
-    dispatchEditorActionResult(_editorCore?.setFoldArrowMode(mode));
+    handleEditorActionResult(_editorCore?.setFoldArrowMode(mode));
   }
 
   void applyWrapMode(core.WrapMode mode) {
-    dispatchEditorActionResult(_editorCore?.setWrapMode(mode));
+    handleEditorActionResult(_editorCore?.setWrapMode(mode));
   }
 
   void applyRenderWhitespace(core.WhitespaceRenderMode mode) {
-    dispatchEditorActionResult(_editorCore?.setRenderWhitespace(mode));
+    handleEditorActionResult(_editorCore?.setRenderWhitespace(mode));
   }
 
   void applyRenderLineBreaks(bool enabled) {
-    dispatchEditorActionResult(_editorCore?.setRenderLineBreaks(enabled));
+    handleEditorActionResult(_editorCore?.setRenderLineBreaks(enabled));
   }
 
   void applyLineSpacing(double add, double mult) {
-    dispatchEditorActionResult(
+    handleEditorActionResult(
       _editorCore?.setLineSpacing(add: add, mult: mult),
     );
   }
 
   void applyContentStartPadding(double padding) {
-    dispatchEditorActionResult(_editorCore?.setContentStartPadding(padding));
+    handleEditorActionResult(_editorCore?.setContentStartPadding(padding));
   }
 
   void applyShowSplitLine(bool show) {
-    dispatchEditorActionResult(_editorCore?.setShowSplitLine(show));
+    handleEditorActionResult(_editorCore?.setShowSplitLine(show));
   }
 
   void applyGutterSticky(bool sticky) {
-    dispatchEditorActionResult(_editorCore?.setGutterSticky(sticky));
+    handleEditorActionResult(_editorCore?.setGutterSticky(sticky));
   }
 
   void applyGutterVisible(bool visible) {
-    dispatchEditorActionResult(_editorCore?.setGutterVisible(visible));
+    handleEditorActionResult(_editorCore?.setGutterVisible(visible));
   }
 
   void applyCurrentLineRenderMode(core.CurrentLineRenderMode mode) {
-    dispatchEditorActionResult(_editorCore?.setCurrentLineRenderMode(mode));
+    handleEditorActionResult(_editorCore?.setCurrentLineRenderMode(mode));
   }
 
   void applyAutoIndentMode(core.AutoIndentMode mode) {
-    dispatchEditorActionResult(_editorCore?.setAutoIndentMode(mode));
+    handleEditorActionResult(_editorCore?.setAutoIndentMode(mode));
   }
 
   void applyBackspaceUnindent(bool enabled) {
-    dispatchEditorActionResult(_editorCore?.setBackspaceUnindent(enabled));
+    handleEditorActionResult(_editorCore?.setBackspaceUnindent(enabled));
   }
 
   void applyReadOnly(bool readOnly) {
-    dispatchEditorActionResult(_editorCore?.setReadOnly(readOnly));
+    handleEditorActionResult(_editorCore?.setReadOnly(readOnly));
   }
 
   void applyMaxGutterIcons(int count) {
-    dispatchEditorActionResult(_editorCore?.setMaxGutterIcons(count));
+    handleEditorActionResult(_editorCore?.setMaxGutterIcons(count));
   }
 }

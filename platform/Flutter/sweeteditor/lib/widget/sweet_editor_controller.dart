@@ -438,16 +438,9 @@ class SweetEditorController {
   core.CursorRect getCursorRect() =>
       _state?._session.editorCore?.getCursorRect() ?? const core.CursorRect();
 
-  core.IntRange getVisibleLineRange() {
-    final editorCore = _state?._session.editorCore;
-    if (editorCore == null) {
-      return const core.IntRange(start: 0, end: -1);
-    }
-    if (_state?._session.renderModel.lines.isEmpty ?? true) {
-      editorCore.buildRenderModel();
-    }
-    return editorCore.getVisibleLineRange();
-  }
+  core.IntRange getVisibleLineRange() =>
+      _state?._session.getVisibleLineRange() ??
+      const core.IntRange(start: 0, end: -1);
 
   int getTotalLineCount() => _state?._session.document?.lineCount ?? 0;
 
