@@ -519,14 +519,8 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_move_cursor_to_line_end", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr MoveCursorToLineEnd(IntPtr handle, int extendSelection, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "editor_ime_is_composing", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern int IsComposing(IntPtr handle);
-
-		[DllImport(LibraryName, EntryPoint = "editor_ime_get_composing_range", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void GetComposingRange(IntPtr handle, ref int outStartLine, ref int outStartColumn, ref int outEndLine, ref int outEndColumn);
-
-		[DllImport(LibraryName, EntryPoint = "editor_ime_get_composing_session_range", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern void GetComposingSessionRange(IntPtr handle, ref int outStartLine, ref int outStartColumn, ref int outEndLine, ref int outEndColumn);
+		[DllImport(LibraryName, EntryPoint = "editor_ime_has_preedit", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern int HasPreedit(IntPtr handle);
 
 		[DllImport(LibraryName, EntryPoint = "editor_ime_handle_command_message", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr ImeHandleCommandMessage(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
@@ -1450,33 +1444,11 @@ namespace SweetEditor {
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
-		/// <summary>Whether visible IME composition is currently active.</summary>
-		/// <returns>Returns <c>true</c> when IME composition is active.</returns>
-		public bool IsComposing() {
+		/// <summary>Whether IME preedit is currently active.</summary>
+		/// <returns>Returns <c>true</c> when IME preedit is active.</returns>
+		public bool HasPreedit() {
 			if (IsReleased) return false;
-			return NativeMethods.IsComposing(nativeHandle) != 0;
-		}
-
-		/// <summary>Gets the visible IME composition range.</summary>
-		public TextRange? GetComposingRange() {
-			if (IsReleased) return null;
-			int startLine = -1;
-			int startColumn = -1;
-			int endLine = -1;
-			int endColumn = -1;
-			NativeMethods.GetComposingRange(nativeHandle, ref startLine, ref startColumn, ref endLine, ref endColumn);
-			return CreateOptionalRange(startLine, startColumn, endLine, endColumn);
-		}
-
-		/// <summary>Gets the active IME composition session range.</summary>
-		public TextRange? GetComposingSessionRange() {
-			if (IsReleased) return null;
-			int startLine = -1;
-			int startColumn = -1;
-			int endLine = -1;
-			int endColumn = -1;
-			NativeMethods.GetComposingSessionRange(nativeHandle, ref startLine, ref startColumn, ref endLine, ref endColumn);
-			return CreateOptionalRange(startLine, startColumn, endLine, endColumn);
+			return NativeMethods.HasPreedit(nativeHandle) != 0;
 		}
 
 		/// <summary>Handles a platform IME command message.</summary>

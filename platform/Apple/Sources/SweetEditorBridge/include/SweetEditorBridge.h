@@ -108,7 +108,7 @@ const uint8_t* editor_ime_handle_text_update_message(intptr_t editor_handle,
     const uint8_t* data,
     size_t size,
     size_t* out_size);
-int  editor_ime_is_composing(intptr_t editor_handle);
+int  editor_ime_has_preedit(intptr_t editor_handle);
 
 // ===================== ReadOnly API =====================
 

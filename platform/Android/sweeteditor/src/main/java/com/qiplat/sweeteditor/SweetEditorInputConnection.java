@@ -295,9 +295,9 @@ public class SweetEditorInputConnection extends BaseInputConnection {
         int selectionStart = clampEditableOffset(context.selection.start, mEditable.length());
         int selectionEnd = clampEditableOffset(context.selection.end, mEditable.length());
         Selection.setSelection(mEditable, selectionStart, selectionEnd);
-        if (context.hasComposition && isValidEditableRange(context.composition, mEditable.length())) {
-            int preeditStart = clampEditableOffset(context.composition.start, mEditable.length());
-            int preeditEnd = clampEditableOffset(context.composition.end, mEditable.length());
+        if (context.hasPreeditRange && isValidEditableRange(context.preeditRange, mEditable.length())) {
+            int preeditStart = clampEditableOffset(context.preeditRange.start, mEditable.length());
+            int preeditEnd = clampEditableOffset(context.preeditRange.end, mEditable.length());
             super.setComposingRegion(preeditStart, preeditEnd);
             mEditableMarkedRole = ImeMarkedRangeRole.PREEDIT;
         } else if (context.hasSystemMarkRange && isValidEditableRange(context.systemMarkRange, mEditable.length())) {

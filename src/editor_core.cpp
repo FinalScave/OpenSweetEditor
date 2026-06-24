@@ -36,23 +36,18 @@ namespace NS_SWEETEDITOR {
   }
 
   static bool sameCompositionState(const CompositionState& lhs, const CompositionState& rhs) {
-    return lhs.is_composing == rhs.is_composing
-           && lhs.has_session == rhs.has_session
-           && lhs.phase == rhs.phase
-           && lhs.visible == rhs.visible
-           && lhs.kind == rhs.kind
+    return lhs.kind == rhs.kind
            && lhs.start_position == rhs.start_position
            && lhs.anchor_range == rhs.anchor_range
            && lhs.original_text == rhs.original_text
-           && lhs.composing_text == rhs.composing_text
-           && lhs.composing_columns == rhs.composing_columns;
+           && lhs.preedit_text == rhs.preedit_text
+           && lhs.preedit_columns == rhs.preedit_columns;
   }
 
   static bool imeSyncSnapshotRequestsPlatformUpdate(const ImeSyncSnapshot& snapshot) {
     return snapshot.clear_system_mark
-           || snapshot.has_visible_composition_range
+           || snapshot.has_preedit_range
            || snapshot.has_system_mark_range
-           || snapshot.preedit_storage != ImePreeditStorage::NONE
            || snapshot.context_policy != ImeContextPolicy::NONE;
   }
 
@@ -163,7 +158,7 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::loadDocument(const SharedPtr<Document>& document) {
     const ActionSnapshot before = captureActionSnapshot();
     cancelLinkedEditingInternal();
-    m_composition_controller_.removeComposingText();
+    m_composition_controller_.removePreeditText();
     m_composition_controller_.resetCompositionState();
     m_composition_controller_.clearCandidateCommitWindow();
     invalidateImeInputContext();
@@ -747,8 +742,8 @@ namespace NS_SWEETEDITOR {
     };
     if (m_document_ == nullptr) return make_result(false);
 
-    if (isComposing() && event.key_code == KeyCode::ESCAPE) {
-      m_composition_controller_.cancelComposing();
+    if (hasPreedit() && event.key_code == KeyCode::ESCAPE) {
+      m_composition_controller_.cancelPreeditText();
       return make_result(true);
     }
 
@@ -1005,8 +1000,8 @@ namespace NS_SWEETEDITOR {
       return finishAction(before, EditorActionSource::PROGRAMMATIC, false, std::move(edit_result));
     }
 
-    if (isComposing()) {
-      m_composition_controller_.cancelComposing();
+    if (hasPreedit()) {
+      m_composition_controller_.cancelPreeditText();
     }
     if (m_linked_editing_session_) {
       m_linked_editing_session_->cancel();
@@ -1060,9 +1055,9 @@ namespace NS_SWEETEDITOR {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
     if (text.empty() && !hasSelection()) return {};
 
-    // If composition is active, end it first (commit current composing text before new input)
-    if (isComposing()) {
-      m_composition_controller_.cancelComposing();
+    // If preedit is active, cancel it before new input
+    if (hasPreedit()) {
+      m_composition_controller_.cancelPreeditText();
     }
 
     // Auto-indent: when inserting a newline with KEEP_INDENT enabled, append previous line's leading whitespace
@@ -1198,9 +1193,9 @@ namespace NS_SWEETEDITOR {
   TextEditResult EditorCore::replaceTextInternal(const TextRange& range, const U8String& new_text) {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
-    // If composition is active, cancel it first
-    if (isComposing()) {
-      m_composition_controller_.cancelComposing();
+    // If preedit is active, cancel it first
+    if (hasPreedit()) {
+      m_composition_controller_.cancelPreeditText();
     }
 
     if (isInLinkedEditing()) {
@@ -1224,27 +1219,27 @@ namespace NS_SWEETEDITOR {
   TextEditResult EditorCore::backspaceInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
-    if (isComposing()) {
+    if (hasPreedit()) {
       const CompositionState& composition = getCompositionState();
       if (composition.kind == CompositionKind::PREEDIT_TEXT) {
-        if (composition.composing_text.empty()) {
-          m_composition_controller_.cancelComposing();
+        if (composition.preedit_text.empty()) {
+          m_composition_controller_.cancelPreeditText();
         } else {
-          U16String composing_u16;
-          StrUtil::convertUTF8ToUTF16(composition.composing_text, composing_u16);
-          size_t cursor_column = composing_u16.length();
+          U16String preedit_u16;
+          StrUtil::convertUTF8ToUTF16(composition.preedit_text, preedit_u16);
+          size_t cursor_column = preedit_u16.length();
           if (cursor_column > 0) {
-            size_t prev_col = UnicodeUtil::prevGraphemeBoundaryColumn(composing_u16, cursor_column);
-            composing_u16.erase(prev_col, cursor_column - prev_col);
+            size_t prev_col = UnicodeUtil::prevGraphemeBoundaryColumn(preedit_u16, cursor_column);
+            preedit_u16.erase(prev_col, cursor_column - prev_col);
             U8String next_text;
-            StrUtil::convertUTF16ToUTF8(composing_u16, next_text);
+            StrUtil::convertUTF16ToUTF8(preedit_u16, next_text);
             if (next_text.empty()) {
-              m_composition_controller_.cancelComposing();
+              m_composition_controller_.cancelPreeditText();
             } else {
-              m_composition_controller_.setComposingText(next_text);
+              m_composition_controller_.setPreeditText(next_text);
             }
           } else {
-            m_composition_controller_.cancelComposing();
+            m_composition_controller_.cancelPreeditText();
           }
         }
         return {};
@@ -1253,7 +1248,7 @@ namespace NS_SWEETEDITOR {
         if (composition.kind == CompositionKind::DOCUMENT_RANGE && m_caret_.cursor == range.end) {
           return m_composition_controller_.deleteBackward(1).edit_result;
         }
-        m_composition_controller_.commitComposingText("", true);
+        m_composition_controller_.commitPreeditText("", true);
       }
     }
 
@@ -1377,13 +1372,13 @@ namespace NS_SWEETEDITOR {
   TextEditResult EditorCore::deleteForwardInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
-    if (isComposing()) {
+    if (hasPreedit()) {
       const CompositionState& composition = getCompositionState();
       if (composition.kind == CompositionKind::PREEDIT_TEXT) {
-        m_composition_controller_.cancelComposing();
+        m_composition_controller_.cancelPreeditText();
         return {};
       }
-      m_composition_controller_.commitComposingText("", true);
+      m_composition_controller_.commitPreeditText("", true);
     }
 
     if (isInLinkedEditing() && hasSelection()) {
@@ -1425,7 +1420,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::deleteCodePointBackward() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (isComposing() || isInLinkedEditing()) {
+    if (hasPreedit() || isInLinkedEditing()) {
       return backspaceInternal();
     }
     if (hasSelection()) {
@@ -1462,7 +1457,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::deleteCodePointForward() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (isComposing() || isInLinkedEditing()) {
+    if (hasPreedit() || isInLinkedEditing()) {
       return deleteForwardInternal();
     }
     if (hasSelection()) {
@@ -1564,7 +1559,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::moveLineUpInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (isComposing()) m_composition_controller_.cancelComposing();
+    if (hasPreedit()) m_composition_controller_.cancelPreeditText();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1608,7 +1603,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::moveLineDownInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (isComposing()) m_composition_controller_.cancelComposing();
+    if (hasPreedit()) m_composition_controller_.cancelPreeditText();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1653,7 +1648,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::copyLineUpInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (isComposing()) m_composition_controller_.cancelComposing();
+    if (hasPreedit()) m_composition_controller_.cancelPreeditText();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1685,7 +1680,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::copyLineDownInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (isComposing()) m_composition_controller_.cancelComposing();
+    if (hasPreedit()) m_composition_controller_.cancelPreeditText();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1718,7 +1713,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::deleteLineInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (isComposing()) m_composition_controller_.cancelComposing();
+    if (hasPreedit()) m_composition_controller_.cancelPreeditText();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1748,7 +1743,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::insertLineAboveInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (isComposing()) m_composition_controller_.cancelComposing();
+    if (hasPreedit()) m_composition_controller_.cancelPreeditText();
 
     size_t line = m_caret_.cursor.line;
     TextPosition insert_pos = {line, 0};
@@ -1765,7 +1760,7 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::insertLineBelowInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (isComposing()) m_composition_controller_.cancelComposing();
+    if (hasPreedit()) m_composition_controller_.cancelPreeditText();
 
     size_t line = m_caret_.cursor.line;
     uint32_t line_cols = m_document_->getLineColumns(line);
@@ -1778,9 +1773,9 @@ namespace NS_SWEETEDITOR {
   TextEditResult EditorCore::undoInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
-    // If composition input is active, cancel it first
-    if (isComposing()) {
-      m_composition_controller_.cancelComposing();
+    // If preedit input is active, cancel it first
+    if (hasPreedit()) {
+      m_composition_controller_.cancelPreeditText();
     }
 
     // Exit linked editing mode when undoing
@@ -1884,9 +1879,9 @@ namespace NS_SWEETEDITOR {
   TextEditResult EditorCore::redoInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
-    // If composition input is active, cancel it first
-    if (isComposing()) {
-      m_composition_controller_.cancelComposing();
+    // If preedit input is active, cancel it first
+    if (hasPreedit()) {
+      m_composition_controller_.cancelPreeditText();
     }
 
     // Exit linked editing mode when redoing
@@ -2169,8 +2164,8 @@ namespace NS_SWEETEDITOR {
   }
 
   void EditorCore::setCursorPositionInternal(const TextPosition& position, bool commit_composition) {
-    if (commit_composition && isComposing() && position != m_caret_.cursor) {
-      m_composition_controller_.commitComposingText("", true);
+    if (commit_composition && hasPreedit() && position != m_caret_.cursor) {
+      m_composition_controller_.commitPreeditText("", true);
     }
     m_caret_.cursor = position;
     if (m_document_ != nullptr) {
@@ -2264,12 +2259,12 @@ namespace NS_SWEETEDITOR {
   }
 
   void EditorCore::setSelectionInternal(const TextRange& range, bool commit_composition) {
-    if (commit_composition && isComposing()) {
+    if (commit_composition && hasPreedit()) {
       TextRange current_range = hasSelection()
           ? m_caret_.selection
           : TextRange {m_caret_.cursor, m_caret_.cursor};
       if (!(range == current_range)) {
-        m_composition_controller_.commitComposingText("", true);
+        m_composition_controller_.commitPreeditText("", true);
       }
     }
     TextRange safe_range = clampDocumentRange(range, true, false);
@@ -2503,8 +2498,8 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::setReadOnly(bool read_only) {
     const ActionSnapshot before = captureActionSnapshot();
-    if (read_only && isComposing()) {
-      m_composition_controller_.cancelComposing();
+    if (read_only && hasPreedit()) {
+      m_composition_controller_.cancelPreeditText();
     }
     m_settings_.read_only = read_only;
     LOGD("EditorCore::setReadOnly, read_only = %s", read_only ? "true" : "false");
@@ -2547,9 +2542,9 @@ namespace NS_SWEETEDITOR {
   TextEditResult EditorCore::insertSnippetInternal(const U8String& snippet_template) {
     if (m_document_ == nullptr || snippet_template.empty() || m_settings_.read_only) return {};
 
-    // If composition is active, cancel it first
-    if (isComposing()) {
-      m_composition_controller_.cancelComposing();
+    // If preedit is active, cancel it first
+    if (hasPreedit()) {
+      m_composition_controller_.cancelPreeditText();
     }
 
     // Exit existing linked editing session
@@ -2592,9 +2587,9 @@ namespace NS_SWEETEDITOR {
     if (m_document_ == nullptr || m_settings_.read_only) return;
     if (model.groups.empty()) return;
 
-    // If composition is active, cancel it first
-    if (isComposing()) {
-      m_composition_controller_.cancelComposing();
+    // If preedit is active, cancel it first
+    if (hasPreedit()) {
+      m_composition_controller_.cancelPreeditText();
     }
 
     // Exit existing linked editing session

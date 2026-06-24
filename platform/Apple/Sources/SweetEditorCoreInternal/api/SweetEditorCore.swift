@@ -590,9 +590,9 @@ class SweetEditorCore {
         }
     }
 
-    func isComposing() -> Bool {
+    func hasPreedit() -> Bool {
         return performCoreCall {
-            editor_ime_is_composing(handle) != 0
+            editor_ime_has_preedit(handle) != 0
         }
     }
 

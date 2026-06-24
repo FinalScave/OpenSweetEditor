@@ -35,12 +35,6 @@ namespace SweetEditor {
         SYSTEM_MARK = 2
     }
 
-    public enum ImePreeditStorage {
-        NONE = 0,
-        VISIBLE_DOCUMENT_PREEDIT = 1,
-        SHADOW_ONLY = 2
-    }
-
     public enum ImeScriptClass {
         UNKNOWN = 0,
         LATIN = 1,
@@ -86,8 +80,8 @@ namespace SweetEditor {
         public int DocumentStartOffset { get; set; } = 0;
         public string Text { get; set; } = string.Empty;
         public ImeOffsetRange Selection { get; set; } = new ImeOffsetRange();
-        public bool HasComposition { get; set; } = false;
-        public ImeOffsetRange Composition { get; set; } = new ImeOffsetRange();
+        public bool HasPreeditRange { get; set; } = false;
+        public ImeOffsetRange PreeditRange { get; set; } = new ImeOffsetRange();
         public bool HasSystemMarkRange { get; set; } = false;
         public ImeOffsetRange SystemMarkRange { get; set; } = new ImeOffsetRange();
         public ImeInputContextKind Kind { get; set; } = ImeInputContextKind.NONE;
@@ -107,12 +101,10 @@ namespace SweetEditor {
         public TextPosition Cursor { get; set; } = new TextPosition();
         public TextRange Selection { get; set; } = new TextRange();
         public bool HasSelection { get; set; } = false;
-        public bool HasComposingSession { get; set; } = false;
-        public bool HasVisibleCompositionRange { get; set; } = false;
-        public TextRange VisibleCompositionRange { get; set; } = new TextRange();
+        public bool HasPreeditRange { get; set; } = false;
+        public TextRange PreeditRange { get; set; } = new TextRange();
         public bool HasSystemMarkRange { get; set; } = false;
         public TextRange SystemMarkRange { get; set; } = new TextRange();
-        public ImePreeditStorage PreeditStorage { get; set; } = ImePreeditStorage.NONE;
         public ImeContextPolicy ContextPolicy { get; set; } = ImeContextPolicy.NONE;
         public bool ClearSystemMark { get; set; } = false;
     }

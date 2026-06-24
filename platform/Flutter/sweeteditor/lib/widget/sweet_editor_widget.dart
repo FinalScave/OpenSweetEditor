@@ -679,8 +679,8 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     final core.ImeOffsetRange? markedRange =
         exposesTextWindow && inputContext.hasSystemMarkRange
         ? inputContext.systemMarkRange
-        : exposesTextWindow && inputContext.hasComposition
-        ? inputContext.composition
+        : exposesTextWindow && inputContext.hasPreeditRange
+        ? inputContext.preeditRange
         : null;
     if (markedRange != null) {
       final composingStart = _normalizeTextInputOffset(markedRange.start, text);
@@ -751,7 +751,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       '[SweetEditor][IME] $event result handled=${result.handled} '
       'content=${result.contentChanged} cursor=${result.cursorChanged} '
       'selection=${result.selectionChanged} '
-      'clear=${sync.clearSystemMark} preedit=${sync.preeditStorage} '
+      'clear=${sync.clearSystemMark} preedit=${sync.hasPreeditRange} '
       'marked=${sync.hasSystemMarkRange}',
     );
   }

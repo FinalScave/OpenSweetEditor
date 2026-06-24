@@ -469,30 +469,8 @@ export class EditorCore {
     );
   }
 
-  isComposing(): boolean {
-    return native.editorIsComposing(this.handle);
-  }
-
-  getComposingRange(): TextRange | null {
-    const arr = native.editorGetComposingRange(this.handle);
-    if (arr === null || arr[0] < 0) {
-      return null;
-    }
-    return {
-      start: { line: arr[0], column: arr[1] },
-      end: { line: arr[2], column: arr[3] }
-    };
-  }
-
-  getComposingSessionRange(): TextRange | null {
-    const arr = native.editorGetComposingSessionRange(this.handle);
-    if (arr === null || arr[0] < 0) {
-      return null;
-    }
-    return {
-      start: { line: arr[0], column: arr[1] },
-      end: { line: arr[2], column: arr[3] }
-    };
+  hasPreedit(): boolean {
+    return native.editorHasPreedit(this.handle);
   }
 
   getImeKeyboardScriptClass(): ImeScriptClass {

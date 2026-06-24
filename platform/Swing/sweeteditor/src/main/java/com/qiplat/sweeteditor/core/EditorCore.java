@@ -457,29 +457,8 @@ public class EditorCore {
 
     // ===================== IME =====================
 
-    public boolean isComposing() {
-        return EditorNative.isComposing(nativeHandle);
-    }
-
-    public TextRange getComposingRange() {
-        try (Arena tempArena = Arena.ofConfined()) {
-            return rangeFromNative(EditorNative.getComposingRange(nativeHandle, tempArena));
-        }
-    }
-
-    public TextRange getComposingSessionRange() {
-        try (Arena tempArena = Arena.ofConfined()) {
-            return rangeFromNative(EditorNative.getComposingSessionRange(nativeHandle, tempArena));
-        }
-    }
-
-    private TextRange rangeFromNative(int[] values) {
-        if (values == null || values.length < 4 || values[0] < 0) {
-            return null;
-        }
-        return new TextRange(
-                new TextPosition(values[0], values[1]),
-                new TextPosition(values[2], values[3]));
+    public boolean hasPreedit() {
+        return EditorNative.hasPreedit(nativeHandle);
     }
 
     private EditorActionResult decodeAction(EditorNative.NativeBinaryResult result) {

@@ -690,7 +690,7 @@ class EditorInteractionController {
     final editorCore = _session.editorCore;
     if (editorCore == null) return false;
     final snapshot = editorCore.getImeSyncSnapshot();
-    if (!snapshot.hasComposingSession && !snapshot.hasSystemMarkRange) {
+    if (!snapshot.hasPreeditRange && !snapshot.hasSystemMarkRange) {
       return false;
     }
     switch (keyCode) {

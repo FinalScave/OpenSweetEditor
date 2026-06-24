@@ -237,11 +237,6 @@ enum CoreProtocol {
         return ImeMarkedRangeRole.fromValue(value)
     }
 
-    static func readImePreeditStorage(_ reader: inout BinaryReader) -> ImePreeditStorage? {
-        guard let value = reader.readInt32() else { return nil }
-        return ImePreeditStorage.fromValue(value)
-    }
-
     static func readImeScriptClass(_ reader: inout BinaryReader) -> ImeScriptClass? {
         guard let value = reader.readInt32() else { return nil }
         return ImeScriptClass.fromValue(value)
@@ -1344,12 +1339,12 @@ enum CoreProtocol {
         guard let document_start_offset = reader.readInt32() else { return nil }
         guard let text = reader.readUtf8String() else { return nil }
         guard let selection = readImeOffsetRange(&reader) else { return nil }
-        guard let has_composition = reader.readBoolI32() else { return nil }
-        guard let composition = readImeOffsetRange(&reader) else { return nil }
+        guard let has_preedit_range = reader.readBoolI32() else { return nil }
+        guard let preedit_range = readImeOffsetRange(&reader) else { return nil }
         guard let has_system_mark_range = reader.readBoolI32() else { return nil }
         guard let system_mark_range = readImeOffsetRange(&reader) else { return nil }
         guard let kind = readImeInputContextKind(&reader) else { return nil }
-        return ImeInputContext(id: id, revision: revision, document_start_offset: document_start_offset, text: text, selection: selection, has_composition: has_composition, composition: composition, has_system_mark_range: has_system_mark_range, system_mark_range: system_mark_range, kind: kind)
+        return ImeInputContext(id: id, revision: revision, document_start_offset: document_start_offset, text: text, selection: selection, has_preedit_range: has_preedit_range, preedit_range: preedit_range, has_system_mark_range: has_system_mark_range, system_mark_range: system_mark_range, kind: kind)
     }
 
     static func decodeImeInputContext(_ data: Data) -> ImeInputContext? {
@@ -1419,15 +1414,13 @@ enum CoreProtocol {
         guard let cursor = readTextPosition(&reader) else { return nil }
         guard let selection = readTextRange(&reader) else { return nil }
         guard let has_selection = reader.readBoolI32() else { return nil }
-        guard let has_composing_session = reader.readBoolI32() else { return nil }
-        guard let has_visible_composition_range = reader.readBoolI32() else { return nil }
-        guard let visible_composition_range = readTextRange(&reader) else { return nil }
+        guard let has_preedit_range = reader.readBoolI32() else { return nil }
+        guard let preedit_range = readTextRange(&reader) else { return nil }
         guard let has_system_mark_range = reader.readBoolI32() else { return nil }
         guard let system_mark_range = readTextRange(&reader) else { return nil }
-        guard let preedit_storage = readImePreeditStorage(&reader) else { return nil }
         guard let context_policy = readImeContextPolicy(&reader) else { return nil }
         guard let clear_system_mark = reader.readBoolI32() else { return nil }
-        return ImeSyncSnapshot(cursor: cursor, selection: selection, has_selection: has_selection, has_composing_session: has_composing_session, has_visible_composition_range: has_visible_composition_range, visible_composition_range: visible_composition_range, has_system_mark_range: has_system_mark_range, system_mark_range: system_mark_range, preedit_storage: preedit_storage, context_policy: context_policy, clear_system_mark: clear_system_mark)
+        return ImeSyncSnapshot(cursor: cursor, selection: selection, has_selection: has_selection, has_preedit_range: has_preedit_range, preedit_range: preedit_range, has_system_mark_range: has_system_mark_range, system_mark_range: system_mark_range, context_policy: context_policy, clear_system_mark: clear_system_mark)
     }
 
     static func decodeImeSyncSnapshot(_ data: Data) -> ImeSyncSnapshot? {

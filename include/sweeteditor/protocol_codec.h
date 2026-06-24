@@ -1489,8 +1489,8 @@ public:
     if (!writeI32(static_cast<int32_t>(value.document_start_offset))) return false;
     if (!writeUtf8String(value.text)) return false;
     if (!write(value.selection)) return false;
-    if (!writeI32(value.has_composition ? 1 : 0)) return false;
-    if (!write(value.composition)) return false;
+    if (!writeI32(value.has_preedit_range ? 1 : 0)) return false;
+    if (!write(value.preedit_range)) return false;
     if (!writeI32(value.has_system_mark_range ? 1 : 0)) return false;
     if (!write(value.system_mark_range)) return false;
     if (!writeI32(static_cast<int32_t>(value.kind))) return false;
@@ -1513,12 +1513,10 @@ public:
     if (!write(value.cursor)) return false;
     if (!write(value.selection)) return false;
     if (!writeI32(value.has_selection ? 1 : 0)) return false;
-    if (!writeI32(value.has_composing_session ? 1 : 0)) return false;
-    if (!writeI32(value.has_visible_composition_range ? 1 : 0)) return false;
-    if (!write(value.visible_composition_range)) return false;
+    if (!writeI32(value.has_preedit_range ? 1 : 0)) return false;
+    if (!write(value.preedit_range)) return false;
     if (!writeI32(value.has_system_mark_range ? 1 : 0)) return false;
     if (!write(value.system_mark_range)) return false;
-    if (!writeI32(static_cast<int32_t>(value.preedit_storage))) return false;
     if (!writeI32(static_cast<int32_t>(value.context_policy))) return false;
     if (!writeI32(value.clear_system_mark ? 1 : 0)) return false;
     return true;

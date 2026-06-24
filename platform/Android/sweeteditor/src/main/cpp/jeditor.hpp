@@ -447,40 +447,8 @@ public:
     return env->NewStringUTF(selected.c_str());
   }
 
-  static jboolean isComposing(jlong handle) {
-    return toJBoolean(editor_ime_is_composing(static_cast<intptr_t>(handle)));
-  }
-
-  static jlongArray getComposingRange(JNIEnv* env, jclass clazz, jlong handle) {
-    int32_t start_line = -1;
-    int32_t start_column = -1;
-    int32_t end_line = -1;
-    int32_t end_column = -1;
-    editor_ime_get_composing_range(static_cast<intptr_t>(handle),
-                               &start_line,
-                               &start_column,
-                               &end_line,
-                               &end_column);
-    jlong values[4] = {start_line, start_column, end_line, end_column};
-    jlongArray result = env->NewLongArray(4);
-    env->SetLongArrayRegion(result, 0, 4, values);
-    return result;
-  }
-
-  static jlongArray getComposingSessionRange(JNIEnv* env, jclass clazz, jlong handle) {
-    int32_t start_line = -1;
-    int32_t start_column = -1;
-    int32_t end_line = -1;
-    int32_t end_column = -1;
-    editor_ime_get_composing_session_range(static_cast<intptr_t>(handle),
-                                       &start_line,
-                                       &start_column,
-                                       &end_line,
-                                       &end_column);
-    jlong values[4] = {start_line, start_column, end_line, end_column};
-    jlongArray result = env->NewLongArray(4);
-    env->SetLongArrayRegion(result, 0, 4, values);
-    return result;
+  static jboolean hasPreedit(jlong handle) {
+    return toJBoolean(editor_ime_has_preedit(static_cast<intptr_t>(handle)));
   }
 
   using ImeMessageHandler = const uint8_t* (*)(intptr_t, const uint8_t*, size_t, size_t*);
@@ -1269,9 +1237,7 @@ public:
       {"nativeInsertLineAbove", "(J)Ljava/nio/ByteBuffer;", (void*) insertLineAbove},
       {"nativeInsertLineBelow", "(J)Ljava/nio/ByteBuffer;", (void*) insertLineBelow},
       {"nativeGetSelectedText", "(J)Ljava/lang/String;", (void*) getSelectedText},
-      {"nativeIsComposing", "(J)Z", (void*) isComposing},
-      {"nativeGetComposingRange", "(J)[J", (void*) getComposingRange},
-      {"nativeGetComposingSessionRange", "(J)[J", (void*) getComposingSessionRange},
+      {"nativeHasPreedit", "(J)Z", (void*) hasPreedit},
       {"nativeImeHandleCommandMessage", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) imeHandleCommandMessage},
       {"nativeImeHandleTextUpdateMessage", "(JLjava/nio/ByteBuffer;I)Ljava/nio/ByteBuffer;", (void*) imeHandleTextUpdateMessage},
       {"nativeImeGetKeyboardScriptClass", "(J)I", (void*) imeGetKeyboardScriptClass},

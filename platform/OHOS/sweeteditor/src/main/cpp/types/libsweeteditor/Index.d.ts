@@ -90,9 +90,7 @@ export const editorMoveCursorToLineStart: (handle: number, extendSelection: bool
 export const editorMoveCursorToLineEnd: (handle: number, extendSelection: boolean) => ArrayBuffer | undefined;
 
 // IME composition
-export const editorIsComposing: (handle: number) => boolean;
-export const editorGetComposingRange: (handle: number) => number[];
-export const editorGetComposingSessionRange: (handle: number) => number[];
+export const editorHasPreedit: (handle: number) => boolean;
 export const editorImeHandleCommandMessage: (handle: number, data: ArrayBuffer) => ArrayBuffer | undefined;
 export const editorImeHandleTextUpdateMessage: (handle: number, data: ArrayBuffer) => ArrayBuffer | undefined;
 export const editorImeGetKeyboardScriptClass: (handle: number) => number;

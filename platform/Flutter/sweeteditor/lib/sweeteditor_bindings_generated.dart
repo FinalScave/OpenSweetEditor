@@ -469,7 +469,7 @@ external ffi.Pointer<ffi.Uint8> editor_get_layout_metrics(
 /// enum_i32 modifiers
 /// enum_i32 command
 /// TextChange is TextRange range followed by U8String new_text
-/// ImeSyncSnapshot is TextPosition cursor, TextRange selection, bool_i32 has_selection, bool_i32 has_composing_session, bool_i32 has_visible_composition_range, TextRange visible_composition_range, bool_i32 has_system_mark_range, TextRange system_mark_range, enum_i32 preedit_storage, enum_i32 context_policy, bool_i32 clear_system_mark
+/// ImeSyncSnapshot is TextPosition cursor, TextRange selection, bool_i32 has_selection, bool_i32 has_preedit_range, TextRange preedit_range, bool_i32 has_system_mark_range, TextRange system_mark_range, enum_i32 context_policy, bool_i32 clear_system_mark
 /// HitTarget is enum_i32 type, i32 line, i32 column, i32 icon_id, i32 color_value
 /// This is the only result payload for core state-changing APIs. Platforms should use needs_redraw from this payload
 /// to decide whether to flush editor state and schedule repaint.
@@ -2099,46 +2099,10 @@ external void free_u8_string(int string_ptr);
 @ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
 external void free_binary_data(int data_ptr);
 
-/// Get whether composition is currently active
-/// @return 1=composing, 0=not composing
+/// Get whether preedit is currently active
+/// @return 1=preedit active, 0=no preedit
 @ffi.Native<ffi.Int Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external int editor_ime_is_composing(int editor_handle);
-
-/// Get current composition range, or -1 values when composition is inactive
-@ffi.Native<
-  ffi.Void Function(
-    ffi.IntPtr,
-    ffi.Pointer<ffi.Int32>,
-    ffi.Pointer<ffi.Int32>,
-    ffi.Pointer<ffi.Int32>,
-    ffi.Pointer<ffi.Int32>,
-  )
->(assetId: _sweeteditorAssetId)
-external void editor_ime_get_composing_range(
-  int editor_handle,
-  ffi.Pointer<ffi.Int32> out_start_line,
-  ffi.Pointer<ffi.Int32> out_start_column,
-  ffi.Pointer<ffi.Int32> out_end_line,
-  ffi.Pointer<ffi.Int32> out_end_column,
-);
-
-/// Get current active composition session range
-@ffi.Native<
-  ffi.Void Function(
-    ffi.IntPtr,
-    ffi.Pointer<ffi.Int32>,
-    ffi.Pointer<ffi.Int32>,
-    ffi.Pointer<ffi.Int32>,
-    ffi.Pointer<ffi.Int32>,
-  )
->(assetId: _sweeteditorAssetId)
-external void editor_ime_get_composing_session_range(
-  int editor_handle,
-  ffi.Pointer<ffi.Int32> out_start_line,
-  ffi.Pointer<ffi.Int32> out_start_column,
-  ffi.Pointer<ffi.Int32> out_end_line,
-  ffi.Pointer<ffi.Int32> out_end_column,
-);
+external int editor_ime_has_preedit(int editor_handle);
 
 /// Handle a platform IME command message.
 /// @param data Binary payload encoded by CoreProtocol.

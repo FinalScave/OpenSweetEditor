@@ -484,7 +484,7 @@
       "fallback": "NONE",
       "underlying_type": null,
       "source": "include/sweeteditor/ime_types.h",
-      "line": 94,
+      "line": 88,
       "values": [
         {
           "name": "NONE",
@@ -542,29 +542,6 @@
         },
         {
           "name": "SYSTEM_MARK",
-          "value": 2
-        }
-      ]
-    },
-    {
-      "name": "ImePreeditStorage",
-      "kind": "enum",
-      "domain": "ime",
-      "fallback": "NONE",
-      "underlying_type": null,
-      "source": "include/sweeteditor/ime_types.h",
-      "line": 88,
-      "values": [
-        {
-          "name": "NONE",
-          "value": 0
-        },
-        {
-          "name": "VISIBLE_DOCUMENT_PREEDIT",
-          "value": 1
-        },
-        {
-          "name": "SHADOW_ONLY",
           "value": 2
         }
       ]
@@ -3302,14 +3279,14 @@
       "direction": "in",
       "domain": "ime",
       "source": "include/sweeteditor/ime_types.h",
-      "line": 99,
+      "line": 93,
       "fields": [
         {
           "name": "kind",
           "cpp_type": "ImeCommandKind",
           "wire": "enum_i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 101,
+          "line": 95,
           "default": "ImeCommandKind::SET_SELECTION"
         },
         {
@@ -3317,7 +3294,7 @@
           "cpp_type": "uint64_t",
           "wire": "u64",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 102,
+          "line": 96,
           "default": "0"
         },
         {
@@ -3325,7 +3302,15 @@
           "cpp_type": "int32_t",
           "wire": "i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 103,
+          "line": 97,
+          "default": "0"
+        },
+        {
+          "name": "document_start_offset",
+          "cpp_type": "int32_t",
+          "wire": "i32",
+          "source": "include/sweeteditor/ime_types.h",
+          "line": 98,
           "default": "0"
         },
         {
@@ -3333,7 +3318,7 @@
           "cpp_type": "ImeOffsetRange",
           "wire": "struct",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 104,
+          "line": 99,
           "default": "-1, -1"
         },
         {
@@ -3341,7 +3326,7 @@
           "cpp_type": "ImeOffsetRange",
           "wire": "struct",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 105,
+          "line": 100,
           "default": "-1, -1"
         },
         {
@@ -3349,14 +3334,14 @@
           "cpp_type": "U8String",
           "wire": "utf8_string",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 106
+          "line": 101
         },
         {
           "name": "cursor_offset",
           "cpp_type": "int32_t",
           "wire": "i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 107,
+          "line": 102,
           "default": "1"
         },
         {
@@ -3364,7 +3349,7 @@
           "cpp_type": "int32_t",
           "wire": "i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 108,
+          "line": 103,
           "default": "0"
         },
         {
@@ -3372,7 +3357,7 @@
           "cpp_type": "int32_t",
           "wire": "i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 109,
+          "line": 104,
           "default": "0"
         },
         {
@@ -3380,7 +3365,7 @@
           "cpp_type": "ImeTextUnit",
           "wire": "enum_i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 111,
+          "line": 106,
           "default": "ImeTextUnit::GRAPHEME"
         },
         {
@@ -3388,7 +3373,7 @@
           "cpp_type": "ImeMarkedRangeRole",
           "wire": "enum_i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 113,
+          "line": 108,
           "default": "ImeMarkedRangeRole::NONE"
         },
         {
@@ -3396,7 +3381,7 @@
           "cpp_type": "ImeScriptClass",
           "wire": "enum_i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 115,
+          "line": 110,
           "default": "ImeScriptClass::UNKNOWN"
         }
       ]
@@ -3448,7 +3433,7 @@
           "line": 71
         },
         {
-          "name": "has_composition",
+          "name": "has_preedit_range",
           "cpp_type": "bool",
           "wire": "bool_i32",
           "source": "include/sweeteditor/ime_types.h",
@@ -3456,7 +3441,7 @@
           "default": "false"
         },
         {
-          "name": "composition",
+          "name": "preedit_range",
           "cpp_type": "ImeOffsetRange",
           "wire": "struct",
           "source": "include/sweeteditor/ime_types.h",
@@ -3547,59 +3532,51 @@
       "direction": "out",
       "domain": "ime",
       "source": "include/sweeteditor/ime_types.h",
-      "line": 134,
+      "line": 130,
       "fields": [
         {
           "name": "cursor",
           "cpp_type": "TextPosition",
           "wire": "struct",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 135
+          "line": 131
         },
         {
           "name": "selection",
           "cpp_type": "TextRange",
           "wire": "struct",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 136
+          "line": 132
         },
         {
           "name": "has_selection",
           "cpp_type": "bool",
           "wire": "bool_i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 137,
+          "line": 133,
           "default": "false"
         },
         {
-          "name": "has_composing_session",
+          "name": "has_preedit_range",
           "cpp_type": "bool",
           "wire": "bool_i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 138,
+          "line": 134,
           "default": "false"
         },
         {
-          "name": "has_visible_composition_range",
-          "cpp_type": "bool",
-          "wire": "bool_i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 139,
-          "default": "false"
-        },
-        {
-          "name": "visible_composition_range",
+          "name": "preedit_range",
           "cpp_type": "TextRange",
           "wire": "struct",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 140
+          "line": 135
         },
         {
           "name": "has_system_mark_range",
           "cpp_type": "bool",
           "wire": "bool_i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 141,
+          "line": 136,
           "default": "false"
         },
         {
@@ -3607,22 +3584,14 @@
           "cpp_type": "TextRange",
           "wire": "struct",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 142
-        },
-        {
-          "name": "preedit_storage",
-          "cpp_type": "ImePreeditStorage",
-          "wire": "enum_i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 144,
-          "default": "ImePreeditStorage::NONE"
+          "line": 137
         },
         {
           "name": "context_policy",
           "cpp_type": "ImeContextPolicy",
           "wire": "enum_i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 146,
+          "line": 139,
           "default": "ImeContextPolicy::NONE"
         },
         {
@@ -3630,7 +3599,7 @@
           "cpp_type": "bool",
           "wire": "bool_i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 147,
+          "line": 140,
           "default": "false"
         }
       ]
@@ -3666,14 +3635,14 @@
       "direction": "in",
       "domain": "ime",
       "source": "include/sweeteditor/ime_types.h",
-      "line": 118,
+      "line": 113,
       "fields": [
         {
           "name": "kind",
           "cpp_type": "ImeTextUpdateKind",
           "wire": "enum_i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 120,
+          "line": 115,
           "default": "ImeTextUpdateKind::SNAPSHOT"
         },
         {
@@ -3681,7 +3650,7 @@
           "cpp_type": "ImeTextUpdateScope",
           "wire": "enum_i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 122,
+          "line": 117,
           "default": "ImeTextUpdateScope::DOCUMENT_WINDOW"
         },
         {
@@ -3689,7 +3658,7 @@
           "cpp_type": "uint64_t",
           "wire": "u64",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 123,
+          "line": 118,
           "default": "0"
         },
         {
@@ -3697,7 +3666,15 @@
           "cpp_type": "int32_t",
           "wire": "i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 124,
+          "line": 119,
+          "default": "0"
+        },
+        {
+          "name": "document_start_offset",
+          "cpp_type": "int32_t",
+          "wire": "i32",
+          "source": "include/sweeteditor/ime_types.h",
+          "line": 120,
           "default": "0"
         },
         {
@@ -3705,21 +3682,21 @@
           "cpp_type": "U8String",
           "wire": "utf8_string",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 125
+          "line": 121
         },
         {
           "name": "patch",
           "cpp_type": "ImeTextPatch",
           "wire": "struct",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 126
+          "line": 122
         },
         {
           "name": "selection",
           "cpp_type": "ImeOffsetRange",
           "wire": "struct",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 127,
+          "line": 123,
           "default": "-1, -1"
         },
         {
@@ -3727,14 +3704,14 @@
           "cpp_type": "ImeMarkedRange",
           "wire": "struct",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 128
+          "line": 124
         },
         {
           "name": "script_class",
           "cpp_type": "ImeScriptClass",
           "wire": "enum_i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 130,
+          "line": 126,
           "default": "ImeScriptClass::UNKNOWN"
         }
       ]

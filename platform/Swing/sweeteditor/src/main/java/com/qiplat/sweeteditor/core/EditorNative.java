@@ -361,16 +361,8 @@ public final class EditorNative {
             FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
                     ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
-    private static final MethodHandle IS_COMPOSING = downcall("editor_ime_is_composing",
+    private static final MethodHandle HAS_PREEDIT = downcall("editor_ime_has_preedit",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG));
-
-    private static final MethodHandle GET_COMPOSING_RANGE = downcall("editor_ime_get_composing_range",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
-                    ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-
-    private static final MethodHandle GET_COMPOSING_SESSION_RANGE = downcall("editor_ime_get_composing_session_range",
-            FunctionDescriptor.ofVoid(ValueLayout.JAVA_LONG,
-                    ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 
     private static final MethodHandle IME_HANDLE_COMMAND_MESSAGE = downcall("editor_ime_handle_command_message",
             FunctionDescriptor.of(ValueLayout.ADDRESS,
@@ -1082,32 +1074,8 @@ public final class EditorNative {
 
     // ===================== IME =====================
 
-    public static boolean isComposing(long handle) {
-        return invokeBoolean(() -> (int) IS_COMPOSING.invokeExact(handle));
-    }
-
-    public static int[] getComposingRange(long handle, Arena arena) {
-        return readNativeRange(arena, GET_COMPOSING_RANGE, handle);
-    }
-
-    public static int[] getComposingSessionRange(long handle, Arena arena) {
-        return readNativeRange(arena, GET_COMPOSING_SESSION_RANGE, handle);
-    }
-
-    private static int[] readNativeRange(Arena arena, MethodHandle method, long handle) {
-        try {
-            MemorySegment outSL = arena.allocate(ValueLayout.JAVA_INT);
-            MemorySegment outSC = arena.allocate(ValueLayout.JAVA_INT);
-            MemorySegment outEL = arena.allocate(ValueLayout.JAVA_INT);
-            MemorySegment outEC = arena.allocate(ValueLayout.JAVA_INT);
-            method.invokeExact(handle, outSL, outSC, outEL, outEC);
-            return new int[]{
-                    outSL.get(ValueLayout.JAVA_INT, 0), outSC.get(ValueLayout.JAVA_INT, 0),
-                    outEL.get(ValueLayout.JAVA_INT, 0), outEC.get(ValueLayout.JAVA_INT, 0)
-            };
-        } catch (Throwable t) {
-            throw new RuntimeException(t);
-        }
+    public static boolean hasPreedit(long handle) {
+        return invokeBoolean(() -> (int) HAS_PREEDIT.invokeExact(handle));
     }
 
     public static NativeBinaryResult handleImeCommandMessage(long handle, MemorySegment payload, long size) {

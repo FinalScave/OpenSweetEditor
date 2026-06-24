@@ -2943,7 +2943,7 @@ namespace SweetEditor {
 				return;
 			}
 
-			if (editorCore.IsComposing()) {
+			if (editorCore.HasPreedit()) {
 				DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
 					Kind = ImeCommandKind.CANCEL_PREEDIT
 				}));
@@ -3859,7 +3859,7 @@ namespace SweetEditor {
 
 			string text = preeditText ?? string.Empty;
 			if (string.IsNullOrEmpty(text)) {
-				if (editorCore.IsComposing()) {
+				if (editorCore.HasPreedit()) {
 					DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
 						Kind = ImeCommandKind.CANCEL_PREEDIT
 					}));
@@ -3868,7 +3868,7 @@ namespace SweetEditor {
 			}
 
 			ImeCommandMessage message = new ImeCommandMessage {
-				Kind = cursorPos.HasValue ? ImeCommandKind.SET_PREEDIT_TEXT : ImeCommandKind.SET_PREEDIT_TEXT,
+				Kind = ImeCommandKind.SET_PREEDIT_TEXT,
 				Text = text
 			};
 			if (cursorPos.HasValue) {

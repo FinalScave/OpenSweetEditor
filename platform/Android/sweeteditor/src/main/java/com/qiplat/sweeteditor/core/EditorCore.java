@@ -800,31 +800,9 @@ public class EditorCore {
 
     // ==================== IME Composition Input ====================
 
-    public boolean isComposing() {
+    public boolean hasPreedit() {
         if (mNativeHandle == 0) return false;
-        return nativeIsComposing(mNativeHandle);
-    }
-
-    @Nullable
-    public TextRange getComposingRange() {
-        if (mNativeHandle == 0) return null;
-        long[] vals = nativeGetComposingRange(mNativeHandle);
-        if (vals == null || vals[0] == -1) return null;
-        return new TextRange(
-                new TextPosition((int) vals[0], (int) vals[1]),
-                new TextPosition((int) vals[2], (int) vals[3])
-        );
-    }
-
-    @Nullable
-    public TextRange getComposingSessionRange() {
-        if (mNativeHandle == 0) return null;
-        long[] vals = nativeGetComposingSessionRange(mNativeHandle);
-        if (vals == null || vals[0] == -1) return null;
-        return new TextRange(
-                new TextPosition((int) vals[0], (int) vals[1]),
-                new TextPosition((int) vals[2], (int) vals[3])
-        );
+        return nativeHasPreedit(mNativeHandle);
     }
 
     @NonNull
@@ -2146,13 +2124,7 @@ public class EditorCore {
     private static native String nativeGetSelectedText(long handle);
 
     @CriticalNative
-    private static native boolean nativeIsComposing(long handle);
-
-    @FastNative
-    private static native long[] nativeGetComposingRange(long handle);
-
-    @FastNative
-    private static native long[] nativeGetComposingSessionRange(long handle);
+    private static native boolean nativeHasPreedit(long handle);
 
     @FastNative
     private static native ByteBuffer nativeImeHandleCommandMessage(long handle, ByteBuffer data, int size);

@@ -95,9 +95,7 @@ static napi_value Init(napi_env env, napi_value exports)
         NAPI_METHOD("editorMoveCursorToLineEnd", EditorCoreNapi::moveCursorToLineEnd),
 
         // IME composition
-        NAPI_METHOD("editorIsComposing", EditorCoreNapi::isComposing),
-        NAPI_METHOD("editorGetComposingRange", EditorCoreNapi::getComposingRange),
-        NAPI_METHOD("editorGetComposingSessionRange", EditorCoreNapi::getComposingSessionRange),
+        NAPI_METHOD("editorHasPreedit", EditorCoreNapi::hasPreedit),
         NAPI_METHOD("editorImeHandleCommandMessage", EditorCoreNapi::imeHandleCommandMessage),
         NAPI_METHOD("editorImeHandleTextUpdateMessage", EditorCoreNapi::imeHandleTextUpdateMessage),
         NAPI_METHOD("editorImeGetKeyboardScriptClass", EditorCoreNapi::imeGetKeyboardScriptClass),

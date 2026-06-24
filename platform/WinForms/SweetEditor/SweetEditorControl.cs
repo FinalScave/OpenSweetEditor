@@ -1566,7 +1566,7 @@ namespace SweetEditor {
 		protected override void OnKeyDown(KeyEventArgs e) {
 			using var perf = StartInputPerf($"OnKeyDown({e.KeyCode})");
 			RefreshPointerModifiers(e.KeyCode);
-			if (editorCore.IsComposing()) {
+			if (editorCore.HasPreedit()) {
 				if (TryHandleComposingKeyDown(e)) {
 					return;
 				}
@@ -1626,7 +1626,7 @@ namespace SweetEditor {
 		protected override void OnKeyPress(KeyPressEventArgs e) {
 			using var perf = StartInputPerf($"OnKeyPress({(int)e.KeyChar})");
 			// Ignore KeyPress while IME composition is active.
-			if (editorCore.IsComposing()) {
+			if (editorCore.HasPreedit()) {
 				base.OnKeyPress(e);
 				return;
 			}
@@ -1671,7 +1671,7 @@ namespace SweetEditor {
 										Text = resultStr,
 										ScriptClass = ImeScriptClass.UNKNOWN
 									}));
-								} else if ((imeFlags & GCS_COMPSTR) == 0 && HasImeComposingSession()) {
+								} else if ((imeFlags & GCS_COMPSTR) == 0 && HasImeActiveRange()) {
 									DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
 										Kind = ImeCommandKind.FINISH_PREEDIT
 									}));
@@ -1696,7 +1696,7 @@ namespace SweetEditor {
 				}
 				case WM_IME_ENDCOMPOSITION: {
 					using var perf = StartInputPerf("WndProc(IME_END)");
-					if (HasImeComposingSession()) {
+					if (HasImeActiveRange()) {
 						DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
 							Kind = ImeCommandKind.FINISH_PREEDIT
 						}));
@@ -1722,8 +1722,9 @@ namespace SweetEditor {
 			return Math.Max(0, Math.Min(cursorPosition, fallback));
 		}
 
-		private bool HasImeComposingSession() {
-			return editorCore.IsComposing() || editorCore.GetImeSyncSnapshot().HasComposingSession;
+		private bool HasImeActiveRange() {
+			ImeSyncSnapshot snapshot = editorCore.GetImeSyncSnapshot();
+			return editorCore.HasPreedit() || snapshot.HasPreeditRange || snapshot.HasSystemMarkRange;
 		}
 
 		private bool TryHandleComposingKeyDown(KeyEventArgs e) {

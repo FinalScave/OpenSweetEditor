@@ -1077,7 +1077,7 @@ public class SweetEditor extends JPanel {
                 try {
                     refreshPointerModifiers(e);
 
-                    if (editorCore.isComposing()) {
+                    if (editorCore.hasPreedit()) {
                         handleComposingKeyPressed(e);
                         return;
                     }
@@ -1145,7 +1145,7 @@ public class SweetEditor extends JPanel {
             public void keyTyped(KeyEvent e) {
                 long inputPerfStart = startInputPerf();
                 try {
-                    if (editorCore.isComposing()) return;
+                    if (editorCore.hasPreedit()) return;
                     char ch = e.getKeyChar();
                     if (!Character.isISOControl(ch) && ch != KeyEvent.CHAR_UNDEFINED) {
                         EditorActionResult result = editorCore.handleKeyEvent(KeyCode.NONE, String.valueOf(ch), 0);
@@ -1200,7 +1200,7 @@ public class SweetEditor extends JPanel {
                         EditorActionResult result = editorCore.handleImeCommandMessage(message);
                         dispatchEditorActionResult(result);
                         changed = true;
-                    } else if (editorCore.isComposing() && committed.length() == 0) {
+                    } else if (editorCore.hasPreedit() && committed.length() == 0) {
                         ImeCommandMessage message = new ImeCommandMessage();
                         message.kind = ImeCommandKind.CANCEL_PREEDIT;
                         EditorActionResult result = editorCore.handleImeCommandMessage(message);

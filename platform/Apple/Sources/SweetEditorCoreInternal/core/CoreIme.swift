@@ -74,21 +74,6 @@ public enum ImeMarkedRangeRole: Int32 {
     }
 }
 
-public enum ImePreeditStorage: Int32 {
-    case NONE = 0
-    case VISIBLE_DOCUMENT_PREEDIT = 1
-    case SHADOW_ONLY = 2
-
-    public static func fromValue(_ value: Int32) -> ImePreeditStorage {
-        switch value {
-        case 0: return .NONE
-        case 1: return .VISIBLE_DOCUMENT_PREEDIT
-        case 2: return .SHADOW_ONLY
-        default: return .NONE
-        }
-    }
-}
-
 public enum ImeScriptClass: Int32 {
     case UNKNOWN = 0
     case LATIN = 1
@@ -185,20 +170,20 @@ public struct ImeInputContext {
     public var document_start_offset: Int32 = 0
     public var text: String = ""
     public var selection: ImeOffsetRange = ImeOffsetRange()
-    public var has_composition: Bool = false
-    public var composition: ImeOffsetRange = ImeOffsetRange()
+    public var has_preedit_range: Bool = false
+    public var preedit_range: ImeOffsetRange = ImeOffsetRange()
     public var has_system_mark_range: Bool = false
     public var system_mark_range: ImeOffsetRange = ImeOffsetRange()
     public var kind: ImeInputContextKind = .NONE
 
-    public init(id: Int64 = 0, revision: Int32 = 0, document_start_offset: Int32 = 0, text: String = "", selection: ImeOffsetRange = ImeOffsetRange(), has_composition: Bool = false, composition: ImeOffsetRange = ImeOffsetRange(), has_system_mark_range: Bool = false, system_mark_range: ImeOffsetRange = ImeOffsetRange(), kind: ImeInputContextKind = .NONE) {
+    public init(id: Int64 = 0, revision: Int32 = 0, document_start_offset: Int32 = 0, text: String = "", selection: ImeOffsetRange = ImeOffsetRange(), has_preedit_range: Bool = false, preedit_range: ImeOffsetRange = ImeOffsetRange(), has_system_mark_range: Bool = false, system_mark_range: ImeOffsetRange = ImeOffsetRange(), kind: ImeInputContextKind = .NONE) {
         self.id = id
         self.revision = revision
         self.document_start_offset = document_start_offset
         self.text = text
         self.selection = selection
-        self.has_composition = has_composition
-        self.composition = composition
+        self.has_preedit_range = has_preedit_range
+        self.preedit_range = preedit_range
         self.has_system_mark_range = has_system_mark_range
         self.system_mark_range = system_mark_range
         self.kind = kind
@@ -229,25 +214,21 @@ public struct ImeSyncSnapshot {
     public var cursor: TextPosition = TextPosition()
     public var selection: TextRange = TextRange()
     public var has_selection: Bool = false
-    public var has_composing_session: Bool = false
-    public var has_visible_composition_range: Bool = false
-    public var visible_composition_range: TextRange = TextRange()
+    public var has_preedit_range: Bool = false
+    public var preedit_range: TextRange = TextRange()
     public var has_system_mark_range: Bool = false
     public var system_mark_range: TextRange = TextRange()
-    public var preedit_storage: ImePreeditStorage = .NONE
     public var context_policy: ImeContextPolicy = .NONE
     public var clear_system_mark: Bool = false
 
-    public init(cursor: TextPosition = TextPosition(), selection: TextRange = TextRange(), has_selection: Bool = false, has_composing_session: Bool = false, has_visible_composition_range: Bool = false, visible_composition_range: TextRange = TextRange(), has_system_mark_range: Bool = false, system_mark_range: TextRange = TextRange(), preedit_storage: ImePreeditStorage = .NONE, context_policy: ImeContextPolicy = .NONE, clear_system_mark: Bool = false) {
+    public init(cursor: TextPosition = TextPosition(), selection: TextRange = TextRange(), has_selection: Bool = false, has_preedit_range: Bool = false, preedit_range: TextRange = TextRange(), has_system_mark_range: Bool = false, system_mark_range: TextRange = TextRange(), context_policy: ImeContextPolicy = .NONE, clear_system_mark: Bool = false) {
         self.cursor = cursor
         self.selection = selection
         self.has_selection = has_selection
-        self.has_composing_session = has_composing_session
-        self.has_visible_composition_range = has_visible_composition_range
-        self.visible_composition_range = visible_composition_range
+        self.has_preedit_range = has_preedit_range
+        self.preedit_range = preedit_range
         self.has_system_mark_range = has_system_mark_range
         self.system_mark_range = system_mark_range
-        self.preedit_storage = preedit_storage
         self.context_policy = context_policy
         self.clear_system_mark = clear_system_mark
     }

@@ -770,33 +770,9 @@ class EditorCore {
     );
   }
 
-  bool get isComposing {
+  bool get hasPreedit {
     _ensureOpen();
-    return bindings.editor_ime_is_composing(_handle) != 0;
-  }
-
-  TextRange? getComposingRange() {
-    _ensureOpen();
-    return using((arena) {
-      final sl = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
-      final sc = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
-      final el = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
-      final ec = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
-      bindings.editor_ime_get_composing_range(_handle, sl, sc, el, ec);
-      return _readNullableRange(sl.value, sc.value, el.value, ec.value);
-    });
-  }
-
-  TextRange? getComposingSessionRange() {
-    _ensureOpen();
-    return using((arena) {
-      final sl = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
-      final sc = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
-      final el = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
-      final ec = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
-      bindings.editor_ime_get_composing_session_range(_handle, sl, sc, el, ec);
-      return _readNullableRange(sl.value, sc.value, el.value, ec.value);
-    });
+    return bindings.editor_ime_has_preedit(_handle) != 0;
   }
 
   EditorActionResult handleImeCommandMessage(ImeCommandMessage message) {
@@ -873,21 +849,6 @@ class EditorCore {
         outSize,
       ),
       CoreProtocol.decodeImeInputContextFromPointer,
-    );
-  }
-
-  TextRange? _readNullableRange(
-    int startLine,
-    int startColumn,
-    int endLine,
-    int endColumn,
-  ) {
-    if (startLine < 0 || startColumn < 0 || endLine < 0 || endColumn < 0) {
-      return null;
-    }
-    return TextRange(
-      start: TextPosition(line: startLine, column: startColumn),
-      end: TextPosition(line: endLine, column: endColumn),
     );
   }
 

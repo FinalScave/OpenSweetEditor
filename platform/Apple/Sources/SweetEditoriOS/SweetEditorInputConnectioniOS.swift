@@ -26,7 +26,7 @@ final class SweetEditorInputConnectioniOS {
 
     var selectedTextRange: UITextRange? {
         get {
-            if owner.editorCore.isComposing(), let markedSelectionRangeValue {
+            if owner.editorCore.hasPreedit(), let markedSelectionRangeValue {
                 selectedRangeValue = markedSelectionRangeValue
                 return owner.uiTextRange(from: markedSelectionRangeValue)
             }
@@ -61,7 +61,7 @@ final class SweetEditorInputConnectioniOS {
     }
 
     var markedTextRange: UITextRange? {
-        guard owner.editorCore.isCompositionEnabled(), owner.editorCore.isComposing() else {
+        guard owner.editorCore.isCompositionEnabled(), owner.editorCore.hasPreedit() else {
             clearLocalCompositionState()
             return nil
         }

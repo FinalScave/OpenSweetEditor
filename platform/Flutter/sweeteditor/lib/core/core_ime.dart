@@ -88,24 +88,6 @@ enum ImeMarkedRangeRole {
   }
 }
 
-enum ImePreeditStorage {
-  none(0),
-  visibleDocumentPreedit(1),
-  shadowOnly(2);
-
-  const ImePreeditStorage(this.value);
-  final int value;
-
-  static ImePreeditStorage fromValue(int value) {
-    switch (value) {
-      case 0: return none;
-      case 1: return visibleDocumentPreedit;
-      case 2: return shadowOnly;
-      default: return none;
-    }
-  }
-}
-
 enum ImeScriptClass {
   unknown(0),
   latin(1),
@@ -215,8 +197,8 @@ class ImeInputContext {
     this.documentStartOffset = 0,
     this.text = '',
     this.selection = const ImeOffsetRange(),
-    this.hasComposition = false,
-    this.composition = const ImeOffsetRange(),
+    this.hasPreeditRange = false,
+    this.preeditRange = const ImeOffsetRange(),
     this.hasSystemMarkRange = false,
     this.systemMarkRange = const ImeOffsetRange(),
     this.kind = ImeInputContextKind.none,
@@ -227,8 +209,8 @@ class ImeInputContext {
   final int documentStartOffset;
   final String text;
   final ImeOffsetRange selection;
-  final bool hasComposition;
-  final ImeOffsetRange composition;
+  final bool hasPreeditRange;
+  final ImeOffsetRange preeditRange;
   final bool hasSystemMarkRange;
   final ImeOffsetRange systemMarkRange;
   final ImeInputContextKind kind;
@@ -259,12 +241,10 @@ class ImeSyncSnapshot {
     this.cursor = const TextPosition(),
     this.selection = const TextRange(),
     this.hasSelection = false,
-    this.hasComposingSession = false,
-    this.hasVisibleCompositionRange = false,
-    this.visibleCompositionRange = const TextRange(),
+    this.hasPreeditRange = false,
+    this.preeditRange = const TextRange(),
     this.hasSystemMarkRange = false,
     this.systemMarkRange = const TextRange(),
-    this.preeditStorage = ImePreeditStorage.none,
     this.contextPolicy = ImeContextPolicy.none,
     this.clearSystemMark = false,
   });
@@ -272,12 +252,10 @@ class ImeSyncSnapshot {
   final TextPosition cursor;
   final TextRange selection;
   final bool hasSelection;
-  final bool hasComposingSession;
-  final bool hasVisibleCompositionRange;
-  final TextRange visibleCompositionRange;
+  final bool hasPreeditRange;
+  final TextRange preeditRange;
   final bool hasSystemMarkRange;
   final TextRange systemMarkRange;
-  final ImePreeditStorage preeditStorage;
   final ImeContextPolicy contextPolicy;
   final bool clearSystemMark;
 }

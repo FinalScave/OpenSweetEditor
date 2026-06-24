@@ -74,21 +74,6 @@ export function imeMarkedRangeRoleFromValue(value: number): ImeMarkedRangeRole {
   }
 }
 
-export enum ImePreeditStorage {
-  NONE = 0,
-  VISIBLE_DOCUMENT_PREEDIT = 1,
-  SHADOW_ONLY = 2,
-}
-
-export function imePreeditStorageFromValue(value: number): ImePreeditStorage {
-  switch (value) {
-    case 0: return ImePreeditStorage.NONE;
-    case 1: return ImePreeditStorage.VISIBLE_DOCUMENT_PREEDIT;
-    case 2: return ImePreeditStorage.SHADOW_ONLY;
-    default: return ImePreeditStorage.NONE;
-  }
-}
-
 export enum ImeScriptClass {
   UNKNOWN = 0,
   LATIN = 1,
@@ -169,8 +154,8 @@ export interface ImeInputContext {
   documentStartOffset: number;
   text: string;
   selection: ImeOffsetRange;
-  hasComposition: boolean;
-  composition: ImeOffsetRange;
+  hasPreeditRange: boolean;
+  preeditRange: ImeOffsetRange;
   hasSystemMarkRange: boolean;
   systemMarkRange: ImeOffsetRange;
   kind: ImeInputContextKind;
@@ -190,12 +175,10 @@ export interface ImeSyncSnapshot {
   cursor: TextPosition;
   selection: TextRange;
   hasSelection: boolean;
-  hasComposingSession: boolean;
-  hasVisibleCompositionRange: boolean;
-  visibleCompositionRange: TextRange;
+  hasPreeditRange: boolean;
+  preeditRange: TextRange;
   hasSystemMarkRange: boolean;
   systemMarkRange: TextRange;
-  preeditStorage: ImePreeditStorage;
   contextPolicy: ImeContextPolicy;
   clearSystemMark: boolean;
 }

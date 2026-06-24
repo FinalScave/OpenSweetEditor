@@ -215,7 +215,7 @@ namespace {
       if (!readF32(ignore_f32)) return payload;
     }
     readF32(payload.view_scale);
-    for (int i = 0; i < 23; ++i) {
+    for (int i = 0; i < 21; ++i) {
       if (!readI32(ignore_i32)) return payload;
     }
     readI32(payload.gesture_type);
@@ -265,7 +265,7 @@ namespace {
 TEST_CASE("C API null handles return safe defaults") {
   CHECK(editor_can_undo(0) == 0);
   CHECK(editor_can_redo(0) == 0);
-  CHECK(editor_ime_is_composing(0) == 0);
+  CHECK(editor_ime_has_preedit(0) == 0);
   CHECK(editor_is_line_visible(0, 0) == 1);
 
   size_t metrics_size = 0;
@@ -404,7 +404,7 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   REQUIRE(ime_result != nullptr);
   CHECK(ime_size > 0);
   free_binary_data(reinterpret_cast<intptr_t>(ime_result));
-  CHECK(editor_ime_is_composing(editor) == 1);
+  CHECK(editor_ime_has_preedit(editor) == 1);
   CHECK(getLineTextUtf8(document, 0) == "Xabcq");
 
   size_t comp_size = 0;
@@ -416,7 +416,7 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   REQUIRE(comp_result != nullptr);
   CHECK(comp_size > 0);
   free_binary_data(reinterpret_cast<intptr_t>(comp_result));
-  CHECK(editor_ime_is_composing(editor) == 0);
+  CHECK(editor_ime_has_preedit(editor) == 0);
   CHECK(getLineTextUtf8(document, 0) == "Xabcz");
 
   action_payload = editor_set_cursor_position(editor, 0, 5, &action_size);

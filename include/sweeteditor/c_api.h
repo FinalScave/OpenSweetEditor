@@ -337,7 +337,7 @@ EDITOR_API const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size
 ///   enum_i32 modifiers
 ///   enum_i32 command
 ///   TextChange is TextRange range followed by U8String new_text
-///   ImeSyncSnapshot is TextPosition cursor, TextRange selection, bool_i32 has_selection, bool_i32 has_composing_session, bool_i32 has_visible_composition_range, TextRange visible_composition_range, bool_i32 has_system_mark_range, TextRange system_mark_range, enum_i32 preedit_storage, enum_i32 context_policy, bool_i32 clear_system_mark
+///   ImeSyncSnapshot is TextPosition cursor, TextRange selection, bool_i32 has_selection, bool_i32 has_preedit_range, TextRange preedit_range, bool_i32 has_system_mark_range, TextRange system_mark_range, enum_i32 context_policy, bool_i32 clear_system_mark
 ///   HitTarget is enum_i32 type, i32 line, i32 column, i32 icon_id, i32 color_value
 /// This is the only result payload for core state-changing APIs. Platforms should use needs_redraw from this payload
 /// to decide whether to flush editor state and schedule repaint.
@@ -983,23 +983,9 @@ EDITOR_API void free_binary_data(intptr_t data_ptr);
 
 #pragma region [IME]
 
-/// Get whether composition is currently active
-/// @return 1=composing, 0=not composing
-EDITOR_API int editor_ime_is_composing(intptr_t editor_handle);
-
-/// Get current composition range, or -1 values when composition is inactive
-EDITOR_API void editor_ime_get_composing_range(intptr_t editor_handle,
-                                               int32_t* out_start_line,
-                                               int32_t* out_start_column,
-                                               int32_t* out_end_line,
-                                               int32_t* out_end_column);
-
-/// Get current active composition session range
-EDITOR_API void editor_ime_get_composing_session_range(intptr_t editor_handle,
-                                                       int32_t* out_start_line,
-                                                       int32_t* out_start_column,
-                                                       int32_t* out_end_line,
-                                                       int32_t* out_end_column);
+/// Get whether preedit is currently active
+/// @return 1=preedit active, 0=no preedit
+EDITOR_API int editor_ime_has_preedit(intptr_t editor_handle);
 
 /// Handle a platform IME command message.
 /// @param data Binary payload encoded by CoreProtocol.

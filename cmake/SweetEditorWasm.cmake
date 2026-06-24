@@ -143,9 +143,7 @@ set(WASM_C_ABI_EXPORTED_FUNCTIONS
         _free_u16_string
         _free_u8_string
         _free_binary_data
-        _editor_ime_is_composing
-        _editor_ime_get_composing_range
-        _editor_ime_get_composing_session_range
+        _editor_ime_has_preedit
         _editor_ime_handle_command_message
         _editor_ime_handle_text_update_message
         _editor_ime_get_keyboard_script_class

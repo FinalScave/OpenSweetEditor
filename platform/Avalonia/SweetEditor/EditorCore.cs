@@ -621,8 +621,8 @@ namespace SweetEditor {
 		[DllImport(LibraryName, EntryPoint = "editor_ime_handle_text_update_message", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr ImeHandleTextUpdateMessage(IntPtr handle, byte[] data, nuint size, out UIntPtr outSize);
 
-		[DllImport(LibraryName, EntryPoint = "editor_ime_is_composing", CallingConvention = CallingConvention.Cdecl)]
-		internal static extern int IsComposing(IntPtr handle);
+		[DllImport(LibraryName, EntryPoint = "editor_ime_has_preedit", CallingConvention = CallingConvention.Cdecl)]
+		internal static extern int HasPreedit(IntPtr handle);
 
 		[DllImport(LibraryName, EntryPoint = "editor_set_read_only", CallingConvention = CallingConvention.Cdecl)]
 		internal static extern IntPtr SetReadOnly(IntPtr handle, int readOnly, out UIntPtr outSize);
@@ -1591,17 +1591,17 @@ namespace SweetEditor {
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
-		/// <summary>Whether IME composition is currently active.</summary>
-		/// <returns>Returns <c>true</c> when IME composition is active.</returns>
-		public bool IsComposing() {
-			return NativeMethods.IsComposing(nativeHandle) != 0;
+		/// <summary>Whether IME preedit is currently active.</summary>
+		/// <returns>Returns <c>true</c> when IME preedit is active.</returns>
+		public bool HasPreedit() {
+			return NativeMethods.HasPreedit(nativeHandle) != 0;
 		}
 
 		/// <summary>Enables or disables IME composition handling.</summary>
 		/// <param name="enabled"><c>true</c> to enable composition; otherwise <c>false</c>.</param>
 		public EditorActionResult SetCompositionEnabled(bool enabled) {
 			compositionEnabled = enabled;
-			if (!enabled && IsComposing()) {
+			if (!enabled && HasPreedit()) {
 				return HandleImeCommandMessage(new ImeCommandMessage {
 					Kind = ImeCommandKind.CANCEL_PREEDIT
 				});

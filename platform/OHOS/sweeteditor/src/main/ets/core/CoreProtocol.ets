@@ -3,7 +3,7 @@ import { EditorActionResult, EditorActionSource, ScrollBehavior, TextChangeKind,
 import { BracketGuide, CodeLensItem, Diagnostic, DiagnosticSeverity, DocumentHighlight, DocumentHighlightKind, FlowGuide, FoldRegion, GutterIcon, IndentGuide, InlayHint, InlayType, LinkSpan, PhantomText, SeparatorGuide, SeparatorStyle, SpanLayer, StyleSpan, TextStyle, diagnosticSeverityFromValue, documentHighlightKindFromValue, inlayTypeFromValue, separatorStyleFromValue, spanLayerFromValue } from './CoreAdornments';
 import { AutoIndentMode, CurrentLineRenderMode, EditorOptions, EditorRangeEffectStyles, EditorRenderColors, FoldArrowMode, HandleConfig, HandleHitArea, RangeEffectStyle, RangeEffectUnderlineStyle, ScrollbarConfig, ScrollbarMode, ScrollbarTrackTapMode, WhitespaceRenderMode, WrapMode, autoIndentModeFromValue, currentLineRenderModeFromValue, foldArrowModeFromValue, rangeEffectUnderlineStyleFromValue, scrollbarModeFromValue, scrollbarTrackTapModeFromValue, whitespaceRenderModeFromValue, wrapModeFromValue } from './CoreConfig';
 import { IntRange, PointF, Rect, Size, TextChange, TextEdit, TextPosition, TextRange } from './CoreFoundation';
-import { ImeCommandKind, ImeCommandMessage, ImeContextPolicy, ImeInputContext, ImeInputContextKind, ImeMarkedRange, ImeMarkedRangeRole, ImeOffsetRange, ImePreeditStorage, ImeScriptClass, ImeSyncSnapshot, ImeTextPatch, ImeTextUnit, ImeTextUpdateKind, ImeTextUpdateMessage, ImeTextUpdateScope, imeCommandKindFromValue, imeContextPolicyFromValue, imeInputContextKindFromValue, imeMarkedRangeRoleFromValue, imePreeditStorageFromValue, imeScriptClassFromValue, imeTextUnitFromValue, imeTextUpdateKindFromValue, imeTextUpdateScopeFromValue } from './CoreIme';
+import { ImeCommandKind, ImeCommandMessage, ImeContextPolicy, ImeInputContext, ImeInputContextKind, ImeMarkedRange, ImeMarkedRangeRole, ImeOffsetRange, ImeScriptClass, ImeSyncSnapshot, ImeTextPatch, ImeTextUnit, ImeTextUpdateKind, ImeTextUpdateMessage, ImeTextUpdateScope, imeCommandKindFromValue, imeContextPolicyFromValue, imeInputContextKindFromValue, imeMarkedRangeRoleFromValue, imeScriptClassFromValue, imeTextUnitFromValue, imeTextUpdateKindFromValue, imeTextUpdateScopeFromValue } from './CoreIme';
 import { EventType, GestureEvent, GestureType, HitTarget, HitTargetType, eventTypeFromValue, gestureTypeFromValue, hitTargetTypeFromValue } from './CoreInteraction';
 import { EditorBuiltinCommand, KeyBinding, KeyChord, KeyCode, KeyModifier, editorBuiltinCommandFromValue } from './CoreKeymap';
 import { LinkedEditingModel, TabStopGroup } from './CoreLinkedEditing';
@@ -1310,8 +1310,8 @@ export class CoreProtocol {
       documentStartOffset: reader.readInt32(),
       text: reader.readUtf8String(),
       selection: CoreProtocol.readImeOffsetRange(reader),
-      hasComposition: reader.readInt32() !== 0,
-      composition: CoreProtocol.readImeOffsetRange(reader),
+      hasPreeditRange: reader.readInt32() !== 0,
+      preeditRange: CoreProtocol.readImeOffsetRange(reader),
       hasSystemMarkRange: reader.readInt32() !== 0,
       systemMarkRange: CoreProtocol.readImeOffsetRange(reader),
       kind: imeInputContextKindFromValue(reader.readInt32())
@@ -1373,12 +1373,10 @@ export class CoreProtocol {
       cursor: CoreProtocol.readTextPosition(reader),
       selection: CoreProtocol.readTextRange(reader),
       hasSelection: reader.readInt32() !== 0,
-      hasComposingSession: reader.readInt32() !== 0,
-      hasVisibleCompositionRange: reader.readInt32() !== 0,
-      visibleCompositionRange: CoreProtocol.readTextRange(reader),
+      hasPreeditRange: reader.readInt32() !== 0,
+      preeditRange: CoreProtocol.readTextRange(reader),
       hasSystemMarkRange: reader.readInt32() !== 0,
       systemMarkRange: CoreProtocol.readTextRange(reader),
-      preeditStorage: imePreeditStorageFromValue(reader.readInt32()),
       contextPolicy: imeContextPolicyFromValue(reader.readInt32()),
       clearSystemMark: reader.readInt32() !== 0
     };

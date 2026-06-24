@@ -474,7 +474,7 @@ TEST_CASE("EditorCore composition update is transient and cancel restores origin
   editor.setCursorPosition({0, 4});
 
   updatePreedit(editor, "x");
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "abx");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
 
@@ -483,7 +483,7 @@ TEST_CASE("EditorCore composition update is transient and cancel restores origin
   CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
 
   cancelPreedit(editor);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "ab");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
 }
@@ -498,12 +498,12 @@ TEST_CASE("EditorCore composition end commits final text once and supports undo"
   editor.setCursorPosition({0, 2});
 
   updatePreedit(editor, "xy");
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "abxy");
 
   EditorActionResult result = finishPreedit(editor);
   REQUIRE(result.content_changed);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "abxy");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
   CHECK(editor.canUndo());
@@ -543,7 +543,7 @@ TEST_CASE("EditorCore IME composing selection offsets are applied in core") {
 
   setPreeditSelection(editor, "xyz", 1, 2, ImeScriptClass::LATIN);
   CHECK(document->getU8Text() == "abxyz");
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(editor.hasSelection());
   CHECK(editor.getSelection() == (TextRange{{0, 3}, {0, 4}}));
 
@@ -578,7 +578,7 @@ TEST_CASE("EditorCore IME input context offsets resolve inside core") {
                        1,
                        3,
                        ImeScriptClass::LATIN);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 4}, {0, 6}}));
 
   replaceContextText(editor, context, 1, 3, "AB", 1, ImeScriptClass::LATIN);
@@ -703,7 +703,7 @@ TEST_CASE("EditorCore IME document offsets resolve inside core") {
   editor.setCursorPosition({0, 5});
 
   markDocumentRange(editor, 2, 5, ImeScriptClass::LATIN);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 2}, {0, 5}}));
 
   replaceText(editor, TextRange{{0, 2}, {0, 5}}, "AB", ImeScriptClass::LATIN);
@@ -735,7 +735,7 @@ TEST_CASE("EditorCore IME input state text update inserts and finishes compositi
       3,
       ImeScriptClass::CJK);
   CHECK(document->getU8Text() == "abx");
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 2}, {0, 3}}));
 
   applyDocumentWindowSnapshot(editor,
@@ -748,7 +748,7 @@ TEST_CASE("EditorCore IME input state text update inserts and finishes compositi
       4,
       ImeScriptClass::CJK);
   CHECK(document->getU8Text() == "abxy");
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 2}, {0, 4}}));
 
   applyDocumentWindowSnapshot(editor,
@@ -760,7 +760,7 @@ TEST_CASE("EditorCore IME input state text update inserts and finishes compositi
       -1,
       -1,
       ImeScriptClass::CJK);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "abxy");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
 }
@@ -785,7 +785,7 @@ TEST_CASE("EditorCore IME input state composing text replaces previous composing
       5,
       ImeScriptClass::CJK);
   REQUIRE(insert_result.content_changed);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "abhow");
 
   context = editor.getImeCommandInputContext(8, 8);
@@ -799,7 +799,7 @@ TEST_CASE("EditorCore IME input state composing text replaces previous composing
       4,
       ImeScriptClass::CJK);
   REQUIRE(first_delete_result.content_changed);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "abho");
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 2}, {0, 4}}));
 
@@ -814,7 +814,7 @@ TEST_CASE("EditorCore IME input state composing text replaces previous composing
       3,
       ImeScriptClass::CJK);
   REQUIRE(second_delete_result.content_changed);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "abh");
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 2}, {0, 3}}));
 
@@ -829,7 +829,7 @@ TEST_CASE("EditorCore IME input state composing text replaces previous composing
       2,
       ImeScriptClass::CJK);
   REQUIRE(clear_result.content_changed);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "ab");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
 }
@@ -853,7 +853,7 @@ TEST_CASE("EditorCore IME input state commit replaces previous composing span") 
       2,
       5,
       ImeScriptClass::CJK);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
 
   context = editor.getImeCommandInputContext(8, 8);
   EditorActionResult commit_result = applyDocumentWindowSnapshot(editor,
@@ -867,7 +867,7 @@ TEST_CASE("EditorCore IME input state commit replaces previous composing span") 
       ImeScriptClass::CJK);
 
   REQUIRE(commit_result.content_changed);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "abhello");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
 }
@@ -916,7 +916,7 @@ TEST_CASE("EditorCore IME input state mark-only composing stays document range")
       ImeScriptClass::CJK);
 
   CHECK_FALSE(mark_result.content_changed);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(editor.getCompositionState().kind == CompositionKind::DOCUMENT_RANGE);
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 0}, {0, 5}}));
   CHECK(document->getU8Text() == "hello");
@@ -934,7 +934,7 @@ TEST_CASE("EditorCore IME input state mark-only composing stays document range")
       ImeScriptClass::CJK);
 
   CHECK_FALSE(finish_result.content_changed);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "hello");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 5}));
 }
@@ -960,7 +960,7 @@ TEST_CASE("EditorCore IME input state replacement commits matching document rang
       ImeScriptClass::CJK);
 
   CHECK_FALSE(mark_result.content_changed);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(editor.getCompositionState().kind == CompositionKind::DOCUMENT_RANGE);
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 0}, {0, 7}}));
 
@@ -975,14 +975,13 @@ TEST_CASE("EditorCore IME input state replacement commits matching document rang
       ImeScriptClass::CJK);
 
   REQUIRE(commit_result.content_changed);
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(commit_result.ime_sync.clear_system_mark);
   CHECK(document->getU8Text() == "enable");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 6}));
 
   context = editor.getImeCommandInputContext(8, 8);
-  CHECK_FALSE(context.has_composition);
+  CHECK_FALSE(context.has_preedit_range);
 }
 
 TEST_CASE("EditorCore IME text model transient input defers composing text") {
@@ -1013,14 +1012,14 @@ TEST_CASE("EditorCore IME text model transient input defers composing text") {
   CHECK_FALSE(composing_result.content_changed);
   CHECK_FALSE(composing_result.needs_ime_sync);
   CHECK_FALSE(composing_result.ime_sync.clear_system_mark);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text().empty());
 
   context = editor.getImeTextUpdateInputContext(ImeTextUpdateScope::TRANSIENT_INPUT, 8, 8);
   CHECK(context.text == "nih");
-  CHECK(context.has_composition);
-  CHECK(context.composition.start == 0);
-  CHECK(context.composition.end == 3);
+  CHECK(context.has_preedit_range);
+  CHECK(context.preedit_range.start == 0);
+  CHECK(context.preedit_range.end == 3);
 
   EditorActionResult commit_result = updateTextSnapshot(editor,
       ImeTextUpdateScope::TRANSIENT_INPUT,
@@ -1036,7 +1035,7 @@ TEST_CASE("EditorCore IME text model transient input defers composing text") {
   REQUIRE(commit_result.content_changed);
   CHECK(commit_result.needs_ime_sync);
   CHECK(commit_result.ime_sync.clear_system_mark);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "你好");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
 
@@ -1110,7 +1109,7 @@ TEST_CASE("EditorCore IME text model delta commits replacement after composing c
       7,
       ImeScriptClass::CJK);
   REQUIRE(mark_result.handled);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
 
   context = editor.getImeTextUpdateInputContext(ImeTextUpdateScope::DOCUMENT_WINDOW, 8, 8);
   EditorActionResult clear_result = updateTextPatch(editor,
@@ -1128,7 +1127,7 @@ TEST_CASE("EditorCore IME text model delta commits replacement after composing c
       ImeScriptClass::CJK);
   CHECK(clear_result.handled);
   CHECK_FALSE(clear_result.content_changed);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
 
   EditorActionResult commit_result = updateTextPatch(editor,
       ImeTextUpdateScope::DOCUMENT_WINDOW,
@@ -1146,8 +1145,7 @@ TEST_CASE("EditorCore IME text model delta commits replacement after composing c
 
   REQUIRE(commit_result.content_changed);
   CHECK(commit_result.ime_sync.clear_system_mark);
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "enables");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
 }
@@ -1212,20 +1210,18 @@ TEST_CASE("EditorCore IME text model latin composition stays platform marked onl
 
   CHECK(result.handled);
   CHECK_FALSE(result.content_changed);
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(result.needs_ime_sync);
   CHECK(result.ime_sync.has_system_mark_range);
   CHECK(result.ime_sync.system_mark_range == (TextRange{{0, 0}, {0, 5}}));
-  CHECK_FALSE(result.ime_sync.has_visible_composition_range);
-  CHECK(result.ime_sync.preedit_storage == ImePreeditStorage::NONE);
+  CHECK_FALSE(result.ime_sync.has_preedit_range);
   CHECK_FALSE(result.ime_sync.clear_system_mark);
 
   ImeInputContext next_context = editor.getImeTextUpdateInputContext(
       ImeTextUpdateScope::DOCUMENT_WINDOW,
       8,
       8);
-  CHECK_FALSE(next_context.has_composition);
+  CHECK_FALSE(next_context.has_preedit_range);
   REQUIRE(next_context.has_system_mark_range);
   CHECK(next_context.system_mark_range.start == 0);
   CHECK(next_context.system_mark_range.end == 5);
@@ -1256,7 +1252,7 @@ TEST_CASE("EditorCore IME text model latin replacement commits hidden marked ran
       ImeScriptClass::LATIN,
       ImeMarkedRangeRole::SYSTEM_MARK);
   REQUIRE(mark_result.handled);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(mark_result.ime_sync.has_system_mark_range);
 
   context = editor.getImeTextUpdateInputContext(ImeTextUpdateScope::DOCUMENT_WINDOW, 8, 8);
@@ -1276,7 +1272,7 @@ TEST_CASE("EditorCore IME text model latin replacement commits hidden marked ran
       ImeMarkedRangeRole::NONE);
   CHECK(clear_result.handled);
   CHECK_FALSE(clear_result.content_changed);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(clear_result.ime_sync.clear_system_mark);
 
   EditorActionResult commit_result = updateTextPatch(editor,
@@ -1296,8 +1292,7 @@ TEST_CASE("EditorCore IME text model latin replacement commits hidden marked ran
 
   REQUIRE(commit_result.content_changed);
   CHECK(commit_result.ime_sync.clear_system_mark);
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "enables");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
 }
@@ -1327,7 +1322,7 @@ TEST_CASE("EditorCore IME text model platform marked range does not replace late
       ImeScriptClass::LATIN,
       ImeMarkedRangeRole::SYSTEM_MARK);
   REQUIRE(mark_result.handled);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
 
   context = editor.getImeTextUpdateInputContext(ImeTextUpdateScope::DOCUMENT_WINDOW, 8, 8);
   EditorActionResult insert_result = updateTextSnapshot(editor,
@@ -1344,7 +1339,7 @@ TEST_CASE("EditorCore IME text model platform marked range does not replace late
 
   REQUIRE(insert_result.content_changed);
   CHECK(document->getU8Text() == "helloX world");
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 5}, {0, 6}}));
 }
 
@@ -1366,15 +1361,14 @@ TEST_CASE("EditorCore IME operation system marked range does not start compositi
 
   CHECK(result.handled);
   CHECK_FALSE(result.content_changed);
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(result.needs_ime_sync);
   REQUIRE(result.ime_sync.has_system_mark_range);
   CHECK(result.ime_sync.system_mark_range == (TextRange{{0, 0}, {0, 5}}));
-  CHECK_FALSE(result.ime_sync.has_visible_composition_range);
+  CHECK_FALSE(result.ime_sync.has_preedit_range);
 
   ImeInputContext next_context = editor.getImeCommandInputContext(8, 8);
-  CHECK_FALSE(next_context.has_composition);
+  CHECK_FALSE(next_context.has_preedit_range);
   REQUIRE(next_context.has_system_mark_range);
   CHECK(next_context.system_mark_range.start == 0);
   CHECK(next_context.system_mark_range.end == 5);
@@ -1403,7 +1397,7 @@ TEST_CASE("EditorCore IME operation preedit after system marked range inserts at
       ImeScriptClass::LATIN,
       ImeMarkedRangeRole::SYSTEM_MARK);
   REQUIRE(mark_result.handled);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
 
   context = editor.getImeCommandInputContext(8, 8);
   REQUIRE(context.has_system_mark_range);
@@ -1416,7 +1410,7 @@ TEST_CASE("EditorCore IME operation preedit after system marked range inserts at
 
   REQUIRE(preedit_result.content_changed);
   CHECK(document->getU8Text() == "hexllo world");
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 2}, {0, 3}}));
   CHECK_FALSE(preedit_result.ime_sync.has_system_mark_range);
   CHECK(preedit_result.ime_sync.clear_system_mark);
@@ -1447,7 +1441,7 @@ TEST_CASE("EditorCore IME text update preedit over system mark replaces marked w
       ImeScriptClass::LATIN,
       ImeMarkedRangeRole::SYSTEM_MARK);
   REQUIRE(mark_result.handled);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
 
   context = editor.getImeTextUpdateInputContext(ImeTextUpdateScope::DOCUMENT_WINDOW, 8, 8);
   REQUIRE(context.has_system_mark_range);
@@ -1465,7 +1459,7 @@ TEST_CASE("EditorCore IME text update preedit over system mark replaces marked w
 
   REQUIRE(preedit_result.content_changed);
   CHECK(document->getU8Text() == "helloX world");
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 0}, {0, 6}}));
 }
 
@@ -1494,7 +1488,7 @@ TEST_CASE("EditorCore IME text update preedit over system mark supports middle e
       ImeScriptClass::LATIN,
       ImeMarkedRangeRole::SYSTEM_MARK);
   REQUIRE(mark_result.handled);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
 
   context = editor.getImeTextUpdateInputContext(ImeTextUpdateScope::DOCUMENT_WINDOW, 8, 8);
   REQUIRE(context.has_system_mark_range);
@@ -1512,7 +1506,7 @@ TEST_CASE("EditorCore IME text update preedit over system mark supports middle e
 
   REQUIRE(preedit_result.content_changed);
   CHECK(document->getU8Text() == "hexllo");
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 2}, {0, 3}}));
   CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
 }
@@ -1559,7 +1553,7 @@ TEST_CASE("EditorCore IME text update commit over system mark replaces candidate
 
   REQUIRE(commit_result.content_changed);
   CHECK(document->getU8Text() == "enables world");
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(commit_result.ime_sync.clear_system_mark);
 }
 
@@ -1605,7 +1599,7 @@ TEST_CASE("EditorCore IME text update single character candidate replaces system
 
   REQUIRE(commit_result.content_changed);
   CHECK(document->getU8Text() == "x world");
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(commit_result.ime_sync.clear_system_mark);
 }
 
@@ -1625,7 +1619,7 @@ TEST_CASE("EditorCore IME operation commit after system marked range inserts at 
       0,
       5);
   REQUIRE(mark_result.handled);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
 
   context = editor.getImeCommandInputContext(8, 8);
   REQUIRE(context.has_system_mark_range);
@@ -1638,7 +1632,7 @@ TEST_CASE("EditorCore IME operation commit after system marked range inserts at 
 
   REQUIRE(commit_result.content_changed);
   CHECK(document->getU8Text() == "helloX world");
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK_FALSE(commit_result.ime_sync.has_system_mark_range);
   CHECK(commit_result.ime_sync.clear_system_mark);
 }
@@ -1666,7 +1660,7 @@ TEST_CASE("EditorCore IME operation commit system marked role inserts at selecti
       ImeScriptClass::LATIN,
       ImeMarkedRangeRole::SYSTEM_MARK);
   REQUIRE(mark_result.handled);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
 
   context = editor.getImeCommandInputContext(8, 8);
   REQUIRE(context.has_system_mark_range);
@@ -1685,7 +1679,7 @@ TEST_CASE("EditorCore IME operation commit system marked role inserts at selecti
 
   REQUIRE(commit_result.content_changed);
   CHECK(document->getU8Text() == "enabledx world");
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK_FALSE(commit_result.ime_sync.has_system_mark_range);
   CHECK(commit_result.ime_sync.clear_system_mark);
 }
@@ -2048,7 +2042,7 @@ TEST_CASE("EditorCore IME operation replace local range consumes explicit candid
 
   REQUIRE(replace_result.content_changed);
   CHECK(document->getU8Text() == "enables");
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK_FALSE(replace_result.ime_sync.has_system_mark_range);
   CHECK(replace_result.ime_sync.clear_system_mark);
 }
@@ -2108,7 +2102,7 @@ TEST_CASE("EditorCore IME input state replacement ignores mid-range plain edit h
       ImeScriptClass::CJK);
 
   CHECK_FALSE(mark_result.content_changed);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(editor.getCompositionState().kind == CompositionKind::DOCUMENT_RANGE);
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 0}, {0, 7}}));
 
@@ -2123,8 +2117,7 @@ TEST_CASE("EditorCore IME input state replacement ignores mid-range plain edit h
       ImeScriptClass::CJK);
 
   REQUIRE(commit_result.content_changed);
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(commit_result.ime_sync.clear_system_mark);
   CHECK(document->getU8Text() == "enables");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
@@ -2151,7 +2144,7 @@ TEST_CASE("EditorCore IME text model replacement commits preedit fallback") {
       ImeScriptClass::CJK);
 
   REQUIRE(preedit_result.content_changed);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(editor.getCompositionState().kind == CompositionKind::PREEDIT_TEXT);
   CHECK(document->getU8Text() == "how");
 
@@ -2167,8 +2160,7 @@ TEST_CASE("EditorCore IME text model replacement commits preedit fallback") {
 
   REQUIRE(commit_result.content_changed);
   CHECK(commit_result.handled);
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(commit_result.ime_sync.clear_system_mark);
   CHECK(document->getU8Text() == "ho");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
@@ -2195,7 +2187,7 @@ TEST_CASE("EditorCore IME input state composing replacement maps to previous ran
       ImeScriptClass::CJK);
 
   CHECK(document->getU8Text() == "a你c");
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 1}, {0, 2}}));
   CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
 }
@@ -2211,19 +2203,19 @@ TEST_CASE("EditorCore backspace during composition shrinks text step-by-step") {
   editor.setCursorPosition({0, 2});
 
   updatePreedit(editor, "how");
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "abhow");
 
   editor.backspace();
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "abho");
 
   editor.backspace();
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "abh");
 
   editor.backspace();
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "ab");
 }
 
@@ -2237,12 +2229,11 @@ TEST_CASE("EditorCore moving cursor commits composition") {
   editor.setCursorPosition({0, 1});
 
   updatePreedit(editor, "x");
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "axbc");
 
   editor.setCursorPosition({0, 4});
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "axbc");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
 }
@@ -2257,12 +2248,12 @@ TEST_CASE("EditorCore set composing region preserves cursor at range end") {
   editor.setCursorPosition({0, 4});
 
   markDocumentRange(editor, {{0, 0}, {0, 4}});
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "word");
   CHECK(editor.getCursorPosition() == (TextPosition {0, 4}));
 
   markDocumentRange(editor, {{0, 0}, {0, 4}});
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "word");
   CHECK(editor.getCursorPosition() == (TextPosition {0, 4}));
 }
@@ -2277,12 +2268,12 @@ TEST_CASE("EditorCore composition end preserves cursor at existing composing ran
   editor.setCursorPosition({0, 4});
 
   markDocumentRange(editor, {{0, 0}, {0, 4}});
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
 
   EditorActionResult result = finishPreedit(editor);
   CHECK_FALSE(result.content_changed);
   CHECK_FALSE(result.cursor_changed);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "word");
   CHECK(editor.getCursorPosition() == (TextPosition {0, 4}));
   CHECK(result.changes.empty());
@@ -2299,12 +2290,12 @@ TEST_CASE("EditorCore IME empty commit replaces active composing text with empty
   editor.setCursorPosition({0, 4});
 
   markDocumentRange(editor, {{0, 0}, {0, 4}});
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
 
   EditorActionResult result = commitText(editor, "", ImeScriptClass::LATIN);
 
   CHECK(result.content_changed);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text().empty());
   CHECK(editor.getCursorPosition() == (TextPosition {0, 0}));
 }
@@ -2320,11 +2311,11 @@ TEST_CASE("EditorCore document range preedit commit is undoable without duplicat
 
   markDocumentRange(editor, {{0, 0}, {0, 4}});
   updatePreedit(editor, "how");
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "how tail");
 
   cancelPreedit(editor);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "word tail");
   CHECK_FALSE(editor.canUndo());
 
@@ -2334,7 +2325,7 @@ TEST_CASE("EditorCore document range preedit commit is undoable without duplicat
   EditorActionResult result = finishPreedit(editor);
   CHECK_FALSE(result.content_changed);
   CHECK(result.changes.empty());
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "how tail");
   CHECK(editor.canUndo());
 
@@ -2378,7 +2369,7 @@ TEST_CASE("EditorCore document range composition finish does not move inlay hint
 
   REQUIRE(color_run != nullptr);
   CHECK(color_run->column == 20);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK_FALSE(editor.canUndo());
 }
 
@@ -2399,7 +2390,7 @@ TEST_CASE("EditorCore repeated document composing region commits replacement onc
   EditorActionResult result = commitText(editor, "Points");
   REQUIRE(result.content_changed);
   REQUIRE(result.changes.size() == 1);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "record Points(double x, double y) {}");
   CHECK(result.changes[0].range == point_range);
   CHECK(result.changes[0].old_text == "Point");
@@ -2422,12 +2413,11 @@ TEST_CASE("EditorCore IME event update preedit drives visible composition") {
   EditorActionResult result = updatePreedit(editor, "how");
 
   REQUIRE(result.handled);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "abhow");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 5}));
-  CHECK(result.ime_sync.has_composing_session);
-  CHECK(result.ime_sync.has_visible_composition_range);
-  CHECK(result.ime_sync.visible_composition_range == (TextRange{{0, 2}, {0, 5}}));
+  CHECK(result.ime_sync.has_preedit_range);
+  CHECK(result.ime_sync.preedit_range == (TextRange{{0, 2}, {0, 5}}));
 }
 
 TEST_CASE("EditorCore IME event commit text finishes active preedit") {
@@ -2440,16 +2430,14 @@ TEST_CASE("EditorCore IME event commit text finishes active preedit") {
   editor.setCursorPosition({0, 2});
 
   updatePreedit(editor, "how");
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
 
   EditorActionResult result = commitText(editor, "how");
 
   REQUIRE(result.handled);
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "abhow");
-  CHECK_FALSE(result.ime_sync.has_composing_session);
-  CHECK_FALSE(result.ime_sync.has_visible_composition_range);
+  CHECK_FALSE(result.ime_sync.has_preedit_range);
 }
 
 TEST_CASE("EditorCore IME event backspace shrinks preedit step-by-step") {
@@ -2464,15 +2452,15 @@ TEST_CASE("EditorCore IME event backspace shrinks preedit step-by-step") {
   updatePreedit(editor, "how");
 
   deleteBackward(editor, 1);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "abho");
 
   deleteBackward(editor, 1);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "abh");
 
   deleteBackward(editor, 1);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "ab");
 }
 
@@ -2486,16 +2474,13 @@ TEST_CASE("EditorCore IME finish clears platform document range") {
   editor.setCursorPosition({0, 12});
 
   markDocumentRange(editor, {{0, 7}, {0, 12}}, ImeScriptClass::LATIN);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
 
   EditorActionResult result = finishPreedit(editor);
 
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
-  CHECK_FALSE(result.ime_sync.has_composing_session);
-  CHECK_FALSE(result.ime_sync.has_visible_composition_range);
+  CHECK_FALSE(editor.hasPreedit());
+  CHECK_FALSE(result.ime_sync.has_preedit_range);
   CHECK_FALSE(result.ime_sync.has_system_mark_range);
-  CHECK(result.ime_sync.preedit_storage == ImePreeditStorage::NONE);
   CHECK(result.ime_sync.clear_system_mark);
 }
 
@@ -2512,20 +2497,15 @@ TEST_CASE("EditorCore IME event CJK preedit stays visible until commit") {
 
   REQUIRE(update_result.handled);
   CHECK(document->getU8Text() == "ni");
-  CHECK(editor.isComposing());
-  CHECK(editor.hasComposingSession());
-  CHECK(update_result.ime_sync.has_composing_session);
-  CHECK(update_result.ime_sync.has_visible_composition_range);
-  CHECK(update_result.ime_sync.preedit_storage == ImePreeditStorage::VISIBLE_DOCUMENT_PREEDIT);
+  CHECK(editor.hasPreedit());
+  CHECK(update_result.ime_sync.has_preedit_range);
 
   EditorActionResult commit_result = commitText(editor, "\xE4\xBD\xA0", ImeScriptClass::CJK);
 
   CHECK(commit_result.content_changed);
   CHECK(document->getU8Text() == "\xE4\xBD\xA0");
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
-  CHECK_FALSE(commit_result.ime_sync.has_composing_session);
-  CHECK(commit_result.ime_sync.preedit_storage == ImePreeditStorage::NONE);
+  CHECK_FALSE(editor.hasPreedit());
+  CHECK_FALSE(commit_result.ime_sync.has_preedit_range);
 }
 
 
@@ -2544,8 +2524,8 @@ TEST_CASE("EditorCore visible preedit does not affect document undo and renders 
   CHECK(update_result.content_changed);
   CHECK(document->getU8Text() == "valueni");
   CHECK_FALSE(editor.canUndo());
-  CHECK(editor.isComposing());
-  CHECK(update_result.ime_sync.preedit_storage == ImePreeditStorage::VISIBLE_DOCUMENT_PREEDIT);
+  CHECK(editor.hasPreedit());
+  CHECK(update_result.ime_sync.has_preedit_range);
 
   EditorRenderModel model;
   EditorRangeEffectStyles styles;
@@ -2648,35 +2628,35 @@ TEST_CASE("EditorCore IME document range accepts cursor inside word for latin sc
   editor.setCursorPosition({0, 2});
   EditorActionResult middle_result = markDocumentRange(editor, {{0, 0}, {0, 5}}, ImeScriptClass::LATIN);
   CHECK(middle_result.handled);
-  REQUIRE(editor.isComposing());
-  CHECK(middle_result.ime_sync.has_visible_composition_range);
-  CHECK(middle_result.ime_sync.visible_composition_range == (TextRange{{0, 0}, {0, 5}}));
+  REQUIRE(editor.hasPreedit());
+  CHECK(middle_result.ime_sync.has_preedit_range);
+  CHECK(middle_result.ime_sync.preedit_range == (TextRange{{0, 0}, {0, 5}}));
   CHECK_FALSE(middle_result.ime_sync.has_system_mark_range);
   ImeInputContext middle_context = editor.getImeCommandInputContext(5, 5);
   CHECK(middle_context.kind == ImeInputContextKind::DOCUMENT_WINDOW);
   CHECK(middle_context.text == "hello");
   CHECK(middle_context.selection.start == 2);
   CHECK(middle_context.selection.end == 2);
-  CHECK(middle_context.has_composition);
-  CHECK(middle_context.composition.start == 0);
-  CHECK(middle_context.composition.end == 5);
+  CHECK(middle_context.has_preedit_range);
+  CHECK(middle_context.preedit_range.start == 0);
+  CHECK(middle_context.preedit_range.end == 5);
 
   cancelPreedit(editor);
   editor.setCursorPosition({0, 5});
   EditorActionResult end_result = markDocumentRange(editor, {{0, 0}, {0, 5}}, ImeScriptClass::LATIN);
   CHECK(end_result.handled);
-  REQUIRE(editor.isComposing());
-  CHECK(end_result.ime_sync.has_visible_composition_range);
-  CHECK(end_result.ime_sync.visible_composition_range == (TextRange{{0, 0}, {0, 5}}));
+  REQUIRE(editor.hasPreedit());
+  CHECK(end_result.ime_sync.has_preedit_range);
+  CHECK(end_result.ime_sync.preedit_range == (TextRange{{0, 0}, {0, 5}}));
   CHECK_FALSE(end_result.ime_sync.has_system_mark_range);
   ImeInputContext end_context = editor.getImeCommandInputContext(5, 5);
   CHECK(end_context.kind == ImeInputContextKind::DOCUMENT_WINDOW);
   CHECK(end_context.text == "hello");
   CHECK(end_context.selection.start == 5);
   CHECK(end_context.selection.end == 5);
-  CHECK(end_context.has_composition);
-  CHECK(end_context.composition.start == 0);
-  CHECK(end_context.composition.end == 5);
+  CHECK(end_context.has_preedit_range);
+  CHECK(end_context.preedit_range.start == 0);
+  CHECK(end_context.preedit_range.end == 5);
 }
 
 TEST_CASE("EditorCore IME document range clamps overflowing line to document end") {
@@ -2691,9 +2671,9 @@ TEST_CASE("EditorCore IME document range clamps overflowing line to document end
   EditorActionResult result = markDocumentRange(editor, {{1, 1}, {99, 0}}, ImeScriptClass::LATIN);
 
   CHECK(result.handled);
-  REQUIRE(editor.isComposing());
-  CHECK(result.ime_sync.has_visible_composition_range);
-  CHECK(result.ime_sync.visible_composition_range == (TextRange{{1, 1}, {1, 5}}));
+  REQUIRE(editor.hasPreedit());
+  CHECK(result.ime_sync.has_preedit_range);
+  CHECK(result.ime_sync.preedit_range == (TextRange{{1, 1}, {1, 5}}));
   CHECK_FALSE(result.ime_sync.has_system_mark_range);
 }
 
@@ -2709,17 +2689,17 @@ TEST_CASE("EditorCore IME unknown document range can start platform composition"
   EditorActionResult result = markDocumentRange(editor, {{0, 0}, {0, 5}});
 
   CHECK(result.handled);
-  REQUIRE(editor.isComposing());
-  CHECK(editor.hasComposingSession());
-  CHECK(result.ime_sync.has_visible_composition_range);
-  CHECK(result.ime_sync.visible_composition_range == (TextRange{{0, 0}, {0, 5}}));
+  REQUIRE(editor.hasPreedit());
+  CHECK(editor.hasPreedit());
+  CHECK(result.ime_sync.has_preedit_range);
+  CHECK(result.ime_sync.preedit_range == (TextRange{{0, 0}, {0, 5}}));
   CHECK_FALSE(result.ime_sync.has_system_mark_range);
 
   EditorActionResult commit_result = commitText(editor, "helloWorld", ImeScriptClass::LATIN);
 
   CHECK(commit_result.content_changed);
   CHECK(document->getU8Text() == "helloWorld");
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
 }
 
 
@@ -2736,13 +2716,13 @@ TEST_CASE("EditorCore IME document range candidate replaces word from middle cur
   ImeReplayRunner ime(editor);
 
   EditorActionResult mark_result = ime.markDocumentRange({{0, 0}, {0, 5}});
-  REQUIRE(mark_result.ime_sync.has_visible_composition_range);
+  REQUIRE(mark_result.ime_sync.has_preedit_range);
 
   EditorActionResult commit_result = ime.commitText("helloWorld");
   REQUIRE(commit_result.content_changed);
   CHECK(document->getU8Text() == "helloWorld");
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 10}));
 }
 
@@ -2760,20 +2740,20 @@ TEST_CASE("EditorCore suppresses candidate exact re-mark after commit") {
   EditorActionResult commit_result = ime.commitText("how");
   REQUIRE(commit_result.handled);
   CHECK(document->getU8Text() == "how");
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
+  CHECK_FALSE(editor.hasPreedit());
 
   EditorActionResult mark_result = ime.markDocumentRange({{0, 0}, {0, 3}});
   CHECK(mark_result.handled);
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
+  CHECK_FALSE(editor.hasPreedit());
 
   EditorActionResult preedit_result = ime.updatePreedit("how");
   CHECK(preedit_result.handled);
   CHECK_FALSE(preedit_result.content_changed);
   CHECK(document->getU8Text() == "how");
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
+  CHECK_FALSE(editor.hasPreedit());
 }
 
 TEST_CASE("EditorCore suppresses document range candidate exact re-mark after commit") {
@@ -2787,26 +2767,26 @@ TEST_CASE("EditorCore suppresses document range candidate exact re-mark after co
   ImeReplayRunner ime(editor);
 
   EditorActionResult mark_result = ime.markDocumentRange({{0, 0}, {0, 7}});
-  REQUIRE(mark_result.ime_sync.has_visible_composition_range);
-  CHECK(mark_result.ime_sync.visible_composition_range == (TextRange{{0, 0}, {0, 7}}));
+  REQUIRE(mark_result.ime_sync.has_preedit_range);
+  CHECK(mark_result.ime_sync.preedit_range == (TextRange{{0, 0}, {0, 7}}));
 
   EditorActionResult commit_result = ime.commitText("enable");
   REQUIRE(commit_result.handled);
   CHECK(document->getU8Text() == "enable");
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
+  CHECK_FALSE(editor.hasPreedit());
 
   EditorActionResult remark_result = ime.markDocumentRange({{0, 0}, {0, 6}});
   CHECK(remark_result.handled);
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
+  CHECK_FALSE(editor.hasPreedit());
 
   EditorActionResult preedit_result = ime.updatePreedit("enable");
   CHECK(preedit_result.handled);
   CHECK_FALSE(preedit_result.content_changed);
   CHECK(document->getU8Text() == "enable");
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
+  CHECK_FALSE(editor.hasPreedit());
 }
 
 
@@ -2821,13 +2801,13 @@ TEST_CASE("EditorCore IME document range full-word edit commit inserts at middle
   ImeReplayRunner ime(editor);
 
   ime.markDocumentRange({{0, 0}, {0, 5}});
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
 
   EditorActionResult commit_result = ime.commitText("hexllo");
   REQUIRE(commit_result.content_changed);
   CHECK(document->getU8Text() == "hexllo");
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
 }
 
@@ -2842,13 +2822,13 @@ TEST_CASE("EditorCore IME document range suffix candidate commit replaces word f
   ImeReplayRunner ime(editor);
 
   ime.markDocumentRange({{0, 0}, {0, 7}});
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
 
   EditorActionResult commit_result = ime.commitText("defaults");
   REQUIRE(commit_result.content_changed);
   CHECK(document->getU8Text() == "defaults");
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 8}));
 }
 
@@ -2864,18 +2844,18 @@ TEST_CASE("EditorCore IME document range suffix preedit replaces word from middl
   ImeReplayRunner ime(editor);
 
   ime.markDocumentRange({{0, 0}, {0, 6}});
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
 
   EditorActionResult update_result = ime.updatePreedit("Strings");
   CHECK(update_result.handled);
   CHECK(document->getU8Text() == "Strings");
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
 
   EditorActionResult finish_result = ime.finishPreedit();
   CHECK(finish_result.handled);
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "Strings");
 }
 
@@ -2892,20 +2872,20 @@ TEST_CASE("EditorCore IME platform prefix range updates only cursor prefix") {
 
   EditorActionResult mark_result = ime.markDocumentRange({{0, 0}, {0, 2}},
                                                       ImeScriptClass::LATIN);
-  REQUIRE(mark_result.ime_sync.has_visible_composition_range);
-  CHECK(mark_result.ime_sync.visible_composition_range == (TextRange{{0, 0}, {0, 2}}));
+  REQUIRE(mark_result.ime_sync.has_preedit_range);
+  CHECK(mark_result.ime_sync.preedit_range == (TextRange{{0, 0}, {0, 2}}));
 
   EditorActionResult first_update = ime.updatePreedit("vax");
   REQUIRE(first_update.content_changed);
   CHECK(document->getU8Text() == "vaxlue");
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 0}, {0, 3}}));
   CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
 
   EditorActionResult second_update = ime.updatePreedit("vaxy");
   REQUIRE(second_update.content_changed);
   CHECK(document->getU8Text() == "vaxylue");
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
   CHECK(editor.getCompositionState().anchor_range == (TextRange{{0, 0}, {0, 4}}));
   CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
 }
@@ -2923,13 +2903,13 @@ TEST_CASE("EditorCore IME platform full word range uses marked range preedit") {
 
   EditorActionResult mark_result = ime.markDocumentRange({{0, 0}, {0, 6}},
                                                       ImeScriptClass::UNKNOWN);
-  REQUIRE(mark_result.ime_sync.has_visible_composition_range);
-  CHECK(mark_result.ime_sync.visible_composition_range == (TextRange{{0, 0}, {0, 6}}));
+  REQUIRE(mark_result.ime_sync.has_preedit_range);
+  CHECK(mark_result.ime_sync.preedit_range == (TextRange{{0, 0}, {0, 6}}));
 
   EditorActionResult update_result = ime.updatePreedit("Strings");
   CHECK(update_result.handled);
   CHECK(document->getU8Text() == "Strings");
-  CHECK(editor.isComposing());
+  CHECK(editor.hasPreedit());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
 }
 
@@ -2947,27 +2927,27 @@ TEST_CASE("EditorCore IME platform full word range keeps word-end full payload i
 
   ime.markDocumentRange({{0, 0}, {0, 5}},
                         ImeScriptClass::UNKNOWN);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
 
   EditorActionResult first_update = ime.updatePreedit("valuex");
   REQUIRE(first_update.content_changed);
   CHECK(document->getU8Text() == "valuex");
-  CHECK(editor.isComposing());
+  CHECK(editor.hasPreedit());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 6}));
 
   EditorActionResult finish_result = ime.finishPreedit();
   CHECK_FALSE(finish_result.content_changed);
   CHECK(finish_result.changes.empty());
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(editor.canUndo());
   ime.markDocumentRange({{0, 0}, {0, 6}},
                         ImeScriptClass::UNKNOWN);
-  REQUIRE(editor.isComposing());
+  REQUIRE(editor.hasPreedit());
 
   EditorActionResult second_update = ime.updatePreedit("valuexy");
   REQUIRE(second_update.content_changed);
   CHECK(document->getU8Text() == "valuexy");
-  CHECK(editor.isComposing());
+  CHECK(editor.hasPreedit());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
 }
 
@@ -2992,7 +2972,7 @@ TEST_CASE("EditorCore full word preedit selection commit keeps provider decorati
 
   EditorActionResult selection_result = ime.selectionChanged({{0, 11}, {0, 11}});
   CHECK_FALSE(selection_result.content_changed);
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "valuex tail");
   CHECK(editor.canUndo());
 
@@ -3037,7 +3017,7 @@ TEST_CASE("EditorCore IME explicit replace text inserts without composition") {
   EditorActionResult replace_result = ime.replaceText({{0, 0}, {0, 5}}, "result");
   REQUIRE(replace_result.content_changed);
   CHECK(document->getU8Text() == "result");
-  CHECK_FALSE(editor.isComposing());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 6}));
 }
 
@@ -3052,13 +3032,13 @@ TEST_CASE("EditorCore IME explicit replace text replaces requested range inside 
   ImeReplayRunner ime(editor);
 
   EditorActionResult mark_result = ime.markDocumentRange({{0, 0}, {0, 5}});
-  REQUIRE(mark_result.ime_sync.has_visible_composition_range);
+  REQUIRE(mark_result.ime_sync.has_preedit_range);
   CHECK_FALSE(mark_result.ime_sync.has_system_mark_range);
 
   EditorActionResult replace_result = ime.replaceText({{0, 2}, {0, 3}}, "helloWorld");
   REQUIRE(replace_result.content_changed);
   CHECK(document->getU8Text() == "hehelloWorldlo");
-  CHECK_FALSE(editor.isComposing());
-  CHECK_FALSE(editor.hasComposingSession());
+  CHECK_FALSE(editor.hasPreedit());
+  CHECK_FALSE(editor.hasPreedit());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 12}));
 }

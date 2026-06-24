@@ -1347,70 +1347,12 @@ void free_binary_data(intptr_t data_ptr) {
 
 #pragma region [IME]
 
-int editor_ime_is_composing(intptr_t editor_handle) {
+int editor_ime_has_preedit(intptr_t editor_handle) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     return 0;
   }
-  return editor_core->isComposing() ? 1 : 0;
-}
-
-void editor_ime_get_composing_range(intptr_t editor_handle,
-                                    int32_t* out_start_line,
-                                    int32_t* out_start_column,
-                                    int32_t* out_end_line,
-                                    int32_t* out_end_column) {
-  if (out_start_line) *out_start_line = -1;
-  if (out_start_column) *out_start_column = -1;
-  if (out_end_line) *out_end_line = -1;
-  if (out_end_column) *out_end_column = -1;
-
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || !editor_core->isComposing()) {
-    return;
-  }
-
-  const CompositionState& state = editor_core->getCompositionState();
-  if (!state.is_composing || !state.visible) {
-    return;
-  }
-
-  TextRange range = state.anchor_range.start == state.anchor_range.end
-      ? TextRange {state.start_position, {state.start_position.line, state.start_position.column + state.composing_columns}}
-      : state.anchor_range;
-  if (out_start_line) *out_start_line = static_cast<int32_t>(range.start.line);
-  if (out_start_column) *out_start_column = static_cast<int32_t>(range.start.column);
-  if (out_end_line) *out_end_line = static_cast<int32_t>(range.end.line);
-  if (out_end_column) *out_end_column = static_cast<int32_t>(range.end.column);
-}
-
-void editor_ime_get_composing_session_range(intptr_t editor_handle,
-                                            int32_t* out_start_line,
-                                            int32_t* out_start_column,
-                                            int32_t* out_end_line,
-                                            int32_t* out_end_column) {
-  if (out_start_line) *out_start_line = -1;
-  if (out_start_column) *out_start_column = -1;
-  if (out_end_line) *out_end_line = -1;
-  if (out_end_column) *out_end_column = -1;
-
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || !editor_core->hasComposingSession()) {
-    return;
-  }
-
-  const CompositionState& state = editor_core->getCompositionState();
-  if (!state.has_session) {
-    return;
-  }
-
-  TextRange range = state.anchor_range.start == state.anchor_range.end
-      ? TextRange {state.start_position, {state.start_position.line, state.start_position.column + state.composing_columns}}
-      : state.anchor_range;
-  if (out_start_line) *out_start_line = static_cast<int32_t>(range.start.line);
-  if (out_start_column) *out_start_column = static_cast<int32_t>(range.start.column);
-  if (out_end_line) *out_end_line = static_cast<int32_t>(range.end.line);
-  if (out_end_column) *out_end_column = static_cast<int32_t>(range.end.column);
+  return editor_core->hasPreedit() ? 1 : 0;
 }
 
 const uint8_t* editor_ime_handle_command_message(intptr_t editor_handle,

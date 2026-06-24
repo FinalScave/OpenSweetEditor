@@ -441,14 +441,11 @@ namespace NS_SWEETEDITOR {
                                                  size_t before_length,
                                                  size_t after_length);
 
-    /// Whether a composition session exists
-    bool hasComposingSession() const;
-
     /// Get current composition state
     const CompositionState& getCompositionState() const;
 
-    /// Whether composition is active
-    bool isComposing() const;
+    /// Whether a preedit is active
+    bool hasPreedit() const;
 
 #pragma endregion
 
@@ -695,8 +692,8 @@ namespace NS_SWEETEDITOR {
     ImeInputContext m_ime_input_context_;
     uint64_t m_next_ime_input_context_id_ {1};
     int32_t m_ime_input_context_revision_ {0};
-    bool m_ime_text_update_has_pending_composition_clear_ {false};
-    ImeOffsetRange m_ime_text_update_pending_composition_clear_ {-1, -1};
+    bool m_ime_text_update_has_pending_preedit_clear_ {false};
+    ImeOffsetRange m_ime_text_update_pending_preedit_clear_ {-1, -1};
     bool m_ime_text_update_has_system_mark_range_ {false};
     TextRange m_ime_text_update_system_mark_range_;
 
@@ -951,7 +948,7 @@ namespace NS_SWEETEDITOR {
                                                 int32_t document_start_offset,
                                                 size_t start_offset,
                                                 size_t end_offset) const;
-    TextRange textRangeFromImeCompositionOffsets(const ImeActionResult& result,
+    TextRange textRangeFromImeMarkedOffsets(const ImeActionResult& result,
                                                 size_t start_offset,
                                                 size_t end_offset) const;
     ImeInputContext buildImeInputContext(size_t before_length,

@@ -88,7 +88,7 @@ namespace NS_SWEETEDITOR {
     return {true, safe_start, safe_end};
   }
 
-  static ImeContextRange normalizeImeComposingRange(int32_t start, int32_t end, size_t text_length) {
+  static ImeContextRange normalizeImeMarkedRange(int32_t start, int32_t end, size_t text_length) {
     if (start < 0 || end < 0) {
       return {};
     }
@@ -343,7 +343,7 @@ namespace NS_SWEETEDITOR {
                                                   size_t selection_end_offset,
                                                   ImeScriptClass script_class) {
     ImeActionResult result = setImePreeditTextInternal(text, script_class);
-    TextRange selection_range = textRangeFromImeCompositionOffsets(
+    TextRange selection_range = textRangeFromImeMarkedOffsets(
         result,
         selection_start_offset,
         selection_end_offset);
@@ -416,10 +416,13 @@ namespace NS_SWEETEDITOR {
     const bool had_system_mark_range =
         m_ime_text_update_has_system_mark_range_
         || m_ime_input_context_.has_system_mark_range;
-    const auto clear_system_mark_range = [&]() -> ImeActionResult {
+    const auto clear_system_mark_state = [&]() {
       clearImeTextUpdateSystemMarkRange();
       m_ime_input_context_.has_system_mark_range = false;
       m_ime_input_context_.system_mark_range = {-1, -1};
+    };
+    const auto make_system_mark_clear_result = [&]() -> ImeActionResult {
+      clear_system_mark_state();
       ImeActionResult result;
       result.handled = true;
       result.sync = getImeSyncSnapshot();
@@ -446,7 +449,7 @@ namespace NS_SWEETEDITOR {
         }
         ImeActionResult result;
         if (had_system_mark_range) {
-          mergeImeActionResult(result, clear_system_mark_range());
+          mergeImeActionResult(result, make_system_mark_clear_result());
         }
         ImeActionResult preedit_result;
         if (has_message_selection()) {
@@ -470,7 +473,7 @@ namespace NS_SWEETEDITOR {
         if (has_context && !matches_input_context) {
           return makeImeInputContextResyncResult(getImeSyncSnapshot());
         }
-        clear_system_mark_range();
+        clear_system_mark_state();
         ImeActionResult result = applyImeCommitTextCommandInternal(
             message.text,
             message.cursor_offset,
@@ -479,13 +482,13 @@ namespace NS_SWEETEDITOR {
         return result;
       }
       case ImeCommandKind::FINISH_PREEDIT: {
-        clear_system_mark_range();
+        clear_system_mark_state();
         ImeActionResult result = applyImeFinishPreeditCommandInternal();
         mark_system_mark_clear(result);
         return result;
       }
       case ImeCommandKind::CANCEL_PREEDIT: {
-        clear_system_mark_range();
+        clear_system_mark_state();
         ImeActionResult result = applyImeCancelPreeditCommandInternal();
         mark_system_mark_clear(result);
         return result;
@@ -495,7 +498,7 @@ namespace NS_SWEETEDITOR {
           return makeImeInputContextResyncResult(getImeSyncSnapshot());
         }
         if (message.marked_role == ImeMarkedRangeRole::PREEDIT) {
-          clear_system_mark_range();
+          clear_system_mark_state();
           const size_t context_text_length = StrUtil::utf16Length(m_ime_input_context_.text);
           const size_t start = clampImeOffset(message.range.start, context_text_length);
           const size_t end = clampImeOffset(message.range.end, context_text_length);
@@ -522,20 +525,20 @@ namespace NS_SWEETEDITOR {
       }
       case ImeCommandKind::CLEAR_MARKED_RANGE: {
         if (message.marked_role == ImeMarkedRangeRole::SYSTEM_MARK) {
-          return clear_system_mark_range();
+          return make_system_mark_clear_result();
         }
         if (message.marked_role == ImeMarkedRangeRole::PREEDIT) {
           return applyImeFinishPreeditCommandInternal();
         }
         ImeActionResult result = applyImeFinishPreeditCommandInternal();
-        mergeImeActionResult(result, clear_system_mark_range());
+        mergeImeActionResult(result, make_system_mark_clear_result());
         return result;
       }
       case ImeCommandKind::REPLACE_TEXT: {
         if (!matches_input_context) {
           return makeImeInputContextResyncResult(getImeSyncSnapshot());
         }
-        clear_system_mark_range();
+        clear_system_mark_state();
         const size_t context_text_length = matches_input_context
             ? StrUtil::utf16Length(m_ime_input_context_.text)
             : 0;
@@ -569,7 +572,7 @@ namespace NS_SWEETEDITOR {
         }
         const size_t delete_before = non_negative_length(message.delete_before);
         const size_t delete_after = non_negative_length(message.delete_after);
-        clear_system_mark_range();
+        clear_system_mark_state();
         ImeActionResult result = deleteImeSurroundingInternal(
             delete_before,
             delete_after,
@@ -634,8 +637,8 @@ namespace NS_SWEETEDITOR {
           std::max<int32_t>(0, document_start_offset));
       size_t context_length = text_length;
       context_length = std::max(context_length, StrUtil::utf16Length(m_ime_input_context_.text));
-      previous_context.has_composition = m_ime_input_context_.has_composition;
-      previous_context.composition = m_ime_input_context_.composition;
+      previous_context.has_preedit_range = m_ime_input_context_.has_preedit_range;
+      previous_context.preedit_range = m_ime_input_context_.preedit_range;
       previous_context.has_system_mark_range = m_ime_input_context_.has_system_mark_range;
       previous_context.system_mark_range = m_ime_input_context_.system_mark_range;
       previous_context.id = context_id;
@@ -653,35 +656,35 @@ namespace NS_SWEETEDITOR {
         selection_start_offset,
         selection_end_offset,
         new_text_length);
-    const ImeContextRange reported_marked_range = normalizeImeComposingRange(
+    const ImeContextRange reported_marked_range = normalizeImeMarkedRange(
         marked_range.range.start,
         marked_range.range.end,
         new_text_length);
-    const bool marked_range_is_composition =
+    const bool marked_range_is_preedit =
         marked_range.role == ImeMarkedRangeRole::PREEDIT;
     const bool marked_range_is_platform =
         marked_range.role == ImeMarkedRangeRole::SYSTEM_MARK;
-    const ImeContextRange new_composition =
-        marked_range_is_composition ? reported_marked_range : ImeContextRange {};
+    const ImeContextRange new_preedit =
+        marked_range_is_preedit ? reported_marked_range : ImeContextRange {};
     const ImeContextRange new_system_mark =
         marked_range_is_platform ? reported_marked_range : ImeContextRange {};
-    const ImeContextRange old_composition = previous_context.has_composition
-                                               ? normalizeImeComposingRange(
-                                                   previous_context.composition.start,
-                                                   previous_context.composition.end,
+    const ImeContextRange old_preedit = previous_context.has_preedit_range
+                                               ? normalizeImeMarkedRange(
+                                                   previous_context.preedit_range.start,
+                                                   previous_context.preedit_range.end,
                                                    old_text_length)
                                                : ImeContextRange {};
     const ImeContextRange old_system_mark =
         previous_context.has_system_mark_range
-        ? normalizeImeComposingRange(previous_context.system_mark_range.start,
+        ? normalizeImeMarkedRange(previous_context.system_mark_range.start,
                                      previous_context.system_mark_range.end,
                                      old_text_length)
         : ImeContextRange {};
     const size_t document_start = static_cast<size_t>(
         std::max<int32_t>(0, previous_context.document_start_offset));
-    const bool had_visible_composition = isComposing();
+    const bool had_active_preedit = hasPreedit();
     const bool new_system_mark_only =
-        new_system_mark.active && !new_composition.active;
+        new_system_mark.active && !new_preedit.active;
     const bool clears_previous_system_mark =
         old_system_mark.active && !new_system_mark.active;
     const auto notify_reported_selection = [&]() {
@@ -691,54 +694,54 @@ namespace NS_SWEETEDITOR {
     };
 
     if (diff.changed) {
-      const bool replaces_previous_composition =
-          old_composition.active
-          && imeDiffTouchesPreviousRange(diff, old_composition)
-          && imeTextPreservesPreviousRangeContext(previous_context.text, text, old_composition);
-      if (replaces_previous_composition) {
+      const bool replaces_previous_preedit =
+          old_preedit.active
+          && imeDiffTouchesPreviousRange(diff, old_preedit)
+          && imeTextPreservesPreviousRangeContext(previous_context.text, text, old_preedit);
+      if (replaces_previous_preedit) {
         mergeImeActionResult(result, setImePreeditRangeInternal(
-            document_start + old_composition.start,
-            document_start + old_composition.end,
+            document_start + old_preedit.start,
+            document_start + old_preedit.end,
             script_class));
-        if (new_composition.active) {
-          const U8String preedit_text = sliceUtf16Text(text, new_composition.start, new_composition.end);
+        if (new_preedit.active) {
+          const U8String preedit_text = sliceUtf16Text(text, new_preedit.start, new_preedit.end);
           mergeImeActionResult(result, setImePreeditTextInternal(
               preedit_text,
-              clampImeRelativeOffset(selection.start, new_composition),
-              clampImeRelativeOffset(selection.end, new_composition),
+              clampImeRelativeOffset(selection.start, new_preedit),
+              clampImeRelativeOffset(selection.end, new_preedit),
               script_class));
         } else {
           const U8String replacement = sliceReplacementForPreviousRange(
               previous_context.text,
               text,
-              old_composition);
+              old_preedit);
           mergeImeActionResult(result, applyImeCommitTextCommandInternal(replacement, script_class));
         }
-      } else if (new_composition.active) {
-        ImeContextRange previous_composition = transformImeRangeToPreviousText(
-            new_composition,
+      } else if (new_preedit.active) {
+        ImeContextRange previous_preedit = transformImeRangeToPreviousText(
+            new_preedit,
             diff,
             old_text_length);
-        if (!previous_composition.active && old_composition.active) {
-          previous_composition = old_composition;
+        if (!previous_preedit.active && old_preedit.active) {
+          previous_preedit = old_preedit;
         }
-        if (previous_composition.active) {
+        if (previous_preedit.active) {
           mergeImeActionResult(result, setImePreeditRangeInternal(
-              document_start + previous_composition.start,
-              document_start + previous_composition.end,
+              document_start + previous_preedit.start,
+              document_start + previous_preedit.end,
               script_class));
         } else {
           const size_t insertion_offset = document_start + std::min(diff.start, old_text_length);
           mergeImeActionResult(result, setImeDocumentSelectionByOffsetInternal(insertion_offset, insertion_offset));
         }
 
-        const U8String preedit_text = sliceUtf16Text(text, new_composition.start, new_composition.end);
+        const U8String preedit_text = sliceUtf16Text(text, new_preedit.start, new_preedit.end);
         mergeImeActionResult(result, setImePreeditTextInternal(
             preedit_text,
-            clampImeRelativeOffset(selection.start, new_composition),
-            clampImeRelativeOffset(selection.end, new_composition),
+            clampImeRelativeOffset(selection.start, new_preedit),
+            clampImeRelativeOffset(selection.end, new_preedit),
             script_class));
-      } else if (old_composition.active || isComposing()) {
+      } else if (old_preedit.active || hasPreedit()) {
         mergeImeActionResult(result, applyImeCommitTextCommandInternal(diff.replacement, script_class));
       } else {
         mergeImeActionResult(result, replaceImeDocumentTextByOffsetInternal(
@@ -751,35 +754,35 @@ namespace NS_SWEETEDITOR {
       if (new_system_mark_only) {
         notify_reported_selection();
       }
-    } else if (new_composition.active) {
-      const bool had_document_range_composition =
-          had_visible_composition && getCompositionState().kind == CompositionKind::DOCUMENT_RANGE;
-      if (!had_visible_composition || had_document_range_composition) {
+    } else if (new_preedit.active) {
+      const bool had_document_range_preedit =
+          had_active_preedit && getCompositionState().kind == CompositionKind::DOCUMENT_RANGE;
+      if (!had_active_preedit || had_document_range_preedit) {
         mergeImeActionResult(result, setImePreeditRangeInternal(
-            document_start + new_composition.start,
-            document_start + new_composition.end,
+            document_start + new_preedit.start,
+            document_start + new_preedit.end,
             script_class));
         mergeImeActionResult(result, setImeDocumentSelectionByOffsetInternal(
             document_start + selection.start,
             document_start + selection.end));
       } else {
-        const U8String preedit_text = sliceUtf16Text(text, new_composition.start, new_composition.end);
+        const U8String preedit_text = sliceUtf16Text(text, new_preedit.start, new_preedit.end);
         mergeImeActionResult(result, setImePreeditTextInternal(
             preedit_text,
-            clampImeRelativeOffset(selection.start, new_composition),
-            clampImeRelativeOffset(selection.end, new_composition),
+            clampImeRelativeOffset(selection.start, new_preedit),
+            clampImeRelativeOffset(selection.end, new_preedit),
             script_class));
       }
     } else if (new_system_mark_only) {
       result.handled = true;
       notify_reported_selection();
-    } else if (old_composition.active || isComposing()) {
+    } else if (old_preedit.active || hasPreedit()) {
       mergeImeActionResult(result, applyImeFinishPreeditCommandInternal());
     } else if (old_system_mark.active) {
       result.handled = true;
     }
 
-    if (!new_composition.active && !new_system_mark_only) {
+    if (!new_preedit.active && !new_system_mark_only) {
       mergeImeActionResult(result, setImeDocumentSelectionByOffsetInternal(
           document_start + selection.start,
           document_start + selection.end));
@@ -849,11 +852,11 @@ namespace NS_SWEETEDITOR {
       return result;
     }
 
-    const ImeContextRange composition = normalizeImeComposingRange(
+    const ImeContextRange preedit = normalizeImeMarkedRange(
         marked_range.range.start,
         marked_range.range.end,
         StrUtil::utf16Length(text));
-    if (marked_range.role == ImeMarkedRangeRole::PREEDIT && composition.active) {
+    if (marked_range.role == ImeMarkedRangeRole::PREEDIT && preedit.active) {
       rememberImeDocumentWindowContext(context_id,
                             context_revision,
                             0,
@@ -871,7 +874,7 @@ namespace NS_SWEETEDITOR {
 
     const bool had_text_update_state = isImeTextWindowContext(m_ime_input_context_)
         && (!m_ime_input_context_.text.empty()
-            || m_ime_input_context_.has_composition
+            || m_ime_input_context_.has_preedit_range
             || m_ime_input_context_.has_system_mark_range);
     if (!text.empty()) {
       result = applyImeCommitTextCommandInternal(text, script_class);
@@ -927,11 +930,11 @@ namespace NS_SWEETEDITOR {
                                       script_class);
     }
 
-    const ImeContextRange reported_marked_range = normalizeImeComposingRange(
+    const ImeContextRange reported_marked_range = normalizeImeMarkedRange(
         marked_range.range.start,
         marked_range.range.end,
         StrUtil::utf16Length(next_text));
-    const ImeContextRange new_composition =
+    const ImeContextRange new_preedit =
         marked_range.role == ImeMarkedRangeRole::PREEDIT
         ? reported_marked_range
         : ImeContextRange {};
@@ -939,31 +942,31 @@ namespace NS_SWEETEDITOR {
         marked_range.role == ImeMarkedRangeRole::SYSTEM_MARK
         ? reported_marked_range
         : ImeContextRange {};
-    const ImeContextRange previous_composition =
+    const ImeContextRange previous_preedit =
         isMatchingImeDocumentWindow(m_ime_input_context_, context_id, context_revision)
-            && m_ime_input_context_.has_composition
-        ? normalizeImeComposingRange(m_ime_input_context_.composition.start,
-                                     m_ime_input_context_.composition.end,
+            && m_ime_input_context_.has_preedit_range
+        ? normalizeImeMarkedRange(m_ime_input_context_.preedit_range.start,
+                                     m_ime_input_context_.preedit_range.end,
                                      old_text_length)
         : ImeContextRange {};
     const ImeContextRange previous_system_mark =
         isMatchingImeDocumentWindow(m_ime_input_context_, context_id, context_revision)
             && m_ime_input_context_.has_system_mark_range
-        ? normalizeImeComposingRange(m_ime_input_context_.system_mark_range.start,
+        ? normalizeImeMarkedRange(m_ime_input_context_.system_mark_range.start,
                                      m_ime_input_context_.system_mark_range.end,
                                      old_text_length)
         : ImeContextRange {};
 
     if (!has_text_delta) {
-      const bool clears_previous_composition =
-          previous_composition.active && !new_composition.active;
+      const bool clears_previous_preedit =
+          previous_preedit.active && !new_preedit.active;
       const bool clears_previous_system_mark =
           previous_system_mark.active && !new_system_mark.active;
-      if (clears_previous_composition) {
-        m_ime_text_update_has_pending_composition_clear_ = true;
-        m_ime_text_update_pending_composition_clear_ = {
-          static_cast<int32_t>(previous_composition.start),
-          static_cast<int32_t>(previous_composition.end)
+      if (clears_previous_preedit) {
+        m_ime_text_update_has_pending_preedit_clear_ = true;
+        m_ime_text_update_pending_preedit_clear_ = {
+          static_cast<int32_t>(previous_preedit.start),
+          static_cast<int32_t>(previous_preedit.end)
         };
         ImeActionResult result;
         result.handled = true;
@@ -996,10 +999,10 @@ namespace NS_SWEETEDITOR {
                                       script_class);
     }
 
-    if (m_ime_text_update_has_pending_composition_clear_
-        && static_cast<int32_t>(delta_start) == m_ime_text_update_pending_composition_clear_.start
-        && static_cast<int32_t>(delta_end) == m_ime_text_update_pending_composition_clear_.end) {
-      ImeActionResult result = isComposing()
+    if (m_ime_text_update_has_pending_preedit_clear_
+        && static_cast<int32_t>(delta_start) == m_ime_text_update_pending_preedit_clear_.start
+        && static_cast<int32_t>(delta_end) == m_ime_text_update_pending_preedit_clear_.end) {
+      ImeActionResult result = hasPreedit()
           ? commitImeContextTextReplacementInternal(context_id,
                                                        context_revision,
                                                        document_start_offset,
@@ -1051,15 +1054,15 @@ namespace NS_SWEETEDITOR {
         to_offset(selection_end_offset));
     ImeActionResult result = notifyImeSelectionChangedInternal(range);
     if (context_id != 0 && context_id == m_ime_input_context_.id) {
-      const bool has_composition = m_ime_input_context_.has_composition;
+      const bool has_preedit_range = m_ime_input_context_.has_preedit_range;
       const bool has_system_mark = m_ime_input_context_.has_system_mark_range;
-      const ImeOffsetRange marked_range = has_composition
-                                          ? m_ime_input_context_.composition
+      const ImeOffsetRange marked_range = has_preedit_range
+                                          ? m_ime_input_context_.preedit_range
                                           : (has_system_mark
                                              ? m_ime_input_context_.system_mark_range
                                              : ImeOffsetRange {-1, -1});
       const ImeMarkedRangeRole marked_range_role =
-          has_composition
+          has_preedit_range
           ? ImeMarkedRangeRole::PREEDIT
           : (has_system_mark
              ? ImeMarkedRangeRole::SYSTEM_MARK
@@ -1105,7 +1108,7 @@ namespace NS_SWEETEDITOR {
     if (m_document_ == nullptr) {
       return result;
     }
-    const ImeContextRange range = normalizeImeComposingRange(
+    const ImeContextRange range = normalizeImeMarkedRange(
         start_offset,
         end_offset,
         StrUtil::utf16Length(m_ime_input_context_.text));
@@ -1164,9 +1167,7 @@ namespace NS_SWEETEDITOR {
     }
 
     const CompositionState& composition = getCompositionState();
-    if (!composition.is_composing
-        || !composition.visible
-        || composition.kind != CompositionKind::DOCUMENT_RANGE) {
+    if (composition.kind != CompositionKind::DOCUMENT_RANGE) {
       return result;
     }
 
@@ -1250,18 +1251,18 @@ namespace NS_SWEETEDITOR {
       static_cast<int32_t>(selection_end - context_start)
     };
 
-    if (m_composition_controller_.hasVisibleComposition()) {
-      TextRange composition_range = m_composition_controller_.currentComposingRange();
-      size_t composing_start = m_document_->getCharIndexFromPosition(composition_range.start);
-      size_t composing_end = m_document_->getCharIndexFromPosition(composition_range.end);
-      if (composing_start > composing_end) {
-        std::swap(composing_start, composing_end);
+    if (m_composition_controller_.hasPreedit()) {
+      TextRange preedit_range = m_composition_controller_.currentPreeditRange();
+      size_t preedit_start = m_document_->getCharIndexFromPosition(preedit_range.start);
+      size_t preedit_end = m_document_->getCharIndexFromPosition(preedit_range.end);
+      if (preedit_start > preedit_end) {
+        std::swap(preedit_start, preedit_end);
       }
-      if (composing_start >= context_start && composing_end <= context_end && composing_start != composing_end) {
-        context.has_composition = true;
-        context.composition = {
-          static_cast<int32_t>(composing_start - context_start),
-          static_cast<int32_t>(composing_end - context_start)
+      if (preedit_start >= context_start && preedit_end <= context_end && preedit_start != preedit_end) {
+        context.has_preedit_range = true;
+        context.preedit_range = {
+          static_cast<int32_t>(preedit_start - context_start),
+          static_cast<int32_t>(preedit_end - context_start)
         };
       }
     }
@@ -1299,7 +1300,7 @@ namespace NS_SWEETEDITOR {
 
   ImeSyncSnapshot EditorCore::buildImeSyncSnapshot() const {
     ImeSyncSnapshot snapshot = m_composition_controller_.buildSyncSnapshot();
-    if (!snapshot.has_visible_composition_range && m_ime_text_update_has_system_mark_range_) {
+    if (!snapshot.has_preedit_range && m_ime_text_update_has_system_mark_range_) {
       snapshot.has_system_mark_range = true;
       snapshot.system_mark_range = m_ime_text_update_system_mark_range_;
       snapshot.clear_system_mark = false;
@@ -1327,7 +1328,7 @@ namespace NS_SWEETEDITOR {
     if (mode == ImeTextUpdateScope::TRANSIENT_INPUT) {
       if (isImeTextWindowContext(m_ime_input_context_)
           && (!m_ime_input_context_.text.empty()
-              || m_ime_input_context_.has_composition
+              || m_ime_input_context_.has_preedit_range
               || m_ime_input_context_.has_system_mark_range)) {
         ImeInputContext context = m_ime_input_context_;
         context.kind = ImeInputContextKind::TRANSIENT_INPUT;
@@ -1368,12 +1369,8 @@ namespace NS_SWEETEDITOR {
     return m_composition_controller_.composition();
   }
 
-  bool EditorCore::isComposing() const {
-    return m_composition_controller_.hasVisibleComposition();
-  }
-
-  bool EditorCore::hasComposingSession() const {
-    return m_composition_controller_.hasComposingSession();
+  bool EditorCore::hasPreedit() const {
+    return m_composition_controller_.hasPreedit();
   }
 
   TextRange EditorCore::textRangeFromImeInputContextOffsets(size_t start_offset, size_t end_offset) const {
@@ -1405,20 +1402,20 @@ namespace NS_SWEETEDITOR {
     return textRangeFromUtf16Offsets(base + start_offset, base + end_offset);
   }
 
-  TextRange EditorCore::textRangeFromImeCompositionOffsets(const ImeActionResult& result,
+  TextRange EditorCore::textRangeFromImeMarkedOffsets(const ImeActionResult& result,
                                                           size_t start_offset,
                                                           size_t end_offset) const {
-    TextRange composition_range;
+    TextRange marked_range;
     bool has_range = false;
     if (result.sync.has_system_mark_range) {
-      composition_range = result.sync.system_mark_range;
+      marked_range = result.sync.system_mark_range;
       has_range = true;
-    } else if (result.sync.has_visible_composition_range) {
-      composition_range = result.sync.visible_composition_range;
+    } else if (result.sync.has_preedit_range) {
+      marked_range = result.sync.preedit_range;
       has_range = true;
     } else if (result.edit_result.contentChanged()) {
       const TextChange& change = result.edit_result.changes.front();
-      composition_range = {
+      marked_range = {
         change.range.start,
         calcPositionAfterInsert(change.range.start, change.new_text)
       };
@@ -1432,8 +1429,8 @@ namespace NS_SWEETEDITOR {
       return textRangeFromUtf16Offsets(cursor_offset, cursor_offset);
     }
 
-    size_t base = m_document_->getCharIndexFromPosition(composition_range.start);
-    size_t end = m_document_->getCharIndexFromPosition(composition_range.end);
+    size_t base = m_document_->getCharIndexFromPosition(marked_range.start);
+    size_t end = m_document_->getCharIndexFromPosition(marked_range.end);
     if (base > end) {
       std::swap(base, end);
     }
@@ -1460,9 +1457,9 @@ namespace NS_SWEETEDITOR {
     } else if (result.sync.has_system_mark_range) {
       edit_start = m_document_->getCharIndexFromPosition(result.sync.system_mark_range.start);
       edit_end = m_document_->getCharIndexFromPosition(result.sync.system_mark_range.end);
-    } else if (result.sync.has_visible_composition_range) {
-      edit_start = m_document_->getCharIndexFromPosition(result.sync.visible_composition_range.start);
-      edit_end = m_document_->getCharIndexFromPosition(result.sync.visible_composition_range.end);
+    } else if (result.sync.has_preedit_range) {
+      edit_start = m_document_->getCharIndexFromPosition(result.sync.preedit_range.start);
+      edit_end = m_document_->getCharIndexFromPosition(result.sync.preedit_range.end);
     }
     if (edit_start > edit_end) {
       std::swap(edit_start, edit_end);
@@ -1492,11 +1489,11 @@ namespace NS_SWEETEDITOR {
         selection_start_offset,
         selection_end_offset,
         text_length);
-    const ImeContextRange normalized_marked_range = normalizeImeComposingRange(
+    const ImeContextRange normalized_marked_range = normalizeImeMarkedRange(
         marked_range.range.start,
         marked_range.range.end,
         text_length);
-    const bool has_composition =
+    const bool has_preedit_range =
         normalized_marked_range.active && marked_range.role == ImeMarkedRangeRole::PREEDIT;
     const bool has_system_mark_range =
         normalized_marked_range.active && marked_range.role == ImeMarkedRangeRole::SYSTEM_MARK;
@@ -1512,8 +1509,8 @@ namespace NS_SWEETEDITOR {
       static_cast<int32_t>(selection.start),
       static_cast<int32_t>(selection.end)
     };
-    m_ime_input_context_.has_composition = has_composition;
-    m_ime_input_context_.composition = has_composition
+    m_ime_input_context_.has_preedit_range = has_preedit_range;
+    m_ime_input_context_.preedit_range = has_preedit_range
                                            ? ImeOffsetRange {
                                            static_cast<int32_t>(normalized_marked_range.start),
                                            static_cast<int32_t>(normalized_marked_range.end)
@@ -1553,8 +1550,8 @@ namespace NS_SWEETEDITOR {
   }
 
   void EditorCore::resetImeTextUpdatePendingState() {
-    m_ime_text_update_has_pending_composition_clear_ = false;
-    m_ime_text_update_pending_composition_clear_ = {-1, -1};
+    m_ime_text_update_has_pending_preedit_clear_ = false;
+    m_ime_text_update_pending_preedit_clear_ = {-1, -1};
   }
 
   void EditorCore::invalidateImeInputContext() {

@@ -485,7 +485,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
     }
 
     func isCoreComposing() -> Bool {
-        editorCore.isComposing()
+        editorCore.hasPreedit()
     }
 
     func cancelCoreCompositionForTesting() {

@@ -524,47 +524,11 @@ public:
     return napi_create_string_value(env, selected.c_str());
   }
 
-  static napi_value isComposing(napi_env env, napi_callback_info info) {
+  static napi_value hasPreedit(napi_env env, napi_callback_info info) {
     size_t argc = 1;
     napi_value args[1];
     napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-    return napi_create_bool_value(env, editor_ime_is_composing(static_cast<intptr_t>(napi_get_handle(env, args[0]))) != 0);
-  }
-
-  static napi_value getComposingRange(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-
-    int32_t sl = -1, sc = -1, el = -1, ec = -1;
-    editor_ime_get_composing_range(static_cast<intptr_t>(napi_get_handle(env, args[0])), &sl, &sc, &el, &ec);
-
-    napi_value result;
-    napi_create_array_with_length(env, 4, &result);
-    napi_value v;
-    napi_create_int32(env, sl, &v); napi_set_element(env, result, 0, v);
-    napi_create_int32(env, sc, &v); napi_set_element(env, result, 1, v);
-    napi_create_int32(env, el, &v); napi_set_element(env, result, 2, v);
-    napi_create_int32(env, ec, &v); napi_set_element(env, result, 3, v);
-    return result;
-  }
-
-  static napi_value getComposingSessionRange(napi_env env, napi_callback_info info) {
-    size_t argc = 1;
-    napi_value args[1];
-    napi_get_cb_info(env, info, &argc, args, nullptr, nullptr);
-
-    int32_t sl = -1, sc = -1, el = -1, ec = -1;
-    editor_ime_get_composing_session_range(static_cast<intptr_t>(napi_get_handle(env, args[0])), &sl, &sc, &el, &ec);
-
-    napi_value result;
-    napi_create_array_with_length(env, 4, &result);
-    napi_value v;
-    napi_create_int32(env, sl, &v); napi_set_element(env, result, 0, v);
-    napi_create_int32(env, sc, &v); napi_set_element(env, result, 1, v);
-    napi_create_int32(env, el, &v); napi_set_element(env, result, 2, v);
-    napi_create_int32(env, ec, &v); napi_set_element(env, result, 3, v);
-    return result;
+    return napi_create_bool_value(env, editor_ime_has_preedit(static_cast<intptr_t>(napi_get_handle(env, args[0]))) != 0);
   }
 
   using ImeMessageHandler = const uint8_t* (*)(intptr_t, const uint8_t*, size_t, size_t*);

@@ -69,8 +69,8 @@ namespace NS_SWEETEDITOR {
     int32_t document_start_offset {0};
     U8String text;
     ImeOffsetRange selection;
-    bool has_composition {false};
-    ImeOffsetRange composition {-1, -1};
+    bool has_preedit_range {false};
+    ImeOffsetRange preedit_range {-1, -1};
     bool has_system_mark_range {false};
     ImeOffsetRange system_mark_range {-1, -1};
     SE_PROTOCOL_WIRE(enum_i32)
@@ -83,12 +83,6 @@ namespace NS_SWEETEDITOR {
     CJK,
     KANA,
     HANGUL,
-  };
-
-  enum class SE_PROTOCOL_ENUM(ime, NONE) ImePreeditStorage {
-    NONE,
-    VISIBLE_DOCUMENT_PREEDIT,
-    SHADOW_ONLY,
   };
 
   enum class SE_PROTOCOL_ENUM(ime, NONE) ImeContextPolicy {
@@ -137,13 +131,10 @@ namespace NS_SWEETEDITOR {
     TextPosition cursor;
     TextRange selection;
     bool has_selection {false};
-    bool has_composing_session {false};
-    bool has_visible_composition_range {false};
-    TextRange visible_composition_range;
+    bool has_preedit_range {false};
+    TextRange preedit_range;
     bool has_system_mark_range {false};
     TextRange system_mark_range;
-    SE_PROTOCOL_WIRE(enum_i32)
-    ImePreeditStorage preedit_storage {ImePreeditStorage::NONE};
     SE_PROTOCOL_WIRE(enum_i32)
     ImeContextPolicy context_policy {ImeContextPolicy::NONE};
     bool clear_system_mark {false};
@@ -166,33 +157,20 @@ namespace NS_SWEETEDITOR {
     DOCUMENT_RANGE,
   };
 
-  enum class CompositionPhase {
-    INACTIVE,
-    ACTIVE,
-  };
-
   /// IME composition state.
   struct CompositionState {
-    /// Whether composition is visible and active.
-    bool is_composing {false};
-    /// Whether there is an active composition session.
-    bool has_session {false};
-    /// Current session phase.
-    CompositionPhase phase {CompositionPhase::INACTIVE};
-    /// Whether the composition range effect and IME composing offsets should be exposed.
-    bool visible {false};
     /// Source and ownership of the active composition.
     CompositionKind kind {CompositionKind::NONE};
     /// Start position of composition in the document.
     TextPosition start_position;
-    /// Authoritative document range owned by this composition session.
+    /// Authoritative document range owned by this active composition.
     TextRange anchor_range;
     /// Original text captured from anchor_range.
     U8String original_text;
-    /// Current composing text.
-    U8String composing_text;
-    /// UTF-16 column count of current composing text for exact cursor placement.
-    size_t composing_columns {0};
+    /// Current preedit text.
+    U8String preedit_text;
+    /// UTF-16 column count of current preedit text for exact cursor placement.
+    size_t preedit_columns {0};
   };
 
 }
