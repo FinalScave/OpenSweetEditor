@@ -1322,9 +1322,7 @@ namespace NS_SWEETEDITOR {
         resolveImeDocumentInputContextKind(context_before, context_after));
   }
 
-  ImeInputContext EditorCore::getImeTextUpdateInputContext(ImeTextUpdateScope mode,
-                                                          size_t before_length,
-                                                          size_t after_length) {
+  ImeInputContext EditorCore::getImeTextUpdateInputContext(ImeTextUpdateScope mode, size_t before_length, size_t after_length) {
     if (mode == ImeTextUpdateScope::TRANSIENT_INPUT) {
       if (isImeTextWindowContext(m_ime_input_context_)
           && (!m_ime_input_context_.text.empty()

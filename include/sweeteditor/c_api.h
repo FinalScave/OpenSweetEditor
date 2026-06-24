@@ -935,7 +935,7 @@ EDITOR_API const uint8_t* editor_clear_all_decorations(intptr_t editor_handle, s
 
 #pragma endregion
 
-#pragma region [Linked Editing & Utilities]
+#pragma region [Linked Editing]
 
 /// Insert VSCode snippet template and enter linked editing mode (convenience API)
 /// @param snippet_template VSCode snippet template (UTF8)
@@ -965,6 +965,48 @@ EDITOR_API const uint8_t* editor_linked_editing_prev(intptr_t editor_handle, siz
 /// Cancel linked editing mode
 EDITOR_API const uint8_t* editor_cancel_linked_editing(intptr_t editor_handle, size_t* out_size);
 
+#pragma endregion
+
+#pragma region [IME]
+
+/// Get whether preedit is currently active
+/// @return 1=preedit active, 0=no preedit
+EDITOR_API int editor_ime_has_preedit(intptr_t editor_handle);
+
+/// Handle a platform IME command message.
+/// @param data Binary payload encoded by CoreProtocol.
+/// @param size Binary payload size in bytes.
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid or payload is invalid.
+EDITOR_API const uint8_t* editor_ime_handle_command_message(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+
+/// Handle a platform IME text update message.
+/// @param data Binary payload encoded by CoreProtocol.
+/// @param size Binary payload size in bytes.
+/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid or payload is invalid.
+EDITOR_API const uint8_t* editor_ime_handle_text_update_message(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+
+/// Get the current IME keyboard script class.
+EDITOR_API int editor_ime_get_keyboard_script_class(intptr_t editor_handle);
+
+/// Get the current IME synchronization snapshot.
+/// @return ImeSyncSnapshot binary payload, returns NULL when editor handle is invalid
+EDITOR_API const uint8_t* editor_ime_get_sync_snapshot(intptr_t editor_handle, size_t* out_size);
+
+/// Get an input context for command-style IME APIs.
+/// @param before_length UTF-16 code unit count requested before the cursor or selection.
+/// @param after_length UTF-16 code unit count requested after the cursor or selection.
+/// @return ImeInputContext binary payload, returns NULL when editor handle is invalid.
+EDITOR_API const uint8_t* editor_ime_get_command_input_context(intptr_t editor_handle, size_t before_length, size_t after_length, size_t* out_size);
+
+/// Get an input context for text-update IME APIs.
+/// @param scope ImeTextUpdateScope enum value.
+/// @param before_length UTF-16 code unit count requested before the cursor or selection.
+/// @param after_length UTF-16 code unit count requested after the cursor or selection.
+/// @return ImeInputContext binary payload, returns NULL when editor handle is invalid.
+EDITOR_API const uint8_t* editor_ime_get_text_update_input_context(intptr_t editor_handle, int scope, size_t before_length, size_t after_length, size_t* out_size);
+
+#pragma endregion
+
 /// Free string memory allocated on C++ side
 /// @param string_ptr String pointer
 EDITOR_API void free_u16_string(intptr_t string_ptr);
@@ -978,52 +1020,6 @@ EDITOR_API void free_u8_string(intptr_t string_ptr);
 /// Platform must call once after reading payload; NULL/0 can be safely ignored.
 /// @param data_ptr Start address of binary payload
 EDITOR_API void free_binary_data(intptr_t data_ptr);
-
-#pragma endregion
-
-#pragma region [IME]
-
-/// Get whether preedit is currently active
-/// @return 1=preedit active, 0=no preedit
-EDITOR_API int editor_ime_has_preedit(intptr_t editor_handle);
-
-/// Handle a platform IME command message.
-/// @param data Binary payload encoded by CoreProtocol.
-/// @param size Binary payload size in bytes.
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid or payload is invalid.
-EDITOR_API const uint8_t* editor_ime_handle_command_message(intptr_t editor_handle,
-                                                            const uint8_t* data,
-                                                            size_t size,
-                                                            size_t* out_size);
-
-/// Handle a platform IME text update message.
-/// @param data Binary payload encoded by CoreProtocol.
-/// @param size Binary payload size in bytes.
-/// @return EditorActionResult binary payload, returns NULL when editor handle is invalid or payload is invalid.
-EDITOR_API const uint8_t* editor_ime_handle_text_update_message(intptr_t editor_handle,
-                                                                const uint8_t* data,
-                                                                size_t size,
-                                                                size_t* out_size);
-
-/// Get the current IME keyboard script class.
-EDITOR_API int editor_ime_get_keyboard_script_class(intptr_t editor_handle);
-
-/// Get the current IME synchronization snapshot.
-/// @return ImeSyncSnapshot binary payload, returns NULL when editor handle is invalid
-EDITOR_API const uint8_t* editor_ime_get_sync_snapshot(intptr_t editor_handle, size_t* out_size);
-
-EDITOR_API const uint8_t* editor_ime_get_command_input_context(intptr_t editor_handle,
-                                                               size_t before_length,
-                                                               size_t after_length,
-                                                               size_t* out_size);
-
-EDITOR_API const uint8_t* editor_ime_get_text_update_input_context(intptr_t editor_handle,
-                                                                   int scope,
-                                                                   size_t before_length,
-                                                                   size_t after_length,
-                                                                   size_t* out_size);
-
-#pragma endregion
 
 #ifdef _WIN32
 /// Set crash log output for DLL calls, Windows only

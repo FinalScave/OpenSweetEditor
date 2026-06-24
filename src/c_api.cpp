@@ -1280,7 +1280,7 @@ const uint8_t* editor_clear_all_decorations(intptr_t editor_handle, size_t* out_
 
 #pragma endregion
 
-#pragma region [Linked Editing & Utilities]
+#pragma region [Linked Editing]
 
 const uint8_t* editor_insert_snippet(intptr_t editor_handle, const char* snippet_template, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
@@ -1328,21 +1328,6 @@ const uint8_t* editor_cancel_linked_editing(intptr_t editor_handle, size_t* out_
   return editorActionResultToBinary(editor_core->cancelLinkedEditing(), out_size);
 }
 
-void free_u16_string(intptr_t string_ptr) {
-  U16Char* ptr = reinterpret_cast<U16Char*>(string_ptr);
-  delete[] ptr;
-}
-
-void free_u8_string(intptr_t string_ptr) {
-  char* ptr = reinterpret_cast<char*>(string_ptr);
-  delete[] ptr;
-}
-
-void free_binary_data(intptr_t data_ptr) {
-  const uint8_t* ptr = reinterpret_cast<const uint8_t*>(data_ptr);
-  delete[] ptr;
-}
-
 #pragma endregion
 
 #pragma region [IME]
@@ -1355,10 +1340,8 @@ int editor_ime_has_preedit(intptr_t editor_handle) {
   return editor_core->hasPreedit() ? 1 : 0;
 }
 
-const uint8_t* editor_ime_handle_command_message(intptr_t editor_handle,
-                                                 const uint8_t* data,
-                                                 size_t size,
-                                                 size_t* out_size) {
+const uint8_t* editor_ime_handle_command_message(intptr_t editor_handle, const uint8_t* data,
+                                                 size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     return nullBinaryPayload(out_size);
@@ -1370,10 +1353,8 @@ const uint8_t* editor_ime_handle_command_message(intptr_t editor_handle,
   return editorActionResultToBinary(editor_core->handleImeCommandMessage(payload), out_size);
 }
 
-const uint8_t* editor_ime_handle_text_update_message(intptr_t editor_handle,
-                                                     const uint8_t* data,
-                                                     size_t size,
-                                                     size_t* out_size) {
+const uint8_t* editor_ime_handle_text_update_message(intptr_t editor_handle, const uint8_t* data,
+                                                     size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     return nullBinaryPayload(out_size);
@@ -1404,10 +1385,8 @@ const uint8_t* editor_ime_get_sync_snapshot(intptr_t editor_handle, size_t* out_
   return protocolToBinary(editor_core->getImeSyncSnapshot(), out_size, sizeof(int32_t) * 21);
 }
 
-const uint8_t* editor_ime_get_command_input_context(intptr_t editor_handle,
-                                                    size_t before_length,
-                                                    size_t after_length,
-                                                    size_t* out_size) {
+const uint8_t* editor_ime_get_command_input_context(intptr_t editor_handle, size_t before_length,
+                                                    size_t after_length, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     if (out_size != nullptr) {
@@ -1419,11 +1398,8 @@ const uint8_t* editor_ime_get_command_input_context(intptr_t editor_handle,
   return protocolToBinary(context, out_size, sizeof(int32_t) * 9 + sizeof(int64_t) + context.text.size());
 }
 
-const uint8_t* editor_ime_get_text_update_input_context(intptr_t editor_handle,
-                                                        int scope,
-                                                        size_t before_length,
-                                                        size_t after_length,
-                                                        size_t* out_size) {
+const uint8_t* editor_ime_get_text_update_input_context(intptr_t editor_handle, int scope,
+                                                        size_t before_length, size_t after_length, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     if (out_size != nullptr) {
@@ -1439,6 +1415,21 @@ const uint8_t* editor_ime_get_text_update_input_context(intptr_t editor_handle,
 }
 
 #pragma endregion
+
+void free_u16_string(intptr_t string_ptr) {
+  U16Char* ptr = reinterpret_cast<U16Char*>(string_ptr);
+  delete[] ptr;
+}
+
+void free_u8_string(intptr_t string_ptr) {
+  char* ptr = reinterpret_cast<char*>(string_ptr);
+  delete[] ptr;
+}
+
+void free_binary_data(intptr_t data_ptr) {
+  const uint8_t* ptr = reinterpret_cast<const uint8_t*>(data_ptr);
+  delete[] ptr;
+}
 
 #ifdef _WIN32
 LONG WINAPI MyUnhandledExceptionFilter(PEXCEPTION_POINTERS pExceptionInfo) {

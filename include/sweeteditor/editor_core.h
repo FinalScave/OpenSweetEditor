@@ -437,9 +437,7 @@ namespace NS_SWEETEDITOR {
 
     ImeInputContext getImeCommandInputContext(size_t before_length, size_t after_length);
 
-    ImeInputContext getImeTextUpdateInputContext(ImeTextUpdateScope scope,
-                                                 size_t before_length,
-                                                 size_t after_length);
+    ImeInputContext getImeTextUpdateInputContext(ImeTextUpdateScope scope, size_t before_length, size_t after_length);
 
     /// Get current composition state
     const CompositionState& getCompositionState() const;
@@ -768,12 +766,8 @@ namespace NS_SWEETEDITOR {
     void placeCursorAt(const PointF& screen_point);
     /// Select word at screen coordinates
     void selectWordAt(const PointF& screen_point);
-    TextPosition clampDocumentPosition(const TextPosition& position,
-                                       bool prefer_right,
-                                       bool line_overflow_to_end) const;
-    TextRange clampDocumentRange(const TextRange& range,
-                                 bool collapse_point_range,
-                                 bool line_overflow_to_end) const;
+    TextPosition clampDocumentPosition(const TextPosition& position, bool prefer_right, bool line_overflow_to_end) const;
+    TextRange clampDocumentRange(const TextRange& range, bool collapse_point_range, bool line_overflow_to_end) const;
     void setCursorPositionInternal(const TextPosition& position, bool commit_composition);
     void setSelectionInternal(const TextRange& range, bool commit_composition);
     /// Update cursor movement (handle selection extension logic)
