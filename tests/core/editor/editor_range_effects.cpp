@@ -21,6 +21,16 @@ namespace {
     editor.setWrapMode(WrapMode::CHAR_BREAK);
   }
 
+  EditorActionResult updatePreedit(EditorCore& editor,
+                                   const U8String& text,
+                                   ImeScriptClass script_class = ImeScriptClass::LATIN) {
+    ImeCommandMessage message;
+    message.kind = ImeCommandKind::SET_PREEDIT_TEXT;
+    message.text = text;
+    message.script_class = script_class;
+    return editor.handleImeCommandMessage(message);
+  }
+
   void checkWrappedRangeEffects(const EditorRenderModel& model, RangeEffectKind kind) {
     REQUIRE(model.lines.size() >= 2);
     auto effects = rangeEffectsOfKind(model, kind);
@@ -278,7 +288,7 @@ TEST_CASE("EditorCore buildRenderModel exposes active IME composition range effe
   styles.ime_composition.underline_style = RangeEffectUnderlineStyle::SOLID;
   editor.setEditorRangeEffectStyles(styles);
   editor.setCursorPosition({0, 1});
-  editor.updateImePreedit("xy", ImeScriptClass::LATIN);
+  updatePreedit(editor, "xy", ImeScriptClass::LATIN);
 
   EditorRenderModel model;
   editor.buildRenderModel(model);
@@ -301,7 +311,7 @@ TEST_CASE("EditorCore buildRenderModel splits wrapped IME composition range effe
   editor.setEditorRangeEffectStyles(styles);
 
   editor.setCursorPosition({0, 0});
-  editor.updateImePreedit("abcdefghijkl", ImeScriptClass::LATIN);
+  updatePreedit(editor, "abcdefghijkl", ImeScriptClass::LATIN);
 
   EditorRenderModel model;
   editor.buildRenderModel(model);

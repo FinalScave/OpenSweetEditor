@@ -551,12 +551,8 @@ class EditorCore {
     _ensureOpen();
     return _callWithBinaryActionData(
       CoreProtocol.encodeSearchRequest(request),
-      (ptr, size, outSize) => bindings.editor_search(
-        _handle,
-        ptr,
-        size,
-        outSize,
-      ),
+      (ptr, size, outSize) =>
+          bindings.editor_search(_handle, ptr, size, outSize),
     );
   }
 
@@ -570,8 +566,7 @@ class EditorCore {
   EditorActionResult findPreviousSearchMatch() {
     _ensureOpen();
     return _callAndParseAction(
-      (outSize) =>
-          bindings.editor_find_previous_search_match(_handle, outSize),
+      (outSize) => bindings.editor_find_previous_search_match(_handle, outSize),
     );
   }
 
@@ -775,205 +770,17 @@ class EditorCore {
     );
   }
 
-  bool get isComposing {
+  bool get hasPreedit {
     _ensureOpen();
-    return bindings.editor_is_composing(_handle) != 0;
+    return bindings.editor_ime_has_preedit(_handle) != 0;
   }
 
-  TextRange? getComposingRange() {
+  EditorActionResult handleImeCommandMessage(ImeCommandMessage message) {
     _ensureOpen();
-    return using((arena) {
-      final sl = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
-      final sc = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
-      final el = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
-      final ec = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
-      bindings.editor_get_composing_range(_handle, sl, sc, el, ec);
-      return _readNullableRange(sl.value, sc.value, el.value, ec.value);
-    });
-  }
-
-  TextRange? getComposingSessionRange() {
-    _ensureOpen();
-    return using((arena) {
-      final sl = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
-      final sc = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
-      final el = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
-      final ec = arena.allocate<ffi.Int32>(ffi.sizeOf<ffi.Int32>());
-      bindings.editor_get_composing_session_range(_handle, sl, sc, el, ec);
-      return _readNullableRange(sl.value, sc.value, el.value, ec.value);
-    });
-  }
-
-  EditorActionResult updateImePreedit(
-    String text, {
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
-    _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        const EditorActionResult(),
-        (outSize) => bindings.editor_ime_update_preedit(
-          _handle,
-          textPtr,
-          scriptClass.value,
-          outSize,
-        ),
-        CoreProtocol.decodeEditorActionResultFromPointer,
-      );
-    });
-  }
-
-  EditorActionResult setImeComposingText(
-    String text, {
-    int cursorOffset = 1,
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
-    _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        const EditorActionResult(),
-        (outSize) => bindings.editor_ime_set_composing_text(
-          _handle,
-          textPtr,
-          cursorOffset,
-          scriptClass.value,
-          outSize,
-        ),
-        CoreProtocol.decodeEditorActionResultFromPointer,
-      );
-    });
-  }
-
-  EditorActionResult setImeComposingTextSelection(
-    String text, {
-    required int selectionStartOffset,
-    required int selectionEndOffset,
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
-    _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        const EditorActionResult(),
-        (outSize) => bindings.editor_ime_set_composing_text_selection(
-          _handle,
-          textPtr,
-          selectionStartOffset,
-          selectionEndOffset,
-          scriptClass.value,
-          outSize,
-        ),
-        CoreProtocol.decodeEditorActionResultFromPointer,
-      );
-    });
-  }
-
-  EditorActionResult commitImeText(
-    String text, {
-    int? cursorOffset,
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
-    _ensureOpen();
-    return using((arena) {
-      final textPtr = _toNativeUtf8(text, arena);
-      return _callAndParse(
-        const EditorActionResult(),
-        (outSize) => cursorOffset == null
-            ? bindings.editor_ime_commit_text(
-                _handle,
-                textPtr,
-                scriptClass.value,
-                outSize,
-              )
-            : bindings.editor_ime_commit_text_with_cursor(
-                _handle,
-                textPtr,
-                cursorOffset,
-                scriptClass.value,
-                outSize,
-              ),
-        CoreProtocol.decodeEditorActionResultFromPointer,
-      );
-    });
-  }
-
-  EditorActionResult finishImePreedit() {
-    _ensureOpen();
-    return _callAndParse(
-      const EditorActionResult(),
-      (outSize) => bindings.editor_ime_finish_preedit(_handle, outSize),
-      CoreProtocol.decodeEditorActionResultFromPointer,
-    );
-  }
-
-  EditorActionResult cancelImePreedit() {
-    _ensureOpen();
-    return _callAndParse(
-      const EditorActionResult(),
-      (outSize) => bindings.editor_ime_cancel_preedit(_handle, outSize),
-      CoreProtocol.decodeEditorActionResultFromPointer,
-    );
-  }
-
-  EditorActionResult markImeDocumentRange(
-    TextRange range, {
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
-    _ensureOpen();
-    return _callAndParse(
-      const EditorActionResult(),
-      (outSize) => bindings.editor_ime_mark_document_range(
-        _handle,
-        range.start.line,
-        range.start.column,
-        range.end.line,
-        range.end.column,
-        scriptClass.value,
-        outSize,
-      ),
-      CoreProtocol.decodeEditorActionResultFromPointer,
-    );
-  }
-
-  EditorActionResult markImeDocumentRangeByOffset(
-    int startOffset,
-    int endOffset, {
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
-    _ensureOpen();
-    return _callAndParse(
-      const EditorActionResult(),
-      (outSize) => bindings.editor_ime_mark_document_range_by_offset(
-        _handle,
-        startOffset,
-        endOffset,
-        scriptClass.value,
-        outSize,
-      ),
-      CoreProtocol.decodeEditorActionResultFromPointer,
-    );
-  }
-
-  EditorActionResult replaceImeText(ImeTextReplacement replacement) {
-    _ensureOpen();
-    final bytes = CoreProtocol.encodeImeTextReplacement(replacement);
+    final bytes = CoreProtocol.encodeImeCommandMessage(message);
     return _callWithBinaryActionData(
       bytes,
-      (ptr, len, outSize) =>
-          bindings.editor_ime_replace_text(_handle, ptr, len, outSize),
-    );
-  }
-
-  EditorActionResult replaceImeDocumentText(
-    ImeDocumentTextReplacement replacement,
-  ) {
-    _ensureOpen();
-    final bytes = CoreProtocol.encodeImeDocumentTextReplacement(replacement);
-    return _callWithBinaryActionData(
-      bytes,
-      (ptr, len, outSize) => bindings.editor_ime_replace_document_text(
+      (ptr, len, outSize) => bindings.editor_ime_handle_command_message(
         _handle,
         ptr,
         len,
@@ -982,217 +789,15 @@ class EditorCore {
     );
   }
 
-  EditorActionResult replaceImeInputContextText(
-    ImeInputContextTextReplacement replacement,
-  ) {
+  EditorActionResult handleImeTextUpdateMessage(ImeTextUpdateMessage message) {
     _ensureOpen();
-    final bytes = CoreProtocol.encodeImeInputContextTextReplacement(replacement);
+    final bytes = CoreProtocol.encodeImeTextUpdateMessage(message);
     return _callWithBinaryActionData(
       bytes,
-      (ptr, len, outSize) => bindings.editor_ime_replace_input_context_text(
+      (ptr, len, outSize) => bindings.editor_ime_handle_text_update_message(
         _handle,
         ptr,
         len,
-        outSize,
-      ),
-    );
-  }
-
-  EditorActionResult markImeInputContextRange(
-    int startOffset,
-    int endOffset, {
-    ImeScriptClass scriptClass = ImeScriptClass.unknown,
-  }) {
-    _ensureOpen();
-    return _callAndParse(
-      const EditorActionResult(),
-      (outSize) => bindings.editor_ime_mark_input_context_range(
-        _handle,
-        startOffset,
-        endOffset,
-        scriptClass.value,
-        outSize,
-      ),
-      CoreProtocol.decodeEditorActionResultFromPointer,
-    );
-  }
-
-  EditorActionResult notifyImeDocumentSelectionChanged(
-    int startOffset,
-    int endOffset,
-  ) {
-    _ensureOpen();
-    return _callAndParse(
-      const EditorActionResult(),
-      (outSize) => bindings.editor_ime_notify_document_selection_changed(
-        _handle,
-        startOffset,
-        endOffset,
-        outSize,
-      ),
-      CoreProtocol.decodeEditorActionResultFromPointer,
-    );
-  }
-
-  EditorActionResult notifyImeInputContextSelectionChanged(
-    int startOffset,
-    int endOffset,
-  ) {
-    _ensureOpen();
-    return _callAndParse(
-      const EditorActionResult(),
-      (outSize) => bindings.editor_ime_notify_input_context_selection_changed(
-        _handle,
-        startOffset,
-        endOffset,
-        outSize,
-      ),
-      CoreProtocol.decodeEditorActionResultFromPointer,
-    );
-  }
-
-  EditorActionResult updateImeTextModelState(ImeTextModelState state) {
-    _ensureOpen();
-    final bytes = CoreProtocol.encodeImeTextModelState(state);
-    return _callWithBinaryActionData(
-      bytes,
-      (ptr, len, outSize) =>
-          bindings.editor_ime_update_text_model_state(_handle, ptr, len, outSize),
-    );
-  }
-
-  EditorActionResult updateImeTextModelDelta(ImeTextModelDelta delta) {
-    _ensureOpen();
-    final bytes = CoreProtocol.encodeImeTextModelDelta(delta);
-    return _callWithBinaryActionData(
-      bytes,
-      (ptr, len, outSize) =>
-          bindings.editor_ime_update_text_model_delta(_handle, ptr, len, outSize),
-    );
-  }
-
-  EditorActionResult updateImeInputStateSelection({
-    required int contextId,
-    required int documentStartOffset,
-    required int selectionStartOffset,
-    required int selectionEndOffset,
-  }) {
-    _ensureOpen();
-    return _callAndParse(
-      const EditorActionResult(),
-      (outSize) => bindings.editor_ime_update_input_state_selection(
-        _handle,
-        contextId,
-        documentStartOffset,
-        selectionStartOffset,
-        selectionEndOffset,
-        outSize,
-      ),
-      CoreProtocol.decodeEditorActionResultFromPointer,
-    );
-  }
-
-  EditorActionResult replaceImeInputStateText(
-    ImeInputStateTextReplacement replacement,
-  ) {
-    _ensureOpen();
-    final bytes = CoreProtocol.encodeImeInputStateTextReplacement(replacement);
-    return _callWithBinaryActionData(
-      bytes,
-      (ptr, len, outSize) =>
-          bindings.editor_ime_replace_input_state_text(_handle, ptr, len, outSize),
-    );
-  }
-
-  EditorActionResult deleteImeBackward({
-    int beforeLength = 1,
-    ImeTextUnit textUnit = ImeTextUnit.grapheme,
-  }) {
-    _ensureOpen();
-    return _callAndParse(
-      const EditorActionResult(),
-      (outSize) => bindings.editor_ime_delete_backward(
-        _handle,
-        beforeLength,
-        textUnit.value,
-        outSize,
-      ),
-      CoreProtocol.decodeEditorActionResultFromPointer,
-    );
-  }
-
-  EditorActionResult deleteImeForward({
-    int afterLength = 1,
-    ImeTextUnit textUnit = ImeTextUnit.grapheme,
-  }) {
-    _ensureOpen();
-    return _callAndParse(
-      const EditorActionResult(),
-      (outSize) => bindings.editor_ime_delete_forward(
-        _handle,
-        afterLength,
-        textUnit.value,
-        outSize,
-      ),
-      CoreProtocol.decodeEditorActionResultFromPointer,
-    );
-  }
-
-  EditorActionResult deleteImeSurrounding({
-    required int beforeLength,
-    required int afterLength,
-    ImeTextUnit textUnit = ImeTextUnit.grapheme,
-  }) {
-    _ensureOpen();
-    return _callAndParse(
-      const EditorActionResult(),
-      (outSize) => bindings.editor_ime_delete_surrounding(
-        _handle,
-        beforeLength,
-        afterLength,
-        textUnit.value,
-        outSize,
-      ),
-      CoreProtocol.decodeEditorActionResultFromPointer,
-    );
-  }
-
-  EditorActionResult notifyImeSelectionChanged(TextRange range) {
-    _ensureOpen();
-    return _callAndParse(
-      const EditorActionResult(),
-      (outSize) => bindings.editor_ime_notify_selection_changed(
-        _handle,
-        range.start.line,
-        range.start.column,
-        range.end.line,
-        range.end.column,
-        outSize,
-      ),
-      CoreProtocol.decodeEditorActionResultFromPointer,
-    );
-  }
-
-  EditorActionResult notifyImeCursorChanged(TextPosition cursor) {
-    _ensureOpen();
-    return _callAndParse(
-      const EditorActionResult(),
-      (outSize) => bindings.editor_ime_notify_cursor_changed(
-        _handle,
-        cursor.line,
-        cursor.column,
-        outSize,
-      ),
-      CoreProtocol.decodeEditorActionResultFromPointer,
-    );
-  }
-
-  EditorActionResult setImeKeyboardScriptClass(ImeScriptClass scriptClass) {
-    _ensureOpen();
-    return _callAndParseAction(
-      (outSize) => bindings.editor_ime_set_keyboard_script_class(
-        _handle,
-        scriptClass.value,
         outSize,
       ),
     );
@@ -1209,16 +814,16 @@ class EditorCore {
     _ensureOpen();
     return _callAndParse(
       const ImeSyncSnapshot(),
-      (outSize) => bindings.editor_get_ime_sync_snapshot(_handle, outSize),
+      (outSize) => bindings.editor_ime_get_sync_snapshot(_handle, outSize),
       CoreProtocol.decodeImeSyncSnapshotFromPointer,
     );
   }
 
-  ImeInputContext getImeInputContext(int beforeLength, int afterLength) {
+  ImeInputContext getImeCommandInputContext(int beforeLength, int afterLength) {
     _ensureOpen();
     return _callAndParse(
       const ImeInputContext(),
-      (outSize) => bindings.editor_get_ime_input_context(
+      (outSize) => bindings.editor_ime_get_command_input_context(
         _handle,
         beforeLength,
         afterLength,
@@ -1228,37 +833,22 @@ class EditorCore {
     );
   }
 
-  ImeInputContext getImeTextModelInputContext(
-    ImeTextModelMode mode,
+  ImeInputContext getImeTextUpdateInputContext(
+    ImeTextUpdateScope scope,
     int beforeLength,
     int afterLength,
   ) {
     _ensureOpen();
     return _callAndParse(
       const ImeInputContext(),
-      (outSize) => bindings.editor_get_ime_text_model_input_context(
+      (outSize) => bindings.editor_ime_get_text_update_input_context(
         _handle,
-        mode.value,
+        scope.value,
         beforeLength,
         afterLength,
         outSize,
       ),
       CoreProtocol.decodeImeInputContextFromPointer,
-    );
-  }
-
-  TextRange? _readNullableRange(
-    int startLine,
-    int startColumn,
-    int endLine,
-    int endColumn,
-  ) {
-    if (startLine < 0 || startColumn < 0 || endLine < 0 || endColumn < 0) {
-      return null;
-    }
-    return TextRange(
-      start: TextPosition(line: startLine, column: startColumn),
-      end: TextPosition(line: endLine, column: endColumn),
     );
   }
 
@@ -1362,18 +952,19 @@ class EditorCore {
     );
   }
 
-  EditorActionResult setEditorRangeEffectStyles(EditorRangeEffectStyles styles) {
+  EditorActionResult setEditorRangeEffectStyles(
+    EditorRangeEffectStyles styles,
+  ) {
     _ensureOpen();
     final payload = CoreProtocol.encodeEditorRangeEffectStyles(styles);
     return _callWithBinaryActionData(
       payload,
-      (data, size, outSize) =>
-          bindings.editor_set_editor_range_effect_styles(
-            _handle,
-            data,
-            size,
-            outSize,
-          ),
+      (data, size, outSize) => bindings.editor_set_editor_range_effect_styles(
+        _handle,
+        data,
+        size,
+        outSize,
+      ),
     );
   }
 
@@ -1679,8 +1270,7 @@ class EditorCore {
     _ensureOpen();
     return _callWithBinaryActionData(
       data,
-      (ptr, len, outSize) =>
-          bindings.editor_set_batch_line_document_highlights(
+      (ptr, len, outSize) => bindings.editor_set_batch_line_document_highlights(
         _handle,
         ptr,
         len,

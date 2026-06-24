@@ -46,21 +46,21 @@ import com.qiplat.sweeteditor.core.foundation.TextChange;
 import com.qiplat.sweeteditor.core.foundation.TextEdit;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
+import com.qiplat.sweeteditor.core.ime.ImeCommandKind;
+import com.qiplat.sweeteditor.core.ime.ImeCommandMessage;
 import com.qiplat.sweeteditor.core.ime.ImeContextPolicy;
-import com.qiplat.sweeteditor.core.ime.ImeDocumentTextReplacement;
 import com.qiplat.sweeteditor.core.ime.ImeInputContext;
 import com.qiplat.sweeteditor.core.ime.ImeInputContextKind;
-import com.qiplat.sweeteditor.core.ime.ImeInputContextTextReplacement;
-import com.qiplat.sweeteditor.core.ime.ImeInputStateTextReplacement;
+import com.qiplat.sweeteditor.core.ime.ImeMarkedRange;
+import com.qiplat.sweeteditor.core.ime.ImeMarkedRangeRole;
 import com.qiplat.sweeteditor.core.ime.ImeOffsetRange;
-import com.qiplat.sweeteditor.core.ime.ImePreeditStorage;
 import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
 import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
-import com.qiplat.sweeteditor.core.ime.ImeTextModelDelta;
-import com.qiplat.sweeteditor.core.ime.ImeTextModelMode;
-import com.qiplat.sweeteditor.core.ime.ImeTextModelState;
-import com.qiplat.sweeteditor.core.ime.ImeTextReplacement;
+import com.qiplat.sweeteditor.core.ime.ImeTextPatch;
 import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
+import com.qiplat.sweeteditor.core.ime.ImeTextUpdateKind;
+import com.qiplat.sweeteditor.core.ime.ImeTextUpdateMessage;
+import com.qiplat.sweeteditor.core.ime.ImeTextUpdateScope;
 import com.qiplat.sweeteditor.core.interaction.EventType;
 import com.qiplat.sweeteditor.core.interaction.GestureEvent;
 import com.qiplat.sweeteditor.core.interaction.GestureType;
@@ -1358,19 +1358,35 @@ public final class CoreProtocol {
         return size;
     }
 
-    private static void writeImeDocumentTextReplacement(BinaryWriter writer, ImeDocumentTextReplacement value) {
-        writer.writeInt32(value.startOffset);
-        writer.writeInt32(value.endOffset);
+    private static void writeImeCommandMessage(BinaryWriter writer, ImeCommandMessage value) {
+        writer.writeInt32(value.kind.value);
+        writer.writeInt64(value.contextId);
+        writer.writeInt32(value.contextRevision);
+        writer.writeInt32(value.documentStartOffset);
+        writeImeOffsetRange(writer, value.range);
+        writeImeOffsetRange(writer, value.selection);
         writer.writeUtf8String(value.text);
         writer.writeInt32(value.cursorOffset);
+        writer.writeInt32(value.deleteBefore);
+        writer.writeInt32(value.deleteAfter);
+        writer.writeInt32(value.textUnit.value);
+        writer.writeInt32(value.markedRole.value);
         writer.writeInt32(value.scriptClass.value);
     }
 
-    public static int sizeOfImeDocumentTextReplacement(ImeDocumentTextReplacement value) {
+    public static int sizeOfImeCommandMessage(ImeCommandMessage value) {
         int size = 0;
         size += 4;
+        size += 8;
         size += 4;
+        size += 4;
+        size += sizeOfImeOffsetRange(value.range);
+        size += sizeOfImeOffsetRange(value.selection);
         size += sizeOfUtf8String(value.text);
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
         size += 4;
         size += 4;
         return size;
@@ -1383,8 +1399,10 @@ public final class CoreProtocol {
         value.documentStartOffset = reader.readInt32();
         value.text = reader.readUtf8String();
         value.selection = readImeOffsetRange(reader);
-        value.hasComposition = reader.readInt32() != 0;
-        value.composition = readImeOffsetRange(reader);
+        value.hasPreeditRange = reader.readInt32() != 0;
+        value.preeditRange = readImeOffsetRange(reader);
+        value.hasSystemMarkRange = reader.readInt32() != 0;
+        value.systemMarkRange = readImeOffsetRange(reader);
         value.kind = ImeInputContextKind.fromValue(reader.readInt32());
         return value;
     }
@@ -1393,43 +1411,26 @@ public final class CoreProtocol {
         return readImeInputContext(new BinaryReader(data, size));
     }
 
-    private static void writeImeInputContextTextReplacement(BinaryWriter writer, ImeInputContextTextReplacement value) {
-        writer.writeInt32(value.startOffset);
-        writer.writeInt32(value.endOffset);
-        writer.writeUtf8String(value.text);
-        writer.writeInt32(value.cursorOffset);
-        writer.writeInt32(value.scriptClass.value);
+    private static ImeMarkedRange readImeMarkedRange(BinaryReader reader) {
+        ImeMarkedRange value = new ImeMarkedRange();
+        value.role = ImeMarkedRangeRole.fromValue(reader.readInt32());
+        value.range = readImeOffsetRange(reader);
+        return value;
     }
 
-    public static int sizeOfImeInputContextTextReplacement(ImeInputContextTextReplacement value) {
+    public static ImeMarkedRange decodeImeMarkedRange(MemorySegment data, long size) {
+        return readImeMarkedRange(new BinaryReader(data, size));
+    }
+
+    private static void writeImeMarkedRange(BinaryWriter writer, ImeMarkedRange value) {
+        writer.writeInt32(value.role.value);
+        writeImeOffsetRange(writer, value.range);
+    }
+
+    public static int sizeOfImeMarkedRange(ImeMarkedRange value) {
         int size = 0;
         size += 4;
-        size += 4;
-        size += sizeOfUtf8String(value.text);
-        size += 4;
-        size += 4;
-        return size;
-    }
-
-    private static void writeImeInputStateTextReplacement(BinaryWriter writer, ImeInputStateTextReplacement value) {
-        writer.writeInt64(value.contextId);
-        writer.writeInt32(value.documentStartOffset);
-        writer.writeInt32(value.startOffset);
-        writer.writeInt32(value.endOffset);
-        writer.writeUtf8String(value.text);
-        writer.writeInt32(value.cursorOffset);
-        writer.writeInt32(value.scriptClass.value);
-    }
-
-    public static int sizeOfImeInputStateTextReplacement(ImeInputStateTextReplacement value) {
-        int size = 0;
-        size += 8;
-        size += 4;
-        size += 4;
-        size += 4;
-        size += sizeOfUtf8String(value.text);
-        size += 4;
-        size += 4;
+        size += sizeOfImeOffsetRange(value.range);
         return size;
     }
 
@@ -1461,14 +1462,12 @@ public final class CoreProtocol {
         value.cursor = readTextPosition(reader);
         value.selection = readTextRange(reader);
         value.hasSelection = reader.readInt32() != 0;
-        value.hasComposingSession = reader.readInt32() != 0;
-        value.hasVisibleCompositionRange = reader.readInt32() != 0;
-        value.visibleCompositionRange = readTextRange(reader);
-        value.hasPlatformMarkedRange = reader.readInt32() != 0;
-        value.platformMarkedRange = readTextRange(reader);
-        value.preeditStorage = ImePreeditStorage.fromValue(reader.readInt32());
+        value.hasPreeditRange = reader.readInt32() != 0;
+        value.preeditRange = readTextRange(reader);
+        value.hasSystemMarkRange = reader.readInt32() != 0;
+        value.systemMarkRange = readTextRange(reader);
         value.contextPolicy = ImeContextPolicy.fromValue(reader.readInt32());
-        value.clearPlatformPreedit = reader.readInt32() != 0;
+        value.clearSystemMark = reader.readInt32() != 0;
         return value;
     }
 
@@ -1476,64 +1475,53 @@ public final class CoreProtocol {
         return readImeSyncSnapshot(new BinaryReader(data, size));
     }
 
-    private static void writeImeTextModelDelta(BinaryWriter writer, ImeTextModelDelta value) {
-        writer.writeInt32(value.mode.value);
-        writer.writeInt64(value.contextId);
-        writer.writeInt32(value.documentStartOffset);
-        writer.writeUtf8String(value.oldText);
-        writeImeOffsetRange(writer, value.delta);
-        writer.writeUtf8String(value.deltaText);
-        writeImeOffsetRange(writer, value.selection);
-        writeImeOffsetRange(writer, value.composition);
-        writer.writeInt32(value.scriptClass.value);
+    private static ImeTextPatch readImeTextPatch(BinaryReader reader) {
+        ImeTextPatch value = new ImeTextPatch();
+        value.range = readImeOffsetRange(reader);
+        value.text = reader.readUtf8String();
+        return value;
     }
 
-    public static int sizeOfImeTextModelDelta(ImeTextModelDelta value) {
+    public static ImeTextPatch decodeImeTextPatch(MemorySegment data, long size) {
+        return readImeTextPatch(new BinaryReader(data, size));
+    }
+
+    private static void writeImeTextPatch(BinaryWriter writer, ImeTextPatch value) {
+        writeImeOffsetRange(writer, value.range);
+        writer.writeUtf8String(value.text);
+    }
+
+    public static int sizeOfImeTextPatch(ImeTextPatch value) {
         int size = 0;
-        size += 4;
-        size += 8;
-        size += 4;
-        size += sizeOfUtf8String(value.oldText);
-        size += sizeOfImeOffsetRange(value.delta);
-        size += sizeOfUtf8String(value.deltaText);
-        size += sizeOfImeOffsetRange(value.selection);
-        size += sizeOfImeOffsetRange(value.composition);
-        size += 4;
+        size += sizeOfImeOffsetRange(value.range);
+        size += sizeOfUtf8String(value.text);
         return size;
     }
 
-    private static void writeImeTextModelState(BinaryWriter writer, ImeTextModelState value) {
-        writer.writeInt32(value.mode.value);
+    private static void writeImeTextUpdateMessage(BinaryWriter writer, ImeTextUpdateMessage value) {
+        writer.writeInt32(value.kind.value);
+        writer.writeInt32(value.scope.value);
         writer.writeInt64(value.contextId);
+        writer.writeInt32(value.contextRevision);
         writer.writeInt32(value.documentStartOffset);
         writer.writeUtf8String(value.text);
+        writeImeTextPatch(writer, value.patch);
         writeImeOffsetRange(writer, value.selection);
-        writeImeOffsetRange(writer, value.composition);
+        writeImeMarkedRange(writer, value.markedRange);
         writer.writeInt32(value.scriptClass.value);
     }
 
-    public static int sizeOfImeTextModelState(ImeTextModelState value) {
+    public static int sizeOfImeTextUpdateMessage(ImeTextUpdateMessage value) {
         int size = 0;
+        size += 4;
         size += 4;
         size += 8;
         size += 4;
-        size += sizeOfUtf8String(value.text);
-        size += sizeOfImeOffsetRange(value.selection);
-        size += sizeOfImeOffsetRange(value.composition);
         size += 4;
-        return size;
-    }
-
-    private static void writeImeTextReplacement(BinaryWriter writer, ImeTextReplacement value) {
-        writeTextRange(writer, value.range);
-        writer.writeUtf8String(value.text);
-        writer.writeInt32(value.scriptClass.value);
-    }
-
-    public static int sizeOfImeTextReplacement(ImeTextReplacement value) {
-        int size = 0;
-        size += sizeOfTextRange(value.range);
         size += sizeOfUtf8String(value.text);
+        size += sizeOfImeTextPatch(value.patch);
+        size += sizeOfImeOffsetRange(value.selection);
+        size += sizeOfImeMarkedRange(value.markedRange);
         size += 4;
         return size;
     }
@@ -2713,117 +2701,65 @@ public final class CoreProtocol {
         return writer.segment();
     }
 
-    public static MemorySegment encodeImeDocumentTextReplacement(Arena arena, ImeDocumentTextReplacement value) {
-        int size = 0;
-        size += 4;
-        size += 4;
-        byte[] textUtf8 = utf8Bytes(value.text);
-        size += 4 + textUtf8.length;
-        size += 4;
-        size += 4;
-        BinaryWriter writer = new BinaryWriter(arena, size);
-        writer.writeInt32(value.startOffset);
-        writer.writeInt32(value.endOffset);
-        writer.writeUtf8Bytes(textUtf8);
-        writer.writeInt32(value.cursorOffset);
-        writer.writeInt32(value.scriptClass.value);
-        return writer.segment();
-    }
-
-    public static MemorySegment encodeImeInputContextTextReplacement(Arena arena, ImeInputContextTextReplacement value) {
-        int size = 0;
-        size += 4;
-        size += 4;
-        byte[] textUtf8 = utf8Bytes(value.text);
-        size += 4 + textUtf8.length;
-        size += 4;
-        size += 4;
-        BinaryWriter writer = new BinaryWriter(arena, size);
-        writer.writeInt32(value.startOffset);
-        writer.writeInt32(value.endOffset);
-        writer.writeUtf8Bytes(textUtf8);
-        writer.writeInt32(value.cursorOffset);
-        writer.writeInt32(value.scriptClass.value);
-        return writer.segment();
-    }
-
-    public static MemorySegment encodeImeInputStateTextReplacement(Arena arena, ImeInputStateTextReplacement value) {
-        int size = 0;
-        size += 8;
-        size += 4;
-        size += 4;
-        size += 4;
-        byte[] textUtf8 = utf8Bytes(value.text);
-        size += 4 + textUtf8.length;
-        size += 4;
-        size += 4;
-        BinaryWriter writer = new BinaryWriter(arena, size);
-        writer.writeInt64(value.contextId);
-        writer.writeInt32(value.documentStartOffset);
-        writer.writeInt32(value.startOffset);
-        writer.writeInt32(value.endOffset);
-        writer.writeUtf8Bytes(textUtf8);
-        writer.writeInt32(value.cursorOffset);
-        writer.writeInt32(value.scriptClass.value);
-        return writer.segment();
-    }
-
-    public static MemorySegment encodeImeTextModelDelta(Arena arena, ImeTextModelDelta value) {
+    public static MemorySegment encodeImeCommandMessage(Arena arena, ImeCommandMessage value) {
         int size = 0;
         size += 4;
         size += 8;
         size += 4;
-        byte[] oldTextUtf8 = utf8Bytes(value.oldText);
-        size += 4 + oldTextUtf8.length;
-        size += sizeOfImeOffsetRange(value.delta);
-        byte[] deltaTextUtf8 = utf8Bytes(value.deltaText);
-        size += 4 + deltaTextUtf8.length;
+        size += 4;
+        size += sizeOfImeOffsetRange(value.range);
         size += sizeOfImeOffsetRange(value.selection);
-        size += sizeOfImeOffsetRange(value.composition);
+        byte[] textUtf8 = utf8Bytes(value.text);
+        size += 4 + textUtf8.length;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
         size += 4;
         BinaryWriter writer = new BinaryWriter(arena, size);
-        writer.writeInt32(value.mode.value);
+        writer.writeInt32(value.kind.value);
         writer.writeInt64(value.contextId);
+        writer.writeInt32(value.contextRevision);
         writer.writeInt32(value.documentStartOffset);
-        writer.writeUtf8Bytes(oldTextUtf8);
-        writeImeOffsetRange(writer, value.delta);
-        writer.writeUtf8Bytes(deltaTextUtf8);
+        writeImeOffsetRange(writer, value.range);
         writeImeOffsetRange(writer, value.selection);
-        writeImeOffsetRange(writer, value.composition);
+        writer.writeUtf8Bytes(textUtf8);
+        writer.writeInt32(value.cursorOffset);
+        writer.writeInt32(value.deleteBefore);
+        writer.writeInt32(value.deleteAfter);
+        writer.writeInt32(value.textUnit.value);
+        writer.writeInt32(value.markedRole.value);
         writer.writeInt32(value.scriptClass.value);
         return writer.segment();
     }
 
-    public static MemorySegment encodeImeTextModelState(Arena arena, ImeTextModelState value) {
+    public static MemorySegment encodeImeTextUpdateMessage(Arena arena, ImeTextUpdateMessage value) {
         int size = 0;
+        size += 4;
         size += 4;
         size += 8;
         size += 4;
+        size += 4;
         byte[] textUtf8 = utf8Bytes(value.text);
         size += 4 + textUtf8.length;
+        size += sizeOfImeOffsetRange(value.patch.range);
+        byte[] patchTextUtf8 = utf8Bytes(value.patch.text);
+        size += 4 + patchTextUtf8.length;
         size += sizeOfImeOffsetRange(value.selection);
-        size += sizeOfImeOffsetRange(value.composition);
+        size += sizeOfImeMarkedRange(value.markedRange);
         size += 4;
         BinaryWriter writer = new BinaryWriter(arena, size);
-        writer.writeInt32(value.mode.value);
+        writer.writeInt32(value.kind.value);
+        writer.writeInt32(value.scope.value);
         writer.writeInt64(value.contextId);
+        writer.writeInt32(value.contextRevision);
         writer.writeInt32(value.documentStartOffset);
         writer.writeUtf8Bytes(textUtf8);
+        writeImeOffsetRange(writer, value.patch.range);
+        writer.writeUtf8Bytes(patchTextUtf8);
         writeImeOffsetRange(writer, value.selection);
-        writeImeOffsetRange(writer, value.composition);
-        writer.writeInt32(value.scriptClass.value);
-        return writer.segment();
-    }
-
-    public static MemorySegment encodeImeTextReplacement(Arena arena, ImeTextReplacement value) {
-        int size = 0;
-        size += sizeOfTextRange(value.range);
-        byte[] textUtf8 = utf8Bytes(value.text);
-        size += 4 + textUtf8.length;
-        size += 4;
-        BinaryWriter writer = new BinaryWriter(arena, size);
-        writeTextRange(writer, value.range);
-        writer.writeUtf8Bytes(textUtf8);
+        writeImeMarkedRange(writer, value.markedRange);
         writer.writeInt32(value.scriptClass.value);
         return writer.segment();
     }

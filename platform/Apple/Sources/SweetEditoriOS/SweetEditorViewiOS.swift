@@ -485,11 +485,12 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
     }
 
     func isCoreComposing() -> Bool {
-        editorCore.isComposing()
+        editorCore.hasPreedit()
     }
 
     func cancelCoreCompositionForTesting() {
-        dispatchEditorActionResult(editorCore.cancelImePreedit())
+        dispatchEditorActionResult(editorCore.handleImeCommandMessage(
+            ImeCommandMessage(kind: .CANCEL_PREEDIT)))
     }
 
     func getDocument() -> SweetDocument? {

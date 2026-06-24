@@ -22,15 +22,11 @@ import {
 } from './CoreConfig';
 import { EventType, GestureEvent } from './CoreInteraction';
 import {
-  ImeDocumentTextReplacement,
-  ImeInputContextTextReplacement,
-  ImeInputStateTextReplacement,
+  ImeCommandMessage,
   ImeInputContext,
   ImeScriptClass,
   ImeSyncSnapshot,
-  ImeTextModelState,
-  ImeTextReplacement,
-  ImeTextUnit
+  ImeTextUpdateMessage
 } from './CoreIme';
 import { KeyBinding } from './CoreKeymap';
 import { SearchRequest, SearchState } from './CoreSearch';
@@ -459,207 +455,22 @@ export class EditorCore {
 
   // ==================== IME Composition Input ====================
 
-  updateImePreedit(text: string | null, scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
+  handleImeCommandMessage(message: ImeCommandMessage): EditorActionResult {
+    const data = CoreProtocol.encodeImeCommandMessage(message);
     return CoreProtocol.decodeEditorActionResult(
-      native.editorImeUpdatePreedit(this.handle, text, scriptHint as number)
+      native.editorImeHandleCommandMessage(this.handle, data)
     );
   }
 
-  setImeComposingText(text: string | null,
-                      cursorOffset: number = 1,
-                      scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
+  handleImeTextUpdateMessage(message: ImeTextUpdateMessage): EditorActionResult {
+    const data = CoreProtocol.encodeImeTextUpdateMessage(message);
     return CoreProtocol.decodeEditorActionResult(
-      native.editorImeSetComposingText(this.handle, text, cursorOffset, scriptHint as number)
+      native.editorImeHandleTextUpdateMessage(this.handle, data)
     );
   }
 
-  setImeComposingTextSelection(text: string | null,
-                               selectionStartOffset: number,
-                               selectionEndOffset: number,
-                               scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeSetComposingTextSelection(
-        this.handle,
-        text,
-        selectionStartOffset,
-        selectionEndOffset,
-        scriptHint as number)
-    );
-  }
-
-  commitImeText(text: string | null, scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeCommitText(this.handle, text, scriptHint as number)
-    );
-  }
-
-  finishImePreedit(): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(native.editorImeFinishPreedit(this.handle));
-  }
-
-  cancelImePreedit(): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(native.editorImeCancelPreedit(this.handle));
-  }
-
-  markImeDocumentRange(range: TextRange, scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeMarkDocumentRange(
-        this.handle,
-        range.start.line,
-        range.start.column,
-        range.end.line,
-        range.end.column,
-        scriptHint as number
-      )
-    );
-  }
-
-  markImeDocumentRangeByOffset(startOffset: number,
-                               endOffset: number,
-                               scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeMarkDocumentRangeByOffset(this.handle, startOffset, endOffset, scriptHint as number)
-    );
-  }
-
-  replaceImeText(replacement: ImeTextReplacement): EditorActionResult {
-    const data = CoreProtocol.encodeImeTextReplacement(replacement);
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeReplaceText(this.handle, data)
-    );
-  }
-
-  replaceImeDocumentText(replacement: ImeDocumentTextReplacement): EditorActionResult {
-    const data = CoreProtocol.encodeImeDocumentTextReplacement(replacement);
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeReplaceDocumentText(this.handle, data)
-    );
-  }
-
-  replaceImeInputContextText(replacement: ImeInputContextTextReplacement): EditorActionResult {
-    const data = CoreProtocol.encodeImeInputContextTextReplacement(replacement);
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeReplaceInputContextText(this.handle, data)
-    );
-  }
-
-  markImeInputContextRange(startOffset: number,
-                           endOffset: number,
-                            scriptHint: ImeScriptClass = ImeScriptClass.UNKNOWN): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeMarkInputContextRange(this.handle, startOffset, endOffset, scriptHint as number)
-    );
-  }
-
-  notifyImeDocumentSelectionChanged(startOffset: number, endOffset: number): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeNotifyDocumentSelectionChanged(this.handle, startOffset, endOffset)
-    );
-  }
-
-  notifyImeInputContextSelectionChanged(startOffset: number, endOffset: number): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeNotifyInputContextSelectionChanged(this.handle, startOffset, endOffset)
-    );
-  }
-
-  updateImeTextModelState(state: ImeTextModelState): EditorActionResult {
-    const data = CoreProtocol.encodeImeTextModelState(state);
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeUpdateTextModelState(this.handle, data)
-    );
-  }
-
-  updateImeInputStateSelection(contextId: number,
-                               documentStartOffset: number,
-                               selectionStartOffset: number,
-                               selectionEndOffset: number): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeUpdateInputStateSelection(
-        this.handle,
-        contextId,
-        documentStartOffset,
-        selectionStartOffset,
-        selectionEndOffset)
-    );
-  }
-
-  replaceImeInputStateText(replacement: ImeInputStateTextReplacement): EditorActionResult {
-    const data = CoreProtocol.encodeImeInputStateTextReplacement(replacement);
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeReplaceInputStateText(this.handle, data)
-    );
-  }
-
-  deleteImeBackward(beforeLength: number = 1,
-                    textUnit: ImeTextUnit = ImeTextUnit.GRAPHEME): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeDeleteBackward(this.handle, beforeLength, textUnit as number)
-    );
-  }
-
-  deleteImeForward(afterLength: number = 1,
-                   textUnit: ImeTextUnit = ImeTextUnit.GRAPHEME): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeDeleteForward(this.handle, afterLength, textUnit as number)
-    );
-  }
-
-  deleteImeSurrounding(beforeLength: number,
-                       afterLength: number,
-                       textUnit: ImeTextUnit = ImeTextUnit.GRAPHEME): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeDeleteSurrounding(this.handle, beforeLength, afterLength, textUnit as number)
-    );
-  }
-
-  notifyImeSelectionChanged(range: TextRange): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeNotifySelectionChanged(
-        this.handle,
-        range.start.line,
-        range.start.column,
-        range.end.line,
-        range.end.column
-      )
-    );
-  }
-
-  notifyImeCursorChanged(cursor: TextPosition): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeNotifyCursorChanged(this.handle, cursor.line, cursor.column)
-    );
-  }
-
-  isComposing(): boolean {
-    return native.editorIsComposing(this.handle);
-  }
-
-  getComposingRange(): TextRange | null {
-    const arr = native.editorGetComposingRange(this.handle);
-    if (arr === null || arr[0] < 0) {
-      return null;
-    }
-    return {
-      start: { line: arr[0], column: arr[1] },
-      end: { line: arr[2], column: arr[3] }
-    };
-  }
-
-  getComposingSessionRange(): TextRange | null {
-    const arr = native.editorGetComposingSessionRange(this.handle);
-    if (arr === null || arr[0] < 0) {
-      return null;
-    }
-    return {
-      start: { line: arr[0], column: arr[1] },
-      end: { line: arr[2], column: arr[3] }
-    };
-  }
-
-  setImeKeyboardScriptClass(scriptClass: ImeScriptClass): EditorActionResult {
-    return CoreProtocol.decodeEditorActionResult(
-      native.editorImeSetKeyboardScriptClass(this.handle, scriptClass as number));
+  hasPreedit(): boolean {
+    return native.editorHasPreedit(this.handle);
   }
 
   getImeKeyboardScriptClass(): ImeScriptClass {
@@ -670,9 +481,9 @@ export class EditorCore {
     return CoreProtocol.decodeImeSyncSnapshot(native.editorGetImeSyncSnapshot(this.handle));
   }
 
-  getImeInputContext(beforeLength: number, afterLength: number): ImeInputContext {
+  getImeCommandInputContext(beforeLength: number, afterLength: number): ImeInputContext {
     return CoreProtocol.decodeImeInputContext(
-      native.editorGetImeInputContext(this.handle, beforeLength, afterLength)
+      native.editorGetImeCommandInputContext(this.handle, beforeLength, afterLength)
     );
   }
 

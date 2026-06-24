@@ -195,80 +195,27 @@ void editor_move_cursor_to_line_end(intptr_t editor_handle, int extend_selection
 ### 11) IME 组合输入
 
 ```c
-const uint8_t* editor_ime_update_preedit(intptr_t editor_handle,
-                                         const char* text,
-                                         int script_hint,
-                                         size_t* out_size);
-const uint8_t* editor_ime_commit_text(intptr_t editor_handle,
-                                      const char* text,
-                                      int script_hint,
-                                      size_t* out_size);
-const uint8_t* editor_ime_finish_preedit(intptr_t editor_handle, size_t* out_size);
-const uint8_t* editor_ime_cancel_preedit(intptr_t editor_handle, size_t* out_size);
-const uint8_t* editor_ime_mark_document_range(intptr_t editor_handle,
-                                              size_t start_line,
-                                              size_t start_column,
-                                              size_t end_line,
-                                              size_t end_column,
-                                              int script_hint,
-                                              size_t* out_size);
-const uint8_t* editor_ime_replace_text(intptr_t editor_handle,
-                                       const uint8_t* data,
-                                       size_t size,
-                                       size_t* out_size);
-const uint8_t* editor_ime_replace_document_text(intptr_t editor_handle,
-                                                const uint8_t* data,
-                                                size_t size,
-                                                size_t* out_size);
-const uint8_t* editor_ime_replace_input_context_text(intptr_t editor_handle,
+const uint8_t* editor_ime_handle_command_message(intptr_t editor_handle,
+                                                 const uint8_t* data,
+                                                 size_t size,
+                                                 size_t* out_size);
+const uint8_t* editor_ime_handle_text_update_message(intptr_t editor_handle,
                                                      const uint8_t* data,
                                                      size_t size,
                                                      size_t* out_size);
-const uint8_t* editor_ime_update_text_model_state(intptr_t editor_handle,
-                                                  const uint8_t* data,
-                                                  size_t size,
-                                                  size_t* out_size);
-const uint8_t* editor_ime_update_text_model_delta(intptr_t editor_handle,
-                                                  const uint8_t* data,
-                                                  size_t size,
-                                                  size_t* out_size);
-const uint8_t* editor_ime_replace_input_state_text(intptr_t editor_handle,
-                                                   const uint8_t* data,
-                                                   size_t size,
-                                                   size_t* out_size);
-const uint8_t* editor_ime_update_input_state_selection(intptr_t editor_handle,
-                                                       uint64_t context_id,
-                                                       int32_t document_start_offset,
-                                                       int32_t selection_start_offset,
-                                                       int32_t selection_end_offset,
-                                                       size_t* out_size);
-const uint8_t* editor_ime_delete_backward(intptr_t editor_handle,
-                                          size_t before_length,
-                                          int text_unit,
-                                          size_t* out_size);
-const uint8_t* editor_ime_delete_forward(intptr_t editor_handle,
-                                         size_t after_length,
-                                         int text_unit,
-                                         size_t* out_size);
-const uint8_t* editor_ime_delete_surrounding(intptr_t editor_handle,
-                                             size_t before_length,
-                                             size_t after_length,
-                                             int text_unit,
-                                             size_t* out_size);
-const uint8_t* editor_ime_notify_selection_changed(intptr_t editor_handle,
-                                                   size_t start_line,
-                                                   size_t start_column,
-                                                   size_t end_line,
-                                                   size_t end_column,
-                                                   size_t* out_size);
-const uint8_t* editor_ime_notify_cursor_changed(intptr_t editor_handle,
-                                                size_t cursor_line,
-                                                size_t cursor_column,
-                                                size_t* out_size);
-const uint8_t* editor_get_ime_sync_snapshot(intptr_t editor_handle, size_t* out_size);
-int            editor_is_composing(intptr_t editor_handle);
+int            editor_ime_get_keyboard_script_class(intptr_t editor_handle);
+const uint8_t* editor_ime_get_sync_snapshot(intptr_t editor_handle, size_t* out_size);
+const uint8_t* editor_ime_get_command_input_context(intptr_t editor_handle,
+                                                    int before_units,
+                                                    int after_units,
+                                                    size_t* out_size);
+const uint8_t* editor_ime_get_text_update_input_context(intptr_t editor_handle,
+                                                        int scope,
+                                                        int before_units,
+                                                        int after_units,
+                                                        size_t* out_size);
+int            editor_ime_is_composing(intptr_t editor_handle);
 ```
-
 ### 12) 只读、自动缩进与手柄配置
 
 ```c

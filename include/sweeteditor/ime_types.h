@@ -11,7 +11,7 @@ namespace NS_SWEETEDITOR {
     CODE_POINT = 1,
   };
 
-  enum class SE_PROTOCOL_ENUM(ime, DOCUMENT_WINDOW) ImeTextModelMode {
+  enum class SE_PROTOCOL_ENUM(ime, DOCUMENT_WINDOW) ImeTextUpdateScope {
     DOCUMENT_WINDOW = 0,
     TRANSIENT_INPUT = 1,
   };
@@ -23,9 +23,44 @@ namespace NS_SWEETEDITOR {
     TRANSIENT_INPUT = 3,
   };
 
+  enum class SE_PROTOCOL_ENUM(ime, NONE) ImeMarkedRangeRole {
+    NONE = 0,
+    PREEDIT = 1,
+    SYSTEM_MARK = 2,
+  };
+
+  enum class SE_PROTOCOL_ENUM(ime, SET_SELECTION) ImeCommandKind {
+    SET_SELECTION = 0,
+    SET_PREEDIT_TEXT = 1,
+    COMMIT_TEXT = 2,
+    FINISH_PREEDIT = 3,
+    CANCEL_PREEDIT = 4,
+    SET_MARKED_RANGE = 5,
+    CLEAR_MARKED_RANGE = 6,
+    REPLACE_TEXT = 7,
+    DELETE_SURROUNDING_TEXT = 8,
+    SET_KEYBOARD_SCRIPT = 9,
+  };
+
+  enum class SE_PROTOCOL_ENUM(ime, SNAPSHOT) ImeTextUpdateKind {
+    SNAPSHOT = 0,
+    PATCH = 1,
+  };
+
   struct SE_PROTOCOL_VALUE(ime) ImeOffsetRange {
     int32_t start {0};
     int32_t end {0};
+  };
+
+  struct SE_PROTOCOL_VALUE(ime) ImeMarkedRange {
+    SE_PROTOCOL_WIRE(enum_i32)
+    ImeMarkedRangeRole role {ImeMarkedRangeRole::NONE};
+    ImeOffsetRange range {-1, -1};
+  };
+
+  struct SE_PROTOCOL_VALUE(ime) ImeTextPatch {
+    ImeOffsetRange range {-1, -1};
+    U8String text;
   };
 
   struct SE_PROTOCOL_OUT(ime) ImeInputContext {
@@ -34,8 +69,10 @@ namespace NS_SWEETEDITOR {
     int32_t document_start_offset {0};
     U8String text;
     ImeOffsetRange selection;
-    bool has_composition {false};
-    ImeOffsetRange composition {-1, -1};
+    bool has_preedit_range {false};
+    ImeOffsetRange preedit_range {-1, -1};
+    bool has_system_mark_range {false};
+    ImeOffsetRange system_mark_range {-1, -1};
     SE_PROTOCOL_WIRE(enum_i32)
     ImeInputContextKind kind {ImeInputContextKind::NONE};
   };
@@ -48,81 +85,43 @@ namespace NS_SWEETEDITOR {
     HANGUL,
   };
 
-  enum class SE_PROTOCOL_ENUM(ime, NONE) ImePreeditStorage {
-    NONE,
-    VISIBLE_DOCUMENT_COMPOSITION,
-    SHADOW_ONLY,
-  };
-
   enum class SE_PROTOCOL_ENUM(ime, NONE) ImeContextPolicy {
     NONE,
     LIMITED_FOR_CANDIDATES,
   };
 
-  struct SE_PROTOCOL_IN(ime) ImeTextReplacement {
-    TextRange range;
-    U8String text;
+  struct SE_PROTOCOL_IN(ime) ImeCommandMessage {
     SE_PROTOCOL_WIRE(enum_i32)
-    ImeScriptClass script_class {ImeScriptClass::UNKNOWN};
-  };
-
-  struct SE_PROTOCOL_IN(ime) ImeDocumentTextReplacement {
-    SE_PROTOCOL_WIRE(size_as_u32)
-    size_t start_offset {0};
-    SE_PROTOCOL_WIRE(size_as_u32)
-    size_t end_offset {0};
+    ImeCommandKind kind {ImeCommandKind::SET_SELECTION};
+    uint64_t context_id {0};
+    int32_t context_revision {0};
+    int32_t document_start_offset {0};
+    ImeOffsetRange range {-1, -1};
+    ImeOffsetRange selection {-1, -1};
     U8String text;
     int32_t cursor_offset {1};
+    int32_t delete_before {0};
+    int32_t delete_after {0};
+    SE_PROTOCOL_WIRE(enum_i32)
+    ImeTextUnit text_unit {ImeTextUnit::GRAPHEME};
+    SE_PROTOCOL_WIRE(enum_i32)
+    ImeMarkedRangeRole marked_role {ImeMarkedRangeRole::NONE};
     SE_PROTOCOL_WIRE(enum_i32)
     ImeScriptClass script_class {ImeScriptClass::UNKNOWN};
   };
 
-  struct SE_PROTOCOL_IN(ime) ImeInputContextTextReplacement {
-    SE_PROTOCOL_WIRE(size_as_u32)
-    size_t start_offset {0};
-    SE_PROTOCOL_WIRE(size_as_u32)
-    size_t end_offset {0};
-    U8String text;
-    int32_t cursor_offset {1};
+  struct SE_PROTOCOL_IN(ime) ImeTextUpdateMessage {
     SE_PROTOCOL_WIRE(enum_i32)
-    ImeScriptClass script_class {ImeScriptClass::UNKNOWN};
-  };
-
-  struct SE_PROTOCOL_IN(ime) ImeTextModelState {
+    ImeTextUpdateKind kind {ImeTextUpdateKind::SNAPSHOT};
     SE_PROTOCOL_WIRE(enum_i32)
-    ImeTextModelMode mode {ImeTextModelMode::DOCUMENT_WINDOW};
+    ImeTextUpdateScope scope {ImeTextUpdateScope::DOCUMENT_WINDOW};
     uint64_t context_id {0};
+    int32_t context_revision {0};
     int32_t document_start_offset {0};
     U8String text;
-    ImeOffsetRange selection;
-    ImeOffsetRange composition {-1, -1};
-    SE_PROTOCOL_WIRE(enum_i32)
-    ImeScriptClass script_class {ImeScriptClass::UNKNOWN};
-  };
-
-  struct SE_PROTOCOL_IN(ime) ImeTextModelDelta {
-    SE_PROTOCOL_WIRE(enum_i32)
-    ImeTextModelMode mode {ImeTextModelMode::DOCUMENT_WINDOW};
-    uint64_t context_id {0};
-    int32_t document_start_offset {0};
-    U8String old_text;
-    ImeOffsetRange delta {-1, -1};
-    U8String delta_text;
-    ImeOffsetRange selection;
-    ImeOffsetRange composition {-1, -1};
-    SE_PROTOCOL_WIRE(enum_i32)
-    ImeScriptClass script_class {ImeScriptClass::UNKNOWN};
-  };
-
-  struct SE_PROTOCOL_IN(ime) ImeInputStateTextReplacement {
-    uint64_t context_id {0};
-    int32_t document_start_offset {0};
-    SE_PROTOCOL_WIRE(size_as_u32)
-    size_t start_offset {0};
-    SE_PROTOCOL_WIRE(size_as_u32)
-    size_t end_offset {0};
-    U8String text;
-    int32_t cursor_offset {1};
+    ImeTextPatch patch;
+    ImeOffsetRange selection {-1, -1};
+    ImeMarkedRange marked_range;
     SE_PROTOCOL_WIRE(enum_i32)
     ImeScriptClass script_class {ImeScriptClass::UNKNOWN};
   };
@@ -132,16 +131,13 @@ namespace NS_SWEETEDITOR {
     TextPosition cursor;
     TextRange selection;
     bool has_selection {false};
-    bool has_composing_session {false};
-    bool has_visible_composition_range {false};
-    TextRange visible_composition_range;
-    bool has_platform_marked_range {false};
-    TextRange platform_marked_range;
-    SE_PROTOCOL_WIRE(enum_i32)
-    ImePreeditStorage preedit_storage {ImePreeditStorage::NONE};
+    bool has_preedit_range {false};
+    TextRange preedit_range;
+    bool has_system_mark_range {false};
+    TextRange system_mark_range;
     SE_PROTOCOL_WIRE(enum_i32)
     ImeContextPolicy context_policy {ImeContextPolicy::NONE};
-    bool clear_platform_preedit {false};
+    bool clear_system_mark {false};
   };
 
   /// Result of a semantic IME action handled by the core.
@@ -161,33 +157,20 @@ namespace NS_SWEETEDITOR {
     DOCUMENT_RANGE,
   };
 
-  enum class CompositionPhase {
-    INACTIVE,
-    ACTIVE,
-  };
-
   /// IME composition state.
   struct CompositionState {
-    /// Whether composition is visible and active.
-    bool is_composing {false};
-    /// Whether there is an active composition session.
-    bool has_session {false};
-    /// Current session phase.
-    CompositionPhase phase {CompositionPhase::INACTIVE};
-    /// Whether the composition range effect and IME composing offsets should be exposed.
-    bool visible {false};
     /// Source and ownership of the active composition.
     CompositionKind kind {CompositionKind::NONE};
     /// Start position of composition in the document.
     TextPosition start_position;
-    /// Authoritative document range owned by this composition session.
+    /// Authoritative document range owned by this active composition.
     TextRange anchor_range;
     /// Original text captured from anchor_range.
     U8String original_text;
-    /// Current composing text.
-    U8String composing_text;
-    /// UTF-16 column count of current composing text for exact cursor placement.
-    size_t composing_columns {0};
+    /// Current preedit text.
+    U8String preedit_text;
+    /// UTF-16 column count of current preedit text for exact cursor placement.
+    size_t preedit_columns {0};
   };
 
 }

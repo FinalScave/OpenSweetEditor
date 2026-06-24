@@ -143,38 +143,13 @@ set(WASM_C_ABI_EXPORTED_FUNCTIONS
         _free_u16_string
         _free_u8_string
         _free_binary_data
-        _editor_is_composing
-        _editor_get_composing_range
-        _editor_get_composing_session_range
-        _editor_ime_update_preedit
-        _editor_ime_set_composing_text
-        _editor_ime_set_composing_text_selection
-        _editor_ime_commit_text
-        _editor_ime_commit_text_with_cursor
-        _editor_ime_finish_preedit
-        _editor_ime_cancel_preedit
-        _editor_ime_mark_document_range
-        _editor_ime_mark_document_range_by_offset
-        _editor_ime_replace_text
-        _editor_ime_replace_document_text
-        _editor_ime_replace_input_context_text
-        _editor_ime_mark_input_context_range
-        _editor_ime_notify_document_selection_changed
-        _editor_ime_notify_input_context_selection_changed
-        _editor_ime_update_text_model_state
-        _editor_ime_update_text_model_delta
-        _editor_ime_update_input_state_selection
-        _editor_ime_replace_input_state_text
-        _editor_ime_delete_backward
-        _editor_ime_delete_forward
-        _editor_ime_delete_surrounding
-        _editor_ime_notify_selection_changed
-        _editor_ime_notify_cursor_changed
-        _editor_ime_set_keyboard_script_class
+        _editor_ime_has_preedit
+        _editor_ime_handle_command_message
+        _editor_ime_handle_text_update_message
         _editor_ime_get_keyboard_script_class
-        _editor_get_ime_sync_snapshot
-        _editor_get_ime_input_context
-        _editor_get_ime_text_model_input_context
+        _editor_ime_get_sync_snapshot
+        _editor_ime_get_command_input_context
+        _editor_ime_get_text_update_input_context
 )
 
 set(WASM_C_ABI_RUNTIME_METHODS

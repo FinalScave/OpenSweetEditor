@@ -39,17 +39,15 @@ namespace NS_SWEETEDITOR {
     ImeActionResult notifyCursorChanged(const TextPosition& cursor);
     ImeSyncSnapshot buildSyncSnapshot() const;
 
-    TextEditResult setComposingText(const U8String& text);
-    TextEditResult commitComposingText(const U8String& committed_text,
-                                       bool empty_text_keeps_composition = false);
-    void cancelComposing();
-    void removeComposingText();
+    TextEditResult setPreeditText(const U8String& text);
+    TextEditResult commitPreeditText(const U8String& committed_text,
+                                       bool empty_text_keeps_preedit = false);
+    void cancelPreeditText();
+    void removePreeditText();
     void resetCompositionState();
 
-    bool hasComposingSession() const;
-    bool hasVisibleComposition() const;
-    TextRange currentComposingRange() const;
-    bool currentPlatformMarkedRange(TextRange& range) const;
+    bool hasPreedit() const;
+    TextRange currentPreeditRange() const;
     ImeContextPolicy inputContextPolicy() const;
     const CompositionState& composition() const;
 
@@ -60,15 +58,12 @@ namespace NS_SWEETEDITOR {
     void clearCandidateCommitWindow();
 
   private:
-    /// Core-owned IME session bookkeeping that is not exposed to platform layers.
-    struct SessionState {
+    /// Core-owned IME flow bookkeeping that is not exposed to platform layers.
+    struct FlowState {
       bool preedit_text_in_document {false};
       bool preedit_replaces_document_range {false};
       TextRange preedit_replaced_range;
       U8String preedit_replaced_text;
-      bool has_shadow_preedit {false};
-      U8String shadow_preedit_text;
-      ImeScriptClass shadow_script_class {ImeScriptClass::UNKNOWN};
       bool has_candidate_commit_window {false};
       TextRange candidate_committed_range;
       U8String candidate_committed_text;
@@ -134,40 +129,36 @@ namespace NS_SWEETEDITOR {
 
     EditorCore& m_editor_;
 
-    SessionState m_session_;
+    FlowState m_flow_;
     CompositionState m_composition_;
     ImeScriptClass m_keyboard_script_class_ {ImeScriptClass::UNKNOWN};
 
-    void setComposingRange(const TextRange& range);
-    TextEditResult finishComposing();
+    void setPreeditRange(const TextRange& range);
+    TextEditResult finishPreeditText();
     TextEditResult applyDocumentRangePlainEdit(const U8String& text);
-    bool canMoveSelectionInsideComposition(const TextRange& range) const;
-    void clearShadowPreedit();
-    void setShadowPreedit(const U8String& text, ImeScriptClass script_class);
+    bool canMoveSelectionInsidePreedit(const TextRange& range) const;
     void beginPlainLatinInputLock(const U8String& preedit_text);
     void trimPlainLatinInputLock(size_t before_length);
     bool shouldUsePlainLatinInputLock(const U8String& text,
                                       ImeScriptClass script_class,
                                       bool is_commit) const;
-    bool shouldShadowPlainLatinLockedPreedit(const U8String& text,
-                                             ImeScriptClass script_class) const;
     void openCandidateCommitWindow(const TextRange& range, const U8String& text, bool suppress_exact_range);
     void markCandidateDeletedToPrefix();
-    void resetSessionPreservingCandidateWindow();
+    void resetFlowPreservingCandidateWindow();
 
-    void beginComposingTextSession();
-    bool hasMidDocumentRangeComposition(const CompositionState& composition,
+    void beginPreeditText();
+    bool hasMidDocumentRangePreedit(const CompositionState& composition,
                                         const TextPosition& cursor) const;
     bool resolveDocumentRangePlainEdit(const CompositionState& composition,
                                        const TextPosition& cursor,
                                        const U8String& text,
                                        TextRange& range,
                                        U8String& replacement) const;
-    bool hasMidDocumentRangeComposition() const;
+    bool hasMidDocumentRangePreedit() const;
     bool resolveDocumentRangePlainEdit(const U8String& text,
                                        TextRange& range,
                                        U8String& replacement) const;
-    bool hasEndDocumentRangeComposition() const;
+    bool hasEndDocumentRangePreedit() const;
     bool resolveDocumentRangeInsertedText(const U8String& text,
                                           U8String& replacement) const;
     TextEditResult applyDocumentRangeEndReplacement(const TextRange& range,

@@ -2943,8 +2943,10 @@ namespace SweetEditor {
 				return;
 			}
 
-			if (editorCore.IsComposing()) {
-				DispatchEditorActionResult(editorCore.CancelImePreedit());
+			if (editorCore.HasPreedit()) {
+				DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
+					Kind = ImeCommandKind.CANCEL_PREEDIT
+				}));
 				e.Handled = true;
 				return;
 			}
@@ -3857,13 +3859,23 @@ namespace SweetEditor {
 
 			string text = preeditText ?? string.Empty;
 			if (string.IsNullOrEmpty(text)) {
-				if (editorCore.IsComposing()) {
-					DispatchEditorActionResult(editorCore.CancelImePreedit());
+				if (editorCore.HasPreedit()) {
+					DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
+						Kind = ImeCommandKind.CANCEL_PREEDIT
+					}));
 				}
 				return;
 			}
 
-			DispatchEditorActionResult(editorCore.UpdateImePreedit(text));
+			ImeCommandMessage message = new ImeCommandMessage {
+				Kind = ImeCommandKind.SET_PREEDIT_TEXT,
+				Text = text
+			};
+			if (cursorPos.HasValue) {
+				int safeCursor = Math.Clamp(cursorPos.Value, 0, text.Length);
+				message.Selection = new ImeOffsetRange { Start = safeCursor, End = safeCursor };
+			}
+			DispatchEditorActionResult(editorCore.HandleImeCommandMessage(message));
 		}
 
 		private sealed class EditorTextInputClient : TextInputMethodClient {

@@ -28,8 +28,12 @@ import {
   HitTargetType
 } from './core/CoreInteraction';
 import {
+  ImeCommandKind,
+  ImeCommandMessage,
   ImeInputContext,
   ImeInputContextKind,
+  ImeMarkedRangeRole,
+  ImeOffsetRange,
   ImeScriptClass,
   ImeSyncSnapshot,
   ImeTextUnit
@@ -241,6 +245,7 @@ export struct SweetEditor {
   private imeAttached: boolean = false;
   private imeSyncScheduled: boolean = false;
   private pendingImeSyncSnapshot: ImeSyncSnapshot | undefined = undefined;
+  private imeInputContext: ImeInputContext | null = null;
   private editorFocused: boolean = false;
   private pendingShowKeyboard: boolean = false;
   private imeWindowId: number = -1;
@@ -1884,7 +1889,12 @@ export struct SweetEditor {
     if (!this.editorCore) {
       return;
     }
-    const result = this.editorCore.setImeComposingText(text, 1, ImeScriptClass.UNKNOWN);
+    const message = new ImeCommandMessage();
+    message.kind = ImeCommandKind.SET_PREEDIT_TEXT;
+    message.text = text;
+    message.cursorOffset = 1;
+    message.scriptClass = ImeScriptClass.UNKNOWN;
+    const result = this.editorCore.handleImeCommandMessage(message);
     this.finishImeAction(result);
   }
 
@@ -1892,7 +1902,11 @@ export struct SweetEditor {
     if (!this.editorCore) {
       return;
     }
-    const result = this.editorCore.commitImeText(text, ImeScriptClass.UNKNOWN);
+    const message = new ImeCommandMessage();
+    message.kind = ImeCommandKind.COMMIT_TEXT;
+    message.text = text;
+    message.scriptClass = ImeScriptClass.UNKNOWN;
+    const result = this.editorCore.handleImeCommandMessage(message);
     this.finishImeAction(result);
   }
 
@@ -2590,13 +2604,14 @@ export struct SweetEditor {
       return;
     }
     const snapshot = this.editorCore.getImeSyncSnapshot();
+    const context = this.refreshImeInputContext();
     const textConfig: inputMethod.TextConfig = {
       inputAttribute: {
         textInputType: inputMethod.TextInputType.MULTILINE,
         enterKeyType: inputMethod.EnterKeyType.NONE
       },
       cursorInfo: this.buildImeCursorInfo(snapshot),
-      selection: this.getImeSelectionRange()
+      selection: this.getImeSelectionRange(context)
     };
     if (this.imeWindowId >= 0) {
       textConfig.windowId = this.imeWindowId;
@@ -2646,6 +2661,7 @@ export struct SweetEditor {
     }
     this.inputController.detach().catch(() => {});
     this.imeAttached = false;
+    this.imeInputContext = null;
   }
 
   private scheduleImeSync(snapshot?: ImeSyncSnapshot): void {
@@ -2669,11 +2685,13 @@ export struct SweetEditor {
       return;
     }
     const syncSnapshot = snapshot ?? this.editorCore.getImeSyncSnapshot();
-    const context = this.editorCore.getImeInputContext(0, 0);
+    const context = this.refreshImeInputContext();
+    if (context === null) {
+      return;
+    }
     const selection = this.getImeSelectionRange(context);
-    const selectedText = context.selection.start === context.selection.end ? '' : context.text;
     const cursorInfo = this.buildImeCursorInfo(syncSnapshot);
-    this.inputController.changeSelection(selectedText, selection.start, selection.end).catch(() => {});
+    this.inputController.changeSelection(context.text, selection.start, selection.end).catch(() => {});
     this.inputController.updateCursor(cursorInfo).catch(() => {});
   }
 
@@ -2689,63 +2707,102 @@ export struct SweetEditor {
     };
   }
 
-  private getImeSelectionRange(context?: ImeInputContext): inputMethod.Range {
+  private refreshImeInputContext(): ImeInputContext | null {
     if (!this.editorCore) {
+      this.imeInputContext = null;
+      return null;
+    }
+    const context = this.editorCore.getImeCommandInputContext(MAX_IME_TEXT_LENGTH / 2, MAX_IME_TEXT_LENGTH / 2);
+    if (context.kind !== ImeInputContextKind.DOCUMENT_WINDOW || context.id === 0) {
+      this.imeInputContext = null;
+      return null;
+    }
+    this.imeInputContext = context;
+    return context;
+  }
+
+  private getImeInputContextForCallback(): ImeInputContext | null {
+    if (this.imeInputContext !== null) {
+      return this.imeInputContext;
+    }
+    return this.refreshImeInputContext();
+  }
+
+  private getImeSelectionRange(context?: ImeInputContext | null): inputMethod.Range {
+    const imeContext = context ?? this.getImeInputContextForCallback();
+    if (imeContext === null) {
       return { start: 0, end: 0 };
     }
-    const imeContext = context ?? this.editorCore.getImeInputContext(0, 0);
-    const start = imeContext.documentStartOffset + Math.max(0, imeContext.selection.start);
-    const end = imeContext.documentStartOffset + Math.max(0, imeContext.selection.end);
+    const textLength = imeContext.text.length;
+    const base = Math.max(0, imeContext.documentStartOffset);
+    const start = base + Math.max(0, Math.min(imeContext.selection.start, textLength));
+    const end = base + Math.max(0, Math.min(imeContext.selection.end, textLength));
     return start <= end ? { start: start, end: end } : { start: end, end: start };
   }
 
   private getImeTextBeforeCursor(length: number): string {
-    if (!this.editorCore) {
-      return '';
-    }
-    const beforeLength = Math.max(0, Math.min(length, MAX_IME_TEXT_LENGTH));
-    const context: ImeInputContext = this.editorCore.getImeInputContext(beforeLength, 0);
-    if (context.kind !== ImeInputContextKind.DOCUMENT_WINDOW) {
+    const context = this.getImeInputContextForCallback();
+    if (context === null) {
       return '';
     }
     const end = Math.max(0, Math.min(context.selection.start, context.text.length));
-    return context.text.substring(0, end);
+    const start = Math.max(0, end - Math.max(0, Math.min(length, MAX_IME_TEXT_LENGTH)));
+    const result = context.text.substring(start, end);
+    return result;
   }
 
   private getImeTextAfterCursor(length: number): string {
-    if (!this.editorCore) {
-      return '';
-    }
-    const afterLength = Math.max(0, Math.min(length, MAX_IME_TEXT_LENGTH));
-    const context: ImeInputContext = this.editorCore.getImeInputContext(0, afterLength);
-    if (context.kind !== ImeInputContextKind.DOCUMENT_WINDOW) {
+    const context = this.getImeInputContextForCallback();
+    if (context === null) {
       return '';
     }
     const start = Math.max(0, Math.min(context.selection.end, context.text.length));
-    return context.text.substring(start);
+    const end = Math.min(context.text.length, start + Math.max(0, Math.min(length, MAX_IME_TEXT_LENGTH)));
+    const result = context.text.substring(start, end);
+    return result;
   }
 
   private getImeTextIndexAtCursor(): number {
-    if (!this.editorCore) {
+    const context = this.getImeInputContextForCallback();
+    if (context === null) {
       return 0;
     }
-    const context = this.editorCore.getImeInputContext(0, 0);
-    return context.documentStartOffset + context.selection.start;
+    const localIndex = Math.max(0, Math.min(context.selection.start, context.text.length));
+    const result = Math.max(0, context.documentStartOffset) + localIndex;
+    return result;
+  }
+
+  private imeRangeFromCallbackRange(range: inputMethod.Range, context: ImeInputContext): ImeOffsetRange {
+    const normalizedStart = Math.max(0, Math.min(range.start, range.end));
+    const normalizedEnd = Math.max(normalizedStart, Math.max(range.start, range.end));
+    const textLength = context.text.length;
+    const base = Math.max(0, context.documentStartOffset);
+    const rangeIsDocumentAbsolute = normalizedStart >= base && normalizedEnd <= base + textLength;
+    const localStart = rangeIsDocumentAbsolute ? normalizedStart - base : normalizedStart;
+    const localEnd = rangeIsDocumentAbsolute ? normalizedEnd - base : normalizedEnd;
+    const start = Math.max(0, Math.min(localStart, textLength));
+    const end = Math.max(start, Math.min(localEnd, textLength));
+    return { start: start, end: end } as ImeOffsetRange;
   }
 
   private deleteLeftByLength(length: number): void {
-    if (!this.editorCore || length <= 0) {
-      return;
-    }
-    const result = this.editorCore.deleteImeBackward(length, ImeTextUnit.GRAPHEME);
-    this.finishImeAction(result);
+    this.deleteSurroundingByIme(length, 0);
   }
 
   private deleteRightByLength(length: number): void {
-    if (!this.editorCore || length <= 0) {
+    this.deleteSurroundingByIme(0, length);
+  }
+
+  private deleteSurroundingByIme(beforeLength: number, afterLength: number): void {
+    if (!this.editorCore || (beforeLength <= 0 && afterLength <= 0)) {
       return;
     }
-    const result = this.editorCore.deleteImeForward(length, ImeTextUnit.GRAPHEME);
+    const message = new ImeCommandMessage();
+    message.kind = ImeCommandKind.DELETE_SURROUNDING_TEXT;
+    message.deleteBefore = Math.max(0, beforeLength);
+    message.deleteAfter = Math.max(0, afterLength);
+    message.textUnit = ImeTextUnit.GRAPHEME;
+    const result = this.editorCore.handleImeCommandMessage(message);
     this.finishImeAction(result);
   }
 
@@ -2770,6 +2827,9 @@ export struct SweetEditor {
       default:
         return;
     }
+    if (moveResult === null) {
+      return;
+    }
     this.finishImeAction(moveResult);
   }
 
@@ -2777,9 +2837,18 @@ export struct SweetEditor {
     if (!this.editorCore) {
       return;
     }
-    const normalizedStart = Math.max(0, Math.min(range.start, range.end));
-    const normalizedEnd = Math.max(normalizedStart, Math.max(range.start, range.end));
-    const result = this.editorCore.notifyImeDocumentSelectionChanged(normalizedStart, normalizedEnd);
+    const context = this.getImeInputContextForCallback();
+    if (context === null) {
+      return;
+    }
+    const localRange = this.imeRangeFromCallbackRange(range, context);
+    const message = new ImeCommandMessage();
+    message.kind = ImeCommandKind.SET_SELECTION;
+    message.contextId = context.id;
+    message.contextRevision = context.revision;
+    message.documentStartOffset = context.documentStartOffset;
+    message.selection = localRange;
+    const result = this.editorCore.handleImeCommandMessage(message);
     this.finishImeAction(result);
   }
 
@@ -2787,21 +2856,40 @@ export struct SweetEditor {
     if (!this.editorCore) {
       return;
     }
-    const normalizedStart = Math.max(0, Math.min(range.start, range.end));
-    const normalizedEnd = Math.max(normalizedStart, Math.max(range.start, range.end));
-    const markResult = this.editorCore.markImeDocumentRangeByOffset(
-      normalizedStart, normalizedEnd, ImeScriptClass.UNKNOWN);
-    this.dispatchEditorActionResult(markResult);
-    const composeResult = this.editorCore.setImeComposingText(text, 1, ImeScriptClass.UNKNOWN);
+    const context = this.getImeInputContextForCallback();
+    if (context !== null) {
+      const localRange = this.imeRangeFromCallbackRange(range, context);
+      const markMessage = new ImeCommandMessage();
+      markMessage.kind = ImeCommandKind.SET_MARKED_RANGE;
+      markMessage.contextId = context.id;
+      markMessage.contextRevision = context.revision;
+      markMessage.documentStartOffset = context.documentStartOffset;
+      markMessage.range = localRange;
+      markMessage.markedRole = ImeMarkedRangeRole.PREEDIT;
+      markMessage.scriptClass = ImeScriptClass.UNKNOWN;
+      const markResult = this.editorCore.handleImeCommandMessage(markMessage);
+      this.dispatchEditorActionResult(markResult);
+    }
+    const composeMessage = new ImeCommandMessage();
+    composeMessage.kind = ImeCommandKind.SET_PREEDIT_TEXT;
+    composeMessage.text = text;
+    composeMessage.cursorOffset = 1;
+    composeMessage.scriptClass = ImeScriptClass.UNKNOWN;
+    const composeResult = this.editorCore.handleImeCommandMessage(composeMessage);
     this.dispatchEditorActionResult(composeResult);
     this.resetCursorBlink();
   }
 
   private finishImePreviewText(): void {
-    if (!this.editorCore || !this.editorCore.isComposing()) {
+    if (!this.editorCore) {
       return;
     }
-    const result = this.editorCore.finishImePreedit();
+    if (!this.editorCore.hasPreedit()) {
+      return;
+    }
+    const message = new ImeCommandMessage();
+    message.kind = ImeCommandKind.FINISH_PREEDIT;
+    const result = this.editorCore.handleImeCommandMessage(message);
     this.finishImeAction(result);
   }
 

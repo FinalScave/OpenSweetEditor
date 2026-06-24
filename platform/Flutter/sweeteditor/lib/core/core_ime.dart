@@ -2,6 +2,38 @@
 
 part of 'editor_core.dart';
 
+enum ImeCommandKind {
+  setSelection(0),
+  setPreeditText(1),
+  commitText(2),
+  finishPreedit(3),
+  cancelPreedit(4),
+  setMarkedRange(5),
+  clearMarkedRange(6),
+  replaceText(7),
+  deleteSurroundingText(8),
+  setKeyboardScript(9);
+
+  const ImeCommandKind(this.value);
+  final int value;
+
+  static ImeCommandKind fromValue(int value) {
+    switch (value) {
+      case 0: return setSelection;
+      case 1: return setPreeditText;
+      case 2: return commitText;
+      case 3: return finishPreedit;
+      case 4: return cancelPreedit;
+      case 5: return setMarkedRange;
+      case 6: return clearMarkedRange;
+      case 7: return replaceText;
+      case 8: return deleteSurroundingText;
+      case 9: return setKeyboardScript;
+      default: return setSelection;
+    }
+  }
+}
+
 enum ImeContextPolicy {
   none(0),
   limitedForCandidates(1);
@@ -38,19 +70,19 @@ enum ImeInputContextKind {
   }
 }
 
-enum ImePreeditStorage {
+enum ImeMarkedRangeRole {
   none(0),
-  visibleDocumentComposition(1),
-  shadowOnly(2);
+  preedit(1),
+  systemMark(2);
 
-  const ImePreeditStorage(this.value);
+  const ImeMarkedRangeRole(this.value);
   final int value;
 
-  static ImePreeditStorage fromValue(int value) {
+  static ImeMarkedRangeRole fromValue(int value) {
     switch (value) {
       case 0: return none;
-      case 1: return visibleDocumentComposition;
-      case 2: return shadowOnly;
+      case 1: return preedit;
+      case 2: return systemMark;
       default: return none;
     }
   }
@@ -78,22 +110,6 @@ enum ImeScriptClass {
   }
 }
 
-enum ImeTextModelMode {
-  documentWindow(0),
-  transientInput(1);
-
-  const ImeTextModelMode(this.value);
-  final int value;
-
-  static ImeTextModelMode fromValue(int value) {
-    switch (value) {
-      case 0: return documentWindow;
-      case 1: return transientInput;
-      default: return documentWindow;
-    }
-  }
-}
-
 enum ImeTextUnit {
   grapheme(0),
   codePoint(1);
@@ -110,19 +126,67 @@ enum ImeTextUnit {
   }
 }
 
-class ImeDocumentTextReplacement {
-  const ImeDocumentTextReplacement({
-    this.startOffset = 0,
-    this.endOffset = 0,
+enum ImeTextUpdateKind {
+  snapshot(0),
+  patch(1);
+
+  const ImeTextUpdateKind(this.value);
+  final int value;
+
+  static ImeTextUpdateKind fromValue(int value) {
+    switch (value) {
+      case 0: return snapshot;
+      case 1: return patch;
+      default: return snapshot;
+    }
+  }
+}
+
+enum ImeTextUpdateScope {
+  documentWindow(0),
+  transientInput(1);
+
+  const ImeTextUpdateScope(this.value);
+  final int value;
+
+  static ImeTextUpdateScope fromValue(int value) {
+    switch (value) {
+      case 0: return documentWindow;
+      case 1: return transientInput;
+      default: return documentWindow;
+    }
+  }
+}
+
+class ImeCommandMessage {
+  const ImeCommandMessage({
+    this.kind = ImeCommandKind.setSelection,
+    this.contextId = 0,
+    this.contextRevision = 0,
+    this.documentStartOffset = 0,
+    this.range = const ImeOffsetRange(),
+    this.selection = const ImeOffsetRange(),
     this.text = '',
     this.cursorOffset = 1,
+    this.deleteBefore = 0,
+    this.deleteAfter = 0,
+    this.textUnit = ImeTextUnit.grapheme,
+    this.markedRole = ImeMarkedRangeRole.none,
     this.scriptClass = ImeScriptClass.unknown,
   });
 
-  final int startOffset;
-  final int endOffset;
+  final ImeCommandKind kind;
+  final int contextId;
+  final int contextRevision;
+  final int documentStartOffset;
+  final ImeOffsetRange range;
+  final ImeOffsetRange selection;
   final String text;
   final int cursorOffset;
+  final int deleteBefore;
+  final int deleteAfter;
+  final ImeTextUnit textUnit;
+  final ImeMarkedRangeRole markedRole;
   final ImeScriptClass scriptClass;
 }
 
@@ -133,8 +197,10 @@ class ImeInputContext {
     this.documentStartOffset = 0,
     this.text = '',
     this.selection = const ImeOffsetRange(),
-    this.hasComposition = false,
-    this.composition = const ImeOffsetRange(),
+    this.hasPreeditRange = false,
+    this.preeditRange = const ImeOffsetRange(),
+    this.hasSystemMarkRange = false,
+    this.systemMarkRange = const ImeOffsetRange(),
     this.kind = ImeInputContextKind.none,
   });
 
@@ -143,45 +209,21 @@ class ImeInputContext {
   final int documentStartOffset;
   final String text;
   final ImeOffsetRange selection;
-  final bool hasComposition;
-  final ImeOffsetRange composition;
+  final bool hasPreeditRange;
+  final ImeOffsetRange preeditRange;
+  final bool hasSystemMarkRange;
+  final ImeOffsetRange systemMarkRange;
   final ImeInputContextKind kind;
 }
 
-class ImeInputContextTextReplacement {
-  const ImeInputContextTextReplacement({
-    this.startOffset = 0,
-    this.endOffset = 0,
-    this.text = '',
-    this.cursorOffset = 1,
-    this.scriptClass = ImeScriptClass.unknown,
+class ImeMarkedRange {
+  const ImeMarkedRange({
+    this.role = ImeMarkedRangeRole.none,
+    this.range = const ImeOffsetRange(),
   });
 
-  final int startOffset;
-  final int endOffset;
-  final String text;
-  final int cursorOffset;
-  final ImeScriptClass scriptClass;
-}
-
-class ImeInputStateTextReplacement {
-  const ImeInputStateTextReplacement({
-    this.contextId = 0,
-    this.documentStartOffset = 0,
-    this.startOffset = 0,
-    this.endOffset = 0,
-    this.text = '',
-    this.cursorOffset = 1,
-    this.scriptClass = ImeScriptClass.unknown,
-  });
-
-  final int contextId;
-  final int documentStartOffset;
-  final int startOffset;
-  final int endOffset;
-  final String text;
-  final int cursorOffset;
-  final ImeScriptClass scriptClass;
+  final ImeMarkedRangeRole role;
+  final ImeOffsetRange range;
 }
 
 class ImeOffsetRange {
@@ -199,81 +241,57 @@ class ImeSyncSnapshot {
     this.cursor = const TextPosition(),
     this.selection = const TextRange(),
     this.hasSelection = false,
-    this.hasComposingSession = false,
-    this.hasVisibleCompositionRange = false,
-    this.visibleCompositionRange = const TextRange(),
-    this.hasPlatformMarkedRange = false,
-    this.platformMarkedRange = const TextRange(),
-    this.preeditStorage = ImePreeditStorage.none,
+    this.hasPreeditRange = false,
+    this.preeditRange = const TextRange(),
+    this.hasSystemMarkRange = false,
+    this.systemMarkRange = const TextRange(),
     this.contextPolicy = ImeContextPolicy.none,
-    this.clearPlatformPreedit = false,
+    this.clearSystemMark = false,
   });
 
   final TextPosition cursor;
   final TextRange selection;
   final bool hasSelection;
-  final bool hasComposingSession;
-  final bool hasVisibleCompositionRange;
-  final TextRange visibleCompositionRange;
-  final bool hasPlatformMarkedRange;
-  final TextRange platformMarkedRange;
-  final ImePreeditStorage preeditStorage;
+  final bool hasPreeditRange;
+  final TextRange preeditRange;
+  final bool hasSystemMarkRange;
+  final TextRange systemMarkRange;
   final ImeContextPolicy contextPolicy;
-  final bool clearPlatformPreedit;
+  final bool clearSystemMark;
 }
 
-class ImeTextModelDelta {
-  const ImeTextModelDelta({
-    this.mode = ImeTextModelMode.documentWindow,
-    this.contextId = 0,
-    this.documentStartOffset = 0,
-    this.oldText = '',
-    this.delta = const ImeOffsetRange(),
-    this.deltaText = '',
-    this.selection = const ImeOffsetRange(),
-    this.composition = const ImeOffsetRange(),
-    this.scriptClass = ImeScriptClass.unknown,
+class ImeTextPatch {
+  const ImeTextPatch({
+    this.range = const ImeOffsetRange(),
+    this.text = '',
   });
 
-  final ImeTextModelMode mode;
-  final int contextId;
-  final int documentStartOffset;
-  final String oldText;
-  final ImeOffsetRange delta;
-  final String deltaText;
-  final ImeOffsetRange selection;
-  final ImeOffsetRange composition;
-  final ImeScriptClass scriptClass;
+  final ImeOffsetRange range;
+  final String text;
 }
 
-class ImeTextModelState {
-  const ImeTextModelState({
-    this.mode = ImeTextModelMode.documentWindow,
+class ImeTextUpdateMessage {
+  const ImeTextUpdateMessage({
+    this.kind = ImeTextUpdateKind.snapshot,
+    this.scope = ImeTextUpdateScope.documentWindow,
     this.contextId = 0,
+    this.contextRevision = 0,
     this.documentStartOffset = 0,
     this.text = '',
+    this.patch = const ImeTextPatch(),
     this.selection = const ImeOffsetRange(),
-    this.composition = const ImeOffsetRange(),
+    this.markedRange = const ImeMarkedRange(),
     this.scriptClass = ImeScriptClass.unknown,
   });
 
-  final ImeTextModelMode mode;
+  final ImeTextUpdateKind kind;
+  final ImeTextUpdateScope scope;
   final int contextId;
+  final int contextRevision;
   final int documentStartOffset;
   final String text;
+  final ImeTextPatch patch;
   final ImeOffsetRange selection;
-  final ImeOffsetRange composition;
-  final ImeScriptClass scriptClass;
-}
-
-class ImeTextReplacement {
-  const ImeTextReplacement({
-    this.range = const TextRange(),
-    this.text = '',
-    this.scriptClass = ImeScriptClass.unknown,
-  });
-
-  final TextRange range;
-  final String text;
+  final ImeMarkedRange markedRange;
   final ImeScriptClass scriptClass;
 }

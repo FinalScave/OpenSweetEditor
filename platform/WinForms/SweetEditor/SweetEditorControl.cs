@@ -1566,7 +1566,7 @@ namespace SweetEditor {
 		protected override void OnKeyDown(KeyEventArgs e) {
 			using var perf = StartInputPerf($"OnKeyDown({e.KeyCode})");
 			RefreshPointerModifiers(e.KeyCode);
-			if (editorCore.IsComposing()) {
+			if (editorCore.HasPreedit()) {
 				if (TryHandleComposingKeyDown(e)) {
 					return;
 				}
@@ -1626,7 +1626,7 @@ namespace SweetEditor {
 		protected override void OnKeyPress(KeyPressEventArgs e) {
 			using var perf = StartInputPerf($"OnKeyPress({(int)e.KeyChar})");
 			// Ignore KeyPress while IME composition is active.
-			if (editorCore.IsComposing()) {
+			if (editorCore.HasPreedit()) {
 				base.OnKeyPress(e);
 				return;
 			}
@@ -1666,16 +1666,26 @@ namespace SweetEditor {
 							if ((imeFlags & GCS_RESULTSTR) != 0) {
 								string resultStr = GetImmCompositionString(hIMC, GCS_RESULTSTR);
 								if (!string.IsNullOrEmpty(resultStr)) {
-									DispatchEditorActionResult(editorCore.CommitImeText(resultStr, ImeScriptClass.UNKNOWN));
-								} else if ((imeFlags & GCS_COMPSTR) == 0 && HasImeComposingSession()) {
-									DispatchEditorActionResult(editorCore.FinishImePreedit());
+									DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
+										Kind = ImeCommandKind.COMMIT_TEXT,
+										Text = resultStr,
+										ScriptClass = ImeScriptClass.UNKNOWN
+									}));
+								} else if ((imeFlags & GCS_COMPSTR) == 0 && HasImeActiveRange()) {
+									DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
+										Kind = ImeCommandKind.FINISH_PREEDIT
+									}));
 								}
 							}
 							if ((imeFlags & GCS_COMPSTR) != 0) {
 								string compStr = GetImmCompositionString(hIMC, GCS_COMPSTR);
 								int cursorPos = GetImmCompositionCursorPosition(hIMC, compStr.Length);
-								DispatchEditorActionResult(editorCore.SetImeComposingTextSelection(
-									compStr, cursorPos, cursorPos, ImeScriptClass.UNKNOWN));
+								DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
+									Kind = ImeCommandKind.SET_PREEDIT_TEXT,
+									Text = compStr,
+									Selection = new ImeOffsetRange { Start = cursorPos, End = cursorPos },
+									ScriptClass = ImeScriptClass.UNKNOWN
+								}));
 							}
 						} finally {
 							ImmReleaseContext(this.Handle, hIMC);
@@ -1686,8 +1696,10 @@ namespace SweetEditor {
 				}
 				case WM_IME_ENDCOMPOSITION: {
 					using var perf = StartInputPerf("WndProc(IME_END)");
-					if (HasImeComposingSession()) {
-						DispatchEditorActionResult(editorCore.FinishImePreedit());
+					if (HasImeActiveRange()) {
+						DispatchEditorActionResult(editorCore.HandleImeCommandMessage(new ImeCommandMessage {
+							Kind = ImeCommandKind.FINISH_PREEDIT
+						}));
 					}
 					base.WndProc(ref m);
 					return;
@@ -1710,21 +1722,32 @@ namespace SweetEditor {
 			return Math.Max(0, Math.Min(cursorPosition, fallback));
 		}
 
-		private bool HasImeComposingSession() {
-			return editorCore.IsComposing() || editorCore.GetImeSyncSnapshot().HasComposingSession;
+		private bool HasImeActiveRange() {
+			ImeSyncSnapshot snapshot = editorCore.GetImeSyncSnapshot();
+			return editorCore.HasPreedit() || snapshot.HasPreeditRange || snapshot.HasSystemMarkRange;
 		}
 
 		private bool TryHandleComposingKeyDown(KeyEventArgs e) {
 			EditorActionResult result;
 			switch (e.KeyCode) {
 				case Keys.Back:
-					result = editorCore.DeleteImeBackward(1, ImeTextUnit.GRAPHEME);
+					result = editorCore.HandleImeCommandMessage(new ImeCommandMessage {
+						Kind = ImeCommandKind.DELETE_SURROUNDING_TEXT,
+						DeleteBefore = 1,
+						TextUnit = ImeTextUnit.GRAPHEME
+					});
 					break;
 				case Keys.Delete:
-					result = editorCore.DeleteImeForward(1, ImeTextUnit.GRAPHEME);
+					result = editorCore.HandleImeCommandMessage(new ImeCommandMessage {
+						Kind = ImeCommandKind.DELETE_SURROUNDING_TEXT,
+						DeleteAfter = 1,
+						TextUnit = ImeTextUnit.GRAPHEME
+					});
 					break;
 				case Keys.Escape:
-					result = editorCore.CancelImePreedit();
+					result = editorCore.HandleImeCommandMessage(new ImeCommandMessage {
+						Kind = ImeCommandKind.CANCEL_PREEDIT
+					});
 					break;
 				default:
 					return false;

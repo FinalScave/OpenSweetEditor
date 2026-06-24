@@ -7,29 +7,25 @@ public final class ImeSyncSnapshot {
     public TextPosition cursor = new TextPosition();
     public TextRange selection = new TextRange();
     public boolean hasSelection = false;
-    public boolean hasComposingSession = false;
-    public boolean hasVisibleCompositionRange = false;
-    public TextRange visibleCompositionRange = new TextRange();
-    public boolean hasPlatformMarkedRange = false;
-    public TextRange platformMarkedRange = new TextRange();
-    public ImePreeditStorage preeditStorage = ImePreeditStorage.NONE;
+    public boolean hasPreeditRange = false;
+    public TextRange preeditRange = new TextRange();
+    public boolean hasSystemMarkRange = false;
+    public TextRange systemMarkRange = new TextRange();
     public ImeContextPolicy contextPolicy = ImeContextPolicy.NONE;
-    public boolean clearPlatformPreedit = false;
+    public boolean clearSystemMark = false;
 
     public ImeSyncSnapshot() {
     }
 
-    public ImeSyncSnapshot(TextPosition cursor, TextRange selection, boolean hasSelection, boolean hasComposingSession, boolean hasVisibleCompositionRange, TextRange visibleCompositionRange, boolean hasPlatformMarkedRange, TextRange platformMarkedRange, ImePreeditStorage preeditStorage, ImeContextPolicy contextPolicy, boolean clearPlatformPreedit) {
+    public ImeSyncSnapshot(TextPosition cursor, TextRange selection, boolean hasSelection, boolean hasPreeditRange, TextRange preeditRange, boolean hasSystemMarkRange, TextRange systemMarkRange, ImeContextPolicy contextPolicy, boolean clearSystemMark) {
         this.cursor = cursor;
         this.selection = selection;
         this.hasSelection = hasSelection;
-        this.hasComposingSession = hasComposingSession;
-        this.hasVisibleCompositionRange = hasVisibleCompositionRange;
-        this.visibleCompositionRange = visibleCompositionRange;
-        this.hasPlatformMarkedRange = hasPlatformMarkedRange;
-        this.platformMarkedRange = platformMarkedRange;
-        this.preeditStorage = preeditStorage;
+        this.hasPreeditRange = hasPreeditRange;
+        this.preeditRange = preeditRange;
+        this.hasSystemMarkRange = hasSystemMarkRange;
+        this.systemMarkRange = systemMarkRange;
         this.contextPolicy = contextPolicy;
-        this.clearPlatformPreedit = clearPlatformPreedit;
+        this.clearSystemMark = clearSystemMark;
     }
 }

@@ -1280,7 +1280,7 @@ const uint8_t* editor_clear_all_decorations(intptr_t editor_handle, size_t* out_
 
 #pragma endregion
 
-#pragma region [Linked Editing & Utilities]
+#pragma region [Linked Editing]
 
 const uint8_t* editor_insert_snippet(intptr_t editor_handle, const char* snippet_template, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
@@ -1328,6 +1328,94 @@ const uint8_t* editor_cancel_linked_editing(intptr_t editor_handle, size_t* out_
   return editorActionResultToBinary(editor_core->cancelLinkedEditing(), out_size);
 }
 
+#pragma endregion
+
+#pragma region [IME]
+
+int editor_ime_has_preedit(intptr_t editor_handle) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    return 0;
+  }
+  return editor_core->hasPreedit() ? 1 : 0;
+}
+
+const uint8_t* editor_ime_handle_command_message(intptr_t editor_handle, const uint8_t* data,
+                                                 size_t size, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    return nullBinaryPayload(out_size);
+  }
+  ImeCommandMessage payload;
+  if (!protocol::ProtocolReader::decode(data, size, payload)) {
+    return nullBinaryPayload(out_size);
+  }
+  return editorActionResultToBinary(editor_core->handleImeCommandMessage(payload), out_size);
+}
+
+const uint8_t* editor_ime_handle_text_update_message(intptr_t editor_handle, const uint8_t* data,
+                                                     size_t size, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    return nullBinaryPayload(out_size);
+  }
+  ImeTextUpdateMessage payload;
+  if (!protocol::ProtocolReader::decode(data, size, payload)) {
+    return nullBinaryPayload(out_size);
+  }
+  return editorActionResultToBinary(editor_core->handleImeTextUpdateMessage(payload), out_size);
+}
+
+int editor_ime_get_keyboard_script_class(intptr_t editor_handle) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    return static_cast<int>(ImeScriptClass::UNKNOWN);
+  }
+  return static_cast<int>(editor_core->getImeKeyboardScriptClass());
+}
+
+const uint8_t* editor_ime_get_sync_snapshot(intptr_t editor_handle, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    if (out_size != nullptr) {
+      *out_size = 0;
+    }
+    return nullptr;
+  }
+  return protocolToBinary(editor_core->getImeSyncSnapshot(), out_size, sizeof(int32_t) * 21);
+}
+
+const uint8_t* editor_ime_get_command_input_context(intptr_t editor_handle, size_t before_length,
+                                                    size_t after_length, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    if (out_size != nullptr) {
+      *out_size = 0;
+    }
+    return nullptr;
+  }
+  ImeInputContext context = editor_core->getImeCommandInputContext(before_length, after_length);
+  return protocolToBinary(context, out_size, sizeof(int32_t) * 9 + sizeof(int64_t) + context.text.size());
+}
+
+const uint8_t* editor_ime_get_text_update_input_context(intptr_t editor_handle, int scope,
+                                                        size_t before_length, size_t after_length, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) {
+    if (out_size != nullptr) {
+      *out_size = 0;
+    }
+    return nullptr;
+  }
+  ImeInputContext context = editor_core->getImeTextUpdateInputContext(
+      static_cast<ImeTextUpdateScope>(scope),
+      before_length,
+      after_length);
+  return protocolToBinary(context, out_size, sizeof(int32_t) * 9 + sizeof(int64_t) + context.text.size());
+}
+
+#pragma endregion
+
 void free_u16_string(intptr_t string_ptr) {
   U16Char* ptr = reinterpret_cast<U16Char*>(string_ptr);
   delete[] ptr;
@@ -1342,524 +1430,6 @@ void free_binary_data(intptr_t data_ptr) {
   const uint8_t* ptr = reinterpret_cast<const uint8_t*>(data_ptr);
   delete[] ptr;
 }
-
-#pragma endregion
-
-#pragma region [IME]
-
-int editor_is_composing(intptr_t editor_handle) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    return 0;
-  }
-  return editor_core->isComposing() ? 1 : 0;
-}
-
-void editor_get_composing_range(intptr_t editor_handle,
-                                int32_t* out_start_line,
-                                int32_t* out_start_column,
-                                int32_t* out_end_line,
-                                int32_t* out_end_column) {
-  if (out_start_line) *out_start_line = -1;
-  if (out_start_column) *out_start_column = -1;
-  if (out_end_line) *out_end_line = -1;
-  if (out_end_column) *out_end_column = -1;
-
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || !editor_core->isComposing()) {
-    return;
-  }
-
-  const CompositionState& state = editor_core->getCompositionState();
-  if (!state.is_composing || !state.visible) {
-    return;
-  }
-
-  TextRange range = state.anchor_range.start == state.anchor_range.end
-      ? TextRange {state.start_position, {state.start_position.line, state.start_position.column + state.composing_columns}}
-      : state.anchor_range;
-  if (out_start_line) *out_start_line = static_cast<int32_t>(range.start.line);
-  if (out_start_column) *out_start_column = static_cast<int32_t>(range.start.column);
-  if (out_end_line) *out_end_line = static_cast<int32_t>(range.end.line);
-  if (out_end_column) *out_end_column = static_cast<int32_t>(range.end.column);
-}
-
-void editor_get_composing_session_range(intptr_t editor_handle,
-                                        int32_t* out_start_line,
-                                        int32_t* out_start_column,
-                                        int32_t* out_end_line,
-                                        int32_t* out_end_column) {
-  if (out_start_line) *out_start_line = -1;
-  if (out_start_column) *out_start_column = -1;
-  if (out_end_line) *out_end_line = -1;
-  if (out_end_column) *out_end_column = -1;
-
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr || !editor_core->hasComposingSession()) {
-    return;
-  }
-
-  const CompositionState& state = editor_core->getCompositionState();
-  if (!state.has_session) {
-    return;
-  }
-
-  TextRange range = state.anchor_range.start == state.anchor_range.end
-      ? TextRange {state.start_position, {state.start_position.line, state.start_position.column + state.composing_columns}}
-      : state.anchor_range;
-  if (out_start_line) *out_start_line = static_cast<int32_t>(range.start.line);
-  if (out_start_column) *out_start_column = static_cast<int32_t>(range.start.column);
-  if (out_end_line) *out_end_line = static_cast<int32_t>(range.end.line);
-  if (out_end_column) *out_end_column = static_cast<int32_t>(range.end.column);
-}
-
-const uint8_t* editor_ime_update_preedit(intptr_t editor_handle,
-                                         const char* text,
-                                         int script_hint,
-                                         size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->updateImePreedit(
-      text != nullptr ? text : "",
-      static_cast<ImeScriptClass>(script_hint)), out_size);
-}
-
-const uint8_t* editor_ime_set_composing_text(intptr_t editor_handle,
-                                             const char* text,
-                                             int cursor_offset,
-                                             int script_hint,
-                                             size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->setImeComposingText(
-      text != nullptr ? text : "",
-      cursor_offset,
-      static_cast<ImeScriptClass>(script_hint)), out_size);
-}
-
-const uint8_t* editor_ime_set_composing_text_selection(intptr_t editor_handle,
-                                                       const char* text,
-                                                       size_t selection_start_offset,
-                                                       size_t selection_end_offset,
-                                                       int script_hint,
-                                                       size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->setImeComposingText(
-      text != nullptr ? text : "",
-      selection_start_offset,
-      selection_end_offset,
-      static_cast<ImeScriptClass>(script_hint)), out_size);
-}
-
-const uint8_t* editor_ime_commit_text(intptr_t editor_handle,
-                                      const char* text,
-                                      int script_hint,
-                                      size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->commitImeText(
-      text != nullptr ? text : "",
-      static_cast<ImeScriptClass>(script_hint)), out_size);
-}
-
-const uint8_t* editor_ime_commit_text_with_cursor(intptr_t editor_handle,
-                                                  const char* text,
-                                                  int cursor_offset,
-                                                  int script_hint,
-                                                  size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->commitImeText(
-      text != nullptr ? text : "",
-      cursor_offset,
-      static_cast<ImeScriptClass>(script_hint)), out_size);
-}
-
-const uint8_t* editor_ime_finish_preedit(intptr_t editor_handle, size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->finishImePreedit(), out_size);
-}
-
-const uint8_t* editor_ime_cancel_preedit(intptr_t editor_handle, size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->cancelImePreedit(), out_size);
-}
-
-const uint8_t* editor_ime_mark_document_range(intptr_t editor_handle,
-                                              size_t start_line,
-                                              size_t start_column,
-                                              size_t end_line,
-                                              size_t end_column,
-                                              int script_hint,
-                                              size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->markImeDocumentRange(
-      {{start_line, start_column}, {end_line, end_column}},
-      static_cast<ImeScriptClass>(script_hint)), out_size);
-}
-
-const uint8_t* editor_ime_mark_document_range_by_offset(intptr_t editor_handle,
-                                                        size_t start_offset,
-                                                        size_t end_offset,
-                                                        int script_hint,
-                                                        size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->markImeDocumentRange(
-      start_offset,
-      end_offset,
-      static_cast<ImeScriptClass>(script_hint)), out_size);
-}
-
-const uint8_t* editor_ime_replace_text(intptr_t editor_handle,
-                                       const uint8_t* data,
-                                       size_t size,
-                                       size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  ImeTextReplacement payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-
-  return editorActionResultToBinary(editor_core->replaceImeText(payload), out_size);
-}
-
-const uint8_t* editor_ime_replace_document_text(intptr_t editor_handle,
-                                                const uint8_t* data,
-                                                size_t size,
-                                                size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  ImeDocumentTextReplacement payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-
-  return editorActionResultToBinary(editor_core->replaceImeDocumentText(payload), out_size);
-}
-
-const uint8_t* editor_ime_replace_input_context_text(intptr_t editor_handle,
-                                                     const uint8_t* data,
-                                                     size_t size,
-                                                     size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  ImeInputContextTextReplacement payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-
-  return editorActionResultToBinary(editor_core->replaceImeInputContextText(payload), out_size);
-}
-
-const uint8_t* editor_ime_mark_input_context_range(intptr_t editor_handle,
-                                                   size_t start_offset,
-                                                   size_t end_offset,
-                                                   int script_hint,
-                                                   size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->markImeInputContextRange(
-      start_offset,
-      end_offset,
-      static_cast<ImeScriptClass>(script_hint)), out_size);
-}
-
-const uint8_t* editor_ime_notify_document_selection_changed(intptr_t editor_handle,
-                                                            size_t start_offset,
-                                                            size_t end_offset,
-                                                            size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->notifyImeDocumentSelectionChanged(
-      start_offset,
-      end_offset), out_size);
-}
-
-const uint8_t* editor_ime_notify_input_context_selection_changed(intptr_t editor_handle,
-                                                                 size_t start_offset,
-                                                                 size_t end_offset,
-                                                                 size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->notifyImeInputContextSelectionChanged(
-      start_offset,
-      end_offset), out_size);
-}
-
-const uint8_t* editor_ime_update_text_model_state(intptr_t editor_handle,
-                                                  const uint8_t* data,
-                                                  size_t size,
-                                                  size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  ImeTextModelState payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-
-  return editorActionResultToBinary(editor_core->updateImeTextModelState(payload), out_size);
-}
-
-const uint8_t* editor_ime_update_text_model_delta(intptr_t editor_handle,
-                                                  const uint8_t* data,
-                                                  size_t size,
-                                                  size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  ImeTextModelDelta payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-
-  return editorActionResultToBinary(editor_core->updateImeTextModelDelta(payload), out_size);
-}
-
-const uint8_t* editor_ime_update_input_state_selection(intptr_t editor_handle,
-                                                       uint64_t context_id,
-                                                       int32_t document_start_offset,
-                                                       int32_t selection_start_offset,
-                                                       int32_t selection_end_offset,
-                                                       size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->updateImeInputStateSelection(
-      context_id,
-      document_start_offset,
-      selection_start_offset,
-      selection_end_offset), out_size);
-}
-
-const uint8_t* editor_ime_replace_input_state_text(intptr_t editor_handle,
-                                                   const uint8_t* data,
-                                                   size_t size,
-                                                   size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  ImeInputStateTextReplacement payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-
-  return editorActionResultToBinary(editor_core->replaceImeInputStateText(payload), out_size);
-}
-
-const uint8_t* editor_ime_delete_backward(intptr_t editor_handle,
-                                          size_t before_length,
-                                          int text_unit,
-                                          size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->deleteImeBackward(
-      before_length,
-      static_cast<ImeTextUnit>(text_unit)), out_size);
-}
-
-const uint8_t* editor_ime_delete_forward(intptr_t editor_handle,
-                                         size_t after_length,
-                                         int text_unit,
-                                         size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->deleteImeForward(
-      after_length,
-      static_cast<ImeTextUnit>(text_unit)), out_size);
-}
-
-const uint8_t* editor_ime_delete_surrounding(intptr_t editor_handle,
-                                             size_t before_length,
-                                             size_t after_length,
-                                             int text_unit,
-                                             size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->deleteImeSurrounding(
-      before_length,
-      after_length,
-      static_cast<ImeTextUnit>(text_unit)), out_size);
-}
-
-const uint8_t* editor_ime_notify_selection_changed(intptr_t editor_handle,
-                                                   size_t start_line,
-                                                   size_t start_column,
-                                                   size_t end_line,
-                                                   size_t end_column,
-                                                   size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->notifyImeSelectionChanged(
-      {{start_line, start_column}, {end_line, end_column}}), out_size);
-}
-
-const uint8_t* editor_ime_notify_cursor_changed(intptr_t editor_handle,
-                                                size_t cursor_line,
-                                                size_t cursor_column,
-                                                size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-
-  return editorActionResultToBinary(editor_core->notifyImeCursorChanged(
-      {cursor_line, cursor_column}), out_size);
-}
-
-const uint8_t* editor_ime_set_keyboard_script_class(intptr_t editor_handle, int script_class, size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    return nullBinaryPayload(out_size);
-  }
-  return editorActionResultToBinary(
-      editor_core->setImeKeyboardScriptClass(static_cast<ImeScriptClass>(script_class)),
-      out_size);
-}
-
-int editor_ime_get_keyboard_script_class(intptr_t editor_handle) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    return static_cast<int>(ImeScriptClass::UNKNOWN);
-  }
-  return static_cast<int>(editor_core->getImeKeyboardScriptClass());
-}
-
-const uint8_t* editor_get_ime_sync_snapshot(intptr_t editor_handle, size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-  return protocolToBinary(editor_core->getImeSyncSnapshot(), out_size, sizeof(int32_t) * 21);
-}
-
-const uint8_t* editor_get_ime_input_context(intptr_t editor_handle,
-                                            size_t before_length,
-                                            size_t after_length,
-                                            size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-  ImeInputContext context = editor_core->getImeInputContext(before_length, after_length);
-  return protocolToBinary(context, out_size, sizeof(int32_t) * 9 + sizeof(int64_t) + context.text.size());
-}
-
-const uint8_t* editor_get_ime_text_model_input_context(intptr_t editor_handle,
-                                                       int mode,
-                                                       size_t before_length,
-                                                       size_t after_length,
-                                                       size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-  ImeInputContext context = editor_core->getImeTextModelInputContext(
-      static_cast<ImeTextModelMode>(mode),
-      before_length,
-      after_length);
-  return protocolToBinary(context, out_size, sizeof(int32_t) * 9 + sizeof(int64_t) + context.text.size());
-}
-
-#pragma endregion
 
 #ifdef _WIN32
 LONG WINAPI MyUnhandledExceptionFilter(PEXCEPTION_POINTERS pExceptionInfo) {

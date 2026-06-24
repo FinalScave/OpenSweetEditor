@@ -559,146 +559,40 @@ class SweetEditorCore {
     // MARK: - IME Composition
 
     @discardableResult
-    func updateImePreedit(_ text: String) -> EditorActionResult? {
+    func handleImeCommandMessage(_ message: ImeCommandMessage) -> EditorActionResult? {
         return performCoreCall {
+            let payload = CoreProtocol.encodeImeCommandMessage(message)
             var size: Int = 0
-            let ptr = text.withCString {
-                editor_ime_update_preedit(handle, $0, 0, &size)
+            let ptr = payload.withUnsafeBytes { raw in
+                let data = raw.baseAddress?.assumingMemoryBound(to: UInt8.self)
+                editor_ime_handle_command_message(handle,
+                                                  data,
+                                                  payload.count,
+                                                  &size)
             }
             return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
     @discardableResult
-    func setImeComposingTextSelection(_ text: String,
-                                      selectionStartOffset: Int,
-                                      selectionEndOffset: Int) -> EditorActionResult? {
+    func handleImeTextUpdateMessage(_ message: ImeTextUpdateMessage) -> EditorActionResult? {
         return performCoreCall {
+            let payload = CoreProtocol.encodeImeTextUpdateMessage(message)
             var size: Int = 0
-            let safeStart = max(0, selectionStartOffset)
-            let safeEnd = max(0, selectionEndOffset)
-            let ptr = text.withCString {
-                editor_ime_set_composing_text_selection(handle, $0, safeStart, safeEnd, 0, &size)
-            }
-            return decodeEditorActionPayload(ptr, size: size)
-        }
-    }
-
-    @discardableResult
-    func commitImeText(_ text: String?) -> EditorActionResult? {
-        return performCoreCall {
-            var size: Int = 0
-            let call: (UnsafePointer<CChar>?) -> UnsafePointer<UInt8>? = { cStr in
-                editor_ime_commit_text(handle, cStr, 0, &size)
-            }
-            let ptr: UnsafePointer<UInt8>?
-            if let value = text {
-                ptr = value.withCString { call($0) }
-            } else {
-                ptr = call(nil)
-            }
-            return decodeEditorActionPayload(ptr, size: size)
-        }
-    }
-
-    @discardableResult
-    func finishImePreedit() -> EditorActionResult? {
-        return performCoreCall {
-            var size: Int = 0
-            let ptr = editor_ime_finish_preedit(handle, &size)
-            return decodeEditorActionPayload(ptr, size: size)
-        }
-    }
-
-    @discardableResult
-    func cancelImePreedit() -> EditorActionResult? {
-        return performCoreCall {
-            var size: Int = 0
-            let ptr = editor_ime_cancel_preedit(handle, &size)
-            return decodeEditorActionPayload(ptr, size: size)
-        }
-    }
-
-    @discardableResult
-    func markImeDocumentRange(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) -> EditorActionResult? {
-        return performCoreCall {
-            var size: Int = 0
-            let ptr = editor_ime_mark_document_range(handle,
-                                                     startLine,
-                                                     startColumn,
-                                                     endLine,
-                                                      endColumn,
-                                                      0,
+            let ptr = payload.withUnsafeBytes { raw in
+                let data = raw.baseAddress?.assumingMemoryBound(to: UInt8.self)
+                editor_ime_handle_text_update_message(handle,
+                                                      data,
+                                                      payload.count,
                                                       &size)
-            return decodeEditorActionPayload(ptr, size: size)
-        }
-    }
-
-    @discardableResult
-    func markImeDocumentRange(startOffset: Int, endOffset: Int) -> EditorActionResult? {
-        return performCoreCall {
-            var size: Int = 0
-            let ptr = editor_ime_mark_document_range_by_offset(handle,
-                                                               startOffset,
-                                                                endOffset,
-                                                                0,
-                                                                &size)
-            return decodeEditorActionPayload(ptr, size: size)
-        }
-    }
-
-    @discardableResult
-    func updateImeTextModelState(_ state: ImeTextModelState) -> EditorActionResult? {
-        return performCoreCall {
-            let payload = CoreProtocol.encodeImeTextModelState(state)
-            var size: Int = 0
-            let ptr = payload.withUnsafeBytes { raw in
-                let data = raw.baseAddress?.assumingMemoryBound(to: UInt8.self)
-                editor_ime_update_text_model_state(handle,
-                                                   data,
-                                                   payload.count,
-                                                   &size)
             }
             return decodeEditorActionPayload(ptr, size: size)
         }
     }
 
-    @discardableResult
-    func updateImeInputStateSelection(contextId: Int64,
-                                      documentStartOffset: Int,
-                                      selectionStartOffset: Int,
-                                      selectionEndOffset: Int) -> EditorActionResult? {
+    func hasPreedit() -> Bool {
         return performCoreCall {
-            var size: Int = 0
-            let ptr = editor_ime_update_input_state_selection(handle,
-                                                              UInt64(max(0, contextId)),
-                                                              Int32(max(0, documentStartOffset)),
-                                                              Int32(selectionStartOffset),
-                                                              Int32(selectionEndOffset),
-                                                              &size)
-            return decodeEditorActionPayload(ptr, size: size)
-        }
-    }
-
-    @discardableResult
-    func replaceImeInputStateText(_ replacement: ImeInputStateTextReplacement) -> EditorActionResult? {
-        return performCoreCall {
-            let payload = CoreProtocol.encodeImeInputStateTextReplacement(replacement)
-            var size: Int = 0
-            let ptr = payload.withUnsafeBytes { raw in
-                let data = raw.baseAddress?.assumingMemoryBound(to: UInt8.self)
-                editor_ime_replace_input_state_text(handle,
-                                                    data,
-                                                    payload.count,
-                                                    &size)
-            }
-            return decodeEditorActionPayload(ptr, size: size)
-        }
-    }
-
-    func isComposing() -> Bool {
-        return performCoreCall {
-            editor_is_composing(handle) != 0
+            editor_ime_has_preedit(handle) != 0
         }
     }
 
@@ -706,7 +600,7 @@ class SweetEditorCore {
     func setCompositionEnabled(_ enabled: Bool) -> EditorActionResult? {
         compositionEnabled = enabled
         if !enabled {
-            return cancelImePreedit()
+            return handleImeCommandMessage(ImeCommandMessage(kind: .CANCEL_PREEDIT))
         }
         return nil
     }

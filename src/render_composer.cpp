@@ -72,7 +72,7 @@ namespace NS_SWEETEDITOR {
 
   void RenderComposer::buildCompositionRangeEffect(EditorRenderModel& model, const CompositionState& composition,
                                                    float line_height) const {
-    if (!composition.is_composing || composition.composing_columns == 0) return;
+    if (composition.kind == CompositionKind::NONE || composition.preedit_columns == 0) return;
     if (m_settings_ == nullptr) return;
 
     float font_height = m_text_layout_->getLayoutMetrics().font_height;
@@ -80,13 +80,13 @@ namespace NS_SWEETEDITOR {
     appendRangeEffectsForRange(model,
                                composition.start_position.line,
                                composition.start_position.column,
-                               composition.start_position.column + composition.composing_columns,
+                               composition.start_position.column + composition.preedit_columns,
                                font_height,
                                top_padding,
                                RangeEffectKind::IME_COMPOSITION,
                                m_settings_->range_effect_styles.ime_composition);
-    LOGD("buildRenderModel: composition range effect composing_cols=%zu, start_pos=(%zu,%zu)",
-         composition.composing_columns,
+    LOGD("buildRenderModel: composition range effect preedit_cols=%zu, start_pos=(%zu,%zu)",
+         composition.preedit_columns,
          composition.start_position.line, composition.start_position.column);
   }
 

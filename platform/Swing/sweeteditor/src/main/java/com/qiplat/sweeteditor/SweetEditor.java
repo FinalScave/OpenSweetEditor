@@ -18,7 +18,10 @@ import com.qiplat.sweeteditor.core.config.RangeEffectUnderlineStyle;
 import com.qiplat.sweeteditor.core.adornment.*;
 import com.qiplat.sweeteditor.core.foundation.*;
 import com.qiplat.sweeteditor.core.foundation.PointF;
+import com.qiplat.sweeteditor.core.ime.ImeCommandKind;
+import com.qiplat.sweeteditor.core.ime.ImeCommandMessage;
 import com.qiplat.sweeteditor.core.ime.ImeInputContext;
+import com.qiplat.sweeteditor.core.ime.ImeOffsetRange;
 import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
 import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
 import com.qiplat.sweeteditor.core.interaction.GestureType;
@@ -1074,7 +1077,7 @@ public class SweetEditor extends JPanel {
                 try {
                     refreshPointerModifiers(e);
 
-                    if (editorCore.isComposing()) {
+                    if (editorCore.hasPreedit()) {
                         handleComposingKeyPressed(e);
                         return;
                     }
@@ -1142,7 +1145,7 @@ public class SweetEditor extends JPanel {
             public void keyTyped(KeyEvent e) {
                 long inputPerfStart = startInputPerf();
                 try {
-                    if (editorCore.isComposing()) return;
+                    if (editorCore.hasPreedit()) return;
                     char ch = e.getKeyChar();
                     if (!Character.isISOControl(ch) && ch != KeyEvent.CHAR_UNDEFINED) {
                         EditorActionResult result = editorCore.handleKeyEvent(KeyCode.NONE, String.valueOf(ch), 0);
@@ -1179,19 +1182,28 @@ public class SweetEditor extends JPanel {
 
                     boolean changed = false;
                     if (committed.length() > 0) {
-                        EditorActionResult result = editorCore.commitImeText(
-                                committed.toString(), ImeScriptClass.UNKNOWN.value);
+                        ImeCommandMessage message = new ImeCommandMessage();
+                        message.kind = ImeCommandKind.COMMIT_TEXT;
+                        message.text = committed.toString();
+                        message.scriptClass = ImeScriptClass.UNKNOWN;
+                        EditorActionResult result = editorCore.handleImeCommandMessage(message);
                         dispatchEditorActionResult(result);
                         changed = true;
                     }
                     if (composed.length() > 0) {
                         int caretOffset = getComposedCaretOffset(event, committedCount, composed.length());
-                        EditorActionResult result = editorCore.setImeComposingTextSelection(
-                                composed.toString(), caretOffset, caretOffset, ImeScriptClass.UNKNOWN.value);
+                        ImeCommandMessage message = new ImeCommandMessage();
+                        message.kind = ImeCommandKind.SET_PREEDIT_TEXT;
+                        message.text = composed.toString();
+                        message.selection = new ImeOffsetRange(caretOffset, caretOffset);
+                        message.scriptClass = ImeScriptClass.UNKNOWN;
+                        EditorActionResult result = editorCore.handleImeCommandMessage(message);
                         dispatchEditorActionResult(result);
                         changed = true;
-                    } else if (editorCore.isComposing() && committed.length() == 0) {
-                        EditorActionResult result = editorCore.cancelImePreedit();
+                    } else if (editorCore.hasPreedit() && committed.length() == 0) {
+                        ImeCommandMessage message = new ImeCommandMessage();
+                        message.kind = ImeCommandKind.CANCEL_PREEDIT;
+                        EditorActionResult result = editorCore.handleImeCommandMessage(message);
                         dispatchEditorActionResult(result);
                         changed = true;
                     }
@@ -1243,7 +1255,7 @@ public class SweetEditor extends JPanel {
 
             @Override
             public int getInsertPositionOffset() {
-                ImeInputContext context = editorCore.getImeInputContext(0, 0);
+                ImeInputContext context = editorCore.getImeCommandInputContext(0, 0);
                 return context.documentStartOffset + context.selection.start;
             }
 
@@ -1280,15 +1292,23 @@ public class SweetEditor extends JPanel {
 
     private void handleComposingKeyPressed(KeyEvent e) {
         EditorActionResult result = null;
+        ImeCommandMessage message = new ImeCommandMessage();
         switch (e.getKeyCode()) {
             case KeyEvent.VK_BACK_SPACE:
-                result = editorCore.deleteImeBackward(1, ImeTextUnit.GRAPHEME.value);
+                message.kind = ImeCommandKind.DELETE_SURROUNDING_TEXT;
+                message.deleteBefore = 1;
+                message.textUnit = ImeTextUnit.GRAPHEME;
+                result = editorCore.handleImeCommandMessage(message);
                 break;
             case KeyEvent.VK_DELETE:
-                result = editorCore.deleteImeForward(1, ImeTextUnit.GRAPHEME.value);
+                message.kind = ImeCommandKind.DELETE_SURROUNDING_TEXT;
+                message.deleteAfter = 1;
+                message.textUnit = ImeTextUnit.GRAPHEME;
+                result = editorCore.handleImeCommandMessage(message);
                 break;
             case KeyEvent.VK_ESCAPE:
-                result = editorCore.cancelImePreedit();
+                message.kind = ImeCommandKind.CANCEL_PREEDIT;
+                result = editorCore.handleImeCommandMessage(message);
                 break;
             default:
                 return;

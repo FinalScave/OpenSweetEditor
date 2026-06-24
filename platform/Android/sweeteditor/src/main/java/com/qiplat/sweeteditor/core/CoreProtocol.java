@@ -46,21 +46,21 @@ import com.qiplat.sweeteditor.core.foundation.TextChange;
 import com.qiplat.sweeteditor.core.foundation.TextEdit;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
+import com.qiplat.sweeteditor.core.ime.ImeCommandKind;
+import com.qiplat.sweeteditor.core.ime.ImeCommandMessage;
 import com.qiplat.sweeteditor.core.ime.ImeContextPolicy;
-import com.qiplat.sweeteditor.core.ime.ImeDocumentTextReplacement;
 import com.qiplat.sweeteditor.core.ime.ImeInputContext;
 import com.qiplat.sweeteditor.core.ime.ImeInputContextKind;
-import com.qiplat.sweeteditor.core.ime.ImeInputContextTextReplacement;
-import com.qiplat.sweeteditor.core.ime.ImeInputStateTextReplacement;
+import com.qiplat.sweeteditor.core.ime.ImeMarkedRange;
+import com.qiplat.sweeteditor.core.ime.ImeMarkedRangeRole;
 import com.qiplat.sweeteditor.core.ime.ImeOffsetRange;
-import com.qiplat.sweeteditor.core.ime.ImePreeditStorage;
 import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
 import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
-import com.qiplat.sweeteditor.core.ime.ImeTextModelDelta;
-import com.qiplat.sweeteditor.core.ime.ImeTextModelMode;
-import com.qiplat.sweeteditor.core.ime.ImeTextModelState;
-import com.qiplat.sweeteditor.core.ime.ImeTextReplacement;
+import com.qiplat.sweeteditor.core.ime.ImeTextPatch;
 import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
+import com.qiplat.sweeteditor.core.ime.ImeTextUpdateKind;
+import com.qiplat.sweeteditor.core.ime.ImeTextUpdateMessage;
+import com.qiplat.sweeteditor.core.ime.ImeTextUpdateScope;
 import com.qiplat.sweeteditor.core.interaction.EventType;
 import com.qiplat.sweeteditor.core.interaction.GestureEvent;
 import com.qiplat.sweeteditor.core.interaction.GestureType;
@@ -1414,24 +1414,40 @@ public final class CoreProtocol {
         return size;
     }
 
-    private static void writeImeDocumentTextReplacementFields(ByteBuffer data, ImeDocumentTextReplacement value) {
-        data.putInt(value.startOffset);
-        data.putInt(value.endOffset);
+    private static void writeImeCommandMessageFields(ByteBuffer data, ImeCommandMessage value) {
+        data.putInt(value.kind.value);
+        data.putLong(value.contextId);
+        data.putInt(value.contextRevision);
+        data.putInt(value.documentStartOffset);
+        writeImeOffsetRangeFields(data, value.range);
+        writeImeOffsetRangeFields(data, value.selection);
         writeUtf8String(data, value.text);
         data.putInt(value.cursorOffset);
+        data.putInt(value.deleteBefore);
+        data.putInt(value.deleteAfter);
+        data.putInt(value.textUnit.value);
+        data.putInt(value.markedRole.value);
         data.putInt(value.scriptClass.value);
     }
 
-    public static void writeImeDocumentTextReplacement(ByteBuffer data, ImeDocumentTextReplacement value) {
+    public static void writeImeCommandMessage(ByteBuffer data, ImeCommandMessage value) {
         prepare(data);
-        writeImeDocumentTextReplacementFields(data, value);
+        writeImeCommandMessageFields(data, value);
     }
 
-    public static int sizeOfImeDocumentTextReplacement(ImeDocumentTextReplacement value) {
+    public static int sizeOfImeCommandMessage(ImeCommandMessage value) {
         int size = 0;
         size += 4;
+        size += 8;
         size += 4;
+        size += 4;
+        size += sizeOfImeOffsetRange(value.range);
+        size += sizeOfImeOffsetRange(value.selection);
         size += sizeOfUtf8String(value.text);
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
         size += 4;
         size += 4;
         return size;
@@ -1444,8 +1460,10 @@ public final class CoreProtocol {
         value.documentStartOffset = data.getInt();
         value.text = readUtf8String(data);
         value.selection = readImeOffsetRange(data);
-        value.hasComposition = data.getInt() != 0;
-        value.composition = readImeOffsetRange(data);
+        value.hasPreeditRange = data.getInt() != 0;
+        value.preeditRange = readImeOffsetRange(data);
+        value.hasSystemMarkRange = data.getInt() != 0;
+        value.systemMarkRange = readImeOffsetRange(data);
         value.kind = ImeInputContextKind.fromValue(data.getInt());
         return value;
     }
@@ -1455,53 +1473,32 @@ public final class CoreProtocol {
         return readImeInputContext(data);
     }
 
-    private static void writeImeInputContextTextReplacementFields(ByteBuffer data, ImeInputContextTextReplacement value) {
-        data.putInt(value.startOffset);
-        data.putInt(value.endOffset);
-        writeUtf8String(data, value.text);
-        data.putInt(value.cursorOffset);
-        data.putInt(value.scriptClass.value);
+    private static ImeMarkedRange readImeMarkedRange(ByteBuffer data) {
+        ImeMarkedRange value = new ImeMarkedRange();
+        value.role = ImeMarkedRangeRole.fromValue(data.getInt());
+        value.range = readImeOffsetRange(data);
+        return value;
     }
 
-    public static void writeImeInputContextTextReplacement(ByteBuffer data, ImeInputContextTextReplacement value) {
+    public static ImeMarkedRange decodeImeMarkedRange(ByteBuffer data) {
         prepare(data);
-        writeImeInputContextTextReplacementFields(data, value);
+        return readImeMarkedRange(data);
     }
 
-    public static int sizeOfImeInputContextTextReplacement(ImeInputContextTextReplacement value) {
+    private static void writeImeMarkedRangeFields(ByteBuffer data, ImeMarkedRange value) {
+        data.putInt(value.role.value);
+        writeImeOffsetRangeFields(data, value.range);
+    }
+
+    public static void writeImeMarkedRange(ByteBuffer data, ImeMarkedRange value) {
+        prepare(data);
+        writeImeMarkedRangeFields(data, value);
+    }
+
+    public static int sizeOfImeMarkedRange(ImeMarkedRange value) {
         int size = 0;
         size += 4;
-        size += 4;
-        size += sizeOfUtf8String(value.text);
-        size += 4;
-        size += 4;
-        return size;
-    }
-
-    private static void writeImeInputStateTextReplacementFields(ByteBuffer data, ImeInputStateTextReplacement value) {
-        data.putLong(value.contextId);
-        data.putInt(value.documentStartOffset);
-        data.putInt(value.startOffset);
-        data.putInt(value.endOffset);
-        writeUtf8String(data, value.text);
-        data.putInt(value.cursorOffset);
-        data.putInt(value.scriptClass.value);
-    }
-
-    public static void writeImeInputStateTextReplacement(ByteBuffer data, ImeInputStateTextReplacement value) {
-        prepare(data);
-        writeImeInputStateTextReplacementFields(data, value);
-    }
-
-    public static int sizeOfImeInputStateTextReplacement(ImeInputStateTextReplacement value) {
-        int size = 0;
-        size += 8;
-        size += 4;
-        size += 4;
-        size += 4;
-        size += sizeOfUtf8String(value.text);
-        size += 4;
-        size += 4;
+        size += sizeOfImeOffsetRange(value.range);
         return size;
     }
 
@@ -1539,14 +1536,12 @@ public final class CoreProtocol {
         value.cursor = readTextPosition(data);
         value.selection = readTextRange(data);
         value.hasSelection = data.getInt() != 0;
-        value.hasComposingSession = data.getInt() != 0;
-        value.hasVisibleCompositionRange = data.getInt() != 0;
-        value.visibleCompositionRange = readTextRange(data);
-        value.hasPlatformMarkedRange = data.getInt() != 0;
-        value.platformMarkedRange = readTextRange(data);
-        value.preeditStorage = ImePreeditStorage.fromValue(data.getInt());
+        value.hasPreeditRange = data.getInt() != 0;
+        value.preeditRange = readTextRange(data);
+        value.hasSystemMarkRange = data.getInt() != 0;
+        value.systemMarkRange = readTextRange(data);
         value.contextPolicy = ImeContextPolicy.fromValue(data.getInt());
-        value.clearPlatformPreedit = data.getInt() != 0;
+        value.clearSystemMark = data.getInt() != 0;
         return value;
     }
 
@@ -1555,79 +1550,64 @@ public final class CoreProtocol {
         return readImeSyncSnapshot(data);
     }
 
-    private static void writeImeTextModelDeltaFields(ByteBuffer data, ImeTextModelDelta value) {
-        data.putInt(value.mode.value);
-        data.putLong(value.contextId);
-        data.putInt(value.documentStartOffset);
-        writeUtf8String(data, value.oldText);
-        writeImeOffsetRangeFields(data, value.delta);
-        writeUtf8String(data, value.deltaText);
-        writeImeOffsetRangeFields(data, value.selection);
-        writeImeOffsetRangeFields(data, value.composition);
-        data.putInt(value.scriptClass.value);
+    private static ImeTextPatch readImeTextPatch(ByteBuffer data) {
+        ImeTextPatch value = new ImeTextPatch();
+        value.range = readImeOffsetRange(data);
+        value.text = readUtf8String(data);
+        return value;
     }
 
-    public static void writeImeTextModelDelta(ByteBuffer data, ImeTextModelDelta value) {
+    public static ImeTextPatch decodeImeTextPatch(ByteBuffer data) {
         prepare(data);
-        writeImeTextModelDeltaFields(data, value);
+        return readImeTextPatch(data);
     }
 
-    public static int sizeOfImeTextModelDelta(ImeTextModelDelta value) {
+    private static void writeImeTextPatchFields(ByteBuffer data, ImeTextPatch value) {
+        writeImeOffsetRangeFields(data, value.range);
+        writeUtf8String(data, value.text);
+    }
+
+    public static void writeImeTextPatch(ByteBuffer data, ImeTextPatch value) {
+        prepare(data);
+        writeImeTextPatchFields(data, value);
+    }
+
+    public static int sizeOfImeTextPatch(ImeTextPatch value) {
         int size = 0;
-        size += 4;
-        size += 8;
-        size += 4;
-        size += sizeOfUtf8String(value.oldText);
-        size += sizeOfImeOffsetRange(value.delta);
-        size += sizeOfUtf8String(value.deltaText);
-        size += sizeOfImeOffsetRange(value.selection);
-        size += sizeOfImeOffsetRange(value.composition);
-        size += 4;
+        size += sizeOfImeOffsetRange(value.range);
+        size += sizeOfUtf8String(value.text);
         return size;
     }
 
-    private static void writeImeTextModelStateFields(ByteBuffer data, ImeTextModelState value) {
-        data.putInt(value.mode.value);
+    private static void writeImeTextUpdateMessageFields(ByteBuffer data, ImeTextUpdateMessage value) {
+        data.putInt(value.kind.value);
+        data.putInt(value.scope.value);
         data.putLong(value.contextId);
+        data.putInt(value.contextRevision);
         data.putInt(value.documentStartOffset);
         writeUtf8String(data, value.text);
+        writeImeTextPatchFields(data, value.patch);
         writeImeOffsetRangeFields(data, value.selection);
-        writeImeOffsetRangeFields(data, value.composition);
+        writeImeMarkedRangeFields(data, value.markedRange);
         data.putInt(value.scriptClass.value);
     }
 
-    public static void writeImeTextModelState(ByteBuffer data, ImeTextModelState value) {
+    public static void writeImeTextUpdateMessage(ByteBuffer data, ImeTextUpdateMessage value) {
         prepare(data);
-        writeImeTextModelStateFields(data, value);
+        writeImeTextUpdateMessageFields(data, value);
     }
 
-    public static int sizeOfImeTextModelState(ImeTextModelState value) {
+    public static int sizeOfImeTextUpdateMessage(ImeTextUpdateMessage value) {
         int size = 0;
+        size += 4;
         size += 4;
         size += 8;
         size += 4;
-        size += sizeOfUtf8String(value.text);
-        size += sizeOfImeOffsetRange(value.selection);
-        size += sizeOfImeOffsetRange(value.composition);
         size += 4;
-        return size;
-    }
-
-    private static void writeImeTextReplacementFields(ByteBuffer data, ImeTextReplacement value) {
-        writeTextRangeFields(data, value.range);
-        writeUtf8String(data, value.text);
-        data.putInt(value.scriptClass.value);
-    }
-
-    public static void writeImeTextReplacement(ByteBuffer data, ImeTextReplacement value) {
-        prepare(data);
-        writeImeTextReplacementFields(data, value);
-    }
-
-    public static int sizeOfImeTextReplacement(ImeTextReplacement value) {
-        int size = 0;
-        size += sizeOfTextRange(value.range);
         size += sizeOfUtf8String(value.text);
+        size += sizeOfImeTextPatch(value.patch);
+        size += sizeOfImeOffsetRange(value.selection);
+        size += sizeOfImeMarkedRange(value.markedRange);
         size += 4;
         return size;
     }
@@ -2861,122 +2841,66 @@ public final class CoreProtocol {
         return data;
     }
 
-    public static ByteBuffer encodeImeDocumentTextReplacement(ImeDocumentTextReplacement value) {
-        int size = 0;
-        size += 4;
-        size += 4;
-        byte[] textUtf8 = utf8Bytes(value.text);
-        size += 4 + textUtf8.length;
-        size += 4;
-        size += 4;
-        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
-        data.putInt(value.startOffset);
-        data.putInt(value.endOffset);
-        writeUtf8Bytes(data, textUtf8);
-        data.putInt(value.cursorOffset);
-        data.putInt(value.scriptClass.value);
-        data.flip();
-        return data;
-    }
-
-    public static ByteBuffer encodeImeInputContextTextReplacement(ImeInputContextTextReplacement value) {
-        int size = 0;
-        size += 4;
-        size += 4;
-        byte[] textUtf8 = utf8Bytes(value.text);
-        size += 4 + textUtf8.length;
-        size += 4;
-        size += 4;
-        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
-        data.putInt(value.startOffset);
-        data.putInt(value.endOffset);
-        writeUtf8Bytes(data, textUtf8);
-        data.putInt(value.cursorOffset);
-        data.putInt(value.scriptClass.value);
-        data.flip();
-        return data;
-    }
-
-    public static ByteBuffer encodeImeInputStateTextReplacement(ImeInputStateTextReplacement value) {
-        int size = 0;
-        size += 8;
-        size += 4;
-        size += 4;
-        size += 4;
-        byte[] textUtf8 = utf8Bytes(value.text);
-        size += 4 + textUtf8.length;
-        size += 4;
-        size += 4;
-        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
-        data.putLong(value.contextId);
-        data.putInt(value.documentStartOffset);
-        data.putInt(value.startOffset);
-        data.putInt(value.endOffset);
-        writeUtf8Bytes(data, textUtf8);
-        data.putInt(value.cursorOffset);
-        data.putInt(value.scriptClass.value);
-        data.flip();
-        return data;
-    }
-
-    public static ByteBuffer encodeImeTextModelDelta(ImeTextModelDelta value) {
+    public static ByteBuffer encodeImeCommandMessage(ImeCommandMessage value) {
         int size = 0;
         size += 4;
         size += 8;
         size += 4;
-        byte[] oldTextUtf8 = utf8Bytes(value.oldText);
-        size += 4 + oldTextUtf8.length;
-        size += sizeOfImeOffsetRange(value.delta);
-        byte[] deltaTextUtf8 = utf8Bytes(value.deltaText);
-        size += 4 + deltaTextUtf8.length;
+        size += 4;
+        size += sizeOfImeOffsetRange(value.range);
         size += sizeOfImeOffsetRange(value.selection);
-        size += sizeOfImeOffsetRange(value.composition);
+        byte[] textUtf8 = utf8Bytes(value.text);
+        size += 4 + textUtf8.length;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
+        size += 4;
         size += 4;
         ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
-        data.putInt(value.mode.value);
+        data.putInt(value.kind.value);
         data.putLong(value.contextId);
+        data.putInt(value.contextRevision);
         data.putInt(value.documentStartOffset);
-        writeUtf8Bytes(data, oldTextUtf8);
-        writeImeOffsetRangeFields(data, value.delta);
-        writeUtf8Bytes(data, deltaTextUtf8);
+        writeImeOffsetRangeFields(data, value.range);
         writeImeOffsetRangeFields(data, value.selection);
-        writeImeOffsetRangeFields(data, value.composition);
+        writeUtf8Bytes(data, textUtf8);
+        data.putInt(value.cursorOffset);
+        data.putInt(value.deleteBefore);
+        data.putInt(value.deleteAfter);
+        data.putInt(value.textUnit.value);
+        data.putInt(value.markedRole.value);
         data.putInt(value.scriptClass.value);
         data.flip();
         return data;
     }
 
-    public static ByteBuffer encodeImeTextModelState(ImeTextModelState value) {
+    public static ByteBuffer encodeImeTextUpdateMessage(ImeTextUpdateMessage value) {
         int size = 0;
+        size += 4;
         size += 4;
         size += 8;
         size += 4;
+        size += 4;
         byte[] textUtf8 = utf8Bytes(value.text);
         size += 4 + textUtf8.length;
+        size += sizeOfImeOffsetRange(value.patch.range);
+        byte[] patchTextUtf8 = utf8Bytes(value.patch.text);
+        size += 4 + patchTextUtf8.length;
         size += sizeOfImeOffsetRange(value.selection);
-        size += sizeOfImeOffsetRange(value.composition);
+        size += sizeOfImeMarkedRange(value.markedRange);
         size += 4;
         ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
-        data.putInt(value.mode.value);
+        data.putInt(value.kind.value);
+        data.putInt(value.scope.value);
         data.putLong(value.contextId);
+        data.putInt(value.contextRevision);
         data.putInt(value.documentStartOffset);
         writeUtf8Bytes(data, textUtf8);
+        writeImeOffsetRangeFields(data, value.patch.range);
+        writeUtf8Bytes(data, patchTextUtf8);
         writeImeOffsetRangeFields(data, value.selection);
-        writeImeOffsetRangeFields(data, value.composition);
-        data.putInt(value.scriptClass.value);
-        data.flip();
-        return data;
-    }
-
-    public static ByteBuffer encodeImeTextReplacement(ImeTextReplacement value) {
-        int size = 0;
-        size += sizeOfTextRange(value.range);
-        byte[] textUtf8 = utf8Bytes(value.text);
-        size += 4 + textUtf8.length;
-        size += 4;
-        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
-        writeTextRangeFields(data, value.range);
-        writeUtf8Bytes(data, textUtf8);
+        writeImeMarkedRangeFields(data, value.markedRange);
         data.putInt(value.scriptClass.value);
         data.flip();
         return data;

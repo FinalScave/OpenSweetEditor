@@ -28,14 +28,12 @@ import com.qiplat.sweeteditor.core.config.EditorOptions;
 import com.qiplat.sweeteditor.core.config.HandleConfig;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
-import com.qiplat.sweeteditor.core.ime.ImeDocumentTextReplacement;
-import com.qiplat.sweeteditor.core.ime.ImeInputContextTextReplacement;
-import com.qiplat.sweeteditor.core.ime.ImeInputStateTextReplacement;
+import com.qiplat.sweeteditor.core.ime.ImeCommandMessage;
 import com.qiplat.sweeteditor.core.ime.ImeInputContext;
 import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
 import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
-import com.qiplat.sweeteditor.core.ime.ImeTextModelState;
-import com.qiplat.sweeteditor.core.ime.ImeTextReplacement;
+import com.qiplat.sweeteditor.core.ime.ImeTextUpdateMessage;
+import com.qiplat.sweeteditor.core.ime.ImeTextUpdateScope;
 import com.qiplat.sweeteditor.core.keymap.KeyModifier;
 import com.qiplat.sweeteditor.core.interaction.EventType;
 import com.qiplat.sweeteditor.core.interaction.GestureEvent;
@@ -802,306 +800,29 @@ public class EditorCore {
 
     // ==================== IME Composition Input ====================
 
-    public boolean isComposing() {
+    public boolean hasPreedit() {
         if (mNativeHandle == 0) return false;
-        return nativeIsComposing(mNativeHandle);
-    }
-
-    @Nullable
-    public TextRange getComposingRange() {
-        if (mNativeHandle == 0) return null;
-        long[] vals = nativeGetComposingRange(mNativeHandle);
-        if (vals == null || vals[0] == -1) return null;
-        return new TextRange(
-                new TextPosition((int) vals[0], (int) vals[1]),
-                new TextPosition((int) vals[2], (int) vals[3])
-        );
-    }
-
-    @Nullable
-    public TextRange getComposingSessionRange() {
-        if (mNativeHandle == 0) return null;
-        long[] vals = nativeGetComposingSessionRange(mNativeHandle);
-        if (vals == null || vals[0] == -1) return null;
-        return new TextRange(
-                new TextPosition((int) vals[0], (int) vals[1]),
-                new TextPosition((int) vals[2], (int) vals[3])
-        );
+        return nativeHasPreedit(mNativeHandle);
     }
 
     @NonNull
-    public EditorActionResult updateImePreedit(@Nullable String text, int scriptHint) {
+    public EditorActionResult handleImeCommandMessage(@NonNull ImeCommandMessage message) {
         if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeUpdatePreedit(mNativeHandle, text != null ? text : "", scriptHint);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult setImeComposingText(@Nullable String text, int cursorOffset, int scriptHint) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeSetComposingText(mNativeHandle, text != null ? text : "", cursorOffset, scriptHint);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult commitImeText(@Nullable String text, int scriptHint) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeCommitText(mNativeHandle, text != null ? text : "", scriptHint);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult finishImePreedit() {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeFinishPreedit(mNativeHandle);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult cancelImePreedit() {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeCancelPreedit(mNativeHandle);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult markImeDocumentRange(@NonNull TextRange range, int scriptHint) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeMarkDocumentRange(
+        ByteBuffer payload = CoreProtocol.encodeImeCommandMessage(message);
+        return decodeAction(nativeImeHandleCommandMessage(
                 mNativeHandle,
-                range.start.line,
-                range.start.column,
-                range.end.line,
-                range.end.column,
-                scriptHint);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
+                payload,
+                payload.remaining()));
     }
 
     @NonNull
-    public EditorActionResult markImeDocumentRange(long startOffset, long endOffset, int scriptHint) {
+    public EditorActionResult handleImeTextUpdateMessage(@NonNull ImeTextUpdateMessage message) {
         if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeMarkDocumentRangeByOffset(mNativeHandle, startOffset, endOffset, scriptHint);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult replaceImeText(@NonNull ImeTextReplacement replacement) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer payload = CoreProtocol.encodeImeTextReplacement(replacement);
-        ByteBuffer data = nativeImeReplaceText(mNativeHandle, payload, payload.remaining());
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult replaceImeDocumentText(@NonNull ImeDocumentTextReplacement replacement) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer payload = CoreProtocol.encodeImeDocumentTextReplacement(replacement);
-        ByteBuffer data = nativeImeReplaceDocumentText(mNativeHandle, payload, payload.remaining());
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult replaceImeInputContextText(@NonNull ImeInputContextTextReplacement replacement) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer payload = CoreProtocol.encodeImeInputContextTextReplacement(replacement);
-        ByteBuffer data = nativeImeReplaceInputContextText(mNativeHandle, payload, payload.remaining());
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult markImeInputContextRange(long startOffset, long endOffset, int scriptHint) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeMarkInputContextRange(mNativeHandle, startOffset, endOffset, scriptHint);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult notifyImeDocumentSelectionChanged(long startOffset, long endOffset) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeNotifyDocumentSelectionChanged(mNativeHandle, startOffset, endOffset);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult notifyImeInputContextSelectionChanged(long startOffset, long endOffset) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeNotifyInputContextSelectionChanged(mNativeHandle, startOffset, endOffset);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult updateImeTextModelState(@NonNull ImeTextModelState state) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer payload = CoreProtocol.encodeImeTextModelState(state);
-        ByteBuffer data = nativeImeUpdateTextModelState(mNativeHandle, payload, payload.remaining());
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult updateImeInputStateSelection(long contextId,
-                                                        int documentStartOffset,
-                                                        int selectionStartOffset,
-                                                        int selectionEndOffset) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeUpdateInputStateSelection(
+        ByteBuffer payload = CoreProtocol.encodeImeTextUpdateMessage(message);
+        return decodeAction(nativeImeHandleTextUpdateMessage(
                 mNativeHandle,
-                contextId,
-                documentStartOffset,
-                selectionStartOffset,
-                selectionEndOffset);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult replaceImeInputStateText(@NonNull ImeInputStateTextReplacement replacement) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer payload = CoreProtocol.encodeImeInputStateTextReplacement(replacement);
-        ByteBuffer data = nativeImeReplaceInputStateText(mNativeHandle, payload, payload.remaining());
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult deleteImeBackward(long beforeLength, int textUnit) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeDeleteBackward(mNativeHandle, beforeLength, textUnit);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult deleteImeForward(long afterLength, int textUnit) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeDeleteForward(mNativeHandle, afterLength, textUnit);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult deleteImeSurrounding(long beforeLength, long afterLength, int textUnit) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeDeleteSurrounding(mNativeHandle, beforeLength, afterLength, textUnit);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult commitImeText(@Nullable String text, int cursorOffset, int scriptHint) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeCommitTextWithCursor(mNativeHandle, text != null ? text : "", cursorOffset, scriptHint);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult notifyImeSelectionChanged(@NonNull TextRange range) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeNotifySelectionChanged(
-                mNativeHandle,
-                range.start.line,
-                range.start.column,
-                range.end.line,
-                range.end.column);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult notifyImeCursorChanged(@NonNull TextPosition cursor) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer data = nativeImeNotifyCursorChanged(
-                mNativeHandle,
-                cursor.line,
-                cursor.column);
-        try {
-            return CoreProtocol.decodeEditorActionResult(data);
-        } finally {
-            nativeFreeBinaryData(data);
-        }
-    }
-
-    @NonNull
-    public EditorActionResult setImeKeyboardScriptClass(int scriptClass) {
-        if (mNativeHandle == 0) return new EditorActionResult();
-        return decodeAction(nativeImeSetKeyboardScriptClass(mNativeHandle, scriptClass));
+                payload,
+                payload.remaining()));
     }
 
     public int getImeKeyboardScriptClass() {
@@ -1122,9 +843,27 @@ public class EditorCore {
     }
 
     @NonNull
-    public ImeInputContext getImeInputContext(long beforeLength, long afterLength) {
+    public ImeInputContext getImeCommandInputContext(long beforeLength, long afterLength) {
         if (mNativeHandle == 0) return new ImeInputContext();
-        ByteBuffer data = nativeGetImeInputContext(mNativeHandle, beforeLength, afterLength);
+        ByteBuffer data = nativeGetImeCommandInputContext(mNativeHandle, beforeLength, afterLength);
+        try {
+            if (data == null) return new ImeInputContext();
+            return CoreProtocol.decodeImeInputContext(data);
+        } finally {
+            nativeFreeBinaryData(data);
+        }
+    }
+
+    @NonNull
+    public ImeInputContext getImeTextUpdateInputContext(@NonNull ImeTextUpdateScope scope,
+                                                        long beforeLength,
+                                                        long afterLength) {
+        if (mNativeHandle == 0) return new ImeInputContext();
+        ByteBuffer data = nativeGetImeTextUpdateInputContext(
+                mNativeHandle,
+                scope.value,
+                beforeLength,
+                afterLength);
         try {
             if (data == null) return new ImeInputContext();
             return CoreProtocol.decodeImeInputContext(data);
@@ -2385,110 +2124,13 @@ public class EditorCore {
     private static native String nativeGetSelectedText(long handle);
 
     @CriticalNative
-    private static native boolean nativeIsComposing(long handle);
+    private static native boolean nativeHasPreedit(long handle);
 
     @FastNative
-    private static native long[] nativeGetComposingRange(long handle);
+    private static native ByteBuffer nativeImeHandleCommandMessage(long handle, ByteBuffer data, int size);
 
     @FastNative
-    private static native long[] nativeGetComposingSessionRange(long handle);
-
-    @FastNative
-    private static native ByteBuffer nativeImeUpdatePreedit(long handle, String text, int scriptHint);
-
-    @FastNative
-    private static native ByteBuffer nativeImeSetComposingText(long handle, String text, int cursorOffset, int scriptHint);
-
-    @FastNative
-    private static native ByteBuffer nativeImeCommitText(long handle, String text, int scriptHint);
-
-    @FastNative
-    private static native ByteBuffer nativeImeCommitTextWithCursor(long handle, String text, int cursorOffset, int scriptHint);
-
-    @FastNative
-    private static native ByteBuffer nativeImeFinishPreedit(long handle);
-
-    @FastNative
-    private static native ByteBuffer nativeImeCancelPreedit(long handle);
-
-    @FastNative
-    private static native ByteBuffer nativeImeMarkDocumentRange(long handle,
-                                                                long startLine,
-                                                                long startColumn,
-                                                                long endLine,
-                                                                long endColumn,
-                                                                int scriptHint);
-
-    @FastNative
-    private static native ByteBuffer nativeImeMarkDocumentRangeByOffset(long handle,
-                                                                        long startOffset,
-                                                                        long endOffset,
-                                                                        int scriptHint);
-
-    @FastNative
-    private static native ByteBuffer nativeImeReplaceText(long handle, ByteBuffer data, int size);
-
-    @FastNative
-    private static native ByteBuffer nativeImeReplaceDocumentText(long handle, ByteBuffer data, int size);
-
-    @FastNative
-    private static native ByteBuffer nativeImeReplaceInputContextText(long handle, ByteBuffer data, int size);
-
-    @FastNative
-    private static native ByteBuffer nativeImeMarkInputContextRange(long handle,
-                                                                    long startOffset,
-                                                                    long endOffset,
-                                                                    int scriptHint);
-
-    @FastNative
-    private static native ByteBuffer nativeImeNotifyDocumentSelectionChanged(long handle,
-                                                                            long startOffset,
-                                                                            long endOffset);
-
-    @FastNative
-    private static native ByteBuffer nativeImeNotifyInputContextSelectionChanged(long handle,
-                                                                                long startOffset,
-                                                                                long endOffset);
-
-    @FastNative
-    private static native ByteBuffer nativeImeUpdateTextModelState(long handle, ByteBuffer data, int size);
-
-    @FastNative
-    private static native ByteBuffer nativeImeUpdateInputStateSelection(long handle,
-                                                                       long contextId,
-                                                                       int documentStartOffset,
-                                                                       int selectionStartOffset,
-                                                                       int selectionEndOffset);
-
-    @FastNative
-    private static native ByteBuffer nativeImeReplaceInputStateText(long handle, ByteBuffer data, int size);
-
-    @FastNative
-    private static native ByteBuffer nativeImeDeleteBackward(long handle, long beforeLength, int textUnit);
-
-    @FastNative
-    private static native ByteBuffer nativeImeDeleteForward(long handle, long afterLength, int textUnit);
-
-    @FastNative
-    private static native ByteBuffer nativeImeDeleteSurrounding(long handle,
-                                                                long beforeLength,
-                                                                long afterLength,
-                                                                int textUnit);
-
-    @FastNative
-    private static native ByteBuffer nativeImeNotifySelectionChanged(long handle,
-                                                                     long startLine,
-                                                                     long startColumn,
-                                                                     long endLine,
-                                                                     long endColumn);
-
-    @FastNative
-    private static native ByteBuffer nativeImeNotifyCursorChanged(long handle,
-                                                                  long cursorLine,
-                                                                  long cursorColumn);
-
-    @FastNative
-    private static native ByteBuffer nativeImeSetKeyboardScriptClass(long handle, int scriptClass);
+    private static native ByteBuffer nativeImeHandleTextUpdateMessage(long handle, ByteBuffer data, int size);
 
     @CriticalNative
     private static native int nativeImeGetKeyboardScriptClass(long handle);
@@ -2497,7 +2139,10 @@ public class EditorCore {
     private static native ByteBuffer nativeGetImeSyncSnapshot(long handle);
 
     @FastNative
-    private static native ByteBuffer nativeGetImeInputContext(long handle, long beforeLength, long afterLength);
+    private static native ByteBuffer nativeGetImeCommandInputContext(long handle, long beforeLength, long afterLength);
+
+    @FastNative
+    private static native ByteBuffer nativeGetImeTextUpdateInputContext(long handle, int scope, long beforeLength, long afterLength);
 
     @FastNative
     private static native ByteBuffer nativeSetReadOnly(long handle, boolean readOnly);

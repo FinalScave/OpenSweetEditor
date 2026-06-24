@@ -100,51 +100,15 @@ const uint8_t* editor_insert_line_below(intptr_t editor_handle, size_t* out_size
 
 // ===================== IME Composition API =====================
 
-const uint8_t* editor_ime_update_preedit(intptr_t editor_handle,
-    const char* text,
-    int script_hint,
-    size_t* out_size);
-const uint8_t* editor_ime_set_composing_text_selection(intptr_t editor_handle,
-    const char* text,
-    size_t selection_start_offset,
-    size_t selection_end_offset,
-    int script_hint,
-    size_t* out_size);
-const uint8_t* editor_ime_commit_text(intptr_t editor_handle,
-    const char* text,
-    int script_hint,
-    size_t* out_size);
-const uint8_t* editor_ime_finish_preedit(intptr_t editor_handle,
-    size_t* out_size);
-const uint8_t* editor_ime_cancel_preedit(intptr_t editor_handle,
-    size_t* out_size);
-const uint8_t* editor_ime_mark_document_range(intptr_t editor_handle,
-    size_t start_line,
-    size_t start_column,
-    size_t end_line,
-    size_t end_column,
-    int script_hint,
-    size_t* out_size);
-const uint8_t* editor_ime_mark_document_range_by_offset(intptr_t editor_handle,
-    size_t start_offset,
-    size_t end_offset,
-    int script_hint,
-    size_t* out_size);
-const uint8_t* editor_ime_update_text_model_state(intptr_t editor_handle,
+const uint8_t* editor_ime_handle_command_message(intptr_t editor_handle,
     const uint8_t* data,
     size_t size,
     size_t* out_size);
-const uint8_t* editor_ime_update_input_state_selection(intptr_t editor_handle,
-    uint64_t context_id,
-    int32_t document_start_offset,
-    int32_t selection_start_offset,
-    int32_t selection_end_offset,
-    size_t* out_size);
-const uint8_t* editor_ime_replace_input_state_text(intptr_t editor_handle,
+const uint8_t* editor_ime_handle_text_update_message(intptr_t editor_handle,
     const uint8_t* data,
     size_t size,
     size_t* out_size);
-int  editor_is_composing(intptr_t editor_handle);
+int  editor_ime_has_preedit(intptr_t editor_handle);
 
 // ===================== ReadOnly API =====================
 

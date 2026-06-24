@@ -9,7 +9,7 @@ namespace NS_SWEETEDITOR {
 
   constexpr size_t LIMITED_IME_DOCUMENT_CONTEXT_LENGTH = 2048;
 
-  struct ImeInputStateRange {
+  struct ImeContextRange {
     bool active {false};
     size_t start {0};
     size_t end {0};
@@ -23,6 +23,37 @@ namespace NS_SWEETEDITOR {
     U8String replacement;
   };
 
+  static bool isImeTextWindowKind(ImeInputContextKind kind) {
+    return kind == ImeInputContextKind::DOCUMENT_WINDOW
+        || kind == ImeInputContextKind::TRANSIENT_INPUT;
+  }
+
+  static bool isImeTextWindowContext(const ImeInputContext& context) {
+    return context.id != 0 && isImeTextWindowKind(context.kind);
+  }
+
+  static bool isImeDocumentWindowContext(const ImeInputContext& context) {
+    return context.id != 0 && context.kind == ImeInputContextKind::DOCUMENT_WINDOW;
+  }
+
+  static bool isMatchingImeDocumentWindow(const ImeInputContext& context,
+                                          uint64_t context_id,
+                                          int32_t context_revision) {
+    return context_id != 0
+        && context_id == context.id
+        && context_revision == context.revision
+        && isImeDocumentWindowContext(context);
+  }
+
+  static ImeActionResult makeImeInputContextResyncResult(ImeSyncSnapshot sync) {
+    ImeActionResult result;
+    result.handled = true;
+    result.sync = sync;
+    result.sync.clear_system_mark = true;
+    result.sync.context_policy = ImeContextPolicy::NONE;
+    return result;
+  }
+
   static size_t clampImeOffset(int32_t offset, size_t length) {
     if (offset < 0) {
       return 0;
@@ -34,7 +65,18 @@ namespace NS_SWEETEDITOR {
     return static_cast<size_t>(std::max<int64_t>(0, std::min<int64_t>(offset, static_cast<int64_t>(length))));
   }
 
-  static ImeInputStateRange normalizeImeSelectionRange(int32_t start, int32_t end, size_t text_length) {
+  static size_t clampImeRelativeOffset(size_t offset, const ImeContextRange& range) {
+    if (!range.active || offset <= range.start) {
+      return 0;
+    }
+    const size_t range_length = range.end > range.start ? range.end - range.start : 0;
+    if (offset >= range.end) {
+      return range_length;
+    }
+    return offset - range.start;
+  }
+
+  static ImeContextRange normalizeImeSelectionRange(int32_t start, int32_t end, size_t text_length) {
     if (start < 0 || end < 0) {
       return {true, text_length, text_length};
     }
@@ -46,7 +88,7 @@ namespace NS_SWEETEDITOR {
     return {true, safe_start, safe_end};
   }
 
-  static ImeInputStateRange normalizeImeComposingRange(int32_t start, int32_t end, size_t text_length) {
+  static ImeContextRange normalizeImeMarkedRange(int32_t start, int32_t end, size_t text_length) {
     if (start < 0 || end < 0) {
       return {};
     }
@@ -128,7 +170,7 @@ namespace NS_SWEETEDITOR {
     return diff;
   }
 
-  static ImeInputStateRange transformImeRangeToPreviousText(const ImeInputStateRange& range,
+  static ImeContextRange transformImeRangeToPreviousText(const ImeContextRange& range,
                                                             const ImeInputTextDiff& diff,
                                                             size_t old_text_length) {
     if (!range.active) {
@@ -164,7 +206,7 @@ namespace NS_SWEETEDITOR {
   }
 
   static bool imeDiffTouchesPreviousRange(const ImeInputTextDiff& diff,
-                                          const ImeInputStateRange& range) {
+                                          const ImeContextRange& range) {
     if (!diff.changed || !range.active) {
       return false;
     }
@@ -176,7 +218,7 @@ namespace NS_SWEETEDITOR {
 
   static bool imeTextPreservesPreviousRangeContext(const U8String& old_text,
                                                    const U8String& new_text,
-                                                   const ImeInputStateRange& range) {
+                                                   const ImeContextRange& range) {
     U16String old_utf16;
     U16String new_utf16;
     StrUtil::convertUTF8ToUTF16(old_text, old_utf16);
@@ -204,7 +246,7 @@ namespace NS_SWEETEDITOR {
 
   static U8String sliceReplacementForPreviousRange(const U8String& old_text,
                                                    const U8String& new_text,
-                                                   const ImeInputStateRange& range) {
+                                                   const ImeContextRange& range) {
     U16String old_utf16;
     U16String new_utf16;
     StrUtil::convertUTF8ToUTF16(old_text, old_utf16);
@@ -224,6 +266,7 @@ namespace NS_SWEETEDITOR {
   }
 
   static void mergeImeActionResult(ImeActionResult& target, const ImeActionResult& source) {
+    const bool clear_system_mark = target.sync.clear_system_mark || source.sync.clear_system_mark;
     target.handled = target.handled || source.handled;
     target.content_changed = target.content_changed || source.content_changed;
     target.cursor_changed = target.cursor_changed || source.cursor_changed;
@@ -240,208 +283,67 @@ namespace NS_SWEETEDITOR {
       }
     }
     target.sync = source.sync;
+    target.sync.clear_system_mark = clear_system_mark;
   }
 
 #pragma region [IME]
 
-  EditorActionResult EditorCore::updateImePreedit(const U8String& text, ImeScriptClass script_class) {
+  EditorActionResult EditorCore::handleImeCommandMessage(const ImeCommandMessage& message) {
     const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, updateImePreeditInternal(text, script_class));
+    return finishImeAction(before, handleImeCommandMessageInternal(message));
   }
 
-  EditorActionResult EditorCore::setImeComposingText(const U8String& text,
-                                                     int cursor_offset,
-                                                     ImeScriptClass script_class) {
+  EditorActionResult EditorCore::handleImeTextUpdateMessage(const ImeTextUpdateMessage& message) {
     const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, setImeComposingTextInternal(text, cursor_offset, script_class));
+    ImeActionResult result;
+    switch (message.kind) {
+      case ImeTextUpdateKind::SNAPSHOT:
+        result = handleImeTextSnapshotInternal(message.scope,
+                                               message.context_id,
+                                               message.context_revision,
+                                               message.document_start_offset,
+                                               message.text,
+                                               message.selection.start,
+                                               message.selection.end,
+                                               message.marked_range,
+                                               message.script_class);
+        break;
+      case ImeTextUpdateKind::PATCH:
+        result = handleImeTextPatchInternal(message.scope,
+                                            message.context_id,
+                                            message.context_revision,
+                                            message.document_start_offset,
+                                            message.text,
+                                            message.patch.range.start,
+                                            message.patch.range.end,
+                                            message.patch.text,
+                                            message.selection.start,
+                                            message.selection.end,
+                                            message.marked_range,
+                                            message.script_class);
+        break;
+    }
+    return finishImeAction(before, result);
   }
 
-  EditorActionResult EditorCore::setImeComposingText(const U8String& text,
-                                                     size_t selection_start_offset,
-                                                     size_t selection_end_offset,
-                                                     ImeScriptClass script_class) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, setImeComposingTextInternal(text, selection_start_offset, selection_end_offset, script_class));
-  }
-
-  EditorActionResult EditorCore::commitImeText(const U8String& text, ImeScriptClass script_class) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, commitImeTextInternal(text, script_class));
-  }
-
-  EditorActionResult EditorCore::commitImeText(const U8String& text,
-                                               int cursor_offset,
-                                               ImeScriptClass script_class) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, commitImeTextInternal(text, cursor_offset, script_class));
-  }
-
-  EditorActionResult EditorCore::finishImePreedit() {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, finishImePreeditInternal());
-  }
-
-  EditorActionResult EditorCore::cancelImePreedit() {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, cancelImePreeditInternal());
-  }
-
-  EditorActionResult EditorCore::markImeDocumentRange(const TextRange& range, ImeScriptClass script_class) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, markImeDocumentRangeInternal(range, script_class));
-  }
-
-  EditorActionResult EditorCore::markImeDocumentRange(size_t start_offset,
-                                                      size_t end_offset,
-                                                      ImeScriptClass script_class) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, markImeDocumentRangeInternal(start_offset, end_offset, script_class));
-  }
-
-  EditorActionResult EditorCore::replaceImeText(const ImeTextReplacement& replacement) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, replaceImeTextInternal(
-        replacement.range,
-        replacement.text,
-        replacement.script_class));
-  }
-
-  EditorActionResult EditorCore::replaceImeDocumentText(const ImeDocumentTextReplacement& replacement) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, replaceImeDocumentTextInternal(
-        replacement.start_offset,
-        replacement.end_offset,
-        replacement.text,
-        replacement.cursor_offset,
-        replacement.script_class));
-  }
-
-  EditorActionResult EditorCore::replaceImeInputContextText(const ImeInputContextTextReplacement& replacement) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, replaceImeInputContextTextInternal(
-        replacement.start_offset,
-        replacement.end_offset,
-        replacement.text,
-        replacement.cursor_offset,
-        replacement.script_class));
-  }
-
-  EditorActionResult EditorCore::markImeInputContextRange(size_t start_offset,
-                                                          size_t end_offset,
-                                                          ImeScriptClass script_class) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, markImeInputContextRangeInternal(start_offset, end_offset, script_class));
-  }
-
-  EditorActionResult EditorCore::notifyImeDocumentSelectionChanged(size_t start_offset, size_t end_offset) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, notifyImeDocumentSelectionChangedInternal(start_offset, end_offset));
-  }
-
-  EditorActionResult EditorCore::notifyImeInputContextSelectionChanged(size_t start_offset, size_t end_offset) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, notifyImeInputContextSelectionChangedInternal(start_offset, end_offset));
-  }
-
-  EditorActionResult EditorCore::updateImeTextModelState(const ImeTextModelState& state) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, updateImeTextModelStateInternal(
-        state.mode,
-        state.context_id,
-        state.document_start_offset,
-        state.text,
-        state.selection.start,
-        state.selection.end,
-        state.composition.start,
-        state.composition.end,
-        state.script_class));
-  }
-
-  EditorActionResult EditorCore::updateImeTextModelDelta(const ImeTextModelDelta& delta) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, updateImeTextModelDeltaInternal(
-        delta.mode,
-        delta.context_id,
-        delta.document_start_offset,
-        delta.old_text,
-        delta.delta.start,
-        delta.delta.end,
-        delta.delta_text,
-        delta.selection.start,
-        delta.selection.end,
-        delta.composition.start,
-        delta.composition.end,
-        delta.script_class));
-  }
-
-  EditorActionResult EditorCore::updateImeInputStateSelection(uint64_t context_id,
-                                                              int32_t document_start_offset,
-                                                              int32_t selection_start_offset,
-                                                              int32_t selection_end_offset) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, updateImeInputStateSelectionInternal(context_id,
-                                                                        document_start_offset,
-                                                                        selection_start_offset,
-                                                                        selection_end_offset));
-  }
-
-  EditorActionResult EditorCore::replaceImeInputStateText(const ImeInputStateTextReplacement& replacement) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, replaceImeInputStateTextInternal(
-        replacement.context_id,
-        replacement.document_start_offset,
-        replacement.start_offset,
-        replacement.end_offset,
-        replacement.text,
-        replacement.cursor_offset,
-        replacement.script_class));
-  }
-
-  EditorActionResult EditorCore::deleteImeBackward(size_t before_length, ImeTextUnit text_unit) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, deleteImeBackwardInternal(before_length, text_unit));
-  }
-
-  EditorActionResult EditorCore::deleteImeForward(size_t after_length, ImeTextUnit text_unit) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, deleteImeForwardInternal(after_length, text_unit));
-  }
-
-  EditorActionResult EditorCore::deleteImeSurrounding(size_t before_length,
-                                                      size_t after_length,
-                                                      ImeTextUnit text_unit) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, deleteImeSurroundingInternal(before_length, after_length, text_unit));
-  }
-
-  EditorActionResult EditorCore::notifyImeSelectionChanged(const TextRange& range) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, notifyImeSelectionChangedInternal(range));
-  }
-
-  EditorActionResult EditorCore::notifyImeCursorChanged(const TextPosition& cursor) {
-    const ActionSnapshot before = captureActionSnapshot();
-    return finishImeAction(before, notifyImeCursorChangedInternal(cursor));
-  }
-
-  ImeActionResult EditorCore::updateImePreeditInternal(const U8String& text, ImeScriptClass script_class) {
+  ImeActionResult EditorCore::setImePreeditTextInternal(const U8String& text, ImeScriptClass script_class) {
     return m_composition_controller_.updatePreedit(text, script_class);
   }
 
-  ImeActionResult EditorCore::setImeComposingTextInternal(const U8String& text,
+  ImeActionResult EditorCore::setImePreeditTextInternal(const U8String& text,
                                                   int cursor_offset,
                                                   ImeScriptClass script_class) {
-    ImeActionResult result = updateImePreeditInternal(text, script_class);
+    ImeActionResult result = setImePreeditTextInternal(text, script_class);
     applyImeCursorOffset(result, text, cursor_offset);
     return result;
   }
 
-  ImeActionResult EditorCore::setImeComposingTextInternal(const U8String& text,
+  ImeActionResult EditorCore::setImePreeditTextInternal(const U8String& text,
                                                   size_t selection_start_offset,
                                                   size_t selection_end_offset,
                                                   ImeScriptClass script_class) {
-    ImeActionResult result = updateImePreeditInternal(text, script_class);
-    TextRange selection_range = textRangeFromImeCompositionOffsets(
+    ImeActionResult result = setImePreeditTextInternal(text, script_class);
+    TextRange selection_range = textRangeFromImeMarkedOffsets(
         result,
         selection_start_offset,
         selection_end_offset);
@@ -450,53 +352,253 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
-  ImeActionResult EditorCore::commitImeTextInternal(const U8String& text, ImeScriptClass script_class) {
+  ImeActionResult EditorCore::applyImeCommitTextCommandInternal(const U8String& text, ImeScriptClass script_class) {
     return m_composition_controller_.commitText(text, script_class);
   }
 
-  ImeActionResult EditorCore::commitImeTextInternal(const U8String& text,
+  ImeActionResult EditorCore::applyImeCommitTextCommandInternal(const U8String& text,
                                             int cursor_offset,
                                             ImeScriptClass script_class) {
-    ImeActionResult result = commitImeTextInternal(text, script_class);
+    ImeActionResult result = applyImeCommitTextCommandInternal(text, script_class);
     applyImeCursorOffset(result, text, cursor_offset);
     return result;
   }
 
-  ImeActionResult EditorCore::finishImePreeditInternal() {
+  ImeActionResult EditorCore::applyImeFinishPreeditCommandInternal() {
     return m_composition_controller_.finishPreedit();
   }
 
-  ImeActionResult EditorCore::cancelImePreeditInternal() {
+  ImeActionResult EditorCore::applyImeCancelPreeditCommandInternal() {
     return m_composition_controller_.cancelPreedit();
   }
 
-  ImeActionResult EditorCore::markImeDocumentRangeInternal(const TextRange& range,
+  ImeActionResult EditorCore::setImePreeditRangeInternal(const TextRange& range,
                                                    ImeScriptClass script_class) {
     return m_composition_controller_.markDocumentRange(range, script_class);
   }
 
-  ImeActionResult EditorCore::markImeDocumentRangeInternal(size_t start_offset,
+  ImeActionResult EditorCore::setImePreeditRangeInternal(size_t start_offset,
                                                    size_t end_offset,
                                                    ImeScriptClass script_class) {
     TextRange range = textRangeFromUtf16Offsets(start_offset, end_offset);
     if (range.start == range.end) {
-      return finishImePreeditInternal();
+      return applyImeFinishPreeditCommandInternal();
     }
-    return markImeDocumentRangeInternal(range, script_class);
+    return setImePreeditRangeInternal(range, script_class);
   }
 
-  ImeActionResult EditorCore::replaceImeTextInternal(const TextRange& range,
+  ImeActionResult EditorCore::replaceImeDocumentRangeInternal(const TextRange& range,
                                              const U8String& text,
                                              ImeScriptClass script_class) {
     return m_composition_controller_.replaceText(range, text, script_class);
   }
 
-  ImeActionResult EditorCore::replaceImeDocumentTextInternal(size_t start_offset,
+  ImeActionResult EditorCore::handleImeCommandMessageInternal(const ImeCommandMessage& message) {
+    auto non_negative_length = [](int32_t length) {
+      return length < 0 ? static_cast<size_t>(0) : static_cast<size_t>(length);
+    };
+    const auto has_message_selection = [&]() {
+      return message.selection.start >= 0 || message.selection.end >= 0;
+    };
+    const auto has_valid_message_selection = [&]() {
+      return message.selection.start >= 0 && message.selection.end >= 0;
+    };
+    const auto message_selection = [&]() {
+      return has_message_selection()
+          ? message.selection
+          : message.range;
+    };
+    const bool matches_input_context = isMatchingImeDocumentWindow(
+        m_ime_input_context_,
+        message.context_id,
+        message.context_revision);
+    const bool has_context = message.context_id != 0;
+    const bool had_system_mark_range =
+        m_ime_text_update_has_system_mark_range_
+        || m_ime_input_context_.has_system_mark_range;
+    const auto clear_system_mark_state = [&]() {
+      clearImeTextUpdateSystemMarkRange();
+      m_ime_input_context_.has_system_mark_range = false;
+      m_ime_input_context_.system_mark_range = {-1, -1};
+    };
+    const auto make_system_mark_clear_result = [&]() -> ImeActionResult {
+      clear_system_mark_state();
+      ImeActionResult result;
+      result.handled = true;
+      result.sync = getImeSyncSnapshot();
+      result.sync.clear_system_mark = true;
+      return result;
+    };
+    const auto mark_system_mark_clear = [&](ImeActionResult& result) {
+      if (had_system_mark_range) {
+        result.sync.clear_system_mark = true;
+      }
+    };
+    switch (message.kind) {
+      case ImeCommandKind::SET_SELECTION: {
+        const ImeOffsetRange selection = message_selection();
+        return setImeContextSelectionInternal(message.context_id,
+                                                    message.context_revision,
+                                                    message.document_start_offset,
+                                                    selection.start,
+                                                    selection.end);
+      }
+      case ImeCommandKind::SET_PREEDIT_TEXT: {
+        if (has_context && !matches_input_context) {
+          return makeImeInputContextResyncResult(getImeSyncSnapshot());
+        }
+        ImeActionResult result;
+        if (had_system_mark_range) {
+          mergeImeActionResult(result, make_system_mark_clear_result());
+        }
+        ImeActionResult preedit_result;
+        if (has_message_selection()) {
+          const ImeOffsetRange selection = message_selection();
+          preedit_result = setImePreeditTextInternal(
+              message.text,
+              non_negative_length(selection.start),
+              non_negative_length(selection.end),
+              message.script_class);
+        } else {
+          preedit_result = setImePreeditTextInternal(
+              message.text,
+              message.cursor_offset,
+              message.script_class);
+        }
+        mergeImeActionResult(result, preedit_result);
+        mark_system_mark_clear(result);
+        return result;
+      }
+      case ImeCommandKind::COMMIT_TEXT: {
+        if (has_context && !matches_input_context) {
+          return makeImeInputContextResyncResult(getImeSyncSnapshot());
+        }
+        clear_system_mark_state();
+        ImeActionResult result = applyImeCommitTextCommandInternal(
+            message.text,
+            message.cursor_offset,
+            message.script_class);
+        mark_system_mark_clear(result);
+        return result;
+      }
+      case ImeCommandKind::FINISH_PREEDIT: {
+        clear_system_mark_state();
+        ImeActionResult result = applyImeFinishPreeditCommandInternal();
+        mark_system_mark_clear(result);
+        return result;
+      }
+      case ImeCommandKind::CANCEL_PREEDIT: {
+        clear_system_mark_state();
+        ImeActionResult result = applyImeCancelPreeditCommandInternal();
+        mark_system_mark_clear(result);
+        return result;
+      }
+      case ImeCommandKind::SET_MARKED_RANGE: {
+        if (!matches_input_context) {
+          return makeImeInputContextResyncResult(getImeSyncSnapshot());
+        }
+        if (message.marked_role == ImeMarkedRangeRole::PREEDIT) {
+          clear_system_mark_state();
+          const size_t context_text_length = StrUtil::utf16Length(m_ime_input_context_.text);
+          const size_t start = clampImeOffset(message.range.start, context_text_length);
+          const size_t end = clampImeOffset(message.range.end, context_text_length);
+          if (start == end) {
+            ImeActionResult result = applyImeFinishPreeditCommandInternal();
+            mark_system_mark_clear(result);
+            return result;
+          }
+          ImeActionResult result = setImePreeditRangeInternal(
+              textRangeFromImeContextOffsets(message.context_id,
+                                             message.context_revision,
+                                             message.document_start_offset,
+                                             start,
+                                             end),
+              message.script_class);
+          mark_system_mark_clear(result);
+          return result;
+        }
+        return setImeContextSystemMarkRangeInternal(message.context_id,
+                                                         message.context_revision,
+                                                         message.document_start_offset,
+                                                         message.range.start,
+                                                         message.range.end);
+      }
+      case ImeCommandKind::CLEAR_MARKED_RANGE: {
+        if (message.marked_role == ImeMarkedRangeRole::SYSTEM_MARK) {
+          return make_system_mark_clear_result();
+        }
+        if (message.marked_role == ImeMarkedRangeRole::PREEDIT) {
+          return applyImeFinishPreeditCommandInternal();
+        }
+        ImeActionResult result = applyImeFinishPreeditCommandInternal();
+        mergeImeActionResult(result, make_system_mark_clear_result());
+        return result;
+      }
+      case ImeCommandKind::REPLACE_TEXT: {
+        if (!matches_input_context) {
+          return makeImeInputContextResyncResult(getImeSyncSnapshot());
+        }
+        clear_system_mark_state();
+        const size_t context_text_length = matches_input_context
+            ? StrUtil::utf16Length(m_ime_input_context_.text)
+            : 0;
+        ImeActionResult result = replaceImeContextTextInternal(
+            message.context_id,
+            message.context_revision,
+            message.document_start_offset,
+            clampImeOffset(message.range.start, context_text_length),
+            clampImeOffset(message.range.end, context_text_length),
+            message.text,
+            message.cursor_offset,
+            message.script_class);
+        mark_system_mark_clear(result);
+        return result;
+      }
+      case ImeCommandKind::DELETE_SURROUNDING_TEXT: {
+        if (has_context && !matches_input_context) {
+          return makeImeInputContextResyncResult(getImeSyncSnapshot());
+        }
+        if (has_valid_message_selection() && matches_input_context) {
+          const size_t context_text_length = StrUtil::utf16Length(m_ime_input_context_.text);
+          const size_t selection_start = clampImeOffset(message.selection.start, context_text_length);
+          const size_t selection_end = clampImeOffset(message.selection.end, context_text_length);
+          setSelectionInternal(
+              textRangeFromImeContextOffsets(message.context_id,
+                                             message.context_revision,
+                                             message.document_start_offset,
+                                             selection_start,
+                                             selection_end),
+              false);
+        }
+        const size_t delete_before = non_negative_length(message.delete_before);
+        const size_t delete_after = non_negative_length(message.delete_after);
+        clear_system_mark_state();
+        ImeActionResult result = deleteImeSurroundingInternal(
+            delete_before,
+            delete_after,
+            message.text_unit);
+        mark_system_mark_clear(result);
+        return result;
+      }
+      case ImeCommandKind::SET_KEYBOARD_SCRIPT: {
+        m_composition_controller_.setKeyboardScriptClass(message.script_class);
+        ImeActionResult result;
+        result.handled = true;
+        result.sync = getImeSyncSnapshot();
+        return result;
+      }
+    }
+
+    ImeActionResult result;
+    return result;
+  }
+
+  ImeActionResult EditorCore::replaceImeDocumentTextByOffsetInternal(size_t start_offset,
                                                      size_t end_offset,
                                                      const U8String& text,
                                                      int cursor_offset,
                                                      ImeScriptClass script_class) {
-    ImeActionResult result = replaceImeTextInternal(
+    ImeActionResult result = replaceImeDocumentRangeInternal(
         textRangeFromUtf16Offsets(start_offset, end_offset),
         text,
         script_class);
@@ -504,230 +606,232 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
-  ImeActionResult EditorCore::replaceImeInputContextTextInternal(size_t start_offset,
-                                                         size_t end_offset,
-                                                         const U8String& text,
-                                                         int cursor_offset,
-                                                         ImeScriptClass script_class) {
-    ImeActionResult result = replaceImeTextInternal(
-        textRangeFromImeInputContextOffsets(start_offset, end_offset),
-        text,
-        script_class);
-    applyImeCursorOffset(result, text, cursor_offset);
-    return result;
-  }
-
-  ImeActionResult EditorCore::markImeInputContextRangeInternal(size_t start_offset,
-                                                       size_t end_offset,
-                                                       ImeScriptClass script_class) {
-    TextRange range = textRangeFromImeInputContextOffsets(start_offset, end_offset);
-    if (range.start == range.end) {
-      return finishImePreeditInternal();
-    }
-    return markImeDocumentRangeInternal(range, script_class);
-  }
-
-  ImeActionResult EditorCore::notifyImeDocumentSelectionChangedInternal(size_t start_offset, size_t end_offset) {
+  ImeActionResult EditorCore::setImeDocumentSelectionByOffsetInternal(size_t start_offset, size_t end_offset) {
     return notifyImeSelectionChangedInternal(textRangeFromUtf16Offsets(start_offset, end_offset));
   }
 
-  ImeActionResult EditorCore::notifyImeInputContextSelectionChangedInternal(size_t start_offset, size_t end_offset) {
-    return notifyImeSelectionChangedInternal(textRangeFromImeInputContextOffsets(start_offset, end_offset));
-  }
-
-  ImeActionResult EditorCore::updateImeInputStateTextInternal(uint64_t context_id,
+  ImeActionResult EditorCore::applyImeDocumentWindowSnapshotInternal(uint64_t context_id,
+                                                      int32_t context_revision,
                                                       int32_t document_start_offset,
                                                       const U8String& text,
                                                       int32_t selection_start_offset,
                                                       int32_t selection_end_offset,
-                                                      int32_t composing_start_offset,
-                                                      int32_t composing_end_offset,
+                                                      ImeMarkedRange marked_range,
                                                       ImeScriptClass script_class) {
     ImeActionResult result;
     if (m_document_ == nullptr || m_settings_.read_only) {
       return result;
     }
 
-    ImeInputContext previous_context;
-    const bool has_previous_context = context_id != 0 && context_id == m_ime_input_context_.id;
-    if (has_previous_context) {
-      previous_context = m_ime_input_context_;
-    } else {
-      previous_context.id = context_id;
-      previous_context.document_start_offset = document_start_offset;
-      previous_context.kind = ImeInputContextKind::DOCUMENT_WINDOW;
+    const bool matches_input_context =
+        isMatchingImeDocumentWindow(m_ime_input_context_, context_id, context_revision);
+    ImeInputContext previous_context = m_ime_input_context_;
+    if (!matches_input_context) {
+      if (context_id == 0
+          || !isImeDocumentWindowContext(m_ime_input_context_)
+          || m_ime_input_context_.document_start_offset != document_start_offset) {
+        return makeImeInputContextResyncResult(getImeSyncSnapshot());
+      }
       const size_t text_length = StrUtil::utf16Length(text);
-      const size_t base = static_cast<size_t>(std::max<int32_t>(0, document_start_offset));
-      previous_context.text = m_document_->getU8Text(textRangeFromUtf16Offsets(base, base + text_length));
+      const size_t document_start = static_cast<size_t>(
+          std::max<int32_t>(0, document_start_offset));
+      size_t context_length = text_length;
+      context_length = std::max(context_length, StrUtil::utf16Length(m_ime_input_context_.text));
+      previous_context.has_preedit_range = m_ime_input_context_.has_preedit_range;
+      previous_context.preedit_range = m_ime_input_context_.preedit_range;
+      previous_context.has_system_mark_range = m_ime_input_context_.has_system_mark_range;
+      previous_context.system_mark_range = m_ime_input_context_.system_mark_range;
+      previous_context.id = context_id;
+      previous_context.revision = context_revision;
+      previous_context.document_start_offset = static_cast<int32_t>(document_start);
+      previous_context.text = m_document_->getU8Text(
+          textRangeFromUtf16Offsets(document_start, document_start + context_length));
+      previous_context.selection = {selection_start_offset, selection_end_offset};
+      previous_context.kind = ImeInputContextKind::DOCUMENT_WINDOW;
     }
-
     const size_t old_text_length = StrUtil::utf16Length(previous_context.text);
     const size_t new_text_length = StrUtil::utf16Length(text);
     const ImeInputTextDiff diff = computeImeInputTextDiff(previous_context.text, text);
-    const ImeInputStateRange selection = normalizeImeSelectionRange(
+    const ImeContextRange selection = normalizeImeSelectionRange(
         selection_start_offset,
         selection_end_offset,
         new_text_length);
-    const ImeInputStateRange new_composition = normalizeImeComposingRange(
-        composing_start_offset,
-        composing_end_offset,
+    const ImeContextRange reported_marked_range = normalizeImeMarkedRange(
+        marked_range.range.start,
+        marked_range.range.end,
         new_text_length);
-    const ImeInputStateRange old_composition = previous_context.has_composition
-                                               ? normalizeImeComposingRange(
-                                                   previous_context.composition.start,
-                                                   previous_context.composition.end,
+    const bool marked_range_is_preedit =
+        marked_range.role == ImeMarkedRangeRole::PREEDIT;
+    const bool marked_range_is_platform =
+        marked_range.role == ImeMarkedRangeRole::SYSTEM_MARK;
+    const ImeContextRange new_preedit =
+        marked_range_is_preedit ? reported_marked_range : ImeContextRange {};
+    const ImeContextRange new_system_mark =
+        marked_range_is_platform ? reported_marked_range : ImeContextRange {};
+    const ImeContextRange old_preedit = previous_context.has_preedit_range
+                                               ? normalizeImeMarkedRange(
+                                                   previous_context.preedit_range.start,
+                                                   previous_context.preedit_range.end,
                                                    old_text_length)
-                                               : ImeInputStateRange {};
+                                               : ImeContextRange {};
+    const ImeContextRange old_system_mark =
+        previous_context.has_system_mark_range
+        ? normalizeImeMarkedRange(previous_context.system_mark_range.start,
+                                     previous_context.system_mark_range.end,
+                                     old_text_length)
+        : ImeContextRange {};
     const size_t document_start = static_cast<size_t>(
         std::max<int32_t>(0, previous_context.document_start_offset));
+    const bool had_active_preedit = hasPreedit();
+    const bool new_system_mark_only =
+        new_system_mark.active && !new_preedit.active;
+    const bool clears_previous_system_mark =
+        old_system_mark.active && !new_system_mark.active;
+    const auto notify_reported_selection = [&]() {
+      mergeImeActionResult(result, setImeDocumentSelectionByOffsetInternal(
+          document_start + selection.start,
+          document_start + selection.end));
+    };
 
     if (diff.changed) {
-      const bool replaces_previous_composition =
-          old_composition.active
-          && imeDiffTouchesPreviousRange(diff, old_composition)
-          && imeTextPreservesPreviousRangeContext(previous_context.text, text, old_composition);
-      if (replaces_previous_composition) {
-        mergeImeActionResult(result, markImeDocumentRangeInternal(
-            document_start + old_composition.start,
-            document_start + old_composition.end,
+      const bool replaces_previous_preedit =
+          old_preedit.active
+          && imeDiffTouchesPreviousRange(diff, old_preedit)
+          && imeTextPreservesPreviousRangeContext(previous_context.text, text, old_preedit);
+      if (replaces_previous_preedit) {
+        mergeImeActionResult(result, setImePreeditRangeInternal(
+            document_start + old_preedit.start,
+            document_start + old_preedit.end,
             script_class));
-        if (new_composition.active) {
-          const U8String preedit_text = sliceUtf16Text(text, new_composition.start, new_composition.end);
-          const size_t composing_length = new_composition.end - new_composition.start;
-          const auto relative_offset = [&](size_t offset) {
-            if (offset <= new_composition.start) {
-              return static_cast<size_t>(0);
-            }
-            if (offset >= new_composition.end) {
-              return composing_length;
-            }
-            return offset - new_composition.start;
-          };
-          mergeImeActionResult(result, setImeComposingTextInternal(
+        if (new_preedit.active) {
+          const U8String preedit_text = sliceUtf16Text(text, new_preedit.start, new_preedit.end);
+          mergeImeActionResult(result, setImePreeditTextInternal(
               preedit_text,
-              relative_offset(selection.start),
-              relative_offset(selection.end),
+              clampImeRelativeOffset(selection.start, new_preedit),
+              clampImeRelativeOffset(selection.end, new_preedit),
               script_class));
         } else {
           const U8String replacement = sliceReplacementForPreviousRange(
               previous_context.text,
               text,
-              old_composition);
-          mergeImeActionResult(result, commitImeTextInternal(replacement, script_class));
+              old_preedit);
+          mergeImeActionResult(result, applyImeCommitTextCommandInternal(replacement, script_class));
         }
-      } else if (new_composition.active) {
-        ImeInputStateRange previous_composition = transformImeRangeToPreviousText(
-            new_composition,
+      } else if (new_preedit.active) {
+        ImeContextRange previous_preedit = transformImeRangeToPreviousText(
+            new_preedit,
             diff,
             old_text_length);
-        if (!previous_composition.active && old_composition.active) {
-          previous_composition = old_composition;
+        if (!previous_preedit.active && old_preedit.active) {
+          previous_preedit = old_preedit;
         }
-        if (previous_composition.active) {
-          mergeImeActionResult(result, markImeDocumentRangeInternal(
-              document_start + previous_composition.start,
-              document_start + previous_composition.end,
+        if (previous_preedit.active) {
+          mergeImeActionResult(result, setImePreeditRangeInternal(
+              document_start + previous_preedit.start,
+              document_start + previous_preedit.end,
               script_class));
         } else {
           const size_t insertion_offset = document_start + std::min(diff.start, old_text_length);
-          mergeImeActionResult(result, notifyImeDocumentSelectionChangedInternal(insertion_offset, insertion_offset));
+          mergeImeActionResult(result, setImeDocumentSelectionByOffsetInternal(insertion_offset, insertion_offset));
         }
 
-        const U8String preedit_text = sliceUtf16Text(text, new_composition.start, new_composition.end);
-        const size_t composing_length = new_composition.end - new_composition.start;
-        const auto relative_offset = [&](size_t offset) {
-          if (offset <= new_composition.start) {
-            return static_cast<size_t>(0);
-          }
-          if (offset >= new_composition.end) {
-            return composing_length;
-          }
-          return offset - new_composition.start;
-        };
-        mergeImeActionResult(result, setImeComposingTextInternal(
+        const U8String preedit_text = sliceUtf16Text(text, new_preedit.start, new_preedit.end);
+        mergeImeActionResult(result, setImePreeditTextInternal(
             preedit_text,
-            relative_offset(selection.start),
-            relative_offset(selection.end),
+            clampImeRelativeOffset(selection.start, new_preedit),
+            clampImeRelativeOffset(selection.end, new_preedit),
             script_class));
-      } else if (old_composition.active || isComposing()) {
-        mergeImeActionResult(result, commitImeTextInternal(diff.replacement, script_class));
+      } else if (old_preedit.active || hasPreedit()) {
+        mergeImeActionResult(result, applyImeCommitTextCommandInternal(diff.replacement, script_class));
       } else {
-        mergeImeActionResult(result, replaceImeDocumentTextInternal(
+        mergeImeActionResult(result, replaceImeDocumentTextByOffsetInternal(
             document_start + diff.start,
             document_start + diff.old_end,
             diff.replacement,
             1,
             script_class));
       }
-    } else if (new_composition.active) {
-      const bool had_visible_composition = isComposing();
-      const bool had_document_range_composition =
-          had_visible_composition && getCompositionState().kind == CompositionKind::DOCUMENT_RANGE;
-      if (!had_visible_composition || had_document_range_composition) {
-        mergeImeActionResult(result, markImeDocumentRangeInternal(
-            document_start + new_composition.start,
-            document_start + new_composition.end,
+      if (new_system_mark_only) {
+        notify_reported_selection();
+      }
+    } else if (new_preedit.active) {
+      const bool had_document_range_preedit =
+          had_active_preedit && getCompositionState().kind == CompositionKind::DOCUMENT_RANGE;
+      if (!had_active_preedit || had_document_range_preedit) {
+        mergeImeActionResult(result, setImePreeditRangeInternal(
+            document_start + new_preedit.start,
+            document_start + new_preedit.end,
             script_class));
-        mergeImeActionResult(result, notifyImeDocumentSelectionChangedInternal(
+        mergeImeActionResult(result, setImeDocumentSelectionByOffsetInternal(
             document_start + selection.start,
             document_start + selection.end));
       } else {
-        const U8String preedit_text = sliceUtf16Text(text, new_composition.start, new_composition.end);
-        const size_t composing_length = new_composition.end - new_composition.start;
-        const auto relative_offset = [&](size_t offset) {
-          if (offset <= new_composition.start) {
-            return static_cast<size_t>(0);
-          }
-          if (offset >= new_composition.end) {
-            return composing_length;
-          }
-          return offset - new_composition.start;
-        };
-        mergeImeActionResult(result, setImeComposingTextInternal(
+        const U8String preedit_text = sliceUtf16Text(text, new_preedit.start, new_preedit.end);
+        mergeImeActionResult(result, setImePreeditTextInternal(
             preedit_text,
-            relative_offset(selection.start),
-            relative_offset(selection.end),
+            clampImeRelativeOffset(selection.start, new_preedit),
+            clampImeRelativeOffset(selection.end, new_preedit),
             script_class));
       }
-    } else if (old_composition.active || isComposing()) {
-      mergeImeActionResult(result, finishImePreeditInternal());
+    } else if (new_system_mark_only) {
+      result.handled = true;
+      notify_reported_selection();
+    } else if (old_preedit.active || hasPreedit()) {
+      mergeImeActionResult(result, applyImeFinishPreeditCommandInternal());
+    } else if (old_system_mark.active) {
+      result.handled = true;
     }
 
-    if (!new_composition.active) {
-      mergeImeActionResult(result, notifyImeDocumentSelectionChangedInternal(
+    if (!new_preedit.active && !new_system_mark_only) {
+      mergeImeActionResult(result, setImeDocumentSelectionByOffsetInternal(
           document_start + selection.start,
           document_start + selection.end));
     }
 
-    rememberImeInputState(context_id,
+    rememberImeDocumentWindowContext(context_id,
+                          context_revision,
                           previous_context.document_start_offset,
                           text,
                           selection_start_offset,
                           selection_end_offset,
-                          composing_start_offset,
-                          composing_end_offset,
+                          marked_range,
                           previous_context.kind);
+    const bool clear_system_mark =
+        (result.sync.clear_system_mark || clears_previous_system_mark) && !new_system_mark.active;
+    if (new_system_mark_only) {
+      rememberImeTextUpdateSystemMarkRange(context_id,
+                                              context_revision,
+                                              previous_context.document_start_offset,
+                                              new_system_mark.start,
+                                              new_system_mark.end);
+    } else {
+      clearImeTextUpdateSystemMarkRange();
+    }
+    if (result.handled) {
+      result.sync = buildImeSyncSnapshot();
+      result.sync.clear_system_mark = result.sync.clear_system_mark || clear_system_mark;
+    }
     return result;
   }
 
-  ImeActionResult EditorCore::updateImeTextModelStateInternal(ImeTextModelMode mode,
+  ImeActionResult EditorCore::handleImeTextSnapshotInternal(ImeTextUpdateScope mode,
                                                       uint64_t context_id,
+                                                      int32_t context_revision,
                                                       int32_t document_start_offset,
                                                       const U8String& text,
                                                       int32_t selection_start_offset,
                                                       int32_t selection_end_offset,
-                                                      int32_t composing_start_offset,
-                                                      int32_t composing_end_offset,
+                                                      ImeMarkedRange marked_range,
                                                       ImeScriptClass script_class) {
-    if (mode == ImeTextModelMode::DOCUMENT_WINDOW) {
-      resetImeTextModelPendingState();
-      return updateImeInputStateTextInternal(context_id,
+    if (mode == ImeTextUpdateScope::DOCUMENT_WINDOW) {
+      resetImeTextUpdatePendingState();
+      return applyImeDocumentWindowSnapshotInternal(context_id,
+                                     context_revision,
                                      document_start_offset,
                                      text,
                                      selection_start_offset,
                                      selection_end_offset,
-                                     composing_start_offset,
-                                     composing_end_offset,
+                                     marked_range,
                                      script_class);
     }
 
@@ -736,61 +840,63 @@ namespace NS_SWEETEDITOR {
       return result;
     }
 
-    resetImeTextModelPendingState();
+    resetImeTextUpdatePendingState();
     const bool stale_context = context_id != 0
-        && m_ime_input_context_.id != 0
+        && isImeTextWindowContext(m_ime_input_context_)
         && context_id != m_ime_input_context_.id;
     if (stale_context) {
       result.handled = true;
       result.sync = getImeSyncSnapshot();
-      result.sync.clear_platform_preedit = true;
+      result.sync.clear_system_mark = true;
       result.sync.context_policy = ImeContextPolicy::NONE;
       return result;
     }
 
-    const size_t text_length = StrUtil::utf16Length(text);
-    const ImeInputStateRange composition = normalizeImeComposingRange(
-        composing_start_offset,
-        composing_end_offset,
-        text_length);
-    if (composition.active) {
-      rememberImeInputState(context_id,
-                            document_start_offset,
+    const ImeContextRange preedit = normalizeImeMarkedRange(
+        marked_range.range.start,
+        marked_range.range.end,
+        StrUtil::utf16Length(text));
+    if (marked_range.role == ImeMarkedRangeRole::PREEDIT && preedit.active) {
+      rememberImeDocumentWindowContext(context_id,
+                            context_revision,
+                            0,
                             text,
                             selection_start_offset,
                             selection_end_offset,
-                            composing_start_offset,
-                            composing_end_offset,
+                            marked_range,
                             ImeInputContextKind::TRANSIENT_INPUT);
       result.handled = true;
       result.sync = getImeSyncSnapshot();
-      result.sync.clear_platform_preedit = false;
+      result.sync.clear_system_mark = false;
       result.sync.context_policy = ImeContextPolicy::NONE;
       return result;
     }
 
-    const bool had_text_model_state = m_ime_input_context_.id != 0
-        && (!m_ime_input_context_.text.empty() || m_ime_input_context_.has_composition);
+    const bool had_text_update_state = isImeTextWindowContext(m_ime_input_context_)
+        && (!m_ime_input_context_.text.empty()
+            || m_ime_input_context_.has_preedit_range
+            || m_ime_input_context_.has_system_mark_range);
     if (!text.empty()) {
-      result = commitImeTextInternal(text, script_class);
+      result = applyImeCommitTextCommandInternal(text, script_class);
       invalidateImeInputContext();
-      result.sync.clear_platform_preedit = true;
+      result.sync.clear_system_mark = true;
       result.sync.context_policy = ImeContextPolicy::NONE;
       return result;
     }
 
     result.handled = true;
     result.sync = getImeSyncSnapshot();
-    result.sync.clear_platform_preedit = had_text_model_state;
+    result.sync.clear_system_mark = had_text_update_state;
     result.sync.context_policy = ImeContextPolicy::NONE;
-    if (had_text_model_state) {
+    if (had_text_update_state) {
       invalidateImeInputContext();
     }
     return result;
   }
 
-  ImeActionResult EditorCore::updateImeTextModelDeltaInternal(ImeTextModelMode mode,
+  ImeActionResult EditorCore::handleImeTextPatchInternal(ImeTextUpdateScope mode,
                                                       uint64_t context_id,
+                                                      int32_t context_revision,
                                                       int32_t document_start_offset,
                                                       const U8String& old_text,
                                                       int32_t delta_start_offset,
@@ -798,8 +904,7 @@ namespace NS_SWEETEDITOR {
                                                       const U8String& delta_text,
                                                       int32_t selection_start_offset,
                                                       int32_t selection_end_offset,
-                                                      int32_t composing_start_offset,
-                                                      int32_t composing_end_offset,
+                                                      ImeMarkedRange marked_range,
                                                       ImeScriptClass script_class) {
     const bool has_text_delta = delta_start_offset >= 0 && delta_end_offset >= 0;
     const size_t old_text_length = StrUtil::utf16Length(old_text);
@@ -813,123 +918,243 @@ namespace NS_SWEETEDITOR {
         ? replaceUtf16TextRange(old_text, delta_start, delta_end, delta_text)
         : old_text;
 
-    if (mode == ImeTextModelMode::TRANSIENT_INPUT) {
-      return updateImeTextModelStateInternal(mode,
+    if (mode == ImeTextUpdateScope::TRANSIENT_INPUT) {
+      return handleImeTextSnapshotInternal(mode,
                                      context_id,
+                                     context_revision,
                                      document_start_offset,
                                      next_text,
                                      selection_start_offset,
-                                     selection_end_offset,
-                                     composing_start_offset,
-                                     composing_end_offset,
-                                     script_class);
+                                      selection_end_offset,
+                                      marked_range,
+                                      script_class);
     }
 
-    const ImeInputStateRange new_composition = normalizeImeComposingRange(
-        composing_start_offset,
-        composing_end_offset,
+    const ImeContextRange reported_marked_range = normalizeImeMarkedRange(
+        marked_range.range.start,
+        marked_range.range.end,
         StrUtil::utf16Length(next_text));
-    const ImeInputStateRange previous_composition =
-        context_id != 0 && context_id == m_ime_input_context_.id && m_ime_input_context_.has_composition
-        ? normalizeImeComposingRange(m_ime_input_context_.composition.start,
-                                     m_ime_input_context_.composition.end,
+    const ImeContextRange new_preedit =
+        marked_range.role == ImeMarkedRangeRole::PREEDIT
+        ? reported_marked_range
+        : ImeContextRange {};
+    const ImeContextRange new_system_mark =
+        marked_range.role == ImeMarkedRangeRole::SYSTEM_MARK
+        ? reported_marked_range
+        : ImeContextRange {};
+    const ImeContextRange previous_preedit =
+        isMatchingImeDocumentWindow(m_ime_input_context_, context_id, context_revision)
+            && m_ime_input_context_.has_preedit_range
+        ? normalizeImeMarkedRange(m_ime_input_context_.preedit_range.start,
+                                     m_ime_input_context_.preedit_range.end,
                                      old_text_length)
-        : ImeInputStateRange {};
+        : ImeContextRange {};
+    const ImeContextRange previous_system_mark =
+        isMatchingImeDocumentWindow(m_ime_input_context_, context_id, context_revision)
+            && m_ime_input_context_.has_system_mark_range
+        ? normalizeImeMarkedRange(m_ime_input_context_.system_mark_range.start,
+                                     m_ime_input_context_.system_mark_range.end,
+                                     old_text_length)
+        : ImeContextRange {};
 
     if (!has_text_delta) {
-      if (previous_composition.active && !new_composition.active) {
-        m_ime_text_model_has_pending_composition_clear_ = true;
-        m_ime_text_model_pending_composition_clear_ = {
-          static_cast<int32_t>(previous_composition.start),
-          static_cast<int32_t>(previous_composition.end)
+      const bool clears_previous_preedit =
+          previous_preedit.active && !new_preedit.active;
+      const bool clears_previous_system_mark =
+          previous_system_mark.active && !new_system_mark.active;
+      if (clears_previous_preedit) {
+        m_ime_text_update_has_pending_preedit_clear_ = true;
+        m_ime_text_update_pending_preedit_clear_ = {
+          static_cast<int32_t>(previous_preedit.start),
+          static_cast<int32_t>(previous_preedit.end)
         };
         ImeActionResult result;
         result.handled = true;
         result.sync = getImeSyncSnapshot();
         return result;
       }
-      resetImeTextModelPendingState();
-      return updateImeInputStateTextInternal(context_id,
+      if (clears_previous_system_mark) {
+        ImeActionResult result;
+        result.handled = true;
+        rememberImeDocumentWindowContext(context_id,
+                              context_revision,
+                              m_ime_input_context_.document_start_offset,
+                              old_text,
+                              selection_start_offset,
+                              selection_end_offset,
+                              {},
+                              m_ime_input_context_.kind);
+        clearImeTextUpdateSystemMarkRange();
+        result.sync = getImeSyncSnapshot();
+        return result;
+      }
+      resetImeTextUpdatePendingState();
+      return applyImeDocumentWindowSnapshotInternal(context_id,
+                                     context_revision,
                                      document_start_offset,
                                      old_text,
                                      selection_start_offset,
-                                     selection_end_offset,
-                                     composing_start_offset,
-                                     composing_end_offset,
-                                     script_class);
+                                      selection_end_offset,
+                                      marked_range,
+                                      script_class);
     }
 
-    if (m_ime_text_model_has_pending_composition_clear_
-        && static_cast<int32_t>(delta_start) == m_ime_text_model_pending_composition_clear_.start
-        && static_cast<int32_t>(delta_end) == m_ime_text_model_pending_composition_clear_.end) {
-      ImeActionResult result = commitImeInputStateTextReplacementInternal(context_id,
-                                                                  document_start_offset,
-                                                                  delta_start,
-                                                                  delta_end,
-                                                                  delta_text,
-                                                                  1,
-                                                                  script_class);
-      resetImeTextModelPendingState();
+    if (m_ime_text_update_has_pending_preedit_clear_
+        && static_cast<int32_t>(delta_start) == m_ime_text_update_pending_preedit_clear_.start
+        && static_cast<int32_t>(delta_end) == m_ime_text_update_pending_preedit_clear_.end) {
+      ImeActionResult result = hasPreedit()
+          ? commitImeContextTextReplacementInternal(context_id,
+                                                       context_revision,
+                                                       document_start_offset,
+                                                       delta_start,
+                                                       delta_end,
+                                                       delta_text,
+                                                       1,
+                                                       script_class)
+          : replaceImeContextTextInternal(context_id,
+                                             context_revision,
+                                             document_start_offset,
+                                             delta_start,
+                                             delta_end,
+                                             delta_text,
+                                             1,
+                                             script_class);
+      resetImeTextUpdatePendingState();
       if (result.handled) {
         invalidateImeInputContext();
         return result;
       }
     } else {
-      resetImeTextModelPendingState();
+      resetImeTextUpdatePendingState();
     }
 
-    return updateImeInputStateTextInternal(context_id,
-                                   document_start_offset,
-                                   next_text,
-                                   selection_start_offset,
-                                   selection_end_offset,
-                                   composing_start_offset,
-                                   composing_end_offset,
-                                   script_class);
+    return applyImeDocumentWindowSnapshotInternal(context_id,
+                                     context_revision,
+                                     document_start_offset,
+                                     next_text,
+                                     selection_start_offset,
+                                    selection_end_offset,
+                                    marked_range,
+                                    script_class);
   }
 
-  ImeActionResult EditorCore::updateImeInputStateSelectionInternal(uint64_t context_id,
+  ImeActionResult EditorCore::setImeContextSelectionInternal(uint64_t context_id,
+                                                           int32_t context_revision,
                                                            int32_t document_start_offset,
                                                            int32_t selection_start_offset,
                                                            int32_t selection_end_offset) {
     auto to_offset = [](int32_t offset) {
       return offset < 0 ? static_cast<size_t>(0) : static_cast<size_t>(offset);
     };
-    const TextRange range = textRangeFromImeInputStateOffsets(
+    const TextRange range = textRangeFromImeContextOffsets(
         context_id,
+        context_revision,
         document_start_offset,
         to_offset(selection_start_offset),
         to_offset(selection_end_offset));
     ImeActionResult result = notifyImeSelectionChangedInternal(range);
     if (context_id != 0 && context_id == m_ime_input_context_.id) {
-      rememberImeInputState(context_id,
+      const bool has_preedit_range = m_ime_input_context_.has_preedit_range;
+      const bool has_system_mark = m_ime_input_context_.has_system_mark_range;
+      const ImeOffsetRange marked_range = has_preedit_range
+                                          ? m_ime_input_context_.preedit_range
+                                          : (has_system_mark
+                                             ? m_ime_input_context_.system_mark_range
+                                             : ImeOffsetRange {-1, -1});
+      const ImeMarkedRangeRole marked_range_role =
+          has_preedit_range
+          ? ImeMarkedRangeRole::PREEDIT
+          : (has_system_mark
+             ? ImeMarkedRangeRole::SYSTEM_MARK
+             : ImeMarkedRangeRole::NONE);
+      rememberImeDocumentWindowContext(context_id,
+                            context_revision,
                             m_ime_input_context_.document_start_offset,
                             m_ime_input_context_.text,
                             selection_start_offset,
                             selection_end_offset,
-                            m_ime_input_context_.has_composition ? m_ime_input_context_.composition.start : -1,
-                            m_ime_input_context_.has_composition ? m_ime_input_context_.composition.end : -1,
+                            {marked_range_role, marked_range},
                             m_ime_input_context_.kind);
     }
     return result;
   }
 
-  ImeActionResult EditorCore::replaceImeInputStateTextInternal(uint64_t context_id,
+  ImeActionResult EditorCore::replaceImeContextTextInternal(uint64_t context_id,
+                                                       int32_t context_revision,
                                                        int32_t document_start_offset,
                                                        size_t start_offset,
                                                        size_t end_offset,
                                                        const U8String& text,
                                                        int cursor_offset,
                                                        ImeScriptClass script_class) {
-    ImeActionResult result = replaceImeTextInternal(
-        textRangeFromImeInputStateOffsets(context_id, document_start_offset, start_offset, end_offset),
+    ImeActionResult result = replaceImeDocumentRangeInternal(
+        textRangeFromImeContextOffsets(context_id,
+                                       context_revision,
+                                       document_start_offset,
+                                       start_offset,
+                                       end_offset),
         text,
         script_class);
     applyImeCursorOffset(result, text, cursor_offset);
     return result;
   }
 
-  ImeActionResult EditorCore::commitImeInputStateTextReplacementInternal(uint64_t context_id,
+  ImeActionResult EditorCore::setImeContextSystemMarkRangeInternal(uint64_t context_id,
+                                                                int32_t context_revision,
+                                                                int32_t document_start_offset,
+                                                                int32_t start_offset,
+                                                                int32_t end_offset) {
+    ImeActionResult result;
+    if (m_document_ == nullptr) {
+      return result;
+    }
+    const ImeContextRange range = normalizeImeMarkedRange(
+        start_offset,
+        end_offset,
+        StrUtil::utf16Length(m_ime_input_context_.text));
+    if (!range.active) {
+      return clearImeContextSystemMarkRangeInternal(context_id, context_revision, document_start_offset);
+    }
+
+    m_ime_input_context_.has_system_mark_range = true;
+    m_ime_input_context_.system_mark_range = {
+      static_cast<int32_t>(range.start),
+      static_cast<int32_t>(range.end)
+    };
+    rememberImeTextUpdateSystemMarkRange(context_id,
+                                            context_revision,
+                                            document_start_offset,
+                                            range.start,
+                                            range.end);
+    result.handled = true;
+    result.sync = buildImeSyncSnapshot();
+    result.sync.clear_system_mark = false;
+    return result;
+  }
+
+  ImeActionResult EditorCore::clearImeContextSystemMarkRangeInternal(uint64_t context_id,
+                                                                  int32_t context_revision,
+                                                                  int32_t document_start_offset) {
+    ImeActionResult result;
+    if (m_document_ == nullptr) {
+      return result;
+    }
+    if (!isMatchingImeDocumentWindow(m_ime_input_context_, context_id, context_revision)
+        && document_start_offset < 0) {
+      return makeImeInputContextResyncResult(getImeSyncSnapshot());
+    }
+
+    m_ime_input_context_.has_system_mark_range = false;
+    m_ime_input_context_.system_mark_range = {-1, -1};
+    clearImeTextUpdateSystemMarkRange();
+    result.handled = true;
+    result.sync = buildImeSyncSnapshot();
+    result.sync.clear_system_mark = true;
+    return result;
+  }
+
+  ImeActionResult EditorCore::commitImeContextTextReplacementInternal(uint64_t context_id,
+                                                                 int32_t context_revision,
                                                                  int32_t document_start_offset,
                                                                  size_t start_offset,
                                                                  size_t end_offset,
@@ -942,14 +1167,13 @@ namespace NS_SWEETEDITOR {
     }
 
     const CompositionState& composition = getCompositionState();
-    if (!composition.is_composing
-        || !composition.visible
-        || composition.kind != CompositionKind::DOCUMENT_RANGE) {
+    if (composition.kind != CompositionKind::DOCUMENT_RANGE) {
       return result;
     }
 
-    const TextRange range = textRangeFromImeInputStateOffsets(
+    const TextRange range = textRangeFromImeContextOffsets(
         context_id,
+        context_revision,
         document_start_offset,
         start_offset,
         end_offset);
@@ -992,8 +1216,11 @@ namespace NS_SWEETEDITOR {
                                                    ImeInputContextKind kind) {
     ImeInputContext context;
     context.kind = kind;
+    const bool text_window = isImeTextWindowKind(kind);
     if (m_document_ == nullptr) {
-      m_ime_input_context_ = context;
+      if (text_window) {
+        m_ime_input_context_ = {};
+      }
       return context;
     }
 
@@ -1011,8 +1238,12 @@ namespace NS_SWEETEDITOR {
     const size_t context_end = std::min(document_length, selection_end + after_length);
     TextRange context_range = textRangeFromUtf16Offsets(context_start, context_end);
 
-    context.id = m_next_ime_input_context_id_++;
-    context.revision = ++m_ime_input_context_revision_;
+    if (text_window) {
+      context.id = m_next_ime_input_context_id_++;
+      context.revision = ++m_ime_input_context_revision_;
+    } else {
+      context.revision = m_ime_input_context_revision_;
+    }
     context.document_start_offset = static_cast<int32_t>(context_start);
     context.text = m_document_->getU8Text(context_range);
     context.selection = {
@@ -1020,23 +1251,40 @@ namespace NS_SWEETEDITOR {
       static_cast<int32_t>(selection_end - context_start)
     };
 
-    TextRange platform_marked_range;
-    if (m_composition_controller_.currentPlatformMarkedRange(platform_marked_range)) {
-      size_t composing_start = m_document_->getCharIndexFromPosition(platform_marked_range.start);
-      size_t composing_end = m_document_->getCharIndexFromPosition(platform_marked_range.end);
-      if (composing_start > composing_end) {
-        std::swap(composing_start, composing_end);
+    if (m_composition_controller_.hasPreedit()) {
+      TextRange preedit_range = m_composition_controller_.currentPreeditRange();
+      size_t preedit_start = m_document_->getCharIndexFromPosition(preedit_range.start);
+      size_t preedit_end = m_document_->getCharIndexFromPosition(preedit_range.end);
+      if (preedit_start > preedit_end) {
+        std::swap(preedit_start, preedit_end);
       }
-      if (composing_start >= context_start && composing_end <= context_end && composing_start != composing_end) {
-        context.has_composition = true;
-        context.composition = {
-          static_cast<int32_t>(composing_start - context_start),
-          static_cast<int32_t>(composing_end - context_start)
+      if (preedit_start >= context_start && preedit_end <= context_end && preedit_start != preedit_end) {
+        context.has_preedit_range = true;
+        context.preedit_range = {
+          static_cast<int32_t>(preedit_start - context_start),
+          static_cast<int32_t>(preedit_end - context_start)
         };
       }
     }
 
-    m_ime_input_context_ = context;
+    if (m_ime_text_update_has_system_mark_range_) {
+      size_t marked_start = m_document_->getCharIndexFromPosition(m_ime_text_update_system_mark_range_.start);
+      size_t marked_end = m_document_->getCharIndexFromPosition(m_ime_text_update_system_mark_range_.end);
+      if (marked_start > marked_end) {
+        std::swap(marked_start, marked_end);
+      }
+      if (marked_start >= context_start && marked_end <= context_end && marked_start != marked_end) {
+        context.has_system_mark_range = true;
+        context.system_mark_range = {
+          static_cast<int32_t>(marked_start - context_start),
+          static_cast<int32_t>(marked_end - context_start)
+        };
+      }
+    }
+
+    if (text_window) {
+      m_ime_input_context_ = context;
+    }
     return context;
   }
 
@@ -1050,7 +1298,17 @@ namespace NS_SWEETEDITOR {
            : ImeInputContextKind::NONE;
   }
 
-  ImeInputContext EditorCore::getImeInputContext(size_t before_length, size_t after_length) {
+  ImeSyncSnapshot EditorCore::buildImeSyncSnapshot() const {
+    ImeSyncSnapshot snapshot = m_composition_controller_.buildSyncSnapshot();
+    if (!snapshot.has_preedit_range && m_ime_text_update_has_system_mark_range_) {
+      snapshot.has_system_mark_range = true;
+      snapshot.system_mark_range = m_ime_text_update_system_mark_range_;
+      snapshot.clear_system_mark = false;
+    }
+    return snapshot;
+  }
+
+  ImeInputContext EditorCore::getImeCommandInputContext(size_t before_length, size_t after_length) {
     const ImeContextPolicy policy = m_composition_controller_.inputContextPolicy();
     if (policy == ImeContextPolicy::NONE) {
       return buildImeInputContext(0, 0, resolveImeDocumentInputContextKind(0, 0));
@@ -1064,12 +1322,12 @@ namespace NS_SWEETEDITOR {
         resolveImeDocumentInputContextKind(context_before, context_after));
   }
 
-  ImeInputContext EditorCore::getImeTextModelInputContext(ImeTextModelMode mode,
-                                                          size_t before_length,
-                                                          size_t after_length) {
-    if (mode == ImeTextModelMode::TRANSIENT_INPUT) {
-      if (m_ime_input_context_.id != 0
-          && (!m_ime_input_context_.text.empty() || m_ime_input_context_.has_composition)) {
+  ImeInputContext EditorCore::getImeTextUpdateInputContext(ImeTextUpdateScope mode, size_t before_length, size_t after_length) {
+    if (mode == ImeTextUpdateScope::TRANSIENT_INPUT) {
+      if (isImeTextWindowContext(m_ime_input_context_)
+          && (!m_ime_input_context_.text.empty()
+              || m_ime_input_context_.has_preedit_range
+              || m_ime_input_context_.has_system_mark_range)) {
         ImeInputContext context = m_ime_input_context_;
         context.kind = ImeInputContextKind::TRANSIENT_INPUT;
         return context;
@@ -1077,7 +1335,12 @@ namespace NS_SWEETEDITOR {
       return buildImeInputContext(0, 0, ImeInputContextKind::TRANSIENT_INPUT);
     }
 
-    return getImeInputContext(before_length, after_length);
+    const size_t context_before = std::min(before_length, LIMITED_IME_DOCUMENT_CONTEXT_LENGTH);
+    const size_t context_after = std::min(after_length, LIMITED_IME_DOCUMENT_CONTEXT_LENGTH);
+    return buildImeInputContext(
+        context_before,
+        context_after,
+        ImeInputContextKind::DOCUMENT_WINDOW);
   }
 
   bool EditorCore::isDocumentRangeReadable(const TextRange& range) const {
@@ -1093,13 +1356,7 @@ namespace NS_SWEETEDITOR {
   }
 
   ImeSyncSnapshot EditorCore::getImeSyncSnapshot() const {
-    return m_composition_controller_.buildSyncSnapshot();
-  }
-
-  EditorActionResult EditorCore::setImeKeyboardScriptClass(ImeScriptClass script_class) {
-    const ActionSnapshot before = captureActionSnapshot();
-    m_composition_controller_.setKeyboardScriptClass(script_class);
-    return finishAction(before, EditorActionSource::IME, true);
+    return buildImeSyncSnapshot();
   }
 
   ImeScriptClass EditorCore::getImeKeyboardScriptClass() const {
@@ -1110,16 +1367,12 @@ namespace NS_SWEETEDITOR {
     return m_composition_controller_.composition();
   }
 
-  bool EditorCore::isComposing() const {
-    return m_composition_controller_.hasVisibleComposition();
-  }
-
-  bool EditorCore::hasComposingSession() const {
-    return m_composition_controller_.hasComposingSession();
+  bool EditorCore::hasPreedit() const {
+    return m_composition_controller_.hasPreedit();
   }
 
   TextRange EditorCore::textRangeFromImeInputContextOffsets(size_t start_offset, size_t end_offset) const {
-    if (m_ime_input_context_.id == 0) {
+    if (!isImeDocumentWindowContext(m_ime_input_context_)) {
       return textRangeFromUtf16Offsets(start_offset, end_offset);
     }
     if (start_offset > end_offset) {
@@ -1132,11 +1385,12 @@ namespace NS_SWEETEDITOR {
     return textRangeFromUtf16Offsets(base + start_offset, base + end_offset);
   }
 
-  TextRange EditorCore::textRangeFromImeInputStateOffsets(uint64_t context_id,
+  TextRange EditorCore::textRangeFromImeContextOffsets(uint64_t context_id,
+                                                          int32_t context_revision,
                                                           int32_t document_start_offset,
                                                           size_t start_offset,
                                                           size_t end_offset) const {
-    if (context_id != 0 && context_id == m_ime_input_context_.id) {
+    if (isMatchingImeDocumentWindow(m_ime_input_context_, context_id, context_revision)) {
       return textRangeFromImeInputContextOffsets(start_offset, end_offset);
     }
     if (start_offset > end_offset) {
@@ -1146,20 +1400,20 @@ namespace NS_SWEETEDITOR {
     return textRangeFromUtf16Offsets(base + start_offset, base + end_offset);
   }
 
-  TextRange EditorCore::textRangeFromImeCompositionOffsets(const ImeActionResult& result,
+  TextRange EditorCore::textRangeFromImeMarkedOffsets(const ImeActionResult& result,
                                                           size_t start_offset,
                                                           size_t end_offset) const {
-    TextRange composition_range;
+    TextRange marked_range;
     bool has_range = false;
-    if (result.sync.has_platform_marked_range) {
-      composition_range = result.sync.platform_marked_range;
+    if (result.sync.has_system_mark_range) {
+      marked_range = result.sync.system_mark_range;
       has_range = true;
-    } else if (result.sync.has_visible_composition_range) {
-      composition_range = result.sync.visible_composition_range;
+    } else if (result.sync.has_preedit_range) {
+      marked_range = result.sync.preedit_range;
       has_range = true;
     } else if (result.edit_result.contentChanged()) {
       const TextChange& change = result.edit_result.changes.front();
-      composition_range = {
+      marked_range = {
         change.range.start,
         calcPositionAfterInsert(change.range.start, change.new_text)
       };
@@ -1173,8 +1427,8 @@ namespace NS_SWEETEDITOR {
       return textRangeFromUtf16Offsets(cursor_offset, cursor_offset);
     }
 
-    size_t base = m_document_->getCharIndexFromPosition(composition_range.start);
-    size_t end = m_document_->getCharIndexFromPosition(composition_range.end);
+    size_t base = m_document_->getCharIndexFromPosition(marked_range.start);
+    size_t end = m_document_->getCharIndexFromPosition(marked_range.end);
     if (base > end) {
       std::swap(base, end);
     }
@@ -1198,12 +1452,12 @@ namespace NS_SWEETEDITOR {
       const TextRange& changed_range = result.edit_result.changes.front().range;
       edit_start = m_document_->getCharIndexFromPosition(changed_range.start);
       edit_end = edit_start + StrUtil::utf16Length(text);
-    } else if (result.sync.has_platform_marked_range) {
-      edit_start = m_document_->getCharIndexFromPosition(result.sync.platform_marked_range.start);
-      edit_end = m_document_->getCharIndexFromPosition(result.sync.platform_marked_range.end);
-    } else if (result.sync.has_visible_composition_range) {
-      edit_start = m_document_->getCharIndexFromPosition(result.sync.visible_composition_range.start);
-      edit_end = m_document_->getCharIndexFromPosition(result.sync.visible_composition_range.end);
+    } else if (result.sync.has_system_mark_range) {
+      edit_start = m_document_->getCharIndexFromPosition(result.sync.system_mark_range.start);
+      edit_end = m_document_->getCharIndexFromPosition(result.sync.system_mark_range.end);
+    } else if (result.sync.has_preedit_range) {
+      edit_start = m_document_->getCharIndexFromPosition(result.sync.preedit_range.start);
+      edit_end = m_document_->getCharIndexFromPosition(result.sync.preedit_range.end);
     }
     if (edit_start > edit_end) {
       std::swap(edit_start, edit_end);
@@ -1220,26 +1474,32 @@ namespace NS_SWEETEDITOR {
     mergeImeActionResult(result, cursor_result);
   }
 
-  void EditorCore::rememberImeInputState(uint64_t context_id,
+  void EditorCore::rememberImeDocumentWindowContext(uint64_t context_id,
+                                         int32_t context_revision,
                                          int32_t document_start_offset,
                                          const U8String& text,
                                          int32_t selection_start_offset,
                                          int32_t selection_end_offset,
-                                         int32_t composing_start_offset,
-                                         int32_t composing_end_offset,
+                                         ImeMarkedRange marked_range,
                                          ImeInputContextKind kind) {
     const size_t text_length = StrUtil::utf16Length(text);
-    const ImeInputStateRange selection = normalizeImeSelectionRange(
+    const ImeContextRange selection = normalizeImeSelectionRange(
         selection_start_offset,
         selection_end_offset,
         text_length);
-    const ImeInputStateRange composition = normalizeImeComposingRange(
-        composing_start_offset,
-        composing_end_offset,
+    const ImeContextRange normalized_marked_range = normalizeImeMarkedRange(
+        marked_range.range.start,
+        marked_range.range.end,
         text_length);
+    const bool has_preedit_range =
+        normalized_marked_range.active && marked_range.role == ImeMarkedRangeRole::PREEDIT;
+    const bool has_system_mark_range =
+        normalized_marked_range.active && marked_range.role == ImeMarkedRangeRole::SYSTEM_MARK;
 
     m_ime_input_context_.id = context_id != 0 ? context_id : m_next_ime_input_context_id_++;
-    m_ime_input_context_.revision = ++m_ime_input_context_revision_;
+    m_ime_input_context_.revision = context_revision != 0
+                                    ? context_revision
+                                    : ++m_ime_input_context_revision_;
     m_ime_input_context_.document_start_offset = std::max<int32_t>(0, document_start_offset);
     m_ime_input_context_.text = text;
     m_ime_input_context_.kind = kind;
@@ -1247,25 +1507,56 @@ namespace NS_SWEETEDITOR {
       static_cast<int32_t>(selection.start),
       static_cast<int32_t>(selection.end)
     };
-    m_ime_input_context_.has_composition = composition.active;
-    m_ime_input_context_.composition = composition.active
-                                       ? ImeOffsetRange {
-                                           static_cast<int32_t>(composition.start),
-                                           static_cast<int32_t>(composition.end)
-                                         }
+    m_ime_input_context_.has_preedit_range = has_preedit_range;
+    m_ime_input_context_.preedit_range = has_preedit_range
+                                           ? ImeOffsetRange {
+                                           static_cast<int32_t>(normalized_marked_range.start),
+                                           static_cast<int32_t>(normalized_marked_range.end)
+                                          }
                                        : ImeOffsetRange {-1, -1};
+    m_ime_input_context_.has_system_mark_range = has_system_mark_range;
+    m_ime_input_context_.system_mark_range = has_system_mark_range
+                                                 ? ImeOffsetRange {
+                                                     static_cast<int32_t>(normalized_marked_range.start),
+                                                     static_cast<int32_t>(normalized_marked_range.end)
+                                                   }
+                                                 : ImeOffsetRange {-1, -1};
   }
 
-  void EditorCore::resetImeTextModelPendingState() {
-    m_ime_text_model_has_pending_composition_clear_ = false;
-    m_ime_text_model_pending_composition_clear_ = {-1, -1};
+  void EditorCore::rememberImeTextUpdateSystemMarkRange(uint64_t context_id,
+                                                           int32_t context_revision,
+                                                           int32_t document_start_offset,
+                                                           size_t start_offset,
+                                                           size_t end_offset) {
+    if (start_offset == end_offset) {
+      clearImeTextUpdateSystemMarkRange();
+      return;
+    }
+    m_ime_text_update_system_mark_range_ = textRangeFromImeContextOffsets(
+        context_id,
+        context_revision,
+        document_start_offset,
+        std::min(start_offset, end_offset),
+        std::max(start_offset, end_offset));
+    m_ime_text_update_has_system_mark_range_ =
+        m_ime_text_update_system_mark_range_.start != m_ime_text_update_system_mark_range_.end;
+  }
+
+  void EditorCore::clearImeTextUpdateSystemMarkRange() {
+    m_ime_text_update_has_system_mark_range_ = false;
+    m_ime_text_update_system_mark_range_ = {};
+  }
+
+  void EditorCore::resetImeTextUpdatePendingState() {
+    m_ime_text_update_has_pending_preedit_clear_ = false;
+    m_ime_text_update_pending_preedit_clear_ = {-1, -1};
   }
 
   void EditorCore::invalidateImeInputContext() {
     m_ime_input_context_ = {};
-    m_ime_input_context_.id = m_next_ime_input_context_id_++;
     m_ime_input_context_.revision = ++m_ime_input_context_revision_;
-    resetImeTextModelPendingState();
+    resetImeTextUpdatePendingState();
+    clearImeTextUpdateSystemMarkRange();
   }
 
 #pragma endregion

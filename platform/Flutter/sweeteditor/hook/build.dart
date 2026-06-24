@@ -16,6 +16,10 @@ final Map<_NativeTarget, _NativeBinary> _nativeBinaries =
         relativePath: 'linux/x86_64/libsweeteditor.so',
         fileName: 'libsweeteditor.so',
       ),
+      _NativeTarget(OS.linux, Architecture.arm64): _NativeBinary(
+        relativePath: 'linux/aarch64/libsweeteditor.so',
+        fileName: 'libsweeteditor.so',
+      ),
       _NativeTarget(OS.android, Architecture.arm64): _NativeBinary(
         relativePath: 'android/arm64-v8a/libsweeteditor.so',
         fileName: 'libsweeteditor.so',
@@ -60,8 +64,9 @@ void main(List<String> args) async {
 
     final targetOS = input.config.code.targetOS;
     final targetArchitecture = input.config.code.targetArchitecture;
-    final targetIOSSdk =
-      targetOS == OS.iOS ? input.config.code.iOS.targetSdk : null;
+    final targetIOSSdk = targetOS == OS.iOS
+        ? input.config.code.iOS.targetSdk
+        : null;
     final nativeBinary =
         _nativeBinaries[_NativeTarget(
           targetOS,

@@ -1,5 +1,34 @@
 import { TextPosition, TextRange } from './CoreFoundation';
 
+export enum ImeCommandKind {
+  SET_SELECTION = 0,
+  SET_PREEDIT_TEXT = 1,
+  COMMIT_TEXT = 2,
+  FINISH_PREEDIT = 3,
+  CANCEL_PREEDIT = 4,
+  SET_MARKED_RANGE = 5,
+  CLEAR_MARKED_RANGE = 6,
+  REPLACE_TEXT = 7,
+  DELETE_SURROUNDING_TEXT = 8,
+  SET_KEYBOARD_SCRIPT = 9,
+}
+
+export function imeCommandKindFromValue(value: number): ImeCommandKind {
+  switch (value) {
+    case 0: return ImeCommandKind.SET_SELECTION;
+    case 1: return ImeCommandKind.SET_PREEDIT_TEXT;
+    case 2: return ImeCommandKind.COMMIT_TEXT;
+    case 3: return ImeCommandKind.FINISH_PREEDIT;
+    case 4: return ImeCommandKind.CANCEL_PREEDIT;
+    case 5: return ImeCommandKind.SET_MARKED_RANGE;
+    case 6: return ImeCommandKind.CLEAR_MARKED_RANGE;
+    case 7: return ImeCommandKind.REPLACE_TEXT;
+    case 8: return ImeCommandKind.DELETE_SURROUNDING_TEXT;
+    case 9: return ImeCommandKind.SET_KEYBOARD_SCRIPT;
+    default: return ImeCommandKind.SET_SELECTION;
+  }
+}
+
 export enum ImeContextPolicy {
   NONE = 0,
   LIMITED_FOR_CANDIDATES = 1,
@@ -30,18 +59,18 @@ export function imeInputContextKindFromValue(value: number): ImeInputContextKind
   }
 }
 
-export enum ImePreeditStorage {
+export enum ImeMarkedRangeRole {
   NONE = 0,
-  VISIBLE_DOCUMENT_COMPOSITION = 1,
-  SHADOW_ONLY = 2,
+  PREEDIT = 1,
+  SYSTEM_MARK = 2,
 }
 
-export function imePreeditStorageFromValue(value: number): ImePreeditStorage {
+export function imeMarkedRangeRoleFromValue(value: number): ImeMarkedRangeRole {
   switch (value) {
-    case 0: return ImePreeditStorage.NONE;
-    case 1: return ImePreeditStorage.VISIBLE_DOCUMENT_COMPOSITION;
-    case 2: return ImePreeditStorage.SHADOW_ONLY;
-    default: return ImePreeditStorage.NONE;
+    case 0: return ImeMarkedRangeRole.NONE;
+    case 1: return ImeMarkedRangeRole.PREEDIT;
+    case 2: return ImeMarkedRangeRole.SYSTEM_MARK;
+    default: return ImeMarkedRangeRole.NONE;
   }
 }
 
@@ -64,19 +93,6 @@ export function imeScriptClassFromValue(value: number): ImeScriptClass {
   }
 }
 
-export enum ImeTextModelMode {
-  DOCUMENT_WINDOW = 0,
-  TRANSIENT_INPUT = 1,
-}
-
-export function imeTextModelModeFromValue(value: number): ImeTextModelMode {
-  switch (value) {
-    case 0: return ImeTextModelMode.DOCUMENT_WINDOW;
-    case 1: return ImeTextModelMode.TRANSIENT_INPUT;
-    default: return ImeTextModelMode.DOCUMENT_WINDOW;
-  }
-}
-
 export enum ImeTextUnit {
   GRAPHEME = 0,
   CODE_POINT = 1,
@@ -90,11 +106,45 @@ export function imeTextUnitFromValue(value: number): ImeTextUnit {
   }
 }
 
-export class ImeDocumentTextReplacement {
-  startOffset: number = 0;
-  endOffset: number = 0;
+export enum ImeTextUpdateKind {
+  SNAPSHOT = 0,
+  PATCH = 1,
+}
+
+export function imeTextUpdateKindFromValue(value: number): ImeTextUpdateKind {
+  switch (value) {
+    case 0: return ImeTextUpdateKind.SNAPSHOT;
+    case 1: return ImeTextUpdateKind.PATCH;
+    default: return ImeTextUpdateKind.SNAPSHOT;
+  }
+}
+
+export enum ImeTextUpdateScope {
+  DOCUMENT_WINDOW = 0,
+  TRANSIENT_INPUT = 1,
+}
+
+export function imeTextUpdateScopeFromValue(value: number): ImeTextUpdateScope {
+  switch (value) {
+    case 0: return ImeTextUpdateScope.DOCUMENT_WINDOW;
+    case 1: return ImeTextUpdateScope.TRANSIENT_INPUT;
+    default: return ImeTextUpdateScope.DOCUMENT_WINDOW;
+  }
+}
+
+export class ImeCommandMessage {
+  kind: ImeCommandKind = ImeCommandKind.SET_SELECTION;
+  contextId: number = 0;
+  contextRevision: number = 0;
+  documentStartOffset: number = 0;
+  range: ImeOffsetRange = { start: -1, end: -1 };
+  selection: ImeOffsetRange = { start: -1, end: -1 };
   text: string = '';
   cursorOffset: number = 1;
+  deleteBefore: number = 0;
+  deleteAfter: number = 0;
+  textUnit: ImeTextUnit = ImeTextUnit.GRAPHEME;
+  markedRole: ImeMarkedRangeRole = ImeMarkedRangeRole.NONE;
   scriptClass: ImeScriptClass = ImeScriptClass.UNKNOWN;
 }
 
@@ -104,27 +154,16 @@ export interface ImeInputContext {
   documentStartOffset: number;
   text: string;
   selection: ImeOffsetRange;
-  hasComposition: boolean;
-  composition: ImeOffsetRange;
+  hasPreeditRange: boolean;
+  preeditRange: ImeOffsetRange;
+  hasSystemMarkRange: boolean;
+  systemMarkRange: ImeOffsetRange;
   kind: ImeInputContextKind;
 }
 
-export class ImeInputContextTextReplacement {
-  startOffset: number = 0;
-  endOffset: number = 0;
-  text: string = '';
-  cursorOffset: number = 1;
-  scriptClass: ImeScriptClass = ImeScriptClass.UNKNOWN;
-}
-
-export class ImeInputStateTextReplacement {
-  contextId: number = 0;
-  documentStartOffset: number = 0;
-  startOffset: number = 0;
-  endOffset: number = 0;
-  text: string = '';
-  cursorOffset: number = 1;
-  scriptClass: ImeScriptClass = ImeScriptClass.UNKNOWN;
+export interface ImeMarkedRange {
+  role: ImeMarkedRangeRole;
+  range: ImeOffsetRange;
 }
 
 export interface ImeOffsetRange {
@@ -136,40 +175,28 @@ export interface ImeSyncSnapshot {
   cursor: TextPosition;
   selection: TextRange;
   hasSelection: boolean;
-  hasComposingSession: boolean;
-  hasVisibleCompositionRange: boolean;
-  visibleCompositionRange: TextRange;
-  hasPlatformMarkedRange: boolean;
-  platformMarkedRange: TextRange;
-  preeditStorage: ImePreeditStorage;
+  hasPreeditRange: boolean;
+  preeditRange: TextRange;
+  hasSystemMarkRange: boolean;
+  systemMarkRange: TextRange;
   contextPolicy: ImeContextPolicy;
-  clearPlatformPreedit: boolean;
+  clearSystemMark: boolean;
 }
 
-export class ImeTextModelDelta {
-  mode: ImeTextModelMode = ImeTextModelMode.DOCUMENT_WINDOW;
-  contextId: number = 0;
-  documentStartOffset: number = 0;
-  oldText: string = '';
-  delta: ImeOffsetRange = { start: -1, end: -1 };
-  deltaText: string = '';
-  selection: ImeOffsetRange = { start: 0, end: 0 };
-  composition: ImeOffsetRange = { start: -1, end: -1 };
-  scriptClass: ImeScriptClass = ImeScriptClass.UNKNOWN;
+export interface ImeTextPatch {
+  range: ImeOffsetRange;
+  text: string;
 }
 
-export class ImeTextModelState {
-  mode: ImeTextModelMode = ImeTextModelMode.DOCUMENT_WINDOW;
+export class ImeTextUpdateMessage {
+  kind: ImeTextUpdateKind = ImeTextUpdateKind.SNAPSHOT;
+  scope: ImeTextUpdateScope = ImeTextUpdateScope.DOCUMENT_WINDOW;
   contextId: number = 0;
+  contextRevision: number = 0;
   documentStartOffset: number = 0;
   text: string = '';
-  selection: ImeOffsetRange = { start: 0, end: 0 };
-  composition: ImeOffsetRange = { start: -1, end: -1 };
-  scriptClass: ImeScriptClass = ImeScriptClass.UNKNOWN;
-}
-
-export class ImeTextReplacement {
-  range: TextRange = { start: { line: 0, column: 0 }, end: { line: 0, column: 0 } };
-  text: string = '';
+  patch: ImeTextPatch = { range: { start: -1, end: -1 }, text: '' };
+  selection: ImeOffsetRange = { start: -1, end: -1 };
+  markedRange: ImeMarkedRange = { role: ImeMarkedRangeRole.NONE, range: { start: -1, end: -1 } };
   scriptClass: ImeScriptClass = ImeScriptClass.UNKNOWN;
 }
