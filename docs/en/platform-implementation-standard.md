@@ -806,6 +806,8 @@ Every platform MUST map native composition sources to core's preedit / marked-ra
 
 Document ranges passed to core MUST use document coordinates. Input-context / text-update offsets MUST be relative to the corresponding `documentStartOffset`. Temporary offsets from a platform-specific surrounding-text window MUST NOT be treated as document offsets. Editable editors always support platform IME composition; read-only mode blocks text changes and MUST NOT be implemented as a composition enable / disable switch.
 
+IME behavior changes MUST be validated against the [IME Regression Matrix](ime-regression-matrix.md). Core automated tests cover shared protocol semantics, but platform adapters still need native acceptance coverage for their actual event order, coordinate-space mapping, and platform-specific candidate behavior.
+
 ### 13.3 Optional Modules
 
 | Module | Mobile | Desktop |
@@ -1094,6 +1096,7 @@ This section defines the performance invariants that platform implementations mu
 |---|---|---|
 | Regression tests | **MUST** | Each core module (Document, Layout, Decoration, EditorCore) MUST have corresponding regression tests |
 | Platform API tests | **SHOULD** | Each platform SHOULD verify host APIs, settings/theme defaults, provider registration/release, and event subscription/release |
+| IME regression matrix | **MUST / SHOULD** | IME protocol semantics MUST be covered by core regression tests, and each platform SHOULD validate native IME behavior with the [`ime-regression-matrix.md`](ime-regression-matrix.md) checklist before releasing IME changes |
 | Result dispatch tests | **SHOULD** | Each platform SHOULD cover `EditorActionResult` dispatch, IME synchronization, text / cursor / selection / scroll events, animation ticks, and pointer cursor updates |
 | Async stale tests | **SHOULD** | Stale decoration / completion async results SHOULD be cancelled or discarded |
 | Lifecycle tests | **SHOULD** | After teardown, platforms should not touch invalid native state or emit host-visible callbacks |

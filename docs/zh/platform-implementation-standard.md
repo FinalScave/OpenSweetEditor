@@ -802,6 +802,8 @@ interface ContextMenuItemProvider {
 
 传入 core 的 document range MUST 使用文档坐标；传入 input-context / text-update 的 offset MUST 相对于对应 `documentStartOffset`；平台 surrounding-text window 的临时 offset 不能被当成文档 offset。可编辑状态下始终支持平台 IME composition；只读模式负责阻止文本变更，MUST NOT 实现为 composition enable / disable 开关。
 
+IME 行为变更 MUST 按 [IME 回归矩阵](ime-regression-matrix.md) 验收。core 自动化测试覆盖共享协议语义，但平台适配层仍需要验证自身实际收到的原生事件顺序、坐标空间映射和平台特定候选行为。
+
 ### 13.3 可选模块
 
 | 模块 | 移动端 | 桌面端 |
@@ -1092,6 +1094,7 @@ Core 层定义了大量装饰数据类型，各平台 MUST 实现完全一致的
 |---|---|---|
 | 回归测试 | **MUST** | 每个核心模块（Document、Layout、Decoration、EditorCore）MUST 有对应的回归测试 |
 | 平台 API 测试 | **SHOULD** | 各平台 SHOULD 验证宿主 API、settings/theme 默认值、provider 注册与释放、事件订阅与释放 |
+| IME 回归矩阵 | **MUST / SHOULD** | IME 协议语义 MUST 由 core 回归测试覆盖，各平台在发布 IME 变更前 SHOULD 按 [`ime-regression-matrix.md`](ime-regression-matrix.md) 清单验证原生 IME 行为 |
 | 结果分发测试 | **SHOULD** | 各平台 SHOULD 覆盖 `EditorActionResult` 分发、IME 同步、文本 / 光标 / 选区 / 滚动事件、动画 tick、指针样式更新 |
 | 异步 stale 测试 | **SHOULD** | decoration / completion 的过期异步结果 SHOULD 被取消或丢弃 |
 | 生命周期测试 | **SHOULD** | teardown 后不应再触达无效 native 状态，也不应再发出宿主可见回调 |
