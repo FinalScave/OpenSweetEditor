@@ -1557,6 +1557,57 @@ TEST_CASE("EditorCore IME text update commit over system mark replaces candidate
   CHECK(commit_result.ime_sync.clear_system_mark);
 }
 
+TEST_CASE("EditorCore IME regression candidate replaces system marked word without prefix duplication") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("boolean enabled()");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 15});
+
+  ImeInputContext context = editor.getImeTextUpdateInputContext(
+      ImeTextUpdateScope::DOCUMENT_WINDOW,
+      16,
+      16);
+  EditorActionResult mark_result = updateTextSnapshot(editor,
+      ImeTextUpdateScope::DOCUMENT_WINDOW,
+      context.id,
+      context.revision,
+      "boolean enabled()",
+      15,
+      15,
+      8,
+      15,
+      ImeScriptClass::LATIN,
+      ImeMarkedRangeRole::SYSTEM_MARK);
+  REQUIRE(mark_result.handled);
+  CHECK_FALSE(editor.hasPreedit());
+  REQUIRE(mark_result.ime_sync.has_system_mark_range);
+
+  context = editor.getImeTextUpdateInputContext(ImeTextUpdateScope::DOCUMENT_WINDOW, 16, 16);
+  REQUIRE(context.has_system_mark_range);
+  EditorActionResult commit_result = updateTextSnapshot(editor,
+      ImeTextUpdateScope::DOCUMENT_WINDOW,
+      context.id,
+      context.revision,
+      "boolean enables()",
+      15,
+      15,
+      -1,
+      -1,
+      ImeScriptClass::LATIN,
+      ImeMarkedRangeRole::NONE);
+
+  REQUIRE(commit_result.content_changed);
+  CHECK(document->getU8Text() == "boolean enables()");
+  CHECK(document->getU8Text() != "booleaenables()");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 15}));
+  CHECK_FALSE(editor.hasPreedit());
+  CHECK_FALSE(commit_result.ime_sync.has_system_mark_range);
+  CHECK(commit_result.ime_sync.clear_system_mark);
+}
+
 TEST_CASE("EditorCore IME text update single character candidate replaces system mark") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
@@ -1776,6 +1827,32 @@ TEST_CASE("EditorCore IME text update delete over system mark deletes at reporte
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
   CHECK_FALSE(delete_result.ime_sync.has_system_mark_range);
   CHECK(delete_result.ime_sync.clear_system_mark);
+}
+
+TEST_CASE("EditorCore IME regression candidate commit then delete to empty") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+  editor.setCursorPosition({0, 0});
+
+  EditorActionResult commit_result = commitText(editor, "hello", ImeScriptClass::LATIN);
+  REQUIRE(commit_result.content_changed);
+  CHECK(document->getU8Text() == "hello");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 5}));
+  CHECK_FALSE(editor.hasPreedit());
+
+  const std::vector<U8String> states {"hell", "hel", "he", "h", ""};
+  for (const U8String& text : states) {
+    EditorActionResult delete_result = deleteBackward(editor, 1);
+
+    REQUIRE(delete_result.content_changed);
+    CHECK(document->getU8Text() == text);
+    CHECK(editor.getCursorPosition() == (TextPosition{0, text.size()}));
+    CHECK_FALSE(editor.hasPreedit());
+  }
 }
 
 TEST_CASE("EditorCore IME text update system mark shrink keeps deleting") {
