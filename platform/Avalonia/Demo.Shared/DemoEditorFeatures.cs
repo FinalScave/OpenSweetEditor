@@ -184,7 +184,6 @@ internal sealed class DemoSelectionMenuItemProvider : ISelectionMenuItemProvider
     public const string ActionInsertSnippet = "insert_snippet";
     public const string ActionFoldAll = "fold_all";
     public const string ActionUnfoldAll = "unfold_all";
-    public const string ActionLoadLargeSample = "load_large_sample";
     public const string ActionTogglePerfOverlay = "toggle_perf_overlay";
     public const string ActionToggleKeyMap = "toggle_keymap";
 
@@ -230,7 +229,6 @@ internal sealed class DemoSelectionMenuItemProvider : ISelectionMenuItemProvider
         items.Add(new SelectionMenuItem(ActionUnfoldAll, "Unfold all"));
         items.Add(new SelectionMenuItem(ActionTogglePerfOverlay, perfOverlayEnabled() ? "Perf: ON" : "Perf: OFF"));
         items.Add(new SelectionMenuItem(ActionToggleKeyMap, useVsCodeKeyMap() ? "Keymap: VS Code" : "Keymap: Default"));
-        items.Add(new SelectionMenuItem(ActionLoadLargeSample, "Large doc"));
         return items;
     }
 }

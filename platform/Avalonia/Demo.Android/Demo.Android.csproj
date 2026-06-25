@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0-android</TargetFramework>
-    <SupportedOSPlatformVersion>21</SupportedOSPlatformVersion>
+    <TargetFramework>net10.0-android36.0</TargetFramework>
+    <SupportedOSPlatformVersion>23</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseMaui>false</UseMaui>
@@ -47,12 +47,24 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="11.3.12" />
-    <PackageReference Include="Avalonia.Android" Version="11.3.12" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12" />
+    <PackageReference Include="Avalonia" Version="12.0.5" />
+    <PackageReference Include="Avalonia.Android" Version="12.0.5" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.5" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Demo.Shared\Demo.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AndroidNativeLibrary Include="..\..\..\prebuilt\android\arm64-v8a\libsweeteditor.so"
+                          Condition="Exists('..\..\..\prebuilt\android\arm64-v8a\libsweeteditor.so')">
+      <Link>lib\arm64-v8a\libsweeteditor.so</Link>
+    </AndroidNativeLibrary>
+
+    <AndroidNativeLibrary Include="..\..\..\prebuilt\android\x86_64\libsweeteditor.so"
+                          Condition="Exists('..\..\..\prebuilt\android\x86_64\libsweeteditor.so')">
+      <Link>lib\x86_64\libsweeteditor.so</Link>
+    </AndroidNativeLibrary>
   </ItemGroup>
 </Project>

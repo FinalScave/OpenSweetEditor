@@ -4,7 +4,6 @@ using Android.OS;
 using Android.Runtime;
 using Android.Util;
 using Android.Views;
-using Avalonia;
 using Avalonia.Android;
 using SweetEditor.Avalonia.Demo;
 
@@ -23,7 +22,7 @@ namespace SweetEditor.Avalonia.Demo.Android;
         ConfigChanges.SmallestScreenSize |
         ConfigChanges.UiMode |
         ConfigChanges.Density)]
-public sealed class MainActivity : AvaloniaMainActivity<App>
+public sealed class MainActivity : AvaloniaMainActivity
 {
     private const string LogTag = "SweetEditorDemo";
     private static readonly object ActivityLock = new();
@@ -39,20 +38,6 @@ public sealed class MainActivity : AvaloniaMainActivity<App>
         base.OnCreate(savedInstanceState);
 
         DemoHostDiagnostics.WriteLine("MainActivity.OnCreate exit");
-    }
-
-    protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
-    {
-        DemoHostDiagnostics.WriteLine("MainActivity.CustomizeAppBuilder");
-        return base.CustomizeAppBuilder(builder)
-            .With(new AndroidPlatformOptions
-            {
-                RenderingMode =
-                [
-                    AndroidRenderingMode.Egl,
-                    AndroidRenderingMode.Software,
-                ],
-            });
     }
 
     protected override void OnDestroy()

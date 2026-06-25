@@ -126,9 +126,7 @@ public static class EmbeddedSampleRepository
 
     public static List<DemoSampleFile> LoadAll(Assembly assembly)
     {
-        List<DemoSampleFile> embedded = LoadEmbeddedSamples(assembly);
-        embedded.AddRange(BuildGeneratedSamples());
-        return embedded;
+        return LoadEmbeddedSamples(assembly);
     }
 
     private static List<DemoSampleFile> LoadEmbeddedSamples(Assembly assembly)
@@ -561,8 +559,8 @@ internal sealed class SampleDocumentLoader
 
         string[] preferredOrder =
         {
-            "example.kt",
             "example.java",
+            "example.kt",
             "example.lua",
         };
 

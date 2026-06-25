@@ -64,15 +64,11 @@ public sealed class EditorToolbarController
     {
         get
         {
-            yield return UndoButton;
-            yield return RedoButton;
             yield return SearchButton;
-            yield return ReplaceButton;
             yield return ThemeButton;
             yield return WrapButton;
             yield return ZoomOutButton;
             yield return ZoomInButton;
-            yield return PerfButton;
             yield return HelpButton;
         }
     }
@@ -80,15 +76,15 @@ public sealed class EditorToolbarController
     public Control BuildView()
     {
         FileCombo.MaxDropDownHeight = 320;
-        SamplePickerButton.MinWidth = 84;
-        SamplePickerButton.Height = 32;
+        SamplePickerButton.MinWidth = 128;
+        SamplePickerButton.Height = 36;
         SamplePickerButton.HorizontalAlignment = HorizontalAlignment.Stretch;
         SamplePickerButton.VerticalAlignment = VerticalAlignment.Center;
 
         StackPanel actions = new()
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 1,
+            Spacing = 6,
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -100,8 +96,8 @@ public sealed class EditorToolbarController
         Grid bar = new()
         {
             ColumnDefinitions = new ColumnDefinitions("*,Auto"),
-            ColumnSpacing = 4,
-            MinHeight = 32,
+            ColumnSpacing = 10,
+            MinHeight = 40,
         };
         bar.Children.Add(SamplePickerButton);
         Grid.SetColumn(actions, 1);
@@ -152,7 +148,7 @@ public sealed class EditorToolbarController
     private static Button CreateTextButton(string text, string tooltip)
     {
         Button button = CreateBaseButton();
-        button.Width = 30;
+        button.Width = 34;
         button.Content = CreateTextChrome(text);
         ToolTip.SetTip(button, tooltip);
         return button;
@@ -160,8 +156,8 @@ public sealed class EditorToolbarController
 
     private static Button CreateBaseButton() => new()
     {
-        Width = 28,
-        Height = 28,
+        Width = 32,
+        Height = 32,
         Padding = new Thickness(0),
         Background = Brushes.Transparent,
         BorderBrush = Brushes.Transparent,
@@ -175,7 +171,7 @@ public sealed class EditorToolbarController
         label = new TextBlock
         {
             Text = "Samples",
-            FontSize = 11.25,
+            FontSize = 12,
             FontWeight = FontWeight.SemiBold,
             VerticalAlignment = VerticalAlignment.Center,
             TextTrimming = TextTrimming.CharacterEllipsis,
@@ -202,9 +198,9 @@ public sealed class EditorToolbarController
 
         chrome = new Border
         {
-            MinWidth = 84,
-            Height = 24,
-            Padding = new Thickness(8, 0, 6, 0),
+            MinWidth = 124,
+            Height = 28,
+            Padding = new Thickness(10, 0, 8, 0),
             Background = Brushes.Transparent,
             CornerRadius = new CornerRadius(7),
             Child = content,

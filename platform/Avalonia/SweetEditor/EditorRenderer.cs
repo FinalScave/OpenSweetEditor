@@ -30,11 +30,14 @@ namespace SweetEditor {
 		private readonly Dictionary<int, float> iconWidthCache = new();
 		private readonly MeasurePerfStats measurePerfStats = new();
 		private readonly PerfOverlay perfOverlay = new();
-		private static readonly IntPtr measureTextWidthCallback = CreateMeasureTextWidthCallback();
-		private static readonly IntPtr measureInlayHintWidthCallback = CreateMeasureInlayHintWidthCallback();
-		private static readonly IntPtr measureIconWidthCallback = CreateMeasureIconWidthCallback();
-		private static readonly IntPtr getFontMetricsCallback = CreateGetFontMetricsCallback();
-		private static EditorRenderer? activeMeasureTarget;
+		private readonly MeasureTextWidthCallback measureTextWidthDelegate;
+		private readonly MeasureInlayHintWidthCallback measureInlayHintWidthDelegate;
+		private readonly MeasureIconWidthCallback measureIconWidthDelegate;
+		private readonly GetFontMetricsCallback getFontMetricsDelegate;
+		private readonly IntPtr measureTextWidthCallback;
+		private readonly IntPtr measureInlayHintWidthCallback;
+		private readonly IntPtr measureIconWidthCallback;
+		private readonly IntPtr getFontMetricsCallback;
 
 		private EditorTheme theme;
 		private EditorIconProvider? iconProvider;
@@ -59,6 +62,14 @@ namespace SweetEditor {
 
 		public EditorRenderer(EditorTheme theme) {
 			this.theme = theme;
+			measureTextWidthDelegate = MeasureText;
+			measureInlayHintWidthDelegate = MeasureInlayText;
+			measureIconWidthDelegate = MeasureIconWidth;
+			getFontMetricsDelegate = GetFontMetrics;
+			measureTextWidthCallback = Marshal.GetFunctionPointerForDelegate(measureTextWidthDelegate);
+			measureInlayHintWidthCallback = Marshal.GetFunctionPointerForDelegate(measureInlayHintWidthDelegate);
+			measureIconWidthCallback = Marshal.GetFunctionPointerForDelegate(measureIconWidthDelegate);
+			getFontMetricsCallback = Marshal.GetFunctionPointerForDelegate(getFontMetricsDelegate);
 			UpdateTypefaces();
 		}
 
@@ -69,7 +80,6 @@ namespace SweetEditor {
 		public string FontFamily => fontFamily;
 
 		public EditorCore.TextMeasurer CreateTextMeasurer() {
-			activeMeasureTarget = this;
 			return new EditorCore.TextMeasurer {
 				MeasureTextWidth = measureTextWidthCallback,
 				MeasureInlayHintWidth = measureInlayHintWidthCallback,
@@ -248,26 +258,30 @@ namespace SweetEditor {
 			return true;
 		}
 
-		private static double GlyphScale(IGlyphTypeface glyphTypeface, float size) {
+		private static double GlyphScale(GlyphTypeface glyphTypeface, float size) {
 			double designEmHeight = Math.Max(1.0, glyphTypeface.Metrics.DesignEmHeight);
 			return size / designEmHeight;
 		}
 
-		private static bool TryGetGlyphAdvance(IGlyphTypeface glyphTypeface, uint codepoint, float size,
+		private static bool TryGetGlyphAdvance(GlyphTypeface glyphTypeface, int codepoint, float size,
 											   out ushort glyphIndex, out float advance) {
-			glyphIndex = glyphTypeface.GetGlyph(codepoint);
-			if (glyphIndex == 0) {
+			if (!glyphTypeface.CharacterToGlyphMap.TryGetGlyph(codepoint, out glyphIndex) || glyphIndex == 0) {
 				advance = 0f;
 				return false;
 			}
 
-			advance = (float)(glyphTypeface.GetGlyphAdvance(glyphIndex) * GlyphScale(glyphTypeface, size));
+			if (!glyphTypeface.TryGetHorizontalGlyphAdvance(glyphIndex, out ushort designAdvance)) {
+				advance = 0f;
+				return false;
+			}
+
+			advance = (float)(designAdvance * GlyphScale(glyphTypeface, size));
 			return advance > 0f;
 		}
 
 		private bool TryGetFixedGlyphAdvance(Typeface typeface, float size, out float advance) {
 			advance = 0f;
-			if (typeface.GlyphTypeface is not IGlyphTypeface glyphTypeface) {
+			if (typeface.GlyphTypeface is not GlyphTypeface glyphTypeface) {
 				return false;
 			}
 			if (!glyphTypeface.Metrics.IsFixedPitch && !IsProbablyMonospace()) {
@@ -281,19 +295,17 @@ namespace SweetEditor {
 			if (string.IsNullOrEmpty(text) || !CanUseGlyphFastPath(text.AsSpan())) {
 				return false;
 			}
-			if (typeface.GlyphTypeface is not IGlyphTypeface glyphTypeface) {
+			if (typeface.GlyphTypeface is not GlyphTypeface glyphTypeface) {
 				return false;
 			}
 
-			double scaleValue = GlyphScale(glyphTypeface, size);
 			double measured = 0;
 			ReadOnlySpan<char> chars = text.AsSpan();
 			for (int i = 0; i < chars.Length; i++) {
-				ushort glyphIndex = glyphTypeface.GetGlyph(chars[i]);
-				if (glyphIndex == 0) {
+				if (!TryGetGlyphAdvance(glyphTypeface, chars[i], size, out _, out float advance)) {
 					return false;
 				}
-				measured += glyphTypeface.GetGlyphAdvance(glyphIndex) * scaleValue;
+				measured += advance;
 			}
 
 			width = (float)measured;
@@ -313,20 +325,14 @@ namespace SweetEditor {
 				return false;
 			}
 
-			if (typeface.GlyphTypeface is not IGlyphTypeface glyphTypeface) {
+			if (typeface.GlyphTypeface is not GlyphTypeface glyphTypeface) {
 				return false;
 			}
 
-			double scaleValue = GlyphScale(glyphTypeface, size);
 			var glyphInfos = new GlyphInfo[length];
 			double measured = 0;
 			for (int i = 0; i < length; i++) {
-				ushort glyphIndex = glyphTypeface.GetGlyph(slice[i]);
-				if (glyphIndex == 0) {
-					return false;
-				}
-				double advance = glyphTypeface.GetGlyphAdvance(glyphIndex) * scaleValue;
-				if (advance <= 0) {
+				if (!TryGetGlyphAdvance(glyphTypeface, slice[i], size, out ushort glyphIndex, out float advance)) {
 					return false;
 				}
 				glyphInfos[i] = new GlyphInfo(glyphIndex, i, advance, default);
@@ -354,7 +360,7 @@ namespace SweetEditor {
 		}
 
 		private LayoutMetrics GetLayoutMetrics(Typeface typeface, int fontStyle, float size, bool inlay) {
-			if (typeface.GlyphTypeface is IGlyphTypeface glyphTypeface) {
+			if (typeface.GlyphTypeface is GlyphTypeface glyphTypeface) {
 				double scaleValue = GlyphScale(glyphTypeface, size);
 				FontMetrics fontMetrics = glyphTypeface.Metrics;
 				float ascent = Math.Max(0.1f, (float)Math.Abs(fontMetrics.Ascent * scaleValue));
@@ -370,84 +376,63 @@ namespace SweetEditor {
 
 		private double Snap(double value) => Math.Round(value * scale) / scale;
 
-		private static unsafe IntPtr CreateMeasureTextWidthCallback() {
-			return (IntPtr)(delegate * unmanaged<ushort *, int, float>)&StaticMeasureText;
-		}
+		[UnmanagedFunctionPointer(CallingConvention.Winapi)]
+		private delegate float MeasureTextWidthCallback(IntPtr textPtr, int fontStyle);
 
-		private static unsafe IntPtr CreateMeasureInlayHintWidthCallback() {
-			return (IntPtr)(delegate * unmanaged<ushort *, float>)&StaticMeasureInlayText;
-		}
+		[UnmanagedFunctionPointer(CallingConvention.Winapi)]
+		private delegate float MeasureInlayHintWidthCallback(IntPtr textPtr);
 
-		private static unsafe IntPtr CreateMeasureIconWidthCallback() {
-			return (IntPtr)(delegate * unmanaged<int, float>)&StaticMeasureIconWidth;
-		}
+		[UnmanagedFunctionPointer(CallingConvention.Winapi)]
+		private delegate float MeasureIconWidthCallback(int iconId);
 
-		private static unsafe IntPtr CreateGetFontMetricsCallback() {
-			return (IntPtr)(delegate * unmanaged<IntPtr, UIntPtr, void>)&StaticGetFontMetrics;
-		}
+		[UnmanagedFunctionPointer(CallingConvention.Winapi)]
+		private delegate void GetFontMetricsCallback(IntPtr arrPtr, UIntPtr length);
 
-		[UnmanagedCallersOnly]
-		private static unsafe float StaticMeasureText(ushort *textPtr, int fontStyle) {
+		private float MeasureText(IntPtr textPtr, int fontStyle) {
 			try {
-				EditorRenderer? target = activeMeasureTarget;
-				if (target == null) {
-					return 0f;
-				}
 				string text = StringFromUtf16(textPtr);
 				if (string.IsNullOrEmpty(text)) {
 					return 0f;
 				}
-				return target.OnMeasureText(text, fontStyle);
+				return OnMeasureText(text, fontStyle);
 			} catch {
 				return 0f;
 			}
 		}
 
-		[UnmanagedCallersOnly]
-		private static unsafe float StaticMeasureInlayText(ushort *textPtr) {
+		private float MeasureInlayText(IntPtr textPtr) {
 			try {
-				EditorRenderer? target = activeMeasureTarget;
-				if (target == null) {
-					return 0f;
-				}
 				string text = StringFromUtf16(textPtr);
 				if (string.IsNullOrEmpty(text)) {
 					return 0f;
 				}
-				return target.OnMeasureInlayText(text);
+				return OnMeasureInlayText(text);
 			} catch {
 				return 0f;
 			}
 		}
 
-		[UnmanagedCallersOnly]
-		private static float StaticMeasureIconWidth(int iconId) {
+		private float MeasureIconWidth(int iconId) {
 			try {
-				EditorRenderer? target = activeMeasureTarget;
-				return target?.OnMeasureIconWidth(iconId) ?? DefaultTextSizeDip;
+				return OnMeasureIconWidth(iconId);
 			} catch {
 				return DefaultTextSizeDip;
 			}
 		}
 
-		[UnmanagedCallersOnly]
-		private static void StaticGetFontMetrics(IntPtr arrPtr, UIntPtr length) {
+		private void GetFontMetrics(IntPtr arrPtr, UIntPtr length) {
 			try {
-				activeMeasureTarget?.OnGetFontMetrics(arrPtr, length);
+				OnGetFontMetrics(arrPtr, length);
 			} catch {
 			}
 		}
 
-		private static unsafe string StringFromUtf16(ushort *textPtr) {
-			if (textPtr == null) {
+		private static string StringFromUtf16(IntPtr textPtr) {
+			if (textPtr == IntPtr.Zero) {
 				return string.Empty;
 			}
 
-			int length = 0;
-			while (textPtr[length] != 0) {
-				length++;
-			}
-			return length == 0 ? string.Empty : new string((char *)textPtr, 0, length);
+			return Marshal.PtrToStringUni(textPtr) ?? string.Empty;
 		}
 
 		private float OnMeasureText(string text, int fontStyle) {

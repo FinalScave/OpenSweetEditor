@@ -175,19 +175,19 @@ public sealed class MainView : UserControl
     private void BuildLayout()
     {
         toolbarContainer.BorderThickness = new Thickness(0, 0, 0, 1);
-        toolbarContainer.Padding = new Thickness(6, 4, 3, 4);
+        toolbarContainer.Padding = new Thickness(12, 8, 12, 8);
         toolbarContainer.Child = toolbarController.BuildView();
         BuildSearchPanel();
 
-        samplePickerItemsPanel.Spacing = 2;
+        samplePickerItemsPanel.Spacing = 4;
         samplePickerScrollViewer.Content = samplePickerItemsPanel;
         samplePickerScrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
         samplePickerScrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
 
         samplePickerPopup.Child = samplePickerScrollViewer;
         samplePickerPopup.IsVisible = false;
-        samplePickerPopup.Padding = new Thickness(4);
-        samplePickerPopup.CornerRadius = new CornerRadius(12);
+        samplePickerPopup.Padding = new Thickness(6);
+        samplePickerPopup.CornerRadius = new CornerRadius(8);
         samplePickerPopup.BorderThickness = new Thickness(1);
         samplePickerPopup.HorizontalAlignment = HorizontalAlignment.Left;
         samplePickerPopup.VerticalAlignment = VerticalAlignment.Top;
@@ -203,9 +203,9 @@ public sealed class MainView : UserControl
         editorHost.Children.Add(notificationPanel);
 
         statusText.Text = "Ready";
-        statusText.FontSize = 11.5;
+        statusText.FontSize = 12;
         statusText.TextTrimming = TextTrimming.CharacterEllipsis;
-        summaryText.FontSize = 10.5;
+        summaryText.FontSize = 11;
         summaryText.TextTrimming = TextTrimming.CharacterEllipsis;
         summaryText.TextAlignment = TextAlignment.Right;
         summaryText.HorizontalAlignment = HorizontalAlignment.Right;
@@ -213,8 +213,8 @@ public sealed class MainView : UserControl
         Grid statusPanel = new()
         {
             ColumnDefinitions = new ColumnDefinitions("*,Auto"),
-            Margin = new Thickness(8, 4, 8, 5),
-            ColumnSpacing = 8,
+            Margin = new Thickness(12, 5, 12, 6),
+            ColumnSpacing = 12,
             Children =
             {
                 statusText,
@@ -246,17 +246,17 @@ public sealed class MainView : UserControl
     {
         searchContainer.IsVisible = false;
         searchContainer.BorderThickness = new Thickness(0, 0, 0, 1);
-        searchContainer.Padding = new Thickness(8, 4, 8, 6);
+        searchContainer.Padding = new Thickness(12, 6, 12, 8);
 
-        searchTextBox.Watermark = "Find";
+        searchTextBox.PlaceholderText = "Find";
         searchTextBox.MinWidth = 160;
-        searchTextBox.Height = 30;
+        searchTextBox.Height = 32;
         searchTextBox.TextChanged += (_, _) => PerformSearch();
         searchTextBox.KeyDown += OnSearchTextBoxKeyDown;
 
-        replaceTextBox.Watermark = "Replace";
+        replaceTextBox.PlaceholderText = "Replace";
         replaceTextBox.MinWidth = 160;
-        replaceTextBox.Height = 30;
+        replaceTextBox.Height = 32;
         replaceTextBox.KeyDown += OnReplaceTextBoxKeyDown;
 
         ConfigureSearchToggle(searchCaseButton, "Aa", "Match case");
@@ -274,7 +274,7 @@ public sealed class MainView : UserControl
         Grid searchRow = new()
         {
             ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"),
-            ColumnSpacing = 4,
+            ColumnSpacing = 6,
         };
         searchRow.Children.Add(searchTextBox);
         AddSearchRowControl(searchRow, CreateSearchTextButton("\\n", "Insert newline token", () => InsertNewlineToken(searchTextBox)), 1);
@@ -287,7 +287,7 @@ public sealed class MainView : UserControl
         AddSearchRowControl(searchRow, CreateSearchTextButton("×", "Close search", CloseSearchPanel), 8);
 
         replaceRow.Orientation = Orientation.Horizontal;
-        replaceRow.Spacing = 4;
+        replaceRow.Spacing = 6;
         replaceRow.IsVisible = false;
         replaceRow.Children.Add(replaceTextBox);
         replaceRow.Children.Add(CreateSearchTextButton("\\n", "Insert newline token", () => InsertNewlineToken(replaceTextBox)));
@@ -296,7 +296,7 @@ public sealed class MainView : UserControl
 
         StackPanel panel = new()
         {
-            Spacing = 4,
+            Spacing = 6,
             Children =
             {
                 searchRow,
@@ -487,7 +487,7 @@ public sealed class MainView : UserControl
             Focusable = true,
         };
         if (DemoPlatformServices.IsAndroid)
-            RenderOptions.SetTextRenderingMode(createdEditor, TextRenderingMode.Alias);
+            TextOptions.SetTextRenderingMode(createdEditor, TextRenderingMode.Alias);
 
         createdEditor.AddHandler(InputElement.KeyDownEvent, OnEditorKeyDown, AvaInteractivity.RoutingStrategies.Tunnel);
         editor = createdEditor;
@@ -515,10 +515,10 @@ public sealed class MainView : UserControl
         {
             bool isAndroid = DemoPlatformServices.IsAndroid;
             settings.SetTypeface("monospace");
-            settings.SetEditorTextSize(isAndroid ? 14.0f : 13.25f);
+            settings.SetEditorTextSize(14.0f);
             currentScale = GetDefaultScale();
             settings.SetScale(currentScale);
-            settings.SetContentStartPadding(2);
+            settings.SetContentStartPadding(isAndroid ? 2 : 6);
             settings.SetFoldArrowMode(FoldArrowMode.AUTO);
             settings.SetCurrentLineRenderMode(CurrentLineRenderMode.BORDER);
             settings.SetGutterSticky(!isAndroid);
@@ -721,7 +721,7 @@ public sealed class MainView : UserControl
         ScheduleChromeRefresh(DeferredChromeWork.Summary);
     }
 
-    private float GetDefaultScale() => DemoPlatformServices.IsAndroid ? 0.90f : 0.96f;
+    private float GetDefaultScale() => DemoPlatformServices.IsAndroid ? 0.90f : 1.0f;
 
     private void TogglePerfOverlay()
     {
@@ -778,19 +778,6 @@ public sealed class MainView : UserControl
         foldCollapsed = false;
         UpdateFeatureStrip();
         UpdateStatus("Unfolded all regions");
-    }
-
-    private void LoadLargeSample()
-    {
-        DemoSampleFile? large = sampleLoader.SampleFiles.FirstOrDefault(file =>
-            file.FileName.EndsWith("large-demo.cpp", StringComparison.OrdinalIgnoreCase));
-        if (large == null)
-        {
-            UpdateStatus("Large sample unavailable");
-            return;
-        }
-
-        _ = sampleLoader.LoadSampleAsync(large);
     }
 
     private void SyncSamplePickerSelection()
@@ -1342,9 +1329,6 @@ public sealed class MainView : UserControl
             case DemoSelectionMenuItemProvider.ActionUnfoldAll:
                 UnfoldAll();
                 break;
-            case DemoSelectionMenuItemProvider.ActionLoadLargeSample:
-                LoadLargeSample();
-                break;
             case DemoSelectionMenuItemProvider.ActionTogglePerfOverlay:
                 TogglePerfOverlay();
                 break;
@@ -1418,8 +1402,8 @@ public sealed class MainView : UserControl
             ? "SweetLine"
             : decorationProvider.HighlightBackendLabel;
         string sampleName = activeSample == null ? "Sample" : System.IO.Path.GetFileNameWithoutExtension(activeSample.FileName);
-        string perfLabel = perfOverlayEnabled ? " · FPS" : string.Empty;
-        string nextValue = $"{sampleName} · {currentLanguageId} · {backendLabel} · {wrapLabel} · {currentScale * 100:F0}% · {cursor.Line + 1}:{cursor.Column + 1}{perfLabel}";
+        string perfLabel = perfOverlayEnabled ? " | FPS" : string.Empty;
+        string nextValue = $"{sampleName} | {currentLanguageId} | {backendLabel} | {wrapLabel} | {currentScale * 100:F0}% | {cursor.Line + 1}:{cursor.Column + 1}{perfLabel}";
         if (string.Equals(lastSummaryValue, nextValue, StringComparison.Ordinal))
             return;
 

@@ -168,12 +168,12 @@ namespace SweetEditor {
 
 			decorationProviderManager.AddProvider(inlineSuggestionDecorationProvider);
 			TextInputMethodClientRequested += OnTextInputMethodClientRequested;
-			AddHandler(Gestures.PinchEvent, OnPinchGesture);
-			AddHandler(Gestures.PinchEndedEvent, OnPinchEnded);
-			AddHandler(Gestures.ScrollGestureEvent, OnScrollGesture);
-			AddHandler(Gestures.ScrollGestureEndedEvent, OnScrollGestureEnded);
-			AddHandler(Gestures.ScrollGestureInertiaStartingEvent, OnScrollGestureInertiaStarting);
-			AddHandler(Gestures.PointerTouchPadGestureMagnifyEvent, OnPointerTouchPadGestureMagnify);
+			AddHandler(InputElement.PinchEvent, OnPinchGesture);
+			AddHandler(InputElement.PinchEndedEvent, OnPinchEnded);
+			AddHandler(InputElement.ScrollGestureEvent, OnScrollGesture);
+			AddHandler(InputElement.ScrollGestureEndedEvent, OnScrollGestureEnded);
+			AddHandler(InputElement.ScrollGestureInertiaStartingEvent, OnScrollGestureInertiaStarting);
+			AddHandler(InputElement.PointerTouchPadGestureMagnifyEvent, OnPointerTouchPadGestureMagnify);
 
 			completionProviderManager.ItemsUpdated += OnCompletionItemsUpdated;
 			completionProviderManager.Dismissed += OnCompletionDismissed;
@@ -290,7 +290,7 @@ namespace SweetEditor {
 			return arranged;
 		}
 
-		protected override void OnGotFocus(GotFocusEventArgs e) {
+		protected override void OnGotFocus(FocusChangedEventArgs e) {
 			base.OnGotFocus(e);
 			if (disposed) {
 				return;
@@ -302,7 +302,7 @@ namespace SweetEditor {
 			NotifyTextInputStateChanged(textViewChanged: true);
 		}
 
-		protected override void OnLostFocus(RoutedEventArgs e) {
+		protected override void OnLostFocus(FocusChangedEventArgs e) {
 			base.OnLostFocus(e);
 			if (disposed) {
 				return;

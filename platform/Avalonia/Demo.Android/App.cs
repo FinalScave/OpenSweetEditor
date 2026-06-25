@@ -1,4 +1,5 @@
 using global::Avalonia;
+using global::Avalonia.Android;
 using global::Avalonia.Controls;
 using global::Avalonia.Controls.ApplicationLifetimes;
 using global::Avalonia.Themes.Fluent;
@@ -18,12 +19,14 @@ public sealed class App : global::Avalonia.Application
     public override void OnFrameworkInitializationCompleted()
     {
         DemoHostDiagnostics.WriteLine("App.OnFrameworkInitializationCompleted enter");
-        Control mainView = new DeferredMainViewHost();
 
         switch (ApplicationLifetime)
         {
+            case IActivityApplicationLifetime activity:
+                activity.MainViewFactory = () => new DeferredMainViewHost();
+                break;
             case ISingleViewApplicationLifetime singleView:
-                singleView.MainView = mainView;
+                singleView.MainView = new DeferredMainViewHost();
                 break;
             case IClassicDesktopStyleApplicationLifetime desktop:
                 desktop.MainWindow = new Window
@@ -31,7 +34,7 @@ public sealed class App : global::Avalonia.Application
                     Title = "SweetEditor Avalonia Demo.Android",
                     Width = 1400,
                     Height = 900,
-                    Content = mainView,
+                    Content = new DeferredMainViewHost(),
                 };
                 break;
         }
