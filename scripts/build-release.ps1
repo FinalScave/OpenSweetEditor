@@ -303,7 +303,8 @@ function Build-Android {
         "-DANDROID_PLATFORM=android-21",
         "-DCMAKE_CXX_FLAGS=-std=c++17",
         "-DSWEETEDITOR_BUILD_STATIC=OFF",
-        "-DSWEETEDITOR_BUILD_TESTS=OFF"
+        "-DSWEETEDITOR_BUILD_TESTS=OFF",
+        "-DSWEETEDITOR_BUILD_ANDROID_JNI=OFF"
     )
 
     Invoke-External -FilePath "cmake" -Arguments @(
