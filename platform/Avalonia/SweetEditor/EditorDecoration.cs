@@ -513,7 +513,6 @@ namespace SweetEditor {
 			appliedContextStartLine = currentContextStartLine;
 			appliedContextEndLine = currentContextEndLine;
 			if (changed) {
-				editor.ResetRenderModelDiagnostics();
 				editor.FlushDecorationUpdate();
 			}
 		}

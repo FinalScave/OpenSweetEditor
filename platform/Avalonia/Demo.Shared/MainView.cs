@@ -25,7 +25,7 @@ using ToggleButton = global::Avalonia.Controls.Primitives.ToggleButton;
 
 namespace SweetEditor.Avalonia.Demo;
 
-public sealed class MainView : UserControl
+internal sealed class MainView : UserControl
 {
     [Flags]
     private enum DeferredChromeWork
@@ -59,9 +59,7 @@ public sealed class MainView : UserControl
     private readonly StackPanel samplePickerItemsPanel = new();
 
     private readonly DemoSettings demoSettings;
-    private readonly Border welcomeOverlay = new();
     private readonly LoadingIndicator loadingIndicator = new();
-    private readonly NotificationPanel notificationPanel = new();
 
     private readonly DemoDecorationProvider decorationProvider;
     private readonly DemoCompletionProvider completionProvider = new();
@@ -109,7 +107,6 @@ public sealed class MainView : UserControl
         sampleLoader = new SampleDocumentLoader(
             controller,
             decorationProvider,
-            toolbarController.FileCombo,
             UpdateStatus,
             ApplyLanguageConfiguration,
             () => demoSettings.LastSampleFileName,
@@ -121,7 +118,6 @@ public sealed class MainView : UserControl
         ApplyPersistedSettings();
         BuildLayout();
         WireEvents();
-        SetupWelcomeOverlay();
 
         ScheduleEditorInitialization();
     }
@@ -146,30 +142,6 @@ public sealed class MainView : UserControl
         demoSettings.InlineSuggestionAutoEnabled = inlineSuggestionAutoEnabled;
         demoSettings.LastSampleFileName = activeSample?.FileName;
         demoSettings.Save();
-    }
-
-    private void SetupWelcomeOverlay()
-    {
-        WelcomeOverlayView welcomeView = new();
-        welcomeView.CloseRequested += () =>
-        {
-            welcomeOverlay.IsVisible = false;
-            demoSettings.ShowWelcome = false;
-            demoSettings.Save();
-            editor?.Focus();
-        };
-        welcomeView.DontShowAgainRequested += () =>
-        {
-            demoSettings.ShowWelcome = false;
-            demoSettings.Save();
-        };
-
-        welcomeOverlay.Background = Brushes.Transparent;
-        welcomeOverlay.HorizontalAlignment = HorizontalAlignment.Stretch;
-        welcomeOverlay.VerticalAlignment = VerticalAlignment.Stretch;
-        welcomeOverlay.ZIndex = 80;
-        welcomeOverlay.Child = welcomeView;
-        welcomeOverlay.IsVisible = demoSettings.ShowWelcome;
     }
 
     private void BuildLayout()
@@ -197,10 +169,6 @@ public sealed class MainView : UserControl
         loadingIndicator.LoadingText = "Loading sample...";
         loadingIndicator.ZIndex = 60;
         editorHost.Children.Add(loadingIndicator);
-
-        notificationPanel.DarkTheme = darkTheme;
-        notificationPanel.ZIndex = 90;
-        editorHost.Children.Add(notificationPanel);
 
         statusText.Text = "Ready";
         statusText.FontSize = 12;
@@ -232,13 +200,11 @@ public sealed class MainView : UserControl
         Grid.SetRow(editorHost, 2);
         Grid.SetRow(statusBar, 3);
         Grid.SetRowSpan(samplePickerPopup, 4);
-        Grid.SetRowSpan(welcomeOverlay, 4);
         layoutRoot.Children.Add(toolbarContainer);
         layoutRoot.Children.Add(searchContainer);
         layoutRoot.Children.Add(editorHost);
         layoutRoot.Children.Add(statusBar);
         layoutRoot.Children.Add(samplePickerPopup);
-        layoutRoot.Children.Add(welcomeOverlay);
         Content = layoutRoot;
     }
 
@@ -352,11 +318,6 @@ public sealed class MainView : UserControl
     private void WireEvents()
     {
         toolbarController.SamplePickerButton.Click += (_, _) => ToggleSamplePickerPopup();
-        toolbarController.FileCombo.SelectionChanged += async (_, _) =>
-        {
-            SyncSamplePickerSelection();
-            await sampleLoader.OnSelectedSampleChangedAsync().ConfigureAwait(false);
-        };
         toolbarController.UndoButton.Click += (_, _) => ExecuteAction(controller.Undo(), "Undo", "Nothing to undo");
         toolbarController.RedoButton.Click += (_, _) => ExecuteAction(controller.Redo(), "Redo", "Nothing to redo");
         toolbarController.SearchButton.Click += (_, _) => OpenSearchPanel(replaceMode: false);
@@ -486,7 +447,7 @@ public sealed class MainView : UserControl
             VerticalAlignment = VerticalAlignment.Stretch,
             Focusable = true,
         };
-        if (DemoPlatformServices.IsAndroid)
+        if (OperatingSystem.IsAndroid())
             TextOptions.SetTextRenderingMode(createdEditor, TextRenderingMode.Alias);
 
         createdEditor.AddHandler(InputElement.KeyDownEvent, OnEditorKeyDown, AvaInteractivity.RoutingStrategies.Tunnel);
@@ -513,7 +474,7 @@ public sealed class MainView : UserControl
         EditorSettings? settings = controller.GetSettings();
         if (settings != null)
         {
-            bool isAndroid = DemoPlatformServices.IsAndroid;
+            bool isAndroid = OperatingSystem.IsAndroid();
             settings.SetTypeface("monospace");
             settings.SetEditorTextSize(14.0f);
             currentScale = GetDefaultScale();
@@ -586,8 +547,6 @@ public sealed class MainView : UserControl
         samplePickerPopup.Background = CreateBrush(darkTheme ? 0xFF1B1E24u : 0xFFFFFFFFu);
         samplePickerPopup.BorderBrush = CreateBrush(darkTheme ? 0xFF313844u : 0xFFD7DEE8u);
 
-        notificationPanel.DarkTheme = darkTheme;
-
         toolbarController.SamplePickerChrome.Background = CreateBrush(surfaceMuted);
         toolbarController.SamplePickerChrome.BorderBrush = CreateBrush(border);
         toolbarController.SamplePickerChrome.BorderThickness = new Thickness(1);
@@ -626,7 +585,7 @@ public sealed class MainView : UserControl
         controller.DismissCompletion();
         controller.DismissInlineSuggestion();
         HideSamplePickerPopup();
-        controller.GetSettings()?.SetGutterSticky(!DemoPlatformServices.IsAndroid);
+        controller.GetSettings()?.SetGutterSticky(!OperatingSystem.IsAndroid());
 
         loadingIndicator.IsLoading = true;
         loadingIndicator.LoadingText = $"Loading {sample.FileName}...";
@@ -721,7 +680,7 @@ public sealed class MainView : UserControl
         ScheduleChromeRefresh(DeferredChromeWork.Summary);
     }
 
-    private float GetDefaultScale() => DemoPlatformServices.IsAndroid ? 0.90f : 1.0f;
+    private float GetDefaultScale() => OperatingSystem.IsAndroid() ? 0.90f : 1.0f;
 
     private void TogglePerfOverlay()
     {
@@ -782,8 +741,8 @@ public sealed class MainView : UserControl
 
     private void SyncSamplePickerSelection()
     {
-        string? selectedFileName = toolbarController.FileCombo.SelectedItem as string
-            ?? activeSample?.FileName
+        string? selectedFileName = activeSample?.FileName
+            ?? sampleLoader.SelectedSample?.FileName
             ?? sampleLoader.SampleFiles.FirstOrDefault()?.FileName;
         toolbarController.SetSamplePickerLabel(selectedFileName);
         RebuildSamplePickerItems();
@@ -821,7 +780,7 @@ public sealed class MainView : UserControl
     private void RebuildSamplePickerItems()
     {
         samplePickerItemsPanel.Children.Clear();
-        string? selectedFileName = toolbarController.FileCombo.SelectedItem as string ?? activeSample?.FileName;
+        string? selectedFileName = activeSample?.FileName ?? sampleLoader.SelectedSample?.FileName;
         foreach (DemoSampleFile sample in sampleLoader.SampleFiles)
         {
             bool isSelected = string.Equals(sample.FileName, selectedFileName, StringComparison.Ordinal);
@@ -839,7 +798,7 @@ public sealed class MainView : UserControl
         uint border = isSelected
             ? (darkTheme ? 0xFF4C9DFFu : 0xFF0F7AD9u)
             : (darkTheme ? 0xFF313844u : 0xFFD7DEE8u);
-        string detail = sample.IsGenerated ? "generated" : sample.LanguageId;
+        string detail = sample.LanguageId;
 
         Grid row = new()
         {
@@ -892,8 +851,8 @@ public sealed class MainView : UserControl
         button.Click += (_, _) =>
         {
             HideSamplePickerPopup();
-            if (!string.Equals(toolbarController.FileCombo.SelectedItem as string, sample.FileName, StringComparison.Ordinal))
-                toolbarController.FileCombo.SelectedItem = sample.FileName;
+            if (!string.Equals(activeSample?.FileName, sample.FileName, StringComparison.Ordinal))
+                _ = sampleLoader.LoadSampleAsync(sample);
         };
         return button;
     }
@@ -974,7 +933,7 @@ public sealed class MainView : UserControl
 
             controller.ShowInlineSuggestion(new InlineSuggestion(cursor.Line, cursor.Column, InlineSuggestionText));
             ScheduleChromeRefresh(DeferredChromeWork.Summary);
-        }, TimeSpan.FromMilliseconds(DemoPlatformServices.IsAndroid ? 1000 : 700));
+        }, TimeSpan.FromMilliseconds(OperatingSystem.IsAndroid() ? 1000 : 700));
     }
 
     private void ApplyToolbarChrome(uint foreground, uint surfaceMuted, uint border, uint accent)
@@ -1456,26 +1415,6 @@ public sealed class MainView : UserControl
             DemoDecorationProvider.CodeLensDebug => "◎ Debug",
             _ => $"Command#{commandId}",
         };
-    }
-
-    private void ShowNotification(string message, NotificationType type = NotificationType.Info)
-    {
-        notificationPanel.ShowNotification(message, type);
-    }
-
-    private void ShowError(string message, Exception? exception = null)
-    {
-        notificationPanel.ShowError(message, exception);
-    }
-
-    private void ShowSuccess(string message)
-    {
-        notificationPanel.ShowSuccess(message);
-    }
-
-    private void ShowWarning(string message)
-    {
-        notificationPanel.ShowWarning(message);
     }
 
     private void ShowKeyboardShortcutsDialog()

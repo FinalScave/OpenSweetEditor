@@ -1,9 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.qiplat.sweeteditor.avalonia.demo.android">
-  <application android:label="SweetEditor Avalonia Demo.Android"
-               android:extractNativeLibs="true"
-               android:usesCleartextTraffic="true" />
-  <uses-sdk android:minSdkVersion="23"
-            android:targetSdkVersion="36" />
+﻿<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.qiplat.sweeteditor.avalonia.demo.android">
+	<application android:label="Demo" android:extractNativeLibs="true" android:usesCleartextTraffic="true" />
 </manifest>

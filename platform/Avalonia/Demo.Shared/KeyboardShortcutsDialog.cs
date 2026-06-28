@@ -8,7 +8,7 @@ using Avalonia.Media;
 
 namespace SweetEditor.Avalonia.Demo;
 
-public sealed class KeyboardShortcutsDialog : Window
+internal sealed class KeyboardShortcutsDialog : Window
 {
     public KeyboardShortcutsDialog()
     {

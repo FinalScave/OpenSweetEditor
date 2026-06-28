@@ -31,15 +31,12 @@ public sealed class DeferredMainViewHost : UserControl
         if (Content is MainView)
             return;
 
-        DemoHostDiagnostics.WriteLine("DeferredMainViewHost.LoadMainView enter");
         try
         {
             Content = new MainView();
-            DemoHostDiagnostics.WriteLine("DeferredMainViewHost.LoadMainView completed");
         }
         catch (Exception ex)
         {
-            DemoHostDiagnostics.WriteException("DeferredMainViewHost.LoadMainView failed", ex);
             Content = BuildErrorPlaceholder(ex);
         }
     }
@@ -141,13 +138,6 @@ public sealed class DeferredMainViewHost : UserControl
                     {
                         Text = ex.Message,
                         Foreground = new SolidColorBrush(Color.FromUInt32(0xFF9AA4B2)),
-                        TextWrapping = TextWrapping.Wrap,
-                    },
-                    new TextBlock
-                    {
-                        Text = $"Log: {DemoHostDiagnostics.GetLogFilePath()}",
-                        Foreground = new SolidColorBrush(Color.FromUInt32(0xFF7A8494)),
-                        FontSize = 12,
                         TextWrapping = TextWrapping.Wrap,
                     },
                 },

@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0-android36.0</TargetFramework>
@@ -19,7 +19,10 @@
     <RuntimeIdentifier>android-arm64</RuntimeIdentifier>
     <AndroidDebuggable>true</AndroidDebuggable>
     <Optimize>true</Optimize>
-    <DebuggerSupport>false</DebuggerSupport>
+    <DebuggerSupport>true</DebuggerSupport>
+	<DebugSymbols>true</DebugSymbols>
+	<AndroidIncludeDebugSymbols>true</AndroidIncludeDebugSymbols>
+	<DebugType>full</DebugType>
     <MetadataUpdaterSupport>false</MetadataUpdaterSupport>
     <AndroidEnableProfiler>false</AndroidEnableProfiler>
     <AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>

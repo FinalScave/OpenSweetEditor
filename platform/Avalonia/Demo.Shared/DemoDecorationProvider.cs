@@ -60,7 +60,6 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
     private bool sweetLineInitialized;
     private int sweetLineSessionVersion;
     private bool activeDocumentLargeMode;
-    private bool activeDocumentStreamingLoad;
     private bool largeDocumentNativeCacheReady;
     private int largeDocumentGeneration;
     private readonly Dictionary<int, List<StyleSpan>> largeDocumentSyntaxCache = new();
@@ -115,7 +114,6 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
             activeContent = content;
             activeLanguageId = GuessLanguageId(fileName);
             activeDocumentLargeMode = IsLargeDocument(content);
-            activeDocumentStreamingLoad = false;
             activeLines = activeDocumentLargeMode ? null : SplitLines(content);
             highlightBackendLabel = "SweetLine pending";
 
@@ -138,52 +136,6 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
         }
     }
 
-    public void BeginStreamingDocument(string fileName, string languageId)
-    {
-        lock (gate)
-        {
-            activeFileName = fileName;
-            activeContent = null;
-            activeLanguageId = string.IsNullOrWhiteSpace(languageId) ? GuessLanguageId(fileName) : languageId;
-            activeDocumentLargeMode = true;
-            activeDocumentStreamingLoad = true;
-            activeLines = null;
-            sweetLineSessionVersion++;
-            ResetSweetLineState();
-            highlightBackendLabel = "SweetLine async";
-        }
-
-        HighlightBackendChanged?.Invoke();
-    }
-
-    public void CompleteStreamingDocument(string fileName, string content)
-    {
-        lock (gate)
-        {
-            if (!string.Equals(activeFileName, fileName, StringComparison.Ordinal))
-                return;
-
-            activeContent = content;
-            activeLanguageId ??= GuessLanguageId(fileName);
-            activeDocumentLargeMode = true;
-            activeDocumentStreamingLoad = false;
-            activeLines = null;
-            StartLargeDocumentPrimeLocked(content);
-        }
-    }
-
-    public Task WaitForPrimeAsync(string fileName, string content, int timeoutMs)
-    {
-        PrimeDocument(fileName, content);
-        return Task.CompletedTask;
-    }
-
-    public Task WaitForPrimeCompletionAsync(string fileName, string content)
-    {
-        PrimeDocument(fileName, content);
-        return Task.CompletedTask;
-    }
-
     public void ActivatePrimedDocument(string fileName, string content, Document document)
     {
         lock (gate)
@@ -192,7 +144,6 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
             activeContent = content;
             activeLanguageId = GuessLanguageId(fileName);
             activeDocumentLargeMode = IsLargeDocument(content);
-            activeDocumentStreamingLoad = false;
             activeLines = activeDocumentLargeMode ? null : SplitLines(content);
             if (activeDocumentLargeMode)
             {
@@ -452,7 +403,6 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
         lock (gate)
         {
             bool hasAsyncSweetLinePipeline =
-                activeDocumentStreamingLoad ||
                 sweetLineLargeDocumentPrimeTask != null ||
                 largeDocumentSyntaxFillTask != null ||
                 sweetLineLargeDocumentAnalyzer != null ||
@@ -588,8 +538,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
         if (TryBuildLargeDocumentSyntaxSliceLocked(context.TextChanges, visibleRange, syntax))
             return syntax.Count > 0 || visibleRange.LineCount == 0;
 
-        if (!activeDocumentStreamingLoad)
-            StartLargeDocumentPrimeLocked(activeContent);
+        StartLargeDocumentPrimeLocked(activeContent);
 
         AppendCachedLargeDocumentSyntaxLocked(start, Math.Min(end, total - 1), syntax);
         QueueLargeDocumentSyntaxFillLocked(start, end);
@@ -606,7 +555,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
 
         try
         {
-            if (DemoPlatformServices.IsAndroid &&
+            if (OperatingSystem.IsAndroid() &&
                 changes != null &&
                 changes.Count > 0)
             {
@@ -813,7 +762,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
         if (changes == null || changes.Count == 0)
             return;
 
-        bool requiresNativeSliceReset = DemoPlatformServices.IsAndroid;
+        bool requiresNativeSliceReset = OperatingSystem.IsAndroid();
         largeDocumentSyntaxCache.Clear();
         largeDocumentLineEndStates.Clear();
         largeDocumentCacheStartLine = -1;
@@ -829,10 +778,6 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
         largeDocumentGeneration++;
         largeDocumentNativeCacheReady = false;
         DisposeLargeDocumentSliceSessionLocked();
-        if (activeDocumentStreamingLoad)
-        {
-            return;
-        }
 
         activeContent = doc.GetText();
         StartLargeDocumentPrimeLocked(activeContent);
@@ -855,7 +800,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
 
     private void StartLargeDocumentPrimeLocked(string? contentSnapshot)
     {
-        if (!activeDocumentLargeMode || activeDocumentStreamingLoad || largeDocumentNativeCacheReady)
+        if (!activeDocumentLargeMode || largeDocumentNativeCacheReady)
             return;
 
         if (sweetLineLargeDocumentPrimeTask != null && !sweetLineLargeDocumentPrimeTask.IsCompleted)

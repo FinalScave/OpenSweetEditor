@@ -1,18 +1,14 @@
 using System;
 using Avalonia;
-using Avalonia.Animation;
-using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.Media;
-using Avalonia.Styling;
 using Avalonia.Threading;
-using AvaloniaRect = global::Avalonia.Rect;
 
 namespace SweetEditor.Avalonia.Demo;
 
-public sealed class LoadingIndicator : Border
+internal sealed class LoadingIndicator : Border
 {
     private readonly DispatcherTimer animationTimer;
     private readonly Ellipse[] dots;
@@ -185,118 +181,4 @@ public sealed class LoadingIndicator : Border
     }
 
     private static SolidColorBrush CreateBrush(uint argb) => new(Color.FromUInt32(argb));
-}
-
-public sealed class ProgressBar : Control
-{
-    private readonly DispatcherTimer animationTimer;
-    private double indeterminateOffset;
-
-    public static readonly StyledProperty<double> ValueProperty =
-        AvaloniaProperty.Register<ProgressBar, double>(nameof(Value));
-
-    public double Value
-    {
-        get => GetValue(ValueProperty);
-        set => SetValue(ValueProperty, Math.Clamp(value, 0, 100));
-    }
-
-    public static readonly StyledProperty<bool> IsIndeterminateProperty =
-        AvaloniaProperty.Register<ProgressBar, bool>(nameof(IsIndeterminate));
-
-    public bool IsIndeterminate
-    {
-        get => GetValue(IsIndeterminateProperty);
-        set => SetValue(IsIndeterminateProperty, value);
-    }
-
-    public static readonly StyledProperty<uint> ProgressColorProperty =
-        AvaloniaProperty.Register<ProgressBar, uint>(nameof(ProgressColor), 0xFF4C9DFF);
-
-    public uint ProgressColor
-    {
-        get => GetValue(ProgressColorProperty);
-        set => SetValue(ProgressColorProperty, value);
-    }
-
-    public ProgressBar()
-    {
-        animationTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromMilliseconds(16),
-        };
-        animationTimer.Tick += OnAnimationTick;
-    }
-
-    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
-    {
-        base.OnPropertyChanged(change);
-        if (change.Property == ValueProperty ||
-            change.Property == IsIndeterminateProperty ||
-            change.Property == ProgressColorProperty)
-        {
-            InvalidateVisual();
-        }
-    }
-
-    public override void Render(DrawingContext context)
-    {
-        double width = Bounds.Width;
-        double height = Bounds.Height;
-
-        if (width <= 0 || height <= 0)
-            return;
-
-        context.FillRectangle(
-            new SolidColorBrush(Color.FromUInt32(0xFF242A33)),
-            new AvaloniaRect(0, 0, width, height),
-            (float)(height / 2));
-
-        if (IsIndeterminate)
-        {
-            double indicatorWidth = width * 0.3;
-            double x = indeterminateOffset % (width + indicatorWidth) - indicatorWidth;
-            context.FillRectangle(
-                new SolidColorBrush(Color.FromUInt32(ProgressColor)),
-                new AvaloniaRect(x, 0, indicatorWidth, height),
-                (float)(height / 2));
-        }
-        else
-        {
-            double progressWidth = width * (Value / 100.0);
-            if (progressWidth > 0)
-            {
-                context.FillRectangle(
-                    new SolidColorBrush(Color.FromUInt32(ProgressColor)),
-                    new AvaloniaRect(0, 0, progressWidth, height),
-                    (float)(height / 2));
-            }
-        }
-    }
-
-    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
-    {
-        base.OnAttachedToVisualTree(e);
-        if (IsIndeterminate)
-            animationTimer.Start();
-    }
-
-    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
-    {
-        base.OnDetachedFromVisualTree(e);
-        animationTimer.Stop();
-    }
-
-    private void OnAnimationTick(object? sender, EventArgs e)
-    {
-        if (IsIndeterminate)
-        {
-            indeterminateOffset += 3;
-            InvalidateVisual();
-        }
-        else
-        {
-            animationTimer.Stop();
-        }
-    }
 }

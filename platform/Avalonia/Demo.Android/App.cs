@@ -1,3 +1,6 @@
+using System;
+using Android.App;
+using Android.Runtime;
 using global::Avalonia;
 using global::Avalonia.Android;
 using global::Avalonia.Controls;
@@ -11,15 +14,11 @@ public sealed class App : global::Avalonia.Application
 {
     public override void Initialize()
     {
-        DemoHostDiagnostics.InstallGlobalHandlers("Android.App.Initialize");
-        DemoHostDiagnostics.WriteLine("App.Initialize");
         Styles.Add(new FluentTheme());
     }
 
     public override void OnFrameworkInitializationCompleted()
     {
-        DemoHostDiagnostics.WriteLine("App.OnFrameworkInitializationCompleted enter");
-
         switch (ApplicationLifetime)
         {
             case IActivityApplicationLifetime activity:
@@ -39,7 +38,33 @@ public sealed class App : global::Avalonia.Application
                 break;
         }
 
-        DemoHostDiagnostics.WriteLine("App.OnFrameworkInitializationCompleted exit");
         base.OnFrameworkInitializationCompleted();
+    }
+}
+
+[Application]
+public class AndroidApp : AvaloniaAndroidApplication<App>
+{
+    public AndroidApp(IntPtr javaReference, JniHandleOwnership transfer)
+        : base(javaReference, transfer)
+    {
+    }
+
+    public override void OnCreate()
+    {
+        base.OnCreate();
+    }
+
+    protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
+    {
+        return base.CustomizeAppBuilder(builder)
+            .With(new AndroidPlatformOptions
+            {
+                RenderingMode =
+                [
+                    AndroidRenderingMode.Egl,
+                    AndroidRenderingMode.Software,
+                ],
+            });
     }
 }

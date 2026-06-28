@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
@@ -105,7 +104,6 @@ namespace SweetEditor {
 		private bool forceViewportUpdate;
 		private AvaloniaSize pendingViewportSize;
 		private AvaloniaSize appliedViewportSize;
-		private bool renderModelDebugLogged;
 		private SweetEditorController? controller;
 		private bool touchSequenceActive;
 		private bool touchPendingFocus;
@@ -315,7 +313,11 @@ namespace SweetEditor {
 
 		protected override void OnPointerPressed(PointerPressedEventArgs e) {
 			bool touchLike = ShouldTreatPointerAsTouch(this, e, allowButtonlessMouseFallback: true);
-			SetImeSuppressedByTouch(touchLike && platformBehavior.SuppressImeOnTouchDown);
+			if (touchLike && platformBehavior.SuppressImeOnTouchDown) {
+				SetImeSuppressedByTouch(!IsFocused || imeSuppressedByTouch);
+			} else {
+				SetImeSuppressedByTouch(false);
+			}
 			if (!touchLike) {
 				base.OnPointerPressed(e);
 			}
@@ -507,9 +509,12 @@ namespace SweetEditor {
 					    textTap &&
 					    gestureDurationMs <= platformBehavior.TouchImeTapMaxDurationMs;
 					if (allowImeForTap) {
-						SetImeSuppressedByTouch(false);
-						Focus();
-						NotifyTextInputStateChanged(textViewChanged: true);
+						bool needsImeActivation = imeSuppressedByTouch || !IsFocused;
+						if (needsImeActivation) {
+							SetImeSuppressedByTouch(false);
+							Focus();
+							NotifyTextInputStateChanged(textViewChanged: true);
+						}
 					} else {
 						SetImeSuppressedByTouch(platformBehavior.SuppressImeOnTouchDown);
 					}
@@ -809,7 +814,9 @@ namespace SweetEditor {
 				DismissInlineSuggestionInternal(emitDismissedCallback: true);
 			}
 
-			var result = InsertConfiguredText(e.Text);
+			var result = ShouldCommitTextInputThroughIme()
+				             ? CommitImeText(e.Text)
+				             : InsertConfiguredText(e.Text);
 			DispatchEditorActionResult(result);
 			e.Handled = true;
 		}
@@ -820,7 +827,6 @@ namespace SweetEditor {
 			}
 
 			ClearAuthorizedDestructiveSelection();
-			renderModelDebugLogged = false;
 			EditorActionResult loadResult = editorCore.LoadDocument(document);
 			EditorActionResult cursorResult = editorCore.SetCursorPosition(new TextPosition { Line = 0, Column = 0 });
 			EditorActionResult scrollResult = editorCore.SetScroll(0, 0);
@@ -843,7 +849,6 @@ namespace SweetEditor {
 				return;
 			}
 
-			renderModelDebugLogged = false;
 			currentTheme = theme;
 			renderer.ApplyTheme(theme);
 			completionPopupController.ApplyTheme(theme);
@@ -938,7 +943,6 @@ namespace SweetEditor {
 		public void SetMetadata<T>(T? metadata)
 		    where T : class, IEditorMetadata {
 			this.metadata = metadata;
-			renderModelDebugLogged = false;
 			decorationProviderManager.RequestRefresh();
 		}
 
@@ -1568,10 +1572,6 @@ namespace SweetEditor {
 		}
 
 		public int GetTotalLineCount() => editorCore.GetDocument()?.GetLineCount() ?? -1;
-
-		internal void ResetRenderModelDiagnostics() {
-			renderModelDebugLogged = false;
-		}
 
 		internal void DetachController(SweetEditorController owner) {
 			if (ReferenceEquals(controller, owner)) {
@@ -2562,7 +2562,6 @@ namespace SweetEditor {
 			}
 			lastFrameBuildMs = (float)((Stopwatch.GetTimestamp() - buildStart) * 1000.0 / Stopwatch.Frequency);
 			renderModelDirty = false;
-			LogRenderModelDebugOnce(renderModel);
 			UpdateVisibleLineRangeCache(renderModel);
 			if (pendingViewportDecorationRefresh && cachedVisibleEndLine >= cachedVisibleStartLine) {
 				pendingViewportDecorationRefresh = false;
@@ -2573,55 +2572,6 @@ namespace SweetEditor {
 					                         }
 				                         },
 				                         DispatcherPriority.Background);
-			}
-		}
-
-		private void LogRenderModelDebugOnce(EditorRenderModel? model) {
-			if (renderModelDebugLogged || model == null || model.Lines == null) {
-				return;
-			}
-			if (!string.Equals(Environment.GetEnvironmentVariable("SWEETEDITOR_RENDER_DEBUG"), "1", StringComparison.Ordinal)) {
-				renderModelDebugLogged = true;
-				return;
-			}
-
-			if (model.Lines.Count == 0) {
-				return;
-			}
-
-			try {
-				int coloredRunCount = 0;
-				var samples = new List<string>();
-				foreach (VisualLine line in model.Lines) {
-					if (line.Runs == null) {
-						continue;
-					}
-
-					foreach (VisualRun run in line.Runs) {
-						if (run.Style.Color != 0) {
-							coloredRunCount++;
-						}
-
-						if (samples.Count >= 12) {
-							continue;
-						}
-
-						string text = (run.Text ?? string.Empty).Replace("\r", "\\r").Replace("\n", "\\n");
-						if (text.Length > 24) {
-							text = text[..24];
-						}
-						samples.Add($"line={line.LogicalLine} wrap={line.WrapIndex} type={run.Type} color=0x{run.Style.Color:X8} font={run.Style.FontStyle} text={text}");
-					}
-				}
-
-				string logPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "sweeteditor-render.log");
-				File.WriteAllLines(logPath, new[] {
-					$"visibleLines={model.Lines.Count} coloredRuns={coloredRunCount}",
-				}
-				                                .Concat(samples));
-				renderModelDebugLogged = true;
-			} catch {
-				// Ignore diagnostics failures.
 			}
 		}
 
@@ -3671,6 +3621,18 @@ namespace SweetEditor {
 			return editorCore.InsertText(text);
 		}
 
+		private bool ShouldCommitTextInputThroughIme() {
+			return editorCore.IsCompositionEnabled() &&
+			       (platformBehavior.Kind == EditorPlatformKind.Android || editorCore.HasPreedit());
+		}
+
+		private EditorActionResult CommitImeText(string text) {
+			return editorCore.HandleImeCommandMessage(new ImeCommandMessage {
+				Kind = ImeCommandKind.COMMIT_TEXT,
+				Text = text,
+			});
+		}
+
 		private bool TryInsertAutoClosingPair(string text, out EditorActionResult? result) {
 			result = null;
 			if (text.Length != 1) {
@@ -3767,9 +3729,6 @@ namespace SweetEditor {
 		}
 
 		private void SafeApplyTextInputSelection(TextSelection selection) {
-			if (platformBehavior.Kind == EditorPlatformKind.Android) {
-				return;
-			}
 			try {
 				ApplyTextInputSelection(selection);
 			} catch {
@@ -3784,7 +3743,7 @@ namespace SweetEditor {
 		}
 
 		private string GetTextInputSurroundingText() {
-			if (disposed || platformBehavior.Kind == EditorPlatformKind.Android) {
+			if (disposed) {
 				return string.Empty;
 			}
 
@@ -3822,12 +3781,6 @@ namespace SweetEditor {
 
 		private void ApplyTextInputSelection(TextSelection selection) {
 			if (disposed) {
-				return;
-			}
-
-			// Android IMEs can issue aggressive selection updates during composing.
-			// Applying them directly causes accidental auto-selection and can race with touch selection handles.
-			if (platformBehavior.Kind == EditorPlatformKind.Android) {
 				return;
 			}
 
@@ -3878,6 +3831,23 @@ namespace SweetEditor {
 			DispatchEditorActionResult(editorCore.HandleImeCommandMessage(message));
 		}
 
+		private void ExecuteTextInputContextMenuAction(ContextMenuAction action) {
+			switch (action) {
+				case ContextMenuAction.Copy:
+					CopyToClipboard();
+					break;
+				case ContextMenuAction.Cut:
+					CutToClipboard();
+					break;
+				case ContextMenuAction.Paste:
+					PasteFromClipboard();
+					break;
+				case ContextMenuAction.SelectAll:
+					SelectAll();
+					break;
+			}
+		}
+
 		private sealed class EditorTextInputClient : TextInputMethodClient {
 			private readonly SweetEditorControl owner;
 
@@ -3889,7 +3859,7 @@ namespace SweetEditor {
 
 			public override bool SupportsPreedit => owner.editorCore.IsCompositionEnabled();
 
-			public override bool SupportsSurroundingText => owner.platformBehavior.Kind != EditorPlatformKind.Android;
+			public override bool SupportsSurroundingText => owner.editorCore.IsCompositionEnabled();
 
 			public override string SurroundingText => owner.SafeGetTextInputSurroundingText();
 
@@ -3906,6 +3876,10 @@ namespace SweetEditor {
 
 			public override void SetPreeditText(string? preeditText, int? cursorPos) {
 				owner.SafeApplyPreeditText(preeditText, cursorPos);
+			}
+
+			public override void ExecuteContextMenuAction(ContextMenuAction action) {
+				owner.ExecuteTextInputContextMenuAction(action);
 			}
 
 			public void NotifyStateChanged(bool textViewChanged) {
