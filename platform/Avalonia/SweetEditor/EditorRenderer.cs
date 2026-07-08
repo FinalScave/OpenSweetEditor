@@ -6,6 +6,9 @@ using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
+using Avalonia.Rendering.SceneGraph;
+using Avalonia.Skia;
+using SkiaSharp;
 using AvaloniaRect = Avalonia.Rect;
 using AvaloniaSize = Avalonia.Size;
 
@@ -22,12 +25,15 @@ namespace SweetEditor {
 		private const float HandleDropRadius = 7.0f;
 		private const float HandleCenterDistance = 16.0f;
 		private const float HandleCurveKappa = 0.5522f;
+		private const int MaxTextFastPathCacheEntries = 4096;
 
 		private readonly Dictionary<int, ISolidColorBrush> brushCache = new();
 		private readonly Dictionary<PenKey, Pen> penCache = new();
 		private readonly Dictionary<int, string> lineNumberTextCache = new();
 		private readonly Dictionary<int, IImage?> iconCache = new();
 		private readonly Dictionary<int, float> iconWidthCache = new();
+		private readonly Dictionary<FixedGlyphAdvanceKey, float> fixedGlyphAdvanceCache = new();
+		private readonly Dictionary<string, bool> textFastPathCache = new(StringComparer.Ordinal);
 		private readonly MeasurePerfStats measurePerfStats = new();
 		private readonly PerfOverlay perfOverlay = new();
 		private readonly MeasureTextWidthCallback measureTextWidthDelegate;
@@ -54,11 +60,23 @@ namespace SweetEditor {
 		private readonly record struct PenKey
 		(int Argb, int ThicknessKey, PenLineCap LineCap, PenLineJoin LineJoin);
 
+		private readonly record struct FixedGlyphAdvanceKey
+		(int FontStyle, int SizeKey);
+
 		private readonly record struct TextMetrics
 		(float Width, float Baseline, float Height);
 
 		private readonly record struct LayoutMetrics
 		(float Baseline, float Height);
+
+		private readonly record struct SkiaTextRun
+		(string Text, float X, float BaselineY, float Advance, float Size, int FontStyle, int Argb);
+
+		private readonly record struct SkiaTextBucketKey
+		(int Argb, int FontStyle, int SizeKey);
+
+		private readonly record struct DelayedTextLine
+		(int Argb, double Thickness, Point Start, Point End);
 
 		public EditorRenderer(EditorTheme theme) {
 			this.theme = theme;
@@ -107,6 +125,24 @@ namespace SweetEditor {
 		public void RecordInputPerf(string tag, float inputMs) {
 			if (perfOverlay.IsEnabled()) {
 				perfOverlay.RecordInput(tag, inputMs);
+			}
+		}
+
+		public void RecordFrameLatencyPerf(string tag, float inputToRenderMs, float requestToRenderMs) {
+			if (perfOverlay.IsEnabled()) {
+				perfOverlay.RecordFrameLatency(tag, inputToRenderMs, requestToRenderMs);
+			}
+		}
+
+		public void RecordRenderIntervalPerf(float intervalMs) {
+			if (perfOverlay.IsEnabled()) {
+				perfOverlay.RecordRenderInterval(intervalMs);
+			}
+		}
+
+		public void RecordDecorationApplyPerf(float applyMs) {
+			if (perfOverlay.IsEnabled()) {
+				perfOverlay.RecordDecorationApply(applyMs);
 			}
 		}
 
@@ -223,6 +259,8 @@ namespace SweetEditor {
 			penCache.Clear();
 			iconCache.Clear();
 			iconWidthCache.Clear();
+			fixedGlyphAdvanceCache.Clear();
+			textFastPathCache.Clear();
 		}
 
 		private void UpdateTypefaces() {
@@ -239,6 +277,7 @@ namespace SweetEditor {
 
 		private void ClearFontDependentCaches() {
 			iconWidthCache.Clear();
+			fixedGlyphAdvanceCache.Clear();
 		}
 
 		private static int QuantizeSize(float size) => (int)MathF.Round(size * 100f);
@@ -256,6 +295,22 @@ namespace SweetEditor {
 				}
 			}
 			return true;
+		}
+
+		private bool CanUseGlyphFastPathCached(string text) {
+			if (string.IsNullOrEmpty(text)) {
+				return false;
+			}
+			if (textFastPathCache.TryGetValue(text, out bool cached)) {
+				return cached;
+			}
+			if (textFastPathCache.Count >= MaxTextFastPathCacheEntries) {
+				textFastPathCache.Clear();
+			}
+
+			bool result = CanUseGlyphFastPath(text.AsSpan());
+			textFastPathCache[text] = result;
+			return result;
 		}
 
 		private static double GlyphScale(GlyphTypeface glyphTypeface, float size) {
@@ -290,9 +345,21 @@ namespace SweetEditor {
 			return TryGetGlyphAdvance(glyphTypeface, 'M', size, out _, out advance);
 		}
 
+		private bool TryGetFixedGlyphAdvanceCached(Typeface typeface, int fontStyle, float size, out float advance) {
+			var key = new FixedGlyphAdvanceKey(fontStyle, QuantizeSize(size));
+			if (fixedGlyphAdvanceCache.TryGetValue(key, out float cached)) {
+				advance = cached;
+				return advance > 0f;
+			}
+
+			bool result = TryGetFixedGlyphAdvance(typeface, size, out advance);
+			fixedGlyphAdvanceCache[key] = result ? advance : 0f;
+			return result;
+		}
+
 		private bool TryMeasureGlyphText(string text, Typeface typeface, float size, out float width) {
 			width = 0f;
-			if (string.IsNullOrEmpty(text) || !CanUseGlyphFastPath(text.AsSpan())) {
+			if (string.IsNullOrEmpty(text) || !CanUseGlyphFastPathCached(text)) {
 				return false;
 			}
 			if (typeface.GlyphTypeface is not GlyphTypeface glyphTypeface) {
@@ -802,6 +869,8 @@ namespace SweetEditor {
 			Span<VisualLine> lines = CollectionsMarshal.AsSpan(model.Lines);
 			int cachedFontStyle = int.MinValue;
 			Typeface cachedTypeface = regularTypeface;
+			List<SkiaTextRun>? skiaTextRuns = OperatingSystem.IsAndroid() ? new List<SkiaTextRun>() : null;
+			List<DelayedTextLine>? delayedTextLines = skiaTextRuns != null ? new List<DelayedTextLine>() : null;
 
 			for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++) {
 				List<VisualRun>? runsList = lines[lineIndex].Runs;
@@ -820,7 +889,8 @@ namespace SweetEditor {
 						continue;
 					}
 
-					if (DrawInvisibleCharacterRun(context, run, drawX, drawWidth, contentClip)) {
+					bool drewInvisible = DrawInvisibleCharacterRun(context, run, drawX, drawWidth, contentClip);
+					if (drewInvisible) {
 						continue;
 					}
 
@@ -836,6 +906,7 @@ namespace SweetEditor {
 					bool hasTypeface = false;
 					bool canUseGlyphFastPath = false;
 					bool canUseHorizontalClip = false;
+					float fixedGlyphAdvance = 0f;
 					if (drawWhitespaceText || needsLayout) {
 						if (cachedFontStyle == run.Style.FontStyle) {
 							typeface = cachedTypeface;
@@ -845,9 +916,11 @@ namespace SweetEditor {
 							cachedTypeface = typeface;
 						}
 						hasTypeface = true;
-						canUseGlyphFastPath = drawWhitespaceText && !isInlay && CanUseGlyphFastPath(text.AsSpan());
+						canUseGlyphFastPath = drawWhitespaceText && !isInlay && CanUseGlyphFastPathCached(text);
 						canUseHorizontalClip =
-							canUseGlyphFastPath && TryGetFixedGlyphAdvance(typeface, textSize, out _);
+							canUseGlyphFastPath &&
+							TryGetFixedGlyphAdvanceCached(typeface, run.Style.FontStyle, textSize,
+														  out fixedGlyphAdvance);
 					}
 
 					int clippedStartIndex = 0;
@@ -863,10 +936,9 @@ namespace SweetEditor {
 					}
 
 					if (drawWhitespaceText && canUseHorizontalClip && !string.IsNullOrEmpty(text) &&
-						drawWidth > clipRight - clipLeft &&
-						TryGetFixedGlyphAdvance(typeface, textSize, out float advance)) {
-						int startIndex = Math.Max(0, (int)MathF.Floor((clipLeft - drawX) / advance));
-						int endIndex = Math.Min(text.Length, (int)MathF.Ceiling((clipRight - drawX) / advance));
+						drawWidth > clipRight - clipLeft) {
+						int startIndex = Math.Max(0, (int)MathF.Floor((clipLeft - drawX) / fixedGlyphAdvance));
+						int endIndex = Math.Min(text.Length, (int)MathF.Ceiling((clipRight - drawX) / fixedGlyphAdvance));
 						if (endIndex <= startIndex) {
 							continue;
 						}
@@ -875,8 +947,8 @@ namespace SweetEditor {
 							clippedStartIndex = startIndex;
 							clippedLength = endIndex - startIndex;
 							clippedGlyphText = true;
-							drawX = Snap(drawX + startIndex * advance);
-							drawWidth = Math.Max(1f, Snap(clippedLength * advance));
+							drawX = Snap(drawX + startIndex * fixedGlyphAdvance);
+							drawWidth = Math.Max(1f, Snap(clippedLength * fixedGlyphAdvance));
 						}
 					}
 
@@ -905,11 +977,23 @@ namespace SweetEditor {
 						continue;
 					}
 
+					bool usedSkiaText = false;
+					if (skiaTextRuns != null && canUseHorizontalClip) {
+						string drawText = clippedGlyphText ? text.Substring(clippedStartIndex, clippedLength) : text;
+						if (drawText.Length > 0) {
+							skiaTextRuns.Add(new SkiaTextRun(drawText, drawX, Snap(run.Y), fixedGlyphAdvance, textSize,
+															  run.Style.FontStyle, textColor));
+							usedSkiaText = true;
+						}
+					}
+
 					GlyphRun glyphRun = default!;
-					bool usedGlyphRun = canUseGlyphFastPath &&
-										TryCreateGlyphRun(text, clippedStartIndex, clippedLength, typeface, textSize,
+					bool usedGlyphRun = false;
+					if (!usedSkiaText && canUseGlyphFastPath) {
+						usedGlyphRun = TryCreateGlyphRun(text, clippedStartIndex, clippedLength, typeface, textSize,
 														  new Point(drawX, Snap(run.Y)), out glyphRun, out _);
-					if (!usedGlyphRun) {
+					}
+					if (!usedSkiaText && !usedGlyphRun) {
 						if (!hasTypeface) {
 							typeface = ResolveTypeface(run.Style.FontStyle);
 							hasTypeface = true;
@@ -927,7 +1011,7 @@ namespace SweetEditor {
 						lineHeight = layout.Height;
 						needsLayout = true;
 						context.DrawText(formatted, new Point(drawX, topY));
-					} else {
+					} else if (usedGlyphRun) {
 						context.DrawGlyphRun(GetBrush(textColor), glyphRun);
 					}
 
@@ -940,14 +1024,35 @@ namespace SweetEditor {
 							layout = GetLayoutMetrics(typeface, run.Style.FontStyle, textSize, inlay: false);
 						}
 						float y = Snap(topY + layout.Baseline * 0.5f);
-						context.DrawLine(GetPen(textColor, 1), new Point(drawX, y), new Point(drawX + drawWidth, y));
+						var start = new Point(drawX, y);
+						var end = new Point(drawX + drawWidth, y);
+						if (delayedTextLines != null) {
+							delayedTextLines.Add(new DelayedTextLine(textColor, 1, start, end));
+						} else {
+							context.DrawLine(GetPen(textColor, 1), start, end);
+						}
 					}
 
 					if (isActiveCodeLens) {
 						float underlineY = ComputeCodeLensUnderlineY(run.Y, layout);
-						context.DrawLine(GetPen(textColor, 1), new Point(drawX, underlineY),
-										 new Point(drawX + drawWidth, underlineY));
+						var start = new Point(drawX, underlineY);
+						var end = new Point(drawX + drawWidth, underlineY);
+						if (delayedTextLines != null) {
+							delayedTextLines.Add(new DelayedTextLine(textColor, 1, start, end));
+						} else {
+							context.DrawLine(GetPen(textColor, 1), start, end);
+						}
 					}
+				}
+			}
+
+			if (skiaTextRuns is { Count: > 0 }) {
+				SkiaTextRun[] runArray = skiaTextRuns.ToArray();
+				context.Custom(new SkiaTextDrawOperation(contentClip, runArray, fontFamily));
+			}
+			if (delayedTextLines != null) {
+				foreach (DelayedTextLine line in delayedTextLines) {
+					context.DrawLine(GetPen(line.Argb, line.Thickness), line.Start, line.End);
 				}
 			}
 		}
@@ -1375,14 +1480,113 @@ namespace SweetEditor {
 						   PenLineJoin lineJoin = PenLineJoin.Miter) {
 			int thicknessKey = QuantizeSize((float)thickness);
 			var key = new PenKey(argb, thicknessKey, lineCap, lineJoin);
-			if (penCache.TryGetValue(key, out Pen? pen))
-            {
+			if (penCache.TryGetValue(key, out Pen? pen)) {
 				return pen;
 			}
 
 			pen = new Pen(GetBrush(argb), thickness, lineCap: lineCap, lineJoin: lineJoin);
 			penCache[key] = pen;
 			return pen;
+		}
+
+		private sealed class SkiaTextDrawOperation : ICustomDrawOperation {
+			private readonly SkiaTextRun[] runs;
+			private readonly string fontFamily;
+
+			public SkiaTextDrawOperation(AvaloniaRect bounds, SkiaTextRun[] runs, string fontFamily) {
+				Bounds = bounds;
+				this.runs = runs;
+				this.fontFamily = fontFamily;
+			}
+
+			public AvaloniaRect Bounds { get; }
+
+			public bool HitTest(Point p) => false;
+
+			public bool Equals(ICustomDrawOperation? other) => false;
+
+			public void Render(ImmediateDrawingContext context) {
+				var leaseFeature = context.TryGetFeature<ISkiaSharpApiLeaseFeature>();
+				if (leaseFeature == null || runs.Length == 0) {
+					return;
+				}
+
+				using ISkiaSharpApiLease lease = leaseFeature.Lease();
+				SKCanvas canvas = lease.SkCanvas;
+				canvas.Save();
+				try {
+					canvas.ClipRect(new SKRect((float)Bounds.X, (float)Bounds.Y, (float)Bounds.Right,
+											   (float)Bounds.Bottom), SKClipOperation.Intersect, false);
+					DrawBuckets(canvas);
+				} finally {
+					canvas.Restore();
+				}
+			}
+
+			public void Dispose() {
+			}
+
+			private void DrawBuckets(SKCanvas canvas) {
+				var buckets = new Dictionary<SkiaTextBucketKey, List<SkiaTextRun>>();
+				foreach (SkiaTextRun run in runs) {
+					var key = new SkiaTextBucketKey(run.Argb, run.FontStyle, QuantizeSize(run.Size));
+					if (!buckets.TryGetValue(key, out List<SkiaTextRun>? bucket)) {
+						bucket = new List<SkiaTextRun>();
+						buckets[key] = bucket;
+					}
+					bucket.Add(run);
+				}
+
+				foreach (KeyValuePair<SkiaTextBucketKey, List<SkiaTextRun>> bucket in buckets) {
+					DrawBucket(canvas, bucket.Key, bucket.Value);
+				}
+			}
+
+			private void DrawBucket(SKCanvas canvas, SkiaTextBucketKey key, List<SkiaTextRun> bucketRuns) {
+				using SKTypeface typeface = CreateTypeface(key.FontStyle);
+				using var font = new SKFont(typeface, bucketRuns[0].Size) {
+					BaselineSnap = true,
+					Edging = SKFontEdging.Alias,
+					Hinting = SKFontHinting.None,
+					Subpixel = false,
+				};
+				using var paint = new SKPaint {
+					Color = ToSkColor(key.Argb),
+					IsAntialias = false,
+					Style = SKPaintStyle.Fill,
+				};
+				using var builder = new SKTextBlobBuilder();
+
+				foreach (SkiaTextRun run in bucketRuns) {
+					SKHorizontalRunBuffer buffer =
+						builder.AllocateHorizontalRun(font, run.Text.Length, run.BaselineY, null);
+					Span<ushort> glyphs = buffer.Glyphs;
+					font.GetGlyphs(run.Text.AsSpan(), glyphs);
+					Span<float> positions = buffer.Positions;
+					for (int i = 0; i < positions.Length; i++) {
+						positions[i] = run.X + i * run.Advance;
+					}
+				}
+
+				using SKTextBlob? blob = builder.Build();
+				if (blob != null) {
+					canvas.DrawText(blob, 0, 0, paint);
+				}
+			}
+
+			private SKTypeface CreateTypeface(int fontStyle) {
+				bool bold = (fontStyle & FontStyleBold) != 0;
+				bool italic = (fontStyle & FontStyleItalic) != 0;
+				int weight = bold ? (int)SKFontStyleWeight.Bold : (int)SKFontStyleWeight.Normal;
+				int width = (int)SKFontStyleWidth.Normal;
+				var slant = italic ? SKFontStyleSlant.Italic : SKFontStyleSlant.Upright;
+				return SKTypeface.FromFamilyName(fontFamily, weight, width, slant);
+			}
+
+			private static SKColor ToSkColor(int argb) {
+				uint value = unchecked((uint)argb);
+				return new SKColor((byte)(value >> 16), (byte)(value >> 8), (byte)value, (byte)(value >> 24));
+			}
 		}
 	}
 }

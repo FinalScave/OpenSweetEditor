@@ -158,6 +158,9 @@ namespace SweetEditor {
 		public const float WARN_PAINT_MS = 8.0f;
 		public const float WARN_INPUT_MS = 3.0f;
 		public const float WARN_PAINT_STEP_MS = 2.0f;
+		public const float WARN_INPUT_TO_RENDER_MS = 32.0f;
+		public const float WARN_RENDER_INTERVAL_MS = 24.0f;
+		public const float WARN_DECORATION_APPLY_MS = 4.0f;
 
 		private const double TextSize = 11.5;
 		private const double LineSpacing = 3.0;
@@ -182,6 +185,11 @@ namespace SweetEditor {
 		private MeasurePerfStats? lastMeasureStats;
 		private string lastInputTag = string.Empty;
 		private float lastInputMs;
+		private string lastFrameInputTag = string.Empty;
+		private float lastInputToRenderMs;
+		private float lastRequestToRenderMs;
+		private float lastRenderIntervalMs;
+		private float lastDecorationApplyMs;
 		private double snapshotMaxContentWidth = -1;
 		private double snapshotPanelWidth;
 		private double snapshotPanelHeight;
@@ -209,6 +217,20 @@ namespace SweetEditor {
 		public void RecordInput(string tag, float inputMs) {
 			lastInputTag = tag ?? string.Empty;
 			lastInputMs = inputMs;
+		}
+
+		public void RecordFrameLatency(string tag, float inputToRenderMs, float requestToRenderMs) {
+			lastFrameInputTag = tag ?? string.Empty;
+			lastInputToRenderMs = inputToRenderMs;
+			lastRequestToRenderMs = requestToRenderMs;
+		}
+
+		public void RecordRenderInterval(float intervalMs) {
+			lastRenderIntervalMs = intervalMs;
+		}
+
+		public void RecordDecorationApply(float applyMs) {
+			lastDecorationApplyMs = applyMs;
 		}
 
 		public void Render(DrawingContext context, AvaloniaSize viewportSize) {
@@ -287,7 +309,25 @@ namespace SweetEditor {
 
 			if (!string.IsNullOrEmpty(lastInputTag)) {
 				string suffix = lastInputMs > WARN_INPUT_MS ? " SLOW" : string.Empty;
-				lines.Add(string.Format(CultureInfo.InvariantCulture, "Input[{0}]: {1:0.00}ms{2}", lastInputTag, lastInputMs, suffix));
+				lines.Add(string.Format(CultureInfo.InvariantCulture, "Input[{0}]: handle={1:0.00}ms{2}", lastInputTag, lastInputMs, suffix));
+			}
+
+			if (!string.IsNullOrEmpty(lastFrameInputTag)) {
+				string suffix = lastInputToRenderMs > WARN_INPUT_TO_RENDER_MS ? " SLOW" : string.Empty;
+				lines.Add(string.Format(
+					CultureInfo.InvariantCulture,
+					"Latency[{0}]: input={1:0.00}ms request={2:0.00}ms{3}",
+					lastFrameInputTag, lastInputToRenderMs, lastRequestToRenderMs, suffix));
+			}
+
+			if (lastRenderIntervalMs > 0f) {
+				string suffix = lastRenderIntervalMs > WARN_RENDER_INTERVAL_MS ? " SLOW" : string.Empty;
+				lines.Add(string.Format(CultureInfo.InvariantCulture, "RenderGap: {0:0.00}ms{1}", lastRenderIntervalMs, suffix));
+			}
+
+			if (lastDecorationApplyMs > 0f) {
+				string suffix = lastDecorationApplyMs > WARN_DECORATION_APPLY_MS ? " SLOW" : string.Empty;
+				lines.Add(string.Format(CultureInfo.InvariantCulture, "DecorApply: {0:0.00}ms{1}", lastDecorationApplyMs, suffix));
 			}
 
 			return lines;

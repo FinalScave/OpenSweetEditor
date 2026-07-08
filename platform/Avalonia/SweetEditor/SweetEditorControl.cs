@@ -31,8 +31,8 @@ namespace SweetEditor {
 
 	public class SweetEditorControl : Control, IDisposable {
 		private const int MaxMergedRenderRunTextLength = 192;
-		private const int AndroidMergeMinTotalRuns = 512;
-		private const int AndroidMergeMinAverageRunsPerLine = 10;
+		private const int MobileMergeMinTotalRuns = 512;
+		private const int MobileMergeMinAverageRunsPerLine = 10;
 
 		public event EventHandler<TextChangedEventArgs>? TextChanged;
 		public event EventHandler<CursorChangedEventArgs>? CursorChanged;
@@ -54,10 +54,12 @@ namespace SweetEditor {
 		public event Action<InlineSuggestion>? InlineSuggestionAccepted;
 		public event Action<InlineSuggestion>? InlineSuggestionDismissed;
 
-		private const int AnimationIntervalMs = 16;
-		private const int AndroidScheduledTextInputNotifyMinIntervalMs = 48;
+		private const int DesktopAnimationIntervalMs = 16;
+		private const int MobileScheduledTextInputNotifyMinIntervalMs = 48;
 		private const float DefaultContentStartPadding = 3.0f;
 		private const float TapFallbackDoubleTapDistanceDip = 18f;
+		private const float InputFrameLinkMaxMs = 250f;
+		private static readonly double PerfTickToMs = 1000.0 / Stopwatch.Frequency;
 
 		private readonly EditorCore editorCore;
 		private readonly EditorRenderer renderer;
@@ -67,12 +69,11 @@ namespace SweetEditor {
 		private readonly CompletionPopupController completionPopupController;
 		private readonly NewLineActionProviderManager newLineActionProviderManager;
 		private readonly SelectionMenuController selectionMenuController;
-		private readonly DispatcherTimer animationTimer;
+		private readonly DispatcherTimer desktopAnimationTimer;
 		private readonly List<CompletionItem> completionItems = new();
+		private readonly Dictionary<int, Point> activeTouchPoints = new();
 		private readonly EditorTextInputClient textInputClient;
 		private readonly EditorPlatformBehavior platformBehavior;
-		private readonly PinchGestureRecognizer pinchGestureRecognizer;
-		private readonly ScrollGestureRecognizer? scrollGestureRecognizer;
 		private EditorKeyMap keyMap = CreateDefaultEditorKeyMap();
 		private KeyChord pendingKeyChord = KeyChord.Empty;
 		private TopLevel? attachedTopLevel;
@@ -93,7 +94,17 @@ namespace SweetEditor {
 		private bool animationActive;
 		private bool renderModelDirty = true;
 		private bool visualInvalidationPending;
+		private bool visualFrameRequestPending;
+		private bool animationFrameTickPending;
 		private float lastFrameBuildMs;
+		private string activeInputPerfTag = string.Empty;
+		private long activeInputPerfStartTick;
+		private string latestInputPerfTag = string.Empty;
+		private long latestInputPerfStartTick;
+		private string pendingFrameInputPerfTag = string.Empty;
+		private long pendingFrameInputStartTick;
+		private long pendingFrameRequestTick;
+		private long lastRenderStartTick;
 		private bool attached;
 		private bool disposed;
 		private int cachedVisibleStartLine;
@@ -122,6 +133,7 @@ namespace SweetEditor {
 		private PointF lastTapFallbackPoint = new();
 		private bool touchMoveFlushScheduled;
 		private long lastTouchMoveFlushTickMs;
+		private float lastDirectPinchScale = 1f;
 		private bool hasAuthorizedDestructiveSelection;
 		private TextRange authorizedDestructiveSelection = new();
 
@@ -134,6 +146,9 @@ namespace SweetEditor {
 			ClipToBounds = true;
 			InputMethod.SetIsInputMethodEnabled(this, true);
 			TextInputOptions.SetMultiline(this, true);
+			if (OperatingSystem.IsAndroid()) {
+				TextOptions.SetTextRenderingMode(this, TextRenderingMode.Alias);
+			}
 
 			platformBehavior = EditorPlatformBehavior.DetectCurrent();
 			renderer = new EditorRenderer(currentTheme);
@@ -150,16 +165,15 @@ namespace SweetEditor {
 			selectionMenuController = new SelectionMenuController(this);
 			settings = new EditorSettings(this);
 			textInputClient = new EditorTextInputClient(this);
-			pinchGestureRecognizer = new PinchGestureRecognizer();
-			scrollGestureRecognizer = !platformBehavior.TouchFirst
-			                              ? new ScrollGestureRecognizer {
-				                                CanHorizontallyScroll = true,
-				                                CanVerticallyScroll = true,
-				                                IsScrollInertiaEnabled = true,
-			                                }
-			                              : null;
-			GestureRecognizers.Add(pinchGestureRecognizer);
-			if (scrollGestureRecognizer != null) {
+			if (platformBehavior.EnableDirectPinch) {
+				GestureRecognizers.Add(new PinchGestureRecognizer());
+			}
+			if (!platformBehavior.TouchFirst) {
+				var scrollGestureRecognizer = new ScrollGestureRecognizer {
+					CanHorizontallyScroll = true,
+					CanVerticallyScroll = true,
+					IsScrollInertiaEnabled = true,
+				};
 				GestureRecognizers.Add(scrollGestureRecognizer);
 			}
 			editorCore.SetKeyMap(keyMap.Bindings);
@@ -183,10 +197,10 @@ namespace SweetEditor {
 			editorCore.RegisterBatchTextStyles(currentTheme.TextStyles);
 			settings.SetContentStartPadding(DefaultContentStartPadding);
 
-			animationTimer = new DispatcherTimer {
-				Interval = TimeSpan.FromMilliseconds(AnimationIntervalMs),
+			desktopAnimationTimer = new DispatcherTimer {
+				Interval = TimeSpan.FromMilliseconds(DesktopAnimationIntervalMs),
 			};
-			animationTimer.Tick += (_, _) => TickAnimations();
+			desktopAnimationTimer.Tick += (_, _) => TickAnimations();
 
 			ApplyPlatformInteractionDefaults();
 			if (platformBehavior.SuppressImeOnTouchDown) {
@@ -228,6 +242,8 @@ namespace SweetEditor {
 
 		public override void Render(DrawingContext context) {
 			base.Render(context);
+			long renderStartTick = renderer.IsPerfOverlayEnabled() ? Stopwatch.GetTimestamp() : 0;
+			RecordRenderTiming(renderStartTick);
 			visualInvalidationPending = false;
 			if (disposed) {
 				return;
@@ -237,6 +253,30 @@ namespace SweetEditor {
 			if (renderModel != null) {
 				renderer.Render(context, renderModel, Bounds.Size, lastFrameBuildMs);
 			}
+		}
+
+		private void RecordRenderTiming(long renderStartTick) {
+			if (renderStartTick == 0) {
+				return;
+			}
+
+			if (lastRenderStartTick != 0) {
+				renderer.RecordRenderIntervalPerf((float)((renderStartTick - lastRenderStartTick) * PerfTickToMs));
+			}
+			lastRenderStartTick = renderStartTick;
+
+			if (pendingFrameInputStartTick == 0) {
+				return;
+			}
+
+			float inputToRenderMs = (float)((renderStartTick - pendingFrameInputStartTick) * PerfTickToMs);
+			float requestToRenderMs = pendingFrameRequestTick != 0
+				                          ? (float)((renderStartTick - pendingFrameRequestTick) * PerfTickToMs)
+				                          : 0f;
+			renderer.RecordFrameLatencyPerf(pendingFrameInputPerfTag, inputToRenderMs, requestToRenderMs);
+			pendingFrameInputPerfTag = string.Empty;
+			pendingFrameInputStartTick = 0;
+			pendingFrameRequestTick = 0;
 		}
 
 		protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e) {
@@ -259,8 +299,10 @@ namespace SweetEditor {
 		protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e) {
 			attached = false;
 			animationActive = false;
-			animationTimer.Stop();
+			desktopAnimationTimer.Stop();
 			visualInvalidationPending = false;
+			visualFrameRequestPending = false;
+			animationFrameTickPending = false;
 			controller?.Unbind(this);
 			DetachTopLevelHooks();
 			CancelActiveTouchSequence(notifyViewportSettled: false);
@@ -313,6 +355,7 @@ namespace SweetEditor {
 
 		protected override void OnPointerPressed(PointerPressedEventArgs e) {
 			bool touchLike = ShouldTreatPointerAsTouch(this, e, allowButtonlessMouseFallback: true);
+			using InputPerfScope perf = BeginInputPerf(touchLike ? "touch.down" : "pointer.down");
 			if (touchLike && platformBehavior.SuppressImeOnTouchDown) {
 				SetImeSuppressedByTouch(!IsFocused || imeSuppressedByTouch);
 			} else {
@@ -326,10 +369,11 @@ namespace SweetEditor {
 			}
 
 			if (touchLike) {
+				bool startingTouchSequence = activeTouchPoints.Count == 0;
 				touchSequenceActive = true;
-				touchPendingFocus = true;
-				touchPointerMoved = false;
-				touchGestureHadScroll = false;
+				touchPendingFocus = startingTouchSequence;
+				touchPointerMoved = !startingTouchSequence;
+				touchGestureHadScroll = !startingTouchSequence;
 			} else {
 				Focus();
 				NotifyTextInputStateChanged(textViewChanged: true);
@@ -352,9 +396,11 @@ namespace SweetEditor {
 					e.Pointer.Capture(this);
 				}
 
+				activeTouchPoints[e.Pointer.Id] = point;
+				EventType touchEventType = activeTouchPoints.Count > 1 ? EventType.TOUCH_POINTER_DOWN : EventType.TOUCH_DOWN;
 				var touchResult = editorCore.HandleGestureEvent(new GestureEvent {
-					Type = EventType.TOUCH_DOWN,
-					Points = [ToPointF(point)],
+					Type = touchEventType,
+					Points = GetActiveTouchPoints(),
 					Modifiers = (int)modifiers,
 					DirectScale = 1,
 				});
@@ -391,6 +437,7 @@ namespace SweetEditor {
 
 		protected override void OnPointerMoved(PointerEventArgs e) {
 			bool touchLike = ShouldTreatPointerAsTouch(this, e, allowButtonlessMouseFallback: touchSequenceActive);
+			using InputPerfScope perf = BeginInputPerf(touchLike ? "touch.move" : "pointer.move");
 			if (!touchLike) {
 				base.OnPointerMoved(e);
 			}
@@ -401,9 +448,11 @@ namespace SweetEditor {
 			var point = e.GetPosition(this);
 			lastPointerPosition = point;
 			if (touchLike) {
-				// Android can occasionally miss the first DOWN in Avalonia gesture dispatch.
+				// Avalonia can occasionally miss the first DOWN in gesture dispatch.
 				// Recover by lazily starting the touch sequence on the first MOVE.
 				if (!touchSequenceActive) {
+					activeTouchPoints.Clear();
+					activeTouchPoints[e.Pointer.Id] = point;
 					touchSequenceActive = true;
 					touchPendingFocus = false;
 					touchPointerMoved = true;
@@ -412,11 +461,23 @@ namespace SweetEditor {
 					touchDownTickMs = Environment.TickCount64;
 					var touchDownResult = editorCore.HandleGestureEvent(new GestureEvent {
 						Type = EventType.TOUCH_DOWN,
-						Points = [ToPointF(point)],
+						Points = GetActiveTouchPoints(),
 						Modifiers = (int)ToModifiers(e.KeyModifiers),
 						DirectScale = 1,
 					});
 					DispatchEditorActionResult(touchDownResult);
+				} else if (!activeTouchPoints.ContainsKey(e.Pointer.Id) && activeTouchPoints.Count > 0) {
+					activeTouchPoints[e.Pointer.Id] = point;
+					touchPendingFocus = false;
+					touchPointerMoved = true;
+					touchGestureHadScroll = true;
+					var touchPointerDownResult = editorCore.HandleGestureEvent(new GestureEvent {
+						Type = EventType.TOUCH_POINTER_DOWN,
+						Points = GetActiveTouchPoints(),
+						Modifiers = (int)ToModifiers(e.KeyModifiers),
+						DirectScale = 1,
+					});
+					DispatchEditorActionResult(touchPointerDownResult);
 				}
 
 				SetImeSuppressedByTouch(platformBehavior.SuppressImeOnTouchDown);
@@ -425,9 +486,10 @@ namespace SweetEditor {
 					touchPointerMoved = true;
 				}
 
+				activeTouchPoints[e.Pointer.Id] = point;
 				var touchResult = editorCore.HandleGestureEvent(new GestureEvent {
 					Type = EventType.TOUCH_MOVE,
-					Points = [ToPointF(point)],
+					Points = GetActiveTouchPoints(),
 					Modifiers = (int)ToModifiers(e.KeyModifiers),
 					DirectScale = 1,
 				});
@@ -458,6 +520,7 @@ namespace SweetEditor {
 
 		protected override void OnPointerReleased(PointerReleasedEventArgs e) {
 			bool touchLike = ShouldTreatPointerAsTouch(this, e, allowButtonlessMouseFallback: touchSequenceActive);
+			using InputPerfScope perf = BeginInputPerf(touchLike ? "touch.up" : "pointer.up");
 			if (!touchLike) {
 				base.OnPointerReleased(e);
 			}
@@ -472,6 +535,26 @@ namespace SweetEditor {
 					return;
 				}
 
+				activeTouchPoints[e.Pointer.Id] = point;
+				if (activeTouchPoints.Count > 1) {
+					activeTouchPoints.Remove(e.Pointer.Id);
+					touchPendingFocus = false;
+					touchPointerMoved = true;
+					touchGestureHadScroll = true;
+					List<PointF> remainingPoints = GetActiveTouchPoints();
+					var touchPointerUpResult = editorCore.HandleGestureEvent(new GestureEvent {
+						Type = EventType.TOUCH_POINTER_UP,
+						Points = remainingPoints.Count > 0 ? remainingPoints : [ToPointF(point)],
+						Modifiers = (int)ToModifiers(e.KeyModifiers),
+						DirectScale = 1,
+					});
+					DispatchEditorActionResult(touchPointerUpResult);
+					UpdateAnimationTimer(touchPointerUpResult.NeedsAnimation);
+					e.Handled = true;
+					return;
+				}
+
+				activeTouchPoints.Remove(e.Pointer.Id);
 				touchSequenceActive = false;
 				if (!platformBehavior.TouchFirst) {
 					e.Pointer.Capture(null);
@@ -544,6 +627,7 @@ namespace SweetEditor {
 
 		protected override void OnPointerWheelChanged(PointerWheelEventArgs e) {
 			base.OnPointerWheelChanged(e);
+			using InputPerfScope perf = BeginInputPerf("wheel");
 			if (disposed) {
 				return;
 			}
@@ -576,6 +660,7 @@ namespace SweetEditor {
 		}
 
 		private void OnPinchGesture(object? sender, PinchEventArgs e) {
+			using InputPerfScope perf = BeginInputPerf("direct.scale");
 			if (disposed || !platformBehavior.EnableDirectPinch) {
 				return;
 			}
@@ -589,7 +674,10 @@ namespace SweetEditor {
 
 			Point origin = e.ScaleOrigin;
 			lastPointerPosition = origin;
-			float directScale = NormalizeDirectScale((float)e.Scale);
+			float currentScale = NormalizeDirectScale((float)e.Scale);
+			float directScale = lastDirectPinchScale > 0f ? currentScale / lastDirectPinchScale : currentScale;
+			lastDirectPinchScale = currentScale;
+			directScale = NormalizeDirectScale(directScale);
 			if (Math.Abs(directScale - 1f) < 0.0001f) {
 				return;
 			}
@@ -611,10 +699,12 @@ namespace SweetEditor {
 			}
 
 			NotifyViewportGestureSettled();
+			lastDirectPinchScale = 1f;
 			e.Handled = true;
 		}
 
 		private void OnScrollGesture(object? sender, ScrollGestureEventArgs e) {
+			using InputPerfScope perf = BeginInputPerf("direct.scroll");
 			if (disposed) {
 				return;
 			}
@@ -668,6 +758,7 @@ namespace SweetEditor {
 		}
 
 		private void OnPointerTouchPadGestureMagnify(object? sender, PointerDeltaEventArgs e) {
+			using InputPerfScope perf = BeginInputPerf("touchpad.scale");
 			if (disposed || !platformBehavior.EnableTouchPadMagnify) {
 				return;
 			}
@@ -696,6 +787,7 @@ namespace SweetEditor {
 
 		protected override void OnKeyDown(KeyEventArgs e) {
 			base.OnKeyDown(e);
+			using InputPerfScope perf = BeginInputPerf("key.down");
 			if (disposed) {
 				return;
 			}
@@ -799,6 +891,7 @@ namespace SweetEditor {
 
 		protected override void OnTextInput(TextInputEventArgs e) {
 			base.OnTextInput(e);
+			using InputPerfScope perf = BeginInputPerf("text.input");
 			if (disposed || string.IsNullOrEmpty(e.Text)) {
 				return;
 			}
@@ -1539,6 +1632,10 @@ namespace SweetEditor {
 			FlushWithoutTextInputState();
 		}
 
+		internal void RecordDecorationApplyPerf(float applyMs) {
+			renderer.RecordDecorationApplyPerf(applyMs);
+		}
+
 		private void FlushCore(bool scheduleTextInputState) {
 			if (disposed) {
 				return;
@@ -1554,12 +1651,91 @@ namespace SweetEditor {
 		}
 
 		private void RequestVisualInvalidate() {
+			CaptureFrameLatencyRequest();
 			if (visualInvalidationPending) {
+				RequestMobileVisualFrame();
 				return;
 			}
 
 			visualInvalidationPending = true;
 			InvalidateVisual();
+			RequestMobileVisualFrame();
+		}
+
+		private InputPerfScope BeginInputPerf(string tag) {
+			if (!renderer.IsPerfOverlayEnabled()) {
+				return default;
+			}
+
+			long startTick = Stopwatch.GetTimestamp();
+			activeInputPerfTag = tag;
+			activeInputPerfStartTick = startTick;
+			return new InputPerfScope(this, tag, startTick);
+		}
+
+		private void EndInputPerf(string tag, long startTick) {
+			if (startTick == 0) {
+				return;
+			}
+			if (!renderer.IsPerfOverlayEnabled()) {
+				if (activeInputPerfStartTick == startTick) {
+					activeInputPerfTag = string.Empty;
+					activeInputPerfStartTick = 0;
+				}
+				return;
+			}
+
+			long now = Stopwatch.GetTimestamp();
+			renderer.RecordInputPerf(tag, (float)((now - startTick) * PerfTickToMs));
+			latestInputPerfTag = tag;
+			latestInputPerfStartTick = startTick;
+			if (activeInputPerfStartTick == startTick) {
+				activeInputPerfTag = string.Empty;
+				activeInputPerfStartTick = 0;
+			}
+		}
+
+		private void CaptureFrameLatencyRequest() {
+			if (!renderer.IsPerfOverlayEnabled()) {
+				return;
+			}
+
+			long now = Stopwatch.GetTimestamp();
+			bool hasActiveInput = activeInputPerfStartTick != 0;
+			long inputStartTick = hasActiveInput ? activeInputPerfStartTick : latestInputPerfStartTick;
+			if (inputStartTick == 0) {
+				return;
+			}
+
+			if (!hasActiveInput && (now - inputStartTick) * PerfTickToMs > InputFrameLinkMaxMs) {
+				return;
+			}
+
+			pendingFrameInputPerfTag = hasActiveInput ? activeInputPerfTag : latestInputPerfTag;
+			pendingFrameInputStartTick = inputStartTick;
+			pendingFrameRequestTick = now;
+		}
+
+		private void RequestMobileVisualFrame() {
+			if (!platformBehavior.IsMobile || visualFrameRequestPending || disposed || !attached) {
+				return;
+			}
+
+			TopLevel? topLevel = attachedTopLevel ?? TopLevel.GetTopLevel(this);
+			if (topLevel == null) {
+				return;
+			}
+
+			visualFrameRequestPending = true;
+			topLevel.RequestAnimationFrame(_ => {
+				visualFrameRequestPending = false;
+				if (disposed || !attached) {
+					return;
+				}
+				if (renderModelDirty || visualInvalidationPending || animationActive) {
+					InvalidateVisual();
+				}
+			});
 		}
 
 		public (int start, int end) GetVisibleLineRange() {
@@ -1585,7 +1761,9 @@ namespace SweetEditor {
 			}
 			disposed = true;
 			animationActive = false;
-			animationTimer.Stop();
+			desktopAnimationTimer.Stop();
+			visualFrameRequestPending = false;
+			animationFrameTickPending = false;
 			DismissInlineSuggestionInternal(emitDismissedCallback: false);
 
 			controller?.Unbind(this);
@@ -1697,7 +1875,7 @@ namespace SweetEditor {
 		}
 
 		private bool NormalizeSuspiciousImplicitSelectionBeforeDestructiveEdit() {
-			if (disposed || platformBehavior.Kind != EditorPlatformKind.Android) {
+			if (disposed || !platformBehavior.IsMobile) {
 				return false;
 			}
 
@@ -1758,7 +1936,12 @@ namespace SweetEditor {
 			if (!result.NeedsAnimation) {
 				NotifyViewportGestureSettled();
 				animationActive = false;
-				animationTimer.Stop();
+				desktopAnimationTimer.Stop();
+				return;
+			}
+
+			if (platformBehavior.IsMobile) {
+				RequestMobileAnimationFrameTick();
 			}
 		}
 
@@ -1766,15 +1949,40 @@ namespace SweetEditor {
 			if (needsAnimation) {
 				if (!animationActive) {
 					animationActive = true;
-					animationTimer.Start();
+					if (!platformBehavior.IsMobile) {
+						desktopAnimationTimer.Start();
+					}
+				}
+				if (platformBehavior.IsMobile) {
+					RequestMobileAnimationFrameTick();
 				}
 				return;
 			}
 
 			if (animationActive) {
 				animationActive = false;
-				animationTimer.Stop();
+				desktopAnimationTimer.Stop();
 			}
+		}
+
+		private void RequestMobileAnimationFrameTick() {
+			if (animationFrameTickPending || disposed || !attached) {
+				return;
+			}
+
+			TopLevel? topLevel = attachedTopLevel ?? TopLevel.GetTopLevel(this);
+			if (topLevel == null) {
+				return;
+			}
+
+			animationFrameTickPending = true;
+			topLevel.RequestAnimationFrame(_ => {
+				animationFrameTickPending = false;
+				if (!animationActive || disposed || !attached) {
+					return;
+				}
+				TickAnimations();
+			});
 		}
 
 		private void OnCompletionItemsUpdated(IReadOnlyList<CompletionItem> items) {
@@ -1799,7 +2007,7 @@ namespace SweetEditor {
 		}
 
 		private bool ShouldRaiseLongPressEvent() {
-			return platformBehavior.Kind == EditorPlatformKind.Android;
+			return platformBehavior.IsMobile;
 		}
 
 		private void NotifySelectionMenuSelectionChanged(bool hasSelection) {
@@ -1977,7 +2185,7 @@ namespace SweetEditor {
 		}
 
 		private bool TryApplyTapFallbackDoubleTap(EditorActionResult result, PointF point) {
-			if (platformBehavior.Kind != EditorPlatformKind.Android) {
+			if (!platformBehavior.IsMobile) {
 				return false;
 			}
 			if (result.HasSelectionAfter || result.HitTarget.Type != HitTargetType.NONE) {
@@ -2014,7 +2222,7 @@ namespace SweetEditor {
 		}
 
 		private bool ShouldDeferLargeDocumentDoubleTap() {
-			if (platformBehavior.Kind != EditorPlatformKind.Android) {
+			if (!platformBehavior.IsMobile) {
 				return false;
 			}
 
@@ -2077,7 +2285,7 @@ namespace SweetEditor {
 		}
 
 		private void NormalizeImplicitGestureSelection(ref EditorActionResult result) {
-			if (platformBehavior.Kind != EditorPlatformKind.Android) {
+			if (!platformBehavior.IsMobile) {
 				return;
 			}
 
@@ -2159,7 +2367,7 @@ namespace SweetEditor {
 		}
 
 		private bool TryGetPreferredDoubleTapSelection(TextPosition cursor, out TextRange range) {
-			if (platformBehavior.Kind == EditorPlatformKind.Android &&
+			if (platformBehavior.IsMobile &&
 			    TryBuildLocalWordSelection(cursor, out range)) {
 				return true;
 			}
@@ -2604,7 +2812,7 @@ namespace SweetEditor {
 				return false;
 			}
 
-			if (platformBehavior.Kind != EditorPlatformKind.Android) {
+			if (!platformBehavior.IsMobile) {
 				return true;
 			}
 
@@ -2620,11 +2828,11 @@ namespace SweetEditor {
 				}
 			}
 
-			if (totalRunCount < AndroidMergeMinTotalRuns) {
+			if (totalRunCount < MobileMergeMinTotalRuns) {
 				return false;
 			}
 
-			if (totalRunCount < visualLines.Count * AndroidMergeMinAverageRunsPerLine) {
+			if (totalRunCount < visualLines.Count * MobileMergeMinAverageRunsPerLine) {
 				return false;
 			}
 
@@ -2983,7 +3191,7 @@ namespace SweetEditor {
 			double cursorTop = cursor.Y;
 			double cursorBottom = cursor.Y + Math.Max(1f, cursor.Height);
 			double topPadding = Math.Min(12d, Math.Max(4d, viewport.Height * 0.08d));
-			double bottomPadding = topPadding + (platformBehavior.Kind == EditorPlatformKind.Android ? 8d : 0d);
+			double bottomPadding = topPadding + (platformBehavior.IsMobile ? 8d : 0d);
 			float targetScrollY = scroll.ScrollY;
 
 			if (cursorBottom > viewport.Bottom - bottomPadding) {
@@ -3025,10 +3233,10 @@ namespace SweetEditor {
 
 			textInputNotificationScheduled = true;
 			long delayMs = 0;
-			if (platformBehavior.Kind == EditorPlatformKind.Android) {
+			if (platformBehavior.IsMobile) {
 				long elapsed = Environment.TickCount64 - lastTextInputNotificationTickMs;
-				if (elapsed < AndroidScheduledTextInputNotifyMinIntervalMs) {
-					delayMs = AndroidScheduledTextInputNotifyMinIntervalMs - elapsed;
+				if (elapsed < MobileScheduledTextInputNotifyMinIntervalMs) {
+					delayMs = MobileScheduledTextInputNotifyMinIntervalMs - elapsed;
 				}
 			}
 
@@ -3183,15 +3391,19 @@ namespace SweetEditor {
 				return;
 			}
 
+			List<PointF> points = GetActiveTouchPoints();
+			if (points.Count == 0) {
+				points = [ToPointF(lastPointerPosition)];
+			}
+			activeTouchPoints.Clear();
 			touchSequenceActive = false;
 			touchPendingFocus = false;
 			touchPointerMoved = false;
 			touchGestureHadScroll = false;
 
-			var point = lastPointerPosition;
 			var result = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.TOUCH_CANCEL,
-				Points = [ToPointF(point)],
+				Points = points,
 				Modifiers = (int)KeyModifier.NONE,
 				DirectScale = 1,
 			});
@@ -3501,6 +3713,14 @@ namespace SweetEditor {
 		private static PointF ToPointF(Point point) => new((float)point.X, (float)point.Y);
 
 		private static Point ToPoint(PointF point) => new(point.X, point.Y);
+
+		private List<PointF> GetActiveTouchPoints() {
+			var points = new List<PointF>(activeTouchPoints.Count);
+			foreach (Point point in activeTouchPoints.Values) {
+				points.Add(ToPointF(point));
+			}
+			return points;
+		}
 
 		private static KeyModifier ToModifiers(KeyModifiers modifiers) {
 			KeyModifier result = KeyModifier.NONE;
@@ -3845,6 +4065,22 @@ namespace SweetEditor {
 				case ContextMenuAction.SelectAll:
 					SelectAll();
 					break;
+			}
+		}
+
+		private readonly struct InputPerfScope : IDisposable {
+			private readonly SweetEditorControl? owner;
+			private readonly string tag;
+			private readonly long startTick;
+
+			public InputPerfScope(SweetEditorControl owner, string tag, long startTick) {
+				this.owner = owner;
+				this.tag = tag;
+				this.startTick = startTick;
+			}
+
+			public void Dispose() {
+				owner?.EndInputPerf(tag, startTick);
 			}
 		}
 

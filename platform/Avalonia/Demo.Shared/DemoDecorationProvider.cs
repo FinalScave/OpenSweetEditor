@@ -129,7 +129,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
 
             sweetLineSessionVersion++;
             ResetSweetLineState();
-            if (activeDocumentLargeMode)
+            if (activeDocumentLargeMode && !IsMobilePlatform())
             {
                 StartLargeDocumentPrimeLocked(content);
             }
@@ -145,7 +145,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
             activeLanguageId = GuessLanguageId(fileName);
             activeDocumentLargeMode = IsLargeDocument(content);
             activeLines = activeDocumentLargeMode ? null : SplitLines(content);
-            if (activeDocumentLargeMode)
+            if (activeDocumentLargeMode && !IsMobilePlatform())
             {
                 StartLargeDocumentPrimeLocked(content);
             }
@@ -231,6 +231,21 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
     {
         lock (gate)
         {
+            if (IsMobilePlatform())
+            {
+                InvalidateLargeDocumentSyntaxCacheIfNeeded(doc, context.TextChanges);
+                syntaxApplyMode = DecorationApplyMode.REPLACE_RANGE;
+                return TryBuildViewportDecorationsWithSweetLineLocked(
+                    doc,
+                    context,
+                    start,
+                    end,
+                    syntax,
+                    folds,
+                    indentGuides,
+                    flowGuides);
+            }
+
             if (activeDocumentLargeMode)
             {
                 InvalidateLargeDocumentSyntaxCacheIfNeeded(doc, context.TextChanges);
@@ -252,36 +267,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
 
             AppendHighlightSlice(slice, syntax);
 
-            if (sweetLineGuides != null)
-            {
-                var seenFolds = new HashSet<string>(StringComparer.Ordinal);
-                foreach (var guide in sweetLineGuides.GuideLines)
-                {
-                    if (guide.EndLine < start || guide.StartLine > end)
-                        continue;
-
-                    indentGuides.Add(new IndentGuide(
-                        new TextPosition { Line = Math.Max(start, guide.StartLine), Column = guide.Column },
-                        new TextPosition { Line = Math.Min(end, guide.EndLine), Column = guide.Column }));
-
-                    foreach (var branch in guide.Branches)
-                    {
-                        if (branch.Line < start || branch.Line > end)
-                            continue;
-                        flowGuides.Add(new FlowGuide {
-                            Start = new TextPosition { Line = Math.Max(start, guide.StartLine), Column = guide.Column },
-                            End = new TextPosition { Line = branch.Line, Column = branch.Column }
-                        });
-                    }
-
-                    if (guide.EndLine > guide.StartLine)
-                    {
-                        string key = $"{guide.StartLine}:{guide.EndLine}";
-                        if (seenFolds.Add(key))
-                            folds.Add(new FoldRegion(guide.StartLine, guide.EndLine));
-                    }
-                }
-            }
+            AppendSweetLineGuides(sweetLineGuides, start, end, folds, indentGuides, flowGuides);
 
             return true;
         }
@@ -292,7 +278,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
         if (sweetLineInitialized)
             return sweetLineAvailable;
 
-        if (activeDocumentLargeMode)
+        if (activeDocumentLargeMode && !IsMobilePlatform())
             return false;
 
         sweetLineInitialized = true;
@@ -355,7 +341,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
             slice = sweetLineAnalyzer.AnalyzeLineRange(visibleRange);
         }
 
-        sweetLineGuides = activeDocumentLargeMode ? null : sweetLineAnalyzer.AnalyzeIndentGuides();
+        sweetLineGuides = sweetLineAnalyzer.AnalyzeIndentGuidesInLineRange(visibleRange);
         return slice;
     }
 
@@ -368,6 +354,135 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
             return false;
 
         return slice.Lines.Count > 0;
+    }
+
+    private bool TryBuildViewportDecorationsWithSweetLineLocked(
+        Document doc,
+        DecorationContext context,
+        int start,
+        int end,
+        Dictionary<int, List<StyleSpan>> syntax,
+        List<FoldRegion> folds,
+        List<IndentGuide> indentGuides,
+        List<FlowGuide> flowGuides)
+    {
+        if (start < 0 || end < start)
+            return false;
+
+        int total = Math.Max(0, doc.GetLineCount());
+        if (total <= 0)
+            return false;
+
+        int safeStart = Math.Max(0, start);
+        int safeEnd = Math.Min(end, total - 1);
+        if (safeEnd < safeStart)
+            return false;
+
+        SlLineRange visibleRange = CreateLineRange(safeStart, safeEnd);
+        if (TryBuildViewportDocumentAnalyzerDecorationsLocked(
+                context,
+                visibleRange,
+                syntax,
+                folds,
+                indentGuides,
+                flowGuides))
+        {
+            return true;
+        }
+
+        return TryBuildViewportSyntaxWithLineAnalyzerLocked(doc, safeStart, safeEnd, syntax);
+    }
+
+    private bool TryBuildViewportDocumentAnalyzerDecorationsLocked(
+        DecorationContext context,
+        SlLineRange visibleRange,
+        Dictionary<int, List<StyleSpan>> syntax,
+        List<FoldRegion> folds,
+        List<IndentGuide> indentGuides,
+        List<FlowGuide> flowGuides)
+    {
+        if (!EnsureSweetLineSession(context))
+            return false;
+
+        SlDocumentHighlightSlice? slice = AnalyzeSweetLineRange(context.TextChanges, visibleRange);
+        if (slice == null || !HasUsableSlice(slice, visibleRange))
+            return false;
+
+        AppendHighlightSlice(slice, syntax);
+        AppendSweetLineGuides(
+            sweetLineGuides,
+            visibleRange.StartLine,
+            visibleRange.StartLine + Math.Max(0, visibleRange.LineCount) - 1,
+            folds,
+            indentGuides,
+            flowGuides);
+        return true;
+    }
+
+    private bool TryBuildViewportSyntaxWithLineAnalyzerLocked(
+        Document doc,
+        int safeStart,
+        int safeEnd,
+        Dictionary<int, List<StyleSpan>> syntax)
+    {
+        if (!EnsureLargeDocumentLineAnalyzerLocked())
+            return false;
+
+        if (!IsLargeDocumentSyntaxRangeCached(safeStart, safeEnd))
+        {
+            int analyzeStart = Math.Max(0, safeStart - LargeDocumentWindowBacktrackLines);
+            FillLargeDocumentSyntaxWindowLocked(doc, analyzeStart, safeEnd);
+        }
+
+        AppendCachedLargeDocumentSyntaxLocked(safeStart, safeEnd, syntax);
+        return syntax.Count > 0 || safeStart <= safeEnd;
+    }
+
+    private bool IsLargeDocumentSyntaxRangeCached(int start, int end)
+    {
+        return largeDocumentCacheStartLine >= 0 &&
+               start >= largeDocumentCacheStartLine &&
+               end <= largeDocumentCachedUntilLine;
+    }
+
+    private static void AppendSweetLineGuides(
+        SlIndentGuideResult? guides,
+        int start,
+        int end,
+        List<FoldRegion> folds,
+        List<IndentGuide> indentGuides,
+        List<FlowGuide> flowGuides)
+    {
+        if (guides == null)
+            return;
+
+        var seenFolds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var guide in guides.GuideLines)
+        {
+            if (guide.EndLine < start || guide.StartLine > end)
+                continue;
+
+            indentGuides.Add(new IndentGuide(
+                new TextPosition { Line = Math.Max(start, guide.StartLine), Column = guide.Column },
+                new TextPosition { Line = Math.Min(end, guide.EndLine), Column = guide.Column }));
+
+            foreach (var branch in guide.Branches)
+            {
+                if (branch.Line < start || branch.Line > end)
+                    continue;
+                flowGuides.Add(new FlowGuide {
+                    Start = new TextPosition { Line = Math.Max(start, guide.StartLine), Column = guide.Column },
+                    End = new TextPosition { Line = branch.Line, Column = branch.Column }
+                });
+            }
+
+            if (guide.EndLine > guide.StartLine)
+            {
+                string key = $"{guide.StartLine}:{guide.EndLine}";
+                if (seenFolds.Add(key))
+                    folds.Add(new FoldRegion(guide.StartLine, guide.EndLine));
+            }
+        }
     }
 
     private void ResetSweetLineState()
@@ -467,6 +582,8 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
         return false;
     }
 
+    private static bool IsMobilePlatform() => OperatingSystem.IsAndroid() || OperatingSystem.IsIOS();
+
     private static int NormalizeStyleId(int styleId)
     {
         if (styleId <= 0)
@@ -555,7 +672,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
 
         try
         {
-            if (OperatingSystem.IsAndroid() &&
+            if (IsMobilePlatform() &&
                 changes != null &&
                 changes.Count > 0)
             {
@@ -762,7 +879,7 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
         if (changes == null || changes.Count == 0)
             return;
 
-        bool requiresNativeSliceReset = OperatingSystem.IsAndroid();
+        bool requiresNativeSliceReset = IsMobilePlatform();
         largeDocumentSyntaxCache.Clear();
         largeDocumentLineEndStates.Clear();
         largeDocumentCacheStartLine = -1;
@@ -800,6 +917,9 @@ internal sealed class DemoDecorationProvider : IDecorationProvider
 
     private void StartLargeDocumentPrimeLocked(string? contentSnapshot)
     {
+        if (IsMobilePlatform())
+            return;
+
         if (!activeDocumentLargeMode || largeDocumentNativeCacheReady)
             return;
 

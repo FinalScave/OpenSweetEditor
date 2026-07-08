@@ -68,6 +68,7 @@ internal sealed class EditorToolbarController
             yield return WrapButton;
             yield return ZoomOutButton;
             yield return ZoomInButton;
+            yield return PerfButton;
             yield return HelpButton;
         }
     }

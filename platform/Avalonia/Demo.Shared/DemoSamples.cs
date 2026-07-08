@@ -15,7 +15,6 @@ internal sealed class DemoSampleFile
 {
     private readonly Func<string> contentFactory;
     private string? cachedContent;
-    private Task<Document>? documentTask;
 
     public string FileName { get; }
     public string LanguageId { get; }
@@ -31,13 +30,8 @@ internal sealed class DemoSampleFile
         this.contentFactory = contentFactory;
     }
 
-    public void WarmDocument()
-    {
-        _ = GetOrCreateDocumentAsync();
-    }
-
-    public Task<Document> GetOrCreateDocumentAsync()
-        => documentTask ??= Task.Run(() => new Document(Content));
+    public Task<Document> CreateDocumentAsync(CancellationToken token)
+        => Task.Run(() => new Document(Content), token);
 }
 
 internal static class EmbeddedSampleRepository
@@ -108,6 +102,7 @@ internal sealed class SampleDocumentLoader
 
     private readonly List<DemoSampleFile> sampleFiles = new();
     private CancellationTokenSource? loadCts;
+    private Document? loadedDocument;
 
     public IReadOnlyList<DemoSampleFile> SampleFiles => sampleFiles;
     public DemoSampleFile? SelectedSample { get; private set; }
@@ -141,7 +136,7 @@ internal sealed class SampleDocumentLoader
 
         if (sampleFiles.Count == 0)
         {
-            controller.LoadDocument(new Document(string.Empty));
+            LoadDocument(new Document(string.Empty));
             updateStatus("No demo samples found");
             return;
         }
@@ -149,7 +144,6 @@ internal sealed class SampleDocumentLoader
         updateStatus(initialSample != null
             ? $"Preparing: {initialSample.FileName}"
             : "Preparing demo sample");
-        initialSample?.WarmDocument();
         Dispatcher.UIThread.Post(() =>
         {
             if (initialSample != null)
@@ -159,13 +153,13 @@ internal sealed class SampleDocumentLoader
 
     public async Task LoadSampleAsync(DemoSampleFile sample)
     {
-        SelectedSample = sample;
-        beforeLoad?.Invoke(sample);
-
         loadCts?.Cancel();
         loadCts?.Dispose();
         loadCts = new CancellationTokenSource();
         CancellationToken token = loadCts.Token;
+
+        SelectedSample = sample;
+        beforeLoad?.Invoke(sample);
 
         applyLanguageConfiguration(sample.LanguageId);
         updateStatus($"Loading: {sample.FileName}");
@@ -174,23 +168,26 @@ internal sealed class SampleDocumentLoader
             setPickerEnabled?.Invoke(false);
         });
 
+        Document? document = null;
+        bool documentLoaded = false;
         try
         {
             string content = await Task.Run(() => sample.Content, token).ConfigureAwait(false);
             decorationProvider.PrimeDocument(sample.FileName, content);
-            Document document = await sample.GetOrCreateDocumentAsync().ConfigureAwait(false);
+            document = await sample.CreateDocumentAsync(token).ConfigureAwait(false);
             token.ThrowIfCancellationRequested();
 
-            await Dispatcher.UIThread.InvokeAsync(() =>
+            documentLoaded = await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 if (token.IsCancellationRequested)
-                    return;
+                    return false;
 
                 decorationProvider.ActivatePrimedDocument(sample.FileName, content, document);
-                controller.LoadDocument(document);
+                LoadDocument(document);
                 controller.RequestDecorationRefresh();
                 setPickerEnabled?.Invoke(true);
                 updateStatus($"Loaded: {sample.FileName}");
+                return true;
             }, DispatcherPriority.Background);
         }
         catch (OperationCanceledException)
@@ -203,6 +200,11 @@ internal sealed class SampleDocumentLoader
                 setPickerEnabled?.Invoke(true);
                 updateStatus($"Load failed: {sample.FileName} ({ex.Message})");
             });
+        }
+        finally
+        {
+            if (!documentLoaded)
+                document?.Dispose();
         }
     }
 
@@ -236,5 +238,13 @@ internal sealed class SampleDocumentLoader
         }
 
         return sampleFiles[0];
+    }
+
+    private void LoadDocument(Document document)
+    {
+        Document? previous = loadedDocument;
+        loadedDocument = document;
+        controller.LoadDocument(document);
+        previous?.Dispose();
     }
 }

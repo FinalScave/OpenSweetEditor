@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -378,6 +379,7 @@ namespace SweetEditor {
 
 		private void ApplyMerged() {
 			applyScheduled = false;
+			long applyStartTick = editor.IsPerfOverlayEnabled() ? Stopwatch.GetTimestamp() : 0;
 			int currentVisibleStartLine = lastVisibleStartLine;
 			int currentVisibleEndLine = lastVisibleEndLine;
 			int currentContextStartLine = lastContextStartLine;
@@ -514,6 +516,9 @@ namespace SweetEditor {
 			appliedContextEndLine = currentContextEndLine;
 			if (changed) {
 				editor.FlushDecorationUpdate();
+			}
+			if (applyStartTick != 0) {
+				editor.RecordDecorationApplyPerf((float)((Stopwatch.GetTimestamp() - applyStartTick) * 1000.0 / Stopwatch.Frequency));
 			}
 		}
 

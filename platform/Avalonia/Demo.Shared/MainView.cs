@@ -447,8 +447,6 @@ internal sealed class MainView : UserControl
             VerticalAlignment = VerticalAlignment.Stretch,
             Focusable = true,
         };
-        if (OperatingSystem.IsAndroid())
-            TextOptions.SetTextRenderingMode(createdEditor, TextRenderingMode.Alias);
 
         createdEditor.AddHandler(InputElement.KeyDownEvent, OnEditorKeyDown, AvaInteractivity.RoutingStrategies.Tunnel);
         editor = createdEditor;
@@ -470,25 +468,26 @@ internal sealed class MainView : UserControl
         controller.SetSelectionMenuItemProvider(selectionMenuProvider);
         controller.SetSelectionMenuListener(new DemoSelectionMenuListener(HandleSelectionMenuAction));
         controller.SetKeyMap(CreateEditorKeyMap());
+        controller.SetPerfOverlayEnabled(perfOverlayEnabled);
 
         EditorSettings? settings = controller.GetSettings();
         if (settings != null)
         {
-            bool isAndroid = OperatingSystem.IsAndroid();
+            bool isMobile = IsMobilePlatform();
             settings.SetTypeface("monospace");
             settings.SetEditorTextSize(14.0f);
             currentScale = GetDefaultScale();
             settings.SetScale(currentScale);
-            settings.SetContentStartPadding(isAndroid ? 2 : 6);
+            settings.SetContentStartPadding(isMobile ? 2 : 6);
             settings.SetFoldArrowMode(FoldArrowMode.AUTO);
             settings.SetCurrentLineRenderMode(CurrentLineRenderMode.BORDER);
-            settings.SetGutterSticky(!isAndroid);
+            settings.SetGutterSticky(!isMobile);
             settings.SetMaxGutterIcons(1);
             settings.SetWrapMode(wrapMode);
             settings.SetAutoIndentMode(AutoIndentMode.KEEP_INDENT);
             settings.SetBackspaceUnindent(true);
-            settings.SetDecorationScrollRefreshMinIntervalMs(isAndroid ? 80 : 64);
-            settings.SetDecorationOverscanViewportMultiplier(isAndroid ? 0.20f : 0.12f);
+            settings.SetDecorationScrollRefreshMinIntervalMs(isMobile ? 80 : 64);
+            settings.SetDecorationOverscanViewportMultiplier(isMobile ? 0.20f : 0.12f);
         }
 
         ApplyTheme();
@@ -585,7 +584,8 @@ internal sealed class MainView : UserControl
         controller.DismissCompletion();
         controller.DismissInlineSuggestion();
         HideSamplePickerPopup();
-        controller.GetSettings()?.SetGutterSticky(!OperatingSystem.IsAndroid());
+        SyncSamplePickerSelection();
+        controller.GetSettings()?.SetGutterSticky(!IsMobilePlatform());
 
         loadingIndicator.IsLoading = true;
         loadingIndicator.LoadingText = $"Loading {sample.FileName}...";
@@ -680,7 +680,9 @@ internal sealed class MainView : UserControl
         ScheduleChromeRefresh(DeferredChromeWork.Summary);
     }
 
-    private float GetDefaultScale() => OperatingSystem.IsAndroid() ? 0.90f : 1.0f;
+    private static bool IsMobilePlatform() => OperatingSystem.IsAndroid() || OperatingSystem.IsIOS();
+
+    private float GetDefaultScale() => IsMobilePlatform() ? 0.90f : 1.0f;
 
     private void TogglePerfOverlay()
     {
@@ -933,7 +935,7 @@ internal sealed class MainView : UserControl
 
             controller.ShowInlineSuggestion(new InlineSuggestion(cursor.Line, cursor.Column, InlineSuggestionText));
             ScheduleChromeRefresh(DeferredChromeWork.Summary);
-        }, TimeSpan.FromMilliseconds(OperatingSystem.IsAndroid() ? 1000 : 700));
+        }, TimeSpan.FromMilliseconds(IsMobilePlatform() ? 1000 : 700));
     }
 
     private void ApplyToolbarChrome(uint foreground, uint surfaceMuted, uint border, uint accent)

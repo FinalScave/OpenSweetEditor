@@ -14,6 +14,11 @@
     <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <SweetEditorAndroidAotMode Condition="'$(SweetEditorAndroidAotMode)' == ''">Profiled</SweetEditorAndroidAotMode>
+    <SweetEditorAndroidEnableLlvm Condition="'$(SweetEditorAndroidEnableLlvm)' == ''">false</SweetEditorAndroidEnableLlvm>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <RuntimeIdentifier>android-arm64</RuntimeIdentifier>
@@ -42,10 +47,12 @@
     <AndroidEnableProfiler>false</AndroidEnableProfiler>
     <AndroidUseSharedRuntime>false</AndroidUseSharedRuntime>
     <EmbedAssembliesIntoApk>true</EmbedAssembliesIntoApk>
-    <RunAOTCompilation>false</RunAOTCompilation>
+    <RunAOTCompilation Condition="'$(SweetEditorAndroidAotMode)' == 'Jit'">false</RunAOTCompilation>
+    <RunAOTCompilation Condition="'$(SweetEditorAndroidAotMode)' != 'Jit'">true</RunAOTCompilation>
     <PublishAot>false</PublishAot>
-    <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
-    <AndroidEnableLLVM>false</AndroidEnableLLVM>
+    <AndroidEnableProfiledAot Condition="'$(SweetEditorAndroidAotMode)' == 'Profiled'">true</AndroidEnableProfiledAot>
+    <AndroidEnableProfiledAot Condition="'$(SweetEditorAndroidAotMode)' != 'Profiled'">false</AndroidEnableProfiledAot>
+    <AndroidEnableLLVM>$(SweetEditorAndroidEnableLlvm)</AndroidEnableLLVM>
     <UseInterpreter>false</UseInterpreter>
   </PropertyGroup>
 

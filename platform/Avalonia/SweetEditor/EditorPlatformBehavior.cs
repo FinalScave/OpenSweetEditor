@@ -2,6 +2,7 @@ namespace SweetEditor {
 	internal enum EditorPlatformKind {
 		Desktop,
 		Android,
+		IOS,
 	}
 
 	internal readonly record struct EditorPlatformBehavior(
@@ -21,9 +22,14 @@ namespace SweetEditor {
 		int TouchImeTapMaxDurationMs,
 		int TouchMoveFlushMinIntervalMs
 	) {
+		public bool IsMobile => Kind is EditorPlatformKind.Android or EditorPlatformKind.IOS;
+
 		public static EditorPlatformBehavior DetectCurrent() {
 			if (OperatingSystem.IsAndroid()) {
 				return Android();
+			}
+			if (OperatingSystem.IsIOS()) {
+				return IOS();
 			}
 
 			return Desktop();
@@ -50,13 +56,21 @@ namespace SweetEditor {
 		}
 
 		public static EditorPlatformBehavior Android() {
+			return Mobile(EditorPlatformKind.Android);
+		}
+
+		public static EditorPlatformBehavior IOS() {
+			return Mobile(EditorPlatformKind.IOS);
+		}
+
+		private static EditorPlatformBehavior Mobile(EditorPlatformKind kind) {
 			return new EditorPlatformBehavior(
-				Kind: EditorPlatformKind.Android,
+				Kind: kind,
 				TouchFirst: true,
 				SuppressImeOnTouchDown: true,
 				UseSelectionMenuByDefault: true,
 				UseContextMenuByDefault: false,
-				EnableDirectPinch: true,
+				EnableDirectPinch: false,
 				EnableTouchPadMagnify: false,
 				UseLongPressForContextMenu: true,
 				HandleHitScale: 1.35f,
@@ -65,7 +79,7 @@ namespace SweetEditor {
 				TouchFocusThreshold: 5.5f,
 				TouchImeTapMaxMovementDip: 2.5f,
 				TouchImeTapMaxDurationMs: 260,
-				TouchMoveFlushMinIntervalMs: 16
+				TouchMoveFlushMinIntervalMs: 0
 			);
 		}
 	}
