@@ -521,7 +521,7 @@ Provider 返回空列表时平台 MAY 不显示选区菜单；Provider SHOULD �
 | `foldArrowMode` | FoldArrowMode | ALWAYS | `setFoldArrowMode(mode)` | `getFoldArrowMode()` | `repaint` | 折叠箭头显示模式 |
 | `wrapMode` | WrapMode | NONE | `setWrapMode(mode)` | `getWrapMode()` | `relayout` | 自动换行模式 |
 | `lineSpacingAdd` | float | 0 | `setLineSpacing(add, mult)` | `getLineSpacingAdd()` | `relayout` | 行间距附加值（像素） |
-| `lineSpacingMult` | float | 1.0 | *(同上)* | `getLineSpacingMult()` | `relayout` | 行间距倍数 |
+| `lineSpacingMult` | float | 1.2 | *(同上)* | `getLineSpacingMult()` | `relayout` | 行间距倍数 |
 | `contentStartPadding` | float | 平台相关 | `setContentStartPadding(padding)` | `getContentStartPadding()` | `relayout` | gutter 分割线与文本渲染起始之间的额外水平内边距（像素） |
 | `showSplitLine` | boolean | true | `setShowSplitLine(show)` | `isShowSplitLine()` | `repaint` | 是否渲染 gutter 分割线 |
 | `gutterSticky` | boolean | 平台相关 | `setGutterSticky(sticky)` | `isGutterSticky()` | `repaint` | gutter 是否在水平滚动时固定（true=固定，false=随内容滚动） |

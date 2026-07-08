@@ -8,6 +8,9 @@ import '../sweeteditor_bindings_generated.dart' as bindings;
 
 /// TextPainter-based text measurement for the native editor engine.
 class EditorTextMeasurer {
+  static const int _maxTextWidthCacheEntriesPerStyle = 4096;
+  static const int _maxInlayHintWidthCacheEntries = 1024;
+
   EditorTextMeasurer({required String fontFamily, required double fontSize})
     : _fontFamily = fontFamily,
       _fontSize = fontSize {
@@ -26,6 +29,8 @@ class EditorTextMeasurer {
   String _fontFamily;
   double _fontSize;
   final Map<int, TextStyle> _flutterStyleCache = {};
+  final Map<int, Map<String, double>> _textWidthCache = {};
+  final Map<String, double> _inlayHintWidthCache = {};
   final Map<int, ({double lineHeight, double ascent, double descent})>
   _fontMetricsCache = {};
   ({double lineHeight, double ascent, double descent})? _inlayHintFontMetrics;
@@ -73,6 +78,8 @@ class EditorTextMeasurer {
     _fontFamily = fontFamily;
     _fontSize = fontSize;
     _flutterStyleCache.clear();
+    _textWidthCache.clear();
+    _inlayHintWidthCache.clear();
     _fontMetricsCache.clear();
     _inlayHintFontMetrics = null;
   }
@@ -91,16 +98,31 @@ class EditorTextMeasurer {
   /// Measure text width for a given font style bitmask (0=normal, 1=bold, 2=italic, 3=bold+italic).
   double measureText(String text, int fontStyle) {
     if (text.isEmpty) return 0;
+    final styleCache = _textWidthCache.putIfAbsent(
+      fontStyle,
+      () => <String, double>{},
+    );
+    final cachedWidth = styleCache[text];
+    if (cachedWidth != null) return cachedWidth;
+
     final style = _getFlutterStyleForFontStyle(fontStyle);
     final painter = TextPainter(
       text: TextSpan(text: text, style: style),
       textDirection: TextDirection.ltr,
     )..layout();
-    return painter.width;
+    final width = painter.width;
+    if (styleCache.length >= _maxTextWidthCacheEntriesPerStyle) {
+      styleCache.clear();
+    }
+    styleCache[text] = width;
+    return width;
   }
 
   double measureInlayHintText(String text) {
     if (text.isEmpty) return 0;
+    final cachedWidth = _inlayHintWidthCache[text];
+    if (cachedWidth != null) return cachedWidth;
+
     final style = TextStyle(
       fontFamily: 'sans-serif',
       fontSize: _fontSize * 0.9,
@@ -109,7 +131,12 @@ class EditorTextMeasurer {
       text: TextSpan(text: text, style: style),
       textDirection: TextDirection.ltr,
     )..layout();
-    return painter.width;
+    final width = painter.width;
+    if (_inlayHintWidthCache.length >= _maxInlayHintWidthCacheEntries) {
+      _inlayHintWidthCache.clear();
+    }
+    _inlayHintWidthCache[text] = width;
+    return width;
   }
 
   double measureIcon(int iconId) => 16.0;

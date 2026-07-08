@@ -11,7 +11,7 @@ namespace SweetEditor {
 		private bool renderLineBreaks;
 		private bool compositionEnabled;
 		private float lineSpacingAdd;
-		private float lineSpacingMult = 1.0f;
+		private float lineSpacingMult = 1.2f;
 		private float contentStartPadding;
 		private bool showSplitLine = true;
 		private bool gutterSticky = true;
@@ -104,7 +104,7 @@ namespace SweetEditor {
 
 		public void SetLineSpacing(float add, float mult) {
 			lineSpacingAdd = add;
-			lineSpacingMult = mult <= 0 ? 1.0f : mult;
+			lineSpacingMult = mult <= 0 ? 1.2f : mult;
 			editor.DispatchEditorActionResult(editor.EditorCoreInternal.SetLineSpacing(lineSpacingAdd, lineSpacingMult));
 		}
 

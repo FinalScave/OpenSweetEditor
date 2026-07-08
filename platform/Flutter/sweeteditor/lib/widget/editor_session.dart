@@ -106,6 +106,7 @@ class EditorSession {
   bool _disposed = false;
   bool _animationsRunning = false;
   double _platformScale = 1.0;
+  double? _pendingPlatformScale;
 
   EditorSettings get settings => _settings;
   core.EditorCore? get editorCore => _editorCore;
@@ -158,6 +159,7 @@ class EditorSession {
 
   void dispose() {
     _disposed = true;
+    _pendingPlatformScale = null;
     _settings.unbind(this);
     completionProviderManager.dispose();
     decorationProviderManager.dispose();
@@ -421,8 +423,7 @@ class EditorSession {
       _handleScrollChanged(result);
     }
     if (result.scaleChanged) {
-      syncPlatformScale(result.scaleAfter);
-      eventBus.publish(ScaleChangedEvent(scale: result.scaleAfter));
+      _pendingPlatformScale = result.scaleAfter;
     }
     if (result.source == core.EditorActionSource.ime) {
       selectionMenuController.hide();
@@ -576,8 +577,21 @@ class EditorSession {
   }
 
   void _handleFlushFrame(Duration _) {
+    _runPendingPlatformScaleSync();
     _flushScheduled = false;
     _performFlush();
+  }
+
+  void _runPendingPlatformScaleSync() {
+    if (_disposed) {
+      _pendingPlatformScale = null;
+      return;
+    }
+    final scale = _pendingPlatformScale;
+    _pendingPlatformScale = null;
+    if (scale == null) return;
+    _syncPlatformScaleNow(scale);
+    eventBus.publish(ScaleChangedEvent(scale: scale));
   }
 
   void _performFlush() {
@@ -765,7 +779,7 @@ class EditorSession {
     handleEditorActionResult(metricsResult);
   }
 
-  void syncPlatformScale(double scale) {
+  void _syncPlatformScaleNow(double scale) {
     final ec = _editorCore;
     if (ec == null) return;
     _platformScale = scale;
@@ -794,9 +808,7 @@ class EditorSession {
   }
 
   void applyLineSpacing(double add, double mult) {
-    handleEditorActionResult(
-      _editorCore?.setLineSpacing(add: add, mult: mult),
-    );
+    handleEditorActionResult(_editorCore?.setLineSpacing(add: add, mult: mult));
   }
 
   void applyContentStartPadding(double padding) {

@@ -12,8 +12,8 @@ class EditorSettings {
   core.WhitespaceRenderMode _renderWhitespace = core.WhitespaceRenderMode.none;
   bool _renderLineBreaks = false;
   double _lineSpacingAdd = 0;
-  double _lineSpacingMult = 1.0;
-  double _contentStartPadding = 0;
+  double _lineSpacingMult = 1.2;
+  double _contentStartPadding = 3.0;
   bool _showSplitLine = true;
   bool _gutterSticky = true;
   bool _gutterVisible = true;

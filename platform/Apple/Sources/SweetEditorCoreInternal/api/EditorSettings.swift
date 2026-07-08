@@ -24,7 +24,7 @@ public final class EditorSettings {
     public private(set) var renderWhitespace: WhitespaceRenderMode = .none
     public private(set) var renderLineBreaks = false
     public private(set) var lineSpacingAdd: Float = 0.0
-    public private(set) var lineSpacingMult: Float = 1.0
+    public private(set) var lineSpacingMult: Float = 1.2
     public private(set) var contentStartPadding: Float = 0.0
     public private(set) var showSplitLine = true
     public private(set) var currentLineRenderMode: CurrentLineRenderMode = .background

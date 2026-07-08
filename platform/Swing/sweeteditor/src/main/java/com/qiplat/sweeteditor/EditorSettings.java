@@ -26,7 +26,7 @@ public class EditorSettings {
     private WhitespaceRenderMode mRenderWhitespace = WhitespaceRenderMode.NONE;
     private boolean mRenderLineBreaks = false;
     private float mLineSpacingAdd = 0f;
-    private float mLineSpacingMult = 1.0f;
+    private float mLineSpacingMult = 1.2f;
     private float mContentStartPadding = 0f;
     private boolean mShowSplitLine = true;
     private boolean mGutterSticky = true;

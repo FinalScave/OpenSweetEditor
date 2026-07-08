@@ -14,7 +14,7 @@ export class EditorSettings {
   private renderWhitespace: WhitespaceRenderMode = WhitespaceRenderMode.NONE;
   private renderLineBreaks: boolean = false;
   private lineSpacingAdd: number = 0;
-  private lineSpacingMult: number = 1.0;
+  private lineSpacingMult: number = 1.2;
   private contentStartPadding: number = DEFAULT_CONTENT_START_PADDING;
   private showSplitLine: boolean = true;
   private gutterSticky: boolean = DEFAULT_GUTTER_STICKY;

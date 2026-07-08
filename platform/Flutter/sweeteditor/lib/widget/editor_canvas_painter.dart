@@ -9,6 +9,10 @@ import '../editor_types.dart';
 import 'editor_text_measurer.dart';
 
 class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
+  static const int _maxTextPainterCacheEntries = 4096;
+  static const int _maxMergedTextRunLength = 192;
+  static const double _runMergeTolerance = 1.0;
+
   EditorCanvasPainter({
     required EditorTheme theme,
     required EditorTextMeasurer measurer,
@@ -26,6 +30,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
   EditorIconProvider? _iconProvider;
   final bool _showSelectionHandles;
   final Map<int, _ResolvedEditorIcon> _resolvedIcons = {};
+  final Map<_TextPainterKey, TextPainter> _textPainterCache = {};
 
   void updateModel(core.EditorRenderModel model, bool cursorVisible) {
     _model = model;
@@ -42,6 +47,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
 
   void updateTheme(EditorTheme theme) {
     _theme = theme;
+    _textPainterCache.clear();
     notifyListeners();
   }
 
@@ -55,6 +61,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
   @override
   void dispose() {
     _disposeResolvedIcons();
+    _textPainterCache.clear();
     super.dispose();
   }
 
@@ -142,11 +149,23 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
       canvas.drawRect(
         Rect.fromLTWH(left, y, right - left, lineH),
         Paint()
-          ..color = Color(_theme.currentLineColor)
+          ..color = Color(_currentLineBorderColor())
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1,
       );
     }
+  }
+
+  int _currentLineBorderColor() {
+    var color = _theme.currentLineColor;
+    if (color == 0) {
+      color = _theme.lineNumberColor;
+    }
+    final alpha = (color >> 24) & 0xFF;
+    if (alpha < 0xA0) {
+      color = (color & 0x00FFFFFF) | (0xA0 << 24);
+    }
+    return color;
   }
 
   void _drawRangeEffectBackgrounds(Canvas canvas, core.EditorRenderModel m) {
@@ -164,8 +183,18 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
 
   void _drawVisualLines(Canvas canvas, core.EditorRenderModel m) {
     for (final line in m.lines) {
-      for (final run in line.runs) {
+      final runs = line.runs;
+      var index = 0;
+      while (index < runs.length) {
+        final run = runs[index];
+        if (run.type == core.VisualRunType.text && run.text.isNotEmpty) {
+          final merged = _mergeTextRunsForDrawing(runs, index);
+          _drawTextRun(canvas, merged.run);
+          index = merged.nextIndex;
+          continue;
+        }
         if (_drawInvisibleCharacterRun(canvas, run)) {
+          index++;
           continue;
         }
         switch (run.type) {
@@ -186,8 +215,77 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
           case core.VisualRunType.newline:
             break;
         }
+        index++;
       }
     }
+  }
+
+  ({core.VisualRun run, int nextIndex}) _mergeTextRunsForDrawing(
+    List<core.VisualRun> runs,
+    int startIndex,
+  ) {
+    final first = runs[startIndex];
+    var last = first;
+    var totalLength = first.text.length;
+    var nextIndex = startIndex + 1;
+    StringBuffer? mergedText;
+
+    while (nextIndex < runs.length) {
+      final next = runs[nextIndex];
+      final nextLength = next.text.length;
+      if (!_canMergeTextRuns(last, next) ||
+          totalLength + nextLength > _maxMergedTextRunLength) {
+        break;
+      }
+      mergedText ??= StringBuffer(first.text);
+      mergedText.write(next.text);
+      totalLength += nextLength;
+      last = next;
+      nextIndex++;
+    }
+
+    final text = mergedText?.toString();
+    if (text == null) {
+      return (run: first, nextIndex: startIndex + 1);
+    }
+
+    return (
+      run: core.VisualRun(
+        type: core.VisualRunType.text,
+        x: first.x,
+        y: first.y,
+        text: text,
+        style: first.style,
+        iconId: first.iconId,
+        colorValue: first.colorValue,
+        width: math.max(0, last.x + last.width - first.x),
+        padding: first.padding,
+        margin: first.margin,
+        active: first.active,
+      ),
+      nextIndex: nextIndex,
+    );
+  }
+
+  bool _canMergeTextRuns(core.VisualRun current, core.VisualRun next) {
+    if (current.type != core.VisualRunType.text ||
+        next.type != core.VisualRunType.text ||
+        current.text.isEmpty ||
+        next.text.isEmpty ||
+        current.active ||
+        next.active) {
+      return false;
+    }
+    if (current.style.color != next.style.color ||
+        current.style.backgroundColor != next.style.backgroundColor ||
+        current.style.fontStyle != next.style.fontStyle) {
+      return false;
+    }
+    if ((current.y - next.y).abs() > 0.01) {
+      return false;
+    }
+    final expectedX = current.x + current.width;
+    return (expectedX - next.x).abs() <= _runMergeTolerance;
   }
 
   bool _drawInvisibleCharacterRun(Canvas canvas, core.VisualRun run) {
@@ -269,18 +367,15 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
   void _drawLineBreakMarkerRun(Canvas canvas, core.VisualRun run) {
     if (run.text.isEmpty) return;
     final fontMetrics = _measurer.getFontMetrics();
-    final painter = TextPainter(
-      text: TextSpan(
-        text: run.text,
-        style: TextStyle(
-          fontFamily: _measurer.fontFamily,
-          fontSize: _measurer.fontSize,
-          color: Color(_theme.invisibleCharacterColor),
-          height: 1.0,
-        ),
+    final painter = _getTextPainter(
+      run.text,
+      TextStyle(
+        fontFamily: _measurer.fontFamily,
+        fontSize: _measurer.fontSize,
+        color: Color(_theme.invisibleCharacterColor),
+        height: 1.0,
       ),
-      textDirection: TextDirection.ltr,
-    )..layout();
+    );
     _paintTextAtBaseline(canvas, painter, run.x, run.y, fontMetrics.ascent);
   }
 
@@ -299,10 +394,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
               : TextDecoration.none,
         );
     final fontMetrics = _measurer.getFontMetrics(run.style.fontStyle);
-    final painter = TextPainter(
-      text: TextSpan(text: run.text, style: style),
-      textDirection: TextDirection.ltr,
-    )..layout();
+    final painter = _getTextPainter(run.text, style);
 
     if (run.style.backgroundColor != 0) {
       canvas.drawRect(
@@ -329,10 +421,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
     if (run.text.isEmpty) return;
     final style = _measurer.buildPhantomTextStyle(_theme.phantomTextColor);
     final fontMetrics = _measurer.getFontMetrics();
-    final painter = TextPainter(
-      text: TextSpan(text: run.text, style: style),
-      textDirection: TextDirection.ltr,
-    )..layout();
+    final painter = _getTextPainter(run.text, style);
     _paintTextAtBaseline(canvas, painter, run.x, run.y, fontMetrics.ascent);
   }
 
@@ -392,10 +481,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
     // Text
     if (run.text.isNotEmpty) {
       final style = pillStyle.copyWith(color: Color(_theme.inlayHintTextColor));
-      final painter = TextPainter(
-        text: TextSpan(text: run.text, style: style),
-        textDirection: TextDirection.ltr,
-      )..layout();
+      final painter = _getTextPainter(run.text, style);
       _paintTextAtBaseline(
         canvas,
         painter,
@@ -416,10 +502,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
       fontSize: _measurer.fontSize,
       color: Color(_theme.foldPlaceholderTextColor),
     );
-    final painter = TextPainter(
-      text: TextSpan(text: text, style: style),
-      textDirection: TextDirection.ltr,
-    )..layout();
+    final painter = _getTextPainter(text, style);
 
     final bgRect = RRect.fromRectAndRadius(
       Rect.fromLTWH(
@@ -571,7 +654,8 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
           Paint()
             ..color = Color(style.borderColor)
             ..style = PaintingStyle.stroke
-            ..strokeWidth = effect.kind == core.RangeEffectKind.linkedEditingActive
+            ..strokeWidth =
+                effect.kind == core.RangeEffectKind.linkedEditingActive
                 ? 2
                 : 1.5,
         );
@@ -655,18 +739,15 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
       final numX = pos.x;
       final baselineY = pos.y;
       final fontMetrics = _measurer.getFontMetrics();
-      final painter = TextPainter(
-        text: TextSpan(
-          text: '${line.logicalLine + 1}',
-          style: TextStyle(
-            fontFamily: _measurer.fontFamily,
-            fontSize: _measurer.fontSize * 0.85,
-            color: Color(color),
-            height: 1.0,
-          ),
+      final painter = _getTextPainter(
+        '${line.logicalLine + 1}',
+        TextStyle(
+          fontFamily: _measurer.fontFamily,
+          fontSize: _measurer.fontSize,
+          color: Color(color),
+          height: 1.0,
         ),
-        textDirection: TextDirection.ltr,
-      )..layout();
+      );
       _paintTextAtBaseline(
         canvas,
         painter,
@@ -710,20 +791,17 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
   void _drawIconData(Canvas canvas, Rect rect, IconData iconData, int color) {
     final iconSize = math.min(rect.width, rect.height);
     if (iconSize <= 0) return;
-    final painter = TextPainter(
-      text: TextSpan(
-        text: String.fromCharCode(iconData.codePoint),
-        style: TextStyle(
-          inherit: false,
-          color: Color(color),
-          fontSize: iconSize,
-          fontFamily: iconData.fontFamily,
-          package: iconData.fontPackage,
-          height: 1.0,
-        ),
+    final painter = _getTextPainter(
+      String.fromCharCode(iconData.codePoint),
+      TextStyle(
+        inherit: false,
+        color: Color(color),
+        fontSize: iconSize,
+        fontFamily: iconData.fontFamily,
+        package: iconData.fontPackage,
+        height: 1.0,
       ),
-      textDirection: TextDirection.ltr,
-    )..layout();
+    );
     painter.paint(
       canvas,
       Offset(
@@ -979,6 +1057,22 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
     return (newAlpha << 24) | (argbColor & 0x00FFFFFF);
   }
 
+  TextPainter _getTextPainter(String text, TextStyle style) {
+    final key = _TextPainterKey(text, style);
+    final cached = _textPainterCache[key];
+    if (cached != null) return cached;
+
+    if (_textPainterCache.length >= _maxTextPainterCacheEntries) {
+      _textPainterCache.clear();
+    }
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    _textPainterCache[key] = painter;
+    return painter;
+  }
+
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 
@@ -990,6 +1084,21 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
 
   @override
   bool shouldRebuildSemantics(covariant CustomPainter oldDelegate) => false;
+}
+
+class _TextPainterKey {
+  const _TextPainterKey(this.text, this.style);
+
+  final String text;
+  final TextStyle style;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is _TextPainterKey && text == other.text && style == other.style;
+
+  @override
+  int get hashCode => Object.hash(text, style);
 }
 
 class _ResolvedEditorIcon {

@@ -154,9 +154,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     );
 
     _overlayCoordinator = EditorOverlayCoordinator(session: _session);
-    _interactionController = EditorInteractionController(
-      session: _session,
-    );
+    _interactionController = EditorInteractionController(session: _session);
 
     _session.completionPopupController.setConfirmHandler(
       _interactionController.onCompletionItemConfirmed,
@@ -885,9 +883,11 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
                     },
                     child: SizedBox.expand(
                       key: _editorKey,
-                      child: CustomPaint(
-                        size: newSize,
-                        painter: _session.painter,
+                      child: RepaintBoundary(
+                        child: CustomPaint(
+                          size: newSize,
+                          painter: _session.painter,
+                        ),
                       ),
                     ),
                   ),

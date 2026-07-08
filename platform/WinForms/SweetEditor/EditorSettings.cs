@@ -17,7 +17,7 @@ namespace SweetEditor {
 		private WhitespaceRenderMode renderWhitespace = WhitespaceRenderMode.NONE;
 		private bool renderLineBreaks = false;
 		private float lineSpacingAdd = 0f;
-		private float lineSpacingMult = 1.0f;
+		private float lineSpacingMult = 1.2f;
 		private float contentStartPadding = 0f;
 		private bool showSplitLine = true;
 		private bool gutterSticky = true;

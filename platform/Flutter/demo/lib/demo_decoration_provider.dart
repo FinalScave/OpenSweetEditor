@@ -112,22 +112,7 @@ class DemoDecorationProvider implements DecorationProvider {
     final seenDiagnostics = <String>{};
     final seenFolds = <String>{};
     final diagnosticCount = <int>[0];
-
-    final content = _controller.getContent();
-    if (content.isEmpty) {
-      receiver.accept(
-        DecorationResultBuilder()
-            .syntaxSpans(syntaxSpans, ApplyMode.merge)
-            .inlayHints(inlayHints, ApplyMode.replaceRange)
-            .diagnostics(diagnostics, ApplyMode.replaceAll)
-            .indentGuides(indentGuides, ApplyMode.replaceAll)
-            .foldRegions(foldRegions, ApplyMode.replaceAll)
-            .separatorGuides(separatorGuides, ApplyMode.replaceAll)
-            .gutterIcons(gutterIcons, ApplyMode.replaceAll)
-            .build(),
-      );
-      return;
-    }
+    final lineTextCache = _LineTextCache(_controller);
 
     final currentFileName = _resolveCurrentFileName(context);
     final fileChanged = currentFileName != _analyzedFileName;
@@ -142,11 +127,28 @@ class DemoDecorationProvider implements DecorationProvider {
           )
           .toInt(),
     );
-    if (_cacheHighlight == null || _documentAnalyzer == null || fileChanged) {
-      _documentAnalyzer?.dispose();
-      _document?.dispose();
+    final analyzerRebuilt =
+        _cacheHighlight == null || _documentAnalyzer == null || fileChanged;
+    if (analyzerRebuilt) {
+      final content = _controller.getContent();
+      if (content.isEmpty) {
+        _resetAnalyzer();
+        receiver.accept(
+          DecorationResultBuilder()
+              .syntaxSpans(syntaxSpans, ApplyMode.replaceAll)
+              .inlayHints(inlayHints, ApplyMode.replaceAll)
+              .diagnostics(diagnostics, ApplyMode.replaceAll)
+              .indentGuides(indentGuides, ApplyMode.replaceAll)
+              .foldRegions(foldRegions, ApplyMode.replaceAll)
+              .separatorGuides(separatorGuides, ApplyMode.replaceAll)
+              .gutterIcons(gutterIcons, ApplyMode.replaceAll)
+              .codeLensItems(codeLensItems, ApplyMode.replaceAll)
+              .build(),
+        );
+        return;
+      }
+      _resetAnalyzer();
       _document = sweetline.Document('file:///$currentFileName', content);
-      _cacheHighlight = null;
       _documentAnalyzer = highlightEngine.loadDocument(_document!);
       _analyzedFileName = currentFileName;
     }
@@ -168,17 +170,23 @@ class DemoDecorationProvider implements DecorationProvider {
       for (final lineHighlight in cacheHighlight.lines) {
         for (final token in lineHighlight.spans) {
           _appendStyleSpan(syntaxSpans, token);
-          _appendColorInlayHint(inlayHints, seenColorHints, token);
-          _appendTextInlayHint(inlayHints, token);
-          _appendSeparator(separatorGuides, token);
-          _appendGutterIcons(gutterIcons, token);
-          _appendCodeLens(codeLensItems, token);
+          _appendColorInlayHint(
+            inlayHints,
+            seenColorHints,
+            token,
+            lineTextCache,
+          );
+          _appendTextInlayHint(inlayHints, token, lineTextCache);
+          _appendSeparator(separatorGuides, token, lineTextCache);
+          _appendGutterIcons(gutterIcons, token, lineTextCache);
+          _appendCodeLens(codeLensItems, token, lineTextCache);
           firstKeywordRange = _appendDynamicDemoDecorations(
             diagnostics,
             seenDiagnostics,
             diagnosticCount,
             firstKeywordRange,
             token,
+            lineTextCache,
           );
         }
       }
@@ -190,57 +198,63 @@ class DemoDecorationProvider implements DecorationProvider {
       );
     }
 
-    if (context.totalLineCount < 2048) {
-      final guideResult = _documentAnalyzer?.analyzeIndentGuides();
-      if (guideResult != null) {
-        for (final guide in guideResult.guideLines) {
-          if (guide.endLine < guide.startLine) {
-            continue;
-          }
-          final column = guide.column < 0 ? 0 : guide.column;
-          indentGuides.add(
-            core.IndentGuide(
-              start: core.TextPosition(line: guide.startLine, column: column),
-              end: core.TextPosition(line: guide.endLine, column: column),
-            ),
+    final guideResult = _documentAnalyzer?.analyzeIndentGuidesInLineRange(
+      visibleRange,
+    );
+    if (guideResult != null) {
+      for (final guide in guideResult.guideLines) {
+        if (guide.endLine < guide.startLine) {
+          continue;
+        }
+        final column = guide.column < 0 ? 0 : guide.column;
+        indentGuides.add(
+          core.IndentGuide(
+            start: core.TextPosition(line: guide.startLine, column: column),
+            end: core.TextPosition(line: guide.endLine, column: column),
+          ),
+        );
+        if (guide.endLine <= guide.startLine) {
+          continue;
+        }
+        final key = '${guide.startLine}:${guide.endLine}';
+        if (seenFolds.add(key)) {
+          foldRegions.add(
+            core.FoldRegion(startLine: guide.startLine, endLine: guide.endLine),
           );
-          if (guide.endLine <= guide.startLine) {
-            continue;
-          }
-          final key = '${guide.startLine}:${guide.endLine}';
-          if (seenFolds.add(key)) {
-            foldRegions.add(
-              core.FoldRegion(
-                startLine: guide.startLine,
-                endLine: guide.endLine,
-              ),
-            );
-          }
         }
       }
     }
 
+    final applyMode = _applyModeForRefresh(analyzerRebuilt);
     receiver.accept(
       DecorationResultBuilder()
-          .syntaxSpans(syntaxSpans, ApplyMode.merge)
-          .inlayHints(inlayHints, ApplyMode.replaceRange)
-          .diagnostics(diagnostics, ApplyMode.replaceAll)
-          .indentGuides(indentGuides, ApplyMode.replaceAll)
-          .foldRegions(foldRegions, ApplyMode.replaceAll)
-          .separatorGuides(separatorGuides, ApplyMode.replaceAll)
-          .gutterIcons(gutterIcons, ApplyMode.replaceAll)
-          .codeLensItems(codeLensItems, ApplyMode.replaceAll)
+          .syntaxSpans(syntaxSpans, applyMode)
+          .inlayHints(inlayHints, applyMode)
+          .diagnostics(diagnostics, applyMode)
+          .indentGuides(indentGuides, applyMode)
+          .foldRegions(foldRegions, applyMode)
+          .separatorGuides(separatorGuides, applyMode)
+          .gutterIcons(gutterIcons, applyMode)
+          .codeLensItems(codeLensItems, applyMode)
           .build(),
     );
   }
 
   @override
   void dispose() {
+    _resetAnalyzer();
+  }
+
+  void _resetAnalyzer() {
     _documentAnalyzer?.dispose();
     _document?.dispose();
     _documentAnalyzer = null;
     _document = null;
     _cacheHighlight = null;
+  }
+
+  ApplyMode _applyModeForRefresh(bool analyzerRebuilt) {
+    return analyzerRebuilt ? ApplyMode.replaceAll : ApplyMode.replaceRange;
   }
 
   _TokenRangeInfo? _appendDynamicDemoDecorations(
@@ -249,12 +263,13 @@ class DemoDecorationProvider implements DecorationProvider {
     List<int> diagnosticCount,
     _TokenRangeInfo? firstKeywordRange,
     sweetline.TokenSpan token,
+    _LineTextCache lineTextCache,
   ) {
     final range = _extractSingleLineTokenRange(token);
     if (range == null) {
       return firstKeywordRange;
     }
-    final literal = _getTokenLiteral(range);
+    final literal = _getTokenLiteral(range, lineTextCache);
     if (literal.isEmpty) {
       return firstKeywordRange;
     }
@@ -385,6 +400,7 @@ class DemoDecorationProvider implements DecorationProvider {
     Map<int, List<core.InlayHint>> inlayHints,
     Set<String> seenHints,
     sweetline.TokenSpan token,
+    _LineTextCache lineTextCache,
   ) {
     if (token.styleId != _styleColor) {
       return;
@@ -393,7 +409,7 @@ class DemoDecorationProvider implements DecorationProvider {
     if (range == null) {
       return;
     }
-    final literal = _getTokenLiteral(range);
+    final literal = _getTokenLiteral(range, lineTextCache);
     final color = _parseColorLiteral(literal);
     if (color == null) {
       return;
@@ -430,6 +446,7 @@ class DemoDecorationProvider implements DecorationProvider {
   void _appendTextInlayHint(
     Map<int, List<core.InlayHint>> inlayHints,
     sweetline.TokenSpan token,
+    _LineTextCache lineTextCache,
   ) {
     if (token.styleId != EditorTheme.styleKeyword) {
       return;
@@ -438,7 +455,7 @@ class DemoDecorationProvider implements DecorationProvider {
     if (range == null) {
       return;
     }
-    final literal = _getTokenLiteral(range);
+    final literal = _getTokenLiteral(range, lineTextCache);
     String? hintText;
     if (literal == 'const') {
       hintText = 'immutable';
@@ -464,6 +481,7 @@ class DemoDecorationProvider implements DecorationProvider {
   void _appendSeparator(
     List<core.SeparatorGuide> separatorGuides,
     sweetline.TokenSpan token,
+    _LineTextCache lineTextCache,
   ) {
     if (token.styleId != EditorTheme.styleComment) {
       return;
@@ -472,7 +490,7 @@ class DemoDecorationProvider implements DecorationProvider {
     if (range == null) {
       return;
     }
-    final lineText = _controller.getLineText(range.line);
+    final lineText = lineTextCache.getLineText(range.line);
     if (range.endColumn > lineText.length) {
       return;
     }
@@ -516,6 +534,7 @@ class DemoDecorationProvider implements DecorationProvider {
   void _appendGutterIcons(
     Map<int, List<core.GutterIcon>> gutterIcons,
     sweetline.TokenSpan token,
+    _LineTextCache lineTextCache,
   ) {
     final styleId = token.styleId;
     if (styleId != EditorTheme.styleKeyword &&
@@ -527,7 +546,7 @@ class DemoDecorationProvider implements DecorationProvider {
       return;
     }
     if (styleId == EditorTheme.styleKeyword) {
-      final literal = _getTokenLiteral(range);
+      final literal = _getTokenLiteral(range, lineTextCache);
       if (literal == 'class' || literal == 'struct') {
         gutterIcons
             .putIfAbsent(range.line, () => [])
@@ -543,6 +562,7 @@ class DemoDecorationProvider implements DecorationProvider {
   void _appendCodeLens(
     Map<int, List<core.CodeLensItem>> codeLensItems,
     sweetline.TokenSpan token,
+    _LineTextCache lineTextCache,
   ) {
     if (codeLensItems.isNotEmpty) {
       return;
@@ -554,7 +574,7 @@ class DemoDecorationProvider implements DecorationProvider {
     if (range == null) {
       return;
     }
-    final literal = _getTokenLiteral(range);
+    final literal = _getTokenLiteral(range, lineTextCache);
     if (literal == 'class' || literal == 'struct') {
       codeLensItems[range.line] = [
         core.CodeLensItem(
@@ -588,8 +608,8 @@ class DemoDecorationProvider implements DecorationProvider {
     return _TokenRangeInfo(start.line, start.column, end.column);
   }
 
-  String _getTokenLiteral(_TokenRangeInfo range) {
-    final lineText = _controller.getLineText(range.line);
+  String _getTokenLiteral(_TokenRangeInfo range, _LineTextCache lineTextCache) {
+    final lineText = lineTextCache.getLineText(range.line);
     if (range.endColumn > lineText.length) {
       return '';
     }
@@ -609,6 +629,17 @@ class DemoDecorationProvider implements DecorationProvider {
       sweetline.TextPosition(range.start.line, range.start.column),
       sweetline.TextPosition(range.end.line, range.end.column),
     );
+  }
+}
+
+class _LineTextCache {
+  _LineTextCache(this._controller);
+
+  final SweetEditorController _controller;
+  final Map<int, String> _lines = {};
+
+  String getLineText(int line) {
+    return _lines.putIfAbsent(line, () => _controller.getLineText(line));
   }
 }
 

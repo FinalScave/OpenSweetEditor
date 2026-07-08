@@ -237,7 +237,7 @@ class EditorCore {
     );
   }
 
-  EditorActionResult setLineSpacing({double add = 0, double mult = 1.0}) {
+  EditorActionResult setLineSpacing({double add = 0, double mult = 1.2}) {
     _ensureOpen();
     return _callAndParseAction(
       (outSize) =>
