@@ -232,6 +232,19 @@ struct Index {
           })
 
         Button() {
+          Text(this.isDarkTheme ? '◐' : '☼')
+            .fontSize(16)
+            .fontColor(this.primaryTextColor())
+        }
+        .width(40)
+        .height(40)
+        .margin({ left: 8 })
+        .padding(0)
+        .backgroundColor(this.panelStrongColor())
+        .borderRadius(12)
+        .onClick(() => this.toggleTheme())
+
+        Button() {
           Text('↶')
             .fontSize(18)
             .fontColor(this.primaryTextColor())
@@ -258,33 +271,7 @@ struct Index {
         .onClick(() => this.handleRedo())
 
         Button() {
-          Text(this.isDarkTheme ? '◐' : '☼')
-            .fontSize(16)
-            .fontColor(this.primaryTextColor())
-        }
-        .width(40)
-        .height(40)
-        .margin({ left: 8 })
-        .padding(0)
-        .backgroundColor(this.panelStrongColor())
-        .borderRadius(12)
-        .onClick(() => this.toggleTheme())
-
-        Button() {
-          Text('≋')
-            .fontSize(17)
-            .fontColor(this.primaryTextColor())
-        }
-        .width(40)
-        .height(40)
-        .margin({ left: 8 })
-        .padding(0)
-        .backgroundColor(this.wrapButtonColor())
-        .borderRadius(12)
-        .onClick(() => this.cycleWrapMode())
-
-        Button() {
-          Text('⌕')
+          Text('...')
             .fontSize(17)
             .fontColor(this.primaryTextColor())
         }
@@ -294,20 +281,11 @@ struct Index {
         .padding(0)
         .backgroundColor(this.panelStrongColor())
         .borderRadius(12)
-        .onClick(() => this.openSearchPanel(false))
-
-        Button() {
-          Text('⇄')
-            .fontSize(16)
-            .fontColor(this.primaryTextColor())
-        }
-        .width(40)
-        .height(40)
-        .margin({ left: 8 })
-        .padding(0)
-        .backgroundColor(this.panelStrongColor())
-        .borderRadius(12)
-        .onClick(() => this.openSearchPanel(true))
+        .bindMenu([
+          { value: 'Search', action: () => this.openSearchPanel(false) },
+          { value: 'Replace', action: () => this.openSearchPanel(true) },
+          { value: this.wrapModeLabel(), action: () => this.cycleWrapMode() }
+        ])
       }
       .width('100%')
       .margin({ top: 12 })
@@ -340,41 +318,12 @@ struct Index {
             this.performSearch();
           })
 
-        Button() {
-          Text('\\n')
-            .fontSize(12)
-            .fontColor(this.primaryTextColor())
-        }
-        .width(40)
-        .height(36)
-        .margin({ left: 6 })
-        .padding(0)
-        .backgroundColor(this.panelStrongColor())
-        .borderRadius(10)
-        .onClick(() => {
-          this.searchText += '\\n';
-          this.performSearch();
-        })
-
         Text(this.searchCounterText())
           .width(56)
           .fontSize(11)
           .fontColor(this.secondaryTextColor())
           .textAlign(TextAlign.Center)
           .maxLines(1)
-
-        this.buildSearchToggle('Aa', this.searchCaseSensitive, () => {
-          this.searchCaseSensitive = !this.searchCaseSensitive;
-          this.performSearch();
-        })
-        this.buildSearchToggle('Word', this.searchWholeWord, () => {
-          this.searchWholeWord = !this.searchWholeWord;
-          this.performSearch();
-        })
-        this.buildSearchToggle('.*', this.searchUseRegex, () => {
-          this.searchUseRegex = !this.searchUseRegex;
-          this.performSearch();
-        })
 
         Button() {
           Text('↑')
@@ -416,6 +365,38 @@ struct Index {
         .onClick(() => this.closeSearchPanel())
       }
       .width('100%')
+
+      Row() {
+        Button() {
+          Text('\\n')
+            .fontSize(12)
+            .fontColor(this.primaryTextColor())
+        }
+        .width(40)
+        .height(36)
+        .padding(0)
+        .backgroundColor(this.panelStrongColor())
+        .borderRadius(10)
+        .onClick(() => {
+          this.searchText += '\\n';
+          this.performSearch();
+        })
+
+        this.buildSearchToggle('Aa', this.searchCaseSensitive, () => {
+          this.searchCaseSensitive = !this.searchCaseSensitive;
+          this.performSearch();
+        })
+        this.buildSearchToggle('Word', this.searchWholeWord, () => {
+          this.searchWholeWord = !this.searchWholeWord;
+          this.performSearch();
+        })
+        this.buildSearchToggle('.*', this.searchUseRegex, () => {
+          this.searchUseRegex = !this.searchUseRegex;
+          this.performSearch();
+        })
+      }
+      .width('100%')
+      .margin({ top: 6 })
 
       if (this.replaceVisible) {
         Row() {

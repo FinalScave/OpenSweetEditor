@@ -1,4 +1,4 @@
-package com.qiplat.sweeteditor.search;
+package com.qiplat.sweeteditor.demo.search;
 
 import android.content.Context;
 import android.graphics.Color;
@@ -22,12 +22,12 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.qiplat.sweeteditor.EditorTheme;
-import com.qiplat.sweeteditor.R;
 import com.qiplat.sweeteditor.SweetEditor;
 import com.qiplat.sweeteditor.core.search.SearchOptions;
 import com.qiplat.sweeteditor.core.search.SearchRequest;
 import com.qiplat.sweeteditor.core.search.SearchState;
 import com.qiplat.sweeteditor.core.search.SearchStatus;
+import com.qiplat.sweeteditor.demo.R;
 import com.qiplat.sweeteditor.event.EditorEventListener;
 import com.qiplat.sweeteditor.event.TextChangedEvent;
 
@@ -234,9 +234,13 @@ public class SearchPanel extends LinearLayout {
     }
 
     public void open() {
+        open(false);
+    }
+
+    public void open(boolean replaceMode) {
         setVisibility(VISIBLE);
         updateControls(currentSearchState());
-        mQueryInput.requestFocus();
+        (replaceMode ? mReplaceInput : mQueryInput).requestFocus();
         post(this::showKeyboard);
         if (mQueryInput.length() > 0) {
             performSearch();
@@ -584,7 +588,7 @@ public class SearchPanel extends LinearLayout {
         InputMethodManager imm = (InputMethodManager) getContext()
                 .getSystemService(Context.INPUT_METHOD_SERVICE);
         if (imm != null) {
-            imm.showSoftInput(mQueryInput, InputMethodManager.SHOW_IMPLICIT);
+            imm.showSoftInput(getFocusedInput(), InputMethodManager.SHOW_IMPLICIT);
         }
     }
 
@@ -592,8 +596,13 @@ public class SearchPanel extends LinearLayout {
         InputMethodManager imm = (InputMethodManager) getContext()
                 .getSystemService(Context.INPUT_METHOD_SERVICE);
         if (imm != null) {
-            imm.hideSoftInputFromWindow(mQueryInput.getWindowToken(), 0);
+            imm.hideSoftInputFromWindow(getFocusedInput().getWindowToken(), 0);
         }
+    }
+
+    @NonNull
+    private EditText getFocusedInput() {
+        return mReplaceInput.hasFocus() ? mReplaceInput : mQueryInput;
     }
 
     private void tintImageView(@NonNull ImageView view, int color) {

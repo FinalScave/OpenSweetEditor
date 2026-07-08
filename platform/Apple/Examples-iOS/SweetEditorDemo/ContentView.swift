@@ -76,25 +76,37 @@ struct ContentView: View {
             .buttonStyle(.borderless)
             .foregroundStyle(primaryForegroundColor)
 
-            Button(action: model.cycleWrapMode) {
-                Image(systemName: "text.alignleft")
+            Button(action: handleUndo) {
+                Image(systemName: "arrow.uturn.backward")
             }
             .buttonStyle(.borderless)
             .foregroundStyle(primaryForegroundColor)
 
-            Button(action: { openSearch(replaceMode: false) }) {
-                Image(systemName: "magnifyingglass")
+            Button(action: handleRedo) {
+                Image(systemName: "arrow.uturn.forward")
             }
             .buttonStyle(.borderless)
             .foregroundStyle(primaryForegroundColor)
-            .keyboardShortcut("f", modifiers: .command)
 
-            Button(action: { openSearch(replaceMode: true) }) {
-                Image(systemName: "arrow.left.arrow.right")
+            Menu {
+                Button(action: { openSearch(replaceMode: false) }) {
+                    Label("Search", systemImage: "magnifyingglass")
+                }
+                .keyboardShortcut("f", modifiers: .command)
+
+                Button(action: { openSearch(replaceMode: true) }) {
+                    Label("Replace", systemImage: "arrow.left.arrow.right")
+                }
+                .keyboardShortcut("h", modifiers: .command)
+
+                Button(action: model.cycleWrapMode) {
+                    Label(DemoWrapModeCycle.title(for: model.wrapMode), systemImage: "text.alignleft")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
             }
             .buttonStyle(.borderless)
             .foregroundStyle(primaryForegroundColor)
-            .keyboardShortcut("h", modifiers: .command)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -184,6 +196,24 @@ struct ContentView: View {
         }
         .buttonStyle(.borderless)
         .foregroundStyle(isOn.wrappedValue ? primaryForegroundColor : secondaryForegroundColor)
+    }
+
+    private func handleUndo() {
+        guard editorHandle.canUndo() else {
+            model.updateStatus("Nothing to undo")
+            return
+        }
+        editorHandle.undo()
+        model.updateStatus("Undo")
+    }
+
+    private func handleRedo() {
+        guard editorHandle.canRedo() else {
+            model.updateStatus("Nothing to redo")
+            return
+        }
+        editorHandle.redo()
+        model.updateStatus("Redo")
     }
 
     private var statusBar: some View {

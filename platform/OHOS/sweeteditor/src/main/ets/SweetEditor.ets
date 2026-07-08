@@ -606,6 +606,8 @@ export struct SweetEditor {
     this.editorCore.setEditorRenderColors(this.buildEditorRenderColors(this.theme));
     this.editorCore.setEditorRangeEffectStyles(this.buildEditorRangeEffectStyles(this.theme));
     this.editorCore.registerBatchTextStyles(this.theme.textStyles);
+    this.editorCore.setContentStartPadding(this.settings.getContentStartPadding());
+    this.editorCore.setGutterSticky(this.settings.isGutterSticky());
 
     this.initSubsystems();
     this.bindController();

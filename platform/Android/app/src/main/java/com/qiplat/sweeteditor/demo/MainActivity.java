@@ -18,6 +18,7 @@ import android.view.WindowInsetsController;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ImageButton;
+import android.widget.PopupMenu;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -44,13 +45,13 @@ import com.qiplat.sweeteditor.core.config.WrapMode;
 import com.qiplat.sweeteditor.core.foundation.TextChange;
 import com.qiplat.sweeteditor.core.search.SearchState;
 import com.qiplat.sweeteditor.core.search.SearchStatus;
+import com.qiplat.sweeteditor.demo.search.SearchPanel;
 import com.qiplat.sweeteditor.event.CursorChangedEvent;
 import com.qiplat.sweeteditor.event.CodeLensClickEvent;
 import com.qiplat.sweeteditor.event.GutterIconClickEvent;
 import com.qiplat.sweeteditor.event.InlayHintClickEvent;
 import com.qiplat.sweeteditor.event.LinkClickEvent;
 import com.qiplat.sweeteditor.event.TextChangedEvent;
-import com.qiplat.sweeteditor.search.SearchPanel;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -72,16 +73,18 @@ public class MainActivity extends AppCompatActivity {
     private static final int LIGHT_BG = 0xFFFAFBFD;
     private static final int LIGHT_FG = 0xFF1F2937;
     private static final int LIGHT_SECONDARY = 0xFF8A94A6;
+    private static final int MENU_SEARCH = 1;
+    private static final int MENU_REPLACE = 2;
+    private static final int MENU_WRAP = 3;
 
     private SweetEditor mEditor;
     private TextView mStatusBar;
     private View mToolbarContainer;
     private SearchPanel mSearchPanel;
-    private ImageButton mBtnSearch;
     private ImageButton mBtnUndo;
     private ImageButton mBtnRedo;
     private ImageButton mBtnTheme;
-    private ImageButton mBtnWrap;
+    private ImageButton mBtnMore;
     private Spinner mFileSpinner;
 
     private boolean mIsDarkTheme = true;
@@ -105,11 +108,10 @@ public class MainActivity extends AppCompatActivity {
         mStatusBar = findViewById(R.id.tv_status);
         mToolbarContainer = findViewById(R.id.toolbar_container);
         mSearchPanel = findViewById(R.id.search_panel);
-        mBtnSearch = findViewById(R.id.btn_search);
         mBtnUndo = findViewById(R.id.btn_undo);
         mBtnRedo = findViewById(R.id.btn_redo);
         mBtnTheme = findViewById(R.id.btn_switch_theme);
-        mBtnWrap = findViewById(R.id.btn_wrap_mode);
+        mBtnMore = findViewById(R.id.btn_more);
         mFileSpinner = findViewById(R.id.spn_files);
 
         applyToolbarInsets();
@@ -181,11 +183,10 @@ public class MainActivity extends AppCompatActivity {
         int secondary = mIsDarkTheme ? DARK_SECONDARY : LIGHT_SECONDARY;
 
         mToolbarContainer.setBackgroundColor(bg);
-        tintImageButton(mBtnSearch, fg);
+        tintImageButton(mBtnTheme, fg);
         tintImageButton(mBtnUndo, fg);
         tintImageButton(mBtnRedo, fg);
-        tintImageButton(mBtnTheme, fg);
-        tintImageButton(mBtnWrap, fg);
+        tintImageButton(mBtnMore, fg);
         mSearchPanel.applyTheme(mEditor.getTheme());
 
         mStatusBar.setBackgroundColor(bg);
@@ -435,38 +436,64 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupToolbar() {
-        mBtnSearch.setOnClickListener(v -> {
-            mSearchPanel.open();
-            updateStatus("Search");
-        });
+        mBtnTheme.setOnClickListener(v -> toggleTheme());
+        mBtnUndo.setOnClickListener(v -> undo());
+        mBtnRedo.setOnClickListener(v -> redo());
+        mBtnMore.setOnClickListener(this::showToolbarMenu);
+    }
 
-        mBtnUndo.setOnClickListener(v -> {
-            if (mEditor.canUndo()) {
-                mEditor.undo();
-                updateStatus("Undo");
-            } else {
-                updateStatus("Nothing to undo");
+    private void showToolbarMenu(@NonNull View anchor) {
+        PopupMenu popup = new PopupMenu(this, anchor);
+        popup.getMenu().add(0, MENU_SEARCH, 0, "Search");
+        popup.getMenu().add(0, MENU_REPLACE, 1, "Replace");
+        popup.getMenu().add(0, MENU_WRAP, 2, "Wrap");
+        popup.setOnMenuItemClickListener(item -> {
+            switch (item.getItemId()) {
+                case MENU_SEARCH:
+                    openSearch(false);
+                    return true;
+                case MENU_REPLACE:
+                    openSearch(true);
+                    return true;
+                case MENU_WRAP:
+                    cycleWrapMode();
+                    return true;
+                default:
+                    return false;
             }
         });
+        popup.show();
+    }
 
-        mBtnRedo.setOnClickListener(v -> {
-            if (mEditor.canRedo()) {
-                mEditor.redo();
-                updateStatus("Redo");
-            } else {
-                updateStatus("Nothing to redo");
-            }
-        });
+    private void openSearch(boolean replaceMode) {
+        mSearchPanel.open(replaceMode);
+        updateStatus(replaceMode ? "Replace" : "Search");
+    }
 
-        mBtnTheme.setOnClickListener(v -> {
-            mIsDarkTheme = !mIsDarkTheme;
-            mEditor.applyTheme(mIsDarkTheme ? EditorTheme.dark() : EditorTheme.light());
-            registerDemoStylesForCurrentTheme();
-            applyAppTheme();
-            updateStatus(mIsDarkTheme ? "Dark theme" : "Light theme");
-        });
+    private void undo() {
+        if (mEditor.canUndo()) {
+            mEditor.undo();
+            updateStatus("Undo");
+        } else {
+            updateStatus("Nothing to undo");
+        }
+    }
 
-        mBtnWrap.setOnClickListener(v -> cycleWrapMode());
+    private void redo() {
+        if (mEditor.canRedo()) {
+            mEditor.redo();
+            updateStatus("Redo");
+        } else {
+            updateStatus("Nothing to redo");
+        }
+    }
+
+    private void toggleTheme() {
+        mIsDarkTheme = !mIsDarkTheme;
+        mEditor.applyTheme(mIsDarkTheme ? EditorTheme.dark() : EditorTheme.light());
+        registerDemoStylesForCurrentTheme();
+        applyAppTheme();
+        updateStatus(mIsDarkTheme ? "Dark theme" : "Light theme");
     }
 
     private void cycleWrapMode() {

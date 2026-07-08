@@ -27,13 +27,13 @@
             android:paddingEnd="4dp" />
 
         <ImageButton
-            android:id="@+id/btn_search"
+            android:id="@+id/btn_switch_theme"
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:layout_marginStart="2dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/se_ic_search_24"
-            android:contentDescription="Search"
+            android:src="@drawable/ic_brightness_24"
+            android:contentDescription="Switch Theme"
             android:scaleType="centerInside"
             android:padding="8dp" />
 
@@ -60,30 +60,19 @@
             android:padding="8dp" />
 
         <ImageButton
-            android:id="@+id/btn_switch_theme"
+            android:id="@+id/btn_more"
             android:layout_width="36dp"
             android:layout_height="36dp"
             android:layout_marginStart="2dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_brightness_24"
-            android:contentDescription="Switch Theme"
-            android:scaleType="centerInside"
-            android:padding="8dp" />
-
-        <ImageButton
-            android:id="@+id/btn_wrap_mode"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:layout_marginStart="2dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:src="@drawable/ic_wrap_text_24"
-            android:contentDescription="Wrap Mode"
+            android:src="@drawable/ic_more_vert_24"
+            android:contentDescription="More"
             android:scaleType="centerInside"
             android:padding="8dp" />
 
     </LinearLayout>
 
-    <com.qiplat.sweeteditor.search.SearchPanel
+    <com.qiplat.sweeteditor.demo.search.SearchPanel
         android:id="@+id/search_panel"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

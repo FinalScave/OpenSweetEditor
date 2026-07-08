@@ -182,6 +182,22 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         dispatchEditorActionResult(editorCore.replaceAllSearchMatches(replacement))
     }
 
+    func undo() {
+        dispatchEditorActionResult(editorCore.undo())
+    }
+
+    func redo() {
+        dispatchEditorActionResult(editorCore.redo())
+    }
+
+    func canUndo() -> Bool {
+        editorCore.canUndo()
+    }
+
+    func canRedo() -> Bool {
+        editorCore.canRedo()
+    }
+
     func clearSearch() {
         dispatchEditorActionResult(editorCore.clearSearch())
     }

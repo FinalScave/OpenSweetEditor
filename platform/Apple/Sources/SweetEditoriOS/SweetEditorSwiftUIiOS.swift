@@ -83,6 +83,22 @@ public final class SweetEditorViewiOS: UIView {
         editorView.replaceAllSearchMatches(replacement)
     }
 
+    public func undo() {
+        editorView.undo()
+    }
+
+    public func redo() {
+        editorView.redo()
+    }
+
+    public func canUndo() -> Bool {
+        editorView.canUndo()
+    }
+
+    public func canRedo() -> Bool {
+        editorView.canRedo()
+    }
+
     public func clearSearch() {
         editorView.clearSearch()
     }

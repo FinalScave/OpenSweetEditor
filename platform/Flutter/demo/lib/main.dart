@@ -10,6 +10,8 @@ import 'demo_completion_provider.dart';
 import 'demo_decoration_provider.dart';
 import 'demo_file_metadata.dart';
 
+enum _ToolbarMenuAction { search, replace, wrap }
+
 void main() {
   runApp(const SweetEditorDemoApp());
 }
@@ -179,6 +181,26 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
     _updateStatus('WrapMode: ${_wrapMode.name}');
   }
 
+  void _handleUndo() {
+    if (_isLoadingSample) return;
+    if (_controller.canUndo) {
+      _controller.undo();
+      _updateStatus('Undo');
+    } else {
+      _updateStatus('Nothing to undo');
+    }
+  }
+
+  void _handleRedo() {
+    if (_isLoadingSample) return;
+    if (_controller.canRedo) {
+      _controller.redo();
+      _updateStatus('Redo');
+    } else {
+      _updateStatus('Nothing to redo');
+    }
+  }
+
   void _updateStatus(String message) {
     if (mounted) setState(() => _statusText = message);
   }
@@ -328,42 +350,95 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
 
   Widget _buildToolbar(Color bgColor, Color fgColor) {
     final secondaryColor = Color(_isDarkTheme ? 0xFF5E6778 : 0xFF8A94A6);
+    final isMobileToolbar =
+        defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       color: bgColor,
-      child: Row(
-        children: [
-          Expanded(child: _buildSamplePicker(bgColor, fgColor, secondaryColor)),
-          _iconButton(Icons.search, fgColor, () {
-            _openSearch(replaceMode: false);
-          }),
-          _iconButton(Icons.find_replace, fgColor, () {
-            _openSearch(replaceMode: true);
-          }),
-          _iconButton(Icons.undo, fgColor, () {
-            if (_isLoadingSample) return;
-            if (_controller.canUndo) {
-              _controller.undo();
-              _updateStatus('Undo');
-            } else {
-              _updateStatus('Nothing to undo');
-            }
-          }),
-          _iconButton(Icons.redo, fgColor, () {
-            if (_isLoadingSample) return;
-            if (_controller.canRedo) {
-              _controller.redo();
-              _updateStatus('Redo');
-            } else {
-              _updateStatus('Nothing to redo');
-            }
-          }),
-          _iconButton(Icons.brightness_6, fgColor, _toggleTheme),
-          _iconButton(Icons.wrap_text, fgColor, _cycleWrapMode),
-        ],
-      ),
+      child: isMobileToolbar
+          ? _buildMobileToolbar(bgColor, fgColor, secondaryColor)
+          : Row(
+              children: [
+                Expanded(
+                  child: _buildSamplePicker(bgColor, fgColor, secondaryColor),
+                ),
+                _iconButton(Icons.search, fgColor, () {
+                  _openSearch(replaceMode: false);
+                }),
+                _iconButton(Icons.find_replace, fgColor, () {
+                  _openSearch(replaceMode: true);
+                }),
+                _iconButton(Icons.undo, fgColor, _handleUndo),
+                _iconButton(Icons.redo, fgColor, _handleRedo),
+                _iconButton(Icons.brightness_6, fgColor, _toggleTheme),
+                _iconButton(Icons.wrap_text, fgColor, _cycleWrapMode),
+              ],
+            ),
     );
+  }
+
+  Widget _buildMobileToolbar(
+    Color bgColor,
+    Color fgColor,
+    Color secondaryColor,
+  ) {
+    return Row(
+      children: [
+        Expanded(child: _buildSamplePicker(bgColor, fgColor, secondaryColor)),
+        _iconButton(Icons.brightness_6, fgColor, _toggleTheme),
+        _iconButton(Icons.undo, fgColor, _handleUndo),
+        _iconButton(Icons.redo, fgColor, _handleRedo),
+        PopupMenuButton<_ToolbarMenuAction>(
+          icon: Icon(Icons.more_vert, size: 20, color: fgColor),
+          padding: const EdgeInsets.all(6),
+          constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+          tooltip: 'More',
+          color: bgColor,
+          onSelected: _handleToolbarMenuAction,
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: _ToolbarMenuAction.search,
+              child: _toolbarMenuItem(Icons.search, 'Search', fgColor),
+            ),
+            PopupMenuItem(
+              value: _ToolbarMenuAction.replace,
+              child: _toolbarMenuItem(Icons.find_replace, 'Replace', fgColor),
+            ),
+            PopupMenuItem(
+              value: _ToolbarMenuAction.wrap,
+              child: _toolbarMenuItem(Icons.wrap_text, 'Wrap', fgColor),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _toolbarMenuItem(IconData icon, String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 18, color: color),
+        const SizedBox(width: 10),
+        Text(label, style: TextStyle(color: color)),
+      ],
+    );
+  }
+
+  void _handleToolbarMenuAction(_ToolbarMenuAction action) {
+    switch (action) {
+      case _ToolbarMenuAction.search:
+        _openSearch(replaceMode: false);
+        return;
+      case _ToolbarMenuAction.replace:
+        _openSearch(replaceMode: true);
+        return;
+      case _ToolbarMenuAction.wrap:
+        _cycleWrapMode();
+        return;
+    }
   }
 
   Widget _buildSearchPanel(Color bgColor, Color fgColor, Color secondaryColor) {
@@ -380,34 +455,29 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
           Row(
             children: [
               Expanded(
-                child: SizedBox(
-                  height: 34,
-                  child: TextField(
-                    controller: _searchController,
-                    focusNode: _searchFocusNode,
-                    onChanged: (_) => _performSearch(),
-                    onSubmitted: (_) => _findNextSearchMatch(),
-                    style: TextStyle(color: fgColor, fontSize: 13),
-                    decoration: _searchFieldDecoration(
-                      'Find',
-                      fgColor,
-                      secondaryColor,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 96),
+                  child: SizedBox(
+                    height: 34,
+                    child: TextField(
+                      controller: _searchController,
+                      focusNode: _searchFocusNode,
+                      onChanged: (_) => _performSearch(),
+                      onSubmitted: (_) => _findNextSearchMatch(),
+                      style: TextStyle(color: fgColor, fontSize: 13),
+                      decoration: _searchFieldDecoration(
+                        'Find',
+                        fgColor,
+                        secondaryColor,
+                      ),
                     ),
                   ),
                 ),
               ),
-              _iconButton(Icons.subdirectory_arrow_left, fgColor, () {
+              _searchIconButton(Icons.subdirectory_arrow_left, fgColor, () {
                 _insertNewlineToken(_searchController);
               }),
-              SizedBox(
-                width: 56,
-                child: Text(
-                  _searchCounterText(),
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: secondaryColor, fontSize: 12),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
+              _searchCounterLabel(secondaryColor),
               _searchToggleButton(
                 'Aa',
                 _searchCaseSensitive,
@@ -438,17 +508,17 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
                   _performSearch();
                 },
               ),
-              _iconButton(
+              _searchIconButton(
                 Icons.keyboard_arrow_up,
                 fgColor,
                 _findPreviousSearchMatch,
               ),
-              _iconButton(
+              _searchIconButton(
                 Icons.keyboard_arrow_down,
                 fgColor,
                 _findNextSearchMatch,
               ),
-              _iconButton(Icons.close, fgColor, _closeSearch),
+              _searchIconButton(Icons.close, fgColor, _closeSearch),
             ],
           ),
           if (_replaceVisible) ...[
@@ -470,7 +540,7 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
                     ),
                   ),
                 ),
-                _iconButton(Icons.subdirectory_arrow_left, fgColor, () {
+                _searchIconButton(Icons.subdirectory_arrow_left, fgColor, () {
                   _insertNewlineToken(_replaceController);
                 }),
                 TextButton(
@@ -497,7 +567,7 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
     hintText: hint,
     hintStyle: TextStyle(color: secondaryColor, fontSize: 13),
     isDense: true,
-    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
     filled: true,
     fillColor: secondaryColor.withValues(alpha: 0.10),
     border: OutlineInputBorder(
@@ -524,14 +594,33 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
     return TextButton(
       onPressed: onPressed,
       style: TextButton.styleFrom(
-        minimumSize: const Size(36, 30),
-        padding: const EdgeInsets.symmetric(horizontal: 6),
+        minimumSize: const Size(0, 30),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.compact,
+        padding: const EdgeInsets.symmetric(horizontal: 4),
         foregroundColor: selected ? fgColor : secondaryColor,
         backgroundColor: selected
             ? secondaryColor.withValues(alpha: 0.18)
             : null,
       ),
       child: Text(label, style: const TextStyle(fontSize: 12)),
+    );
+  }
+
+  Widget _searchCounterLabel(Color secondaryColor) {
+    final counter = _searchCounterText();
+    if (counter.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 2),
+      child: Text(
+        counter,
+        textAlign: TextAlign.center,
+        style: TextStyle(color: secondaryColor, fontSize: 12),
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 
@@ -580,6 +669,16 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
       onPressed: onPressed,
       padding: const EdgeInsets.all(6),
       constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+    );
+  }
+
+  Widget _searchIconButton(IconData icon, Color color, VoidCallback onPressed) {
+    return IconButton(
+      icon: Icon(icon, size: 22, color: color),
+      onPressed: onPressed,
+      padding: EdgeInsets.zero,
+      visualDensity: VisualDensity.compact,
+      constraints: const BoxConstraints(minWidth: 28, minHeight: 34),
     );
   }
 

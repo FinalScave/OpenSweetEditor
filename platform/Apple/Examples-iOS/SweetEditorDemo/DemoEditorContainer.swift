@@ -29,6 +29,22 @@ final class DemoEditorHandle: ObservableObject {
         view?.replaceAllSearchMatches(replacement)
     }
 
+    func undo() {
+        view?.undo()
+    }
+
+    func redo() {
+        view?.redo()
+    }
+
+    func canUndo() -> Bool {
+        view?.canUndo() ?? false
+    }
+
+    func canRedo() -> Bool {
+        view?.canRedo() ?? false
+    }
+
     func clearSearch() {
         view?.clearSearch()
     }

@@ -36,6 +36,7 @@ internal sealed class EditorToolbarController
         ZoomInButton = CreateTextButton("A+", "Larger UI");
         PerfButton = CreateTextButton("FPS", "Toggle performance overlay");
         HelpButton = CreateIconButton(HelpIcon, "Keyboard shortcuts");
+        MoreButton = CreateTextButton("...", "More");
         SamplePickerButton = CreateSamplePickerButton(out samplePickerChrome, out samplePickerLabel, out samplePickerChevron);
         wrapBadgeText = FindWrapBadge(WrapButton);
         SetSamplePickerLabel(null);
@@ -55,6 +56,7 @@ internal sealed class EditorToolbarController
     public Button ZoomInButton { get; }
     public Button PerfButton { get; }
     public Button HelpButton { get; }
+    public Button MoreButton { get; }
     public Border SamplePickerChrome => samplePickerChrome;
     public TextBlock SamplePickerLabel => samplePickerLabel;
     public AvaPath SamplePickerChevron => samplePickerChevron;
@@ -63,17 +65,21 @@ internal sealed class EditorToolbarController
     {
         get
         {
+            yield return UndoButton;
+            yield return RedoButton;
             yield return SearchButton;
+            yield return ReplaceButton;
             yield return ThemeButton;
             yield return WrapButton;
             yield return ZoomOutButton;
             yield return ZoomInButton;
             yield return PerfButton;
             yield return HelpButton;
+            yield return MoreButton;
         }
     }
 
-    public Control BuildView()
+    public Control BuildView(bool mobile)
     {
         SamplePickerButton.MinWidth = 128;
         SamplePickerButton.Height = 36;
@@ -87,7 +93,7 @@ internal sealed class EditorToolbarController
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center,
         };
-        foreach (Button button in ActionButtons)
+        foreach (Button button in ToolbarButtons(mobile))
         {
             actions.Children.Add(button);
         }
@@ -102,6 +108,29 @@ internal sealed class EditorToolbarController
         Grid.SetColumn(actions, 1);
         bar.Children.Add(actions);
         return bar;
+    }
+
+    private IEnumerable<Button> ToolbarButtons(bool mobile)
+    {
+        if (mobile)
+        {
+            yield return ThemeButton;
+            yield return UndoButton;
+            yield return RedoButton;
+            yield return MoreButton;
+            yield break;
+        }
+
+        yield return UndoButton;
+        yield return RedoButton;
+        yield return SearchButton;
+        yield return ReplaceButton;
+        yield return ThemeButton;
+        yield return WrapButton;
+        yield return ZoomOutButton;
+        yield return ZoomInButton;
+        yield return PerfButton;
+        yield return HelpButton;
     }
 
     public void SetTheme(bool dark)
