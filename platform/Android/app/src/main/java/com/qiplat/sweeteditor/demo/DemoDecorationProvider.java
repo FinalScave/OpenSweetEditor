@@ -152,8 +152,9 @@ public class DemoDecorationProvider implements DecorationProvider {
         String currentFileName = resolveCurrentFileName(context);
 
         DocumentHighlightSlice highlightSlice = null;
-        LineRange visibleRange = new LineRange(context.visibleLineRange.start,
-                context.visibleLineRange.end - context.visibleLineRange.start);
+        int visibleStartLine = Math.max(0, context.visibleLineRange.start);
+        LineRange visibleRange = new LineRange(visibleStartLine,
+                Math.max(0, context.visibleLineRange.end - visibleStartLine + 1));
         boolean fileChanged = !currentFileName.equals(analyzedFileName);
         if (documentAnalyzer == null || fileChanged) {
             documentAnalyzer = highlightEngine.loadDocument(
