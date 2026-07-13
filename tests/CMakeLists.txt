@@ -13,7 +13,7 @@ file(GLOB_RECURSE PERF_TEST_SOURCES
 function(configure_sweeteditor_test_target target_name)
     target_sources(${target_name} PRIVATE
             $<TARGET_OBJECTS:${SWEETEDITOR_CORE_OBJECT_TARGET}>
-            $<TARGET_OBJECTS:${SWEETEDITOR_C_API_OBJECT_TARGET}>
+            ${SWEETEDITOR_C_API_OBJECTS}
     )
     target_include_directories(${target_name} PRIVATE
             ${SWEETEDITOR_PUBLIC_INCLUDE_DIR}
@@ -26,27 +26,7 @@ function(configure_sweeteditor_test_target target_name)
             SWEETEDITOR_DEBUG=1
             SWEETEDITOR_EXPORT=1
     )
-    if (MSVC)
-        target_compile_options(${target_name} PRIVATE /Zc:__cplusplus /utf-8)
-        target_compile_definitions(${target_name} PRIVATE _CRT_SECURE_NO_WARNINGS NOMINMAX=1)
-    endif ()
-    if (ANDROID)
-        target_compile_definitions(${target_name} PRIVATE ANDROID)
-    elseif (OHOS)
-        target_compile_definitions(${target_name} PRIVATE OHOS)
-    elseif (WIN32)
-        target_compile_definitions(${target_name} PRIVATE WINDOWS _POSIX _POSIX_THREAD_SAFE_FUNCTIONS)
-    elseif (APPLE)
-        if (CMAKE_SYSTEM_NAME STREQUAL "iOS")
-            target_compile_definitions(${target_name} PRIVATE IOS)
-        else ()
-            target_compile_definitions(${target_name} PRIVATE OSX)
-        endif ()
-    elseif (EMSCRIPTEN)
-        target_compile_definitions(${target_name} PRIVATE WASM)
-    elseif (UNIX AND NOT APPLE)
-        target_compile_definitions(${target_name} PRIVATE LINUX)
-    endif ()
+    sweeteditor_apply_platform_target(${target_name})
     target_link_libraries(${target_name} PRIVATE
             SweetEditor3p::Catch2
             ${SWEETEDITOR_LINK_LIB}

@@ -98,7 +98,6 @@ function copy_apple_dylib() {
   local build_dir="$1"
   local dest_dir="$2"
   local dylib_path=""
-  local framework_binary_path=""
   local candidates=(
     "$build_dir/lib/libsweeteditor.dylib"
     "$build_dir/lib/Release/libsweeteditor.dylib"
@@ -121,30 +120,6 @@ function copy_apple_dylib() {
   dylib_path="$(find "$build_dir" -type f -name "libsweeteditor.dylib" | head -n 1 || true)"
   if [ -n "$dylib_path" ]; then
     cp -f "$dylib_path" "$dest_dir/"
-    return 0
-  fi
-
-  local framework_candidates=(
-    "$build_dir/lib/Release/SweetEditorCore.framework/SweetEditorCore"
-    "$build_dir/lib/Release/SweetEditorCore.framework/Versions/A/SweetEditorCore"
-    "$build_dir/lib/SweetEditorCore.framework/SweetEditorCore"
-    "$build_dir/lib/SweetEditorCore.framework/Versions/A/SweetEditorCore"
-    "$build_dir/Release/SweetEditorCore.framework/SweetEditorCore"
-    "$build_dir/Release/SweetEditorCore.framework/Versions/A/SweetEditorCore"
-    "$build_dir/Release-iphoneos/SweetEditorCore.framework/SweetEditorCore"
-    "$build_dir/Release-iphonesimulator/SweetEditorCore.framework/SweetEditorCore"
-  )
-
-  for framework_binary_path in "${framework_candidates[@]}"; do
-    if [ -f "$framework_binary_path" ]; then
-      cp -f "$framework_binary_path" "$dest_dir/libsweeteditor.dylib"
-      return 0
-    fi
-  done
-
-  framework_binary_path="$(find "$build_dir" -type f \( -path "*SweetEditorCore.framework/SweetEditorCore" -o -path "*SweetEditorCore.framework/Versions/A/SweetEditorCore" \) | head -n 1 || true)"
-  if [ -n "$framework_binary_path" ]; then
-    cp -f "$framework_binary_path" "$dest_dir/libsweeteditor.dylib"
     return 0
   fi
 
@@ -269,6 +244,7 @@ function build_apple() {
     -DSWEETEDITOR_BUILD_SHARED="$build_shared_lib"
     -DSWEETEDITOR_BUILD_STATIC="$build_static_lib"
     -DSWEETEDITOR_BUILD_TESTS=OFF
+    -DSWEETEDITOR_BUILD_APPLE_FRAMEWORK=OFF
     -DCMAKE_OSX_SYSROOT="$apple_sysroot"
     -DCMAKE_OSX_ARCHITECTURES="$apple_arch"
   )
@@ -283,7 +259,7 @@ function build_apple() {
 
   cmake "${cmake_args[@]}"
 
-  cmake --build "$apple_build_dir" --target "$apple_target_name" -j 12
+  cmake --build "$apple_build_dir" --target "$apple_target_name" --config Release -j 12
 
   case "$copy_mode" in
     dylib)

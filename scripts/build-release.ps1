@@ -69,6 +69,80 @@ function Resolve-CommandPath {
     return $command.Source
 }
 
+function Resolve-VsWherePath {
+    $command = Get-Command "vswhere.exe" -ErrorAction SilentlyContinue
+    if ($command) {
+        return $command.Source
+    }
+
+    $candidates = @(
+        (Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"),
+        (Join-Path $env:ProgramFiles "Microsoft Visual Studio\Installer\vswhere.exe")
+    )
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate) {
+            return $candidate
+        }
+    }
+
+    throw "Visual Studio Installer tool was not found: vswhere.exe"
+}
+
+function Test-CMakeGeneratorSupport {
+    param(
+        [Parameter(Mandatory = $true)][string]$CMakePath,
+        [Parameter(Mandatory = $true)][string]$Generator
+    )
+
+    $help = (& $CMakePath --help 2>&1) -join "`n"
+    if ($LASTEXITCODE -ne 0) {
+        return $false
+    }
+    return $help -match "(?m)^\*?\s*$([regex]::Escape($Generator))\s+="
+}
+
+function Resolve-WindowsBuildEnvironment {
+    $vswhere = Resolve-VsWherePath
+    $versions = @(
+        [pscustomobject]@{ Range = "[18.0,19.0)"; Year = "2026"; Generator = "Visual Studio 18 2026" },
+        [pscustomobject]@{ Range = "[17.0,18.0)"; Year = "2022"; Generator = "Visual Studio 17 2022" },
+        [pscustomobject]@{ Range = "[16.0,17.0)"; Year = "2019"; Generator = "Visual Studio 16 2019" }
+    )
+
+    foreach ($version in $versions) {
+        $pathLines = & $vswhere -latest -products "*" -requires "Microsoft.VisualStudio.Component.VC.Tools.x86.x64" -version $version.Range -property installationPath
+        if ($LASTEXITCODE -ne 0) {
+            throw "Failed to query installed Visual Studio instances."
+        }
+        $installationPath = (($pathLines | ForEach-Object { $_ -replace "`0", "" }) -join "").Trim()
+        if (-not $installationPath) {
+            continue
+        }
+
+        $cmakeCandidates = @(
+            (Join-Path $installationPath "Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe")
+        )
+        $pathCMake = Get-Command "cmake" -ErrorAction SilentlyContinue
+        if ($pathCMake) {
+            $cmakeCandidates += $pathCMake.Source
+        }
+
+        foreach ($cmakePath in @($cmakeCandidates | Select-Object -Unique)) {
+            if ((Test-Path -LiteralPath $cmakePath) -and
+                (Test-CMakeGeneratorSupport -CMakePath $cmakePath -Generator $version.Generator)) {
+                return [pscustomobject]@{
+                    CMakePath = $cmakePath
+                    Generator = $version.Generator
+                    InstancePath = $installationPath
+                    Year = $version.Year
+                }
+            }
+        }
+    }
+
+    throw "No supported Visual Studio C++ toolchain was found. Install Visual Studio 2019, 2022, or 2026 with Desktop development with C++."
+}
+
 function Get-WslDistros {
     param([Parameter(Mandatory = $true)][string]$WslPath)
 
@@ -223,13 +297,19 @@ function Copy-BuiltLibraries {
 
 function Build-WindowsMsvc {
     Write-Section "Windows X64"
-    $windowsBuildDir = Join-Path $BuildDir "windows"
+    $environment = Resolve-WindowsBuildEnvironment
+    $windowsBuildDir = Join-Path $BuildDir "windows\vs$($environment.Year)"
     $windowsPrebuiltDir = Join-Path $OutputDir "windows\x64"
 
-    Invoke-External -FilePath "cmake" -Arguments @(
+    Write-Host "Visual Studio: $($environment.Generator)"
+    Write-Host "CMake: $($environment.CMakePath)"
+
+    Invoke-External -FilePath $environment.CMakePath -Arguments @(
         $ProjectDir,
         "-B", $windowsBuildDir,
-        "-G", "Visual Studio 17 2022",
+        "-G", $environment.Generator,
+        "-A", "x64",
+        "-DCMAKE_GENERATOR_INSTANCE=$($environment.InstancePath)",
         "-DCMAKE_BUILD_TYPE=Release",
         "-DCMAKE_CXX_STANDARD=17",
         "-DCMAKE_CXX_STANDARD_REQUIRED=ON",
@@ -238,7 +318,7 @@ function Build-WindowsMsvc {
         "-DSWEETEDITOR_BUILD_TESTS=OFF"
     )
 
-    Invoke-External -FilePath "cmake" -Arguments @(
+    Invoke-External -FilePath $environment.CMakePath -Arguments @(
         "--build", $windowsBuildDir,
         "--target", $TargetName,
         "--config", "Release",

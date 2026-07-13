@@ -14,6 +14,7 @@ OUTPUT_XCFRAMEWORK_IOS="${OUTPUT_DIR}/SweetEditorCoreIOS.xcframework"
 OUTPUT_XCFRAMEWORK_OSX="${OUTPUT_DIR}/SweetEditorCoreOSX.xcframework"
 FRAMEWORK_NAME="SweetEditorCore.framework"
 FRAMEWORK_BINARY_NAME="SweetEditorCore"
+FRAMEWORK_TARGET="SweetEditorCore"
 
 # Parse argument: "ios", "osx", or empty (build both)
 BUILD_TARGET="${1:-all}"
@@ -30,6 +31,8 @@ function configure_apple_build() {
     -DSWEETEDITOR_BUILD_TESTS=OFF \
     -DSWEETEDITOR_BUILD_SHARED=ON \
     -DSWEETEDITOR_BUILD_STATIC=OFF \
+    -DSWEETEDITOR_BUILD_APPLE_FRAMEWORK=ON \
+    -DSWEETEDITOR_APPLE_STATIC_FRAMEWORK=OFF \
     "$@"
 }
 
@@ -107,14 +110,14 @@ function build_ios() {
     -DCMAKE_OSX_SYSROOT=iphoneos \
     -DCMAKE_OSX_ARCHITECTURES=arm64
 
-  cmake --build "${IOS_DEVICE_BUILD_DIR}" --config Release
+  cmake --build "${IOS_DEVICE_BUILD_DIR}" --target "${FRAMEWORK_TARGET}" --config Release
 
   configure_apple_build "${IOS_SIM_BUILD_DIR}" \
     -DCMAKE_SYSTEM_NAME=iOS \
     -DCMAKE_OSX_SYSROOT=iphonesimulator \
     -DCMAKE_OSX_ARCHITECTURES=arm64
 
-  cmake --build "${IOS_SIM_BUILD_DIR}" --config Release
+  cmake --build "${IOS_SIM_BUILD_DIR}" --target "${FRAMEWORK_TARGET}" --config Release
 
   IOS_DEVICE_FRAMEWORK_PATH="$(locate_framework_dir "${IOS_DEVICE_BUILD_DIR}")"
   IOS_SIM_FRAMEWORK_PATH="$(locate_framework_dir "${IOS_SIM_BUILD_DIR}")"
@@ -144,12 +147,12 @@ function build_osx() {
   configure_apple_build "${MACOS_BUILD_DIR}" \
     -DCMAKE_OSX_ARCHITECTURES=arm64
 
-  cmake --build "${MACOS_BUILD_DIR}" --config Release
+  cmake --build "${MACOS_BUILD_DIR}" --target "${FRAMEWORK_TARGET}" --config Release
 
   configure_apple_build "${MACOS_X64_BUILD_DIR}" \
     -DCMAKE_OSX_ARCHITECTURES=x86_64
 
-  cmake --build "${MACOS_X64_BUILD_DIR}" --config Release
+  cmake --build "${MACOS_X64_BUILD_DIR}" --target "${FRAMEWORK_TARGET}" --config Release
 
   MACOS_FRAMEWORK_PATH="$(locate_framework_dir "${MACOS_BUILD_DIR}")"
   MACOS_X64_FRAMEWORK_PATH="$(locate_framework_dir "${MACOS_X64_BUILD_DIR}")"
