@@ -1,59 +1,10 @@
-# WinForms Platform API
+# WinForms API
 
-This document maps to the current WinForms implementation:
+For installation, requirements, build commands, and package consumption, see the [WinForms README](../../platform/WinForms/SweetEditor/README.md).
 
-- Control layer: `platform/WinForms/SweetEditor/SweetEditorControl.cs`
-- Bridge layer: `platform/WinForms/SweetEditor/EditorCore.cs`
-- Protocol encode/decode: `platform/WinForms/SweetEditor/CoreProtocol.cs`
-- Extension/Provider:
-  - `platform/WinForms/SweetEditor/EditorCompletion.cs`
-  - `platform/WinForms/SweetEditor/EditorDecoration.cs`
-  - `platform/WinForms/SweetEditor/EditorNewLine.cs`
-- Performance debug: `platform/WinForms/SweetEditor/Perf.cs`
-- Demo: `platform/WinForms/Demo/Form1.cs`
+This reference describes the primary host-facing API and WinForms-specific helpers in `platform/WinForms/SweetEditor`.
 
-## Architecture Notes
-
-- WinForms calls C API by P/Invoke (`sweeteditor.dll`).
-- `EditorCore` wraps native calls, and `CoreProtocol` encodes and decodes binary payloads.
-- The current bridge protocol is binary payload.
-- `SweetEditorControl` handles input, drawing, event publishing, and provider management.
-- `Document` creation and line-text query use UTF-16 boundary; text fields in the render model and `EditorActionResult` payload are currently decoded as UTF-8.
-
-## Quick Start
-
-### Environment Requirements (current repository setup)
-
-- .NET SDK: `8.0+`
-- Runtime platform: Windows x64
-
-### Run the WinForms Demo in this repository
-
-```powershell
-cd platform/WinForms
-dotnet build .\WinForms.sln -c Release
-dotnet run --project .\Demo\Demo.csproj -c Release
-```
-
-### Integrate into an existing WinForms app via NuGet
-
-Recommended: install from NuGet directly:
-
-```powershell
-dotnet add package SweetEditor --version 1.0.4
-```
-
-Or add this in your project file:
-
-```xml
-<ItemGroup>
-  <PackageReference Include="SweetEditor" Version="1.0.4" />
-</ItemGroup>
-```
-
-> Use the latest published version when integrating; `1.0.4` is the current example in this document.
-
-### Minimal Integration Example
+## Minimal Integration
 
 ```csharp
 using System.Windows.Forms;
@@ -63,10 +14,7 @@ public sealed class MainForm : Form
 {
     public MainForm()
     {
-        var editor = new SweetEditorControl
-        {
-            Dock = DockStyle.Fill
-        };
+        var editor = new SweetEditorControl { Dock = DockStyle.Fill };
         Controls.Add(editor);
 
         editor.ApplyTheme(EditorTheme.Dark());
@@ -76,48 +24,36 @@ public sealed class MainForm : Form
 }
 ```
 
-### Notes
+The NuGet package places `sweeteditor.dll` under `runtimes/win-x64/native`, so normal package restore does not require manual `DllImport` setup or native file copying.
 
-- The NuGet package includes native runtime:
-  `runtimes/win-x64/native/sweeteditor.dll`
-- No manual `DllImport` setup or manual native file copy is required in normal NuGet restore flow.
+## `SweetEditorControl`
 
-## Public Control Layer: `SweetEditorControl`
-
-### Constructors
+### Construction and Core Configuration
 
 ```csharp
 public SweetEditorControl()
 public SweetEditorControl(IContainer container)
-```
 
-### Document / Appearance / Language Config / Debug
-
-```csharp
+public EditorSettings Settings { get; }
 public void LoadDocument(Document document)
-public EditorTheme GetTheme()
+public Document? GetDocument()
+public EditorTheme? GetTheme()
 public void ApplyTheme(EditorTheme theme)
-public void SetPerfOverlayEnabled(bool enabled)
-public bool IsPerfOverlayEnabled()
-public void SetFoldArrowMode(FoldArrowMode mode)
-public void SetWrapMode(WrapMode mode)
-public void SetAutoIndentMode(AutoIndentMode mode)
-public AutoIndentMode GetAutoIndentMode()
+public EditorKeyMap? GetKeyMap()
+public void SetKeyMap(EditorKeyMap editorKeyMap)
 public void SetLanguageConfiguration(LanguageConfiguration? config)
 public LanguageConfiguration? GetLanguageConfiguration()
 public void SetMetadata<T>(T? metadata) where T : class, IEditorMetadata
 public T? GetMetadata<T>() where T : class, IEditorMetadata
-public void SetLineSpacing(float add, float mult)
-public CursorRect GetPositionRect(int line, int column)
-public CursorRect GetCursorRect()
 public void SetEditorIconProvider(EditorIconProvider? provider)
-public void SetMaxGutterIcons(int count)
+public void SetPerfOverlayEnabled(bool enabled)
+public bool IsPerfOverlayEnabled()
 public void Flush()
 ```
 
-`Flush()` is a force-refresh / diagnostic entrypoint. Normal edit, decoration, scroll, and selection paths dispatch `EditorActionResult` through the unified result path, and `NeedsRedraw` decides whether to refresh the render model and redraw; hosts usually do not need to call it after batched decoration updates.
+`Flush()` forces a render-model refresh for diagnostics. Normal editing, scrolling, selection, provider, and decoration operations request redraws automatically.
 
-### Edit / Line Actions / Undo Redo
+### Text Editing, Line Operations, and Clipboard
 
 ```csharp
 public void InsertText(string text)
@@ -138,14 +74,33 @@ public bool Undo()
 public bool Redo()
 public bool CanUndo()
 public bool CanRedo()
+
+public void CopyToClipboard()
+public void PasteFromClipboard()
+public void CutToClipboard()
 ```
 
-### Cursor Selection / Navigation
+`ApplyTextEdits(...)` accepts non-overlapping edits in original-document coordinates and groups applied content changes into one undo operation.
+
+### Search and Replace
+
+```csharp
+public void Search(SearchRequest request)
+public void FindNextSearchMatch()
+public void FindPreviousSearchMatch()
+public void ReplaceCurrentSearchMatch(string replacement)
+public void ReplaceAllSearchMatches(string replacement)
+public void ClearSearch()
+public SearchState GetSearchState()
+```
+
+`SearchOptions` supports case-sensitive, whole-word, regular-expression, wrap-around, and maximum-match settings. `SearchState` reports status, match count, current match, generation, and any error message.
+
+### Cursor, Selection, Navigation, and Geometry
 
 ```csharp
 public string GetSelectedText()
 public TextPosition GetCursorPosition()
-public Document? GetDocument()
 public TextRange GetWordRangeAtCursor()
 public string GetWordAtCursor()
 public void SetCursorPosition(TextPosition position)
@@ -154,18 +109,24 @@ public void SetSelection(TextRange range)
 public (bool hasSelection, TextRange range) GetSelection()
 public void SelectAll()
 
-public void ScrollToLine(int line, ScrollBehavior behavior = ScrollBehavior.CENTER)
+public void GotoPosition(int line, int column = 0)
+public void ScrollToLine(int line, ScrollBehavior behavior = ScrollBehavior.GOTO_CENTER)
 public void SetScroll(float scrollX, float scrollY)
 public ScrollMetrics GetScrollMetrics()
-public void GotoPosition(int line, int column = 0)
+public CursorRect GetPositionRect(int line, int column)
+public CursorRect GetCursorRect()
+public IntRange GetVisibleLineRange()
+public int GetTotalLineCount()
 ```
 
-### Styles / Decorations / Folding / Linked Editing
+`GetTotalLineCount()` returns `0` when no document is loaded. `GetLinkTargetAt(...)` and other string queries return an empty string when no value is available.
+
+### Styles, Decorations, and Folding
 
 ```csharp
-public void registerTextStyle(int styleId, int color, int backgroundColor, int fontStyle)
-public void registerBatchTextStyles(IReadOnlyDictionary<int, TextStyle> stylesById)
-public void registerTextStyle(int styleId, int color, int fontStyle)
+public void RegisterTextStyle(int styleId, int color, int backgroundColor, int fontStyle)
+public void RegisterTextStyle(int styleId, int color, int fontStyle)
+public void RegisterBatchTextStyles(IReadOnlyDictionary<int, TextStyle> stylesById)
 public void SetLineSpans(int line, SpanLayer layer, IList<StyleSpan> spans)
 public void SetLineSpans(int line, IList<StyleSpan> spans)
 public void SetBatchLineSpans(SpanLayer layer, Dictionary<int, IList<StyleSpan>> spansByLine)
@@ -177,28 +138,24 @@ public void SetLinePhantomTexts(int line, IList<PhantomText> phantoms)
 public void SetBatchLinePhantomTexts(Dictionary<int, IList<PhantomText>> phantomsByLine)
 public void SetLineCodeLens(int line, IList<CodeLensItem> items)
 public void SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine)
-public void ClearCodeLens()
 public void SetLineLinks(int line, IList<LinkSpan> links)
 public void SetBatchLineLinks(Dictionary<int, IList<LinkSpan>> linksByLine)
 public string GetLinkTargetAt(int line, int column)
-public void ClearLinks()
-
 public void SetLineDiagnostics(int line, IList<Diagnostic> items)
 public void SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine)
-public void ClearDiagnostics()
-
+public void SetLineDocumentHighlights(int line, IList<DocumentHighlight> items)
+public void SetBatchLineDocumentHighlights(Dictionary<int, IList<DocumentHighlight>> highlightsByLine)
 public void SetLineGutterIcons(int line, IList<GutterIcon> icons)
 public void SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine)
-public void ClearGutterIcons()
 
 public void SetIndentGuides(IList<IndentGuide> guides)
 public void SetBracketGuides(IList<BracketGuide> guides)
 public void SetFlowGuides(IList<FlowGuide> guides)
 public void SetSeparatorGuides(IList<SeparatorGuide> guides)
-public void ClearGuides()
 
 public void SetFoldRegions(IList<FoldRegion> regions)
 public bool ToggleFold(int line)
+public bool ToggleFoldAt(int line)
 public bool FoldAt(int line)
 public bool UnfoldAt(int line)
 public void FoldAll()
@@ -209,10 +166,22 @@ public void ClearHighlights()
 public void ClearHighlights(SpanLayer layer)
 public void ClearInlayHints()
 public void ClearPhantomTexts()
+public void ClearGutterIcons()
+public void ClearCodeLens()
+public void ClearLinks()
+public void ClearGuides()
+public void ClearDiagnostics()
+public void ClearDocumentHighlights()
 public void ClearAllDecorations()
 public void ClearMatchedBrackets()
+```
 
-public EditorActionResult InsertSnippet(string snippetTemplate)
+The control renders syntax, semantic, and overlay spans; inlay hints; phantom text; CodeLens; links; diagnostics; document highlights; gutter icons; fold regions; and indent, bracket, flow, and separator guides.
+
+### Snippets and Linked Editing
+
+```csharp
+public void InsertSnippet(string snippetTemplate)
 public void StartLinkedEditing(LinkedEditingModel model)
 public bool IsInLinkedEditing()
 public bool LinkedEditingNext()
@@ -220,7 +189,9 @@ public bool LinkedEditingPrev()
 public void CancelLinkedEditing()
 ```
 
-### Provider / Completion
+Snippet insertion supports tab stops. Linked editing can also be started directly with a `LinkedEditingModel`.
+
+### Providers and Completion
 
 ```csharp
 public void AddNewLineActionProvider(INewLineActionProvider provider)
@@ -236,35 +207,136 @@ public void TriggerCompletion()
 public void ShowCompletionItems(List<CompletionItem> items)
 public void DismissCompletion()
 public void SetCompletionItemRenderer(ICompletionItemRenderer? renderer)
-public (int start, int end) GetVisibleLineRange()
-public int GetTotalLineCount()
 ```
 
-`GetTotalLineCount()` returns the current document line count, or `-1` when no document is loaded.
+- Completion providers receive invoked, trigger-character, or retrigger contexts and return results through a cancellable receiver. `CompletionItem.TextEdit` defines the primary replacement range; `AdditionalTextEdits` use original-document coordinates. Snippet-format items enter snippet mode.
+- Decoration providers receive the visible range, accumulated text changes, language configuration, and editor metadata. They can return syntax, semantic, overlay, inlay, diagnostic, document-highlight, guide, fold, gutter-icon, phantom-text, CodeLens, and link data using merge, replace-all, or replace-range modes.
+- New-line action providers form a chain. The first provider that returns an action supplies the text inserted for Enter; returning `null` delegates to the next provider or the default editor behavior.
 
-`CompletionItem.TextEdit` uses the generated `TextEdit` type for precise replacement edits. Without `TextEdit`, completion inserts `InsertText` / `Label` at the cursor; `AdditionalTextEdits` is appended after the primary edit.
-
-### Interaction Events
+### Events
 
 ```csharp
+public event EventHandler<TextChangedEventArgs> TextChanged
+public event EventHandler<CursorChangedEventArgs> CursorChanged
+public event EventHandler<SelectionChangedEventArgs> SelectionChanged
+public event EventHandler<ScrollChangedEventArgs> ScrollChanged
+public event EventHandler<ScaleChangedEventArgs> ScaleChanged
+public event EventHandler<DocumentLoadedEventArgs> DocumentLoaded
+public event EventHandler<LongPressEventArgs> LongPress
+public event EventHandler<DoubleTapEventArgs> DoubleTap
+public event EventHandler<ContextMenuEventArgs> ContextMenu
+public event EventHandler<InlayHintClickEventArgs> InlayHintClick
+public event EventHandler<GutterIconClickEventArgs> GutterIconClick
+public event EventHandler<FoldToggleEventArgs> FoldToggle
 public event EventHandler<CodeLensClickEventArgs> CodeLensClick
 public event EventHandler<LinkClickEventArgs> LinkClick
 ```
 
-`GetLinkTargetAt()` returns an empty string when no link matches the requested position.
+## `EditorSettings`
 
-## Bridge Layer Notes
+Access settings through `editor.Settings`.
 
-- `EditorCore` (P/Invoke) already has bracket highlight bridge:
-  - `SetBracketPairs(int[] openChars, int[] closeChars)`
-  - `SetMatchedBrackets(...)`
-  - `ClearMatchedBrackets()`
-- Common control entry is `SetLanguageConfiguration(...)`, which sends bracket pairs to core.
-- Performance overlay is provided by `Perf.cs`, off by default, for debug/build troubleshooting only.
+```csharp
+public void SetEditorTextSize(float size)
+public float GetEditorTextSize()
+public void SetFontFamily(string family)
+public string GetFontFamily()
+public void SetScale(float scale)
+public float GetScale()
+public void SetFoldArrowMode(FoldArrowMode mode)
+public FoldArrowMode GetFoldArrowMode()
+public void SetWrapMode(WrapMode mode)
+public WrapMode GetWrapMode()
+public void SetRenderWhitespace(WhitespaceRenderMode mode)
+public WhitespaceRenderMode GetRenderWhitespace()
+public void SetRenderLineBreaks(bool enabled)
+public bool IsRenderLineBreaks()
+public void SetLineSpacing(float add, float mult)
+public float GetLineSpacingAdd()
+public float GetLineSpacingMult()
+public void SetContentStartPadding(float padding)
+public float GetContentStartPadding()
+public void SetShowSplitLine(bool show)
+public bool IsShowSplitLine()
+public void SetGutterSticky(bool sticky)
+public bool IsGutterSticky()
+public void SetGutterVisible(bool visible)
+public bool IsGutterVisible()
+public void SetCurrentLineRenderMode(CurrentLineRenderMode mode)
+public CurrentLineRenderMode GetCurrentLineRenderMode()
+public void SetAutoIndentMode(AutoIndentMode mode)
+public AutoIndentMode GetAutoIndentMode()
+public void SetBackspaceUnindent(bool enabled)
+public bool IsBackspaceUnindent()
+public void SetReadOnly(bool readOnly)
+public bool IsReadOnly()
+public void SetMaxGutterIcons(int count)
+public int GetMaxGutterIcons()
+public void SetDecorationScrollRefreshMinIntervalMs(int intervalMs)
+public int GetDecorationScrollRefreshMinIntervalMs()
+public void SetDecorationOverscanViewportMultiplier(float multiplier)
+public float GetDecorationOverscanViewportMultiplier()
+```
+
+`WrapMode` accepts `NONE`, `CHAR_BREAK`, or `WORD_BREAK`.
+
+## Themes, Private Fonts, Keymaps, and Language Configuration
+
+`EditorTheme` provides built-in palettes and application-defined text styles:
+
+```csharp
+public static EditorTheme Dark()
+public static EditorTheme Light()
+public EditorTheme DefineTextStyle(int styleId, TextStyle style)
+public Dictionary<int, TextStyle> TextStyles { get; set; }
+```
+
+The theme also exposes individual `Color` properties for editor text and background, selection, guides, scrollbars, IME composition, decorations, search and document highlights, and completion UI. Custom style IDs should start at `EditorTheme.STYLE_USER_BASE`.
+
+`EditorFontLoader` registers a private font with Windows and owns that registration:
+
+```csharp
+public EditorFontLoader()
+public string LoadFont(string path)
+public Font CreateFont(float size, FontStyle style = FontStyle.Regular)
+public void Dispose()
+```
+
+`LoadFont(...)` returns the family name accepted by `EditorSettings.SetFontFamily(...)`. Keep the loader alive for as long as the editor uses that private font, then dispose it.
+
+`EditorKeyMap` exposes the built-in presets and host customization methods:
+
+```csharp
+public static EditorKeyMap DefaultKeyMap()
+public static EditorKeyMap Vscode()
+public static EditorKeyMap JetBrains()
+public static EditorKeyMap Sublime()
+public void AddBinding(KeyBinding binding)
+public bool RemoveBinding(KeyBinding binding)
+public IReadOnlyList<KeyBinding> GetBindings()
+public int RegisterCommand(KeyBinding binding, Action<KeyBinding, SweetEditorControl> handler)
+public Action<KeyBinding, SweetEditorControl>? GetCommand(int commandId)
+```
+
+`LanguageConfiguration` describes the language ID, bracket pairs, auto-closing pairs, line and block comments, tab size, and spaces-for-tabs preference. Bracket, auto-closing, and indentation settings are applied to editing behavior; the full configuration is also available to completion, decoration, and new-line providers.
 
 ## `Document`
 
 ```csharp
 public Document(string text)
+public Document(FileInfo? file)
+public static Document FromPath(string path)
+public int GetLineCount()
 public string GetLineText(int line)
+public string GetText()
+public void Dispose()
 ```
+
+Dispose a document when it is no longer needed. Loading a new document into a control does not transfer ownership of the managed `Document` object.
+
+## WinForms Input Behavior
+
+- Keyboard input uses the active `EditorKeyMap`; completion and host commands are handled before ordinary text input where applicable.
+- Mouse press, drag, hover, right-click, and wheel input are forwarded to editor gestures for selection, scrolling, links, CodeLens, gutter icons, folding, and context menus.
+- Clipboard operations use the WinForms clipboard.
+- Windows IME integration supports preedit text, commit, cancellation, and grapheme-based surrounding-text deletion while composing.

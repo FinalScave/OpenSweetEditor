@@ -1,80 +1,34 @@
 # OHOS 平台 API
 
-本文档对应当前 OHOS 实现：
+安装、SDK 要求、包配置和构建命令请阅读 [OHOS README](../../platform/OHOS/sweeteditor/README.md)。本文只记录当前面向宿主的 ArkTS 公开 API。
+
+## 公开入口
 
 - 包入口：`platform/OHOS/sweeteditor/src/main/ets/Index.ets`
 - ArkUI 组件：`platform/OHOS/sweeteditor/src/main/ets/SweetEditor.ets`
-- 控制器 / 配置层：
-  - `platform/OHOS/sweeteditor/src/main/ets/SweetEditor.ets`（`SweetEditorController`）
-  - `platform/OHOS/sweeteditor/src/main/ets/EditorSettings.ets`
-- 桥接层：`platform/OHOS/sweeteditor/src/main/ets/core/EditorCore.ets`
-- 协议编解码：`platform/OHOS/sweeteditor/src/main/ets/core/CoreProtocol.ets`
-- NAPI 层：
-  - `platform/OHOS/sweeteditor/src/main/cpp/napi_editor.hpp`
-  - `platform/OHOS/sweeteditor/src/main/cpp/napi_init.cpp`
+- 宿主控制器：`platform/OHOS/sweeteditor/src/main/ets/SweetEditorController.ets`
+- 运行时设置：`platform/OHOS/sweeteditor/src/main/ets/EditorSettings.ets`
+- Provider 与扩展：`completion`、`decoration`、`newline`、`copilot` 和 `selection` 目录
+- 事件：`platform/OHOS/sweeteditor/src/main/ets/event/EditorEvent.ets`
+- 高级原生桥接：`platform/OHOS/sweeteditor/src/main/ets/core/EditorCore.ets`
 
-## 架构说明
+应用通常从 `@qiplat/sweeteditor` 导入公开类型，并组合使用 `SweetEditor` 与 `SweetEditorController`。组件拥有原生会话，控制器是宿主的命令式入口。其中 `bind(...)` 和 `unbind(...)` 属于组件生命周期衔接，宿主不应调用。
 
-- OHOS 主路径是 ArkTS + NAPI 直连共享 C++ 核心，通过 `libsweeteditor.so` 调用。
-- `EditorCore` 在桥接边界保留原生数值协议。
-- `buildRenderModel()`、`EditorActionResult`、滚动度量等复杂返回当前仍通过二进制 payload 返回，再由 `CoreProtocol.ets` 解码。
-- `Index.ets` 统一 re-export 公开 API，业务侧通常直接从 `@qiplat/sweeteditor` 导入，不需要使用深层路径。
-- 补全面板、Inline Suggestion 条、Selection Menu 等 ArkUI 浮层由平台层实现，但数据来源仍是 C++ render model 与 `EditorActionResult`。
-
-## 快速开始
-
-### 环境要求（按当前仓库配置）
-
-- HarmonyOS SDK / API：`5.1.1(19)`
-- 包管理器：`ohpm`
-- 构建工具：`hvigorw`
-- 包类型：HAR（`platform/OHOS/sweeteditor`）
-
-### 在仓库内直接运行 Demo
-
-Windows PowerShell：
-
-```powershell
-cd platform/OHOS
-.\hvigorw.bat assembleApp --no-daemon
-```
-
-macOS / Linux shell：
-
-```bash
-cd platform/OHOS
-./hvigorw assembleApp --no-daemon
-```
-
-### 在现有 OHOS 项目中接入
-
-按当前仓库结构，推荐先使用本地包依赖：
-
-```json5
-{
-  "dependencies": {
-    "@qiplat/sweeteditor": "file:../sweeteditor"
-  }
-}
-```
-
-然后执行：
-
-```bash
-ohpm install
-```
-
-如果后续你把包发布到自有仓库，再把 `file:` 路径替换成发布版本号即可。
-
-### 最小集成示例
+## 最小示例
 
 ```ts
-import { Document, EditorTheme, SweetEditor, SweetEditorController, WrapMode } from '@qiplat/sweeteditor';
+import {
+  Document,
+  EditorTheme,
+  SweetEditor,
+  SweetEditorController,
+  WrapMode
+} from '@qiplat/sweeteditor';
 
 @Entry
 @Component
 struct Index {
-  private controller: SweetEditorController = new SweetEditorController();
+  private readonly controller: SweetEditorController = new SweetEditorController();
 
   aboutToAppear(): void {
     this.controller.whenReady(() => {
@@ -85,260 +39,309 @@ struct Index {
   }
 
   build() {
-    Column() {
-      SweetEditor({ controller: this.controller })
-        .width('100%')
-        .height('100%')
-    }
-    .width('100%')
-    .height('100%')
+    SweetEditor({ controller: this.controller })
+      .width('100%')
+      .height('100%')
   }
 }
 ```
 
-## 主要外部控制 API：`SweetEditorController`
+一个控制器只能关联一个组件实例。`getSettings()` 在 `whenReady(...)` 触发后才可用。
 
-对 ArkUI 业务组件来说，`SweetEditorController` 是主要控制入口。`SweetEditor` 就绪后，由控制器驱动文档、主题、Provider、事件订阅等能力。
+## `SweetEditorController`
 
-### 生命周期与基础访问
-
-```ts
-public whenReady(listener: () => void): void
-public loadDocument(document: Document): void
-public getDocument(): Document | null
-public getSettings(): EditorSettings | null
-public applyTheme(theme: EditorTheme): void
-public getTheme(): EditorTheme | null
-```
-
-### 语言配置 / Metadata / Icon Provider
+### 生命周期与配置
 
 ```ts
-public setLanguageConfiguration(config: LanguageConfiguration | null): void
-public setMetadata(metadata: EditorMetadata | null): void
-public setEditorIconProvider(provider: EditorIconProvider | null): void
+whenReady(listener: () => void): void
+loadDocument(document: Document): void
+getDocument(): Document | null
+getSettings(): EditorSettings | null
+
+applyTheme(theme: EditorTheme): void
+getTheme(): EditorTheme | null
+setLanguageConfiguration(config: LanguageConfiguration | null): void
+getLanguageConfiguration(): LanguageConfiguration | null
+setMetadata(metadata: EditorMetadata | null): void
+getMetadata(): EditorMetadata | null
+setEditorIconProvider(provider: EditorIconProvider | null): void
+getKeyMap(): EditorKeyMap
+setKeyMap(keyMap: EditorKeyMap): void
+
+getVisibleLineRange(): IntRange
+getTotalLineCount(): number
 ```
 
-### Decorations / Completion / Inline Suggestion
+`LanguageConfiguration` 包含语言 ID、括号对、自动闭合对、Tab 宽度和空格缩进设置。`EditorMetadata` 是可供 Provider 读取的宿主自定义不透明值。
+
+### 文本编辑与行命令
 
 ```ts
-public addDecorationProvider(provider: DecorationProvider): void
-public setLineCodeLens(line: number, items: CodeLensItem[]): void
-public setBatchLineCodeLens(itemsByLine: Map<number, CodeLensItem[]>): void
-public clearCodeLens(): void
-public setLineLinks(line: number, links: LinkSpan[]): void
-public setBatchLineLinks(linksByLine: Map<number, LinkSpan[]>): void
-public getLinkTargetAt(line: number, column: number): string
-public clearLinks(): void
-public requestDecorationRefresh(): void
-public addCompletionProvider(provider: CompletionProvider): void
-public triggerCompletion(): void
-public showInlineSuggestion(suggestion: InlineSuggestion): void
-public dismissInlineSuggestion(): void
-public isInlineSuggestionShowing(): boolean
-public setInlineSuggestionListener(listener: InlineSuggestionListener | null): void
+insertText(text: string): void
+insertTextAt(position: TextPosition, text: string): void
+replaceText(range: TextRange, newText: string): void
+deleteText(range: TextRange): void
+applyTextEdits(edits: TextEdit[]): void
+
+moveLineUp(): void
+moveLineDown(): void
+copyLineUp(): void
+copyLineDown(): void
+deleteLine(): void
+insertLineAbove(): void
+insertLineBelow(): void
+
+undo(): void
+redo(): void
+canUndo(): boolean
+canRedo(): boolean
 ```
 
-### 事件与撤销重做
+`applyTextEdits(...)` 在一次操作中应用多项编辑，编辑范围使用原始文档坐标。
+
+### 搜索与替换
 
 ```ts
-public onTextChanged(listener: EditorEventListener<TextChangedEvent>): void
-public offTextChanged(listener: EditorEventListener<TextChangedEvent>): void
-public onCursorChanged(listener: EditorEventListener<CursorChangedEvent>): void
-public offCursorChanged(listener: EditorEventListener<CursorChangedEvent>): void
-public onSelectionChanged(listener: EditorEventListener<SelectionChangedEvent>): void
-public offSelectionChanged(listener: EditorEventListener<SelectionChangedEvent>): void
-public onScrollChanged(listener: EditorEventListener<ScrollChangedEvent>): void
-public offScrollChanged(listener: EditorEventListener<ScrollChangedEvent>): void
-public onScaleChanged(listener: EditorEventListener<ScaleChangedEvent>): void
-public offScaleChanged(listener: EditorEventListener<ScaleChangedEvent>): void
-public onDocumentLoaded(listener: EditorEventListener<DocumentLoadedEvent>): void
-public offDocumentLoaded(listener: EditorEventListener<DocumentLoadedEvent>): void
-public onFoldToggle(listener: EditorEventListener<FoldToggleEvent>): void
-public offFoldToggle(listener: EditorEventListener<FoldToggleEvent>): void
-public onGutterIconClick(listener: EditorEventListener<GutterIconClickEvent>): void
-public offGutterIconClick(listener: EditorEventListener<GutterIconClickEvent>): void
-public onInlayHintClick(listener: EditorEventListener<InlayHintClickEvent>): void
-public offInlayHintClick(listener: EditorEventListener<InlayHintClickEvent>): void
-public onCodeLensClick(listener: EditorEventListener<CodeLensClickEvent>): void
-public offCodeLensClick(listener: EditorEventListener<CodeLensClickEvent>): void
-public onLinkClick(listener: EditorEventListener<LinkClickEvent>): void
-public offLinkClick(listener: EditorEventListener<LinkClickEvent>): void
-public undo(): EditorActionResult
-public redo(): EditorActionResult
-public canUndo(): boolean
-public canRedo(): boolean
+search(request: SearchRequest): void
+findNextSearchMatch(): void
+findPreviousSearchMatch(): void
+replaceCurrentSearchMatch(replacement: string): void
+replaceAllSearchMatches(replacement: string): void
+clearSearch(): void
+getSearchState(): SearchState
 ```
 
-移动端相关事件（如 `LongPressEvent`、`DoubleTapEvent`）以及 OHOS 特有的 `SelectionMenuItemClickEvent` 也都通过对应的 `onXxx` / `offXxx` 方法暴露。
+搜索选项支持区分大小写、全词、正则表达式、循环查找和最大匹配数量。
 
-`getLinkTargetAt(...)` 在请求位置未命中 link 时返回空字符串。
-
-## 运行时配置：`EditorSettings`
-
-`EditorSettings` 通过 `SweetEditorController.getSettings()` 获取，是主要的外观 / 行为配置入口。
-
-### 外观与布局
+### 光标、选区、剪贴板与导航
 
 ```ts
-public setEditorTextSize(size: number): void
-public getEditorTextSize(): number
-public setFontFamily(fontFamily: string): void
-public getFontFamily(): string
-public setScale(scale: number): void
-public getScale(): number
-public setLineSpacing(add: number, mult: number): void
-public getLineSpacingAdd(): number
-public getLineSpacingMult(): number
-public setContentStartPadding(padding: number): void
-public getContentStartPadding(): number
-public setShowSplitLine(show: boolean): void
-public isShowSplitLine(): boolean
-public setGutterSticky(sticky: boolean): void
-public isGutterSticky(): boolean
-public setGutterVisible(visible: boolean): void
-public isGutterVisible(): boolean
-public setCurrentLineRenderMode(mode: CurrentLineRenderMode): void
-public getCurrentLineRenderMode(): CurrentLineRenderMode
-public setRenderWhitespace(mode: WhitespaceRenderMode): void
-public getRenderWhitespace(): WhitespaceRenderMode
-public setRenderLineBreaks(enabled: boolean): void
-public isRenderLineBreaks(): boolean
+selectAll(): void
+getSelectedText(): string
+setSelection(range: TextRange): void
+setSelection(startLine: number, startColumn: number, endLine: number, endColumn: number): void
+getSelection(): TextRange | null
+
+getCursorPosition(): TextPosition
+setCursorPosition(position: TextPosition): void
+getWordRangeAtCursor(): TextRange
+getWordAtCursor(): string
+
+copyToClipboard(): void
+pasteFromClipboard(): void
+cutToClipboard(): void
+
+gotoPosition(line: number, column: number): void
+scrollToLine(line: number, behavior?: ScrollBehavior): void
+setScroll(scrollX: number, scrollY: number): void
+getScrollMetrics(): ScrollMetrics
+getPositionRect(line: number, column: number): CursorRect
+getCursorRect(): CursorRect
 ```
 
-### 编辑器行为
+### 样式与 Decoration
 
 ```ts
-public setFoldArrowMode(mode: FoldArrowMode): void
-public getFoldArrowMode(): FoldArrowMode
-public setWrapMode(mode: WrapMode): void
-public getWrapMode(): WrapMode
-public setAutoIndentMode(mode: AutoIndentMode): void
-public getAutoIndentMode(): AutoIndentMode
-public setReadOnly(readOnly: boolean): void
-public isReadOnly(): boolean
-public setMaxGutterIcons(count: number): void
-public getMaxGutterIcons(): number
+registerTextStyle(styleId: number, color: number, backgroundColorOrFontStyle: number, fontStyle?: number): void
+registerBatchTextStyles(stylesById: Map<number, TextStyle>): void
+
+setLineSpans(line: number, layer: SpanLayer, spans: StyleSpan[]): void
+setBatchLineSpans(layer: SpanLayer, spansByLine: Map<number, StyleSpan[]>): void
+setLineInlayHints(line: number, hints: InlayHint[]): void
+setBatchLineInlayHints(hintsByLine: Map<number, InlayHint[]>): void
+setLinePhantomTexts(line: number, phantoms: PhantomText[]): void
+setBatchLinePhantomTexts(phantomsByLine: Map<number, PhantomText[]>): void
+setLineGutterIcons(line: number, icons: GutterIcon[]): void
+setBatchLineGutterIcons(iconsByLine: Map<number, GutterIcon[]>): void
+setLineCodeLens(line: number, items: CodeLensItem[]): void
+setBatchLineCodeLens(itemsByLine: Map<number, CodeLensItem[]>): void
+setLineLinks(line: number, links: LinkSpan[]): void
+setBatchLineLinks(linksByLine: Map<number, LinkSpan[]>): void
+getLinkTargetAt(line: number, column: number): string
+setLineDiagnostics(line: number, items: Diagnostic[]): void
+setBatchLineDiagnostics(itemsByLine: Map<number, Diagnostic[]>): void
+setLineDocumentHighlights(line: number, items: DocumentHighlight[]): void
+setBatchLineDocumentHighlights(itemsByLine: Map<number, DocumentHighlight[]>): void
+
+setIndentGuides(guides: IndentGuide[]): void
+setBracketGuides(guides: BracketGuide[]): void
+setFlowGuides(guides: FlowGuide[]): void
+setSeparatorGuides(guides: SeparatorGuide[]): void
+
+clearHighlights(layer?: SpanLayer): void
+clearInlayHints(): void
+clearPhantomTexts(): void
+clearGutterIcons(): void
+clearCodeLens(): void
+clearLinks(): void
+clearGuides(): void
+clearDiagnostics(): void
+clearDocumentHighlights(): void
+clearAllDecorations(): void
 ```
 
-### Decoration 刷新调优
+`SpanLayer` 包含语法、语义和 overlay 三层。`getLinkTargetAt(...)` 在请求位置没有链接时返回空字符串。
+
+### 折叠、Snippet 与 Linked Editing
 
 ```ts
-public setDecorationScrollRefreshMinIntervalMs(intervalMs: number): void
-public getDecorationScrollRefreshMinIntervalMs(): number
-public setDecorationOverscanViewportMultiplier(multiplier: number): void
-public getDecorationOverscanViewportMultiplier(): number
+setFoldRegions(regions: FoldRegion[]): void
+toggleFoldAt(line: number): void
+foldAt(line: number): void
+unfoldAt(line: number): void
+foldAll(): void
+unfoldAll(): void
+isLineVisible(line: number): boolean
+
+insertSnippet(template: string): void
+startLinkedEditing(model: LinkedEditingModel): void
+isInLinkedEditing(): boolean
+linkedEditingNext(): void
+linkedEditingPrev(): void
+cancelLinkedEditing(): void
 ```
 
-完整跨平台 settings 与 theme 契约见[平台实现标准](./platform-implementation-standard.md)。
-
-## 高级桥接层：`EditorCore`
-
-`EditorCore` 是围绕 `libsweeteditor.so` 的低层 ArkTS bridge。正常业务代码优先使用 `SweetEditorController` + `EditorSettings`；只有在需要直接控制 render-model、协议 payload 或平台集成时，才建议直接使用 `EditorCore`。
-
-### View / Render / Metrics
+### Provider 与编辑器浮层
 
 ```ts
-public setViewport(width: number, height: number): void
-public onFontMetricsChanged(): void
-public buildRenderModel(): EditorRenderModel
-public getViewState(): ArrayBuffer | undefined
-public getLayoutMetrics(): ArrayBuffer | undefined
-public ensureCursorVisible(): void
-public getPositionRect(line: number, column: number): CursorRect
-public getCursorRect(): CursorRect
-public setScroll(scrollX: number, scrollY: number): void
-public getScrollMetrics(): ScrollMetrics
+addDecorationProvider(provider: DecorationProvider): void
+removeDecorationProvider(provider: DecorationProvider): void
+requestDecorationRefresh(): void
+
+addCompletionProvider(provider: CompletionProvider): void
+removeCompletionProvider(provider: CompletionProvider): void
+triggerCompletion(): void
+showCompletionItems(items: CompletionItem[]): void
+dismissCompletion(): void
+setCompletionItemViewBuilder(builder: CompletionItemViewBuilder | null): void
+
+addNewLineActionProvider(provider: NewLineActionProvider): void
+removeNewLineActionProvider(provider: NewLineActionProvider): void
+
+showInlineSuggestion(suggestion: InlineSuggestion): void
+dismissInlineSuggestion(): void
+isInlineSuggestionShowing(): boolean
+setInlineSuggestionListener(listener: InlineSuggestionListener | null): void
+
+setSelectionMenuItemProvider(provider: SelectionMenuItemProvider | null): void
 ```
 
-### Gesture / Keyboard / Animation
+### 事件与诊断
+
+控制器为下列类型化事件提供成对的 `onXxx` 和 `offXxx` 方法：
+
+| 事件 | 订阅 / 取消订阅 |
+| --- | --- |
+| 文本变化 | `onTextChanged` / `offTextChanged` |
+| 光标变化 | `onCursorChanged` / `offCursorChanged` |
+| 选区变化 | `onSelectionChanged` / `offSelectionChanged` |
+| 滚动变化 | `onScrollChanged` / `offScrollChanged` |
+| 缩放变化 | `onScaleChanged` / `offScaleChanged` |
+| 长按 | `onLongPress` / `offLongPress` |
+| 双击 | `onDoubleTap` / `offDoubleTap` |
+| 右键菜单手势 | `onContextMenu` / `offContextMenu` |
+| Gutter icon 点击 | `onGutterIconClick` / `offGutterIconClick` |
+| Inlay hint 点击 | `onInlayHintClick` / `offInlayHintClick` |
+| CodeLens 点击 | `onCodeLensClick` / `offCodeLensClick` |
+| 链接点击 | `onLinkClick` / `offLinkClick` |
+| 折叠切换 | `onFoldToggle` / `offFoldToggle` |
+| 文档加载 | `onDocumentLoaded` / `offDocumentLoaded` |
+| Selection Menu 自定义项 | `onSelectionMenuItemClick` / `offSelectionMenuItemClick` |
 
 ```ts
-public handleGestureEvent(event: GestureEvent): EditorActionResult
-public handleSimpleGestureEvent(type: EventType, pointerCount: number, points: number[]): EditorActionResult
-public tickAnimations(): EditorActionResult
-public handleKeyEvent(keyCode: number, text: string | null, modifiers: number): EditorActionResult
+setPerfOverlayEnabled(enabled: boolean): void
+isPerfOverlayEnabled(): boolean
+flush(): void
 ```
 
-### 文本编辑 / 光标选区 / IME
+inline suggestion 的接受和关闭通过 `InlineSuggestionListener` 回调，不走编辑器事件系统。`flush()` 是强制刷新和诊断入口，普通更新无需调用。性能浮层默认关闭，仅用于调试。
 
-这里列出的是 `SweetEditor` view 方法。底层 `EditorCore` 调用仍返回 `EditorActionResult`，view 会在内部统一分发这些结果。
+## `EditorSettings`
 
 ```ts
-public insertText(text: string): void
-public insertTextAt(position: TextPosition, text: string): void
-public replaceText(...): void
-public deleteText(...): void
-public applyTextEdits(edits: TextEdit[]): void
-public backspace(): void
-public deleteForward(): void
-public getCursorPosition(): TextPosition
-public getWordRangeAtCursor(): TextRange
-public getWordAtCursor(): string
-public setCursorPosition(line: number, column: number): void
-public setSelection(...): void
-public getSelection(): TextRange | null
-public getSelectedText(): string
-public handleImeCommandMessage(message: ImeCommandMessage): EditorActionResult | undefined
-public handleImeTextUpdateMessage(message: ImeTextUpdateMessage): EditorActionResult | undefined
-public hasPreedit(): boolean
+setEditorTextSize(size: number): void
+getEditorTextSize(): number
+setFontFamily(fontFamily: string): void
+getFontFamily(): string
+setScale(scale: number): void
+getScale(): number
+
+setFoldArrowMode(mode: FoldArrowMode): void
+getFoldArrowMode(): FoldArrowMode
+setWrapMode(mode: WrapMode): void
+getWrapMode(): WrapMode
+setRenderWhitespace(mode: WhitespaceRenderMode): void
+getRenderWhitespace(): WhitespaceRenderMode
+setRenderLineBreaks(enabled: boolean): void
+isRenderLineBreaks(): boolean
+setLineSpacing(add: number, mult: number): void
+getLineSpacingAdd(): number
+getLineSpacingMult(): number
+setContentStartPadding(padding: number): void
+getContentStartPadding(): number
+setShowSplitLine(show: boolean): void
+isShowSplitLine(): boolean
+setGutterSticky(sticky: boolean): void
+isGutterSticky(): boolean
+setGutterVisible(visible: boolean): void
+isGutterVisible(): boolean
+setCurrentLineRenderMode(mode: CurrentLineRenderMode): void
+getCurrentLineRenderMode(): CurrentLineRenderMode
+
+setAutoIndentMode(mode: AutoIndentMode): void
+getAutoIndentMode(): AutoIndentMode
+setBackspaceUnindent(enabled: boolean): void
+isBackspaceUnindent(): boolean
+setReadOnly(readOnly: boolean): void
+isReadOnly(): boolean
+setMaxGutterIcons(count: number): void
+getMaxGutterIcons(): number
+
+setDecorationScrollRefreshMinIntervalMs(intervalMs: number): void
+getDecorationScrollRefreshMinIntervalMs(): number
+setDecorationOverscanViewportMultiplier(multiplier: number): void
+getDecorationOverscanViewportMultiplier(): number
 ```
 
-### 样式 / Decoration / Folding / Linked Editing
+## 扩展契约
 
-```ts
-public registerTextStyle(styleId: number, color: number, backgroundColorOrFontStyle: number, fontStyle?: number): void
-public registerBatchTextStyles(stylesByIdOrData: Map<number, TextStyle> | ArrayBuffer, _size?: number): void
-public setLineSpans(...): void
-public setBatchLineSpans(...): void
-public setLineInlayHints(...): void
-public setBatchLineInlayHints(...): void
-public setLinePhantomTexts(...): void
-public setBatchLinePhantomTexts(...): void
-public setLineCodeLens(lineOrData: number | ArrayBuffer, itemsOrSize?: CodeLensItem[] | number): void
-public setBatchLineCodeLens(itemsByLineOrData: Map<number, CodeLensItem[]> | ArrayBuffer, _size?: number): void
-public clearCodeLens(): void
-public setLineLinks(lineOrData: number | ArrayBuffer, linksOrSize?: LinkSpan[] | number): void
-public setBatchLineLinks(linksByLineOrData: Map<number, LinkSpan[]> | ArrayBuffer, _size?: number): void
-public getLinkTargetAt(line: number, column: number): string
-public clearLinks(): void
-public setLineGutterIcons(...): void
-public setBatchLineGutterIcons(...): void
-public setLineDiagnostics(...): void
-public setBatchLineDiagnostics(...): void
-public setIndentGuides(...): void
-public setBracketGuides(...): void
-public setFlowGuides(...): void
-public setSeparatorGuides(...): void
-public setFoldRegions(...): void
-public toggleFold(line: number): boolean
-public foldAt(line: number): boolean
-public unfoldAt(line: number): boolean
-public foldAll(): void
-public unfoldAll(): void
-public insertSnippet(snippetTemplate: string): EditorActionResult
-public startLinkedEditing(modelOrData: LinkedEditingModel | ArrayBuffer, _size?: number): void
-public cancelLinkedEditing(): void
-public clearAllDecorations(): void
-```
+### Decoration
 
-大部分批量 Decoration API 同时支持强类型 ArkTS 数据和预打包 `ArrayBuffer`。`ArrayBuffer` 路径适合高级 Provider 管线或大批量更新场景。
+`DecorationProvider` 接收包含可见行范围、总行数、文本变化、语言配置和 Metadata 的 `DecorationContext`，并可通过 `DecorationReceiver` 异步提交快照；过期 Receiver 会进入取消状态。
 
-对于 Link 查询，`getLinkTargetAt(...)` 在请求位置未命中时返回空字符串。
+`DecorationResult` 支持语法、语义和 overlay span、inlay hint、diagnostic、文档高亮、折叠区域、缩进线、括号线、流程线、分隔线、gutter icon、phantom text、CodeLens 和链接。每一类均支持 `MERGE`、`REPLACE_ALL` 和 `REPLACE_RANGE` 应用模式。
+
+### 补全与换行
+
+`CompletionProvider` 接收光标、当前行、单词范围、语言、Metadata 和触发信息，并可提交可取消的异步结果。补全项支持主文本编辑、附加编辑、snippet、过滤、排序、类型和自定义 ArkUI 条目构建器。
+
+`NewLineActionProvider` 是用于定制 Enter 插入文本的同步调用链。
+
+### Selection Menu 与 Inline Suggestion
+
+`SelectionMenuItemProvider` 根据当前选区状态构建移动端选择菜单。inline suggestion 展示 phantom text 和操作条，并通过 `InlineSuggestionListener` 报告接受和关闭操作。
 
 ## `Document`
 
 ```ts
-public static fromString(text: string): Document
-public static fromFile(path: string): Document
-public getText(): string
-public getLineCount(): number
-public getLineText(line: number): string
-public destroy(): void
+static fromString(text: string): Document
+static fromFile(path: string): Document
+getText(): string
+getLineCount(): number
+getLineText(line: number): string
+destroy(): void
 ```
 
-## 说明
+组件只借用活动 `Document`；替换文档或释放组件时不会调用 `destroy()`。编辑器使用期间必须保持 Document 存活，停止使用后由应用自行销毁。不要复用已经销毁的文档，也不要复用其组件已释放的控制器。
 
-- OHOS 侧主要公开集成面是 `SweetEditor` + `SweetEditorController`，不是裸 `EditorCore`。
-- 在应用 `StyleSpan` 之前，先注册对应 `TextStyle`。
-- `SweetEditor` 组件内部还承担了 OHOS 特有 UI 与系统集成，例如剪贴板、IME 回调、Selection Menu 浮层、Completion Popup、Inline Suggestion Bar、Perf Overlay。
+## OHOS 平台行为
+
+- 使用 ArkUI Canvas 渲染，同时支持等宽与非等宽字体。
+- HarmonyOS 输入法集成覆盖组合输入、preview text、周边上下文、光标与选区同步以及键盘生命周期。
+- 组件集成系统 pasteboard、硬件按键、触摸与鼠标手势、拖动选区、缩放、选择手柄、补全面板、inline suggestion 和移动端选择菜单。
+- 右键菜单手势通过事件公开；OHOS 不提供 Android 的 Context Menu Popup/Provider API。
+- HAR 和支持的原生架构请以 README 为准。
+
+## 高级 `EditorCore`
+
+`EditorCore` 是导出的低层 ArkTS/NAPI 桥接，供需要直接访问 render model、IME、手势或预打包 decoration 的宿主使用。普通应用应使用 `SweetEditorController` 和 `EditorSettings`。核心概念与 ABI 行为请参考 [EditorCore / C API 文档](./api-editor-core.md)。

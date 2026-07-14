@@ -9,10 +9,10 @@
 **C++17 内核 + 平台原生渲染，面向 IDE、AI 编程工具、云开发工作台等长期演进的编辑基础设施场景。**
 
 [![C++17](https://img.shields.io/badge/C++-17-blue.svg?logo=cplusplus)](https://isocpp.org/)
-[![Platforms](https://img.shields.io/badge/Platforms-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows%20%7C%20Swing%20%7C%20OHOS%20%7C%20Flutter%20%7C%20Avalonia%20%7C%20Web*-brightgreen.svg)](#平台支持状态)
+[![Targets](https://img.shields.io/badge/Targets-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows%20%7C%20Swing%20%7C%20OHOS%20%7C%20Flutter%20%7C%20Avalonia%20%7C%20Web-brightgreen.svg)](#实现状态)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-**Android · iOS · macOS · Windows · Swing · OHOS · Flutter · Avalonia · Web\***
+**Android · iOS · macOS · Windows · Swing · OHOS · Flutter · Avalonia · Web**
 
 </div>
 
@@ -20,64 +20,50 @@
 
 ## 项目定位
 
-SweetEditor 是一套跨平台代码编辑器内核，面向需要在 Android、iOS、macOS、Windows、Swing、OHOS、Flutter 和 Avalonia 上保持一致编辑行为的产品。
+SweetEditor 是一套跨平台代码编辑器内核，面向需要在不同平台保持一致编辑行为的产品。
 
-它采用“**C++17 内核 + 平台原生渲染**”架构：C++ 内核负责文档编辑语义、文本布局与装饰模型，各平台层负责输入转发与绘制。
+采用“**C++17 内核 + 平台原生渲染**”架构：C++ 内核负责文档编辑语义、文本布局与装饰模型，各接入层负责输入转发与绘制。
 
 适合用于 IDE、AI 编程工具、云开发工作台等需要长期演进的编辑基础设施场景。
 
 ## 核心特性
 
 - **统一内核，多平台复用**：高亮、折叠、Inlay Hints、Ghost Text、结构线等能力由单一 C++ 内核统一生成
-- **核心与渲染分离**：平台层聚焦输入桥接与原生绘制，降低多平台回归和维护成本
+- **核心与渲染分离**：接入层聚焦输入桥接与原生绘制，降低不同目标之间的回归和维护成本
 - **高级编辑能力完整**：支持代码折叠、Snippet、Linked Editing、诊断装饰、补全扩展等能力
 - **性能路径明确**：基于 Piece Table、增量布局、视口渲染、SIMD Unicode 加速与 mmap 大文件加载
-- **原生接入友好**：已适配 Android、Apple 平台、Windows、Swing、OHOS、Flutter 和 Avalonia，Web 当前为测试状态，由非官方 fork 仓库维护
+- **接入友好**：支持 Android、Apple 平台、Windows、Swing、OHOS、Flutter、Avalonia 和 Web
 
-## 平台支持状态
+## 实现状态
 
-| 平台                    | 状态       | 渲染技术                    | UI 框架                  | 实现来源                                                                                                              |
+| 目标                    | 状态       | 渲染技术                    | UI 框架                  | 实现来源                                                                                                              |
 |-----------------------|----------|-------------------------|------------------------|-------------------------------------------------------------------------------------------------------------------|
-| Android               | 已实现      | Canvas + Paint          | Android View           | [./platform/Android](./platform/Android)                                                                          |
-| iOS                   | 已实现      | CoreText + CoreGraphics | UIKit / SwiftUI（正在完善）  | [./platform/Apple](./platform/Apple)                                                                              |
-| macOS                 | 已实现      | CoreText + CoreGraphics | AppKit / SwiftUI（正在完善） | [./platform/Apple](./platform/Apple)                                                                              |
-| Windows               | 已实现      | GDI+                    | WinForms               | [./platform/WinForms](./platform/WinForms)                                                                        |
-| Swing                 | 已实现      | Java2D                  | Swing                  | [./platform/Swing](./platform/Swing)                                                                              |
-| OHOS                  | 已实现      | ArkUI Canvas            | ArkUI                  | [./platform/OHOS](./platform/OHOS)                                                                                |
-| Flutter               | 已实现      | TextPainter             | Flutter                | [./platform/Flutter](./platform/Flutter)                                                                          |
-| Avalonia              | 已实现      | DrawingContext          | Avalonia               | [./platform/Avalonia](./platform/Avalonia)                                                                        |
+| Android               | 已实现      | Canvas + Paint          | Android View           | [Android README](./platform/Android/sweeteditor/README.md)                                                         |
+| iOS                   | 已实现      | CoreText + CoreGraphics | UIKit / SwiftUI（正在完善）  | [Apple README](./platform/Apple/README.md)                                                                         |
+| macOS                 | 已实现      | CoreText + CoreGraphics | AppKit / SwiftUI（正在完善） | [Apple README](./platform/Apple/README.md)                                                                         |
+| Windows               | 已实现      | GDI+                    | WinForms               | [WinForms README](./platform/WinForms/SweetEditor/README.md)                                                       |
+| Swing                 | 已实现      | Java2D                  | Swing                  | [Swing README](./platform/Swing/sweeteditor/README.md)                                                             |
+| OHOS                  | 已实现      | ArkUI Canvas            | ArkUI                  | [OHOS README](./platform/OHOS/sweeteditor/README.md)                                                               |
+| Flutter               | 已实现      | TextPainter             | Flutter                | [Flutter README](./platform/Flutter/sweeteditor/README.md)                                                         |
+| Avalonia              | 已实现      | DrawingContext          | Avalonia               | [Avalonia README](./platform/Avalonia/SweetEditor/README.md)                                                       |
 | Qt                    | 已实现      | QPainter                | Qt                     | [FinalScave/SweetEditor-Qt](https://github.com/FinalScave/SweetEditor-Qt)                                         |
 | Compose Multiplatform | 进行中      | Compose Canvas          | Compose                | [lumkit/SweetEditor-Compose](https://github.com/lumkit/SweetEditor-Compose)                                       |
-| Web                   | 测试中（非官方） | -                       | -                      | [LangLang03/OpenSweetEditor-Web](https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten) |
+| Web                   | 核心绑定已实现  | WebAssembly             | -                      | [Web README](./platform/Emscripten/README.md)                                                                      |
 | C# WinUI              | 待实现      | -                       | -                      | -                                                                                                                 |
 
 ## 整体架构
 
 ```text
 +-----------------------------------------------------------------------------------+
-|                          平台层（Input + Render）                                 |
-|                                                                                   |
-| Android        Apple         Swing / WinForms      OHOS            Web*           |
-| Canvas         CoreText/CG   Java2D / GDI+         ArkUI Canvas    测试中         |
-+----------------+-------------+----------------------+---------------+--------------+
-         |               |                 |                    |
-         | JNI 直连      | 手工 C bridge   | C API / payload    | NAPI 直连
-         v               v                 v                    v
-+----------------+ +----------------+ +------------------+ +-------------------+
-| JNI Bridge     | | Apple Bridge   | | C API Bridge     | | OHOS NAPI Bridge |
-| jni_entry      | | Swift + C      | | extern "C"       | | ArkTS + NAPI     |
-+----------------+ +----------------+ +------------------+ +-------------------+
-          \               |                 |                    /
-           \              |                 |                   /
-            +-------------+-----------------+------------------+
-                                  |
-                                  v
-               +--------------------------------------------------+
-               |             SweetEditor Core (C++17)             |
-               | Document / TextLayout / DecorationManager /      |
-               | EditorCore / GestureHandler / UndoManager /      |
-               | LinkedEditing                                    |
-               +--------------------------------------------------+
+| Android | Apple | Swing | WinForms | OHOS | Flutter | Avalonia | Web             |
+| 输入 / 绘制 / 原生资源 / 生命周期                                                   |
++-----------------------------------------------------------------------------------+
+                                         |
+                                         v
++-----------------------------------------------------------------------------------+
+| SweetEditor Core (C++17)                                                          |
+| 文档 / 编辑 / 布局 / 装饰 / 交互 / 撤销重做                                          |
++-----------------------------------------------------------------------------------+
 ```
 
 > 完整架构文档请参阅 [架构设计文档](docs/zh/architecture.md)
@@ -100,7 +86,7 @@ cmake .. -DCMAKE_BUILD_TYPE=Release
 cmake --build . -j
 ```
 
-各平台快速接入指南及 WebAssembly 测试构建说明，请参阅 [平台 API 索引](docs/zh/api-platform.md)。
+快速接入请先阅读下方各实现 README；桥接层和控件层的完整 API 请参阅 [接入 API 索引](docs/zh/api-platform.md)。
 
 ### 最小集成示例
 
@@ -110,9 +96,9 @@ editor.applyTheme(EditorTheme.dark());
 editor.loadDocument(new Document("Hello, SweetEditor!"));
 ```
 
-更多示例请参阅平台 API 文档。
+更多示例请参阅接入 API 文档。
 
-## 平台 Demo 截图
+## Demo 截图
 
 <div align="center">
   <table>
@@ -145,9 +131,22 @@ SweetEditor 坚持最小依赖原则，核心运行时仅依赖少量轻量库�
 | --- | --- |
 | [架构设计](docs/zh/architecture.md) | 核心架构、模块设计、数据流、渲染流水线 |
 | [EditorCore API（中文）](docs/zh/api-editor-core.md) | C++ 核心层和 C API 参考 |
-| [平台 API 索引（中文）](docs/zh/api-platform.md) | Android、Swing、Apple、WinForms、OHOS、Avalonia 平台 API 文档入口 |
-| [平台实现标准](docs/zh/platform-implementation-standard.md) | 所有平台实现必须遵循的类型清单、模块结构、API 契约与合规规则 |
+| [接入 API 索引（中文）](docs/zh/api-platform.md) | 所有接入 API 文档入口 |
+| [接入实现标准](docs/zh/platform-implementation-standard.md) | 所有接入实现必须遵循的类型清单、模块结构、API 契约与合规规则 |
 | [参与共建](docs/zh/join.md) | 仓库结构、阅读入口、平台同步检查点 |
+
+### 接入指南
+
+| 目标 | 指南 |
+| --- | --- |
+| Android | [Android README](platform/Android/sweeteditor/README.md) |
+| Apple | [Apple README](platform/Apple/README.md) |
+| Avalonia | [Avalonia README](platform/Avalonia/SweetEditor/README.md) |
+| Flutter | [Flutter README](platform/Flutter/sweeteditor/README.md) |
+| OHOS | [OHOS README](platform/OHOS/sweeteditor/README.md) |
+| Swing | [Swing README](platform/Swing/sweeteditor/README.md) |
+| WinForms | [WinForms README](platform/WinForms/SweetEditor/README.md) |
+| Web | [Web README](platform/Emscripten/README.md) |
 
 ## 参与共建
 

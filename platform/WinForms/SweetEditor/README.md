@@ -1,12 +1,9 @@
 # SweetEditor for WinForms
 
-[![NuGet](https://img.shields.io/nuget/v/SweetEditor.svg)](https://www.nuget.org/packages/SweetEditor)
 [![.NET 8](https://img.shields.io/badge/.NET-8.0-blue.svg)](https://dotnet.microsoft.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/FinalScave/SweetEditor/blob/main/LICENSE)
 
-A high-performance WinForms code editor control powered by the [SweetEditor](https://github.com/FinalScave/SweetEditor) C++ core.
-
-The C++ core handles text layout, cursor/selection logic, folding, decoration data, and interaction math; the WinForms layer provides native GDI+ rendering and input dispatch.
+A high-performance WinForms code editor control that uses P/Invoke to access the shared [SweetEditor](https://github.com/FinalScave/SweetEditor) C++ core and renders with GDI+.
 
 ## Features
 
@@ -22,7 +19,7 @@ The C++ core handles text layout, cursor/selection logic, folding, decoration da
 - IME composition support
 - Completion, decoration, and newline action provider extensions
 - Monospace and proportional font support
-- Pinch-to-zoom scaling
+- Ctrl+mouse-wheel zoom and programmatic scaling
 
 ## Requirements
 
@@ -32,8 +29,8 @@ The C++ core handles text layout, cursor/selection logic, folding, decoration da
 
 ## Install
 
-```
-dotnet add package SweetEditor
+```powershell
+dotnet add package SweetEditor --version 1.0.0-rc1
 ```
 
 ## Quick Start
@@ -73,7 +70,7 @@ All settings are available via `editor.Settings` and take effect immediately.
 | `SetEditorTextSize(float)` | Base text size in points |
 | `SetFontFamily(string)` | Font family name |
 | `SetScale(float)` | Editor scale factor |
-| `SetWrapMode(WrapMode)` | `NONE` / `WORD_BREAK` |
+| `SetWrapMode(WrapMode)` | `NONE` / `CHAR_BREAK` / `WORD_BREAK` |
 | `SetRenderWhitespace(WhitespaceRenderMode)` | Invisible whitespace marker mode |
 | `SetRenderLineBreaks(bool)` | Show/hide line-break markers |
 | `SetLineSpacing(float add, float mult)` | Line spacing |
@@ -100,51 +97,15 @@ editor.ApplyTheme(theme);
 
 ## Events
 
-```csharp
-editor.TextChanged      += (s, e) => { /* e.Kind, e.Source, e.Changes */ };
-editor.CursorChanged    += (s, e) => { /* e.CursorPosition */ };
-editor.SelectionChanged += (s, e) => { /* selection info */ };
-editor.ScrollChanged    += (s, e) => { /* scroll info */ };
-editor.ScaleChanged     += (s, e) => { /* new scale */ };
-editor.DocumentLoaded   += (s, e) => { /* document ready */ };
-editor.FoldToggle       += (s, e) => { /* e.LocationInEditor */ };
-editor.ContextMenu      += (s, e) => { /* e.LocationInEditor */ };
-```
+The control publishes text, cursor, selection, scroll, scale, document, gesture, decoration, folding, CodeLens, and link events. See the [API reference](https://github.com/FinalScave/SweetEditor/blob/main/docs/en/api-platform-winforms.md#events) for the current event list and payload types.
 
 ## Text Editing
 
-```csharp
-editor.InsertText("Hello");
-editor.ReplaceText(new TextRange(new TextPosition(0, 0), new TextPosition(0, 5)), "Hi");
-editor.DeleteText(range);
-editor.SelectAll();
-editor.SetSelection(0, 0, 0, 5);
-editor.Undo();
-editor.Redo();
-```
+Text insertion, replacement, deletion, batched edits, line operations, clipboard commands, search and replace, selection, navigation, and undo/redo are exposed by `SweetEditorControl`. See the [API reference](https://github.com/FinalScave/SweetEditor/blob/main/docs/en/api-platform-winforms.md#text-editing-line-operations-and-clipboard) for signatures.
 
 ## Decorations
 
-```csharp
-// Syntax spans
-editor.SetLineSpans(line, SpanLayer.SYNTAX, spans);
-editor.SetBatchLineSpans(SpanLayer.SYNTAX, spansByLine);
-editor.ClearLineSpans(line, SpanLayer.SYNTAX);
-
-// Diagnostics
-editor.SetLineDiagnostics(line, diagnostics);
-editor.SetBatchLineDiagnostics(diagsByLine);
-
-// Inlay hints, ghost text, gutter icons
-editor.SetLineInlayHints(line, hints);
-editor.SetLinePhantomTexts(line, phantoms);
-editor.SetLineGutterIcons(line, icons);
-
-// Guides
-editor.SetIndentGuides(guides);
-editor.SetBracketGuides(guides);
-editor.SetFoldRegions(regions);
-```
+The editor supports syntax, semantic, and overlay spans; inlay hints; phantom text; CodeLens; links; diagnostics; document highlights; gutter icons; fold regions; and indent, bracket, flow, and separator guides. The [API reference](https://github.com/FinalScave/SweetEditor/blob/main/docs/en/api-platform-winforms.md#styles-decorations-and-folding) is the canonical method list.
 
 ## Extension Points
 
@@ -164,34 +125,29 @@ editor.AddNewLineActionProvider(myNewLineProvider);
 
 ## Linked Editing
 
-```csharp
-editor.StartLinkedEditing(model);
-editor.LinkedEditingNext();
-editor.LinkedEditingPrev();
-editor.CancelLinkedEditing();
-```
+Snippets, tab stops, and linked-editing navigation are documented in the [API reference](https://github.com/FinalScave/SweetEditor/blob/main/docs/en/api-platform-winforms.md#snippets-and-linked-editing).
 
 ## Build from Source
 
-```powershell
-# 1. Build the native C++ shared library
-.\scripts\build-shared.ps1 -Platform windows
+Run these commands from the repository root:
 
-# 2. Build and pack
+```powershell
+# Build the native C++ shared library
+.\scripts\build-release.ps1 -Platform windows
+
+# Build and pack the NuGet package
 dotnet build  .\platform\WinForms\SweetEditor\SweetEditor.csproj -c Release
 dotnet pack   .\platform\WinForms\SweetEditor\SweetEditor.csproj -c Release
 ```
 
 Output: `platform/WinForms/SweetEditor/bin/Release/SweetEditor.<version>.nupkg`
 
-## Publish
-
-```powershell
-dotnet nuget push .\platform\WinForms\SweetEditor\bin\Release\SweetEditor.<version>.nupkg `
-    --api-key <NUGET_API_KEY> `
-    --source https://api.nuget.org/v3/index.json
-```
-
 ## License
 
 [MIT](https://github.com/FinalScave/SweetEditor/blob/main/LICENSE)
+
+## Links
+
+- [WinForms API reference](https://github.com/FinalScave/SweetEditor/blob/main/docs/en/api-platform-winforms.md)
+- [Changelog](https://github.com/FinalScave/SweetEditor/blob/main/platform/WinForms/SweetEditor/CHANGELOG.md)
+- [Repository](https://github.com/FinalScave/SweetEditor)

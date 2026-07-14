@@ -20,13 +20,12 @@ This document gives practical development entry points based on the current repo
 ├── docs
 │   ├── zh/architecture.md           architecture overview (ZH)
 │   ├── zh/api-editor-core.md        C API / core contract (ZH)
-│   ├── zh/api-platform*.md          platform API docs (ZH)
+│   ├── zh/api-platform*.md          integration API docs (ZH)
 │   ├── en/architecture.md           architecture overview (EN)
 │   ├── en/api-editor-core.md        C API / core contract (EN)
-│   └── en/api-platform*.md          platform API docs (EN)
-├── src
-│   ├── include                      core headers and c_api.h
-│   └── core                         Document / Layout / Decoration / EditorCore / c_api
+│   └── en/api-platform*.md          integration API docs (EN)
+├── include/sweeteditor              core headers and c_api.h
+├── src                              Document / Layout / Decoration / EditorCore / c_api implementations
 ├── tests                            core regression tests
 ├── platform
 │   ├── Android                      Android SDK + direct JNI
@@ -36,7 +35,7 @@ This document gives practical development entry points based on the current repo
 │   ├── OHOS                         OHOS SDK + direct NAPI
 │   ├── Flutter                      Dart FFI + Flutter Widget
 │   ├── Avalonia                     C# P/Invoke + Avalonia Control
-│   └── Emscripten                   experimental Web testing (unofficial fork: https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten)
+│   └── Emscripten                   Web ES-module core binding through an explicit C ABI subset
 └── prebuilt                         prebuilt shared libs
 ```
 
@@ -53,7 +52,7 @@ This document gives practical development entry points based on the current repo
 - `include/sweeteditor/editor_core.h` / `src/editor_core.cpp`
   - main edit coordinator: input, selection, IME, undo/redo, render model assembly
 - `include/sweeteditor/c_api.h` / `src/c_api.cpp`
-  - stable bridge boundary for non-Android platforms
+  - stable bridge boundary for non-Android integrations
 
 ### Android
 
@@ -98,9 +97,9 @@ This document gives practical development entry points based on the current repo
 - `platform/Apple/Sources/SweetEditorCoreInternal/api/SweetEditorCore.swift`
   - core Swift wrapper and bridge-facing entry points
 - `platform/Apple/Sources/SweetEditorCoreInternal/core/CoreProtocol.swift`
-  - binary payload encoding and decoding aligned with generated platform `CoreProtocol`
-- `platform/Apple/Sources/SweetEditorCoreInternal/visual`
-  - render-model DTOs aligned with Android `core.visual`
+  - binary payload encoding and decoding aligned with generated integration `CoreProtocol`
+- `platform/Apple/Sources/SweetEditorCoreInternal/core/CoreVisual.swift`
+  - shared Apple render-model DTOs
 - `platform/Apple/Sources/SweetEditorCoreInternal/EditorRenderer.swift`
   - shared Apple renderer consuming the visual model
 - `platform/Apple/Sources/SweetEditoriOS`
@@ -114,7 +113,7 @@ This document gives practical development entry points based on the current repo
 - `platform/Flutter/sweeteditor/lib/core/core_protocol.dart`
   - Dart-side binary protocol encoding/decoding
 - `platform/Flutter/sweeteditor/lib/widget/sweet_editor_widget.dart`
-  - Flutter widget layer and platform text-input integration
+  - Flutter widget and text-input integration
 
 ### Avalonia
 
@@ -127,9 +126,9 @@ This document gives practical development entry points based on the current repo
 - `platform/Avalonia/SweetEditor/EditorRenderer.cs`
   - Avalonia DrawingContext rendering
 
-## Platform Implementation Standard
+## Integration Implementation Standard
 
-If you are implementing a new platform or maintaining an existing one, see the [Platform Implementation Standard](platform-implementation-standard.md) for the full list of required types, module structure, API contracts, and compliance rules that every platform must follow.
+If you are adding or maintaining an integration, see the [Integration Implementation Standard](platform-implementation-standard.md) for the full list of required types, module structure, API contracts, and compliance rules that every integration must follow.
 
 ## If You Change X, Start from Y
 
@@ -143,8 +142,8 @@ If you are implementing a new platform or maintaining an existing one, see the [
   - change `c_api.h` / `c_api.cpp` first
   - then sync Swing / WinForms / Apple / Flutter / Avalonia
   - if Android has equivalent capability, sync JNI path too
-- Change platform input behavior:
-  - first confirm core semantic support exists, then change platform forwarding; do not hard-code edit rules in platform layer
+- Change integration input behavior:
+  - first confirm core semantic support exists, then change integration forwarding; do not hard-code edit rules in the integration layer
 
 ## Cross-Platform Sync Checkpoints
 
@@ -179,7 +178,7 @@ Usual sync targets:
 
 - Doc updates should reflect capabilities already implemented in current code. Do not write roadmap items as current status.
 - For Chinese files in Windows repos, verify encoding first; in this repo, `README.md` and most `docs/zh/*.md` files are UTF-8.
-- After platform protocol changes, sync at least one note in `README.md`, `docs/zh/architecture.md`, `docs/en/architecture.md`, and matching `docs/zh/api-platform*.md` / `docs/en/api-platform*.md` files.
+- After integration protocol changes, sync at least one note in `README.md`, `docs/zh/architecture.md`, `docs/en/architecture.md`, and matching `docs/zh/api-platform*.md` / `docs/en/api-platform*.md` files.
 
 ## Naming Style (Current Code Habits)
 
@@ -187,4 +186,4 @@ Usual sync targets:
 - C++ type names use PascalCase
 - C++ function names use lowerCamelCase
 - C++ member variables usually use `m_` prefix
-- Public APIs in platform layer should be semantic first; bridge layer should stay close to low-level protocol
+- Public APIs in the integration layer should be semantic first; bridge layer should stay close to low-level protocol

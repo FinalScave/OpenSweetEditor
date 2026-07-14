@@ -6,7 +6,7 @@ apply plugin: "signing"
 
 description = "Cross-platform code editor"
 group = "com.qiplat"
-version = "1.0.6"
+version = "1.0.0-rc1"
 
 android {
     namespace 'com.qiplat.sweeteditor'

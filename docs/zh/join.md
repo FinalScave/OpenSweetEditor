@@ -20,13 +20,12 @@
 ├── docs
 │   ├── zh/architecture.md           架构总览（中文）
 │   ├── zh/api-editor-core.md        C API / 核心契约（中文）
-│   ├── zh/api-platform*.md          各平台 API 文档（中文）
+│   ├── zh/api-platform*.md          各接入 API 文档（中文）
 │   ├── en/architecture.md           架构总览（英文）
 │   ├── en/api-editor-core.md        C API / 核心契约（英文）
-│   └── en/api-platform*.md          各平台 API 文档（英文）
-├── src
-│   ├── include                      核心头文件与 c_api.h
-│   └── core                         Document / Layout / Decoration / EditorCore / c_api
+│   └── en/api-platform*.md          各接入 API 文档（英文）
+├── include/sweeteditor              核心头文件与 c_api.h
+├── src                              Document / Layout / Decoration / EditorCore / c_api 实现
 ├── tests                            核心回归测试
 ├── platform
 │   ├── Android                      Android SDK + JNI 直连
@@ -36,7 +35,7 @@
 │   ├── OHOS                         OHOS SDK + NAPI 直连
 │   ├── Flutter                      Dart FFI + Flutter Widget
 │   ├── Avalonia                     C# P/Invoke + Avalonia Control
-│   └── Emscripten                   Web 实验性测试（非官方 fork：https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten）
+│   └── Emscripten                   通过显式 C ABI 子集提供 Web ES Module 内核绑定
 └── prebuilt                         预构建动态库
 ```
 
@@ -53,7 +52,7 @@
 - `include/sweeteditor/editor_core.h` / `src/editor_core.cpp`
   - 编辑语义总协调器：输入、选区、IME、撤销重做、渲染模型组装
 - `include/sweeteditor/c_api.h` / `src/c_api.cpp`
-  - 非 Android 平台的稳定桥接边界
+  - 非 Android 接入实现的稳定桥接边界
 
 ### Android
 
@@ -97,6 +96,12 @@
   - 手工 C bridge 头
 - `platform/Apple/Sources/SweetEditorCoreInternal/api/SweetEditorCore.swift`
   - Swift 侧核心封装与二进制协议解码
+- `platform/Apple/Sources/SweetEditorCoreInternal/core/CoreProtocol.swift`
+  - 与其他接入实现 `CoreProtocol` 对齐的二进制载荷编解码
+- `platform/Apple/Sources/SweetEditorCoreInternal/core/CoreVisual.swift`
+  - Apple 共用渲染模型 DTO
+- `platform/Apple/Sources/SweetEditorCoreInternal/EditorRenderer.swift`
+  - 消费渲染模型的 Apple 共用渲染器
 - `platform/Apple/Sources/SweetEditoriOS`
 - `platform/Apple/Sources/SweetEditorMacOS`
   - iOS / macOS 平台视图
@@ -108,7 +113,7 @@
 - `platform/Flutter/sweeteditor/lib/core/core_protocol.dart`
   - Dart 侧二进制协议编解码
 - `platform/Flutter/sweeteditor/lib/widget/sweet_editor_widget.dart`
-  - Flutter Widget 层与平台文本输入接入
+  - Flutter Widget 与文本输入接入
 
 ### Avalonia
 
@@ -121,9 +126,9 @@
 - `platform/Avalonia/SweetEditor/EditorRenderer.cs`
   - Avalonia DrawingContext 渲染
 
-## 平台实现标准
+## 接入实现标准
 
-如果你正在实现新平台或维护现有平台，请参阅 [平台实现标准](platform-implementation-standard.md)，其中定义了所有平台实现必须遵循的类型清单、模块结构、API 契约与合规规则。
+如果你正在新增或维护接入实现，请参阅 [接入实现标准](platform-implementation-standard.md)，其中定义了所有接入实现必须遵循的类型清单、模块结构、API 契约与合规规则。
 
 ## 修改什么，就从哪里进
 
@@ -137,10 +142,10 @@
   - 先改 `c_api.h` / `c_api.cpp`
   - 再同步 Swing / WinForms / Apple / Flutter / Avalonia
   - Android 若有同构能力，也要同步 JNI 路径
-- 改平台输入行为：
-  - 先确认核心是否已有语义支持，再改平台转发，不要把编辑规则写死在平台层
+- 改接入层输入行为：
+  - 先确认核心是否已有语义支持，再改接入层转发，不要把编辑规则写死在接入层
 
-## 平台同步检查点
+## 跨实现同步检查点
 
 只要触发以下任一项，就不要只改一层：
 
@@ -173,7 +178,7 @@
 
 - 文档更新优先反映“当前代码已经实现的能力”，不要把路线图写成现状。
 - Windows 仓库里遇到中文文件先确认编码；本仓库 `README.md` 和大多数 `docs/zh/*.md` 当前为 UTF-8。
-- 平台协议改动后，`README.md`、`docs/zh/architecture.md`、`docs/en/architecture.md`，以及对应的 `docs/zh/api-platform*.md` / `docs/en/api-platform*.md` 至少同步一处说明。
+- 接入协议改动后，`README.md`、`docs/zh/architecture.md`、`docs/en/architecture.md`，以及对应的 `docs/zh/api-platform*.md` / `docs/en/api-platform*.md` 至少同步一处说明。
 
 ## 命名风格（当前代码习惯）
 
@@ -181,4 +186,4 @@
 - C++ 类型名使用 PascalCase
 - C++ 函数名使用 lowerCamelCase
 - C++ 成员变量通常使用 `m_` 前缀
-- 平台层公开 API 优先语义化，桥接层保持贴近底层协议
+- 接入层公开 API 优先语义化，桥接层保持贴近底层协议

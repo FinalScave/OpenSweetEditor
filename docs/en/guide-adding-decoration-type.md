@@ -13,7 +13,7 @@ Read these documents first:
 
 - [Architecture](architecture.md)
 - [Editor Core API](api-editor-core.md)
-- [Platform Implementation Standard](platform-implementation-standard.md)
+- [Integration Implementation Standard](platform-implementation-standard.md)
 
 ---
 
@@ -74,7 +74,7 @@ Skip this layer entirely for pure-visual decorations (SyntaxSpan, PhantomText, G
 - Document the binary payload format (LE byte order) in the header comment.
 - Implement with `ByteCursor` parsing, then forward to `EditorCore`.
 
-### Layer 6 — Platform Native Bridge (per platform)
+### Layer 6 — Native Bridge (per integration)
 
 For Android JNI as example:
 
@@ -84,22 +84,22 @@ For Android JNI as example:
 - Register the methods in the `JNINativeMethod` array inside `RegisterMethods()`.
 - Use `@FastNative` annotation for methods that take `ByteBuffer` parameters (zero-copy direct buffer) and `@CriticalNative` for methods with only primitive/void signatures. Mismatching annotations will crash at runtime.
 
-> Other platforms follow equivalent patterns: OHOS uses NAPI (`napi_editor.hpp` + `napi_init.cpp`); iOS uses Objective-C bridging.
+> Other integrations follow equivalent patterns: OHOS uses NAPI (`napi_editor.hpp` + `napi_init.cpp`); iOS uses Objective-C bridging.
 
-### Layer 7 — Platform Core Wrapper
+### Layer 7 — Integration Core Wrapper
 
 For Android as example:
 
 **Files**: `<Type>.java`, `VisualRunType.java`, `EditorCore.java`, `CoreProtocol.java`
 
-- Define the platform data class (e.g. `public final` immutable POJO with the same fields as the C++ struct).
+- Define the integration data class (e.g. `public final` immutable POJO with the same fields as the C++ struct).
 - Add the enum value to `VisualRunType`. If the decoration is interactive, also add to `HitTargetType`.
 - Implement `setLine<Type>` / `setBatchLine<Type>` / `clear<Type>` / query methods in `EditorCore.java`, encoding via `CoreProtocol` → `ByteBuffer.allocateDirect()` then calling `native*` methods.
 - Add the protocol model in C++ and let `CoreProtocol.java` generate the corresponding binary encoder.
 
-> Other platforms: OHOS uses ArkTS interfaces in `CoreAdornments.ets` + `CoreProtocol.ets` + `EditorCore.ets`.
+> Other integrations: OHOS uses ArkTS interfaces in `CoreAdornments.ets` + `CoreProtocol.ets` + `EditorCore.ets`.
 
-### Layer 8 — Platform Decoration System and UI
+### Layer 8 — Integration Decoration System and UI
 
 **Files**: `DecorationResult.java`, `DecorationProviderManager.java`, `SweetEditor.java`, `EditorRenderer.java`
 
@@ -114,11 +114,11 @@ For Android as example:
 - Define a click event class (e.g. `<Type>ClickEvent.java`, extends `EditorEvent`).
 - Expose `on<Type>Click` / `off<Type>Click` event subscription APIs.
 
-> Other platforms: OHOS distributes these across `DecorationTypes.ets`, `SweetEditor.ets`, `SweetEditorController.ets`, `EditorEvent.ets`, `EditorRenderer.ets`.
+> Other integrations: OHOS distributes these across `DecorationTypes.ets`, `SweetEditor.ets`, `SweetEditorController.ets`, `EditorEvent.ets`, and `EditorRenderer.ets`.
 
-### Layer 9 — Cross-platform `DecorationType` Enum Sync
+### Layer 9 — Cross-implementation `DecorationType` Enum Sync
 
-`DecorationType` is defined independently in every platform. All of the following files must be updated with the new enum value:
+`DecorationType` is defined independently in every integration. All of the following files must be updated with the new enum value:
 
 - Android: `DecorationType.java`
 - Swing: `DecorationType.java`
@@ -128,15 +128,15 @@ For Android as example:
 - Avalonia: `EditorDecoration.cs` (Flags enum)
 - WinForms: `EditorDecoration.cs` (Flags enum)
 
-Missing a platform causes that platform's `DecorationProvider` to be unable to declare the new capability.
+Missing an integration prevents its `DecorationProvider` from declaring the new capability.
 
 ### Layer 10 — Tests
 
-**Files**: `tests/decoration_adjust.cpp`, `tests/layout_decorations.cpp`
+**Files**: `tests/core/decoration/decoration_adjust.cpp`, `tests/core/layout/layout_decorations.cpp`
 
 - Add `adjustForEdit` test cases in `decoration_adjust.cpp` covering the new type's column/line adjustment behavior.
 - If the new type is inline and participates in hitTest/screen-coord, add consistency checks in `layout_decorations.cpp`.
-- Platform-level tests (Swift, Android instrumentation) may also need coverage for the new event type.
+- Integration-level tests (Swift, Android instrumentation) may also need coverage for the new event type.
 
 ---
 
@@ -156,11 +156,11 @@ Types with column+length semantics (like LinkSpan, DiagnosticSpan) need column-l
 
 ### Binary protocol consistency
 
-The C API payload format (little-endian u32 sequences) must exactly match the platform-side `pack*` encoder. Variable-length payloads (e.g. UTF-8 strings) use the pattern `u32 byte_length + u8[byte_length]`.
+The C API payload format (little-endian u32 sequences) must exactly match the integration-side `pack*` encoder. Variable-length payloads (e.g. UTF-8 strings) use the pattern `u32 byte_length + u8[byte_length]`.
 
-### Platform bridge annotation and signature matching
+### Integration bridge annotation and signature matching
 
-Each platform has its own rules for native bridge declarations. On Android, `@FastNative` / `@CriticalNative` annotations must match the JNI signature exactly or it will crash at runtime. On OHOS, ArkTS requires explicit return types on `forEach` callbacks and explicit generic type parameters. Always verify that the platform-side native declarations match the C API signatures.
+Each integration has its own rules for native bridge declarations. On Android, `@FastNative` / `@CriticalNative` annotations must match the JNI signature exactly or it will crash at runtime. On OHOS, ArkTS requires explicit return types on `forEach` callbacks and explicit generic type parameters. Always verify that the integration-side native declarations match the C API signatures.
 
 ### Cursor placement interaction
 
@@ -174,7 +174,7 @@ LINK runs participate in `getPositionScreenCoord()` / `columnToX()` the same way
 
 ## Reference: Files Touched for LinkSpan (Android example)
 
-> The table below uses Android file names. Other platforms have equivalent files:
+> The table below uses Android file names. Other integrations have equivalent files:
 > OHOS → `napi_editor.hpp`, `CoreAdornments.ets`, `DecorationTypes.ets`, `SweetEditor.ets`, etc.
 > iOS → corresponding Objective-C / Swift bridging files.
 
@@ -189,4 +189,4 @@ LINK runs participate in `getPositionScreenCoord()` / `columnToX()` the same way
 | Java Decoration | `DecorationResult.java`, `DecorationType.java`, `DecorationProviderManager.java` |
 | Java UI | `SweetEditor.java`, `<Type>ClickEvent.java` (if interactive), `EditorRenderer.java` |
 | DecorationType Enum | `DecorationType.java` (Android, Swing), `DecorationTypes.ets` (OHOS), `decoration_types.dart` (Flutter), `DecorationProvider.swift` (Apple), `EditorDecoration.cs` (Avalonia, WinForms) |
-| Tests | `decoration_adjust.cpp`, `layout_decorations.cpp` |
+| Tests | `tests/core/decoration/decoration_adjust.cpp`, `tests/core/layout/layout_decorations.cpp` |

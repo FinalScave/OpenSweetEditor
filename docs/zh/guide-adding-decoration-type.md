@@ -11,7 +11,7 @@
 
 - [架构总览](architecture.md)
 - [Editor Core API](api-editor-core.md)
-- [平台实现标准](platform-implementation-standard.md)
+- [接入实现标准](platform-implementation-standard.md)
 
 ---
 
@@ -72,7 +72,7 @@
 - 在头文件注释中记录二进制载荷格式（小端字节序）。
 - 使用 `ByteCursor` 解析并转发到 `EditorCore`。
 
-### 第 6 层 — 平台原生桥接（各平台）
+### 第 6 层 — 原生桥接（各实现）
 
 以 Android JNI 为例：
 
@@ -82,22 +82,22 @@
 - 在 `kJMethods[]` 数组（同样在 `jeditor.hpp` 中）注册方法。`jni_entry.cpp` 只负责调用 `RegisterMethods()`，不需要修改。
 - 使用 `@FastNative` 注解接受 `ByteBuffer` 参数的方法（零拷贝 direct buffer），`@CriticalNative` 用于仅含基本类型/void 签名的方法。注解与签名不匹配会导致运行时崩溃。
 
-> 其他平台的等价模式：OHOS 使用 NAPI（`napi_editor.hpp` + `napi_init.cpp`）；iOS 使用 Objective-C 桥接。
+> 其他接入实现采用等价模式：OHOS 使用 NAPI（`napi_editor.hpp` + `napi_init.cpp`）；iOS 使用 Objective-C 桥接。
 
-### 第 7 层 — 平台 Core 封装
+### 第 7 层 — 接入层 Core 封装
 
 以 Android 为例：
 
 **文件**：`<Type>.java`、`VisualRunType.java`、`EditorCore.java`、`CoreProtocol.java`
 
-- 定义平台数据类（如 `public final` 不可变 POJO，字段与 C++ 结构体一致）。
+- 定义接入层数据类（如 `public final` 不可变 POJO，字段与 C++ 结构体一致）。
 - 在 `VisualRunType` 中添加枚举值。如果装饰可交互，同时在 `HitTargetType` 中添加。
 - 在 `EditorCore.java` 中实现 `setLine<Type>` / `setBatchLine<Type>` / `clear<Type>` / 查询方法，通过 `CoreProtocol` → `ByteBuffer.allocateDirect()` 编码后调用 `native*` 方法。
 - 在 C++ 中补充协议模型，让 `CoreProtocol.java` 生成对应二进制编码方法。
 
-> 其他平台：OHOS 使用 ArkTS 接口，分布在 `CoreAdornments.ets` + `CoreProtocol.ets` + `EditorCore.ets`。
+> 其他接入实现：OHOS 使用 ArkTS 接口，分布在 `CoreAdornments.ets` + `CoreProtocol.ets` + `EditorCore.ets`。
 
-### 第 8 层 — 平台装饰系统与 UI
+### 第 8 层 — 接入层装饰系统与 UI
 
 **文件**：`DecorationResult.java`、`DecorationProviderManager.java`、`SweetEditor.java`、`EditorRenderer.java`
 
@@ -112,11 +112,11 @@
 - 定义点击事件类（如 `<Type>ClickEvent.java`，继承 `EditorEvent`）。
 - 暴露 `on<Type>Click` / `off<Type>Click` 事件订阅 API。
 
-> 其他平台：OHOS 将这些分布在 `DecorationTypes.ets`、`SweetEditor.ets`、`SweetEditorController.ets`、`EditorEvent.ets`、`EditorRenderer.ets`。
+> 其他实现：OHOS 将这些分布在 `DecorationTypes.ets`、`SweetEditor.ets`、`SweetEditorController.ets`、`EditorEvent.ets`、`EditorRenderer.ets`。
 
-### 第 9 层 — 跨平台 `DecorationType` 枚举同步
+### 第 9 层 — 跨实现 `DecorationType` 枚举同步
 
-`DecorationType` 在每个平台中独立定义，以下文件都必须添加新枚举值：
+`DecorationType` 在每个实现中独立定义，以下文件都必须添加新枚举值：
 
 - Android：`DecorationType.java`
 - Swing：`DecorationType.java`
@@ -126,15 +126,15 @@
 - Avalonia：`EditorDecoration.cs`（Flags 枚举）
 - WinForms：`EditorDecoration.cs`（Flags 枚举）
 
-遗漏任何一个平台会导致该平台的 `DecorationProvider` 无法声明新的 capability。
+遗漏任何一个接入实现都会导致其 `DecorationProvider` 无法声明新的 capability。
 
 ### 第 10 层 — 测试
 
-**文件**：`tests/decoration_adjust.cpp`、`tests/layout_decorations.cpp`
+**文件**：`tests/core/decoration/decoration_adjust.cpp`、`tests/core/layout/layout_decorations.cpp`
 
 - 在 `decoration_adjust.cpp` 中添加新类型的 `adjustForEdit` 测试用例，覆盖列/行调整行为。
 - 如果新类型是行内装饰且参与 hitTest / 屏幕坐标，在 `layout_decorations.cpp` 中添加一致性检查。
-- 平台级测试（Swift、Android instrumentation）可能也需要覆盖新的事件类型。
+- 接入层测试（Swift、Android instrumentation）可能也需要覆盖新的事件类型。
 
 ---
 
@@ -154,11 +154,11 @@
 
 ### 二进制协议一致性
 
-C API 载荷格式（小端 u32 序列）必须与平台侧 `pack*` 编码器完全一致。变长载荷（如 UTF-8 字符串）使用 `u32 byte_length + u8[byte_length]` 模式。
+C API 载荷格式（小端 u32 序列）必须与接入侧 `pack*` 编码器完全一致。变长载荷（如 UTF-8 字符串）使用 `u32 byte_length + u8[byte_length]` 模式。
 
-### 平台桥接注解与签名匹配
+### 接入桥接注解与签名匹配
 
-各平台有各自的原生桥接声明规则。Android 上 `@FastNative` / `@CriticalNative` 注解必须与 JNI 签名精确匹配，否则运行时崩溃。OHOS 上 ArkTS 要求 `forEach` 回调显式标注返回类型，泛型函数调用需要显式类型参数。务必验证平台侧 native 声明与 C API 签名的一致性。
+各实现有各自的原生桥接声明规则。Android 上 `@FastNative` / `@CriticalNative` 注解必须与 JNI 签名精确匹配，否则运行时崩溃。OHOS 上 ArkTS 要求 `forEach` 回调显式标注返回类型，泛型函数调用需要显式类型参数。务必验证接入侧 native 声明与 C API 签名的一致性。
 
 ### 光标放置交互
 
@@ -172,7 +172,7 @@ LINK run 在 `getPositionScreenCoord()` / `columnToX()` 中与 TEXT run 同等�
 
 ## 参考：LinkSpan 涉及的文件清单（Android 为例）
 
-> 下表使用 Android 文件名。其他平台有等价文件：
+> 下表使用 Android 文件名。其他接入实现有等价文件：
 > OHOS → `napi_editor.hpp`、`CoreAdornments.ets`、`DecorationTypes.ets`、`SweetEditor.ets` 等。
 > iOS → 对应的 Objective-C / Swift 桥接文件。
 
@@ -187,4 +187,4 @@ LINK run 在 `getPositionScreenCoord()` / `columnToX()` 中与 TEXT run 同等�
 | Java 装饰 | `DecorationResult.java`、`DecorationType.java`、`DecorationProviderManager.java` |
 | Java UI | `SweetEditor.java`、`<Type>ClickEvent.java`（如果可交互）、`EditorRenderer.java` |
 | DecorationType 枚举 | `DecorationType.java`（Android、Swing）、`DecorationTypes.ets`（OHOS）、`decoration_types.dart`（Flutter）、`DecorationProvider.swift`（Apple）、`EditorDecoration.cs`（Avalonia、WinForms） |
-| 测试 | `decoration_adjust.cpp`、`layout_decorations.cpp` |
+| 测试 | `tests/core/decoration/decoration_adjust.cpp`、`tests/core/layout/layout_decorations.cpp` |

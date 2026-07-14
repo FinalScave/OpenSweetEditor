@@ -71,10 +71,12 @@
 
 - [ ] Android 平台
 - [ ] iOS/macOS 平台
-- [ ] Windows 平台
-- [ ] Swing 平台
-- [ ] Web/Emscripten
+- [ ] WinForms
+- [ ] Swing
+- [ ] Web（Emscripten）
 - [ ] OHOS 平台
+- [ ] Flutter
+- [ ] Avalonia
 - [ ] 不涉及平台相关改动
 
 ### 基础设施 Infrastructure
@@ -86,7 +88,7 @@
 **平台同步检查关键点:**
 
 - c_api.h 新增或修改函数
-- TextEditResult / GestureResult / KeyEventResult / ScrollMetrics / LayoutMetrics 等结构变更
+- EditorActionResult / EditorRenderModel / ScrollMetrics / LayoutMetrics 或其他 CoreProtocol 载荷的结构变更
 - 渲染模型字段变更
 - IME、手势、折叠、装饰相关的核心行为变更
 

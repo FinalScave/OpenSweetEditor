@@ -1,135 +1,109 @@
 # SweetEditor Apple SDK
 
-This directory is the Apple SPM workspace root.
+The Apple SDK provides native SweetEditor views for iOS and macOS as a local Swift Package. Its Swift/C bridge uses the shared core packaged in XCFrameworks.
 
-## Published products
+## Requirements
 
-- `SweetEditoriOS`
-- `SweetEditorMacOS`
+- iOS 13 or newer
+- macOS 11 or newer
+- Xcode with Swift Package Manager support
+- Prebuilt `SweetEditorCore` XCFrameworks, or a local toolchain capable of rebuilding them
 
-`SweetEditorCore` is an internal target and is not published as a product.
+## Products
 
-## Local commands
+- `SweetEditoriOS`: UIKit and SwiftUI integration
+- `SweetEditorMacOS`: AppKit and SwiftUI integration
 
-- `make all` runs native prebuild + `swift build` + `swift test`
-- `make native` builds `binaries/SweetEditorCoreIOS.xcframework` and `binaries/SweetEditorCoreOSX.xcframework`
-- `make native-if-needed` only rebuilds native when inputs changed
-- `make build` builds SPM targets
-- `make test` runs SPM tests
-- `make verify-local` checks manifest and builds
-- `make demo-macos-build` builds the macOS demo apps
-- `make demo-macos-run` runs the AppKit macOS demo app
-- `make demo-macos-run-swiftui` runs the SwiftUI macOS demo app
+`SweetEditorCoreInternal`, `SweetEditorBridge`, and the native binary targets are package implementation details and are not published as products.
 
-## Native artifact layout
+## Local Package Integration
 
-- `platform/Apple/binaries/SweetEditorCoreIOS.xcframework` and `platform/Apple/binaries/SweetEditorCoreOSX.xcframework` are the packaged binary artifacts consumed by `Package.swift`.
-- The XCFrameworks contain dynamic `SweetEditorCore.framework` slices for macOS, iOS device (`arm64`), and iOS simulator (`arm64`).
-- Intermediate build outputs remain under `build/apple-*`. Those build directories may contain the underlying dynamic-library binaries used by the framework bundles, but only the XCFramework in `binaries/` is treated as a stable distributable artifact.
+After checking out the repository, build or verify the native artifacts:
 
-### Consumer note
+```bash
+cd platform/Apple
+make native-if-needed
+make verify-local
+```
 
-The package surface stays the same, but the native Apple payload is now delivered as dynamic frameworks inside the XCFramework. App consumers should continue integrating through Swift Package Manager rather than trying to reference intermediate build outputs directly.
+Add `platform/Apple` as a local Swift Package in Xcode, then link the product for the target platform.
 
-## Xcode one-click setup
+## Quick Start
 
-1. Open `platform/Apple/Package.swift` in Xcode.
-2. Edit active Scheme -> Build -> Pre-actions.
-3. Add script:
+### iOS UIKit
+
+```swift
+import SweetEditoriOS
+
+let editor = SweetEditorViewiOS(frame: .zero)
+editor.applyTheme(isDark: true)
+editor.loadDocument(text: "Hello, SweetEditor!")
+editor.settings.setWrapMode(.wordBreak)
+```
+
+### macOS AppKit
+
+```swift
+import SweetEditorMacOS
+
+let editor = SweetEditorViewMacOS(frame: .zero)
+editor.applyTheme(isDark: true)
+editor.loadDocument(text: "Hello, SweetEditor!")
+editor.settings.setWrapMode(.wordBreak)
+```
+
+SwiftUI entry points are `SweetEditorSwiftUIViewiOS` and `SweetEditorSwiftUIMacOS`.
+
+## Features
+
+- Native UIKit, AppKit, and SwiftUI views
+- Shared editing, selection, folding, scrolling, search, and undo/redo behavior
+- Decorations, diagnostics, inlay hints, phantom text, links, code lens, and gutter icons
+- Completion and decoration provider extensions
+- Typed metadata and selection previews on the native macOS view
+- Runtime settings for wrapping, whitespace, line breaks, scale, spacing, and read-only mode
+- Fold, decoration, and interaction callbacks
+
+Neither public native view currently exposes a language-configuration setter. The macOS newline-provider methods depend on internal provider types and are not usable as an application extension point. Metadata access is public only on `SweetEditorViewMacOS`; it is not exposed by `SweetEditorViewiOS` or either SwiftUI wrapper.
+
+## Native Artifacts
+
+- `binaries/SweetEditorCoreIOS.xcframework` contains iOS device and simulator slices.
+- `binaries/SweetEditorCoreOSX.xcframework` contains the macOS universal slice.
+- Each XCFramework contains dynamic `SweetEditorCore.framework` slices.
+- Intermediate native builds stay under the repository `build/apple-*` directories.
+
+Raw Apple shared-library builds produce `libsweeteditor.dylib`. Framework packaging is selected independently with `SWEETEDITOR_BUILD_APPLE_FRAMEWORK=ON`; framework binaries are never copied or renamed as raw dylibs.
+
+## Local Commands
+
+- `make all`: native prebuild, Swift build, and Swift tests
+- `make native`: rebuild both XCFrameworks
+- `make native-if-needed`: rebuild native artifacts only when inputs changed
+- `make build`: build Swift Package targets
+- `make test`: run Swift tests
+- `make verify-local`: validate the package and local build
+- `make demo-macos-build`: build the macOS demos
+- `make demo-macos-run`: run the AppKit demo
+- `make demo-macos-run-swiftui`: run the SwiftUI demo
+
+## Xcode Prebuild
+
+Add this script as an Xcode scheme pre-action when the native artifact should be refreshed automatically:
 
 ```bash
 cd "$SRCROOT"
 ./scripts/xcode_prebuild.sh
 ```
 
-Optional: force native rebuild once by setting env var in pre-action:
+Set `SWEETEDITOR_FORCE_NATIVE=1` to force a one-time rebuild.
 
-```bash
-export SWEETEDITOR_FORCE_NATIVE=1
-```
+## Links
 
-## Fold toggle callback
-
-Apple views now expose a fold toggle callback for both gutter-arrow clicks and folded-placeholder clicks.
-
-- Event type: `SweetEditorFoldToggleEvent`
-- Fields: `line`, `isGutter`, `locationInView`
-- `line` is 0-based logical line index
-
-### macOS AppKit
-
-```swift
-let editor = SweetEditorViewMacOS(frame: .zero)
-editor.showsPerformanceOverlay = true
-editor.onFoldToggle = { event in
-    print("fold toggled at line: \(event.line), gutter: \(event.isGutter)")
-}
-```
-
-### iOS UIKit
-
-```swift
-let editor = SweetEditorViewiOS(frame: .zero)
-editor.onFoldToggle = { event in
-    print("fold toggled at line: \(event.line), gutter: \(event.isGutter)")
-}
-```
-
-### SwiftUI
-
-```swift
-SweetEditorSwiftUIMacOS(
-    isDarkTheme: false,
-    showsPerformanceOverlay: true,
-    onFoldToggle: { event in
-        print(event.line)
-    }
-)
-
-SweetEditorSwiftUIViewiOS(
-    isDarkTheme: false,
-    onFoldToggle: { event in
-        print(event.line)
-    }
-)
-```
-
-## Runtime settings
-
-Use `settings` as the preferred entry point for runtime editor configuration. This matches the Android-side design where runtime behavior is centralized in `EditorSettings`, while theme and language configuration stay on their own APIs.
-
-### macOS AppKit
-
-```swift
-let editor = SweetEditorViewMacOS(frame: .zero)
-editor.settings.setScale(1.1)
-editor.settings.setWrapMode(.wordBreak)
-editor.settings.setRenderWhitespace(.boundary)
-editor.settings.setRenderLineBreaks(true)
-editor.settings.setLineSpacing(add: 1.0, mult: 1.2)
-editor.settings.setReadOnly(false)
-editor.settings.setMaxGutterIcons(2)
-
-editor.applyTheme(.dark())
-editor.setLanguageConfiguration(swiftConfig)
-```
-
-### iOS UIKit
-
-```swift
-let editor = SweetEditorViewiOS(frame: .zero)
-editor.settings.setScale(1.1)
-editor.settings.setWrapMode(.wordBreak)
-editor.settings.setRenderWhitespace(.boundary)
-editor.settings.setRenderLineBreaks(true)
-editor.settings.setLineSpacing(add: 1.0, mult: 1.2)
-editor.settings.setReadOnly(false)
-editor.settings.setMaxGutterIcons(2)
-
-editor.applyTheme(.dark())
-editor.setLanguageConfiguration(swiftConfig)
-```
-
-### Compatibility note
-
-Legacy setters such as `setScale(_:)`, `setWrapMode(_:)`, and `setReadOnly(_:)` remain available for compatibility, but they now forward into `settings`. Prefer `settings` for new integration code.
+- [Apple API reference](https://github.com/FinalScave/SweetEditor/blob/main/docs/en/api-platform-apple.md)
+- [iOS demo](Examples-iOS/README.md)
+- [macOS demos](Examples-MacOS/README.md)
+- [Native binary layout](binaries/README.md)
+- [Changelog](CHANGELOG.md)
+- [Repository](https://github.com/FinalScave/SweetEditor)
+- [MIT License](../../LICENSE)

@@ -24,17 +24,17 @@
 
 The core design principle of SweetEditor is **"complete separation of computation and rendering"**:
 
-1. **C++ core does no rendering** - it does not depend on any graphics library (OpenGL / Skia / Metal, etc.) and does not hold any platform UI object.
-2. **C++ core does no font measuring** - measuring is inverted to platform side through the `TextMeasurer` interface.
+1. **C++ core does no rendering** - it does not depend on any graphics library (OpenGL / Skia / Metal, etc.) and does not hold any host UI object.
+2. **C++ core does no font measuring** - measuring is inverted to the integration layer through the `TextMeasurer` interface.
 3. **C++ core outputs structured render model** - internally it builds `EditorRenderModel`; Android / C API / bridge paths are all built around this model.
-4. **Platform layer stays thin** - it mainly forwards events, does font measuring, decodes binary protocol, and draws from model; it does not hold cross-platform editing semantics.
+4. **Integration layer stays thin** - it mainly forwards events, does font measuring, decodes binary protocol, and draws from the model; it does not hold shared editing semantics.
 
 Core benefits:
 
 - **Behavior consistency**: text edit, cursor move, selection logic all have one implementation.
 - **Testability**: core logic can be unit tested without UI.
-- **Controllable platform adaptation cost**: minimum loop for a new platform is `TextMeasurer` + input forwarding + payload decode + drawing. Complexity stays in core, not in platform semantic layer.
-- **Best rendering quality**: each platform uses its strongest native text rendering.
+- **Controllable integration cost**: the minimum loop for a new implementation is `TextMeasurer` + input forwarding + payload decode + drawing. Complexity stays in core, not in the integration semantic layer.
+- **Best rendering quality**: each implementation uses the native text rendering best suited to its target.
 
 ---
 
@@ -42,10 +42,10 @@ Core benefits:
 
 ```text
 +-----------------------------------------------------------------------------------+
-|                          Platform Layer (Input + Render)                          |
+|                         Integration Layer (Input + Render or C ABI)               |
 |                                                                                   |
-| Android        Apple         Swing / WinForms      OHOS            Web*           |
-| Canvas         CoreText/CG   Java2D / GDI+         ArkUI Canvas    Testing        |
+| Android        Apple         Swing / WinForms      OHOS            Web            |
+| Canvas         CoreText/CG   Java2D / GDI+         ArkUI Canvas    C ABI module   |
 +----------------+-------------+----------------------+---------------+--------------+
          |               |                 |                    |
          | JNI direct    | manual C bridge | C API / payload    | NAPI direct
@@ -67,14 +67,6 @@ Core benefits:
                +--------------------------------------------------+
 ```
 
-Current integration status (code state):
-
-- Android: integrated (JNI direct)
-- Swing / WinForms: integrated (C API)
-- Apple: integrated (Swift Package + manual bridge)
-- Web (Emscripten): experimental testing work is maintained in the unofficial fork repository: <https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten>
-- OHOS: integrated (ArkTS component + NAPI direct bridge)
-
 ---
 
 ## Core Module Details
@@ -89,7 +81,7 @@ There is one easy-to-misread point in the current string model:
 
 - **Storage layer**: `Document` and edit entry points are mainly UTF-8
 - **Layout/measure layer**: `LogicalLine.cached_text`, `TextLayout` measure cache, and `VisualRun.text` use UTF-16
-- **Platform protocol layer**: complex C API structures go through binary payload; render-model text fields are currently serialized in UTF-8, while `get_document_line_text()` separately returns UTF-16 pointer
+- **Integration protocol layer**: complex C API structures go through binary payload; render-model text fields are currently serialized in UTF-8, while `get_document_line_utf16()` separately returns a UTF-16 pointer
 
 So the core model is not "all UTF-8" or "all UTF-16", but a mixed model: "UTF-8 storage + UTF-16 layout/measure + binary payload transport".
 
@@ -151,7 +143,7 @@ The layout engine is one of the most critical modules. It transforms logical lin
 2. **Auto wrap** - split long lines into visual lines by `WrapMode`
 3. **Viewport clipping** - layout/output only visible lines
 4. **HitTest** - precise mapping from screen coordinates to text position
-5. **Width measurement** - call platform text measure via `TextMeasurer`, with cache
+5. **Width measurement** - call host text measurement via `TextMeasurer`, with cache
 
 #### Layout Flow
 
@@ -205,7 +197,7 @@ class TextMeasurer {
 };
 ```
 
-Implemented by each platform. C API passes callbacks through `text_measurer_t`:
+Implemented by each integration. The C API passes callbacks through `text_measurer_t`:
 
 ```c
 typedef struct {
@@ -248,7 +240,7 @@ Extra notes:
 
 - `InlayHint.text` / `PhantomText.text` are still stored as UTF-8 in `DecorationManager`.
 - `TextLayout::buildLineRuns()` converts needed decoration text to UTF-16 when generating `VisualRun`.
-- So decoration manager stores edit-semantic data, not platform-ready drawing objects.
+- So the decoration manager stores edit-semantic data, not renderer-ready drawing objects.
 
 #### TextStyleRegistry
 
@@ -259,7 +251,7 @@ class TextStyleRegistry {
 };
 ```
 
-Platform side registers style first (ID -> color + font style), then applies ranges per line through `setLineSpans`. This decouples style definition from style usage and helps theme switching.
+The integration layer registers styles first (ID -> color + font style), then applies ranges per line through `setLineSpans`. This decouples style definition from style usage and helps theme switching.
 
 #### Auto adjust after edits
 
@@ -283,7 +275,7 @@ IME composition semantic actions and composition state are owned by `Composition
 
 ```cpp
 class EditorCore {
-  Ptr<TextMeasurer>       m_measurer_;         // text measure (platform impl)
+  Ptr<TextMeasurer>       m_measurer_;         // text measure (integration impl)
   Ptr<Document>           m_document_;         // document model
   Ptr<DecorationManager>  m_decorations_;      // decoration manager
   UPtr<GestureHandler>    m_gesture_handler_;  // gesture recognition
@@ -360,12 +352,12 @@ Direct series: DIRECT_SCALE (trackpad pinch), DIRECT_SCROLL (trackpad scroll)
 #### Modifier Keys
 
 ```cpp
-enum class Modifier : uint8_t {
+enum class KeyModifier : uint8_t {
   NONE  = 0,
-  SHIFT = 1 << 0,  // Shift+Click = extend selection
-  CTRL  = 1 << 1,  // Ctrl+Click = multi-cursor (future)
+  SHIFT = 1 << 0,
+  CTRL  = 1 << 1,
   ALT   = 1 << 2,
-  META  = 1 << 3,  // Cmd (macOS)
+  META  = 1 << 3,
 };
 ```
 
@@ -437,8 +429,8 @@ struct EditorRenderModel {
 
 Current C API conventions:
 
-- `editor_build_render_model()`: returns native-endian binary payload (all supported platforms are currently little-endian)
-- `editor_get_layout_metrics()`: returns `LayoutMetrics` binary payload for platform-side layout query
+- `editor_build_render_model()`: returns native-endian binary payload (all supported targets are currently little-endian)
+- `editor_get_layout_metrics()`: returns `LayoutMetrics` binary payload for host-side layout queries
 
 ### VisualLine and VisualRun
 
@@ -465,16 +457,16 @@ Important distinction between internal representation and cross-language transpo
 
 ### RangeEffectRenderItem and RangeEffectStyle
 
-`RangeEffectRenderItem` is the shared geometry channel for visible range presentations such as selection, search matches, document highlights, IME composition, diagnostics, linked editing, and bracket matches. Core resolves each item into screen-space rectangles before it reaches a platform renderer.
+`RangeEffectRenderItem` is the shared geometry channel for visible range presentations such as selection, search matches, document highlights, IME composition, diagnostics, linked editing, and bracket matches. Core resolves each item into screen-space rectangles before it reaches an integration renderer.
 
 `RangeEffectStyle` has two different responsibilities:
 
-- `foreground_color` is consumed by core during layout. Core splits affected `VisualRun` values and writes the resolved foreground into `VisualRun.style`. Platform renderers must not draw foreground from `range_effects`.
-- `background_color`, `border_color`, `underline_color`, and `underline_style` are consumed by platform renderers through `range_effects`.
+- `foreground_color` is consumed by core during layout. Core splits affected `VisualRun` values and writes the resolved foreground into `VisualRun.style`. Integration renderers must not draw foreground from `range_effects`.
+- `background_color`, `border_color`, `underline_color`, and `underline_style` are consumed by integration renderers through `range_effects`.
 
-The platform renderer should treat `RangeEffectRenderItem.rect` as final visible geometry. The rects are already split by wrapping, viewport visibility, folded-tail projection, and other layout rules. Platforms should not recompute them from document ranges.
+The integration renderer should treat `RangeEffectRenderItem.rect` as final visible geometry. The rects are already split by wrapping, viewport visibility, folded-tail projection, and other layout rules. Integrations should not recompute them from document ranges.
 
-### Platform-side Drawing Order
+### Integration-side Drawing Order
 
 ```
 1. Fill background
@@ -497,7 +489,7 @@ The platform renderer should treat `RangeEffectRenderItem.rect` as final visible
 9. Draw scrollbars
 ```
 
-`RangeEffectKind` is a semantic label for the resolved effect. Platforms may use it for small presentation tweaks, such as a thicker active linked-editing border, but should not infer editor state or business behavior from it.
+`RangeEffectKind` is a semantic label for the resolved effect. Integrations may use it for small presentation tweaks, such as a thicker active linked-editing border, but should not infer editor state or business behavior from it.
 
 ---
 
@@ -505,7 +497,7 @@ The platform renderer should treat `RangeEffectRenderItem.rect` as final visible
 
 ### C API Layer
 
-Main bridge contract for non-Android platforms is `extern "C"` C API. Objects pass via `intptr_t` handles:
+The main bridge contract for non-Android integrations is the `extern "C"` C API. Objects pass via `intptr_t` handles:
 
 ```c
 // create
@@ -525,7 +517,7 @@ free_editor(editor);
 
 ### Data Exchange Format
 
-Current C API path uses binary payload uniformly (native-endian; all supported platforms are currently little-endian):
+The current C API path uses binary payload uniformly (native-endian; all supported targets are currently little-endian):
 
 - `editor_build_render_model()` -> `EditorRenderModel`
 - `editor_get_layout_metrics()` -> `LayoutMetrics`
@@ -539,18 +531,18 @@ In addition, input-style APIs such as `editor_set_line_spans()`, `editor_set_lin
 String notes:
 
 - string fields in binary payload are length-prefixed UTF-8
-- `create_document_from_utf16()` / `get_document_line_text()` are explicit UTF-16 boundaries
+- `create_document_from_utf16()` / `get_document_line_utf16()` are explicit UTF-16 boundaries
 - a few query APIs still return UTF-8 `const char*` (such as `editor_get_selected_text()`)
 
-### Bridge by Platform
+### Bridge by Implementation
 
-| Platform | Bridge tech | Call path |
+| Implementation | Bridge tech | Call path |
 |------|---------|---------|
 | Android | JNI (`jni_entry.cpp` + `jeditor.hpp`) | Java `native*` direct to C++ objects |
 | iOS/macOS | Swift Package + manual C bridge | Swift calls bridge functions |
 | Windows | P/Invoke | `DllImport("sweeteditor.dll")` |
 | Swing | Java FFM | downcall to C API |
-| Web | Emscripten | Testing in unofficial fork: <https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten> |
+| Web | Emscripten | C ABI ES module |
 | OHOS | ArkTS NAPI (`libsweeteditor.so`) | ArkTS `native` calls into shared C++ and decodes binary payload in `CoreProtocol.ets` |
 
 Note: Android currently does not use `c_api.h` call chain. New public features must sync both JNI path and C API path.
@@ -567,13 +559,13 @@ Extra:
 
 ### Full flow from input to render
 
-> The flow below uses C API platforms (Swing/WinForms/Apple) as example; Android is similar but enters through direct JNI.
+> The flow below uses C API implementations (Swing/WinForms/Apple) as examples; Android is similar but enters through direct JNI.
 
 ```
    User touch/click
         │
         ▼
-  Platform captures event
+  Integration layer captures event
         │
         ▼
   C API: editor_handle_gesture_event()
@@ -593,7 +585,7 @@ Extra:
   Return EditorActionResult (binary payload)
         │
         ▼
-  Platform dispatches EditorActionResult through one path
+  Integration layer dispatches EditorActionResult through one path
         │  · emit text events from changes/contentChanged
         │  · synchronize IME state from needsImeSync
         │  · drive animation ticks from needsAnimation
@@ -615,7 +607,7 @@ Extra:
   Return EditorRenderModel (binary payload)
         │
         ▼
-  Platform draws model to screen
+  Integration layer draws model to screen
 ```
 
 ### Text edit flow
@@ -642,7 +634,7 @@ Extra:
   Fold into EditorActionResult
         │  {contentChanged, changes, cursorChanged, selectionChanged, needsRedraw, ...}
         ▼
-  Platform dispatches EditorActionResult
+  Integration layer dispatches EditorActionResult
         │
         ▼
   If needsRedraw is true, refresh render model and redraw
@@ -674,11 +666,11 @@ void free_editor(intptr_t handle) {
 }
 ```
 
-Platform side should ensure:
+The integration layer should ensure:
 
 - call `free_document()` / `free_editor()` when handles are no longer used
 - free binary payload returned by `editor_build_render_model()` etc. via `free_binary_data()`
-- free UTF-16 text returned by `get_document_line_text()` via `free_u16_string()`
+- free UTF-16 text returned by `get_document_line_utf16()` via `free_u16_string()`
 
 ---
 

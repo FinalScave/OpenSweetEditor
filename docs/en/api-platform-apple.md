@@ -1,231 +1,250 @@
 # Apple Platform API
 
-This document maps to the current Apple SPM SDK implementation (root: `platform/Apple`).
+This document describes the public API exported by the Apple Swift Package in `platform/Apple`. Internal Swift wrappers and the C bridge are implementation details unless explicitly listed here.
 
-## Overview
+## Requirements and Products
 
-- Public products: `SweetEditoriOS`, `SweetEditorMacOS`
-- Internal core target: `SweetEditorCoreInternal` (not exposed directly)
-- Core communication path: Swift -> manual C bridge -> C++ Core
+- iOS 13 or newer
+- macOS 11 or newer
+- Public Swift Package product `SweetEditoriOS`
+- Public Swift Package product `SweetEditorMacOS`
 
-Key files:
+The public native entry points are:
 
-- C bridge: `platform/Apple/Sources/SweetEditorBridge/include/SweetEditorBridge.h`
-- Swift core wrapper: `platform/Apple/Sources/SweetEditorCoreInternal/api/SweetEditorCore.swift`
-- Document object: `platform/Apple/Sources/SweetEditorCoreInternal/runtime/SweetDocument.swift`
+- `SweetEditorViewiOS`, a UIKit `UIView`
+- `SweetEditorViewMacOS`, an AppKit `NSView`
+- `SweetEditorSwiftUIViewiOS`, a `UIViewRepresentable` wrapper
+- `SweetEditorSwiftUIMacOS`, an `NSViewRepresentable` wrapper
 
-Internal layout follows the same mental split used by Android:
+`SweetEditorCoreInternal`, `SweetEditorBridge`, `SweetEditorCore`, and `SweetDocument` are not public application entry points. The two public products re-export public support models from `SweetEditorCoreInternal`, but applications do not link that internal target directly.
 
-- Binary protocol encode/decode: `platform/Apple/Sources/SweetEditorCoreInternal/core/CoreProtocol.swift`
-- Render-model DTOs: `platform/Apple/Sources/SweetEditorCoreInternal/visual/`
-- Shared renderer: `platform/Apple/Sources/SweetEditorCoreInternal/EditorRenderer.swift`
-- Shared theme/support types: `platform/Apple/Sources/SweetEditorCoreInternal/EditorTheme.swift`, `platform/Apple/Sources/SweetEditorCoreInternal/ScrollbarVisualStyle.swift`, `platform/Apple/Sources/SweetEditorCoreInternal/EditorIconProvider.swift`
+## Package and Native Artifacts
 
-## Shared Core Features (for iOS and macOS)
+- `SweetEditorCoreIOS.xcframework` contains iOS device and simulator framework slices.
+- `SweetEditorCoreOSX.xcframework` contains the macOS universal framework slice.
+- The XCFrameworks contain dynamic `SweetEditorCore.framework` binaries.
+- A raw Apple shared-library build produces `libsweeteditor.dylib` independently of framework packaging.
 
-`SweetEditorCore` is the shared feature layer for iOS and macOS. It handles:
+See the [Apple README](../../platform/Apple/README.md) for package integration and build commands.
 
-- UTF-16 pointer conversion
-- Delegation into binary payload encode/decode (including `LayoutMetrics`) via `CoreProtocol`
-- Text measure callbacks and render-model building
+## Common Native View API
 
-### Basic and Rendering
+`SweetEditorViewiOS` and `SweetEditorViewMacOS` share the API groups below unless a platform difference is stated.
 
-```swift
-func setViewport(width: Int, height: Int)
-func setDocument(_ document: SweetDocument)
-func buildRenderModel() -> EditorRenderModel?
-func getLayoutMetrics() -> LayoutMetrics?
-func setScroll(scrollX: Float, scrollY: Float)
-func getScrollMetrics() -> ScrollMetrics
-func onFontMetricsChanged()
-```
+### Document, Theme, and Content Queries
 
-### Input and Text Edit
+    var settings: EditorSettings { get }
 
-`SweetEditorCore` methods return `EditorActionResult`; `SweetEditorViewMacOS` and `SweetEditorViewiOS` consume those results internally and expose host editing methods as `Void`.
+    func applyTheme(isDark: Bool)
+    func loadDocument(text: String)
+    func documentLines() -> [String]
 
-```swift
-func handleGestureEvent(
-    type: SEEventType,
-    points: [(Float, Float)],
-    modifiers: SEModifier = [],
-    wheelDeltaX: Float = 0,
-    wheelDeltaY: Float = 0,
-    directScale: Float = 1) -> EditorActionResultData?
+Only text loading through `loadDocument(text:)` is public. File-backed `SweetDocument` construction remains internal.
 
-func handleKeyEvent(
-    keyCode: SEKeyCode,
-    text: String? = nil,
-    modifiers: SEModifier = []) -> EditorActionResultData?
+### Search and Replace
 
-func insertText(_ text: String) -> EditorActionResultData?
-func insertText(at position: TextPosition, text: String)
-func replaceText(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int, newText: String) -> EditorActionResultData?
-func deleteText(startLine: Int, startColumn: Int, endLine: Int, endColumn: Int) -> EditorActionResultData?
-func applyTextEdits(_ edits: [TextEdit]) -> EditorActionResultData?
-```
+    func search(_ request: SearchRequest)
+    func findNextSearchMatch()
+    func findPreviousSearchMatch()
+    func replaceCurrentSearchMatch(_ replacement: String)
+    func replaceAllSearchMatches(_ replacement: String)
+    func clearSearch()
+    func getSearchState() -> SearchState
 
-### Line Actions
+`SearchRequest` supports case sensitivity, whole-word matching, regular expressions, wrap-around, and a maximum match count.
 
-```swift
-func moveLineUp() -> EditorActionResultData?
-func moveLineDown() -> EditorActionResultData?
-func copyLineUp() -> EditorActionResultData?
-func copyLineDown() -> EditorActionResultData?
-func deleteLine() -> EditorActionResultData?
-func insertLineAbove() -> EditorActionResultData?
-func insertLineBelow() -> EditorActionResultData?
-```
+### External Text Edits
 
-### Cursor, Word, IME, Read-only, Auto Indent
+    func insertText(at position: TextPosition, text: String)
+    func applyTextEdits(_ edits: [TextEdit])
 
-```swift
-func getSelectedText() -> String
-func getCursorPosition() -> (line: Int, column: Int)?
-func getWordRangeAtCursor() -> (startLine: Int, startColumn: Int, endLine: Int, endColumn: Int)
-func getWordAtCursor() -> String
+`applyTextEdits(_:)` applies the supplied edits as one undoable operation. Direct range replacement, deletion, cursor control, and selection control are internal and are not public View methods.
 
-func handleImeCommandMessage(_ message: ImeCommandMessage) -> EditorActionResult?
-func handleImeTextUpdateMessage(_ message: ImeTextUpdateMessage) -> EditorActionResult?
-func hasPreedit() -> Bool
+The native views still provide interactive cursor movement, selection, clipboard commands, line actions, undo and redo shortcuts, scrolling, folding, and IME input through UIKit or AppKit event handling.
 
-func setReadOnly(_ readOnly: Bool)
-func isReadOnly() -> Bool
+### Effective Runtime Settings
 
-enum AutoIndentMode: Int32
-func setAutoIndentMode(_ mode: AutoIndentMode)
-func getAutoIndentMode() -> AutoIndentMode
+Use the public `settings` object for runtime configuration:
 
-struct CursorRect { let x: CGFloat; let y: CGFloat; let height: CGFloat }
-func getPositionRect(line: Int, column: Int) -> CursorRect
-func getCursorRect() -> CursorRect
-```
+    settings.setScale(_:)
+    settings.setFoldArrowMode(_:)
+    settings.setWrapMode(_:)
+    settings.setRenderWhitespace(_:)
+    settings.setRenderLineBreaks(_:)
+    settings.setLineSpacing(add:mult:)
+    settings.setContentStartPadding(_:)
+    settings.setShowSplitLine(_:)
+    settings.setCurrentLineRenderMode(_:)
+    settings.setAutoIndentMode(_:)
+    settings.setBackspaceUnindent(_:)
+    settings.setReadOnly(_:)
+    settings.setCompositionEnabled(_:)
+    settings.setMaxGutterIcons(_:)
 
-### Styles / Decorations / Folding / Linked Editing
+The native views also retain compatibility wrappers for maximum gutter icons, fold-arrow mode, line spacing, content padding, split-line visibility, current-line mode, whitespace rendering, line-break rendering, read-only mode, integer wrap mode, and scale.
 
-```swift
-func registerStyle(styleId: UInt32, color: Int32, fontStyle: Int32)
-func registerStyle(styleId: UInt32, color: Int32, backgroundColor: Int32, fontStyle: Int32)
-func clearHighlights()
-func clearHighlights(layer: UInt8)
-func setLineSpans(line: Int, layer: UInt8 = 0, spans: [StyleSpan])
-func setBatchLineSpans(layer: UInt8, spansByLine: [Int: [StyleSpan]])
+### Styles and Decorations
 
-func setLineDiagnostics(line: Int, items: [Diagnostic])
-func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [Diagnostic]])
-func clearDiagnostics()
+Both native views expose:
 
-func setLineInlayHints(line: Int, hints: [InlayHintPayload])
-func setBatchLineInlayHints(_ hintsByLine: [Int: [InlayHintPayload]])
-func clearInlayHints()
-func setLinePhantomTexts(line: Int, phantoms: [PhantomTextPayload])
-func setBatchLinePhantomTexts(_ phantomsByLine: [Int: [PhantomTextPayload]])
-func clearPhantomTexts()
-func setLineCodeLens(line: Int, items: [CodeLensPayload])
-func setBatchLineCodeLens(_ itemsByLine: [Int: [CodeLensPayload]])
-func clearCodeLens()
-func setLineLinks(line: Int, links: [LinkSpan])
-func setBatchLineLinks(_ linksByLine: [Int: [LinkSpan]])
-func getLinkTargetAt(line: Int, column: Int) -> String
-func clearLinks()
-func clearAllDecorations()
+    func applyDecorations(_ decorations: EditorResolvedDecorations, clearExisting: Bool = true)
 
-func setLineGutterIcons(line: Int, icons: [GutterIcon])
-func setBatchLineGutterIcons(_ iconsByLine: [Int: [GutterIcon]])
-func clearGutterIcons()
-func setMaxGutterIcons(_ count: UInt32)
+    func registerStyle(styleId: UInt32, color: Int32, fontStyle: Int32)
+    func registerStyle(styleId: UInt32, color: Int32, backgroundColor: Int32, fontStyle: Int32)
 
-func setIndentGuides(_ guides: [IndentGuidePayload])
-func setBracketGuides(_ guides: [BracketGuidePayload])
-func setFlowGuides(_ guides: [FlowGuidePayload])
-func setSeparatorGuides(_ guides: [SeparatorGuidePayload])
-func clearGuides()
+    func setLineSpans(line: Int, layer: SpanLayer, spans: [StyleSpan])
+    func setBatchLineSpans(layer: SpanLayer, spansByLine: [Int: [StyleSpan]])
 
-func setFoldRegions(_ regions: [FoldRegion])
-func toggleFold(line: Int) -> Bool
-func foldAt(line: Int) -> Bool
-func unfoldAt(line: Int) -> Bool
-func foldAll()
-func unfoldAll()
-func isLineVisible(line: Int) -> Bool
+    func setLineInlayHints(line: Int, hints: [InlayHint])
+    func setBatchLineInlayHints(_ hintsByLine: [Int: [InlayHint]])
+    func setLinePhantomTexts(line: Int, phantoms: [PhantomText])
+    func setBatchLinePhantomTexts(_ phantomsByLine: [Int: [PhantomText]])
+    func setLineGutterIcons(line: Int, icons: [GutterIcon])
+    func setBatchLineGutterIcons(_ iconsByLine: [Int: [GutterIcon]])
+    func setLineCodeLens(line: Int, items: [CodeLensItem])
+    func setBatchLineCodeLens(_ itemsByLine: [Int: [CodeLensItem]])
+    func setLineLinks(line: Int, links: [LinkSpan])
+    func setBatchLineLinks(_ linksByLine: [Int: [LinkSpan]])
+    func getLinkTargetAt(line: Int, column: Int) -> String
 
-enum FoldArrowMode: Int32
-enum WrapMode: Int32
-enum WhitespaceRenderMode: Int32
-func setFoldArrowMode(_ mode: FoldArrowMode)
-func setWrapMode(_ mode: WrapMode)
-func setRenderWhitespace(_ mode: WhitespaceRenderMode)
-func setRenderLineBreaks(_ enabled: Bool)
-func setLineSpacing(add: Float, mult: Float)
+    func setLineDiagnostics(line: Int, items: [Diagnostic])
+    func setBatchLineDiagnostics(_ diagnosticsByLine: [Int: [Diagnostic]])
+    func setLineDocumentHighlights(line: Int, items: [DocumentHighlight])
+    func setBatchLineDocumentHighlights(_ highlightsByLine: [Int: [DocumentHighlight]])
 
-func insertSnippet(_ template: String) -> EditorActionResultData?
-func startLinkedEditing(model: LinkedEditingModel)
-func isInLinkedEditing() -> Bool
-func linkedEditingNext() -> Bool
-func linkedEditingPrev() -> Bool
-func cancelLinkedEditing()
-```
+    func setIndentGuides(_ guides: [IndentGuide])
+    func setBracketGuides(_ guides: [BracketGuide])
+    func setFlowGuides(_ guides: [FlowGuide])
+    func setSeparatorGuides(_ guides: [SeparatorGuide])
+    func setFoldRegions(_ regions: [FoldRegion])
 
-> `SweetEditorCore` exposes model-oriented helpers and payload-oriented helpers for paths that already carry generated protocol models.
+    func clearHighlights()
+    func clearHighlights(layer: SpanLayer)
+    func clearInlayHints()
+    func clearPhantomTexts()
+    func clearGutterIcons()
+    func clearCodeLens()
+    func clearLinks()
+    func clearGuides()
+    func clearDiagnostics()
+    func clearDocumentHighlights()
+    func clearAllDecorations()
 
-`getLinkTargetAt(line:column:)` returns an empty string when no link matches the requested position.
+`clearSearch()` is listed in the search API above. Fold regions can be removed by setting an empty region list; there is no separate public `clearFoldRegions` method.
 
-### Bracket Highlight
+### Decoration Providers
 
-```swift
-func setBracketPairs(openChars: [Int32], closeChars: [Int32])
-func setMatchedBrackets(openLine: Int, openColumn: Int, closeLine: Int, closeColumn: Int)
-func clearMatchedBrackets()
-```
+    func attachDecorationProvider(_ provider: DecorationProvider)
+    func detachDecorationProvider(_ provider: DecorationProvider)
+    func requestDecorationRefresh()
 
-## iOS (UIKit / SwiftUI)
+`DecorationProvider` receives visible-line range, total line count, and text changes through `DecorationContext`. `DecorationResult` supports `merge`, `replaceAll`, and `replaceRange` modes for the supported decoration families.
 
-iOS view-layer files:
+### Completion Providers
 
-- `platform/Apple/Sources/SweetEditoriOS/SweetEditorViewiOS.swift`
-- `platform/Apple/Sources/SweetEditoriOS/SweetEditorSwiftUIiOS.swift`
+    func attachCompletionProvider(_ provider: CompletionProvider)
+    func detachCompletionProvider(_ provider: CompletionProvider)
+    func triggerCompletion()
+    func showCompletionItems(_ items: [CompletionItem])
+    func dismissCompletion()
 
-On top of shared core, iOS adds wrappers for:
+Completion providers return results asynchronously through `CompletionReceiver`. Provider results are merged and sorted. Completion items support direct text insertion, primary text edits, additional text edits, and snippet insertion with linked placeholders.
 
-- DecorationProvider: `add/remove/requestDecorationRefresh`
-- Decoration providers return `DecorationResult`; each decoration family has a `DecorationApplyMode` (`merge`, `replaceAll`, `replaceRange`).
-- CompletionProvider: `add/remove/trigger/show/dismiss`
-- Language config: `setLanguageConfiguration(_:)` (syncs bracket pairs to Core)
-- Generic metadata API: `setMetadata<T: EditorMetadata>(_:)` / `getMetadata<T: EditorMetadata>() -> T?`
-- CodeLens / Link click callbacks: `onCodeLensClick`, `onLinkClick`
-- `setWrapMode(_ mode: Int)`: keeps `Int` entry and maps to `SweetEditorCore.WrapMode`
+### Icons and Interaction Callbacks
 
-SwiftUI entry: `SweetEditorSwiftUIViewiOS`.
+    var editorIconProvider: EditorIconProvider?
+    func setEditorIconProvider(_ provider: EditorIconProvider?)
 
-> Current status: SwiftUI wrappers are present and still being refined. Validate focus, IME, popup, and provider flows in your target app before shipping.
+    var onFoldToggle: ((SweetEditorFoldToggleEvent) -> Void)?
+    var onInlayHintClick: ((SweetEditorInlayHintClickEvent) -> Void)?
+    var onGutterIconClick: ((SweetEditorGutterIconClickEvent) -> Void)?
+    var onCodeLensClick: ((SweetEditorCodeLensClickEvent) -> Void)?
+    var onLinkClick: ((SweetEditorLinkClickEvent) -> Void)?
 
-## macOS (AppKit / SwiftUI)
+`EditorIconProvider` supplies `CGImage` values for gutter and icon inlay rendering.
 
-macOS view-layer files:
+## iOS-Specific Public API
 
-- `platform/Apple/Sources/SweetEditorMacOS/SweetEditorViewMacOS.swift`
-- `platform/Apple/Sources/SweetEditorMacOS/SweetEditorSwiftUIMacOS.swift`
+`SweetEditorViewiOS` additionally exposes:
 
-macOS also wraps providers, language config, metadata, and click callbacks (`onCodeLensClick`, `onLinkClick`) on top of shared core. Features align with iOS. Main differences come from AppKit event system and input path.
+    var onDocumentTextChanged: ((String) -> Void)?
 
-SwiftUI entry: `SweetEditorSwiftUIMacOS`.
+    func insertText(_ text: String)
+    func undo()
+    func redo()
+    func canUndo() -> Bool
+    func canRedo() -> Bool
 
-> Current status: SwiftUI wrappers are present and still being refined. Validate focus, IME, popup, and provider flows in your target app before shipping.
+The UIKit implementation integrates `UITextInput`, `UIKeyInput`, marked text, surrounding-text queries, selection ranges, candidate positioning, touch gestures, pinch scaling, iPad pointer input, and physical-keyboard shortcuts.
 
-## `SweetDocument`
+`SweetEditorSwiftUIViewiOS` exposes only:
 
-```swift
-init(text: String)
-init(filePath: String)
-func getLineText(_ line: Int) -> String
-func getLineCount() -> Int
-```
+- `isDarkTheme`
+- fold, inlay hint, gutter icon, CodeLens, and link callbacks
 
-## Gaps and Risks
+It does not directly expose document loading, settings, providers, completion control, or document-text binding. Use `SweetEditorViewiOS` when those APIs are required.
 
-- Apple bridge/header is maintained manually, so there is risk of signature drift from `include/sweeteditor/c_api.h`.
-- When core API changes, at least check these together:
-  - `include/sweeteditor/c_api.h`
-  - `platform/Apple/Sources/SweetEditorBridge/include/SweetEditorBridge.h`
-  - `platform/Apple/Sources/SweetEditorCoreInternal/api/SweetEditorCore.swift`
+## macOS-Specific Public API
+
+`SweetEditorViewMacOS` additionally exposes:
+
+    static weak var activeEditor: SweetEditorViewMacOS?
+    var scrollbarHoverRevealEnabled: Bool
+    var showsPerformanceOverlay: Bool
+
+    func registerBatchStyles(
+        _ stylesById: [UInt32: (color: Int32, backgroundColor: Int32, fontStyle: Int32)]
+    )
+    func selectedTextPreview(maxLength: Int = 80) -> String?
+    func setMetadata<T: EditorMetadata>(_ metadata: T?)
+    func getMetadata<T: EditorMetadata>() -> T?
+    func handleForwardedKeyDown(_ event: NSEvent)
+    func applyEditorSettings(_ settings: EditorSettings)
+
+The metadata methods are not exposed by `SweetEditorViewiOS` or either SwiftUI wrapper.
+
+The AppKit implementation integrates `NSTextInputClient`, marked text, surrounding-text queries, candidate positioning, mouse and trackpad input, wheel scrolling, magnification, clipboard shortcuts, and standard AppKit key bindings.
+
+`SweetEditorSwiftUIMacOS` exposes:
+
+- `isDarkTheme`
+- `showsPerformanceOverlay`
+- fold, inlay hint, gutter icon, CodeLens, and link callbacks
+
+It does not directly expose document loading, settings, providers, completion control, or metadata. Use `SweetEditorViewMacOS` when those APIs are required.
+
+## Public Support Types
+
+The public products re-export the public support types needed by the APIs above, including:
+
+- `EditorSettings` and its semantic setting enums
+- `SearchRequest`, `SearchOptions`, and `SearchState`
+- `TextPosition`, `TextRange`, and `TextEdit`
+- Style and decoration models
+- `DecorationProvider`, `DecorationReceiver`, `DecorationContext`, and `DecorationResult`
+- `CompletionProvider`, `CompletionReceiver`, `CompletionContext`, `CompletionResult`, and `CompletionItem`
+- `EditorIconProvider` and platform click-event types
+- `EditorMetadata`; public `setMetadata` and `getMetadata` entry points exist only on the native macOS view
+
+## Known Limitations
+
+- There is no public language-configuration setter on either native View. `DecorationContext.languageConfiguration` and `CompletionContext.languageConfiguration` therefore remain `nil` through the current public path.
+- `EditorSettings.setEditorTextSize` and `setTypeface` update stored values but are not applied to the native core or text measurer.
+- `EditorSettings.setDecorationScrollRefreshMinIntervalMs` and `setDecorationOverscanViewportMultiplier` are not connected to `DecorationProviderManager`.
+- `CompletionItem.filterText` is stored but is not used for local completion filtering.
+- The Apple views do not drive the core `tickAnimations` API, so core-managed fling animation is not part of the current Apple surface.
+- Although the macOS source declares `addNewLineActionProvider` and `removeNewLineActionProvider`, their provider, context, and result types are internal. Applications cannot call these methods or implement that provider contract.
+- The SwiftUI wrappers intentionally expose a smaller surface than the native UIKit and AppKit views.
+- The C bridge is maintained manually and must be checked when the shared C API changes.
+
+## Implementation References
+
+- Package manifest: [`platform/Apple/Package.swift`](../../platform/Apple/Package.swift)
+- Public iOS wrapper: [`platform/Apple/Sources/SweetEditoriOS/SweetEditorSwiftUIiOS.swift`](../../platform/Apple/Sources/SweetEditoriOS/SweetEditorSwiftUIiOS.swift)
+- Internal UIKit editor: [`platform/Apple/Sources/SweetEditoriOS/SweetEditorViewiOS.swift`](../../platform/Apple/Sources/SweetEditoriOS/SweetEditorViewiOS.swift)
+- Public macOS view: [`platform/Apple/Sources/SweetEditorMacOS/SweetEditorViewMacOS.swift`](../../platform/Apple/Sources/SweetEditorMacOS/SweetEditorViewMacOS.swift)
+- macOS SwiftUI wrapper: [`platform/Apple/Sources/SweetEditorMacOS/SweetEditorSwiftUIMacOS.swift`](../../platform/Apple/Sources/SweetEditorMacOS/SweetEditorSwiftUIMacOS.swift)
+- Public re-exports: [`platform/Apple/Sources/SweetEditoriOS/PublicExports.swift`](../../platform/Apple/Sources/SweetEditoriOS/PublicExports.swift) and [`platform/Apple/Sources/SweetEditorMacOS/PublicExports.swift`](../../platform/Apple/Sources/SweetEditorMacOS/PublicExports.swift)
+- Manual C bridge: [`platform/Apple/Sources/SweetEditorBridge/include/SweetEditorBridge.h`](../../platform/Apple/Sources/SweetEditorBridge/include/SweetEditorBridge.h)
+
+See the [Apple changelog](../../platform/Apple/CHANGELOG.md) for release contents.

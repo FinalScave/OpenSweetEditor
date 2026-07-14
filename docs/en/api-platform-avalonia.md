@@ -1,89 +1,12 @@
-# Avalonia Platform API
+# Avalonia API
 
-This document maps to the current Avalonia implementation:
+For requirements, source integration, build commands, and host setup, see the [Avalonia README](../../platform/Avalonia/SweetEditor/README.md).
 
-- Control layer: `platform/Avalonia/SweetEditor/SweetEditorControl.cs`
-- Controller: `platform/Avalonia/SweetEditor/SweetEditorController.cs`
-- Bridge layer: `platform/Avalonia/SweetEditor/EditorCore.cs`
-- Protocol encode/decode: `platform/Avalonia/SweetEditor/CoreProtocol.cs`
-- Rendering: `platform/Avalonia/SweetEditor/EditorRenderer.cs`
-- Providers / extensions:
-  - `platform/Avalonia/SweetEditor/EditorCompletion.cs`
-  - `platform/Avalonia/SweetEditor/EditorDecoration.cs`
-  - `platform/Avalonia/SweetEditor/EditorNewLine.cs`
-  - `platform/Avalonia/SweetEditor/EditorInlineSuggestion.cs`
-  - `platform/Avalonia/SweetEditor/EditorSelectionMenu.cs`
-  - `platform/Avalonia/SweetEditor/EditorPerf.cs`
-- Shared demo: `platform/Avalonia/Demo.Shared/*`
-- Android host: `platform/Avalonia/Demo.Android/*`
-- Desktop host: `platform/Avalonia/Demo.Desktop/*`
+This reference describes the current public API in `platform/Avalonia/SweetEditor`.
 
-## Architecture Notes
+## Minimal Integration
 
-- The Avalonia path is `Avalonia UI + C# P/Invoke -> C API`.
-- `EditorCore` owns the native handle, document lifecycle, edit commands, and render-model retrieval.
-- `CoreProtocol` encodes and decodes binary payloads; `EditorRenderer` consumes `EditorRenderModel` and draws through Avalonia `DrawingContext`.
-- `SweetEditorControl` is the concrete widget entry. `SweetEditorController` is the external command surface for declarative / MVVM-style host code.
-- Decorations, completion, newline action, inline suggestion, and selection menu are split into dedicated Avalonia-side manager/provider modules.
-- SweetEditor native assets are centralized in the Avalonia project configuration; demo projects only host the control. SweetLine native assets are supplied by the SweetLine NuGet package.
-
-## Layout
-
-- `SweetEditor/`: Avalonia widget, bridge, rendering, events, provider management
-- `Demo.Shared/`: shared UI, sample loading, SweetLine runtime, icon/menu logic
-- `Demo.Android/`: Avalonia Android host entry point
-- `Demo.Desktop/`: Avalonia desktop host
-- `Demo.Mac/` / `Demo.iOS/`: platform-specific demo hosts
-
-## Requirements
-
-### Base
-
-- .NET SDK: `8.0+`
-- Avalonia: `11.3.12`
-- SweetEditor core native prebuilts:
-  - Windows: `prebuilt/windows/x64/sweeteditor.dll`
-  - Linux: `prebuilt/linux/x86_64/libsweeteditor.so`
-  - macOS: `prebuilt/osx/*/libsweeteditor.dylib`
-  - Android: `prebuilt/android/*/libsweeteditor.so`
-  - iOS: `prebuilt/ios/*/libsweeteditor.dylib`
-
-### Android extras
-
-- .NET Android workload
-- Android SDK (API 34)
-- `adb`
-- SweetLine native assets are provided by the SweetLine NuGet package.
-
-## Quick Start
-
-### Run the desktop demo inside this repository
-
-```bash
-cd platform/Avalonia
-dotnet build Avalonia.sln -c Debug
-dotnet run --project Demo.Desktop/Demo.Desktop.csproj -c Debug
-```
-
-### Build the Android demo inside this repository
-
-```bash
-cd platform/Avalonia
-dotnet build Demo.Android/Demo.Android.csproj \
-  -c Debug \
-  -f net8.0-android \
-  -p:RuntimeIdentifier=android-arm64
-```
-
-Install the signed debug APK manually:
-
-```bash
-adb install -r Demo.Android/bin/Debug/net8.0-android/android-arm64/com.qiplat.sweeteditor.avalonia.demo.android-Signed.apk
-```
-
-### Integrate into an existing Avalonia app
-
-Recommended in-repo integration is a project reference:
+Add the source project to the host application:
 
 ```xml
 <ItemGroup>
@@ -91,7 +14,9 @@ Recommended in-repo integration is a project reference:
 </ItemGroup>
 ```
 
-Minimal example:
+Adjust the relative path for the host project. `ProjectReference` supplies the managed control but does not transitively add the repository's Android or iOS native-library items; mobile hosts must configure those assets explicitly as described below.
+
+Create a control directly or bind it to a controller:
 
 ```csharp
 using SweetEditor;
@@ -103,87 +28,15 @@ editor.LoadDocument(new Document("Hello, SweetEditor!"));
 editor.GetSettings().SetWrapMode(WrapMode.WORD_BREAK);
 ```
 
-## Resources and SweetLine Integration
+## `SweetEditorControl`
 
-### Sample code and syntax rules
-
-`Demo.Shared` embeds resources from repository-level `platform/_res`:
-
-- `../../_res/files/*.*` -> `SweetEditor.PlatformRes.files.*`
-- `../../_res/syntaxes/*.json` -> `SweetEditor.PlatformRes.syntaxes.*`
-
-Shared demo sample loader:
-
-- `platform/Avalonia/Demo.Shared/DemoSamples.cs`
-
-### SweetLine native path
-
-`Demo.Shared` uses the SweetLine NuGet package through:
-
-- `platform/Avalonia/Demo.Shared/DemoSweetLineRuntime.cs`
-
-Current strategy:
-
-- Android: create `HighlightEngine`, `DocumentAnalyzer`, and `TextAnalyzer`
-- Syntax rules: compile embedded `platform/_res/syntaxes/*.json`
-- Large documents: prefer visible-range slice / line-level analysis instead of returning the full highlight result to managed code
-- Desktop: fall back to managed highlighting if SweetLine native is unavailable
-
-## Public Entry Types
-
-- `SweetEditorControl`
-- `SweetEditorController`
-- `EditorSettings`
-- `EditorTheme`
-- `Document`
-- `LanguageConfiguration`
-- `EditorKeyMap`
-- `DecorationContext` / `DecorationResult`
-- `CompletionContext` / `CompletionItem` / `CompletionResult`
-- `InlineSuggestion`
-- `SelectionMenuItem`
-
-## Public Control Layer: `SweetEditorControl`
-
-### Constructors
+### Construction, Lifecycle, and Core Configuration
 
 ```csharp
 public SweetEditorControl()
 public SweetEditorControl(SweetEditorController controller)
-```
+public void Dispose()
 
-### Public events
-
-```csharp
-public event EventHandler<TextChangedEventArgs>? TextChanged
-public event EventHandler<CursorChangedEventArgs>? CursorChanged
-public event EventHandler<SelectionChangedEventArgs>? SelectionChanged
-public event EventHandler<ScrollChangedEventArgs>? ScrollChanged
-public event EventHandler<ScaleChangedEventArgs>? ScaleChanged
-public event EventHandler<DocumentLoadedEventArgs>? DocumentLoaded
-public event EventHandler<LongPressEventArgs>? LongPress
-public event EventHandler<DoubleTapEventArgs>? DoubleTap
-public new event EventHandler<ContextMenuEventArgs>? ContextMenu
-public event EventHandler<InlayHintClickEventArgs>? InlayHintClick
-public event EventHandler<GutterIconClickEventArgs>? GutterIconClick
-public event EventHandler<FoldToggleEventArgs>? FoldToggle
-public event EventHandler<SelectionMenuItemClickEventArgs>? SelectionMenuItemClick
-public event Action<IReadOnlyList<CompletionItem>>? CompletionItemsUpdated
-public event Action? CompletionDismissed
-public event Action<InlineSuggestion>? InlineSuggestionAccepted
-public event Action<InlineSuggestion>? InlineSuggestionDismissed
-```
-
-Notes:
-
-- `SelectionChangedEventArgs.Selection` may be null
-- `DoubleTapEventArgs.Selection` may be null
-- mobile hosts emit `LongPress`
-- cross-platform / desktop hosts may consume `ContextMenu`
-
-### Document / theme / language / metadata / debug
-
-```csharp
 public void LoadDocument(Document document)
 public Document? GetDocument()
 public EditorTheme GetTheme()
@@ -202,11 +55,146 @@ public LayoutMetrics GetLayoutMetrics()
 public void Flush()
 public (int start, int end) GetVisibleLineRange()
 public int GetTotalLineCount()
+public void SetMaxGutterIcons(int count)
+public int GetMaxGutterIcons()
 ```
 
-`Flush()` is a force-refresh / diagnostic entrypoint. Normal edit, decoration, scroll, selection, and IME synchronization paths dispatch `EditorActionResult` through the unified result path, and `NeedsRedraw` decides whether to refresh the render model and redraw.
+`Flush()` forces a render-model refresh for diagnostics. Normal editing, scrolling, selection, IME, provider, and decoration operations request redraws automatically. `GetTotalLineCount()` returns `-1` when no document is loaded.
 
-### Providers / completion / ghost / selection menu
+### Text Editing, Line Operations, and Clipboard
+
+```csharp
+public void InsertText(string text)
+public void InsertTextAt(TextPosition position, string text)
+public void ReplaceText(TextRange range, string newText)
+public void DeleteText(TextRange range)
+public void ApplyTextEdits(IReadOnlyList<TextEdit> edits)
+
+public void MoveLineUp()
+public void MoveLineDown()
+public void CopyLineUp()
+public void CopyLineDown()
+public void DeleteLine()
+public void InsertLineAbove()
+public void InsertLineBelow()
+
+public bool Undo()
+public bool Redo()
+public bool CanUndo()
+public bool CanRedo()
+
+public void CopyToClipboard()
+public void PasteFromClipboard()
+public void CutToClipboard()
+```
+
+`ApplyTextEdits(...)` accepts non-overlapping edits in original-document coordinates and groups applied content changes into one undo operation.
+
+### Search and Replace
+
+```csharp
+public void Search(SearchRequest request)
+public void FindNextSearchMatch()
+public void FindPreviousSearchMatch()
+public void ReplaceCurrentSearchMatch(string replacement)
+public void ReplaceAllSearchMatches(string replacement)
+public void ClearSearch()
+public SearchState GetSearchState()
+```
+
+`SearchOptions` supports case-sensitive, whole-word, regular-expression, wrap-around, and maximum-match settings. `SearchState` reports status, match count, current match, generation, and any error message.
+
+### Cursor, Selection, Navigation, and Geometry
+
+```csharp
+public void SelectAll()
+public string GetSelectedText()
+public void SetSelection(int startLine, int startColumn, int endLine, int endColumn)
+public (bool hasSelection, TextRange range) GetSelection()
+public void SetCursorPosition(TextPosition position)
+public TextPosition GetCursorPosition()
+public TextRange? GetWordRangeAtCursor()
+public string GetWordAtCursor()
+
+public void GotoPosition(int line, int column = 0)
+public void ScrollToLine(int line, ScrollBehavior behavior = ScrollBehavior.GOTO_CENTER)
+public void SetScroll(float scrollX, float scrollY)
+public ScrollMetrics GetScrollMetrics()
+public CursorRect GetPositionRect(int line, int column)
+public CursorRect GetCursorRect()
+```
+
+`GetLinkTargetAt(...)` and other string queries return an empty string when no value is available.
+
+### Styles, Decorations, and Folding
+
+```csharp
+public void RegisterTextStyle(uint styleId, int color, int backgroundColor, int fontStyle)
+public void RegisterBatchTextStyles(IReadOnlyDictionary<int, TextStyle> stylesById)
+public void SetLineSpans(int line, SpanLayer layer, IList<StyleSpan> spans)
+public void SetBatchLineSpans(SpanLayer layer, Dictionary<int, IList<StyleSpan>> spansByLine)
+public void ClearLineSpans(int line, SpanLayer layer)
+
+public void SetLineInlayHints(int line, IList<InlayHint> hints)
+public void SetBatchLineInlayHints(Dictionary<int, IList<InlayHint>> hintsByLine)
+public void SetLinePhantomTexts(int line, IList<PhantomText> phantoms)
+public void SetBatchLinePhantomTexts(Dictionary<int, IList<PhantomText>> phantomsByLine)
+public void SetLineGutterIcons(int line, IList<GutterIcon> icons)
+public void SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine)
+public void SetLineCodeLens(int line, IList<CodeLensItem> items)
+public void SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine)
+public void SetLineLinks(int line, IList<LinkSpan> links)
+public void SetBatchLineLinks(Dictionary<int, IList<LinkSpan>> linksByLine)
+public string GetLinkTargetAt(int line, int column)
+public void SetLineDiagnostics(int line, IList<Diagnostic> items)
+public void SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine)
+public void SetLineDocumentHighlights(int line, IList<DocumentHighlight> items)
+public void SetBatchLineDocumentHighlights(Dictionary<int, IList<DocumentHighlight>> highlightsByLine)
+
+public void SetIndentGuides(IList<IndentGuide> guides)
+public void SetBracketGuides(IList<BracketGuide> guides)
+public void SetFlowGuides(IList<FlowGuide> guides)
+public void SetSeparatorGuides(IList<SeparatorGuide> guides)
+
+public void SetFoldRegions(IList<FoldRegion> regions)
+public bool ToggleFold(int line)
+public bool FoldAt(int line)
+public bool UnfoldAt(int line)
+public bool IsLineVisible(int line)
+public void FoldAll()
+public void UnfoldAll()
+
+public void ClearHighlights()
+public void ClearHighlights(SpanLayer layer)
+public void ClearInlayHints()
+public void ClearPhantomTexts()
+public void ClearGutterIcons()
+public void ClearCodeLens()
+public void ClearLinks()
+public void ClearGuides()
+public void ClearDiagnostics()
+public void ClearDocumentHighlights()
+public void ClearAllDecorations()
+public void SetMatchedBrackets(int openLine, int openColumn, int closeLine, int closeColumn)
+public void ClearMatchedBrackets()
+```
+
+The control renders syntax, semantic, and overlay spans; inlay hints; phantom text; CodeLens; links; diagnostics; document highlights; gutter icons; fold regions; and indent, bracket, flow, and separator guides.
+
+### Snippets and Linked Editing
+
+```csharp
+public EditorActionResult InsertSnippet(string snippetTemplate)
+public void StartLinkedEditing(LinkedEditingModel model)
+public bool IsInLinkedEditing()
+public bool LinkedEditingNext()
+public bool LinkedEditingPrev()
+public void CancelLinkedEditing()
+```
+
+Snippet insertion supports tab stops. Linked editing can also be started directly with a `LinkedEditingModel`.
+
+### Providers, Completion, Inline Suggestions, and Selection Menu
 
 ```csharp
 public void AddNewLineActionProvider(INewLineActionProvider provider)
@@ -234,149 +222,54 @@ public void SetSelectionMenuListener(ISelectionMenuListener? listener)
 public bool IsSelectionMenuShowing()
 ```
 
-Notes:
+- Completion providers receive invoked, trigger-character, or retrigger contexts and return results through a cancellable receiver. `CompletionItem.TextEdit` defines the primary replacement range; `AdditionalTextEdits` use original-document coordinates. Snippet-format items enter snippet mode. `ICompletionItemRenderer` supplies the item height and Avalonia `Control` for each item.
+- Decoration providers receive the visible range, accumulated text changes, language configuration, and editor metadata. They can return syntax, semantic, overlay, inlay, diagnostic, document-highlight, guide, fold, gutter-icon, phantom-text, CodeLens, and link data using merge, replace-all, or replace-range modes.
+- New-line action providers form a chain. The first provider that returns an action supplies the text inserted for Enter; returning `null` delegates to the next provider or the default editor behavior.
+- The editor owns completion and mobile selection-menu UI. Hosts provide completion results, custom menu items, custom item controls, and listeners through the public provider interfaces.
 
-- Completion and selection menu UI are editor-owned in Avalonia. Hosts provide items and listen for custom selection-menu commands through the provider/listener APIs.
-- `SetCompletionItemRenderer(...)` customizes completion item views through `ICompletionItemRenderer`.
-
-### Text edit / line operations / clipboard / undo-redo
-
-```csharp
-public void InsertText(string text)
-public void InsertTextAt(TextPosition position, string text)
-public void ReplaceText(TextRange range, string newText)
-public void DeleteText(TextRange range)
-public void ApplyTextEdits(IReadOnlyList<TextEdit> edits)
-
-public void MoveLineUp()
-public void MoveLineDown()
-public void CopyLineUp()
-public void CopyLineDown()
-public void DeleteLine()
-public void InsertLineAbove()
-public void InsertLineBelow()
-
-public bool Undo()
-public bool Redo()
-public bool CanUndo()
-public bool CanRedo()
-
-public void CopyToClipboard()
-public void PasteFromClipboard()
-public void CutToClipboard()
-```
-
-### Cursor / selection / navigation / scroll
+### Events
 
 ```csharp
-public void SelectAll()
-public string GetSelectedText()
-public void SetSelection(int startLine, int startColumn, int endLine, int endColumn)
-public (bool hasSelection, TextRange range) GetSelection()
-public void SetCursorPosition(TextPosition position)
-public TextPosition GetCursorPosition()
-public TextRange? GetWordRangeAtCursor()
-public string GetWordAtCursor()
-public void GotoPosition(int line, int column = 0)
-public void ScrollToLine(int line, ScrollBehavior behavior = ScrollBehavior.CENTER)
-public void SetScroll(float scrollX, float scrollY)
-public ScrollMetrics GetScrollMetrics()
-public CursorRect GetPositionRect(int line, int column)
-public CursorRect GetCursorRect()
+public event EventHandler<TextChangedEventArgs>? TextChanged
+public event EventHandler<CursorChangedEventArgs>? CursorChanged
+public event EventHandler<SelectionChangedEventArgs>? SelectionChanged
+public event EventHandler<ScrollChangedEventArgs>? ScrollChanged
+public event EventHandler<ScaleChangedEventArgs>? ScaleChanged
+public event EventHandler<DocumentLoadedEventArgs>? DocumentLoaded
+public event EventHandler<LongPressEventArgs>? LongPress
+public event EventHandler<DoubleTapEventArgs>? DoubleTap
+public new event EventHandler<ContextMenuEventArgs>? ContextMenu
+public event EventHandler<InlayHintClickEventArgs>? InlayHintClick
+public event EventHandler<GutterIconClickEventArgs>? GutterIconClick
+public event EventHandler<CodeLensClickEventArgs>? CodeLensClick
+public event EventHandler<LinkClickEventArgs>? LinkClick
+public event EventHandler<FoldToggleEventArgs>? FoldToggle
+public event EventHandler<SelectionMenuItemClickEventArgs>? SelectionMenuItemClick
+public event Action<IReadOnlyList<CompletionItem>>? CompletionItemsUpdated
+public event Action? CompletionDismissed
+public event Action<InlineSuggestion>? InlineSuggestionAccepted
+public event Action<InlineSuggestion>? InlineSuggestionDismissed
 ```
 
-### Fold / decoration / styles / linked editing
+`SelectionChangedEventArgs.Selection` and `DoubleTapEventArgs.Selection` may be null.
 
-```csharp
-public bool ToggleFold(int line)
-public bool FoldAt(int line)
-public bool UnfoldAt(int line)
-public bool IsLineVisible(int line)
-public void FoldAll()
-public void UnfoldAll()
-
-public void RegisterTextStyle(uint styleId, int color, int backgroundColor, int fontStyle)
-public void RegisterBatchTextStyles(IReadOnlyDictionary<int, TextStyle> stylesById)
-public void SetLineSpans(int line, SpanLayer layer, IList<StyleSpan> spans)
-public void SetBatchLineSpans(SpanLayer layer, Dictionary<int, IList<StyleSpan>> spansByLine)
-public void ClearLineSpans(int line, SpanLayer layer)
-
-public void SetLineInlayHints(int line, IList<InlayHint> hints)
-public void SetBatchLineInlayHints(Dictionary<int, IList<InlayHint>> hintsByLine)
-public void SetLinePhantomTexts(int line, IList<PhantomText> phantoms)
-public void SetBatchLinePhantomTexts(Dictionary<int, IList<PhantomText>> phantomsByLine)
-public void SetLineGutterIcons(int line, IList<GutterIcon> icons)
-public void SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine)
-public void SetLineCodeLens(int line, IList<CodeLensItem> items)
-public void SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine)
-public void SetLineLinks(int line, IList<LinkSpan> links)
-public void SetBatchLineLinks(Dictionary<int, IList<LinkSpan>> linksByLine)
-public string GetLinkTargetAt(int line, int column)
-public void SetLineDiagnostics(int line, IList<Diagnostic> items)
-public void SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine)
-public void SetLineDocumentHighlights(int line, IList<DocumentHighlight> items)
-public void SetBatchLineDocumentHighlights(Dictionary<int, IList<DocumentHighlight>> highlightsByLine)
-public void SetIndentGuides(IList<IndentGuide> guides)
-public void SetBracketGuides(IList<BracketGuide> guides)
-public void SetFlowGuides(IList<FlowGuide> guides)
-public void SetSeparatorGuides(IList<SeparatorGuide> guides)
-public void SetFoldRegions(IList<FoldRegion> regions)
-
-public void ClearHighlights()
-public void ClearHighlights(SpanLayer layer)
-public void ClearInlayHints()
-public void ClearPhantomTexts()
-public void ClearGutterIcons()
-public void ClearCodeLens()
-public void ClearLinks()
-public void ClearGuides()
-public void ClearDiagnostics()
-public void ClearDocumentHighlights()
-public void ClearAllDecorations()
-public void ClearMatchedBrackets()
-
-public EditorActionResult InsertSnippet(string snippetTemplate)
-public void StartLinkedEditing(LinkedEditingModel model)
-public bool IsInLinkedEditing()
-public bool LinkedEditingNext()
-public bool LinkedEditingPrev()
-public void CancelLinkedEditing()
-```
-
-## Public Controller Layer: `SweetEditorController`
-
-### Lifecycle
+## `SweetEditorController`
 
 ```csharp
 public void WhenReady(Action callback)
 public void Dispose()
 ```
 
-### Controller rules
+The controller exposes the same command and event surface as `SweetEditorControl`, including search, settings access, providers, completion, inline suggestions, selection menu, editing, clipboard, navigation, decorations, and linked editing.
 
-- `SweetEditorController` provides `whenReady(callback)` semantics; if the control is already bound, the callback runs immediately.
-- When the control is not bound, command calls are queued and replayed after binding.
-- Getters return default / empty values when unbound instead of throwing.
-- One controller instance must not be bound to multiple `SweetEditorControl` instances at the same time.
+- Calls made before binding are queued and replayed after a control binds to the controller.
+- `WhenReady(...)` runs immediately when already bound, or after binding otherwise.
+- Unbound getters return documented default or empty values instead of throwing. In particular, controller `GetTheme()` returns `EditorTheme?` and `GetSettings()` returns `EditorSettings?`, unlike the non-null control getters.
+- A controller instance cannot be bound to multiple controls at the same time.
 
-### Public events
+## `EditorSettings`
 
-The controller exposes the same event set as `SweetEditorControl`.
-
-### Public methods
-
-Except for constructors, `SweetEditorController` mirrors `SweetEditorControl` 1:1, including:
-
-- document / theme / keymap / language configuration / metadata / perf overlay toggles / layout metrics
-- providers / completion / inline suggestion / selection menu
-- text editing / line operations / clipboard / undo-redo
-- cursor / selection / navigation / scroll
-- fold / styles / decorations / linked editing
-- `Flush()` / `GetVisibleLineRange()` / `GetTotalLineCount()`
-
-The only extra lifecycle surface is `WhenReady(...)` and `Dispose()`.
-
-## Public Settings Layer: `EditorSettings`
+Access settings through `editor.GetSettings()` or `controller.GetSettings()` after the controller is ready.
 
 ```csharp
 public void SetEditorTextSize(float size)
@@ -424,61 +317,39 @@ public void SetDecorationOverscanViewportMultiplier(float multiplier)
 public float GetDecorationOverscanViewportMultiplier()
 ```
 
-For the complete cross-platform settings and theme contract, see [Platform Implementation Standard](./platform-implementation-standard.md).
+`SetTypeface(...)` is an alias of `SetFontFamily(...)`.
 
-## Provider and data model notes
+## Keymaps and Language Configuration
 
-### Completion
+`EditorKeyMap.DefaultKeyMap()` and `Vscode()` create the built-in map. Hosts can add, replace, remove, or clear `KeyBinding` values and register host commands with `RegisterCommand(...)`. The current Avalonia implementation does not expose JetBrains or Sublime preset factories.
 
-- `CompletionItem`
-- `CompletionContext`
-- `CompletionResult`
-- `ICompletionProvider`
-- `ICompletionReceiver`
-- `ICompletionItemRenderer`
-- `CompletionTriggerKind`
+`LanguageConfiguration` describes the language ID, bracket pairs, auto-closing pairs, line and block comments, tab size, and spaces-for-tabs preference. Bracket, auto-closing, and indentation settings are applied to editing behavior; the full configuration is also available to completion, decoration, and new-line providers.
 
-`CompletionItem.TextEdit` is the only source of replacement range semantics. Without it, completion inserts `InsertText` / `Label` at the cursor; `AdditionalTextEdits` is appended after the primary edit.
+## `Document`
 
-`ICompletionItemRenderer` supplies both item height and an Avalonia `Control` for each completion item.
+```csharp
+public Document(string text)
+public Document(FileInfo? file)
+public static Document FromPath(string path)
+public int GetLineCount()
+public string GetLineText(int line)
+public string GetText()
+public void Dispose()
+```
 
-### Decoration
+Dispose a document when it is no longer needed. Loading a new document into a control does not transfer ownership of the managed `Document` object.
 
-- `DecorationType`
-- `DecorationApplyMode`
-- `DecorationContext`
-- `DecorationResult`
-- `IDecorationProvider`
-- `IDecorationReceiver`
+## Avalonia Input Behavior
 
-### New line
+- Desktop input supports configurable keyboard commands, clipboard operations, mouse selection and dragging, wheel scrolling, pointer cursors, context menus, touchpad magnification, and scroll gestures with inertia.
+- Touch input supports tap, double tap, long press, drag selection, scrolling, and direct pinch scaling. Mobile hosts render selection handles and use the editor-owned selection menu.
+- Avalonia text input and IME synchronization handle preedit, commit, selection, cursor geometry, and surrounding-text state. Android additionally tracks `InputPane` occlusion and repositions editor-owned popups to avoid the software keyboard.
+- Completion, inline suggestions, links, CodeLens, gutter icons, fold markers, and selection-menu items participate in keyboard or pointer interaction through their corresponding events and listeners.
 
-- `NewLineAction`
-- `NewLineContext`
-- `INewLineActionProvider`
+## Native Asset Support
 
-### Ghost / selection menu
+The project targets .NET 10 and Avalonia 12.0.5. Integrate it from source through `ProjectReference`. Repository-level targets above the referenced project are not inherited by an external host.
 
-- `InlineSuggestion`
-- `IInlineSuggestionListener`
-- `SelectionMenuItem`
-- `ISelectionMenuItemProvider`
-- `ISelectionMenuListener`
-
-## Android vs desktop
-
-### Android
-
-- `SweetEditorControl` owns `InputPane` occlusion handling and popup repositioning.
-- `SweetEditorControl` disables `SupportsSurroundingText` on Android to avoid large-text IME overhead.
-- Touch, long-press, double-tap, drag-select, IME avoidance, and selection-menu behavior get extra Avalonia control adaptation on Android.
-- Native assets:
-  - SweetEditor Android, Windows, and Linux assets are declared by `SweetEditor.csproj`.
-  - SweetEditor macOS and iOS app bundle references are injected by `platform/Avalonia/Directory.Build.targets`.
-  - SweetLine native assets are provided by the SweetLine NuGet package.
-
-### Desktop
-
-- `Demo.Desktop` and `Demo.Android` share `Demo.Shared/MainView.cs`.
-- If SweetLine native is not available on desktop, syntax highlighting falls back to managed implementation.
-- Desktop and Android share the same `SweetEditorControl` / `SweetEditorController` / provider API contract.
+- `SweetEditor.csproj` copies Windows x64, Linux x64, and macOS x64/arm64 native libraries when the selected runtime matches.
+- The repository [Android demo project](../../platform/Avalonia/Demo.Android/Demo.Android.csproj) includes Android `arm64-v8a` and `x86_64` libraries with `AndroidNativeLibrary` items. An external Android host must add equivalent items for its supported ABIs.
+- The repository [Directory.Build.targets](../../platform/Avalonia/Directory.Build.targets) adds macOS and iOS native references only to executable projects below `platform/Avalonia`. An external iOS host must add an equivalent `NativeReference` for the selected arm64 device or arm64 simulator library and enable `CopyToAppBundle`.

@@ -1,90 +1,12 @@
-# Avalonia 平台 API
+# Avalonia API
 
-本文档对应当前 Avalonia 实现：
+环境要求、源码接入、构建命令和宿主配置见 [Avalonia README](../../platform/Avalonia/SweetEditor/README.md)。
 
-- 控件层：`platform/Avalonia/SweetEditor/SweetEditorControl.cs`
-- 控制器：`platform/Avalonia/SweetEditor/SweetEditorController.cs`
-- 桥接层：`platform/Avalonia/SweetEditor/EditorCore.cs`
-- 协议编解码：`platform/Avalonia/SweetEditor/CoreProtocol.cs`
-- 渲染层：`platform/Avalonia/SweetEditor/EditorRenderer.cs`
-- Provider / 扩展：
-  - `platform/Avalonia/SweetEditor/EditorCompletion.cs`
-  - `platform/Avalonia/SweetEditor/EditorDecoration.cs`
-  - `platform/Avalonia/SweetEditor/EditorNewLine.cs`
-  - `platform/Avalonia/SweetEditor/EditorInlineSuggestion.cs`
-  - `platform/Avalonia/SweetEditor/EditorSelectionMenu.cs`
-  - `platform/Avalonia/SweetEditor/EditorPerf.cs`
-- 共享 Demo：`platform/Avalonia/Demo.Shared/*`
-- Android 宿主：`platform/Avalonia/Demo.Android/*`
-- 桌面宿主：`platform/Avalonia/Demo.Desktop/*`
+本文档说明 `platform/Avalonia/SweetEditor` 当前真实公开的 API。
 
-## 架构说明
+## 最小集成
 
-- Avalonia 平台主路径是 `Avalonia UI + C# P/Invoke -> C API`。
-- `EditorCore` 负责封装 native 句柄、文档生命周期、文本编辑命令与 render-model 拉取。
-- `CoreProtocol` 负责二进制 payload 编解码；`EditorRenderer` 消费 `EditorRenderModel` 进行 Avalonia `DrawingContext` 绘制。
-- `SweetEditorControl` 是宿主真正持有的控件入口；`SweetEditorController` 提供声明式 / MVVM 风格下的外部控制入口。
-- Decorations / Completion / NewLine / InlineSuggestion / SelectionMenu 均在 Avalonia 层按标准拆成独立 manager/provider 模块。
-- SweetEditor native asset 统一收敛在 Avalonia 项目构建配置中，Demo 项目只负责宿主入口；SweetLine native asset 由 SweetLine NuGet 包提供。
-
-## 目录结构
-
-- `SweetEditor/`：Avalonia 控件、协议桥接、渲染、事件、provider 管理
-- `Demo.Shared/`：共享 UI、样例加载、SweetLine 运行时、图标与菜单逻辑
-- `Demo.Android/`：Avalonia Android 宿主入口
-- `Demo.Desktop/`：Avalonia Desktop 宿主
-- `Demo.Mac/` / `Demo.iOS/`：平台特定 Demo 宿主
-- `api-platform-avalonia.md`：平台目录入口文档（当前文档在 `docs/zh` 的规范版本）
-
-## 环境要求
-
-### 基础要求
-
-- .NET SDK：`8.0+`
-- Avalonia：`11.3.12`
-- SweetEditor core native 预构建库：
-  - Windows：`prebuilt/windows/x64/sweeteditor.dll`
-  - Linux：`prebuilt/linux/x86_64/libsweeteditor.so`
-  - macOS：`prebuilt/osx/*/libsweeteditor.dylib`
-  - Android：`prebuilt/android/*/libsweeteditor.so`
-  - iOS：`prebuilt/ios/*/libsweeteditor.dylib`
-
-### Android 额外要求
-
-- .NET Android workload
-- Android SDK（API 34）
-- `adb`
-- SweetLine native asset 由 SweetLine NuGet 包提供。
-
-## 快速开始
-
-### 在仓库内运行桌面 Demo
-
-```bash
-cd platform/Avalonia
-dotnet build Avalonia.sln -c Debug
-dotnet run --project Demo.Desktop/Demo.Desktop.csproj -c Debug
-```
-
-### 在仓库内构建 Android Demo
-
-```bash
-cd platform/Avalonia
-dotnet build Demo.Android/Demo.Android.csproj \
-  -c Debug \
-  -f net8.0-android \
-  -p:RuntimeIdentifier=android-arm64
-```
-
-手动安装可使用签名后的输出包：
-
-```bash
-adb install -r Demo.Android/bin/Debug/net8.0-android/android-arm64/com.qiplat.sweeteditor.avalonia.demo.android-Signed.apk
-```
-
-### 在现有 Avalonia 应用中接入
-
-当前仓库内的推荐接入方式是项目引用：
+在宿主应用中引用源码项目：
 
 ```xml
 <ItemGroup>
@@ -92,7 +14,9 @@ adb install -r Demo.Android/bin/Debug/net8.0-android/android-arm64/com.qiplat.sw
 </ItemGroup>
 ```
 
-最小示例：
+请根据宿主项目位置调整相对路径。`ProjectReference` 只提供托管控件，不会传递仓库为 Android 或 iOS 配置的 native library item；移动端宿主必须按下文显式配置这些资源。
+
+可以直接创建控件，也可以绑定 Controller：
 
 ```csharp
 using SweetEditor;
@@ -104,87 +28,15 @@ editor.LoadDocument(new Document("Hello, SweetEditor!"));
 editor.GetSettings().SetWrapMode(WrapMode.WORD_BREAK);
 ```
 
-## 资源与 SweetLine 对接
+## `SweetEditorControl`
 
-### 示例代码与高亮规则
-
-`Demo.Shared` 会把仓库根目录 `platform/_res` 中的资源嵌入到程序集：
-
-- `../../_res/files/*.*` -> `SweetEditor.PlatformRes.files.*`
-- `../../_res/syntaxes/*.json` -> `SweetEditor.PlatformRes.syntaxes.*`
-
-共享 Demo 样例加载入口：
-
-- `platform/Avalonia/Demo.Shared/DemoSamples.cs`
-
-### SweetLine native 对接
-
-`Demo.Shared` 通过 SweetLine NuGet 包接入：
-
-- `platform/Avalonia/Demo.Shared/DemoSweetLineRuntime.cs`
-
-当前对接策略：
-
-- Android：优先创建 `HighlightEngine`、`DocumentAnalyzer`、`TextAnalyzer`
-- 语法规则：从嵌入资源 `platform/_res/syntaxes/*.json` 编译
-- 大文档：优先走可见区 slice / 行级分析，避免整份高亮结果回传到托管层
-- 桌面：若未提供 SweetLine native，则回退到托管高亮
-
-## 公开入口类型
-
-- `SweetEditorControl`
-- `SweetEditorController`
-- `EditorSettings`
-- `EditorTheme`
-- `Document`
-- `LanguageConfiguration`
-- `EditorKeyMap`
-- `DecorationContext` / `DecorationResult`
-- `CompletionContext` / `CompletionItem` / `CompletionResult`
-- `InlineSuggestion`
-- `SelectionMenuItem`
-
-## 公开控件层：`SweetEditorControl`
-
-### 构造
+### 构造、生命周期与核心配置
 
 ```csharp
 public SweetEditorControl()
 public SweetEditorControl(SweetEditorController controller)
-```
+public void Dispose()
 
-### 公开事件
-
-```csharp
-public event EventHandler<TextChangedEventArgs>? TextChanged
-public event EventHandler<CursorChangedEventArgs>? CursorChanged
-public event EventHandler<SelectionChangedEventArgs>? SelectionChanged
-public event EventHandler<ScrollChangedEventArgs>? ScrollChanged
-public event EventHandler<ScaleChangedEventArgs>? ScaleChanged
-public event EventHandler<DocumentLoadedEventArgs>? DocumentLoaded
-public event EventHandler<LongPressEventArgs>? LongPress
-public event EventHandler<DoubleTapEventArgs>? DoubleTap
-public new event EventHandler<ContextMenuEventArgs>? ContextMenu
-public event EventHandler<InlayHintClickEventArgs>? InlayHintClick
-public event EventHandler<GutterIconClickEventArgs>? GutterIconClick
-public event EventHandler<FoldToggleEventArgs>? FoldToggle
-public event EventHandler<SelectionMenuItemClickEventArgs>? SelectionMenuItemClick
-public event Action<IReadOnlyList<CompletionItem>>? CompletionItemsUpdated
-public event Action? CompletionDismissed
-public event Action<InlineSuggestion>? InlineSuggestionAccepted
-public event Action<InlineSuggestion>? InlineSuggestionDismissed
-```
-
-说明：
-
-- `SelectionChangedEventArgs.Selection` 允许为空
-- `DoubleTapEventArgs.Selection` 允许为空
-- 移动端会发出 `LongPress`
-- 跨平台 / 桌面宿主可以消费 `ContextMenu`
-
-### 文档 / 主题 / 语言 / 元数据 / 调试
-
-```csharp
 public void LoadDocument(Document document)
 public Document? GetDocument()
 public EditorTheme GetTheme()
@@ -203,11 +55,146 @@ public LayoutMetrics GetLayoutMetrics()
 public void Flush()
 public (int start, int end) GetVisibleLineRange()
 public int GetTotalLineCount()
+public void SetMaxGutterIcons(int count)
+public int GetMaxGutterIcons()
 ```
 
-`Flush()` 是强制刷新 / 诊断入口。正常编辑、装饰、滚动、选区和 IME 同步路径会通过统一分发 `EditorActionResult`，并由 `NeedsRedraw` 决定是否刷新 render model 与重绘。
+`Flush()` 用于诊断场景下强制刷新渲染模型。正常编辑、滚动、选区、IME、Provider 和装饰操作会自动请求重绘。未加载文档时，`GetTotalLineCount()` 返回 `-1`。
 
-### Provider / Completion / Ghost / Selection Menu
+### 文本编辑、行操作与剪贴板
+
+```csharp
+public void InsertText(string text)
+public void InsertTextAt(TextPosition position, string text)
+public void ReplaceText(TextRange range, string newText)
+public void DeleteText(TextRange range)
+public void ApplyTextEdits(IReadOnlyList<TextEdit> edits)
+
+public void MoveLineUp()
+public void MoveLineDown()
+public void CopyLineUp()
+public void CopyLineDown()
+public void DeleteLine()
+public void InsertLineAbove()
+public void InsertLineBelow()
+
+public bool Undo()
+public bool Redo()
+public bool CanUndo()
+public bool CanRedo()
+
+public void CopyToClipboard()
+public void PasteFromClipboard()
+public void CutToClipboard()
+```
+
+`ApplyTextEdits(...)` 接收基于原始文档坐标且互不重叠的编辑，并把实际内容变更归为一次撤销操作。
+
+### 搜索与替换
+
+```csharp
+public void Search(SearchRequest request)
+public void FindNextSearchMatch()
+public void FindPreviousSearchMatch()
+public void ReplaceCurrentSearchMatch(string replacement)
+public void ReplaceAllSearchMatches(string replacement)
+public void ClearSearch()
+public SearchState GetSearchState()
+```
+
+`SearchOptions` 支持区分大小写、全词、正则表达式、循环搜索和最大匹配数。`SearchState` 会返回状态、匹配数、当前匹配、generation 和错误信息。
+
+### 光标、选区、导航与几何信息
+
+```csharp
+public void SelectAll()
+public string GetSelectedText()
+public void SetSelection(int startLine, int startColumn, int endLine, int endColumn)
+public (bool hasSelection, TextRange range) GetSelection()
+public void SetCursorPosition(TextPosition position)
+public TextPosition GetCursorPosition()
+public TextRange? GetWordRangeAtCursor()
+public string GetWordAtCursor()
+
+public void GotoPosition(int line, int column = 0)
+public void ScrollToLine(int line, ScrollBehavior behavior = ScrollBehavior.GOTO_CENTER)
+public void SetScroll(float scrollX, float scrollY)
+public ScrollMetrics GetScrollMetrics()
+public CursorRect GetPositionRect(int line, int column)
+public CursorRect GetCursorRect()
+```
+
+`GetLinkTargetAt(...)` 等字符串查询在没有结果时返回空字符串。
+
+### 样式、装饰与折叠
+
+```csharp
+public void RegisterTextStyle(uint styleId, int color, int backgroundColor, int fontStyle)
+public void RegisterBatchTextStyles(IReadOnlyDictionary<int, TextStyle> stylesById)
+public void SetLineSpans(int line, SpanLayer layer, IList<StyleSpan> spans)
+public void SetBatchLineSpans(SpanLayer layer, Dictionary<int, IList<StyleSpan>> spansByLine)
+public void ClearLineSpans(int line, SpanLayer layer)
+
+public void SetLineInlayHints(int line, IList<InlayHint> hints)
+public void SetBatchLineInlayHints(Dictionary<int, IList<InlayHint>> hintsByLine)
+public void SetLinePhantomTexts(int line, IList<PhantomText> phantoms)
+public void SetBatchLinePhantomTexts(Dictionary<int, IList<PhantomText>> phantomsByLine)
+public void SetLineGutterIcons(int line, IList<GutterIcon> icons)
+public void SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine)
+public void SetLineCodeLens(int line, IList<CodeLensItem> items)
+public void SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine)
+public void SetLineLinks(int line, IList<LinkSpan> links)
+public void SetBatchLineLinks(Dictionary<int, IList<LinkSpan>> linksByLine)
+public string GetLinkTargetAt(int line, int column)
+public void SetLineDiagnostics(int line, IList<Diagnostic> items)
+public void SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine)
+public void SetLineDocumentHighlights(int line, IList<DocumentHighlight> items)
+public void SetBatchLineDocumentHighlights(Dictionary<int, IList<DocumentHighlight>> highlightsByLine)
+
+public void SetIndentGuides(IList<IndentGuide> guides)
+public void SetBracketGuides(IList<BracketGuide> guides)
+public void SetFlowGuides(IList<FlowGuide> guides)
+public void SetSeparatorGuides(IList<SeparatorGuide> guides)
+
+public void SetFoldRegions(IList<FoldRegion> regions)
+public bool ToggleFold(int line)
+public bool FoldAt(int line)
+public bool UnfoldAt(int line)
+public bool IsLineVisible(int line)
+public void FoldAll()
+public void UnfoldAll()
+
+public void ClearHighlights()
+public void ClearHighlights(SpanLayer layer)
+public void ClearInlayHints()
+public void ClearPhantomTexts()
+public void ClearGutterIcons()
+public void ClearCodeLens()
+public void ClearLinks()
+public void ClearGuides()
+public void ClearDiagnostics()
+public void ClearDocumentHighlights()
+public void ClearAllDecorations()
+public void SetMatchedBrackets(int openLine, int openColumn, int closeLine, int closeColumn)
+public void ClearMatchedBrackets()
+```
+
+控件可渲染语法、语义和 overlay spans，以及 Inlay Hint、Phantom Text、CodeLens、链接、诊断、文档高亮、gutter 图标、折叠区域和 indent、bracket、flow、separator guides。
+
+### Snippet 与联动编辑
+
+```csharp
+public EditorActionResult InsertSnippet(string snippetTemplate)
+public void StartLinkedEditing(LinkedEditingModel model)
+public bool IsInLinkedEditing()
+public bool LinkedEditingNext()
+public bool LinkedEditingPrev()
+public void CancelLinkedEditing()
+```
+
+Snippet 插入支持 tab stops；也可以直接使用 `LinkedEditingModel` 启动联动编辑。
+
+### Provider、补全、Inline Suggestion 与 Selection Menu
 
 ```csharp
 public void AddNewLineActionProvider(INewLineActionProvider provider)
@@ -235,156 +222,54 @@ public void SetSelectionMenuListener(ISelectionMenuListener? listener)
 public bool IsSelectionMenuShowing()
 ```
 
-说明：
+- 补全 Provider 接收主动触发、触发字符或 retrigger 上下文，并通过可取消 receiver 返回结果。`CompletionItem.TextEdit` 定义主替换范围，`AdditionalTextEdits` 使用原始文档坐标；snippet 格式的补全项会进入 snippet 模式。`ICompletionItemRenderer` 为每个补全项提供高度和 Avalonia `Control`。
+- 装饰 Provider 会收到可见行范围、累计文本变更、语言配置和编辑器元数据，可按 merge、replace-all 或 replace-range 模式返回语法、语义、overlay、Inlay Hint、诊断、文档高亮、guide、折叠、gutter 图标、Phantom Text、CodeLens 和链接数据。
+- New-line action Provider 组成责任链。首个返回 action 的 Provider 决定 Enter 插入的文本；返回 `null` 时继续交给后续 Provider 或编辑器默认行为。
+- 编辑器持有补全和移动端 Selection Menu UI。宿主通过公开 Provider 接口提供补全结果、自定义菜单项、自定义补全项控件和监听器。
 
-- Avalonia 的 completion 与 selection menu UI 由编辑器控件内部持有；宿主通过 provider/listener API 提供菜单项并监听 custom 命令。
-- `SetCompletionItemRenderer(...)` 通过 `ICompletionItemRenderer` 自定义补全项视图。
-
-### 文本编辑 / 行操作 / 剪贴板 / 撤销重做
-
-```csharp
-public void InsertText(string text)
-public void InsertTextAt(TextPosition position, string text)
-public void ReplaceText(TextRange range, string newText)
-public void DeleteText(TextRange range)
-public void ApplyTextEdits(IReadOnlyList<TextEdit> edits)
-
-public void MoveLineUp()
-public void MoveLineDown()
-public void CopyLineUp()
-public void CopyLineDown()
-public void DeleteLine()
-public void InsertLineAbove()
-public void InsertLineBelow()
-
-public bool Undo()
-public bool Redo()
-public bool CanUndo()
-public bool CanRedo()
-
-public void CopyToClipboard()
-public void PasteFromClipboard()
-public void CutToClipboard()
-```
-
-### 光标 / 选区 / 导航 / 滚动
+### 事件
 
 ```csharp
-public void SelectAll()
-public string GetSelectedText()
-public void SetSelection(int startLine, int startColumn, int endLine, int endColumn)
-public (bool hasSelection, TextRange range) GetSelection()
-public void SetCursorPosition(TextPosition position)
-public TextPosition GetCursorPosition()
-public TextRange? GetWordRangeAtCursor()
-public string GetWordAtCursor()
-public void GotoPosition(int line, int column = 0)
-public void ScrollToLine(int line, ScrollBehavior behavior = ScrollBehavior.CENTER)
-public void SetScroll(float scrollX, float scrollY)
-public ScrollMetrics GetScrollMetrics()
-public CursorRect GetPositionRect(int line, int column)
-public CursorRect GetCursorRect()
+public event EventHandler<TextChangedEventArgs>? TextChanged
+public event EventHandler<CursorChangedEventArgs>? CursorChanged
+public event EventHandler<SelectionChangedEventArgs>? SelectionChanged
+public event EventHandler<ScrollChangedEventArgs>? ScrollChanged
+public event EventHandler<ScaleChangedEventArgs>? ScaleChanged
+public event EventHandler<DocumentLoadedEventArgs>? DocumentLoaded
+public event EventHandler<LongPressEventArgs>? LongPress
+public event EventHandler<DoubleTapEventArgs>? DoubleTap
+public new event EventHandler<ContextMenuEventArgs>? ContextMenu
+public event EventHandler<InlayHintClickEventArgs>? InlayHintClick
+public event EventHandler<GutterIconClickEventArgs>? GutterIconClick
+public event EventHandler<CodeLensClickEventArgs>? CodeLensClick
+public event EventHandler<LinkClickEventArgs>? LinkClick
+public event EventHandler<FoldToggleEventArgs>? FoldToggle
+public event EventHandler<SelectionMenuItemClickEventArgs>? SelectionMenuItemClick
+public event Action<IReadOnlyList<CompletionItem>>? CompletionItemsUpdated
+public event Action? CompletionDismissed
+public event Action<InlineSuggestion>? InlineSuggestionAccepted
+public event Action<InlineSuggestion>? InlineSuggestionDismissed
 ```
 
-### 折叠 / 装饰 / 样式 / 联动编辑
+`SelectionChangedEventArgs.Selection` 和 `DoubleTapEventArgs.Selection` 允许为空。
 
-```csharp
-public bool ToggleFold(int line)
-public bool FoldAt(int line)
-public bool UnfoldAt(int line)
-public bool IsLineVisible(int line)
-public void FoldAll()
-public void UnfoldAll()
-
-public void RegisterTextStyle(uint styleId, int color, int backgroundColor, int fontStyle)
-public void RegisterBatchTextStyles(IReadOnlyDictionary<int, TextStyle> stylesById)
-public void SetLineSpans(int line, SpanLayer layer, IList<StyleSpan> spans)
-public void SetBatchLineSpans(SpanLayer layer, Dictionary<int, IList<StyleSpan>> spansByLine)
-public void ClearLineSpans(int line, SpanLayer layer)
-
-public void SetLineInlayHints(int line, IList<InlayHint> hints)
-public void SetBatchLineInlayHints(Dictionary<int, IList<InlayHint>> hintsByLine)
-public void SetLinePhantomTexts(int line, IList<PhantomText> phantoms)
-public void SetBatchLinePhantomTexts(Dictionary<int, IList<PhantomText>> phantomsByLine)
-public void SetLineGutterIcons(int line, IList<GutterIcon> icons)
-public void SetBatchLineGutterIcons(Dictionary<int, IList<GutterIcon>> iconsByLine)
-public void SetLineCodeLens(int line, IList<CodeLensItem> items)
-public void SetBatchLineCodeLens(Dictionary<int, IList<CodeLensItem>> itemsByLine)
-public void SetLineLinks(int line, IList<LinkSpan> links)
-public void SetBatchLineLinks(Dictionary<int, IList<LinkSpan>> linksByLine)
-public string GetLinkTargetAt(int line, int column)
-public void SetLineDiagnostics(int line, IList<Diagnostic> items)
-public void SetBatchLineDiagnostics(Dictionary<int, IList<Diagnostic>> diagsByLine)
-public void SetLineDocumentHighlights(int line, IList<DocumentHighlight> items)
-public void SetBatchLineDocumentHighlights(Dictionary<int, IList<DocumentHighlight>> highlightsByLine)
-public void SetIndentGuides(IList<IndentGuide> guides)
-public void SetBracketGuides(IList<BracketGuide> guides)
-public void SetFlowGuides(IList<FlowGuide> guides)
-public void SetSeparatorGuides(IList<SeparatorGuide> guides)
-public void SetFoldRegions(IList<FoldRegion> regions)
-
-public void ClearHighlights()
-public void ClearHighlights(SpanLayer layer)
-public void ClearInlayHints()
-public void ClearPhantomTexts()
-public void ClearGutterIcons()
-public void ClearCodeLens()
-public void ClearLinks()
-public void ClearGuides()
-public void ClearDiagnostics()
-public void ClearDocumentHighlights()
-public void ClearAllDecorations()
-public void ClearMatchedBrackets()
-
-public EditorActionResult InsertSnippet(string snippetTemplate)
-public void StartLinkedEditing(LinkedEditingModel model)
-public bool IsInLinkedEditing()
-public bool LinkedEditingNext()
-public bool LinkedEditingPrev()
-public void CancelLinkedEditing()
-```
-
-## 公开控制器层：`SweetEditorController`
-
-### 生命周期
+## `SweetEditorController`
 
 ```csharp
 public void WhenReady(Action callback)
 public void Dispose()
 ```
 
-### 控制器约束
+Controller 暴露与 `SweetEditorControl` 相同的命令和事件面，包括搜索、Settings 访问、Provider、补全、Inline Suggestion、Selection Menu、编辑、剪贴板、导航、装饰和联动编辑。
 
-- `SweetEditorController` 提供 `whenReady(callback)` 语义；若控件已绑定则立即回调。
-- 控件未绑定时，命令式调用会入队，绑定后按顺序执行。
-- getter 在未绑定时返回默认值或空值，不直接抛异常。
-- 同一个 controller 不能同时绑定多个 `SweetEditorControl`。
+- 绑定前发出的调用会进入队列，并在控件绑定后按顺序执行。
+- 已绑定时 `WhenReady(...)` 立即执行，否则在绑定后执行。
+- 未绑定的 getter 返回约定的默认值或空值，不抛异常。Controller 的 `GetTheme()` 返回 `EditorTheme?`，`GetSettings()` 返回 `EditorSettings?`，与控件的非空 getter 不同。
+- 一个 Controller 不能同时绑定多个控件。
 
-### 公开事件
+## `EditorSettings`
 
-`SweetEditorController` 暴露的事件集合与 `SweetEditorControl` 保持一致：
-
-```csharp
-TextChanged / CursorChanged / SelectionChanged / ScrollChanged / ScaleChanged / DocumentLoaded
-LongPress / DoubleTap / ContextMenu / InlayHintClick / GutterIconClick / FoldToggle
-SelectionMenuItemClick / CompletionItemsUpdated / CompletionDismissed
-InlineSuggestionAccepted / InlineSuggestionDismissed
-```
-
-### 公开方法
-
-除构造函数外，`SweetEditorController` 暴露的命令面与 `SweetEditorControl` 1:1 对齐，包括：
-
-- 文档 / 主题 / keymap / 语言配置 / 元数据 / perf overlay 开关 / LayoutMetrics
-- Provider / Completion / InlineSuggestion / SelectionMenu
-- 文本编辑 / 行操作 / 剪贴板 / 撤销重做
-- 光标 / 选区 / 导航 / 滚动
-- 折叠 / 样式 / 装饰 / linked editing
-- `Flush()` / `GetVisibleLineRange()` / `GetTotalLineCount()`
-
-控制器额外公开的唯一生命周期方法是 `WhenReady(...)` 与 `Dispose()`。
-
-## 公开设置层：`EditorSettings`
+通过 `editor.GetSettings()` 访问；使用 Controller 时，应在 Controller ready 后调用 `controller.GetSettings()`。
 
 ```csharp
 public void SetEditorTextSize(float size)
@@ -432,73 +317,39 @@ public void SetDecorationOverscanViewportMultiplier(float multiplier)
 public float GetDecorationOverscanViewportMultiplier()
 ```
 
-完整跨平台 settings 与 theme 契约见[平台实现标准](./platform-implementation-standard.md)。
+`SetTypeface(...)` 是 `SetFontFamily(...)` 的别名。
 
-说明：
+## Keymap 与语言配置
 
-- `SetTypeface(...)` 是 `SetFontFamily(...)` 的别名。
-- `SetDecorationScrollRefreshMinIntervalMs(...)` 与 `SetDecorationOverscanViewportMultiplier(...)` 用于控制装饰刷新节流与 overscan。
-- Android Demo 当前会根据移动端场景对 `GutterSticky`、文本尺寸和装饰刷新频率做默认收口。
+`EditorKeyMap.DefaultKeyMap()` 和 `Vscode()` 可创建内置映射。宿主可以增加、替换、移除或清空 `KeyBinding`，并通过 `RegisterCommand(...)` 注册宿主命令。当前 Avalonia 实现不公开 JetBrains 或 Sublime preset factory。
 
-## Provider / 数据模型补充
+`LanguageConfiguration` 描述语言 ID、括号对、自动闭合对、行注释、块注释、Tab 宽度和以空格代替 Tab 的偏好。括号、自动闭合和缩进配置会影响编辑行为；Completion、Decoration 和 New-line Provider 也可读取完整配置。
 
-### Completion
+## `Document`
 
-- `CompletionItem`
-- `CompletionContext`
-- `CompletionResult`
-- `ICompletionProvider`
-- `ICompletionReceiver`
-- `ICompletionItemRenderer`
-- `CompletionTriggerKind`
+```csharp
+public Document(string text)
+public Document(FileInfo? file)
+public static Document FromPath(string path)
+public int GetLineCount()
+public string GetLineText(int line)
+public string GetText()
+public void Dispose()
+```
 
-`CompletionItem.TextEdit` 是唯一替换范围语义来源。没有它时，补全会在光标处直接插入 `InsertText` / `Label`；`AdditionalTextEdits` 会追加到主编辑之后。
+文档不再使用时应调用 `Dispose()`。把文档加载到控件不会转移托管 `Document` 对象的所有权。
 
-`ICompletionItemRenderer` 同时提供补全项高度和每个补全项对应的 Avalonia `Control`。
+## Avalonia 输入行为
 
-### Decoration
+- 桌面输入支持可配置键盘命令、剪贴板、鼠标选择与拖动、滚轮滚动、pointer cursor、上下文菜单、触控板缩放和带惯性的滚动手势。
+- 触摸输入支持 tap、double tap、long press、拖选、滚动和直接 pinch 缩放；移动端宿主会渲染选区手柄并使用编辑器持有的 Selection Menu。
+- Avalonia 文本输入与 IME 同步会处理 preedit、提交、选区、光标几何和 surrounding-text 状态；Android 还会跟踪 `InputPane` 遮挡，并重新定位编辑器持有的 popup 以避开软键盘。
+- 补全、Inline Suggestion、链接、CodeLens、gutter 图标、折叠标记和 Selection Menu 项通过对应事件或 listener 参与键盘和 pointer 交互。
 
-- `DecorationType`
-- `DecorationApplyMode`
-- `DecorationContext`
-- `DecorationResult`
-- `IDecorationProvider`
-- `IDecorationReceiver`
+## Native Asset 支持
 
-### New Line
+项目目标为 .NET 10 和 Avalonia 12.0.5，通过 `ProjectReference` 从源码接入。引用项目上级目录中的仓库级 targets 不会被外部宿主继承。
 
-- `NewLineAction`
-- `NewLineContext`
-- `INewLineActionProvider`
-
-### Ghost / Selection Menu
-
-- `InlineSuggestion`
-- `IInlineSuggestionListener`
-- `SelectionMenuItem`
-- `ISelectionMenuItemProvider`
-- `ISelectionMenuListener`
-
-## Android 与桌面差异
-
-### Android
-
-- `SweetEditorControl` 内部负责 `InputPane` 遮挡处理与 popup 位置更新。
-- `SweetEditorControl` 在 Android 上关闭 `SupportsSurroundingText`，避免大文本 IME 查询开销。
-- 触摸、长按、双击、拖选、IME 遮挡与 selection menu 行为由 Avalonia 控件层做额外适配。
-- Native asset：
-  - SweetEditor Android、Windows、Linux 资产由 `SweetEditor.csproj` 声明。
-  - SweetEditor macOS、iOS app bundle 引用由 `platform/Avalonia/Directory.Build.targets` 注入。
-  - SweetLine native asset 由 SweetLine NuGet 包提供。
-
-### 桌面
-
-- `Demo.Desktop` 与 `Demo.Android` 共用 `Demo.Shared/MainView.cs`。
-- 若桌面环境未提供 SweetLine native，语法高亮会回退到托管实现。
-- 桌面与 Android 共用 `SweetEditorControl` / `SweetEditorController` / Provider API 契约。
-
-## 当前实现说明
-
-- 当前 Avalonia 平台已经按项目标准实现 `SweetEditorControl`、`SweetEditorController`、`EditorSettings`、provider 管理、事件系统、selection menu、ghost、perf overlay 等宿主 API。
-- Android Demo 主路径明确要求使用 SweetLine native，不自行实现另一套高亮引擎。
-- 输入法、触摸、选区菜单、completion popup 和大文档高亮都由 Avalonia 控件层或 Demo provider 明确分工处理。
+- `SweetEditor.csproj` 会在运行时匹配时复制 Windows x64、Linux x64 和 macOS x64/arm64 native 库。
+- 仓库的 [Android 示例项目](../../platform/Avalonia/Demo.Android/Demo.Android.csproj) 通过 `AndroidNativeLibrary` item 包含 Android `arm64-v8a` 和 `x86_64` native 库。外部 Android 宿主必须为其支持的 ABI 添加等价 item。
+- 仓库的 [Directory.Build.targets](../../platform/Avalonia/Directory.Build.targets) 只为 `platform/Avalonia` 目录树下的可执行项目添加 macOS 和 iOS native reference。外部 iOS 宿主必须为所选 arm64 真机或 arm64 模拟器库添加等价 `NativeReference`，并启用 `CopyToAppBundle`。

@@ -24,17 +24,17 @@
 
 SweetEditor 的核心设计理念是 **"计算与渲染的彻底分离"**：
 
-1. **C++ 核心不做任何渲染** — 不依赖任何图形库（OpenGL / Skia / Metal 等），也不持有任何平台 UI 对象
-2. **C++ 核心不做字体测量** — 通过 `TextMeasurer` 接口将测量权反转给平台
+1. **C++ 核心不做任何渲染** — 不依赖任何图形库（OpenGL / Skia / Metal 等），也不持有任何宿主 UI 对象
+2. **C++ 核心不做字体测量** — 通过 `TextMeasurer` 接口将测量权反转给接入层
 3. **C++ 核心输出结构化渲染模型** — 内部统一组装 `EditorRenderModel`；Android / C API / bridge 路径都围绕这份模型对外
-4. **平台层尽量薄** — 主要负责事件转发、字体测量、二进制协议解码和按模型绘制，不承载跨平台编辑语义
+4. **接入层尽量薄** — 主要负责事件转发、字体测量、二进制协议解码和按模型绘制，不承载共享编辑语义
 
 这种设计带来的核心优势：
 
 - **行为一致性**：文本编辑、光标移动、选区计算等所有逻辑只有一份实现
 - **可测试性**：核心逻辑可以脱离 UI 进行单元测试
-- **平台适配成本可控**：新增平台的最小闭环是 `TextMeasurer` + 输入转发 + payload 解码 + 绘制；复杂度主要留在核心，不留在平台语义层
-- **渲染质量最优**：每个平台使用自己最擅长的文字渲染技术
+- **接入成本可控**：新增实现的最小闭环是 `TextMeasurer` + 输入转发 + payload 解码 + 绘制；复杂度主要留在核心，不留在接入语义层
+- **渲染质量最优**：每种实现使用适合其目标的原生文字渲染技术
 
 ---
 
@@ -42,10 +42,10 @@ SweetEditor 的核心设计理念是 **"计算与渲染的彻底分离"**：
 
 ```text
 +-----------------------------------------------------------------------------------+
-|                          平台层（Input + Render）                                 |
+|                            接入层（Input + Render 或 C ABI）                      |
 |                                                                                   |
-| Android        Apple         Swing / WinForms      OHOS            Web*           |
-| Canvas         CoreText/CG   Java2D / GDI+         ArkUI Canvas    测试中         |
+| Android        Apple         Swing / WinForms      OHOS            Web            |
+| Canvas         CoreText/CG   Java2D / GDI+         ArkUI Canvas    C ABI 模块      |
 +----------------+-------------+----------------------+---------------+--------------+
          |               |                 |                    |
          | JNI 直连      | 手工 C bridge   | C API / payload    | NAPI 直连
@@ -67,14 +67,6 @@ SweetEditor 的核心设计理念是 **"计算与渲染的彻底分离"**：
                +--------------------------------------------------+
 ```
 
-当前接入状态（代码现状）：
-
-- Android：已接入（JNI 直连）
-- Swing / WinForms：已接入（C API）
-- Apple：已接入（Swift Package + 手工 bridge）
-- Web(Emscripten)：实验性测试支持，由非官方 fork 仓库维护：<https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten>
-- OHOS：已接入（ArkTS 组件 + NAPI 直连桥接）
-
 ---
 
 ## 核心模块详解
@@ -89,7 +81,7 @@ Document 是文本内容的抽象层，定义了统一的文本操作接口。
 
 - **存储层**：`Document` 及编辑入口以 UTF-8 为主
 - **布局/测量层**：`LogicalLine.cached_text`、`TextLayout` 测量缓存、`VisualRun.text` 使用 UTF-16
-- **平台协议层**：C API 的复杂结构走二进制 payload；其中渲染模型文本字段当前序列化为 UTF-8，`get_document_line_text()` 则单独返回 UTF-16 指针
+- **接入协议层**：C API 的复杂结构走二进制 payload；其中渲染模型文本字段当前序列化为 UTF-8，`get_document_line_utf16()` 则单独返回 UTF-16 指针
 
 因此核心不是“全 UTF-8”或“全 UTF-16”，而是“UTF-8 存储 + UTF-16 布局/测量 + binary payload 传输”的混合模型。
 
@@ -151,7 +143,7 @@ struct LogicalLine {
 2. **自动换行** — 根据 `WrapMode` 将超长行拆分为多个视觉行
 3. **视口裁剪** — 只布局和输出可见区域的行，跳过视口外的行
 4. **HitTest** — 屏幕坐标 → 文本位置的精确映射
-5. **宽度测量** — 通过 `TextMeasurer` 接口调用平台字体测量，结果缓存
+5. **宽度测量** — 通过 `TextMeasurer` 接口调用宿主字体测量，结果缓存
 
 #### 布局流程
 
@@ -205,7 +197,7 @@ class TextMeasurer {
 };
 ```
 
-由各平台实现。C API 通过回调结构体 `text_measurer_t` 传入：
+由各接入实现。C API 通过回调结构体 `text_measurer_t` 传入：
 
 ```c
 typedef struct {
@@ -248,7 +240,7 @@ typedef struct {
 
 - `InlayHint.text` / `PhantomText.text` 当前在 `DecorationManager` 中仍以 UTF-8 存储。
 - `TextLayout::buildLineRuns()` 在生成 `VisualRun` 时会把需要绘制/测量的装饰文本转换为 UTF-16。
-- 因此装饰管理器保存的是“编辑语义数据”，不是平台可直接消费的绘制对象。
+- 因此装饰管理器保存的是“编辑语义数据”，不是 renderer 可直接消费的绘制对象。
 
 #### TextStyleRegistry — 样式注册表
 
@@ -259,7 +251,7 @@ class TextStyleRegistry {
 };
 ```
 
-平台侧先注册样式（ID → 颜色 + 字体样式），再通过 `setLineSpans` 为每行设置样式区间。这种设计解耦了"样式定义"和"样式应用"，便于主题切换。
+接入层先注册样式（ID → 颜色 + 字体样式），再通过 `setLineSpans` 为每行设置样式区间。这种设计解耦了“样式定义”和“样式应用”，便于主题切换。
 
 #### 编辑后自动调整
 
@@ -283,7 +275,7 @@ IME composition 的语义动作和 composition state 由 `CompositionController`
 
 ```cpp
 class EditorCore {
-  Ptr<TextMeasurer>       m_measurer_;         // 文字测量（平台实现）
+  Ptr<TextMeasurer>       m_measurer_;         // 文字测量（接入实现）
   Ptr<Document>           m_document_;         // 文档模型
   Ptr<DecorationManager>  m_decorations_;      // 装饰管理器
   UPtr<GestureHandler>    m_gesture_handler_;  // 手势识别
@@ -360,12 +352,12 @@ TextEditResult applyEdit(const TextRange& range, const U8String& new_text, bool 
 #### 修饰键
 
 ```cpp
-enum class Modifier : uint8_t {
+enum class KeyModifier : uint8_t {
   NONE  = 0,
-  SHIFT = 1 << 0,  // Shift+Click = 扩展选区
-  CTRL  = 1 << 1,  // Ctrl+Click = 多光标（未来）
+  SHIFT = 1 << 0,
+  CTRL  = 1 << 1,
   ALT   = 1 << 2,
-  META  = 1 << 3,  // Cmd (macOS)
+  META  = 1 << 3,
 };
 ```
 
@@ -437,8 +429,8 @@ struct EditorRenderModel {
 
 当前 C API 约定：
 
-- `editor_build_render_model()`：返回本机字节序二进制 payload（当前支持平台均为 little-endian）
-- `editor_get_layout_metrics()`：返回 `LayoutMetrics` 二进制 payload，供平台查询布局参数
+- `editor_build_render_model()`：返回本机字节序二进制 payload（当前支持目标均为 little-endian）
+- `editor_get_layout_metrics()`：返回 `LayoutMetrics` 二进制 payload，供宿主查询布局参数
 
 ### VisualLine 与 VisualRun
 
@@ -465,16 +457,16 @@ VisualLine
 
 ### RangeEffectRenderItem 与 RangeEffectStyle
 
-`RangeEffectRenderItem` 是 selection、search match、document highlight、IME composition、diagnostic、linked editing、bracket match 等可见 range 呈现的统一几何通道。Core 会在交给平台 renderer 之前，把每个 item 解析成屏幕坐标下的矩形。
+`RangeEffectRenderItem` 是 selection、search match、document highlight、IME composition、diagnostic、linked editing、bracket match 等可见 range 呈现的统一几何通道。Core 会在交给接入层 renderer 之前，把每个 item 解析成屏幕坐标下的矩形。
 
 `RangeEffectStyle` 有两类不同职责：
 
-- `foreground_color` 由 core 在 layout 阶段消费。Core 会拆分受影响的 `VisualRun`，并把解析后的前景色写入 `VisualRun.style`。平台 renderer 不应从 `range_effects` 中绘制前景色。
-- `background_color`、`border_color`、`underline_color` 和 `underline_style` 由平台 renderer 通过 `range_effects` 消费。
+- `foreground_color` 由 core 在 layout 阶段消费。Core 会拆分受影响的 `VisualRun`，并把解析后的前景色写入 `VisualRun.style`。接入层 renderer 不应从 `range_effects` 中绘制前景色。
+- `background_color`、`border_color`、`underline_color` 和 `underline_style` 由接入层 renderer 通过 `range_effects` 消费。
 
-平台 renderer 应将 `RangeEffectRenderItem.rect` 视为最终可见几何。rect 已经按自动换行、viewport 可见性、折叠 tail projection 和其它 layout 规则拆分好；平台不应再从文档 range 重新计算。
+接入层 renderer 应将 `RangeEffectRenderItem.rect` 视为最终可见几何。rect 已经按自动换行、viewport 可见性、折叠 tail projection 和其它 layout 规则拆分好；接入实现不应再从文档 range 重新计算。
 
-### 平台侧绘制顺序
+### 接入层绘制顺序
 
 ```
 1. 填充背景色
@@ -497,7 +489,7 @@ VisualLine
 9. 绘制滚动条
 ```
 
-`RangeEffectKind` 是解析后的 effect 语义标签。平台可以用它做小范围呈现调整，例如 active linked-editing 使用更粗边框，但不应从它反推出编辑器状态或业务行为。
+`RangeEffectKind` 是解析后的 effect 语义标签。接入实现可以用它做小范围呈现调整，例如 active linked-editing 使用更粗边框，但不应从它反推出编辑器状态或业务行为。
 
 ---
 
@@ -505,7 +497,7 @@ VisualLine
 
 ### C API 层
 
-非 Android 的主桥接契约是 `extern "C"` C API，对象通过 `intptr_t` 句柄传递：
+非 Android 接入实现的主要桥接契约是 `extern "C"` C API，对象通过 `intptr_t` 句柄传递：
 
 ```c
 // 创建
@@ -525,7 +517,7 @@ free_editor(editor);
 
 ### 数据交换格式
 
-当前 C API 路径的数据交换统一为二进制 payload（本机字节序，当前支持平台均为 little-endian）：
+当前 C API 路径的数据交换统一为二进制 payload（本机字节序，当前支持目标均为 little-endian）：
 
 - `editor_build_render_model()` → `EditorRenderModel`
 - `editor_get_layout_metrics()` → `LayoutMetrics`
@@ -539,18 +531,18 @@ free_editor(editor);
 字符串补充约定：
 
 - binary payload 内的字符串字段当前统一为长度前缀 UTF-8
-- `create_document_from_utf16()` / `get_document_line_text()` 是显式 UTF-16 边界
+- `create_document_from_utf16()` / `get_document_line_utf16()` 是显式 UTF-16 边界
 - 少量查询接口仍返回 UTF-8 `const char*`（如 `editor_get_selected_text()`）
 
-### 各平台桥接方式
+### 各实现桥接方式
 
-| 平台 | 桥接技术 | 调用方式 |
+| 实现 | 桥接技术 | 调用方式 |
 |------|---------|---------|
 | Android | JNI (`jni_entry.cpp` + `jeditor.hpp`) | Java `native*` 直连 C++ 对象 |
 | iOS/macOS | Swift Package + 手工 C bridge | Swift 调 bridge 函数 |
 | Windows | P/Invoke | `DllImport(\"sweeteditor.dll\")` |
 | Swing | Java FFM | Downcall 到 C API |
-| Web | Emscripten | 非官方 fork 中测试中：<https://github.com/LangLang03/OpenSweetEditor-Web/tree/main/platform/Emscripten> |
+| Web | Emscripten | C ABI ES Module |
 | OHOS | ArkTS NAPI（`libsweeteditor.so`） | ArkTS 通过 `native` 直连共享 C++，并在 `CoreProtocol.ets` 中解码 binary payload |
 
 注意：Android 目前不是经由 `c_api.h` 调用链路；新增公共能力时需要同步 JNI 路径与 C API 路径。
@@ -567,13 +559,13 @@ free_editor(editor);
 
 ### 用户输入 → 渲染 的完整流程
 
-> 下面流程以 C API 平台（Swing/WinForms/Apple）为例；Android 同构但入口是 JNI 直连。
+> 下面流程以 C API 实现（Swing/WinForms/Apple）为例；Android 同构但入口是 JNI 直连。
 
 ```
    用户触摸/点击
         │
         ▼
-  平台层捕获事件
+  接入层捕获事件
         │
         ▼
   C API: editor_handle_gesture_event()
@@ -593,7 +585,7 @@ free_editor(editor);
   返回 EditorActionResult (binary payload)
         │
         ▼
-  平台统一分发 EditorActionResult
+  接入层统一分发 EditorActionResult
         │  · 根据 changes/contentChanged 派发文本事件
         │  · 根据 needsImeSync 同步输入法状态
         │  · 根据 needsAnimation 驱动动画 tick
@@ -615,7 +607,7 @@ free_editor(editor);
   返回 EditorRenderModel (binary payload)
         │
         ▼
-  平台层按模型绘制到屏幕
+  接入层按模型绘制到屏幕
 ```
 
 ### 文本编辑流程
@@ -642,7 +634,7 @@ free_editor(editor);
   汇入 EditorActionResult
         │  {contentChanged, changes, cursorChanged, selectionChanged, needsRedraw, ...}
         ▼
-  平台统一分发 EditorActionResult
+  接入层统一分发 EditorActionResult
         │
         ▼
   needsRedraw 为 true 时刷新 render model 并重绘
@@ -674,11 +666,11 @@ void free_editor(intptr_t handle) {
 }
 ```
 
-平台层须确保：
+接入层须确保：
 
 - 对象句柄在不再使用时调用 `free_document()` / `free_editor()`
 - `editor_build_render_model()` 等返回的二进制 payload 用 `free_binary_data()` 释放
-- `get_document_line_text()` 返回的 UTF-16 文本用 `free_u16_string()` 释放
+- `get_document_line_utf16()` 返回的 UTF-16 文本用 `free_u16_string()` 释放
 
 ---
 

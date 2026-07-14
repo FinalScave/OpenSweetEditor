@@ -1,434 +1,453 @@
 # EditorCore / C API Reference
 
-This document follows `include/sweeteditor/c_api.h` and describes the current external core contract of SweetEditor (2026-06).
+This document describes the current external core contract declared by [`include/sweeteditor/c_api.h`](../../include/sweeteditor/c_api.h). The header is authoritative when this document and the implementation differ.
 
-Platform API docs:
+Integration API documents:
 
-- `docs/en/api-platform-android.md`
-- `docs/en/api-platform-swing.md`
-- `docs/en/api-platform-winforms.md`
-- `docs/en/api-platform-apple.md`
+- [Android Platform API](api-platform-android.md)
+- [Avalonia API](api-platform-avalonia.md)
+- [Flutter API](api-platform-flutter.md)
+- [OHOS Platform API](api-platform-ohos.md)
+- [Swing API](api-platform-swing.md)
+- [WinForms API](api-platform-winforms.md)
+- [Apple Platform API](api-platform-apple.md)
+- [Web Platform API](api-platform-web.md)
 
 ## Contract Boundary
 
-- Stable cross-platform ABI: `extern "C"` + `intptr_t` handles + binary payload (render model / `EditorActionResult` / metrics).
-- Internal C++ classes (`EditorCore`/`Document`/`TextLayout`) are implementation details.
-- If document and code conflict, use `c_api.h`/`c_api.cpp`.
+- The cross-platform ABI uses `extern "C"`, `EDITOR_API`, `EDITOR_CALL`, `intptr_t` handles, and CoreProtocol binary payloads.
+- Internal C++ types such as `EditorCore`, `Document`, and `TextLayout` are implementation details.
+- Android primarily calls C++ through JNI. Swing and WinForms use the C API through FFM and P/Invoke. Apple uses a manually maintained C bridge whose public Swift surface differs from this header. Web exposes only the subset listed in `WASM_C_ABI_EXPORTED_FUNCTIONS`.
 
-Current bridge status:
+## Data, Encoding, and Memory
 
-- Android: main path is JNI direct to C++ (not through `c_api.h`).
-- Swing / WinForms: through C API (FFM / PInvoke).
-- Apple: through manually maintained C bridge (API shape differs from `c_api.h`, requires explicit cross-check).
+- Lines and columns are zero-based.
+- All CoreProtocol payloads use little-endian encoding, independent of host byte order.
+- `U8String` is `u32 byte_length` followed by UTF-8 bytes.
+- `List<T>` is `u32 count` followed by the encoded items.
+- Map-like payloads are `u32 entry_count` followed by key/value pairs in insertion order.
+- `bool_u8` uses one byte; `bool_i32` uses a little-endian `i32`.
+- `PointF` is `f32 x, f32 y`.
+- `TextPosition` is `i32 line, i32 column`; `TextRange` is `TextPosition start, TextPosition end`.
+- Every function returning `const uint8_t*` with `size_t* out_size` returns an owned binary buffer. Read exactly `out_size` bytes, then call `free_binary_data` once. A null pointer indicates failure or no payload as documented by the header.
+- `get_document_utf8`, `get_document_line_utf8`, `editor_get_selected_text`, `editor_get_word_at_cursor`, and `editor_get_link_target_at` return owned UTF-8 strings released with `free_u8_string`.
+- `get_document_utf16` and `get_document_line_utf16` return owned UTF-16 strings released with `free_u16_string`.
+- Release document and editor handles with `free_document` and `free_editor` respectively.
 
-## Data and Memory Conventions
+## Text Measurement Callbacks
 
-- Objects are created/freed through `intptr_t` handles.
-- Complex return values like render model, `EditorActionResult`, and scroll metrics are usually returned as `const uint8_t* + out_size` binary payload, and caller frees with `free_binary_data`.
-- `editor_get_layout_metrics` returns `LayoutMetrics` binary payload (`const uint8_t* + out_size`), also freed by `free_binary_data`.
-- `get_document_line_text` returns UTF-16 text, caller frees with `free_u16_string`.
-- A few text queries return UTF-8 `const char*` (for example `get_document_text`, `editor_get_selected_text`, `editor_get_word_at_cursor`, `editor_get_link_target_at`); caller frees them with `free_u8_string`, although platform wrappers usually copy immediately.
-
-## Callback Struct
-
-### `text_measurer_t`
+Use the calling-convention macro from the header rather than hard-coding a platform convention:
 
 ```c
 typedef struct {
-    float (__stdcall* measure_text_width)(const U16Char* text, int32_t font_style);
-    float (__stdcall* measure_inlay_hint_width)(const U16Char* text);
-    float (__stdcall* measure_icon_width)(int32_t icon_id);
-    void  (__stdcall* get_font_metrics)(float* arr, size_t length);
+    float (EDITOR_CALL* measure_text_width)(const U16Char* text, int32_t font_style);
+    float (EDITOR_CALL* measure_inlay_hint_width)(const U16Char* text);
+    float (EDITOR_CALL* measure_icon_width)(int32_t icon_id);
+    void  (EDITOR_CALL* get_font_metrics)(float* arr, size_t length);
 } text_measurer_t;
 ```
 
-## C API Groups
+`get_font_metrics` writes the font metrics expected by the current core implementation. Callback storage and any platform trampoline must remain valid until the editor is freed.
 
-### 1) Document
+## Canonical Wire Layouts
 
-```c
-intptr_t        create_document_from_utf16(const U16Char* text);
-intptr_t        create_document_from_file(const char* path);
-void            free_document(intptr_t document_handle);
-const char*     get_document_text(intptr_t document_handle);
-size_t          get_document_line_count(intptr_t document_handle);
-const U16Char*  get_document_line_text(intptr_t document_handle, size_t line);
+### `EditorOptions`
+
+`create_editor` consumes the following fields in order:
+
+1. `f32 touch_slop`
+2. `i64 double_tap_timeout`
+3. `i64 long_press_ms`
+4. `f32 fling_friction`
+5. `f32 fling_min_velocity`
+6. `f32 fling_max_velocity`
+7. `u64 max_undo_stack_size`
+8. `i64 key_chord_timeout_ms`
+9. `bool_u8 reveal_selection_end_on_select_all`
+
+### `EditorActionResult`
+
+State-changing APIs return this layout unless a more specific return payload is stated:
+
+```text
+bool_i32 handled
+bool_i32 needs_redraw
+enum_i32 source
+enum_i32 text_change_kind
+bool_i32 content_changed
+bool_i32 cursor_changed
+bool_i32 selection_changed
+bool_i32 scroll_changed
+bool_i32 scale_changed
+bool_i32 pointer_cursor_changed
+bool_i32 composition_changed
+bool_i32 decoration_changed
+bool_i32 needs_ime_sync
+bool_i32 needs_edge_scroll
+bool_i32 needs_fling
+bool_i32 needs_animation
+bool_i32 is_handle_drag
+List<TextChange> changes
+TextPosition cursor_before
+TextPosition cursor_after
+bool_i32 has_selection_before
+bool_i32 has_selection_after
+TextRange selection_before
+TextRange selection_after
+f32 scroll_x_before
+f32 scroll_y_before
+f32 scroll_x_after
+f32 scroll_y_after
+f32 scale_before
+f32 scale_after
+enum_i32 pointer_cursor_before
+enum_i32 pointer_cursor_after
+ImeSyncSnapshot ime_sync
+enum_i32 gesture_type
+enum_i32 gesture_event_type
+PointF tap_point
+HitTarget hit_target
+enum_i32 modifiers
+enum_i32 command
 ```
 
-### 2) Editor lifecycle
+`TextChange` is `TextRange range, U8String new_text`. `HitTarget` is `enum_i32 type, i32 line, i32 column, i32 icon_id, i32 color_value`.
 
-```c
-intptr_t create_editor(text_measurer_t measurer, const uint8_t* options_data, size_t options_size);
-void     free_editor(intptr_t editor_handle);
-void     editor_set_document(intptr_t editor_handle, intptr_t document_handle);
+### `EditorRenderModel`
+
+```text
+f32 split_x
+bool_i32 split_line_visible
+f32 scroll_x
+f32 scroll_y
+Size viewport_size
+PointF current_line
+enum_i32 current_line_render_mode
+List<VisualLine> lines
+Cursor cursor
+List<RangeEffectRenderItem> range_effects
+SelectionHandle selection_start_handle
+SelectionHandle selection_end_handle
+List<GuideSegment> guide_segments
+u32 max_gutter_icons
+List<GutterIconRenderItem> gutter_icons
+List<FoldMarkerRenderItem> fold_markers
+ScrollbarModel vertical_scrollbar
+ScrollbarModel horizontal_scrollbar
+bool_i32 gutter_sticky
+bool_i32 gutter_visible
+enum_i32 pointer_cursor_type
 ```
 
-- `create_editor` uses LE `EditorOptions` payload: `f32 touch_slop`, `i64 double_tap_timeout`, `i64 long_press_ms`, `u64 max_undo_stack_size`.
+Nested render-model types follow the field order documented beside `editor_build_render_model` in `c_api.h`.
 
-### 3) Viewport / appearance
+### `LayoutMetrics`
 
-```c
-void           editor_set_viewport(intptr_t editor_handle, int32_t width, int32_t height);
-void           editor_on_font_metrics_changed(intptr_t editor_handle);
-const uint8_t* editor_set_fold_arrow_mode(intptr_t editor_handle, int mode, size_t* out_size);
-const uint8_t* editor_set_wrap_mode(intptr_t editor_handle, int mode, size_t* out_size);
-const uint8_t* editor_set_line_spacing(intptr_t editor_handle, float add, float mult, size_t* out_size);
-const uint8_t* editor_set_render_whitespace(intptr_t editor_handle, int mode, size_t* out_size);
-const uint8_t* editor_set_render_line_breaks(intptr_t editor_handle, int enabled, size_t* out_size);
+```text
+f32 font_height
+f32 font_ascent
+f32 line_spacing_add
+f32 line_spacing_mult
+f32 line_number_margin
+f32 line_number_width
+f32 content_start_padding
+u32 max_gutter_icons
+f32 inlay_hint_padding
+f32 inlay_hint_margin
+enum_i32 fold_arrow_mode
+bool_i32 has_fold_regions
+bool_i32 gutter_sticky
+bool_i32 gutter_visible
 ```
 
-Numeric conventions:
+### `ScrollMetrics`
 
-- `FoldArrowMode`: `0=AUTO`, `1=ALWAYS`, `2=HIDDEN`
-- `WrapMode`: `0=NONE`, `1=CHAR_BREAK`, `2=WORD_BREAK`
-- `WhitespaceRenderMode`: `0=NONE`, `1=BOUNDARY`, `2=SELECTION`, `3=TRAILING`, `4=ALL`
-
-### 4) Rendering
-
-```c
-const uint8_t* editor_build_render_model(intptr_t editor_handle, size_t* out_size);
-const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size_t* out_size);
+```text
+f32 scale
+f32 scroll_x
+f32 scroll_y
+f32 max_scroll_x
+f32 max_scroll_y
+Size content_size
+Size viewport_size
+f32 text_area_x
+f32 text_area_width
+bool_i32 can_scroll_x
+bool_i32 can_scroll_y
 ```
 
-- `editor_build_render_model`: returns native-endian binary payload; all currently supported platforms are little-endian.
-- `editor_get_layout_metrics`: returns `LayoutMetrics` binary payload (native-endian; all currently supported platforms are little-endian).
+### Common Input Payloads
 
-`editor_get_layout_metrics` payload layout (in order):
+- `HandleConfig`: two `HandleHitArea` values; each hit area is `f32 left, f32 top, f32 right, f32 bottom`.
+- `ScrollbarConfig`: `f32 thickness, f32 min_thumb, f32 thumb_hit_padding, enum_i32 mode, bool_u8 thumb_draggable, enum_i32 track_tap_mode, u16 fade_delay_ms, u16 fade_duration_ms`.
+- `EditorRenderColors`: five `i32` colors in this order: text, link, active link, CodeLens, active CodeLens.
+- `GestureEvent`: `enum_i32 type, List<PointF> points, i32 modifiers, f32 wheel_delta_x, f32 wheel_delta_y, f32 direct_scale`.
+- `SetKeyMapPayload`: `List<KeyBinding>`; each binding is `KeyChord first, KeyChord second, u32 command`, and each chord is `u8 modifiers, u16 key_code`.
+- `ApplyTextEditsPayload`: `List<TextEdit>`; each edit is `TextRange range, U8String new_text`.
+- `SearchRequest`: `U8String pattern, SearchOptions options`; options are four `bool_i32` values for case-sensitive, whole-word, regex, and wrap-around followed by `u32 max_matches`.
+- Replacement payloads are one `U8String`.
 
-1. `f32 font_height`
-2. `f32 font_ascent`
-3. `f32 line_spacing_add`
-4. `f32 line_spacing_mult`
-5. `f32 line_number_margin`
-6. `f32 line_number_width`
-7. `i32 max_gutter_icons`
-8. `f32 inlay_hint_padding`
-9. `f32 inlay_hint_margin`
-10. `i32 fold_arrow_mode` (`0=AUTO`, `1=ALWAYS`, `2=HIDDEN`)
-11. `i32 has_fold_regions` (`0=false`, `1=true`)
+### Styles, Decorations, Guides, and Folding
 
-### 5) Gesture / key
+- `TextStyle`: `i32 color, i32 background_color, i32 font_style`.
+- `StyleSpan`: `u32 column, u32 length, u32 style_id`.
+- `SetLineSpansPayload`: `u32 line, enum_i32 layer, List<StyleSpan> spans`.
+- `SetBatchLineSpansPayload`: `enum_i32 layer, u32 entry_count`, then repeat `u32 line, List<StyleSpan> spans`.
+- `RegisterBatchTextStylesPayload`: `u32 entry_count`, then repeat `u32 style_id, TextStyle style`.
+- For inlay, phantom-text, gutter-icon, CodeLens, link, diagnostic, and document-highlight families, single-line payloads start with `u32 line` followed by `List<T>`. Their batch payloads start with `u32 entry_count`, then repeat `u32 line, List<T>`.
+- `InlayHint`: `enum_i32 type, u32 column, i32 int_value, U8String text`.
+- `PhantomText`: `u32 column, U8String text`.
+- `GutterIcon`: `i32 icon_id`.
+- `CodeLensItem`: `i32 column, i32 command_id, U8String text`.
+- `LinkSpan`: `u32 column, u32 length, U8String target`.
+- `Diagnostic`: `u32 column, u32 length, enum_i32 severity`. There is no color field in this payload.
+- `DocumentHighlight`: `u32 column, u32 length, enum_i32 kind`.
+- `IndentGuide` and `FlowGuide`: `TextPosition start, TextPosition end`.
+- `BracketGuide`: `TextPosition parent, TextPosition end, List<TextPosition> children`.
+- `SeparatorGuide`: `i32 line, enum_i32 style, i32 count, u32 text_end_column`.
+- `FoldRegion`: `u32 start_line, u32 end_line, bool_u8 collapsed`.
 
-```c
-const uint8_t* editor_handle_gesture_event(
-    intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+### Linked Editing
 
-const uint8_t* editor_handle_key_event(
-    intptr_t editor_handle, uint16_t key_code, const char* text, uint8_t modifiers, size_t* out_size);
+`StartLinkedEditingPayload` contains one `LinkedEditingModel`:
+
+```text
+LinkedEditingModel = List<TabStopGroup> groups
+TabStopGroup = u32 index, List<TextRange> ranges, U8String default_text
 ```
 
-`modifiers` bit flags: `SHIFT=1`, `CTRL=2`, `ALT=4`, `META=8`.
+There is no global range table or string blob in the current layout.
 
-### 6) Text edit (atomic)
+## Complete C API
 
-```c
-const uint8_t* editor_insert_text(intptr_t editor_handle, const char* text, size_t* out_size);
-const uint8_t* editor_replace_text(
-    intptr_t editor_handle,
-    size_t start_line, size_t start_column,
-    size_t end_line, size_t end_column,
-    const char* text,
-    size_t* out_size);
-const uint8_t* editor_delete_text(
-    intptr_t editor_handle,
-    size_t start_line, size_t start_column,
-    size_t end_line, size_t end_column,
-    size_t* out_size);
-const uint8_t* editor_backspace(intptr_t editor_handle, size_t* out_size);
-const uint8_t* editor_delete_forward(intptr_t editor_handle, size_t* out_size);
-```
+The declarations below mirror all 153 functions in the current header.
 
-### 7) Line actions (new)
+### Documents and Editor Lifecycle
 
 ```c
-const uint8_t* editor_move_line_up(intptr_t editor_handle, size_t* out_size);
-const uint8_t* editor_move_line_down(intptr_t editor_handle, size_t* out_size);
-const uint8_t* editor_copy_line_up(intptr_t editor_handle, size_t* out_size);
-const uint8_t* editor_copy_line_down(intptr_t editor_handle, size_t* out_size);
-const uint8_t* editor_delete_line(intptr_t editor_handle, size_t* out_size);
-const uint8_t* editor_insert_line_above(intptr_t editor_handle, size_t* out_size);
-const uint8_t* editor_insert_line_below(intptr_t editor_handle, size_t* out_size);
+EDITOR_API intptr_t create_document_from_utf8(const char* text);
+EDITOR_API intptr_t create_document_from_utf16(const U16Char* text);
+EDITOR_API intptr_t create_document_from_file(const char* path);
+EDITOR_API void free_document(intptr_t document_handle);
+EDITOR_API char* get_document_utf8(intptr_t document_handle);
+EDITOR_API U16Char* get_document_utf16(intptr_t document_handle);
+EDITOR_API size_t get_document_line_count(intptr_t document_handle);
+EDITOR_API char* get_document_line_utf8(intptr_t document_handle, size_t line);
+EDITOR_API U16Char* get_document_line_utf16(intptr_t document_handle, size_t line);
+
+EDITOR_API intptr_t create_editor(text_measurer_t measurer, const uint8_t* options_data, size_t options_size);
+EDITOR_API void free_editor(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_set_document(intptr_t editor_handle, intptr_t document_handle, size_t* out_size);
 ```
 
-### 8) Undo / redo
+### Viewport, Appearance, Rendering, and Events
 
 ```c
-const uint8_t* editor_undo(intptr_t editor_handle, size_t* out_size);
-const uint8_t* editor_redo(intptr_t editor_handle, size_t* out_size);
-int            editor_can_undo(intptr_t editor_handle);
-int            editor_can_redo(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_set_viewport(intptr_t editor_handle, int32_t width, int32_t height, size_t* out_size);
+EDITOR_API const uint8_t* editor_on_font_metrics_changed(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_fold_arrow_mode(intptr_t editor_handle, int mode, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_wrap_mode(intptr_t editor_handle, int mode, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_tab_size(intptr_t editor_handle, int tab_size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_scale(intptr_t editor_handle, float scale, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_line_spacing(intptr_t editor_handle, float add, float mult, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_content_start_padding(intptr_t editor_handle, float padding, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_show_split_line(intptr_t editor_handle, int show, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_current_line_render_mode(intptr_t editor_handle, int mode, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_render_whitespace(intptr_t editor_handle, int mode, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_render_line_breaks(intptr_t editor_handle, int enabled, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_gutter_sticky(intptr_t editor_handle, int sticky, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_gutter_visible(intptr_t editor_handle, int visible, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_handle_config(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_scrollbar_config(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_editor_render_colors(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_editor_range_effect_styles(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_build_render_model(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_handle_gesture_event(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_update_pointer_modifiers(intptr_t editor_handle, uint8_t modifiers, size_t* out_size);
+EDITOR_API const uint8_t* editor_tick_animations(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_handle_key_event(intptr_t editor_handle, uint16_t key_code, const char* text, uint8_t modifiers, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_keymap(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
 ```
 
-### 9) Cursor / selection / word
+Numeric values include `FoldArrowMode` `0=AUTO, 1=ALWAYS, 2=HIDDEN`; `WrapMode` `0=NONE, 1=CHAR_BREAK, 2=WORD_BREAK`; `WhitespaceRenderMode` `0=NONE, 1=BOUNDARY, 2=SELECTION, 3=TRAILING, 4=ALL`; and current-line mode `0=BACKGROUND, 1=BORDER, 2=NONE`.
+
+### Text Editing, Line Actions, Undo, and Search
 
 ```c
-void       editor_set_cursor_position(intptr_t editor_handle, size_t line, size_t column);
-void       editor_get_cursor_position(intptr_t editor_handle, size_t* out_line, size_t* out_column);
-void       editor_select_all(intptr_t editor_handle);
-void       editor_set_selection(
-    intptr_t editor_handle,
-    size_t start_line, size_t start_column,
-    size_t end_line, size_t end_column);
-int        editor_get_selection(
-    intptr_t editor_handle,
-    size_t* out_start_line, size_t* out_start_column,
-    size_t* out_end_line, size_t* out_end_column);
-const char* editor_get_selected_text(intptr_t editor_handle);
-void       editor_get_word_range_at_cursor(
-    intptr_t editor_handle,
-    size_t* out_start_line, size_t* out_start_column,
-    size_t* out_end_line, size_t* out_end_column);
-const char* editor_get_word_at_cursor(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_insert_text(intptr_t editor_handle, const char* text, size_t* out_size);
+EDITOR_API const uint8_t* editor_replace_text(intptr_t editor_handle, size_t start_line, size_t start_column, size_t end_line, size_t end_column, const char* text, size_t* out_size);
+EDITOR_API const uint8_t* editor_delete_text(intptr_t editor_handle, size_t start_line, size_t start_column, size_t end_line, size_t end_column, size_t* out_size);
+EDITOR_API const uint8_t* editor_apply_text_edits(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_backspace(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_delete_forward(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_move_line_up(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_move_line_down(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_copy_line_up(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_copy_line_down(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_delete_line(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_insert_line_above(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_insert_line_below(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_undo(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_redo(intptr_t editor_handle, size_t* out_size);
+EDITOR_API int editor_can_undo(intptr_t editor_handle);
+EDITOR_API int editor_can_redo(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_search(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_find_next_search_match(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_find_previous_search_match(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_replace_current_search_match(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_replace_all_search_matches(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_clear_search(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_get_search_state(intptr_t editor_handle, size_t* out_size);
 ```
 
-### 10) Cursor movement
+`editor_get_search_state` returns a `SearchState` buffer rather than `EditorActionResult`. Its ordered fields are `enum_i32 status, U8String pattern, SearchOptions options, u64 generation, u32 match_count, i32 current_index, bool_i32 has_current_match, TextRange current_range, U8String error_message`.
+
+### Cursor, Selection, Read-only State, and Indentation
 
 ```c
-void editor_move_cursor_left(intptr_t editor_handle, int extend_selection);
-void editor_move_cursor_right(intptr_t editor_handle, int extend_selection);
-void editor_move_cursor_up(intptr_t editor_handle, int extend_selection);
-void editor_move_cursor_down(intptr_t editor_handle, int extend_selection);
-void editor_move_cursor_to_line_start(intptr_t editor_handle, int extend_selection);
-void editor_move_cursor_to_line_end(intptr_t editor_handle, int extend_selection);
+EDITOR_API const uint8_t* editor_set_cursor_position(intptr_t editor_handle, size_t line, size_t column, size_t* out_size);
+EDITOR_API void editor_get_cursor_position(intptr_t editor_handle, size_t* out_line, size_t* out_column);
+EDITOR_API const uint8_t* editor_select_all(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_selection(intptr_t editor_handle, size_t start_line, size_t start_column, size_t end_line, size_t end_column, size_t* out_size);
+EDITOR_API int editor_get_selection(intptr_t editor_handle, size_t* out_start_line, size_t* out_start_column, size_t* out_end_line, size_t* out_end_column);
+EDITOR_API const char* editor_get_selected_text(intptr_t editor_handle);
+EDITOR_API void editor_get_word_range_at_cursor(intptr_t editor_handle, size_t* out_start_line, size_t* out_start_column, size_t* out_end_line, size_t* out_end_column);
+EDITOR_API const char* editor_get_word_at_cursor(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_move_cursor_left(intptr_t editor_handle, int extend_selection, size_t* out_size);
+EDITOR_API const uint8_t* editor_move_cursor_right(intptr_t editor_handle, int extend_selection, size_t* out_size);
+EDITOR_API const uint8_t* editor_move_cursor_up(intptr_t editor_handle, int extend_selection, size_t* out_size);
+EDITOR_API const uint8_t* editor_move_cursor_down(intptr_t editor_handle, int extend_selection, size_t* out_size);
+EDITOR_API const uint8_t* editor_move_cursor_to_line_start(intptr_t editor_handle, int extend_selection, size_t* out_size);
+EDITOR_API const uint8_t* editor_move_cursor_to_line_end(intptr_t editor_handle, int extend_selection, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_read_only(intptr_t editor_handle, int read_only, size_t* out_size);
+EDITOR_API int editor_is_read_only(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_set_auto_indent_mode(intptr_t editor_handle, int mode, size_t* out_size);
+EDITOR_API int editor_get_auto_indent_mode(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_set_backspace_unindent(intptr_t editor_handle, int enabled, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_insert_spaces(intptr_t editor_handle, int enabled, size_t* out_size);
 ```
 
-### 11) IME composition
+`AutoIndentMode` uses `0=NONE, 1=KEEP_INDENT`.
+
+### Navigation and Coordinates
 
 ```c
-const uint8_t* editor_ime_handle_command_message(intptr_t editor_handle,
-                                                 const uint8_t* data,
-                                                 size_t size,
-                                                 size_t* out_size);
-const uint8_t* editor_ime_handle_text_update_message(intptr_t editor_handle,
-                                                     const uint8_t* data,
-                                                     size_t size,
-                                                     size_t* out_size);
-int            editor_ime_get_keyboard_script_class(intptr_t editor_handle);
-const uint8_t* editor_ime_get_sync_snapshot(intptr_t editor_handle, size_t* out_size);
-const uint8_t* editor_ime_get_command_input_context(intptr_t editor_handle,
-                                                    int before_units,
-                                                    int after_units,
-                                                    size_t* out_size);
-const uint8_t* editor_ime_get_text_update_input_context(intptr_t editor_handle,
-                                                        int scope,
-                                                        int before_units,
-                                                        int after_units,
-                                                        size_t* out_size);
-int            editor_ime_is_composing(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_scroll_to_line(intptr_t editor_handle, size_t line, uint8_t behavior, size_t* out_size);
+EDITOR_API const uint8_t* editor_goto_position(intptr_t editor_handle, size_t line, size_t column, size_t* out_size);
+EDITOR_API const uint8_t* editor_ensure_cursor_visible(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_scroll(intptr_t editor_handle, float scroll_x, float scroll_y, size_t* out_size);
+EDITOR_API const uint8_t* editor_get_scroll_metrics(intptr_t editor_handle, size_t* out_size);
+EDITOR_API void editor_get_position_rect(intptr_t editor_handle, size_t line, size_t column, float* out_x, float* out_y, float* out_height);
+EDITOR_API void editor_get_cursor_rect(intptr_t editor_handle, float* out_x, float* out_y, float* out_height);
 ```
-### 12) Read-only, auto indent, and handle config
+
+`ScrollBehavior` uses `0=GOTO_TOP, 1=GOTO_CENTER, 2=GOTO_BOTTOM`. `editor_get_scroll_metrics` returns `ScrollMetrics`, not `EditorActionResult`.
+
+### Styles and Highlight Layers
 
 ```c
-void editor_set_read_only(intptr_t editor_handle, int read_only);
-int  editor_is_read_only(intptr_t editor_handle);
-void editor_set_auto_indent_mode(intptr_t editor_handle, int mode);
-int  editor_get_auto_indent_mode(intptr_t editor_handle);
-const uint8_t* editor_set_handle_config(
-    intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_register_text_style(intptr_t editor_handle, uint32_t style_id, int32_t color, int32_t background_color, int32_t font_style, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_batch_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_register_batch_text_styles(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_clear_line_spans(intptr_t editor_handle, size_t line, uint8_t layer, size_t* out_size);
+EDITOR_API const uint8_t* editor_clear_highlights_layer(intptr_t editor_handle, uint8_t layer, size_t* out_size);
 ```
 
-`AutoIndentMode`: `0=NONE`, `1=KEEP_INDENT`.
+`SpanLayer` uses `0=SYNTAX, 1=SEMANTIC, 2=OVERLAY`. `font_style` combines `BOLD=1`, `ITALIC=2`, and `STRIKETHROUGH=4`.
 
-### 13) Coordinates and navigation
+### Decorations and Guides
 
 ```c
-void editor_get_position_rect(
-    intptr_t editor_handle,
-    size_t line, size_t column,
-    float* out_x, float* out_y, float* out_height);
-void editor_get_cursor_rect(
-    intptr_t editor_handle,
-    float* out_x, float* out_y, float* out_height);
-void editor_scroll_to_line(intptr_t editor_handle, size_t line, uint8_t behavior);
-void editor_goto_position(intptr_t editor_handle, size_t line, size_t column);
-void editor_set_scroll(intptr_t editor_handle, float scroll_x, float scroll_y);
-const uint8_t* editor_get_scroll_metrics(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_batch_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_batch_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_batch_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_max_gutter_icons(intptr_t editor_handle, uint32_t count, size_t* out_size);
+EDITOR_API const uint8_t* editor_clear_gutter_icons(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_batch_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_clear_codelens(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_line_links(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_batch_line_links(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_clear_links(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const char* editor_get_link_target_at(intptr_t editor_handle, size_t line, size_t column);
+EDITOR_API const uint8_t* editor_set_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_batch_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_clear_diagnostics(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_line_document_highlights(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_batch_line_document_highlights(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_clear_document_highlights(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_indent_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_bracket_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_flow_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_separator_guides(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_clear_guides(intptr_t editor_handle, size_t* out_size);
 ```
 
-`ScrollBehavior`: `0=GOTO_TOP`, `1=GOTO_CENTER`, `2=GOTO_BOTTOM`.
-
-### 14) Style / highlight
+### Brackets, Folding, and Aggregate Clearing
 
 ```c
-void editor_register_style(
-    intptr_t editor_handle,
-    uint32_t style_id,
-    int32_t color,
-    int32_t background_color,
-    int32_t font_style);
-void editor_set_line_spans(
-    intptr_t editor_handle,
-    const uint8_t* data,
-    size_t size);
-void editor_set_batch_line_spans(
-    intptr_t editor_handle,
-    const uint8_t* data,
-    size_t size);
-void editor_clear_line_spans(intptr_t editor_handle, size_t line, uint8_t layer);
-void editor_clear_highlights_layer(intptr_t editor_handle, uint8_t layer);
+EDITOR_API const uint8_t* editor_set_bracket_pairs(intptr_t editor_handle, const uint32_t* open_chars, const uint32_t* close_chars, size_t count, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_auto_closing_pairs(intptr_t editor_handle, const uint32_t* open_chars, const uint32_t* close_chars, size_t count, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_matched_brackets(intptr_t editor_handle, size_t open_line, size_t open_col, size_t close_line, size_t close_col, size_t* out_size);
+EDITOR_API const uint8_t* editor_clear_matched_brackets(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_fold_regions(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_toggle_fold(intptr_t editor_handle, size_t line, size_t* out_size);
+EDITOR_API const uint8_t* editor_fold_at(intptr_t editor_handle, size_t line, size_t* out_size);
+EDITOR_API const uint8_t* editor_unfold_at(intptr_t editor_handle, size_t line, size_t* out_size);
+EDITOR_API const uint8_t* editor_fold_all(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_unfold_all(intptr_t editor_handle, size_t* out_size);
+EDITOR_API int editor_is_line_visible(intptr_t editor_handle, size_t line);
+EDITOR_API void editor_get_visible_line_range(intptr_t editor_handle, int32_t* out_start_line, int32_t* out_end_line);
+EDITOR_API const uint8_t* editor_clear_highlights(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_clear_inlay_hints(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_clear_phantom_texts(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_clear_all_decorations(intptr_t editor_handle, size_t* out_size);
 ```
 
-- `SpanLayer`: `0=SYNTAX`, `1=SEMANTIC`, `2=OVERLAY`
-- `font_style` bit flags: `BOLD=1`, `ITALIC=2`, `STRIKETHROUGH=4`
-- `editor_set_line_spans` payload (LE):
-  - `u32 line, u32 layer, u32 span_count`
-  - repeat `span_count` groups: `[u32 column, u32 length, u32 style_id]`
-- `editor_set_batch_line_spans` payload (LE):
-  - `u32 layer, u32 entry_count`
-  - repeat `entry_count` groups: `[u32 line, u32 span_count, [u32 column, u32 length, u32 style_id] × span_count]`
-
-### 15) Inlay / Phantom / CodeLens / Links / Gutter / Diagnostics
+### Snippets and Linked Editing
 
 ```c
-void editor_set_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_batch_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_batch_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size);
-
-void editor_set_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_batch_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_clear_codelens(intptr_t editor_handle);
-
-void editor_set_line_links(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_batch_line_links(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_clear_links(intptr_t editor_handle);
-const char* editor_get_link_target_at(intptr_t editor_handle, size_t line, size_t column);
-
-void editor_set_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_batch_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_clear_gutter_icons(intptr_t editor_handle);
-void editor_set_max_gutter_icons(intptr_t editor_handle, uint32_t count);
-
-void editor_set_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_batch_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_clear_diagnostics(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_insert_snippet(intptr_t editor_handle, const char* snippet_template, size_t* out_size);
+EDITOR_API const uint8_t* editor_start_linked_editing(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API int editor_is_in_linked_editing(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_linked_editing_next(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_linked_editing_prev(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_cancel_linked_editing(intptr_t editor_handle, size_t* out_size);
 ```
 
-- `editor_set_line_inlay_hints` payload (LE):
-  - `u32 line, u32 hint_count`
-  - repeat `hint_count` groups: `[u32 type, u32 column, i32 int_value, u32 text_len, u8[text_len] text_utf8]`
-- `editor_set_batch_line_inlay_hints` payload (LE):
-  - `u32 entry_count`
-  - repeat `entry_count` groups: `[u32 line, u32 hint_count, hint_items...]`
-- `editor_set_line_phantom_texts` payload (LE):
-  - `u32 line, u32 phantom_count`
-  - repeat `phantom_count` groups: `[u32 column, u32 text_len, u8[text_len] text_utf8]`
-- `editor_set_batch_line_phantom_texts` payload (LE):
-  - `u32 entry_count`
-  - repeat `entry_count` groups: `[u32 line, u32 phantom_count, phantom_items...]`
-- `editor_set_line_codelens` payload (LE):
-  - `u32 line, u32 item_count`
-  - repeat `item_count` groups: `[i32 column, i32 command_id, u32 text_len, u8[text_len] text_utf8]`
-- `editor_set_batch_line_codelens` payload (LE):
-  - `u32 entry_count`
-  - repeat `entry_count` groups: `[u32 line, u32 item_count, codelens_items...]`
-- `editor_set_line_links` payload (LE):
-  - `u32 line, u32 link_count`
-  - repeat `link_count` groups: `[u32 column, u32 length, u32 target_len, u8[target_len] target_utf8]`
-- `editor_set_batch_line_links` payload (LE):
-  - `u32 entry_count`
-  - repeat `entry_count` groups: `[u32 line, u32 link_count, link_items...]`
-- `editor_get_link_target_at` returns a UTF-8 string freed with `free_u8_string`; it returns an empty string when no link matches the requested position.
-- `editor_set_line_gutter_icons` payload (LE):
-  - `u32 line, u32 icon_count`
-  - repeat `icon_count` groups: `[i32 icon_id]`
-- `editor_set_batch_line_gutter_icons` payload (LE):
-  - `u32 entry_count`
-  - repeat `entry_count` groups: `[u32 line, u32 icon_count, [i32 icon_id] × icon_count]`
-- `editor_set_line_diagnostics` payload (LE):
-  - `u32 line, u32 diag_count`
-  - repeat `diag_count` groups: `[u32 column, u32 length, i32 severity, i32 color]`
-- `editor_set_batch_line_diagnostics` payload (LE):
-  - `u32 entry_count`
-  - repeat `entry_count` groups: `[u32 line, u32 diag_count, [u32 column, u32 length, i32 severity, i32 color] × diag_count]`
-
-### 16) Guide / Bracket Highlight / Fold
+### IME Protocol
 
 ```c
-void editor_set_indent_guides(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_bracket_guides(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_flow_guides(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_set_separator_guides(intptr_t editor_handle, const uint8_t* data, size_t size);
-void editor_clear_guides(intptr_t editor_handle);
-
-void editor_set_bracket_pairs(
-    intptr_t editor_handle,
-    const uint32_t* open_chars,
-    const uint32_t* close_chars,
-    size_t count);
-void editor_set_matched_brackets(
-    intptr_t editor_handle,
-    size_t open_line, size_t open_col,
-    size_t close_line, size_t close_col);
-void editor_clear_matched_brackets(intptr_t editor_handle);
-
-void editor_set_fold_regions(intptr_t editor_handle, const uint8_t* data, size_t size);
-int  editor_toggle_fold(intptr_t editor_handle, size_t line);
-int  editor_fold_at(intptr_t editor_handle, size_t line);
-int  editor_unfold_at(intptr_t editor_handle, size_t line);
-void editor_fold_all(intptr_t editor_handle);
-void editor_unfold_all(intptr_t editor_handle);
-int  editor_is_line_visible(intptr_t editor_handle, size_t line);
+EDITOR_API int editor_ime_has_preedit(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_ime_handle_command_message(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_ime_handle_text_update_message(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API int editor_ime_get_keyboard_script_class(intptr_t editor_handle);
+EDITOR_API const uint8_t* editor_ime_get_sync_snapshot(intptr_t editor_handle, size_t* out_size);
+EDITOR_API const uint8_t* editor_ime_get_command_input_context(intptr_t editor_handle, size_t before_length, size_t after_length, size_t* out_size);
+EDITOR_API const uint8_t* editor_ime_get_text_update_input_context(intptr_t editor_handle, int scope, size_t before_length, size_t after_length, size_t* out_size);
 ```
 
-- `editor_set_indent_guides` payload (LE):
-  - `u32 count`
-  - repeat `count` groups: `[u32 start_line, u32 start_column, u32 end_line, u32 end_column]`
-- `editor_set_bracket_guides` payload (LE):
-  - `u32 count`
-  - repeat `count` groups: `[u32 parent_line, u32 parent_column, u32 end_line, u32 end_column, u32 child_count, child_items...]`
-- `editor_set_flow_guides` payload (LE):
-  - `u32 count`
-  - repeat `count` groups: `[u32 start_line, u32 start_column, u32 end_line, u32 end_column]`
-- `editor_set_separator_guides` payload (LE):
-  - `u32 count`
-  - repeat `count` groups: `[i32 line, i32 style, i32 count, u32 text_end_column]`
-- `editor_set_fold_regions` payload (LE):
-  - `u32 region_count`
-  - repeat `region_count` groups: `[u32 start_line, u32 end_line, u32 collapsed]`
-- `separator style`: `0=single`, `1=double`
+The two message handlers return `EditorActionResult`. Snapshot and input-context queries return `ImeSyncSnapshot` or `ImeInputContext` payloads and use the same owned-buffer rule.
 
-### 17) Clear operations
+### Memory Utilities and Windows-only Setup
 
 ```c
-void editor_clear_highlights(intptr_t editor_handle);
-void editor_clear_inlay_hints(intptr_t editor_handle);
-void editor_clear_phantom_texts(intptr_t editor_handle);
-void editor_clear_all_decorations(intptr_t editor_handle);
+EDITOR_API void free_u16_string(intptr_t string_ptr);
+EDITOR_API void free_u8_string(intptr_t string_ptr);
+EDITOR_API void free_binary_data(intptr_t data_ptr);
+
+#ifdef _WIN32
+EDITOR_API void init_unhandled_exception_handler();
+#endif
 ```
 
-### 18) Linked editing
+`init_unhandled_exception_handler` does not exist in non-Windows builds and cannot be enabled by adding it to a Web export list.
 
-```c
-const uint8_t* editor_insert_snippet(intptr_t editor_handle, const char* snippet_template, size_t* out_size);
-void           editor_start_linked_editing(intptr_t editor_handle, const uint8_t* data, size_t size);
-int            editor_is_in_linked_editing(intptr_t editor_handle);
-int            editor_linked_editing_next(intptr_t editor_handle);
-int            editor_linked_editing_prev(intptr_t editor_handle);
-void           editor_cancel_linked_editing(intptr_t editor_handle);
-```
+## Synchronization Rule
 
-`editor_start_linked_editing` payload (LE):
-- `u32 group_count, u32 range_count, u32 string_blob_size`
-- `group_count` groups: `[u32 index, u32 default_text_offset, u32 default_text_len]`
-- `range_count` groups: `[u32 group_ordinal, u32 start_line, u32 start_col, u32 end_line, u32 end_col]`
-- UTF-8 string blob (`default_text_offset=0xFFFFFFFF` means `null`)
-
-### 19) Utilities / memory management
-
-```c
-void free_u8_string(intptr_t string_ptr);
-void free_u16_string(intptr_t string_ptr);
-void free_binary_data(intptr_t data_ptr);
-```
-
-Extra export on Windows:
-
-```c
-void init_unhandled_exception_handler();
-```
-
-## Sync Advice
-
-- For any public feature change, update `c_api.h` + `c_api.cpp` first, then sync Android JNI / Swing FFM / WinForms PInvoke / Apple bridge.
-- If `visual.h` render model layout, binary payload layout, or enum values change, platform decoders must also be updated (including `LayoutMetrics` payload).
+When the C API changes, update this document together with `c_api.h`, `c_api.cpp`, platform bridges, and generated CoreProtocol codecs. Any change to a wire type, field order, integer width, boolean width, or enum representation requires matching decoder updates on every consuming platform.

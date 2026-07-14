@@ -14,7 +14,7 @@
 		<Authors>Scave</Authors>
 		<Company>Mobile-IPE</Company>
 		<Product>SweetEditor</Product>
-		<Version>1.0.4</Version>
+		<Version>1.0.0-rc1</Version>
 		<Description>Cross-platform code editor core for WinForms, powered by SweetEditor C++.</Description>
 		<PackageProjectUrl>https://github.com/FinalScave/SweetEditor</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/FinalScave/SweetEditor</RepositoryUrl>

@@ -1,83 +1,10 @@
-# Swing 平台 API
+# Swing API
 
-本文档对应当前 Swing 实现：
+安装、环境要求、构建命令、运行参数和依赖坐标见 [Swing README](../../platform/Swing/sweeteditor/README.md)。
 
-- 控件层：`platform/Swing/sweeteditor/src/main/java/com/qiplat/sweeteditor/SweetEditor.java`
-- 桥接层：`platform/Swing/sweeteditor/src/main/java/com/qiplat/sweeteditor/core/EditorCore.java`
-- FFM 层：`platform/Swing/sweeteditor/src/main/java/com/qiplat/sweeteditor/core/EditorNative.java`
-- 文档对象：`platform/Swing/sweeteditor/src/main/java/com/qiplat/sweeteditor/core/Document.java`
+本文档说明 `platform/Swing/sweeteditor` 当前真实公开的 API。
 
-## 架构说明
-
-- Swing 通过 Java FFM 调用 C API。
-- `EditorCore` 负责 upcall 测量回调 + 二进制 payload 解码。
-- 当前桥接协议为二进制 payload。
-- `SweetEditor` 提供语义化控件 API（枚举）并处理 Swing 输入事件。
-
-## 快速开始
-
-### 环境要求（按当前仓库配置）
-
-- JDK：`22`
-- Gradle Wrapper：`8.10`
-- 运行参数：`--enable-native-access=ALL-UNNAMED`
-- 当前 demo 配置默认开启 `--enable-preview`
-
-### 在仓库内直接运行 Demo
-
-```bash
-cd platform/Swing
-./gradlew :demo:run
-```
-
-Windows PowerShell 可用：
-
-```powershell
-cd platform/Swing
-.\gradlew.bat :demo:run
-```
-
-### 在现有 Java Swing 项目中接入
-
-推荐使用 Maven Central 依赖：
-
-```gradle
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    implementation("com.qiplat:sweeteditor-swing:0.0.1")
-}
-```
-
-Maven（pom.xml）可使用：
-
-```xml
-<dependency>
-    <groupId>com.qiplat</groupId>
-    <artifactId>sweeteditor-swing</artifactId>
-    <version>0.0.1</version>
-    <scope>compile</scope>
-</dependency>
-```
-> 仓库内模块版本当前为 `0.0.1`；如果通过 Maven Central 接入，请替换为你实际要使用的发布版本。
-
-运行 JVM 需开启：
-
-```text
---enable-native-access=ALL-UNNAMED
-```
-
-如果使用仓库源码模块（本地联调场景）：
-
-```gradle
-dependencies {
-    implementation(project(":sweeteditor"))
-}
-```
-
-### 最小集成示例
+## 最小集成
 
 ```java
 import com.qiplat.sweeteditor.EditorTheme;
@@ -89,42 +16,48 @@ import javax.swing.SwingUtilities;
 
 SwingUtilities.invokeLater(() -> {
     JFrame frame = new JFrame("SweetEditor");
-    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-
     SweetEditor editor = new SweetEditor(EditorTheme.dark());
     editor.loadDocument(new Document("Hello, SweetEditor!"));
 
     frame.setContentPane(editor);
     frame.setSize(1000, 700);
-    frame.setLocationRelativeTo(null);
+    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     frame.setVisible(true);
 });
 ```
 
-### 说明
+Java 22 运行时必须启用 native access。本地库加载顺序为 `sweeteditor.lib.path`、匹配的 JAR 内资源自动解压，最后通过 `System.loadLibrary` 回退到 `java.library.path`。
 
-- `EditorNative` 会按顺序尝试加载本地库：`-Dsweeteditor.lib.path` -> 源码候选目录 -> JAR 内 native 自动解压 -> `java.library.path`。
-- Maven 发布场景可选调用 `NativeLibraryExtractor.extractToDefaultDir()` 预先解压本地库。
+## `SweetEditor`
 
-## 公开控件层：`SweetEditor`
-
-### 构造与基础
+### 构造与核心配置
 
 ```java
 public SweetEditor()
 public SweetEditor(EditorTheme theme)
+
 public void loadDocument(Document document)
-public EditorTheme getEditorTheme()
+public Document getDocument()
+public EditorSettings getSettings()
+public EditorTheme getTheme()
 public void applyTheme(EditorTheme theme)
 public EditorCore getEditorCore()
+public EditorKeyMap getKeyMap()
+public void setKeyMap(EditorKeyMap keyMap)
+public void setLanguageConfiguration(LanguageConfiguration config)
+public LanguageConfiguration getLanguageConfiguration()
+public <T extends EditorMetadata> void setMetadata(T metadata)
+public <T extends EditorMetadata> T getMetadata()
+public void setEditorIconProvider(EditorIconProvider provider)
+public EditorIconProvider getEditorIconProvider()
+public void setPerfOverlayEnabled(boolean enabled)
+public boolean isPerfOverlayEnabled()
 public void flush()
 ```
 
-`flush()` 是强制刷新 / 诊断入口。正常编辑、装饰、滚动和选区路径会通过统一分发 `EditorActionResult`，并由 `needsRedraw` 决定是否刷新 render model 与重绘；宿主通常不需要在批量装饰更新后手动调用。
+`flush()` 用于诊断场景下强制刷新渲染模型。正常编辑、滚动、选区、Provider 和装饰操作会自动重绘。
 
-### 编辑 / 行操作 / 撤销重做
-
-这里列出的是 `SweetEditor` component 方法。底层 `EditorCore` 调用仍返回 `EditorActionResult`，component 会在内部统一分发这些结果。
+### 文本编辑、行操作与剪贴板
 
 ```java
 public void insertText(String text)
@@ -145,40 +78,126 @@ public void undo()
 public void redo()
 public boolean canUndo()
 public boolean canRedo()
+
+public void copyToClipboard()
+public void pasteFromClipboard()
+public void cutToClipboard()
 ```
 
-### 光标选区 / 导航 / 外观
+`applyTextEdits(...)` 接收基于原始文档坐标且互不重叠的编辑，并把实际内容变更归为一次撤销操作。
+
+### 搜索与替换
+
+```java
+public void search(SearchRequest request)
+public void findNextSearchMatch()
+public void findPreviousSearchMatch()
+public void replaceCurrentSearchMatch(String replacement)
+public void replaceAllSearchMatches(String replacement)
+public void clearSearch()
+public SearchState getSearchState()
+```
+
+`SearchOptions` 支持区分大小写、全词、正则表达式、循环搜索和最大匹配数。`SearchState` 会返回状态、匹配数、当前匹配、generation 和错误信息。
+
+### 光标、选区、导航与几何信息
 
 ```java
 public void selectAll()
 public String getSelectedText()
-public int[] getCursorPosition()
-public Document getDocument()
-public int[] getWordRangeAtCursor()
+public void setSelection(int startLine, int startColumn, int endLine, int endColumn)
+public TextRange getSelection()
+public void setCursorPosition(TextPosition position)
+public TextPosition getCursorPosition()
+public TextRange getWordRangeAtCursor()
 public String getWordAtCursor()
-public void setReadOnly(boolean readOnly)
-public boolean isReadOnly()
+
 public void gotoPosition(int line, int column)
+public void scrollToLine(int line, ScrollBehavior behavior)
 public void setScroll(float scrollX, float scrollY)
 public ScrollMetrics getScrollMetrics()
-public void setLineSpacing(float add, float mult)
-
-public void setFoldArrowMode(FoldArrowMode mode)
-public void setWrapMode(WrapMode mode)
-public void setAutoIndentMode(AutoIndentMode mode)
-public int getAutoIndentMode()
 public CursorRect getPositionRect(int line, int column)
 public CursorRect getCursorRect()
+public IntRange getVisibleLineRange()
+public int getTotalLineCount()
 ```
 
-### 语言配置 / 元数据 / 扩展 Provider
+没有选区时，`getSelection()` 返回 `null`。`getLinkTargetAt(...)` 等字符串查询在没有结果时返回空字符串。
+
+### 样式、装饰与折叠
 
 ```java
-public void setLanguageConfiguration(LanguageConfiguration config)
-public LanguageConfiguration getLanguageConfiguration()
-public <T extends EditorMetadata> void setMetadata(T metadata)
-public <T extends EditorMetadata> T getMetadata()
+public void registerTextStyle(int styleId, int color, int bgColor, int fontStyle)
+public void registerTextStyle(int styleId, int color, int fontStyle)
+public void registerBatchTextStyles(Map<Integer, ? extends TextStyle> textStyles)
+public void setLineSpans(int line, SpanLayer layer, List<? extends StyleSpan> spans)
+public void setBatchLineSpans(SpanLayer layer, Map<Integer, ? extends List<? extends StyleSpan>> spansByLine)
 
+public void setLineInlayHints(int line, List<? extends InlayHint> hints)
+public void setBatchLineInlayHints(Map<Integer, ? extends List<? extends InlayHint>> hintsByLine)
+public void setLinePhantomTexts(int line, List<? extends PhantomText> phantoms)
+public void setBatchLinePhantomTexts(Map<Integer, ? extends List<? extends PhantomText>> phantomsByLine)
+public void setLineCodeLens(int line, List<? extends CodeLensItem> items)
+public void setBatchLineCodeLens(Map<Integer, ? extends List<? extends CodeLensItem>> itemsByLine)
+public void setLineLinks(int line, List<? extends LinkSpan> links)
+public void setBatchLineLinks(Map<Integer, ? extends List<? extends LinkSpan>> linksByLine)
+public String getLinkTargetAt(int line, int column)
+public void setLineDiagnostics(int line, List<? extends Diagnostic> items)
+public void setBatchLineDiagnostics(Map<Integer, ? extends List<? extends Diagnostic>> diagsByLine)
+public void setLineDocumentHighlights(int line, List<? extends DocumentHighlight> items)
+public void setBatchLineDocumentHighlights(Map<Integer, ? extends List<? extends DocumentHighlight>> highlightsByLine)
+public void setLineGutterIcons(int line, List<? extends GutterIcon> icons)
+public void setBatchLineGutterIcons(Map<Integer, ? extends List<? extends GutterIcon>> iconsByLine)
+
+public void setIndentGuides(List<? extends IndentGuide> guides)
+public void setBracketGuides(List<? extends BracketGuide> guides)
+public void setFlowGuides(List<? extends FlowGuide> guides)
+public void setSeparatorGuides(List<? extends SeparatorGuide> guides)
+
+public void setFoldRegions(List<? extends FoldRegion> regions)
+public void toggleFoldAt(int line)
+public void foldAt(int line)
+public void unfoldAt(int line)
+public void foldAll()
+public void unfoldAll()
+public boolean isLineVisible(int line)
+
+public void clearHighlights()
+public void clearHighlights(SpanLayer layer)
+public void clearInlayHints()
+public void clearPhantomTexts()
+public void clearGutterIcons()
+public void clearCodeLens()
+public void clearLinks()
+public void clearGuides()
+public void clearDiagnostics()
+public void clearDocumentHighlights()
+public void clearAllDecorations()
+```
+
+组件可渲染语法、语义和 overlay spans，以及 Inlay Hint、Phantom Text、CodeLens、链接、诊断、文档高亮、gutter 图标、折叠区域和 indent、bracket、flow、separator guides。
+
+### Snippet、联动编辑与 Inline Suggestion
+
+```java
+public void insertSnippet(String snippetTemplate)
+public void startLinkedEditing(LinkedEditingModel model)
+public boolean isInLinkedEditing()
+public void linkedEditingNext()
+public void linkedEditingPrev()
+public void cancelLinkedEditing()
+
+public void showInlineSuggestion(InlineSuggestion suggestion)
+public void dismissInlineSuggestion()
+public boolean isInlineSuggestionShowing()
+public void setInlineSuggestionListener(InlineSuggestionListener listener)
+```
+
+Snippet 插入支持 tab stops。Inline Suggestion 显示时，Tab 接受建议，Escape 关闭建议。
+
+### Provider 与补全
+
+```java
 public void addNewLineActionProvider(NewLineActionProvider provider)
 public void removeNewLineActionProvider(NewLineActionProvider provider)
 
@@ -192,86 +211,94 @@ public void triggerCompletion()
 public void showCompletionItems(List<CompletionItem> items)
 public void dismissCompletion()
 public void setCompletionCellRenderer(CompletionCellRenderer renderer)
-public void setEditorIconProvider(EditorIconProvider provider)
-public EditorIconProvider getEditorIconProvider()
-public int[] getVisibleLineRange()
-public int getTotalLineCount()
+```
+
+- 补全 Provider 接收主动触发、触发字符或 retrigger 上下文，并通过可取消 receiver 返回结果。`CompletionItem.textEdit` 定义主替换范围，`additionalTextEdits` 使用原始文档坐标；snippet 格式的补全项会进入 snippet 模式。
+- 装饰 Provider 会收到可见行范围、累计文本变更、语言配置和编辑器元数据，可按 merge、replace-all 或 replace-range 模式返回语法、语义、overlay、Inlay Hint、诊断、文档高亮、guide、折叠、gutter 图标、Phantom Text、CodeLens 和链接数据。
+- New-line action Provider 组成责任链。首个返回 action 的 Provider 决定 Enter 插入的文本；返回 `null` 时继续交给后续 Provider 或编辑器默认行为。
+
+### 事件总线
+
+```java
 public <T extends EditorEvent> void subscribe(Class<T> eventType, EditorEventListener<T> listener)
 public <T extends EditorEvent> void unsubscribe(Class<T> eventType, EditorEventListener<T> listener)
 ```
 
-### 样式 / 装饰 / 折叠 / 联动编辑
+类型化事件总线会发布 `TextChangedEvent`、`CursorChangedEvent`、`SelectionChangedEvent`、`ScrollChangedEvent`、`ScaleChangedEvent`、`DocumentLoadedEvent`、`LongPressEvent`、`DoubleTapEvent`、`ContextMenuEvent`、`InlayHintClickEvent`、`GutterIconClickEvent`、`FoldToggleEvent`、`CodeLensClickEvent` 和 `LinkClickEvent`。
+
+## `EditorSettings`
+
+通过 `editor.getSettings()` 访问设置。
 
 ```java
-public void registerTextStyle(int styleId, int color, int bgColor, int fontStyle)
-public void registerTextStyle(int styleId, int color, int fontStyle)
-public void registerBatchTextStyles(Map<Integer, ? extends TextStyle> textStyles)
-public void setLineSpans(int line, int layer, List<? extends StyleSpan> spans)
-public void setBatchLineSpans(int layer, Map<Integer, ? extends List<? extends StyleSpan>> spansByLine)
-
-public void setLineInlayHints(int line, List<? extends InlayHint> hints)
-public void setBatchLineInlayHints(Map<Integer, ? extends List<? extends InlayHint>> hintsByLine)
-public void setLinePhantomTexts(int line, List<? extends PhantomText> phantoms)
-public void setBatchLinePhantomTexts(Map<Integer, ? extends List<? extends PhantomText>> phantomsByLine)
-public void setLineCodeLens(int line, List<? extends CodeLensItem> items)
-public void setBatchLineCodeLens(Map<Integer, ? extends List<? extends CodeLensItem>> itemsByLine)
-public void clearCodeLens()
-public void setLineLinks(int line, List<? extends LinkSpan> links)
-public void setBatchLineLinks(Map<Integer, ? extends List<? extends LinkSpan>> linksByLine)
-public String getLinkTargetAt(int line, int column)
-public void clearLinks()
-
-public void setLineDiagnostics(int line, List<? extends Diagnostic> items)
-public void setBatchLineDiagnostics(Map<Integer, ? extends List<? extends Diagnostic>> diagsByLine)
-public void clearDiagnostics()
-
-public void setLineGutterIcons(int line, List<? extends GutterIcon> icons)
-public void setBatchLineGutterIcons(Map<Integer, ? extends List<? extends GutterIcon>> iconsByLine)
+public void setScale(float scale)
+public float getScale()
+public void setEditorTextSize(float textSize)
+public float getEditorTextSize()
+public void setFontFamily(String fontFamily)
+public String getFontFamily()
+public void setGutterVisible(boolean visible)
+public boolean isGutterVisible()
+public void setFoldArrowMode(FoldArrowMode mode)
+public FoldArrowMode getFoldArrowMode()
+public void setWrapMode(WrapMode mode)
+public WrapMode getWrapMode()
+public void setRenderWhitespace(WhitespaceRenderMode mode)
+public WhitespaceRenderMode getRenderWhitespace()
+public void setRenderLineBreaks(boolean enabled)
+public boolean isRenderLineBreaks()
+public void setLineSpacing(float add, float mult)
+public float getLineSpacingAdd()
+public float getLineSpacingMult()
+public void setContentStartPadding(float padding)
+public float getContentStartPadding()
+public void setShowSplitLine(boolean show)
+public boolean isShowSplitLine()
+public void setGutterSticky(boolean sticky)
+public boolean isGutterSticky()
+public void setCurrentLineRenderMode(CurrentLineRenderMode mode)
+public CurrentLineRenderMode getCurrentLineRenderMode()
+public void setAutoIndentMode(AutoIndentMode mode)
+public AutoIndentMode getAutoIndentMode()
+public void setBackspaceUnindent(boolean enabled)
+public boolean isBackspaceUnindent()
+public void setReadOnly(boolean readOnly)
+public boolean isReadOnly()
 public void setMaxGutterIcons(int count)
-public void clearGutterIcons()
-
-public void setIndentGuides(List<? extends IndentGuide> guides)
-public void setBracketGuides(List<? extends BracketGuide> guides)
-public void setFlowGuides(List<? extends FlowGuide> guides)
-public void setSeparatorGuides(List<? extends SeparatorGuide> guides)
-public void clearGuides()
-
-public void setFoldRegions(List<? extends FoldRegion> regions)
-public boolean toggleFold(int line)
-public void foldAll()
-public void unfoldAll()
-
-public void clearHighlights()
-public void clearHighlights(SpanLayer layer)
-public void clearInlayHints()
-public void clearPhantomTexts()
-public void clearAllDecorations()
-
-public EditorCore.EditorActionResult insertSnippet(String snippetTemplate)
-public void startLinkedEditing(LinkedEditingModel model)
-public boolean isInLinkedEditing()
-public boolean linkedEditingNext()
-public boolean linkedEditingPrev()
-public void cancelLinkedEditing()
+public int getMaxGutterIcons()
+public void setDecorationScrollRefreshMinIntervalMs(int intervalMs)
+public int getDecorationScrollRefreshMinIntervalMs()
+public void setDecorationOverscanViewportMultiplier(float multiplier)
+public float getDecorationOverscanViewportMultiplier()
+public void setCursorAnimationEnabled(boolean enabled)
+public boolean isCursorAnimationEnabled()
+public void setGutterAnimationEnabled(boolean enabled)
+public boolean isGutterAnimationEnabled()
 ```
 
-`CodeLensClickEvent` 和 `LinkClickEvent` 通过泛型 `subscribe(...)` 事件总线分发。`getLinkTargetAt(...)` 在请求位置未命中 link 时返回空字符串。
+## Keymap 与语言配置
 
-## 桥接层说明
+`EditorKeyMap.defaultKeyMap()`、`vscode()`、`jetbrains()` 和 `sublime()` 可创建内置映射。宿主可以增删 `KeyBinding`，并通过 `registerCommand(...)` 注册快捷键处理器。
 
-- `EditorCore` / `EditorNative` 已包含括号高亮能力：
-  - `setBracketPairs(int[] openChars, int[] closeChars)`
-  - `setMatchedBrackets(...)`
-  - `clearMatchedBrackets()`
-- 控件层通常通过 `setLanguageConfiguration(...)` 触发括号对下发。
-- `Document` 当前公开 `getLineText(int)` 与 `getLineCount()` 两个读取入口。
+使用 `LanguageConfiguration.Builder` 构造语言配置。它描述语言 ID、括号对、自动闭合对、行注释、块注释、Tab 宽度和以空格代替 Tab 的偏好。括号、自动闭合和缩进配置会影响编辑行为；Completion、Decoration 和 New-line Provider 也可读取完整配置。
 
 ## `Document`
 
 ```java
 public Document(String text)
+public Document(Path path)
+public Document(File file)
 public long getHandle()
 public String getLineText(int line)
 public int getLineCount()
-public void close()
+public String getText()
 ```
+
+`Document` 通过 `Cleaner` 释放 native handle，不公开 `close()` 方法。
+
+## Swing 输入行为
+
+- 键盘输入使用当前 `EditorKeyMap`；补全和 Inline Suggestion 会先拦截自身的导航或确认按键，再处理普通编辑器命令。
+- 鼠标按下、拖动、悬停、右键和滚轮输入用于选区、滚动、链接、CodeLens、gutter 图标、折叠和上下文菜单。
+- 剪贴板操作使用 AWT 系统剪贴板。
+- Java 输入法通过 `InputMethodRequests` 提供 preedit、提交、取消、光标几何、surrounding text 和 selected text。

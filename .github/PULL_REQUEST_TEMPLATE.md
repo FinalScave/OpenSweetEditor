@@ -2,7 +2,7 @@
 
 ## Pre-submission Checklist
 
-- [ ] Read the contribution guide (docs/zh/join.md) and followed the guidelines
+- [ ] Read the contribution guide (docs/en/join.md) and followed the guidelines
 - [ ] Local build passed
 - [ ] Unit tests passed (if applicable)
 - [ ] Self-review completed
@@ -71,10 +71,12 @@
 
 - [ ] Android Platform
 - [ ] iOS/macOS Platform
-- [ ] Windows Platform
-- [ ] Swing Platform
-- [ ] Web/Emscripten
+- [ ] WinForms
+- [ ] Swing
+- [ ] Web (Emscripten)
 - [ ] OHOS Platform
+- [ ] Flutter
+- [ ] Avalonia
 - [ ] No platform-related changes
 
 ### Infrastructure
@@ -86,7 +88,7 @@
 **Platform sync checklist key points:**
 
 - New or modified functions in c_api.h
-- Structural changes to TextEditResult / GestureResult / KeyEventResult / ScrollMetrics / LayoutMetrics, etc.
+- Structural changes to EditorActionResult / EditorRenderModel / ScrollMetrics / LayoutMetrics or other CoreProtocol payloads
 - Rendering model field changes
 - Core behavior changes related to IME, gestures, folding, decorations
 

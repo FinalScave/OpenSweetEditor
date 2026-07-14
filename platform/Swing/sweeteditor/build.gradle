@@ -3,7 +3,7 @@ plugins {
 }
 
 group = 'com.qiplat'
-version = '0.0.1'
+version = '1.0.0-rc1'
 
 java {
     toolchain {
