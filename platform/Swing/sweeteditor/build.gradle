@@ -1,7 +1,9 @@
 plugins {
     id 'java-library'
+    id 'net.thebugmc.gradle.sonatype-central-portal-publisher' version '1.2.4'
 }
 
+description = 'Cross-platform code editor'
 group = 'com.qiplat'
 version = '1.0.0-rc1'
 
@@ -60,6 +62,10 @@ tasks.named('processResources') {
     dependsOn(tasks.named('syncNativeResources'))
 }
 
+tasks.named('sourcesJar') {
+    dependsOn(tasks.named('syncNativeResources'))
+}
+
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs += ['--enable-preview']
 }
@@ -67,4 +73,84 @@ tasks.withType(JavaCompile).configureEach {
 test {
     useJUnitPlatform()
     jvmArgs '--enable-preview', '--enable-native-access=ALL-UNNAMED'
+}
+
+javadoc {
+    failOnError false
+    options {
+        locale('zh_CN')
+        encoding('utf-8')
+        links('http://docs.oracle.com/javase/7/docs/api')
+    }
+}
+
+ext.localPublishProps = new Properties()
+File f = rootProject.file('.gradle/publish.properties')
+if (f.exists()) {
+    f.withInputStream { ext.localPublishProps.load(it) }
+}
+
+static def toNonBlank(String value) {
+    if (value == null) {
+        return null
+    }
+    String trimmed = value.trim()
+    return trimmed.isEmpty() ? null : trimmed
+}
+
+def getPublishConfig(String name) {
+    return toNonBlank(providers.gradleProperty(name).orNull)
+            ?: toNonBlank(providers.environmentVariable(name).orNull)
+            ?: toNonBlank(providers.environmentVariable(name.replace('.', '_').toUpperCase()).orNull)
+            ?: toNonBlank(ext.localPublishProps.getProperty(name))
+}
+
+String defaultGpgExecutable = System.getProperty('os.name')
+        .toLowerCase()
+        .contains('windows') ? 'gpg.exe' : 'gpg'
+String gpgExecutable = getPublishConfig('signing.gnupg.executable') ?: defaultGpgExecutable
+String gpgKeyName = getPublishConfig('signing.gnupg.keyName')
+String gpgPassphrase = getPublishConfig('signing.gnupg.passphrase')
+project.extensions.extraProperties.set('signing.gnupg.executable', gpgExecutable)
+rootProject.extensions.extraProperties.set('signing.gnupg.executable', gpgExecutable)
+if (gpgKeyName != null && !gpgKeyName.empty) {
+    project.extensions.extraProperties.set('signing.gnupg.keyName', gpgKeyName)
+    rootProject.extensions.extraProperties.set('signing.gnupg.keyName', gpgKeyName)
+}
+if (gpgPassphrase != null && !gpgPassphrase.empty) {
+    project.extensions.extraProperties.set('signing.gnupg.passphrase', gpgPassphrase)
+    rootProject.extensions.extraProperties.set('signing.gnupg.passphrase', gpgPassphrase)
+}
+
+signing {
+    useGpgCmd()
+}
+
+centralPortal {
+    username = getPublishConfig('sonatype.username')
+    password = getPublishConfig('sonatype.password')
+    name = 'sweeteditor-swing'
+
+    pom {
+        url = 'https://github.com/FinalScave/SweetEditor'
+        licenses {
+            license {
+                name = 'MIT License'
+                url = 'https://opensource.org/license/mit'
+            }
+        }
+        developers {
+            developer {
+                name = 'Scave'
+                email = 'iscave@163.com'
+                organization = 'Mobile IPE'
+                organizationUrl = 'https://github.com/mobile-ipe'
+            }
+        }
+        scm {
+            connection = 'scm:git:https://github.com/FinalScave/SweetEditor.git'
+            developerConnection = 'scm:git:https://github.com/FinalScave/SweetEditor'
+            url = 'https://github.com/FinalScave/SweetEditor'
+        }
+    }
 }

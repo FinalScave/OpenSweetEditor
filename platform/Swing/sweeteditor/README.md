@@ -4,6 +4,24 @@ SweetEditor for Swing is a Java2D code editor component that calls the shared Sw
 
 ## Installation
 
+### Maven
+
+```xml
+<dependency>
+  <groupId>com.qiplat</groupId>
+  <artifactId>sweeteditor-swing</artifactId>
+  <version>1.0.0-rc1</version>
+</dependency>
+```
+
+### Gradle
+
+```groovy
+implementation "com.qiplat:sweeteditor-swing:1.0.0-rc1"
+```
+
+### Source Tree
+
 Consume the Gradle project directly from the source tree:
 
 ```gradle
@@ -12,7 +30,7 @@ dependencies {
 }
 ```
 
-For local JAR integration, build `:sweeteditor:jar`, add `sweeteditor-1.0.0-rc1.jar` from `sweeteditor/build/libs`, and declare Gson 2.11.0 in the consuming project. The generated JAR includes native resources for the supported desktop targets.
+For local JAR integration, build `:sweeteditor:jar`, add `sweeteditor-swing-1.0.0-rc1.jar` from `sweeteditor/build/libs`, and declare Gson 2.11.0 in the consuming project. The generated JAR includes native resources for the supported desktop targets.
 
 ## Requirements
 
