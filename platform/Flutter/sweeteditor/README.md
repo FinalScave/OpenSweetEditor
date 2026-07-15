@@ -6,11 +6,10 @@ SweetEditor for Flutter is a Dart FFI wrapper and Flutter widget built on the sh
 
 ```yaml
 dependencies:
-  sweeteditor:
-    path: ../sweeteditor
+  sweeteditor: ^1.0.0-rc1
 ```
 
-Adjust the path to the checked-out `platform/Flutter/sweeteditor` directory in the consuming workspace.
+To consume the package directly from the source tree instead, use a path dependency that points to the checked-out `platform/Flutter/sweeteditor` directory.
 
 ## Requirements
 
