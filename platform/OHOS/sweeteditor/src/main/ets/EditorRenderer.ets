@@ -1,8 +1,7 @@
 import { EditorIconProvider, EditorTheme } from './EditorTypes';
 import {
   HandleConfig,
-  ScrollbarConfig,
-  ScrollbarMode
+  ScrollbarConfig
 } from './core/CoreConfig';
 import { Rect } from './core/CoreFoundation';
 import {
@@ -175,10 +174,9 @@ export class EditorRenderer {
 
   /**
    * Render the editor content onto the canvas.
-   * Returns true if transient scrollbar refresh should be scheduled.
    */
   render(ctx: CanvasRenderingContext2D, model: EditorRenderModel,
-    viewWidth: number, viewHeight: number, cursorVisible: boolean): boolean {
+    viewWidth: number, viewHeight: number, cursorVisible: boolean): void {
     const perf = PerfStepRecorder.start();
     this.currentFontKey = '';
     ctx.clearRect(0, 0, viewWidth, viewHeight);
@@ -217,7 +215,7 @@ export class EditorRenderer {
     perf.mark(PerfStepRecorder.STEP_LINE_NO);
     this.drawSelectionHandles(ctx, model.selectionStartHandle, model.selectionEndHandle);
     perf.mark(PerfStepRecorder.STEP_HANDLES);
-    const needsTransientRefresh = this.drawScrollbars(ctx, model);
+    this.drawScrollbars(ctx, model);
     perf.mark(PerfStepRecorder.STEP_SCROLLBARS);
 
     this.perfOverlay.draw(ctx, viewWidth);
@@ -225,7 +223,6 @@ export class EditorRenderer {
     this.lastDrawPerf = perf;
     this.lastDrawMs = perf.getTotalMs();
 
-    return needsTransientRefresh;
   }
 
   private drawLines(ctx: CanvasRenderingContext2D, model: EditorRenderModel): void {
@@ -838,7 +835,7 @@ export class EditorRenderer {
     ctx.fill();
   }
 
-  private drawScrollbars(ctx: CanvasRenderingContext2D, model: EditorRenderModel): boolean {
+  private drawScrollbars(ctx: CanvasRenderingContext2D, model: EditorRenderModel): void {
     const vertical = model.verticalScrollbar;
     const horizontal = model.horizontalScrollbar;
     const verticalAlpha = getScrollbarAlpha(vertical);
@@ -846,7 +843,7 @@ export class EditorRenderer {
     const hasVertical = isDrawableScrollbar(vertical, verticalAlpha);
     const hasHorizontal = isDrawableScrollbar(horizontal, horizontalAlpha);
     if (!hasVertical && !hasHorizontal) {
-      return false;
+      return;
     }
 
     let verticalTrackX = 0;
@@ -894,7 +891,6 @@ export class EditorRenderer {
       ctx.fillRect(verticalTrackX, horizontalTrackY, verticalTrackWidth, horizontalTrackHeight);
     }
 
-    return this.scrollbarConfig !== null && this.scrollbarConfig.mode === ScrollbarMode.TRANSIENT;
   }
 
   private getActiveLogicalLine(model: EditorRenderModel): number {

@@ -3,6 +3,28 @@ from ..ir import visible_schema_types
 
 
 JAVA_MODEL_HELPERS = {
+    "EditorActionResult": {
+        "body_blocks": [
+            {
+                "sentinel": "    public boolean needsAnimation() {",
+                "lines": [
+                    "",
+                    "    public boolean hasAnimationFlag(int flag) {",
+                    "        return (animationFlags & flag) != 0;",
+                    "    }",
+                    "",
+                    "    public boolean needsAnimation() {",
+                    "        return animationFlags != AnimationFlag.NONE;",
+                    "    }",
+                    "",
+                    "    public boolean needsViewportMotion() {",
+                    "        return hasAnimationFlag(AnimationFlag.EDGE_SCROLL)",
+                    "                || hasAnimationFlag(AnimationFlag.FLING);",
+                    "    }",
+                ],
+            },
+        ],
+    },
     "TextPosition": {
         "static_members": [
             "    public static final TextPosition NONE = new TextPosition();",

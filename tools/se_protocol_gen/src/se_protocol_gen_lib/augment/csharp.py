@@ -474,6 +474,15 @@ namespace {namespace} {{
 
     public sealed partial class EditorActionResult {{
         public static EditorActionResult Empty => new();
+
+        public bool HasAnimationFlag(AnimationFlag flag) =>
+            (AnimationFlags & (int)flag) != 0;
+
+        public bool NeedsAnimation => AnimationFlags != (int)AnimationFlag.NONE;
+
+        public bool NeedsViewportMotion =>
+            HasAnimationFlag(AnimationFlag.EDGE_SCROLL) ||
+            HasAnimationFlag(AnimationFlag.FLING);
     }}
 }}
 """

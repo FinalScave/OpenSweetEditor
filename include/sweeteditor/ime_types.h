@@ -138,6 +138,8 @@ namespace NS_SWEETEDITOR {
     SE_PROTOCOL_WIRE(enum_i32)
     ImeContextPolicy context_policy {ImeContextPolicy::NONE};
     bool clear_system_mark {false};
+
+    bool requestsPlatformUpdate() const;
   };
 
   /// Result of a semantic IME action handled by the core.
@@ -171,6 +173,9 @@ namespace NS_SWEETEDITOR {
     U8String preedit_text;
     /// UTF-16 column count of current preedit text for exact cursor placement.
     size_t preedit_columns {0};
+
+    bool operator==(const CompositionState& other) const;
+    bool operator!=(const CompositionState& other) const;
   };
 
 }

@@ -50,7 +50,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
     private var localKeyDownMonitor: Any?
     private var performanceOverlayTimer: Timer?
     private var cursorBlinkTimer: Timer?
-    private var transientScrollbarRefreshTimer: Timer?
+    private var animationTimer: Timer?
     private var hoverTrackingArea: NSTrackingArea?
     private var scrollbarPolicy = MacOSScrollbarPolicy()
     private var scrollbarHoverController = MacOSScrollbarHoverController()
@@ -650,7 +650,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
     deinit {
         performanceOverlayTimer?.invalidate()
         cursorBlinkTimer?.invalidate()
-        transientScrollbarRefreshTimer?.invalidate()
+        animationTimer?.invalidate()
         hoverTrackingArea = nil
         if let localKeyDownMonitor {
             NSEvent.removeMonitor(localKeyDownMonitor)
@@ -731,6 +731,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
                 }
             }
         }
+        updateAnimationSchedule(result)
         dispatchStateEvents(result)
         if result.needs_redraw {
             rebuildAndRedraw()
@@ -902,17 +903,15 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         // Set text matrix to flip text rendering (CoreText expects unflipped coordinates)
         context.textMatrix = CGAffineTransform(scaleX: 1.0, y: -1.0)
 
-        let needsTransientRefresh = EditorRenderer.draw(context: context,
-                                                        model: model,
-                                                        core: editorCore,
-                                                        viewHeight: bounds.height,
-                                                        iconProvider: editorIconProvider,
-                                                        isCursorBlinkVisible: isCursorBlinkVisible && isEditorFocused(),
-                                                        scrollbarStyle: scrollbarPolicy.visualStyle(for: EditorRenderer.theme))
+        EditorRenderer.draw(context: context,
+                            model: model,
+                            core: editorCore,
+                            viewHeight: bounds.height,
+                            iconProvider: editorIconProvider,
+                            isCursorBlinkVisible: isCursorBlinkVisible && isEditorFocused(),
+                            scrollbarStyle: scrollbarPolicy.visualStyle(for: EditorRenderer.theme))
 
         context.restoreGState()
-
-        updateTransientScrollbarRefresh(needsRefresh: needsTransientRefresh)
 
         let frameEnd = CACurrentMediaTime()
         let drawDurationMs = (frameEnd - frameStart) * 1000
@@ -987,19 +986,18 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         metricsText.draw(at: textOrigin, withAttributes: textAttributes)
     }
 
-    private func updateTransientScrollbarRefresh(needsRefresh: Bool) {
-        guard editorCore.scrollbarConfig.mode == .TRANSIENT else {
-            transientScrollbarRefreshTimer?.invalidate()
-            transientScrollbarRefreshTimer = nil
+    private func updateAnimationSchedule(_ result: EditorActionResult) {
+        animationTimer?.invalidate()
+        animationTimer = nil
+        guard result.needsAnimation else {
             return
         }
-        guard needsRefresh else {
-            transientScrollbarRefreshTimer?.invalidate()
-            transientScrollbarRefreshTimer = nil
-            return
-        }
-        ScrollbarRefreshScheduler.scheduleTransientRefreshTimer(&transientScrollbarRefreshTimer) { [weak self] in
-            self?.rebuildAndRedraw()
+        CoreAnimationScheduler.schedule(
+            &animationTimer,
+            delayMs: result.next_animation_delay_ms
+        ) { [weak self] in
+            guard let self else { return }
+            self.dispatchEditorActionResult(self.editorCore.tickAnimations())
         }
     }
 

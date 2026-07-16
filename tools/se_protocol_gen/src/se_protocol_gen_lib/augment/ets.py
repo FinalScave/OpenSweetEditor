@@ -40,6 +40,21 @@ export function createEmptySearchState(): SearchState {
 }
 """.strip()
 
+ACTION_ANIMATION_HELPERS = """
+export function hasAnimationFlag(result: EditorActionResult, flag: number): boolean {
+  return (result.animationFlags & flag) !== 0;
+}
+
+export function needsAnimation(result: EditorActionResult): boolean {
+  return result.animationFlags !== AnimationFlag.NONE;
+}
+
+export function needsViewportMotion(result: EditorActionResult): boolean {
+  return hasAnimationFlag(result, AnimationFlag.EDGE_SCROLL) ||
+    hasAnimationFlag(result, AnimationFlag.FLING);
+}
+""".strip()
+
 
 def config_bool(value):
     return str(value).strip().lower() in ("1", "true", "yes", "on")
@@ -116,6 +131,17 @@ def augment_ets_search_file(out_root, target):
     path.write_text(text, encoding="utf-8")
     return str(path)
 
+def augment_ets_action_file(out_root, target):
+    path = out_root / ets_domain_file(target, "action")
+    if not path.exists():
+        return None
+    text = path.read_text(encoding="utf-8")
+    if "export function needsAnimation" in text:
+        return None
+    text = text.rstrip() + "\n\n" + ACTION_ANIMATION_HELPERS + "\n"
+    path.write_text(text, encoding="utf-8")
+    return str(path)
+
 
 def augment_ets(schema, target_name, target, out_root):
     if not ets_model_helpers_enabled(target):
@@ -134,4 +160,7 @@ def augment_ets(schema, target_name, target, out_root):
     search_path = augment_ets_search_file(out_root, target)
     if search_path is not None:
         written.append(search_path)
+    action_path = augment_ets_action_file(out_root, target)
+    if action_path is not None:
+        written.append(action_path)
     return written

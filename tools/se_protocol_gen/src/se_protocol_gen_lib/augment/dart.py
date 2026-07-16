@@ -3,6 +3,17 @@ from ..ir import visible_schema_types
 
 
 DART_MODEL_HELPERS = {
+    "EditorActionResult": [
+        "extension EditorActionResultAnimationHelpers on EditorActionResult {",
+        "  bool hasAnimationFlag(int flag) => (animationFlags & flag) != 0;",
+        "",
+        "  bool get needsAnimation => animationFlags != AnimationFlag.none;",
+        "",
+        "  bool get needsViewportMotion =>",
+        "      hasAnimationFlag(AnimationFlag.edgeScroll) ||",
+        "      hasAnimationFlag(AnimationFlag.fling);",
+        "}",
+    ],
     "TextRange": [
         "extension TextRangeCoreHelpers on TextRange {",
         "  bool get isCollapsed => start.line == end.line && start.column == end.column;",

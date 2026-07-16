@@ -30,7 +30,7 @@ struct EditorRenderer {
                      viewHeight: CGFloat,
                      iconProvider: EditorIconProvider? = nil,
                      isCursorBlinkVisible: Bool = true,
-                     scrollbarStyle: ScrollbarVisualStyle? = nil) -> Bool {
+                     scrollbarStyle: ScrollbarVisualStyle? = nil) {
         let t = theme
         let resolvedScrollbarStyle = scrollbarStyle ?? ScrollbarVisualStyle.themedDefault(for: t)
         let rect = CGRect(x: 0, y: 0,
@@ -108,7 +108,7 @@ struct EditorRenderer {
             }
         }
 
-        return drawScrollbars(context: context, model: model, style: resolvedScrollbarStyle)
+        drawScrollbars(context: context, model: model, style: resolvedScrollbarStyle)
     }
 
     // MARK: - Drawing Helpers
@@ -602,16 +602,14 @@ struct EditorRenderer {
         context.restoreGState()
     }
 
-    static func drawScrollbars(context: CGContext, model: EditorRenderModel, style: ScrollbarVisualStyle) -> Bool {
+    static func drawScrollbars(context: CGContext, model: EditorRenderModel, style: ScrollbarVisualStyle) {
         let vertical = model.vertical_scrollbar
         let horizontal = model.horizontal_scrollbar
         let verticalAlpha = scrollbarAlpha(vertical)
         let horizontalAlpha = scrollbarAlpha(horizontal)
         let hasVertical = isDrawableScrollbar(vertical, alpha: verticalAlpha)
         let hasHorizontal = isDrawableScrollbar(horizontal, alpha: horizontalAlpha)
-        guard hasVertical || hasHorizontal else {
-            return false
-        }
+        guard hasVertical || hasHorizontal else { return }
 
         var verticalTrackX: CGFloat = 0
         var verticalTrackWidth: CGFloat = 0
@@ -649,7 +647,6 @@ struct EditorRenderer {
             )
         }
 
-        return true
     }
 
     // MARK: - Color Helpers

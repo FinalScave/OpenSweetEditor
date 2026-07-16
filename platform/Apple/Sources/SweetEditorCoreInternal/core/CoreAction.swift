@@ -1,5 +1,12 @@
 import Foundation
 
+public enum AnimationFlag {
+    public static let NONE: Int32 = 0
+    public static let EDGE_SCROLL: Int32 = 1
+    public static let FLING: Int32 = 2
+    public static let TRANSIENT_SCROLLBAR: Int32 = 4
+}
+
 public enum EditorActionSource: Int32 {
     case NONE = 0
     case SETUP = 1
@@ -85,9 +92,8 @@ public struct EditorActionResult {
     public var composition_changed: Bool = false
     public var decoration_changed: Bool = false
     public var needs_ime_sync: Bool = false
-    public var needs_edge_scroll: Bool = false
-    public var needs_fling: Bool = false
-    public var needs_animation: Bool = false
+    public var animation_flags: Int32 = 0
+    public var next_animation_delay_ms: Int32 = 0
     public var is_handle_drag: Bool = false
     public var changes: [TextChange] = []
     public var cursor_before: TextPosition = TextPosition()
@@ -112,7 +118,7 @@ public struct EditorActionResult {
     public var modifiers: Int32 = KeyModifier.NONE
     public var command: Int32 = 0
 
-    public init(handled: Bool = false, needs_redraw: Bool = false, source: EditorActionSource = .NONE, text_change_kind: TextChangeKind = .NONE, content_changed: Bool = false, cursor_changed: Bool = false, selection_changed: Bool = false, scroll_changed: Bool = false, scale_changed: Bool = false, pointer_cursor_changed: Bool = false, composition_changed: Bool = false, decoration_changed: Bool = false, needs_ime_sync: Bool = false, needs_edge_scroll: Bool = false, needs_fling: Bool = false, needs_animation: Bool = false, is_handle_drag: Bool = false, changes: [TextChange] = [], cursor_before: TextPosition = TextPosition(), cursor_after: TextPosition = TextPosition(), has_selection_before: Bool = false, has_selection_after: Bool = false, selection_before: TextRange = TextRange(), selection_after: TextRange = TextRange(), scroll_x_before: Float = 0, scroll_y_before: Float = 0, scroll_x_after: Float = 0, scroll_y_after: Float = 0, scale_before: Float = 1, scale_after: Float = 1, pointer_cursor_before: PointerCursorType = .TEXT, pointer_cursor_after: PointerCursorType = .TEXT, ime_sync: ImeSyncSnapshot = ImeSyncSnapshot(), gesture_type: GestureType = .UNDEFINED, gesture_event_type: EventType = .UNDEFINED, tap_point: PointF = PointF(), hit_target: HitTarget = HitTarget(), modifiers: Int32 = KeyModifier.NONE, command: Int32 = 0) {
+    public init(handled: Bool = false, needs_redraw: Bool = false, source: EditorActionSource = .NONE, text_change_kind: TextChangeKind = .NONE, content_changed: Bool = false, cursor_changed: Bool = false, selection_changed: Bool = false, scroll_changed: Bool = false, scale_changed: Bool = false, pointer_cursor_changed: Bool = false, composition_changed: Bool = false, decoration_changed: Bool = false, needs_ime_sync: Bool = false, animation_flags: Int32 = 0, next_animation_delay_ms: Int32 = 0, is_handle_drag: Bool = false, changes: [TextChange] = [], cursor_before: TextPosition = TextPosition(), cursor_after: TextPosition = TextPosition(), has_selection_before: Bool = false, has_selection_after: Bool = false, selection_before: TextRange = TextRange(), selection_after: TextRange = TextRange(), scroll_x_before: Float = 0, scroll_y_before: Float = 0, scroll_x_after: Float = 0, scroll_y_after: Float = 0, scale_before: Float = 1, scale_after: Float = 1, pointer_cursor_before: PointerCursorType = .TEXT, pointer_cursor_after: PointerCursorType = .TEXT, ime_sync: ImeSyncSnapshot = ImeSyncSnapshot(), gesture_type: GestureType = .UNDEFINED, gesture_event_type: EventType = .UNDEFINED, tap_point: PointF = PointF(), hit_target: HitTarget = HitTarget(), modifiers: Int32 = KeyModifier.NONE, command: Int32 = 0) {
         self.handled = handled
         self.needs_redraw = needs_redraw
         self.source = source
@@ -126,9 +132,8 @@ public struct EditorActionResult {
         self.composition_changed = composition_changed
         self.decoration_changed = decoration_changed
         self.needs_ime_sync = needs_ime_sync
-        self.needs_edge_scroll = needs_edge_scroll
-        self.needs_fling = needs_fling
-        self.needs_animation = needs_animation
+        self.animation_flags = animation_flags
+        self.next_animation_delay_ms = next_animation_delay_ms
         self.is_handle_drag = is_handle_drag
         self.changes = changes
         self.cursor_before = cursor_before

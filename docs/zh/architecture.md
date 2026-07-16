@@ -588,7 +588,7 @@ free_editor(editor);
   接入层统一分发 EditorActionResult
         │  · 根据 changes/contentChanged 派发文本事件
         │  · 根据 needsImeSync 同步输入法状态
-        │  · 根据 needsAnimation 驱动动画 tick
+        │  · 根据 animationFlags / nextAnimationDelayMs 调度动画 tick
         │  · 根据 needsRedraw 决定是否刷新渲染模型
         │
         ▼

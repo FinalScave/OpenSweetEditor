@@ -1881,6 +1881,7 @@ namespace SweetEditor {
 			animationTimer.Interval = AnimationIntervalMs;
 			animationTimer.Tick += (_, _) => {
 				if (!animationActive) return;
+				animationTimer.Stop();
 				EditorActionResult result = editorCore.TickAnimations();
 				DispatchEditorActionResult(result);
 			};
@@ -1888,11 +1889,15 @@ namespace SweetEditor {
 
 		private void UpdateAnimationTimer(EditorActionResult result) {
 			if (animationTimer == null) InitAnimationTimer();
+			animationTimer!.Stop();
 			if (result.NeedsAnimation) {
-				if (!animationActive) {
-					animationActive = true;
-					animationTimer!.Start();
-				}
+				animationActive = true;
+				animationTimer.Interval = Math.Max(
+					1,
+					result.NextAnimationDelayMs <= 0
+						? AnimationIntervalMs
+						: result.NextAnimationDelayMs);
+				animationTimer.Start();
 				return;
 			}
 			if (animationActive) {

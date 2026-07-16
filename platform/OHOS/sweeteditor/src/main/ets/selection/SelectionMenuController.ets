@@ -5,7 +5,11 @@ import {
 } from './SelectionMenuTypes';
 import { EditorEventBus } from '../event/EditorEventBus';
 import { SelectionMenuItemClickEvent } from '../event/EditorEvent';
-import { EditorActionResult } from '../core/CoreAction';
+import {
+  EditorActionResult,
+  EditorActionSource,
+  needsViewportMotion
+} from '../core/CoreAction';
 import { GestureType } from '../core/CoreInteraction';
 import { SweetEditorController } from '../SweetEditorController';
 import { SweetEditor } from '../SweetEditor';
@@ -119,8 +123,10 @@ export class SelectionMenuController {
         break;
     }
 
-    const animationTickEnded = !result.needsAnimation;
-    const canRestoreNow = (isPointerReleased && !result.needsAnimation) || animationTickEnded;
+    const viewportMotionActive = needsViewportMotion(result);
+    const animationTickEnded =
+      result.source === EditorActionSource.ANIMATION && !viewportMotionActive;
+    const canRestoreNow = (isPointerReleased && !viewportMotionActive) || animationTickEnded;
     if (this.hiddenByViewportGesture && canRestoreNow) {
       this.hiddenByViewportGesture = false;
       if (result.hasSelectionAfter) {
@@ -132,7 +138,7 @@ export class SelectionMenuController {
       const shouldShowFromSelectionInteraction = this.selectionInteractionActive &&
         result.hasSelectionAfter &&
         !this.hiddenByViewportGesture &&
-        !result.needsAnimation;
+        !viewportMotionActive;
       this.selectionInteractionActive = false;
       if (shouldShowAfterRelease || shouldShowFromSelectionInteraction) {
         this.scheduleShow();

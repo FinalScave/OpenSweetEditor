@@ -5,13 +5,13 @@ class EditorSessionHostCallbacks {
     required this.onRenderModelUpdated,
     required this.onTextInputStyleInvalidated,
     required this.onHostActionResult,
-    required this.onAnimationStateChanged,
+    required this.onAnimationScheduleChanged,
   });
 
   final void Function(core.EditorRenderModel model) onRenderModelUpdated;
   final VoidCallback onTextInputStyleInvalidated;
   final void Function(core.EditorActionResult result) onHostActionResult;
-  final void Function(bool animating) onAnimationStateChanged;
+  final void Function(int? delayMs) onAnimationScheduleChanged;
 }
 
 class EditorSession {
@@ -104,7 +104,7 @@ class EditorSession {
   bool _renderModelDirty = false;
   bool _flushScheduled = false;
   bool _disposed = false;
-  bool _animationsRunning = false;
+  bool _animationActive = false;
   double _platformScale = 1.0;
   double? _pendingPlatformScale;
 
@@ -323,13 +323,16 @@ class EditorSession {
     if (_disposed || result == null) return;
     if (result.gestureType != core.GestureType.undefined) {
       _fireGestureEvents(result);
+    }
+    if (result.source == core.EditorActionSource.gesture ||
+        result.source == core.EditorActionSource.animation) {
       selectionMenuController.onGestureActionResult(
         result,
         result.hasSelectionAfter,
       );
     }
 
-    _updateAnimationState(result);
+    _updateAnimationSchedule(result);
     _dispatchStateEvents(result);
     hostCallbacks.onHostActionResult(result);
     if (result.needsRedraw) {
@@ -339,7 +342,7 @@ class EditorSession {
 
   void tickAnimations() {
     final ec = _editorCore;
-    if (_disposed || ec == null || !_animationsRunning) return;
+    if (_disposed || ec == null || !_animationActive) return;
     handleEditorActionResult(ec.tickAnimations());
   }
 
@@ -558,22 +561,11 @@ class EditorSession {
     }
   }
 
-  void _updateAnimationState(core.EditorActionResult result) {
-    if (result.needsAnimation) {
-      if (!_animationsRunning) {
-        _animationsRunning = true;
-        hostCallbacks.onAnimationStateChanged(true);
-      }
-      return;
-    }
-    if (result.source != core.EditorActionSource.gesture &&
-        result.source != core.EditorActionSource.animation) {
-      return;
-    }
-    if (_animationsRunning) {
-      _animationsRunning = false;
-      hostCallbacks.onAnimationStateChanged(false);
-    }
+  void _updateAnimationSchedule(core.EditorActionResult result) {
+    _animationActive = result.needsAnimation;
+    hostCallbacks.onAnimationScheduleChanged(
+      _animationActive ? math.max(0, result.nextAnimationDelayMs) : null,
+    );
   }
 
   void _handleFlushFrame(Duration _) {

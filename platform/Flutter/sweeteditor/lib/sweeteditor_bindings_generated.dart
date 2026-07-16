@@ -442,9 +442,8 @@ external ffi.Pointer<ffi.Uint8> editor_get_layout_metrics(
 /// bool_i32 composition_changed
 /// bool_i32 decoration_changed
 /// bool_i32 needs_ime_sync
-/// bool_i32 needs_edge_scroll
-/// bool_i32 needs_fling
-/// bool_i32 needs_animation
+/// u32 animation_flags
+/// u32 next_animation_delay_ms
 /// bool_i32 is_handle_drag
 /// List<TextChange> changes
 /// TextPosition cursor_before
@@ -468,6 +467,9 @@ external ffi.Pointer<ffi.Uint8> editor_get_layout_metrics(
 /// HitTarget hit_target
 /// enum_i32 modifiers
 /// enum_i32 command
+/// animation_flags is a bit set: 1=EDGE_SCROLL, 2=FLING, 4=TRANSIENT_SCROLLBAR
+/// when animation_flags is nonzero, next_animation_delay_ms=0 requests the next display frame
+/// and a positive value requests editor_tick_animations after that delay
 /// TextChange is TextRange range followed by U8String new_text
 /// ImeSyncSnapshot is TextPosition cursor, TextRange selection, bool_i32 has_selection, bool_i32 has_preedit_range, TextRange preedit_range, bool_i32 has_system_mark_range, TextRange system_mark_range, enum_i32 context_policy, bool_i32 clear_system_mark
 /// HitTarget is enum_i32 type, i32 line, i32 column, i32 icon_id, i32 color_value
@@ -512,10 +514,10 @@ external ffi.Pointer<ffi.Uint8> editor_update_pointer_modifiers(
   ffi.Pointer<ffi.Size> out_size,
 );
 
-/// Unified animation tick: advances all active animations (edge-scroll, fling).
-/// Platform should use a single frame callback driven by needs_animation and call this.
+/// Unified animation tick for all core-managed animation flags.
+/// Platform schedules the next call from animation_flags and next_animation_delay_ms.
 /// Returns the same EditorActionResult binary layout as editor_handle_gesture_event.
-/// When needs_animation becomes false in the returned payload, stop the callback.
+/// When animation_flags becomes zero in the returned payload, stop scheduling.
 /// @return EditorActionResult binary payload
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(ffi.IntPtr, ffi.Pointer<ffi.Size>)
@@ -2082,23 +2084,6 @@ external ffi.Pointer<ffi.Uint8> editor_cancel_linked_editing(
   ffi.Pointer<ffi.Size> out_size,
 );
 
-/// Free string memory allocated on C++ side
-/// @param string_ptr String pointer
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void free_u16_string(int string_ptr);
-
-/// Free UTF-8 string memory allocated on C++ side
-/// @param string_ptr String pointer
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void free_u8_string(int string_ptr);
-
-/// Free binary memory returned by C++ side
-/// Applies to all APIs that return const uint8_t* + out_size.
-/// Platform must call once after reading payload; NULL/0 can be safely ignored.
-/// @param data_ptr Start address of binary payload
-@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
-external void free_binary_data(int data_ptr);
-
 /// Get whether preedit is currently active
 /// @return 1=preedit active, 0=no preedit
 @ffi.Native<ffi.Int Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
@@ -2156,6 +2141,10 @@ external ffi.Pointer<ffi.Uint8> editor_ime_get_sync_snapshot(
   ffi.Pointer<ffi.Size> out_size,
 );
 
+/// Get an input context for command-style IME APIs.
+/// @param before_length UTF-16 code unit count requested before the cursor or selection.
+/// @param after_length UTF-16 code unit count requested after the cursor or selection.
+/// @return ImeInputContext binary payload, returns NULL when editor handle is invalid.
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -2171,6 +2160,11 @@ external ffi.Pointer<ffi.Uint8> editor_ime_get_command_input_context(
   ffi.Pointer<ffi.Size> out_size,
 );
 
+/// Get an input context for text-update IME APIs.
+/// @param scope ImeTextUpdateScope enum value.
+/// @param before_length UTF-16 code unit count requested before the cursor or selection.
+/// @param after_length UTF-16 code unit count requested after the cursor or selection.
+/// @return ImeInputContext binary payload, returns NULL when editor handle is invalid.
 @ffi.Native<
   ffi.Pointer<ffi.Uint8> Function(
     ffi.IntPtr,
@@ -2187,6 +2181,23 @@ external ffi.Pointer<ffi.Uint8> editor_ime_get_text_update_input_context(
   int after_length,
   ffi.Pointer<ffi.Size> out_size,
 );
+
+/// Free string memory allocated on C++ side
+/// @param string_ptr String pointer
+@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
+external void free_u16_string(int string_ptr);
+
+/// Free UTF-8 string memory allocated on C++ side
+/// @param string_ptr String pointer
+@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
+external void free_u8_string(int string_ptr);
+
+/// Free binary memory returned by C++ side
+/// Applies to all APIs that return const uint8_t* + out_size.
+/// Platform must call once after reading payload; NULL/0 can be safely ignored.
+/// @param data_ptr Start address of binary payload
+@ffi.Native<ffi.Void Function(ffi.IntPtr)>(assetId: _sweeteditorAssetId)
+external void free_binary_data(int data_ptr);
 
 /// Text measurement callback set, passed when creating EditorCore
 final class text_measurer_t extends ffi.Struct {

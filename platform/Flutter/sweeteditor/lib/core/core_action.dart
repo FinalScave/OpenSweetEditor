@@ -2,6 +2,14 @@
 
 part of 'editor_core.dart';
 
+class AnimationFlag {
+  AnimationFlag._();
+  static const int none = 0;
+  static const int edgeScroll = 1;
+  static const int fling = 2;
+  static const int transientScrollbar = 4;
+}
+
 enum EditorActionSource {
   none(0),
   setup(1),
@@ -97,9 +105,8 @@ class EditorActionResult {
     this.compositionChanged = false,
     this.decorationChanged = false,
     this.needsImeSync = false,
-    this.needsEdgeScroll = false,
-    this.needsFling = false,
-    this.needsAnimation = false,
+    this.animationFlags = 0,
+    this.nextAnimationDelayMs = 0,
     this.isHandleDrag = false,
     this.changes = const [],
     this.cursorBefore = const TextPosition(),
@@ -138,9 +145,8 @@ class EditorActionResult {
   final bool compositionChanged;
   final bool decorationChanged;
   final bool needsImeSync;
-  final bool needsEdgeScroll;
-  final bool needsFling;
-  final bool needsAnimation;
+  final int animationFlags;
+  final int nextAnimationDelayMs;
   final bool isHandleDrag;
   final List<TextChange> changes;
   final TextPosition cursorBefore;
@@ -164,4 +170,14 @@ class EditorActionResult {
   final HitTarget hitTarget;
   final int modifiers;
   final int command;
+}
+
+extension EditorActionResultAnimationHelpers on EditorActionResult {
+  bool hasAnimationFlag(int flag) => (animationFlags & flag) != 0;
+
+  bool get needsAnimation => animationFlags != AnimationFlag.none;
+
+  bool get needsViewportMotion =>
+      hasAnimationFlag(AnimationFlag.edgeScroll) ||
+      hasAnimationFlag(AnimationFlag.fling);
 }

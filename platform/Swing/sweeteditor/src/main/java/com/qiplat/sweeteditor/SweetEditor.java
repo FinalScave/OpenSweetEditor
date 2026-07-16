@@ -1529,7 +1529,7 @@ public class SweetEditor extends JPanel {
         if (result.gestureType != null && result.gestureType != GestureType.UNDEFINED) {
             fireGestureEvents(result, result.tapPoint);
         }
-        updateAnimationTimer(result.needsAnimation);
+        updateAnimationTimer(result);
         dispatchStateEvents(result);
         if (result.needsRedraw) {
             flush();
@@ -1710,20 +1710,25 @@ public class SweetEditor extends JPanel {
             if (!animationActive) {
                 return;
             }
+            animationTimer.stop();
             EditorActionResult result = editorCore.tickAnimations();
             dispatchEditorActionResult(result);
         });
-        animationTimer.setRepeats(true);
+        animationTimer.setRepeats(false);
     }
 
-    private void updateAnimationTimer(boolean needsAnimation) {
-        if (needsAnimation && !animationActive) {
-            animationActive = true;
-            animationTimer.start();
-        } else if (!needsAnimation && animationActive) {
+    private void updateAnimationTimer(EditorActionResult result) {
+        if (!result.needsAnimation()) {
             animationActive = false;
             animationTimer.stop();
+            return;
         }
+        animationActive = true;
+        int delayMs = result.nextAnimationDelayMs <= 0
+                ? ANIMATION_INTERVAL_MS
+                : result.nextAnimationDelayMs;
+        animationTimer.setInitialDelay(Math.max(1, delayMs));
+        animationTimer.restart();
     }
 
     // ===================== Helpers =====================

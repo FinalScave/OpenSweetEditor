@@ -92,6 +92,8 @@ namespace SweetEditor {
 		private LanguageConfiguration? languageConfiguration;
 		private IEditorMetadata? metadata;
 		private bool animationActive;
+		private bool animationWaiting;
+		private bool viewportMotionAnimationActive;
 		private bool renderModelDirty = true;
 		private bool visualInvalidationPending;
 		private bool visualFrameRequestPending;
@@ -200,7 +202,11 @@ namespace SweetEditor {
 			desktopAnimationTimer = new DispatcherTimer {
 				Interval = TimeSpan.FromMilliseconds(DesktopAnimationIntervalMs),
 			};
-			desktopAnimationTimer.Tick += (_, _) => TickAnimations();
+			desktopAnimationTimer.Tick += (_, _) => {
+				desktopAnimationTimer.Stop();
+				animationWaiting = false;
+				TickAnimations();
+			};
 
 			ApplyPlatformInteractionDefaults();
 			if (platformBehavior.SuppressImeOnTouchDown) {
@@ -299,6 +305,8 @@ namespace SweetEditor {
 		protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e) {
 			attached = false;
 			animationActive = false;
+			animationWaiting = false;
+			viewportMotionAnimationActive = false;
 			desktopAnimationTimer.Stop();
 			visualInvalidationPending = false;
 			visualFrameRequestPending = false;
@@ -405,7 +413,6 @@ namespace SweetEditor {
 					DirectScale = 1,
 				});
 				DispatchEditorActionResult(touchResult);
-				UpdateAnimationTimer(touchResult.NeedsAnimation);
 				e.Handled = true;
 				return;
 			}
@@ -430,7 +437,6 @@ namespace SweetEditor {
 					DirectScale = 1,
 				});
 				DispatchEditorActionResult(result);
-				UpdateAnimationTimer(result.NeedsAnimation);
 				e.Handled = true;
 			}
 		}
@@ -497,7 +503,6 @@ namespace SweetEditor {
 					touchGestureHadScroll = true;
 				}
 				DispatchEditorActionResult(touchResult);
-				UpdateAnimationTimer(touchResult.NeedsAnimation);
 				e.Handled = true;
 				return;
 			}
@@ -514,7 +519,6 @@ namespace SweetEditor {
 				DirectScale = 1,
 			});
 			DispatchEditorActionResult(result);
-			UpdateAnimationTimer(result.NeedsAnimation);
 			e.Handled = true;
 		}
 
@@ -549,7 +553,6 @@ namespace SweetEditor {
 						DirectScale = 1,
 					});
 					DispatchEditorActionResult(touchPointerUpResult);
-					UpdateAnimationTimer(touchPointerUpResult.NeedsAnimation);
 					e.Handled = true;
 					return;
 				}
@@ -608,7 +611,6 @@ namespace SweetEditor {
 
 				DispatchEditorActionResult(touchResult);
 				NotifyViewportGestureSettled();
-				UpdateAnimationTimer(touchResult.NeedsAnimation);
 				e.Handled = true;
 				return;
 			}
@@ -621,7 +623,6 @@ namespace SweetEditor {
 			});
 			DispatchEditorActionResult(result);
 			NotifyViewportGestureSettled();
-			UpdateAnimationTimer(result.NeedsAnimation);
 			e.Handled = true;
 		}
 
@@ -689,7 +690,6 @@ namespace SweetEditor {
 				DirectScale = directScale,
 			});
 			DispatchEditorActionResult(result);
-			UpdateAnimationTimer(result.NeedsAnimation);
 			e.Handled = true;
 		}
 
@@ -732,7 +732,6 @@ namespace SweetEditor {
 				DirectScale = 1f,
 			});
 			DispatchEditorActionResult(result);
-			UpdateAnimationTimer(result.NeedsAnimation);
 			e.Handled = true;
 		}
 
@@ -781,7 +780,6 @@ namespace SweetEditor {
 				DirectScale = directScale,
 			});
 			DispatchEditorActionResult(result);
-			UpdateAnimationTimer(result.NeedsAnimation);
 			e.Handled = true;
 		}
 
@@ -1545,6 +1543,7 @@ namespace SweetEditor {
 			if (result.GestureType != GestureType.UNDEFINED) {
 				FireGestureEvents(result, ToPoint(result.TapPoint));
 			}
+			UpdateAnimationTimer(result);
 			DispatchStateEvents(result);
 
 			if (result.NeedsRedraw) {
@@ -1761,6 +1760,8 @@ namespace SweetEditor {
 			}
 			disposed = true;
 			animationActive = false;
+			animationWaiting = false;
+			viewportMotionAnimationActive = false;
 			desktopAnimationTimer.Stop();
 			visualFrameRequestPending = false;
 			animationFrameTickPending = false;
@@ -1932,37 +1933,37 @@ namespace SweetEditor {
 			}
 
 			var result = editorCore.TickAnimations();
+			bool viewportMotionSettled = viewportMotionAnimationActive && !result.NeedsViewportMotion;
 			DispatchEditorActionResult(result);
-			if (!result.NeedsAnimation) {
+			if (viewportMotionSettled) {
 				NotifyViewportGestureSettled();
-				animationActive = false;
-				desktopAnimationTimer.Stop();
-				return;
-			}
-
-			if (platformBehavior.IsMobile) {
-				RequestMobileAnimationFrameTick();
 			}
 		}
 
-		private void UpdateAnimationTimer(bool needsAnimation) {
-			if (needsAnimation) {
-				if (!animationActive) {
-					animationActive = true;
-					if (!platformBehavior.IsMobile) {
-						desktopAnimationTimer.Start();
-					}
-				}
-				if (platformBehavior.IsMobile) {
-					RequestMobileAnimationFrameTick();
-				}
+		private void UpdateAnimationTimer(EditorActionResult result) {
+			desktopAnimationTimer.Stop();
+			if (!result.NeedsAnimation) {
+				animationActive = false;
+				animationWaiting = false;
+				viewportMotionAnimationActive = false;
 				return;
 			}
 
-			if (animationActive) {
-				animationActive = false;
-				desktopAnimationTimer.Stop();
+			animationActive = true;
+			viewportMotionAnimationActive = result.NeedsViewportMotion;
+
+			if (platformBehavior.IsMobile && result.NextAnimationDelayMs <= 0) {
+				animationWaiting = false;
+				RequestMobileAnimationFrameTick();
+				return;
 			}
+
+			int delayMs = result.NextAnimationDelayMs <= 0
+				              ? DesktopAnimationIntervalMs
+				              : result.NextAnimationDelayMs;
+			animationWaiting = result.NextAnimationDelayMs > 0;
+			desktopAnimationTimer.Interval = TimeSpan.FromMilliseconds(Math.Max(1, delayMs));
+			desktopAnimationTimer.Start();
 		}
 
 		private void RequestMobileAnimationFrameTick() {
@@ -1978,7 +1979,7 @@ namespace SweetEditor {
 			animationFrameTickPending = true;
 			topLevel.RequestAnimationFrame(_ => {
 				animationFrameTickPending = false;
-				if (!animationActive || disposed || !attached) {
+				if (!animationActive || animationWaiting || disposed || !attached) {
 					return;
 				}
 				TickAnimations();
@@ -3411,7 +3412,6 @@ namespace SweetEditor {
 			if (notifyViewportSettled) {
 				NotifyViewportGestureSettled();
 			}
-			UpdateAnimationTimer(result.NeedsAnimation);
 		}
 
 		private static AvaloniaSize MeasurePopupChild(Popup popup) {

@@ -5,7 +5,8 @@ import {
 import {
   EditorActionSource,
   EditorActionResult,
-  ScrollBehavior
+  ScrollBehavior,
+  needsAnimation
 } from './core/CoreAction';
 import {
   EditorOptions,
@@ -168,7 +169,6 @@ const ANIMATION_FRAME_INTERVAL_MS = 16;
 const DISPLAY_SYNC_MIN_FPS = 30;
 const DISPLAY_SYNC_MAX_FPS = 120;
 const DISPLAY_SYNC_EXPECTED_FPS = 60;
-const TRANSIENT_SCROLLBAR_REFRESH_MIN_MS = 16;
 const MAX_IME_TEXT_LENGTH = 32768;
 const EDITOR_FOCUS_ID = 'sweeteditor-canvas';
 const SELECTION_MENU_GAP = 8;
@@ -228,7 +228,8 @@ export struct SweetEditor {
   private renderScheduled: boolean = false;
   private frameSync: displaySync.DisplaySync | null = null;
   private frameSyncRunning: boolean = false;
-  private transientScrollbarTimerId: number = -1;
+  private animationWaiting: boolean = false;
+  private animationDelayTimerId: number = -1;
   private density: number = 2.0;
   private viewWidth: number = 0;
   private viewHeight: number = 0;
@@ -301,7 +302,6 @@ export struct SweetEditor {
     this.stopAnimation();
     this.stopFrameSync();
     this.clearRenderTimer();
-    this.clearTransientScrollbarTimer();
     this.unregisterImeCallbacks();
     this.detachInputMethod();
     this.controller.unbind(this);
@@ -1554,9 +1554,6 @@ export struct SweetEditor {
     }
     if (result.gestureType !== GestureType.UNDEFINED) {
       this.fireGestureEvents(result, result.tapPoint);
-      if (this.selectionMenuController) {
-        this.selectionMenuController.onGestureActionResult(result, this.isPointerReleaseEvent(result.gestureEventType));
-      }
       if (result.gestureType === GestureType.TAP) {
         if (this.shouldShowSoftKeyboardForTap(result)) {
           this.showSoftKeyboard();
@@ -1564,7 +1561,14 @@ export struct SweetEditor {
         this.resetCursorBlink();
       }
     }
-    this.updateAnimationState(result);
+    if (this.selectionMenuController &&
+      (result.source === EditorActionSource.GESTURE ||
+        result.source === EditorActionSource.ANIMATION)) {
+      this.selectionMenuController.onGestureActionResult(
+        result,
+        this.isPointerReleaseEvent(result.gestureEventType));
+    }
+    this.updateAnimationSchedule(result);
     this.dispatchStateEvents(result);
     if (result.needsImeSync) {
       this.scheduleImeSync(result.imeSync);
@@ -2314,7 +2318,7 @@ export struct SweetEditor {
       return;
     }
 
-    const needsTransientRefresh = this.renderer.render(
+    this.renderer.render(
       this.canvasContext, model, this.viewWidth, this.viewHeight, this.cursorVisible);
     this.renderer.getPerfOverlay().recordFrame(
       buildMs,
@@ -2352,11 +2356,6 @@ export struct SweetEditor {
       );
     }
 
-    if (needsTransientRefresh) {
-      this.scheduleTransientScrollbarRefresh(TRANSIENT_SCROLLBAR_REFRESH_MIN_MS);
-    } else {
-      this.clearTransientScrollbarTimer();
-    }
   }
 
   private startCursorBlink(): void {
@@ -2379,31 +2378,41 @@ export struct SweetEditor {
     this.startCursorBlink();
   }
 
-  private updateAnimationState(result: EditorActionResult): void {
-    if (result.needsAnimation) {
-      this.startAnimation();
-      return;
-    }
-    if (result.source !== EditorActionSource.GESTURE && result.source !== EditorActionSource.ANIMATION) {
-      return;
-    }
-    if (this.animationActive) {
+  private updateAnimationSchedule(result: EditorActionResult): void {
+    this.clearAnimationDelayTimer();
+    if (!needsAnimation(result)) {
       this.stopAnimation();
-    }
-  }
-
-  private startAnimation(): void {
-    if (this.animationActive) {
       return;
     }
+
     this.animationActive = true;
-    if (!this.startFrameSync()) {
-      this.scheduleFallbackFrame();
+    const delayMs = Math.max(0, result.nextAnimationDelayMs);
+    if (delayMs <= 0) {
+      this.animationWaiting = false;
+      if (!this.startFrameSync()) {
+        this.scheduleFallbackFrame();
+      }
+      return;
     }
+
+    this.animationWaiting = true;
+    this.stopFrameSyncIfIdle();
+    this.animationDelayTimerId = setTimeout(() => {
+      this.animationDelayTimerId = -1;
+      if (!this.animationActive) {
+        return;
+      }
+      this.animationWaiting = false;
+      if (!this.startFrameSync()) {
+        this.scheduleFallbackFrame();
+      }
+    }, delayMs);
   }
 
   private stopAnimation(): void {
     this.animationActive = false;
+    this.animationWaiting = false;
+    this.clearAnimationDelayTimer();
     this.stopFrameSyncIfIdle();
   }
 
@@ -2416,7 +2425,7 @@ export struct SweetEditor {
     }
 
     let shouldRender = this.renderScheduled;
-    if (this.animationActive) {
+    if (this.animationActive && !this.animationWaiting) {
       const result = this.editorCore.tickAnimations();
       this.dispatchEditorActionResult(result);
     }
@@ -2426,18 +2435,6 @@ export struct SweetEditor {
       this.invalidateCanvas();
     }
     this.stopFrameSyncIfIdle();
-  }
-
-  private scheduleTransientScrollbarRefresh(delayMs: number): void {
-    const config = this.renderer ? this.renderer.getScrollbarConfig() : null;
-    if (config === null || config.mode !== ScrollbarMode.TRANSIENT) {
-      this.clearTransientScrollbarTimer();
-      return;
-    }
-    this.clearTransientScrollbarTimer();
-    this.transientScrollbarTimerId = setTimeout(() => {
-      this.flush();
-    }, Math.max(TRANSIENT_SCROLLBAR_REFRESH_MIN_MS, delayMs));
   }
 
   private scheduleCanvasInvalidation(): void {
@@ -2483,7 +2480,7 @@ export struct SweetEditor {
   }
 
   private stopFrameSyncIfIdle(): void {
-    if (this.animationActive || this.renderScheduled) {
+    if ((this.animationActive && !this.animationWaiting) || this.renderScheduled) {
       return;
     }
     this.stopFrameSync();
@@ -2519,10 +2516,10 @@ export struct SweetEditor {
     }
   }
 
-  private clearTransientScrollbarTimer(): void {
-    if (this.transientScrollbarTimerId >= 0) {
-      clearTimeout(this.transientScrollbarTimerId);
-      this.transientScrollbarTimerId = -1;
+  private clearAnimationDelayTimer(): void {
+    if (this.animationDelayTimerId >= 0) {
+      clearTimeout(this.animationDelayTimerId);
+      this.animationDelayTimerId = -1;
     }
   }
 

@@ -4,6 +4,14 @@ using System.Collections.Generic;
 
 namespace SweetEditor {
 
+    [Flags]
+    public enum AnimationFlag {
+        NONE = 0,
+        EDGE_SCROLL = 1,
+        FLING = 2,
+        TRANSIENT_SCROLLBAR = 4
+    }
+
     public enum EditorActionSource {
         NONE = 0,
         SETUP = 1,
@@ -49,9 +57,8 @@ namespace SweetEditor {
         public bool CompositionChanged { get; set; } = false;
         public bool DecorationChanged { get; set; } = false;
         public bool NeedsImeSync { get; set; } = false;
-        public bool NeedsEdgeScroll { get; set; } = false;
-        public bool NeedsFling { get; set; } = false;
-        public bool NeedsAnimation { get; set; } = false;
+        public int AnimationFlags { get; set; } = 0;
+        public int NextAnimationDelayMs { get; set; } = 0;
         public bool IsHandleDrag { get; set; } = false;
         public List<TextChange> Changes { get; set; } = new();
         public TextPosition CursorBefore { get; set; } = new TextPosition();

@@ -70,6 +70,13 @@ namespace NS_SWEETEDITOR {
     GOTO_BOTTOM,
   };
 
+  enum class SE_PROTOCOL_FLAGS(action) AnimationFlag : uint32_t {
+    NONE = 0,
+    EDGE_SCROLL = 1u << 0,
+    FLING = 1u << 1,
+    TRANSIENT_SCROLLBAR = 1u << 2,
+  };
+
   /// Unified caret state.
   struct CaretState {
     /// Logical cursor position in text.
@@ -168,6 +175,8 @@ namespace NS_SWEETEDITOR {
     float bottom {0};
 
     bool contains(float dx, float dy) const;
+    bool operator==(const HandleHitArea& other) const;
+    bool operator!=(const HandleHitArea& other) const;
   };
 
   struct SE_PROTOCOL_IN(config) HandleConfig {
@@ -175,6 +184,9 @@ namespace NS_SWEETEDITOR {
     HandleHitArea start_hit_area {-32.1f, -8.0f, 8.0f, 32.1f};
     /// Hit area for the end handle, relative to the cursor bottom anchor.
     HandleHitArea end_hit_area {-8.0f, -8.0f, 32.1f, 32.1f};
+
+    bool operator==(const HandleConfig& other) const;
+    bool operator!=(const HandleConfig& other) const;
   };
 
   enum class SE_PROTOCOL_ENUM(config, ALWAYS) ScrollbarMode : uint8_t {
@@ -209,6 +221,9 @@ namespace NS_SWEETEDITOR {
     uint16_t fade_delay_ms {700};
     /// Fade duration in milliseconds (TRANSIENT mode; used for both fade-in and fade-out)
     uint16_t fade_duration_ms {300};
+
+    bool operator==(const ScrollbarConfig& other) const;
+    bool operator!=(const ScrollbarConfig& other) const;
   };
 
   /// Editor colors resolved by the core when materializing visual runs.

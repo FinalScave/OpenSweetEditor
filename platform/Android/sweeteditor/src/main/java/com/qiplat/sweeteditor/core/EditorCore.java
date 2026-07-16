@@ -380,8 +380,8 @@ public class EditorCore {
     }
 
     /**
-     * Unified animation tick: advances all active animations (edge-scroll, fling).
-     * Platform can use a single frame callback driven by EditorActionResult.needsAnimation.
+     * Unified animation tick for all core-managed animation flags.
+     * Platform schedules the next call from animationFlags and nextAnimationDelayMs.
      */
     public EditorActionResult tickAnimations() {
         if (mNativeHandle == 0) {

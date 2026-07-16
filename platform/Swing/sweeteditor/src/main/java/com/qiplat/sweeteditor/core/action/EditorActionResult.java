@@ -26,9 +26,8 @@ public final class EditorActionResult {
     public boolean compositionChanged = false;
     public boolean decorationChanged = false;
     public boolean needsImeSync = false;
-    public boolean needsEdgeScroll = false;
-    public boolean needsFling = false;
-    public boolean needsAnimation = false;
+    public int animationFlags = 0;
+    public int nextAnimationDelayMs = 0;
     public boolean isHandleDrag = false;
     public java.util.List<TextChange> changes = new java.util.ArrayList<>();
     public TextPosition cursorBefore = new TextPosition();
@@ -56,7 +55,7 @@ public final class EditorActionResult {
     public EditorActionResult() {
     }
 
-    public EditorActionResult(boolean handled, boolean needsRedraw, EditorActionSource source, TextChangeKind textChangeKind, boolean contentChanged, boolean cursorChanged, boolean selectionChanged, boolean scrollChanged, boolean scaleChanged, boolean pointerCursorChanged, boolean compositionChanged, boolean decorationChanged, boolean needsImeSync, boolean needsEdgeScroll, boolean needsFling, boolean needsAnimation, boolean isHandleDrag, java.util.List<TextChange> changes, TextPosition cursorBefore, TextPosition cursorAfter, boolean hasSelectionBefore, boolean hasSelectionAfter, TextRange selectionBefore, TextRange selectionAfter, float scrollXBefore, float scrollYBefore, float scrollXAfter, float scrollYAfter, float scaleBefore, float scaleAfter, PointerCursorType pointerCursorBefore, PointerCursorType pointerCursorAfter, ImeSyncSnapshot imeSync, GestureType gestureType, EventType gestureEventType, PointF tapPoint, HitTarget hitTarget, int modifiers, int command) {
+    public EditorActionResult(boolean handled, boolean needsRedraw, EditorActionSource source, TextChangeKind textChangeKind, boolean contentChanged, boolean cursorChanged, boolean selectionChanged, boolean scrollChanged, boolean scaleChanged, boolean pointerCursorChanged, boolean compositionChanged, boolean decorationChanged, boolean needsImeSync, int animationFlags, int nextAnimationDelayMs, boolean isHandleDrag, java.util.List<TextChange> changes, TextPosition cursorBefore, TextPosition cursorAfter, boolean hasSelectionBefore, boolean hasSelectionAfter, TextRange selectionBefore, TextRange selectionAfter, float scrollXBefore, float scrollYBefore, float scrollXAfter, float scrollYAfter, float scaleBefore, float scaleAfter, PointerCursorType pointerCursorBefore, PointerCursorType pointerCursorAfter, ImeSyncSnapshot imeSync, GestureType gestureType, EventType gestureEventType, PointF tapPoint, HitTarget hitTarget, int modifiers, int command) {
         this.handled = handled;
         this.needsRedraw = needsRedraw;
         this.source = source;
@@ -70,9 +69,8 @@ public final class EditorActionResult {
         this.compositionChanged = compositionChanged;
         this.decorationChanged = decorationChanged;
         this.needsImeSync = needsImeSync;
-        this.needsEdgeScroll = needsEdgeScroll;
-        this.needsFling = needsFling;
-        this.needsAnimation = needsAnimation;
+        this.animationFlags = animationFlags;
+        this.nextAnimationDelayMs = nextAnimationDelayMs;
         this.isHandleDrag = isHandleDrag;
         this.changes = changes;
         this.cursorBefore = cursorBefore;
@@ -96,5 +94,18 @@ public final class EditorActionResult {
         this.hitTarget = hitTarget;
         this.modifiers = modifiers;
         this.command = command;
+    }
+
+    public boolean hasAnimationFlag(int flag) {
+        return (animationFlags & flag) != 0;
+    }
+
+    public boolean needsAnimation() {
+        return animationFlags != AnimationFlag.NONE;
+    }
+
+    public boolean needsViewportMotion() {
+        return hasAnimationFlag(AnimationFlag.EDGE_SCROLL)
+                || hasAnimationFlag(AnimationFlag.FLING);
     }
 }

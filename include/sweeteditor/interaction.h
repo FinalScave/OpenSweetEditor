@@ -26,6 +26,20 @@ namespace NS_SWEETEDITOR {
     bool cancel_linked_editing {false};
   };
 
+  struct InteractionResult {
+    GestureResult gesture;
+    GestureIntent intent;
+    bool handled {false};
+    bool needs_redraw {false};
+    bool is_handle_drag {false};
+  };
+
+  struct InteractionAnimationState {
+    uint32_t flags {0};
+    uint32_t next_tick_delay_ms {0};
+    bool needs_redraw {false};
+  };
+
   class EditorInteraction {
   public:
     struct PendingScaleAnchor {
@@ -38,13 +52,12 @@ namespace NS_SWEETEDITOR {
 
     explicit EditorInteraction(const InteractionContext& context);
 
-    GestureResult handleGestureEvent(const GestureEvent& event, GestureIntent& intent);
-    GestureResult tickEdgeScroll();
-    GestureResult tickFling();
-    GestureResult tickAnimations();
-    bool hasActiveEdgeScroll() const;
-    bool hasActiveFling() const;
+    InteractionResult handleGestureEvent(const GestureEvent& event);
+    InteractionResult tickAnimations();
+    InteractionAnimationState resolveAnimationState();
     void stopFling();
+    void onViewportChanged();
+    void onScrollbarConfigChanged();
     void resetForDocumentLoad();
 
     void markScrollbarInteraction();
@@ -59,8 +72,28 @@ namespace NS_SWEETEDITOR {
     void updateHandleCache(const PointF& start, const PointF& end, float line_height);
 
   private:
-    enum class HandleDragTarget { NONE, START, END };
-    enum class ScrollbarDragTarget { NONE, VERTICAL, HORIZONTAL };
+    enum class PointerInteractionOwner {
+      NONE,
+      HANDLE_START,
+      HANDLE_END,
+      SCROLLBAR_VERTICAL,
+      SCROLLBAR_HORIZONTAL,
+    };
+
+    struct PointerInteractionState {
+      PointerInteractionOwner owner {PointerInteractionOwner::NONE};
+      PointF start_point;
+      float start_scroll_x {0};
+      float start_scroll_y {0};
+      float travel_x {0};
+      float travel_y {0};
+      float max_scroll_x {0};
+      float max_scroll_y {0};
+
+      void reset() {
+        *this = {};
+      }
+    };
 
     struct EdgeScrollState {
       bool active {false};
@@ -71,34 +104,49 @@ namespace NS_SWEETEDITOR {
       int64_t last_tick_time {0};
     };
 
-    void fillInteractionGestureState(GestureResult& result) const;
+    struct TransientScrollbarTimeline {
+      int64_t fade_in_start_ms {0};
+      int64_t last_interaction_ms {0};
+      bool running {false};
+
+      bool active() const {
+        return running;
+      }
+
+      void reset() {
+        fade_in_start_ms = 0;
+        last_interaction_ms = 0;
+        running = false;
+      }
+    };
+
+    void fillInteractionState(InteractionResult& result) const;
     PointF resolveScaleFocus(const GestureEvent& event) const;
-    bool handleScrollbarGesture(const GestureEvent& event, GestureResult& result);
-    HandleDragTarget hitTestHandle(const PointF& screen_point) const;
+    bool handleScrollbarGesture(const GestureEvent& event, InteractionResult& result);
+    bool handleSelectionHandleGesture(const GestureEvent& event, InteractionResult& result);
+    bool canShowTransientScrollbar() const;
+    void markScrollbarControlInteraction();
+    PointerInteractionOwner hitTestHandle(const PointF& screen_point) const;
     bool shouldPlaceCursorOnLongPress(const PointF& screen_point) const;
-    void dragHandleTo(HandleDragTarget target, const PointF& screen_point);
+    void dragHandleTo(PointerInteractionOwner target, const PointF& screen_point);
     void dragSelectTo(const PointF& screen_point, bool is_mouse = false);
     void updateEdgeScrollState(const PointF& screen_point, bool is_handle_drag, bool is_mouse);
+    void resetPointerInteraction();
+    void resetKineticMotion();
+    void resetAllInteractionState();
+    GestureResult tickEdgeScroll();
+    GestureResult tickFling();
 
     InteractionContext m_context_;
     UniquePtr<GestureHandler> m_gesture_handler_;
     UniquePtr<FlingAnimator> m_fling_;
 
-    int64_t m_scrollbar_last_interaction_ms_ {0};
-    int64_t m_scrollbar_cycle_start_ms_ {0};
-    ScrollbarDragTarget m_dragging_scrollbar_ {ScrollbarDragTarget::NONE};
-    PointF m_scrollbar_drag_start_point_;
-    float m_scrollbar_drag_start_scroll_x_ {0};
-    float m_scrollbar_drag_start_scroll_y_ {0};
-    float m_scrollbar_drag_travel_x_ {0};
-    float m_scrollbar_drag_travel_y_ {0};
-    float m_scrollbar_drag_max_scroll_x_ {0};
-    float m_scrollbar_drag_max_scroll_y_ {0};
+    TransientScrollbarTimeline m_transient_scrollbar_timeline_;
+    PointerInteractionState m_pointer_interaction_;
 
     PendingScaleAnchor m_pending_scale_anchor_;
     bool m_scale_gesture_active_ {false};
 
-    HandleDragTarget m_dragging_handle_ {HandleDragTarget::NONE};
     PointF m_cached_start_handle_pos_;
     PointF m_cached_end_handle_pos_;
     float m_cached_handle_height_ {0};

@@ -232,7 +232,6 @@ AppKit 实现接入 `NSTextInputClient`、marked text、周边文本查询、候
 - `EditorSettings.setEditorTextSize` 和 `setTypeface` 只更新保存值，没有应用到原生核心或文本测量器。
 - `EditorSettings.setDecorationScrollRefreshMinIntervalMs` 和 `setDecorationOverscanViewportMultiplier` 尚未连接 `DecorationProviderManager`。
 - `CompletionItem.filterText` 只保存数据，当前不参与本地补全过滤。
-- Apple View 没有驱动核心 `tickAnimations` API，因此当前 Apple 公开层不包含核心管理的 fling 动画。
 - 尽管 macOS 源码声明了 `addNewLineActionProvider` 和 `removeNewLineActionProvider`，其 provider、context 和 result 类型均为 internal；应用无法调用这些方法或实现该 provider 契约。
 - SwiftUI 封装有意只提供原生 UIKit 和 AppKit View 的一部分能力。
 - C bridge 由手工维护，共享 C API 变化时需要同步核对。

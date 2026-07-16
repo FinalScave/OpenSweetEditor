@@ -25,7 +25,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
     private var completionPopupController: CompletionPopupController?
     private var newLineActionProviderManager: NewLineActionProviderManager?
     private var pinchRecognizer: UIPinchGestureRecognizer!
-    private var transientScrollbarRefreshTimer: Timer?
+    private var animationTimer: Timer?
     private var scrollbarPolicy = IOSScrollbarPolicy()
     private lazy var textInputConnection = SweetEditorInputConnectioniOS(owner: self)
 
@@ -619,6 +619,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
                 }
             }
         }
+        updateAnimationSchedule(result)
         dispatchStateEvents(result)
         if result.needs_redraw {
             rebuildAndRedraw()
@@ -646,7 +647,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
     }
 
     deinit {
-        transientScrollbarRefreshTimer?.invalidate()
+        animationTimer?.invalidate()
     }
 
     /// Switches the editor theme.
@@ -693,29 +694,27 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         context.saveGState()
         context.textMatrix = Self.textMatrixForTopOriginDrawing
 
-        let needsTransientRefresh = EditorRenderer.draw(context: context,
-                                                        model: model,
-                                                        core: editorCore,
-                                                        viewHeight: bounds.height,
-                                                        iconProvider: editorIconProvider)
+        EditorRenderer.draw(context: context,
+                            model: model,
+                            core: editorCore,
+                            viewHeight: bounds.height,
+                            iconProvider: editorIconProvider)
 
         context.restoreGState()
-        updateTransientScrollbarRefresh(needsRefresh: needsTransientRefresh)
     }
 
-    private func updateTransientScrollbarRefresh(needsRefresh: Bool) {
-        guard editorCore.scrollbarConfig.mode == .TRANSIENT else {
-            transientScrollbarRefreshTimer?.invalidate()
-            transientScrollbarRefreshTimer = nil
+    private func updateAnimationSchedule(_ result: EditorActionResult) {
+        animationTimer?.invalidate()
+        animationTimer = nil
+        guard result.needsAnimation else {
             return
         }
-        guard needsRefresh else {
-            transientScrollbarRefreshTimer?.invalidate()
-            transientScrollbarRefreshTimer = nil
-            return
-        }
-        ScrollbarRefreshScheduler.scheduleTransientRefreshTimer(&transientScrollbarRefreshTimer) { [weak self] in
-            self?.rebuildAndRedraw()
+        CoreAnimationScheduler.schedule(
+            &animationTimer,
+            delayMs: result.next_animation_delay_ms
+        ) { [weak self] in
+            guard let self else { return }
+            self.dispatchEditorActionResult(self.editorCore.tickAnimations())
         }
     }
 

@@ -11,77 +11,22 @@
 #include "text_boundary.hpp"
 
 namespace NS_SWEETEDITOR {
-  static uint32_t advanceVisualColumn(U16Char ch, uint32_t visual_col, uint32_t tab_size) {
-    if (ch == u'\t') {
-      return (visual_col / tab_size + 1) * tab_size;
+  namespace {
+    uint32_t advanceVisualColumn(U16Char ch, uint32_t visual_col, uint32_t tab_size) {
+      if (ch == u'\t') {
+        return (visual_col / tab_size + 1) * tab_size;
+      }
+      return visual_col + 1;
     }
-    return visual_col + 1;
-  }
 
-  static uint32_t computeVisualColumn(const U16String& line_text, size_t col, uint32_t tab_size) {
-    uint32_t visual_col = 0;
-    size_t safe_col = std::min(col, line_text.size());
-    for (size_t i = 0; i < safe_col; ++i) {
-      visual_col = advanceVisualColumn(line_text[i], visual_col, tab_size);
+    uint32_t computeVisualColumn(const U16String& line_text, size_t col, uint32_t tab_size) {
+      uint32_t visual_col = 0;
+      size_t safe_col = std::min(col, line_text.size());
+      for (size_t i = 0; i < safe_col; ++i) {
+        visual_col = advanceVisualColumn(line_text[i], visual_col, tab_size);
+      }
+      return visual_col;
     }
-    return visual_col;
-  }
-
-  static bool sameHitTarget(const HitTarget& lhs, const HitTarget& rhs) {
-    return lhs.type == rhs.type
-           && lhs.line == rhs.line
-           && lhs.column == rhs.column
-           && lhs.icon_id == rhs.icon_id
-           && lhs.color_value == rhs.color_value;
-  }
-
-  static bool sameCompositionState(const CompositionState& lhs, const CompositionState& rhs) {
-    return lhs.kind == rhs.kind
-           && lhs.start_position == rhs.start_position
-           && lhs.anchor_range == rhs.anchor_range
-           && lhs.original_text == rhs.original_text
-           && lhs.preedit_text == rhs.preedit_text
-           && lhs.preedit_columns == rhs.preedit_columns;
-  }
-
-  static bool imeSyncSnapshotRequestsPlatformUpdate(const ImeSyncSnapshot& snapshot) {
-    return snapshot.clear_system_mark
-           || snapshot.has_preedit_range
-           || snapshot.has_system_mark_range
-           || snapshot.context_policy != ImeContextPolicy::NONE;
-  }
-
-  static HitTarget toHotInteractiveTarget(const HitTarget& target, KeyModifier modifiers) {
-    if (target.type == HitTargetType::CODELENS) {
-      return target;
-    }
-    if (target.type == HitTargetType::LINK
-        && hasAnyModifier(modifiers, KeyModifier::CTRL | KeyModifier::META)) {
-      return target;
-    }
-    return {};
-  }
-
-  static bool isMousePointerEvent(EventType type) {
-    switch (type) {
-      case EventType::MOUSE_DOWN:
-      case EventType::MOUSE_MOVE:
-      case EventType::MOUSE_UP:
-      case EventType::MOUSE_WHEEL:
-      case EventType::MOUSE_RIGHT_DOWN:
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  static EditorActionResult makeSearchActionResult(bool handled, bool needs_redraw = true) {
-    EditorActionResult result;
-    result.handled = handled;
-    result.source = EditorActionSource::SEARCH;
-    result.needs_redraw = needs_redraw;
-    result.decoration_changed = needs_redraw;
-    return result;
   }
 
 #pragma region [Setup & View State]
@@ -105,6 +50,9 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::setHandleConfig(const HandleConfig& config) {
     const ActionSnapshot before = captureActionSnapshot();
+    if (m_settings_.handle == config) {
+      return finishAction(before, EditorActionSource::SETUP, true);
+    }
     m_settings_.handle = config;
     LOGD("EditorCore::setHandleConfig(), start_hit=[%.1f,%.1f,%.1f,%.1f], end_hit=[%.1f,%.1f,%.1f,%.1f]",
          config.start_hit_area.left, config.start_hit_area.top,
@@ -116,6 +64,7 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::setScrollbarConfig(const ScrollbarConfig& config) {
     const ActionSnapshot before = captureActionSnapshot();
+    const ScrollbarConfig previous = m_settings_.scrollbar;
     m_settings_.scrollbar.thickness = std::max(1.0f, config.thickness);
     m_settings_.scrollbar.min_thumb = std::max(m_settings_.scrollbar.thickness, config.min_thumb);
     m_settings_.scrollbar.thumb_hit_padding = std::max(0.0f, config.thumb_hit_padding);
@@ -124,6 +73,9 @@ namespace NS_SWEETEDITOR {
     m_settings_.scrollbar.track_tap_mode = config.track_tap_mode;
     m_settings_.scrollbar.fade_delay_ms = std::max<uint16_t>(0, config.fade_delay_ms);
     m_settings_.scrollbar.fade_duration_ms = std::max<uint16_t>(0, config.fade_duration_ms);
+    if (previous != m_settings_.scrollbar) {
+      m_interaction_->onScrollbarConfigChanged();
+    }
     normalizeScrollState();
     LOGD("EditorCore::setScrollbarConfig(), thickness = %.1f, min_thumb = %.1f, thumb_hit_padding = %.1f, mode = %d, thumb_draggable = %d, track_tap_mode = %d, fade_delay_ms = %u, fade_duration_ms = %u",
          m_settings_.scrollbar.thickness,
@@ -198,10 +150,15 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::setViewport(const Size& viewport) {
     const ActionSnapshot before = captureActionSnapshot();
     PERF_TIMER("setViewport");
+    const bool viewport_changed =
+        m_viewport_.width != viewport.width || m_viewport_.height != viewport.height;
     bool width_changed = (m_viewport_.width != viewport.width);
     LOGW("setViewport: old=%s new=%s widthChanged=%d", m_viewport_.dump().c_str(), viewport.dump().c_str(), width_changed);
     m_viewport_ = viewport;
     m_text_layout_->setViewport(viewport);
+    if (viewport_changed) {
+      m_interaction_->onViewportChanged();
+    }
     if (width_changed) {
       markAllLinesDirty();
     }
@@ -620,55 +577,16 @@ namespace NS_SWEETEDITOR {
       m_pointer_cursor_type_ = get_primary_probe().cursor_type;
     }
 
-    if (event.type == EventType::MOUSE_DOWN) {
-      m_mouse_button_down_ = true;
-      clearHoverHitTarget();
-    } else if (event.type == EventType::MOUSE_UP) {
-      m_mouse_button_down_ = false;
-    }
-
-    GestureIntent intent;
-    GestureResult result = m_interaction_->handleGestureEvent(event, intent);
-
-    switch (event.type) {
-      case EventType::MOUSE_MOVE: {
-        const HitTarget hot_target = get_primary_probe().hot_target;
-        if (m_mouse_button_down_) {
-          if (m_press_hit_target_.type != HitTargetType::NONE
-              && !sameHitTarget(hot_target, m_press_hit_target_)) {
-            clearPressHitTarget();
-          }
-        } else {
-          m_hover_hit_target_ = hot_target;
-        }
-        break;
-      }
-      case EventType::MOUSE_DOWN:
-        m_press_hit_target_ = get_primary_probe().hot_target;
-        break;
-      case EventType::MOUSE_UP:
-        clearPressHitTarget();
-        break;
-      case EventType::TOUCH_DOWN:
-        m_press_hit_target_ = get_primary_probe().hot_target;
-        break;
-      case EventType::TOUCH_MOVE: {
-        const HitTarget hot_target = get_primary_probe().hot_target;
-        if (m_press_hit_target_.type != HitTargetType::NONE
-            && !sameHitTarget(hot_target, m_press_hit_target_)) {
-          clearPressHitTarget();
-        }
-        break;
-      }
-      case EventType::TOUCH_UP:
-      case EventType::TOUCH_CANCEL:
-      case EventType::TOUCH_POINTER_DOWN:
-        clearPressHitTarget();
-        break;
-      default:
-        break;
-    }
-
+    InteractionResult interaction_result = m_interaction_->handleGestureEvent(event);
+    GestureIntent& intent = interaction_result.intent;
+    GestureResult& result = interaction_result.gesture;
+    const HitTarget primary_hot_target =
+        has_primary_point && !interaction_result.is_handle_drag
+            ? get_primary_probe().hot_target
+            : HitTarget {};
+    interaction_result.handled =
+        updatePointerHitTargetLifecycle(event, primary_hot_target)
+        || interaction_result.handled;
 
     if (intent.cancel_linked_editing) {
       if (m_linked_editing_session_ && m_linked_editing_session_->isActive()) {
@@ -693,12 +611,11 @@ namespace NS_SWEETEDITOR {
       gesture_decoration_changed = toggleFoldAtInternal(intent.fold_line);
     }
 
-    finalizeGestureResult(result);
-    return finishGestureAction(before,
-                               result,
-                               EditorActionSource::GESTURE,
-                               event.type,
-                               gesture_decoration_changed);
+    return finishInteractionAction(before,
+                                   std::move(interaction_result),
+                                   EditorActionSource::GESTURE,
+                                   event.type,
+                                   gesture_decoration_changed);
   }
 
   EditorActionResult EditorCore::updatePointerModifiers(KeyModifier modifiers) {
@@ -714,15 +631,16 @@ namespace NS_SWEETEDITOR {
 
     EditorActionResult result = finishAction(before, EditorActionSource::GESTURE, false);
     result.modifiers = modifiers;
-    result.handled = result.needs_redraw || result.pointer_cursor_changed;
+    const bool active_hit_target_changed =
+        before.active_hit_target != getActiveHitTarget();
+    result.handled = active_hit_target_changed || result.pointer_cursor_changed;
     return result;
   }
 
   EditorActionResult EditorCore::tickAnimations() {
     const ActionSnapshot before = captureActionSnapshot();
-    GestureResult result = m_interaction_->tickAnimations();
-    finalizeGestureResult(result);
-    return finishGestureAction(before, result, EditorActionSource::ANIMATION);
+    InteractionResult result = m_interaction_->tickAnimations();
+    return finishInteractionAction(before, std::move(result), EditorActionSource::ANIMATION);
   }
 
   EditorActionResult EditorCore::stopFling() {
@@ -1976,12 +1894,14 @@ namespace NS_SWEETEDITOR {
     publishPendingSearchResult(std::move(searching_result));
     SearchResult result = getSearchEngine().search(snapshot);
     if (result.state.generation != m_search_generation_->load()) {
-      return makeSearchActionResult(false, false);
+      const ActionSnapshot before = captureActionSnapshot();
+      return finishAction(before, EditorActionSource::SEARCH, false);
     }
     chooseCurrentSearchMatch(result, snapshot.cursor_position);
     publishSearchState(result.state);
     publishPendingSearchResult(std::move(result));
-    return makeSearchActionResult(true);
+    const ActionSnapshot before = captureActionSnapshot();
+    return finishAction(before, EditorActionSource::SEARCH, true, {}, true, true);
   }
 
   EditorActionResult EditorCore::findNextSearchMatch() {
@@ -2059,7 +1979,8 @@ namespace NS_SWEETEDITOR {
     const U8String actual_replacement = getSearchEngine().buildReplacement(match, replacement, options);
     if (generation != m_search_generation_->load()) {
       markSearchStaleForDocumentChange();
-      return makeSearchActionResult(false);
+      const ActionSnapshot before = captureActionSnapshot();
+      return finishAction(before, EditorActionSource::SEARCH, false, {}, true, true);
     }
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = replaceTextInternal(match.range, actual_replacement);
@@ -2090,7 +2011,8 @@ namespace NS_SWEETEDITOR {
     }
     if (generation != m_search_generation_->load()) {
       markSearchStaleForDocumentChange();
-      return makeSearchActionResult(false);
+      const ActionSnapshot before = captureActionSnapshot();
+      return finishAction(before, EditorActionSource::SEARCH, false, {}, true, true);
     }
 
     const ActionSnapshot before = captureActionSnapshot();
@@ -3813,6 +3735,58 @@ namespace NS_SWEETEDITOR {
     m_press_hit_target_ = {};
   }
 
+  bool EditorCore::updatePointerHitTargetLifecycle(const GestureEvent& event,
+                                                   const HitTarget& primary_hot_target) {
+    switch (event.type) {
+    case EventType::MOUSE_MOVE:
+      if (m_mouse_button_down_) {
+        const bool handled = m_press_hit_target_.type != HitTargetType::NONE;
+        if (handled && primary_hot_target != m_press_hit_target_) {
+          clearPressHitTarget();
+        }
+        return handled;
+      }
+      m_hover_hit_target_ = primary_hot_target;
+      return false;
+
+    case EventType::MOUSE_DOWN:
+      m_mouse_button_down_ = true;
+      clearHoverHitTarget();
+      m_press_hit_target_ = primary_hot_target;
+      return m_press_hit_target_.type != HitTargetType::NONE;
+
+    case EventType::MOUSE_UP: {
+      m_mouse_button_down_ = false;
+      const bool handled = m_press_hit_target_.type != HitTargetType::NONE;
+      clearPressHitTarget();
+      return handled;
+    }
+
+    case EventType::TOUCH_DOWN:
+      m_press_hit_target_ = primary_hot_target;
+      return m_press_hit_target_.type != HitTargetType::NONE;
+
+    case EventType::TOUCH_MOVE: {
+      const bool handled = m_press_hit_target_.type != HitTargetType::NONE;
+      if (handled && primary_hot_target != m_press_hit_target_) {
+        clearPressHitTarget();
+      }
+      return handled;
+    }
+
+    case EventType::TOUCH_UP:
+    case EventType::TOUCH_CANCEL:
+    case EventType::TOUCH_POINTER_DOWN: {
+      const bool handled = m_press_hit_target_.type != HitTargetType::NONE;
+      clearPressHitTarget();
+      return handled;
+    }
+
+    default:
+      return false;
+    }
+  }
+
   HitTarget EditorCore::getActiveHitTarget() const {
     return m_press_hit_target_.type != HitTargetType::NONE ? m_press_hit_target_ : m_hover_hit_target_;
   }
@@ -3834,7 +3808,12 @@ namespace NS_SWEETEDITOR {
       return result;
     }
 
-    result.hot_target = toHotInteractiveTarget(m_text_layout_->hitTestDecoration(point), modifiers);
+    const HitTarget target = m_text_layout_->hitTestDecoration(point);
+    if (target.type == HitTargetType::CODELENS
+        || (target.type == HitTargetType::LINK
+            && hasAnyModifier(modifiers, KeyModifier::CTRL | KeyModifier::META))) {
+      result.hot_target = target;
+    }
     if (result.hot_target.type != HitTargetType::NONE) {
       result.cursor_type = PointerCursorType::HAND;
       return result;
@@ -3844,16 +3823,6 @@ namespace NS_SWEETEDITOR {
                            ? PointerCursorType::TEXT
                            : PointerCursorType::DEFAULT;
     return result;
-  }
-
-  void EditorCore::finalizeGestureResult(GestureResult& result) const {
-    result.cursor_position = m_caret_.cursor;
-    result.has_selection = hasSelection();
-    result.selection = m_caret_.selection;
-    result.view_scroll_x = m_view_state_.scroll_x;
-    result.view_scroll_y = m_view_state_.scroll_y;
-    result.view_scale = m_view_state_.scale;
-    result.pointer_cursor_type = m_pointer_cursor_type_;
   }
 
   EditorCore::ActionSnapshot EditorCore::captureActionSnapshot() const {
@@ -3875,7 +3844,7 @@ namespace NS_SWEETEDITOR {
                                               bool handled,
                                               TextEditResult edit_result,
                                               bool force_redraw,
-                                              bool decoration_changed) const {
+                                              bool decoration_changed) {
     EditorActionResult result;
     result.handled = handled || edit_result.handled;
     result.source = source;
@@ -3911,8 +3880,9 @@ namespace NS_SWEETEDITOR {
     result.pointer_cursor_after = m_pointer_cursor_type_;
     result.pointer_cursor_changed = result.pointer_cursor_before != result.pointer_cursor_after;
 
-    const bool active_hit_target_changed = !sameHitTarget(before.active_hit_target, getActiveHitTarget());
-    result.composition_changed = !sameCompositionState(before.composition, m_composition_controller_.composition());
+    const bool active_hit_target_changed = before.active_hit_target != getActiveHitTarget();
+    const InteractionAnimationState animation_state = m_interaction_->resolveAnimationState();
+    result.composition_changed = before.composition != m_composition_controller_.composition();
     result.decoration_changed = decoration_changed;
     result.needs_ime_sync = result.content_changed || result.cursor_changed || result.selection_changed || result.composition_changed;
     if (result.needs_ime_sync) {
@@ -3926,45 +3896,44 @@ namespace NS_SWEETEDITOR {
                           || result.scale_changed
                           || result.composition_changed
                           || active_hit_target_changed
-                          || result.decoration_changed;
-    result.needs_edge_scroll = m_interaction_->hasActiveEdgeScroll();
-    result.needs_fling = m_interaction_->hasActiveFling();
-    result.needs_animation = result.needs_edge_scroll || result.needs_fling;
+                          || result.decoration_changed
+                          || animation_state.needs_redraw;
+    result.animation_flags = animation_state.flags;
+    result.next_animation_delay_ms = animation_state.next_tick_delay_ms;
     return result;
   }
 
-  EditorActionResult EditorCore::finishGestureAction(const ActionSnapshot& before,
-                                                     GestureResult gesture_result,
-                                                     EditorActionSource source,
-                                                     EventType event_type,
-                                                     bool decoration_changed) const {
-    EditorActionResult result = finishAction(before, source, true, {}, false, decoration_changed);
+  EditorActionResult EditorCore::finishInteractionAction(
+      const ActionSnapshot& before,
+      InteractionResult interaction_result,
+      EditorActionSource source,
+      EventType event_type,
+      bool decoration_changed) {
+    const GestureResult& gesture_result = interaction_result.gesture;
+    EditorActionResult result = finishAction(before,
+                                             source,
+                                             interaction_result.handled,
+                                             {},
+                                             interaction_result.needs_redraw,
+                                             decoration_changed);
     result.gesture_type = gesture_result.type;
     result.gesture_event_type = event_type;
     result.tap_point = gesture_result.tap_point;
     result.hit_target = gesture_result.hit_target;
     result.modifiers = gesture_result.modifiers;
-    result.is_handle_drag = gesture_result.is_handle_drag;
-    result.pointer_cursor_after = gesture_result.pointer_cursor_type;
-    result.pointer_cursor_changed = result.pointer_cursor_before != result.pointer_cursor_after;
-    result.handled = gesture_result.type != GestureType::UNDEFINED
-                     || result.needs_redraw
-                     || result.needs_edge_scroll
-                     || result.needs_fling
-                     || result.needs_animation
-                     || result.pointer_cursor_changed;
+    result.is_handle_drag = interaction_result.is_handle_drag;
     return result;
   }
 
   EditorActionResult EditorCore::finishImeAction(const ActionSnapshot& before,
-                                                 const ImeActionResult& ime_result) const {
+                                                 const ImeActionResult& ime_result) {
     EditorActionResult result = finishAction(before,
                                              EditorActionSource::IME,
                                              ime_result.handled,
                                              ime_result.edit_result);
     result.ime_sync = ime_result.sync;
     result.needs_ime_sync = result.needs_ime_sync
-        || imeSyncSnapshotRequestsPlatformUpdate(result.ime_sync);
+        || result.ime_sync.requestsPlatformUpdate();
     result.needs_redraw = result.needs_redraw || result.composition_changed || result.content_changed;
     return result;
   }

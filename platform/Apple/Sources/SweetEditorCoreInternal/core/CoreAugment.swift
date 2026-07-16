@@ -1,6 +1,21 @@
 import CoreGraphics
 import Foundation
 
+public extension EditorActionResult {
+    func hasAnimationFlag(_ flag: Int32) -> Bool {
+        animation_flags & flag != 0
+    }
+
+    var needsAnimation: Bool {
+        animation_flags != AnimationFlag.NONE
+    }
+
+    var needsViewportMotion: Bool {
+        hasAnimationFlag(AnimationFlag.EDGE_SCROLL)
+            || hasAnimationFlag(AnimationFlag.FLING)
+    }
+}
+
 public extension AutoIndentMode {
     static let none = AutoIndentMode.NONE
     static let keepIndent = AutoIndentMode.KEEP_INDENT

@@ -232,7 +232,6 @@ The public products re-export the public support types needed by the APIs above,
 - `EditorSettings.setEditorTextSize` and `setTypeface` update stored values but are not applied to the native core or text measurer.
 - `EditorSettings.setDecorationScrollRefreshMinIntervalMs` and `setDecorationOverscanViewportMultiplier` are not connected to `DecorationProviderManager`.
 - `CompletionItem.filterText` is stored but is not used for local completion filtering.
-- The Apple views do not drive the core `tickAnimations` API, so core-managed fling animation is not part of the current Apple surface.
 - Although the macOS source declares `addNewLineActionProvider` and `removeNewLineActionProvider`, their provider, context, and result types are internal. Applications cannot call these methods or implement that provider contract.
 - The SwiftUI wrappers intentionally expose a smaller surface than the native UIKit and AppKit views.
 - The C bridge is maintained manually and must be checked when the shared C API changes.

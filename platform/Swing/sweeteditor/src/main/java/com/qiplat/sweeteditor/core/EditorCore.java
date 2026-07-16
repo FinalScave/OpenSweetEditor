@@ -235,7 +235,7 @@ public class EditorCore {
         return decodeAction(EditorNative.updatePointerModifiers(nativeHandle, modifiers));
     }
 
-    /** Unified animation tick: advances all active animations (edge-scroll, fling). */
+    /** Unified animation tick for all core-managed animation flags. */
     public EditorActionResult tickAnimations() {
         return decodeAction(EditorNative.tickAnimations(nativeHandle));
     }

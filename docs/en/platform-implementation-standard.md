@@ -23,7 +23,7 @@ The Core layer does not involve UI rendering. It contains only bridging, data mo
 | Category | Required Types | Description |
 |---|---|---|
 | **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer` | Native bridge + public core API wrapper |
-| **Action** | `EditorActionResult`, `EditorActionSource`, `TextChangeKind`, `ScrollBehavior` | Core action result and action-related enums; `EditorActionResult` is the unified result carrier for core state-changing APIs |
+| **Action** | `EditorActionResult`, `EditorActionSource`, `TextChangeKind`, `ScrollBehavior`, `AnimationFlag` | Core action result and action-related enums; `EditorActionResult` is the unified result carrier for core state-changing APIs |
 | **Config** | `EditorOptions`, `HandleConfig`, `HandleHitArea`, `ScrollbarConfig`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollbarMode`, `ScrollbarTrackTapMode`, `EditorRenderColors`, `EditorRangeEffectStyles`, `RangeEffectStyle`, `RangeEffectUnderlineStyle` | Runtime, construction, and editor render styling protocol types |
 | **Foundation** | `TextPosition`, `TextRange`, `TextEdit`, `IntRange`, `TextChange`, `PointF`, `Size`, `Rect` | Fundamental value types and geometry carriers |
 | **Interaction** | `GestureEvent`, `GestureType`, `EventType`, `HitTarget`, `HitTargetType` | Input and hit-test protocol types |
@@ -540,7 +540,7 @@ All implementations MUST expose the following settings through getter/setter pai
 
 > All setter calls MUST take effect immediately and pass the core-returned `EditorActionResult` to the unified result dispatcher.
 >
-> Typical impact describes host-visible semantics only. It is not the basis for integration-layer flush, repaint, or relayout decisions. Whether to rebuild the render model, synchronize IME state, continue animation, or repaint MUST be driven by `EditorActionResult` fields such as `needsRedraw`, `needsImeSync`, and `needsAnimation`.
+> Typical impact describes host-visible semantics only. It is not the basis for integration-layer flush, repaint, or relayout decisions. Whether to rebuild the render model, synchronize IME state, continue animation, or repaint MUST be driven by `EditorActionResult` fields such as `needsRedraw`, `needsImeSync`, `animationFlags`, and `nextAnimationDelayMs`.
 >
 > Typical impact categories:
 > - `repaint`: usually affects visual refresh without requiring text relayout.
@@ -666,10 +666,11 @@ Implementations MAY expose the return value of `handleGestureEvent(...)` directl
 | `tapPoint` | `PointF` | **MUST** | Gesture hit point in editor-local coordinates |
 | `hitTarget` | `HitTargetType` + integration-aligned payload | **MUST** | Hit-test result for the current gesture location |
 | `pointerCursorAfter` / `pointerCursorChanged` | `PointerCursorType` / boolean | **MUST** on desktop or targets with mouse / hover input, **MAY** on touch-only targets | Pointer cursor hint for the current mouse location, plus whether the host cursor should update |
-| `needsEdgeScroll` / `needsFling` / `needsAnimation` | boolean | **MUST** | Edge-scroll and fling state plus the unified animation scheduling flag; implementations schedule ticks from `needsAnimation` |
+| `animationFlags` | `AnimationFlag` bit set | **MUST** | Active Core animation reasons, including `EDGE_SCROLL`, `FLING`, and `TRANSIENT_SCROLLBAR`; zero stops scheduling |
+| `nextAnimationDelayMs` | u32 | **MUST** | Delay before the next animation tick; zero requests the next display frame and a positive value requests a delayed wake-up |
 | `isHandleDrag` | boolean | Mobile **SHOULD** | Whether the current gesture is a selection-handle drag |
 
-> These fields MUST be consumed according to their own semantics and must not depend on `needsRedraw` as a side effect. Desktop targets, and targets with mouse / hover input, SHOULD apply `pointerCursorAfter` immediately when `pointerCursorChanged` is true even if the result does not require redraw; implementations MUST also start or stop animation ticks from `needsAnimation` rather than waiting for the next render model rebuild. Touch-only targets with no pointer cursor concept MAY ignore cursor-shape changes entirely.
+> These fields MUST be consumed according to their own semantics and must not depend on `needsRedraw` as a side effect. Integrations MUST schedule the next tick from `nextAnimationDelayMs` while `animationFlags != 0`, and stop when the flags become zero. Selection menus and viewport-settled logic must inspect `EDGE_SCROLL | FLING`, rather than treating the visual-only `TRANSIENT_SCROLLBAR` flag as ongoing viewport motion. Desktop targets, and targets with mouse / hover input, SHOULD apply `pointerCursorAfter` immediately when `pointerCursorChanged` is true even if the result does not require redraw. Touch-only targets with no pointer cursor concept MAY ignore cursor-shape changes entirely.
 
 ### 11.5 ContextMenu Standard Contract
 

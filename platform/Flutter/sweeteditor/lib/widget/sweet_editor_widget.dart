@@ -68,7 +68,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
   bool _editorResourcesReleased = false;
   bool _pendingDocumentLoadedNotification = false;
   Ticker? _animationTicker;
-  bool _animating = false;
+  Timer? _animationDelayTimer;
   core.PointerCursorType _pointerCursorType = core.PointerCursorType.text;
 
   EditorEventBus get _eventBus => widget.controller._eventBus;
@@ -139,7 +139,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
         onRenderModelUpdated: _handleRenderModelUpdated,
         onTextInputStyleInvalidated: _updateTextInputStyle,
         onHostActionResult: _handleEditorActionResult,
-        onAnimationStateChanged: _setAnimationRunning,
+        onAnimationScheduleChanged: _setAnimationSchedule,
       ),
       theme: widget.theme ?? EditorTheme.dark(),
       initialSettings: widget.settings,
@@ -217,22 +217,32 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     _session.requestFlush();
   }
 
-  void _setAnimationRunning(bool running) {
+  void _setAnimationSchedule(int? delayMs) {
     if (_editorResourcesReleased) return;
-    if (running) {
-      if (_animating) return;
-      _animating = true;
-      _animationTicker ??= createTicker(_onAnimationTick);
-      _animationTicker!.start();
+    _animationDelayTimer?.cancel();
+    _animationDelayTimer = null;
+    if (delayMs == null) {
+      _animationTicker?.stop();
       return;
     }
-    if (!_animating) return;
-    _animating = false;
+
+    if (delayMs <= 0) {
+      _animationTicker ??= createTicker(_onAnimationTick);
+      if (!_animationTicker!.isActive) {
+        _animationTicker!.start();
+      }
+      return;
+    }
+
     _animationTicker?.stop();
+    _animationDelayTimer = Timer(Duration(milliseconds: delayMs), () {
+      if (_editorResourcesReleased) return;
+      _session.tickAnimations();
+    });
   }
 
   void _onAnimationTick(Duration elapsed) {
-    if (_editorResourcesReleased || !_animating) return;
+    if (_editorResourcesReleased) return;
     _session.tickAnimations();
   }
 
@@ -280,7 +290,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   void _releaseEditorResources() {
     if (_editorResourcesReleased) return;
-    _setAnimationRunning(false);
+    _setAnimationSchedule(null);
     _editorResourcesReleased = true;
     _animationTicker?.dispose();
     _animationTicker = null;

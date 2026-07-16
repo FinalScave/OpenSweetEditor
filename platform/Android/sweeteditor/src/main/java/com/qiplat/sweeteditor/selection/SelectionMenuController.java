@@ -139,8 +139,8 @@ public class SelectionMenuController {
         boolean pointerReleased = actionMasked == MotionEvent.ACTION_UP
                 || actionMasked == MotionEvent.ACTION_CANCEL
                 || actionMasked == MotionEvent.ACTION_POINTER_UP;
-        boolean animationTickEnded = actionMasked == -1 && !result.needsAnimation;
-        boolean canRestoreNow = (pointerReleased && !result.needsAnimation) || animationTickEnded;
+        boolean animationTickEnded = actionMasked == -1 && !result.needsViewportMotion();
+        boolean canRestoreNow = (pointerReleased && !result.needsViewportMotion()) || animationTickEnded;
         if (hiddenByViewportGesture && canRestoreNow) {
             hiddenByViewportGesture = false;
             if (result.hasSelectionAfter) {

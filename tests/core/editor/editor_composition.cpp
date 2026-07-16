@@ -464,6 +464,53 @@ namespace {
 
 }
 
+TEST_CASE("IME state value semantics cover platform sync requests") {
+  CompositionState state;
+  CompositionState other;
+  CHECK(state == other);
+
+  other.kind = CompositionKind::PREEDIT_TEXT;
+  CHECK(state != other);
+  other = state;
+
+  other.start_position = {1, 2};
+  CHECK(state != other);
+  other = state;
+
+  other.anchor_range = {{1, 2}, {1, 3}};
+  CHECK(state != other);
+  other = state;
+
+  other.original_text = "original";
+  CHECK(state != other);
+  other = state;
+
+  other.preedit_text = "preedit";
+  CHECK(state != other);
+  other = state;
+
+  other.preedit_columns = 3;
+  CHECK(state != other);
+
+  ImeSyncSnapshot sync;
+  CHECK_FALSE(sync.requestsPlatformUpdate());
+
+  sync.clear_system_mark = true;
+  CHECK(sync.requestsPlatformUpdate());
+  sync = {};
+
+  sync.has_preedit_range = true;
+  CHECK(sync.requestsPlatformUpdate());
+  sync = {};
+
+  sync.has_system_mark_range = true;
+  CHECK(sync.requestsPlatformUpdate());
+  sync = {};
+
+  sync.context_policy = ImeContextPolicy::LIMITED_FOR_CANDIDATES;
+  CHECK(sync.requestsPlatformUpdate());
+}
+
 TEST_CASE("EditorCore composition update is transient and cancel restores original text") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);

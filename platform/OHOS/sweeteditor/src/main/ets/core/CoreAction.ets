@@ -4,6 +4,13 @@ import { EventType, GestureType, HitTarget } from './CoreInteraction';
 import { KeyModifier } from './CoreKeymap';
 import { PointerCursorType } from './CoreVisual';
 
+export class AnimationFlag {
+  static readonly NONE: number = 0;
+  static readonly EDGE_SCROLL: number = 1;
+  static readonly FLING: number = 2;
+  static readonly TRANSIENT_SCROLLBAR: number = 4;
+}
+
 export enum EditorActionSource {
   NONE = 0,
   SETUP = 1,
@@ -89,9 +96,8 @@ export interface EditorActionResult {
   compositionChanged: boolean;
   decorationChanged: boolean;
   needsImeSync: boolean;
-  needsEdgeScroll: boolean;
-  needsFling: boolean;
-  needsAnimation: boolean;
+  animationFlags: number;
+  nextAnimationDelayMs: number;
   isHandleDrag: boolean;
   changes: TextChange[];
   cursorBefore: TextPosition;
@@ -115,4 +121,17 @@ export interface EditorActionResult {
   hitTarget: HitTarget;
   modifiers: number;
   command: number;
+}
+
+export function hasAnimationFlag(result: EditorActionResult, flag: number): boolean {
+  return (result.animationFlags & flag) !== 0;
+}
+
+export function needsAnimation(result: EditorActionResult): boolean {
+  return result.animationFlags !== AnimationFlag.NONE;
+}
+
+export function needsViewportMotion(result: EditorActionResult): boolean {
+  return hasAnimationFlag(result, AnimationFlag.EDGE_SCROLL) ||
+    hasAnimationFlag(result, AnimationFlag.FLING);
 }

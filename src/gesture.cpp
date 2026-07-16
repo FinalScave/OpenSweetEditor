@@ -9,6 +9,45 @@
 
 namespace NS_SWEETEDITOR {
 
+  bool isMousePointerEvent(EventType type) {
+    switch (type) {
+    case EventType::MOUSE_DOWN:
+    case EventType::MOUSE_MOVE:
+    case EventType::MOUSE_UP:
+    case EventType::MOUSE_WHEEL:
+    case EventType::MOUSE_RIGHT_DOWN:
+      return true;
+    default:
+      return false;
+    }
+  }
+
+  bool isPrimaryPointerDown(EventType type) {
+    return type == EventType::TOUCH_DOWN || type == EventType::MOUSE_DOWN;
+  }
+
+  bool isPrimaryPointerMove(EventType type) {
+    return type == EventType::TOUCH_MOVE || type == EventType::MOUSE_MOVE;
+  }
+
+  bool isPrimaryPointerEnd(EventType type) {
+    return type == EventType::TOUCH_UP
+        || type == EventType::MOUSE_UP
+        || type == EventType::TOUCH_CANCEL;
+  }
+
+  bool HitTarget::operator==(const HitTarget& other) const {
+    return type == other.type
+        && line == other.line
+        && column == other.column
+        && icon_id == other.icon_id
+        && color_value == other.color_value;
+  }
+
+  bool HitTarget::operator!=(const HitTarget& other) const {
+    return !(*this == other);
+  }
+
 #pragma region [Class: GestureEvent]
   GestureEvent GestureEvent::create(EventType type, const uint8_t pointer_count, const float* points) {
     return createWithModifiers(type, pointer_count, points, KeyModifier::NONE);

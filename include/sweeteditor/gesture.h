@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <limits>
 #include <sweeteditor/foundation.h>
-#include <sweeteditor/visual.h>
+#include <sweeteditor/keymap.h>
 
 namespace NS_SWEETEDITOR {
 
@@ -108,6 +108,11 @@ namespace NS_SWEETEDITOR {
     DIRECT_SCROLL = 13,
   };
 
+  bool isMousePointerEvent(EventType type);
+  bool isPrimaryPointerDown(EventType type);
+  bool isPrimaryPointerMove(EventType type);
+  bool isPrimaryPointerEnd(EventType type);
+
   /// Gesture event data passed from platform layer
   struct SE_PROTOCOL_IN(interaction) GestureEvent {
     /// Gesture event type
@@ -187,6 +192,9 @@ namespace NS_SWEETEDITOR {
     int32_t icon_id {0};
     /// Color value (ARGB, valid for INLAY_HINT_COLOR)
     int32_t color_value {0};
+
+    bool operator==(const HitTarget& other) const;
+    bool operator!=(const HitTarget& other) const;
   };
 
   /// Gesture handling result
@@ -198,34 +206,8 @@ namespace NS_SWEETEDITOR {
     float scroll_y {0};
     /// Modifier key state (returned to upper layer, used for Shift+Click, etc.)
     KeyModifier modifiers {KeyModifier::NONE};
-    /// Cursor position (filled by EditorCore)
-    TextPosition cursor_position;
-    /// Whether there is a selection (filled by EditorCore)
-    bool has_selection {false};
-    /// Selection range (filled by EditorCore)
-    TextRange selection;
-    /// View scroll offset (filled by EditorCore)
-    float view_scroll_x {0};
-    float view_scroll_y {0};
-    /// View scale (filled by EditorCore)
-    float view_scale {1};
-    /// Decoration hit target at the gesture location (filled by EditorCore when applicable)
+    /// Decoration hit target at the gesture location when applicable
     HitTarget hit_target;
-    /// Whether the core has active edge-scroll state.
-    /// Platforms use needs_animation for scheduling and may use this for diagnostics.
-    bool needs_edge_scroll {false};
-    /// Whether the core has active fling state.
-    /// Platforms use needs_animation for scheduling and may use this for diagnostics.
-    bool needs_fling {false};
-    /// Aggregated animation flag (needs_edge_scroll || needs_fling).
-    /// Platform can use a single animation loop driven by this flag
-    /// and call tickAnimations().
-    bool needs_animation {false};
-    /// Whether this gesture event is part of a selection handle drag.
-    /// True while the user is dragging a selection handle (start or end).
-    bool is_handle_drag {false};
-    /// Pointer cursor hint for the current mouse location.
-    PointerCursorType pointer_cursor_type {PointerCursorType::TEXT};
   };
 
   /// Gesture handler class

@@ -1,5 +1,7 @@
 #include <catch2/catch_amalgamated.hpp>
+#include <chrono>
 #include <string>
+#include <thread>
 #include <sweeteditor/editor_core.h>
 #include "test_measurer.h"
 #include "test_render_helpers.h"
@@ -221,7 +223,9 @@ TEST_CASE("EditorCore buildRenderModel clears pressed CodeLens when touch moves 
       second.y
   };
 
-  editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_DOWN, 1, first_press));
+  const EditorActionResult down = editor.handleGestureEvent(
+      GestureEvent::create(EventType::TOUCH_DOWN, 1, first_press));
+  CHECK(down.handled);
 
   model = {};
   editor.buildRenderModel(model);
@@ -244,6 +248,13 @@ TEST_CASE("EditorCore buildRenderModel clears pressed CodeLens when touch moves 
   const VisualLine& released_model = findCodeLensVisualLine(model, 0);
   CHECK_FALSE(findNthCodeLensRun(released_model, 0).active);
   CHECK_FALSE(findNthCodeLensRun(released_model, 1).active);
+
+  const EditorActionResult cancel_down = editor.handleGestureEvent(
+      GestureEvent::create(EventType::TOUCH_DOWN, 1, first_press));
+  REQUIRE(cancel_down.handled);
+  const EditorActionResult cancel = editor.handleGestureEvent(
+      GestureEvent::create(EventType::TOUCH_CANCEL, 0, nullptr));
+  CHECK(cancel.handled);
 }
 
 TEST_CASE("EditorCore exposes pointer cursor type for text, CodeLens, gutter and scrollbar") {
@@ -319,6 +330,94 @@ TEST_CASE("EditorCore exposes pointer cursor type for text, CodeLens, gutter and
   model = {};
   editor.buildRenderModel(model);
   CHECK(model.pointer_cursor_type == PointerCursorType::DEFAULT);
+}
+
+TEST_CASE("EditorCore schedules transient scrollbar fade through animation flags") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  ScrollbarConfig scrollbar;
+  scrollbar.mode = ScrollbarMode::TRANSIENT;
+  scrollbar.thumb_draggable = true;
+  scrollbar.fade_delay_ms = 100;
+  scrollbar.fade_duration_ms = 200;
+  editor.setScrollbarConfig(scrollbar);
+
+  std::string text;
+  for (int i = 0; i < 80; ++i) {
+    text += "abcdefghij\n";
+  }
+  editor.loadDocument(makeShared<LineArrayDocument>(text));
+  editor.setViewport({240, 80});
+
+  GestureEvent wheel;
+  wheel.type = EventType::MOUSE_WHEEL;
+  wheel.wheel_delta_y = -24.0f;
+  const EditorActionResult started = editor.handleGestureEvent(wheel);
+
+  REQUIRE(started.hasAnimationFlag(AnimationFlag::TRANSIENT_SCROLLBAR));
+  CHECK(started.next_animation_delay_ms == 0);
+  CHECK(started.needs_redraw);
+
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+  REQUIRE(model.vertical_scrollbar.visible);
+  const float scrollbar_point[2] = {
+      model.vertical_scrollbar.thumb.origin.x + model.vertical_scrollbar.thumb.width * 0.5f,
+      model.vertical_scrollbar.thumb.origin.y + model.vertical_scrollbar.thumb.height * 0.5f
+  };
+  const EditorActionResult scrollbar_down = editor.handleGestureEvent(
+      GestureEvent::create(EventType::MOUSE_DOWN, 1, scrollbar_point));
+  CHECK(scrollbar_down.gesture_type == GestureType::UNDEFINED);
+  CHECK(scrollbar_down.handled);
+
+  const EditorActionResult scrollbar_up = editor.handleGestureEvent(
+      GestureEvent::create(EventType::MOUSE_UP, 1, scrollbar_point));
+  CHECK(scrollbar_up.gesture_type == GestureType::UNDEFINED);
+  CHECK(scrollbar_up.handled);
+
+  const float hover_point[2] = {40.0f, 40.0f};
+  const EditorActionResult passive_hover = editor.handleGestureEvent(
+      GestureEvent::create(EventType::MOUSE_MOVE, 1, hover_point));
+  REQUIRE(passive_hover.hasAnimationFlag(AnimationFlag::TRANSIENT_SCROLLBAR));
+  CHECK(passive_hover.gesture_type == GestureType::UNDEFINED);
+  CHECK_FALSE(passive_hover.handled);
+
+  const EditorActionResult unchanged_modifiers =
+      editor.updatePointerModifiers(KeyModifier::NONE);
+  REQUIRE(unchanged_modifiers.hasAnimationFlag(AnimationFlag::TRANSIENT_SCROLLBAR));
+  CHECK_FALSE(unchanged_modifiers.handled);
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(30));
+  const EditorActionResult holding = editor.tickAnimations();
+  REQUIRE(holding.hasAnimationFlag(AnimationFlag::TRANSIENT_SCROLLBAR));
+  CHECK(holding.next_animation_delay_ms > 0);
+  CHECK_FALSE(holding.needs_redraw);
+  CHECK_FALSE(holding.handled);
+
+  std::this_thread::sleep_for(
+      std::chrono::milliseconds(holding.next_animation_delay_ms + 50));
+  const EditorActionResult fading = editor.tickAnimations();
+  REQUIRE(fading.hasAnimationFlag(AnimationFlag::TRANSIENT_SCROLLBAR));
+  CHECK(fading.next_animation_delay_ms == 0);
+  CHECK(fading.needs_redraw);
+  CHECK_FALSE(fading.handled);
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(170));
+  const EditorActionResult finished = editor.tickAnimations();
+  CHECK(finished.animation_flags == 0);
+  CHECK(finished.next_animation_delay_ms == 0);
+  CHECK(finished.needs_redraw);
+  CHECK_FALSE(finished.handled);
+
+  model = {};
+  editor.buildRenderModel(model);
+  CHECK_FALSE(model.vertical_scrollbar.visible);
+  CHECK_FALSE(model.horizontal_scrollbar.visible);
+
+  const EditorActionResult settled = editor.tickAnimations();
+  CHECK(settled.animation_flags == 0);
+  CHECK_FALSE(settled.needs_redraw);
 }
 
 TEST_CASE("EditorCore handleGestureEvent ctrl-tap on LINK resolves target and places cursor at tap") {
@@ -526,10 +625,12 @@ TEST_CASE("EditorCore line-start word selection end handle can cross CodeLens vi
   const EditorActionResult down = editor.handleGestureEvent(
       GestureEvent::create(EventType::TOUCH_DOWN, 1, down_point));
 
+  CHECK(down.handled);
   CHECK(down.is_handle_drag);
   CHECK(down.has_selection_after);
   CHECK(down.selection_after == (TextRange{{1, 0}, {1, 4}}));
 
+  editor.setViewport({440, 200});
   const float move_point[2] = {
       model.selection_end_handle.position.x + 12.0f,
       codelens_mid_y + 4.0f
@@ -540,4 +641,9 @@ TEST_CASE("EditorCore line-start word selection end handle can cross CodeLens vi
   CHECK(move.is_handle_drag);
   CHECK(move.has_selection_after);
   CHECK(move.selection_after == (TextRange{{0, 5}, {1, 0}}));
+
+  const EditorActionResult up = editor.handleGestureEvent(
+      GestureEvent::create(EventType::TOUCH_UP, 1, move_point));
+  CHECK(up.handled);
+  CHECK_FALSE(up.is_handle_drag);
 }

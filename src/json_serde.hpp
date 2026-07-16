@@ -61,7 +61,7 @@ namespace NS_SWEETEDITOR {
     {PointerCursorType::TEXT, "TEXT"},
     {PointerCursorType::HAND, "HAND"},
   })
-  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(GestureResult, type, tap_point, modifiers, scale, scroll_x, scroll_y, cursor_position, has_selection, selection, view_scroll_x, view_scroll_y, view_scale, hit_target, needs_edge_scroll, needs_fling, needs_animation, is_handle_drag, pointer_cursor_type)
+  NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(GestureResult, type, tap_point, modifiers, scale, scroll_x, scroll_y, hit_target)
 
   NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TextChange, range, old_text, new_text)
   NLOHMANN_JSON_SERIALIZE_ENUM(TextChangeKind, {

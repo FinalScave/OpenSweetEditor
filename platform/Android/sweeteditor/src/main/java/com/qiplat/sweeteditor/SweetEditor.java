@@ -41,6 +41,7 @@ import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.interaction.HitTargetType;
 import com.qiplat.sweeteditor.core.interaction.GestureType;
 import com.qiplat.sweeteditor.core.interaction.EventType;
+import com.qiplat.sweeteditor.core.action.EditorActionSource;
 import com.qiplat.sweeteditor.core.action.EditorActionResult;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
@@ -172,7 +173,6 @@ public class SweetEditor extends View {
      * Current theme (default dark).
      */
     private EditorTheme mTheme = EditorTheme.dark();
-    private static final int TRANSIENT_SCROLLBAR_REFRESH_MIN_MS = 16;
 
     // Cursor blink
     private boolean mCursorVisible = true;
@@ -240,25 +240,21 @@ public class SweetEditor extends View {
         }
     };
 
-    private final Runnable mTransientScrollbarRefresh = new Runnable() {
-        @Override
-        public void run() {
-            // Trigger one rebuild so C++ transient alpha/visibility can advance.
-            flush();
-        }
-    };
-
-    // Unified animation callback: drives edge-scroll, fling, etc. via Choreographer
-    private boolean mScrollAnimationActive = false;
-    private final Choreographer.FrameCallback mScrollAnimationCallback = new Choreographer.FrameCallback() {
+    // Unified core animation callback.
+    private boolean mCoreAnimationActive = false;
+    private final Choreographer.FrameCallback mCoreAnimationCallback = new Choreographer.FrameCallback() {
         @Override
         public void doFrame(long frameTimeNanos) {
-            if (!mScrollAnimationActive) return;
+            if (!mCoreAnimationActive) return;
             EditorActionResult result = mEditorCore.tickAnimations();
             dispatchEditorActionResult(result);
-            if (mScrollAnimationActive) {
-                Choreographer.getInstance().postFrameCallback(this);
-            }
+        }
+    };
+    private final Runnable mDelayedCoreAnimationCallback = new Runnable() {
+        @Override
+        public void run() {
+            if (!mCoreAnimationActive) return;
+            Choreographer.getInstance().postFrameCallback(mCoreAnimationCallback);
         }
     };
 
@@ -402,7 +398,7 @@ public class SweetEditor extends View {
             return;
         }
 
-        boolean needsTransientRefresh = mRenderer.render(canvas, model, getWidth(), getHeight(),
+        mRenderer.render(canvas, model, getWidth(), getHeight(),
                 mCursorVisible, animationHolder, buildMs);
 
         if (mCompletionPopupController != null && model.cursor != null && model.cursor.position != null) {
@@ -420,12 +416,6 @@ public class SweetEditor extends View {
                 && model.selectionStartHandle != null
                 && model.selectionEndHandle != null) {
             mSelectionMenuController.updateSelectionHandles(model.selectionStartHandle, model.selectionEndHandle);
-        }
-
-        if (needsTransientRefresh) {
-            scheduleTransientScrollbarRefresh(TRANSIENT_SCROLLBAR_REFRESH_MIN_MS);
-        } else {
-            mHandler.removeCallbacks(mTransientScrollbarRefresh);
         }
 
         if (ENABLE_PERF_LOG) {
@@ -455,9 +445,9 @@ public class SweetEditor extends View {
         super.onDetachedFromWindow();
         mHandler.removeCallbacks(mCursorBlink);
         stopVisualTransition();
-        mHandler.removeCallbacks(mTransientScrollbarRefresh);
-        Choreographer.getInstance().removeFrameCallback(mScrollAnimationCallback);
-        mScrollAnimationActive = false;
+        mHandler.removeCallbacks(mDelayedCoreAnimationCallback);
+        Choreographer.getInstance().removeFrameCallback(mCoreAnimationCallback);
+        mCoreAnimationActive = false;
         if (mSelectionMenuController != null) {
             mSelectionMenuController.dismiss();
         }
@@ -479,9 +469,9 @@ public class SweetEditor extends View {
         } else {
             mHandler.removeCallbacks(mCursorBlink);
             stopVisualTransition();
-            mHandler.removeCallbacks(mTransientScrollbarRefresh);
-            Choreographer.getInstance().removeFrameCallback(mScrollAnimationCallback);
-            mScrollAnimationActive = false;
+            mHandler.removeCallbacks(mDelayedCoreAnimationCallback);
+            Choreographer.getInstance().removeFrameCallback(mCoreAnimationCallback);
+            mCoreAnimationActive = false;
         }
     }
 
@@ -2158,11 +2148,6 @@ public class SweetEditor extends View {
             mSelectionMenuController.dismiss();
         }
 
-        // Drive selection menu state machine
-        if (mSelectionMenuController != null) {
-            mSelectionMenuController.onEditorActionResult(result, actionMasked);
-        }
-
         if (mContextMenuController != null) {
             mContextMenuController.onEditorActionResult(result, locationInEditor);
         }
@@ -2216,7 +2201,14 @@ public class SweetEditor extends View {
             PointF tapPoint = new PointF(result.tapPoint.x, result.tapPoint.y);
             fireGestureEvents(result, tapPoint, motionActionFromGestureEventType(result.gestureEventType));
         }
-        updateAnimationState(result);
+        if (mSelectionMenuController != null
+                && (result.source == EditorActionSource.GESTURE
+                    || result.source == EditorActionSource.ANIMATION)) {
+            mSelectionMenuController.onEditorActionResult(
+                    result,
+                    motionActionFromGestureEventType(result.gestureEventType));
+        }
+        updateAnimationSchedule(result);
         dispatchStateEvents(result);
         if (mInputConnection != null) {
             mInputConnection.onEditorActionResult(result);
@@ -2345,17 +2337,19 @@ public class SweetEditor extends View {
         dispatchEditorActionResult(result);
     }
 
-    private void updateAnimationState(@NonNull EditorActionResult result) {
-        if (result.needsAnimation) {
-            if (!mScrollAnimationActive) {
-                mScrollAnimationActive = true;
-                Choreographer.getInstance().postFrameCallback(mScrollAnimationCallback);
-            }
+    private void updateAnimationSchedule(@NonNull EditorActionResult result) {
+        mHandler.removeCallbacks(mDelayedCoreAnimationCallback);
+        Choreographer.getInstance().removeFrameCallback(mCoreAnimationCallback);
+        if (!result.needsAnimation()) {
+            mCoreAnimationActive = false;
             return;
         }
-        if (mScrollAnimationActive) {
-            mScrollAnimationActive = false;
-            Choreographer.getInstance().removeFrameCallback(mScrollAnimationCallback);
+        mCoreAnimationActive = true;
+        int delayMs = Math.max(0, result.nextAnimationDelayMs);
+        if (delayMs == 0) {
+            Choreographer.getInstance().postFrameCallback(mCoreAnimationCallback);
+        } else {
+            mHandler.postDelayed(mDelayedCoreAnimationCallback, delayMs);
         }
     }
 
@@ -2493,17 +2487,6 @@ public class SweetEditor extends View {
         getLocationOnScreen(mTmpWindowLocation);
         int viewBottom = mTmpWindowLocation[1] + getHeight();
         return Math.max(0, viewBottom - mVisibleWindowFrame.bottom);
-    }
-
-    private void scheduleTransientScrollbarRefresh(int requestedDelayMs) {
-        ScrollbarConfig config = mRenderer.getScrollbarConfig();
-        if (config == null || config.mode != ScrollbarMode.TRANSIENT) {
-            mHandler.removeCallbacks(mTransientScrollbarRefresh);
-            return;
-        }
-        int delayMs = Math.max(TRANSIENT_SCROLLBAR_REFRESH_MIN_MS, requestedDelayMs);
-        mHandler.removeCallbacks(mTransientScrollbarRefresh);
-        mHandler.postDelayed(mTransientScrollbarRefresh, delayMs);
     }
 
     private void resetCursorBlink() {

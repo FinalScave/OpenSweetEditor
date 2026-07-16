@@ -23,7 +23,7 @@ Core 层不涉及 UI 渲染，仅包含桥接、数据模型和协议编解码�
 | 逻辑分类 | 必须包含的类型 | 说明 |
 |---|---|---|
 | **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer` | 原生桥接 + 公共核心 API 封装 |
-| **Action** | `EditorActionResult`, `EditorActionSource`, `TextChangeKind`, `ScrollBehavior` | Core action 结果与相关枚举；`EditorActionResult` 是变更类 core API 的统一结果载体 |
+| **Action** | `EditorActionResult`, `EditorActionSource`, `TextChangeKind`, `ScrollBehavior`, `AnimationFlag` | Core action 结果与相关枚举；`EditorActionResult` 是变更类 core API 的统一结果载体 |
 | **Config** | `EditorOptions`, `HandleConfig`, `HandleHitArea`, `ScrollbarConfig`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollbarMode`, `ScrollbarTrackTapMode`, `EditorRenderColors`, `EditorRangeEffectStyles`, `RangeEffectStyle`, `RangeEffectUnderlineStyle` | 运行时、构造与编辑器渲染样式协议类型 |
 | **Foundation** | `TextPosition`, `TextRange`, `TextEdit`, `IntRange`, `TextChange`, `PointF`, `Size`, `Rect` | 基础值类型与几何载体 |
 | **Interaction** | `GestureEvent`, `GestureType`, `EventType`, `HitTarget`, `HitTargetType` | 输入与命中测试协议类型 |
@@ -538,7 +538,7 @@ Provider 返回空列表时实现 MAY 不显示选区菜单；Provider SHOULD �
 
 > 所有 setter 调用后 MUST 立即生效，并将 core 返回的 `EditorActionResult` 交给统一结果分发入口处理。
 >
-> 典型影响仅用于说明宿主可预期的语义，不是接入层判断 flush、repaint 或 relayout 的依据。是否重建 render model、刷新 IME 状态、触发动画或重绘，MUST 由 `EditorActionResult` 的 `needsRedraw`、`needsImeSync`、`needsAnimation` 等字段决定。
+> 典型影响仅用于说明宿主可预期的语义，不是接入层判断 flush、repaint 或 relayout 的依据。是否重建 render model、刷新 IME 状态、触发动画或重绘，MUST 由 `EditorActionResult` 的 `needsRedraw`、`needsImeSync`、`animationFlags` 和 `nextAnimationDelayMs` 等字段决定。
 >
 > 典型影响说明：
 > - `repaint`：通常只影响视觉刷新，不要求文本重新布局。
@@ -662,10 +662,11 @@ ContextMenuEvent      // 具有显式上下文菜单手势入口的目标
 | `tapPoint` | `PointF` | **MUST** | 手势命中的 editor 本地坐标 |
 | `hitTarget` | `HitTargetType` + 与宿主对齐的 payload | **MUST** | 当前手势位置的命中测试结果 |
 | `pointerCursorAfter` / `pointerCursorChanged` | `PointerCursorType` / boolean | 桌面端或具备 mouse / hover 输入的目标 **MUST**，纯触摸目标 **MAY** | 当前鼠标位置对应的指针样式提示，以及是否需要更新宿主鼠标形状 |
-| `needsEdgeScroll` / `needsFling` / `needsAnimation` | boolean | **MUST** | 边缘滚动与惯性滚动状态，以及统一动画调度标记；实现只根据 `needsAnimation` 调度 tick |
+| `animationFlags` | `AnimationFlag` 位集合 | **MUST** | Core 当前仍活动的动画原因，包括 `EDGE_SCROLL`、`FLING`、`TRANSIENT_SCROLLBAR`；值为 `0` 时停止调度 |
+| `nextAnimationDelayMs` | u32 | **MUST** | 下一次动画 tick 的延迟；`0` 表示下一次显示帧，大于 `0` 表示延迟唤醒 |
 | `isHandleDrag` | boolean | 移动端 **SHOULD** | 当前手势是否为选择手柄拖拽 |
 
-> 这些字段 MUST 按自身语义独立消费，不能依赖 `needsRedraw` 顺带生效。桌面或具备 mouse / hover 输入的实现 SHOULD 在 `pointerCursorChanged` 为 true 时立即应用 `pointerCursorAfter`，即使本次 result 不需要重绘；接入层也 MUST 根据 `needsAnimation` 启动或停止 animation tick，不能等待下一次 render model rebuild。纯触摸且没有鼠标指针概念的实现 MAY 完全忽略鼠标形状变化。
+> 这些字段 MUST 按自身语义独立消费，不能依赖 `needsRedraw` 顺带生效。接入层 MUST 在 `animationFlags != 0` 时按照 `nextAnimationDelayMs` 安排下一次 tick，并在 flags 变为 `0` 时停止。选择菜单或“视口运动结束”逻辑只能检查 `EDGE_SCROLL | FLING`，不能把纯视觉的 `TRANSIENT_SCROLLBAR` 当作手势仍在运动。桌面或具备 mouse / hover 输入的实现 SHOULD 在 `pointerCursorChanged` 为 true 时立即应用 `pointerCursorAfter`，即使本次 result 不需要重绘。纯触摸且没有鼠标指针概念的实现 MAY 完全忽略鼠标形状变化。
 
 ### 11.5 ContextMenu 标准契约
 

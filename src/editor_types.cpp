@@ -22,6 +22,41 @@ namespace NS_SWEETEDITOR {
     return dx >= left && dx <= right && dy >= top && dy <= bottom;
   }
 
+  bool HandleHitArea::operator==(const HandleHitArea& other) const {
+    return left == other.left
+        && top == other.top
+        && right == other.right
+        && bottom == other.bottom;
+  }
+
+  bool HandleHitArea::operator!=(const HandleHitArea& other) const {
+    return !(*this == other);
+  }
+
+  bool HandleConfig::operator==(const HandleConfig& other) const {
+    return start_hit_area == other.start_hit_area
+        && end_hit_area == other.end_hit_area;
+  }
+
+  bool HandleConfig::operator!=(const HandleConfig& other) const {
+    return !(*this == other);
+  }
+
+  bool ScrollbarConfig::operator==(const ScrollbarConfig& other) const {
+    return thickness == other.thickness
+        && min_thumb == other.min_thumb
+        && thumb_hit_padding == other.thumb_hit_padding
+        && mode == other.mode
+        && thumb_draggable == other.thumb_draggable
+        && track_tap_mode == other.track_tap_mode
+        && fade_delay_ms == other.fade_delay_ms
+        && fade_duration_ms == other.fade_duration_ms;
+  }
+
+  bool ScrollbarConfig::operator!=(const ScrollbarConfig& other) const {
+    return !(*this == other);
+  }
+
   bool TextEditResult::contentChanged() const {
     return !changes.empty();
   }

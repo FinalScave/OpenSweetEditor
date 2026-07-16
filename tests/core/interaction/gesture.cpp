@@ -1,9 +1,53 @@
 #include <catch2/catch_amalgamated.hpp>
 #include <chrono>
 #include <thread>
+#include <sweeteditor/editor_types.h>
 #include <sweeteditor/gesture.h>
 
 using namespace NS_SWEETEDITOR;
+
+TEST_CASE("EventType helpers classify primary pointer events") {
+  CHECK(isMousePointerEvent(EventType::MOUSE_DOWN));
+  CHECK(isMousePointerEvent(EventType::MOUSE_WHEEL));
+  CHECK_FALSE(isMousePointerEvent(EventType::TOUCH_DOWN));
+
+  CHECK(isPrimaryPointerDown(EventType::TOUCH_DOWN));
+  CHECK(isPrimaryPointerDown(EventType::MOUSE_DOWN));
+  CHECK_FALSE(isPrimaryPointerDown(EventType::TOUCH_POINTER_DOWN));
+
+  CHECK(isPrimaryPointerMove(EventType::TOUCH_MOVE));
+  CHECK(isPrimaryPointerMove(EventType::MOUSE_MOVE));
+  CHECK_FALSE(isPrimaryPointerMove(EventType::DIRECT_SCROLL));
+
+  CHECK(isPrimaryPointerEnd(EventType::TOUCH_UP));
+  CHECK(isPrimaryPointerEnd(EventType::MOUSE_UP));
+  CHECK(isPrimaryPointerEnd(EventType::TOUCH_CANCEL));
+  CHECK_FALSE(isPrimaryPointerEnd(EventType::TOUCH_POINTER_UP));
+}
+
+TEST_CASE("Interaction value types compare all fields") {
+  HandleConfig handle;
+  HandleConfig changed_handle = handle;
+  CHECK(handle == changed_handle);
+  changed_handle.end_hit_area.right += 1.0f;
+  CHECK(handle != changed_handle);
+
+  ScrollbarConfig scrollbar;
+  ScrollbarConfig changed_scrollbar = scrollbar;
+  CHECK(scrollbar == changed_scrollbar);
+  changed_scrollbar.fade_duration_ms += 1;
+  CHECK(scrollbar != changed_scrollbar);
+
+  HitTarget target;
+  target.type = HitTargetType::CODELENS;
+  target.line = 3;
+  target.column = 4;
+  target.icon_id = 5;
+  HitTarget changed_target = target;
+  CHECK(target == changed_target);
+  changed_target.icon_id += 1;
+  CHECK(target != changed_target);
+}
 
 TEST_CASE("GestureHandler maps wheel modifiers to scale and horizontal scroll") {
   GestureHandler handler(TouchConfig {});

@@ -38,9 +38,10 @@ namespace NS_SWEETEDITOR {
     bool decoration_changed {false};
     bool needs_ime_sync {false};
 
-    bool needs_edge_scroll {false};
-    bool needs_fling {false};
-    bool needs_animation {false};
+    /// AnimationFlag bit set describing active core-managed animations.
+    uint32_t animation_flags {0};
+    /// Delay before the next animation tick; zero requests the next display frame.
+    uint32_t next_animation_delay_ms {0};
     bool is_handle_drag {false};
 
     Vector<TextChange> changes;
@@ -75,6 +76,19 @@ namespace NS_SWEETEDITOR {
     KeyModifier modifiers {KeyModifier::NONE};
     SE_PROTOCOL_WIRE(i32)
     EditorCommandId command {0};
+
+    bool hasAnimationFlag(AnimationFlag flag) const {
+      return (animation_flags & static_cast<uint32_t>(flag)) != 0;
+    }
+
+    bool needsAnimation() const {
+      return animation_flags != 0;
+    }
+
+    bool needsViewportMotion() const {
+      return hasAnimationFlag(AnimationFlag::EDGE_SCROLL)
+          || hasAnimationFlag(AnimationFlag::FLING);
+    }
   };
 
   /// Editor core class
@@ -198,9 +212,9 @@ namespace NS_SWEETEDITOR {
     /// @return Editor state changes caused by pointer presentation refresh
     EditorActionResult updatePointerModifiers(KeyModifier modifiers);
 
-    /// Unified animation tick: advances all active animations (edge-scroll, fling).
-    /// Platform can use a single frame callback driven by needs_animation and call this.
-    /// @return Updated gesture result with needs_animation reflecting whether any animation is still active
+    /// Unified animation tick for all core-managed animation flags.
+    /// Platform schedules the next call from animation_flags and next_animation_delay_ms.
+    /// @return Updated action result with the next animation schedule
     EditorActionResult tickAnimations();
 
     /// Immediately stop any active fling animation
@@ -810,21 +824,22 @@ namespace NS_SWEETEDITOR {
     void clearPressHitTarget();
     HitTarget getActiveHitTarget() const;
     PointerProbeResult probePointer(const PointF& point, KeyModifier modifiers) const;
-    void finalizeGestureResult(GestureResult& result) const;
+    bool updatePointerHitTargetLifecycle(const GestureEvent& event,
+                                         const HitTarget& primary_hot_target);
     ActionSnapshot captureActionSnapshot() const;
     EditorActionResult finishAction(const ActionSnapshot& before,
                                     EditorActionSource source,
                                     bool handled,
                                     TextEditResult edit_result = {},
                                     bool force_redraw = false,
-                                    bool decoration_changed = false) const;
-    EditorActionResult finishGestureAction(const ActionSnapshot& before,
-                                           GestureResult gesture_result,
-                                           EditorActionSource source,
-                                           EventType event_type = EventType::UNDEFINED,
-                                           bool decoration_changed = false) const;
+                                    bool decoration_changed = false);
+    EditorActionResult finishInteractionAction(const ActionSnapshot& before,
+                                               InteractionResult interaction_result,
+                                               EditorActionSource source,
+                                               EventType event_type = EventType::UNDEFINED,
+                                               bool decoration_changed = false);
     EditorActionResult finishImeAction(const ActionSnapshot& before,
-                                       const ImeActionResult& ime_result) const;
+                                       const ImeActionResult& ime_result);
     void normalizeScrollState();
 
     /// Linked editing: apply synced replace to all linked ranges in current tab stop, return all changes

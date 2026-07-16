@@ -588,7 +588,7 @@ Extra:
   Integration layer dispatches EditorActionResult through one path
         │  · emit text events from changes/contentChanged
         │  · synchronize IME state from needsImeSync
-        │  · drive animation ticks from needsAnimation
+        │  · schedule animation ticks from animationFlags / nextAnimationDelayMs
         │  · refresh render model from needsRedraw
         │
         ▼

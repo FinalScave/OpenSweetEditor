@@ -310,9 +310,8 @@ EDITOR_API const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size
 ///   bool_i32 composition_changed
 ///   bool_i32 decoration_changed
 ///   bool_i32 needs_ime_sync
-///   bool_i32 needs_edge_scroll
-///   bool_i32 needs_fling
-///   bool_i32 needs_animation
+///   u32 animation_flags
+///   u32 next_animation_delay_ms
 ///   bool_i32 is_handle_drag
 ///   List<TextChange> changes
 ///   TextPosition cursor_before
@@ -336,6 +335,9 @@ EDITOR_API const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size
 ///   HitTarget hit_target
 ///   enum_i32 modifiers
 ///   enum_i32 command
+///   animation_flags is a bit set: 1=EDGE_SCROLL, 2=FLING, 4=TRANSIENT_SCROLLBAR
+///   when animation_flags is nonzero, next_animation_delay_ms=0 requests the next display frame
+///   and a positive value requests editor_tick_animations after that delay
 ///   TextChange is TextRange range followed by U8String new_text
 ///   ImeSyncSnapshot is TextPosition cursor, TextRange selection, bool_i32 has_selection, bool_i32 has_preedit_range, TextRange preedit_range, bool_i32 has_system_mark_range, TextRange system_mark_range, enum_i32 context_policy, bool_i32 clear_system_mark
 ///   HitTarget is enum_i32 type, i32 line, i32 column, i32 icon_id, i32 color_value
@@ -360,10 +362,10 @@ EDITOR_API const uint8_t* editor_handle_gesture_event(intptr_t editor_handle, co
 /// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_update_pointer_modifiers(intptr_t editor_handle, uint8_t modifiers, size_t* out_size);
 
-/// Unified animation tick: advances all active animations (edge-scroll, fling).
-/// Platform should use a single frame callback driven by needs_animation and call this.
+/// Unified animation tick for all core-managed animation flags.
+/// Platform schedules the next call from animation_flags and next_animation_delay_ms.
 /// Returns the same EditorActionResult binary layout as editor_handle_gesture_event.
-/// When needs_animation becomes false in the returned payload, stop the callback.
+/// When animation_flags becomes zero in the returned payload, stop scheduling.
 /// @return EditorActionResult binary payload
 EDITOR_API const uint8_t* editor_tick_animations(intptr_t editor_handle, size_t* out_size);
 

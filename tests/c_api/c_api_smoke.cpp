@@ -165,6 +165,8 @@ namespace {
     int32_t handled = 0;
     int32_t source = 0;
     int32_t text_change_kind = 0;
+    uint32_t animation_flags = 0;
+    uint32_t next_animation_delay_ms = 0;
     int32_t gesture_type = 0;
     float view_scale = 1.0f;
   };
@@ -181,6 +183,12 @@ namespace {
       offset += sizeof(int32_t);
       return true;
     };
+    auto readU32 = [&](uint32_t& out) -> bool {
+      if (offset + sizeof(uint32_t) > size) return false;
+      std::memcpy(&out, data + offset, sizeof(uint32_t));
+      offset += sizeof(uint32_t);
+      return true;
+    };
     auto readF32 = [&](float& out) -> bool {
       if (offset + sizeof(float) > size) return false;
       std::memcpy(&out, data + offset, sizeof(float));
@@ -193,9 +201,12 @@ namespace {
     if (!readI32(ignore_i32)) return payload;
     if (!readI32(payload.source)) return payload;
     if (!readI32(payload.text_change_kind)) return payload;
-    for (int i = 0; i < 13; ++i) {
+    for (int i = 0; i < 9; ++i) {
       if (!readI32(ignore_i32)) return payload;
     }
+    if (!readU32(payload.animation_flags)) return payload;
+    if (!readU32(payload.next_animation_delay_ms)) return payload;
+    if (!readI32(ignore_i32)) return payload;
     int32_t change_count = 0;
     if (!readI32(change_count)) return payload;
     for (int32_t i = 0; i < change_count; ++i) {

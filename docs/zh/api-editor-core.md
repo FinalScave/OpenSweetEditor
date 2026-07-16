@@ -83,9 +83,8 @@ bool_i32 pointer_cursor_changed
 bool_i32 composition_changed
 bool_i32 decoration_changed
 bool_i32 needs_ime_sync
-bool_i32 needs_edge_scroll
-bool_i32 needs_fling
-bool_i32 needs_animation
+u32 animation_flags
+u32 next_animation_delay_ms
 bool_i32 is_handle_drag
 List<TextChange> changes
 TextPosition cursor_before
@@ -112,6 +111,8 @@ enum_i32 command
 ```
 
 `TextChange` 为 `TextRange range, U8String new_text`。`HitTarget` 为 `enum_i32 type, i32 line, i32 column, i32 icon_id, i32 color_value`。
+
+`animation_flags` 是 `AnimationFlag` 位集合：`EDGE_SCROLL=1`、`FLING=2`、`TRANSIENT_SCROLLBAR=4`。值为 `0` 时停止调度；非零时，`next_animation_delay_ms=0` 表示下一次垂直同步继续 tick，大于 `0` 表示延迟指定毫秒后再次调用 `editor_tick_animations`。
 
 ### `EditorRenderModel`
 

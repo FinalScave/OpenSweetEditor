@@ -21,7 +21,6 @@ import com.qiplat.sweeteditor.core.adornment.TextStyle;
 import com.qiplat.sweeteditor.core.config.CurrentLineRenderMode;
 import com.qiplat.sweeteditor.core.config.HandleHitArea;
 import com.qiplat.sweeteditor.core.foundation.Rect;
-import com.qiplat.sweeteditor.core.config.ScrollbarMode;
 import com.qiplat.sweeteditor.core.visual.*;
 import com.qiplat.sweeteditor.perf.MeasurePerfStats;
 import com.qiplat.sweeteditor.perf.PerfOverlay;
@@ -307,12 +306,10 @@ final class EditorRenderer {
 
     /**
      * Render the editor content onto the canvas.
-     *
-     * @return true if transient scrollbar refresh should be scheduled
      */
-    public boolean render(@NonNull Canvas canvas, @NonNull EditorRenderModel model,
-                          int viewWidth, int viewHeight,
-                          boolean cursorVisible, AnimationHolder animationHolder, float buildMs) {
+    public void render(@NonNull Canvas canvas, @NonNull EditorRenderModel model,
+                       int viewWidth, int viewHeight,
+                       boolean cursorVisible, AnimationHolder animationHolder, float buildMs) {
         PerfStepRecorder drawPerf = mPerfOverlay.isEnabled() ? PerfStepRecorder.start() : null;
 
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_BUILD);
@@ -353,7 +350,7 @@ final class EditorRenderer {
         drawSelectionHandles(canvas, model.selectionStartHandle, model.selectionEndHandle);
         if (drawPerf != null) drawPerf.mark(PerfStepRecorder.STEP_HANDLES);
 
-        boolean needsTransientRefresh = drawScrollbars(canvas, model);
+        drawScrollbars(canvas, model);
         if (drawPerf != null) {
             drawPerf.mark(PerfStepRecorder.STEP_SCROLLBARS);
             drawPerf.finish();
@@ -366,7 +363,6 @@ final class EditorRenderer {
             mPerfOverlay.draw(canvas, viewWidth);
         }
 
-        return needsTransientRefresh;
     }
 
     private void drawLines(Canvas canvas, EditorRenderModel model) {
@@ -747,10 +743,7 @@ final class EditorRenderer {
         return color;
     }
 
-    /**
-     * @return true if transient scrollbar refresh should be scheduled
-     */
-    private boolean drawScrollbars(Canvas canvas, EditorRenderModel model) {
+    private void drawScrollbars(Canvas canvas, EditorRenderModel model) {
         ScrollbarModel vertical = model.verticalScrollbar;
         ScrollbarModel horizontal = model.horizontalScrollbar;
         float verticalAlpha = getScrollbarAlpha(vertical);
@@ -758,7 +751,7 @@ final class EditorRenderer {
         boolean hasVertical = isDrawableScrollbar(vertical, verticalAlpha);
         boolean hasHorizontal = isDrawableScrollbar(horizontal, horizontalAlpha);
         if (!hasVertical && !hasHorizontal) {
-            return false;
+            return;
         }
 
         float verticalTrackX = 0f;
@@ -804,7 +797,6 @@ final class EditorRenderer {
                     mScrollbarTrackPaint);
         }
 
-        return mScrollbarConfig != null && mScrollbarConfig.mode == ScrollbarMode.TRANSIENT;
     }
 
     private void drawCursor(Canvas canvas, @Nullable Cursor cursor, boolean cursorVisible, AnimationHolder animationHolder) {

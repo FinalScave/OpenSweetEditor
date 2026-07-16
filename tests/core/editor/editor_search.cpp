@@ -2,6 +2,7 @@
 #include <sweeteditor/editor_core.h>
 #include <sweeteditor/document.h>
 #include "test_measurer.h"
+#include "test_text_helpers.h"
 
 using namespace NS_SWEETEDITOR;
 
@@ -175,4 +176,32 @@ TEST_CASE("EditorCore search reports invalid regex failures") {
   CHECK(state.status == SearchStatus::FAILED);
   CHECK(state.match_count == 0);
   CHECK_FALSE(state.error_message.empty());
+}
+
+TEST_CASE("EditorCore search preserves active animation schedule") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  ScrollbarConfig scrollbar;
+  scrollbar.mode = ScrollbarMode::TRANSIENT;
+  scrollbar.fade_delay_ms = 1000;
+  scrollbar.fade_duration_ms = 1000;
+  editor.setScrollbarConfig(scrollbar);
+  editor.loadDocument(
+      makeShared<LineArrayDocument>(makeRepeatedLines(120, "needle")));
+  editor.setViewport({120, 80});
+
+  GestureEvent wheel;
+  wheel.type = EventType::MOUSE_WHEEL;
+  wheel.wheel_delta_y = -24.0f;
+  const EditorActionResult started = editor.handleGestureEvent(wheel);
+  REQUIRE(started.hasAnimationFlag(AnimationFlag::TRANSIENT_SCROLLBAR));
+
+  SearchRequest request;
+  request.pattern = "needle";
+  const EditorActionResult searched = editor.search(request);
+
+  CHECK(searched.source == EditorActionSource::SEARCH);
+  CHECK(searched.handled);
+  CHECK(searched.hasAnimationFlag(AnimationFlag::TRANSIENT_SCROLLBAR));
 }

@@ -1,5 +1,6 @@
 package com.qiplat.sweeteditor.core;
 
+import com.qiplat.sweeteditor.core.action.AnimationFlag;
 import com.qiplat.sweeteditor.core.action.EditorActionResult;
 import com.qiplat.sweeteditor.core.action.EditorActionSource;
 import com.qiplat.sweeteditor.core.action.ScrollBehavior;
@@ -759,9 +760,8 @@ public final class CoreProtocol {
         value.compositionChanged = reader.readInt32() != 0;
         value.decorationChanged = reader.readInt32() != 0;
         value.needsImeSync = reader.readInt32() != 0;
-        value.needsEdgeScroll = reader.readInt32() != 0;
-        value.needsFling = reader.readInt32() != 0;
-        value.needsAnimation = reader.readInt32() != 0;
+        value.animationFlags = reader.readInt32();
+        value.nextAnimationDelayMs = reader.readInt32();
         value.isHandleDrag = reader.readInt32() != 0;
         value.changes = readTextChangeList(reader);
         value.cursorBefore = readTextPosition(reader);
