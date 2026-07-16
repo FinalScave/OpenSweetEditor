@@ -71,10 +71,14 @@ function(sweeteditor_platform_add_extra_targets)
             _editor_set_content_start_padding
             _editor_set_show_split_line
             _editor_set_current_line_render_mode
+            _editor_set_render_whitespace
+            _editor_set_render_line_breaks
             _editor_set_gutter_sticky
             _editor_set_gutter_visible
             _editor_set_handle_config
             _editor_set_scrollbar_config
+            _editor_set_editor_render_colors
+            _editor_set_editor_range_effect_styles
             _editor_build_render_model
             _editor_get_layout_metrics
             _editor_handle_gesture_event
@@ -85,6 +89,7 @@ function(sweeteditor_platform_add_extra_targets)
             _editor_insert_text
             _editor_replace_text
             _editor_delete_text
+            _editor_apply_text_edits
             _editor_backspace
             _editor_delete_forward
             _editor_move_line_up
@@ -98,6 +103,13 @@ function(sweeteditor_platform_add_extra_targets)
             _editor_redo
             _editor_can_undo
             _editor_can_redo
+            _editor_search
+            _editor_find_next_search_match
+            _editor_find_previous_search_match
+            _editor_replace_current_search_match
+            _editor_replace_all_search_matches
+            _editor_clear_search
+            _editor_get_search_state
             _editor_set_cursor_position
             _editor_get_cursor_position
             _editor_select_all
@@ -149,6 +161,9 @@ function(sweeteditor_platform_add_extra_targets)
             _editor_set_line_diagnostics
             _editor_set_batch_line_diagnostics
             _editor_clear_diagnostics
+            _editor_set_line_document_highlights
+            _editor_set_batch_line_document_highlights
+            _editor_clear_document_highlights
             _editor_set_indent_guides
             _editor_set_bracket_guides
             _editor_set_flow_guides
@@ -176,9 +191,6 @@ function(sweeteditor_platform_add_extra_targets)
             _editor_linked_editing_next
             _editor_linked_editing_prev
             _editor_cancel_linked_editing
-            _free_u16_string
-            _free_u8_string
-            _free_binary_data
             _editor_ime_has_preedit
             _editor_ime_handle_command_message
             _editor_ime_handle_text_update_message
@@ -186,6 +198,9 @@ function(sweeteditor_platform_add_extra_targets)
             _editor_ime_get_sync_snapshot
             _editor_ime_get_command_input_context
             _editor_ime_get_text_update_input_context
+            _free_u16_string
+            _free_u8_string
+            _free_binary_data
     )
 
     set(WASM_C_ABI_RUNTIME_METHODS
