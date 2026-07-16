@@ -178,7 +178,7 @@ export interface RangeEffectStyle {
 }
 
 export class ScrollbarConfig {
-  thickness: number = 10.0;
+  thickness: number = 12.0;
   minThumb: number = 24.0;
   thumbHitPadding: number = 0.0;
   mode: ScrollbarMode = ScrollbarMode.ALWAYS;

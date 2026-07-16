@@ -1,7 +1,7 @@
 package com.qiplat.sweeteditor.core.config;
 
 public final class ScrollbarConfig {
-    public float thickness = 10.0f;
+    public float thickness = 12.0f;
     public float minThumb = 24.0f;
     public float thumbHitPadding = 0.0f;
     public ScrollbarMode mode = ScrollbarMode.ALWAYS;

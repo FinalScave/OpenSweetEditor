@@ -3006,7 +3006,7 @@
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
           "line": 206,
-          "default": "10.0f"
+          "default": "12.0f"
         },
         {
           "name": "min_thumb",

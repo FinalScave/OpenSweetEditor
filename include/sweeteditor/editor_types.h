@@ -203,7 +203,7 @@ namespace NS_SWEETEDITOR {
   /// Scrollbar configuration (geometry + interaction behavior)
   struct SE_PROTOCOL_IN(config) ScrollbarConfig {
     /// Scrollbar track/thumb thickness in pixels
-    float thickness {10.0f};
+    float thickness {12.0f};
     /// Minimum thumb length in pixels
     float min_thumb {24.0f};
     /// Extra thumb hit-test padding in pixels (applied on all sides)

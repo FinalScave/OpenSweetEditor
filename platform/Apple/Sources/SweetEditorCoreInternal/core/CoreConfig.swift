@@ -237,7 +237,7 @@ public struct RangeEffectStyle {
 }
 
 public struct ScrollbarConfig {
-    public var thickness: Float = 10.0
+    public var thickness: Float = 12.0
     public var min_thumb: Float = 24.0
     public var thumb_hit_padding: Float = 0.0
     public var mode: ScrollbarMode = .ALWAYS
@@ -246,7 +246,7 @@ public struct ScrollbarConfig {
     public var fade_delay_ms: Int32 = 700
     public var fade_duration_ms: Int32 = 300
 
-    public init(thickness: Float = 10.0, min_thumb: Float = 24.0, thumb_hit_padding: Float = 0.0, mode: ScrollbarMode = .ALWAYS, thumb_draggable: Bool = true, track_tap_mode: ScrollbarTrackTapMode = .JUMP, fade_delay_ms: Int32 = 700, fade_duration_ms: Int32 = 300) {
+    public init(thickness: Float = 12.0, min_thumb: Float = 24.0, thumb_hit_padding: Float = 0.0, mode: ScrollbarMode = .ALWAYS, thumb_draggable: Bool = true, track_tap_mode: ScrollbarTrackTapMode = .JUMP, fade_delay_ms: Int32 = 700, fade_duration_ms: Int32 = 300) {
         self.thickness = thickness
         self.min_thumb = min_thumb
         self.thumb_hit_padding = thumb_hit_padding

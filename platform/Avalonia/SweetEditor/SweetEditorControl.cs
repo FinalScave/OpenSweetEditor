@@ -3277,8 +3277,8 @@ namespace SweetEditor {
 			}
 
 			editorCore.SetScrollbarConfig(new ScrollbarConfig {
-				// Align closer to Android demo geometry for finger drag usability.
-				Thickness = 7.0f,
+				// Match Android scrollbar thickness while retaining the Avalonia touch hit area.
+				Thickness = 5.0f,
 				MinThumb = 40.0f,
 				ThumbHitPadding = 16.0f,
 				Mode = ScrollbarMode.TRANSIENT,

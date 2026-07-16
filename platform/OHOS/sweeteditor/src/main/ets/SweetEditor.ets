@@ -587,7 +587,7 @@ export struct SweetEditor {
     this.renderer.attachCanvasContext(ctx);
 
     const scrollbarConfig = new ScrollbarConfig();
-    scrollbarConfig.thickness = 8.0;
+    scrollbarConfig.thickness = 5.0;
     scrollbarConfig.minThumb = 40.0;
     scrollbarConfig.thumbHitPadding = 20.0;
     scrollbarConfig.mode = ScrollbarMode.TRANSIENT;

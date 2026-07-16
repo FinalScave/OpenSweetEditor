@@ -1,7 +1,7 @@
 import SweetEditorCoreInternal
 
 struct IOSScrollbarPolicy {
-    let defaultThickness: Float = 8.0
+    let defaultThickness: Float = 5.0
     let defaultMinThumb: Float = 48.0
     let defaultThumbHitPadding: Float = 16.0
 

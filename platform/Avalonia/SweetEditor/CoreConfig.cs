@@ -111,7 +111,7 @@ namespace SweetEditor {
     }
 
     public sealed partial class ScrollbarConfig {
-        public float Thickness { get; set; } = 10.0f;
+        public float Thickness { get; set; } = 12.0f;
         public float MinThumb { get; set; } = 24.0f;
         public float ThumbHitPadding { get; set; } = 0.0f;
         public ScrollbarMode Mode { get; set; } = ScrollbarMode.ALWAYS;

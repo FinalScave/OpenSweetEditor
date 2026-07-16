@@ -126,7 +126,7 @@ public extension TextChange {
 }
 
 public extension ScrollbarConfig {
-    init(thickness: Float = 10.0,
+    init(thickness: Float = 12.0,
          minThumb: Float = 24.0,
          thumbHitPadding: Float = 0.0,
          mode: ScrollbarMode = .ALWAYS,

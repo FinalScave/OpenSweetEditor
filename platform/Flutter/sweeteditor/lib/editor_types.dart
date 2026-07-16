@@ -114,6 +114,9 @@ class EditorTheme {
 
   static EditorTheme dark() {
     final theme = EditorTheme();
+    theme.scrollbarTrackColor = 0x2AFFFFFF;
+    theme.scrollbarThumbColor = 0x9A7282A0;
+    theme.scrollbarThumbActiveColor = 0xFFAABEDD;
     theme.textStyles = {
       styleKeyword: const core.TextStyle(color: 0xFF7AA2F7, fontStyle: 1),
       styleString: const core.TextStyle(color: 0xFF9ECE6A),

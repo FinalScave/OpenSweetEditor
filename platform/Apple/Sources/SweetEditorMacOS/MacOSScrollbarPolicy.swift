@@ -16,7 +16,7 @@ struct MacOSScrollbarPolicy {
         switch scrollerStyle {
         case .legacy:
             return ScrollbarConfig(
-                thickness: 10.0,
+                thickness: 12.0,
                 minThumb: 24.0,
                 thumbHitPadding: 0.0,
                 mode: .ALWAYS,
@@ -27,10 +27,10 @@ struct MacOSScrollbarPolicy {
             )
         case .overlay:
             return ScrollbarConfig(
-                thickness: 8.0,
+                thickness: 12.0,
                 minThumb: 48.0,
                 thumbHitPadding: 16.0,
-                mode: .TRANSIENT,
+                mode: .ALWAYS,
                 thumbDraggable: true,
                 trackTapMode: .DISABLED,
                 fadeDelayMs: 700,
@@ -38,10 +38,10 @@ struct MacOSScrollbarPolicy {
             )
         @unknown default:
             return ScrollbarConfig(
-                thickness: 8.0,
+                thickness: 12.0,
                 minThumb: 48.0,
                 thumbHitPadding: 16.0,
-                mode: .TRANSIENT,
+                mode: .ALWAYS,
                 thumbDraggable: true,
                 trackTapMode: .DISABLED,
                 fadeDelayMs: 700,

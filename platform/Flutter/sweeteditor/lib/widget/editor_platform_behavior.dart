@@ -155,10 +155,12 @@ class EditorPlatformBehavior {
     required bool isMobileStyle,
   }) {
     return core.ScrollbarConfig(
-      thickness: isMobileStyle ? 8.0 : 6.0,
+      thickness: isMobileStyle ? 5.0 : 12.0,
       minThumb: isMobileStyle ? 40.0 : 32.0,
       thumbHitPadding: isMobileStyle ? 20.0 : 0.0,
-      mode: core.ScrollbarMode.transient,
+      mode: isMobileStyle
+          ? core.ScrollbarMode.transient
+          : core.ScrollbarMode.always,
       thumbDraggable: true,
       trackTapMode: core.ScrollbarTrackTapMode.disabled,
       fadeDelayMs: 700,

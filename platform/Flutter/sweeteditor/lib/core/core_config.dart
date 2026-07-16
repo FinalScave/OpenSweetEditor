@@ -264,7 +264,7 @@ class RangeEffectStyle {
 
 class ScrollbarConfig {
   const ScrollbarConfig({
-    this.thickness = 10.0,
+    this.thickness = 12.0,
     this.minThumb = 24.0,
     this.thumbHitPadding = 0.0,
     this.mode = ScrollbarMode.always,
