@@ -583,7 +583,8 @@ namespace Demo {
 				DecorationType.InlayHint |
 				DecorationType.PhantomText |
 				DecorationType.Diagnostic |
-				DecorationType.CodeLens;
+				DecorationType.CodeLens |
+				DecorationType.Link;
 
 			public static bool EnsureSweetLineReady(IReadOnlyList<string> syntaxFiles) {
 				if (highlightEngine != null) {
@@ -667,6 +668,7 @@ namespace Demo {
 				var inlayHints = new Dictionary<int, List<InlayHint>>();
 				var gutterIcons = new Dictionary<int, List<GutterIcon>>();
 				var codeLensItems = new Dictionary<int, List<CodeLensItem>>();
+				var links = new Dictionary<int, List<LinkSpan>>();
 				var indentGuides = new List<IndentGuide>();
 				var foldRegions = new List<FoldRegion>();
 				var separatorGuides = new List<SeparatorGuide>();
@@ -684,7 +686,9 @@ namespace Demo {
 					if (highlightEngine == null) {
 						return new DecorationResult {
 							PhantomTexts = dynamicPhantoms,
-							PhantomTextsMode = DecorationApplyMode.REPLACE_ALL
+							PhantomTextsMode = DecorationApplyMode.REPLACE_ALL,
+							Links = links,
+							LinksMode = DecorationApplyMode.REPLACE_RANGE
 						};
 					}
 
@@ -737,7 +741,9 @@ namespace Demo {
 						SeparatorGuides = separatorGuides,
 						SeparatorGuidesMode = DecorationApplyMode.REPLACE_ALL,
 						GutterIcons = gutterIcons,
-						GutterIconsMode = DecorationApplyMode.REPLACE_ALL
+						GutterIconsMode = DecorationApplyMode.REPLACE_ALL,
+						Links = links,
+						LinksMode = DecorationApplyMode.REPLACE_RANGE
 					};
 				}
 
@@ -753,6 +759,7 @@ namespace Demo {
 						AppendSeparator(separatorGuides, textLines, token);
 						AppendGutterIcons(gutterIcons, textLines, token);
 						AppendCodeLens(codeLensItems, textLines, token);
+						AppendLink(links, textLines, token);
 						firstKeywordRange = AppendDynamicDemoDecorations(
 							dynamicPhantoms,
 							phantomLines,
@@ -808,7 +815,9 @@ namespace Demo {
 					GutterIcons = gutterIcons,
 					GutterIconsMode = DecorationApplyMode.REPLACE_ALL,
 					CodeLensItems = codeLensItems,
-					CodeLensItemsMode = DecorationApplyMode.REPLACE_ALL
+					CodeLensItemsMode = DecorationApplyMode.REPLACE_ALL,
+					Links = links,
+					LinksMode = DecorationApplyMode.REPLACE_RANGE
 				};
 			}
 
@@ -982,6 +991,24 @@ namespace Demo {
 						new(range.StartColumn, "◎ Debug", CodeLensDebug)
 					};
 				}
+			}
+
+			private static void AppendLink(Dictionary<int, List<LinkSpan>> links,
+										   List<string> textLines,
+										   TokenSpan token) {
+				if (token.StyleId != StyleUrl) {
+					return;
+				}
+				TokenRangeInfo? range = ExtractSingleLineTokenRange(token);
+				if (range == null) {
+					return;
+				}
+				string target = GetTokenLiteral(textLines, range);
+				if (string.IsNullOrEmpty(target)) {
+					return;
+				}
+				GetOrCreate(links, range.Line)
+					.Add(new LinkSpan(range.StartColumn, range.Length, target));
 			}
 
 			private static TokenRangeInfo? AppendDynamicDemoDecorations(

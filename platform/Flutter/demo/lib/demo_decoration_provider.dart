@@ -87,6 +87,7 @@ class DemoDecorationProvider implements DecorationProvider {
     DecorationType.separatorGuide,
     DecorationType.gutterIcon,
     DecorationType.codeLens,
+    DecorationType.link,
   };
 
   @override
@@ -96,7 +97,11 @@ class DemoDecorationProvider implements DecorationProvider {
   ) {
     final highlightEngine = _highlightEngine;
     if (highlightEngine == null) {
-      receiver.accept(DecorationResultBuilder().build());
+      receiver.accept(
+        DecorationResultBuilder()
+            .links(<int, List<core.LinkSpan>>{}, ApplyMode.replaceAll)
+            .build(),
+      );
       return;
     }
 
@@ -105,6 +110,7 @@ class DemoDecorationProvider implements DecorationProvider {
     final diagnostics = <int, List<core.Diagnostic>>{};
     final gutterIcons = <int, List<core.GutterIcon>>{};
     final codeLensItems = <int, List<core.CodeLensItem>>{};
+    final links = <int, List<core.LinkSpan>>{};
     final indentGuides = <core.IndentGuide>[];
     final foldRegions = <core.FoldRegion>[];
     final separatorGuides = <core.SeparatorGuide>[];
@@ -143,6 +149,7 @@ class DemoDecorationProvider implements DecorationProvider {
               .separatorGuides(separatorGuides, ApplyMode.replaceAll)
               .gutterIcons(gutterIcons, ApplyMode.replaceAll)
               .codeLensItems(codeLensItems, ApplyMode.replaceAll)
+              .links(links, ApplyMode.replaceAll)
               .build(),
         );
         return;
@@ -180,6 +187,7 @@ class DemoDecorationProvider implements DecorationProvider {
           _appendSeparator(separatorGuides, token, lineTextCache);
           _appendGutterIcons(gutterIcons, token, lineTextCache);
           _appendCodeLens(codeLensItems, token, lineTextCache);
+          _appendLink(links, token, lineTextCache);
           firstKeywordRange = _appendDynamicDemoDecorations(
             diagnostics,
             seenDiagnostics,
@@ -236,6 +244,7 @@ class DemoDecorationProvider implements DecorationProvider {
           .separatorGuides(separatorGuides, applyMode)
           .gutterIcons(gutterIcons, applyMode)
           .codeLensItems(codeLensItems, applyMode)
+          .links(links, applyMode)
           .build(),
     );
   }
@@ -589,6 +598,33 @@ class DemoDecorationProvider implements DecorationProvider {
         ),
       ];
     }
+  }
+
+  void _appendLink(
+    Map<int, List<core.LinkSpan>> links,
+    sweetline.TokenSpan token,
+    _LineTextCache lineTextCache,
+  ) {
+    if (token.styleId != _styleUrl) {
+      return;
+    }
+    final range = _extractSingleLineTokenRange(token);
+    if (range == null) {
+      return;
+    }
+    final target = _getTokenLiteral(range, lineTextCache);
+    if (target.isEmpty) {
+      return;
+    }
+    links
+        .putIfAbsent(range.line, () => [])
+        .add(
+          core.LinkSpan(
+            column: range.startColumn,
+            length: range.length,
+            target: target,
+          ),
+        );
   }
 
   _TokenRangeInfo? _extractSingleLineTokenRange(sweetline.TokenSpan token) {
