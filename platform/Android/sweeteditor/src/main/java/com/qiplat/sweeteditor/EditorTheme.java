@@ -193,7 +193,7 @@ public class EditorTheme {
         t.selectionTextColor        = 0xFFFFFFFF;
         t.lineNumberColor           = 0xFF5E6778;
         t.currentLineNumberColor    = 0xFF9CB3D6;
-        t.currentLineColor          = 0x163A4A66;
+        t.currentLineColor          = 0x503A4A66;
         t.guideColor                = 0x2E56617A;
         t.separatorLineColor        = 0xFF4A8F7A;
         t.splitLineColor            = 0x3356617A;
@@ -270,7 +270,7 @@ public class EditorTheme {
         t.selectionTextColor        = 0xFFFFFFFF;
         t.lineNumberColor           = 0xFF8A94A6;
         t.currentLineNumberColor    = 0xFF3A5FA0;
-        t.currentLineColor          = 0x120D3B66;
+        t.currentLineColor          = 0x1A0D3B66;
         t.guideColor                = 0x2229426B;
         t.separatorLineColor        = 0xFF2F855A;
         t.splitLineColor            = 0x1F29426B;

@@ -61,7 +61,7 @@ class EditorTheme {
   int selectionTextColor = 0xFFFFFFFF;
   int lineNumberColor = 0xFF5E6778;
   int currentLineNumberColor = 0xFF9CB3D6;
-  int currentLineColor = 0x163A4A66;
+  int currentLineColor = 0x503A4A66;
   int guideColor = 0x2E56617A;
   int separatorLineColor = 0xFF4A8F7A;
   int splitLineColor = 0x3356617A;
@@ -147,7 +147,7 @@ class EditorTheme {
       ..selectionTextColor = 0xFFFFFFFF
       ..lineNumberColor = 0xFF8A94A6
       ..currentLineNumberColor = 0xFF3A5FA0
-      ..currentLineColor = 0x120D3B66
+      ..currentLineColor = 0x1A0D3B66
       ..guideColor = 0x2229426B
       ..separatorLineColor = 0xFF2F855A
       ..splitLineColor = 0x1F29426B
