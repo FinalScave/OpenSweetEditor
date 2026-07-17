@@ -1032,7 +1032,7 @@ public:
     if (!writeI32(value.needs_ime_sync ? 1 : 0)) return false;
     if (!writeU32(static_cast<uint32_t>(value.animation_flags))) return false;
     if (!writeU32(static_cast<uint32_t>(value.next_animation_delay_ms))) return false;
-    if (!writeI32(value.is_handle_drag ? 1 : 0)) return false;
+    if (!writeU32(static_cast<uint32_t>(value.interaction_flags))) return false;
     if (!writeList(value.changes)) return false;
     if (!write(value.cursor_before)) return false;
     if (!write(value.cursor_after)) return false;

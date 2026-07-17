@@ -3,6 +3,7 @@ package com.qiplat.sweeteditor.core;
 import com.qiplat.sweeteditor.core.action.AnimationFlag;
 import com.qiplat.sweeteditor.core.action.EditorActionResult;
 import com.qiplat.sweeteditor.core.action.EditorActionSource;
+import com.qiplat.sweeteditor.core.action.InteractionFlag;
 import com.qiplat.sweeteditor.core.action.ScrollBehavior;
 import com.qiplat.sweeteditor.core.action.TextChangeKind;
 import com.qiplat.sweeteditor.core.adornment.BracketGuide;
@@ -665,7 +666,7 @@ public final class CoreProtocol {
         value.needsImeSync = data.getInt() != 0;
         value.animationFlags = data.getInt();
         value.nextAnimationDelayMs = data.getInt();
-        value.isHandleDrag = data.getInt() != 0;
+        value.interactionFlags = data.getInt();
         value.changes = readTextChangeList(data);
         value.cursorBefore = readTextPosition(data);
         value.cursorAfter = readTextPosition(data);

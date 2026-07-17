@@ -255,6 +255,7 @@ TEST_CASE("EditorCore buildRenderModel clears pressed CodeLens when touch moves 
   const EditorActionResult cancel = editor.handleGestureEvent(
       GestureEvent::create(EventType::TOUCH_CANCEL, 0, nullptr));
   CHECK(cancel.handled);
+  CHECK_FALSE(cancel.hasActiveInteraction());
 }
 
 TEST_CASE("EditorCore exposes pointer cursor type for text, CodeLens, gutter and scrollbar") {
@@ -626,7 +627,8 @@ TEST_CASE("EditorCore line-start word selection end handle can cross CodeLens vi
       GestureEvent::create(EventType::TOUCH_DOWN, 1, down_point));
 
   CHECK(down.handled);
-  CHECK(down.is_handle_drag);
+  CHECK(down.hasInteractionFlag(InteractionFlag::PRIMARY_POINTER));
+  CHECK(down.hasInteractionFlag(InteractionFlag::SELECTION_DRAG));
   CHECK(down.has_selection_after);
   CHECK(down.selection_after == (TextRange{{1, 0}, {1, 4}}));
 
@@ -638,12 +640,13 @@ TEST_CASE("EditorCore line-start word selection end handle can cross CodeLens vi
   const EditorActionResult move = editor.handleGestureEvent(
       GestureEvent::create(EventType::TOUCH_MOVE, 1, move_point));
 
-  CHECK(move.is_handle_drag);
+  CHECK(move.hasInteractionFlag(InteractionFlag::PRIMARY_POINTER));
+  CHECK(move.hasInteractionFlag(InteractionFlag::SELECTION_DRAG));
   CHECK(move.has_selection_after);
   CHECK(move.selection_after == (TextRange{{0, 5}, {1, 0}}));
 
   const EditorActionResult up = editor.handleGestureEvent(
       GestureEvent::create(EventType::TOUCH_UP, 1, move_point));
   CHECK(up.handled);
-  CHECK_FALSE(up.is_handle_drag);
+  CHECK_FALSE(up.hasActiveInteraction());
 }

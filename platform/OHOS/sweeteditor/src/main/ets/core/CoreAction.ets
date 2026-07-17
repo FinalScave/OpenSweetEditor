@@ -42,6 +42,13 @@ export function editorActionSourceFromValue(value: number): EditorActionSource {
   }
 }
 
+export class InteractionFlag {
+  static readonly NONE: number = 0;
+  static readonly PRIMARY_POINTER: number = 1;
+  static readonly SELECTION_DRAG: number = 2;
+  static readonly VIEWPORT_GESTURE: number = 4;
+}
+
 export enum ScrollBehavior {
   GOTO_TOP = 0,
   GOTO_CENTER = 1,
@@ -98,7 +105,7 @@ export interface EditorActionResult {
   needsImeSync: boolean;
   animationFlags: number;
   nextAnimationDelayMs: number;
-  isHandleDrag: boolean;
+  interactionFlags: number;
   changes: TextChange[];
   cursorBefore: TextPosition;
   cursorAfter: TextPosition;
@@ -134,4 +141,12 @@ export function needsAnimation(result: EditorActionResult): boolean {
 export function needsViewportMotion(result: EditorActionResult): boolean {
   return hasAnimationFlag(result, AnimationFlag.EDGE_SCROLL) ||
     hasAnimationFlag(result, AnimationFlag.FLING);
+}
+
+export function hasInteractionFlag(result: EditorActionResult, flag: number): boolean {
+  return (result.interactionFlags & flag) !== 0;
+}
+
+export function hasActiveInteraction(result: EditorActionResult): boolean {
+  return result.interactionFlags !== InteractionFlag.NONE;
 }

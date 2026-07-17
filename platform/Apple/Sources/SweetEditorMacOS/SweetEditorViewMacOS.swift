@@ -51,6 +51,8 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
     private var performanceOverlayTimer: Timer?
     private var cursorBlinkTimer: Timer?
     private var animationTimer: Timer?
+    private var directScrollGestureActive = false
+    private var directScaleGestureActive = false
     private var hoverTrackingArea: NSTrackingArea?
     private var scrollbarPolicy = MacOSScrollbarPolicy()
     private var scrollbarHoverController = MacOSScrollbarHoverController()
@@ -632,6 +634,9 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         if window == nil {
+            endDirectGestureSessions()
+            animationTimer?.invalidate()
+            animationTimer = nil
             stopCursorBlink(hideCursor: true)
             return
         }
@@ -648,6 +653,7 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
     }
 
     deinit {
+        endDirectGestureSessions()
         performanceOverlayTimer?.invalidate()
         cursorBlinkTimer?.invalidate()
         animationTimer?.invalidate()
@@ -1082,7 +1088,14 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
 
         let result: EditorActionResult?
         if event.phase != [] || event.momentumPhase != [] {
-            // Trackpad two-finger scroll (continuous)
+            if !directScrollGestureActive {
+                directScrollGestureActive = true
+                dispatchEditorActionResult(editorCore.handleGestureEvent(
+                    type: .directGestureBegin,
+                    points: [(Float(point.x), Float(point.y))],
+                    modifiers: mods
+                ))
+            }
             result = editorCore.handleGestureEvent(
                 type: .directScroll,
                 points: [(Float(point.x), Float(point.y))],
@@ -1090,8 +1103,24 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
                 wheelDeltaX: Float(event.scrollingDeltaX),
                 wheelDeltaY: Float(event.scrollingDeltaY)
             )
+            dispatchEditorActionResult(result)
+            let phaseFinished = event.phase.contains(.ended) || event.phase.contains(.cancelled)
+            let momentumFinished = event.momentumPhase.contains(.ended)
+                || event.momentumPhase.contains(.cancelled)
+            if momentumFinished || (phaseFinished && event.momentumPhase == []) {
+                directScrollGestureActive = false
+                dispatchEditorActionResult(editorCore.handleGestureEvent(
+                    type: .directGestureEnd,
+                    points: [(Float(point.x), Float(point.y))],
+                    modifiers: mods
+                ))
+            }
         } else {
-            // Mouse scroll wheel (discrete)
+            dispatchEditorActionResult(editorCore.handleGestureEvent(
+                type: .directGestureBegin,
+                points: [(Float(point.x), Float(point.y))],
+                modifiers: mods
+            ))
             result = editorCore.handleGestureEvent(
                 type: .mouseWheel,
                 points: [(Float(point.x), Float(point.y))],
@@ -1099,19 +1128,58 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
                 wheelDeltaX: Float(event.scrollingDeltaX * 40),
                 wheelDeltaY: Float(event.scrollingDeltaY * 40)
             )
+            dispatchEditorActionResult(result)
+            dispatchEditorActionResult(editorCore.handleGestureEvent(
+                type: .directGestureEnd,
+                points: [(Float(point.x), Float(point.y))],
+                modifiers: mods
+            ))
         }
-        dispatchEditorActionResult(result)
     }
 
     override func magnify(with event: NSEvent) {
         resetCursorBlink()
         let point = convert(event.locationInWindow, from: nil)
+        let isContinuous = event.phase != []
+        if !isContinuous || !directScaleGestureActive {
+            if isContinuous {
+                directScaleGestureActive = true
+            }
+            dispatchEditorActionResult(editorCore.handleGestureEvent(
+                type: .directGestureBegin,
+                points: [(Float(point.x), Float(point.y))]
+            ))
+        }
         let result = editorCore.handleGestureEvent(
             type: .directScale,
             points: [(Float(point.x), Float(point.y))],
             directScale: Float(1.0 + event.magnification)
         )
         dispatchEditorActionResult(result)
+        if !isContinuous {
+            dispatchEditorActionResult(editorCore.handleGestureEvent(
+                type: .directGestureEnd,
+                points: [(Float(point.x), Float(point.y))]
+            ))
+        }
+        if directScaleGestureActive
+            && (event.phase.contains(.ended) || event.phase.contains(.cancelled)) {
+            directScaleGestureActive = false
+            dispatchEditorActionResult(editorCore.handleGestureEvent(
+                type: .directGestureEnd,
+                points: [(Float(point.x), Float(point.y))]
+            ))
+        }
+    }
+
+    private func endDirectGestureSessions() {
+        let activeSessionCount = (directScrollGestureActive ? 1 : 0)
+            + (directScaleGestureActive ? 1 : 0)
+        directScrollGestureActive = false
+        directScaleGestureActive = false
+        for _ in 0..<activeSessionCount {
+            _ = editorCore?.handleGestureEvent(type: .directGestureEnd, points: [])
+        }
     }
 
     private func fireGestureEvents(_ result: EditorActionResult) {

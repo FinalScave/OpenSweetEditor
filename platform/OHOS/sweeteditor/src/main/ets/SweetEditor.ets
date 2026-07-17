@@ -1068,9 +1068,6 @@ export struct SweetEditor {
       return;
     }
     const result = this.editorCore.selectAll();
-    if (this.selectionMenuController) {
-      this.selectionMenuController.onSelectAll();
-    }
     this.finishEditorAction(result);
   }
 
@@ -1561,12 +1558,8 @@ export struct SweetEditor {
         this.resetCursorBlink();
       }
     }
-    if (this.selectionMenuController &&
-      (result.source === EditorActionSource.GESTURE ||
-        result.source === EditorActionSource.ANIMATION)) {
-      this.selectionMenuController.onGestureActionResult(
-        result,
-        this.isPointerReleaseEvent(result.gestureEventType));
+    if (this.selectionMenuController) {
+      this.selectionMenuController.onEditorActionResult(result);
     }
     this.updateAnimationSchedule(result);
     this.dispatchStateEvents(result);
@@ -1601,12 +1594,6 @@ export struct SweetEditor {
       this.syncPlatformScale(result.scaleAfter);
       this.eventBus.emit('scaleChanged', new ScaleChangedEvent(result.scaleAfter));
     }
-  }
-
-  private isPointerReleaseEvent(eventType: EventType): boolean {
-    return eventType === EventType.TOUCH_UP ||
-      eventType === EventType.TOUCH_CANCEL ||
-      eventType === EventType.MOUSE_UP;
   }
 
   private shouldShowSoftKeyboardForTap(result: EditorActionResult): boolean {
@@ -2251,10 +2238,6 @@ export struct SweetEditor {
     if (this.decorationProviderManager && textChanges.length > 0) {
       this.decorationProviderManager.onTextChanged(textChanges);
     }
-    if (this.selectionMenuController) {
-      this.selectionMenuController.onTextChanged();
-    }
-
     this.maybeTriggerCompletionFromChanges(textChanges);
   }
 

@@ -38,6 +38,13 @@ public enum EditorActionSource: Int32 {
     }
 }
 
+public enum InteractionFlag {
+    public static let NONE: Int32 = 0
+    public static let PRIMARY_POINTER: Int32 = 1
+    public static let SELECTION_DRAG: Int32 = 2
+    public static let VIEWPORT_GESTURE: Int32 = 4
+}
+
 public enum ScrollBehavior: Int32 {
     case GOTO_TOP = 0
     case GOTO_CENTER = 1
@@ -94,7 +101,7 @@ public struct EditorActionResult {
     public var needs_ime_sync: Bool = false
     public var animation_flags: Int32 = 0
     public var next_animation_delay_ms: Int32 = 0
-    public var is_handle_drag: Bool = false
+    public var interaction_flags: Int32 = 0
     public var changes: [TextChange] = []
     public var cursor_before: TextPosition = TextPosition()
     public var cursor_after: TextPosition = TextPosition()
@@ -118,7 +125,7 @@ public struct EditorActionResult {
     public var modifiers: Int32 = KeyModifier.NONE
     public var command: Int32 = 0
 
-    public init(handled: Bool = false, needs_redraw: Bool = false, source: EditorActionSource = .NONE, text_change_kind: TextChangeKind = .NONE, content_changed: Bool = false, cursor_changed: Bool = false, selection_changed: Bool = false, scroll_changed: Bool = false, scale_changed: Bool = false, pointer_cursor_changed: Bool = false, composition_changed: Bool = false, decoration_changed: Bool = false, needs_ime_sync: Bool = false, animation_flags: Int32 = 0, next_animation_delay_ms: Int32 = 0, is_handle_drag: Bool = false, changes: [TextChange] = [], cursor_before: TextPosition = TextPosition(), cursor_after: TextPosition = TextPosition(), has_selection_before: Bool = false, has_selection_after: Bool = false, selection_before: TextRange = TextRange(), selection_after: TextRange = TextRange(), scroll_x_before: Float = 0, scroll_y_before: Float = 0, scroll_x_after: Float = 0, scroll_y_after: Float = 0, scale_before: Float = 1, scale_after: Float = 1, pointer_cursor_before: PointerCursorType = .TEXT, pointer_cursor_after: PointerCursorType = .TEXT, ime_sync: ImeSyncSnapshot = ImeSyncSnapshot(), gesture_type: GestureType = .UNDEFINED, gesture_event_type: EventType = .UNDEFINED, tap_point: PointF = PointF(), hit_target: HitTarget = HitTarget(), modifiers: Int32 = KeyModifier.NONE, command: Int32 = 0) {
+    public init(handled: Bool = false, needs_redraw: Bool = false, source: EditorActionSource = .NONE, text_change_kind: TextChangeKind = .NONE, content_changed: Bool = false, cursor_changed: Bool = false, selection_changed: Bool = false, scroll_changed: Bool = false, scale_changed: Bool = false, pointer_cursor_changed: Bool = false, composition_changed: Bool = false, decoration_changed: Bool = false, needs_ime_sync: Bool = false, animation_flags: Int32 = 0, next_animation_delay_ms: Int32 = 0, interaction_flags: Int32 = 0, changes: [TextChange] = [], cursor_before: TextPosition = TextPosition(), cursor_after: TextPosition = TextPosition(), has_selection_before: Bool = false, has_selection_after: Bool = false, selection_before: TextRange = TextRange(), selection_after: TextRange = TextRange(), scroll_x_before: Float = 0, scroll_y_before: Float = 0, scroll_x_after: Float = 0, scroll_y_after: Float = 0, scale_before: Float = 1, scale_after: Float = 1, pointer_cursor_before: PointerCursorType = .TEXT, pointer_cursor_after: PointerCursorType = .TEXT, ime_sync: ImeSyncSnapshot = ImeSyncSnapshot(), gesture_type: GestureType = .UNDEFINED, gesture_event_type: EventType = .UNDEFINED, tap_point: PointF = PointF(), hit_target: HitTarget = HitTarget(), modifiers: Int32 = KeyModifier.NONE, command: Int32 = 0) {
         self.handled = handled
         self.needs_redraw = needs_redraw
         self.source = source
@@ -134,7 +141,7 @@ public struct EditorActionResult {
         self.needs_ime_sync = needs_ime_sync
         self.animation_flags = animation_flags
         self.next_animation_delay_ms = next_animation_delay_ms
-        self.is_handle_drag = is_handle_drag
+        self.interaction_flags = interaction_flags
         self.changes = changes
         self.cursor_before = cursor_before
         self.cursor_after = cursor_after

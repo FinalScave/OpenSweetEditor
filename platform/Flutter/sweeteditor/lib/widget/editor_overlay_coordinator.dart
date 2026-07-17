@@ -57,6 +57,13 @@ class EditorOverlayCoordinator {
         model.cursor.height,
       );
     }
+
+    final selectionMenuItems = _selectionMenuOverlay.value;
+    if (selectionMenuItems != null) {
+      _selectionMenuOverlay.value = List<SelectionMenuItem>.unmodifiable(
+        selectionMenuItems,
+      );
+    }
   }
 
   Offset computeSelectionMenuPosition(

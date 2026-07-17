@@ -42,7 +42,8 @@ namespace NS_SWEETEDITOR {
     uint32_t animation_flags {0};
     /// Delay before the next animation tick; zero requests the next display frame.
     uint32_t next_animation_delay_ms {0};
-    bool is_handle_drag {false};
+    /// InteractionFlag bit set describing active input interactions.
+    uint32_t interaction_flags {0};
 
     Vector<TextChange> changes;
 
@@ -88,6 +89,14 @@ namespace NS_SWEETEDITOR {
     bool needsViewportMotion() const {
       return hasAnimationFlag(AnimationFlag::EDGE_SCROLL)
           || hasAnimationFlag(AnimationFlag::FLING);
+    }
+
+    bool hasInteractionFlag(InteractionFlag flag) const {
+      return (interaction_flags & static_cast<uint32_t>(flag)) != 0;
+    }
+
+    bool hasActiveInteraction() const {
+      return interaction_flags != 0;
     }
   };
 

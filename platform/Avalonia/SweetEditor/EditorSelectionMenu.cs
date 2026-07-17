@@ -51,8 +51,14 @@ namespace SweetEditor {
 	}
 
 	internal sealed class SelectionMenuController : IDisposable {
+		private enum LifecycleState {
+			Hidden,
+			PendingShow,
+			Visible,
+			Suspended,
+		}
+
 		private const int ShowDelayMs = 100;
-		private const int ViewportRestoreDelayMs = 120;
 		private const double VerticalOffset = 8;
 		private const double HandleClearance = 32;
 		private const double FallbackMenuWidth = 220;
@@ -60,11 +66,13 @@ namespace SweetEditor {
 
 		private readonly SweetEditorControl editor;
 		private readonly DispatcherTimer showTimer;
-		private readonly DispatcherTimer viewportRestoreTimer;
 		private Popup? popup;
 		private ISelectionMenuItemProvider? itemProvider;
 		private ISelectionMenuListener? listener;
-		private bool hiddenByViewportGesture;
+		private IReadOnlyList<SelectionMenuItem> visibleItems = [];
+		private LifecycleState state;
+		private bool hasSelection;
+		private bool coreBlocked;
 		private bool disposed;
 
 		public event Action<SelectionMenuItem>? CustomItemSelected;
@@ -78,87 +86,42 @@ namespace SweetEditor {
 				showTimer.Stop();
 				ShowNow();
 			};
-
-			viewportRestoreTimer = new DispatcherTimer {
-				Interval = TimeSpan.FromMilliseconds(ViewportRestoreDelayMs),
-			};
-			viewportRestoreTimer.Tick += (_, _) => {
-				viewportRestoreTimer.Stop();
-				if (disposed || !hiddenByViewportGesture) {
-					return;
-				}
-				hiddenByViewportGesture = false;
-				if (ShouldShowForCurrentState()) {
-					ScheduleShow();
-				}
-			};
 		}
 
-		public bool IsShowing => popup?.IsOpen == true;
+		public bool IsShowing => state == LifecycleState.Visible && popup?.IsOpen == true;
 
 		public void SetItemProvider(ISelectionMenuItemProvider? provider) {
 			itemProvider = provider;
-			if (IsShowing && !hiddenByViewportGesture) {
-				ScheduleShow();
-			}
 		}
 
 		public void SetListener(ISelectionMenuListener? listener) {
 			this.listener = listener;
 		}
 
-		public IReadOnlyList<SelectionMenuItem> GetItems() => BuildItems();
-
-		public void ExecuteItem(string itemId) {
-			if (disposed || string.IsNullOrWhiteSpace(itemId)) {
+		private void ScheduleShow() {
+			if (disposed || !editor.IsMounted || !hasSelection) {
 				return;
 			}
-
-			foreach (SelectionMenuItem item in BuildItems()) {
-				if (!string.Equals(item.Id, itemId, StringComparison.Ordinal)) {
-					continue;
-				}
-				if (item.Enabled) {
-					OnMenuItemClicked(item);
-				}
-				return;
-			}
-		}
-
-		public void ScheduleShow() {
-			if (disposed || !editor.IsMounted || hiddenByViewportGesture) {
+			if (coreBlocked) {
+				Suspend();
 				return;
 			}
 			showTimer.Stop();
+			if (popup != null) {
+				popup.IsOpen = false;
+			}
+			visibleItems = [];
+			state = LifecycleState.PendingShow;
 			showTimer.Start();
 		}
 
-		public void OnSelectionChanged(bool hasSelection) {
-			if (disposed) {
+		public void ApplyTheme() {
+			if (disposed || state != LifecycleState.Visible || popup?.IsOpen != true || visibleItems.Count == 0) {
 				return;
 			}
 
-			if (!hasSelection && !editor.IsInlineSuggestionShowing()) {
-				Dismiss();
-				return;
-			}
-
-			if (hiddenByViewportGesture) {
-				return;
-			}
-
-			if (IsShowing) {
-				UpdatePosition();
-				return;
-			}
-
-			ScheduleShow();
-		}
-
-		public void OnTextChanged() {
-			hiddenByViewportGesture = false;
-			viewportRestoreTimer.Stop();
-			Dismiss();
+			RebuildPopupContent(visibleItems);
+			UpdatePosition();
 		}
 
 		public void OnEditorActionResult(EditorActionResult result) {
@@ -166,57 +129,23 @@ namespace SweetEditor {
 				return;
 			}
 
-			switch (result.GestureType) {
-				case GestureType.DOUBLE_TAP:
-				case GestureType.LONG_PRESS:
-					hiddenByViewportGesture = false;
-					viewportRestoreTimer.Stop();
-					if (result.HasSelectionAfter || editor.IsInlineSuggestionShowing()) {
-						ScheduleShow();
-					} else {
-						Dismiss();
-					}
-					break;
-				case GestureType.TAP:
-					hiddenByViewportGesture = false;
-					viewportRestoreTimer.Stop();
-					if (result.HasSelectionAfter || editor.IsInlineSuggestionShowing()) {
-						ScheduleShow();
-					} else {
-						Dismiss();
-					}
-					break;
-				case GestureType.DRAG_SELECT:
-					hiddenByViewportGesture = true;
-					Dismiss();
-					if (result.HasSelectionAfter || editor.IsInlineSuggestionShowing()) {
-						ScheduleViewportRestore();
-					}
-					break;
-				case GestureType.SCROLL:
-				case GestureType.FAST_SCROLL:
-				case GestureType.SCALE:
-					hiddenByViewportGesture = true;
-					Dismiss();
-					if (result.HasSelectionAfter || editor.IsInlineSuggestionShowing()) {
-						ScheduleViewportRestore();
-					}
-					break;
-				default:
-					if (hiddenByViewportGesture && (result.HasSelectionAfter || editor.IsInlineSuggestionShowing())) {
-						ScheduleViewportRestore();
-					}
-					break;
-			}
-		}
+			hasSelection = result.HasSelectionAfter;
+			coreBlocked = result.HasActiveInteraction || result.NeedsViewportMotion;
 
-		public void OnViewportGestureSettled() {
-			if (disposed || !hiddenByViewportGesture) {
+			if (result.ContentChanged || !hasSelection) {
+				Dismiss();
 				return;
 			}
-			hiddenByViewportGesture = false;
-			viewportRestoreTimer.Stop();
-			if (ShouldShowForCurrentState()) {
+
+			bool wantsShow = result.SelectionChanged;
+			if (coreBlocked) {
+				if (wantsShow || state != LifecycleState.Hidden) {
+					Suspend();
+				}
+				return;
+			}
+
+			if (wantsShow || state == LifecycleState.Suspended) {
 				ScheduleShow();
 			}
 		}
@@ -245,6 +174,8 @@ namespace SweetEditor {
 
 		public void Dismiss() {
 			showTimer.Stop();
+			state = LifecycleState.Hidden;
+			visibleItems = [];
 			if (popup != null) {
 				popup.IsOpen = false;
 			}
@@ -256,7 +187,7 @@ namespace SweetEditor {
 			}
 			disposed = true;
 			showTimer.Stop();
-			viewportRestoreTimer.Stop();
+			visibleItems = [];
 			if (popup != null) {
 				popup.IsOpen = false;
 				popup.Child = null;
@@ -266,26 +197,26 @@ namespace SweetEditor {
 			itemProvider = null;
 		}
 
-		private void ScheduleViewportRestore() {
-			if (disposed) {
-				return;
+		private void Suspend() {
+			showTimer.Stop();
+			visibleItems = [];
+			if (popup != null) {
+				popup.IsOpen = false;
 			}
-			viewportRestoreTimer.Stop();
-			viewportRestoreTimer.Start();
-		}
-
-		private bool ShouldShowForCurrentState() {
-			var selection = editor.GetSelection();
-			return selection.hasSelection || editor.IsInlineSuggestionShowing();
+			state = LifecycleState.Suspended;
 		}
 
 		private void ShowNow() {
-			if (disposed || !editor.IsMounted || hiddenByViewportGesture) {
+			if (disposed || !editor.IsMounted || state != LifecycleState.PendingShow) {
 				return;
 			}
 
-			if (!ShouldShowForCurrentState()) {
+			if (!hasSelection || !editor.GetSelection().hasSelection) {
 				Dismiss();
+				return;
+			}
+			if (coreBlocked) {
+				Suspend();
 				return;
 			}
 
@@ -296,45 +227,40 @@ namespace SweetEditor {
 			}
 
 			EnsurePopup();
-			RebuildPopupContent(items);
+			visibleItems = new List<SelectionMenuItem>(items);
+			RebuildPopupContent(visibleItems);
+			state = LifecycleState.Visible;
 			UpdatePosition();
 		}
 
 		private IReadOnlyList<SelectionMenuItem> BuildItems() {
+			if (itemProvider != null) {
+				try {
+					var provided = itemProvider.ProvideMenuItems(editor);
+					if (provided == null) {
+						return [];
+					}
+					var items = new List<SelectionMenuItem>();
+					foreach (var item in provided) {
+						if (item != null && !string.IsNullOrWhiteSpace(item.Id)) {
+							items.Add(item);
+						}
+					}
+					return items;
+				}
+				catch (Exception ex) {
+					Console.Error.WriteLine($"Selection menu item provider error: {ex.Message}");
+					return [];
+				}
+			}
+
 			bool hasSelection = editor.GetSelection().hasSelection;
-			var merged = new List<SelectionMenuItem> {
+			return [
 				new(SelectionMenuItem.ACTION_CUT, "Cut", hasSelection),
 				new(SelectionMenuItem.ACTION_COPY, "Copy", hasSelection),
 				new(SelectionMenuItem.ACTION_PASTE, "Paste"),
 				new(SelectionMenuItem.ACTION_SELECT_ALL, "Select All"),
-			};
-
-			if (itemProvider == null) {
-				return merged;
-			}
-
-			try {
-				var items = itemProvider.ProvideMenuItems(editor);
-				if (items != null) {
-					foreach (var item in items) {
-						if (item == null || string.IsNullOrWhiteSpace(item.Id)) {
-							continue;
-						}
-
-						int existingIndex = merged.FindIndex(existing => string.Equals(existing.Id, item.Id, StringComparison.Ordinal));
-						if (existingIndex >= 0) {
-							merged[existingIndex] = item;
-						} else {
-							merged.Add(item);
-						}
-					}
-				}
-			}
-			catch (Exception ex) {
-				Console.Error.WriteLine($"Selection menu item provider error: {ex.Message}");
-			}
-
-			return merged;
+			];
 		}
 
 		private void EnsurePopup() {
@@ -342,23 +268,23 @@ namespace SweetEditor {
 				return;
 			}
 
-				popup = new Popup {
-					PlacementTarget = editor,
-					Placement = PlacementMode.AnchorAndGravity,
-					PlacementAnchor = PopupAnchor.TopLeft,
-					PlacementGravity = PopupGravity.TopLeft,
-					HorizontalOffset = 0,
-					VerticalOffset = 0,
-					IsLightDismissEnabled = true,
-					OverlayDismissEventPassThrough = true,
-					Topmost = true,
-				};
-			}
+			popup = new Popup {
+				PlacementTarget = editor,
+				Placement = PlacementMode.AnchorAndGravity,
+				PlacementAnchor = PopupAnchor.TopLeft,
+				PlacementGravity = PopupGravity.TopLeft,
+				HorizontalOffset = 0,
+				VerticalOffset = 0,
+				IsLightDismissEnabled = true,
+				OverlayDismissEventPassThrough = true,
+				Topmost = true,
+			};
+		}
 
-			private void RebuildPopupContent(IReadOnlyList<SelectionMenuItem> items) {
-				if (popup == null) {
-					return;
-				}
+		private void RebuildPopupContent(IReadOnlyList<SelectionMenuItem> items) {
+			if (popup == null) {
+				return;
+			}
 
 			double maxWidth = Math.Max(180, editor.Bounds.Width - 12);
 			var row = new WrapPanel {
@@ -368,42 +294,58 @@ namespace SweetEditor {
 				MaxWidth = maxWidth,
 			};
 
-				foreach (var item in items) {
-					var button = new Button {
-						Content = item.Label,
-						IsEnabled = item.Enabled,
-						Padding = new Thickness(8, 4),
-						ClickMode = ClickMode.Press,
-					};
-					bool invoked = false;
-					void invoke() {
-						if (invoked || !item.Enabled) {
-							return;
-						}
-						invoked = true;
-						OnMenuItemClicked(item);
-					}
-					button.Click += (_, _) => invoke();
-					button.AddHandler(InputElement.PointerPressedEvent, (_, e) => {
-						if (!item.Enabled) {
-							return;
-						}
-						if (!editor.IsPrimaryPointerPress(button, e)) {
-							return;
-						}
-						e.Handled = true;
-						invoke();
-					}, RoutingStrategies.Tunnel);
-					row.Children.Add(button);
-				}
-
 			EditorTheme theme = editor.GetTheme();
+			bool firstItem = true;
+			foreach (var item in items) {
+				var itemContainer = new StackPanel {
+					Orientation = Orientation.Horizontal,
+				};
+				if (!firstItem) {
+					itemContainer.Children.Add(new Border {
+						Width = 1,
+						Height = 18,
+						Margin = new Thickness(2, 4),
+						VerticalAlignment = VerticalAlignment.Center,
+						Background = new SolidColorBrush(Color.FromUInt32(theme.SelectionMenuDividerColor)),
+					});
+				}
+				firstItem = false;
+				var button = new Button {
+					Content = item.Label,
+					IsEnabled = item.Enabled,
+					Padding = new Thickness(8, 4),
+					ClickMode = ClickMode.Press,
+					Foreground = new SolidColorBrush(Color.FromUInt32(theme.SelectionMenuTextColor)),
+				};
+				bool invoked = false;
+				void invoke() {
+					if (invoked || !item.Enabled) {
+						return;
+					}
+					invoked = true;
+					OnMenuItemClicked(item);
+				}
+				button.Click += (_, _) => invoke();
+				button.AddHandler(InputElement.PointerPressedEvent, (_, e) => {
+					if (!item.Enabled) {
+						return;
+					}
+					if (!editor.IsPrimaryPointerPress(button, e)) {
+						return;
+					}
+					e.Handled = true;
+					invoke();
+				}, RoutingStrategies.Tunnel);
+				itemContainer.Children.Add(button);
+				row.Children.Add(itemContainer);
+			}
+
 			popup.Child = new Border {
 				Padding = new Thickness(6),
 				CornerRadius = new CornerRadius(8),
 				BorderThickness = new Thickness(1),
 				BorderBrush = new SolidColorBrush(Color.FromUInt32(theme.CompletionBorderColor)),
-				Background = new SolidColorBrush(Color.FromUInt32(theme.CompletionBgColor)),
+				Background = new SolidColorBrush(Color.FromUInt32(theme.SelectionMenuBgColor)),
 				Child = row,
 			};
 		}
@@ -431,7 +373,7 @@ namespace SweetEditor {
 					break;
 				case SelectionMenuItem.ACTION_SELECT_ALL:
 					editor.SelectAll();
-					break;
+					return;
 				default:
 					try {
 						listener?.OnSelectionMenuItemSelected(item.Id);
@@ -463,20 +405,7 @@ namespace SweetEditor {
 
 			var selection = editor.GetSelection();
 			if (!selection.hasSelection) {
-				if (!editor.IsInlineSuggestionShowing()) {
-					return false;
-				}
-
-				var cursor = editor.GetCursorRect();
-				double anchorX = cursor.X - menuWidth * 0.5;
-				double aboveY = cursor.Y - menuHeight - VerticalOffset;
-				double belowY = cursor.Y + Math.Max(1f, cursor.Height) + VerticalOffset;
-				double anchorY = aboveY >= minY ? aboveY : belowY;
-
-				anchorX = Math.Clamp(anchorX, minX, maxX);
-				anchorY = Math.Clamp(anchorY, minY, maxY);
-				rect = new AvaloniaRect(anchorX, anchorY, 1, 1);
-				return true;
+				return false;
 			}
 
 			var start = editor.GetPositionRect(selection.range.Start.Line, selection.range.Start.Column);

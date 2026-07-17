@@ -101,6 +101,10 @@ public final class ContextMenuController {
         currentRequest = null;
     }
 
+    public void onHostDetached() {
+        dismissImmediate();
+    }
+
     public boolean isShowing() {
         return popup.isShowing();
     }
@@ -136,7 +140,6 @@ public final class ContextMenuController {
             dismissImmediate();
             return;
         }
-        currentRequest = request;
         popup.setSections(sections);
         int offsetX = PopupPositioner.dpToPx(editor.getContext(), MENU_OFFSET_X_DP);
         int offsetY = PopupPositioner.dpToPx(editor.getContext(), MENU_OFFSET_Y_DP);
@@ -155,6 +158,7 @@ public final class ContextMenuController {
                 MENU_PLACEMENTS
         ));
         popup.showAt(editor, position.screenX, position.screenY, position.placement);
+        currentRequest = request;
     }
 
     @NonNull

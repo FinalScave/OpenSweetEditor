@@ -1,5 +1,5 @@
 import util from '@ohos.util';
-import { AnimationFlag, EditorActionResult, EditorActionSource, ScrollBehavior, TextChangeKind, editorActionSourceFromValue, scrollBehaviorFromValue, textChangeKindFromValue } from './CoreAction';
+import { AnimationFlag, EditorActionResult, EditorActionSource, InteractionFlag, ScrollBehavior, TextChangeKind, editorActionSourceFromValue, scrollBehaviorFromValue, textChangeKindFromValue } from './CoreAction';
 import { BracketGuide, CodeLensItem, Diagnostic, DiagnosticSeverity, DocumentHighlight, DocumentHighlightKind, FlowGuide, FoldRegion, GutterIcon, IndentGuide, InlayHint, InlayType, LinkSpan, PhantomText, SeparatorGuide, SeparatorStyle, SpanLayer, StyleSpan, TextStyle, diagnosticSeverityFromValue, documentHighlightKindFromValue, inlayTypeFromValue, separatorStyleFromValue, spanLayerFromValue } from './CoreAdornments';
 import { AutoIndentMode, CurrentLineRenderMode, EditorOptions, EditorRangeEffectStyles, EditorRenderColors, FoldArrowMode, HandleConfig, HandleHitArea, RangeEffectStyle, RangeEffectUnderlineStyle, ScrollbarConfig, ScrollbarMode, ScrollbarTrackTapMode, WhitespaceRenderMode, WrapMode, autoIndentModeFromValue, currentLineRenderModeFromValue, foldArrowModeFromValue, rangeEffectUnderlineStyleFromValue, scrollbarModeFromValue, scrollbarTrackTapModeFromValue, whitespaceRenderModeFromValue, wrapModeFromValue } from './CoreConfig';
 import { IntRange, PointF, Rect, Size, TextChange, TextEdit, TextPosition, TextRange } from './CoreFoundation';
@@ -672,7 +672,7 @@ export class CoreProtocol {
       needsImeSync: reader.readInt32() !== 0,
       animationFlags: reader.readInt32(),
       nextAnimationDelayMs: reader.readInt32(),
-      isHandleDrag: reader.readInt32() !== 0,
+      interactionFlags: reader.readInt32(),
       changes: CoreProtocol.readTextChangeList(reader),
       cursorBefore: CoreProtocol.readTextPosition(reader),
       cursorAfter: CoreProtocol.readTextPosition(reader),

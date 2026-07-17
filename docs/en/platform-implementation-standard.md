@@ -23,7 +23,7 @@ The Core layer does not involve UI rendering. It contains only bridging, data mo
 | Category | Required Types | Description |
 |---|---|---|
 | **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer` | Native bridge + public core API wrapper |
-| **Action** | `EditorActionResult`, `EditorActionSource`, `TextChangeKind`, `ScrollBehavior`, `AnimationFlag` | Core action result and action-related enums; `EditorActionResult` is the unified result carrier for core state-changing APIs |
+| **Action** | `EditorActionResult`, `EditorActionSource`, `TextChangeKind`, `ScrollBehavior`, `AnimationFlag`, `InteractionFlag` | Core action result and action-related enums; `EditorActionResult` is the unified result carrier for core state-changing APIs |
 | **Config** | `EditorOptions`, `HandleConfig`, `HandleHitArea`, `ScrollbarConfig`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollbarMode`, `ScrollbarTrackTapMode`, `EditorRenderColors`, `EditorRangeEffectStyles`, `RangeEffectStyle`, `RangeEffectUnderlineStyle` | Runtime, construction, and editor render styling protocol types |
 | **Foundation** | `TextPosition`, `TextRange`, `TextEdit`, `IntRange`, `TextChange`, `PointF`, `Size`, `Rect` | Fundamental value types and geometry carriers |
 | **Interaction** | `GestureEvent`, `GestureType`, `EventType`, `HitTarget`, `HitTargetType` | Input and hit-test protocol types |
@@ -440,7 +440,9 @@ On mobile targets, the selection menu module is SHOULD level. Desktop implementa
 | custom item callback | **MUST** | Implementation MUST provide a listener, delegate, event, typed stream, or equivalent mechanism to observe custom item activation; explicit listeners should provide `onSelectionMenuItemSelected(itemId)` |
 | `setSelectionMenuItemProvider(provider)` | **MUST** | Configure custom selection-menu items; passing `null` SHOULD restore the host default menu |
 
-When the provider returns an empty list, the implementation MAY choose not to show a selection menu. The provider SHOULD be invoked immediately before the menu is shown so items can reflect the current editor state. Built-in cut / copy / paste / select-all actions are not required to emit the custom item callback. After terminal editor teardown, internal detach, or controller disposal, no host-visible custom selection-menu callbacks may be emitted.
+When the provider returns an empty list, the implementation MAY choose not to show a selection menu. The provider SHOULD be invoked immediately before the menu is shown so items can reflect the current editor state. Changing the provider takes effect on the next show cycle; a menu that is already visible remains unchanged. Built-in cut / copy / paste / select-all actions are not required to emit the custom item callback. After terminal editor teardown, internal detach, or controller disposal, no host-visible custom selection-menu callbacks may be emitted.
+
+Mutual exclusion with built-in context menus, or with another editor-owned menu explicitly designed to replace the selection menu, MUST be coordinated inside the editor implementation. Opening a replacement menu MUST dismiss the selection menu to `HIDDEN`; closing the replacement menu alone MUST NOT restore it. Non-replacement overlays such as completion and inline suggestions do not automatically participate in this exclusion rule. Demo or host code MUST NOT be responsible for maintaining the selection-menu lifecycle.
 
 ### 7.2 Positioning and Lifetime
 
@@ -448,7 +450,11 @@ When the provider returns an empty list, the implementation MAY choose not to sh
 |---|---|---|
 | Selection anchor | **MUST** | When visible, the menu MUST be anchored to the current selection / caret geometry or an equivalent host-native selection affordance |
 | Selection invalidation | **MUST** | If the selection becomes empty, invalid, or detached from the current document state, the menu MUST dismiss |
-| Scroll / viewport change | **SHOULD** | Scrolling or viewport changes SHOULD update the menu position; they SHOULD NOT require dismiss unless the implementation cannot reposition safely |
+| Lifecycle state | **MUST** | Implementations MUST preserve equivalent `HIDDEN`, `PENDING_SHOW`, `VISIBLE`, and `SUSPENDED` states so a user dismissal is distinct from temporary interaction suppression |
+| Active interaction | **MUST** | While `interactionFlags != 0`, a pending or visible menu, or a menu made eligible by the current selection change, MUST enter `SUSPENDED`; a deliberately hidden menu MUST remain hidden |
+| Viewport motion | **MUST** | While `EDGE_SCROLL | FLING` is active, the menu MUST remain `SUSPENDED`; `TRANSIENT_SCROLLBAR` alone MUST NOT block restoration |
+| Restoration | **MUST** | When active interactions and viewport motion both end, a suspended menu MUST re-check the current selection and restore after the platform show delay when the selection remains valid |
+| Programmatic viewport change | **SHOULD** | A viewport change outside an active interaction SHOULD reposition a visible menu when its selection anchor remains visible |
 | Command completion | **SHOULD** | After the user activates a selection-menu command, the menu SHOULD dismiss unless the implementation intentionally keeps it open for a multi-step workflow |
 
 ---
@@ -498,6 +504,7 @@ All color fields use the host color type (ARGB). Implementations MUST provide th
 | Linked editing | `linkedEditingActiveColor`, `linkedEditingInactiveColor` |
 | Bracket matching | `bracketHighlightBorderColor`, `bracketHighlightBgColor` |
 | Completion popup | `completionBgColor`, `completionBorderColor`, `completionSelectedBgColor`, `completionLabelColor`, `completionDetailColor` |
+| Selection menu (when implemented) | `selectionMenuBgColor`, `selectionMenuTextColor`, `selectionMenuDividerColor` |
 
 ### 8.3 Factory Methods
 
@@ -668,9 +675,9 @@ Implementations MAY expose the return value of `handleGestureEvent(...)` directl
 | `pointerCursorAfter` / `pointerCursorChanged` | `PointerCursorType` / boolean | **MUST** on desktop or targets with mouse / hover input, **MAY** on touch-only targets | Pointer cursor hint for the current mouse location, plus whether the host cursor should update |
 | `animationFlags` | `AnimationFlag` bit set | **MUST** | Active Core animation reasons, including `EDGE_SCROLL`, `FLING`, and `TRANSIENT_SCROLLBAR`; zero stops scheduling |
 | `nextAnimationDelayMs` | u32 | **MUST** | Delay before the next animation tick; zero requests the next display frame and a positive value requests a delayed wake-up |
-| `isHandleDrag` | boolean | Mobile **SHOULD** | Whether the current gesture is a selection-handle drag |
+| `interactionFlags` | `InteractionFlag` bit set | **MUST** | Active input lifecycles: `PRIMARY_POINTER`, `SELECTION_DRAG`, and `VIEWPORT_GESTURE`; zero means no input interaction is active |
 
-> These fields MUST be consumed according to their own semantics and must not depend on `needsRedraw` as a side effect. Integrations MUST schedule the next tick from `nextAnimationDelayMs` while `animationFlags != 0`, and stop when the flags become zero. Selection menus and viewport-settled logic must inspect `EDGE_SCROLL | FLING`, rather than treating the visual-only `TRANSIENT_SCROLLBAR` flag as ongoing viewport motion. Desktop targets, and targets with mouse / hover input, SHOULD apply `pointerCursorAfter` immediately when `pointerCursorChanged` is true even if the result does not require redraw. Touch-only targets with no pointer cursor concept MAY ignore cursor-shape changes entirely.
+> These fields MUST be consumed according to their own semantics and must not depend on `needsRedraw` as a side effect. Integrations MUST schedule the next tick from `nextAnimationDelayMs` while `animationFlags != 0`, and stop when the flags become zero. Selection menus must remain suspended while `interactionFlags != 0` or `EDGE_SCROLL | FLING` is active, then re-evaluate the current selection when both become zero. The visual-only `TRANSIENT_SCROLLBAR` flag must not delay menu restoration. Desktop targets, and targets with mouse / hover input, SHOULD apply `pointerCursorAfter` immediately when `pointerCursorChanged` is true even if the result does not require redraw. Touch-only targets with no pointer cursor concept MAY ignore cursor-shape changes entirely.
 
 ### 11.5 ContextMenu Standard Contract
 

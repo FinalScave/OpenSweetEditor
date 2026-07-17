@@ -629,7 +629,7 @@ namespace SweetEditor {
                 NeedsImeSync = reader.ReadBoolI32(),
                 AnimationFlags = reader.ReadInt32(),
                 NextAnimationDelayMs = reader.ReadInt32(),
-                IsHandleDrag = reader.ReadBoolI32(),
+                InteractionFlags = reader.ReadInt32(),
                 Changes = ReadTextChangeList(ref reader),
                 CursorBefore = ReadTextPosition(ref reader),
                 CursorAfter = ReadTextPosition(ref reader),

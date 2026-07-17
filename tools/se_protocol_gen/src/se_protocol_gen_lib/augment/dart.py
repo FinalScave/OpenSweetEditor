@@ -12,6 +12,10 @@ DART_MODEL_HELPERS = {
         "  bool get needsViewportMotion =>",
         "      hasAnimationFlag(AnimationFlag.edgeScroll) ||",
         "      hasAnimationFlag(AnimationFlag.fling);",
+        "",
+        "  bool hasInteractionFlag(int flag) => (interactionFlags & flag) != 0;",
+        "",
+        "  bool get hasActiveInteraction => interactionFlags != InteractionFlag.none;",
         "}",
     ],
     "TextRange": [

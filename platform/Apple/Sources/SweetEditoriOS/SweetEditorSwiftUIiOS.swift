@@ -6,6 +6,18 @@ import SweetEditorCoreInternal
 public final class SweetEditorViewiOS: UIView {
     private let editorView = IOSEditorView(frame: .zero)
     public var onDocumentTextChanged: ((String) -> Void)?
+    public var selectionMenuItemProvider: SweetEditorSelectionMenuItemProvider? {
+        didSet {
+            guard selectionMenuItemProvider != nil else {
+                editorView.selectionMenuItemsProvider = nil
+                return
+            }
+            editorView.selectionMenuItemsProvider = { [weak self] in
+                guard let self, let provider = self.selectionMenuItemProvider else { return [] }
+                return provider.provideSelectionMenuItems(for: self)
+            }
+        }
+    }
 
     public var settings: EditorSettings {
         editorView.settings
@@ -36,6 +48,11 @@ public final class SweetEditorViewiOS: UIView {
         set { editorView.onLinkClick = newValue }
     }
 
+    public var onSelectionMenuItemClick: ((SweetEditorSelectionMenuItem) -> Void)? {
+        get { editorView.onSelectionMenuItemClick }
+        set { editorView.onSelectionMenuItemClick = newValue }
+    }
+
     public var editorIconProvider: EditorIconProvider? {
         get { editorView.editorIconProvider }
         set { editorView.editorIconProvider = newValue }
@@ -43,6 +60,18 @@ public final class SweetEditorViewiOS: UIView {
 
     public func setEditorIconProvider(_ provider: EditorIconProvider?) {
         editorView.editorIconProvider = provider
+    }
+
+    public func setSelectionMenuItemProvider(_ provider: SweetEditorSelectionMenuItemProvider?) {
+        selectionMenuItemProvider = provider
+    }
+
+    public func dismissSelectionMenu() {
+        editorView.dismissSelectionMenu()
+    }
+
+    public var isSelectionMenuShowing: Bool {
+        editorView.isSelectionMenuShowing
     }
 
     public override init(frame: CGRect) {

@@ -115,6 +115,9 @@ namespace SweetEditor {
 		public uint CompletionSelectedBgColor { get; set; }
 		public uint CompletionLabelColor { get; set; }
 		public uint CompletionDetailColor { get; set; }
+		public uint SelectionMenuBgColor { get; set; }
+		public uint SelectionMenuTextColor { get; set; }
+		public uint SelectionMenuDividerColor { get; set; }
 
 		public Dictionary<int, TextStyle> TextStyles { get; set; } = new();
 
@@ -170,6 +173,9 @@ namespace SweetEditor {
 				CompletionSelectedBgColor = 0x3D5580BB,
 				CompletionLabelColor = 0xFFD8DEE9,
 				CompletionDetailColor = 0xFF7A8494,
+				SelectionMenuBgColor = 0xF0252830,
+				SelectionMenuTextColor = 0xFFD8DEE9,
+				SelectionMenuDividerColor = 0x33D8DEE9,
 				TextStyles = new Dictionary<int, TextStyle> {
 					[STYLE_KEYWORD] = new TextStyle(unchecked((int)0xFF7AA2F7), 1),
 					[STYLE_STRING] = new TextStyle(unchecked((int)0xFF9ECE6A), 0),
@@ -234,6 +240,9 @@ namespace SweetEditor {
 				CompletionSelectedBgColor = 0x3D3B82F6,
 				CompletionLabelColor = 0xFF1F2937,
 				CompletionDetailColor = 0xFF8A94A6,
+				SelectionMenuBgColor = 0xF0FAFBFD,
+				SelectionMenuTextColor = 0xFF1F2937,
+				SelectionMenuDividerColor = 0x331F2937,
 				TextStyles = new Dictionary<int, TextStyle> {
 					[STYLE_KEYWORD] = new TextStyle(unchecked((int)0xFF3559D6), 1),
 					[STYLE_STRING] = new TextStyle(unchecked((int)0xFF0F7B6C), 0),

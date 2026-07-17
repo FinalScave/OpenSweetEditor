@@ -14,7 +14,9 @@ public enum EventType {
     MOUSE_WHEEL(10),
     MOUSE_RIGHT_DOWN(11),
     DIRECT_SCALE(12),
-    DIRECT_SCROLL(13);
+    DIRECT_SCROLL(13),
+    DIRECT_GESTURE_BEGIN(14),
+    DIRECT_GESTURE_END(15);
 
     public final int value;
 
@@ -38,6 +40,8 @@ public enum EventType {
             case 11: return MOUSE_RIGHT_DOWN;
             case 12: return DIRECT_SCALE;
             case 13: return DIRECT_SCROLL;
+            case 14: return DIRECT_GESTURE_BEGIN;
+            case 15: return DIRECT_GESTURE_END;
             default: return UNDEFINED;
         }
     }

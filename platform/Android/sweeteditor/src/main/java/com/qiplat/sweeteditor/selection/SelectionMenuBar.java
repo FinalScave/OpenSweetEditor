@@ -99,17 +99,8 @@ public class SelectionMenuBar {
         }
     }
 
-    public void dismiss() {
-        if (popupWindow.isShowing()) {
-            PopupAnimator.animateDismiss(contentView, lastPlacement, () -> {
-                if (popupWindow.isShowing()) {
-                    popupWindow.dismiss();
-                }
-            });
-        }
-    }
-
     public void dismissImmediate() {
+        currentItems = null;
         if (popupWindow.isShowing()) {
             popupWindow.dismiss();
         }

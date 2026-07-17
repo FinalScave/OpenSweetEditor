@@ -598,10 +598,7 @@ class SweetEditorController {
     );
   }
 
-  void setLineDocumentHighlights(
-    int line,
-    List<core.DocumentHighlight> items,
-  ) {
+  void setLineDocumentHighlights(int line, List<core.DocumentHighlight> items) {
     _runEditorCoreAction(
       (editorCore) => editorCore.setLineDocumentHighlights(line, items),
     );

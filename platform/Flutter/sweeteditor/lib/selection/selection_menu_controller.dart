@@ -5,12 +5,9 @@ import '../widget/editor_overlay.dart';
 
 import 'selection_types.dart';
 
+enum _SelectionMenuLifecycleState { hidden, pendingShow, visible, suspended }
+
 /// Controls the lifecycle of the selection context menu.
-///
-/// State machine:
-///   HIDDEN --(double-tap/long-press + selection)--> VISIBLE
-///   VISIBLE --(handle drag / scroll / scale / tap)--> HIDDEN
-///   HIDDEN --(handle drag end + selection)--> VISIBLE
 class SelectionMenuController {
   static const int _showDelayMs = 100;
 
@@ -23,15 +20,11 @@ class SelectionMenuController {
   final bool _enabled;
   final SelectionMenuContext Function(bool hasSelection) _buildContext;
   SelectionMenuItemProvider? _itemProvider;
-  bool _handleDragActive = false;
-  bool _hiddenByViewportGesture = false;
-  bool _visible = false;
+  _SelectionMenuLifecycleState _state = _SelectionMenuLifecycleState.hidden;
+  bool _hasSelection = false;
+  bool _coreBlocked = false;
   Timer? _showTimer;
-  List<SelectionMenuItem> _currentItems = [];
   EditorOverlayUpdater<List<SelectionMenuItem>>? _overlayUpdater;
-
-  bool get isVisible => _visible;
-  List<SelectionMenuItem> get currentItems => _currentItems;
 
   void setItemProvider(SelectionMenuItemProvider? provider) {
     _itemProvider = provider;
@@ -41,64 +34,31 @@ class SelectionMenuController {
     _overlayUpdater = updater;
   }
 
-  void onGestureActionResult(
-    core.EditorActionResult result,
-    bool hasSelection,
-  ) {
+  void onEditorActionResult(core.EditorActionResult result) {
     if (!_enabled) {
-      _hideImmediate();
+      hide();
       return;
     }
 
-    if (result.isHandleDrag) {
-      if (!_handleDragActive) {
-        _handleDragActive = true;
-        _hideImmediate();
+    _hasSelection = result.hasSelectionAfter;
+    _coreBlocked = result.hasActiveInteraction || result.needsViewportMotion;
+
+    if (result.contentChanged || !_hasSelection) {
+      hide();
+      return;
+    }
+
+    final wantsShow = result.selectionChanged;
+    if (_coreBlocked) {
+      if (wantsShow || _state != _SelectionMenuLifecycleState.hidden) {
+        _suspend();
       }
       return;
     }
 
-    if (_handleDragActive) {
-      _handleDragActive = false;
-      if (hasSelection) {
-        _scheduleShow(hasSelection);
-      }
-      return;
+    if (wantsShow || _state == _SelectionMenuLifecycleState.suspended) {
+      _scheduleShow();
     }
-
-    switch (result.gestureType) {
-      case core.GestureType.doubleTap:
-      case core.GestureType.longPress:
-        if (hasSelection) {
-          _scheduleShow(hasSelection);
-        }
-      case core.GestureType.tap:
-        _hideImmediate();
-      case core.GestureType.scroll:
-      case core.GestureType.scale:
-        if (_visible && !_hiddenByViewportGesture) {
-          _hiddenByViewportGesture = true;
-          _hideImmediate();
-        }
-      case core.GestureType.dragSelect:
-        break;
-      default:
-        break;
-    }
-  }
-
-  void onSelectAll() {
-    if (!_enabled) {
-      _hideImmediate();
-      return;
-    }
-    _scheduleShow(true);
-  }
-
-  void onTextChanged() {
-    _handleDragActive = false;
-    _hiddenByViewportGesture = false;
-    _hideImmediate();
   }
 
   List<SelectionMenuItem> _buildItems(bool hasSelection) {
@@ -128,30 +88,56 @@ class SelectionMenuController {
     ];
   }
 
-  void _scheduleShow(bool hasSelection) {
-    if (!_enabled) {
-      _hideImmediate();
+  void _scheduleShow() {
+    if (!_enabled || !_hasSelection) {
+      hide();
+      return;
+    }
+    if (_coreBlocked) {
+      _suspend();
       return;
     }
     _showTimer?.cancel();
+    if (_state == _SelectionMenuLifecycleState.visible) {
+      _overlayUpdater?.call(null);
+    }
+    _state = _SelectionMenuLifecycleState.pendingShow;
     _showTimer = Timer(const Duration(milliseconds: _showDelayMs), () {
-      _currentItems = _buildItems(hasSelection);
-      _visible = true;
-      _hiddenByViewportGesture = false;
-      final overlayItems = List<SelectionMenuItem>.unmodifiable(_currentItems);
+      if (_state != _SelectionMenuLifecycleState.pendingShow) return;
+      if (!_hasSelection) {
+        hide();
+        return;
+      }
+      if (_coreBlocked) {
+        _suspend();
+        return;
+      }
+      final items = _buildItems(_hasSelection);
+      if (items.isEmpty) {
+        hide();
+        return;
+      }
+      _state = _SelectionMenuLifecycleState.visible;
+      final overlayItems = List<SelectionMenuItem>.unmodifiable(items);
       _overlayUpdater?.call(overlayItems);
     });
   }
 
-  void _hideImmediate() {
+  void _suspend() {
     _showTimer?.cancel();
-    if (_visible) {
-      _visible = false;
+    if (_state == _SelectionMenuLifecycleState.visible) {
       _overlayUpdater?.call(null);
     }
+    _state = _SelectionMenuLifecycleState.suspended;
   }
 
-  void hide() => _hideImmediate();
+  void hide() {
+    _showTimer?.cancel();
+    if (_state == _SelectionMenuLifecycleState.visible) {
+      _overlayUpdater?.call(null);
+    }
+    _state = _SelectionMenuLifecycleState.hidden;
+  }
 
   void dispose() {
     _showTimer?.cancel();

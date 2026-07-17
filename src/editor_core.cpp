@@ -580,8 +580,10 @@ namespace NS_SWEETEDITOR {
     InteractionResult interaction_result = m_interaction_->handleGestureEvent(event);
     GestureIntent& intent = interaction_result.intent;
     GestureResult& result = interaction_result.gesture;
+    const uint32_t interaction_flags = m_interaction_->resolveInteractionFlags();
     const HitTarget primary_hot_target =
-        has_primary_point && !interaction_result.is_handle_drag
+        has_primary_point
+            && !(interaction_flags & static_cast<uint32_t>(InteractionFlag::SELECTION_DRAG))
             ? get_primary_probe().hot_target
             : HitTarget {};
     interaction_result.handled =
@@ -3900,6 +3902,7 @@ namespace NS_SWEETEDITOR {
                           || animation_state.needs_redraw;
     result.animation_flags = animation_state.flags;
     result.next_animation_delay_ms = animation_state.next_tick_delay_ms;
+    result.interaction_flags = m_interaction_->resolveInteractionFlags();
     return result;
   }
 
@@ -3921,7 +3924,6 @@ namespace NS_SWEETEDITOR {
     result.tap_point = gesture_result.tap_point;
     result.hit_target = gesture_result.hit_target;
     result.modifiers = gesture_result.modifiers;
-    result.is_handle_drag = interaction_result.is_handle_drag;
     return result;
   }
 

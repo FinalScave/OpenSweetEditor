@@ -44,6 +44,14 @@ enum EditorActionSource {
   }
 }
 
+class InteractionFlag {
+  InteractionFlag._();
+  static const int none = 0;
+  static const int primaryPointer = 1;
+  static const int selectionDrag = 2;
+  static const int viewportGesture = 4;
+}
+
 enum ScrollBehavior {
   gotoTop(0),
   gotoCenter(1),
@@ -107,7 +115,7 @@ class EditorActionResult {
     this.needsImeSync = false,
     this.animationFlags = 0,
     this.nextAnimationDelayMs = 0,
-    this.isHandleDrag = false,
+    this.interactionFlags = 0,
     this.changes = const [],
     this.cursorBefore = const TextPosition(),
     this.cursorAfter = const TextPosition(),
@@ -147,7 +155,7 @@ class EditorActionResult {
   final bool needsImeSync;
   final int animationFlags;
   final int nextAnimationDelayMs;
-  final bool isHandleDrag;
+  final int interactionFlags;
   final List<TextChange> changes;
   final TextPosition cursorBefore;
   final TextPosition cursorAfter;
@@ -180,4 +188,8 @@ extension EditorActionResultAnimationHelpers on EditorActionResult {
   bool get needsViewportMotion =>
       hasAnimationFlag(AnimationFlag.edgeScroll) ||
       hasAnimationFlag(AnimationFlag.fling);
+
+  bool hasInteractionFlag(int flag) => (interactionFlags & flag) != 0;
+
+  bool get hasActiveInteraction => interactionFlags != InteractionFlag.none;
 }

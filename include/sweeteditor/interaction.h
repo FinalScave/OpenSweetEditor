@@ -31,7 +31,6 @@ namespace NS_SWEETEDITOR {
     GestureIntent intent;
     bool handled {false};
     bool needs_redraw {false};
-    bool is_handle_drag {false};
   };
 
   struct InteractionAnimationState {
@@ -55,6 +54,7 @@ namespace NS_SWEETEDITOR {
     InteractionResult handleGestureEvent(const GestureEvent& event);
     InteractionResult tickAnimations();
     InteractionAnimationState resolveAnimationState();
+    uint32_t resolveInteractionFlags() const;
     void stopFling();
     void onViewportChanged();
     void onScrollbarConfigChanged();
@@ -99,7 +99,7 @@ namespace NS_SWEETEDITOR {
       bool active {false};
       float speed {0};
       PointF last_screen_point;
-      bool is_handle_drag {false};
+      bool selection_drag {false};
       bool is_mouse {false};
       int64_t last_tick_time {0};
     };
@@ -120,7 +120,23 @@ namespace NS_SWEETEDITOR {
       }
     };
 
-    void fillInteractionState(InteractionResult& result) const;
+    struct InteractionLifecycleState {
+      bool primary_pointer_active {false};
+      bool selection_drag_active {false};
+      bool pointer_viewport_gesture_active {false};
+      uint32_t direct_viewport_gesture_depth {0};
+
+      void resetPointer() {
+        primary_pointer_active = false;
+        selection_drag_active = false;
+        pointer_viewport_gesture_active = false;
+      }
+
+      void reset() {
+        *this = {};
+      }
+    };
+
     PointF resolveScaleFocus(const GestureEvent& event) const;
     bool handleScrollbarGesture(const GestureEvent& event, InteractionResult& result);
     bool handleSelectionHandleGesture(const GestureEvent& event, InteractionResult& result);
@@ -130,8 +146,9 @@ namespace NS_SWEETEDITOR {
     bool shouldPlaceCursorOnLongPress(const PointF& screen_point) const;
     void dragHandleTo(PointerInteractionOwner target, const PointF& screen_point);
     void dragSelectTo(const PointF& screen_point, bool is_mouse = false);
-    void updateEdgeScrollState(const PointF& screen_point, bool is_handle_drag, bool is_mouse);
-    void resetPointerInteraction();
+    void updateEdgeScrollState(const PointF& screen_point, bool selection_drag, bool is_mouse);
+    void resetPointerMechanics();
+    void resetPointerState();
     void resetKineticMotion();
     void resetAllInteractionState();
     GestureResult tickEdgeScroll();
@@ -143,6 +160,7 @@ namespace NS_SWEETEDITOR {
 
     TransientScrollbarTimeline m_transient_scrollbar_timeline_;
     PointerInteractionState m_pointer_interaction_;
+    InteractionLifecycleState m_interaction_lifecycle_;
 
     PendingScaleAnchor m_pending_scale_anchor_;
     bool m_scale_gesture_active_ {false};

@@ -7,15 +7,21 @@ import { EditorEventBus } from '../event/EditorEventBus';
 import { SelectionMenuItemClickEvent } from '../event/EditorEvent';
 import {
   EditorActionResult,
-  EditorActionSource,
+  hasActiveInteraction,
   needsViewportMotion
 } from '../core/CoreAction';
-import { GestureType } from '../core/CoreInteraction';
 import { SweetEditorController } from '../SweetEditorController';
 import { SweetEditor } from '../SweetEditor';
 import { popupRect, PopupRect } from '../ui/PopupPositioner';
 
 const SHOW_DELAY_MS = 100;
+
+enum SelectionMenuLifecycleState {
+  HIDDEN,
+  PENDING_SHOW,
+  VISIBLE,
+  SUSPENDED
+}
 
 /**
  * Selection handle position data.
@@ -37,11 +43,9 @@ export class SelectionMenuController {
   private itemProvider: SelectionMenuItemProvider | null = null;
   private startHandle: SelectionHandleInfo | null = null;
   private endHandle: SelectionHandleInfo | null = null;
-  private handleDragActive: boolean = false;
-  private selectionInteractionActive: boolean = false;
-  private hiddenByViewportGesture: boolean = false;
-  private pendingShow: boolean = false;
-  private showing: boolean = false;
+  private lifecycleState: SelectionMenuLifecycleState = SelectionMenuLifecycleState.HIDDEN;
+  private hasSelection: boolean = false;
+  private coreBlocked: boolean = false;
   private showTimerId: number = -1;
   private stateListener: ((state: SelectionMenuState) => void) | null = null;
   private state: SelectionMenuState = { visible: false, items: [], anchorRect: popupRect(0, 0, 0, 0) };
@@ -54,9 +58,6 @@ export class SelectionMenuController {
 
   setItemProvider(provider: SelectionMenuItemProvider | null): void {
     this.itemProvider = provider;
-    if (this.showing) {
-      this.updateVisibleState(this.buildItems());
-    }
   }
 
   setStateListener(listener: ((state: SelectionMenuState) => void) | null): void {
@@ -67,98 +68,44 @@ export class SelectionMenuController {
   updateSelectionHandles(start: SelectionHandleInfo | null, end: SelectionHandleInfo | null): void {
     this.startHandle = start;
     this.endHandle = end;
-    if (this.showing) {
+    if (this.lifecycleState === SelectionMenuLifecycleState.VISIBLE) {
       this.updateVisibleState(this.state.items);
     }
   }
 
-  clearSelectionHandles(): void {
+  private clearSelectionHandles(): void {
     this.startHandle = null;
     this.endHandle = null;
   }
 
-  isShowing(): boolean {
-    return this.showing;
-  }
+  onEditorActionResult(result: EditorActionResult): void {
+    this.hasSelection = result.hasSelectionAfter;
+    this.coreBlocked = hasActiveInteraction(result) || needsViewportMotion(result);
 
-  onGestureActionResult(result: EditorActionResult, isPointerReleased: boolean): void {
-    let shouldShowAfterRelease = false;
+    if (result.contentChanged || !this.hasSelection) {
+      if (result.contentChanged) {
+        this.clearSelectionHandles();
+      }
+      this.dismiss();
+      return;
+    }
 
-    if (result.isHandleDrag) {
-      this.selectionInteractionActive = true;
-      if (!this.handleDragActive) {
-        this.handleDragActive = true;
-        this.hideImmediate();
+    const wantsShow = result.selectionChanged;
+    if (this.coreBlocked) {
+      if (wantsShow || this.lifecycleState !== SelectionMenuLifecycleState.HIDDEN) {
+        this.suspend();
       }
       return;
     }
 
-    if (this.handleDragActive) {
-      this.handleDragActive = false;
-      if (result.hasSelectionAfter) {
-        shouldShowAfterRelease = true;
-      }
+    if (wantsShow || this.lifecycleState === SelectionMenuLifecycleState.SUSPENDED) {
+      this.scheduleShow();
     }
-
-    switch (result.gestureType) {
-      case GestureType.DOUBLE_TAP:
-        this.hiddenByViewportGesture = false;
-        if (result.hasSelectionAfter) {
-          this.scheduleShow();
-        }
-        break;
-      case GestureType.TAP:
-        this.hiddenByViewportGesture = false;
-        this.hideImmediate();
-        break;
-      case GestureType.SCROLL:
-      case GestureType.FAST_SCROLL:
-      case GestureType.SCALE:
-        this.hiddenByViewportGesture = true;
-        this.hideImmediate();
-        break;
-      case GestureType.DRAG_SELECT:
-        this.selectionInteractionActive = true;
-        this.hideImmediate();
-        break;
-    }
-
-    const viewportMotionActive = needsViewportMotion(result);
-    const animationTickEnded =
-      result.source === EditorActionSource.ANIMATION && !viewportMotionActive;
-    const canRestoreNow = (isPointerReleased && !viewportMotionActive) || animationTickEnded;
-    if (this.hiddenByViewportGesture && canRestoreNow) {
-      this.hiddenByViewportGesture = false;
-      if (result.hasSelectionAfter) {
-        this.scheduleShow();
-      }
-    }
-
-    if (isPointerReleased) {
-      const shouldShowFromSelectionInteraction = this.selectionInteractionActive &&
-        result.hasSelectionAfter &&
-        !this.hiddenByViewportGesture &&
-        !viewportMotionActive;
-      this.selectionInteractionActive = false;
-      if (shouldShowAfterRelease || shouldShowFromSelectionInteraction) {
-        this.scheduleShow();
-      }
-    }
-  }
-
-  onSelectAll(): void {
-    this.scheduleShow();
-  }
-
-  onTextChanged(): void {
-    this.clearSelectionHandles();
-    this.hide();
   }
 
   dismiss(): void {
     this.cancelPendingShow();
-    this.showing = false;
-    this.selectionInteractionActive = false;
+    this.lifecycleState = SelectionMenuLifecycleState.HIDDEN;
     this.updateHiddenState();
   }
 
@@ -166,29 +113,40 @@ export class SelectionMenuController {
     switch (item.id) {
       case SelectionMenuItem.ACTION_CUT:
         this.editor.cutToClipboard();
-        this.hide();
+        this.dismiss();
         break;
       case SelectionMenuItem.ACTION_COPY:
         this.editor.copyToClipboard();
-        this.hide();
+        this.dismiss();
         break;
       case SelectionMenuItem.ACTION_PASTE:
         this.editor.pasteFromClipboard();
-        this.hide();
+        this.dismiss();
         break;
       case SelectionMenuItem.ACTION_SELECT_ALL:
         this.editor.selectAll();
         break;
       default:
         this.eventBus.emit('selectionMenuItemClick', new SelectionMenuItemClickEvent(item));
-        this.hide();
+        this.dismiss();
         break;
     }
   }
 
   private scheduleShow(): void {
+    if (!this.hasSelection) {
+      this.dismiss();
+      return;
+    }
+    if (this.coreBlocked) {
+      this.suspend();
+      return;
+    }
     this.cancelPendingShow();
-    this.pendingShow = true;
+    if (this.lifecycleState === SelectionMenuLifecycleState.VISIBLE) {
+      this.updateHiddenState();
+    }
+    this.lifecycleState = SelectionMenuLifecycleState.PENDING_SHOW;
     this.showTimerId = setTimeout(() => {
       this.showTimerId = -1;
       this.doShow();
@@ -196,44 +154,40 @@ export class SelectionMenuController {
   }
 
   private cancelPendingShow(): void {
-    this.pendingShow = false;
     if (this.showTimerId >= 0) {
       clearTimeout(this.showTimerId);
       this.showTimerId = -1;
     }
   }
 
-  private hide(): void {
+  private suspend(): void {
     this.cancelPendingShow();
-    if (this.showing) {
-      this.showing = false;
+    if (this.lifecycleState === SelectionMenuLifecycleState.VISIBLE) {
       this.updateHiddenState();
     }
-  }
-
-  private hideImmediate(): void {
-    this.cancelPendingShow();
-    if (this.showing) {
-      this.showing = false;
-      this.updateHiddenState();
-    }
+    this.lifecycleState = SelectionMenuLifecycleState.SUSPENDED;
   }
 
   private doShow(): void {
-    if (!this.pendingShow) {
+    if (this.lifecycleState !== SelectionMenuLifecycleState.PENDING_SHOW) {
       return;
     }
-    this.pendingShow = false;
-    if (!this.editor.hasSelection()) {
+    if (!this.hasSelection || !this.editor.hasSelection()) {
+      this.dismiss();
+      return;
+    }
+    if (this.coreBlocked) {
+      this.suspend();
       return;
     }
 
     const items = this.buildItems();
     if (items.length === 0) {
+      this.dismiss();
       return;
     }
 
-    this.showing = true;
+    this.lifecycleState = SelectionMenuLifecycleState.VISIBLE;
     this.state = {
       visible: true,
       items: [...items],
@@ -294,7 +248,7 @@ export class SelectionMenuController {
   }
 
   private updateVisibleState(items: SelectionMenuItem[]): void {
-    if (!this.showing) {
+    if (this.lifecycleState !== SelectionMenuLifecycleState.VISIBLE) {
       return;
     }
     const anchorRect = this.computeMenuAnchorRect();

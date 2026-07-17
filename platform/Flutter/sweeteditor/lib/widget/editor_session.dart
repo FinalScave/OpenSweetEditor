@@ -324,13 +324,7 @@ class EditorSession {
     if (result.gestureType != core.GestureType.undefined) {
       _fireGestureEvents(result);
     }
-    if (result.source == core.EditorActionSource.gesture ||
-        result.source == core.EditorActionSource.animation) {
-      selectionMenuController.onGestureActionResult(
-        result,
-        result.hasSelectionAfter,
-      );
-    }
+    selectionMenuController.onEditorActionResult(result);
 
     _updateAnimationSchedule(result);
     _dispatchStateEvents(result);
@@ -356,7 +350,6 @@ class EditorSession {
       ),
     );
     decorationProviderManager.onTextChanged(result.changes);
-    selectionMenuController.onTextChanged();
 
     final ec = _editorCore;
     if (ec == null || ec.isInLinkedEditing) {
@@ -427,9 +420,6 @@ class EditorSession {
     }
     if (result.scaleChanged) {
       _pendingPlatformScale = result.scaleAfter;
-    }
-    if (result.source == core.EditorActionSource.ime) {
-      selectionMenuController.hide();
     }
   }
 

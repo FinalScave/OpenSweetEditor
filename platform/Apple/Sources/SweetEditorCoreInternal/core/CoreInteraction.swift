@@ -15,6 +15,8 @@ public enum EventType: Int32 {
     case MOUSE_RIGHT_DOWN = 11
     case DIRECT_SCALE = 12
     case DIRECT_SCROLL = 13
+    case DIRECT_GESTURE_BEGIN = 14
+    case DIRECT_GESTURE_END = 15
 
     public static func fromValue(_ value: Int32) -> EventType {
         switch value {
@@ -32,6 +34,8 @@ public enum EventType: Int32 {
         case 11: return .MOUSE_RIGHT_DOWN
         case 12: return .DIRECT_SCALE
         case 13: return .DIRECT_SCROLL
+        case 14: return .DIRECT_GESTURE_BEGIN
+        case 15: return .DIRECT_GESTURE_END
         default: return .UNDEFINED
         }
     }

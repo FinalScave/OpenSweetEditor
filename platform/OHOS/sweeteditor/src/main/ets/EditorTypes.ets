@@ -113,9 +113,9 @@ export class EditorTheme {
   completionLabelColor: number = 0xFFD8DEE9;
   completionDetailColor: number = 0xFF7A8494;
   selectionMenuBgColor: number = 0xF0252830;
-  selectionMenuTextColor: number = 0xFFD7DEE9;
+  selectionMenuTextColor: number = 0xFFD8DEE9;
   selectionMenuBorderColor: number = 0x40607090;
-  selectionMenuDividerColor: number = 0x1FD8DEE9;
+  selectionMenuDividerColor: number = 0x33D8DEE9;
   textStyles: Map<number, TextStyle> = new Map();
 
   defineTextStyle(styleId: number, style: TextStyle): EditorTheme {
@@ -174,9 +174,9 @@ export class EditorTheme {
     theme.completionLabelColor = 0xFFD8DEE9;
     theme.completionDetailColor = 0xFF7A8494;
     theme.selectionMenuBgColor = theme.completionBgColor;
-    theme.selectionMenuTextColor = 0xFFD7DEE9;
+    theme.selectionMenuTextColor = 0xFFD8DEE9;
     theme.selectionMenuBorderColor = theme.completionBorderColor;
-    theme.selectionMenuDividerColor = 0x1FD8DEE9;
+    theme.selectionMenuDividerColor = 0x33D8DEE9;
     theme.textStyles = new Map<number, TextStyle>([
       [EditorTheme.STYLE_KEYWORD, { color: 0xFF7AA2F7, backgroundColor: 0, fontStyle: TextStyle.BOLD } as TextStyle],
       [EditorTheme.STYLE_STRING, { color: 0xFF9ECE6A, backgroundColor: 0, fontStyle: TextStyle.NORMAL } as TextStyle],
@@ -247,7 +247,7 @@ export class EditorTheme {
     theme.selectionMenuBgColor = theme.completionBgColor;
     theme.selectionMenuTextColor = 0xFF1F2937;
     theme.selectionMenuBorderColor = theme.completionBorderColor;
-    theme.selectionMenuDividerColor = 0x1F1F2937;
+    theme.selectionMenuDividerColor = 0x331F2937;
     theme.textStyles = new Map<number, TextStyle>([
       [EditorTheme.STYLE_KEYWORD, { color: 0xFF3559D6, backgroundColor: 0, fontStyle: TextStyle.BOLD } as TextStyle],
       [EditorTheme.STYLE_STRING, { color: 0xFF0F7B6C, backgroundColor: 0, fontStyle: TextStyle.NORMAL } as TextStyle],

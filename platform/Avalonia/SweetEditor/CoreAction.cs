@@ -26,6 +26,14 @@ namespace SweetEditor {
         LINKED_EDITING = 10
     }
 
+    [Flags]
+    public enum InteractionFlag {
+        NONE = 0,
+        PRIMARY_POINTER = 1,
+        SELECTION_DRAG = 2,
+        VIEWPORT_GESTURE = 4
+    }
+
     public enum ScrollBehavior {
         GOTO_TOP = 0,
         GOTO_CENTER = 1,
@@ -59,7 +67,7 @@ namespace SweetEditor {
         public bool NeedsImeSync { get; set; } = false;
         public int AnimationFlags { get; set; } = 0;
         public int NextAnimationDelayMs { get; set; } = 0;
-        public bool IsHandleDrag { get; set; } = false;
+        public int InteractionFlags { get; set; } = 0;
         public List<TextChange> Changes { get; set; } = new();
         public TextPosition CursorBefore { get; set; } = new TextPosition();
         public TextPosition CursorAfter { get; set; } = new TextPosition();

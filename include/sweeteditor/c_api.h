@@ -312,7 +312,7 @@ EDITOR_API const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size
 ///   bool_i32 needs_ime_sync
 ///   u32 animation_flags
 ///   u32 next_animation_delay_ms
-///   bool_i32 is_handle_drag
+///   u32 interaction_flags
 ///   List<TextChange> changes
 ///   TextPosition cursor_before
 ///   TextPosition cursor_after
@@ -336,6 +336,7 @@ EDITOR_API const uint8_t* editor_get_layout_metrics(intptr_t editor_handle, size
 ///   enum_i32 modifiers
 ///   enum_i32 command
 ///   animation_flags is a bit set: 1=EDGE_SCROLL, 2=FLING, 4=TRANSIENT_SCROLLBAR
+///   interaction_flags is a bit set: 1=PRIMARY_POINTER, 2=SELECTION_DRAG, 4=VIEWPORT_GESTURE
 ///   when animation_flags is nonzero, next_animation_delay_ms=0 requests the next display frame
 ///   and a positive value requests editor_tick_animations after that delay
 ///   TextChange is TextRange range followed by U8String new_text

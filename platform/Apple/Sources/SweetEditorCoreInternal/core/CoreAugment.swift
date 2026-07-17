@@ -14,6 +14,14 @@ public extension EditorActionResult {
         hasAnimationFlag(AnimationFlag.EDGE_SCROLL)
             || hasAnimationFlag(AnimationFlag.FLING)
     }
+
+    func hasInteractionFlag(_ flag: Int32) -> Bool {
+        interaction_flags & flag != 0
+    }
+
+    var hasActiveInteraction: Bool {
+        interaction_flags != InteractionFlag.NONE
+    }
 }
 
 public extension AutoIndentMode {

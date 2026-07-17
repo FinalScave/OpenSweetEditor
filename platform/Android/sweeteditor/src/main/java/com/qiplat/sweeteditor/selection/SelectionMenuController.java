@@ -3,15 +3,12 @@ package com.qiplat.sweeteditor.selection;
 import android.graphics.RectF;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.MotionEvent;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.qiplat.sweeteditor.EditorTheme;
 import com.qiplat.sweeteditor.SweetEditor;
-import com.qiplat.sweeteditor.core.EditorCore;
-import com.qiplat.sweeteditor.core.interaction.GestureType;
 import com.qiplat.sweeteditor.core.action.EditorActionResult;
 import com.qiplat.sweeteditor.core.visual.SelectionHandle;
 import com.qiplat.sweeteditor.event.EditorEventBus;
@@ -25,15 +22,15 @@ import java.util.List;
 
 /**
  * Controls the lifecycle of the selection context menu.
- * <p>
- * State machine:
- * <pre>
- *   HIDDEN --(DOUBLE_TAP + selection)--> VISIBLE
- *   VISIBLE --(handle drag / scroll / scale / tap)--> HIDDEN
- *   HIDDEN --(handle drag end + selection)--> VISIBLE
- * </pre>
  */
 public class SelectionMenuController {
+
+    private enum LifecycleState {
+        HIDDEN,
+        PENDING_SHOW,
+        VISIBLE,
+        SUSPENDED
+    }
 
     private static final int SHOW_DELAY_MS = 100;
     private static final int MENU_OFFSET_Y_DP = 8;
@@ -53,9 +50,8 @@ public class SelectionMenuController {
     @Nullable private SelectionMenuItemProvider itemProvider;
     @Nullable private SelectionHandle startHandle;
     @Nullable private SelectionHandle endHandle;
-    private boolean handleDragActive = false;
-    private boolean hiddenByViewportGesture = false;
-    private boolean pendingShow = false;
+    @NonNull private LifecycleState state = LifecycleState.HIDDEN;
+    private boolean coreBlocked;
 
     public SelectionMenuController(@NonNull SweetEditor editor,
                                    @NonNull EditorEventBus eventBus,
@@ -83,132 +79,100 @@ public class SelectionMenuController {
     public void updateSelectionHandles(@Nullable SelectionHandle start, @Nullable SelectionHandle end) {
         this.startHandle = start;
         this.endHandle = end;
+        if (state == LifecycleState.VISIBLE && menuBar.isShowing()) {
+            PopupPositioner.Result position = computeMenuPosition();
+            menuBar.updatePosition(position.screenX, position.screenY);
+        }
     }
 
-    public void clearSelectionHandles() {
+    private void clearSelectionHandles() {
         this.startHandle = null;
         this.endHandle = null;
     }
 
-    /**
-     * Called from {@code SweetEditor.onTouchEvent} after gesture processing.
-     * Drives the show/hide state machine.
-     */
-    public void onEditorActionResult(@NonNull EditorActionResult result, int actionMasked) {
-        if (result.isHandleDrag) {
-            if (!handleDragActive) {
-                handleDragActive = true;
-                hideImmediate();
+    public void onEditorActionResult(@NonNull EditorActionResult result) {
+        coreBlocked = result.hasActiveInteraction() || result.needsViewportMotion();
+
+        if (result.contentChanged || !result.hasSelectionAfter) {
+            if (result.contentChanged) {
+                clearSelectionHandles();
+            }
+            dismiss();
+            return;
+        }
+
+        boolean wantsShow = result.selectionChanged;
+        if (coreBlocked) {
+            if (wantsShow || state != LifecycleState.HIDDEN) {
+                suspend();
             }
             return;
         }
 
-        if (handleDragActive) {
-            handleDragActive = false;
-            if (result.hasSelectionAfter) {
-                scheduleShow();
-            }
+        if (wantsShow || state == LifecycleState.SUSPENDED) {
+            scheduleShow();
         }
-
-        switch (result.gestureType) {
-            case DOUBLE_TAP:
-                hiddenByViewportGesture = false;
-                if (result.hasSelectionAfter) {
-                    scheduleShow();
-                }
-                break;
-
-            case TAP:
-                hiddenByViewportGesture = false;
-                hideImmediate();
-                break;
-
-            case SCROLL:
-            case FAST_SCROLL:
-            case SCALE:
-                hiddenByViewportGesture = true;
-            case DRAG_SELECT:
-                hideImmediate();
-                break;
-
-            default:
-                break;
-        }
-
-        // Auto restore after viewport gesture (scroll/scale/fling) fully ends.
-        boolean pointerReleased = actionMasked == MotionEvent.ACTION_UP
-                || actionMasked == MotionEvent.ACTION_CANCEL
-                || actionMasked == MotionEvent.ACTION_POINTER_UP;
-        boolean animationTickEnded = actionMasked == -1 && !result.needsViewportMotion();
-        boolean canRestoreNow = (pointerReleased && !result.needsViewportMotion()) || animationTickEnded;
-        if (hiddenByViewportGesture && canRestoreNow) {
-            hiddenByViewportGesture = false;
-            if (result.hasSelectionAfter) {
-                scheduleShow();
-            }
-        }
-    }
-
-    /** Called when selectAll() is invoked programmatically. */
-    public void onSelectAll() {
-        scheduleShow();
-    }
-
-    /** Called when text content changes (insert/delete). */
-    public void onTextChanged() {
-        clearSelectionHandles();
-        hide();
     }
 
     /** Dismiss immediately (e.g. on detach). */
     public void dismiss() {
         cancelPendingShow();
         menuBar.dismissImmediate();
-    }
-
-    public boolean isShowing() {
-        return menuBar.isShowing();
+        state = LifecycleState.HIDDEN;
     }
 
     private void scheduleShow() {
-        cancelPendingShow();
-        pendingShow = true;
-        handler.postDelayed(this::doShow, SHOW_DELAY_MS);
-    }
-
-    private void cancelPendingShow() {
-        pendingShow = false;
-        handler.removeCallbacksAndMessages(null);
-    }
-
-    private void hide() {
-        cancelPendingShow();
-        if (menuBar.isShowing()) {
-            menuBar.dismiss();
+        if (!editor.hasSelection()) {
+            dismiss();
+            return;
         }
-    }
-
-    private void hideImmediate() {
+        if (coreBlocked) {
+            suspend();
+            return;
+        }
         cancelPendingShow();
         if (menuBar.isShowing()) {
             menuBar.dismissImmediate();
         }
+        state = LifecycleState.PENDING_SHOW;
+        handler.postDelayed(this::doShow, SHOW_DELAY_MS);
+    }
+
+    private void cancelPendingShow() {
+        handler.removeCallbacksAndMessages(null);
+    }
+
+    private void suspend() {
+        cancelPendingShow();
+        if (menuBar.isShowing()) {
+            menuBar.dismissImmediate();
+        }
+        state = LifecycleState.SUSPENDED;
     }
 
     private void doShow() {
-        if (!pendingShow) return;
-        pendingShow = false;
-
-        if (!editor.hasSelection()) return;
+        if (state != LifecycleState.PENDING_SHOW) return;
+        if (!editor.hasSelection()) {
+            dismiss();
+            return;
+        }
+        if (coreBlocked) {
+            suspend();
+            return;
+        }
 
         List<SelectionMenuItem> items = buildItems();
-        if (items.isEmpty()) return;
+        if (items.isEmpty()) {
+            dismiss();
+            return;
+        }
 
         PopupPositioner.Result position = computeMenuPosition();
         if (menuBar.isShowing()) {
             menuBar.dismissImmediate();
         }
         menuBar.showAt(editor, position.screenX, position.screenY, items, position.placement);
+        state = LifecycleState.VISIBLE;
     }
 
     private List<SelectionMenuItem> buildItems() {
@@ -233,24 +197,24 @@ public class SelectionMenuController {
         switch (item.id) {
             case SelectionMenuItem.ACTION_CUT:
                 if (editor.cutToClipboard()) {
-                    hide();
+                    dismiss();
                 }
                 break;
             case SelectionMenuItem.ACTION_COPY:
                 if (editor.copyToClipboard()) {
-                    hide();
+                    dismiss();
                 }
                 break;
             case SelectionMenuItem.ACTION_PASTE:
                 editor.pasteFromClipboard();
-                hide();
+                dismiss();
                 break;
             case SelectionMenuItem.ACTION_SELECT_ALL:
                 editor.selectAll();
                 break;
             default:
                 eventBus.publish(new SelectionMenuItemClickEvent(item));
-                hide();
+                dismiss();
                 break;
         }
     }

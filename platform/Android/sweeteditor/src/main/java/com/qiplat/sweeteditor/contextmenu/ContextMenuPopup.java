@@ -53,6 +53,7 @@ public final class ContextMenuPopup {
     private int rippleColor;
     private int measuredWidth = -1;
     private int measuredHeight = -1;
+    private int popupGeneration;
     @NonNull private PopupPositioner.Placement lastPlacement =
             PopupPositioner.Placement.of(PopupPositioner.PopupSide.BELOW, PopupPositioner.PopupAlign.START);
 
@@ -96,6 +97,7 @@ public final class ContextMenuPopup {
 
     public void showAt(@NonNull View anchor, int screenX, int screenY,
                        @NonNull PopupPositioner.Placement placement) {
+        popupGeneration++;
         if (popupWindow.isShowing()) {
             popupWindow.dismiss();
         }
@@ -108,9 +110,11 @@ public final class ContextMenuPopup {
     }
 
     public void dismiss() {
+        currentSections = null;
         if (popupWindow.isShowing()) {
+            int dismissGeneration = ++popupGeneration;
             PopupAnimator.animateDismiss(contentView, lastPlacement, () -> {
-                if (popupWindow.isShowing()) {
+                if (dismissGeneration == popupGeneration && popupWindow.isShowing()) {
                     popupWindow.dismiss();
                 }
             });
@@ -118,6 +122,8 @@ public final class ContextMenuPopup {
     }
 
     public void dismissImmediate() {
+        popupGeneration++;
+        currentSections = null;
         if (popupWindow.isShowing()) {
             popupWindow.dismiss();
         }

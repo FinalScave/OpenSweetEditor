@@ -16,7 +16,9 @@ enum EventType {
   mouseWheel(10),
   mouseRightDown(11),
   directScale(12),
-  directScroll(13);
+  directScroll(13),
+  directGestureBegin(14),
+  directGestureEnd(15);
 
   const EventType(this.value);
   final int value;
@@ -37,6 +39,8 @@ enum EventType {
       case 11: return mouseRightDown;
       case 12: return directScale;
       case 13: return directScroll;
+      case 14: return directGestureBegin;
+      case 15: return directGestureEnd;
       default: return undefined;
     }
   }

@@ -85,7 +85,7 @@ bool_i32 decoration_changed
 bool_i32 needs_ime_sync
 u32 animation_flags
 u32 next_animation_delay_ms
-bool_i32 is_handle_drag
+u32 interaction_flags
 List<TextChange> changes
 TextPosition cursor_before
 TextPosition cursor_after
@@ -113,6 +113,8 @@ enum_i32 command
 `TextChange` is `TextRange range, U8String new_text`. `HitTarget` is `enum_i32 type, i32 line, i32 column, i32 icon_id, i32 color_value`.
 
 `animation_flags` is an `AnimationFlag` bit set: `EDGE_SCROLL=1`, `FLING=2`, and `TRANSIENT_SCROLLBAR=4`. A zero value stops scheduling. For nonzero flags, `next_animation_delay_ms=0` requests the next display frame; a positive value requests another `editor_tick_animations` call after that delay.
+
+`interaction_flags` is an `InteractionFlag` bit set: `PRIMARY_POINTER=1`, `SELECTION_DRAG=2`, and `VIEWPORT_GESTURE=4`. It describes active input lifecycles and is independent of animation scheduling.
 
 ### `EditorRenderModel`
 

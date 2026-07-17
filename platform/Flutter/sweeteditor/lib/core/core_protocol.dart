@@ -660,7 +660,7 @@ EditorActionResult _readEditorActionResult(_BinaryReader reader) {
     needsImeSync: reader.readBoolI32(),
     animationFlags: reader.readUint32(),
     nextAnimationDelayMs: reader.readUint32(),
-    isHandleDrag: reader.readBoolI32(),
+    interactionFlags: reader.readUint32(),
     changes: _readTextChangeList(reader),
     cursorBefore: _readTextPosition(reader),
     cursorAfter: _readTextPosition(reader),

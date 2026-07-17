@@ -90,8 +90,11 @@ TEST_CASE("EditorCore viewport resize cancels stale scrollbar capture") {
       model.vertical_scrollbar.thumb.origin.y
           + model.vertical_scrollbar.thumb.height * 0.5f
   };
-  REQUIRE(editor.handleGestureEvent(
-      GestureEvent::create(EventType::MOUSE_DOWN, 1, down_point)).handled);
+  const EditorActionResult down = editor.handleGestureEvent(
+      GestureEvent::create(EventType::MOUSE_DOWN, 1, down_point));
+  REQUIRE(down.handled);
+  CHECK(down.hasInteractionFlag(InteractionFlag::PRIMARY_POINTER));
+  CHECK(down.hasInteractionFlag(InteractionFlag::VIEWPORT_GESTURE));
 
   editor.setViewport({120, 80});
   const float first_move[2] = {down_point[0], down_point[1] + 10.0f};
@@ -107,6 +110,7 @@ TEST_CASE("EditorCore viewport resize cancels stale scrollbar capture") {
       GestureEvent::create(EventType::MOUSE_MOVE, 1, second_move));
   CHECK(second_move_result.gesture_type == GestureType::UNDEFINED);
   CHECK(second_move_result.scroll_y_after == scroll_after_first_move);
+  CHECK_FALSE(second_move_result.hasActiveInteraction());
 }
 
 TEST_CASE("EditorCore scrollbar config change cancels stale scrollbar capture") {
@@ -130,8 +134,11 @@ TEST_CASE("EditorCore scrollbar config change cancels stale scrollbar capture") 
       model.vertical_scrollbar.thumb.origin.y
           + model.vertical_scrollbar.thumb.height * 0.5f
   };
-  REQUIRE(editor.handleGestureEvent(
-      GestureEvent::create(EventType::MOUSE_DOWN, 1, down_point)).handled);
+  const EditorActionResult down = editor.handleGestureEvent(
+      GestureEvent::create(EventType::MOUSE_DOWN, 1, down_point));
+  REQUIRE(down.handled);
+  CHECK(down.hasInteractionFlag(InteractionFlag::PRIMARY_POINTER));
+  CHECK(down.hasInteractionFlag(InteractionFlag::VIEWPORT_GESTURE));
 
   editor.setScrollbarConfig(scrollbar);
   const float first_move[2] = {down_point[0], down_point[1] + 10.0f};
@@ -144,6 +151,7 @@ TEST_CASE("EditorCore scrollbar config change cancels stale scrollbar capture") 
   scrollbar.mode = ScrollbarMode::NEVER;
   const EditorActionResult disabled = editor.setScrollbarConfig(scrollbar);
   CHECK(disabled.animation_flags == 0);
+  CHECK_FALSE(disabled.hasActiveInteraction());
   const float second_move[2] = {down_point[0], down_point[1] + 30.0f};
   const EditorActionResult second_move_result = editor.handleGestureEvent(
       GestureEvent::create(EventType::MOUSE_MOVE, 1, second_move));
@@ -195,6 +203,111 @@ TEST_CASE("EditorCore invalid viewport clears interaction animations") {
   CHECK(restored.animation_flags == 0);
   const EditorActionResult settled = editor.tickAnimations();
   CHECK(settled.animation_flags == 0);
+}
+
+TEST_CASE("EditorCore reports pointer and viewport interaction lifecycles") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(
+      makeShared<LineArrayDocument>(makeRepeatedLines(120, "abcdefghijklmnop")));
+  editor.setViewport({120, 80});
+
+  const float down_point[2] = {40.0f, 60.0f};
+  const float move_point[2] = {40.0f, 20.0f};
+  const EditorActionResult down = editor.handleGestureEvent(
+      GestureEvent::create(EventType::TOUCH_DOWN, 1, down_point));
+  CHECK(down.hasInteractionFlag(InteractionFlag::PRIMARY_POINTER));
+  CHECK_FALSE(down.hasInteractionFlag(InteractionFlag::VIEWPORT_GESTURE));
+
+  const EditorActionResult move = editor.handleGestureEvent(
+      GestureEvent::create(EventType::TOUCH_MOVE, 1, move_point));
+  CHECK(move.hasInteractionFlag(InteractionFlag::PRIMARY_POINTER));
+  CHECK(move.hasInteractionFlag(InteractionFlag::VIEWPORT_GESTURE));
+
+  const EditorActionResult up = editor.handleGestureEvent(
+      GestureEvent::create(EventType::TOUCH_UP, 1, move_point));
+  CHECK_FALSE(up.hasActiveInteraction());
+}
+
+TEST_CASE("EditorCore direct gesture begins by stopping an active fling") {
+  EditorOptions options;
+  options.fling_min_velocity = 1.0f;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(
+      makeShared<LineArrayDocument>(makeRepeatedLines(120, "abcdefghijklmnop")));
+  editor.setViewport({120, 80});
+
+  const float down_point[2] = {40.0f, 60.0f};
+  const float first_move[2] = {40.0f, 40.0f};
+  const float second_move[2] = {40.0f, 20.0f};
+  editor.handleGestureEvent(
+      GestureEvent::create(EventType::TOUCH_DOWN, 1, down_point));
+  editor.handleGestureEvent(
+      GestureEvent::create(EventType::TOUCH_MOVE, 1, first_move));
+  std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  editor.handleGestureEvent(
+      GestureEvent::create(EventType::TOUCH_MOVE, 1, second_move));
+  const EditorActionResult fling = editor.handleGestureEvent(
+      GestureEvent::create(EventType::TOUCH_UP, 1, second_move));
+  REQUIRE(fling.hasAnimationFlag(AnimationFlag::FLING));
+
+  GestureEvent begin;
+  begin.type = EventType::DIRECT_GESTURE_BEGIN;
+  const EditorActionResult direct = editor.handleGestureEvent(begin);
+  CHECK(direct.hasInteractionFlag(InteractionFlag::VIEWPORT_GESTURE));
+  CHECK_FALSE(direct.hasAnimationFlag(AnimationFlag::FLING));
+
+  GestureEvent end;
+  end.type = EventType::DIRECT_GESTURE_END;
+  const EditorActionResult settled = editor.handleGestureEvent(end);
+  CHECK_FALSE(settled.hasActiveInteraction());
+  CHECK_FALSE(settled.hasAnimationFlag(AnimationFlag::FLING));
+}
+
+TEST_CASE("EditorCore keeps overlapping direct gesture sessions active until the final end") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(makeShared<LineArrayDocument>(makeRepeatedLines(30, "abcdefghij")));
+  editor.setViewport({120, 80});
+
+  GestureEvent begin;
+  begin.type = EventType::DIRECT_GESTURE_BEGIN;
+  const EditorActionResult first_begin = editor.handleGestureEvent(begin);
+  CHECK(first_begin.hasInteractionFlag(InteractionFlag::VIEWPORT_GESTURE));
+
+  const EditorActionResult second_begin = editor.handleGestureEvent(begin);
+  CHECK(second_begin.hasInteractionFlag(InteractionFlag::VIEWPORT_GESTURE));
+
+  GestureEvent end;
+  end.type = EventType::DIRECT_GESTURE_END;
+  const EditorActionResult first_end = editor.handleGestureEvent(end);
+  CHECK(first_end.hasInteractionFlag(InteractionFlag::VIEWPORT_GESTURE));
+
+  const EditorActionResult second_end = editor.handleGestureEvent(end);
+  CHECK_FALSE(second_end.hasActiveInteraction());
+}
+
+TEST_CASE("EditorCore ignores unmatched direct gesture end") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(makeShared<LineArrayDocument>(makeRepeatedLines(30, "abcdefghij")));
+  editor.setViewport({120, 80});
+  editor.setScroll(0.0f, 12.5f);
+  const ScrollMetrics before = editor.getScrollMetrics();
+
+  GestureEvent end;
+  end.type = EventType::DIRECT_GESTURE_END;
+  const EditorActionResult result = editor.handleGestureEvent(end);
+  const ScrollMetrics after = editor.getScrollMetrics();
+
+  CHECK(result.handled);
+  CHECK_FALSE(result.hasActiveInteraction());
+  CHECK(after.scroll_y == before.scroll_y);
+  CHECK_FALSE(result.scroll_changed);
 }
 
 TEST_CASE("EditorCore selectAll keeps scroll stable when reveal_selection_end_on_select_all is disabled") {

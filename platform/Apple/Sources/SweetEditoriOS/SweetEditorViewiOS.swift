@@ -12,6 +12,8 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
     var onGutterIconClick: ((SweetEditorGutterIconClickEvent) -> Void)?
     var onCodeLensClick: ((SweetEditorCodeLensClickEvent) -> Void)?
     var onLinkClick: ((SweetEditorLinkClickEvent) -> Void)?
+    var onSelectionMenuItemClick: ((SweetEditorSelectionMenuItem) -> Void)?
+    var selectionMenuItemsProvider: (() -> [SweetEditorSelectionMenuItem])?
     var onDocumentTextChanged: ((String) -> Void)?
     var editorIconProvider: EditorIconProvider?
     let settings = EditorSettings(host: nil)
@@ -23,8 +25,10 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
     private var decorationProviderManager: DecorationProviderManager?
     private var completionProviderManager: CompletionProviderManager?
     private var completionPopupController: CompletionPopupController?
+    private var selectionMenuController: IOSSelectionMenuController?
     private var newLineActionProviderManager: NewLineActionProviderManager?
     private var pinchRecognizer: UIPinchGestureRecognizer!
+    private var directScaleGestureActive = false
     private var animationTimer: Timer?
     private var scrollbarPolicy = IOSScrollbarPolicy()
     private lazy var textInputConnection = SweetEditorInputConnectioniOS(owner: self)
@@ -83,6 +87,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         editorCore.setScrollbarConfig(scrollbarPolicy.defaultConfig())
         editorCore.setCompositionEnabled(settings.compositionEnabled)
         EditorRenderer.applyTheme(EditorRenderer.theme, core: editorCore)
+        selectionMenuController = IOSSelectionMenuController(editor: self, theme: EditorRenderer.theme)
         decorationProviderManager = DecorationProviderManager(
             core: editorCore,
             visibleLineRangeProvider: { [weak self] in
@@ -592,17 +597,113 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         return editorCore.getCursorRect()
     }
 
+    var selectionMenuHasSelection: Bool {
+        editorCore.getSelectionRange() != nil
+    }
+
+    func selectionMenuItems() -> [SweetEditorSelectionMenuItem] {
+        if let selectionMenuItemsProvider {
+            return selectionMenuItemsProvider()
+        }
+        let hasSelection = selectionMenuHasSelection
+        return [
+            SweetEditorSelectionMenuItem(
+                id: SweetEditorSelectionMenuItem.actionCut,
+                label: "Cut",
+                isEnabled: hasSelection
+            ),
+            SweetEditorSelectionMenuItem(
+                id: SweetEditorSelectionMenuItem.actionCopy,
+                label: "Copy",
+                isEnabled: hasSelection
+            ),
+            SweetEditorSelectionMenuItem(
+                id: SweetEditorSelectionMenuItem.actionPaste,
+                label: "Paste"
+            ),
+            SweetEditorSelectionMenuItem(
+                id: SweetEditorSelectionMenuItem.actionSelectAll,
+                label: "Select All"
+            ),
+        ]
+    }
+
+    func selectionMenuAnchorRect() -> CGRect? {
+        guard let selection = editorCore.getSelectionRange() else { return nil }
+        let startRect = editorCore.getPositionRect(
+            line: selection.startLine,
+            column: selection.startColumn
+        )
+        let endRect = editorCore.getPositionRect(
+            line: selection.endLine,
+            column: selection.endColumn
+        )
+        let minX = min(CGFloat(startRect.x), CGFloat(endRect.x))
+        let maxX = max(CGFloat(startRect.x), CGFloat(endRect.x))
+        let minY = min(CGFloat(startRect.y), CGFloat(endRect.y))
+        let maxY = max(
+            CGFloat(startRect.y + startRect.height),
+            CGFloat(endRect.y + endRect.height)
+        )
+        let rawRect = CGRect(
+            x: minX,
+            y: minY,
+            width: max(1, maxX - minX),
+            height: max(1, maxY - minY)
+        )
+        let visibleRect = rawRect.intersection(bounds)
+        return visibleRect.isNull || visibleRect.isEmpty ? nil : visibleRect
+    }
+
+    func selectionMenuCut() {
+        guard let selection = editorCore.getSelectionRange() else { return }
+        let selectedText = editorCore.getSelectedText()
+        guard !selectedText.isEmpty else { return }
+        UIPasteboard.general.string = selectedText
+        dispatchEditorActionResult(editorCore.deleteText(
+            startLine: selection.startLine,
+            startColumn: selection.startColumn,
+            endLine: selection.endLine,
+            endColumn: selection.endColumn
+        ))
+    }
+
+    func selectionMenuCopy() {
+        let selectedText = editorCore.getSelectedText()
+        guard !selectedText.isEmpty else { return }
+        UIPasteboard.general.string = selectedText
+    }
+
+    func selectionMenuPaste() {
+        guard let text = UIPasteboard.general.string else { return }
+        dispatchEditorActionResult(editorCore.insertText(text))
+    }
+
+    func selectionMenuSelectAll() {
+        dispatchEditorActionResult(editorCore.handleKeyEvent(keyCode: .a, modifiers: .meta))
+    }
+
+    func dismissSelectionMenu() {
+        selectionMenuController?.dismiss()
+    }
+
+    var isSelectionMenuShowing: Bool {
+        selectionMenuController?.isShowing == true
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
         let size = bounds.size
         guard size.width > 0 && size.height > 0 else { return }
         let result = editorCore.setViewport(width: Int(size.width), height: Int(size.height))
         dispatchEditorActionResult(result)
+        selectionMenuController?.updatePosition()
     }
 
     private func rebuildAndRedraw() {
         renderModel = editorCore.buildRenderModel()
         updateCompletionPopupPosition()
+        selectionMenuController?.updatePosition()
         setNeedsDisplay()
     }
 
@@ -619,6 +720,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
                 }
             }
         }
+        selectionMenuController?.onEditorActionResult(result)
         updateAnimationSchedule(result)
         dispatchStateEvents(result)
         if result.needs_redraw {
@@ -647,13 +749,26 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
     }
 
     deinit {
+        endDirectScaleGesture(dispatchResult: false)
+        selectionMenuController?.dismiss()
         animationTimer?.invalidate()
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window == nil {
+            endDirectScaleGesture(dispatchResult: false)
+            animationTimer?.invalidate()
+            animationTimer = nil
+            selectionMenuController?.dismiss()
+        }
     }
 
     /// Switches the editor theme.
     func applyTheme(_ theme: EditorTheme) {
         let bgColor = EditorRenderer.applyTheme(theme, core: editorCore)
         backgroundColor = UIColor(cgColor: bgColor)
+        selectionMenuController?.applyTheme(theme)
         rebuildAndRedraw()
     }
 
@@ -876,13 +991,42 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
 
     @objc private func handlePinch(_ recognizer: UIPinchGestureRecognizer) {
         let center = recognizer.location(in: self)
+        let points = [(Float(center.x), Float(center.y))]
+
+        switch recognizer.state {
+        case .began:
+            directScaleGestureActive = true
+            dispatchEditorActionResult(editorCore.handleGestureEvent(
+                type: .directGestureBegin,
+                points: points
+            ))
+        case .changed:
+            dispatchEditorActionResult(editorCore.handleGestureEvent(
+                type: .directScale,
+                points: points,
+                directScale: Float(recognizer.scale)
+            ))
+            recognizer.scale = 1.0
+        case .ended, .cancelled, .failed:
+            endDirectScaleGesture(points: points)
+        default:
+            break
+        }
+    }
+
+    private func endDirectScaleGesture(
+        points: [(Float, Float)] = [],
+        dispatchResult: Bool = true
+    ) {
+        guard directScaleGestureActive else { return }
+        directScaleGestureActive = false
         let result = editorCore.handleGestureEvent(
-            type: .directScale,
-            points: [(Float(center.x), Float(center.y))],
-            directScale: Float(recognizer.scale)
+            type: .directGestureEnd,
+            points: points
         )
-        dispatchEditorActionResult(result)
-        recognizer.scale = 1.0
+        if dispatchResult {
+            dispatchEditorActionResult(result)
+        }
     }
 
     // MARK: - iPad Pointer / Trackpad Support

@@ -333,7 +333,7 @@ A unified gesture recognition engine for touch and mouse input.
 ```
 Touch series: TOUCH_DOWN → TOUCH_MOVE → TOUCH_UP (with multi-touch POINTER_DOWN/UP)
 Mouse series: MOUSE_DOWN → MOUSE_MOVE → MOUSE_UP + MOUSE_WHEEL + MOUSE_RIGHT_DOWN
-Direct series: DIRECT_SCALE (trackpad pinch), DIRECT_SCROLL (trackpad scroll)
+Direct series: DIRECT_SCALE (trackpad pinch), DIRECT_SCROLL (trackpad scroll), with DIRECT_GESTURE_BEGIN / DIRECT_GESTURE_END bracketing each continuous platform gesture lifecycle; phase-less wheel or scale events use an atomic BEGIN -> event -> END session
 ```
 
 #### Recognized Gestures

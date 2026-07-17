@@ -71,6 +71,8 @@ public class SweetEditor extends JPanel {
     private static final int MOUSE_UP = 9;
     private static final int MOUSE_WHEEL = 10;
     private static final int MOUSE_RIGHT_DOWN = 11;
+    private static final int DIRECT_GESTURE_BEGIN = 14;
+    private static final int DIRECT_GESTURE_END = 15;
 
     // Modifier bit flags
     private static final int MOD_SHIFT = 1;
@@ -1067,7 +1069,9 @@ public class SweetEditor extends JPanel {
 
         addMouseWheelListener(e -> {
             float deltaY = (float) (-e.getPreciseWheelRotation() * 40);
+            handleGesture(DIRECT_GESTURE_BEGIN, e.getX(), e.getY(), getModifiers(e), 0, 0, 1);
             handleGesture(MOUSE_WHEEL, e.getX(), e.getY(), getModifiers(e), 0, deltaY, 1);
+            handleGesture(DIRECT_GESTURE_END, e.getX(), e.getY(), getModifiers(e), 0, 0, 1);
         });
 
         addKeyListener(new KeyAdapter() {

@@ -168,14 +168,21 @@ Completion providers return results asynchronously through `CompletionReceiver`.
 `SweetEditorViewiOS` additionally exposes:
 
     var onDocumentTextChanged: ((String) -> Void)?
+    var selectionMenuItemProvider: SweetEditorSelectionMenuItemProvider?
+    var onSelectionMenuItemClick: ((SweetEditorSelectionMenuItem) -> Void)?
+    var isSelectionMenuShowing: Bool { get }
 
+    func setSelectionMenuItemProvider(_ provider: SweetEditorSelectionMenuItemProvider?)
+    func dismissSelectionMenu()
     func insertText(_ text: String)
     func undo()
     func redo()
     func canUndo() -> Bool
     func canRedo() -> Bool
 
-The UIKit implementation integrates `UITextInput`, `UIKeyInput`, marked text, surrounding-text queries, selection ranges, candidate positioning, touch gestures, pinch scaling, iPad pointer input, and physical-keyboard shortcuts.
+`SweetEditorSelectionMenuItemProvider` returns the complete item list for the next menu show cycle. Replacing the provider does not mutate an already visible menu. Built-in item identifiers are available from `SweetEditorSelectionMenuItem`, and custom item activation is delivered through `onSelectionMenuItemClick`.
+
+The UIKit implementation integrates `UITextInput`, `UIKeyInput`, marked text, surrounding-text queries, selection ranges, the floating selection menu, candidate positioning, touch gestures, pinch scaling, iPad pointer input, and physical-keyboard shortcuts.
 
 `SweetEditorSwiftUIViewiOS` exposes only:
 
@@ -223,6 +230,7 @@ The public products re-export the public support types needed by the APIs above,
 - Style and decoration models
 - `DecorationProvider`, `DecorationReceiver`, `DecorationContext`, and `DecorationResult`
 - `CompletionProvider`, `CompletionReceiver`, `CompletionContext`, `CompletionResult`, and `CompletionItem`
+- `SweetEditorSelectionMenuItem` and `SweetEditorSelectionMenuItemProvider` on iOS
 - `EditorIconProvider` and platform click-event types
 - `EditorMetadata`; public `setMetadata` and `getMetadata` entry points exist only on the native macOS view
 

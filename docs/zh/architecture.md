@@ -333,7 +333,7 @@ TextEditResult applyEdit(const TextRange& range, const U8String& new_text, bool 
 ```
 触摸系列：TOUCH_DOWN → TOUCH_MOVE → TOUCH_UP（含多指 POINTER_DOWN/UP）
 鼠标系列：MOUSE_DOWN → MOUSE_MOVE → MOUSE_UP + MOUSE_WHEEL + MOUSE_RIGHT_DOWN
-直通系列：DIRECT_SCALE（触控板缩放）、DIRECT_SCROLL（触控板滚动）
+直通系列：DIRECT_SCALE（触控板缩放）、DIRECT_SCROLL（触控板滚动），平台侧的每段连续手势生命周期由 DIRECT_GESTURE_BEGIN / DIRECT_GESTURE_END 包围；无 phase 的滚轮或缩放事件使用一次原子的 BEGIN -> 事件 -> END 会话
 ```
 
 #### 识别的手势

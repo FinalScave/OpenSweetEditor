@@ -40,8 +40,6 @@ import com.qiplat.sweeteditor.core.config.RangeEffectUnderlineStyle;
 import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.interaction.HitTargetType;
 import com.qiplat.sweeteditor.core.interaction.GestureType;
-import com.qiplat.sweeteditor.core.interaction.EventType;
-import com.qiplat.sweeteditor.core.action.EditorActionSource;
 import com.qiplat.sweeteditor.core.action.EditorActionResult;
 import com.qiplat.sweeteditor.core.config.ScrollbarConfig;
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
@@ -452,7 +450,7 @@ public class SweetEditor extends View {
             mSelectionMenuController.dismiss();
         }
         if (mContextMenuController != null) {
-            mContextMenuController.dismiss();
+            mContextMenuController.onHostDetached();
         }
         if (mInputConnection != null) {
             mInputConnection.closeConnection();
@@ -930,10 +928,6 @@ public class SweetEditor extends View {
      */
     public void selectAll() {
         EditorActionResult result = mEditorCore.selectAll();
-        if (mSelectionMenuController != null
-                && (mContextMenuController == null || !mContextMenuController.isShowing())) {
-            mSelectionMenuController.onSelectAll();
-        }
         dispatchEditorActionResult(result);
     }
 
@@ -1989,10 +1983,6 @@ public class SweetEditor extends View {
             if (mDecorationProviderManager != null) {
                 mDecorationProviderManager.onTextChanged(editResult.changes);
             }
-            // Hide selection menu on text change
-            if (mSelectionMenuController != null) {
-                mSelectionMenuController.onTextChanged();
-            }
             if (mContextMenuController != null) {
                 mContextMenuController.onTextChanged();
             }
@@ -2060,7 +2050,7 @@ public class SweetEditor extends View {
      * @param result           Gesture processing result
      * @param locationInEditor Pointer location relative to the editor
      */
-    private void fireGestureEvents(EditorActionResult result, PointF locationInEditor, int actionMasked) {
+    private void fireGestureEvents(EditorActionResult result, PointF locationInEditor) {
         switch (result.gestureType) {
             case LONG_PRESS:
                 mEventBus.publish(new LongPressEvent(result.cursorAfter, locationInEditor));
@@ -2142,12 +2132,6 @@ public class SweetEditor extends View {
                 break;
         }
 
-        if ((result.gestureType == GestureType.LONG_PRESS
-                || result.gestureType == GestureType.CONTEXT_MENU)
-                && mSelectionMenuController != null) {
-            mSelectionMenuController.dismiss();
-        }
-
         if (mContextMenuController != null) {
             mContextMenuController.onEditorActionResult(result, locationInEditor);
         }
@@ -2199,14 +2183,14 @@ public class SweetEditor extends View {
                 resetCursorBlink();
             }
             PointF tapPoint = new PointF(result.tapPoint.x, result.tapPoint.y);
-            fireGestureEvents(result, tapPoint, motionActionFromGestureEventType(result.gestureEventType));
+            fireGestureEvents(result, tapPoint);
         }
-        if (mSelectionMenuController != null
-                && (result.source == EditorActionSource.GESTURE
-                    || result.source == EditorActionSource.ANIMATION)) {
-            mSelectionMenuController.onEditorActionResult(
-                    result,
-                    motionActionFromGestureEventType(result.gestureEventType));
+        if (mSelectionMenuController != null) {
+            if (mContextMenuController != null && mContextMenuController.isShowing()) {
+                mSelectionMenuController.dismiss();
+            } else {
+                mSelectionMenuController.onEditorActionResult(result);
+            }
         }
         updateAnimationSchedule(result);
         dispatchStateEvents(result);
@@ -2218,25 +2202,6 @@ public class SweetEditor extends View {
         }
         if (result.gestureType == GestureType.TAP) {
             notifyImeViewClicked();
-        }
-    }
-
-    private static int motionActionFromGestureEventType(EventType eventType) {
-        switch (eventType) {
-            case TOUCH_DOWN:
-                return MotionEvent.ACTION_DOWN;
-            case TOUCH_POINTER_DOWN:
-                return MotionEvent.ACTION_POINTER_DOWN;
-            case TOUCH_MOVE:
-                return MotionEvent.ACTION_MOVE;
-            case TOUCH_POINTER_UP:
-                return MotionEvent.ACTION_POINTER_UP;
-            case TOUCH_UP:
-                return MotionEvent.ACTION_UP;
-            case TOUCH_CANCEL:
-                return MotionEvent.ACTION_CANCEL;
-            default:
-                return -1;
         }
     }
 

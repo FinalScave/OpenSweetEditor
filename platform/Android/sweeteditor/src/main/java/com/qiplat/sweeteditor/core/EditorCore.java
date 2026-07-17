@@ -88,6 +88,8 @@ public class EditorCore {
     public static final int EVENT_TYPE_MOUSE_RIGHT_DOWN = 11;
     public static final int EVENT_TYPE_DIRECT_SCALE = 12;
     public static final int EVENT_TYPE_DIRECT_SCROLL = 13;
+    public static final int EVENT_TYPE_DIRECT_GESTURE_BEGIN = 14;
+    public static final int EVENT_TYPE_DIRECT_GESTURE_END = 15;
 
     // ==================== Construction/Initialization/Lifecycle ====================
 

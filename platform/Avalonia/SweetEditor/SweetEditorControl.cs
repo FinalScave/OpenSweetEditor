@@ -93,7 +93,6 @@ namespace SweetEditor {
 		private IEditorMetadata? metadata;
 		private bool animationActive;
 		private bool animationWaiting;
-		private bool viewportMotionAnimationActive;
 		private bool renderModelDirty = true;
 		private bool visualInvalidationPending;
 		private bool visualFrameRequestPending;
@@ -136,6 +135,8 @@ namespace SweetEditor {
 		private bool touchMoveFlushScheduled;
 		private long lastTouchMoveFlushTickMs;
 		private float lastDirectPinchScale = 1f;
+		private bool directPinchActive;
+		private bool directScrollActive;
 		private bool hasAuthorizedDestructiveSelection;
 		private TextRange authorizedDestructiveSelection = new();
 
@@ -304,16 +305,16 @@ namespace SweetEditor {
 
 		protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e) {
 			attached = false;
+			CancelActiveTouchSequence();
+			CancelDirectGestureSessions();
 			animationActive = false;
 			animationWaiting = false;
-			viewportMotionAnimationActive = false;
 			desktopAnimationTimer.Stop();
 			visualInvalidationPending = false;
 			visualFrameRequestPending = false;
 			animationFrameTickPending = false;
 			controller?.Unbind(this);
 			DetachTopLevelHooks();
-			CancelActiveTouchSequence(notifyViewportSettled: false);
 			SetImeSuppressedByTouch(platformBehavior.SuppressImeOnTouchDown);
 			selectionMenuController.Dismiss();
 			completionPopupController.Dismiss();
@@ -610,7 +611,6 @@ namespace SweetEditor {
 				touchGestureHadScroll = false;
 
 				DispatchEditorActionResult(touchResult);
-				NotifyViewportGestureSettled();
 				e.Handled = true;
 				return;
 			}
@@ -622,7 +622,6 @@ namespace SweetEditor {
 				DirectScale = 1,
 			});
 			DispatchEditorActionResult(result);
-			NotifyViewportGestureSettled();
 			e.Handled = true;
 		}
 
@@ -639,15 +638,28 @@ namespace SweetEditor {
 
 			var point = e.GetPosition(this);
 			lastPointerPosition = point;
+			int modifiers = (int)ToModifiers(e.KeyModifiers);
+			DispatchEditorActionResult(editorCore.HandleGestureEvent(new GestureEvent {
+				Type = EventType.DIRECT_GESTURE_BEGIN,
+				Points = [ToPointF(point)],
+				Modifiers = modifiers,
+				DirectScale = 1,
+			}));
 			var result = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.MOUSE_WHEEL,
 				Points = [ToPointF(point)],
-				Modifiers = (int)ToModifiers(e.KeyModifiers),
+				Modifiers = modifiers,
 				WheelDeltaX = (float)e.Delta.X * 120f,
 				WheelDeltaY = (float)e.Delta.Y * 120f,
 				DirectScale = 1,
 			});
 			DispatchEditorActionResult(result);
+			DispatchEditorActionResult(editorCore.HandleGestureEvent(new GestureEvent {
+				Type = EventType.DIRECT_GESTURE_END,
+				Points = [ToPointF(point)],
+				Modifiers = modifiers,
+				DirectScale = 1,
+			}));
 			e.Handled = true;
 		}
 
@@ -657,7 +669,7 @@ namespace SweetEditor {
 				return;
 			}
 
-			CancelActiveTouchSequence(notifyViewportSettled: true);
+			CancelActiveTouchSequence();
 		}
 
 		private void OnPinchGesture(object? sender, PinchEventArgs e) {
@@ -675,11 +687,21 @@ namespace SweetEditor {
 
 			Point origin = e.ScaleOrigin;
 			lastPointerPosition = origin;
+			if (!directPinchActive) {
+				directPinchActive = true;
+				DispatchEditorActionResult(editorCore.HandleGestureEvent(new GestureEvent {
+					Type = EventType.DIRECT_GESTURE_BEGIN,
+					Points = [ToPointF(origin)],
+					Modifiers = (int)KeyModifier.NONE,
+					DirectScale = 1f,
+				}));
+			}
 			float currentScale = NormalizeDirectScale((float)e.Scale);
 			float directScale = lastDirectPinchScale > 0f ? currentScale / lastDirectPinchScale : currentScale;
 			lastDirectPinchScale = currentScale;
 			directScale = NormalizeDirectScale(directScale);
 			if (Math.Abs(directScale - 1f) < 0.0001f) {
+				e.Handled = true;
 				return;
 			}
 
@@ -698,7 +720,15 @@ namespace SweetEditor {
 				return;
 			}
 
-			NotifyViewportGestureSettled();
+			if (directPinchActive) {
+				directPinchActive = false;
+				DispatchEditorActionResult(editorCore.HandleGestureEvent(new GestureEvent {
+					Type = EventType.DIRECT_GESTURE_END,
+					Points = [ToPointF(lastPointerPosition)],
+					Modifiers = (int)KeyModifier.NONE,
+					DirectScale = 1f,
+				}));
+			}
 			lastDirectPinchScale = 1f;
 			e.Handled = true;
 		}
@@ -717,9 +747,19 @@ namespace SweetEditor {
 			}
 
 			Point point = lastPointerPosition;
+			if (!directScrollActive) {
+				directScrollActive = true;
+				DispatchEditorActionResult(editorCore.HandleGestureEvent(new GestureEvent {
+					Type = EventType.DIRECT_GESTURE_BEGIN,
+					Points = [ToPointF(point)],
+					Modifiers = (int)KeyModifier.NONE,
+					DirectScale = 1f,
+				}));
+			}
 			float deltaX = NormalizeDirectScrollDelta(e.Delta.X);
 			float deltaY = NormalizeDirectScrollDelta(e.Delta.Y);
 			if (Math.Abs(deltaX) < 0.0001f && Math.Abs(deltaY) < 0.0001f) {
+				e.Handled = true;
 				return;
 			}
 
@@ -740,7 +780,15 @@ namespace SweetEditor {
 				return;
 			}
 
-			NotifyViewportGestureSettled();
+			if (directScrollActive) {
+				directScrollActive = false;
+				DispatchEditorActionResult(editorCore.HandleGestureEvent(new GestureEvent {
+					Type = EventType.DIRECT_GESTURE_END,
+					Points = [ToPointF(lastPointerPosition)],
+					Modifiers = (int)KeyModifier.NONE,
+					DirectScale = 1f,
+				}));
+			}
 			e.Handled = true;
 		}
 
@@ -772,14 +820,27 @@ namespace SweetEditor {
 			if (Math.Abs(directScale - 1f) < 0.0001f) {
 				return;
 			}
+			int modifiers = (int)ToModifiers(e.KeyModifiers);
+			DispatchEditorActionResult(editorCore.HandleGestureEvent(new GestureEvent {
+				Type = EventType.DIRECT_GESTURE_BEGIN,
+				Points = [ToPointF(point)],
+				Modifiers = modifiers,
+				DirectScale = 1f,
+			}));
 
 			var result = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.DIRECT_SCALE,
 				Points = [ToPointF(point)],
-				Modifiers = (int)ToModifiers(e.KeyModifiers),
+				Modifiers = modifiers,
 				DirectScale = directScale,
 			});
 			DispatchEditorActionResult(result);
+			DispatchEditorActionResult(editorCore.HandleGestureEvent(new GestureEvent {
+				Type = EventType.DIRECT_GESTURE_END,
+				Points = [ToPointF(point)],
+				Modifiers = modifiers,
+				DirectScale = 1f,
+			}));
 			e.Handled = true;
 		}
 
@@ -943,6 +1004,7 @@ namespace SweetEditor {
 			currentTheme = theme;
 			renderer.ApplyTheme(theme);
 			completionPopupController.ApplyTheme(theme);
+			selectionMenuController.ApplyTheme();
 			DispatchEditorActionResult(editorCore.SetEditorRenderColors(BuildEditorRenderColors(theme)));
 			DispatchEditorActionResult(editorCore.SetEditorRangeEffectStyles(BuildEditorRangeEffectStyles(theme)));
 			DispatchEditorActionResult(editorCore.RegisterBatchTextStyles(theme.TextStyles));
@@ -1112,7 +1174,6 @@ namespace SweetEditor {
 				inlineSuggestionPopup.IsOpen = attached;
 			}
 			UpdateInlineSuggestionActionBarPosition();
-			ScheduleSelectionMenuShow();
 
 			decorationProviderManager.RequestRefresh();
 			Flush();
@@ -1317,7 +1378,6 @@ namespace SweetEditor {
 
 		public void SelectAll() {
 			DispatchEditorActionResult(editorCore.SelectAll());
-			ScheduleSelectionMenuShow();
 		}
 
 		public string GetSelectedText() => disposed ? string.Empty : editorCore.GetSelectedText();
@@ -1543,6 +1603,7 @@ namespace SweetEditor {
 			if (result.GestureType != GestureType.UNDEFINED) {
 				FireGestureEvents(result, ToPoint(result.TapPoint));
 			}
+			NotifySelectionMenuEditorActionResult(result);
 			UpdateAnimationTimer(result);
 			DispatchStateEvents(result);
 
@@ -1581,7 +1642,6 @@ namespace SweetEditor {
 				                                   : hasSelection;
 				UpdateDestructiveSelectionAuthorization(hasSelection, explicitSelectionSource, selection ?? new TextRange());
 				SelectionChanged?.Invoke(this, new SelectionChangedEventArgs(hasSelection, selection, cursor));
-				NotifySelectionMenuSelectionChanged(hasSelection);
 			}
 			if (result.ScrollChanged) {
 				ScrollChanged?.Invoke(this, new ScrollChangedEventArgs(result.ScrollXAfter, result.ScrollYAfter));
@@ -1758,10 +1818,10 @@ namespace SweetEditor {
 			if (disposed) {
 				return;
 			}
+			CancelDirectGestureSessions();
 			disposed = true;
 			animationActive = false;
 			animationWaiting = false;
-			viewportMotionAnimationActive = false;
 			desktopAnimationTimer.Stop();
 			visualFrameRequestPending = false;
 			animationFrameTickPending = false;
@@ -1933,11 +1993,7 @@ namespace SweetEditor {
 			}
 
 			var result = editorCore.TickAnimations();
-			bool viewportMotionSettled = viewportMotionAnimationActive && !result.NeedsViewportMotion;
 			DispatchEditorActionResult(result);
-			if (viewportMotionSettled) {
-				NotifyViewportGestureSettled();
-			}
 		}
 
 		private void UpdateAnimationTimer(EditorActionResult result) {
@@ -1945,12 +2001,10 @@ namespace SweetEditor {
 			if (!result.NeedsAnimation) {
 				animationActive = false;
 				animationWaiting = false;
-				viewportMotionAnimationActive = false;
 				return;
 			}
 
 			animationActive = true;
-			viewportMotionAnimationActive = result.NeedsViewportMotion;
 
 			if (platformBehavior.IsMobile && result.NextAnimationDelayMs <= 0) {
 				animationWaiting = false;
@@ -2011,38 +2065,9 @@ namespace SweetEditor {
 			return platformBehavior.IsMobile;
 		}
 
-		private void NotifySelectionMenuSelectionChanged(bool hasSelection) {
-			if (ShouldAutoShowSelectionMenu()) {
-				selectionMenuController.OnSelectionChanged(hasSelection);
-			} else if (!hasSelection && !IsInlineSuggestionShowing()) {
-				selectionMenuController.Dismiss();
-			}
-		}
-
-		private void ScheduleSelectionMenuShow() {
-			if (ShouldAutoShowSelectionMenu()) {
-				selectionMenuController.ScheduleShow();
-			}
-		}
-
-		private void NotifyViewportGestureSettled() {
-			if (ShouldAutoShowSelectionMenu()) {
-				selectionMenuController.OnViewportGestureSettled();
-			} else if (selectionMenuController.IsShowing) {
-				selectionMenuController.Dismiss();
-			}
-		}
-
 		private void NotifySelectionMenuEditorActionResult(EditorActionResult result) {
 			if (!ShouldAutoShowSelectionMenu()) {
-				if (!result.HasSelectionAfter && !IsInlineSuggestionShowing()) {
-					selectionMenuController.Dismiss();
-				}
-				return;
-			}
-
-			if (result.GestureType == GestureType.LONG_PRESS && !platformBehavior.UseLongPressForContextMenu) {
-				if (!result.HasSelectionAfter && !IsInlineSuggestionShowing()) {
+				if (selectionMenuController.IsShowing) {
 					selectionMenuController.Dismiss();
 				}
 				return;
@@ -2081,10 +2106,6 @@ namespace SweetEditor {
 
 			if (!deferLargeDocumentDoubleTap && result.GestureType == GestureType.DOUBLE_TAP) {
 				NormalizeDoubleTapSelection(ref result);
-			}
-
-			if (!deferLargeDocumentDoubleTap) {
-				NotifySelectionMenuEditorActionResult(result);
 			}
 
 			switch (result.GestureType) {
@@ -2210,7 +2231,6 @@ namespace SweetEditor {
 						                            selection.hasSelection,
 						                            selection.hasSelection ? selection.range : (TextRange?)null,
 						                            point));
-						ScheduleSelectionMenuShow();
 						return true;
 					}
 				}
@@ -2543,7 +2563,6 @@ namespace SweetEditor {
 		private void FireTextChanged(EditorActionResult? editResult = null) {
 			DismissInlineSuggestionInternal(emitDismissedCallback: true);
 			ClearAuthorizedDestructiveSelection();
-			selectionMenuController.OnTextChanged();
 			if (editResult?.Changes != null && editResult.Changes.Count > 0) {
 				TextChanged?.Invoke(this, new TextChangedEventArgs(editResult.TextChangeKind, editResult.Source, editResult.Changes));
 				decorationProviderManager.OnTextChanged(editResult.Changes);
@@ -3387,7 +3406,7 @@ namespace SweetEditor {
 			return point.Properties.IsLeftButtonPressed;
 		}
 
-		private void CancelActiveTouchSequence(bool notifyViewportSettled) {
+		private void CancelActiveTouchSequence() {
 			if (!touchSequenceActive) {
 				return;
 			}
@@ -3409,8 +3428,20 @@ namespace SweetEditor {
 				DirectScale = 1,
 			});
 			DispatchEditorActionResult(result);
-			if (notifyViewportSettled) {
-				NotifyViewportGestureSettled();
+		}
+
+		private void CancelDirectGestureSessions() {
+			int activeSessionCount = (directPinchActive ? 1 : 0) + (directScrollActive ? 1 : 0);
+			directPinchActive = false;
+			directScrollActive = false;
+			lastDirectPinchScale = 1f;
+			for (int i = 0; i < activeSessionCount; i++) {
+				DispatchEditorActionResult(editorCore.HandleGestureEvent(new GestureEvent {
+					Type = EventType.DIRECT_GESTURE_END,
+					Points = [ToPointF(lastPointerPosition)],
+					Modifiers = (int)KeyModifier.NONE,
+					DirectScale = 1f,
+				}));
 			}
 		}
 
@@ -3483,7 +3514,6 @@ namespace SweetEditor {
 
 			case EditorBuiltinCommand.SELECT_ALL:
 				DispatchEditorActionResult(editorCore.SelectAll());
-				ScheduleSelectionMenuShow();
 				return true;
 
 			case EditorBuiltinCommand.UNDO: {

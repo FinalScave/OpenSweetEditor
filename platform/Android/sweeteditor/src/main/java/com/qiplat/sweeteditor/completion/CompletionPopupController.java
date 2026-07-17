@@ -73,6 +73,7 @@ public class CompletionPopupController implements CompletionProviderManager.Comp
     private float cachedCursorX = 0;
     private float cachedCursorY = 0;
     private float cachedCursorHeight = 0;
+    private int popupGeneration;
     @NonNull private PopupPositioner.Placement lastPlacement =
             PopupPositioner.Placement.of(PopupPositioner.PopupSide.BELOW, PopupPositioner.PopupAlign.START);
 
@@ -181,8 +182,9 @@ public class CompletionPopupController implements CompletionProviderManager.Comp
 
     public void dismiss() {
         if (popupWindow != null && popupWindow.isShowing()) {
+            int dismissGeneration = ++popupGeneration;
             PopupAnimator.animateDismiss(recyclerView, lastPlacement, () -> {
-                if (popupWindow.isShowing()) {
+                if (dismissGeneration == popupGeneration && popupWindow.isShowing()) {
                     popupWindow.dismiss();
                 }
             });
@@ -218,6 +220,7 @@ public class CompletionPopupController implements CompletionProviderManager.Comp
             dismiss();
             return;
         }
+        popupGeneration++;
         applyPopupSize(layout.popupWidth, layout.popupHeight);
         if (!popupWindow.isShowing()) {
             lastPlacement = layout.position.placement;
@@ -229,6 +232,7 @@ public class CompletionPopupController implements CompletionProviderManager.Comp
             return;
         }
         applyPopupLayout(layout);
+        PopupAnimator.animateShow(recyclerView, lastPlacement);
     }
 
     @Nullable

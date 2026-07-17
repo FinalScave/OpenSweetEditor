@@ -31,6 +31,9 @@ struct EditorTheme {
     var inlayHintBgColor: CGColor
     var inlayHintTextColor: CGColor
     var inlayHintIconColor: CGColor
+    var selectionMenuBgColor: CGColor
+    var selectionMenuTextColor: CGColor
+    var selectionMenuDividerColor: CGColor
 
     // Default diagnostic decoration colors (severity: ERROR/WARNING/INFO/HINT).
     var diagnosticErrorColor: CGColor
@@ -101,6 +104,9 @@ struct EditorTheme {
             inlayHintBgColor:         CGColor(srgbRed: 1.0, green: 1.0, blue: 1.0, alpha: 0x20/255.0),
             inlayHintTextColor:       CGColor(srgbRed: 0xD4/255.0, green: 0xD4/255.0, blue: 0xD4/255.0, alpha: 0.55),
             inlayHintIconColor:       CGColor(srgbRed: 0xD4/255.0, green: 0xD4/255.0, blue: 0xD4/255.0, alpha: 0xB2/255.0),
+            selectionMenuBgColor:     CGColor(srgbRed: 0x25/255.0, green: 0x28/255.0, blue: 0x30/255.0, alpha: 0xF0/255.0),
+            selectionMenuTextColor:   CGColor(srgbRed: 0xD8/255.0, green: 0xDE/255.0, blue: 0xE9/255.0, alpha: 1.0),
+            selectionMenuDividerColor: CGColor(srgbRed: 0xD8/255.0, green: 0xDE/255.0, blue: 0xE9/255.0, alpha: 0x33/255.0),
             diagnosticErrorColor:     CGColor(srgbRed: 1.0, green: 0.0, blue: 0.0, alpha: 1.0),
             diagnosticWarningColor:   CGColor(srgbRed: 1.0, green: 0.8, blue: 0.0, alpha: 1.0),
             diagnosticInfoColor:      CGColor(srgbRed: 0.38, green: 0.71, blue: 0.93, alpha: 1.0),
@@ -156,6 +162,9 @@ struct EditorTheme {
             inlayHintBgColor:         CGColor(srgbRed: 0.0, green: 0.0, blue: 0.0, alpha: 0x20/255.0),
             inlayHintTextColor:       CGColor(srgbRed: 0.0, green: 0.0, blue: 0.0, alpha: 0.55),
             inlayHintIconColor:       CGColor(srgbRed: 0.0, green: 0.0, blue: 0.0, alpha: 0xB2/255.0),
+            selectionMenuBgColor:     CGColor(srgbRed: 0xFA/255.0, green: 0xFB/255.0, blue: 0xFD/255.0, alpha: 0xF0/255.0),
+            selectionMenuTextColor:   CGColor(srgbRed: 0x1F/255.0, green: 0x29/255.0, blue: 0x37/255.0, alpha: 1.0),
+            selectionMenuDividerColor: CGColor(srgbRed: 0x1F/255.0, green: 0x29/255.0, blue: 0x37/255.0, alpha: 0x33/255.0),
             diagnosticErrorColor:     CGColor(srgbRed: 0.85, green: 0.0, blue: 0.0, alpha: 1.0),
             diagnosticWarningColor:   CGColor(srgbRed: 0.75, green: 0.6, blue: 0.0, alpha: 1.0),
             diagnosticInfoColor:      CGColor(srgbRed: 0.15, green: 0.47, blue: 0.73, alpha: 1.0),

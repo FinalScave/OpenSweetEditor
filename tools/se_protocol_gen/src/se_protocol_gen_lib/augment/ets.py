@@ -53,6 +53,14 @@ export function needsViewportMotion(result: EditorActionResult): boolean {
   return hasAnimationFlag(result, AnimationFlag.EDGE_SCROLL) ||
     hasAnimationFlag(result, AnimationFlag.FLING);
 }
+
+export function hasInteractionFlag(result: EditorActionResult, flag: number): boolean {
+  return (result.interactionFlags & flag) !== 0;
+}
+
+export function hasActiveInteraction(result: EditorActionResult): boolean {
+  return result.interactionFlags !== InteractionFlag.NONE;
+}
 """.strip()
 
 

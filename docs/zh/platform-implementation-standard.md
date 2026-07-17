@@ -23,7 +23,7 @@ Core 层不涉及 UI 渲染，仅包含桥接、数据模型和协议编解码�
 | 逻辑分类 | 必须包含的类型 | 说明 |
 |---|---|---|
 | **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer` | 原生桥接 + 公共核心 API 封装 |
-| **Action** | `EditorActionResult`, `EditorActionSource`, `TextChangeKind`, `ScrollBehavior`, `AnimationFlag` | Core action 结果与相关枚举；`EditorActionResult` 是变更类 core API 的统一结果载体 |
+| **Action** | `EditorActionResult`, `EditorActionSource`, `TextChangeKind`, `ScrollBehavior`, `AnimationFlag`, `InteractionFlag` | Core action 结果与相关枚举；`EditorActionResult` 是变更类 core API 的统一结果载体 |
 | **Config** | `EditorOptions`, `HandleConfig`, `HandleHitArea`, `ScrollbarConfig`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollbarMode`, `ScrollbarTrackTapMode`, `EditorRenderColors`, `EditorRangeEffectStyles`, `RangeEffectStyle`, `RangeEffectUnderlineStyle` | 运行时、构造与编辑器渲染样式协议类型 |
 | **Foundation** | `TextPosition`, `TextRange`, `TextEdit`, `IntRange`, `TextChange`, `PointF`, `Size`, `Rect` | 基础值类型与几何载体 |
 | **Interaction** | `GestureEvent`, `GestureType`, `EventType`, `HitTarget`, `HitTargetType` | 输入与命中测试协议类型 |
@@ -439,7 +439,9 @@ Selection menu 模块在移动端为 SHOULD 级别。桌面实现 MAY 完全省�
 | custom item 回调 | **MUST** | 实现 MUST 提供 listener、delegate、事件、typed stream 或等价机制观察 custom item 被触发；显式 listener 推荐提供 `onSelectionMenuItemSelected(itemId)` |
 | `setSelectionMenuItemProvider(provider)` | **MUST** | 配置 custom 选区菜单项；传入 `null` 时 SHOULD 恢复宿主默认菜单 |
 
-Provider 返回空列表时实现 MAY 不显示选区菜单；Provider SHOULD 在菜单即将显示时重新调用，使菜单项随当前 editor 状态动态变化。内建 cut / copy / paste / select all 等宿主动作不要求统一发出 custom item 回调。editor 进入终结性 teardown、内部 detach 或 controller dispose 后，不得再发出宿主可见的 custom selection-menu 回调。
+Provider 返回空列表时实现 MAY 不显示选区菜单；Provider SHOULD 在菜单即将显示时重新调用，使菜单项随当前 editor 状态动态变化。更换 Provider 在下一次展示时生效，已经可见的菜单保持不变。内建 cut / copy / paste / select all 等宿主动作不要求统一发出 custom item 回调。editor 进入终结性 teardown、内部 detach 或 controller dispose 后，不得再发出宿主可见的 custom selection-menu 回调。
+
+与内建 ContextMenu，或其他被明确设计为替代 SelectionMenu 的 editor 自有菜单之间的互斥，MUST 由 editor 实现内部统一协调。替代型菜单打开时 MUST 将 SelectionMenu 关闭到 `HIDDEN`，仅关闭替代型菜单不得自动恢复 SelectionMenu。Completion、InlineSuggestion 等非替代型浮层不自动适用这条互斥规则。Demo 或宿主代码不得负责维护 SelectionMenu 生命周期。
 
 ### 7.2 定位与生命周期
 
@@ -447,7 +449,11 @@ Provider 返回空列表时实现 MAY 不显示选区菜单；Provider SHOULD �
 |---|---|---|
 | 选区锚点 | **MUST** | 菜单可见时 MUST 锚定到当前选区 / 光标几何信息，或接入等价的原生选区承载体 |
 | 选区失效 | **MUST** | 若选区变为空、失效，或已与当前文档状态脱离，菜单 MUST 关闭 |
-| 滚动 / 视口变化 | **SHOULD** | 滚动或视口变化时 SHOULD 更新菜单位置；除非实现无法安全重定位，否则 SHOULD NOT 强制关闭 |
+| 生命周期状态 | **MUST** | 实现 MUST 保持等价的 `HIDDEN`、`PENDING_SHOW`、`VISIBLE`、`SUSPENDED` 状态，使用户主动关闭与交互期间临时挂起能够区分 |
+| 活动交互 | **MUST** | `interactionFlags != 0` 期间，处于待显示或可见状态的菜单，以及本次选区变化产生了显示意图的菜单 MUST 进入 `SUSPENDED`；主动隐藏的菜单必须保持隐藏 |
+| 视口运动 | **MUST** | `EDGE_SCROLL | FLING` 活动期间菜单 MUST 保持 `SUSPENDED`；仅有 `TRANSIENT_SCROLLBAR` 时不得阻止恢复 |
+| 恢复 | **MUST** | 活动交互与视口运动都结束后，已挂起菜单 MUST 重新检查当前选区；选区仍有效时按平台展示延迟恢复 |
+| 程序化视口变化 | **SHOULD** | 非活动交互期间发生视口变化时，只要选区锚点仍可见，SHOULD 重定位可见菜单 |
 | 命令完成后 | **SHOULD** | 用户触发选区菜单命令后，菜单 SHOULD 关闭；除非实现有意支持多步操作流保持开启 |
 
 ---
@@ -496,6 +502,7 @@ Provider 返回空列表时实现 MAY 不显示选区菜单；Provider SHOULD �
 | 联动编辑 | `linkedEditingActiveColor`, `linkedEditingInactiveColor` |
 | 括号匹配 | `bracketHighlightBorderColor`, `bracketHighlightBgColor` |
 | 补全弹窗 | `completionBgColor`, `completionBorderColor`, `completionSelectedBgColor`, `completionLabelColor`, `completionDetailColor` |
+| 选区菜单（实现该模块时） | `selectionMenuBgColor`, `selectionMenuTextColor`, `selectionMenuDividerColor` |
 
 ### 8.3 工厂方法
 
@@ -664,9 +671,9 @@ ContextMenuEvent      // 具有显式上下文菜单手势入口的目标
 | `pointerCursorAfter` / `pointerCursorChanged` | `PointerCursorType` / boolean | 桌面端或具备 mouse / hover 输入的目标 **MUST**，纯触摸目标 **MAY** | 当前鼠标位置对应的指针样式提示，以及是否需要更新宿主鼠标形状 |
 | `animationFlags` | `AnimationFlag` 位集合 | **MUST** | Core 当前仍活动的动画原因，包括 `EDGE_SCROLL`、`FLING`、`TRANSIENT_SCROLLBAR`；值为 `0` 时停止调度 |
 | `nextAnimationDelayMs` | u32 | **MUST** | 下一次动画 tick 的延迟；`0` 表示下一次显示帧，大于 `0` 表示延迟唤醒 |
-| `isHandleDrag` | boolean | 移动端 **SHOULD** | 当前手势是否为选择手柄拖拽 |
+| `interactionFlags` | `InteractionFlag` 位集合 | **MUST** | 当前仍活动的输入生命周期：`PRIMARY_POINTER`、`SELECTION_DRAG`、`VIEWPORT_GESTURE`；值为 `0` 表示没有活动中的输入交互 |
 
-> 这些字段 MUST 按自身语义独立消费，不能依赖 `needsRedraw` 顺带生效。接入层 MUST 在 `animationFlags != 0` 时按照 `nextAnimationDelayMs` 安排下一次 tick，并在 flags 变为 `0` 时停止。选择菜单或“视口运动结束”逻辑只能检查 `EDGE_SCROLL | FLING`，不能把纯视觉的 `TRANSIENT_SCROLLBAR` 当作手势仍在运动。桌面或具备 mouse / hover 输入的实现 SHOULD 在 `pointerCursorChanged` 为 true 时立即应用 `pointerCursorAfter`，即使本次 result 不需要重绘。纯触摸且没有鼠标指针概念的实现 MAY 完全忽略鼠标形状变化。
+> 这些字段 MUST 按自身语义独立消费，不能依赖 `needsRedraw` 顺带生效。接入层 MUST 在 `animationFlags != 0` 时按照 `nextAnimationDelayMs` 安排下一次 tick，并在 flags 变为 `0` 时停止。选择菜单在 `interactionFlags != 0` 或 `EDGE_SCROLL | FLING` 活动期间必须保持挂起，并在两者都归零后按当前选区重新判断是否显示。纯视觉的 `TRANSIENT_SCROLLBAR` 不能延迟菜单恢复。桌面或具备 mouse / hover 输入的实现 SHOULD 在 `pointerCursorChanged` 为 true 时立即应用 `pointerCursorAfter`，即使本次 result 不需要重绘。纯触摸且没有鼠标指针概念的实现 MAY 完全忽略鼠标形状变化。
 
 ### 11.5 ContextMenu 标准契约
 

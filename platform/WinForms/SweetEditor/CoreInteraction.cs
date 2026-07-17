@@ -18,7 +18,9 @@ namespace SweetEditor {
         MOUSE_WHEEL = 10,
         MOUSE_RIGHT_DOWN = 11,
         DIRECT_SCALE = 12,
-        DIRECT_SCROLL = 13
+        DIRECT_SCROLL = 13,
+        DIRECT_GESTURE_BEGIN = 14,
+        DIRECT_GESTURE_END = 15
     }
 
     public enum GestureType {

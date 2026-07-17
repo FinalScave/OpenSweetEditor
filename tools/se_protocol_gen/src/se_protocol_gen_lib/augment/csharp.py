@@ -483,6 +483,11 @@ namespace {namespace} {{
         public bool NeedsViewportMotion =>
             HasAnimationFlag(AnimationFlag.EDGE_SCROLL) ||
             HasAnimationFlag(AnimationFlag.FLING);
+
+        public bool HasInteractionFlag(InteractionFlag flag) =>
+            (InteractionFlags & (int)flag) != 0;
+
+        public bool HasActiveInteraction => InteractionFlags != (int)InteractionFlag.NONE;
     }}
 }}
 """

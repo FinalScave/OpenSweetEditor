@@ -58,6 +58,8 @@ enum SEEventType: UInt8, Codable {
     case mouseRightDown    = 11
     case directScale       = 12
     case directScroll      = 13
+    case directGestureBegin = 14
+    case directGestureEnd   = 15
 }
 
 // MARK: - SweetEditorCore

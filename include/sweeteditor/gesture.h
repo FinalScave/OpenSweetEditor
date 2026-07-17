@@ -106,6 +106,10 @@ namespace NS_SWEETEDITOR {
     DIRECT_SCALE = 12,
     /// Scroll value passed directly by platform (for example, two-finger trackpad scroll)
     DIRECT_SCROLL = 13,
+    /// Begin a platform passthrough gesture session.
+    DIRECT_GESTURE_BEGIN = 14,
+    /// End or cancel a platform passthrough gesture session.
+    DIRECT_GESTURE_END = 15,
   };
 
   bool isMousePointerEvent(EventType type);

@@ -58,6 +58,7 @@ public class InlineSuggestionActionBar {
     private int dismissTextColor;
     private int dividerColor;
     private int rippleColor;
+    private int popupGeneration;
     @NonNull private PopupPositioner.Placement lastPlacement =
             PopupPositioner.Placement.of(PopupPositioner.PopupSide.ABOVE, PopupPositioner.PopupAlign.START);
 
@@ -110,6 +111,7 @@ public class InlineSuggestionActionBar {
 
     public void showAt(@NonNull View anchor, float cursorX, float cursorY, float cursorHeight) {
         PopupLayout layout = computeLayout(anchor, cursorX, cursorY, cursorHeight);
+        popupGeneration++;
         if (!popupWindow.isShowing()) {
             lastPlacement = layout.position.placement;
             PopupAnimator.prepareForShow(contentView, lastPlacement);
@@ -120,6 +122,7 @@ public class InlineSuggestionActionBar {
             return;
         }
         applyPopupLayout(layout);
+        PopupAnimator.animateShow(contentView, lastPlacement);
     }
 
     public void updatePosition(@NonNull View anchor, float cursorX, float cursorY, float cursorHeight) {
@@ -129,12 +132,16 @@ public class InlineSuggestionActionBar {
 
     public void dismiss() {
         if (!popupWindow.isShowing()) return;
+        int dismissGeneration = ++popupGeneration;
         PopupAnimator.animateDismiss(contentView, lastPlacement, () -> {
-            if (popupWindow.isShowing()) popupWindow.dismiss();
+            if (dismissGeneration == popupGeneration && popupWindow.isShowing()) {
+                popupWindow.dismiss();
+            }
         });
     }
 
     public void dismissImmediately() {
+        popupGeneration++;
         if (popupWindow.isShowing()) popupWindow.dismiss();
     }
 

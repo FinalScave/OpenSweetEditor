@@ -4,9 +4,8 @@ const double _kDirectScaleEpsilon = 0.0001;
 const double _kDirectScrollEpsilon = 0.0001;
 
 class EditorInteractionController {
-  EditorInteractionController({
-    required EditorSession session,
-  }) : _session = session;
+  EditorInteractionController({required EditorSession session})
+    : _session = session;
 
   final EditorSession _session;
 
@@ -102,14 +101,26 @@ class EditorInteractionController {
 
   core.EditorActionResult? onPointerSignal(PointerSignalEvent event) {
     if (event is! PointerScrollEvent) return null;
-    return _sendGestureEvent(
+    final point = _pointFromEvent(event);
+    final modifiers = _currentGestureModifiers(
+      allowCtrl: _session.platformBehavior.supportsCtrlWheelScale,
+    );
+    _sendGestureEvent(
+      type: core.EventType.directGestureBegin,
+      points: [point],
+      modifiers: modifiers,
+    );
+    _sendGestureEvent(
       type: core.EventType.mouseWheel,
-      points: [_pointFromEvent(event)],
-      modifiers: _currentGestureModifiers(
-        allowCtrl: _session.platformBehavior.supportsCtrlWheelScale,
-      ),
+      points: [point],
+      modifiers: modifiers,
       wheelDeltaX: -event.scrollDelta.dx,
       wheelDeltaY: -event.scrollDelta.dy,
+    );
+    return _sendGestureEvent(
+      type: core.EventType.directGestureEnd,
+      points: [point],
+      modifiers: modifiers,
     );
   }
 
@@ -119,8 +130,14 @@ class EditorInteractionController {
     if (!_session.platformBehavior.supportsTrackpadPanZoom) {
       return null;
     }
+    if (_activePanZoomScales.containsKey(event.pointer)) {
+      return null;
+    }
     _activePanZoomScales[event.pointer] = 1.0;
-    return null;
+    return _sendGestureEvent(
+      type: core.EventType.directGestureBegin,
+      points: [_pointFromEvent(event)],
+    );
   }
 
   core.EditorActionResult? onPointerPanZoomUpdate(
@@ -129,10 +146,13 @@ class EditorInteractionController {
     if (!_session.platformBehavior.supportsTrackpadPanZoom) {
       return null;
     }
+    final previousScale = _activePanZoomScales[event.pointer];
+    if (previousScale == null) {
+      return null;
+    }
     final point = _pointFromEvent(event);
     core.EditorActionResult? result;
 
-    final previousScale = _activePanZoomScales[event.pointer] ?? 1.0;
     final currentScale = _normalizeDirectScale(event.scale);
     _activePanZoomScales[event.pointer] = currentScale;
     final directScale = previousScale == 0
@@ -162,8 +182,16 @@ class EditorInteractionController {
   }
 
   core.EditorActionResult? onPointerPanZoomEnd(PointerPanZoomEndEvent event) {
-    _activePanZoomScales.remove(event.pointer);
-    return null;
+    if (!_session.platformBehavior.supportsTrackpadPanZoom) {
+      return null;
+    }
+    if (_activePanZoomScales.remove(event.pointer) == null) {
+      return null;
+    }
+    return _sendGestureEvent(
+      type: core.EventType.directGestureEnd,
+      points: [_pointFromEvent(event)],
+    );
   }
 
   core.EditorActionResult? _handleTouchDown(PointerDownEvent event) {
@@ -520,9 +548,7 @@ class EditorInteractionController {
 
   void _pasteFromClipboard() {
     Clipboard.getData(Clipboard.kTextPlain).then((data) {
-      if (data?.text != null &&
-          data!.text!.isNotEmpty &&
-          _session.isActive) {
+      if (data?.text != null && data!.text!.isNotEmpty && _session.isActive) {
         insertText(data.text!);
       }
     });
@@ -587,7 +613,9 @@ class EditorInteractionController {
         _resetCursorBlink();
         _dispatchEditorActionResult(
           editorCore.handleImeCommandMessage(
-            const core.ImeCommandMessage(kind: core.ImeCommandKind.cancelPreedit),
+            const core.ImeCommandMessage(
+              kind: core.ImeCommandKind.cancelPreedit,
+            ),
           ),
         );
         return true;
@@ -675,7 +703,6 @@ class EditorInteractionController {
     final editorCore = _session.editorCore;
     if (editorCore == null) return;
     final result = editorCore.selectAll();
-    _session.selectionMenuController.onSelectAll();
     _resetCursorBlink();
     _dispatchEditorActionResult(result);
   }

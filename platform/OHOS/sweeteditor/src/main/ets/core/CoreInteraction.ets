@@ -16,6 +16,8 @@ export enum EventType {
   MOUSE_RIGHT_DOWN = 11,
   DIRECT_SCALE = 12,
   DIRECT_SCROLL = 13,
+  DIRECT_GESTURE_BEGIN = 14,
+  DIRECT_GESTURE_END = 15,
 }
 
 export function eventTypeFromValue(value: number): EventType {
@@ -34,6 +36,8 @@ export function eventTypeFromValue(value: number): EventType {
     case 11: return EventType.MOUSE_RIGHT_DOWN;
     case 12: return EventType.DIRECT_SCALE;
     case 13: return EventType.DIRECT_SCROLL;
+    case 14: return EventType.DIRECT_GESTURE_BEGIN;
+    case 15: return EventType.DIRECT_GESTURE_END;
     default: return EventType.UNDEFINED;
   }
 }

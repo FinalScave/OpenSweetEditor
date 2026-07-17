@@ -77,6 +77,13 @@ namespace NS_SWEETEDITOR {
     TRANSIENT_SCROLLBAR = 1u << 2,
   };
 
+  enum class SE_PROTOCOL_FLAGS(action) InteractionFlag : uint32_t {
+    NONE = 0,
+    PRIMARY_POINTER = 1u << 0,
+    SELECTION_DRAG = 1u << 1,
+    VIEWPORT_GESTURE = 1u << 2,
+  };
+
   /// Unified caret state.
   struct CaretState {
     /// Logical cursor position in text.

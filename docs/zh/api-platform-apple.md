@@ -168,14 +168,21 @@ Package 接入和构建命令见 [Apple README](../../platform/Apple/README.md)�
 `SweetEditorViewiOS` 额外公开：
 
     var onDocumentTextChanged: ((String) -> Void)?
+    var selectionMenuItemProvider: SweetEditorSelectionMenuItemProvider?
+    var onSelectionMenuItemClick: ((SweetEditorSelectionMenuItem) -> Void)?
+    var isSelectionMenuShowing: Bool { get }
 
+    func setSelectionMenuItemProvider(_ provider: SweetEditorSelectionMenuItemProvider?)
+    func dismissSelectionMenu()
     func insertText(_ text: String)
     func undo()
     func redo()
     func canUndo() -> Bool
     func canRedo() -> Bool
 
-UIKit 实现接入 `UITextInput`、`UIKeyInput`、marked text、周边文本查询、选区、候选窗定位、触摸手势、双指缩放、iPad 指针和实体键盘快捷键。
+`SweetEditorSelectionMenuItemProvider` 返回下一次菜单展示所需的完整菜单项列表；更换 Provider 不会改变已经可见的菜单。内建菜单项标识由 `SweetEditorSelectionMenuItem` 提供，自定义菜单项通过 `onSelectionMenuItemClick` 回调。
+
+UIKit 实现接入 `UITextInput`、`UIKeyInput`、marked text、周边文本查询、选区、浮动 Selection Menu、候选窗定位、触摸手势、双指缩放、iPad 指针和实体键盘快捷键。
 
 `SweetEditorSwiftUIViewiOS` 只直接公开：
 
@@ -223,6 +230,7 @@ AppKit 实现接入 `NSTextInputClient`、marked text、周边文本查询、候
 - 样式与装饰模型
 - `DecorationProvider`、`DecorationReceiver`、`DecorationContext` 和 `DecorationResult`
 - `CompletionProvider`、`CompletionReceiver`、`CompletionContext`、`CompletionResult` 和 `CompletionItem`
+- iOS 的 `SweetEditorSelectionMenuItem` 和 `SweetEditorSelectionMenuItemProvider`
 - `EditorIconProvider` 和各平台点击事件类型
 - `EditorMetadata`；公开 `setMetadata` 和 `getMetadata` 入口仅存在于 macOS 原生 View
 

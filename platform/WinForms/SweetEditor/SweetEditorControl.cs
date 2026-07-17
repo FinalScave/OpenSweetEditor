@@ -1865,6 +1865,12 @@ namespace SweetEditor {
 			using var perf = StartInputPerf($"OnMouseWheel({e.Delta})");
 			KeyModifier mods = GetCurrentModifiers();
 			float deltaY = e.Delta;
+			DispatchEditorActionResult(editorCore.HandleGestureEvent(new GestureEvent {
+				Type = EventType.DIRECT_GESTURE_BEGIN,
+				Points = [new PointF(e.X, e.Y)],
+				Modifiers = (int)mods,
+				DirectScale = 1
+			}));
 			EditorActionResult gestureResult = editorCore.HandleGestureEvent(new GestureEvent {
 				Type = EventType.MOUSE_WHEEL,
 				Points = [new PointF(e.X, e.Y)],
@@ -1873,6 +1879,12 @@ namespace SweetEditor {
 				DirectScale = 1
 			});
 			DispatchEditorActionResult(gestureResult);
+			DispatchEditorActionResult(editorCore.HandleGestureEvent(new GestureEvent {
+				Type = EventType.DIRECT_GESTURE_END,
+				Points = [new PointF(e.X, e.Y)],
+				Modifiers = (int)mods,
+				DirectScale = 1
+			}));
 			base.OnMouseWheel(e);
 		}
 
