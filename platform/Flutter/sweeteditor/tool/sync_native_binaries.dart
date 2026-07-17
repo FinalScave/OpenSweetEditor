@@ -1,13 +1,23 @@
 import 'dart:io';
 
-const List<String> _supportedRoots = <String>['android', 'ios', 'osx', 'windows', 'linux'];
+const List<String> _supportedRoots = <String>[
+  'android',
+  'ios',
+  'macos',
+  'windows',
+  'linux',
+];
 
 void main() {
   final scriptFile = File.fromUri(Platform.script).absolute;
   final packageRoot = scriptFile.parent.parent;
   final repoRoot = packageRoot.parent.parent.parent;
-  final prebuiltRoot = Directory('${repoRoot.path}${Platform.pathSeparator}prebuilt');
-  final nativeRoot = Directory('${packageRoot.path}${Platform.pathSeparator}native');
+  final prebuiltRoot = Directory(
+    '${repoRoot.path}${Platform.pathSeparator}prebuilt',
+  );
+  final nativeRoot = Directory(
+    '${packageRoot.path}${Platform.pathSeparator}native',
+  );
 
   if (!prebuiltRoot.existsSync()) {
     throw StateError('Prebuilt directory not found: ${prebuiltRoot.path}');
@@ -20,7 +30,9 @@ void main() {
 
   final copiedTargets = <String>[];
   for (final rootName in _supportedRoots) {
-    final sourceDir = Directory('${prebuiltRoot.path}${Platform.pathSeparator}$rootName');
+    final sourceDir = Directory(
+      '${prebuiltRoot.path}${Platform.pathSeparator}$rootName',
+    );
     if (!sourceDir.existsSync()) {
       continue;
     }
@@ -52,7 +64,8 @@ int _copyDirectoryContents(Directory sourceDir, Directory destinationDir) {
       continue;
     }
 
-    final destinationPath = '${destinationDir.path}${Platform.pathSeparator}$name';
+    final destinationPath =
+        '${destinationDir.path}${Platform.pathSeparator}$name';
     if (entity is File) {
       if (_shouldCopyFile(entity)) {
         destinationDir.createSync(recursive: true);
@@ -74,7 +87,8 @@ int _copyDirectory(Directory sourceDir, Directory destinationDir) {
       continue;
     }
 
-    final destinationPath = '${destinationDir.path}${Platform.pathSeparator}$name';
+    final destinationPath =
+        '${destinationDir.path}${Platform.pathSeparator}$name';
     if (entity is File) {
       if (_shouldCopyFile(entity)) {
         destinationDir.createSync(recursive: true);
@@ -82,7 +96,10 @@ int _copyDirectory(Directory sourceDir, Directory destinationDir) {
         copiedFiles++;
       }
     } else if (entity is Directory) {
-      final nestedCopiedFiles = _copyDirectory(entity, Directory(destinationPath));
+      final nestedCopiedFiles = _copyDirectory(
+        entity,
+        Directory(destinationPath),
+      );
       copiedFiles += nestedCopiedFiles;
     }
   }

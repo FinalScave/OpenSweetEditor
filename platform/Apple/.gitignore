@@ -20,8 +20,6 @@ DerivedData/
 *.perspectivev3
 !default.perspectivev3
 
-binaries/*.xcframework
-
 /.derived/
 
 # PM

@@ -4,9 +4,9 @@
 
 ### Platform Integration
 
-- Provide the `SweetEditoriOS` and `SweetEditorMacOS` Swift Package products for iOS 13 or newer and macOS 11 or newer.
+- Provide the `SweetEditorIOS` and `SweetEditorMacOS` Swift Package products for iOS 14 or newer and macOS 11 or newer.
 - Offer native UIKit and AppKit editor views together with `UIViewRepresentable` and `NSViewRepresentable` SwiftUI entry points.
-- Distribute the shared native runtime as dynamic `SweetEditorCore.framework` slices through iOS device, iOS simulator, and macOS XCFrameworks.
+- Distribute the shared native runtime as dynamic `SweetEditorCoreIOS.framework` and `SweetEditorCoreMacOS.framework` slices through platform-specific XCFrameworks.
 
 ### Editing and Native Input
 

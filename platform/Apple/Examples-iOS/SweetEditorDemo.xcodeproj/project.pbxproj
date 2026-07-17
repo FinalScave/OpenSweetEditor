@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		44A100012F76C7CD006A12D1 /* SweetEditoriOS in Frameworks */ = {isa = PBXBuildFile; productRef = 44A100022F76C7CD006A12D1 /* SweetEditoriOS */; };
+		44A100012F76C7CD006A12D1 /* SweetEditorIOS in Frameworks */ = {isa = PBXBuildFile; productRef = 44A100022F76C7CD006A12D1 /* SweetEditorIOS */; };
 		44A100072F76C7CD006A12D1 /* files in Resources */ = {isa = PBXBuildFile; fileRef = 44A100062F76C7CD006A12D1 /* files */; };
 		44A100082F76C7CD006A12D1 /* files in Resources */ = {isa = PBXBuildFile; fileRef = 44A100062F76C7CD006A12D1 /* files */; };
 /* End PBXBuildFile section */
@@ -30,10 +30,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		44A100062F76C7CD006A12D1 /* files */ = {isa = PBXFileReference; lastKnownFileType = folder; name = files; path = ../../_res/files; sourceTree = SOURCE_ROOT; };
 		448DBB432F76C7CC006A12D1 /* SweetEditorDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SweetEditorDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		448DBB502F76C7CD006A12D1 /* SweetEditorDemoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SweetEditorDemoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		448DBB5A2F76C7CD006A12D1 /* SweetEditorDemoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SweetEditorDemoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		44A100062F76C7CD006A12D1 /* files */ = {isa = PBXFileReference; lastKnownFileType = folder; name = files; path = ../../_res/files; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -59,7 +59,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				44A100012F76C7CD006A12D1 /* SweetEditoriOS in Frameworks */,
+				44A100012F76C7CD006A12D1 /* SweetEditorIOS in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -121,7 +121,7 @@
 			);
 			name = SweetEditorDemo;
 			packageProductDependencies = (
-				44A100022F76C7CD006A12D1 /* SweetEditoriOS */,
+				44A100022F76C7CD006A12D1 /* SweetEditorIOS */,
 			);
 			productName = SweetEditorDemo;
 			productReference = 448DBB432F76C7CC006A12D1 /* SweetEditorDemo.app */;
@@ -245,7 +245,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
 
 /* Begin PBXSourcesBuildPhase section */
 		448DBB3F2F76C7CC006A12D1 /* Sources */ = {
@@ -411,7 +410,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 3872G938L7;
+				DEVELOPMENT_TEAM = 7FBWN97Q4S;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -443,7 +442,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 3872G938L7;
+				DEVELOPMENT_TEAM = 7FBWN97Q4S;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -597,10 +596,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		44A100022F76C7CD006A12D1 /* SweetEditoriOS */ = {
+		44A100022F76C7CD006A12D1 /* SweetEditorIOS */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 44A100032F76C7CD006A12D1 /* XCLocalSwiftPackageReference ".." */;
-			productName = SweetEditoriOS;
+			productName = SweetEditorIOS;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

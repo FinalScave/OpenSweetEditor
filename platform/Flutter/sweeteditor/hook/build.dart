@@ -29,11 +29,11 @@ final Map<_NativeTarget, _NativeBinary> _nativeBinaries =
         fileName: 'libsweeteditor.so',
       ),
       _NativeTarget(OS.macOS, Architecture.arm64): _NativeBinary(
-        relativePath: 'osx/arm64/libsweeteditor.dylib',
+        relativePath: 'macos/arm64/libsweeteditor.dylib',
         fileName: 'libsweeteditor.dylib',
       ),
       _NativeTarget(OS.macOS, Architecture.x64): _NativeBinary(
-        relativePath: 'osx/x86_64/libsweeteditor.dylib',
+        relativePath: 'macos/x86_64/libsweeteditor.dylib',
         fileName: 'libsweeteditor.dylib',
       ),
       _NativeTarget(

@@ -92,18 +92,18 @@ This document gives practical development entry points based on the current repo
 
 ### Apple
 
-- `platform/Apple/Sources/SweetEditorBridge/include/SweetEditorBridge.h`
-  - manual C bridge header
-- `platform/Apple/Sources/SweetEditorCoreInternal/api/SweetEditorCore.swift`
+- `include/sweeteditor/c_api.h`
+  - canonical C API imported from the native framework
+- `platform/Apple/SweetEditor-Shared/api/SweetEditorCore.swift`
   - core Swift wrapper and bridge-facing entry points
-- `platform/Apple/Sources/SweetEditorCoreInternal/core/CoreProtocol.swift`
+- `platform/Apple/SweetEditor-Shared/core/CoreProtocol.swift`
   - binary payload encoding and decoding aligned with generated integration `CoreProtocol`
-- `platform/Apple/Sources/SweetEditorCoreInternal/core/CoreVisual.swift`
+- `platform/Apple/SweetEditor-Shared/core/CoreVisual.swift`
   - shared Apple render-model DTOs
-- `platform/Apple/Sources/SweetEditorCoreInternal/EditorRenderer.swift`
+- `platform/Apple/SweetEditor-Shared/EditorRenderer.swift`
   - shared Apple renderer consuming the visual model
-- `platform/Apple/Sources/SweetEditoriOS`
-- `platform/Apple/Sources/SweetEditorMacOS`
+- `platform/Apple/SweetEditor-iOS`
+- `platform/Apple/SweetEditor-macOS`
   - iOS / macOS platform views
 
 ### Flutter
@@ -160,7 +160,7 @@ Usual sync targets:
 - Android: `jeditor.hpp`, `jni_entry.cpp`, Java `CoreProtocol`
 - Swing: `EditorNative.java`, `CoreProtocol.java`
 - WinForms: `EditorCore.cs`, `CoreProtocol.cs`
-- Apple: `SweetEditorBridge.h`, `SweetEditorCore.swift`
+- Apple: `c_api.h`, `SweetEditorCore.swift`, `CoreProtocol.swift`
 - Flutter: `editor_core.dart`, `core_protocol.dart`, `sweeteditor_bindings_generated.dart`
 - Avalonia: `EditorCore.cs`, `CoreProtocol.cs`
 

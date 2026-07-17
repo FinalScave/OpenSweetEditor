@@ -1,12 +1,12 @@
 # Apple 平台 API
 
-本文档描述 `platform/Apple` 中 Apple Swift Package 实际对外发布的 API。除非本文明确列出，否则 Swift 内部封装和 C bridge 均属于实现细节。
+本文档描述 `platform/Apple` 中 Apple Swift Package 实际对外发布的 API。除非本文明确列出，否则 Swift 内部封装和原生 C API 接入均属于实现细节。
 
 ## 环境要求与 Product
 
-- iOS 13 或更高版本
+- iOS 14 或更高版本
 - macOS 11 或更高版本
-- 对外发布的 Swift Package Product：`SweetEditoriOS`
+- 对外发布的 Swift Package Product：`SweetEditorIOS`
 - 对外发布的 Swift Package Product：`SweetEditorMacOS`
 
 公开原生入口包括：
@@ -16,13 +16,13 @@
 - `SweetEditorSwiftUIViewiOS`：`UIViewRepresentable` 封装
 - `SweetEditorSwiftUIMacOS`：`NSViewRepresentable` 封装
 
-`SweetEditorCoreInternal`、`SweetEditorBridge`、`SweetEditorCore` 和 `SweetDocument` 都不是应用公开入口。两个公开 Product 会重新导出 `SweetEditorCoreInternal` 中的 public 支撑模型，但应用不直接链接该内部 target。
+`SweetEditorShared`、`SweetEditorCore` 和 `SweetDocument` 都不是应用公开入口。两个公开 Product 会重新导出 `SweetEditorShared` 中的 public 支撑模型，但应用不直接链接该共享实现 target。
 
 ## Package 与原生产物
 
-- `SweetEditorCoreIOS.xcframework` 包含 iOS 真机和模拟器 Framework slice。
-- `SweetEditorCoreOSX.xcframework` 包含 macOS universal Framework slice。
-- XCFramework 内部为动态 `SweetEditorCore.framework`。
+- `SweetEditorCoreIOS.xcframework.zip` 包含 `SweetEditorCoreIOS.xcframework`，其中有 iOS 真机和模拟器 `SweetEditorCoreIOS.framework` slice。
+- `SweetEditorCoreMacOS.xcframework.zip` 包含 `SweetEditorCoreMacOS.xcframework`，其中有 macOS universal `SweetEditorCoreMacOS.framework` slice。
+- 每个平台的 XCFramework、Framework、模块和 SwiftPM binary target 使用相同名称。
 - 普通 Apple shared-library 构建独立生成 `libsweeteditor.dylib`，不与 Framework 打包混用。
 
 Package 接入和构建命令见 [Apple README](../../platform/Apple/README.md)。
@@ -242,16 +242,17 @@ AppKit 实现接入 `NSTextInputClient`、marked text、周边文本查询、候
 - `CompletionItem.filterText` 只保存数据，当前不参与本地补全过滤。
 - 尽管 macOS 源码声明了 `addNewLineActionProvider` 和 `removeNewLineActionProvider`，其 provider、context 和 result 类型均为 internal；应用无法调用这些方法或实现该 provider 契约。
 - SwiftUI 封装有意只提供原生 UIKit 和 AppKit View 的一部分能力。
-- C bridge 由手工维护，共享 C API 变化时需要同步核对。
+- Apple 实现直接导入平台专用 Core Framework 导出的标准 `c_api.h`，不再维护独立的 C 声明头文件。
 
 ## 实现参考
 
 - Package 清单：[`platform/Apple/Package.swift`](../../platform/Apple/Package.swift)
-- iOS 公开包装：[`platform/Apple/Sources/SweetEditoriOS/SweetEditorSwiftUIiOS.swift`](../../platform/Apple/Sources/SweetEditoriOS/SweetEditorSwiftUIiOS.swift)
-- UIKit 内部编辑器：[`platform/Apple/Sources/SweetEditoriOS/SweetEditorViewiOS.swift`](../../platform/Apple/Sources/SweetEditoriOS/SweetEditorViewiOS.swift)
-- macOS 公开 View：[`platform/Apple/Sources/SweetEditorMacOS/SweetEditorViewMacOS.swift`](../../platform/Apple/Sources/SweetEditorMacOS/SweetEditorViewMacOS.swift)
-- macOS SwiftUI 包装：[`platform/Apple/Sources/SweetEditorMacOS/SweetEditorSwiftUIMacOS.swift`](../../platform/Apple/Sources/SweetEditorMacOS/SweetEditorSwiftUIMacOS.swift)
-- 公开重新导出：[`platform/Apple/Sources/SweetEditoriOS/PublicExports.swift`](../../platform/Apple/Sources/SweetEditoriOS/PublicExports.swift) 和 [`platform/Apple/Sources/SweetEditorMacOS/PublicExports.swift`](../../platform/Apple/Sources/SweetEditorMacOS/PublicExports.swift)
-- 手工 C bridge：[`platform/Apple/Sources/SweetEditorBridge/include/SweetEditorBridge.h`](../../platform/Apple/Sources/SweetEditorBridge/include/SweetEditorBridge.h)
+- 共享 Swift 实现：[`platform/Apple/SweetEditor-Shared`](../../platform/Apple/SweetEditor-Shared)
+- iOS 公开包装：[`platform/Apple/SweetEditor-iOS/SweetEditorSwiftUIiOS.swift`](../../platform/Apple/SweetEditor-iOS/SweetEditorSwiftUIiOS.swift)
+- UIKit 内部编辑器：[`platform/Apple/SweetEditor-iOS/SweetEditorViewiOS.swift`](../../platform/Apple/SweetEditor-iOS/SweetEditorViewiOS.swift)
+- macOS 公开 View：[`platform/Apple/SweetEditor-macOS/SweetEditorViewMacOS.swift`](../../platform/Apple/SweetEditor-macOS/SweetEditorViewMacOS.swift)
+- macOS SwiftUI 包装：[`platform/Apple/SweetEditor-macOS/SweetEditorSwiftUIMacOS.swift`](../../platform/Apple/SweetEditor-macOS/SweetEditorSwiftUIMacOS.swift)
+- 公开重新导出：[`platform/Apple/SweetEditor-iOS/PublicExports.swift`](../../platform/Apple/SweetEditor-iOS/PublicExports.swift) 和 [`platform/Apple/SweetEditor-macOS/PublicExports.swift`](../../platform/Apple/SweetEditor-macOS/PublicExports.swift)
+- 标准 C API：[`include/sweeteditor/c_api.h`](../../include/sweeteditor/c_api.h)
 
 发布内容见 [Apple CHANGELOG](../../platform/Apple/CHANGELOG.md)。

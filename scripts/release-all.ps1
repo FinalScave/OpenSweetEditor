@@ -472,13 +472,13 @@ function Test-NativeAbi {
     $expected = Get-ExpectedNativeSymbols
     $platforms = New-Object System.Collections.Generic.HashSet[string]
     if ($TargetKeys -contains "native") {
-        @("android", "ios", "linux", "ohos", "osx", "windows") | ForEach-Object { $platforms.Add($_) | Out-Null }
+        @("android", "ios", "linux", "macos", "ohos", "windows") | ForEach-Object { $platforms.Add($_) | Out-Null }
     } else {
         foreach ($targetKey in $TargetKeys) {
             switch ($targetKey) {
-                "swing" { @("linux", "osx", "windows") | ForEach-Object { $platforms.Add($_) | Out-Null } }
+                "swing" { @("linux", "macos", "windows") | ForEach-Object { $platforms.Add($_) | Out-Null } }
                 "winforms" { $platforms.Add("windows") | Out-Null }
-                "flutter" { @("android", "ios", "linux", "osx", "windows") | ForEach-Object { $platforms.Add($_) | Out-Null } }
+                "flutter" { @("android", "ios", "linux", "macos", "windows") | ForEach-Object { $platforms.Add($_) | Out-Null } }
             }
         }
     }

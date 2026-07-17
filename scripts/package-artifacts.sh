@@ -110,7 +110,7 @@ function trim_text() {
 
 function validate_platform() {
   case "$1" in
-    android|ios|linux|ohos|osx|wasm|windows)
+    android|ios|linux|macos|ohos|wasm|windows)
       return 0
       ;;
     *)
@@ -273,7 +273,7 @@ function write_prebuilt_readme_file() {
     printf '%s\n' "- wasm/sweeteditor_embind.js"
     printf '%s\n' "- android/arm64-v8a/libsweeteditor.so"
     printf '%s\n' "- ios/SweetEditorCoreIOS.xcframework.zip"
-    printf '%s\n' "- osx/SweetEditorCoreOSX.xcframework.zip"
+    printf '%s\n' "- macos/SweetEditorCoreMacOS.xcframework.zip"
   } > "$path"
 }
 

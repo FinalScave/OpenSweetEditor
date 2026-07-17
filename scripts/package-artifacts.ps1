@@ -12,7 +12,7 @@ param(
     [string]$PrebuiltNamePrefix = "sweeteditor-prebuilt",
     [string]$HeadersNamePrefix = "sweeteditor-headers",
 
-    [ValidateSet("android", "ios", "linux", "ohos", "osx", "wasm", "windows")]
+    [ValidateSet("android", "ios", "linux", "macos", "ohos", "wasm", "windows")]
     [string[]]$Platform = @(),
 
     [string]$Commit = "",
@@ -153,7 +153,7 @@ function Write-PrebuiltReadmeFile {
     $lines.Add("- wasm/sweeteditor_embind.js")
     $lines.Add("- android/arm64-v8a/libsweeteditor.so")
     $lines.Add("- ios/SweetEditorCoreIOS.xcframework.zip")
-    $lines.Add("- osx/SweetEditorCoreOSX.xcframework.zip")
+    $lines.Add("- macos/SweetEditorCoreMacOS.xcframework.zip")
 
     [System.IO.File]::WriteAllLines($Path, $lines, [System.Text.UTF8Encoding]::new($false))
 }

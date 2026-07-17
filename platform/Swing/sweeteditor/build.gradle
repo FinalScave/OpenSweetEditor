@@ -48,11 +48,11 @@ tasks.register('syncNativeResources', Sync) {
         include 'libsweeteditor.so'
         into 'native/linux-aarch64'
     }
-    from(new File(repoRoot, 'prebuilt/osx/x86_64')) {
+    from(new File(repoRoot, 'prebuilt/macos/x86_64')) {
         include 'libsweeteditor.dylib'
         into 'native/macos-x86_64'
     }
-    from(new File(repoRoot, 'prebuilt/osx/arm64')) {
+    from(new File(repoRoot, 'prebuilt/macos/arm64')) {
         include 'libsweeteditor.dylib'
         into 'native/macos-aarch64'
     }

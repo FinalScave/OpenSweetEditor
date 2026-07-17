@@ -30,9 +30,9 @@ application {
         nativeLibSubDir = '../../prebuilt/windows/x64'
     } else if (osName.contains('mac')) {
         if (osArch.contains('aarch64') || osArch.contains('arm64')) {
-            nativeLibSubDir = '../../prebuilt/osx/arm64'
+            nativeLibSubDir = '../../prebuilt/macos/arm64'
         } else {
-            nativeLibSubDir = '../../prebuilt/osx/x86_64'
+            nativeLibSubDir = '../../prebuilt/macos/x86_64'
         }
     } else if (osName.contains('linux')) {
         nativeLibSubDir = '../../prebuilt/linux/x86_64'

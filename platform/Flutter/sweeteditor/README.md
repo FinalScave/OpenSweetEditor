@@ -15,6 +15,7 @@ To consume the package directly from the source tree instead, use a path depende
 
 - Dart SDK `^3.11.4`
 - A Flutter SDK compatible with the workspace
+- iOS 14 or newer and macOS 11 or newer for Apple targets
 - Native prebuilts synchronized into the package before running or packaging
 
 The build hook supports Windows x64, Linux x64/arm64, Android arm64/x64, macOS x64/arm64, and iOS device/simulator arm64.
@@ -52,7 +53,7 @@ The build hook selects a matching library from `native/<platform>/<architecture>
 
 ```bash
 cd platform/Flutter/sweeteditor
-dart run tool/sync_native_binaries.dart
+dart tool/sync_native_binaries.dart
 ```
 
 ## Run the Demo

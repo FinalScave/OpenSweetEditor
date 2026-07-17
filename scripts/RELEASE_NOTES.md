@@ -11,7 +11,7 @@ Cross-platform release assets for SweetEditor.
 
 - Android: `arm64-v8a`, `x86_64`
 - iOS: `arm64`, `simulator-arm64`, `SweetEditorCoreIOS.xcframework.zip`
-- macOS: `arm64`, `x86_64`, `SweetEditorCoreOSX.xcframework.zip`
+- macOS: `arm64`, `x86_64`, `SweetEditorCoreMacOS.xcframework.zip`
 - Linux: `x86_64`, `aarch64`
 - Windows: `x64`
 - OHOS: `arm64-v8a`, `x86_64`

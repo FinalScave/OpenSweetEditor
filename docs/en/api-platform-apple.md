@@ -1,12 +1,12 @@
 # Apple Platform API
 
-This document describes the public API exported by the Apple Swift Package in `platform/Apple`. Internal Swift wrappers and the C bridge are implementation details unless explicitly listed here.
+This document describes the public API exported by the Apple Swift Package in `platform/Apple`. Internal Swift wrappers and the native C API integration are implementation details unless explicitly listed here.
 
 ## Requirements and Products
 
-- iOS 13 or newer
+- iOS 14 or newer
 - macOS 11 or newer
-- Public Swift Package product `SweetEditoriOS`
+- Public Swift Package product `SweetEditorIOS`
 - Public Swift Package product `SweetEditorMacOS`
 
 The public native entry points are:
@@ -16,13 +16,13 @@ The public native entry points are:
 - `SweetEditorSwiftUIViewiOS`, a `UIViewRepresentable` wrapper
 - `SweetEditorSwiftUIMacOS`, an `NSViewRepresentable` wrapper
 
-`SweetEditorCoreInternal`, `SweetEditorBridge`, `SweetEditorCore`, and `SweetDocument` are not public application entry points. The two public products re-export public support models from `SweetEditorCoreInternal`, but applications do not link that internal target directly.
+`SweetEditorShared`, `SweetEditorCore`, and `SweetDocument` are not public application entry points. The two public products re-export public support models from `SweetEditorShared`, but applications do not link that shared implementation target directly.
 
 ## Package and Native Artifacts
 
-- `SweetEditorCoreIOS.xcframework` contains iOS device and simulator framework slices.
-- `SweetEditorCoreOSX.xcframework` contains the macOS universal framework slice.
-- The XCFrameworks contain dynamic `SweetEditorCore.framework` binaries.
+- `SweetEditorCoreIOS.xcframework.zip` contains `SweetEditorCoreIOS.xcframework` with iOS device and simulator `SweetEditorCoreIOS.framework` slices.
+- `SweetEditorCoreMacOS.xcframework.zip` contains `SweetEditorCoreMacOS.xcframework` with the universal macOS `SweetEditorCoreMacOS.framework` slice.
+- Each XCFramework, Framework, module, and SwiftPM binary target uses the same platform-specific name.
 - A raw Apple shared-library build produces `libsweeteditor.dylib` independently of framework packaging.
 
 See the [Apple README](../../platform/Apple/README.md) for package integration and build commands.
@@ -242,16 +242,17 @@ The public products re-export the public support types needed by the APIs above,
 - `CompletionItem.filterText` is stored but is not used for local completion filtering.
 - Although the macOS source declares `addNewLineActionProvider` and `removeNewLineActionProvider`, their provider, context, and result types are internal. Applications cannot call these methods or implement that provider contract.
 - The SwiftUI wrappers intentionally expose a smaller surface than the native UIKit and AppKit views.
-- The C bridge is maintained manually and must be checked when the shared C API changes.
+- The Apple implementation imports the canonical `c_api.h` exported by the platform-specific core Framework; it does not maintain a separate C declaration header.
 
 ## Implementation References
 
 - Package manifest: [`platform/Apple/Package.swift`](../../platform/Apple/Package.swift)
-- Public iOS wrapper: [`platform/Apple/Sources/SweetEditoriOS/SweetEditorSwiftUIiOS.swift`](../../platform/Apple/Sources/SweetEditoriOS/SweetEditorSwiftUIiOS.swift)
-- Internal UIKit editor: [`platform/Apple/Sources/SweetEditoriOS/SweetEditorViewiOS.swift`](../../platform/Apple/Sources/SweetEditoriOS/SweetEditorViewiOS.swift)
-- Public macOS view: [`platform/Apple/Sources/SweetEditorMacOS/SweetEditorViewMacOS.swift`](../../platform/Apple/Sources/SweetEditorMacOS/SweetEditorViewMacOS.swift)
-- macOS SwiftUI wrapper: [`platform/Apple/Sources/SweetEditorMacOS/SweetEditorSwiftUIMacOS.swift`](../../platform/Apple/Sources/SweetEditorMacOS/SweetEditorSwiftUIMacOS.swift)
-- Public re-exports: [`platform/Apple/Sources/SweetEditoriOS/PublicExports.swift`](../../platform/Apple/Sources/SweetEditoriOS/PublicExports.swift) and [`platform/Apple/Sources/SweetEditorMacOS/PublicExports.swift`](../../platform/Apple/Sources/SweetEditorMacOS/PublicExports.swift)
-- Manual C bridge: [`platform/Apple/Sources/SweetEditorBridge/include/SweetEditorBridge.h`](../../platform/Apple/Sources/SweetEditorBridge/include/SweetEditorBridge.h)
+- Shared Swift implementation: [`platform/Apple/SweetEditor-Shared`](../../platform/Apple/SweetEditor-Shared)
+- Public iOS wrapper: [`platform/Apple/SweetEditor-iOS/SweetEditorSwiftUIiOS.swift`](../../platform/Apple/SweetEditor-iOS/SweetEditorSwiftUIiOS.swift)
+- Internal UIKit editor: [`platform/Apple/SweetEditor-iOS/SweetEditorViewiOS.swift`](../../platform/Apple/SweetEditor-iOS/SweetEditorViewiOS.swift)
+- Public macOS view: [`platform/Apple/SweetEditor-macOS/SweetEditorViewMacOS.swift`](../../platform/Apple/SweetEditor-macOS/SweetEditorViewMacOS.swift)
+- macOS SwiftUI wrapper: [`platform/Apple/SweetEditor-macOS/SweetEditorSwiftUIMacOS.swift`](../../platform/Apple/SweetEditor-macOS/SweetEditorSwiftUIMacOS.swift)
+- Public re-exports: [`platform/Apple/SweetEditor-iOS/PublicExports.swift`](../../platform/Apple/SweetEditor-iOS/PublicExports.swift) and [`platform/Apple/SweetEditor-macOS/PublicExports.swift`](../../platform/Apple/SweetEditor-macOS/PublicExports.swift)
+- Canonical C API: [`include/sweeteditor/c_api.h`](../../include/sweeteditor/c_api.h)
 
 See the [Apple changelog](../../platform/Apple/CHANGELOG.md) for release contents.

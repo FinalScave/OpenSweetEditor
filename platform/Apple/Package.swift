@@ -4,53 +4,45 @@ import PackageDescription
 let package = Package(
     name: "SweetEditorApple",
     platforms: [
-        .iOS(.v13),
+        .iOS(.v14),
         .macOS(.v11),
     ],
     products: [
-        .library(name: "SweetEditoriOS", targets: ["SweetEditoriOS"]),
+        .library(name: "SweetEditorIOS", targets: ["SweetEditorIOS"]),
         .library(name: "SweetEditorMacOS", targets: ["SweetEditorMacOS"]),
     ],
     targets: [
         .binaryTarget(
             name: "SweetEditorCoreIOS",
-            path: "binaries/SweetEditorCoreIOS.xcframework"
+            path: ".build-local/SweetEditorCoreIOS.xcframework"
         ),
         .binaryTarget(
-            name: "SweetEditorCoreOSX",
-            path: "binaries/SweetEditorCoreOSX.xcframework"
+            name: "SweetEditorCoreMacOS",
+            path: ".build-local/SweetEditorCoreMacOS.xcframework"
         ),
         .target(
-            name: "SweetEditorBridge",
-            publicHeadersPath: "include"
+            name: "SweetEditorShared",
+            dependencies: [
+                .target(name: "SweetEditorCoreIOS", condition: .when(platforms: [.iOS])),
+                .target(name: "SweetEditorCoreMacOS", condition: .when(platforms: [.macOS])),
+            ],
+            path: "SweetEditor-Shared"
         ),
         .target(
-            name: "SweetEditorCoreInternal",
-            dependencies: ["SweetEditorBridge"]
-        ),
-        .target(
-            name: "SweetEditoriOS",
-            dependencies: ["SweetEditorCoreInternal", "SweetEditorCoreIOS"],
+            name: "SweetEditorIOS",
+            dependencies: ["SweetEditorShared"],
+            path: "SweetEditor-iOS",
             swiftSettings: [
                 .unsafeFlags(["-Xfrontend", "-disable-access-control"]),
             ]
         ),
         .target(
             name: "SweetEditorMacOS",
-            dependencies: ["SweetEditorCoreInternal", "SweetEditorCoreOSX"],
+            dependencies: ["SweetEditorShared"],
+            path: "SweetEditor-macOS",
             swiftSettings: [
                 .unsafeFlags(["-Xfrontend", "-disable-access-control"]),
             ]
-        ),
-        .testTarget(
-            name: "SweetEditoriOSTests",
-            dependencies: ["SweetEditoriOS"],
-            path: "Tests/SweetEditoriOSTests"
-        ),
-        .testTarget(
-            name: "SweetEditorMacOSTests",
-            dependencies: ["SweetEditorMacOS"],
-            path: "Tests/SweetEditorMacOSTests"
         ),
     ],
     swiftLanguageVersions: [.v5]

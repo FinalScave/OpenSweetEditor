@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-import SweetEditoriOS
+import SweetEditorIOS
 
 struct ContentView: View {
     @StateObject private var model = DemoScreenModel()

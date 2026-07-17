@@ -790,7 +790,7 @@ Each implementation uses its own native bridge technology. This is expected and 
 | Android | JNI (`jeditor.hpp`) |
 | Swing | Java FFM (`EditorNative.java`) |
 | WinForms | P/Invoke (`NativeMethods`) |
-| Apple | Swift C bridge (`CBridge.swift`) |
+| Apple | Swift import of the C API from the platform XCFramework |
 | OHOS | NAPI (`napi_editor.hpp`) |
 | Flutter | FFI (Dart) |
 

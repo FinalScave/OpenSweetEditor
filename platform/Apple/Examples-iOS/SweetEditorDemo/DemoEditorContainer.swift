@@ -1,5 +1,6 @@
 import SwiftUI
-import SweetEditoriOS
+import Combine
+import SweetEditorIOS
 
 @MainActor
 final class DemoEditorHandle: ObservableObject {

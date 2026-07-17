@@ -1,6 +1,6 @@
 # SweetEditor iOS Demo
 
-The `platform/Apple/Examples-iOS` project hosts a runnable iOS demo app for `SweetEditoriOS`. It is intended as the fastest way to try the UIKit-backed editor inside a SwiftUI app shell, switch between bundled sample files, and preview theme, wrap mode, and decoration behavior.
+The `platform/Apple/Examples-iOS` project hosts a runnable iOS demo app for `SweetEditorIOS`. It is intended as the fastest way to try the UIKit-backed editor inside a SwiftUI app shell, switch between bundled sample files, and preview theme, wrap mode, and decoration behavior.
 
 ## Quick start
 
@@ -9,13 +9,13 @@ The `platform/Apple/Examples-iOS` project hosts a runnable iOS demo app for `Swe
 3. If this is your first run, build the native bridge first from `platform/Apple`:
 
    ```bash
-   make native-if-needed
+   bash ./build.sh native-if-needed
    ```
 
 More comvenient commands:
 
    ```bash
-   make all
+   bash ./build.sh all
    ```
 
 4. Choose an iPhone simulator or a connected iOS device.
@@ -34,7 +34,7 @@ More comvenient commands:
 3. Pick an iOS simulator or device destination.
 4. Run (`⌘R`).
 
-If the native binary needs to be refreshed, run `make native-if-needed` from `platform/Apple` before launching the app.
+If the native binary needs to be refreshed, run `bash ./build.sh native-if-needed` from `platform/Apple` before launching the app.
 
 ## Recommended runtime configuration style
 

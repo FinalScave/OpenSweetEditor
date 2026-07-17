@@ -3,7 +3,7 @@
 # -b, --build           Build directory
 # -o, --output          Output directory
 # -s, --src             SweetEditor project source directory
-# -p, --platform        Target platform (all/android/windows/osx/ios/ohos/wasm; all means build everything)
+# -p, --platform        Target platform (all/android/windows/macos/ios/ohos/wasm; all means build everything)
 # --android-ndk         Android NDK path
 # --ohos-toolchain      OHOS toolchain CMake file path
 
@@ -56,8 +56,12 @@ set -- "${POSITIONAL_ARGS[@]}"
 
 TARGET_NAME=sweeteditor
 WASM_TARGET_NAMES=(sweeteditor_wasm_c_abi sweeteditor_wasm_embind)
-APPLE_XCFRAMEWORK_IOS="SweetEditorCoreIOS.xcframework"
-APPLE_XCFRAMEWORK_OSX="SweetEditorCoreOSX.xcframework"
+APPLE_XCFRAMEWORK_IOS_BUNDLE_NAME="SweetEditorCoreIOS.xcframework"
+APPLE_XCFRAMEWORK_MACOS_BUNDLE_NAME="SweetEditorCoreMacOS.xcframework"
+APPLE_XCFRAMEWORK_IOS_ARCHIVE_NAME="SweetEditorCoreIOS.xcframework.zip"
+APPLE_XCFRAMEWORK_MACOS_ARCHIVE_NAME="SweetEditorCoreMacOS.xcframework.zip"
+APPLE_IOS_DEPLOYMENT_TARGET="14.0"
+APPLE_MACOS_DEPLOYMENT_TARGET="11.0"
 echo "============================= Start building: $PLATFORM ============================="
 
 function resolve_android_strip_tool() {
@@ -127,53 +131,22 @@ function copy_apple_dylib() {
   return 1
 }
 
-function copy_apple_static_lib() {
-  local build_dir="$1"
-  local dest_dir="$2"
-  local static_lib_path=""
-  local candidates=(
-    "$build_dir/lib/libsweeteditor_static.a"
-    "$build_dir/lib/Release/libsweeteditor_static.a"
-    "$build_dir/lib/Release-iphoneos/libsweeteditor_static.a"
-    "$build_dir/lib/Release-iphonesimulator/libsweeteditor_static.a"
-    "$build_dir/Release/libsweeteditor_static.a"
-    "$build_dir/Release-iphoneos/libsweeteditor_static.a"
-    "$build_dir/Release-iphonesimulator/libsweeteditor_static.a"
-  )
-
-  mkdir -p "$dest_dir"
-
-  for static_lib_path in "${candidates[@]}"; do
-    if [ -f "$static_lib_path" ]; then
-      cp -f "$static_lib_path" "$dest_dir/"
-      return 0
-    fi
-  done
-
-  static_lib_path="$(find "$build_dir" -type f -name "libsweeteditor_static.a" | head -n 1 || true)"
-  if [ -n "$static_lib_path" ]; then
-    cp -f "$static_lib_path" "$dest_dir/"
-    return 0
-  fi
-
-  echo "Apple static library not found under $build_dir" >&2
-  return 1
-}
-
 function copy_xcframework() {
   local platform="$1"
   local apple_binaries_dir="$2"
   local output_dir="$3"
-  local xcframework_name
   local xcframework_dir
+  local archive_name
   local xcframework_zip
 
   case "$platform" in
     ios)
-      xcframework_name="$APPLE_XCFRAMEWORK_IOS"
+      xcframework_dir="${apple_binaries_dir}/${APPLE_XCFRAMEWORK_IOS_BUNDLE_NAME}"
+      archive_name="$APPLE_XCFRAMEWORK_IOS_ARCHIVE_NAME"
       ;;
-    osx)
-      xcframework_name="$APPLE_XCFRAMEWORK_OSX"
+    macos)
+      xcframework_dir="${apple_binaries_dir}/${APPLE_XCFRAMEWORK_MACOS_BUNDLE_NAME}"
+      archive_name="$APPLE_XCFRAMEWORK_MACOS_ARCHIVE_NAME"
       ;;
     *)
       echo "Unknown platform: $platform" >&2
@@ -181,8 +154,7 @@ function copy_xcframework() {
       ;;
   esac
 
-  xcframework_dir="${apple_binaries_dir}/${xcframework_name}"
-  xcframework_zip="${output_dir}/${xcframework_name}.zip"
+  xcframework_zip="${output_dir}/${archive_name}"
 
   if [ ! -d "$xcframework_dir" ]; then
     echo "XCFramework not found at $xcframework_dir" >&2
@@ -191,10 +163,7 @@ function copy_xcframework() {
 
   mkdir -p "$output_dir"
   rm -f "$xcframework_zip"
-  (
-    cd "$apple_binaries_dir"
-    ditto -c -k --sequesterRsrc --keepParent "$xcframework_name" "$xcframework_zip"
-  )
+  ditto -c -k --norsrc --keepParent "$xcframework_dir" "$xcframework_zip"
 }
 
 function build_windows_msvc() {
@@ -214,12 +183,12 @@ function build_windows_msvc() {
   copy_built_libraries "$WINDOWS_BUILD_DIR/bin" "$WINDOWS_PREBUILT_DIR"
 }
 
-function build_osx() {
-  OSX_ARCH=$1
-  echo "============================= MacOSX $OSX_ARCH ============================="
-  OSX_BUILD_DIR="$BUILD_DIR/osx/$OSX_ARCH"
-  OSX_PREBUILT_DIR="$OUTPUT_DIR/osx/$OSX_ARCH"
-  build_apple "$OSX_BUILD_DIR" "$OSX_PREBUILT_DIR" "macosx" "$OSX_ARCH" "$TARGET_NAME" "Xcode" "" ON OFF dylib
+function build_macos() {
+  MACOS_ARCH=$1
+  echo "============================= macOS $MACOS_ARCH ============================="
+  MACOS_BUILD_DIR="$BUILD_DIR/macos/$MACOS_ARCH"
+  MACOS_PREBUILT_DIR="$OUTPUT_DIR/macos/$MACOS_ARCH"
+  build_apple "$MACOS_BUILD_DIR" "$MACOS_PREBUILT_DIR" "macosx" "$MACOS_ARCH" "$TARGET_NAME" "Xcode" "" "$APPLE_MACOS_DEPLOYMENT_TARGET"
 }
 
 function build_apple() {
@@ -230,10 +199,8 @@ function build_apple() {
   local apple_target_name="$5"
   local apple_generator="$6"
   local apple_system_name="$7"
-  local build_shared_lib="$8"
-  local build_static_lib="$9"
-  local copy_mode="${10}"
-  shift 10
+  local apple_deployment_target="$8"
+  shift 8
 
   local cmake_args=(
     "$PROJECT_DIR"
@@ -241,12 +208,13 @@ function build_apple() {
     -G "$apple_generator"
     -DCMAKE_CXX_FLAGS=-std=c++17
     -DCMAKE_BUILD_TYPE=Release
-    -DSWEETEDITOR_BUILD_SHARED="$build_shared_lib"
-    -DSWEETEDITOR_BUILD_STATIC="$build_static_lib"
+    -DSWEETEDITOR_BUILD_SHARED=ON
+    -DSWEETEDITOR_BUILD_STATIC=OFF
     -DSWEETEDITOR_BUILD_TESTS=OFF
     -DSWEETEDITOR_BUILD_APPLE_FRAMEWORK=OFF
     -DCMAKE_OSX_SYSROOT="$apple_sysroot"
     -DCMAKE_OSX_ARCHITECTURES="$apple_arch"
+    -DCMAKE_OSX_DEPLOYMENT_TARGET="$apple_deployment_target"
   )
 
   if [ -n "$apple_system_name" ]; then
@@ -260,19 +228,7 @@ function build_apple() {
   cmake "${cmake_args[@]}"
 
   cmake --build "$apple_build_dir" --target "$apple_target_name" --config Release -j 12
-
-  case "$copy_mode" in
-    dylib)
-      copy_apple_dylib "$apple_build_dir" "$apple_prebuilt_dir"
-      ;;
-    static)
-      copy_apple_static_lib "$apple_build_dir" "$apple_prebuilt_dir"
-      ;;
-    *)
-      echo "Unknown Apple copy mode: $copy_mode" >&2
-      return 1
-      ;;
-  esac
+  copy_apple_dylib "$apple_build_dir" "$apple_prebuilt_dir"
 }
 
 function build_ios() {
@@ -291,35 +247,7 @@ function build_ios() {
   fi
   echo "============================= iOS $IOS_VARIANT $IOS_ARCH ============================="
   IOS_BUILD_DIR="$BUILD_DIR/ios-xcode/$IOS_TARGET"
-  build_apple "$IOS_BUILD_DIR" "$IOS_PREBUILT_DIR" "$IOS_SDK" "$IOS_ARCH" "$TARGET_NAME" "Xcode" "iOS" \
-    ON \
-    OFF \
-    dylib \
-    -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO \
-    -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED=NO \
-    -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY= \
-    -DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM=
-}
-
-function build_ios_static() {
-  IOS_TARGET=$1
-  if [[ "$IOS_TARGET" == simulator-* ]]; then
-    IOS_VARIANT="simulator"
-    IOS_ARCH="${IOS_TARGET#simulator-}"
-    IOS_SDK="iphonesimulator"
-    IOS_PREBUILT_DIR="$OUTPUT_DIR/ios/$IOS_TARGET"
-  else
-    IOS_VARIANT="ios"
-    IOS_ARCH="$IOS_TARGET"
-    IOS_SDK="iphoneos"
-    IOS_PREBUILT_DIR="$OUTPUT_DIR/ios/$IOS_ARCH"
-  fi
-  echo "============================= iOS $IOS_VARIANT $IOS_ARCH static ============================="
-  IOS_BUILD_DIR="$BUILD_DIR/ios-xcode-static/$IOS_TARGET"
-  build_apple "$IOS_BUILD_DIR" "$IOS_PREBUILT_DIR" "$IOS_SDK" "$IOS_ARCH" "${TARGET_NAME}_static" "Xcode" "iOS" \
-    OFF \
-    ON \
-    static \
+  build_apple "$IOS_BUILD_DIR" "$IOS_PREBUILT_DIR" "$IOS_SDK" "$IOS_ARCH" "$TARGET_NAME" "Xcode" "iOS" "$APPLE_IOS_DEPLOYMENT_TARGET" \
     -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO \
     -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_REQUIRED=NO \
     -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY= \
@@ -331,17 +259,17 @@ function build_ios_xcframework() {
 
   echo "============================= iOS XCFramework ============================="
   mkdir -p "$ios_output_dir"
-  bash "$PROJECT_DIR/platform/Apple/scripts/build_native_xcframework.sh" ios
-  copy_xcframework ios "$PROJECT_DIR/platform/Apple/binaries" "$ios_output_dir"
+  bash "$PROJECT_DIR/platform/Apple/build.sh" native ios
+  copy_xcframework ios "$PROJECT_DIR/platform/Apple/.build-local" "$ios_output_dir"
 }
 
-function build_osx_xcframework() {
-  local osx_output_dir="$OUTPUT_DIR/osx"
+function build_macos_xcframework() {
+  local macos_output_dir="$OUTPUT_DIR/macos"
 
   echo "============================= macOS XCFramework ============================="
-  mkdir -p "$osx_output_dir"
-  bash "$PROJECT_DIR/platform/Apple/scripts/build_native_xcframework.sh" osx
-  copy_xcframework osx "$PROJECT_DIR/platform/Apple/binaries" "$osx_output_dir"
+  mkdir -p "$macos_output_dir"
+  bash "$PROJECT_DIR/platform/Apple/build.sh" native macos
+  copy_xcframework macos "$PROJECT_DIR/platform/Apple/.build-local" "$macos_output_dir"
 }
 
 function build_linux() {
@@ -469,14 +397,12 @@ function build_ohos() {
 
 if [ $PLATFORM = "all" ]; then
   build_windows_msvc
-  build_osx arm64
-  build_osx x86_64
+  build_macos arm64
+  build_macos x86_64
   build_ios arm64
-  build_ios_static arm64
   build_ios simulator-arm64
-  build_ios_static simulator-arm64
   build_ios_xcframework
-  build_osx_xcframework
+  build_macos_xcframework
   build_linux x86_64
   build_linux aarch64
   build_emscripten
@@ -488,20 +414,14 @@ elif [ $PLATFORM = "wasm" ]; then
   build_emscripten
 elif [ $PLATFORM = "windows" ]; then
   build_windows_msvc
-elif [ $PLATFORM = "osx" ]; then
-  build_osx arm64
-  build_osx x86_64
-  build_osx_xcframework
+elif [ $PLATFORM = "macos" ]; then
+  build_macos arm64
+  build_macos x86_64
+  build_macos_xcframework
 elif [ $PLATFORM = "ios" ]; then
   build_ios arm64
-  build_ios_static arm64
   build_ios simulator-arm64
-  build_ios_static simulator-arm64
   build_ios_xcframework
-elif [ $PLATFORM = "osx" ]; then
-  build_osx arm64
-  build_osx x86_64
-  build_osx_xcframework
 elif [ $PLATFORM = "linux" ]; then
   build_linux x86_64
   build_linux aarch64

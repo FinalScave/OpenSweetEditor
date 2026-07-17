@@ -19,7 +19,8 @@ let package = Package(
             name: "SweetEditorDemoSupport",
             dependencies: [
                 .product(name: "SweetEditorMacOS", package: "Apple"),
-            ]
+            ],
+            path: "SweetEditorDemoSupport"
         ),
         .executableTarget(
             name: "SweetEditorMacDemo",
@@ -28,6 +29,7 @@ let package = Package(
                 .product(name: "SweetEditorMacOS", package: "Apple"),
                 "SweetEditorDemoSupport",
             ],
+            path: "SweetEditorMacDemo",
             resources: [
                 .process("Resources"),
             ]
@@ -37,14 +39,8 @@ let package = Package(
             dependencies: [
                 .product(name: "SweetEditorMacOS", package: "Apple"),
                 "SweetEditorDemoSupport",
-            ]
-        ),
-        .testTarget(
-            name: "SweetEditorMacDemoTests",
-            dependencies: [
-                "SweetEditorMacDemo",
-                "SweetEditorDemoSupport",
-            ]
+            ],
+            path: "SweetEditorMacDemoSwiftUI"
         ),
     ],
     swiftLanguageVersions: [.v5]

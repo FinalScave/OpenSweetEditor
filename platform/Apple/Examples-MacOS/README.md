@@ -7,20 +7,20 @@ The `platform/Apple/Examples-MacOS` package hosts runnable demo apps for `SweetE
 - `SweetEditorMacDemo` – the existing AppKit window controller sample that exercises undo/redo, wrap mode, decorations, etc.
 - `SweetEditorMacDemoSwiftUI` – a new declarative SwiftUI experience built with `SweetEditorSwiftUIMacOS`, showing the same controls rendered with SwiftUI widgets.
 
-## Run with Makefile helpers
+## Run with the Apple build script
 
 ```bash
 cd platform/Apple
-make native-if-needed
-make demo-macos-run           # AppKit demo
-make demo-macos-run-swiftui   # SwiftUI demo
+bash ./build.sh native-if-needed
+bash ./build.sh demo-macos-run
+bash ./build.sh demo-macos-run-swiftui
 ```
 
 ## Run manually
 
 ```bash
 cd platform/Apple
-make native-if-needed
+bash ./build.sh native-if-needed
 cd Examples-MacOS
 swift run SweetEditorMacDemo
 swift run SweetEditorMacDemoSwiftUI

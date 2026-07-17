@@ -1,5 +1,5 @@
 import Combine
-import SweetEditoriOS
+import SweetEditorIOS
 
 @MainActor
 final class DemoScreenModel: ObservableObject {

@@ -352,4 +352,4 @@ public void Dispose()
 
 - `SweetEditor.csproj` 会在运行时匹配时复制 Windows x64、Linux x64 和 macOS x64/arm64 native 库。
 - 仓库的 [Android 示例项目](../../platform/Avalonia/Demo.Android/Demo.Android.csproj) 通过 `AndroidNativeLibrary` item 包含 Android `arm64-v8a` 和 `x86_64` native 库。外部 Android 宿主必须为其支持的 ABI 添加等价 item。
-- 仓库的 [Directory.Build.targets](../../platform/Avalonia/Directory.Build.targets) 只为 `platform/Avalonia` 目录树下的可执行项目添加 macOS 和 iOS native reference。外部 iOS 宿主必须为所选 arm64 真机或 arm64 模拟器库添加等价 `NativeReference`，并启用 `CopyToAppBundle`。
+- 仓库的 [Directory.Build.targets](../../platform/Avalonia/Directory.Build.targets) 只为 `platform/Avalonia` 目录树下的可执行项目添加 macOS 和 iOS native reference。它会将 `SweetEditorCoreIOS.xcframework.zip` 解压到中间输出目录，再引用解压后的 XCFramework，由 .NET 选择真机或模拟器 Framework slice。外部 iOS 宿主必须添加等价的 XCFramework `NativeReference`。

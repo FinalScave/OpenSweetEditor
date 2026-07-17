@@ -90,7 +90,7 @@ targets:
 
   apple_swift:
     backend: swift
-    output_root: platform/Apple/Sources/SweetEditorCoreInternal
+    output_root: platform/Apple/SweetEditor-Shared
     codec_file: core/CoreProtocol.swift
     layout: split_by_domain
     domains:

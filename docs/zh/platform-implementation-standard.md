@@ -786,7 +786,7 @@ interface ContextMenuItemProvider {
 | Android | JNI (`jeditor.hpp`) |
 | Swing | Java FFM (`EditorNative.java`) |
 | WinForms | P/Invoke (`NativeMethods`) |
-| Apple | Swift C bridge (`CBridge.swift`) |
+| Apple | 从平台 XCFramework 导入 C API 的 Swift 接入层 |
 | OHOS | NAPI (`napi_editor.hpp`) |
 | Flutter | FFI (Dart) |
 

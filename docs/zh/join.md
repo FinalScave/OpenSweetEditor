@@ -92,18 +92,18 @@
 
 ### Apple
 
-- `platform/Apple/Sources/SweetEditorBridge/include/SweetEditorBridge.h`
-  - 手工 C bridge 头
-- `platform/Apple/Sources/SweetEditorCoreInternal/api/SweetEditorCore.swift`
+- `include/sweeteditor/c_api.h`
+  - 原生 Framework 直接导入的标准 C API
+- `platform/Apple/SweetEditor-Shared/api/SweetEditorCore.swift`
   - Swift 侧核心封装与二进制协议解码
-- `platform/Apple/Sources/SweetEditorCoreInternal/core/CoreProtocol.swift`
+- `platform/Apple/SweetEditor-Shared/core/CoreProtocol.swift`
   - 与其他接入实现 `CoreProtocol` 对齐的二进制载荷编解码
-- `platform/Apple/Sources/SweetEditorCoreInternal/core/CoreVisual.swift`
+- `platform/Apple/SweetEditor-Shared/core/CoreVisual.swift`
   - Apple 共用渲染模型 DTO
-- `platform/Apple/Sources/SweetEditorCoreInternal/EditorRenderer.swift`
+- `platform/Apple/SweetEditor-Shared/EditorRenderer.swift`
   - 消费渲染模型的 Apple 共用渲染器
-- `platform/Apple/Sources/SweetEditoriOS`
-- `platform/Apple/Sources/SweetEditorMacOS`
+- `platform/Apple/SweetEditor-iOS`
+- `platform/Apple/SweetEditor-macOS`
   - iOS / macOS 平台视图
 
 ### Flutter
@@ -160,7 +160,7 @@
 - Android：`jeditor.hpp`、`jni_entry.cpp`、Java `CoreProtocol`
 - Swing：`EditorNative.java`、`CoreProtocol.java`
 - WinForms：`EditorCore.cs`、`CoreProtocol.cs`
-- Apple：`SweetEditorBridge.h`、`SweetEditorCore.swift`
+- Apple：`c_api.h`、`SweetEditorCore.swift`、`CoreProtocol.swift`
 - Flutter：`editor_core.dart`、`core_protocol.dart`、`sweeteditor_bindings_generated.dart`
 - Avalonia：`EditorCore.cs`、`CoreProtocol.cs`
 

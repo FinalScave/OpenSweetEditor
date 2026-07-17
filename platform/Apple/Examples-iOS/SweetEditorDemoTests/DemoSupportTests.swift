@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-import SweetEditoriOS
+import SweetEditorIOS
 @testable import SweetEditorDemo
 
 struct DemoSupportTests {

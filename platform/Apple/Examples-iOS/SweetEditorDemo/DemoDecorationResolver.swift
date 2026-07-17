@@ -1,5 +1,5 @@
 import Foundation
-import SweetEditoriOS
+import SweetEditorIOS
 
 enum DemoDecorationResolver {
     static func resolve(lines: [String]) -> EditorResolvedDecorations {

@@ -4,17 +4,17 @@ The Apple SDK provides native SweetEditor views for iOS and macOS as a local Swi
 
 ## Requirements
 
-- iOS 13 or newer
+- iOS 14 or newer
 - macOS 11 or newer
 - Xcode with Swift Package Manager support
-- Prebuilt `SweetEditorCore` XCFrameworks, or a local toolchain capable of rebuilding them
+- Prebuilt `SweetEditorCoreIOS` and `SweetEditorCoreMacOS` XCFrameworks, or a local toolchain capable of rebuilding them
 
 ## Products
 
-- `SweetEditoriOS`: UIKit and SwiftUI integration
+- `SweetEditorIOS`: UIKit and SwiftUI integration
 - `SweetEditorMacOS`: AppKit and SwiftUI integration
 
-`SweetEditorCoreInternal`, `SweetEditorBridge`, and the native binary targets are package implementation details and are not published as products.
+`SweetEditorShared` and the native binary targets are package implementation details and are not published as products. The shared target imports the canonical C API exposed by the platform-specific core Framework; it does not maintain a separate bridge header.
 
 ## Local Package Integration
 
@@ -22,8 +22,8 @@ After checking out the repository, build or verify the native artifacts:
 
 ```bash
 cd platform/Apple
-make native-if-needed
-make verify-local
+bash ./build.sh native-if-needed
+bash ./build.sh verify
 ```
 
 Add `platform/Apple` as a local Swift Package in Xcode, then link the product for the target platform.
@@ -33,7 +33,7 @@ Add `platform/Apple` as a local Swift Package in Xcode, then link the product fo
 ### iOS UIKit
 
 ```swift
-import SweetEditoriOS
+import SweetEditorIOS
 
 let editor = SweetEditorViewiOS(frame: .zero)
 editor.applyTheme(isDark: true)
@@ -68,24 +68,25 @@ Neither public native view currently exposes a language-configuration setter. Th
 
 ## Native Artifacts
 
-- `binaries/SweetEditorCoreIOS.xcframework` contains iOS device and simulator slices.
-- `binaries/SweetEditorCoreOSX.xcframework` contains the macOS universal slice.
-- Each XCFramework contains dynamic `SweetEditorCore.framework` slices.
+- `.build-local/SweetEditorCoreIOS.xcframework` contains iOS device and simulator slices of `SweetEditorCoreIOS.framework`.
+- `.build-local/SweetEditorCoreMacOS.xcframework` contains the macOS universal slice of `SweetEditorCoreMacOS.framework`.
+- The XCFramework, Framework, module, and SwiftPM binary target names match on each platform.
+- `.build-local` is generated and ignored; release archives remain under the repository `prebuilt` directory.
 - Intermediate native builds stay under the repository `build/apple-*` directories.
 
 Raw Apple shared-library builds produce `libsweeteditor.dylib`. Framework packaging is selected independently with `SWEETEDITOR_BUILD_APPLE_FRAMEWORK=ON`; framework binaries are never copied or renamed as raw dylibs.
 
 ## Local Commands
 
-- `make all`: native prebuild, Swift build, and Swift tests
-- `make native`: rebuild both XCFrameworks
-- `make native-if-needed`: rebuild native artifacts only when inputs changed
-- `make build`: build Swift Package targets
-- `make test`: run Swift tests
-- `make verify-local`: validate the package and local build
-- `make demo-macos-build`: build the macOS demos
-- `make demo-macos-run`: run the AppKit demo
-- `make demo-macos-run-swiftui`: run the SwiftUI demo
+- `bash ./build.sh all`: refresh native artifacts and validate the Swift Package
+- `bash ./build.sh native [ios|macos|all]`: rebuild native XCFrameworks
+- `bash ./build.sh native-if-needed [ios|macos|all]`: rebuild native artifacts only when inputs changed
+- `bash ./build.sh build`: build Swift Package targets
+- `bash ./build.sh verify`: describe and build the Swift Package
+- `bash ./build.sh demo-macos-build`: build the macOS demos
+- `bash ./build.sh demo-macos-run`: run the AppKit demo
+- `bash ./build.sh demo-macos-run-swiftui`: run the SwiftUI demo
+- `bash ./build.sh clean`: remove Apple build outputs
 
 ## Xcode Prebuild
 
@@ -93,7 +94,7 @@ Add this script as an Xcode scheme pre-action when the native artifact should be
 
 ```bash
 cd "$SRCROOT"
-./scripts/xcode_prebuild.sh
+bash ./build.sh native-if-needed
 ```
 
 Set `SWEETEDITOR_FORCE_NATIVE=1` to force a one-time rebuild.
@@ -103,7 +104,6 @@ Set `SWEETEDITOR_FORCE_NATIVE=1` to force a one-time rebuild.
 - [Apple API reference](https://github.com/FinalScave/SweetEditor/blob/main/docs/en/api-platform-apple.md)
 - [iOS demo](Examples-iOS/README.md)
 - [macOS demos](Examples-MacOS/README.md)
-- [Native binary layout](binaries/README.md)
 - [Changelog](CHANGELOG.md)
 - [Repository](https://github.com/FinalScave/SweetEditor)
 - [MIT License](../../LICENSE)
