@@ -56,7 +56,6 @@ namespace SweetEditor {
 
 		private const int DesktopAnimationIntervalMs = 16;
 		private const int MobileScheduledTextInputNotifyMinIntervalMs = 48;
-		private const float DefaultContentStartPadding = 3.0f;
 		private const float TapFallbackDoubleTapDistanceDip = 18f;
 		private const float InputFrameLinkMaxMs = 250f;
 		private static readonly double PerfTickToMs = 1000.0 / Stopwatch.Frequency;
@@ -198,7 +197,7 @@ namespace SweetEditor {
 			editorCore.SetEditorRenderColors(BuildEditorRenderColors(currentTheme));
 			editorCore.SetEditorRangeEffectStyles(BuildEditorRangeEffectStyles(currentTheme));
 			editorCore.RegisterBatchTextStyles(currentTheme.TextStyles);
-			settings.SetContentStartPadding(DefaultContentStartPadding);
+			editorCore.SetContentStartPadding(settings.GetContentStartPadding());
 
 			desktopAnimationTimer = new DispatcherTimer {
 				Interval = TimeSpan.FromMilliseconds(DesktopAnimationIntervalMs),
@@ -3038,6 +3037,9 @@ namespace SweetEditor {
 			attachedTopLevel = topLevel;
 			attachedTopLevel.ScalingChanged += OnHostTopLevelScalingChanged;
 			attachedTopLevel.BackRequested += OnHostTopLevelBackRequested;
+			if (topLevel.RenderScaling != 1.0) {
+				settings.SetEditorTextSize(28.0f / (float)topLevel.RenderScaling);
+			}
 
 			attachedInputPane = topLevel.InputPane;
 			if (attachedInputPane != null) {

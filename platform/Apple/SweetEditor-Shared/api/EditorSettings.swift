@@ -16,7 +16,7 @@ protocol EditorSettingsHost: AnyObject {
 public final class EditorSettings {
     private weak var host: EditorSettingsHost?
 
-    public private(set) var editorTextSize: Float = 14.0
+    public private(set) var editorTextSize: Float
     public private(set) var typeface: String = "Menlo"
     public private(set) var scale: Float = 1.0
     public private(set) var foldArrowMode: FoldArrowMode = .always
@@ -25,7 +25,7 @@ public final class EditorSettings {
     public private(set) var renderLineBreaks = false
     public private(set) var lineSpacingAdd: Float = 0.0
     public private(set) var lineSpacingMult: Float = 1.2
-    public private(set) var contentStartPadding: Float = 0.0
+    public private(set) var contentStartPadding: Float = 3.0
     public private(set) var showSplitLine = true
     public private(set) var currentLineRenderMode: CurrentLineRenderMode = .background
     public private(set) var autoIndentMode: AutoIndentMode = .keepIndent
@@ -36,8 +36,9 @@ public final class EditorSettings {
     public private(set) var decorationScrollRefreshMinIntervalMs: Int64 = 16
     public private(set) var decorationOverscanViewportMultiplier: Float = 1.5
 
-    init(host: EditorSettingsHost?) {
+    init(host: EditorSettingsHost?, editorTextSize: Float) {
         self.host = host
+        self.editorTextSize = editorTextSize
     }
 
     func attachHost(_ host: EditorSettingsHost) {

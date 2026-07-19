@@ -26,7 +26,7 @@ class SweetEditorWidget extends StatefulWidget {
     this.languageConfiguration,
     this.metadata,
     this.fontFamily = 'monospace',
-    this.fontSize = 14,
+    this.fontSize,
     this.autofocus = true,
   });
 
@@ -40,7 +40,7 @@ class SweetEditorWidget extends StatefulWidget {
   final LanguageConfiguration? languageConfiguration;
   final EditorMetadata? metadata;
   final String fontFamily;
-  final double fontSize;
+  final double? fontSize;
   final bool autofocus;
 
   @override
@@ -73,6 +73,15 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
 
   EditorEventBus get _eventBus => widget.controller._eventBus;
 
+  double get _resolvedFontSize {
+    final configuredSize = widget.fontSize;
+    if (configuredSize != null) return configuredSize;
+    final pixelRatio =
+        WidgetsBinding.instance.platformDispatcher.implicitView?.devicePixelRatio ??
+        1.0;
+    return 28.0 / (pixelRatio.isFinite && pixelRatio > 0 ? pixelRatio : 1.0);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -95,7 +104,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
     _applyTheme(widget.theme ?? defaultTheme);
     _session.applyDeclarativeSettings(
       widget.settings,
-      fontSize: widget.fontSize,
+      fontSize: _resolvedFontSize,
       fontFamily: widget.fontFamily,
       gutterSticky: _platformBehavior.gutterStickyDefault,
     );
@@ -144,7 +153,7 @@ class _SweetEditorWidgetState extends State<SweetEditorWidget>
       theme: widget.theme ?? EditorTheme.dark(),
       initialSettings: widget.settings,
       fontFamily: widget.fontFamily,
-      fontSize: widget.fontSize,
+      fontSize: _resolvedFontSize,
       gutterSticky: _platformBehavior.gutterStickyDefault,
       platformBehavior: _platformBehavior,
       initialKeyMap: widget.keyMap ?? EditorKeyMap.defaultKeyMap(),

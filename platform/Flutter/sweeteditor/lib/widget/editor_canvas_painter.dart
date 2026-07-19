@@ -533,7 +533,7 @@ class EditorCanvasPainter extends ChangeNotifier implements CustomPainter {
       final color = isSeparator ? _theme.separatorLineColor : _theme.guideColor;
       final paint = Paint()
         ..color = Color(color)
-        ..strokeWidth = 1
+        ..strokeWidth = 0.5
         ..style = PaintingStyle.stroke;
 
       final startX = seg.start.x;

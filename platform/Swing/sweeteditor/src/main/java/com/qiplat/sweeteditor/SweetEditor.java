@@ -123,11 +123,13 @@ public class SweetEditor extends JPanel {
         setDoubleBuffered(true);
 
         renderer = new EditorRenderer(theme);
+        settings = new EditorSettings(this);
         animationHolder = new AnimationHolder();
 
         editorCore = new EditorCore(renderer.getTextMeasurer(), new EditorOptions(20.0f, 300L, 500L, 3.5f, 50.0f, 8000.0f, 512L, 2000L, false));
         keyMap = createDefaultKeyMap();
         editorCore.setKeyMap(keyMap.getBindings());
+        editorCore.setContentStartPadding(settings.getContentStartPadding());
 
         // Completion manager and popup controller
         completionProviderManager = new CompletionProviderManager(this);
@@ -146,8 +148,6 @@ public class SweetEditor extends JPanel {
             }
         });
         completionPopupController.setConfirmListener(this::applyCompletionItem);
-
-        settings = new EditorSettings(this);
 
         inlineSuggestionController = new InlineSuggestionController(this);
 

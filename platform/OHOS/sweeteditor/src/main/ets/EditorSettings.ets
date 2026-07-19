@@ -1,12 +1,9 @@
 import { AutoIndentMode, CurrentLineRenderMode, FoldArrowMode, WhitespaceRenderMode, WrapMode } from './core/CoreConfig';
 import { SweetEditor } from './SweetEditor';
 
-const DEFAULT_CONTENT_START_PADDING: number = 3.0;
-const DEFAULT_GUTTER_STICKY: boolean = false;
-
 export class EditorSettings {
   private editor: SweetEditor;
-  private textSize: number = 28;
+  private textSize: number = 28.0;
   private fontFamily: string = 'monospace';
   private scale: number = 1.0;
   private foldArrowMode: FoldArrowMode = FoldArrowMode.ALWAYS;
@@ -15,9 +12,9 @@ export class EditorSettings {
   private renderLineBreaks: boolean = false;
   private lineSpacingAdd: number = 0;
   private lineSpacingMult: number = 1.2;
-  private contentStartPadding: number = DEFAULT_CONTENT_START_PADDING;
+  private contentStartPadding: number = 3.0;
   private showSplitLine: boolean = true;
-  private gutterSticky: boolean = DEFAULT_GUTTER_STICKY;
+  private gutterSticky: boolean = false;
   private gutterVisible: boolean = true;
   private currentLineRenderMode: CurrentLineRenderMode = CurrentLineRenderMode.BACKGROUND;
   private autoIndentMode: AutoIndentMode = AutoIndentMode.KEEP_INDENT;

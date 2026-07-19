@@ -7,6 +7,27 @@
 
 using namespace NS_SWEETEDITOR;
 
+TEST_CASE("EditorCore clamps programmatic and gesture scale to the supported range") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+  editor.loadDocument(makeShared<LineArrayDocument>(makeRepeatedLines(4, "0123456789")));
+  editor.setViewport({120, 80});
+
+  editor.setScale(0.1f);
+  CHECK(editor.getScrollMetrics().scale == Catch::Approx(0.75f));
+
+  editor.setScale(10.0f);
+  CHECK(editor.getScrollMetrics().scale == Catch::Approx(5.0f));
+
+  editor.setScale(1.0f);
+  GestureEvent direct_scale;
+  direct_scale.type = EventType::DIRECT_SCALE;
+  direct_scale.points.push_back({20.0f, 20.0f});
+  direct_scale.direct_scale = 0.1f;
+  editor.handleGestureEvent(direct_scale);
+  CHECK(editor.getScrollMetrics().scale == Catch::Approx(0.75f));
+}
+
 TEST_CASE("EditorCore setScroll is clamped by computed scroll bounds") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);

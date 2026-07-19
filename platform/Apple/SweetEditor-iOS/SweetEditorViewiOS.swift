@@ -16,7 +16,7 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
     var selectionMenuItemsProvider: (() -> [SweetEditorSelectionMenuItem])?
     var onDocumentTextChanged: ((String) -> Void)?
     var editorIconProvider: EditorIconProvider?
-    let settings = EditorSettings(host: nil)
+    let settings = EditorSettings(host: nil, editorTextSize: 28.0 / Float(UIScreen.main.scale))
 
     private var editorCore: SweetEditorCore!
     private var document: SweetDocument?
@@ -83,9 +83,10 @@ class IOSEditorView: UIView, UIKeyInput, UITextInput, UITextInputTraits, UIPoint
         isMultipleTouchEnabled = true
         isUserInteractionEnabled = true
 
-        editorCore = SweetEditorCore(fontSize: 14.0, fontName: "Menlo")
+        editorCore = SweetEditorCore(fontSize: CGFloat(settings.editorTextSize), fontName: "Menlo")
         editorCore.setScrollbarConfig(scrollbarPolicy.defaultConfig())
         editorCore.setCompositionEnabled(settings.compositionEnabled)
+        editorCore.setContentStartPadding(settings.contentStartPadding)
         EditorRenderer.applyTheme(EditorRenderer.theme, core: editorCore)
         selectionMenuController = IOSSelectionMenuController(editor: self, theme: EditorRenderer.theme)
         decorationProviderManager = DecorationProviderManager(

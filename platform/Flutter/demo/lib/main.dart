@@ -335,7 +335,6 @@ class _EditorDemoPageState extends State<EditorDemoPage> {
                               defaultTargetPlatform == TargetPlatform.macOS
                           ? 'Menlo'
                           : 'monospace',
-                      fontSize: 14,
                     ),
                   ),
                   _buildStatusBar(bgColor, secondaryColor),

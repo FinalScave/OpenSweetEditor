@@ -24,7 +24,7 @@ public class EditorSettings {
 
     private final SweetEditor mEditor;
 
-    private float mTextSize = 36f;
+    private float mTextSize = 28f;
     private Typeface mTypeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL);
     private float mScale = 1.0f;
     private FoldArrowMode mFoldArrowMode = FoldArrowMode.ALWAYS;

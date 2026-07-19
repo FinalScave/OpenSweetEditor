@@ -289,8 +289,10 @@ namespace NS_SWEETEDITOR {
 
   /// Runtime-mutable editor settings (modified via individual setters)
   struct EditorSettings {
+    /// Min scale factor
+    float min_scale {0.75f};
     /// Max scale factor
-    float max_scale {5};
+    float max_scale {5.0f};
     /// Read-only mode; block all edit actions (insert/delete/undo/redo/IME input)
     bool read_only {false};
     /// Auto indent mode; default keeps previous line indent

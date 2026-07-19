@@ -6,10 +6,9 @@ namespace SweetEditor {
 	/// </para>
 	/// </summary>
 	public class EditorSettings {
-
 		private readonly SweetEditorControl editor;
 
-		private float editorTextSize = 11f;
+		private float editorTextSize = GetDefaultTextSizePoints(96);
 		private string fontFamily = "Consolas";
 		private float scale = 1.0f;
 		private FoldArrowMode foldArrowMode = FoldArrowMode.ALWAYS;
@@ -44,6 +43,11 @@ namespace SweetEditor {
 
 		/// <summary>Gets editor text size (points).</summary>
 		public float GetEditorTextSize() => editorTextSize;
+
+		internal static float GetDefaultTextSizePoints(int dpi) {
+			int effectiveDpi = dpi > 0 ? dpi : 96;
+			return 28f * 72f / effectiveDpi;
+		}
 
 		/// <summary>Sets editor font family.</summary>
 		public void SetFontFamily(string family) {

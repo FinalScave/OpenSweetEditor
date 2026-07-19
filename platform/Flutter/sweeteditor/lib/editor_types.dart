@@ -62,7 +62,7 @@ class EditorTheme {
   int lineNumberColor = 0xFF5E6778;
   int currentLineNumberColor = 0xFF9CB3D6;
   int currentLineColor = 0x503A4A66;
-  int guideColor = 0x2E56617A;
+  int guideColor = 0x8056617A;
   int separatorLineColor = 0xFF4A8F7A;
   int splitLineColor = 0x3356617A;
   int scrollbarTrackColor = 0x48FFFFFF;
@@ -73,7 +73,7 @@ class EditorTheme {
   int inlayHintTextColor = 0xC0AFC2E0;
   int inlayHintIconColor = 0xCC9CB0CD;
   int phantomTextColor = 0x8AA3B5D1;
-  int invisibleCharacterColor = 0x706B7890;
+  int invisibleCharacterColor = 0x486B7890;
   int foldPlaceholderBgColor = 0x36506C90;
   int foldPlaceholderTextColor = 0xFFE2ECFF;
   int diagnosticErrorColor = 0xFFF7768E;
@@ -148,7 +148,7 @@ class EditorTheme {
       ..lineNumberColor = 0xFF8A94A6
       ..currentLineNumberColor = 0xFF3A5FA0
       ..currentLineColor = 0x1A0D3B66
-      ..guideColor = 0x2229426B
+      ..guideColor = 0x4029426B
       ..separatorLineColor = 0xFF2F855A
       ..splitLineColor = 0x1F29426B
       ..scrollbarTrackColor = 0x1F2A3B55
@@ -159,7 +159,7 @@ class EditorTheme {
       ..inlayHintTextColor = 0xB0344A73
       ..inlayHintIconColor = 0xB04B607E
       ..phantomTextColor = 0x8A4B607E
-      ..invisibleCharacterColor = 0x705D6B82
+      ..invisibleCharacterColor = 0x405D6B82
       ..foldPlaceholderBgColor = 0x2E748DB0
       ..foldPlaceholderTextColor = 0xFF284A70
       ..diagnosticErrorColor = 0xFFDC2626

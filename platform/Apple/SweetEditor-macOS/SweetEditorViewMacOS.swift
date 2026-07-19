@@ -7,7 +7,10 @@ import SweetEditorShared
 public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAccessor, EditorSettingsHost {
     public static weak var activeEditor: SweetEditorViewMacOS?
     private static let scrollbarDiagnosticsEnabled = ProcessInfo.processInfo.environment["SWEETEDITOR_SCROLLBAR_DIAGNOSTICS"] == "1"
-    public let settings = EditorSettings(host: nil)
+    public let settings = EditorSettings(
+        host: nil,
+        editorTextSize: 28.0 / Float(NSScreen.main?.backingScaleFactor ?? 1.0)
+    )
     public var onFoldToggle: ((SweetEditorFoldToggleEvent) -> Void)?
     public var onInlayHintClick: ((SweetEditorInlayHintClickEvent) -> Void)?
     public var onGutterIconClick: ((SweetEditorGutterIconClickEvent) -> Void)?
@@ -104,10 +107,10 @@ public class SweetEditorViewMacOS: NSView, NSTextInputClient, CompletionEditorAc
         settings.attachHost(self)
         wantsLayer = true
         layer?.backgroundColor = EditorRenderer.theme.backgroundColor
-        editorCore = SweetEditorCore(fontSize: 14.0, fontName: "Menlo")
+        editorCore = SweetEditorCore(fontSize: CGFloat(settings.editorTextSize), fontName: "Menlo")
         editorCore.setScrollbarConfig(scrollbarPolicy.defaultConfig())
         editorCore.setCompositionEnabled(settings.compositionEnabled)
-        editorCore.setReadOnly(false)
+        editorCore.setContentStartPadding(settings.contentStartPadding)
         // Sync current theme to Core first so syntax styles are registered immediately.
         EditorRenderer.applyTheme(EditorRenderer.theme, core: editorCore)
         decorationProviderManager = DecorationProviderManager(

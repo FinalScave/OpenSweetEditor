@@ -336,7 +336,7 @@ namespace NS_SWEETEDITOR {
       if (event.type == EventType::TOUCH_MOVE) {
         m_interaction_lifecycle_.pointer_viewport_gesture_active = true;
       }
-      m_context_.view_state->scale = std::max(1.0f, std::min(m_context_.settings->max_scale, m_context_.view_state->scale * result.scale));
+      m_context_.view_state->scale = std::max(m_context_.settings->min_scale, std::min(m_context_.settings->max_scale, m_context_.view_state->scale * result.scale));
       break;
     }
     case GestureType::SCROLL:

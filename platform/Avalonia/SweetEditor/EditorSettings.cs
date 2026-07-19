@@ -12,7 +12,7 @@ namespace SweetEditor {
 		private bool compositionEnabled;
 		private float lineSpacingAdd;
 		private float lineSpacingMult = 1.2f;
-		private float contentStartPadding;
+		private float contentStartPadding = 3.0f;
 		private bool showSplitLine = true;
 		private bool gutterSticky = true;
 		private bool gutterVisible = true;

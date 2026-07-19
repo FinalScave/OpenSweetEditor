@@ -18,7 +18,7 @@ public class EditorSettings {
     private final SweetEditor mEditor;
 
     private float mScale = 1.0f;
-    private float mEditorTextSize = 14f;
+    private float mEditorTextSize = EditorRenderer.resolveDefaultTextSize();
     private String mFontFamily = "monospace";
     private boolean mGutterVisible = true;
     private FoldArrowMode mFoldArrowMode = FoldArrowMode.ALWAYS;
@@ -27,7 +27,7 @@ public class EditorSettings {
     private boolean mRenderLineBreaks = false;
     private float mLineSpacingAdd = 0f;
     private float mLineSpacingMult = 1.2f;
-    private float mContentStartPadding = 0f;
+    private float mContentStartPadding = 3.0f;
     private boolean mShowSplitLine = true;
     private boolean mGutterSticky = true;
     private CurrentLineRenderMode mCurrentLineRenderMode = CurrentLineRenderMode.BACKGROUND;

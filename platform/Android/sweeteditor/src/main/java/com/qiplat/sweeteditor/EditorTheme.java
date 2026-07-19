@@ -194,7 +194,7 @@ public class EditorTheme {
         t.lineNumberColor           = 0xFF5E6778;
         t.currentLineNumberColor    = 0xFF9CB3D6;
         t.currentLineColor          = 0x503A4A66;
-        t.guideColor                = 0x2E56617A;
+        t.guideColor                = 0x8056617A;
         t.separatorLineColor        = 0xFF4A8F7A;
         t.splitLineColor            = 0x3356617A;
         t.scrollbarTrackColor       = 0x2AFFFFFF;
@@ -210,7 +210,7 @@ public class EditorTheme {
         t.foldPlaceholderBgColor    = 0x36506C90;
         t.foldPlaceholderTextColor  = 0xFFE2ECFF;
         t.phantomTextColor          = 0x8AA3B5D1;
-        t.invisibleCharacterColor   = 0x706B7890;
+        t.invisibleCharacterColor   = 0x486B7890;
         t.inlayHintIconColor        = 0xCC9CB0CD;
         t.diagnosticErrorColor      = 0xFFF7768E;
         t.diagnosticWarningColor    = 0xFFE0AF68;
@@ -271,7 +271,7 @@ public class EditorTheme {
         t.lineNumberColor           = 0xFF8A94A6;
         t.currentLineNumberColor    = 0xFF3A5FA0;
         t.currentLineColor          = 0x1A0D3B66;
-        t.guideColor                = 0x2229426B;
+        t.guideColor                = 0x4029426B;
         t.separatorLineColor        = 0xFF2F855A;
         t.splitLineColor            = 0x1F29426B;
         t.scrollbarTrackColor       = 0x1F2A3B55;
@@ -287,7 +287,7 @@ public class EditorTheme {
         t.foldPlaceholderBgColor    = 0x2E748DB0;
         t.foldPlaceholderTextColor  = 0xFF284A70;
         t.phantomTextColor          = 0x8A4B607E;
-        t.invisibleCharacterColor   = 0x705D6B82;
+        t.invisibleCharacterColor   = 0x405D6B82;
         t.inlayHintIconColor        = 0xB04B607E;
         t.diagnosticErrorColor      = 0xFFDC2626;
         t.diagnosticWarningColor    = 0xFFD97706;

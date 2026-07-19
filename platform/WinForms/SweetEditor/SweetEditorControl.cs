@@ -219,7 +219,7 @@ namespace SweetEditor {
 			LineNumberColor = Color.FromArgb(unchecked((int)0xFF5E6778)),
 			CurrentLineNumberColor = Color.FromArgb(unchecked((int)0xFF9CB3D6)),
 			CurrentLineColor = Color.FromArgb(unchecked((int)0x503A4A66)),
-			GuideColor = Color.FromArgb(unchecked((int)0x2E56617A)),
+			GuideColor = Color.FromArgb(unchecked((int)0x8056617A)),
 			SeparatorLineColor = Color.FromArgb(unchecked((int)0xFF4A8F7A)),
 			SplitLineColor = Color.FromArgb(unchecked((int)0x3356617A)),
 			ScrollbarTrackColor = Color.FromArgb(unchecked((int)0x2AFFFFFF)),
@@ -234,7 +234,7 @@ namespace SweetEditor {
 			InlayHintTextColor = Color.FromArgb(unchecked((int)0xC0AFC2E0)),
 			InlayHintIconColor = Color.FromArgb(unchecked((int)0xCC9CB0CD)),
 			PhantomTextColor = Color.FromArgb(unchecked((int)0x8AA3B5D1)),
-			InvisibleCharacterColor = Color.FromArgb(unchecked((int)0x706B7890)),
+			InvisibleCharacterColor = Color.FromArgb(unchecked((int)0x486B7890)),
 			FoldPlaceholderBgColor = Color.FromArgb(unchecked((int)0x36506C90)),
 			FoldPlaceholderTextColor = Color.FromArgb(unchecked((int)0xFFE2ECFF)),
 			DiagnosticErrorColor = Color.FromArgb(unchecked((int)0xFFF7768E)),
@@ -284,7 +284,7 @@ namespace SweetEditor {
 			LineNumberColor = Color.FromArgb(unchecked((int)0xFF8A94A6)),
 			CurrentLineNumberColor = Color.FromArgb(unchecked((int)0xFF3A5FA0)),
 			CurrentLineColor = Color.FromArgb(unchecked((int)0x1A0D3B66)),
-			GuideColor = Color.FromArgb(unchecked((int)0x2229426B)),
+			GuideColor = Color.FromArgb(unchecked((int)0x4029426B)),
 			SeparatorLineColor = Color.FromArgb(unchecked((int)0xFF2F855A)),
 			SplitLineColor = Color.FromArgb(unchecked((int)0x1F29426B)),
 			ScrollbarTrackColor = Color.FromArgb(unchecked((int)0x1F2A3B55)),
@@ -299,7 +299,7 @@ namespace SweetEditor {
 			InlayHintTextColor = Color.FromArgb(unchecked((int)0xB0344A73)),
 			InlayHintIconColor = Color.FromArgb(unchecked((int)0xB04B607E)),
 			PhantomTextColor = Color.FromArgb(unchecked((int)0x8A4B607E)),
-			InvisibleCharacterColor = Color.FromArgb(unchecked((int)0x705D6B82)),
+			InvisibleCharacterColor = Color.FromArgb(unchecked((int)0x405D6B82)),
 			FoldPlaceholderBgColor = Color.FromArgb(unchecked((int)0x2E748DB0)),
 			FoldPlaceholderTextColor = Color.FromArgb(unchecked((int)0xFF284A70)),
 			DiagnosticErrorColor = Color.FromArgb(unchecked((int)0xFFDC2626)),
@@ -686,7 +686,6 @@ namespace SweetEditor {
 		private const int AnimationIntervalMs = 16;
 		private System.Windows.Forms.Timer? animationTimer;
 		private bool animationActive = false;
-		private const float DefaultContentStartPaddingDp = 3.0f;
 
 		public SweetEditorControl() {
 			InitializeComponent();
@@ -1526,8 +1525,10 @@ namespace SweetEditor {
 			editorCore.SetKeyMap(keyMap.GetBindings());
 
 			settings = new EditorSettings(this);
-			settings.SetContentStartPadding(DpToPx(DefaultContentStartPaddingDp));
-			editorCore.SetAutoIndentMode((int)settings.GetAutoIndentMode());
+			if (DeviceDpi != 96) {
+				settings.SetEditorTextSize(EditorSettings.GetDefaultTextSizePoints(DeviceDpi));
+			}
+			settings.SetContentStartPadding(DpToPx(3.0f));
 		}
 
 		protected override void OnHandleCreated(EventArgs e) {

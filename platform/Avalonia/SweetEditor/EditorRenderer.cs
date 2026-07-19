@@ -14,7 +14,6 @@ using AvaloniaSize = Avalonia.Size;
 
 namespace SweetEditor {
 	internal sealed class EditorRenderer : IDisposable {
-		private const float DefaultTextSizeDip = 15.0f;
 		private const float InlayTextSizeRatio = 0.86f;
 		private const int MaxLineNumberTextCacheEntries = 8192;
 		private const int MeasureColorArgb = unchecked((int)0xFF000000);
@@ -48,7 +47,7 @@ namespace SweetEditor {
 		private EditorTheme theme;
 		private EditorIconProvider? iconProvider;
 		private string fontFamily = "monospace";
-		private float textSizeDip = DefaultTextSizeDip;
+		private float textSizeDip = 28.0f;
 		private float scale = 1.0f;
 		private float platformDensity = 1.0f;
 
@@ -483,7 +482,7 @@ namespace SweetEditor {
 			try {
 				return OnMeasureIconWidth(iconId);
 			} catch {
-				return DefaultTextSizeDip;
+				return textSizeDip;
 			}
 		}
 

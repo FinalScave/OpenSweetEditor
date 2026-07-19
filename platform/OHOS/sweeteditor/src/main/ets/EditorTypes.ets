@@ -72,7 +72,7 @@ export class EditorTheme {
   lineNumberColor: number = 0xFF5E6778;
   currentLineNumberColor: number = 0xFF9CB3D6;
   currentLineColor: number = 0x503A4A66;
-  guideColor: number = 0x2E56617A;
+  guideColor: number = 0x8056617A;
   separatorLineColor: number = 0xFF4A8F7A;
   splitLineColor: number = 0x3356617A;
   scrollbarTrackColor: number = 0x48FFFFFF;
@@ -83,7 +83,7 @@ export class EditorTheme {
   inlayHintTextColor: number = 0xC0AFC2E0;
   inlayHintIconColor: number = 0xCC9CB0CD;
   phantomTextColor: number = 0x8AA3B5D1;
-  invisibleCharacterColor: number = 0x706B7890;
+  invisibleCharacterColor: number = 0x486B7890;
   foldPlaceholderBgColor: number = 0x36506C90;
   foldPlaceholderTextColor: number = 0xFFE2ECFF;
   diagnosticErrorColor: number = 0xFFF7768E;
@@ -133,7 +133,7 @@ export class EditorTheme {
     theme.lineNumberColor = 0xFF5E6778;
     theme.currentLineNumberColor = 0xFF9CB3D6;
     theme.currentLineColor = 0x503A4A66;
-    theme.guideColor = 0x2E56617A;
+    theme.guideColor = 0x8056617A;
     theme.separatorLineColor = 0xFF4A8F7A;
     theme.splitLineColor = 0x3356617A;
     theme.scrollbarTrackColor = 0x2AFFFFFF;
@@ -144,7 +144,7 @@ export class EditorTheme {
     theme.inlayHintTextColor = 0xC0AFC2E0;
     theme.inlayHintIconColor = 0xCC9CB0CD;
     theme.phantomTextColor = 0x8AA3B5D1;
-    theme.invisibleCharacterColor = 0x706B7890;
+    theme.invisibleCharacterColor = 0x486B7890;
     theme.foldPlaceholderBgColor = 0x36506C90;
     theme.foldPlaceholderTextColor = 0xFFE2ECFF;
     theme.diagnosticErrorColor = 0xFFF7768E;
@@ -204,7 +204,7 @@ export class EditorTheme {
     theme.lineNumberColor = 0xFF8A94A6;
     theme.currentLineNumberColor = 0xFF3A5FA0;
     theme.currentLineColor = 0x1A0D3B66;
-    theme.guideColor = 0x2229426B;
+    theme.guideColor = 0x4029426B;
     theme.separatorLineColor = 0xFF2F855A;
     theme.splitLineColor = 0x1F29426B;
     theme.scrollbarTrackColor = 0x1F2A3B55;
@@ -215,7 +215,7 @@ export class EditorTheme {
     theme.inlayHintTextColor = 0xB0344A73;
     theme.inlayHintIconColor = 0xB04B607E;
     theme.phantomTextColor = 0x8A4B607E;
-    theme.invisibleCharacterColor = 0x705D6B82;
+    theme.invisibleCharacterColor = 0x405D6B82;
     theme.foldPlaceholderBgColor = 0x2E748DB0;
     theme.foldPlaceholderTextColor = 0xFF284A70;
     theme.diagnosticErrorColor = 0xFFDC2626;

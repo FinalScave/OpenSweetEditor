@@ -294,6 +294,9 @@ export struct SweetEditor {
     } catch (e) {
       this.density = 2.0;
     }
+    if (!this.initialized && this.density !== 1.0) {
+      this.settings.setEditorTextSize(28.0 / this.density);
+    }
     this.resolveImeWindowId();
   }
 
@@ -575,6 +578,7 @@ export struct SweetEditor {
     this.initialized = true;
 
     this.renderer = new EditorRenderer(this.theme, this.density);
+    this.renderer.applyTextSize(this.settings.getEditorTextSize());
     this.renderer.setEditorIconProvider(this.iconProvider);
 
     const touchSlop = 10;

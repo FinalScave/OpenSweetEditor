@@ -159,7 +159,8 @@ namespace NS_SWEETEDITOR {
   }
 
   U8String EditorSettings::dump() const {
-    return "EditorSettings {max_scale = " + std::to_string(max_scale)
+    return "EditorSettings {min_scale = " + std::to_string(min_scale)
+        + ", max_scale = " + std::to_string(max_scale)
         + ", read_only = " + (read_only ? "true" : "false")
         + ", insert_spaces = " + (insert_spaces ? "true" : "false")
         + ", content_start_padding = " + std::to_string(content_start_padding)

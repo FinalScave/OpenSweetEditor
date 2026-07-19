@@ -332,7 +332,7 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::setScale(float scale) {
     const ActionSnapshot before = captureActionSnapshot();
     m_interaction_->resetScaleState();
-    m_view_state_.scale = scale;
+    m_view_state_.scale = std::max(m_settings_.min_scale, std::min(m_settings_.max_scale, scale));
     normalizeScrollState();
     LOGD("EditorCore::setScale, m_view_state_ = %s", m_view_state_.dump().c_str());
     return finishAction(before, EditorActionSource::SETUP, true);

@@ -46,8 +46,6 @@ import java.util.Locale;
 
 public class Main extends JFrame {
     private static final String FALLBACK_FILE_NAME = "example.cpp";
-    private static final float LINUX_EDITOR_TEXT_SIZE = 26f;
-    private static final float DESKTOP_EDITOR_TEXT_SIZE = 18f;
     private static final String FALLBACK_SAMPLE_CODE =
             "// SweetEditor Demo\n" +
             "int main() {\n" +
@@ -81,7 +79,6 @@ public class Main extends JFrame {
         setLocationRelativeTo(null);
 
         editor = new SweetEditor(EditorTheme.dark());
-        editor.getSettings().setEditorTextSize(resolveDemoEditorTextSize());
         String demoFontFamily = resolveDemoFontFamily();
         if (demoFontFamily != null) {
             editor.getSettings().setFontFamily(demoFontFamily);
@@ -454,11 +451,6 @@ public class Main extends JFrame {
         int linkColor = isDarkTheme ? 0xFF7DCFFF : 0xFF005FB8;
         editor.registerTextStyle(DemoDecorationProvider.STYLE_COLOR, color, 0);
         editor.registerTextStyle(DemoDecorationProvider.STYLE_LINK, linkColor, 0);
-    }
-
-    private static float resolveDemoEditorTextSize() {
-        String osName = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-        return osName.contains("linux") ? LINUX_EDITOR_TEXT_SIZE : DESKTOP_EDITOR_TEXT_SIZE;
     }
 
     private static String resolveDemoFontFamily() {

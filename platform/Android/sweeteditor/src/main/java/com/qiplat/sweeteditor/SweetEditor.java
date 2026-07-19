@@ -131,7 +131,6 @@ public class SweetEditor extends View {
     private static final boolean ENABLE_PERF_LOG = true;
     private static final int PERF_LOG_INTERVAL = 60;
     private static final int MAX_CLIPBOARD_SELECTION_CHARS = 100_000;
-    private static final float DEFAULT_CONTENT_START_PADDING_DP = 3.0f;
 
     private EditorRenderer mRenderer;
     private AnimationHolder animationHolder;
@@ -2403,7 +2402,7 @@ public class SweetEditor extends View {
         mEditorCore.registerBatchTextStyles(mTheme.textStyles);
 
         mSettings = new EditorSettings(this);
-        mSettings.setContentStartPadding(UiDimensions.dpToPxFloat(context, DEFAULT_CONTENT_START_PADDING_DP));
+        mSettings.setContentStartPadding(UiDimensions.dpToPxFloat(context, 3.0f));
         mKeyMap = createDefaultKeyMap();
         mEditorCore.setGutterSticky(mSettings.isGutterSticky());
         setFocusable(true);

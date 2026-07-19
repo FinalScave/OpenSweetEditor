@@ -126,7 +126,7 @@ final class EditorRenderer {
         mGuidePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mGuidePaint.setStyle(Paint.Style.STROKE);
         mGuidePaint.setColor(theme.guideColor);
-        mGuidePaint.setStrokeWidth(1f);
+        mGuidePaint.setStrokeWidth(Math.max(1f, 0.5f * mDensity));
 
         mSeparatorLinePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mSeparatorLinePaint.setColor(theme.separatorLineColor);

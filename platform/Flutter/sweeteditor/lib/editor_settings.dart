@@ -4,7 +4,7 @@ part of 'sweeteditor.dart';
 class EditorSettings {
   EditorSettings();
 
-  double _textSize = 14;
+  double? _textSize;
   String _fontFamily = 'monospace';
   double _scale = 1.0;
   core.FoldArrowMode _foldArrowMode = core.FoldArrowMode.always;
@@ -25,7 +25,6 @@ class EditorSettings {
   int _maxGutterIcons = 0;
   int _decorationScrollRefreshMinIntervalMs = 16;
   double _decorationOverscanViewportMultiplier = 1.5;
-  bool _textSizeCustomized = false;
   bool _fontFamilyCustomized = false;
   bool _gutterStickyCustomized = false;
   EditorSession? _session;
@@ -54,7 +53,6 @@ class EditorSettings {
         _decorationScrollRefreshMinIntervalMs;
     copy._decorationOverscanViewportMultiplier =
         _decorationOverscanViewportMultiplier;
-    copy._textSizeCustomized = _textSizeCustomized;
     copy._fontFamilyCustomized = _fontFamilyCustomized;
     copy._gutterStickyCustomized = _gutterStickyCustomized;
     return copy;
@@ -83,7 +81,6 @@ class EditorSettings {
         other._decorationScrollRefreshMinIntervalMs;
     _decorationOverscanViewportMultiplier =
         other._decorationOverscanViewportMultiplier;
-    _textSizeCustomized = other._textSizeCustomized;
     _fontFamilyCustomized = other._fontFamilyCustomized;
     _gutterStickyCustomized = other._gutterStickyCustomized;
     final session = _session;
@@ -97,9 +94,7 @@ class EditorSettings {
     required String fontFamily,
     bool? gutterSticky,
   }) {
-    if (!_textSizeCustomized) {
-      _textSize = textSize;
-    }
+    _textSize ??= textSize;
     if (!_fontFamilyCustomized) {
       _fontFamily = fontFamily;
     }
@@ -120,21 +115,20 @@ class EditorSettings {
 
   void setEditorTextSize(double size) {
     _textSize = size;
-    _textSizeCustomized = true;
     _session?.applyTypography(
-      textSize: _textSize,
+      textSize: size,
       fontFamily: _fontFamily,
       scale: _scale,
     );
   }
 
-  double getEditorTextSize() => _textSize;
+  double getEditorTextSize() => _textSize ?? 28.0;
 
   void setFontFamily(String fontFamily) {
     _fontFamily = fontFamily;
     _fontFamilyCustomized = true;
     _session?.applyTypography(
-      textSize: _textSize,
+      textSize: getEditorTextSize(),
       fontFamily: _fontFamily,
       scale: _scale,
     );
@@ -145,7 +139,7 @@ class EditorSettings {
   void setScale(double scale) {
     _scale = scale;
     _session?.applyTypography(
-      textSize: _textSize,
+      textSize: getEditorTextSize(),
       fontFamily: _fontFamily,
       scale: _scale,
     );
@@ -276,7 +270,7 @@ class EditorSettings {
 
   void _applyAll(EditorSession session) {
     session.applyTypography(
-      textSize: _textSize,
+      textSize: getEditorTextSize(),
       fontFamily: _fontFamily,
       scale: _scale,
     );

@@ -130,30 +130,56 @@ class EditorSession {
     final ec = _editorCore;
     if (ec == null) return;
     _platformScale = _settings.getScale();
-    _measurer.updateFont(
-      platformBehavior.resolveFontFamily(_settings.getFontFamily()),
-      _settings.getEditorTextSize() * _platformScale,
-    );
-    ec.setScale(_platformScale);
-    ec.onFontMetricsChanged();
-    hostCallbacks.onTextInputStyleInvalidated();
-    ec.setFoldArrowMode(_settings.getFoldArrowMode());
-    ec.setWrapMode(_settings.getWrapMode());
-    ec.setRenderWhitespace(_settings.getRenderWhitespace());
-    ec.setRenderLineBreaks(_settings.isRenderLineBreaks());
-    ec.setLineSpacing(
-      add: _settings.getLineSpacingAdd(),
-      mult: _settings.getLineSpacingMult(),
-    );
-    ec.setContentStartPadding(_settings.getContentStartPadding());
-    ec.setShowSplitLine(_settings.isShowSplitLine());
-    ec.setGutterSticky(_settings.isGutterSticky());
-    ec.setGutterVisible(_settings.isGutterVisible());
-    ec.setCurrentLineRenderMode(_settings.getCurrentLineRenderMode());
-    ec.setAutoIndentMode(_settings.getAutoIndentMode());
-    ec.setBackspaceUnindent(_settings.isBackspaceUnindent());
-    ec.setReadOnly(_settings.isReadOnly());
-    ec.setMaxGutterIcons(_settings.getMaxGutterIcons());
+    if (_platformScale != 1.0) {
+      ec.setScale(_platformScale);
+    }
+    if (_settings.getFoldArrowMode() != core.FoldArrowMode.always) {
+      ec.setFoldArrowMode(_settings.getFoldArrowMode());
+    }
+    if (_settings.getWrapMode() != core.WrapMode.none) {
+      ec.setWrapMode(_settings.getWrapMode());
+    }
+    if (_settings.getRenderWhitespace() != core.WhitespaceRenderMode.none) {
+      ec.setRenderWhitespace(_settings.getRenderWhitespace());
+    }
+    if (_settings.isRenderLineBreaks()) {
+      ec.setRenderLineBreaks(true);
+    }
+    if (_settings.getLineSpacingAdd() != 0.0 ||
+        _settings.getLineSpacingMult() != 1.2) {
+      ec.setLineSpacing(
+        add: _settings.getLineSpacingAdd(),
+        mult: _settings.getLineSpacingMult(),
+      );
+    }
+    if (_settings.getContentStartPadding() != 0.0) {
+      ec.setContentStartPadding(_settings.getContentStartPadding());
+    }
+    if (!_settings.isShowSplitLine()) {
+      ec.setShowSplitLine(false);
+    }
+    if (!_settings.isGutterSticky()) {
+      ec.setGutterSticky(false);
+    }
+    if (!_settings.isGutterVisible()) {
+      ec.setGutterVisible(false);
+    }
+    if (_settings.getCurrentLineRenderMode() !=
+        core.CurrentLineRenderMode.background) {
+      ec.setCurrentLineRenderMode(_settings.getCurrentLineRenderMode());
+    }
+    if (_settings.getAutoIndentMode() != core.AutoIndentMode.keepIndent) {
+      ec.setAutoIndentMode(_settings.getAutoIndentMode());
+    }
+    if (!_settings.isBackspaceUnindent()) {
+      ec.setBackspaceUnindent(false);
+    }
+    if (_settings.isReadOnly()) {
+      ec.setReadOnly(true);
+    }
+    if (_settings.getMaxGutterIcons() != 0) {
+      ec.setMaxGutterIcons(_settings.getMaxGutterIcons());
+    }
     decorationProviderManager.requestRefresh();
   }
 

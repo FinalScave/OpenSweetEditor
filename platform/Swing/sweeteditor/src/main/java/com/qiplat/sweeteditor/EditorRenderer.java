@@ -59,9 +59,25 @@ final class EditorRenderer implements EditorCore.TextMeasurer {
 
     public EditorRenderer(EditorTheme theme) {
         this.theme = theme;
-        baseRegularFont = findMonospaceFont(14);
-        baseInlayHintFont = new Font("SansSerif", Font.PLAIN, 12);
+        float defaultTextSize = resolveDefaultTextSize();
+        baseRegularFont = findMonospaceFont(14).deriveFont(defaultTextSize);
+        baseInlayHintFont = new Font("SansSerif", Font.PLAIN, 12).deriveFont(defaultTextSize * 0.86f);
         syncPlatformScale(1.0f);
+    }
+
+    static float resolveDefaultTextSize() {
+        double deviceScale = 1.0;
+        if (!GraphicsEnvironment.isHeadless()) {
+            GraphicsConfiguration configuration = GraphicsEnvironment
+                    .getLocalGraphicsEnvironment()
+                    .getDefaultScreenDevice()
+                    .getDefaultConfiguration();
+            double scaleY = configuration.getDefaultTransform().getScaleY();
+            if (Double.isFinite(scaleY) && scaleY > 0.0) {
+                deviceScale = scaleY;
+            }
+        }
+        return 28.0f / (float) deviceScale;
     }
 
     public EditorCore.TextMeasurer getTextMeasurer() {
