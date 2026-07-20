@@ -64,7 +64,7 @@ TEST_CASE("EditorCore insertText with empty string and no selection is no-op") {
   CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
 }
 
-TEST_CASE("EditorCore applyTextEdits groups edits and keeps primary cursor") {
+TEST_CASE("EditorCore applyTextEdits applies one atomic batch and keeps primary cursor") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
 
@@ -90,6 +90,12 @@ TEST_CASE("EditorCore applyTextEdits groups edits and keeps primary cursor") {
   CHECK(undo_result.text_change_kind == TextChangeKind::UNDO);
   CHECK(document->getU8Text() == "fun call()");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
+
+  EditorActionResult redo_result = editor.redo();
+  REQUIRE(redo_result.content_changed);
+  CHECK(redo_result.text_change_kind == TextChangeKind::REDO);
+  CHECK(document->getU8Text() == "import demo\nfun run()");
+  CHECK(editor.getCursorPosition() == (TextPosition{1, 7}));
 }
 
 TEST_CASE("EditorCore applyTextEdits allows insertion at replacement end") {
@@ -109,6 +115,54 @@ TEST_CASE("EditorCore applyTextEdits allows insertion at replacement end") {
   REQUIRE(result.content_changed);
   CHECK(document->getU8Text() == "runAsync()");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
+
+  REQUIRE(editor.undo().content_changed);
+  CHECK(document->getU8Text() == "call()");
+
+  REQUIRE(editor.redo().content_changed);
+  CHECK(document->getU8Text() == "runAsync()");
+}
+
+TEST_CASE("EditorCore applyTextEdits preserves inverse coordinates across line changes") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("aa\nbb\ncc\ndd");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  Vector<TextEdit> edits;
+  edits.push_back({{{0, 0}, {0, 2}}, "A\nX"});
+  edits.push_back({{{2, 0}, {3, 0}}, ""});
+
+  REQUIRE(editor.applyTextEdits(std::move(edits)).content_changed);
+  CHECK(document->getU8Text() == "A\nX\nbb\ndd");
+
+  REQUIRE(editor.undo().content_changed);
+  CHECK(document->getU8Text() == "aa\nbb\ncc\ndd");
+
+  REQUIRE(editor.redo().content_changed);
+  CHECK(document->getU8Text() == "A\nX\nbb\ndd");
+}
+
+TEST_CASE("EditorCore applyTextEdits creates a history merge barrier") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  Vector<TextEdit> edits;
+  edits.push_back({{{0, 0}, {0, 0}}, "a"});
+  REQUIRE(editor.applyTextEdits(std::move(edits)).content_changed);
+  REQUIRE(editor.insertText("b").content_changed);
+  CHECK(document->getU8Text() == "ab");
+
+  REQUIRE(editor.undo().content_changed);
+  CHECK(document->getU8Text() == "a");
+  REQUIRE(editor.undo().content_changed);
+  CHECK(document->getU8Text().empty());
 }
 
 TEST_CASE("EditorCore applyTextEdits ignores collapsed empty edits for content and undo") {
@@ -334,6 +388,61 @@ TEST_CASE("EditorCore clamps cursor positions away from surrogate middles") {
 
   editor.moveCursorLeft();
   CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
+}
+
+TEST_CASE("EditorCore traverses both visual sides of a soft wrap boundary") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(makeShared<LineArrayDocument>("abcdefghij"));
+  editor.setViewport({90, 320});
+  editor.setWrapMode(WrapMode::CHAR_BREAK);
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+  editor.setCursorPosition({0, 5});
+
+  editor.moveCursorRight();
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 6}));
+  CHECK(editor.getCaretAffinity() == CaretAffinity::UPSTREAM);
+
+  editor.moveCursorRight();
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 6}));
+  CHECK(editor.getCaretAffinity() == CaretAffinity::DOWNSTREAM);
+
+  editor.moveCursorRight();
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
+
+  editor.moveCursorLeft();
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 6}));
+  CHECK(editor.getCaretAffinity() == CaretAffinity::DOWNSTREAM);
+
+  editor.moveCursorLeft();
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 6}));
+  CHECK(editor.getCaretAffinity() == CaretAffinity::UPSTREAM);
+
+  editor.moveCursorLeft();
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 5}));
+}
+
+TEST_CASE("EditorCore vertical movement keeps preferred x across wrapped lines") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+
+  editor.loadDocument(makeShared<LineArrayDocument>("abcdefghijklmnopqr"));
+  editor.setViewport({90, 320});
+  editor.setWrapMode(WrapMode::CHAR_BREAK);
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+  editor.setCursorPosition({0, 5});
+
+  editor.moveCursorDown();
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 11}));
+  editor.moveCursorDown();
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 17}));
+  editor.moveCursorUp();
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 11}));
+  editor.moveCursorUp();
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 5}));
 }
 
 TEST_CASE("EditorCore keeps zero-length selection collapsed when clamped around a surrogate pair") {

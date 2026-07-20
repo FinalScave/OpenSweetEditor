@@ -165,16 +165,17 @@ namespace NS_SWEETEDITOR {
 
     VisibleLineInfo layoutVisibleLines(EditorRenderModel& model, const PresentationContext& presentation_context);
 
-    /// Pointer hit test: convert screen point to text position (for cursor placement / tap)
+    /// Pointer hit test for cursor placement and taps.
+    /// The result preserves the visual side of a soft-wrap boundary.
     /// @param screen_point Screen point (relative to editor view top-left)
-    TextPosition hitTestPointer(const PointF& screen_point);
+    CaretHit hitTestPointer(const PointF& screen_point);
 
     /// Text-boundary hit test: convert screen point to a stable text boundary
     /// used by selection dragging and handle dragging.
     /// Virtual lines (for example CodeLens) are mapped to adjacent document text boundaries.
     /// Clickable inline runs such as Link still map to their own logical text range.
     /// @param screen_point Screen point (relative to editor view top-left)
-    TextPosition hitTestTextBoundary(const PointF& screen_point);
+    CaretHit hitTestTextBoundary(const PointF& screen_point);
 
     /// Screen hit test: detect hit on InlayHint, GutterIcon, fold marker, and other decorations
     /// @param screen_point Screen point (relative to editor view top-left)
@@ -182,7 +183,9 @@ namespace NS_SWEETEDITOR {
 
     /// Get screen coordinates for a text position (for cursor, floating panel, etc.)
     /// @return Screen coordinates (x = cursor x, y = line start y)
-    PointF getPositionScreenCoord(const TextPosition& position);
+    PointF getPositionScreenCoord(
+        const TextPosition& position,
+        CaretAffinity affinity = CaretAffinity::DOWNSTREAM);
 
     /// Get screen x range from one column to another and also return y (avoid repeated query)
     /// @param line Logical line index
@@ -330,7 +333,9 @@ namespace NS_SWEETEDITOR {
     /// Find wrapped sub-line index hit inside a logical line
     size_t findHitWrapIndex(const LogicalLine& ll, float abs_y, float line_height) const;
     /// Shared implementation behind pointer/text-boundary hit testing.
-    TextPosition hitTestInternal(const PointF& screen_point, bool text_boundary);
+    CaretHit hitTestInternal(const PointF& screen_point, bool text_boundary);
+    /// Resolve the logical position before soft-wrap affinity is attached.
+    TextPosition hitTestPositionInternal(const PointF& screen_point, bool text_boundary);
     /// Resolve a virtual visual line under pointer-hit semantics.
     TextPosition mapVisualLineToPointerTarget(size_t logical_line, const VisualLine& visual_line) const;
     /// Resolve a virtual visual line under text-boundary semantics.

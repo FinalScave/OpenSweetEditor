@@ -59,13 +59,14 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  void RenderComposer::buildCursorModel(EditorRenderModel& model, const TextPosition& cursor_position,
-                                        bool has_selection, float line_height) const {
-    PointF cursor_screen = m_text_layout_->getPositionScreenCoord(cursor_position);
-    model.cursor.text_position = cursor_position;
+  void RenderComposer::buildCursorModel(EditorRenderModel& model, const CaretState& caret,
+                                         float line_height) const {
+    PointF cursor_screen = m_text_layout_->getPositionScreenCoord(caret.active,
+                                                                  caret.active_affinity);
+    model.cursor.text_position = caret.active;
     model.cursor.position = cursor_screen;
     model.cursor.height = line_height;
-    model.cursor.visible = !has_selection;
+    model.cursor.visible = !caret.hasSelection();
     model.cursor.show_dragger = false;
     model.current_line = {0, cursor_screen.y};
   }
@@ -92,11 +93,11 @@ namespace NS_SWEETEDITOR {
 
   void RenderComposer::buildSelectionRangeEffects(EditorRenderModel& model, Document* document,
                                                   const CaretState& caret, float line_height) const {
-    if (!caret.has_selection || document == nullptr) {
+    if (!caret.hasSelection() || document == nullptr) {
       return;
     }
 
-    TextRange selection = caret.selection;
+    TextRange selection = caret.selection();
     TextPosition sel_start = selection.start;
     TextPosition sel_end = selection.end;
     if (sel_end < sel_start) {

@@ -1,142 +1,101 @@
 #include <sweeteditor/undo.h>
 
 namespace NS_SWEETEDITOR {
-
-  bool EditAction::canMergeWith(const EditAction& next) const {
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-      next.timestamp - timestamp).count();
-    if (elapsed > 500) return false;
-    if (next.had_selection) return false;
-
-    if (old_text.empty() && next.old_text.empty()
-        && !new_text.empty() && next.new_text.size() == 1
-        && next.new_text[0] != '\n' && next.new_text[0] != '\r') {
-      if (next.range.start == cursor_after) {
-        return true;
-      }
+  namespace {
+    bool isSingleInsertion(const HistoryEntry& entry) {
+      return entry.redo_replacements.size() == 1
+          && entry.undo_replacements.size() == 1
+          && entry.redo_replacements[0].range.isCollapsed()
+          && !entry.redo_replacements[0].text.empty()
+          && entry.undo_replacements[0].text.empty();
     }
 
-    if (new_text.empty() && next.new_text.empty()
-        && !old_text.empty() && next.old_text.size() == 1) {
-      if (next.range.end == range.start) {
-        return true;
-      }
-      if (next.range.start == range.start) {
-        return true;
-      }
+    bool isSingleDeletion(const HistoryEntry& entry) {
+      return entry.redo_replacements.size() == 1
+          && entry.undo_replacements.size() == 1
+          && !entry.redo_replacements[0].range.isCollapsed()
+          && entry.redo_replacements[0].text.empty()
+          && !entry.undo_replacements[0].text.empty();
+    }
+  }
+
+  bool HistoryEntry::canMergeWith(const HistoryEntry& next) const {
+    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        next.timestamp - timestamp).count();
+    if (!allows_merge
+        || !next.allows_merge
+        || elapsed > 500
+        || caret_before.hasSelection()
+        || next.caret_before.hasSelection()) {
+      return false;
+    }
+
+    if (isSingleInsertion(*this) && isSingleInsertion(next)) {
+      const auto& next_text = next.redo_replacements[0].text;
+      return next_text.size() == 1
+          && next_text[0] != '\n'
+          && next_text[0] != '\r'
+          && next.redo_replacements[0].range.start == caret_after.active;
+    }
+
+    if (isSingleDeletion(*this) && isSingleDeletion(next)) {
+      const auto& next_text = next.undo_replacements[0].text;
+      if (next_text.size() != 1 || next_text[0] == '\n' || next_text[0] == '\r') return false;
+      const TextRange& range = redo_replacements[0].range;
+      const TextRange& next_range = next.redo_replacements[0].range;
+      return next_range.end == range.start || next_range.start == range.start;
     }
 
     return false;
   }
 
-  void EditAction::mergeWith(const EditAction& next) {
-    if (old_text.empty() && next.old_text.empty()) {
-      new_text += next.new_text;
-      cursor_after = next.cursor_after;
-      timestamp = next.timestamp;
-    } else if (new_text.empty() && next.new_text.empty()) {
-      if (next.range.end == range.start) {
-        old_text = next.old_text + old_text;
-        range.start = next.range.start;
-        cursor_before = next.cursor_before;
-      } else {
-        old_text += next.old_text;
-        range.end = next.range.end;
-      }
-      cursor_after = next.cursor_after;
-      timestamp = next.timestamp;
+  void HistoryEntry::mergeWith(const HistoryEntry& next) {
+    auto& redo = redo_replacements[0];
+    auto& undo = undo_replacements[0];
+    const auto& next_redo = next.redo_replacements[0];
+    const auto& next_undo = next.undo_replacements[0];
+
+    if (isSingleInsertion(*this) && isSingleInsertion(next)) {
+      redo.text += next_redo.text;
+      undo.range.end = next_undo.range.end;
+    } else if (next_redo.range.end == redo.range.start) {
+      redo.range.start = next_redo.range.start;
+      undo.range = next_undo.range;
+      undo.text = next_undo.text + undo.text;
+    } else {
+      ++redo.range.end.column;
+      undo.text += next_undo.text;
     }
-  }
 
-  TextPosition UndoEntry::cursorBefore() const {
-    return is_compound ? compound.cursor_before : single.cursor_before;
-  }
-
-  TextPosition UndoEntry::cursorAfter() const {
-    return is_compound ? compound.cursor_after : single.cursor_after;
-  }
-
-  bool UndoEntry::hadSelection() const {
-    return is_compound ? compound.had_selection : single.had_selection;
-  }
-
-  TextRange UndoEntry::selectionBefore() const {
-    return is_compound ? compound.selection_before : single.selection_before;
+    caret_after = next.caret_after;
+    timestamp = next.timestamp;
   }
 
   UndoManager::UndoManager(size_t max_stack_size)
     : m_max_stack_size_(max_stack_size) {}
 
-  void UndoManager::pushAction(EditAction action) {
-    if (m_group_depth_ > 0) {
-      m_group_actions_.push_back(std::move(action));
+  void UndoManager::pushEntry(HistoryEntry entry) {
+    m_redo_stack_.clear();
+
+    if (!m_undo_stack_.empty() && m_undo_stack_.back().canMergeWith(entry)) {
+      m_undo_stack_.back().mergeWith(entry);
       return;
     }
 
-    m_redo_stack_.clear();
-
-    if (!m_undo_stack_.empty() && !m_undo_stack_.back().is_compound) {
-      if (m_undo_stack_.back().single.canMergeWith(action)) {
-        m_undo_stack_.back().single.mergeWith(action);
-        return;
-      }
-    }
-
-    UndoEntry entry;
-    entry.is_compound = false;
-    entry.single = std::move(action);
     m_undo_stack_.push_back(std::move(entry));
-
     if (m_undo_stack_.size() > m_max_stack_size_) {
       m_undo_stack_.erase(m_undo_stack_.begin());
     }
   }
 
-  void UndoManager::beginGroup(TextPosition cursor_before, bool had_selection, TextRange selection_before) {
-    if (m_group_depth_ == 0) {
-      m_group_actions_.clear();
-      m_group_cursor_before_ = cursor_before;
-      m_group_had_selection_ = had_selection;
-      m_group_selection_before_ = selection_before;
-    }
-    m_group_depth_++;
-  }
-
-  void UndoManager::endGroup(TextPosition cursor_after) {
-    if (m_group_depth_ == 0) return;
-    m_group_depth_--;
-    if (m_group_depth_ > 0) return;
-
-    if (m_group_actions_.empty()) return;
-
-    m_redo_stack_.clear();
-
-    UndoEntry entry;
-    entry.is_compound = true;
-    entry.compound.actions = std::move(m_group_actions_);
-    entry.compound.cursor_before = m_group_cursor_before_;
-    entry.compound.cursor_after = cursor_after;
-    entry.compound.had_selection = m_group_had_selection_;
-    entry.compound.selection_before = m_group_selection_before_;
-    m_undo_stack_.push_back(std::move(entry));
-
-    if (m_undo_stack_.size() > m_max_stack_size_) {
-      m_undo_stack_.erase(m_undo_stack_.begin());
-    }
-  }
-
-  bool UndoManager::isInGroup() const {
-    return m_group_depth_ > 0;
-  }
-
-  const UndoEntry* UndoManager::undo() {
+  const HistoryEntry* UndoManager::undo() {
     if (m_undo_stack_.empty()) return nullptr;
     m_redo_stack_.push_back(std::move(m_undo_stack_.back()));
     m_undo_stack_.pop_back();
     return &m_redo_stack_.back();
   }
 
-  const UndoEntry* UndoManager::redo() {
+  const HistoryEntry* UndoManager::redo() {
     if (m_redo_stack_.empty()) return nullptr;
     m_undo_stack_.push_back(std::move(m_redo_stack_.back()));
     m_redo_stack_.pop_back();
@@ -154,8 +113,6 @@ namespace NS_SWEETEDITOR {
   void UndoManager::clear() {
     m_undo_stack_.clear();
     m_redo_stack_.clear();
-    m_group_depth_ = 0;
-    m_group_actions_.clear();
   }
 
   void UndoManager::setMaxStackSize(size_t size) {

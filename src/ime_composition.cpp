@@ -133,15 +133,15 @@ namespace NS_SWEETEDITOR {
   }
 
   TextPosition CompositionController::coreCursor() const {
-    return m_editor_.m_caret_.cursor;
+    return m_editor_.m_caret_.active;
   }
 
   bool CompositionController::coreHasSelection() const {
-    return m_editor_.m_caret_.has_selection;
+    return m_editor_.m_caret_.hasSelection();
   }
 
   TextRange CompositionController::coreSelection() const {
-    return m_editor_.m_caret_.selection;
+    return m_editor_.m_caret_.selection();
   }
 
   TextRange CompositionController::coreClampDocumentRange(const TextRange& range) const {
@@ -199,16 +199,19 @@ namespace NS_SWEETEDITOR {
                                                    const TextPosition& cursor_after,
                                                    bool had_selection,
                                                    const TextRange& selection_before) {
-    EditAction action;
-    action.range = range;
-    action.old_text = old_text;
-    action.new_text = new_text;
-    action.cursor_before = cursor_before;
-    action.cursor_after = cursor_after;
-    action.had_selection = had_selection;
-    action.selection_before = selection_before;
-    action.timestamp = std::chrono::steady_clock::now();
-    m_editor_.m_undo_manager_->pushAction(std::move(action));
+    TextChange change;
+    change.range = range;
+    change.old_text = old_text;
+    change.new_text = new_text;
+    CaretState caret_before;
+    if (had_selection) {
+      caret_before.setSelection(selection_before);
+    } else {
+      caret_before.setSelection({cursor_before, cursor_before});
+    }
+    CaretState caret_after;
+    caret_after.setSelection({cursor_after, cursor_after});
+    m_editor_.recordHistory({change}, caret_before, caret_after);
   }
 
   void CompositionController::coreDeleteSelectionForComposition() {
@@ -262,7 +265,11 @@ namespace NS_SWEETEDITOR {
   }
 
   void CompositionController::coreSetRawCursorPosition(const TextPosition& cursor) {
-    m_editor_.m_caret_.cursor = cursor;
+    const bool had_selection = m_editor_.m_caret_.hasSelection();
+    m_editor_.m_caret_.active = cursor;
+    if (!had_selection) {
+      m_editor_.m_caret_.anchor = cursor;
+    }
   }
 
   void CompositionController::coreInvalidateContentMetrics(size_t line) {

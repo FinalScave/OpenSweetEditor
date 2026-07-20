@@ -24,12 +24,12 @@ TEST_CASE("TextLayout hitTest matches getPositionScreenCoord in non-wrap mode") 
   const float probe_y = layout.getPositionScreenCoord({0, 0}).y + layout.getLineHeight() * 0.5f;
   for (size_t col = 0; col < 6; ++col) {
     const PointF pos = layout.getPositionScreenCoord({0, col});
-    const TextPosition mapped = layout.hitTestPointer({pos.x + 1.0f, probe_y});
+    const TextPosition mapped = layout.hitTestPointer({pos.x + 1.0f, probe_y}).position;
     CHECK(mapped == (TextPosition{0, col}));
   }
 
   const PointF end_pos = layout.getPositionScreenCoord({0, 6});
-  const TextPosition mapped_end = layout.hitTestPointer({end_pos.x + 4.0f, probe_y});
+  const TextPosition mapped_end = layout.hitTestPointer({end_pos.x + 4.0f, probe_y}).position;
   CHECK(mapped_end == (TextPosition{0, 6}));
 }
 
@@ -54,9 +54,40 @@ TEST_CASE("TextLayout hitTest/getPositionScreenCoord stay consistent in wrap mod
   for (size_t col = 0; col < 10; ++col) {
     const PointF pos = layout.getPositionScreenCoord({0, col});
     const float probe_y = pos.y + layout.getLineHeight() * 0.5f;
-    const TextPosition mapped = layout.hitTestPointer({pos.x + 1.0f, probe_y});
+    const TextPosition mapped = layout.hitTestPointer({pos.x + 1.0f, probe_y}).position;
     CHECK(mapped == (TextPosition{0, col}));
   }
+}
+
+TEST_CASE("TextLayout preserves both caret sides at a soft wrap boundary") {
+  SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
+  SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
+  TextLayout layout(measurer, decorations);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("abcdefghij");
+  layout.loadDocument(document);
+  layout.setViewport({90, 320});
+  layout.setViewState({1.0f, 0.0f, 0.0f});
+  layout.setWrapMode(WrapMode::CHAR_BREAK);
+
+  EditorRenderModel model;
+  layout.layoutVisibleLines(model, PresentationContext {});
+
+  const TextPosition boundary {0, 6};
+  const PointF upstream = layout.getPositionScreenCoord(boundary, CaretAffinity::UPSTREAM);
+  const PointF downstream = layout.getPositionScreenCoord(boundary, CaretAffinity::DOWNSTREAM);
+  REQUIRE(downstream.y > upstream.y);
+
+  const float line_height = layout.getLineHeight();
+  const CaretHit upstream_hit = layout.hitTestPointer(
+      {upstream.x + 1.0f, upstream.y + line_height * 0.5f});
+  const CaretHit downstream_hit = layout.hitTestPointer(
+      {downstream.x + 1.0f, downstream.y + line_height * 0.5f});
+
+  CHECK(upstream_hit.position == boundary);
+  CHECK(upstream_hit.affinity == CaretAffinity::UPSTREAM);
+  CHECK(downstream_hit.position == boundary);
+  CHECK(downstream_hit.affinity == CaretAffinity::DOWNSTREAM);
 }
 
 TEST_CASE("TextLayout hitTest snaps emoji modifier graphemes to left and right boundaries") {
@@ -78,8 +109,8 @@ TEST_CASE("TextLayout hitTest snaps emoji modifier graphemes to left and right b
   const float probe_y = cluster_start.y + layout.getLineHeight() * 0.5f;
   const float cluster_width = cluster_end.x - cluster_start.x;
 
-  CHECK(layout.hitTestPointer({cluster_start.x + cluster_width * 0.25f, probe_y}) == (TextPosition{0, 1}));
-  CHECK(layout.hitTestPointer({cluster_start.x + cluster_width * 0.75f, probe_y}) == (TextPosition{0, 5}));
+  CHECK(layout.hitTestPointer({cluster_start.x + cluster_width * 0.25f, probe_y}).position == (TextPosition{0, 1}));
+  CHECK(layout.hitTestPointer({cluster_start.x + cluster_width * 0.75f, probe_y}).position == (TextPosition{0, 5}));
 }
 
 TEST_CASE("TextLayout horizontal cropping preserves grapheme hit testing") {
@@ -196,8 +227,8 @@ TEST_CASE("TextLayout hitTestTextBoundary maps CodeLens virtual line to previous
   const float probe_y = line_start.y - layout.getLineHeight() * 0.5f;
   const float probe_x = layout.getLayoutMetrics().textAreaX() + 20.0f;
 
-  CHECK(layout.hitTestPointer({probe_x, probe_y}) == (TextPosition{1, 0}));
-  CHECK(layout.hitTestTextBoundary({probe_x, probe_y}) == (TextPosition{0, 5}));
+  CHECK(layout.hitTestPointer({probe_x, probe_y}).position == (TextPosition{1, 0}));
+  CHECK(layout.hitTestTextBoundary({probe_x, probe_y}).position == (TextPosition{0, 5}));
 }
 
 TEST_CASE("TextLayout hitTestDecoration returns unique command ids for CodeLens runs") {
@@ -330,8 +361,8 @@ TEST_CASE("TextLayout maps collapsed fold tail runs to their source line") {
   CHECK(tail_end.x == Catch::Approx(tail_it->x + tail_it->width));
 
   const float probe_y = layout.getPositionScreenCoord({0, 0}).y + layout.getLineHeight() * 0.5f;
-  CHECK(layout.hitTestPointer({tail_it->x + 1.0f, probe_y}) == (TextPosition{2, 0}));
-  CHECK(layout.hitTestPointer({tail_it->x + tail_it->width * 0.75f, probe_y}) == (TextPosition{2, 1}));
+  CHECK(layout.hitTestPointer({tail_it->x + 1.0f, probe_y}).position == (TextPosition{2, 0}));
+  CHECK(layout.hitTestPointer({tail_it->x + tail_it->width * 0.75f, probe_y}).position == (TextPosition{2, 1}));
 }
 
 TEST_CASE("TextLayout gutter fold hit uses content line geometry when CodeLens exists") {

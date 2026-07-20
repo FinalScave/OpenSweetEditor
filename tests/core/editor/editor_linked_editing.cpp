@@ -34,6 +34,30 @@ TEST_CASE("EditorCore snippet linked editing mirrors placeholders and exits at t
   CHECK(editor.getCursorPosition() == (TextPosition{0, 13}));
 }
 
+TEST_CASE("EditorCore linked editing is one atomic undo and redo entry") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  REQUIRE(editor.insertSnippet("${1:foo} + ${1:foo} -> $0").content_changed);
+  REQUIRE(editor.insertText("bar").content_changed);
+  CHECK(document->getU8Text() == "bar + bar -> ");
+
+  REQUIRE(editor.undo().content_changed);
+  CHECK(document->getU8Text() == "foo + foo -> ");
+  CHECK_FALSE(editor.isInLinkedEditing());
+  CHECK(editor.hasSelection());
+  CHECK(editor.getSelection() == (TextRange{{0, 0}, {0, 3}}));
+
+  REQUIRE(editor.redo().content_changed);
+  CHECK(document->getU8Text() == "bar + bar -> ");
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 3}));
+  CHECK_FALSE(editor.isInLinkedEditing());
+}
+
 TEST_CASE("EditorCore linked editing supports prev navigation and explicit cancel") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);

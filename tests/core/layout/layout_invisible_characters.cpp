@@ -117,5 +117,5 @@ TEST_CASE("TextLayout hit test on line break marker maps to line end") {
 
   PointF line_end = layout.getPositionScreenCoord({0, 3});
   float probe_y = line_end.y + layout.getLineHeight() * 0.5f;
-  CHECK(layout.hitTestPointer({line_end.x + 5.0f, probe_y}) == (TextPosition{0, 3}));
+  CHECK(layout.hitTestPointer({line_end.x + 5.0f, probe_y}).position == (TextPosition{0, 3}));
 }

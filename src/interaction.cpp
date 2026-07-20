@@ -62,7 +62,7 @@ namespace NS_SWEETEDITOR {
 
   EditorInteraction::PointerInteractionOwner EditorInteraction::hitTestHandle(
       const PointF& screen_point) const {
-    if (!m_cached_handles_valid_ || !m_context_.caret->has_selection) {
+    if (!m_cached_handles_valid_ || !m_context_.caret->hasSelection()) {
       return PointerInteractionOwner::NONE;
     }
 
@@ -99,7 +99,7 @@ namespace NS_SWEETEDITOR {
 
   void EditorInteraction::dragHandleTo(PointerInteractionOwner target,
                                        const PointF& screen_point) {
-    if (!m_context_.caret->has_selection
+    if (!m_context_.caret->hasSelection()
         || (target != PointerInteractionOwner::HANDLE_START
             && target != PointerInteractionOwner::HANDLE_END)) {
       return;
@@ -112,8 +112,9 @@ namespace NS_SWEETEDITOR {
     PointF adjusted_point = screen_point;
     adjusted_point.y -= hit_rect.bottom;
 
-    TextPosition pos = m_context_.text_layout->hitTestTextBoundary(adjusted_point);
-    TextRange selection = m_context_.caret->selection;
+    const CaretHit hit = m_context_.text_layout->hitTestTextBoundary(adjusted_point);
+    const TextPosition pos = hit.position;
+    TextRange selection = m_context_.caret->selection();
     TextPosition sel_start = selection.start;
     TextPosition sel_end = selection.end;
     bool swapped = sel_end < sel_start;
@@ -133,23 +134,24 @@ namespace NS_SWEETEDITOR {
               : PointerInteractionOwner::HANDLE_START;
     }
 
-    m_context_.caret->setSelection({sel_start, sel_end});
-    m_context_.caret->cursor =
-        m_pointer_interaction_.owner == PointerInteractionOwner::HANDLE_END
-            ? sel_end
-            : sel_start;
+    // Crossing handles swaps the dragged endpoint while preserving anchor/active direction.
+    if (m_pointer_interaction_.owner == PointerInteractionOwner::HANDLE_END) {
+      m_context_.caret->setSelection({sel_start, sel_end}, hit.affinity);
+    } else {
+      m_context_.caret->setSelection({sel_end, sel_start}, hit.affinity);
+    }
 
     updateEdgeScrollState(screen_point, true, false);
-    LOGD("EditorInteraction::dragHandleTo, selection = %s", m_context_.caret->selection.dump().c_str());
+    LOGD("EditorInteraction::dragHandleTo, selection = %s", m_context_.caret->selection().dump().c_str());
   }
 
   bool EditorInteraction::shouldPlaceCursorOnLongPress(const PointF& screen_point) const {
-    if (m_context_.text_layout == nullptr || !m_context_.caret->has_selection) {
+    if (m_context_.text_layout == nullptr || !m_context_.caret->hasSelection()) {
       return true;
     }
 
     const TextRange selection = m_context_.caret->normalizedSelection();
-    const TextPosition pressed_position = m_context_.text_layout->hitTestPointer(screen_point);
+    const TextPosition pressed_position = m_context_.text_layout->hitTestPointer(screen_point).position;
     return !selection.contains(pressed_position);
   }
 
@@ -161,16 +163,14 @@ namespace NS_SWEETEDITOR {
       adjusted_point.y -= hit_bottom;
     }
 
-    TextPosition pos = m_context_.text_layout->hitTestTextBoundary(adjusted_point);
-
-    if (!m_context_.caret->has_selection) {
-      m_context_.caret->setSelection({m_context_.caret->cursor, pos});
-    } else {
-      m_context_.caret->setSelection({m_context_.caret->selection.start, pos});
-    }
+    const CaretHit hit = m_context_.text_layout->hitTestTextBoundary(adjusted_point);
+    const TextPosition anchor = m_context_.caret->hasSelection()
+        ? m_context_.caret->anchor
+        : m_context_.caret->active;
+    m_context_.caret->setSelection({anchor, hit.position}, hit.affinity);
 
     updateEdgeScrollState(screen_point, false, is_mouse);
-    LOGD("EditorInteraction::dragSelectTo, selection = %s", m_context_.caret->selection.dump().c_str());
+    LOGD("EditorInteraction::dragSelectTo, selection = %s", m_context_.caret->selection().dump().c_str());
   }
 
   void EditorInteraction::updateEdgeScrollState(const PointF& screen_point,
@@ -286,7 +286,7 @@ namespace NS_SWEETEDITOR {
 
     switch (result.type) {
     case GestureType::TAP:
-      if (static_cast<uint8_t>(result.modifiers & KeyModifier::SHIFT) && m_context_.caret->has_selection) {
+      if (static_cast<uint8_t>(result.modifiers & KeyModifier::SHIFT) && m_context_.caret->hasSelection()) {
         bool is_mouse_tap = (event.type == EventType::MOUSE_DOWN);
         dragSelectTo(result.tap_point, is_mouse_tap);
       } else {
@@ -325,7 +325,7 @@ namespace NS_SWEETEDITOR {
     }
     case GestureType::SCALE: {
       const PointF focus_screen = resolveScaleFocus(event);
-          TextPosition anchor_position = m_context_.text_layout->hitTestPointer(focus_screen);
+          TextPosition anchor_position = m_context_.text_layout->hitTestPointer(focus_screen).position;
       PointF anchor_coord = m_context_.text_layout->getPositionScreenCoord(anchor_position);
       m_pending_scale_anchor_.active = true;
       m_pending_scale_anchor_.focus_screen = focus_screen;

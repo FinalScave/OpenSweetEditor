@@ -88,6 +88,9 @@ TEST_CASE("EditorCore search supports regex captures in replace all") {
 
   editor.undo();
   CHECK(document->getU8Text() == "foo1 foo2");
+
+  editor.redo();
+  CHECK(document->getU8Text() == "bar1 bar2");
 }
 
 TEST_CASE("EditorCore search supports newline patterns") {
