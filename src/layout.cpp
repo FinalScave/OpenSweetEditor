@@ -215,15 +215,61 @@ namespace NS_SWEETEDITOR {
     return visible_line_info;
   }
 
-  TextPosition TextLayout::hitTestPointer(const PointF& screen_point) {
+  CaretHit TextLayout::hitTestPointer(const PointF& screen_point) {
     return hitTestInternal(screen_point, false);
   }
 
-  TextPosition TextLayout::hitTestTextBoundary(const PointF& screen_point) {
+  CaretHit TextLayout::hitTestTextBoundary(const PointF& screen_point) {
     return hitTestInternal(screen_point, true);
   }
 
-  TextPosition TextLayout::hitTestInternal(const PointF& screen_point, bool text_boundary) {
+  CaretHit TextLayout::hitTestInternal(const PointF& screen_point, bool text_boundary) {
+    CaretHit hit;
+    hit.position = hitTestPositionInternal(screen_point, text_boundary);
+    if (m_document_ == nullptr || m_wrap_mode_ == WrapMode::NONE) {
+      return hit;
+    }
+
+    Vector<LogicalLine>& logical_lines = m_document_->getLogicalLines();
+    if (logical_lines.empty()) {
+      return hit;
+    }
+    const float abs_y = screen_point.y + m_view_state_.scroll_y;
+    const size_t hit_line = findHitLine(abs_y);
+    if (hit_line >= logical_lines.size()) {
+      return hit;
+    }
+    LogicalLine& logical_line = logical_lines[hit_line];
+    layoutLine(hit_line, logical_line);
+    if (logical_line.visual_lines.empty()) {
+      return hit;
+    }
+    const size_t wrap_index = findHitWrapIndex(logical_line, abs_y, getLineHeight());
+    if (wrap_index >= logical_line.visual_lines.size()) {
+      return hit;
+    }
+
+    size_t column_min = SIZE_MAX;
+    size_t column_max = 0;
+    float width = 0;
+    if (!getVisualLineTextColumnExtent(logical_line.visual_lines[wrap_index],
+                                       hit.position.line,
+                                       column_min,
+                                       column_max,
+                                       width)) {
+      return hit;
+    }
+    // A wrap boundary has one logical position but two visual caret locations.
+    if (wrap_index > 0 && hit.position.column == column_min) {
+      hit.affinity = CaretAffinity::DOWNSTREAM;
+    } else if (wrap_index + 1 < logical_line.visual_lines.size()
+               && hit.position.column == column_max) {
+      hit.affinity = CaretAffinity::UPSTREAM;
+    }
+    return hit;
+  }
+
+  TextPosition TextLayout::hitTestPositionInternal(const PointF& screen_point, bool text_boundary) {
     PERF_TIMER("hitTest");
     if (m_document_ == nullptr) {
       return {0, 0};
@@ -493,7 +539,8 @@ namespace NS_SWEETEDITOR {
     return {};
   }
 
-  PointF TextLayout::getPositionScreenCoord(const TextPosition& position) {
+  PointF TextLayout::getPositionScreenCoord(const TextPosition& position,
+                                            CaretAffinity affinity) {
     if (m_document_ == nullptr) {
       return {0, 0};
     }
@@ -527,7 +574,13 @@ namespace NS_SWEETEDITOR {
     if (target_col > 0 || projected) {
       for (const VisualLine& vl : owner_ll.visual_lines) {
         float x_offset = 0;
-        if (columnToVisualLineX(vl, position.line, target_col, true, x_offset)) {
+        const bool allow_line_end = m_wrap_mode_ == WrapMode::NONE
+            || affinity == CaretAffinity::UPSTREAM;
+        if (columnToVisualLineX(vl,
+                                position.line,
+                                target_col,
+                                allow_line_end,
+                                x_offset)) {
           return {text_area_x + x_offset - scroll_offset, vl.line_number_position.y - scroll_y};
         }
       }

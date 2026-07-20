@@ -1227,7 +1227,7 @@ namespace NS_SWEETEDITOR {
     const size_t document_length = documentUtf16Length();
     TextRange selection = hasSelection()
                           ? m_caret_.normalizedSelection()
-                          : TextRange {m_caret_.cursor, m_caret_.cursor};
+                          : TextRange {m_caret_.active, m_caret_.active};
     size_t selection_start = m_document_->getCharIndexFromPosition(selection.start);
     size_t selection_end = m_document_->getCharIndexFromPosition(selection.end);
     if (selection_start > selection_end) {

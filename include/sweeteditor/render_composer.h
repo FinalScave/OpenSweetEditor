@@ -16,8 +16,8 @@ namespace NS_SWEETEDITOR {
   public:
     RenderComposer(TextLayout* text_layout, DecorationManager* decorations, EditorSettings* settings);
 
-    void buildCursorModel(EditorRenderModel& model, const TextPosition& cursor_position,
-                          bool has_selection, float line_height) const;
+    void buildCursorModel(EditorRenderModel& model, const CaretState& caret,
+                          float line_height) const;
 
     void buildCompositionRangeEffect(EditorRenderModel& model, const CompositionState& composition,
                                      float line_height) const;

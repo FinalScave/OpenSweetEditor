@@ -643,7 +643,7 @@ TEST_CASE("EditorCore line-start word selection end handle can cross CodeLens vi
   CHECK(move.hasInteractionFlag(InteractionFlag::PRIMARY_POINTER));
   CHECK(move.hasInteractionFlag(InteractionFlag::SELECTION_DRAG));
   CHECK(move.has_selection_after);
-  CHECK(move.selection_after == (TextRange{{0, 5}, {1, 0}}));
+  CHECK(move.selection_after == (TextRange{{1, 0}, {0, 5}}));
 
   const EditorActionResult up = editor.handleGestureEvent(
       GestureEvent::create(EventType::TOUCH_UP, 1, move_point));

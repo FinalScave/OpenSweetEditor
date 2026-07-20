@@ -37,6 +37,69 @@ namespace {
       }
     }
   }
+
+  template <typename DocumentType>
+  void checkBatchReplacement() {
+    DocumentType document("ab\r\ncd\xF0\x9F\x99\x82\nef");
+    const Vector<DocumentReplacement> replacements {
+      {{{0, 1}, {1, 1}}, "X\nY"},
+      {{{2, 0}, {2, 1}}, "Z"},
+    };
+
+    document.replaceU8TextBatch(replacements);
+
+    CHECK(document.getU8Text() == "aX\nYd\xF0\x9F\x99\x82\nZf");
+  }
+
+  template <typename DocumentType>
+  void checkBatchValidationKeepsDocument() {
+    DocumentType document("abcdef");
+    const Vector<DocumentReplacement> overlapping {
+      {{{0, 1}, {0, 4}}, "X"},
+      {{{0, 3}, {0, 5}}, "Y"},
+    };
+    CHECK_THROWS_AS(document.replaceU8TextBatch(overlapping), std::invalid_argument);
+    CHECK(document.getU8Text() == "abcdef");
+
+    const Vector<DocumentReplacement> out_of_range {
+      {{{0, 1}, {0, 7}}, "Z"},
+    };
+    CHECK_THROWS_AS(document.replaceU8TextBatch(out_of_range), std::out_of_range);
+    CHECK(document.getU8Text() == "abcdef");
+
+    DocumentType unicode_document("a\xF0\x9F\x99\x82" "b");
+    const Vector<DocumentReplacement> split_surrogate {
+      {{{0, 2}, {0, 3}}, "Z"},
+    };
+    CHECK_THROWS_AS(unicode_document.replaceU8TextBatch(split_surrogate), std::invalid_argument);
+    CHECK(unicode_document.getU8Text() == "a\xF0\x9F\x99\x82" "b");
+  }
+
+}
+
+TEST_CASE("Document batch replacement uses shared pre-edit coordinates") {
+  checkBatchReplacement<LineArrayDocument>();
+  checkBatchReplacement<PieceTableDocument>();
+}
+
+TEST_CASE("Document batch replacement preserves live state on validation failure") {
+  checkBatchValidationKeepsDocument<LineArrayDocument>();
+  checkBatchValidationKeepsDocument<PieceTableDocument>();
+}
+
+TEST_CASE("Document batch replacement allows an insertion at replacement end") {
+  const Vector<DocumentReplacement> replacements {
+    {{{0, 0}, {0, 4}}, "run"},
+    {{{0, 4}, {0, 4}}, "Async"},
+  };
+
+  LineArrayDocument line_document("call()");
+  PieceTableDocument piece_document("call()");
+  line_document.replaceU8TextBatch(replacements);
+  piece_document.replaceU8TextBatch(replacements);
+
+  CHECK(line_document.getU8Text() == "runAsync()");
+  checkEquivalent(line_document, piece_document);
 }
 
 TEST_CASE("LineArrayDocument and PieceTableDocument stay equivalent after mixed edits") {

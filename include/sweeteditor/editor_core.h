@@ -338,6 +338,9 @@ namespace NS_SWEETEDITOR {
     /// Get cursor position
     TextPosition getCursorPosition() const;
 
+    /// Get visual affinity of the active caret endpoint.
+    CaretAffinity getCaretAffinity() const;
+
     /// Set text selection range
     /// @param range Selection range (start is anchor, end is active end)
     EditorActionResult setSelection(const TextRange& range);
@@ -678,9 +681,7 @@ namespace NS_SWEETEDITOR {
     };
 
     struct ActionSnapshot {
-      TextPosition cursor;
-      bool has_selection {false};
-      TextRange selection;
+      CaretState caret;
       float scroll_x {0};
       float scroll_y {0};
       float scale {1};
@@ -704,8 +705,11 @@ namespace NS_SWEETEDITOR {
     ViewState m_view_state_;
     IntRange m_visible_line_range_;
 
-    /// Unified caret state: cursor position + selection
+    /// Unified caret state.
     CaretState m_caret_;
+    /// Horizontal screen coordinate retained across consecutive vertical moves.
+    bool m_has_preferred_cursor_x_ {false};
+    float m_preferred_cursor_x_ {0};
 
     /// Core-owned IME composition controller
     CompositionController m_composition_controller_;
@@ -791,10 +795,21 @@ namespace NS_SWEETEDITOR {
     void selectWordAt(const PointF& screen_point);
     TextPosition clampDocumentPosition(const TextPosition& position, bool prefer_right, bool line_overflow_to_end) const;
     TextRange clampDocumentRange(const TextRange& range, bool collapse_point_range, bool line_overflow_to_end) const;
-    void setCursorPositionInternal(const TextPosition& position, bool commit_composition);
-    void setSelectionInternal(const TextRange& range, bool commit_composition);
+    void setCursorPositionInternal(const TextPosition& position,
+                                   bool commit_composition,
+                                   CaretAffinity affinity = CaretAffinity::DOWNSTREAM,
+                                   bool preserve_preferred_cursor_x = false);
+    void setSelectionInternal(const TextRange& range,
+                              bool commit_composition,
+                              CaretAffinity affinity = CaretAffinity::DOWNSTREAM,
+                              bool preserve_preferred_cursor_x = false);
     /// Update cursor movement (handle selection extension logic)
-    void moveCursorTo(const TextPosition& new_pos, bool extend_selection);
+    void moveCursorTo(const TextPosition& new_pos,
+                      bool extend_selection,
+                      CaretAffinity affinity = CaretAffinity::DOWNSTREAM,
+                      bool preserve_preferred_cursor_x = false);
+    void restoreCaretState(const CaretState& caret);
+    bool hasDistinctCaretAffinities(const TextPosition& position);
     size_t documentUtf16Length() const;
     TextRange textRangeFromUtf16Offsets(size_t start_offset, size_t end_offset) const;
     SearchSnapshot buildSearchSnapshot(const SearchRequest& request, uint64_t generation) const;
@@ -813,6 +828,14 @@ namespace NS_SWEETEDITOR {
     void selectSearchMatch(size_t index);
     /// Calculate new cursor position after inserting UTF8 text
     TextPosition calcPositionAfterInsert(const TextPosition& start, const U8String& text) const;
+    /// Apply non-overlapping replacements that share one pre-edit coordinate space.
+    TextEditResult applyEditBatch(const Vector<DocumentReplacement>& replacements,
+                                  bool update_fold_state = true);
+    /// Build and store one atomic history entry after the final caret is known.
+    void recordHistory(const Vector<TextChange>& changes,
+                       const CaretState& caret_before,
+                       const CaretState& caret_after,
+                       bool allows_merge = false);
     /// Unified edit entry: apply document edit and record undo operation
     /// @param range Range to replace (for pure insert, start == end)
     /// @param new_text New text (for pure delete, use empty string)

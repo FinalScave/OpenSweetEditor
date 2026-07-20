@@ -8,6 +8,60 @@
 #include <sweeteditor/utility.h>
 
 namespace NS_SWEETEDITOR {
+  namespace {
+    // Validate the entire plan before live mutation and return descending indices.
+    Vector<size_t> prepareDocumentReplacements(
+        Document& document,
+        const Vector<DocumentReplacement>& replacements) {
+      Vector<size_t> prepared;
+      prepared.reserve(replacements.size());
+      for (size_t index = 0; index < replacements.size(); ++index) {
+        const DocumentReplacement& replacement = replacements[index];
+        if (replacement.range.end < replacement.range.start) {
+          throw std::invalid_argument("Document replacement range must be normalized");
+        }
+        if (replacement.range.start.line >= document.getLineCount()
+            || replacement.range.end.line >= document.getLineCount()) {
+          throw std::out_of_range("Document replacement line is out of range");
+        }
+        if (replacement.range.start.column > document.getLineColumns(replacement.range.start.line)
+            || replacement.range.end.column > document.getLineColumns(replacement.range.end.line)) {
+          throw std::out_of_range("Document replacement column is out of range");
+        }
+        const U16String start_line = document.getLineU16Text(replacement.range.start.line);
+        const U16String end_line = replacement.range.start.line == replacement.range.end.line
+                                    ? start_line
+                                    : document.getLineU16Text(replacement.range.end.line);
+        if (!UnicodeUtil::isCodePointBoundary(start_line, replacement.range.start.column)
+            || !UnicodeUtil::isCodePointBoundary(end_line, replacement.range.end.column)) {
+          throw std::invalid_argument("Document replacement splits a UTF-16 surrogate pair");
+        }
+        if (replacement.range.isCollapsed() && replacement.text.empty()) {
+          continue;
+        }
+        prepared.push_back(index);
+      }
+
+      std::sort(prepared.begin(), prepared.end(),
+                [&replacements](size_t lhs_index, size_t rhs_index) {
+                  const DocumentReplacement& lhs = replacements[lhs_index];
+                  const DocumentReplacement& rhs = replacements[rhs_index];
+                  if (lhs.range.start != rhs.range.start) {
+                    return lhs.range.start < rhs.range.start;
+                  }
+                  return lhs.range.end < rhs.range.end;
+                });
+      for (size_t index = 1; index < prepared.size(); ++index) {
+        if (replacements[prepared[index - 1]].range.overlaps(replacements[prepared[index]].range)) {
+          throw std::invalid_argument("Document replacement ranges overlap");
+        }
+      }
+
+      std::reverse(prepared.begin(), prepared.end());
+      return prepared;
+    }
+  }
+
 #pragma region [Class: PieceTableDocument]
   PieceTableDocument::PieceTableDocument(U8String&& original_string): m_original_buffer_(makeUnique<U8StringBuffer>(std::move(original_string))) {
     rebuildBufferSegments();
@@ -473,6 +527,20 @@ namespace NS_SWEETEDITOR {
     }
     m_total_bytes_ += text.size();
     updateLogicalLinesByInsertText(start_byte, text);
+  }
+
+  void PieceTableDocument::replaceU8TextBatch(
+      const Vector<DocumentReplacement>& replacements) {
+    Vector<size_t> prepared = prepareDocumentReplacements(*this, replacements);
+    if (prepared.empty()) {
+      return;
+    }
+
+    // Descending shared pre-edit coordinates remain valid after every earlier replacement.
+    for (size_t index : prepared) {
+      const DocumentReplacement& replacement = replacements[index];
+      replaceU8Text(replacement.range, replacement.text);
+    }
   }
 
   void PieceTableDocument::deleteU8Text(size_t start_byte, size_t byte_length) {
@@ -972,6 +1040,20 @@ namespace NS_SWEETEDITOR {
   void LineArrayDocument::replaceU8Text(const TextRange& range, const U8String& text) {
     deleteU8Text(range);
     insertU8Text(range.start, text);
+  }
+
+  void LineArrayDocument::replaceU8TextBatch(
+      const Vector<DocumentReplacement>& replacements) {
+    Vector<size_t> prepared = prepareDocumentReplacements(*this, replacements);
+    if (prepared.empty()) {
+      return;
+    }
+
+    // Descending shared pre-edit coordinates remain valid after every earlier replacement.
+    for (size_t index : prepared) {
+      const DocumentReplacement& replacement = replacements[index];
+      replaceU8Text(replacement.range, replacement.text);
+    }
   }
 
   U8String LineArrayDocument::getU8Text(const TextRange& range) {

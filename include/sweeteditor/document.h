@@ -11,6 +11,12 @@
 #include <sweeteditor/visual.h>
 
 namespace NS_SWEETEDITOR {
+  /// One document replacement whose range uses the shared pre-edit document coordinates.
+  struct DocumentReplacement {
+    TextRange range;
+    U8String text;
+  };
+
   /// Line ending type
   enum class LineEnding : uint8_t {
     /// No line ending (usually the last line)
@@ -94,6 +100,10 @@ namespace NS_SWEETEDITOR {
     /// Replace text in specified range (equivalent to delete + insert, but atomic)
     virtual void replaceU8Text(const TextRange& range, const U8String& text) = 0;
 
+    /// Apply non-overlapping replacements against one shared pre-edit document snapshot.
+    /// All ranges are validated before replacements are applied in descending order.
+    virtual void replaceU8TextBatch(const Vector<DocumentReplacement>& replacements) = 0;
+
     /// Get text in specified range (UTF-8, including line endings)
     virtual U8String getU8Text(const TextRange& range) = 0;
 
@@ -151,6 +161,7 @@ namespace NS_SWEETEDITOR {
     void insertU8Text(const TextPosition& position, const U8String& text) override;
     void deleteU8Text(const TextRange& range) override;
     void replaceU8Text(const TextRange& range, const U8String& text) override;
+    void replaceU8TextBatch(const Vector<DocumentReplacement>& replacements) override;
     U8String getU8Text(const TextRange& range) override;
     size_t countChars(size_t start_byte, size_t byte_length) const override;
     Vector<LogicalLine>& getLogicalLines() override;
@@ -189,6 +200,7 @@ namespace NS_SWEETEDITOR {
     void insertU8Text(const TextPosition& position, const U8String& text) override;
     void deleteU8Text(const TextRange& range) override;
     void replaceU8Text(const TextRange& range, const U8String& text) override;
+    void replaceU8TextBatch(const Vector<DocumentReplacement>& replacements) override;
     U8String getU8Text(const TextRange& range) override;
     size_t countChars(size_t start_byte, size_t byte_length) const override;
     Vector<LogicalLine>& getLogicalLines() override;

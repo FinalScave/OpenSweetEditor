@@ -84,18 +84,35 @@ namespace NS_SWEETEDITOR {
     VIEWPORT_GESTURE = 1u << 2,
   };
 
+  /// Visual side of a caret at a soft-wrap boundary.
+  enum class CaretAffinity : uint8_t {
+    DOWNSTREAM = 0,
+    UPSTREAM = 1,
+  };
+
   /// Unified caret state.
   struct CaretState {
-    /// Logical cursor position in text.
-    TextPosition cursor;
-    /// Selection range where start is the anchor and end is the active side.
-    TextRange selection;
-    /// Whether there is an active selection.
-    bool has_selection {false};
+    /// Fixed endpoint used while extending a selection.
+    TextPosition anchor;
+    /// Active endpoint and logical cursor position.
+    TextPosition active;
+    /// Visual side of the active endpoint.
+    CaretAffinity active_affinity {CaretAffinity::DOWNSTREAM};
 
-    void setSelection(const TextRange& range);
+    void setSelection(const TextRange& range,
+                      CaretAffinity affinity = CaretAffinity::DOWNSTREAM);
     void clearSelection();
+    bool hasSelection() const;
+    TextRange selection() const;
     TextRange normalizedSelection() const;
+    bool operator==(const CaretState& other) const;
+    bool operator!=(const CaretState& other) const;
+  };
+
+  /// Hit-test result containing both the logical position and its visual caret side.
+  struct CaretHit {
+    TextPosition position;
+    CaretAffinity affinity {CaretAffinity::DOWNSTREAM};
   };
 
   /// Auto-indent modes.
@@ -362,7 +379,7 @@ namespace NS_SWEETEDITOR {
     bool handled {false};
     /// Semantic kind of document text changes.
     TextChangeKind change_kind {TextChangeKind::NONE};
-    /// List of all changes (normal edit: 1; linked edit/compound undo/redo: maybe many)
+    /// List of all changes (normal edit: 1; atomic batch/undo/redo: maybe many)
     std::vector<TextChange> changes;
     /// Cursor position before operation
     TextPosition cursor_before;

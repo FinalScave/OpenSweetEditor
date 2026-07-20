@@ -79,21 +79,38 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  void CaretState::setSelection(const TextRange& range) {
-    selection = range;
-    has_selection = !(range.start == range.end);
-    cursor = range.end;
+  void CaretState::setSelection(const TextRange& range, CaretAffinity affinity) {
+    anchor = range.start;
+    active = range.end;
+    active_affinity = affinity;
   }
 
   void CaretState::clearSelection() {
-    selection = {};
-    has_selection = false;
+    anchor = active;
+  }
+
+  bool CaretState::hasSelection() const {
+    return anchor != active;
+  }
+
+  TextRange CaretState::selection() const {
+    return {anchor, active};
   }
 
   TextRange CaretState::normalizedSelection() const {
-    TextRange r = selection;
+    TextRange r = selection();
     if (r.end < r.start) std::swap(r.start, r.end);
     return r;
+  }
+
+  bool CaretState::operator==(const CaretState& other) const {
+    return anchor == other.anchor
+        && active == other.active
+        && active_affinity == other.active_affinity;
+  }
+
+  bool CaretState::operator!=(const CaretState& other) const {
+    return !(*this == other);
   }
 
   TouchConfig EditorOptions::simpleAsTouchConfig() const {
