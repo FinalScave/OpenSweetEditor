@@ -1023,6 +1023,67 @@ const uint8_t* editor_set_max_gutter_icons(intptr_t editor_handle, uint32_t coun
   return editorActionResultToBinary(editor_core->setMaxGutterIcons(count), out_size);
 }
 
+const uint8_t* editor_clear_gutter_icons(intptr_t editor_handle, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->clearGutterIcons(), out_size);
+}
+
+const uint8_t* editor_set_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  protocol::SetLineCodeLensPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(
+      editor_core->setLineCodeLens(payload.line, std::move(payload.items)),
+      out_size);
+}
+
+const uint8_t* editor_set_batch_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  protocol::SetBatchLineCodeLensPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setBatchLineCodeLens(std::move(payload.entries)), out_size);
+}
+
+const uint8_t* editor_clear_codelens(intptr_t editor_handle, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->clearCodeLens(), out_size);
+}
+
+const uint8_t* editor_set_line_links(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  protocol::SetLineLinksPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(
+      editor_core->setLineLinks(payload.line, std::move(payload.links)),
+      out_size);
+}
+
+const uint8_t* editor_set_batch_line_links(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  protocol::SetBatchLineLinksPayload payload;
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setBatchLineLinks(std::move(payload.entries)), out_size);
+}
+
+const uint8_t* editor_clear_links(intptr_t editor_handle, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->clearLinks(), out_size);
+}
+
+const char* editor_get_link_target_at(intptr_t editor_handle, size_t line, size_t column) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  U8String target;
+  if (editor_core != nullptr) {
+    target = editor_core->getLinkTargetAt(line, column);
+  }
+  char* result = new char[target.size() + 1];
+  std::strcpy(result, target.c_str());
+  return result;
+}
+
 const uint8_t* editor_set_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   protocol::SetLineDiagnosticsPayload payload;
@@ -1093,6 +1154,12 @@ const uint8_t* editor_set_separator_guides(intptr_t editor_handle, const uint8_t
   protocol::SetSeparatorGuidesPayload payload;
   if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
   return editorActionResultToBinary(editor_core->setSeparatorGuides(std::move(payload.guides)), out_size);
+}
+
+const uint8_t* editor_clear_guides(intptr_t editor_handle, size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->clearGuides(), out_size);
 }
 
 const uint8_t* editor_set_bracket_pairs(intptr_t editor_handle, const uint32_t* open_chars, const uint32_t* close_chars, size_t count, size_t* out_size) {
@@ -1203,73 +1270,6 @@ const uint8_t* editor_clear_phantom_texts(intptr_t editor_handle, size_t* out_si
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) return nullBinaryPayload(out_size);
   return editorActionResultToBinary(editor_core->clearPhantomTexts(), out_size);
-}
-
-const uint8_t* editor_clear_gutter_icons(intptr_t editor_handle, size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(editor_core->clearGutterIcons(), out_size);
-}
-
-const uint8_t* editor_set_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  protocol::SetLineCodeLensPayload payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(
-      editor_core->setLineCodeLens(payload.line, std::move(payload.items)),
-      out_size);
-}
-
-const uint8_t* editor_set_batch_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  protocol::SetBatchLineCodeLensPayload payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(editor_core->setBatchLineCodeLens(std::move(payload.entries)), out_size);
-}
-
-const uint8_t* editor_clear_codelens(intptr_t editor_handle, size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(editor_core->clearCodeLens(), out_size);
-}
-
-const uint8_t* editor_set_line_links(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  protocol::SetLineLinksPayload payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(
-      editor_core->setLineLinks(payload.line, std::move(payload.links)),
-      out_size);
-}
-
-const uint8_t* editor_set_batch_line_links(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  protocol::SetBatchLineLinksPayload payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(editor_core->setBatchLineLinks(std::move(payload.entries)), out_size);
-}
-
-const uint8_t* editor_clear_links(intptr_t editor_handle, size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(editor_core->clearLinks(), out_size);
-}
-
-const char* editor_get_link_target_at(intptr_t editor_handle, size_t line, size_t column) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  U8String target;
-  if (editor_core != nullptr) {
-    target = editor_core->getLinkTargetAt(line, column);
-  }
-  char* result = new char[target.size() + 1];
-  std::strcpy(result, target.c_str());
-  return result;
-}
-
-const uint8_t* editor_clear_guides(intptr_t editor_handle, size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(editor_core->clearGuides(), out_size);
 }
 
 const uint8_t* editor_clear_all_decorations(intptr_t editor_handle, size_t* out_size) {

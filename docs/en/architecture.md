@@ -269,7 +269,7 @@ When text changes, all decoration line/column offsets must be updated. `adjustFo
 
 EditorCore is the top-level class. It composes all submodules and exposes full editor APIs.
 
-IME composition semantic actions and composition state are owned by `CompositionController` in `include/sweeteditor/ime_composition.h` and `src/ime_composition.cpp`. `EditorCore` acts as the host that provides document, caret, selection, linked-editing, and invalidation adapters, while public APIs remain semantic entrypoints such as `handleImeCommandMessage(...)` and `handleImeTextUpdateMessage(...)`.
+`EditorCore` directly owns IME composition state and short-lived edit transactions. The implementation lives in `src/editor_core_ime.cpp`, while reusable committed-to-editing coordinate projection remains source-private in `src/ime_projection.cpp`. Public APIs remain semantic entrypoints such as `applyImeCommands(...)` and `applyImeTextUpdates(...)`.
 
 #### Internal Components
 
@@ -281,7 +281,7 @@ class EditorCore {
   UPtr<GestureHandler>    m_gesture_handler_;  // gesture recognition
   UPtr<TextLayout>        m_text_layout_;      // layout engine
   UPtr<UndoManager>       m_undo_manager_;     // undo/redo
-  CompositionController   m_composition_controller_;
+  optional<ImeSessionState> m_ime_session_;
   // cursor, selection, interaction state...
 };
 ```
@@ -296,7 +296,7 @@ class EditorCore {
 | `insertText()` / `backspace()` / `deleteForward()` | atomic text operations |
 | `moveCursor*()` | cursor movement (up/down/left/right, line start/end) |
 | `setSelection()` / `selectAll()` | selection management |
-| `handleImeCommandMessage(...)` / `handleImeTextUpdateMessage(...)` | IME composition |
+| `applyImeCommands(...)` / `applyImeTextUpdates(...)` | IME composition |
 | `undo()` / `redo()` | undo/redo |
 | `registerTextStyle()` / `setLineSpans()` / `setBatchLineSpans()` / `setLineInlayHints()` / `setLinePhantomTexts()` | decoration setting |
 | `setFoldRegions()` / `foldAt()` / `unfoldAt()` | code folding |

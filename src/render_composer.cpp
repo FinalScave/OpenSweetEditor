@@ -1,8 +1,8 @@
 #include <algorithm>
 #include <sweeteditor/render_composer.h>
-#include <sweeteditor/editor_core.h>
 #include <sweeteditor/interaction.h>
 #include <sweeteditor/linked_editing.h>
+#include "ime_projection.hpp"
 #include "logging.h"
 #include "render_style_util.hpp"
 
@@ -38,12 +38,10 @@ namespace NS_SWEETEDITOR {
 
   RenderComposer::RenderComposer(TextLayout* text_layout,
                                  DecorationManager* decorations,
-                                 EditorSettings* settings,
-                                 const CompositionController& composition_controller)
+                                 EditorSettings* settings)
       : m_text_layout_(text_layout),
         m_decorations_(decorations),
-        m_settings_(settings),
-        m_composition_controller_(composition_controller) {
+        m_settings_(settings) {
   }
 
   void RenderComposer::appendRangeEffectsForRange(EditorRenderModel& model,
@@ -212,6 +210,7 @@ namespace NS_SWEETEDITOR {
                                                const Vector<SearchMatch>& matches,
                                                const Vector<Vector<uint32_t>>& match_indices_by_line,
                                                int32_t current_index,
+                                               const std::optional<CompositionState>& composition,
                                                float line_height) const {
     if (document == nullptr || m_settings_ == nullptr || matches.empty()) return;
 
@@ -220,8 +219,8 @@ namespace NS_SWEETEDITOR {
 
     HashSet<uint32_t> emitted_matches;
     for (size_t editing_line : source_lines) {
-      const Vector<size_t> committed_lines =
-          m_composition_controller_.committedSourceLinesForEditingLine(editing_line);
+      const Vector<size_t> committed_lines = ImeProjection::committedSourceLinesForEditingLine(
+          *document, composition, editing_line);
       for (size_t source_line : committed_lines) {
         if (source_line >= match_indices_by_line.size()) continue;
 
@@ -230,8 +229,8 @@ namespace NS_SWEETEDITOR {
             continue;
           }
 
-          const std::optional<TextRange> projected =
-              m_composition_controller_.projectCommittedRange(matches[match_index].range);
+          const std::optional<TextRange> projected = ImeProjection::projectCommittedRange(
+              *document, composition, matches[match_index].range);
           if (!projected.has_value()) continue;
           const bool is_current = current_index >= 0
               && match_index == static_cast<uint32_t>(current_index);
@@ -262,21 +261,22 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  void RenderComposer::buildDocumentHighlightRangeEffects(EditorRenderModel& model, Document* document,
-                                                          float line_height) const {
+  void RenderComposer::buildDocumentHighlightRangeEffects(
+      EditorRenderModel& model, Document* document,
+      const std::optional<CompositionState>& composition, float line_height) const {
     if (m_decorations_ == nullptr || document == nullptr || m_settings_ == nullptr) return;
 
     HashSet<size_t> source_lines;
     collectVisibleRangeEffectSourceLines(model, m_text_layout_, source_lines);
     for (size_t editing_line : source_lines) {
-      const Vector<size_t> committed_lines =
-          m_composition_controller_.committedSourceLinesForEditingLine(editing_line);
+      const Vector<size_t> committed_lines = ImeProjection::committedSourceLinesForEditingLine(
+          *document, composition, editing_line);
       for (size_t source_line : committed_lines) {
         const auto& highlights = m_decorations_->getLineDocumentHighlights(source_line);
         for (const auto& highlight : highlights) {
           if (highlight.length == 0) continue;
-          const std::optional<TextRange> projected =
-              m_composition_controller_.projectCommittedRange({
+          const std::optional<TextRange> projected = ImeProjection::projectCommittedRange(
+              *document, composition, {
                   {source_line, highlight.column},
                   {source_line, static_cast<size_t>(highlight.column) + highlight.length}
               });
@@ -302,14 +302,15 @@ namespace NS_SWEETEDITOR {
 
   void RenderComposer::buildLinkedEditingRangeEffects(EditorRenderModel& model, Document* document,
                                                       const LinkedEditingSession* linked_editing_session,
+                                                      const std::optional<CompositionState>& composition,
                                                       float line_height) const {
     if (linked_editing_session == nullptr || !linked_editing_session->isActive()) return;
     if (document == nullptr || m_settings_ == nullptr) return;
 
     auto highlights = linked_editing_session->getAllHighlights();
     for (const auto& hl : highlights) {
-      const std::optional<TextRange> projected =
-          m_composition_controller_.projectCommittedRange(hl.range);
+      const std::optional<TextRange> projected = ImeProjection::projectCommittedRange(
+          *document, composition, hl.range);
       if (!projected.has_value() || projected->isCollapsed()) continue;
       for (size_t line = projected->start.line;
            line <= projected->end.line && line < document->getLineCount();
@@ -450,8 +451,9 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  void RenderComposer::buildDiagnosticRangeEffects(EditorRenderModel& model, Document* document,
-                                                   float line_height) const {
+  void RenderComposer::buildDiagnosticRangeEffects(
+      EditorRenderModel& model, Document* document,
+      const std::optional<CompositionState>& composition, float line_height) const {
     if (m_decorations_ == nullptr || document == nullptr || m_settings_ == nullptr) return;
 
     float font_height = m_text_layout_->getLayoutMetrics().font_height;
@@ -462,14 +464,14 @@ namespace NS_SWEETEDITOR {
       if (getVisualLineSemantics(vl.kind).text_semantics != TextSemanticsPolicy::PARTICIPATES) continue;
       const size_t editing_line = vl.logical_line;
       if (!emitted_lines.insert(editing_line).second) continue;
-      const Vector<size_t> committed_lines =
-          m_composition_controller_.committedSourceLinesForEditingLine(editing_line);
+      const Vector<size_t> committed_lines = ImeProjection::committedSourceLinesForEditingLine(
+          *document, composition, editing_line);
       for (size_t source_line : committed_lines) {
         const auto& diags = m_decorations_->getLineDiagnostics(source_line);
         for (const auto& ds : diags) {
           if (ds.length == 0) continue;
-          const std::optional<TextRange> projected =
-              m_composition_controller_.projectCommittedRange({
+          const std::optional<TextRange> projected = ImeProjection::projectCommittedRange(
+              *document, composition, {
                   {source_line, ds.column},
                   {source_line, static_cast<size_t>(ds.column) + ds.length}
               });

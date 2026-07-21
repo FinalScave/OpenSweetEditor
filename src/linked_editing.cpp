@@ -210,7 +210,7 @@ namespace NS_SWEETEDITOR {
   }
 #pragma endregion
 
-#pragma region [CLass: LinkedEditingSession]
+#pragma region [Class: LinkedEditingSession]
   LinkedEditingSession::LinkedEditingSession(LinkedEditingModel&& model)
     : m_model_(std::move(model)), m_current_idx_(0), m_active_(true) {
     if (m_model_.groups.empty()) {

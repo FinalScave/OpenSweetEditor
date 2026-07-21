@@ -296,6 +296,8 @@ namespace NS_SWEETEDITOR {
     clearFoldRegions();
   }
 
+#pragma region Guide (Code Structure Lines)
+
   void DecorationManager::setIndentGuides(Vector<IndentGuide>&& guides) {
     m_indent_guides_ = std::move(guides);
   }
@@ -318,6 +320,8 @@ namespace NS_SWEETEDITOR {
     m_flow_guides_.clear();
     m_separator_guides_.clear();
   }
+
+#pragma endregion
 
 #pragma region Fold (Code Folding)
 

@@ -9,7 +9,6 @@
 
 namespace NS_SWEETEDITOR {
   class Document;
-  class CompositionController;
   class EditorInteraction;
   class LinkedEditingSession;
 
@@ -17,8 +16,7 @@ namespace NS_SWEETEDITOR {
   public:
     RenderComposer(TextLayout* text_layout,
                    DecorationManager* decorations,
-                   EditorSettings* settings,
-                   const CompositionController& composition_controller);
+                   EditorSettings* settings);
 
     void buildCursorModel(EditorRenderModel& model, const CaretState& caret,
                           float line_height) const;
@@ -35,17 +33,24 @@ namespace NS_SWEETEDITOR {
                                  const Vector<SearchMatch>& matches,
                                  const Vector<Vector<uint32_t>>& match_indices_by_line,
                                  int32_t current_index,
+                                 const std::optional<CompositionState>& composition,
                                  float line_height) const;
 
-    void buildDocumentHighlightRangeEffects(EditorRenderModel& model, Document* document, float line_height) const;
+    void buildDocumentHighlightRangeEffects(
+        EditorRenderModel& model, Document* document,
+        const std::optional<CompositionState>& composition, float line_height) const;
 
     void buildLinkedEditingRangeEffects(EditorRenderModel& model, Document* document,
-                                        const LinkedEditingSession* linked_editing_session, float line_height) const;
+                                        const LinkedEditingSession* linked_editing_session,
+                                        const std::optional<CompositionState>& composition,
+                                        float line_height) const;
 
     void buildGuideSegments(EditorRenderModel& model, Document* document,
                             TextMeasurer& measurer, float line_height) const;
 
-    void buildDiagnosticRangeEffects(EditorRenderModel& model, Document* document, float line_height) const;
+    void buildDiagnosticRangeEffects(
+        EditorRenderModel& model, Document* document,
+        const std::optional<CompositionState>& composition, float line_height) const;
 
     void buildBracketHighlightRangeEffects(EditorRenderModel& model, Document* document,
                                            const TextPosition& cursor_position, const Vector<BracketPair>& bracket_pairs,
@@ -69,7 +74,6 @@ namespace NS_SWEETEDITOR {
     TextLayout* m_text_layout_ {nullptr};
     DecorationManager* m_decorations_ {nullptr};
     EditorSettings* m_settings_ {nullptr};
-    const CompositionController& m_composition_controller_;
   };
 }
 
