@@ -7,7 +7,7 @@ export function autoIndentModeFromValue(value: number): AutoIndentMode {
   switch (value) {
     case 0: return AutoIndentMode.NONE;
     case 1: return AutoIndentMode.KEEP_INDENT;
-    default: return AutoIndentMode.NONE;
+    default: throw new Error('Unknown AutoIndentMode value: ' + value);
   }
 }
 
@@ -22,7 +22,7 @@ export function currentLineRenderModeFromValue(value: number): CurrentLineRender
     case 0: return CurrentLineRenderMode.BACKGROUND;
     case 1: return CurrentLineRenderMode.BORDER;
     case 2: return CurrentLineRenderMode.NONE;
-    default: return CurrentLineRenderMode.BACKGROUND;
+    default: throw new Error('Unknown CurrentLineRenderMode value: ' + value);
   }
 }
 
@@ -37,7 +37,7 @@ export function foldArrowModeFromValue(value: number): FoldArrowMode {
     case 0: return FoldArrowMode.AUTO;
     case 1: return FoldArrowMode.ALWAYS;
     case 2: return FoldArrowMode.HIDDEN;
-    default: return FoldArrowMode.AUTO;
+    default: throw new Error('Unknown FoldArrowMode value: ' + value);
   }
 }
 
@@ -54,7 +54,7 @@ export function rangeEffectUnderlineStyleFromValue(value: number): RangeEffectUn
     case 1: return RangeEffectUnderlineStyle.SOLID;
     case 2: return RangeEffectUnderlineStyle.DASHED;
     case 3: return RangeEffectUnderlineStyle.WAVY;
-    default: return RangeEffectUnderlineStyle.NONE;
+    default: throw new Error('Unknown RangeEffectUnderlineStyle value: ' + value);
   }
 }
 
@@ -69,7 +69,7 @@ export function scrollbarModeFromValue(value: number): ScrollbarMode {
     case 0: return ScrollbarMode.ALWAYS;
     case 1: return ScrollbarMode.TRANSIENT;
     case 2: return ScrollbarMode.NEVER;
-    default: return ScrollbarMode.ALWAYS;
+    default: throw new Error('Unknown ScrollbarMode value: ' + value);
   }
 }
 
@@ -82,7 +82,7 @@ export function scrollbarTrackTapModeFromValue(value: number): ScrollbarTrackTap
   switch (value) {
     case 0: return ScrollbarTrackTapMode.JUMP;
     case 1: return ScrollbarTrackTapMode.DISABLED;
-    default: return ScrollbarTrackTapMode.JUMP;
+    default: throw new Error('Unknown ScrollbarTrackTapMode value: ' + value);
   }
 }
 
@@ -101,7 +101,7 @@ export function whitespaceRenderModeFromValue(value: number): WhitespaceRenderMo
     case 2: return WhitespaceRenderMode.SELECTION;
     case 3: return WhitespaceRenderMode.TRAILING;
     case 4: return WhitespaceRenderMode.ALL;
-    default: return WhitespaceRenderMode.NONE;
+    default: throw new Error('Unknown WhitespaceRenderMode value: ' + value);
   }
 }
 
@@ -116,7 +116,7 @@ export function wrapModeFromValue(value: number): WrapMode {
     case 0: return WrapMode.NONE;
     case 1: return WrapMode.CHAR_BREAK;
     case 2: return WrapMode.WORD_BREAK;
-    default: return WrapMode.NONE;
+    default: throw new Error('Unknown WrapMode value: ' + value);
   }
 }
 

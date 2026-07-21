@@ -72,11 +72,11 @@ def generate_swift_domain(domain, items, enums, schema):
         for value in item["values"]:
             lines.append(f"    case {value['name']} = {value['value']}")
         lines.append("")
-        lines.append(f"    public static func fromValue(_ value: Int32) -> {item['name']} {{")
+        lines.append(f"    public static func fromValue(_ value: Int32) -> {item['name']}? {{")
         lines.append("        switch value {")
         for value in item["values"]:
             lines.append(f"        case {value['value']}: return .{value['name']}")
-        lines.append(f"        default: return .{item['fallback']}")
+        lines.append("        default: return nil")
         lines.append("        }")
         lines.append("    }")
         lines.append("}")

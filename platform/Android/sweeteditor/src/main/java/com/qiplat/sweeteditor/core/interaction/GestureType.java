@@ -28,7 +28,7 @@ public enum GestureType {
             case 6: return FAST_SCROLL;
             case 7: return DRAG_SELECT;
             case 8: return CONTEXT_MENU;
-            default: return UNDEFINED;
+            default: throw new IllegalArgumentException("Unknown GestureType value: " + value);
         }
     }
 }

@@ -42,7 +42,7 @@ public enum EventType {
             case 13: return DIRECT_SCROLL;
             case 14: return DIRECT_GESTURE_BEGIN;
             case 15: return DIRECT_GESTURE_END;
-            default: return UNDEFINED;
+            default: throw new IllegalArgumentException("Unknown EventType value: " + value);
         }
     }
 }

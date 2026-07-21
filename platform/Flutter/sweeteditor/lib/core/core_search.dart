@@ -19,7 +19,7 @@ enum SearchStatus {
       case 2: return ready;
       case 3: return stale;
       case 4: return failed;
-      default: return inactive;
+      default: throw ArgumentError.value(value, 'value', 'Unknown SearchStatus value');
     }
   }
 }

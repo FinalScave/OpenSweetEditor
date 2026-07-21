@@ -20,7 +20,7 @@ public enum SearchStatus {
             case 2: return READY;
             case 3: return STALE;
             case 4: return FAILED;
-            default: return INACTIVE;
+            default: throw new IllegalArgumentException("Unknown SearchStatus value: " + value);
         }
     }
 }

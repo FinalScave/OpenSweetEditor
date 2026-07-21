@@ -2,15 +2,12 @@ package com.qiplat.sweeteditor.core.ime;
 
 public enum ImeCommandKind {
     SET_SELECTION(0),
-    SET_PREEDIT_TEXT(1),
-    COMMIT_TEXT(2),
-    FINISH_PREEDIT(3),
-    CANCEL_PREEDIT(4),
-    SET_MARKED_RANGE(5),
-    CLEAR_MARKED_RANGE(6),
-    REPLACE_TEXT(7),
-    DELETE_SURROUNDING_TEXT(8),
-    SET_KEYBOARD_SCRIPT(9);
+    BEGIN_COMPOSITION(1),
+    UPDATE_COMPOSITION(2),
+    COMMIT_TEXT(3),
+    FINISH_COMPOSITION(4),
+    CANCEL_COMPOSITION(5),
+    DELETE_SURROUNDING(6);
 
     public final int value;
 
@@ -21,16 +18,13 @@ public enum ImeCommandKind {
     public static ImeCommandKind fromValue(int value) {
         switch (value) {
             case 0: return SET_SELECTION;
-            case 1: return SET_PREEDIT_TEXT;
-            case 2: return COMMIT_TEXT;
-            case 3: return FINISH_PREEDIT;
-            case 4: return CANCEL_PREEDIT;
-            case 5: return SET_MARKED_RANGE;
-            case 6: return CLEAR_MARKED_RANGE;
-            case 7: return REPLACE_TEXT;
-            case 8: return DELETE_SURROUNDING_TEXT;
-            case 9: return SET_KEYBOARD_SCRIPT;
-            default: return SET_SELECTION;
+            case 1: return BEGIN_COMPOSITION;
+            case 2: return UPDATE_COMPOSITION;
+            case 3: return COMMIT_TEXT;
+            case 4: return FINISH_COMPOSITION;
+            case 5: return CANCEL_COMPOSITION;
+            case 6: return DELETE_SURROUNDING;
+            default: throw new IllegalArgumentException("Unknown ImeCommandKind value: " + value);
         }
     }
 }

@@ -80,7 +80,7 @@ public enum EditorBuiltinCommand {
             case 32: return PASTE;
             case 33: return CUT;
             case 34: return TRIGGER_COMPLETION;
-            default: return NONE;
+            default: throw new IllegalArgumentException("Unknown EditorBuiltinCommand value: " + value);
         }
     }
 }

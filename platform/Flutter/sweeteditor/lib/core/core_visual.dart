@@ -15,7 +15,7 @@ enum FoldState {
       case 0: return none;
       case 1: return expanded;
       case 2: return collapsed;
-      default: return none;
+      default: throw ArgumentError.value(value, 'value', 'Unknown FoldState value');
     }
   }
 }
@@ -31,7 +31,7 @@ enum GuideDirection {
     switch (value) {
       case 0: return vertical;
       case 1: return horizontal;
-      default: return vertical;
+      default: throw ArgumentError.value(value, 'value', 'Unknown GuideDirection value');
     }
   }
 }
@@ -49,7 +49,7 @@ enum GuideStyle {
       case 0: return solid;
       case 1: return dashed;
       case 2: return double;
-      default: return solid;
+      default: throw ArgumentError.value(value, 'value', 'Unknown GuideStyle value');
     }
   }
 }
@@ -69,7 +69,7 @@ enum GuideType {
       case 1: return bracket;
       case 2: return flow;
       case 3: return separator;
-      default: return indent;
+      default: throw ArgumentError.value(value, 'value', 'Unknown GuideType value');
     }
   }
 }
@@ -87,7 +87,7 @@ enum PointerCursorType {
       case 0: return default_;
       case 1: return text;
       case 2: return hand;
-      default: return default_;
+      default: throw ArgumentError.value(value, 'value', 'Unknown PointerCursorType value');
     }
   }
 }
@@ -127,7 +127,7 @@ enum RangeEffectKind {
       case 11: return diagnosticWarning;
       case 12: return diagnosticInfo;
       case 13: return diagnosticHint;
-      default: return selection;
+      default: throw ArgumentError.value(value, 'value', 'Unknown RangeEffectKind value');
     }
   }
 }
@@ -145,7 +145,7 @@ enum VisualLineKind {
       case 0: return content;
       case 1: return phantom;
       case 2: return codelens;
-      default: return content;
+      default: throw ArgumentError.value(value, 'value', 'Unknown VisualLineKind value');
     }
   }
 }
@@ -175,7 +175,7 @@ enum VisualRunType {
       case 6: return foldPlaceholder;
       case 7: return codelens;
       case 8: return link;
-      default: return text;
+      default: throw ArgumentError.value(value, 'value', 'Unknown VisualRunType value');
     }
   }
 }

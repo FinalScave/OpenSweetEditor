@@ -2,180 +2,157 @@
 #define SWEETEDITOR_IME_TYPES_H
 
 #include <cstdint>
+#include <optional>
 #include <sweeteditor/editor_types.h>
 
 namespace NS_SWEETEDITOR {
 
-  enum class SE_PROTOCOL_ENUM(ime, GRAPHEME) ImeTextUnit {
-    GRAPHEME = 0,
-    CODE_POINT = 1,
+  enum class SE_PROTOCOL_ENUM(ime, COMMAND) ImeMutationModel {
+    COMMAND = 0,
+    TEXT_UPDATE = 1,
   };
 
-  enum class SE_PROTOCOL_ENUM(ime, DOCUMENT_WINDOW) ImeTextUpdateScope {
-    DOCUMENT_WINDOW = 0,
-    TRANSIENT_INPUT = 1,
+  enum class SE_PROTOCOL_ENUM(ime, EDITING) ImeTextSource {
+    EDITING = 0,
+    COMMITTED = 1,
+    EDITING_BUFFER = 2,
   };
 
-  enum class SE_PROTOCOL_ENUM(ime, NONE) ImeInputContextKind {
-    NONE = 0,
-    SELECTION_ONLY = 1,
-    DOCUMENT_WINDOW = 2,
-    TRANSIENT_INPUT = 3,
+  enum class SE_PROTOCOL_ENUM(ime, DOCUMENT) ImeCoordinateSpace {
+    DOCUMENT = 0,
+    EDITING_BUFFER = 1,
+    CONTEXT_SLICE = 2,
+    COMPOSITION = 3,
   };
 
-  enum class SE_PROTOCOL_ENUM(ime, NONE) ImeMarkedRangeRole {
-    NONE = 0,
-    PREEDIT = 1,
-    SYSTEM_MARK = 2,
+  enum class SE_PROTOCOL_ENUM(ime, UTF16_CODE_UNIT) ImeTextUnit {
+    UTF16_CODE_UNIT = 0,
+    UNICODE_CODE_POINT = 1,
   };
 
   enum class SE_PROTOCOL_ENUM(ime, SET_SELECTION) ImeCommandKind {
     SET_SELECTION = 0,
-    SET_PREEDIT_TEXT = 1,
-    COMMIT_TEXT = 2,
-    FINISH_PREEDIT = 3,
-    CANCEL_PREEDIT = 4,
-    SET_MARKED_RANGE = 5,
-    CLEAR_MARKED_RANGE = 6,
-    REPLACE_TEXT = 7,
-    DELETE_SURROUNDING_TEXT = 8,
-    SET_KEYBOARD_SCRIPT = 9,
+    BEGIN_COMPOSITION = 1,
+    UPDATE_COMPOSITION = 2,
+    COMMIT_TEXT = 3,
+    FINISH_COMPOSITION = 4,
+    CANCEL_COMPOSITION = 5,
+    DELETE_SURROUNDING = 6,
   };
 
-  enum class SE_PROTOCOL_ENUM(ime, SNAPSHOT) ImeTextUpdateKind {
-    SNAPSHOT = 0,
-    PATCH = 1,
+  enum class SE_PROTOCOL_ENUM(ime, OK) ImeResultCode {
+    OK = 0,
+    SESSION_MISMATCH = 1,
+    REJECTED = 2,
+    READ_ONLY = 3,
+  };
+
+  enum class SE_PROTOCOL_ENUM(ime, NONE) ImeHostAction {
+    NONE = 0,
+    CLOSE_SESSION = 1,
+    RESTART_SESSION = 2,
   };
 
   struct SE_PROTOCOL_VALUE(ime) ImeOffsetRange {
-    int32_t start {0};
-    int32_t end {0};
-  };
-
-  struct SE_PROTOCOL_VALUE(ime) ImeMarkedRange {
     SE_PROTOCOL_WIRE(enum_i32)
-    ImeMarkedRangeRole role {ImeMarkedRangeRole::NONE};
-    ImeOffsetRange range {-1, -1};
+    ImeCoordinateSpace coordinate_space {ImeCoordinateSpace::DOCUMENT};
+    int64_t start_utf16 {-1};
+    int64_t end_utf16 {-1};
+
+    bool operator==(const ImeOffsetRange& other) const;
+    bool operator!=(const ImeOffsetRange& other) const;
   };
 
-  struct SE_PROTOCOL_VALUE(ime) ImeTextPatch {
-    ImeOffsetRange range {-1, -1};
-    U8String text;
-  };
-
-  struct SE_PROTOCOL_OUT(ime) ImeInputContext {
-    uint64_t id {0};
-    int32_t revision {0};
-    int32_t document_start_offset {0};
-    U8String text;
-    ImeOffsetRange selection;
-    bool has_preedit_range {false};
-    ImeOffsetRange preedit_range {-1, -1};
-    bool has_system_mark_range {false};
-    ImeOffsetRange system_mark_range {-1, -1};
+  struct SE_PROTOCOL_VALUE(ime) ImeSelection {
     SE_PROTOCOL_WIRE(enum_i32)
-    ImeInputContextKind kind {ImeInputContextKind::NONE};
+    ImeCoordinateSpace coordinate_space {ImeCoordinateSpace::DOCUMENT};
+    int64_t anchor_utf16 {-1};
+    int64_t active_utf16 {-1};
+    SE_PROTOCOL_WIRE(enum_i32)
+    CaretAffinity affinity {CaretAffinity::DOWNSTREAM};
+
+    bool operator==(const ImeSelection& other) const;
+    bool operator!=(const ImeSelection& other) const;
   };
 
-  enum class SE_PROTOCOL_ENUM(ime, UNKNOWN) ImeScriptClass {
-    UNKNOWN,
-    LATIN,
-    CJK,
-    KANA,
-    HANGUL,
-  };
-
-  enum class SE_PROTOCOL_ENUM(ime, NONE) ImeContextPolicy {
-    NONE,
-    LIMITED_FOR_CANDIDATES,
-  };
-
-  struct SE_PROTOCOL_IN(ime) ImeCommandMessage {
+  struct SE_PROTOCOL_IN(ime) ImeCommand {
     SE_PROTOCOL_WIRE(enum_i32)
     ImeCommandKind kind {ImeCommandKind::SET_SELECTION};
-    uint64_t context_id {0};
-    int32_t context_revision {0};
-    int32_t document_start_offset {0};
-    ImeOffsetRange range {-1, -1};
-    ImeOffsetRange selection {-1, -1};
+    ImeOffsetRange target_range;
+    ImeSelection selection_after;
     U8String text;
-    int32_t cursor_offset {1};
-    int32_t delete_before {0};
-    int32_t delete_after {0};
+    int64_t delete_before {0};
+    int64_t delete_after {0};
     SE_PROTOCOL_WIRE(enum_i32)
-    ImeTextUnit text_unit {ImeTextUnit::GRAPHEME};
-    SE_PROTOCOL_WIRE(enum_i32)
-    ImeMarkedRangeRole marked_role {ImeMarkedRangeRole::NONE};
-    SE_PROTOCOL_WIRE(enum_i32)
-    ImeScriptClass script_class {ImeScriptClass::UNKNOWN};
+    ImeTextUnit text_unit {ImeTextUnit::UTF16_CODE_UNIT};
   };
 
-  struct SE_PROTOCOL_IN(ime) ImeTextUpdateMessage {
+  struct SE_PROTOCOL_IN(ime) ImeCommandBatch {
+    uint64_t session_id {0};
+    Vector<ImeCommand> commands;
+  };
+
+  struct SE_PROTOCOL_IN(ime) ImeTextUpdateStep {
+    U8String old_text;
+    ImeOffsetRange patch_range;
+    U8String replacement_text;
+    ImeSelection selection_after;
+    ImeOffsetRange composition_after;
+  };
+
+  struct SE_PROTOCOL_IN(ime) ImeTextUpdateBatch {
+    uint64_t session_id {0};
+    uint64_t expected_state_revision {0};
+    Vector<ImeTextUpdateStep> steps;
+  };
+
+  struct SE_PROTOCOL_OUT(ime) ImeState {
     SE_PROTOCOL_WIRE(enum_i32)
-    ImeTextUpdateKind kind {ImeTextUpdateKind::SNAPSHOT};
+    ImeResultCode result_code {ImeResultCode::OK};
+    uint64_t session_id {0};
+    uint64_t state_revision {0};
+    ImeSelection selection;
+    ImeOffsetRange composition_range;
+  };
+
+  struct SE_PROTOCOL_OUT(ime) ImeTextContext {
     SE_PROTOCOL_WIRE(enum_i32)
-    ImeTextUpdateScope scope {ImeTextUpdateScope::DOCUMENT_WINDOW};
-    uint64_t context_id {0};
-    int32_t context_revision {0};
-    int32_t document_start_offset {0};
+    ImeResultCode result_code {ImeResultCode::OK};
+    int64_t slice_start_utf16 {0};
+    int64_t total_length_utf16 {0};
     U8String text;
-    ImeTextPatch patch;
-    ImeOffsetRange selection {-1, -1};
-    ImeMarkedRange marked_range;
-    SE_PROTOCOL_WIRE(enum_i32)
-    ImeScriptClass script_class {ImeScriptClass::UNKNOWN};
+    ImeSelection selection;
+    ImeOffsetRange composition_range;
   };
 
-  /// Snapshot that platform layers use to synchronize IME selection and marked ranges.
-  struct SE_PROTOCOL_OUT(ime) ImeSyncSnapshot {
-    TextPosition cursor;
-    TextRange selection;
-    bool has_selection {false};
-    bool has_preedit_range {false};
-    TextRange preedit_range;
-    bool has_system_mark_range {false};
-    TextRange system_mark_range;
-    SE_PROTOCOL_WIRE(enum_i32)
-    ImeContextPolicy context_policy {ImeContextPolicy::NONE};
-    bool clear_system_mark {false};
-
-    bool requestsPlatformUpdate() const;
-  };
-
-  /// Result of a semantic IME action handled by the core.
-  struct ImeActionResult {
-    bool handled {false};
-    bool content_changed {false};
-    bool cursor_changed {false};
-    bool selection_changed {false};
-    TextEditResult edit_result;
-    ImeSyncSnapshot sync;
-  };
-
-  /// IME composition ownership.
-  enum class CompositionKind {
-    NONE,
-    PREEDIT_TEXT,
-    DOCUMENT_RANGE,
-  };
-
-  /// IME composition state.
   struct CompositionState {
-    /// Source and ownership of the active composition.
-    CompositionKind kind {CompositionKind::NONE};
-    /// Start position of composition in the document.
-    TextPosition start_position;
-    /// Authoritative document range owned by this active composition.
-    TextRange anchor_range;
-    /// Original text captured from anchor_range.
-    U8String original_text;
-    /// Current preedit text.
-    U8String preedit_text;
-    /// UTF-16 column count of current preedit text for exact cursor placement.
-    size_t preedit_columns {0};
+    TextRange current_range;
+    std::optional<U8String> baseline_text_raw;
+    CaretState baseline_caret;
 
     bool operator==(const CompositionState& other) const;
     bool operator!=(const CompositionState& other) const;
+  };
+
+  struct EditingBufferState {
+    TextRange document_range;
+    U8String text;
+    int64_t safe_start_utf16 {0};
+    int64_t safe_end_utf16 {0};
+    uint64_t state_revision {1};
+  };
+
+  struct ImeSessionState {
+    uint64_t session_id {0};
+    std::optional<CompositionState> composition;
+    std::optional<EditingBufferState> editing_buffer;
+  };
+
+  struct ImeActionResult {
+    bool handled {false};
+    TextEditResult edit_result;
+    ImeHostAction host_action {ImeHostAction::NONE};
+    ImeState state;
   };
 
 }

@@ -16,7 +16,7 @@ public enum GuideStyle {
             case 0: return SOLID;
             case 1: return DASHED;
             case 2: return DOUBLE;
-            default: return SOLID;
+            default: throw new IllegalArgumentException("Unknown GuideStyle value: " + value);
         }
     }
 }

@@ -63,6 +63,14 @@ namespace SweetEditor {
             }
         }
 
+        private static T ReadEnum<T>(ref BinaryReader reader) where T : struct, Enum {
+            var value = reader.ReadInt32();
+            if (!Enum.IsDefined(typeof(T), value)) {
+                throw new ArgumentOutOfRangeException(nameof(value), value, $"Unknown {typeof(T).Name} value");
+            }
+            return (T)Enum.ToObject(typeof(T), value);
+        }
+
         private sealed class BinaryWriter {
             private readonly byte[] data;
             private int offset;
@@ -294,6 +302,42 @@ namespace SweetEditor {
                 values.Add(ReadGutterIconRenderItem(ref reader));
             }
             return values;
+        }
+
+        private static void WriteImeCommandList(BinaryWriter writer, IReadOnlyList<ImeCommand>? values) {
+            var count = values == null ? 0 : values.Count;
+            writer.WriteInt32(count);
+            for (var i = 0; i < count; i++) {
+                WriteImeCommand(writer, values![i]);
+            }
+        }
+
+        private static int SizeOfImeCommandList(IReadOnlyList<ImeCommand>? values) {
+            var size = 4;
+            if (values != null) {
+                for (var i = 0; i < values.Count; i++) {
+                    size += SizeOfImeCommand(values[i]);
+                }
+            }
+            return size;
+        }
+
+        private static void WriteImeTextUpdateStepList(BinaryWriter writer, IReadOnlyList<ImeTextUpdateStep>? values) {
+            var count = values == null ? 0 : values.Count;
+            writer.WriteInt32(count);
+            for (var i = 0; i < count; i++) {
+                WriteImeTextUpdateStep(writer, values![i]);
+            }
+        }
+
+        private static int SizeOfImeTextUpdateStepList(IReadOnlyList<ImeTextUpdateStep>? values) {
+            var size = 4;
+            if (values != null) {
+                for (var i = 0; i < values.Count; i++) {
+                    size += SizeOfImeTextUpdateStep(values[i]);
+                }
+            }
+            return size;
         }
 
         private static void WriteIndentGuideList(BinaryWriter writer, IReadOnlyList<IndentGuide>? values) {
@@ -616,8 +660,8 @@ namespace SweetEditor {
             return new EditorActionResult {
                 Handled = reader.ReadBoolI32(),
                 NeedsRedraw = reader.ReadBoolI32(),
-                Source = (EditorActionSource)reader.ReadInt32(),
-                TextChangeKind = (TextChangeKind)reader.ReadInt32(),
+                Source = ReadEnum<EditorActionSource>(ref reader),
+                TextChangeKind = ReadEnum<TextChangeKind>(ref reader),
                 ContentChanged = reader.ReadBoolI32(),
                 CursorChanged = reader.ReadBoolI32(),
                 SelectionChanged = reader.ReadBoolI32(),
@@ -626,7 +670,6 @@ namespace SweetEditor {
                 PointerCursorChanged = reader.ReadBoolI32(),
                 CompositionChanged = reader.ReadBoolI32(),
                 DecorationChanged = reader.ReadBoolI32(),
-                NeedsImeSync = reader.ReadBoolI32(),
                 AnimationFlags = reader.ReadInt32(),
                 NextAnimationDelayMs = reader.ReadInt32(),
                 InteractionFlags = reader.ReadInt32(),
@@ -643,11 +686,12 @@ namespace SweetEditor {
                 ScrollYAfter = reader.ReadFloat32(),
                 ScaleBefore = reader.ReadFloat32(),
                 ScaleAfter = reader.ReadFloat32(),
-                PointerCursorBefore = (PointerCursorType)reader.ReadInt32(),
-                PointerCursorAfter = (PointerCursorType)reader.ReadInt32(),
-                ImeSync = ReadImeSyncSnapshot(ref reader),
-                GestureType = (GestureType)reader.ReadInt32(),
-                GestureEventType = (EventType)reader.ReadInt32(),
+                PointerCursorBefore = ReadEnum<PointerCursorType>(ref reader),
+                PointerCursorAfter = ReadEnum<PointerCursorType>(ref reader),
+                ImeHostAction = ReadEnum<ImeHostAction>(ref reader),
+                ImeState = ReadImeState(ref reader),
+                GestureType = ReadEnum<GestureType>(ref reader),
+                GestureEventType = ReadEnum<EventType>(ref reader),
                 TapPoint = ReadPointF(ref reader),
                 HitTarget = ReadHitTarget(ref reader),
                 Modifiers = reader.ReadInt32(),
@@ -1004,7 +1048,7 @@ namespace SweetEditor {
                 BackgroundColor = reader.ReadInt32(),
                 BorderColor = reader.ReadInt32(),
                 UnderlineColor = reader.ReadInt32(),
-                UnderlineStyle = (RangeEffectUnderlineStyle)reader.ReadInt32(),
+                UnderlineStyle = ReadEnum<RangeEffectUnderlineStyle>(ref reader),
             };
         }
 
@@ -1238,88 +1282,45 @@ namespace SweetEditor {
             return size;
         }
 
-        private static void WriteImeCommandMessage(BinaryWriter writer, ImeCommandMessage value) {
+        private static void WriteImeCommand(BinaryWriter writer, ImeCommand value) {
             writer.WriteInt32((int)value.Kind);
-            writer.WriteInt64(value.ContextId);
-            writer.WriteInt32(value.ContextRevision);
-            writer.WriteInt32(value.DocumentStartOffset);
-            WriteImeOffsetRange(writer, value.Range);
-            WriteImeOffsetRange(writer, value.Selection);
+            WriteImeOffsetRange(writer, value.TargetRange);
+            WriteImeSelection(writer, value.SelectionAfter);
             WriteUtf8String(writer, value.Text);
-            writer.WriteInt32(value.CursorOffset);
-            writer.WriteInt32(value.DeleteBefore);
-            writer.WriteInt32(value.DeleteAfter);
+            writer.WriteInt64(value.DeleteBefore);
+            writer.WriteInt64(value.DeleteAfter);
             writer.WriteInt32((int)value.TextUnit);
-            writer.WriteInt32((int)value.MarkedRole);
-            writer.WriteInt32((int)value.ScriptClass);
         }
 
-        private static int SizeOfImeCommandMessage(ImeCommandMessage value) {
+        private static int SizeOfImeCommand(ImeCommand value) {
             var size = 0;
             size += 4;
-            size += 8;
-            size += 4;
-            size += 4;
-            size += SizeOfImeOffsetRange(value.Range);
-            size += SizeOfImeOffsetRange(value.Selection);
+            size += SizeOfImeOffsetRange(value.TargetRange);
+            size += SizeOfImeSelection(value.SelectionAfter);
             size += SizeOfUtf8String(value.Text);
-            size += 4;
-            size += 4;
-            size += 4;
-            size += 4;
-            size += 4;
+            size += 8;
+            size += 8;
             size += 4;
             return size;
         }
 
-        private static ImeInputContext ReadImeInputContext(ref BinaryReader reader) {
-            return new ImeInputContext {
-                Id = reader.ReadInt64(),
-                Revision = reader.ReadInt32(),
-                DocumentStartOffset = reader.ReadInt32(),
-                Text = ReadUtf8String(ref reader),
-                Selection = ReadImeOffsetRange(ref reader),
-                HasPreeditRange = reader.ReadBoolI32(),
-                PreeditRange = ReadImeOffsetRange(ref reader),
-                HasSystemMarkRange = reader.ReadBoolI32(),
-                SystemMarkRange = ReadImeOffsetRange(ref reader),
-                Kind = (ImeInputContextKind)reader.ReadInt32(),
-            };
+        private static void WriteImeCommandBatch(BinaryWriter writer, ImeCommandBatch value) {
+            writer.WriteInt64(value.SessionId);
+            WriteImeCommandList(writer, value.Commands);
         }
 
-        public static ImeInputContext DecodeImeInputContext(ReadOnlySpan<byte> data) {
-            var reader = new BinaryReader(data);
-            return ReadImeInputContext(ref reader);
-        }
-
-        private static ImeMarkedRange ReadImeMarkedRange(ref BinaryReader reader) {
-            return new ImeMarkedRange {
-                Role = (ImeMarkedRangeRole)reader.ReadInt32(),
-                Range = ReadImeOffsetRange(ref reader),
-            };
-        }
-
-        public static ImeMarkedRange DecodeImeMarkedRange(ReadOnlySpan<byte> data) {
-            var reader = new BinaryReader(data);
-            return ReadImeMarkedRange(ref reader);
-        }
-
-        private static void WriteImeMarkedRange(BinaryWriter writer, ImeMarkedRange value) {
-            writer.WriteInt32((int)value.Role);
-            WriteImeOffsetRange(writer, value.Range);
-        }
-
-        private static int SizeOfImeMarkedRange(ImeMarkedRange value) {
+        private static int SizeOfImeCommandBatch(ImeCommandBatch value) {
             var size = 0;
-            size += 4;
-            size += SizeOfImeOffsetRange(value.Range);
+            size += 8;
+            size += SizeOfImeCommandList(value.Commands);
             return size;
         }
 
         private static ImeOffsetRange ReadImeOffsetRange(ref BinaryReader reader) {
             return new ImeOffsetRange {
-                Start = reader.ReadInt32(),
-                End = reader.ReadInt32(),
+                CoordinateSpace = ReadEnum<ImeCoordinateSpace>(ref reader),
+                StartUtf16 = reader.ReadInt64(),
+                EndUtf16 = reader.ReadInt64(),
             };
         }
 
@@ -1329,85 +1330,109 @@ namespace SweetEditor {
         }
 
         private static void WriteImeOffsetRange(BinaryWriter writer, ImeOffsetRange value) {
-            writer.WriteInt32(value.Start);
-            writer.WriteInt32(value.End);
+            writer.WriteInt32((int)value.CoordinateSpace);
+            writer.WriteInt64(value.StartUtf16);
+            writer.WriteInt64(value.EndUtf16);
         }
 
         private static int SizeOfImeOffsetRange(ImeOffsetRange value) {
             var size = 0;
             size += 4;
-            size += 4;
+            size += 8;
+            size += 8;
             return size;
         }
 
-        private static ImeSyncSnapshot ReadImeSyncSnapshot(ref BinaryReader reader) {
-            return new ImeSyncSnapshot {
-                Cursor = ReadTextPosition(ref reader),
-                Selection = ReadTextRange(ref reader),
-                HasSelection = reader.ReadBoolI32(),
-                HasPreeditRange = reader.ReadBoolI32(),
-                PreeditRange = ReadTextRange(ref reader),
-                HasSystemMarkRange = reader.ReadBoolI32(),
-                SystemMarkRange = ReadTextRange(ref reader),
-                ContextPolicy = (ImeContextPolicy)reader.ReadInt32(),
-                ClearSystemMark = reader.ReadBoolI32(),
+        private static ImeSelection ReadImeSelection(ref BinaryReader reader) {
+            return new ImeSelection {
+                CoordinateSpace = ReadEnum<ImeCoordinateSpace>(ref reader),
+                AnchorUtf16 = reader.ReadInt64(),
+                ActiveUtf16 = reader.ReadInt64(),
+                Affinity = ReadEnum<CaretAffinity>(ref reader),
             };
         }
 
-        public static ImeSyncSnapshot DecodeImeSyncSnapshot(ReadOnlySpan<byte> data) {
+        public static ImeSelection DecodeImeSelection(ReadOnlySpan<byte> data) {
             var reader = new BinaryReader(data);
-            return ReadImeSyncSnapshot(ref reader);
+            return ReadImeSelection(ref reader);
         }
 
-        private static ImeTextPatch ReadImeTextPatch(ref BinaryReader reader) {
-            return new ImeTextPatch {
-                Range = ReadImeOffsetRange(ref reader),
-                Text = ReadUtf8String(ref reader),
-            };
+        private static void WriteImeSelection(BinaryWriter writer, ImeSelection value) {
+            writer.WriteInt32((int)value.CoordinateSpace);
+            writer.WriteInt64(value.AnchorUtf16);
+            writer.WriteInt64(value.ActiveUtf16);
+            writer.WriteInt32((int)value.Affinity);
         }
 
-        public static ImeTextPatch DecodeImeTextPatch(ReadOnlySpan<byte> data) {
-            var reader = new BinaryReader(data);
-            return ReadImeTextPatch(ref reader);
-        }
-
-        private static void WriteImeTextPatch(BinaryWriter writer, ImeTextPatch value) {
-            WriteImeOffsetRange(writer, value.Range);
-            WriteUtf8String(writer, value.Text);
-        }
-
-        private static int SizeOfImeTextPatch(ImeTextPatch value) {
+        private static int SizeOfImeSelection(ImeSelection value) {
             var size = 0;
-            size += SizeOfImeOffsetRange(value.Range);
-            size += SizeOfUtf8String(value.Text);
-            return size;
-        }
-
-        private static void WriteImeTextUpdateMessage(BinaryWriter writer, ImeTextUpdateMessage value) {
-            writer.WriteInt32((int)value.Kind);
-            writer.WriteInt32((int)value.Scope);
-            writer.WriteInt64(value.ContextId);
-            writer.WriteInt32(value.ContextRevision);
-            writer.WriteInt32(value.DocumentStartOffset);
-            WriteUtf8String(writer, value.Text);
-            WriteImeTextPatch(writer, value.Patch);
-            WriteImeOffsetRange(writer, value.Selection);
-            WriteImeMarkedRange(writer, value.MarkedRange);
-            writer.WriteInt32((int)value.ScriptClass);
-        }
-
-        private static int SizeOfImeTextUpdateMessage(ImeTextUpdateMessage value) {
-            var size = 0;
-            size += 4;
             size += 4;
             size += 8;
+            size += 8;
             size += 4;
-            size += 4;
-            size += SizeOfUtf8String(value.Text);
-            size += SizeOfImeTextPatch(value.Patch);
-            size += SizeOfImeOffsetRange(value.Selection);
-            size += SizeOfImeMarkedRange(value.MarkedRange);
-            size += 4;
+            return size;
+        }
+
+        private static ImeState ReadImeState(ref BinaryReader reader) {
+            return new ImeState {
+                ResultCode = ReadEnum<ImeResultCode>(ref reader),
+                SessionId = reader.ReadInt64(),
+                StateRevision = reader.ReadInt64(),
+                Selection = ReadImeSelection(ref reader),
+                CompositionRange = ReadImeOffsetRange(ref reader),
+            };
+        }
+
+        public static ImeState DecodeImeState(ReadOnlySpan<byte> data) {
+            var reader = new BinaryReader(data);
+            return ReadImeState(ref reader);
+        }
+
+        private static ImeTextContext ReadImeTextContext(ref BinaryReader reader) {
+            return new ImeTextContext {
+                ResultCode = ReadEnum<ImeResultCode>(ref reader),
+                SliceStartUtf16 = reader.ReadInt64(),
+                TotalLengthUtf16 = reader.ReadInt64(),
+                Text = ReadUtf8String(ref reader),
+                Selection = ReadImeSelection(ref reader),
+                CompositionRange = ReadImeOffsetRange(ref reader),
+            };
+        }
+
+        public static ImeTextContext DecodeImeTextContext(ReadOnlySpan<byte> data) {
+            var reader = new BinaryReader(data);
+            return ReadImeTextContext(ref reader);
+        }
+
+        private static void WriteImeTextUpdateBatch(BinaryWriter writer, ImeTextUpdateBatch value) {
+            writer.WriteInt64(value.SessionId);
+            writer.WriteInt64(value.ExpectedStateRevision);
+            WriteImeTextUpdateStepList(writer, value.Steps);
+        }
+
+        private static int SizeOfImeTextUpdateBatch(ImeTextUpdateBatch value) {
+            var size = 0;
+            size += 8;
+            size += 8;
+            size += SizeOfImeTextUpdateStepList(value.Steps);
+            return size;
+        }
+
+        private static void WriteImeTextUpdateStep(BinaryWriter writer, ImeTextUpdateStep value) {
+            WriteUtf8String(writer, value.OldText);
+            WriteImeOffsetRange(writer, value.PatchRange);
+            WriteUtf8String(writer, value.ReplacementText);
+            WriteImeSelection(writer, value.SelectionAfter);
+            WriteImeOffsetRange(writer, value.CompositionAfter);
+        }
+
+        private static int SizeOfImeTextUpdateStep(ImeTextUpdateStep value) {
+            var size = 0;
+            size += SizeOfUtf8String(value.OldText);
+            size += SizeOfImeOffsetRange(value.PatchRange);
+            size += SizeOfUtf8String(value.ReplacementText);
+            size += SizeOfImeSelection(value.SelectionAfter);
+            size += SizeOfImeOffsetRange(value.CompositionAfter);
             return size;
         }
 
@@ -1433,7 +1458,7 @@ namespace SweetEditor {
 
         private static HitTarget ReadHitTarget(ref BinaryReader reader) {
             return new HitTarget {
-                Type = (HitTargetType)reader.ReadInt32(),
+                Type = ReadEnum<HitTargetType>(ref reader),
                 Line = reader.ReadInt32(),
                 Column = reader.ReadInt32(),
                 IconId = reader.ReadInt32(),
@@ -1568,7 +1593,7 @@ namespace SweetEditor {
 
         private static SearchState ReadSearchState(ref BinaryReader reader) {
             return new SearchState {
-                Status = (SearchStatus)reader.ReadInt32(),
+                Status = ReadEnum<SearchStatus>(ref reader),
                 Pattern = ReadUtf8String(ref reader),
                 Options = ReadSearchOptions(ref reader),
                 Generation = reader.ReadInt64(),
@@ -1635,7 +1660,7 @@ namespace SweetEditor {
                 ScrollY = reader.ReadFloat32(),
                 ViewportSize = ReadSize(ref reader),
                 CurrentLine = ReadPointF(ref reader),
-                CurrentLineRenderMode = (CurrentLineRenderMode)reader.ReadInt32(),
+                CurrentLineRenderMode = ReadEnum<CurrentLineRenderMode>(ref reader),
                 Lines = ReadVisualLineList(ref reader),
                 Cursor = ReadCursor(ref reader),
                 RangeEffects = ReadRangeEffectRenderItemList(ref reader),
@@ -1649,7 +1674,7 @@ namespace SweetEditor {
                 HorizontalScrollbar = ReadScrollbarModel(ref reader),
                 GutterSticky = reader.ReadBoolI32(),
                 GutterVisible = reader.ReadBoolI32(),
-                PointerCursorType = (PointerCursorType)reader.ReadInt32(),
+                PointerCursorType = ReadEnum<PointerCursorType>(ref reader),
             };
         }
 
@@ -1661,7 +1686,7 @@ namespace SweetEditor {
         private static FoldMarkerRenderItem ReadFoldMarkerRenderItem(ref BinaryReader reader) {
             return new FoldMarkerRenderItem {
                 LogicalLine = reader.ReadInt32(),
-                FoldState = (FoldState)reader.ReadInt32(),
+                FoldState = ReadEnum<FoldState>(ref reader),
                 Rect = ReadRect(ref reader),
             };
         }
@@ -1673,9 +1698,9 @@ namespace SweetEditor {
 
         private static GuideSegment ReadGuideSegment(ref BinaryReader reader) {
             return new GuideSegment {
-                Direction = (GuideDirection)reader.ReadInt32(),
-                Type = (GuideType)reader.ReadInt32(),
-                Style = (GuideStyle)reader.ReadInt32(),
+                Direction = ReadEnum<GuideDirection>(ref reader),
+                Type = ReadEnum<GuideType>(ref reader),
+                Style = ReadEnum<GuideStyle>(ref reader),
                 Start = ReadPointF(ref reader),
                 End = ReadPointF(ref reader),
                 ArrowEnd = reader.ReadBoolI32(),
@@ -1712,7 +1737,7 @@ namespace SweetEditor {
                 MaxGutterIcons = reader.ReadInt32(),
                 InlayHintPadding = reader.ReadFloat32(),
                 InlayHintMargin = reader.ReadFloat32(),
-                FoldArrowMode = (FoldArrowMode)reader.ReadInt32(),
+                FoldArrowMode = ReadEnum<FoldArrowMode>(ref reader),
                 HasFoldRegions = reader.ReadBoolI32(),
                 GutterSticky = reader.ReadBoolI32(),
                 GutterVisible = reader.ReadBoolI32(),
@@ -1727,7 +1752,7 @@ namespace SweetEditor {
         private static RangeEffectRenderItem ReadRangeEffectRenderItem(ref BinaryReader reader) {
             return new RangeEffectRenderItem {
                 Rect = ReadRect(ref reader),
-                Kind = (RangeEffectKind)reader.ReadInt32(),
+                Kind = ReadEnum<RangeEffectKind>(ref reader),
                 Style = ReadRangeEffectStyle(ref reader),
             };
         }
@@ -1792,9 +1817,9 @@ namespace SweetEditor {
                 WrapIndex = reader.ReadInt32(),
                 LineNumberPosition = ReadPointF(ref reader),
                 Runs = ReadVisualRunList(ref reader),
-                Kind = (VisualLineKind)reader.ReadInt32(),
+                Kind = ReadEnum<VisualLineKind>(ref reader),
                 OwnsGutterSemantics = reader.ReadBoolI32(),
-                FoldState = (FoldState)reader.ReadInt32(),
+                FoldState = ReadEnum<FoldState>(ref reader),
             };
         }
 
@@ -1805,7 +1830,7 @@ namespace SweetEditor {
 
         private static VisualRun ReadVisualRun(ref BinaryReader reader) {
             return new VisualRun {
-                Type = (VisualRunType)reader.ReadInt32(),
+                Type = ReadEnum<VisualRunType>(ref reader),
                 X = reader.ReadFloat32(),
                 Y = reader.ReadFloat32(),
                 Text = ReadUtf8String(ref reader),
@@ -2458,15 +2483,27 @@ namespace SweetEditor {
             return writer.ToArray();
         }
 
-        public static byte[] EncodeImeCommandMessage(ImeCommandMessage value) {
-            var writer = new BinaryWriter(SizeOfImeCommandMessage(value));
-            WriteImeCommandMessage(writer, value);
+        public static byte[] EncodeImeCommand(ImeCommand value) {
+            var writer = new BinaryWriter(SizeOfImeCommand(value));
+            WriteImeCommand(writer, value);
             return writer.ToArray();
         }
 
-        public static byte[] EncodeImeTextUpdateMessage(ImeTextUpdateMessage value) {
-            var writer = new BinaryWriter(SizeOfImeTextUpdateMessage(value));
-            WriteImeTextUpdateMessage(writer, value);
+        public static byte[] EncodeImeCommandBatch(ImeCommandBatch value) {
+            var writer = new BinaryWriter(SizeOfImeCommandBatch(value));
+            WriteImeCommandBatch(writer, value);
+            return writer.ToArray();
+        }
+
+        public static byte[] EncodeImeTextUpdateBatch(ImeTextUpdateBatch value) {
+            var writer = new BinaryWriter(SizeOfImeTextUpdateBatch(value));
+            WriteImeTextUpdateBatch(writer, value);
+            return writer.ToArray();
+        }
+
+        public static byte[] EncodeImeTextUpdateStep(ImeTextUpdateStep value) {
+            var writer = new BinaryWriter(SizeOfImeTextUpdateStep(value));
+            WriteImeTextUpdateStep(writer, value);
             return writer.ToArray();
         }
 

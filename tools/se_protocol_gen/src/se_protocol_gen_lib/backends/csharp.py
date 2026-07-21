@@ -79,7 +79,7 @@ def csharp_read_expr(field):
         return f"Read{inner}List(ref reader)"
     wire = field["wire"]
     if wire == "enum_i32":
-        return f"({field['cpp_type']})reader.ReadInt32()"
+        return f"ReadEnum<{field['cpp_type']}>(ref reader)"
     if wire == "u8":
         return "reader.ReadUInt8()"
     if wire == "u16":
@@ -365,6 +365,14 @@ def generate_csharp_codec(schema, target=None):
         "                offset += length;",
         "                return value;",
         "            }",
+        "        }",
+        "",
+        "        private static T ReadEnum<T>(ref BinaryReader reader) where T : struct, Enum {",
+        "            var value = reader.ReadInt32();",
+        "            if (!Enum.IsDefined(typeof(T), value)) {",
+        "                throw new ArgumentOutOfRangeException(nameof(value), value, $\"Unknown {typeof(T).Name} value\");",
+        "            }",
+        "            return (T)Enum.ToObject(typeof(T), value);",
         "        }",
         "",
         "        private sealed class BinaryWriter {",

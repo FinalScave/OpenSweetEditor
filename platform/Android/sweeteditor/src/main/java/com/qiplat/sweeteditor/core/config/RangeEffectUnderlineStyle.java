@@ -18,7 +18,7 @@ public enum RangeEffectUnderlineStyle {
             case 1: return SOLID;
             case 2: return DASHED;
             case 3: return WAVY;
-            default: return NONE;
+            default: throw new IllegalArgumentException("Unknown RangeEffectUnderlineStyle value: " + value);
         }
     }
 }

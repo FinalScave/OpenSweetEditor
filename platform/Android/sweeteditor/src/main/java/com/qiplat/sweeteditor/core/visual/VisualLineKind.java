@@ -16,7 +16,7 @@ public enum VisualLineKind {
             case 0: return CONTENT;
             case 1: return PHANTOM;
             case 2: return CODELENS;
-            default: return CONTENT;
+            default: throw new IllegalArgumentException("Unknown VisualLineKind value: " + value);
         }
     }
 }

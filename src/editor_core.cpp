@@ -33,6 +33,10 @@ namespace NS_SWEETEDITOR {
   EditorCore::EditorCore(const SharedPtr<TextMeasurer>& measurer, const EditorOptions& options): m_measurer_(measurer), m_options_(options), m_key_resolver_(options.key_chord_timeout_ms), m_composition_controller_(*this) {
     m_decorations_ = makeShared<DecorationManager>();
     m_text_layout_ = makeUnique<TextLayout>(measurer, m_decorations_);
+    m_text_layout_->setLineDecorationCollector(
+        [this](size_t line, LineLayoutDecorations& decorations) {
+          collectLineLayoutDecorations(line, decorations);
+        });
     InteractionContext interaction_context;
     interaction_context.touch_config = options.simpleAsTouchConfig();
     interaction_context.settings = &m_settings_;
@@ -41,7 +45,8 @@ namespace NS_SWEETEDITOR {
     interaction_context.text_layout = m_text_layout_.get();
     interaction_context.caret = &m_caret_;
     m_interaction_ = makeUnique<EditorInteraction>(interaction_context);
-    m_render_composer_ = makeUnique<RenderComposer>(m_text_layout_.get(), m_decorations_.get(), &m_settings_);
+    m_render_composer_ = makeUnique<RenderComposer>(
+        m_text_layout_.get(), m_decorations_.get(), &m_settings_, m_composition_controller_);
     m_undo_manager_ = makeUnique<UndoManager>(options.max_undo_stack_size);
     m_key_resolver_.setKeyMap(KeyMap::createDefault());
     loadDocument(makeShared<LineArrayDocument>(""));
@@ -110,10 +115,8 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::loadDocument(const SharedPtr<Document>& document) {
     const ActionSnapshot before = captureActionSnapshot();
     cancelLinkedEditingInternal();
-    m_composition_controller_.removePreeditText();
-    m_composition_controller_.resetCompositionState();
-    m_composition_controller_.clearCandidateCommitWindow();
-    invalidateImeInputContext();
+    m_composition_controller_.cancelPreedit();
+    closeImeSession();
     m_undo_manager_->clear();
     m_interaction_->resetForDocumentLoad();
     clearMatchedBrackets();
@@ -141,10 +144,7 @@ namespace NS_SWEETEDITOR {
     m_visible_line_range_ = {};
     normalizeScrollState();
     LOGD("EditorCore::loadDocument()");
-    EditorActionResult result = finishAction(before, EditorActionSource::SETUP, true, {}, true);
-    result.needs_ime_sync = true;
-    result.ime_sync = getImeSyncSnapshot();
-    return result;
+    return finishAction(before, EditorActionSource::SETUP, true, {}, true);
   }
 
   EditorActionResult EditorCore::setViewport(const Size& viewport) {
@@ -490,13 +490,13 @@ namespace NS_SWEETEDITOR {
     PERF_BEGIN(cursor_sel);
     m_render_composer_->buildCursorModel(model, m_caret_, line_height);
     m_render_composer_->buildDocumentHighlightRangeEffects(model, m_document_.get(), line_height);
-    m_render_composer_->buildSearchRangeEffects(model,
-                                                m_document_.get(),
-                                                m_search_matches_,
-                                                m_search_match_indices_by_line_,
-                                                m_search_state_.current_index,
-                                                line_height);
-    m_render_composer_->buildCompositionRangeEffect(model, m_composition_controller_.composition(), line_height);
+    m_render_composer_->buildSearchRangeEffects(
+        model, m_document_.get(), m_search_matches_, m_search_match_indices_by_line_,
+        m_search_state_.current_index, line_height);
+    if (getCompositionState().has_value()) {
+      m_render_composer_->buildCompositionRangeEffect(
+          model, m_document_.get(), *getCompositionState(), line_height);
+    }
     m_render_composer_->buildSelectionRangeEffects(model, m_document_.get(), m_caret_, line_height);
     if (m_caret_.hasSelection()) {
       m_interaction_->updateHandleCache(model.selection_start_handle.position,
@@ -512,14 +512,9 @@ namespace NS_SWEETEDITOR {
 
     m_render_composer_->buildDiagnosticRangeEffects(model, m_document_.get(), line_height);
     m_render_composer_->buildLinkedEditingRangeEffects(model, m_document_.get(), m_linked_editing_session_.get(), line_height);
-    m_render_composer_->buildBracketHighlightRangeEffects(model,
-                                                          m_document_.get(),
-                                                          m_caret_.active,
-                                                          m_bracket_pairs_,
-                                                          m_external_bracket_open_,
-                                                          m_external_bracket_close_,
-                                                          m_has_external_brackets_,
-                                                          line_height);
+    m_render_composer_->buildBracketHighlightRangeEffects(
+        model, m_document_.get(), m_caret_.active, m_bracket_pairs_,
+        m_external_bracket_open_, m_external_bracket_close_, m_has_external_brackets_, line_height);
     m_render_composer_->buildScrollbarModel(model, *m_interaction_);
     model.pointer_cursor_type = m_pointer_cursor_type_;
   }
@@ -560,6 +555,7 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::handleGestureEvent(const GestureEvent& event) {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution;
     if (event.type == EventType::TOUCH_DOWN || event.type == EventType::MOUSE_DOWN) {
       m_has_preferred_cursor_x_ = false;
     }
@@ -583,6 +579,9 @@ namespace NS_SWEETEDITOR {
     InteractionResult interaction_result = m_interaction_->handleGestureEvent(event);
     GestureIntent& intent = interaction_result.intent;
     GestureResult& result = interaction_result.gesture;
+    if (intent.place_cursor || intent.select_word || intent.toggle_fold) {
+      resolution = finishCompositionForAction();
+    }
     const uint32_t interaction_flags = m_interaction_->resolveInteractionFlags();
     const HitTarget primary_hot_target =
         has_primary_point
@@ -616,11 +615,15 @@ namespace NS_SWEETEDITOR {
       gesture_decoration_changed = toggleFoldAtInternal(intent.fold_line);
     }
 
-    return finishInteractionAction(before,
-                                   std::move(interaction_result),
-                                   EditorActionSource::GESTURE,
-                                   event.type,
-                                   gesture_decoration_changed);
+    EditorActionResult action = finishInteractionAction(
+        before, std::move(interaction_result), EditorActionSource::GESTURE, event.type, gesture_decoration_changed);
+    if (resolution.contentChanged()) {
+      action.text_change_kind = resolution.change_kind;
+      action.changes = std::move(resolution.changes);
+      action.content_changed = true;
+      action.needs_redraw = true;
+    }
+    return action;
   }
 
   EditorActionResult EditorCore::updatePointerModifiers(KeyModifier modifiers) {
@@ -666,23 +669,27 @@ namespace NS_SWEETEDITOR {
     if (m_document_ == nullptr) return make_result(false);
 
     if (hasPreedit() && event.key_code == KeyCode::ESCAPE) {
-      m_composition_controller_.cancelPreeditText();
+      m_composition_controller_.cancelPreedit();
       return make_result(true);
     }
+
+    TextEditResult resolution;
 
     if (m_linked_editing_session_ && m_linked_editing_session_->isActive()) {
       bool shift = static_cast<uint8_t>(event.modifiers & KeyModifier::SHIFT) != 0;
       if (event.key_code == KeyCode::TAB) {
+        resolution = finishCompositionForAction();
         if (shift) {
           linkedEditingPrevTabStopInternal();
         } else {
           linkedEditingNextTabStopInternal();
         }
-        return make_result(true);
+        return make_result(true, std::move(resolution));
       }
       if (event.key_code == KeyCode::ENTER) {
+        resolution = finishCompositionForAction();
         finishLinkedEditingInternal();
-        return make_result(true);
+        return make_result(true, std::move(resolution));
       }
       if (event.key_code == KeyCode::ESCAPE) {
         cancelLinkedEditingInternal();
@@ -700,17 +707,25 @@ namespace NS_SWEETEDITOR {
     if (resolve.status == ResolveStatus::MATCHED) {
       command = resolve.command;
 
-      if (command == static_cast<EditorCommandId>(EditorBuiltinCommand::COPY) ||
-        command == static_cast<EditorCommandId>(EditorBuiltinCommand::PASTE) ||
-        command == static_cast<EditorCommandId>(EditorBuiltinCommand::CUT) ||
-        command == static_cast<EditorCommandId>(EditorBuiltinCommand::TRIGGER_COMPLETION) ||
-        command > EDITOR_BUILTIN_COMMAND_MAX) {
+      if (command == static_cast<EditorCommandId>(EditorBuiltinCommand::PASTE)
+          || command == static_cast<EditorCommandId>(EditorBuiltinCommand::CUT)) {
+        resolution = finishCompositionForAction();
+        return make_result(true, std::move(resolution));
+      }
+      if (command == static_cast<EditorCommandId>(EditorBuiltinCommand::COPY)
+          || command == static_cast<EditorCommandId>(EditorBuiltinCommand::TRIGGER_COMPLETION)
+          || command > EDITOR_BUILTIN_COMMAND_MAX) {
         return make_result(true);
+      }
+
+      const EditorBuiltinCommand builtin = static_cast<EditorBuiltinCommand>(command);
+      if (builtin != EditorBuiltinCommand::UNDO && builtin != EditorBuiltinCommand::REDO) {
+        resolution = finishCompositionForAction();
       }
 
       bool handled = true;
       TextEditResult edit_result;
-      switch (static_cast<EditorBuiltinCommand>(command)) {
+      switch (builtin) {
       case EditorBuiltinCommand::CURSOR_LEFT:
         moveCursorLeft(false);
         break;
@@ -793,11 +808,11 @@ namespace NS_SWEETEDITOR {
         break;
       case EditorBuiltinCommand::UNDO:
         edit_result = undoInternal();
-        handled = edit_result.contentChanged();
+        handled = edit_result.handled;
         break;
       case EditorBuiltinCommand::REDO:
         edit_result = redoInternal();
-        handled = edit_result.contentChanged();
+        handled = edit_result.handled;
         break;
       case EditorBuiltinCommand::MOVE_LINE_UP:
         edit_result = moveLineUpInternal();
@@ -821,14 +836,17 @@ namespace NS_SWEETEDITOR {
 
       if (handled) {
         LOGD("EditorCore::handleKeyEvent, key_code = %d, command = %d, handled = %d", (int)event.key_code, (int)command, handled);
-        return make_result(handled, std::move(edit_result));
+        appendTextEditResult(resolution, std::move(edit_result));
+        return make_result(handled, std::move(resolution));
       }
     }
 
     if (event.isTextInput()) {
+      resolution = finishCompositionForAction();
       TextEditResult edit_result = insertTextInternal(event.text);
       LOGD("EditorCore::handleKeyEvent, key_code = %d, handled = %d", (int)event.key_code, 1);
-      return make_result(true, std::move(edit_result));
+      appendTextEditResult(resolution, std::move(edit_result));
+      return make_result(true, std::move(resolution));
     }
 
     LOGD("EditorCore::handleKeyEvent, key_code = %d, handled = %d", (int)event.key_code, 0);
@@ -847,25 +865,31 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::insertText(const U8String& text) {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     TextEditResult edit_result = insertTextInternal(text);
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, edit_result.handled, std::move(edit_result));
+    appendTextEditResult(resolution, std::move(edit_result));
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, resolution.handled, std::move(resolution));
   }
 
   EditorActionResult EditorCore::replaceText(const TextRange& range, const U8String& new_text) {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     TextEditResult edit_result = replaceTextInternal(range, new_text);
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, edit_result.handled, std::move(edit_result));
+    appendTextEditResult(resolution, std::move(edit_result));
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, resolution.handled, std::move(resolution));
   }
 
   EditorActionResult EditorCore::deleteText(const TextRange& range) {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     TextEditResult edit_result = deleteTextInternal(range);
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, edit_result.handled, std::move(edit_result));
+    appendTextEditResult(resolution, std::move(edit_result));
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, resolution.handled, std::move(resolution));
   }
 
   EditorActionResult EditorCore::applyTextEdits(Vector<TextEdit>&& edits) {
     const ActionSnapshot before = captureActionSnapshot();
-    TextEditResult edit_result;
+    TextEditResult edit_result = finishCompositionForAction();
     edit_result.cursor_before = m_caret_.active;
 
     if (m_document_ == nullptr || m_settings_.read_only || edits.empty()) {
@@ -912,7 +936,7 @@ namespace NS_SWEETEDITOR {
     TextPosition primary_cursor = pending[0].new_end;
     if (!has_real_edits) {
       if (primary_cursor != m_caret_.active || hasSelection()) {
-        setCursorPositionInternal(primary_cursor, true);
+        setCursorPositionInternal(primary_cursor);
         clearSelection();
         ensureCursorVisible();
         edit_result.markHandled();
@@ -923,9 +947,6 @@ namespace NS_SWEETEDITOR {
       return finishAction(before, EditorActionSource::PROGRAMMATIC, false, std::move(edit_result));
     }
 
-    if (hasPreedit()) {
-      m_composition_controller_.cancelPreeditText();
-    }
     if (m_linked_editing_session_) {
       m_linked_editing_session_->cancel();
       m_linked_editing_session_.reset();
@@ -948,39 +969,39 @@ namespace NS_SWEETEDITOR {
     }
 
     const CaretState caret_before = m_caret_;
-    edit_result = applyEditBatch(replacements);
-    edit_result.cursor_before = caret_before.active;
-    if (edit_result.contentChanged()) {
-      setCursorPositionInternal(primary_cursor, true);
+    TextEditResult operation = applyEditBatch(replacements);
+    operation.cursor_before = caret_before.active;
+    if (operation.contentChanged()) {
+      setCursorPositionInternal(primary_cursor);
       clearSelection();
       ensureCursorVisible();
-      recordHistory(edit_result.changes, caret_before, m_caret_);
+      recordHistory(operation.changes, caret_before, m_caret_);
     }
-    edit_result.cursor_after = m_caret_.active;
+    operation.cursor_after = m_caret_.active;
+    appendTextEditResult(edit_result, std::move(operation));
 
     return finishAction(before, EditorActionSource::PROGRAMMATIC, edit_result.handled, std::move(edit_result));
   }
 
   EditorActionResult EditorCore::backspace() {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     TextEditResult edit_result = backspaceInternal();
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, edit_result.handled, std::move(edit_result));
+    appendTextEditResult(resolution, std::move(edit_result));
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, resolution.handled, std::move(resolution));
   }
 
   EditorActionResult EditorCore::deleteForward() {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     TextEditResult edit_result = deleteForwardInternal();
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, edit_result.handled, std::move(edit_result));
+    appendTextEditResult(resolution, std::move(edit_result));
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, resolution.handled, std::move(resolution));
   }
 
   TextEditResult EditorCore::insertTextInternal(const U8String& text) {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
     if (text.empty() && !hasSelection()) return {};
-
-    // If preedit is active, cancel it before new input
-    if (hasPreedit()) {
-      m_composition_controller_.cancelPreeditText();
-    }
 
     // Auto-indent: when inserting a newline with KEEP_INDENT enabled, append previous line's leading whitespace
     U8String actual_text = text;
@@ -1115,11 +1136,6 @@ namespace NS_SWEETEDITOR {
   TextEditResult EditorCore::replaceTextInternal(const TextRange& range, const U8String& new_text) {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
-    // If preedit is active, cancel it first
-    if (hasPreedit()) {
-      m_composition_controller_.cancelPreeditText();
-    }
-
     if (isInLinkedEditing()) {
       const TabStopGroup* group = m_linked_editing_session_->currentGroup();
       if (group && !group->ranges.empty() && range == group->ranges[0]) {
@@ -1140,39 +1156,6 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::backspaceInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-
-    if (hasPreedit()) {
-      const CompositionState& composition = getCompositionState();
-      if (composition.kind == CompositionKind::PREEDIT_TEXT) {
-        if (composition.preedit_text.empty()) {
-          m_composition_controller_.cancelPreeditText();
-        } else {
-          U16String preedit_u16;
-          StrUtil::convertUTF8ToUTF16(composition.preedit_text, preedit_u16);
-          size_t cursor_column = preedit_u16.length();
-          if (cursor_column > 0) {
-            size_t prev_col = UnicodeUtil::prevGraphemeBoundaryColumn(preedit_u16, cursor_column);
-            preedit_u16.erase(prev_col, cursor_column - prev_col);
-            U8String next_text;
-            StrUtil::convertUTF16ToUTF8(preedit_u16, next_text);
-            if (next_text.empty()) {
-              m_composition_controller_.cancelPreeditText();
-            } else {
-              m_composition_controller_.setPreeditText(next_text);
-            }
-          } else {
-            m_composition_controller_.cancelPreeditText();
-          }
-        }
-        return {};
-      } else {
-        const TextRange range = composition.anchor_range;
-        if (composition.kind == CompositionKind::DOCUMENT_RANGE && m_caret_.active == range.end) {
-          return m_composition_controller_.deleteBackward(1).edit_result;
-        }
-        m_composition_controller_.commitPreeditText("", true);
-      }
-    }
 
     if (isInLinkedEditing()) {
       const TabStopGroup* group = m_linked_editing_session_->currentGroup();
@@ -1294,15 +1277,6 @@ namespace NS_SWEETEDITOR {
   TextEditResult EditorCore::deleteForwardInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
-    if (hasPreedit()) {
-      const CompositionState& composition = getCompositionState();
-      if (composition.kind == CompositionKind::PREEDIT_TEXT) {
-        m_composition_controller_.cancelPreeditText();
-        return {};
-      }
-      m_composition_controller_.commitPreeditText("", true);
-    }
-
     if (isInLinkedEditing() && hasSelection()) {
       auto result = applyLinkedEditsWithResult("");
       LOGD("EditorCore::deleteForward(linked), cursor = %s", m_caret_.active.dump().c_str());
@@ -1340,131 +1314,60 @@ namespace NS_SWEETEDITOR {
     return {};
   }
 
-  TextEditResult EditorCore::deleteCodePointBackward() {
-    if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (hasPreedit() || isInLinkedEditing()) {
-      return backspaceInternal();
-    }
-    if (hasSelection()) {
-      TextRange range = m_caret_.normalizedSelection();
-      return applyEdit(range, "");
-    }
-
-    if (m_caret_.active.column > 0) {
-      const U16String& line_text = m_document_->getLineU16TextRef(m_caret_.active.line);
-      const size_t col = std::min<size_t>(m_caret_.active.column, line_text.size());
-      const size_t code_point_start = UnicodeUtil::clampColumnToCodePointBoundaryLeft(line_text, col);
-      const size_t code_point_end = UnicodeUtil::clampColumnToCodePointBoundaryRight(line_text, col);
-      const bool cursor_inside_code_point = code_point_start < col && code_point_end > col;
-      const size_t delete_start = cursor_inside_code_point
-          ? code_point_start
-          : UnicodeUtil::prevCodePointColumn(line_text, col);
-      const size_t delete_end = cursor_inside_code_point ? code_point_end : col;
-      if (delete_start == delete_end) return {};
-      TextRange del_range = {
-        {m_caret_.active.line, static_cast<uint32_t>(delete_start)},
-        {m_caret_.active.line, static_cast<uint32_t>(delete_end)}
-      };
-      return applyEdit(del_range, "");
-    }
-
-    if (m_caret_.active.line > 0) {
-      size_t prev_line = m_caret_.active.line - 1;
-      uint32_t prev_cols = m_document_->getLineColumns(prev_line);
-      TextRange del_range = {{prev_line, prev_cols}, {m_caret_.active.line, 0}};
-      return applyEdit(del_range, "");
-    }
-    return {};
-  }
-
-  TextEditResult EditorCore::deleteCodePointForward() {
-    if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (hasPreedit() || isInLinkedEditing()) {
-      return deleteForwardInternal();
-    }
-    if (hasSelection()) {
-      TextRange range = m_caret_.normalizedSelection();
-      return applyEdit(range, "");
-    }
-
-    uint32_t line_cols = m_document_->getLineColumns(m_caret_.active.line);
-    if (m_caret_.active.column < line_cols) {
-      const U16String& line_text = m_document_->getLineU16TextRef(m_caret_.active.line);
-      const size_t col = std::min<size_t>(m_caret_.active.column, line_text.size());
-      const size_t code_point_start = UnicodeUtil::clampColumnToCodePointBoundaryLeft(line_text, col);
-      const size_t code_point_end = UnicodeUtil::clampColumnToCodePointBoundaryRight(line_text, col);
-      const bool cursor_inside_code_point = code_point_start < col && code_point_end > col;
-      const size_t delete_start = cursor_inside_code_point ? code_point_start : col;
-      const size_t delete_end = cursor_inside_code_point
-          ? code_point_end
-          : UnicodeUtil::nextCodePointColumn(line_text, col);
-      if (delete_start == delete_end) return {};
-      TextRange del_range = {
-        {m_caret_.active.line, static_cast<uint32_t>(delete_start)},
-        {m_caret_.active.line, static_cast<uint32_t>(delete_end)}
-      };
-      return applyEdit(del_range, "");
-    }
-
-    if (m_caret_.active.line + 1 < m_document_->getLineCount()) {
-      TextRange del_range = {{m_caret_.active.line, line_cols}, {m_caret_.active.line + 1, 0}};
-      return applyEdit(del_range, "");
-    }
-    return {};
-  }
-
-  void EditorCore::deleteSelection() {
-    if (!hasSelection() || m_document_ == nullptr) return;
-    TextRange range = m_caret_.normalizedSelection();
-    // Internal call; do not record undo (used in composition flow)
-    m_document_->deleteU8Text(range);
-    noteDocumentContentChanged();
-    // Adjust decoration offsets to avoid misalignment (especially after multi-line selection deletion)
-    m_decorations_->adjustForEdit(range, range.start);
-    m_text_layout_->invalidateContentMetrics(range.start.line);
-    m_caret_.active = range.start;
-    clearSelection();
-  }
   EditorActionResult EditorCore::moveLineUp() {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     TextEditResult edit_result = moveLineUpInternal();
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, edit_result.handled, std::move(edit_result));
+    appendTextEditResult(resolution, std::move(edit_result));
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, resolution.handled, std::move(resolution));
   }
 
   EditorActionResult EditorCore::moveLineDown() {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     TextEditResult edit_result = moveLineDownInternal();
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, edit_result.handled, std::move(edit_result));
+    appendTextEditResult(resolution, std::move(edit_result));
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, resolution.handled, std::move(resolution));
   }
 
   EditorActionResult EditorCore::copyLineUp() {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     TextEditResult edit_result = copyLineUpInternal();
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, edit_result.handled, std::move(edit_result));
+    appendTextEditResult(resolution, std::move(edit_result));
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, resolution.handled, std::move(resolution));
   }
 
   EditorActionResult EditorCore::copyLineDown() {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     TextEditResult edit_result = copyLineDownInternal();
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, edit_result.handled, std::move(edit_result));
+    appendTextEditResult(resolution, std::move(edit_result));
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, resolution.handled, std::move(resolution));
   }
 
   EditorActionResult EditorCore::deleteLine() {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     TextEditResult edit_result = deleteLineInternal();
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, edit_result.handled, std::move(edit_result));
+    appendTextEditResult(resolution, std::move(edit_result));
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, resolution.handled, std::move(resolution));
   }
 
   EditorActionResult EditorCore::insertLineAbove() {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     TextEditResult edit_result = insertLineAboveInternal();
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, edit_result.handled, std::move(edit_result));
+    appendTextEditResult(resolution, std::move(edit_result));
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, resolution.handled, std::move(resolution));
   }
 
   EditorActionResult EditorCore::insertLineBelow() {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     TextEditResult edit_result = insertLineBelowInternal();
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, edit_result.handled, std::move(edit_result));
+    appendTextEditResult(resolution, std::move(edit_result));
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, resolution.handled, std::move(resolution));
   }
 
   EditorActionResult EditorCore::undo() {
@@ -1481,7 +1384,6 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::moveLineUpInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (hasPreedit()) m_composition_controller_.cancelPreeditText();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1523,7 +1425,6 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::moveLineDownInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (hasPreedit()) m_composition_controller_.cancelPreeditText();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1566,7 +1467,6 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::copyLineUpInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (hasPreedit()) m_composition_controller_.cancelPreeditText();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1596,7 +1496,6 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::copyLineDownInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (hasPreedit()) m_composition_controller_.cancelPreeditText();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1627,7 +1526,6 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::deleteLineInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (hasPreedit()) m_composition_controller_.cancelPreeditText();
 
     size_t first_line, last_line;
     if (hasSelection()) {
@@ -1657,7 +1555,6 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::insertLineAboveInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (hasPreedit()) m_composition_controller_.cancelPreeditText();
 
     size_t line = m_caret_.active.line;
     TextPosition insert_pos = {line, 0};
@@ -1667,7 +1564,7 @@ namespace NS_SWEETEDITOR {
 
     // Keep cursor on the newly inserted empty line
     if (result.contentChanged()) {
-      setCursorPositionInternal({line, 0}, true);
+      setCursorPositionInternal({line, 0});
       clearSelection();
       result.cursor_after = m_caret_.active;
       recordHistory(result.changes, caret_before, m_caret_);
@@ -1678,7 +1575,6 @@ namespace NS_SWEETEDITOR {
 
   TextEditResult EditorCore::insertLineBelowInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
-    if (hasPreedit()) m_composition_controller_.cancelPreeditText();
 
     size_t line = m_caret_.active.line;
     uint32_t line_cols = m_document_->getLineColumns(line);
@@ -1691,9 +1587,15 @@ namespace NS_SWEETEDITOR {
   TextEditResult EditorCore::undoInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
-    // If preedit input is active, cancel it first
+    TextEditResult resolution;
     if (hasPreedit()) {
-      m_composition_controller_.cancelPreeditText();
+      const bool owns_text = CompositionController::ownsCompositionText(
+          *getCompositionState());
+      resolution = m_composition_controller_.cancelPreedit();
+      resolution.markHandled();
+      if (owns_text) {
+        return resolution;
+      }
     }
 
     // Exit linked editing mode when undoing
@@ -1703,7 +1605,7 @@ namespace NS_SWEETEDITOR {
     }
 
     const HistoryEntry* entry = m_undo_manager_->undo();
-    if (entry == nullptr) return {};
+    if (entry == nullptr) return resolution;
 
     TextEditResult edit_result = applyEditBatch(entry->undo_replacements, false);
     edit_result.change_kind = TextChangeKind::UNDO;
@@ -1712,15 +1614,22 @@ namespace NS_SWEETEDITOR {
     edit_result.cursor_after = m_caret_.active;
     ensureCursorVisible();
     LOGD("EditorCore::undo, cursor = %s", m_caret_.active.dump().c_str());
-    return edit_result;
+    appendTextEditResult(resolution, std::move(edit_result));
+    return resolution;
   }
 
   TextEditResult EditorCore::redoInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
-    // If preedit input is active, cancel it first
+    TextEditResult resolution;
     if (hasPreedit()) {
-      m_composition_controller_.cancelPreeditText();
+      const bool owns_text = CompositionController::ownsCompositionText(
+          *getCompositionState());
+      resolution = m_composition_controller_.cancelPreedit();
+      resolution.markHandled();
+      if (owns_text) {
+        return resolution;
+      }
     }
 
     // Exit linked editing mode when redoing
@@ -1730,7 +1639,7 @@ namespace NS_SWEETEDITOR {
     }
 
     const HistoryEntry* entry = m_undo_manager_->redo();
-    if (entry == nullptr) return {};
+    if (entry == nullptr) return resolution;
 
     TextEditResult edit_result = applyEditBatch(entry->redo_replacements, false);
     edit_result.change_kind = TextChangeKind::REDO;
@@ -1739,7 +1648,30 @@ namespace NS_SWEETEDITOR {
     edit_result.cursor_after = m_caret_.active;
     ensureCursorVisible();
     LOGD("EditorCore::redo, cursor = %s", m_caret_.active.dump().c_str());
-    return edit_result;
+    appendTextEditResult(resolution, std::move(edit_result));
+    return resolution;
+  }
+
+  TextEditResult EditorCore::finishCompositionForAction() {
+    if (!hasPreedit()) {
+      return {};
+    }
+    TextEditResult result = m_composition_controller_.finishPreedit();
+    result.markHandled();
+    return result;
+  }
+
+  void EditorCore::appendTextEditResult(TextEditResult& target, TextEditResult&& source) {
+    target.handled = target.handled || source.handled;
+    target.editing_content_changed = target.editing_content_changed
+        || source.editing_content_changed;
+    target.mergeChangeKind(source.change_kind);
+    if (!source.changes.empty()) {
+      target.changes.insert(target.changes.end(),
+                            std::make_move_iterator(source.changes.begin()),
+                            std::make_move_iterator(source.changes.end()));
+    }
+    target.cursor_after = source.cursor_after;
   }
 
   bool EditorCore::canUndo() const {
@@ -1773,8 +1705,9 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::findNextSearchMatch() {
     drainPendingSearchResult();
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     if (m_search_state_.status != SearchStatus::READY || m_search_matches_.empty()) {
-      return finishAction(before, EditorActionSource::SEARCH, false);
+      return finishAction(before, EditorActionSource::SEARCH, resolution.handled, std::move(resolution));
     }
 
     size_t index = m_search_state_.current_index >= 0
@@ -1782,20 +1715,21 @@ namespace NS_SWEETEDITOR {
         : firstSearchMatchAtOrAfter(m_caret_.active);
     if (index >= m_search_matches_.size()) {
       if (!m_search_state_.options.wrap_around) {
-        return finishAction(before, EditorActionSource::SEARCH, false);
+        return finishAction(before, EditorActionSource::SEARCH, resolution.handled, std::move(resolution));
       }
       index = 0;
     }
 
     selectSearchMatch(index);
-    return finishAction(before, EditorActionSource::SEARCH, true, {}, true, true);
+    return finishAction(before, EditorActionSource::SEARCH, true, std::move(resolution), true, true);
   }
 
   EditorActionResult EditorCore::findPreviousSearchMatch() {
     drainPendingSearchResult();
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     if (m_search_state_.status != SearchStatus::READY || m_search_matches_.empty()) {
-      return finishAction(before, EditorActionSource::SEARCH, false);
+      return finishAction(before, EditorActionSource::SEARCH, resolution.handled, std::move(resolution));
     }
 
     size_t index = m_search_matches_.size();
@@ -1803,14 +1737,14 @@ namespace NS_SWEETEDITOR {
       index = static_cast<size_t>(m_search_state_.current_index) - 1;
     } else if (m_search_state_.current_index == 0) {
       if (!m_search_state_.options.wrap_around) {
-        return finishAction(before, EditorActionSource::SEARCH, false);
+        return finishAction(before, EditorActionSource::SEARCH, resolution.handled, std::move(resolution));
       }
       index = m_search_matches_.size() - 1;
     } else {
       index = firstSearchMatchAtOrAfter(m_caret_.active);
       if (index == 0) {
         if (!m_search_state_.options.wrap_around) {
-          return finishAction(before, EditorActionSource::SEARCH, false);
+          return finishAction(before, EditorActionSource::SEARCH, resolution.handled, std::move(resolution));
         }
         index = m_search_matches_.size() - 1;
       } else if (index >= m_search_matches_.size()) {
@@ -1821,11 +1755,13 @@ namespace NS_SWEETEDITOR {
     }
 
     selectSearchMatch(index);
-    return finishAction(before, EditorActionSource::SEARCH, true, {}, true, true);
+    return finishAction(before, EditorActionSource::SEARCH, true, std::move(resolution), true, true);
   }
 
   EditorActionResult EditorCore::replaceCurrentSearchMatch(const U8String& replacement) {
     drainPendingSearchResult();
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     SearchMatch match;
     SearchOptions options;
     uint64_t generation = 0;
@@ -1834,8 +1770,7 @@ namespace NS_SWEETEDITOR {
         || m_search_state_.status != SearchStatus::READY
         || m_search_state_.current_index < 0
         || static_cast<size_t>(m_search_state_.current_index) >= m_search_matches_.size()) {
-      const ActionSnapshot before = captureActionSnapshot();
-      return finishAction(before, EditorActionSource::SEARCH, false);
+      return finishAction(before, EditorActionSource::SEARCH, resolution.handled, std::move(resolution));
     }
 
     match = m_search_matches_[static_cast<size_t>(m_search_state_.current_index)];
@@ -1845,16 +1780,17 @@ namespace NS_SWEETEDITOR {
     const U8String actual_replacement = getSearchEngine().buildReplacement(match, replacement, options);
     if (generation != m_search_generation_->load()) {
       markSearchStaleForDocumentChange();
-      const ActionSnapshot before = captureActionSnapshot();
-      return finishAction(before, EditorActionSource::SEARCH, false, {}, true, true);
+      return finishAction(before, EditorActionSource::SEARCH, resolution.handled, std::move(resolution), true, true);
     }
-    const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result = replaceTextInternal(match.range, actual_replacement);
-    return finishAction(before, EditorActionSource::SEARCH, edit_result.handled, std::move(edit_result));
+    appendTextEditResult(resolution, std::move(edit_result));
+    return finishAction(before, EditorActionSource::SEARCH, resolution.handled, std::move(resolution));
   }
 
   EditorActionResult EditorCore::replaceAllSearchMatches(const U8String& replacement) {
     drainPendingSearchResult();
+    const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     Vector<SearchMatch> matches;
     SearchOptions options;
     uint64_t generation = 0;
@@ -1862,8 +1798,7 @@ namespace NS_SWEETEDITOR {
     if (m_document_ == nullptr || m_settings_.read_only
         || m_search_state_.status != SearchStatus::READY
         || m_search_matches_.empty()) {
-      const ActionSnapshot before = captureActionSnapshot();
-      return finishAction(before, EditorActionSource::SEARCH, false);
+      return finishAction(before, EditorActionSource::SEARCH, resolution.handled, std::move(resolution));
     }
 
     matches = m_search_matches_;
@@ -1877,11 +1812,9 @@ namespace NS_SWEETEDITOR {
     }
     if (generation != m_search_generation_->load()) {
       markSearchStaleForDocumentChange();
-      const ActionSnapshot before = captureActionSnapshot();
-      return finishAction(before, EditorActionSource::SEARCH, false, {}, true, true);
+      return finishAction(before, EditorActionSource::SEARCH, resolution.handled, std::move(resolution), true, true);
     }
 
-    const ActionSnapshot before = captureActionSnapshot();
     TextEditResult edit_result;
     edit_result.cursor_before = m_caret_.active;
 
@@ -1897,7 +1830,7 @@ namespace NS_SWEETEDITOR {
     if (edit_result.contentChanged()) {
       const TextPosition cursor_after = calcPositionAfterInsert(
           matches.front().range.start, replacement_texts.front());
-      setCursorPositionInternal(cursor_after, true);
+      setCursorPositionInternal(cursor_after);
       clearSelection();
       edit_result.cursor_after = m_caret_.active;
       recordHistory(edit_result.changes, caret_before, m_caret_);
@@ -1905,7 +1838,8 @@ namespace NS_SWEETEDITOR {
       edit_result.cursor_after = m_caret_.active;
     }
 
-    return finishAction(before, EditorActionSource::SEARCH, edit_result.handled, std::move(edit_result));
+    appendTextEditResult(resolution, std::move(edit_result));
+    return finishAction(before, EditorActionSource::SEARCH, resolution.handled, std::move(resolution));
   }
 
   EditorActionResult EditorCore::clearSearch() {
@@ -1933,7 +1867,19 @@ namespace NS_SWEETEDITOR {
     }
     const uint64_t generation = m_search_generation_->load();
     if (state->generation == generation) {
-      return *state;
+      SearchState projected = *state;
+      if (projected.has_current_match) {
+        const std::optional<TextRange> range =
+            m_composition_controller_.projectCommittedRange(projected.current_range);
+        if (range.has_value()) {
+          projected.current_range = *range;
+        } else {
+          projected.current_index = -1;
+          projected.has_current_match = false;
+          projected.current_range = {};
+        }
+      }
+      return projected;
     }
 
     SearchState stale_state = *state;
@@ -1950,24 +1896,17 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::setCursorPosition(const TextPosition& position) {
     const ActionSnapshot before = captureActionSnapshot();
-    if (position != m_caret_.active || hasSelection()) {
-      m_composition_controller_.clearPlainLatinInputLock();
-    }
-    setCursorPositionInternal(position, true);
+    TextEditResult resolution = finishCompositionForAction();
+    setCursorPositionInternal(position);
     clearSelection();
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
   }
 
-  void EditorCore::setCursorPositionInternal(const TextPosition& position,
-                                             bool commit_composition,
-                                             CaretAffinity affinity,
+  void EditorCore::setCursorPositionInternal(const TextPosition& position, CaretAffinity affinity,
                                              bool preserve_preferred_cursor_x) {
     const bool had_selection = m_caret_.hasSelection();
     if (!preserve_preferred_cursor_x) {
       m_has_preferred_cursor_x_ = false;
-    }
-    if (commit_composition && hasPreedit() && position != m_caret_.active) {
-      m_composition_controller_.commitPreeditText("", true);
     }
     m_caret_.active = position;
     m_caret_.active_affinity = affinity;
@@ -2011,8 +1950,7 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  TextPosition EditorCore::clampDocumentPosition(const TextPosition& position,
-                                                 bool prefer_right,
+  TextPosition EditorCore::clampDocumentPosition(const TextPosition& position, bool prefer_right,
                                                  bool line_overflow_to_end) const {
     if (m_document_ == nullptr) {
       return position;
@@ -2038,8 +1976,7 @@ namespace NS_SWEETEDITOR {
     return safe_position;
   }
 
-  TextRange EditorCore::clampDocumentRange(const TextRange& range,
-                                           bool collapse_point_range,
+  TextRange EditorCore::clampDocumentRange(const TextRange& range, bool collapse_point_range,
                                            bool line_overflow_to_end) const {
     if (m_document_ == nullptr) {
       return range;
@@ -2067,25 +2004,15 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::setSelection(const TextRange& range) {
     const ActionSnapshot before = captureActionSnapshot();
-    m_composition_controller_.clearPlainLatinInputLock();
-    setSelectionInternal(range, true);
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
+    TextEditResult resolution = finishCompositionForAction();
+    setSelectionInternal(range);
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
   }
 
-  void EditorCore::setSelectionInternal(const TextRange& range,
-                                        bool commit_composition,
-                                        CaretAffinity affinity,
+  void EditorCore::setSelectionInternal(const TextRange& range, CaretAffinity affinity,
                                         bool preserve_preferred_cursor_x) {
     if (!preserve_preferred_cursor_x) {
       m_has_preferred_cursor_x_ = false;
-    }
-    if (commit_composition && hasPreedit()) {
-      TextRange current_range = hasSelection()
-          ? m_caret_.selection()
-          : TextRange {m_caret_.active, m_caret_.active};
-      if (!(range == current_range)) {
-        m_composition_controller_.commitPreeditText("", true);
-      }
     }
     TextRange safe_range = clampDocumentRange(range, true, false);
     m_caret_.setSelection(safe_range, affinity);
@@ -2101,21 +2028,23 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::clearSelection() {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     m_caret_.clearSelection();
     m_has_preferred_cursor_x_ = false;
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
   }
 
   EditorActionResult EditorCore::selectAll() {
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr) return finishAction(before, EditorActionSource::PROGRAMMATIC, false);
+    TextEditResult resolution = finishCompositionForAction();
     size_t last_line = m_document_->getLineCount() > 0 ? m_document_->getLineCount() - 1 : 0;
     uint32_t last_col = m_document_->getLineColumns(last_line);
-    setSelection({{0, 0}, {last_line, last_col}});
+    setSelectionInternal({{0, 0}, {last_line, last_col}});
     if (m_options_.reveal_selection_end_on_select_all) {
       ensureCursorVisible();
     }
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
   }
 
   U8String EditorCore::getSelectedText() const {
@@ -2163,18 +2092,19 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::moveCursorLeft(bool extend_selection) {
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr) return finishAction(before, EditorActionSource::PROGRAMMATIC, false);
+    TextEditResult resolution = finishCompositionForAction();
 
     if (hasSelection() && !extend_selection) {
       TextRange range = m_caret_.normalizedSelection();
       moveCursorTo(range.start, false);
-      return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
+      return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
     }
 
     if (m_caret_.active_affinity == CaretAffinity::DOWNSTREAM
         && hasDistinctCaretAffinities(m_caret_.active)) {
       // Move from the next visual-line start to the previous visual-line end first.
       moveCursorTo(m_caret_.active, extend_selection, CaretAffinity::UPSTREAM);
-      return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
+      return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
     }
 
     TextPosition new_pos = m_caret_.active;
@@ -2191,24 +2121,25 @@ namespace NS_SWEETEDITOR {
       new_pos.column = m_document_->getLineColumns(new_pos.line);
     }
     moveCursorTo(new_pos, extend_selection, CaretAffinity::DOWNSTREAM);
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
   }
 
   EditorActionResult EditorCore::moveCursorRight(bool extend_selection) {
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr) return finishAction(before, EditorActionSource::PROGRAMMATIC, false);
+    TextEditResult resolution = finishCompositionForAction();
 
     if (hasSelection() && !extend_selection) {
       TextRange range = m_caret_.normalizedSelection();
       moveCursorTo(range.end, false);
-      return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
+      return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
     }
 
     if (m_caret_.active_affinity == CaretAffinity::UPSTREAM
         && hasDistinctCaretAffinities(m_caret_.active)) {
       // Move from the previous visual-line end to the next visual-line start first.
       moveCursorTo(m_caret_.active, extend_selection, CaretAffinity::DOWNSTREAM);
-      return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
+      return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
     }
 
     TextPosition new_pos = m_caret_.active;
@@ -2229,7 +2160,7 @@ namespace NS_SWEETEDITOR {
         ? CaretAffinity::UPSTREAM
         : CaretAffinity::DOWNSTREAM;
     moveCursorTo(new_pos, extend_selection, affinity);
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
   }
 
   EditorActionResult EditorCore::moveCursorUp(bool extend_selection) {
@@ -2237,6 +2168,7 @@ namespace NS_SWEETEDITOR {
     if (m_document_ == nullptr || m_text_layout_ == nullptr) {
       return finishAction(before, EditorActionSource::PROGRAMMATIC, false);
     }
+    TextEditResult resolution = finishCompositionForAction();
 
     const PointF current_screen = m_text_layout_->getPositionScreenCoord(
         m_caret_.active, m_caret_.active_affinity);
@@ -2251,7 +2183,7 @@ namespace NS_SWEETEDITOR {
     };
     const CaretHit hit = m_text_layout_->hitTestPointer(target_point);
     moveCursorTo(hit.position, extend_selection, hit.affinity, true);
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
   }
 
   EditorActionResult EditorCore::moveCursorDown(bool extend_selection) {
@@ -2259,6 +2191,7 @@ namespace NS_SWEETEDITOR {
     if (m_document_ == nullptr || m_text_layout_ == nullptr) {
       return finishAction(before, EditorActionSource::PROGRAMMATIC, false);
     }
+    TextEditResult resolution = finishCompositionForAction();
 
     const PointF current_screen = m_text_layout_->getPositionScreenCoord(
         m_caret_.active, m_caret_.active_affinity);
@@ -2272,58 +2205,67 @@ namespace NS_SWEETEDITOR {
     };
     const CaretHit hit = m_text_layout_->hitTestPointer(target_point);
     moveCursorTo(hit.position, extend_selection, hit.affinity, true);
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
   }
 
   EditorActionResult EditorCore::moveCursorToLineStart(bool extend_selection) {
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr) return finishAction(before, EditorActionSource::PROGRAMMATIC, false);
+    TextEditResult resolution = finishCompositionForAction();
     moveCursorTo({m_caret_.active.line, 0}, extend_selection);
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
   }
 
   EditorActionResult EditorCore::moveCursorToLineEnd(bool extend_selection) {
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr) return finishAction(before, EditorActionSource::PROGRAMMATIC, false);
+    TextEditResult resolution = finishCompositionForAction();
     uint32_t cols = m_document_->getLineColumns(m_caret_.active.line);
     moveCursorTo({m_caret_.active.line, cols}, extend_selection);
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
   }
 
   EditorActionResult EditorCore::moveCursorPageUp(bool extend_selection) {
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr || m_text_layout_ == nullptr) return finishAction(before, EditorActionSource::PROGRAMMATIC, false);
+    TextEditResult resolution = finishCompositionForAction();
     float line_height = m_text_layout_->getLineHeight();
-    if (line_height <= 0) return finishAction(before, EditorActionSource::PROGRAMMATIC, false);
+    if (line_height <= 0) {
+      return finishAction(before, EditorActionSource::PROGRAMMATIC, resolution.handled, std::move(resolution));
+    }
     int page_lines = static_cast<int>(m_viewport_.height / line_height);
     if (page_lines < 1) page_lines = 1;
     for (int i = 0; i < page_lines; ++i) {
       moveCursorUp(extend_selection);
     }
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
   }
 
   EditorActionResult EditorCore::moveCursorPageDown(bool extend_selection) {
     const ActionSnapshot before = captureActionSnapshot();
     if (m_document_ == nullptr || m_text_layout_ == nullptr) return finishAction(before, EditorActionSource::PROGRAMMATIC, false);
+    TextEditResult resolution = finishCompositionForAction();
     float line_height = m_text_layout_->getLineHeight();
-    if (line_height <= 0) return finishAction(before, EditorActionSource::PROGRAMMATIC, false);
+    if (line_height <= 0) {
+      return finishAction(before, EditorActionSource::PROGRAMMATIC, resolution.handled, std::move(resolution));
+    }
     int page_lines = static_cast<int>(m_viewport_.height / line_height);
     if (page_lines < 1) page_lines = 1;
     for (int i = 0; i < page_lines; ++i) {
       moveCursorDown(extend_selection);
     }
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
   }
 
   EditorActionResult EditorCore::setReadOnly(bool read_only) {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution;
     if (read_only && hasPreedit()) {
-      m_composition_controller_.cancelPreeditText();
+      resolution = finishCompositionForAction();
     }
     m_settings_.read_only = read_only;
     LOGD("EditorCore::setReadOnly, read_only = %s", read_only ? "true" : "false");
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, true, std::move(resolution));
   }
 
   bool EditorCore::isReadOnly() const {
@@ -2355,17 +2297,14 @@ namespace NS_SWEETEDITOR {
   }
   EditorActionResult EditorCore::insertSnippet(const U8String& snippet_template) {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     TextEditResult edit_result = insertSnippetInternal(snippet_template);
-    return finishAction(before, EditorActionSource::PROGRAMMATIC, edit_result.handled, std::move(edit_result));
+    appendTextEditResult(resolution, std::move(edit_result));
+    return finishAction(before, EditorActionSource::PROGRAMMATIC, resolution.handled, std::move(resolution));
   }
 
   TextEditResult EditorCore::insertSnippetInternal(const U8String& snippet_template) {
     if (m_document_ == nullptr || snippet_template.empty() || m_settings_.read_only) return {};
-
-    // If preedit is active, cancel it first
-    if (hasPreedit()) {
-      m_composition_controller_.cancelPreeditText();
-    }
 
     // Exit existing linked editing session
     if (m_linked_editing_session_) {
@@ -2399,18 +2338,14 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::startLinkedEditing(LinkedEditingModel&& model) {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     startLinkedEditingInternal(std::move(model));
-    return finishAction(before, EditorActionSource::LINKED_EDITING, true);
+    return finishAction(before, EditorActionSource::LINKED_EDITING, true, std::move(resolution));
   }
 
   void EditorCore::startLinkedEditingInternal(LinkedEditingModel&& model) {
     if (m_document_ == nullptr || m_settings_.read_only) return;
     if (model.groups.empty()) return;
-
-    // If preedit is active, cancel it first
-    if (hasPreedit()) {
-      m_composition_controller_.cancelPreeditText();
-    }
 
     // Exit existing linked editing session
     if (m_linked_editing_session_) {
@@ -2430,8 +2365,9 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::linkedEditingNextTabStop() {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     bool handled = linkedEditingNextTabStopInternal();
-    return finishAction(before, EditorActionSource::LINKED_EDITING, handled);
+    return finishAction(before, EditorActionSource::LINKED_EDITING, handled, std::move(resolution));
   }
 
   bool EditorCore::linkedEditingNextTabStopInternal() {
@@ -2448,8 +2384,9 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::linkedEditingPrevTabStop() {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     bool handled = linkedEditingPrevTabStopInternal();
-    return finishAction(before, EditorActionSource::LINKED_EDITING, handled);
+    return finishAction(before, EditorActionSource::LINKED_EDITING, handled, std::move(resolution));
   }
 
   bool EditorCore::linkedEditingPrevTabStopInternal() {
@@ -2463,8 +2400,9 @@ namespace NS_SWEETEDITOR {
 
   EditorActionResult EditorCore::finishLinkedEditing() {
     const ActionSnapshot before = captureActionSnapshot();
+    TextEditResult resolution = finishCompositionForAction();
     finishLinkedEditingInternal();
-    return finishAction(before, EditorActionSource::LINKED_EDITING, true);
+    return finishAction(before, EditorActionSource::LINKED_EDITING, true, std::move(resolution));
   }
 
   void EditorCore::finishLinkedEditingInternal() {
@@ -2674,6 +2612,10 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::setLineSpans(size_t line, SpanLayer layer, Vector<StyleSpan>&& spans) {
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineSpans(line, layer, std::move(spans));
+    if (hasPreedit()) {
+      markAllLinesDirty();
+      return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
+    }
     auto& lines = m_document_->getLogicalLines();
     if (line < lines.size()) {
       lines[line].is_layout_dirty = true;
@@ -2694,6 +2636,10 @@ namespace NS_SWEETEDITOR {
       }
       if (line < min_line) min_line = line;
     }
+    if (hasPreedit()) {
+      markAllLinesDirty();
+      return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
+    }
     m_text_layout_->invalidateContentMetrics(min_line);
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
@@ -2701,6 +2647,10 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::setLineInlayHints(size_t line, Vector<InlayHint>&& hints) {
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineInlayHints(line, std::move(hints));
+    if (hasPreedit()) {
+      markAllLinesDirty();
+      return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
+    }
     auto& lines = m_document_->getLogicalLines();
     if (line < lines.size()) {
       lines[line].is_layout_dirty = true;
@@ -2721,6 +2671,10 @@ namespace NS_SWEETEDITOR {
       }
       if (line < min_line) min_line = line;
     }
+    if (hasPreedit()) {
+      markAllLinesDirty();
+      return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
+    }
     m_text_layout_->invalidateContentMetrics(min_line);
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
@@ -2728,6 +2682,10 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::setLinePhantomTexts(size_t line, Vector<PhantomText>&& phantoms) {
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLinePhantomTexts(line, std::move(phantoms));
+    if (hasPreedit()) {
+      markAllLinesDirty();
+      return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
+    }
     auto& lines = m_document_->getLogicalLines();
     if (line < lines.size()) {
       lines[line].is_layout_dirty = true;
@@ -2747,6 +2705,10 @@ namespace NS_SWEETEDITOR {
         lines[line].is_layout_dirty = true;
       }
       if (line < min_line) min_line = line;
+    }
+    if (hasPreedit()) {
+      markAllLinesDirty();
+      return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
     }
     m_text_layout_->invalidateContentMetrics(min_line);
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
@@ -2814,6 +2776,10 @@ namespace NS_SWEETEDITOR {
   EditorActionResult EditorCore::setLineLinks(size_t line, Vector<LinkSpan>&& links) {
     const ActionSnapshot before = captureActionSnapshot();
     m_decorations_->setLineLinks(line, std::move(links));
+    if (hasPreedit()) {
+      markAllLinesDirty();
+      return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
+    }
     auto& lines = m_document_->getLogicalLines();
     if (line < lines.size()) {
       lines[line].is_layout_dirty = true;
@@ -2834,6 +2800,10 @@ namespace NS_SWEETEDITOR {
       }
       if (line < min_line) min_line = line;
     }
+    if (hasPreedit()) {
+      markAllLinesDirty();
+      return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
+    }
     m_text_layout_->invalidateContentMetrics(min_line);
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
@@ -2847,8 +2817,15 @@ namespace NS_SWEETEDITOR {
   }
 
   U8String EditorCore::getLinkTargetAt(size_t line, size_t column) const {
-    const LinkSpan* link = m_decorations_->findLinkAt(line, column);
-    return link != nullptr ? link->target : U8String {};
+    LineLayoutDecorations decorations;
+    collectLineLayoutDecorations(line, decorations);
+    for (const LinkSpan& link : decorations.links) {
+      const size_t end = static_cast<size_t>(link.column) + link.length;
+      if (column >= link.column && column < end) {
+        return link.target;
+      }
+    }
+    return {};
   }
 
   EditorActionResult EditorCore::setLineDiagnostics(size_t line, Vector<Diagnostic>&& diagnostics) {
@@ -2917,7 +2894,6 @@ namespace NS_SWEETEDITOR {
     return finishAction(before, EditorActionSource::DECORATION, true, {}, true, true);
   }
 
-
   void EditorCore::syncFoldState() {
     if (m_document_ == nullptr) return;
     auto& lines = m_document_->getLogicalLines();
@@ -2930,13 +2906,34 @@ namespace NS_SWEETEDITOR {
         ll.is_layout_dirty = true;
       }
     }
+    const std::optional<CompositionState>& composition = getCompositionState();
+    const bool has_projection = composition.has_value()
+        && m_composition_controller_.hasNonIdentityProjection(*composition);
+    TextPosition baseline_end;
+    int64_t composition_line_delta = 0;
+    if (has_projection) {
+      baseline_end = m_composition_controller_.baselineRange(*composition).end;
+      composition_line_delta = static_cast<int64_t>(composition->current_range.end.line)
+          - static_cast<int64_t>(baseline_end.line);
+    }
+
     // Start line of each fold region needs relayout (fold state changes affect FOLD_PLACEHOLDER generation)
     for (const auto& fr : m_decorations_->getFoldRegions()) {
-      if (fr.start_line < lines.size()) {
-        lines[fr.start_line].is_layout_dirty = true;
+      size_t start_line = fr.start_line;
+      size_t end_line = fr.end_line;
+      if (has_projection && end_line >= composition->current_range.start.line) {
+        if (start_line > baseline_end.line) {
+          start_line = TextPosition {start_line, 0}.withLineDelta(composition_line_delta).line;
+          end_line = TextPosition {end_line, 0}.withLineDelta(composition_line_delta).line;
+        } else {
+          continue;
+        }
+      }
+      if (start_line < lines.size()) {
+        lines[start_line].is_layout_dirty = true;
       }
       if (!fr.collapsed) continue;
-      for (size_t i = fr.start_line + 1; i <= fr.end_line && i < lines.size(); ++i) {
+      for (size_t i = start_line + 1; i <= end_line && i < lines.size(); ++i) {
         lines[i].is_fold_hidden = true;
         lines[i].is_layout_dirty = true;
       }
@@ -3121,7 +3118,6 @@ namespace NS_SWEETEDITOR {
     LOGD("EditorCore::placeCursorAt, pos = %s", hit.position.dump().c_str());
   }
 
-
   void EditorCore::selectWordAt(const PointF& screen_point) {
     if (m_document_ == nullptr) return;
     TextPosition pos = m_text_layout_->hitTestPointer(screen_point).position;
@@ -3175,15 +3171,13 @@ namespace NS_SWEETEDITOR {
     return finishAction(before, EditorActionSource::PROGRAMMATIC, true);
   }
 
-  void EditorCore::moveCursorTo(const TextPosition& new_pos,
-                                bool extend_selection,
-                                CaretAffinity affinity,
+  void EditorCore::moveCursorTo(const TextPosition& new_pos, bool extend_selection, CaretAffinity affinity,
                                 bool preserve_preferred_cursor_x) {
     if (extend_selection) {
       const TextPosition anchor = hasSelection() ? m_caret_.anchor : m_caret_.active;
-      setSelectionInternal({anchor, new_pos}, true, affinity, preserve_preferred_cursor_x);
+      setSelectionInternal({anchor, new_pos}, affinity, preserve_preferred_cursor_x);
     } else {
-      setCursorPositionInternal(new_pos, true, affinity, preserve_preferred_cursor_x);
+      setCursorPositionInternal(new_pos, affinity, preserve_preferred_cursor_x);
       m_caret_.clearSelection();
     }
     ensureCursorVisible();
@@ -3408,8 +3402,74 @@ namespace NS_SWEETEDITOR {
         : TextRange {};
   }
 
-  void EditorCore::collectTextPresentationEffectsForLine(size_t line,
-                                                         Vector<TextPresentationEffect>& effects) const {
+  void EditorCore::collectLineLayoutDecorations(size_t line, LineLayoutDecorations& decorations) const {
+    const Vector<size_t> source_lines =
+        m_composition_controller_.committedSourceLinesForEditingLine(line);
+    for (size_t source_line : source_lines) {
+      for (const StyleSpan& span : m_decorations_->getMergedLineSpans(source_line)) {
+        const TextRange committed {{source_line, span.column},
+                                   {source_line, static_cast<size_t>(span.column) + span.length}};
+        const std::optional<TextRange> projected =
+            m_composition_controller_.projectCommittedRange(committed);
+        if (!projected.has_value()
+            || projected->start.line != line
+            || projected->end.line != line
+            || projected->end.column <= projected->start.column) {
+          continue;
+        }
+        StyleSpan value = span;
+        value.column = static_cast<uint32_t>(projected->start.column);
+        value.length = static_cast<uint32_t>(projected->end.column - projected->start.column);
+        decorations.spans.push_back(std::move(value));
+      }
+
+      for (const InlayHint& hint : m_decorations_->getLineInlayHints(source_line)) {
+        const std::optional<TextPosition> projected = m_composition_controller_.projectCommittedAnchor(
+            {source_line, hint.column}, CompositionController::EndpointBias::AFTER);
+        if (!projected.has_value() || projected->line != line) continue;
+        InlayHint value = hint;
+        value.column = static_cast<uint32_t>(projected->column);
+        decorations.inlay_hints.push_back(std::move(value));
+      }
+
+      for (const PhantomText& phantom : m_decorations_->getLinePhantomTexts(source_line)) {
+        const std::optional<TextPosition> projected = m_composition_controller_.projectCommittedAnchor(
+            {source_line, phantom.column}, CompositionController::EndpointBias::AFTER);
+        if (!projected.has_value() || projected->line != line) continue;
+        PhantomText value = phantom;
+        value.column = static_cast<uint32_t>(projected->column);
+        decorations.phantom_texts.push_back(std::move(value));
+      }
+
+      for (const LinkSpan& link : m_decorations_->getLineLinks(source_line)) {
+        const TextRange committed {{source_line, link.column},
+                                   {source_line, static_cast<size_t>(link.column) + link.length}};
+        const std::optional<TextRange> projected =
+            m_composition_controller_.projectCommittedRange(committed);
+        if (!projected.has_value()
+            || projected->start.line != line
+            || projected->end.line != line
+            || projected->end.column <= projected->start.column) {
+          continue;
+        }
+        LinkSpan value = link;
+        value.column = static_cast<uint32_t>(projected->start.column);
+        value.length = static_cast<uint32_t>(projected->end.column - projected->start.column);
+        decorations.links.push_back(std::move(value));
+      }
+    }
+
+    const auto by_column = [](const auto& lhs, const auto& rhs) {
+      return lhs.column < rhs.column;
+    };
+    std::stable_sort(decorations.spans.begin(), decorations.spans.end(), by_column);
+    std::stable_sort(decorations.inlay_hints.begin(), decorations.inlay_hints.end(), by_column);
+    std::stable_sort(decorations.phantom_texts.begin(), decorations.phantom_texts.end(), by_column);
+    std::stable_sort(decorations.links.begin(), decorations.links.end(), by_column);
+  }
+
+  void EditorCore::collectTextPresentationEffectsForLine(
+      size_t line, Vector<TextPresentationEffect>& effects) const {
     if (m_caret_.hasSelection()) {
       const TextRange selection = m_caret_.normalizedSelection();
       const RangeEffectStyle& selection_style = m_settings_.range_effect_styles.selection;
@@ -3427,21 +3487,68 @@ namespace NS_SWEETEDITOR {
       }
     }
 
-    const auto& document_highlights = m_decorations_->getLineDocumentHighlights(line);
-    for (const auto& highlight : document_highlights) {
-      if (highlight.length == 0) continue;
-      const RangeEffectStyle& style =
-          RenderStyleUtil::documentHighlightRangeEffectStyle(m_settings_.range_effect_styles, highlight.kind);
+    const Vector<size_t> highlight_source_lines =
+        m_composition_controller_.committedSourceLinesForEditingLine(line);
+    for (size_t source_line : highlight_source_lines) {
+      const auto& document_highlights =
+          m_decorations_->getLineDocumentHighlights(source_line);
+      for (const auto& highlight : document_highlights) {
+        if (highlight.length == 0) continue;
+        const std::optional<TextRange> projected =
+            m_composition_controller_.projectCommittedRange({
+                {source_line, highlight.column},
+                {source_line, static_cast<size_t>(highlight.column) + highlight.length}
+            });
+        if (!projected.has_value()
+            || line < projected->start.line
+            || line > projected->end.line) {
+          continue;
+        }
+        const RangeEffectStyle& style =
+            RenderStyleUtil::documentHighlightRangeEffectStyle(
+                m_settings_.range_effect_styles, highlight.kind);
+        if (style.foreground_color == 0 && style.background_color == 0) {
+          continue;
+        }
+
+        TextPresentationEffect effect;
+        effect.range = *projected;
+        effect.foreground_color = style.foreground_color;
+        effect.clear_text_background = style.background_color != 0;
+        effect.priority = 60;
+        effects.push_back(effect);
+      }
+    }
+
+    const auto append_search_effect = [&](uint32_t match_index, const TextRange& range) {
+      if (match_index >= m_search_matches_.size()) return;
+      const bool is_current = m_search_state_.current_index >= 0
+          && match_index == static_cast<uint32_t>(m_search_state_.current_index);
+      const RangeEffectStyle& style = is_current
+          ? m_settings_.range_effect_styles.search_current
+          : m_settings_.range_effect_styles.search_match;
       if (style.foreground_color == 0 && style.background_color == 0) {
-        continue;
+        return;
       }
 
       TextPresentationEffect effect;
-      effect.range = {{line, highlight.column}, {line, highlight.column + highlight.length}};
+      effect.range = range;
       effect.foreground_color = style.foreground_color;
       effect.clear_text_background = style.background_color != 0;
-      effect.priority = 60;
+      effect.priority = is_current ? 80 : 70;
       effects.push_back(effect);
+    };
+
+    if (hasPreedit()) {
+      for (size_t index = 0; index < m_search_matches_.size(); ++index) {
+        const std::optional<TextRange> range =
+            m_composition_controller_.projectCommittedRange(m_search_matches_[index].range);
+        if (!range.has_value() || line < range->start.line || line > range->end.line) {
+          continue;
+        }
+        append_search_effect(static_cast<uint32_t>(index), *range);
+      }
+      return;
     }
 
     if (line >= m_search_match_indices_by_line_.size()) {
@@ -3450,21 +3557,7 @@ namespace NS_SWEETEDITOR {
 
     for (uint32_t match_index : m_search_match_indices_by_line_[line]) {
       if (match_index >= m_search_matches_.size()) continue;
-      const bool is_current = m_search_state_.current_index >= 0
-          && match_index == static_cast<uint32_t>(m_search_state_.current_index);
-      const RangeEffectStyle& style = is_current
-          ? m_settings_.range_effect_styles.search_current
-          : m_settings_.range_effect_styles.search_match;
-      if (style.foreground_color == 0 && style.background_color == 0) {
-        continue;
-      }
-
-      TextPresentationEffect effect;
-      effect.range = m_search_matches_[match_index].range;
-      effect.foreground_color = style.foreground_color;
-      effect.clear_text_background = style.background_color != 0;
-      effect.priority = is_current ? 80 : 70;
-      effects.push_back(effect);
+      append_search_effect(match_index, m_search_matches_[match_index].range);
     }
   }
 
@@ -3484,7 +3577,7 @@ namespace NS_SWEETEDITOR {
     m_search_state_.current_index = static_cast<int32_t>(index);
     m_search_state_.has_current_match = true;
     m_search_state_.current_range = m_search_matches_[index].range;
-    setSelectionInternal(m_search_matches_[index].range, true);
+    setSelectionInternal(m_search_matches_[index].range);
     ensureCursorVisible();
     publishSearchState(m_search_state_);
   }
@@ -3512,8 +3605,7 @@ namespace NS_SWEETEDITOR {
     return {new_line, new_col};
   }
 
-  TextEditResult EditorCore::applyEditBatch(const Vector<DocumentReplacement>& replacements,
-                                            bool update_fold_state) {
+  TextEditResult EditorCore::applyEditBatch(const Vector<DocumentReplacement>& replacements, bool update_fold_state) {
     TextEditResult result;
     if (m_document_ == nullptr || replacements.empty()) return result;
 
@@ -3615,10 +3707,8 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
-  void EditorCore::recordHistory(const Vector<TextChange>& changes,
-                                 const CaretState& caret_before,
-                                 const CaretState& caret_after,
-                                 bool allows_merge) {
+  void EditorCore::recordHistory(const Vector<TextChange>& changes, const CaretState& caret_before,
+                                 const CaretState& caret_after, bool allows_merge) {
     if (changes.empty()) return;
 
     HistoryEntry entry;
@@ -3674,7 +3764,7 @@ namespace NS_SWEETEDITOR {
                                       ? change.range.start
                                       : calcPositionAfterInsert(change.range.start, change.new_text);
 
-    setCursorPositionInternal(new_cursor, true);
+    setCursorPositionInternal(new_cursor);
     clearSelection();
     edit_result.cursor_after = m_caret_.active;
 
@@ -3809,15 +3899,13 @@ namespace NS_SWEETEDITOR {
     snapshot.scale = m_view_state_.scale;
     snapshot.pointer_cursor_type = m_pointer_cursor_type_;
     snapshot.active_hit_target = getActiveHitTarget();
-    snapshot.composition = m_composition_controller_.composition();
+    snapshot.composition = getCompositionState();
+    snapshot.ime_session_active = m_ime_session_.has_value();
     return snapshot;
   }
 
-  EditorActionResult EditorCore::finishAction(const ActionSnapshot& before,
-                                              EditorActionSource source,
-                                              bool handled,
-                                              TextEditResult edit_result,
-                                              bool force_redraw,
+  EditorActionResult EditorCore::finishAction(const ActionSnapshot& before, EditorActionSource source, bool handled,
+                                              TextEditResult edit_result, bool force_redraw,
                                               bool decoration_changed) {
     EditorActionResult result;
     result.handled = handled || edit_result.handled;
@@ -3859,11 +3947,28 @@ namespace NS_SWEETEDITOR {
 
     const bool active_hit_target_changed = before.active_hit_target != getActiveHitTarget();
     const InteractionAnimationState animation_state = m_interaction_->resolveAnimationState();
-    result.composition_changed = before.composition != m_composition_controller_.composition();
+    result.composition_changed = before.composition != getCompositionState();
     result.decoration_changed = decoration_changed;
-    result.needs_ime_sync = result.content_changed || result.cursor_changed || result.selection_changed || result.composition_changed;
-    if (result.needs_ime_sync) {
-      result.ime_sync = getImeSyncSnapshot();
+    const bool ime_state_changed = result.content_changed
+        || result.cursor_changed
+        || result.selection_changed
+        || result.composition_changed;
+    const bool restart_text_update_session = source != EditorActionSource::IME
+        && isImeTextUpdateSession()
+        && ime_state_changed;
+    const bool session_invalidated = source != EditorActionSource::IME
+        && before.ime_session_active
+        && !m_ime_session_.has_value();
+    if (session_invalidated || restart_text_update_session) {
+      if (restart_text_update_session) {
+        closeImeSession();
+      }
+      result.ime_host_action = m_settings_.read_only
+          ? ImeHostAction::CLOSE_SESSION
+          : ImeHostAction::RESTART_SESSION;
+      result.ime_state = emptyImeState(ImeResultCode::OK);
+    } else {
+      result.ime_state = buildImeState();
     }
     result.needs_redraw = force_redraw
                           || result.content_changed
@@ -3882,18 +3987,11 @@ namespace NS_SWEETEDITOR {
   }
 
   EditorActionResult EditorCore::finishInteractionAction(
-      const ActionSnapshot& before,
-      InteractionResult interaction_result,
-      EditorActionSource source,
-      EventType event_type,
-      bool decoration_changed) {
+      const ActionSnapshot& before, InteractionResult interaction_result, EditorActionSource source,
+      EventType event_type, bool decoration_changed) {
     const GestureResult& gesture_result = interaction_result.gesture;
-    EditorActionResult result = finishAction(before,
-                                             source,
-                                             interaction_result.handled,
-                                             {},
-                                             interaction_result.needs_redraw,
-                                             decoration_changed);
+    EditorActionResult result = finishAction(before, source, interaction_result.handled, {},
+                                             interaction_result.needs_redraw, decoration_changed);
     result.gesture_type = gesture_result.type;
     result.gesture_event_type = event_type;
     result.tap_point = gesture_result.tap_point;
@@ -3902,16 +4000,15 @@ namespace NS_SWEETEDITOR {
     return result;
   }
 
-  EditorActionResult EditorCore::finishImeAction(const ActionSnapshot& before,
-                                                 const ImeActionResult& ime_result) {
-    EditorActionResult result = finishAction(before,
-                                             EditorActionSource::IME,
-                                             ime_result.handled,
-                                             ime_result.edit_result);
-    result.ime_sync = ime_result.sync;
-    result.needs_ime_sync = result.needs_ime_sync
-        || result.ime_sync.requestsPlatformUpdate();
-    result.needs_redraw = result.needs_redraw || result.composition_changed || result.content_changed;
+  EditorActionResult EditorCore::finishImeAction(const ActionSnapshot& before, const ImeActionResult& ime_result) {
+    EditorActionResult result = finishAction(
+        before, EditorActionSource::IME, ime_result.handled, ime_result.edit_result);
+    if (ime_result.edit_result.editing_content_changed && !result.content_changed) {
+      result.composition_changed = true;
+    }
+    result.ime_host_action = ime_result.host_action;
+    result.ime_state = ime_result.state;
+    result.needs_redraw = result.needs_redraw || result.composition_changed;
     return result;
   }
 
@@ -3920,7 +4017,6 @@ namespace NS_SWEETEDITOR {
     if (m_text_layout_ == nullptr) return;
     m_text_layout_->normalizeViewState(m_view_state_);
   }
-
 
 #pragma endregion
 

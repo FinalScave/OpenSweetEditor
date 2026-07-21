@@ -36,8 +36,14 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  RenderComposer::RenderComposer(TextLayout* text_layout, DecorationManager* decorations, EditorSettings* settings)
-      : m_text_layout_(text_layout), m_decorations_(decorations), m_settings_(settings) {
+  RenderComposer::RenderComposer(TextLayout* text_layout,
+                                 DecorationManager* decorations,
+                                 EditorSettings* settings,
+                                 const CompositionController& composition_controller)
+      : m_text_layout_(text_layout),
+        m_decorations_(decorations),
+        m_settings_(settings),
+        m_composition_controller_(composition_controller) {
   }
 
   void RenderComposer::appendRangeEffectsForRange(EditorRenderModel& model,
@@ -71,24 +77,33 @@ namespace NS_SWEETEDITOR {
     model.current_line = {0, cursor_screen.y};
   }
 
-  void RenderComposer::buildCompositionRangeEffect(EditorRenderModel& model, const CompositionState& composition,
+  void RenderComposer::buildCompositionRangeEffect(EditorRenderModel& model,
+                                                   Document* document,
+                                                   const CompositionState& composition,
                                                    float line_height) const {
-    if (composition.kind == CompositionKind::NONE || composition.preedit_columns == 0) return;
-    if (m_settings_ == nullptr) return;
+    if (m_settings_ == nullptr || document == nullptr) return;
+
+    const TextRange range = composition.current_range.normalized();
+    if (range.isCollapsed()) return;
 
     float font_height = m_text_layout_->getLayoutMetrics().font_height;
     float top_padding = (line_height - font_height) * 0.5f;
-    appendRangeEffectsForRange(model,
-                               composition.start_position.line,
-                               composition.start_position.column,
-                               composition.start_position.column + composition.preedit_columns,
-                               font_height,
-                               top_padding,
-                               RangeEffectKind::IME_COMPOSITION,
-                               m_settings_->range_effect_styles.ime_composition);
-    LOGD("buildRenderModel: composition range effect preedit_cols=%zu, start_pos=(%zu,%zu)",
-         composition.preedit_columns,
-         composition.start_position.line, composition.start_position.column);
+    for (size_t line = range.start.line;
+         line <= range.end.line && line < document->getLineCount();
+         ++line) {
+      const size_t start_column = line == range.start.line ? range.start.column : 0;
+      const size_t end_column = line == range.end.line
+          ? range.end.column
+          : document->getLineColumns(line);
+      appendRangeEffectsForRange(model,
+                                 line,
+                                 start_column,
+                                 end_column,
+                                 font_height,
+                                 top_padding,
+                                 RangeEffectKind::IME_COMPOSITION,
+                                 m_settings_->range_effect_styles.ime_composition);
+    }
   }
 
   void RenderComposer::buildSelectionRangeEffects(EditorRenderModel& model, Document* document,
@@ -204,28 +219,44 @@ namespace NS_SWEETEDITOR {
     collectVisibleRangeEffectSourceLines(model, m_text_layout_, source_lines);
 
     HashSet<uint32_t> emitted_matches;
-    for (size_t source_line : source_lines) {
-      if (source_line >= match_indices_by_line.size()) continue;
+    for (size_t editing_line : source_lines) {
+      const Vector<size_t> committed_lines =
+          m_composition_controller_.committedSourceLinesForEditingLine(editing_line);
+      for (size_t source_line : committed_lines) {
+        if (source_line >= match_indices_by_line.size()) continue;
 
-      for (uint32_t match_index : match_indices_by_line[source_line]) {
-        if (match_index >= matches.size() || !emitted_matches.insert(match_index).second) {
-          continue;
-        }
+        for (uint32_t match_index : match_indices_by_line[source_line]) {
+          if (match_index >= matches.size() || !emitted_matches.insert(match_index).second) {
+            continue;
+          }
 
-        const SearchMatch& match = matches[match_index];
-        const bool is_current = current_index >= 0 && match_index == static_cast<uint32_t>(current_index);
-        const RangeEffectKind kind = is_current ? RangeEffectKind::SEARCH_CURRENT : RangeEffectKind::SEARCH_MATCH;
-        const RangeEffectStyle& style = is_current
-            ? m_settings_->range_effect_styles.search_current
-            : m_settings_->range_effect_styles.search_match;
+          const std::optional<TextRange> projected =
+              m_composition_controller_.projectCommittedRange(matches[match_index].range);
+          if (!projected.has_value()) continue;
+          const bool is_current = current_index >= 0
+              && match_index == static_cast<uint32_t>(current_index);
+          const RangeEffectKind kind = is_current
+              ? RangeEffectKind::SEARCH_CURRENT
+              : RangeEffectKind::SEARCH_MATCH;
+          const RangeEffectStyle& style = is_current
+              ? m_settings_->range_effect_styles.search_current
+              : m_settings_->range_effect_styles.search_match;
 
-        for (size_t line = match.range.start.line; line <= match.range.end.line && line < document->getLineCount(); ++line) {
-          if (source_lines.find(line) == source_lines.end()) continue;
-          size_t col_begin = line == match.range.start.line ? match.range.start.column : 0;
-          size_t col_end = line == match.range.end.line ? match.range.end.column : document->getLineColumns(line);
-          if (col_begin >= col_end) continue;
+          for (size_t line = projected->start.line;
+               line <= projected->end.line && line < document->getLineCount();
+               ++line) {
+            if (source_lines.find(line) == source_lines.end()) continue;
+            const size_t col_begin = line == projected->start.line
+                ? projected->start.column
+                : 0;
+            const size_t col_end = line == projected->end.line
+                ? projected->end.column
+                : document->getLineColumns(line);
+            if (col_begin >= col_end) continue;
 
-          appendRangeEffectsForRange(model, line, col_begin, col_end, line_height, 0.0f, kind, style);
+            appendRangeEffectsForRange(
+                model, line, col_begin, col_end, line_height, 0.0f, kind, style);
+          }
         }
       }
     }
@@ -237,24 +268,34 @@ namespace NS_SWEETEDITOR {
 
     HashSet<size_t> source_lines;
     collectVisibleRangeEffectSourceLines(model, m_text_layout_, source_lines);
-    for (size_t source_line : source_lines) {
-      if (source_line >= document->getLineCount()) continue;
-      const auto& highlights = m_decorations_->getLineDocumentHighlights(source_line);
-      if (highlights.empty()) continue;
-
-      for (const auto& highlight : highlights) {
-        if (highlight.length == 0) continue;
-        const size_t col_begin = highlight.column;
-        const size_t col_end = col_begin + static_cast<size_t>(highlight.length);
-        appendRangeEffectsForRange(model,
-                                   source_line,
-                                   col_begin,
-                                   col_end,
-                                   line_height,
-                                   0.0f,
-                                   RenderStyleUtil::documentHighlightRangeEffectKind(highlight.kind),
-                                   RenderStyleUtil::documentHighlightRangeEffectStyle(m_settings_->range_effect_styles,
-                                                                                      highlight.kind));
+    for (size_t editing_line : source_lines) {
+      const Vector<size_t> committed_lines =
+          m_composition_controller_.committedSourceLinesForEditingLine(editing_line);
+      for (size_t source_line : committed_lines) {
+        const auto& highlights = m_decorations_->getLineDocumentHighlights(source_line);
+        for (const auto& highlight : highlights) {
+          if (highlight.length == 0) continue;
+          const std::optional<TextRange> projected =
+              m_composition_controller_.projectCommittedRange({
+                  {source_line, highlight.column},
+                  {source_line, static_cast<size_t>(highlight.column) + highlight.length}
+              });
+          if (!projected.has_value()
+              || projected->start.line != editing_line
+              || projected->end.line != editing_line) {
+            continue;
+          }
+          appendRangeEffectsForRange(
+              model,
+              editing_line,
+              projected->start.column,
+              projected->end.column,
+              line_height,
+              0.0f,
+              RenderStyleUtil::documentHighlightRangeEffectKind(highlight.kind),
+              RenderStyleUtil::documentHighlightRangeEffectStyle(
+                  m_settings_->range_effect_styles, highlight.kind));
+        }
       }
     }
   }
@@ -267,11 +308,15 @@ namespace NS_SWEETEDITOR {
 
     auto highlights = linked_editing_session->getAllHighlights();
     for (const auto& hl : highlights) {
-      if (hl.range.start == hl.range.end) continue;
-      for (size_t line = hl.range.start.line; line <= hl.range.end.line && line < document->getLineCount(); ++line) {
-        size_t col_begin = (line == hl.range.start.line) ? hl.range.start.column : 0;
+      const std::optional<TextRange> projected =
+          m_composition_controller_.projectCommittedRange(hl.range);
+      if (!projected.has_value() || projected->isCollapsed()) continue;
+      for (size_t line = projected->start.line;
+           line <= projected->end.line && line < document->getLineCount();
+           ++line) {
+        size_t col_begin = line == projected->start.line ? projected->start.column : 0;
         uint32_t line_cols = document->getLineColumns(line);
-        size_t col_end = (line == hl.range.end.line) ? hl.range.end.column : line_cols;
+        size_t col_end = line == projected->end.line ? projected->end.column : line_cols;
         if (col_begin >= col_end) continue;
         const RangeEffectStyle& style = hl.is_active
             ? m_settings_->range_effect_styles.linked_editing_active
@@ -415,22 +460,35 @@ namespace NS_SWEETEDITOR {
     HashSet<size_t> emitted_lines;
     for (const auto& vl : model.lines) {
       if (getVisualLineSemantics(vl.kind).text_semantics != TextSemanticsPolicy::PARTICIPATES) continue;
-      size_t logical_line = vl.logical_line;
-      if (!emitted_lines.insert(logical_line).second) continue;
-      const auto& diags = m_decorations_->getLineDiagnostics(logical_line);
-      if (diags.empty()) continue;
-
-      for (const auto& ds : diags) {
-        if (ds.length == 0) continue;
-        appendRangeEffectsForRange(model,
-                                   logical_line,
-                                   ds.column,
-                                   ds.column + ds.length,
-                                   font_height,
-                                   top_padding,
-                                   RenderStyleUtil::diagnosticRangeEffectKind(ds.severity),
-                                   RenderStyleUtil::diagnosticRangeEffectStyle(m_settings_->range_effect_styles,
-                                                                               ds.severity));
+      const size_t editing_line = vl.logical_line;
+      if (!emitted_lines.insert(editing_line).second) continue;
+      const Vector<size_t> committed_lines =
+          m_composition_controller_.committedSourceLinesForEditingLine(editing_line);
+      for (size_t source_line : committed_lines) {
+        const auto& diags = m_decorations_->getLineDiagnostics(source_line);
+        for (const auto& ds : diags) {
+          if (ds.length == 0) continue;
+          const std::optional<TextRange> projected =
+              m_composition_controller_.projectCommittedRange({
+                  {source_line, ds.column},
+                  {source_line, static_cast<size_t>(ds.column) + ds.length}
+              });
+          if (!projected.has_value()
+              || projected->start.line != editing_line
+              || projected->end.line != editing_line) {
+            continue;
+          }
+          appendRangeEffectsForRange(
+              model,
+              editing_line,
+              projected->start.column,
+              projected->end.column,
+              font_height,
+              top_padding,
+              RenderStyleUtil::diagnosticRangeEffectKind(ds.severity),
+              RenderStyleUtil::diagnosticRangeEffectStyle(
+                  m_settings_->range_effect_styles, ds.severity));
+        }
       }
     }
   }

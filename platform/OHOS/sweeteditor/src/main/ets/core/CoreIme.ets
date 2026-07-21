@@ -1,202 +1,184 @@
-import { TextPosition, TextRange } from './CoreFoundation';
+export enum CaretAffinity {
+  DOWNSTREAM = 0,
+  UPSTREAM = 1,
+}
+
+export function caretAffinityFromValue(value: number): CaretAffinity {
+  switch (value) {
+    case 0: return CaretAffinity.DOWNSTREAM;
+    case 1: return CaretAffinity.UPSTREAM;
+    default: throw new Error('Unknown CaretAffinity value: ' + value);
+  }
+}
 
 export enum ImeCommandKind {
   SET_SELECTION = 0,
-  SET_PREEDIT_TEXT = 1,
-  COMMIT_TEXT = 2,
-  FINISH_PREEDIT = 3,
-  CANCEL_PREEDIT = 4,
-  SET_MARKED_RANGE = 5,
-  CLEAR_MARKED_RANGE = 6,
-  REPLACE_TEXT = 7,
-  DELETE_SURROUNDING_TEXT = 8,
-  SET_KEYBOARD_SCRIPT = 9,
+  BEGIN_COMPOSITION = 1,
+  UPDATE_COMPOSITION = 2,
+  COMMIT_TEXT = 3,
+  FINISH_COMPOSITION = 4,
+  CANCEL_COMPOSITION = 5,
+  DELETE_SURROUNDING = 6,
 }
 
 export function imeCommandKindFromValue(value: number): ImeCommandKind {
   switch (value) {
     case 0: return ImeCommandKind.SET_SELECTION;
-    case 1: return ImeCommandKind.SET_PREEDIT_TEXT;
-    case 2: return ImeCommandKind.COMMIT_TEXT;
-    case 3: return ImeCommandKind.FINISH_PREEDIT;
-    case 4: return ImeCommandKind.CANCEL_PREEDIT;
-    case 5: return ImeCommandKind.SET_MARKED_RANGE;
-    case 6: return ImeCommandKind.CLEAR_MARKED_RANGE;
-    case 7: return ImeCommandKind.REPLACE_TEXT;
-    case 8: return ImeCommandKind.DELETE_SURROUNDING_TEXT;
-    case 9: return ImeCommandKind.SET_KEYBOARD_SCRIPT;
-    default: return ImeCommandKind.SET_SELECTION;
+    case 1: return ImeCommandKind.BEGIN_COMPOSITION;
+    case 2: return ImeCommandKind.UPDATE_COMPOSITION;
+    case 3: return ImeCommandKind.COMMIT_TEXT;
+    case 4: return ImeCommandKind.FINISH_COMPOSITION;
+    case 5: return ImeCommandKind.CANCEL_COMPOSITION;
+    case 6: return ImeCommandKind.DELETE_SURROUNDING;
+    default: throw new Error('Unknown ImeCommandKind value: ' + value);
   }
 }
 
-export enum ImeContextPolicy {
+export enum ImeCoordinateSpace {
+  DOCUMENT = 0,
+  EDITING_BUFFER = 1,
+  CONTEXT_SLICE = 2,
+  COMPOSITION = 3,
+}
+
+export function imeCoordinateSpaceFromValue(value: number): ImeCoordinateSpace {
+  switch (value) {
+    case 0: return ImeCoordinateSpace.DOCUMENT;
+    case 1: return ImeCoordinateSpace.EDITING_BUFFER;
+    case 2: return ImeCoordinateSpace.CONTEXT_SLICE;
+    case 3: return ImeCoordinateSpace.COMPOSITION;
+    default: throw new Error('Unknown ImeCoordinateSpace value: ' + value);
+  }
+}
+
+export enum ImeHostAction {
   NONE = 0,
-  LIMITED_FOR_CANDIDATES = 1,
+  CLOSE_SESSION = 1,
+  RESTART_SESSION = 2,
 }
 
-export function imeContextPolicyFromValue(value: number): ImeContextPolicy {
+export function imeHostActionFromValue(value: number): ImeHostAction {
   switch (value) {
-    case 0: return ImeContextPolicy.NONE;
-    case 1: return ImeContextPolicy.LIMITED_FOR_CANDIDATES;
-    default: return ImeContextPolicy.NONE;
+    case 0: return ImeHostAction.NONE;
+    case 1: return ImeHostAction.CLOSE_SESSION;
+    case 2: return ImeHostAction.RESTART_SESSION;
+    default: throw new Error('Unknown ImeHostAction value: ' + value);
   }
 }
 
-export enum ImeInputContextKind {
-  NONE = 0,
-  SELECTION_ONLY = 1,
-  DOCUMENT_WINDOW = 2,
-  TRANSIENT_INPUT = 3,
+export enum ImeMutationModel {
+  COMMAND = 0,
+  TEXT_UPDATE = 1,
 }
 
-export function imeInputContextKindFromValue(value: number): ImeInputContextKind {
+export function imeMutationModelFromValue(value: number): ImeMutationModel {
   switch (value) {
-    case 0: return ImeInputContextKind.NONE;
-    case 1: return ImeInputContextKind.SELECTION_ONLY;
-    case 2: return ImeInputContextKind.DOCUMENT_WINDOW;
-    case 3: return ImeInputContextKind.TRANSIENT_INPUT;
-    default: return ImeInputContextKind.NONE;
+    case 0: return ImeMutationModel.COMMAND;
+    case 1: return ImeMutationModel.TEXT_UPDATE;
+    default: throw new Error('Unknown ImeMutationModel value: ' + value);
   }
 }
 
-export enum ImeMarkedRangeRole {
-  NONE = 0,
-  PREEDIT = 1,
-  SYSTEM_MARK = 2,
+export enum ImeResultCode {
+  OK = 0,
+  SESSION_MISMATCH = 1,
+  REJECTED = 2,
+  READ_ONLY = 3,
 }
 
-export function imeMarkedRangeRoleFromValue(value: number): ImeMarkedRangeRole {
+export function imeResultCodeFromValue(value: number): ImeResultCode {
   switch (value) {
-    case 0: return ImeMarkedRangeRole.NONE;
-    case 1: return ImeMarkedRangeRole.PREEDIT;
-    case 2: return ImeMarkedRangeRole.SYSTEM_MARK;
-    default: return ImeMarkedRangeRole.NONE;
+    case 0: return ImeResultCode.OK;
+    case 1: return ImeResultCode.SESSION_MISMATCH;
+    case 2: return ImeResultCode.REJECTED;
+    case 3: return ImeResultCode.READ_ONLY;
+    default: throw new Error('Unknown ImeResultCode value: ' + value);
   }
 }
 
-export enum ImeScriptClass {
-  UNKNOWN = 0,
-  LATIN = 1,
-  CJK = 2,
-  KANA = 3,
-  HANGUL = 4,
+export enum ImeTextSource {
+  EDITING = 0,
+  COMMITTED = 1,
+  EDITING_BUFFER = 2,
 }
 
-export function imeScriptClassFromValue(value: number): ImeScriptClass {
+export function imeTextSourceFromValue(value: number): ImeTextSource {
   switch (value) {
-    case 0: return ImeScriptClass.UNKNOWN;
-    case 1: return ImeScriptClass.LATIN;
-    case 2: return ImeScriptClass.CJK;
-    case 3: return ImeScriptClass.KANA;
-    case 4: return ImeScriptClass.HANGUL;
-    default: return ImeScriptClass.UNKNOWN;
+    case 0: return ImeTextSource.EDITING;
+    case 1: return ImeTextSource.COMMITTED;
+    case 2: return ImeTextSource.EDITING_BUFFER;
+    default: throw new Error('Unknown ImeTextSource value: ' + value);
   }
 }
 
 export enum ImeTextUnit {
-  GRAPHEME = 0,
-  CODE_POINT = 1,
+  UTF16_CODE_UNIT = 0,
+  UNICODE_CODE_POINT = 1,
 }
 
 export function imeTextUnitFromValue(value: number): ImeTextUnit {
   switch (value) {
-    case 0: return ImeTextUnit.GRAPHEME;
-    case 1: return ImeTextUnit.CODE_POINT;
-    default: return ImeTextUnit.GRAPHEME;
+    case 0: return ImeTextUnit.UTF16_CODE_UNIT;
+    case 1: return ImeTextUnit.UNICODE_CODE_POINT;
+    default: throw new Error('Unknown ImeTextUnit value: ' + value);
   }
 }
 
-export enum ImeTextUpdateKind {
-  SNAPSHOT = 0,
-  PATCH = 1,
-}
-
-export function imeTextUpdateKindFromValue(value: number): ImeTextUpdateKind {
-  switch (value) {
-    case 0: return ImeTextUpdateKind.SNAPSHOT;
-    case 1: return ImeTextUpdateKind.PATCH;
-    default: return ImeTextUpdateKind.SNAPSHOT;
-  }
-}
-
-export enum ImeTextUpdateScope {
-  DOCUMENT_WINDOW = 0,
-  TRANSIENT_INPUT = 1,
-}
-
-export function imeTextUpdateScopeFromValue(value: number): ImeTextUpdateScope {
-  switch (value) {
-    case 0: return ImeTextUpdateScope.DOCUMENT_WINDOW;
-    case 1: return ImeTextUpdateScope.TRANSIENT_INPUT;
-    default: return ImeTextUpdateScope.DOCUMENT_WINDOW;
-  }
-}
-
-export class ImeCommandMessage {
+export class ImeCommand {
   kind: ImeCommandKind = ImeCommandKind.SET_SELECTION;
-  contextId: number = 0;
-  contextRevision: number = 0;
-  documentStartOffset: number = 0;
-  range: ImeOffsetRange = { start: -1, end: -1 };
-  selection: ImeOffsetRange = { start: -1, end: -1 };
+  targetRange: ImeOffsetRange = { coordinateSpace: ImeCoordinateSpace.DOCUMENT, startUtf16: -1, endUtf16: -1 };
+  selectionAfter: ImeSelection = { coordinateSpace: ImeCoordinateSpace.DOCUMENT, anchorUtf16: -1, activeUtf16: -1, affinity: CaretAffinity.DOWNSTREAM };
   text: string = '';
-  cursorOffset: number = 1;
   deleteBefore: number = 0;
   deleteAfter: number = 0;
-  textUnit: ImeTextUnit = ImeTextUnit.GRAPHEME;
-  markedRole: ImeMarkedRangeRole = ImeMarkedRangeRole.NONE;
-  scriptClass: ImeScriptClass = ImeScriptClass.UNKNOWN;
+  textUnit: ImeTextUnit = ImeTextUnit.UTF16_CODE_UNIT;
 }
 
-export interface ImeInputContext {
-  id: number;
-  revision: number;
-  documentStartOffset: number;
-  text: string;
-  selection: ImeOffsetRange;
-  hasPreeditRange: boolean;
-  preeditRange: ImeOffsetRange;
-  hasSystemMarkRange: boolean;
-  systemMarkRange: ImeOffsetRange;
-  kind: ImeInputContextKind;
-}
-
-export interface ImeMarkedRange {
-  role: ImeMarkedRangeRole;
-  range: ImeOffsetRange;
+export class ImeCommandBatch {
+  sessionId: number = 0;
+  commands: ImeCommand[] = [];
 }
 
 export interface ImeOffsetRange {
-  start: number;
-  end: number;
+  coordinateSpace: ImeCoordinateSpace;
+  startUtf16: number;
+  endUtf16: number;
 }
 
-export interface ImeSyncSnapshot {
-  cursor: TextPosition;
-  selection: TextRange;
-  hasSelection: boolean;
-  hasPreeditRange: boolean;
-  preeditRange: TextRange;
-  hasSystemMarkRange: boolean;
-  systemMarkRange: TextRange;
-  contextPolicy: ImeContextPolicy;
-  clearSystemMark: boolean;
+export interface ImeSelection {
+  coordinateSpace: ImeCoordinateSpace;
+  anchorUtf16: number;
+  activeUtf16: number;
+  affinity: CaretAffinity;
 }
 
-export interface ImeTextPatch {
-  range: ImeOffsetRange;
+export interface ImeState {
+  resultCode: ImeResultCode;
+  sessionId: number;
+  stateRevision: number;
+  selection: ImeSelection;
+  compositionRange: ImeOffsetRange;
+}
+
+export interface ImeTextContext {
+  resultCode: ImeResultCode;
+  sliceStartUtf16: number;
+  totalLengthUtf16: number;
   text: string;
+  selection: ImeSelection;
+  compositionRange: ImeOffsetRange;
 }
 
-export class ImeTextUpdateMessage {
-  kind: ImeTextUpdateKind = ImeTextUpdateKind.SNAPSHOT;
-  scope: ImeTextUpdateScope = ImeTextUpdateScope.DOCUMENT_WINDOW;
-  contextId: number = 0;
-  contextRevision: number = 0;
-  documentStartOffset: number = 0;
-  text: string = '';
-  patch: ImeTextPatch = { range: { start: -1, end: -1 }, text: '' };
-  selection: ImeOffsetRange = { start: -1, end: -1 };
-  markedRange: ImeMarkedRange = { role: ImeMarkedRangeRole.NONE, range: { start: -1, end: -1 } };
-  scriptClass: ImeScriptClass = ImeScriptClass.UNKNOWN;
+export class ImeTextUpdateBatch {
+  sessionId: number = 0;
+  expectedStateRevision: number = 0;
+  steps: ImeTextUpdateStep[] = [];
+}
+
+export class ImeTextUpdateStep {
+  oldText: string = '';
+  patchRange: ImeOffsetRange = { coordinateSpace: ImeCoordinateSpace.DOCUMENT, startUtf16: -1, endUtf16: -1 };
+  replacementText: string = '';
+  selectionAfter: ImeSelection = { coordinateSpace: ImeCoordinateSpace.DOCUMENT, anchorUtf16: -1, activeUtf16: -1, affinity: CaretAffinity.DOWNSTREAM };
+  compositionAfter: ImeOffsetRange = { coordinateSpace: ImeCoordinateSpace.DOCUMENT, startUtf16: -1, endUtf16: -1 };
 }

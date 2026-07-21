@@ -9,6 +9,15 @@
 
 namespace NS_SWEETEDITOR {
   namespace {
+    void appendLineEnding(U8String& text, LineEnding ending) {
+      switch (ending) {
+        case LineEnding::LF: text.push_back('\n'); break;
+        case LineEnding::CR: text.push_back('\r'); break;
+        case LineEnding::CRLF: text.append("\r\n"); break;
+        case LineEnding::NONE: break;
+      }
+    }
+
     // Validate the entire plan before live mutation and return descending indices.
     Vector<size_t> prepareDocumentReplacements(
         Document& document,
@@ -369,7 +378,7 @@ namespace NS_SWEETEDITOR {
         result += u8_sub;
       }
       if (line < r_end.line) {
-        result += "\n";
+        appendLineEnding(result, m_logical_lines_[line].line_ending);
       }
     }
     return result;
@@ -1074,7 +1083,7 @@ namespace NS_SWEETEDITOR {
         result += u8_sub;
       }
       if (line < r_end.line) {
-        result += "\n";
+        appendLineEnding(result, m_logical_lines_[line].line_ending);
       }
     }
     return result;
@@ -1239,4 +1248,3 @@ namespace NS_SWEETEDITOR {
   }
 #pragma endregion
 }
-

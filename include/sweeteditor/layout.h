@@ -52,6 +52,13 @@ namespace NS_SWEETEDITOR {
     uint32_t priority {0};
   };
 
+  struct LineLayoutDecorations {
+    Vector<StyleSpan> spans;
+    Vector<InlayHint> inlay_hints;
+    Vector<PhantomText> phantom_texts;
+    Vector<LinkSpan> links;
+  };
+
   /// Presentation-time state used when materializing the render model.
   /// This context does not affect geometry/layout caches. It only affects
   /// the final visual model emitted to platform renderers.
@@ -159,6 +166,9 @@ namespace NS_SWEETEDITOR {
 
     void setTabSize(uint32_t tab_size);
 
+    void setLineDecorationCollector(
+        std::function<void(size_t, LineLayoutDecorations&)> collector);
+
     uint32_t getTabSize() const;
 
     void layoutLine(size_t index, LogicalLine& logical_line);
@@ -261,6 +271,7 @@ namespace NS_SWEETEDITOR {
     float m_number_width_;
     float m_space_width_;
     uint32_t m_tab_size_ {4};
+    std::function<void(size_t, LineLayoutDecorations&)> m_collect_line_decorations_;
     // Text width measurement cache (key = text + font_style pair)
     struct TextWidthKey {
       U16String text;
@@ -315,7 +326,11 @@ namespace NS_SWEETEDITOR {
     void layoutLineIntoVisualLines(size_t line_index, const U16String& line_text, float start_y,
                             Vector<VisualLine>& out_visual_lines);
     /// Zip-align one line with highlight spans, inlay hints, and phantom texts to build VisualRuns
-    void buildLineRuns(size_t line_index, const U16String& line_text, Vector<VisualRun>& runs);
+    void buildLineRuns(size_t line_index,
+                       const U16String& line_text,
+                       const LineLayoutDecorations& decorations,
+                       Vector<VisualRun>& runs);
+    void collectLineDecorations(size_t line_index, LineLayoutDecorations& decorations) const;
     void cropVisualLineRuns(VisualLine& visual_line, float scroll_x);
     void applyPresentationState(VisualLine& visual_line, const PresentationContext& presentation_context);
     void materializeWhitespaceRuns(VisualLine& visual_line, const PresentationContext& presentation_context);

@@ -86,6 +86,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton mBtnTheme;
     private ImageButton mBtnMore;
     private Spinner mFileSpinner;
+    private ArrayAdapter<String> mFileAdapter;
 
     private boolean mIsDarkTheme = true;
     private WrapMode mWrapModePreset = WrapMode.NONE;
@@ -193,7 +194,7 @@ public class MainActivity extends AppCompatActivity {
         mStatusBar.setTextColor(secondary);
 
         updateStatusBarAppearance();
-        updateSpinnerTheme(fg, bg);
+        updateSpinnerTheme();
     }
 
     private void tintImageButton(ImageButton btn, int color) {
@@ -225,32 +226,32 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void updateSpinnerTheme(int textColor, int bgColor) {
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(this,
-                android.R.layout.simple_spinner_item, mDemoFiles) {
-            @NonNull
-            @Override
-            public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
-                TextView tv = (TextView) super.getView(position, convertView, parent);
-                tv.setTextColor(textColor);
-                tv.setTextSize(13f);
-                return tv;
-            }
+    private void updateSpinnerTheme() {
+        if (mFileAdapter == null) {
+            mFileAdapter = new ArrayAdapter<String>(this,
+                    android.R.layout.simple_spinner_item, mDemoFiles) {
+                @NonNull
+                @Override
+                public View getView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                    TextView tv = (TextView) super.getView(position, convertView, parent);
+                    tv.setTextColor(mIsDarkTheme ? DARK_FG : LIGHT_FG);
+                    tv.setTextSize(13f);
+                    return tv;
+                }
 
-            @Override
-            public View getDropDownView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
-                TextView tv = (TextView) super.getDropDownView(position, convertView, parent);
-                tv.setTextColor(textColor);
-                tv.setBackgroundColor(bgColor);
-                tv.setPadding(24, 20, 24, 20);
-                return tv;
-            }
-        };
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        int currentSelection = mFileSpinner.getSelectedItemPosition();
-        mFileSpinner.setAdapter(adapter);
-        if (currentSelection >= 0 && currentSelection < mDemoFiles.size()) {
-            mFileSpinner.setSelection(currentSelection);
+                @Override
+                public View getDropDownView(int position, @Nullable View convertView, @NonNull ViewGroup parent) {
+                    TextView tv = (TextView) super.getDropDownView(position, convertView, parent);
+                    tv.setTextColor(mIsDarkTheme ? DARK_FG : LIGHT_FG);
+                    tv.setBackgroundColor(mIsDarkTheme ? DARK_BG : LIGHT_BG);
+                    tv.setPadding(24, 20, 24, 20);
+                    return tv;
+                }
+            };
+            mFileAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            mFileSpinner.setAdapter(mFileAdapter);
+        } else {
+            mFileAdapter.notifyDataSetChanged();
         }
     }
 

@@ -44,6 +44,9 @@ namespace NS_SWEETEDITOR {
     bool canUndo() const;
     bool canRedo() const;
 
+    /// Prevent the latest history entry from merging with a later edit.
+    void breakMergeChain();
+
     void clear();
 
     void setMaxStackSize(size_t size);

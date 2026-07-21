@@ -15,7 +15,7 @@ export function searchStatusFromValue(value: number): SearchStatus {
     case 2: return SearchStatus.READY;
     case 3: return SearchStatus.STALE;
     case 4: return SearchStatus.FAILED;
-    default: return SearchStatus.INACTIVE;
+    default: throw new Error('Unknown SearchStatus value: ' + value);
   }
 }
 

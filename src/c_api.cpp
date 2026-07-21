@@ -1332,61 +1332,61 @@ const uint8_t* editor_cancel_linked_editing(intptr_t editor_handle, size_t* out_
 
 #pragma region [IME]
 
-int editor_ime_has_preedit(intptr_t editor_handle) {
+const uint8_t* editor_ime_begin_session(intptr_t editor_handle, int mutation_model,
+                                        size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    return 0;
-  }
-  return editor_core->hasPreedit() ? 1 : 0;
+  if (editor_core == nullptr) return nullBinaryPayload(out_size);
+  return protocolToBinary(
+      editor_core->beginImeSession(static_cast<ImeMutationModel>(mutation_model)),
+      out_size,
+      sizeof(int32_t) * 6 + sizeof(int64_t) * 5);
 }
 
-const uint8_t* editor_ime_handle_command_message(intptr_t editor_handle, const uint8_t* data,
-                                                 size_t size, size_t* out_size) {
+const uint8_t* editor_ime_end_session(intptr_t editor_handle, uint64_t session_id,
+                                      size_t* out_size) {
+  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
+  if (editor_core == nullptr) return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->endImeSession(session_id), out_size);
+}
+
+const uint8_t* editor_ime_apply_commands(intptr_t editor_handle, const uint8_t* data,
+                                         size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     return nullBinaryPayload(out_size);
   }
-  ImeCommandMessage payload;
+  ImeCommandBatch payload;
   if (!protocol::ProtocolReader::decode(data, size, payload)) {
     return nullBinaryPayload(out_size);
   }
-  return editorActionResultToBinary(editor_core->handleImeCommandMessage(payload), out_size);
+  return editorActionResultToBinary(editor_core->applyImeCommands(payload), out_size);
 }
 
-const uint8_t* editor_ime_handle_text_update_message(intptr_t editor_handle, const uint8_t* data,
-                                                     size_t size, size_t* out_size) {
+const uint8_t* editor_ime_apply_text_updates(intptr_t editor_handle, const uint8_t* data,
+                                             size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     return nullBinaryPayload(out_size);
   }
-  ImeTextUpdateMessage payload;
+  ImeTextUpdateBatch payload;
   if (!protocol::ProtocolReader::decode(data, size, payload)) {
     return nullBinaryPayload(out_size);
   }
-  return editorActionResultToBinary(editor_core->handleImeTextUpdateMessage(payload), out_size);
+  return editorActionResultToBinary(editor_core->applyImeTextUpdates(payload), out_size);
 }
 
-int editor_ime_get_keyboard_script_class(intptr_t editor_handle) {
+const uint8_t* editor_ime_get_state(intptr_t editor_handle, uint64_t session_id,
+                                    size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    return static_cast<int>(ImeScriptClass::UNKNOWN);
-  }
-  return static_cast<int>(editor_core->getImeKeyboardScriptClass());
+  if (editor_core == nullptr) return nullBinaryPayload(out_size);
+  return protocolToBinary(editor_core->getImeState(session_id),
+                          out_size,
+                          sizeof(int32_t) * 6 + sizeof(int64_t) * 5);
 }
 
-const uint8_t* editor_ime_get_sync_snapshot(intptr_t editor_handle, size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-  return protocolToBinary(editor_core->getImeSyncSnapshot(), out_size, sizeof(int32_t) * 21);
-}
-
-const uint8_t* editor_ime_get_command_input_context(intptr_t editor_handle, size_t before_length,
-                                                    size_t after_length, size_t* out_size) {
+const uint8_t* editor_ime_get_context(intptr_t editor_handle, uint64_t session_id,
+                                      int source, int64_t start_utf16,
+                                      int64_t length_utf16, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     if (out_size != nullptr) {
@@ -1394,24 +1394,14 @@ const uint8_t* editor_ime_get_command_input_context(intptr_t editor_handle, size
     }
     return nullptr;
   }
-  ImeInputContext context = editor_core->getImeCommandInputContext(before_length, after_length);
-  return protocolToBinary(context, out_size, sizeof(int32_t) * 9 + sizeof(int64_t) + context.text.size());
-}
-
-const uint8_t* editor_ime_get_text_update_input_context(intptr_t editor_handle, int scope,
-                                                        size_t before_length, size_t after_length, size_t* out_size) {
-  SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
-  if (editor_core == nullptr) {
-    if (out_size != nullptr) {
-      *out_size = 0;
-    }
-    return nullptr;
-  }
-  ImeInputContext context = editor_core->getImeTextUpdateInputContext(
-      static_cast<ImeTextUpdateScope>(scope),
-      before_length,
-      after_length);
-  return protocolToBinary(context, out_size, sizeof(int32_t) * 9 + sizeof(int64_t) + context.text.size());
+  ImeTextContext context = editor_core->getImeContext(
+      session_id,
+      static_cast<ImeTextSource>(source),
+      start_utf16,
+      length_utf16);
+  return protocolToBinary(context,
+                          out_size,
+                          sizeof(int32_t) * 6 + sizeof(int64_t) * 6 + context.text.size());
 }
 
 #pragma endregion

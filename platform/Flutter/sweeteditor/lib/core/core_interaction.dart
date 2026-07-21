@@ -41,7 +41,7 @@ enum EventType {
       case 13: return directScroll;
       case 14: return directGestureBegin;
       case 15: return directGestureEnd;
-      default: return undefined;
+      default: throw ArgumentError.value(value, 'value', 'Unknown EventType value');
     }
   }
 }
@@ -71,7 +71,7 @@ enum GestureType {
       case 6: return fastScroll;
       case 7: return dragSelect;
       case 8: return contextMenu;
-      default: return undefined;
+      default: throw ArgumentError.value(value, 'value', 'Unknown GestureType value');
     }
   }
 }
@@ -101,7 +101,7 @@ enum HitTargetType {
       case 6: return gutterIcon;
       case 7: return foldGutter;
       case 8: return foldPlaceholder;
-      default: return none;
+      default: throw ArgumentError.value(value, 'value', 'Unknown HitTargetType value');
     }
   }
 }

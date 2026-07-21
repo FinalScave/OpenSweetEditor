@@ -6,13 +6,13 @@ public enum DiagnosticSeverity: Int32 {
     case DIAG_INFO = 2
     case DIAG_HINT = 3
 
-    public static func fromValue(_ value: Int32) -> DiagnosticSeverity {
+    public static func fromValue(_ value: Int32) -> DiagnosticSeverity? {
         switch value {
         case 0: return .DIAG_ERROR
         case 1: return .DIAG_WARNING
         case 2: return .DIAG_INFO
         case 3: return .DIAG_HINT
-        default: return .DIAG_ERROR
+        default: return nil
         }
     }
 }
@@ -22,12 +22,12 @@ public enum DocumentHighlightKind: Int32 {
     case READ = 1
     case WRITE = 2
 
-    public static func fromValue(_ value: Int32) -> DocumentHighlightKind {
+    public static func fromValue(_ value: Int32) -> DocumentHighlightKind? {
         switch value {
         case 0: return .TEXT
         case 1: return .READ
         case 2: return .WRITE
-        default: return .TEXT
+        default: return nil
         }
     }
 }
@@ -37,12 +37,12 @@ public enum InlayType: Int32 {
     case ICON = 1
     case COLOR = 2
 
-    public static func fromValue(_ value: Int32) -> InlayType {
+    public static func fromValue(_ value: Int32) -> InlayType? {
         switch value {
         case 0: return .TEXT
         case 1: return .ICON
         case 2: return .COLOR
-        default: return .TEXT
+        default: return nil
         }
     }
 }
@@ -51,11 +51,11 @@ public enum SeparatorStyle: Int32 {
     case SINGLE = 0
     case DOUBLE = 1
 
-    public static func fromValue(_ value: Int32) -> SeparatorStyle {
+    public static func fromValue(_ value: Int32) -> SeparatorStyle? {
         switch value {
         case 0: return .SINGLE
         case 1: return .DOUBLE
-        default: return .SINGLE
+        default: return nil
         }
     }
 }
@@ -65,12 +65,12 @@ public enum SpanLayer: Int32 {
     case SEMANTIC = 1
     case OVERLAY = 2
 
-    public static func fromValue(_ value: Int32) -> SpanLayer {
+    public static func fromValue(_ value: Int32) -> SpanLayer? {
         switch value {
         case 0: return .SYNTAX
         case 1: return .SEMANTIC
         case 2: return .OVERLAY
-        default: return .SYNTAX
+        default: return nil
         }
     }
 }

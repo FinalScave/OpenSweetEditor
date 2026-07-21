@@ -44,11 +44,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.qiplat.sweeteditor.EditorSettings;
 import com.qiplat.sweeteditor.SweetEditor;
 import com.qiplat.sweeteditor.core.Document;
-import com.qiplat.sweeteditor.core.EditorCore;
 import com.qiplat.sweeteditor.core.foundation.IntRange;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
-import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
 import com.qiplat.sweeteditor.event.CursorChangedEvent;
 import com.qiplat.sweeteditor.event.SelectionChangedEvent;
 import com.qiplat.sweeteditor.event.TextChangedEvent;
@@ -815,31 +813,7 @@ public class ImeTraceActivity extends AppCompatActivity {
                 json.put("selectionStartOffset", JSONObject.NULL);
                 json.put("selectionEndOffset", JSONObject.NULL);
             }
-            appendCoreSnapshot(json);
             return json;
-        }
-
-        private void appendCoreSnapshot(JSONObject json) throws JSONException {
-            try {
-                Method method = SweetEditor.class.getDeclaredMethod("getEditorCore");
-                method.setAccessible(true);
-                EditorCore core = (EditorCore) method.invoke(this);
-                json.put("keyboardScriptClass", core.getImeKeyboardScriptClass());
-                ImeSyncSnapshot snapshot = core.getImeSyncSnapshot();
-                json.put("hasPreedit", core.hasPreedit());
-                json.put("preeditRange", snapshot.hasPreeditRange ? rangeToJson(snapshot.preeditRange) : JSONObject.NULL);
-                JSONObject sync = new JSONObject();
-                sync.put("cursor", positionToJson(snapshot.cursor));
-                sync.put("selection", rangeToJson(snapshot.selection));
-                sync.put("hasPreeditRange", snapshot.hasPreeditRange);
-                sync.put("preeditRange", rangeToJson(snapshot.preeditRange));
-                sync.put("systemMarkRange", rangeToJson(snapshot.systemMarkRange));
-                sync.put("contextPolicy", snapshot.contextPolicy);
-                sync.put("clearSystemMark", snapshot.clearSystemMark);
-                json.put("imeSync", sync);
-            } catch (ReflectiveOperationException e) {
-                json.put("coreSnapshotError", e.getClass().getSimpleName() + ": " + e.getMessage());
-            }
         }
     }
 

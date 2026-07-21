@@ -4,189 +4,83 @@
 #ifndef SWEETEDITOR_IME_COMPOSITION_H
 #define SWEETEDITOR_IME_COMPOSITION_H
 
+#include <optional>
 #include <sweeteditor/ime_types.h>
 
 namespace NS_SWEETEDITOR {
 
   class EditorCore;
+  class RenderComposer;
 
   class CompositionController {
   public:
     explicit CompositionController(EditorCore& editor);
 
-    ImeActionResult updatePreedit(const U8String& text,
-                                  ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
-    ImeActionResult commitText(const U8String& text,
-                               ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
-    ImeActionResult finishPreedit();
-    ImeActionResult cancelPreedit();
-    ImeActionResult markDocumentRange(const TextRange& range,
-                                       ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
-    ImeActionResult replaceText(const TextRange& range,
-                                const U8String& text,
-                                ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
-    ImeActionResult commitDocumentRangeReplacement(const TextRange& range,
-                                                   const U8String& text,
-                                                   ImeScriptClass script_class = ImeScriptClass::UNKNOWN);
-    ImeActionResult deleteBackward(size_t before_length = 1,
-                                   ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
-    ImeActionResult deleteForward(size_t after_length = 1,
-                                  ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
-    ImeActionResult deleteSurrounding(size_t before_length,
-                                      size_t after_length,
-                                      ImeTextUnit text_unit = ImeTextUnit::GRAPHEME);
-    ImeActionResult notifySelectionChanged(const TextRange& range);
-    ImeActionResult notifyCursorChanged(const TextPosition& cursor);
-    ImeSyncSnapshot buildSyncSnapshot() const;
-
-    TextEditResult setPreeditText(const U8String& text);
-    TextEditResult commitPreeditText(const U8String& committed_text,
-                                       bool empty_text_keeps_preedit = false);
-    void cancelPreeditText();
-    void removePreeditText();
-    void resetCompositionState();
-
-    bool hasPreedit() const;
-    TextRange currentPreeditRange() const;
-    ImeContextPolicy inputContextPolicy() const;
-    const CompositionState& composition() const;
-
-    void setKeyboardScriptClass(ImeScriptClass script_class);
-    ImeScriptClass keyboardScriptClass() const;
-
-    void clearPlainLatinInputLock();
-    void clearCandidateCommitWindow();
+    TextEditResult finishPreedit();
+    TextEditResult cancelPreedit();
 
   private:
-    /// Core-owned IME flow bookkeeping that is not exposed to platform layers.
-    struct FlowState {
-      bool preedit_text_in_document {false};
-      bool preedit_replaces_document_range {false};
-      TextRange preedit_replaced_range;
-      U8String preedit_replaced_text;
-      bool has_candidate_commit_window {false};
-      TextRange candidate_committed_range;
-      U8String candidate_committed_text;
-      bool candidate_deleted_to_prefix {false};
-      bool suppress_candidate_exact_range {false};
-      bool plain_latin_input_lock {false};
-      U8String plain_latin_preedit_text;
-      U8String document_range_end_plain_preedit_text;
-      U8String document_range_end_plain_inserted_text;
+    friend class EditorCore;
+    friend class RenderComposer;
+
+    ImeActionResult applyCommandBatch(const Vector<ImeCommand>& commands);
+    ImeActionResult applyTextUpdatePlan(
+        const Vector<DocumentReplacement>& replacements, const std::optional<TextRange>& composition_after,
+        const std::optional<TextRange>& rollover_baseline, const U8String& composition_text,
+        const CaretState& caret_after, bool finish_after);
+
+    enum class EndpointBias {
+      BEFORE,
+      AFTER,
     };
 
-    struct EditorState {
-      TextPosition cursor;
-      bool has_selection {false};
-      TextRange selection;
+    struct EditTransaction {
+      Vector<DocumentReplacement> physical_replacements;
+      Vector<TextChange> committed_changes;
+      CaretState caret_before;
+      CaretState caret_after;
+      std::optional<size_t> composition_replacement_index;
+      std::optional<U8String> composition_text;
+      std::optional<TextRange> composition_baseline_range;
+      bool update_composition {false};
+      std::optional<CompositionState> composition_after;
+      bool cancel_linked_editing {false};
+      bool break_history_merge {false};
     };
-
-    static ImeScriptClass classifyScriptFromText(const U8String& text);
-    static bool isNonLatinScript(ImeScriptClass script_class);
-    static bool isInlineCandidateText(const U8String& text);
-    EditorState captureEditorState() const;
-    void finishAction(ImeActionResult& result, const EditorState& state) const;
-    static void mergeEditResult(ImeActionResult& result, const TextEditResult& edit_result);
-    void observeKeyboardScriptClass(ImeScriptClass script_class);
-    ImeScriptClass resolveScriptClass(const U8String& text, ImeScriptClass script_class) const;
-
-    bool coreHasDocument() const;
-    bool coreReadOnly() const;
-    bool coreIsLinkedEditingActive() const;
-    TextPosition coreCursor() const;
-    bool coreHasSelection() const;
-    TextRange coreSelection() const;
-    TextRange coreClampDocumentRange(const TextRange& range) const;
-    bool coreIsDocumentRangeReadable(const TextRange& range) const;
-    U8String coreDocumentText(const TextRange& range) const;
-    size_t coreDocumentLineCount() const;
-    uint32_t coreLineColumns(size_t line) const;
-    size_t coreCharIndexFromPosition(const TextPosition& position) const;
-    TextPosition corePositionAfterInsert(const TextPosition& start, const U8String& text) const;
-    TextEditResult coreApplyEdit(const TextRange& range, const U8String& text);
-    TextEditResult coreInsertText(const U8String& text);
-    void coreRecordUndoAction(const TextRange& range,
-                              const U8String& old_text,
-                              const U8String& new_text,
-                              const TextPosition& cursor_before,
-                              const TextPosition& cursor_after,
-                              bool had_selection,
-                              const TextRange& selection_before);
-    void coreDeleteSelectionForComposition();
-    void coreDeleteDocumentRange(const TextRange& range);
-    void coreInsertDocumentText(const TextPosition& position, const U8String& text);
-    TextEditResult coreBackspace();
-    TextEditResult coreDeleteForward();
-    TextEditResult coreDeleteCodePointBackward();
-    TextEditResult coreDeleteCodePointForward();
-    void coreSetCursorPosition(const TextPosition& cursor);
-    void coreSetSelection(const TextRange& range);
-    void coreSetCursorPositionInternal(const TextPosition& cursor);
-    void coreSetSelectionInternal(const TextRange& range);
-    void coreSetRawCursorPosition(const TextPosition& cursor);
-    void coreInvalidateContentMetrics(size_t line);
-    void coreEnsureCursorVisible();
 
     EditorCore& m_editor_;
 
-    FlowState m_flow_;
-    CompositionState m_composition_;
-    ImeScriptClass m_keyboard_script_class_ {ImeScriptClass::UNKNOWN};
+    std::optional<CompositionState>& compositionState();
+    const std::optional<CompositionState>& compositionState() const;
 
-    void setPreeditRange(const TextRange& range);
-    TextEditResult finishPreeditText();
-    TextEditResult applyDocumentRangePlainEdit(const U8String& text);
-    bool canMoveSelectionInsidePreedit(const TextRange& range) const;
-    void beginPlainLatinInputLock(const U8String& preedit_text);
-    void trimPlainLatinInputLock(size_t before_length);
-    bool shouldUsePlainLatinInputLock(const U8String& text,
-                                      ImeScriptClass script_class,
-                                      bool is_commit) const;
-    void openCandidateCommitWindow(const TextRange& range, const U8String& text, bool suppress_exact_range);
-    void markCandidateDeletedToPrefix();
-    void resetFlowPreservingCandidateWindow();
-
-    void beginPreeditText();
-    bool hasMidDocumentRangePreedit(const CompositionState& composition,
-                                        const TextPosition& cursor) const;
-    bool resolveDocumentRangePlainEdit(const CompositionState& composition,
-                                       const TextPosition& cursor,
-                                       const U8String& text,
-                                       TextRange& range,
-                                       U8String& replacement) const;
-    bool hasMidDocumentRangePreedit() const;
-    bool resolveDocumentRangePlainEdit(const U8String& text,
-                                       TextRange& range,
-                                       U8String& replacement) const;
-    bool hasEndDocumentRangePreedit() const;
-    bool resolveDocumentRangeInsertedText(const U8String& text,
-                                          U8String& replacement) const;
-    TextEditResult applyDocumentRangeEndReplacement(const TextRange& range,
-                                                    const U8String& replacement,
-                                                    const U8String& preedit_text,
-                                                    const U8String& inserted_text,
-                                                    bool is_commit);
-    TextEditResult applyDocumentRangeEndPlainEdit(const U8String& text, bool is_commit);
-    TextEditResult applyPlainLatinInputLockEdit(const U8String& text, bool is_commit);
-    bool trySuppressCandidateCommit(const U8String& text);
-    bool trySuppressCandidateMark(const TextRange& range);
-    void updateCandidateWindowAfterDelete();
-    void handleUpdatePreedit(ImeActionResult& result, const U8String& text, ImeScriptClass script_class);
-    void handleCommitText(ImeActionResult& result, const U8String& text, ImeScriptClass script_class);
-    void handleFinishPreedit(ImeActionResult& result);
-    void handleCancelPreedit();
-    void handleMarkDocumentRange(const TextRange& range);
-    void handleDelete(ImeActionResult& result,
-                      size_t before_length,
-                      size_t after_length,
-                      ImeTextUnit text_unit);
-    void handleSelectionChanged(const TextRange& range);
-    void handleCursorChanged(const TextPosition& cursor);
-    bool tryDeleteFromDocumentRangeEnd(ImeActionResult& result,
-                                       size_t before_length,
-                                       size_t after_length,
-                                       ImeTextUnit text_unit);
-    void handleReplaceText(ImeActionResult& result, const TextRange& range, const U8String& text);
+    static U8String logicalizeLineEndings(const U8String& text);
+    static TextChangeKind replacementChangeKind(const TextRange& range, const U8String& text);
+    bool coreHasDocument() const;
+    bool coreReadOnly() const;
+    U8String coreDocumentText(const TextRange& range) const;
+    std::optional<TextRange> projectCommittedRange(const TextRange& range) const;
+    std::optional<TextPosition> projectCommittedAnchor(const TextPosition& position, EndpointBias bias) const;
+    Vector<size_t> committedSourceLinesForEditingLine(size_t editing_line) const;
+    TextPosition corePositionAfterInsert(const TextPosition& start, const U8String& text) const;
+    static TextPosition transformPosition(const TextRange& old_range, const TextPosition& new_end,
+                                          const TextPosition& position, EndpointBias bias);
+    static bool ownsCompositionText(const CompositionState& state);
+    bool hasNonIdentityProjection(const CompositionState& state) const;
+    TextRange baselineRange(const CompositionState& state) const;
+    CaretState transformCaretForChanges(const CaretState& caret, const Vector<TextChange>& changes) const;
+    bool isDocumentRangeValid(const TextRange& range) const;
+    bool validateTransaction(const EditTransaction& transaction) const;
+    void appendLinkedCompositionEdits(const CompositionState& state, const TextRange& baseline_range,
+                                      const U8String& final_text_raw, EditTransaction& transaction);
+    bool linkedRangesAffectedByChanges(const Vector<TextChange>& changes) const;
+    void beginComposition(const TextRange& range, EditTransaction& transaction);
+    void replaceCompositionText(const U8String& text, EditTransaction& transaction);
+    void settleComposition(const U8String& final_text_raw, EditTransaction& transaction,
+                           bool replace_current_text);
+    void cancelComposition(EditTransaction& transaction);
+    TextEditResult commitTransaction(EditTransaction& transaction);
+    Vector<TextRange> deletionRangesForCaret(const CaretState& caret, size_t before_length,
+                                             size_t after_length, ImeTextUnit text_unit) const;
   };
 
 }

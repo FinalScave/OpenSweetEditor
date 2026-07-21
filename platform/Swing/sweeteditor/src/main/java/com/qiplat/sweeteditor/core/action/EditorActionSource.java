@@ -32,7 +32,7 @@ public enum EditorActionSource {
             case 8: return FOLDING;
             case 9: return SEARCH;
             case 10: return LINKED_EDITING;
-            default: return NONE;
+            default: throw new IllegalArgumentException("Unknown EditorActionSource value: " + value);
         }
     }
 }

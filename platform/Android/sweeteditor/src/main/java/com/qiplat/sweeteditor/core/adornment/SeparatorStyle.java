@@ -14,7 +14,7 @@ public enum SeparatorStyle {
         switch (value) {
             case 0: return SINGLE;
             case 1: return DOUBLE;
-            default: return SINGLE;
+            default: throw new IllegalArgumentException("Unknown SeparatorStyle value: " + value);
         }
     }
 }

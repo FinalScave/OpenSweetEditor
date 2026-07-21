@@ -7,14 +7,14 @@ public enum SearchStatus: Int32 {
     case STALE = 3
     case FAILED = 4
 
-    public static func fromValue(_ value: Int32) -> SearchStatus {
+    public static func fromValue(_ value: Int32) -> SearchStatus? {
         switch value {
         case 0: return .INACTIVE
         case 1: return .SEARCHING
         case 2: return .READY
         case 3: return .STALE
         case 4: return .FAILED
-        default: return .INACTIVE
+        default: return nil
         }
     }
 }

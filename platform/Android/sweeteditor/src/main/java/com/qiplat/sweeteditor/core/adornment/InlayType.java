@@ -16,7 +16,7 @@ public enum InlayType {
             case 0: return TEXT;
             case 1: return ICON;
             case 2: return COLOR;
-            default: return TEXT;
+            default: throw new IllegalArgumentException("Unknown InlayType value: " + value);
         }
     }
 }

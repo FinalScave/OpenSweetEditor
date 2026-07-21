@@ -38,7 +38,7 @@ public enum RangeEffectKind {
             case 11: return DIAGNOSTIC_WARNING;
             case 12: return DIAGNOSTIC_INFO;
             case 13: return DIAGNOSTIC_HINT;
-            default: return SELECTION;
+            default: throw new IllegalArgumentException("Unknown RangeEffectKind value: " + value);
         }
     }
 }

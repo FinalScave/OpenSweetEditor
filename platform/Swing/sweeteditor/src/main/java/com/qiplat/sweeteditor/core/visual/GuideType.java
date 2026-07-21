@@ -18,7 +18,7 @@ public enum GuideType {
             case 1: return BRACKET;
             case 2: return FLOW;
             case 3: return SEPARATOR;
-            default: return INDENT;
+            default: throw new IllegalArgumentException("Unknown GuideType value: " + value);
         }
     }
 }

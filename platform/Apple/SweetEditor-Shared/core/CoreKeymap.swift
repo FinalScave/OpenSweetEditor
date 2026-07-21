@@ -37,7 +37,7 @@ public enum EditorBuiltinCommand: Int32 {
     case CUT = 33
     case TRIGGER_COMPLETION = 34
 
-    public static func fromValue(_ value: Int32) -> EditorBuiltinCommand {
+    public static func fromValue(_ value: Int32) -> EditorBuiltinCommand? {
         switch value {
         case 0: return .NONE
         case 1: return .CURSOR_LEFT
@@ -74,7 +74,7 @@ public enum EditorBuiltinCommand: Int32 {
         case 32: return .PASTE
         case 33: return .CUT
         case 34: return .TRIGGER_COMPLETION
-        default: return .NONE
+        default: return nil
         }
     }
 }

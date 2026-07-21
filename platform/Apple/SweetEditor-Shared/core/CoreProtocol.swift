@@ -217,44 +217,44 @@ enum CoreProtocol {
         return WrapMode.fromValue(value)
     }
 
+    static func readCaretAffinity(_ reader: inout BinaryReader) -> CaretAffinity? {
+        guard let value = reader.readInt32() else { return nil }
+        return CaretAffinity.fromValue(value)
+    }
+
     static func readImeCommandKind(_ reader: inout BinaryReader) -> ImeCommandKind? {
         guard let value = reader.readInt32() else { return nil }
         return ImeCommandKind.fromValue(value)
     }
 
-    static func readImeContextPolicy(_ reader: inout BinaryReader) -> ImeContextPolicy? {
+    static func readImeCoordinateSpace(_ reader: inout BinaryReader) -> ImeCoordinateSpace? {
         guard let value = reader.readInt32() else { return nil }
-        return ImeContextPolicy.fromValue(value)
+        return ImeCoordinateSpace.fromValue(value)
     }
 
-    static func readImeInputContextKind(_ reader: inout BinaryReader) -> ImeInputContextKind? {
+    static func readImeHostAction(_ reader: inout BinaryReader) -> ImeHostAction? {
         guard let value = reader.readInt32() else { return nil }
-        return ImeInputContextKind.fromValue(value)
+        return ImeHostAction.fromValue(value)
     }
 
-    static func readImeMarkedRangeRole(_ reader: inout BinaryReader) -> ImeMarkedRangeRole? {
+    static func readImeMutationModel(_ reader: inout BinaryReader) -> ImeMutationModel? {
         guard let value = reader.readInt32() else { return nil }
-        return ImeMarkedRangeRole.fromValue(value)
+        return ImeMutationModel.fromValue(value)
     }
 
-    static func readImeScriptClass(_ reader: inout BinaryReader) -> ImeScriptClass? {
+    static func readImeResultCode(_ reader: inout BinaryReader) -> ImeResultCode? {
         guard let value = reader.readInt32() else { return nil }
-        return ImeScriptClass.fromValue(value)
+        return ImeResultCode.fromValue(value)
+    }
+
+    static func readImeTextSource(_ reader: inout BinaryReader) -> ImeTextSource? {
+        guard let value = reader.readInt32() else { return nil }
+        return ImeTextSource.fromValue(value)
     }
 
     static func readImeTextUnit(_ reader: inout BinaryReader) -> ImeTextUnit? {
         guard let value = reader.readInt32() else { return nil }
         return ImeTextUnit.fromValue(value)
-    }
-
-    static func readImeTextUpdateKind(_ reader: inout BinaryReader) -> ImeTextUpdateKind? {
-        guard let value = reader.readInt32() else { return nil }
-        return ImeTextUpdateKind.fromValue(value)
-    }
-
-    static func readImeTextUpdateScope(_ reader: inout BinaryReader) -> ImeTextUpdateScope? {
-        guard let value = reader.readInt32() else { return nil }
-        return ImeTextUpdateScope.fromValue(value)
     }
 
     static func readEventType(_ reader: inout BinaryReader) -> EventType? {
@@ -458,6 +458,36 @@ enum CoreProtocol {
             values.append(value)
         }
         return values
+    }
+
+    static func writeImeCommandList(_ writer: inout BinaryWriter, _ values: [ImeCommand]) {
+        writer.writeInt32(Int32(values.count))
+        for value in values {
+            writeImeCommand(&writer, value)
+        }
+    }
+
+    static func sizeOfImeCommandList(_ values: [ImeCommand]) -> Int {
+        var size = 4
+        for value in values {
+            size += sizeOfImeCommand(value)
+        }
+        return size
+    }
+
+    static func writeImeTextUpdateStepList(_ writer: inout BinaryWriter, _ values: [ImeTextUpdateStep]) {
+        writer.writeInt32(Int32(values.count))
+        for value in values {
+            writeImeTextUpdateStep(&writer, value)
+        }
+    }
+
+    static func sizeOfImeTextUpdateStepList(_ values: [ImeTextUpdateStep]) -> Int {
+        var size = 4
+        for value in values {
+            size += sizeOfImeTextUpdateStep(value)
+        }
+        return size
     }
 
     static func writeIndentGuideList(_ writer: inout BinaryWriter, _ values: [IndentGuide]) {
@@ -763,7 +793,6 @@ enum CoreProtocol {
         guard let pointer_cursor_changed = reader.readBoolI32() else { return nil }
         guard let composition_changed = reader.readBoolI32() else { return nil }
         guard let decoration_changed = reader.readBoolI32() else { return nil }
-        guard let needs_ime_sync = reader.readBoolI32() else { return nil }
         guard let animation_flags = reader.readInt32() else { return nil }
         guard let next_animation_delay_ms = reader.readInt32() else { return nil }
         guard let interaction_flags = reader.readInt32() else { return nil }
@@ -782,14 +811,15 @@ enum CoreProtocol {
         guard let scale_after = reader.readFloat32() else { return nil }
         guard let pointer_cursor_before = readPointerCursorType(&reader) else { return nil }
         guard let pointer_cursor_after = readPointerCursorType(&reader) else { return nil }
-        guard let ime_sync = readImeSyncSnapshot(&reader) else { return nil }
+        guard let ime_host_action = readImeHostAction(&reader) else { return nil }
+        guard let ime_state = readImeState(&reader) else { return nil }
         guard let gesture_type = readGestureType(&reader) else { return nil }
         guard let gesture_event_type = readEventType(&reader) else { return nil }
         guard let tap_point = readPointF(&reader) else { return nil }
         guard let hit_target = readHitTarget(&reader) else { return nil }
         guard let modifiers = reader.readInt32() else { return nil }
         guard let command = reader.readInt32() else { return nil }
-        return EditorActionResult(handled: handled, needs_redraw: needs_redraw, source: source, text_change_kind: text_change_kind, content_changed: content_changed, cursor_changed: cursor_changed, selection_changed: selection_changed, scroll_changed: scroll_changed, scale_changed: scale_changed, pointer_cursor_changed: pointer_cursor_changed, composition_changed: composition_changed, decoration_changed: decoration_changed, needs_ime_sync: needs_ime_sync, animation_flags: animation_flags, next_animation_delay_ms: next_animation_delay_ms, interaction_flags: interaction_flags, changes: changes, cursor_before: cursor_before, cursor_after: cursor_after, has_selection_before: has_selection_before, has_selection_after: has_selection_after, selection_before: selection_before, selection_after: selection_after, scroll_x_before: scroll_x_before, scroll_y_before: scroll_y_before, scroll_x_after: scroll_x_after, scroll_y_after: scroll_y_after, scale_before: scale_before, scale_after: scale_after, pointer_cursor_before: pointer_cursor_before, pointer_cursor_after: pointer_cursor_after, ime_sync: ime_sync, gesture_type: gesture_type, gesture_event_type: gesture_event_type, tap_point: tap_point, hit_target: hit_target, modifiers: modifiers, command: command)
+        return EditorActionResult(handled: handled, needs_redraw: needs_redraw, source: source, text_change_kind: text_change_kind, content_changed: content_changed, cursor_changed: cursor_changed, selection_changed: selection_changed, scroll_changed: scroll_changed, scale_changed: scale_changed, pointer_cursor_changed: pointer_cursor_changed, composition_changed: composition_changed, decoration_changed: decoration_changed, animation_flags: animation_flags, next_animation_delay_ms: next_animation_delay_ms, interaction_flags: interaction_flags, changes: changes, cursor_before: cursor_before, cursor_after: cursor_after, has_selection_before: has_selection_before, has_selection_after: has_selection_after, selection_before: selection_before, selection_after: selection_after, scroll_x_before: scroll_x_before, scroll_y_before: scroll_y_before, scroll_x_after: scroll_x_after, scroll_y_after: scroll_y_after, scale_before: scale_before, scale_after: scale_after, pointer_cursor_before: pointer_cursor_before, pointer_cursor_after: pointer_cursor_after, ime_host_action: ime_host_action, ime_state: ime_state, gesture_type: gesture_type, gesture_event_type: gesture_event_type, tap_point: tap_point, hit_target: hit_target, modifiers: modifiers, command: command)
     }
 
     static func decodeEditorActionResult(_ data: Data) -> EditorActionResult? {
@@ -1312,81 +1342,34 @@ enum CoreProtocol {
         sizeOfTextPosition(value.start) + sizeOfTextPosition(value.end)
     }
 
-    static func writeImeCommandMessage(_ writer: inout BinaryWriter, _ value: ImeCommandMessage) {
+    static func writeImeCommand(_ writer: inout BinaryWriter, _ value: ImeCommand) {
         writer.writeInt32(value.kind.rawValue)
-        writer.writeInt64(value.context_id)
-        writer.writeInt32(value.context_revision)
-        writer.writeInt32(value.document_start_offset)
-        writeImeOffsetRange(&writer, value.range)
-        writeImeOffsetRange(&writer, value.selection)
+        writeImeOffsetRange(&writer, value.target_range)
+        writeImeSelection(&writer, value.selection_after)
         writer.writeUtf8String(value.text)
-        writer.writeInt32(value.cursor_offset)
-        writer.writeInt32(value.delete_before)
-        writer.writeInt32(value.delete_after)
+        writer.writeInt64(value.delete_before)
+        writer.writeInt64(value.delete_after)
         writer.writeInt32(value.text_unit.rawValue)
-        writer.writeInt32(value.marked_role.rawValue)
-        writer.writeInt32(value.script_class.rawValue)
     }
 
-    static func sizeOfImeCommandMessage(_ value: ImeCommandMessage) -> Int {
-        4 + 8 + 4 + 4 + sizeOfImeOffsetRange(value.range) + sizeOfImeOffsetRange(value.selection) + sizeOfUtf8String(value.text) + 4 + 4 + 4 + 4 + 4 + 4
+    static func sizeOfImeCommand(_ value: ImeCommand) -> Int {
+        4 + sizeOfImeOffsetRange(value.target_range) + sizeOfImeSelection(value.selection_after) + sizeOfUtf8String(value.text) + 8 + 8 + 4
     }
 
-    static func readImeInputContext(_ reader: inout BinaryReader) -> ImeInputContext? {
-        guard let id = reader.readInt64() else { return nil }
-        guard let revision = reader.readInt32() else { return nil }
-        guard let document_start_offset = reader.readInt32() else { return nil }
-        guard let text = reader.readUtf8String() else { return nil }
-        guard let selection = readImeOffsetRange(&reader) else { return nil }
-        guard let has_preedit_range = reader.readBoolI32() else { return nil }
-        guard let preedit_range = readImeOffsetRange(&reader) else { return nil }
-        guard let has_system_mark_range = reader.readBoolI32() else { return nil }
-        guard let system_mark_range = readImeOffsetRange(&reader) else { return nil }
-        guard let kind = readImeInputContextKind(&reader) else { return nil }
-        return ImeInputContext(id: id, revision: revision, document_start_offset: document_start_offset, text: text, selection: selection, has_preedit_range: has_preedit_range, preedit_range: preedit_range, has_system_mark_range: has_system_mark_range, system_mark_range: system_mark_range, kind: kind)
+    static func writeImeCommandBatch(_ writer: inout BinaryWriter, _ value: ImeCommandBatch) {
+        writer.writeInt64(value.session_id)
+        writeImeCommandList(&writer, value.commands)
     }
 
-    static func decodeImeInputContext(_ data: Data) -> ImeInputContext? {
-        return data.withUnsafeBytes { raw in
-            decodeImeInputContext(raw)
-        }
-    }
-
-    static func decodeImeInputContext(_ data: UnsafeRawBufferPointer) -> ImeInputContext? {
-        var reader = BinaryReader(data)
-        return readImeInputContext(&reader)
-    }
-
-    static func readImeMarkedRange(_ reader: inout BinaryReader) -> ImeMarkedRange? {
-        guard let role = readImeMarkedRangeRole(&reader) else { return nil }
-        guard let range = readImeOffsetRange(&reader) else { return nil }
-        return ImeMarkedRange(role: role, range: range)
-    }
-
-    static func decodeImeMarkedRange(_ data: Data) -> ImeMarkedRange? {
-        return data.withUnsafeBytes { raw in
-            decodeImeMarkedRange(raw)
-        }
-    }
-
-    static func decodeImeMarkedRange(_ data: UnsafeRawBufferPointer) -> ImeMarkedRange? {
-        var reader = BinaryReader(data)
-        return readImeMarkedRange(&reader)
-    }
-
-    static func writeImeMarkedRange(_ writer: inout BinaryWriter, _ value: ImeMarkedRange) {
-        writer.writeInt32(value.role.rawValue)
-        writeImeOffsetRange(&writer, value.range)
-    }
-
-    static func sizeOfImeMarkedRange(_ value: ImeMarkedRange) -> Int {
-        4 + sizeOfImeOffsetRange(value.range)
+    static func sizeOfImeCommandBatch(_ value: ImeCommandBatch) -> Int {
+        8 + sizeOfImeCommandList(value.commands)
     }
 
     static func readImeOffsetRange(_ reader: inout BinaryReader) -> ImeOffsetRange? {
-        guard let start = reader.readInt32() else { return nil }
-        guard let end = reader.readInt32() else { return nil }
-        return ImeOffsetRange(start: start, end: end)
+        guard let coordinate_space = readImeCoordinateSpace(&reader) else { return nil }
+        guard let start_utf16 = reader.readInt64() else { return nil }
+        guard let end_utf16 = reader.readInt64() else { return nil }
+        return ImeOffsetRange(coordinate_space: coordinate_space, start_utf16: start_utf16, end_utf16: end_utf16)
     }
 
     static func decodeImeOffsetRange(_ data: Data) -> ImeOffsetRange? {
@@ -1401,79 +1384,106 @@ enum CoreProtocol {
     }
 
     static func writeImeOffsetRange(_ writer: inout BinaryWriter, _ value: ImeOffsetRange) {
-        writer.writeInt32(value.start)
-        writer.writeInt32(value.end)
+        writer.writeInt32(value.coordinate_space.rawValue)
+        writer.writeInt64(value.start_utf16)
+        writer.writeInt64(value.end_utf16)
     }
 
     static func sizeOfImeOffsetRange(_ value: ImeOffsetRange) -> Int {
-        4 + 4
+        4 + 8 + 8
     }
 
-    static func readImeSyncSnapshot(_ reader: inout BinaryReader) -> ImeSyncSnapshot? {
-        guard let cursor = readTextPosition(&reader) else { return nil }
-        guard let selection = readTextRange(&reader) else { return nil }
-        guard let has_selection = reader.readBoolI32() else { return nil }
-        guard let has_preedit_range = reader.readBoolI32() else { return nil }
-        guard let preedit_range = readTextRange(&reader) else { return nil }
-        guard let has_system_mark_range = reader.readBoolI32() else { return nil }
-        guard let system_mark_range = readTextRange(&reader) else { return nil }
-        guard let context_policy = readImeContextPolicy(&reader) else { return nil }
-        guard let clear_system_mark = reader.readBoolI32() else { return nil }
-        return ImeSyncSnapshot(cursor: cursor, selection: selection, has_selection: has_selection, has_preedit_range: has_preedit_range, preedit_range: preedit_range, has_system_mark_range: has_system_mark_range, system_mark_range: system_mark_range, context_policy: context_policy, clear_system_mark: clear_system_mark)
+    static func readImeSelection(_ reader: inout BinaryReader) -> ImeSelection? {
+        guard let coordinate_space = readImeCoordinateSpace(&reader) else { return nil }
+        guard let anchor_utf16 = reader.readInt64() else { return nil }
+        guard let active_utf16 = reader.readInt64() else { return nil }
+        guard let affinity = readCaretAffinity(&reader) else { return nil }
+        return ImeSelection(coordinate_space: coordinate_space, anchor_utf16: anchor_utf16, active_utf16: active_utf16, affinity: affinity)
     }
 
-    static func decodeImeSyncSnapshot(_ data: Data) -> ImeSyncSnapshot? {
+    static func decodeImeSelection(_ data: Data) -> ImeSelection? {
         return data.withUnsafeBytes { raw in
-            decodeImeSyncSnapshot(raw)
+            decodeImeSelection(raw)
         }
     }
 
-    static func decodeImeSyncSnapshot(_ data: UnsafeRawBufferPointer) -> ImeSyncSnapshot? {
+    static func decodeImeSelection(_ data: UnsafeRawBufferPointer) -> ImeSelection? {
         var reader = BinaryReader(data)
-        return readImeSyncSnapshot(&reader)
+        return readImeSelection(&reader)
     }
 
-    static func readImeTextPatch(_ reader: inout BinaryReader) -> ImeTextPatch? {
-        guard let range = readImeOffsetRange(&reader) else { return nil }
+    static func writeImeSelection(_ writer: inout BinaryWriter, _ value: ImeSelection) {
+        writer.writeInt32(value.coordinate_space.rawValue)
+        writer.writeInt64(value.anchor_utf16)
+        writer.writeInt64(value.active_utf16)
+        writer.writeInt32(value.affinity.rawValue)
+    }
+
+    static func sizeOfImeSelection(_ value: ImeSelection) -> Int {
+        4 + 8 + 8 + 4
+    }
+
+    static func readImeState(_ reader: inout BinaryReader) -> ImeState? {
+        guard let result_code = readImeResultCode(&reader) else { return nil }
+        guard let session_id = reader.readInt64() else { return nil }
+        guard let state_revision = reader.readInt64() else { return nil }
+        guard let selection = readImeSelection(&reader) else { return nil }
+        guard let composition_range = readImeOffsetRange(&reader) else { return nil }
+        return ImeState(result_code: result_code, session_id: session_id, state_revision: state_revision, selection: selection, composition_range: composition_range)
+    }
+
+    static func decodeImeState(_ data: Data) -> ImeState? {
+        return data.withUnsafeBytes { raw in
+            decodeImeState(raw)
+        }
+    }
+
+    static func decodeImeState(_ data: UnsafeRawBufferPointer) -> ImeState? {
+        var reader = BinaryReader(data)
+        return readImeState(&reader)
+    }
+
+    static func readImeTextContext(_ reader: inout BinaryReader) -> ImeTextContext? {
+        guard let result_code = readImeResultCode(&reader) else { return nil }
+        guard let slice_start_utf16 = reader.readInt64() else { return nil }
+        guard let total_length_utf16 = reader.readInt64() else { return nil }
         guard let text = reader.readUtf8String() else { return nil }
-        return ImeTextPatch(range: range, text: text)
+        guard let selection = readImeSelection(&reader) else { return nil }
+        guard let composition_range = readImeOffsetRange(&reader) else { return nil }
+        return ImeTextContext(result_code: result_code, slice_start_utf16: slice_start_utf16, total_length_utf16: total_length_utf16, text: text, selection: selection, composition_range: composition_range)
     }
 
-    static func decodeImeTextPatch(_ data: Data) -> ImeTextPatch? {
+    static func decodeImeTextContext(_ data: Data) -> ImeTextContext? {
         return data.withUnsafeBytes { raw in
-            decodeImeTextPatch(raw)
+            decodeImeTextContext(raw)
         }
     }
 
-    static func decodeImeTextPatch(_ data: UnsafeRawBufferPointer) -> ImeTextPatch? {
+    static func decodeImeTextContext(_ data: UnsafeRawBufferPointer) -> ImeTextContext? {
         var reader = BinaryReader(data)
-        return readImeTextPatch(&reader)
+        return readImeTextContext(&reader)
     }
 
-    static func writeImeTextPatch(_ writer: inout BinaryWriter, _ value: ImeTextPatch) {
-        writeImeOffsetRange(&writer, value.range)
-        writer.writeUtf8String(value.text)
+    static func writeImeTextUpdateBatch(_ writer: inout BinaryWriter, _ value: ImeTextUpdateBatch) {
+        writer.writeInt64(value.session_id)
+        writer.writeInt64(value.expected_state_revision)
+        writeImeTextUpdateStepList(&writer, value.steps)
     }
 
-    static func sizeOfImeTextPatch(_ value: ImeTextPatch) -> Int {
-        sizeOfImeOffsetRange(value.range) + sizeOfUtf8String(value.text)
+    static func sizeOfImeTextUpdateBatch(_ value: ImeTextUpdateBatch) -> Int {
+        8 + 8 + sizeOfImeTextUpdateStepList(value.steps)
     }
 
-    static func writeImeTextUpdateMessage(_ writer: inout BinaryWriter, _ value: ImeTextUpdateMessage) {
-        writer.writeInt32(value.kind.rawValue)
-        writer.writeInt32(value.scope.rawValue)
-        writer.writeInt64(value.context_id)
-        writer.writeInt32(value.context_revision)
-        writer.writeInt32(value.document_start_offset)
-        writer.writeUtf8String(value.text)
-        writeImeTextPatch(&writer, value.patch)
-        writeImeOffsetRange(&writer, value.selection)
-        writeImeMarkedRange(&writer, value.marked_range)
-        writer.writeInt32(value.script_class.rawValue)
+    static func writeImeTextUpdateStep(_ writer: inout BinaryWriter, _ value: ImeTextUpdateStep) {
+        writer.writeUtf8String(value.old_text)
+        writeImeOffsetRange(&writer, value.patch_range)
+        writer.writeUtf8String(value.replacement_text)
+        writeImeSelection(&writer, value.selection_after)
+        writeImeOffsetRange(&writer, value.composition_after)
     }
 
-    static func sizeOfImeTextUpdateMessage(_ value: ImeTextUpdateMessage) -> Int {
-        4 + 4 + 8 + 4 + 4 + sizeOfUtf8String(value.text) + sizeOfImeTextPatch(value.patch) + sizeOfImeOffsetRange(value.selection) + sizeOfImeMarkedRange(value.marked_range) + 4
+    static func sizeOfImeTextUpdateStep(_ value: ImeTextUpdateStep) -> Int {
+        sizeOfUtf8String(value.old_text) + sizeOfImeOffsetRange(value.patch_range) + sizeOfUtf8String(value.replacement_text) + sizeOfImeSelection(value.selection_after) + sizeOfImeOffsetRange(value.composition_after)
     }
 
     static func writeGestureEvent(_ writer: inout BinaryWriter, _ value: GestureEvent) {
@@ -2526,15 +2536,27 @@ enum CoreProtocol {
         return writer.data()
     }
 
-    static func encodeImeCommandMessage(_ value: ImeCommandMessage) -> Data {
+    static func encodeImeCommand(_ value: ImeCommand) -> Data {
         var writer = BinaryWriter()
-        writeImeCommandMessage(&writer, value)
+        writeImeCommand(&writer, value)
         return writer.data()
     }
 
-    static func encodeImeTextUpdateMessage(_ value: ImeTextUpdateMessage) -> Data {
+    static func encodeImeCommandBatch(_ value: ImeCommandBatch) -> Data {
         var writer = BinaryWriter()
-        writeImeTextUpdateMessage(&writer, value)
+        writeImeCommandBatch(&writer, value)
+        return writer.data()
+    }
+
+    static func encodeImeTextUpdateBatch(_ value: ImeTextUpdateBatch) -> Data {
+        var writer = BinaryWriter()
+        writeImeTextUpdateBatch(&writer, value)
+        return writer.data()
+    }
+
+    static func encodeImeTextUpdateStep(_ value: ImeTextUpdateStep) -> Data {
+        var writer = BinaryWriter()
+        writeImeTextUpdateStep(&writer, value)
         return writer.data()
     }
 

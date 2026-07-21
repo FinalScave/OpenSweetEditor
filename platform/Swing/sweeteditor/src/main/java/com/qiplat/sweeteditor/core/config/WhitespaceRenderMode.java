@@ -20,7 +20,7 @@ public enum WhitespaceRenderMode {
             case 2: return SELECTION;
             case 3: return TRAILING;
             case 4: return ALL;
-            default: return NONE;
+            default: throw new IllegalArgumentException("Unknown WhitespaceRenderMode value: " + value);
         }
     }
 }

@@ -48,21 +48,22 @@ import com.qiplat.sweeteditor.core.foundation.TextChange;
 import com.qiplat.sweeteditor.core.foundation.TextEdit;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
+import com.qiplat.sweeteditor.core.ime.CaretAffinity;
+import com.qiplat.sweeteditor.core.ime.ImeCommand;
+import com.qiplat.sweeteditor.core.ime.ImeCommandBatch;
 import com.qiplat.sweeteditor.core.ime.ImeCommandKind;
-import com.qiplat.sweeteditor.core.ime.ImeCommandMessage;
-import com.qiplat.sweeteditor.core.ime.ImeContextPolicy;
-import com.qiplat.sweeteditor.core.ime.ImeInputContext;
-import com.qiplat.sweeteditor.core.ime.ImeInputContextKind;
-import com.qiplat.sweeteditor.core.ime.ImeMarkedRange;
-import com.qiplat.sweeteditor.core.ime.ImeMarkedRangeRole;
+import com.qiplat.sweeteditor.core.ime.ImeCoordinateSpace;
+import com.qiplat.sweeteditor.core.ime.ImeHostAction;
+import com.qiplat.sweeteditor.core.ime.ImeMutationModel;
 import com.qiplat.sweeteditor.core.ime.ImeOffsetRange;
-import com.qiplat.sweeteditor.core.ime.ImeScriptClass;
-import com.qiplat.sweeteditor.core.ime.ImeSyncSnapshot;
-import com.qiplat.sweeteditor.core.ime.ImeTextPatch;
+import com.qiplat.sweeteditor.core.ime.ImeResultCode;
+import com.qiplat.sweeteditor.core.ime.ImeSelection;
+import com.qiplat.sweeteditor.core.ime.ImeState;
+import com.qiplat.sweeteditor.core.ime.ImeTextContext;
+import com.qiplat.sweeteditor.core.ime.ImeTextSource;
 import com.qiplat.sweeteditor.core.ime.ImeTextUnit;
-import com.qiplat.sweeteditor.core.ime.ImeTextUpdateKind;
-import com.qiplat.sweeteditor.core.ime.ImeTextUpdateMessage;
-import com.qiplat.sweeteditor.core.ime.ImeTextUpdateScope;
+import com.qiplat.sweeteditor.core.ime.ImeTextUpdateBatch;
+import com.qiplat.sweeteditor.core.ime.ImeTextUpdateStep;
 import com.qiplat.sweeteditor.core.interaction.EventType;
 import com.qiplat.sweeteditor.core.interaction.GestureEvent;
 import com.qiplat.sweeteditor.core.interaction.GestureType;
@@ -311,6 +312,42 @@ public final class CoreProtocol {
             values.add(readGutterIconRenderItem(data));
         }
         return values;
+    }
+
+    private static void writeImeCommandList(ByteBuffer data, java.util.List<? extends ImeCommand> values) {
+        int count = values == null ? 0 : values.size();
+        data.putInt(count);
+        for (int i = 0; i < count; i++) {
+            writeImeCommandFields(data, values.get(i));
+        }
+    }
+
+    private static int sizeOfImeCommandList(java.util.List<? extends ImeCommand> values) {
+        int size = 4;
+        if (values != null) {
+            for (int i = 0; i < values.size(); i++) {
+                size += sizeOfImeCommand(values.get(i));
+            }
+        }
+        return size;
+    }
+
+    private static void writeImeTextUpdateStepList(ByteBuffer data, java.util.List<? extends ImeTextUpdateStep> values) {
+        int count = values == null ? 0 : values.size();
+        data.putInt(count);
+        for (int i = 0; i < count; i++) {
+            writeImeTextUpdateStepFields(data, values.get(i));
+        }
+    }
+
+    private static int sizeOfImeTextUpdateStepList(java.util.List<? extends ImeTextUpdateStep> values) {
+        int size = 4;
+        if (values != null) {
+            for (int i = 0; i < values.size(); i++) {
+                size += sizeOfImeTextUpdateStep(values.get(i));
+            }
+        }
+        return size;
     }
 
     private static void writeIndentGuideList(ByteBuffer data, java.util.List<? extends IndentGuide> values) {
@@ -663,7 +700,6 @@ public final class CoreProtocol {
         value.pointerCursorChanged = data.getInt() != 0;
         value.compositionChanged = data.getInt() != 0;
         value.decorationChanged = data.getInt() != 0;
-        value.needsImeSync = data.getInt() != 0;
         value.animationFlags = data.getInt();
         value.nextAnimationDelayMs = data.getInt();
         value.interactionFlags = data.getInt();
@@ -682,7 +718,8 @@ public final class CoreProtocol {
         value.scaleAfter = data.getFloat();
         value.pointerCursorBefore = PointerCursorType.fromValue(data.getInt());
         value.pointerCursorAfter = PointerCursorType.fromValue(data.getInt());
-        value.imeSync = readImeSyncSnapshot(data);
+        value.imeHostAction = ImeHostAction.fromValue(data.getInt());
+        value.imeState = readImeState(data);
         value.gestureType = GestureType.fromValue(data.getInt());
         value.gestureEventType = EventType.fromValue(data.getInt());
         value.tapPoint = readPointF(data);
@@ -1415,98 +1452,55 @@ public final class CoreProtocol {
         return size;
     }
 
-    private static void writeImeCommandMessageFields(ByteBuffer data, ImeCommandMessage value) {
+    private static void writeImeCommandFields(ByteBuffer data, ImeCommand value) {
         data.putInt(value.kind.value);
-        data.putLong(value.contextId);
-        data.putInt(value.contextRevision);
-        data.putInt(value.documentStartOffset);
-        writeImeOffsetRangeFields(data, value.range);
-        writeImeOffsetRangeFields(data, value.selection);
+        writeImeOffsetRangeFields(data, value.targetRange);
+        writeImeSelectionFields(data, value.selectionAfter);
         writeUtf8String(data, value.text);
-        data.putInt(value.cursorOffset);
-        data.putInt(value.deleteBefore);
-        data.putInt(value.deleteAfter);
+        data.putLong(value.deleteBefore);
+        data.putLong(value.deleteAfter);
         data.putInt(value.textUnit.value);
-        data.putInt(value.markedRole.value);
-        data.putInt(value.scriptClass.value);
     }
 
-    public static void writeImeCommandMessage(ByteBuffer data, ImeCommandMessage value) {
+    public static void writeImeCommand(ByteBuffer data, ImeCommand value) {
         prepare(data);
-        writeImeCommandMessageFields(data, value);
+        writeImeCommandFields(data, value);
     }
 
-    public static int sizeOfImeCommandMessage(ImeCommandMessage value) {
+    public static int sizeOfImeCommand(ImeCommand value) {
         int size = 0;
         size += 4;
-        size += 8;
-        size += 4;
-        size += 4;
-        size += sizeOfImeOffsetRange(value.range);
-        size += sizeOfImeOffsetRange(value.selection);
+        size += sizeOfImeOffsetRange(value.targetRange);
+        size += sizeOfImeSelection(value.selectionAfter);
         size += sizeOfUtf8String(value.text);
-        size += 4;
-        size += 4;
-        size += 4;
-        size += 4;
-        size += 4;
+        size += 8;
+        size += 8;
         size += 4;
         return size;
     }
 
-    private static ImeInputContext readImeInputContext(ByteBuffer data) {
-        ImeInputContext value = new ImeInputContext();
-        value.id = data.getLong();
-        value.revision = data.getInt();
-        value.documentStartOffset = data.getInt();
-        value.text = readUtf8String(data);
-        value.selection = readImeOffsetRange(data);
-        value.hasPreeditRange = data.getInt() != 0;
-        value.preeditRange = readImeOffsetRange(data);
-        value.hasSystemMarkRange = data.getInt() != 0;
-        value.systemMarkRange = readImeOffsetRange(data);
-        value.kind = ImeInputContextKind.fromValue(data.getInt());
-        return value;
+    private static void writeImeCommandBatchFields(ByteBuffer data, ImeCommandBatch value) {
+        data.putLong(value.sessionId);
+        writeImeCommandList(data, value.commands);
     }
 
-    public static ImeInputContext decodeImeInputContext(ByteBuffer data) {
+    public static void writeImeCommandBatch(ByteBuffer data, ImeCommandBatch value) {
         prepare(data);
-        return readImeInputContext(data);
+        writeImeCommandBatchFields(data, value);
     }
 
-    private static ImeMarkedRange readImeMarkedRange(ByteBuffer data) {
-        ImeMarkedRange value = new ImeMarkedRange();
-        value.role = ImeMarkedRangeRole.fromValue(data.getInt());
-        value.range = readImeOffsetRange(data);
-        return value;
-    }
-
-    public static ImeMarkedRange decodeImeMarkedRange(ByteBuffer data) {
-        prepare(data);
-        return readImeMarkedRange(data);
-    }
-
-    private static void writeImeMarkedRangeFields(ByteBuffer data, ImeMarkedRange value) {
-        data.putInt(value.role.value);
-        writeImeOffsetRangeFields(data, value.range);
-    }
-
-    public static void writeImeMarkedRange(ByteBuffer data, ImeMarkedRange value) {
-        prepare(data);
-        writeImeMarkedRangeFields(data, value);
-    }
-
-    public static int sizeOfImeMarkedRange(ImeMarkedRange value) {
+    public static int sizeOfImeCommandBatch(ImeCommandBatch value) {
         int size = 0;
-        size += 4;
-        size += sizeOfImeOffsetRange(value.range);
+        size += 8;
+        size += sizeOfImeCommandList(value.commands);
         return size;
     }
 
     private static ImeOffsetRange readImeOffsetRange(ByteBuffer data) {
         ImeOffsetRange value = new ImeOffsetRange();
-        value.start = data.getInt();
-        value.end = data.getInt();
+        value.coordinateSpace = ImeCoordinateSpace.fromValue(data.getInt());
+        value.startUtf16 = data.getLong();
+        value.endUtf16 = data.getLong();
         return value;
     }
 
@@ -1516,8 +1510,9 @@ public final class CoreProtocol {
     }
 
     private static void writeImeOffsetRangeFields(ByteBuffer data, ImeOffsetRange value) {
-        data.putInt(value.start);
-        data.putInt(value.end);
+        data.putInt(value.coordinateSpace.value);
+        data.putLong(value.startUtf16);
+        data.putLong(value.endUtf16);
     }
 
     public static void writeImeOffsetRange(ByteBuffer data, ImeOffsetRange value) {
@@ -1528,88 +1523,116 @@ public final class CoreProtocol {
     public static int sizeOfImeOffsetRange(ImeOffsetRange value) {
         int size = 0;
         size += 4;
-        size += 4;
+        size += 8;
+        size += 8;
         return size;
     }
 
-    private static ImeSyncSnapshot readImeSyncSnapshot(ByteBuffer data) {
-        ImeSyncSnapshot value = new ImeSyncSnapshot();
-        value.cursor = readTextPosition(data);
-        value.selection = readTextRange(data);
-        value.hasSelection = data.getInt() != 0;
-        value.hasPreeditRange = data.getInt() != 0;
-        value.preeditRange = readTextRange(data);
-        value.hasSystemMarkRange = data.getInt() != 0;
-        value.systemMarkRange = readTextRange(data);
-        value.contextPolicy = ImeContextPolicy.fromValue(data.getInt());
-        value.clearSystemMark = data.getInt() != 0;
+    private static ImeSelection readImeSelection(ByteBuffer data) {
+        ImeSelection value = new ImeSelection();
+        value.coordinateSpace = ImeCoordinateSpace.fromValue(data.getInt());
+        value.anchorUtf16 = data.getLong();
+        value.activeUtf16 = data.getLong();
+        value.affinity = CaretAffinity.fromValue(data.getInt());
         return value;
     }
 
-    public static ImeSyncSnapshot decodeImeSyncSnapshot(ByteBuffer data) {
+    public static ImeSelection decodeImeSelection(ByteBuffer data) {
         prepare(data);
-        return readImeSyncSnapshot(data);
+        return readImeSelection(data);
     }
 
-    private static ImeTextPatch readImeTextPatch(ByteBuffer data) {
-        ImeTextPatch value = new ImeTextPatch();
-        value.range = readImeOffsetRange(data);
-        value.text = readUtf8String(data);
-        return value;
+    private static void writeImeSelectionFields(ByteBuffer data, ImeSelection value) {
+        data.putInt(value.coordinateSpace.value);
+        data.putLong(value.anchorUtf16);
+        data.putLong(value.activeUtf16);
+        data.putInt(value.affinity.value);
     }
 
-    public static ImeTextPatch decodeImeTextPatch(ByteBuffer data) {
+    public static void writeImeSelection(ByteBuffer data, ImeSelection value) {
         prepare(data);
-        return readImeTextPatch(data);
+        writeImeSelectionFields(data, value);
     }
 
-    private static void writeImeTextPatchFields(ByteBuffer data, ImeTextPatch value) {
-        writeImeOffsetRangeFields(data, value.range);
-        writeUtf8String(data, value.text);
-    }
-
-    public static void writeImeTextPatch(ByteBuffer data, ImeTextPatch value) {
-        prepare(data);
-        writeImeTextPatchFields(data, value);
-    }
-
-    public static int sizeOfImeTextPatch(ImeTextPatch value) {
+    public static int sizeOfImeSelection(ImeSelection value) {
         int size = 0;
-        size += sizeOfImeOffsetRange(value.range);
-        size += sizeOfUtf8String(value.text);
-        return size;
-    }
-
-    private static void writeImeTextUpdateMessageFields(ByteBuffer data, ImeTextUpdateMessage value) {
-        data.putInt(value.kind.value);
-        data.putInt(value.scope.value);
-        data.putLong(value.contextId);
-        data.putInt(value.contextRevision);
-        data.putInt(value.documentStartOffset);
-        writeUtf8String(data, value.text);
-        writeImeTextPatchFields(data, value.patch);
-        writeImeOffsetRangeFields(data, value.selection);
-        writeImeMarkedRangeFields(data, value.markedRange);
-        data.putInt(value.scriptClass.value);
-    }
-
-    public static void writeImeTextUpdateMessage(ByteBuffer data, ImeTextUpdateMessage value) {
-        prepare(data);
-        writeImeTextUpdateMessageFields(data, value);
-    }
-
-    public static int sizeOfImeTextUpdateMessage(ImeTextUpdateMessage value) {
-        int size = 0;
-        size += 4;
         size += 4;
         size += 8;
+        size += 8;
         size += 4;
-        size += 4;
-        size += sizeOfUtf8String(value.text);
-        size += sizeOfImeTextPatch(value.patch);
-        size += sizeOfImeOffsetRange(value.selection);
-        size += sizeOfImeMarkedRange(value.markedRange);
-        size += 4;
+        return size;
+    }
+
+    private static ImeState readImeState(ByteBuffer data) {
+        ImeState value = new ImeState();
+        value.resultCode = ImeResultCode.fromValue(data.getInt());
+        value.sessionId = data.getLong();
+        value.stateRevision = data.getLong();
+        value.selection = readImeSelection(data);
+        value.compositionRange = readImeOffsetRange(data);
+        return value;
+    }
+
+    public static ImeState decodeImeState(ByteBuffer data) {
+        prepare(data);
+        return readImeState(data);
+    }
+
+    private static ImeTextContext readImeTextContext(ByteBuffer data) {
+        ImeTextContext value = new ImeTextContext();
+        value.resultCode = ImeResultCode.fromValue(data.getInt());
+        value.sliceStartUtf16 = data.getLong();
+        value.totalLengthUtf16 = data.getLong();
+        value.text = readUtf8String(data);
+        value.selection = readImeSelection(data);
+        value.compositionRange = readImeOffsetRange(data);
+        return value;
+    }
+
+    public static ImeTextContext decodeImeTextContext(ByteBuffer data) {
+        prepare(data);
+        return readImeTextContext(data);
+    }
+
+    private static void writeImeTextUpdateBatchFields(ByteBuffer data, ImeTextUpdateBatch value) {
+        data.putLong(value.sessionId);
+        data.putLong(value.expectedStateRevision);
+        writeImeTextUpdateStepList(data, value.steps);
+    }
+
+    public static void writeImeTextUpdateBatch(ByteBuffer data, ImeTextUpdateBatch value) {
+        prepare(data);
+        writeImeTextUpdateBatchFields(data, value);
+    }
+
+    public static int sizeOfImeTextUpdateBatch(ImeTextUpdateBatch value) {
+        int size = 0;
+        size += 8;
+        size += 8;
+        size += sizeOfImeTextUpdateStepList(value.steps);
+        return size;
+    }
+
+    private static void writeImeTextUpdateStepFields(ByteBuffer data, ImeTextUpdateStep value) {
+        writeUtf8String(data, value.oldText);
+        writeImeOffsetRangeFields(data, value.patchRange);
+        writeUtf8String(data, value.replacementText);
+        writeImeSelectionFields(data, value.selectionAfter);
+        writeImeOffsetRangeFields(data, value.compositionAfter);
+    }
+
+    public static void writeImeTextUpdateStep(ByteBuffer data, ImeTextUpdateStep value) {
+        prepare(data);
+        writeImeTextUpdateStepFields(data, value);
+    }
+
+    public static int sizeOfImeTextUpdateStep(ImeTextUpdateStep value) {
+        int size = 0;
+        size += sizeOfUtf8String(value.oldText);
+        size += sizeOfImeOffsetRange(value.patchRange);
+        size += sizeOfUtf8String(value.replacementText);
+        size += sizeOfImeSelection(value.selectionAfter);
+        size += sizeOfImeOffsetRange(value.compositionAfter);
         return size;
     }
 
@@ -2842,67 +2865,114 @@ public final class CoreProtocol {
         return data;
     }
 
-    public static ByteBuffer encodeImeCommandMessage(ImeCommandMessage value) {
+    public static ByteBuffer encodeImeCommand(ImeCommand value) {
         int size = 0;
         size += 4;
-        size += 8;
-        size += 4;
-        size += 4;
-        size += sizeOfImeOffsetRange(value.range);
-        size += sizeOfImeOffsetRange(value.selection);
+        size += sizeOfImeOffsetRange(value.targetRange);
+        size += sizeOfImeSelection(value.selectionAfter);
         byte[] textUtf8 = utf8Bytes(value.text);
         size += 4 + textUtf8.length;
-        size += 4;
-        size += 4;
-        size += 4;
-        size += 4;
-        size += 4;
+        size += 8;
+        size += 8;
         size += 4;
         ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
         data.putInt(value.kind.value);
-        data.putLong(value.contextId);
-        data.putInt(value.contextRevision);
-        data.putInt(value.documentStartOffset);
-        writeImeOffsetRangeFields(data, value.range);
-        writeImeOffsetRangeFields(data, value.selection);
+        writeImeOffsetRangeFields(data, value.targetRange);
+        writeImeSelectionFields(data, value.selectionAfter);
         writeUtf8Bytes(data, textUtf8);
-        data.putInt(value.cursorOffset);
-        data.putInt(value.deleteBefore);
-        data.putInt(value.deleteAfter);
+        data.putLong(value.deleteBefore);
+        data.putLong(value.deleteAfter);
         data.putInt(value.textUnit.value);
-        data.putInt(value.markedRole.value);
-        data.putInt(value.scriptClass.value);
         data.flip();
         return data;
     }
 
-    public static ByteBuffer encodeImeTextUpdateMessage(ImeTextUpdateMessage value) {
+    public static ByteBuffer encodeImeCommandBatch(ImeCommandBatch value) {
         int size = 0;
-        size += 4;
-        size += 4;
         size += 8;
+        int commandsCount = value.commands == null ? 0 : value.commands.size();
+        byte[][] commandsTextUtf8 = new byte[commandsCount][];
         size += 4;
-        size += 4;
-        byte[] textUtf8 = utf8Bytes(value.text);
-        size += 4 + textUtf8.length;
-        size += sizeOfImeOffsetRange(value.patch.range);
-        byte[] patchTextUtf8 = utf8Bytes(value.patch.text);
-        size += 4 + patchTextUtf8.length;
-        size += sizeOfImeOffsetRange(value.selection);
-        size += sizeOfImeMarkedRange(value.markedRange);
-        size += 4;
+        for (int commandsIndex = 0; commandsIndex < commandsCount; commandsIndex++) {
+            ImeCommand commandsItem = value.commands.get(commandsIndex);
+            size += 4;
+            size += sizeOfImeOffsetRange(commandsItem.targetRange);
+            size += sizeOfImeSelection(commandsItem.selectionAfter);
+            byte[] commandsTextBytes = utf8Bytes(commandsItem.text);
+            commandsTextUtf8[commandsIndex] = commandsTextBytes;
+            size += 4 + commandsTextBytes.length;
+            size += 8;
+            size += 8;
+            size += 4;
+        }
         ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
-        data.putInt(value.kind.value);
-        data.putInt(value.scope.value);
-        data.putLong(value.contextId);
-        data.putInt(value.contextRevision);
-        data.putInt(value.documentStartOffset);
-        writeUtf8Bytes(data, textUtf8);
-        writeImeOffsetRangeFields(data, value.patch.range);
-        writeUtf8Bytes(data, patchTextUtf8);
-        writeImeOffsetRangeFields(data, value.selection);
-        writeImeMarkedRangeFields(data, value.markedRange);
-        data.putInt(value.scriptClass.value);
+        data.putLong(value.sessionId);
+        data.putInt(commandsCount);
+        for (int commandsIndex = 0; commandsIndex < commandsCount; commandsIndex++) {
+            ImeCommand commandsItem = value.commands.get(commandsIndex);
+            data.putInt(commandsItem.kind.value);
+            writeImeOffsetRangeFields(data, commandsItem.targetRange);
+            writeImeSelectionFields(data, commandsItem.selectionAfter);
+            writeUtf8Bytes(data, commandsTextUtf8[commandsIndex]);
+            data.putLong(commandsItem.deleteBefore);
+            data.putLong(commandsItem.deleteAfter);
+            data.putInt(commandsItem.textUnit.value);
+        }
+        data.flip();
+        return data;
+    }
+
+    public static ByteBuffer encodeImeTextUpdateBatch(ImeTextUpdateBatch value) {
+        int size = 0;
+        size += 8;
+        size += 8;
+        int stepsCount = value.steps == null ? 0 : value.steps.size();
+        byte[][] stepsOldTextUtf8 = new byte[stepsCount][];
+        byte[][] stepsReplacementTextUtf8 = new byte[stepsCount][];
+        size += 4;
+        for (int stepsIndex = 0; stepsIndex < stepsCount; stepsIndex++) {
+            ImeTextUpdateStep stepsItem = value.steps.get(stepsIndex);
+            byte[] stepsOldTextBytes = utf8Bytes(stepsItem.oldText);
+            stepsOldTextUtf8[stepsIndex] = stepsOldTextBytes;
+            size += 4 + stepsOldTextBytes.length;
+            size += sizeOfImeOffsetRange(stepsItem.patchRange);
+            byte[] stepsReplacementTextBytes = utf8Bytes(stepsItem.replacementText);
+            stepsReplacementTextUtf8[stepsIndex] = stepsReplacementTextBytes;
+            size += 4 + stepsReplacementTextBytes.length;
+            size += sizeOfImeSelection(stepsItem.selectionAfter);
+            size += sizeOfImeOffsetRange(stepsItem.compositionAfter);
+        }
+        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
+        data.putLong(value.sessionId);
+        data.putLong(value.expectedStateRevision);
+        data.putInt(stepsCount);
+        for (int stepsIndex = 0; stepsIndex < stepsCount; stepsIndex++) {
+            ImeTextUpdateStep stepsItem = value.steps.get(stepsIndex);
+            writeUtf8Bytes(data, stepsOldTextUtf8[stepsIndex]);
+            writeImeOffsetRangeFields(data, stepsItem.patchRange);
+            writeUtf8Bytes(data, stepsReplacementTextUtf8[stepsIndex]);
+            writeImeSelectionFields(data, stepsItem.selectionAfter);
+            writeImeOffsetRangeFields(data, stepsItem.compositionAfter);
+        }
+        data.flip();
+        return data;
+    }
+
+    public static ByteBuffer encodeImeTextUpdateStep(ImeTextUpdateStep value) {
+        int size = 0;
+        byte[] oldTextUtf8 = utf8Bytes(value.oldText);
+        size += 4 + oldTextUtf8.length;
+        size += sizeOfImeOffsetRange(value.patchRange);
+        byte[] replacementTextUtf8 = utf8Bytes(value.replacementText);
+        size += 4 + replacementTextUtf8.length;
+        size += sizeOfImeSelection(value.selectionAfter);
+        size += sizeOfImeOffsetRange(value.compositionAfter);
+        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
+        writeUtf8Bytes(data, oldTextUtf8);
+        writeImeOffsetRangeFields(data, value.patchRange);
+        writeUtf8Bytes(data, replacementTextUtf8);
+        writeImeSelectionFields(data, value.selectionAfter);
+        writeImeOffsetRangeFields(data, value.compositionAfter);
         data.flip();
         return data;
     }

@@ -299,7 +299,7 @@
       "fallback": "NONE",
       "underlying_type": null,
       "source": "include/sweeteditor/editor_types.h",
-      "line": 102,
+      "line": 119,
       "values": [
         {
           "name": "NONE",
@@ -318,7 +318,7 @@
       "fallback": "BACKGROUND",
       "underlying_type": null,
       "source": "include/sweeteditor/editor_types.h",
-      "line": 120,
+      "line": 137,
       "values": [
         {
           "name": "BACKGROUND",
@@ -364,7 +364,7 @@
       "fallback": "NONE",
       "underlying_type": null,
       "source": "include/sweeteditor/editor_types.h",
-      "line": 249,
+      "line": 266,
       "values": [
         {
           "name": "NONE",
@@ -391,7 +391,7 @@
       "fallback": "ALWAYS",
       "underlying_type": "uint8_t",
       "source": "include/sweeteditor/editor_types.h",
-      "line": 199,
+      "line": 216,
       "values": [
         {
           "name": "ALWAYS",
@@ -414,7 +414,7 @@
       "fallback": "JUMP",
       "underlying_type": "uint8_t",
       "source": "include/sweeteditor/editor_types.h",
-      "line": 205,
+      "line": 222,
       "values": [
         {
           "name": "JUMP",
@@ -433,7 +433,7 @@
       "fallback": "NONE",
       "underlying_type": null,
       "source": "include/sweeteditor/editor_types.h",
-      "line": 130,
+      "line": 147,
       "values": [
         {
           "name": "NONE",
@@ -464,7 +464,7 @@
       "fallback": "NONE",
       "underlying_type": null,
       "source": "include/sweeteditor/editor_types.h",
-      "line": 110,
+      "line": 127,
       "values": [
         {
           "name": "NONE",
@@ -481,153 +481,179 @@
       ]
     },
     {
+      "name": "CaretAffinity",
+      "kind": "enum",
+      "domain": "ime",
+      "fallback": "DOWNSTREAM",
+      "underlying_type": "uint8_t",
+      "source": "include/sweeteditor/editor_types.h",
+      "line": 88,
+      "values": [
+        {
+          "name": "DOWNSTREAM",
+          "value": 0
+        },
+        {
+          "name": "UPSTREAM",
+          "value": 1
+        }
+      ]
+    },
+    {
       "name": "ImeCommandKind",
       "kind": "enum",
       "domain": "ime",
       "fallback": "SET_SELECTION",
       "underlying_type": null,
       "source": "include/sweeteditor/ime_types.h",
-      "line": 32,
+      "line": 33,
       "values": [
         {
           "name": "SET_SELECTION",
           "value": 0
         },
         {
-          "name": "SET_PREEDIT_TEXT",
+          "name": "BEGIN_COMPOSITION",
           "value": 1
+        },
+        {
+          "name": "UPDATE_COMPOSITION",
+          "value": 2
         },
         {
           "name": "COMMIT_TEXT",
-          "value": 2
-        },
-        {
-          "name": "FINISH_PREEDIT",
           "value": 3
         },
         {
-          "name": "CANCEL_PREEDIT",
+          "name": "FINISH_COMPOSITION",
           "value": 4
         },
         {
-          "name": "SET_MARKED_RANGE",
+          "name": "CANCEL_COMPOSITION",
           "value": 5
         },
         {
-          "name": "CLEAR_MARKED_RANGE",
+          "name": "DELETE_SURROUNDING",
           "value": 6
-        },
-        {
-          "name": "REPLACE_TEXT",
-          "value": 7
-        },
-        {
-          "name": "DELETE_SURROUNDING_TEXT",
-          "value": 8
-        },
-        {
-          "name": "SET_KEYBOARD_SCRIPT",
-          "value": 9
         }
       ]
     },
     {
-      "name": "ImeContextPolicy",
+      "name": "ImeCoordinateSpace",
       "kind": "enum",
       "domain": "ime",
-      "fallback": "NONE",
+      "fallback": "DOCUMENT",
       "underlying_type": null,
       "source": "include/sweeteditor/ime_types.h",
-      "line": 88,
+      "line": 21,
       "values": [
         {
-          "name": "NONE",
+          "name": "DOCUMENT",
           "value": 0
         },
         {
-          "name": "LIMITED_FOR_CANDIDATES",
-          "value": 1
-        }
-      ]
-    },
-    {
-      "name": "ImeInputContextKind",
-      "kind": "enum",
-      "domain": "ime",
-      "fallback": "NONE",
-      "underlying_type": null,
-      "source": "include/sweeteditor/ime_types.h",
-      "line": 19,
-      "values": [
-        {
-          "name": "NONE",
-          "value": 0
-        },
-        {
-          "name": "SELECTION_ONLY",
+          "name": "EDITING_BUFFER",
           "value": 1
         },
         {
-          "name": "DOCUMENT_WINDOW",
+          "name": "CONTEXT_SLICE",
           "value": 2
         },
         {
-          "name": "TRANSIENT_INPUT",
+          "name": "COMPOSITION",
           "value": 3
         }
       ]
     },
     {
-      "name": "ImeMarkedRangeRole",
+      "name": "ImeHostAction",
       "kind": "enum",
       "domain": "ime",
       "fallback": "NONE",
       "underlying_type": null,
       "source": "include/sweeteditor/ime_types.h",
-      "line": 26,
+      "line": 50,
       "values": [
         {
           "name": "NONE",
           "value": 0
         },
         {
-          "name": "PREEDIT",
+          "name": "CLOSE_SESSION",
           "value": 1
         },
         {
-          "name": "SYSTEM_MARK",
+          "name": "RESTART_SESSION",
           "value": 2
         }
       ]
     },
     {
-      "name": "ImeScriptClass",
+      "name": "ImeMutationModel",
       "kind": "enum",
       "domain": "ime",
-      "fallback": "UNKNOWN",
+      "fallback": "COMMAND",
       "underlying_type": null,
       "source": "include/sweeteditor/ime_types.h",
-      "line": 80,
+      "line": 10,
       "values": [
         {
-          "name": "UNKNOWN",
+          "name": "COMMAND",
           "value": 0
         },
         {
-          "name": "LATIN",
+          "name": "TEXT_UPDATE",
+          "value": 1
+        }
+      ]
+    },
+    {
+      "name": "ImeResultCode",
+      "kind": "enum",
+      "domain": "ime",
+      "fallback": "OK",
+      "underlying_type": null,
+      "source": "include/sweeteditor/ime_types.h",
+      "line": 43,
+      "values": [
+        {
+          "name": "OK",
+          "value": 0
+        },
+        {
+          "name": "SESSION_MISMATCH",
           "value": 1
         },
         {
-          "name": "CJK",
+          "name": "REJECTED",
           "value": 2
         },
         {
-          "name": "KANA",
+          "name": "READ_ONLY",
           "value": 3
+        }
+      ]
+    },
+    {
+      "name": "ImeTextSource",
+      "kind": "enum",
+      "domain": "ime",
+      "fallback": "EDITING",
+      "underlying_type": null,
+      "source": "include/sweeteditor/ime_types.h",
+      "line": 15,
+      "values": [
+        {
+          "name": "EDITING",
+          "value": 0
         },
         {
-          "name": "HANGUL",
-          "value": 4
+          "name": "COMMITTED",
+          "value": 1
+        },
+        {
+          "name": "EDITING_BUFFER",
+          "value": 2
         }
       ]
     },
@@ -635,55 +661,17 @@
       "name": "ImeTextUnit",
       "kind": "enum",
       "domain": "ime",
-      "fallback": "GRAPHEME",
+      "fallback": "UTF16_CODE_UNIT",
       "underlying_type": null,
       "source": "include/sweeteditor/ime_types.h",
-      "line": 9,
+      "line": 28,
       "values": [
         {
-          "name": "GRAPHEME",
+          "name": "UTF16_CODE_UNIT",
           "value": 0
         },
         {
-          "name": "CODE_POINT",
-          "value": 1
-        }
-      ]
-    },
-    {
-      "name": "ImeTextUpdateKind",
-      "kind": "enum",
-      "domain": "ime",
-      "fallback": "SNAPSHOT",
-      "underlying_type": null,
-      "source": "include/sweeteditor/ime_types.h",
-      "line": 45,
-      "values": [
-        {
-          "name": "SNAPSHOT",
-          "value": 0
-        },
-        {
-          "name": "PATCH",
-          "value": 1
-        }
-      ]
-    },
-    {
-      "name": "ImeTextUpdateScope",
-      "kind": "enum",
-      "domain": "ime",
-      "fallback": "DOCUMENT_WINDOW",
-      "underlying_type": null,
-      "source": "include/sweeteditor/ime_types.h",
-      "line": 14,
-      "values": [
-        {
-          "name": "DOCUMENT_WINDOW",
-          "value": 0
-        },
-        {
-          "name": "TRANSIENT_INPUT",
+          "name": "UNICODE_CODE_POINT",
           "value": 1
         }
       ]
@@ -1532,19 +1520,11 @@
           "default": "false"
         },
         {
-          "name": "needs_ime_sync",
-          "cpp_type": "bool",
-          "wire": "bool_i32",
-          "source": "include/sweeteditor/editor_core.h",
-          "line": 39,
-          "default": "false"
-        },
-        {
           "name": "animation_flags",
           "cpp_type": "uint32_t",
           "wire": "u32",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 42,
+          "line": 41,
           "default": "0"
         },
         {
@@ -1552,7 +1532,7 @@
           "cpp_type": "uint32_t",
           "wire": "u32",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 44,
+          "line": 43,
           "default": "0"
         },
         {
@@ -1560,7 +1540,7 @@
           "cpp_type": "uint32_t",
           "wire": "u32",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 46,
+          "line": 45,
           "default": "0"
         },
         {
@@ -1568,28 +1548,28 @@
           "cpp_type": "Vector<TextChange>",
           "wire": "list",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 48
+          "line": 47
         },
         {
           "name": "cursor_before",
           "cpp_type": "TextPosition",
           "wire": "struct",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 50
+          "line": 49
         },
         {
           "name": "cursor_after",
           "cpp_type": "TextPosition",
           "wire": "struct",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 51
+          "line": 50
         },
         {
           "name": "has_selection_before",
           "cpp_type": "bool",
           "wire": "bool_i32",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 52,
+          "line": 51,
           "default": "false"
         },
         {
@@ -1597,7 +1577,7 @@
           "cpp_type": "bool",
           "wire": "bool_i32",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 53,
+          "line": 52,
           "default": "false"
         },
         {
@@ -1605,21 +1585,21 @@
           "cpp_type": "TextRange",
           "wire": "struct",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 54
+          "line": 53
         },
         {
           "name": "selection_after",
           "cpp_type": "TextRange",
           "wire": "struct",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 55
+          "line": 54
         },
         {
           "name": "scroll_x_before",
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 57,
+          "line": 56,
           "default": "0"
         },
         {
@@ -1627,7 +1607,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 58,
+          "line": 57,
           "default": "0"
         },
         {
@@ -1635,7 +1615,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 59,
+          "line": 58,
           "default": "0"
         },
         {
@@ -1643,7 +1623,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 60,
+          "line": 59,
           "default": "0"
         },
         {
@@ -1651,7 +1631,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 61,
+          "line": 60,
           "default": "1"
         },
         {
@@ -1659,7 +1639,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 62,
+          "line": 61,
           "default": "1"
         },
         {
@@ -1667,7 +1647,7 @@
           "cpp_type": "PointerCursorType",
           "wire": "enum_i32",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 65,
+          "line": 64,
           "default": "PointerCursorType::TEXT"
         },
         {
@@ -1675,22 +1655,30 @@
           "cpp_type": "PointerCursorType",
           "wire": "enum_i32",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 67,
+          "line": 66,
           "default": "PointerCursorType::TEXT"
         },
         {
-          "name": "ime_sync",
-          "cpp_type": "ImeSyncSnapshot",
+          "name": "ime_host_action",
+          "cpp_type": "ImeHostAction",
+          "wire": "enum_i32",
+          "source": "include/sweeteditor/editor_core.h",
+          "line": 69,
+          "default": "ImeHostAction::NONE"
+        },
+        {
+          "name": "ime_state",
+          "cpp_type": "ImeState",
           "wire": "struct",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 69
+          "line": 70
         },
         {
           "name": "gesture_type",
           "cpp_type": "GestureType",
           "wire": "enum_i32",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 71,
+          "line": 72,
           "default": "GestureType::UNDEFINED"
         },
         {
@@ -1698,7 +1686,7 @@
           "cpp_type": "EventType",
           "wire": "enum_i32",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 73,
+          "line": 74,
           "default": "EventType::UNDEFINED"
         },
         {
@@ -1706,7 +1694,7 @@
           "cpp_type": "PointF",
           "wire": "struct",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 74,
+          "line": 75,
           "default": ""
         },
         {
@@ -1714,14 +1702,14 @@
           "cpp_type": "HitTarget",
           "wire": "struct",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 75
+          "line": 76
         },
         {
           "name": "modifiers",
           "cpp_type": "KeyModifier",
           "wire": "i32",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 77,
+          "line": 78,
           "default": "KeyModifier::NONE"
         },
         {
@@ -1729,7 +1717,7 @@
           "cpp_type": "EditorCommandId",
           "wire": "i32",
           "source": "include/sweeteditor/editor_core.h",
-          "line": 79,
+          "line": 80,
           "default": "0"
         }
       ]
@@ -2675,14 +2663,14 @@
       "direction": "in",
       "domain": "config",
       "source": "include/sweeteditor/editor_types.h",
-      "line": 150,
+      "line": 167,
       "fields": [
         {
           "name": "touch_slop",
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 152,
+          "line": 169,
           "default": "10"
         },
         {
@@ -2690,7 +2678,7 @@
           "cpp_type": "int64_t",
           "wire": "i64",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 154,
+          "line": 171,
           "default": "300"
         },
         {
@@ -2698,7 +2686,7 @@
           "cpp_type": "int64_t",
           "wire": "i64",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 156,
+          "line": 173,
           "default": "500"
         },
         {
@@ -2706,7 +2694,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 158,
+          "line": 175,
           "default": "3.5f"
         },
         {
@@ -2714,7 +2702,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 160,
+          "line": 177,
           "default": "50.0f"
         },
         {
@@ -2722,7 +2710,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 162,
+          "line": 179,
           "default": "8000.0f"
         },
         {
@@ -2730,7 +2718,7 @@
           "cpp_type": "size_t",
           "wire": "size_as_u64",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 165,
+          "line": 182,
           "default": "512"
         },
         {
@@ -2738,7 +2726,7 @@
           "cpp_type": "int64_t",
           "wire": "i64",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 167,
+          "line": 184,
           "default": "2000"
         },
         {
@@ -2746,7 +2734,7 @@
           "cpp_type": "bool",
           "wire": "bool_u8",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 170,
+          "line": 187,
           "default": "false"
         }
       ]
@@ -2757,105 +2745,105 @@
       "direction": "in",
       "domain": "config",
       "source": "include/sweeteditor/editor_types.h",
-      "line": 270,
+      "line": 287,
       "fields": [
         {
           "name": "selection",
           "cpp_type": "RangeEffectStyle",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 271
+          "line": 288
         },
         {
           "name": "search_match",
           "cpp_type": "RangeEffectStyle",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 272
+          "line": 289
         },
         {
           "name": "search_current",
           "cpp_type": "RangeEffectStyle",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 273
+          "line": 290
         },
         {
           "name": "document_highlight_text",
           "cpp_type": "RangeEffectStyle",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 274
+          "line": 291
         },
         {
           "name": "document_highlight_read",
           "cpp_type": "RangeEffectStyle",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 275
+          "line": 292
         },
         {
           "name": "document_highlight_write",
           "cpp_type": "RangeEffectStyle",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 276
+          "line": 293
         },
         {
           "name": "linked_editing_active",
           "cpp_type": "RangeEffectStyle",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 277
+          "line": 294
         },
         {
           "name": "linked_editing_inactive",
           "cpp_type": "RangeEffectStyle",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 278
+          "line": 295
         },
         {
           "name": "ime_composition",
           "cpp_type": "RangeEffectStyle",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 279
+          "line": 296
         },
         {
           "name": "bracket_match",
           "cpp_type": "RangeEffectStyle",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 280
+          "line": 297
         },
         {
           "name": "diagnostic_error",
           "cpp_type": "RangeEffectStyle",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 281
+          "line": 298
         },
         {
           "name": "diagnostic_warning",
           "cpp_type": "RangeEffectStyle",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 282
+          "line": 299
         },
         {
           "name": "diagnostic_info",
           "cpp_type": "RangeEffectStyle",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 283
+          "line": 300
         },
         {
           "name": "diagnostic_hint",
           "cpp_type": "RangeEffectStyle",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 284
+          "line": 301
         }
       ]
     },
@@ -2865,14 +2853,14 @@
       "direction": "in",
       "domain": "config",
       "source": "include/sweeteditor/editor_types.h",
-      "line": 237,
+      "line": 254,
       "fields": [
         {
           "name": "text_foreground",
           "cpp_type": "int32_t",
           "wire": "i32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 238,
+          "line": 255,
           "default": "0"
         },
         {
@@ -2880,7 +2868,7 @@
           "cpp_type": "int32_t",
           "wire": "i32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 239,
+          "line": 256,
           "default": "0"
         },
         {
@@ -2888,7 +2876,7 @@
           "cpp_type": "int32_t",
           "wire": "i32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 240,
+          "line": 257,
           "default": "0"
         },
         {
@@ -2896,7 +2884,7 @@
           "cpp_type": "int32_t",
           "wire": "i32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 241,
+          "line": 258,
           "default": "0"
         },
         {
@@ -2904,7 +2892,7 @@
           "cpp_type": "int32_t",
           "wire": "i32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 242,
+          "line": 259,
           "default": "0"
         }
       ]
@@ -2915,14 +2903,14 @@
       "direction": "in",
       "domain": "config",
       "source": "include/sweeteditor/editor_types.h",
-      "line": 189,
+      "line": 206,
       "fields": [
         {
           "name": "start_hit_area",
           "cpp_type": "HandleHitArea",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 191,
+          "line": 208,
           "default": "-32.1f, -8.0f, 8.0f, 32.1f"
         },
         {
@@ -2930,7 +2918,7 @@
           "cpp_type": "HandleHitArea",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 193,
+          "line": 210,
           "default": "-8.0f, -8.0f, 32.1f, 32.1f"
         }
       ]
@@ -2941,14 +2929,14 @@
       "direction": "value",
       "domain": "config",
       "source": "include/sweeteditor/editor_types.h",
-      "line": 178,
+      "line": 195,
       "fields": [
         {
           "name": "left",
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 179,
+          "line": 196,
           "default": "0"
         },
         {
@@ -2956,7 +2944,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 180,
+          "line": 197,
           "default": "0"
         },
         {
@@ -2964,7 +2952,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 181,
+          "line": 198,
           "default": "0"
         },
         {
@@ -2972,7 +2960,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 182,
+          "line": 199,
           "default": "0"
         }
       ]
@@ -2983,14 +2971,14 @@
       "direction": "value",
       "domain": "config",
       "source": "include/sweeteditor/editor_types.h",
-      "line": 257,
+      "line": 274,
       "fields": [
         {
           "name": "foreground_color",
           "cpp_type": "int32_t",
           "wire": "i32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 258,
+          "line": 275,
           "default": "0"
         },
         {
@@ -2998,7 +2986,7 @@
           "cpp_type": "int32_t",
           "wire": "i32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 259,
+          "line": 276,
           "default": "0"
         },
         {
@@ -3006,7 +2994,7 @@
           "cpp_type": "int32_t",
           "wire": "i32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 260,
+          "line": 277,
           "default": "0"
         },
         {
@@ -3014,7 +3002,7 @@
           "cpp_type": "int32_t",
           "wire": "i32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 261,
+          "line": 278,
           "default": "0"
         },
         {
@@ -3022,7 +3010,7 @@
           "cpp_type": "RangeEffectUnderlineStyle",
           "wire": "enum_i32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 263,
+          "line": 280,
           "default": "RangeEffectUnderlineStyle::NONE"
         }
       ]
@@ -3033,14 +3021,14 @@
       "direction": "in",
       "domain": "config",
       "source": "include/sweeteditor/editor_types.h",
-      "line": 211,
+      "line": 228,
       "fields": [
         {
           "name": "thickness",
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 213,
+          "line": 230,
           "default": "12.0f"
         },
         {
@@ -3048,7 +3036,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 215,
+          "line": 232,
           "default": "24.0f"
         },
         {
@@ -3056,7 +3044,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 217,
+          "line": 234,
           "default": "0.0f"
         },
         {
@@ -3064,7 +3052,7 @@
           "cpp_type": "ScrollbarMode",
           "wire": "enum_i32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 220,
+          "line": 237,
           "default": "ScrollbarMode::ALWAYS"
         },
         {
@@ -3072,7 +3060,7 @@
           "cpp_type": "bool",
           "wire": "bool_u8",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 223,
+          "line": 240,
           "default": "true"
         },
         {
@@ -3080,7 +3068,7 @@
           "cpp_type": "ScrollbarTrackTapMode",
           "wire": "enum_i32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 226,
+          "line": 243,
           "default": "ScrollbarTrackTapMode::JUMP"
         },
         {
@@ -3088,7 +3076,7 @@
           "cpp_type": "uint16_t",
           "wire": "u16",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 228,
+          "line": 245,
           "default": "700"
         },
         {
@@ -3096,7 +3084,7 @@
           "cpp_type": "uint16_t",
           "wire": "u16",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 230,
+          "line": 247,
           "default": "300"
         }
       ]
@@ -3235,21 +3223,21 @@
       "direction": "out",
       "domain": "foundation",
       "source": "include/sweeteditor/editor_types.h",
-      "line": 347,
+      "line": 366,
       "fields": [
         {
           "name": "range",
           "cpp_type": "TextRange",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 349
+          "line": 368
         },
         {
           "name": "new_text",
           "cpp_type": "U8String",
           "wire": "utf8_string",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 354
+          "line": 373
         }
       ]
     },
@@ -3328,90 +3316,56 @@
       ]
     },
     {
-      "name": "ImeCommandMessage",
+      "name": "ImeCommand",
       "kind": "value",
       "direction": "in",
       "domain": "ime",
       "source": "include/sweeteditor/ime_types.h",
-      "line": 93,
+      "line": 78,
       "fields": [
         {
           "name": "kind",
           "cpp_type": "ImeCommandKind",
           "wire": "enum_i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 95,
+          "line": 80,
           "default": "ImeCommandKind::SET_SELECTION"
         },
         {
-          "name": "context_id",
-          "cpp_type": "uint64_t",
-          "wire": "u64",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 96,
-          "default": "0"
-        },
-        {
-          "name": "context_revision",
-          "cpp_type": "int32_t",
-          "wire": "i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 97,
-          "default": "0"
-        },
-        {
-          "name": "document_start_offset",
-          "cpp_type": "int32_t",
-          "wire": "i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 98,
-          "default": "0"
-        },
-        {
-          "name": "range",
+          "name": "target_range",
           "cpp_type": "ImeOffsetRange",
           "wire": "struct",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 99,
-          "default": "-1, -1"
+          "line": 81
         },
         {
-          "name": "selection",
-          "cpp_type": "ImeOffsetRange",
+          "name": "selection_after",
+          "cpp_type": "ImeSelection",
           "wire": "struct",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 100,
-          "default": "-1, -1"
+          "line": 82
         },
         {
           "name": "text",
           "cpp_type": "U8String",
           "wire": "utf8_string",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 101
-        },
-        {
-          "name": "cursor_offset",
-          "cpp_type": "int32_t",
-          "wire": "i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 102,
-          "default": "1"
+          "line": 83
         },
         {
           "name": "delete_before",
-          "cpp_type": "int32_t",
-          "wire": "i32",
+          "cpp_type": "int64_t",
+          "wire": "i64",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 103,
+          "line": 84,
           "default": "0"
         },
         {
           "name": "delete_after",
-          "cpp_type": "int32_t",
-          "wire": "i32",
+          "cpp_type": "int64_t",
+          "wire": "i64",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 104,
+          "line": 85,
           "default": "0"
         },
         {
@@ -3419,138 +3373,33 @@
           "cpp_type": "ImeTextUnit",
           "wire": "enum_i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 106,
-          "default": "ImeTextUnit::GRAPHEME"
-        },
-        {
-          "name": "marked_role",
-          "cpp_type": "ImeMarkedRangeRole",
-          "wire": "enum_i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 108,
-          "default": "ImeMarkedRangeRole::NONE"
-        },
-        {
-          "name": "script_class",
-          "cpp_type": "ImeScriptClass",
-          "wire": "enum_i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 110,
-          "default": "ImeScriptClass::UNKNOWN"
+          "line": 87,
+          "default": "ImeTextUnit::UTF16_CODE_UNIT"
         }
       ]
     },
     {
-      "name": "ImeInputContext",
+      "name": "ImeCommandBatch",
       "kind": "value",
-      "direction": "out",
+      "direction": "in",
       "domain": "ime",
       "source": "include/sweeteditor/ime_types.h",
-      "line": 66,
+      "line": 90,
       "fields": [
         {
-          "name": "id",
+          "name": "session_id",
           "cpp_type": "uint64_t",
           "wire": "u64",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 67,
+          "line": 91,
           "default": "0"
         },
         {
-          "name": "revision",
-          "cpp_type": "int32_t",
-          "wire": "i32",
+          "name": "commands",
+          "cpp_type": "Vector<ImeCommand>",
+          "wire": "list",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 68,
-          "default": "0"
-        },
-        {
-          "name": "document_start_offset",
-          "cpp_type": "int32_t",
-          "wire": "i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 69,
-          "default": "0"
-        },
-        {
-          "name": "text",
-          "cpp_type": "U8String",
-          "wire": "utf8_string",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 70
-        },
-        {
-          "name": "selection",
-          "cpp_type": "ImeOffsetRange",
-          "wire": "struct",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 71
-        },
-        {
-          "name": "has_preedit_range",
-          "cpp_type": "bool",
-          "wire": "bool_i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 72,
-          "default": "false"
-        },
-        {
-          "name": "preedit_range",
-          "cpp_type": "ImeOffsetRange",
-          "wire": "struct",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 73,
-          "default": "-1, -1"
-        },
-        {
-          "name": "has_system_mark_range",
-          "cpp_type": "bool",
-          "wire": "bool_i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 74,
-          "default": "false"
-        },
-        {
-          "name": "system_mark_range",
-          "cpp_type": "ImeOffsetRange",
-          "wire": "struct",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 75,
-          "default": "-1, -1"
-        },
-        {
-          "name": "kind",
-          "cpp_type": "ImeInputContextKind",
-          "wire": "enum_i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 77,
-          "default": "ImeInputContextKind::NONE"
-        }
-      ]
-    },
-    {
-      "name": "ImeMarkedRange",
-      "kind": "value",
-      "direction": "value",
-      "domain": "ime",
-      "source": "include/sweeteditor/ime_types.h",
-      "line": 55,
-      "fields": [
-        {
-          "name": "role",
-          "cpp_type": "ImeMarkedRangeRole",
-          "wire": "enum_i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 57,
-          "default": "ImeMarkedRangeRole::NONE"
-        },
-        {
-          "name": "range",
-          "cpp_type": "ImeOffsetRange",
-          "wire": "struct",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 58,
-          "default": "-1, -1"
+          "line": 92
         }
       ]
     },
@@ -3560,175 +3409,154 @@
       "direction": "value",
       "domain": "ime",
       "source": "include/sweeteditor/ime_types.h",
-      "line": 50,
+      "line": 56,
       "fields": [
         {
-          "name": "start",
-          "cpp_type": "int32_t",
-          "wire": "i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 51,
-          "default": "0"
-        },
-        {
-          "name": "end",
-          "cpp_type": "int32_t",
-          "wire": "i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 52,
-          "default": "0"
-        }
-      ]
-    },
-    {
-      "name": "ImeSyncSnapshot",
-      "kind": "value",
-      "direction": "out",
-      "domain": "ime",
-      "source": "include/sweeteditor/ime_types.h",
-      "line": 130,
-      "fields": [
-        {
-          "name": "cursor",
-          "cpp_type": "TextPosition",
-          "wire": "struct",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 131
-        },
-        {
-          "name": "selection",
-          "cpp_type": "TextRange",
-          "wire": "struct",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 132
-        },
-        {
-          "name": "has_selection",
-          "cpp_type": "bool",
-          "wire": "bool_i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 133,
-          "default": "false"
-        },
-        {
-          "name": "has_preedit_range",
-          "cpp_type": "bool",
-          "wire": "bool_i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 134,
-          "default": "false"
-        },
-        {
-          "name": "preedit_range",
-          "cpp_type": "TextRange",
-          "wire": "struct",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 135
-        },
-        {
-          "name": "has_system_mark_range",
-          "cpp_type": "bool",
-          "wire": "bool_i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 136,
-          "default": "false"
-        },
-        {
-          "name": "system_mark_range",
-          "cpp_type": "TextRange",
-          "wire": "struct",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 137
-        },
-        {
-          "name": "context_policy",
-          "cpp_type": "ImeContextPolicy",
+          "name": "coordinate_space",
+          "cpp_type": "ImeCoordinateSpace",
           "wire": "enum_i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 139,
-          "default": "ImeContextPolicy::NONE"
+          "line": 58,
+          "default": "ImeCoordinateSpace::DOCUMENT"
         },
         {
-          "name": "clear_system_mark",
-          "cpp_type": "bool",
-          "wire": "bool_i32",
+          "name": "start_utf16",
+          "cpp_type": "int64_t",
+          "wire": "i64",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 140,
-          "default": "false"
+          "line": 59,
+          "default": "-1"
+        },
+        {
+          "name": "end_utf16",
+          "cpp_type": "int64_t",
+          "wire": "i64",
+          "source": "include/sweeteditor/ime_types.h",
+          "line": 60,
+          "default": "-1"
         }
       ]
     },
     {
-      "name": "ImeTextPatch",
+      "name": "ImeSelection",
       "kind": "value",
       "direction": "value",
       "domain": "ime",
       "source": "include/sweeteditor/ime_types.h",
-      "line": 61,
+      "line": 66,
       "fields": [
         {
-          "name": "range",
-          "cpp_type": "ImeOffsetRange",
-          "wire": "struct",
+          "name": "coordinate_space",
+          "cpp_type": "ImeCoordinateSpace",
+          "wire": "enum_i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 62,
-          "default": "-1, -1"
+          "line": 68,
+          "default": "ImeCoordinateSpace::DOCUMENT"
         },
         {
-          "name": "text",
-          "cpp_type": "U8String",
-          "wire": "utf8_string",
+          "name": "anchor_utf16",
+          "cpp_type": "int64_t",
+          "wire": "i64",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 63
+          "line": 69,
+          "default": "-1"
+        },
+        {
+          "name": "active_utf16",
+          "cpp_type": "int64_t",
+          "wire": "i64",
+          "source": "include/sweeteditor/ime_types.h",
+          "line": 70,
+          "default": "-1"
+        },
+        {
+          "name": "affinity",
+          "cpp_type": "CaretAffinity",
+          "wire": "enum_i32",
+          "source": "include/sweeteditor/ime_types.h",
+          "line": 72,
+          "default": "CaretAffinity::DOWNSTREAM"
         }
       ]
     },
     {
-      "name": "ImeTextUpdateMessage",
+      "name": "ImeState",
       "kind": "value",
-      "direction": "in",
+      "direction": "out",
       "domain": "ime",
       "source": "include/sweeteditor/ime_types.h",
-      "line": 113,
+      "line": 109,
       "fields": [
         {
-          "name": "kind",
-          "cpp_type": "ImeTextUpdateKind",
+          "name": "result_code",
+          "cpp_type": "ImeResultCode",
           "wire": "enum_i32",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 115,
-          "default": "ImeTextUpdateKind::SNAPSHOT"
+          "line": 111,
+          "default": "ImeResultCode::OK"
         },
         {
-          "name": "scope",
-          "cpp_type": "ImeTextUpdateScope",
-          "wire": "enum_i32",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 117,
-          "default": "ImeTextUpdateScope::DOCUMENT_WINDOW"
-        },
-        {
-          "name": "context_id",
+          "name": "session_id",
           "cpp_type": "uint64_t",
           "wire": "u64",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 118,
+          "line": 112,
           "default": "0"
         },
         {
-          "name": "context_revision",
-          "cpp_type": "int32_t",
-          "wire": "i32",
+          "name": "state_revision",
+          "cpp_type": "uint64_t",
+          "wire": "u64",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 119,
+          "line": 113,
           "default": "0"
         },
         {
-          "name": "document_start_offset",
-          "cpp_type": "int32_t",
-          "wire": "i32",
+          "name": "selection",
+          "cpp_type": "ImeSelection",
+          "wire": "struct",
+          "source": "include/sweeteditor/ime_types.h",
+          "line": 114
+        },
+        {
+          "name": "composition_range",
+          "cpp_type": "ImeOffsetRange",
+          "wire": "struct",
+          "source": "include/sweeteditor/ime_types.h",
+          "line": 115
+        }
+      ]
+    },
+    {
+      "name": "ImeTextContext",
+      "kind": "value",
+      "direction": "out",
+      "domain": "ime",
+      "source": "include/sweeteditor/ime_types.h",
+      "line": 118,
+      "fields": [
+        {
+          "name": "result_code",
+          "cpp_type": "ImeResultCode",
+          "wire": "enum_i32",
           "source": "include/sweeteditor/ime_types.h",
           "line": 120,
+          "default": "ImeResultCode::OK"
+        },
+        {
+          "name": "slice_start_utf16",
+          "cpp_type": "int64_t",
+          "wire": "i64",
+          "source": "include/sweeteditor/ime_types.h",
+          "line": 121,
+          "default": "0"
+        },
+        {
+          "name": "total_length_utf16",
+          "cpp_type": "int64_t",
+          "wire": "i64",
+          "source": "include/sweeteditor/ime_types.h",
+          "line": 122,
           "default": "0"
         },
         {
@@ -3736,37 +3564,99 @@
           "cpp_type": "U8String",
           "wire": "utf8_string",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 121
-        },
-        {
-          "name": "patch",
-          "cpp_type": "ImeTextPatch",
-          "wire": "struct",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 122
+          "line": 123
         },
         {
           "name": "selection",
-          "cpp_type": "ImeOffsetRange",
-          "wire": "struct",
-          "source": "include/sweeteditor/ime_types.h",
-          "line": 123,
-          "default": "-1, -1"
-        },
-        {
-          "name": "marked_range",
-          "cpp_type": "ImeMarkedRange",
+          "cpp_type": "ImeSelection",
           "wire": "struct",
           "source": "include/sweeteditor/ime_types.h",
           "line": 124
         },
         {
-          "name": "script_class",
-          "cpp_type": "ImeScriptClass",
-          "wire": "enum_i32",
+          "name": "composition_range",
+          "cpp_type": "ImeOffsetRange",
+          "wire": "struct",
           "source": "include/sweeteditor/ime_types.h",
-          "line": 126,
-          "default": "ImeScriptClass::UNKNOWN"
+          "line": 125
+        }
+      ]
+    },
+    {
+      "name": "ImeTextUpdateBatch",
+      "kind": "value",
+      "direction": "in",
+      "domain": "ime",
+      "source": "include/sweeteditor/ime_types.h",
+      "line": 103,
+      "fields": [
+        {
+          "name": "session_id",
+          "cpp_type": "uint64_t",
+          "wire": "u64",
+          "source": "include/sweeteditor/ime_types.h",
+          "line": 104,
+          "default": "0"
+        },
+        {
+          "name": "expected_state_revision",
+          "cpp_type": "uint64_t",
+          "wire": "u64",
+          "source": "include/sweeteditor/ime_types.h",
+          "line": 105,
+          "default": "0"
+        },
+        {
+          "name": "steps",
+          "cpp_type": "Vector<ImeTextUpdateStep>",
+          "wire": "list",
+          "source": "include/sweeteditor/ime_types.h",
+          "line": 106
+        }
+      ]
+    },
+    {
+      "name": "ImeTextUpdateStep",
+      "kind": "value",
+      "direction": "in",
+      "domain": "ime",
+      "source": "include/sweeteditor/ime_types.h",
+      "line": 95,
+      "fields": [
+        {
+          "name": "old_text",
+          "cpp_type": "U8String",
+          "wire": "utf8_string",
+          "source": "include/sweeteditor/ime_types.h",
+          "line": 96
+        },
+        {
+          "name": "patch_range",
+          "cpp_type": "ImeOffsetRange",
+          "wire": "struct",
+          "source": "include/sweeteditor/ime_types.h",
+          "line": 97
+        },
+        {
+          "name": "replacement_text",
+          "cpp_type": "U8String",
+          "wire": "utf8_string",
+          "source": "include/sweeteditor/ime_types.h",
+          "line": 98
+        },
+        {
+          "name": "selection_after",
+          "cpp_type": "ImeSelection",
+          "wire": "struct",
+          "source": "include/sweeteditor/ime_types.h",
+          "line": 99
+        },
+        {
+          "name": "composition_after",
+          "cpp_type": "ImeOffsetRange",
+          "wire": "struct",
+          "source": "include/sweeteditor/ime_types.h",
+          "line": 100
         }
       ]
     },
@@ -4224,14 +4114,14 @@
       "direction": "value",
       "domain": "visual",
       "source": "include/sweeteditor/editor_types.h",
-      "line": 376,
+      "line": 395,
       "fields": [
         {
           "name": "x",
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 377,
+          "line": 396,
           "default": "0"
         },
         {
@@ -4239,7 +4129,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 378,
+          "line": 397,
           "default": "0"
         },
         {
@@ -4247,7 +4137,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 379,
+          "line": 398,
           "default": "0"
         }
       ]
@@ -4700,14 +4590,14 @@
       "direction": "out",
       "domain": "visual",
       "source": "include/sweeteditor/editor_types.h",
-      "line": 332,
+      "line": 351,
       "fields": [
         {
           "name": "scale",
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 333,
+          "line": 352,
           "default": "1"
         },
         {
@@ -4715,7 +4605,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 334,
+          "line": 353,
           "default": "0"
         },
         {
@@ -4723,7 +4613,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 335,
+          "line": 354,
           "default": "0"
         },
         {
@@ -4731,7 +4621,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 336,
+          "line": 355,
           "default": "0"
         },
         {
@@ -4739,7 +4629,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 337,
+          "line": 356,
           "default": "0"
         },
         {
@@ -4747,21 +4637,21 @@
           "cpp_type": "Size",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 338
+          "line": 357
         },
         {
           "name": "viewport_size",
           "cpp_type": "Size",
           "wire": "struct",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 339
+          "line": 358
         },
         {
           "name": "text_area_x",
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 340,
+          "line": 359,
           "default": "0"
         },
         {
@@ -4769,7 +4659,7 @@
           "cpp_type": "float",
           "wire": "f32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 341,
+          "line": 360,
           "default": "0"
         },
         {
@@ -4777,7 +4667,7 @@
           "cpp_type": "bool",
           "wire": "bool_i32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 342,
+          "line": 361,
           "default": "false"
         },
         {
@@ -4785,7 +4675,7 @@
           "cpp_type": "bool",
           "wire": "bool_i32",
           "source": "include/sweeteditor/editor_types.h",
-          "line": 343,
+          "line": 362,
           "default": "false"
         }
       ]

@@ -1,8 +1,8 @@
 package com.qiplat.sweeteditor.core.ime;
 
 public enum ImeTextUnit {
-    GRAPHEME(0),
-    CODE_POINT(1);
+    UTF16_CODE_UNIT(0),
+    UNICODE_CODE_POINT(1);
 
     public final int value;
 
@@ -12,9 +12,9 @@ public enum ImeTextUnit {
 
     public static ImeTextUnit fromValue(int value) {
         switch (value) {
-            case 0: return GRAPHEME;
-            case 1: return CODE_POINT;
-            default: return GRAPHEME;
+            case 0: return UTF16_CODE_UNIT;
+            case 1: return UNICODE_CODE_POINT;
+            default: throw new IllegalArgumentException("Unknown ImeTextUnit value: " + value);
         }
     }
 }

@@ -9,17 +9,23 @@
 
 namespace NS_SWEETEDITOR {
   class Document;
+  class CompositionController;
   class EditorInteraction;
   class LinkedEditingSession;
 
   class RenderComposer {
   public:
-    RenderComposer(TextLayout* text_layout, DecorationManager* decorations, EditorSettings* settings);
+    RenderComposer(TextLayout* text_layout,
+                   DecorationManager* decorations,
+                   EditorSettings* settings,
+                   const CompositionController& composition_controller);
 
     void buildCursorModel(EditorRenderModel& model, const CaretState& caret,
                           float line_height) const;
 
-    void buildCompositionRangeEffect(EditorRenderModel& model, const CompositionState& composition,
+    void buildCompositionRangeEffect(EditorRenderModel& model,
+                                     Document* document,
+                                     const CompositionState& composition,
                                      float line_height) const;
 
     void buildSelectionRangeEffects(EditorRenderModel& model, Document* document,
@@ -63,6 +69,7 @@ namespace NS_SWEETEDITOR {
     TextLayout* m_text_layout_ {nullptr};
     DecorationManager* m_decorations_ {nullptr};
     EditorSettings* m_settings_ {nullptr};
+    const CompositionController& m_composition_controller_;
   };
 }
 
