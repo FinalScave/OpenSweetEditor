@@ -1483,10 +1483,10 @@ class SweetEditorCore {
         }
     }
 
-    /// Starts linked-editing mode with a generic LinkedEditingModel.
+    /// Starts linked-editing mode with externally built tab stop groups.
     @discardableResult
-    func startLinkedEditing(model: LinkedEditingModel) -> EditorActionResult? {
-        let payload = CoreProtocol.encodeStartLinkedEditingPayload(model: model)
+    func startLinkedEditing(groups: [TabStopGroup]) -> EditorActionResult? {
+        let payload = CoreProtocol.encodeStartLinkedEditingPayload(groups: groups)
         return performPayloadEditorAction(payload) { ptr, size, outSize in
             editor_start_linked_editing(handle, ptr, size, &outSize)
         }

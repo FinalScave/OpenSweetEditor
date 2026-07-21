@@ -2052,10 +2052,9 @@ external ffi.Pointer<ffi.Uint8> editor_insert_snippet(
   ffi.Pointer<ffi.Size> out_size,
 );
 
-/// Start linked editing mode with generic LinkedEditingModel payload
+/// Start linked editing mode with tab stop groups
 /// @param data StartLinkedEditingPayload binary payload encoded by CoreProtocol
-/// LinkedEditingModel model
-/// LinkedEditingModel is List<TabStopGroup> groups
+/// List<TabStopGroup> groups
 /// TabStopGroup is u32 index, List<TextRange> ranges, U8String default_text
 /// @param size payload byte length
 @ffi.Native<

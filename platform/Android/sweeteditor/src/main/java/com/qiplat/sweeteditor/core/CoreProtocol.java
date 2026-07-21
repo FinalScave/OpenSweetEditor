@@ -40,15 +40,16 @@ import com.qiplat.sweeteditor.core.config.ScrollbarMode;
 import com.qiplat.sweeteditor.core.config.ScrollbarTrackTapMode;
 import com.qiplat.sweeteditor.core.config.WhitespaceRenderMode;
 import com.qiplat.sweeteditor.core.config.WrapMode;
+import com.qiplat.sweeteditor.core.foundation.CaretAffinity;
 import com.qiplat.sweeteditor.core.foundation.IntRange;
 import com.qiplat.sweeteditor.core.foundation.PointF;
 import com.qiplat.sweeteditor.core.foundation.Rect;
 import com.qiplat.sweeteditor.core.foundation.Size;
+import com.qiplat.sweeteditor.core.foundation.TabStopGroup;
 import com.qiplat.sweeteditor.core.foundation.TextChange;
 import com.qiplat.sweeteditor.core.foundation.TextEdit;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
-import com.qiplat.sweeteditor.core.ime.CaretAffinity;
 import com.qiplat.sweeteditor.core.ime.ImeCommand;
 import com.qiplat.sweeteditor.core.ime.ImeCommandBatch;
 import com.qiplat.sweeteditor.core.ime.ImeCommandKind;
@@ -78,8 +79,6 @@ import com.qiplat.sweeteditor.core.search.SearchOptions;
 import com.qiplat.sweeteditor.core.search.SearchRequest;
 import com.qiplat.sweeteditor.core.search.SearchState;
 import com.qiplat.sweeteditor.core.search.SearchStatus;
-import com.qiplat.sweeteditor.core.snippet.LinkedEditingModel;
-import com.qiplat.sweeteditor.core.snippet.TabStopGroup;
 import com.qiplat.sweeteditor.core.visual.Cursor;
 import com.qiplat.sweeteditor.core.visual.CursorRect;
 import com.qiplat.sweeteditor.core.visual.EditorRenderModel;
@@ -1353,6 +1352,25 @@ public final class CoreProtocol {
         return size;
     }
 
+    private static void writeTabStopGroupFields(ByteBuffer data, TabStopGroup value) {
+        data.putInt(value.index);
+        writeTextRangeList(data, value.ranges);
+        writeUtf8String(data, value.defaultText);
+    }
+
+    public static void writeTabStopGroup(ByteBuffer data, TabStopGroup value) {
+        prepare(data);
+        writeTabStopGroupFields(data, value);
+    }
+
+    public static int sizeOfTabStopGroup(TabStopGroup value) {
+        int size = 0;
+        size += 4;
+        size += sizeOfTextRangeList(value.ranges);
+        size += sizeOfUtf8String(value.defaultText);
+        return size;
+    }
+
     private static TextChange readTextChange(ByteBuffer data) {
         TextChange value = new TextChange();
         value.range = readTextRange(data);
@@ -1734,40 +1752,6 @@ public final class CoreProtocol {
         int size = 0;
         size += 1;
         size += 2;
-        return size;
-    }
-
-    private static void writeLinkedEditingModelFields(ByteBuffer data, LinkedEditingModel value) {
-        writeTabStopGroupList(data, value.groups);
-    }
-
-    public static void writeLinkedEditingModel(ByteBuffer data, LinkedEditingModel value) {
-        prepare(data);
-        writeLinkedEditingModelFields(data, value);
-    }
-
-    public static int sizeOfLinkedEditingModel(LinkedEditingModel value) {
-        int size = 0;
-        size += sizeOfTabStopGroupList(value.groups);
-        return size;
-    }
-
-    private static void writeTabStopGroupFields(ByteBuffer data, TabStopGroup value) {
-        data.putInt(value.index);
-        writeTextRangeList(data, value.ranges);
-        writeUtf8String(data, value.defaultText);
-    }
-
-    public static void writeTabStopGroup(ByteBuffer data, TabStopGroup value) {
-        prepare(data);
-        writeTabStopGroupFields(data, value);
-    }
-
-    public static int sizeOfTabStopGroup(TabStopGroup value) {
-        int size = 0;
-        size += 4;
-        size += sizeOfTextRangeList(value.ranges);
-        size += sizeOfUtf8String(value.defaultText);
         return size;
     }
 
@@ -2865,6 +2849,20 @@ public final class CoreProtocol {
         return data;
     }
 
+    public static ByteBuffer encodeTabStopGroup(TabStopGroup value) {
+        int size = 0;
+        size += 4;
+        size += sizeOfTextRangeList(value.ranges);
+        byte[] defaultTextUtf8 = utf8Bytes(value.defaultText);
+        size += 4 + defaultTextUtf8.length;
+        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
+        data.putInt(value.index);
+        writeTextRangeList(data, value.ranges);
+        writeUtf8Bytes(data, defaultTextUtf8);
+        data.flip();
+        return data;
+    }
+
     public static ByteBuffer encodeImeCommand(ImeCommand value) {
         int size = 0;
         size += 4;
@@ -3001,13 +2999,13 @@ public final class CoreProtocol {
         return data;
     }
 
-    public static ByteBuffer encodeLinkedEditingModel(LinkedEditingModel value) {
+    public static ByteBuffer encodeStartLinkedEditingPayload(java.util.List<? extends TabStopGroup> groups) {
         int size = 0;
-        int groupsCount = value.groups == null ? 0 : value.groups.size();
+        int groupsCount = groups == null ? 0 : groups.size();
         byte[][] groupsDefaultTextUtf8 = new byte[groupsCount][];
         size += 4;
         for (int groupsIndex = 0; groupsIndex < groupsCount; groupsIndex++) {
-            TabStopGroup groupsItem = value.groups.get(groupsIndex);
+            TabStopGroup groupsItem = groups.get(groupsIndex);
             size += 4;
             size += sizeOfTextRangeList(groupsItem.ranges);
             byte[] groupsDefaultTextBytes = utf8Bytes(groupsItem.defaultText);
@@ -3017,50 +3015,11 @@ public final class CoreProtocol {
         ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
         data.putInt(groupsCount);
         for (int groupsIndex = 0; groupsIndex < groupsCount; groupsIndex++) {
-            TabStopGroup groupsItem = value.groups.get(groupsIndex);
+            TabStopGroup groupsItem = groups.get(groupsIndex);
             data.putInt(groupsItem.index);
             writeTextRangeList(data, groupsItem.ranges);
             writeUtf8Bytes(data, groupsDefaultTextUtf8[groupsIndex]);
         }
-        data.flip();
-        return data;
-    }
-
-    public static ByteBuffer encodeStartLinkedEditingPayload(LinkedEditingModel model) {
-        int size = 0;
-        int modelGroupsCount = model.groups == null ? 0 : model.groups.size();
-        byte[][] modelGroupsDefaultTextUtf8 = new byte[modelGroupsCount][];
-        size += 4;
-        for (int modelGroupsIndex = 0; modelGroupsIndex < modelGroupsCount; modelGroupsIndex++) {
-            TabStopGroup modelGroupsItem = model.groups.get(modelGroupsIndex);
-            size += 4;
-            size += sizeOfTextRangeList(modelGroupsItem.ranges);
-            byte[] modelGroupsDefaultTextBytes = utf8Bytes(modelGroupsItem.defaultText);
-            modelGroupsDefaultTextUtf8[modelGroupsIndex] = modelGroupsDefaultTextBytes;
-            size += 4 + modelGroupsDefaultTextBytes.length;
-        }
-        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
-        data.putInt(modelGroupsCount);
-        for (int modelGroupsIndex = 0; modelGroupsIndex < modelGroupsCount; modelGroupsIndex++) {
-            TabStopGroup modelGroupsItem = model.groups.get(modelGroupsIndex);
-            data.putInt(modelGroupsItem.index);
-            writeTextRangeList(data, modelGroupsItem.ranges);
-            writeUtf8Bytes(data, modelGroupsDefaultTextUtf8[modelGroupsIndex]);
-        }
-        data.flip();
-        return data;
-    }
-
-    public static ByteBuffer encodeTabStopGroup(TabStopGroup value) {
-        int size = 0;
-        size += 4;
-        size += sizeOfTextRangeList(value.ranges);
-        byte[] defaultTextUtf8 = utf8Bytes(value.defaultText);
-        size += 4 + defaultTextUtf8.length;
-        ByteBuffer data = ByteBuffer.allocateDirect(size).order(ByteOrder.LITTLE_ENDIAN);
-        data.putInt(value.index);
-        writeTextRangeList(data, value.ranges);
-        writeUtf8Bytes(data, defaultTextUtf8);
         data.flip();
         return data;
     }

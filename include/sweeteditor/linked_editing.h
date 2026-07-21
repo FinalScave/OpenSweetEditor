@@ -11,7 +11,7 @@
 namespace NS_SWEETEDITOR {
 
   /// Tab stop group (all positions with the same index are edited together)
-  struct SE_PROTOCOL_IN(linked_editing) TabStopGroup {
+  struct SE_PROTOCOL_IN(foundation) TabStopGroup {
     /// Group index that decides Tab navigation order (0 = final cursor position, 1+ = edit order)
     uint32_t index{0};
     /// All text ranges in this group (updated together during linked editing)
@@ -20,18 +20,12 @@ namespace NS_SWEETEDITOR {
     U8String default_text;
   };
 
-  /// Linked editing model (pure data, built by SnippetParser or external code)
-  struct SE_PROTOCOL_IN(linked_editing) LinkedEditingModel {
-    /// All tab stop groups ordered by navigation sequence (index=1,2,3,..., index=0 at the end)
-    Vector<TabStopGroup> groups;
-  };
-
   /// Snippet parse result
   struct SnippetParseResult {
     /// Expanded plain text (all placeholders replaced with default text)
     U8String text;
-    /// Matching LinkedEditingModel (ranges use absolute positions relative to insert point)
-    LinkedEditingModel model;
+    /// Tab stop groups whose ranges use absolute positions relative to the insert point
+    Vector<TabStopGroup> groups;
   };
 
   /// VSCode snippet syntax parser
@@ -40,7 +34,7 @@ namespace NS_SWEETEDITOR {
     /// Parse a VSCode snippet template into SnippetParseResult
     /// @param snippet_template Template text, for example "for (int ${1:i}=0; ${1:i}<${2:n}; ${1:i}++) {\n\t$0\n}"
     /// @param insert_position Start position where the template is inserted (used to compute absolute range positions)
-    /// @return Parse result: expanded plain text + LinkedEditingModel
+    /// @return Parse result: expanded plain text and tab stop groups
     static SnippetParseResult parse(const U8String& snippet_template, const TextPosition& insert_position);
   };
 
@@ -55,8 +49,7 @@ namespace NS_SWEETEDITOR {
   /// Linked editing session (lifecycle managed by EditorCore)
   class LinkedEditingSession {
   public:
-    explicit LinkedEditingSession(LinkedEditingModel&& model);
-    explicit LinkedEditingSession(const LinkedEditingModel& model);
+    explicit LinkedEditingSession(Vector<TabStopGroup> groups);
 
     /// Whether the session is still active
     bool isActive() const;
@@ -101,8 +94,8 @@ namespace NS_SWEETEDITOR {
     Vector<LinkedEditingHighlight> getAllHighlights() const;
 
   private:
-    LinkedEditingModel m_model_;
-    size_t m_current_idx_{0}; ///< Index in m_model_.groups
+    Vector<TabStopGroup> m_groups_;
+    size_t m_current_idx_{0}; ///< Index in m_groups_
     bool m_active_{true};
 
     /// Internal helper: check if index is valid

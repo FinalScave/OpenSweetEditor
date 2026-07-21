@@ -1291,7 +1291,7 @@ const uint8_t* editor_start_linked_editing(intptr_t editor_handle, const uint8_t
     return nullBinaryPayload(out_size);
   }
 
-  return editorActionResultToBinary(editor_core->startLinkedEditing(std::move(payload.model)), out_size);
+  return editorActionResultToBinary(editor_core->startLinkedEditing(std::move(payload.groups)), out_size);
 }
 
 int editor_is_in_linked_editing(intptr_t editor_handle) {

@@ -16,7 +16,7 @@ import android.view.inputmethod.SurroundingText;
 import android.view.inputmethod.TextAttribute;
 
 import com.qiplat.sweeteditor.core.action.EditorActionResult;
-import com.qiplat.sweeteditor.core.ime.CaretAffinity;
+import com.qiplat.sweeteditor.core.foundation.CaretAffinity;
 import com.qiplat.sweeteditor.core.ime.ImeCommand;
 import com.qiplat.sweeteditor.core.ime.ImeCommandBatch;
 import com.qiplat.sweeteditor.core.ime.ImeCommandKind;

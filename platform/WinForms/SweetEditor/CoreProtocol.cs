@@ -1198,6 +1198,20 @@ namespace SweetEditor {
             return size;
         }
 
+        private static void WriteTabStopGroup(BinaryWriter writer, TabStopGroup value) {
+            writer.WriteInt32(value.Index);
+            WriteTextRangeList(writer, value.Ranges);
+            WriteUtf8String(writer, value.DefaultText);
+        }
+
+        private static int SizeOfTabStopGroup(TabStopGroup value) {
+            var size = 0;
+            size += 4;
+            size += SizeOfTextRangeList(value.Ranges);
+            size += SizeOfUtf8String(value.DefaultText);
+            return size;
+        }
+
         private static TextChange ReadTextChange(ref BinaryReader reader) {
             return new TextChange {
                 Range = ReadTextRange(ref reader),
@@ -1519,30 +1533,6 @@ namespace SweetEditor {
             var size = 0;
             size += 1;
             size += 2;
-            return size;
-        }
-
-        private static void WriteLinkedEditingModel(BinaryWriter writer, LinkedEditingModel value) {
-            WriteTabStopGroupList(writer, value.Groups);
-        }
-
-        private static int SizeOfLinkedEditingModel(LinkedEditingModel value) {
-            var size = 0;
-            size += SizeOfTabStopGroupList(value.Groups);
-            return size;
-        }
-
-        private static void WriteTabStopGroup(BinaryWriter writer, TabStopGroup value) {
-            writer.WriteInt32(value.Index);
-            WriteTextRangeList(writer, value.Ranges);
-            WriteUtf8String(writer, value.DefaultText);
-        }
-
-        private static int SizeOfTabStopGroup(TabStopGroup value) {
-            var size = 0;
-            size += 4;
-            size += SizeOfTextRangeList(value.Ranges);
-            size += SizeOfUtf8String(value.DefaultText);
             return size;
         }
 
@@ -2483,6 +2473,12 @@ namespace SweetEditor {
             return writer.ToArray();
         }
 
+        public static byte[] EncodeTabStopGroup(TabStopGroup value) {
+            var writer = new BinaryWriter(SizeOfTabStopGroup(value));
+            WriteTabStopGroup(writer, value);
+            return writer.ToArray();
+        }
+
         public static byte[] EncodeImeCommand(ImeCommand value) {
             var writer = new BinaryWriter(SizeOfImeCommand(value));
             WriteImeCommand(writer, value);
@@ -2529,31 +2525,19 @@ namespace SweetEditor {
             return writer.ToArray();
         }
 
-        public static byte[] EncodeLinkedEditingModel(LinkedEditingModel value) {
-            var writer = new BinaryWriter(SizeOfLinkedEditingModel(value));
-            WriteLinkedEditingModel(writer, value);
-            return writer.ToArray();
+        private static void WriteStartLinkedEditingPayloadWire(BinaryWriter writer, IReadOnlyList<TabStopGroup>? groups) {
+            WriteTabStopGroupList(writer, groups);
         }
 
-        private static void WriteStartLinkedEditingPayloadWire(BinaryWriter writer, LinkedEditingModel model) {
-            WriteLinkedEditingModel(writer, model);
-        }
-
-        private static int SizeOfStartLinkedEditingPayloadWire(LinkedEditingModel model) {
+        private static int SizeOfStartLinkedEditingPayloadWire(IReadOnlyList<TabStopGroup>? groups) {
             var size = 0;
-            size += SizeOfLinkedEditingModel(model);
+            size += SizeOfTabStopGroupList(groups);
             return size;
         }
 
-        public static byte[] EncodeStartLinkedEditingPayload(LinkedEditingModel model) {
-            var writer = new BinaryWriter(SizeOfStartLinkedEditingPayloadWire(model));
-            WriteStartLinkedEditingPayloadWire(writer, model);
-            return writer.ToArray();
-        }
-
-        public static byte[] EncodeTabStopGroup(TabStopGroup value) {
-            var writer = new BinaryWriter(SizeOfTabStopGroup(value));
-            WriteTabStopGroup(writer, value);
+        public static byte[] EncodeStartLinkedEditingPayload(IReadOnlyList<TabStopGroup>? groups) {
+            var writer = new BinaryWriter(SizeOfStartLinkedEditingPayloadWire(groups));
+            WriteStartLinkedEditingPayloadWire(writer, groups);
             return writer.ToArray();
         }
 

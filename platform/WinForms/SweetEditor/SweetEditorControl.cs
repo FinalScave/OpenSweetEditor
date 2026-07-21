@@ -1452,8 +1452,8 @@ namespace SweetEditor {
 		}
 
 		/// <summary>Starts linked editing.</summary>
-		public void StartLinkedEditing(LinkedEditingModel model) {
-			DispatchEditorActionResult(editorCore.StartLinkedEditing(model));
+		public void StartLinkedEditing(IReadOnlyList<TabStopGroup> groups) {
+			DispatchEditorActionResult(editorCore.StartLinkedEditing(groups));
 		}
 
 		/// <summary>Returns whether in linked editing.</summary>

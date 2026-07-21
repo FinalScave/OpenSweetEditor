@@ -1247,6 +1247,16 @@ enum CoreProtocol {
         4 + 4
     }
 
+    static func writeTabStopGroup(_ writer: inout BinaryWriter, _ value: TabStopGroup) {
+        writer.writeInt32(value.index)
+        writeTextRangeList(&writer, value.ranges)
+        writer.writeUtf8String(value.default_text)
+    }
+
+    static func sizeOfTabStopGroup(_ value: TabStopGroup) -> Int {
+        4 + sizeOfTextRangeList(value.ranges) + sizeOfUtf8String(value.default_text)
+    }
+
     static func readTextChange(_ reader: inout BinaryReader) -> TextChange? {
         guard let range = readTextRange(&reader) else { return nil }
         guard let new_text = reader.readUtf8String() else { return nil }
@@ -1571,24 +1581,6 @@ enum CoreProtocol {
 
     static func sizeOfKeyChord(_ value: KeyChord) -> Int {
         1 + 2
-    }
-
-    static func writeLinkedEditingModel(_ writer: inout BinaryWriter, _ value: LinkedEditingModel) {
-        writeTabStopGroupList(&writer, value.groups)
-    }
-
-    static func sizeOfLinkedEditingModel(_ value: LinkedEditingModel) -> Int {
-        sizeOfTabStopGroupList(value.groups)
-    }
-
-    static func writeTabStopGroup(_ writer: inout BinaryWriter, _ value: TabStopGroup) {
-        writer.writeInt32(value.index)
-        writeTextRangeList(&writer, value.ranges)
-        writer.writeUtf8String(value.default_text)
-    }
-
-    static func sizeOfTabStopGroup(_ value: TabStopGroup) -> Int {
-        4 + sizeOfTextRangeList(value.ranges) + sizeOfUtf8String(value.default_text)
     }
 
     static func readSearchOptions(_ reader: inout BinaryReader) -> SearchOptions? {
@@ -2536,6 +2528,12 @@ enum CoreProtocol {
         return writer.data()
     }
 
+    static func encodeTabStopGroup(_ value: TabStopGroup) -> Data {
+        var writer = BinaryWriter()
+        writeTabStopGroup(&writer, value)
+        return writer.data()
+    }
+
     static func encodeImeCommand(_ value: ImeCommand) -> Data {
         var writer = BinaryWriter()
         writeImeCommand(&writer, value)
@@ -2582,31 +2580,19 @@ enum CoreProtocol {
         return writer.data()
     }
 
-    static func encodeLinkedEditingModel(_ value: LinkedEditingModel) -> Data {
-        var writer = BinaryWriter()
-        writeLinkedEditingModel(&writer, value)
-        return writer.data()
+    static func writeStartLinkedEditingPayloadWire(_ writer: inout BinaryWriter, groups: [TabStopGroup]) {
+        writeTabStopGroupList(&writer, groups)
     }
 
-    static func writeStartLinkedEditingPayloadWire(_ writer: inout BinaryWriter, model: LinkedEditingModel) {
-        writeLinkedEditingModel(&writer, model)
-    }
-
-    static func sizeOfStartLinkedEditingPayloadWire(model: LinkedEditingModel) -> Int {
+    static func sizeOfStartLinkedEditingPayloadWire(groups: [TabStopGroup]) -> Int {
         var size = 0
-        size += sizeOfLinkedEditingModel(model)
+        size += sizeOfTabStopGroupList(groups)
         return size
     }
 
-    static func encodeStartLinkedEditingPayload(model: LinkedEditingModel) -> Data {
+    static func encodeStartLinkedEditingPayload(groups: [TabStopGroup]) -> Data {
         var writer = BinaryWriter()
-        writeStartLinkedEditingPayloadWire(&writer, model: model)
-        return writer.data()
-    }
-
-    static func encodeTabStopGroup(_ value: TabStopGroup) -> Data {
-        var writer = BinaryWriter()
-        writeTabStopGroup(&writer, value)
+        writeStartLinkedEditingPayloadWire(&writer, groups: groups)
         return writer.data()
     }
 

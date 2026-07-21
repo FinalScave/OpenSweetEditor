@@ -4,11 +4,6 @@ using System.Collections.Generic;
 
 namespace SweetEditor {
 
-    public enum CaretAffinity {
-        DOWNSTREAM = 0,
-        UPSTREAM = 1
-    }
-
     public enum ImeCommandKind {
         SET_SELECTION = 0,
         BEGIN_COMPOSITION = 1,

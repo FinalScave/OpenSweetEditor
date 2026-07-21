@@ -185,14 +185,14 @@ public void ClearMatchedBrackets()
 
 ```csharp
 public EditorActionResult InsertSnippet(string snippetTemplate)
-public void StartLinkedEditing(LinkedEditingModel model)
+public void StartLinkedEditing(IReadOnlyList<TabStopGroup> groups)
 public bool IsInLinkedEditing()
 public bool LinkedEditingNext()
 public bool LinkedEditingPrev()
 public void CancelLinkedEditing()
 ```
 
-Snippet 插入支持 tab stops；也可以直接使用 `LinkedEditingModel` 启动联动编辑。
+Snippet 插入支持 tab stops；也可以直接使用 `TabStopGroup` 列表启动联动编辑。
 
 ### Provider、补全、Inline Suggestion 与 Selection Menu
 

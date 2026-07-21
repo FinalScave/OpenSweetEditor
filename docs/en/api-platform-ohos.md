@@ -194,7 +194,7 @@ unfoldAll(): void
 isLineVisible(line: number): boolean
 
 insertSnippet(template: string): void
-startLinkedEditing(model: LinkedEditingModel): void
+startLinkedEditing(groups: TabStopGroup[]): void
 isInLinkedEditing(): boolean
 linkedEditingNext(): void
 linkedEditingPrev(): void

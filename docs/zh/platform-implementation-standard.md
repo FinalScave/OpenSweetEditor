@@ -25,12 +25,11 @@ Core 层不涉及 UI 渲染，仅包含桥接、数据模型和协议编解码�
 | **Core Bridge** | `EditorCore`, `Document`, `CoreProtocol`, `TextMeasurer` | 原生桥接 + 公共核心 API 封装 |
 | **Action** | `EditorActionResult`, `EditorActionSource`, `TextChangeKind`, `ScrollBehavior`, `AnimationFlag`, `InteractionFlag` | Core action 结果与相关枚举；`EditorActionResult` 是变更类 core API 的统一结果载体 |
 | **Config** | `EditorOptions`, `HandleConfig`, `HandleHitArea`, `ScrollbarConfig`, `WrapMode`, `FoldArrowMode`, `AutoIndentMode`, `CurrentLineRenderMode`, `ScrollbarMode`, `ScrollbarTrackTapMode`, `EditorRenderColors`, `EditorRangeEffectStyles`, `RangeEffectStyle`, `RangeEffectUnderlineStyle` | 运行时、构造与编辑器渲染样式协议类型 |
-| **Foundation** | `TextPosition`, `TextRange`, `TextEdit`, `IntRange`, `TextChange`, `PointF`, `Size`, `Rect` | 基础值类型与几何载体 |
+| **Foundation** | `TextPosition`, `TextRange`, `TextEdit`, `IntRange`, `TextChange`, `PointF`, `Size`, `Rect`, `CaretAffinity`, `TabStopGroup` | 基础值类型与共享编辑器数据载体 |
 | **Interaction** | `GestureEvent`, `GestureType`, `EventType`, `HitTarget`, `HitTargetType` | 输入与命中测试协议类型 |
 | **IME** | `ImeSyncSnapshot`, `ImeInputContext`, `ImeOffsetRange`, `ImeMarkedRange`, `ImeMarkedRangeRole`, `ImeCommandKind`, `ImeCommandMessage`, `ImeTextPatch`, `ImeTextUpdateKind`, `ImeTextUpdateScope`, `ImeTextUpdateMessage`, `ImeScriptClass`, `ImeContextPolicy`, `ImeInputContextKind`, `ImeTextUnit` | IME 同步快照、文本上下文协议类型与替换 payload model；接入侧同步决策由 `EditorActionResult` 承载 |
 | **Adornment** | `StyleSpan`, `SpanLayer`, `InlayHint`, `InlayType`, `PhantomText`, `CodeLensItem`, `LinkSpan`, `FoldRegion`, `GutterIcon`, `Diagnostic`, `DiagnosticSeverity`, `DocumentHighlight`, `DocumentHighlightKind`, `IndentGuide`, `BracketGuide`, `FlowGuide`, `SeparatorGuide`, `SeparatorStyle`, `TextStyle` | 装饰数据类型 |
 | **Visual** | `EditorRenderModel`, `LayoutMetrics`, `VisualLine`, `VisualLineKind`, `VisualRun`, `VisualRunType`, `PointerCursorType`, `Cursor`, `CursorRect`, `SelectionHandle`, `ScrollMetrics`, `ScrollbarModel`, `GuideSegment`, `GuideType`, `GuideDirection`, `GuideStyle`, `RangeEffectKind`, `RangeEffectRenderItem`, `FoldMarkerRenderItem`, `FoldState`, `GutterIconRenderItem` | 渲染模型类型（几何语义见第 2.5 与 2.6 节） |
-| **Snippet** | `LinkedEditingModel`, `TabStopGroup` | 联动编辑 / Tab stop 分组 |
 | **Keymap** | `KeyBinding`, `KeyChord`, `KeyCode`, `KeyModifier`, `EditorBuiltinCommand` | 快捷键绑定数据类型与内建命令标识 |
 
 Core 协议类型与 `CoreProtocol` 编解码器 MUST 通过 `tools/se_protocol_gen` 从 C++ `SE_PROTOCOL_*` 标注生成。接入代码 MAY 增加生成后 augment 或轻量宿主语言 helper，但 MUST NOT 维护独立的 `ProtocolEncoder` / `ProtocolDecoder` 实现，也不能定义实现私有二进制 schema。augment MUST NOT 改变编码字段顺序、标量宽度、可空性、list/map 布局、枚举值或 payload 名称。
@@ -236,7 +235,7 @@ Widget 层负责宿主原生渲染、用户交互和扩展系统。
 | 折叠 | `setFoldRegions(regions)`, `toggleFoldAt(line)`, `foldAt(line)`, `unfoldAt(line)`, `foldAll()`, `unfoldAll()`, `isLineVisible(line)` |
 | Search | `search(request)`, `findNextSearchMatch()`, `findPreviousSearchMatch()`, `replaceCurrentSearchMatch(replacement)`, `replaceAllSearchMatches(replacement)`, `clearSearch()`, `getSearchState()` |
 | 清除 | `clearAllDecorations()` |
-| Linked Editing | `insertSnippet(template)`, `startLinkedEditing(model)`, `isInLinkedEditing()`, `linkedEditingNext()`, `linkedEditingPrev()`, `cancelLinkedEditing()` |
+| Linked Editing | `insertSnippet(template)`, `startLinkedEditing(groups)`, `isInLinkedEditing()`, `linkedEditingNext()`, `linkedEditingPrev()`, `cancelLinkedEditing()` |
 
 IME API 是宿主输入事件进入 core 的请求入口。本标准约束的是语义能力族，而不是要求每个实现调用全部 bridge 函数。接入层 MUST NOT 因为系统 IME 请求 surrounding text、候选上下文或光标矩形，就创建 editor preedit。是否建立 preedit 只取决于系统 IME 是否通过 composing / marked / preedit API 明确声明可编辑组合文本或组合范围；提交、替换、删除和 selection 同步由 core 基于当前 selection、preedit、system mark 与输入上下文统一裁决。
 

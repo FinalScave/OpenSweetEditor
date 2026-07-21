@@ -1436,9 +1436,9 @@ TEST_CASE("EditorCore linked composition degrades to primary-only for conflictin
   editor.loadDocument(document);
   editor.setViewport({800, 600});
 
-  LinkedEditingModel model;
-  model.groups.push_back({1, {{{0, 0}, {0, 3}}, {{0, 2}, {0, 5}}}, "abc"});
-  editor.startLinkedEditing(std::move(model));
+  Vector<TabStopGroup> groups;
+  groups.push_back({1, {{{0, 0}, {0, 3}}, {{0, 2}, {0, 5}}}, "abc"});
+  editor.startLinkedEditing(std::move(groups));
   REQUIRE(editor.isInLinkedEditing());
 
   updatePreedit(editor, "X");

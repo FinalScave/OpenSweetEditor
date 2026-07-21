@@ -1,5 +1,7 @@
 package com.qiplat.sweeteditor.core.ime;
 
+import com.qiplat.sweeteditor.core.foundation.CaretAffinity;
+
 public final class ImeSelection {
     public ImeCoordinateSpace coordinateSpace = ImeCoordinateSpace.DOCUMENT;
     public long anchorUtf16 = -1L;

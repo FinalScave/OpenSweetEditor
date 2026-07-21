@@ -40,7 +40,7 @@ namespace {
 
   template <typename DocumentType> void checkBatchReplacement() {
     DocumentType document("ab\r\ncd\xF0\x9F\x99\x82\nef");
-    const Vector<DocumentReplacement> replacements{
+    const Vector<TextEdit> replacements{
         {{{0, 1}, {1, 1}}, "X\nY"},
         {{{2, 0}, {2, 1}}, "Z"},
     };
@@ -52,14 +52,14 @@ namespace {
 
   template <typename DocumentType> void checkBatchValidationKeepsDocument() {
     DocumentType document("abcdef");
-    const Vector<DocumentReplacement> overlapping{
+    const Vector<TextEdit> overlapping{
         {{{0, 1}, {0, 4}}, "X"},
         {{{0, 3}, {0, 5}}, "Y"},
     };
     CHECK_THROWS_AS(document.replaceU8TextBatch(overlapping), std::invalid_argument);
     CHECK(document.getU8Text() == "abcdef");
 
-    const Vector<DocumentReplacement> out_of_range{
+    const Vector<TextEdit> out_of_range{
         {{{0, 1}, {0, 7}}, "Z"},
     };
     CHECK_THROWS_AS(document.replaceU8TextBatch(out_of_range), std::out_of_range);
@@ -67,7 +67,7 @@ namespace {
 
     DocumentType unicode_document("a\xF0\x9F\x99\x82"
                                   "b");
-    const Vector<DocumentReplacement> split_surrogate{
+    const Vector<TextEdit> split_surrogate{
         {{{0, 2}, {0, 3}}, "Z"},
     };
     CHECK_THROWS_AS(unicode_document.replaceU8TextBatch(split_surrogate), std::invalid_argument);
@@ -89,7 +89,7 @@ TEST_CASE("Document batch replacement preserves live state on validation failure
 }
 
 TEST_CASE("Document batch replacement allows an insertion at replacement end") {
-  const Vector<DocumentReplacement> replacements{
+  const Vector<TextEdit> replacements{
       {{{0, 0}, {0, 4}}, "run"},
       {{{0, 4}, {0, 4}}, "Async"},
   };

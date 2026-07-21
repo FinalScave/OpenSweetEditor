@@ -26,46 +26,44 @@ namespace NS_SWEETEDITOR {
     }
 
     // Validate the entire plan before live mutation and return descending indices.
-    Vector<size_t> prepareDocumentReplacements(Document& document, const Vector<DocumentReplacement>& replacements) {
+    Vector<size_t> prepareDocumentEdits(Document& document, const Vector<TextEdit>& edits) {
       Vector<size_t> prepared;
-      prepared.reserve(replacements.size());
-      for (size_t index = 0; index < replacements.size(); ++index) {
-        const DocumentReplacement& replacement = replacements[index];
-        if (replacement.range.end < replacement.range.start) {
+      prepared.reserve(edits.size());
+      for (size_t index = 0; index < edits.size(); ++index) {
+        const TextEdit& edit = edits[index];
+        if (edit.range.end < edit.range.start) {
           throw std::invalid_argument("Document replacement range must be normalized");
         }
-        if (replacement.range.start.line >= document.getLineCount()
-            || replacement.range.end.line >= document.getLineCount()) {
+        if (edit.range.start.line >= document.getLineCount() || edit.range.end.line >= document.getLineCount()) {
           throw std::out_of_range("Document replacement line is out of range");
         }
-        if (replacement.range.start.column > document.getLineColumns(replacement.range.start.line)
-            || replacement.range.end.column > document.getLineColumns(replacement.range.end.line)) {
+        if (edit.range.start.column > document.getLineColumns(edit.range.start.line)
+            || edit.range.end.column > document.getLineColumns(edit.range.end.line)) {
           throw std::out_of_range("Document replacement column is out of range");
         }
-        const U16String start_line = document.getLineU16Text(replacement.range.start.line);
-        const U16String end_line = replacement.range.start.line == replacement.range.end.line
-                                       ? start_line
-                                       : document.getLineU16Text(replacement.range.end.line);
-        if (!UnicodeUtil::isCodePointBoundary(start_line, replacement.range.start.column)
-            || !UnicodeUtil::isCodePointBoundary(end_line, replacement.range.end.column)) {
+        const U16String start_line = document.getLineU16Text(edit.range.start.line);
+        const U16String end_line =
+            edit.range.start.line == edit.range.end.line ? start_line : document.getLineU16Text(edit.range.end.line);
+        if (!UnicodeUtil::isCodePointBoundary(start_line, edit.range.start.column)
+            || !UnicodeUtil::isCodePointBoundary(end_line, edit.range.end.column)) {
           throw std::invalid_argument("Document replacement splits a UTF-16 surrogate pair");
         }
-        if (replacement.range.isCollapsed() && replacement.text.empty()) {
+        if (edit.range.isCollapsed() && edit.new_text.empty()) {
           continue;
         }
         prepared.push_back(index);
       }
 
-      std::sort(prepared.begin(), prepared.end(), [&replacements](size_t lhs_index, size_t rhs_index) {
-        const DocumentReplacement& lhs = replacements[lhs_index];
-        const DocumentReplacement& rhs = replacements[rhs_index];
+      std::sort(prepared.begin(), prepared.end(), [&edits](size_t lhs_index, size_t rhs_index) {
+        const TextEdit& lhs = edits[lhs_index];
+        const TextEdit& rhs = edits[rhs_index];
         if (lhs.range.start != rhs.range.start) {
           return lhs.range.start < rhs.range.start;
         }
         return lhs.range.end < rhs.range.end;
       });
       for (size_t index = 1; index < prepared.size(); ++index) {
-        if (replacements[prepared[index - 1]].range.overlaps(replacements[prepared[index]].range)) {
+        if (edits[prepared[index - 1]].range.overlaps(edits[prepared[index]].range)) {
           throw std::invalid_argument("Document replacement ranges overlap");
         }
       }
@@ -547,16 +545,16 @@ namespace NS_SWEETEDITOR {
     updateLogicalLinesByInsertText(start_byte, text);
   }
 
-  void PieceTableDocument::replaceU8TextBatch(const Vector<DocumentReplacement>& replacements) {
-    Vector<size_t> prepared = prepareDocumentReplacements(*this, replacements);
+  void PieceTableDocument::replaceU8TextBatch(const Vector<TextEdit>& edits) {
+    Vector<size_t> prepared = prepareDocumentEdits(*this, edits);
     if (prepared.empty()) {
       return;
     }
 
     // Descending shared pre-edit coordinates remain valid after every earlier replacement.
     for (size_t index : prepared) {
-      const DocumentReplacement& replacement = replacements[index];
-      replaceU8Text(replacement.range, replacement.text);
+      const TextEdit& edit = edits[index];
+      replaceU8Text(edit.range, edit.new_text);
     }
   }
 
@@ -1063,16 +1061,16 @@ namespace NS_SWEETEDITOR {
     insertU8Text(range.start, text);
   }
 
-  void LineArrayDocument::replaceU8TextBatch(const Vector<DocumentReplacement>& replacements) {
-    Vector<size_t> prepared = prepareDocumentReplacements(*this, replacements);
+  void LineArrayDocument::replaceU8TextBatch(const Vector<TextEdit>& edits) {
+    Vector<size_t> prepared = prepareDocumentEdits(*this, edits);
     if (prepared.empty()) {
       return;
     }
 
     // Descending shared pre-edit coordinates remain valid after every earlier replacement.
     for (size_t index : prepared) {
-      const DocumentReplacement& replacement = replacements[index];
-      replaceU8Text(replacement.range, replacement.text);
+      const TextEdit& edit = edits[index];
+      replaceU8Text(edit.range, edit.new_text);
     }
   }
 

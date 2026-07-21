@@ -141,7 +141,7 @@ namespace protocol {
   };
 
   struct SE_PROTOCOL_IN(linked_editing) StartLinkedEditingPayload {
-    LinkedEditingModel model;
+    Vector<TabStopGroup> groups;
   };
 
 }

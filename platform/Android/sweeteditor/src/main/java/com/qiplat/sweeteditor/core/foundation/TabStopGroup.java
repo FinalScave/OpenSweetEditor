@@ -1,6 +1,5 @@
-package com.qiplat.sweeteditor.core.snippet;
+package com.qiplat.sweeteditor.core.foundation;
 
-import com.qiplat.sweeteditor.core.foundation.TextRange;
 import java.util.List;
 
 public final class TabStopGroup {

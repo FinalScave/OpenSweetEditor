@@ -1176,6 +1176,20 @@ int _sizeOfSize(Size value) {
   return size;
 }
 
+void _writeTabStopGroup(_BinaryWriter writer, TabStopGroup value) {
+  writer.writeUint32(value.index);
+  _writeTextRangeList(writer, value.ranges);
+  _writeUtf8String(writer, value.defaultText);
+}
+
+int _sizeOfTabStopGroup(TabStopGroup value) {
+  var size = 0;
+  size += 4;
+  size += _sizeOfTextRangeList(value.ranges);
+  size += _sizeOfUtf8String(value.defaultText);
+  return size;
+}
+
 TextChange _readTextChange(_BinaryReader reader) {
   return TextChange(
     range: _readTextRange(reader),
@@ -1442,30 +1456,6 @@ int _sizeOfKeyChord(KeyChord value) {
   var size = 0;
   size += 1;
   size += 2;
-  return size;
-}
-
-void _writeLinkedEditingModel(_BinaryWriter writer, LinkedEditingModel value) {
-  _writeTabStopGroupList(writer, value.groups);
-}
-
-int _sizeOfLinkedEditingModel(LinkedEditingModel value) {
-  var size = 0;
-  size += _sizeOfTabStopGroupList(value.groups);
-  return size;
-}
-
-void _writeTabStopGroup(_BinaryWriter writer, TabStopGroup value) {
-  writer.writeUint32(value.index);
-  _writeTextRangeList(writer, value.ranges);
-  _writeUtf8String(writer, value.defaultText);
-}
-
-int _sizeOfTabStopGroup(TabStopGroup value) {
-  var size = 0;
-  size += 4;
-  size += _sizeOfTextRangeList(value.ranges);
-  size += _sizeOfUtf8String(value.defaultText);
   return size;
 }
 
@@ -2497,6 +2487,12 @@ class CoreProtocol {
     return writer.toBytes();
   }
 
+  static Uint8List encodeTabStopGroup(TabStopGroup value) {
+    final writer = _BinaryWriter(_sizeOfTabStopGroup(value));
+    _writeTabStopGroup(writer, value);
+    return writer.toBytes();
+  }
+
   static Uint8List encodeImeCommand(ImeCommand value) {
     final writer = _BinaryWriter(_sizeOfImeCommand(value));
     _writeImeCommand(writer, value);
@@ -2543,31 +2539,19 @@ class CoreProtocol {
     return writer.toBytes();
   }
 
-  static Uint8List encodeLinkedEditingModel(LinkedEditingModel value) {
-    final writer = _BinaryWriter(_sizeOfLinkedEditingModel(value));
-    _writeLinkedEditingModel(writer, value);
-    return writer.toBytes();
+  static void _writeStartLinkedEditingPayloadWire(_BinaryWriter writer, List<TabStopGroup>? groups) {
+    _writeTabStopGroupList(writer, groups);
   }
 
-  static void _writeStartLinkedEditingPayloadWire(_BinaryWriter writer, LinkedEditingModel model) {
-    _writeLinkedEditingModel(writer, model);
-  }
-
-  static int _sizeOfStartLinkedEditingPayloadWire(LinkedEditingModel model) {
+  static int _sizeOfStartLinkedEditingPayloadWire(List<TabStopGroup>? groups) {
     var size = 0;
-    size += _sizeOfLinkedEditingModel(model);
+    size += _sizeOfTabStopGroupList(groups);
     return size;
   }
 
-  static Uint8List encodeStartLinkedEditingPayload(LinkedEditingModel model) {
-    final writer = _BinaryWriter(_sizeOfStartLinkedEditingPayloadWire(model));
-    _writeStartLinkedEditingPayloadWire(writer, model);
-    return writer.toBytes();
-  }
-
-  static Uint8List encodeTabStopGroup(TabStopGroup value) {
-    final writer = _BinaryWriter(_sizeOfTabStopGroup(value));
-    _writeTabStopGroup(writer, value);
+  static Uint8List encodeStartLinkedEditingPayload(List<TabStopGroup>? groups) {
+    final writer = _BinaryWriter(_sizeOfStartLinkedEditingPayloadWire(groups));
+    _writeStartLinkedEditingPayloadWire(writer, groups);
     return writer.toBytes();
   }
 

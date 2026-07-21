@@ -17,7 +17,6 @@ import com.qiplat.sweeteditor.core.interaction.GestureEvent;
 import com.qiplat.sweeteditor.core.keymap.KeyBinding;
 import com.qiplat.sweeteditor.core.search.*;
 import com.qiplat.sweeteditor.core.visual.*;
-import com.qiplat.sweeteditor.core.snippet.*;
 
 import java.lang.ref.Cleaner;
 import java.lang.foreign.*;
@@ -996,9 +995,9 @@ public class EditorCore {
         }
     }
 
-    public EditorActionResult startLinkedEditing(LinkedEditingModel model) {
+    public EditorActionResult startLinkedEditing(List<TabStopGroup> groups) {
         try (Arena tempArena = Arena.ofConfined()) {
-            MemorySegment payload = CoreProtocol.encodeStartLinkedEditingPayload(tempArena, model);
+            MemorySegment payload = CoreProtocol.encodeStartLinkedEditingPayload(tempArena, groups);
             return decodeAction(EditorNative.startLinkedEditing(nativeHandle, payload, payload.byteSize()));
         }
     }

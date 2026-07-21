@@ -181,7 +181,7 @@ The component renders syntax, semantic, and overlay spans; inlay hints; phantom 
 
 ```java
 public void insertSnippet(String snippetTemplate)
-public void startLinkedEditing(LinkedEditingModel model)
+public void startLinkedEditing(List<TabStopGroup> groups)
 public boolean isInLinkedEditing()
 public void linkedEditingNext()
 public void linkedEditingPrev()

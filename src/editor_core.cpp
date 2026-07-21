@@ -943,18 +943,18 @@ namespace NS_SWEETEDITOR {
       return rhs.range.end < lhs.range.end;
     });
 
-    Vector<DocumentReplacement> replacements;
-    replacements.reserve(pending.size());
+    Vector<TextEdit> document_edits;
+    document_edits.reserve(pending.size());
     for (const auto& edit : pending) {
       if (edit.is_no_op) continue;
-      replacements.push_back({edit.range, edit.new_text});
+      document_edits.push_back({edit.range, edit.new_text});
       if (edit.original_index != 0) {
         primary_cursor = edit.range.transformPositionAfterEdit(primary_cursor, edit.new_end);
       }
     }
 
     const CaretState caret_before = m_caret_;
-    TextEditResult operation = applyEditBatch(replacements);
+    TextEditResult operation = applyEditBatch(document_edits);
     operation.cursor_before = caret_before.active;
     if (operation.contentChanged()) {
       setCursorPositionInternal(primary_cursor);
@@ -1194,15 +1194,15 @@ namespace NS_SWEETEDITOR {
     TextEditResult edit_result;
     edit_result.cursor_before = m_caret_.active;
 
-    Vector<DocumentReplacement> replacements;
-    replacements.reserve(matches.size());
+    Vector<TextEdit> edits;
+    edits.reserve(matches.size());
     for (size_t index = 0; index < matches.size(); ++index) {
-      replacements.push_back({matches[index].range, replacement_texts[index]});
+      edits.push_back({matches[index].range, replacement_texts[index]});
     }
 
     const CaretState caret_before = m_caret_;
     cancelLinkedEditingInternal();
-    edit_result = applyEditBatch(replacements);
+    edit_result = applyEditBatch(edits);
     edit_result.cursor_before = caret_before.active;
     if (edit_result.contentChanged()) {
       const TextPosition cursor_after = calcPositionAfterInsert(matches.front().range.start, replacement_texts.front());
@@ -1569,10 +1569,10 @@ namespace NS_SWEETEDITOR {
     return finishAction(before, EditorActionSource::PROGRAMMATIC, resolution.handled, std::move(resolution));
   }
 
-  EditorActionResult EditorCore::startLinkedEditing(LinkedEditingModel&& model) {
+  EditorActionResult EditorCore::startLinkedEditing(Vector<TabStopGroup>&& groups) {
     const ActionSnapshot before = captureActionSnapshot();
     TextEditResult resolution = finishCompositionForAction();
-    startLinkedEditingInternal(std::move(model));
+    startLinkedEditingInternal(std::move(groups));
     return finishAction(before, EditorActionSource::LINKED_EDITING, true, std::move(resolution));
   }
 
@@ -2959,8 +2959,8 @@ namespace NS_SWEETEDITOR {
     TextEditResult edit_result = applyEdit(replace_range, parse_result.text);
 
     // If tab stops exist, start linked editing
-    if (!parse_result.model.groups.empty()) {
-      m_linked_editing_session_ = makeUnique<LinkedEditingSession>(std::move(parse_result.model));
+    if (!parse_result.groups.empty()) {
+      m_linked_editing_session_ = makeUnique<LinkedEditingSession>(std::move(parse_result.groups));
       activateCurrentTabStop();
     }
 
@@ -2968,9 +2968,9 @@ namespace NS_SWEETEDITOR {
     return edit_result;
   }
 
-  void EditorCore::startLinkedEditingInternal(LinkedEditingModel&& model) {
+  void EditorCore::startLinkedEditingInternal(Vector<TabStopGroup>&& groups) {
     if (m_document_ == nullptr || m_settings_.read_only) return;
-    if (model.groups.empty()) return;
+    if (groups.empty()) return;
 
     // Exit existing linked editing session
     if (m_linked_editing_session_) {
@@ -2978,7 +2978,7 @@ namespace NS_SWEETEDITOR {
       m_linked_editing_session_.reset();
     }
 
-    m_linked_editing_session_ = makeUnique<LinkedEditingSession>(std::move(model));
+    m_linked_editing_session_ = makeUnique<LinkedEditingSession>(std::move(groups));
     activateCurrentTabStop();
 
     LOGD("EditorCore::startLinkedEditing, cursor = %s", m_caret_.active.dump().c_str());
@@ -3044,8 +3044,7 @@ namespace NS_SWEETEDITOR {
     return true;
   }
 
-  std::optional<Vector<DocumentReplacement>> EditorCore::planLinkedEdit(const TextRange& range,
-                                                                        const U8String& text) const {
+  std::optional<Vector<TextEdit>> EditorCore::planLinkedEdit(const TextRange& range, const U8String& text) const {
     if (!hasValidLinkedEditingGroup() || m_document_ == nullptr || range.end < range.start) return std::nullopt;
     const TabStopGroup* group = m_linked_editing_session_->currentGroup();
     const size_t line_count = m_document_->getLineCount();
@@ -3066,15 +3065,16 @@ namespace NS_SWEETEDITOR {
 
     const U8String final_text =
         m_document_->getU8Text({primary.start, range.start}) + text + m_document_->getU8Text({range.end, primary.end});
-    const Vector<std::pair<TextRange, U8String>> edits = m_linked_editing_session_->computeLinkedEdits(final_text);
-    Vector<DocumentReplacement> replacements;
-    replacements.reserve(edits.size());
-    for (const auto& [edit_range, edit_text] : edits) {
+    const Vector<std::pair<TextRange, U8String>> linked_edits =
+        m_linked_editing_session_->computeLinkedEdits(final_text);
+    Vector<TextEdit> plan;
+    plan.reserve(linked_edits.size());
+    for (const auto& [edit_range, edit_text] : linked_edits) {
       if (m_document_->getU8Text(edit_range) != edit_text) {
-        replacements.push_back({edit_range, edit_text});
+        plan.push_back({edit_range, edit_text});
       }
     }
-    return replacements;
+    return plan;
   }
 
   TextEditResult EditorCore::applyLinkedEditWithResult(const TextRange& range, const U8String& text) {
@@ -3083,7 +3083,7 @@ namespace NS_SWEETEDITOR {
 
     const TabStopGroup* group = m_linked_editing_session_->currentGroup();
     if (group == nullptr || group->ranges.empty()) return result;
-    const std::optional<Vector<DocumentReplacement>> plan = planLinkedEdit(range, text);
+    const std::optional<Vector<TextEdit>> plan = planLinkedEdit(range, text);
     if (!plan.has_value()) return result;
     const size_t caret_offset =
         StrUtil::utf16Length(m_document_->getU8Text({group->ranges[0].start, range.start}) + text);
@@ -3093,9 +3093,9 @@ namespace NS_SWEETEDITOR {
       result = applyEditBatch(*plan);
       if (!result.contentChanged()) return {};
 
-      for (const DocumentReplacement& replacement : *plan) {
-        TextPosition new_end = calcPositionAfterInsert(replacement.range.start, replacement.text);
-        m_linked_editing_session_->adjustRangesForEdit(replacement.range, new_end);
+      for (const TextEdit& edit : *plan) {
+        TextPosition new_end = calcPositionAfterInsert(edit.range.start, edit.new_text);
+        m_linked_editing_session_->adjustRangesForEdit(edit.range, new_end);
       }
     }
 
@@ -3499,30 +3499,30 @@ namespace NS_SWEETEDITOR {
     return {new_line, new_col};
   }
 
-  TextEditResult EditorCore::applyEditBatch(const Vector<DocumentReplacement>& replacements, bool update_fold_state) {
+  TextEditResult EditorCore::applyEditBatch(const Vector<TextEdit>& edits, bool update_fold_state) {
     TextEditResult result;
-    if (m_document_ == nullptr || replacements.empty()) return result;
+    if (m_document_ == nullptr || edits.empty()) return result;
 
-    struct PendingReplacement {
-      DocumentReplacement replacement;
+    struct PendingEdit {
+      TextEdit edit;
       bool keep_fold_collapsed{false};
       size_t fold_tail_owner_line{0};
     };
 
-    Vector<PendingReplacement> pending;
-    pending.reserve(replacements.size());
+    Vector<PendingEdit> pending;
+    pending.reserve(edits.size());
     const size_t line_count = m_document_->getLineCount();
 
-    for (const DocumentReplacement& replacement : replacements) {
-      TextRange safe_range = clampDocumentRange(replacement.range, true, false).normalized();
-      if (safe_range.isCollapsed() && replacement.text.empty()) continue;
+    for (const TextEdit& edit : edits) {
+      TextRange safe_range = clampDocumentRange(edit.range, true, false).normalized();
+      if (safe_range.isCollapsed() && edit.new_text.empty()) continue;
 
-      PendingReplacement item;
-      item.replacement = {safe_range, replacement.text};
+      PendingEdit item;
+      item.edit = {safe_range, edit.new_text};
       item.fold_tail_owner_line = line_count;
 
       const bool single_line_text =
-          replacement.text.find('\n') == U8String::npos && replacement.text.find('\r') == U8String::npos;
+          edit.new_text.find('\n') == U8String::npos && edit.new_text.find('\r') == U8String::npos;
       if (update_fold_state && single_line_text && safe_range.start.line == safe_range.end.line
           && m_text_layout_ != nullptr) {
         size_t start_owner_line = line_count;
@@ -3544,45 +3544,45 @@ namespace NS_SWEETEDITOR {
 
     if (pending.empty()) return result;
 
-    std::sort(pending.begin(), pending.end(), [](const PendingReplacement& lhs, const PendingReplacement& rhs) {
-      if (lhs.replacement.range.start != rhs.replacement.range.start) {
-        return lhs.replacement.range.start < rhs.replacement.range.start;
+    std::sort(pending.begin(), pending.end(), [](const PendingEdit& lhs, const PendingEdit& rhs) {
+      if (lhs.edit.range.start != rhs.edit.range.start) {
+        return lhs.edit.range.start < rhs.edit.range.start;
       }
-      return lhs.replacement.range.end < rhs.replacement.range.end;
+      return lhs.edit.range.end < rhs.edit.range.end;
     });
 
-    Vector<DocumentReplacement> document_replacements;
-    document_replacements.reserve(pending.size());
+    Vector<TextEdit> document_edits;
+    document_edits.reserve(pending.size());
     result.changes.reserve(pending.size());
     size_t first_affected_line = line_count;
 
-    for (const PendingReplacement& item : pending) {
-      const TextRange& range = item.replacement.range;
+    for (const PendingEdit& item : pending) {
+      const TextRange& range = item.edit.range;
       TextChange change;
       change.range = range;
       if (!range.isCollapsed()) {
         change.old_text = m_document_->getU8Text(range);
       }
-      change.new_text = item.replacement.text;
+      change.new_text = item.edit.new_text;
       result.changes.push_back(std::move(change));
-      document_replacements.push_back(item.replacement);
+      document_edits.push_back(item.edit);
       first_affected_line = std::min(first_affected_line, range.start.line);
 
       if (range.isCollapsed()) {
         result.markHandled(TextChangeKind::INSERTION);
-      } else if (item.replacement.text.empty()) {
+      } else if (item.edit.new_text.empty()) {
         result.markHandled(TextChangeKind::DELETION);
       } else {
         result.markHandled(TextChangeKind::REPLACEMENT);
       }
     }
 
-    m_document_->replaceU8TextBatch(document_replacements);
+    m_document_->replaceU8TextBatch(document_edits);
     noteDocumentContentChanged();
 
     for (auto it = pending.rbegin(); it != pending.rend(); ++it) {
-      const TextPosition new_end = calcPositionAfterInsert(it->replacement.range.start, it->replacement.text);
-      m_decorations_->adjustForEdit(it->replacement.range, new_end);
+      const TextPosition new_end = calcPositionAfterInsert(it->edit.range.start, it->edit.new_text);
+      m_decorations_->adjustForEdit(it->edit.range, new_end);
       if (it->keep_fold_collapsed) {
         first_affected_line = std::min(first_affected_line, it->fold_tail_owner_line);
       }

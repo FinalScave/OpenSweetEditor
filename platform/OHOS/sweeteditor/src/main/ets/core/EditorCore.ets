@@ -3,6 +3,7 @@ import { CoreProtocol } from './CoreProtocol';
 import {
   IntRange,
   PointF,
+  TabStopGroup,
   TextEdit,
   TextPosition,
   TextRange
@@ -48,7 +49,6 @@ import {
   TextStyle
 } from './CoreAdornments';
 import { CursorRect, EditorRenderModel, ScrollMetrics } from './CoreVisual';
-import { LinkedEditingModel } from './CoreLinkedEditing';
 
 export enum EditorEventType {
   TextChanged,
@@ -965,12 +965,12 @@ export class EditorCore {
     return CoreProtocol.decodeEditorActionResult(native.editorInsertSnippet(this.handle, snippetTemplate));
   }
 
-  startLinkedEditing(modelOrData: LinkedEditingModel | ArrayBuffer, _size?: number): EditorActionResult {
-    if (modelOrData instanceof ArrayBuffer) {
+  startLinkedEditing(groupsOrData: TabStopGroup[] | ArrayBuffer, _size?: number): EditorActionResult {
+    if (groupsOrData instanceof ArrayBuffer) {
       return CoreProtocol.decodeEditorActionResult(
-        native.editorStartLinkedEditing(this.handle, modelOrData, modelOrData.byteLength));
+        native.editorStartLinkedEditing(this.handle, groupsOrData, groupsOrData.byteLength));
     }
-    const data = CoreProtocol.encodeStartLinkedEditingPayload(modelOrData);
+    const data = CoreProtocol.encodeStartLinkedEditingPayload(groupsOrData);
     return CoreProtocol.decodeEditorActionResult(
       native.editorStartLinkedEditing(this.handle, data, data.byteLength));
   }
