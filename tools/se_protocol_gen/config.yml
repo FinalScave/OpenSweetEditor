@@ -43,7 +43,6 @@ targets:
       ime: ime
       interaction: interaction
       keymap: keymap
-      linked_editing: snippet
       search: search
       visual: visual
 
@@ -65,7 +64,6 @@ targets:
       ime: ime
       interaction: interaction
       keymap: keymap
-      linked_editing: snippet
       search: search
       visual: visual
 
@@ -84,7 +82,6 @@ targets:
       ime: CoreIme.ets
       interaction: CoreInteraction.ets
       keymap: CoreKeymap.ets
-      linked_editing: CoreLinkedEditing.ets
       search: CoreSearch.ets
       visual: CoreVisual.ets
 
@@ -101,7 +98,6 @@ targets:
       ime: core/CoreIme.swift
       interaction: core/CoreInteraction.swift
       keymap: core/CoreKeymap.swift
-      linked_editing: core/CoreLinkedEditing.swift
       search: core/CoreSearch.swift
       visual: core/CoreVisual.swift
 
@@ -121,7 +117,6 @@ targets:
       ime: CoreIme.cs
       interaction: CoreInteraction.cs
       keymap: CoreKeymap.cs
-      linked_editing: CoreLinkedEditing.cs
       search: CoreSearch.cs
       visual: CoreVisual.cs
 
@@ -141,7 +136,6 @@ targets:
       ime: CoreIme.cs
       interaction: CoreInteraction.cs
       keymap: CoreKeymap.cs
-      linked_editing: CoreLinkedEditing.cs
       search: CoreSearch.cs
       visual: CoreVisual.cs
 
@@ -159,6 +153,5 @@ targets:
       ime: core_ime.dart
       interaction: core_interaction.dart
       keymap: core_keymap.dart
-      linked_editing: core_linked_editing.dart
       search: core_search.dart
       visual: core_visual.dart

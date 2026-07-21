@@ -31,7 +31,6 @@ import com.qiplat.sweeteditor.core.keymap.KeyCode;
 import com.qiplat.sweeteditor.core.search.SearchRequest;
 import com.qiplat.sweeteditor.core.search.SearchState;
 import com.qiplat.sweeteditor.core.visual.*;
-import com.qiplat.sweeteditor.core.snippet.*;
 import com.qiplat.sweeteditor.core.visual.Cursor;
 import com.qiplat.sweeteditor.decoration.DecorationProvider;
 import com.qiplat.sweeteditor.decoration.DecorationProviderManager;
@@ -730,8 +729,8 @@ public class SweetEditor extends JPanel {
         dispatchEditorActionResult(result);
     }
 
-    public void startLinkedEditing(LinkedEditingModel model) {
-        EditorActionResult result = editorCore.startLinkedEditing(model);
+    public void startLinkedEditing(List<TabStopGroup> groups) {
+        EditorActionResult result = editorCore.startLinkedEditing(groups);
         dispatchEditorActionResult(result);
     }
 

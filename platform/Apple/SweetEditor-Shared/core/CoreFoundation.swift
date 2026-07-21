@@ -1,5 +1,18 @@
 import Foundation
 
+public enum CaretAffinity: Int32 {
+    case DOWNSTREAM = 0
+    case UPSTREAM = 1
+
+    public static func fromValue(_ value: Int32) -> CaretAffinity? {
+        switch value {
+        case 0: return .DOWNSTREAM
+        case 1: return .UPSTREAM
+        default: return nil
+        }
+    }
+}
+
 public struct IntRange {
     public var start: Int32 = 0
     public var end: Int32 = -1
@@ -39,6 +52,18 @@ public struct Size {
     public init(width: Float = 0, height: Float = 0) {
         self.width = width
         self.height = height
+    }
+}
+
+public struct TabStopGroup {
+    public var index: Int32 = 0
+    public var ranges: [TextRange] = []
+    public var default_text: String = ""
+
+    public init(index: Int32 = 0, ranges: [TextRange] = [], default_text: String = "") {
+        self.index = index
+        self.ranges = ranges
+        self.default_text = default_text
     }
 }
 

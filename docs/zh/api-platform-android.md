@@ -185,7 +185,7 @@ public void unfoldAll()
 public boolean isLineVisible(int line)
 
 public void insertSnippet(String snippetTemplate)
-public void startLinkedEditing(LinkedEditingModel model)
+public void startLinkedEditing(List<TabStopGroup> groups)
 public boolean isInLinkedEditing()
 public void linkedEditingNext()
 public void linkedEditingPrev()

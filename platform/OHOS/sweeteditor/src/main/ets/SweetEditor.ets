@@ -42,6 +42,7 @@ import {
 import {
   IntRange,
   PointF,
+  TabStopGroup,
   TextChange,
   TextEdit,
   TextPosition,
@@ -73,7 +74,6 @@ import {
   SpanLayer,
   StyleSpan
 } from './core/CoreAdornments';
-import { LinkedEditingModel } from './core/CoreLinkedEditing';
 import { EditorIconProvider, EditorMetadata, EditorTheme, LanguageConfiguration } from './EditorTypes';
 import { EditorKeyMap } from './EditorKeymap';
 import {
@@ -1445,11 +1445,11 @@ export struct SweetEditor {
     this.dispatchEditorActionResult(result);
   }
 
-  startLinkedEditing(model: LinkedEditingModel): void {
+  startLinkedEditing(groups: TabStopGroup[]): void {
     if (!this.editorCore) {
       return;
     }
-    const result = this.editorCore.startLinkedEditing(model);
+    const result = this.editorCore.startLinkedEditing(groups);
     this.resetCursorBlink();
     this.finishEditorAction(result);
   }

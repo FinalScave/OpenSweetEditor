@@ -2,22 +2,6 @@
 
 part of 'editor_core.dart';
 
-enum CaretAffinity {
-  downstream(0),
-  upstream(1);
-
-  const CaretAffinity(this.value);
-  final int value;
-
-  static CaretAffinity fromValue(int value) {
-    switch (value) {
-      case 0: return downstream;
-      case 1: return upstream;
-      default: throw ArgumentError.value(value, 'value', 'Unknown CaretAffinity value');
-    }
-  }
-}
-
 enum ImeCommandKind {
   setSelection(0),
   beginComposition(1),

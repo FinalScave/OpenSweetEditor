@@ -692,6 +692,15 @@ public:
     return true;
   }
 
+  inline bool read(TabStopGroup& out) {
+    uint32_t out_index_value{};
+    if (!readU32(out_index_value)) return false;
+    out.index = static_cast<uint32_t>(out_index_value);
+    if (!readList(out.ranges)) return false;
+    if (!readUtf8String(out.default_text)) return false;
+    return true;
+  }
+
   inline bool read(TextEdit& out) {
     if (!read(out.range)) return false;
     if (!readUtf8String(out.new_text)) return false;
@@ -836,22 +845,8 @@ public:
     return true;
   }
 
-  inline bool read(LinkedEditingModel& out) {
-    if (!readList(out.groups)) return false;
-    return true;
-  }
-
   inline bool read(StartLinkedEditingPayload& out) {
-    if (!read(out.model)) return false;
-    return true;
-  }
-
-  inline bool read(TabStopGroup& out) {
-    uint32_t out_index_value{};
-    if (!readU32(out_index_value)) return false;
-    out.index = static_cast<uint32_t>(out_index_value);
-    if (!readList(out.ranges)) return false;
-    if (!readUtf8String(out.default_text)) return false;
+    if (!readList(out.groups)) return false;
     return true;
   }
 
@@ -1430,6 +1425,13 @@ public:
     return true;
   }
 
+  inline bool write(const TabStopGroup& value) {
+    if (!writeU32(static_cast<uint32_t>(value.index))) return false;
+    if (!writeList(value.ranges)) return false;
+    if (!writeUtf8String(value.default_text)) return false;
+    return true;
+  }
+
   inline bool write(const TextChange& value) {
     if (!write(value.range)) return false;
     if (!writeUtf8String(value.new_text)) return false;
@@ -1558,20 +1560,8 @@ public:
     return true;
   }
 
-  inline bool write(const LinkedEditingModel& value) {
-    if (!writeList(value.groups)) return false;
-    return true;
-  }
-
   inline bool write(const StartLinkedEditingPayload& value) {
-    if (!write(value.model)) return false;
-    return true;
-  }
-
-  inline bool write(const TabStopGroup& value) {
-    if (!writeU32(static_cast<uint32_t>(value.index))) return false;
-    if (!writeList(value.ranges)) return false;
-    if (!writeUtf8String(value.default_text)) return false;
+    if (!writeList(value.groups)) return false;
     return true;
   }
 

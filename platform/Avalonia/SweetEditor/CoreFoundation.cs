@@ -4,6 +4,11 @@ using System.Collections.Generic;
 
 namespace SweetEditor {
 
+    public enum CaretAffinity {
+        DOWNSTREAM = 0,
+        UPSTREAM = 1
+    }
+
     public sealed partial class IntRange {
         public int Start { get; set; } = 0;
         public int End { get; set; } = -1;
@@ -23,6 +28,12 @@ namespace SweetEditor {
     public sealed partial class Size {
         public float Width { get; set; } = 0f;
         public float Height { get; set; } = 0f;
+    }
+
+    public sealed partial class TabStopGroup {
+        public int Index { get; set; } = 0;
+        public List<TextRange> Ranges { get; set; } = new();
+        public string DefaultText { get; set; } = string.Empty;
     }
 
     public sealed partial class TextChange {

@@ -1,6 +1,6 @@
 import { Document } from './core/EditorCore';
 import { ScrollBehavior } from './core/CoreAction';
-import { IntRange, TextEdit, TextPosition, TextRange } from './core/CoreFoundation';
+import { IntRange, TabStopGroup, TextEdit, TextPosition, TextRange } from './core/CoreFoundation';
 import { CursorRect, ScrollMetrics } from './core/CoreVisual';
 import { SearchRequest, SearchState, createEmptySearchState } from './core/CoreSearch';
 import {
@@ -20,7 +20,6 @@ import {
   StyleSpan,
   TextStyle
 } from './core/CoreAdornments';
-import { LinkedEditingModel } from './core/CoreLinkedEditing';
 import { EditorIconProvider, EditorMetadata, EditorTheme, LanguageConfiguration } from './EditorTypes';
 import { EditorKeyMap } from './EditorKeymap';
 import { EditorSettings } from './EditorSettings';
@@ -505,8 +504,8 @@ export class SweetEditorController {
     this.run((api) => api.insertSnippet(template));
   }
 
-  startLinkedEditing(model: LinkedEditingModel): void {
-    this.run((api) => api.startLinkedEditing(model));
+  startLinkedEditing(groups: TabStopGroup[]): void {
+    this.run((api) => api.startLinkedEditing(groups));
   }
 
   isInLinkedEditing(): boolean {

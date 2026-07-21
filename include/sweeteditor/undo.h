@@ -11,9 +11,9 @@ namespace NS_SWEETEDITOR {
   /// One atomic undo/redo history entry.
   struct HistoryEntry {
     /// Replacements in the coordinates of the document before the edit.
-    Vector<DocumentReplacement> redo_replacements;
+    Vector<TextEdit> redo_replacements;
     /// Inverse replacements in the coordinates of the document after the edit.
-    Vector<DocumentReplacement> undo_replacements;
+    Vector<TextEdit> undo_replacements;
     CaretState caret_before;
     CaretState caret_after;
     std::chrono::steady_clock::time_point timestamp;

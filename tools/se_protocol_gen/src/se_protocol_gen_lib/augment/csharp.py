@@ -413,13 +413,6 @@ namespace {namespace} {{
         public static bool operator !=(KeyBinding? left, KeyBinding? right) => !(left == right);
     }}
 
-    public sealed partial class LinkedEditingModel {{
-        public LinkedEditingModel AddGroup(int index, string? defaultText, params TextRange[] ranges) {{
-            Groups.Add(new TabStopGroup(index, defaultText, ranges));
-            return this;
-        }}
-    }}
-
     public sealed partial class TabStopGroup {{
         public TabStopGroup() {{ }}
 

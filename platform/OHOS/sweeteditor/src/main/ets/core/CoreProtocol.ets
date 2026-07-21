@@ -2,11 +2,10 @@ import util from '@ohos.util';
 import { AnimationFlag, EditorActionResult, EditorActionSource, InteractionFlag, ScrollBehavior, TextChangeKind, editorActionSourceFromValue, scrollBehaviorFromValue, textChangeKindFromValue } from './CoreAction';
 import { BracketGuide, CodeLensItem, Diagnostic, DiagnosticSeverity, DocumentHighlight, DocumentHighlightKind, FlowGuide, FoldRegion, GutterIcon, IndentGuide, InlayHint, InlayType, LinkSpan, PhantomText, SeparatorGuide, SeparatorStyle, SpanLayer, StyleSpan, TextStyle, diagnosticSeverityFromValue, documentHighlightKindFromValue, inlayTypeFromValue, separatorStyleFromValue, spanLayerFromValue } from './CoreAdornments';
 import { AutoIndentMode, CurrentLineRenderMode, EditorOptions, EditorRangeEffectStyles, EditorRenderColors, FoldArrowMode, HandleConfig, HandleHitArea, RangeEffectStyle, RangeEffectUnderlineStyle, ScrollbarConfig, ScrollbarMode, ScrollbarTrackTapMode, WhitespaceRenderMode, WrapMode, autoIndentModeFromValue, currentLineRenderModeFromValue, foldArrowModeFromValue, rangeEffectUnderlineStyleFromValue, scrollbarModeFromValue, scrollbarTrackTapModeFromValue, whitespaceRenderModeFromValue, wrapModeFromValue } from './CoreConfig';
-import { IntRange, PointF, Rect, Size, TextChange, TextEdit, TextPosition, TextRange } from './CoreFoundation';
-import { CaretAffinity, ImeCommand, ImeCommandBatch, ImeCommandKind, ImeCoordinateSpace, ImeHostAction, ImeMutationModel, ImeOffsetRange, ImeResultCode, ImeSelection, ImeState, ImeTextContext, ImeTextSource, ImeTextUnit, ImeTextUpdateBatch, ImeTextUpdateStep, caretAffinityFromValue, imeCommandKindFromValue, imeCoordinateSpaceFromValue, imeHostActionFromValue, imeMutationModelFromValue, imeResultCodeFromValue, imeTextSourceFromValue, imeTextUnitFromValue } from './CoreIme';
+import { CaretAffinity, IntRange, PointF, Rect, Size, TabStopGroup, TextChange, TextEdit, TextPosition, TextRange, caretAffinityFromValue } from './CoreFoundation';
+import { ImeCommand, ImeCommandBatch, ImeCommandKind, ImeCoordinateSpace, ImeHostAction, ImeMutationModel, ImeOffsetRange, ImeResultCode, ImeSelection, ImeState, ImeTextContext, ImeTextSource, ImeTextUnit, ImeTextUpdateBatch, ImeTextUpdateStep, imeCommandKindFromValue, imeCoordinateSpaceFromValue, imeHostActionFromValue, imeMutationModelFromValue, imeResultCodeFromValue, imeTextSourceFromValue, imeTextUnitFromValue } from './CoreIme';
 import { EventType, GestureEvent, GestureType, HitTarget, HitTargetType, eventTypeFromValue, gestureTypeFromValue, hitTargetTypeFromValue } from './CoreInteraction';
 import { EditorBuiltinCommand, KeyBinding, KeyChord, KeyCode, KeyModifier, editorBuiltinCommandFromValue } from './CoreKeymap';
-import { LinkedEditingModel, TabStopGroup } from './CoreLinkedEditing';
 import { SearchOptions, SearchRequest, SearchState, SearchStatus, searchStatusFromValue } from './CoreSearch';
 import { Cursor, CursorRect, EditorRenderModel, FoldMarkerRenderItem, FoldState, GuideDirection, GuideSegment, GuideStyle, GuideType, GutterIconRenderItem, LayoutMetrics, PointerCursorType, RangeEffectKind, RangeEffectRenderItem, ScrollMetrics, ScrollbarModel, SelectionHandle, VisualLine, VisualLineKind, VisualRun, VisualRunType, foldStateFromValue, guideDirectionFromValue, guideStyleFromValue, guideTypeFromValue, pointerCursorTypeFromValue, rangeEffectKindFromValue, visualLineKindFromValue, visualRunTypeFromValue } from './CoreVisual';
 
@@ -1224,6 +1223,20 @@ export class CoreProtocol {
     return size;
   }
 
+  static writeTabStopGroup(writer: BinaryWriter, value: TabStopGroup): void {
+    writer.writeInt32(value.index);
+    CoreProtocol.writeTextRangeList(writer, value.ranges);
+    writer.writeUtf8String(value.defaultText);
+  }
+
+  static sizeOfTabStopGroup(value: TabStopGroup): number {
+    let size = 0;
+    size += 4;
+    size += CoreProtocol.sizeOfTextRangeList(value.ranges);
+    size += CoreProtocol.sizeOfUtf8String(value.defaultText);
+    return size;
+  }
+
   private static readTextChange(reader: BinaryReader): TextChange {
     return {
       range: CoreProtocol.readTextRange(reader),
@@ -1534,30 +1547,6 @@ export class CoreProtocol {
     let size = 0;
     size += 1;
     size += 2;
-    return size;
-  }
-
-  static writeLinkedEditingModel(writer: BinaryWriter, value: LinkedEditingModel): void {
-    CoreProtocol.writeTabStopGroupList(writer, value.groups);
-  }
-
-  static sizeOfLinkedEditingModel(value: LinkedEditingModel): number {
-    let size = 0;
-    size += CoreProtocol.sizeOfTabStopGroupList(value.groups);
-    return size;
-  }
-
-  static writeTabStopGroup(writer: BinaryWriter, value: TabStopGroup): void {
-    writer.writeInt32(value.index);
-    CoreProtocol.writeTextRangeList(writer, value.ranges);
-    writer.writeUtf8String(value.defaultText);
-  }
-
-  static sizeOfTabStopGroup(value: TabStopGroup): number {
-    let size = 0;
-    size += 4;
-    size += CoreProtocol.sizeOfTextRangeList(value.ranges);
-    size += CoreProtocol.sizeOfUtf8String(value.defaultText);
     return size;
   }
 
@@ -2447,6 +2436,12 @@ export class CoreProtocol {
     return writer.getBuffer();
   }
 
+  static encodeTabStopGroup(value: TabStopGroup): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfTabStopGroup(value));
+    CoreProtocol.writeTabStopGroup(writer, value);
+    return writer.getBuffer();
+  }
+
   static encodeImeCommand(value: ImeCommand): ArrayBuffer {
     const writer = new BinaryWriter(CoreProtocol.sizeOfImeCommand(value));
     CoreProtocol.writeImeCommand(writer, value);
@@ -2493,31 +2488,19 @@ export class CoreProtocol {
     return writer.getBuffer();
   }
 
-  static encodeLinkedEditingModel(value: LinkedEditingModel): ArrayBuffer {
-    const writer = new BinaryWriter(CoreProtocol.sizeOfLinkedEditingModel(value));
-    CoreProtocol.writeLinkedEditingModel(writer, value);
-    return writer.getBuffer();
+  private static writeStartLinkedEditingPayloadWire(writer: BinaryWriter, groups: TabStopGroup[]): void {
+    CoreProtocol.writeTabStopGroupList(writer, groups);
   }
 
-  private static writeStartLinkedEditingPayloadWire(writer: BinaryWriter, model: LinkedEditingModel): void {
-    CoreProtocol.writeLinkedEditingModel(writer, model);
-  }
-
-  private static sizeOfStartLinkedEditingPayloadWire(model: LinkedEditingModel): number {
+  private static sizeOfStartLinkedEditingPayloadWire(groups: TabStopGroup[]): number {
     let size = 0;
-    size += CoreProtocol.sizeOfLinkedEditingModel(model);
+    size += CoreProtocol.sizeOfTabStopGroupList(groups);
     return size;
   }
 
-  static encodeStartLinkedEditingPayload(model: LinkedEditingModel): ArrayBuffer {
-    const writer = new BinaryWriter(CoreProtocol.sizeOfStartLinkedEditingPayloadWire(model));
-    CoreProtocol.writeStartLinkedEditingPayloadWire(writer, model);
-    return writer.getBuffer();
-  }
-
-  static encodeTabStopGroup(value: TabStopGroup): ArrayBuffer {
-    const writer = new BinaryWriter(CoreProtocol.sizeOfTabStopGroup(value));
-    CoreProtocol.writeTabStopGroup(writer, value);
+  static encodeStartLinkedEditingPayload(groups: TabStopGroup[]): ArrayBuffer {
+    const writer = new BinaryWriter(CoreProtocol.sizeOfStartLinkedEditingPayloadWire(groups));
+    CoreProtocol.writeStartLinkedEditingPayloadWire(writer, groups);
     return writer.getBuffer();
   }
 

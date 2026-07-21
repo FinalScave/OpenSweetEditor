@@ -2178,10 +2178,10 @@ namespace SweetEditor {
 			return DecodeAction(payloadPtr, payloadSize);
 		}
 
-		/// <summary>Starts linked editing mode with a generic LinkedEditingModel.</summary>
-		public EditorActionResult StartLinkedEditing(LinkedEditingModel model) {
-			if (IsReleased || model == null) return EditorActionResult.Empty;
-			byte[] payload = CoreProtocol.EncodeStartLinkedEditingPayload(model);
+		/// <summary>Starts linked editing mode with externally built tab stop groups.</summary>
+		public EditorActionResult StartLinkedEditing(IReadOnlyList<TabStopGroup> groups) {
+			if (IsReleased || groups == null) return EditorActionResult.Empty;
+			byte[] payload = CoreProtocol.EncodeStartLinkedEditingPayload(groups);
 			IntPtr payloadPtr = NativeMethods.StartLinkedEditing(nativeHandle, payload, (nuint)payload.Length, out UIntPtr payloadSize);
 			return DecodeAction(payloadPtr, payloadSize);
 		}

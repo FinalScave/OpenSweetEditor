@@ -2,6 +2,22 @@
 
 part of 'editor_core.dart';
 
+enum CaretAffinity {
+  downstream(0),
+  upstream(1);
+
+  const CaretAffinity(this.value);
+  final int value;
+
+  static CaretAffinity fromValue(int value) {
+    switch (value) {
+      case 0: return downstream;
+      case 1: return upstream;
+      default: throw ArgumentError.value(value, 'value', 'Unknown CaretAffinity value');
+    }
+  }
+}
+
 class IntRange {
   const IntRange({
     this.start = 0,
@@ -42,6 +58,18 @@ class Size {
 
   final double width;
   final double height;
+}
+
+class TabStopGroup {
+  const TabStopGroup({
+    this.index = 0,
+    this.ranges = const [],
+    this.defaultText = '',
+  });
+
+  final int index;
+  final List<TextRange> ranges;
+  final String defaultText;
 }
 
 class TextChange {

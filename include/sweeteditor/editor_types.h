@@ -85,7 +85,7 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Visual side of a caret at a soft-wrap boundary.
-  enum class SE_PROTOCOL_ENUM(ime, DOWNSTREAM) CaretAffinity : uint8_t {
+  enum class SE_PROTOCOL_ENUM(foundation, DOWNSTREAM) CaretAffinity : uint8_t {
     DOWNSTREAM = 0,
     UPSTREAM = 1,
   };

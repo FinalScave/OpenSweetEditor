@@ -185,14 +185,14 @@ The control renders syntax, semantic, and overlay spans; inlay hints; phantom te
 
 ```csharp
 public EditorActionResult InsertSnippet(string snippetTemplate)
-public void StartLinkedEditing(LinkedEditingModel model)
+public void StartLinkedEditing(IReadOnlyList<TabStopGroup> groups)
 public bool IsInLinkedEditing()
 public bool LinkedEditingNext()
 public bool LinkedEditingPrev()
 public void CancelLinkedEditing()
 ```
 
-Snippet insertion supports tab stops. Linked editing can also be started directly with a `LinkedEditingModel`.
+Snippet insertion supports tab stops. Linked editing can also be started directly with a list of `TabStopGroup` values.
 
 ### Providers, Completion, Inline Suggestions, and Selection Menu
 

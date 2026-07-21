@@ -941,10 +941,9 @@ EDITOR_API const uint8_t* editor_clear_all_decorations(intptr_t editor_handle, s
 /// @return EditorActionResult binary payload, returns NULL on failure
 EDITOR_API const uint8_t* editor_insert_snippet(intptr_t editor_handle, const char* snippet_template, size_t* out_size);
 
-/// Start linked editing mode with generic LinkedEditingModel payload
+/// Start linked editing mode with tab stop groups
 /// @param data StartLinkedEditingPayload binary payload encoded by CoreProtocol
-///        LinkedEditingModel model
-///        LinkedEditingModel is List<TabStopGroup> groups
+///        List<TabStopGroup> groups
 ///        TabStopGroup is u32 index, List<TextRange> ranges, U8String default_text
 /// @param size payload byte length
 EDITOR_API const uint8_t* editor_start_linked_editing(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);

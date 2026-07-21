@@ -1,15 +1,4 @@
-export enum CaretAffinity {
-  DOWNSTREAM = 0,
-  UPSTREAM = 1,
-}
-
-export function caretAffinityFromValue(value: number): CaretAffinity {
-  switch (value) {
-    case 0: return CaretAffinity.DOWNSTREAM;
-    case 1: return CaretAffinity.UPSTREAM;
-    default: throw new Error('Unknown CaretAffinity value: ' + value);
-  }
-}
+import { CaretAffinity } from './CoreFoundation';
 
 export enum ImeCommandKind {
   SET_SELECTION = 0,

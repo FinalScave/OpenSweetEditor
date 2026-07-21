@@ -110,7 +110,7 @@ namespace NS_SWEETEDITOR {
     EditorCore(EditorCore&&) = delete;
     EditorCore& operator=(EditorCore&&) = delete;
 
-#pragma region [Setup & View State]
+#pragma region[Setup & View State]
 
     /// Set selection handle configuration at runtime
     /// @param config Handle appearance and touch parameters
@@ -189,7 +189,7 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
-#pragma region [Rendering & Input]
+#pragma region[Rendering & Input]
 
     /// Get editor text-style registry
     /// @return Text-style registry
@@ -239,7 +239,7 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
-#pragma region [Editing & Cursor]
+#pragma region[Editing & Cursor]
 
     /// Insert text at cursor position (replace selection if any)
     /// @param text UTF8 text
@@ -426,10 +426,9 @@ namespace NS_SWEETEDITOR {
     /// @return Exact change info (changes from inserting template text)
     EditorActionResult insertSnippet(const U8String& snippet_template);
 
-    /// Start linked editing mode with generic LinkedEditingModel
-    /// Model is built outside; ranges must already point to correct positions in document
-    /// @param model Linked editing model
-    EditorActionResult startLinkedEditing(LinkedEditingModel&& model);
+    /// Start linked editing mode with externally built tab stop groups
+    /// Ranges must already point to correct positions in document
+    EditorActionResult startLinkedEditing(Vector<TabStopGroup>&& groups);
 
     /// Whether linked editing mode is active
     bool isInLinkedEditing() const;
@@ -450,7 +449,7 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
-#pragma region [IME]
+#pragma region[IME]
 
     ImeState beginImeSession(ImeMutationModel mutation_model);
 
@@ -473,7 +472,7 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
-#pragma region [Navigation & Decorations]
+#pragma region[Navigation & Decorations]
 
     /// Scroll to target line
     /// @param line Line number
@@ -757,7 +756,7 @@ namespace NS_SWEETEDITOR {
     /// Max character distance for built-in bracket scan
     static constexpr size_t kMaxBracketScanChars = 10000;
 
-#pragma region [Setup & View State Internals]
+#pragma region[Setup & View State Internals]
 
     /// Mark all logical lines as layout dirty
     void markAllLinesDirty(bool reset_heights = false);
@@ -765,7 +764,7 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
-#pragma region [Rendering & Input Internals]
+#pragma region[Rendering & Input Internals]
 
     /// Presentation-state helpers for clickable decoration hot targets.
     void clearHoverHitTarget();
@@ -783,7 +782,7 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
-#pragma region [Editing & Cursor Internals]
+#pragma region[Editing & Cursor Internals]
 
     TextEditResult insertTextInternal(const U8String& text);
     TextEditResult replaceTextInternal(const TextRange& range, const U8String& new_text);
@@ -802,13 +801,13 @@ namespace NS_SWEETEDITOR {
     TextEditResult finishCompositionForAction();
     static void appendTextEditResult(TextEditResult& target, TextEditResult&& source);
     TextEditResult insertSnippetInternal(const U8String& snippet_template);
-    void startLinkedEditingInternal(LinkedEditingModel&& model);
+    void startLinkedEditingInternal(Vector<TabStopGroup>&& groups);
     bool linkedEditingNextTabStopInternal();
     bool linkedEditingPrevTabStopInternal();
     void cancelLinkedEditingInternal();
     void finishLinkedEditingInternal();
     bool hasValidLinkedEditingGroup() const;
-    std::optional<Vector<DocumentReplacement>> planLinkedEdit(const TextRange& range, const U8String& text) const;
+    std::optional<Vector<TextEdit>> planLinkedEdit(const TextRange& range, const U8String& text) const;
     /// Linked editing: apply a local replacement and return one edit result
     TextEditResult applyLinkedEditWithResult(const TextRange& range, const U8String& text);
     /// Linked editing: jump to target tab stop and select default text
@@ -843,7 +842,7 @@ namespace NS_SWEETEDITOR {
     /// Calculate new cursor position after inserting UTF8 text
     TextPosition calcPositionAfterInsert(const TextPosition& start, const U8String& text) const;
     /// Apply non-overlapping replacements that share one pre-edit coordinate space.
-    TextEditResult applyEditBatch(const Vector<DocumentReplacement>& replacements, bool update_fold_state = true);
+    TextEditResult applyEditBatch(const Vector<TextEdit>& edits, bool update_fold_state = true);
     /// Build and store one atomic history entry after the final caret is known.
     void recordHistory(const Vector<TextChange>& changes, const CaretState& caret_before, const CaretState& caret_after,
                        bool allows_merge = false);
@@ -856,7 +855,7 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
-#pragma region [Navigation & Decorations Internals]
+#pragma region[Navigation & Decorations Internals]
 
     bool foldAtInternal(size_t line);
     bool unfoldAtInternal(size_t line);
@@ -875,7 +874,7 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
-#pragma region [IME Internals]
+#pragma region[IME Internals]
 
     const std::optional<CompositionState>& compositionState() const;
     CaretState transformCaretForChanges(const CaretState& caret, const Vector<TextChange>& changes) const;
@@ -890,7 +889,7 @@ namespace NS_SWEETEDITOR {
     void settleComposition(const U8String& final_text_raw, EditTransaction& transaction, bool replace_current_text);
     void cancelComposition(EditTransaction& transaction);
     TextEditResult commitTransaction(EditTransaction& transaction);
-    ImeActionResult applyTextUpdatePlan(const Vector<DocumentReplacement>& replacements,
+    ImeActionResult applyTextUpdatePlan(const Vector<TextEdit>& edits,
                                         const std::optional<TextRange>& composition_after,
                                         const std::optional<TextRange>& rollover_baseline,
                                         const U8String& composition_text, const CaretState& caret_after,

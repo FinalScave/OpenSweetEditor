@@ -1,4 +1,4 @@
-package com.qiplat.sweeteditor.core.ime;
+package com.qiplat.sweeteditor.core.foundation;
 
 public enum CaretAffinity {
     DOWNSTREAM(0),

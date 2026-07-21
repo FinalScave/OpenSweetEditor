@@ -4,14 +4,14 @@ namespace NS_SWEETEDITOR {
   namespace {
     bool isSingleInsertion(const HistoryEntry& entry) {
       return entry.redo_replacements.size() == 1 && entry.undo_replacements.size() == 1
-             && entry.redo_replacements[0].range.isCollapsed() && !entry.redo_replacements[0].text.empty()
-             && entry.undo_replacements[0].text.empty();
+             && entry.redo_replacements[0].range.isCollapsed() && !entry.redo_replacements[0].new_text.empty()
+             && entry.undo_replacements[0].new_text.empty();
     }
 
     bool isSingleDeletion(const HistoryEntry& entry) {
       return entry.redo_replacements.size() == 1 && entry.undo_replacements.size() == 1
-             && !entry.redo_replacements[0].range.isCollapsed() && entry.redo_replacements[0].text.empty()
-             && !entry.undo_replacements[0].text.empty();
+             && !entry.redo_replacements[0].range.isCollapsed() && entry.redo_replacements[0].new_text.empty()
+             && !entry.undo_replacements[0].new_text.empty();
     }
   }
 
@@ -23,13 +23,13 @@ namespace NS_SWEETEDITOR {
     }
 
     if (isSingleInsertion(*this) && isSingleInsertion(next)) {
-      const auto& next_text = next.redo_replacements[0].text;
+      const auto& next_text = next.redo_replacements[0].new_text;
       return next_text.size() == 1 && next_text[0] != '\n' && next_text[0] != '\r'
              && next.redo_replacements[0].range.start == caret_after.active;
     }
 
     if (isSingleDeletion(*this) && isSingleDeletion(next)) {
-      const auto& next_text = next.undo_replacements[0].text;
+      const auto& next_text = next.undo_replacements[0].new_text;
       if (next_text.size() != 1 || next_text[0] == '\n' || next_text[0] == '\r') return false;
       const TextRange& range = redo_replacements[0].range;
       const TextRange& next_range = next.redo_replacements[0].range;
@@ -46,15 +46,15 @@ namespace NS_SWEETEDITOR {
     const auto& next_undo = next.undo_replacements[0];
 
     if (isSingleInsertion(*this) && isSingleInsertion(next)) {
-      redo.text += next_redo.text;
+      redo.new_text += next_redo.new_text;
       undo.range.end = next_undo.range.end;
     } else if (next_redo.range.end == redo.range.start) {
       redo.range.start = next_redo.range.start;
       undo.range = next_undo.range;
-      undo.text = next_undo.text + undo.text;
+      undo.new_text = next_undo.new_text + undo.new_text;
     } else {
       ++redo.range.end.column;
-      undo.text += next_undo.text;
+      undo.new_text += next_undo.new_text;
     }
 
     caret_after = next.caret_after;

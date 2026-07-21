@@ -72,9 +72,9 @@ import com.qiplat.sweeteditor.core.foundation.TextChange;
 import com.qiplat.sweeteditor.core.foundation.TextEdit;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
 import com.qiplat.sweeteditor.core.foundation.TextRange;
+import com.qiplat.sweeteditor.core.foundation.TabStopGroup;
 import com.qiplat.sweeteditor.core.search.SearchRequest;
 import com.qiplat.sweeteditor.core.search.SearchState;
-import com.qiplat.sweeteditor.core.snippet.LinkedEditingModel;
 import com.qiplat.sweeteditor.perf.MeasurePerfStats;
 import com.qiplat.sweeteditor.perf.PerfOverlay;
 import com.qiplat.sweeteditor.core.visual.*;
@@ -1575,12 +1575,12 @@ public class SweetEditor extends View {
     }
 
     /**
-     * Start linked editing mode with a generic LinkedEditingModel.
+     * Start linked editing mode with externally built tab stop groups.
      *
-     * @param model Linked editing model
+     * @param groups ordered tab stop groups
      */
-    public void startLinkedEditing(@NonNull LinkedEditingModel model) {
-        EditorActionResult result = mEditorCore.startLinkedEditing(model);
+    public void startLinkedEditing(@NonNull List<TabStopGroup> groups) {
+        EditorActionResult result = mEditorCore.startLinkedEditing(groups);
         resetCursorBlink();
         dispatchEditorActionResult(result);
     }

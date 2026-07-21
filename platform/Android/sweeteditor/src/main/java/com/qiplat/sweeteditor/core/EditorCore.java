@@ -41,9 +41,9 @@ import com.qiplat.sweeteditor.core.search.SearchState;
 import com.qiplat.sweeteditor.core.visual.CursorRect;
 import com.qiplat.sweeteditor.core.visual.EditorRenderModel;
 import com.qiplat.sweeteditor.core.visual.LayoutMetrics;
-import com.qiplat.sweeteditor.core.snippet.LinkedEditingModel;
 import com.qiplat.sweeteditor.core.visual.ScrollMetrics;
 import com.qiplat.sweeteditor.core.foundation.IntRange;
+import com.qiplat.sweeteditor.core.foundation.TabStopGroup;
 import com.qiplat.sweeteditor.core.foundation.TextChange;
 import com.qiplat.sweeteditor.core.foundation.TextEdit;
 import com.qiplat.sweeteditor.core.foundation.TextPosition;
@@ -1666,14 +1666,14 @@ public class EditorCore {
     }
 
     /**
-     * Starts linked editing mode with generic LinkedEditingModel.
+     * Starts linked editing mode with externally built tab stop groups.
      *
-     * @param model Linked editing model
+     * @param groups ordered tab stop groups
      */
     @NonNull
-    public EditorActionResult startLinkedEditing(@NonNull LinkedEditingModel model) {
+    public EditorActionResult startLinkedEditing(@NonNull List<TabStopGroup> groups) {
         if (mNativeHandle == 0) return new EditorActionResult();
-        ByteBuffer payload = CoreProtocol.encodeStartLinkedEditingPayload(model);
+        ByteBuffer payload = CoreProtocol.encodeStartLinkedEditingPayload(groups);
         return decodeAction(nativeStartLinkedEditing(mNativeHandle, payload, payload.remaining()));
     }
 

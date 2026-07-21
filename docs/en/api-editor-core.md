@@ -212,10 +212,10 @@ bool_i32 can_scroll_y
 
 ### Linked Editing
 
-`StartLinkedEditingPayload` contains one `LinkedEditingModel`:
+`StartLinkedEditingPayload` directly contains the tab stop groups:
 
 ```text
-LinkedEditingModel = List<TabStopGroup> groups
+List<TabStopGroup> groups
 TabStopGroup = u32 index, List<TextRange> ranges, U8String default_text
 ```
 

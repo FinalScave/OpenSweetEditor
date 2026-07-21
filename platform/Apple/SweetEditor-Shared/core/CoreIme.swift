@@ -1,18 +1,5 @@
 import Foundation
 
-public enum CaretAffinity: Int32 {
-    case DOWNSTREAM = 0
-    case UPSTREAM = 1
-
-    public static func fromValue(_ value: Int32) -> CaretAffinity? {
-        switch value {
-        case 0: return .DOWNSTREAM
-        case 1: return .UPSTREAM
-        default: return nil
-        }
-    }
-}
-
 public enum ImeCommandKind: Int32 {
     case SET_SELECTION = 0
     case BEGIN_COMPOSITION = 1

@@ -13,7 +13,6 @@ part 'core_adornments.dart';
 part 'core_ime.dart';
 part 'core_interaction.dart';
 part 'core_keymap.dart';
-part 'core_linked_editing.dart';
 part 'core_search.dart';
 part 'core_visual.dart';
 part 'core_protocol.dart';
@@ -1590,10 +1589,10 @@ class EditorCore {
     });
   }
 
-  EditorActionResult startLinkedEditing(LinkedEditingModel model) {
+  EditorActionResult startLinkedEditing(List<TabStopGroup> groups) {
     _ensureOpen();
     return startLinkedEditingRaw(
-      CoreProtocol.encodeStartLinkedEditingPayload(model),
+      CoreProtocol.encodeStartLinkedEditingPayload(groups),
     );
   }
 

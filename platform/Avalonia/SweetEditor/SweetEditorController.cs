@@ -402,7 +402,7 @@ namespace SweetEditor {
 
 		public EditorActionResult InsertSnippet(string snippetTemplate) => Read(e => e.InsertSnippet(snippetTemplate), EditorActionResult.Empty);
 
-		public void StartLinkedEditing(LinkedEditingModel model) => Invoke(e => e.StartLinkedEditing(model));
+		public void StartLinkedEditing(IReadOnlyList<TabStopGroup> groups) => Invoke(e => e.StartLinkedEditing(groups));
 
 		public bool IsInLinkedEditing() => Read(e => e.IsInLinkedEditing(), false);
 

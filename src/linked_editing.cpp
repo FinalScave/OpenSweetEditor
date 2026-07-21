@@ -201,7 +201,7 @@ namespace NS_SWEETEDITOR {
         group.ranges.push_back({start, end});
       }
 
-      result.model.groups.push_back(std::move(group));
+      result.groups.push_back(std::move(group));
     }
 
     return result;
@@ -209,20 +209,11 @@ namespace NS_SWEETEDITOR {
 #pragma endregion
 
 #pragma region[Class: LinkedEditingSession]
-  LinkedEditingSession::LinkedEditingSession(LinkedEditingModel&& model)
-      : m_model_(std::move(model)),
+  LinkedEditingSession::LinkedEditingSession(Vector<TabStopGroup> groups)
+      : m_groups_(std::move(groups)),
         m_current_idx_(0),
         m_active_(true) {
-    if (m_model_.groups.empty()) {
-      m_active_ = false;
-    }
-  }
-
-  LinkedEditingSession::LinkedEditingSession(const LinkedEditingModel& model)
-      : m_model_(model),
-        m_current_idx_(0),
-        m_active_(true) {
-    if (m_model_.groups.empty()) {
+    if (m_groups_.empty()) {
       m_active_ = false;
     }
   }
@@ -233,7 +224,7 @@ namespace NS_SWEETEDITOR {
 
   bool LinkedEditingSession::nextTabStop() {
     if (!m_active_) return false;
-    if (m_current_idx_ + 1 < m_model_.groups.size()) {
+    if (m_current_idx_ + 1 < m_groups_.size()) {
       m_current_idx_++;
       return true;
     }
@@ -257,8 +248,8 @@ namespace NS_SWEETEDITOR {
 
   TextPosition LinkedEditingSession::finalCursorPosition() const {
     // $0 group is last, use its primaryRange.start as final cursor position
-    if (!m_model_.groups.empty()) {
-      const auto& last_group = m_model_.groups.back();
+    if (!m_groups_.empty()) {
+      const auto& last_group = m_groups_.back();
       if (!last_group.ranges.empty()) {
         return last_group.ranges[0].start;
       }
@@ -268,7 +259,7 @@ namespace NS_SWEETEDITOR {
 
   const TabStopGroup* LinkedEditingSession::currentGroup() const {
     if (!isValidIndex()) return nullptr;
-    return &m_model_.groups[m_current_idx_];
+    return &m_groups_[m_current_idx_];
   }
 
   const TextRange& LinkedEditingSession::primaryRange() const {
@@ -312,8 +303,8 @@ namespace NS_SWEETEDITOR {
     int64_t line_delta = new_end_line - old_end_line;
     int64_t col_delta = new_end_col - old_end_col;
 
-    for (size_t group_index = 0; group_index < m_model_.groups.size(); ++group_index) {
-      auto& group = m_model_.groups[group_index];
+    for (size_t group_index = 0; group_index < m_groups_.size(); ++group_index) {
+      auto& group = m_groups_[group_index];
       for (auto& range : group.ranges) {
         if (group_index == m_current_idx_ && range == old_range) {
           range = {old_range.start, new_end};
@@ -357,9 +348,9 @@ namespace NS_SWEETEDITOR {
     Vector<LinkedEditingHighlight> highlights;
     if (!m_active_) return highlights;
 
-    for (size_t i = 0; i < m_model_.groups.size(); ++i) {
+    for (size_t i = 0; i < m_groups_.size(); ++i) {
       bool is_active = (i == m_current_idx_);
-      for (const auto& range : m_model_.groups[i].ranges) {
+      for (const auto& range : m_groups_[i].ranges) {
         highlights.push_back({range, is_active});
       }
     }
@@ -367,7 +358,7 @@ namespace NS_SWEETEDITOR {
   }
 
   bool LinkedEditingSession::isValidIndex() const {
-    return m_active_ && m_current_idx_ < m_model_.groups.size();
+    return m_active_ && m_current_idx_ < m_groups_.size();
   }
 #pragma endregion
 }
