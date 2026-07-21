@@ -13,7 +13,7 @@ namespace NS_SWEETEDITOR {
   /// Tab stop group (all positions with the same index are edited together)
   struct SE_PROTOCOL_IN(linked_editing) TabStopGroup {
     /// Group index that decides Tab navigation order (0 = final cursor position, 1+ = edit order)
-    uint32_t index {0};
+    uint32_t index{0};
     /// All text ranges in this group (updated together during linked editing)
     Vector<TextRange> ranges;
     /// Default placeholder text
@@ -49,7 +49,7 @@ namespace NS_SWEETEDITOR {
     /// Text range
     TextRange range;
     /// Whether this is the currently active tab stop
-    bool is_active {false};
+    bool is_active{false};
   };
 
   /// Linked editing session (lifecycle managed by EditorCore)
@@ -102,8 +102,8 @@ namespace NS_SWEETEDITOR {
 
   private:
     LinkedEditingModel m_model_;
-    size_t m_current_idx_ {0};  ///< Index in m_model_.groups
-    bool m_active_ {true};
+    size_t m_current_idx_{0}; ///< Index in m_model_.groups
+    bool m_active_{true};
 
     /// Internal helper: check if index is valid
     bool isValidIndex() const;

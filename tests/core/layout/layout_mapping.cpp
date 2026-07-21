@@ -19,7 +19,7 @@ TEST_CASE("TextLayout hitTest matches getPositionScreenCoord in non-wrap mode") 
   layout.setWrapMode(WrapMode::NONE);
 
   EditorRenderModel model;
-  layout.layoutVisibleLines(model, PresentationContext {});
+  layout.layoutVisibleLines(model);
 
   const float probe_y = layout.getPositionScreenCoord({0, 0}).y + layout.getLineHeight() * 0.5f;
   for (size_t col = 0; col < 6; ++col) {
@@ -45,7 +45,7 @@ TEST_CASE("TextLayout hitTest/getPositionScreenCoord stay consistent in wrap mod
   layout.setWrapMode(WrapMode::CHAR_BREAK);
 
   EditorRenderModel model;
-  layout.layoutVisibleLines(model, PresentationContext {});
+  layout.layoutVisibleLines(model);
 
   const PointF p0 = layout.getPositionScreenCoord({0, 0});
   const PointF p7 = layout.getPositionScreenCoord({0, 7});
@@ -71,18 +71,16 @@ TEST_CASE("TextLayout preserves both caret sides at a soft wrap boundary") {
   layout.setWrapMode(WrapMode::CHAR_BREAK);
 
   EditorRenderModel model;
-  layout.layoutVisibleLines(model, PresentationContext {});
+  layout.layoutVisibleLines(model);
 
-  const TextPosition boundary {0, 6};
+  const TextPosition boundary{0, 6};
   const PointF upstream = layout.getPositionScreenCoord(boundary, CaretAffinity::UPSTREAM);
   const PointF downstream = layout.getPositionScreenCoord(boundary, CaretAffinity::DOWNSTREAM);
   REQUIRE(downstream.y > upstream.y);
 
   const float line_height = layout.getLineHeight();
-  const CaretHit upstream_hit = layout.hitTestPointer(
-      {upstream.x + 1.0f, upstream.y + line_height * 0.5f});
-  const CaretHit downstream_hit = layout.hitTestPointer(
-      {downstream.x + 1.0f, downstream.y + line_height * 0.5f});
+  const CaretHit upstream_hit = layout.hitTestPointer({upstream.x + 1.0f, upstream.y + line_height * 0.5f});
+  const CaretHit downstream_hit = layout.hitTestPointer({downstream.x + 1.0f, downstream.y + line_height * 0.5f});
 
   CHECK(upstream_hit.position == boundary);
   CHECK(upstream_hit.affinity == CaretAffinity::UPSTREAM);
@@ -95,14 +93,15 @@ TEST_CASE("TextLayout hitTest snaps emoji modifier graphemes to left and right b
   SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
   TextLayout layout(measurer, decorations);
 
-  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB" "B");
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB"
+                                                               "B");
   layout.loadDocument(document);
   layout.setViewport({320, 200});
   layout.setViewState({1.0f, 0.0f, 0.0f});
   layout.setWrapMode(WrapMode::NONE);
 
   EditorRenderModel model;
-  layout.layoutVisibleLines(model, PresentationContext {});
+  layout.layoutVisibleLines(model);
 
   const PointF cluster_start = layout.getPositionScreenCoord({0, 1});
   const PointF cluster_end = layout.getPositionScreenCoord({0, 5});
@@ -118,18 +117,19 @@ TEST_CASE("TextLayout horizontal cropping preserves grapheme hit testing") {
   SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
   TextLayout layout(measurer, decorations);
 
-  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB" "B");
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB"
+                                                               "B");
   layout.loadDocument(document);
   layout.setViewport({80, 200});
   layout.setWrapMode(WrapMode::NONE);
 
   EditorRenderModel model;
-  layout.layoutVisibleLines(model, PresentationContext {});
+  layout.layoutVisibleLines(model);
 
   const float text_area_x = layout.getLayoutMetrics().textAreaX();
   layout.setViewState({1.0f, text_area_x + 15.0f, 0.0f});
   model = {};
-  layout.layoutVisibleLines(model, PresentationContext {});
+  layout.layoutVisibleLines(model);
 
   REQUIRE_FALSE(model.lines.empty());
 
@@ -140,7 +140,9 @@ TEST_CASE("TextLayout horizontal cropping preserves grapheme hit testing") {
 
   U8String cropped_text;
   StrUtil::convertUTF16ToUTF8(run_it->text, cropped_text);
-  CHECK(cropped_text == "\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB" "B");
+  CHECK(cropped_text
+        == "\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB"
+           "B");
 }
 
 TEST_CASE("TextLayout wrap keeps emoji modifier grapheme on one visual line") {
@@ -148,7 +150,8 @@ TEST_CASE("TextLayout wrap keeps emoji modifier grapheme on one visual line") {
   SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
   TextLayout layout(measurer, decorations);
 
-  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB" "B");
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBB"
+                                                               "B");
   layout.loadDocument(document);
   layout.setViewport({120, 200});
   const float text_area_x = layout.getLayoutMetrics().textAreaX();
@@ -156,7 +159,7 @@ TEST_CASE("TextLayout wrap keeps emoji modifier grapheme on one visual line") {
   layout.setWrapMode(WrapMode::CHAR_BREAK);
 
   EditorRenderModel model;
-  layout.layoutVisibleLines(model, PresentationContext {});
+  layout.layoutVisibleLines(model);
 
   REQUIRE(model.lines.size() == 3);
   CHECK(collectVisualLineText(model.lines[0]) == "A");
@@ -169,23 +172,24 @@ TEST_CASE("TextLayout monospace left crop does not over-trim complex graphemes")
   SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
   TextLayout layout(measurer, decorations);
 
-  SharedPtr<Document> document = makeShared<LineArrayDocument>(
-      "\xF0\x9F\x92\x9D\xF0\x9F\x92\x97\xF0\x9F\x87\xA8\xF0\x9F\x87\xB3\xF0\x9F\x87\xB2\xF0\x9F\x87\xB4\xF0\x9F\x91\x8C\xF0\x9F\x8F\xBB");
+  SharedPtr<Document> document =
+      makeShared<LineArrayDocument>("\xF0\x9F\x92\x9D\xF0\x9F\x92\x97\xF0\x9F\x87\xA8\xF0\x9F\x87\xB3\xF0\x9F\x87\xB2"
+                                    "\xF0\x9F\x87\xB4\xF0\x9F\x91\x8C\xF0\x9F\x8F\xBB");
   layout.loadDocument(document);
   layout.setViewport({160, 200});
   layout.setWrapMode(WrapMode::NONE);
 
   EditorRenderModel model;
-  layout.layoutVisibleLines(model, PresentationContext {});
+  layout.layoutVisibleLines(model);
 
   const float text_area_x = layout.getLayoutMetrics().textAreaX();
   layout.setViewState({1.0f, text_area_x + 25.0f, 0.0f});
   model = {};
-  layout.layoutVisibleLines(model, PresentationContext {});
+  layout.layoutVisibleLines(model);
 
   REQUIRE_FALSE(model.lines.empty());
-  CHECK(collectVisualLineText(model.lines[0]) ==
-        "\xF0\x9F\x87\xA8\xF0\x9F\x87\xB3\xF0\x9F\x87\xB2\xF0\x9F\x87\xB4\xF0\x9F\x91\x8C\xF0\x9F\x8F\xBB");
+  CHECK(collectVisualLineText(model.lines[0])
+        == "\xF0\x9F\x87\xA8\xF0\x9F\x87\xB3\xF0\x9F\x87\xB2\xF0\x9F\x87\xB4\xF0\x9F\x91\x8C\xF0\x9F\x8F\xBB");
 }
 
 TEST_CASE("TextLayout getPositionScreenCoord skips CodeLens virtual line for line start") {
@@ -248,7 +252,7 @@ TEST_CASE("TextLayout hitTestDecoration returns unique command ids for CodeLens 
   decorations->setLineCodeLens(0, std::move(items));
 
   EditorRenderModel model;
-  layout.layoutVisibleLines(model, PresentationContext {});
+  layout.layoutVisibleLines(model);
   const VisualLine& codelens_line = findCodeLensVisualLine(model, 0);
   const VisualRun& first = findNthCodeLensRun(codelens_line, 0);
   const VisualRun& second = findNthCodeLensRun(codelens_line, 1);
@@ -284,7 +288,7 @@ TEST_CASE("TextLayout positions CodeLens runs by anchored columns") {
   decorations->setLineCodeLens(0, std::move(items));
 
   EditorRenderModel model;
-  layout.layoutVisibleLines(model, PresentationContext {});
+  layout.layoutVisibleLines(model);
   const VisualLine& codelens_line = findCodeLensVisualLine(model, 0);
   const VisualRun& first = findNthCodeLensRun(codelens_line, 0);
   const VisualRun& second = findNthCodeLensRun(codelens_line, 1);
@@ -312,7 +316,7 @@ TEST_CASE("TextLayout hitTestDecoration resolves LINK target by canonical start 
   decorations->setLineLinks(0, std::move(links));
 
   EditorRenderModel model;
-  layout.layoutVisibleLines(model, PresentationContext {});
+  layout.layoutVisibleLines(model);
   REQUIRE_FALSE(model.lines.empty());
   const VisualLine& content_line = model.lines.front();
   const VisualRun& link_run = findFirstRunOfType(content_line, VisualRunType::LINK);
@@ -346,7 +350,7 @@ TEST_CASE("TextLayout maps collapsed fold tail runs to their source line") {
   lines[0].is_layout_dirty = true;
 
   EditorRenderModel model;
-  layout.layoutVisibleLines(model, PresentationContext {});
+  layout.layoutVisibleLines(model);
   REQUIRE_FALSE(model.lines.empty());
 
   const VisualLine& folded_line = model.lines.front();

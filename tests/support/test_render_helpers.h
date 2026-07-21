@@ -52,8 +52,7 @@ namespace NS_SWEETEDITOR {
     return line.runs.front();
   }
 
-  inline Vector<const VisualRun*> findRunsOfType(const EditorRenderModel& model,
-                                                 size_t logical_line,
+  inline Vector<const VisualRun*> findRunsOfType(const EditorRenderModel& model, size_t logical_line,
                                                  VisualRunType type) {
     Vector<const VisualRun*> runs;
     for (const VisualLine& line : model.lines) {
@@ -77,7 +76,8 @@ namespace NS_SWEETEDITOR {
     return effects;
   }
 
-  inline const RangeEffectRenderItem& requireSingleRangeEffectOfKind(const EditorRenderModel& model, RangeEffectKind kind) {
+  inline const RangeEffectRenderItem& requireSingleRangeEffectOfKind(const EditorRenderModel& model,
+                                                                     RangeEffectKind kind) {
     auto effects = rangeEffectsOfKind(model, kind);
     REQUIRE(effects.size() == 1);
     return *effects.front();

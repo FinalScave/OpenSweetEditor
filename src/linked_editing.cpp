@@ -6,11 +6,10 @@
 #include <algorithm>
 
 namespace NS_SWEETEDITOR {
-#pragma region [Class: SnippetParser]
+#pragma region[Class: SnippetParser]
   /// Calculate absolute TextPosition from offset (line char offset) and insert_position
   /// text is plain text from insert_position to the current offset
-  static TextPosition calcAbsolutePosition(const TextPosition& insert_pos,
-                                           const U8String& text_before) {
+  static TextPosition calcAbsolutePosition(const TextPosition& insert_pos, const U8String& text_before) {
     size_t line = insert_pos.line;
     size_t col = insert_pos.column;
     auto it = text_before.begin();
@@ -33,20 +32,19 @@ namespace NS_SWEETEDITOR {
     return {line, col};
   }
 
-  SnippetParseResult SnippetParser::parse(const U8String& snippet_template,
-                                          const TextPosition& insert_position) {
+  SnippetParseResult SnippetParser::parse(const U8String& snippet_template, const TextPosition& insert_position) {
     SnippetParseResult result;
     U8String& plain_text = result.text;
 
     // Temp storage: index -> (default_text, list of {offset_in_plain, length})
     struct Occurrence {
-      size_t offset;  // byte offset in plain_text
-      size_t length;  // byte length of default text at that position
+      size_t offset; // byte offset in plain_text
+      size_t length; // byte length of default text at that position
     };
     struct TabStopInfo {
       uint32_t index;
       U8String default_text;
-      bool has_default {false};
+      bool has_default{false};
       Vector<Occurrence> occurrences;
     };
     HashMap<uint32_t, TabStopInfo> tab_stop_map;
@@ -210,16 +208,20 @@ namespace NS_SWEETEDITOR {
   }
 #pragma endregion
 
-#pragma region [Class: LinkedEditingSession]
+#pragma region[Class: LinkedEditingSession]
   LinkedEditingSession::LinkedEditingSession(LinkedEditingModel&& model)
-    : m_model_(std::move(model)), m_current_idx_(0), m_active_(true) {
+      : m_model_(std::move(model)),
+        m_current_idx_(0),
+        m_active_(true) {
     if (m_model_.groups.empty()) {
       m_active_ = false;
     }
   }
 
   LinkedEditingSession::LinkedEditingSession(const LinkedEditingModel& model)
-    : m_model_(model), m_current_idx_(0), m_active_(true) {
+      : m_model_(model),
+        m_current_idx_(0),
+        m_active_(true) {
     if (m_model_.groups.empty()) {
       m_active_ = false;
     }
@@ -280,8 +282,7 @@ namespace NS_SWEETEDITOR {
     return m_current_idx_;
   }
 
-  Vector<std::pair<TextRange, U8String>> LinkedEditingSession::computeLinkedEdits(
-      const U8String& new_text) const {
+  Vector<std::pair<TextRange, U8String>> LinkedEditingSession::computeLinkedEdits(const U8String& new_text) const {
     Vector<std::pair<TextRange, U8String>> edits;
     const TabStopGroup* group = currentGroup();
     if (group == nullptr) return edits;
@@ -292,18 +293,15 @@ namespace NS_SWEETEDITOR {
     }
 
     // Sort by document position in descending order (replace back to front)
-    std::sort(edits.begin(), edits.end(),
-      [](const auto& a, const auto& b) {
-        if (a.first.start.line != b.first.start.line)
-          return a.first.start.line > b.first.start.line;
-        return a.first.start.column > b.first.start.column;
-      });
+    std::sort(edits.begin(), edits.end(), [](const auto& a, const auto& b) {
+      if (a.first.start.line != b.first.start.line) return a.first.start.line > b.first.start.line;
+      return a.first.start.column > b.first.start.column;
+    });
 
     return edits;
   }
 
-  void LinkedEditingSession::adjustRangesForEdit(const TextRange& old_range,
-                                                  const TextPosition& new_end) {
+  void LinkedEditingSession::adjustRangesForEdit(const TextRange& old_range, const TextPosition& new_end) {
     if (!m_active_) return;
 
     // Compute line delta and column delta on the last line
@@ -331,8 +329,8 @@ namespace NS_SWEETEDITOR {
             range.start.column = static_cast<size_t>(static_cast<int64_t>(range.start.column) + col_delta);
           } else {
             // Crossed lines, column is based on new_end_col on the new line
-            range.start.column = static_cast<size_t>(
-              new_end_col + (static_cast<int64_t>(range.start.column) - old_end_col));
+            range.start.column =
+                static_cast<size_t>(new_end_col + (static_cast<int64_t>(range.start.column) - old_end_col));
           }
         } else if (range.start.line > old_range.end.line) {
           // Lines after the edit point
@@ -345,8 +343,8 @@ namespace NS_SWEETEDITOR {
           if (line_delta == 0) {
             range.end.column = static_cast<size_t>(static_cast<int64_t>(range.end.column) + col_delta);
           } else {
-            range.end.column = static_cast<size_t>(
-              new_end_col + (static_cast<int64_t>(range.end.column) - old_end_col));
+            range.end.column =
+                static_cast<size_t>(new_end_col + (static_cast<int64_t>(range.end.column) - old_end_col));
           }
         } else if (range.end.line > old_range.end.line) {
           range.end.line = static_cast<size_t>(static_cast<int64_t>(range.end.line) + line_delta);

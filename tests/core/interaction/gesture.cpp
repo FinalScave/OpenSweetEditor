@@ -50,7 +50,7 @@ TEST_CASE("Interaction value types compare all fields") {
 }
 
 TEST_CASE("GestureHandler maps wheel modifiers to scale and horizontal scroll") {
-  GestureHandler handler(TouchConfig {});
+  GestureHandler handler(TouchConfig{});
 
   GestureEvent zoom_event;
   zoom_event.type = EventType::MOUSE_WHEEL;
@@ -97,7 +97,8 @@ TEST_CASE("GestureHandler recognizes long press and three-finger fast scroll") {
   handler.handleGestureEvent(GestureEvent::create(EventType::TOUCH_DOWN, 1, press_point));
   std::this_thread::sleep_for(std::chrono::milliseconds(4));
 
-  const GestureResult long_press = handler.handleGestureEvent(GestureEvent::create(EventType::TOUCH_MOVE, 1, press_point));
+  const GestureResult long_press =
+      handler.handleGestureEvent(GestureEvent::create(EventType::TOUCH_MOVE, 1, press_point));
   REQUIRE(long_press.type == GestureType::LONG_PRESS);
 
   handler.resetState();
@@ -106,7 +107,8 @@ TEST_CASE("GestureHandler recognizes long press and three-finger fast scroll") {
   handler.handleGestureEvent(GestureEvent::create(EventType::TOUCH_POINTER_DOWN, 3, multi_down));
 
   const float multi_move[6] = {10.0f, 26.0f, 30.0f, 26.0f, 50.0f, 26.0f};
-  const GestureResult fast_scroll = handler.handleGestureEvent(GestureEvent::create(EventType::TOUCH_MOVE, 3, multi_move));
+  const GestureResult fast_scroll =
+      handler.handleGestureEvent(GestureEvent::create(EventType::TOUCH_MOVE, 3, multi_move));
   REQUIRE(fast_scroll.type == GestureType::FAST_SCROLL);
   CHECK(fast_scroll.scroll_y != Catch::Approx(0.0f));
 }

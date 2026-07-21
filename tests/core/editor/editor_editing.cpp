@@ -358,7 +358,8 @@ TEST_CASE("EditorCore backspace removes one surrogate pair as a single glyph") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
 
-  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x98\x80" "B");
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x98\x80"
+                                                               "B");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
   editor.setCursorPosition({0, 3}); // after 'A' (1) and emoji (2)
@@ -376,7 +377,8 @@ TEST_CASE("EditorCore clamps cursor positions away from surrogate middles") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
 
-  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x98\x80" "B");
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x98\x80"
+                                                               "B");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
 
@@ -449,7 +451,8 @@ TEST_CASE("EditorCore keeps zero-length selection collapsed when clamped around 
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
 
-  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x98\x80" "B");
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x98\x80"
+                                                               "B");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
 
@@ -463,7 +466,8 @@ TEST_CASE("EditorCore deleteForward removes one surrogate pair as a single glyph
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
 
-  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x98\x80" "B");
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x98\x80"
+                                                               "B");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
   editor.setCursorPosition({0, 1});
@@ -580,28 +584,34 @@ TEST_CASE("EditorCore getWordRangeAtCursor keeps combining graphemes intact") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
 
-  SharedPtr<Document> document = makeShared<LineArrayDocument>("a\xCC\x81" "bc");
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("a\xCC\x81"
+                                                               "bc");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
 
   editor.setCursorPosition({0, 2});
 
   CHECK(editor.getWordRangeAtCursor() == (TextRange{{0, 0}, {0, 4}}));
-  CHECK(editor.getWordAtCursor() == "a\xCC\x81" "bc");
+  CHECK(editor.getWordAtCursor()
+        == "a\xCC\x81"
+           "bc");
 }
 
 TEST_CASE("EditorCore replaceText normalizes insert positions away from surrogate middles") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
 
-  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x98\x80" "B");
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x98\x80"
+                                                               "B");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
 
   EditorActionResult result = editor.replaceText({{0, 2}, {0, 2}}, "X");
 
   REQUIRE(result.content_changed);
-  CHECK(document->getU8Text() == "AX\xF0\x9F\x98\x80" "B");
+  CHECK(document->getU8Text()
+        == "AX\xF0\x9F\x98\x80"
+           "B");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
 }
 
@@ -609,7 +619,8 @@ TEST_CASE("EditorCore deleteText expands surrogate-spanning ranges to full code-
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
 
-  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x98\x80" "B");
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("A\xF0\x9F\x98\x80"
+                                                               "B");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
 

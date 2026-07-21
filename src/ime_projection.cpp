@@ -3,7 +3,7 @@
 #include <sweeteditor/document.h>
 #include "ime_projection.hpp"
 
-namespace NS_SWEETEDITOR::ImeProjection {
+namespace NS_SWEETEDITOR {
 
   namespace {
     TextPosition positionAfterText(const TextPosition& start, const U8String& text) {
@@ -31,7 +31,76 @@ namespace NS_SWEETEDITOR::ImeProjection {
     }
   }
 
-  U8String logicalizeLineEndings(const U8String& text) {
+  TextPosition EditingProjection::transformPosition(const TextRange& source_range, const TextPosition& target_end,
+                                                    const TextPosition& position, EndpointBias bias) {
+    const TextRange range = source_range.normalized();
+    if (position < range.start) {
+      return position;
+    }
+    if (position <= range.end) {
+      return bias == EndpointBias::BEFORE ? range.start : target_end;
+    }
+    return range.transformPositionAfterEdit(position, target_end);
+  }
+
+  std::optional<TextRange> EditingProjection::projectRange(const TextRange& source_range, const TextRange& target_range,
+                                                           const TextRange& range) {
+    const TextRange source = source_range.normalized();
+    const TextRange target = target_range.normalized();
+    const TextRange normalized = range.normalized();
+    const bool affected = source.isCollapsed() ? normalized.start < source.start && source.start < normalized.end
+                                               : normalized.overlaps(source);
+    if (affected) {
+      return std::nullopt;
+    }
+
+    TextRange projected{transformPosition(source, target.end, normalized.start, EndpointBias::AFTER),
+                        transformPosition(source, target.end, normalized.end, EndpointBias::BEFORE)};
+    if (projected.end < projected.start) {
+      projected.end = projected.start;
+    }
+    return projected;
+  }
+
+  std::optional<TextPosition> EditingProjection::projectAnchor(const TextRange& source_range,
+                                                               const TextRange& target_range,
+                                                               const TextPosition& position, EndpointBias bias) {
+    const TextRange source = source_range.normalized();
+    const TextRange target = target_range.normalized();
+    if (!source.isCollapsed() && source.start <= position && position < source.end) {
+      return std::nullopt;
+    }
+    return transformPosition(source, target.end, position, bias);
+  }
+
+  Vector<size_t> EditingProjection::sourceLinesForEditingLine(const TextRange& source_range,
+                                                              const TextRange& target_range, size_t editing_line) {
+    const TextRange source = source_range.normalized();
+    const TextRange target = target_range.normalized();
+    Vector<size_t> lines;
+    const auto append_unique = [&lines](size_t line) {
+      if (std::find(lines.begin(), lines.end(), line) == lines.end()) {
+        lines.push_back(line);
+      }
+    };
+
+    if (editing_line < target.start.line) {
+      append_unique(editing_line);
+    } else if (editing_line > target.end.line) {
+      const int64_t line_delta = static_cast<int64_t>(target.end.line) - static_cast<int64_t>(source.end.line);
+      append_unique(TextPosition{editing_line, 0}.withLineDelta(-line_delta).line);
+    } else {
+      if (editing_line == target.start.line) {
+        append_unique(source.start.line);
+      }
+      if (editing_line == target.end.line) {
+        append_unique(source.end.line);
+      }
+    }
+    return lines;
+  }
+
+  U8String ImeProjection::logicalizeLineEndings(const U8String& text) {
     U8String logical;
     logical.reserve(text.size());
     for (size_t index = 0; index < text.size(); ++index) {
@@ -47,107 +116,56 @@ namespace NS_SWEETEDITOR::ImeProjection {
     return logical;
   }
 
-  TextPosition transformPosition(const TextRange& old_range, const TextPosition& new_end,
-                                 const TextPosition& position, EndpointBias bias) {
-    const TextRange range = old_range.normalized();
-    if (position < range.start) {
-      return position;
-    }
-    if (position <= range.end) {
-      return bias == EndpointBias::BEFORE ? range.start : new_end;
-    }
-    return range.transformPositionAfterEdit(position, new_end);
+  TextPosition ImeProjection::transformPosition(const TextRange& old_range, const TextPosition& new_end,
+                                                const TextPosition& position, EndpointBias bias) {
+    return EditingProjection::transformPosition(old_range, new_end, position, bias);
   }
 
-  bool ownsCompositionText(const CompositionState& state) {
+  bool ImeProjection::ownsCompositionText(const CompositionState& state) {
     return state.baseline_text_raw.has_value();
   }
 
-  TextRange baselineRange(const CompositionState& state) {
+  TextRange ImeProjection::baselineRange(const CompositionState& state) {
     if (!ownsCompositionText(state)) {
       return state.current_range;
     }
-    return {
-        state.current_range.start,
-        positionAfterText(state.current_range.start, logicalizeLineEndings(*state.baseline_text_raw))
-    };
+    return {state.current_range.start,
+            positionAfterText(state.current_range.start, logicalizeLineEndings(*state.baseline_text_raw))};
   }
 
-  bool hasNonIdentityProjection(Document& document, const CompositionState& state) {
+  bool ImeProjection::hasNonIdentityProjection(Document& document, const CompositionState& state) {
     return ownsCompositionText(state)
-        && logicalizeLineEndings(document.getU8Text(state.current_range))
-            != logicalizeLineEndings(*state.baseline_text_raw);
+           && logicalizeLineEndings(document.getU8Text(state.current_range))
+                  != logicalizeLineEndings(*state.baseline_text_raw);
   }
 
-  std::optional<TextRange> projectCommittedRange(
-      Document& document, const std::optional<CompositionState>& composition,
-      const TextRange& range) {
+  std::optional<TextRange> ImeProjection::projectCommittedRange(Document& document,
+                                                                const std::optional<CompositionState>& composition,
+                                                                const TextRange& range) {
     if (!composition.has_value() || !hasNonIdentityProjection(document, *composition)) {
       return range;
     }
 
-    const TextRange baseline = baselineRange(*composition);
-    const TextRange normalized = range.normalized();
-    const bool affected = baseline.isCollapsed()
-        ? normalized.start < baseline.start && baseline.start < normalized.end
-        : normalized.overlaps(baseline);
-    if (affected) {
-      return std::nullopt;
-    }
-
-    TextRange projected {
-        transformPosition(baseline, composition->current_range.end, normalized.start, EndpointBias::AFTER),
-        transformPosition(baseline, composition->current_range.end, normalized.end, EndpointBias::BEFORE)
-    };
-    if (projected.end < projected.start) {
-      projected.end = projected.start;
-    }
-    return projected;
+    return EditingProjection::projectRange(baselineRange(*composition), composition->current_range, range);
   }
 
-  std::optional<TextPosition> projectCommittedAnchor(
-      Document& document, const std::optional<CompositionState>& composition,
-      const TextPosition& position, EndpointBias bias) {
+  std::optional<TextPosition> ImeProjection::projectCommittedAnchor(Document& document,
+                                                                    const std::optional<CompositionState>& composition,
+                                                                    const TextPosition& position, EndpointBias bias) {
     if (!composition.has_value() || !hasNonIdentityProjection(document, *composition)) {
       return position;
     }
-    const TextRange baseline = baselineRange(*composition);
-    if (!baseline.isCollapsed() && baseline.start <= position && position < baseline.end) {
-      return std::nullopt;
-    }
-    return transformPosition(baseline, composition->current_range.end, position, bias);
+    return EditingProjection::projectAnchor(baselineRange(*composition), composition->current_range, position, bias);
   }
 
-  Vector<size_t> committedSourceLinesForEditingLine(
-      Document& document, const std::optional<CompositionState>& composition,
-      size_t editing_line) {
+  Vector<size_t> ImeProjection::committedSourceLinesForEditingLine(Document& document,
+                                                                   const std::optional<CompositionState>& composition,
+                                                                   size_t editing_line) {
     if (!composition.has_value() || !hasNonIdentityProjection(document, *composition)) {
       return {editing_line};
     }
-    const TextRange baseline = baselineRange(*composition);
-    const TextRange current = composition->current_range;
-    Vector<size_t> lines;
-    const auto append_unique = [&lines](size_t line) {
-      if (std::find(lines.begin(), lines.end(), line) == lines.end()) {
-        lines.push_back(line);
-      }
-    };
-
-    if (editing_line < current.start.line) {
-      append_unique(editing_line);
-    } else if (editing_line > current.end.line) {
-      const int64_t line_delta = static_cast<int64_t>(current.end.line)
-          - static_cast<int64_t>(baseline.end.line);
-      append_unique(TextPosition {editing_line, 0}.withLineDelta(-line_delta).line);
-    } else {
-      if (editing_line == current.start.line) {
-        append_unique(baseline.start.line);
-      }
-      if (editing_line == current.end.line) {
-        append_unique(baseline.end.line);
-      }
-    }
-    return lines;
+    return EditingProjection::sourceLinesForEditingLine(baselineRange(*composition), composition->current_range,
+                                                        editing_line);
   }
 
 }

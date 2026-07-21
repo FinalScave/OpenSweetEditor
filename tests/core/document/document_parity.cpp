@@ -26,7 +26,7 @@ namespace {
       const size_t mid_col = left_cols / 2;
       const size_t samples[] = {0, mid_col, static_cast<size_t>(left_cols)};
       for (size_t col : samples) {
-        const TextPosition pos {line, col};
+        const TextPosition pos{line, col};
         size_t left_ci = left.getCharIndexFromPosition(pos);
         size_t right_ci = right.getCharIndexFromPosition(pos);
         CHECK(left_ci == right_ci);
@@ -38,12 +38,11 @@ namespace {
     }
   }
 
-  template <typename DocumentType>
-  void checkBatchReplacement() {
+  template <typename DocumentType> void checkBatchReplacement() {
     DocumentType document("ab\r\ncd\xF0\x9F\x99\x82\nef");
-    const Vector<DocumentReplacement> replacements {
-      {{{0, 1}, {1, 1}}, "X\nY"},
-      {{{2, 0}, {2, 1}}, "Z"},
+    const Vector<DocumentReplacement> replacements{
+        {{{0, 1}, {1, 1}}, "X\nY"},
+        {{{2, 0}, {2, 1}}, "Z"},
     };
 
     document.replaceU8TextBatch(replacements);
@@ -51,28 +50,30 @@ namespace {
     CHECK(document.getU8Text() == "aX\nYd\xF0\x9F\x99\x82\nZf");
   }
 
-  template <typename DocumentType>
-  void checkBatchValidationKeepsDocument() {
+  template <typename DocumentType> void checkBatchValidationKeepsDocument() {
     DocumentType document("abcdef");
-    const Vector<DocumentReplacement> overlapping {
-      {{{0, 1}, {0, 4}}, "X"},
-      {{{0, 3}, {0, 5}}, "Y"},
+    const Vector<DocumentReplacement> overlapping{
+        {{{0, 1}, {0, 4}}, "X"},
+        {{{0, 3}, {0, 5}}, "Y"},
     };
     CHECK_THROWS_AS(document.replaceU8TextBatch(overlapping), std::invalid_argument);
     CHECK(document.getU8Text() == "abcdef");
 
-    const Vector<DocumentReplacement> out_of_range {
-      {{{0, 1}, {0, 7}}, "Z"},
+    const Vector<DocumentReplacement> out_of_range{
+        {{{0, 1}, {0, 7}}, "Z"},
     };
     CHECK_THROWS_AS(document.replaceU8TextBatch(out_of_range), std::out_of_range);
     CHECK(document.getU8Text() == "abcdef");
 
-    DocumentType unicode_document("a\xF0\x9F\x99\x82" "b");
-    const Vector<DocumentReplacement> split_surrogate {
-      {{{0, 2}, {0, 3}}, "Z"},
+    DocumentType unicode_document("a\xF0\x9F\x99\x82"
+                                  "b");
+    const Vector<DocumentReplacement> split_surrogate{
+        {{{0, 2}, {0, 3}}, "Z"},
     };
     CHECK_THROWS_AS(unicode_document.replaceU8TextBatch(split_surrogate), std::invalid_argument);
-    CHECK(unicode_document.getU8Text() == "a\xF0\x9F\x99\x82" "b");
+    CHECK(unicode_document.getU8Text()
+          == "a\xF0\x9F\x99\x82"
+             "b");
   }
 
 }
@@ -88,9 +89,9 @@ TEST_CASE("Document batch replacement preserves live state on validation failure
 }
 
 TEST_CASE("Document batch replacement allows an insertion at replacement end") {
-  const Vector<DocumentReplacement> replacements {
-    {{{0, 0}, {0, 4}}, "run"},
-    {{{0, 4}, {0, 4}}, "Async"},
+  const Vector<DocumentReplacement> replacements{
+      {{{0, 0}, {0, 4}}, "run"},
+      {{{0, 4}, {0, 4}}, "Async"},
   };
 
   LineArrayDocument line_document("call()");
@@ -291,19 +292,21 @@ TEST_CASE("Unicode: Chinese characters insert and replace") {
   piece_doc.insertU8Text({0, 1}, "ABC");
   checkEquivalent(line_doc, piece_doc);
 
-  line_doc.replaceU8Text({{0, 0}, {0, 2}}, "\xe5\xa5\xbd");  // "好"
+  line_doc.replaceU8Text({{0, 0}, {0, 2}}, "\xe5\xa5\xbd"); // "好"
   piece_doc.replaceU8Text({{0, 0}, {0, 2}}, "\xe5\xa5\xbd");
   checkEquivalent(line_doc, piece_doc);
 
-  line_doc.replaceU8Text({{0, 0}, {1, 2}}, "\xe4\xb8\x80\n\xe4\xba\x8c\n\xe4\xb8\x89");  // "一\n二\n三"
+  line_doc.replaceU8Text({{0, 0}, {1, 2}}, "\xe4\xb8\x80\n\xe4\xba\x8c\n\xe4\xb8\x89"); // "一\n二\n三"
   piece_doc.replaceU8Text({{0, 0}, {1, 2}}, "\xe4\xb8\x80\n\xe4\xba\x8c\n\xe4\xb8\x89");
   checkEquivalent(line_doc, piece_doc);
 }
 
 TEST_CASE("Unicode: emoji (4-byte UTF-8 / surrogate pairs)") {
   // "\xf0\x9f\x98\x80" = 😀, "\xf0\x9f\x8e\x89" = 🎉
-  LineArrayDocument line_doc("A\xf0\x9f\x98\x80" "B\nCD");
-  PieceTableDocument piece_doc("A\xf0\x9f\x98\x80" "B\nCD");
+  LineArrayDocument line_doc("A\xf0\x9f\x98\x80"
+                             "B\nCD");
+  PieceTableDocument piece_doc("A\xf0\x9f\x98\x80"
+                               "B\nCD");
   checkEquivalent(line_doc, piece_doc);
 
   // Emoji is 2 UTF-16 code units (surrogate pair), so column 1-3 covers the emoji
@@ -313,7 +316,7 @@ TEST_CASE("Unicode: emoji (4-byte UTF-8 / surrogate pairs)") {
 }
 
 TEST_CASE("Unicode: mixed ASCII, CJK, and emoji") {
-  LineArrayDocument line_doc("Hi\xe4\xb8\x96\xe7\x95\x8c\xf0\x9f\x8c\x8d\nEnd");  // "Hi世界🌍\nEnd"
+  LineArrayDocument line_doc("Hi\xe4\xb8\x96\xe7\x95\x8c\xf0\x9f\x8c\x8d\nEnd"); // "Hi世界🌍\nEnd"
   PieceTableDocument piece_doc("Hi\xe4\xb8\x96\xe7\x95\x8c\xf0\x9f\x8c\x8d\nEnd");
   checkEquivalent(line_doc, piece_doc);
 
@@ -321,7 +324,7 @@ TEST_CASE("Unicode: mixed ASCII, CJK, and emoji") {
   piece_doc.replaceU8Text({{0, 2}, {0, 4}}, "AB");
   checkEquivalent(line_doc, piece_doc);
 
-  line_doc.insertU8Text({1, 1}, "\xf0\x9f\x98\x8e");  // 😎
+  line_doc.insertU8Text({1, 1}, "\xf0\x9f\x98\x8e"); // 😎
   piece_doc.insertU8Text({1, 1}, "\xf0\x9f\x98\x8e");
   checkEquivalent(line_doc, piece_doc);
 }
@@ -402,8 +405,10 @@ TEST_CASE("Replace: delete line ending to merge lines") {
 }
 
 TEST_CASE("Document range extraction honors UTF-16 surrogate boundaries") {
-  LineArrayDocument line_doc("A\xf0\x9f\x98\x80" "B\n\xe4\xb8\xad\xf0\x9f\x98\x80x");
-  PieceTableDocument piece_doc("A\xf0\x9f\x98\x80" "B\n\xe4\xb8\xad\xf0\x9f\x98\x80x");
+  LineArrayDocument line_doc("A\xf0\x9f\x98\x80"
+                             "B\n\xe4\xb8\xad\xf0\x9f\x98\x80x");
+  PieceTableDocument piece_doc("A\xf0\x9f\x98\x80"
+                               "B\n\xe4\xb8\xad\xf0\x9f\x98\x80x");
 
   CHECK(line_doc.getU8Text({{0, 0}, {0, 1}}) == "A");
   CHECK(piece_doc.getU8Text({{0, 0}, {0, 1}}) == "A");
@@ -438,7 +443,9 @@ TEST_CASE("Document range extraction preserves original line endings") {
 }
 
 TEST_CASE("Document global offsets use UTF-16 code units") {
-  const U8String text = "A\xf0\x9f\x98\x80" "B\nC\xf0\x9f\x98\x80" "D";
+  const U8String text = "A\xf0\x9f\x98\x80"
+                        "B\nC\xf0\x9f\x98\x80"
+                        "D";
   LineArrayDocument line_doc(text);
   PieceTableDocument piece_doc(text);
 

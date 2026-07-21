@@ -3,39 +3,29 @@
 namespace NS_SWEETEDITOR {
   namespace {
     bool isSingleInsertion(const HistoryEntry& entry) {
-      return entry.redo_replacements.size() == 1
-          && entry.undo_replacements.size() == 1
-          && entry.redo_replacements[0].range.isCollapsed()
-          && !entry.redo_replacements[0].text.empty()
-          && entry.undo_replacements[0].text.empty();
+      return entry.redo_replacements.size() == 1 && entry.undo_replacements.size() == 1
+             && entry.redo_replacements[0].range.isCollapsed() && !entry.redo_replacements[0].text.empty()
+             && entry.undo_replacements[0].text.empty();
     }
 
     bool isSingleDeletion(const HistoryEntry& entry) {
-      return entry.redo_replacements.size() == 1
-          && entry.undo_replacements.size() == 1
-          && !entry.redo_replacements[0].range.isCollapsed()
-          && entry.redo_replacements[0].text.empty()
-          && !entry.undo_replacements[0].text.empty();
+      return entry.redo_replacements.size() == 1 && entry.undo_replacements.size() == 1
+             && !entry.redo_replacements[0].range.isCollapsed() && entry.redo_replacements[0].text.empty()
+             && !entry.undo_replacements[0].text.empty();
     }
   }
 
   bool HistoryEntry::canMergeWith(const HistoryEntry& next) const {
-    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-        next.timestamp - timestamp).count();
-    if (!allows_merge
-        || !next.allows_merge
-        || elapsed > 500
-        || caret_before.hasSelection()
+    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(next.timestamp - timestamp).count();
+    if (!allows_merge || !next.allows_merge || elapsed > 500 || caret_before.hasSelection()
         || next.caret_before.hasSelection()) {
       return false;
     }
 
     if (isSingleInsertion(*this) && isSingleInsertion(next)) {
       const auto& next_text = next.redo_replacements[0].text;
-      return next_text.size() == 1
-          && next_text[0] != '\n'
-          && next_text[0] != '\r'
-          && next.redo_replacements[0].range.start == caret_after.active;
+      return next_text.size() == 1 && next_text[0] != '\n' && next_text[0] != '\r'
+             && next.redo_replacements[0].range.start == caret_after.active;
     }
 
     if (isSingleDeletion(*this) && isSingleDeletion(next)) {
@@ -72,7 +62,8 @@ namespace NS_SWEETEDITOR {
   }
 
   UndoManager::UndoManager(size_t max_stack_size)
-    : m_max_stack_size_(max_stack_size) {}
+      : m_max_stack_size_(max_stack_size) {
+  }
 
   void UndoManager::pushEntry(HistoryEntry entry) {
     m_redo_stack_.clear();

@@ -12,10 +12,10 @@ namespace NS_SWEETEDITOR {
   struct SE_PROTOCOL_VALUE(foundation) TextPosition {
     /// Line index, starting from 0
     SE_PROTOCOL_WIRE(size_as_i32)
-    size_t line {0};
+    size_t line{0};
     /// Column index, starting from 0
     SE_PROTOCOL_WIRE(size_as_i32)
-    size_t column {0};
+    size_t column{0};
 
     bool operator<(const TextPosition& other) const;
     bool operator<=(const TextPosition& other) const;
@@ -47,8 +47,8 @@ namespace NS_SWEETEDITOR {
 
   /// Inclusive integer range
   struct SE_PROTOCOL_VALUE(foundation) IntRange {
-    int32_t start {0};
-    int32_t end {-1};
+    int32_t start{0};
+    int32_t end{-1};
 
     bool isEmpty() const;
     bool contains(int32_t value) const;
@@ -58,8 +58,8 @@ namespace NS_SWEETEDITOR {
 
   /// 2D coordinate wrapper
   struct SE_PROTOCOL_VALUE(foundation) PointF {
-    float x {0};
-    float y {0};
+    float x{0};
+    float y{0};
 
     float distance(const PointF& other) const;
     U8String dump() const;
@@ -67,8 +67,8 @@ namespace NS_SWEETEDITOR {
 
   /// 2D size wrapper
   struct SE_PROTOCOL_VALUE(foundation) Size {
-    float width {0};
-    float height {0};
+    float width{0};
+    float height{0};
 
     bool isEmpty() const;
     U8String dump() const;
@@ -77,8 +77,8 @@ namespace NS_SWEETEDITOR {
   /// Axis-aligned rectangle (origin + size)
   struct SE_PROTOCOL_VALUE(foundation) Rect {
     PointF origin;
-    float width {0};
-    float height {0};
+    float width{0};
+    float height{0};
   };
 
 }

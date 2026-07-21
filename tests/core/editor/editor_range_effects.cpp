@@ -10,7 +10,7 @@ using namespace NS_SWEETEDITOR;
 
 namespace {
   UniquePtr<EditorCore> makeEditor(const U8String& text, float width = 320.0f, float height = 120.0f) {
-    auto editor = makeUnique<EditorCore>(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions {});
+    auto editor = makeUnique<EditorCore>(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions{});
     editor->loadDocument(makeShared<LineArrayDocument>(text));
     editor->setViewport({width, height});
     return editor;
@@ -46,18 +46,20 @@ namespace {
 
   const VisualRun& findProjectedTextRun(const EditorRenderModel& model, size_t source_line) {
     REQUIRE_FALSE(model.lines.empty());
-    const auto run_it = std::find_if(model.lines.front().runs.begin(), model.lines.front().runs.end(), [source_line](const VisualRun& run) {
-      return run.source_line == source_line && run.type == VisualRunType::TEXT;
-    });
+    const auto run_it = std::find_if(model.lines.front().runs.begin(), model.lines.front().runs.end(),
+                                     [source_line](const VisualRun& run) {
+                                       return run.source_line == source_line && run.type == VisualRunType::TEXT;
+                                     });
     REQUIRE(run_it != model.lines.front().runs.end());
     return *run_it;
   }
 
   const VisualRun& findProjectedTextRun(const EditorRenderModel& model, size_t source_line, size_t column) {
     REQUIRE_FALSE(model.lines.empty());
-    const auto run_it = std::find_if(model.lines.front().runs.begin(), model.lines.front().runs.end(), [source_line, column](const VisualRun& run) {
-      return run.source_line == source_line && run.column == column && run.type == VisualRunType::TEXT;
-    });
+    const auto run_it = std::find_if(
+        model.lines.front().runs.begin(), model.lines.front().runs.end(), [source_line, column](const VisualRun& run) {
+          return run.source_line == source_line && run.column == column && run.type == VisualRunType::TEXT;
+        });
     REQUIRE(run_it != model.lines.front().runs.end());
     return *run_it;
   }
@@ -65,8 +67,7 @@ namespace {
   bool hasRangeEffectRectForRun(const EditorRenderModel& model, RangeEffectKind kind, const VisualRun& run) {
     for (const RangeEffectRenderItem* effect : rangeEffectsOfKind(model, kind)) {
       const Rect& rect = effect->rect;
-      if (rect.origin.x == Catch::Approx(run.x) &&
-          rect.width == Catch::Approx(run.width)) {
+      if (rect.origin.x == Catch::Approx(run.x) && rect.width == Catch::Approx(run.width)) {
         return true;
       }
     }

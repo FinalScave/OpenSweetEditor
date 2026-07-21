@@ -9,19 +9,15 @@
 using namespace NS_SWEETEDITOR;
 
 namespace {
-  UniquePtr<EditorCore> makeEditor(const U8String& text,
-                                   const Size& viewport,
-                                   WrapMode wrap_mode = WrapMode::NONE) {
-    auto editor = makeUnique<EditorCore>(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions {});
+  UniquePtr<EditorCore> makeEditor(const U8String& text, const Size& viewport, WrapMode wrap_mode = WrapMode::NONE) {
+    auto editor = makeUnique<EditorCore>(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions{});
     editor->loadDocument(makeShared<LineArrayDocument>(text));
     editor->setViewport(viewport);
     editor->setWrapMode(wrap_mode);
     return editor;
   }
 
-  TextLayout makeLayout(const U8String& text,
-                        const Size& viewport,
-                        WrapMode wrap_mode = WrapMode::NONE) {
+  TextLayout makeLayout(const U8String& text, const Size& viewport, WrapMode wrap_mode = WrapMode::NONE) {
     SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
     SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
     TextLayout layout(measurer, decorations);
@@ -45,9 +41,9 @@ TEST_CASE("Performance baseline: scroll metrics on many short lines") {
 }
 
 TEST_CASE("Performance baseline: build render model on wrapped long lines") {
-  auto editor_holder = makeEditor(makeRepeatedLines(600, "abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789"),
-                                  {120, 220},
-                                  WrapMode::CHAR_BREAK);
+  auto editor_holder =
+      makeEditor(makeRepeatedLines(600, "abcdefghijklmnopqrstuvwxyz0123456789abcdefghijklmnopqrstuvwxyz0123456789"),
+                 {120, 220}, WrapMode::CHAR_BREAK);
   EditorCore& editor = *editor_holder;
 
   BENCHMARK("BuildRenderModel_WrappedLongLines") {
@@ -59,16 +55,15 @@ TEST_CASE("Performance baseline: build render model on wrapped long lines") {
 }
 
 TEST_CASE("Performance baseline: hitTest mapping on large wrapped layout") {
-  TextLayout layout = makeLayout(makeRepeatedLines(2000, "abcdefghijklmnopqrstuvwxyz0123456789"),
-                                 {120, 240},
-                                 WrapMode::CHAR_BREAK);
+  TextLayout layout =
+      makeLayout(makeRepeatedLines(2000, "abcdefghijklmnopqrstuvwxyz0123456789"), {120, 240}, WrapMode::CHAR_BREAK);
 
   EditorRenderModel model;
-  layout.layoutVisibleLines(model, PresentationContext {});
+  layout.layoutVisibleLines(model);
   REQUIRE_FALSE(model.lines.empty());
 
   BENCHMARK("HitTest_WrappedLargeLayout") {
-    TextPosition last {};
+    TextPosition last{};
     for (size_t i = 0; i < 60; ++i) {
       const float y = 6.0f + static_cast<float>((i % 12) * 14);
       const float x = 36.0f + static_cast<float>((i % 5) * 18);

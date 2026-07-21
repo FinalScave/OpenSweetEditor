@@ -70,17 +70,17 @@ TEST_CASE("EditorCore linked editing applies ordinary edits at the active caret"
   editor.setCursorPosition({0, 1});
   REQUIRE(editor.insertText("X").content_changed);
   CHECK(document->getU8Text() == "aXb-aXb");
-  CHECK(editor.getCursorPosition() == (TextPosition {0, 2}));
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
   CHECK(editor.isInLinkedEditing());
 
   REQUIRE(editor.backspace().content_changed);
   CHECK(document->getU8Text() == "ab-ab");
-  CHECK(editor.getCursorPosition() == (TextPosition {0, 1}));
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
   CHECK(editor.isInLinkedEditing());
 
   REQUIRE(editor.deleteForward().content_changed);
   CHECK(document->getU8Text() == "a-a");
-  CHECK(editor.getCursorPosition() == (TextPosition {0, 1}));
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
   CHECK(editor.isInLinkedEditing());
 }
 
@@ -196,15 +196,13 @@ TEST_CASE("SnippetParser handles escape sequences in plain text and placeholders
 
 TEST_CASE("LinkedEditingSession computes edits in descending document order") {
   LinkedEditingModel model;
-  model.groups.push_back(TabStopGroup {
-      1,
-      {
-          {{0, 1}, {0, 2}},
-          {{1, 0}, {1, 1}},
-          {{0, 5}, {0, 6}},
-      },
-      ""
-  });
+  model.groups.push_back(TabStopGroup{1,
+                                      {
+                                          {{0, 1}, {0, 2}},
+                                          {{1, 0}, {1, 1}},
+                                          {{0, 5}, {0, 6}},
+                                      },
+                                      ""});
 
   LinkedEditingSession session(std::move(model));
   const auto edits = session.computeLinkedEdits("zz");
@@ -219,15 +217,13 @@ TEST_CASE("LinkedEditingSession computes edits in descending document order") {
 TEST_CASE("LinkedEditingSession adjusts ranges after edits") {
   auto makeSession = []() {
     LinkedEditingModel model;
-    model.groups.push_back(TabStopGroup {
-        1,
-        {
-            {{0, 0}, {0, 1}},
-            {{0, 5}, {0, 7}},
-            {{1, 2}, {1, 4}},
-        },
-        ""
-    });
+    model.groups.push_back(TabStopGroup{1,
+                                        {
+                                            {{0, 0}, {0, 1}},
+                                            {{0, 5}, {0, 7}},
+                                            {{1, 2}, {1, 4}},
+                                        },
+                                        ""});
     return LinkedEditingSession(model);
   };
 
@@ -263,11 +259,11 @@ TEST_CASE("LinkedEditingSession adjusts ranges after edits") {
 
     const TabStopGroup* group = session.currentGroup();
     REQUIRE(group != nullptr);
-    CHECK(group->ranges[0] == (TextRange {{0, 1}, {0, 3}}));
-    CHECK(group->ranges[1] == (TextRange {{0, 7}, {0, 7}}));
+    CHECK(group->ranges[0] == (TextRange{{0, 1}, {0, 3}}));
+    CHECK(group->ranges[1] == (TextRange{{0, 7}, {0, 7}}));
     REQUIRE(session.nextTabStop());
     group = session.currentGroup();
     REQUIRE(group != nullptr);
-    CHECK(group->ranges[0] == (TextRange {{0, 3}, {0, 3}}));
+    CHECK(group->ranges[0] == (TextRange{{0, 3}, {0, 3}}));
   }
 }

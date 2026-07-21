@@ -32,7 +32,7 @@ namespace {
   }
 
   text_measurer_t makeMeasurer() {
-    text_measurer_t measurer {};
+    text_measurer_t measurer{};
     measurer.measure_text_width = measureTextWidth;
     measurer.measure_inlay_hint_width = measureInlayHintWidth;
     measurer.measure_icon_width = measureIconWidth;
@@ -56,19 +56,15 @@ namespace {
     return out;
   }
 
-  const uint8_t* sendImeCommand(intptr_t editor_handle, uint64_t session_id,
-                                ImeCommand command, size_t* out_size) {
-    Vector<uint8_t> data = protocol::ProtocolWriter::encode(
-        ImeCommandBatch {session_id, {std::move(command)}});
+  const uint8_t* sendImeCommand(intptr_t editor_handle, uint64_t session_id, ImeCommand command, size_t* out_size) {
+    Vector<uint8_t> data = protocol::ProtocolWriter::encode(ImeCommandBatch{session_id, {std::move(command)}});
     return editor_ime_apply_commands(editor_handle, data.data(), data.size(), out_size);
   }
 
   ImeState beginCommandSession(intptr_t editor_handle) {
     size_t size = 0;
-    const uint8_t* payload = editor_ime_begin_session(
-        editor_handle,
-        static_cast<int>(ImeMutationModel::COMMAND),
-        &size);
+    const uint8_t* payload =
+        editor_ime_begin_session(editor_handle, static_cast<int>(ImeMutationModel::COMMAND), &size);
     ImeState state;
     REQUIRE(payload != nullptr);
     protocol::ProtocolReader reader(payload, size);
@@ -431,8 +427,7 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   ImeCommand preedit_message;
   preedit_message.kind = ImeCommandKind::UPDATE_COMPOSITION;
   preedit_message.text = "q";
-  const uint8_t* ime_result = sendImeCommand(
-      editor, ime_state.session_id, preedit_message, &ime_size);
+  const uint8_t* ime_result = sendImeCommand(editor, ime_state.session_id, preedit_message, &ime_size);
   REQUIRE(ime_result != nullptr);
   CHECK(ime_size > 0);
   free_binary_data(reinterpret_cast<intptr_t>(ime_result));
@@ -442,8 +437,7 @@ TEST_CASE("C API basic edit, composition and linked editing flow") {
   ImeCommand commit_message;
   commit_message.kind = ImeCommandKind::COMMIT_TEXT;
   commit_message.text = "z";
-  const uint8_t* comp_result = sendImeCommand(
-      editor, ime_state.session_id, commit_message, &comp_size);
+  const uint8_t* comp_result = sendImeCommand(editor, ime_state.session_id, commit_message, &comp_size);
   REQUIRE(comp_result != nullptr);
   CHECK(comp_size > 0);
   free_binary_data(reinterpret_cast<intptr_t>(comp_result));

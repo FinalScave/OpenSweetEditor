@@ -13,9 +13,9 @@
 namespace NS_SWEETEDITOR {
   /// Highlight layer enum (priority from low to high, higher layers cover lower layers)
   enum class SE_PROTOCOL_ENUM(adornment, SYNTAX) SpanLayer : uint8_t {
-    SYNTAX   = 0,  // Syntax highlight
-    SEMANTIC = 1,  // Semantic highlight
-    OVERLAY  = 2,  // Host or plugin overlay highlight
+    SYNTAX = 0,   // Syntax highlight
+    SEMANTIC = 1, // Semantic highlight
+    OVERLAY = 2,  // Host or plugin overlay highlight
   };
   /// Total number of highlight layers
   constexpr size_t kSpanLayerCount = 3;
@@ -23,17 +23,17 @@ namespace NS_SWEETEDITOR {
   /// Font style bit flags, combine multiple styles with bit operations
   /// Platform side unpacks with (font_style & FONT_STYLE_BOLD) != 0
   enum FontStyle : int32_t {
-    FONT_STYLE_NORMAL        = 0,
-    FONT_STYLE_BOLD          = 1 << 0,  // 0x01
-    FONT_STYLE_ITALIC        = 1 << 1,  // 0x02
-    FONT_STYLE_STRIKETHROUGH = 1 << 2,  // 0x04
+    FONT_STYLE_NORMAL = 0,
+    FONT_STYLE_BOLD = 1 << 0,          // 0x01
+    FONT_STYLE_ITALIC = 1 << 1,        // 0x02
+    FONT_STYLE_STRIKETHROUGH = 1 << 2, // 0x04
   };
 
   /// Pack font style bit flags
   inline int32_t packFontStyle(bool bold, bool italic, bool strikethrough) {
     int32_t style = FONT_STYLE_NORMAL;
-    if (bold)          style |= FONT_STYLE_BOLD;
-    if (italic)        style |= FONT_STYLE_ITALIC;
+    if (bold) style |= FONT_STYLE_BOLD;
+    if (italic) style |= FONT_STYLE_ITALIC;
     if (strikethrough) style |= FONT_STYLE_STRIKETHROUGH;
     return style;
   }
@@ -41,11 +41,11 @@ namespace NS_SWEETEDITOR {
   /// Text style definition (color + background color + font style)
   struct SE_PROTOCOL_VALUE(adornment) TextStyle {
     /// Foreground color value
-    int32_t color {0};
+    int32_t color{0};
     /// Background color value (ARGB), 0 means transparent/no background
-    int32_t background_color {0};
+    int32_t background_color{0};
     /// Font style (bit flag combination: BOLD | ITALIC | STRIKETHROUGH)
-    int32_t font_style {FONT_STYLE_NORMAL};
+    int32_t font_style{FONT_STYLE_NORMAL};
   };
 
   /// Text-style registry
@@ -67,11 +67,11 @@ namespace NS_SWEETEDITOR {
   /// Highlight span definition
   struct SE_PROTOCOL_VALUE(adornment) StyleSpan {
     /// Start column in the line
-    uint32_t column {0};
+    uint32_t column{0};
     /// Character length of the span
-    uint32_t length {0};
+    uint32_t length{0};
     /// Style ID
-    uint32_t style_id {0};
+    uint32_t style_id{0};
   };
 
   /// Inlay content type enum
@@ -88,11 +88,11 @@ namespace NS_SWEETEDITOR {
   struct SE_PROTOCOL_IN(adornment) InlayHint {
     /// Inlay type
     SE_PROTOCOL_WIRE(enum_i32)
-    InlayType type {InlayType::TEXT};
+    InlayType type{InlayType::TEXT};
     /// Start column in the line
-    uint32_t column {0};
+    uint32_t column{0};
     /// Numeric payload for icon ID or color value
-    int32_t int_value {0};
+    int32_t int_value{0};
     /// Inlay text content
     U8String text;
   };
@@ -100,7 +100,7 @@ namespace NS_SWEETEDITOR {
   /// Ghost text
   struct SE_PROTOCOL_IN(adornment) PhantomText {
     /// Start column in the line
-    uint32_t column {0};
+    uint32_t column{0};
     /// Text content
     U8String text;
   };
@@ -108,15 +108,15 @@ namespace NS_SWEETEDITOR {
   /// Gutter icon
   struct SE_PROTOCOL_IN(adornment) GutterIcon {
     /// Icon resource ID (defined and drawn on platform side)
-    int32_t icon_id {0};
+    int32_t icon_id{0};
   };
 
   /// CodeLens item (clickable label above a code line)
   struct SE_PROTOCOL_IN(adornment) CodeLensItem {
     /// Anchor column within the owning code line
-    int32_t column {0};
+    int32_t column{0};
     /// Unique command ID (platform-defined, transparently passed back on click)
-    int32_t command_id {0};
+    int32_t command_id{0};
     /// Display text (UTF8), e.g. "3 references"
     U8String text;
   };
@@ -124,9 +124,9 @@ namespace NS_SWEETEDITOR {
   /// Clickable document link range embedded in source text
   struct SE_PROTOCOL_IN(adornment) LinkSpan {
     /// Start column in the line
-    uint32_t column {0};
+    uint32_t column{0};
     /// Character length of the link range
-    uint32_t length {0};
+    uint32_t length{0};
     /// Link target (URL, file URI, or platform-defined document target)
     U8String target;
   };
@@ -135,21 +135,21 @@ namespace NS_SWEETEDITOR {
 
   /// Diagnostic severity level
   enum class SE_PROTOCOL_ENUM(adornment, DIAG_ERROR) DiagnosticSeverity : int32_t {
-    DIAG_ERROR   = 0,  // Red wavy underline
-    DIAG_WARNING = 1,  // Yellow wavy underline
-    DIAG_INFO    = 2,  // Blue thin underline
-    DIAG_HINT    = 3,  // Gray dashed line
+    DIAG_ERROR = 0,   // Red wavy underline
+    DIAG_WARNING = 1, // Yellow wavy underline
+    DIAG_INFO = 2,    // Blue thin underline
+    DIAG_HINT = 3,    // Gray dashed line
   };
 
   /// Diagnostic (wavy/underline decoration)
   struct SE_PROTOCOL_IN(adornment) Diagnostic {
     /// Start column in the line
-    uint32_t column {0};
+    uint32_t column{0};
     /// Character length of the span
-    uint32_t length {0};
+    uint32_t length{0};
     /// Severity level
     SE_PROTOCOL_WIRE(enum_i32)
-    DiagnosticSeverity severity {DiagnosticSeverity::DIAG_ERROR};
+    DiagnosticSeverity severity{DiagnosticSeverity::DIAG_ERROR};
   };
 
 #pragma endregion
@@ -158,23 +158,30 @@ namespace NS_SWEETEDITOR {
 
   /// Document highlight kind, aligned with language server document highlights
   enum class SE_PROTOCOL_ENUM(adornment, TEXT) DocumentHighlightKind : int32_t {
-    TEXT  = 0,
-    READ  = 1,
+    TEXT = 0,
+    READ = 1,
     WRITE = 2,
   };
 
   /// Document highlight range for symbol references on a line
   struct SE_PROTOCOL_IN(adornment) DocumentHighlight {
     /// Start column in the line
-    uint32_t column {0};
+    uint32_t column{0};
     /// Character length of the span
-    uint32_t length {0};
+    uint32_t length{0};
     /// Highlight role
     SE_PROTOCOL_WIRE(enum_i32)
-    DocumentHighlightKind kind {DocumentHighlightKind::TEXT};
+    DocumentHighlightKind kind{DocumentHighlightKind::TEXT};
   };
 
 #pragma endregion
+
+  struct LineLayoutDecorations {
+    Vector<StyleSpan> spans;
+    Vector<InlayHint> inlay_hints;
+    Vector<PhantomText> phantom_texts;
+    Vector<LinkSpan> links;
+  };
 
 #pragma region Fold (Code Folding)
 
@@ -182,13 +189,13 @@ namespace NS_SWEETEDITOR {
   struct SE_PROTOCOL_IN(adornment) FoldRegion {
     /// First line of fold region (stays visible, shows fold placeholder)
     SE_PROTOCOL_WIRE(size_as_u32)
-    size_t start_line {0};
+    size_t start_line{0};
     /// Last line of fold region (inclusive), start_line+1 to end_line is hidden when folded
     SE_PROTOCOL_WIRE(size_as_u32)
-    size_t end_line {0};
+    size_t end_line{0};
     /// Whether it is in folded (collapsed) state
     SE_PROTOCOL_WIRE(bool_u8)
-    bool collapsed {false};
+    bool collapsed{false};
   };
 
 #pragma endregion
@@ -197,8 +204,8 @@ namespace NS_SWEETEDITOR {
 
   /// Separator line style
   enum class SE_PROTOCOL_ENUM(adornment, SINGLE) SeparatorStyle : int32_t {
-    SINGLE = 0,  // Single bar (---)
-    DOUBLE = 1,  // Double bar (===)
+    SINGLE = 0, // Single bar (---)
+    DOUBLE = 1, // Double bar (===)
   };
 
   /// Indent vertical line (from { to })
@@ -211,13 +218,13 @@ namespace NS_SWEETEDITOR {
   struct SE_PROTOCOL_IN(adornment) BracketGuide {
     TextPosition parent;
     TextPosition end;
-    Vector<TextPosition> children;  // Each child {line, column}, draw horizontal line from parent.column to child.column
+    Vector<TextPosition> children; // Each child {line, column}, draw horizontal line from parent.column to child.column
   };
 
   /// Control-flow back arrow (draw from loop tail back to loop head)
   struct SE_PROTOCOL_IN(adornment) FlowGuide {
-    TextPosition start;  // Loop head (arrow points here)
-    TextPosition end;    // Loop tail (arrow starts here)
+    TextPosition start; // Loop head (arrow points here)
+    TextPosition end;   // Loop tail (arrow starts here)
   };
 
   /// Horizontal separator line
@@ -225,8 +232,8 @@ namespace NS_SWEETEDITOR {
     int32_t line;
     SE_PROTOCOL_WIRE(enum_i32)
     SeparatorStyle style;
-    int32_t count;                // Symbol count (number of = or -)
-    uint32_t text_end_column;     // End column of comment text (separator starts drawing here)
+    int32_t count;            // Symbol count (number of = or -)
+    uint32_t text_end_column; // End column of comment text (separator starts drawing here)
   };
 
 #pragma endregion
@@ -237,6 +244,20 @@ namespace NS_SWEETEDITOR {
     DecorationManager();
 
     SharedPtr<TextStyleRegistry> getTextStyleRegistry();
+
+    void setEditingProjection(const TextRange& committed_range, const TextRange& editing_range);
+
+    void clearEditingProjection();
+
+    LineLayoutDecorations getEditingLineLayoutDecorations(size_t editing_line) const;
+
+    Vector<CodeLensItem> getEditingLineCodeLens(size_t editing_line) const;
+
+    Vector<GutterIcon> getEditingLineGutterIcons(size_t editing_line) const;
+
+    Vector<Diagnostic> getEditingLineDiagnostics(size_t editing_line) const;
+
+    Vector<DocumentHighlight> getEditingLineDocumentHighlights(size_t editing_line) const;
 
     /// Set highlight spans for a given line and layer (externally provided, sorted by column ascending)
     void setLineSpans(size_t line, SpanLayer layer, Vector<StyleSpan>&& spans);
@@ -390,9 +411,20 @@ namespace NS_SWEETEDITOR {
     /// @param old_range Text range before edit (deleted/replaced range)
     /// @param new_end New end position of that range after edit
     void adjustForEdit(const TextRange& old_range, const TextPosition& new_end);
+
   private:
+    struct EditingProjectionState {
+      TextRange committed_range;
+      TextRange editing_range;
+    };
+
     void ensureLineCapacity_(size_t line_count);
+    Vector<size_t> committedSourceLinesForEditingLine_(size_t editing_line) const;
+    std::optional<TextRange> projectCommittedRange_(const TextRange& range) const;
+    std::optional<TextPosition> projectCommittedAnchor_(const TextPosition& position) const;
+
     SharedPtr<TextStyleRegistry> m_text_style_reg_;
+    std::optional<EditingProjectionState> m_editing_projection_;
     std::array<Vector<Vector<StyleSpan>>, kSpanLayerCount> m_layer_spans_;
     Vector<Vector<InlayHint>> m_inlay_hints_;
     Vector<Vector<PhantomText>> m_phantom_texts_;

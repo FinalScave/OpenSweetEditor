@@ -10,22 +10,14 @@
 namespace NS_SWEETEDITOR {
   namespace TextBoundaryUtil {
     inline bool isWordChar(U16Char ch) {
-      return (ch >= CHAR16('a') && ch <= CHAR16('z')) ||
-             (ch >= CHAR16('A') && ch <= CHAR16('Z')) ||
-             (ch >= CHAR16('0') && ch <= CHAR16('9')) ||
-             ch == CHAR16('_') ||
-             ch > 0x7F;
+      return (ch >= CHAR16('a') && ch <= CHAR16('z')) || (ch >= CHAR16('A') && ch <= CHAR16('Z'))
+             || (ch >= CHAR16('0') && ch <= CHAR16('9')) || ch == CHAR16('_') || ch > 0x7F;
     }
 
     inline bool isWordWrapBreakChar(U16Char ch) {
-      return ch == CHAR16(' ') || ch == CHAR16('\t') ||
-             ch == CHAR16('-') || ch == CHAR16('/') ||
-             ch == CHAR16('\\') || ch == CHAR16('.') ||
-             ch == CHAR16(',') || ch == CHAR16(';') ||
-             ch == CHAR16(':') || ch == CHAR16('!') ||
-             ch == CHAR16('?') || ch == CHAR16(')') ||
-             ch == CHAR16(']') || ch == CHAR16('}') ||
-             ch == CHAR16('>');
+      return ch == CHAR16(' ') || ch == CHAR16('\t') || ch == CHAR16('-') || ch == CHAR16('/') || ch == CHAR16('\\')
+             || ch == CHAR16('.') || ch == CHAR16(',') || ch == CHAR16(';') || ch == CHAR16(':') || ch == CHAR16('!')
+             || ch == CHAR16('?') || ch == CHAR16(')') || ch == CHAR16(']') || ch == CHAR16('}') || ch == CHAR16('>');
     }
 
     inline bool isSourceWhitespace(U16Char ch) {

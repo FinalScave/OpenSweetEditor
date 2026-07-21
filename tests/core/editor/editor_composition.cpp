@@ -11,9 +11,7 @@ using namespace NS_SWEETEDITOR;
 
 namespace {
 
-  size_t utf16OffsetForPosition(const U8String& text,
-                                const TextPosition& position,
-                                bool line_overflow_to_end) {
+  size_t utf16OffsetForPosition(const U8String& text, const TextPosition& position, bool line_overflow_to_end) {
     U16String utf16;
     StrUtil::convertUTF8ToUTF16(text, utf16);
 
@@ -40,30 +38,19 @@ namespace {
   }
 
   EditorActionResult updatePreedit(EditorCore& editor, const U8String& text);
-  EditorActionResult setPreeditSelection(EditorCore& editor,
-                                         const U8String& text,
-                                         size_t selection_start_offset,
+  EditorActionResult setPreeditSelection(EditorCore& editor, const U8String& text, size_t selection_start_offset,
                                          size_t selection_end_offset);
   EditorActionResult commitText(EditorCore& editor, const U8String& text);
-  EditorActionResult commitText(EditorCore& editor,
-                                const U8String& text,
-                                int cursor_offset);
+  EditorActionResult commitText(EditorCore& editor, const U8String& text, int cursor_offset);
   EditorActionResult finishPreedit(EditorCore& editor);
   void cancelPreedit(EditorCore& editor);
-  EditorActionResult markDocumentRange(EditorCore& editor,
-                                       const TextRange& range);
-  EditorActionResult markDocumentRange(EditorCore& editor,
-                                       size_t start_offset,
-                                       size_t end_offset);
-  EditorActionResult deleteBackward(EditorCore& editor,
-                                    size_t count = 1,
+  EditorActionResult markDocumentRange(EditorCore& editor, const TextRange& range);
+  EditorActionResult markDocumentRange(EditorCore& editor, size_t start_offset, size_t end_offset);
+  EditorActionResult deleteBackward(EditorCore& editor, size_t count = 1,
                                     ImeTextUnit text_unit = ImeTextUnit::UNICODE_CODE_POINT);
-  EditorActionResult deleteForward(EditorCore& editor,
-                                   size_t count = 1,
+  EditorActionResult deleteForward(EditorCore& editor, size_t count = 1,
                                    ImeTextUnit text_unit = ImeTextUnit::UNICODE_CODE_POINT);
-  EditorActionResult deleteSurrounding(EditorCore& editor,
-                                       size_t before_length,
-                                       size_t after_length,
+  EditorActionResult deleteSurrounding(EditorCore& editor, size_t before_length, size_t after_length,
                                        ImeTextUnit text_unit = ImeTextUnit::UNICODE_CODE_POINT);
   EditorActionResult selectionChanged(EditorCore& editor, const TextRange& range);
   EditorActionResult cursorChanged(EditorCore& editor, const TextPosition& cursor);
@@ -71,8 +58,7 @@ namespace {
   uint64_t commandSession(EditorCore& editor) {
     static std::unordered_map<EditorCore*, uint64_t> sessions;
     auto found = sessions.find(&editor);
-    if (found != sessions.end()
-        && editor.getImeState(found->second).result_code == ImeResultCode::OK) {
+    if (found != sessions.end() && editor.getImeState(found->second).result_code == ImeResultCode::OK) {
       return found->second;
     }
     ImeState state = editor.beginImeSession(ImeMutationModel::COMMAND);
@@ -87,7 +73,9 @@ namespace {
 
   class ImeReplayRunner {
   public:
-    explicit ImeReplayRunner(EditorCore& editor) : m_editor(editor) {}
+    explicit ImeReplayRunner(EditorCore& editor)
+        : m_editor(editor) {
+    }
 
     EditorActionResult updatePreedit(const U8String& text) {
       return ::updatePreedit(m_editor, text);
@@ -127,40 +115,27 @@ namespace {
     return applyCommand(editor, std::move(command));
   }
 
-  EditorActionResult commitText(EditorCore& editor,
-                            const U8String& text,
-                            int cursor_offset) {
+  EditorActionResult commitText(EditorCore& editor, const U8String& text, int cursor_offset) {
     ImeState state = editor.getImeState(commandSession(editor));
     const int64_t start = state.composition_range.start_utf16 >= 0
-        ? state.composition_range.start_utf16
-        : std::min(state.selection.anchor_utf16, state.selection.active_utf16);
+                              ? state.composition_range.start_utf16
+                              : std::min(state.selection.anchor_utf16, state.selection.active_utf16);
     const int64_t end = start + static_cast<int64_t>(StrUtil::utf16Length(text));
     const int64_t target = cursor_offset > 0 ? end + cursor_offset - 1 : start + cursor_offset;
     ImeCommand command;
     command.kind = ImeCommandKind::COMMIT_TEXT;
     command.text = text;
-    command.selection_after = {
-        ImeCoordinateSpace::DOCUMENT,
-        target,
-        target,
-        CaretAffinity::DOWNSTREAM
-    };
+    command.selection_after = {ImeCoordinateSpace::DOCUMENT, target, target, CaretAffinity::DOWNSTREAM};
     return applyCommand(editor, std::move(command));
   }
 
-  EditorActionResult setPreeditSelection(EditorCore& editor,
-                                         const U8String& text,
-                                         size_t selection_start_offset,
+  EditorActionResult setPreeditSelection(EditorCore& editor, const U8String& text, size_t selection_start_offset,
                                          size_t selection_end_offset) {
     ImeCommand command;
     command.kind = ImeCommandKind::UPDATE_COMPOSITION;
     command.text = text;
-    command.selection_after = {
-      ImeCoordinateSpace::COMPOSITION,
-      static_cast<int64_t>(selection_start_offset),
-      static_cast<int64_t>(selection_end_offset),
-      CaretAffinity::DOWNSTREAM
-    };
+    command.selection_after = {ImeCoordinateSpace::COMPOSITION, static_cast<int64_t>(selection_start_offset),
+                               static_cast<int64_t>(selection_end_offset), CaretAffinity::DOWNSTREAM};
     return applyCommand(editor, std::move(command));
   }
 
@@ -176,30 +151,22 @@ namespace {
     applyCommand(editor, std::move(command));
   }
 
-  EditorActionResult markDocumentRange(EditorCore& editor,
-                                       const TextRange& range) {
+  EditorActionResult markDocumentRange(EditorCore& editor, const TextRange& range) {
     const uint64_t session_id = commandSession(editor);
     ImeTextContext context = editor.getImeContext(session_id, ImeTextSource::EDITING, 0, -1);
     ImeCommand command;
     command.kind = ImeCommandKind::BEGIN_COMPOSITION;
-    command.target_range = {
-      ImeCoordinateSpace::DOCUMENT,
-      static_cast<int64_t>(utf16OffsetForPosition(context.text, range.start, false)),
-      static_cast<int64_t>(utf16OffsetForPosition(context.text, range.end, true))
-    };
+    command.target_range = {ImeCoordinateSpace::DOCUMENT,
+                            static_cast<int64_t>(utf16OffsetForPosition(context.text, range.start, false)),
+                            static_cast<int64_t>(utf16OffsetForPosition(context.text, range.end, true))};
     return applyCommand(editor, std::move(command));
   }
 
-  EditorActionResult markDocumentRange(EditorCore& editor,
-                                       size_t start_offset,
-                                       size_t end_offset) {
-    return markDocumentRange(editor,
-                             {{0, start_offset}, {0, end_offset}});
+  EditorActionResult markDocumentRange(EditorCore& editor, size_t start_offset, size_t end_offset) {
+    return markDocumentRange(editor, {{0, start_offset}, {0, end_offset}});
   }
 
-  EditorActionResult deleteBackward(EditorCore& editor,
-                                    size_t count,
-                                    ImeTextUnit text_unit) {
+  EditorActionResult deleteBackward(EditorCore& editor, size_t count, ImeTextUnit text_unit) {
     ImeCommand command;
     command.kind = ImeCommandKind::DELETE_SURROUNDING;
     command.delete_before = static_cast<int64_t>(count);
@@ -207,9 +174,7 @@ namespace {
     return applyCommand(editor, std::move(command));
   }
 
-  EditorActionResult deleteForward(EditorCore& editor,
-                                   size_t count,
-                                   ImeTextUnit text_unit) {
+  EditorActionResult deleteForward(EditorCore& editor, size_t count, ImeTextUnit text_unit) {
     ImeCommand command;
     command.kind = ImeCommandKind::DELETE_SURROUNDING;
     command.delete_after = static_cast<int64_t>(count);
@@ -217,9 +182,7 @@ namespace {
     return applyCommand(editor, std::move(command));
   }
 
-  EditorActionResult deleteSurrounding(EditorCore& editor,
-                                       size_t before_length,
-                                       size_t after_length,
+  EditorActionResult deleteSurrounding(EditorCore& editor, size_t before_length, size_t after_length,
                                        ImeTextUnit text_unit) {
     ImeCommand command;
     command.kind = ImeCommandKind::DELETE_SURROUNDING;
@@ -260,14 +223,14 @@ TEST_CASE("IME state value semantics cover canonical ranges and selections") {
   CHECK(state != other);
 
   ImeOffsetRange range;
-  CHECK(range == ImeOffsetRange {});
+  CHECK(range == ImeOffsetRange{});
   range.end_utf16 = 0;
-  CHECK(range != ImeOffsetRange {});
+  CHECK(range != ImeOffsetRange{});
 
   ImeSelection selection;
-  CHECK(selection == ImeSelection {});
+  CHECK(selection == ImeSelection{});
   selection.affinity = CaretAffinity::UPSTREAM;
-  CHECK(selection != ImeSelection {});
+  CHECK(selection != ImeSelection{});
 }
 
 TEST_CASE("EditorCore composition update is transient and cancel restores original text") {
@@ -359,47 +322,6 @@ TEST_CASE("EditorCore IME composing selection offsets are applied in core") {
   CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 TEST_CASE("EditorCore backspace during composition shrinks text step-by-step") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
@@ -459,13 +381,13 @@ TEST_CASE("EditorCore set composing region preserves cursor at range end") {
   markDocumentRange(editor, {{0, 0}, {0, 4}});
   REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "word");
-  CHECK(editor.getCursorPosition() == (TextPosition {0, 4}));
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
 
   finishPreedit(editor);
   markDocumentRange(editor, {{0, 0}, {0, 4}});
   REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "word");
-  CHECK(editor.getCursorPosition() == (TextPosition {0, 4}));
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
 }
 
 TEST_CASE("EditorCore composition end preserves cursor at existing composing range end") {
@@ -485,7 +407,7 @@ TEST_CASE("EditorCore composition end preserves cursor at existing composing ran
   CHECK_FALSE(result.cursor_changed);
   CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "word");
-  CHECK(editor.getCursorPosition() == (TextPosition {0, 4}));
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 4}));
   CHECK(result.changes.empty());
   CHECK_FALSE(editor.canUndo());
 }
@@ -507,7 +429,7 @@ TEST_CASE("EditorCore IME empty commit replaces active composing text with empty
   CHECK(result.content_changed);
   CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text().empty());
-  CHECK(editor.getCursorPosition() == (TextPosition {0, 0}));
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 0}));
 }
 
 TEST_CASE("EditorCore document range preedit commit is undoable without duplicate text change") {
@@ -595,7 +517,7 @@ TEST_CASE("EditorCore repeated document composing region commits replacement onc
   editor.setViewport({800, 600});
   editor.setCursorPosition({0, 12});
 
-  TextRange point_range {{0, 7}, {0, 12}};
+  TextRange point_range{{0, 7}, {0, 12}};
   markDocumentRange(editor, point_range);
   markDocumentRange(editor, point_range);
   markDocumentRange(editor, point_range);
@@ -610,9 +532,6 @@ TEST_CASE("EditorCore repeated document composing region commits replacement onc
   CHECK(result.changes[0].new_text == "Points");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 13}));
 }
-
-
-
 
 TEST_CASE("EditorCore IME event update preedit drives visible composition") {
   EditorOptions options;
@@ -629,8 +548,7 @@ TEST_CASE("EditorCore IME event update preedit drives visible composition") {
   REQUIRE(editor.hasPreedit());
   CHECK(document->getU8Text() == "abhow");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 5}));
-  CHECK(result.ime_state.composition_range == (ImeOffsetRange{
-      ImeCoordinateSpace::DOCUMENT, 2, 5}));
+  CHECK(result.ime_state.composition_range == (ImeOffsetRange{ImeCoordinateSpace::DOCUMENT, 2, 5}));
 }
 
 TEST_CASE("EditorCore IME event commit text finishes active preedit") {
@@ -650,7 +568,7 @@ TEST_CASE("EditorCore IME event commit text finishes active preedit") {
   REQUIRE(result.handled);
   CHECK_FALSE(editor.hasPreedit());
   CHECK(document->getU8Text() == "abhow");
-  CHECK(result.ime_state.composition_range == ImeOffsetRange {});
+  CHECK(result.ime_state.composition_range == ImeOffsetRange{});
 }
 
 TEST_CASE("EditorCore IME event backspace shrinks preedit step-by-step") {
@@ -692,7 +610,7 @@ TEST_CASE("EditorCore IME finish clears composition range") {
   EditorActionResult result = finishPreedit(editor);
 
   CHECK_FALSE(editor.hasPreedit());
-  CHECK(result.ime_state.composition_range == ImeOffsetRange {});
+  CHECK(result.ime_state.composition_range == ImeOffsetRange{});
 }
 
 TEST_CASE("EditorCore IME event CJK preedit stays visible until commit") {
@@ -709,16 +627,15 @@ TEST_CASE("EditorCore IME event CJK preedit stays visible until commit") {
   REQUIRE(update_result.handled);
   CHECK(document->getU8Text() == "ni");
   CHECK(editor.hasPreedit());
-  CHECK(update_result.ime_state.composition_range != ImeOffsetRange {});
+  CHECK(update_result.ime_state.composition_range != ImeOffsetRange{});
 
   EditorActionResult commit_result = commitText(editor, "\xE4\xBD\xA0");
 
   CHECK(commit_result.content_changed);
   CHECK(document->getU8Text() == "\xE4\xBD\xA0");
   CHECK_FALSE(editor.hasPreedit());
-  CHECK(commit_result.ime_state.composition_range == ImeOffsetRange {});
+  CHECK(commit_result.ime_state.composition_range == ImeOffsetRange{});
 }
-
 
 TEST_CASE("EditorCore visible preedit does not affect document undo and renders decoration") {
   EditorOptions options;
@@ -736,7 +653,7 @@ TEST_CASE("EditorCore visible preedit does not affect document undo and renders 
   CHECK(document->getU8Text() == "valueni");
   CHECK_FALSE(editor.canUndo());
   CHECK(editor.hasPreedit());
-  CHECK(update_result.ime_state.composition_range != ImeOffsetRange {});
+  CHECK(update_result.ime_state.composition_range != ImeOffsetRange{});
 
   EditorRenderModel model;
   EditorRangeEffectStyles styles;
@@ -793,14 +710,9 @@ TEST_CASE("EditorCore IME preedit updates become one undoable commit") {
   CHECK(document->getU8Text().empty());
 }
 
-
-
-
-
 TEST_CASE("EditorCore IME surrounding delete preserves selection and removes its sides") {
   auto run_delete_case = [](const std::function<EditorActionResult(EditorCore&)>& delete_action,
-                            const U8String& expected_text,
-                            const TextRange& expected_selection) {
+                            const U8String& expected_text, const TextRange& expected_selection) {
     EditorOptions options;
     EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
     SharedPtr<Document> document = makeShared<LineArrayDocument>("xhello worldy");
@@ -821,24 +733,26 @@ TEST_CASE("EditorCore IME surrounding delete preserves selection and removes its
 
   SECTION("delete backward") {
     run_delete_case(
-        [](EditorCore& editor) { return deleteBackward(editor, 1); },
-        "hello worldy",
-        {{0, 0}, {0, 5}});
+        [](EditorCore& editor) {
+          return deleteBackward(editor, 1);
+        },
+        "hello worldy", {{0, 0}, {0, 5}});
   }
   SECTION("delete forward") {
     run_delete_case(
-        [](EditorCore& editor) { return deleteForward(editor, 1); },
-        "xhelloworldy",
-        {{0, 1}, {0, 6}});
+        [](EditorCore& editor) {
+          return deleteForward(editor, 1);
+        },
+        "xhelloworldy", {{0, 1}, {0, 6}});
   }
   SECTION("delete surrounding") {
     run_delete_case(
-        [](EditorCore& editor) { return deleteSurrounding(editor, 1, 1); },
-        "helloworldy",
-        {{0, 0}, {0, 5}});
+        [](EditorCore& editor) {
+          return deleteSurrounding(editor, 1, 1);
+        },
+        "helloworldy", {{0, 0}, {0, 5}});
   }
 }
-
 
 TEST_CASE("EditorCore IME document range rejects overflowing line") {
   EditorOptions options;
@@ -873,8 +787,7 @@ TEST_CASE("EditorCore IME unknown document range can start platform composition"
   CHECK(result.handled);
   REQUIRE(editor.hasPreedit());
   CHECK(editor.hasPreedit());
-  CHECK(result.ime_state.composition_range == (ImeOffsetRange{
-      ImeCoordinateSpace::DOCUMENT, 0, 5}));
+  CHECK(result.ime_state.composition_range == (ImeOffsetRange{ImeCoordinateSpace::DOCUMENT, 0, 5}));
 
   EditorActionResult commit_result = commitText(editor, "helloWorld");
 
@@ -882,9 +795,6 @@ TEST_CASE("EditorCore IME unknown document range can start platform composition"
   CHECK(document->getU8Text() == "helloWorld");
   CHECK_FALSE(editor.hasPreedit());
 }
-
-
-
 
 TEST_CASE("EditorCore IME document range commit replaces word from middle cursor") {
   EditorOptions options;
@@ -897,7 +807,7 @@ TEST_CASE("EditorCore IME document range commit replaces word from middle cursor
   ImeReplayRunner ime(editor);
 
   EditorActionResult mark_result = ime.markDocumentRange({{0, 0}, {0, 5}});
-  REQUIRE(mark_result.ime_state.composition_range != ImeOffsetRange {});
+  REQUIRE(mark_result.ime_state.composition_range != ImeOffsetRange{});
 
   EditorActionResult commit_result = ime.commitText("helloWorld");
   REQUIRE(commit_result.content_changed);
@@ -906,10 +816,6 @@ TEST_CASE("EditorCore IME document range commit replaces word from middle cursor
   CHECK_FALSE(editor.hasPreedit());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 10}));
 }
-
-
-
-
 
 TEST_CASE("EditorCore IME document range suffix commit replaces word from middle cursor") {
   EditorOptions options;
@@ -931,7 +837,6 @@ TEST_CASE("EditorCore IME document range suffix commit replaces word from middle
   CHECK_FALSE(editor.hasPreedit());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 8}));
 }
-
 
 TEST_CASE("EditorCore IME document range suffix preedit replaces word from middle cursor") {
   EditorOptions options;
@@ -959,8 +864,6 @@ TEST_CASE("EditorCore IME document range suffix preedit replaces word from middl
   CHECK(document->getU8Text() == "Strings");
 }
 
-
-
 TEST_CASE("EditorCore IME platform full word range uses marked range preedit") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
@@ -982,8 +885,6 @@ TEST_CASE("EditorCore IME platform full word range uses marked range preedit") {
   CHECK(editor.hasPreedit());
   CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
 }
-
-
 
 TEST_CASE("EditorCore composition resolution commits before selection and adjusts decorations once") {
   EditorOptions options;
@@ -1028,15 +929,6 @@ TEST_CASE("EditorCore composition resolution commits before selection and adjust
   CHECK(document->getU8Text() == "value tail");
   CHECK(editor.getCursorPosition() == (TextPosition{0, 5}));
 }
-
-
-
-
-
-
-
-
-
 
 TEST_CASE("EditorCore composition cancel restores mixed raw line endings and baseline selection") {
   EditorOptions options;
@@ -1191,7 +1083,7 @@ TEST_CASE("EditorCore marked-only composition does not block undo and redo histo
 }
 
 TEST_CASE("EditorCore IME commit keeps an active command session") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -1222,7 +1114,7 @@ TEST_CASE("EditorCore IME commit keeps an active command session") {
 }
 
 TEST_CASE("EditorCore external text input keeps an active command session") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -1252,7 +1144,7 @@ TEST_CASE("EditorCore external text input keeps an active command session") {
 }
 
 TEST_CASE("EditorCore pointer relocation keeps an active command session") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("boolean enabled");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -1262,13 +1154,9 @@ TEST_CASE("EditorCore pointer relocation keeps an active command session") {
   REQUIRE(markDocumentRange(editor, {{0, 0}, {0, 7}}).handled);
   REQUIRE(editor.hasPreedit());
   const CursorRect target = editor.getPositionScreenRect({0, 11});
-  const float point[2] = {
-      target.x + 1.0f,
-      target.y + target.height * 0.5f
-  };
+  const float point[2] = {target.x + 1.0f, target.y + target.height * 0.5f};
 
-  EditorActionResult result = editor.handleGestureEvent(
-      GestureEvent::create(EventType::MOUSE_DOWN, 1, point));
+  EditorActionResult result = editor.handleGestureEvent(GestureEvent::create(EventType::MOUSE_DOWN, 1, point));
 
   CHECK(result.handled);
   CHECK(result.source == EditorActionSource::GESTURE);
@@ -1279,7 +1167,7 @@ TEST_CASE("EditorCore pointer relocation keeps an active command session") {
   CHECK(result.ime_state.composition_range.end_utf16 == -1);
   CHECK(editor.getImeState(session).result_code == ImeResultCode::OK);
   CHECK_FALSE(editor.hasPreedit());
-  CHECK(editor.getCursorPosition() == (TextPosition {0, 11}));
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 11}));
   CHECK(document->getU8Text() == "boolean enabled");
 }
 
@@ -1436,8 +1324,7 @@ TEST_CASE("EditorCore text update mirrors linked placeholders before restarting 
   REQUIRE(editor.insertSnippet("${1:i}-${1:i}").content_changed);
   ImeState session = editor.beginImeSession(ImeMutationModel::TEXT_UPDATE);
   REQUIRE(session.result_code == ImeResultCode::OK);
-  ImeTextContext context = editor.getImeContext(
-      session.session_id, ImeTextSource::EDITING_BUFFER, 0, -1);
+  ImeTextContext context = editor.getImeContext(session.session_id, ImeTextSource::EDITING_BUFFER, 0, -1);
   REQUIRE(context.result_code == ImeResultCode::OK);
   REQUIRE(context.text == "i-i");
 
@@ -1445,13 +1332,8 @@ TEST_CASE("EditorCore text update mirrors linked placeholders before restarting 
   step.old_text = context.text;
   step.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 0, 1};
   step.replacement_text = "z";
-  step.selection_after = {
-      ImeCoordinateSpace::EDITING_BUFFER, 1, 1, CaretAffinity::DOWNSTREAM};
-  EditorActionResult update = editor.applyImeTextUpdates({
-      session.session_id,
-      session.state_revision,
-      {step}
-  });
+  step.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 1, 1, CaretAffinity::DOWNSTREAM};
+  EditorActionResult update = editor.applyImeTextUpdates({session.session_id, session.state_revision, {step}});
 
   REQUIRE(update.content_changed);
   CHECK(update.changes.size() == 2);
@@ -1476,9 +1358,9 @@ TEST_CASE("EditorCore mixed surrounding delete keeps composition active and comm
   EditorActionResult deletion = deleteSurrounding(editor, 3, 2);
   REQUIRE(deletion.content_changed);
   REQUIRE(deletion.changes.size() == 2);
-  CHECK(deletion.changes[0].range == (TextRange {{0, 1}, {0, 2}}));
+  CHECK(deletion.changes[0].range == (TextRange{{0, 1}, {0, 2}}));
   CHECK(deletion.changes[0].old_text == "b");
-  CHECK(deletion.changes[1].range == (TextRange {{0, 5}, {0, 7}}));
+  CHECK(deletion.changes[1].range == (TextRange{{0, 5}, {0, 7}}));
   CHECK(deletion.changes[1].old_text == "cd");
   CHECK(editor.hasPreedit());
   CHECK(document->getU8Text() == "a");
@@ -1491,7 +1373,7 @@ TEST_CASE("EditorCore mixed surrounding delete keeps composition active and comm
   EditorActionResult finish = finishPreedit(editor);
   REQUIRE(finish.content_changed);
   REQUIRE(finish.changes.size() == 1);
-  CHECK(finish.changes[0].range == (TextRange {{0, 1}, {0, 4}}));
+  CHECK(finish.changes[0].range == (TextRange{{0, 1}, {0, 4}}));
   CHECK(finish.changes[0].old_text == "XYZ");
   CHECK(finish.changes[0].new_text == "Q");
   CHECK(document->getU8Text() == "aQ");
@@ -1533,7 +1415,7 @@ TEST_CASE("EditorCore mixed surrounding delete merges adjacent committed pieces"
   EditorActionResult deletion = deleteSurrounding(editor, 3, 1);
   REQUIRE(deletion.content_changed);
   REQUIRE(deletion.changes.size() == 1);
-  CHECK(deletion.changes[0].range == (TextRange {{0, 1}, {0, 3}}));
+  CHECK(deletion.changes[0].range == (TextRange{{0, 1}, {0, 3}}));
   CHECK(deletion.changes[0].old_text == "bc");
   CHECK(editor.hasPreedit());
   CHECK(document->getU8Text() == "ad");
@@ -1634,7 +1516,7 @@ TEST_CASE("EditorCore projects persistent effects around an insertion compositio
   editor.setViewport({800, 600});
 
   constexpr int32_t syntax_color = static_cast<int32_t>(0xFF123456u);
-  editor.registerTextStyle(1, TextStyle {syntax_color, 0, FONT_STYLE_NORMAL});
+  editor.registerTextStyle(1, TextStyle{syntax_color, 0, FONT_STYLE_NORMAL});
   editor.setLineSpans(0, SpanLayer::SYNTAX, {{0, 1, 1}, {4, 2, 1}});
   editor.setLineInlayHints(0, {{InlayType::TEXT, 2, 0, "hint"}});
   editor.setLinePhantomTexts(0, {{4, "ghost"}});
@@ -1664,8 +1546,7 @@ TEST_CASE("EditorCore projects persistent effects around an insertion compositio
       if (run.type == VisualRunType::INLAY_HINT) inlay = &run;
       if (run.type == VisualRunType::PHANTOM_TEXT) phantom = &run;
       if (run.type == VisualRunType::LINK) link = &run;
-      has_before_style = has_before_style
-          || (run.column == 0 && run.style.color == syntax_color);
+      has_before_style = has_before_style || (run.column == 0 && run.style.color == syntax_color);
     }
   }
   for (const RangeEffectRenderItem& effect : model.range_effects) {
@@ -1705,7 +1586,7 @@ TEST_CASE("EditorCore hides persistent effects intersecting composition") {
   editor.loadDocument(makeShared<LineArrayDocument>("abcdef"));
   editor.setViewport({800, 600});
 
-  editor.registerTextStyle(1, TextStyle {static_cast<int32_t>(0xFF123456u), 0, FONT_STYLE_NORMAL});
+  editor.registerTextStyle(1, TextStyle{static_cast<int32_t>(0xFF123456u), 0, FONT_STYLE_NORMAL});
   editor.setLineSpans(0, SpanLayer::SYNTAX, {{2, 2, 1}});
   editor.setLineInlayHints(0, {{InlayType::TEXT, 2, 0, "hint"}});
   editor.setLinePhantomTexts(0, {{2, "ghost"}});
@@ -1738,8 +1619,7 @@ TEST_CASE("EditorCore hides persistent effects intersecting composition") {
   bool zero_finish_restored_link = false;
   for (const VisualLine& line : marked_model.lines) {
     for (const VisualRun& run : line.runs) {
-      zero_finish_restored_link = zero_finish_restored_link
-          || run.type == VisualRunType::LINK;
+      zero_finish_restored_link = zero_finish_restored_link || run.type == VisualRunType::LINK;
     }
   }
   CHECK(zero_finish_restored_link);
@@ -1753,8 +1633,7 @@ TEST_CASE("EditorCore hides persistent effects intersecting composition") {
   bool identity_owner_kept_link = false;
   for (const VisualLine& line : marked_model.lines) {
     for (const VisualRun& run : line.runs) {
-      identity_owner_kept_link = identity_owner_kept_link
-          || run.type == VisualRunType::LINK;
+      identity_owner_kept_link = identity_owner_kept_link || run.type == VisualRunType::LINK;
     }
   }
   CHECK(identity_owner_kept_link);
@@ -1802,10 +1681,20 @@ TEST_CASE("EditorCore projects persistent effects across provisional line change
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
   editor.loadDocument(makeShared<LineArrayDocument>("aa\nbb\ncc"));
   editor.setViewport({800, 600});
-  editor.registerTextStyle(1, TextStyle {static_cast<int32_t>(0xFF123456u), 0, FONT_STYLE_NORMAL});
+  editor.registerTextStyle(1, TextStyle{static_cast<int32_t>(0xFF123456u), 0, FONT_STYLE_NORMAL});
   editor.setLineSpans(2, SpanLayer::SEMANTIC, {{0, 2, 1}});
   editor.setLineInlayHints(2, {{InlayType::TEXT, 0, 0, "hint"}});
   editor.setLinePhantomTexts(2, {{0, "ghost"}});
+  editor.setLineCodeLens(2, {{0, 42, "references"}});
+  editor.setLineGutterIcons(2, {{7}});
+  editor.setLineDiagnostics(2, {{0, 2, DiagnosticSeverity::DIAG_ERROR}});
+  editor.setLineDocumentHighlights(2, {{0, 2, DocumentHighlightKind::READ}});
+
+  EditorRangeEffectStyles styles;
+  styles.diagnostic_error.underline_color = static_cast<int32_t>(0xFFFF0000u);
+  styles.diagnostic_error.underline_style = RangeEffectUnderlineStyle::WAVY;
+  styles.document_highlight_read.background_color = static_cast<int32_t>(0x3300FF00u);
+  editor.setEditorRangeEffectStyles(styles);
 
   editor.setCursorPosition({0, 2});
   updatePreedit(editor, "X\n");
@@ -1816,23 +1705,62 @@ TEST_CASE("EditorCore projects persistent effects across provisional line change
   bool projected_link = false;
   bool projected_inlay = false;
   bool projected_phantom = false;
+  bool projected_codelens = false;
+  bool projected_diagnostic = false;
+  bool projected_highlight = false;
   for (const VisualLine& line : model.lines) {
     for (const VisualRun& run : line.runs) {
-      projected_link = projected_link
-          || (line.logical_line == 3 && run.type == VisualRunType::LINK && run.column == 0);
-      projected_inlay = projected_inlay
-          || (line.logical_line == 3 && run.type == VisualRunType::INLAY_HINT && run.column == 0);
-      projected_phantom = projected_phantom
-          || (line.logical_line == 3 && run.type == VisualRunType::PHANTOM_TEXT && run.column == 0);
+      projected_link = projected_link || (line.logical_line == 3 && run.type == VisualRunType::LINK && run.column == 0);
+      projected_inlay =
+          projected_inlay || (line.logical_line == 3 && run.type == VisualRunType::INLAY_HINT && run.column == 0);
+      projected_phantom =
+          projected_phantom || (line.logical_line == 3 && run.type == VisualRunType::PHANTOM_TEXT && run.column == 0);
+      projected_codelens =
+          projected_codelens || (line.logical_line == 3 && run.type == VisualRunType::CODELENS && run.icon_id == 42);
     }
   }
+  for (const RangeEffectRenderItem& effect : model.range_effects) {
+    projected_diagnostic = projected_diagnostic || effect.kind == RangeEffectKind::DIAGNOSTIC_ERROR;
+    projected_highlight = projected_highlight || effect.kind == RangeEffectKind::DOCUMENT_HIGHLIGHT_READ;
+  }
+  const bool projected_gutter =
+      std::any_of(model.gutter_icons.begin(), model.gutter_icons.end(), [](const GutterIconRenderItem& item) {
+        return item.logical_line == 3 && item.icon_id == 7;
+      });
   CHECK(projected_link);
   CHECK(projected_inlay);
   CHECK(projected_phantom);
+  CHECK(projected_codelens);
+  CHECK(projected_gutter);
+  CHECK(projected_diagnostic);
+  CHECK(projected_highlight);
   CHECK(editor.getLinkTargetAt(3, 0) == "doc://multiline");
 
   cancelPreedit(editor);
   CHECK(editor.getLinkTargetAt(2, 0) == "doc://multiline");
+}
+
+TEST_CASE("EditorCore hides persistent guides intersecting composition") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), options);
+  editor.loadDocument(makeShared<LineArrayDocument>("a\nb\nc\nd"));
+  editor.setViewport({800, 600});
+  editor.setIndentGuides({{{0, 0}, {3, 0}}});
+
+  EditorRenderModel model;
+  editor.buildRenderModel(model);
+  REQUIRE(model.guide_segments.size() == 1);
+
+  editor.setSelection({{1, 0}, {1, 1}});
+  updatePreedit(editor, "X");
+  model = {};
+  editor.buildRenderModel(model);
+  CHECK(model.guide_segments.empty());
+
+  cancelPreedit(editor);
+  model = {};
+  editor.buildRenderModel(model);
+  CHECK(model.guide_segments.size() == 1);
 }
 
 TEST_CASE("EditorCore provisional multiline edit reprojects persistent fold state") {
@@ -1889,12 +1817,7 @@ TEST_CASE("EditorCore IME selection remains independent from active composition"
 
   ImeCommand selection;
   selection.kind = ImeCommandKind::SET_SELECTION;
-  selection.selection_after = {
-      ImeCoordinateSpace::DOCUMENT,
-      0,
-      0,
-      CaretAffinity::DOWNSTREAM
-  };
+  selection.selection_after = {ImeCoordinateSpace::DOCUMENT, 0, 0, CaretAffinity::DOWNSTREAM};
   EditorActionResult result = applyCommand(editor, selection);
 
   CHECK(result.handled);
@@ -1926,7 +1849,7 @@ TEST_CASE("EditorCore composition cancel restores baseline caret affinity") {
 }
 
 TEST_CASE("EditorCore command batch stages composition and commits one history entry") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abcd");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -1944,10 +1867,7 @@ TEST_CASE("EditorCore command batch stages composition and commits one history e
   ImeCommand finish;
   finish.kind = ImeCommandKind::FINISH_COMPOSITION;
 
-  EditorActionResult result = editor.applyImeCommands({
-      session.session_id,
-      {begin, update, finish}
-  });
+  EditorActionResult result = editor.applyImeCommands({session.session_id, {begin, update, finish}});
 
   REQUIRE(result.content_changed);
   CHECK(result.changes.size() == 1);
@@ -1959,7 +1879,7 @@ TEST_CASE("EditorCore command batch stages composition and commits one history e
 }
 
 TEST_CASE("EditorCore document mark does not own provisional text") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abcde");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -1983,7 +1903,7 @@ TEST_CASE("EditorCore document mark does not own provisional text") {
 }
 
 TEST_CASE("EditorCore document mark commit is one ordinary committed replacement") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abcde");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -1995,7 +1915,7 @@ TEST_CASE("EditorCore document mark commit is one ordinary committed replacement
   REQUIRE(result.content_changed);
   REQUIRE(result.changes.size() == 1);
   CHECK(document->getU8Text() == "a123456e");
-  CHECK(editor.getCursorPosition() == (TextPosition {0, 7}));
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 7}));
   CHECK_FALSE(editor.hasPreedit());
   REQUIRE(editor.undo().content_changed);
   CHECK(document->getU8Text() == "abcde");
@@ -2003,7 +1923,7 @@ TEST_CASE("EditorCore document mark commit is one ordinary committed replacement
 }
 
 TEST_CASE("EditorCore can finish a document mark before a targeted commit") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abcde");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2021,21 +1941,17 @@ TEST_CASE("EditorCore can finish a document mark before a targeted commit") {
   commit.kind = ImeCommandKind::COMMIT_TEXT;
   commit.target_range = {ImeCoordinateSpace::DOCUMENT, 1, 4};
   commit.text = "X";
-  commit.selection_after = {
-      ImeCoordinateSpace::DOCUMENT, 2, 2, CaretAffinity::DOWNSTREAM};
-  EditorActionResult result = editor.applyImeCommands({
-      session.session_id,
-      {finish, commit}
-  });
+  commit.selection_after = {ImeCoordinateSpace::DOCUMENT, 2, 2, CaretAffinity::DOWNSTREAM};
+  EditorActionResult result = editor.applyImeCommands({session.session_id, {finish, commit}});
 
   REQUIRE(result.content_changed);
   CHECK(document->getU8Text() == "aXe");
-  CHECK(editor.getCursorPosition() == (TextPosition {0, 2}));
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 2}));
   CHECK_FALSE(editor.hasPreedit());
 }
 
 TEST_CASE("EditorCore surrounding delete transforms an active document mark") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abcde");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2047,8 +1963,7 @@ TEST_CASE("EditorCore surrounding delete transforms an active document mark") {
   REQUIRE(deletion.content_changed);
   CHECK(document->getU8Text() == "abce");
   REQUIRE(editor.getCompositionState().has_value());
-  CHECK(editor.getCompositionState()->current_range
-      == (TextRange {{0, 1}, {0, 3}}));
+  CHECK(editor.getCompositionState()->current_range == (TextRange{{0, 1}, {0, 3}}));
   CHECK_FALSE(editor.getCompositionState()->baseline_text_raw.has_value());
   CHECK_FALSE(finishPreedit(editor).content_changed);
   REQUIRE(editor.undo().content_changed);
@@ -2056,7 +1971,7 @@ TEST_CASE("EditorCore surrounding delete transforms an active document mark") {
 }
 
 TEST_CASE("EditorCore idle composition update accepts a document target") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abcd");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2080,7 +1995,7 @@ TEST_CASE("EditorCore idle composition update accepts a document target") {
 }
 
 TEST_CASE("EditorCore reports same-range provisional composition text changes") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("ab");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2103,7 +2018,7 @@ TEST_CASE("EditorCore reports same-range provisional composition text changes") 
 }
 
 TEST_CASE("EditorCore command batch merges composition finish and idle commit") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("ab cd");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2122,10 +2037,7 @@ TEST_CASE("EditorCore command batch merges composition finish and idle commit") 
   commit.kind = ImeCommandKind::COMMIT_TEXT;
   commit.target_range = {ImeCoordinateSpace::DOCUMENT, 4, 6};
   commit.text = "Y";
-  EditorActionResult result = editor.applyImeCommands({
-      session.session_id,
-      {finish, commit}
-  });
+  EditorActionResult result = editor.applyImeCommands({session.session_id, {finish, commit}});
 
   REQUIRE(result.content_changed);
   CHECK(result.changes.size() == 2);
@@ -2136,7 +2048,7 @@ TEST_CASE("EditorCore command batch merges composition finish and idle commit") 
 }
 
 TEST_CASE("EditorCore idle commit resolves selection against its post-state") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2156,19 +2068,18 @@ TEST_CASE("EditorCore idle commit resolves selection against its post-state") {
   ImeCommand commit;
   commit.kind = ImeCommandKind::COMMIT_TEXT;
   commit.text = " ";
-  commit.selection_after = {
-      ImeCoordinateSpace::DOCUMENT, 6, 6, CaretAffinity::DOWNSTREAM};
+  commit.selection_after = {ImeCoordinateSpace::DOCUMENT, 6, 6, CaretAffinity::DOWNSTREAM};
   EditorActionResult result = editor.applyImeCommands({session.session_id, {commit}});
 
   REQUIRE(result.handled);
   CHECK(result.ime_state.result_code == ImeResultCode::OK);
   CHECK(result.ime_host_action == ImeHostAction::NONE);
   CHECK(document->getU8Text() == "hello ");
-  CHECK(editor.getCursorPosition() == (TextPosition {0, 6}));
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 6}));
 }
 
 TEST_CASE("EditorCore idle commit maps selection through a multiline replacement") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abcdef");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2179,19 +2090,18 @@ TEST_CASE("EditorCore idle commit maps selection through a multiline replacement
   commit.kind = ImeCommandKind::COMMIT_TEXT;
   commit.target_range = {ImeCoordinateSpace::DOCUMENT, 1, 3};
   commit.text = "X\nYZ";
-  commit.selection_after = {
-      ImeCoordinateSpace::DOCUMENT, 6, 6, CaretAffinity::DOWNSTREAM};
+  commit.selection_after = {ImeCoordinateSpace::DOCUMENT, 6, 6, CaretAffinity::DOWNSTREAM};
   EditorActionResult result = editor.applyImeCommands({session.session_id, {commit}});
 
   REQUIRE(result.handled);
   CHECK(result.ime_state.result_code == ImeResultCode::OK);
   CHECK(result.ime_host_action == ImeHostAction::NONE);
   CHECK(document->getU8Text() == "aX\nYZdef");
-  CHECK(editor.getCursorPosition() == (TextPosition {1, 3}));
+  CHECK(editor.getCursorPosition() == (TextPosition{1, 3}));
 }
 
 TEST_CASE("EditorCore command batch merges mixed deletion and composition finish") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("012345");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2210,10 +2120,7 @@ TEST_CASE("EditorCore command batch merges mixed deletion and composition finish
   deletion.text_unit = ImeTextUnit::UNICODE_CODE_POINT;
   ImeCommand finish;
   finish.kind = ImeCommandKind::FINISH_COMPOSITION;
-  EditorActionResult result = editor.applyImeCommands({
-      session.session_id,
-      {deletion, finish}
-  });
+  EditorActionResult result = editor.applyImeCommands({session.session_id, {deletion, finish}});
 
   REQUIRE(result.content_changed);
   CHECK(result.changes.size() == 1);
@@ -2226,7 +2133,7 @@ TEST_CASE("EditorCore command batch merges mixed deletion and composition finish
 }
 
 TEST_CASE("EditorCore rejected command batch leaves payload state unchanged") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abc");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2241,21 +2148,18 @@ TEST_CASE("EditorCore rejected command batch leaves payload state unchanged") {
   invalid_begin.kind = ImeCommandKind::BEGIN_COMPOSITION;
   invalid_begin.target_range = {ImeCoordinateSpace::DOCUMENT, 0, 1};
 
-  EditorActionResult result = editor.applyImeCommands({
-      session.session_id,
-      {update, invalid_begin}
-  });
+  EditorActionResult result = editor.applyImeCommands({session.session_id, {update, invalid_begin}});
 
   CHECK(result.ime_state.result_code == ImeResultCode::REJECTED);
   CHECK(result.ime_host_action == ImeHostAction::RESTART_SESSION);
   CHECK(document->getU8Text() == "abc");
-  CHECK(editor.getCursorPosition() == (TextPosition {0, 1}));
+  CHECK(editor.getCursorPosition() == (TextPosition{0, 1}));
   CHECK_FALSE(editor.hasPreedit());
   CHECK_FALSE(editor.canUndo());
 }
 
 TEST_CASE("EditorCore validates a single command before applying its text") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abc");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2271,8 +2175,7 @@ TEST_CASE("EditorCore validates a single command before applying its text") {
 
   ImeCommand rejected = accepted;
   rejected.text = "Y";
-  rejected.selection_after = {
-      ImeCoordinateSpace::DOCUMENT, 99, 99, CaretAffinity::DOWNSTREAM};
+  rejected.selection_after = {ImeCoordinateSpace::DOCUMENT, 99, 99, CaretAffinity::DOWNSTREAM};
   EditorActionResult result = editor.applyImeCommands({session.session_id, {rejected}});
 
   CHECK(result.ime_state.result_code == ImeResultCode::REJECTED);
@@ -2283,7 +2186,7 @@ TEST_CASE("EditorCore validates a single command before applying its text") {
 }
 
 TEST_CASE("EditorCore text update session validates revision old text and contexts") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("ab");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2292,8 +2195,7 @@ TEST_CASE("EditorCore text update session validates revision old text and contex
   ImeState session = editor.beginImeSession(ImeMutationModel::TEXT_UPDATE);
   REQUIRE(session.result_code == ImeResultCode::OK);
   REQUIRE(session.state_revision == 1);
-  ImeTextContext initial = editor.getImeContext(
-      session.session_id, ImeTextSource::EDITING_BUFFER, 0, -1);
+  ImeTextContext initial = editor.getImeContext(session.session_id, ImeTextSource::EDITING_BUFFER, 0, -1);
   REQUIRE(initial.result_code == ImeResultCode::OK);
   CHECK(initial.text == "ab");
 
@@ -2301,14 +2203,9 @@ TEST_CASE("EditorCore text update session validates revision old text and contex
   step.old_text = "ab";
   step.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 2, 2};
   step.replacement_text = "x";
-  step.selection_after = {
-      ImeCoordinateSpace::EDITING_BUFFER, 3, 3, CaretAffinity::DOWNSTREAM};
+  step.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 3, 3, CaretAffinity::DOWNSTREAM};
   step.composition_after = {ImeCoordinateSpace::EDITING_BUFFER, 2, 3};
-  EditorActionResult update = editor.applyImeTextUpdates({
-      session.session_id,
-      session.state_revision,
-      {step}
-  });
+  EditorActionResult update = editor.applyImeTextUpdates({session.session_id, session.state_revision, {step}});
 
   CHECK_FALSE(update.content_changed);
   CHECK(document->getU8Text() == "abx");
@@ -2319,11 +2216,7 @@ TEST_CASE("EditorCore text update session validates revision old text and contex
 
   ImeTextUpdateStep invalid = step;
   invalid.old_text = "stale";
-  EditorActionResult rejected = editor.applyImeTextUpdates({
-      session.session_id,
-      2,
-      {invalid}
-  });
+  EditorActionResult rejected = editor.applyImeTextUpdates({session.session_id, 2, {invalid}});
   CHECK(rejected.ime_state.result_code == ImeResultCode::REJECTED);
   CHECK(rejected.ime_host_action == ImeHostAction::RESTART_SESSION);
   CHECK(document->getU8Text() == "abx");
@@ -2333,7 +2226,7 @@ TEST_CASE("EditorCore text update session validates revision old text and contex
 }
 
 TEST_CASE("EditorCore committed context maps text after a changed composition length") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   editor.loadDocument(makeShared<LineArrayDocument>("abcdef"));
   editor.setViewport({800, 600});
   editor.setSelection({{0, 1}, {0, 3}});
@@ -2346,25 +2239,20 @@ TEST_CASE("EditorCore committed context maps text after a changed composition le
   ImeCommand update;
   update.kind = ImeCommandKind::UPDATE_COMPOSITION;
   update.text = "XYZ";
-  REQUIRE_FALSE(editor.applyImeCommands({
-      session.session_id,
-      {begin, update}
-  }).content_changed);
+  REQUIRE_FALSE(editor.applyImeCommands({session.session_id, {begin, update}}).content_changed);
 
-  ImeTextContext full = editor.getImeContext(
-      session.session_id, ImeTextSource::COMMITTED, 0, -1);
+  ImeTextContext full = editor.getImeContext(session.session_id, ImeTextSource::COMMITTED, 0, -1);
   REQUIRE(full.result_code == ImeResultCode::OK);
   CHECK(full.text == "abcdef");
   CHECK(full.composition_range.start_utf16 == 1);
   CHECK(full.composition_range.end_utf16 == 3);
-  ImeTextContext suffix = editor.getImeContext(
-      session.session_id, ImeTextSource::COMMITTED, 3, 3);
+  ImeTextContext suffix = editor.getImeContext(session.session_id, ImeTextSource::COMMITTED, 3, 3);
   REQUIRE(suffix.result_code == ImeResultCode::OK);
   CHECK(suffix.text == "def");
 }
 
 TEST_CASE("EditorCore text update batch commits chained steps atomically") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abc");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2376,20 +2264,14 @@ TEST_CASE("EditorCore text update batch commits chained steps atomically") {
   first.old_text = "abc";
   first.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 3, 3};
   first.replacement_text = "x";
-  first.selection_after = {
-      ImeCoordinateSpace::EDITING_BUFFER, 4, 4, CaretAffinity::DOWNSTREAM};
+  first.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 4, 4, CaretAffinity::DOWNSTREAM};
   ImeTextUpdateStep second;
   second.old_text = "abcx";
   second.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 4, 4};
   second.replacement_text = "y";
-  second.selection_after = {
-      ImeCoordinateSpace::EDITING_BUFFER, 5, 5, CaretAffinity::DOWNSTREAM};
+  second.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 5, 5, CaretAffinity::DOWNSTREAM};
 
-  EditorActionResult result = editor.applyImeTextUpdates({
-      session.session_id,
-      session.state_revision,
-      {first, second}
-  });
+  EditorActionResult result = editor.applyImeTextUpdates({session.session_id, session.state_revision, {first, second}});
 
   REQUIRE(result.content_changed);
   CHECK(result.changes.size() == 1);
@@ -2401,7 +2283,7 @@ TEST_CASE("EditorCore text update batch commits chained steps atomically") {
 }
 
 TEST_CASE("EditorCore text update finishes a composition after a subrange patch") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abc");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2413,26 +2295,17 @@ TEST_CASE("EditorCore text update finishes a composition after a subrange patch"
   begin.old_text = "abc";
   begin.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 3, 3};
   begin.replacement_text = "xy";
-  begin.selection_after = {
-      ImeCoordinateSpace::EDITING_BUFFER, 5, 5, CaretAffinity::DOWNSTREAM};
+  begin.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 5, 5, CaretAffinity::DOWNSTREAM};
   begin.composition_after = {ImeCoordinateSpace::EDITING_BUFFER, 3, 5};
-  EditorActionResult update = editor.applyImeTextUpdates({
-      session.session_id,
-      session.state_revision,
-      {begin}
-  });
+  EditorActionResult update = editor.applyImeTextUpdates({session.session_id, session.state_revision, {begin}});
   REQUIRE(update.ime_state.state_revision == 2);
 
   ImeTextUpdateStep finish;
   finish.old_text = "abcxy";
   finish.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 4, 5};
-  finish.selection_after = {
-      ImeCoordinateSpace::EDITING_BUFFER, 4, 4, CaretAffinity::DOWNSTREAM};
-  EditorActionResult result = editor.applyImeTextUpdates({
-      session.session_id,
-      update.ime_state.state_revision,
-      {finish}
-  });
+  finish.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 4, 4, CaretAffinity::DOWNSTREAM};
+  EditorActionResult result =
+      editor.applyImeTextUpdates({session.session_id, update.ime_state.state_revision, {finish}});
 
   REQUIRE(result.content_changed);
   CHECK(document->getU8Text() == "abcx");
@@ -2443,7 +2316,7 @@ TEST_CASE("EditorCore text update finishes a composition after a subrange patch"
 }
 
 TEST_CASE("EditorCore text update keeps external committed edits outside composition") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abcdef");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2455,28 +2328,19 @@ TEST_CASE("EditorCore text update keeps external committed edits outside composi
   begin.old_text = "abcdef";
   begin.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 3, 3};
   begin.replacement_text = "X";
-  begin.selection_after = {
-      ImeCoordinateSpace::EDITING_BUFFER, 4, 4, CaretAffinity::DOWNSTREAM};
+  begin.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 4, 4, CaretAffinity::DOWNSTREAM};
   begin.composition_after = {ImeCoordinateSpace::EDITING_BUFFER, 3, 4};
-  EditorActionResult update = editor.applyImeTextUpdates({
-      session.session_id,
-      session.state_revision,
-      {begin}
-  });
+  EditorActionResult update = editor.applyImeTextUpdates({session.session_id, session.state_revision, {begin}});
   REQUIRE(update.ime_state.state_revision == 2);
 
   ImeTextUpdateStep external;
   external.old_text = "abcXdef";
   external.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 7, 7};
   external.replacement_text = "Y";
-  external.selection_after = {
-      ImeCoordinateSpace::EDITING_BUFFER, 4, 4, CaretAffinity::DOWNSTREAM};
+  external.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 4, 4, CaretAffinity::DOWNSTREAM};
   external.composition_after = {ImeCoordinateSpace::EDITING_BUFFER, 3, 4};
-  EditorActionResult result = editor.applyImeTextUpdates({
-      session.session_id,
-      update.ime_state.state_revision,
-      {external}
-  });
+  EditorActionResult result =
+      editor.applyImeTextUpdates({session.session_id, update.ime_state.state_revision, {external}});
 
   REQUIRE(result.content_changed);
   CHECK(document->getU8Text() == "abcXdefY");
@@ -2491,7 +2355,7 @@ TEST_CASE("EditorCore text update keeps external committed edits outside composi
 
 TEST_CASE("EditorCore text update uses after composition to own a boundary insertion") {
   const auto run_case = [](bool include_in_composition) {
-    EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+    EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
     SharedPtr<Document> document = makeShared<LineArrayDocument>("abcdef");
     editor.loadDocument(document);
     editor.setViewport({800, 600});
@@ -2503,32 +2367,19 @@ TEST_CASE("EditorCore text update uses after composition to own a boundary inser
     begin.old_text = "abcdef";
     begin.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 3, 3};
     begin.replacement_text = "X";
-    begin.selection_after = {
-        ImeCoordinateSpace::EDITING_BUFFER, 4, 4, CaretAffinity::DOWNSTREAM};
+    begin.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 4, 4, CaretAffinity::DOWNSTREAM};
     begin.composition_after = {ImeCoordinateSpace::EDITING_BUFFER, 3, 4};
-    EditorActionResult update = editor.applyImeTextUpdates({
-        session.session_id,
-        session.state_revision,
-        {begin}
-    });
+    EditorActionResult update = editor.applyImeTextUpdates({session.session_id, session.state_revision, {begin}});
     REQUIRE(update.ime_state.state_revision == 2);
 
     ImeTextUpdateStep boundary;
     boundary.old_text = "abcXdef";
     boundary.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 4, 4};
     boundary.replacement_text = "Y";
-    boundary.selection_after = {
-        ImeCoordinateSpace::EDITING_BUFFER, 5, 5, CaretAffinity::DOWNSTREAM};
-    boundary.composition_after = {
-        ImeCoordinateSpace::EDITING_BUFFER,
-        3,
-        include_in_composition ? 5 : 4
-    };
-    EditorActionResult result = editor.applyImeTextUpdates({
-        session.session_id,
-        update.ime_state.state_revision,
-        {boundary}
-    });
+    boundary.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 5, 5, CaretAffinity::DOWNSTREAM};
+    boundary.composition_after = {ImeCoordinateSpace::EDITING_BUFFER, 3, include_in_composition ? 5 : 4};
+    EditorActionResult result =
+        editor.applyImeTextUpdates({session.session_id, update.ime_state.state_revision, {boundary}});
 
     CHECK(document->getU8Text() == "abcXYdef");
     CHECK(result.content_changed == !include_in_composition);
@@ -2545,7 +2396,7 @@ TEST_CASE("EditorCore text update uses after composition to own a boundary inser
 }
 
 TEST_CASE("EditorCore text update rollover finishes the old owner and starts the new one") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("ab");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2557,28 +2408,19 @@ TEST_CASE("EditorCore text update rollover finishes the old owner and starts the
   first.old_text = "ab";
   first.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 1, 1};
   first.replacement_text = "X";
-  first.selection_after = {
-      ImeCoordinateSpace::EDITING_BUFFER, 2, 2, CaretAffinity::DOWNSTREAM};
+  first.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 2, 2, CaretAffinity::DOWNSTREAM};
   first.composition_after = {ImeCoordinateSpace::EDITING_BUFFER, 1, 2};
-  EditorActionResult update = editor.applyImeTextUpdates({
-      session.session_id,
-      session.state_revision,
-      {first}
-  });
+  EditorActionResult update = editor.applyImeTextUpdates({session.session_id, session.state_revision, {first}});
   REQUIRE(update.ime_state.state_revision == 2);
 
   ImeTextUpdateStep rollover;
   rollover.old_text = "aXb";
   rollover.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 3, 3};
   rollover.replacement_text = "Y";
-  rollover.selection_after = {
-      ImeCoordinateSpace::EDITING_BUFFER, 4, 4, CaretAffinity::DOWNSTREAM};
+  rollover.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 4, 4, CaretAffinity::DOWNSTREAM};
   rollover.composition_after = {ImeCoordinateSpace::EDITING_BUFFER, 3, 4};
-  EditorActionResult result = editor.applyImeTextUpdates({
-      session.session_id,
-      update.ime_state.state_revision,
-      {rollover}
-  });
+  EditorActionResult result =
+      editor.applyImeTextUpdates({session.session_id, update.ime_state.state_revision, {rollover}});
 
   REQUIRE(result.content_changed);
   CHECK(document->getU8Text() == "aXbY");
@@ -2592,7 +2434,7 @@ TEST_CASE("EditorCore text update rollover finishes the old owner and starts the
 }
 
 TEST_CASE("EditorCore text update rejects ambiguous composition ownership") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abc");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2604,26 +2446,17 @@ TEST_CASE("EditorCore text update rejects ambiguous composition ownership") {
   first.old_text = "abc";
   first.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 1, 1};
   first.replacement_text = "X";
-  first.selection_after = {
-      ImeCoordinateSpace::EDITING_BUFFER, 2, 2, CaretAffinity::DOWNSTREAM};
+  first.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 2, 2, CaretAffinity::DOWNSTREAM};
   first.composition_after = {ImeCoordinateSpace::EDITING_BUFFER, 1, 2};
-  EditorActionResult update = editor.applyImeTextUpdates({
-      session.session_id,
-      session.state_revision,
-      {first}
-  });
+  EditorActionResult update = editor.applyImeTextUpdates({session.session_id, session.state_revision, {first}});
   REQUIRE(update.ime_state.state_revision == 2);
 
   ImeTextUpdateStep ambiguous;
   ambiguous.old_text = "aXbc";
-  ambiguous.selection_after = {
-      ImeCoordinateSpace::EDITING_BUFFER, 2, 2, CaretAffinity::DOWNSTREAM};
+  ambiguous.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 2, 2, CaretAffinity::DOWNSTREAM};
   ambiguous.composition_after = {ImeCoordinateSpace::EDITING_BUFFER, 1, 3};
-  EditorActionResult result = editor.applyImeTextUpdates({
-      session.session_id,
-      update.ime_state.state_revision,
-      {ambiguous}
-  });
+  EditorActionResult result =
+      editor.applyImeTextUpdates({session.session_id, update.ime_state.state_revision, {ambiguous}});
 
   CHECK(result.ime_state.result_code == ImeResultCode::REJECTED);
   CHECK(result.ime_host_action == ImeHostAction::RESTART_SESSION);
@@ -2634,7 +2467,7 @@ TEST_CASE("EditorCore text update rejects ambiguous composition ownership") {
 }
 
 TEST_CASE("EditorCore text update splits a cross-boundary deletion") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("012345");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2646,27 +2479,18 @@ TEST_CASE("EditorCore text update splits a cross-boundary deletion") {
   first.old_text = "012345";
   first.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 2, 4};
   first.replacement_text = "XY";
-  first.selection_after = {
-      ImeCoordinateSpace::EDITING_BUFFER, 4, 4, CaretAffinity::DOWNSTREAM};
+  first.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 4, 4, CaretAffinity::DOWNSTREAM};
   first.composition_after = {ImeCoordinateSpace::EDITING_BUFFER, 2, 4};
-  EditorActionResult update = editor.applyImeTextUpdates({
-      session.session_id,
-      session.state_revision,
-      {first}
-  });
+  EditorActionResult update = editor.applyImeTextUpdates({session.session_id, session.state_revision, {first}});
   REQUIRE(update.ime_state.state_revision == 2);
 
   ImeTextUpdateStep deletion;
   deletion.old_text = "01XY45";
   deletion.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 1, 3};
-  deletion.selection_after = {
-      ImeCoordinateSpace::EDITING_BUFFER, 1, 1, CaretAffinity::DOWNSTREAM};
+  deletion.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 1, 1, CaretAffinity::DOWNSTREAM};
   deletion.composition_after = {ImeCoordinateSpace::EDITING_BUFFER, 1, 2};
-  EditorActionResult result = editor.applyImeTextUpdates({
-      session.session_id,
-      update.ime_state.state_revision,
-      {deletion}
-  });
+  EditorActionResult result =
+      editor.applyImeTextUpdates({session.session_id, update.ime_state.state_revision, {deletion}});
 
   REQUIRE(result.content_changed);
   CHECK(document->getU8Text() == "0Y45");
@@ -2678,7 +2502,7 @@ TEST_CASE("EditorCore text update splits a cross-boundary deletion") {
 }
 
 TEST_CASE("EditorCore text update preserves patch identity for repeated text") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("aa");
   editor.loadDocument(document);
   editor.setViewport({800, 600});
@@ -2689,25 +2513,20 @@ TEST_CASE("EditorCore text update preserves patch identity for repeated text") {
   ImeTextUpdateStep step;
   step.old_text = "aa";
   step.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 0, 1};
-  step.selection_after = {
-      ImeCoordinateSpace::EDITING_BUFFER, 0, 0, CaretAffinity::DOWNSTREAM};
+  step.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 0, 0, CaretAffinity::DOWNSTREAM};
 
-  EditorActionResult result = editor.applyImeTextUpdates({
-      session.session_id,
-      session.state_revision,
-      {step}
-  });
+  EditorActionResult result = editor.applyImeTextUpdates({session.session_id, session.state_revision, {step}});
 
   REQUIRE(result.content_changed);
   REQUIRE(result.changes.size() == 1);
-  CHECK(result.changes[0].range == (TextRange {{0, 0}, {0, 1}}));
+  CHECK(result.changes[0].range == (TextRange{{0, 0}, {0, 1}}));
   CHECK(document->getU8Text() == "a");
   REQUIRE(editor.undo().content_changed);
   CHECK(document->getU8Text() == "aa");
 }
 
 TEST_CASE("EditorCore text update guard remains atomic after a later invalid step") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   const U8String original(4000, 'a');
   SharedPtr<Document> document = makeShared<LineArrayDocument>(original);
   editor.loadDocument(document);
@@ -2716,23 +2535,18 @@ TEST_CASE("EditorCore text update guard remains atomic after a later invalid ste
 
   ImeState session = editor.beginImeSession(ImeMutationModel::TEXT_UPDATE);
   REQUIRE(session.result_code == ImeResultCode::OK);
-  ImeTextContext context = editor.getImeContext(
-      session.session_id, ImeTextSource::EDITING_BUFFER, 0, -1);
+  ImeTextContext context = editor.getImeContext(session.session_id, ImeTextSource::EDITING_BUFFER, 0, -1);
   REQUIRE(context.result_code == ImeResultCode::OK);
   ImeTextUpdateStep first;
   first.old_text = context.text;
   first.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 0, 0};
   first.replacement_text = "x";
-  first.selection_after = {
-      ImeCoordinateSpace::EDITING_BUFFER, 1, 1, CaretAffinity::DOWNSTREAM};
+  first.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 1, 1, CaretAffinity::DOWNSTREAM};
   ImeTextUpdateStep invalid = first;
   invalid.old_text = "invalid";
 
-  EditorActionResult result = editor.applyImeTextUpdates({
-      session.session_id,
-      session.state_revision,
-      {first, invalid}
-  });
+  EditorActionResult result =
+      editor.applyImeTextUpdates({session.session_id, session.state_revision, {first, invalid}});
 
   CHECK(result.ime_state.result_code == ImeResultCode::REJECTED);
   CHECK(result.ime_host_action == ImeHostAction::RESTART_SESSION);
@@ -2741,7 +2555,7 @@ TEST_CASE("EditorCore text update guard remains atomic after a later invalid ste
 }
 
 TEST_CASE("EditorCore accepts a guard update before restarting the session") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   const U8String original(4000, 'a');
   SharedPtr<Document> document = makeShared<LineArrayDocument>(original);
   editor.loadDocument(document);
@@ -2750,33 +2564,26 @@ TEST_CASE("EditorCore accepts a guard update before restarting the session") {
 
   ImeState session = editor.beginImeSession(ImeMutationModel::TEXT_UPDATE);
   REQUIRE(session.result_code == ImeResultCode::OK);
-  ImeTextContext context = editor.getImeContext(
-      session.session_id, ImeTextSource::EDITING_BUFFER, 0, -1);
+  ImeTextContext context = editor.getImeContext(session.session_id, ImeTextSource::EDITING_BUFFER, 0, -1);
   REQUIRE(context.result_code == ImeResultCode::OK);
   ImeTextUpdateStep step;
   step.old_text = context.text;
   step.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 0, 0};
   step.replacement_text = "x";
-  step.selection_after = {
-      ImeCoordinateSpace::EDITING_BUFFER, 1, 1, CaretAffinity::DOWNSTREAM};
+  step.selection_after = {ImeCoordinateSpace::EDITING_BUFFER, 1, 1, CaretAffinity::DOWNSTREAM};
 
-  EditorActionResult result = editor.applyImeTextUpdates({
-      session.session_id,
-      session.state_revision,
-      {step}
-  });
+  EditorActionResult result = editor.applyImeTextUpdates({session.session_id, session.state_revision, {step}});
 
   CHECK(result.content_changed);
   CHECK(result.ime_state.result_code == ImeResultCode::OK);
   CHECK(result.ime_host_action == ImeHostAction::RESTART_SESSION);
   CHECK(result.ime_state.session_id == 0);
   CHECK(document->getU8Text().size() == original.size() + 1);
-  CHECK(editor.getImeState(session.session_id).result_code
-      == ImeResultCode::SESSION_MISMATCH);
+  CHECK(editor.getImeState(session.session_id).result_code == ImeResultCode::SESSION_MISMATCH);
 }
 
 TEST_CASE("EditorCore text update ignores affinity-only host echo") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions{});
   editor.loadDocument(makeShared<LineArrayDocument>("abcdefghij"));
   editor.setViewport({90, 320});
   editor.setWrapMode(WrapMode::CHAR_BREAK);
@@ -2788,8 +2595,7 @@ TEST_CASE("EditorCore text update ignores affinity-only host echo") {
 
   ImeState session = editor.beginImeSession(ImeMutationModel::TEXT_UPDATE);
   REQUIRE(session.result_code == ImeResultCode::OK);
-  ImeTextContext context = editor.getImeContext(
-      session.session_id, ImeTextSource::EDITING_BUFFER, 0, -1);
+  ImeTextContext context = editor.getImeContext(session.session_id, ImeTextSource::EDITING_BUFFER, 0, -1);
   REQUIRE(context.result_code == ImeResultCode::OK);
   ImeTextUpdateStep step;
   step.old_text = context.text;
@@ -2797,18 +2603,14 @@ TEST_CASE("EditorCore text update ignores affinity-only host echo") {
   step.selection_after.coordinate_space = ImeCoordinateSpace::EDITING_BUFFER;
   step.selection_after.affinity = CaretAffinity::DOWNSTREAM;
 
-  EditorActionResult result = editor.applyImeTextUpdates({
-      session.session_id,
-      session.state_revision,
-      {step}
-  });
+  EditorActionResult result = editor.applyImeTextUpdates({session.session_id, session.state_revision, {step}});
 
   CHECK(result.ime_state.state_revision == session.state_revision);
   CHECK(editor.getCaretAffinity() == CaretAffinity::UPSTREAM);
 }
 
 TEST_CASE("EditorCore stale session cannot disturb current IME generation") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   editor.loadDocument(makeShared<LineArrayDocument>("abc"));
   editor.setViewport({800, 600});
 
@@ -2826,7 +2628,7 @@ TEST_CASE("EditorCore stale session cannot disturb current IME generation") {
 }
 
 TEST_CASE("EditorCore document load restarts an active IME session") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   editor.loadDocument(makeShared<LineArrayDocument>("old"));
   editor.setViewport({800, 600});
 
@@ -2839,13 +2641,12 @@ TEST_CASE("EditorCore document load restarts an active IME session") {
   CHECK(result.ime_host_action == ImeHostAction::RESTART_SESSION);
   CHECK(result.ime_state.result_code == ImeResultCode::OK);
   CHECK(result.ime_state.session_id == 0);
-  CHECK(editor.getImeState(session.session_id).result_code
-      == ImeResultCode::SESSION_MISMATCH);
+  CHECK(editor.getImeState(session.session_id).result_code == ImeResultCode::SESSION_MISMATCH);
   CHECK(document->getU8Text() == "new");
 }
 
 TEST_CASE("EditorCore command canonical fields reject before live mutation") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("abc");
   editor.loadDocument(document);
   editor.setViewport({800, 600});

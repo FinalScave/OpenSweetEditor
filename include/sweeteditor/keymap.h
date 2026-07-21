@@ -37,31 +37,40 @@ namespace NS_SWEETEDITOR {
 
   /// Modifier key flags
   enum class SE_PROTOCOL_FLAGS(keymap) KeyModifier : uint8_t {
-    NONE  = 0,
+    NONE = 0,
     SHIFT = 1 << 0,
-    CTRL  = 1 << 1,
-    ALT   = 1 << 2,
-    META  = 1 << 3,
+    CTRL = 1 << 1,
+    ALT = 1 << 2,
+    META = 1 << 3,
   };
-  inline KeyModifier operator&(KeyModifier a, KeyModifier b) { return static_cast<KeyModifier>(static_cast<uint8_t>(a) & static_cast<uint8_t>(b)); }
-  inline KeyModifier operator|(KeyModifier a, KeyModifier b) { return static_cast<KeyModifier>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b)); }
-  inline bool hasAnyModifier(KeyModifier value, KeyModifier mask) { return static_cast<uint8_t>(value & mask) != 0; }
+  inline KeyModifier operator&(KeyModifier a, KeyModifier b) {
+    return static_cast<KeyModifier>(static_cast<uint8_t>(a) & static_cast<uint8_t>(b));
+  }
+  inline KeyModifier operator|(KeyModifier a, KeyModifier b) {
+    return static_cast<KeyModifier>(static_cast<uint8_t>(a) | static_cast<uint8_t>(b));
+  }
+  inline bool hasAnyModifier(KeyModifier value, KeyModifier mask) {
+    return static_cast<uint8_t>(value & mask) != 0;
+  }
 
   /// A single key chord: one key press with optional modifiers
   struct SE_PROTOCOL_VALUE(keymap) KeyChord {
     SE_PROTOCOL_WIRE(u8)
-    KeyModifier modifiers {KeyModifier::NONE};
+    KeyModifier modifiers{KeyModifier::NONE};
     SE_PROTOCOL_WIRE(u16)
-    KeyCode key_code {KeyCode::NONE};
+    KeyCode key_code{KeyCode::NONE};
 
     bool operator==(const KeyChord& other) const;
     bool operator!=(const KeyChord& other) const;
-    bool empty() const { return key_code == KeyCode::NONE; }
+    bool empty() const {
+      return key_code == KeyCode::NONE;
+    }
   };
 
   struct KeyChordHash {
     size_t operator()(const KeyChord& chord) const noexcept {
-      return std::hash<uint32_t>()((static_cast<uint32_t>(chord.key_code) << 8) | static_cast<uint32_t>(chord.modifiers));
+      return std::hash<uint32_t>()((static_cast<uint32_t>(chord.key_code) << 8)
+                                   | static_cast<uint32_t>(chord.modifiers));
     }
   };
 
@@ -106,14 +115,15 @@ namespace NS_SWEETEDITOR {
     TRIGGER_COMPLETION,
   };
 
-  inline constexpr EditorCommandId EDITOR_BUILTIN_COMMAND_MAX = static_cast<EditorCommandId>(EditorBuiltinCommand::TRIGGER_COMPLETION);
+  inline constexpr EditorCommandId EDITOR_BUILTIN_COMMAND_MAX =
+      static_cast<EditorCommandId>(EditorBuiltinCommand::TRIGGER_COMPLETION);
 
   /// A key binding entry: one or two chords mapped to a command
   struct SE_PROTOCOL_VALUE(keymap) KeyBinding {
     KeyChord first;
-    KeyChord second;  // second.empty() means single-chord binding
+    KeyChord second; // second.empty() means single-chord binding
     SE_PROTOCOL_WIRE(u32)
-    EditorCommandId command {0};
+    EditorCommandId command{0};
   };
 
   /// Mapping entry: either a direct command or a sub-map for multi-chord bindings
@@ -137,14 +147,14 @@ namespace NS_SWEETEDITOR {
 
   /// Result of a key resolve operation
   enum class ResolveStatus : uint8_t {
-    MATCHED,    // A command was resolved
-    PENDING,    // Waiting for the second chord
-    NO_MATCH,   // No binding found
+    MATCHED,  // A command was resolved
+    PENDING,  // Waiting for the second chord
+    NO_MATCH, // No binding found
   };
 
   struct ResolveResult {
-    ResolveStatus status {ResolveStatus::NO_MATCH};
-    EditorCommandId command {0};
+    ResolveStatus status{ResolveStatus::NO_MATCH};
+    EditorCommandId command{0};
   };
 
   /// Stateful resolver that owns a KeyMap and handles multi-chord key sequences with timeout
@@ -159,15 +169,17 @@ namespace NS_SWEETEDITOR {
     ResolveResult resolve(const KeyChord& chord);
 
     /// Whether a multi-chord sequence is pending
-    bool isPending() const { return m_pending_; }
+    bool isPending() const {
+      return m_pending_;
+    }
 
   private:
     void cancelPending();
     int64_t m_pending_timeout_ms_;
     KeyMap m_key_map_;
-    bool m_pending_ {false};
-    int64_t m_pending_time_ {0};
-    const HashMap<KeyChord, EditorCommandId, KeyChordHash>* m_pending_sub_map_ {nullptr};
+    bool m_pending_{false};
+    int64_t m_pending_time_{0};
+    const HashMap<KeyChord, EditorCommandId, KeyChordHash>* m_pending_sub_map_{nullptr};
   };
 } // namespace NS_SWEETEDITOR
 #endif //SWEETEDITOR_KEYMAP_H

@@ -31,29 +31,25 @@ namespace NS_SWEETEDITOR {
   }
 
   bool isPrimaryPointerEnd(EventType type) {
-    return type == EventType::TOUCH_UP
-        || type == EventType::MOUSE_UP
-        || type == EventType::TOUCH_CANCEL;
+    return type == EventType::TOUCH_UP || type == EventType::MOUSE_UP || type == EventType::TOUCH_CANCEL;
   }
 
   bool HitTarget::operator==(const HitTarget& other) const {
-    return type == other.type
-        && line == other.line
-        && column == other.column
-        && icon_id == other.icon_id
-        && color_value == other.color_value;
+    return type == other.type && line == other.line && column == other.column && icon_id == other.icon_id
+           && color_value == other.color_value;
   }
 
   bool HitTarget::operator!=(const HitTarget& other) const {
     return !(*this == other);
   }
 
-#pragma region [Class: GestureEvent]
+#pragma region[Class: GestureEvent]
   GestureEvent GestureEvent::create(EventType type, const uint8_t pointer_count, const float* points) {
     return createWithModifiers(type, pointer_count, points, KeyModifier::NONE);
   }
 
-  GestureEvent GestureEvent::createWithModifiers(EventType type, const uint8_t pointer_count, const float* points, KeyModifier modifiers) {
+  GestureEvent GestureEvent::createWithModifiers(EventType type, const uint8_t pointer_count, const float* points,
+                                                 KeyModifier modifiers) {
     GestureEvent event;
     event.type = type;
     event.modifiers = modifiers;
@@ -64,13 +60,14 @@ namespace NS_SWEETEDITOR {
   }
 
   U8String GestureEvent::dump() const {
-    return "GestureEvent {type = " + std::to_string(static_cast<int32_t>(type)) + ", point size = " + std::to_string(points.size())
-         + ", modifiers = " + std::to_string(static_cast<uint8_t>(modifiers)) + "}";
+    return "GestureEvent {type = " + std::to_string(static_cast<int32_t>(type)) + ", point size = "
+           + std::to_string(points.size()) + ", modifiers = " + std::to_string(static_cast<uint8_t>(modifiers)) + "}";
   }
 #pragma endregion
 
-#pragma region [Class: GestureHandler]
-  GestureHandler::GestureHandler(const TouchConfig& config): m_config_(config) {
+#pragma region[Class: GestureHandler]
+  GestureHandler::GestureHandler(const TouchConfig& config)
+      : m_config_(config) {
   }
 
   void GestureHandler::resetState() {
@@ -88,11 +85,8 @@ namespace NS_SWEETEDITOR {
   }
 
   GestureResult GestureHandler::handleGestureEvent(const GestureEvent& event) {
-    if (event.points.empty()
-        && event.type != EventType::MOUSE_WHEEL
-        && event.type != EventType::DIRECT_SCALE
-        && event.type != EventType::DIRECT_SCROLL
-        && event.type != EventType::TOUCH_CANCEL) {
+    if (event.points.empty() && event.type != EventType::MOUSE_WHEEL && event.type != EventType::DIRECT_SCALE
+        && event.type != EventType::DIRECT_SCROLL && event.type != EventType::TOUCH_CANCEL) {
       LOGD("GestureHandler::handleGestureEvent, points empty");
       return {};
     }
@@ -110,7 +104,7 @@ namespace NS_SWEETEDITOR {
       m_down_time_ = current_time;
       // Double-tap check
       if (current_time - m_last_tap_time_ <= m_config_.double_tap_timeout
-        && m_down_points_[0].distance(m_last_tap_point_) < m_config_.touch_slop) {
+          && m_down_points_[0].distance(m_last_tap_point_) < m_config_.touch_slop) {
         m_is_tap_ = false;
         m_last_tap_time_ = 0;
         return {GestureType::DOUBLE_TAP, m_down_points_[0], 1, 0, 0, m_active_modifiers_};
@@ -210,7 +204,7 @@ namespace NS_SWEETEDITOR {
       // to init single-touch state, so later TOUCH_MOVE delta is correct
       if (!event.points.empty()) {
         m_last_move_point_ = event.points[0];
-        m_down_points_ = { event.points[0] };
+        m_down_points_ = {event.points[0]};
       } else {
         m_down_points_.clear();
       }
@@ -341,8 +335,9 @@ namespace NS_SWEETEDITOR {
   }
 #pragma endregion
 
-#pragma region [Class: FlingAnimator]
-  FlingAnimator::FlingAnimator(const TouchConfig& config): m_config_(config) {
+#pragma region[Class: FlingAnimator]
+  FlingAnimator::FlingAnimator(const TouchConfig& config)
+      : m_config_(config) {
   }
 
   void FlingAnimator::recordSample(const PointF& point, int64_t timestamp_ms) {

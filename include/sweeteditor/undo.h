@@ -18,7 +18,7 @@ namespace NS_SWEETEDITOR {
     CaretState caret_after;
     std::chrono::steady_clock::time_point timestamp;
     /// Whether this entry may coalesce with an adjacent character edit.
-    bool allows_merge {false};
+    bool allows_merge{false};
 
     /// Check whether this entry can merge with the next continuous character edit.
     bool canMergeWith(const HistoryEntry& next) const;

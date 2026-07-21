@@ -6,7 +6,7 @@
 #include <sweeteditor/foundation.h>
 
 namespace NS_SWEETEDITOR {
-#pragma region [Class: TextPosition]
+#pragma region[Class: TextPosition]
   bool TextPosition::operator<(const TextPosition& other) const {
     if (line != other.line) return line < other.line;
     return column < other.column;
@@ -42,7 +42,7 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
-#pragma region [Class: TextRange]
+#pragma region[Class: TextRange]
   bool TextRange::operator==(const TextRange& other) const {
     return start == other.start && end == other.end;
   }
@@ -112,7 +112,7 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
-#pragma region [Class: Size]
+#pragma region[Class: Size]
   bool Size::isEmpty() const {
     return width <= 0 || height <= 0;
   }
@@ -123,7 +123,7 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
-#pragma region [Class: IntRange]
+#pragma region[Class: IntRange]
   bool IntRange::isEmpty() const {
     return end < start;
   }
@@ -141,7 +141,7 @@ namespace NS_SWEETEDITOR {
   }
 #pragma endregion
 
-#pragma region [Class: PointF]
+#pragma region[Class: PointF]
   float PointF::distance(const PointF& other) const {
     return sqrtf(powf(other.x - x, 2) + powf(other.y - y, 2));
   }

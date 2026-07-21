@@ -7,9 +7,7 @@
 using namespace NS_SWEETEDITOR;
 
 namespace {
-  EditorRenderModel renderInvisibleModel(const U8String& text,
-                                         WhitespaceRenderMode mode,
-                                         bool line_breaks = false,
+  EditorRenderModel renderInvisibleModel(const U8String& text, WhitespaceRenderMode mode, bool line_breaks = false,
                                          TextRange selection = {}) {
     SharedPtr<TextMeasurer> measurer = makeShared<FixedWidthTextMeasurer>(10.0f);
     SharedPtr<DecorationManager> decorations = makeShared<DecorationManager>();
@@ -21,15 +19,15 @@ namespace {
     layout.setWrapMode(WrapMode::NONE);
     layout.setRenderLineBreaks(line_breaks);
 
-    PresentationContext context;
-    context.render_whitespace = mode;
+    VisualRunInput input;
+    input.whitespace_mode = mode;
     if (selection.start != selection.end) {
-      context.has_selection = true;
-      context.selection_range = selection;
+      input.selection_range = selection;
     }
 
     EditorRenderModel model;
-    layout.layoutVisibleLines(model, context);
+    layout.layoutVisibleLines(model);
+    layout.finalizeVisualRuns(model, input);
     return model;
   }
 
@@ -88,10 +86,7 @@ TEST_CASE("TextLayout materializes whitespace markers by render mode") {
 
 TEST_CASE("TextLayout materializes whitespace markers only inside selection") {
   const U8String text = "a b c";
-  EditorRenderModel model = renderInvisibleModel(text,
-                                                 WhitespaceRenderMode::SELECTION,
-                                                 false,
-                                                 {{0, 1}, {0, 4}});
+  EditorRenderModel model = renderInvisibleModel(text, WhitespaceRenderMode::SELECTION, false, {{0, 1}, {0, 4}});
   CHECK(countWhitespaceColumns(model) == 2);
 }
 
@@ -112,7 +107,7 @@ TEST_CASE("TextLayout hit test on line break marker maps to line end") {
   layout.setRenderLineBreaks(true);
 
   EditorRenderModel model;
-  layout.layoutVisibleLines(model, PresentationContext {});
+  layout.layoutVisibleLines(model);
   REQUIRE(countLineBreakMarkers(model) == 1);
 
   PointF line_end = layout.getPositionScreenCoord({0, 3});

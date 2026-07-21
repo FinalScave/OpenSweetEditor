@@ -72,12 +72,10 @@ namespace NS_SWEETEDITOR {
         return {};
       }
 
-      auto it = std::upper_bound(snapshot.line_start_offsets.begin(),
-                                 snapshot.line_start_offsets.end(),
-                                 offset);
+      auto it = std::upper_bound(snapshot.line_start_offsets.begin(), snapshot.line_start_offsets.end(), offset);
       size_t line = it == snapshot.line_start_offsets.begin()
-          ? 0
-          : static_cast<size_t>(std::distance(snapshot.line_start_offsets.begin(), it) - 1);
+                        ? 0
+                        : static_cast<size_t>(std::distance(snapshot.line_start_offsets.begin(), it) - 1);
       line = std::min(line, snapshot.line_lengths.size() - 1);
       const size_t line_start = snapshot.line_start_offsets[line];
       const size_t column = std::min(offset - line_start, snapshot.line_lengths[line]);
@@ -108,7 +106,8 @@ namespace NS_SWEETEDITOR {
 
       const bool left_word = start > 0 && TextBoundaryUtil::isWordChar(snapshot.text[start - 1]);
       const bool first_word = start < snapshot.text.size() && TextBoundaryUtil::isWordChar(snapshot.text[start]);
-      const bool last_word = end > 0 && end <= snapshot.text.size() && TextBoundaryUtil::isWordChar(snapshot.text[end - 1]);
+      const bool last_word =
+          end > 0 && end <= snapshot.text.size() && TextBoundaryUtil::isWordChar(snapshot.text[end - 1]);
       const bool right_word = end < snapshot.text.size() && TextBoundaryUtil::isWordChar(snapshot.text[end]);
       return (!left_word || !first_word) && (!last_word || !right_word);
     }
@@ -213,10 +212,10 @@ namespace NS_SWEETEDITOR {
             if (capture.matched) {
               const size_t capture_start_wide = base_wide + static_cast<size_t>(match.position(i));
               const size_t capture_end_wide = capture_start_wide + static_cast<size_t>(match.length(i));
-              const size_t capture_start_u16 = wide_text.wide_to_u16[
-                  std::min(capture_start_wide, wide_text.wide_to_u16.size() - 1)];
-              const size_t capture_end_u16 = wide_text.wide_to_u16[
-                  std::min(capture_end_wide, wide_text.wide_to_u16.size() - 1)];
+              const size_t capture_start_u16 =
+                  wide_text.wide_to_u16[std::min(capture_start_wide, wide_text.wide_to_u16.size() - 1)];
+              const size_t capture_end_u16 =
+                  wide_text.wide_to_u16[std::min(capture_end_wide, wide_text.wide_to_u16.size() - 1)];
               capture.range = rangeFromOffsets(snapshot, capture_start_u16, capture_end_u16);
               capture.text = textFromOffsets(snapshot, capture_start_u16, capture_end_u16);
             }
@@ -257,15 +256,14 @@ namespace NS_SWEETEDITOR {
     class StdSearchEngine final : public SearchEngine {
     public:
       SearchResult search(const SearchSnapshot& snapshot) const override {
-        SearchResult result = snapshot.request.options.use_regex
-            ? executeRegexSearch(snapshot)
-            : executeLiteralSearch(snapshot);
+        SearchResult result =
+            snapshot.request.options.use_regex ? executeRegexSearch(snapshot) : executeLiteralSearch(snapshot);
         if (result.state.status != SearchStatus::FAILED && result.state.status != SearchStatus::INACTIVE) {
           result.state.status = SearchStatus::READY;
         }
         result.state.match_count = static_cast<uint32_t>(result.matches.size());
-        result.state.has_current_match = result.state.current_index >= 0
-            && static_cast<size_t>(result.state.current_index) < result.matches.size();
+        result.state.has_current_match =
+            result.state.current_index >= 0 && static_cast<size_t>(result.state.current_index) < result.matches.size();
         if (result.state.has_current_match) {
           result.state.current_range = result.matches[static_cast<size_t>(result.state.current_index)].range;
         } else {
@@ -278,8 +276,7 @@ namespace NS_SWEETEDITOR {
         return result;
       }
 
-      U8String buildReplacement(const SearchMatch& match,
-                                const U8String& replacement,
+      U8String buildReplacement(const SearchMatch& match, const U8String& replacement,
                                 const SearchOptions& options) const override {
         if (!options.use_regex) {
           return replacement;
@@ -308,8 +305,7 @@ namespace NS_SWEETEDITOR {
           if (next >= '0' && next <= '9') {
             size_t capture_index = static_cast<size_t>(next - '0');
             size_t consumed = 1;
-            if (i + 2 < replacement.size()
-                && std::isdigit(static_cast<unsigned char>(replacement[i + 2]))) {
+            if (i + 2 < replacement.size() && std::isdigit(static_cast<unsigned char>(replacement[i + 2]))) {
               const size_t two_digit = capture_index * 10 + static_cast<size_t>(replacement[i + 2] - '0');
               if (two_digit < match.captures.size()) {
                 capture_index = two_digit;
@@ -337,9 +333,7 @@ namespace NS_SWEETEDITOR {
         return result;
       }
 
-      U8String buildReplacement(const SearchMatch&,
-                                const U8String& replacement,
-                                const SearchOptions&) const override {
+      U8String buildReplacement(const SearchMatch&, const U8String& replacement, const SearchOptions&) const override {
         return replacement;
       }
     };

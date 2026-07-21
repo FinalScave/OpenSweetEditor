@@ -11,7 +11,6 @@
 #include <sweeteditor/ime_types.h>
 #include <sweeteditor/layout.h>
 #include <sweeteditor/interaction.h>
-#include <sweeteditor/render_composer.h>
 #include <sweeteditor/undo.h>
 #include <sweeteditor/linked_editing.h>
 #include <sweeteditor/search.h>
@@ -19,64 +18,66 @@
 
 namespace NS_SWEETEDITOR {
 
-  struct SE_PROTOCOL_OUT(action) EditorActionResult {
-    bool handled {false};
-    bool needs_redraw {false};
-    SE_PROTOCOL_WIRE(enum_i32)
-    EditorActionSource source {EditorActionSource::NONE};
-    SE_PROTOCOL_WIRE(enum_i32)
-    TextChangeKind text_change_kind {TextChangeKind::NONE};
+  class RenderModelComposer;
 
-    bool content_changed {false};
-    bool cursor_changed {false};
-    bool selection_changed {false};
-    bool scroll_changed {false};
-    bool scale_changed {false};
-    bool pointer_cursor_changed {false};
-    bool composition_changed {false};
-    bool decoration_changed {false};
+  struct SE_PROTOCOL_OUT(action) EditorActionResult {
+    bool handled{false};
+    bool needs_redraw{false};
+    SE_PROTOCOL_WIRE(enum_i32)
+    EditorActionSource source{EditorActionSource::NONE};
+    SE_PROTOCOL_WIRE(enum_i32)
+    TextChangeKind text_change_kind{TextChangeKind::NONE};
+
+    bool content_changed{false};
+    bool cursor_changed{false};
+    bool selection_changed{false};
+    bool scroll_changed{false};
+    bool scale_changed{false};
+    bool pointer_cursor_changed{false};
+    bool composition_changed{false};
+    bool decoration_changed{false};
 
     /// AnimationFlag bit set describing active core-managed animations.
-    uint32_t animation_flags {0};
+    uint32_t animation_flags{0};
     /// Delay before the next animation tick; zero requests the next display frame.
-    uint32_t next_animation_delay_ms {0};
+    uint32_t next_animation_delay_ms{0};
     /// InteractionFlag bit set describing active input interactions.
-    uint32_t interaction_flags {0};
+    uint32_t interaction_flags{0};
 
     Vector<TextChange> changes;
 
     TextPosition cursor_before;
     TextPosition cursor_after;
-    bool has_selection_before {false};
-    bool has_selection_after {false};
+    bool has_selection_before{false};
+    bool has_selection_after{false};
     TextRange selection_before;
     TextRange selection_after;
 
-    float scroll_x_before {0};
-    float scroll_y_before {0};
-    float scroll_x_after {0};
-    float scroll_y_after {0};
-    float scale_before {1};
-    float scale_after {1};
+    float scroll_x_before{0};
+    float scroll_y_before{0};
+    float scroll_x_after{0};
+    float scroll_y_after{0};
+    float scale_before{1};
+    float scale_after{1};
 
     SE_PROTOCOL_WIRE(enum_i32)
-    PointerCursorType pointer_cursor_before {PointerCursorType::TEXT};
+    PointerCursorType pointer_cursor_before{PointerCursorType::TEXT};
     SE_PROTOCOL_WIRE(enum_i32)
-    PointerCursorType pointer_cursor_after {PointerCursorType::TEXT};
+    PointerCursorType pointer_cursor_after{PointerCursorType::TEXT};
 
     SE_PROTOCOL_WIRE(enum_i32)
-    ImeHostAction ime_host_action {ImeHostAction::NONE};
+    ImeHostAction ime_host_action{ImeHostAction::NONE};
     ImeState ime_state;
     SE_PROTOCOL_WIRE(enum_i32)
-    GestureType gesture_type {GestureType::UNDEFINED};
+    GestureType gesture_type{GestureType::UNDEFINED};
     SE_PROTOCOL_WIRE(enum_i32)
-    EventType gesture_event_type {EventType::UNDEFINED};
-    PointF tap_point {};
+    EventType gesture_event_type{EventType::UNDEFINED};
+    PointF tap_point{};
     HitTarget hit_target;
     SE_PROTOCOL_WIRE(i32)
-    KeyModifier modifiers {KeyModifier::NONE};
+    KeyModifier modifiers{KeyModifier::NONE};
     SE_PROTOCOL_WIRE(i32)
-    EditorCommandId command {0};
+    EditorCommandId command{0};
 
     bool hasAnimationFlag(AnimationFlag flag) const {
       return (animation_flags & static_cast<uint32_t>(flag)) != 0;
@@ -87,8 +88,7 @@ namespace NS_SWEETEDITOR {
     }
 
     bool needsViewportMotion() const {
-      return hasAnimationFlag(AnimationFlag::EDGE_SCROLL)
-          || hasAnimationFlag(AnimationFlag::FLING);
+      return hasAnimationFlag(AnimationFlag::EDGE_SCROLL) || hasAnimationFlag(AnimationFlag::FLING);
     }
 
     bool hasInteractionFlag(InteractionFlag flag) const {
@@ -104,6 +104,7 @@ namespace NS_SWEETEDITOR {
   class EditorCore {
   public:
     explicit EditorCore(const SharedPtr<TextMeasurer>& measurer, const EditorOptions& options);
+    ~EditorCore();
     EditorCore(const EditorCore&) = delete;
     EditorCore& operator=(const EditorCore&) = delete;
     EditorCore(EditorCore&&) = delete;
@@ -461,8 +462,8 @@ namespace NS_SWEETEDITOR {
 
     ImeState getImeState(uint64_t session_id) const;
 
-    ImeTextContext getImeContext(uint64_t session_id, ImeTextSource source,
-                                 int64_t start_utf16, int64_t length_utf16) const;
+    ImeTextContext getImeContext(uint64_t session_id, ImeTextSource source, int64_t start_utf16,
+                                 int64_t length_utf16) const;
 
     /// Get current composition state
     const std::optional<CompositionState>& getCompositionState() const;
@@ -676,18 +677,18 @@ namespace NS_SWEETEDITOR {
   private:
     struct PointerProbeResult {
       HitTarget hot_target;
-      PointerCursorType cursor_type {PointerCursorType::TEXT};
+      PointerCursorType cursor_type{PointerCursorType::TEXT};
     };
 
     struct ActionSnapshot {
       CaretState caret;
-      float scroll_x {0};
-      float scroll_y {0};
-      float scale {1};
-      PointerCursorType pointer_cursor_type {PointerCursorType::TEXT};
+      float scroll_x{0};
+      float scroll_y{0};
+      float scale{1};
+      PointerCursorType pointer_cursor_type{PointerCursorType::TEXT};
       HitTarget active_hit_target;
       std::optional<CompositionState> composition;
-      bool ime_session_active {false};
+      bool ime_session_active{false};
     };
 
     struct EditTransaction;
@@ -699,7 +700,7 @@ namespace NS_SWEETEDITOR {
     SharedPtr<DecorationManager> m_decorations_;
     UniquePtr<TextLayout> m_text_layout_;
     UniquePtr<EditorInteraction> m_interaction_;
-    UniquePtr<RenderComposer> m_render_composer_;
+    UniquePtr<RenderModelComposer> m_render_model_composer_;
     UniquePtr<UndoManager> m_undo_manager_;
     KeyResolver m_key_resolver_;
 
@@ -710,20 +711,20 @@ namespace NS_SWEETEDITOR {
     /// Unified caret state.
     CaretState m_caret_;
     /// Horizontal screen coordinate retained across consecutive vertical moves.
-    bool m_has_preferred_cursor_x_ {false};
-    float m_preferred_cursor_x_ {0};
+    bool m_has_preferred_cursor_x_{false};
+    float m_preferred_cursor_x_{0};
 
     std::optional<ImeSessionState> m_ime_session_;
-    uint64_t m_next_ime_session_id_ {1};
+    uint64_t m_next_ime_session_id_{1};
 
     /// Linked editing session (nullptr means not in linked editing mode)
     UniquePtr<LinkedEditingSession> m_linked_editing_session_;
 
     /// Bracket pair list (default (){}[])
-    Vector<BracketPair> m_bracket_pairs_ {
-      {U'(', U')'},
-      {U'{', U'}'},
-      {U'[', U']'},
+    Vector<BracketPair> m_bracket_pairs_{
+        {U'(', U')'},
+        {U'{', U'}'},
+        {U'[', U']'},
     };
 
     /// Auto-closing pair list (empty = disabled)
@@ -732,26 +733,26 @@ namespace NS_SWEETEDITOR {
     /// Exact bracket match positions set from outside
     TextPosition m_external_bracket_open_;
     TextPosition m_external_bracket_close_;
-    bool m_has_external_brackets_ {false};
+    bool m_has_external_brackets_{false};
 
-    UniquePtr<std::atomic<uint64_t>> m_search_generation_ {makeUnique<std::atomic<uint64_t>>(0)};
+    UniquePtr<std::atomic<uint64_t>> m_search_generation_{makeUnique<std::atomic<uint64_t>>(0)};
     SearchState m_search_state_;
     Vector<SearchMatch> m_search_matches_;
     Vector<Vector<uint32_t>> m_search_match_indices_by_line_;
     SharedPtr<SearchResult> m_pending_search_result_;
-    SharedPtr<const SearchState> m_published_search_state_ {makeShared<const SearchState>(SearchState {})};
+    SharedPtr<const SearchState> m_published_search_state_{makeShared<const SearchState>(SearchState{})};
 
     /// Hovered clickable hit target for interactive runs such as CodeLens and Link.
     HitTarget m_hover_hit_target_;
     /// Pressed clickable hit target.
     HitTarget m_press_hit_target_;
     /// Whether the primary mouse button is currently pressed.
-    bool m_mouse_button_down_ {false};
+    bool m_mouse_button_down_{false};
     /// Last mouse point reported by the platform for pointer presentation refresh.
     PointF m_last_mouse_point_;
-    bool m_has_last_mouse_point_ {false};
+    bool m_has_last_mouse_point_{false};
     /// Current pointer cursor type for the last observed mouse location.
-    PointerCursorType m_pointer_cursor_type_ {PointerCursorType::TEXT};
+    PointerCursorType m_pointer_cursor_type_{PointerCursorType::TEXT};
 
     /// Max character distance for built-in bracket scan
     static constexpr size_t kMaxBracketScanChars = 10000;
@@ -766,8 +767,6 @@ namespace NS_SWEETEDITOR {
 
 #pragma region [Rendering & Input Internals]
 
-    void collectLineLayoutDecorations(size_t line, LineLayoutDecorations& decorations) const;
-    void collectTextPresentationEffectsForLine(size_t line, Vector<TextPresentationEffect>& effects) const;
     /// Presentation-state helpers for clickable decoration hot targets.
     void clearHoverHitTarget();
     void clearPressHitTarget();
@@ -814,7 +813,8 @@ namespace NS_SWEETEDITOR {
     TextEditResult applyLinkedEditWithResult(const TextRange& range, const U8String& text);
     /// Linked editing: jump to target tab stop and select default text
     void activateCurrentTabStop();
-    TextPosition clampDocumentPosition(const TextPosition& position, bool prefer_right, bool line_overflow_to_end) const;
+    TextPosition clampDocumentPosition(const TextPosition& position, bool prefer_right,
+                                       bool line_overflow_to_end) const;
     TextRange clampDocumentRange(const TextRange& range, bool collapse_point_range, bool line_overflow_to_end) const;
     void setCursorPositionInternal(const TextPosition& position, CaretAffinity affinity = CaretAffinity::DOWNSTREAM,
                                    bool preserve_preferred_cursor_x = false);
@@ -822,8 +822,7 @@ namespace NS_SWEETEDITOR {
                               bool preserve_preferred_cursor_x = false);
     /// Update cursor movement (handle selection extension logic)
     void moveCursorTo(const TextPosition& new_pos, bool extend_selection,
-                      CaretAffinity affinity = CaretAffinity::DOWNSTREAM,
-                      bool preserve_preferred_cursor_x = false);
+                      CaretAffinity affinity = CaretAffinity::DOWNSTREAM, bool preserve_preferred_cursor_x = false);
     void restoreCaretState(const CaretState& caret);
     bool hasDistinctCaretAffinities(const TextPosition& position);
     size_t documentUtf16Length() const;
@@ -846,8 +845,8 @@ namespace NS_SWEETEDITOR {
     /// Apply non-overlapping replacements that share one pre-edit coordinate space.
     TextEditResult applyEditBatch(const Vector<DocumentReplacement>& replacements, bool update_fold_state = true);
     /// Build and store one atomic history entry after the final caret is known.
-    void recordHistory(const Vector<TextChange>& changes, const CaretState& caret_before,
-                       const CaretState& caret_after, bool allows_merge = false);
+    void recordHistory(const Vector<TextChange>& changes, const CaretState& caret_before, const CaretState& caret_after,
+                       bool allows_merge = false);
     /// Unified edit entry: apply document edit and record undo operation
     /// @param range Range to replace (for pure insert, start == end)
     /// @param new_text New text (for pure delete, use empty string)
@@ -888,19 +887,19 @@ namespace NS_SWEETEDITOR {
     void appendLinkedCompositionEdits(const CompositionState& state, const TextRange& baseline_range,
                                       const U8String& final_text_raw, EditTransaction& transaction);
     bool linkedRangesAffectedByChanges(const Vector<TextChange>& changes) const;
-    void settleComposition(const U8String& final_text_raw, EditTransaction& transaction,
-                           bool replace_current_text);
+    void settleComposition(const U8String& final_text_raw, EditTransaction& transaction, bool replace_current_text);
     void cancelComposition(EditTransaction& transaction);
     TextEditResult commitTransaction(EditTransaction& transaction);
-    ImeActionResult applyTextUpdatePlan(
-        const Vector<DocumentReplacement>& replacements, const std::optional<TextRange>& composition_after,
-        const std::optional<TextRange>& rollover_baseline, const U8String& composition_text,
-        const CaretState& caret_after, bool finish_after);
+    ImeActionResult applyTextUpdatePlan(const Vector<DocumentReplacement>& replacements,
+                                        const std::optional<TextRange>& composition_after,
+                                        const std::optional<TextRange>& rollover_baseline,
+                                        const U8String& composition_text, const CaretState& caret_after,
+                                        bool finish_after);
     ImeActionResult applyCommandBatch(const Vector<ImeCommand>& commands);
     TextEditResult finishPreedit();
     TextEditResult cancelPreedit();
-    Vector<TextRange> deletionRangesForCaret(const CaretState& caret, size_t before_length,
-                                             size_t after_length, ImeTextUnit text_unit) const;
+    Vector<TextRange> deletionRangesForCaret(const CaretState& caret, size_t before_length, size_t after_length,
+                                             ImeTextUnit text_unit) const;
     ImeActionResult rejectImeMutation();
     ImeState buildImeState() const;
     ImeState emptyImeState(ImeResultCode result_code) const;

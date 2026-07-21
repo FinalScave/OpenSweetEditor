@@ -11,42 +11,42 @@ namespace NS_SWEETEDITOR {
 
   struct InteractionContext {
     TouchConfig touch_config;
-    EditorSettings* settings {nullptr};
-    ViewState* view_state {nullptr};
-    Size* viewport {nullptr};
-    TextLayout* text_layout {nullptr};
-    CaretState* caret {nullptr};
+    EditorSettings* settings{nullptr};
+    ViewState* view_state{nullptr};
+    Size* viewport{nullptr};
+    TextLayout* text_layout{nullptr};
+    CaretState* caret{nullptr};
   };
 
   struct GestureIntent {
-    bool place_cursor {false};
-    bool select_word {false};
-    bool toggle_fold {false};
-    size_t fold_line {0};
-    bool cancel_linked_editing {false};
+    bool place_cursor{false};
+    bool select_word{false};
+    bool toggle_fold{false};
+    size_t fold_line{0};
+    bool cancel_linked_editing{false};
   };
 
   struct InteractionResult {
     GestureResult gesture;
     GestureIntent intent;
-    bool handled {false};
-    bool needs_redraw {false};
+    bool handled{false};
+    bool needs_redraw{false};
   };
 
   struct InteractionAnimationState {
-    uint32_t flags {0};
-    uint32_t next_tick_delay_ms {0};
-    bool needs_redraw {false};
+    uint32_t flags{0};
+    uint32_t next_tick_delay_ms{0};
+    bool needs_redraw{false};
   };
 
   class EditorInteraction {
   public:
     struct PendingScaleAnchor {
-      bool active {false};
+      bool active{false};
       PointF focus_screen;
       TextPosition anchor_position;
-      float offset_x {0};
-      float offset_y {0};
+      float offset_x{0};
+      float offset_y{0};
     };
 
     explicit EditorInteraction(const InteractionContext& context);
@@ -81,14 +81,14 @@ namespace NS_SWEETEDITOR {
     };
 
     struct PointerInteractionState {
-      PointerInteractionOwner owner {PointerInteractionOwner::NONE};
+      PointerInteractionOwner owner{PointerInteractionOwner::NONE};
       PointF start_point;
-      float start_scroll_x {0};
-      float start_scroll_y {0};
-      float travel_x {0};
-      float travel_y {0};
-      float max_scroll_x {0};
-      float max_scroll_y {0};
+      float start_scroll_x{0};
+      float start_scroll_y{0};
+      float travel_x{0};
+      float travel_y{0};
+      float max_scroll_x{0};
+      float max_scroll_y{0};
 
       void reset() {
         *this = {};
@@ -96,18 +96,18 @@ namespace NS_SWEETEDITOR {
     };
 
     struct EdgeScrollState {
-      bool active {false};
-      float speed {0};
+      bool active{false};
+      float speed{0};
       PointF last_screen_point;
-      bool selection_drag {false};
-      bool is_mouse {false};
-      int64_t last_tick_time {0};
+      bool selection_drag{false};
+      bool is_mouse{false};
+      int64_t last_tick_time{0};
     };
 
     struct TransientScrollbarTimeline {
-      int64_t fade_in_start_ms {0};
-      int64_t last_interaction_ms {0};
-      bool running {false};
+      int64_t fade_in_start_ms{0};
+      int64_t last_interaction_ms{0};
+      bool running{false};
 
       bool active() const {
         return running;
@@ -121,10 +121,10 @@ namespace NS_SWEETEDITOR {
     };
 
     struct InteractionLifecycleState {
-      bool primary_pointer_active {false};
-      bool selection_drag_active {false};
-      bool pointer_viewport_gesture_active {false};
-      uint32_t direct_viewport_gesture_depth {0};
+      bool primary_pointer_active{false};
+      bool selection_drag_active{false};
+      bool pointer_viewport_gesture_active{false};
+      uint32_t direct_viewport_gesture_depth{0};
 
       void resetPointer() {
         primary_pointer_active = false;
@@ -163,12 +163,12 @@ namespace NS_SWEETEDITOR {
     InteractionLifecycleState m_interaction_lifecycle_;
 
     PendingScaleAnchor m_pending_scale_anchor_;
-    bool m_scale_gesture_active_ {false};
+    bool m_scale_gesture_active_{false};
 
     PointF m_cached_start_handle_pos_;
     PointF m_cached_end_handle_pos_;
-    float m_cached_handle_height_ {0};
-    bool m_cached_handles_valid_ {false};
+    float m_cached_handle_height_{0};
+    bool m_cached_handles_valid_{false};
 
     EdgeScrollState m_edge_scroll_;
   };
