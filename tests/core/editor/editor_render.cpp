@@ -64,11 +64,9 @@ TEST_CASE("EditorCore buildRenderModel resolves role foregrounds in core") {
   const VisualRun& codelens_run = findNthCodeLensRun(codelens_line, 0);
   CHECK(codelens_run.style.color == codelens_color);
 
-  const float hover_point[2] = {
-      link_runs.front()->x + link_runs.front()->width * 0.5f,
-      link_runs.front()->y
-  };
-  editor.handleGestureEvent(GestureEvent::createWithModifiers(EventType::MOUSE_MOVE, 1, hover_point, KeyModifier::CTRL));
+  const float hover_point[2] = {link_runs.front()->x + link_runs.front()->width * 0.5f, link_runs.front()->y};
+  editor.handleGestureEvent(
+      GestureEvent::createWithModifiers(EventType::MOUSE_MOVE, 1, hover_point, KeyModifier::CTRL));
 
   model = {};
   editor.buildRenderModel(model);
@@ -92,13 +90,9 @@ TEST_CASE("EditorCore handleGestureEvent tap on CodeLens keeps cursor unchanged"
   editor.buildRenderModel(model);
   const VisualLine& codelens_line = findCodeLensVisualLine(model, 0);
   const VisualRun& codelens_run = findNthCodeLensRun(codelens_line, 0);
-  const float point[2] = {
-      codelens_run.x + codelens_run.width * 0.5f,
-      codelens_run.y
-  };
+  const float point[2] = {codelens_run.x + codelens_run.width * 0.5f, codelens_run.y};
 
-  const EditorActionResult result = editor.handleGestureEvent(
-      GestureEvent::create(EventType::MOUSE_DOWN, 1, point));
+  const EditorActionResult result = editor.handleGestureEvent(GestureEvent::create(EventType::MOUSE_DOWN, 1, point));
 
   CHECK(result.hit_target.type == HitTargetType::CODELENS);
   CHECK(result.hit_target.column == 2);
@@ -126,10 +120,7 @@ TEST_CASE("EditorCore buildRenderModel activates only hovered CodeLens run") {
   CHECK_FALSE(first_initial.active);
   CHECK_FALSE(second_initial.active);
 
-  const float hover_first[2] = {
-      first_initial.x + first_initial.width * 0.5f,
-      first_initial.y
-  };
+  const float hover_first[2] = {first_initial.x + first_initial.width * 0.5f, first_initial.y};
   editor.handleGestureEvent(GestureEvent::create(EventType::MOUSE_MOVE, 1, hover_first));
 
   model = {};
@@ -139,10 +130,7 @@ TEST_CASE("EditorCore buildRenderModel activates only hovered CodeLens run") {
   CHECK_FALSE(findNthCodeLensRun(after_first_hover, 1).active);
 
   const VisualRun& second_hover_target = findNthCodeLensRun(after_first_hover, 1);
-  const float hover_second[2] = {
-      second_hover_target.x + second_hover_target.width * 0.5f,
-      second_hover_target.y
-  };
+  const float hover_second[2] = {second_hover_target.x + second_hover_target.width * 0.5f, second_hover_target.y};
   editor.handleGestureEvent(GestureEvent::create(EventType::MOUSE_MOVE, 1, hover_second));
 
   model = {};
@@ -176,10 +164,7 @@ TEST_CASE("EditorCore buildRenderModel keeps CodeLens active while mouse is pres
   editor.buildRenderModel(model);
   const VisualLine& codelens_line = findCodeLensVisualLine(model, 0);
   const VisualRun& first = findNthCodeLensRun(codelens_line, 0);
-  const float press_point[2] = {
-      first.x + first.width * 0.5f,
-      first.y
-  };
+  const float press_point[2] = {first.x + first.width * 0.5f, first.y};
 
   editor.handleGestureEvent(GestureEvent::create(EventType::MOUSE_DOWN, 1, press_point));
 
@@ -214,17 +199,11 @@ TEST_CASE("EditorCore buildRenderModel clears pressed CodeLens when touch moves 
   const VisualLine& codelens_line = findCodeLensVisualLine(model, 0);
   const VisualRun& first = findNthCodeLensRun(codelens_line, 0);
   const VisualRun& second = findNthCodeLensRun(codelens_line, 1);
-  const float first_press[2] = {
-      first.x + first.width * 0.5f,
-      first.y
-  };
-  const float move_out[2] = {
-      second.x + second.width * 0.5f,
-      second.y
-  };
+  const float first_press[2] = {first.x + first.width * 0.5f, first.y};
+  const float move_out[2] = {second.x + second.width * 0.5f, second.y};
 
-  const EditorActionResult down = editor.handleGestureEvent(
-      GestureEvent::create(EventType::TOUCH_DOWN, 1, first_press));
+  const EditorActionResult down =
+      editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_DOWN, 1, first_press));
   CHECK(down.handled);
 
   model = {};
@@ -249,11 +228,11 @@ TEST_CASE("EditorCore buildRenderModel clears pressed CodeLens when touch moves 
   CHECK_FALSE(findNthCodeLensRun(released_model, 0).active);
   CHECK_FALSE(findNthCodeLensRun(released_model, 1).active);
 
-  const EditorActionResult cancel_down = editor.handleGestureEvent(
-      GestureEvent::create(EventType::TOUCH_DOWN, 1, first_press));
+  const EditorActionResult cancel_down =
+      editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_DOWN, 1, first_press));
   REQUIRE(cancel_down.handled);
-  const EditorActionResult cancel = editor.handleGestureEvent(
-      GestureEvent::create(EventType::TOUCH_CANCEL, 0, nullptr));
+  const EditorActionResult cancel =
+      editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_CANCEL, 0, nullptr));
   CHECK(cancel.handled);
   CHECK_FALSE(cancel.hasActiveInteraction());
 }
@@ -283,12 +262,9 @@ TEST_CASE("EditorCore exposes pointer cursor type for text, CodeLens, gutter and
 
   const VisualLine& codelens_line = findCodeLensVisualLine(model, 0);
   const VisualRun& codelens_run = findNthCodeLensRun(codelens_line, 0);
-  const float code_lens_point[2] = {
-      codelens_run.x + codelens_run.width * 0.5f,
-      codelens_run.y
-  };
-  const EditorActionResult hover_codelens = editor.handleGestureEvent(
-      GestureEvent::create(EventType::MOUSE_MOVE, 1, code_lens_point));
+  const float code_lens_point[2] = {codelens_run.x + codelens_run.width * 0.5f, codelens_run.y};
+  const EditorActionResult hover_codelens =
+      editor.handleGestureEvent(GestureEvent::create(EventType::MOUSE_MOVE, 1, code_lens_point));
   CHECK(hover_codelens.pointer_cursor_after == PointerCursorType::HAND);
 
   model = {};
@@ -296,24 +272,18 @@ TEST_CASE("EditorCore exposes pointer cursor type for text, CodeLens, gutter and
   CHECK(model.pointer_cursor_type == PointerCursorType::HAND);
 
   const CursorRect text_rect = editor.getPositionScreenRect({0, 2});
-  const float text_point[2] = {
-      text_rect.x + 1.0f,
-      text_rect.y + text_rect.height * 0.5f
-  };
-  const EditorActionResult hover_text = editor.handleGestureEvent(
-      GestureEvent::create(EventType::MOUSE_MOVE, 1, text_point));
+  const float text_point[2] = {text_rect.x + 1.0f, text_rect.y + text_rect.height * 0.5f};
+  const EditorActionResult hover_text =
+      editor.handleGestureEvent(GestureEvent::create(EventType::MOUSE_MOVE, 1, text_point));
   CHECK(hover_text.pointer_cursor_after == PointerCursorType::TEXT);
 
   model = {};
   editor.buildRenderModel(model);
   CHECK(model.pointer_cursor_type == PointerCursorType::TEXT);
 
-  const float gutter_point[2] = {
-      1.0f,
-      text_rect.y + text_rect.height * 0.5f
-  };
-  const EditorActionResult hover_gutter = editor.handleGestureEvent(
-      GestureEvent::create(EventType::MOUSE_MOVE, 1, gutter_point));
+  const float gutter_point[2] = {1.0f, text_rect.y + text_rect.height * 0.5f};
+  const EditorActionResult hover_gutter =
+      editor.handleGestureEvent(GestureEvent::create(EventType::MOUSE_MOVE, 1, gutter_point));
   CHECK(hover_gutter.pointer_cursor_after == PointerCursorType::DEFAULT);
 
   model = {};
@@ -322,10 +292,9 @@ TEST_CASE("EditorCore exposes pointer cursor type for text, CodeLens, gutter and
 
   const float scrollbar_point[2] = {
       model.vertical_scrollbar.track.origin.x + model.vertical_scrollbar.track.width * 0.5f,
-      model.vertical_scrollbar.track.origin.y + model.vertical_scrollbar.track.height * 0.5f
-  };
-  const EditorActionResult hover_scrollbar = editor.handleGestureEvent(
-      GestureEvent::create(EventType::MOUSE_MOVE, 1, scrollbar_point));
+      model.vertical_scrollbar.track.origin.y + model.vertical_scrollbar.track.height * 0.5f};
+  const EditorActionResult hover_scrollbar =
+      editor.handleGestureEvent(GestureEvent::create(EventType::MOUSE_MOVE, 1, scrollbar_point));
   CHECK(hover_scrollbar.pointer_cursor_after == PointerCursorType::DEFAULT);
 
   model = {};
@@ -365,27 +334,25 @@ TEST_CASE("EditorCore schedules transient scrollbar fade through animation flags
   REQUIRE(model.vertical_scrollbar.visible);
   const float scrollbar_point[2] = {
       model.vertical_scrollbar.thumb.origin.x + model.vertical_scrollbar.thumb.width * 0.5f,
-      model.vertical_scrollbar.thumb.origin.y + model.vertical_scrollbar.thumb.height * 0.5f
-  };
-  const EditorActionResult scrollbar_down = editor.handleGestureEvent(
-      GestureEvent::create(EventType::MOUSE_DOWN, 1, scrollbar_point));
+      model.vertical_scrollbar.thumb.origin.y + model.vertical_scrollbar.thumb.height * 0.5f};
+  const EditorActionResult scrollbar_down =
+      editor.handleGestureEvent(GestureEvent::create(EventType::MOUSE_DOWN, 1, scrollbar_point));
   CHECK(scrollbar_down.gesture_type == GestureType::UNDEFINED);
   CHECK(scrollbar_down.handled);
 
-  const EditorActionResult scrollbar_up = editor.handleGestureEvent(
-      GestureEvent::create(EventType::MOUSE_UP, 1, scrollbar_point));
+  const EditorActionResult scrollbar_up =
+      editor.handleGestureEvent(GestureEvent::create(EventType::MOUSE_UP, 1, scrollbar_point));
   CHECK(scrollbar_up.gesture_type == GestureType::UNDEFINED);
   CHECK(scrollbar_up.handled);
 
   const float hover_point[2] = {40.0f, 40.0f};
-  const EditorActionResult passive_hover = editor.handleGestureEvent(
-      GestureEvent::create(EventType::MOUSE_MOVE, 1, hover_point));
+  const EditorActionResult passive_hover =
+      editor.handleGestureEvent(GestureEvent::create(EventType::MOUSE_MOVE, 1, hover_point));
   REQUIRE(passive_hover.hasAnimationFlag(AnimationFlag::TRANSIENT_SCROLLBAR));
   CHECK(passive_hover.gesture_type == GestureType::UNDEFINED);
   CHECK_FALSE(passive_hover.handled);
 
-  const EditorActionResult unchanged_modifiers =
-      editor.updatePointerModifiers(KeyModifier::NONE);
+  const EditorActionResult unchanged_modifiers = editor.updatePointerModifiers(KeyModifier::NONE);
   REQUIRE(unchanged_modifiers.hasAnimationFlag(AnimationFlag::TRANSIENT_SCROLLBAR));
   CHECK_FALSE(unchanged_modifiers.handled);
 
@@ -396,8 +363,7 @@ TEST_CASE("EditorCore schedules transient scrollbar fade through animation flags
   CHECK_FALSE(holding.needs_redraw);
   CHECK_FALSE(holding.handled);
 
-  std::this_thread::sleep_for(
-      std::chrono::milliseconds(holding.next_animation_delay_ms + 50));
+  std::this_thread::sleep_for(std::chrono::milliseconds(holding.next_animation_delay_ms + 50));
   const EditorActionResult fading = editor.tickAnimations();
   REQUIRE(fading.hasAnimationFlag(AnimationFlag::TRANSIENT_SCROLLBAR));
   CHECK(fading.next_animation_delay_ms == 0);
@@ -436,13 +402,10 @@ TEST_CASE("EditorCore handleGestureEvent ctrl-tap on LINK resolves target and pl
   editor.buildRenderModel(model);
   const auto link_runs = findRunsOfType(model, 0, VisualRunType::LINK);
   REQUIRE(link_runs.size() == 1);
-  const float point[2] = {
-      link_runs.front()->x + link_runs.front()->width * 0.5f,
-      link_runs.front()->y
-  };
+  const float point[2] = {link_runs.front()->x + link_runs.front()->width * 0.5f, link_runs.front()->y};
 
-  const EditorActionResult result = editor.handleGestureEvent(
-      GestureEvent::createWithModifiers(EventType::MOUSE_DOWN, 1, point, KeyModifier::CTRL));
+  const EditorActionResult result =
+      editor.handleGestureEvent(GestureEvent::createWithModifiers(EventType::MOUSE_DOWN, 1, point, KeyModifier::CTRL));
 
   CHECK(result.hit_target.type == HitTargetType::LINK);
   CHECK(result.hit_target.line == 0);
@@ -474,12 +437,9 @@ TEST_CASE("EditorCore buildRenderModel activates wrapped LINK runs together with
   }
 
   const VisualRun* hover_target = initial_link_runs.back();
-  const float hover_point[2] = {
-      hover_target->x + hover_target->width * 0.5f,
-      hover_target->y
-  };
-  const EditorActionResult plain_hover = editor.handleGestureEvent(
-      GestureEvent::create(EventType::MOUSE_MOVE, 1, hover_point));
+  const float hover_point[2] = {hover_target->x + hover_target->width * 0.5f, hover_target->y};
+  const EditorActionResult plain_hover =
+      editor.handleGestureEvent(GestureEvent::create(EventType::MOUSE_MOVE, 1, hover_point));
   CHECK(plain_hover.pointer_cursor_after == PointerCursorType::TEXT);
 
   model = {};
@@ -517,13 +477,10 @@ TEST_CASE("EditorCore updatePointerModifiers refreshes hovered LINK presentation
   editor.buildRenderModel(model);
   auto link_runs = findRunsOfType(model, 0, VisualRunType::LINK);
   REQUIRE(link_runs.size() == 1);
-  const float hover_point[2] = {
-      link_runs.front()->x + link_runs.front()->width * 0.5f,
-      link_runs.front()->y
-  };
+  const float hover_point[2] = {link_runs.front()->x + link_runs.front()->width * 0.5f, link_runs.front()->y};
 
-  const EditorActionResult plain_hover = editor.handleGestureEvent(
-      GestureEvent::create(EventType::MOUSE_MOVE, 1, hover_point));
+  const EditorActionResult plain_hover =
+      editor.handleGestureEvent(GestureEvent::create(EventType::MOUSE_MOVE, 1, hover_point));
   CHECK(plain_hover.pointer_cursor_after == PointerCursorType::TEXT);
 
   const EditorActionResult ctrl_refresh = editor.updatePointerModifiers(KeyModifier::CTRL);
@@ -559,14 +516,10 @@ TEST_CASE("EditorCore long press inside selection keeps existing selection") {
   editor.setSelection({{0, 1}, {0, 4}});
 
   const CursorRect inside_rect = editor.getPositionScreenRect({0, 2});
-  const float point[2] = {
-      inside_rect.x + 1.0f,
-      inside_rect.y + inside_rect.height * 0.5f
-  };
+  const float point[2] = {inside_rect.x + 1.0f, inside_rect.y + inside_rect.height * 0.5f};
 
   editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_DOWN, 1, point));
-  const EditorActionResult result = editor.handleGestureEvent(
-      GestureEvent::create(EventType::TOUCH_MOVE, 1, point));
+  const EditorActionResult result = editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_MOVE, 1, point));
 
   REQUIRE(result.gesture_type == GestureType::LONG_PRESS);
   CHECK(result.has_selection_after);
@@ -586,14 +539,10 @@ TEST_CASE("EditorCore long press outside selection places cursor and clears sele
   editor.setSelection({{0, 1}, {0, 4}});
 
   const CursorRect outside_rect = editor.getPositionScreenRect({0, 5});
-  const float point[2] = {
-      outside_rect.x + 1.0f,
-      outside_rect.y + outside_rect.height * 0.5f
-  };
+  const float point[2] = {outside_rect.x + 1.0f, outside_rect.y + outside_rect.height * 0.5f};
 
   editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_DOWN, 1, point));
-  const EditorActionResult result = editor.handleGestureEvent(
-      GestureEvent::create(EventType::TOUCH_MOVE, 1, point));
+  const EditorActionResult result = editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_MOVE, 1, point));
 
   REQUIRE(result.gesture_type == GestureType::LONG_PRESS);
   CHECK_FALSE(result.has_selection_after);
@@ -619,12 +568,9 @@ TEST_CASE("EditorCore line-start word selection end handle can cross CodeLens vi
   const VisualLine& codelens_line = findCodeLensVisualLine(model, 1);
   const float codelens_mid_y = codelens_line.line_number_position.y + model.selection_end_handle.height * 0.5f;
 
-  const float down_point[2] = {
-      model.selection_end_handle.position.x + 12.0f,
-      model.selection_end_handle.position.y + model.selection_end_handle.height + 12.0f
-  };
-  const EditorActionResult down = editor.handleGestureEvent(
-      GestureEvent::create(EventType::TOUCH_DOWN, 1, down_point));
+  const float down_point[2] = {model.selection_end_handle.position.x + 12.0f,
+                               model.selection_end_handle.position.y + model.selection_end_handle.height + 12.0f};
+  const EditorActionResult down = editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_DOWN, 1, down_point));
 
   CHECK(down.handled);
   CHECK(down.hasInteractionFlag(InteractionFlag::PRIMARY_POINTER));
@@ -633,20 +579,15 @@ TEST_CASE("EditorCore line-start word selection end handle can cross CodeLens vi
   CHECK(down.selection_after == (TextRange{{1, 0}, {1, 4}}));
 
   editor.setViewport({440, 200});
-  const float move_point[2] = {
-      model.selection_end_handle.position.x + 12.0f,
-      codelens_mid_y + 4.0f
-  };
-  const EditorActionResult move = editor.handleGestureEvent(
-      GestureEvent::create(EventType::TOUCH_MOVE, 1, move_point));
+  const float move_point[2] = {model.selection_end_handle.position.x + 12.0f, codelens_mid_y + 4.0f};
+  const EditorActionResult move = editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_MOVE, 1, move_point));
 
   CHECK(move.hasInteractionFlag(InteractionFlag::PRIMARY_POINTER));
   CHECK(move.hasInteractionFlag(InteractionFlag::SELECTION_DRAG));
   CHECK(move.has_selection_after);
   CHECK(move.selection_after == (TextRange{{1, 0}, {0, 5}}));
 
-  const EditorActionResult up = editor.handleGestureEvent(
-      GestureEvent::create(EventType::TOUCH_UP, 1, move_point));
+  const EditorActionResult up = editor.handleGestureEvent(GestureEvent::create(EventType::TOUCH_UP, 1, move_point));
   CHECK(up.handled);
   CHECK_FALSE(up.hasActiveInteraction());
 }

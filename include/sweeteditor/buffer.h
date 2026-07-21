@@ -45,7 +45,7 @@ namespace NS_SWEETEDITOR {
     U8String m_string_buf_;
   };
 
-	/// File memory-mapped buffer implementation (read-only)
+  /// File memory-mapped buffer implementation (read-only)
   class MappedFileBuffer : public Buffer {
   public:
     MappedFileBuffer(const U8String& path);

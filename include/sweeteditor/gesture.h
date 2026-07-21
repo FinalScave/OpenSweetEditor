@@ -14,17 +14,17 @@ namespace NS_SWEETEDITOR {
 
   struct TouchConfig {
     /// Movement threshold for gesture detection; below this is treated as a tap
-    float touch_slop {10};
+    float touch_slop{10};
     /// Time threshold for double tap
-    int64_t double_tap_timeout {300};
+    int64_t double_tap_timeout{300};
     /// Time threshold for long press
-    int64_t long_press_ms {500};
+    int64_t long_press_ms{500};
     /// Fling friction coefficient (higher = faster deceleration)
-    float fling_friction {2.0f};
+    float fling_friction{2.0f};
     /// Minimum fling velocity threshold in pixels/second
-    float fling_min_velocity {30.0f};
+    float fling_min_velocity{30.0f};
     /// Maximum fling velocity cap in pixels/second
-    float fling_max_velocity {12000.0f};
+    float fling_max_velocity{12000.0f};
   };
 
   /// Fling (inertial scroll) animator driven by exponential velocity decay.
@@ -56,19 +56,19 @@ namespace NS_SWEETEDITOR {
 
   private:
     TouchConfig m_config_;
-    bool m_active_ {false};
-    float m_velocity_x_ {0};
-    float m_velocity_y_ {0};
-    float m_elapsed_ms_ {0};
-    int64_t m_last_tick_time_ {0};
+    bool m_active_{false};
+    float m_velocity_x_{0};
+    float m_velocity_y_{0};
+    float m_elapsed_ms_{0};
+    int64_t m_last_tick_time_{0};
 
     static constexpr int kMaxSamples = 8;
     struct Sample {
       PointF point;
-      int64_t timestamp_ms {0};
+      int64_t timestamp_ms{0};
     };
     Sample m_samples_[kMaxSamples];
-    int m_sample_count_ {0};
+    int m_sample_count_{0};
 
     void computeVelocity(float& vx, float& vy) const;
   };
@@ -121,20 +121,21 @@ namespace NS_SWEETEDITOR {
   struct SE_PROTOCOL_IN(interaction) GestureEvent {
     /// Gesture event type
     SE_PROTOCOL_WIRE(enum_i32)
-    EventType type {EventType::UNDEFINED};
+    EventType type{EventType::UNDEFINED};
     /// Pointer coordinates
     Vector<PointF> points;
     /// Modifier key state (Shift/Ctrl/Alt/Meta bitmask)
     SE_PROTOCOL_WIRE(i32)
-    KeyModifier modifiers {KeyModifier::NONE};
+    KeyModifier modifiers{KeyModifier::NONE};
     /// Wheel delta for MOUSE_WHEEL (positive: up/right, negative: down/left)
-    float wheel_delta_x {0};
-    float wheel_delta_y {0};
+    float wheel_delta_x{0};
+    float wheel_delta_y{0};
     /// Scale value for DIRECT_SCALE
-    float direct_scale {1};
+    float direct_scale{1};
 
     static GestureEvent create(EventType type, uint8_t pointer_count, const float* points);
-    static GestureEvent createWithModifiers(EventType type, uint8_t pointer_count, const float* points, KeyModifier modifiers);
+    static GestureEvent createWithModifiers(EventType type, uint8_t pointer_count, const float* points,
+                                            KeyModifier modifiers);
     U8String dump() const;
   };
 
@@ -185,17 +186,17 @@ namespace NS_SWEETEDITOR {
   /// Tap hit target info (filled by EditorCore for TAP)
   struct SE_PROTOCOL_OUT(interaction) HitTarget {
     SE_PROTOCOL_WIRE(enum_i32)
-    HitTargetType type {HitTargetType::NONE};
+    HitTargetType type{HitTargetType::NONE};
     /// Hit logical line index (0-based)
     SE_PROTOCOL_WIRE(size_as_i32)
-    size_t line {0};
+    size_t line{0};
     /// Hit column index (0-based, meaningful for INLAY_HINT, CODELENS, and LINK)
     SE_PROTOCOL_WIRE(size_as_i32)
-    size_t column {0};
+    size_t column{0};
     /// Icon ID (valid for INLAY_HINT_ICON / GUTTER_ICON, or unique command_id for CODELENS)
-    int32_t icon_id {0};
+    int32_t icon_id{0};
     /// Color value (ARGB, valid for INLAY_HINT_COLOR)
-    int32_t color_value {0};
+    int32_t color_value{0};
 
     bool operator==(const HitTarget& other) const;
     bool operator!=(const HitTarget& other) const;
@@ -203,13 +204,13 @@ namespace NS_SWEETEDITOR {
 
   /// Gesture handling result
   struct GestureResult {
-    GestureType type {GestureType::UNDEFINED};
-    PointF tap_point {};
-    float scale {1};
-    float scroll_x {0};
-    float scroll_y {0};
+    GestureType type{GestureType::UNDEFINED};
+    PointF tap_point{};
+    float scale{1};
+    float scroll_x{0};
+    float scroll_y{0};
     /// Modifier key state (returned to upper layer, used for Shift+Click, etc.)
-    KeyModifier modifiers {KeyModifier::NONE};
+    KeyModifier modifiers{KeyModifier::NONE};
     /// Decoration hit target at the gesture location when applicable
     HitTarget hit_target;
   };
@@ -225,24 +226,24 @@ namespace NS_SWEETEDITOR {
 
     /// Reset all gesture states (call after drag handle operations end, etc.)
     void resetState();
-  private:
 
+  private:
     const TouchConfig m_config_;
     Vector<PointF> m_down_points_;
-    int64_t m_down_time_ {std::numeric_limits<int64_t>::max()};
+    int64_t m_down_time_{std::numeric_limits<int64_t>::max()};
     PointF m_last_move_point_;
-    float m_last_distance_ {0};
-    bool m_is_tap_ {false};
-    bool m_is_mouse_down_ {false};
-    bool m_is_dragging_ {false};
-    bool m_is_scaling_ {false};
-    bool m_is_fast_scrolling_ {false};
-    bool m_is_scrolling_ {false};
-    int m_pinch_confirm_count_ {0};
+    float m_last_distance_{0};
+    bool m_is_tap_{false};
+    bool m_is_mouse_down_{false};
+    bool m_is_dragging_{false};
+    bool m_is_scaling_{false};
+    bool m_is_fast_scrolling_{false};
+    bool m_is_scrolling_{false};
+    int m_pinch_confirm_count_{0};
     Vector<PointF> m_last_multi_points_;
     PointF m_last_tap_point_;
-    int64_t m_last_tap_time_ {0};
-    KeyModifier m_active_modifiers_ {KeyModifier::NONE};
+    int64_t m_last_tap_time_{0};
+    KeyModifier m_active_modifiers_{KeyModifier::NONE};
   };
 
 }

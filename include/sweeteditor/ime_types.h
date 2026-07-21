@@ -55,9 +55,9 @@ namespace NS_SWEETEDITOR {
 
   struct SE_PROTOCOL_VALUE(ime) ImeOffsetRange {
     SE_PROTOCOL_WIRE(enum_i32)
-    ImeCoordinateSpace coordinate_space {ImeCoordinateSpace::DOCUMENT};
-    int64_t start_utf16 {-1};
-    int64_t end_utf16 {-1};
+    ImeCoordinateSpace coordinate_space{ImeCoordinateSpace::DOCUMENT};
+    int64_t start_utf16{-1};
+    int64_t end_utf16{-1};
 
     bool operator==(const ImeOffsetRange& other) const;
     bool operator!=(const ImeOffsetRange& other) const;
@@ -65,11 +65,11 @@ namespace NS_SWEETEDITOR {
 
   struct SE_PROTOCOL_VALUE(ime) ImeSelection {
     SE_PROTOCOL_WIRE(enum_i32)
-    ImeCoordinateSpace coordinate_space {ImeCoordinateSpace::DOCUMENT};
-    int64_t anchor_utf16 {-1};
-    int64_t active_utf16 {-1};
+    ImeCoordinateSpace coordinate_space{ImeCoordinateSpace::DOCUMENT};
+    int64_t anchor_utf16{-1};
+    int64_t active_utf16{-1};
     SE_PROTOCOL_WIRE(enum_i32)
-    CaretAffinity affinity {CaretAffinity::DOWNSTREAM};
+    CaretAffinity affinity{CaretAffinity::DOWNSTREAM};
 
     bool operator==(const ImeSelection& other) const;
     bool operator!=(const ImeSelection& other) const;
@@ -77,18 +77,18 @@ namespace NS_SWEETEDITOR {
 
   struct SE_PROTOCOL_IN(ime) ImeCommand {
     SE_PROTOCOL_WIRE(enum_i32)
-    ImeCommandKind kind {ImeCommandKind::SET_SELECTION};
+    ImeCommandKind kind{ImeCommandKind::SET_SELECTION};
     ImeOffsetRange target_range;
     ImeSelection selection_after;
     U8String text;
-    int64_t delete_before {0};
-    int64_t delete_after {0};
+    int64_t delete_before{0};
+    int64_t delete_after{0};
     SE_PROTOCOL_WIRE(enum_i32)
-    ImeTextUnit text_unit {ImeTextUnit::UTF16_CODE_UNIT};
+    ImeTextUnit text_unit{ImeTextUnit::UTF16_CODE_UNIT};
   };
 
   struct SE_PROTOCOL_IN(ime) ImeCommandBatch {
-    uint64_t session_id {0};
+    uint64_t session_id{0};
     Vector<ImeCommand> commands;
   };
 
@@ -101,25 +101,25 @@ namespace NS_SWEETEDITOR {
   };
 
   struct SE_PROTOCOL_IN(ime) ImeTextUpdateBatch {
-    uint64_t session_id {0};
-    uint64_t expected_state_revision {0};
+    uint64_t session_id{0};
+    uint64_t expected_state_revision{0};
     Vector<ImeTextUpdateStep> steps;
   };
 
   struct SE_PROTOCOL_OUT(ime) ImeState {
     SE_PROTOCOL_WIRE(enum_i32)
-    ImeResultCode result_code {ImeResultCode::OK};
-    uint64_t session_id {0};
-    uint64_t state_revision {0};
+    ImeResultCode result_code{ImeResultCode::OK};
+    uint64_t session_id{0};
+    uint64_t state_revision{0};
     ImeSelection selection;
     ImeOffsetRange composition_range;
   };
 
   struct SE_PROTOCOL_OUT(ime) ImeTextContext {
     SE_PROTOCOL_WIRE(enum_i32)
-    ImeResultCode result_code {ImeResultCode::OK};
-    int64_t slice_start_utf16 {0};
-    int64_t total_length_utf16 {0};
+    ImeResultCode result_code{ImeResultCode::OK};
+    int64_t slice_start_utf16{0};
+    int64_t total_length_utf16{0};
     U8String text;
     ImeSelection selection;
     ImeOffsetRange composition_range;
@@ -137,21 +137,21 @@ namespace NS_SWEETEDITOR {
   struct EditingBufferState {
     TextRange document_range;
     U8String text;
-    int64_t safe_start_utf16 {0};
-    int64_t safe_end_utf16 {0};
-    uint64_t state_revision {1};
+    int64_t safe_start_utf16{0};
+    int64_t safe_end_utf16{0};
+    uint64_t state_revision{1};
   };
 
   struct ImeSessionState {
-    uint64_t session_id {0};
+    uint64_t session_id{0};
     std::optional<CompositionState> composition;
     std::optional<EditingBufferState> editing_buffer;
   };
 
   struct ImeActionResult {
-    bool handled {false};
+    bool handled{false};
     TextEditResult edit_result;
-    ImeHostAction host_action {ImeHostAction::NONE};
+    ImeHostAction host_action{ImeHostAction::NONE};
     ImeState state;
   };
 

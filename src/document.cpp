@@ -11,17 +11,22 @@ namespace NS_SWEETEDITOR {
   namespace {
     void appendLineEnding(U8String& text, LineEnding ending) {
       switch (ending) {
-        case LineEnding::LF: text.push_back('\n'); break;
-        case LineEnding::CR: text.push_back('\r'); break;
-        case LineEnding::CRLF: text.append("\r\n"); break;
-        case LineEnding::NONE: break;
+      case LineEnding::LF:
+        text.push_back('\n');
+        break;
+      case LineEnding::CR:
+        text.push_back('\r');
+        break;
+      case LineEnding::CRLF:
+        text.append("\r\n");
+        break;
+      case LineEnding::NONE:
+        break;
       }
     }
 
     // Validate the entire plan before live mutation and return descending indices.
-    Vector<size_t> prepareDocumentReplacements(
-        Document& document,
-        const Vector<DocumentReplacement>& replacements) {
+    Vector<size_t> prepareDocumentReplacements(Document& document, const Vector<DocumentReplacement>& replacements) {
       Vector<size_t> prepared;
       prepared.reserve(replacements.size());
       for (size_t index = 0; index < replacements.size(); ++index) {
@@ -39,8 +44,8 @@ namespace NS_SWEETEDITOR {
         }
         const U16String start_line = document.getLineU16Text(replacement.range.start.line);
         const U16String end_line = replacement.range.start.line == replacement.range.end.line
-                                    ? start_line
-                                    : document.getLineU16Text(replacement.range.end.line);
+                                       ? start_line
+                                       : document.getLineU16Text(replacement.range.end.line);
         if (!UnicodeUtil::isCodePointBoundary(start_line, replacement.range.start.column)
             || !UnicodeUtil::isCodePointBoundary(end_line, replacement.range.end.column)) {
           throw std::invalid_argument("Document replacement splits a UTF-16 surrogate pair");
@@ -51,15 +56,14 @@ namespace NS_SWEETEDITOR {
         prepared.push_back(index);
       }
 
-      std::sort(prepared.begin(), prepared.end(),
-                [&replacements](size_t lhs_index, size_t rhs_index) {
-                  const DocumentReplacement& lhs = replacements[lhs_index];
-                  const DocumentReplacement& rhs = replacements[rhs_index];
-                  if (lhs.range.start != rhs.range.start) {
-                    return lhs.range.start < rhs.range.start;
-                  }
-                  return lhs.range.end < rhs.range.end;
-                });
+      std::sort(prepared.begin(), prepared.end(), [&replacements](size_t lhs_index, size_t rhs_index) {
+        const DocumentReplacement& lhs = replacements[lhs_index];
+        const DocumentReplacement& rhs = replacements[rhs_index];
+        if (lhs.range.start != rhs.range.start) {
+          return lhs.range.start < rhs.range.start;
+        }
+        return lhs.range.end < rhs.range.end;
+      });
       for (size_t index = 1; index < prepared.size(); ++index) {
         if (replacements[prepared[index - 1]].range.overlaps(replacements[prepared[index]].range)) {
           throw std::invalid_argument("Document replacement ranges overlap");
@@ -71,12 +75,14 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-#pragma region [Class: PieceTableDocument]
-  PieceTableDocument::PieceTableDocument(U8String&& original_string): m_original_buffer_(makeUnique<U8StringBuffer>(std::move(original_string))) {
+#pragma region[Class: PieceTableDocument]
+  PieceTableDocument::PieceTableDocument(U8String&& original_string)
+      : m_original_buffer_(makeUnique<U8StringBuffer>(std::move(original_string))) {
     rebuildBufferSegments();
   }
 
-  PieceTableDocument::PieceTableDocument(const U8String& original_string): m_original_buffer_(makeUnique<U8StringBuffer>(original_string)) {
+  PieceTableDocument::PieceTableDocument(const U8String& original_string)
+      : m_original_buffer_(makeUnique<U8StringBuffer>(original_string)) {
     rebuildBufferSegments();
   }
 
@@ -87,7 +93,8 @@ namespace NS_SWEETEDITOR {
     rebuildBufferSegments();
   }
 
-  PieceTableDocument::PieceTableDocument(UniquePtr<Buffer>&& original_buffer): m_original_buffer_(std::move(original_buffer)) {
+  PieceTableDocument::PieceTableDocument(UniquePtr<Buffer>&& original_buffer)
+      : m_original_buffer_(std::move(original_buffer)) {
     rebuildBufferSegments();
   }
 
@@ -278,8 +285,10 @@ namespace NS_SWEETEDITOR {
     size_t low = 0, high = m_logical_lines_.size();
     while (low < high) {
       size_t mid = low + (high - low) / 2;
-      if (m_logical_lines_[mid].start_byte <= start_byte) low = mid + 1;
-      else high = mid;
+      if (m_logical_lines_[mid].start_byte <= start_byte)
+        low = mid + 1;
+      else
+        high = mid;
     }
     size_t line_to_remove = low;
 
@@ -288,16 +297,17 @@ namespace NS_SWEETEDITOR {
     high = m_logical_lines_.size();
     while (low < high) {
       size_t mid = low + (high - low) / 2;
-      if (m_logical_lines_[mid].start_byte <= start_byte + delete_length) low = mid + 1;
-      else high = mid;
+      if (m_logical_lines_[mid].start_byte <= start_byte + delete_length)
+        low = mid + 1;
+      else
+        high = mid;
     }
     size_t line_to_keep = low;
 
     LineEnding original_last_ending = LineEnding::NONE;
     if (line_to_remove < line_to_keep) {
       original_last_ending = m_logical_lines_[line_to_keep - 1].line_ending;
-      m_logical_lines_.erase(m_logical_lines_.begin() + line_to_remove,
-                             m_logical_lines_.begin() + line_to_keep);
+      m_logical_lines_.erase(m_logical_lines_.begin() + line_to_remove, m_logical_lines_.begin() + line_to_keep);
     } else {
       original_last_ending = m_logical_lines_[line].line_ending;
     }
@@ -344,8 +354,7 @@ namespace NS_SWEETEDITOR {
 
     if (!new_lines.empty()) {
       new_lines.back().line_ending = original_last_ending;
-      m_logical_lines_.insert(m_logical_lines_.begin() + line + 1,
-                              new_lines.begin(), new_lines.end());
+      m_logical_lines_.insert(m_logical_lines_.begin() + line + 1, new_lines.begin(), new_lines.end());
     } else {
       m_logical_lines_[line].line_ending = original_last_ending;
     }
@@ -354,8 +363,8 @@ namespace NS_SWEETEDITOR {
     long net_shift = static_cast<long>(text.size()) - static_cast<long>(delete_length);
     size_t start_shift_line = line + 1 + new_lines.size();
     for (size_t i = start_shift_line; i < m_logical_lines_.size(); ++i) {
-      m_logical_lines_[i].start_byte = static_cast<size_t>(
-          static_cast<long>(m_logical_lines_[i].start_byte) + net_shift);
+      m_logical_lines_[i].start_byte =
+          static_cast<size_t>(static_cast<long>(m_logical_lines_[i].start_byte) + net_shift);
       m_logical_lines_[i].is_u16_dirty = true;
     }
   }
@@ -538,8 +547,7 @@ namespace NS_SWEETEDITOR {
     updateLogicalLinesByInsertText(start_byte, text);
   }
 
-  void PieceTableDocument::replaceU8TextBatch(
-      const Vector<DocumentReplacement>& replacements) {
+  void PieceTableDocument::replaceU8TextBatch(const Vector<DocumentReplacement>& replacements) {
     Vector<size_t> prepared = prepareDocumentReplacements(*this, replacements);
     if (prepared.empty()) {
       return;
@@ -583,8 +591,7 @@ namespace NS_SWEETEDITOR {
           // Delete tail
           it->byte_length -= delete_len_in_seg;
           ++it;
-        }
-        else {
+        } else {
           // Delete middle
           size_t left_len = intersect_start - seg_start;
           BufferSegment right = *it;
@@ -626,7 +633,7 @@ namespace NS_SWEETEDITOR {
           logical_line.start_byte = start_byte + i + 2;
           logical_line.is_u16_dirty = true;
           new_lines.push_back(logical_line);
-           // Set the previous logical line's line_ending
+          // Set the previous logical line's line_ending
           if (new_lines.size() == 1) {
             m_logical_lines_[line].line_ending = LineEnding::CRLF;
           } else {
@@ -725,8 +732,8 @@ namespace NS_SWEETEDITOR {
     // Line text end = next line start - current line ending bytes (excluding line ending)
     size_t line_end_byte;
     if (position.line + 1 < m_logical_lines_.size()) {
-      line_end_byte = m_logical_lines_[position.line + 1].start_byte
-                    - lineEndingBytes(m_logical_lines_[position.line].line_ending);
+      line_end_byte =
+          m_logical_lines_[position.line + 1].start_byte - lineEndingBytes(m_logical_lines_[position.line].line_ending);
     } else {
       line_end_byte = m_total_bytes_;
     }
@@ -736,35 +743,35 @@ namespace NS_SWEETEDITOR {
 
     auto it = m_buffer_segments_.begin();
     while (it != m_buffer_segments_.end()) {
-        size_t seg_end = current_byte + it->byte_length;
-        // Segment intersects this line's range
-        if (seg_end > line_start_byte && current_byte < line_end_byte) {
-            // Segment scan start position
-            size_t intersect_start = std::max(current_byte, line_start_byte);
-            // Segment scan end position
-            size_t intersect_end = std::min(seg_end, line_end_byte);
-            const char* seg_data = getSegmentData(*it);
-            // Local read start inside segment
-            size_t local_start = intersect_start - current_byte;
-            const char* local_it = seg_data + local_start;
-            const char* local_end = seg_data + intersect_end - current_byte;
-            while (local_it < local_end && scanned_u16_count < position.column) {
-                uint32_t cp = utf8::next(local_it, local_end);
-                scanned_u16_count += (cp > 0xFFFF) ? 2 : 1;
-            }
-            result += static_cast<size_t>(local_it - (seg_data + local_start));
-            if (scanned_u16_count >= position.column) {
-                return result;
-            }
+      size_t seg_end = current_byte + it->byte_length;
+      // Segment intersects this line's range
+      if (seg_end > line_start_byte && current_byte < line_end_byte) {
+        // Segment scan start position
+        size_t intersect_start = std::max(current_byte, line_start_byte);
+        // Segment scan end position
+        size_t intersect_end = std::min(seg_end, line_end_byte);
+        const char* seg_data = getSegmentData(*it);
+        // Local read start inside segment
+        size_t local_start = intersect_start - current_byte;
+        const char* local_it = seg_data + local_start;
+        const char* local_end = seg_data + intersect_end - current_byte;
+        while (local_it < local_end && scanned_u16_count < position.column) {
+          uint32_t cp = utf8::next(local_it, local_end);
+          scanned_u16_count += (cp > 0xFFFF) ? 2 : 1;
         }
-
-        current_byte += it->byte_length;
-        ++it;
-
-        // Already past this line
-        if (current_byte >= line_end_byte) {
-          break;
+        result += static_cast<size_t>(local_it - (seg_data + local_start));
+        if (scanned_u16_count >= position.column) {
+          return result;
         }
+      }
+
+      current_byte += it->byte_length;
+      ++it;
+
+      // Already past this line
+      if (current_byte >= line_end_byte) {
+        break;
+      }
     }
     return result;
   }
@@ -813,14 +820,13 @@ namespace NS_SWEETEDITOR {
   }
 
   inline const char* PieceTableDocument::getSegmentData(const BufferSegment& segment) const {
-    return (segment.type == SegmentType::ORIGINAL)
-             ? m_original_buffer_->data() + segment.start_byte
-             : m_edit_buffer_->data() + segment.start_byte;
+    return (segment.type == SegmentType::ORIGINAL) ? m_original_buffer_->data() + segment.start_byte
+                                                   : m_edit_buffer_->data() + segment.start_byte;
   }
 
 #pragma endregion
 
-#pragma region [Class: LineArrayDocument]
+#pragma region[Class: LineArrayDocument]
   LineArrayDocument::LineArrayDocument(U8String&& original_string) {
     buildFromU8String(original_string);
   }
@@ -852,10 +858,17 @@ namespace NS_SWEETEDITOR {
     for (size_t i = 0; i < m_lines_.size(); ++i) {
       result.append(m_lines_[i]);
       switch (m_logical_lines_[i].line_ending) {
-        case LineEnding::LF:   result.push_back('\n'); break;
-        case LineEnding::CR:   result.push_back('\r'); break;
-        case LineEnding::CRLF: result.append("\r\n");  break;
-        case LineEnding::NONE: break;
+      case LineEnding::LF:
+        result.push_back('\n');
+        break;
+      case LineEnding::CR:
+        result.push_back('\r');
+        break;
+      case LineEnding::CRLF:
+        result.append("\r\n");
+        break;
+      case LineEnding::NONE:
+        break;
       }
     }
     return result;
@@ -1032,8 +1045,7 @@ namespace NS_SWEETEDITOR {
     } else {
       // Multi-line delete: first-line prefix + last-line suffix,
       // inherit the last line's line_ending
-      U8String merged = m_lines_[start_line].substr(0, start_byte_col)
-                      + m_lines_[end_line].substr(end_byte_col);
+      U8String merged = m_lines_[start_line].substr(0, start_byte_col) + m_lines_[end_line].substr(end_byte_col);
       m_lines_[start_line] = merged;
       m_logical_lines_[start_line].line_ending = m_logical_lines_[end_line].line_ending;
       m_logical_lines_[start_line].is_u16_dirty = true;
@@ -1051,8 +1063,7 @@ namespace NS_SWEETEDITOR {
     insertU8Text(range.start, text);
   }
 
-  void LineArrayDocument::replaceU8TextBatch(
-      const Vector<DocumentReplacement>& replacements) {
+  void LineArrayDocument::replaceU8TextBatch(const Vector<DocumentReplacement>& replacements) {
     Vector<size_t> prepared = prepareDocumentReplacements(*this, replacements);
     if (prepared.empty()) {
       return;
@@ -1210,9 +1221,8 @@ namespace NS_SWEETEDITOR {
       from_line = 1;
     }
     for (size_t i = from_line; i < m_lines_.size(); ++i) {
-      m_logical_lines_[i].start_byte = m_logical_lines_[i - 1].start_byte
-                                     + m_lines_[i - 1].size()
-                                     + lineEndingBytes(m_logical_lines_[i - 1].line_ending);
+      m_logical_lines_[i].start_byte = m_logical_lines_[i - 1].start_byte + m_lines_[i - 1].size()
+                                       + lineEndingBytes(m_logical_lines_[i - 1].line_ending);
       m_logical_lines_[i].is_u16_dirty = true;
     }
     // Mark from_line itself as dirty too

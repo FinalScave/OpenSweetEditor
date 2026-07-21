@@ -8,7 +8,7 @@ using namespace NS_SWEETEDITOR;
 
 namespace {
   UniquePtr<EditorCore> makeSearchEditor(const U8String& text) {
-    auto editor = makeUnique<EditorCore>(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions {});
+    auto editor = makeUnique<EditorCore>(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions{});
     editor->loadDocument(makeShared<LineArrayDocument>(text));
     editor->setViewport({500, 240});
     return editor;
@@ -94,7 +94,7 @@ TEST_CASE("EditorCore search supports regex captures in replace all") {
 }
 
 TEST_CASE("EditorCore search replacement does not act as linked input") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("");
   editor.loadDocument(document);
   editor.setViewport({500, 240});
@@ -112,7 +112,7 @@ TEST_CASE("EditorCore search replacement does not act as linked input") {
 }
 
 TEST_CASE("EditorCore replace all exits linked editing") {
-  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions {});
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions{});
   SharedPtr<Document> document = makeShared<LineArrayDocument>("");
   editor.loadDocument(document);
   editor.setViewport({500, 240});
@@ -226,8 +226,7 @@ TEST_CASE("EditorCore search preserves active animation schedule") {
   scrollbar.fade_delay_ms = 1000;
   scrollbar.fade_duration_ms = 1000;
   editor.setScrollbarConfig(scrollbar);
-  editor.loadDocument(
-      makeShared<LineArrayDocument>(makeRepeatedLines(120, "needle")));
+  editor.loadDocument(makeShared<LineArrayDocument>(makeRepeatedLines(120, "needle")));
   editor.setViewport({120, 80});
 
   GestureEvent wheel;

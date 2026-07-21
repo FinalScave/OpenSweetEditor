@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstring>
 #include <sweeteditor/decoration.h>
+#include "ime_projection.hpp"
 
 namespace NS_SWEETEDITOR {
   const Vector<StyleSpan> DecorationManager::kEmptySpans;
@@ -15,7 +16,13 @@ namespace NS_SWEETEDITOR {
   const Vector<CodeLensItem> DecorationManager::kEmptyCodeLensItems;
   const Vector<LinkSpan> DecorationManager::kEmptyLinks;
 
-#pragma region [Class: TextStyleRegistry]
+  namespace {
+    bool isVisibleOnLine(const std::optional<TextRange>& range, size_t line) {
+      return range.has_value() && range->start.line == line && range->end.line == line && !range->isCollapsed();
+    }
+  }
+
+#pragma region[Class: TextStyleRegistry]
   void TextStyleRegistry::registerTextStyle(uint32_t style_id, TextStyle&& style) {
     style_map_.insert_or_assign(style_id, std::move(style));
   }
@@ -31,13 +38,172 @@ namespace NS_SWEETEDITOR {
   }
 #pragma endregion
 
-#pragma region [Class: DecorationManager]
+#pragma region[Class: DecorationManager]
   DecorationManager::DecorationManager() {
     m_text_style_reg_ = makeShared<TextStyleRegistry>();
   }
 
   SharedPtr<TextStyleRegistry> DecorationManager::getTextStyleRegistry() {
     return m_text_style_reg_;
+  }
+
+  void DecorationManager::setEditingProjection(const TextRange& committed_range, const TextRange& editing_range) {
+    m_editing_projection_ = EditingProjectionState{committed_range.normalized(), editing_range.normalized()};
+  }
+
+  void DecorationManager::clearEditingProjection() {
+    m_editing_projection_.reset();
+  }
+
+  Vector<size_t> DecorationManager::committedSourceLinesForEditingLine_(size_t editing_line) const {
+    if (!m_editing_projection_.has_value()) {
+      return {editing_line};
+    }
+    return EditingProjection::sourceLinesForEditingLine(m_editing_projection_->committed_range,
+                                                        m_editing_projection_->editing_range, editing_line);
+  }
+
+  std::optional<TextRange> DecorationManager::projectCommittedRange_(const TextRange& range) const {
+    if (!m_editing_projection_.has_value()) {
+      return range;
+    }
+    return EditingProjection::projectRange(m_editing_projection_->committed_range, m_editing_projection_->editing_range,
+                                           range);
+  }
+
+  std::optional<TextPosition> DecorationManager::projectCommittedAnchor_(const TextPosition& position) const {
+    if (!m_editing_projection_.has_value()) {
+      return position;
+    }
+    return EditingProjection::projectAnchor(m_editing_projection_->committed_range,
+                                            m_editing_projection_->editing_range, position,
+                                            EditingProjection::EndpointBias::AFTER);
+  }
+
+  LineLayoutDecorations DecorationManager::getEditingLineLayoutDecorations(size_t editing_line) const {
+    LineLayoutDecorations decorations;
+    for (size_t source_line : committedSourceLinesForEditingLine_(editing_line)) {
+      for (const StyleSpan& span : getMergedLineSpans(source_line)) {
+        const std::optional<TextRange> projected = projectCommittedRange_(
+            {{source_line, span.column}, {source_line, static_cast<size_t>(span.column) + span.length}});
+        if (!isVisibleOnLine(projected, editing_line)) {
+          continue;
+        }
+        StyleSpan value = span;
+        value.column = static_cast<uint32_t>(projected->start.column);
+        value.length = static_cast<uint32_t>(projected->end.column - projected->start.column);
+        decorations.spans.push_back(std::move(value));
+      }
+
+      for (const InlayHint& hint : getLineInlayHints(source_line)) {
+        const std::optional<TextPosition> projected = projectCommittedAnchor_({source_line, hint.column});
+        if (!projected.has_value() || projected->line != editing_line) continue;
+        InlayHint value = hint;
+        value.column = static_cast<uint32_t>(projected->column);
+        decorations.inlay_hints.push_back(std::move(value));
+      }
+
+      for (const PhantomText& phantom : getLinePhantomTexts(source_line)) {
+        const std::optional<TextPosition> projected = projectCommittedAnchor_({source_line, phantom.column});
+        if (!projected.has_value() || projected->line != editing_line) continue;
+        PhantomText value = phantom;
+        value.column = static_cast<uint32_t>(projected->column);
+        decorations.phantom_texts.push_back(std::move(value));
+      }
+
+      for (const LinkSpan& link : getLineLinks(source_line)) {
+        const std::optional<TextRange> projected = projectCommittedRange_(
+            {{source_line, link.column}, {source_line, static_cast<size_t>(link.column) + link.length}});
+        if (!isVisibleOnLine(projected, editing_line)) {
+          continue;
+        }
+        LinkSpan value = link;
+        value.column = static_cast<uint32_t>(projected->start.column);
+        value.length = static_cast<uint32_t>(projected->end.column - projected->start.column);
+        decorations.links.push_back(std::move(value));
+      }
+    }
+
+    const auto by_column = [](const auto& lhs, const auto& rhs) {
+      return lhs.column < rhs.column;
+    };
+    std::stable_sort(decorations.spans.begin(), decorations.spans.end(), by_column);
+    std::stable_sort(decorations.inlay_hints.begin(), decorations.inlay_hints.end(), by_column);
+    std::stable_sort(decorations.phantom_texts.begin(), decorations.phantom_texts.end(), by_column);
+    std::stable_sort(decorations.links.begin(), decorations.links.end(), by_column);
+    return decorations;
+  }
+
+  Vector<CodeLensItem> DecorationManager::getEditingLineCodeLens(size_t editing_line) const {
+    Vector<CodeLensItem> result;
+    for (size_t source_line : committedSourceLinesForEditingLine_(editing_line)) {
+      for (const CodeLensItem& item : getLineCodeLens(source_line)) {
+        const std::optional<TextPosition> projected =
+            projectCommittedAnchor_({source_line, static_cast<size_t>(std::max(0, item.column))});
+        if (!projected.has_value() || projected->line != editing_line) continue;
+        CodeLensItem value = item;
+        value.column = static_cast<int32_t>(projected->column);
+        result.push_back(std::move(value));
+      }
+    }
+    std::stable_sort(result.begin(), result.end(), [](const CodeLensItem& lhs, const CodeLensItem& rhs) {
+      return lhs.column < rhs.column;
+    });
+    return result;
+  }
+
+  Vector<GutterIcon> DecorationManager::getEditingLineGutterIcons(size_t editing_line) const {
+    Vector<GutterIcon> result;
+    for (size_t source_line : committedSourceLinesForEditingLine_(editing_line)) {
+      const std::optional<TextPosition> projected = projectCommittedAnchor_({source_line, 0});
+      if (!projected.has_value() || projected->line != editing_line) continue;
+      const Vector<GutterIcon>& icons = getLineGutterIcons(source_line);
+      result.insert(result.end(), icons.begin(), icons.end());
+    }
+    return result;
+  }
+
+  Vector<Diagnostic> DecorationManager::getEditingLineDiagnostics(size_t editing_line) const {
+    Vector<Diagnostic> result;
+    for (size_t source_line : committedSourceLinesForEditingLine_(editing_line)) {
+      for (const Diagnostic& diagnostic : getLineDiagnostics(source_line)) {
+        const std::optional<TextRange> projected =
+            projectCommittedRange_({{source_line, diagnostic.column},
+                                    {source_line, static_cast<size_t>(diagnostic.column) + diagnostic.length}});
+        if (!isVisibleOnLine(projected, editing_line)) {
+          continue;
+        }
+        Diagnostic value = diagnostic;
+        value.column = static_cast<uint32_t>(projected->start.column);
+        value.length = static_cast<uint32_t>(projected->end.column - projected->start.column);
+        result.push_back(std::move(value));
+      }
+    }
+    std::stable_sort(result.begin(), result.end(), [](const Diagnostic& lhs, const Diagnostic& rhs) {
+      return lhs.column < rhs.column;
+    });
+    return result;
+  }
+
+  Vector<DocumentHighlight> DecorationManager::getEditingLineDocumentHighlights(size_t editing_line) const {
+    Vector<DocumentHighlight> result;
+    for (size_t source_line : committedSourceLinesForEditingLine_(editing_line)) {
+      for (const DocumentHighlight& highlight : getLineDocumentHighlights(source_line)) {
+        const std::optional<TextRange> projected = projectCommittedRange_(
+            {{source_line, highlight.column}, {source_line, static_cast<size_t>(highlight.column) + highlight.length}});
+        if (!isVisibleOnLine(projected, editing_line)) {
+          continue;
+        }
+        DocumentHighlight value = highlight;
+        value.column = static_cast<uint32_t>(projected->start.column);
+        value.length = static_cast<uint32_t>(projected->end.column - projected->start.column);
+        result.push_back(std::move(value));
+      }
+    }
+    std::stable_sort(result.begin(), result.end(), [](const DocumentHighlight& lhs, const DocumentHighlight& rhs) {
+      return lhs.column < rhs.column;
+    });
+    return result;
   }
 
   void DecorationManager::setLineSpans(size_t line, SpanLayer layer, Vector<StyleSpan>&& spans) {
@@ -337,8 +503,7 @@ namespace NS_SWEETEDITOR {
 
       bool matched = false;
       for (const auto& old_region : old_regions) {
-        if (old_region.start_line == region.start_line &&
-            old_region.end_line == region.end_line) {
+        if (old_region.start_line == region.start_line && old_region.end_line == region.end_line) {
           region.collapsed = old_region.collapsed;
           matched = true;
           break;
@@ -357,13 +522,12 @@ namespace NS_SWEETEDITOR {
       normalized.push_back(region);
     }
 
-    std::sort(normalized.begin(), normalized.end(),
-      [](const FoldRegion& a, const FoldRegion& b) {
-        if (a.start_line != b.start_line) {
-          return a.start_line < b.start_line;
-        }
-        return a.end_line < b.end_line;
-      });
+    std::sort(normalized.begin(), normalized.end(), [](const FoldRegion& a, const FoldRegion& b) {
+      if (a.start_line != b.start_line) {
+        return a.start_line < b.start_line;
+      }
+      return a.end_line < b.end_line;
+    });
 
     m_fold_regions_.clear();
     m_fold_regions_.reserve(normalized.size());
@@ -518,8 +682,7 @@ namespace NS_SWEETEDITOR {
   }
 
   // Line-level delete/insert (shared by three line-indexed containers)
-  template<typename T>
-  static void adjustLineStorage(Vector<Vector<T>>& storage, const EditParams& p) {
+  template <typename T> static void adjustLineStorage(Vector<Vector<T>>& storage, const EditParams& p) {
     if (storage.empty()) return;
     if (p.old_line_count > 0 || p.new_line_count > 0) {
       size_t sz = storage.size();
@@ -538,14 +701,13 @@ namespace NS_SWEETEDITOR {
   }
 
   // Adjust start line for point decorations (column only, no length)
-  template<typename T>
-  static void adjustPointDecoStartLine(Vector<T>& items, const Vector<Vector<T>>& storage,
-                                        size_t storage_size, const EditParams& p,
-                                        Vector<T>* out_moved_to_new_end = nullptr) {
+  template <typename T>
+  static void adjustPointDecoStartLine(Vector<T>& items, const Vector<Vector<T>>& storage, size_t storage_size,
+                                       const EditParams& p, Vector<T>* out_moved_to_new_end = nullptr) {
     if (p.old_line_count == 0 && p.new_line_count == 0) {
       // Single-line edit: remove items inside the edit range, shift items after it
       int64_t col_delta = static_cast<int64_t>(p.new_end_col) - static_cast<int64_t>(p.old_end_col);
-      for (auto it = items.begin(); it != items.end(); ) {
+      for (auto it = items.begin(); it != items.end();) {
         if (it->column > p.old_start_col && it->column < p.old_end_col) {
           it = items.erase(it);
         } else {
@@ -559,7 +721,7 @@ namespace NS_SWEETEDITOR {
       // Multi-line edit: keep only items at or before old_start_col on the start line
       // Collect items with column > old_start_col (may move to a new line)
       Vector<T> moved_items;
-      for (auto it = items.begin(); it != items.end(); ) {
+      for (auto it = items.begin(); it != items.end();) {
         if (it->column > p.old_start_col) {
           moved_items.push_back(std::move(*it));
           it = items.erase(it);
@@ -599,10 +761,10 @@ namespace NS_SWEETEDITOR {
 
   // Adjust start line for StyleSpan (range logic with column + length)
   static void adjustSpanStartLine(Vector<StyleSpan>& spans, size_t span_storage_size,
-                                   const Vector<Vector<StyleSpan>>& storage, const EditParams& p) {
+                                  const Vector<Vector<StyleSpan>>& storage, const EditParams& p) {
     if (p.old_line_count == 0 && p.new_line_count == 0) {
       int64_t col_delta = static_cast<int64_t>(p.new_end_col) - static_cast<int64_t>(p.old_end_col);
-      for (auto it = spans.begin(); it != spans.end(); ) {
+      for (auto it = spans.begin(); it != spans.end();) {
         uint32_t span_end = it->column + it->length;
         if (span_end <= p.old_start_col) {
           ++it;
@@ -628,7 +790,7 @@ namespace NS_SWEETEDITOR {
       }
     } else {
       // Multi-line edit: keep only spans before old_start_col on the start line
-      for (auto it = spans.begin(); it != spans.end(); ) {
+      for (auto it = spans.begin(); it != spans.end();) {
         uint32_t span_end = it->column + it->length;
         if (span_end <= p.old_start_col) {
           ++it;
@@ -657,10 +819,10 @@ namespace NS_SWEETEDITOR {
 
   // Adjust start line for Diagnostic (same shape as StyleSpan: column + length)
   static void adjustDiagnosticStartLine(Vector<Diagnostic>& spans, size_t span_storage_size,
-                                         const Vector<Vector<Diagnostic>>& storage, const EditParams& p) {
+                                        const Vector<Vector<Diagnostic>>& storage, const EditParams& p) {
     if (p.old_line_count == 0 && p.new_line_count == 0) {
       int64_t col_delta = static_cast<int64_t>(p.new_end_col) - static_cast<int64_t>(p.old_end_col);
-      for (auto it = spans.begin(); it != spans.end(); ) {
+      for (auto it = spans.begin(); it != spans.end();) {
         uint32_t span_end = it->column + it->length;
         if (span_end <= p.old_start_col) {
           ++it;
@@ -685,7 +847,7 @@ namespace NS_SWEETEDITOR {
         }
       }
     } else {
-      for (auto it = spans.begin(); it != spans.end(); ) {
+      for (auto it = spans.begin(); it != spans.end();) {
         uint32_t span_end = it->column + it->length;
         if (span_end <= p.old_start_col) {
           ++it;
@@ -717,7 +879,7 @@ namespace NS_SWEETEDITOR {
                                   const HashMap<size_t, Vector<LinkSpan>>& storage, const EditParams& p) {
     if (p.old_line_count == 0 && p.new_line_count == 0) {
       int64_t col_delta = static_cast<int64_t>(p.new_end_col) - static_cast<int64_t>(p.old_end_col);
-      for (auto it = spans.begin(); it != spans.end(); ) {
+      for (auto it = spans.begin(); it != spans.end();) {
         uint32_t span_end = it->column + it->length;
         if (span_end <= p.old_start_col) {
           ++it;
@@ -742,7 +904,7 @@ namespace NS_SWEETEDITOR {
         }
       }
     } else {
-      for (auto it = spans.begin(); it != spans.end(); ) {
+      for (auto it = spans.begin(); it != spans.end();) {
         uint32_t span_end = it->column + it->length;
         if (span_end <= p.old_start_col) {
           ++it;
@@ -774,14 +936,14 @@ namespace NS_SWEETEDITOR {
   void DecorationManager::adjustForEdit(const TextRange& old_range, const TextPosition& new_end) {
     EditParams p;
     p.old_start_line = old_range.start.line;
-    p.old_start_col  = old_range.start.column;
-    p.old_end_line   = old_range.end.line;
-    p.old_end_col    = old_range.end.column;
-    p.new_end_line   = new_end.line;
-    p.new_end_col    = new_end.column;
+    p.old_start_col = old_range.start.column;
+    p.old_end_line = old_range.end.line;
+    p.old_end_col = old_range.end.column;
+    p.new_end_line = new_end.line;
+    p.new_end_col = new_end.column;
     p.old_line_count = p.old_end_line - p.old_start_line;
     p.new_line_count = p.new_end_line - p.old_start_line;
-    p.line_delta     = static_cast<int64_t>(p.new_end_line) - static_cast<int64_t>(p.old_end_line);
+    p.line_delta = static_cast<int64_t>(p.new_end_line) - static_cast<int64_t>(p.old_end_line);
 
     // StyleSpan (all layers)
     for (size_t li = 0; li < kSpanLayerCount; ++li) {
@@ -795,15 +957,17 @@ namespace NS_SWEETEDITOR {
     // InlayHint
     Vector<InlayHint> moved_hints;
     if (!m_inlay_hints_.empty() && p.old_start_line < m_inlay_hints_.size()) {
-      adjustPointDecoStartLine(m_inlay_hints_[p.old_start_line], m_inlay_hints_, m_inlay_hints_.size(), p, &moved_hints);
+      adjustPointDecoStartLine(m_inlay_hints_[p.old_start_line], m_inlay_hints_, m_inlay_hints_.size(), p,
+                               &moved_hints);
     }
     adjustLineStorage(m_inlay_hints_, p);
     // Place InlayHints moved by Enter-like operations onto the new last line
     if (!moved_hints.empty() && p.new_end_line < m_inlay_hints_.size()) {
       auto& target = m_inlay_hints_[p.new_end_line];
       for (auto& h : moved_hints) {
-        auto it = std::lower_bound(target.begin(), target.end(), h,
-          [](const InlayHint& a, const InlayHint& b) { return a.column < b.column; });
+        auto it = std::lower_bound(target.begin(), target.end(), h, [](const InlayHint& a, const InlayHint& b) {
+          return a.column < b.column;
+        });
         target.insert(it, std::move(h));
       }
     }
@@ -811,15 +975,17 @@ namespace NS_SWEETEDITOR {
     // PhantomText
     Vector<PhantomText> moved_phantoms;
     if (!m_phantom_texts_.empty() && p.old_start_line < m_phantom_texts_.size()) {
-      adjustPointDecoStartLine(m_phantom_texts_[p.old_start_line], m_phantom_texts_, m_phantom_texts_.size(), p, &moved_phantoms);
+      adjustPointDecoStartLine(m_phantom_texts_[p.old_start_line], m_phantom_texts_, m_phantom_texts_.size(), p,
+                               &moved_phantoms);
     }
     adjustLineStorage(m_phantom_texts_, p);
     // Place PhantomText moved by Enter-like operations onto the new last line
     if (!moved_phantoms.empty() && p.new_end_line < m_phantom_texts_.size()) {
       auto& target = m_phantom_texts_[p.new_end_line];
       for (auto& ph : moved_phantoms) {
-        auto it = std::lower_bound(target.begin(), target.end(), ph,
-          [](const PhantomText& a, const PhantomText& b) { return a.column < b.column; });
+        auto it = std::lower_bound(target.begin(), target.end(), ph, [](const PhantomText& a, const PhantomText& b) {
+          return a.column < b.column;
+        });
         target.insert(it, std::move(ph));
       }
     }
@@ -843,8 +1009,8 @@ namespace NS_SWEETEDITOR {
       }
       HashMap<size_t, Vector<LinkSpan>> new_links;
       for (auto& [line, links] : m_links_) {
-        size_t target = (line <= p.old_start_line) ? line
-          : static_cast<size_t>(static_cast<int64_t>(line) + p.line_delta);
+        size_t target =
+            (line <= p.old_start_line) ? line : static_cast<size_t>(static_cast<int64_t>(line) + p.line_delta);
         new_links[target] = std::move(links);
       }
       m_links_ = std::move(new_links);
@@ -896,8 +1062,8 @@ namespace NS_SWEETEDITOR {
       }
       HashMap<size_t, Vector<GutterIcon>> new_icons;
       for (auto& [line, icons] : m_gutter_icons_) {
-        size_t target = (line <= p.old_start_line) ? line
-          : static_cast<size_t>(static_cast<int64_t>(line) + p.line_delta);
+        size_t target =
+            (line <= p.old_start_line) ? line : static_cast<size_t>(static_cast<int64_t>(line) + p.line_delta);
         new_icons[target] = std::move(icons);
       }
       m_gutter_icons_ = std::move(new_icons);
@@ -912,8 +1078,8 @@ namespace NS_SWEETEDITOR {
       }
       HashMap<size_t, Vector<CodeLensItem>> new_items;
       for (auto& [line, items] : m_codelens_items_) {
-        size_t target = (line <= p.old_start_line) ? line
-          : static_cast<size_t>(static_cast<int64_t>(line) + p.line_delta);
+        size_t target =
+            (line <= p.old_start_line) ? line : static_cast<size_t>(static_cast<int64_t>(line) + p.line_delta);
         new_items[target] = std::move(items);
       }
       m_codelens_items_ = std::move(new_items);
@@ -921,19 +1087,24 @@ namespace NS_SWEETEDITOR {
 
     // FoldRegion: adjust by line offsets and remove fully covered regions
     if (!m_fold_regions_.empty()) {
-      for (auto it = m_fold_regions_.begin(); it != m_fold_regions_.end(); ) {
+      for (auto it = m_fold_regions_.begin(); it != m_fold_regions_.end();) {
         auto& fr = *it;
         // Region is fully before the edit range, unaffected
-        if (fr.end_line < p.old_start_line) { ++it; continue; }
+        if (fr.end_line < p.old_start_line) {
+          ++it;
+          continue;
+        }
         // Region is fully after the edit range, shift line numbers
         if (fr.start_line > p.old_end_line) {
           fr.start_line = static_cast<size_t>(static_cast<int64_t>(fr.start_line) + p.line_delta);
           fr.end_line = static_cast<size_t>(static_cast<int64_t>(fr.end_line) + p.line_delta);
-          ++it; continue;
+          ++it;
+          continue;
         }
         // Region is fully covered by the edit, remove it
         if (fr.start_line >= p.old_start_line && fr.end_line <= p.old_end_line) {
-          it = m_fold_regions_.erase(it); continue;
+          it = m_fold_regions_.erase(it);
+          continue;
         }
         // Partial overlap: adjust boundaries
         if (fr.start_line < p.old_start_line) {

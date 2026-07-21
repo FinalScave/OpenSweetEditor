@@ -10,7 +10,7 @@
 #include <sweeteditor/utility.h>
 
 namespace NS_SWEETEDITOR {
-#pragma region [Class: TimeUtil]
+#pragma region[Class: TimeUtil]
   int64_t TimeUtil::milliTime() {
     auto now = std::chrono::high_resolution_clock::now();
     return std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
@@ -28,7 +28,7 @@ namespace NS_SWEETEDITOR {
 
 #pragma endregion
 
-#pragma region [Class: StrUtil]
+#pragma region[Class: StrUtil]
   U8String StrUtil::formatString(const char* format, ...) {
     va_list args;
     va_start(args, format);
@@ -69,8 +69,7 @@ namespace NS_SWEETEDITOR {
   void StrUtil::convertUTF8ToUTF16(const U8String& utf8_str, U16Char** result) {
     size_t utf16_len = utf16Length(utf8_str);
     *result = new U16Char[utf16_len + 1];
-    const size_t written =
-        simdutf::convert_utf8_to_utf16(utf8_str.c_str(), utf8_str.length(), CHAR16_PTR(*result));
+    const size_t written = simdutf::convert_utf8_to_utf16(utf8_str.c_str(), utf8_str.length(), CHAR16_PTR(*result));
     (void)written;
     (*result)[utf16_len] = 0;
   }
@@ -92,15 +91,15 @@ namespace NS_SWEETEDITOR {
   }
 #pragma endregion
 
-#pragma region [Class: UnicodeUtil]
+#pragma region[Class: UnicodeUtil]
   static utf8::utfchar32_t toUtf16CodeUnit(U16Char ch) {
     return static_cast<utf8::utfchar32_t>(utf8::internal::mask16(ch));
   }
 
   struct CodePointSpan {
-    uint32_t cp {0};
-    size_t start {0};
-    size_t end {0};
+    uint32_t cp{0};
+    size_t start{0};
+    size_t end{0};
   };
 
   static uint32_t decodeCodePoint(const U16String& text, size_t start, size_t end) {
@@ -131,11 +130,8 @@ namespace NS_SWEETEDITOR {
   }
 
   static bool isCombiningMark(uint32_t cp) {
-    return (cp >= 0x0300u && cp <= 0x036Fu) ||
-           (cp >= 0x1AB0u && cp <= 0x1AFFu) ||
-           (cp >= 0x1DC0u && cp <= 0x1DFFu) ||
-           (cp >= 0x20D0u && cp <= 0x20FFu) ||
-           (cp >= 0xFE20u && cp <= 0xFE2Fu);
+    return (cp >= 0x0300u && cp <= 0x036Fu) || (cp >= 0x1AB0u && cp <= 0x1AFFu) || (cp >= 0x1DC0u && cp <= 0x1DFFu)
+           || (cp >= 0x20D0u && cp <= 0x20FFu) || (cp >= 0xFE20u && cp <= 0xFE2Fu);
   }
 
   static bool isEmojiModifier(uint32_t cp) {
@@ -183,9 +179,7 @@ namespace NS_SWEETEDITOR {
 
   size_t UnicodeUtil::clampColumnToCodePointBoundaryLeft(const U16String& text, size_t column) {
     column = std::min(column, text.length());
-    if (column > 0 && column < text.length()
-        && isTrailSurrogate(text[column])
-        && isLeadSurrogate(text[column - 1])) {
+    if (column > 0 && column < text.length() && isTrailSurrogate(text[column]) && isLeadSurrogate(text[column - 1])) {
       return column - 1;
     }
     return column;
@@ -193,9 +187,7 @@ namespace NS_SWEETEDITOR {
 
   size_t UnicodeUtil::clampColumnToCodePointBoundaryRight(const U16String& text, size_t column) {
     column = std::min(column, text.length());
-    if (column > 0 && column < text.length()
-        && isTrailSurrogate(text[column])
-        && isLeadSurrogate(text[column - 1])) {
+    if (column > 0 && column < text.length() && isTrailSurrogate(text[column]) && isLeadSurrogate(text[column - 1])) {
       return column + 1;
     }
     return column;
@@ -204,9 +196,7 @@ namespace NS_SWEETEDITOR {
   size_t UnicodeUtil::prevCodePointColumn(const U16String& text, size_t column) {
     size_t safe_column = clampColumnToCodePointBoundaryLeft(text, column);
     if (safe_column == 0) return 0;
-    if (safe_column >= 2
-        && isTrailSurrogate(text[safe_column - 1])
-        && isLeadSurrogate(text[safe_column - 2])) {
+    if (safe_column >= 2 && isTrailSurrogate(text[safe_column - 1]) && isLeadSurrogate(text[safe_column - 2])) {
       return safe_column - 2;
     }
     return safe_column - 1;
@@ -215,8 +205,7 @@ namespace NS_SWEETEDITOR {
   size_t UnicodeUtil::nextCodePointColumn(const U16String& text, size_t column) {
     size_t safe_column = clampColumnToCodePointBoundaryRight(text, column);
     if (safe_column >= text.length()) return text.length();
-    if (safe_column + 1 < text.length()
-        && isLeadSurrogate(text[safe_column])
+    if (safe_column + 1 < text.length() && isLeadSurrogate(text[safe_column])
         && isTrailSurrogate(text[safe_column + 1])) {
       return safe_column + 2;
     }
@@ -299,12 +288,8 @@ namespace NS_SWEETEDITOR {
     CodePointSpan span;
     size_t cursor = 0;
     while (readCodePointAt(text, cursor, span)) {
-      if (span.end - span.start > 1
-          || isCombiningMark(span.cp)
-          || isVariationSelector(span.cp)
-          || isEmojiModifier(span.cp)
-          || isRegionalIndicator(span.cp)
-          || isZeroWidthJoiner(span.cp)) {
+      if (span.end - span.start > 1 || isCombiningMark(span.cp) || isVariationSelector(span.cp)
+          || isEmojiModifier(span.cp) || isRegionalIndicator(span.cp) || isZeroWidthJoiner(span.cp)) {
         return true;
       }
       cursor = span.end;

@@ -454,10 +454,8 @@ const uint8_t* editor_insert_text(intptr_t editor_handle, const char* text, size
   return editorActionResultToBinary(result, out_size);
 }
 
-const uint8_t* editor_replace_text(intptr_t editor_handle,
-    size_t start_line, size_t start_column,
-    size_t end_line, size_t end_column,
-    const char* text, size_t* out_size) {
+const uint8_t* editor_replace_text(intptr_t editor_handle, size_t start_line, size_t start_column, size_t end_line,
+                                   size_t end_column, const char* text, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr || text == nullptr) {
     if (out_size != nullptr) {
@@ -470,9 +468,8 @@ const uint8_t* editor_replace_text(intptr_t editor_handle,
   return editorActionResultToBinary(result, out_size);
 }
 
-const uint8_t* editor_delete_text(intptr_t editor_handle,
-    size_t start_line, size_t start_column,
-    size_t end_line, size_t end_column, size_t* out_size) {
+const uint8_t* editor_delete_text(intptr_t editor_handle, size_t start_line, size_t start_column, size_t end_line,
+                                  size_t end_column, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     if (out_size != nullptr) {
@@ -888,7 +885,7 @@ const uint8_t* editor_set_scroll(intptr_t editor_handle, float scroll_x, float s
 }
 
 const uint8_t* editor_get_scroll_metrics(intptr_t editor_handle, size_t* out_size) {
-  ScrollMetrics metrics {};
+  ScrollMetrics metrics{};
   metrics.scale = 1.0f;
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core != nullptr) {
@@ -897,9 +894,8 @@ const uint8_t* editor_get_scroll_metrics(intptr_t editor_handle, size_t* out_siz
   return protocolToBinary(metrics, out_size, sizeof(float) * 11 + sizeof(int32_t) * 2);
 }
 
-void editor_get_position_rect(intptr_t editor_handle,
-    size_t line, size_t column,
-    float* out_x, float* out_y, float* out_height) {
+void editor_get_position_rect(intptr_t editor_handle, size_t line, size_t column, float* out_x, float* out_y,
+                              float* out_height) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) return;
   CursorRect rect = editor_core->getPositionScreenRect({line, column});
@@ -908,8 +904,7 @@ void editor_get_position_rect(intptr_t editor_handle,
   if (out_height) *out_height = rect.height;
 }
 
-void editor_get_cursor_rect(intptr_t editor_handle,
-    float* out_x, float* out_y, float* out_height) {
+void editor_get_cursor_rect(intptr_t editor_handle, float* out_x, float* out_y, float* out_height) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) return;
   CursorRect rect = editor_core->getCursorScreenRect();
@@ -924,26 +919,25 @@ const uint8_t* editor_register_text_style(intptr_t editor_handle, uint32_t style
     return nullBinaryPayload(out_size);
   }
   return editorActionResultToBinary(
-      editor_core->registerTextStyle(style_id, TextStyle{color, background_color, font_style}),
-      out_size);
+      editor_core->registerTextStyle(style_id, TextStyle{color, background_color, font_style}), out_size);
 }
 
 const uint8_t* editor_set_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   protocol::SetLineSpansPayload payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(
-      editor_core->setLineSpans(payload.line, payload.layer, std::move(payload.spans)),
-      out_size);
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload))
+    return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setLineSpans(payload.line, payload.layer, std::move(payload.spans)),
+                                    out_size);
 }
 
 const uint8_t* editor_set_batch_line_spans(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   protocol::SetBatchLineSpansPayload payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(
-      editor_core->setBatchLineSpans(payload.layer, std::move(payload.entries)),
-      out_size);
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload))
+    return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setBatchLineSpans(payload.layer, std::move(payload.entries)),
+                                    out_size);
 }
 
 const uint8_t* editor_register_batch_text_styles(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
@@ -970,10 +964,9 @@ const uint8_t* editor_clear_highlights_layer(intptr_t editor_handle, uint8_t lay
 const uint8_t* editor_set_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   protocol::SetLineInlayHintsPayload payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(
-      editor_core->setLineInlayHints(payload.line, std::move(payload.hints)),
-      out_size);
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload))
+    return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setLineInlayHints(payload.line, std::move(payload.hints)), out_size);
 }
 
 const uint8_t* editor_set_batch_line_inlay_hints(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
@@ -986,10 +979,10 @@ const uint8_t* editor_set_batch_line_inlay_hints(intptr_t editor_handle, const u
 const uint8_t* editor_set_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   protocol::SetLinePhantomTextsPayload payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(
-      editor_core->setLinePhantomTexts(payload.line, std::move(payload.phantoms)),
-      out_size);
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload))
+    return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setLinePhantomTexts(payload.line, std::move(payload.phantoms)),
+                                    out_size);
 }
 
 const uint8_t* editor_set_batch_line_phantom_texts(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
@@ -1002,10 +995,9 @@ const uint8_t* editor_set_batch_line_phantom_texts(intptr_t editor_handle, const
 const uint8_t* editor_set_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   protocol::SetLineGutterIconsPayload payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(
-      editor_core->setLineGutterIcons(payload.line, std::move(payload.icons)),
-      out_size);
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload))
+    return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setLineGutterIcons(payload.line, std::move(payload.icons)), out_size);
 }
 
 const uint8_t* editor_set_batch_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
@@ -1032,10 +1024,9 @@ const uint8_t* editor_clear_gutter_icons(intptr_t editor_handle, size_t* out_siz
 const uint8_t* editor_set_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   protocol::SetLineCodeLensPayload payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(
-      editor_core->setLineCodeLens(payload.line, std::move(payload.items)),
-      out_size);
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload))
+    return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setLineCodeLens(payload.line, std::move(payload.items)), out_size);
 }
 
 const uint8_t* editor_set_batch_line_codelens(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
@@ -1054,10 +1045,9 @@ const uint8_t* editor_clear_codelens(intptr_t editor_handle, size_t* out_size) {
 const uint8_t* editor_set_line_links(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   protocol::SetLineLinksPayload payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(
-      editor_core->setLineLinks(payload.line, std::move(payload.links)),
-      out_size);
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload))
+    return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setLineLinks(payload.line, std::move(payload.links)), out_size);
 }
 
 const uint8_t* editor_set_batch_line_links(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
@@ -1087,10 +1077,10 @@ const char* editor_get_link_target_at(intptr_t editor_handle, size_t line, size_
 const uint8_t* editor_set_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   protocol::SetLineDiagnosticsPayload payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(
-      editor_core->setLineDiagnostics(payload.line, std::move(payload.diagnostics)),
-      out_size);
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload))
+    return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setLineDiagnostics(payload.line, std::move(payload.diagnostics)),
+                                    out_size);
 }
 
 const uint8_t* editor_set_batch_line_diagnostics(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
@@ -1106,13 +1096,14 @@ const uint8_t* editor_clear_diagnostics(intptr_t editor_handle, size_t* out_size
   return editorActionResultToBinary(editor_core->clearDiagnostics(), out_size);
 }
 
-const uint8_t* editor_set_line_document_highlights(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
+const uint8_t* editor_set_line_document_highlights(intptr_t editor_handle, const uint8_t* data, size_t size,
+                                                   size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   protocol::SetLineDocumentHighlightsPayload payload;
-  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload)) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(
-      editor_core->setLineDocumentHighlights(payload.line, std::move(payload.highlights)),
-      out_size);
+  if (editor_core == nullptr || !protocol::ProtocolReader::decode(data, size, payload))
+    return nullBinaryPayload(out_size);
+  return editorActionResultToBinary(editor_core->setLineDocumentHighlights(payload.line, std::move(payload.highlights)),
+                                    out_size);
 }
 
 const uint8_t* editor_set_batch_line_document_highlights(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
@@ -1189,9 +1180,8 @@ const uint8_t* editor_set_auto_closing_pairs(intptr_t editor_handle, const uint3
 const uint8_t* editor_set_matched_brackets(intptr_t editor_handle, size_t open_line, size_t open_col, size_t close_line, size_t close_col, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) return nullBinaryPayload(out_size);
-  return editorActionResultToBinary(
-      editor_core->setMatchedBrackets({open_line, open_col}, {close_line, close_col}),
-      out_size);
+  return editorActionResultToBinary(editor_core->setMatchedBrackets({open_line, open_col}, {close_line, close_col}),
+                                    out_size);
 }
 
 const uint8_t* editor_clear_matched_brackets(intptr_t editor_handle, size_t* out_size) {
@@ -1332,25 +1322,20 @@ const uint8_t* editor_cancel_linked_editing(intptr_t editor_handle, size_t* out_
 
 #pragma region [IME]
 
-const uint8_t* editor_ime_begin_session(intptr_t editor_handle, int mutation_model,
-                                        size_t* out_size) {
+const uint8_t* editor_ime_begin_session(intptr_t editor_handle, int mutation_model, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) return nullBinaryPayload(out_size);
-  return protocolToBinary(
-      editor_core->beginImeSession(static_cast<ImeMutationModel>(mutation_model)),
-      out_size,
-      sizeof(int32_t) * 6 + sizeof(int64_t) * 5);
+  return protocolToBinary(editor_core->beginImeSession(static_cast<ImeMutationModel>(mutation_model)), out_size,
+                          sizeof(int32_t) * 6 + sizeof(int64_t) * 5);
 }
 
-const uint8_t* editor_ime_end_session(intptr_t editor_handle, uint64_t session_id,
-                                      size_t* out_size) {
+const uint8_t* editor_ime_end_session(intptr_t editor_handle, uint64_t session_id, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) return nullBinaryPayload(out_size);
   return editorActionResultToBinary(editor_core->endImeSession(session_id), out_size);
 }
 
-const uint8_t* editor_ime_apply_commands(intptr_t editor_handle, const uint8_t* data,
-                                         size_t size, size_t* out_size) {
+const uint8_t* editor_ime_apply_commands(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     return nullBinaryPayload(out_size);
@@ -1362,8 +1347,8 @@ const uint8_t* editor_ime_apply_commands(intptr_t editor_handle, const uint8_t* 
   return editorActionResultToBinary(editor_core->applyImeCommands(payload), out_size);
 }
 
-const uint8_t* editor_ime_apply_text_updates(intptr_t editor_handle, const uint8_t* data,
-                                             size_t size, size_t* out_size) {
+const uint8_t* editor_ime_apply_text_updates(intptr_t editor_handle, const uint8_t* data, size_t size,
+                                             size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
     return nullBinaryPayload(out_size);
@@ -1375,17 +1360,13 @@ const uint8_t* editor_ime_apply_text_updates(intptr_t editor_handle, const uint8
   return editorActionResultToBinary(editor_core->applyImeTextUpdates(payload), out_size);
 }
 
-const uint8_t* editor_ime_get_state(intptr_t editor_handle, uint64_t session_id,
-                                    size_t* out_size) {
+const uint8_t* editor_ime_get_state(intptr_t editor_handle, uint64_t session_id, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) return nullBinaryPayload(out_size);
-  return protocolToBinary(editor_core->getImeState(session_id),
-                          out_size,
-                          sizeof(int32_t) * 6 + sizeof(int64_t) * 5);
+  return protocolToBinary(editor_core->getImeState(session_id), out_size, sizeof(int32_t) * 6 + sizeof(int64_t) * 5);
 }
 
-const uint8_t* editor_ime_get_context(intptr_t editor_handle, uint64_t session_id,
-                                      int source, int64_t start_utf16,
+const uint8_t* editor_ime_get_context(intptr_t editor_handle, uint64_t session_id, int source, int64_t start_utf16,
                                       int64_t length_utf16, size_t* out_size) {
   SharedPtr<EditorCore> editor_core = getCPtrHolderValue<EditorCore>(editor_handle);
   if (editor_core == nullptr) {
@@ -1394,14 +1375,9 @@ const uint8_t* editor_ime_get_context(intptr_t editor_handle, uint64_t session_i
     }
     return nullptr;
   }
-  ImeTextContext context = editor_core->getImeContext(
-      session_id,
-      static_cast<ImeTextSource>(source),
-      start_utf16,
-      length_utf16);
-  return protocolToBinary(context,
-                          out_size,
-                          sizeof(int32_t) * 6 + sizeof(int64_t) * 6 + context.text.size());
+  ImeTextContext context =
+      editor_core->getImeContext(session_id, static_cast<ImeTextSource>(source), start_utf16, length_utf16);
+  return protocolToBinary(context, out_size, sizeof(int32_t) * 6 + sizeof(int64_t) * 6 + context.text.size());
 }
 
 #pragma endregion
@@ -1423,21 +1399,14 @@ void free_binary_data(intptr_t data_ptr) {
 
 #ifdef _WIN32
 LONG WINAPI MyUnhandledExceptionFilter(PEXCEPTION_POINTERS pExceptionInfo) {
-  HANDLE hFile = CreateFileW(L"SweetEditor_Crash.dmp",
-                            GENERIC_WRITE, 0, NULL, CREATE_ALWAYS,
-                            FILE_ATTRIBUTE_NORMAL, NULL);
+  HANDLE hFile =
+      CreateFileW(L"SweetEditor_Crash.dmp", GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
   if (hFile != INVALID_HANDLE_VALUE) {
     MINIDUMP_EXCEPTION_INFORMATION dumpInfo;
     dumpInfo.ThreadId = GetCurrentThreadId();
     dumpInfo.ExceptionPointers = pExceptionInfo;
     dumpInfo.ClientPointers = FALSE;
-    MiniDumpWriteDump(GetCurrentProcess(),
-                     GetCurrentProcessId(),
-                     hFile,
-                     MiniDumpNormal,
-                     &dumpInfo,
-                     NULL,
-                     NULL);
+    MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, MiniDumpNormal, &dumpInfo, NULL, NULL);
     CloseHandle(hFile);
   }
   return EXCEPTION_EXECUTE_HANDLER;
@@ -1447,5 +1416,4 @@ void init_unhandled_exception_handler() {
   SetUnhandledExceptionFilter(MyUnhandledExceptionFilter);
 }
 #endif
-
 }

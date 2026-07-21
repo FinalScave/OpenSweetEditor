@@ -13,9 +13,7 @@
 namespace NS_SWEETEDITOR {
   namespace {
     bool isSourceTextRun(const VisualRun& run) {
-      return run.type == VisualRunType::TEXT
-          || run.type == VisualRunType::LINK
-          || run.type == VisualRunType::TAB;
+      return run.type == VisualRunType::TEXT || run.type == VisualRunType::LINK || run.type == VisualRunType::TAB;
     }
 
     size_t runSourceLine(const VisualLine& visual_line, const VisualRun& run) {
@@ -23,9 +21,11 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-#pragma region [Class: TextLayout]
-  TextLayout::TextLayout(const SharedPtr<TextMeasurer>& measurer, const SharedPtr<DecorationManager>& decoration_manager)
-    : m_measurer_(measurer), m_decoration_manager_(decoration_manager) {
+#pragma region[Class: TextLayout]
+  TextLayout::TextLayout(const SharedPtr<TextMeasurer>& measurer,
+                         const SharedPtr<DecorationManager>& decoration_manager)
+      : m_measurer_(measurer),
+        m_decoration_manager_(decoration_manager) {
     resetMeasurer();
   }
 
@@ -89,17 +89,6 @@ namespace NS_SWEETEDITOR {
     return m_tab_size_;
   }
 
-  void TextLayout::setLineDecorationCollector(
-      std::function<void(size_t, LineLayoutDecorations&)> collector) {
-    m_collect_line_decorations_ = std::move(collector);
-    if (m_document_ != nullptr) {
-      for (auto& line : m_document_->getLogicalLines()) {
-        line.is_layout_dirty = true;
-      }
-    }
-    invalidateContentMetrics();
-  }
-
   void TextLayout::layoutLine(size_t index, LogicalLine& logical_line) {
     // Use prefix index to get line start y, and sync to LogicalLine.start_y (derived cache)
     ensurePrefixIndexUpTo(index);
@@ -156,7 +145,7 @@ namespace NS_SWEETEDITOR {
     logical_line.is_layout_dirty = false;
   }
 
-  VisibleLineInfo TextLayout::layoutVisibleLines(EditorRenderModel& model, const PresentationContext& presentation_context) {
+  VisibleLineInfo TextLayout::layoutVisibleLines(EditorRenderModel& model) {
     PERF_TIMER("layoutVisibleLines");
     if (!isValidViewportSize(m_viewport_) || m_document_ == nullptr) {
       return {};
@@ -203,7 +192,6 @@ namespace NS_SWEETEDITOR {
             run.x += text_area_x;
           }
         }
-        applyPresentationState(visual_line, presentation_context);
         // Fill gutter state only for the line that explicitly owns logical-line gutter semantics.
         if (visual_line.owns_gutter_semantics && m_layout_metrics_.gutter_visible) {
           buildGutterIconRenderItems(i, screen_y, gutter_offset, model.gutter_icons);
@@ -224,6 +212,12 @@ namespace NS_SWEETEDITOR {
     model.scroll_y = scroll_y;
     model.viewport_size = m_viewport_;
     return visible_line_info;
+  }
+
+  void TextLayout::finalizeVisualRuns(EditorRenderModel& model, const VisualRunInput& input) {
+    for (VisualLine& visual_line : model.lines) {
+      finalizeVisualLineRuns(visual_line, input);
+    }
   }
 
   CaretHit TextLayout::hitTestPointer(const PointF& screen_point) {
@@ -263,18 +257,14 @@ namespace NS_SWEETEDITOR {
     size_t column_min = SIZE_MAX;
     size_t column_max = 0;
     float width = 0;
-    if (!getVisualLineTextColumnExtent(logical_line.visual_lines[wrap_index],
-                                       hit.position.line,
-                                       column_min,
-                                       column_max,
+    if (!getVisualLineTextColumnExtent(logical_line.visual_lines[wrap_index], hit.position.line, column_min, column_max,
                                        width)) {
       return hit;
     }
     // A wrap boundary has one logical position but two visual caret locations.
     if (wrap_index > 0 && hit.position.column == column_min) {
       hit.affinity = CaretAffinity::DOWNSTREAM;
-    } else if (wrap_index + 1 < logical_line.visual_lines.size()
-               && hit.position.column == column_max) {
+    } else if (wrap_index + 1 < logical_line.visual_lines.size() && hit.position.column == column_max) {
       hit.affinity = CaretAffinity::UPSTREAM;
     }
     return hit;
@@ -425,8 +415,8 @@ namespace NS_SWEETEDITOR {
     if (m_document_ == nullptr) {
       return {};
     }
-    if (screen_point.x < 0.0f || screen_point.y < 0.0f
-        || screen_point.x >= m_viewport_.width || screen_point.y >= m_viewport_.height) {
+    if (screen_point.x < 0.0f || screen_point.y < 0.0f || screen_point.x >= m_viewport_.width
+        || screen_point.y >= m_viewport_.height) {
       return {};
     }
     Vector<LogicalLine>& logical_lines = m_document_->getLogicalLines();
@@ -460,25 +450,27 @@ namespace NS_SWEETEDITOR {
         const float fold_width = m_layout_metrics_.foldArrowAreaWidth();
         if (fold_width > 0) {
           const float fold_left = split_x - m_layout_metrics_.line_number_margin - fold_width;
-          if (screen_point.x >= fold_left && screen_point.x < fold_left + fold_width &&
-              screen_point.y >= item_top && screen_point.y < item_top + marker_height) {
+          if (screen_point.x >= fold_left && screen_point.x < fold_left + fold_width && screen_point.y >= item_top
+              && screen_point.y < item_top + marker_height) {
             return {HitTargetType::FOLD_GUTTER, hit_line, 0, 0};
           }
         }
       }
 
       // Gutter icon hit-test
-      const auto& gutter_icons = m_decoration_manager_->getLineGutterIcons(hit_line);
-      if (!gutter_icons.empty() && icon_size > 0 &&
-          screen_point.y >= item_top && screen_point.y < item_top + icon_size) {
+      const Vector<GutterIcon> gutter_icons = m_decoration_manager_->getEditingLineGutterIcons(hit_line);
+      if (!gutter_icons.empty() && icon_size > 0 && screen_point.y >= item_top
+          && screen_point.y < item_top + icon_size) {
         if (m_layout_metrics_.max_gutter_icons == 0) {
           const float icon_left = m_layout_metrics_.line_number_margin;
           if (screen_point.x >= icon_left && screen_point.x < icon_left + icon_size) {
             return {HitTargetType::GUTTER_ICON, hit_line, 0, gutter_icons[0].icon_id};
           }
         } else {
-          const size_t max_icons = std::min(static_cast<size_t>(m_layout_metrics_.max_gutter_icons), gutter_icons.size());
-          const float fold_lane_left = split_x - m_layout_metrics_.line_number_margin - m_layout_metrics_.foldArrowAreaWidth();
+          const size_t max_icons =
+              std::min(static_cast<size_t>(m_layout_metrics_.max_gutter_icons), gutter_icons.size());
+          const float fold_lane_left =
+              split_x - m_layout_metrics_.line_number_margin - m_layout_metrics_.foldArrowAreaWidth();
           float icon_right = show_fold_arrows ? fold_lane_left : (split_x - 2.0f);
           for (size_t idx = 0; idx < max_icons; ++idx) {
             const size_t icon_index = max_icons - 1 - idx;
@@ -537,11 +529,9 @@ namespace NS_SWEETEDITOR {
       } else if (run.type == VisualRunType::LINK) {
         if (click_x >= run_x && click_x < run_right) {
           const size_t source_line = runSourceLine(vl, run);
-          LineLayoutDecorations decorations;
-          collectLineDecorations(source_line, decorations);
+          LineLayoutDecorations decorations = m_decoration_manager_->getEditingLineLayoutDecorations(source_line);
           for (const LinkSpan& link : decorations.links) {
-            if (run.column >= link.column
-                && run.column < static_cast<size_t>(link.column) + link.length) {
+            if (run.column >= link.column && run.column < static_cast<size_t>(link.column) + link.length) {
               return {HitTargetType::LINK, source_line, link.column, 0};
             }
           }
@@ -554,8 +544,7 @@ namespace NS_SWEETEDITOR {
     return {};
   }
 
-  PointF TextLayout::getPositionScreenCoord(const TextPosition& position,
-                                            CaretAffinity affinity) {
+  PointF TextLayout::getPositionScreenCoord(const TextPosition& position, CaretAffinity affinity) {
     if (m_document_ == nullptr) {
       return {0, 0};
     }
@@ -572,9 +561,8 @@ namespace NS_SWEETEDITOR {
     size_t target_col = std::min(position.column, source_text.length());
     size_t owner_line = position.line;
     if (!resolveSourceVisualOwnerLine(position.line, target_col, target_col, true, owner_line)) {
-      const FoldRegion* fold_region = m_decoration_manager_ != nullptr
-          ? m_decoration_manager_->getFoldRegionForLine(position.line)
-          : nullptr;
+      const FoldRegion* fold_region =
+          m_decoration_manager_ != nullptr ? m_decoration_manager_->getFoldRegionForLine(position.line) : nullptr;
       if (fold_region != nullptr && fold_region->start_line < logical_lines.size()) {
         return getPositionScreenCoord({fold_region->start_line, m_document_->getLineColumns(fold_region->start_line)});
       }
@@ -589,13 +577,8 @@ namespace NS_SWEETEDITOR {
     if (target_col > 0 || projected) {
       for (const VisualLine& vl : owner_ll.visual_lines) {
         float x_offset = 0;
-        const bool allow_line_end = m_wrap_mode_ == WrapMode::NONE
-            || affinity == CaretAffinity::UPSTREAM;
-        if (columnToVisualLineX(vl,
-                                position.line,
-                                target_col,
-                                allow_line_end,
-                                x_offset)) {
+        const bool allow_line_end = m_wrap_mode_ == WrapMode::NONE || affinity == CaretAffinity::UPSTREAM;
+        if (columnToVisualLineX(vl, position.line, target_col, allow_line_end, x_offset)) {
           return {text_area_x + x_offset - scroll_offset, vl.line_number_position.y - scroll_y};
         }
       }
@@ -623,8 +606,8 @@ namespace NS_SWEETEDITOR {
     return {text_area_x - (m_wrap_mode_ == WrapMode::NONE ? scroll_x : 0), screen_y};
   }
 
-  void TextLayout::resolveColumnXRange(size_t line, size_t col_start, size_t col_end,
-                                      float& out_x_start, float& out_x_end) {
+  void TextLayout::resolveColumnXRange(size_t line, size_t col_start, size_t col_end, float& out_x_start,
+                                       float& out_x_end) {
     if (m_document_ == nullptr) {
       out_x_start = out_x_end = 0;
       return;
@@ -683,14 +666,14 @@ namespace NS_SWEETEDITOR {
     out_x_end = text_area_x + x_end - scroll_offset;
   }
 
-  void TextLayout::getColumnScreenRange(size_t line, size_t col_start, size_t col_end,
-                                         float& out_x_start, float& out_x_end, float& out_y) {
+  void TextLayout::getColumnScreenRange(size_t line, size_t col_start, size_t col_end, float& out_x_start,
+                                        float& out_x_end, float& out_y) {
     resolveColumnXRange(line, col_start, col_end, out_x_start, out_x_end);
     out_y = getPositionScreenCoord({line, col_start}).y;
   }
 
-  void TextLayout::getColumnSelectionRects(size_t line, size_t col_start, size_t col_end,
-                                            float rect_height, Vector<Rect>& out_rects) {
+  void TextLayout::getColumnSelectionRects(size_t line, size_t col_start, size_t col_end, float rect_height,
+                                           Vector<Rect>& out_rects) {
     if (m_document_ == nullptr) return;
     Vector<LogicalLine>& logical_lines = m_document_->getLogicalLines();
     if (line >= logical_lines.size()) return;
@@ -733,8 +716,7 @@ namespace NS_SWEETEDITOR {
       if (!found_end) x_end = vl_width;
 
       Rect rect;
-      rect.origin = {text_area_x + x_start - scroll_offset,
-                     vl.line_number_position.y - scroll_y};
+      rect.origin = {text_area_x + x_start - scroll_offset, vl.line_number_position.y - scroll_y};
       rect.width = x_end - x_start;
       rect.height = rect_height;
       out_rects.push_back(rect);
@@ -844,7 +826,8 @@ namespace NS_SWEETEDITOR {
     if (m_wrap_mode_ == WrapMode::NONE) {
       bounds.content_width = metrics.max_line_width;
       float extra = m_layout_metrics_.gutter_sticky ? 0.0f : bounds.text_area_x;
-      bounds.max_scroll_x = std::max(0.0f, metrics.max_line_width - bounds.text_area_width + getLineHeight() * 2 + extra);
+      bounds.max_scroll_x =
+          std::max(0.0f, metrics.max_line_width - bounds.text_area_width + getLineHeight() * 2 + extra);
     } else {
       bounds.content_width = bounds.text_area_width;
       bounds.max_scroll_x = 0;
@@ -923,15 +906,14 @@ namespace NS_SWEETEDITOR {
       return false;
     }
     const auto& lines = m_document_->getLogicalLines();
-    if (!region.collapsed || region.end_line <= region.start_line ||
-        region.start_line >= lines.size() || region.end_line >= lines.size()) {
+    if (!region.collapsed || region.end_line <= region.start_line || region.start_line >= lines.size()
+        || region.end_line >= lines.size()) {
       return false;
     }
 
     const U16String& line_text = m_document_->getLineU16TextRef(region.end_line);
     size_t trim_pos = 0;
-    while (trim_pos < line_text.size() &&
-           (line_text[trim_pos] == u' ' || line_text[trim_pos] == u'\t')) {
+    while (trim_pos < line_text.size() && (line_text[trim_pos] == u' ' || line_text[trim_pos] == u'\t')) {
       ++trim_pos;
     }
     if (trim_pos >= line_text.size()) {
@@ -945,8 +927,7 @@ namespace NS_SWEETEDITOR {
     return true;
   }
 
-  bool TextLayout::resolveFoldTailProjectionForOwnerLine(size_t owner_line,
-                                                         FoldTailProjection& out_projection) {
+  bool TextLayout::resolveFoldTailProjectionForOwnerLine(size_t owner_line, FoldTailProjection& out_projection) {
     if (m_document_ == nullptr || m_decoration_manager_ == nullptr) {
       return false;
     }
@@ -966,8 +947,7 @@ namespace NS_SWEETEDITOR {
     return false;
   }
 
-  bool TextLayout::resolveFoldTailProjectionForSourceLine(size_t source_line,
-                                                          FoldTailProjection& out_projection) {
+  bool TextLayout::resolveFoldTailProjectionForSourceLine(size_t source_line, FoldTailProjection& out_projection) {
     if (m_document_ == nullptr || m_decoration_manager_ == nullptr) {
       return false;
     }
@@ -979,8 +959,8 @@ namespace NS_SWEETEDITOR {
     bool found = false;
     FoldTailProjection best_projection;
     for (const FoldRegion& region : m_decoration_manager_->getFoldRegions()) {
-      if (region.end_line != source_line ||
-          region.start_line >= lines.size() || lines[region.start_line].is_fold_hidden) {
+      if (region.end_line != source_line || region.start_line >= lines.size()
+          || lines[region.start_line].is_fold_hidden) {
         continue;
       }
 
@@ -1001,11 +981,8 @@ namespace NS_SWEETEDITOR {
     return true;
   }
 
-  bool TextLayout::resolveSourceVisualOwnerLine(size_t source_line,
-                                                size_t range_start,
-                                                size_t range_end,
-                                                bool include_empty_end,
-                                                size_t& out_owner_line) {
+  bool TextLayout::resolveSourceVisualOwnerLine(size_t source_line, size_t range_start, size_t range_end,
+                                                bool include_empty_end, size_t& out_owner_line) {
     if (m_document_ == nullptr) {
       return false;
     }
@@ -1031,11 +1008,11 @@ namespace NS_SWEETEDITOR {
       return false;
     }
 
-    const bool intersects = (safe_start == safe_end)
-        ? (include_empty_end
-              ? (safe_start >= projection.visible_start && safe_start <= projection.visible_end)
-              : (safe_start >= projection.visible_start && safe_start < projection.visible_end))
-        : (safe_start < projection.visible_end && safe_end > projection.visible_start);
+    const bool intersects =
+        (safe_start == safe_end)
+            ? (include_empty_end ? (safe_start >= projection.visible_start && safe_start <= projection.visible_end)
+                                 : (safe_start >= projection.visible_start && safe_start < projection.visible_end))
+            : (safe_start < projection.visible_end && safe_end > projection.visible_start);
     if (!intersects) {
       return false;
     }
@@ -1044,17 +1021,15 @@ namespace NS_SWEETEDITOR {
     return true;
   }
 
-  bool TextLayout::isFoldTailProjectedPosition(const TextPosition& position,
-                                               bool include_end,
-                                               size_t* out_owner_line) {
+  bool TextLayout::isFoldTailProjectedPosition(const TextPosition& position, bool include_end, size_t* out_owner_line) {
     FoldTailProjection projection;
     if (!resolveFoldTailProjectionForSourceLine(position.line, projection)) {
       return false;
     }
 
     const bool inside = include_end
-        ? (position.column >= projection.visible_start && position.column <= projection.visible_end)
-        : (position.column >= projection.visible_start && position.column < projection.visible_end);
+                            ? (position.column >= projection.visible_start && position.column <= projection.visible_end)
+                            : (position.column >= projection.visible_start && position.column < projection.visible_end);
     if (!inside) {
       return false;
     }
@@ -1069,8 +1044,7 @@ namespace NS_SWEETEDITOR {
     if (!resolveFoldTailProjectionForOwnerLine(owner_line, projection)) {
       return false;
     }
-    out_range = {{projection.source_line, projection.visible_start},
-                 {projection.source_line, projection.visible_end}};
+    out_range = {{projection.source_line, projection.visible_start}, {projection.source_line, projection.visible_end}};
     return true;
   }
 
@@ -1095,7 +1069,7 @@ namespace NS_SWEETEDITOR {
 
     // Rebuild prefix from dirty start
     size_t start = m_prefix_dirty_from_;
-    if (start > up_to_line) return;  // No dirty data in target range
+    if (start > up_to_line) return; // No dirty data in target range
 
     // Use default line height as estimated height for never-laid-out lines,
     // to avoid full-document layoutLine just for exact heights.
@@ -1111,9 +1085,9 @@ namespace NS_SWEETEDITOR {
     // This eliminates O(N) float accumulation error that otherwise grows to
     // ~120 px at line 14000 with non-power-of-two line heights, causing visible
     // viewport jitter during pinch-to-zoom.
-    float run_base_y = 0.0f;     // prefix_y where the current same-height run started
-    float run_height = 0.0f;     // height value of the current run
-    size_t run_count = 0;        // how many lines of run_height have been accumulated
+    float run_base_y = 0.0f; // prefix_y where the current same-height run started
+    float run_height = 0.0f; // height value of the current run
+    size_t run_count = 0;    // how many lines of run_height have been accumulated
 
     for (size_t i = start; i <= up_to_line; ++i) {
       if (i == 0) {
@@ -1128,7 +1102,7 @@ namespace NS_SWEETEDITOR {
         if (prev.height >= 0) {
           h = prev.height;
         } else {
-          bool has_codelens = !m_decoration_manager_->getLineCodeLens(i - 1).empty();
+          bool has_codelens = !m_decoration_manager_->getEditingLineCodeLens(i - 1).empty();
           h = has_codelens ? default_height * 2 : default_height;
         }
         if (h == run_height && run_count > 0) {
@@ -1224,19 +1198,18 @@ namespace NS_SWEETEDITOR {
   }
 
   void TextLayout::layoutLineIntoVisualLines(size_t line_index, const U16String& line_text, float start_y,
-                                      Vector<VisualLine>& out_visual_lines) {
+                                             Vector<VisualLine>& out_visual_lines) {
     float line_height = getLineHeight();
-    const float base_start_y = start_y;  // Save original start_y for phantom continuation y calculation
+    const float base_start_y = start_y; // Save original start_y for phantom continuation y calculation
 
-    const auto& line_codelens_items = m_decoration_manager_->getLineCodeLens(line_index);
+    const Vector<CodeLensItem> line_codelens_items = m_decoration_manager_->getEditingLineCodeLens(line_index);
     const bool has_codelens = !line_codelens_items.empty();
     if (has_codelens) {
       start_y += line_height;
     }
 
     // Build runs for original line (includes first phantom line segment)
-    LineLayoutDecorations decorations;
-    collectLineDecorations(line_index, decorations);
+    LineLayoutDecorations decorations = m_decoration_manager_->getEditingLineLayoutDecorations(line_index);
     Vector<VisualRun> all_runs;
     buildLineRuns(line_index, line_text, decorations, all_runs);
 
@@ -1262,9 +1235,7 @@ namespace NS_SWEETEDITOR {
                        });
 
       auto resolveCodeLensAnchorX = [&](int32_t column) -> float {
-        const size_t safe_column = column <= 0
-            ? 0
-            : std::min(static_cast<size_t>(column), line_text.length());
+        const size_t safe_column = column <= 0 ? 0 : std::min(static_cast<size_t>(column), line_text.length());
 
         float line_end_x = 0;
         bool has_line_end = false;
@@ -1407,23 +1378,8 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  void TextLayout::collectLineDecorations(
-      size_t line_index,
-      LineLayoutDecorations& decorations) const {
-    if (m_collect_line_decorations_) {
-      m_collect_line_decorations_(line_index, decorations);
-      return;
-    }
-    decorations.spans = m_decoration_manager_->getMergedLineSpans(line_index);
-    decorations.inlay_hints = m_decoration_manager_->getLineInlayHints(line_index);
-    decorations.phantom_texts = m_decoration_manager_->getLinePhantomTexts(line_index);
-    decorations.links = m_decoration_manager_->getLineLinks(line_index);
-  }
-
-  void TextLayout::buildLineRuns(size_t line_index,
-                                 const U16String& line_text,
-                                 const LineLayoutDecorations& decorations,
-                                 Vector<VisualRun>& runs) {
+  void TextLayout::buildLineRuns(size_t line_index, const U16String& line_text,
+                                 const LineLayoutDecorations& decorations, Vector<VisualRun>& runs) {
     const auto& merged_spans = decorations.spans;
     const auto& inlay_hints = decorations.inlay_hints;
     const auto& phantom_texts = decorations.phantom_texts;
@@ -1658,8 +1614,8 @@ namespace NS_SWEETEDITOR {
       run.x = text_area_x + run_left - scroll_x;
 
       // Decorator and marker runs are atomic for viewport cropping.
-      if (run.type == VisualRunType::INLAY_HINT || run.type == VisualRunType::TAB
-          || run.type == VisualRunType::CODELENS || run.type == VisualRunType::NEWLINE) {
+      if (run.type == VisualRunType::INLAY_HINT || run.type == VisualRunType::TAB || run.type == VisualRunType::CODELENS
+          || run.type == VisualRunType::NEWLINE) {
         current_x = run_right;
         ++run_it;
         continue;
@@ -1699,8 +1655,8 @@ namespace NS_SWEETEDITOR {
               continue;
             }
             if (visible_start > 0 || visible_len < run.length) {
-              float crop_offset = visible_start > 0
-                  ? measureWidth(run.text.substr(0, visible_start), run.style.font_style) : 0;
+              float crop_offset =
+                  visible_start > 0 ? measureWidth(run.text.substr(0, visible_start), run.style.font_style) : 0;
               run.x = text_area_x + (run_left + crop_offset) - scroll_x;
               if (updates_source_range) {
                 run.column += visible_start;
@@ -1765,13 +1721,11 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  void TextLayout::applyPresentationState(VisualLine& visual_line,
-                                          const PresentationContext& presentation_context) {
-    const EditorRenderColors& colors = presentation_context.render_colors;
+  void TextLayout::finalizeVisualLineRuns(VisualLine& visual_line, const VisualRunInput& input) {
+    const EditorRenderColors& colors = input.colors;
 
     Vector<VisualRun> runs;
     bool has_split = false;
-    HashMap<size_t, Vector<TextPresentationEffect>> line_effect_cache;
     HashMap<size_t, LineLayoutDecorations> line_decoration_cache;
 
     auto ensure_runs = [&](size_t current_index) {
@@ -1781,40 +1735,23 @@ namespace NS_SWEETEDITOR {
       has_split = true;
     };
 
-    auto get_line_effects = [&](size_t source_line) -> const Vector<TextPresentationEffect>& {
-      auto it = line_effect_cache.find(source_line);
-      if (it != line_effect_cache.end()) {
-        return it->second;
-      }
-
-      Vector<TextPresentationEffect> effects;
-      if (presentation_context.collect_text_effects) {
-        presentation_context.collect_text_effects(source_line, effects);
-      }
-      auto inserted = line_effect_cache.emplace(source_line, std::move(effects));
-      return inserted.first->second;
-    };
-
     auto is_active_run = [&](const VisualRun& run) {
-      const HitTarget& active_hit_target = presentation_context.active_hit_target;
+      const HitTarget& active_hit_target = input.active_hit_target;
       if (active_hit_target.type == HitTargetType::NONE) return false;
       const size_t source_line = runSourceLine(visual_line, run);
       if (source_line != active_hit_target.line) return false;
 
       if (run.type == VisualRunType::CODELENS) {
-        return run.column == active_hit_target.column
-            && run.icon_id == active_hit_target.icon_id;
+        return run.column == active_hit_target.column && run.icon_id == active_hit_target.icon_id;
       }
       if (run.type == VisualRunType::LINK) {
         auto it = line_decoration_cache.find(source_line);
         if (it == line_decoration_cache.end()) {
-          LineLayoutDecorations decorations;
-          collectLineDecorations(source_line, decorations);
+          LineLayoutDecorations decorations = m_decoration_manager_->getEditingLineLayoutDecorations(source_line);
           it = line_decoration_cache.emplace(source_line, std::move(decorations)).first;
         }
         for (const LinkSpan& link : it->second.links) {
-          if (run.column >= link.column
-              && run.column < static_cast<size_t>(link.column) + link.length) {
+          if (run.column >= link.column && run.column < static_cast<size_t>(link.column) + link.length) {
             return link.column == active_hit_target.column;
           }
         }
@@ -1822,62 +1759,62 @@ namespace NS_SWEETEDITOR {
       return false;
     };
 
-    auto apply_foreground = [&](VisualRun& run) {
+    auto resolve_foreground = [&](VisualRun& run) {
       int32_t role_color = 0;
       if (run.type == VisualRunType::LINK) {
-        role_color = run.active && colors.active_link_foreground != 0
-            ? colors.active_link_foreground : colors.link_foreground;
+        role_color =
+            run.active && colors.active_link_foreground != 0 ? colors.active_link_foreground : colors.link_foreground;
       } else if (run.type == VisualRunType::CODELENS) {
-        role_color = run.active && colors.active_codelens_foreground != 0
-            ? colors.active_codelens_foreground : colors.codelens_foreground;
+        role_color = run.active && colors.active_codelens_foreground != 0 ? colors.active_codelens_foreground
+                                                                          : colors.codelens_foreground;
       }
 
       if (role_color != 0) {
         run.style.color = role_color;
       } else if (run.style.color == 0 && colors.text_foreground != 0) {
         switch (run.type) {
-          case VisualRunType::TEXT:
-          case VisualRunType::LINK:
-          case VisualRunType::TAB:
-          case VisualRunType::CODELENS:
-            run.style.color = colors.text_foreground;
-            break;
-          default:
-            break;
+        case VisualRunType::TEXT:
+        case VisualRunType::LINK:
+        case VisualRunType::TAB:
+        case VisualRunType::CODELENS:
+          run.style.color = colors.text_foreground;
+          break;
+        default:
+          break;
         }
       }
     };
 
-    auto collect_effect_segments = [&](const VisualRun& run,
-                                       Vector<size_t>& cuts,
-                                       const Vector<TextPresentationEffect>*& line_effects) {
-      if (!presentation_context.collect_text_effects || !isSourceTextRun(run)
-          || run.text.empty() || run.length == 0) {
+    auto collect_override_segments = [&](const VisualRun& run, Vector<size_t>& cuts,
+                                         const Vector<TextRunStyleOverride>*& line_overrides) {
+      if (!isSourceTextRun(run) || run.text.empty() || run.length == 0) {
         return false;
       }
 
       const size_t source_line = runSourceLine(visual_line, run);
-      line_effects = &get_line_effects(source_line);
-      if (line_effects->empty()) return false;
+      const auto overrides_it = input.style_overrides_by_line.find(source_line);
+      if (overrides_it == input.style_overrides_by_line.end() || overrides_it->second.empty()) {
+        return false;
+      }
+      line_overrides = &overrides_it->second;
 
       const size_t run_start = run.column;
       const size_t run_end = run.column + run.length;
-      bool has_effect = false;
+      bool has_override = false;
       cuts.clear();
       cuts.push_back(0);
       cuts.push_back(run.text.length());
 
-      for (const TextPresentationEffect& effect : *line_effects) {
-        if (source_line < effect.range.start.line || source_line > effect.range.end.line) {
+      for (const TextRunStyleOverride& override : *line_overrides) {
+        if (source_line < override.range.start.line || source_line > override.range.end.line) {
           continue;
         }
 
-        const size_t effect_start = source_line == effect.range.start.line
-            ? effect.range.start.column : 0;
-        const size_t effect_end = source_line == effect.range.end.line
-            ? effect.range.end.column : std::numeric_limits<size_t>::max();
-        const size_t intersect_start = std::max(run_start, effect_start);
-        const size_t intersect_end = std::min(run_end, effect_end);
+        const size_t override_start = source_line == override.range.start.line ? override.range.start.column : 0;
+        const size_t override_end =
+            source_line == override.range.end.line ? override.range.end.column : std::numeric_limits<size_t>::max();
+        const size_t intersect_start = std::max(run_start, override_start);
+        const size_t intersect_end = std::min(run_end, override_end);
         if (intersect_start >= intersect_end) {
           continue;
         }
@@ -1891,21 +1828,18 @@ namespace NS_SWEETEDITOR {
         }
         cuts.push_back(local_start);
         cuts.push_back(local_end);
-        has_effect = true;
+        has_override = true;
       }
 
-      if (!has_effect) return false;
+      if (!has_override) return false;
       std::sort(cuts.begin(), cuts.end());
       cuts.erase(std::unique(cuts.begin(), cuts.end()), cuts.end());
       return cuts.size() > 1;
     };
 
-    auto resolve_effect_for_part = [&](const VisualRun& run,
-                                       size_t part_start,
-                                       size_t part_end,
-                                       const Vector<TextPresentationEffect>& line_effects,
-                                       int32_t& foreground,
-                                       bool& clear_background) {
+    auto resolve_overrides_for_part = [&](const VisualRun& run, size_t part_start, size_t part_end,
+                                          const Vector<TextRunStyleOverride>& line_overrides, int32_t& foreground,
+                                          bool& clear_background) {
       foreground = 0;
       clear_background = false;
       uint32_t foreground_priority = 0;
@@ -1913,39 +1847,33 @@ namespace NS_SWEETEDITOR {
       const size_t source_start = run.column + part_start;
       const size_t source_end = run.column + part_end;
 
-      for (const TextPresentationEffect& effect : line_effects) {
-        if (source_line < effect.range.start.line || source_line > effect.range.end.line) {
+      for (const TextRunStyleOverride& override : line_overrides) {
+        if (source_line < override.range.start.line || source_line > override.range.end.line) {
           continue;
         }
-        const size_t effect_start = source_line == effect.range.start.line
-            ? effect.range.start.column : 0;
-        const size_t effect_end = source_line == effect.range.end.line
-            ? effect.range.end.column : std::numeric_limits<size_t>::max();
-        if (std::max(source_start, effect_start) >= std::min(source_end, effect_end)) {
+        const size_t override_start = source_line == override.range.start.line ? override.range.start.column : 0;
+        const size_t override_end =
+            source_line == override.range.end.line ? override.range.end.column : std::numeric_limits<size_t>::max();
+        if (std::max(source_start, override_start) >= std::min(source_end, override_end)) {
           continue;
         }
-        if (effect.clear_text_background) {
+        if (override.clear_text_background) {
           clear_background = true;
         }
-        if (effect.foreground_color != 0 && effect.priority >= foreground_priority) {
-          foreground = effect.foreground_color;
-          foreground_priority = effect.priority;
+        if (override.foreground_color != 0 && override.priority >= foreground_priority) {
+          foreground = override.foreground_color;
+          foreground_priority = override.priority;
         }
       }
     };
 
-    auto append_part = [&](const VisualRun& run,
-                           size_t start,
-                           size_t end,
-                           int32_t foreground,
-                           bool clear_background) {
+    auto append_part = [&](const VisualRun& run, size_t start, size_t end, int32_t foreground, bool clear_background) {
       if (start >= end) return;
       VisualRun part = run;
       part.column = run.column + start;
       part.length = end - start;
       part.text = run.text.substr(start, end - start);
-      const float prefix_width = start == 0
-          ? 0.0f : measureWidth(run.text.substr(0, start), run.style.font_style);
+      const float prefix_width = start == 0 ? 0.0f : measureWidth(run.text.substr(0, start), run.style.font_style);
       part.x = run.x + prefix_width;
       part.width = measureWidth(part.text, part.style.font_style);
       if (foreground != 0) {
@@ -1960,11 +1888,11 @@ namespace NS_SWEETEDITOR {
     for (size_t index = 0; index < visual_line.runs.size(); ++index) {
       VisualRun& run = visual_line.runs[index];
       run.active = is_active_run(run);
-      apply_foreground(run);
+      resolve_foreground(run);
 
       Vector<size_t> cuts;
-      const Vector<TextPresentationEffect>* line_effects = nullptr;
-      if (!collect_effect_segments(run, cuts, line_effects)) {
+      const Vector<TextRunStyleOverride>* line_overrides = nullptr;
+      if (!collect_override_segments(run, cuts, line_overrides)) {
         if (has_split) runs.push_back(run);
         continue;
       }
@@ -1975,7 +1903,7 @@ namespace NS_SWEETEDITOR {
         const size_t end = cuts[cut_index + 1];
         int32_t foreground = 0;
         bool clear_background = false;
-        resolve_effect_for_part(run, start, end, *line_effects, foreground, clear_background);
+        resolve_overrides_for_part(run, start, end, *line_overrides, foreground, clear_background);
         append_part(run, start, end, foreground, clear_background);
       }
     }
@@ -1984,19 +1912,18 @@ namespace NS_SWEETEDITOR {
       visual_line.runs = std::move(runs);
     }
 
-    materializeWhitespaceRuns(visual_line, presentation_context);
+    applyWhitespaceMode(visual_line, input);
   }
 
-  void TextLayout::materializeWhitespaceRuns(VisualLine& visual_line,
-                                             const PresentationContext& presentation_context) {
-    if (presentation_context.render_whitespace == WhitespaceRenderMode::NONE || visual_line.runs.empty()) {
+  void TextLayout::applyWhitespaceMode(VisualLine& visual_line, const VisualRunInput& input) {
+    if (input.whitespace_mode == WhitespaceRenderMode::NONE || visual_line.runs.empty()) {
       return;
     }
 
     struct LineWhitespaceInfo {
-      const U16String* text {nullptr};
-      size_t leading_end {0};
-      size_t trailing_start {0};
+      const U16String* text{nullptr};
+      size_t leading_end{0};
+      size_t trailing_start{0};
     };
 
     HashMap<size_t, LineWhitespaceInfo> line_info_cache;
@@ -2018,8 +1945,8 @@ namespace NS_SWEETEDITOR {
     };
 
     auto is_column_selected = [&](size_t source_line, size_t column) {
-      if (!presentation_context.has_selection) return false;
-      const TextRange& selection = presentation_context.selection_range;
+      if (!input.selection_range.has_value()) return false;
+      const TextRange& selection = *input.selection_range;
       if (selection.start == selection.end) return false;
       if (source_line < selection.start.line || source_line > selection.end.line) return false;
       if (selection.start.line == selection.end.line) {
@@ -2035,7 +1962,7 @@ namespace NS_SWEETEDITOR {
       if (info == nullptr || info->text == nullptr) return false;
       const U16String& line_text = *info->text;
       if (column >= line_text.length() || line_text[column] != CHAR16(' ')) return false;
-      switch (presentation_context.render_whitespace) {
+      switch (input.whitespace_mode) {
       case WhitespaceRenderMode::ALL:
         return true;
       case WhitespaceRenderMode::TRAILING:
@@ -2059,7 +1986,7 @@ namespace NS_SWEETEDITOR {
       if (info == nullptr || info->text == nullptr) return false;
       const U16String& line_text = *info->text;
       if (column >= line_text.length() || line_text[column] != CHAR16('\t')) return false;
-      switch (presentation_context.render_whitespace) {
+      switch (input.whitespace_mode) {
       case WhitespaceRenderMode::ALL:
       case WhitespaceRenderMode::BOUNDARY:
         return true;
@@ -2084,8 +2011,7 @@ namespace NS_SWEETEDITOR {
       part.column = run.column + start;
       part.length = end - start;
       part.text = run.text.substr(start, end - start);
-      const float prefix_width = start == 0
-          ? 0.0f : measureWidth(run.text.substr(0, start), run.style.font_style);
+      const float prefix_width = start == 0 ? 0.0f : measureWidth(run.text.substr(0, start), run.style.font_style);
       part.x = run.x + prefix_width;
       part.width = measureWidth(part.text, part.style.font_style);
       runs.push_back(std::move(part));
@@ -2113,8 +2039,8 @@ namespace NS_SWEETEDITOR {
       bool segment_marker = false;
       bool has_segment = false;
       for (size_t index = 0; index < run.text.length(); ++index) {
-        const bool is_visible_space = run.text[index] == CHAR16(' ')
-            && should_render_space(source_line, run.column + index);
+        const bool is_visible_space =
+            run.text[index] == CHAR16(' ') && should_render_space(source_line, run.column + index);
         if (!has_segment) {
           segment_start = index;
           segment_marker = is_visible_space;
@@ -2122,8 +2048,7 @@ namespace NS_SWEETEDITOR {
           continue;
         }
         if (is_visible_space != segment_marker) {
-          append_text_part(run, segment_start, index,
-                           segment_marker ? VisualRunType::WHITESPACE : run.type);
+          append_text_part(run, segment_start, index, segment_marker ? VisualRunType::WHITESPACE : run.type);
           changed = changed || segment_marker;
           segment_start = index;
           segment_marker = is_visible_space;
@@ -2131,8 +2056,7 @@ namespace NS_SWEETEDITOR {
       }
 
       if (has_segment) {
-        append_text_part(run, segment_start, run.text.length(),
-                         segment_marker ? VisualRunType::WHITESPACE : run.type);
+        append_text_part(run, segment_start, run.text.length(), segment_marker ? VisualRunType::WHITESPACE : run.type);
         changed = changed || segment_marker;
       } else {
         runs.push_back(std::move(run));
@@ -2144,9 +2068,8 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  void TextLayout::wrapLineRuns(size_t line_index, float start_y, float line_height,
-                                Vector<VisualRun>& runs, Vector<VisualLine>& out_lines,
-                                size_t wrap_index_offset) {
+  void TextLayout::wrapLineRuns(size_t line_index, float start_y, float line_height, Vector<VisualRun>& runs,
+                                Vector<VisualLine>& out_lines, size_t wrap_index_offset) {
     const float text_area_x = m_layout_metrics_.textAreaX();
     const float wrap_width = m_viewport_.width - text_area_x;
     if (wrap_width <= 0) {
@@ -2343,8 +2266,7 @@ namespace NS_SWEETEDITOR {
     const U16String& end_text = m_document_->getLineU16TextRef(end_line_idx);
 
     // Use buildLineRuns to get complete runs for the tail line (with highlight styles)
-    LineLayoutDecorations end_decorations;
-    collectLineDecorations(end_line_idx, end_decorations);
+    LineLayoutDecorations end_decorations = m_decoration_manager_->getEditingLineLayoutDecorations(end_line_idx);
     Vector<VisualRun> end_runs;
     buildLineRuns(end_line_idx, end_text, end_decorations, end_runs);
 
@@ -2436,10 +2358,9 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  void TextLayout::buildGutterIconRenderItems(size_t logical_line, float line_top_screen,
-                                              float gutter_offset,
+  void TextLayout::buildGutterIconRenderItems(size_t logical_line, float line_top_screen, float gutter_offset,
                                               Vector<GutterIconRenderItem>& out_items) const {
-    const auto& gutter_icons = m_decoration_manager_->getLineGutterIcons(logical_line);
+    const Vector<GutterIcon> gutter_icons = m_decoration_manager_->getEditingLineGutterIcons(logical_line);
     if (gutter_icons.empty()) return;
 
     const float line_height = getLineHeight();
@@ -2459,7 +2380,8 @@ namespace NS_SWEETEDITOR {
     const size_t max_icons = std::min(static_cast<size_t>(m_layout_metrics_.max_gutter_icons), gutter_icons.size());
     const float split_x = m_layout_metrics_.gutterWidth();
     const bool show_fold_arrows = m_layout_metrics_.shouldShowFoldArrows();
-    const float fold_lane_left = split_x - m_layout_metrics_.line_number_margin - m_layout_metrics_.foldArrowAreaWidth();
+    const float fold_lane_left =
+        split_x - m_layout_metrics_.line_number_margin - m_layout_metrics_.foldArrowAreaWidth();
     float icon_right = show_fold_arrows ? fold_lane_left : (split_x - 2.0f);
     icon_right += gutter_offset;
     for (size_t idx = 0; idx < max_icons; ++idx) {
@@ -2473,8 +2395,7 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  bool TextLayout::buildFoldMarkerRenderItem(size_t logical_line, float line_top_screen,
-                                             float gutter_offset,
+  bool TextLayout::buildFoldMarkerRenderItem(size_t logical_line, float line_top_screen, float gutter_offset,
                                              FoldMarkerRenderItem& out_item) const {
     if (!m_layout_metrics_.shouldShowFoldArrows()) return false;
     int fs = m_decoration_manager_->getFoldStateForLine(logical_line);
@@ -2563,11 +2484,11 @@ namespace NS_SWEETEDITOR {
   TextPosition TextLayout::mapVisualLineToPointerTarget(size_t logical_line, const VisualLine& visual_line) const {
     const auto& semantics = getVisualLineSemantics(visual_line.kind);
     switch (semantics.pointer_hit) {
-      case PointerHitPolicy::OWNER_LINE_START:
-        return {logical_line, 0};
-      case PointerHitPolicy::CONTENT:
-      default:
-        return {logical_line, 0};
+    case PointerHitPolicy::OWNER_LINE_START:
+      return {logical_line, 0};
+    case PointerHitPolicy::CONTENT:
+    default:
+      return {logical_line, 0};
     }
   }
 
@@ -2577,21 +2498,18 @@ namespace NS_SWEETEDITOR {
     }
     const auto& semantics = getVisualLineSemantics(visual_line.kind);
     switch (semantics.text_boundary) {
-      case TextBoundaryPolicy::PREVIOUS_VISIBLE_LINE_END:
-        return previousVisibleLineEnd(logical_line);
-      case TextBoundaryPolicy::OWNER_LINE_END:
-        return {logical_line, m_document_->getLineColumns(logical_line)};
-      case TextBoundaryPolicy::CONTENT:
-      default:
-        return {logical_line, 0};
+    case TextBoundaryPolicy::PREVIOUS_VISIBLE_LINE_END:
+      return previousVisibleLineEnd(logical_line);
+    case TextBoundaryPolicy::OWNER_LINE_END:
+      return {logical_line, m_document_->getLineColumns(logical_line)};
+    case TextBoundaryPolicy::CONTENT:
+    default:
+      return {logical_line, 0};
     }
   }
 
-  bool TextLayout::getVisualLineTextColumnExtent(const VisualLine& visual_line,
-                                                  size_t source_line,
-                                                  size_t& out_col_min,
-                                                  size_t& out_col_max,
-                                                  float& out_total_width) {
+  bool TextLayout::getVisualLineTextColumnExtent(const VisualLine& visual_line, size_t source_line, size_t& out_col_min,
+                                                 size_t& out_col_max, float& out_total_width) {
     out_col_min = SIZE_MAX;
     out_col_max = 0;
     out_total_width = 0;
@@ -2610,11 +2528,8 @@ namespace NS_SWEETEDITOR {
     return out_col_min != SIZE_MAX;
   }
 
-  bool TextLayout::columnToVisualLineX(const VisualLine& visual_line,
-                                       size_t source_line,
-                                       size_t column,
-                                       bool allow_line_end,
-                                       float& out_x) {
+  bool TextLayout::columnToVisualLineX(const VisualLine& visual_line, size_t source_line, size_t column,
+                                       bool allow_line_end, float& out_x) {
     float vl_x = 0;
     for (const VisualRun& run : visual_line.runs) {
       if (!isSourceTextRun(run) || runSourceLine(visual_line, run) != source_line) {
@@ -2624,9 +2539,8 @@ namespace NS_SWEETEDITOR {
 
       size_t run_start = run.column;
       size_t run_end = run.column + run.length;
-      bool inside = allow_line_end
-                    ? (column >= run_start && column <= run_end)
-                    : (column >= run_start && column < run_end);
+      bool inside =
+          allow_line_end ? (column >= run_start && column <= run_end) : (column >= run_start && column < run_end);
       if (!inside) {
         vl_x += run.width;
         continue;

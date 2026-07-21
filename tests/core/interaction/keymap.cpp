@@ -26,8 +26,10 @@ TEST_CASE("KeyResolver resolves default completion shortcuts") {
 
 TEST_CASE("KeyResolver handles pending multi-chord bindings and clears on mismatch") {
   KeyMap key_map;
-  key_map.addBinding({{KeyModifier::CTRL, KeyCode::K}, {KeyModifier::CTRL, KeyCode::C}, commandId(EditorBuiltinCommand::COPY)});
-  key_map.addBinding({{KeyModifier::CTRL, KeyCode::K}, {KeyModifier::CTRL, KeyCode::X}, commandId(EditorBuiltinCommand::CUT)});
+  key_map.addBinding(
+      {{KeyModifier::CTRL, KeyCode::K}, {KeyModifier::CTRL, KeyCode::C}, commandId(EditorBuiltinCommand::COPY)});
+  key_map.addBinding(
+      {{KeyModifier::CTRL, KeyCode::K}, {KeyModifier::CTRL, KeyCode::X}, commandId(EditorBuiltinCommand::CUT)});
 
   KeyResolver resolver;
   resolver.setKeyMap(std::move(key_map));
@@ -54,7 +56,8 @@ TEST_CASE("KeyResolver handles pending multi-chord bindings and clears on mismat
 
 TEST_CASE("KeyResolver pending sequence expires after timeout") {
   KeyMap key_map;
-  key_map.addBinding({{KeyModifier::CTRL, KeyCode::K}, {KeyModifier::CTRL, KeyCode::C}, commandId(EditorBuiltinCommand::COPY)});
+  key_map.addBinding(
+      {{KeyModifier::CTRL, KeyCode::K}, {KeyModifier::CTRL, KeyCode::C}, commandId(EditorBuiltinCommand::COPY)});
 
   KeyResolver resolver(1);
   resolver.setKeyMap(std::move(key_map));
@@ -74,7 +77,8 @@ TEST_CASE("KeyResolver pending sequence expires after timeout") {
 TEST_CASE("KeyMap second chord overrides prior single-chord entry on same first chord") {
   KeyMap key_map;
   key_map.addBinding({{KeyModifier::CTRL, KeyCode::K}, {}, commandId(EditorBuiltinCommand::DELETE_LINE)});
-  key_map.addBinding({{KeyModifier::CTRL, KeyCode::K}, {KeyModifier::CTRL, KeyCode::C}, commandId(EditorBuiltinCommand::COPY)});
+  key_map.addBinding(
+      {{KeyModifier::CTRL, KeyCode::K}, {KeyModifier::CTRL, KeyCode::C}, commandId(EditorBuiltinCommand::COPY)});
 
   const KeyMapEntry* entry = key_map.lookup({KeyModifier::CTRL, KeyCode::K});
   REQUIRE(entry != nullptr);

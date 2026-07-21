@@ -18,11 +18,11 @@ namespace NS_SWEETEDITOR {
   };
 
   struct SE_PROTOCOL_VALUE(search) SearchOptions {
-    bool case_sensitive {false};
-    bool whole_word {false};
-    bool use_regex {false};
-    bool wrap_around {true};
-    uint32_t max_matches {10000};
+    bool case_sensitive{false};
+    bool whole_word{false};
+    bool use_regex{false};
+    bool wrap_around{true};
+    uint32_t max_matches{10000};
   };
 
   struct SE_PROTOCOL_IN(search) SearchRequest {
@@ -32,20 +32,20 @@ namespace NS_SWEETEDITOR {
 
   struct SE_PROTOCOL_OUT(search) SearchState {
     SE_PROTOCOL_WIRE(enum_i32)
-    SearchStatus status {SearchStatus::INACTIVE};
+    SearchStatus status{SearchStatus::INACTIVE};
     U8String pattern;
     SearchOptions options;
     SE_PROTOCOL_WIRE(u64)
-    uint64_t generation {0};
-    uint32_t match_count {0};
-    int32_t current_index {-1};
-    bool has_current_match {false};
+    uint64_t generation{0};
+    uint32_t match_count{0};
+    int32_t current_index{-1};
+    bool has_current_match{false};
     TextRange current_range;
     U8String error_message;
   };
 
   struct SearchCapture {
-    bool matched {false};
+    bool matched{false};
     TextRange range;
     U8String text;
   };
@@ -76,8 +76,7 @@ namespace NS_SWEETEDITOR {
 
     virtual SearchResult search(const SearchSnapshot& snapshot) const = 0;
 
-    virtual U8String buildReplacement(const SearchMatch& match,
-                                      const U8String& replacement,
+    virtual U8String buildReplacement(const SearchMatch& match, const U8String& replacement,
                                       const SearchOptions& options) const = 0;
   };
 

@@ -43,25 +43,25 @@ namespace NS_SWEETEDITOR {
   /// Snapshot of logical line data (refresh when marked dirty)
   struct LogicalLine {
     /// Start byte offset of this line in whole document, updated when text changes
-    size_t start_byte {0};
+    size_t start_byte{0};
     /// Start UTF-16 offset of this line in whole document, updated when dirty
-    size_t start_utf16 {0};
+    size_t start_utf16{0};
     /// Cached text of this line (without line ending), updated when dirty
     U16String cached_u16_text;
     /// Whether current line text data is marked dirty and needs refresh
-    bool is_u16_dirty {false};
+    bool is_u16_dirty{false};
     /// Line ending type of current line
-    LineEnding line_ending {LineEnding::NONE};
+    LineEnding line_ending{LineEnding::NONE};
     /// Start y coordinate of current line
-    float start_y {-1};
+    float start_y{-1};
     /// Render height of current line
-    float height {-1};
+    float height{-1};
     /// Visual line layout data
     Vector<VisualLine> visual_lines;
     /// Whether current line layout is marked dirty and needs rebuild
-    bool is_layout_dirty {true};
+    bool is_layout_dirty{true};
     /// Whether this line is hidden by code folding (synced by fold manager)
-    bool is_fold_hidden {false};
+    bool is_fold_hidden{false};
   };
 
   /// Abstract editor document interface; subclasses can implement different text models (Piece Table, line-based, etc.)
@@ -126,19 +126,16 @@ namespace NS_SWEETEDITOR {
   };
 
   /// Text segment type
-  enum class SegmentType {
-    ORIGINAL,
-    EDITED
-  };
+  enum class SegmentType { ORIGINAL, EDITED };
 
   /// Text segment in a Buffer
   struct BufferSegment {
     /// Whether this segment belongs to original document text
-    SegmentType type {SegmentType::ORIGINAL};
+    SegmentType type{SegmentType::ORIGINAL};
     /// Start byte position in buffer
-    size_t start_byte {0};
+    size_t start_byte{0};
     /// Byte length
-    size_t byte_length {0};
+    size_t byte_length{0};
   };
 
   /// Line-based document implementation: each line stores independent UTF-8 text, suitable for small/medium files and frequent line-level operations
@@ -166,12 +163,14 @@ namespace NS_SWEETEDITOR {
     size_t countChars(size_t start_byte, size_t byte_length) const override;
     Vector<LogicalLine>& getLogicalLines() override;
     const U16String& getLineU16TextRef(size_t line) override;
+
   protected:
     void updateDirtyLine(size_t index, LogicalLine& logical_line) override;
     /// UTF-8 text content for each line (without line ending)
     Vector<U8String> m_lines_;
     /// Logical line data
     Vector<LogicalLine> m_logical_lines_;
+
   private:
     void buildFromU8String(const U8String& text);
     void rebuildLogicalLines();
@@ -205,6 +204,7 @@ namespace NS_SWEETEDITOR {
     size_t countChars(size_t start_byte, size_t byte_length) const override;
     Vector<LogicalLine>& getLogicalLines() override;
     const U16String& getLineU16TextRef(size_t line) override;
+
   protected:
     void updateDirtyLine(size_t index, LogicalLine& logical_line) override;
     /// Buffer for original content (read-only)
@@ -216,7 +216,8 @@ namespace NS_SWEETEDITOR {
     /// Logical line data
     Vector<LogicalLine> m_logical_lines_;
     /// Total byte length of full document
-    size_t m_total_bytes_ {0};
+    size_t m_total_bytes_{0};
+
   private:
     void rebuildBufferSegments();
     void rebuildLogicalLines();
@@ -234,4 +235,3 @@ namespace NS_SWEETEDITOR {
 }
 
 #endif //SWEETEDITOR_DOCUMENT_H
-

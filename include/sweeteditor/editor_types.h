@@ -12,11 +12,11 @@ namespace NS_SWEETEDITOR {
   /// Editor view state.
   struct ViewState {
     /// Scale factor.
-    float scale {1};
+    float scale{1};
     /// Horizontal scroll offset.
-    float scroll_x {0};
+    float scroll_x{0};
     /// Vertical scroll offset.
-    float scroll_y {0};
+    float scroll_y{0};
 
     U8String dump() const;
   };
@@ -24,11 +24,11 @@ namespace NS_SWEETEDITOR {
   /// Keyboard event data.
   struct KeyEvent {
     /// Key code.
-    KeyCode key_code {KeyCode::NONE};
+    KeyCode key_code{KeyCode::NONE};
     /// Input text used for regular character input.
     U8String text;
     /// Modifier key state.
-    KeyModifier modifiers {KeyModifier::NONE};
+    KeyModifier modifiers{KeyModifier::NONE};
 
     /// Whether this is plain text input.
     bool isTextInput() const;
@@ -97,10 +97,9 @@ namespace NS_SWEETEDITOR {
     /// Active endpoint and logical cursor position.
     TextPosition active;
     /// Visual side of the active endpoint.
-    CaretAffinity active_affinity {CaretAffinity::DOWNSTREAM};
+    CaretAffinity active_affinity{CaretAffinity::DOWNSTREAM};
 
-    void setSelection(const TextRange& range,
-                      CaretAffinity affinity = CaretAffinity::DOWNSTREAM);
+    void setSelection(const TextRange& range, CaretAffinity affinity = CaretAffinity::DOWNSTREAM);
     void clearSelection();
     bool hasSelection() const;
     TextRange selection() const;
@@ -112,7 +111,7 @@ namespace NS_SWEETEDITOR {
   /// Hit-test result containing both the logical position and its visual caret side.
   struct CaretHit {
     TextPosition position;
-    CaretAffinity affinity {CaretAffinity::DOWNSTREAM};
+    CaretAffinity affinity{CaretAffinity::DOWNSTREAM};
   };
 
   /// Auto-indent modes.
@@ -159,32 +158,32 @@ namespace NS_SWEETEDITOR {
 
   /// Bracket pair definition (open/close character pair)
   struct BracketPair {
-    char32_t open;            ///< Opening bracket char, like '('
-    char32_t close;           ///< Closing bracket char, like ')'
+    char32_t open;  ///< Opening bracket char, like '('
+    char32_t close; ///< Closing bracket char, like ')'
   };
 
   /// Construction-time immutable options for EditorCore
   struct SE_PROTOCOL_IN(config) EditorOptions {
     /// Threshold to treat a gesture as move; below this it is a tap
-    float touch_slop {10};
+    float touch_slop{10};
     /// Double tap time threshold
-    int64_t double_tap_timeout {300};
+    int64_t double_tap_timeout{300};
     /// Long press time threshold
-    int64_t long_press_ms {500};
+    int64_t long_press_ms{500};
     /// Fling friction coefficient (higher = faster deceleration)
-    float fling_friction {3.5f};
+    float fling_friction{3.5f};
     /// Minimum fling velocity threshold in pixels/second
-    float fling_min_velocity {50.0f};
+    float fling_min_velocity{50.0f};
     /// Maximum fling velocity cap in pixels/second
-    float fling_max_velocity {8000.0f};
+    float fling_max_velocity{8000.0f};
     /// Max undo stack size (0 = unlimited)
     SE_PROTOCOL_WIRE(size_as_u64)
-    size_t max_undo_stack_size {512};
+    size_t max_undo_stack_size{512};
     /// Multi-chord key binding timeout in milliseconds
-    int64_t key_chord_timeout_ms {2000};
+    int64_t key_chord_timeout_ms{2000};
     /// Whether selectAll() should reveal the selection end after updating the selection
     SE_PROTOCOL_WIRE(bool_u8)
-    bool reveal_selection_end_on_select_all {false};
+    bool reveal_selection_end_on_select_all{false};
 
     TouchConfig simpleAsTouchConfig() const;
     U8String dump() const;
@@ -193,10 +192,10 @@ namespace NS_SWEETEDITOR {
   /// Selection handle hit-test configuration.
   /// All geometry is owned by the platform drawing layer; C++ only needs hit areas.
   struct SE_PROTOCOL_VALUE(config) HandleHitArea {
-    float left {0};
-    float top {0};
-    float right {0};
-    float bottom {0};
+    float left{0};
+    float top{0};
+    float right{0};
+    float bottom{0};
 
     bool contains(float dx, float dy) const;
     bool operator==(const HandleHitArea& other) const;
@@ -205,9 +204,9 @@ namespace NS_SWEETEDITOR {
 
   struct SE_PROTOCOL_IN(config) HandleConfig {
     /// Hit area for the start handle, relative to the cursor bottom anchor.
-    HandleHitArea start_hit_area {-32.1f, -8.0f, 8.0f, 32.1f};
+    HandleHitArea start_hit_area{-32.1f, -8.0f, 8.0f, 32.1f};
     /// Hit area for the end handle, relative to the cursor bottom anchor.
-    HandleHitArea end_hit_area {-8.0f, -8.0f, 32.1f, 32.1f};
+    HandleHitArea end_hit_area{-8.0f, -8.0f, 32.1f, 32.1f};
 
     bool operator==(const HandleConfig& other) const;
     bool operator!=(const HandleConfig& other) const;
@@ -227,24 +226,24 @@ namespace NS_SWEETEDITOR {
   /// Scrollbar configuration (geometry + interaction behavior)
   struct SE_PROTOCOL_IN(config) ScrollbarConfig {
     /// Scrollbar track/thumb thickness in pixels
-    float thickness {12.0f};
+    float thickness{12.0f};
     /// Minimum thumb length in pixels
-    float min_thumb {24.0f};
+    float min_thumb{24.0f};
     /// Extra thumb hit-test padding in pixels (applied on all sides)
-    float thumb_hit_padding {0.0f};
+    float thumb_hit_padding{0.0f};
     /// Visibility mode across platforms
     SE_PROTOCOL_WIRE(enum_i32)
-    ScrollbarMode mode {ScrollbarMode::ALWAYS};
+    ScrollbarMode mode{ScrollbarMode::ALWAYS};
     /// Whether thumb drag interaction is enabled
     SE_PROTOCOL_WIRE(bool_u8)
-    bool thumb_draggable {true};
+    bool thumb_draggable{true};
     /// Track tap behavior
     SE_PROTOCOL_WIRE(enum_i32)
-    ScrollbarTrackTapMode track_tap_mode {ScrollbarTrackTapMode::JUMP};
+    ScrollbarTrackTapMode track_tap_mode{ScrollbarTrackTapMode::JUMP};
     /// Delay before hide (TRANSIENT mode)
-    uint16_t fade_delay_ms {700};
+    uint16_t fade_delay_ms{700};
     /// Fade duration in milliseconds (TRANSIENT mode; used for both fade-in and fade-out)
-    uint16_t fade_duration_ms {300};
+    uint16_t fade_duration_ms{300};
 
     bool operator==(const ScrollbarConfig& other) const;
     bool operator!=(const ScrollbarConfig& other) const;
@@ -252,11 +251,11 @@ namespace NS_SWEETEDITOR {
 
   /// Editor colors resolved by the core when materializing visual runs.
   struct SE_PROTOCOL_IN(config) EditorRenderColors {
-    int32_t text_foreground {0};
-    int32_t link_foreground {0};
-    int32_t active_link_foreground {0};
-    int32_t codelens_foreground {0};
-    int32_t active_codelens_foreground {0};
+    int32_t text_foreground{0};
+    int32_t link_foreground{0};
+    int32_t active_link_foreground{0};
+    int32_t codelens_foreground{0};
+    int32_t active_codelens_foreground{0};
 
     bool operator==(const EditorRenderColors& other) const;
     bool operator!=(const EditorRenderColors& other) const;
@@ -272,12 +271,12 @@ namespace NS_SWEETEDITOR {
 
   /// Visual style for a document range effect.
   struct SE_PROTOCOL_VALUE(config) RangeEffectStyle {
-    int32_t foreground_color {0};
-    int32_t background_color {0};
-    int32_t border_color {0};
-    int32_t underline_color {0};
+    int32_t foreground_color{0};
+    int32_t background_color{0};
+    int32_t border_color{0};
+    int32_t underline_color{0};
     SE_PROTOCOL_WIRE(enum_i32)
-    RangeEffectUnderlineStyle underline_style {RangeEffectUnderlineStyle::NONE};
+    RangeEffectUnderlineStyle underline_style{RangeEffectUnderlineStyle::NONE};
 
     bool operator==(const RangeEffectStyle& other) const;
     bool operator!=(const RangeEffectStyle& other) const;
@@ -307,38 +306,38 @@ namespace NS_SWEETEDITOR {
   /// Runtime-mutable editor settings (modified via individual setters)
   struct EditorSettings {
     /// Min scale factor
-    float min_scale {0.75f};
+    float min_scale{0.75f};
     /// Max scale factor
-    float max_scale {5.0f};
+    float max_scale{5.0f};
     /// Read-only mode; block all edit actions (insert/delete/undo/redo/IME input)
-    bool read_only {false};
+    bool read_only{false};
     /// Auto indent mode; default keeps previous line indent
-    AutoIndentMode auto_indent_mode {AutoIndentMode::KEEP_INDENT};
+    AutoIndentMode auto_indent_mode{AutoIndentMode::KEEP_INDENT};
     /// When true, backspace on leading whitespace unindents to the previous tab stop,
     /// or merges the line upward if the entire line is blank
-    bool backspace_unindent {true};
+    bool backspace_unindent{true};
     /// When true, Tab inserts spaces up to the next tab stop instead of a literal '\t'
-    bool insert_spaces {false};
+    bool insert_spaces{false};
     /// Selection handle configuration
     HandleConfig handle;
     /// Scrollbar geometry configuration
     ScrollbarConfig scrollbar;
     /// Extra horizontal padding between gutter split and text rendering start (pixels)
-    float content_start_padding {0.0f};
+    float content_start_padding{0.0f};
     /// Whether to render the gutter split line
-    bool show_split_line {true};
+    bool show_split_line{true};
     /// Current line render mode
-    CurrentLineRenderMode current_line_render_mode {CurrentLineRenderMode::BACKGROUND};
+    CurrentLineRenderMode current_line_render_mode{CurrentLineRenderMode::BACKGROUND};
     /// Whether gutter stays fixed during horizontal scroll (true=fixed, false=scrolls with content)
-    bool gutter_sticky {true};
+    bool gutter_sticky{true};
     /// Whether gutter area is visible (false = hide line numbers, icons, fold arrows)
-    bool gutter_visible {true};
+    bool gutter_visible{true};
     /// Current auto-wrap mode
-    WrapMode wrap_mode {WrapMode::NONE};
+    WrapMode wrap_mode{WrapMode::NONE};
     /// Whitespace marker rendering mode
-    WhitespaceRenderMode render_whitespace {WhitespaceRenderMode::NONE};
+    WhitespaceRenderMode render_whitespace{WhitespaceRenderMode::NONE};
     /// Whether to render source line-ending markers
-    bool render_line_breaks {false};
+    bool render_line_breaks{false};
     /// Core-resolved editor render colors
     EditorRenderColors render_colors;
     /// Core-resolved range-effect styles
@@ -349,17 +348,17 @@ namespace NS_SWEETEDITOR {
 
   /// Core metric data needed by scrollbars
   struct SE_PROTOCOL_OUT(visual) ScrollMetrics {
-    float scale {1};
-    float scroll_x {0};
-    float scroll_y {0};
-    float max_scroll_x {0};
-    float max_scroll_y {0};
+    float scale{1};
+    float scroll_x{0};
+    float scroll_y{0};
+    float max_scroll_x{0};
+    float max_scroll_y{0};
     Size content_size;
     Size viewport_size;
-    float text_area_x {0};
-    float text_area_width {0};
-    bool can_scroll_x {false};
-    bool can_scroll_y {false};
+    float text_area_x{0};
+    float text_area_width{0};
+    bool can_scroll_x{false};
+    bool can_scroll_y{false};
   };
 
   /// One text change (exact change info at one edit location)
@@ -376,11 +375,11 @@ namespace NS_SWEETEDITOR {
   /// Full result of a text edit operation (may include many changes)
   struct TextEditResult {
     /// Whether the edit request was handled.
-    bool handled {false};
+    bool handled{false};
     /// Whether the current editing text changed, including provisional IME text.
-    bool editing_content_changed {false};
+    bool editing_content_changed{false};
     /// Semantic kind of document text changes.
-    TextChangeKind change_kind {TextChangeKind::NONE};
+    TextChangeKind change_kind{TextChangeKind::NONE};
     /// List of all changes (normal edit: 1; atomic batch/undo/redo: maybe many)
     std::vector<TextChange> changes;
     /// Cursor position before operation
@@ -395,9 +394,9 @@ namespace NS_SWEETEDITOR {
 
   /// Screen-space rectangle for cursor/text position (for panel placement)
   struct SE_PROTOCOL_VALUE(visual) CursorRect {
-    float x {0};       ///< x coordinate relative to top-left of editor view
-    float y {0};       ///< y coordinate relative to top-left of editor view (line top)
-    float height {0};  ///< Line height (same as cursor height)
+    float x{0};      ///< x coordinate relative to top-left of editor view
+    float y{0};      ///< y coordinate relative to top-left of editor view (line top)
+    float height{0}; ///< Line height (same as cursor height)
   };
 
 }

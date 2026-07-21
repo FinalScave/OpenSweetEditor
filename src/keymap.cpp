@@ -45,30 +45,30 @@ namespace NS_SWEETEDITOR {
     };
 
     // Cursor movement
-    addCmd(KeyModifier::NONE,  KeyCode::LEFT,  EditorBuiltinCommand::CURSOR_LEFT);
-    addCmd(KeyModifier::NONE,  KeyCode::RIGHT, EditorBuiltinCommand::CURSOR_RIGHT);
-    addCmd(KeyModifier::NONE,  KeyCode::UP,    EditorBuiltinCommand::CURSOR_UP);
-    addCmd(KeyModifier::NONE,  KeyCode::DOWN,  EditorBuiltinCommand::CURSOR_DOWN);
-    addCmd(KeyModifier::NONE,  KeyCode::HOME,  EditorBuiltinCommand::CURSOR_LINE_START);
-    addCmd(KeyModifier::NONE,  KeyCode::END,   EditorBuiltinCommand::CURSOR_LINE_END);
-    addCmd(KeyModifier::NONE, KeyCode::PAGE_UP,   EditorBuiltinCommand::CURSOR_PAGE_UP);
+    addCmd(KeyModifier::NONE, KeyCode::LEFT, EditorBuiltinCommand::CURSOR_LEFT);
+    addCmd(KeyModifier::NONE, KeyCode::RIGHT, EditorBuiltinCommand::CURSOR_RIGHT);
+    addCmd(KeyModifier::NONE, KeyCode::UP, EditorBuiltinCommand::CURSOR_UP);
+    addCmd(KeyModifier::NONE, KeyCode::DOWN, EditorBuiltinCommand::CURSOR_DOWN);
+    addCmd(KeyModifier::NONE, KeyCode::HOME, EditorBuiltinCommand::CURSOR_LINE_START);
+    addCmd(KeyModifier::NONE, KeyCode::END, EditorBuiltinCommand::CURSOR_LINE_END);
+    addCmd(KeyModifier::NONE, KeyCode::PAGE_UP, EditorBuiltinCommand::CURSOR_PAGE_UP);
     addCmd(KeyModifier::NONE, KeyCode::PAGE_DOWN, EditorBuiltinCommand::CURSOR_PAGE_DOWN);
 
     // Selection (Shift + movement)
-    addCmd(KeyModifier::SHIFT, KeyCode::LEFT,  EditorBuiltinCommand::SELECT_LEFT);
+    addCmd(KeyModifier::SHIFT, KeyCode::LEFT, EditorBuiltinCommand::SELECT_LEFT);
     addCmd(KeyModifier::SHIFT, KeyCode::RIGHT, EditorBuiltinCommand::SELECT_RIGHT);
-    addCmd(KeyModifier::SHIFT, KeyCode::UP,    EditorBuiltinCommand::SELECT_UP);
-    addCmd(KeyModifier::SHIFT, KeyCode::DOWN,  EditorBuiltinCommand::SELECT_DOWN);
-    addCmd(KeyModifier::SHIFT, KeyCode::HOME,  EditorBuiltinCommand::SELECT_LINE_START);
-    addCmd(KeyModifier::SHIFT, KeyCode::END,   EditorBuiltinCommand::SELECT_LINE_END);
-    addCmd(KeyModifier::SHIFT, KeyCode::PAGE_UP,   EditorBuiltinCommand::SELECT_PAGE_UP);
+    addCmd(KeyModifier::SHIFT, KeyCode::UP, EditorBuiltinCommand::SELECT_UP);
+    addCmd(KeyModifier::SHIFT, KeyCode::DOWN, EditorBuiltinCommand::SELECT_DOWN);
+    addCmd(KeyModifier::SHIFT, KeyCode::HOME, EditorBuiltinCommand::SELECT_LINE_START);
+    addCmd(KeyModifier::SHIFT, KeyCode::END, EditorBuiltinCommand::SELECT_LINE_END);
+    addCmd(KeyModifier::SHIFT, KeyCode::PAGE_UP, EditorBuiltinCommand::SELECT_PAGE_UP);
     addCmd(KeyModifier::SHIFT, KeyCode::PAGE_DOWN, EditorBuiltinCommand::SELECT_PAGE_DOWN);
 
     // Editing
-    addCmd(KeyModifier::NONE, KeyCode::BACKSPACE,  EditorBuiltinCommand::BACKSPACE);
+    addCmd(KeyModifier::NONE, KeyCode::BACKSPACE, EditorBuiltinCommand::BACKSPACE);
     addCmd(KeyModifier::NONE, KeyCode::DELETE_KEY, EditorBuiltinCommand::DELETE_FORWARD);
-    addCmd(KeyModifier::NONE,  KeyCode::TAB,   EditorBuiltinCommand::INSERT_TAB);
-    addCmd(KeyModifier::NONE,  KeyCode::ENTER, EditorBuiltinCommand::INSERT_NEWLINE);
+    addCmd(KeyModifier::NONE, KeyCode::TAB, EditorBuiltinCommand::INSERT_TAB);
+    addCmd(KeyModifier::NONE, KeyCode::ENTER, EditorBuiltinCommand::INSERT_NEWLINE);
 
     // Ctrl/Cmd shortcuts
     addCmd(KeyModifier::CTRL, KeyCode::A, EditorBuiltinCommand::SELECT_ALL);
@@ -97,9 +97,9 @@ namespace NS_SWEETEDITOR {
     addCmd(KeyModifier::META | KeyModifier::SHIFT, KeyCode::ENTER, EditorBuiltinCommand::INSERT_LINE_ABOVE);
 
     // Line operations (Alt + arrow)
-    addCmd(KeyModifier::ALT, KeyCode::UP,   EditorBuiltinCommand::MOVE_LINE_UP);
+    addCmd(KeyModifier::ALT, KeyCode::UP, EditorBuiltinCommand::MOVE_LINE_UP);
     addCmd(KeyModifier::ALT, KeyCode::DOWN, EditorBuiltinCommand::MOVE_LINE_DOWN);
-    addCmd(KeyModifier::ALT | KeyModifier::SHIFT, KeyCode::UP,   EditorBuiltinCommand::COPY_LINE_UP);
+    addCmd(KeyModifier::ALT | KeyModifier::SHIFT, KeyCode::UP, EditorBuiltinCommand::COPY_LINE_UP);
     addCmd(KeyModifier::ALT | KeyModifier::SHIFT, KeyCode::DOWN, EditorBuiltinCommand::COPY_LINE_DOWN);
 
     // Delete line (Ctrl/Cmd + Shift + K)
@@ -110,7 +110,8 @@ namespace NS_SWEETEDITOR {
   }
 
   KeyResolver::KeyResolver(int64_t pending_timeout_ms)
-    : m_pending_timeout_ms_(pending_timeout_ms) {}
+      : m_pending_timeout_ms_(pending_timeout_ms) {
+  }
 
   void KeyResolver::setKeyMap(KeyMap key_map) {
     m_key_map_ = std::move(key_map);
@@ -119,8 +120,7 @@ namespace NS_SWEETEDITOR {
 
   ResolveResult KeyResolver::resolve(const KeyChord& chord) {
     if (m_pending_) {
-      bool expired = !m_pending_sub_map_ ||
-                     (TimeUtil::milliTime() - m_pending_time_ > m_pending_timeout_ms_);
+      bool expired = !m_pending_sub_map_ || (TimeUtil::milliTime() - m_pending_time_ > m_pending_timeout_ms_);
       if (expired) {
         cancelPending();
       } else {

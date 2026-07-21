@@ -69,10 +69,10 @@ extern "C" {
 
 /// Text measurement callback set, passed when creating EditorCore
 typedef struct {
-    float (EDITOR_CALL* measure_text_width)(const U16Char* text, int32_t font_style);
-    float (EDITOR_CALL* measure_inlay_hint_width)(const U16Char* text);
-    float (EDITOR_CALL* measure_icon_width)(int32_t icon_id);
-    void  (EDITOR_CALL* get_font_metrics)(float* arr, size_t length);
+  float(EDITOR_CALL* measure_text_width)(const U16Char* text, int32_t font_style);
+  float(EDITOR_CALL* measure_inlay_hint_width)(const U16Char* text);
+  float(EDITOR_CALL* measure_icon_width)(int32_t icon_id);
+  void(EDITOR_CALL* get_font_metrics)(float* arr, size_t length);
 } text_measurer_t;
 
 #pragma region [Core Lifecycle, View & Events]
@@ -402,10 +402,8 @@ EDITOR_API const uint8_t* editor_insert_text(intptr_t editor_handle, const char*
 /// @param end_column End column of replacement range (0-based)
 /// @param text Replacement UTF8 text
 /// @return EditorActionResult binary payload, returns NULL on failure
-EDITOR_API const uint8_t* editor_replace_text(intptr_t editor_handle,
-    size_t start_line, size_t start_column,
-    size_t end_line, size_t end_column,
-    const char* text, size_t* out_size);
+EDITOR_API const uint8_t* editor_replace_text(intptr_t editor_handle, size_t start_line, size_t start_column,
+                                              size_t end_line, size_t end_column, const char* text, size_t* out_size);
 
 /// Delete text in the specified range
 /// @param start_line start line of deletion range(0-based)
@@ -413,9 +411,8 @@ EDITOR_API const uint8_t* editor_replace_text(intptr_t editor_handle,
 /// @param end_line end line of deletion range(0-based)
 /// @param end_column End column of deletion range (0-based)
 /// @return EditorActionResult binary payload, returns NULL on failure
-EDITOR_API const uint8_t* editor_delete_text(intptr_t editor_handle,
-    size_t start_line, size_t start_column,
-    size_t end_line, size_t end_column, size_t* out_size);
+EDITOR_API const uint8_t* editor_delete_text(intptr_t editor_handle, size_t start_line, size_t start_column,
+                                             size_t end_line, size_t end_column, size_t* out_size);
 
 /// Apply multiple text edits as one undoable operation.
 /// @param data ApplyTextEditsPayload binary payload encoded by CoreProtocol
@@ -644,16 +641,14 @@ EDITOR_API const uint8_t* editor_get_scroll_metrics(intptr_t editor_handle, size
 /// @param out_x Output: x coordinate in viewport
 /// @param out_y Output: y coordinate in viewport (line top)
 /// @param out_height Output: line height
-EDITOR_API void editor_get_position_rect(intptr_t editor_handle,
-    size_t line, size_t column,
-    float* out_x, float* out_y, float* out_height);
+EDITOR_API void editor_get_position_rect(intptr_t editor_handle, size_t line, size_t column, float* out_x, float* out_y,
+                                         float* out_height);
 
 /// Get screen coordinate rect at current cursor position (shortcut)
 /// @param out_x Output: x coordinate in viewport
 /// @param out_y Output: y coordinate in viewport (line top)
 /// @param out_height Output: line height
-EDITOR_API void editor_get_cursor_rect(intptr_t editor_handle,
-    float* out_x, float* out_y, float* out_height);
+EDITOR_API void editor_get_cursor_rect(intptr_t editor_handle, float* out_x, float* out_y, float* out_height);
 
 /// Register text style (color + background color + font style)
 /// @param style_id Style ID
@@ -743,7 +738,8 @@ EDITOR_API const uint8_t* editor_set_line_gutter_icons(intptr_t editor_handle, c
 ///        Repeated entry is u32 line followed by List<GutterIcon> icons
 ///        GutterIcon is i32 icon_id
 /// @param size payload byte length
-EDITOR_API const uint8_t* editor_set_batch_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size, size_t* out_size);
+EDITOR_API const uint8_t* editor_set_batch_line_gutter_icons(intptr_t editor_handle, const uint8_t* data, size_t size,
+                                                             size_t* out_size);
 
 /// Set max gutter icon count (affects reserved gutter width)
 /// @param count Max icon count (0=no reserved space)
@@ -996,9 +992,8 @@ EDITOR_API const uint8_t* editor_ime_apply_text_updates(intptr_t editor_handle, 
 EDITOR_API const uint8_t* editor_ime_get_state(intptr_t editor_handle, uint64_t session_id, size_t* out_size);
 
 /// Read a slice from an IME text source.
-EDITOR_API const uint8_t* editor_ime_get_context(intptr_t editor_handle, uint64_t session_id,
-                                                int source, int64_t start_utf16,
-                                                int64_t length_utf16, size_t* out_size);
+EDITOR_API const uint8_t* editor_ime_get_context(intptr_t editor_handle, uint64_t session_id, int source,
+                                                 int64_t start_utf16, int64_t length_utf16, size_t* out_size);
 
 #pragma endregion
 
