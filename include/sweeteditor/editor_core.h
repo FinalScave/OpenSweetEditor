@@ -14,7 +14,6 @@
 #include <sweeteditor/render_composer.h>
 #include <sweeteditor/undo.h>
 #include <sweeteditor/linked_editing.h>
-#include <sweeteditor/ime_composition.h>
 #include <sweeteditor/search.h>
 #include <atomic>
 
@@ -103,7 +102,6 @@ namespace NS_SWEETEDITOR {
 
   /// Editor core class
   class EditorCore {
-    friend class CompositionController;
   public:
     explicit EditorCore(const SharedPtr<TextMeasurer>& measurer, const EditorOptions& options);
     EditorCore(const EditorCore&) = delete;
@@ -692,6 +690,8 @@ namespace NS_SWEETEDITOR {
       bool ime_session_active {false};
     };
 
+    struct EditTransaction;
+
     SharedPtr<TextMeasurer> m_measurer_;
     EditorOptions m_options_;
     EditorSettings m_settings_;
@@ -712,9 +712,6 @@ namespace NS_SWEETEDITOR {
     /// Horizontal screen coordinate retained across consecutive vertical moves.
     bool m_has_preferred_cursor_x_ {false};
     float m_preferred_cursor_x_ {0};
-
-    /// Core-owned IME composition controller
-    CompositionController m_composition_controller_;
 
     std::optional<ImeSessionState> m_ime_session_;
     uint64_t m_next_ime_session_id_ {1};
@@ -759,6 +756,36 @@ namespace NS_SWEETEDITOR {
     /// Max character distance for built-in bracket scan
     static constexpr size_t kMaxBracketScanChars = 10000;
 
+#pragma region [Setup & View State Internals]
+
+    /// Mark all logical lines as layout dirty
+    void markAllLinesDirty(bool reset_heights = false);
+    void normalizeScrollState();
+
+#pragma endregion
+
+#pragma region [Rendering & Input Internals]
+
+    void collectLineLayoutDecorations(size_t line, LineLayoutDecorations& decorations) const;
+    void collectTextPresentationEffectsForLine(size_t line, Vector<TextPresentationEffect>& effects) const;
+    /// Presentation-state helpers for clickable decoration hot targets.
+    void clearHoverHitTarget();
+    void clearPressHitTarget();
+    HitTarget getActiveHitTarget() const;
+    PointerProbeResult probePointer(const PointF& point, KeyModifier modifiers) const;
+    bool updatePointerHitTargetLifecycle(const GestureEvent& event, const HitTarget& primary_hot_target);
+    ActionSnapshot captureActionSnapshot() const;
+    EditorActionResult finishAction(const ActionSnapshot& before, EditorActionSource source, bool handled,
+                                    TextEditResult edit_result = {}, bool force_redraw = false,
+                                    bool decoration_changed = false);
+    EditorActionResult finishInteractionAction(const ActionSnapshot& before, InteractionResult interaction_result,
+                                               EditorActionSource source, EventType event_type = EventType::UNDEFINED,
+                                               bool decoration_changed = false);
+
+#pragma endregion
+
+#pragma region [Editing & Cursor Internals]
+
     TextEditResult insertTextInternal(const U8String& text);
     TextEditResult replaceTextInternal(const TextRange& range, const U8String& new_text);
     TextEditResult deleteTextInternal(const TextRange& range);
@@ -783,15 +810,10 @@ namespace NS_SWEETEDITOR {
     void finishLinkedEditingInternal();
     bool hasValidLinkedEditingGroup() const;
     std::optional<Vector<DocumentReplacement>> planLinkedEdit(const TextRange& range, const U8String& text) const;
-    bool foldAtInternal(size_t line);
-    bool unfoldAtInternal(size_t line);
-    bool toggleFoldAtInternal(size_t line);
-    void foldAllInternal();
-    void unfoldAllInternal();
-    /// Place cursor by screen coordinates
-    void placeCursorAt(const PointF& screen_point);
-    /// Select word at screen coordinates
-    void selectWordAt(const PointF& screen_point);
+    /// Linked editing: apply a local replacement and return one edit result
+    TextEditResult applyLinkedEditWithResult(const TextRange& range, const U8String& text);
+    /// Linked editing: jump to target tab stop and select default text
+    void activateCurrentTabStop();
     TextPosition clampDocumentPosition(const TextPosition& position, bool prefer_right, bool line_overflow_to_end) const;
     TextRange clampDocumentRange(const TextRange& range, bool collapse_point_range, bool line_overflow_to_end) const;
     void setCursorPositionInternal(const TextPosition& position, CaretAffinity affinity = CaretAffinity::DOWNSTREAM,
@@ -817,8 +839,6 @@ namespace NS_SWEETEDITOR {
     void noteDocumentContentChanged();
     void chooseCurrentSearchMatch(SearchResult& result) const;
     void chooseCurrentSearchMatch(SearchResult& result, const TextPosition& position) const;
-    void collectLineLayoutDecorations(size_t line, LineLayoutDecorations& decorations) const;
-    void collectTextPresentationEffectsForLine(size_t line, Vector<TextPresentationEffect>& effects) const;
     size_t firstSearchMatchAtOrAfter(const TextPosition& position) const;
     void selectSearchMatch(size_t index);
     /// Calculate new cursor position after inserting UTF8 text
@@ -835,38 +855,52 @@ namespace NS_SWEETEDITOR {
     /// @return Exact change info
     TextEditResult applyEdit(const TextRange& range, const U8String& new_text, bool record_undo = true);
 
+#pragma endregion
+
+#pragma region [Navigation & Decorations Internals]
+
+    bool foldAtInternal(size_t line);
+    bool unfoldAtInternal(size_t line);
+    bool toggleFoldAtInternal(size_t line);
+    void foldAllInternal();
+    void unfoldAllInternal();
     /// Sync fold state in DecorationManager to each LogicalLine.is_fold_hidden
     void syncFoldState();
 
     /// Auto unfold when edit range overlaps folded region
     void autoUnfoldForEdit(const TextRange& range);
+    /// Place cursor by screen coordinates
+    void placeCursorAt(const PointF& screen_point);
+    /// Select word at screen coordinates
+    void selectWordAt(const PointF& screen_point);
 
-    /// Mark all logical lines as layout dirty
-    void markAllLinesDirty(bool reset_heights = false);
-    /// Presentation-state helpers for clickable decoration hot targets.
-    void clearHoverHitTarget();
-    void clearPressHitTarget();
-    HitTarget getActiveHitTarget() const;
-    PointerProbeResult probePointer(const PointF& point, KeyModifier modifiers) const;
-    bool updatePointerHitTargetLifecycle(const GestureEvent& event, const HitTarget& primary_hot_target);
-    ActionSnapshot captureActionSnapshot() const;
-    EditorActionResult finishAction(const ActionSnapshot& before, EditorActionSource source, bool handled,
-                                    TextEditResult edit_result = {}, bool force_redraw = false,
-                                    bool decoration_changed = false);
-    EditorActionResult finishInteractionAction(const ActionSnapshot& before, InteractionResult interaction_result,
-                                               EditorActionSource source, EventType event_type = EventType::UNDEFINED,
-                                               bool decoration_changed = false);
-    EditorActionResult finishImeAction(const ActionSnapshot& before, const ImeActionResult& ime_result);
-    void normalizeScrollState();
-
-    /// Linked editing: apply a local replacement and return one edit result
-    TextEditResult applyLinkedEditWithResult(const TextRange& range, const U8String& text);
-
-    /// Linked editing: jump to target tab stop and select default text
-    void activateCurrentTabStop();
+#pragma endregion
 
 #pragma region [IME Internals]
 
+    const std::optional<CompositionState>& compositionState() const;
+    CaretState transformCaretForChanges(const CaretState& caret, const Vector<TextChange>& changes) const;
+    bool isDocumentRangeValid(const TextRange& range) const;
+    bool validateTransaction(const EditTransaction& transaction) const;
+    void beginComposition(const TextRange& range, EditTransaction& transaction);
+    void replaceCompositionText(const U8String& text, EditTransaction& transaction);
+    bool stageLinkedEdit(const TextRange& range, const U8String& text, EditTransaction& transaction);
+    void appendLinkedCompositionEdits(const CompositionState& state, const TextRange& baseline_range,
+                                      const U8String& final_text_raw, EditTransaction& transaction);
+    bool linkedRangesAffectedByChanges(const Vector<TextChange>& changes) const;
+    void settleComposition(const U8String& final_text_raw, EditTransaction& transaction,
+                           bool replace_current_text);
+    void cancelComposition(EditTransaction& transaction);
+    TextEditResult commitTransaction(EditTransaction& transaction);
+    ImeActionResult applyTextUpdatePlan(
+        const Vector<DocumentReplacement>& replacements, const std::optional<TextRange>& composition_after,
+        const std::optional<TextRange>& rollover_baseline, const U8String& composition_text,
+        const CaretState& caret_after, bool finish_after);
+    ImeActionResult applyCommandBatch(const Vector<ImeCommand>& commands);
+    TextEditResult finishPreedit();
+    TextEditResult cancelPreedit();
+    Vector<TextRange> deletionRangesForCaret(const CaretState& caret, size_t before_length,
+                                             size_t after_length, ImeTextUnit text_unit) const;
     ImeActionResult rejectImeMutation();
     ImeState buildImeState() const;
     ImeState emptyImeState(ImeResultCode result_code) const;
@@ -876,6 +910,7 @@ namespace NS_SWEETEDITOR {
     void closeImeSession();
     bool validateImeCommand(const ImeCommand& command) const;
     bool validateImeTextUpdateStep(const ImeTextUpdateStep& step) const;
+    EditorActionResult finishImeAction(const ActionSnapshot& before, const ImeActionResult& ime_result);
 
 #pragma endregion
   };

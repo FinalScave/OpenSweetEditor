@@ -269,7 +269,7 @@ void adjustForEdit(const TextRange& old_range, const TextPosition& new_end);
 
 EditorCore 是最顶层的类，组合所有子模块并提供完整的编辑器 API。
 
-IME composition 的语义动作和 composition state 由 `CompositionController` 负责，文件为 `include/sweeteditor/ime_composition.h` 与 `src/ime_composition.cpp`。`EditorCore` 只作为 host 提供文档、光标、选区、linked editing 和刷新 adapter，公开 API 仍通过 `handleImeCommandMessage(...)、handleImeTextUpdateMessage(...) 等消息入口暴露。
+`EditorCore` 直接持有 IME composition state 和短生命周期编辑事务，实现位于 `src/editor_core_ime.cpp`；可复用的 committed → editing 坐标投影保持为 `src/ime_projection.cpp` 中的源码私有能力。公开 API 仍通过 `applyImeCommands(...)`、`applyImeTextUpdates(...)` 等语义入口暴露。
 
 #### 内部组件
 
@@ -281,7 +281,7 @@ class EditorCore {
   UPtr<GestureHandler>    m_gesture_handler_;  // 手势识别
   UPtr<TextLayout>        m_text_layout_;      // 布局引擎
   UPtr<UndoManager>       m_undo_manager_;     // 撤销/重做
-  CompositionController   m_composition_controller_;
+  optional<ImeSessionState> m_ime_session_;
   // 光标、选区、交互状态...
 };
 ```
@@ -296,7 +296,7 @@ class EditorCore {
 | `insertText()` / `backspace()` / `deleteForward()` | 原子文本操作 |
 | `moveCursor*()` | 光标移动（上下左右、行首行尾） |
 | `setSelection()` / `selectAll()` | 选区管理 |
-| `handleImeCommandMessage(...)` / `handleImeTextUpdateMessage(...)` | IME 组合输入 |
+| `applyImeCommands(...)` / `applyImeTextUpdates(...)` | IME 组合输入 |
 | `undo()` / `redo()` | 撤销/重做 |
 | `registerTextStyle()` / `setLineSpans()` / `setBatchLineSpans()` / `setLineInlayHints()` / `setLinePhantomTexts()` | 装饰设置 |
 | `setFoldRegions()` / `foldAt()` / `unfoldAt()` | 代码折叠 |
