@@ -70,6 +70,7 @@ namespace NS_SWEETEDITOR {
     CaretState transformCaretForChanges(const CaretState& caret, const Vector<TextChange>& changes) const;
     bool isDocumentRangeValid(const TextRange& range) const;
     bool validateTransaction(const EditTransaction& transaction) const;
+    bool stageLinkedEdit(const TextRange& range, const U8String& text, EditTransaction& transaction);
     void appendLinkedCompositionEdits(const CompositionState& state, const TextRange& baseline_range,
                                       const U8String& final_text_raw, EditTransaction& transaction);
     bool linkedRangesAffectedByChanges(const Vector<TextChange>& changes) const;

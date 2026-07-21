@@ -93,6 +93,42 @@ TEST_CASE("EditorCore search supports regex captures in replace all") {
   CHECK(document->getU8Text() == "bar1 bar2");
 }
 
+TEST_CASE("EditorCore search replacement does not act as linked input") {
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions {});
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("");
+  editor.loadDocument(document);
+  editor.setViewport({500, 240});
+
+  REQUIRE(editor.insertSnippet("${1:foo}-${1:foo}").content_changed);
+  REQUIRE(editor.isInLinkedEditing());
+
+  SearchRequest request;
+  request.pattern = "foo";
+  editor.search(request);
+
+  REQUIRE(editor.replaceCurrentSearchMatch("bar").content_changed);
+  CHECK(document->getU8Text() == "foo-bar");
+  CHECK_FALSE(editor.isInLinkedEditing());
+}
+
+TEST_CASE("EditorCore replace all exits linked editing") {
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(10.0f), EditorOptions {});
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("");
+  editor.loadDocument(document);
+  editor.setViewport({500, 240});
+
+  REQUIRE(editor.insertSnippet("${1:foo}-${1:foo}").content_changed);
+  REQUIRE(editor.isInLinkedEditing());
+
+  SearchRequest request;
+  request.pattern = "foo";
+  editor.search(request);
+
+  REQUIRE(editor.replaceAllSearchMatches("bar").content_changed);
+  CHECK(document->getU8Text() == "bar-bar");
+  CHECK_FALSE(editor.isInLinkedEditing());
+}
+
 TEST_CASE("EditorCore search supports newline patterns") {
   auto editor_holder = makeSearchEditor("alpha\nbeta");
   EditorCore& editor = *editor_holder;

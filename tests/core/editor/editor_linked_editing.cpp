@@ -58,6 +58,77 @@ TEST_CASE("EditorCore linked editing is one atomic undo and redo entry") {
   CHECK_FALSE(editor.isInLinkedEditing());
 }
 
+TEST_CASE("EditorCore linked editing applies ordinary edits at the active caret") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  REQUIRE(editor.insertSnippet("${1:ab}-${1:ab}").content_changed);
+  editor.setCursorPosition({0, 1});
+  REQUIRE(editor.insertText("X").content_changed);
+  CHECK(document->getU8Text() == "aXb-aXb");
+  CHECK(editor.getCursorPosition() == (TextPosition {0, 2}));
+  CHECK(editor.isInLinkedEditing());
+
+  REQUIRE(editor.backspace().content_changed);
+  CHECK(document->getU8Text() == "ab-ab");
+  CHECK(editor.getCursorPosition() == (TextPosition {0, 1}));
+  CHECK(editor.isInLinkedEditing());
+
+  REQUIRE(editor.deleteForward().content_changed);
+  CHECK(document->getU8Text() == "a-a");
+  CHECK(editor.getCursorPosition() == (TextPosition {0, 1}));
+  CHECK(editor.isInLinkedEditing());
+}
+
+TEST_CASE("EditorCore structural line edits exit linked editing") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  SECTION("move line up") {
+    REQUIRE(editor.insertSnippet("top\n${1:a}-${1:a}").content_changed);
+    REQUIRE(editor.moveLineUp().content_changed);
+  }
+
+  SECTION("move line down") {
+    REQUIRE(editor.insertSnippet("${1:a}-${1:a}\ntail").content_changed);
+    REQUIRE(editor.moveLineDown().content_changed);
+  }
+
+  SECTION("copy line up") {
+    REQUIRE(editor.insertSnippet("${1:a}-${1:a}\ntail").content_changed);
+    REQUIRE(editor.copyLineUp().content_changed);
+  }
+
+  SECTION("copy line down") {
+    REQUIRE(editor.insertSnippet("${1:a}-${1:a}\ntail").content_changed);
+    REQUIRE(editor.copyLineDown().content_changed);
+  }
+
+  SECTION("delete line") {
+    REQUIRE(editor.insertSnippet("${1:a}-${1:a}\ntail").content_changed);
+    REQUIRE(editor.deleteLine().content_changed);
+  }
+
+  SECTION("insert line above") {
+    REQUIRE(editor.insertSnippet("${1:a}-${1:a}\ntail").content_changed);
+    REQUIRE(editor.insertLineAbove().content_changed);
+  }
+
+  SECTION("insert line below") {
+    REQUIRE(editor.insertSnippet("${1:a}-${1:a}\ntail").content_changed);
+    REQUIRE(editor.insertLineBelow().content_changed);
+  }
+
+  CHECK_FALSE(editor.isInLinkedEditing());
+}
+
 TEST_CASE("EditorCore linked editing supports prev navigation and explicit cancel") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
@@ -180,5 +251,23 @@ TEST_CASE("LinkedEditingSession adjusts ranges after edits") {
     CHECK(group->ranges[0] == (TextRange{{0, 0}, {0, 1}}));
     CHECK(group->ranges[1] == (TextRange{{1, 3}, {1, 5}}));
     CHECK(group->ranges[2] == (TextRange{{2, 2}, {2, 4}}));
+  }
+
+  SECTION("collapsed owner expands while other ranges move past the insertion") {
+    LinkedEditingModel model;
+    model.groups.push_back({1, {{{0, 1}, {0, 1}}, {{0, 5}, {0, 5}}}, ""});
+    model.groups.push_back({0, {{{0, 1}, {0, 1}}}, ""});
+    LinkedEditingSession session(std::move(model));
+
+    session.adjustRangesForEdit({{0, 1}, {0, 1}}, {0, 3});
+
+    const TabStopGroup* group = session.currentGroup();
+    REQUIRE(group != nullptr);
+    CHECK(group->ranges[0] == (TextRange {{0, 1}, {0, 3}}));
+    CHECK(group->ranges[1] == (TextRange {{0, 7}, {0, 7}}));
+    REQUIRE(session.nextTabStop());
+    group = session.currentGroup();
+    REQUIRE(group != nullptr);
+    CHECK(group->ranges[0] == (TextRange {{0, 3}, {0, 3}}));
   }
 }

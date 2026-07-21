@@ -286,7 +286,7 @@ public class MainActivity extends AppCompatActivity {
             Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
         });
         mEditor.subscribe(LinkClickEvent.class, e -> openLinkInBrowser(e.target));
-        mEditor.subscribe(CursorChangedEvent.class, e -> scheduleSuggestionIfAtLineEnd(e));
+        //mEditor.subscribe(CursorChangedEvent.class, e -> scheduleSuggestionIfAtLineEnd(e));
 
         mEditor.setInlineSuggestionListener(new com.qiplat.sweeteditor.copilot.InlineSuggestionListener() {
             @Override

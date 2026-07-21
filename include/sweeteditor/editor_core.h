@@ -781,6 +781,8 @@ namespace NS_SWEETEDITOR {
     bool linkedEditingPrevTabStopInternal();
     void cancelLinkedEditingInternal();
     void finishLinkedEditingInternal();
+    bool hasValidLinkedEditingGroup() const;
+    std::optional<Vector<DocumentReplacement>> planLinkedEdit(const TextRange& range, const U8String& text) const;
     bool foldAtInternal(size_t line);
     bool unfoldAtInternal(size_t line);
     bool toggleFoldAtInternal(size_t line);
@@ -857,11 +859,8 @@ namespace NS_SWEETEDITOR {
     EditorActionResult finishImeAction(const ActionSnapshot& before, const ImeActionResult& ime_result);
     void normalizeScrollState();
 
-    /// Linked editing: apply synced replace to all linked ranges in current tab stop, return all changes
-    std::vector<TextChange> performLinkedEdits(const U8String& new_text);
-
-    /// Linked editing: apply replace and return one edit result (based on primary range)
-    TextEditResult applyLinkedEditsWithResult(const U8String& new_text);
+    /// Linked editing: apply a local replacement and return one edit result
+    TextEditResult applyLinkedEditWithResult(const TextRange& range, const U8String& text);
 
     /// Linked editing: jump to target tab stop and select default text
     void activateCurrentTabStop();

@@ -1111,24 +1111,10 @@ namespace NS_SWEETEDITOR {
       }
     }
 
-    if (isInLinkedEditing()) {
-      const TabStopGroup* group = m_linked_editing_session_->currentGroup();
-      if (group == nullptr || group->ranges.empty()) return {};
-      U8String current_text = hasSelection() ? "" : m_document_->getU8Text(group->ranges[0]);
-      U8String linked_text = current_text + actual_text;
-      TextEditResult result = applyLinkedEditsWithResult(linked_text);
-      LOGD("EditorCore::insertText(linked), cursor = %s", m_caret_.active.dump().c_str());
-      return result;
-    }
-
-    TextEditResult result;
-    if (hasSelection()) {
-      TextRange range = m_caret_.normalizedSelection();
-      result = applyEdit(range, actual_text);
-    } else {
-      TextRange range = {m_caret_.active, m_caret_.active};
-      result = applyEdit(range, actual_text);
-    }
+    const TextRange range = hasSelection()
+        ? m_caret_.normalizedSelection()
+        : TextRange {m_caret_.active, m_caret_.active};
+    TextEditResult result = replaceTextInternal(range, actual_text);
     LOGD("EditorCore::insertText, cursor = %s", m_caret_.active.dump().c_str());
     return result;
   }
@@ -1137,12 +1123,12 @@ namespace NS_SWEETEDITOR {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
     if (isInLinkedEditing()) {
-      const TabStopGroup* group = m_linked_editing_session_->currentGroup();
-      if (group && !group->ranges.empty() && range == group->ranges[0]) {
-        TextEditResult result = applyLinkedEditsWithResult(new_text);
+      TextEditResult result = applyLinkedEditWithResult(range, new_text);
+      if (result.handled) {
         LOGD("EditorCore::replaceText(linked), cursor = %s", m_caret_.active.dump().c_str());
         return result;
       }
+      cancelLinkedEditingInternal();
     }
 
     TextEditResult result = applyEdit(range, new_text);
@@ -1157,34 +1143,9 @@ namespace NS_SWEETEDITOR {
   TextEditResult EditorCore::backspaceInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
-    if (isInLinkedEditing()) {
-      const TabStopGroup* group = m_linked_editing_session_->currentGroup();
-      if (group && !group->ranges.empty()) {
-        const TextRange& primary = group->ranges[0];
-        if (hasSelection()) {
-          auto result = applyLinkedEditsWithResult("");
-          LOGD("EditorCore::backspace(linked), cursor = %s", m_caret_.active.dump().c_str());
-          return result;
-        }
-        if (primary.start < primary.end) {
-          U8String current_text = m_document_->getU8Text(primary);
-          if (!current_text.empty()) {
-            auto end_it = current_text.end();
-            utf8::prior(end_it, current_text.begin());
-            U8String new_text(current_text.begin(), end_it);
-            auto result = applyLinkedEditsWithResult(new_text);
-            LOGD("EditorCore::backspace(linked), cursor = %s", m_caret_.active.dump().c_str());
-            return result;
-          }
-        } else {
-          cancelLinkedEditingInternal();
-        }
-      }
-    }
-
     if (hasSelection()) {
       TextRange range = m_caret_.normalizedSelection();
-      auto result = applyEdit(range, "");
+      auto result = replaceTextInternal(range, "");
       LOGD("EditorCore::backspace, cursor = %s", m_caret_.active.dump().c_str());
       return result;
     }
@@ -1199,7 +1160,7 @@ namespace NS_SWEETEDITOR {
         for (const auto& pair : m_auto_closing_pairs_) {
           if (left_char == static_cast<char32_t>(pair.open) && right_char == static_cast<char32_t>(pair.close)) {
             TextRange del_range = {{m_caret_.active.line, static_cast<uint32_t>(col - 1)}, {m_caret_.active.line, static_cast<uint32_t>(col + 1)}};
-            auto result = applyEdit(del_range, "");
+            auto result = replaceTextInternal(del_range, "");
             LOGD("EditorCore::backspace(auto-close-pair), cursor = %s", m_caret_.active.dump().c_str());
             return result;
           }
@@ -1226,7 +1187,7 @@ namespace NS_SWEETEDITOR {
             size_t prev_line = m_caret_.active.line - 1;
             uint32_t prev_cols = m_document_->getLineColumns(prev_line);
             TextRange del_range = {{prev_line, prev_cols}, {m_caret_.active.line, (uint32_t)line_text.size()}};
-            auto result = applyEdit(del_range, "");
+            auto result = replaceTextInternal(del_range, "");
             LOGD("EditorCore::backspace, cursor = %s", m_caret_.active.dump().c_str());
             return result;
           }
@@ -1245,7 +1206,7 @@ namespace NS_SWEETEDITOR {
           }
           if (target_col < col) {
             TextRange del_range = {{m_caret_.active.line, (uint32_t)target_col}, {m_caret_.active.line, (uint32_t)col}};
-            auto result = applyEdit(del_range, "");
+            auto result = replaceTextInternal(del_range, "");
             LOGD("EditorCore::backspace, cursor = %s", m_caret_.active.dump().c_str());
             return result;
           }
@@ -1260,14 +1221,14 @@ namespace NS_SWEETEDITOR {
           : UnicodeUtil::prevGraphemeBoundaryColumn(line_text, col);
       const size_t delete_end = cursor_inside_cluster ? cluster_end : col;
       TextRange del_range = {{m_caret_.active.line, delete_start}, {m_caret_.active.line, delete_end}};
-      auto result = applyEdit(del_range, "");
+      auto result = replaceTextInternal(del_range, "");
       LOGD("EditorCore::backspace, cursor = %s", m_caret_.active.dump().c_str());
       return result;
     } else if (m_caret_.active.line > 0) {
       size_t prev_line = m_caret_.active.line - 1;
       uint32_t prev_cols = m_document_->getLineColumns(prev_line);
       TextRange del_range = {{prev_line, prev_cols}, {m_caret_.active.line, 0}};
-      auto result = applyEdit(del_range, "");
+      auto result = replaceTextInternal(del_range, "");
       LOGD("EditorCore::backspace, cursor = %s", m_caret_.active.dump().c_str());
       return result;
     }
@@ -1277,15 +1238,9 @@ namespace NS_SWEETEDITOR {
   TextEditResult EditorCore::deleteForwardInternal() {
     if (m_document_ == nullptr || m_settings_.read_only) return {};
 
-    if (isInLinkedEditing() && hasSelection()) {
-      auto result = applyLinkedEditsWithResult("");
-      LOGD("EditorCore::deleteForward(linked), cursor = %s", m_caret_.active.dump().c_str());
-      return result;
-    }
-
     if (hasSelection()) {
       TextRange range = m_caret_.normalizedSelection();
-      auto result = applyEdit(range, "");
+      auto result = replaceTextInternal(range, "");
       LOGD("EditorCore::deleteForward, cursor = %s", m_caret_.active.dump().c_str());
       return result;
     }
@@ -1302,12 +1257,12 @@ namespace NS_SWEETEDITOR {
           ? cluster_end
           : UnicodeUtil::nextGraphemeBoundaryColumn(line_text, col);
       TextRange del_range = {{m_caret_.active.line, delete_start}, {m_caret_.active.line, delete_end}};
-      auto result = applyEdit(del_range, "");
+      auto result = replaceTextInternal(del_range, "");
       LOGD("EditorCore::deleteForward, cursor = %s", m_caret_.active.dump().c_str());
       return result;
     } else if (m_caret_.active.line + 1 < m_document_->getLineCount()) {
       TextRange del_range = {{m_caret_.active.line, line_cols}, {m_caret_.active.line + 1, 0}};
-      auto result = applyEdit(del_range, "");
+      auto result = replaceTextInternal(del_range, "");
       LOGD("EditorCore::deleteForward, cursor = %s", m_caret_.active.dump().c_str());
       return result;
     }
@@ -1407,6 +1362,7 @@ namespace NS_SWEETEDITOR {
     U8String new_text = block_text + "\n" + prev_text;
 
     const CaretState caret_before = m_caret_;
+    cancelLinkedEditingInternal();
     auto result = applyEdit(full_range, new_text, false);
     if (result.contentChanged()) {
       CaretState caret_after = caret_before;
@@ -1449,6 +1405,7 @@ namespace NS_SWEETEDITOR {
     U8String new_text = next_text + "\n" + block_text;
 
     const CaretState caret_before = m_caret_;
+    cancelLinkedEditingInternal();
     auto result = applyEdit(full_range, new_text, false);
     if (result.contentChanged()) {
       CaretState caret_after = caret_before;
@@ -1487,6 +1444,7 @@ namespace NS_SWEETEDITOR {
     TextPosition insert_pos = {first_line, 0};
     U8String insert_text = block_text + "\n";
 
+    cancelLinkedEditingInternal();
     auto result = applyEdit({insert_pos, insert_pos}, insert_text);
 
     // Keep cursor at original logical position (inserted text already shifted it down correctly)
@@ -1517,6 +1475,7 @@ namespace NS_SWEETEDITOR {
     TextPosition insert_pos = {last_line, last_cols};
     U8String insert_text = "\n" + block_text;
 
+    cancelLinkedEditingInternal();
     auto result = applyEdit({insert_pos, insert_pos}, insert_text);
 
     // applyEdit moves cursor to the end of inserted text (end of copied block), which is what we want
@@ -1549,6 +1508,9 @@ namespace NS_SWEETEDITOR {
       del_range = {{0, 0}, {last_line, m_document_->getLineColumns(last_line)}};
     }
 
+    if (!del_range.isCollapsed()) {
+      cancelLinkedEditingInternal();
+    }
     auto result = applyEdit(del_range, "");
     return result;
   }
@@ -1560,6 +1522,7 @@ namespace NS_SWEETEDITOR {
     TextPosition insert_pos = {line, 0};
 
     const CaretState caret_before = m_caret_;
+    cancelLinkedEditingInternal();
     auto result = applyEdit({insert_pos, insert_pos}, "\n", false);
 
     // Keep cursor on the newly inserted empty line
@@ -1580,6 +1543,7 @@ namespace NS_SWEETEDITOR {
     uint32_t line_cols = m_document_->getLineColumns(line);
     TextPosition insert_pos = {line, line_cols};
 
+    cancelLinkedEditingInternal();
     auto result = applyEdit({insert_pos, insert_pos}, "\n");
     // applyEdit has already moved cursor to the start of the new line
     return result;
@@ -1782,7 +1746,8 @@ namespace NS_SWEETEDITOR {
       markSearchStaleForDocumentChange();
       return finishAction(before, EditorActionSource::SEARCH, resolution.handled, std::move(resolution), true, true);
     }
-    TextEditResult edit_result = replaceTextInternal(match.range, actual_replacement);
+    cancelLinkedEditingInternal();
+    TextEditResult edit_result = applyEdit(match.range, actual_replacement);
     appendTextEditResult(resolution, std::move(edit_result));
     return finishAction(before, EditorActionSource::SEARCH, resolution.handled, std::move(resolution));
   }
@@ -1825,6 +1790,7 @@ namespace NS_SWEETEDITOR {
     }
 
     const CaretState caret_before = m_caret_;
+    cancelLinkedEditingInternal();
     edit_result = applyEditBatch(replacements);
     edit_result.cursor_before = caret_before.active;
     if (edit_result.contentChanged()) {
@@ -2429,63 +2395,101 @@ namespace NS_SWEETEDITOR {
     }
   }
 
-  TextEditResult EditorCore::applyLinkedEditsWithResult(const U8String& new_text) {
+  bool EditorCore::hasValidLinkedEditingGroup() const {
+    if (!isInLinkedEditing()) return false;
+    const TabStopGroup* group = m_linked_editing_session_->currentGroup();
+    if (group == nullptr || group->ranges.empty()) return false;
+
+    for (size_t index = 0; index < group->ranges.size(); ++index) {
+      const TextRange& range = group->ranges[index];
+      if (range.end < range.start) return false;
+      for (size_t previous = 0; previous < index; ++previous) {
+        const TextRange& other = group->ranges[previous];
+        const bool collapsed_collision = range.isCollapsed()
+            ? other.start <= range.start && range.start <= other.end
+            : other.isCollapsed() && range.start <= other.start && other.start <= range.end;
+        if (range.overlaps(other) || collapsed_collision) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  std::optional<Vector<DocumentReplacement>> EditorCore::planLinkedEdit(
+      const TextRange& range, const U8String& text) const {
+    if (!hasValidLinkedEditingGroup() || m_document_ == nullptr || range.end < range.start) return std::nullopt;
+    const TabStopGroup* group = m_linked_editing_session_->currentGroup();
+    const size_t line_count = m_document_->getLineCount();
+    for (const TextRange& group_range : group->ranges) {
+      if (group_range.start.line >= line_count || group_range.end.line >= line_count) return std::nullopt;
+      const U16String& start_line = m_document_->getLineU16TextRef(group_range.start.line);
+      const U16String& end_line = group_range.start.line == group_range.end.line
+          ? start_line
+          : m_document_->getLineU16TextRef(group_range.end.line);
+      if (group_range.start.column > start_line.size() || group_range.end.column > end_line.size()
+          || !UnicodeUtil::isCodePointBoundary(start_line, group_range.start.column)
+          || !UnicodeUtil::isCodePointBoundary(end_line, group_range.end.column)) {
+        return std::nullopt;
+      }
+    }
+    const TextRange& primary = group->ranges[0];
+    if (range.start < primary.start || primary.end < range.end) return std::nullopt;
+
+    const U8String final_text = m_document_->getU8Text({primary.start, range.start})
+        + text
+        + m_document_->getU8Text({range.end, primary.end});
+    const Vector<std::pair<TextRange, U8String>> edits = m_linked_editing_session_->computeLinkedEdits(final_text);
+    Vector<DocumentReplacement> replacements;
+    replacements.reserve(edits.size());
+    for (const auto& [edit_range, edit_text] : edits) {
+      if (m_document_->getU8Text(edit_range) != edit_text) {
+        replacements.push_back({edit_range, edit_text});
+      }
+    }
+    return replacements;
+  }
+
+  TextEditResult EditorCore::applyLinkedEditWithResult(
+      const TextRange& range, const U8String& text) {
     TextEditResult result;
     if (!isInLinkedEditing() || m_document_ == nullptr) return result;
 
     const TabStopGroup* group = m_linked_editing_session_->currentGroup();
     if (group == nullptr || group->ranges.empty()) return result;
-
-    const TextRange primary_before = group->ranges[0];
-    const U8String old_text = m_document_->getU8Text(primary_before);
-    if (old_text == new_text) return result;
-
-    const TextPosition cursor_before = m_caret_.active;
-    auto changes = performLinkedEdits(new_text);
-
-    result.markHandled(primary_before.isCollapsed()
-                       ? TextChangeKind::INSERTION
-                       : (new_text.empty() ? TextChangeKind::DELETION : TextChangeKind::REPLACEMENT));
-    result.changes = std::move(changes);
-    result.cursor_before = cursor_before;
-    result.cursor_after = m_caret_.active;
-    return result;
-  }
-
-  std::vector<TextChange> EditorCore::performLinkedEdits(const U8String& new_text) {
-    std::vector<TextChange> changes;
-    if (!isInLinkedEditing()) return changes;
-
-    auto edits = m_linked_editing_session_->computeLinkedEdits(new_text);
-    if (edits.empty()) return changes;
-
-    Vector<DocumentReplacement> replacements;
-    replacements.reserve(edits.size());
-    for (const auto& [range, text] : edits) {
-      replacements.push_back({range, text});
-    }
+    const std::optional<Vector<DocumentReplacement>> plan = planLinkedEdit(range, text);
+    if (!plan.has_value()) return result;
+    const size_t caret_offset = StrUtil::utf16Length(
+        m_document_->getU8Text({group->ranges[0].start, range.start}) + text);
 
     const CaretState caret_before = m_caret_;
-    TextEditResult edit_result = applyEditBatch(replacements);
-    if (!edit_result.contentChanged()) return changes;
+    if (!plan->empty()) {
+      result = applyEditBatch(*plan);
+      if (!result.contentChanged()) return {};
 
-    // The session ranges are updated in the same descending order as the document replacements.
-    for (const auto& [range, text] : edits) {
-      TextPosition new_end = calcPositionAfterInsert(range.start, text);
-      m_linked_editing_session_->adjustRangesForEdit(range, new_end);
+      for (const DocumentReplacement& replacement : *plan) {
+        TextPosition new_end = calcPositionAfterInsert(replacement.range.start, replacement.text);
+        m_linked_editing_session_->adjustRangesForEdit(replacement.range, new_end);
+      }
     }
 
-    // Move cursor to end of primary range
-    const TabStopGroup* group = m_linked_editing_session_->currentGroup();
+    group = m_linked_editing_session_->currentGroup();
     if (group && !group->ranges.empty()) {
-      setCursorPosition(group->ranges[0].end);
+      const size_t primary_start = m_document_->getCharIndexFromPosition(group->ranges[0].start);
+      setCursorPositionInternal(m_document_->getPositionFromCharIndex(primary_start + caret_offset));
       clearSelection();
     }
 
-    changes = std::move(edit_result.changes);
-    recordHistory(changes, caret_before, m_caret_);
+    result.markHandled(range.isCollapsed()
+                       ? TextChangeKind::INSERTION
+                       : (text.empty() ? TextChangeKind::DELETION : TextChangeKind::REPLACEMENT));
+    result.cursor_before = caret_before.active;
+    result.cursor_after = m_caret_.active;
+    if (!result.changes.empty()) {
+      recordHistory(result.changes, caret_before, m_caret_);
+    }
     ensureCursorVisible();
-    return changes;
+    return result;
   }
 
   void EditorCore::activateCurrentTabStop() {
