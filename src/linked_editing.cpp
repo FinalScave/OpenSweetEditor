@@ -314,8 +314,14 @@ namespace NS_SWEETEDITOR {
     int64_t line_delta = new_end_line - old_end_line;
     int64_t col_delta = new_end_col - old_end_col;
 
-    for (auto& group : m_model_.groups) {
+    for (size_t group_index = 0; group_index < m_model_.groups.size(); ++group_index) {
+      auto& group = m_model_.groups[group_index];
       for (auto& range : group.ranges) {
+        if (group_index == m_current_idx_ && range == old_range) {
+          range = {old_range.start, new_end};
+          continue;
+        }
+
         // Only adjust ranges after the edit point
         // Start position adjustment
         if (range.start.line == old_range.end.line && range.start.column >= old_range.end.column) {

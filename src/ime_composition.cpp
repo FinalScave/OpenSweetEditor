@@ -199,6 +199,22 @@ namespace NS_SWEETEDITOR {
     transaction.caret_after.setSelection({new_end, new_end});
   }
 
+  bool CompositionController::stageLinkedEdit(
+      const TextRange& range, const U8String& text, EditTransaction& transaction) {
+    if (!m_editor_.isInLinkedEditing()) return false;
+    const std::optional<Vector<DocumentReplacement>> plan = m_editor_.planLinkedEdit(range, text);
+    if (!plan.has_value()) {
+      transaction.cancel_linked_editing = true;
+      return false;
+    }
+    for (const DocumentReplacement& replacement : *plan) {
+      const U8String old_text = coreDocumentText(replacement.range);
+      transaction.physical_replacements.push_back(replacement);
+      transaction.committed_changes.push_back({replacement.range, old_text, replacement.text});
+    }
+    return true;
+  }
+
   void CompositionController::appendLinkedCompositionEdits(
       const CompositionState& state, const TextRange& baseline_range,
       const U8String& final_text_raw, EditTransaction& transaction) {
@@ -207,10 +223,11 @@ namespace NS_SWEETEDITOR {
       return;
     }
     const TabStopGroup* group = session->currentGroup();
-    if (!session->isActive() || group == nullptr || group->ranges.size() < 2) {
-      if (!session->isActive() || group == nullptr) {
-        transaction.cancel_linked_editing = true;
-      }
+    if (!m_editor_.hasValidLinkedEditingGroup() || group == nullptr) {
+      transaction.cancel_linked_editing = true;
+      return;
+    }
+    if (group->ranges.size() < 2) {
       return;
     }
 
@@ -218,22 +235,12 @@ namespace NS_SWEETEDITOR {
     size_t owner_index = group->ranges.size();
     for (size_t index = 0; index < group->ranges.size(); ++index) {
       const TextRange& range = group->ranges[index];
-      if (range.end < range.start) {
-        transaction.cancel_linked_editing = true;
-        return;
-      }
       const bool owns_baseline = baseline_range.isCollapsed()
           ? range.start <= baseline_range.start && baseline_range.start <= range.end
           : range.start <= baseline_range.start && baseline_range.end <= range.end;
       if (owns_baseline) {
         ++owner_count;
         owner_index = index;
-      }
-      for (size_t previous = 0; previous < index; ++previous) {
-        if (range.overlaps(group->ranges[previous])) {
-          transaction.cancel_linked_editing = true;
-          return;
-        }
       }
     }
     if (owner_count != 1 || owner_index != 0) {
@@ -260,28 +267,22 @@ namespace NS_SWEETEDITOR {
       return;
     }
 
-    Vector<TextRange> editing_secondaries;
-    editing_secondaries.reserve(group->ranges.size() - 1);
-    for (size_t index = 1; index < group->ranges.size(); ++index) {
-      const std::optional<TextRange> projected = projectCommittedRange(group->ranges[index]);
+    const U8String prefix = coreDocumentText({editing_primary.start, state.current_range.start});
+    const U8String suffix = coreDocumentText({state.current_range.end, editing_primary.end});
+    const U8String linked_text = prefix + final_text_raw + suffix;
+    const Vector<std::pair<TextRange, U8String>> edits = session->computeLinkedEdits(linked_text);
+    for (const auto& [committed_range, edit_text] : edits) {
+      if (committed_range == group->ranges[0]) continue;
+      const std::optional<TextRange> projected = projectCommittedRange(committed_range);
       if (!projected.has_value() || !isDocumentRangeValid(*projected)) {
         transaction.cancel_linked_editing = true;
         return;
       }
-      editing_secondaries.push_back(*projected);
-    }
-
-    const U8String prefix = coreDocumentText({editing_primary.start, state.current_range.start});
-    const U8String suffix = coreDocumentText({state.current_range.end, editing_primary.end});
-    const U8String linked_text = prefix + final_text_raw + suffix;
-    for (size_t index = 0; index < editing_secondaries.size(); ++index) {
-      const TextRange& editing_secondary = editing_secondaries[index];
+      const TextRange& editing_secondary = *projected;
       const U8String secondary_text = coreDocumentText(editing_secondary);
-      if (secondary_text == linked_text) {
-        continue;
-      }
-      transaction.physical_replacements.push_back({editing_secondary, linked_text});
-      transaction.committed_changes.push_back({group->ranges[index + 1], secondary_text, linked_text});
+      if (secondary_text == edit_text) continue;
+      transaction.physical_replacements.push_back({editing_secondary, edit_text});
+      transaction.committed_changes.push_back({committed_range, secondary_text, edit_text});
     }
   }
 
@@ -294,7 +295,14 @@ namespace NS_SWEETEDITOR {
         m_editor_.m_linked_editing_session_->getAllHighlights();
     for (const TextChange& change : changes) {
       for (const LinkedEditingHighlight& highlight : highlights) {
-        if (change.range.overlaps(highlight.range)) {
+        const bool affected = change.range.isCollapsed()
+            ? highlight.range.start <= change.range.start
+                && change.range.start <= highlight.range.end
+            : change.range.overlaps(highlight.range)
+                || (highlight.range.isCollapsed()
+                    && change.range.start <= highlight.range.start
+                    && highlight.range.start <= change.range.end);
+        if (affected) {
           return true;
         }
       }
@@ -516,11 +524,26 @@ namespace NS_SWEETEDITOR {
     }
     if (!initial_owns_text) {
       if (!composition_after.has_value()) {
-        transaction.committed_changes.reserve(replacements.size());
-        for (const DocumentReplacement& replacement : replacements) {
-          const U8String old_text = coreDocumentText(replacement.range);
-          if (old_text != replacement.text) {
-            transaction.committed_changes.push_back({replacement.range, old_text, replacement.text});
+        bool linked_edit_staged = false;
+        if (!initial_composition.has_value() && replacements.size() == 1
+            && m_editor_.isInLinkedEditing()) {
+          transaction.physical_replacements.clear();
+          linked_edit_staged = stageLinkedEdit(
+              replacements.front().range, replacements.front().text, transaction);
+          if (!linked_edit_staged) {
+            transaction.physical_replacements = replacements;
+          }
+        }
+        if (!linked_edit_staged) {
+          transaction.committed_changes.reserve(replacements.size());
+          for (const DocumentReplacement& replacement : replacements) {
+            const U8String old_text = coreDocumentText(replacement.range);
+            if (old_text != replacement.text) {
+              transaction.committed_changes.push_back({replacement.range, old_text, replacement.text});
+            }
+          }
+          if (linkedRangesAffectedByChanges(transaction.committed_changes)) {
+            transaction.cancel_linked_editing = true;
           }
         }
         if (initial_composition.has_value()) {
@@ -946,10 +969,18 @@ namespace NS_SWEETEDITOR {
                                     physical_range.end, EndpointBias::BEFORE)
               };
             }
-            const U8String old_text = coreDocumentText(physical_range);
-            if (old_text != command.text) {
-              transaction.physical_replacements.push_back({physical_range, command.text});
-              transaction.committed_changes.push_back({committed_range, old_text, command.text});
+            bool linked_edit_staged = false;
+            if (!initial_composition.has_value()
+                && transaction.physical_replacements.empty()
+                && m_editor_.isInLinkedEditing()) {
+              linked_edit_staged = stageLinkedEdit(physical_range, command.text, transaction);
+            }
+            if (!linked_edit_staged) {
+              const U8String old_text = coreDocumentText(physical_range);
+              if (old_text != command.text) {
+                transaction.physical_replacements.push_back({physical_range, command.text});
+                transaction.committed_changes.push_back({committed_range, old_text, command.text});
+              }
             }
             transaction.caret_after.setSelection({
                 corePositionAfterInsert(physical_range.start, command.text),
@@ -985,41 +1016,47 @@ namespace NS_SWEETEDITOR {
 
           const std::optional<CompositionState>& state = stagedComposition();
           const bool owns_text = state.has_value() && ownsCompositionText(*state);
+          bool linked_edit_staged = false;
+          if (!state.has_value() && ranges.size() == 1 && m_editor_.isInLinkedEditing()) {
+            linked_edit_staged = stageLinkedEdit(ranges.front(), "", transaction);
+          }
           Vector<TextChange> editing_changes;
-          for (const TextRange& range : ranges) {
-            transaction.physical_replacements.push_back({range, ""});
-            editing_changes.push_back({range, coreDocumentText(range), ""});
-            if (!owns_text) {
-              transaction.committed_changes.push_back({range, coreDocumentText(range), ""});
-              continue;
-            }
+          if (!linked_edit_staged) {
+            for (const TextRange& range : ranges) {
+              transaction.physical_replacements.push_back({range, ""});
+              editing_changes.push_back({range, coreDocumentText(range), ""});
+              if (!owns_text) {
+                transaction.committed_changes.push_back({range, coreDocumentText(range), ""});
+                continue;
+              }
 
-            const TextRange baseline = baselineRange(*state);
-            const TextPosition left_end = std::min(range.end, state->current_range.start);
-            if (range.start < left_end) {
-              const TextRange editing_left {range.start, left_end};
-              transaction.committed_changes.push_back({
-                  {
-                      transformPosition(state->current_range, baseline.end,
-                                        editing_left.start, EndpointBias::AFTER),
-                      transformPosition(state->current_range, baseline.end,
-                                        editing_left.end, EndpointBias::BEFORE)
-                  },
-                  coreDocumentText(editing_left), ""
-              });
-            }
-            const TextPosition right_start = std::max(range.start, state->current_range.end);
-            if (right_start < range.end) {
-              const TextRange editing_right {right_start, range.end};
-              transaction.committed_changes.push_back({
-                  {
-                      transformPosition(state->current_range, baseline.end,
-                                        editing_right.start, EndpointBias::AFTER),
-                      transformPosition(state->current_range, baseline.end,
-                                        editing_right.end, EndpointBias::BEFORE)
-                  },
-                  coreDocumentText(editing_right), ""
-              });
+              const TextRange baseline = baselineRange(*state);
+              const TextPosition left_end = std::min(range.end, state->current_range.start);
+              if (range.start < left_end) {
+                const TextRange editing_left {range.start, left_end};
+                transaction.committed_changes.push_back({
+                    {
+                        transformPosition(state->current_range, baseline.end,
+                                          editing_left.start, EndpointBias::AFTER),
+                        transformPosition(state->current_range, baseline.end,
+                                          editing_left.end, EndpointBias::BEFORE)
+                    },
+                    coreDocumentText(editing_left), ""
+                });
+              }
+              const TextPosition right_start = std::max(range.start, state->current_range.end);
+              if (right_start < range.end) {
+                const TextRange editing_right {right_start, range.end};
+                transaction.committed_changes.push_back({
+                    {
+                        transformPosition(state->current_range, baseline.end,
+                                          editing_right.start, EndpointBias::AFTER),
+                        transformPosition(state->current_range, baseline.end,
+                                          editing_right.end, EndpointBias::BEFORE)
+                    },
+                    coreDocumentText(editing_right), ""
+                });
+              }
             }
           }
           if (owns_text) {
@@ -1061,6 +1098,14 @@ namespace NS_SWEETEDITOR {
             transaction.update_composition = true;
             transaction.composition_after = next_state;
             transaction.caret_after = transformCaretForChanges(transaction.caret_after, editing_changes);
+          } else if (linked_edit_staged) {
+            Vector<TextChange> ordered_changes = transaction.committed_changes;
+            std::sort(ordered_changes.begin(), ordered_changes.end(),
+                      [](const TextChange& lhs, const TextChange& rhs) {
+                        return lhs.range.start < rhs.range.start;
+                      });
+            transaction.caret_after = transformCaretForChanges(
+                transaction.caret_after, ordered_changes);
           } else {
             transaction.caret_after = transformCaretForChanges(transaction.caret_after,
                                                                transaction.committed_changes);
@@ -1078,7 +1123,10 @@ namespace NS_SWEETEDITOR {
               transaction.composition_after = std::move(next_state);
             }
           }
-          transaction.cancel_linked_editing = linkedRangesAffectedByChanges(transaction.committed_changes);
+          if (!linked_edit_staged
+              && linkedRangesAffectedByChanges(transaction.committed_changes)) {
+            transaction.cancel_linked_editing = true;
+          }
           transaction.break_history_merge = true;
           break;
         }

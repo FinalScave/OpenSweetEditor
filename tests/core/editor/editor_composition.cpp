@@ -1323,6 +1323,145 @@ TEST_CASE("EditorCore linked composition cancel leaves secondary targets unchang
   CHECK(document->getU8Text().empty());
 }
 
+TEST_CASE("EditorCore linked composition survives insertion at collapsed targets") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  REQUIRE(editor.insertSnippet("${1:i}-${1:i}-${1:i}").content_changed);
+  REQUIRE(commitText(editor, "").content_changed);
+  REQUIRE(document->getU8Text() == "--");
+  REQUIRE(editor.isInLinkedEditing());
+
+  REQUIRE(commitText(editor, "a").content_changed);
+  REQUIRE(document->getU8Text() == "a-a-a");
+  REQUIRE(editor.isInLinkedEditing());
+
+  REQUIRE(markDocumentRange(editor, {{0, 0}, {0, 1}}).handled);
+  REQUIRE_FALSE(updatePreedit(editor, "ab").content_changed);
+  REQUIRE(document->getU8Text() == "ab-a-a");
+
+  EditorActionResult finish = finishPreedit(editor);
+  REQUIRE(finish.content_changed);
+  CHECK(finish.changes.size() == 3);
+  CHECK(document->getU8Text() == "ab-ab-ab");
+  CHECK(editor.isInLinkedEditing());
+}
+
+TEST_CASE("EditorCore idle IME commit mirrors linked placeholders atomically") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  REQUIRE(editor.insertSnippet("${1:i}-${1:i}-${1:i}").content_changed);
+  EditorActionResult commit = commitText(editor, "z");
+
+  REQUIRE(commit.content_changed);
+  CHECK(commit.changes.size() == 3);
+  CHECK(document->getU8Text() == "z-z-z");
+  CHECK(editor.isInLinkedEditing());
+  REQUIRE(editor.undo().content_changed);
+  CHECK(document->getU8Text() == "i-i-i");
+}
+
+TEST_CASE("EditorCore idle IME commit continues linked editing after composition finish") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  REQUIRE(editor.insertSnippet("${1:i}-${1:i}").content_changed);
+  REQUIRE_FALSE(updatePreedit(editor, "z").content_changed);
+  REQUIRE(finishPreedit(editor).content_changed);
+  REQUIRE(document->getU8Text() == "z-z");
+
+  EditorActionResult commit = commitText(editor, " ");
+
+  REQUIRE(commit.content_changed);
+  CHECK(commit.changes.size() == 2);
+  CHECK(document->getU8Text() == "z -z ");
+  CHECK(editor.isInLinkedEditing());
+  REQUIRE(editor.undo().content_changed);
+  CHECK(document->getU8Text() == "z-z");
+}
+
+TEST_CASE("EditorCore idle IME delete mirrors linked placeholders") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  REQUIRE(editor.insertSnippet("${1:i}-${1:i}").content_changed);
+  REQUIRE(commitText(editor, "z").content_changed);
+  EditorActionResult deletion = deleteBackward(editor);
+
+  REQUIRE(deletion.content_changed);
+  CHECK(deletion.changes.size() == 2);
+  CHECK(document->getU8Text() == "-");
+  CHECK(editor.isInLinkedEditing());
+  REQUIRE(editor.undo().content_changed);
+  CHECK(document->getU8Text() == "z-z");
+}
+
+TEST_CASE("EditorCore idle IME delete preserves input when leaving a linked placeholder") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  REQUIRE(editor.insertSnippet("${1:i}-${1:i}").content_changed);
+  EditorActionResult deletion = deleteForward(editor, 2);
+
+  REQUIRE(deletion.content_changed);
+  CHECK(document->getU8Text() == "i");
+  CHECK_FALSE(editor.isInLinkedEditing());
+  REQUIRE(editor.undo().content_changed);
+  CHECK(document->getU8Text() == "i-i");
+}
+
+TEST_CASE("EditorCore text update mirrors linked placeholders before restarting its buffer") {
+  EditorOptions options;
+  EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
+  SharedPtr<Document> document = makeShared<LineArrayDocument>("");
+  editor.loadDocument(document);
+  editor.setViewport({800, 600});
+
+  REQUIRE(editor.insertSnippet("${1:i}-${1:i}").content_changed);
+  ImeState session = editor.beginImeSession(ImeMutationModel::TEXT_UPDATE);
+  REQUIRE(session.result_code == ImeResultCode::OK);
+  ImeTextContext context = editor.getImeContext(
+      session.session_id, ImeTextSource::EDITING_BUFFER, 0, -1);
+  REQUIRE(context.result_code == ImeResultCode::OK);
+  REQUIRE(context.text == "i-i");
+
+  ImeTextUpdateStep step;
+  step.old_text = context.text;
+  step.patch_range = {ImeCoordinateSpace::EDITING_BUFFER, 0, 1};
+  step.replacement_text = "z";
+  step.selection_after = {
+      ImeCoordinateSpace::EDITING_BUFFER, 1, 1, CaretAffinity::DOWNSTREAM};
+  EditorActionResult update = editor.applyImeTextUpdates({
+      session.session_id,
+      session.state_revision,
+      {step}
+  });
+
+  REQUIRE(update.content_changed);
+  CHECK(update.changes.size() == 2);
+  CHECK(update.ime_host_action == ImeHostAction::RESTART_SESSION);
+  CHECK(document->getU8Text() == "z-z");
+  CHECK(editor.isInLinkedEditing());
+  REQUIRE(editor.undo().content_changed);
+  CHECK(document->getU8Text() == "i-i");
+}
+
 TEST_CASE("EditorCore mixed surrounding delete keeps composition active and commits external changes") {
   EditorOptions options;
   EditorCore editor(makeShared<FixedWidthTextMeasurer>(), options);
